@@ -26,6 +26,8 @@ export const worktreesApi = {
 
   listAll: () => ipcRenderer.invoke('worktrees:listAll'),
 
+  unpushedStatus: (args) => ipcRenderer.invoke('worktrees:unpushedStatus', args),
+
   create: (args) => ipcRenderer.invoke('worktrees:create', args),
 
   adoptProvisionedRoot: (args) => ipcRenderer.invoke('worktrees:adoptProvisionedRoot', args),
