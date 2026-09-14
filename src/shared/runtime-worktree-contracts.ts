@@ -171,12 +171,18 @@ export type RuntimeWorktreeOverlapSibling = {
   /** Committed branch tips only, via `git merge-tree --write-tree`; see command help text. */
   conflictPrediction: WorktreeConflictPrediction
   conflictingFiles: string[]
+  /** Set when this sibling's own changes computation failed; sharedFiles/conflictPrediction
+   *  above are not a real "clean" result for it, just this sibling degrading in isolation. */
+  changesUnverifiable?: true
 }
 
 export type RuntimeWorktreeOverlapResult = {
   worktree: { id: string; branch: string | null }
   siblings: RuntimeWorktreeOverlapSibling[]
   unsupported?: 'folder'
+  /** Set when the sibling scan was not authoritative: `siblings` is empty because siblings
+   *  could not be enumerated, not because there are none. Never treat this as "no siblings". */
+  siblingsUnverifiable?: true
 }
 
 export type RuntimeRepoList = { repos: Repo[] }

@@ -100,11 +100,70 @@ describe('computeWorktreeOverlap', () => {
     vi.restoreAllMocks()
   })
 
-  it('reports no siblings, not a false-empty guess, when the scan is not authoritative', async () => {
+  it('flags siblingsUnverifiable instead of a false-empty "no siblings" when the scan is not authoritative', async () => {
     const host = makeHost({
       listDetectedManagedWorktrees: async () => ({ authoritative: false, worktrees: [TARGET, SIBLING] })
     })
     const result = await computeWorktreeOverlap(host, 'id:repo-1::/target')
     expect(result.siblings).toEqual([])
+    expect(result.siblingsUnverifiable).toBe(true)
+  })
+
+  it('does not set siblingsUnverifiable when the scan is authoritative', async () => {
+    vi.spyOn(mergeTreePrediction, 'predictWorktreeMergeTreeConflict').mockResolvedValue({
+      prediction: 'clean',
+      conflictingFiles: []
+    })
+    const host = makeHost()
+    const result = await computeWorktreeOverlap(host, 'id:repo-1::/target')
+    expect(result.siblingsUnverifiable).toBeUndefined()
+    vi.restoreAllMocks()
+  })
+
+  it('degrades only the failing sibling when its changes computation throws, others still report', async () => {
+    const OTHER_SIBLING: WorktreeSummary = {
+      id: 'repo-1::/other',
+      repoId: 'repo-1',
+      branch: 'agent-c',
+      path: '/other',
+      head: 'head-c'
+    }
+    vi.spyOn(mergeTreePrediction, 'predictWorktreeMergeTreeConflict').mockResolvedValue({
+      prediction: 'clean',
+      conflictingFiles: []
+    })
+    const host = makeHost({
+      listDetectedManagedWorktrees: async () => ({
+        authoritative: true,
+        worktrees: [TARGET, SIBLING, OTHER_SIBLING]
+      }),
+      getRuntimeGitStatus: async (selector) => {
+        if (selector === 'id:repo-1::/sibling') {
+          throw new Error('host unreachable')
+        }
+        return { entries: [], conflictOperation: 'unknown' }
+      }
+    })
+
+    const result = await computeWorktreeOverlap(host, 'id:repo-1::/target')
+
+    expect(result.siblings).toEqual([
+      {
+        id: SIBLING.id,
+        branch: SIBLING.branch,
+        sharedFiles: [],
+        changesUnverifiable: true,
+        conflictPrediction: 'unverifiable',
+        conflictingFiles: []
+      },
+      {
+        id: OTHER_SIBLING.id,
+        branch: OTHER_SIBLING.branch,
+        sharedFiles: [],
+        conflictPrediction: 'clean',
+        conflictingFiles: []
+      }
+    ])
+    vi.restoreAllMocks()
   })
 })
