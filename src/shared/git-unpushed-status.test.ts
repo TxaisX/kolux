@@ -7,8 +7,8 @@ function upstream(overrides: Partial<GitUpstreamStatus>): GitUpstreamStatus {
 }
 
 describe('classifyWorktreeUnpushedStatus', () => {
-  it('reports unknown when the upstream status is missing', () => {
-    expect(classifyWorktreeUnpushedStatus(undefined, null)).toEqual({ kind: 'unknown' })
+  it('reports unverifiable when the upstream status is missing', () => {
+    expect(classifyWorktreeUnpushedStatus(undefined, null)).toEqual({ kind: 'unverifiable' })
   })
 
   it('reports ahead with the commit count when upstream exists and is ahead', () => {
@@ -24,10 +24,10 @@ describe('classifyWorktreeUnpushedStatus', () => {
     })
   })
 
-  it('reports unknown for a never-published branch when the commit count could not be read', () => {
+  it('reports unverifiable for a never-published branch when the commit count could not be read', () => {
     expect(
       classifyWorktreeUnpushedStatus(upstream({ hasUpstream: false, ahead: 0, behind: 0 }), null)
-    ).toEqual({ kind: 'unknown' })
+    ).toEqual({ kind: 'unverifiable' })
   })
 
   it('reports unpublished with the count for a never-published branch with local commits', () => {

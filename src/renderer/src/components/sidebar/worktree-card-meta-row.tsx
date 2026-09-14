@@ -13,8 +13,8 @@ import { getDirectoryName } from './worktree-card-model'
 import type { WorktreeCardPresentation } from './worktree-card-presentation'
 import type { WorktreeCardController } from './use-worktree-card-controller'
 
-// Why: one shared attention style — matches the conflict-operation badge below.
-const UNPUSHED_BADGE_CLASSNAME =
+// Why: one shared attention style for every amber sidebar badge (conflict-operation and unpushed).
+const AMBER_ATTENTION_BADGE_CLASSNAME =
   'h-[16px] px-1.5 text-[10px] font-medium rounded shrink-0 gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 dark:text-amber-400 dark:border-amber-400/30 dark:bg-amber-400/5 leading-none'
 
 export function WorktreeCardMetaRow({
@@ -102,10 +102,7 @@ export function WorktreeCardMetaRow({
         ) : null}
 
         {showConflictOperationBadge && (
-          <Badge
-            variant="outline"
-            className="h-[16px] px-1.5 text-[10px] font-medium rounded shrink-0 gap-1 text-amber-600 border-amber-500/30 bg-amber-500/5 dark:text-amber-400 dark:border-amber-400/30 dark:bg-amber-400/5 leading-none"
-          >
+          <Badge variant="outline" className={AMBER_ATTENTION_BADGE_CLASSNAME}>
             <GitMerge className="size-2.5" />
             {CONFLICT_OPERATION_LABELS[conflictOperation]}
           </Badge>
@@ -140,7 +137,7 @@ function WorktreeCardUnpushedBadge({
 }): React.JSX.Element {
   if (unpushedStatus.kind === 'ahead') {
     return (
-      <Badge variant="outline" className={UNPUSHED_BADGE_CLASSNAME}>
+      <Badge variant="outline" className={AMBER_ATTENTION_BADGE_CLASSNAME}>
         {translate('sidebar.worktreeCard.unpushedBadge.ahead', '↑{{count}} unpushed', {
           count: unpushedStatus.count
         })}
@@ -150,7 +147,7 @@ function WorktreeCardUnpushedBadge({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Badge variant="outline" className={UNPUSHED_BADGE_CLASSNAME}>
+        <Badge variant="outline" className={AMBER_ATTENTION_BADGE_CLASSNAME}>
           {translate('sidebar.worktreeCard.unpushedBadge.unpublished', 'Unpublished')}
         </Badge>
       </TooltipTrigger>

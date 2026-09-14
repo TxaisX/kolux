@@ -89,6 +89,47 @@ describe('computeInitialCommitPreview', () => {
     expect(result.hasWarnings).toBe(false)
   })
 
+  it('flags a secret file sorted after the display cutoff and still reports it truncated', async () => {
+    // 10 plain files plus one secret-named file — well under MAX_PREVIEW_FILES (5000), but
+    // proves flags come from the FULL list, not just the (possibly truncated) display slice.
+    for (let i = 0; i < 10; i++) {
+      await writeFile(join(root, `file-${i}.txt`), 'noop')
+    }
+    await writeFile(join(root, 'credentials.json'), '{}')
+
+    const result = await computeInitialCommitPreview(root)
+    if ('error' in result) {
+      throw new Error(`expected success, got: ${result.error}`)
+    }
+
+    expect(result.hasWarnings).toBe(true)
+    expect(result.flaggedCount).toBe(1)
+    // The flagged file is surfaced first in the display list, never dropped.
+    expect(result.files[0]?.path).toBe('credentials.json')
+    expect(result.files[0]?.flags.secret).toBe(true)
+  })
+
+  it('flags a secret file placed past MAX_PREVIEW_FILES and reports the tree as truncated', async () => {
+    const writes: Promise<void>[] = []
+    for (let i = 0; i < 5001; i++) {
+      writes.push(writeFile(join(root, `plain-${String(i).padStart(5, '0')}.txt`), ''))
+    }
+    // Alphabetically last (so it sorts after the 5000th entry in git's listing) and matches
+    // the `.pem$` secret pattern regardless of prefix (unlike the `^credentials` pattern).
+    writes.push(writeFile(join(root, 'zzz-private.pem'), 'fake key'))
+    await Promise.all(writes)
+
+    const result = await computeInitialCommitPreview(root)
+    if ('error' in result) {
+      throw new Error(`expected success, got: ${result.error}`)
+    }
+
+    expect(result.totalCount).toBe(5002)
+    expect(result.truncated).toBe(true)
+    expect(result.hasWarnings).toBe(true)
+    expect(result.flaggedCount).toBe(1)
+  }, 30_000)
+
   it('reports no warnings and an empty list for a clean tree', async () => {
     await writeFile(join(root, 'readme.md'), 'hi')
     const result = await computeInitialCommitPreview(root)

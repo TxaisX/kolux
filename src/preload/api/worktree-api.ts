@@ -67,7 +67,7 @@ export type WorktreeApi = {
   cancelListDetected?: (args: { providerRequestId: ProviderRequestId }) => Promise<void>
   listAll: () => Promise<Worktree[]>
   /** Best-effort unpushed-work status per worktree, keyed by worktreeId; missing/unresolved
-   *  entries mean `unknown`, never a guess. Batched — call once per refresh, not per card.
+   *  entries mean `unverifiable`, never a guess. Batched — call once per refresh, not per card.
    *  Optional: desktop-only for now, so paired web/mobile clients simply show no badge. */
   unpushedStatus?: (args: {
     worktrees: WorktreeUnpushedStatusQuery[]

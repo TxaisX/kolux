@@ -73,7 +73,7 @@ describe('registerWorktreeUnpushedStatusHandlers', () => {
     )
   })
 
-  it('reports unknown without reading git for a folder repo', async () => {
+  it('reports unverifiable without reading git for a folder repo', async () => {
     const store = makeStore({ 'repo-folder': FOLDER_REPO })
     registerWorktreeUnpushedStatusHandlers(store)
 
@@ -83,11 +83,11 @@ describe('registerWorktreeUnpushedStatusHandlers', () => {
       ]
     })
 
-    expect(result).toEqual({ 'w-1': { kind: 'unknown' } })
+    expect(result).toEqual({ 'w-1': { kind: 'unverifiable' } })
     expect(resolveWorktreeUnpushedStatusMock).not.toHaveBeenCalled()
   })
 
-  it('reports unknown for a repo that no longer exists', async () => {
+  it('reports unverifiable for a repo that no longer exists', async () => {
     const store = makeStore({})
     registerWorktreeUnpushedStatusHandlers(store)
 
@@ -95,7 +95,7 @@ describe('registerWorktreeUnpushedStatusHandlers', () => {
       worktrees: [{ worktreeId: 'w-1', repoId: 'gone', path: '/gone', isMainWorktree: false }]
     })
 
-    expect(result).toEqual({ 'w-1': { kind: 'unknown' } })
+    expect(result).toEqual({ 'w-1': { kind: 'unverifiable' } })
   })
 
   it('tolerates a malformed request instead of throwing', async () => {

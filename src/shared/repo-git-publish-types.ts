@@ -19,6 +19,8 @@ export type InitialCommitPreviewResult =
       totalCount: number
       truncated: boolean
       hasWarnings: boolean
+      /** Count of flagged (secret/large) files across the FULL tree, not just the displayed slice. */
+      flaggedCount: number
       gitignoreExists: boolean
     }
   | { error: string }

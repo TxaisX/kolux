@@ -31,7 +31,7 @@ export function registerWorktreeUnpushedStatusHandlers(store: Store): void {
         async (query): Promise<[string, WorktreeUnpushedStatus]> => {
           const repo = query.repoId ? store.getRepo(query.repoId) : undefined
           if (!repo || isFolderRepo(repo)) {
-            return [query.worktreeId, { kind: 'unknown' }]
+            return [query.worktreeId, { kind: 'unverifiable' }]
           }
           const status = await resolveWorktreeUnpushedStatus(
             {

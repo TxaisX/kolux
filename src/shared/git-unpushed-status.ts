@@ -2,13 +2,13 @@ import type { GitUpstreamStatus } from './git-status-types'
 import type { ExecutionHostId } from './execution-host'
 
 // Why: the sidebar badge and any other "is this worktree pushed" surface must
-// agree on one vocabulary. `unknown` covers SSH/host reads that could not be
-// obtained — never guess a state here.
+// agree on one vocabulary. `unverifiable` covers SSH/host reads that could not be
+// obtained — never guess a state here (matches the ssh-execution-boundary verdict vocabulary).
 export type WorktreeUnpushedStatus =
   | { kind: 'ahead'; count: number }
   | { kind: 'unpublished'; count: number }
   | { kind: 'synced' }
-  | { kind: 'unknown' }
+  | { kind: 'unverifiable' }
 
 /** What the renderer sends to ask the main process for one worktree's unpushed status. */
 export type WorktreeUnpushedStatusQuery = {
@@ -30,7 +30,7 @@ export function classifyWorktreeUnpushedStatus(
   unpublishedCommitCount: number | null
 ): WorktreeUnpushedStatus {
   if (!upstreamStatus) {
-    return { kind: 'unknown' }
+    return { kind: 'unverifiable' }
   }
   if (upstreamStatus.hasUpstream) {
     return upstreamStatus.ahead > 0
@@ -38,7 +38,7 @@ export function classifyWorktreeUnpushedStatus(
       : { kind: 'synced' }
   }
   if (unpublishedCommitCount === null) {
-    return { kind: 'unknown' }
+    return { kind: 'unverifiable' }
   }
   return unpublishedCommitCount > 0
     ? { kind: 'unpublished', count: unpublishedCommitCount }
