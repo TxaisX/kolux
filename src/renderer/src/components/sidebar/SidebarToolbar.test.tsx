@@ -38,6 +38,10 @@ vi.mock('./SidebarSettingsHelpMenu', () => ({
   SidebarSettingsHelpMenu: () => <button type="button">Settings</button>
 }))
 
+vi.mock('./SidebarUpdateButton', () => ({
+  SidebarUpdateButton: () => <button type="button">Check for updates</button>
+}))
+
 const roots: Root[] = []
 
 async function renderToolbar(onWorkspaceBoardToggle = vi.fn()): Promise<{

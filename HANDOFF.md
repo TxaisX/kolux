@@ -46,8 +46,11 @@ If a release contains both kinds, the larger one wins: any x-level change makes 
 
 ## Releasing and auto-update
 
-The installed app checks GitHub Releases on `TxaisX/nightshift` once a day and installs any
-newer version it finds there. To ship one:
+The installed app checks GitHub Releases on `TxaisX/nightshift` once a day. The update button
+in the sidebar footer (`SidebarUpdateButton.tsx`, between Help and "Reveal active workspace")
+walks the same flow by hand: Check for updates → Update to vX → Downloading % → Restart to
+update. It only reflects `updateStatus`, so the updater never runs in `pnpm dev` and the button
+stays on "Check for updates" there. To ship a release:
 
 1. Bump `version` in `package.json` (for example `0.1.0` → `0.1.1`) and commit it to `main`.
 2. `git tag v0.1.1 && git push origin main v0.1.1`.

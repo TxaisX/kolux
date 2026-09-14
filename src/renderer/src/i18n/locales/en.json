@@ -977,6 +977,9 @@
         "preview": {
           "pairedOutsideWorktree": "Files outside the workspace can't be previewed on a paired server yet."
         }
+      },
+      "resolve-pending-agent-choice": {
+        "launchFailed": "Could not build launch command for {{value0}}."
       }
     },
     "hooks": {
@@ -3325,7 +3328,8 @@
             "1ff1c77616": "browser",
             "586d2ac445": "terminal",
             "addSplitPane": "Add split pane",
-            "closePaneColumn": "Close split pane"
+            "closePaneColumn": "Close split pane",
+            "tidyLayout": "Tidy panes"
           },
           "AiVaultSessionDropLayer": {
             "dropOntoTerminalPane": "Drop onto a terminal pane to resume this session.",
@@ -3339,6 +3343,9 @@
           },
           "TabGroupDropOverlay": {
             "paneColumnLabel": "New split"
+          },
+          "LayoutPresetsMenu": {
+            "layoutPresetGrid": "{{rows}} grid"
           }
         },
         "bar": {
@@ -6277,6 +6284,23 @@
           "title": "Worktree scan failed for {{value0}}",
           "retry": "Retry scan",
           "retained": "Existing worktrees are kept until a scan succeeds. Click to retry."
+        },
+        "SidebarUpdateButton": {
+          "3b1f7c2a90": "Checking…",
+          "8d42e61b07": "Checking GitHub for a newer version",
+          "c7a09e3f51": "Up to date",
+          "1e6d8b4c23": "You have the latest version. Click to check again.",
+          "5a2f9d7e84": "Update to v{{value0}}",
+          "9b3c6e1d45": "Download Nightshift v{{value0}}",
+          "4f8e2a6c19": "Downloading {{value0}}%",
+          "d2b7f0a938": "Downloading Nightshift v{{value0}}",
+          "6e1a4d9b72": "Restart to update",
+          "a8c5e3f201": "Restart Nightshift to install v{{value0}}",
+          "0c9d7b5e36": "Update failed",
+          "e4f1b8c627": "Update failed. Click to try again.",
+          "7d3a0f6e58": "Check for updates",
+          "b6e2c9a417": "Check GitHub for a newer version",
+          "2a7f5c8d90": "Couldn't restart to install the update."
         }
       },
       "shared": {
