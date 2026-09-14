@@ -75,6 +75,9 @@ export function useCompleteGitRepoAdd({
         closeModal,
         setHideDefaultBranchWorkspace
       })
+      // Why: settles an addRepo()-opened Add repo dialog with the repo it just finished adding.
+      const addedRepo = useAppStore.getState().repos.find((repo) => repo.id === repoId) ?? null
+      useAppStore.getState().resolveAddRepoDialogRequest(addedRepo)
     },
     [closeModal, finishProjectAdd, setHideDefaultBranchWorkspace]
   )

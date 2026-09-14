@@ -162,12 +162,31 @@ function getRuntimeHostActionModel(): {
   }
 }
 
+function getSshHostActionModel(): {
+  primary: string
+  secondary: string[]
+} {
+  const { primaryAction, secondaryActions } = getAddRepoLocalStartActions({
+    isSshLikely: false,
+    browseHostKind: 'ssh',
+    onBrowse: vi.fn(),
+    onOpenCloneStep: vi.fn(),
+    onOpenRemoteStep: vi.fn(),
+    onOpenCreateStep: vi.fn()
+  })
+
+  return {
+    primary: primaryAction.title,
+    secondary: secondaryActions.map((action) => action.title)
+  }
+}
+
 describe('AddRepoLocalStartStep', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })
 
-  it('promotes browse folder and keeps secondary actions always visible', () => {
+  it('promotes clone from URL and keeps secondary actions always visible', () => {
     const markup = renderLocalStartStep(false)
 
     expect(markup).toContain('Browse folder')
@@ -178,12 +197,12 @@ describe('AddRepoLocalStartStep', () => {
     expect(markup).not.toContain('More options')
   })
 
-  it('orders secondary actions clone-first for default users', () => {
+  it('promotes clone from URL to hero and orders secondary actions browse-first for default users', () => {
     const titles = getActionTitles(false)
 
-    expect(titles.primary).toBe('Browse folder')
+    expect(titles.primary).toBe('Clone from URL')
     expect(titles.secondary).toEqual([
-      'Clone from URL',
+      'Browse folder',
       'Project on SSH host',
       'Create new project'
     ])
@@ -223,11 +242,18 @@ describe('AddRepoLocalStartStep', () => {
     expect(model.description).toBe('Existing Git repository or folder on this host')
   })
 
-  it('focuses Browse folder when the default Add Project step opens', async () => {
-    const { container, root } = await renderLocalStartStepDom(false)
-    const browseButton = findButton(container, 'Browse folder')
+  it('keeps "Open project on SSH host" as the hero on an SSH host', () => {
+    const model = getSshHostActionModel()
 
-    expect(document.activeElement).toBe(browseButton)
+    expect(model.primary).toBe('Open project on SSH host')
+    expect(model.secondary).toEqual(['Clone from URL', 'Project on SSH host', 'Create new project'])
+  })
+
+  it('focuses Clone from URL when the default Add Project step opens', async () => {
+    const { container, root } = await renderLocalStartStepDom(false)
+    const cloneButton = findButton(container, 'Clone from URL')
+
+    expect(document.activeElement).toBe(cloneButton)
 
     await act(async () => {
       root.unmount()
@@ -273,11 +299,11 @@ describe('AddRepoLocalStartStep', () => {
     })
   })
 
-  it('marks the autofocused Browse action as selected with the ⏎ chip', async () => {
+  it('marks the autofocused Clone action as selected with the ⏎ chip', async () => {
     const { container, root } = await renderLocalStartStepDom(false)
 
-    expect(findButton(container, 'Browse folder').textContent).toContain('⏎')
-    expect(findButton(container, 'Clone from URL').textContent).not.toContain('⏎')
+    expect(findButton(container, 'Clone from URL').textContent).toContain('⏎')
+    expect(findButton(container, 'Browse folder').textContent).not.toContain('⏎')
 
     await act(async () => {
       root.unmount()
@@ -286,14 +312,14 @@ describe('AddRepoLocalStartStep', () => {
 
   it('moves the ⏎ selection to whichever action receives focus', async () => {
     const { container, root } = await renderLocalStartStepDom(false)
-    const cloneButton = findButton(container, 'Clone from URL')
+    const browseButton = findButton(container, 'Browse folder')
 
     await act(async () => {
-      cloneButton.focus()
+      browseButton.focus()
     })
 
-    expect(findButton(container, 'Clone from URL').textContent).toContain('⏎')
-    expect(findButton(container, 'Browse folder').textContent).not.toContain('⏎')
+    expect(findButton(container, 'Browse folder').textContent).toContain('⏎')
+    expect(findButton(container, 'Clone from URL').textContent).not.toContain('⏎')
 
     await act(async () => {
       root.unmount()
@@ -344,8 +370,8 @@ describe('AddRepoLocalStartStep', () => {
 
   it('hides the visual ⏎ chip from assistive technology', async () => {
     const { container, root } = await renderLocalStartStepDom(false)
-    const browseButton = findButton(container, 'Browse folder')
-    const enterChip = Array.from(browseButton.querySelectorAll('[aria-hidden="true"]')).find(
+    const cloneButton = findButton(container, 'Clone from URL')
+    const enterChip = Array.from(cloneButton.querySelectorAll('[aria-hidden="true"]')).find(
       (entry) => entry.textContent?.includes('⏎')
     )
 
@@ -360,13 +386,13 @@ describe('AddRepoLocalStartStep', () => {
     const { container, root } = await renderLocalStartStepDom(false)
 
     await act(async () => {
-      findButton(container, 'Browse folder').dispatchEvent(
+      findButton(container, 'Clone from URL').dispatchEvent(
         new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
       )
     })
 
-    // ArrowDown from Browse moves focus — and the ⏎ chip — to the first secondary action.
-    const firstSecondary = findButton(container, 'Clone from URL')
+    // ArrowDown from Clone (the hero) moves focus — and the ⏎ chip — to the first secondary action.
+    const firstSecondary = findButton(container, 'Browse folder')
     expect(document.activeElement).toBe(firstSecondary)
     expect(firstSecondary.textContent).toContain('⏎')
 
