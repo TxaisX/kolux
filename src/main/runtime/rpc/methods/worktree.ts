@@ -23,6 +23,8 @@ import {
   WorktreeTeardownMissingTerminalsParams
 } from './worktree-schemas'
 import { WORKTREE_CATALOG_METHODS } from './worktree-catalog-methods'
+import { computeWorktreeChanges } from '../worktree-changes-computation'
+import { computeWorktreeOverlap } from '../worktree-overlap-computation'
 
 export const WORKTREE_METHODS: RpcMethod[] = [
   ...WORKTREE_CATALOG_METHODS,
@@ -50,6 +52,16 @@ export const WORKTREE_METHODS: RpcMethod[] = [
     handler: async (params, { runtime }) => ({
       worktree: await runtime.showManagedWorktree(params.worktree)
     })
+  }),
+  defineMethod({
+    name: 'worktree.changes',
+    params: WorktreeSelector,
+    handler: async (params, { runtime }) => computeWorktreeChanges(runtime, params.worktree)
+  }),
+  defineMethod({
+    name: 'worktree.overlap',
+    params: WorktreeSelector,
+    handler: async (params, { runtime }) => computeWorktreeOverlap(runtime, params.worktree)
   }),
   defineMethod({
     name: 'worktree.sleep',

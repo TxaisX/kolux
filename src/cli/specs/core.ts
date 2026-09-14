@@ -4,6 +4,7 @@ import { WORKTREE_LISTING_SCOPE_NOTES } from './worktree-listing-scope-notes'
 import { SERVE_COMMAND_SPECS } from './serve'
 import { TERMINAL_SEND_COMMAND_SPEC } from './terminal-send'
 import { TERMINAL_CLOSE_COMMAND_SPEC } from './terminal-close'
+import { WORKTREE_CHANGES_COMMAND_SPECS } from './worktree-changes'
 
 export const CORE_COMMAND_SPECS: CommandSpec[] = [
   {
@@ -179,6 +180,7 @@ export const CORE_COMMAND_SPECS: CommandSpec[] = [
       'For Git worktrees, removal also attempts to delete the checked-out local branch, with or without --force. Nightshift retains branches it knows predated the worktree and any branch whose changes it cannot prove are already merged.'
     ]
   },
+  ...WORKTREE_CHANGES_COMMAND_SPECS,
   {
     path: ['worktree', 'ps'],
     summary: 'Show a compact orchestration summary across worktrees',
