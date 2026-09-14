@@ -112,6 +112,9 @@ const GitRepoConversionFollowUpDialog = React.memo(function GitRepoConversionFol
   const previewError = preview && 'error' in preview ? preview.error : null
   const files = preview && !('error' in preview) ? preview.files : []
   const hasWarnings = preview && !('error' in preview) && preview.hasWarnings
+  const truncated = preview && !('error' in preview) ? preview.truncated : false
+  const totalCount = preview && !('error' in preview) ? preview.totalCount : 0
+  const flaggedCount = preview && !('error' in preview) ? preview.flaggedCount : 0
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -139,34 +142,43 @@ const GitRepoConversionFollowUpDialog = React.memo(function GitRepoConversionFol
               <DialogDescription className="text-xs">
                 {loading
                   ? 'Scanning the project…'
-                  : `${files.length} file${files.length === 1 ? '' : 's'} will be added.`}
+                  : `${totalCount} file${totalCount === 1 ? '' : 's'} will be added.`}
               </DialogDescription>
             </DialogHeader>
             {previewError ? (
               <p className="text-xs text-destructive">{previewError}</p>
             ) : (
-              <div className="scrollbar-sleek max-h-64 overflow-y-auto rounded-md border border-border/70">
-                {files.map((file) => {
-                  const flagged = Boolean(file.flags.secret || file.flags.large)
-                  return (
-                    <div
-                      key={file.path}
-                      className={cn(
-                        'flex items-center justify-between gap-2 border-b border-border/40 px-2 py-1 text-xs last:border-b-0',
-                        flagged && 'bg-destructive/10 text-destructive'
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-1">
-                        {flagged ? <AlertTriangle className="size-3 shrink-0" /> : null}
-                        <span className="truncate">{file.path}</span>
-                      </span>
-                      <span className="shrink-0 text-muted-foreground">
-                        {formatBytes(file.size)}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
+              <>
+                {truncated ? (
+                  <p className="text-xs text-muted-foreground">
+                    Showing first {files.length} of {totalCount} files
+                    {flaggedCount > 0 ? ` (${flaggedCount} flagged)` : ''} — all files were checked
+                    for secrets.
+                  </p>
+                ) : null}
+                <div className="scrollbar-sleek max-h-64 overflow-y-auto rounded-md border border-border/70">
+                  {files.map((file) => {
+                    const flagged = Boolean(file.flags.secret || file.flags.large)
+                    return (
+                      <div
+                        key={file.path}
+                        className={cn(
+                          'flex items-center justify-between gap-2 border-b border-border/40 px-2 py-1 text-xs last:border-b-0',
+                          flagged && 'bg-destructive/10 text-destructive'
+                        )}
+                      >
+                        <span className="flex min-w-0 items-center gap-1">
+                          {flagged ? <AlertTriangle className="size-3 shrink-0" /> : null}
+                          <span className="truncate">{file.path}</span>
+                        </span>
+                        <span className="shrink-0 text-muted-foreground">
+                          {formatBytes(file.size)}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
             {!previewError && !loading ? (
               <div className="flex items-center gap-2">

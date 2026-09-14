@@ -1,6 +1,9 @@
 import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
 import type { WorktreeUnpushedStatusQuery } from '../../../../shared/git-unpushed-status'
-import { applyWorktreeUnpushedStatuses } from './worktree-unpushed-status-store'
+import {
+  applyWorktreeUnpushedStatuses,
+  deleteWorktreeUnpushedStatus
+} from './worktree-unpushed-status-store'
 
 // Why: a slow safety net is enough once focus/mount refreshes already keep this fresh.
 const UNPUSHED_STATUS_POLL_INTERVAL_MS = 60_000
@@ -22,6 +25,7 @@ export function registerWorktreeForUnpushedStatus(query: WorktreeUnpushedStatusQ
   return () => {
     if (registry.get(query.worktreeId) === query) {
       registry.delete(query.worktreeId)
+      deleteWorktreeUnpushedStatus(query.worktreeId)
     }
     // Why: stop the interval/focus listener once nothing is left to check — an empty
     // sidebar (or a test that unmounts every card) should not poll in the background.

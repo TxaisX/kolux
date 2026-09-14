@@ -5,7 +5,7 @@ import type { Repo } from '../../../shared/repo-types'
 import { isGitRepo } from '../../git/repo'
 import { upgradeFolderRepo } from '../folder-repo-git-upgrade'
 import { resolveLocalRepo } from './local-repo-host-guard'
-import { initGitRepoWithEmptyCommit } from './git-init-with-empty-commit'
+import { initGitRepoWithEmptyCommit, removeInitializedGitDir } from './git-init-with-empty-commit'
 
 /**
  * `repos:convertFolderToGit` — the context-menu "Make it a git repo" action for a
@@ -40,6 +40,10 @@ export function registerRepoConvertFolderToGitHandler(mainWindow: BrowserWindow,
 
       const outcome = await upgradeFolderRepo({ store, mainWindow, disposed: false }, repoId)
       if (outcome !== 'upgraded') {
+        // The empty-commit init succeeded but the upgrade was blocked/rejected — leaving the
+        // just-created `.git` around would silently turn this folder project into a git repo
+        // behind the user's back the next time it's scanned.
+        await removeInitializedGitDir(repo.path)
         return { error: 'Could not finish converting this project to a git repository' }
       }
       const upgraded = store.getRepo(repoId)

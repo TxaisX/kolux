@@ -7,6 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -109,10 +110,11 @@ describe('repos:convertFolderToGit', () => {
     expect(result).toEqual({ repo })
   })
 
-  it('surfaces a clean error when the upgrade is blocked (e.g. extra folder workspaces)', async () => {
+  it('surfaces a clean error when the upgrade is blocked (e.g. extra folder workspaces), and removes the .git it just created', async () => {
     upgradeFolderRepoMock.mockResolvedValueOnce('blocked')
     const result = await call({ repoId: repo.id })
     expect(result).toEqual({ error: 'Could not finish converting this project to a git repository' })
+    expect(existsSync(join(root, '.git'))).toBe(false)
   })
 
   it('surfaces a git init failure (missing directory) without calling upgradeFolderRepo', async () => {

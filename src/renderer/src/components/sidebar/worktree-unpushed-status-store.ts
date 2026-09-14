@@ -45,6 +45,16 @@ export function applyWorktreeUnpushedStatuses(
   }
 }
 
+/** Drops one worktree's cached status — call when it's no longer registered (card unmounted)
+ *  so a stale badge can't reappear if the same id is ever reused. */
+export function deleteWorktreeUnpushedStatus(worktreeId: string): void {
+  if (statusByWorktreeId.delete(worktreeId)) {
+    for (const listener of listeners) {
+      listener()
+    }
+  }
+}
+
 /** Test-only: reset between specs so one test's fetched statuses can't leak into another. */
 export function clearWorktreeUnpushedStatusStoreForTests(): void {
   statusByWorktreeId.clear()

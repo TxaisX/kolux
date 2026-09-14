@@ -7,6 +7,12 @@ export type GitInitEmptyCommitResult = { ok: true } | { ok: false; error: string
 const IDENTITY_ERROR_HINT =
   'Git author identity is not configured. Run `git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"`, then try again.'
 
+/** Removes a `.git` dir this module just created — shared by the commit-failure cleanup
+ *  below and by callers that must undo the init when a later step in their own flow fails. */
+export async function removeInitializedGitDir(targetPath: string): Promise<void> {
+  await rm(join(targetPath, '.git'), { recursive: true, force: true }).catch(() => {})
+}
+
 /**
  * `git init` + an empty initial commit so HEAD has a branch ref for worktrees.
  * Shared by repos:create (fresh directory) and repos:initGit (existing folder) —
@@ -28,7 +34,7 @@ export async function initGitRepoWithEmptyCommit(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     if (step === 'commit') {
-      await rm(join(targetPath, '.git'), { recursive: true, force: true }).catch(() => {})
+      await removeInitializedGitDir(targetPath)
       if (/Please tell me who you are|user\.name|user\.email/i.test(message)) {
         return { ok: false, error: IDENTITY_ERROR_HINT }
       }

@@ -126,6 +126,22 @@ describe('worktree unpushed status registry', () => {
     expect(unpushedStatusMock).not.toHaveBeenCalled()
   })
 
+  it('clears the cached status when a card unmounts', async () => {
+    unpushedStatusMock.mockResolvedValue({ 'w-1': { kind: 'ahead', count: 2 } })
+    const root = await mount('w-1')
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150)
+    })
+    expect(getWorktreeUnpushedStatusSnapshot('w-1')).toEqual({ kind: 'ahead', count: 2 })
+
+    await act(async () => {
+      root.unmount()
+    })
+    mountedRoots.splice(mountedRoots.indexOf(root), 1)
+
+    expect(getWorktreeUnpushedStatusSnapshot('w-1')).toBeUndefined()
+  })
+
   it('refreshes on window focus', async () => {
     registerWorktreeForUnpushedStatus({
       worktreeId: 'w-1',

@@ -10,7 +10,11 @@ import { notifyReposChanged } from './repos-changed-notification'
 import { notifyWorktreesChanged } from '../worktree-remote'
 import { resolveLocalRepo } from './local-repo-host-guard'
 import { repoHasAnyRemote } from './repo-remote-presence'
-import { validateGithubRepoName, validateRemoteUrl } from './publish-remote-input-validation'
+import {
+  redactUrlUserinfo,
+  validateGithubRepoName,
+  validateRemoteUrl
+} from './publish-remote-input-validation'
 
 type PublishOutcome = { ok: true } | { ok: false; error: string }
 
@@ -52,6 +56,16 @@ export async function publishToGithub(
     return { ok: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    // `gh repo create --push` can create the remote GitHub repo and add the local `origin`
+    // remote before the push itself fails — leaving a half-published state. Never delete the
+    // GitHub repo automatically (the user may still want it); just undo the local remote.
+    if (await repoHasAnyRemote(repoPath)) {
+      await gitExecFileAsync(['remote', 'remove', 'origin'], { cwd: repoPath }).catch(() => {})
+      return {
+        ok: false,
+        error: `GitHub repository "${name}" was created but the push failed, so the local "origin" remote was removed: ${message}. The repository still exists on GitHub — push to it manually or delete it there.`
+      }
+    }
     return { ok: false, error: `Failed to create the GitHub repository: ${message}` }
   }
 }
@@ -129,7 +143,7 @@ export function registerRepoPublishRemoteHandler(mainWindow: BrowserWindow, stor
       }
 
       if (!outcome.ok) {
-        return { error: outcome.error }
+        return { error: redactUrlUserinfo(outcome.error) }
       }
 
       notifyReposChanged(mainWindow)

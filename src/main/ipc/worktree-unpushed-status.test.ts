@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GitStatusResult } from '../../shared/git-status-types'
 import type { Repo } from '../../shared/repo-types'
 
-const { getStatusMock, gitExecFileAsyncMock, getSshGitProviderMock } = vi.hoisted(() => ({
-  getStatusMock: vi.fn(),
-  gitExecFileAsyncMock: vi.fn(),
-  getSshGitProviderMock: vi.fn()
-}))
+const { getStatusMock, gitExecFileAsyncMock, getSshGitProviderMock, listWorktreesMock } = vi.hoisted(
+  () => ({
+    getStatusMock: vi.fn(),
+    gitExecFileAsyncMock: vi.fn(),
+    getSshGitProviderMock: vi.fn(),
+    listWorktreesMock: vi.fn()
+  })
+)
 
 vi.mock('../git/status', () => ({ getStatus: getStatusMock }))
 vi.mock('../git/runner', () => ({ gitExecFileAsync: gitExecFileAsyncMock }))
+vi.mock('../git/worktree', () => ({ listWorktrees: listWorktreesMock }))
 vi.mock('../providers/ssh-git-dispatch', () => ({
   getSshGitProvider: getSshGitProviderMock,
   SSH_GIT_PROVIDER_UNAVAILABLE_MESSAGE: 'SSH git provider unavailable.'
@@ -33,6 +37,11 @@ const SSH_REPO: Repo = {
 
 const WORKTREE = { path: '/repo/tree', hostId: undefined, isMainWorktree: false }
 
+const KNOWN_LOCAL_WORKTREES = [
+  { path: '/repo', head: 'a', branch: 'main', isBare: false, isMainWorktree: true },
+  { path: '/repo/tree', head: 'b', branch: 'feature', isBare: false, isMainWorktree: false }
+]
+
 function status(overrides: Partial<GitStatusResult> = {}): GitStatusResult {
   return {
     entries: [],
@@ -46,6 +55,8 @@ describe('resolveWorktreeUnpushedStatus', () => {
     getStatusMock.mockReset()
     gitExecFileAsyncMock.mockReset()
     getSshGitProviderMock.mockReset()
+    listWorktreesMock.mockReset()
+    listWorktreesMock.mockResolvedValue(KNOWN_LOCAL_WORKTREES)
   })
 
   it('reports ahead with the upstream count for a local worktree', async () => {
@@ -102,19 +113,19 @@ describe('resolveWorktreeUnpushedStatus', () => {
     })
   })
 
-  it('reports unknown when the status read throws', async () => {
+  it('reports unverifiable when the status read throws', async () => {
     getStatusMock.mockRejectedValue(new Error('boom'))
 
     await expect(resolveWorktreeUnpushedStatus(WORKTREE, LOCAL_REPO)).resolves.toEqual({
-      kind: 'unknown'
+      kind: 'unverifiable'
     })
   })
 
-  it('reports unknown for an unreachable SSH host rather than reading locally', async () => {
+  it('reports unverifiable for an unreachable SSH host rather than reading locally', async () => {
     getSshGitProviderMock.mockReturnValue(undefined)
 
     await expect(resolveWorktreeUnpushedStatus(WORKTREE, SSH_REPO)).resolves.toEqual({
-      kind: 'unknown'
+      kind: 'unverifiable'
     })
     expect(getStatusMock).not.toHaveBeenCalled()
   })
@@ -123,7 +134,11 @@ describe('resolveWorktreeUnpushedStatus', () => {
     const providerGetStatus = vi
       .fn()
       .mockResolvedValue(status({ upstreamStatus: { hasUpstream: true, ahead: 1, behind: 0 } }))
-    getSshGitProviderMock.mockReturnValue({ getStatus: providerGetStatus })
+    const providerListWorktrees = vi.fn().mockResolvedValue(KNOWN_LOCAL_WORKTREES)
+    getSshGitProviderMock.mockReturnValue({
+      getStatus: providerGetStatus,
+      listWorktrees: providerListWorktrees
+    })
 
     await expect(resolveWorktreeUnpushedStatus(WORKTREE, SSH_REPO)).resolves.toEqual({
       kind: 'ahead',
@@ -133,6 +148,30 @@ describe('resolveWorktreeUnpushedStatus', () => {
       WORKTREE.path,
       expect.objectContaining({ includeLineStats: false })
     )
+    expect(getStatusMock).not.toHaveBeenCalled()
+  })
+
+  it('reports unverifiable for a path outside the repo\'s known worktrees, without reading git status', async () => {
+    listWorktreesMock.mockResolvedValue(KNOWN_LOCAL_WORKTREES)
+    const outsideWorktree = { path: '/etc/passwd-lookalike', hostId: undefined, isMainWorktree: false }
+
+    await expect(resolveWorktreeUnpushedStatus(outsideWorktree, LOCAL_REPO)).resolves.toEqual({
+      kind: 'unverifiable'
+    })
+    expect(getStatusMock).not.toHaveBeenCalled()
+  })
+
+  it('reports unverifiable for an SSH path outside the repo\'s known worktrees', async () => {
+    const providerListWorktrees = vi.fn().mockResolvedValue(KNOWN_LOCAL_WORKTREES)
+    getSshGitProviderMock.mockReturnValue({
+      getStatus: vi.fn(),
+      listWorktrees: providerListWorktrees
+    })
+    const outsideWorktree = { path: '/repo/not-a-real-worktree', hostId: undefined, isMainWorktree: false }
+
+    await expect(resolveWorktreeUnpushedStatus(outsideWorktree, SSH_REPO)).resolves.toEqual({
+      kind: 'unverifiable'
+    })
     expect(getStatusMock).not.toHaveBeenCalled()
   })
 })

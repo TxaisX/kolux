@@ -189,6 +189,29 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
     )
   })
 
+  it('rolls the local origin remote back when gh creates the repo but the push fails', async () => {
+    diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
+    // Mirrors real `gh repo create --push`: it can add the local `origin` remote itself
+    // before a push failure, leaving a half-published state this handler must undo.
+    ghExecFileAsyncMock.mockImplementation(async () => {
+      git(['remote', 'add', 'origin', 'https://github.com/owner/my-project.git'], root)
+      throw new Error('failed to push some refs')
+    })
+
+    const result = await call({
+      repoId: repo.id,
+      provider: 'github',
+      name: 'my-project',
+      confirmed: true
+    })
+
+    expect(result).toMatchObject({
+      error: expect.stringContaining('my-project')
+    })
+    expect(result).toMatchObject({ error: expect.stringContaining('push failed') })
+    expect(() => git(['remote', 'get-url', 'origin'], root)).toThrow()
+  })
+
   it('rejects a repo name that looks like argument injection, without calling gh', async () => {
     diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
     const result = await call({ repoId: repo.id, provider: 'github', name: '-x', confirmed: true })
