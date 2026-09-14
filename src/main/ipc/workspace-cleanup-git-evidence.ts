@@ -118,8 +118,10 @@ export async function readWorkspaceCleanupGitEvidence(
   }
 }
 
-async function readUnpushedCommitCount(
-  worktree: Worktree,
+/** Exported for reuse by other unpushed-work readers (e.g. the sidebar badge) so the
+ *  `rev-list --not --remotes` command has one call site. */
+export async function readUnpushedCommitCount(
+  worktree: Pick<Worktree, 'path'>,
   route: Exclude<WorkspaceCleanupWorktreeGitRoute, { kind: 'host-mismatch' }>,
   signal?: AbortSignal
 ): Promise<number | null> {
@@ -151,7 +153,7 @@ async function readUnpushedCommitCount(
 }
 
 /** An unreachable remote host is an error, never a licence to read this machine's checkout. */
-function requireWorkspaceCleanupGitProvider(
+export function requireWorkspaceCleanupGitProvider(
   route: Extract<WorkspaceCleanupGitRoute, { kind: 'ssh' }>
 ): SshGitProvider {
   if (!route.provider) {

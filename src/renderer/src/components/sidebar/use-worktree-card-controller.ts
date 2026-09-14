@@ -8,6 +8,7 @@ import { useWorktreeCardLinkedDetails } from './use-worktree-card-linked-details
 import { useWorktreeCardReviewDetails } from './use-worktree-card-review-details'
 import { useWorktreeCardSecondaryDetails } from './use-worktree-card-secondary-details'
 import { useWorktreeCardWorkspaceActions } from './use-worktree-card-workspace-actions'
+import { useWorktreeUnpushedBadge } from './use-worktree-unpushed-badge'
 
 export function useWorktreeCardController(props: ResolvedWorktreeCardProps) {
   const { worktree, repo } = props
@@ -30,6 +31,19 @@ export function useWorktreeCardController(props: ResolvedWorktreeCardProps) {
     linearIssueFallbackEntry: review.linearIssueFallbackEntry,
     prDisplay: review.prDisplay
   })
+
+  // Why null for folders/repos-as-folders: badge is git-worktree-only, never guessed for folder workspaces.
+  const unpushedStatus = useWorktreeUnpushedBadge(
+    review.isFolder
+      ? null
+      : {
+          id: worktree.id,
+          repoId: worktree.repoId,
+          path: worktree.path,
+          hostId: worktree.hostId,
+          isMainWorktree: worktree.isMainWorktree
+        }
+  )
 
   const showStatus = foundation.cardProps.includes('status')
   const showIssue = foundation.cardProps.includes('issue')
@@ -145,6 +159,7 @@ export function useWorktreeCardController(props: ResolvedWorktreeCardProps) {
     ...review,
     ...linked,
     detailsHoverControl,
+    unpushedStatus,
     showStatus,
     showIssue,
     showLinearIssue,

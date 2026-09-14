@@ -22,15 +22,15 @@ export function HostSetupStartActions({
   return (
     <div className="space-y-3 pt-1">
       <HostSetupActionButton
-        icon={FolderOpen}
-        title={translate('auto.components.settings.RepositoryPane.browseFolder', 'Browse folder')}
+        icon={Download}
+        title={translate('auto.components.settings.RepositoryPane.cloneFromUrl', 'Clone from URL')}
         description={translate(
-          'auto.components.settings.RepositoryPane.browseFolderHelp',
-          'Use an existing checkout or folder on this host.'
+          'auto.components.settings.RepositoryPane.cloneFromUrlHelp',
+          'Clone this repository onto the selected host.'
         )}
         disabled={pathActionsDisabled}
         selected
-        onClick={onBrowse}
+        onClick={onClone}
       />
       <div className="space-y-1.5">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -38,17 +38,17 @@ export function HostSetupStartActions({
         </p>
         <div className="overflow-hidden rounded-md border border-input bg-background">
           <HostSetupActionButton
-            icon={Download}
+            icon={FolderOpen}
             title={translate(
-              'auto.components.settings.RepositoryPane.cloneFromUrl',
-              'Clone from URL'
+              'auto.components.settings.RepositoryPane.browseFolder',
+              'Browse folder'
             )}
             description={translate(
-              'auto.components.settings.RepositoryPane.cloneFromUrlHelp',
-              'Clone this repository onto the selected host.'
+              'auto.components.settings.RepositoryPane.browseFolderHelp',
+              'Use an existing checkout or folder on this host.'
             )}
             disabled={pathActionsDisabled}
-            onClick={onClone}
+            onClick={onBrowse}
             className="rounded-t-md"
           />
           <HostSetupActionButton

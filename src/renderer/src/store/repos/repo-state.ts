@@ -159,6 +159,9 @@ export type RepoSlice = {
   fetchFolderWorkspaces: (options?: RuntimeCatalogFetchOptions) => Promise<void>
   fetchFolderWorkspacesForAllHosts: (options?: AllHostCatalogFetchOptions) => Promise<void>
   addRepo: () => Promise<Repo | null>
+  /** Settles the Promise `addRepo()` returned: the added Repo, or null on
+   *  cancel / non-git-folder handoff. No-op if no addRepo() call is pending. */
+  resolveAddRepoDialogRequest: (repo: Repo | null) => void
   addRepoPath: (
     path: string,
     kind?: 'git' | 'folder',

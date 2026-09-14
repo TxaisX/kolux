@@ -96,6 +96,11 @@ export function createReposApi(): NonNullable<Partial<PreloadApi>['repos']> {
     },
     // Why: converting a folder to a git repo runs local git commands the desktop main process owns; unavailable in paired web clients.
     initGit: () => Promise.resolve({ error: 'Not supported in web client' }),
+    convertFolderToGit: () => Promise.resolve({ error: 'Not supported in web client' }),
+    previewInitialCommit: () => Promise.resolve({ error: 'Not supported in web client' }),
+    commitInitialFiles: () => Promise.resolve({ error: 'Not supported in web client' }),
+    previewPublish: () => Promise.resolve({ error: 'Not supported in web client' }),
+    publishRemote: () => Promise.resolve({ error: 'Not supported in web client' }),
     isGitAvailable: async () =>
       (await callRuntimeResult<{ available: boolean }>('repo.gitAvailable')).available,
     getDefaultCreateProjectParent: async () => {

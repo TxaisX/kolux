@@ -2,7 +2,9 @@ import type { PublicKnownRuntimeEnvironment } from '../shared/runtime-environmen
 import type {
   RuntimeRepoList,
   RuntimeRepoSearchRefs,
+  RuntimeWorktreeChangesResult,
   RuntimeWorktreeListResult,
+  RuntimeWorktreeOverlapResult,
   RuntimeWorktreePsResult,
   RuntimeWorktreeRecord
 } from '../shared/runtime-types'
@@ -188,6 +190,47 @@ export function formatWorktreeList(
   return result.truncated
     ? `${bodyWithScope}\ntruncated: showing ${result.worktrees.length} of ${result.totalCount}`
     : bodyWithScope
+}
+
+export function formatWorktreeChanges(result: RuntimeWorktreeChangesResult): string {
+  const header = `${result.worktree.id}  ${result.worktree.branch ?? ''}  ${result.worktree.path}`
+  if (result.unsupported === 'folder') {
+    return `${header}\nunsupported: folder workspace (not a git worktree)`
+  }
+  const baseLine = `base: ${result.base ?? 'unresolved'}`
+  if (result.files.length === 0) {
+    return `${header}\n${baseLine}\nNo changes.`
+  }
+  const body = result.files
+    .map((file) => {
+      const flags = [file.committed ? 'committed' : null, file.uncommitted ? 'uncommitted' : null]
+        .filter(Boolean)
+        .join('+')
+      return `${file.status.padEnd(9)} ${flags.padEnd(20)} ${file.path}`
+    })
+    .join('\n')
+  return `${header}\n${baseLine}\n${body}`
+}
+
+export function formatWorktreeOverlap(result: RuntimeWorktreeOverlapResult): string {
+  const header = `${result.worktree.id}  ${result.worktree.branch ?? ''}`
+  if (result.unsupported === 'folder') {
+    return `${header}\nunsupported: folder workspace (not a git worktree)`
+  }
+  if (result.siblingsUnverifiable) {
+    return `${header}\nCould not verify sibling worktrees (scan not authoritative).`
+  }
+  if (result.siblings.length === 0) {
+    return `${header}\nNo sibling worktrees.`
+  }
+  const lines = result.siblings.map((sibling) => {
+    const unverifiableSuffix = sibling.changesUnverifiable ? '  changes unverifiable' : ''
+    if (sibling.sharedFiles.length === 0) {
+      return `${sibling.id}  ${sibling.branch ?? ''}  no shared files${unverifiableSuffix}`
+    }
+    return `${sibling.id}  ${sibling.branch ?? ''}  shared:${sibling.sharedFiles.length}  predict:${sibling.conflictPrediction}${unverifiableSuffix}\n  ${sibling.sharedFiles.join(', ')}`
+  })
+  return `${header}\n${lines.join('\n')}`
 }
 
 export function formatWorktreeShow(result: { worktree: RuntimeWorktreeRecord }): string {
