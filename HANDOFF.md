@@ -46,9 +46,76 @@ The version is held at `0.0.0` deliberately, because the product is still being 
   `agent-grid` top-level view (also in the sidebar nav): up to 6 live terminals tiled 3x2,
   font 14/12/11px for 1-2/3-4/5-6 agents, ptyId resolved via `useLiveDashboardSnapshot`.
   Verified over CDP: button, 2x3 squares (75px, 2 rows x 3 cols), model select, Launch N
-  enabling, grid page empty state. **Not verified at runtime:** an actual launch (tiles with
-  live terminals, font fit, `--model` on the spawned process), the native folder picker, and
-  the git-init click.
+  enabling, grid page empty state. Not driven: the native folder picker and the git-init click.
+- **Live 6-agent test (2026-09-14, throwaway repo, Haiku).** Worked: `repos:initGit` from the
+  page (one empty commit, zero files tracked); 6 worktrees on 6 separate branches; 6
+  `claude.exe` processes all carrying `--model haiku`; 5 grid tiles in a 3-wide layout at
+  516x403; each agent read README and named its own worktree; no files changed anywhere.
+  **Broken, found by the test:**
+  1. *Trust prompt blocks every agent.* Each Claude session stopped on "Do you trust this
+     folder?" although `.claude.json` held `hasTrustDialogAccepted: true` for its path
+     (written before spawn, `worktree-remote.ts:443`). Slash style is not the cause: accepting
+     trust wrote no new key. Suspect six concurrent `claude` startups rewriting `.claude.json`
+     (the preset has a `ponytail:` note about exactly this race). Unproven.
+  2. *Launch leaves the grid.* `revealPendingCreation` forces `setActiveView('terminal')` per
+     creation; something at completion pulls the view back off `agent-grid`.
+  3. *Sixth tile missing.* The worktree the app activated (`needlefish`) never appears in the
+     grid; `selectAgentGridCards` needs a card with a live `ptyId` for it.
+  4. *Branch names come from the audit brief.* First-message rename named branches
+     `audit-docs-before-reporting`, `audit-apis-with-context7`, … because
+     `CONTEXT7_AUDIT_BRIEF` is the start of every prompt. Put the task first or exclude the
+     brief from naming.
+  The project `fleet` points at a deleted folder (`G:\Dev\git-repos\fleet`); launching into it
+  fails as "No base branch found", which misdescribes a missing directory.
+- **Fixes after the live test (uncommitted as of writing).**
+  - *Per-agent model + handoff.* Picking a count creates one row per agent (`LaunchAgentSlots`,
+    `resizeLaunchSlots`); each row has its own agent and model. Every prompt is
+    `task + <nightshift-launch-brief>…</nightshift-launch-brief>` (`src/shared/launch-agent-brief.ts`):
+    role brief, stay-in-your-worktree, keep `.nightshift/handoffs/<worktree>.md` of every file
+    added/updated/removed, and the context7 audit.
+  - *Bug 4 fixed.* `first-work-branch-rename.ts` strips the brief before naming; brief-only
+    prompts never rename.
+  - *Bugs 2 and 3 fixed (one cause).* `beginPendingWorktreeCreation` gave every concurrent
+    creation the single `activePendingCreationId`, and the `activeView === 'terminal' &&
+    activePendingCreationId === null` completion fallback then activated an arbitrary sibling. That
+    pulled the view off the grid, and the activation gate lost a pty race, leaving that worktree's
+    card with `ptyId === null`. Requests now carry `revealOnStart: false`, which skips view/pending
+    claims and completion activation. **That alone did not hold live:** main's
+    `spawnLocalStartupAndSetupTerminals` calls `createTerminal({ activate: true })`
+    (`worktree-remote.ts:459`), and the renderer turns that into `activateTerminalInitiatedWorktree`,
+    which pulls the view off the grid independently. Dropping `startup` for background launches kept
+    the grid but started **no agents**: the renderer fallback only queues the command, and a PTY
+    spawns only when a pane mounts, which the grid never does. Final fix: an optional
+    `focusStartupTerminal: false` on `CreateWorktreeArgs` → `createTerminal({ activate: false,
+    surfaceOwner: false })`. The runtime RPC path reuses its existing `activate` field. The PTY
+    still registers in `ptyIdsByTabId` without a mounted pane, so tiles get live terminals.
+  - *Sixth worktree failing (found in the live retest).* Six `git worktree add` runs plus
+    `branch.<b>.base` writes on one repo collided on `.git/config` ("could not lock config file",
+    "Permission denied"). `addWorktree` now serializes per repo via `runKeyedSerializedOperation`,
+    keyed on `wslDistro + resolve(repoPath)`; different repos still run in parallel.
+  - **Live verification, final (2026-09-14, throwaway repo, rows opus/opus/sonnet/sonnet/haiku/haiku):**
+    view stayed on `agent-grid` throughout; 6 worktrees, 6 grid tiles; no trust prompt anywhere; six
+    `claude.exe` with matching `--model`; every agent wrote `count.txt` and
+    `.nightshift/handoffs/<worktree>.md`, and nothing else changed; branches renamed from the task
+    (`count-readme-lines`, `-2`…`-6`). One Haiku/Sonnet-class answer was wrong (5 vs 4): model
+    quality, not app.
+  - Still not runtime-verified: the native folder picker and the "Make it a git repo" click.
+    Pre-existing: 5 failures in `worktree-creation-flow.test.ts` (identical on `b0ec17bc`). 5 failures in `worktree-creation-flow.test.ts` are
+    pre-existing: identical on commit `b0ec17bc`.
+  - *Bug 1: root cause found, fix not yet runtime-verified.* **On Windows Claude looks up trust
+    only under forward-slash keys.** Its `d1()` runs `path.normalize` and then replaces `\` with
+    `/`; `Dqe()` keys the project on the main repo root, and the fallback walk checks the worktree
+    folder, both through `d1()` (Claude Code 2.1.270 bundle). Nightshift wrote `G:\Dev\…`, which is
+    never read. Proven live: six `hasTrustDialogAccepted: true` backslash entries still prompted,
+    and accepting the prompt wrote `G:/…/six-agent-retest`, the forward-slash main repo root. Every
+    "green" earlier fix wrote the wrong key. Fix: `toClaudeProjectKey()` in `claude-trust-preset.ts`
+    (forward slashes on win32 only). Also kept: the wave pre-trust (`agentTrust:preTrustWorktrees`,
+    one write before any spawn, called from LaunchAgentsDialog), the 250 ms batch for per-spawn
+    marks, and a Claude branch in the CLI/runtime create path, which previously had none.
+    Parent-directory trust cannot work: Claude's walk stops at the nearest `.git`, and every
+    worktree has its own `.git` file. Stale backslash entries in `.claude.json` are harmless.
+  - A test once wrote temp entries into the real `.claude.json`; they were removed and the test now
+    clears `CLAUDE_CONFIG_DIR`. Any new test touching Claude config must do the same.
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this
   machine; nothing starts until one is chosen. Verified end to end in a running app.

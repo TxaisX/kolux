@@ -3,58 +3,67 @@ import { getDefaultSettings } from '../../../../shared/constants'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import {
+  launchAgentHandoffPath,
+  stripLaunchAgentBrief
+} from '../../../../shared/launch-agent-brief'
+import {
   buildLaunchAgentsRequests,
-  CONTEXT7_AUDIT_BRIEF,
-  LAUNCH_AGENTS_MAX
+  LAUNCH_AGENTS_MAX,
+  type LaunchAgentSlot
 } from './launch-agents-requests'
 
 const CLAUDE = 'claude' as TuiAgent
 const repo = { id: 'repo-1', path: 'C:/src/app', displayName: 'app', kind: 'git' } as Repo
 
-function build(count: number, existing: string[] = [], model: string | null = null) {
+function build(slots: LaunchAgentSlot[], existing: string[] = []) {
   return buildLaunchAgentsRequests({
     repo,
     settings: getDefaultSettings('C:/Users/test'),
     prompt: 'ship it',
-    agents: Array.from({ length: count }, () => CLAUDE),
-    model,
+    slots,
     setupDecision: 'skip',
     worktreesByRepo: { [repo.id]: existing.map((name) => ({ path: `C:/wt/${name}` })) }
   })
 }
 
+const claudeSlots = (count: number, model: string | null = null): LaunchAgentSlot[] =>
+  Array.from({ length: count }, () => ({ agent: CLAUDE, model }))
+
 describe('buildLaunchAgentsRequests', () => {
   it('gives every agent in a full wave its own worktree', () => {
-    const names = build(LAUNCH_AGENTS_MAX).map((request) => request.name)
+    const names = build(claudeSlots(LAUNCH_AGENTS_MAX)).map((request) => request.name)
     expect(names).toHaveLength(LAUNCH_AGENTS_MAX)
     expect(new Set(names).size).toBe(LAUNCH_AGENTS_MAX)
   })
 
   it('never reuses a worktree name that already exists', () => {
-    const first = build(LAUNCH_AGENTS_MAX).map((request) => request.name)
-    const second = build(LAUNCH_AGENTS_MAX, first).map((request) => request.name)
+    const first = build(claudeSlots(LAUNCH_AGENTS_MAX)).map((request) => request.name)
+    const second = build(claudeSlots(LAUNCH_AGENTS_MAX), first).map((request) => request.name)
     expect(second.filter((name) => first.includes(name))).toEqual([])
   })
 
   it('refuses to launch more than the cap', () => {
-    expect(build(LAUNCH_AGENTS_MAX + 3)).toHaveLength(LAUNCH_AGENTS_MAX)
+    expect(build(claudeSlots(LAUNCH_AGENTS_MAX + 3))).toHaveLength(LAUNCH_AGENTS_MAX)
   })
 
-  it('opens every session on the chosen model', () => {
-    for (const request of build(3, [], 'opus')) {
-      // Why: the launcher shell-quotes each argument, so match across the quoting.
-      expect(request.startupPlan?.launchCommand).toMatch(/--model\W+opus\b/)
-    }
+  it('opens each session on its own chosen model', () => {
+    const requests = build([
+      { agent: CLAUDE, model: 'opus' },
+      { agent: CLAUDE, model: 'haiku' },
+      { agent: CLAUDE, model: null }
+    ])
+    // Why: the launcher shell-quotes each argument, so match across the quoting.
+    expect(requests[0]?.startupPlan?.launchCommand).toMatch(/--model\W+opus\b/)
+    expect(requests[1]?.startupPlan?.launchCommand).toMatch(/--model\W+haiku\b/)
+    expect(requests[2]?.startupPlan?.launchCommand).not.toContain('--model')
   })
 
-  it('leaves the model to the agent when none is chosen', () => {
-    expect(build(1)[0]?.startupPlan?.launchCommand).not.toContain('--model')
-  })
-
-  it('tells every session to audit its work against context7', () => {
-    for (const request of build(2)) {
-      expect(request.quickPrompt.startsWith(CONTEXT7_AUDIT_BRIEF)).toBe(true)
-      expect(request.quickPrompt.endsWith('ship it')).toBe(true)
+  it('gives every session the rules and its own handoff file, after the task', () => {
+    for (const request of build(claudeSlots(2))) {
+      expect(request.quickPrompt.startsWith('ship it')).toBe(true)
+      expect(request.quickPrompt).toContain('context7')
+      expect(request.quickPrompt).toContain(launchAgentHandoffPath(request.name))
+      expect(stripLaunchAgentBrief(request.quickPrompt)).toBe('ship it')
     }
   })
 })

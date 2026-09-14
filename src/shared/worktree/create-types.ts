@@ -144,6 +144,14 @@ export type CreateWorktreeArgs = {
   /** Optional startup command for callers that want the backend to spawn the
    *  first terminal as soon as the worktree is registered. */
   startup?: WorktreeStartupLaunch
+  /** False keeps the spawned startup terminal (and the worktree it belongs to)
+   *  out of the foreground — no reveal, no activation — while still spawning
+   *  it and registering its pty for callers that read it back (e.g. the agent
+   *  grid). Omitted (or true) preserves the pre-existing focus-on-create
+   *  behavior; older hosts that predate this field simply keep focusing, so a
+   *  mixed-version client/host pair degrades to today's behavior rather than
+   *  failing. Only meaningful alongside `startup`. */
+  focusStartupTerminal?: boolean
   /** Correlates `createWorktree:progress` events back to a specific pending
    *  creation in the renderer, so concurrent background creates each drive
    *  their own status surface. Omitted by synchronous callers. */

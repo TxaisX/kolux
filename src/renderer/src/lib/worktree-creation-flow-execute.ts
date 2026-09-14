@@ -106,7 +106,15 @@ export async function executeWorktreeCreation(
           ...(provisionedRoot ? { provisionedRoot } : {}),
           ...(preparedRequest.parentWorktreeId
             ? { parentWorktreeId: preparedRequest.parentWorktreeId }
-            : {})
+            : {}),
+          // Why: main hardcodes `activate: true` on the backend-spawned startup
+          // terminal (worktree-remote.ts) — a background batch launch's only lever
+          // over that main-side default is this explicit opt-out, threaded down to
+          // `runtime.createTerminal({ activate: false, surfaceOwner: false })` so
+          // the pty still spawns and registers (ptyIdsByTabId/terminalLayoutsByTabId)
+          // without ever focusing the tab, revealing the sidebar row, or flipping
+          // activeView/activeWorktreeId.
+          ...(preparedRequest.revealOnStart === false ? { focusStartupTerminal: false } : {})
         }
       )
   } catch (error) {
@@ -165,7 +173,14 @@ export async function executeWorktreeCreation(
   // means the user still expects this task-launch handoff when it becomes ready;
   // the entry guard prevents a late trust preflight from reviving a cancelled create.
   const completionState = useAppStore.getState()
+  // Why: a background batch launch must never activate/reveal on completion —
+  // the shared activeView/activePendingCreationId fallback below is only safe
+  // for one creation at a time; N concurrent creations can null out the active
+  // id between each other's completions and hijack whichever one lands then
+  // (this is how bug #3's activated worktree ended up racing the gate/adopt
+  // path below instead of the plain background-terminal path its siblings used).
   const shouldActivateOnCompletion =
+    preparedRequest.revealOnStart !== false &&
     completionState.pendingWorktreeCreations[creationId] !== undefined &&
     (isPendingCreationSurfaceVisible(creationId) ||
       (completionState.activeView === 'terminal' &&

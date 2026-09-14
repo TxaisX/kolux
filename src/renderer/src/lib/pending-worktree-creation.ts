@@ -112,6 +112,12 @@ export type WorktreeCreationRequest = {
   /** When the composer stays open for sequential creates, completion must not
    *  steal focus from the next workspace name field. */
   suppressTerminalFocusOnCompletion?: boolean
+  /** False for a fully-background batch launch (e.g. the agent grid's launcher):
+   *  never flips activeView/sidebar, never becomes the active pending creation,
+   *  and never activates/reveals the worktree on completion. The startup
+   *  terminal still spawns normally so the worktree gets a live pty. Omit (or
+   *  true) to keep today's single-workspace reveal-on-create behavior. */
+  revealOnStart?: boolean
 }
 
 /** Renderer-only, session-ephemeral record of an in-flight (or failed) worktree

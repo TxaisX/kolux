@@ -22,10 +22,14 @@ import { useRetiredWorktreeNames } from '@/hooks/useRetiredWorktreeNames'
 import { translate } from '@/i18n/i18n'
 import { isTuiAgentEnabled } from '../../../../shared/tui-agent-selection'
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import { buildLaunchAgentsRequests, LAUNCH_AGENTS_MAX } from './launch-agents-requests'
+import {
+  buildLaunchAgentsRequests,
+  LAUNCH_AGENTS_MAX,
+  type LaunchAgentSlot
+} from './launch-agents-requests'
 import { assignLaunchRoles, getLaunchPreset } from './launch-agent-roles'
-import { LaunchAgentsLineup, LaunchPresetRow } from './LaunchAgentsLineup'
-import { LaunchModelPicker, resolveLaunchModel } from './LaunchModelPicker'
+import { LaunchPresetRow } from './LaunchAgentsLineup'
+import { LaunchAgentSlots, resizeLaunchSlots } from './LaunchAgentSlots'
 
 const T = (id: string, fallback: string): string =>
   translate(`auto.components.launch-agents.LaunchAgentsDialog.${id}`, fallback)
@@ -46,7 +50,7 @@ export default function LaunchAgentsDialog(): React.JSX.Element | null {
           <DialogDescription>
             {T(
               'description',
-              'Pick up to 6 agents. Each one gets its own worktree and branch, so no two ever touch the same files.'
+              'Pick up to 6 agents and a model for each. Every agent gets its own worktree, branch and handoff file, so no two ever touch the same files.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -82,9 +86,7 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
       : (localRepos[0]?.id ?? '')
   )
   const [prompt, setPrompt] = useState('')
-  const [count, setCount] = useState(0)
-  const [agentId, setAgentId] = useState<TuiAgent | null>(null)
-  const [modelId, setModelId] = useState<string | null>(null)
+  const [slots, setSlots] = useState<LaunchAgentSlot[]>([])
   const [presetId, setPresetId] = useState<string | null>(null)
   const [launching, setLaunching] = useState(false)
   const retired = useRetiredWorktreeNames(repoId || null, repoId)
@@ -102,13 +104,8 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
     )
   }, [detectedAgentList, settings?.disabledTuiAgents])
 
-  const agent = agents.find((entry) => entry.id === agentId) ?? agents[0] ?? null
-  const model = agent ? resolveLaunchModel(agent.id, modelId) : null
-  const expandedAgents = useMemo(
-    () => (agent ? Array.from({ length: count }, () => agent.id) : []),
-    [agent, count]
-  )
-  const total = expandedAgents.length
+  const total = slots.length
+  const expandedAgents = useMemo(() => slots.map((slot) => slot.agent), [slots])
   const repo = localRepos.find((entry) => entry.id === repoId) ?? null
   const preset = getLaunchPreset(presetId)
   const roles = useMemo(
@@ -116,12 +113,19 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
     [expandedAgents, preset]
   )
 
+  const chooseCount = (count: number): void => {
+    setSlots((prev) => resizeLaunchSlots(prev, count, agents[0]?.id ?? null))
+  }
+  const updateSlot = (index: number, slot: LaunchAgentSlot): void => {
+    setSlots((prev) => prev.map((entry, i) => (i === index ? slot : entry)))
+  }
+
   // Why: picking a shape with no count chosen should produce that shape, not an empty lineup.
   const selectPreset = (nextPresetId: string | null): void => {
     setPresetId(nextPresetId)
     const nextPreset = getLaunchPreset(nextPresetId)
-    if (nextPreset && count === 0) {
-      setCount(Math.min(nextPreset.roles.length, LAUNCH_AGENTS_MAX))
+    if (nextPreset && total === 0) {
+      chooseCount(Math.min(nextPreset.roles.length, LAUNCH_AGENTS_MAX))
     }
   }
 
@@ -151,13 +155,27 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
         repo,
         settings,
         prompt,
-        agents: expandedAgents,
-        model,
+        slots,
         roles,
         setupDecision: trust === 'skip' ? 'skip' : setup.decision,
         worktreesByRepo,
         retired
       })
+      // Why: agents spawn seconds apart and each rewrites Claude's config, so trust every folder before the first one starts.
+      const claudeNames = requests.filter((r) => r.agent === 'claude').map((r) => r.name)
+      if (claudeNames.length > 0) {
+        const preTrust = await window.api.agentTrust.preTrustWorktrees({
+          repoId: repo.id,
+          agent: 'claude',
+          worktreeNames: claudeNames
+        })
+        if ('error' in preTrust) {
+          console.warn(
+            '[launch-agents] pre-trust failed; per-agent trust still runs:',
+            preTrust.error
+          )
+        }
+      }
       for (const request of requests) {
         runBackgroundWorktreeCreation(request)
       }
@@ -221,12 +239,12 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
                 key={choice}
                 type="button"
                 role="radio"
-                aria-checked={count === choice}
-                onClick={() => setCount(choice)}
+                aria-checked={total === choice}
+                onClick={() => chooseCount(choice)}
                 className={cn(
                   'flex aspect-square items-center justify-center rounded-lg border text-xl font-semibold tabular-nums transition-colors',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  count === choice
+                  total === choice
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-background text-foreground hover:bg-accent'
                 )}
@@ -238,19 +256,9 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
         )}
       </div>
 
-      {agent ? (
-        <LaunchModelPicker
-          agents={agents}
-          agentId={agent.id}
-          onAgentChange={setAgentId}
-          model={model}
-          onModelChange={setModelId}
-        />
-      ) : null}
+      <LaunchAgentSlots slots={slots} agents={agents} roles={roles} onChange={updateSlot} />
 
       <LaunchPresetRow presetId={presetId} onSelect={selectPreset} />
-
-      <LaunchAgentsLineup agents={expandedAgents} roles={roles} />
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">{T('prompt', 'Prompt for every session')}</span>

@@ -7,6 +7,7 @@ import type {
 import type { AgentInterruptInferenceRequest } from '../../shared/agent-interrupt-intent'
 import type { AgentQuestionAnsweredInferenceRequest } from '../../shared/agent-question-answered-intent'
 import type { ComputerAwakeStatus } from '../../shared/computer-awake-mode'
+import type { TuiAgent } from '../../shared/tui-agent'
 
 export type AgentStatusApi = {
   /** Listen for agent status updates forwarded from native hook receivers. */
@@ -54,6 +55,14 @@ export type AgentTrustApi = {
     workspacePath: string
     connectionId?: string
   }) => Promise<void>
+  /** Pre-trust every worktree a launch wave is about to create, in one write, before any of them
+   *  spawns an agent. Local repos + the `claude` preset only; other presets return `{ ok: true }`
+   *  as a no-op since they keep their own per-spawn trust write. */
+  preTrustWorktrees: (args: {
+    repoId: string
+    agent: TuiAgent
+    worktreeNames: string[]
+  }) => Promise<{ ok: true } | { error: string }>
 }
 
 export type AgentAwakeApi = {

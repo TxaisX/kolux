@@ -10,7 +10,12 @@ export function createBeginPendingWorktreeCreation(
   return (entry) => {
     set((s) => ({
       pendingWorktreeCreations: { ...s.pendingWorktreeCreations, [entry.creationId]: entry },
-      activePendingCreationId: entry.creationId
+      // Why: a fully-background batch creation must never claim the shared
+      // active-pending-creation slot — that would steal it from a sibling
+      // launched in the same batch (or from whatever the user is looking at).
+      ...(entry.request.revealOnStart === false
+        ? {}
+        : { activePendingCreationId: entry.creationId })
     }))
   }
 }

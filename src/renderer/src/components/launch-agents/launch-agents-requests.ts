@@ -15,14 +15,14 @@ import {
 import type { WorktreeCreationRequest } from '@/lib/pending-worktree-creation'
 import { CLIENT_PLATFORM } from '@/lib/new-workspace'
 import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-plan'
-import { composeRolePrompt, type LaunchRole } from './launch-agent-roles'
+import { composeLaunchAgentPrompt } from '../../../../shared/launch-agent-brief'
+import type { LaunchRole } from './launch-agent-roles'
 
 // Why: a 2x3 wave is the most one machine runs with every session fully responsive.
 export const LAUNCH_AGENTS_MAX = 6
 
-/** Sent to the agent, not shown to the user, so it is not localized. */
-export const CONTEXT7_AUDIT_BRIEF =
-  'Before reporting any work as done, audit it silently: for every library, framework, SDK or CLI API you used, check the current docs with the context7 MCP tools (resolve-library-id, then query-docs) and fix anything that does not match. Require any sub-agents you spawn to do the same. Report only the audited result.'
+/** One session in a wave: which agent CLI, and the catalog model it opens on (null = agent default). */
+export type LaunchAgentSlot = { agent: TuiAgent; model: string | null }
 
 // Why: mirrors the composer's dedup (live names across every repo + retired names for this repo),
 // but threads each pick back into the used set so N sessions launched together never collide.
@@ -46,9 +46,8 @@ export function buildLaunchAgentsRequests(input: {
   repo: Repo
   settings: GlobalSettings
   prompt: string
-  agents: TuiAgent[]
-  /** Catalog model id every session opens on; null keeps the agent's own default. */
-  model?: string | null
+  /** One entry per session: its agent CLI and the model it opens on. */
+  slots: readonly LaunchAgentSlot[]
   /** Per-session role, index-aligned with `agents`. Omit for N identical sessions. */
   roles?: readonly (LaunchRole | null)[]
   setupDecision: SetupDecision
@@ -64,12 +63,13 @@ export function buildLaunchAgentsRequests(input: {
     terminalWindowsShell: input.settings.terminalWindowsShell
   })
   const sharedPrompt = input.prompt.trim()
-  return input.agents.slice(0, LAUNCH_AGENTS_MAX).map((agent, index) => {
+  return input.slots.slice(0, LAUNCH_AGENTS_MAX).map((slot, index) => {
+    const { agent, model } = slot
     const name = selectSuggestedCreatureName(used, Math.random, retired.exhaustedTiers)
     used.add(normalizeSuggestedName(name))
-    // Why: each session gets its role brief ahead of the shared task, so a wave
+    // Why: each session gets its role brief with the shared rules, so a wave
     // of N agents divides the work instead of repeating it N times.
-    const prompt = `${CONTEXT7_AUDIT_BRIEF}\n\n${composeRolePrompt(sharedPrompt, input.roles?.[index] ?? null)}`.trim()
+    const prompt = composeLaunchAgentPrompt(sharedPrompt, name, input.roles?.[index]?.brief)
     const { startupPlan, backendStartup, telemetry } = buildQuickComposerStartup({
       agent,
       prompt,
@@ -80,7 +80,7 @@ export function buildLaunchAgentsRequests(input: {
       shell,
       isRemote,
       telemetrySource: 'sidebar',
-      ...(input.model ? { sessionOptionOverrides: { model: input.model } } : {})
+      ...(model ? { sessionOptionOverrides: { model } } : {})
     })
     return {
       repoId: input.repo.id,
@@ -99,7 +99,12 @@ export function buildLaunchAgentsRequests(input: {
       quickPrompt: prompt,
       quickTelemetry: telemetry,
       // Why: N creations finish in any order; none of them should steal focus from the others.
-      suppressTerminalFocusOnCompletion: true
+      suppressTerminalFocusOnCompletion: true,
+      // Why: a launched wave stays on the agent grid — no creation may flip
+      // activeView, claim the active pending creation, or activate/reveal its
+      // worktree on completion (that used to bounce the grid to a random tab
+      // and starve one worktree's pty of a surface; see AgentGridPage).
+      revealOnStart: false
     }
   })
 }

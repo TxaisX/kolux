@@ -10,7 +10,7 @@ import type { DashboardCard } from '../../../../shared/dashboard-snapshot'
 const MAX_TILES = 6
 
 /** One tile per worktree (its first live-pty card), capped and scoped to the active repo. */
-function selectAgentGridCards(cards: DashboardCard[], repoId: string): LiveAgentGridCard[] {
+export function selectAgentGridCards(cards: DashboardCard[], repoId: string): LiveAgentGridCard[] {
   const seenWorktreeIds = new Set<string>()
   const result: LiveAgentGridCard[] = []
   for (const card of cards) {
@@ -36,8 +36,7 @@ export default function AgentGridPage(): React.JSX.Element {
     return !repo?.executionHostId || repo.executionHostId === 'local'
   }, [repos, activeRepoId])
   const cards = useMemo(
-    () =>
-      activeRepoId && isLocalRepo ? selectAgentGridCards(snapshot.cards, activeRepoId) : [],
+    () => (activeRepoId && isLocalRepo ? selectAgentGridCards(snapshot.cards, activeRepoId) : []),
     [snapshot.cards, activeRepoId, isLocalRepo]
   )
   const fontSize = agentGridFontSize(cards.length)
