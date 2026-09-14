@@ -96,7 +96,7 @@ export function AddRepoLocalStartStep({
   onOpenCreateStep,
   onStopNestedScan
 }: AddRepoLocalStartStepProps): React.JSX.Element {
-  const browseActionRef = useRef<HTMLButtonElement | null>(null)
+  const primaryActionRef = useRef<HTMLButtonElement | null>(null)
   const actionsRef = useRef<HTMLDivElement | null>(null)
   const actionsUnavailable = isAdding || actionsDisabled
   const { primaryAction, secondaryActions } = getAddRepoLocalStartActions({
@@ -111,14 +111,15 @@ export function AddRepoLocalStartStep({
   })
 
   // The white fill + ⏎ chip is a roving selection indicator, not a fixed "primary" badge:
-  // it follows keyboard focus so Enter always activates the highlighted action. Browse is
-  // autofocused on open, so it starts selected; Tab and ↑/↓ move the highlight.
+  // it follows keyboard focus so Enter always activates the highlighted action. The hero
+  // card (Clone from URL on local hosts, Browse on SSH hosts) is autofocused on open, so it
+  // starts selected; Tab and ↑/↓ move the highlight.
   const [selectedKind, setSelectedKind] = useState<string | null>(primaryAction.kind)
   const visibleSelectedKind = actionsUnavailable ? null : selectedKind
 
   useEffect(() => {
     if (!actionsUnavailable) {
-      browseActionRef.current?.focus()
+      primaryActionRef.current?.focus()
     }
   }, [actionsUnavailable])
 
@@ -179,7 +180,7 @@ export function AddRepoLocalStartStep({
           description={primaryAction.description}
           disabled={actionsUnavailable}
           selected={visibleSelectedKind === primaryAction.kind}
-          buttonRef={browseActionRef}
+          buttonRef={primaryActionRef}
           onClick={primaryAction.onClick}
           onFocus={() => setSelectedKind(primaryAction.kind)}
         />

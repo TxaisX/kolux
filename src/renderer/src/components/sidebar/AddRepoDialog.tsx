@@ -32,6 +32,7 @@ export default React.memo(function AddRepoDialog({
     !hosted && typeof s.modalData.droppedLocalPath === 'string' ? s.modalData.droppedLocalPath : ''
   )
   const addRepoPath = useAppStore((s) => s.addRepoPath)
+  const resolveAddRepoDialogRequest = useAppStore((s) => s.resolveAddRepoDialogRequest)
   const scanNestedRepos = useAppStore((s) => s.scanNestedRepos)
   const cancelNestedRepoScan = useAppStore((s) => s.cancelNestedRepoScan)
   const importNestedRepos = useAppStore((s) => s.importNestedRepos)
@@ -271,11 +272,13 @@ export default React.memo(function AddRepoDialog({
         if (step === 'nested' && !isAdding) {
           trackNestedBackAction()
         }
+        // Why: settles an addRepo()-opened dialog with null on cancel; a no-op otherwise.
+        resolveAddRepoDialogRequest(null)
         closeModal()
         resetState()
       }
     },
-    [closeModal, isAdding, resetState, step, trackNestedBackAction]
+    [closeModal, isAdding, resetState, resolveAddRepoDialogRequest, step, trackNestedBackAction]
   )
 
   return (

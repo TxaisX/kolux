@@ -27,10 +27,17 @@ import { mergeProjectCompatibilityForHostRepoChange } from './repo-catalog-ident
 import { warnIfProjectKnownInAnotherProfile } from '../projects/project-profile-presence'
 import { warnIfProjectCrossesWslFilesystemBoundary } from '../projects/project-wsl-filesystem-boundary-advisory'
 
+// ponytail: single in-flight addRepo() request — a second call before the first
+// settles just resolves the first with null instead of tracking a queue.
+let pendingAddRepoDialogResolve: ((repo: Repo | null) => void) | null = null
+
 export function createRepoAddActions(
   set: Parameters<StateCreator<AppState>>[0],
   get: Parameters<StateCreator<AppState>>[1]
-): Pick<RepoSlice, 'addRepoPath' | 'addRepo' | 'addNonGitFolder'> {
+): Pick<
+  RepoSlice,
+  'addRepoPath' | 'addRepo' | 'addNonGitFolder' | 'resolveAddRepoDialogRequest'
+> {
   return {
     addRepoPath: async (path, kind = 'git', options) => {
       try {
@@ -91,6 +98,8 @@ export function createRepoAddActions(
             ...(displayName ? { displayName } : {}),
             ...(target.kind === 'environment' ? { runtimeEnvironmentId: target.environmentId } : {})
           })
+          // Why: settles any addRepo()-opened Add repo dialog handing off to this confirm dialog.
+          get().resolveAddRepoDialogRequest(null)
           return null
         }
         repo = repoWithFetchedOwner(repo, target)
@@ -146,7 +155,7 @@ export function createRepoAddActions(
       }
     },
 
-    addRepo: async () => {
+    addRepo: () => {
       const target = getActiveRuntimeTarget(get().settings)
       if (target.kind !== 'local') {
         // Why: OS folder pickers return client-local paths; remote environments need an explicit host path (Add Project dialog).
@@ -156,13 +165,22 @@ export function createRepoAddActions(
             'Use Add Project to enter a path on the selected host.'
           )
         )
-        return null
+        return Promise.resolve(null)
       }
-      const path = await window.api.repos.pickFolder()
-      if (!path) {
-        return null
-      }
-      return get().addRepoPath(path)
+      // Why: routes through the Add repo dialog (clone-first) instead of the native folder
+      // picker, so opening "Add repo" also surfaces Clone/Create. Resolves once the dialog
+      // finishes adding a repo, or null on cancel / non-git-folder handoff.
+      return new Promise<Repo | null>((resolve) => {
+        pendingAddRepoDialogResolve?.(null)
+        pendingAddRepoDialogResolve = resolve
+        get().openModal('add-repo')
+      })
+    },
+
+    resolveAddRepoDialogRequest: (repo) => {
+      const resolve = pendingAddRepoDialogResolve
+      pendingAddRepoDialogResolve = null
+      resolve?.(repo)
     },
 
     addNonGitFolder: async (path, options) => {
