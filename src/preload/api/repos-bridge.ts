@@ -21,6 +21,16 @@ export const reposApi = {
 
   initGit: (args) => ipcRenderer.invoke('repos:initGit', args),
 
+  convertFolderToGit: (args) => ipcRenderer.invoke('repos:convertFolderToGit', args),
+
+  previewInitialCommit: (args) => ipcRenderer.invoke('repos:previewInitialCommit', args),
+
+  commitInitialFiles: (args) => ipcRenderer.invoke('repos:commitInitialFiles', args),
+
+  previewPublish: (args) => ipcRenderer.invoke('repos:previewPublish', args),
+
+  publishRemote: (args) => ipcRenderer.invoke('repos:publishRemote', args),
+
   isGitAvailable: (): Promise<boolean> => ipcRenderer.invoke('repos:isGitAvailable'),
 
   getDefaultCreateProjectParent: (): Promise<string> =>

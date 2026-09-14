@@ -5,6 +5,11 @@ import { registerRepoCatalogHandlers } from './repos/repo-catalog-handlers'
 import { registerProjectHostSetupHandlers } from './repos/project-host-setup-handlers'
 import { registerRepoCreationHandlers } from './repos/repo-creation-handlers'
 import { registerRepoInitGitHandler } from './repos/repo-init-git-handler'
+import { registerRepoConvertFolderToGitHandler } from './repos/repo-convert-folder-to-git-handler'
+import { registerRepoInitialCommitPreviewHandler } from './repos/repo-initial-commit-preview-handler'
+import { registerRepoCommitInitialFilesHandler } from './repos/repo-commit-initial-files-handler'
+import { registerRepoPublishRemotePreviewHandler } from './repos/repo-publish-remote-preview-handler'
+import { registerRepoPublishRemoteHandler } from './repos/repo-publish-remote-handler'
 import { registerProjectGroupHandlers } from './repos/project-group-handlers'
 import { registerFolderWorkspaceHandlers } from './repos/folder-workspace-handlers'
 import { registerNestedRepoImportHandler } from './repos/nested-repo-import-handler'
@@ -66,6 +71,11 @@ export function registerRepoHandlers(
   ipcMain.removeHandler('repos:create')
   ipcMain.removeHandler('repos:createRemote')
   ipcMain.removeHandler('repos:initGit')
+  ipcMain.removeHandler('repos:convertFolderToGit')
+  ipcMain.removeHandler('repos:previewInitialCommit')
+  ipcMain.removeHandler('repos:commitInitialFiles')
+  ipcMain.removeHandler('repos:previewPublish')
+  ipcMain.removeHandler('repos:publishRemote')
   ipcMain.removeHandler('sparsePresets:list')
   ipcMain.removeHandler('sparsePresets:save')
   ipcMain.removeHandler('sparsePresets:remove')
@@ -74,6 +84,11 @@ export function registerRepoHandlers(
   registerProjectHostSetupHandlers(mainWindow, store)
   registerRepoCreationHandlers(mainWindow, store)
   registerRepoInitGitHandler(mainWindow, store)
+  registerRepoConvertFolderToGitHandler(mainWindow, store)
+  registerRepoInitialCommitPreviewHandler(store)
+  registerRepoCommitInitialFilesHandler(mainWindow, store)
+  registerRepoPublishRemotePreviewHandler(store)
+  registerRepoPublishRemoteHandler(mainWindow, store)
   registerProjectGroupHandlers(mainWindow, store)
   registerFolderWorkspaceHandlers(mainWindow, store, runtime)
   registerNestedRepoImportHandler(mainWindow, store)

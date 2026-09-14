@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react'
+import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { useShallow } from 'zustand/react/shallow'
 import {
@@ -220,6 +221,32 @@ const WorktreeList = React.memo(function WorktreeList({
     },
     [openModal]
   )
+  const handleMakeGitRepo = useCallback(
+    (repo: Repo) => {
+      void (async () => {
+        try {
+          const result = await window.api.repos.convertFolderToGit({ repoId: repo.id })
+          if ('error' in result) {
+            throw new Error(result.error)
+          }
+          // Why: the empty-commit conversion is silent — this dialog is the only place the
+          // user is offered the opt-in "Commit files…" step, so it can't get lost.
+          openModal('git-repo-conversion-followup', { repoId: result.repo.id })
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : 'Failed to turn this project into a git repo'
+          )
+        }
+      })()
+    },
+    [openModal]
+  )
+  const handlePublishRemote = useCallback(
+    (repo: Repo) => {
+      openModal('publish-remote', { repoId: repo.id })
+    },
+    [openModal]
+  )
   const handleCreateFolderWorkspace = useCallback(
     (projectGroup: ProjectGroup) => {
       if (!projectGroup.parentPath) {
@@ -307,6 +334,8 @@ const WorktreeList = React.memo(function WorktreeList({
           externalWorktreeCards.newExternalWorktreeInboxActionState
         }
         handleRemoveProject={handleRemoveProject}
+        handleMakeGitRepo={handleMakeGitRepo}
+        handlePublishRemote={handlePublishRemote}
         handleCreateGroupFromRepo={projectGroupDialogs.handleCreateGroupFromRepo}
         handleMoveProjectToGroup={projectGroupDialogs.handleMoveProjectToGroup}
         handleRemoveProjectFromGroup={projectGroupDialogs.handleRemoveProjectFromGroup}
