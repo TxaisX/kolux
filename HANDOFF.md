@@ -31,8 +31,33 @@ code, so removing it would make every build infringing. It is not user-visible. 
 
 ## Versioning
 
-The version is held at `0.0.0` deliberately, because the product is still being built.
-**Do not bump it.** The owner will say when to move to the next version.
+Versions stay within `0.x.y` while the product is being built. **Never move to `1.0.0`**
+until the owner says so. Pick x or y from what the release changes, and state the reason in
+the version-bump commit message (for example "0.2.0 — x: adds the orchestration panel").
+
+| Bump | When | Examples |
+|---|---|---|
+| **x** → `0.X.0` (y resets to 0) | Users can do something new, or must change how they work | a new feature, screen or workflow; removing or reworking existing behavior; settings or saved data that older versions can't read |
+| **y** → `0.x.Y` | Existing behavior gets better, nothing new to learn | bug fixes, performance, visual or wording polish, security patches, dependency updates |
+| none | Nothing a user would notice | docs, tests, CI, internal refactors with no behavior change |
+
+If a release contains both kinds, the larger one wins: any x-level change makes it x.
+`0.1.0` was x: it is the first release and adds automatic updates.
+
+## Releasing and auto-update
+
+The installed app checks GitHub Releases on `TxaisX/nightshift` once a day and installs any
+newer version it finds there. To ship one:
+
+1. Bump `version` in `package.json` (for example `0.1.0` → `0.1.1`) and commit it to `main`.
+2. `git tag v0.1.1 && git push origin main v0.1.1`.
+3. `.github/workflows/release.yml` builds the Windows installer and publishes the release.
+   It fails fast if the tag and `package.json` disagree.
+
+Releases are **unsigned**. Stable Windows builds only carry the SignPath `publisherName` when
+`NIGHTSHIFT_WIN_SIGNPATH=1`, because an installed app with a publisherName rejects every
+unsigned update. Builds made before 2026-09-14 do carry it, so they need one manual install
+of a newer release; after that, updates are automatic. Mac and Linux are not released.
 
 ## Recent work, and why
 

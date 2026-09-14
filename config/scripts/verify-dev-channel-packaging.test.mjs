@@ -34,12 +34,21 @@ afterEach(() => {
 })
 
 describe('electron-builder dev-channel identity', () => {
-  it('keeps the SignPath publisherName on stable Windows builds', () => {
-    const config = loadConfigWithEnv({})
+  it('keeps the SignPath publisherName on SignPath-signed stable Windows builds', () => {
+    const config = loadConfigWithEnv({ NIGHTSHIFT_WIN_SIGNPATH: '1' })
 
     expect(config.win.signtoolOptions.publisherName).toBe('SignPath Foundation')
     expect(config.win.verifyUpdateCodeSignature).toBeUndefined()
     expect(config.publish.repo).toBe('nightshift')
+    expect(config.publish.releaseType).toBe('release')
+  })
+
+  // Stable releases currently ship unsigned; claiming a publisher would reject every update.
+  it('drops the publisherName on unsigned stable Windows builds', () => {
+    const config = loadConfigWithEnv({})
+
+    expect(config.win.signtoolOptions.publisherName).toBeUndefined()
+    expect(config.win.verifyUpdateCodeSignature).toBe(false)
     expect(config.publish.releaseType).toBe('release')
   })
 
@@ -58,11 +67,14 @@ describe('electron-builder dev-channel identity', () => {
   // the CI SignPath request. Carrying it must not drag a publisherName onto a
   // dev build, which is the failure the split above exists to prevent.
   it('carries the uninstaller sign hook without changing publisherName semantics', () => {
-    for (const env of [{}, WIN_ADHOC_ENV]) {
+    const signedEnv = { NIGHTSHIFT_WIN_SIGNPATH: '1' }
+    for (const env of [{}, signedEnv, WIN_ADHOC_ENV]) {
       const config = loadConfigWithEnv(env)
       expect(typeof config.win.signtoolOptions.sign).toBe('function')
     }
-    expect(loadConfigWithEnv({}).win.signtoolOptions.publisherName).toBe('SignPath Foundation')
+    expect(loadConfigWithEnv(signedEnv).win.signtoolOptions.publisherName).toBe(
+      'SignPath Foundation'
+    )
     expect(loadConfigWithEnv(WIN_ADHOC_ENV).win.signtoolOptions.publisherName).toBeUndefined()
   })
 

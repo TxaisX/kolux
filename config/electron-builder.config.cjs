@@ -36,6 +36,8 @@ const isWinHourly = process.env.NIGHTSHIFT_WIN_HOURLY === '1'
 const isWinDaily = process.env.NIGHTSHIFT_WIN_DAILY === '1'
 const isWinAdhoc = process.env.NIGHTSHIFT_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
+// Why: only a SignPath-signed build may advertise its publisherName; see signtoolOptions below.
+const isWinUnsigned = isWinDevChannel || process.env.NIGHTSHIFT_WIN_SIGNPATH !== '1'
 const isMacRelease = process.env.NIGHTSHIFT_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
 const isLinuxArm64Release = process.env.NIGHTSHIFT_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
@@ -413,9 +415,9 @@ module.exports = {
     // its existing channel split above.
     signtoolOptions: {
       sign: signWindowsUninstallerViaSignPath,
-      ...(isWinDevChannel ? {} : { publisherName: 'SignPath Foundation' })
+      ...(isWinUnsigned ? {} : { publisherName: 'SignPath Foundation' })
     },
-    ...(isWinDevChannel ? { verifyUpdateCodeSignature: false } : {}),
+    ...(isWinUnsigned ? { verifyUpdateCodeSignature: false } : {}),
     extraResources: [
       ...commonExtraResources,
       ...createPackagedRuntimeNodeModuleResources('win32'),
