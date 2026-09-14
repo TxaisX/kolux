@@ -124,15 +124,16 @@ const GitRepoConversionFollowUpDialog = React.memo(function GitRepoConversionFol
             <DialogHeader>
               <DialogTitle className="text-sm">Git repo created</DialogTitle>
               <DialogDescription className="text-xs">
-                This project now has one empty commit. Your existing files haven&apos;t been
-                added yet — commit them now, or leave the repo empty and do it later.
+                This project now has one empty commit. Your existing files haven&apos;t been added
+                yet — commit them now, or leave the repo empty and do it later.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Done
+              <Button variant="outline" onClick={handleCommitFilesClick}>
+                Commit files…
               </Button>
-              <Button onClick={handleCommitFilesClick}>Commit files…</Button>
+              {/* Why: keeping the repo empty is the safe default for arbitrary personal folders. */}
+              <Button onClick={() => handleOpenChange(false)}>Done</Button>
             </DialogFooter>
           </>
         ) : (
@@ -214,7 +215,10 @@ const GitRepoConversionFollowUpDialog = React.memo(function GitRepoConversionFol
               <Button
                 onClick={handleConfirmCommit}
                 disabled={
-                  loading || committing || Boolean(previewError) || Boolean(hasWarnings && !acknowledged)
+                  loading ||
+                  committing ||
+                  Boolean(previewError) ||
+                  Boolean(hasWarnings && !acknowledged)
                 }
               >
                 Commit files

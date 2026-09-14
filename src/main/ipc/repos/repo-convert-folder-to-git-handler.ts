@@ -15,7 +15,10 @@ import { initGitRepoWithEmptyCommit, removeInitializedGitDir } from './git-init-
  * uses for an externally-run `git init` — to flip `kind` on the existing repo record
  * in place instead of registering a second, duplicate project.
  */
-export function registerRepoConvertFolderToGitHandler(mainWindow: BrowserWindow, store: Store): void {
+export function registerRepoConvertFolderToGitHandler(
+  mainWindow: BrowserWindow,
+  store: Store
+): void {
   ipcMain.handle(
     'repos:convertFolderToGit',
     async (_event, args: { repoId: string }): Promise<{ repo: Repo } | { error: string }> => {
@@ -39,7 +42,10 @@ export function registerRepoConvertFolderToGitHandler(mainWindow: BrowserWindow,
       }
 
       const outcome = await upgradeFolderRepo({ store, mainWindow, disposed: false }, repoId)
-      if (outcome !== 'upgraded') {
+      // Why: the background folder watcher can see the new `.git` and upgrade the record first;
+      // our call then reads 'blocked', and rolling back would strand a git record with no `.git`.
+      const alreadyUpgraded = store.getRepo(repoId)?.kind === 'git'
+      if (outcome !== 'upgraded' && !alreadyUpgraded) {
         // The empty-commit init succeeded but the upgrade was blocked/rejected — leaving the
         // just-created `.git` around would silently turn this folder project into a git repo
         // behind the user's back the next time it's scanned.
@@ -47,7 +53,9 @@ export function registerRepoConvertFolderToGitHandler(mainWindow: BrowserWindow,
         return { error: 'Could not finish converting this project to a git repository' }
       }
       const upgraded = store.getRepo(repoId)
-      return upgraded ? { repo: upgraded } : { error: 'Project could not be reloaded after conversion' }
+      return upgraded
+        ? { repo: upgraded }
+        : { error: 'Project could not be reloaded after conversion' }
     }
   )
 }

@@ -100,9 +100,9 @@ describe('repos:convertFolderToGit', () => {
     expect(
       execFileSync('git', ['log', '--oneline'], { cwd: root, encoding: 'utf-8' }).trim()
     ).toContain('Initial commit')
-    expect(
-      execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf-8' })
-    ).toBe('')
+    expect(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf-8' })).toBe(
+      ''
+    )
     expect(upgradeFolderRepoMock).toHaveBeenCalledWith(
       { store, mainWindow: mockWindow, disposed: false },
       repo.id
@@ -113,8 +113,20 @@ describe('repos:convertFolderToGit', () => {
   it('surfaces a clean error when the upgrade is blocked (e.g. extra folder workspaces), and removes the .git it just created', async () => {
     upgradeFolderRepoMock.mockResolvedValueOnce('blocked')
     const result = await call({ repoId: repo.id })
-    expect(result).toEqual({ error: 'Could not finish converting this project to a git repository' })
+    expect(result).toEqual({
+      error: 'Could not finish converting this project to a git repository'
+    })
     expect(existsSync(join(root, '.git'))).toBe(false)
+  })
+
+  it('keeps the .git and succeeds when the background watcher upgraded the record first', async () => {
+    upgradeFolderRepoMock.mockImplementation(async () => {
+      repo.kind = 'git'
+      return 'blocked'
+    })
+    const result = await call({ repoId: repo.id })
+    expect(result).toEqual({ repo })
+    expect(existsSync(join(root, '.git'))).toBe(true)
   })
 
   it('surfaces a git init failure (missing directory) without calling upgradeFolderRepo', async () => {

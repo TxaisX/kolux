@@ -99,7 +99,12 @@ The version is held at `0.0.0` deliberately, because the product is still being 
     `.nightshift/handoffs/<worktree>.md`, and nothing else changed; branches renamed from the task
     (`count-readme-lines`, `-2`…`-6`). One Haiku/Sonnet-class answer was wrong (5 vs 4): model
     quality, not app.
-  - Still not runtime-verified: the native folder picker and the "Make it a git repo" click.
+  - "Make it a git repo" verified live on the merged branch (`95356b57`, 2026-09-14). Opening
+    `confirm-non-git-folder` through `window.__store` on a plain folder containing `notes.txt`
+    and clicking the button added the project as `kind: git`, set it active, and landed on
+    `launch-agents` with it selected. It made one empty "Initial commit": zero files in the
+    commit, zero tracked, `notes.txt` untouched and untracked. Still not driven: the native folder
+    picker itself (not automatable).
     Pre-existing: 5 failures in `worktree-creation-flow.test.ts` (identical on `b0ec17bc`). 5 failures in `worktree-creation-flow.test.ts` are
     pre-existing: identical on commit `b0ec17bc`.
   - *Bug 1: root cause found, fix not yet runtime-verified.* **On Windows Claude looks up trust
@@ -116,6 +121,40 @@ The version is held at `0.0.0` deliberately, because the product is still being 
     worktree has its own `.git` file. Stale backslash entries in `.claude.json` are harmless.
   - A test once wrote temp entries into the real `.claude.json`; they were removed and the test now
     clears `CLAUDE_CONFIG_DIR`. Any new test touching Claude config must do the same.
+- **Git repos as the default way to hold a project (2026-09-14).** Four features plus
+  security/review fixes, merged at `80d5dd72`:
+  - *Clone first.* Add repo's hero card on local hosts is "Clone from URL"; Browse folder moved
+    under "Other ways to add" (SSH ordering unchanged). `addRepo()` now opens that dialog and
+    resolves `Repo | null` only after it closes (`resolveAddRepoDialogRequest`, settled in a
+    `finally`). **If another modal is already open it falls back to the native picker**, because
+    modal state is single-slot and swapping would wipe Launch Agents' draft.
+  - *Unpushed badge.* `worktrees:unpushedStatus` + a renderer registry (150 ms debounce, 60 s
+    visible interval, focus refresh) → amber "↑N unpushed" / "Unpublished" on git worktree
+    cards. Paths are resolved against the repo's own worktree list; SSH failures read
+    `unverifiable`, never synced.
+  - *Folder → git → publish.* Context menu "Make it a git repo" (`repos:convertFolderToGit`)
+    keeps the **empty** first commit on purpose: these can be personal folders (Documents).
+    Committing files is an opt-in second step with a full-tree secret/large-file scan
+    (display list capped, scan is not) and a default `.gitignore`. "Publish to remote…" needs
+    `confirmed: true`, defaults GitHub to private, rejects URLs with embedded credentials, and
+    rolls back `origin` on failure (never deletes a created GitHub repo). Local hosts only.
+  - *Overlap CLI.* `nightshift worktree changes|overlap --json` (read-only; merge-tree prediction
+    on committed tips only). A non-authoritative sibling scan sets `siblingsUnverifiable`; one
+    failing sibling degrades alone. Skill guides tell agents to run it before editing.
+  - **Verified in a running app (hidden instance, CDP):** Clone-first hero + focus, both badges,
+    conversion + commit preview flagging `id_ed25519` and gating on acknowledgement, publish
+    dialog counts and credential-URL rejection, Launch Agents keeping its draft (via store call;
+    the native picker can't be driven). Not driven: an actual publish to GitHub.
+  - **Bugs the runtime check found (fixed after, tests only):** a race where the background folder
+    watcher upgrades the record before `convertFolderToGit` does, so the handler saw 'blocked',
+    deleted `.git` and stranded a git-kind record (now it succeeds if the record is already git);
+    and the follow-up dialog had "Commit files…" as primary instead of "Done".
+  - **Traps from building it:** fresh `git worktree add` copies can't compile native modules in
+    this sandbox, so use `pnpm install --ignore-scripts` and run `node node_modules/vitest/vitest.mjs
+    run --config config/vitest.config.ts`, `node config/scripts/run-typecheck-projects-in-parallel.mjs`
+    and `node node_modules/oxlint/bin/oxlint` directly. Harness-isolated worktrees can start from a
+    stale commit or be auto-removed when unchanged; check `git log -1` first. When two sessions share
+    this checkout, build in separate worktrees and merge only after the other session commits.
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this
   machine; nothing starts until one is chosen. Verified end to end in a running app.
