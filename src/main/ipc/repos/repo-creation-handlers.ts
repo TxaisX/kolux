@@ -19,6 +19,7 @@ import { notifyReposChanged } from './repos-changed-notification'
 import { addLocalRepoFromPath } from './local-repo-registration'
 import { addRemoteRepoFromPath } from './remote-repo-registration'
 import { createRemoteRepo } from './remote-repo-creation'
+import { initGitRepoWithEmptyCommit } from './git-init-with-empty-commit'
 
 const GIT_AVAILABILITY_TIMEOUT_MS = 1500
 
@@ -223,36 +224,14 @@ export function registerRepoCreationHandlers(mainWindow: BrowserWindow, store: S
       }
 
       if (repoKind === 'git') {
-        // Why: track which git step ran so catch can attribute failure; the identity-hint regex only applies during commit.
-        let step: 'init' | 'commit' = 'init'
-        try {
-          await gitExecFileAsync(['init'], { cwd: targetPath })
-          step = 'commit'
-          await gitExecFileAsync(['commit', '--allow-empty', '-m', 'Initial commit'], {
-            cwd: targetPath
-          })
-        } catch (err) {
-          // Only rm the dir if we made it (pre-existing folders must survive retry); otherwise strip just the .git/ that git init created.
+        const initResult = await initGitRepoWithEmptyCommit(targetPath)
+        if (!initResult.ok) {
+          // Only rm the dir if we made it — a pre-existing folder must survive retry;
+          // the shared helper already strips just the .git/ it created on a commit failure.
           if (createdDir) {
             await rm(targetPath, { recursive: true, force: true }).catch(() => {})
-          } else if (step === 'commit') {
-            await rm(join(targetPath, '.git'), { recursive: true, force: true }).catch(() => {})
           }
-          const message = err instanceof Error ? err.message : String(err)
-          if (
-            step === 'commit' &&
-            /Please tell me who you are|user\.name|user\.email/i.test(message)
-          ) {
-            return {
-              error:
-                'Git author identity is not configured. Run `git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"`, then try again.'
-            }
-          }
-          const stepLabel =
-            step === 'init'
-              ? 'Failed to initialize git repository'
-              : 'Failed to create initial commit'
-          return { error: `${stepLabel}: ${message}` }
+          return { error: initResult.error }
         }
       }
 

@@ -19,6 +19,8 @@ export const reposApi = {
 
   create: (args) => ipcRenderer.invoke('repos:create', args),
 
+  initGit: (args) => ipcRenderer.invoke('repos:initGit', args),
+
   isGitAvailable: (): Promise<boolean> => ipcRenderer.invoke('repos:isGitAvailable'),
 
   getDefaultCreateProjectParent: (): Promise<string> =>

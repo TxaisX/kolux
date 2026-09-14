@@ -53,11 +53,14 @@ function clamp(value: number, min: number, max: number): number {
 export function AgentTerminalPreview({
   ptyId,
   terminalInput = null,
+  fontSize,
   className
 }: {
   ptyId: string
   /** Host-input facts relayed with the card; null routes bytes by client OS. */
   terminalInput?: DashboardCardTerminalInput | null
+  /** Overrides the settings-derived font size, e.g. the agent grid's auto-fit by tile count. */
+  fontSize?: number
   className?: string
 }): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -70,6 +73,10 @@ export function AgentTerminalPreview({
   const settingsRef = useRef(settings)
   const macOptionAsAltRef = useRef(macOptionAsAlt)
   const terminalInputRef = useRef(terminalInput)
+  const fontSizeRef = useRef(fontSize)
+  // Why: the box-fit scale reads live cell metrics, so a font-size change (no
+  // resize/reconnect) still needs a fit pass to rescale the transform.
+  const scheduleFitRef = useRef<() => void>(() => {})
   const { terminalTheme, terminalMode } = useMemo(() => {
     if (!settings) {
       return { terminalTheme: null, terminalMode: 'dark' as const }
@@ -93,7 +100,8 @@ export function AgentTerminalPreview({
     settingsRef.current = settings
     macOptionAsAltRef.current = macOptionAsAlt
     terminalInputRef.current = terminalInput
-  }, [settings, macOptionAsAlt, terminalInput])
+    fontSizeRef.current = fontSize
+  }, [settings, macOptionAsAlt, terminalInput, fontSize])
 
   useEffect(() => {
     setPtyGone(false)
@@ -118,6 +126,7 @@ export function AgentTerminalPreview({
 
     const boxFit = createPreviewBoxFit({ container, getTerminal: () => terminal })
     const scheduleFit = boxFit.schedule
+    scheduleFitRef.current = scheduleFit
 
     const gridClaim = createPreviewGridClaim({
       ptyId,
@@ -261,7 +270,8 @@ export function AgentTerminalPreview({
             themeMode: terminalMode,
             cols: clamp(snap.cols ?? FALLBACK_COLS, 2, 500),
             rows: clamp(snap.rows ?? FALLBACK_ROWS, 2, 200),
-            scrollback: PREVIEW_SCROLLBACK_BUFFER_ROWS
+            scrollback: PREVIEW_SCROLLBACK_BUFFER_ROWS,
+            fontSize: fontSizeRef.current
           })
         )
         try {
@@ -411,10 +421,13 @@ export function AgentTerminalPreview({
     }
     Object.assign(
       terminal.options,
-      buildPreviewAppearanceOptions(settings, macOptionAsAlt === 'true')
+      buildPreviewAppearanceOptions(settings, macOptionAsAlt === 'true', fontSize)
     )
     syncPreviewTerminalLigatures(terminal, settings)
-  }, [settings, macOptionAsAlt])
+    // Why: a font-size-only change resizes cells but not cols/rows, so the
+    // box-fit scale (computed from screen.offsetWidth) must be recomputed.
+    scheduleFitRef.current()
+  }, [settings, macOptionAsAlt, fontSize])
 
   return (
     // Why: a size FIXED by the viewport (not shrink-to-fit) + overflow-hidden

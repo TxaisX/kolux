@@ -4,6 +4,7 @@ import type { Store } from '../persistence'
 import { registerRepoCatalogHandlers } from './repos/repo-catalog-handlers'
 import { registerProjectHostSetupHandlers } from './repos/project-host-setup-handlers'
 import { registerRepoCreationHandlers } from './repos/repo-creation-handlers'
+import { registerRepoInitGitHandler } from './repos/repo-init-git-handler'
 import { registerProjectGroupHandlers } from './repos/project-group-handlers'
 import { registerFolderWorkspaceHandlers } from './repos/folder-workspace-handlers'
 import { registerNestedRepoImportHandler } from './repos/nested-repo-import-handler'
@@ -64,6 +65,7 @@ export function registerRepoHandlers(
   ipcMain.removeHandler('repos:addRemote')
   ipcMain.removeHandler('repos:create')
   ipcMain.removeHandler('repos:createRemote')
+  ipcMain.removeHandler('repos:initGit')
   ipcMain.removeHandler('sparsePresets:list')
   ipcMain.removeHandler('sparsePresets:save')
   ipcMain.removeHandler('sparsePresets:remove')
@@ -71,6 +73,7 @@ export function registerRepoHandlers(
   registerRepoCatalogHandlers(mainWindow, store)
   registerProjectHostSetupHandlers(mainWindow, store)
   registerRepoCreationHandlers(mainWindow, store)
+  registerRepoInitGitHandler(mainWindow, store)
   registerProjectGroupHandlers(mainWindow, store)
   registerFolderWorkspaceHandlers(mainWindow, store, runtime)
   registerNestedRepoImportHandler(mainWindow, store)

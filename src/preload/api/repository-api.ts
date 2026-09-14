@@ -97,6 +97,8 @@ export type RepositoryApi = {
     name: string
     kind: 'git' | 'folder'
   }) => Promise<{ repo: Repo } | { error: string }>
+  // Why: error union matches the IPC handler's return shape; turns an existing local, non-git folder into a git repo in place.
+  initGit: (args: { path: string }) => Promise<{ repo: Repo } | { error: string }>
   isGitAvailable: () => Promise<boolean>
   getDefaultCreateProjectParent: () => Promise<string>
   onCloneProgress: (callback: (data: { phase: string; percent: number }) => void) => () => void

@@ -36,6 +36,19 @@ The version is held at `0.0.0` deliberately, because the product is still being 
 
 ## Recent work, and why
 
+- **Launch a wave of up to 6 agents.** Landing's primary button is "Launch agents"; with no
+  local git repo it opens the folder picker first. A plain folder gets "Make it a git repo"
+  (`repos:initGit`: `git init` + empty commit, never stages user files; local only), which
+  continues into the launch dialog. The dialog lists git repos only, picks a count from a 2x3
+  grid of squares (cap `LAUNCH_AGENTS_MAX = 6`, also enforced in the request builder), an
+  agent and a catalog model (sent as `sessionOptions.model` -> `--model`). Every session's
+  prompt starts with `CONTEXT7_AUDIT_BRIEF`. After launch the app switches to the new
+  `agent-grid` top-level view (also in the sidebar nav): up to 6 live terminals tiled 3x2,
+  font 14/12/11px for 1-2/3-4/5-6 agents, ptyId resolved via `useLiveDashboardSnapshot`.
+  Verified over CDP: button, 2x3 squares (75px, 2 rows x 3 cols), model select, Launch N
+  enabling, grid page empty state. **Not verified at runtime:** an actual launch (tiles with
+  live terminals, font fit, `--model` on the spawned process), the native folder picker, and
+  the git-init click.
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this
   machine; nothing starts until one is chosen. Verified end to end in a running app.

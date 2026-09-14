@@ -17,20 +17,12 @@ import { CLIENT_PLATFORM } from '@/lib/new-workspace'
 import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-plan'
 import { composeRolePrompt, type LaunchRole } from './launch-agent-roles'
 
-export const LAUNCH_AGENTS_MAX_PER_AGENT = 9
+// Why: a 2x3 wave is the most one machine runs with every session fully responsive.
+export const LAUNCH_AGENTS_MAX = 6
 
-export type LaunchAgentCounts = Partial<Record<TuiAgent, number>>
-
-/** {claude: 2, codex: 1} -> ['claude', 'claude', 'codex'] */
-export function expandLaunchAgentCounts(counts: LaunchAgentCounts): TuiAgent[] {
-  const agents: TuiAgent[] = []
-  for (const [agent, count] of Object.entries(counts) as [TuiAgent, number | undefined][]) {
-    for (let i = 0; i < (count ?? 0); i += 1) {
-      agents.push(agent)
-    }
-  }
-  return agents
-}
+/** Sent to the agent, not shown to the user, so it is not localized. */
+export const CONTEXT7_AUDIT_BRIEF =
+  'Before reporting any work as done, audit it silently: for every library, framework, SDK or CLI API you used, check the current docs with the context7 MCP tools (resolve-library-id, then query-docs) and fix anything that does not match. Require any sub-agents you spawn to do the same. Report only the audited result.'
 
 // Why: mirrors the composer's dedup (live names across every repo + retired names for this repo),
 // but threads each pick back into the used set so N sessions launched together never collide.
@@ -55,6 +47,8 @@ export function buildLaunchAgentsRequests(input: {
   settings: GlobalSettings
   prompt: string
   agents: TuiAgent[]
+  /** Catalog model id every session opens on; null keeps the agent's own default. */
+  model?: string | null
   /** Per-session role, index-aligned with `agents`. Omit for N identical sessions. */
   roles?: readonly (LaunchRole | null)[]
   setupDecision: SetupDecision
@@ -70,12 +64,12 @@ export function buildLaunchAgentsRequests(input: {
     terminalWindowsShell: input.settings.terminalWindowsShell
   })
   const sharedPrompt = input.prompt.trim()
-  return input.agents.map((agent, index) => {
+  return input.agents.slice(0, LAUNCH_AGENTS_MAX).map((agent, index) => {
     const name = selectSuggestedCreatureName(used, Math.random, retired.exhaustedTiers)
     used.add(normalizeSuggestedName(name))
     // Why: each session gets its role brief ahead of the shared task, so a wave
     // of N agents divides the work instead of repeating it N times.
-    const prompt = composeRolePrompt(sharedPrompt, input.roles?.[index] ?? null)
+    const prompt = `${CONTEXT7_AUDIT_BRIEF}\n\n${composeRolePrompt(sharedPrompt, input.roles?.[index] ?? null)}`.trim()
     const { startupPlan, backendStartup, telemetry } = buildQuickComposerStartup({
       agent,
       prompt,
@@ -85,7 +79,8 @@ export function buildLaunchAgentsRequests(input: {
       platform: CLIENT_PLATFORM,
       shell,
       isRemote,
-      telemetrySource: 'sidebar'
+      telemetrySource: 'sidebar',
+      ...(input.model ? { sessionOptionOverrides: { model: input.model } } : {})
     })
     return {
       repoId: input.repo.id,

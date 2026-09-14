@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookOpen, CalendarClock, EyeOff, Files, Search, Smartphone } from 'lucide-react'
+import { BookOpen, CalendarClock, EyeOff, Files, LayoutGrid, Search, Smartphone } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
@@ -59,6 +59,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const openMobilePage = useAppStore((s) => s.openMobilePage)
   const openArtifactsPage = useAppStore((s) => s.openArtifactsPage)
   const openSkillsPage = useAppStore((s) => s.openSkillsPage)
+  const setActiveView = useAppStore((s) => s.setActiveView)
   const openModal = useAppStore((s) => s.openModal)
   const updateSettings = useAppStore((s) => s.updateSettings)
   const activeView = useAppStore((s) => s.activeView)
@@ -71,6 +72,7 @@ const SidebarNav = React.memo(function SidebarNav() {
   const mobileActive = activeView === 'mobile'
   const artifactsActive = activeView === 'artifacts'
   const skillsActive = activeView === 'skills'
+  const agentGridActive = activeView === 'agent-grid'
   const mobileOnboardingBadge = useMobileSidebarOnboardingBadge(showMobileButton)
   const hideAutomationsButton = React.useCallback(() => {
     void updateSettings({ showAutomationsButton: false })
@@ -179,6 +181,25 @@ const SidebarNav = React.memo(function SidebarNav() {
           <HideSidebarMenu onHide={hideSkillsButton} />
         </ContextMenu>
       ) : null}
+      <button
+        type="button"
+        onClick={() => setActiveView('agent-grid')}
+        aria-current={agentGridActive ? 'page' : undefined}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+          agentGridActive
+            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
+            : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
+        )}
+      >
+        <LayoutGrid
+          className={cn('size-4 shrink-0', !agentGridActive && 'text-worktree-sidebar-foreground/30')}
+          strokeWidth={agentGridActive ? 2.25 : 1.75}
+        />
+        <span className="flex-1">
+          {translate('auto.components.sidebar.SidebarNav.agentGrid', 'Agent grid')}
+        </span>
+      </button>
       {showAutomationsButton ? (
         <ContextMenu>
           <ContextMenuTrigger asChild>

@@ -94,6 +94,8 @@ export function createReposApi(): NonNullable<Partial<PreloadApi>['repos']> {
       )
       return withRuntimeRepoMutationOwner(owned.result, owned.hostId)
     },
+    // Why: converting a folder to a git repo runs local git commands the desktop main process owns; unavailable in paired web clients.
+    initGit: () => Promise.resolve({ error: 'Not supported in web client' }),
     isGitAvailable: async () =>
       (await callRuntimeResult<{ available: boolean }>('repo.gitAvailable')).available,
     getDefaultCreateProjectParent: async () => {

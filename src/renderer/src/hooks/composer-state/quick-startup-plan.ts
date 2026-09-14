@@ -1,6 +1,7 @@
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { AgentStartupShell } from '../../../../shared/tui-agent-startup-shell'
+import type { SessionOptionValue } from '../../../../shared/native-chat-session-options'
 import type { AgentStartedTelemetry } from '@/lib/worktree-startup-payload'
 import type { WorktreeCreationRequest } from '@/lib/pending-worktree-creation'
 import type { AgentStartupPlan } from '@/lib/tui-agent-startup'
@@ -23,6 +24,8 @@ export type QuickComposerStartupInput = {
   shell: AgentStartupShell | null | undefined
   isRemote: boolean
   telemetrySource: WorktreeCreationRequest['telemetrySource']
+  /** Forced per-launch options (e.g. `{ model }`), layered over the settings-derived ones. */
+  sessionOptionOverrides?: Record<string, SessionOptionValue>
 }
 
 export type QuickComposerStartup = {
@@ -33,7 +36,7 @@ export type QuickComposerStartup = {
 
 export function buildQuickComposerStartup(input: QuickComposerStartupInput): QuickComposerStartup {
   const { agent, draftPrompt, prompt, settings } = input
-  const sessionOptions =
+  const settingsSessionOptions =
     agent === null
       ? undefined
       : resolveInitialNativeChatSessionOptions(
@@ -52,6 +55,9 @@ export function buildQuickComposerStartup(input: QuickComposerStartupInput): Qui
             )
           }
         )
+  const sessionOptions = input.sessionOptionOverrides
+    ? { ...settingsSessionOptions, ...input.sessionOptionOverrides }
+    : settingsSessionOptions
   const draftLaunchPlan =
     agent === null || !draftPrompt
       ? null

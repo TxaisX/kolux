@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, Rocket } from 'lucide-react'
+import { FolderPlus, Rocket } from 'lucide-react'
+import { isGitRepoKind } from '../../../../shared/repo-kind'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,8 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { AgentIcon, getAgentCatalog } from '@/lib/agent-catalog'
+import { cn } from '@/lib/utils'
+import { getAgentCatalog } from '@/lib/agent-catalog'
 import { runBackgroundWorktreeCreation } from '@/lib/worktree-creation-flow'
 import { resolveDirectSetupDecision } from '@/lib/launch-work-item-direct-preflight'
 import { getSettingsForRepoRuntimeOwner } from '@/lib/repo-runtime-owner'
@@ -20,17 +22,15 @@ import { useRetiredWorktreeNames } from '@/hooks/useRetiredWorktreeNames'
 import { translate } from '@/i18n/i18n'
 import { isTuiAgentEnabled } from '../../../../shared/tui-agent-selection'
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import {
-  buildLaunchAgentsRequests,
-  expandLaunchAgentCounts,
-  LAUNCH_AGENTS_MAX_PER_AGENT,
-  type LaunchAgentCounts
-} from './launch-agents-requests'
+import { buildLaunchAgentsRequests, LAUNCH_AGENTS_MAX } from './launch-agents-requests'
 import { assignLaunchRoles, getLaunchPreset } from './launch-agent-roles'
 import { LaunchAgentsLineup, LaunchPresetRow } from './LaunchAgentsLineup'
+import { LaunchModelPicker, resolveLaunchModel } from './LaunchModelPicker'
 
 const T = (id: string, fallback: string): string =>
   translate(`auto.components.launch-agents.LaunchAgentsDialog.${id}`, fallback)
+
+const COUNT_CHOICES = Array.from({ length: LAUNCH_AGENTS_MAX }, (_, index) => index + 1)
 
 export default function LaunchAgentsDialog(): React.JSX.Element | null {
   const visible = useAppStore((s) => s.activeModal === 'launch-agents')
@@ -46,7 +46,7 @@ export default function LaunchAgentsDialog(): React.JSX.Element | null {
           <DialogDescription>
             {T(
               'description',
-              'Pick how many sessions of each agent to open. Each one gets its own worktree and the same prompt.'
+              'Pick up to 6 agents. Each one gets its own worktree and branch, so no two ever touch the same files.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -64,15 +64,27 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
   const detectedAgentList = useAppStore((s) => s.detectedAgentIds)
   const ensureDetectedAgents = useAppStore((s) => s.ensureDetectedAgents)
 
-  // Why: v1 launches into local git worktrees only; remote/SSH repos keep the single-agent composer.
-  const localRepos = useMemo(() => repos.filter((repo) => !repo.connectionId), [repos])
+  const addRepo = useAppStore((s) => s.addRepo)
+  // Why: plain folders have no worktrees, so only git repos can host parallel agents.
+  const localRepos = useMemo(
+    () => repos.filter((repo) => !repo.connectionId && isGitRepoKind(repo)),
+    [repos]
+  )
+  const pickRepo = async (): Promise<void> => {
+    const added = await addRepo()
+    if (added && isGitRepoKind(added)) {
+      setRepoId(added.id)
+    }
+  }
   const [repoId, setRepoId] = useState<string>(() =>
     localRepos.some((repo) => repo.id === activeRepoId)
       ? (activeRepoId ?? '')
       : (localRepos[0]?.id ?? '')
   )
   const [prompt, setPrompt] = useState('')
-  const [counts, setCounts] = useState<LaunchAgentCounts>({})
+  const [count, setCount] = useState(0)
+  const [agentId, setAgentId] = useState<TuiAgent | null>(null)
+  const [modelId, setModelId] = useState<string | null>(null)
   const [presetId, setPresetId] = useState<string | null>(null)
   const [launching, setLaunching] = useState(false)
   const retired = useRetiredWorktreeNames(repoId || null, repoId)
@@ -90,7 +102,12 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
     )
   }, [detectedAgentList, settings?.disabledTuiAgents])
 
-  const expandedAgents = useMemo(() => expandLaunchAgentCounts(counts), [counts])
+  const agent = agents.find((entry) => entry.id === agentId) ?? agents[0] ?? null
+  const model = agent ? resolveLaunchModel(agent.id, modelId) : null
+  const expandedAgents = useMemo(
+    () => (agent ? Array.from({ length: count }, () => agent.id) : []),
+    [agent, count]
+  )
   const total = expandedAgents.length
   const repo = localRepos.find((entry) => entry.id === repoId) ?? null
   const preset = getLaunchPreset(presetId)
@@ -99,23 +116,13 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
     [expandedAgents, preset]
   )
 
-  const setCount = (agent: TuiAgent, next: number): void => {
-    setCounts((prev) => ({
-      ...prev,
-      [agent]: Math.max(0, Math.min(LAUNCH_AGENTS_MAX_PER_AGENT, next))
-    }))
-  }
-
-  // Why: picking a shape with nothing queued should produce that shape, not an
-  // empty lineup the user then has to build by hand one click at a time.
+  // Why: picking a shape with no count chosen should produce that shape, not an empty lineup.
   const selectPreset = (nextPresetId: string | null): void => {
     setPresetId(nextPresetId)
     const nextPreset = getLaunchPreset(nextPresetId)
-    const firstAgent = agents[0]
-    if (!nextPreset || total > 0 || !firstAgent) {
-      return
+    if (nextPreset && count === 0) {
+      setCount(Math.min(nextPreset.roles.length, LAUNCH_AGENTS_MAX))
     }
-    setCount(firstAgent.id, Math.min(nextPreset.roles.length, LAUNCH_AGENTS_MAX_PER_AGENT))
   }
 
   const launch = async (): Promise<void> => {
@@ -145,6 +152,7 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
         settings,
         prompt,
         agents: expandedAgents,
+        model,
         roles,
         setupDecision: trust === 'skip' ? 'skip' : setup.decision,
         worktreesByRepo,
@@ -161,71 +169,84 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
         )
       )
       onClose()
+      // Why: a wave is launched to be watched together, so land on the grid for this repo.
+      useAppStore.getState().setActiveRepo(repo.id)
+      useAppStore.getState().setActiveView('agent-grid')
     } finally {
       setLaunching(false)
     }
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-4">
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">{T('project', 'Project')}</span>
-        <select
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-          value={repoId}
-          onChange={(event) => setRepoId(event.target.value)}
-        >
-          {localRepos.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
-
+    <div className="scrollbar-sleek flex min-h-0 flex-col gap-4 overflow-y-auto">
       <div className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">{T('agents', 'Agents')}</span>
-        <div className="scrollbar-sleek max-h-56 overflow-y-auto rounded-md border border-border">
-          {agents.length === 0 ? (
-            <p className="p-3 text-xs text-muted-foreground">
-              {T('noAgents', 'No agent CLIs detected on this machine yet.')}
-            </p>
-          ) : null}
-          {agents.map((entry) => {
-            const count = counts[entry.id] ?? 0
-            return (
-              <div
-                key={entry.id}
-                className="flex items-center gap-2 border-b border-border px-3 py-1.5 last:border-b-0"
-              >
-                <AgentIcon agent={entry.id} size={14} />
-                <span className="flex-1 truncate">{entry.label}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={T('fewer', 'Fewer')}
-                  disabled={count === 0}
-                  onClick={() => setCount(entry.id, count - 1)}
-                >
-                  <Minus className="size-3.5" />
-                </Button>
-                <span className="w-5 text-center tabular-nums">{count}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={T('more', 'More')}
-                  disabled={count >= LAUNCH_AGENTS_MAX_PER_AGENT}
-                  onClick={() => setCount(entry.id, count + 1)}
-                >
-                  <Plus className="size-3.5" />
-                </Button>
-              </div>
-            )
-          })}
+        <span className="font-medium">{T('project', 'Git repo')}</span>
+        <div className="flex items-center gap-2">
+          <select
+            aria-label={T('project', 'Git repo')}
+            className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+            value={repoId}
+            onChange={(event) => setRepoId(event.target.value)}
+          >
+            {localRepos.length === 0 ? (
+              <option value="">{T('noRepos', 'No git repos added yet')}</option>
+            ) : null}
+            {localRepos.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {entry.displayName}
+              </option>
+            ))}
+          </select>
+          <Button type="button" variant="outline" size="sm" onClick={() => void pickRepo()}>
+            <FolderPlus className="size-3.5" />
+            {T('addRepo', 'Add repo…')}
+          </Button>
         </div>
       </div>
+
+      <div className="flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">{T('howMany', 'How many agents')}</span>
+        {agents.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {T('noAgents', 'No agent CLIs detected on this machine yet.')}
+          </p>
+        ) : (
+          <div
+            role="radiogroup"
+            aria-label={T('howMany', 'How many agents')}
+            className="grid w-full max-w-[15rem] grid-cols-3 gap-2"
+          >
+            {COUNT_CHOICES.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                role="radio"
+                aria-checked={count === choice}
+                onClick={() => setCount(choice)}
+                className={cn(
+                  'flex aspect-square items-center justify-center rounded-lg border text-xl font-semibold tabular-nums transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  count === choice
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background text-foreground hover:bg-accent'
+                )}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {agent ? (
+        <LaunchModelPicker
+          agents={agents}
+          agentId={agent.id}
+          onAgentChange={setAgentId}
+          model={model}
+          onModelChange={setModelId}
+        />
+      ) : null}
 
       <LaunchPresetRow presetId={presetId} onSelect={selectPreset} />
 
