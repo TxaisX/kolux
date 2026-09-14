@@ -46,6 +46,12 @@ jobs:
           pnpm run build:native
           pnpm run ensure:electron-runtime
 
+      # Why: electron-builder uploads through parallel publishers that each create the release if missing, which made two v0.1.0 releases.
+      - name: Create the release before uploading
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "" --verify-tag
+
       - name: Package and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
