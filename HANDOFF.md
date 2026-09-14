@@ -105,8 +105,7 @@ The version is held at `0.0.0` deliberately, because the product is still being 
     `launch-agents` with it selected. It made one empty "Initial commit": zero files in the
     commit, zero tracked, `notes.txt` untouched and untracked. Still not driven: the native folder
     picker itself (not automatable).
-    Pre-existing: 5 failures in `worktree-creation-flow.test.ts` (identical on `b0ec17bc`). 5 failures in `worktree-creation-flow.test.ts` are
-    pre-existing: identical on commit `b0ec17bc`.
+  - Pre-existing: 5 failures in `worktree-creation-flow.test.ts`, identical on commit `b0ec17bc`.
   - *Bug 1: root cause found, fix not yet runtime-verified.* **On Windows Claude looks up trust
     only under forward-slash keys.** Its `d1()` runs `path.normalize` and then replaces `\` with
     `/`; `Dqe()` keys the project on the main repo root, and the fallback walk checks the worktree
