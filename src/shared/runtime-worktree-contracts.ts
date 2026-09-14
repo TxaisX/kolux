@@ -141,6 +141,44 @@ export type RuntimeWorktreePsConditionalResult =
   | RuntimeWorktreePsSnapshotResult
   | RuntimeWorktreePsUnchangedResult
 
+export type WorktreeChangeFileStatus = 'added' | 'modified' | 'deleted' | 'renamed' | 'untracked'
+
+export type RuntimeWorktreeChangeFile = {
+  path: string
+  status: WorktreeChangeFileStatus
+  /** Present vs the merge-base with the worktree's base ref. */
+  committed: boolean
+  /** Present in the working tree (staged or unstaged), regardless of base ref. */
+  uncommitted: boolean
+}
+
+export type RuntimeWorktreeChangesResult = {
+  worktree: { id: string; branch: string | null; path: string }
+  /** The base ref committed changes were compared against, or null when it could not be
+   *  resolved (no persisted, configured, or detectable default base ref). */
+  base: string | null
+  files: RuntimeWorktreeChangeFile[]
+  /** Set instead of computing anything when the target is a folder workspace, not a git worktree. */
+  unsupported?: 'folder'
+}
+
+export type WorktreeConflictPrediction = 'conflicts' | 'clean' | 'unverifiable'
+
+export type RuntimeWorktreeOverlapSibling = {
+  id: string
+  branch: string | null
+  sharedFiles: string[]
+  /** Committed branch tips only, via `git merge-tree --write-tree`; see command help text. */
+  conflictPrediction: WorktreeConflictPrediction
+  conflictingFiles: string[]
+}
+
+export type RuntimeWorktreeOverlapResult = {
+  worktree: { id: string; branch: string | null }
+  siblings: RuntimeWorktreeOverlapSibling[]
+  unsupported?: 'folder'
+}
+
 export type RuntimeRepoList = { repos: Repo[] }
 
 export type RuntimeRepoSearchRefs = {

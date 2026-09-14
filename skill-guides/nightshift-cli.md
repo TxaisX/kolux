@@ -138,6 +138,21 @@ Update after a repro, fix, validation, handoff, or blocker. Keep it short and cu
 
 Card status uses `--workspace-status <id>`; defaults are `todo`, `in-progress`, `in-review`, `completed`.
 
+## Worktree Changes and Overlap
+
+Read-only commands to see what a sibling worktree is touching before you edit — no editor tabs open, nothing is mutated.
+
+```text
+NIGHTSHIFT worktree changes --json
+NIGHTSHIFT worktree changes --worktree active --json
+NIGHTSHIFT worktree overlap --json
+NIGHTSHIFT worktree overlap --worktree active --json
+```
+
+- `worktree changes` returns `files`: the union of committed changes (vs the merge-base with the worktree's base ref) and uncommitted working-tree changes. Each file reports `committed`/`uncommitted` independently, so a file can be both.
+- `worktree overlap` compares the target worktree against every other worktree of the same repo. For each sibling: `sharedFiles` (from both worktrees' `changes` file sets) and `conflictPrediction` (`conflicts` | `clean` | `unverifiable`), computed from committed branch tips only via `git merge-tree` — it does not see either side's uncommitted changes. `unverifiable` covers Git before 2.38, an SSH-hosted sibling, or a failed check; it is never reported as `clean`.
+- **Run `worktree overlap --json` before editing.** If a sibling's `sharedFiles` is non-empty, coordinate (worktree comment or an orchestration ask) before touching those files instead of finding out at merge time.
+
 ## Terminals
 
 Common commands:
