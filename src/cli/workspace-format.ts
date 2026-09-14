@@ -217,14 +217,18 @@ export function formatWorktreeOverlap(result: RuntimeWorktreeOverlapResult): str
   if (result.unsupported === 'folder') {
     return `${header}\nunsupported: folder workspace (not a git worktree)`
   }
+  if (result.siblingsUnverifiable) {
+    return `${header}\nCould not verify sibling worktrees (scan not authoritative).`
+  }
   if (result.siblings.length === 0) {
     return `${header}\nNo sibling worktrees.`
   }
   const lines = result.siblings.map((sibling) => {
+    const unverifiableSuffix = sibling.changesUnverifiable ? '  changes unverifiable' : ''
     if (sibling.sharedFiles.length === 0) {
-      return `${sibling.id}  ${sibling.branch ?? ''}  no shared files`
+      return `${sibling.id}  ${sibling.branch ?? ''}  no shared files${unverifiableSuffix}`
     }
-    return `${sibling.id}  ${sibling.branch ?? ''}  shared:${sibling.sharedFiles.length}  predict:${sibling.conflictPrediction}\n  ${sibling.sharedFiles.join(', ')}`
+    return `${sibling.id}  ${sibling.branch ?? ''}  shared:${sibling.sharedFiles.length}  predict:${sibling.conflictPrediction}${unverifiableSuffix}\n  ${sibling.sharedFiles.join(', ')}`
   })
   return `${header}\n${lines.join('\n')}`
 }

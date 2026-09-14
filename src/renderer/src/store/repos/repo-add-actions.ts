@@ -167,6 +167,19 @@ export function createRepoAddActions(
         )
         return Promise.resolve(null)
       }
+      // Why: modal state is single-slot (ui-slice-modal-actions.ts) — opening 'add-repo' while
+      // another modal (e.g. Launch agents' "Add repo…") is already up would unmount it and lose
+      // its in-progress state. Fall back to the native picker in that case instead of swapping.
+      const activeModal = get().activeModal
+      if (activeModal !== 'none' && activeModal !== 'add-repo') {
+        return (async () => {
+          const path = await window.api.repos.pickFolder()
+          if (!path) {
+            return null
+          }
+          return get().addRepoPath(path)
+        })()
+      }
       // Why: routes through the Add repo dialog (clone-first) instead of the native folder
       // picker, so opening "Add repo" also surfaces Clone/Create. Resolves once the dialog
       // finishes adding a repo, or null on cancel / non-git-folder handoff.

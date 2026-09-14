@@ -150,8 +150,9 @@ NIGHTSHIFT worktree overlap --worktree active --json
 ```
 
 - `worktree changes` returns `files`: the union of committed changes (vs the merge-base with the worktree's base ref) and uncommitted working-tree changes. Each file reports `committed`/`uncommitted` independently, so a file can be both.
-- `worktree overlap` compares the target worktree against every other worktree of the same repo. For each sibling: `sharedFiles` (from both worktrees' `changes` file sets) and `conflictPrediction` (`conflicts` | `clean` | `unverifiable`), computed from committed branch tips only via `git merge-tree` — it does not see either side's uncommitted changes. `unverifiable` covers Git before 2.38, an SSH-hosted sibling, or a failed check; it is never reported as `clean`.
-- **Run `worktree overlap --json` before editing.** If a sibling's `sharedFiles` is non-empty, coordinate (worktree comment or an orchestration ask) before touching those files instead of finding out at merge time.
+- `worktree overlap` compares the target worktree against every other worktree of the same repo. For each sibling: `sharedFiles` (from both worktrees' `changes` file sets) and `conflictPrediction` (`conflicts` | `clean` | `unverifiable`), computed from committed branch tips only via `git merge-tree` — it does not see either side's uncommitted changes. `unverifiable` covers Git before 2.38, an SSH-hosted sibling, or a failed check; it is never reported as `clean`. A sibling can also carry `changesUnverifiable: true` when only that sibling's own changes computation failed — its `sharedFiles`/`conflictPrediction` are not a real "clean" result, just that one sibling degrading in isolation.
+- The top-level result can carry `siblingsUnverifiable: true` with an empty `siblings` array: the scan was not authoritative, so siblings are unknown, not absent. Never read an empty `siblings` array alone as "no sibling worktrees" — check `siblingsUnverifiable` first.
+- **Run `worktree overlap --json` before editing.** If a sibling's `sharedFiles` is non-empty, or `siblingsUnverifiable`/`changesUnverifiable` is set, coordinate (worktree comment or an orchestration ask) before touching those files instead of finding out at merge time.
 
 ## Terminals
 

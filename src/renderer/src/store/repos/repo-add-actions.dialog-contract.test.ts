@@ -70,4 +70,39 @@ describe('addRepo() dialog-routing contract', () => {
     store.getState().resolveAddRepoDialogRequest(localRepo)
     await expect(secondAddRepoPromise).resolves.toEqual(localRepo)
   })
+
+  it('falls back to the native folder picker when another modal is already open', async () => {
+    const store = createTestStore()
+    store.getState().openModal('launch-agents')
+    reposPickFolder.mockResolvedValue('/some/path')
+    reposAdd.mockResolvedValue({ repo: localRepo })
+
+    const addRepoPromise = store.getState().addRepo()
+
+    // Why executionHostId: the native-picker path routes through addRepoPath, which stamps it.
+    await expect(addRepoPromise).resolves.toEqual({ ...localRepo, executionHostId: 'local' })
+    expect(reposPickFolder).toHaveBeenCalled()
+    // Why: must not swap out the caller's already-open modal.
+    expect(store.getState().activeModal).toBe('launch-agents')
+  })
+
+  it('resolves null from the native-picker fallback when the picker is cancelled', async () => {
+    const store = createTestStore()
+    store.getState().openModal('launch-agents')
+    reposPickFolder.mockResolvedValue(null)
+
+    const addRepoPromise = store.getState().addRepo()
+
+    await expect(addRepoPromise).resolves.toBeNull()
+    expect(store.getState().activeModal).toBe('launch-agents')
+  })
+
+  it('still opens the Add repo dialog when no modal is open', () => {
+    const store = createTestStore()
+
+    void store.getState().addRepo()
+
+    expect(store.getState().activeModal).toBe('add-repo')
+    expect(reposPickFolder).not.toHaveBeenCalled()
+  })
 })
