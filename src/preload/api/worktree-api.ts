@@ -34,6 +34,10 @@ import type {
 import type { WorkspaceLineage, WorktreeLineage } from '../../shared/worktree/lineage-types'
 import type { WorktreeMeta } from '../../shared/worktree/meta-types'
 import type {
+  WorktreeUnpushedStatus,
+  WorktreeUnpushedStatusQuery
+} from '../../shared/git-unpushed-status'
+import type {
   DetectedWorktreeListResult,
   GitHubPrStartPoint,
   GitPushTarget,
@@ -62,6 +66,12 @@ export type WorktreeApi = {
   ) => Promise<ForgetRemovedWorktreesForExecutionHostResult>
   cancelListDetected?: (args: { providerRequestId: ProviderRequestId }) => Promise<void>
   listAll: () => Promise<Worktree[]>
+  /** Best-effort unpushed-work status per worktree, keyed by worktreeId; missing/unresolved
+   *  entries mean `unknown`, never a guess. Batched — call once per refresh, not per card.
+   *  Optional: desktop-only for now, so paired web/mobile clients simply show no badge. */
+  unpushedStatus?: (args: {
+    worktrees: WorktreeUnpushedStatusQuery[]
+  }) => Promise<Record<string, WorktreeUnpushedStatus>>
   create: (args: CreateWorktreeArgs) => Promise<CreateWorktreeResult>
   adoptProvisionedRoot: (args: AdoptProvisionedRootArgs) => Promise<CreateWorktreeResult>
   /** Two-phase progress for a background `create`, correlated by `creationId`. The remote/runtime
