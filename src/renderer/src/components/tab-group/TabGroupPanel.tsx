@@ -16,6 +16,7 @@ import { TabBarQuickCommandsButton } from '../tab-bar/TabBarQuickCommandsButton'
 import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
 import { useTidyLayoutCommand } from './useTidyLayoutCommand'
 import LayoutPresetsMenu from './LayoutPresetsMenu'
+import PaneCountStepper from './PaneCountStepper'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
 import { resolveGroupTabFromVisibleId } from './tab-group-visible-id'
 import { getTabPaneBodyDroppableId, type HoveredTabInsertion } from './useTabDragSplit'
@@ -277,6 +278,9 @@ export default function TabGroupPanel({
               {isFocused ? (
                 <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
               ) : null}
+              {/* Why only isFocused: "choose how many panes" acts on the whole
+                  worktree grid, so one focused pane's control is enough. */}
+              {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
               {/* Why only isFocused: Tidy and the presets apply to the panes inside a
                   tab too, which exist with or without split groups. Closing a group
                   still needs one, so that item keeps the stricter gate below. */}

@@ -90,6 +90,11 @@ export function digitKeyMatches(
   if (logicalKey && logicalKey.length === 1 && logicalKey >= '0' && logicalKey <= '9') {
     return logicalKey === digit
   }
+  // Why: Shift+digit reports the shifted glyph ("@" for 2) on every platform, so a binding that
+  // names the digit can only be recognised by the physical key it sits on.
+  if (hasModifier(input, 'shift') && input.code === `Digit${digit}`) {
+    return true
+  }
   return canFallBackToPhysicalCode(input, platform) && input.code === `Digit${digit}`
 }
 

@@ -28,6 +28,7 @@ import { CodexSwitcherMenu } from './CodexSwitcherMenu'
 import { ProviderDetailsMenu, CLOSE_ALL_CONTEXT_MENUS_EVENT } from './ProviderDetailsMenu'
 import { ProviderLetterBadge, ProviderSegment } from './StatusBarProviderSegment'
 import { useStatusBarController } from './use-status-bar-controller'
+import { UsageOverviewDialog } from '@/components/usage/UsageOverviewDialog'
 import { StatusBarVisibilityMenu } from './StatusBarVisibilityMenu'
 import { isPairedWebClientWindow } from '@/lib/desktop-window-chrome'
 
@@ -87,7 +88,9 @@ export function StatusBarSurface({
     statusBarUsageMode,
     usageMenuFocusHandoff,
     usageMenuOpen,
-    usagePercentageDisplay
+    usagePercentageDisplay,
+    usageOverviewDialogOpen,
+    closeUsageOverviewDialog
   } = controller
 
   return (
@@ -295,6 +298,10 @@ export function StatusBarSurface({
       </div>
 
       <StatusBarVisibilityMenu controller={controller} />
+      <UsageOverviewDialog
+        open={usageOverviewDialogOpen}
+        onOpenChange={(next) => (next ? undefined : closeUsageOverviewDialog())}
+      />
     </div>
   )
 }

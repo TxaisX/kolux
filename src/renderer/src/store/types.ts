@@ -22,6 +22,7 @@ import type {
 } from './slices/usage-provider-slices'
 import type { BrowserSlice } from './slices/browser'
 import type { RateLimitSlice } from './slices/rate-limits'
+import type { WorkspaceHandoffSlice } from './slices/workspace-handoff'
 import type { SshSlice } from './slices/ssh'
 import type { RuntimeEnvironmentSshSlice } from './slices/runtime-environment-ssh'
 import type { AgentStatusSlice } from './slices/agent-status'
@@ -66,6 +67,7 @@ export type AppState = RepoSlice &
   OpenCodeUsageSlice &
   BrowserSlice &
   RateLimitSlice &
+  WorkspaceHandoffSlice &
   SshSlice &
   RuntimeEnvironmentSshSlice &
   AgentStatusSlice &

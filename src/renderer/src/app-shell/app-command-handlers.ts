@@ -253,6 +253,18 @@ export function createAppCommandHandlers(
       }
     ],
     [
+      'view.inbox',
+      () => claim('view.inbox', () => useAppStore.getState().setActiveView('inbox'))
+    ],
+    [
+      'view.floor',
+      () => claim('view.floor', () => useAppStore.getState().setActiveView('floor'))
+    ],
+    [
+      'view.code',
+      () => claim('view.code', () => useAppStore.getState().setActiveView('terminal'))
+    ],
+    [
       'sidebar.right.toggle',
       () =>
         canRevealRightSidebar
