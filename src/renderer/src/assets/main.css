@@ -45,6 +45,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-workbench-surface: var(--workbench-surface);
+  --color-editor-surface: var(--editor-surface);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
