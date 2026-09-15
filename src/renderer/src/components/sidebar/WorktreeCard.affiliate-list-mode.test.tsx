@@ -79,8 +79,8 @@ vi.mock('./CacheTimer', () => ({
   usePromptCacheCountdownStartedAt: () => null
 }))
 
-vi.mock('./WorktreeCardAgents', () => ({
-  default: () => <div data-testid="inline-agents" />
+vi.mock('./WorktreeCardSessions', () => ({
+  default: () => <div data-testid="inline-sessions" />
 }))
 
 vi.mock('./WorktreeContextMenu', () => ({
@@ -210,7 +210,7 @@ describe('WorktreeCard affiliate list mode', () => {
     )
   })
 
-  it('still shows inline agent details in affiliate list mode', () => {
+  it('still shows inline session details in affiliate list mode', () => {
     worktreeCardProperties = ['status', 'inline-agents']
 
     act(() => {
@@ -226,6 +226,6 @@ describe('WorktreeCard affiliate list mode', () => {
       )
     })
 
-    expect(container.querySelector('[data-testid="inline-agents"]')).not.toBeNull()
+    expect(container.querySelector('[data-testid="inline-sessions"]')).not.toBeNull()
   })
 })

@@ -165,7 +165,7 @@ export function createUpdaterMocks(): UpdaterMocks {
     eventHandlers.clear()
     on.mockClear()
     autoUpdaterMock.checkForUpdates.mockReset().mockResolvedValue(null)
-    autoUpdaterMock.downloadUpdate.mockReset()
+    autoUpdaterMock.downloadUpdate.mockReset().mockResolvedValue([])
     autoUpdaterMock.quitAndInstall.mockReset()
     autoUpdaterMock.setFeedURL.mockClear()
     autoUpdaterMock.updateConfigPath = undefined
@@ -188,7 +188,7 @@ export function createUpdaterMocks(): UpdaterMocks {
     logger: undefined as { error: (message: unknown) => void } | undefined,
     on,
     checkForUpdates: vi.fn(),
-    downloadUpdate: vi.fn(),
+    downloadUpdate: vi.fn().mockResolvedValue([]),
     quitAndInstall: vi.fn(),
     setFeedURL: vi.fn(),
     updateConfigPath: undefined as string | undefined,

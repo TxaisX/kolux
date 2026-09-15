@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { SYNC_FIT_PANES_EVENT } from '@/constants/terminal'
 import { canShowRightSidebarForView } from '@/lib/right-sidebar-visibility'
@@ -8,10 +8,6 @@ import { shouldShowWorktreeCreationSurface } from '@/lib/worktree-creation-surfa
 import { useAppStore } from '../store'
 import { selectActiveTerminalChromeState } from '../store/active-terminal-chrome-selector'
 import { useSystemPrefersDark } from '../components/terminal-pane/use-system-prefers-dark'
-import {
-  hasRequestedBackgroundTerminalWorktreeMount,
-  subscribeBackgroundTerminalWorktreeMountRequests
-} from '../components/terminal/background-terminal-worktree-mount'
 
 export type AppChromeLayout = ReturnType<typeof useAppChromeLayout>
 
@@ -41,28 +37,12 @@ export function useAppChromeLayout() {
     activeTabCanExpand,
     effectiveActiveTabExpanded
   } = useAppStore(useShallow(selectActiveTerminalChromeState))
-  const backgroundTerminalMountRequested = useSyncExternalStore(
-    subscribeBackgroundTerminalWorktreeMountRequests,
-    hasRequestedBackgroundTerminalWorktreeMount,
-    hasRequestedBackgroundTerminalWorktreeMount
-  )
-
   const systemPrefersDark = useSystemPrefersDark()
   const leftSidebarStyle = useMemo(
     () => resolveLeftSidebarStyleVariables(settings, systemPrefersDark),
     [settings, systemPrefersDark]
   ) as React.CSSProperties | undefined
 
-  const canMountTerminalWorkbenchNow = activeWorktreeId !== null || backgroundTerminalMountRequested
-  // Why a latch in state, not a ref: the write has to be visible to the next render, and a
-  // render-phase ref write would also survive a render React discards. Setting state during
-  // render is the supported way to derive it, and the `||` below keeps this render correct.
-  const [hasMountedTerminalWorkbench, setHasMountedTerminalWorkbench] = useState(false)
-  if (canMountTerminalWorkbenchNow && !hasMountedTerminalWorkbench) {
-    setHasMountedTerminalWorkbench(true)
-  }
-  // Why: skip the terminal bundle on the landing path, but once mounted keep hidden panes alive through sleep/shutdown when activeWorktreeId briefly goes null.
-  const shouldMountTerminalWorkbench = canMountTerminalWorkbenchNow || hasMountedTerminalWorkbench
   // Why: visible worktree creation owns its faux tab strip start to finish; keep the previous workspace mounted for retention without real chrome.
   const creationLayoutActive = shouldShowWorktreeCreationSurface({
     activeView,
@@ -131,7 +111,6 @@ export function useAppChromeLayout() {
     rightSidebarExplorerView,
     rightSidebarOpen,
     rightSidebarTab,
-    shouldMountTerminalWorkbench,
     showSidebar,
     // Full-page navigation surfaces own the whole content area, so suppress right-sidebar controls.
     showRightSidebarControls: !creationLayoutActive && canShowRightSidebarForView(activeView),
@@ -139,8 +118,6 @@ export function useAppChromeLayout() {
     showTitlebarExpandButton: workspaceChromeActive && !hasTabBar && effectiveActiveTabExpanded,
     sidebarOpen,
     stackedSidebarOpen,
-    // Why: the workbench stays mounted while hidden, so visibility tracks the same condition separately.
-    terminalWorkbenchVisible: workspaceChromeActive,
     titlebarLeftControlsRef,
     workspaceChromeActive
   }

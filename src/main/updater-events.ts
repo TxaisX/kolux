@@ -17,13 +17,16 @@ import {
 import { isExternallyManagedLinuxInstall } from './linux-update-package-type'
 import * as linuxPackageRecovery from './linux-package-update-recovery'
 
-const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
-const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
+import {
+  AUTO_UPDATE_CHECK_INTERVAL_MS,
+  AUTO_UPDATE_RETRY_INTERVAL_MS
+} from './updater/updater-state'
 
 type UpdaterHandlerContext = {
   autoUpdater: ElectronAutoUpdater
   clearBackgroundCheckLaunchPending: () => void
   clearAvailableUpdateContext: () => void
+  downloadUpdate: () => void
   consumeMissingManifestPrereleaseFallbackResult: () => { userInitiated: boolean } | null
   getPublishingWindowLastGoodCheck: () => { lastGoodTag: string } | null
   getMissingManifestPrereleaseFallbackUserInitiated: () => boolean | null
@@ -67,6 +70,7 @@ export function registerAutoUpdaterHandlers({
   autoUpdater,
   clearBackgroundCheckLaunchPending,
   clearAvailableUpdateContext,
+  downloadUpdate,
   consumeMissingManifestPrereleaseFallbackResult,
   getPublishingWindowLastGoodCheck,
   getMissingManifestPrereleaseFallbackUserInitiated,
@@ -134,6 +138,17 @@ export function registerAutoUpdaterHandlers({
     const publishingWindowLastGoodCheck = getPublishingWindowLastGoodCheck()
     const wasUserInitiated = missingManifestFallback?.userInitiated ?? getUserInitiatedCheck()
     setUserInitiatedCheck(false)
+    const scheduleNextReleaseCheck = (): void => {
+      if (missingManifestFallback || publishingWindowLastGoodCheck) {
+        // Why: a fallback manifest means the primary is transiently missing; keep the short retry cadence.
+        scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
+        return
+      }
+      recordCompletedUpdateCheck()
+      if (!wasUserInitiated) {
+        scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
+      }
+    }
 
     // Release checks remain newer-only; validated local builds and pinned dev jumps may intentionally downgrade.
     if (
@@ -142,15 +157,7 @@ export function registerAutoUpdaterHandlers({
       compareVersions(info.version, app.getVersion()) <= 0
     ) {
       clearAvailableUpdateContext()
-      if (missingManifestFallback || publishingWindowLastGoodCheck) {
-        // Why: a current-version fallback manifest means the primary is transiently missing; keep the short retry cadence.
-        scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
-      } else {
-        recordCompletedUpdateCheck()
-        if (!wasUserInitiated) {
-          scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
-        }
-      }
+      scheduleNextReleaseCheck()
       sendStatus(
         getRetainedLinuxPackageManualInstallStatus() ?? {
           state: 'not-available',
@@ -188,15 +195,7 @@ export function registerAutoUpdaterHandlers({
         // recordCompletedUpdateCheck() would persist lastUpdateCheckAt and
         // suppress the next real background check for a full day.
         if (!isLocalBuildCheck() && !isPinnedBuildCheck()) {
-          if (missingManifestFallback || publishingWindowLastGoodCheck) {
-            // Why: last-good release is a temporary fallback; keep probing so users can move to the newest tag once it publishes.
-            scheduleAutomaticUpdateCheck(AUTO_UPDATE_RETRY_INTERVAL_MS)
-          } else {
-            recordCompletedUpdateCheck()
-            if (!wasUserInitiated) {
-              scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
-            }
-          }
+          scheduleNextReleaseCheck()
         }
 
         sendStatus(
@@ -208,6 +207,10 @@ export function registerAutoUpdaterHandlers({
             ...(isExternallyManagedLinuxInstall() ? { externallyManaged: true } : {})
           }
         )
+        // Why: any found release downloads itself so the only click left is Restart; dev jumps keep their own flow.
+        if (!isLocalBuildCheck() && !isPinnedBuildCheck() && !isExternallyManagedLinuxInstall()) {
+          downloadUpdate()
+        }
       } finally {
         clearUpdateAvailableEventPending(attemptId)
       }

@@ -4,13 +4,13 @@ vi.mock('@/components/confirmation-dialog-context', () => ({
   useConfirmationDialog: () => vi.fn().mockResolvedValue(false)
 }))
 
-// Regression test for the child-worktrees <-> agent-list expansion coupling:
-// in a worktree card that shows BOTH inline agent rows (with orchestration
-// lineage) AND a "N children" child-worktrees chip, toggling the child-worktrees
-// chip used to reset the agent list's expansion state (it remounts the card).
-// It renders the REAL WorktreeCardAgents (not a mock) inside the REAL
-// WorktreeList so the remount and the durable-expansion fix are exercised
-// end-to-end. The two toggles must stay independent in both directions.
+// Regression test for the child-worktrees <-> session-list expansion coupling:
+// in a worktree card that shows BOTH inline session rows AND a "N children"
+// child-worktrees chip, toggling the child-worktrees chip used to reset the
+// session list's expansion state (it remounts the card). It renders the REAL
+// WorktreeCardSessions (not a mock) inside the REAL WorktreeList so the
+// remount and the durable-expansion fix are exercised end-to-end. The two
+// toggles must stay independent in both directions.
 //
 // NOTE: unlike the sibling lineage test, this file's useVirtualizer mock HONORS
 // the real `getItemKey` (which returns getRenderRowKey(row)). Without that, the
@@ -20,10 +20,7 @@ vi.mock('@/components/confirmation-dialog-context', () => ({
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import type {
-  AgentStatusEntry,
-  AgentStatusOrchestrationContext
-} from '../../../../shared/agent-status-types'
+import type { AgentStatusEntry } from '../../../../shared/agent-status-types'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import type { WorktreeCardProperty } from '../../../../shared/ui-chrome-types'
@@ -144,7 +141,7 @@ vi.mock('./CacheTimer', () => ({
   usePromptCacheCountdownForPane: () => null
 }))
 
-// NOTE: intentionally NOT mocking ./WorktreeCardAgents — we render the real one.
+// NOTE: intentionally NOT mocking ./WorktreeCardSessions — we render the real one.
 
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -155,7 +152,6 @@ vi.mock('./WorktreeContextMenu', () => ({
 
 const TAB_ID = 'tabP'
 const PANE_ROOT = `${TAB_ID}:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa`
-const PANE_CHILD = `${TAB_ID}:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb`
 const PANE_ROOT_2 = `${TAB_ID}:cccccccc-cccc-4ccc-8ccc-cccccccccccc`
 
 function makeRepo(): Repo {
@@ -209,11 +205,7 @@ function makeLineage(worktree: Worktree, parent: Worktree): WorktreeLineage {
   }
 }
 
-function makeAgentEntry(
-  paneKey: string,
-  prompt: string,
-  orchestration?: AgentStatusOrchestrationContext
-): AgentStatusEntry {
+function makeAgentEntry(paneKey: string, prompt: string): AgentStatusEntry {
   const now = Date.now()
   return {
     state: 'working',
@@ -223,8 +215,7 @@ function makeAgentEntry(
     agentType: 'claude',
     paneKey,
     worktreeId: 'parent',
-    stateHistory: [],
-    ...(orchestration ? { orchestration } : {})
+    stateHistory: []
   }
 }
 
@@ -262,12 +253,7 @@ function setAgentLineageState(options: {
     sortOrder: 10
   })
   const agentStatusByPaneKey: Record<string, AgentStatusEntry> = {
-    [PANE_ROOT]: makeAgentEntry(PANE_ROOT, 'PARENT_AGENT_PROMPT'),
-    [PANE_CHILD]: makeAgentEntry(PANE_CHILD, 'CHILD_AGENT_PROMPT', {
-      taskId: 't1',
-      dispatchId: 'd1',
-      parentPaneKey: PANE_ROOT
-    })
+    [PANE_ROOT]: makeAgentEntry(PANE_ROOT, 'PARENT_AGENT_PROMPT')
   }
   if (options.secondRootAgent) {
     agentStatusByPaneKey[PANE_ROOT_2] = makeAgentEntry(PANE_ROOT_2, 'SECOND_ROOT_PROMPT')
@@ -366,7 +352,7 @@ function setAgentLineageState(options: {
     worktreeLineageById: { [child.id]: makeLineage(child, parent) },
     worktreesByRepo: { [repo.id]: [parent, child] },
 
-    // ── agent-list specific state (real WorktreeCardAgents deps) ──
+    // ── session-list specific state (real WorktreeCardSessions deps) ──
     agentActivityDisplayMode: options.agentActivityDisplayMode,
     agentSendPopoverTargetMode: null,
     acknowledgedAgentsByPaneKey: {},
@@ -416,10 +402,6 @@ function childWorktreeChip(container: HTMLElement): HTMLButtonElement | null {
   return findButtonByAriaLabel(container, /child workspace/i)
 }
 
-function agentChildDisclosure(container: HTMLElement): HTMLButtonElement | null {
-  return findButtonByAriaLabel(container, /child agent/i)
-}
-
 function compactAgentSummary(container: HTMLElement): HTMLButtonElement | null {
   return (
     [...container.querySelectorAll<HTMLButtonElement>('button.compact-agent-summary-button')][0] ??
@@ -446,7 +428,7 @@ async function click(el: Element): Promise<void> {
   })
 }
 
-describe('WorktreeCard agent-list <-> child-worktrees expansion coupling', () => {
+describe('WorktreeCard session-list <-> child-worktrees expansion coupling', () => {
   beforeAll(async () => {
     WorktreeList = (await import('./WorktreeList')).default as WorktreeListComponent
   }, 60_000)
@@ -468,90 +450,69 @@ describe('WorktreeCard agent-list <-> child-worktrees expansion coupling', () =>
     clearWorktreeAgentExpansionStateForTests()
   })
 
-  it('[full mode] both toggles render independently at mount', async () => {
-    setAgentLineageState({ agentActivityDisplayMode: 'full' })
-    const { container } = await renderWorktreeList()
+  // Why no [full mode] cases here: 'full' vs 'compact' display mode no longer
+  // has any effect on the sidebar list — WorktreeCardSessions always renders
+  // one row per open tab, with a single collapse-all summary, never a
+  // per-agent nested disclosure (that mechanism was deleted along with agent
+  // rows). These cases exercise the same expansion-coupling contract in
+  // session terms instead. A remount-preserves-expansion case is not repeated
+  // here: 'toggling CHILD WORKTREES preserves the compact agent summary
+  // expansion (regression)' below already covers it end-to-end for sessions.
 
-    // Same-tab lineage children must not inherit the parent's conversation name.
-    expect(container.textContent).toContain('Parent Terminal')
-    expect(container.textContent).not.toContain('PARENT_AGENT_PROMPT')
-    expect(container.textContent).toContain('CHILD_AGENT_PROMPT')
+  it('[session mode] both toggles render independently at mount', async () => {
+    setAgentLineageState({ agentActivityDisplayMode: 'compact' })
+    const { container } = await renderWorktreeList()
 
     // Both controls exist and are independent DOM elements.
     expect(childWorktreeChip(container)).not.toBeNull()
-    expect(agentChildDisclosure(container)).not.toBeNull()
+    expect(compactAgentSummary(container)).not.toBeNull()
 
-    // Defaults: child worktrees expanded (chip aria-expanded true) AND child
-    // agents expanded (disclosure aria-expanded true).
+    // Defaults: child worktrees expanded (chip aria-expanded true) AND the
+    // session summary collapsed — the session row (named for its tab) isn't
+    // even mounted yet, matching "no per-session rows until expanded".
     expect(childWorktreeChip(container)!.getAttribute('aria-expanded')).toBe('true')
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('true')
+    expect(compactAgentSummary(container)!.getAttribute('aria-expanded')).toBe('false')
+    expect(container.textContent).not.toContain('Parent Terminal')
     expect(childWorktreeCardPresent(container)).toBe(true)
+
+    // Expanding the summary reveals the session row, named for its tab.
+    await click(compactAgentSummary(container)!)
+    expect(container.textContent).toContain('Parent Terminal')
   })
 
-  it('[full mode] toggling AGENTS does NOT change the child-worktrees chip (agents -> children uncoupled)', async () => {
-    setAgentLineageState({ agentActivityDisplayMode: 'full' })
+  it('[session mode] toggling the SESSION SUMMARY does NOT change the child-worktrees chip (sessions -> children uncoupled)', async () => {
+    setAgentLineageState({ agentActivityDisplayMode: 'compact' })
     const { container } = await renderWorktreeList()
 
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('true')
+    expect(compactAgentSummary(container)!.getAttribute('aria-expanded')).toBe('false')
     expect(childWorktreeCardPresent(container)).toBe(true)
 
-    // Collapse the child AGENTS via the disclosure chevron.
-    await click(agentChildDisclosure(container)!)
+    // Expand the session summary.
+    await click(compactAgentSummary(container)!)
 
-    // Agent children now collapsed (local state)...
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('false')
-    expect(container.querySelector('.worktree-agent-lineage-children')).toBeNull()
+    expect(compactAgentSummary(container)!.getAttribute('aria-expanded')).toBe('true')
     // ...but the child WORKTREES are untouched: chip still expanded, child card present.
     expect(childWorktreeChip(container)!.getAttribute('aria-expanded')).toBe('true')
     expect(childWorktreeCardPresent(container)).toBe(true)
-    // And collapsedGroups was never mutated by an agent toggle.
+    // And collapsedGroups was never mutated by a session toggle.
     expect((mockStore.state.collapsedGroups as Set<string>).size).toBe(0)
   })
 
-  it('[full mode] toggling CHILD WORKTREES still remounts the card but PRESERVES agent expansion (regression)', async () => {
-    setAgentLineageState({ agentActivityDisplayMode: 'full' })
+  it('[session mode] CONTROL: a re-render that does NOT change collapsedGroups preserves session state (isolates the remount)', async () => {
+    setAgentLineageState({ agentActivityDisplayMode: 'compact' })
     const { container, root } = await renderWorktreeList()
 
-    // Parent starts inside a lineage-group render row (children expanded).
-    expect(parentVirtualRowKey(container)).toBe('lineage-group:all:lineage:parent')
-
-    // User collapses the child AGENTS.
-    await click(agentChildDisclosure(container)!)
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('false')
-
-    // User now clicks the CHILD-WORKTREES chip to collapse child worktrees.
-    await click(childWorktreeChip(container)!)
-    expect(mockStore.state.toggleCollapsedGroup).toHaveBeenCalledWith('lineage:parent')
-    // Store isn't reactive; flush the collapsedGroups change into a re-render.
-    await rerender(root)
-
-    // The remount still happens: the parent moved to a standalone 'item' render
-    // row with a DIFFERENT React key, and the child card is gone.
-    expect(parentVirtualRowKey(container)).toBe('wt:all:|parent')
-    expect(childWorktreeCardPresent(container)).toBe(false)
-
-    // FIXED: the card remounted, but the durable expansion cache means the
-    // child AGENTS the user collapsed stay collapsed — the child-worktrees
-    // toggle no longer bleeds into the agent list.
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('false')
-    expect(container.querySelector('.worktree-agent-lineage-children')).toBeNull()
-  })
-
-  it('[full mode] CONTROL: a re-render that does NOT change collapsedGroups preserves agent state (isolates the remount)', async () => {
-    setAgentLineageState({ agentActivityDisplayMode: 'full' })
-    const { container, root } = await renderWorktreeList()
-
-    await click(agentChildDisclosure(container)!)
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('false')
+    await click(compactAgentSummary(container)!)
+    expect(compactAgentSummary(container)!.getAttribute('aria-expanded')).toBe('true')
 
     // Re-render WITHOUT touching collapsedGroups: the parent's virtual-row key
     // stays 'lineage-group:all:lineage:parent', so there is no remount.
     await rerender(root)
 
     expect(parentVirtualRowKey(container)).toBe('lineage-group:all:lineage:parent')
-    // Agent collapse survives => proves it is the KEY change (remount), not the
-    // re-render itself, that resets the agent expansion.
-    expect(agentChildDisclosure(container)!.getAttribute('aria-expanded')).toBe('false')
+    // Session expansion survives => proves it is the KEY change (remount), not
+    // the re-render itself, that would reset it.
+    expect(compactAgentSummary(container)!.getAttribute('aria-expanded')).toBe('true')
   })
 
   it('[compact mode] toggling CHILD WORKTREES preserves the compact agent summary expansion (regression)', async () => {

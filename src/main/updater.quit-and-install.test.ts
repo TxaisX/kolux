@@ -67,7 +67,7 @@ describe('updater', () => {
     const sendMock = vi.fn()
     const mainWindow = { webContents: { send: sendMock } }
 
-    const { setupAutoUpdater, checkForUpdatesFromMenu, downloadUpdate } = await loadUpdaterModule()
+    const { setupAutoUpdater, checkForUpdatesFromMenu } = await loadUpdaterModule()
 
     setupAutoUpdater(mainWindow as never, { getLastUpdateCheckAt: () => Date.now() })
     checkForUpdatesFromMenu()
@@ -80,14 +80,14 @@ describe('updater', () => {
       })
     })
 
-    sendMock.mockClear()
-    downloadUpdate()
-
+    // Why: the found release downloads itself; the error must still surface from that in-flight download.
+    await vi.waitFor(() => {
+      expect(sendMock).toHaveBeenCalledWith(
+        'updater:status',
+        expect.objectContaining({ state: 'error', message: 'download failed' })
+      )
+    })
     expect(autoUpdaterMock.downloadUpdate).toHaveBeenCalledTimes(1)
-    expect(sendMock).toHaveBeenCalledWith(
-      'updater:status',
-      expect.objectContaining({ state: 'error', message: 'download failed' })
-    )
   })
 
   it('surfaces an accepted retry before electron-updater emits download progress', async () => {
@@ -117,7 +117,7 @@ describe('updater', () => {
       })
     })
 
-    downloadUpdate()
+    // Why: the first download is automatic; the rejected attempt comes from it.
     await vi.waitFor(() => {
       expect(sendMock).toHaveBeenCalledWith('updater:status', {
         state: 'error',

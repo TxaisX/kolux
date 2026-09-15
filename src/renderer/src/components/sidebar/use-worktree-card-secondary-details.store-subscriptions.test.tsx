@@ -5,11 +5,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
 import { readStoreListenerCount } from '@/store/store-listener-census'
+import { useLiveSessionCount } from '@/components/session-rail/use-live-session-count'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import { usePromptCacheCountdownStartedAt } from './CacheTimer'
 import { useWorktreeCardSecondaryDetails } from './use-worktree-card-secondary-details'
-import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 
 const mocks = vi.hoisted(() => ({ toastError: vi.fn() }))
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
@@ -116,7 +116,7 @@ describe('useWorktreeCardSecondaryDetails store subscriptions', () => {
     // Baseline: the two hooks it composes, mounted on their own.
     const composedBaseline = listenerCount()
     function ComposedProbe(): null {
-      useWorktreeAgentRows(WORKTREE_ID, false)
+      useLiveSessionCount(WORKTREE_ID)
       usePromptCacheCountdownStartedAt(WORKTREE_ID, true)
       return null
     }

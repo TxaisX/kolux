@@ -18,6 +18,7 @@ import {
 } from './pending'
 import { makePtyDataPayload, sendModelRestoreNeededMarker, sendPtyDataToRenderer } from './payload'
 import { warnIfDroppingHiddenBytesForVisiblePty } from './debug-snapshot'
+import { hasAnyPtyDeliveryTarget } from '../pty-window-ownership'
 import type { PtyIpcSession } from '../session'
 
 export function schedulePendingDataFlush(session: PtyIpcSession, delayMs: number): void {
@@ -50,13 +51,15 @@ export function clearDispatcherReadyWatchdog(session: PtyIpcSession): void {
 
 export function armDispatcherReadyWatchdog(session: PtyIpcSession): void {
   clearDispatcherReadyWatchdog(session)
-  if (session.mainWindow.isDestroyed()) {
+  // Why hasAnyPtyDeliveryTarget, not mainWindow alone: a terminal window can be the
+  // only surviving delivery target once the main window closes (#terminal-windows).
+  if (!hasAnyPtyDeliveryTarget(session.mainWindow)) {
     return
   }
   // Why: one-shot self-heal — force the gate open if the reloaded page never signals ready, so a dropped handshake can't hold it forever. Unref'd so it can't keep the process alive.
   session.dispatcherReadyWatchdogTimer = setTimeout(() => {
     session.dispatcherReadyWatchdogTimer = null
-    if (session.rendererPtyDispatcherReady || session.mainWindow.isDestroyed()) {
+    if (session.rendererPtyDispatcherReady || !hasAnyPtyDeliveryTarget(session.mainWindow)) {
       return
     }
     session.rendererPtyDispatcherReady = true
@@ -77,7 +80,7 @@ export function clearFlushTimerIfIdle(session: PtyIpcSession): void {
 
 export function flushPendingData(session: PtyIpcSession): void {
   session.flushTimer = null
-  if (session.mainWindow.isDestroyed()) {
+  if (!hasAnyPtyDeliveryTarget(session.mainWindow)) {
     // Why release now: bookkeeping is being wiped, so no future drain can resume these producers — local shells would wedge.
     session.producerFlowControl.releaseAll()
     session.clearDeliveryResyncProbe()

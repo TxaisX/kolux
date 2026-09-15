@@ -84,7 +84,8 @@ describe('updater externally managed Linux installs', () => {
     await vi.advanceTimersByTimeAsync(0)
 
     const status = lastStatus(send)
-    expect(status).toEqual({ state: 'available', version: '1.0.61', changelog: null })
+    // Why: a real deb host downloads the found release straight away.
+    expect(status).toEqual({ state: 'downloading', percent: 0, version: '1.0.61' })
     expect(status && 'externallyManaged' in status).toBe(false)
   })
 

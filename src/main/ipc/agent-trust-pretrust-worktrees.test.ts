@@ -58,18 +58,18 @@ describe('planPreTrustWorktreePaths', () => {
     }
   })
 
-  it('plans one distinct path per name for a full 6-name wave', async () => {
+  it(`plans one distinct path per name for a full ${MAX_PRE_TRUST_WORKTREES}-name wave`, async () => {
     const repoDir = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-repo-'))
     const workspaceRoot = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-root-'))
     try {
       const testRepo = repo({ path: repoDir })
       const settings = settingsWithWorkspaceDir(workspaceRoot)
-      const names = ['a', 'b', 'c', 'd', 'e', 'f']
+      const names = Array.from({ length: MAX_PRE_TRUST_WORKTREES }, (_, i) => `wt-${i}`)
 
       const planned = await planPreTrustWorktreePaths(testRepo, settings, names)
 
-      expect(planned).toHaveLength(6)
-      expect(new Set(planned).size).toBe(6)
+      expect(planned).toHaveLength(MAX_PRE_TRUST_WORKTREES)
+      expect(new Set(planned).size).toBe(MAX_PRE_TRUST_WORKTREES)
     } finally {
       rmSync(repoDir, { recursive: true, force: true })
       rmSync(workspaceRoot, { recursive: true, force: true })

@@ -11,9 +11,9 @@ import {
   sanitizeWorktreeName
 } from './worktree-logic'
 
-/** Mirrors the 2x3 wave cap in launch-agents-requests.ts (`LAUNCH_AGENTS_MAX`) -- duplicated as a
- *  small constant rather than importing renderer code from the main process. */
-export const MAX_PRE_TRUST_WORKTREES = 6
+/** Mirrors the app-wide agent-launch wave cap (12). Duplicated as a small constant rather than
+ *  importing renderer code from the main process. */
+export const MAX_PRE_TRUST_WORKTREES = 12
 
 export type PreTrustWorktreesArgs = { repoId: string; agent: TuiAgent; worktreeNames: string[] }
 

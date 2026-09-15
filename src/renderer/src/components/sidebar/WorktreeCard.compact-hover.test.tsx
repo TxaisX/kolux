@@ -30,6 +30,10 @@ let workspacePortScan: { key: string; result: WorkspacePortScanResult } | null =
 let settings: Partial<GlobalSettings> | null = { compactWorktreeCards: true }
 let agentActivityDisplayMode: 'compact' | 'full' | undefined
 let mockInlineAgentRows: DashboardAgentRowData[] = []
+// Why: drives useLiveSessionCount, which the aggregate-cache-timer suppression
+// now keys off instead of the (removed) compact inline agent visibility.
+let tabsByWorktree: Record<string, { id: string }[]> = {}
+let ptyIdsByTabId: Record<string, string[]> = {}
 
 vi.mock('@/store', () => ({
   useAppStore: (selector: (state: unknown) => unknown) =>
@@ -48,7 +52,7 @@ vi.mock('@/store', () => ({
       openModal,
       openTaskPage,
       projectGroups,
-      ptyIdsByTabId: {},
+      ptyIdsByTabId,
       recordFeatureInteraction,
       remoteBranchConflictByWorktreeId: {},
       setRemoteBrowserPageHandle: vi.fn(),
@@ -57,7 +61,7 @@ vi.mock('@/store', () => ({
       settings,
       sshConnectionStates: new Map(),
       sshTargetLabels: new Map(),
-      tabsByWorktree: {},
+      tabsByWorktree,
       updateWorktreeMeta,
       workspacePortScan,
       worktreeCardProperties
@@ -108,9 +112,9 @@ vi.mock('./useWorktreeAgentRows', () => ({
   useWorktreeAgentRows: vi.fn(() => mockInlineAgentRows)
 }))
 
-vi.mock('./WorktreeCardAgents', () => ({
-  default: ({ className, agents }: { className?: string; agents?: DashboardAgentRowData[] }) => (
-    <div className={className} data-agent-count={agents?.length ?? ''} data-worktree-agents="" />
+vi.mock('./WorktreeCardSessions', () => ({
+  default: ({ className }: { className?: string }) => (
+    <div className={className} data-worktree-sessions="" />
   )
 }))
 
@@ -191,6 +195,8 @@ describe('WorktreeCard compact hover details', () => {
     settings = { compactWorktreeCards: true }
     agentActivityDisplayMode = undefined
     mockInlineAgentRows = []
+    tabsByWorktree = {}
+    ptyIdsByTabId = {}
     cacheTimerMocks.usePromptCacheCountdownStartedAt.mockReturnValue(null)
   })
 
@@ -554,7 +560,7 @@ describe('WorktreeCard compact hover details', () => {
     expect(childIndex).toBeGreaterThanOrEqual(0)
   })
 
-  it('suppresses inline agent rows in compact cards by default', async () => {
+  it('suppresses inline session rows in compact cards by default', async () => {
     settings = { compactWorktreeCards: true }
     worktreeCardProperties = ['status', 'inline-agents']
     const { default: WorktreeCard } = await import('./WorktreeCard')
@@ -563,7 +569,7 @@ describe('WorktreeCard compact hover details', () => {
       <WorktreeCard worktree={makeWorktree()} repo={makeRepo()} isActive={false} />
     )
 
-    expect(markup).not.toContain('data-worktree-agents')
+    expect(markup).not.toContain('data-worktree-sessions')
   })
 
   it('does not create a compact metadata row solely for an aggregate cache timer', async () => {
@@ -606,30 +612,28 @@ describe('WorktreeCard compact hover details', () => {
     expect(markup).toContain('More PR actions')
   })
 
-  it('suppresses the aggregate cache timer when compact inline agents are visible', async () => {
+  it('suppresses the aggregate cache timer when compact inline sessions are visible', async () => {
     settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status', 'inline-agents']
-    agentActivityDisplayMode = 'compact'
-    mockInlineAgentRows = [{} as DashboardAgentRowData]
     const worktree = makeWorktree()
+    tabsByWorktree = { [worktree.id]: [{ id: 'tab-1' }] }
+    ptyIdsByTabId = { 'tab-1': ['pty-1'] }
     const { default: WorktreeCard } = await import('./WorktreeCard')
 
     const markup = renderToStaticMarkup(
       <WorktreeCard worktree={worktree} repo={makeRepo()} isActive={false} />
     )
 
-    expect(markup).toContain('data-worktree-agents=""')
+    expect(markup).toContain('data-worktree-sessions=""')
     expect(cacheTimerMocks.usePromptCacheCountdownStartedAt).toHaveBeenCalledWith(
       worktree.id,
       false
     )
   })
 
-  it('keeps status and agent tooltip targets outside the worktree details hover trigger', async () => {
+  it('keeps status and session tooltip targets outside the worktree details hover trigger', async () => {
     settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status', 'inline-agents']
-    agentActivityDisplayMode = 'compact'
-    mockInlineAgentRows = [{} as DashboardAgentRowData]
     const { default: WorktreeCard } = await import('./WorktreeCard')
 
     const markup = renderToStaticMarkup(
@@ -638,20 +642,20 @@ describe('WorktreeCard compact hover details', () => {
     const statusIndex = markup.indexOf('data-worktree-card-status-slot=""')
     const triggerIndex = markup.indexOf('data-worktree-card-hover-trigger=""')
     const hoverContentIndex = markup.indexOf('data-hover-card-content=""')
-    const agentsIndex = markup.indexOf('data-worktree-agents=""')
+    const sessionsIndex = markup.indexOf('data-worktree-sessions=""')
 
     expectIdentityBodyIsHoverTrigger(markup)
     expect(statusIndex).toBeGreaterThanOrEqual(0)
     expect(statusIndex).toBeLessThan(triggerIndex)
     expect(hoverContentIndex).toBeGreaterThan(triggerIndex)
-    expect(agentsIndex).toBeGreaterThan(hoverContentIndex)
+    expect(sessionsIndex).toBeGreaterThan(hoverContentIndex)
   })
 
-  it('preserves the aggregate cache timer when compact inline agents are enabled but absent', async () => {
+  it('preserves the aggregate cache timer when compact inline sessions are enabled but absent', async () => {
     settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status', 'inline-agents']
-    agentActivityDisplayMode = 'compact'
-    mockInlineAgentRows = []
+    // Why: 'inline-agents' is on but the worktree has no open tabs, so the
+    // session list renders nothing and the aggregate timer stays the only signal.
     cacheTimerMocks.usePromptCacheCountdownStartedAt.mockImplementation(
       (_worktreeId: string, active = true) => (active ? 10_000 : null)
     )
@@ -662,8 +666,7 @@ describe('WorktreeCard compact hover details', () => {
       <WorktreeCard worktree={worktree} repo={makeRepo()} isActive={false} />
     )
 
-    expect(markup).toContain('data-worktree-agents=""')
-    expect(markup).toContain('data-agent-count="0"')
+    expect(markup).toContain('data-worktree-sessions=""')
     expect(cacheTimerMocks.usePromptCacheCountdownStartedAt).toHaveBeenCalledWith(worktree.id, true)
   })
 

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { LinearAgentSkillSetupPrompt } from './LinearAgentSkillSetupPrompt'
-import WorktreeCardAgents from './WorktreeCardAgents'
+import WorktreeCardSessions from './WorktreeCardSessions'
 import type { WorktreeCardPresentation } from './worktree-card-presentation'
 import type { WorktreeCardController } from './use-worktree-card-controller'
 
@@ -28,8 +28,6 @@ export function WorktreeCardSecondaryRows({
     onLineageToggle,
     remoteBranchConflict,
     showInlineAgentList,
-    agentActivityDisplayMode,
-    compactInlineAgentRows,
     showLineageChildChip,
     lineageChildAriaLabel,
     childWorkspaceShortLabel
@@ -63,11 +61,10 @@ export function WorktreeCardSecondaryRows({
         />
       ) : null}
 
-      {/* Why: counterbalance the card stack gap (-mt-1) so agents right after the title read as one header group. */}
+      {/* Why: counterbalance the card stack gap (-mt-1) so sessions right after the title read as one header group. */}
       {showInlineAgentList && (
-        <WorktreeCardAgents
+        <WorktreeCardSessions
           worktreeId={worktree.id}
-          agents={agentActivityDisplayMode === 'compact' ? compactInlineAgentRows : undefined}
           className={hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1'}
         />
       )}
