@@ -27,6 +27,7 @@ export type PersistedUIWriteBaseline = {
   hideWorkspacesFromOtherDevices: boolean
   alwaysShowDefaultBranchWorkspace: boolean
   showDotfilesByWorktree: Record<string, boolean>
+  agentPermissionModeByWorktree: Record<string, 'yolo' | 'manual'>
   filterRepoIds: readonly string[]
   acknowledgedAgentsByPaneKey: Record<string, number>
   activityClearedAtByPaneKey: Record<string, number>
@@ -56,6 +57,7 @@ const PERSISTED_UI_WRITE_BASELINE_FIELD_SET = {
   hideWorkspacesFromOtherDevices: true,
   alwaysShowDefaultBranchWorkspace: true,
   showDotfilesByWorktree: true,
+  agentPermissionModeByWorktree: true,
   filterRepoIds: true,
   acknowledgedAgentsByPaneKey: true,
   activityClearedAtByPaneKey: true,
@@ -101,6 +103,7 @@ function writeFieldEqual(field: keyof PersistedUIWriteBaseline, a: unknown, b: u
   }
   if (
     field === 'showDotfilesByWorktree' ||
+    field === 'agentPermissionModeByWorktree' ||
     field === 'acknowledgedAgentsByPaneKey' ||
     field === 'activityClearedAtByPaneKey' ||
     field === 'manuallyUnreadTurnsByPaneKey'

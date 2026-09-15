@@ -93,6 +93,26 @@ export function sanitizeShowDotfilesByWorktree(value: unknown): Record<string, b
   return out
 }
 
+export function sanitizeAgentPermissionModeByWorktree(
+  value: unknown
+): Record<string, 'yolo' | 'manual'> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  const out: Record<string, 'yolo' | 'manual'> = {}
+  for (const [worktreeId, mode] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      !worktreeId ||
+      !isSafePersistedRecordKey(worktreeId) ||
+      (mode !== 'yolo' && mode !== 'manual')
+    ) {
+      continue
+    }
+    out[worktreeId] = mode
+  }
+  return out
+}
+
 export function sanitizePersistedSidebarWidth(
   width: unknown,
   fallback: number,

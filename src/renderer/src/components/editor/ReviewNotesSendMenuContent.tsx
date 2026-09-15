@@ -35,7 +35,7 @@ import type { LaunchSource } from '../../../../shared/telemetry-events'
 import { agentRowDotState } from '@/lib/agent-row-dot-state'
 import { translate } from '@/i18n/i18n'
 
-type OrderedSendTarget = {
+export type OrderedSendTarget = {
   target: NotesSendAgentTarget
   agent: DashboardAgentRowData | null
 }
@@ -232,7 +232,7 @@ function resolveCurrentSendTargetEligibility(
   return { status: 'disabled', disabledReason: 'Terminal is no longer available' }
 }
 
-function AgentTargetMenuItem({
+export function AgentTargetMenuItem({
   target,
   agent,
   now,
@@ -284,7 +284,7 @@ function AgentTargetMenuItem({
   )
 }
 
-function orderSendTargetsByWorktreeAgentRows(
+export function orderSendTargetsByWorktreeAgentRows(
   sendTargets: NotesSendAgentTarget[],
   agentRows: DashboardAgentRowData[]
 ): OrderedSendTarget[] {

@@ -34,6 +34,7 @@ import {
   normalizeRightSidebarExplorerView,
   normalizeRightSidebarTab,
   normalizeShowDotfilesByWorktree,
+  normalizeAgentPermissionModeByWorktree,
   normalizeSortBy
 } from './ui-selection-normalization'
 import {
@@ -171,6 +172,10 @@ export function updatePersistedUI(
       sanitizedUpdates.showDotfilesByWorktree !== undefined
         ? normalizeShowDotfilesByWorktree(sanitizedUpdates.showDotfilesByWorktree)
         : normalizeShowDotfilesByWorktree(operations.state.ui?.showDotfilesByWorktree),
+    agentPermissionModeByWorktree:
+      sanitizedUpdates.agentPermissionModeByWorktree !== undefined
+        ? normalizeAgentPermissionModeByWorktree(sanitizedUpdates.agentPermissionModeByWorktree)
+        : normalizeAgentPermissionModeByWorktree(operations.state.ui?.agentPermissionModeByWorktree),
     featureTipsSeenIds:
       sanitizedUpdates.featureTipsSeenIds !== undefined
         ? normalizeFeatureTipIds(sanitizedUpdates.featureTipsSeenIds)

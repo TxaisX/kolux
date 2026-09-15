@@ -10,6 +10,7 @@ import {
   normalizeRightSidebarExplorerView,
   normalizeRightSidebarTab,
   normalizeShowDotfilesByWorktree,
+  normalizeAgentPermissionModeByWorktree,
   normalizeSortBy
 } from '../applying-settings/ui-selection-normalization'
 import { stripMainOwnedTelemetryMarkerFromUI } from '../applying-settings/ui-interaction-merge'
@@ -190,6 +191,9 @@ export function normalizeLoadedUiState(
     osc52ClipboardDefaultOnNoticePending: osc52ClipboardNoticePending,
     sortBy: migrate ? ('smart' as const) : sort,
     showDotfilesByWorktree: normalizeShowDotfilesByWorktree(parsed.ui?.showDotfilesByWorktree),
+    agentPermissionModeByWorktree: normalizeAgentPermissionModeByWorktree(
+      parsed.ui?.agentPermissionModeByWorktree
+    ),
     workspaceStatuses,
     _workspaceStatusesDefaultOrderMigrated: true,
     _workspaceStatusesReorderedDefaultRepaired: true,

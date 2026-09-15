@@ -577,6 +577,50 @@ describe('createUISlice hydratePersistedUI', () => {
     expect(store.getState().showDotfilesByWorktree).toEqual({ 'repo-1::/repo': false })
   })
 
+  it('hydrates persisted per-worktree YOLO overrides', () => {
+    const store = createUIStore()
+
+    store.getState().hydratePersistedUI(
+      makePersistedUI({
+        agentPermissionModeByWorktree: {
+          'repo-1::/repo': 'manual',
+          'repo-2::/repo': 'yolo'
+        }
+      })
+    )
+
+    expect(store.getState().agentPermissionModeByWorktree).toEqual({
+      'repo-1::/repo': 'manual',
+      'repo-2::/repo': 'yolo'
+    })
+  })
+
+  it('drops invalid persisted per-worktree YOLO override entries', () => {
+    const store = createUIStore()
+
+    store.getState().hydratePersistedUI(
+      makePersistedUI({
+        agentPermissionModeByWorktree: {
+          'repo-1::/repo': 'manual',
+          'repo-2::/repo': 'nope',
+          constructor: 'yolo'
+        } as never
+      })
+    )
+
+    expect(store.getState().agentPermissionModeByWorktree).toEqual({ 'repo-1::/repo': 'manual' })
+  })
+
+  it('sets and clears a per-worktree YOLO override', () => {
+    const store = createUIStore()
+
+    store.getState().setAgentPermissionModeForWorktree('repo-1::/repo', 'manual')
+    expect(store.getState().agentPermissionModeByWorktree).toEqual({ 'repo-1::/repo': 'manual' })
+
+    store.getState().setAgentPermissionModeForWorktree('repo-1::/repo', null)
+    expect(store.getState().agentPermissionModeByWorktree).toEqual({})
+  })
+
   it('falls back to explorer for invalid persisted right sidebar tabs', () => {
     const store = createUIStore()
 

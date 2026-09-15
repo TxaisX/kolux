@@ -37,6 +37,28 @@ export function normalizeShowDotfilesByWorktree(value: unknown): Record<string, 
   return out
 }
 
+export function normalizeAgentPermissionModeByWorktree(
+  value: unknown
+): Record<string, 'yolo' | 'manual'> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  const out: Record<string, 'yolo' | 'manual'> = {}
+  for (const [worktreeId, mode] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      !worktreeId ||
+      worktreeId === '__proto__' ||
+      worktreeId === 'constructor' ||
+      worktreeId === 'prototype' ||
+      (mode !== 'yolo' && mode !== 'manual')
+    ) {
+      continue
+    }
+    out[worktreeId] = mode
+  }
+  return out
+}
+
 export function normalizeSortBy(sortBy: unknown): PersistedState['ui']['sortBy'] {
   if (
     sortBy === 'smart' ||

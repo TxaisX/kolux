@@ -15,6 +15,7 @@ import { RetainedBrowserPaneOverlayLayer } from './browser-pane/assemble-chrome/
 import EmulatorPaneOverlayLayer from './emulator-pane/EmulatorPaneOverlayLayer'
 import StructuredAgentSessionPaneOverlayLayer from './native-chat/StructuredAgentSessionPaneOverlayLayer'
 import AiVaultSessionDropLayer from './tab-group/AiVaultSessionDropLayer'
+import { WorkspaceComposer } from './composer/WorkspaceComposer'
 
 export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
   worktreeId,
@@ -52,48 +53,51 @@ export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
     <div
       className={
         isVisible
-          ? 'absolute inset-0 flex'
+          ? 'absolute inset-0 flex flex-col'
           : shouldKeepPaintable
-            ? 'absolute inset-0 flex opacity-0 pointer-events-none'
+            ? 'absolute inset-0 flex flex-col opacity-0 pointer-events-none'
             : 'absolute inset-0 hidden'
       }
       inert={!isVisible}
       aria-hidden={!isVisible}
     >
-      <TabGroupSplitLayout
-        layout={layout}
-        worktreeId={worktreeId}
-        focusedGroupId={focusedGroupId}
-        isWorktreeActive={isVisible}
-      />
-      <TerminalPaneOverlayLayer
-        worktreeId={worktreeId}
-        worktreePath={worktreePath}
-        isWorktreeActive={isVisible}
-        coldParkTerminalPanes={shouldColdParkTerminalPanes}
-        isForceParked={isForceParked}
-        shouldMeasureHiddenWorktree={shouldMeasureHiddenWorktree}
-        activityTerminalPortals={activityTerminalPortals}
-        backgroundMountTabIds={backgroundMountTabIds}
-        activationDeferredMountTabIds={activationDeferredMountTabIds}
-      />
-      <RetainedBrowserPaneOverlayLayer
-        worktreeId={worktreeId}
-        isWorktreeActive={isVisible}
-        mountEligible={shouldMountRetainedBrowserOverlay({
-          isWorktreeVisible: isVisible,
-          hasDeferredBackgroundMounts: backgroundMountTabIds !== null,
-          needsBrowserGuestPaint
-        })}
-      />
-      {isVisible || backgroundMountTabIds === null ? (
-        <EmulatorPaneOverlayLayer worktreeId={worktreeId} isWorktreeActive={isVisible} />
-      ) : null}
-      <StructuredAgentSessionPaneOverlayLayer
-        worktreeId={worktreeId}
-        isWorktreeActive={isVisible}
-      />
-      <AiVaultSessionDropLayer worktreeId={worktreeId} enabled={isVisible} />
+      <div className="relative flex flex-1 min-h-0">
+        <TabGroupSplitLayout
+          layout={layout}
+          worktreeId={worktreeId}
+          focusedGroupId={focusedGroupId}
+          isWorktreeActive={isVisible}
+        />
+        <TerminalPaneOverlayLayer
+          worktreeId={worktreeId}
+          worktreePath={worktreePath}
+          isWorktreeActive={isVisible}
+          coldParkTerminalPanes={shouldColdParkTerminalPanes}
+          isForceParked={isForceParked}
+          shouldMeasureHiddenWorktree={shouldMeasureHiddenWorktree}
+          activityTerminalPortals={activityTerminalPortals}
+          backgroundMountTabIds={backgroundMountTabIds}
+          activationDeferredMountTabIds={activationDeferredMountTabIds}
+        />
+        <RetainedBrowserPaneOverlayLayer
+          worktreeId={worktreeId}
+          isWorktreeActive={isVisible}
+          mountEligible={shouldMountRetainedBrowserOverlay({
+            isWorktreeVisible: isVisible,
+            hasDeferredBackgroundMounts: backgroundMountTabIds !== null,
+            needsBrowserGuestPaint
+          })}
+        />
+        {isVisible || backgroundMountTabIds === null ? (
+          <EmulatorPaneOverlayLayer worktreeId={worktreeId} isWorktreeActive={isVisible} />
+        ) : null}
+        <StructuredAgentSessionPaneOverlayLayer
+          worktreeId={worktreeId}
+          isWorktreeActive={isVisible}
+        />
+        <AiVaultSessionDropLayer worktreeId={worktreeId} enabled={isVisible} />
+      </div>
+      {isVisible ? <WorkspaceComposer worktreeId={worktreeId} /> : null}
     </div>
   )
 })
