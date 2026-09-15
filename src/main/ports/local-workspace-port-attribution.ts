@@ -71,7 +71,9 @@ export function enrichPort(
   worktrees: readonly NormalizedWorkspacePortProbe[],
   urlWatcher: Pick<AdvertisedUrlWatcher, 'lookup'>
 ): WorkspacePort {
-  const owner = attributePortToNormalizedWorkspaces(port, worktrees)
+  const owner =
+    attributePortToNormalizedWorkspaces(port, worktrees) ??
+    attributePortByAdvertisedUrl(port, worktrees, urlWatcher)
   const base = {
     id: `${port.host}:${port.port}:${port.pid ?? 'unknown'}`,
     bindHost: port.host,
@@ -145,6 +147,22 @@ export function isContainerProcess(
 ): boolean {
   const haystack = `${port.processName ?? ''} ${port.commandLine ?? ''}`.toLowerCase()
   return /\b(com\.[\w.-]+\.backend|com\.container\w*|container\w*)\b/.test(haystack)
+}
+
+// Why: Windows scans carry no cwd and dev servers rarely name the worktree on their command
+// line, so a workspace-bound terminal printing "http://localhost:5173" is the only evidence
+// that port belongs to the workspace. Without this every listener on Windows reads as external.
+function attributePortByAdvertisedUrl(
+  port: RawListeningPort,
+  worktrees: readonly NormalizedWorkspacePortProbe[],
+  urlWatcher: Pick<AdvertisedUrlWatcher, 'lookup'>
+): WorkspacePortOwner | undefined {
+  for (const { worktree } of worktrees) {
+    if (urlWatcher.lookup(worktree.id, port.port, port.pid)) {
+      return toOwner(worktree, 'advertised')
+    }
+  }
+  return undefined
 }
 
 function toOwner(
