@@ -62,6 +62,10 @@ export type UISlicePreferences = {
   showDotfilesByWorktree: Record<string, boolean>
   setShowDotfilesForWorktree: (worktreeId: string, showDotfiles: boolean) => void
   toggleShowDotfilesForWorktree: (worktreeId: string) => void
+  /** Per-worktree YOLO override. Missing entries fall back to the global agent default mode. */
+  agentPermissionModeByWorktree: Record<string, 'yolo' | 'manual'>
+  /** `null` clears the override so the worktree inherits the global default mode again. */
+  setAgentPermissionModeForWorktree: (worktreeId: string, mode: 'yolo' | 'manual' | null) => void
   filterRepoIds: readonly string[]
   setFilterRepoIds: (ids: readonly string[]) => void
   /** Agents-view scope filters, independent from workspace navigation filters. */

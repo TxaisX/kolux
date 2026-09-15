@@ -19,10 +19,7 @@ import {
 import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
 import { isWebRuntimeSessionActive } from '@/runtime/web-runtime-session'
 import { launchAgentInWebHostTab } from '@/lib/launch-agent-web-host-tab'
-import {
-  resolveTuiAgentLaunchArgs,
-  resolveTuiAgentLaunchEnv
-} from '../../../shared/tui-agent-launch-defaults'
+import { resolveWorktreeAgentLaunchArgs } from '../../../shared/tui-agent-launch-defaults'
 import { resolveLocalWindowsAgentStartupShell } from '../../../shared/windows-terminal-shell'
 import { TUI_AGENT_CONFIG } from '../../../shared/tui-agent-config'
 import { seedCommandCodeSubmittedPromptStatus } from '@/lib/command-code-prompt-status-seed'
@@ -131,11 +128,13 @@ function launchAgentInNewTabInternal(
     terminalWindowsShell: store.settings?.terminalWindowsShell
   })
   const cmdOverrides = store.settings?.agentCmdOverrides ?? {}
-  const effectiveAgentArgs =
-    agentArgs !== undefined
-      ? agentArgs
-      : resolveTuiAgentLaunchArgs(agent, store.settings?.agentDefaultArgs)
-  const agentEnv = resolveTuiAgentLaunchEnv(agent, store.settings?.agentDefaultEnv)
+  const { agentArgs: effectiveAgentArgs, agentEnv } = resolveWorktreeAgentLaunchArgs({
+    agent,
+    explicitAgentArgs: agentArgs,
+    defaultAgentArgs: store.settings?.agentDefaultArgs,
+    defaultAgentEnv: store.settings?.agentDefaultEnv,
+    worktreeMode: store.agentPermissionModeByWorktree?.[worktreeId]
+  })
   const trimmedPrompt = prompt?.trim() ?? ''
   const hasPrompt = trimmedPrompt.length > 0
   const isFollowupPath = TUI_AGENT_CONFIG[agent].promptInjectionMode === 'stdin-after-start'

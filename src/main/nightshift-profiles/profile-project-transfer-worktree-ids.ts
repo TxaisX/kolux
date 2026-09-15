@@ -37,6 +37,7 @@ export function collectTransferWorktreeIds(
     collectSessionWorktreeIds(session, repoId, ids)
   }
   Object.keys(state.ui?.showDotfilesByWorktree ?? {}).forEach(add)
+  Object.keys(state.ui?.agentPermissionModeByWorktree ?? {}).forEach(add)
   return ids
 }
 

@@ -16922,6 +16922,12 @@
         "LaunchAgentsLineup": {
           "lineup": "Lineup ({{count}})"
         }
+      },
+      "composer": {
+        "WorkspaceComposer": {
+          "sent": "Sent to {{value0}}",
+          "send-failed": "Could not send to {{value0}}"
+        }
       }
     },
     "i18n": {

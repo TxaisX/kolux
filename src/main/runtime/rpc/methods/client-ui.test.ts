@@ -609,6 +609,10 @@ describe('client UI RPC methods', () => {
     ['taskResumeState.jiraQuery', { taskResumeState: { jiraQuery: 'ENG' } }],
     ['activeView', { activeView: 'tasks' }],
     ['showDotfilesByWorktree', { showDotfilesByWorktree: { 'repo::/worktree': true } }],
+    [
+      'agentPermissionModeByWorktree',
+      { agentPermissionModeByWorktree: { 'repo::/worktree': 'manual' } }
+    ],
     ['setupGuideSidebarDismissed', { setupGuideSidebarDismissed: true }],
     ['setupGuideBrowserMilestoneMigrated', { setupGuideBrowserMilestoneMigrated: true }],
     [
@@ -657,6 +661,7 @@ describe('client UI RPC methods', () => {
       hideAutomationGeneratedWorkspaces: false,
       alwaysShowDefaultBranchWorkspace: true,
       showDotfilesByWorktree: { 'repo::/worktree': true },
+      agentPermissionModeByWorktree: { 'repo::/worktree': 'manual' },
       filterRepoIds: ['repo-1'],
       acknowledgedAgentsByPaneKey: { 'pane-1': 123 }
     }

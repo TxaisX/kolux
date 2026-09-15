@@ -150,6 +150,25 @@ export function createUiPreferenceActions(set: UISliceSet, get: UISliceGet): Par
         return { showDotfilesByWorktree: next }
       }),
 
+    agentPermissionModeByWorktree: {},
+    setAgentPermissionModeForWorktree: (worktreeId, mode) =>
+      set((s) => {
+        if (!worktreeId) {
+          return s
+        }
+        const current = s.agentPermissionModeByWorktree[worktreeId] ?? null
+        if (current === mode) {
+          return s
+        }
+        const next = { ...s.agentPermissionModeByWorktree }
+        if (mode === null) {
+          delete next[worktreeId]
+        } else {
+          next[worktreeId] = mode
+        }
+        return { agentPermissionModeByWorktree: next }
+      }),
+
     filterRepoIds: [],
     setFilterRepoIds: (ids) => set({ filterRepoIds: ids }),
 

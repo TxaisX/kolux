@@ -27,6 +27,7 @@ function makeBaseline(overrides: Partial<PersistedUIWriteBaseline> = {}): Persis
     hideWorkspacesFromOtherDevices: false,
     alwaysShowDefaultBranchWorkspace: true,
     showDotfilesByWorktree: {},
+    agentPermissionModeByWorktree: {},
     filterRepoIds: [],
     acknowledgedAgentsByPaneKey: {},
     activityClearedAtByPaneKey: {},
@@ -116,6 +117,27 @@ describe('manuallyUnreadTurnsByPaneKey write round-trip', () => {
     expect(persistedUIWriteFieldsToWireUpdate({ manuallyUnreadTurnsByPaneKey: { p1: 7 } })).toEqual(
       { manuallyUnreadTurnsByPaneKey: { p1: 7 } }
     )
+  })
+})
+
+describe('agentPermissionModeByWorktree write round-trip', () => {
+  it('diffs by record content, like the other worktree-keyed maps', () => {
+    const baseline = makeBaseline({ agentPermissionModeByWorktree: { w1: 'yolo' } })
+    expect(
+      diffPersistedUIWriteFields(
+        makeBaseline({ agentPermissionModeByWorktree: { w1: 'yolo' } }),
+        baseline
+      )
+    ).toEqual({})
+    expect(
+      diffPersistedUIWriteFields(
+        makeBaseline({ agentPermissionModeByWorktree: { w1: 'manual' } }),
+        baseline
+      )
+    ).toEqual({ agentPermissionModeByWorktree: { w1: 'manual' } })
+    expect(
+      persistedUIWriteFieldsToWireUpdate({ agentPermissionModeByWorktree: { w1: 'manual' } })
+    ).toEqual({ agentPermissionModeByWorktree: { w1: 'manual' } })
   })
 })
 

@@ -102,3 +102,52 @@ export function resolveTuiAgentLaunchEnv(
   }
   return getTuiAgentDefaultEnv(agent)
 }
+
+/**
+ * Per-workspace YOLO override: 'yolo' replaces args/env with the agent's YOLO
+ * shape outright; 'manual' strips just the YOLO flag/env, leaving any other
+ * custom args/env the workspace's resolved defaults carried untouched.
+ */
+export function applyAgentPermissionModeOverride(
+  agent: TuiAgent,
+  mode: 'yolo' | 'manual',
+  args: string,
+  env: Record<string, string>
+): { agentArgs: string; agentEnv: Record<string, string> } {
+  if (mode === 'yolo') {
+    return {
+      agentArgs: YOLO_TUI_AGENT_ARGS[agent] ?? '',
+      agentEnv: { ...YOLO_TUI_AGENT_ENV[agent] }
+    }
+  }
+  const yoloArgs = YOLO_TUI_AGENT_ARGS[agent]
+  const strippedArgs = yoloArgs ? args.replace(argPattern(yoloArgs), ' ').trim() : args
+  const strippedEnv = { ...env }
+  for (const key of Object.keys(YOLO_TUI_AGENT_ENV[agent] ?? {})) {
+    delete strippedEnv[key]
+  }
+  return { agentArgs: strippedArgs, agentEnv: strippedEnv }
+}
+
+/**
+ * Resolve the launch args/env a caller should actually use: an explicit caller
+ * override always wins untouched; otherwise the host default is resolved and,
+ * when the launch worktree has an explicit per-workspace YOLO mode, overridden
+ * by it. Shared by every launch path so the three-way precedence stays in one place.
+ */
+export function resolveWorktreeAgentLaunchArgs(args: {
+  agent: TuiAgent
+  explicitAgentArgs: string | null | undefined
+  defaultAgentArgs: Partial<Record<TuiAgent, string>> | null | undefined
+  defaultAgentEnv: Partial<Record<TuiAgent, Record<string, string>>> | null | undefined
+  worktreeMode: 'yolo' | 'manual' | undefined
+}): { agentArgs: string | null; agentEnv: Record<string, string> } {
+  const agentEnv = resolveTuiAgentLaunchEnv(args.agent, args.defaultAgentEnv)
+  if (args.explicitAgentArgs !== undefined) {
+    return { agentArgs: args.explicitAgentArgs, agentEnv }
+  }
+  const agentArgs = resolveTuiAgentLaunchArgs(args.agent, args.defaultAgentArgs)
+  return args.worktreeMode
+    ? applyAgentPermissionModeOverride(args.agent, args.worktreeMode, agentArgs, agentEnv)
+    : { agentArgs, agentEnv }
+}

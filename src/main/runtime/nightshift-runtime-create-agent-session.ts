@@ -17,10 +17,7 @@ import {
 } from './nightshift-runtime-core'
 import { isTuiAgentEnabled } from '../../shared/tui-agent-selection'
 import { resolveLocalWindowsAgentStartupShell } from '../../shared/windows-terminal-shell'
-import {
-  resolveTuiAgentLaunchArgs,
-  resolveTuiAgentLaunchEnv
-} from '../../shared/tui-agent-launch-defaults'
+import { resolveWorktreeAgentLaunchArgs } from '../../shared/tui-agent-launch-defaults'
 import { buildAgentDraftLaunchPlan, buildAgentStartupPlan } from '../../shared/tui-agent-startup'
 import type { RuntimeTerminalCreate } from '../../shared/runtime-types'
 import type {
@@ -159,14 +156,19 @@ export class NightshiftRuntimeWithCreateAgentSession extends NightshiftRuntimeWi
         isRemote,
         terminalWindowsShell: settings.terminalWindowsShell
       })
+      const { agentArgs: resolvedAgentArgs, agentEnv: resolvedAgentEnv } =
+        resolveWorktreeAgentLaunchArgs({
+          agent: request.agent,
+          explicitAgentArgs: request.agentArgs,
+          defaultAgentArgs: settings.agentDefaultArgs,
+          defaultAgentEnv: settings.agentDefaultEnv,
+          worktreeMode: this.store?.getUI?.().agentPermissionModeByWorktree?.[workspace.id]
+        })
       const startupArgs = {
         agent: request.agent,
         cmdOverrides: settings.agentCmdOverrides ?? {},
-        agentArgs:
-          request.agentArgs !== undefined
-            ? request.agentArgs
-            : resolveTuiAgentLaunchArgs(request.agent, settings.agentDefaultArgs),
-        agentEnv: resolveTuiAgentLaunchEnv(request.agent, settings.agentDefaultEnv),
+        agentArgs: resolvedAgentArgs,
+        agentEnv: resolvedAgentEnv,
         sessionOptions: this.toAgentSessionOptions(request.launchPreferences),
         platform,
         shell,

@@ -28,6 +28,7 @@ import {
   normalizeRightSidebarExplorerView,
   normalizeRightSidebarTab,
   normalizeShowDotfilesByWorktree,
+  normalizeAgentPermissionModeByWorktree,
   normalizeSortBy
 } from './ui-selection-normalization'
 import { stripMainOwnedTelemetryMarkerFromUI } from './ui-interaction-merge'
@@ -67,6 +68,9 @@ export function getPersistedUI(
     manualRepoOrder: normalizeManualRepoOrder(state.ui?.manualRepoOrder),
     browserDefaultZoomLevel: normalizeBrowserPageZoomLevel(state.ui?.browserDefaultZoomLevel),
     showDotfilesByWorktree: normalizeShowDotfilesByWorktree(state.ui?.showDotfilesByWorktree),
+    agentPermissionModeByWorktree: normalizeAgentPermissionModeByWorktree(
+      state.ui?.agentPermissionModeByWorktree
+    ),
     featureTipsSeenIds: normalizeFeatureTipIds(state.ui?.featureTipsSeenIds),
     contextualToursSeenIds: normalizeContextualTourIds(state.ui?.contextualToursSeenIds),
     featureInteractions: normalizeFeatureInteractions(state.ui?.featureInteractions),

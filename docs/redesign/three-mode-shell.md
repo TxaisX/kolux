@@ -98,13 +98,14 @@ dev server's job (HMR); there is no file watcher in the renderer and none is pla
 non-HMR server needs one. There is no "Start dev" command in the app today; Quick Commands
 are the place to run one.
 
-### Permissions bypassed by default
+### Permissions bypassed by default (YOLO)
 
 This build is for personal use. New sessions start with the agent's bypass mode on
 (Claude Code `--dangerously-skip-permissions`, Codex full-auto / YOLO, and the equivalent
-for every other CLI). The composer chip that today would read "Ask before editing" reads
-**Bypass on** and can be flipped per workspace. Approve/Reject cards only appear for
-workspaces where bypass is off.
+for every other CLI). The composer chip reads **YOLO on** / **YOLO off** and is flipped per
+workspace; the choice binds at the next launch in that workspace, it does not change an
+agent that is already running. Approve/Reject cards only appear for workspaces where
+YOLO is off.
 
 ### Usage across every CLI
 
@@ -152,7 +153,8 @@ Mapped 2026-09-14. Paths are repo-relative under `src/renderer/src` unless noted
 | Agent picker pane | `components/agent-picker/AgentPickerPane.tsx` via `createTab(..., { pendingAgentChoice: true })` | none |
 | Launch N agents | `components/launch-agents/` (per-agent stepper, lineup, one worktree per agent) | drop the shape presets from the UI |
 | Pane grid | `components/pane-layout/` (`computeGridRows`, `buildGridLayout`, `tidyLayout`), `setTabGroupLayout` | a "set pane count to N" command that creates and closes leaves |
-| Bypass by default | `src/shared/tui-agent-launch-defaults.ts` already defaults every agent to its skip-permissions flag | show it as a composer chip; per-workspace override |
+| YOLO by default | `src/shared/tui-agent-launch-defaults.ts` defaults every agent to its skip-permissions flag; `resolveWorktreeAgentLaunchArgs` applies the per-workspace override | none |
+| Workspace composer | `components/composer/WorkspaceComposer.tsx` under the panes: agent picker chip (`deriveNotesSendAgentTargets`) + YOLO chip (`agentPermissionModeByWorktree`), sends via `sendBracketedPasteToRunningAgent` | model / effort / branch / token chips |
 | Usage | `store/slices/rate-limits.ts`, `usage-provider-slices.ts` (Claude, Codex, OpenCode, Grok), `components/status-bar/InlineProviderUsage.tsx`, switcher menus, `feature-wall/agents-orchestration/UsagePage.tsx` | one view across CLIs with reset times |
 | PR state | `store/slices/hosted-review.ts` (provider-agnostic state and decision), `github-checks.ts` `checksStatus`, `components/github-pr-merge-state.ts` | a derived "ready to merge" |
 | Changes panel | `components/right-sidebar/source-control/` | bind to an arbitrary worktree, not only the active one |
@@ -168,15 +170,16 @@ Status as of 2026-09-14 is in brackets.
 
 1. **Shell**: mode switch in the title bar, `Ctrl+Shift+1/2/3` (`Ctrl+1` was taken by
    workspace-by-index), Code mode = today's layout. [done]
-2. **Bypass default + composer chips**: new sessions start in bypass (already true); chips
-   show it. [chips not started]
+2. **YOLO default + composer chips**: new sessions start in YOLO (already true); the
+   composer shows a YOLO chip and an agent picker. [done 2026-09-15; model/effort chips
+   not started]
 3. **Pane count + pickers + launch by number**: stepper, grid, empty panes as pickers.
    [stepper and pickers done; Launch dialog still shows shape presets]
 4. **Inbox**: needs-you feed from hook events; decision cards via native-chat; open in
    Code. [done for agent status; PR-ready and failed kinds not started]
 5. **Right panel**: PR strip, Changes/Review/Handoff tabs, checks, drawer. [Handoff section
    done; the rest is the existing right sidebar]
-6. **Web preview pane** bound to the focused workspace. [not started]
+6. **Web preview pane** bound to the focused workspace. [done, v0.4.0 / v0.4.1]
 7. **Usage view** across CLIs. [done]
 8. **Floor**: lanes from session history [done], runs from the orchestration store [needs
    renderer IPC, not started].

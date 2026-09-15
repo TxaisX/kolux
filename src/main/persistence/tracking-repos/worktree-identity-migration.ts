@@ -254,6 +254,10 @@ export function migrateWorktreeIdentity(
   if (showDotfiles) {
     changed = moveKey(showDotfiles) || changed
   }
+  const agentPermissionMode = state.ui?.agentPermissionModeByWorktree
+  if (agentPermissionMode) {
+    changed = moveKey(agentPermissionMode) || changed
+  }
 
   return changed
 }

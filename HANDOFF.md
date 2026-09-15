@@ -100,9 +100,25 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   - `Mod+Shift+<digit>` chords now match on every platform (`keybindings/matching-key.ts`):
     Shift+2 reports "@", so the digit binding falls back to the physical `Digit2` code. This
     also fixes the older `Mod+Shift+0` binding on macOS.
-  Not done yet from the design doc: composer chips with the bypass state, the web preview
-  pane bound to a workspace, Launch agents without shape presets, readable transcript as the
-  default pane view, Ctrl+K session palette, Floor from the orchestration run log.
+  Not done yet from the design doc: Launch agents without shape presets, readable
+  transcript as the default pane view, Ctrl+K session palette, Floor from the orchestration
+  run log.
+
+- **Workspace composer** (`components/composer/`, mounted under the panes in
+  `TerminalWorktreeSplitSurface`). One message box per workspace with two chips: an
+  **agent picker** listing the running agents in that workspace (targets come from
+  `deriveNotesSendAgentTargets`, so a freshly launched CLI appears once its title says it is
+  ready) and a **YOLO** chip that stores `agentPermissionModeByWorktree` and is applied by
+  `resolveWorktreeAgentLaunchArgs` on the next launch in that workspace. Sends go through
+  `sendBracketedPasteToRunningAgent`; Enter sends, Shift+Enter is a newline, Escape hands
+  focus back to the terminal, and the box is disabled until a target is eligible. Verified in
+  the dev app on Windows: Claude launched with `--dangerously-skip-permissions`, the chip
+  listed it once Claude's "✳" title arrived, a sent prompt reached it (title flipped to "◐"
+  then back to "✳"), and no keystrokes leaked to the terminal. Traps: Claude's one-time
+  "bypass permissions" acceptance prompt does not set a title, so the composer stays
+  disabled until it is answered in the pane; the YOLO chip cannot switch a running agent,
+  only the next launch; agent panes use the canvas renderer, so `.xterm-rows` is empty for
+  them under CDP and the runtime pane title is the only readable signal.
 
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this

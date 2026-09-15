@@ -43,6 +43,7 @@ export function getDefaultUIState(): PersistedUIState {
     hideWorkspacesFromOtherDevices: false,
     alwaysShowDefaultBranchWorkspace: true,
     showDotfilesByWorktree: {},
+    agentPermissionModeByWorktree: {},
     filterRepoIds: [],
     agentsVisibleHostIds: null,
     agentsFilterRepoIds: [],

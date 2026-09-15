@@ -367,6 +367,7 @@ describe('createSettingsSlice runtime switching', () => {
       markdownFrontmatterVisible: { '/env-1/repo/stale.md': false },
       editorCursorLine: { '/env-1/repo/stale.md': 4 },
       showDotfilesByWorktree: { 'repo-env-1::/env-1/repo': false },
+      agentPermissionModeByWorktree: { 'repo-env-1::/env-1/repo': 'manual' },
       gitIgnoredPathsByWorktree: { 'repo-env-1::/env-1/repo': ['dist/'] },
       prCache: { '/env-1/repo::main': { data: null, fetchedAt: Date.now() } },
       linearIssueCache: { 'LIN-1': { data: { id: 'LIN-1' } as never, fetchedAt: Date.now() } },
@@ -429,6 +430,9 @@ describe('createSettingsSlice runtime switching', () => {
     })
     expect(store.getState().editorCursorLine).toEqual({ '/env-1/repo/stale.md': 4 })
     expect(store.getState().showDotfilesByWorktree).toEqual({ 'repo-env-1::/env-1/repo': false })
+    expect(store.getState().agentPermissionModeByWorktree).toEqual({
+      'repo-env-1::/env-1/repo': 'manual'
+    })
     expect(store.getState().gitIgnoredPathsByWorktree).toEqual({
       'repo-env-1::/env-1/repo': ['dist/']
     })
