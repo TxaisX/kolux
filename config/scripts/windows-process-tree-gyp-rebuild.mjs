@@ -209,8 +209,12 @@ export function ensureWindowsProcessTreeCommandLinePatch(
 export function stageWindowsProcessTreeNodeAddonApiHeaders(
   packageDir = WINDOWS_PROCESS_TREE_PACKAGE_DIR
 ) {
+  // Why: realpath first. packageDir is pnpm's symlink into the store, and resolution from the
+  // link walks the logical parents, where the sibling node-addon-api does not exist.
   const nodeAddonApiDir = dirname(
-    createRequire(join(packageDir, 'package.json')).resolve('node-addon-api/package.json')
+    createRequire(join(realpathSync(packageDir), 'package.json')).resolve(
+      'node-addon-api/package.json'
+    )
   )
   const stagedHeaderDir = join(packageDir, 'deps', 'node-addon-api')
   mkdirSync(stagedHeaderDir, { recursive: true })
