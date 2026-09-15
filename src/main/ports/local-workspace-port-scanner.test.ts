@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
 import path from 'node:path'
 import { scanWorkspacePorts } from './local-workspace-port-scanner'
-import { attributePortToWorkspace, isContainerProcess } from './local-workspace-port-attribution'
+import {
+  attributePortToWorkspace,
+  enrichPort,
+  isContainerProcess,
+  normalizeWorkspacePortProbes
+} from './local-workspace-port-attribution'
 import {
   parseLsofListeningOutput,
   parseNetstatListeningOutput,
@@ -195,6 +200,52 @@ describe('attributePortToWorkspace', () => {
     const owner = attributePortToWorkspace({ cwd: '/Applications/ContainerRuntime.app' }, worktrees)
 
     expect(owner).toBeUndefined()
+  })
+})
+
+describe('enrichPort with an advertised URL but no process evidence', () => {
+  const advertised = {
+    origin: 'http://localhost:8767',
+    host: 'localhost',
+    hostKind: 'loopback' as const,
+    protocol: 'http' as const,
+    port: 8767,
+    ptyId: 'pty-1',
+    lastSeenAt: 1
+  }
+  const rawPort = { host: '0.0.0.0', port: 8767, pid: 4242, processName: 'python' }
+
+  it('promotes the listener to the workspace whose terminal printed the URL', () => {
+    const lookup = vi.fn((worktreeId: string, port: number) =>
+      worktreeId === worktrees[1].id && port === 8767 ? advertised : undefined
+    )
+    const enriched = enrichPort(rawPort, normalizeWorkspacePortProbes(worktrees), { lookup })
+
+    expect(enriched).toMatchObject({
+      kind: 'workspace',
+      advertisedUrl: 'http://localhost:8767',
+      owner: { worktreeId: worktrees[1].id, confidence: 'advertised' }
+    })
+    expect(lookup).toHaveBeenCalledWith(worktrees[1].id, 8767, 4242)
+  })
+
+  it('stays external when no workspace terminal printed the port', () => {
+    const enriched = enrichPort(rawPort, normalizeWorkspacePortProbes(worktrees), {
+      lookup: () => undefined
+    })
+
+    expect(enriched.kind).toBe('external')
+  })
+
+  it('prefers process evidence over the banner when both exist', () => {
+    const lookup = vi.fn(() => advertised)
+    const enriched = enrichPort(
+      { ...rawPort, cwd: '/repo' },
+      normalizeWorkspacePortProbes(worktrees),
+      { lookup }
+    )
+
+    expect(enriched).toMatchObject({ kind: 'workspace', owner: { worktreeId: worktrees[0].id, confidence: 'cwd' } })
   })
 })
 

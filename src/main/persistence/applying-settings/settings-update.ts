@@ -157,6 +157,10 @@ export function updateSettings(
   if ('autoRenameBranchFromWork' in updates || 'autoRenameBranchFromWorkDefaultedOn' in updates) {
     sanitizedUpdates.autoRenameBranchFromWorkDefaultedOn = true
   }
+  if ('terminalThemeDark' in updates) {
+    // Why: a theme the user chose must survive the one-shot Nightshift Dark default migration.
+    sanitizedUpdates.terminalThemeDarkDefaultedToNightshift = true
+  }
   if ('openInApplications' in updates) {
     sanitizedUpdates.openInApplications = normalizeOpenInApplications(updates.openInApplications)
   }

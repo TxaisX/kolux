@@ -17,6 +17,7 @@ import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
 import { useTidyLayoutCommand } from './useTidyLayoutCommand'
 import LayoutPresetsMenu from './LayoutPresetsMenu'
 import PaneCountStepper from './PaneCountStepper'
+import WorkspacePreviewButton from './WorkspacePreviewButton'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
 import { resolveGroupTabFromVisibleId } from './tab-group-visible-id'
 import { getTabPaneBodyDroppableId, type HoveredTabInsertion } from './useTabDragSplit'
@@ -281,6 +282,9 @@ export default function TabGroupPanel({
               {/* Why only isFocused: "choose how many panes" acts on the whole
                   worktree grid, so one focused pane's control is enough. */}
               {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
+              {isFocused ? (
+                <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
+              ) : null}
               {/* Why only isFocused: Tidy and the presets apply to the panes inside a
                   tab too, which exist with or without split groups. Closing a group
                   still needs one, so that item keeps the stricter gate below. */}
@@ -362,7 +366,7 @@ export default function TabGroupPanel({
         ref={setBodyDropRef}
         data-tab-group-body-id={groupId}
         data-worktree-id={worktreeId}
-        className="relative flex-1 min-h-0 overflow-hidden"
+        className="relative flex-1 min-h-0 overflow-hidden bg-workbench-surface"
         style={bodyAnchorStyle}
       >
         {/* Why: empty anchor so the agent-sessions tour reads as a terminal-area tip, not toolbar chrome. */}

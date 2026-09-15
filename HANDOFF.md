@@ -64,6 +64,16 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
+- **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
+  (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
+  step below the chrome. The default dark terminal theme is now `Nightshift Dark`
+  (`#0d0d0d`, `lib/terminal-themes/defaults.ts`); Ghostty's `#282c34` was the lightest
+  surface on screen. Profiles that still hold the old default on disk move once through
+  `terminalThemeDarkDefaultedToNightshift` (`shared/terminal-theme-default-migration.ts`,
+  applied in `prepare-loaded-profile-settings.ts`); a theme the user picked is never touched,
+  and any later change from Settings sets the guard. Also fixed in passing: `--editor-surface`
+  was never registered in the `@theme` block, so eleven `bg-editor-surface` call sites
+  (diff panes, artifact and activity previews) painted nothing; they now paint as written.
 - **Three-mode shell (2026-09-14).** The renderer now has Inbox · Floor · Code as top-level
   modes with a switch in the title bar (`app-shell/ModeSwitch.tsx`) and `Ctrl+Shift+1/2/3`.
   Why and what: `docs/redesign/three-mode-shell.md`; the clickable spec is
@@ -132,6 +142,26 @@ nor the pre-existing Ctrl+Shift+J fire from CDP key events, so this harness cann
 them), the pane stepper (it renders only with an active worktree, and the dev profile had
 none), the usage dialog (the roster item only exists once a provider is configured), and the
 Inbox answer path. Each has unit coverage; drive them by hand before a release.
+
+Darker work area and Preview button, verified in the running dev app over CDP on 2026-09-15
+with the dev profile switched to dark and restored: tab-group body `rgb(10,10,10)`
+(`--workbench-surface`), tab strip `rgb(23,23,23)` (`--card`), xterm `rgb(13,13,13)`
+(Nightshift Dark), and the profile's stored theme had moved to `Nightshift Dark` with the
+guard set. The Preview button (`tab-group/WorkspacePreviewButton.tsx`) renders disabled
+with no errors. Its enabled state could not be reached on this Windows machine, and the
+cause is upstream: the Windows port scan never learns a listener's working directory
+(`local-workspace-platform-port-scanner.ts` reads cwd from `/proc` on Linux and `lsof` on
+macOS only), so no port is ever attributed to a workspace here, even one started from the
+workspace's own terminal that printed its URL. The sidebar ports panel is empty for the
+same reason. Likely fix: let `local-workspace-port-scanner.ts` promote a listener to
+workspace-kind when `advertisedUrlWatcher.lookup` holds a validated entry for that port,
+since the watcher already knows which PTY, and therefore which worktree, printed it.
+
+Repository trap: `.gitignore` ignores `docs/**` by policy and allow-lists durable docs one
+by one. A new file under `docs/` is silently left out of every commit (the three-mode-shell
+spec and prototype were referenced by two commits and this file before anyone noticed they
+were untracked). When you add a durable doc, add its folder or path to the allow-list in the
+same commit and check `git ls-files docs/<path>` before you cite it.
 
 Runtime traps found while doing this:
 

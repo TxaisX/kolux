@@ -134,6 +134,9 @@ export type GlobalSettings = {
   terminalCursorStyleDefaultedToBlock?: boolean
   terminalCursorBlink: boolean
   terminalThemeDark: string
+  /** One-shot migration guard: profiles still on the old Ghostty default move to
+   * `Nightshift Dark` once; a theme the user picked afterwards is never touched. */
+  terminalThemeDarkDefaultedToNightshift?: boolean
   terminalCustomThemes?: TerminalCustomTheme[]
   terminalDividerColorDark: string
   terminalUseSeparateLightTheme: boolean

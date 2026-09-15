@@ -5,7 +5,8 @@ export type WorkspacePortProbe = {
   path: string
 }
 
-export type WorkspacePortAttributionConfidence = 'cwd' | 'command' | 'none'
+// 'advertised': no cwd or command-line evidence, but a terminal bound to the workspace printed this port's URL.
+export type WorkspacePortAttributionConfidence = 'cwd' | 'command' | 'advertised' | 'none'
 
 export type WorkspacePortOwner = {
   worktreeId: string

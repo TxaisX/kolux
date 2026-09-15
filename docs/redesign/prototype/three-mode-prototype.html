@@ -1,0 +1,690 @@
+<title>Nightshift Three-Mode Concept</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+  :root { --page: #e9ebef; --page-ink: #16181d; --page-muted: #6a7280; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d0f12; --page-ink: #e8eaee; --page-muted: #8a919e; } }
+  :root[data-theme="dark"] { --page: #0d0f12; --page-ink: #e8eaee; --page-muted: #8a919e; }
+  :root {
+    --bg: #0a0a0a; --sidebar: #171717; --card: #171717; --sec: #262626; --acc: #404040; --editor: #1e1e1e;
+    --fg: #fafafa; --muted: #a1a1a1; --prim: #e5e5e5; --prim-on: #171717; --ring: #737373; --border: rgba(255,255,255,.07); --border-2: rgba(255,255,255,.12);
+    --ny: #f97316; --ny-text: #fdba74; --ok: #86efac; --ai: #a78bfa; --add: #81b88b; --mod: #e2c08d; --del: #c74e39; --ign: #6e6e6e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--page-ink); font: 400 14px/1.5 "Geist", "Segoe UI", system-ui, sans-serif; padding-block: 24px 48px; padding-inline: 16px; }
+  .intro { max-width: 1440px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: baseline; color: var(--page-muted); font-size: 13px; }
+  .intro b { color: var(--page-ink); font-weight: 600; font-size: 15px; }
+  .intro kbd { font: 500 11px "Geist Mono", ui-monospace, monospace; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; opacity: .8; }
+  .stagewrap { max-width: 1440px; margin: 0 auto; }
+  .stage { width: 1440px; height: 900px; transform-origin: top left; }
+  .win { position: relative; width: 1440px; height: 900px; background: var(--bg); color: var(--fg); border: 1px solid var(--border-2); border-radius: 8px; overflow: hidden; display: grid; grid-template-rows: 36px 1fr 24px; font-size: 13px; box-shadow: 0 24px 60px -30px rgba(0,0,0,.6); }
+  .mono { font-family: "Geist Mono", "Cascadia Code", ui-monospace, monospace; }
+  .muted { color: var(--muted); }
+  .k { font: 400 10px "Geist Mono", ui-monospace, monospace; color: var(--muted); opacity: .8; }
+  button { font-family: inherit; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+
+  /* title bar */
+  .tb { display: grid; grid-template-columns: 300px 1fr 300px; align-items: center; background: var(--sidebar); border-bottom: 1px solid var(--border); }
+  .tb .l { display: flex; align-items: center; gap: 10px; padding-left: 12px; position: relative; }
+  .glyph { width: 16px; height: 16px; border-radius: 4px; background: var(--prim); display: grid; place-items: center; }
+  .glyph i { width: 8px; height: 8px; border-radius: 50%; background: var(--prim-on); display: block; }
+  .brand { font-weight: 600; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; background: var(--sec); font-size: 11px; color: var(--muted); white-space: nowrap; border: 0; }
+  .chip.fg { color: var(--fg); }
+  .chip.btnlike { cursor: pointer; }
+  .chip .caret { font-size: 9px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ign); display: inline-block; flex: none; }
+  .dot.ok { background: var(--ok); } .dot.ny { background: var(--ny); } .dot.ai { background: var(--ai); } .dot.fg { background: var(--fg); } .dot.gem { background: var(--ok); }
+  .tb .c { display: flex; justify-content: center; }
+  .seg { display: flex; gap: 2px; padding: 2px; background: var(--bg); border-radius: 6px; }
+  .seg button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 4px; font-size: 12px; color: var(--muted); font-family: inherit; }
+  .seg button[aria-pressed="true"] { background: var(--acc); color: var(--fg); font-weight: 500; }
+  .seg button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .tb .r { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .search { display: flex; align-items: center; gap: 8px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .avatar { width: 18px; height: 18px; border-radius: 50%; background: var(--ai); }
+  .caps { display: flex; margin-left: 8px; }
+  .caps span { width: 46px; height: 36px; display: grid; place-items: center; font-size: 12px; color: var(--fg); }
+  .caps span:last-child:hover { background: #c42b1c; }
+  .menu { position: absolute; top: 30px; left: 118px; z-index: 20; background: var(--card); border: 1px solid var(--border-2); border-radius: 6px; padding: 4px; min-width: 190px; box-shadow: 0 12px 30px -10px rgba(0,0,0,.8); display: grid; gap: 1px; }
+  .menu[hidden] { display: none; }
+  .menu button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; font-size: 12px; }
+  .menu button:hover { background: var(--acc); }
+  .menu button[aria-checked="true"] { background: var(--sec); }
+  .menu .cnt { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+  /* status bar */
+  .sb { display: flex; align-items: center; gap: 16px; padding: 0 12px; background: var(--sidebar); border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  .sb .tally { display: flex; gap: 12px; }
+  .sb .tally span { display: inline-flex; align-items: center; gap: 5px; }
+  .sb .grow { flex: 1; }
+  .meter { display: inline-flex; align-items: center; gap: 6px; }
+  .meter i { width: 56px; height: 4px; border-radius: 2px; background: var(--sec); position: relative; display: block; }
+  .meter i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); background: var(--muted); border-radius: 2px; }
+  .ny-text { color: var(--ny-text); }
+  .ok-text { color: var(--ok); }
+
+  /* body / modes */
+  .body { position: relative; min-height: 0; }
+  .mode { position: absolute; inset: 0; display: none; }
+  .mode.on { display: grid; }
+  .col { min-height: 0; overflow: hidden; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .col:last-child { border-right: 0; }
+  .col.sidebar { background: var(--sidebar); }
+  .sect { padding: 10px 16px 4px; font: 500 10px "Geist", sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 6px; }
+  .sect .mono { font-weight: 400; }
+  .sect.warm { color: var(--ny-text); }
+  .empty { padding: 14px 16px; font-size: 12px; color: var(--muted); }
+
+  /* Inbox */
+  #inbox { grid-template-columns: 320px 1fr 360px; }
+  .railhead { display: flex; align-items: center; padding: 12px 12px 8px 16px; font-weight: 600; font-size: 14px; }
+  .railhead .grow { flex: 1; }
+  .railhead span { font-weight: 400; font-size: 12px; color: var(--muted); }
+  .list { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; flex: 1; }
+  .card { display: grid; grid-template-columns: 3px 1fr; border-radius: 6px; cursor: pointer; transition: background .12s; }
+  .card:hover { background: rgba(255,255,255,.03); }
+  .card[aria-selected="true"] { background: var(--acc); }
+  .card .bar { border-radius: 2px; background: var(--ign); margin: 6px 0; }
+  .card .bar.ny { background: var(--ny); } .card .bar.ok { background: var(--ok); }
+  .card .in { padding: 8px 10px 8px 9px; display: grid; gap: 3px; min-width: 0; }
+  .card .r1 { display: flex; gap: 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .card .r1 b { font-weight: 500; flex: none; }
+  .card .r1 b.warm { color: var(--ny-text); }
+  .card .r1 span { overflow: hidden; text-overflow: ellipsis; }
+  .card .r2 { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .card .r3 { display: flex; gap: 8px; font-size: 11px; color: var(--muted); }
+  .card .r3 .grow { flex: 1; }
+  .add { color: var(--add); } .del { color: var(--del); } .mod { color: var(--mod); }
+  .main { display: flex; flex-direction: column; }
+  .shead { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+  .shead .t { display: flex; gap: 12px; align-items: flex-start; }
+  .shead h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 20px; flex: 1; text-wrap: balance; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 5px; background: var(--sec); font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; border: 0; color: var(--fg); }
+  .btn.ghost { background: transparent; border: 1px solid var(--border-2); }
+  .btn.primary { background: var(--prim); color: var(--prim-on); }
+  .btn.primary .k { color: var(--prim-on); }
+  .btn:hover { filter: brightness(1.1); }
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .tr { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; overflow: auto; flex: 1; }
+  .you { background: var(--card); border-radius: 8px; padding: 10px 14px; line-height: 19px; max-width: 640px; }
+  .fold { font-size: 12px; color: var(--muted); }
+  .trow { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .trow b { font-weight: 500; }
+  .think { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .think i { width: 8px; height: 8px; border-radius: 50%; background: var(--ai); animation: blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .diff { background: var(--editor); border-radius: 6px; padding: 8px 12px; font: 11.5px/17px "Geist Mono", ui-monospace, monospace; color: var(--muted); max-width: 640px; overflow-x: auto; }
+  .diff div { padding: 1px 6px; border-radius: 2px; white-space: pre; }
+  .diff .a { background: rgba(129,184,139,.16); color: var(--fg); } .diff .d { background: rgba(199,78,57,.16); color: var(--fg); }
+  .sum { line-height: 19px; max-width: 640px; }
+  .decision { margin: 0 20px 12px; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; background: rgba(249,115,22,.08); border: 1px solid rgba(249,115,22,.5); }
+  .decision.quiet { background: var(--card); border-color: var(--border-2); }
+  .decision .tx { flex: 1; min-width: 0; } .decision .tx b { display: block; color: var(--ny-text); font-weight: 600; } .decision.quiet .tx b { color: var(--fg); } .decision .tx span { font-size: 11px; color: var(--muted); }
+  .decision input { flex: 1; background: var(--bg); border: 1px solid var(--border-2); border-radius: 5px; color: var(--fg); padding: 6px 10px; font: inherit; font-size: 12px; }
+  .composer { margin: 0 20px 16px; background: var(--card); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 12px 14px 10px; display: grid; gap: 10px; }
+  .composer textarea { all: unset; display: block; width: 100%; min-height: 20px; color: var(--fg); font: inherit; resize: none; }
+  .composer textarea::placeholder { color: var(--muted); }
+  .chips { display: flex; align-items: center; gap: 6px; }
+  .chips .grow { flex: 1; }
+  .send { width: 28px; height: 28px; border-radius: 50%; background: var(--prim); color: var(--prim-on); display: grid; place-items: center; font-weight: 600; border: 0; cursor: pointer; }
+  .prstrip { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .prstrip .grow { flex: 1; }
+  .prstrip.ready { color: var(--fg); }
+  .prstrip.ready .state { color: var(--ok); font-weight: 500; }
+  .prstrip.merged .state { color: var(--muted); }
+  .tabs { display: flex; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--border); }
+  .tabs span { display: flex; align-items: center; gap: 6px; padding: 6px 10px 8px; font-size: 12px; color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer; }
+  .tabs span.on { color: var(--fg); font-weight: 500; border-color: var(--fg); }
+  .tabs i { font: 400 10px "Geist Mono", monospace; background: var(--sec); border-radius: 8px; padding: 0 5px; font-style: normal; }
+  .tabs .on i { background: var(--acc); }
+  .against { display: flex; gap: 8px; padding: 10px 16px 6px; font-size: 11px; color: var(--muted); } .against .grow { flex: 1; }
+  .files { padding: 0 8px 8px; display: grid; gap: 1px; }
+  .frow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+  .frow:hover { background: rgba(255,255,255,.03); }
+  .frow[aria-selected="true"] { background: var(--acc); }
+  .frow .st { font: 500 10px "Geist Mono", monospace; width: 10px; }
+  .frow .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .frow .nm span { color: var(--muted); }
+  .checks { padding: 12px 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); display: grid; gap: 6px; }
+  .checks .sect { padding: 0 0 2px; }
+  .crow { display: flex; align-items: center; gap: 8px; font-size: 12px; } .crow .grow { flex: 1; } .crow .v { font-size: 11px; color: var(--muted); }
+  .drawer { margin-top: auto; display: flex; gap: 12px; align-items: center; padding: 8px 16px; border-top: 1px solid var(--border); font-size: 12px; } .drawer .grow { flex: 1; }
+  .side { display: flex; flex-direction: column; }
+  .tree { padding: 8px 8px; font-size: 12px; display: grid; gap: 1px; }
+  .tree div { padding: 4px 8px; border-radius: 4px; display: flex; gap: 6px; color: var(--muted); } .tree div.f { color: var(--fg); } .tree div.i2 { padding-left: 24px; }
+
+  /* Floor */
+  #floor { grid-template-columns: 1fr 360px; }
+  .floorhead { display: flex; align-items: center; gap: 12px; padding: 12px 20px 10px; border-bottom: 1px solid var(--border); }
+  .floorhead h2 { margin: 0; font-size: 14px; font-weight: 600; }
+  .floorhead .grow { flex: 1; }
+  .range { display: flex; gap: 2px; padding: 2px; background: var(--sidebar); border-radius: 6px; }
+  .range button { all: unset; cursor: pointer; padding: 2px 8px; border-radius: 4px; font-size: 11px; color: var(--muted); } .range button[aria-pressed="true"] { background: var(--acc); color: var(--fg); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 14px; height: 6px; border-radius: 2px; display: inline-block; background: var(--acc); }
+  .legend i.ny { background: var(--ny); } .legend i.ok { background: var(--ok); } .legend i.unv { background: repeating-linear-gradient(90deg, var(--ign) 0 3px, transparent 3px 6px); }
+  .lanes { overflow: auto; flex: 1; }
+  .axis { display: grid; grid-template-columns: 300px 1fr; position: sticky; top: 0; background: var(--bg); z-index: 1; border-bottom: 1px solid var(--border); }
+  .axis .ticks { display: grid; grid-template-columns: repeat(6, 1fr); font: 10px "Geist Mono", monospace; color: var(--muted); padding: 6px 0; }
+  .axis .ticks span { border-left: 1px solid var(--border); padding-left: 6px; }
+  .host { display: grid; grid-template-columns: 300px 1fr; align-items: center; padding: 10px 0 4px; }
+  .host .hl { padding-left: 20px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+  .host .hl .chip { margin-left: 4px; }
+  .lane { display: grid; grid-template-columns: 300px 1fr; align-items: center; min-height: 40px; border-top: 1px solid var(--border); cursor: pointer; }
+  .lane:hover, .lane[aria-selected="true"] { background: rgba(255,255,255,.03); }
+  .lane[aria-selected="true"] .ll { box-shadow: inset 3px 0 0 var(--fg); }
+  .lane .ll { padding: 6px 12px 6px 20px; display: grid; gap: 2px; min-width: 0; height: 100%; }
+  .lane .ll.sub { padding-left: 40px; }
+  .lane .ll .n { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lane .ll .n b { font-weight: 500; }
+  .lane .ll .m { font-size: 11px; color: var(--muted); display: flex; gap: 8px; }
+  .track { position: relative; height: 40px; background-image: linear-gradient(90deg, var(--border) 1px, transparent 1px); background-size: calc(100% / 6) 100%; }
+  .track .bar { position: absolute; top: 12px; height: 16px; border-radius: 3px; background: var(--acc); left: var(--l); width: var(--w); display: flex; align-items: center; padding: 0 6px; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; margin: 0; transition: width .4s, left .4s; }
+  .track .bar.ny { background: var(--ny); color: #1a0d03; font-weight: 500; }
+  .track .bar.ok { background: var(--ok); color: #05210f; }
+  .track .bar.unv { background: repeating-linear-gradient(90deg, var(--ign) 0 4px, transparent 4px 8px); }
+  .track .bar.live::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 6px; background: var(--fg); opacity: .6; border-radius: 0 3px 3px 0; }
+  .now { position: absolute; top: 0; bottom: 0; left: 88%; border-left: 1px dashed var(--muted); }
+  .rlink { position: absolute; left: calc(var(--l) - 2px); top: -12px; width: 8px; height: 26px; border-left: 1px solid var(--muted); border-bottom: 1px solid var(--muted); border-radius: 0 0 0 4px; opacity: .6; }
+  .runpanel { display: flex; flex-direction: column; }
+  .rp { padding: 14px 16px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+  .rp h3 { margin: 0; font-size: 13px; font-weight: 600; }
+  .rp .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: 12px; margin: 0; }
+  .rp .kv dt { color: var(--muted); font-size: 11px; padding-top: 1px; } .rp .kv dd { margin: 0; }
+  .lineup { display: grid; gap: 4px; }
+  .lineup div { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 8px; border-radius: 5px; background: var(--card); }
+  .lineup div .role { color: var(--muted); font-size: 11px; margin-left: auto; }
+  .mail { display: grid; gap: 4px; }
+  .mail div { display: flex; gap: 8px; font-size: 12px; padding: 6px 8px; border-radius: 5px; background: var(--card); }
+  .mail div.unread { box-shadow: inset 3px 0 0 var(--ny); }
+  .mail .who { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .queue { display: flex; gap: 8px; }
+  .stat { flex: 1; background: var(--card); border-radius: 6px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 18px; font-weight: 600; font-family: "Geist Mono", monospace; }
+  .stat span { font-size: 11px; color: var(--muted); }
+  .stat.warm b { color: var(--ny-text); }
+  .rp .actions { display: flex; gap: 8px; }
+
+  /* Code */
+  #code { grid-template-columns: 280px 1fr 340px; }
+  .wtrow { display: grid; gap: 3px; padding: 8px 10px 8px 12px; border-radius: 6px; cursor: pointer; }
+  .wtrow:hover { background: rgba(255,255,255,.03); }
+  .wtrow[aria-selected="true"] { background: var(--acc); }
+  .wtrow .n { display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; } .wtrow .n b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wtrow .m { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; } .wtrow .m .grow { flex: 1; }
+  .wtrow .agents { display: flex; gap: 3px; }
+  .layoutbar { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 11px; color: var(--muted); background: var(--sidebar); }
+  .layoutbar .grow { flex: 1; }
+  .layoutbar > * { white-space: nowrap; }
+  .layoutbar .seg { background: var(--bg); }
+  .layoutbar .seg button { padding: 2px 8px; font-size: 11px; }
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); flex: 1; min-height: 0; }
+  .stepper { display: inline-flex; align-items: center; background: var(--bg); border-radius: 6px; padding: 2px; }
+  .stepper button { all: unset; cursor: pointer; width: 22px; height: 18px; text-align: center; border-radius: 4px; color: var(--muted); font-size: 13px; }
+  .stepper button:hover { background: var(--acc); color: var(--fg); }
+  .stepper b { min-width: 22px; text-align: center; font: 500 12px "Geist Mono", monospace; color: var(--fg); }
+  .launchwrap { position: relative; }
+  .launch { position: absolute; top: 28px; right: 0; z-index: 20; width: 360px; background: var(--card); border: 1px solid var(--border-2); border-radius: 8px; padding: 12px; box-shadow: 0 16px 40px -14px rgba(0,0,0,.9); display: grid; gap: 10px; color: var(--fg); }
+  .launch[hidden] { display: none; }
+  .launch h4 { margin: 0; font-size: 13px; font-weight: 600; }
+  .launch label { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+  .launch label { min-width: 0; }
+  .launch textarea, .launch select { width: 100%; box-sizing: border-box; background: var(--bg); border: 1px solid var(--border-2); border-radius: 5px; color: var(--fg); padding: 6px 8px; font: inherit; font-size: 12px; resize: none; }
+  .launch .row { display: flex; align-items: center; gap: 8px; }
+  .launch .row .grow { flex: 1; }
+  .launch .lineup { max-height: 120px; overflow: auto; }
+  .pane.picker .pbody { justify-content: center; align-items: center; text-align: center; gap: 10px; }
+  .pane.picker .pick { display: grid; gap: 4px; width: 100%; max-width: 240px; }
+  .pane.picker .pick button { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; background: var(--card); font-size: 12px; }
+  .pane.picker .pick button:hover { background: var(--acc); }
+  .pane.picker .pick button .k { margin-left: auto; }
+  .pane.picker .ph b { color: var(--muted); font-weight: 400; }
+  .pane { background: var(--bg); display: flex; flex-direction: column; min-width: 0; min-height: 0; cursor: default; }
+  .ph { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--sidebar); border-bottom: 1px solid var(--border); font-size: 12px; }
+  .ph b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ph .grow { flex: 1; } .ph .act { color: var(--muted); font-size: 11px; display: flex; gap: 10px; }
+  .pane.compact .ph .toggle, .pane.compact .ph .act button:not(:last-child) { display: none; }
+  .pane .pbody, .pane .term { overflow-x: hidden; }
+  .side .files, .frow { min-width: 0; }
+  .ph .act button { all: unset; cursor: pointer; }
+  .toggle { display: inline-flex; gap: 1px; padding: 1px; background: var(--bg); border-radius: 4px; font-size: 10px; }
+  .toggle button { all: unset; cursor: pointer; padding: 1px 6px; border-radius: 3px; color: var(--muted); } .toggle button[aria-pressed="true"] { background: var(--acc); color: var(--fg); }
+  .pbody { flex: 1; overflow: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .pane.compact .pbody { padding: 10px 12px; gap: 8px; font-size: 12px; }
+  .pane.compact .you { padding: 8px 10px; font-size: 12px; line-height: 17px; }
+  .pane.compact .sum { font-size: 12px; line-height: 17px; }
+  .pane.compact .diff { display: none; }
+  .pane.compact .decision { padding: 8px 10px; gap: 8px; margin: 0; }
+  .pane.compact .decision .tx b { font-size: 12px; } .pane.compact .decision .tx span { display: none; }
+  .pane.compact .btn { padding: 4px 9px; font-size: 11px; }
+  .pane.focus .ph { box-shadow: inset 0 -2px 0 var(--fg); }
+  .term { font: 12px/18px "Geist Mono", ui-monospace, monospace; color: var(--muted); white-space: pre-wrap; padding: 12px 14px; flex: 1; overflow: auto; }
+  .pane.compact .term { font-size: 11px; line-height: 16px; padding: 10px 12px; }
+  .term .p { color: var(--fg); } .term .w { color: var(--mod); } .term .g { color: var(--ok); } .term .c { color: var(--ai); }
+  .code-main { display: flex; flex-direction: column; }
+  .code-main .composer { margin: 12px 16px 14px; }
+  .state-line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); margin-top: auto; padding-top: 6px; border-top: 1px solid var(--border); }
+  .state-line .grow { flex: 1; }
+  .state-line .warm { color: var(--ny-text); font-weight: 500; }
+  .state-line .good { color: var(--ok); }
+  .pane .decision { margin: 0; }
+
+  /* palette + toast */
+  .palette { position: absolute; inset: 0; z-index: 30; background: rgba(0,0,0,.45); display: none; align-items: flex-start; justify-content: center; padding-top: 120px; }
+  .palette.on { display: flex; }
+  .palette .box { width: 560px; background: var(--card); border: 1px solid var(--border-2); border-radius: 10px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.9); overflow: hidden; }
+  .palette input { all: unset; display: block; width: 100%; padding: 12px 14px; font-size: 14px; color: var(--fg); border-bottom: 1px solid var(--border); box-sizing: border-box; }
+  .palette input::placeholder { color: var(--muted); }
+  .palette ul { list-style: none; margin: 0; padding: 6px; max-height: 320px; overflow: auto; }
+  .palette li { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+  .palette li[aria-selected="true"], .palette li:hover { background: var(--acc); }
+  .palette li .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .palette li .where { color: var(--muted); font-size: 11px; }
+  .toasts { position: absolute; right: 16px; bottom: 36px; display: grid; gap: 6px; z-index: 25; }
+  .toast { background: var(--card); border: 1px solid var(--border-2); border-left: 3px solid var(--fg); border-radius: 6px; padding: 8px 12px; font-size: 12px; box-shadow: 0 12px 30px -12px rgba(0,0,0,.8); animation: rise .18s ease-out; max-width: 360px; }
+  .toast.ny { border-left-color: var(--ny); } .toast.ok { border-left-color: var(--ok); }
+  .toast .k { display: block; margin-top: 2px; }
+  @keyframes rise { from { transform: translateY(6px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .toast, .think i, .track .bar { animation: none; transition: none; } }
+  @media (prefers-reduced-motion: no-preference) { .track .bar.live::after { animation: pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .15; } } }
+</style>
+
+<div class="intro">
+  <b>Nightshift · three-mode prototype</b>
+  <span>Windows 11 · 1440×900 · example data, everything is clickable</span>
+  <span><kbd>Ctrl+1/2/3</kbd> modes · <kbd>Ctrl+K</kbd> search · <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>Ctrl+Enter</kbd> act · <kbd>Tab</kbd> cycle panes · <kbd>+</kbd>/<kbd>−</kbd> pane count · <kbd>N</kbd> launch agents</span>
+</div>
+
+<div class="stagewrap"><div class="stage" id="stage">
+<div class="win" id="win">
+  <div class="tb">
+    <div class="l"><span class="glyph"><i></i></span><span class="brand">Nightshift</span><button class="chip btnlike" id="hostchip"></button><div class="menu" id="hostmenu" hidden></div></div>
+    <div class="c"><div class="seg" id="modeseg" role="tablist" aria-label="Mode">
+      <button role="tab" data-mode="inbox">Inbox <span class="k">Ctrl+1</span></button>
+      <button role="tab" data-mode="floor">Floor <span class="k">Ctrl+2</span></button>
+      <button role="tab" data-mode="code">Code <span class="k">Ctrl+3</span></button>
+    </div></div>
+    <div class="r"><span class="search" id="searchbtn">Search <span class="k">Ctrl+K</span></span><span class="avatar"></span><span class="caps"><span>—</span><span>☐</span><span>✕</span></span></div>
+  </div>
+
+  <div class="body">
+    <section class="mode" id="inbox" aria-label="Inbox">
+      <div class="col sidebar"><div class="railhead">Inbox <span class="grow"></span><span id="inboxcount"></span></div><div class="list" id="inboxlist"></div></div>
+      <div class="col main" id="inboxmain"></div>
+      <div class="col sidebar side" id="inboxside"></div>
+    </section>
+    <section class="mode" id="floor" aria-label="Floor">
+      <div class="col">
+        <div class="floorhead"><h2>Floor</h2><span class="muted" style="font-size:12px" id="floorsub"></span><span class="grow"></span>
+          <div class="legend"><span><i></i>running</span><span><i class="ny"></i>needs you</span><span><i class="ok"></i>done</span><span><i class="unv"></i>unverifiable</span></div>
+          <div class="range" id="range"><button data-r="15">15m</button><button data-r="60" aria-pressed="true">60m</button><button data-r="480">Today</button></div></div>
+        <div class="lanes" id="lanes"></div>
+      </div>
+      <div class="col sidebar runpanel" id="runpanel"></div>
+    </section>
+    <section class="mode" id="code" aria-label="Code">
+      <div class="col sidebar"><div class="railhead">Workspaces <span class="grow"></span><span>+</span></div><div class="list" id="wtlist"></div></div>
+      <div class="col code-main">
+        <div class="layoutbar"><span>Panes</span><div class="stepper" aria-label="Pane count"><button data-step="-1" title="Fewer panes">−</button><b id="panecount">2</b><button data-step="1" title="More panes">+</button></div><span class="k">+ / − keys · Ctrl+\ tidy · empty panes ask which agent to start</span><span class="grow"></span><div class="launchwrap"><button class="btn" id="launchbtn">Launch agents… <span class="k">N</span></button>
+          <div class="launch" id="launch" hidden><h4>Launch agents</h4>
+            <div class="row"><span class="muted" style="font-size:11px">How many agents</span><div class="stepper"><button data-lstep="-1">−</button><b id="lcount">3</b><button data-lstep="1">+</button></div><span class="k">one worktree each</span></div>
+            <label>Repository<select id="lrepo"><option>bridgemind-api</option><option>nightshift</option><option>bridgemind-website</option></select></label>
+            <label>Prompt<textarea id="lprompt" rows="2" placeholder="What should they work on?">Add rate limiting to the public API</textarea></label>
+            <div class="lineup" id="llineup"></div>
+            <div class="row"><span class="k" id="lnote"></span><span class="grow"></span><button class="btn ghost" id="lcancel">Cancel</button><button class="btn primary" id="lgo">Launch <span class="k">Ctrl+Enter</span></button></div>
+          </div></div></div>
+        <div class="panes" id="panes"></div>
+        <div class="composer"><textarea id="codeinput" rows="1" placeholder="Message the focused pane…  @ file · / command · Tab to switch pane"></textarea><div class="chips" id="codechips"></div></div>
+      </div>
+      <div class="col sidebar side" id="codeside"></div>
+    </section>
+    <div class="palette" id="palette"><div class="box"><input id="palinput" placeholder="Jump to a session, or type a mode name…"><ul id="pallist"></ul></div></div>
+    <div class="toasts" id="toasts"></div>
+  </div>
+
+  <div class="sb"><div class="tally" id="tally"></div><span class="grow"></span>
+    <span class="meter"><span class="mono">claude</span><i style="--p:78%"></i><span class="mono">78%</span></span>
+    <span class="meter"><span class="mono">codex</span><i style="--p:31%"></i><span class="mono">31%</span></span>
+    <span>v0.2.0 · up to date</span></div>
+</div>
+</div></div>
+
+<script>
+(function () {
+  // ---------- data ----------
+  var HOSTS = { pc: { label: 'This PC', ok: true }, wsl: { label: 'wsl: Ubuntu', ok: true }, ssh: { label: 'ssh: build-box', ok: false } };
+  var AGENTS = { claude: { name: 'Claude Code', glyph: '✳', dot: 'ai', model: 'Sonnet 5' }, codex: { name: 'Codex', glyph: '⌘', dot: 'fg', model: 'gpt-5.6-terra' }, gemini: { name: 'Gemini', glyph: '◆', dot: 'gem', model: 'Gemini 3.5' } };
+  var S = [
+    { id: 'fix-guard', repo: 'bridgemind-api', branch: 'fix-guard', host: 'pc', agent: 'claude', shape: 'Swarm', role: 'dispatcher', age: 2, started: 48,
+      title: 'Tighten the subscription guard so a cancelled tier cannot reach a PRO route', short: 'Tighten cancelled-tier guard',
+      state: 'needs', need: 'approve', status: 'approve edit', diff: [14, 6],
+      files: [{ dir: 'src/common/guards/', name: 'subscription.guard.ts', st: 'M', add: 14, del: 6 }, { dir: 'test/', name: 'subscription.guard.spec.ts', st: 'A', add: 41 }],
+      checks: [['Tests', '18 / 18', true], ['Typecheck', 'clean', true], ['Lint', 'not run', false]], pr: null,
+      tr: [{ t: 'you', x: 'tighten the subscription guard so a cancelled tier cannot reach a PRO route' }, { t: 'fold', x: 'Thought for 12s' }, { t: 'fold', x: '5 tool calls · Read ×3 · Grep ×2' },
+           { t: 'row', v: 'Edit', g: 'src/common/guards/subscription.guard.ts', add: 14, del: 6 },
+           { t: 'diff', l: [['', '   const tier = subscription?.tier ?? "free";'], ['d', '-  if (tier === "cancelled") return next();'], ['a', '+  if (tier === "cancelled") {'], ['a', '+    throw new ForbiddenException("subscription cancelled");'], ['a', '+  }'], ['', '   if (route.requiresPro && tier !== "pro") {']] },
+           { t: 'row', v: 'Run', g: 'npm run test -- subscription', ok: '18 passed · 0 failed' }, { t: 'sum', x: 'A cancelled subscription now fails closed at the guard instead of at the controller. Added the regression test.' }],
+      hist: [{ l: 12, w: 46, x: 'plan · dispatch · collect' }], tasks: { active: 3, queued: 7 },
+      lineup: [['claude', 'dispatcher'], ['claude', 'guard worker'], ['codex', 'e2e worker'], [null, 'reviewer']],
+      mail: [{ who: 'guard → dispatcher', x: 'edit ready, holding for approval', unread: true }, { who: 'e2e → dispatcher', x: 'need the guard\'s error text', unread: true }, { who: 'dispatcher → all', x: 'use ForbiddenException, not 401' }] },
+    { id: 'e2e-cancel', repo: 'bridgemind-api', branch: 'e2e-cancel', host: 'pc', agent: 'codex', parent: 'fix-guard', role: 'e2e worker', age: 0, started: 34,
+      title: 'Write the e2e for the cancelled-tier path', short: 'Write e2e for cancelled path', state: 'running', status: 'editing test/subscription.e2e-spec.ts', diff: [41, 0],
+      files: [{ dir: 'test/', name: 'subscription.e2e-spec.ts', st: 'M', add: 41 }], checks: [['E2E', '3 / 3', true], ['Typecheck', 'clean', true], ['Lint', 'not run', false]], pr: null,
+      tr: [{ t: 'you', x: 'write the e2e for the cancelled-tier path' }, { t: 'row', v: 'Explored', g: 'test/auth.e2e-spec.ts' }, { t: 'row', v: 'Edit', g: 'test/subscription.e2e-spec.ts', add: 41 }, { t: 'row', v: 'Run', g: 'npm run test:e2e -- subscription', ok: '3 passed' }, { t: 'sum', x: 'Added the cancelled-tier regression. Runs green. Waiting on the guard\'s final error text before I lock the assertion.' }],
+      raw: true, hist: [{ l: 34, w: 40, x: 'explore · write · run' }] },
+    { id: 'sidebar-badges', repo: 'nightshift', branch: 'sidebar-badges', host: 'pc', agent: 'claude', shape: 'Solo', age: 18, started: 58,
+      title: 'Show how many sessions are live on each workspace row', short: 'Sidebar session badges', state: 'needs', need: 'merge', status: 'PR ready · #412', diff: [248, 31],
+      files: [{ dir: 'src/renderer/src/components/sidebar/', name: 'SidebarWorkspaceRow.tsx', st: 'M', add: 61, del: 12 }, { dir: '…/sidebar/', name: 'SidebarSessionBadge.tsx', st: 'A', add: 48 }, { dir: 'src/renderer/src/stores/', name: 'agent-status-store.ts', st: 'M', add: 39, del: 9 }, { dir: '…/sidebar/', name: 'SidebarSessionBadge.test.tsx', st: 'A', add: 72 }, { dir: 'docs/', name: 'HANDOFF.md', st: 'M', add: 11, del: 2 }],
+      checks: [['Tests', '21 / 21', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 412, state: 'ready' },
+      tr: [{ t: 'you', x: 'show how many sessions are live on each workspace row, hidden at zero' }, { t: 'fold', x: '14 tool calls' }, { t: 'row', v: 'Edit', g: 'SidebarWorkspaceRow.tsx', add: 61, del: 12 }, { t: 'row', v: 'Run', g: 'pnpm test sidebar', ok: '21 passed' }, { t: 'sum', x: 'Per-workspace session badge added, hidden at zero. Reused the existing per-session status dots. PR #412 is open and every check is green.' }],
+      hist: [{ l: 2, w: 58, x: 'done · 21/21 checks', kind: 'ok' }] },
+    { id: 'UI-Development', repo: 'nightshift', branch: 'UI-Development', host: 'wsl', agent: 'codex', shape: 'Pair', age: 6, started: 40,
+      title: 'Draft the three-mode shell behind a feature flag', short: 'Three-mode shell draft', state: 'needs', need: 'question', question: 'Which auth provider is canonical, Supabase or the custom JWT guard?', status: 'asked a question', diff: [0, 0],
+      files: [], checks: [['Tests', 'not run', false], ['Typecheck', 'not run', false], ['Lint', 'not run', false]], pr: null,
+      tr: [{ t: 'you', x: 'draft the three-mode shell behind a feature flag' }, { t: 'fold', x: 'Thought for 9s' }, { t: 'row', v: 'Explored', g: 'src/renderer/src/components/ · 23 files' }, { t: 'sum', x: 'Before I wire the session guard into the shell I need one decision from you.' }],
+      hist: [{ l: 20, w: 50, x: 'explore · draft' }] },
+    { id: 'charter', repo: 'bridgemind-website', branch: 'charter', host: 'ssh', agent: 'claude', shape: 'Solo', age: 11, started: 55,
+      title: 'Rewrite the authority section of the charter', short: 'Rewrite the authority section', state: 'unverifiable', status: 'lost contact 4m ago', diff: [120, 0],
+      files: [{ dir: 'docs/', name: 'charter.md', st: 'M', add: 120 }], checks: [['Build', 'unknown', false]], pr: null,
+      tr: [{ t: 'you', x: 'rewrite the authority section of the charter' }, { t: 'row', v: 'Edit', g: 'docs/charter.md', add: 120 }, { t: 'sum', x: 'Last message 4 min ago. The host stopped answering; the agent may still be running. Loss of contact is not proof of exit.' }],
+      hist: [{ l: 5, w: 60, x: 'rewrite authority section' }] },
+    { id: 'lint-split', repo: 'nightshift', branch: 'lint-split', host: 'pc', agent: 'gemini', shape: 'Solo', age: 60, started: 180,
+      title: 'Split every oversized file so lint passes with no carve-out', short: 'Split oversized files', state: 'done', status: 'merged', diff: [1292, 406],
+      files: [{ dir: 'src/main/', name: 'agent-hooks.ts', st: 'M', add: 40, del: 380 }, { dir: 'src/main/', name: 'agent-hook-events.ts', st: 'A', add: 351 }], checks: [['Tests', '212 / 212', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 409, state: 'merged' },
+      tr: [{ t: 'you', x: 'split every oversized file so lint passes with no carve-out' }, { t: 'fold', x: '31 tool calls' }, { t: 'row', v: 'Run', g: 'pnpm lint', ok: 'clean' }, { t: 'sum', x: 'Split every oversized file. Lint passes with no carve-out. Merged as #409.' }],
+      hist: [{ l: 0, w: 30, x: 'split · lint', kind: 'ok' }] },
+    { id: 'update-button', repo: 'nightshift', branch: 'update-button', host: 'pc', agent: 'codex', shape: 'Solo', age: 180, started: 240,
+      title: 'Add an update button to the sidebar footer', short: 'Update button in sidebar footer', state: 'done', status: 'merged', diff: [88, 4],
+      files: [{ dir: '…/sidebar/', name: 'SidebarUpdateButton.tsx', st: 'A', add: 88 }], checks: [['Tests', '9 / 9', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 407, state: 'merged' },
+      tr: [{ t: 'you', x: 'add an update button to the sidebar footer' }, { t: 'sum', x: 'Button walks Check → Update → Downloading → Restart. Merged as #407.' }], hist: [{ l: 0, w: 12, x: 'done', kind: 'ok' }] }
+  ];
+  var FOLDERS = [{ id: 'database', label: 'database' }];
+  var st = { mode: 'inbox', host: 'all', sel: 'fix-guard', floorSel: 'fix-guard', range: 60, panes: 2, focus: 'fix-guard', raw: {}, sideTab: 'Changes', minute: 0 };
+  try { var saved = JSON.parse(localStorage.getItem('ns-proto') || '{}'); if (saved.mode) st.mode = saved.mode; if (saved.panes) st.panes = saved.panes; } catch (e) {}
+
+  // ---------- helpers ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var byId = function (id) { for (var i = 0; i < S.length; i++) if (S[i].id === id) return S[i]; return null; };
+  var vis = function () { return S.filter(function (s) { return st.host === 'all' || s.host === st.host; }); };
+  var age = function (m) { return m <= 0 ? 'now' : m < 60 ? m + 'm' : Math.round(m / 60) + 'h'; };
+  var diffHtml = function (d) { return (d[0] ? '<span class="mono add">+' + d[0].toLocaleString() + '</span>' : '') + (d[1] ? '<span class="mono del">−' + d[1].toLocaleString() + '</span>' : ''); };
+  var dot = function (s) { return '<i class="dot ' + (s.state === 'needs' ? 'ny' : s.state === 'running' ? 'ok' : s.state === 'done' ? '' : '') + '"></i>'; };
+  var agentDot = function (s) { return '<i class="dot ' + AGENTS[s.agent].dot + '"></i>'; };
+  var kindLabel = function (s) { if (s.state === 'needs') return { approve: 'Approve edit', merge: 'PR ready', question: 'Question' }[s.need]; if (s.state === 'running') return 'Running'; if (s.state === 'unverifiable') return 'Unverifiable'; return 'Merged'; };
+  var hostLabel = function (s) { return (s.host === 'pc' ? '' : s.host + ': ') + s.repo; };
+  var toast = function (msg, kind, sub) { var t = document.createElement('div'); t.className = 'toast ' + (kind || ''); t.innerHTML = esc(msg) + (sub ? '<span class="k">' + esc(sub) + '</span>' : ''); $('toasts').appendChild(t); setTimeout(function () { t.remove(); }, 4200); };
+  var save = function () { try { localStorage.setItem('ns-proto', JSON.stringify({ mode: st.mode, panes: st.panes })); } catch (e) {} };
+
+  // ---------- state transitions (the "agents") ----------
+  function act(id, what, payload) {
+    var s = byId(id); if (!s) return;
+    if (what === 'approve' && s.need === 'approve') {
+      s.state = 'running'; s.need = null; s.status = 'applying edit · running tests'; s.tr.push({ t: 'sys', x: 'You approved the edit.' }); s.hist.push({ l: 58, w: 12, x: 'approve edit', kind: 'ny' });
+      toast(s.id + ': edit applied, running the full suite', 'ok', 'Ctrl+Z undoes for 30s');
+      later(4500, function () { s.state = 'needs'; s.need = 'merge'; s.status = 'PR ready · #418'; s.pr = { n: 418, state: 'ready' }; s.checks = [['Tests', '18 / 18', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]]; s.tr.push({ t: 'row', v: 'Run', g: 'pnpm test', ok: '212 passed' }, { t: 'sum', x: 'Opened PR #418. All checks green. Ready for your review.' }); s.hist.push({ l: 70, w: 10, x: 'tests · PR', kind: 'ok' }); toast(s.id + ': PR #418 opened, checks green', 'ny', 'Needs you: merge'); render(); });
+    } else if (what === 'reject' && s.need === 'approve') {
+      s.state = 'running'; s.need = null; s.status = 'revising'; s.tr.push({ t: 'sys', x: 'You rejected the edit' + (payload ? ': ' + payload : '.') });
+      later(4000, function () { s.state = 'needs'; s.need = 'approve'; s.status = 'approve edit'; s.tr.push({ t: 'row', v: 'Edit', g: 'src/common/guards/subscription.guard.ts', add: 9, del: 6 }, { t: 'sum', x: 'Revised: the guard now returns a 402 with a reason code instead of throwing.' }); toast(s.id + ': revised edit is waiting', 'ny'); render(); });
+    } else if (what === 'merge' && s.need === 'merge') {
+      s.state = 'done'; s.need = null; s.status = 'merged'; s.pr.state = 'merged'; s.age = 0; s.tr.push({ t: 'sys', x: 'Merged #' + s.pr.n + ' into main.' }); s.hist.push({ l: 60, w: 8, x: 'merged', kind: 'ok' });
+      toast('Merged #' + s.pr.n + ' · ' + s.id, 'ok', 'Worktree kept until you archive it');
+    } else if (what === 'answer' && s.need === 'question') {
+      s.state = 'running'; s.need = null; s.status = 'drafting with your answer'; s.tr.push({ t: 'you', x: payload || 'The JWT guard is canonical.' }, { t: 'think' });
+      later(5000, function () { s.state = 'running'; s.status = 'running tests'; s.tr = s.tr.filter(function (r) { return r.t !== 'think'; }); s.tr.push({ t: 'row', v: 'Edit', g: 'src/renderer/src/shell/ModeSwitch.tsx', add: 142 }, { t: 'row', v: 'Edit', g: 'src/renderer/src/shell/ModeShell.tsx', add: 88, del: 3 }); s.diff = [230, 3]; s.files = [{ dir: 'src/renderer/src/shell/', name: 'ModeSwitch.tsx', st: 'A', add: 142 }, { dir: 'src/renderer/src/shell/', name: 'ModeShell.tsx', st: 'M', add: 88, del: 3 }]; render(); later(4000, function () { s.state = 'needs'; s.need = 'approve'; s.status = 'approve edit'; s.tr.push({ t: 'sum', x: 'Shell drafted behind the flag. Two files, waiting for your approval.' }); toast(s.id + ': draft is ready to approve', 'ny'); render(); }); });
+    } else if (what === 'reconnect' && s.state === 'unverifiable') {
+      s.status = 'reconnecting…'; toast('Reconnecting to ' + HOSTS[s.host].label + '…');
+      later(2500, function () { HOSTS.ssh.ok = true; s.state = 'running'; s.status = 'reconnected · editing charter.md'; s.age = 0; s.tr.push({ t: 'sys', x: 'Contact restored. The agent kept working while the link was down.' }, { t: 'row', v: 'Edit', g: 'docs/charter.md', add: 164 }); s.diff = [164, 0]; s.hist.push({ l: 65, w: 23, x: 'no contact', kind: 'unv' }); toast(s.id + ': back, still live', 'ok'); render(); });
+    } else if (what === 'archive' && s.state === 'done') {
+      S.splice(S.indexOf(s), 1); toast('Archived worktree ' + s.id); if (st.sel === id) st.sel = null; if (st.focus === id) st.focus = null;
+    } else if (what === 'message') {
+      s.tr.push({ t: 'you', x: payload }, { t: 'think' }); if (s.state !== 'needs') { s.status = 'reading your message'; }
+      later(2600, function () { s.tr = s.tr.filter(function (r) { return r.t !== 'think'; }); s.tr.push({ t: 'sum', x: 'Understood. ' + (s.state === 'needs' ? 'I\'ll hold until you decide on the pending item.' : 'Folding that into the current pass; I\'ll report when the tests are back.') }); render(); });
+    }
+    render();
+  }
+  function later(ms, fn) { setTimeout(fn, ms); }
+
+  // ---------- renderers ----------
+  function renderChrome() {
+    $('hostchip').innerHTML = '<i class="dot ' + (st.host === 'ssh' && !HOSTS.ssh.ok ? '' : 'ok') + '"></i>' + esc(st.host === 'all' ? 'All hosts' : HOSTS[st.host].label) + ' <span class="caret">▾</span>';
+    document.querySelectorAll('#modeseg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)); });
+    ['inbox', 'floor', 'code'].forEach(function (m) { $(m).classList.toggle('on', m === st.mode); });
+    var live = S.filter(function (s) { return s.state === 'running'; }).length, needs = S.filter(function (s) { return s.state === 'needs'; }).length, unv = S.filter(function (s) { return s.state === 'unverifiable'; }).length;
+    $('tally').innerHTML = '<span><i class="dot ok"></i>' + live + ' live</span><span class="' + (needs ? 'ny-text' : '') + '"><i class="dot ' + (needs ? 'ny' : '') + '"></i>' + needs + ' needs you</span><span><i class="dot"></i>' + unv + ' unverifiable</span>';
+  }
+  function cardHtml(s) {
+    var warm = s.state === 'needs'; var bar = warm ? 'ny' : s.state === 'running' ? 'ok' : '';
+    var meta = warm ? AGENTS[s.agent].name.split(' ')[0].toLowerCase() : s.status;
+    return '<div class="card" role="option" tabindex="0" data-id="' + s.id + '" aria-selected="' + (st.sel === s.id) + '"><i class="bar ' + bar + '"></i><div class="in">' +
+      '<div class="r1"><b class="' + (warm ? 'warm' : '') + '">' + kindLabel(s) + '</b><span>' + esc(s.state === 'needs' && s.need === 'approve' ? s.files[0].name : s.state === 'needs' && s.need === 'merge' ? '#' + s.pr.n + ' · checks ' + s.checks[0][1].replace(/ /g, '') : s.state === 'needs' ? s.question : s.short) + '</span></div>' +
+      '<div class="r2">' + agentDot(s) + '<span class="mono">' + esc(hostLabel(s)) + ' › ' + esc(s.branch) + '</span></div>' +
+      '<div class="r3">' + (s.diff[0] || s.diff[1] ? diffHtml(s.diff) : '') + '<span>' + esc(meta) + '</span><span class="grow"></span><span class="mono">' + age(s.age) + '</span></div></div></div>';
+  }
+  function renderInbox() {
+    var v = vis(); var g = { needs: [], wait: [], done: [] };
+    v.forEach(function (s) { (s.state === 'needs' ? g.needs : s.state === 'done' ? g.done : g.wait).push(s); });
+    var h = '';
+    if (g.needs.length) h += '<div class="sect warm">Needs you <span class="mono">' + g.needs.length + '</span></div>' + g.needs.map(cardHtml).join('');
+    if (g.wait.length) h += '<div class="sect">Waiting on agent <span class="mono">' + g.wait.length + '</span></div>' + g.wait.map(cardHtml).join('');
+    if (g.done.length) h += '<div class="sect">Done today <span class="mono">' + g.done.length + '</span></div>' + g.done.map(cardHtml).join('');
+    if (!v.length) h = '<div class="empty">Nothing on this host.</div>';
+    $('inboxlist').innerHTML = h;
+    $('inboxcount').textContent = g.needs.length ? g.needs.length + ' waiting on you' : 'all clear';
+    if (!byId(st.sel) || v.indexOf(byId(st.sel)) < 0) st.sel = (g.needs[0] || g.wait[0] || g.done[0] || {}).id || null;
+    document.querySelectorAll('#inboxlist .card').forEach(function (c) { c.setAttribute('aria-selected', String(c.dataset.id === st.sel)); });
+    renderInboxMain(); renderSide($('inboxside'), byId(st.sel));
+  }
+  function trHtml(rows, wide) {
+    return rows.map(function (r) {
+      if (r.t === 'you') return '<div class="you">' + esc(r.x) + '</div>';
+      if (r.t === 'fold') return '<div class="fold">▸  ' + esc(r.x) + '</div>';
+      if (r.t === 'sys') return '<div class="fold">— ' + esc(r.x) + '</div>';
+      if (r.t === 'think') return '<div class="think"><i></i>Thinking…</div>';
+      if (r.t === 'row') return '<div class="trow"><i class="dot ok"></i><b>' + esc(r.v) + '</b><span class="mono muted">' + esc(r.g) + '</span>' + (r.add != null ? diffHtml([r.add, r.del || 0]) : '') + (r.ok ? '<span class="ok-text">' + esc(r.ok) + '</span>' : '') + '</div>';
+      if (r.t === 'diff') return '<div class="diff">' + r.l.map(function (l) { return '<div class="' + l[0] + '">' + esc(l[1]) + '</div>'; }).join('') + '</div>';
+      if (r.t === 'sum') return '<div class="sum">' + esc(r.x) + '</div>';
+      return '';
+    }).join('');
+  }
+  function decisionHtml(s, compact) {
+    if (s.state === 'needs' && s.need === 'approve') return '<div class="decision" data-id="' + s.id + '"><div class="tx"><b>' + (compact ? 'Approve edit?' : 'Waiting for your approval') + '</b><span>' + s.files.length + ' file' + (s.files.length > 1 ? 's' : '') + ' · this worktree · Ask before editing is on</span></div><button class="btn ghost" data-act="reject">Reject <span class="k">Ctrl+Bksp</span></button><button class="btn primary" data-act="approve">Approve <span class="k">Ctrl+Enter</span></button></div>';
+    if (s.state === 'needs' && s.need === 'merge') return '<div class="decision" data-id="' + s.id + '"><div class="tx"><b>PR #' + s.pr.n + ' is ready to merge</b><span>' + s.checks.filter(function (c) { return c[2]; }).length + ' of ' + s.checks.length + ' checks green · against main</span></div><button class="btn ghost" data-act="open">Open in Code <span class="k">Enter</span></button><button class="btn primary" data-act="merge">Merge <span class="k">Ctrl+Enter</span></button></div>';
+    if (s.state === 'needs' && s.need === 'question') return '<div class="decision" data-id="' + s.id + '"><div class="tx"><b>' + esc(s.question) + '</b><span>Nothing runs until you answer</span></div><input id="answer-' + s.id + '" placeholder="Type an answer and press Enter"><button class="btn primary" data-act="answer">Answer <span class="k">Ctrl+Enter</span></button></div>';
+    if (s.state === 'unverifiable') return '<div class="decision quiet" data-id="' + s.id + '"><div class="tx"><b>Unverifiable</b><span>' + esc(s.status) + ' · loss of contact is not proof of exit</span></div><button class="btn" data-act="reconnect">Reconnect</button></div>';
+    if (s.state === 'done') return '<div class="decision quiet" data-id="' + s.id + '"><div class="tx"><b>Done</b><span>' + esc(s.status) + (s.pr ? ' · #' + s.pr.n : '') + '</span></div><button class="btn ghost" data-act="archive">Archive worktree</button></div>';
+    return '<div class="decision quiet" data-id="' + s.id + '"><div class="tx"><b>Running</b><span>' + esc(s.status) + '</span></div><button class="btn ghost" data-act="open">Open in Code <span class="k">Enter</span></button></div>';
+  }
+  function chipsHtml(s) {
+    return '<span class="chip fg">' + agentDot(s) + esc(AGENTS[s.agent].name.split(' ')[0]) + ' <span class="caret">▾</span></span><span class="chip fg">' + esc(AGENTS[s.agent].model) + ' <span class="caret">▾</span></span><span class="chip">High <span class="caret">▾</span></span><span class="chip">Ask before editing <span class="caret">▾</span></span><span class="chip mono">' + esc(s.branch) + '</span><span class="grow"></span><span class="k">' + (28 + (s.tr.length * 1.3)).toFixed(1) + 'k tokens</span><button class="send" data-send="' + s.id + '" aria-label="Send">↑</button>';
+  }
+  function renderInboxMain() {
+    var s = byId(st.sel); var m = $('inboxmain');
+    if (!s) { m.innerHTML = '<div class="empty">Select an item.</div>'; return; }
+    m.innerHTML = '<div class="shead"><div class="t"><h2>' + esc(s.title) + '</h2><button class="btn ghost" data-act="open" data-id="' + s.id + '">Open in Code <span class="k">Enter</span></button><button class="btn ghost">⋯</button></div>' +
+      '<div class="crumbs"><span class="chip mono">' + esc(s.repo) + '</span>›<span class="chip mono fg">' + esc(s.branch) + '</span>from<span class="chip mono">main</span><span class="chip"><i class="dot ' + (HOSTS[s.host].ok ? 'ok' : '') + '"></i>' + esc(HOSTS[s.host].label) + '</span><span class="chip">' + agentDot(s) + esc(AGENTS[s.agent].name + ' · ' + AGENTS[s.agent].model + ' · High') + '</span>' + (s.role && s.role !== 'solo' ? '<span class="chip">' + esc(s.role) + '</span>' : '') + '</div></div>' +
+      '<div class="tr" id="inboxtr">' + trHtml(s.tr) + '</div>' + decisionHtml(s) +
+      '<div class="composer"><textarea id="inboxinput" rows="1" placeholder="Reply or redirect…  @ file · / command"></textarea><div class="chips">' + chipsHtml(s) + '</div></div>';
+    var tr = $('inboxtr'); tr.scrollTop = tr.scrollHeight;
+  }
+  function renderSide(el, s) {
+    if (!s) { el.innerHTML = ''; return; }
+    var pr = !s.pr ? '<div class="prstrip">No pull request yet<span class="grow"></span><button class="btn">Create PR <span class="k">Ctrl+Shift+P</span></button></div>' :
+      s.pr.state === 'ready' ? '<div class="prstrip ready"><span class="mono">#' + s.pr.n + '</span><span class="state">Ready to merge</span><span class="grow"></span><button class="btn primary" data-act="merge" data-id="' + s.id + '">Merge</button></div>' :
+      '<div class="prstrip merged"><span class="mono">#' + s.pr.n + '</span><span class="state">Merged into main</span><span class="grow"></span></div>';
+    var tabs = ['Files', 'Changes', 'Review'].map(function (t) { var n = t === 'Changes' ? s.files.length : t === 'Review' ? (s.pr && s.pr.state === 'ready' ? 3 : 0) : null; return '<span class="' + (st.sideTab === t ? 'on' : '') + '" data-tab="' + t + '">' + t + (n != null ? ' <i>' + n + '</i>' : '') + '</span>'; }).join('');
+    var body = '';
+    if (st.sideTab === 'Changes') body = '<div class="against">Against <span class="mono" style="color:var(--fg)">main</span><span class="grow"></span>' + diffHtml(s.diff) + '</div><div class="files">' + (s.files.length ? s.files.map(function (f, i) { return '<div class="frow" aria-selected="' + (i === 0) + '"><span class="st ' + (f.st === 'M' ? 'mod' : 'add') + '">' + f.st + '</span><span class="nm"><span>' + esc(f.dir) + '</span>' + esc(f.name) + '</span>' + diffHtml([f.add || 0, f.del || 0]) + '</div>'; }).join('') : '<div class="empty">No changes yet.</div>') + '</div>';
+    else if (st.sideTab === 'Files') body = '<div class="tree"><div>▸ src</div><div class="i2">▸ main</div><div class="i2 f">▾ renderer</div><div>▸ docs</div><div class="f">AGENTS.md</div><div class="f">HANDOFF.md</div><div>package.json</div></div>';
+    else body = s.pr && s.pr.state === 'ready' ? '<div class="files"><div class="frow"><span class="st mod">•</span><span class="nm">SidebarSessionBadge.tsx:41 <span>· hide badge when count is 0, not when undefined</span></span></div><div class="frow"><span class="st mod">•</span><span class="nm">agent-status-store.ts:88 <span>· collator built once per sort?</span></span></div><div class="frow"><span class="st add">✓</span><span class="nm">HANDOFF.md <span>· looks right</span></span></div></div>' : '<div class="empty">No review comments.</div>';
+    el.innerHTML = pr + '<div class="tabs" data-side>' + tabs + '</div>' + body +
+      '<div class="checks"><div class="sect">Checks</div>' + s.checks.map(function (c) { return '<div class="crow"><i class="dot ' + (c[2] ? 'ok' : '') + '"></i>' + esc(c[0]) + '<span class="grow"></span><span class="v mono">' + esc(c[1]) + '</span></div>'; }).join('') + '</div>' +
+      '<div class="drawer"><b>Run</b><span class="muted">Terminal</span><span class="muted">Browser</span><span class="grow"></span><span class="k">▶ pnpm dev  Ctrl+R</span></div>';
+  }
+
+  function renderFloor() {
+    var v = vis(); var byHost = {}; v.forEach(function (s) { (byHost[s.host] = byHost[s.host] || []).push(s); });
+    var scale = 60 / st.range; var ticks = ''; for (var i = 0; i < 6; i++) ticks += '<span>−' + Math.round(st.range - i * st.range / 6) + 'm</span>';
+    var h = '<div class="axis"><div></div><div class="ticks">' + ticks + '</div></div>';
+    var segs = function (s) {
+      var out = s.hist.map(function (b) { return { l: b.l, w: b.w, x: b.x, kind: b.kind || '' }; });
+      var lastEnd = out.length ? out[out.length - 1].l + out[out.length - 1].w : Math.max(0, 88 - s.started * (88 / 60));
+      if (s.state === 'needs') out.push({ l: lastEnd, w: 88 - lastEnd, x: { approve: 'approve edit', merge: 'review #' + (s.pr ? s.pr.n : ''), question: 'answer question' }[s.need], kind: 'ny' });
+      else if (s.state === 'running') out.push({ l: lastEnd, w: 88 - lastEnd, x: s.status, kind: 'live' });
+      else if (s.state === 'unverifiable') out.push({ l: lastEnd, w: 88 - lastEnd, x: '', kind: 'unv' });
+      return out.map(function (b) { var l = 100 - (100 - b.l) * scale, w = b.w * scale; if (l + w < 0) return ''; if (l < 0) { w += l; l = 0; } return '<span class="bar ' + b.kind + '" style="--l:' + l.toFixed(1) + '%;--w:' + Math.max(w, 1).toFixed(1) + '%">' + esc(b.x) + '</span>'; }).join('');
+    };
+    var lane = function (s, sub) {
+      var m = s.state === 'needs' ? '<span class="ny-text">' + esc(s.status) + '</span>' : '<span>' + esc(s.status) + '</span>';
+      return '<div class="lane" data-id="' + s.id + '" aria-selected="' + (st.floorSel === s.id) + '"><div class="ll' + (sub ? ' sub' : '') + '"><div class="n">' + agentDot(s) + '<b>' + esc(s.id) + (s.role && s.role !== 'solo' ? ' · ' + s.role : '') + '</b></div><div class="m"><span class="mono">' + esc(s.branch) + '</span>' + m + '</div></div><div class="track">' + (sub ? '<i class="rlink" style="--l:' + (100 - (100 - (s.hist[0] ? s.hist[0].l : Math.max(0, 88 - s.started * (88 / 60)))) * scale).toFixed(1) + '%"></i>' : '') + segs(s) + '<span class="now"></span></div></div>';
+    };
+    Object.keys(HOSTS).forEach(function (hk) {
+      var list = byHost[hk]; if (!list) return;
+      h += '<div class="host"><div class="hl"><i class="dot ' + (HOSTS[hk].ok ? 'ok' : '') + '"></i>' + esc(HOSTS[hk].label) + '<span class="chip">' + list.length + ' agent' + (list.length > 1 ? 's' : '') + (HOSTS[hk].ok ? '' : ' · last seen 4m') + '</span></div><div></div></div>';
+      list.filter(function (s) { return !s.parent; }).forEach(function (s) { h += lane(s, false); list.filter(function (c) { return c.parent === s.id; }).forEach(function (c) { h += lane(c, true); }); });
+    });
+    $('lanes').innerHTML = h;
+    $('floorsub').textContent = v.length + ' agents on ' + Object.keys(byHost).length + ' host' + (Object.keys(byHost).length > 1 ? 's' : '') + ' · last ' + (st.range === 480 ? 'today' : st.range + ' min');
+    document.querySelectorAll('#range button').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.r === st.range)); });
+    renderRunPanel();
+  }
+  function renderRunPanel() {
+    var s = byId(st.floorSel) || byId(st.sel); if (!s) { $('runpanel').innerHTML = ''; return; }
+    var root = s.parent ? byId(s.parent) : s; var kids = S.filter(function (c) { return c.parent === root.id; });
+    var needs = [root].concat(kids).filter(function (x) { return x.state === 'needs'; }).length;
+    var lineup = (root.lineup || [[root.agent, root.role || 'solo']]).map(function (p) { return '<div>' + (p[0] ? '<i class="dot ' + AGENTS[p[0]].dot + '"></i>' + esc(AGENTS[p[0]].name) : '<i class="dot"></i>slot open') + '<span class="role">' + esc(p[1]) + '</span></div>'; }).join('');
+    var mail = (root.mail || [{ who: root.agent + ' → you', x: root.status }]).map(function (m) { return '<div class="' + (m.unread ? 'unread' : '') + '"><span class="who">' + esc(m.who) + '</span>' + esc(m.x) + '</div>'; }).join('');
+    $('runpanel').innerHTML = '<div class="rp"><h3>' + esc(root.id) + (kids.length ? ' · ' + (kids.length + 1) + ' agents' : '') + '</h3><dl class="kv"><dt>Repo</dt><dd class="mono">' + esc(root.repo) + '</dd><dt>Host</dt><dd>' + esc(HOSTS[root.host].label) + '</dd><dt>Started</dt><dd>' + root.started + ' min ago</dd><dt>Prompt</dt><dd>' + esc(root.title) + '</dd></dl></div>' +
+      '<div class="rp"><div class="sect" style="padding:0">Tasks</div><div class="queue"><div class="stat"><b>' + (root.tasks ? root.tasks.active : 1) + '</b><span>active</span></div><div class="stat"><b>' + (root.tasks ? root.tasks.queued : 0) + '</b><span>queued</span></div><div class="stat ' + (needs ? 'warm' : '') + '"><b>' + needs + '</b><span>needs you</span></div></div></div>' +
+      '<div class="rp"><div class="sect" style="padding:0">Lineup</div><div class="lineup">' + lineup + '</div></div>' +
+      '<div class="rp"><div class="sect" style="padding:0">Mailbox <span class="mono">' + (root.mail ? root.mail.filter(function (m) { return m.unread; }).length + ' unread' : '') + '</span></div><div class="mail">' + mail + '</div></div>' +
+      '<div class="rp"><div class="actions"><button class="btn primary" data-act="open" data-id="' + s.id + '">Open in Inbox <span class="k">Enter</span></button><button class="btn ghost" data-act="stop" data-id="' + root.id + '">Stop run <span class="k">S</span></button></div></div>';
+  }
+
+  function renderCode() {
+    var v = vis(); var pinned = v.filter(function (s) { return ['fix-guard', 'UI-Development'].indexOf(s.id) >= 0; }); var rest = v.filter(function (s) { return pinned.indexOf(s) < 0; });
+    var row = function (s) { var m = s.state === 'needs' ? '<span class="ny-text">' + esc(s.status) + '</span>' : '<span>' + (s.host !== 'pc' ? s.host + ' · ' : '') + esc(s.status) + '</span>'; return '<div class="wtrow" data-id="' + s.id + '" aria-selected="' + (st.focus === s.id) + '"><div class="n">' + dot(s) + '<b>' + esc(s.id) + '</b><span class="chip mono">' + esc(s.repo) + '</span></div><div class="m"><span class="agents">' + agentDot(s) + '</span>' + m + '<span class="grow"></span>' + diffHtml(s.diff) + '<span class="mono">' + age(s.age) + '</span></div></div>'; };
+    $('wtlist').innerHTML = (pinned.length ? '<div class="sect">Pinned <span class="mono">' + pinned.length + '</span></div>' + pinned.map(row).join('') : '') + '<div class="sect">In progress <span class="mono">' + rest.length + '</span></div>' + rest.map(row).join('') + '<div class="sect">Folders <span class="mono">1</span></div><div class="wtrow"><div class="n"><i class="dot"></i><b>database</b><span class="chip">folder</span></div><div class="m"><span>no agents</span></div></div>';
+    if (!byId(st.focus) || v.indexOf(byId(st.focus)) < 0) st.focus = v.length ? v[0].id : null;
+    $('panecount').textContent = st.panes;
+    var f0 = byId(st.focus); var order = (f0 && v.indexOf(f0) >= 0 ? [f0] : []).concat(v.filter(function (s) { return s !== f0 && f0 && f0.batch && s.batch === f0.batch; })).concat(v.filter(function (s) { return s !== f0 && !(f0 && f0.batch && s.batch === f0.batch); }));
+    var shown = order.slice(0, st.panes); var empties = Math.max(0, st.panes - shown.length);
+    var cols = st.panes <= 3 ? st.panes : st.panes === 4 ? 2 : 3, rows = Math.ceil(st.panes / cols);
+    var panes = $('panes'); panes.className = 'panes'; panes.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)'; panes.style.gridTemplateRows = 'repeat(' + rows + ', 1fr)';
+    var compact = st.panes >= 4;
+    var pickers = ''; for (var e = 0; e < empties; e++) pickers += '<div class="pane picker' + (st.focus === 'new-' + e ? ' focus' : '') + '" data-pane="new-' + e + '"><div class="ph"><i class="dot"></i><b>New agent · pane ' + (shown.length + e + 1) + '</b><span class="grow"></span><span class="act"><button title="Close" data-closepane="1">✕</button></span></div><div class="pbody"><div class="muted">Nothing runs until you choose an agent.</div><div class="pick">' + Object.keys(AGENTS).map(function (k) { return '<button data-new="' + k + '"><i class="dot ' + AGENTS[k].dot + '"></i>' + esc(AGENTS[k].name) + '<span class="k">' + esc(AGENTS[k].model) + '</span></button>'; }).join('') + '</div><div class="k">Uses the prompt in the composer, or explores the repo if it is empty</div></div></div>';
+    panes.innerHTML = shown.map(function (s) {
+      var raw = !!st.raw[s.id];
+      var body = raw ? '<div class="term"><span class="p">&gt; ' + esc(AGENTS[s.agent].name.toLowerCase()) + '</span>\n' + esc(AGENTS[s.agent].name + ' · ' + AGENTS[s.agent].model + ' · ' + s.repo) + '\n\n' + s.tr.map(function (r) { return r.t === 'you' ? '<span class="p">&gt; ' + esc(r.x) + '</span>\n' : r.t === 'row' ? '• ' + esc(r.v.padEnd(9)) + esc(r.g) + (r.ok ? '  <span class="g">✓ ' + esc(r.ok) + '</span>' : '') + '\n' : r.t === 'sum' ? '\n' + esc(r.x) + '\n\n' : r.t === 'think' ? '<span class="c">▍ thinking</span>\n' : ''; }).join('') + '<span class="p">&gt; </span><span class="c">▍</span></div>' :
+        '<div class="pbody">' + trHtml(compact ? s.tr.slice(-4) : s.tr) + (compact ? '' : decisionHtml(s, false)) + (compact ? '<div class="state-line">' + (s.state === 'needs' ? '<span class="warm">' + kindLabel(s) + '</span>' : s.state === 'done' ? '<span class="good">Done</span>' : '<span>' + esc(kindLabel(s)) + '</span>') + '<span class="grow"></span>' + (s.state === 'needs' ? '<button class="btn primary" data-act="' + { approve: 'approve', merge: 'merge', question: 'open' }[s.need] + '" data-id="' + s.id + '">' + { approve: 'Approve', merge: 'Merge', question: 'Answer' }[s.need] + '</button>' : s.state === 'unverifiable' ? '<button class="btn ghost" data-act="reconnect" data-id="' + s.id + '">Reconnect</button>' : s.state === 'done' ? '<button class="btn ghost" data-act="archive" data-id="' + s.id + '">Archive worktree</button>' : '') + '</div>' : '') + '</div>';
+      return '<div class="pane' + (compact ? ' compact' : '') + (st.focus === s.id ? ' focus' : '') + '" data-pane="' + s.id + '"><div class="ph">' + dot(s) + '<span style="color:var(--' + (AGENTS[s.agent].dot === 'ai' ? 'ai' : AGENTS[s.agent].dot === 'gem' ? 'ok' : 'fg') + ')">' + AGENTS[s.agent].glyph + '</span><b>' + esc(AGENTS[s.agent].name.split(' ')[0].toLowerCase() + ' · ' + s.id) + '</b>' + (s.host !== 'pc' ? '<span class="chip" style="padding:0 6px">' + s.host + '</span>' : '') + '<span class="grow"></span><span class="toggle"><button data-raw="0" data-id="' + s.id + '" aria-pressed="' + !raw + '">Readable</button><button data-raw="1" data-id="' + s.id + '" aria-pressed="' + raw + '">Raw</button></span><span class="act"><button title="More">⋯</button><button title="Maximize">⤢</button><button title="Close">✕</button></span></div>' + body + '</div>';
+    }).join('') + pickers;
+    var f = byId(st.focus); $('codechips').innerHTML = f ? chipsHtml(f) : '<span class="k">Pick an agent in the focused pane, or type a prompt first and it becomes that agent\'s first message.</span>'; $('codeinput').placeholder = f ? 'Message ' + f.id + '…  @ file · / command · Tab to switch pane' : 'Prompt for the new agent…';
+    renderSide($('codeside'), f);
+  }
+  // ---------- launching agents ----------
+  var L = { n: 3 };
+  function rolesFor(n) { if (n === 1) return ['solo']; if (n === 2) return ['driver', 'reviewer']; if (n === 4) return ['spec', 'build', 'test', 'review']; var r = ['dispatcher']; for (var i = 1; i < n; i++) r.push('worker ' + i); return r; }
+  function shapeFor(n) { return n === 1 ? 'Solo' : n === 2 ? 'Pair' : n === 4 ? 'Workbench' : 'Swarm'; }
+  function spawn(o) {
+    var slug = (o.prompt || 'new task').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 3).join('-') || 'task';
+    var id = o.n > 1 ? slug + '-' + o.i : slug; while (byId(id)) id += '2';
+    var s = { id: id, repo: o.repo, branch: id, host: 'pc', agent: o.agent, shape: o.shape, role: o.role, parent: o.parent, batch: o.batch, age: 0, started: 0, title: o.prompt, short: o.prompt.slice(0, 44), state: 'running', status: 'starting ' + AGENTS[o.agent].name.split(' ')[0].toLowerCase() + '…', diff: [0, 0], files: [], checks: [['Tests', 'not run', false], ['Typecheck', 'not run', false], ['Lint', 'not run', false]], pr: null, tr: [{ t: 'you', x: o.prompt }, { t: 'think' }], hist: [] };
+    S.push(s);
+    later(2500, function () { s.status = 'exploring the repo'; s.tr = s.tr.filter(function (r) { return r.t !== 'think'; }); s.tr.push({ t: 'fold', x: 'Thought for 6s' }, { t: 'row', v: 'Explored', g: 'src/ · 18 files' }, { t: 'think' }); render(); });
+    later(7000 + Math.random() * 3000, function () {
+      s.tr = s.tr.filter(function (r) { return r.t !== 'think'; });
+      if (o.ask) { s.state = 'needs'; s.need = 'question'; s.question = 'Should the limit be per API key or per IP?'; s.status = 'asked a question'; s.tr.push({ t: 'sum', x: 'One decision before I write the middleware.' }); toast(s.id + ' asked a question', 'ny', 'Needs you'); }
+      else { s.status = 'editing src/middleware/rate-limit.ts'; s.diff = [64, 2]; s.files = [{ dir: 'src/middleware/', name: 'rate-limit.ts', st: 'A', add: 64 }, { dir: 'src/', name: 'app.ts', st: 'M', add: 3, del: 2 }]; s.tr.push({ t: 'row', v: 'Edit', g: 'src/middleware/rate-limit.ts', add: 64 }, { t: 'think' }); }
+      render();
+    });
+    return s;
+  }
+  function renderLaunch() {
+    $('lcount').textContent = L.n;
+    var agents = Object.keys(AGENTS); var roles = rolesFor(L.n);
+    $('llineup').innerHTML = roles.map(function (r, i) { var a = agents[i % agents.length]; return '<div><i class="dot ' + AGENTS[a].dot + '"></i>' + esc(AGENTS[a].name) + '<span class="role">' + esc(r) + '</span></div>'; }).join('');
+    $('lnote').textContent = L.n + ' pane' + (L.n > 1 ? 's' : '') + ' · ' + L.n + ' worktree' + (L.n > 1 ? 's' : '') + ' from main';
+  }
+  function openLaunch() { $('launch').hidden = false; renderLaunch(); $('lprompt').focus(); }
+  function closeLaunch() { $('launch').hidden = true; }
+  function doLaunch() {
+    var prompt = $('lprompt').value.trim() || 'Explore the repository and summarize open work'; var repo = $('lrepo').value; var n = L.n; var roles = rolesFor(n); var agents = Object.keys(AGENTS); var first = null; var batch = 'b' + Date.now();
+    for (var i = 0; i < n; i++) { var s = spawn({ prompt: prompt, repo: repo, agent: agents[i % agents.length], role: roles[i], shape: shapeFor(n), n: n, i: i + 1, batch: batch, parent: first && n > 2 && n !== 4 ? first.id : undefined, ask: n > 1 ? i === n - 1 : false }); if (!first) { first = s; if (n > 2 && n !== 4) { first.tasks = { active: n - 1, queued: 0 }; first.lineup = roles.map(function (r, k) { return [agents[k % agents.length], r]; }); first.mail = [{ who: 'you → all', x: prompt }]; } } }
+    st.panes = Math.min(9, n); st.focus = first.id; st.mode = 'code'; closeLaunch(); toast('Launched ' + n + ' agent' + (n > 1 ? 's' : ''), 'ok', n + ' worktree' + (n > 1 ? 's' : '') + ' created in ' + repo); render();
+  }
+  function render() { renderChrome(); if (st.mode === 'inbox') renderInbox(); else if (st.mode === 'floor') renderFloor(); else renderCode(); save(); }
+
+  // ---------- navigation ----------
+  function setMode(m, id) { st.mode = m; if (id) { if (m === 'inbox') st.sel = id; if (m === 'floor') st.floorSel = id; if (m === 'code') st.focus = id; } render(); }
+  function primary(id) { var s = byId(id); if (!s) return; if (s.state === 'needs') { if (s.need === 'approve') act(id, 'approve'); else if (s.need === 'merge') act(id, 'merge'); else { var inp = $('answer-' + id); if (inp && inp.value.trim()) act(id, 'answer', inp.value.trim()); else if (inp) inp.focus(); else setMode('inbox', id); } } else if (s.state === 'unverifiable') act(id, 'reconnect'); }
+  function move(dir) { var cards = Array.prototype.slice.call(document.querySelectorAll('#inboxlist .card')); var i = cards.findIndex(function (c) { return c.dataset.id === st.sel; }); var n = cards[Math.max(0, Math.min(cards.length - 1, i + dir))]; if (n) { st.sel = n.dataset.id; renderInbox(); n.scrollIntoView({ block: 'nearest' }); } }
+
+  // ---------- events ----------
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-mode]'); if (t) { setMode(t.dataset.mode); return; }
+    if (e.target.closest('#launchbtn')) { $('launch').hidden ? openLaunch() : closeLaunch(); return; }
+    if (e.target.closest('#lcancel')) { closeLaunch(); return; }
+    if (e.target.closest('#lgo')) { doLaunch(); return; }
+    var ls = e.target.closest('[data-lstep]'); if (ls) { L.n = Math.max(1, Math.min(9, L.n + (+ls.dataset.lstep))); renderLaunch(); return; }
+    if (!e.target.closest('.launchwrap')) closeLaunch();
+    var stp = e.target.closest('[data-step]'); if (stp) { st.panes = Math.max(1, Math.min(9, st.panes + (+stp.dataset.step))); renderCode(); return; }
+    var nw = e.target.closest('[data-new]'); if (nw) { var box = $('codeinput'); var f = byId(st.focus); var s = spawn({ prompt: box.value.trim() || 'Explore the repository and summarize open work', repo: f ? f.repo : 'bridgemind-api', agent: nw.dataset.new, role: 'solo', shape: 'Solo', n: 1, i: 1, ask: false }); box.value = ''; st.focus = s.id; toast('Started ' + AGENTS[s.agent].name + ' in ' + s.id, 'ok'); render(); return; }
+    if (e.target.closest('[data-closepane]')) { st.panes = Math.max(1, st.panes - 1); renderCode(); return; }
+    var a = e.target.closest('[data-act]');
+    if (a) { var id = a.dataset.id || (a.closest('[data-id]') || {}).dataset && a.closest('[data-id]').dataset.id; var what = a.dataset.act;
+      if (what === 'open') { setMode(st.mode === 'floor' ? 'inbox' : st.mode === 'inbox' ? 'code' : 'inbox', id); return; }
+      if (what === 'stop') { var root = byId(id); if (root) { [root].concat(S.filter(function (c) { return c.parent === id; })).forEach(function (x) { if (x.state !== 'done') { x.state = 'done'; x.need = null; x.status = 'stopped by you'; } }); toast('Stopped run ' + id); render(); } return; }
+      if (what === 'answer') { var inp = $('answer-' + id); act(id, 'answer', inp && inp.value.trim()); return; }
+      if (what === 'reject') { act(id, 'reject'); return; }
+      act(id, what); return; }
+    var send = e.target.closest('[data-send]'); if (send) { var box = st.mode === 'inbox' ? $('inboxinput') : $('codeinput'); if (box && box.value.trim()) { act(send.dataset.send, 'message', box.value.trim()); box.value = ''; } return; }
+    var raw = e.target.closest('[data-raw]'); if (raw) { st.raw[raw.dataset.id] = raw.dataset.raw === '1'; renderCode(); return; }
+    var card = e.target.closest('#inboxlist .card'); if (card) { st.sel = card.dataset.id; renderInbox(); return; }
+    var lane = e.target.closest('.lane'); if (lane) { st.floorSel = lane.dataset.id; renderFloor(); return; }
+    var wt = e.target.closest('.wtrow[data-id]'); if (wt) { st.focus = wt.dataset.id; renderCode(); return; }
+    var pane = e.target.closest('.pane'); if (pane && !e.target.closest('button')) { st.focus = pane.dataset.pane; renderCode(); return; }
+    var tab = e.target.closest('[data-side] span[data-tab]'); if (tab) { st.sideTab = tab.dataset.tab; render(); return; }
+    var rb = e.target.closest('#range button'); if (rb) { st.range = +rb.dataset.r; renderFloor(); return; }
+    if (e.target.closest('#hostchip')) { var m = $('hostmenu'); m.hidden = !m.hidden; m.innerHTML = [['all', 'All hosts'], ['pc', 'This PC'], ['wsl', 'wsl: Ubuntu'], ['ssh', 'ssh: build-box']].map(function (o) { var n = o[0] === 'all' ? S.length : S.filter(function (s) { return s.host === o[0]; }).length; return '<button role="menuitemradio" aria-checked="' + (st.host === o[0]) + '" data-host="' + o[0] + '"><i class="dot ' + (o[0] === 'ssh' && !HOSTS.ssh.ok ? '' : 'ok') + '"></i>' + o[1] + '<span class="cnt">' + n + '</span></button>'; }).join(''); return; }
+    var hb = e.target.closest('[data-host]'); if (hb) { st.host = hb.dataset.host; $('hostmenu').hidden = true; render(); return; }
+    if (!e.target.closest('#hostmenu')) $('hostmenu').hidden = true;
+    if (e.target.closest('#searchbtn')) { openPalette(); return; }
+    if (e.target.id === 'palette') closePalette();
+  });
+  document.addEventListener('keydown', function (e) {
+    var pal = $('palette').classList.contains('on');
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') { e.preventDefault(); pal ? closePalette() : openPalette(); return; }
+    if (pal) { if (e.key === 'Escape') closePalette(); if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); palMove(e.key === 'ArrowDown' ? 1 : -1); } if (e.key === 'Enter') { palGo(); } return; }
+    if (!$('launch').hidden) { if (e.key === 'Escape') { closeLaunch(); return; } if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); doLaunch(); return; } if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) { var i = ['1', '2', '3'].indexOf(e.key); if (i > -1) { e.preventDefault(); setMode(['inbox', 'floor', 'code'][i]); return; }
+      if (e.key === 'Enter') { e.preventDefault(); primary(st.mode === 'code' ? st.focus : st.mode === 'floor' ? st.floorSel : st.sel); return; }
+      if (e.key === 'Backspace' && st.mode !== 'code') { var s = byId(st.sel); if (s && s.need === 'approve') { e.preventDefault(); act(s.id, 'reject'); } return; } }
+    var typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if (typing) { if (e.key === 'Enter' && !e.shiftKey && document.activeElement.tagName === 'TEXTAREA') { e.preventDefault(); var box = document.activeElement; var id = st.mode === 'inbox' ? st.sel : st.focus; if (box.value.trim() && id) { act(id, 'message', box.value.trim()); box.value = ''; } } if (e.key === 'Enter' && document.activeElement.id.indexOf('answer-') === 0) { var aid = document.activeElement.id.slice(7); act(aid, 'answer', document.activeElement.value.trim()); } return; }
+    if (st.mode === 'inbox') { if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); move(1); } if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); move(-1); } if (e.key === 'Enter') { setMode('code', st.sel); } }
+    if (st.mode === 'floor') { if (e.key === 'Enter') setMode('inbox', st.floorSel); if (e.key === 's' && byId(st.floorSel)) { document.querySelector('[data-act="stop"]') && document.querySelector('[data-act="stop"]').click(); } }
+    if (st.mode === 'code') { if (e.key === 'n') { e.preventDefault(); openLaunch(); return; } if (e.key === '+' || e.key === '=') { st.panes = Math.min(9, st.panes + 1); renderCode(); return; } if (e.key === '-') { st.panes = Math.max(1, st.panes - 1); renderCode(); return; } if (e.key === 'Tab') { e.preventDefault(); var ids = Array.prototype.map.call(document.querySelectorAll('.pane'), function (p) { return p.dataset.pane; }); var k = ids.indexOf(st.focus); st.focus = ids[(k + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]; renderCode(); } if (e.key === '\\' && e.ctrlKey) { toast('Tidied both split trees'); } }
+  });
+  // palette
+  var palIdx = 0;
+  function palItems() { var q = $('palinput').value.trim().toLowerCase(); var items = [{ kind: 'mode', id: 'inbox', label: 'Go to Inbox', where: 'Ctrl+1' }, { kind: 'mode', id: 'floor', label: 'Go to Floor', where: 'Ctrl+2' }, { kind: 'mode', id: 'code', label: 'Go to Code', where: 'Ctrl+3' }].concat(S.map(function (s) { return { kind: 'session', id: s.id, label: s.id + ' · ' + s.short, where: hostLabel(s) + ' · ' + kindLabel(s), dot: s }; })); return items.filter(function (i) { return !q || (i.label + ' ' + i.where).toLowerCase().indexOf(q) >= 0; }); }
+  function renderPal() { var items = palItems(); palIdx = Math.max(0, Math.min(palIdx, items.length - 1)); $('pallist').innerHTML = items.map(function (i, k) { return '<li data-k="' + k + '" aria-selected="' + (k === palIdx) + '">' + (i.dot ? dot(i.dot) : '<i class="dot fg"></i>') + '<span class="grow">' + esc(i.label) + '</span><span class="where">' + esc(i.where) + '</span></li>'; }).join('') || '<li><span class="grow muted">No matches</span></li>'; }
+  function openPalette() { $('palette').classList.add('on'); $('palinput').value = ''; palIdx = 0; renderPal(); $('palinput').focus(); }
+  function closePalette() { $('palette').classList.remove('on'); }
+  function palMove(d) { palIdx += d; renderPal(); }
+  function palGo() { var i = palItems()[palIdx]; if (!i) return; closePalette(); if (i.kind === 'mode') setMode(i.id); else setMode('code', i.id); }
+  $('palinput').addEventListener('input', function () { palIdx = 0; renderPal(); });
+  $('pallist').addEventListener('click', function (e) { var li = e.target.closest('li[data-k]'); if (li) { palIdx = +li.dataset.k; palGo(); } });
+
+  // clock: ages tick, running lanes creep
+  setInterval(function () { S.forEach(function (s) { s.age += 1; s.started += 1; }); if (st.mode !== 'inbox' || !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) render(); }, 60000);
+
+  // stage scaling
+  var stage = $('stage'), wrap = stage.parentElement;
+  function fit() { var s = Math.min(1, wrap.clientWidth / 1440); stage.style.transform = 'scale(' + s + ')'; wrap.style.height = (900 * s) + 'px'; }
+  fit(); addEventListener('resize', fit);
+  render();
+})();
+</script>
