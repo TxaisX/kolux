@@ -114,9 +114,18 @@ function resolveUpgrade(repoPath: string): { externalWorktreeVisibility?: 'hide'
     : {}
 }
 
-type UpgradeResult = 'upgraded' | 'blocked' | 'rejected'
+export type UpgradeResult = 'upgraded' | 'blocked' | 'rejected'
 
-async function upgradeFolderRepo(watch: UpgradeWatch, repoId: string): Promise<UpgradeResult> {
+/**
+ * Runs the folder->git upgrade for one repo id immediately (vs. this file's background
+ * poll). Exported so `repos:convertFolderToGit` can reuse the exact same conversion —
+ * extra-workspace guard, kind flip, worktree-root prep, and change notifications —
+ * instead of duplicating it, after that handler has already run `git init` itself.
+ */
+export async function upgradeFolderRepo(
+  watch: Pick<UpgradeWatch, 'store' | 'mainWindow' | 'disposed'>,
+  repoId: string
+): Promise<UpgradeResult> {
   // Re-read after the marker stat: the repo can be removed or already upgraded mid-tick.
   const current = watch.store.getRepo(repoId)
   if (!current || !isUpgradeCandidate(current)) {

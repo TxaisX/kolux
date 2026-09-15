@@ -33,6 +33,8 @@ const NonGitFolderDialog = React.memo(function NonGitFolderDialog() {
   const connectionId = typeof modalData.connectionId === 'string' ? modalData.connectionId : ''
   const runtimeEnvironmentId =
     typeof modalData.runtimeEnvironmentId === 'string' ? modalData.runtimeEnvironmentId : ''
+  // Why: git-init only runs against a local folder — remote/SSH keeps today's folder-only behavior.
+  const isLocalFolder = !connectionId && !runtimeEnvironmentId
   const displayName = typeof modalData.displayName === 'string' ? modalData.displayName.trim() : ''
   const runtimeEnvironmentName =
     runtimeEnvironmentId &&
@@ -145,6 +147,36 @@ const NonGitFolderDialog = React.memo(function NonGitFolderDialog() {
     closeModal()
   }, [addNonGitFolder, closeModal, displayName, folderPath, connectionId, runtimeEnvironmentId])
 
+  const handleMakeGitRepo = useCallback(() => {
+    if (!folderPath) {
+      return
+    }
+    void (async () => {
+      try {
+        const result = await window.api.repos.initGit({ path: folderPath })
+        if ('error' in result) {
+          throw new Error(result.error)
+        }
+        const { repo } = upsertAddedRepoWithProjectHostSetup(result.repo)
+        toast.success(translate('auto.store.slices.repos.8bb3ad7935', 'Project added'), {
+          description: repo.displayName
+        })
+        useAppStore.getState().setActiveRepo(repo.id)
+        // Why: folders are git-inited so agents can launch, so continue straight into that.
+        useAppStore.getState().openModal('launch-agents')
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : translate(
+                'auto.components.sidebar.NonGitFolderDialog.makeGitRepoFailed',
+                'Failed to turn this folder into a git repo'
+              )
+        )
+      }
+    })()
+  }, [folderPath])
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (!open) {
@@ -167,6 +199,14 @@ const NonGitFolderDialog = React.memo(function NonGitFolderDialog() {
               "This folder isn't a Git repository. You'll have the editor, terminal, and search, but Git-based features won't be available."
             )}
             <span className="mt-2 block">{checkedHostDescription}</span>
+            {isLocalFolder && (
+              <span className="mt-2 block">
+                {translate(
+                  'auto.components.sidebar.NonGitFolderDialog.makeGitRepoExplanation',
+                  "Agents need Git to work in separate worktrees. This won't touch your existing files — it just adds an empty first commit."
+                )}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,9 +220,17 @@ const NonGitFolderDialog = React.memo(function NonGitFolderDialog() {
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {translate('auto.components.sidebar.NonGitFolderDialog.05b33a17a9', 'Cancel')}
           </Button>
-          <Button onClick={handleConfirm}>
+          <Button variant={isLocalFolder ? 'outline' : 'default'} onClick={handleConfirm}>
             {translate('auto.components.sidebar.NonGitFolderDialog.e52454b7f6', 'Open as Folder')}
           </Button>
+          {isLocalFolder && (
+            <Button onClick={handleMakeGitRepo}>
+              {translate(
+                'auto.components.sidebar.NonGitFolderDialog.makeItAGitRepo',
+                'Make it a git repo'
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

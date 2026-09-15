@@ -25,3 +25,24 @@ export function isUnsupportedMergeTreeMergeBaseError(error: unknown): boolean {
     output
   )
 }
+
+/** Raw stdout captured on a thrown git error, or '' when none was attached. */
+export function getGitCommandStdout(error: unknown): string {
+  if (typeof error !== 'object' || error === null) {
+    return ''
+  }
+  const stdout = (error as Record<string, unknown>).stdout
+  return typeof stdout === 'string' ? stdout : ''
+}
+
+/** `git merge-tree --write-tree --name-only -z` output: the tree oid, then NUL-delimited
+ *  conflicted paths. Both are NUL-terminated under `-z`, so splitting on `\0` and dropping
+ *  the first entry (the tree oid) yields just the paths. */
+export function parseMergeTreeNameOnlyOutput(stdout: string): string[] {
+  const entries = stdout.split('\0').filter(Boolean)
+  if (entries.length === 0) {
+    return []
+  }
+  const [, ...files] = entries
+  return files
+}

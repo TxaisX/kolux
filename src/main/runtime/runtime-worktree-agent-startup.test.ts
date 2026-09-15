@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   markCodexProjectTrusted: vi.fn(),
   markCopilotFolderTrusted: vi.fn(),
   markCursorWorkspaceTrusted: vi.fn(),
+  markClaudeProjectTrusted: vi.fn(),
   detectRemoteAgents: vi.fn(),
   detectInstalledAgentsWithShellPathHydration: vi.fn()
 }))
@@ -13,6 +14,10 @@ vi.mock('../agent-trust-presets', () => ({
   markCodexProjectTrusted: mocks.markCodexProjectTrusted,
   markCopilotFolderTrusted: mocks.markCopilotFolderTrusted,
   markCursorWorkspaceTrusted: mocks.markCursorWorkspaceTrusted
+}))
+
+vi.mock('../claude-trust-preset', () => ({
+  markClaudeProjectTrusted: mocks.markClaudeProjectTrusted
 }))
 
 vi.mock('../preflight/agent-detection', () => ({
@@ -139,5 +144,26 @@ describe('markLocalWorktreeTrusted', () => {
     mocks.markCodexProjectTrusted.mockRejectedValueOnce(new Error('write failed'))
 
     await expect(markLocalWorktreeTrusted('codex', '/workspace/app')).resolves.toBeUndefined()
+  })
+
+  // Why: this branch was missing entirely, so a `claude`-agent worktree created through this
+  // path (CLI/automation/mobile-triggered creation) never got a pre-spawn trust write at all.
+  it('waits for the Claude trust write before resolving', async () => {
+    let finish!: () => void
+    mocks.markClaudeProjectTrusted.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve
+      })
+    )
+    let settled = false
+    const marking = markLocalWorktreeTrusted('claude', '/workspace/app').then(() => {
+      settled = true
+    })
+
+    await Promise.resolve()
+    expect(settled).toBe(false)
+    finish()
+    await marking
+    expect(mocks.markClaudeProjectTrusted).toHaveBeenCalledWith('/workspace/app')
   })
 })

@@ -67,6 +67,18 @@ describe('pending worktree creation state', () => {
     expect(store.getState().activePendingCreationId).toBe('c1')
   })
 
+  it('beginPendingWorktreeCreation registers a revealOnStart:false entry without claiming the active surface', () => {
+    const store = createTestStore()
+    store.getState().beginPendingWorktreeCreation(
+      makePendingCreation('c1', {
+        request: { ...makePendingCreation('c1').request, revealOnStart: false }
+      })
+    )
+
+    expect(store.getState().pendingWorktreeCreations.c1).toBeDefined()
+    expect(store.getState().activePendingCreationId).toBeNull()
+  })
+
   it('keeps source and run context on the retryable request', () => {
     const store = createTestStore()
     const entry = makePendingCreation('c1', {

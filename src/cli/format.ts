@@ -58,7 +58,9 @@ export {
   formatRepoList,
   formatRepoRefs,
   formatRepoShow,
+  formatWorktreeChanges,
   formatWorktreeList,
+  formatWorktreeOverlap,
   formatWorktreePs,
   formatWorktreeShow
 } from './workspace-format'

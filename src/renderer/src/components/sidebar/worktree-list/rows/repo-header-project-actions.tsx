@@ -5,10 +5,12 @@ import {
   Eye,
   FolderInput,
   FolderTree,
+  GitBranchPlus,
   Plus,
   Shapes,
   SlidersHorizontal,
-  Trash2
+  Trash2,
+  UploadCloud
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -28,7 +30,8 @@ import { getRepositoryIconSectionId } from '@/components/settings/repository-set
 import type { ProjectGroup } from '../../../../../../shared/project-group-types'
 import type { Repo } from '../../../../../../shared/repo-types'
 import type { WorktreeVisibilityDefaults } from '../../../../../../shared/global-settings-types'
-import { isGitRepoKind } from '../../../../../../shared/repo-kind'
+import { isFolderRepo, isGitRepoKind } from '../../../../../../shared/repo-kind'
+import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../../../../shared/execution-host'
 import {
   effectiveExternalWorktreeVisibility,
   isLegacyRepoForExternalWorktreeVisibility
@@ -56,6 +59,12 @@ function getWorktreeVisibilityMenuLabel(
   return visibility === 'show' ? 'Hide non-Nightshift worktrees' : 'Show hidden worktrees'
 }
 
+// Why: converting to git and publishing both run local git/gh commands the desktop
+// main process owns; matches NonGitFolderDialog's existing local-only gating.
+function isLocalRepo(repo: Repo): boolean {
+  return !repo.connectionId && getRepoExecutionHostId(repo) === LOCAL_EXECUTION_HOST_ID
+}
+
 export type RepoHeaderProjectActions = {
   getWorktreeVisibilityDefaults: (repo: Repo) => WorktreeVisibilityDefaults | undefined
   onOpenRepoSettings: (projectId: string, sectionId?: string) => void
@@ -65,6 +74,8 @@ export type RepoHeaderProjectActions = {
   onRemoveProjectFromGroup: (repo: Repo) => void
   onRemoveProject: (repo: Repo) => void
   onCreateForRepo: (projectId: string) => void
+  onMakeGitRepo: (repo: Repo) => void
+  onPublishRemote: (repo: Repo) => void
 }
 
 export function RepoHeaderProjectActionsMenu({
@@ -132,6 +143,24 @@ export function RepoHeaderProjectActionsMenu({
           <DropdownMenuItem onSelect={() => actions.onOpenWorktreeVisibility(repo)}>
             <Eye className="size-3.5" />
             {getWorktreeVisibilityMenuLabel(repo, actions.getWorktreeVisibilityDefaults(repo))}
+          </DropdownMenuItem>
+        ) : null}
+        {isFolderRepo(repo) && isLocalRepo(repo) ? (
+          <DropdownMenuItem onSelect={() => actions.onMakeGitRepo(repo)}>
+            <GitBranchPlus className="size-3.5" />
+            {translate(
+              'auto.components.sidebar.WorktreeList.makeItAGitRepoMenuItem',
+              'Make it a git repo'
+            )}
+          </DropdownMenuItem>
+        ) : null}
+        {isGitRepoKind(repo) && isLocalRepo(repo) && !repo.gitRemoteIdentity ? (
+          <DropdownMenuItem onSelect={() => actions.onPublishRemote(repo)}>
+            <UploadCloud className="size-3.5" />
+            {translate(
+              'auto.components.sidebar.WorktreeList.publishToRemoteMenuItem',
+              'Publish to remote…'
+            )}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem onSelect={() => actions.onCreateGroupFromRepo(repo)}>

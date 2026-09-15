@@ -120,6 +120,124 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   only the next launch; agent panes use the canvas renderer, so `.xterm-rows` is empty for
   them under CDP and the runtime pane title is the only readable signal.
 
+- **Launch a wave of up to 6 agents.** Landing's primary button is "Launch agents"; with no
+  local git repo it opens the folder picker first. A plain folder gets "Make it a git repo"
+  (`repos:initGit`: `git init` + empty commit, never stages user files; local only), which
+  continues into the launch dialog. The dialog lists git repos only, picks a count from a 2x3
+  grid of squares (cap `LAUNCH_AGENTS_MAX = 6`, also enforced in the request builder), an
+  agent and a catalog model (sent as `sessionOptions.model` -> `--model`). Every session's
+  prompt starts with `CONTEXT7_AUDIT_BRIEF`. After launch the app switches to the new
+  `agent-grid` top-level view (also in the sidebar nav): up to 6 live terminals tiled 3x2,
+  font 14/12/11px for 1-2/3-4/5-6 agents, ptyId resolved via `useLiveDashboardSnapshot`.
+  Verified over CDP: button, 2x3 squares (75px, 2 rows x 3 cols), model select, Launch N
+  enabling, grid page empty state. Not driven: the native folder picker and the git-init click.
+- **Live 6-agent test (2026-09-14, throwaway repo, Haiku).** Worked: `repos:initGit` from the
+  page (one empty commit, zero files tracked); 6 worktrees on 6 separate branches; 6
+  `claude.exe` processes all carrying `--model haiku`; 5 grid tiles in a 3-wide layout at
+  516x403; each agent read README and named its own worktree; no files changed anywhere.
+  **Broken, found by the test:**
+  1. *Trust prompt blocks every agent.* Each Claude session stopped on "Do you trust this
+     folder?" although `.claude.json` held `hasTrustDialogAccepted: true` for its path
+     (written before spawn, `worktree-remote.ts:443`). Slash style is not the cause: accepting
+     trust wrote no new key. Suspect six concurrent `claude` startups rewriting `.claude.json`
+     (the preset has a `ponytail:` note about exactly this race). Unproven.
+  2. *Launch leaves the grid.* `revealPendingCreation` forces `setActiveView('terminal')` per
+     creation; something at completion pulls the view back off `agent-grid`.
+  3. *Sixth tile missing.* The worktree the app activated (`needlefish`) never appears in the
+     grid; `selectAgentGridCards` needs a card with a live `ptyId` for it.
+  4. *Branch names come from the audit brief.* First-message rename named branches
+     `audit-docs-before-reporting`, `audit-apis-with-context7`, … because
+     `CONTEXT7_AUDIT_BRIEF` is the start of every prompt. Put the task first or exclude the
+     brief from naming.
+  The project `fleet` points at a deleted folder (`G:\Dev\git-repos\fleet`); launching into it
+  fails as "No base branch found", which misdescribes a missing directory.
+- **Fixes after the live test (uncommitted as of writing).**
+  - *Per-agent model + handoff.* Picking a count creates one row per agent (`LaunchAgentSlots`,
+    `resizeLaunchSlots`); each row has its own agent and model. Every prompt is
+    `task + <nightshift-launch-brief>…</nightshift-launch-brief>` (`src/shared/launch-agent-brief.ts`):
+    role brief, stay-in-your-worktree, keep `.nightshift/handoffs/<worktree>.md` of every file
+    added/updated/removed, and the context7 audit.
+  - *Bug 4 fixed.* `first-work-branch-rename.ts` strips the brief before naming; brief-only
+    prompts never rename.
+  - *Bugs 2 and 3 fixed (one cause).* `beginPendingWorktreeCreation` gave every concurrent
+    creation the single `activePendingCreationId`, and the `activeView === 'terminal' &&
+    activePendingCreationId === null` completion fallback then activated an arbitrary sibling. That
+    pulled the view off the grid, and the activation gate lost a pty race, leaving that worktree's
+    card with `ptyId === null`. Requests now carry `revealOnStart: false`, which skips view/pending
+    claims and completion activation. **That alone did not hold live:** main's
+    `spawnLocalStartupAndSetupTerminals` calls `createTerminal({ activate: true })`
+    (`worktree-remote.ts:459`), and the renderer turns that into `activateTerminalInitiatedWorktree`,
+    which pulls the view off the grid independently. Dropping `startup` for background launches kept
+    the grid but started **no agents**: the renderer fallback only queues the command, and a PTY
+    spawns only when a pane mounts, which the grid never does. Final fix: an optional
+    `focusStartupTerminal: false` on `CreateWorktreeArgs` → `createTerminal({ activate: false,
+    surfaceOwner: false })`. The runtime RPC path reuses its existing `activate` field. The PTY
+    still registers in `ptyIdsByTabId` without a mounted pane, so tiles get live terminals.
+  - *Sixth worktree failing (found in the live retest).* Six `git worktree add` runs plus
+    `branch.<b>.base` writes on one repo collided on `.git/config` ("could not lock config file",
+    "Permission denied"). `addWorktree` now serializes per repo via `runKeyedSerializedOperation`,
+    keyed on `wslDistro + resolve(repoPath)`; different repos still run in parallel.
+  - **Live verification, final (2026-09-14, throwaway repo, rows opus/opus/sonnet/sonnet/haiku/haiku):**
+    view stayed on `agent-grid` throughout; 6 worktrees, 6 grid tiles; no trust prompt anywhere; six
+    `claude.exe` with matching `--model`; every agent wrote `count.txt` and
+    `.nightshift/handoffs/<worktree>.md`, and nothing else changed; branches renamed from the task
+    (`count-readme-lines`, `-2`…`-6`). One Haiku/Sonnet-class answer was wrong (5 vs 4): model
+    quality, not app.
+  - "Make it a git repo" verified live on the merged branch (`95356b57`, 2026-09-14). Opening
+    `confirm-non-git-folder` through `window.__store` on a plain folder containing `notes.txt`
+    and clicking the button added the project as `kind: git`, set it active, and landed on
+    `launch-agents` with it selected. It made one empty "Initial commit": zero files in the
+    commit, zero tracked, `notes.txt` untouched and untracked. Still not driven: the native folder
+    picker itself (not automatable).
+  - Pre-existing: 5 failures in `worktree-creation-flow.test.ts`, identical on commit `b0ec17bc`.
+  - *Bug 1: root cause found, fix not yet runtime-verified.* **On Windows Claude looks up trust
+    only under forward-slash keys.** Its `d1()` runs `path.normalize` and then replaces `\` with
+    `/`; `Dqe()` keys the project on the main repo root, and the fallback walk checks the worktree
+    folder, both through `d1()` (Claude Code 2.1.270 bundle). Nightshift wrote `G:\Dev\…`, which is
+    never read. Proven live: six `hasTrustDialogAccepted: true` backslash entries still prompted,
+    and accepting the prompt wrote `G:/…/six-agent-retest`, the forward-slash main repo root. Every
+    "green" earlier fix wrote the wrong key. Fix: `toClaudeProjectKey()` in `claude-trust-preset.ts`
+    (forward slashes on win32 only). Also kept: the wave pre-trust (`agentTrust:preTrustWorktrees`,
+    one write before any spawn, called from LaunchAgentsDialog), the 250 ms batch for per-spawn
+    marks, and a Claude branch in the CLI/runtime create path, which previously had none.
+    Parent-directory trust cannot work: Claude's walk stops at the nearest `.git`, and every
+    worktree has its own `.git` file. Stale backslash entries in `.claude.json` are harmless.
+  - A test once wrote temp entries into the real `.claude.json`; they were removed and the test now
+    clears `CLAUDE_CONFIG_DIR`. Any new test touching Claude config must do the same.
+- **Git repos as the default way to hold a project (2026-09-14).** Four features plus
+  security/review fixes, merged at `80d5dd72`:
+  - *Clone first.* Add repo's hero card on local hosts is "Clone from URL"; Browse folder moved
+    under "Other ways to add" (SSH ordering unchanged). `addRepo()` now opens that dialog and
+    resolves `Repo | null` only after it closes (`resolveAddRepoDialogRequest`, settled in a
+    `finally`). **If another modal is already open it falls back to the native picker**, because
+    modal state is single-slot and swapping would wipe Launch Agents' draft.
+  - *Unpushed badge.* `worktrees:unpushedStatus` + a renderer registry (150 ms debounce, 60 s
+    visible interval, focus refresh) → amber "↑N unpushed" / "Unpublished" on git worktree
+    cards. Paths are resolved against the repo's own worktree list; SSH failures read
+    `unverifiable`, never synced.
+  - *Folder → git → publish.* Context menu "Make it a git repo" (`repos:convertFolderToGit`)
+    keeps the **empty** first commit on purpose: these can be personal folders (Documents).
+    Committing files is an opt-in second step with a full-tree secret/large-file scan
+    (display list capped, scan is not) and a default `.gitignore`. "Publish to remote…" needs
+    `confirmed: true`, defaults GitHub to private, rejects URLs with embedded credentials, and
+    rolls back `origin` on failure (never deletes a created GitHub repo). Local hosts only.
+  - *Overlap CLI.* `nightshift worktree changes|overlap --json` (read-only; merge-tree prediction
+    on committed tips only). A non-authoritative sibling scan sets `siblingsUnverifiable`; one
+    failing sibling degrades alone. Skill guides tell agents to run it before editing.
+  - **Verified in a running app (hidden instance, CDP):** Clone-first hero + focus, both badges,
+    conversion + commit preview flagging `id_ed25519` and gating on acknowledgement, publish
+    dialog counts and credential-URL rejection, Launch Agents keeping its draft (via store call;
+    the native picker can't be driven). Not driven: an actual publish to GitHub.
+  - **Bugs the runtime check found (fixed after, tests only):** a race where the background folder
+    watcher upgrades the record before `convertFolderToGit` does, so the handler saw 'blocked',
+    deleted `.git` and stranded a git-kind record (now it succeeds if the record is already git);
+    and the follow-up dialog had "Commit files…" as primary instead of "Done".
+  - **Traps from building it:** fresh `git worktree add` copies can't compile native modules in
+    this sandbox, so use `pnpm install --ignore-scripts` and run `node node_modules/vitest/vitest.mjs
+    run --config config/vitest.config.ts`, `node config/scripts/run-typecheck-projects-in-parallel.mjs`
+    and `node node_modules/oxlint/bin/oxlint` directly. Harness-isolated worktrees can start from a
+    stale commit or be auto-removed when unchanged; check `git log -1` first. When two sessions share
+    this checkout, build in separate worktrees and merge only after the other session commits.
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this
   machine; nothing starts until one is chosen. Verified end to end in a running app.

@@ -122,3 +122,4 @@ export type TopLevelView =
   | 'skills'
   | 'artifacts'
   | 'mobile'
+  | 'agent-grid'

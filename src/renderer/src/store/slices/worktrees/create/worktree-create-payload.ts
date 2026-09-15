@@ -16,6 +16,9 @@ export type CreateWorktreeCallOptions = {
   displayNameKind?: CreateWorktreeArgs['displayNameKind']
   /** Parent picked in the composer. Sets sidebar nesting only; ignored if it no longer exists. */
   parentWorktreeId?: string
+  /** False keeps a backend-spawned startup terminal out of the foreground. See
+   *  `CreateWorktreeArgs['focusStartupTerminal']`. */
+  focusStartupTerminal?: boolean
   provisionedRoot?: {
     runtimeId: string
     executionHostId: ExecutionHostId
@@ -106,7 +109,8 @@ export function buildLocalWorktreeCreateArgs(
     repoId: request.repoId,
     ...sharedCreateFields(request, attempt),
     ...(request.startup ? { startup: request.startup } : {}),
-    ...(request.creationId ? { creationId: request.creationId } : {})
+    ...(request.creationId ? { creationId: request.creationId } : {}),
+    ...(request.options?.focusStartupTerminal === false ? { focusStartupTerminal: false } : {})
   }
 }
 
@@ -129,7 +133,9 @@ export function buildRuntimeWorktreeCreateParams(
           ...(startup.startupCommandDelivery
             ? { startupCommandDelivery: startup.startupCommandDelivery }
             : {}),
-          activate: true
+          // Why: an older remote host that has never heard of focusStartupTerminal
+          // ignores the unknown field and keeps today's always-focus behavior.
+          activate: options?.focusStartupTerminal !== false
         }
       : {})
   }

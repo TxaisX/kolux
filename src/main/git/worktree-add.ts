@@ -1,4 +1,6 @@
+import { resolve } from 'node:path'
 import { resolveWorktreeAddBaseRef } from '../../shared/worktree/base-ref'
+import { runKeyedSerializedOperation } from '../cli/keyed-promise-queue'
 import type {
   LocalBaseRefRefreshResult,
   LocalBaseRefUpdateSuggestion
@@ -147,7 +149,13 @@ export async function unsetWorktreeCreationBase(
  * `branch.<branch>.base` for new-branch worktrees with a base ref, and may
  * write `push.autoSetupRemote=true` to the repo's shared config.
  */
-export async function addWorktree(
+// Why: concurrent `worktree add` + `branch.<b>.base` writes on one repo collide on the shared
+// .git/config lock ("could not lock config file", "Permission denied"), failing a launch wave.
+// ponytail: keyed on the caller's repo path, not the git common dir, to avoid an extra git call;
+// two spellings of one repo would still run in parallel.
+const worktreeAddQueues = new Map<string, Promise<void>>()
+
+export function addWorktree(
   repoPath: string,
   worktreePath: string,
   branch: string,
@@ -155,6 +163,29 @@ export async function addWorktree(
   refreshLocalBaseRef = false,
   noCheckout = false,
   options: AddWorktreeOptions = {}
+): Promise<AddWorktreeResult> {
+  const queueKey = `${options.wslDistro ?? 'local'}::${resolve(repoPath)}`
+  return runKeyedSerializedOperation(worktreeAddQueues, queueKey, () =>
+    addWorktreeNow(
+      repoPath,
+      worktreePath,
+      branch,
+      baseBranch,
+      refreshLocalBaseRef,
+      noCheckout,
+      options
+    )
+  )
+}
+
+async function addWorktreeNow(
+  repoPath: string,
+  worktreePath: string,
+  branch: string,
+  baseBranch: string | undefined,
+  refreshLocalBaseRef: boolean,
+  noCheckout: boolean,
+  options: AddWorktreeOptions
 ): Promise<AddWorktreeResult> {
   try {
     return await withRepoRefMaintenancePaused('worktree-add', () =>

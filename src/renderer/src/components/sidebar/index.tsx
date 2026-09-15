@@ -25,6 +25,10 @@ const SidebarAgentsList = lazyWithRetry(() => import('./SidebarAgentsList'))
 
 const WorktreeMetaDialog = lazyWithRetry(() => import('./WorktreeMetaDialog'))
 const RemoveFolderDialog = lazyWithRetry(() => import('./RemoveFolderDialog'))
+const GitRepoConversionFollowUpDialog = lazyWithRetry(
+  () => import('./GitRepoConversionFollowUpDialog')
+)
+const PublishRemoteDialog = lazyWithRetry(() => import('./PublishRemoteDialog'))
 const WorktreeVisibilityDialog = lazyWithRetry(() => import('./WorktreeVisibilityDialog'))
 const NightshiftYamlTrustDialog = lazyWithRetry(() => import('./NightshiftYamlTrustDialog'))
 const ForgetSshWorkspaceDialog = lazyWithRetry(() => import('./ForgetSshWorkspaceDialog'))
@@ -245,6 +249,8 @@ function Sidebar({
       <React.Suspense fallback={null}>
         {activeModal === 'edit-meta' ? <WorktreeMetaDialog /> : null}
         {activeModal === 'confirm-remove-folder' ? <RemoveFolderDialog /> : null}
+        {activeModal === 'git-repo-conversion-followup' ? <GitRepoConversionFollowUpDialog /> : null}
+        {activeModal === 'publish-remote' ? <PublishRemoteDialog /> : null}
         {activeModal === 'worktree-visibility' ? <WorktreeVisibilityDialog /> : null}
         {activeModal === 'confirm-nightshift-yaml-hooks' ? <NightshiftYamlTrustDialog /> : null}
         {activeModal === 'forget-ssh-workspace' ? <ForgetSshWorkspaceDialog /> : null}

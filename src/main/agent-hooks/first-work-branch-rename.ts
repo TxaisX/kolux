@@ -11,6 +11,7 @@ import {
   stripConfiguredBranchPrefix
 } from '../../shared/branch-name-from-work'
 import { getCommitMessageModelDiscoveryHostKey } from '../../shared/commit-message-host-key'
+import { stripLaunchAgentBrief } from '../../shared/launch-agent-brief'
 import { computeBranchName, getConfiguredBranchPrefix } from '../ipc/worktree-logic'
 import { gitExecFileAsync } from '../git/runner'
 import { getSshGitUsername, resolveLocalGitUsername } from '../git/git-username'
@@ -114,7 +115,8 @@ export async function maybeAutoRenameBranchOnFirstWork(
   if (settledWorktreeIds.has(worktreeId) || inFlightWorktreeIds.has(worktreeId)) {
     return
   }
-  const prompt = event.prompt?.trim()
+  // Why: launch waves append operating rules to the task; naming from them gave every branch the same rule-derived name.
+  const prompt = stripLaunchAgentBrief(event.prompt ?? '')
   if (!prompt) {
     return
   }

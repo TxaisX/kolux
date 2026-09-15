@@ -23,6 +23,12 @@ import type {
   ProjectUpdateArgs
 } from '../../shared/project-types'
 import type { BaseRefDefaultResult, BaseRefSearchResult, Repo } from '../../shared/repo-types'
+import type {
+  CommitInitialFilesArgs,
+  InitialCommitPreviewResult,
+  PublishPreviewResult,
+  PublishRemoteArgs
+} from '../../shared/repo-git-publish-types'
 
 export type RepositoryApi = {
   list: () => Promise<Repo[]>
@@ -97,6 +103,21 @@ export type RepositoryApi = {
     name: string
     kind: 'git' | 'folder'
   }) => Promise<{ repo: Repo } | { error: string }>
+  // Why: error union matches the IPC handler's return shape; turns an existing local, non-git folder into a git repo in place.
+  initGit: (args: { path: string }) => Promise<{ repo: Repo } | { error: string }>
+  // Why: the context-menu "Make it a git repo" for an already-tracked folder project — converts
+  // the existing repo record's kind in place instead of registering a duplicate (see initGit above,
+  // which only ever handles a not-yet-tracked path). Local repos only.
+  convertFolderToGit: (args: { repoId: string }) => Promise<{ repo: Repo } | { error: string }>
+  // Why: read-only look at what "Commit files…" would stage, shown before the user opts in.
+  previewInitialCommit: (args: { repoId: string }) => Promise<InitialCommitPreviewResult>
+  // Why: the explicit opt-in that actually stages and commits the user's real files.
+  commitInitialFiles: (args: CommitInitialFilesArgs) => Promise<{ repo: Repo } | { error: string }>
+  // Why: commit/file counts the Publish dialog shows before the user confirms uploading.
+  previewPublish: (args: { repoId: string }) => Promise<PublishPreviewResult>
+  // Why: first push to a brand-new remote (GitHub via `gh`, or an arbitrary URL). Always
+  // requires `confirmed: true` — the caller must have shown the previewPublish counts first.
+  publishRemote: (args: PublishRemoteArgs) => Promise<{ repo: Repo } | { error: string }>
   isGitAvailable: () => Promise<boolean>
   getDefaultCreateProjectParent: () => Promise<string>
   onCloneProgress: (callback: (data: { phase: string; percent: number }) => void) => () => void

@@ -34,6 +34,12 @@ function revealPendingCreation(
     loaderVisible: true,
     request
   })
+  // Why: a background batch launch (e.g. the agent grid launcher) must leave
+  // the caller's current view alone — forcing 'terminal' here is what used to
+  // bounce a multi-agent launch off the grid mid-flight.
+  if (request.revealOnStart === false) {
+    return
+  }
   // Why: the creation panel only renders under the terminal view (App content
   // router), so force it active so the panel is what fills the content area.
   store.setActiveView('terminal')
@@ -53,9 +59,11 @@ export function runBackgroundWorktreeCreation(request: WorktreeCreationRequest):
     request
   )
   if (existingCreationId) {
-    store.setActivePendingWorktreeCreation(existingCreationId)
-    store.setActiveView('terminal')
-    store.setSidebarOpen(true)
+    if (request.revealOnStart !== false) {
+      store.setActivePendingWorktreeCreation(existingCreationId)
+      store.setActiveView('terminal')
+      store.setSidebarOpen(true)
+    }
     return existingCreationId
   }
   // Why: crypto.randomUUID is undefined in non-secure browser contexts (LAN web
@@ -96,7 +104,8 @@ export function continueBackgroundWorktreeCreation(
   })
   // Why: background work-item preflight can finish after the user moved on; keep
   // the pending row alive without reselecting the creation panel in that case.
-  if (options.revealCreationSurface !== false) {
+  // A revealOnStart:false request (a batch launch) must stay off-surface here too.
+  if (options.revealCreationSurface !== false && request.revealOnStart !== false) {
     store.setActivePendingWorktreeCreation(creationId)
     store.setActiveView('terminal')
     store.setSidebarOpen(true)

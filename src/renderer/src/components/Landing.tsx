@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ExternalLink, FolderPlus, GitBranchPlus, Star, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ExternalLink,
+  FolderPlus,
+  GitBranchPlus,
+  Rocket,
+  Star,
+  X
+} from 'lucide-react'
 import { cn } from '../lib/utils'
 import { useAppStore } from '../store'
 import { isGitRepoKind } from '../../../shared/repo-kind'
@@ -219,6 +227,20 @@ function PreflightBanner({
 export default function Landing(): React.JSX.Element {
   const repos = useAppStore((s) => s.repos)
   const openModal = useAppStore((s) => s.openModal)
+  const addRepo = useAppStore((s) => s.addRepo)
+  const setActiveRepo = useAppStore((s) => s.setActiveRepo)
+
+  // Why: first run has no repo to launch into, so pick one before asking how many agents.
+  const launchAgents = async (): Promise<void> => {
+    if (!repos.some((repo) => isGitRepoKind(repo) && !repo.connectionId)) {
+      const repo = await addRepo()
+      if (!repo || !isGitRepoKind(repo)) {
+        return
+      }
+      setActiveRepo(repo.id)
+    }
+    openModal('launch-agents')
+  }
 
   const createTargetLabel =
     repos.length > 0 && repos.every((repo) => isGitRepoKind(repo)) ? 'Worktree' : 'Workspace'
@@ -275,6 +297,14 @@ export default function Landing(): React.JSX.Element {
           </p>
 
           <div className="flex items-center justify-center gap-2.5 flex-wrap">
+            <button
+              className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground font-medium text-sm px-4 py-2 rounded-md cursor-pointer hover:bg-primary/90 transition-colors"
+              onClick={() => void launchAgents()}
+            >
+              <Rocket className="size-3.5" />
+              {translate('auto.components.Landing.launchAgents', 'Launch agents')}
+            </button>
+
             <button
               className="inline-flex items-center gap-1.5 bg-secondary/70 border border-border/80 text-foreground font-medium text-sm px-4 py-2 rounded-md cursor-pointer hover:bg-accent transition-colors"
               onClick={() => openModal('add-repo')}

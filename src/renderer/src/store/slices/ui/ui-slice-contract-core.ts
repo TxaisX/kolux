@@ -115,6 +115,7 @@ export type UiViewHistory =
   | 'skills'
   | 'artifacts'
   | 'mobile'
+  | 'agent-grid'
 
 export type UISliceCore = {
   sidebarOpen: boolean

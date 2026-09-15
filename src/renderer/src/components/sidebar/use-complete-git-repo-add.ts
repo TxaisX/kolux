@@ -68,13 +68,19 @@ export function useCompleteGitRepoAdd({
         await finishProjectAdd(repoId, source, executionHostId)
         return
       }
-      await finishProjectAddWithDefaultCheckout({
-        repoId,
-        source,
-        executionHostId,
-        closeModal,
-        setHideDefaultBranchWorkspace
-      })
+      try {
+        await finishProjectAddWithDefaultCheckout({
+          repoId,
+          source,
+          executionHostId,
+          closeModal,
+          setHideDefaultBranchWorkspace
+        })
+      } finally {
+        // Why: settles an addRepo()-opened Add repo dialog even if the checkout handoff throws, so callers never hang.
+        const addedRepo = useAppStore.getState().repos.find((repo) => repo.id === repoId) ?? null
+        useAppStore.getState().resolveAddRepoDialogRequest(addedRepo)
+      }
     },
     [closeModal, finishProjectAdd, setHideDefaultBranchWorkspace]
   )

@@ -31,6 +31,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     folderMetaRowContent,
     showIdentityInNewCard,
     conflictOperation,
+    unpushedStatus,
     cardProps,
     cacheStartedAt,
     hasDetails,
@@ -87,7 +88,11 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
   // Why: rebases already surface in source control, so dense cards skip the persistent rebase chip.
   const showConflictOperationBadge =
     !!conflictOperation && conflictOperation !== 'unknown' && conflictOperation !== 'rebase'
-  const hasMetadataBadge = showConflictOperationBadge
+  const showUnpushedBadge =
+    !!unpushedStatus &&
+    (unpushedStatus.kind === 'ahead' ||
+      (unpushedStatus.kind === 'unpublished' && unpushedStatus.count > 0))
+  const hasMetadataBadge = showConflictOperationBadge || showUnpushedBadge
   const showUnreadQuickAction = !affiliateListMode && showStatus && !newCardStyle
   // Why: the slot owns the unread/status lane; legacy keeps the bell toggle, the new card keeps the glyph passive.
   const showCombinedStatusSlot = showStatus
@@ -103,6 +108,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     showIdentityInNewCard ||
     showDetachedHeadInMetaRow ||
     showConflictOperationBadge ||
+    showUnpushedBadge ||
     cacheStartedAt != null ||
     showMetaRowDetails
   )
@@ -278,6 +284,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     showDetachedHeadInMetaRow,
     showBranch,
     showConflictOperationBadge,
+    showUnpushedBadge,
     showUnreadQuickAction,
     showCombinedStatusSlot,
     showTitleRowPrimary,

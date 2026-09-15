@@ -34,7 +34,7 @@ export function getAddRepoLocalStartActions({
   primaryAction: AddRepoLocalStartAction
   secondaryActions: AddRepoLocalStartAction[]
 } {
-  const primaryAction = {
+  const browse = {
     kind: 'browse' as const,
     icon: FolderOpen,
     title:
@@ -111,11 +111,21 @@ export function getAddRepoLocalStartActions({
     onClick: onOpenCreateStep
   }
 
-  const secondaryActions = showRemoteAction
-    ? isSshLikely
-      ? [remote, clone, create]
-      : [clone, remote, create]
-    : [clone, create]
+  // Clone-first only for a genuinely local (not SSH, not SSH-likely) host — SSH hosts keep
+  // "Open project on SSH host" as the hero, and SSH-likely users keep browse-primary too.
+  const cloneIsHero = browseHostKind === 'local' && !isSshLikely
+
+  const primaryAction = cloneIsHero ? clone : browse
+
+  const secondaryActions = cloneIsHero
+    ? showRemoteAction
+      ? [browse, remote, create]
+      : [browse, create]
+    : showRemoteAction
+      ? isSshLikely
+        ? [remote, clone, create]
+        : [clone, remote, create]
+      : [clone, create]
 
   return { primaryAction, secondaryActions }
 }

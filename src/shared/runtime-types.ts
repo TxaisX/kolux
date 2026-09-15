@@ -197,9 +197,15 @@ export type {
   RuntimeWorktreePsSnapshotResult,
   RuntimeWorktreePsSummary,
   RuntimeWorktreePsUnchangedResult,
+  RuntimeWorktreeChangeFile,
+  RuntimeWorktreeChangesResult,
+  RuntimeWorktreeOverlapResult,
+  RuntimeWorktreeOverlapSibling,
   RuntimeWorktreeRecord,
   RuntimeWorktreeRemoveResult,
-  RuntimeWorktreeStatus
+  RuntimeWorktreeStatus,
+  WorktreeChangeFileStatus,
+  WorktreeConflictPrediction
 } from './runtime-worktree-contracts'
 export type {
   RuntimeMarkdownReadTabResult,

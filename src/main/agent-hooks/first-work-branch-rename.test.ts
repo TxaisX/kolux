@@ -6,6 +6,7 @@ import type { AgentSessionJournal } from '../native-chat/agent-session-journal/j
 import { StructuredAgentSessionStatusFeed } from '../native-chat/agent-session-wire/structured-agent-session-status-feed'
 import { maybeAutoRenameWorkspaceOnFirstStructuredTurn } from './first-work-structured-session-rename'
 import { WORKTREE_ID_SEPARATOR } from '../../shared/worktree/id'
+import { composeLaunchAgentPrompt } from '../../shared/launch-agent-brief'
 
 const {
   gitExecFileAsyncMock,
@@ -407,6 +408,25 @@ describe('maybeAutoRenameBranchOnFirstWork', () => {
     await maybeAutoRenameBranchOnFirstWork(workingEvent({ state: 'done' }), deps)
     await maybeAutoRenameBranchOnFirstWork(workingEvent({ prompt: '   ' }), deps)
     expect(gitExecFileAsyncMock).not.toHaveBeenCalled()
+  })
+
+  it('never names a branch from a launch wave brief alone', async () => {
+    const { deps } = makeDeps()
+    const briefOnly = composeLaunchAgentPrompt('', 'anhinga')
+    await maybeAutoRenameBranchOnFirstWork(workingEvent({ prompt: briefOnly }), deps)
+    expect(generateBranchNameMock).not.toHaveBeenCalled()
+    expect(gitExecFileAsyncMock).not.toHaveBeenCalled()
+  })
+
+  it('names a launched branch from the task, not the brief that follows it', async () => {
+    const { deps } = makeDeps()
+    const prompt = composeLaunchAgentPrompt('Fix auth', 'anhinga', 'You are the REVIEWER.')
+    await maybeAutoRenameBranchOnFirstWork(workingEvent({ prompt }), deps)
+    expect(generateBranchNameMock).toHaveBeenCalledWith(
+      expect.objectContaining({ firstPrompt: 'Fix auth' }),
+      expect.anything(),
+      expect.anything()
+    )
   })
 
   it('does not re-attempt after a successful rename', async () => {

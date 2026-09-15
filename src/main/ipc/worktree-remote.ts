@@ -389,7 +389,7 @@ function countNonEmptyGitOutputLines(output: string): number {
   return output.split(/\r?\n/).filter((line) => line.trim().length > 0).length
 }
 
-async function spawnLocalStartupAndSetupTerminals(args: {
+export async function spawnLocalStartupAndSetupTerminals(args: {
   runtime: NightshiftRuntimeService | undefined
   worktree: Pick<Worktree, 'id' | 'path'>
   startup: CreateWorktreeArgs['startup']
@@ -397,8 +397,13 @@ async function spawnLocalStartupAndSetupTerminals(args: {
   defaultTabs: CreateWorktreeResult['defaultTabs']
   settings: GlobalSettings
   createdWithAgent: CreateWorktreeArgs['createdWithAgent']
+  /** False keeps the spawned startup terminal out of the foreground — the pty
+   *  still spawns and registers, it is just never focused/revealed. Omitted (or
+   *  true) keeps today's always-focus behavior. */
+  focusStartupTerminal?: boolean
 }): Promise<StagedStartupResult> {
   const { runtime, worktree, startup, setup, defaultTabs, settings, createdWithAgent } = args
+  const focusStartupTerminal = args.focusStartupTerminal !== false
   if (!runtime || !startup || defaultTabs?.tabs.length) {
     return { didSpawnSetup: false }
   }
@@ -440,7 +445,8 @@ async function spawnLocalStartupAndSetupTerminals(args: {
         } else if (preset === 'codex') {
           markCodexProjectTrusted(worktree.path)
         } else if (preset === 'claude') {
-          markClaudeProjectTrusted(worktree.path)
+          // Why: batches with sibling worktrees launched in the same wave; must land before spawn.
+          await markClaudeProjectTrusted(worktree.path)
         }
       } catch {
         // Best-effort: launch still proceeds and the agent can ask interactively.
@@ -455,7 +461,11 @@ async function spawnLocalStartupAndSetupTerminals(args: {
       ...(sequencedStartup.viewMode ? { viewMode: sequencedStartup.viewMode } : {}),
       startupCommandDelivery: sequencedStartup.startupCommandDelivery,
       telemetry: sequencedStartup.telemetry,
-      activate: true
+      activate: focusStartupTerminal,
+      // Why: an unfocused startup terminal must not steal the sidebar reveal
+      // either — activate:false alone only stops the worktree from becoming
+      // the active one; surfaceOwner:false is what keeps the create silent.
+      ...(focusStartupTerminal ? {} : { surfaceOwner: false })
     })
     startupTerminalHandle = terminal.handle
     startupTerminal = {
@@ -3044,7 +3054,8 @@ export async function createLocalWorktree(
       setup,
       defaultTabs,
       settings,
-      createdWithAgent: args.createdWithAgent
+      createdWithAgent: args.createdWithAgent,
+      focusStartupTerminal: args.focusStartupTerminal
     })
   )
 
