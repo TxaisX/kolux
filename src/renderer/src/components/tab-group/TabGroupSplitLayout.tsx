@@ -314,7 +314,7 @@ export default function TabGroupSplitLayout({
           both painted and stacked into a 2px bar below the drag strip. */}
         <div
           ref={dragSplit.setDragRootNode}
-          className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden border-l border-border"
+          className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden border-l border-border bg-workbench-surface"
         >
           <div className="h-[4px] shrink-0 bg-card" data-terminal-focus-release-surface="true" />
           <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">

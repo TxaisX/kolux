@@ -16,6 +16,7 @@ import { hasUnsupportedTuiAgentArgs } from '../../../shared/tui-agent-launch-def
 import { normalizeTerminalCursorStyleDefault } from '../../../shared/terminal-cursor-style-settings'
 import { normalizeTerminalLineHeight } from '../../../shared/terminal-line-height-settings'
 import { migrateAgentYoloDefaults } from '../applying-settings/terminal-settings-migrations'
+import { migrateTerminalThemeDarkDefault } from '../../../shared/terminal-theme-default-migration'
 import {
   normalizeLoadedOnboardingState,
   normalizeNotificationSettings,
@@ -43,6 +44,10 @@ export type PreparedLoadedProfileSettings = {
   migratedAgentYoloDefaults: Pick<
     GlobalSettings,
     'agentDefaultArgs' | 'agentDefaultEnv' | 'agentYoloDefaultsMigrated'
+  >
+  migratedTerminalThemeDark: Pick<
+    GlobalSettings,
+    'terminalThemeDark' | 'terminalThemeDarkDefaultedToNightshift'
   >
   migratedWindowsRuntimeDefault: GlobalSettings['localWindowsRuntimeDefault']
   migratedLocalAccountRuntime: GlobalSettings['localAccountRuntime']
@@ -134,6 +139,11 @@ export function prepareLoadedProfileSettings(
   }
   const migratedDisabledTuiAgents = normalizeDisabledTuiAgents(parsed.settings?.disabledTuiAgents)
   const migratedAgentYoloDefaults = migrateAgentYoloDefaults(parsed.settings)
+  const { changed: terminalThemeDarkChanged, ...migratedTerminalThemeDark } =
+    migrateTerminalThemeDarkDefault(parsed.settings)
+  if (terminalThemeDarkChanged || parsed.settings?.terminalThemeDarkDefaultedToNightshift !== true) {
+    markNeedsSave()
+  }
   if (
     parsed.settings?.agentYoloDefaultsMigrated !== true ||
     hasUnsupportedTuiAgentArgs('opencode', parsed.settings?.agentDefaultArgs?.opencode) ||
@@ -242,6 +252,7 @@ export function prepareLoadedProfileSettings(
     stampPrimarySelectionTerminalDefaults,
     migratedDisabledTuiAgents,
     migratedAgentYoloDefaults,
+    migratedTerminalThemeDark,
     migratedWindowsRuntimeDefault,
     migratedLocalAccountRuntime,
     loadedCompactWorktreeCards,

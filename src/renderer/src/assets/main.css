@@ -44,6 +44,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-workbench-surface: var(--workbench-surface);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
@@ -155,6 +156,8 @@
   --nightshift-security-ring: #a1a1a1;
   --background: #fff;
   --editor-surface: #ffffff;
+  /* Why: the Code work area sits a step below the chrome so panes read as the subject. */
+  --workbench-surface: #f4f4f5;
   --foreground: #0a0a0a;
   --card: #fff;
   --card-foreground: #0a0a0a;
@@ -273,6 +276,7 @@
   --nightshift-security-ring: #737373;
   --background: #0a0a0a;
   --editor-surface: #1e1e1e;
+  --workbench-surface: #0a0a0a;
   --foreground: #fafafa;
   --card: #171717;
   --card-foreground: #fafafa;
