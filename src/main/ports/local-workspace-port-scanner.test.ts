@@ -5,7 +5,8 @@ import {
   attributePortToWorkspace,
   enrichPort,
   isContainerProcess,
-  normalizeWorkspacePortProbes
+  normalizeWorkspacePortProbes,
+  reconcileAdvertisedUrls
 } from './local-workspace-port-attribution'
 import {
   parseLsofListeningOutput,
@@ -235,6 +236,20 @@ describe('enrichPort with an advertised URL but no process evidence', () => {
     })
 
     expect(enriched.kind).toBe('external')
+  })
+
+  it('keeps a banner-only listener alive through reconciliation', () => {
+    const lookup = vi.fn((worktreeId: string, port: number) =>
+      worktreeId === worktrees[1].id && port === 8767 ? advertised : undefined
+    )
+    const reconcileScan = vi.fn()
+    reconcileAdvertisedUrls([rawPort], normalizeWorkspacePortProbes(worktrees), {
+      lookup,
+      reconcileScan
+    })
+
+    expect(reconcileScan).toHaveBeenCalledWith([worktrees[1].id], [{ port: 8767, pid: 4242 }])
+    expect(reconcileScan).toHaveBeenCalledWith([worktrees[0].id], [])
   })
 
   it('prefers process evidence over the banner when both exist', () => {

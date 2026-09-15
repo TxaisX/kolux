@@ -88,7 +88,13 @@ export function LocalPortRow({
     'Open in Browser'
   )
   const confidenceLabel =
-    port.kind === 'workspace' ? (port.owner.confidence === 'cwd' ? 'cwd' : 'command') : null
+    port.kind === 'workspace'
+      ? port.owner.confidence === 'advertised'
+        ? 'url'
+        : port.owner.confidence === 'cwd'
+          ? 'cwd'
+          : 'command'
+      : null
   const canStopProcess =
     port.kind === 'workspace' && Boolean(port.pid) && port.processName !== 'Electron'
 

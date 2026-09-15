@@ -106,14 +106,18 @@ export function enrichPort(
 export function reconcileAdvertisedUrls(
   ports: RawListeningPort[],
   worktrees: readonly NormalizedWorkspacePortProbe[],
-  urlWatcher: Pick<AdvertisedUrlWatcher, 'reconcileScan'>
+  urlWatcher: Pick<AdvertisedUrlWatcher, 'reconcileScan' | 'lookup'>
 ): void {
   const observationsByWorktree = new Map<string, { port: number; pid?: number }[]>()
   for (const worktree of worktrees) {
     observationsByWorktree.set(worktree.worktree.id, [])
   }
   for (const port of ports) {
-    const owner = attributePortToNormalizedWorkspaces(port, worktrees)
+    const owner =
+      attributePortToNormalizedWorkspaces(port, worktrees) ??
+      // Why: without this, a banner-only listener (Windows has no cwd) reads as "absent" for
+      // its workspace and the watcher evicts the banner in the same scan that could use it.
+      attributePortByAdvertisedUrl(port, worktrees, urlWatcher)
     if (!owner) {
       continue
     }

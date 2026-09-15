@@ -42,7 +42,10 @@ function isWorkspacePortOwner(value: unknown): boolean {
     typeof value.repoId === 'string' &&
     typeof value.displayName === 'string' &&
     typeof value.path === 'string' &&
-    (value.confidence === 'cwd' || value.confidence === 'command' || value.confidence === 'none')
+    (value.confidence === 'cwd' ||
+      value.confidence === 'command' ||
+      value.confidence === 'advertised' ||
+      value.confidence === 'none')
   )
 }
 
