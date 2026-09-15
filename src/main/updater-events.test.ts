@@ -67,6 +67,7 @@ function createContext(overrides?: Partial<HandlerContext>): HandlerContext {
     autoUpdater: createUpdaterStub() as never,
     clearBackgroundCheckLaunchPending: vi.fn(),
     clearAvailableUpdateContext: vi.fn(),
+    downloadUpdate: vi.fn(),
     consumeMissingManifestPrereleaseFallbackResult: vi.fn(() => null),
     getPublishingWindowLastGoodCheck: vi.fn(() => null),
     getMissingManifestPrereleaseFallbackUserInitiated: vi.fn(() => null),

@@ -49,7 +49,8 @@ If a release contains both kinds, the larger one wins: any x-level change makes 
 The installed app checks GitHub Releases on `TxaisX/nightshift` once a day. The update button
 in the sidebar footer (`SidebarUpdateButton.tsx`, between Help and "Reveal active workspace")
 walks the same flow by hand: Check for updates → Update to vX → Downloading % → Restart to
-update. It only reflects `updateStatus`, so the updater never runs in `pnpm dev` and the button
+update. Any check that finds a newer release starts the download itself, so the card jumps
+straight to Downloading % → Restart to update; the only click left is Restart. It only reflects `updateStatus`, so the updater never runs in `pnpm dev` and the button
 stays on "Check for updates" there. To ship a release:
 
 1. Bump `version` in `package.json` (for example `0.1.0` → `0.1.1`) and commit it to `main`.
@@ -76,6 +77,15 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   whose pty `listLiveDaemonPtyIds()` still reports; if the inventory is unavailable it reopens
   none, rather than empty windows. Verified: restored Claude sessions render live output in
   their own windows.
+- **Found updates download themselves (2026-09-15).** `updater-events.ts` calls
+  `downloadUpdate()` right after broadcasting `available`, background or manual, so the only
+  click left is Restart. Skipped for local builds, pinned dev jumps, externally managed Linux
+  packages, and serve hosts (`updater-setup.ts` gates on interactive install mode, because a
+  paired client drives a server's download and expects to see `available` first). Check cadence
+  is unchanged (launch, daily, wake/focus after a day). Test: `updater.startup-scheduling.test.ts`
+  "downloads an update found by a background check without a click". `updater-changelog.test.ts`
+  and `updater-nudge.test.ts` fail on this branch before and after; their `net.fetch` mock
+  returns null and is unrelated.
 - **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
   (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
   step below the chrome. The default dark terminal theme is now `Nightshift Dark`

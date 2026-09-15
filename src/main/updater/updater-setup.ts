@@ -167,6 +167,12 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
       autoUpdater,
       clearBackgroundCheckLaunchPending: () => this.clearBackgroundCheckLaunchPending(),
       clearAvailableUpdateContext: () => this.clearAvailableUpdateContext(),
+      // Why: a serve host's download is driven by its paired client, which expects to see 'available' first.
+      downloadUpdate: () => {
+        if (this.updateInstallMode === 'interactive') {
+          this.downloadUpdate()
+        }
+      },
       consumeMissingManifestPrereleaseFallbackResult: () =>
         this.consumeMissingManifestPrereleaseFallbackResult(),
       getPublishingWindowLastGoodCheck: () => this.getPublishingWindowLastGoodCheck(),
