@@ -164,6 +164,26 @@ describe('createUISlice hydratePersistedUI', () => {
     expect(store.getState().activeView).toBe('terminal')
   })
 
+  it('falls back to terminal for the removed inbox and floor views (v0.5.0 profiles)', () => {
+    const store = createUIStore()
+
+    store
+      .getState()
+      .hydratePersistedUI(
+        makePersistedUI({ activeView: 'inbox' as unknown as PersistedUIState['activeView'] }),
+        'startup'
+      )
+    expect(store.getState().activeView).toBe('terminal')
+
+    store
+      .getState()
+      .hydratePersistedUI(
+        makePersistedUI({ activeView: 'floor' as unknown as PersistedUIState['activeView'] }),
+        'startup'
+      )
+    expect(store.getState().activeView).toBe('terminal')
+  })
+
   it('keeps a persisted activity view when the settings fetch failed', () => {
     // A failed window.api.settings.get() leaves settings null; downgrading here would let the
     // persisted-UI writer overwrite the saved view with terminal.

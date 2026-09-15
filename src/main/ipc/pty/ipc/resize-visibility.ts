@@ -1,9 +1,4 @@
 import { getPtyIpc } from '../../pty-host-bindings'
-import type {
-  PtyDeliveryWriteOff,
-  PtyRendererDeliveryHealthReply,
-  PtyRendererDeliveryStateReport
-} from '../../../../shared/pty-renderer-delivery-health'
 import { redactPtyIdForDiagnostics } from '../../../../shared/pty-delivery-diagnostics'
 import { setTerminalViewAttributes } from '../../../runtime/terminal-view-attribute-store'
 import { validateTerminalViewAttributes } from '../../../../shared/terminal-view-attributes'
@@ -27,15 +22,15 @@ import {
   mainDeliveryBreadcrumbs,
   resetRendererDeliveryAccountingForLifecycleReset
 } from '../delivery/debug'
-import { PTY_DELIVERY_HEAL_MIN_ACK_SILENCE_MS } from '../delivery/constants'
-import { applyCumulativeAck } from '../delivery/accounting'
 import { sendModelRestoreNeededMarker } from '../delivery/payload'
 import { isMainWindowPtyIpcEvent } from './write-input'
+import { installPtyDeliveryHealthIpc } from './delivery-health'
 import type { PtyIpcSession } from '../session'
 
 export function installPtyResizeVisibilityIpc(session: PtyIpcSession): void {
   const ipcMain = getPtyIpc()
   const { runtime, mainWindow } = session
+  installPtyDeliveryHealthIpc(session)
 
   // Why: resize is fire-and-forget — ipcMain.on (not .handle) halves IPC traffic by skipping the empty acknowledgement reply.
   ipcMain.removeAllListeners('pty:resize')
@@ -92,103 +87,6 @@ export function installPtyResizeVisibilityIpc(session: PtyIpcSession): void {
       provider.ackColdRestore(args.id)
     }
   })
-
-  // Why: renderer ACKs bound main→renderer delivery without stopping PTY ingestion — agent/status consumers still see every chunk via the provider/runtime path.
-  ipcMain.removeAllListeners('pty:ackData')
-  ipcMain.on(
-    'pty:ackData',
-    (_event, args: { id: string; charCount?: number; processedChars?: number }) => {
-      session.lastAckReceivedAtMs = Date.now()
-      // Why: a live ACK channel means a future unanswered probe is a fresh diagnostic event, not a continuation of the last silent streak.
-      session.deliveryResyncUnansweredWarnLogged = false
-      let acknowledged = 0
-      if (typeof args.processedChars === 'number' && Number.isFinite(args.processedChars)) {
-        acknowledged = applyCumulativeAck(session, args.id, Math.max(0, args.processedChars))
-      } else {
-        // Why: tolerate legacy per-chunk delta payloads — dev hot-reload can pair an old renderer with a new main.
-        const accounting = session.rendererDeliveryAccountingByPty.get(args.id)
-        const delta = Number.isFinite(args.charCount) ? Math.max(0, args.charCount ?? 0) : 0
-        acknowledged = accounting
-          ? applyCumulativeAck(session, args.id, accounting.ackedChars + delta)
-          : 0
-      }
-      tryGetProviderForPty(args.id)?.acknowledgeDataEvent(args.id, acknowledged)
-      session.schedulePendingDataAfterCreditReport(acknowledged > 0)
-    }
-  )
-
-  ipcMain.removeAllListeners('pty:deliveryResyncResponse')
-  ipcMain.on(
-    'pty:deliveryResyncResponse',
-    (_event, args: { requestId: number; processedCharsByPty: Record<string, number> }) => {
-      if (
-        session.deliveryResyncOutstandingRequestId === null ||
-        args?.requestId !== session.deliveryResyncOutstandingRequestId
-      ) {
-        return
-      }
-      session.clearDeliveryResyncProbe()
-      session.deliveryResyncUnansweredWarnLogged = false
-      // Why max-merge: the renderer's cumulative totals are authoritative for what it processed, draining exactly the in-flight debt from lost ACKs.
-      let creditedAny = false
-      for (const [id, processedChars] of Object.entries(args.processedCharsByPty ?? {})) {
-        if (typeof processedChars !== 'number' || !Number.isFinite(processedChars)) {
-          continue
-        }
-        const acknowledged = applyCumulativeAck(session, id, Math.max(0, processedChars))
-        if (acknowledged > 0) {
-          creditedAny = true
-          tryGetProviderForPty(id)?.acknowledgeDataEvent(id, acknowledged)
-        }
-      }
-      session.schedulePendingDataAfterCreditReport(creditedAny)
-    }
-  )
-
-  // Why invoke + renderer-initiated: the field wedge (v1.4.121-rc.0) kills every main→renderer push channel while invoke survives, so the resync rides here plus a write-off lane.
-  ipcMain.removeHandler('pty:reportRendererDeliveryState')
-  ipcMain.handle(
-    'pty:reportRendererDeliveryState',
-    (_event, args: PtyRendererDeliveryStateReport): PtyRendererDeliveryHealthReply => {
-      // Extra repair lane for the lost-ACK variant: identical max-merge to the resync response, so a heal is only reached when merging cannot drain.
-      let creditedAny = false
-      for (const [id, processedChars] of Object.entries(args?.processedCharsByPty ?? {})) {
-        if (typeof processedChars !== 'number' || !Number.isFinite(processedChars)) {
-          continue
-        }
-        const acknowledged = applyCumulativeAck(session, id, Math.max(0, processedChars))
-        if (acknowledged > 0) {
-          creditedAny = true
-          tryGetProviderForPty(id)?.acknowledgeDataEvent(id, acknowledged)
-        }
-      }
-      let writtenOff: PtyDeliveryWriteOff[] = []
-      // Why the main-side ACK-silence check: requiring main to have also seen no ACK stops a buggy/foreign caller from writing off live delivery.
-      if (
-        args?.heal === true &&
-        session.rendererInFlightTotalChars > 0 &&
-        (session.lastAckReceivedAtMs === null ||
-          Date.now() - session.lastAckReceivedAtMs >= PTY_DELIVERY_HEAL_MIN_ACK_SILENCE_MS)
-      ) {
-        writtenOff = session.writeOffLostRendererDelivery(args)
-        creditedAny ||= writtenOff.length > 0
-      }
-      session.schedulePendingDataAfterCreditReport(creditedAny)
-      let inFlightPtyCount = 0
-      for (const accounting of session.rendererDeliveryAccountingByPty.values()) {
-        if (accounting.sentChars - accounting.ackedChars > 0) {
-          inFlightPtyCount++
-        }
-      }
-      return {
-        inFlightTotalChars: session.rendererInFlightTotalChars,
-        inFlightPtyCount,
-        msSinceLastAck:
-          session.lastAckReceivedAtMs === null ? null : Date.now() - session.lastAckReceivedAtMs,
-        ...(writtenOff.length > 0 ? { writtenOff } : {})
-      }
-    }
-  )
 
   // Why: renderer signals its pty:data listener is live; until then sends are held so boot-window bytes can't drop into a listener-less page and pin the gate.
   ipcMain.removeAllListeners('pty:rendererDispatcherReady')

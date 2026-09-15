@@ -17,6 +17,7 @@ import {
   markCopilotFolderTrusted,
   markCursorWorkspaceTrusted
 } from '../agent-trust-presets'
+import { markClaudeProjectTrusted } from '../claude-trust-preset'
 import {
   detectInstalledAgentsWithShellPathHydration,
   detectRemoteAgents
@@ -199,6 +200,9 @@ export async function markLocalWorktreeTrusted(
     } else if (preset === 'codex') {
       // Why: the Codex write queues behind any in-flight hook grant, so the agent must not launch until it lands.
       await markCodexProjectTrusted(workspacePath)
+    } else if (preset === 'claude') {
+      // Why: batches with sibling worktrees launched in the same wave; must land before spawn.
+      await markClaudeProjectTrusted(workspacePath)
     }
   } catch {
     // Best-effort: the user can still accept the agent trust prompt manually.

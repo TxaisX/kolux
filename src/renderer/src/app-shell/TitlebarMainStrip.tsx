@@ -6,7 +6,6 @@ import { ActivityTitlebarControls } from '../components/activity/ActivityTitleba
 import { useShortcutLabel } from '../hooks/useShortcutLabel'
 import { useAppStore } from '../store'
 import { hasCustomTitleBar } from './app-window-chrome'
-import { ModeSwitch } from './ModeSwitch'
 import type { AppChromeLayout } from './use-app-chrome-layout'
 
 export function RightSidebarToggle(): React.JSX.Element {
@@ -45,15 +44,10 @@ export function TitlebarMainStrip({ layout }: { layout: AppChromeLayout }): Reac
     )
   }
 
-  const showTabsSlot =
-    layout.activeView !== 'activity' &&
-    layout.activeView !== 'inbox' &&
-    layout.activeView !== 'floor' &&
-    !layout.creationLayoutActive
+  const showTabsSlot = layout.activeView !== 'activity' && !layout.creationLayoutActive
 
   return (
     <>
-      <ModeSwitch />
       {layout.activeView === 'activity' ? (
         <ActivityTitlebarControls />
       ) : showTabsSlot ? (

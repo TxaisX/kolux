@@ -1,95 +1,66 @@
 import React from 'react'
-import { Button } from '@/components/ui/button'
-import { AgentIcon, getAgentCatalog } from '@/lib/agent-catalog'
+import { AgentIcon } from '@/lib/agent-catalog'
 import { translate } from '@/i18n/i18n'
-import type { TuiAgent } from '../../../../shared/tui-agent'
-import { getLaunchPresets, type LaunchRole } from './launch-agent-roles'
+import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session-option-catalog'
+import type { LaunchAgentSlot } from './launch-agents-requests'
 
-const T = (id: string, fallback: string): string =>
-  translate(`auto.components.launch-agents.LaunchAgentsLineup.${id}`, fallback)
+const T = (id: string, fallback: string, options?: Record<string, unknown>): string =>
+  translate(`auto.components.launch-agents.LaunchAgentsLineup.${id}`, fallback, options)
 
-function agentLabel(agent: TuiAgent): string {
-  return getAgentCatalog().find((entry) => entry.id === agent)?.label ?? agent
-}
-
-export function LaunchPresetRow({
-  presetId,
-  onSelect
-}: {
-  presetId: string | null
-  onSelect: (id: string | null) => void
-}): React.JSX.Element {
-  return (
-    <div className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium">{T('shape', 'Shape')}</span>
-      <div className="flex flex-wrap gap-1.5">
-        <Button
-          type="button"
-          size="xs"
-          variant={presetId === null ? 'default' : 'outline'}
-          onClick={() => onSelect(null)}
-        >
-          {T('samePrompt', 'Same prompt')}
-        </Button>
-        {getLaunchPresets().map((preset) => (
-          <Button
-            key={preset.id}
-            type="button"
-            size="xs"
-            variant={presetId === preset.id ? 'default' : 'outline'}
-            onClick={() => onSelect(preset.id)}
-          >
-            {preset.label}
-          </Button>
-        ))}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {presetId === null
-          ? T('samePromptHelp', 'Every session gets the identical prompt.')
-          : T('rolesHelp', 'Each session gets a different job ahead of your prompt.')}
-      </p>
-    </div>
-  )
-}
+const SELECT_CLASS =
+  'h-7 min-w-0 flex-1 rounded-md border border-input bg-background px-1.5 text-xs'
 
 /**
- * The lineup: what will actually open, and the role each session takes. Shown
- * before launching so a wave is reviewed rather than discovered afterwards.
+ * WILL LAUNCH: one row per seat — its number, the agent icon and label, and a
+ * per-seat model dropdown. Changing a row's model affects only that seat.
  */
 export function LaunchAgentsLineup({
-  agents,
-  roles
+  slots,
+  agentLabel,
+  onModelChange
 }: {
-  agents: readonly TuiAgent[]
-  roles: readonly (LaunchRole | null)[]
+  slots: readonly LaunchAgentSlot[]
+  agentLabel: (agent: LaunchAgentSlot['agent']) => string
+  onModelChange: (index: number, model: string | null) => void
 }): React.JSX.Element | null {
-  if (agents.length === 0) {
+  if (slots.length === 0) {
     return null
   }
   return (
-    <div className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium">
-        {translate(
-          'auto.components.launch-agents.LaunchAgentsLineup.lineup',
-          'Lineup ({{count}})',
-          { count: agents.length }
-        )}
-      </span>
-      <ol className="scrollbar-sleek max-h-32 overflow-y-auto rounded-md border border-border">
-        {agents.map((agent, index) => (
+    <ol className="scrollbar-sleek max-h-56 overflow-y-auto rounded-md border border-border">
+      {slots.map((slot, index) => {
+        const models = getAgentSessionOptionCatalog(slot.agent)?.models ?? []
+        return (
           <li
-            key={`${agent}-${index}`}
-            className="flex items-center gap-2 border-b border-border px-3 py-1 text-xs last:border-b-0"
+            key={index}
+            className="flex flex-wrap items-center gap-2 border-b border-border px-2.5 py-1.5 last:border-b-0 sm:flex-nowrap"
           >
-            <span className="w-4 text-center tabular-nums text-muted-foreground">{index + 1}</span>
-            <AgentIcon agent={agent} size={12} />
-            <span className="flex-1 truncate">{agentLabel(agent)}</span>
-            <span className="text-muted-foreground">
-              {roles[index]?.label ?? T('sameTask', 'Same task')}
+            <span className="w-5 text-center text-xs tabular-nums text-muted-foreground">
+              {index + 1}
             </span>
+            <AgentIcon agent={slot.agent} size={14} />
+            <span className="min-w-0 flex-1 truncate text-xs">{agentLabel(slot.agent)}</span>
+            {models.length === 0 ? (
+              <span className="shrink-0 text-xs text-muted-foreground">
+                {T('agentDefault', 'Default model')}
+              </span>
+            ) : (
+              <select
+                aria-label={`${T('modelFor', 'Model')} ${index + 1}`}
+                className={SELECT_CLASS}
+                value={slot.model ?? ''}
+                onChange={(event) => onModelChange(index, event.target.value || null)}
+              >
+                {models.map((model) => (
+                  <option key={model.id} value={model.id} title={model.description}>
+                    {model.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </li>
-        ))}
-      </ol>
-    </div>
+        )
+      })}
+    </ol>
   )
 }

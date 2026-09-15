@@ -4,9 +4,9 @@ import { toast } from 'sonner'
 import type { GitHubWorkItem } from '../../../../shared/github/work-item-types'
 import { translate } from '@/i18n/i18n'
 import { openWorkspaceBrowserTab } from '@/lib/workspace-browser-tab-open'
+import { useLiveSessionCount } from '@/components/session-rail/use-live-session-count'
 import { hasWorktreeCardDetails } from './WorktreeCardMeta'
 import { usePromptCacheCountdownStartedAt } from './CacheTimer'
-import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import type { WorktreeCardProps } from './worktree-card-model'
 import type { useWorktreeCardFoundation } from './use-worktree-card-foundation'
 import type { useWorktreeCardLinkedDetails } from './use-worktree-card-linked-details'
@@ -41,7 +41,6 @@ export function useWorktreeCardSecondaryDetails({
   cardProps,
   newCardStyle,
   compactCards,
-  agentActivityDisplayMode,
   workspacePorts,
   openTaskPage,
   updateWorktreeMeta,
@@ -52,7 +51,6 @@ export function useWorktreeCardSecondaryDetails({
     | 'cardProps'
     | 'newCardStyle'
     | 'compactCards'
-    | 'agentActivityDisplayMode'
     | 'workspacePorts'
     | 'openTaskPage'
     | 'updateWorktreeMeta'
@@ -89,15 +87,11 @@ export function useWorktreeCardSecondaryDetails({
   const metaCliProvenance = showCli ? worktree.cliProvenance : null
   const metaComment = showComment ? hoverComment : null
   const showInlineAgentList = cardProps.includes('inline-agents') && (newCardStyle || !compactCards)
-  const compactInlineAgentRows = useWorktreeAgentRows(
-    worktree.id,
-    showInlineAgentList && agentActivityDisplayMode === 'compact'
-  )
-  const compactInlineAgentRowsVisible =
-    showInlineAgentList &&
-    agentActivityDisplayMode === 'compact' &&
-    compactInlineAgentRows.length > 0
-  const showAggregateCacheTimer = !compactCards && !compactInlineAgentRowsVisible
+  // Why: session rows carry no per-row cache timer, so the aggregate one below
+  // is only redundant when the inline session list is actually showing rows —
+  // reuses the same live-session count the sidebar badge already tracks.
+  const liveSessionCount = useLiveSessionCount(worktree.id)
+  const showAggregateCacheTimer = !compactCards && !(showInlineAgentList && liveSessionCount > 0)
   const handleOpenGitHubIssueInNightshift = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -258,7 +252,6 @@ export function useWorktreeCardSecondaryDetails({
     metaCliProvenance,
     metaComment,
     showInlineAgentList,
-    compactInlineAgentRows,
     handleOpenGitHubIssueInNightshift,
     handleOpenIssueInBrowser,
     handleOpenReviewInNightshift,

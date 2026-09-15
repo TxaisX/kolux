@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { getPtyIpc } from '../../pty-host-bindings'
 import { parseTerminalKittyKeyboardFlags } from '../../../../shared/terminal-kitty-keyboard-flags'
-import { isMainWindowPtyIpcEvent } from './write-input'
+import {
+  isAuthorizedPtySender,
+  isPtyDeliveryWindowDestroyed,
+  resolvePtyDeliveryWindow
+} from '../pty-window-ownership'
 import type { PtyIpcSession, SerializeResult } from '../session'
 
 export function settleSerializeRequest(
@@ -37,11 +41,13 @@ export function installPtySerializeBufferIpc(session: PtyIpcSession): void {
         } | null
       }
     ) => {
-      // Why: the snapshot seeds terminal restore state, so only the main window may settle it.
-      if (
-        !isMainWindowPtyIpcEvent(event, session.mainWindow, session.mainWindow.webContents) ||
-        typeof args?.requestId !== 'string'
-      ) {
+      // Why: the snapshot seeds terminal restore state, so only the window that owns this
+      // pty (or the main window, for an unowned one) may settle its serialize request.
+      if (typeof args?.requestId !== 'string') {
+        return
+      }
+      const pending = session.pendingSerializeRequests.get(args.requestId)
+      if (!pending || !isAuthorizedPtySender(event.sender, pending.ptyId, session.mainWindow)) {
         return
       }
       const snapshot = args.snapshot
@@ -88,7 +94,7 @@ export function requestSerializedBuffer(
   ptyId: string,
   opts?: { scrollbackRows?: number }
 ): Promise<SerializeResult> {
-  if (session.mainWindow.isDestroyed()) {
+  if (isPtyDeliveryWindowDestroyed(ptyId, session.mainWindow)) {
     return Promise.resolve(null)
   }
 
@@ -97,7 +103,7 @@ export function requestSerializedBuffer(
     const timeout = setTimeout(() => {
       settleSerializeRequest(session, requestId, null)
     }, 750)
-    session.pendingSerializeRequests.set(requestId, { resolve, timeout })
+    session.pendingSerializeRequests.set(requestId, { ptyId, resolve, timeout })
     const payload: {
       requestId: string
       ptyId: string
@@ -106,6 +112,9 @@ export function requestSerializedBuffer(
     if (opts) {
       payload.opts = opts
     }
-    session.mainWindow.webContents.send('pty:serializeBuffer:request', payload)
+    resolvePtyDeliveryWindow(ptyId, session.mainWindow).webContents.send(
+      'pty:serializeBuffer:request',
+      payload
+    )
   })
 }

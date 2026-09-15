@@ -4,8 +4,9 @@
 import { act, createRef, type ReactNode, type RefObject } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import path from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ManagedPane, PaneManager } from '@/lib/pane-manager/pane-manager'
+import { useAppStore } from '@/store'
 import type { PtyTransport } from './pty-transport'
 import TerminalPaneHeaderOverlay from './TerminalPaneHeaderOverlay'
 
@@ -15,21 +16,14 @@ vi.mock('@/components/ui/tooltip', () => ({
   TooltipContent: ({ children }: { children?: ReactNode }) => <span>{children}</span>
 }))
 
-vi.mock('@/i18n/i18n', () => ({
-  translate: (_key: string, fallback: string, values?: Record<string, string>) =>
-    Object.entries(values ?? {}).reduce(
-      (text, [key, value]) => text.replace(`{{${key}}}`, value),
-      fallback
-    )
-}))
 const mounted: { container: HTMLDivElement; root: Root }[] = []
 
-function makePane(id: number): ManagedPane {
-  const leafId = `leaf-${id}` as ManagedPane['leafId']
+function makePane(id: number, leafId: string): ManagedPane {
+  const brandedLeafId = leafId as ManagedPane['leafId']
   return {
     id,
-    leafId,
-    stablePaneId: leafId,
+    leafId: brandedLeafId,
+    stablePaneId: brandedLeafId,
     container: document.createElement('div'),
     linkTooltip: document.createElement('div'),
     terminal: {} as ManagedPane['terminal'],
@@ -39,37 +33,37 @@ function makePane(id: number): ManagedPane {
   }
 }
 
+const PANE_1_LEAF = '11111111-1111-4111-8111-111111111111'
+const PANE_2_LEAF = '22222222-2222-4222-8222-222222222222'
+
 function renderOverlay({
-  paneTitles,
   paneCount = 2,
-  showAlwaysOnHeaders = true,
+  expandedPaneId = null,
   showSplitButton = true,
   onClosePane = vi.fn(),
-  onRemoveTitle = vi.fn(),
-  onRenameSubmit = vi.fn(),
-  canContinueAgentSessionInNewSession = false,
-  onContinueAgentSessionInNewSession = vi.fn(),
+  onToggleExpandPane = vi.fn(),
+  onSplitPane = vi.fn(),
+  onPaneTitleContextMenu = vi.fn(),
   renameValue = '',
   renamingPaneId = null
 }: {
-  paneTitles: Record<number, string>
   paneCount?: number
-  showAlwaysOnHeaders?: boolean
+  expandedPaneId?: number | null
   showSplitButton?: boolean
   onClosePane?: ReturnType<typeof vi.fn>
-  onRemoveTitle?: ReturnType<typeof vi.fn>
-  onRenameSubmit?: ReturnType<typeof vi.fn>
-  canContinueAgentSessionInNewSession?: boolean
-  onContinueAgentSessionInNewSession?: ReturnType<typeof vi.fn>
+  onToggleExpandPane?: ReturnType<typeof vi.fn>
+  onSplitPane?: ReturnType<typeof vi.fn>
+  onPaneTitleContextMenu?: ReturnType<typeof vi.fn>
   renameValue?: string
   renamingPaneId?: number | null
-}): {
+} = {}): {
   container: HTMLDivElement
   onClosePane: ReturnType<typeof vi.fn>
-  onRemoveTitle: ReturnType<typeof vi.fn>
-  onRenameSubmit: ReturnType<typeof vi.fn>
+  onToggleExpandPane: ReturnType<typeof vi.fn>
+  onSplitPane: ReturnType<typeof vi.fn>
+  onPaneTitleContextMenu: ReturnType<typeof vi.fn>
 } {
-  const panes = [makePane(1), makePane(2)]
+  const panes = [makePane(1, PANE_1_LEAF), makePane(2, PANE_2_LEAF)]
   const container = document.createElement('div')
   document.body.appendChild(container)
   const root = createRoot(container)
@@ -79,12 +73,10 @@ function renderOverlay({
         tabId="tab-1"
         worktreeId="wt-1"
         cwd={path.join(path.sep, 'tmp')}
-        showAlwaysOnHeaders={showAlwaysOnHeaders}
+        showAlwaysOnHeaders
         showSplitButton={showSplitButton}
         paneCount={paneCount}
-        activePaneId={1}
         panes={panes}
-        paneTitles={paneTitles}
         paneTitleOverlayRects={{
           1: { left: 0, top: 0, width: 200 },
           2: { left: 220, top: 0, width: 200 }
@@ -98,44 +90,31 @@ function renderOverlay({
         hiddenStartupStyle={{}}
         managerRef={{ current: null } as RefObject<PaneManager | null>}
         paneTransportsRef={{ current: new Map() } as RefObject<Map<number, PtyTransport>>}
-        canContinueAgentSessionInNewSession={canContinueAgentSessionInNewSession}
-        onContinueAgentSessionInNewSession={
-          onContinueAgentSessionInNewSession as (pane: ManagedPane) => void
+        expandedPaneId={expandedPaneId}
+        onSplitPane={
+          onSplitPane as (pane: ManagedPane, direction: 'vertical' | 'horizontal') => void
         }
-        onSplitPane={vi.fn()}
+        onToggleExpandPane={onToggleExpandPane as (pane: ManagedPane) => void}
         onBeginPaneDrag={vi.fn()}
         onActivatePaneTitleInteraction={vi.fn()}
-        onPaneTitleContextMenu={vi.fn()}
-        onStartRename={vi.fn()}
-        onRemoveTitle={onRemoveTitle as (paneId: number) => void}
+        onPaneTitleContextMenu={
+          onPaneTitleContextMenu as (event: React.MouseEvent<HTMLElement>, paneId: number) => void
+        }
         onClosePane={onClosePane as (paneId: number) => void}
         onRenameValueChange={vi.fn()}
-        onRenameSubmit={onRenameSubmit as () => void}
+        onRenameSubmit={vi.fn()}
         onRenameCancel={vi.fn()}
         onRenameBlur={vi.fn()}
       />
     )
   })
   mounted.push({ container, root })
-  return { container, onClosePane, onRemoveTitle, onRenameSubmit }
+  return { container, onClosePane, onToggleExpandPane, onSplitPane, onPaneTitleContextMenu }
 }
 
-function pressInputKey(
-  input: HTMLInputElement,
-  key: string,
-  options?: { isComposing?: boolean; keyCode?: number }
-): void {
-  act(() => {
-    const event = new KeyboardEvent('keydown', { key, bubbles: true })
-    if (options?.isComposing !== undefined) {
-      Object.defineProperty(event, 'isComposing', { value: options.isComposing })
-    }
-    if (options?.keyCode !== undefined) {
-      Object.defineProperty(event, 'keyCode', { value: options.keyCode })
-    }
-    input.dispatchEvent(event)
-  })
-}
+beforeEach(() => {
+  useAppStore.setState(useAppStore.getInitialState(), true)
+})
 
 afterEach(() => {
   for (const { container, root } of mounted.splice(0)) {
@@ -145,83 +124,118 @@ afterEach(() => {
 })
 
 describe('TerminalPaneHeaderOverlay', () => {
-  it('keeps the titled-pane close affordance as remove-title while headers are always on', () => {
-    const { container, onClosePane, onRemoveTitle } = renderOverlay({
-      paneTitles: { 1: 'server', 2: '' }
-    })
+  it('renders no title text in the steady-state header', () => {
+    const { container } = renderOverlay()
 
-    const removeTitle = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Remove pane title: server"]'
-    )
-    expect(removeTitle).not.toBeNull()
-
-    act(() => removeTitle?.click())
-
-    expect(onRemoveTitle).toHaveBeenCalledWith(1)
-    expect(onClosePane).not.toHaveBeenCalledWith(1)
+    expect(container.querySelector('.pane-title-text')).toBeNull()
+    expect(container.querySelector('.pane-title-input')).toBeNull()
   })
 
-  it('keeps split and close-pane controls available for untitled split pane headers', () => {
-    const { container, onClosePane, onRemoveTitle } = renderOverlay({
-      paneTitles: { 1: '', 2: '' }
+  it("renders the running agent's logo for a pane whose agent is known", () => {
+    useAppStore.setState({
+      agentStatusByPaneKey: {
+        [`tab-1:${PANE_1_LEAF}`]: {
+          state: 'working',
+          prompt: '',
+          updatedAt: Date.now(),
+          stateStartedAt: Date.now(),
+          paneKey: `tab-1:${PANE_1_LEAF}`,
+          stateHistory: [],
+          agentType: 'codex'
+        }
+      }
     })
 
-    expect(container.querySelector('button[aria-label="Split Terminal Right"]')).not.toBeNull()
-    expect(container.querySelector('.pane-title-drag-handle')).toBeNull()
-    const closePane = container.querySelector<HTMLButtonElement>('button[aria-label="Close Pane"]')
-    expect(closePane).not.toBeNull()
+    const { container } = renderOverlay()
 
-    act(() => closePane?.click())
+    expect(container.querySelector('[data-agent-icon="codex"]')).not.toBeNull()
+  })
+
+  it('falls back to a plain terminal glyph when no agent is identified for the pane', () => {
+    const { container } = renderOverlay()
+
+    expect(container.querySelector('[data-agent-icon]')).toBeNull()
+    expect(container.querySelector('svg.lucide-square-terminal')).not.toBeNull()
+  })
+
+  it('keeps the fixed action order: overflow, expand, split, close', () => {
+    const { container } = renderOverlay()
+
+    const actions = container.querySelector('.pane-title-actions')
+    const labels = Array.from(actions?.querySelectorAll('button') ?? []).map((button) =>
+      button.getAttribute('aria-label')
+    )
+
+    expect(labels).toEqual(['More actions', 'Expand Pane', 'Split Terminal Right', 'Close Pane'])
+  })
+
+  it('opens the pane context menu (which carries rename) from the overflow button', () => {
+    const { container, onPaneTitleContextMenu } = renderOverlay()
+
+    const overflow = container.querySelector<HTMLButtonElement>('button[aria-label="More actions"]')
+    expect(overflow).not.toBeNull()
+
+    act(() => overflow?.click())
+
+    expect(onPaneTitleContextMenu).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('always shows the close button, even for a lone untitled pane', () => {
+    const { container, onClosePane } = renderOverlay({ paneCount: 1 })
+
+    const closeButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Close Pane"]'
+    )
+    expect(closeButton).not.toBeNull()
+
+    act(() => closeButton?.click())
 
     expect(onClosePane).toHaveBeenCalledWith(1)
-    expect(onRemoveTitle).not.toHaveBeenCalled()
+  })
+
+  it('disables expand for a lone pane and enables it once split', () => {
+    const { container: solo } = renderOverlay({ paneCount: 1 })
+    expect(
+      solo.querySelector<HTMLButtonElement>('button[aria-label="Expand Pane"]')?.disabled
+    ).toBe(true)
+
+    const { container: split } = renderOverlay({ paneCount: 2 })
+    expect(
+      split.querySelector<HTMLButtonElement>('button[aria-label="Expand Pane"]')?.disabled
+    ).toBe(false)
   })
 
   it('omits the split control when the header affordance is hidden', () => {
-    const { container } = renderOverlay({
-      paneTitles: { 1: '', 2: '' },
-      paneCount: 1,
-      showSplitButton: false
-    })
+    const { container } = renderOverlay({ paneCount: 1, showSplitButton: false })
 
     expect(container.querySelector('button[aria-label="Split Terminal Right"]')).toBeNull()
   })
 
-  it('ignores IME composition Enter before submitting a pane title rename', () => {
-    const { container, onRenameSubmit } = renderOverlay({
-      paneTitles: { 1: 'server', 2: '' },
-      renamingPaneId: 1,
-      renameValue: '日本語 pane'
+  it('conveys the dot state through an accessible label, not color alone', () => {
+    useAppStore.setState({
+      agentStatusByPaneKey: {
+        [`tab-1:${PANE_1_LEAF}`]: {
+          state: 'blocked',
+          prompt: '',
+          updatedAt: Date.now(),
+          stateStartedAt: Date.now(),
+          paneKey: `tab-1:${PANE_1_LEAF}`,
+          stateHistory: []
+        }
+      }
     })
-    const input = container.querySelector<HTMLInputElement>('.pane-title-input')
 
-    expect(input).not.toBeNull()
+    const { container } = renderOverlay()
 
-    pressInputKey(input as HTMLInputElement, 'Enter', { isComposing: true })
-
-    expect(onRenameSubmit).not.toHaveBeenCalled()
-
-    pressInputKey(input as HTMLInputElement, 'Enter')
-
-    expect(onRenameSubmit).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('[aria-label="Blocked"]')).not.toBeNull()
   })
 
-  it('shows new-session continuation on the active agent pane header', () => {
-    const onContinueAgentSessionInNewSession = vi.fn()
-    const { container } = renderOverlay({
-      paneTitles: { 1: '', 2: '' },
-      canContinueAgentSessionInNewSession: true,
-      onContinueAgentSessionInNewSession
-    })
-    const handoff = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Continue in New Session…"]'
-    )
+  it('renders the rename input when editing, still with no visible title text', () => {
+    const { container } = renderOverlay({ renamingPaneId: 1, renameValue: 'server' })
 
-    expect(handoff).not.toBeNull()
-    act(() => handoff?.click())
-
-    expect(onContinueAgentSessionInNewSession).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 1 })
-    )
+    const input = container.querySelector<HTMLInputElement>('.pane-title-input')
+    expect(input).not.toBeNull()
+    expect(input?.value).toBe('server')
+    expect(container.querySelector('.pane-title-text')).toBeNull()
   })
 })

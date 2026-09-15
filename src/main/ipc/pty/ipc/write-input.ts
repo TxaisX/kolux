@@ -11,6 +11,10 @@ import {
   iterateTerminalInputChunks
 } from '../../../../shared/terminal-input'
 import { reportAgentSessionWriteRefusal } from '../agent-session-write-refusal-report'
+import {
+  isTerminalSessionWindowWebContents,
+  resolvePtyDeliveryWindow
+} from '../pty-window-ownership'
 import { ptyOwnership } from '../provider/ownership-state'
 import { tryGetProviderForPty } from '../provider/registry'
 import {
@@ -19,16 +23,21 @@ import {
   visibleRendererPtys
 } from '../delivery/visibility-state'
 
+// Why the name stayed: every caller already treats this as 'is this a trusted first-party
+// Nightshift renderer', and a tracked terminal window is exactly that — same preload, same
+// trust level as the main window, just a second BrowserWindow.
 export function isMainWindowPtyIpcEvent(
   event: IpcMainEvent | IpcMainInvokeEvent,
   mainWindow: BrowserWindow,
   mainWebContents: WebContents
 ): boolean {
-  return (
-    event.sender === mainWebContents &&
-    !mainWindow.isDestroyed() &&
-    !(typeof mainWebContents.isDestroyed === 'function' && mainWebContents.isDestroyed())
-  )
+  if (event.sender === mainWebContents) {
+    return (
+      !mainWindow.isDestroyed() &&
+      !(typeof mainWebContents.isDestroyed === 'function' && mainWebContents.isDestroyed())
+    )
+  }
+  return isTerminalSessionWindowWebContents(event.sender)
 }
 
 export type PtyWritePayload = { id: string; data: string }
@@ -51,15 +60,17 @@ export function createPtyWriteInput(deps: {
   const { mainWindow, runtime, clearHiddenRendererResizeOutput } = deps
 
   const reportUnavailablePtyWrite = (id: string, error: unknown): void => {
+    if (!isPtyWriteUnavailableError(error)) {
+      return
+    }
+    const target = resolvePtyDeliveryWindow(id, mainWindow)
     if (
-      !isPtyWriteUnavailableError(error) ||
-      mainWindow.isDestroyed() ||
-      (typeof mainWindow.webContents.isDestroyed === 'function' &&
-        mainWindow.webContents.isDestroyed())
+      target.isDestroyed() ||
+      (typeof target.webContents.isDestroyed === 'function' && target.webContents.isDestroyed())
     ) {
       return
     }
-    mainWindow.webContents.send('pty:writeUnavailable', { id })
+    target.webContents.send('pty:writeUnavailable', { id })
   }
 
   /** Single lease check for every byte-entry point this module owns. */

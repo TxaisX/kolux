@@ -12,11 +12,10 @@ const RIGHT_SIDEBAR_SUPPRESSED_VIEWS = new Set<ActiveView>([
   'space',
   'skills',
   'artifacts',
-  'mobile',
+  'mobile'
   // Why: Inbox owns its own w-72 right column scoped to the *selected* item's
   // worktree (InboxWorktreeSummary); the global panel reads the active worktree
   // instead, which is a different (and often unrelated) workspace.
-  'inbox'
 ])
 
 export function canShowRightSidebarForView(activeView: ActiveView): boolean {

@@ -440,7 +440,7 @@ async function spawnLocalStartupAndSetupTerminals(args: {
         } else if (preset === 'codex') {
           markCodexProjectTrusted(worktree.path)
         } else if (preset === 'claude') {
-          markClaudeProjectTrusted(worktree.path)
+          await markClaudeProjectTrusted(worktree.path)
         }
       } catch {
         // Best-effort: launch still proceeds and the agent can ask interactively.

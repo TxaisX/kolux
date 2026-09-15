@@ -132,6 +132,8 @@ export function createRepoAddActions(
           await warnIfProjectKnownInAnotherProfile(repo, get().activeNightshiftProfileId)
           // Why after the set(): the project row carrying the runtime override only exists once the repo is in state.
           warnIfProjectCrossesWslFilesystemBoundary(repo, get().projects, get().settings)
+          // Why: a project opened for the first time has no sessions yet, so ask how many agents to open before anything else.
+          get().openModal('launch-agents', { repoId: repo.id })
         }
         return repo
       } catch (err) {

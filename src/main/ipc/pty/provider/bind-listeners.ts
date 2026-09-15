@@ -14,6 +14,7 @@ import {
 import { localProvider } from './registry'
 import { clearProviderPtyState } from './state-cleanup'
 import { providerSnapshotRequiredPtys } from '../delivery/visibility-state'
+import { isPtyDeliveryWindowDestroyed, resolvePtyDeliveryWindow } from '../pty-window-ownership'
 import type { PtyIpcSession } from '../session'
 
 export function bindProviderListeners(session: PtyIpcSession): void {
@@ -27,14 +28,13 @@ export function bindProviderListeners(session: PtyIpcSession): void {
   // just the pane whose write happened to detect the dead endpoint (STA-2373).
   setLocalWriteUnavailableUnsub(
     localProvider.onWriteUnavailable?.((payload) => {
-      if (
-        session.mainWindow.isDestroyed() ||
-        (typeof session.mainWindow.webContents.isDestroyed === 'function' &&
-          session.mainWindow.webContents.isDestroyed())
-      ) {
+      if (isPtyDeliveryWindowDestroyed(payload.id, session.mainWindow)) {
         return
       }
-      session.mainWindow.webContents.send('pty:writeUnavailable', { id: payload.id })
+      resolvePtyDeliveryWindow(payload.id, session.mainWindow).webContents.send(
+        'pty:writeUnavailable',
+        { id: payload.id }
+      )
     }) ?? null
   )
 

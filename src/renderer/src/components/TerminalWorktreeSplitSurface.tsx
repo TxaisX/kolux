@@ -15,7 +15,6 @@ import { RetainedBrowserPaneOverlayLayer } from './browser-pane/assemble-chrome/
 import EmulatorPaneOverlayLayer from './emulator-pane/EmulatorPaneOverlayLayer'
 import StructuredAgentSessionPaneOverlayLayer from './native-chat/StructuredAgentSessionPaneOverlayLayer'
 import AiVaultSessionDropLayer from './tab-group/AiVaultSessionDropLayer'
-import { WorkspaceComposer } from './composer/WorkspaceComposer'
 
 export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
   worktreeId,
@@ -97,7 +96,6 @@ export const WorktreeSplitSurface = React.memo(function WorktreeSplitSurface({
         />
         <AiVaultSessionDropLayer worktreeId={worktreeId} enabled={isVisible} />
       </div>
-      {isVisible ? <WorkspaceComposer worktreeId={worktreeId} /> : null}
     </div>
   )
 })

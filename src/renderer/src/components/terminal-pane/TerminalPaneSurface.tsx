@@ -31,8 +31,6 @@ export function TerminalPaneSurface({
 }): React.JSX.Element {
   const {
     activePane,
-    activePaneCanContinueInNewSession,
-    activePaneCanToggleChat,
     activePaneIsChatLeaf,
     activatePaneTitleInteraction,
     agentSessionContinuation,
@@ -54,13 +52,10 @@ export function TerminalPaneSurface({
     handleContextMenuToggleNativeChat,
     handlePrimarySelectionAuxClick,
     handlePrimarySelectionMiddleMouseDown,
-    handleRemoveTitle,
     handleRenameBlur,
     handleRenameCancel,
     handleRenameSubmit,
     handleRequestClosePane,
-    handleStartRename,
-    handleToggleNativeChat,
     hiddenStartupStyle,
     isActive,
     keybindings,
@@ -73,7 +68,6 @@ export function TerminalPaneSurface({
     paneCount,
     paneTitleBackground,
     paneTitleOverlayRects,
-    paneTitles,
     paneTransportsRef,
     pendingCloseConfirmation,
     quickCommandDraft,
@@ -298,9 +292,7 @@ export function TerminalPaneSurface({
         showAlwaysOnHeaders={isActive && terminalContentVisible}
         showSplitButton={showSplitButton}
         paneCount={paneCount}
-        activePaneId={activePane?.id}
         panes={managedPanes}
-        paneTitles={paneTitles}
         paneTitleOverlayRects={paneTitleOverlayRects}
         renamingPaneId={renamingPaneId}
         renameValue={renameValue}
@@ -311,19 +303,12 @@ export function TerminalPaneSurface({
         hiddenStartupStyle={hiddenStartupStyle}
         managerRef={managerRef}
         paneTransportsRef={paneTransportsRef}
-        canToggleNativeChat={activePaneCanToggleChat}
-        isChatViewMode={activePaneIsChatLeaf}
-        onToggleNativeChat={handleToggleNativeChat}
-        canContinueAgentSessionInNewSession={activePaneCanContinueInNewSession}
-        onContinueAgentSessionInNewSession={(pane) =>
-          contextMenu.runForPane(pane.id, contextMenu.onContinueAgentSessionInNewSession)
-        }
+        expandedPaneId={expandedPaneId}
         onSplitPane={splitTerminalPaneFromHeader}
+        onToggleExpandPane={(pane) => contextMenu.runForPane(pane.id, contextMenu.onToggleExpand)}
         onBeginPaneDrag={beginPaneDragFromHeader}
         onActivatePaneTitleInteraction={activatePaneTitleInteraction}
         onPaneTitleContextMenu={contextMenu.onPaneTitleContextMenu}
-        onStartRename={handleStartRename}
-        onRemoveTitle={handleRemoveTitle}
         onClosePane={handleRequestClosePane}
         onRenameValueChange={setRenameValue}
         onRenameSubmit={handleRenameSubmit}

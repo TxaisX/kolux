@@ -101,7 +101,7 @@ export type PtyIpcSession = {
   retiredRejectedPtyIds: Map<string, NodeJS.Timeout>
   pendingSerializeRequests: Map<
     string,
-    { resolve: (result: SerializeResult) => void; timeout: NodeJS.Timeout }
+    { ptyId: string; resolve: (result: SerializeResult) => void; timeout: NodeJS.Timeout }
   >
   canSendPtyDataToRenderer: (id: string, options?: { interactive?: boolean }) => boolean
   schedulePendingDataFlush: (delayMs: number) => void
