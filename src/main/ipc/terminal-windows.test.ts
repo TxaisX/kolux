@@ -17,7 +17,7 @@ const { handlers, ipcMainMock, openMock, closeMock, focusMock, listMock, restore
       closeMock: vi.fn(),
       focusMock: vi.fn(),
       listMock: vi.fn(),
-      restoreMock: vi.fn()
+      restoreMock: vi.fn(() => Promise.resolve())
     }
   }
 )
@@ -57,7 +57,7 @@ describe('registerTerminalWindowsHandlers', () => {
       expect(invoke('terminalWindows:open', { worktreeId: 'wt1' })).toEqual({
         error: 'invalid-args'
       })
-      expect(invoke('terminalWindows:open', { worktreeId: 'a::b', tabId: 'tab1' })).toEqual({
+      expect(invoke('terminalWindows:open', { worktreeId: 'wt1', tabId: 'a::b' })).toEqual({
         error: 'invalid-args'
       })
       expect(openMock).not.toHaveBeenCalled()

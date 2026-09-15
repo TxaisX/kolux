@@ -120,13 +120,18 @@ import {
 import { resetTerminalSessionWindowRegistryForTests } from './terminal-session-window-registry'
 import { makeTerminalWindowSessionKey } from '../../shared/terminal-window-session-key'
 
-function makeStore(bounds: Record<string, unknown> = {}): {
+function makeStore(
+  bounds: Record<string, unknown> = {},
+  tabsByWorktree: Record<string, { id: string; ptyId: string | null }[]> = {}
+): {
   getUI: () => Record<string, unknown>
   updateUI: ReturnType<typeof vi.fn>
+  getWorkspaceSession: () => { tabsByWorktree: typeof tabsByWorktree }
 } {
   const ui: Record<string, unknown> = { terminalWindowBoundsBySessionKey: bounds }
   return {
     getUI: () => ui,
+    getWorkspaceSession: () => ({ tabsByWorktree }),
     updateUI: vi.fn((patch: Record<string, unknown>) => Object.assign(ui, patch))
   }
 }
@@ -157,6 +162,15 @@ describe('openOrFocusTerminalSessionWindow', () => {
     expect(opts.webPreferences?.partition).toBe('nightshift-terminal-window')
     expect(opts.webPreferences?.preload).toMatch(/preload[\\/]index\.js$/)
     expect(installNavigationPolicyMock).toHaveBeenCalledWith(instances[0].webContents)
+  })
+
+  it('attaches the persisted pty of the tab when the caller omits ptyId', () => {
+    const store = makeStore({}, { 'repo::G:/wt1': [{ id: 'tab1', ptyId: 'pty-9' }] })
+    openOrFocusTerminalSessionWindow(store as never, { worktreeId: 'repo::G:/wt1', tabId: 'tab1' })
+
+    const search = new URLSearchParams(instances[0].loadFile.mock.calls[0][1].search)
+    expect(search.get('worktreeId')).toBe('repo::G:/wt1')
+    expect(search.get('ptyId')).toBe('pty-9')
   })
 
   it('focuses the existing window instead of opening a duplicate for the same sessionKey', () => {

@@ -9,7 +9,10 @@ import {
 } from '../window/terminal-session-window'
 import { restoreLiveTerminalSessionWindows } from '../window/terminal-session-window-restore'
 import { setPtyWindowOwner } from './pty/pty-window-ownership'
-import { isValidTerminalWindowIdPart } from '../../shared/terminal-window-session-key'
+import {
+  isValidTerminalWindowTabId,
+  isValidTerminalWindowWorktreeId
+} from '../../shared/terminal-window-session-key'
 
 const MAX_SESSION_KEY_LENGTH = 1025 // two 512-char id parts + the "::" separator
 
@@ -18,7 +21,7 @@ function isOpenArgs(value: unknown): value is OpenTerminalSessionWindowArgs {
     return false
   }
   const { worktreeId, tabId, ptyId } = value as Record<string, unknown>
-  if (!isValidTerminalWindowIdPart(worktreeId) || !isValidTerminalWindowIdPart(tabId)) {
+  if (!isValidTerminalWindowWorktreeId(worktreeId) || !isValidTerminalWindowTabId(tabId)) {
     return false
   }
   return ptyId === undefined || typeof ptyId === 'string'
@@ -76,5 +79,7 @@ export function registerTerminalWindowsHandlers(store: Store | null): void {
 
   ipcMain.handle('terminalWindows:list', () => ({ sessions: listTerminalSessionWindows() }))
 
-  restoreLiveTerminalSessionWindows(store)
+  void restoreLiveTerminalSessionWindows(store).catch((error) =>
+    console.warn('[terminal-windows] restore failed:', error)
+  )
 }

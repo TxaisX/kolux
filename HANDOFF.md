@@ -64,6 +64,18 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
+- **Terminal windows actually attach now (2026-09-15).** Commit `097edc5b` opened one
+  window per terminal but none worked at runtime. Four causes, each found by running the app:
+  worktree ids are `<repoId>::<path>`, so the key validator rejected every real id (keys now
+  split on the last `::`, and only the tab id may not contain it); the window URL never carried
+  the pty id (main now falls back to the tab's persisted pty); the window root had no
+  `TooltipProvider`, so the pane header crashed on first render; and
+  `terminalPreview:*` only admitted the main window and the dashboard pop-out. A terminal window
+  is now admitted only for the one pty it was opened on
+  (`isTerminalSessionWindowRendererForPty`). Restore waits for the daemon and reopens only tabs
+  whose pty `listLiveDaemonPtyIds()` still reports; if the inventory is unavailable it reopens
+  none, rather than empty windows. Verified: restored Claude sessions render live output in
+  their own windows.
 - **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
   (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
   step below the chrome. The default dark terminal theme is now `Nightshift Dark`
@@ -219,6 +231,14 @@ one was attached to the wrong data. Running the app found all three. Do the same
 
 ## Known gaps
 
+- **Sidebar agent rows are dead code.** The sidebar lists sessions now, but
+  `sidebar/WorktreeCardAgents.tsx` and its four tests remain; the only live import is the
+  `SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT` constant in `use-scroll-suppression.ts`.
+  Move that constant, then delete the file and its tests.
+- **Terminal windows can repeat a block of scrollback** after a resize resync; the live
+  prompt is correct underneath. Seen once in a restored Claude window, not yet chased.
+- **SSH terminal windows are never restored.** Restore trusts only the local daemon
+  inventory, so a remote pty reads as unverifiable and its window stays closed.
 - **Layout presets** apply a grid to the tab-group tree only, so they are rarely
   applicable. Tidy was fixed to cover both trees; presets were not.
 - **Orchestration has a command line but no control UI.** Runs, tasks, dispatch and

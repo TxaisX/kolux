@@ -1,8 +1,19 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { openOrFocusMock } = vi.hoisted(() => ({ openOrFocusMock: vi.fn() }))
+const { openOrFocusMock, listLiveMock, ownerMock } = vi.hoisted(() => ({
+  openOrFocusMock: vi.fn((_store: unknown, args: { worktreeId: string; tabId: string }) => ({
+    sessionKey: `${args.worktreeId}::${args.tabId}`
+  })),
+  listLiveMock: vi.fn<() => Promise<string[] | null>>(),
+  ownerMock: vi.fn()
+}))
 vi.mock('./terminal-session-window', () => ({
   openOrFocusTerminalSessionWindow: openOrFocusMock
+}))
+vi.mock('../daemon/daemon-provider-state', () => ({ listLiveDaemonPtyIds: listLiveMock }))
+vi.mock('../ipc/pty/pty-window-ownership', () => ({ setPtyWindowOwner: ownerMock }))
+vi.mock('../startup/main-process-state', () => ({
+  mainProcessState: { localPtyProviderStartupReady: Promise.resolve() }
 }))
 
 import { restoreLiveTerminalSessionWindows } from './terminal-session-window-restore'
@@ -15,12 +26,16 @@ function makeStore(tabsByWorktree: Record<string, FakeTab[]>): {
   return { getWorkspaceSession: () => ({ tabsByWorktree }) }
 }
 
+beforeEach(() => {
+  listLiveMock.mockResolvedValue(['pty-1', 'pty-a', 'pty-b'])
+})
+
 afterEach(() => {
-  openOrFocusMock.mockClear()
+  vi.clearAllMocks()
 })
 
 describe('restoreLiveTerminalSessionWindows', () => {
-  it('reopens a window only for tabs still bound to a pty', () => {
+  it('reopens a window only for tabs still bound to a pty', async () => {
     const store = makeStore({
       wt1: [
         { id: 'tab-live', ptyId: 'pty-1' },
@@ -28,35 +43,43 @@ describe('restoreLiveTerminalSessionWindows', () => {
       ]
     })
 
-    restoreLiveTerminalSessionWindows(store as never)
+    await restoreLiveTerminalSessionWindows(store as never)
 
     expect(openOrFocusMock).toHaveBeenCalledTimes(1)
     expect(openOrFocusMock).toHaveBeenCalledWith(store, { worktreeId: 'wt1', tabId: 'tab-live' })
+    expect(ownerMock).toHaveBeenCalledWith('pty-1', 'wt1::tab-live')
   })
 
-  it('reopens every live session across multiple worktrees', () => {
+  it('reopens every live session across multiple worktrees', async () => {
     const store = makeStore({
       wt1: [{ id: 'tab-a', ptyId: 'pty-a' }],
       wt2: [{ id: 'tab-b', ptyId: 'pty-b' }]
     })
 
-    restoreLiveTerminalSessionWindows(store as never)
+    await restoreLiveTerminalSessionWindows(store as never)
 
     expect(openOrFocusMock).toHaveBeenCalledTimes(2)
-    expect(openOrFocusMock).toHaveBeenCalledWith(store, { worktreeId: 'wt1', tabId: 'tab-a' })
-    expect(openOrFocusMock).toHaveBeenCalledWith(store, { worktreeId: 'wt2', tabId: 'tab-b' })
   })
 
-  it('does nothing when there are no live sessions', () => {
-    const store = makeStore({ wt1: [{ id: 'tab-closed', ptyId: null }] })
+  it('skips tabs whose persisted pty the daemon no longer reports', async () => {
+    const store = makeStore({ wt1: [{ id: 'tab-stale', ptyId: 'pty-gone' }] })
 
-    restoreLiveTerminalSessionWindows(store as never)
+    await restoreLiveTerminalSessionWindows(store as never)
 
     expect(openOrFocusMock).not.toHaveBeenCalled()
   })
 
-  it('is a no-op with a null store', () => {
-    expect(() => restoreLiveTerminalSessionWindows(null)).not.toThrow()
+  it('reopens nothing when the daemon inventory is unavailable', async () => {
+    listLiveMock.mockResolvedValue(null)
+    const store = makeStore({ wt1: [{ id: 'tab-live', ptyId: 'pty-1' }] })
+
+    await restoreLiveTerminalSessionWindows(store as never)
+
+    expect(openOrFocusMock).not.toHaveBeenCalled()
+  })
+
+  it('is a no-op with a null store', async () => {
+    await expect(restoreLiveTerminalSessionWindows(null)).resolves.toBeUndefined()
     expect(openOrFocusMock).not.toHaveBeenCalled()
   })
 })

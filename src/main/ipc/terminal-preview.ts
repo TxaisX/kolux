@@ -5,6 +5,7 @@ import type {
 } from '../../shared/terminal-preview'
 import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
 import { isDashboardPopoutRenderer } from '../window/dashboard-popout-window'
+import { isTerminalSessionWindowRendererForPty } from '../window/terminal-session-window-registry'
 import { isTrustedUIRenderer } from './ui'
 import {
   TERMINAL_PREVIEW_OUTPUT_BATCH_MAX_BYTES,
@@ -20,8 +21,16 @@ function isValidPtyId(value: unknown): value is string {
 // Why: the preview dialog has two hosts — the pop-out window and the main
 // renderer's in-window overlay. The trusted UI renderer already has full PTY
 // access through the regular terminal channels, so admitting it adds no reach.
-function isTerminalPreviewRenderer(sender: WebContents): boolean {
-  return isDashboardPopoutRenderer(sender) || isTrustedUIRenderer(sender)
+// A terminal window is admitted only for the one pty it was opened on.
+function isTerminalPreviewRenderer(sender: WebContents, ptyId: unknown): ptyId is string {
+  if (!isValidPtyId(ptyId)) {
+    return false
+  }
+  return (
+    isDashboardPopoutRenderer(sender) ||
+    isTrustedUIRenderer(sender) ||
+    isTerminalSessionWindowRendererForPty(sender, ptyId)
+  )
 }
 /** Pop-out terminal transport with an atomic snapshot/live boundary. */
 export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeService): void {
@@ -90,7 +99,7 @@ export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeServic
       event,
       args: { ptyId?: unknown; opts?: { scrollbackRows?: unknown } }
     ): Promise<TerminalPreviewConnectResult> => {
-      if (!isTerminalPreviewRenderer(event.sender) || !isValidPtyId(args?.ptyId)) {
+      if (!isTerminalPreviewRenderer(event.sender, args?.ptyId)) {
         return { snapshot: null, replay: [] }
       }
       const ptyId = args.ptyId
@@ -165,11 +174,7 @@ export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeServic
   ipcMain.handle(
     'terminalPreview:input',
     (event, args: { ptyId?: unknown; data?: unknown }): Promise<boolean> => {
-      if (
-        !isTerminalPreviewRenderer(event.sender) ||
-        !isValidPtyId(args?.ptyId) ||
-        typeof args.data !== 'string'
-      ) {
+      if (!isTerminalPreviewRenderer(event.sender, args?.ptyId) || typeof args.data !== 'string') {
         return Promise.resolve(false)
       }
       return runtime.writeTerminalPreviewInput(args.ptyId, args.data)
@@ -180,8 +185,7 @@ export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeServic
     'terminalPreview:ack',
     (event, args: { ptyId?: unknown; bytes?: unknown }): void => {
       if (
-        !isTerminalPreviewRenderer(event.sender) ||
-        !isValidPtyId(args?.ptyId) ||
+        !isTerminalPreviewRenderer(event.sender, args?.ptyId) ||
         typeof args.bytes !== 'number' ||
         !Number.isFinite(args.bytes) ||
         args.bytes <= 0 ||
@@ -204,8 +208,7 @@ export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeServic
       args: { ptyId?: unknown; cols?: unknown; rows?: unknown }
     ): Promise<{ cols: number; rows: number } | null> => {
       if (
-        !isTerminalPreviewRenderer(event.sender) ||
-        !isValidPtyId(args?.ptyId) ||
+        !isTerminalPreviewRenderer(event.sender, args?.ptyId) ||
         typeof args.cols !== 'number' ||
         typeof args.rows !== 'number' ||
         !Number.isFinite(args.cols) ||
@@ -251,7 +254,7 @@ export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeServic
   )
 
   ipcMain.handle('terminalPreview:unsubscribe', (event, args: { ptyId?: unknown }): void => {
-    if (!isTerminalPreviewRenderer(event.sender) || !isValidPtyId(args?.ptyId)) {
+    if (!isTerminalPreviewRenderer(event.sender, args?.ptyId)) {
       return
     }
     subscriptionsByContents.get(event.sender.id)?.get(args.ptyId)?.dispose()

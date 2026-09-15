@@ -17,6 +17,7 @@ import {
 import { applyDocumentTheme } from './lib/document-theme'
 import { buildAppFontFamily } from './lib/app-font-family'
 import { I18nProvider } from './i18n/I18nProvider'
+import { TooltipProvider } from './components/ui/tooltip'
 import { translate } from './i18n/i18n'
 import { useAppStore } from './store'
 import type { GlobalSettings } from '../../shared/global-settings-types'
@@ -152,7 +153,10 @@ getOrCreateRendererRoot(rootElement, import.meta.hot?.data).render(
   <StrictMode>
     <I18nProvider>
       <TerminalWindowSettingsSync />
-      <TerminalWindowApp />
+      {/* Why: pane-header Tooltips throw without a provider; this entry doesn't mount App.tsx's. */}
+      <TooltipProvider delayDuration={400}>
+        <TerminalWindowApp />
+      </TooltipProvider>
     </I18nProvider>
   </StrictMode>
 )

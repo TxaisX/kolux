@@ -1,26 +1,21 @@
 import type { Store } from '../persistence'
-import { openOrFocusTerminalSessionWindow } from './terminal-session-window'
+import { listLiveDaemonPtyIds } from '../daemon/daemon-provider-state'
 import { setPtyWindowOwner } from '../ipc/pty/pty-window-ownership'
+import { mainProcessState } from '../startup/main-process-state'
+import { openOrFocusTerminalSessionWindow } from './terminal-session-window'
 
-/**
- * Reopen a window for every session that is still live, at its remembered
- * bounds (openOrFocusTerminalSessionWindow falls back to a cascade position
- * when none are recorded — e.g. the first restart after this feature ships).
- *
- * ponytail: liveness = the persisted tab still carries a bound ptyId
- * (`store.getWorkspaceSession().tabsByWorktree`), the same signal the old
- * single-window restore used to decide which tabs to redraw. Swap for a
- * runtime-confirmed post-reattachment signal if this proves stale once the
- * daemon has had a chance to reconcile.
- */
-export function restoreLiveTerminalSessionWindows(store: Store | null): void {
+/** Reopens a window for every persisted tab whose pty the daemon still reports live. */
+export async function restoreLiveTerminalSessionWindows(store: Store | null): Promise<void> {
   if (!store) {
     return
   }
+  await mainProcessState.localPtyProviderStartupReady
+  // Why: persisted ptyIds outlive their ptys; null (no daemon / unreachable) can't prove any live, so reopen none.
+  const livePtyIds = new Set(await listLiveDaemonPtyIds())
   const tabsByWorktree = store.getWorkspaceSession().tabsByWorktree ?? {}
   for (const [worktreeId, tabs] of Object.entries(tabsByWorktree)) {
     for (const tab of tabs ?? []) {
-      if (!tab.ptyId) {
+      if (!tab.ptyId || !livePtyIds.has(tab.ptyId)) {
         continue
       }
       const { sessionKey } = openOrFocusTerminalSessionWindow(store, { worktreeId, tabId: tab.id })

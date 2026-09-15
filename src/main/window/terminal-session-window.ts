@@ -29,7 +29,7 @@ const BOUNDS_SAVE_DEBOUNCE_MS = 500
 export type OpenTerminalSessionWindowArgs = {
   worktreeId: string
   tabId: string
-  /** Not yet routed to the renderer's query string; reserved for wiring the pty stream to this window. */
+  /** Falls back to the persisted tab's pty when omitted, so every caller's window can attach. */
   ptyId?: string
 }
 
@@ -44,12 +44,15 @@ function loadTerminalWindow(
   window: BrowserWindow,
   sessionKey: string,
   worktreeId: string,
-  tabId: string
+  tabId: string,
+  ptyId: string | undefined
 ): void {
-  const search =
-    `sessionKey=${encodeURIComponent(sessionKey)}` +
-    `&worktreeId=${encodeURIComponent(worktreeId)}` +
-    `&tabId=${encodeURIComponent(tabId)}`
+  const search = new URLSearchParams({
+    sessionKey,
+    worktreeId,
+    tabId,
+    ...(ptyId ? { ptyId } : {})
+  }).toString()
   // Why: mirrors loadMainWindow/loadDashboardPopout's dev/prod branch.
   if (is.dev && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(`${process.env.ELECTRON_RENDERER_URL}/terminal-window.html?${search}`)
@@ -78,7 +81,8 @@ function createTerminalWindow(
   store: Store | null,
   sessionKey: string,
   worktreeId: string,
-  tabId: string
+  tabId: string,
+  ptyId: string | undefined
 ): BrowserWindow {
   const savedBounds = getPersistedTerminalWindowBounds(store, sessionKey)
   const origin = savedBounds ? null : computeCascadeOrigin()
@@ -115,7 +119,7 @@ function createTerminalWindow(
     window.maximize()
   }
 
-  trackTerminalSessionWindow({ sessionKey, worktreeId, tabId, window })
+  trackTerminalSessionWindow({ sessionKey, worktreeId, tabId, ptyId, window })
 
   window.once('ready-to-show', () => showWindowWithoutStealingFocus(window))
 
@@ -156,7 +160,7 @@ function createTerminalWindow(
     untrackTerminalSessionWindow(sessionKey)
   })
 
-  loadTerminalWindow(window, sessionKey, worktreeId, tabId)
+  loadTerminalWindow(window, sessionKey, worktreeId, tabId, ptyId)
   return window
 }
 
@@ -170,8 +174,19 @@ export function openOrFocusTerminalSessionWindow(
     focusTerminalSessionWindow(sessionKey)
     return { sessionKey }
   }
-  createTerminalWindow(store, sessionKey, args.worktreeId, args.tabId)
+  const ptyId = args.ptyId ?? findPersistedTabPtyId(store, args.worktreeId, args.tabId)
+  createTerminalWindow(store, sessionKey, args.worktreeId, args.tabId, ptyId)
   return { sessionKey }
+}
+
+/** The pty the workspace session currently binds to this tab, if any. */
+function findPersistedTabPtyId(
+  store: Store | null,
+  worktreeId: string,
+  tabId: string
+): string | undefined {
+  const tabs = store?.getWorkspaceSession().tabsByWorktree?.[worktreeId] ?? []
+  return tabs.find((tab) => tab.id === tabId)?.ptyId ?? undefined
 }
 
 export function focusTerminalSessionWindow(sessionKey: string): boolean {

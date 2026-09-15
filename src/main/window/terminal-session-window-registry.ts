@@ -1,9 +1,11 @@
-import type { BrowserWindow } from 'electron'
+import type { BrowserWindow, WebContents } from 'electron'
 
 export type TerminalSessionWindowEntry = {
   sessionKey: string
   worktreeId: string
   tabId: string
+  /** The pty this window was opened on — the only one it may drive. */
+  ptyId?: string
   window: BrowserWindow
 }
 
@@ -36,6 +38,13 @@ export function untrackTerminalSessionWindow(sessionKey: string): void {
 
 export function listTerminalSessionWindowEntries(): TerminalSessionWindowEntry[] {
   return [...windowsBySessionKey.values()].filter((entry) => !entry.window.isDestroyed())
+}
+
+/** True when `sender` is a terminal window opened on exactly this pty. */
+export function isTerminalSessionWindowRendererForPty(sender: WebContents, ptyId: string): boolean {
+  return listTerminalSessionWindowEntries().some(
+    (entry) => entry.ptyId === ptyId && entry.window.webContents === sender
+  )
 }
 
 export function terminalSessionWindowCount(): number {
