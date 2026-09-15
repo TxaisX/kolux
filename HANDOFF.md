@@ -157,6 +157,17 @@ same reason. Likely fix: let `local-workspace-port-scanner.ts` promote a listene
 workspace-kind when `advertisedUrlWatcher.lookup` holds a validated entry for that port,
 since the watcher already knows which PTY, and therefore which worktree, printed it.
 
+Resolved on 2026-09-14, verified in the running app (Preview enabled after
+`python -m http.server 8771 --bind 127.0.0.1` in the workspace terminal, and one click opened
+a browser pane on that URL). It took three pieces, and the first alone changed nothing:
+`enrichPort` attributes a banner-only listener with confidence `advertised`;
+`reconcileAdvertisedUrls` must count that listener as present for the workspace, or the
+watcher evicts the banner in the same scan (that is why `beafcc5d` did not enable the
+button); and the renderer's `workspace-port-scan-client.ts` validator must accept the new
+confidence value, or it discards the entire scan as "invalid response" and the status bar
+reports the scan as unavailable. When you add a value to a shared union that crosses the
+main/renderer boundary, grep for the hand-written validator too.
+
 Repository trap: `.gitignore` ignores `docs/**` by policy and allow-lists durable docs one
 by one. A new file under `docs/` is silently left out of every commit (the three-mode-shell
 spec and prototype were referenced by two commits and this file before anyone noticed they
