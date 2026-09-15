@@ -24,6 +24,7 @@ import type {
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { getAgentLabel } from '@/lib/agent-catalog'
 import { getProviderDisplayName } from '../status-bar/usage-error-copy'
+import { translate } from '@/i18n/i18n'
 
 export type UsageWindowRow = {
   label: string
@@ -104,10 +105,10 @@ function todayKey(now: number): string {
 
 function buildWindows(p: ProviderRateLimits, now: number): UsageWindowRow[] {
   const sections: { label: string; window: RateLimitWindow | null | undefined }[] = [
-    { label: 'Session', window: p.session },
-    { label: 'Weekly', window: p.weekly },
-    { label: 'Fable', window: p.fableWeekly },
-    { label: 'Monthly', window: p.monthly },
+    { label: translate('components.usage.window.session', 'Session'), window: p.session },
+    { label: translate('components.usage.window.weekly', 'Weekly'), window: p.weekly },
+    { label: translate('components.usage.window.fable', 'Fable'), window: p.fableWeekly },
+    { label: translate('components.usage.window.monthly', 'Monthly'), window: p.monthly },
     ...(p.buckets ?? []).map((bucket) => ({ label: bucket.name, window: bucket }))
   ]
   return sections

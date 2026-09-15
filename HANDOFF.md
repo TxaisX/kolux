@@ -142,10 +142,19 @@ Runtime traps found while doing this:
 - Playwright's `page.screenshot` never returns against the off-screen window because it waits
   for a compositor frame. Use `page.evaluate` for DOM-level checks, and raw
   `Page.captureScreenshot` only when a frame exists.
-- Two suites fail before any change: `right-sidebar/SourceControl.host-context-boundary`
-  (asserts source text that is already out of date) and
-  `app-shell/workspace-view-cross-client-sync` (reads files under `mobile/`, which is not in
-  this worktree).
+- Suites that fail before any change, all verified against the previous commit with the
+  working tree stashed: `right-sidebar/SourceControl.host-context-boundary` (asserts source
+  text that is already out of date), `app-shell/workspace-view-cross-client-sync` and the
+  reliability-gates check (both read files under `mobile/`, which is not in this worktree),
+  and `i18n/runtime-required-catalog` plus `verify:localization-runtime-catalog` (seven
+  TerminalPane minimum-contrast entries drifted from `en.json`; `pnpm run
+  sync:localization-runtime-catalog` regenerates it). `verify:skill-bundle-manifest` and
+  `audit:code-quality:native` (two import cycles in `shared/constants.ts` and
+  `main/github/stacked-pr-creation.ts`) also fail on the previous commit.
+- The full `vitest run` on this machine reports about 340 failing files. None of them
+  touch a file this branch changed; the causes are Windows `EPERM`/`EBUSY` on temp files,
+  `spawn /bin/sh ENOENT`, and the missing `mobile/` folder. CI on Linux is the honest
+  signal for the whole suite; run targeted suites locally.
 
 **Green tests are not enough here.** Three separate UI features passed tests, typecheck
 and lint while being broken: one never rendered, one silently created a plain terminal, and

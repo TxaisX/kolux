@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import React, { useEffect, useMemo, useState } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useNow } from '@/hooks/use-now'
@@ -8,16 +9,22 @@ import { openFloorLaneInInbox } from './floor-lane-activation'
 import { useFloorLanes } from './use-floor-lanes'
 import type { FloorRange } from './floor-types'
 
-const RANGE_OPTIONS: { value: FloorRange; label: string }[] = [
-  { value: '15m', label: '15m' },
-  { value: '60m', label: '60m' },
-  { value: 'today', label: 'Today' }
-]
+function rangeOptions(): { value: FloorRange; label: string }[] {
+  return [
+    { value: '15m', label: translate('components.floor.range.15m', '15m') },
+    { value: '60m', label: translate('components.floor.range.60m', '60m') },
+    { value: 'today', label: translate('components.floor.range.today', 'Today') }
+  ]
+}
 
-const RANGE_SUBTITLE: Record<FloorRange, string> = {
-  '15m': 'last 15 min',
-  '60m': 'last 60 min',
-  today: 'today'
+function rangeSubtitle(range: FloorRange): string {
+  if (range === '15m') {
+    return translate('components.floor.range.last15', 'last 15 min')
+  }
+  if (range === '60m') {
+    return translate('components.floor.range.last60', 'last 60 min')
+  }
+  return translate('components.floor.range.todaySubtitle', 'today')
 }
 
 function FloorLegendDot({ className }: { className: string }): React.JSX.Element {
@@ -29,19 +36,19 @@ function FloorLegend(): React.JSX.Element {
     <div className="flex items-center gap-3 text-xs text-muted-foreground">
       <span className="flex items-center gap-1">
         <FloorLegendDot className="bg-accent-foreground" />
-        running
+        {translate('components.floor.legend.running', 'running')}
       </span>
       <span className="flex items-center gap-1">
         <FloorLegendDot className="bg-agent-question" />
-        needs you
+        {translate('components.floor.legend.needsYou', 'needs you')}
       </span>
       <span className="flex items-center gap-1">
         <FloorLegendDot className="bg-status-success" />
-        done
+        {translate('components.floor.legend.done', 'done')}
       </span>
       <span className="flex items-center gap-1">
         <FloorLegendDot className="border border-dashed border-muted-foreground bg-transparent" />
-        unverifiable
+        {translate('components.floor.legend.unverifiable', 'unverifiable')}
       </span>
     </div>
   )
@@ -77,10 +84,13 @@ export default function FloorPage(): React.JSX.Element {
     <div className="flex min-h-0 min-w-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-          <h2 className="text-sm font-semibold">Floor</h2>
+          <h2 className="text-sm font-semibold">{translate('components.floor.title', 'Floor')}</h2>
           <span className="text-xs text-muted-foreground">
-            {agentCount} agent{agentCount === 1 ? '' : 's'} on {hostCount} host
-            {hostCount === 1 ? '' : 's'} · {RANGE_SUBTITLE[range]}
+            {translate('components.floor.subtitle', '{{agents}} on {{hosts}} · {{range}}', {
+              agents: translate('components.floor.agentCount', '{{count}} agents', { count: agentCount }),
+              hosts: translate('components.floor.hostCount', '{{count}} hosts', { count: hostCount }),
+              range: rangeSubtitle(range)
+            })}
           </span>
           <div className="flex-1" />
           <FloorLegend />
@@ -91,7 +101,7 @@ export default function FloorPage(): React.JSX.Element {
             value={range}
             onValueChange={(value) => value && setRange(value as FloorRange)}
           >
-            {RANGE_OPTIONS.map((option) => (
+            {rangeOptions().map((option) => (
               <ToggleGroupItem key={option.value} value={option.value} aria-label={option.label}>
                 {option.label}
               </ToggleGroupItem>

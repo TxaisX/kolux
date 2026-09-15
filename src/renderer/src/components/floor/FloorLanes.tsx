@@ -1,3 +1,4 @@
+import { translate } from '@/i18n/i18n'
 import React, { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { FloorLane } from './FloorLane'
@@ -50,7 +51,7 @@ function FloorHostGroup({
         />
         <span className="font-medium">{host.label}</span>
         <span className="rounded-full border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground">
-          {agentCount} agent{agentCount === 1 ? '' : 's'}
+          {translate('components.floor.agentCount', '{{count}} agents', { count: agentCount })}
         </span>
       </div>
       {host.lanes.map((lane) => (
@@ -87,7 +88,7 @@ export function FloorLanes({
   return (
     <div
       role="listbox"
-      aria-label="Agents"
+      aria-label={translate('components.floor.lanes.ariaLabel', 'Agents')}
       className="min-h-0 flex-1 overflow-y-auto scrollbar-sleek"
       onKeyDown={(event) => {
         if (event.key === 'Enter' && selectedPaneKey) {
@@ -98,7 +99,9 @@ export function FloorLanes({
     >
       <FloorAxis range={range} />
       {hosts.length === 0 ? (
-        <div className="p-6 text-sm text-muted-foreground">No agents running right now.</div>
+        <div className="p-6 text-sm text-muted-foreground">
+          {translate('components.floor.lanes.empty', 'No agents running right now.')}
+        </div>
       ) : (
         hosts.map((host) => (
           <FloorHostGroup

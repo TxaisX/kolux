@@ -3346,6 +3346,9 @@
           },
           "LayoutPresetsMenu": {
             "layoutPresetGrid": "{{rows}} grid"
+          },
+          "usePaneCountCommand": {
+            "shrinkStopped": "Stopped at {{achievable}} panes"
           }
         },
         "bar": {
@@ -16983,6 +16986,14 @@
           "deleteTable": "Delete table"
         }
       }
+    },
+    "app-shell": {
+      "ModeSwitch": {
+        "5c1a7e9d02": "Inbox",
+        "b30f6c2e81": "Floor",
+        "e9421d7fa4": "Code",
+        "1f84a6c930": "Mode"
+      }
     }
   },
   "components": {
@@ -17559,6 +17570,111 @@
         "copySessionIdSuccess": "Session ID copied",
         "copySessionIdError": "Unable to copy session ID"
       }
+    },
+    "inbox": {
+      "items": {
+        "needs": {
+          "fallback": "Needs your input"
+        },
+        "running": {
+          "tool": "Running {{value0}}",
+          "fallback": "Working"
+        },
+        "done": {
+          "fallback": "Turn complete"
+        }
+      },
+      "detail": {
+        "openInCode": "Open in Code",
+        "answerInCode": "Answer in Code",
+        "empty": "Select an item from the Inbox."
+      },
+      "list": {
+        "kind": {
+          "question": "Question",
+          "permission": "Permission",
+          "running": "Running",
+          "unverifiable": "Unverifiable",
+          "done": "Done"
+        },
+        "title": "Inbox",
+        "needsCount": "{{value0}} needs you",
+        "allClear": "All clear",
+        "section": {
+          "needs": "Needs you",
+          "waiting": "Waiting on agent",
+          "done": "Done today"
+        },
+        "empty": "Nothing needs you right now."
+      },
+      "summary": {
+        "empty": "Select an item to see its changes.",
+        "title": "Changes",
+        "branch": "Branch",
+        "host": "Host",
+        "filesChanged": "Files changed",
+        "lines": "Lines",
+        "limitation": "This is a summary only — open the item in Code for the full Source Control panel."
+      }
+    },
+    "usage": {
+      "UsageOverviewDialog": {
+        "title": "Usage across every CLI",
+        "refresh": "Refresh usage"
+      },
+      "UsageOverviewProviderCard": {
+        "fetching": "Fetching usage…",
+        "error": "Refresh failed",
+        "notTracked": "Detected, but Nightshift does not track its usage yet.",
+        "notDetected": "Not detected on this machine.",
+        "today": "Today",
+        "recentSessions": "Recent sessions"
+      },
+      "window": {
+        "session": "Session",
+        "weekly": "Weekly",
+        "fable": "Fable",
+        "monthly": "Monthly"
+      }
+    },
+    "floor": {
+      "runPanel": {
+        "agentCount": "{{count}} agents",
+        "repo": "Repo",
+        "host": "Host",
+        "started": "Started",
+        "startedAgo": "{{duration}} ago",
+        "prompt": "Prompt",
+        "tasks": "Tasks",
+        "active": "active",
+        "needsYou": "needs you",
+        "lineup": "Lineup",
+        "openInCode": "Open in Code",
+        "openInInbox": "Open in Inbox",
+        "empty": "Select an agent to see its run."
+      },
+      "agentCount": "{{count}} agents",
+      "lanes": {
+        "ariaLabel": "Agents",
+        "empty": "No agents running right now."
+      },
+      "range": {
+        "15m": "15m",
+        "60m": "60m",
+        "today": "Today",
+        "last15": "last 15 min",
+        "last60": "last 60 min",
+        "todaySubtitle": "today"
+      },
+      "legend": {
+        "running": "running",
+        "needsYou": "needs you",
+        "done": "done",
+        "unverifiable": "unverifiable"
+      },
+      "title": "Floor",
+      "subtitle": "{{agents}} on {{hosts}} · {{range}}",
+      "hostCount": "{{count}} hosts"
     }
   },
   "dashboardPopout": {
