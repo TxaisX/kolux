@@ -51,6 +51,7 @@ export type UISliceContextual = {
     | 'launch-agents'
     | 'new-workspace-composer'
     | 'confirm-nightshift-yaml-hooks'
+    | 'usage'
   modalData: Record<string, unknown>
   openModal: (modal: UISliceContextual['activeModal'], data?: Record<string, unknown>) => void
   closeModal: () => void

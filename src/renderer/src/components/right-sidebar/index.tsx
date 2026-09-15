@@ -16,6 +16,7 @@ import {
 } from './right-sidebar-width'
 import { translate } from '@/i18n/i18n'
 import { RightSidebarPanelContent } from './right-sidebar-panel-content'
+import { HandoffPanel } from './handoff/HandoffPanel'
 import { useMeasuredWidth } from './right-sidebar-measured-width'
 import {
   isPairedWebClientWindow,
@@ -92,6 +93,11 @@ function RightSidebarInner(): React.JSX.Element {
           competed with file Explorer/Search for vertical space. The right
           sidebar is back to tab-only content. */}
       <RightSidebarPanelContent effectiveTab={effectiveTab} rightSidebarOpen={rightSidebarOpen} />
+      {/* Why: docked below the tab content instead of as its own tab — the activity-bar tab
+          set is a closed union owned elsewhere, and a handoff document applies to every
+          workspace kind (git or folder, local or SSH/WSL), not only the git-only Source
+          Control tab. */}
+      <HandoffPanel />
     </div>
   ) : null
 

@@ -45,6 +45,7 @@ import { registerWorkspacePortHandlers } from '../workspace-ports'
 import { registerLocalhostWorktreeLabelHandlers } from '../localhost-worktree-labels'
 import { registerAutomationHandlers } from '../automations'
 import { registerKeybindingHandlers } from '../keybindings'
+import { registerWorkspaceHandoffHandlers } from '../workspace-handoff'
 import { registerTelemetryHandlers } from '../telemetry'
 import { registerShellHandlers } from '../shell'
 import { registerPetHandlers } from '../pet'
@@ -197,6 +198,7 @@ export function registerCoreHandlers(
   })
   registerBrowserHandlers()
   registerShellHandlers(store)
+  registerWorkspaceHandoffHandlers()
   registerPetHandlers()
   registerSessionHandlers(store)
   registerUIHandlers(store, { isDashboardPopoutRenderer })

@@ -24,6 +24,8 @@ const SkillsPage = lazy(() => import('../components/skills/SkillsPage'))
 const ArtifactsPage = lazy(() => import('../components/artifacts/ArtifactsPage'))
 const WorkspaceSpacePage = lazy(() => import('../components/workspace-space/WorkspaceSpacePage'))
 const MobilePage = lazy(() => import('../components/mobile/MobilePage'))
+const InboxPage = lazy(() => import('@/components/inbox/InboxPage'))
+const FloorPage = lazy(() => import('@/components/floor/FloorPage'))
 const Terminal = lazy(() => import('../components/Terminal'))
 
 type WorktreeSidebarScrollRefs = {
@@ -68,6 +70,8 @@ function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element 
   const { activeView, activeWorktreeId, activePendingCreationId, creationLayoutActive } = layout
   return (
     <>
+      {activeView === 'inbox' ? <InboxPage /> : null}
+      {activeView === 'floor' ? <FloorPage /> : null}
       {activeView === 'settings' ? <Settings /> : null}
       {activeView === 'skills' ? <SkillsPage /> : null}
       {activeView === 'artifacts' ? <ArtifactsPage /> : null}

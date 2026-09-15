@@ -3,7 +3,7 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-10.
+Last updated: 2026-09-14.
 
 ## What this is
 
@@ -64,6 +64,36 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
+- **Three-mode shell (2026-09-14).** The renderer now has Inbox · Floor · Code as top-level
+  modes with a switch in the title bar (`app-shell/ModeSwitch.tsx`) and `Ctrl+Shift+1/2/3`.
+  Why and what: `docs/redesign/three-mode-shell.md`; the clickable spec is
+  `docs/redesign/prototype/three-mode-prototype.html`. What landed in this pass:
+  - `inbox` and `floor` views on `TopLevelView`; Code is the existing `terminal` view.
+  - **Inbox** (`components/inbox/`): needs-you / waiting / done items derived from
+    `agentStatusByPaneKey` with the sidebar's freshness and decay rules; question and
+    approval cards reuse `native-chat` and send answers to the agent's pty. That send path
+    runs outside its usual chat-pane host and is **not runtime-verified**.
+  - **Floor** (`components/floor/`): lanes per agent grouped by host, segments from
+    `stateHistory`, 15m / 60m / today axis, workers nested under their dispatcher. Runs,
+    tasks and mailboxes have no renderer IPC yet (`// ponytail:` in `FloorRunPanel.tsx`).
+  - **Pane count** (`components/tab-group/PaneCountStepper.tsx`, `usePaneCountCommand.ts`,
+    `pane-layout/pane-count-plan.ts`): `− N +` in the focused pane's toolbar, 1 to 9; growing
+    adds agent-picker panes, shrinking never closes a pane with more than one tab or a live
+    agent and reports where it stopped.
+  - **Usage** (`components/usage/`): a dialog from the status bar roster item "Usage
+    details & history" (`openModal('usage')`) listing every rate-limit provider's windows,
+    reset countdowns, today's tokens and recent sessions.
+  - **Per-workspace handoff** (`components/right-sidebar/handoff/`, `main/workspace-handoff/`,
+    `workspaceHandoff:get/set` IPC): one document per workspace keyed by host + path, stored
+    in userData so folder and SSH workspaces get one without touching the remote. "Hand to
+    agent…" launches the chosen agent in the same workspace with the document as its prompt.
+  - `Mod+Shift+<digit>` chords now match on every platform (`keybindings/matching-key.ts`):
+    Shift+2 reports "@", so the digit binding falls back to the physical `Digit2` code. This
+    also fixes the older `Mod+Shift+0` binding on macOS.
+  Not done yet from the design doc: composer chips with the bypass state, the web preview
+  pane bound to a workspace, Launch agents without shape presets, readable transcript as the
+  default pane view, Ctrl+K session palette, Floor from the orchestration run log.
+
 - **Agent picker.** A pane can now exist without spawning a shell. "Choose agent…" in the
   `+` menu opens a pane whose whole body is a picker of the agent CLIs detected on this
   machine; nothing starts until one is chosen. Verified end to end in a running app.
@@ -92,6 +122,39 @@ sidebar session badge, the launch dialog lineup, and Tidy (pane widths went from
 
 Not verified at runtime: layout presets, and whether the agent dashboard populates under
 load.
+
+Three-mode shell, verified by driving the dev app over CDP on 2026-09-14: the switch renders
+with its shortcut chips, clicking Inbox mounts the empty state ("Nothing needs you right
+now"), clicking Floor mounts the header, legend and range toggle, Code returns to the
+workspace landing, and no renderer errors were logged. Not verified at runtime: the
+keyboard chords (Electron routes shortcuts in the main process, and neither the new chords
+nor the pre-existing Ctrl+Shift+J fire from CDP key events, so this harness cannot test
+them), the pane stepper (it renders only with an active worktree, and the dev profile had
+none), the usage dialog (the roster item only exists once a provider is configured), and the
+Inbox answer path. Each has unit coverage; drive them by hand before a release.
+
+Runtime traps found while doing this:
+
+- `pnpm dev` runs `ensure:electron-runtime`, which reinstalls and rebuilds native modules;
+  on this machine that fails inside MSBuild's FileTracker (`FTK1011`, a missing `.tlog`
+  directory for `@vscode/windows-process-tree`). Launch with
+  `NIGHTSHIFT_BACKGROUND_LAUNCH=1 node config/scripts/run-electron-vite-dev.mjs` instead.
+- Playwright's `page.screenshot` never returns against the off-screen window because it waits
+  for a compositor frame. Use `page.evaluate` for DOM-level checks, and raw
+  `Page.captureScreenshot` only when a frame exists.
+- Suites that fail before any change, all verified against the previous commit with the
+  working tree stashed: `right-sidebar/SourceControl.host-context-boundary` (asserts source
+  text that is already out of date), `app-shell/workspace-view-cross-client-sync` and the
+  reliability-gates check (both read files under `mobile/`, which is not in this worktree),
+  and `i18n/runtime-required-catalog` plus `verify:localization-runtime-catalog` (seven
+  TerminalPane minimum-contrast entries drifted from `en.json`; `pnpm run
+  sync:localization-runtime-catalog` regenerates it). `verify:skill-bundle-manifest` and
+  `audit:code-quality:native` (two import cycles in `shared/constants.ts` and
+  `main/github/stacked-pr-creation.ts`) also fail on the previous commit.
+- The full `vitest run` on this machine reports about 340 failing files. None of them
+  touch a file this branch changed; the causes are Windows `EPERM`/`EBUSY` on temp files,
+  `spawn /bin/sh ENOENT`, and the missing `mobile/` folder. CI on Linux is the honest
+  signal for the whole suite; run targeted suites locally.
 
 **Green tests are not enough here.** Three separate UI features passed tests, typecheck
 and lint while being broken: one never rendered, one silently created a plain terminal, and

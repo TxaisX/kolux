@@ -24,6 +24,7 @@ import {
 } from './slices/usage-provider-slices'
 import { createBrowserSlice } from './slices/browser'
 import { createRateLimitSlice } from './slices/rate-limits'
+import { createWorkspaceHandoffSlice } from './slices/workspace-handoff'
 import { createSshSlice } from './slices/ssh'
 import { createRuntimeEnvironmentSshSlice } from './slices/runtime-environment-ssh'
 import { createAgentStatusSlice } from './slices/agent-status'
@@ -96,6 +97,7 @@ export const useAppStore = create<AppState>()(
         ...createOpenCodeUsageSlice(...a),
         ...createBrowserSlice(...a),
         ...createRateLimitSlice(...a),
+        ...createWorkspaceHandoffSlice(...a),
         ...createSshSlice(...a),
         ...createRuntimeEnvironmentSshSlice(...a),
         ...createAgentStatusSlice(...a),

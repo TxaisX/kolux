@@ -4,6 +4,8 @@ import type { TopLevelView } from './ui-chrome-types'
 // persistence boundary that validates values loaded from disk or IPC.
 const TOP_LEVEL_VIEW_LOOKUP: Record<TopLevelView, true> = {
   terminal: true,
+  inbox: true,
+  floor: true,
   settings: true,
   tasks: true,
   activity: true,

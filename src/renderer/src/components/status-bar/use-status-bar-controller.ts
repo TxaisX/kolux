@@ -18,6 +18,9 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
   const openSettingsTarget = useAppStore((s) => s.openSettingsTarget)
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
+  const activeModal = useAppStore((s) => s.activeModal)
+  const openModal = useAppStore((s) => s.openModal)
+  const closeModal = useAppStore((s) => s.closeModal)
   const usagePercentageDisplay = normalizeUsagePercentageDisplay(
     useAppStore((s) => s.usagePercentageDisplay)
   )
@@ -211,9 +214,10 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
   }
   const handleUsageDetails = (): void => {
     setUsageMenuOpen(false)
-    openSettingsTarget({ pane: 'stats', repoId: null })
-    openSettingsPage()
+    openModal('usage')
   }
+  const usageOverviewDialogOpen = activeModal === 'usage'
+  const closeUsageOverviewDialog = (): void => closeModal()
   const handleOpenProviderAccounts = (provider: ProviderRateLimits['provider']): void => {
     const sectionId = getUsageProviderAccountsSectionId(provider)
     if (!sectionId) {
@@ -267,7 +271,9 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     toggleStatusBarItem,
     usageMenuFocusHandoff,
     usageMenuOpen,
-    usagePercentageDisplay
+    usagePercentageDisplay,
+    usageOverviewDialogOpen,
+    closeUsageOverviewDialog
   }
 }
 

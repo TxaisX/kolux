@@ -3,6 +3,30 @@ import { platformBindings } from './definitions-support'
 
 export const KEYBINDING_DEFINITION_CORE_2: readonly KeybindingDefinition[] = [
   {
+    id: 'view.inbox',
+    title: 'Show Inbox',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: ['shortcut', 'view', 'mode', 'inbox', 'needs you'],
+    defaultBindings: platformBindings(['Mod+Shift+1'])
+  },
+  {
+    id: 'view.floor',
+    title: 'Show Floor',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: ['shortcut', 'view', 'mode', 'floor', 'agents', 'lanes'],
+    defaultBindings: platformBindings(['Mod+Shift+2'])
+  },
+  {
+    id: 'view.code',
+    title: 'Show Code',
+    group: 'Global',
+    scope: 'global',
+    searchKeywords: ['shortcut', 'view', 'mode', 'code', 'terminal', 'worktree'],
+    defaultBindings: platformBindings(['Mod+Shift+3'])
+  },
+  {
     id: 'floatingWorkspace.minimize',
     title: 'Minimize Floating Workspace Panel',
     group: 'Global',
