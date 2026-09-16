@@ -130,12 +130,25 @@ describe('watcher removal gate', () => {
     removal.release()
   })
 
-  it('rejects enclosing installs while a nested root is being removed', async () => {
+  it('rejects enclosing watcher installs while a nested root is being removed', async () => {
     const removal = acquireWatcherRemovalGate('/repo/nested')
     await removal.ready
 
     expect(() => beginWatcherInstall('/repo')).toThrow(WatcherRemovalInProgressError)
-    expect(() => beginTerminalInstall('/repo')).toThrow(TerminalRemovalInProgressError)
+
+    removal.release()
+  })
+
+  // Why: child worktrees sit inside the root worktree's folder, so fencing the
+  // parent blocked every new terminal in the root workspace during a child removal.
+  it('admits a terminal at an enclosing root while a nested root is being removed', async () => {
+    const removal = acquireWatcherRemovalGate('/repo/nested')
+    await removal.ready
+
+    const finishInstall = beginTerminalInstall('/repo')
+    expect(() => beginTerminalInstall('/repo/nested')).toThrow(TerminalRemovalInProgressError)
+    expect(() => beginTerminalInstall('/repo/nested/src')).toThrow(TerminalRemovalInProgressError)
+    finishInstall()
 
     removal.release()
   })
