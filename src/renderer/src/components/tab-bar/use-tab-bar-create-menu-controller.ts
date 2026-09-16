@@ -9,6 +9,7 @@ import {
 } from '@/lib/launch-agent-in-new-tab'
 import type { WindowsTerminalCapabilities } from '@/lib/windows-terminal-capabilities'
 import { useAppStore } from '../../store'
+import { splitPaneForNewSession } from '../pane-layout/split-pane-for-new-session'
 import type { TabAgentLaunchOption } from './tab-agent-launch-options'
 import { buildTabCreateMenuOptions, type TabCreateMenuOption } from './tab-create-menu-options'
 import { resolveWindowsShellLaunchTarget } from './windows-shell-launch'
@@ -225,7 +226,7 @@ export function useTabBarCreateMenuController({
     const result = launchAgentInNewTab({
       agent,
       worktreeId,
-      groupId: resolvedGroupId,
+      groupId: splitPaneForNewSession(useAppStore.getState, worktreeId, resolvedGroupId),
       launchSource: 'tab_bar_quick_launch'
     })
     if (!result) {

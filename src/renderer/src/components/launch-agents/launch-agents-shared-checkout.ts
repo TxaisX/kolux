@@ -6,7 +6,7 @@ import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-
 import { resolveLocalWindowsAgentStartupShell } from '../../../../shared/windows-terminal-shell'
 import { tuiAgentToAgentKind } from '../../../../shared/agent-kind'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import { regridToCurrentLeaves } from '../tab-group/usePaneCountCommand'
+import { regridToCurrentLeaves } from '../pane-layout/split-pane-for-new-session'
 import { settingsWithSeatModel, type SharedCheckoutSeatRequest } from './launch-agents-requests'
 
 /**
@@ -89,6 +89,6 @@ export async function runSharedCheckoutLaunch(
   if (seated === 0) {
     return
   }
-  regridToCurrentLeaves(store.setTabGroupLayout, worktreeId)
+  regridToCurrentLeaves(useAppStore.getState(), worktreeId)
   activateAndRevealWorktree(worktreeId)
 }

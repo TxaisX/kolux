@@ -17,10 +17,9 @@ import { showClientCreationActionError } from '@/lib/client-creation-action-erro
 import { openTabBarEntry, type TabCreateEntryArgs } from './tab-bar/tab-create-entry-action'
 import { translate } from '@/i18n/i18n'
 import { getActiveWorktreeRuntimeEnvironmentId } from './terminal-workspace-model'
+import { splitPaneForNewSession } from './pane-layout/split-pane-for-new-session'
+import { resolvePendingAgentChoice } from '@/lib/resolve-pending-agent-choice'
 import type { TerminalColdActivationController } from './terminal-cold-activation'
-
-const T = (id: string, fallback: string, options?: Record<string, unknown>): string =>
-  translate(`auto.components.use-terminal-create-actions.${id}`, fallback, options)
 
 export function useTerminalCreateActions(controller: TerminalColdActivationController) {
   const {
@@ -38,9 +37,17 @@ export function useTerminalCreateActions(controller: TerminalColdActivationContr
       if (!activeWorktreeId) {
         return
       }
-      const targetGroupId =
+      const sourceGroupId =
         useAppStore.getState().activeGroupIdByWorktree[activeWorktreeId] ??
         useAppStore.getState().groupsByWorktree[activeWorktreeId]?.[0]?.id
+      if (!shellOverride && sourceGroupId) {
+        // Why: the store action splits a fresh pane for the session itself.
+        void openNewTerminalTabInActiveWorkspace(sourceGroupId)
+        return
+      }
+      const targetGroupId = sourceGroupId
+        ? splitPaneForNewSession(useAppStore.getState, activeWorktreeId, sourceGroupId)
+        : undefined
       const runtimeEnvironmentId = getActiveWorktreeRuntimeEnvironmentId(activeWorktreeId)
       if (isWebRuntimeSessionActive(runtimeEnvironmentId)) {
         void createWebRuntimeSessionTerminal({
@@ -52,11 +59,7 @@ export function useTerminalCreateActions(controller: TerminalColdActivationContr
         })
         return
       }
-      if (!shellOverride && targetGroupId) {
-        void openNewTerminalTabInActiveWorkspace(targetGroupId)
-        return
-      }
-      const newTab = createTab(activeWorktreeId, undefined, shellOverride)
+      const newTab = createTab(activeWorktreeId, targetGroupId, shellOverride)
       setActiveTabType('terminal')
       const state = useAppStore.getState()
       const currentTerminals = state.tabsByWorktree[activeWorktreeId] ?? []
@@ -95,13 +98,15 @@ export function useTerminalCreateActions(controller: TerminalColdActivationContr
         return
       }
       const state = useAppStore.getState()
-      const targetGroupId =
+      const sourceGroupId =
         state.activeGroupIdByWorktree[activeWorktreeId] ??
         state.groupsByWorktree[activeWorktreeId]?.[0]?.id
       const result = launchAgentInNewTab({
         agent,
         worktreeId: activeWorktreeId,
-        groupId: targetGroupId,
+        groupId: sourceGroupId
+          ? splitPaneForNewSession(useAppStore.getState, activeWorktreeId, sourceGroupId)
+          : undefined,
         launchSource: 'shortcut'
       })
       if (!result) {
@@ -129,9 +134,12 @@ export function useTerminalCreateActions(controller: TerminalColdActivationContr
       return
     }
     const state = useAppStore.getState()
-    const targetGroupId =
+    const sourceGroupId =
       state.activeGroupIdByWorktree[activeWorktreeId] ??
       state.groupsByWorktree[activeWorktreeId]?.[0]?.id
+    const targetGroupId = sourceGroupId
+      ? splitPaneForNewSession(useAppStore.getState, activeWorktreeId, sourceGroupId)
+      : undefined
     const newTab = createTab(activeWorktreeId, targetGroupId, undefined, {
       pendingAgentChoice: true
     })
@@ -139,32 +147,9 @@ export function useTerminalCreateActions(controller: TerminalColdActivationContr
     focusTerminalTabSurface(newTab.id)
   }, [activeWorktreeId, createTab, setActiveTabType])
 
-  // Resolves a pending-agent-choice tab once the picker fires `onPick`. 'blank'
-  // just clears the flag in place so TerminalPane mounts and spawns the
-  // default shell like any other plain tab. An agent pick closes the
-  // placeholder and routes through the same launchAgentInNewTab funnel every
-  // other agent launch uses (ponytail: mints a fresh tab rather than reusing
-  // the placeholder's id — acceptable since it never held any scrollback).
   const handleResolveAgentChoiceTab = useCallback(
-    (tabId: string, worktreeId: string, pick: TuiAgent | 'blank') => {
-      if (pick === 'blank') {
-        useAppStore.getState().resolveTabPendingAgentChoice(tabId)
-        return
-      }
-      useAppStore.getState().closeTab(tabId, { recordInteraction: false })
-      const result = launchAgentInNewTab({
-        agent: pick,
-        worktreeId,
-        launchSource: 'shortcut'
-      })
-      if (!result) {
-        toast.error(
-          T('agentChoiceLaunchFailed', 'Could not build launch command for {{value0}}.', {
-            value0: pick
-          })
-        )
-      }
-    },
+    (tabId: string, worktreeId: string, pick: TuiAgent | 'blank') =>
+      resolvePendingAgentChoice(tabId, worktreeId, pick),
     []
   )
 

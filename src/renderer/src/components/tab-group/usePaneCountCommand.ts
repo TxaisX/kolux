@@ -1,13 +1,11 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { useAppStore, type AppState } from '../../store'
-import { EQUALIZE_PANES_EVENT } from '@/constants/terminal'
 import { selectLiveTabAgentPanes } from '@/lib/tab-agent-status-index'
 import { translate } from '@/i18n/i18n'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
-import { buildGridLayout } from '../pane-layout/grid-layout'
 import { collectLeafGroupIds } from '../pane-layout/tidy-layout'
-import { computeGridRows } from '../pane-layout/preset-grid'
+import { regridToCurrentLeaves } from '../pane-layout/split-pane-for-new-session'
 import {
   PANE_COUNT_MAX,
   PANE_COUNT_MIN,
@@ -49,26 +47,6 @@ function buildGroupInfo(state: AppState, worktreeId: string): PaneCountGroupInfo
   })
 }
 
-/** Rebuilds the worktree's tab-group tree into a balanced grid for whatever
- *  leaves currently exist, and re-broadcasts Tidy so per-tab panes even out
- *  too (see useTidyLayoutCommand) — growing/shrinking changes leaf count, so
- *  presets' exact-match rebuild doesn't apply here. */
-export function regridToCurrentLeaves(
-  setTabGroupLayout: AppState['setTabGroupLayout'],
-  worktreeId: string
-): void {
-  const layout = useAppStore.getState().layoutByWorktree[worktreeId]
-  if (!layout) {
-    return
-  }
-  const leafIds = collectLeafGroupIds(layout)
-  const nextLayout = buildGridLayout(leafIds, computeGridRows(leafIds.length))
-  if (nextLayout) {
-    setTabGroupLayout(worktreeId, nextLayout)
-  }
-  window.dispatchEvent(new Event(EQUALIZE_PANES_EVENT))
-}
-
 /** Surfaces the one case planPaneCount can't fully satisfy: a shrink that
  *  stopped early because the next pane in line has more than one tab or a
  *  running agent, leaving more panes than requested. */
@@ -98,7 +76,6 @@ function notifyIfShrinkStalled(target: number, achievable: number): void {
  * for the pure decision of what to create/close.
  */
 export function usePaneCountCommand(worktreeId: string): PaneCountCommand {
-  const setTabGroupLayout = useAppStore((state) => state.setTabGroupLayout)
   const createEmptySplitGroup = useAppStore((state) => state.createEmptySplitGroup)
   const closeEmptyGroup = useAppStore((state) => state.closeEmptyGroup)
   const createTab = useAppStore((state) => state.createTab)
@@ -128,7 +105,7 @@ export function usePaneCountCommand(worktreeId: string): PaneCountCommand {
             recordInteraction: false
           })
         }
-        regridToCurrentLeaves(setTabGroupLayout, worktreeId)
+        regridToCurrentLeaves(useAppStore.getState(), worktreeId)
         return
       }
 
@@ -140,7 +117,7 @@ export function usePaneCountCommand(worktreeId: string): PaneCountCommand {
       const settle = (): void => {
         pending -= 1
         if (pending === 0) {
-          regridToCurrentLeaves(setTabGroupLayout, worktreeId)
+          regridToCurrentLeaves(useAppStore.getState(), worktreeId)
           const finalLayout = useAppStore.getState().layoutByWorktree[worktreeId]
           const finalCount = finalLayout ? collectLeafGroupIds(finalLayout).length : 0
           notifyIfShrinkStalled(plan.target, finalCount)
@@ -172,7 +149,7 @@ export function usePaneCountCommand(worktreeId: string): PaneCountCommand {
         })
       }
     },
-    [closeEmptyGroup, createEmptySplitGroup, createTab, setTabGroupLayout, worktreeId]
+    [closeEmptyGroup, createEmptySplitGroup, createTab, worktreeId]
   )
 
   return {

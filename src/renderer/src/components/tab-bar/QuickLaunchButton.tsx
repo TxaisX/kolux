@@ -8,6 +8,7 @@ import { useAgentDetectionTargetForWorktree } from '@/hooks/useAgentDetectionTar
 import { useDetectedAgents } from '@/hooks/useDetectedAgents'
 import { useOptionalShortcutLabel } from '@/hooks/useShortcutLabel'
 import { launchAgentInNewTab } from '@/lib/launch-agent-in-new-tab'
+import { splitPaneForNewSession } from '@/components/pane-layout/split-pane-for-new-session'
 import { isAgentSessionHandleProvider } from '../../../../shared/agent-session-provider-handle'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import type { LaunchSource } from '../../../../shared/telemetry-events'
@@ -137,7 +138,7 @@ function QuickLaunchAgentMenuItemsInner({
       const result = launchAgentInNewTab({
         agent,
         worktreeId,
-        groupId,
+        groupId: splitPaneForNewSession(useAppStore.getState, worktreeId, groupId),
         ...(prompt !== undefined ? { prompt } : {}),
         ...(promptDelivery !== undefined ? { promptDelivery } : {}),
         ...(launchSource !== undefined ? { launchSource } : {}),

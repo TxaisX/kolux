@@ -29,7 +29,7 @@ vi.mock('@/store', () => ({
     })
   }
 }))
-vi.mock('../tab-group/usePaneCountCommand', () => ({
+vi.mock('../pane-layout/split-pane-for-new-session', () => ({
   regridToCurrentLeaves: mocks.regridToCurrentLeaves
 }))
 vi.mock('@/lib/worktree-activation', () => ({
@@ -112,7 +112,7 @@ describe('runSharedCheckoutLaunch', () => {
     ])
     expect(mocks.queueTabStartupCommand).toHaveBeenCalledTimes(3)
     expect(mocks.regridToCurrentLeaves).toHaveBeenCalledTimes(1)
-    expect(mocks.regridToCurrentLeaves).toHaveBeenCalledWith(mocks.setTabGroupLayout, WORKTREE)
+    expect(mocks.regridToCurrentLeaves).toHaveBeenCalledWith(expect.anything(), WORKTREE)
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith(WORKTREE)
   })
 
