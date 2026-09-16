@@ -8,9 +8,11 @@ import type { TuiAgent } from '../../../shared/tui-agent'
  * Resolve a pending-agent-choice pane once its picker fires.
  *
  * 'blank' clears the flag in place, so the pane mounts a terminal and spawns the
- * default shell like any other plain tab. An agent pick closes the placeholder
- * and routes through the same `launchAgentInNewTab` funnel every other agent
- * launch uses.
+ * default shell like any other plain tab. An agent pick launches through the
+ * same `launchAgentInNewTab` funnel every other agent launch uses, into the
+ * placeholder's own pane, and only then closes the placeholder — so the picked
+ * agent occupies the pane the user chose it for instead of drifting to the
+ * active group.
  *
  * Why a module function rather than a hook callback: two surfaces render the
  * picker — the legacy pane list and the split-pane overlay — and they must
@@ -24,14 +26,18 @@ export function resolvePendingAgentChoice(
   worktreeId: string,
   pick: TuiAgent | 'blank'
 ): void {
+  const store = useAppStore.getState()
   if (pick === 'blank') {
-    useAppStore.getState().resolveTabPendingAgentChoice(tabId)
+    store.resolveTabPendingAgentChoice(tabId)
     return
   }
-  useAppStore.getState().closeTab(tabId, { recordInteraction: false })
+  const groupId = (store.groupsByWorktree[worktreeId] ?? []).find((group) =>
+    group.tabOrder.includes(tabId)
+  )?.id
   const result = launchAgentInNewTab({
     agent: pick,
     worktreeId,
+    ...(groupId ? { groupId } : {}),
     launchSource: 'shortcut'
   })
   if (!result) {
@@ -42,5 +48,7 @@ export function resolvePendingAgentChoice(
         { value0: pick }
       )
     )
+    return
   }
+  useAppStore.getState().closeTab(tabId, { recordInteraction: false })
 }
