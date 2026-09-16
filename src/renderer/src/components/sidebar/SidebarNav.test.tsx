@@ -150,6 +150,18 @@ function setSidebarState({
   }
 }
 
+// Why: Automations and Nightshift Mobile now default OFF (projects-first sidebar),
+// so cases that exercise those rows opt them back in explicitly.
+function enableOptionalNavRows(): void {
+  setSidebarState({
+    settings: {
+      ...getDefaultSettings('/tmp'),
+      showAutomationsButton: true,
+      showMobileButton: true
+    }
+  })
+}
+
 const mountedRoots: Root[] = []
 
 async function renderSidebarNav(): Promise<HTMLDivElement> {
@@ -306,6 +318,7 @@ describe('SidebarNav', () => {
   })
 
   it('updates localized labels when the language changes after mount', async () => {
+    enableOptionalNavRows()
     const container = await renderSidebarNav()
 
     expect(queryButtonByText(container, 'Automations')).not.toBeNull()
@@ -320,6 +333,7 @@ describe('SidebarNav', () => {
   })
 
   it('updates labels when pseudo-localization is enabled after mount', async () => {
+    enableOptionalNavRows()
     const container = await renderSidebarNav()
 
     await act(async () => {
@@ -331,6 +345,7 @@ describe('SidebarNav', () => {
   })
 
   it('shows the inline hide control only once a device is paired', async () => {
+    enableOptionalNavRows()
     const beforePairing = await renderSidebarNav()
     expect(queryButtonByText(beforePairing, 'Nightshift Mobile')).not.toBeNull()
     expect(beforePairing.querySelector('button[aria-label="Hide from sidebar"]')).toBeNull()
@@ -374,6 +389,7 @@ describe('SidebarNav', () => {
   })
 
   it('hides Automations from its sidebar context menu', async () => {
+    enableOptionalNavRows()
     const container = await renderSidebarNav()
 
     const automationsMenu = getButtonByText(container, 'Automations').closest(
@@ -387,6 +403,7 @@ describe('SidebarNav', () => {
   })
 
   it('hides Mobile from its sidebar context menu', async () => {
+    enableOptionalNavRows()
     const container = await renderSidebarNav()
 
     const mobileMenu = getButtonByText(container, 'Nightshift Mobile').closest(

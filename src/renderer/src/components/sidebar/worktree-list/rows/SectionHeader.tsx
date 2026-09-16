@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type { AppState } from '@/store/types'
 import { RepoIconGlyph } from '@/components/repo/repo-icon'
 import { RepoForkIndicator } from '@/components/repo/repo-fork-indicator'
+import { ProjectSessionCountBadge } from '@/components/session-rail/ProjectSessionCountBadge'
 import type { FolderWorkspacePathStatus } from '../../../../../../shared/folder-workspace-path-status'
 import { isConfirmedStaleFolderPathStatus } from '../../../../../../shared/folder-workspace-path-status'
 import type { ProjectGroup } from '../../../../../../shared/project-group-types'
@@ -336,6 +337,11 @@ export function renderWorktreeSectionHeaderRow(args: {
               <RepoForkIndicator upstream={row.repo?.upstream} />
               <FolderPathStatusIndicator status={projectGroupPathStatus} />
               {isRepoHeader ? <RepoScanUnavailableIndicator repo={row.repo!} /> : null}
+              {/* Why: the project row carries the whole project's live-session count, so a
+                  collapsed project still reads as "2 sessions running in here". */}
+              {row.worktreeIds && row.worktreeIds.length > 0 ? (
+                <ProjectSessionCountBadge worktreeIds={row.worktreeIds} />
+              ) : null}
             </div>
           </div>
         </div>

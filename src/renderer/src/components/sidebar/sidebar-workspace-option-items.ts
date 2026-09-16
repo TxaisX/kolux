@@ -114,16 +114,6 @@ const BASE_WORKTREE_CARD_PROPERTY_OPTIONS: WorktreeCardPropertyOption[] = [
     }
   },
   {
-    id: 'inline-agents',
-    properties: ['inline-agents'],
-    get label() {
-      return translate(
-        'auto.components.sidebar.SidebarWorkspaceOptionsMenu.65a9820bd1',
-        'Agent statuses'
-      )
-    }
-  },
-  {
     id: 'branch',
     properties: ['branch'],
     get label() {

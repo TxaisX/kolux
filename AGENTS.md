@@ -16,7 +16,9 @@ Never steal monitor focus or reveal test windows: no `show()`, `showInactive()`,
 visible-window tests paused on the user's desktop; run them on an isolated display or CI.
 Rebuild modified launch-policy code before running an app; stale build wrappers are not safe.
 
-Use the `$electron` skill and Playwright CDP for rendered Nightshift UI checks. Do not use computer-use for Nightshift UI validation.
+Use the `nightshift-run` skill and Playwright CDP for rendered Nightshift UI checks. Do not use computer-use for Nightshift UI validation.
+
+Before moving or removing anything in the left sidebar or the chrome around the pane grid, read [`docs/reference/renderer-sidebar-surfaces.md`](./docs/reference/renderer-sidebar-surfaces.md): it maps each visible element to its file, and records that most of that chrome is gated by persisted per-user state (settings keys, `worktreeCardProperties`, `collapsedGroups`) — so changing a default in code leaves an existing profile exactly as it was.
 
 # Style
 

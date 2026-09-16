@@ -4,7 +4,6 @@ import {
   CalendarClock,
   EyeOff,
   Files,
-  Inbox,
   LayoutGrid,
   Rows3,
   Search,
@@ -83,7 +82,6 @@ const SidebarNav = React.memo(function SidebarNav() {
   const artifactsActive = activeView === 'artifacts'
   const skillsActive = activeView === 'skills'
   const agentGridActive = activeView === 'agent-grid'
-  const inboxActive = activeView === 'inbox'
   const floorActive = activeView === 'floor'
   const mobileOnboardingBadge = useMobileSidebarOnboardingBadge(showMobileButton)
   const hideAutomationsButton = React.useCallback(() => {
@@ -194,27 +192,8 @@ const SidebarNav = React.memo(function SidebarNav() {
         </ContextMenu>
       ) : null}
       {/* Why here: the Code view drops the full-width titlebar (tab groups reach the top),
-          so the titlebar ModeSwitch is not visible there; these rows keep Inbox and Floor
-          one click away from the pane grid. */}
-      <button
-        type="button"
-        onClick={() => setActiveView('inbox')}
-        aria-current={inboxActive ? 'page' : undefined}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
-          inboxActive
-            ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
-            : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
-        )}
-      >
-        <Inbox
-          className={cn('size-4 shrink-0', !inboxActive && 'text-worktree-sidebar-foreground/30')}
-          strokeWidth={inboxActive ? 2.25 : 1.75}
-        />
-        <span className="flex-1">
-          {translate('auto.components.sidebar.SidebarNav.inbox', 'Inbox')}
-        </span>
-      </button>
+          so the titlebar ModeSwitch is not visible there; this row keeps Floor one click
+          away from the pane grid. Inbox stays reachable from the ModeSwitch. */}
       <button
         type="button"
         onClick={() => setActiveView('floor')}

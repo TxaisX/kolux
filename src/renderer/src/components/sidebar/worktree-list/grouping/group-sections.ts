@@ -89,7 +89,10 @@ export function appendOrderedGroups(
             tone: PROJECT_GROUP_META.tone,
             icon: PROJECT_GROUP_META.icon,
             repo,
-            projectGroupDepth
+            projectGroupDepth,
+            // Why: the project row shows its own live-session badge, so a collapsed
+            // project still says how many sessions are running under it.
+            worktreeIds: group.items.map((worktree) => worktree.id)
           }
         : groupBy === 'workspace-status'
           ? (() => {
