@@ -63,10 +63,6 @@ export default React.memo(function AddRepoDialog({
     nestedScanId,
     setNestedSelectedPaths,
     setNestedGroupName,
-    setNestedScanInProgress,
-    getNestedRepoRuntimeKind,
-    showNestedRepoReview,
-    setActiveNestedScanId,
     handleStopNestedScan,
     resetNestedRepoReviewState,
     showRemoteNestedRepoReview,
@@ -179,10 +175,6 @@ export default React.memo(function AddRepoDialog({
     // Why: this flow's closes are all folder/non-git outcomes that navigate.
     closeModal: closeForFolderHandoff,
     fetchWorktrees,
-    scanNestedRepos,
-    setActiveNestedScanId,
-    setNestedScanInProgress,
-    showNestedRepoReview,
     onGitRepoReady: completeGitRepoAdd,
     setIsAdding,
     setAddProjectBusyLabel
@@ -199,11 +191,6 @@ export default React.memo(function AddRepoDialog({
     // Why: closes only after a folder add, which activates the folder workspace.
     closeModal: closeForFolderHandoff,
     fetchWorktrees,
-    getNestedRepoRuntimeKind,
-    scanNestedRepos,
-    setActiveNestedScanId,
-    setNestedScanInProgress,
-    showNestedRepoReview,
     onGitRepoReady: completeGitRepoAdd,
     setAddProjectBusyLabel
   })
