@@ -3,7 +3,7 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-14.
+Last updated: 2026-09-16.
 
 ## What this is
 
@@ -65,6 +65,19 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
+- **The 0.5.0 launcher rewrite was dropped in favour of 0.7.0's (2026-09-16).** A branch built
+  on the 0.5.0 base rewrote `LaunchAgentsDialog` to open one pane per session via
+  `launch-agents-into-workspace.ts`, and renamed `launch-agents-requests.ts` to
+  `launch-agent-counts.ts`. 0.7.0's `runSharedCheckoutLaunch` already does that job and does it
+  better: it pre-trusts the checkout per agent, carries per-seat models through
+  `settingsWithSeatModel`, reuses an empty root group, and keeps New worktree as an opt-in. The
+  rewrite was skipped whole rather than merged — its rename also deleted `settingsWithSeatModel`,
+  which 0.7.0's own launch path imports. **Still open from it:** `runSharedCheckoutLaunch` hardcodes
+  `isRemote: false`, `CLIENT_PLATFORM` and `resolveLocalWindowsAgentStartupShell`, so a
+  shared-checkout wave assumes a local host — the dropped version routed through
+  `launchAgentInNewTab`, which resolves the execution host and so worked on SSH and folder
+  workspaces. Worth porting that routing before anyone launches a wave on a remote workspace.
+
 - **Sessions are panes in the main window again (2026-09-15, 0.7.0).** The 0.6.0
   one-window-per-terminal model is off the user's path. The in-window workbench
   (`components/Terminal.tsx`, `TerminalWorkbenchContainer.tsx`, the Inbox · Floor · Code shell,
@@ -116,6 +129,51 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   "downloads an update found by a background check without a click". `updater-changelog.test.ts`
   and `updater-nudge.test.ts` fail on this branch before and after; their `net.fetch` mock
   returns null and is unrelated.
+- **Every new session gets its own pane (2026-09-16, `8a19ef2a`, `d1d386e6`).** Owner's call: the tab
+  strip's "+" used to stack New Terminal / Choose agent… / agent quick-launches as tabs in
+  one strip, hiding every session but one. `pane-layout/split-pane-for-new-session.ts` is the
+  one helper: split a fresh group to the right of the source, regrid to a balanced grid
+  (`regridToCurrentLeaves` moved here from `usePaneCountCommand.ts`), return the group to
+  create in, or the source group when nothing can be split. It is called at every
+  new-session entry point: the store's `openNewTerminalTabInActiveWorkspace` (tab-strip "+",
+  titlebar "+", Cmd/Ctrl+J), `newTerminalWithShell`, the tab-bar agent quick-launch menu and
+  `QuickLaunchButton`, and the global `handleNewTab` / `handleNewAgentTab` /
+  `handleNewAgentChoiceTab`. Deliberately not split: browser, markdown and simulator tabs,
+  "Split Terminal Right" (already splits), restore/sync/adoption paths, and the launch funnel
+  `launchAgentInNewTab` itself (continuation and recovery launches choose their group on
+  purpose). `resolvePendingAgentChoice` now launches into the placeholder's own group and
+  closes the placeholder afterwards, so the picked agent stays in the pane it was chosen for;
+  `use-terminal-create-actions.ts` delegates to it instead of carrying a copy. Trap: the
+  helper's Tidy broadcast is guarded on `typeof window.dispatchEvent === 'function'` because
+  store-level tests stub `window` with only `api`. Runtime-verified 2026-09-16 in this tree's
+  dev app by clicking the real "+" control (`aria-label="New tab"`, use the `:visible` match:
+  hidden workspace surfaces stay mounted with their own "+") in a fresh folder workspace: New
+  Terminal took it from 1 pane to 2, Choose agent… to 3, one tab per pane, the picker pane
+  pending, and the shells spawned. Activating a workspace from a script with
+  `setActiveWorktree` does not mount the pane surface; the Add Project flow does.
+- **Add Project opens only the picked folder (2026-09-16, `1da4acc7`).** Picking or dropping
+  a folder used to scan it for the git repositories inside and stop at a "review nested
+  repos" step that imported each one as its own project. Owner's call: only the selected
+  folder. `useAddRepoLocalFolderFlow` and `useAddRepoServerPathFlow` now go straight to
+  `addRepoPath`: a git repo opens as a project, anything else goes to the existing "Open as
+  Folder" confirmation and becomes one folder workspace. The nested-review step, its store
+  actions and the main-process scan/import IPC are untouched and still reachable from the SSH
+  "remote path" flow (`useRemoteRepo` in `AddRepoSteps.tsx`) and the runtime RPC; nothing
+  local reaches them any more. Runtime-verified the same day: dropping a non-git parent holding
+  two git repos on Add Project went straight to "Open as Folder", and the store then held one
+  `kind: 'folder'` repo for the parent and none for the children.
+
+- **Terminals could not open during a child-worktree removal (2026-09-16, `8be599aa`).**
+  Symptom: launching Claude tabs in the root workspace while a child worktree was being deleted
+  left the panes blank; the trace shows `terminal_pane_recovery_remount` /
+  `spawn-left-pane-unbound` three times per tab at 15s, then the 5-minute recovery cap.
+  Cause: `watcher-removal-gate.ts` fenced any PTY spawn whose root *enclosed* the removal root,
+  and child worktrees live inside the root worktree's folder, so every root-workspace spawn was
+  refused for the whole removal (40s+ when `git worktree remove` stalls on EBUSY). The renderer
+  swallows that fence as "doomed pane" and remount-loops. Fix: `beginTerminalInstall` now fences
+  only spawns *inside-or-equal* the removal root; `beginWatcherInstall` keeps both directions
+  (a recursive watcher on the parent holds handles inside the child). Needs a `0.5.1` release to
+  reach the installed app. Left alone: the renderer's remount loop on a fenced pane.
 - **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
   (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
   step below the chrome. The default dark terminal theme is now `Nightshift Dark`
