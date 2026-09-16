@@ -1,35 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { handlers, ipcMainMock, openMock, closeMock, focusMock, listMock, restoreMock } = vi.hoisted(
-  () => {
-    const handlerMap = new Map<string, (event: unknown, args?: unknown) => unknown>()
-    return {
-      handlers: handlerMap,
-      ipcMainMock: {
-        handle: vi.fn((channel: string, listener: (event: unknown, args?: unknown) => unknown) => {
-          handlerMap.set(channel, listener)
-        }),
-        removeHandler: vi.fn((channel: string) => {
-          handlerMap.delete(channel)
-        })
-      },
-      openMock: vi.fn(),
-      closeMock: vi.fn(),
-      focusMock: vi.fn(),
-      listMock: vi.fn(),
-      restoreMock: vi.fn(() => Promise.resolve())
-    }
+const { handlers, ipcMainMock, openMock, closeMock, focusMock, listMock } = vi.hoisted(() => {
+  const handlerMap = new Map<string, (event: unknown, args?: unknown) => unknown>()
+  return {
+    handlers: handlerMap,
+    ipcMainMock: {
+      handle: vi.fn((channel: string, listener: (event: unknown, args?: unknown) => unknown) => {
+        handlerMap.set(channel, listener)
+      }),
+      removeHandler: vi.fn((channel: string) => {
+        handlerMap.delete(channel)
+      })
+    },
+    openMock: vi.fn(),
+    closeMock: vi.fn(),
+    focusMock: vi.fn(),
+    listMock: vi.fn()
   }
-)
+})
 vi.mock('electron', () => ({ ipcMain: ipcMainMock }))
 vi.mock('../window/terminal-session-window', () => ({
   openOrFocusTerminalSessionWindow: openMock,
   closeTerminalSessionWindow: closeMock,
   focusTerminalSessionWindow: focusMock,
   listTerminalSessionWindows: listMock
-}))
-vi.mock('../window/terminal-session-window-restore', () => ({
-  restoreLiveTerminalSessionWindows: restoreMock
 }))
 
 import { registerTerminalWindowsHandlers } from './terminal-windows'
@@ -48,10 +42,6 @@ afterEach(() => {
 })
 
 describe('registerTerminalWindowsHandlers', () => {
-  it('restores live sessions once on registration', () => {
-    expect(restoreMock).toHaveBeenCalledTimes(1)
-  })
-
   describe('terminalWindows:open', () => {
     it('rejects malformed args instead of opening a window', () => {
       expect(invoke('terminalWindows:open', { worktreeId: 'wt1' })).toEqual({

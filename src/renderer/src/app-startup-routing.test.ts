@@ -407,18 +407,25 @@ describe('renderer startup runtime routing', () => {
     expect(gateBlock.slice(gateIndex, createIndex)).toContain("outcome !== 'empty'")
   })
 
-  it('never mounts a terminal surface in the main window', () => {
-    // Why: every terminal now lives in its own OS window (see docs/redesign/three-mode-shell.md
-    // successor work) — the main window shell must never import or mount the old in-window
-    // terminal workbench, its pane grid, or its layout-preset chrome.
+  it('does not load the terminal workbench on the no-workspace landing path', () => {
     const shellSource = readSource(WORKSPACE_SHELL_PATH)
     const layoutSource = readSource(CHROME_LAYOUT_PATH)
 
-    expect(shellSource).not.toContain("components/Terminal'")
-    expect(shellSource).not.toContain('TerminalWorkbenchContainer')
-    expect(shellSource).not.toContain('shouldMountTerminalWorkbench')
-    expect(layoutSource).not.toContain('shouldMountTerminalWorkbench')
-    expect(layoutSource).not.toContain('terminalWorkbenchVisible')
+    expect(shellSource).toContain("const Terminal = lazy(() => import('../components/Terminal'))")
+    expect(shellSource).not.toContain("from '../components/Terminal'")
+    expect(layoutSource).toContain(
+      'const canMountTerminalWorkbenchNow = activeWorktreeId !== null || backgroundTerminalMountRequested'
+    )
+    // Why pin the latch: once the workbench has mounted it must stay mounted, so hidden
+    // terminal/browser/editor panes survive activeWorktreeId briefly going null.
+    expect(layoutSource).toContain(
+      'const [hasMountedTerminalWorkbench, setHasMountedTerminalWorkbench] = useState(false)'
+    )
+    expect(layoutSource).toContain('setHasMountedTerminalWorkbench(true)')
+    expect(layoutSource).toContain(
+      'const shouldMountTerminalWorkbench = canMountTerminalWorkbenchNow || hasMountedTerminalWorkbench'
+    )
+    expect(shellSource).toContain('shouldMountTerminalWorkbench ?')
   })
 
   it('keeps the new-workspace composer eager because it is a critical create surface', () => {

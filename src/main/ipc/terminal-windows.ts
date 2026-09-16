@@ -7,7 +7,6 @@ import {
   openOrFocusTerminalSessionWindow,
   type OpenTerminalSessionWindowArgs
 } from '../window/terminal-session-window'
-import { restoreLiveTerminalSessionWindows } from '../window/terminal-session-window-restore'
 import { setPtyWindowOwner } from './pty/pty-window-ownership'
 import {
   isValidTerminalWindowTabId,
@@ -78,8 +77,4 @@ export function registerTerminalWindowsHandlers(store: Store | null): void {
   )
 
   ipcMain.handle('terminalWindows:list', () => ({ sessions: listTerminalSessionWindows() }))
-
-  void restoreLiveTerminalSessionWindows(store).catch((error) =>
-    console.warn('[terminal-windows] restore failed:', error)
-  )
 }

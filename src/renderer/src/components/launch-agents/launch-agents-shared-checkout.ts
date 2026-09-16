@@ -1,32 +1,48 @@
 import { useAppStore } from '@/store'
 import { CLIENT_PLATFORM } from '@/lib/new-workspace'
+import { activateAndRevealWorktree } from '@/lib/worktree-activation'
+import { preflightAgentTrust } from '@/lib/agent-trust-preflight'
 import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-plan'
 import { resolveLocalWindowsAgentStartupShell } from '../../../../shared/windows-terminal-shell'
 import { tuiAgentToAgentKind } from '../../../../shared/agent-kind'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
+import { regridToCurrentLeaves } from '../tab-group/usePaneCountCommand'
 import { settingsWithSeatModel, type SharedCheckoutSeatRequest } from './launch-agents-requests'
-import { openTerminalWindowForSharedCheckoutSeat } from './launch-agents-window-handoff'
 
 /**
  * Shared-checkout launch: every seat runs in the project's own folder — no
- * worktree or branch is created — and, like a `new-worktree` seat, gets its
- * own OS window rather than a pane in the main window. Starting the terminal
- * is synchronous (there is no background worktree create to wait on), so the
- * tab id is already known the moment it's created and the window opens
- * immediately, no polling required.
+ * worktree or branch is created — and each seat becomes its own pane in that
+ * workspace's grid inside the main window. Starting a terminal is synchronous
+ * (there is no background worktree create to wait on), so the seats are
+ * created back to back, the tab-group tree is regridded once into a balanced
+ * grid, and the workspace is revealed. The checkout is pre-trusted for every
+ * agent in the wave first, so N panes do not all stop on the same trust prompt.
  */
-export function runSharedCheckoutLaunch(
+export async function runSharedCheckoutLaunch(
   worktreeId: string,
+  worktreePath: string,
   seats: readonly SharedCheckoutSeatRequest[],
   settings: GlobalSettings
-): void {
+): Promise<void> {
+  // Why before any tab exists: a trust artifact must land before the first pty spawns.
+  for (const agent of new Set(seats.map((seat) => seat.agent))) {
+    await preflightAgentTrust({ agent, workspacePath: worktreePath })
+  }
   const store = useAppStore.getState()
   const shell = resolveLocalWindowsAgentStartupShell({
     platform: CLIENT_PLATFORM,
     isRemote: false,
     terminalWindowsShell: settings.terminalWindowsShell
   })
+  const rootGroupId = store.ensureWorktreeRootGroup(worktreeId)
+  // Why: a fresh workspace's root group holds no tab yet — the first seat takes it
+  // so the grid never shows an idle pane; every other seat gets its own new group.
+  const rootGroupIsEmpty =
+    (useAppStore.getState().groupsByWorktree[worktreeId] ?? []).find(
+      (group) => group.id === rootGroupId
+    )?.tabOrder.length === 0
 
+  let seated = 0
   for (const seat of seats) {
     const { startupPlan } = buildQuickComposerStartup({
       agent: seat.agent,
@@ -42,7 +58,14 @@ export function runSharedCheckoutLaunch(
     if (!startupPlan) {
       continue
     }
-    const tab = store.createTab(worktreeId, undefined, undefined, {
+    const groupId =
+      seated === 0 && rootGroupIsEmpty
+        ? rootGroupId
+        : store.createEmptySplitGroup(worktreeId, rootGroupId, 'right', { activate: false })
+    if (!groupId) {
+      continue
+    }
+    const tab = store.createTab(worktreeId, groupId, undefined, {
       launchAgent: seat.agent,
       activate: false
     })
@@ -61,6 +84,11 @@ export function runSharedCheckoutLaunch(
         request_kind: 'new'
       }
     })
-    openTerminalWindowForSharedCheckoutSeat(worktreeId, tab.id)
+    seated += 1
   }
+  if (seated === 0) {
+    return
+  }
+  regridToCurrentLeaves(store.setTabGroupLayout, worktreeId)
+  activateAndRevealWorktree(worktreeId)
 }

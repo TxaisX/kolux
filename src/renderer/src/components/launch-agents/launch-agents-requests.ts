@@ -19,9 +19,10 @@ import type { WorktreeCreationRequest } from '@/lib/pending-worktree-creation'
 import { CLIENT_PLATFORM } from '@/lib/new-workspace'
 import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-plan'
 
-/** Where a wave of seats runs. A git repo defaults to a worktree per seat;
- *  a non-git folder workspace has no git worktrees at all, so every seat
- *  shares the one checkout and opens a plain terminal pane there instead. */
+/** Where a wave of seats runs. Every seat defaults to sharing the one checkout
+ *  as its own pane in that workspace's grid ("sessions of a project"); a git
+ *  repo can opt into a worktree per seat instead. A non-git folder workspace
+ *  has no git worktrees at all, so shared checkout is its only option. */
 export type LaunchIsolationMode = 'new-worktree' | 'shared-checkout'
 
 /** One seat: which agent CLI, and the catalog model it opens on (null = agent default). */
@@ -55,10 +56,6 @@ export function buildSharedCheckoutSeatRequests(input: {
 /** `new-worktree` is only meaningful for a git repo — a folder workspace has no worktrees. */
 export function isNewWorktreeIsolationAvailable(repo: Pick<Repo, 'kind'>): boolean {
   return isGitRepoKind(repo)
-}
-
-export function defaultIsolationMode(repo: Pick<Repo, 'kind'>): LaunchIsolationMode {
-  return isNewWorktreeIsolationAvailable(repo) ? 'new-worktree' : 'shared-checkout'
 }
 
 /** The catalog default model for an agent, or null when the agent has no model catalog. */

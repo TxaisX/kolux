@@ -3,6 +3,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
+import { activateAndRevealWorktree } from '@/lib/worktree-activation'
+import { activateTabAndFocusPane } from '@/lib/activate-tab-and-focus-pane'
 import { useWorktreeAgentRows } from './useWorktreeAgentRows'
 import { selectLivePtyIdsForWorktree } from './worktree-card-status-inputs'
 import { selectTerminalLayoutsForWorktree } from './worktree-agent-row-selectors'
@@ -52,15 +54,13 @@ const WorktreeCardSessions = React.memo(function WorktreeCardSessions({
 
   const handleActivate = useCallback(
     (tabId: string) => {
-      // Why: every terminal lives in its own OS window now — a session row opens or
-      // focuses that window instead of switching the (terminal-free) main window.
-      void window.api.terminalWindows.open({
-        worktreeId,
-        tabId,
-        ptyId: ptyIdsByTabId[tabId]?.[0]
-      })
+      // Why: design-doc rule — every user-initiated worktree switch routes through
+      // activateAndRevealWorktree (cross-repo activation + nav history); the session
+      // then becomes the visible tab in the main window's pane grid.
+      activateAndRevealWorktree(worktreeId)
+      activateTabAndFocusPane(tabId, null)
     },
-    [worktreeId, ptyIdsByTabId]
+    [worktreeId]
   )
 
   const stopBubble = useCallback((e: React.MouseEvent) => {

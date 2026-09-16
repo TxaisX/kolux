@@ -105,6 +105,8 @@ export type NewWorkspaceDraft = {
 
 export type UiViewHistory =
   | 'terminal'
+  | 'inbox'
+  | 'floor'
   | 'settings'
   | 'tasks'
   | 'activity'

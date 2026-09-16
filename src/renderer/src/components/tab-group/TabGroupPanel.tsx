@@ -15,6 +15,8 @@ import TabBar from '../tab-bar/TabBar'
 import { TabBarQuickCommandsButton } from '../tab-bar/TabBarQuickCommandsButton'
 import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
 import { useTidyLayoutCommand } from './useTidyLayoutCommand'
+import LayoutPresetsMenu from './LayoutPresetsMenu'
+import PaneCountStepper from './PaneCountStepper'
 import WorkspacePreviewButton from './WorkspacePreviewButton'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
 import { resolveGroupTabFromVisibleId } from './tab-group-visible-id'
@@ -277,6 +279,9 @@ export default function TabGroupPanel({
               {isFocused ? (
                 <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
               ) : null}
+              {/* Why only isFocused: "choose how many panes" acts on the whole
+                  worktree grid, so one focused pane's control is enough. */}
+              {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
               {isFocused ? (
                 <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
               ) : null}
@@ -315,6 +320,7 @@ export default function TabGroupPanel({
                           'Tidy panes'
                         )}
                       </DropdownMenuItem>
+                      <LayoutPresetsMenu worktreeId={worktreeId} />
                       {hasSplitGroups ? (
                         <DropdownMenuItem
                           variant="destructive"

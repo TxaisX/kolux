@@ -5,7 +5,6 @@ import type { TuiAgent } from '../../../../shared/tui-agent'
 import {
   buildLaunchAgentsRequests,
   buildSharedCheckoutSeatRequests,
-  defaultIsolationMode,
   isNewWorktreeIsolationAvailable,
   resizeLaunchSlots,
   retargetLaunchSlots,
@@ -138,13 +137,11 @@ describe('retargetLaunchSlots', () => {
 })
 
 describe('isolation mode', () => {
-  it('defaults a git repo to new-worktree isolation', () => {
+  it('offers new-worktree isolation for a git repo', () => {
     expect(isNewWorktreeIsolationAvailable(gitRepo)).toBe(true)
-    expect(defaultIsolationMode(gitRepo)).toBe('new-worktree')
   })
 
   it('disables new-worktree isolation for a non-git folder workspace', () => {
     expect(isNewWorktreeIsolationAvailable(folderRepo)).toBe(false)
-    expect(defaultIsolationMode(folderRepo)).toBe('shared-checkout')
   })
 })

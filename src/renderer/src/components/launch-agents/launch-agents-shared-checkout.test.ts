@@ -7,20 +7,36 @@ import type { SharedCheckoutSeatRequest } from './launch-agents-requests'
 const mocks = vi.hoisted(() => ({
   createTab: vi.fn(),
   queueTabStartupCommand: vi.fn(),
-  openTerminalWindowForSharedCheckoutSeat: vi.fn(),
-  buildQuickComposerStartup: vi.fn()
+  ensureWorktreeRootGroup: vi.fn(),
+  createEmptySplitGroup: vi.fn(),
+  setTabGroupLayout: vi.fn(),
+  regridToCurrentLeaves: vi.fn(),
+  activateAndRevealWorktree: vi.fn(),
+  preflightAgentTrust: vi.fn(() => Promise.resolve()),
+  buildQuickComposerStartup: vi.fn(),
+  groups: [] as { id: string; tabOrder: string[] }[]
 }))
 
 vi.mock('@/store', () => ({
   useAppStore: {
     getState: () => ({
       createTab: mocks.createTab,
-      queueTabStartupCommand: mocks.queueTabStartupCommand
+      queueTabStartupCommand: mocks.queueTabStartupCommand,
+      ensureWorktreeRootGroup: mocks.ensureWorktreeRootGroup,
+      createEmptySplitGroup: mocks.createEmptySplitGroup,
+      setTabGroupLayout: mocks.setTabGroupLayout,
+      groupsByWorktree: { 'wt-project': mocks.groups }
     })
   }
 }))
-vi.mock('./launch-agents-window-handoff', () => ({
-  openTerminalWindowForSharedCheckoutSeat: mocks.openTerminalWindowForSharedCheckoutSeat
+vi.mock('../tab-group/usePaneCountCommand', () => ({
+  regridToCurrentLeaves: mocks.regridToCurrentLeaves
+}))
+vi.mock('@/lib/worktree-activation', () => ({
+  activateAndRevealWorktree: mocks.activateAndRevealWorktree
+}))
+vi.mock('@/lib/agent-trust-preflight', () => ({
+  preflightAgentTrust: mocks.preflightAgentTrust
 }))
 vi.mock('@/hooks/composer-state/quick-startup-plan', () => ({
   buildQuickComposerStartup: mocks.buildQuickComposerStartup
@@ -31,6 +47,8 @@ import { runSharedCheckoutLaunch } from './launch-agents-shared-checkout'
 
 const CLAUDE = 'claude' as TuiAgent
 const WORKTREE = 'wt-project'
+const WORKTREE_PATH = 'G:/Dev/project'
+const ROOT_GROUP = 'group-root'
 
 function seat(overrides: Partial<SharedCheckoutSeatRequest> = {}): SharedCheckoutSeatRequest {
   return {
@@ -45,6 +63,11 @@ function seat(overrides: Partial<SharedCheckoutSeatRequest> = {}): SharedCheckou
 describe('runSharedCheckoutLaunch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.groups = [{ id: ROOT_GROUP, tabOrder: [] }]
+    mocks.ensureWorktreeRootGroup.mockReturnValue(ROOT_GROUP)
+    mocks.createEmptySplitGroup.mockImplementation(
+      () => `group-${mocks.createEmptySplitGroup.mock.calls.length}`
+    )
     mocks.createTab.mockImplementation((_worktreeId: string, groupId: string | undefined) => ({
       id: `tab-${mocks.createTab.mock.calls.length}`,
       groupId
@@ -61,37 +84,57 @@ describe('runSharedCheckoutLaunch', () => {
     })
   })
 
-  it('opens one OS window per seat, all in the project worktree, and creates no worktree or pane group', () => {
-    const seats = [seat(), seat({ agent: CLAUDE, model: 'opus' }), seat()]
-    runSharedCheckoutLaunch(WORKTREE, seats, {} as never)
+  it('gives every seat its own pane in the project workspace, then regrids and reveals it', async () => {
+    const seats = [seat(), seat({ model: 'opus' }), seat()]
+    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, seats, {} as never)
 
-    expect(mocks.createTab).toHaveBeenCalledTimes(3)
-    // Why: every call targets the SAME project worktree, and no group id is
-    // ever passed — proves no split/pane group is created for these seats.
-    for (const call of mocks.createTab.mock.calls) {
-      expect(call[0]).toBe(WORKTREE)
-      expect(call[1]).toBeUndefined()
-    }
-
-    expect(mocks.openTerminalWindowForSharedCheckoutSeat).toHaveBeenCalledTimes(3)
-    for (const call of mocks.openTerminalWindowForSharedCheckoutSeat.mock.calls) {
-      expect(call[0]).toBe(WORKTREE)
-    }
-    const openedTabIds = mocks.openTerminalWindowForSharedCheckoutSeat.mock.calls.map(
-      (call) => call[1]
+    // Why: one trust write per agent in the wave, and it lands before any tab exists.
+    expect(mocks.preflightAgentTrust).toHaveBeenCalledTimes(1)
+    expect(mocks.preflightAgentTrust).toHaveBeenCalledWith({
+      agent: CLAUDE,
+      workspacePath: WORKTREE_PATH
+    })
+    expect(mocks.preflightAgentTrust.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.createTab.mock.invocationCallOrder[0]
     )
-    expect(new Set(openedTabIds).size).toBe(3)
+
+    // Why: the fresh root group is empty, so the first seat takes it and only the
+    // other two seats need a new split group — no idle pane is left in the grid.
+    expect(mocks.createEmptySplitGroup).toHaveBeenCalledTimes(2)
+    for (const call of mocks.createEmptySplitGroup.mock.calls) {
+      expect(call.slice(0, 3)).toEqual([WORKTREE, ROOT_GROUP, 'right'])
+    }
+    expect(mocks.createTab).toHaveBeenCalledTimes(3)
+    expect(mocks.createTab.mock.calls.map((call) => [call[0], call[1]])).toEqual([
+      [WORKTREE, ROOT_GROUP],
+      [WORKTREE, 'group-1'],
+      [WORKTREE, 'group-2']
+    ])
+    expect(mocks.queueTabStartupCommand).toHaveBeenCalledTimes(3)
+    expect(mocks.regridToCurrentLeaves).toHaveBeenCalledTimes(1)
+    expect(mocks.regridToCurrentLeaves).toHaveBeenCalledWith(mocks.setTabGroupLayout, WORKTREE)
+    expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith(WORKTREE)
   })
 
-  it('skips a seat with no buildable startup plan — no tab, no window', () => {
+  it('keeps a workspace that already holds a tab and adds every seat as a new pane', async () => {
+    mocks.groups = [{ id: ROOT_GROUP, tabOrder: ['existing-tab'] }]
+    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat(), seat()], {} as never)
+
+    expect(mocks.createEmptySplitGroup).toHaveBeenCalledTimes(2)
+    expect(mocks.createTab.mock.calls.map((call) => call[1])).toEqual(['group-1', 'group-2'])
+  })
+
+  it('skips a seat with no buildable startup plan — no tab, no pane, no reveal', async () => {
     mocks.buildQuickComposerStartup.mockReturnValueOnce({
       startupPlan: null,
       backendStartup: undefined,
       telemetry: null
     })
-    runSharedCheckoutLaunch(WORKTREE, [seat()], {} as never)
+    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat()], {} as never)
 
     expect(mocks.createTab).not.toHaveBeenCalled()
-    expect(mocks.openTerminalWindowForSharedCheckoutSeat).not.toHaveBeenCalled()
+    expect(mocks.createEmptySplitGroup).not.toHaveBeenCalled()
+    expect(mocks.regridToCurrentLeaves).not.toHaveBeenCalled()
+    expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
   })
 })

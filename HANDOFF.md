@@ -65,7 +65,37 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
-- **Terminal windows actually attach now (2026-09-15).** Commit `097edc5b` opened one
+- **Sessions are panes in the main window again (2026-09-15, 0.7.0).** The 0.6.0
+  one-window-per-terminal model is off the user's path. The in-window workbench
+  (`components/Terminal.tsx`, `TerminalWorkbenchContainer.tsx`, the Inbox · Floor · Code shell,
+  the workspace composer, the pane count `− N +` stepper and Layout presets) is mounted in
+  `AppWorkspaceShell` exactly as in 0.5.0, restored from the pre-0.6.0 tree. On top of 0.5.0:
+  - The New session launcher defaults to **Shared checkout** ("sessions of a project"); New
+    worktree is the opt-in. `runSharedCheckoutLaunch` pre-trusts the checkout once per agent in
+    the wave (`preflightAgentTrust`, before any tab exists), gives every seat its own tab group
+    (the first seat reuses an empty root group), regrids with `regridToCurrentLeaves` and reveals
+    the workspace. Seats land in the active workspace when it belongs to the project, else in the
+    project's own checkout.
+  - A sidebar session row activates its workspace and tab in the main window
+    (`activateAndRevealWorktree` + `activateTabAndFocusPane`).
+  - Inbox and Floor are sidebar nav rows as well, because the Code view has no full-width
+    titlebar and therefore no ModeSwitch; the titlebar switch still shows on Inbox and Floor.
+  - The OS terminal-window code (`main/window/terminal-session-window*`, `ipc/terminal-windows.ts`,
+    `renderer/terminal-window.tsx`, `components/terminal-window/`) stays in the tree but nothing
+    opens it: the renderer callers are gone and the startup restore call was removed. Pty
+    delivery already falls back to the main window when no window owns a pty
+    (`resolvePtyDeliveryWindow`), so no transport change was needed.
+  Verified in the dev app over CDP (`.tmp/verify-grid.mjs` pattern: `window.__store`,
+  `openModal('launch-agents')`, click the seat pill, Launch): Launch 2 → two Claude panes in the
+  grid and `terminalWindows:list` empty; typing into a pane reached the pty and hook status
+  arrived; a second Launch 2 gave a 2x2 grid and both new seats started without the trust prompt;
+  Inbox and Floor open from the sidebar, Code returns from the titlebar switch, and the four
+  terminals stayed mounted meanwhile.
+  Pre-existing failure left alone: `app-startup-routing.test.ts` "#9002" expects a one-line
+  `addEventListener` that prettier wrapped in `use-app-session-persistence.ts`.
+  `agent-launch-routing-caller-census` now pins `HandoffPanel.tsx`, which called
+  `launchAgentInNewTab` unpinned.
+- **Superseded by 0.7.0 above. Terminal windows actually attach now (2026-09-15).** Commit `097edc5b` opened one
   window per terminal but none worked at runtime. Four causes, each found by running the app:
   worktree ids are `<repoId>::<path>`, so the key validator rejected every real id (keys now
   split on the last `::`, and only the tab id may not contain it); the window URL never carried

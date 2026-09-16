@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar'
 import RightSidebar from '../components/right-sidebar'
 import { RecoverableRenderErrorBoundary } from '../components/error-boundaries/RecoverableRenderErrorBoundary'
 import { FloatingTerminalToggleButton } from '../components/floating-terminal/FloatingTerminalToggleButton'
+import { TerminalWorkbenchContainer } from '../components/TerminalWorkbenchContainer'
 import type { VirtualizedScrollAnchor } from '../hooks/useVirtualizedScrollAnchor'
 import { TitlebarLeftControls } from './TitlebarLeftControls'
 import { RightSidebarToggle, TitlebarMainStrip } from './TitlebarMainStrip'
@@ -24,6 +25,9 @@ const ArtifactsPage = lazy(() => import('../components/artifacts/ArtifactsPage')
 const WorkspaceSpacePage = lazy(() => import('../components/workspace-space/WorkspaceSpacePage'))
 const MobilePage = lazy(() => import('../components/mobile/MobilePage'))
 const AgentGridPage = lazy(() => import('../components/agent-grid/AgentGridPage'))
+const InboxPage = lazy(() => import('@/components/inbox/InboxPage'))
+const FloorPage = lazy(() => import('@/components/floor/FloorPage'))
+const Terminal = lazy(() => import('../components/Terminal'))
 
 type WorktreeSidebarScrollRefs = {
   scrollOffsetRef: React.MutableRefObject<number>
@@ -64,9 +68,11 @@ function WorktreeSidebar({
 }
 
 function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element {
-  const { activeView, activePendingCreationId, creationLayoutActive } = layout
+  const { activeView, activeWorktreeId, activePendingCreationId, creationLayoutActive } = layout
   return (
     <>
+      {activeView === 'inbox' ? <InboxPage /> : null}
+      {activeView === 'floor' ? <FloorPage /> : null}
       {activeView === 'settings' ? <Settings /> : null}
       {activeView === 'skills' ? <SkillsPage /> : null}
       {activeView === 'artifacts' ? <ArtifactsPage /> : null}
@@ -82,10 +88,7 @@ function ActivePage({ layout }: { layout: AppChromeLayout }): React.JSX.Element 
           reserveCollapsedSidebarHeaderSpace={layout.leftTitlebarChromeLayout.isFloating}
         />
       ) : null}
-      {/* Why: the main window never hosts a terminal (each session lives in its own OS
-          window), so selecting a project has nothing left to show in the content area —
-          Landing covers both the no-project and a-project-is-selected cases alike. */}
-      {activeView === 'terminal' && !creationLayoutActive ? <Landing /> : null}
+      {activeView === 'terminal' && !activeWorktreeId && !creationLayoutActive ? <Landing /> : null}
     </>
   )
 }
@@ -181,6 +184,27 @@ export function AppWorkspaceShell(props: {
                   </div>
                 )}
                 <div className="flex flex-1 min-w-0 min-h-0 flex-col">
+                  {layout.shouldMountTerminalWorkbench ? (
+                    <TerminalWorkbenchContainer isVisible={layout.terminalWorkbenchVisible}>
+                      <Suspense fallback={null}>
+                        <RecoverableRenderErrorBoundary
+                          boundaryId="terminal.workbench"
+                          surface="terminal-workbench"
+                          resetKey="terminal"
+                          title={translate(
+                            'auto.App.5a9519aef0',
+                            'The workspace workbench hit an error.'
+                          )}
+                          description={translate(
+                            'auto.App.98d4ea2823',
+                            'Terminal, browser, or editor rendering failed in this workspace. Retry to remount it.'
+                          )}
+                        >
+                          <Terminal />
+                        </RecoverableRenderErrorBoundary>
+                      </Suspense>
+                    </TerminalWorkbenchContainer>
+                  ) : null}
                   <Suspense fallback={null}>
                     <RecoverableRenderErrorBoundary
                       boundaryId={`page.${layout.activeView}`}

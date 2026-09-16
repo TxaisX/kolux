@@ -12,8 +12,19 @@ const fakeState = {
   settings: { tabAutoGenerateTitle: false }
 }
 
+const mocks = vi.hoisted(() => ({
+  activateAndRevealWorktree: vi.fn(),
+  activateTabAndFocusPane: vi.fn()
+}))
+
 vi.mock('@/store', () => ({
   useAppStore: (selector: (state: typeof fakeState) => unknown) => selector(fakeState)
+}))
+vi.mock('@/lib/worktree-activation', () => ({
+  activateAndRevealWorktree: mocks.activateAndRevealWorktree
+}))
+vi.mock('@/lib/activate-tab-and-focus-pane', () => ({
+  activateTabAndFocusPane: mocks.activateTabAndFocusPane
 }))
 vi.mock('./useWorktreeAgentRows', () => ({ useWorktreeAgentRows: () => [] }))
 vi.mock('./worktree-card-status-inputs', () => ({
@@ -33,25 +44,22 @@ vi.mock('./worktree-card-agents-expansion-state', () => ({
 import WorktreeCardSessions from './WorktreeCardSessions'
 
 describe('WorktreeCardSessions', () => {
-  const openMock = vi.fn()
-
   beforeEach(() => {
-    openMock.mockClear()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only window.api shim ahead of the preload contract landing
-    ;(window as any).api = { terminalWindows: { open: openMock } }
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
     cleanup()
   })
 
-  it('clicking a session row opens that session in its own terminal window, keyed by worktree + tab', () => {
+  it('clicking a session row reveals its workspace and activates that tab in the main window', () => {
     render(<WorktreeCardSessions worktreeId="wt-1" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Claude' }))
 
-    expect(openMock).toHaveBeenCalledTimes(1)
-    expect(openMock).toHaveBeenCalledWith({ worktreeId: 'wt-1', tabId: 'tab-1', ptyId: 'pty-1' })
+    expect(mocks.activateAndRevealWorktree).toHaveBeenCalledTimes(1)
+    expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('wt-1')
+    expect(mocks.activateTabAndFocusPane).toHaveBeenCalledWith('tab-1', null)
   })
 
   it('is reachable and activatable by keyboard, not only by pointer', () => {
@@ -61,7 +69,7 @@ describe('WorktreeCardSessions', () => {
     expect(row).toHaveAttribute('tabIndex', '0')
     fireEvent.keyDown(row, { key: 'Enter' })
 
-    expect(openMock).toHaveBeenCalledTimes(1)
-    expect(openMock).toHaveBeenCalledWith({ worktreeId: 'wt-1', tabId: 'tab-1', ptyId: 'pty-1' })
+    expect(mocks.activateAndRevealWorktree).toHaveBeenCalledWith('wt-1')
+    expect(mocks.activateTabAndFocusPane).toHaveBeenCalledWith('tab-1', null)
   })
 })

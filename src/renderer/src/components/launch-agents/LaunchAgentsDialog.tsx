@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { getAgentCatalog, getAgentLabel } from '@/lib/agent-catalog'
 import { runBackgroundWorktreeCreation } from '@/lib/worktree-creation-flow'
-import { openTerminalWindowWhenSeatIsReady } from './launch-agents-window-handoff'
 import { resolveDirectSetupDecision } from '@/lib/launch-work-item-direct-preflight'
 import { getSettingsForRepoRuntimeOwner } from '@/lib/repo-runtime-owner'
 import { ensureHooksConfirmed } from '@/lib/ensure-hooks-confirmed'
@@ -18,7 +17,6 @@ import type { TuiAgent } from '../../../../shared/tui-agent'
 import {
   buildLaunchAgentsRequests,
   buildSharedCheckoutSeatRequests,
-  defaultIsolationMode,
   defaultLaunchModel,
   isNewWorktreeIsolationAvailable,
   resizeLaunchSlots,
@@ -101,7 +99,8 @@ function LaunchAgentsBody({
 
   const [selectedAgent, setSelectedAgent] = useState<TuiAgent | null>(null)
   const [count, setCount] = useState(1)
-  const [isolation, setIsolation] = useState<LaunchIsolationMode | null>(null)
+  // Why: sessions of a project share its checkout by default; a worktree per seat is opt-in.
+  const [isolation, setIsolation] = useState<LaunchIsolationMode>('shared-checkout')
   const [slots, setSlots] = useState<LaunchAgentSlot[]>([])
   const [prompt, setPrompt] = useState('')
   const [launching, setLaunching] = useState(false)
@@ -113,12 +112,6 @@ function LaunchAgentsBody({
       setSelectedAgent(agents[0].id)
     }
   }, [agents, selectedAgent])
-
-  useEffect(() => {
-    if (isolation === null && repo) {
-      setIsolation(defaultIsolationMode(repo))
-    }
-  }, [isolation, repo])
 
   useEffect(() => {
     setSlots((prev) => resizeLaunchSlots(prev, count, selectedAgent))
@@ -135,9 +128,7 @@ function LaunchAgentsBody({
 
   const newWorktreeAvailable = repo ? isNewWorktreeIsolationAvailable(repo) : false
   const effectiveIsolation: LaunchIsolationMode =
-    isolation && (isolation !== 'new-worktree' || newWorktreeAvailable)
-      ? isolation
-      : 'shared-checkout'
+    isolation === 'new-worktree' && newWorktreeAvailable ? 'new-worktree' : 'shared-checkout'
 
   const launch = async (): Promise<void> => {
     if (!repo || !settings || slots.length === 0) {
@@ -146,13 +137,18 @@ function LaunchAgentsBody({
     setLaunching(true)
     try {
       if (effectiveIsolation === 'shared-checkout') {
-        const worktreeId = worktreesByRepo[repo.id]?.[0]?.id
-        if (!worktreeId) {
+        // Why: sessions land in the workspace the user is looking at when it belongs to
+        // this project, else in the project's own checkout.
+        const worktrees = worktreesByRepo[repo.id] ?? []
+        const activeWorktreeId = useAppStore.getState().activeWorktreeId
+        const worktree =
+          worktrees.find((candidate) => candidate.id === activeWorktreeId) ?? worktrees[0]
+        if (!worktree) {
           toast.error(T('noCheckout', 'No checkout found for this project yet.'))
           return
         }
         const seats = buildSharedCheckoutSeatRequests({ slots, prompt })
-        runSharedCheckoutLaunch(worktreeId, seats, settings)
+        await runSharedCheckoutLaunch(worktree.id, worktree.path, seats, settings)
         toast.success(T('launched', 'Launching {{count}} agent sessions', { count: seats.length }))
         onClose()
         return
@@ -183,11 +179,7 @@ function LaunchAgentsBody({
         retired
       })
       for (const request of requests) {
-        const creationId = runBackgroundWorktreeCreation(request)
-        // Why: every seat is its own terminal window — hand each one off as its
-        // background worktree/tab creation concludes, reusing the existing
-        // pending-creation lifecycle instead of re-deriving completion here.
-        openTerminalWindowWhenSeatIsReady(creationId, repo.id, request.name)
+        runBackgroundWorktreeCreation(request)
       }
       toast.success(T('launched', 'Launching {{count}} agent sessions', { count: requests.length }))
       onClose()
