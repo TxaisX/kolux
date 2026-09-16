@@ -3,7 +3,7 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-14.
+Last updated: 2026-09-16.
 
 ## What this is
 
@@ -64,6 +64,79 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 
 ## Recent work, and why
 
+- **Launch agents opens panes, not workspaces (2026-09-16, `3d23a6ea`).** The 🚀 launcher
+  used to build one `WorktreeCreationRequest` per session, so launching 3 agents added 3 rows
+  under the repo in the sidebar. It now opens one pane per session inside the *active*
+  workspace (`launch-agents-into-workspace.ts`): `createEmptySplitGroup` per session,
+  `launchAgentInNewTab` into that group, then one `regridToCurrentLeaves` so the grid stays
+  even. The workspace row's `SessionCountBadge` counts the new sessions instead; no new rows.
+  Owner's call — sessions share the workspace's working directory, so a wave can edit the same
+  files; roles (`launch-agent-roles.ts`) are what keep them from doing identical work.
+  - `launch-agents-requests.ts` → `launch-agent-counts.ts`: the creature-naming, setup-decision
+    and startup-plan machinery was only needed to *create* worktrees and is gone. What survived
+    is `expandLaunchAgentCounts`.
+  - Prompts go out as `promptDelivery: 'submit-after-ready'`, matching every other generated
+    multi-line prompt path (fix-checks, recovery-launch, session continuation). The old argv
+    delivery would truncate a role brief + task, and plain `auto-submit` leaves
+    `stdin-after-start` agents holding an unsent draft.
+  - The dialog lost its project picker (it shows the target workspace read-only) and with it the
+    local-repo-only restriction: `launchAgentInNewTab` resolves the execution host itself, so the
+    launcher now works in SSH and folder workspaces too.
+  - **Runtime-verified on 2026-09-16** in this tree's dev app over CDP (port 9334): with a
+    folder workspace active, the dialog showed a read-only "Workspace verify-parent /
+    verify-parent" line and no `<select>`, and "Launch 2" took the layout from 1 to 3 leaves
+    (2×1 grid, one tab per group, both new tabs carrying `launchAgent: 'claude'`) with the
+    worktree count unchanged. Not verified: the agents actually running, because the dev
+    runtime on this machine cannot spawn any shell (node-pty's build output has `conpty.node`
+    but no `conpty.dll`, the `ensure:electron-runtime` trap below; a plain Terminal 1 in the
+    same workspace failed identically). Drive one real launch in an installed build before
+    a release.
+
+- **Every new session gets its own pane (2026-09-16, `5ff6a619`, `53a3a67b`).** Owner's call: the tab
+  strip's "+" used to stack New Terminal / Choose agent… / agent quick-launches as tabs in
+  one strip, hiding every session but one. `pane-layout/split-pane-for-new-session.ts` is the
+  one helper: split a fresh group to the right of the source, regrid to a balanced grid
+  (`regridToCurrentLeaves` moved here from `usePaneCountCommand.ts`), return the group to
+  create in, or the source group when nothing can be split. It is called at every
+  new-session entry point: the store's `openNewTerminalTabInActiveWorkspace` (tab-strip "+",
+  titlebar "+", Cmd/Ctrl+J), `newTerminalWithShell`, the tab-bar agent quick-launch menu and
+  `QuickLaunchButton`, and the global `handleNewTab` / `handleNewAgentTab` /
+  `handleNewAgentChoiceTab`. Deliberately not split: browser, markdown and simulator tabs,
+  "Split Terminal Right" (already splits), restore/sync/adoption paths, and the launch funnel
+  `launchAgentInNewTab` itself (continuation and recovery launches choose their group on
+  purpose). `resolvePendingAgentChoice` now launches into the placeholder's own group and
+  closes the placeholder afterwards, so the picked agent stays in the pane it was chosen for;
+  `use-terminal-create-actions.ts` delegates to it instead of carrying a copy. Trap: the
+  helper's Tidy broadcast is guarded on `typeof window.dispatchEvent === 'function'` because
+  store-level tests stub `window` with only `api`. Runtime-verified 2026-09-16 in this tree's
+  dev app by clicking the real "+" control (`aria-label="New tab"`, use the `:visible` match:
+  hidden workspace surfaces stay mounted with their own "+") in a fresh folder workspace: New
+  Terminal took it from 1 pane to 2, Choose agent… to 3, one tab per pane, the picker pane
+  pending, and the shells spawned. Activating a workspace from a script with
+  `setActiveWorktree` does not mount the pane surface; the Add Project flow does.
+- **Add Project opens only the picked folder (2026-09-16, `fea3bffd`).** Picking or dropping
+  a folder used to scan it for the git repositories inside and stop at a "review nested
+  repos" step that imported each one as its own project. Owner's call: only the selected
+  folder. `useAddRepoLocalFolderFlow` and `useAddRepoServerPathFlow` now go straight to
+  `addRepoPath`: a git repo opens as a project, anything else goes to the existing "Open as
+  Folder" confirmation and becomes one folder workspace. The nested-review step, its store
+  actions and the main-process scan/import IPC are untouched and still reachable from the SSH
+  "remote path" flow (`useRemoteRepo` in `AddRepoSteps.tsx`) and the runtime RPC; nothing
+  local reaches them any more. Runtime-verified the same day: dropping a non-git parent holding
+  two git repos on Add Project went straight to "Open as Folder", and the store then held one
+  `kind: 'folder'` repo for the parent and none for the children.
+
+- **Terminals could not open during a child-worktree removal (2026-09-16, `646cd973`).**
+  Symptom: launching Claude tabs in the root workspace while a child worktree was being deleted
+  left the panes blank; the trace shows `terminal_pane_recovery_remount` /
+  `spawn-left-pane-unbound` three times per tab at 15s, then the 5-minute recovery cap.
+  Cause: `watcher-removal-gate.ts` fenced any PTY spawn whose root *enclosed* the removal root,
+  and child worktrees live inside the root worktree's folder, so every root-workspace spawn was
+  refused for the whole removal (40s+ when `git worktree remove` stalls on EBUSY). The renderer
+  swallows that fence as "doomed pane" and remount-loops. Fix: `beginTerminalInstall` now fences
+  only spawns *inside-or-equal* the removal root; `beginWatcherInstall` keeps both directions
+  (a recursive watcher on the parent holds handles inside the child). Needs a `0.5.1` release to
+  reach the installed app. Left alone: the renderer's remount loop on a fenced pane.
 - **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
   (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
   step below the chrome. The default dark terminal theme is now `Nightshift Dark`
