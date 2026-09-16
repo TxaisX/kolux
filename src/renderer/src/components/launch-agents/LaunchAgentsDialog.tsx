@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Minus, Plus, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
@@ -12,21 +12,18 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { AgentIcon, getAgentCatalog } from '@/lib/agent-catalog'
-import { runBackgroundWorktreeCreation } from '@/lib/worktree-creation-flow'
-import { resolveDirectSetupDecision } from '@/lib/launch-work-item-direct-preflight'
-import { getSettingsForRepoRuntimeOwner } from '@/lib/repo-runtime-owner'
-import { ensureHooksConfirmed } from '@/lib/ensure-hooks-confirmed'
-import { useRetiredWorktreeNames } from '@/hooks/useRetiredWorktreeNames'
+import { useAgentDetectionTargetForWorktree } from '@/hooks/useAgentDetectionTarget'
+import { useDetectedAgents } from '@/hooks/useDetectedAgents'
 import { translate } from '@/i18n/i18n'
 import { isTuiAgentEnabled } from '../../../../shared/tui-agent-selection'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import {
-  buildLaunchAgentsRequests,
   expandLaunchAgentCounts,
   LAUNCH_AGENTS_MAX_PER_AGENT,
   type LaunchAgentCounts
-} from './launch-agents-requests'
-import { assignLaunchRoles, getLaunchPreset } from './launch-agent-roles'
+} from './launch-agent-counts'
+import { assignLaunchRoles, composeRolePrompt, getLaunchPreset } from './launch-agent-roles'
+import { launchAgentsIntoWorkspace } from './launch-agents-into-workspace'
 import { LaunchAgentsLineup, LaunchPresetRow } from './LaunchAgentsLineup'
 
 const T = (id: string, fallback: string): string =>
@@ -46,7 +43,7 @@ export default function LaunchAgentsDialog(): React.JSX.Element | null {
           <DialogDescription>
             {T(
               'description',
-              'Pick how many sessions of each agent to open. Each one gets its own worktree and the same prompt.'
+              'Pick how many sessions of each agent to open. Each one opens as a pane in the current workspace and gets the same prompt.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -58,41 +55,37 @@ export default function LaunchAgentsDialog(): React.JSX.Element | null {
 
 function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Element {
   const repos = useAppStore((s) => s.repos)
-  const activeRepoId = useAppStore((s) => s.activeRepoId)
-  const settings = useAppStore((s) => s.settings)
+  const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
-  const detectedAgentList = useAppStore((s) => s.detectedAgentIds)
-  const ensureDetectedAgents = useAppStore((s) => s.ensureDetectedAgents)
+  const settings = useAppStore((s) => s.settings)
+  const detectionTarget = useAgentDetectionTargetForWorktree(activeWorktreeId)
+  const { detectedIds } = useDetectedAgents(detectionTarget)
 
-  // Why: v1 launches into local git worktrees only; remote/SSH repos keep the single-agent composer.
-  const localRepos = useMemo(() => repos.filter((repo) => !repo.connectionId), [repos])
-  const [repoId, setRepoId] = useState<string>(() =>
-    localRepos.some((repo) => repo.id === activeRepoId)
-      ? (activeRepoId ?? '')
-      : (localRepos[0]?.id ?? '')
+  // Why: sessions land as panes in the workspace the user is looking at; there is no project picker.
+  const workspace = useMemo(
+    () =>
+      Object.values(worktreesByRepo)
+        .flat()
+        .find((worktree) => worktree.id === activeWorktreeId) ?? null,
+    [activeWorktreeId, worktreesByRepo]
   )
+  const projectName = repos.find((repo) => repo.id === workspace?.repoId)?.displayName ?? null
   const [prompt, setPrompt] = useState('')
   const [counts, setCounts] = useState<LaunchAgentCounts>({})
   const [presetId, setPresetId] = useState<string | null>(null)
   const [launching, setLaunching] = useState(false)
-  const retired = useRetiredWorktreeNames(repoId || null, repoId)
-
-  useEffect(() => {
-    void ensureDetectedAgents()
-  }, [ensureDetectedAgents])
 
   const agents = useMemo(() => {
-    const detected = detectedAgentList ? new Set<TuiAgent>(detectedAgentList) : null
+    const detected = detectedIds ? new Set<TuiAgent>(detectedIds) : null
     return getAgentCatalog().filter(
       (entry) =>
         isTuiAgentEnabled(entry.id, settings?.disabledTuiAgents) &&
         (detected === null || detected.has(entry.id))
     )
-  }, [detectedAgentList, settings?.disabledTuiAgents])
+  }, [detectedIds, settings?.disabledTuiAgents])
 
   const expandedAgents = useMemo(() => expandLaunchAgentCounts(counts), [counts])
   const total = expandedAgents.length
-  const repo = localRepos.find((entry) => entry.id === repoId) ?? null
   const preset = getLaunchPreset(presetId)
   const roles = useMemo(
     () => assignLaunchRoles(expandedAgents, preset?.roles ?? []),
@@ -118,46 +111,30 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
     setCount(firstAgent.id, Math.min(nextPreset.roles.length, LAUNCH_AGENTS_MAX_PER_AGENT))
   }
 
-  const launch = async (): Promise<void> => {
-    if (!repo || !settings || total === 0) {
+  const launch = (): void => {
+    if (!workspace || total === 0) {
       return
     }
     setLaunching(true)
     try {
-      const store = useAppStore.getState()
-      const setup = await resolveDirectSetupDecision(
-        repo.id,
-        repo,
-        getSettingsForRepoRuntimeOwner(store, repo.id)
+      // Why: each session gets its role brief ahead of the shared task, so a wave
+      // of N agents divides the work instead of repeating it N times.
+      const launched = launchAgentsIntoWorkspace(
+        workspace.id,
+        expandedAgents.map((agent, index) => ({
+          agent,
+          prompt: composeRolePrompt(prompt.trim(), roles[index] ?? null)
+        }))
       )
-      if (setup.kind === 'needs-modal') {
-        toast.error(
-          T(
-            'setupAsksPerWorkspace',
-            'This project asks about setup scripts per workspace. Pick a default in its settings, then launch again.'
-          )
-        )
+      if (launched === 0) {
+        toast.error(T('launchFailed', 'Could not build a launch command for these agents.'))
         return
-      }
-      const trust = await ensureHooksConfirmed(useAppStore.getState(), repo.id, 'setup')
-      const requests = buildLaunchAgentsRequests({
-        repo,
-        settings,
-        prompt,
-        agents: expandedAgents,
-        roles,
-        setupDecision: trust === 'skip' ? 'skip' : setup.decision,
-        worktreesByRepo,
-        retired
-      })
-      for (const request of requests) {
-        runBackgroundWorktreeCreation(request)
       }
       toast.success(
         translate(
           'auto.components.launch-agents.LaunchAgentsDialog.launched',
           'Launching {{count}} agent sessions',
-          { count: requests.length }
+          { count: launched }
         )
       )
       onClose()
@@ -168,20 +145,19 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">{T('project', 'Project')}</span>
-        <select
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-          value={repoId}
-          onChange={(event) => setRepoId(event.target.value)}
-        >
-          {localRepos.map((entry) => (
-            <option key={entry.id} value={entry.id}>
-              {entry.displayName}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="font-medium">{T('workspace', 'Workspace')}</span>
+        {workspace ? (
+          <span className="truncate text-muted-foreground">
+            {projectName ? `${projectName} / ` : ''}
+            {workspace.displayName}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            {T('noWorkspace', 'Open a workspace first; sessions launch into it as panes.')}
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium">{T('agents', 'Agents')}</span>
@@ -251,8 +227,8 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
         <Button
           type="button"
           size="sm"
-          disabled={launching || total === 0 || repo === null}
-          onClick={() => void launch()}
+          disabled={launching || total === 0 || workspace === null}
+          onClick={launch}
         >
           <Rocket className="size-3.5" />
           {translate(
