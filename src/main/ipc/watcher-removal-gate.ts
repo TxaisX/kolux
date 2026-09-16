@@ -50,38 +50,43 @@ export class TerminalRemovalInProgressError extends Error {
 const states = new Map<string, WatcherRemovalGateState>()
 
 export function beginWatcherInstall(rootPath: string, connectionId?: string): () => void {
-  return beginRemovalSensitiveInstall(
-    rootPath,
-    connectionId,
-    () => new WatcherRemovalInProgressError()
-  )
+  // Why: a recursive watcher on an enclosing root holds handles inside the nested
+  // root being removed, which blocks the delete on Windows.
+  return beginRemovalSensitiveInstall(rootPath, connectionId, {
+    fenceEnclosingRoots: true,
+    createRemovalError: () => new WatcherRemovalInProgressError()
+  })
 }
 
 export function beginTerminalInstall(rootPath: string, connectionId?: string): () => void {
-  return beginRemovalSensitiveInstall(
-    rootPath,
-    connectionId,
-    () => new TerminalRemovalInProgressError()
-  )
+  // Why not fence enclosing roots: child worktrees live inside the root worktree's
+  // folder, so fencing the parent blocked every new terminal in the root workspace
+  // for the whole removal (40s+ when the delete stalls on a locked folder), and the
+  // renderer's remount cap stretched that into a 5-minute outage per tab. A shell
+  // started at the parent holds nothing inside the child.
+  return beginRemovalSensitiveInstall(rootPath, connectionId, {
+    fenceEnclosingRoots: false,
+    createRemovalError: () => new TerminalRemovalInProgressError()
+  })
 }
 
 function beginRemovalSensitiveInstall(
   rootPath: string,
   connectionId: string | undefined,
-  createRemovalError: () => Error
+  policy: { fenceEnclosingRoots: boolean; createRemovalError: () => Error }
 ): () => void {
   const normalizedRoot = normalizeRuntimePathForComparison(rootPath)
-  // Why: PTY admission can fence both worktree identity and cwd, which may be
-  // parent/child roots; neither side may overlap an active removal.
+  // Why: PTY admission fences both worktree identity and cwd separately, so a cwd
+  // continuing into a dying child is caught even when the tab's worktree is the parent.
   if (
     matchingHostStates(connectionId).some(
       (state) =>
         state.removalCount > 0 &&
         (isPathInsideOrEqual(state.rootPath, normalizedRoot) ||
-          isPathInsideOrEqual(normalizedRoot, state.rootPath))
+          (policy.fenceEnclosingRoots && isPathInsideOrEqual(normalizedRoot, state.rootPath)))
     )
   ) {
-    throw createRemovalError()
+    throw policy.createRemovalError()
   }
   const key = watcherRemovalGateKey(normalizedRoot, connectionId)
   const state = states.get(key) ?? createState(key, normalizedRoot, connectionId)
