@@ -85,11 +85,7 @@ The injected preamble is authoritative. A dispatched worker must:
 3. Read coordinator follow-ups at each natural checkpoint — before starting a
    new file, after a test run — and once more immediately before `worker_done`:
    `NIGHTSHIFT orchestration check --terminal <your_handle> --json`.
-   Before editing, also run `NIGHTSHIFT worktree overlap --json`; if a sibling's
-   `sharedFiles` is non-empty, or the result carries `siblingsUnverifiable` or a
-   sibling's `changesUnverifiable`/`conflictPrediction: 'unverifiable'`, coordinate
-   (a worktree comment or an `ask`) before touching those files rather than finding
-   out at merge time. Treat any of these as "not verified" — never as "no overlap".
+   Before editing, run `NIGHTSHIFT worktree overlap --json` and coordinate on any hit.
 4. Send `worker_done` exactly once, from the dispatched terminal, with a
    three-sentence executive summary, both lifecycle IDs, and explicit
    `--outcome succeeded` or `--outcome failed`. Never encode failure only in prose.
@@ -162,11 +158,9 @@ Every Task spec must be self-contained and name:
 - **Target:** the files, component, or environment in scope.
 - **Change:** the concrete result to produce.
 - **Constraints:** invariants, compatibility rules, and do-not-touch boundaries.
-- **Ownership:** what this worker may edit and any coordination boundary. Check
-  `NIGHTSHIFT worktree overlap --json` before editing a file another worker's
-  worktree also touches (non-empty `sharedFiles`). Treat `siblingsUnverifiable`
-  or any sibling marked `unverifiable` the same way as non-empty `sharedFiles`:
-  not verified, coordinate before editing — never read it as "no overlap".
+- **Ownership:** what this worker may edit and any coordination boundary. A non-empty
+  `sharedFiles`, `siblingsUnverifiable`, `changesUnverifiable` or `conflictPrediction:
+  'unverifiable'` all mean not verified — coordinate first, never read one as "no overlap".
 - **Observable acceptance:** the test, output, or evidence that proves completion.
 
 ## Completion accounting

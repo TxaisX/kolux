@@ -77,8 +77,9 @@ describe('orchestration kernel', () => {
       '## Conditional references'
     ]
 
-    // Why: 202 is the budget after the anti-loop nextAction rule; the kernel is always in context.
-    expect(kernel.split('\n').length).toBeLessThanOrEqual(202)
+    // Why: 205 is the budget after the worktree-overlap rule; the kernel is always in
+    // context, so growth is deliberate — condense before raising this again.
+    expect(kernel.split('\n').length).toBeLessThanOrEqual(205)
     for (let index = 1; index < headings.length; index += 1) {
       expect(kernel.indexOf(headings[index])).toBeGreaterThan(kernel.indexOf(headings[index - 1]))
     }

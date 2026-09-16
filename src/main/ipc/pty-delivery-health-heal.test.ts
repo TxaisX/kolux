@@ -73,7 +73,7 @@ describe('registerPtyHandlers', () => {
       isFocused: () => true,
       isVisible: () => true,
       isMinimized: () => false,
-      webContents: { on: vi.fn(), send: vi.fn(), removeListener: vi.fn() }
+      webContents: { on: vi.fn(), send: vi.fn(), removeListener: vi.fn(), isDestroyed: () => false }
     }
 
     try {

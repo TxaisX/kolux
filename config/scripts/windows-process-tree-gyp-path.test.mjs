@@ -26,7 +26,10 @@ describe('windows-process-tree node-addon-api gyp path', () => {
       join(projectDir, 'config/scripts/windows-process-tree-gyp-rebuild.mjs'),
       'utf8'
     )
-    expect(rebuildHelper).toContain("createRequire(join(packageDir, 'package.json'))")
+    // realpath first: packageDir is pnpm's symlink into the store, and resolving from the
+    // link misses the sibling node-addon-api that the physical path exposes.
+    expect(rebuildHelper).toContain('realpathSync(packageDir)')
+    expect(rebuildHelper).toContain("createRequire(join(packageRoot, 'package.json'))")
     expect(rebuildHelper).toContain("resolve('node-addon-api/package.json')")
     expect(rebuildHelper).toContain("'napi.h'")
     expect(rebuildHelper).toContain("'napi-inl.h'")

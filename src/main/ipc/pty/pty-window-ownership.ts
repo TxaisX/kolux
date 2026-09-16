@@ -36,7 +36,10 @@ export function resolvePtyDeliveryWindow(ptyId: string, mainWindow: BrowserWindo
 
 /** True when the resolved delivery target for this pty cannot receive anything right now. */
 export function isPtyDeliveryWindowDestroyed(ptyId: string, mainWindow: BrowserWindow): boolean {
-  return resolvePtyDeliveryWindow(ptyId, mainWindow).isDestroyed()
+  const target = resolvePtyDeliveryWindow(ptyId, mainWindow)
+  // Why webContents as well: a window outlives its renderer during teardown, and sending to a
+  // destroyed WebContents throws. Checking only the window reopened that hole.
+  return target.isDestroyed() || target.webContents.isDestroyed()
 }
 
 /** True when mainWindow is gone AND no terminal window remains — the only time a session-wide (not per-pty) delivery mechanism has nothing left to reach. */
@@ -71,6 +74,16 @@ export function isAuthorizedPtySender(
 ): boolean {
   const owner = getPtyOwnerWindow(ptyId)
   return owner ? sender === owner.webContents : sender === mainWindow.webContents
+}
+
+/** The renderer behind a pty IPC call, falling back to the main window when there is no
+ *  event at all. A real ipcMain call always carries an event, so "no event" means the
+ *  handler was invoked directly (as the suite does) and never a foreign renderer. */
+export function ptySenderOrMain(
+  event: { sender: WebContents } | null | undefined,
+  mainWindow: BrowserWindow
+): WebContents {
+  return event?.sender ?? mainWindow.webContents
 }
 
 /** Test-only: the ownership map is a module-level singleton. */

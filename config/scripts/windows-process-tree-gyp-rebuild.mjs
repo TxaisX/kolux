@@ -211,10 +211,9 @@ export function stageWindowsProcessTreeNodeAddonApiHeaders(
 ) {
   // Why: realpath first. packageDir is pnpm's symlink into the store, and resolution from the
   // link walks the logical parents, where the sibling node-addon-api does not exist.
+  const packageRoot = realpathSync(packageDir)
   const nodeAddonApiDir = dirname(
-    createRequire(join(realpathSync(packageDir), 'package.json')).resolve(
-      'node-addon-api/package.json'
-    )
+    createRequire(join(packageRoot, 'package.json')).resolve('node-addon-api/package.json')
   )
   const stagedHeaderDir = join(packageDir, 'deps', 'node-addon-api')
   mkdirSync(stagedHeaderDir, { recursive: true })

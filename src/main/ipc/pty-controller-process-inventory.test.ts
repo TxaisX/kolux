@@ -96,7 +96,7 @@ function session(id: string): PtyProcessInfo {
 
 const mainWindow = {
   isDestroyed: () => false,
-  webContents: { on: vi.fn(), send: vi.fn(), removeListener: vi.fn() }
+  webContents: { on: vi.fn(), send: vi.fn(), removeListener: vi.fn(), isDestroyed: () => false }
 }
 
 function captureController(): {

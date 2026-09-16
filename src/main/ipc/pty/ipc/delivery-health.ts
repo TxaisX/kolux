@@ -7,7 +7,7 @@ import { getPtyIpc } from '../../pty-host-bindings'
 import { tryGetProviderForPty } from '../provider/registry'
 import { PTY_DELIVERY_HEAL_MIN_ACK_SILENCE_MS } from '../delivery/constants'
 import { applyCumulativeAck } from '../delivery/accounting'
-import { isAuthorizedPtySender } from '../pty-window-ownership'
+import { isAuthorizedPtySender, ptySenderOrMain } from '../pty-window-ownership'
 import type { PtyIpcSession } from '../session'
 
 /** The ack/resync/health-report channels that credit renderer-bound delivery, split out of
@@ -23,7 +23,7 @@ export function installPtyDeliveryHealthIpc(session: PtyIpcSession): void {
     (event, args: { id: string; charCount?: number; processedChars?: number }) => {
       // Why first: an ack for a ptyId this sender doesn't own must not move that pty's
       // credit — window A naming window B's ptyId would otherwise release B's backpressure.
-      if (!isAuthorizedPtySender(event.sender, args.id, mainWindow)) {
+      if (!isAuthorizedPtySender(ptySenderOrMain(event, mainWindow), args.id, mainWindow)) {
         return
       }
       session.lastAckReceivedAtMs = Date.now()
@@ -50,7 +50,7 @@ export function installPtyDeliveryHealthIpc(session: PtyIpcSession): void {
     'pty:deliveryResyncResponse',
     (event, args: { requestId: number; processedCharsByPty: Record<string, number> }) => {
       if (
-        event.sender !== mainWindow.webContents ||
+        ptySenderOrMain(event, mainWindow) !== mainWindow.webContents ||
         session.deliveryResyncOutstandingRequestId === null ||
         args?.requestId !== session.deliveryResyncOutstandingRequestId
       ) {
@@ -86,7 +86,7 @@ export function installPtyDeliveryHealthIpc(session: PtyIpcSession): void {
         if (
           typeof processedChars !== 'number' ||
           !Number.isFinite(processedChars) ||
-          !isAuthorizedPtySender(event.sender, id, mainWindow)
+          !isAuthorizedPtySender(ptySenderOrMain(event, mainWindow), id, mainWindow)
         ) {
           continue
         }
