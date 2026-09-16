@@ -4,6 +4,7 @@ import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { resolveWorktreeOperationRouteResult } from '@/lib/worktree-operation-route'
 import { isWebClientLocation } from '@/lib/web-client-location'
+import { splitPaneForNewSession } from '@/components/pane-layout/split-pane-for-new-session'
 import type { TerminalSlice, TerminalStoreGet, TerminalStoreSet } from './terminal-state'
 
 export function createActiveWorkspaceTerminalActions(
@@ -11,12 +12,14 @@ export function createActiveWorkspaceTerminalActions(
   get: TerminalStoreGet
 ): Pick<TerminalSlice, 'openNewTerminalTabInActiveWorkspace'> {
   return {
-    openNewTerminalTabInActiveWorkspace: async (groupId, opts) => {
+    openNewTerminalTabInActiveWorkspace: async (sourceGroupId, opts) => {
       const state = get()
       const worktreeId = state.activeWorktreeId
       if (!worktreeId) {
         return
       }
+      // Why: every new session gets its own pane so all running sessions stay in view.
+      const groupId = splitPaneForNewSession(get, worktreeId, sourceGroupId)
       const workspaceScope = parseWorkspaceKey(worktreeId)
       const worktreeRoute =
         worktreeId === FLOATING_TERMINAL_WORKTREE_ID || workspaceScope?.type === 'folder'

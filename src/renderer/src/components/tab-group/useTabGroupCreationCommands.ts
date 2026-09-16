@@ -16,6 +16,7 @@ import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner
 import { browserWorkspaceHasRemoteOwner } from '@/runtime/remote-browser-tab-ownership'
 import { getClientCreationActionPolicy } from '@/lib/client-creation-action-policy'
 import type { TabGroupWorktreeSnapshot } from './useTabGroupItemProjections'
+import { splitPaneForNewSession } from '../pane-layout/split-pane-for-new-session'
 
 export function recordTerminalTabGroupSplit(createdTerminal: TerminalTab | null | undefined): void {
   if (!createdTerminal) {
@@ -154,17 +155,18 @@ export function useTabGroupCreationCommands({
     newTerminalWithShell: (shellOverride: string) => {
       void (async () => {
         const environmentId = getRuntimeEnvironmentIdForWorktree(useAppStore.getState(), worktreeId)
+        const targetGroupId = splitPaneForNewSession(useAppStore.getState, worktreeId, groupId)
         const outcome = await createWebRuntimeSessionTerminal({
           worktreeId,
           environmentId,
-          targetGroupId: groupId,
+          targetGroupId,
           command: shellOverride,
           activate: true
         })
         if (outcome.status === 'created' || isWebRuntimeSessionActive(environmentId)) {
           return
         }
-        const terminal = createTab(worktreeId, groupId, shellOverride)
+        const terminal = createTab(worktreeId, targetGroupId, shellOverride)
         setActiveTab(terminal.id)
         setActiveTabType('terminal')
         focusTerminalTabSurface(terminal.id)
