@@ -1,6 +1,5 @@
 import { randomBytes } from 'node:crypto'
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -9,6 +8,7 @@ import {
   rmSync,
   writeFileSync
 } from 'node:fs'
+import { cp } from 'node:fs/promises'
 import { dirname, join, win32 as winPath } from 'node:path'
 import { getAppEnvironment } from '../../shared/app-environment'
 import type { ProcessLivenessVerdict } from './daemon-incarnation-evidence-types'
@@ -189,7 +189,9 @@ export function buildDaemonHostManifest(sources: DaemonHostSources): CopyOp[] {
   return ops
 }
 
-function executeManifest(ops: CopyOp[], stagingRoot: string): void {
+// Async (fs/promises.cp) so the ~183MB/439-file copy doesn't block Electron's single-threaded
+// main process for its whole duration — each op yields the event loop instead of freezing it.
+async function executeManifest(ops: CopyOp[], stagingRoot: string): Promise<void> {
   for (const op of ops) {
     if (!existsSync(op.sourcePath)) {
       if (op.optional) {
@@ -199,13 +201,12 @@ function executeManifest(ops: CopyOp[], stagingRoot: string): void {
     }
     const dest = destPath(stagingRoot, op.destRel)
     mkdirSync(dirname(dest), { recursive: true })
-    const { filter } = op
     // Dereference symlinks so the copy holds no link back into the install dir.
-    cpSync(op.sourcePath, dest, {
+    await cp(op.sourcePath, dest, {
       recursive: op.kind === 'dir',
       dereference: true,
       force: true,
-      ...(filter ? { filter: (src: string) => filter(src) } : {})
+      ...(op.filter ? { filter: (src: string) => op.filter!(src) } : {})
     })
   }
 }
@@ -261,11 +262,9 @@ export function getRelocatedDaemonHost(): RelocatedDaemonHost | null {
   return { execPath, entryPath }
 }
 
-/**
- * Materialize the current version's daemon host, returning its fork paths or null (fail-open). Idempotent
- * via marker; stages into a temp sibling and publishes by atomic rename, so a crash mid-copy never leaves a half-populated dest.
- */
-export function materializeRelocatedDaemonHost(): RelocatedDaemonHost | null {
+let inFlightMaterialization: Promise<RelocatedDaemonHost | null> | null = null
+
+async function doMaterializeRelocatedDaemonHost(): Promise<RelocatedDaemonHost | null> {
   const existing = getRelocatedDaemonHost()
   if (existing) {
     return existing
@@ -281,7 +280,7 @@ export function materializeRelocatedDaemonHost(): RelocatedDaemonHost | null {
   try {
     mkdirSync(root, { recursive: true })
     rmSync(staging, { recursive: true, force: true })
-    executeManifest(buildDaemonHostManifest(sources), staging)
+    await executeManifest(buildDaemonHostManifest(sources), staging)
     // Marker written LAST so an interrupted copy leaves a marker-less staging dir the next launch discards.
     const marker: MaterializeMarker = {
       version,
@@ -303,6 +302,18 @@ export function materializeRelocatedDaemonHost(): RelocatedDaemonHost | null {
     return null
   }
   return getRelocatedDaemonHost()
+}
+
+/**
+ * Materialize the current version's daemon host, returning its fork paths or null (fail-open). Idempotent
+ * via marker; stages into a temp sibling and publishes by atomic rename, so a crash mid-copy never leaves a half-populated dest.
+ * Async and single-flight: a startup pre-warm and a concurrent daemon launch share one in-flight copy.
+ */
+export function materializeRelocatedDaemonHost(): Promise<RelocatedDaemonHost | null> {
+  inFlightMaterialization ??= doMaterializeRelocatedDaemonHost().finally(
+    () => (inFlightMaterialization = null)
+  )
+  return inFlightMaterialization
 }
 
 export type PinnedDaemonVersionsEvidence =

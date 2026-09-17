@@ -13,8 +13,19 @@ import {
 import os from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as NodeFsPromises from 'node:fs/promises'
 
 import { setAppEnvironment, type AppEnvironment } from '../../shared/app-environment'
+
+// node:fs/promises's own export object is frozen (real ESM), so vi.spyOn can't touch `cp` directly —
+// vi.mock swaps the whole module instead, delegating to the real cp so every other test still copies
+// for real. vi.hoisted because the mock factory (hoisted above imports) needs to close over this.
+const { cpMock } = vi.hoisted(() => ({ cpMock: vi.fn() }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof NodeFsPromises>()
+  cpMock.mockImplementation(actual.cp)
+  return { ...actual, cp: cpMock }
+})
 
 // Mutable host stub. Relocation now reads the AppEnvironment port rather than electron's
 // `app`, so nightshiftd's daemon launch path can resolve without Electron in the graph.
@@ -166,8 +177,8 @@ describe('buildDaemonHostManifest', () => {
 })
 
 describe('materializeRelocatedDaemonHost', () => {
-  it('copies the tree, writes the marker, and returns mirrored fork paths', () => {
-    const result = materializeRelocatedDaemonHost()
+  it('copies the tree, writes the marker, and returns mirrored fork paths', async () => {
+    const result = await materializeRelocatedDaemonHost()
     expect(result).not.toBeNull()
     const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
     expect(result?.execPath).toBe(join(dest, 'Nightshift.exe'))
@@ -203,8 +214,8 @@ describe('materializeRelocatedDaemonHost', () => {
     expect(marker.entryRelPath).toBe('resources/app.asar.unpacked/out/main/daemon-entry.js')
   })
 
-  it('copies the exe verbatim: same file name and same bytes as the install-dir exe', () => {
-    const result = materializeRelocatedDaemonHost()
+  it('copies the exe verbatim: same file name and same bytes as the install-dir exe', async () => {
+    const result = await materializeRelocatedDaemonHost()
     const sourceExe = join(installDir, 'Nightshift.exe')
     // Byte-for-byte under the same name is what preserves the Authenticode signature and leaves
     // no renamed-image signal for endpoint detection to read as masquerading.
@@ -212,12 +223,12 @@ describe('materializeRelocatedDaemonHost', () => {
     expect(readFileSync(result!.execPath)).toEqual(readFileSync(sourceExe))
   })
 
-  it('tracks a differently-named app exe rather than pinning an image name of its own', () => {
+  it('tracks a differently-named app exe rather than pinning an image name of its own', async () => {
     // A dev-channel or rebranded build ships a different executableName; the host copy must follow
     // it, which is what keeps the copy verbatim instead of reintroducing a name mismatch.
     renameSync(join(installDir, 'Nightshift.exe'), join(installDir, 'Nightshift Nightly.exe'))
     setProcessProp('execPath', join(installDir, 'Nightshift Nightly.exe'))
-    const result = materializeRelocatedDaemonHost()
+    const result = await materializeRelocatedDaemonHost()
     const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
     expect(result?.execPath).toBe(join(dest, 'Nightshift Nightly.exe'))
     expect(existsSync(join(dest, 'orca-terminal-daemon.exe'))).toBe(false)
@@ -225,23 +236,23 @@ describe('materializeRelocatedDaemonHost', () => {
     expect(getRelocatedDaemonHost()?.execPath).toBe(join(dest, 'Nightshift Nightly.exe'))
   })
 
-  it('is idempotent: a valid marker short-circuits without recopying', () => {
-    materializeRelocatedDaemonHost()
+  it('is idempotent: a valid marker short-circuits without recopying', async () => {
+    await materializeRelocatedDaemonHost()
     const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
     // A recopy would rm the dest; a sentinel inside it must survive the 2nd call.
     const sentinel = join(dest, 'sentinel.txt')
     writeFileSync(sentinel, 'keep')
-    const result = materializeRelocatedDaemonHost()
+    const result = await materializeRelocatedDaemonHost()
     expect(result?.execPath).toBe(join(dest, 'Nightshift.exe'))
     expect(existsSync(sentinel)).toBe(true)
   })
 
-  it('fails open on a missing required input, leaving no dest or staging dir', () => {
+  it('fails open on a missing required input, leaving no dest or staging dir', async () => {
     rmSync(join(installDir, 'resources', 'node_modules', 'node-pty'), {
       recursive: true,
       force: true
     })
-    const result = materializeRelocatedDaemonHost()
+    const result = await materializeRelocatedDaemonHost()
     expect(result).toBeNull()
     const hostRoot = join(localAppDataDir, 'Nightshift', 'daemon-host')
     // Neither the published dest nor any leftover staging dir remains.
@@ -249,22 +260,43 @@ describe('materializeRelocatedDaemonHost', () => {
     expect(remaining).toEqual([])
   })
 
-  it('returns null off win32', () => {
+  it('returns null off win32', async () => {
     setProcessProp('platform', 'darwin')
-    expect(materializeRelocatedDaemonHost()).toBeNull()
+    expect(await materializeRelocatedDaemonHost()).toBeNull()
     expect(existsSync(join(localAppDataDir, 'Nightshift', 'daemon-host'))).toBe(false)
   })
 
-  it('does nothing for a packaged host with no asar root (nightshiftd on win32)', () => {
+  it('does nothing for a packaged host with no asar root (nightshiftd on win32)', async () => {
     // nightshiftd answers isPackaged() true — it is a shipped build — but it is plain Node: no
     // asar, no resourcesPath, and no NSIS updater to escape. Relocation staging a copy of
     // an Electron tree that is not there is the isPackaged-honesty defect, and it would
     // silently produce a null host on a path whose failures are meant to be visible.
     hostApp.appPath = join(installDir, 'resources', 'app')
     installHostApp()
-    expect(materializeRelocatedDaemonHost()).toBeNull()
+    expect(await materializeRelocatedDaemonHost()).toBeNull()
     expect(getRelocatedDaemonHost()).toBeNull()
     expect(existsSync(join(localAppDataDir, 'Nightshift', 'daemon-host'))).toBe(false)
+  })
+
+  it('single-flights concurrent calls: two callers in flight together perform one copy', async () => {
+    cpMock.mockClear()
+    const [first, second] = await Promise.all([
+      materializeRelocatedDaemonHost(),
+      materializeRelocatedDaemonHost()
+    ])
+    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
+    expect(first?.execPath).toBe(join(dest, 'Nightshift.exe'))
+    expect(second?.execPath).toBe(join(dest, 'Nightshift.exe'))
+    // The exe copy op alone proves one copy ran; a second concurrent copy would have raced it and
+    // roughly doubled this count (one call per copy op per invocation).
+    const exeCopyCalls = cpMock.mock.calls.filter(([source]) =>
+      String(source).endsWith('Nightshift.exe')
+    )
+    expect(exeCopyCalls.length).toBe(1)
+    // A later call after both settle sees the marker and short-circuits without copying again.
+    cpMock.mockClear()
+    await materializeRelocatedDaemonHost()
+    expect(cpMock).not.toHaveBeenCalled()
   })
 })
 

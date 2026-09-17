@@ -22,6 +22,7 @@ import {
   handlePtyExit,
   startTerminalRuntimeStartupServices
 } from './main-process-pty-startup'
+import { materializeRelocatedDaemonHost } from '../daemon/daemon-host-relocation'
 import { prepareCodexRuntimeHomeForLaunch } from './codex-launch-preparation'
 import { prepareCodexSessionResumeForLaunch } from './codex-session-resume-launch'
 import { startWindowsDesktopBeforeShellPathReady } from './windows-desktop-shell-path-startup'
@@ -233,6 +234,15 @@ async function launchDesktopMode(
         }
       )
   ])
+  // Why here and not on first terminal spawn: this is a once-per-app-version ~183MB copy
+  // (materializeRelocatedDaemonHost, win32-packaged only — a no-op elsewhere). Firing it now, after
+  // the window exists and off the paint path, means it's usually already cached by the time the user
+  // opens a terminal instead of freezing that spawn. Fire-and-forget: must never gate startup, and
+  // materializeRelocatedDaemonHost is already fail-open internally, so a failure here just means the
+  // next daemon launch retries the copy itself.
+  void materializeRelocatedDaemonHost().catch((error) =>
+    console.warn('[daemon] Background daemon-host pre-warm failed:', error)
+  )
   if (!runtimeRpcStartResult.ok) {
     // Why gated: this dialog is the only launch-phase text read through translateMain, and i18n
     // now settles alongside this phase — without the wait a non-English user could get the
