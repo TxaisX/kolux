@@ -37,6 +37,7 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     hasDetails,
     hasPorts,
     showStatus,
+    showInlineAgentList,
     showLineageChildChip,
     remoteBranchConflict,
     visibleCardTitle,
@@ -270,7 +271,8 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
   const titleRowIndicators = showTitleRowIndicators ? (
     <div className="ml-auto flex shrink-0 items-center gap-1 pr-1.5">{detailsAndPorts}</div>
   ) : null
-  const hasSecondaryCardContent = hasMetaRow || !!remoteBranchConflict || showLineageChildChip
+  const hasSecondaryCardContent =
+    hasMetaRow || !!remoteBranchConflict || showInlineAgentList || showLineageChildChip
   const titleOnlyCard = !hasSecondaryCardContent
 
   return {

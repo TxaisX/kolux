@@ -79,6 +79,10 @@ vi.mock('./CacheTimer', () => ({
   usePromptCacheCountdownStartedAt: () => null
 }))
 
+vi.mock('./WorktreeCardSessions', () => ({
+  default: () => <div data-testid="inline-sessions" />
+}))
+
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => (
     <div data-testid="context-menu-wrapper">{children}</div>
@@ -204,5 +208,24 @@ describe('WorktreeCard affiliate list mode', () => {
       'repo-1::/repo/worktrees/affiliate',
       'local'
     )
+  })
+
+  it('still shows inline session details in affiliate list mode', () => {
+    worktreeCardProperties = ['status', 'inline-agents']
+
+    act(() => {
+      root.render(
+        <WorktreeCard
+          worktree={makeWorktree()}
+          repo={makeRepo()}
+          isActive={false}
+          nativeDragEnabled
+          flushSurface
+          affiliateListMode
+        />
+      )
+    })
+
+    expect(container.querySelector('[data-testid="inline-sessions"]')).not.toBeNull()
   })
 })

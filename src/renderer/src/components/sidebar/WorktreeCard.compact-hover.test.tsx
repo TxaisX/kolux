@@ -112,6 +112,12 @@ vi.mock('./useWorktreeAgentRows', () => ({
   useWorktreeAgentRows: vi.fn(() => mockInlineAgentRows)
 }))
 
+vi.mock('./WorktreeCardSessions', () => ({
+  default: ({ className }: { className?: string }) => (
+    <div className={className} data-worktree-sessions="" />
+  )
+}))
+
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
   CLOSE_ALL_CONTEXT_MENUS_EVENT: 'nightshift:test-close-context-menus',
@@ -554,7 +560,7 @@ describe('WorktreeCard compact hover details', () => {
     expect(childIndex).toBeGreaterThanOrEqual(0)
   })
 
-  it('never renders an inline session list in the card', async () => {
+  it('suppresses inline session rows in compact cards by default', async () => {
     settings = { compactWorktreeCards: true }
     worktreeCardProperties = ['status', 'inline-agents']
     const { default: WorktreeCard } = await import('./WorktreeCard')
@@ -564,6 +570,25 @@ describe('WorktreeCard compact hover details', () => {
     )
 
     expect(markup).not.toContain('data-worktree-sessions')
+  })
+
+  it('suppresses the aggregate cache timer when compact inline sessions are visible', async () => {
+    settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
+    worktreeCardProperties = ['status', 'inline-agents']
+    const worktree = makeWorktree()
+    tabsByWorktree = { [worktree.id]: [{ id: 'tab-1' }] }
+    ptyIdsByTabId = { 'tab-1': ['pty-1'] }
+    const { default: WorktreeCard } = await import('./WorktreeCard')
+
+    const markup = renderToStaticMarkup(
+      <WorktreeCard worktree={worktree} repo={makeRepo()} isActive={false} />
+    )
+
+    expect(markup).toContain('data-worktree-sessions=""')
+    expect(cacheTimerMocks.usePromptCacheCountdownStartedAt).toHaveBeenCalledWith(
+      worktree.id,
+      false
+    )
   })
 
   it('does not create a compact metadata row solely for an aggregate cache timer', async () => {
@@ -606,7 +631,7 @@ describe('WorktreeCard compact hover details', () => {
     expect(markup).toContain('More PR actions')
   })
 
-  it('keeps status tooltip targets outside the worktree details hover trigger', async () => {
+  it('keeps status and session tooltip targets outside the worktree details hover trigger', async () => {
     settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
     worktreeCardProperties = ['status', 'inline-agents']
     const { default: WorktreeCard } = await import('./WorktreeCard')
@@ -617,11 +642,32 @@ describe('WorktreeCard compact hover details', () => {
     const statusIndex = markup.indexOf('data-worktree-card-status-slot=""')
     const triggerIndex = markup.indexOf('data-worktree-card-hover-trigger=""')
     const hoverContentIndex = markup.indexOf('data-hover-card-content=""')
+    const sessionsIndex = markup.indexOf('data-worktree-sessions=""')
 
     expectIdentityBodyIsHoverTrigger(markup)
     expect(statusIndex).toBeGreaterThanOrEqual(0)
     expect(statusIndex).toBeLessThan(triggerIndex)
     expect(hoverContentIndex).toBeGreaterThan(triggerIndex)
+    expect(sessionsIndex).toBeGreaterThan(hoverContentIndex)
+  })
+
+  it('preserves the aggregate cache timer when compact inline sessions are enabled but absent', async () => {
+    settings = { compactWorktreeCards: false, experimentalNewWorktreeCardStyle: true }
+    worktreeCardProperties = ['status', 'inline-agents']
+    // Why: 'inline-agents' is on but the worktree has no open tabs, so the
+    // session list renders nothing and the aggregate timer stays the only signal.
+    cacheTimerMocks.usePromptCacheCountdownStartedAt.mockImplementation(
+      (_worktreeId: string, active = true) => (active ? 10_000 : null)
+    )
+    const worktree = makeWorktree()
+    const { default: WorktreeCard } = await import('./WorktreeCard')
+
+    const markup = renderToStaticMarkup(
+      <WorktreeCard worktree={worktree} repo={makeRepo()} isActive={false} />
+    )
+
+    expect(markup).toContain('data-worktree-sessions=""')
+    expect(cacheTimerMocks.usePromptCacheCountdownStartedAt).toHaveBeenCalledWith(worktree.id, true)
   })
 
   it('keeps child card markup outside the parent hover trigger when new card style is on', async () => {

@@ -58,5 +58,11 @@ export const PROPERTY_OPTIONS: { id: WorktreeCardProperty; label: string }[] = [
     get label() {
       return translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.b64d8bcca0', 'Ports')
     }
+  },
+  {
+    id: 'inline-agents',
+    get label() {
+      return translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.d7084e8bc8', 'Sessions')
+    }
   }
 ]

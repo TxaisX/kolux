@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAppStore } from '@/store'
 import { readStoreListenerCount } from '@/store/store-listener-census'
+import { useLiveSessionCount } from '@/components/session-rail/use-live-session-count'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import { usePromptCacheCountdownStartedAt } from './CacheTimer'
@@ -112,9 +113,10 @@ describe('useWorktreeCardSecondaryDetails store subscriptions', () => {
   it('adds no store listener of its own beyond the hooks it composes', () => {
     const settings = makeSettings(300_000)
 
-    // Baseline: the hook it composes, mounted on its own.
+    // Baseline: the two hooks it composes, mounted on their own.
     const composedBaseline = listenerCount()
     function ComposedProbe(): null {
+      useLiveSessionCount(WORKTREE_ID)
       usePromptCacheCountdownStartedAt(WORKTREE_ID, true)
       return null
     }
@@ -130,7 +132,7 @@ describe('useWorktreeCardSecondaryDetails store subscriptions', () => {
     mount(<Probe />)
 
     // Why: promptCacheTtlMs comes from the settings the card already subscribes to,
-    // so this hook must not open a second subscription for the same field.
+    // so this hook must not open a third subscription for the same field.
     expect(listenerCount() - baseline).toBe(composedListeners)
 
     unmount()

@@ -28,6 +28,7 @@ export function WorktreeCardParentContent({
     handleToggleUnreadQuick,
     statusLaneReview,
     branchIdentityDisplay,
+    showInlineAgentList,
     titleRenaming,
     isDeleting,
     hoverIssue,
@@ -160,12 +161,14 @@ export function WorktreeCardParentContent({
       <div
         className={cn(
           'flex min-w-0 flex-1 flex-col gap-1.5',
-          // Why: lineage child cards intentionally outdent into the card gutter; inner elements handle truncation.
-          !newCardStyle && lineageChildren ? 'overflow-visible' : 'overflow-hidden'
+          // Why: inline agent rows intentionally outdent into the card gutter; inner elements handle truncation.
+          showInlineAgentList || (!newCardStyle && lineageChildren)
+            ? 'overflow-visible'
+            : 'overflow-hidden'
         )}
       >
         {identityContentWithHover}
-        <WorktreeCardSecondaryRows card={card} />
+        <WorktreeCardSecondaryRows card={card} presentation={presentation} />
       </div>
     </div>
   )

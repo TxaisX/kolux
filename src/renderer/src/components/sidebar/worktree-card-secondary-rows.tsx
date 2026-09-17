@@ -6,12 +6,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import { LinearAgentSkillSetupPrompt } from './LinearAgentSkillSetupPrompt'
+import WorktreeCardSessions from './WorktreeCardSessions'
+import type { WorktreeCardPresentation } from './worktree-card-presentation'
 import type { WorktreeCardController } from './use-worktree-card-controller'
 
 export function WorktreeCardSecondaryRows({
-  card
+  card,
+  presentation
 }: {
   card: WorktreeCardController
+  presentation: WorktreeCardPresentation
 }): React.JSX.Element {
   const {
     worktree,
@@ -23,10 +27,12 @@ export function WorktreeCardSecondaryRows({
     lineageCollapsed,
     onLineageToggle,
     remoteBranchConflict,
+    showInlineAgentList,
     showLineageChildChip,
     lineageChildAriaLabel,
     childWorkspaceShortLabel
   } = card
+  const { hasMetaRow } = presentation
 
   return (
     <>
@@ -54,6 +60,14 @@ export function WorktreeCardSecondaryRows({
           settings={settings}
         />
       ) : null}
+
+      {/* Why: counterbalance the card stack gap (-mt-1) so sessions right after the title read as one header group. */}
+      {showInlineAgentList && (
+        <WorktreeCardSessions
+          worktreeId={worktree.id}
+          className={hasMetaRow || remoteBranchConflict ? 'mt-0' : '-mt-1'}
+        />
+      )}
 
       {showLineageChildChip && (
         <div
