@@ -3,7 +3,7 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-16.
+Last updated: 2026-09-17.
 
 ## What this is
 
@@ -64,6 +64,42 @@ unsigned update. Builds made before 2026-09-14 do carry it, so they need one man
 of a newer release; after that, updates are automatic. Mac and Linux are not released.
 
 ## Recent work, and why
+
+- **One session per pane, the "+" out of the strip, and sessions back in the sidebar
+  (2026-09-17).** Three independent changes on the owner's call that the tab strip should stop
+  implying multiple tabs per pane.
+  - **No "+" beside a tab.** The create menu moved out of `tab-bar-surface.tsx` into
+    `tab-bar/tab-bar-create-menu.tsx`, with `TabBarCreateMenuButton` mounting it standalone.
+    `TabBar` gained `hideCreateMenu` (default false) and `TabGroupPanel` passes it, so pane
+    strips render the tab alone. **Trap that cost a rebuild:** the replacement was first mounted
+    in the titlebar, which does not work — the Code view has no full-width titlebar, so neither
+    `#titlebar-tabs` nor the added `#titlebar-new-tab` renders while panes are on screen, and
+    the app ended up with *zero* "+" anywhere. It now lives in the focused pane's action cluster
+    beside Quick Commands and the pane-count stepper, gated on `isFocused` so exactly one shows
+    and it follows focus. The titlebar plumbing is still in the tree and inert in Code view;
+    delete it when someone is next in there. `aria-label="New tab"` is preserved because nine
+    E2E specs locate the control by it. **Those nine specs have not been run** — they build
+    two-tab groups as setup, which no longer happens, so treat them as unverified.
+  - **Enforcement is UI-only by choice.** Nothing in the interface builds a two-tab pane, but the
+    store still can, so dragging a tab onto another pane still merges. Do not "fix" that without
+    asking; it is the deliberate escape hatch.
+  - **Sidebar session rows are back**, reversing `124ee74b` two days after it landed. That commit
+    cut them because the list "restated what the count badge already said" — true while the strip
+    listed sessions, false once the strip's "+" went away and nothing else names them. Restored
+    `WorktreeCardSessions` from `124ee74b^` rather than rewritten; `WorktreeCardAgents` stays
+    dead (older, twice superseded, and keys off paneKeys instead of tab ids). No persisted state
+    changed: `'inline-agents'` was still defaulted and the `normalize-loaded-ui-state` one-shot
+    migration already backfills it.
+  - **The Windows daemon host no longer copies on the spawn path.** `materializeRelocatedDaemonHost`
+    is async over `fs/promises.cp` with a single-flight guard, and `launchDesktopMode` pre-warms
+    it unawaited once the first window exists. It used to be a serial `cpSync` loop over 439
+    files (~273MB) that froze the main process on the first terminal after every version change.
+  - **The ~30s "Claude takes forever to open" is not an app bug.** Measured on the owner's machine:
+    PowerShell starts in 0.3s, the `claude` binary in 0.05s, the daemon-host copy in 1.7s — and
+    `claude mcp list` takes **19.9s** against the 20 MCP servers configured globally. The startup
+    cost is the CLI dialling those servers, so it is a config problem, not a Nightshift one. Do
+    not go looking for it in the spawn path again. `DAEMON_RECOVERY_BUDGET_MS` (32s) is also not
+    it: that only engages for a wedged daemon handoff.
 
 - **The 0.5.0 launcher rewrite was dropped in favour of 0.7.0's (2026-09-16).** A branch built
   on the 0.5.0 base rewrote `LaunchAgentsDialog` to open one pane per session via
