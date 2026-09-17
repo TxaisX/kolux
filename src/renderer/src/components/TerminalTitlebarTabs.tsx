@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom'
 import type { TerminalTab } from '../../../shared/terminal-tab-types'
 import { useAppStore } from '../store'
 import TabBar from './tab-bar/TabBar'
+import TabBarCreateMenuButton from './tab-bar/TabBarCreateMenuButton'
 import type { TerminalController } from './use-terminal-controller'
 
 const EMPTY_TERMINAL_TABS: TerminalTab[] = []
@@ -55,11 +56,35 @@ export function TerminalTitlebarTabs({
     setTabCustomTitle,
     tabBarOrder,
     titlebarTabsTarget,
+    titlebarNewTabTarget,
     worktreeBrowserTabs,
     worktreeClientHostedBrowserRows,
     worktreeFiles
   } = controller
-  if (!renderedActiveWorktreeId || effectiveActiveLayout || !titlebarTabsTarget) {
+  if (!renderedActiveWorktreeId) {
+    return null
+  }
+  // Why: split workspaces suppress every pane's own "+" (TabGroupPanel), so the titlebar
+  // mounts a standalone create-menu button instead of the full (tab-strip-owning) bar below.
+  if (effectiveActiveLayout) {
+    if (!titlebarNewTabTarget) {
+      return null
+    }
+    return createPortal(
+      <TabBarCreateMenuButton
+        worktreeId={renderedActiveWorktreeId}
+        onNewTerminalTab={() => handleNewTab()}
+        onNewTerminalWithShell={handleNewTab}
+        onNewAgentChoiceTab={handleNewAgentChoiceTab}
+        onNewBrowserTab={handleNewBrowserTab}
+        onNewSimulatorTab={mobileEmulatorEnabled ? handleNewSimulatorTab : undefined}
+        onOpenEntry={handleOpenEntry}
+        onNewFileTab={handleNewFile}
+      />,
+      titlebarNewTabTarget
+    )
+  }
+  if (!titlebarTabsTarget) {
     return null
   }
   return createPortal(

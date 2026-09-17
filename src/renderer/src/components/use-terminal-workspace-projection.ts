@@ -54,6 +54,9 @@ export function useTerminalWorkspaceProjection(controller: TerminalWorkspaceStor
     workspaceSessionReady && hydrationSucceeded
   )
   const titlebarTabsTarget = document.getElementById('titlebar-tabs')
+  // Why: split workspaces suppress the per-pane "+" (TabGroupPanel), so the titlebar mounts its
+  // own always-present create button here instead of inside the (unsplit-only) tab strip portal.
+  const titlebarNewTabTarget = document.getElementById('titlebar-new-tab')
 
   useEffect(() => {
     if (!activeWorktreeId) {
@@ -102,6 +105,7 @@ export function useTerminalWorkspaceProjection(controller: TerminalWorkspaceStor
     foregroundTerminalTabIds,
     tabs,
     titlebarTabsTarget,
+    titlebarNewTabTarget,
     worktreeFiles,
     worktreeBrowserTabs,
     worktreeClientHostedBrowserRows,

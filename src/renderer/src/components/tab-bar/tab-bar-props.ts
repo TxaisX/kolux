@@ -57,4 +57,23 @@ export type TabBarProps = {
   hoveredTabInsertion?: HoveredTabInsertion | null
   /** Floating workspace panels are rounded; skip tab top borders that clash with the curve. */
   tabStripChrome?: 'default' | 'floating-panel'
+  /** Per-pane strips suppress the "+": since 0.8.0 every session gets its own pane, so the titlebar "+" is the only add-tab affordance there. Default false preserves today's bar. */
+  hideCreateMenu?: boolean
 }
+
+/** What the tab strip's "+" trigger + menu needs — enough to mount it without a tab strip around it. */
+export type TabBarCreateMenuProps = Pick<
+  TabBarProps,
+  | 'worktreeId'
+  | 'terminalOnly'
+  | 'showAgentLaunchItems'
+  | 'onOpenEntry'
+  | 'newTabMenuOrder'
+  | 'onNewTerminalTab'
+  | 'onNewTerminalWithShell'
+  | 'onNewBrowserTab'
+  | 'onNewAgentChoiceTab'
+  | 'onNewSimulatorTab'
+  | 'onNewFileTab'
+  | 'onOpenFileTab'
+>

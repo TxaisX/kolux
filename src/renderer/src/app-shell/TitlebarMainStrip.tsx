@@ -57,10 +57,18 @@ export function TitlebarMainStrip({ layout }: { layout: AppChromeLayout }): Reac
       {layout.activeView === 'activity' ? (
         <ActivityTitlebarControls />
       ) : showTabsSlot ? (
-        <div
-          id="titlebar-tabs"
-          className={`flex flex-1 min-w-0 self-stretch${!layout.workspaceChromeActive ? ' invisible pointer-events-none' : ''}`}
-        />
+        <>
+          <div
+            id="titlebar-tabs"
+            className={`flex flex-1 min-w-0 self-stretch${!layout.workspaceChromeActive ? ' invisible pointer-events-none' : ''}`}
+          />
+          {/* Why: a split workspace's own tab strips suppress the "+" (TabGroupPanel), so this
+              slot carries it instead — it stays empty while #titlebar-tabs owns the bar (unsplit). */}
+          <div
+            id="titlebar-new-tab"
+            className={`flex items-center self-stretch shrink-0${!layout.workspaceChromeActive ? ' invisible pointer-events-none' : ''}`}
+          />
+        </>
       ) : null}
       {layout.showTitlebarExpandButton && (
         <Tooltip>

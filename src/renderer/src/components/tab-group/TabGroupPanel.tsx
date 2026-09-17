@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import TabBar from '../tab-bar/TabBar'
 
 import { TabBarQuickCommandsButton } from '../tab-bar/TabBarQuickCommandsButton'
+import TabBarCreateMenuButton from '../tab-bar/TabBarCreateMenuButton'
 import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
 import { useTidyLayoutCommand } from './useTidyLayoutCommand'
 import LayoutPresetsMenu from './LayoutPresetsMenu'
@@ -106,6 +107,16 @@ export default function TabGroupPanel({
     [bodyAnchorName]
   )
 
+  // Why: the strip's create menu and the action cluster's "+" are the same menu, so share one handler set.
+  const createHandlers = {
+    onNewTerminalTab: commands.newTerminalTab,
+    onNewAgentChoiceTab: commands.newAgentChoiceTab,
+    onNewTerminalWithShell: commands.newTerminalWithShell,
+    onNewBrowserTab: commands.newBrowserTab,
+    onNewSimulatorTab: commands.newSimulatorTab,
+    onOpenEntry: commands.openEntry,
+    onNewFileTab: commands.newFileTab
+  }
   const tabBar = (
     <TabBar
       tabs={terminalTabs}
@@ -148,13 +159,7 @@ export default function TabGroupPanel({
           commands.closeToLeft(item.id)
         }
       }}
-      onNewTerminalTab={commands.newTerminalTab}
-      onNewAgentChoiceTab={commands.newAgentChoiceTab}
-      onNewTerminalWithShell={commands.newTerminalWithShell}
-      onNewBrowserTab={commands.newBrowserTab}
-      onNewSimulatorTab={commands.newSimulatorTab}
-      onOpenEntry={commands.openEntry}
-      onNewFileTab={commands.newFileTab}
+      {...createHandlers}
       onSetCustomTitle={commands.setTabCustomTitle}
       onSetTabColor={commands.setTabColor}
       onTogglePaneExpand={commands.toggleTerminalPaneExpand}
@@ -220,6 +225,8 @@ export default function TabGroupPanel({
       }}
       tabBarOrder={tabBarOrder}
       hoveredTabInsertion={hoveredTabInsertion}
+      // Why: since 0.8.0 every session gets its own pane, so the per-pane "+" is redundant — the titlebar "+" (TabBarCreateMenuButton) is the one add-tab affordance now.
+      hideCreateMenu
     />
   )
 
@@ -276,14 +283,15 @@ export default function TabGroupPanel({
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <div className={focusedActionChromeClassName}>
+              {/* Why only isFocused: each acts on the workspace or the whole worktree grid, so the
+                  focused pane owns them — one "+" per workspace, never one beside every tab. */}
               {isFocused ? (
-                <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
-              ) : null}
-              {/* Why only isFocused: "choose how many panes" acts on the whole
-                  worktree grid, so one focused pane's control is enough. */}
-              {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
-              {isFocused ? (
-                <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
+                <>
+                  <TabBarCreateMenuButton worktreeId={worktreeId} {...createHandlers} />
+                  <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
+                  <PaneCountStepper worktreeId={worktreeId} />
+                  <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
+                </>
               ) : null}
               {/* Why only isFocused: Tidy and the presets apply to the panes inside a
                   tab too, which exist with or without split groups. Closing a group

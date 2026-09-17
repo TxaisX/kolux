@@ -587,7 +587,14 @@ describe('TabBar context menu wiring', () => {
       preventDefault: vi.fn()
     })
 
-    const root = findChildrenByType(element, 'div')[0]
+    // Why: the pending-focus cleanup ref now lives on the create-menu's own
+    // `display: contents` wrapper (tab-bar-create-menu.tsx), not the tab strip's outer div.
+    const root = findChildrenByType(element, 'div').find(
+      (node) => (node.props.style as { display?: string } | undefined)?.display === 'contents'
+    )
+    if (!root) {
+      throw new Error('Could not find the create-menu focus-cleanup wrapper')
+    }
     const rootRef = (root.props.ref ?? root.ref) as (node: HTMLDivElement | null) => void
     rootRef(null)
 

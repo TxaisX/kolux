@@ -10,7 +10,7 @@ import {
   isMacOs,
   type resolveWindowsPowerShellImplementationSetting
 } from './use-tab-bar-runtime-model'
-import type { TabBarProps } from './tab-bar-props'
+import type { TabBarCreateMenuProps } from './tab-bar-props'
 import { resolveWindowsShellLaunchTarget } from './windows-shell-launch'
 
 const T = (id: string, fallback: string): string =>
@@ -34,7 +34,7 @@ export function renderTabBarStaticCreateMenu({
   openMarkdownShortcut,
   queueNewActiveTerminalFocusAfterNewTabMenuClose
 }: {
-  props: TabBarProps
+  props: TabBarCreateMenuProps
   terminalOnly: boolean
   mobileEmulatorEnabled: boolean
   managedBrowserCreationEnabled: boolean
