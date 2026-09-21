@@ -25,6 +25,7 @@ const fetchSettings = vi.fn(async () => {})
 const reauthenticate = vi.fn(async (_args: unknown) => codexSnapshot(null))
 
 let storeSettings: GlobalSettings
+let inactiveUsage: ProviderRateLimits
 
 function codexAccount(id: string, updatedAt: number): CodexManagedAccountSummary {
   return {
@@ -158,7 +159,7 @@ vi.mock('../../store', () => {
     fetchInactiveCodexAccountUsage,
     rateLimits: {
       inactiveCodexAccounts: [
-        { accountId: 'account-2', isFetching: false, rateLimits: unavailableUsage }
+        { accountId: 'account-2', isFetching: false, rateLimits: inactiveUsage }
       ],
       codexTarget: { runtime: 'host', wslDistro: null }
     }
@@ -196,6 +197,7 @@ describe('status bar Codex sign-in action', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     storeSettings = settingsWithActive(null)
+    inactiveUsage = unavailableUsage
     Object.defineProperty(window, 'api', {
       configurable: true,
       writable: true,
@@ -205,6 +207,54 @@ describe('status bar Codex sign-in action', () => {
 
   afterEach(() => {
     cleanup()
+  })
+
+  it('offers a quota transition without switching until selected, then uses the restart workflow', async () => {
+    storeSettings = settingsWithActive('account-1')
+    const now = Date.now()
+    const window = {
+      usedPercent: 20,
+      windowMinutes: 300,
+      resetsAt: now + 60_000,
+      resetDescription: null
+    }
+    inactiveUsage = {
+      provider: 'codex',
+      status: 'ok',
+      error: null,
+      updatedAt: now,
+      session: window,
+      weekly: { ...window, windowMinutes: 10080 }
+    }
+    const { selectCodexProviderAccount } =
+      await import('@/runtime/runtime-provider-accounts-client')
+    vi.mocked(selectCodexProviderAccount).mockResolvedValueOnce(codexSnapshot('account-2'))
+    const { CodexSwitcherMenu } = await import('./CodexSwitcherMenu')
+    render(
+      <CodexSwitcherMenu
+        codex={{ ...inactiveUsage, session: { ...window, usedPercent: 100 } }}
+        compact={false}
+        iconOnly={false}
+      />
+    )
+
+    expect(selectCodexProviderAccount).not.toHaveBeenCalled()
+    expect(markLiveCodexSessionsForRestart).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Switch to account-2@example.com — quota available'))
+    await waitFor(() =>
+      expect(markLiveCodexSessionsForRestart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          previousAccountId: 'account-1',
+          nextAccountId: 'account-2',
+          target: { runtime: 'host', wslDistro: null }
+        })
+      )
+    )
+    expect(selectCodexProviderAccount).toHaveBeenCalledWith(storeSettings, {
+      accountId: 'account-2',
+      runtime: 'host',
+      wslDistro: null
+    })
   })
 
   it.each([null, 'Enterprise'])(

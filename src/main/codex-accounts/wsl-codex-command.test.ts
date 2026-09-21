@@ -26,7 +26,8 @@ describe('WSL Codex commands', () => {
 
     expect(command).toContain('export CODEX_HOME=')
     expect(command).toContain('/home/alice/managed-home')
-    expect(command).toContain('exec "$resolved" login')
+    expect(command).toContain('exec "$resolved"')
+    expect(command).toContain('cli_auth_credentials_store="file"')
   })
 
   it('quotes an explicit read-only app-server contract without changing the default', () => {

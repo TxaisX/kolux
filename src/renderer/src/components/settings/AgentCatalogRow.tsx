@@ -9,6 +9,7 @@ import { SettingsBadge, SettingsSegmentedControl } from './SettingsFormControls'
 import type { AgentSessionSourceHomeControl } from './codex-session-source-home-control'
 import { AgentSessionSourceHomeInput } from './codex-session-source-home-control'
 import { stringifyAgentDefaultEnvDraft } from './agent-default-env-draft'
+import { AgentSignInButton } from './AgentSignInButton'
 import {
   AgentCommandOverrideInput,
   AgentDefaultArgsInput,
@@ -199,6 +200,12 @@ export function AgentCatalogRow({
           </div>
         </div>
       </div>
+
+      {isDetected && isEnabled && (
+        <div className="mt-2 pl-10">
+          <AgentSignInButton agent={agentId} label={label} homepageUrl={homepageUrl} />
+        </div>
+      )}
 
       {isDetected && cmdOpen && (
         <div className="mt-3 pl-10">

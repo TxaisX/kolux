@@ -1,4 +1,5 @@
 import { buildPosixCommandPathLookupScript } from '../../shared/posix-command-path-lookup'
+import { CODEX_ACCOUNT_LOGIN_ARGS } from './codex-account-login-args'
 import {
   buildWslCapturedLoginShellCommand,
   buildWslExecArgs,
@@ -71,7 +72,7 @@ export function buildWslCodexLoginArgs(distro: string, linuxHomePath: string): s
     '  exit 127',
     'fi',
     `export CODEX_HOME=${quotePosixShell(linuxHomePath)}`,
-    'exec "$resolved" login'
+    `exec "$resolved" ${CODEX_ACCOUNT_LOGIN_ARGS.map(quotePosixShell).join(' ')}`
   ].join('\n')
   return buildWslCodexShellArgs(distro, command)
 }

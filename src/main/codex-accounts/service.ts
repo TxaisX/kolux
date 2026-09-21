@@ -1,4 +1,5 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
+import { spawnProcess } from '../../shared/child-process/run-process'
 import type { WindowsHostInteractiveLoginSpawn } from '../../shared/windows-interactive-login-spawn'
 import type {
   CodexManagedAccount,
@@ -237,10 +238,10 @@ export class CodexAccountService {
     await runCodexLoginSession(managedHomePath, {
       wslCommand: 'wsl.exe',
       spawn: ({ command, args, env, stdio }) =>
-        spawn(command, args, {
+        spawnProcess({
+          program: command,
+          args,
           stdio,
-          // Why: hide the outer wrapper only. A dedicated login console stays visible.
-          windowsHide: true,
           env
         }),
       killProcessTree: killLoginProcessTree

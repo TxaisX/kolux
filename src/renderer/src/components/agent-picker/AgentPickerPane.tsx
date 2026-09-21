@@ -1,5 +1,6 @@
 import React from 'react'
-import { SquareTerminal } from 'lucide-react'
+import { RefreshCw, SquareTerminal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { AgentIcon, getAgentLabel } from '@/lib/agent-catalog'
 import { useAppStore } from '@/store'
 import { useAgentDetectionTargetForWorktree } from '@/hooks/useAgentDetectionTarget'
@@ -35,14 +36,12 @@ export function AgentPickerPane({
   onPick
 }: AgentPickerPaneProps): React.JSX.Element {
   const agentDetectionTarget = useAgentDetectionTargetForWorktree(worktreeId)
-  const { detectedIds } = useDetectedAgents(agentDetectionTarget)
+  const { detectedIds, isLoading, isRefreshing, refresh } = useDetectedAgents(agentDetectionTarget)
   const defaultAgent = useAppStore((s) => s.settings?.defaultTuiAgent)
   const disabledAgents = useAppStore(
     (s) => s.settings?.disabledTuiAgents ?? DEFAULT_DISABLED_TUI_AGENTS
   )
-  const agents = detectedIds
-    ? getAgentPickerOptions(detectedIds, defaultAgent, disabledAgents)
-    : []
+  const agents = detectedIds ? getAgentPickerOptions(detectedIds, defaultAgent, disabledAgents) : []
 
   return (
     <div className="scrollbar-sleek flex size-full flex-col items-center justify-center gap-6 overflow-y-auto p-8">
@@ -50,6 +49,18 @@ export function AgentPickerPane({
         {T('heading', 'Start vibe coding in {{value0}}', { value0: workspaceName })}
       </h2>
       <div className="flex w-full max-w-lg flex-col gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="self-end"
+          disabled={isLoading || isRefreshing}
+          aria-busy={isRefreshing}
+          onClick={() => void refresh()}
+        >
+          <RefreshCw className="size-3.5" aria-hidden="true" />
+          {T('refreshAgents', 'Refresh agents')}
+        </Button>
         {agents.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground">
             {detectedIds && detectedIds.length > 0

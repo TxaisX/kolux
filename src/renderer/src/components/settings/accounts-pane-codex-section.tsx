@@ -9,6 +9,7 @@ import { SearchableSetting } from './SearchableSetting'
 import { getAccountsCodexSearchEntries } from './accounts-search'
 import { getCodexSystemDefaultSubtitle } from './accounts-pane-runtime'
 import type { AccountsPaneSectionModel } from './accounts-pane-types'
+import { AccountSignInNotice } from './AccountSignInNotice'
 import { renderCodexAccountRow } from './accounts-pane-codex-account-row'
 
 export function renderCodexAccountsSection(model: AccountsPaneSectionModel): React.JSX.Element {
@@ -182,6 +183,11 @@ export function renderCodexAccountsSection(model: AccountsPaneSectionModel): Rea
           </Button>
         </div>
         {remoteAccountScopeNotice}
+        {!isRemoteAccountScope && (
+          <AccountSignInNotice
+            pending={codexAction === 'adding' || codexAction.startsWith('reauth:')}
+          />
+        )}
 
         <div className="space-y-2">
           <button

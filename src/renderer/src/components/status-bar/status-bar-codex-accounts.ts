@@ -179,5 +179,6 @@ export function resolveCodexStatusAccountState(
   if (settings?.activeRuntimeEnvironmentId?.trim()) {
     return runtimeState
   }
-  return getCodexStatusAccountsFromSettings(settings) ?? runtimeState
+  const localState = getCodexStatusAccountsFromSettings(settings)
+  return localState ? { ...localState, systemDefault: runtimeState.systemDefault } : runtimeState
 }

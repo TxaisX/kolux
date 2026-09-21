@@ -27,6 +27,7 @@ import {
 } from './InlineProviderUsage'
 import { ProviderDetailsMenu } from './ProviderDetailsMenu'
 import { useCodexSwitcherController } from './use-codex-switcher-controller'
+import { CodexAccountTransition } from './CodexAccountTransition'
 
 export function CodexSwitcherMenu({
   codex,
@@ -42,6 +43,8 @@ export function CodexSwitcherMenu({
   triggerContent?: React.ReactNode
 }): React.JSX.Element {
   const {
+    accountState,
+    fetchInactiveCodexAccountUsage,
     accountsExpanded,
     activeTarget,
     canRedeemReset,
@@ -183,6 +186,17 @@ export function CodexSwitcherMenu({
       <DropdownMenuLabel>
         {translate('auto.components.status.bar.StatusBar.7657e3db9c', 'Codex Account')}
       </DropdownMenuLabel>
+      <CodexAccountTransition
+        codex={codex}
+        accounts={accountState}
+        group={selectedGroup}
+        usage={inactiveCodexAccounts}
+        remoteOwned={hasActiveRuntimeEnvironment}
+        open={open}
+        busy={isSwitching || reauthenticatingAccountId !== null}
+        refreshUsage={fetchInactiveCodexAccountUsage}
+        selectAccount={handleSelectAccount}
+      />
       <DropdownMenuItem
         onSelect={(event) => {
           event.preventDefault()

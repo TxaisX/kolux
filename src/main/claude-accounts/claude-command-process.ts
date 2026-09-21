@@ -1,9 +1,5 @@
 import { spawnProcess } from '../../shared/child-process/run-process'
 import { withCliRuntimeOnPath } from '../../shared/node-cli-command-resolution'
-import {
-  buildWindowsHostInteractiveLoginSpawn,
-  type WindowsHostInteractiveLoginSpawn
-} from '../../shared/windows-interactive-login-spawn'
 import { resolveClaudeCommand } from '../codex-cli/command'
 import { buildWindowsCommandInvocation } from './windows-command-invocation'
 import { terminateClaudeProcess } from './claude-login-process-termination'
@@ -35,27 +31,12 @@ export function runClaudeCommandProcess(
   options?: ClaudeCommandOptions
 ): Promise<string> {
   return new Promise((resolvePromise, rejectPromise) => {
-    const isWindowsHostInteractiveLogin =
-      process.platform === 'win32' &&
-      configDir.linuxPath === null &&
-      configDir.wslDistro === null &&
-      args[0] === 'auth' &&
-      args[1] === 'login'
+    const isAuthLogin = args[0] === 'auth' && args[1] === 'login'
     // Why lazy: the WSL branch runs `claude` inside the distro, so resolving a
     // host binary there would be wasted filesystem probing for a path never used.
     let cachedHostClaudeCommand: string | null = null
     const hostClaudeCommand = (): string => (cachedHostClaudeCommand ??= resolveClaudeCommand())
-    // The native login needs its own visible console, so it runs behind a
-    // start /wait wrapper that relays the real login PID back for termination.
-    const interactiveLogin = isWindowsHostInteractiveLogin
-      ? buildWindowsHostInteractiveLoginSpawn(hostClaudeCommand(), args)
-      : null
-    const spawnConfig = resolveClaudeInvocation(
-      args,
-      configDir,
-      interactiveLogin,
-      hostClaudeCommand
-    )
+    const spawnConfig = resolveClaudeInvocation(args, configDir, hostClaudeCommand)
     const child = spawnProcess({
       program: spawnConfig.command,
       args: spawnConfig.args,
@@ -63,15 +44,13 @@ export function runClaudeCommandProcess(
       // Why: Claude's browser auth can bind its callback lifetime to stdin.
       // Keeping stdin open prevents hidden managed-login runs from tearing down
       // the local callback server before the browser returns.
-      stdio: interactiveLogin
-        ? interactiveLogin.stdio
-        : [options?.keepStdinOpen ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      stdio: [options?.keepStdinOpen ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       detached: process.platform !== 'win32',
       windowsVerbatimArguments: spawnConfig.windowsVerbatimArguments
     })
     const stdout = child.stdout
     const stderr = child.stderr
-    if (!interactiveLogin && (!stdout || !stderr)) {
+    if (!stdout || !stderr) {
       if (options?.keepStdinOpen) {
         child.stdin?.destroy()
       }
@@ -101,7 +80,6 @@ export function runClaudeCommandProcess(
       child.off('error', onError)
       child.off(completionEvent, onDone)
       options?.signal?.removeEventListener('abort', onAbort)
-      interactiveLogin?.cleanup?.()
       if (options?.keepStdinOpen) {
         child.stdin?.destroy()
       }
@@ -123,7 +101,7 @@ export function runClaudeCommandProcess(
         return
       }
       terminationPending = true
-      terminateClaudeProcess(child, interactiveLogin, afterKill)
+      terminateClaudeProcess(child, null, afterKill)
     }
     const appendOutput = (chunk: Buffer): void => {
       output = `${output}${chunk.toString()}`
@@ -151,6 +129,12 @@ export function runClaudeCommandProcess(
       settle(() => {
         if (code === 0 || options?.allowFailure) {
           resolvePromise(output)
+          return
+        }
+        if (isAuthLogin) {
+          rejectPromise(
+            new Error('Claude sign-in did not complete. Please try again in your browser.')
+          )
           return
         }
         const trimmedOutput = output.trim()
@@ -199,13 +183,14 @@ function claudeConfigDirEnv(configDir: string): NodeJS.ProcessEnv {
 function resolveClaudeInvocation(
   args: string[],
   configDir: ClaudeCommandConfig,
-  interactiveLogin: WindowsHostInteractiveLoginSpawn | null,
   hostClaudeCommand: () => string
 ): ClaudeSpawnConfig {
-  const spawnConfig = interactiveLogin
+  const isNativeLogin =
+    !configDir.linuxPath && !configDir.wslDistro && args[0] === 'auth' && args[1] === 'login'
+  const spawnConfig = isNativeLogin
     ? {
-        command: interactiveLogin.command,
-        args: interactiveLogin.args,
+        command: hostClaudeCommand(),
+        args,
         env: withCliRuntimeOnPath(hostClaudeCommand(), {
           ...process.env,
           ...claudeConfigDirEnv(configDir.windowsPath)

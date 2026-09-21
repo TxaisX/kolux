@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Minus, Plus, Rocket } from 'lucide-react'
+import { Minus, Plus, RefreshCw, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -59,7 +59,7 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
   const settings = useAppStore((s) => s.settings)
   const detectionTarget = useAgentDetectionTargetForWorktree(activeWorktreeId)
-  const { detectedIds } = useDetectedAgents(detectionTarget)
+  const { detectedIds, isLoading, isRefreshing, refresh } = useDetectedAgents(detectionTarget)
 
   // Why: sessions land as panes in the workspace the user is looking at; there is no project picker.
   const workspace = useMemo(
@@ -160,7 +160,20 @@ function LaunchAgentsBody({ onClose }: { onClose: () => void }): React.JSX.Eleme
       </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">{T('agents', 'Agents')}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium">{T('agents', 'Agents')}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            disabled={isLoading || isRefreshing}
+            aria-busy={isRefreshing}
+            onClick={() => void refresh()}
+          >
+            <RefreshCw className="size-3.5" aria-hidden="true" />
+            {T('refreshAgents', 'Refresh agents')}
+          </Button>
+        </div>
         <div className="scrollbar-sleek max-h-56 overflow-y-auto rounded-md border border-border">
           {agents.length === 0 ? (
             <p className="p-3 text-xs text-muted-foreground">
