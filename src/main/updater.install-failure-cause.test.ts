@@ -42,7 +42,7 @@ const {
     eventHandlers.clear()
     on.mockClear()
     autoUpdaterMock.checkForUpdates.mockReset()
-    autoUpdaterMock.downloadUpdate.mockReset()
+    autoUpdaterMock.downloadUpdate.mockReset().mockResolvedValue([])
     autoUpdaterMock.quitAndInstall.mockReset()
     autoUpdaterMock.setFeedURL.mockClear()
   }
@@ -82,7 +82,7 @@ vi.mock('electron', () => ({
   autoUpdater: nativeUpdaterMock,
   powerMonitor: { on: vi.fn() },
   shell: { openExternal: vi.fn() },
-  net: { fetch: vi.fn() }
+  net: { fetch: vi.fn(), isOnline: () => true }
 }))
 
 vi.mock('electron-updater', () => ({ autoUpdater: autoUpdaterMock }))

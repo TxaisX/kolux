@@ -64,7 +64,8 @@ describe('buildLaunchAgentsRequests', () => {
     // Why: the launcher shell-quotes each argument, so match across the quoting.
     expect(requests[0]?.startupPlan?.launchCommand).toMatch(/--model\W+opus\b/)
     expect(requests[1]?.startupPlan?.launchCommand).toMatch(/--model\W+haiku\b/)
-    expect(requests[2]?.startupPlan?.launchCommand).not.toContain('--model')
+    // Why: an unpicked Claude seat takes the catalog default (Opus), not the bare CLI's.
+    expect(requests[2]?.startupPlan?.launchCommand).toMatch(/--model\W+opus\b/)
   })
 
   it('carries the shared prompt onto every seat', () => {

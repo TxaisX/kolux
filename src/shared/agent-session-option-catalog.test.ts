@@ -44,7 +44,7 @@ describe('agent session option catalog', () => {
       { id: 'sonnet', label: 'Sonnet' },
       { id: 'haiku', label: 'Haiku' }
     ])
-    expect(catalog.models.find((model) => model.isDefault)?.id).toBe('sonnet')
+    expect(catalog.models.find((model) => model.isDefault)?.id).toBe('opus')
   })
 
   it('parses Claude list_models discovery into catalog models with options', () => {
@@ -112,13 +112,13 @@ describe('agent session option catalog', () => {
     const catalog = getAgentSessionOptionCatalog('claude')!
     const merged = mergeCatalogModels(catalog.models, [
       { id: 'opus[1m]', label: 'Opus (1M context)', options: [] },
-      { id: 'sonnet', label: 'Sonnet', description: 'Sonnet 5 · Efficient', options: [] }
+      { id: 'opus', label: 'Opus', description: 'Opus 5 · Everyday', options: [] }
     ])
     expect(merged.map(({ id }) => id)).toEqual(['fable', 'opus', 'sonnet', 'haiku', 'opus[1m]'])
-    const sonnet = merged.find((model) => model.id === 'sonnet')!
-    expect(sonnet.description).toBe('Sonnet 5 · Efficient')
-    expect(sonnet.isDefault).toBe(true)
-    expect(sonnet.options.map(({ id }) => id)).toEqual(['effort'])
+    const opus = merged.find((model) => model.id === 'opus')!
+    expect(opus.description).toBe('Opus 5 · Everyday')
+    expect(opus.isDefault).toBe(true)
+    expect(opus.options.map(({ id }) => id)).toEqual(['effort', 'fastMode'])
   })
 
   it('parses Cursor model discovery without treating headings as models', () => {
@@ -154,6 +154,48 @@ describe('agent session option catalog', () => {
     ).toMatchObject({
       args: ['--model', 'opus', '--effort', 'future-effort'],
       appliedValues: { model: 'opus', effort: 'future-effort' }
+    })
+  })
+
+  it('defaults an unpicked Claude launch to opus at high effort', () => {
+    expect(resolveAgentSessionOptionLaunch('claude', undefined)).toEqual({
+      args: ['--model', 'opus', '--effort', 'high'],
+      appliedValues: { model: 'opus', effort: 'high' }
+    })
+    expect(resolveAgentSessionOptionLaunch('claude', {})).toEqual({
+      args: ['--model', 'opus', '--effort', 'high'],
+      appliedValues: { model: 'opus', effort: 'high' }
+    })
+  })
+
+  it('suppresses the default Claude model when agent args already carry one', () => {
+    // The default model is dropped outright; the default effort still emits (the
+    // user's own args govern the model), but isn't recorded as applied since the
+    // model it would apply under is no longer the launched one.
+    expect(resolveAgentSessionOptionLaunch('claude', undefined, ['--model', 'sonnet'])).toEqual({
+      args: ['--effort', 'high'],
+      appliedValues: {}
+    })
+  })
+
+  it('suppresses only the default Claude effort when agent args already carry one', () => {
+    expect(resolveAgentSessionOptionLaunch('claude', undefined, ['--effort', 'max'])).toEqual({
+      args: ['--model', 'opus'],
+      appliedValues: { model: 'opus' }
+    })
+  })
+
+  it('never defaults a model for a catalog that has not opted in', () => {
+    expect(resolveAgentSessionOptionLaunch('codex', undefined)).toEqual({
+      args: [],
+      appliedValues: {}
+    })
+  })
+
+  it('leaves an explicit worker pick untouched even with launchDefaultModel enabled', () => {
+    expect(resolveAgentSessionOptionLaunch('claude', { model: 'sonnet' }, [], false)).toEqual({
+      args: ['--model', 'sonnet'],
+      appliedValues: { model: 'sonnet' }
     })
   })
 

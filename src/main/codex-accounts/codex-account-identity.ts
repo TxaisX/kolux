@@ -38,7 +38,9 @@ export class CodexAccountIdentity {
       // a generic failure is what lets the add path's rollback delete a home
       // holding freshly authenticated bytes.
       if (isDefinitiveAbsence(error)) {
-        throw error
+        throw new Error(
+          'Codex account credentials are missing. Finish authorization in your browser, then try again.'
+        )
       }
       throw new ManagedCodexHomeTemporarilyUnavailableError(undefined, { cause: error })
     }

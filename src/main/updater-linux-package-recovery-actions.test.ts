@@ -56,7 +56,7 @@ vi.mock('electron', () => ({
   autoUpdater: { on: vi.fn() },
   powerMonitor: { on: vi.fn() },
   shell: { showItemInFolder: showItemInFolderMock },
-  net: { fetch: vi.fn() }
+  net: { fetch: vi.fn(), isOnline: () => true }
 }))
 
 vi.mock('electron-updater', () => ({ autoUpdater: autoUpdaterMock }))

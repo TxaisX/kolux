@@ -1,12 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { WindowsHostInteractiveLoginSpawn } from '../../shared/windows-interactive-login-spawn'
-import { buildWindowsHostInteractiveLoginSpawn } from '../../shared/windows-interactive-login-spawn'
 import { withCliRuntimeOnPath } from '../../shared/node-cli-command-resolution'
 import { parseWslUncPath } from '../../shared/wsl-paths'
 import { resolveCodexCommand } from '../codex-cli/command'
-import { getSpawnArgsForWindows } from '../win32-utils'
 import { runWslProcess } from '../wsl/wsl-runner'
+import { readCodexAuthIdentity } from './codex-auth-identity'
+import { ManagedCodexHomeTemporarilyUnavailableError } from './host-codex-managed-home-ownership'
+import { CODEX_ACCOUNT_LOGIN_ARGS } from './codex-account-login-args'
 import {
   buildWslCodexAvailabilityScript,
   buildWslCodexLoginArgs,
@@ -73,7 +74,13 @@ function loginAuthChanged(
 ): boolean {
   // Why: metadata-only touches can happen before OAuth finishes. Requiring new
   // credential bytes prevents reauthentication from being killed prematurely.
-  return initial !== undefined && current !== undefined && current !== null && current !== initial
+  return (
+    initial !== undefined &&
+    current !== undefined &&
+    current !== null &&
+    current !== initial &&
+    Boolean(readCodexAuthIdentity(current)?.email)
+  )
 }
 
 export async function runCodexLoginSession(
@@ -195,26 +202,34 @@ export async function runCodexLoginSession(
 
     const onClose = (code: number | null): void => {
       settle(() => {
-        // Why: the post-auth tree kill is a success path — auth.json already
-        // exists and codex only failed to exit on its own, so the forced
-        // non-zero exit must not surface as a login failure.
-        // Why: the kill only arms after the watcher observed new credential
-        // bytes, so an unreadable auth.json here is a lock, not a failed login.
-        // Only a definitive absence may revoke that verdict — reading a lock as
-        // failure sends the caller's rollback at a home that just authenticated.
-        if (
-          code === 0 ||
-          (loginTreeKilledAfterAuth && readLoginAuthSnapshot(authJsonPath) !== null)
-        ) {
+        const authSnapshot = readLoginAuthSnapshot(authJsonPath)
+        // A scanner lock cannot revoke credentials already observed before teardown.
+        if (loginTreeKilledAfterAuth && authSnapshot === undefined) {
           resolvePromise()
           return
         }
-        const trimmedOutput = output.trim()
+        if (authSnapshot === undefined) {
+          rejectPromise(new ManagedCodexHomeTemporarilyUnavailableError())
+          return
+        }
+        if (code === 0 || loginTreeKilledAfterAuth) {
+          if (authSnapshot && readCodexAuthIdentity(authSnapshot)?.email) {
+            resolvePromise()
+            return
+          }
+          rejectPromise(
+            new Error(
+              'Codex sign-in did not save account credentials. Finish authorization in your browser, then try adding the account again.'
+            )
+          )
+          return
+        }
+        // CLI output may contain OAuth URLs, device codes, or tokens.
         rejectPromise(
           new Error(
-            trimmedOutput
-              ? `Codex login failed: ${trimmedOutput}`
-              : `Codex login exited with code ${code ?? 'unknown'}.`
+            output.toLowerCase().includes('address already in use')
+              ? 'Another Codex sign-in is already using the browser callback. Finish that sign-in, then try again.'
+              : `Codex login exited with code ${code ?? 'unknown'}. Finish authorization in your browser and try again.`
           )
         )
       })
@@ -235,21 +250,12 @@ function createHostLoginSpawn(managedHomePath: string): {
   interactiveLogin: WindowsHostInteractiveLoginSpawn | null
 } {
   const codexCommand = resolveCodexCommand()
-  // Why: Windows host login needs a real console; otherwise inherit/hide
-  // leaves the child unable to read a paste-code / device-auth prompt.
-  const interactiveLogin =
-    process.platform === 'win32'
-      ? buildWindowsHostInteractiveLoginSpawn(codexCommand, ['login'])
-      : null
-  const { spawnCmd, spawnArgs } = interactiveLogin
-    ? { spawnCmd: interactiveLogin.command, spawnArgs: interactiveLogin.args }
-    : getSpawnArgsForWindows(codexCommand, ['login'])
   return {
-    command: spawnCmd,
-    args: spawnArgs,
+    command: codexCommand,
+    args: [...CODEX_ACCOUNT_LOGIN_ARGS],
     env: withCliRuntimeOnPath(codexCommand, { ...process.env, CODEX_HOME: managedHomePath }),
     codexCommand,
-    interactiveLogin
+    interactiveLogin: null
   }
 }
 

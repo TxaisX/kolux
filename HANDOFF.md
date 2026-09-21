@@ -3,7 +3,16 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-17.
+Last updated: 2026-09-20.
+
+## Current pass: Codex access, account authorization, and automatic updates
+
+- Codex is already a supported detected agent and launches into the active workspace panes. The launcher and agent-picker now expose a target-aware `Refresh agents` action so a newly installed Codex CLI becomes available without restarting Nightshift.
+- Managed Codex login now forces file-backed credentials per account (`cli_auth_credentials_store="file"`), uses the provider's browser authorization flow, waits for a usable identity in `auth.json`, and rejects an empty/missing credential instead of saving a broken account. Claude managed login uses the same piped browser-login approach while preserving its existing credential capture.
+- Settings > Agents now provides provider-aware sign-in guidance. Codex and Claude account panels explain that `Add Account` opens browser authorization and only save after successful authorization. The Codex status-bar switcher recommends another account only when its cached usage is fresh, successful, host/runtime-matched, and tied to a different identity.
+- The updater checks every 15 minutes while packaged and online, retries after connectivity returns, keeps available/downloading/downloaded state intact, and the release workflow keeps a GitHub release draft until the installer, manifest, and blockmap are present. The existing sidebar update control remains the bottom-left download/restart entry point.
+- Merged into `main` on 2026-09-20 from `ns/sessions-as-panes` (a branch cut from 0.5.0). Its 0.5.0-base launcher rewrite (`3d23a6ea`, `launch-agents-into-workspace.ts`, the `launch-agent-counts.ts` rename) was dropped again, same as on 2026-09-16; only the `Refresh agents` button was ported onto 0.7.0's New session launcher.
+- Verified 2026-09-20 before commit: `pnpm tc` clean, oxlint clean on every changed file, and all 23 changed/new test files pass (385 tests). Two real bugs fixed at that point: `updater-events.ts` kept its own 24-hour copy of the check interval, so after the first successful check the next one waited a day instead of 15 minutes (now imports the shared constants); and the new "no background check while an update is available" guard also blocked the hourly fallback retry that moves a user off a stand-in (prerelease or last-good) release, so timer retries now pass `allowWhileAvailable`. Still red and pre-existing: `updater-changelog` and `updater-nudge` fetch tests (7 + 3) expect data that `FORK_NO_PHONE_HOME` has disabled since the fork; the account suite's Windows/WSL fixture and symlink reds. Not verified: the draft-then-publish release workflow (needs a real tag push) and a real browser sign-in in an installed build.
 
 ## What this is
 

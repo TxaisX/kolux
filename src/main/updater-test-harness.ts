@@ -39,7 +39,7 @@ type UpdaterModuleFactories = {
     autoUpdater: { on: UpdaterSpy }
     powerMonitor: { on: UpdaterSpy }
     shell: { showItemInFolder: UpdaterSpy }
-    net: { fetch: UpdaterSpy }
+    net: { fetch: UpdaterSpy; isOnline: Mock<() => boolean> }
   }
   electronUpdater: () => { autoUpdater: AutoUpdaterMock }
   electronUpdaterLoader: () => { loadElectronAutoUpdater: () => AutoUpdaterMock }
@@ -73,6 +73,7 @@ export type UpdaterMocks = {
   isMock: { dev: boolean }
   killAllPtyMock: UpdaterSpy
   powerMonitorOnMock: UpdaterSpy
+  netIsOnlineMock: Mock<() => boolean>
   getLinuxPackageTypeMock: Mock<() => LinuxPackageType>
   getLinuxRootPackageTypeMock: Mock<() => 'deb' | 'rpm' | null>
   isExternallyManagedLinuxInstallMock: Mock<() => boolean>
@@ -212,10 +213,10 @@ export function createUpdaterMocks(): UpdaterMocks {
   const isMock = { dev: false }
   const killAllPtyMock = vi.fn()
   const powerMonitorOnMock = vi.fn()
+  const netIsOnlineMock = vi.fn(() => true)
   const getLinuxRootPackageTypeMock = vi.fn<() => 'deb' | 'rpm' | null>(() => null)
-  const getLinuxPackageTypeMock = vi.fn<() => LinuxPackageType>(() => {
-    return getLinuxRootPackageTypeMock() ?? 'non-root'
-  })
+  const packageTypeFromRoot = (): LinuxPackageType => getLinuxRootPackageTypeMock() ?? 'non-root'
+  const getLinuxPackageTypeMock = vi.fn<() => LinuxPackageType>(packageTypeFromRoot)
   const isExternallyManagedLinuxInstallMock = vi.fn<() => boolean>(() => false)
   const recordUpdaterLifecycleMock = vi.fn()
   const fetchChangelogMock = vi.fn()
@@ -236,7 +237,7 @@ export function createUpdaterMocks(): UpdaterMocks {
       autoUpdater: nativeUpdaterMock,
       powerMonitor: { on: powerMonitorOnMock },
       shell: { showItemInFolder: vi.fn() },
-      net: { fetch: vi.fn() }
+      net: { fetch: vi.fn(), isOnline: netIsOnlineMock }
     }),
     electronUpdater: () => ({ autoUpdater: autoUpdaterMock }),
     electronUpdaterLoader: () => ({ loadElectronAutoUpdater: loadGenerationScopedAutoUpdater }),
@@ -279,10 +280,8 @@ export function createUpdaterMocks(): UpdaterMocks {
     vi.resetModules()
     autoUpdaterMock.reset()
     nativeUpdaterMock.on.mockReset()
-    browserWindowMock.getAllWindows.mockReset()
-    browserWindowMock.getAllWindows.mockReturnValue([])
-    appMock.getVersion.mockReset()
-    appMock.getVersion.mockReturnValue('1.0.51')
+    browserWindowMock.getAllWindows.mockReset().mockReturnValue([])
+    appMock.getVersion.mockReset().mockReturnValue('1.0.51')
     appMock.quit.mockReset()
     appMock.isPackaged = true
     isMock.dev = false
@@ -290,10 +289,9 @@ export function createUpdaterMocks(): UpdaterMocks {
     armExitWatchdogMock.mockReset()
     disarmExitWatchdogMock.mockReset()
     powerMonitorOnMock.mockReset()
+    netIsOnlineMock.mockReset().mockReturnValue(true)
     getLinuxRootPackageTypeMock.mockReset().mockReturnValue(null)
-    getLinuxPackageTypeMock.mockReset().mockImplementation(() => {
-      return getLinuxRootPackageTypeMock() ?? 'non-root'
-    })
+    getLinuxPackageTypeMock.mockReset().mockImplementation(packageTypeFromRoot)
     isExternallyManagedLinuxInstallMock.mockReset().mockReturnValue(false)
     recordUpdaterLifecycleMock.mockReset()
     fetchNudgeMock.mockReset().mockResolvedValue(null)
@@ -325,6 +323,7 @@ export function createUpdaterMocks(): UpdaterMocks {
     isMock,
     killAllPtyMock,
     powerMonitorOnMock,
+    netIsOnlineMock,
     getLinuxPackageTypeMock,
     getLinuxRootPackageTypeMock,
     isExternallyManagedLinuxInstallMock,

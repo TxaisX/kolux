@@ -35,10 +35,22 @@ export function resolveAgentSessionOptionLaunch(
   includeCatalogDefaults = true
 ): ResolvedSessionOptionLaunch {
   const catalog = getAgentSessionOptionCatalog(agent)
-  const modelId = typeof values?.model === 'string' ? values.model : null
-  if (!catalog || !values || !modelId) {
+  if (!catalog) {
     return { args: [], appliedValues: {} }
   }
+  const explicitModelId = typeof values?.model === 'string' ? values.model : null
+  // Why: an unpicked launch still adopts the catalog's isDefault model (and its
+  // options' defaults) when the catalog opts in, so Claude always launches at
+  // its best model/effort instead of the bare CLI default.
+  const defaultModelId =
+    !explicitModelId && includeCatalogDefaults && catalog.launchDefaultModel
+      ? catalog.models.find((candidate) => candidate.isDefault)?.id
+      : undefined
+  const modelId = explicitModelId ?? defaultModelId ?? null
+  if (!modelId) {
+    return { args: [], appliedValues: {} }
+  }
+  const sourceValues = values ?? {}
 
   const model = findCatalogModel(catalog, modelId)
   const appliedValues: Record<string, SessionOptionValue> = {}
@@ -46,7 +58,7 @@ export function resolveAgentSessionOptionLaunch(
   const modelOptions = model?.options ?? catalog.unknownModelOptions ?? []
   const modelValues = Object.fromEntries(
     modelOptions.flatMap((option) => {
-      const explicitValue = values[option.id]
+      const explicitValue = sourceValues[option.id]
       if (explicitValue !== undefined) {
         if (
           !model &&
@@ -64,9 +76,17 @@ export function resolveAgentSessionOptionLaunch(
     ? catalog.composeModelValue(modelId, modelValues)
     : modelId
   const modelOverridden = catalog.modelApply.agentArgsOverride?.(trailingAgentArgs) === true
+  // Why: a picker/worker choice always wins over conflicting agent args (they land
+  // later on the line, so last-flag-wins still resolves to the user's own value).
+  // A launch *default* has no such backstop — the user's flag may sit earlier on
+  // the line (e.g. inside a command override) — so a defaulted, overridden value
+  // is dropped outright instead of merely left unrecorded.
+  const modelWasDefaulted = !explicitModelId
 
   if (catalog.modelApply.launchArgs) {
-    args.push(...catalog.modelApply.launchArgs(composedModelId))
+    if (!(modelWasDefaulted && modelOverridden)) {
+      args.push(...catalog.modelApply.launchArgs(composedModelId))
+    }
     if (!modelOverridden) {
       appliedValues.model = modelId
     }
@@ -76,6 +96,8 @@ export function resolveAgentSessionOptionLaunch(
     if (value === undefined) {
       continue
     }
+    const optionOverridden = option.apply.agentArgsOverride?.(trailingAgentArgs) === true
+    const optionWasDefaulted = sourceValues[option.id] === undefined
     if (option.apply.composedIntoModel) {
       if (catalog.modelApply.launchArgs && !modelOverridden) {
         appliedValues[option.id] = value
@@ -85,8 +107,11 @@ export function resolveAgentSessionOptionLaunch(
     if (!option.apply.launchArgs) {
       continue
     }
+    if (optionWasDefaulted && optionOverridden) {
+      continue
+    }
     args.push(...option.apply.launchArgs(value))
-    if (!modelOverridden && !option.apply.agentArgsOverride?.(trailingAgentArgs)) {
+    if (!modelOverridden && !optionOverridden) {
       appliedValues[option.id] = value
     }
   }

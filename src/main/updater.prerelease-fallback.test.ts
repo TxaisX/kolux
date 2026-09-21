@@ -571,6 +571,15 @@ describe('updater', () => {
   })
 
   it('keeps user prerelease fallback available on the short retry cadence', async () => {
+    // Why: found releases auto-download; finish it so the fallback retry cadence is what's under test.
+    let foundVersion = ''
+    autoUpdaterMock.on('update-available', (info) => {
+      foundVersion = (info as { version: string }).version
+    })
+    autoUpdaterMock.downloadUpdate.mockImplementation(() => {
+      queueMicrotask(() => autoUpdaterMock.emit('update-downloaded', { version: foundVersion }))
+      return Promise.resolve([])
+    })
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-03T12:00:00Z'))
     appMock.getVersion.mockReturnValue('1.3.51-rc.5')

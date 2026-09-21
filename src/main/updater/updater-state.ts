@@ -5,7 +5,8 @@ import type { UpdateSource, UpdateStatus } from '../../shared/update-status-type
 import type { ReleaseChannel } from '../../shared/release-channel'
 import type { PrimaryEventSuppression, UpdateCheckVariant } from './updater-types'
 
-export const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+export const AUTO_UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000
+export const UPDATE_CONNECTIVITY_POLL_INTERVAL_MS = 60 * 1000
 export const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
 // Why: a persistently-failing feed used to re-arm the retry at a fixed 1h cadence forever (issue #7576); backoff doubles per failure up to this cap, any completed check resets.
 export const MAX_AUTO_UPDATE_RETRY_INTERVAL_MS = 6 * 60 * 60 * 1000
@@ -115,6 +116,8 @@ export abstract class UpdaterState {
   protected getReleaseChannelOverride: (() => ReleaseChannel | null) | null = null
 
   protected consecutiveAutomaticRetrySchedules = 0
+  protected lastAutomaticCheckAttemptAt: number | null = null
+  protected lastCompletedUpdateCheckAt: number | null = null
   protected readonly installFailureCauseMaxLength = 200
 
   constructor() {}

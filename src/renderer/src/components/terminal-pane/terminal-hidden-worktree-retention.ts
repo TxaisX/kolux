@@ -11,10 +11,12 @@ import {
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import { createWorktreeTabBucketProjection } from '@/lib/worktree-tab-bucket-projection'
 
-// Why these sizes: a retained hidden pane costs a measured ~2.5MB of V8 heap
-// at the 5k-row default scrollback and ~19MB at 50k (plus per-pane queues),
-// not the ~4-5MB per WORKTREE the warm cap assumed — so un-parkable worktrees
-// (pty classes parking can't restore) get a retention budget: at most 4 stay
+// Why these sizes: a retained hidden pane costs a measured ~14MB *outside* the
+// JS heap per mounted xterm pane (WebGL context, xterm buffers) even idle with
+// no pty, on top of the ~2.5MB of V8 heap at the 5k-row default scrollback
+// (~19MB at 50k, plus per-pane queues) — far more than the ~4-5MB per WORKTREE
+// the warm cap originally assumed — so un-parkable worktrees (pty classes
+// parking can't restore) get a tighter retention budget: at most 2 stay
 // mounted while hidden and none past 15 minutes, evicted least-recently-hidden
 // first via force-park. The TTL is absolute: the last-active exemption bounds
 // the cap, never the clock.
@@ -28,7 +30,7 @@ import { createWorktreeTabBucketProjection } from '@/lib/worktree-tab-bucket-pro
 // spared worktree (last-active, exempt tabs) can hold full 50k-row scrollback
 // indefinitely. Accepted tradeoff: high-scrollback users rely on unmount
 // eviction, not demotion.
-export const TERMINAL_HIDDEN_WORKTREE_RETENTION_LIMIT = 4
+export const TERMINAL_HIDDEN_WORKTREE_RETENTION_LIMIT = 2
 export const TERMINAL_HIDDEN_WORKTREE_RETENTION_TTL_MS = 15 * 60_000
 
 export function createTerminalWorktreeTopologyProjection(

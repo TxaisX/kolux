@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Rocket, X } from 'lucide-react'
+import { RefreshCw, Rocket, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,8 @@ import { resolveDirectSetupDecision } from '@/lib/launch-work-item-direct-prefli
 import { getSettingsForRepoRuntimeOwner } from '@/lib/repo-runtime-owner'
 import { ensureHooksConfirmed } from '@/lib/ensure-hooks-confirmed'
 import { useRetiredWorktreeNames } from '@/hooks/useRetiredWorktreeNames'
+import { useAgentDetectionTargetForWorktree } from '@/hooks/useAgentDetectionTarget'
+import { useDetectedAgents } from '@/hooks/useDetectedAgents'
 import { translate } from '@/i18n/i18n'
 import { isTuiAgentEnabled } from '../../../../shared/tui-agent-selection'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -77,16 +79,24 @@ function LaunchAgentsBody({
   const activeRepoId = useAppStore((s) => s.activeRepoId)
   const settings = useAppStore((s) => s.settings)
   const worktreesByRepo = useAppStore((s) => s.worktreesByRepo)
-  const detectedAgentList = useAppStore((s) => s.detectedAgentIds)
-  const ensureDetectedAgents = useAppStore((s) => s.ensureDetectedAgents)
+  const activeWorktreeId = useAppStore((s) => s.activeWorktreeId)
 
   const repoId = repoIdOverride ?? activeRepoId
   const repo = repos.find((entry) => entry.id === repoId) ?? null
   const retired = useRetiredWorktreeNames(repoId ?? null, repoId ?? '')
-
-  useEffect(() => {
-    void ensureDetectedAgents()
-  }, [ensureDetectedAgents])
+  const repoWorktrees = repoId ? (worktreesByRepo[repoId] ?? []) : []
+  // Why: detect on the host the shared-checkout launch will run on, so SSH/WSL projects list their own CLIs.
+  const launchWorktreeId =
+    repoWorktrees.find((candidate) => candidate.id === activeWorktreeId)?.id ??
+    repoWorktrees[0]?.id ??
+    null
+  const detectionTarget = useAgentDetectionTargetForWorktree(launchWorktreeId)
+  const {
+    detectedIds: detectedAgentList,
+    isLoading,
+    isRefreshing,
+    refresh
+  } = useDetectedAgents(detectionTarget)
 
   const agents = useMemo(() => {
     const detected = detectedAgentList ? new Set<TuiAgent>(detectedAgentList) : null
@@ -213,6 +223,18 @@ function LaunchAgentsBody({
         <div className="flex w-full max-w-[520px] flex-col gap-6">
           <Section label={T('agentSection', 'Agent')}>
             <LaunchAgentGrid agents={agents} selected={selectedAgent} onSelect={selectAgent} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="self-start"
+              disabled={isLoading || isRefreshing}
+              aria-busy={isRefreshing}
+              onClick={() => void refresh()}
+            >
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+              {T('refreshAgents', 'Refresh agents')}
+            </Button>
           </Section>
 
           <Section label={T('howManySection', 'How many')}>

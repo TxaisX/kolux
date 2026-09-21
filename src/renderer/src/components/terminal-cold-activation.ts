@@ -1,5 +1,6 @@
 import { useAppStore } from '../store'
 import {
+  COLD_ACTIVATION_REVEAL_BATCH_SIZE,
   canDeferColdActivationTabsForHost,
   canMountTerminalWorkspaceForStartup,
   planColdActivationTabDeferral,
@@ -13,6 +14,30 @@ import { canWatcherCoverParkedTerminalTab } from './terminal-pane/terminal-parke
 import { isRemoteRuntimePtyId } from '@/runtime/runtime-terminal-inspection'
 import { terminalProviderHasAuthoritativeSnapshot } from './terminal/terminal-provider-snapshot-capability'
 import type { TerminalParkingFoundation } from './use-terminal-parking-foundation'
+
+// Why module-level: applyTerminalColdActivation is a plain function invoked
+// every render, not a hook, so a per-worktree "frame already scheduled" guard
+// has to live outside React state to avoid stacking duplicate rAFs.
+const scheduledRevealFrameIdByWorktreeId = new Map<string, number>()
+
+function requestAnimationFrameOrTimeout(callback: () => void): number {
+  if (typeof requestAnimationFrame === 'function') {
+    return requestAnimationFrame(callback)
+  }
+  return window.setTimeout(callback, 16)
+}
+
+/** Spreads a big reveal batch across frames instead of one render bump per tab. */
+function scheduleNextColdActivationRevealPass(worktreeId: string, onNextPass: () => void): void {
+  if (scheduledRevealFrameIdByWorktreeId.has(worktreeId)) {
+    return
+  }
+  const frameId = requestAnimationFrameOrTimeout(() => {
+    scheduledRevealFrameIdByWorktreeId.delete(worktreeId)
+    onNextPass()
+  })
+  scheduledRevealFrameIdByWorktreeId.set(worktreeId, frameId)
+}
 
 export function applyTerminalColdActivation(controller: TerminalParkingFoundation) {
   const {
@@ -31,6 +56,7 @@ export function applyTerminalColdActivation(controller: TerminalParkingFoundatio
     pairedRuntimeParkingEnvironmentIds,
     pendingStartupByTabId,
     renderedActiveWorktreeId,
+    setBackgroundMountRevision,
     startupWorktreeRefreshCompleted,
     tabsByWorktree,
     terminalParkingEnabled,
@@ -133,13 +159,19 @@ export function applyTerminalColdActivation(controller: TerminalParkingFoundatio
           immediateTabIds.add(tab.id)
         }
       }
-      revealActivationDeferredTabs({
+      const { hasMoreToReveal } = revealActivationDeferredTabs({
         restrictions: backgroundMountTabIdsByWorktreeRef.current,
         deferredMountTabIdsByWorktree: activationDeferredMountTabIdsByWorktreeRef.current,
         worktreeId: renderedActiveWorktreeId,
         allTabIds: worktreeTabs.map((tab) => tab.id),
-        immediateTabIds
+        immediateTabIds,
+        maxNewMountsPerPass: COLD_ACTIVATION_REVEAL_BATCH_SIZE
       })
+      if (hasMoreToReveal) {
+        scheduleNextColdActivationRevealPass(renderedActiveWorktreeId, () =>
+          setBackgroundMountRevision((revision) => revision + 1)
+        )
+      }
     }
     mountedWorktreeIdsRef.current.add(renderedActiveWorktreeId)
   } else {
@@ -156,6 +188,7 @@ export function applyTerminalColdActivation(controller: TerminalParkingFoundatio
       mountedWorktreeIdsRef.current.delete(id)
       backgroundMountTabIdsByWorktreeRef.current.delete(id)
       activationDeferredMountTabIdsByWorktreeRef.current.delete(id)
+      scheduledRevealFrameIdByWorktreeId.delete(id)
     }
   }
   const anyMountedWorktreeHasLayout = computeAnyMountedWorktreeHasLayout(

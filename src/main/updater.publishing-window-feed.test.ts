@@ -553,6 +553,15 @@ describe('updater', () => {
   })
 
   it('does not attach nudge dismissal to an older last-good available update', async () => {
+    // Why: found releases auto-download; finish it so the fallback retry cadence is what's under test.
+    let foundVersion = ''
+    autoUpdaterMock.on('update-available', (info) => {
+      foundVersion = (info as { version: string }).version
+    })
+    autoUpdaterMock.downloadUpdate.mockImplementation(() => {
+      queueMicrotask(() => autoUpdaterMock.emit('update-downloaded', { version: foundVersion }))
+      return Promise.resolve([])
+    })
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-24T21:40:00Z'))
     appMock.getVersion.mockReturnValue('1.4.25')

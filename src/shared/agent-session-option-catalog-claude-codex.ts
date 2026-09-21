@@ -128,6 +128,9 @@ const CLAUDE_FAST_MODE: CatalogOption = {
 
 export const CLAUDE_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
   supportsWorkerLaunchPreferences: true,
+  // Why: an unpicked launch should still get the best model at full effort
+  // rather than whatever the bare CLI defaults to.
+  launchDefaultModel: true,
   // Why: these ids are Claude CLI aliases that resolve to the newest model of
   // each family on the host's CLI (`opus` is Opus 5 on current CLIs, older
   // Opus on older CLIs), so pinned version labels lie on part of the fleet.
@@ -144,13 +147,13 @@ export const CLAUDE_SESSION_OPTION_CATALOG: AgentSessionOptionCatalog = {
       id: 'opus',
       label: 'Opus',
       description: 'Best for everyday, complex tasks',
+      isDefault: true,
       options: [claudeEffort(true), CLAUDE_FAST_MODE]
     },
     {
       id: 'sonnet',
       label: 'Sonnet',
       description: 'Efficient for routine tasks',
-      isDefault: true,
       options: [claudeEffort(true)]
     },
     {

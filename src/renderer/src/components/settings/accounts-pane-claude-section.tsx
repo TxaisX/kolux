@@ -12,6 +12,7 @@ import {
 } from './provider-account-visibility'
 import { formatAccountTimestamp, getClaudeAccountRuntimeLabel } from './accounts-pane-runtime'
 import type { AccountsPaneSectionModel } from './accounts-pane-types'
+import { AccountSignInNotice } from './AccountSignInNotice'
 
 export function renderClaudeAccountsSection(model: AccountsPaneSectionModel): React.JSX.Element {
   const {
@@ -116,6 +117,11 @@ export function renderClaudeAccountsSection(model: AccountsPaneSectionModel): Re
           </div>
         </div>
         {remoteAccountScopeNotice}
+        {!isRemoteAccountScope && (
+          <AccountSignInNotice
+            pending={claudeAction === 'adding' || claudeAction.startsWith('reauth:')}
+          />
+        )}
 
         <div className="space-y-2">
           <button

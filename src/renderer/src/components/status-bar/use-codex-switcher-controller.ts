@@ -289,6 +289,8 @@ export function useCodexSwitcherController(codex: ProviderRateLimits) {
   const resetProjection = getCodexResetProjection(codex, hasActiveRuntimeEnvironment)
 
   return {
+    accountState,
+    fetchInactiveCodexAccountUsage,
     accountsExpanded,
     activeTarget,
     handleAccountsExpandedToggle,
