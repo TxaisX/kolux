@@ -541,7 +541,11 @@ describe('buildAgentResumeStartupPlan claude selector guard', () => {
       agentArgs: '--resume stale-session --model sonnet',
       platform: 'linux'
     })
-    expect(restored?.launchCommand).toBe(`claude '--model' 'sonnet' '--resume' '${SESSION_ID}'`)
+    // The default model is dropped (agent args already carry one); the default
+    // effort still emits ahead of the user's own args.
+    expect(restored?.launchCommand).toBe(
+      `claude '--effort' 'high' '--model' 'sonnet' '--resume' '${SESSION_ID}'`
+    )
   })
 
   it('still launches exotic custom commands that the tokenizer rejects', () => {

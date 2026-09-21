@@ -47,10 +47,20 @@ export function resolveAgentLaunchCommand(args: {
   if (!trailingTokens.ok) {
     return { ok: false, error: `CLI arguments are invalid: ${trailingTokens.error}` }
   }
+  // Why: a command override that already spells out --model/--effort must be seen
+  // as an override too, or a launch default would land after it on the line and
+  // clobber it (a command override isn't reparsed for --model/--effort elsewhere).
+  const overrideOwnTokens =
+    override && !args.sessionOptionsOverrideAgentArgs
+      ? (() => {
+          const parsed = tokenizeStartupCommand(override, args.shell)
+          return parsed.ok ? parsed.tokens : []
+        })()
+      : []
   const resolvedOptions = resolveAgentSessionOptionLaunch(
     args.agent,
     args.sessionOptions,
-    args.sessionOptionsOverrideAgentArgs ? [] : trailingTokens.tokens,
+    args.sessionOptionsOverrideAgentArgs ? [] : [...overrideOwnTokens, ...trailingTokens.tokens],
     !args.sessionOptionsOverrideAgentArgs
   )
   if (override && args.sessionOptionsOverrideAgentArgs) {

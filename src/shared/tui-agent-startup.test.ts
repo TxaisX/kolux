@@ -53,7 +53,9 @@ describe('tui agent startup plans', () => {
       platform: 'linux'
     })
 
-    expect(plan?.launchCommand).toBe("claude 'fix Bob'\"'\"'s branch'")
+    expect(plan?.launchCommand).toBe(
+      "claude '--model' 'opus' '--effort' 'high' 'fix Bob'\"'\"'s branch'"
+    )
   })
 
   it('uses PowerShell quoting by default when the target shell is Windows', () => {
@@ -64,7 +66,9 @@ describe('tui agent startup plans', () => {
       platform: 'win32'
     })
 
-    expect(plan?.launchCommand).toBe("claude 'fix Bob''s \"quoted\" branch'")
+    expect(plan?.launchCommand).toBe(
+      "claude '--model' 'opus' '--effort' 'high' 'fix Bob''s \"quoted\" branch'"
+    )
   })
 
   it('invokes fully quoted argv commands in PowerShell', () => {
@@ -82,7 +86,9 @@ describe('tui agent startup plans', () => {
       shell: 'cmd'
     })
 
-    expect(plan?.launchCommand).toBe('claude "fix ^"quoted^" ^& ^%PATH^%"')
+    expect(plan?.launchCommand).toBe(
+      'claude "--model" "opus" "--effort" "high" "fix ^"quoted^" ^& ^%PATH^%"'
+    )
   })
 
   it('terminates Grok options before a flag-shaped POSIX prompt', () => {
@@ -236,7 +242,7 @@ describe('tui agent startup plans', () => {
       platform: 'linux'
     })
 
-    expect(plan?.launchCommand).toBe("claude 'fix it'")
+    expect(plan?.launchCommand).toBe("claude '--model' 'opus' '--effort' 'high' 'fix it'")
     expect(plan?.launchCommand).not.toContain('--settings')
   })
 
@@ -359,7 +365,9 @@ describe('tui agent startup plans', () => {
       platform: 'linux'
     })
 
-    expect(plan?.launchCommand).toBe("claude --dangerously-skip-permissions 'fix it'")
+    expect(plan?.launchCommand).toBe(
+      "claude --dangerously-skip-permissions '--model' 'opus' '--effort' 'high' 'fix it'"
+    )
   })
 
   it('leaves Codex command overrides untouched', () => {
@@ -474,8 +482,10 @@ describe('tui agent startup plans', () => {
       platform: 'linux'
     })
 
+    // The default model is dropped (the agent args already carry one); the
+    // default effort still emits ahead of the user's own args.
     expect(plan?.launchCommand).toBe(
-      "claude '--model' 'sonnet' '--add-dir' 'path with spaces' 'fix it'"
+      "claude '--effort' 'high' '--model' 'sonnet' '--add-dir' 'path with spaces' 'fix it'"
     )
   })
 
@@ -488,7 +498,9 @@ describe('tui agent startup plans', () => {
       platform: 'win32'
     })
 
-    expect(plan?.launchCommand).toBe("claude '--model' 'sonnet' '--name' 'Bob''s' 'fix it'")
+    expect(plan?.launchCommand).toBe(
+      "claude '--effort' 'high' '--model' 'sonnet' '--name' 'Bob''s' 'fix it'"
+    )
   })
 
   it('carries agent launch environment defaults into startup plans', () => {

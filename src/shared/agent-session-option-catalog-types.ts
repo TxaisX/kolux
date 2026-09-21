@@ -75,6 +75,12 @@ export type AgentSessionOptionCatalog = {
    * model while the picker, which never reads launch args, still names the CLI default.
    * A real fix means threading `modelApply.agentArgsOverride` through to the surface. */
   defaultModelIsCliDefault?: true
+  /** When set, a launch with no explicit model pick still emits the `isDefault`
+   * model plus each of its options' `defaultValue`s, as if the user had picked
+   * them — unlike `defaultModelIsCliDefault`, which only affects picker display.
+   * A user's own `--model`/`--effort` (agent args or command override) still wins;
+   * see `agentArgsOverride`. */
+  launchDefaultModel?: true
   listModels?: {
     command: string
     parse: (stdout: string) => CatalogModel[]

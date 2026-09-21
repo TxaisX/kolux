@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { AgentSessionRecord } from '../../shared/agent-session-record'
+import { resolveAgentSessionOptionLaunch } from '../../shared/agent-session-option-launch'
 import { LOCAL_EXECUTION_HOST_ID } from '../../shared/execution-host'
 import type { AgentSessionRecordStore } from '../runtime/agent-session-record-store'
 import { AgentSessionPreSpawnError } from '../native-chat/agent-session-wire/structured-agent-session-adapter'
@@ -226,6 +227,15 @@ describe('claude structured launch resolution', () => {
       extraArgs: { settings: '/tmp/s.json' }
     })
     expect(() => claudeSdkOptionsForLaunchArgs(['-m', 'opus'])).toThrow(/no SDK option/)
+  })
+
+  it('round-trips an unpicked launch to the opus/high launch default', () => {
+    const resolved = resolveAgentSessionOptionLaunch('claude', undefined)
+    expect(resolved.args).toEqual(['--model', 'opus', '--effort', 'high'])
+    expect(claudeSdkOptionsForLaunchArgs(resolved.args)).toEqual({
+      model: 'opus',
+      effort: 'high'
+    })
   })
 
   it('keeps the session launch environment pinned after account settings change', async () => {
