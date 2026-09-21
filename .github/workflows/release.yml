@@ -55,7 +55,9 @@ jobs:
       - name: Package and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish always -c.publish.releaseType=draft
+          # Why env, not -c.publish.releaseType: -c aliases --config, so the flag is read as a config file path.
+          EP_DRAFT: 'true'
+        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish always
 
       - name: Publish the complete release
         env:
