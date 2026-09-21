@@ -284,6 +284,22 @@ describe('connectPanePty', () => {
     expect(deps.onPtyErrorRef.current).toHaveBeenCalledWith(1, 'shell exited with code 1')
   })
 
+  // Why: a connect that REJECTS never reaches callbacks.onError, so this catch
+  // was the one spawn failure with no diagnostic anywhere — the pane just sat
+  // blank. The reattach paths have always reported; this one now matches.
+  it('surfaces a rejected fresh spawn instead of leaving the pane blank', async () => {
+    const { connectPanePty } = await import('./pty-connection')
+    const transport = createMockTransport()
+    transport.connect.mockRejectedValue(new Error('spawn refused by host'))
+    transportFactoryQueue.push(transport)
+    const deps = createDeps({ tabId: 'tab-rejected-spawn' })
+
+    connectPanePty(createPane(1) as never, createManager(1) as never, deps as never)
+    await flushAsyncTicks()
+
+    expect(deps.onPtyErrorRef.current).toHaveBeenCalledWith(1, 'spawn refused by host')
+  })
+
   it('threads the resolved local project runtime into IPC terminal transport options', async () => {
     const { connectPanePty } = await import('./pty-connection')
     const transport = createMockTransport()

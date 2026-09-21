@@ -3,7 +3,6 @@ import type { EditorSlice } from '../types/editor-slice'
 import type { DiffSource, OpenFile } from '../types/open-file'
 import { buildDiffEditorFileId, withDiffContentReloadRequest } from '../file-ids/editor-file-ids'
 import { resolveDiffRuntimeEnvironmentId } from '../git/diff-runtime-owner'
-import { resolveEditorOpenTargetGroupId } from '../tabs/editor-open-target-group'
 import {
   getReplaceablePreviewFileId,
   openWorkspaceEditorItem,
@@ -28,8 +27,9 @@ export function createOpenUnstagedDiff(
         const diffSource: DiffSource = staged ? 'staged' : 'unstaged'
         const id = buildDiffEditorFileId(worktreeId, diffSource, relativePath, runtimeEnvironmentId)
         editorItemFileId = id
-        const targetGroupId =
-          resolveEditorOpenTargetGroupId(s, worktreeId, options?.targetGroupId) ?? undefined
+        // Why no reuse-heuristic here anymore: see open-file-apply.ts — openWorkspaceEditorItem
+        // now owns deciding between refocusing an existing tab and splitting a fresh pane.
+        const targetGroupId = options?.targetGroupId
         editorItemTargetGroupId = targetGroupId
         const existing = s.openFiles.find((f) => f.id === id)
         if (existing) {

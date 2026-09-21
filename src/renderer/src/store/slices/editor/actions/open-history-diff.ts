@@ -5,7 +5,6 @@ import type { OpenFile } from '../types/open-file'
 import { withDiffContentReloadRequest } from '../file-ids/editor-file-ids'
 import { resolveDiffRuntimeEnvironmentId } from '../git/diff-runtime-owner'
 import { toBranchCompareSnapshot, toCommitCompareSnapshot } from '../git/git-status-reconciliation'
-import { resolveEditorOpenTargetGroupId } from '../tabs/editor-open-target-group'
 import {
   getReplaceablePreviewFileId,
   openWorkspaceEditorItem,
@@ -23,8 +22,9 @@ export function createOpenHistoryDiff(
       const isPreview = options?.preview ?? false
       let editorItemTargetGroupId = options?.targetGroupId
       set((s) => {
-        const targetGroupId =
-          resolveEditorOpenTargetGroupId(s, worktreeId, options?.targetGroupId) ?? undefined
+        // Why no reuse-heuristic here anymore: see open-file-apply.ts — openWorkspaceEditorItem
+        // now owns deciding between refocusing an existing tab and splitting a fresh pane.
+        const targetGroupId = options?.targetGroupId
         editorItemTargetGroupId = targetGroupId
         const runtimeEnvironmentId = resolveDiffRuntimeEnvironmentId(
           s,
@@ -114,8 +114,9 @@ export function createOpenHistoryDiff(
       const isPreview = options?.preview ?? false
       let editorItemTargetGroupId = options?.targetGroupId
       set((s) => {
-        const targetGroupId =
-          resolveEditorOpenTargetGroupId(s, worktreeId, options?.targetGroupId) ?? undefined
+        // Why no reuse-heuristic here anymore: see open-file-apply.ts — openWorkspaceEditorItem
+        // now owns deciding between refocusing an existing tab and splitting a fresh pane.
+        const targetGroupId = options?.targetGroupId
         editorItemTargetGroupId = targetGroupId
         const runtimeEnvironmentId = resolveDiffRuntimeEnvironmentId(
           s,

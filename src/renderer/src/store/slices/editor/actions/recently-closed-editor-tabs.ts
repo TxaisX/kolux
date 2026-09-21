@@ -30,8 +30,16 @@ export function createRecentlyClosedEditorTabs(
         }
       }))
       const { position, reopenId, ...file } = next
+      // Why: a recorded position can go stale once every open splits its own
+      // pane — if this path is already live elsewhere (a bare id got
+      // reclaimed by another worktree and reopened under an owner-qualified
+      // id, say), trust openFile's own dedup over the old position instead of
+      // planting a second tab in a group nothing else points at anymore.
+      const alreadyLive = get().openFiles.some(
+        (openFile) => openFile.worktreeId === file.worktreeId && openFile.filePath === file.filePath
+      )
       const restoredFileId = get().openFile(file, {
-        targetGroupId: position?.groupId,
+        targetGroupId: alreadyLive ? undefined : position?.groupId,
         reopenId
       })
       restoreRecentlyClosedTabPosition(get, worktreeId, restoredFileId, position)

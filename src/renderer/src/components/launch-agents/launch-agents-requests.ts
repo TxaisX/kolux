@@ -10,6 +10,7 @@ import {
 import { resolveLocalWindowsAgentStartupShell } from '../../../../shared/windows-terminal-shell'
 import { getAgentSessionOptionCatalog } from '../../../../shared/agent-session-option-catalog'
 import { resolveAgentSessionOptionLaunch } from '../../../../shared/agent-session-option-launch'
+import type { SessionOptionValue } from '../../../../shared/native-chat-session-options'
 import {
   normalizeSuggestedName,
   selectSuggestedCreatureName,
@@ -25,8 +26,15 @@ import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-
  *  has no git worktrees at all, so shared checkout is its only option. */
 export type LaunchIsolationMode = 'new-worktree' | 'shared-checkout'
 
-/** One seat: which agent CLI, and the catalog model it opens on (null = agent default). */
-export type LaunchAgentSlot = { agent: TuiAgent; model: string | null }
+/** One seat: which agent CLI, the catalog model it opens on (null = agent
+ *  default), and any of that model's declared options (e.g. `effort`,
+ *  `fastMode`) the user overrode away from the catalog default. Missing or
+ *  absent means "use the catalog default for this model". */
+export type LaunchAgentSlot = {
+  agent: TuiAgent
+  model: string | null
+  options?: Record<string, SessionOptionValue>
+}
 
 /** One seat's plan for `shared-checkout` isolation: a plain terminal-CLI
  *  launch, pinned the same way as the `new-worktree` path so neither
@@ -34,6 +42,7 @@ export type LaunchAgentSlot = { agent: TuiAgent; model: string | null }
 export type SharedCheckoutSeatRequest = {
   agent: TuiAgent
   model: string | null
+  options?: Record<string, SessionOptionValue>
   prompt: string
   agentLaunchRoute: 'terminal-tui'
 }
@@ -48,6 +57,7 @@ export function buildSharedCheckoutSeatRequests(input: {
   return input.slots.map((slot) => ({
     agent: slot.agent,
     model: slot.model,
+    options: slot.options,
     prompt: sharedPrompt,
     agentLaunchRoute: 'terminal-tui' as const
   }))
@@ -96,6 +106,8 @@ export function retargetLaunchSlots(
   const fallback = defaultLaunchModel(agent)
   return slots.map((slot) => ({
     agent,
+    // Why: a new agent's catalog rarely shares the old one's option ids or
+    // choices, so a carried-over override could apply to the wrong thing.
     model: slot.model && models.some((model) => model.id === slot.model) ? slot.model : fallback
   }))
 }
@@ -118,23 +130,27 @@ function collectUsedNames(
   return used
 }
 
-/** Merges a seat's model choice into the agent's launch args as the catalog's
- *  own CLI flags (e.g. `--model opus`), the same mechanism a launch args
- *  override always uses — no separate model plumbing through the startup plan. */
+/** Merges a seat's model choice and any option overrides (e.g. `effort`,
+ *  `fastMode`) into the agent's launch args as the catalog's own CLI flags
+ *  (e.g. `--model opus --effort high`), the same mechanism a launch args
+ *  override always uses — no separate model/option plumbing through the
+ *  startup plan. An option left unset still launches at its catalog default,
+ *  since `resolveAgentSessionOptionLaunch` fills defaults for a known model. */
 export function settingsWithSeatModel(
   settings: GlobalSettings,
   agent: TuiAgent,
-  model: string | null
+  model: string | null,
+  options?: Record<string, SessionOptionValue>
 ): GlobalSettings {
   if (!model) {
     return settings
   }
-  const modelArgs = resolveAgentSessionOptionLaunch(agent, { model }).args
-  if (modelArgs.length === 0) {
+  const launchArgs = resolveAgentSessionOptionLaunch(agent, { model, ...options }).args
+  if (launchArgs.length === 0) {
     return settings
   }
   const baseArgs = settings.agentDefaultArgs?.[agent]?.trim()
-  const combined = [baseArgs, modelArgs.join(' ')].filter(Boolean).join(' ')
+  const combined = [baseArgs, launchArgs.join(' ')].filter(Boolean).join(' ')
   return { ...settings, agentDefaultArgs: { ...settings.agentDefaultArgs, [agent]: combined } }
 }
 
@@ -162,7 +178,7 @@ export function buildLaunchAgentsRequests(input: {
   return input.slots.map((slot) => {
     const name = selectSuggestedCreatureName(used, Math.random, retired.exhaustedTiers)
     used.add(normalizeSuggestedName(name))
-    const seatSettings = settingsWithSeatModel(input.settings, slot.agent, slot.model)
+    const seatSettings = settingsWithSeatModel(input.settings, slot.agent, slot.model, slot.options)
     const { startupPlan, backendStartup, telemetry } = buildQuickComposerStartup({
       agent: slot.agent,
       prompt: sharedPrompt,

@@ -3,7 +3,6 @@ import type { EditorSlice } from '../types/editor-slice'
 import { joinPath } from '@/lib/path'
 import type { OpenFile } from '../types/open-file'
 import { toOpenConflictMetadata } from '../git/git-status-reconciliation'
-import { resolveEditorOpenTargetGroupId } from '../tabs/editor-open-target-group'
 import {
   getReplaceablePreviewFileId,
   openWorkspaceEditorItem,
@@ -23,8 +22,9 @@ export function createOpenConflictFile(
       set((s) => {
         const id = absolutePath
         const conflict = toOpenConflictMetadata(entry)
-        const targetGroupId =
-          resolveEditorOpenTargetGroupId(s, worktreeId, options?.targetGroupId) ?? undefined
+        // Why no reuse-heuristic here anymore: see open-file-apply.ts — openWorkspaceEditorItem
+        // now owns deciding between refocusing an existing tab and splitting a fresh pane.
+        const targetGroupId = options?.targetGroupId
         editorItemTargetGroupId = targetGroupId
         const existing = s.openFiles.find((f) => f.id === id)
         const nextTracked =

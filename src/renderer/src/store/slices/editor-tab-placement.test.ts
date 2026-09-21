@@ -175,9 +175,14 @@ describe('createEditorSlice split-group editor routing', () => {
     return store.getState().unifiedTabsByWorktree['wt-1']?.find((tab) => tab.entityId === entityId)
   }
 
-  it('routes implicit file opens to an existing visible editor group', () => {
+  // Why these three no longer assert "reuses an existing editor group": every
+  // pane holds exactly one session now (the tab bar is gone), so a fresh,
+  // not-already-open file always splits its own new pane instead of quietly
+  // joining whatever group used to look like a reasonable home for it.
+  it('opens a fresh implicit file in its own new pane, not an existing editor group', () => {
     const store = createEditorTabsStore()
     const { terminalTabId, terminalGroupId, editorGroupId } = seedTerminalAndEditorGroups(store)
+    const groupIdsBefore = store.getState().groupsByWorktree['wt-1'].map((group) => group.id)
 
     openSourceFile(store, '/repo/next.ts')
 
@@ -185,15 +190,13 @@ describe('createEditorSlice split-group editor routing', () => {
     const terminalGroup = store
       .getState()
       .groupsByWorktree['wt-1'].find((group) => group.id === terminalGroupId)
-    const editorGroup = store
-      .getState()
-      .groupsByWorktree['wt-1'].find((group) => group.id === editorGroupId)
-    expect(openedTab?.groupId).toBe(editorGroupId)
-    expect(editorGroup?.activeTabId).toBe(openedTab?.id)
+    expect(openedTab?.groupId).toBeTruthy()
+    expect(groupIdsBefore).not.toContain(openedTab?.groupId)
+    expect(openedTab?.groupId).not.toBe(editorGroupId)
     expect(terminalGroup?.activeTabId).toBe(terminalTabId)
   })
 
-  it('uses editor-recent groups when no inactive group is currently showing an editor', () => {
+  it('opens a fresh implicit file in its own new pane even when another group recently showed an editor', () => {
     const store = createEditorTabsStore()
     const { editorGroupId } = seedTerminalAndEditorGroups(store)
     store.getState().createUnifiedTab('wt-1', 'browser', {
@@ -202,10 +205,13 @@ describe('createEditorSlice split-group editor routing', () => {
       label: 'Browser',
       targetGroupId: editorGroupId
     })
+    const groupIdsBefore = store.getState().groupsByWorktree['wt-1'].map((group) => group.id)
 
     openSourceFile(store, '/repo/recent-target.ts')
 
-    expect(findUnifiedTabByEntity(store, '/repo/recent-target.ts')?.groupId).toBe(editorGroupId)
+    const openedGroupId = findUnifiedTabByEntity(store, '/repo/recent-target.ts')?.groupId
+    expect(openedGroupId).toBeTruthy()
+    expect(groupIdsBefore).not.toContain(openedGroupId)
   })
 
   it('keeps explicit target groups ahead of default editor routing', () => {
@@ -217,14 +223,15 @@ describe('createEditorSlice split-group editor routing', () => {
     expect(findUnifiedTabByEntity(store, '/repo/explicit.ts')?.groupId).toBe(terminalGroupId)
   })
 
-  it('opens implicit files in a focused browser split group instead of stealing an editor pane (#6891)', () => {
+  it('splits a fresh pane off the focused browser group instead of stealing an existing editor pane (#6891)', () => {
     const store = createEditorTabsStore()
     const { editorGroupId } = seedTerminalAndEditorGroups(store)
 
     // Regression #6891: with a split like Agent | Browser, focusing the browser
-    // pane and opening a file sent it to another pane. A focused browser pane
-    // was treated like a focused agent terminal, so the open was stolen into an
-    // existing editor pane instead of the focused group.
+    // pane and opening a file sent it to another pane. That "steal a distant
+    // pane" failure mode cannot happen now — every fresh open gets its own new
+    // pane — so this guards the new-pane split targets the focused group, not
+    // that stale editor pane.
     const browserGroupId = store.getState().createEmptySplitGroup('wt-1', editorGroupId, 'right')
     if (!browserGroupId) {
       throw new Error('Expected split browser group')
@@ -240,9 +247,13 @@ describe('createEditorSlice split-group editor routing', () => {
       activeTabType: 'browser',
       activeTabTypeByWorktree: { 'wt-1': 'browser' }
     } as Partial<AppState>)
+    const groupIdsBefore = store.getState().groupsByWorktree['wt-1'].map((group) => group.id)
 
     openSourceFile(store, '/repo/from-browser.ts')
 
-    expect(findUnifiedTabByEntity(store, '/repo/from-browser.ts')?.groupId).toBe(browserGroupId)
+    const openedGroupId = findUnifiedTabByEntity(store, '/repo/from-browser.ts')?.groupId
+    expect(openedGroupId).toBeTruthy()
+    expect(groupIdsBefore).not.toContain(openedGroupId)
+    expect(openedGroupId).not.toBe(editorGroupId)
   })
 })

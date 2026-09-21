@@ -16,10 +16,7 @@ import {
   resolveEditorFileIdForOwner,
   shouldRequestExistingFileContentReload
 } from '../file-ids/editor-file-ids'
-import {
-  buildEditorActiveResult,
-  resolveEditorOpenTargetGroupId
-} from '../tabs/editor-open-target-group'
+import { buildEditorActiveResult } from '../tabs/editor-open-target-group'
 import {
   getReplaceablePreviewFileId,
   removeEditorStateForReplacedPreview
@@ -91,9 +88,10 @@ export function applyOpenFileToState(
   scratch.editorItemFileId = id
   const isPreview = options?.preview ?? false
   const recordReplacedPreview = options?.recordReplacedPreview ?? false
-  // Why: resolve the target group up-front so preview replacement is scoped to it (group B open must not evict group A's preview).
-  const targetGroupId =
-    resolveEditorOpenTargetGroupId(s, worktreeId, options?.targetGroupId) ?? undefined
+  // Why no reuse-heuristic here anymore: every pane holds exactly one session now, so an
+  // unspecified target is left undefined — openWorkspaceEditorItem is what decides whether to
+  // refocus an existing tab or split a fresh pane, once it knows if this file is actually new.
+  const targetGroupId = options?.targetGroupId
   scratch.editorItemTargetGroupId = targetGroupId
   const activeResult = buildEditorActiveResult(s, worktreeId, id)
   if (existing) {

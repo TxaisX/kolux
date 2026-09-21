@@ -1,7 +1,7 @@
 import { Suspense, useMemo } from 'react'
 import { lazyWithRetry as lazy } from '@/lib/lazy-with-retry'
 import { useDroppable } from '@dnd-kit/core'
-import { Ellipsis, LayoutGrid, X } from 'lucide-react'
+import { Ellipsis, LayoutGrid, Plus, X } from 'lucide-react'
 import { useAppStore } from '../../store'
 import {
   DropdownMenu,
@@ -9,8 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import TabBar from '../tab-bar/TabBar'
 
 import { TabBarQuickCommandsButton } from '../tab-bar/TabBarQuickCommandsButton'
 import { useTabGroupWorkspaceModel } from './useTabGroupWorkspaceModel'
@@ -18,19 +18,12 @@ import { useTidyLayoutCommand } from './useTidyLayoutCommand'
 import LayoutPresetsMenu from './LayoutPresetsMenu'
 import PaneCountStepper from './PaneCountStepper'
 import WorkspacePreviewButton from './WorkspacePreviewButton'
-import { closeTerminalTab } from '../terminal/terminal-tab-actions'
-import { resolveGroupTabFromVisibleId } from './tab-group-visible-id'
-import { getTabPaneBodyDroppableId, type HoveredTabInsertion } from './useTabDragSplit'
+import { getTabPaneBodyDroppableId } from './useTabDragSplit'
 import { tabGroupBodyAnchorName } from './tab-group-body-anchor'
 import { translate } from '@/i18n/i18n'
-import type { TabGroup } from '../../../../shared/tab-types'
-import type { ClientHostedBrowserRow } from '../../../../shared/client-hosted-browser-rows'
-import { useClientHostedBrowserRows } from '@/lib/pane-manager/client-hosted-browser-row-state'
-import { resolveClientHostedBrowserRowStripGroupId } from '../tab-bar/client-hosted-browser-row-strip-placement'
+import { getRepoIdFromWorktreeId } from '../../../../shared/worktree/id'
 
 const EditorPanel = lazy(() => import('../editor/EditorPanel'))
-const EMPTY_GROUPS: readonly TabGroup[] = []
-const EMPTY_CLIENT_HOSTED_ROWS: readonly ClientHostedBrowserRow[] = []
 
 export default function TabGroupPanel({
   groupId,
@@ -46,8 +39,7 @@ export default function TabGroupPanel({
   suppressBottomBorder = false,
   reserveClosedExplorerToggleSpace,
   reserveCollapsedSidebarHeaderSpace,
-  isTabDragActive = false,
-  hoveredTabInsertion = null
+  isTabDragActive = false
 }: {
   groupId: string
   worktreeId: string
@@ -63,32 +55,12 @@ export default function TabGroupPanel({
   reserveClosedExplorerToggleSpace: boolean
   reserveCollapsedSidebarHeaderSpace: boolean
   isTabDragActive?: boolean
-  hoveredTabInsertion?: HoveredTabInsertion | null
 }): React.JSX.Element {
   const rightSidebarOpen = useAppStore((state) => state.rightSidebarOpen)
   const sidebarOpen = useAppStore((state) => state.sidebarOpen)
   const model = useTabGroupWorkspaceModel({ groupId, worktreeId })
   const tidyLayoutCommand = useTidyLayoutCommand(worktreeId)
-  const {
-    activeTab,
-    agentSessionItems,
-    browserItems,
-    commands,
-    editorItems,
-    tabBarOrder,
-    terminalTabs
-  } = model
-  // Why: one strip owns the worktree's client-hosted rows, or every split repeats them.
-  const ownsClientHostedRows = useAppStore(
-    (state) =>
-      resolveClientHostedBrowserRowStripGroupId(
-        state.groupsByWorktree[worktreeId] ?? EMPTY_GROUPS
-      ) === groupId
-  )
-  const worktreeClientHostedRows = useClientHostedBrowserRows(worktreeId)
-  const clientHostedRows = ownsClientHostedRows
-    ? worktreeClientHostedRows
-    : EMPTY_CLIENT_HOSTED_ROWS
+  const { activeTab, commands } = model
   const { setNodeRef: setBodyDropRef } = useDroppable({
     id: getTabPaneBodyDroppableId(groupId),
     data: {
@@ -104,123 +76,6 @@ export default function TabGroupPanel({
   const bodyAnchorStyle = useMemo(
     () => ({ anchorName: bodyAnchorName }) as React.CSSProperties,
     [bodyAnchorName]
-  )
-
-  const tabBar = (
-    <TabBar
-      tabs={terminalTabs}
-      activeTabId={
-        activeTab?.contentType === 'terminal'
-          ? activeTab.entityId
-          : activeTab?.contentType === 'agent-session'
-            ? activeTab.id
-            : null
-      }
-      groupId={groupId}
-      worktreeId={worktreeId}
-      expandedPaneByTabId={model.expandedPaneByTabId}
-      onActivate={commands.activateTerminal}
-      onClose={(terminalId) => {
-        const item = resolveGroupTabFromVisibleId(model.groupTabs, terminalId)
-        if (item?.contentType === 'terminal' || item?.contentType === 'agent-session') {
-          commands.closeItem(item.id)
-          return
-        }
-        // Why: agent quick-launch can briefly desync unified/runtime tab ids before the host snapshot lands, so still route close through the shared helper.
-        closeTerminalTab(terminalId)
-      }}
-      onCloseOthers={(visibleId) => {
-        // Why: TabBar emits entityId for terminals/browsers but unifiedTabId for editors; match both so the menu works on every tab kind.
-        const item = resolveGroupTabFromVisibleId(model.groupTabs, visibleId)
-        if (item) {
-          commands.closeOthers(item.id)
-        }
-      }}
-      onCloseToRight={(visibleId) => {
-        const item = resolveGroupTabFromVisibleId(model.groupTabs, visibleId)
-        if (item) {
-          commands.closeToRight(item.id)
-        }
-      }}
-      onCloseToLeft={(visibleId) => {
-        const item = resolveGroupTabFromVisibleId(model.groupTabs, visibleId)
-        if (item) {
-          commands.closeToLeft(item.id)
-        }
-      }}
-      onNewTerminalTab={commands.newTerminalTab}
-      onNewAgentChoiceTab={commands.newAgentChoiceTab}
-      onNewTerminalWithShell={commands.newTerminalWithShell}
-      onNewBrowserTab={commands.newBrowserTab}
-      onNewSimulatorTab={commands.newSimulatorTab}
-      onOpenEntry={commands.openEntry}
-      onNewFileTab={commands.newFileTab}
-      onSetCustomTitle={commands.setTabCustomTitle}
-      onSetTabColor={commands.setTabColor}
-      onTogglePaneExpand={commands.toggleTerminalPaneExpand}
-      editorFiles={editorItems}
-      browserTabs={browserItems}
-      clientHostedBrowserRows={clientHostedRows}
-      groupActiveTabId={activeTab?.id ?? null}
-      agentSessionTabs={agentSessionItems}
-      activeFileId={
-        activeTab?.contentType === 'terminal' ||
-        activeTab?.contentType === 'agent-session' ||
-        activeTab?.contentType === 'browser' ||
-        activeTab?.contentType === 'simulator'
-          ? null
-          : activeTab?.id
-      }
-      activeBrowserTabId={activeTab?.contentType === 'browser' ? activeTab.entityId : null}
-      activeSimulatorTabId={activeTab?.contentType === 'simulator' ? activeTab.id : null}
-      activeTabType={
-        activeTab?.contentType === 'terminal'
-          ? 'terminal'
-          : activeTab?.contentType === 'agent-session'
-            ? 'agent-session'
-            : activeTab?.contentType === 'browser'
-              ? 'browser'
-              : activeTab?.contentType === 'simulator'
-                ? 'simulator'
-                : 'editor'
-      }
-      onActivateFile={commands.activateEditor}
-      onCloseFile={commands.closeItem}
-      onActivateBrowserTab={commands.activateBrowser}
-      onActivateAgentSession={commands.activateAgentSession}
-      onCloseBrowserTab={(browserTabId) => {
-        const item = model.groupTabs.find(
-          (candidate) => candidate.entityId === browserTabId && candidate.contentType === 'browser'
-        )
-        if (item) {
-          commands.closeItem(item.id)
-        }
-      }}
-      onDuplicateBrowserTab={commands.duplicateBrowserTab}
-      onCloseAllFiles={commands.closeAllEditorTabsInGroup}
-      onMakePreviewFilePermanent={(_fileId, tabId) => {
-        if (!tabId) {
-          return
-        }
-        const item = model.groupTabs.find((candidate) => candidate.id === tabId)
-        if (!item) {
-          return
-        }
-        commands.makePreviewFilePermanent(item.entityId, item.id)
-      }}
-      onPinFile={(_fileId, tabId) => {
-        if (!tabId) {
-          return
-        }
-        const item = model.groupTabs.find((candidate) => candidate.id === tabId)
-        if (!item) {
-          return
-        }
-        commands.pinFile(item.entityId, item.id)
-      }}
-      tabBarOrder={tabBarOrder}
-      hoveredTabInsertion={hoveredTabInsertion}
-    />
   )
 
   const menuButtonClassName =
@@ -249,118 +104,159 @@ export default function TabGroupPanel({
       // Why: keyboard/AT focus can enter a split group without a pointer event, so sync group focus to DOM focus for global shortcuts.
       onFocusCapture={commands.focusGroup}
     >
-      {/* Why: each split group needs its own tab row because multiple groups can show at once but the titlebar has only one shared center slot. */}
-      {/* Why: macOS hiddenInset titleBarStyle makes -webkit-app-region: drag the only way to move the window from this tab row. */}
-      <div
-        className="h-[32px] shrink-0 border-b border-border bg-card"
-        data-tab-group-strip-id={groupId}
-        data-terminal-focus-release-surface="true"
-        data-worktree-id={worktreeId}
-      >
-        <div className="flex h-full items-stretch pr-1.5">
-          {/* Why: Electron drag hit-test respects no-drag only on DOM descendants, not z-index siblings, so this no-drag spacer keeps the collapsed left-sidebar's floating toggle clickable. */}
-          {reserveCollapsedSidebarHeaderSpace && !sidebarOpen ? (
+      {/* Why: the tab bar is gone — every pane holds exactly one session — but a focused
+          pane (or one sitting in a window-control corner) still needs a slim strip for
+          pane-level actions and the no-drag spacers around the titlebar. An unfocused,
+          non-corner pane renders none of this, so nothing sits at its top. */}
+      {/* Why: macOS hiddenInset titleBarStyle makes -webkit-app-region: drag the only way to move the window from this row. */}
+      {isFocused ||
+      (reserveCollapsedSidebarHeaderSpace && !sidebarOpen) ||
+      (reserveClosedExplorerToggleSpace && !rightSidebarOpen) ? (
+        <div
+          className="h-[32px] shrink-0 border-b border-border bg-card"
+          data-tab-group-strip-id={groupId}
+          data-terminal-focus-release-surface="true"
+          data-worktree-id={worktreeId}
+        >
+          <div className="flex h-full items-stretch justify-end pr-1.5">
+            {/* Why: Electron drag hit-test respects no-drag only on DOM descendants, not z-index siblings, so this no-drag spacer keeps the collapsed left-sidebar's floating toggle clickable. */}
+            {reserveCollapsedSidebarHeaderSpace && !sidebarOpen ? (
+              <div
+                className="shrink-0"
+                style={
+                  {
+                    width: 'var(--collapsed-sidebar-header-width)',
+                    WebkitAppRegion: 'no-drag'
+                  } as React.CSSProperties
+                }
+              />
+            ) : null}
             <div
-              className="shrink-0"
-              style={
-                {
-                  width: 'var(--collapsed-sidebar-header-width)',
-                  WebkitAppRegion: 'no-drag'
-                } as React.CSSProperties
-              }
+              className="min-w-0 flex-1"
+              style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
             />
-          ) : null}
-          <div className="min-w-0 flex-1 h-full">{tabBar}</div>
-          <div
-            className="ml-1.5 flex shrink-0 items-center gap-0.5"
-            style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-          >
-            <div className={focusedActionChromeClassName}>
-              {isFocused ? (
-                <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
-              ) : null}
-              {/* Why only isFocused: "choose how many panes" acts on the whole
-                  worktree grid, so one focused pane's control is enough. */}
-              {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
-              {isFocused ? (
-                <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
-              ) : null}
-              {/* Why only isFocused: Tidy and the presets apply to the panes inside a
-                  tab too, which exist with or without split groups. Closing a group
-                  still needs one, so that item keeps the stricter gate below. */}
-              {isFocused ? (
-                <Tooltip>
-                  <DropdownMenu modal={false}>
+            <div
+              className="ml-1.5 flex shrink-0 items-center gap-0.5"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
+              <div className={focusedActionChromeClassName}>
+                {isFocused ? (
+                  <Tooltip>
                     <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={translate(
-                            'auto.components.tab.group.TabGroupPanel.9acaf92093',
-                            'Pane Actions'
-                          )}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                          }}
-                          className={menuButtonClassName}
-                        >
-                          <Ellipsis className="size-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <DropdownMenuContent align="end" side="bottom" sideOffset={4}>
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          tidyLayoutCommand()
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={translate(
+                          'auto.components.tab.group.TabGroupPanel.launchAgent',
+                          'Launch agent'
+                        )}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          useAppStore
+                            .getState()
+                            .openModal('launch-agents', {
+                              repoId: getRepoIdFromWorktreeId(worktreeId)
+                            })
                         }}
                       >
-                        <LayoutGrid className="size-4" />
-                        {translate(
-                          'auto.components.tab.group.TabGroupPanel.tidyLayout',
-                          'Tidy panes'
-                        )}
-                      </DropdownMenuItem>
-                      <LayoutPresetsMenu worktreeId={worktreeId} />
-                      {hasSplitGroups ? (
+                        <Plus className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={6}>
+                      {translate(
+                        'auto.components.tab.group.TabGroupPanel.launchAgent',
+                        'Launch agent'
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+                {isFocused ? (
+                  <TabBarQuickCommandsButton worktreeId={worktreeId} groupId={groupId} />
+                ) : null}
+                {/* Why only isFocused: "choose how many panes" acts on the whole
+                    worktree grid, so one focused pane's control is enough. */}
+                {isFocused ? <PaneCountStepper worktreeId={worktreeId} /> : null}
+                {isFocused ? (
+                  <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
+                ) : null}
+                {/* Why only isFocused: Tidy and the presets apply to the panes inside a
+                    tab too, which exist with or without split groups. Closing a group
+                    still needs one, so that item keeps the stricter gate below. */}
+                {isFocused ? (
+                  <Tooltip>
+                    <DropdownMenu modal={false}>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={translate(
+                              'auto.components.tab.group.TabGroupPanel.9acaf92093',
+                              'Pane Actions'
+                            )}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                            }}
+                            className={menuButtonClassName}
+                          >
+                            <Ellipsis className="size-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <DropdownMenuContent align="end" side="bottom" sideOffset={4}>
                         <DropdownMenuItem
-                          variant="destructive"
                           onSelect={() => {
-                            commands.closeGroup()
+                            tidyLayoutCommand()
                           }}
                         >
-                          <X className="size-4" />
+                          <LayoutGrid className="size-4" />
                           {translate(
-                            'auto.components.tab.group.TabGroupPanel.closePaneColumn',
-                            'Close split pane'
+                            'auto.components.tab.group.TabGroupPanel.tidyLayout',
+                            'Tidy panes'
                           )}
                         </DropdownMenuItem>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <TooltipContent side="bottom" sideOffset={6}>
-                    {translate(
-                      'auto.components.tab.group.TabGroupPanel.9acaf92093',
-                      'Pane Actions'
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
+                        <LayoutPresetsMenu worktreeId={worktreeId} />
+                        {hasSplitGroups ? (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => {
+                              commands.closeGroup()
+                            }}
+                          >
+                            <X className="size-4" />
+                            {translate(
+                              'auto.components.tab.group.TabGroupPanel.closePaneColumn',
+                              'Close split pane'
+                            )}
+                          </DropdownMenuItem>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <TooltipContent side="bottom" sideOffset={6}>
+                      {translate(
+                        'auto.components.tab.group.TabGroupPanel.9acaf92093',
+                        'Pane Actions'
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </div>
             </div>
+            {/* Why: Electron drag hit-test respects no-drag only on DOM descendants, not z-index siblings, so this no-drag spacer keeps the floating right-sidebar toggle + window controls clickable. */}
+            {reserveClosedExplorerToggleSpace && !rightSidebarOpen ? (
+              <div
+                className="shrink-0"
+                style={
+                  {
+                    width: 'calc(40px + var(--window-controls-width, 0px))',
+                    WebkitAppRegion: 'no-drag'
+                  } as React.CSSProperties
+                }
+              />
+            ) : null}
           </div>
-          {/* Why: Electron drag hit-test respects no-drag only on DOM descendants, not z-index siblings, so this no-drag spacer keeps the floating right-sidebar toggle + window controls clickable. */}
-          {reserveClosedExplorerToggleSpace && !rightSidebarOpen ? (
-            <div
-              className="shrink-0"
-              style={
-                {
-                  width: 'calc(40px + var(--window-controls-width, 0px))',
-                  WebkitAppRegion: 'no-drag'
-                } as React.CSSProperties
-              }
-            />
-          ) : null}
         </div>
-      </div>
+      ) : null}
 
       <div
         ref={setBodyDropRef}

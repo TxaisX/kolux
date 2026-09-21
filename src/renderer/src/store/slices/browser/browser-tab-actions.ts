@@ -18,6 +18,7 @@ import {
 import { getBrowserSessionProfileHostId } from './browser-host-state'
 import { getRuntimeEnvironmentIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { admitBrowserPageMount } from '@/components/browser-pane/host-guest/browser-page-mount-admission'
+import { resolveNewPaneTargetGroupId } from '../tabs/resolve-new-pane-target-group-id'
 
 export function createBrowserTabActions(
   set: BrowserSliceSet,
@@ -161,12 +162,15 @@ export function createBrowserTabActions(
       return browserTab
     },
 
-    openNewBrowserTabInActiveWorkspace: async (groupId) => {
+    openNewBrowserTabInActiveWorkspace: async (requestedGroupId) => {
       const state = get()
       const worktreeId = state.activeWorktreeId
       if (!worktreeId) {
         return
       }
+      // Why: every pane holds exactly one session now — a new browser tab
+      // always splits a fresh pane rather than appending beside the caller's group.
+      const groupId = resolveNewPaneTargetGroupId(state, worktreeId) ?? requestedGroupId
       const browserAvailability = getClientCreationActionPolicy(state, worktreeId)[
         'managed-browser'
       ]

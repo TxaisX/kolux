@@ -1,8 +1,9 @@
 import type { AppState } from '../../../types'
 import type { EditorSlice } from '../types/editor-slice'
 import type { OpenFile } from '../types/open-file'
-import { resolveEditorOpenTargetGroupId } from './editor-open-target-group'
 import { isEditorTabContentType } from './editor-tab-content-type'
+import { resolveNewPaneTargetGroupId } from '../../tabs/resolve-new-pane-target-group-id'
+import { canReplacePreviewContentType } from '../../tabs/tabs-tab-order'
 
 export function openWorkspaceEditorItem(
   state: AppState,
@@ -13,7 +14,32 @@ export function openWorkspaceEditorItem(
   isPreview?: boolean,
   targetGroupId?: string
 ): string {
-  const resolvedGroupId = resolveEditorOpenTargetGroupId(state, worktreeId, targetGroupId)
+  let resolvedTargetGroupId = targetGroupId
+  if (!resolvedTargetGroupId) {
+    // Why: with no explicit target, look for this entity in every group before
+    // falling back — every pane holds exactly one session now, so a file/diff
+    // already open somewhere must be refocused there, never duplicated into a
+    // fresh pane.
+    const worktreeTabs = state.unifiedTabsByWorktree?.[worktreeId] ?? []
+    const existingAnywhere = worktreeTabs.find(
+      (tab) => tab.entityId === fileId && tab.contentType === contentType
+    )
+    if (existingAnywhere) {
+      state.activateTab?.(existingAnywhere.id, { preservePreview: isPreview })
+      return existingAnywhere.id
+    }
+    // Why: a preview open (single-click "peek") replaces whatever the
+    // worktree's current preview tab shows, wherever it lives, so previewing
+    // several files in a row reuses that one pane instead of splitting a
+    // fresh pane for every click.
+    const existingPreview = isPreview
+      ? worktreeTabs.find(
+          (tab) => tab.isPreview && canReplacePreviewContentType(contentType, tab.contentType)
+        )
+      : undefined
+    resolvedTargetGroupId = existingPreview?.groupId
+  }
+  const resolvedGroupId = resolvedTargetGroupId ?? resolveNewPaneTargetGroupId(state, worktreeId)
   if (resolvedGroupId) {
     const existing = state.findTabForEntityInGroup?.(
       worktreeId,

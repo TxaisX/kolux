@@ -198,9 +198,6 @@ function SplitNode({
         reserveClosedExplorerToggleSpace={touchesTopEdge && touchesRightEdge}
         reserveCollapsedSidebarHeaderSpace={touchesTopEdge && touchesLeftEdge}
         isTabDragActive={isTabDragActive}
-        hoveredTabInsertion={
-          hoveredTabInsertion?.groupId === node.groupId ? hoveredTabInsertion : null
-        }
       />
     )
   }

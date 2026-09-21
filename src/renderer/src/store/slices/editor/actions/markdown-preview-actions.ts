@@ -12,6 +12,7 @@ import type { OpenFile } from '../types/open-file'
 import { resolveEditorFileIdForOwner } from '../file-ids/editor-file-ids'
 import { buildEditorActiveResult } from '../tabs/editor-open-target-group'
 import { openWorkspaceEditorItem } from '../tabs/workspace-editor-item'
+import { resolveNewPaneTargetGroupId } from '../../tabs/resolve-new-pane-target-group-id'
 
 export function createMarkdownPreviewActions(
   set: EditorSet,
@@ -24,12 +25,15 @@ export function createMarkdownPreviewActions(
   | 'pinFile'
 > {
   return {
-    openNewMarkdownInActiveWorkspace: async (groupId) => {
+    openNewMarkdownInActiveWorkspace: async (requestedGroupId) => {
       const state = get()
       const worktreeId = state.activeWorktreeId
       if (!worktreeId) {
         return
       }
+      // Why: every pane holds exactly one session now — a new markdown file
+      // always splits a fresh pane rather than appending beside the caller's group.
+      const groupId = resolveNewPaneTargetGroupId(state, worktreeId) ?? requestedGroupId
       const worktree = state.getKnownWorktreeById(worktreeId)
       if (!worktree) {
         return
