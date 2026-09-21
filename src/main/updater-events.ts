@@ -16,9 +16,10 @@ import {
 } from './linux-package-downloaded-status'
 import { isExternallyManagedLinuxInstall } from './linux-update-package-type'
 import * as linuxPackageRecovery from './linux-package-update-recovery'
-
-const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
-const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
+import {
+  AUTO_UPDATE_CHECK_INTERVAL_MS,
+  AUTO_UPDATE_RETRY_INTERVAL_MS
+} from './updater/updater-state'
 
 type UpdaterHandlerContext = {
   autoUpdater: ElectronAutoUpdater

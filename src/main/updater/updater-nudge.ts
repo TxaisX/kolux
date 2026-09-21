@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, net } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { fetchNudge, shouldApplyNudge } from '../updater-nudge'
 import { NUDGE_ACTIVATION_COOLDOWN_MS, NUDGE_POLL_INTERVAL_MS } from './updater-state'
@@ -7,7 +7,7 @@ import { UpdaterBuildSelection } from './updater-build-selection'
 /** Polls update campaigns and exposes their dismissal actions. */
 export abstract class UpdaterNudge extends UpdaterBuildSelection {
   protected async checkForUpdateNudge(): Promise<void> {
-    if (!app.isPackaged || is.dev) {
+    if (!app.isPackaged || is.dev || !net.isOnline()) {
       return
     }
     if (this.nudgeCheckInFlight) {

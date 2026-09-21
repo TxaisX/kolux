@@ -82,7 +82,7 @@ vi.mock('electron', () => ({
   autoUpdater: nativeUpdaterMock,
   powerMonitor: { on: vi.fn() },
   shell: { openExternal: vi.fn() },
-  net: { fetch: vi.fn() }
+  net: { fetch: vi.fn(), isOnline: () => true }
 }))
 
 vi.mock('electron-updater', () => ({ autoUpdater: autoUpdaterMock }))

@@ -80,7 +80,7 @@ vi.mock('electron', () => ({
   BrowserWindow: browserWindowMock,
   autoUpdater: nativeUpdaterMock,
   powerMonitor: { on: vi.fn() },
-  net: { fetch: netFetchMock, request: netRequestMock }
+  net: { fetch: netFetchMock, request: netRequestMock, isOnline: () => true }
 }))
 
 vi.mock('electron-updater', () => ({

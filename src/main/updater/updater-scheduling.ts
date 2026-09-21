@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, net } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import { withUpdaterSpan } from '../observability/instrumentation'
 import {
@@ -16,8 +16,11 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
 
   protected scheduleAutomaticUpdateCheck(delayMs: number): void {
     let effectiveDelayMs = delayMs
-    // All retry-cadence callers pass exactly this constant, so keying backoff on it keeps one choke point instead of threading a flag through every schedule site.
-    if (delayMs === AUTO_UPDATE_RETRY_INTERVAL_MS) {
+    const isRetry = delayMs === this.getAutomaticRetryInterval()
+    // Only the short retry cadence backs off. A successful check always keeps the
+    // normal polling interval, even when that interval happens to share a value
+    // with an older retry setting.
+    if (isRetry) {
       effectiveDelayMs = Math.min(
         AUTO_UPDATE_RETRY_INTERVAL_MS * 2 ** this.consecutiveAutomaticRetrySchedules,
         MAX_AUTO_UPDATE_RETRY_INTERVAL_MS
@@ -29,7 +32,7 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
     }
     this.autoUpdateCheckTimer = setTimeout(() => {
       // Why: Nightshift runs for days, so keep the next background check scheduled in the main process rather than tying it to relaunches or renderer lifetime.
-      if (!this.runBackgroundUpdateCheck()) {
+      if (!this.runBackgroundUpdateCheck(undefined, isRetry)) {
         // Why: a deferred check reaches no outcome handler, so re-arm here or one deferral ends automatic checks for the process lifetime.
         this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)
       }
@@ -38,12 +41,15 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
 
   protected recordCompletedUpdateCheck(): void {
     this.consecutiveAutomaticRetrySchedules = 0
-    this.persistLastUpdateCheckAt?.(Date.now())
+    this.lastCompletedUpdateCheckAt = Date.now()
+    this.persistLastUpdateCheckAt?.(this.lastCompletedUpdateCheckAt)
   }
 
   /** Returns false when the check was deferred instead of launched, so timer-driven callers can re-arm. */
   protected runBackgroundUpdateCheck(
-    nudgeId: string | null = this.getPersistedPendingUpdateNudgeId()
+    nudgeId: string | null = this.getPersistedPendingUpdateNudgeId(),
+    // Why: fallback 'available' states schedule retries to reach the newest tag once it publishes.
+    allowWhileAvailable = false
   ): boolean {
     // Why: a pinned dev jump owns the feed until it settles; a background check would repoint it mid-flight and download the wrong build.
     if (
@@ -54,13 +60,23 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
     ) {
       return false
     }
-    if (this.backgroundCheckLaunchPending || this.currentStatus.state === 'checking') {
+    if (
+      this.backgroundCheckLaunchPending ||
+      this.downloadInFlight ||
+      this.currentStatus.state === 'checking' ||
+      (this.currentStatus.state === 'available' && !allowWhileAvailable) ||
+      this.currentStatus.state === 'downloading' ||
+      this.currentStatus.state === 'downloaded'
+    ) {
       return false
     }
     if (!app.isPackaged || is.dev) {
-      this.sendStatus({ state: 'not-available' })
       return false
     }
+    if (!net.isOnline()) {
+      return false
+    }
+    this.lastAutomaticCheckAttemptAt = Date.now()
     // Why: set the nudge marker before any events arrive so later checks can't inherit a stale campaign id; persisted id keeps a nudge card dismissable after relaunch.
     this.activeUpdateNudgeId = nudgeId
     // Why: 'checking-for-update' arrives a tick later, so a second focus/resume can slip in before status flips; track launch in memory to dedupe that gap.

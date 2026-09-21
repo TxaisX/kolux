@@ -1,7 +1,7 @@
 name: Release
 
 # Push a tag like v0.1.0 to build the Windows installer and publish it as a GitHub Release.
-# Installed copies find it through latest.yml on their daily update check.
+# Installed copies find it through latest.yml on their automatic update check.
 on:
   push:
     tags: ['v0.*']
@@ -50,9 +50,20 @@ jobs:
       - name: Create the release before uploading
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "" --verify-tag
+        run: gh release create "$env:GITHUB_REF_NAME" --title "$env:GITHUB_REF_NAME" --notes "" --verify-tag --draft
 
       - name: Package and publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish always
+        run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish always -c.publish.releaseType=draft
+
+      - name: Publish the complete release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $assets = gh release view "$env:GITHUB_REF_NAME" --json assets --jq '.assets[].name'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify release assets' }
+          foreach ($required in @('latest.yml', 'nightshift-windows-setup.exe', 'nightshift-windows-setup.exe.blockmap')) {
+            if ($assets -notcontains $required) { throw "Missing release asset: $required" }
+          }
+          gh release edit "$env:GITHUB_REF_NAME" --draft=false --latest
