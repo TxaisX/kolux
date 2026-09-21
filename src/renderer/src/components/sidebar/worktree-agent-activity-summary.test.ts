@@ -445,7 +445,7 @@ describe('selectWorktreeAgentActivitySummary', () => {
     expect(summary.agentStatusPaneIdsByTabId['tab-parent']).toEqual(new Set([LEAF_ID]))
   })
 
-  // Why: Nightshift injects its own "<Agent> - action required" OSC title on a blocked/waiting hook,
+  // Why: Kolux injects its own "<Agent> - action required" OSC title on a blocked/waiting hook,
   // then classifies that title back as evidence. If a pane stopped registering its identity once
   // its row aged out, that self-authored title outranked the pane's own `done` row and pinned the
   // workspace card to the question icon with no agent asking anything.

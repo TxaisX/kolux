@@ -294,7 +294,7 @@ describe('terminal-history', () => {
 
     it('records the history DIRECTORY from the SPAWN env, not this process env', () => {
       // The file is written by the PTY's fish, and the two envs disagree whenever
-      // Nightshift was launched with a different XDG_DATA_HOME than the shells it spawns.
+      // Kolux was launched with a different XDG_DATA_HOME than the shells it spawns.
       // Pinned so the assertion cannot accidentally read the developer's own value.
       const originalDataHome = process.env.XDG_DATA_HOME
       process.env.XDG_DATA_HOME = ['', 'main', 'process', 'data'].join(sep)
@@ -339,32 +339,32 @@ describe('terminal-history', () => {
       expect(envA.fish_history).not.toBe(envB.fish_history)
     })
 
-    it('drops an NIGHTSHIFT_HISTFILE inherited from a parent Nightshift PTY', () => {
-      // Why: a Nightshift terminal opened from inside another Nightshift terminal inherits
+    it('drops an KOLUX_HISTFILE inherited from a parent Kolux PTY', () => {
+      // Why: a Kolux terminal opened from inside another Kolux terminal inherits
       // it, and the zsh wrapper would then re-export the PARENT worktree's
       // history path here. Credit: caught by @innocarpe in #11146.
       const env: Record<string, string> = {
-        NIGHTSHIFT_HISTFILE: ['', 'other', 'wt', 'zsh_history'].join(sep)
+        KOLUX_HISTFILE: ['', 'other', 'wt', 'zsh_history'].join(sep)
       }
 
       injectHistoryEnv(env, 'repo-1::/path/wt', '/bin/zsh', '/path/wt')
 
-      expect(env.NIGHTSHIFT_HISTFILE).toBe(env.HISTFILE)
-      expect(env.NIGHTSHIFT_HISTFILE).not.toContain('other')
+      expect(env.KOLUX_HISTFILE).toBe(env.HISTFILE)
+      expect(env.KOLUX_HISTFILE).not.toContain('other')
     })
 
-    it('drops an inherited NIGHTSHIFT_HISTFILE even when it injects nothing', () => {
+    it('drops an inherited KOLUX_HISTFILE even when it injects nothing', () => {
       // The dangerous variant: the early return would otherwise leave the stale
       // value pointing the wrapper at another worktree, overriding HISTFILE.
       const env: Record<string, string> = {
         HISTFILE: ['', 'mine', 'zsh_history'].join(sep),
-        NIGHTSHIFT_HISTFILE: ['', 'other', 'wt', 'zsh_history'].join(sep)
+        KOLUX_HISTFILE: ['', 'other', 'wt', 'zsh_history'].join(sep)
       }
 
       injectHistoryEnv(env, 'repo-1::/path/wt', '/bin/zsh', '/path/wt')
 
       expect(env.HISTFILE).toBe(['', 'mine', 'zsh_history'].join(sep))
-      expect(env.NIGHTSHIFT_HISTFILE).toBeUndefined()
+      expect(env.KOLUX_HISTFILE).toBeUndefined()
     })
 
     it.each([
@@ -378,13 +378,13 @@ describe('terminal-history', () => {
           '',
           'home',
           'me',
-          '.nightshift-remote',
+          '.kolux-remote',
           'terminal-history',
           `${OTHER_WORKTREE_HASH}-zsh_history`
         ].join(sep)
       ]
-    ])('drops a %s HISTFILE inherited from a parent Nightshift pane', (_kind, inherited) => {
-      // HISTFILE stays EXPORTED once the wrapper restores it, so a Nightshift launched
+    ])('drops a %s HISTFILE inherited from a parent Kolux pane', (_kind, inherited) => {
+      // HISTFILE stays EXPORTED once the wrapper restores it, so a Kolux launched
       // from a pane in another worktree would otherwise hit the check-before-set
       // early return in EVERY pane and append into that one worktree's file.
       const env: Record<string, string> = { HISTFILE: inherited }
@@ -398,14 +398,14 @@ describe('terminal-history', () => {
 
     it.each([
       ['an ordinary path', ['', 'home', 'me', '.zsh_history'].join(sep)],
-      // Nightshift only ever mints absolute paths, so the same shape relative to the
+      // Kolux only ever mints absolute paths, so the same shape relative to the
       // user's cwd is theirs.
       [
-        'a relative path of Nightshift’s shape',
+        'a relative path of Kolux’s shape',
         ['terminal-history', OTHER_WORKTREE_HASH, 'zsh_history'].join(sep)
       ]
     ])('preserves %s the user set as HISTFILE', (_kind, histFile) => {
-      // Only a path Nightshift minted is droppable; everything else is the user's.
+      // Only a path Kolux minted is droppable; everything else is the user's.
       const env: Record<string, string> = { HISTFILE: histFile }
 
       const result = injectHistoryEnv(env, 'repo-1::/path/wt', '/bin/zsh', '/path/wt')
@@ -425,8 +425,8 @@ describe('terminal-history', () => {
     it.each([
       ['desktop', fishHistorySessionName(hashWorktreeId('repo-1::/path/other-wt'))],
       ['relay', relayFishHistorySessionName(hashWorktreeId('repo-1::/path/other-wt'))]
-    ])('replaces a %s fish_history inherited from a parent Nightshift', (_kind, inherited) => {
-      // fish EXPORTS fish_history, so a Nightshift launched from a fish pane hands the
+    ])('replaces a %s fish_history inherited from a parent Kolux', (_kind, inherited) => {
+      // fish EXPORTS fish_history, so a Kolux launched from a fish pane hands the
       // LAUNCHING worktree's session to every pane here — panes in every other
       // worktree included, which would all then write one worktree's history file.
       const env: Record<string, string> = { fish_history: inherited }
@@ -467,7 +467,7 @@ describe('terminal-history', () => {
       mkdirSyncMock.mockReset()
     })
 
-    it('replaces an inherited Nightshift fish_history with this worktree session', () => {
+    it('replaces an inherited Kolux fish_history with this worktree session', () => {
       const env: Record<string, string> = {
         fish_history: fishHistorySessionName(hashWorktreeId('repo-1::/path/other-wt'))
       }
@@ -522,11 +522,11 @@ describe('terminal-history', () => {
     })
 
     it('swaps an injected fish session for the fallback shell HISTFILE', () => {
-      const env: Record<string, string> = { fish_history: 'nightshift_abc123' }
+      const env: Record<string, string> = { fish_history: 'kolux_abc123' }
       updateHistoryEnvForFallback(env, '/bin/bash', {
         shell: 'fish',
         histFile: null,
-        fishSession: 'nightshift_abc123',
+        fishSession: 'kolux_abc123',
         historyDir: '/fake/userData/terminal-history/abc123'
       })
       expect(env.fish_history).toBeUndefined()
@@ -600,14 +600,12 @@ describe('terminal-history', () => {
       existsSyncMock.mockReturnValue(true)
       lstatSyncMock.mockReturnValue({ isFile: () => true })
       readFileSyncMock.mockReturnValue(
-        JSON.stringify({ worktreeId, fishSession: 'nightshift_deadbeefdeadbeef' })
+        JSON.stringify({ worktreeId, fishSession: 'kolux_deadbeefdeadbeef' })
       )
 
       deleteWorktreeHistoryDir('repo-1::/path/wt')
 
-      expect(rmSyncMock).not.toHaveBeenCalledWith(
-        expect.stringContaining('nightshift_deadbeefdeadbeef')
-      )
+      expect(rmSyncMock).not.toHaveBeenCalledWith(expect.stringContaining('kolux_deadbeefdeadbeef'))
       await flushPendingWorktreeHistoryDeletions()
     })
 
@@ -696,7 +694,7 @@ describe('terminal-history', () => {
       try {
         parseWslPathMock.mockReturnValue({ distro: 'Ubuntu', linuxPath: '/home/user/project' })
         toLinuxPathMock.mockReturnValue(
-          '/mnt/c/Users/user/AppData/Roaming/Nightshift/terminal-history-wsl/Ubuntu/abc123/bash_history'
+          '/mnt/c/Users/user/AppData/Roaming/Kolux/terminal-history-wsl/Ubuntu/abc123/bash_history'
         )
         mkdirSyncMock.mockReturnValue(undefined)
         existsSyncMock.mockReturnValue(true)
@@ -753,7 +751,7 @@ describe('terminal-history', () => {
         toLinuxPathMock.mockImplementation((p: string) => p.replace(/^C:\\/i, '/mnt/c/'))
         mkdirSyncMock.mockReturnValue(undefined)
         existsSyncMock.mockReturnValue(true)
-        getPathMock.mockReturnValue('C:\\Users\\alice\\AppData\\Roaming\\Nightshift')
+        getPathMock.mockReturnValue('C:\\Users\\alice\\AppData\\Roaming\\Kolux')
 
         const env: Record<string, string> = {}
         const result = injectHistoryEnv(env, 'repo-1::C:\\repo', '/bin/bash', 'C:\\repo', {

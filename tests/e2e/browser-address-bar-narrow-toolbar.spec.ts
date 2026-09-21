@@ -7,7 +7,7 @@
 
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import type { ElectronApplication, Locator, Page } from '@stablyai/playwright-test'
 import {
   ensureTerminalVisible,
@@ -77,11 +77,11 @@ async function toolbarWidth(page: Page): Promise<number> {
 }
 
 function addressBarInput(page: Page): Locator {
-  return page.locator('[data-nightshift-browser-address-bar="true"]')
+  return page.locator('[data-kolux-browser-address-bar="true"]')
 }
 
 function addressBarOverlay(page: Page): Locator {
-  return page.locator('[data-nightshift-browser-address-bar-overlay="true"]')
+  return page.locator('[data-kolux-browser-address-bar-overlay="true"]')
 }
 
 async function addressBarInputWidth(page: Page): Promise<number> {
@@ -129,42 +129,38 @@ async function settleToSqueezedRestingState(
 }
 
 test.describe('Browser address bar in a narrow toolbar', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   test('focusing the squeezed address bar expands a typable field that navigates', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     const destination = await startDestinationServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-      await createBlankBrowserTab(nightshiftPage, worktreeId)
-      await settleToSqueezedRestingState(nightshiftPage, electronApp)
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
+      await createBlankBrowserTab(koluxPage, worktreeId)
+      await settleToSqueezedRestingState(koluxPage, electronApp)
 
-      const overlay = addressBarOverlay(nightshiftPage)
+      const overlay = addressBarOverlay(koluxPage)
       // The bug: the inline field is squeezed away entirely.
-      await expect
-        .poll(() => addressBarInputWidth(nightshiftPage), { timeout: 10_000 })
-        .toBeLessThan(40)
+      await expect.poll(() => addressBarInputWidth(koluxPage), { timeout: 10_000 }).toBeLessThan(40)
 
-      await nightshiftPage
-        .locator('form:has(> [data-nightshift-browser-address-bar="true"])')
-        .click()
+      await koluxPage.locator('form:has(> [data-kolux-browser-address-bar="true"])').click()
 
       await expect(overlay).toBeVisible()
       await expect
-        .poll(() => addressBarInputWidth(nightshiftPage), { timeout: 5_000 })
+        .poll(() => addressBarInputWidth(koluxPage), { timeout: 5_000 })
         .toBeGreaterThan(BROWSER_ADDRESS_BAR_MIN_INLINE_WIDTH / 2)
 
-      await addressBarInput(nightshiftPage).fill(destination.url)
-      await addressBarInput(nightshiftPage).press('Enter')
+      await addressBarInput(koluxPage).fill(destination.url)
+      await addressBarInput(koluxPage).press('Enter')
 
       await expect
-        .poll(async () => (await getBrowserTabs(nightshiftPage, worktreeId)).at(-1)?.url ?? null, {
+        .poll(async () => (await getBrowserTabs(koluxPage, worktreeId)).at(-1)?.url ?? null, {
           timeout: 15_000
         })
         .toContain('/typed')

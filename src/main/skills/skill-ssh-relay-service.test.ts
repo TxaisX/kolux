@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function userDataPath(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-ssh-client-test-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-ssh-client-test-'))
   roots.push(root)
   return root
 }

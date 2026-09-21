@@ -301,7 +301,7 @@ function loadNodePtyNativeModule() {
   assertNodePtyJobOwnership({ nativeName, native })
   if (requiresPatchedNodePtySourceBuild() && !isNodePtyReleaseBuildDir(native?.dir)) {
     throw new Error(
-      `node-pty resolved to ${native.dir}; expected build/Release so Nightshift's node-pty patch is active`
+      `node-pty resolved to ${native.dir}; expected build/Release so Kolux's node-pty patch is active`
     )
   }
 }
@@ -332,7 +332,7 @@ function getPatchedNodePtyRebuildReason() {
     return null
   }
 
-  // Why: a loadable upstream node-pty prebuild is not enough; Nightshift's Unix and
+  // Why: a loadable upstream node-pty prebuild is not enough; Kolux's Unix and
   // Windows patches only land in the source-built build/Release artifacts.
   const nodePtyDir = resolve(projectDir, 'node_modules', 'node-pty')
   const artifactPaths = patchedNodePtyArtifactPaths(nodePtyDir)

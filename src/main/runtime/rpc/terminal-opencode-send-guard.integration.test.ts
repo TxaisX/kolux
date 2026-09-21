@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
 import { TERMINAL_METHODS } from './methods/terminal'
@@ -14,7 +14,7 @@ describe('OpenCode guarded terminal send', () => {
   it('refuses a marker title left on a shell without writing notes', async () => {
     vi.useFakeTimers()
     const write = vi.fn(() => true)
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setPtyController({
       write,
       kill: () => true,

@@ -9,10 +9,7 @@ import { codexHookService } from '../codex/hook-service'
 import { ensureRealHomeCodexHookState } from '../codex/codex-real-home-hook-install'
 import { isAgentStatusHooksEnabled } from '../agent-hooks/managed-agent-hook-controls'
 import { markCodexProjectTrusted } from '../agent-trust-presets'
-import {
-  getNightshiftManagedCodexHomePath,
-  getSystemCodexHomePath
-} from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
 import { normalizeRuntimePathForComparison } from '../../shared/cross-platform-path'
 import { mainProcessState as state } from './main-process-state'
 
@@ -50,7 +47,7 @@ export async function prepareCodexSessionResumeForLaunch(args: {
     systemCodexHomePath: systemHomePath,
     // Why: the mirror winning is what triggers the migration into ~/.codex below, so it must
     // outrank the path-sorted account homes or a system-default selection resumes as an account.
-    sharedRuntimeCodexHomePath: getNightshiftManagedCodexHomePath(),
+    sharedRuntimeCodexHomePath: getKoluxManagedCodexHomePath(),
     resolveVerifiedResumeHome: async (sessionSource) => {
       let migrated = { useRealCodexHome: false }
       try {
@@ -117,7 +114,7 @@ export async function prepareCodexSessionResumeForLaunch(args: {
         ...preparation,
         reconcileSharedRuntimeAuth:
           normalizeRuntimePathForComparison(preparation.codexHomePath) ===
-          normalizeRuntimePathForComparison(getNightshiftManagedCodexHomePath())
+          normalizeRuntimePathForComparison(getKoluxManagedCodexHomePath())
       }
     : preparation
 }

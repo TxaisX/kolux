@@ -15,7 +15,7 @@ import {
 } from '../keychain'
 import { ClaudeRuntimeAuthCredentialIdentity } from './runtime-auth-credential-identity'
 
-const OWNERSHIP_PROBE_TIMEOUT = 'nightshift-wsl-ownership-probe-timeout'
+const OWNERSHIP_PROBE_TIMEOUT = 'kolux-wsl-ownership-probe-timeout'
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
@@ -39,7 +39,7 @@ export class ClaudeRuntimeAuthManagedCredentials extends ClaudeRuntimeAuthCreden
   ): Promise<void> {
     const managedAuthPath = await this.getOwnedManagedAuthPath(account)
     if (!managedAuthPath) {
-      throw new Error('Managed Claude auth storage is not owned by Nightshift.')
+      throw new Error('Managed Claude auth storage is not owned by Kolux.')
     }
     if (process.platform === 'darwin') {
       await writeManagedClaudeKeychainCredentials(account.id, credentialsJson)
@@ -93,7 +93,7 @@ export class ClaudeRuntimeAuthManagedCredentials extends ClaudeRuntimeAuthCreden
     const wslInfo = parseWslUncPath(account.managedAuthPath)
     if (wslInfo) {
       if (
-        !wslInfo.linuxPath.includes('/.local/share/nightshift/claude-accounts/') ||
+        !wslInfo.linuxPath.includes('/.local/share/kolux/claude-accounts/') ||
         !wslInfo.linuxPath.endsWith('/auth')
       ) {
         return null
@@ -107,11 +107,11 @@ export class ClaudeRuntimeAuthManagedCredentials extends ClaudeRuntimeAuthCreden
             script: [
               'set -euo pipefail',
               `candidate=${shellQuote(wslInfo.linuxPath)}`,
-              'managed_root="${HOME%/}/.local/share/nightshift/claude-accounts"',
+              'managed_root="${HOME%/}/.local/share/kolux/claude-accounts"',
               'candidate_real=$(readlink -f -- "$candidate")',
               'managed_root_real=$(readlink -f -- "$managed_root")',
-              'test -f "$candidate_real/.nightshift-managed-claude-auth"',
-              `test "$(cat "$candidate_real/.nightshift-managed-claude-auth")" = ${shellQuote(account.id)}`,
+              'test -f "$candidate_real/.kolux-managed-claude-auth"',
+              `test "$(cat "$candidate_real/.kolux-managed-claude-auth")" = ${shellQuote(account.id)}`,
               'case "$candidate_real" in "$managed_root_real"/*/auth) printf "%s\\n" "$candidate_real" ;; *) exit 35 ;; esac'
             ].join('\n'),
             timeoutMs: 5000
@@ -125,7 +125,7 @@ export class ClaudeRuntimeAuthManagedCredentials extends ClaudeRuntimeAuthCreden
           const canonicalLinuxPath = owned.stdout.trim()
           return canonicalLinuxPath ? toWindowsWslPath(canonicalLinuxPath, wslInfo.distro) : null
         } catch (error) {
-          // Why rethrow a timeout: null means "not owned by Nightshift", and the
+          // Why rethrow a timeout: null means "not owned by Kolux", and the
           // caller persists that -- clearing the user's account selection. A
           // slow distro must not decide ownership. Swallowing it here is what
           // made the previous guard dead code.

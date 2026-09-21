@@ -18,11 +18,11 @@ const scopeA: ArtifactShareScope = {
   cloudUserId: 'user-a',
   cloudProfileId: 'cloud-a',
   cloudOrganizationId: 'org-a',
-  apiOrigin: 'https://share.nightshift.invalid'
+  apiOrigin: 'https://share.kolux.invalid'
 }
 
 async function userDataPath(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), 'nightshift-artifact-records-'))
+  const path = await mkdtemp(join(tmpdir(), 'kolux-artifact-records-'))
   createdPaths.push(path)
   return path
 }
@@ -40,7 +40,7 @@ describe('artifact share record store', () => {
       ...scopeA,
       slug: 'artifact-a',
       editToken: 'secret-a',
-      shareUrl: 'https://share.nightshift.invalid/a/artifact-a'
+      shareUrl: 'https://share.kolux.invalid/a/artifact-a'
     })
 
     expect(
@@ -73,7 +73,7 @@ describe('artifact share record store', () => {
         ...scopeA,
         slug: 'artifact-a',
         editToken: 'secret-a',
-        shareUrl: 'https://share.nightshift.invalid/a/artifact-a'
+        shareUrl: 'https://share.kolux.invalid/a/artifact-a'
       })
     }
 
@@ -97,7 +97,7 @@ describe('artifact share record store', () => {
           '/repo/report.html': {
             slug: 'artifact-a',
             editToken: 'legacy-secret',
-            shareUrl: 'https://share.nightshift.invalid/a/artifact-a'
+            shareUrl: 'https://share.kolux.invalid/a/artifact-a'
           }
         }
       })
@@ -121,7 +121,7 @@ describe('artifact share record store', () => {
             ...scopeA,
             slug: 'artifact-a',
             editToken: 'expired-secret',
-            shareUrl: 'https://share.nightshift.invalid/a/artifact-a',
+            shareUrl: 'https://share.kolux.invalid/a/artifact-a',
             expiresAt: '2020-01-01T00:00:00.000Z',
             savedAt: 1
           }
@@ -145,7 +145,7 @@ describe('artifact share record store', () => {
           ...scopeA,
           slug: `artifact-${index}`,
           editToken: `secret-${index}`,
-          shareUrl: `https://share.nightshift.invalid/a/artifact-${index}`,
+          shareUrl: `https://share.kolux.invalid/a/artifact-${index}`,
           expiresAt: '2099-01-01T00:00:00.000Z',
           savedAt: index
         }
@@ -181,7 +181,7 @@ describe('artifact share record store', () => {
             apiOrigin: scopeA.apiOrigin,
             slug: 'legacy-artifact',
             editToken: 'legacy-secret',
-            shareUrl: 'https://share.nightshift.invalid/a/legacy-artifact'
+            shareUrl: 'https://share.kolux.invalid/a/legacy-artifact'
           }
         }
       })
@@ -202,7 +202,7 @@ describe('artifact share record store', () => {
       ...scopeA,
       slug: 'new-artifact',
       editToken: 'new-secret',
-      shareUrl: 'https://share.nightshift.invalid/a/new-artifact',
+      shareUrl: 'https://share.kolux.invalid/a/new-artifact',
       expiresAt: '2099-01-01T00:00:00.000Z'
     })
 
@@ -231,7 +231,7 @@ describe('artifact share record store', () => {
         ...scopeA,
         slug: 'new-artifact',
         editToken: 'new-secret',
-        shareUrl: 'https://share.nightshift.invalid/a/new-artifact',
+        shareUrl: 'https://share.kolux.invalid/a/new-artifact',
         expiresAt: '2099-01-01T00:00:00.000Z'
       })
     ).toThrow(/could not be read safely/)

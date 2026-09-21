@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { worktreeRow } from './worktree-row-locators'
 
@@ -41,27 +41,27 @@ async function prepareSidebarForSwitchTest(page: Page): Promise<[string, string]
 }
 
 test.describe('Worktree switch responsiveness', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('updates the selected workspace in the same click task when changing back', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const [firstWorktreeId, secondWorktreeId] = await prepareSidebarForSwitchTest(nightshiftPage)
-    const firstRow = worktreeRow(nightshiftPage, firstWorktreeId)
-    const secondRow = worktreeRow(nightshiftPage, secondWorktreeId)
+    const [firstWorktreeId, secondWorktreeId] = await prepareSidebarForSwitchTest(koluxPage)
+    const firstRow = worktreeRow(koluxPage, firstWorktreeId)
+    const secondRow = worktreeRow(koluxPage, secondWorktreeId)
 
     await expect(firstRow).toBeVisible()
     await expect(secondRow).toBeVisible()
     await expect(firstRow).toHaveAttribute('aria-current', 'page')
-    await expect(nightshiftPage.locator('[data-rendered-active-worktree-id]')).toHaveAttribute(
+    await expect(koluxPage.locator('[data-rendered-active-worktree-id]')).toHaveAttribute(
       'data-rendered-active-worktree-id',
       firstWorktreeId
     )
 
-    const result = await nightshiftPage.evaluate(
+    const result = await koluxPage.evaluate(
       async ({ firstId, secondId, timerDelayMs }) => {
         const option = (id: string): HTMLElement => {
           const element = [...document.querySelectorAll<HTMLElement>('[data-worktree-id]')].find(

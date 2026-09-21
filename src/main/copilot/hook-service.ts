@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, unlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type { SFTPWrapper } from 'ssh2'
@@ -32,7 +32,48 @@ function getCopilotHome(): string {
 }
 
 function getConfigPath(): string {
+  return join(getCopilotHome(), 'hooks', 'kolux.json')
+}
+
+// Why: pre-rename Kolux wrote hooks/nightshift.json; Copilot loads every hooks/*.json, so a
+// stale copy would keep firing the managed hook a second time after the app renamed itself.
+function getLegacyConfigPath(): string {
   return join(getCopilotHome(), 'hooks', 'nightshift.json')
+}
+
+function sweepLegacyCopilotConfig(): void {
+  const legacyPath = getLegacyConfigPath()
+  if (!existsSync(legacyPath)) {
+    return
+  }
+  const config = readHooksJson(legacyPath)
+  if (!config) {
+    return
+  }
+  const isManagedCommand = createManagedCommandMatcher(getManagedScriptFileName())
+  const nextHooks = { ...config.hooks }
+  let changed = false
+  for (const [eventName, definitions] of Object.entries(nextHooks)) {
+    if (!Array.isArray(definitions)) {
+      continue
+    }
+    const cleaned = removeManagedCommands(definitions, isManagedCommand)
+    changed = changed || definitionsChanged(definitions, cleaned)
+    if (cleaned.length === 0) {
+      delete nextHooks[eventName]
+    } else {
+      nextHooks[eventName] = cleaned
+    }
+  }
+  if (!changed) {
+    return
+  }
+  if (Object.keys(nextHooks).length === 0) {
+    unlinkSync(legacyPath)
+    return
+  }
+  config.hooks = nextHooks
+  writeHooksJson(legacyPath, config)
 }
 
 export class CopilotHookService {
@@ -50,7 +91,7 @@ export class CopilotHookService {
         state: 'error',
         configPath,
         managedHooksPresent: false,
-        detail: 'Could not parse Copilot hooks/nightshift.json'
+        detail: 'Could not parse Copilot hooks/kolux.json'
       }
     }
 
@@ -117,7 +158,7 @@ export class CopilotHookService {
         state: 'error',
         configPath,
         managedHooksPresent: false,
-        detail: 'Could not parse Copilot hooks/nightshift.json'
+        detail: 'Could not parse Copilot hooks/kolux.json'
       }
     }
 
@@ -151,6 +192,7 @@ export class CopilotHookService {
     config.hooks = nextHooks
     writeManagedScript(scriptPath, getManagedScript())
     writeHooksJson(configPath, config)
+    sweepLegacyCopilotConfig()
     return this.getStatus()
   }
 
@@ -159,6 +201,7 @@ export class CopilotHookService {
   }
 
   remove(): AgentHookInstallStatus {
+    sweepLegacyCopilotConfig()
     const configPath = getConfigPath()
     if (!existsSync(configPath)) {
       return this.getStatus()
@@ -170,7 +213,7 @@ export class CopilotHookService {
         state: 'error',
         configPath,
         managedHooksPresent: false,
-        detail: 'Could not parse Copilot hooks/nightshift.json'
+        detail: 'Could not parse Copilot hooks/kolux.json'
       }
     }
 

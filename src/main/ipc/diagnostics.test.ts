@@ -90,11 +90,9 @@ describe('diagnostics IPC handlers', () => {
     deleteDiagnosticBundleMock.mockReset()
     getDiagnosticsStatusMock.mockReset()
     uploadDiagnosticBundleMock.mockReset()
-    delete (globalThis as { NIGHTSHIFT_BUILD_IDENTITY?: unknown }).NIGHTSHIFT_BUILD_IDENTITY
-    delete (globalThis as { NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL?: unknown })
-      .NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL
-    process.env.NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL =
-      'https://diagnostics.example.com/diagnostics/token'
+    delete (globalThis as { KOLUX_BUILD_IDENTITY?: unknown }).KOLUX_BUILD_IDENTITY
+    delete (globalThis as { KOLUX_DIAGNOSTICS_TOKEN_URL?: unknown }).KOLUX_DIAGNOSTICS_TOKEN_URL
+    process.env.KOLUX_DIAGNOSTICS_TOKEN_URL = 'https://diagnostics.example.com/diagnostics/token'
     getDiagnosticsStatusMock.mockReturnValue({
       localFileEnabled: true,
       bundleEnabled: true,
@@ -143,13 +141,12 @@ describe('diagnostics IPC handlers', () => {
       payload: '{"type":"bundle-header"}\n{"safe":true}\n'
     })
     const globalOverrides = globalThis as {
-      NIGHTSHIFT_BUILD_IDENTITY?: 'stable'
-      NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL?: string
+      KOLUX_BUILD_IDENTITY?: 'stable'
+      KOLUX_DIAGNOSTICS_TOKEN_URL?: string
     }
-    globalOverrides.NIGHTSHIFT_BUILD_IDENTITY = 'stable'
-    globalOverrides.NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL =
-      'https://official.example.com/diagnostics/token'
-    process.env.NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL = 'https://attacker.example.com/diagnostics/token'
+    globalOverrides.KOLUX_BUILD_IDENTITY = 'stable'
+    globalOverrides.KOLUX_DIAGNOSTICS_TOKEN_URL = 'https://official.example.com/diagnostics/token'
+    process.env.KOLUX_DIAGNOSTICS_TOKEN_URL = 'https://attacker.example.com/diagnostics/token'
     collectDiagnosticBundleMock.mockReturnValue(bundle)
     readFileSyncMock.mockReturnValue(bundle.payload)
     const collect = handlers.get('diagnostics:collectBundle')!

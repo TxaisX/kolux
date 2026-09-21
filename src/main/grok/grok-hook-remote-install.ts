@@ -46,8 +46,8 @@ export async function installRemoteGrokHook(
   script: string
 ): Promise<AgentHookInstallStatus> {
   const home = remoteHome.replace(/\/$/, '')
-  const configPath = `${remoteGrokHome(home, remoteGrokHomeDir)}/hooks/nightshift-status.json`
-  const scriptPath = `${home}/.nightshift/agent-hooks/grok-hook.sh`
+  const configPath = `${remoteGrokHome(home, remoteGrokHomeDir)}/hooks/kolux-status.json`
+  const scriptPath = `${home}/.kolux/agent-hooks/grok-hook.sh`
   try {
     const config = await readHooksJsonRemote(sftp, configPath)
     if (!config) {
@@ -55,7 +55,7 @@ export async function installRemoteGrokHook(
     }
     buildInstalledGrokConfig(
       config,
-      wrapPosixHookCommand(scriptPath, {}, { requiredEnvVar: 'NIGHTSHIFT_PANE_KEY' }),
+      wrapPosixHookCommand(scriptPath, {}, { requiredEnvVar: 'KOLUX_PANE_KEY' }),
       'grok-hook.sh'
     )
     await writeManagedScriptRemote(sftp, scriptPath, script)

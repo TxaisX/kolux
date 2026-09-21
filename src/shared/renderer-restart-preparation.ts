@@ -1,11 +1,11 @@
 import {
-  NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT,
+  KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT,
   type EditorPrepareHotExitDetail
 } from './editor-save-events'
 import {
   consumeShutdownCheckpointFailureReason,
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT
 } from './renderer-shutdown-events'
 import type { UpdateStatus } from './update-status-types'
 
@@ -20,7 +20,7 @@ function requestEditorHotExitBackup(eventTarget: EventTarget): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     let claimed = false
     eventTarget.dispatchEvent(
-      new CustomEvent<EditorPrepareHotExitDetail>(NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT, {
+      new CustomEvent<EditorPrepareHotExitDetail>(KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT, {
         detail: {
           claim: () => {
             claimed = true
@@ -54,7 +54,7 @@ export async function prepareRendererForAppRestart(
       checkpointFailed = true
     }
     eventTarget.addEventListener(
-      NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
+      KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
       markCheckpointFailed
     )
     try {
@@ -62,7 +62,7 @@ export async function prepareRendererForAppRestart(
       eventTarget.dispatchEvent(new Event('beforeunload', { cancelable: true }))
     } finally {
       eventTarget.removeEventListener(
-        NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
+        KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
         markCheckpointFailed
       )
     }
@@ -84,7 +84,7 @@ export async function prepareRendererForAppRestart(
     // retry-then-degrade budget that the next user attempt must consume.
     eventTarget.dispatchEvent(
       new Event(
-        checkpointFailed ? NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT : abortedEventName
+        checkpointFailed ? KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT : abortedEventName
       )
     )
     throw error

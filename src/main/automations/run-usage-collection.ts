@@ -95,9 +95,5 @@ export async function collectAutomationRunUsage({
       completedAt: collectedAt
     })
   }
-  return unavailable(
-    null,
-    'provider_unsupported',
-    'This agent does not report usage to Nightshift yet.'
-  )
+  return unavailable(null, 'provider_unsupported', 'This agent does not report usage to Kolux yet.')
 }

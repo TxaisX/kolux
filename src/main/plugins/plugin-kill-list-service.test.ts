@@ -9,7 +9,7 @@ import type { PluginKillListStore } from './plugin-kill-list-store'
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-kill-list-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-kill-list-'))
   roots.push(root)
   return root
 }

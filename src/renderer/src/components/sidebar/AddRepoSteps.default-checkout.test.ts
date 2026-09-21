@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     repos: [] as Repo[],
     projects: [],
     projectHostSetups: [],
-    clearNightshiftHookTrustForRepo: vi.fn(),
+    clearKoluxHookTrustForRepo: vi.fn(),
     openModal: vi.fn(),
     cancelNestedRepoScan: vi.fn()
   },

@@ -108,7 +108,7 @@ async function seedGroupedQuestion(): Promise<{ itemId: string; revision: number
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-wire-grouped-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-wire-grouped-'))
   resetHostTestOperationIds()
   ordinal = 0
   acquire = vi.fn(async ({ fence }) => ({

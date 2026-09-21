@@ -31,11 +31,11 @@ export async function presentRendererRecoveryPrompt(
     const recoveryDetail = stalled
       ? translateMain(
           'rendererRecovery.stalledDetail',
-          'Nightshift reloaded the window after a crash, but it never finished loading.'
+          'Kolux reloaded the window after a crash, but it never finished loading.'
         )
       : translateMain(
           'rendererRecovery.crashLoopDetail',
-          'Nightshift tried to recover {{recoveryCount}} times in a row without success.',
+          'Kolux tried to recover {{recoveryCount}} times in a row without success.',
           { recoveryCount: deps.recentRecoveryCount }
         )
     const causeDetail = diagnosis
@@ -45,7 +45,7 @@ export async function presentRendererRecoveryPrompt(
         )}`
       : translateMain(
           'rendererRecovery.genericDetail',
-          'This is often a graphics-driver or installation problem. Reload to try again, or quit and relaunch Nightshift.'
+          'This is often a graphics-driver or installation problem. Reload to try again, or quit and relaunch Kolux.'
         )
     const { response } = await deps.showMessageBox({
       type: 'error',
@@ -53,7 +53,7 @@ export async function presentRendererRecoveryPrompt(
       defaultId: 0,
       // Escape retries instead of destroying the session.
       cancelId: 0,
-      title: translateMain('rendererRecovery.title', 'Nightshift keeps failing to load'),
+      title: translateMain('rendererRecovery.title', 'Kolux keeps failing to load'),
       message: stalled
         ? translateMain(
             'rendererRecovery.stalledMessage',

@@ -4,16 +4,16 @@ import { InMemoryClipboardMetadataManager } from 'monaco-editor/esm/vs/editor/br
 import { toast } from 'sonner'
 import { translate } from '@/i18n/i18n'
 import {
-  NIGHTSHIFT_CONTEXT_MENU_PASTE_NAME,
-  NIGHTSHIFT_CONTEXT_MENU_PASTE_PRIORITY,
-  runNightshiftContextMenuPaste
+  KOLUX_CONTEXT_MENU_PASTE_NAME,
+  KOLUX_CONTEXT_MENU_PASTE_PRIORITY,
+  runKoluxContextMenuPaste
 } from './monaco-context-menu-paste'
 
 let installed = false
 
 /**
  * Make Monaco's context-menu / command-palette Paste read the clipboard through
- * Nightshift's trusted IPC bridge instead of the sandbox-blocked navigator.clipboard.
+ * Kolux's trusted IPC bridge instead of the sandbox-blocked navigator.clipboard.
  * Idempotent and safe to call once during Monaco setup.
  */
 export function installMonacoContextMenuPaste(monaco: typeof Monaco): void {
@@ -29,10 +29,10 @@ export function installMonacoContextMenuPaste(monaco: typeof Monaco): void {
   // MultiCommand iteration so the blocked default never runs. Returning `false`
   // falls through to the default for read-only/unfocused/non-editor cases.
   PasteAction.addImplementation(
-    NIGHTSHIFT_CONTEXT_MENU_PASTE_PRIORITY,
-    NIGHTSHIFT_CONTEXT_MENU_PASTE_NAME,
+    KOLUX_CONTEXT_MENU_PASTE_PRIORITY,
+    KOLUX_CONTEXT_MENU_PASTE_NAME,
     () =>
-      runNightshiftContextMenuPaste({
+      runKoluxContextMenuPaste({
         getFocusedEditor: () =>
           monaco.editor.getEditors().find((candidate) => candidate.hasTextFocus()) ?? null,
         readClipboardText: (options) => window.api.ui.readClipboardText(options),

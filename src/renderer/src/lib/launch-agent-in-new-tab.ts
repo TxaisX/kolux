@@ -120,7 +120,7 @@ function launchAgentInNewTabInternal(
             : getLocalProjectExecutionRuntimeContext(store, worktreeId)
         )
       : CLIENT_PLATFORM)
-  // Why: SSH remotes deploy the shim as plain `nightshift`, so skip the Linux-only `nightshift-ide` rename for remote launches.
+  // Why: SSH remotes deploy the shim as plain `kolux`, so skip the Linux-only `kolux-ide` rename for remote launches.
   const isRemote = Boolean(worktreeSshConnectionId)
   const queuedShell = resolveLocalWindowsAgentStartupShell({
     platform: resolvedLaunchPlatform,
@@ -308,7 +308,7 @@ function launchAgentInNewTabInternal(
     }).then((delivered) => {
       if (delivered) {
         if (agent === 'command-code' && submitPastedPrompt) {
-          // Why: Command Code has no prompt-submit hook; when Nightshift submits a
+          // Why: Command Code has no prompt-submit hook; when Kolux submits a
           // generated prompt after readiness, seed working at delivery time.
           seedCommandCodeSubmittedPromptStatus(worktreeId, tab.id, trimmedPrompt)
         }

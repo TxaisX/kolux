@@ -88,7 +88,7 @@ async function reopenStore(): Promise<void> {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-recovery-exits-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-recovery-exits-'))
   resetHostTestOperationIds()
   acquire = vi.fn(async ({ fence }) => ({
     process: {

@@ -63,9 +63,9 @@ export const EphemeralVmRecipeSshTargetSchema = z
   })
   .strict()
 
-const EphemeralVmRecipeNightshiftServerConnectionSchema = z
+const EphemeralVmRecipeKoluxServerConnectionSchema = z
   .object({
-    type: z.literal('nightshift-server'),
+    type: z.literal('kolux-server'),
     pairingCode: z.string().min(1),
     projectRoot: z.string().min(1)
   })
@@ -80,7 +80,7 @@ const EphemeralVmRecipeSshConnectionSchema = z
   .strict()
 
 export const EphemeralVmRecipeConnectionSchema = z.discriminatedUnion('type', [
-  EphemeralVmRecipeNightshiftServerConnectionSchema,
+  EphemeralVmRecipeKoluxServerConnectionSchema,
   EphemeralVmRecipeSshConnectionSchema
 ])
 
@@ -163,13 +163,25 @@ export function parseEphemeralVmRecipeResult(stdout: string): EphemeralVmRecipeR
   } catch {
     return { ok: false, error: 'Recipe stdout must be one JSON object.' }
   }
+  // Why: a recipe script written before the Nightshift->Kolux rename may still emit "nightshift-server".
+  if (
+    parsed !== null &&
+    typeof parsed === 'object' &&
+    'connection' in parsed &&
+    parsed.connection !== null &&
+    typeof parsed.connection === 'object' &&
+    'type' in parsed.connection &&
+    parsed.connection.type === 'nightshift-server'
+  ) {
+    parsed = { ...parsed, connection: { ...parsed.connection, type: 'kolux-server' } }
+  }
   const result = EphemeralVmRecipeResultSchema.safeParse(parsed)
   if (!result.success) {
     return { ok: false, error: result.error.issues[0]?.message ?? 'Invalid recipe result.' }
   }
   const connection = getEphemeralVmRecipeResultConnection(result.data)
-  if (connection.type === 'nightshift-server' && !parsePairingCode(connection.pairingCode)) {
-    return { ok: false, error: 'Recipe result pairingCode is not a valid Nightshift pairing code.' }
+  if (connection.type === 'kolux-server' && !parsePairingCode(connection.pairingCode)) {
+    return { ok: false, error: 'Recipe result pairingCode is not a valid Kolux pairing code.' }
   }
   if (!isAbsoluteRuntimePath(connection.projectRoot)) {
     return { ok: false, error: 'Recipe result projectRoot must be an absolute runtime path.' }
@@ -184,7 +196,7 @@ export function getEphemeralVmRecipeResultConnection(
     return result.connection
   }
   return {
-    type: 'nightshift-server',
+    type: 'kolux-server',
     pairingCode: result.pairingCode,
     projectRoot: result.projectRoot
   }
@@ -196,15 +208,15 @@ export function getEphemeralVmRecipeResultProjectRoot(result: EphemeralVmRecipeR
 
 export function getEphemeralVmRecipeResultCheckoutMode(
   result: EphemeralVmRecipeResult
-): 'nightshift-worktree' | 'provisioned-root' {
-  return result.schemaVersion === 2 ? 'provisioned-root' : 'nightshift-worktree'
+): 'kolux-worktree' | 'provisioned-root' {
+  return result.schemaVersion === 2 ? 'provisioned-root' : 'kolux-worktree'
 }
 
 export function getEphemeralVmRecipeResultPairingCode(
   result: EphemeralVmRecipeResult
 ): string | null {
   const connection = getEphemeralVmRecipeResultConnection(result)
-  return connection.type === 'nightshift-server' ? connection.pairingCode : null
+  return connection.type === 'kolux-server' ? connection.pairingCode : null
 }
 
 export function isAbsoluteRuntimePath(path: string): boolean {

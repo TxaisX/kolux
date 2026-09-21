@@ -163,7 +163,7 @@ describe('useNativeChatExternalAttachments', () => {
       expectedSshTargetId: 'conn-1',
       expectedSshConnectionGeneration: 4
     })
-    mocks.uploadNativeChatAttachmentPaths.mockResolvedValue(['/remote/wt/.nightshift/drops/a.txt'])
+    mocks.uploadNativeChatAttachmentPaths.mockResolvedValue(['/remote/wt/.kolux/drops/a.txt'])
     const attachResolvedPaths = vi.fn()
     const probe = await renderProbe({ attachResolvedPaths })
     await act(async () => {
@@ -177,10 +177,7 @@ describe('useNativeChatExternalAttachments', () => {
       expectedSshTargetId: 'conn-1',
       expectedSshConnectionGeneration: 4
     })
-    expect(attachResolvedPaths).toHaveBeenCalledWith(
-      ['/remote/wt/.nightshift/drops/a.txt'],
-      'conn-1'
-    )
+    expect(attachResolvedPaths).toHaveBeenCalledWith(['/remote/wt/.kolux/drops/a.txt'], 'conn-1')
     expect(mocks.authorizeExternalPath).not.toHaveBeenCalled()
   })
 
@@ -206,18 +203,15 @@ describe('useNativeChatExternalAttachments', () => {
       probe.latest().attachExternalPaths(['/local/b.txt'])
     })
     await act(async () => {
-      secondUpload.resolve([
-        '/remote/wt/.nightshift/drops/b.txt',
-        '/remote/wt/.nightshift/drops/b.txt'
-      ])
+      secondUpload.resolve(['/remote/wt/.kolux/drops/b.txt', '/remote/wt/.kolux/drops/b.txt'])
     })
     await act(async () => {
-      firstUpload.resolve(['/remote/wt/.nightshift/drops/a.txt'])
+      firstUpload.resolve(['/remote/wt/.kolux/drops/a.txt'])
     })
 
     expect(attachResolvedPaths.mock.calls).toEqual([
-      [['/remote/wt/.nightshift/drops/b.txt', '/remote/wt/.nightshift/drops/b.txt'], 'conn-1'],
-      [['/remote/wt/.nightshift/drops/a.txt'], 'conn-1']
+      [['/remote/wt/.kolux/drops/b.txt', '/remote/wt/.kolux/drops/b.txt'], 'conn-1'],
+      [['/remote/wt/.kolux/drops/a.txt'], 'conn-1']
     ])
   })
 
@@ -280,7 +274,7 @@ describe('useNativeChatExternalAttachments', () => {
     })
     await probe.setDisabled(true)
     await act(async () => {
-      resolveUpload(['/remote/wt/.nightshift/drops/a.txt'])
+      resolveUpload(['/remote/wt/.kolux/drops/a.txt'])
     })
     expect(attachResolvedPaths).not.toHaveBeenCalled()
   })

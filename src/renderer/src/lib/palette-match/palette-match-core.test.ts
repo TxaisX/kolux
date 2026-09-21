@@ -44,8 +44,8 @@ const labelOnly = (text: string): PaletteDocumentInput => ({
 
 describe('palette query preparation', () => {
   it('splits on whitespace only and keeps punctuation inside tokens', () => {
-    expect(ready('nightshift/main 08-13 #123').tokens.map((token) => token.text)).toEqual([
-      'nightshift/main',
+    expect(ready('kolux/main 08-13 #123').tokens.map((token) => token.text)).toEqual([
+      'kolux/main',
       '08-13',
       '#123'
     ])
@@ -75,8 +75,8 @@ describe('palette query preparation', () => {
   })
 
   it('parses repo/branch per token', () => {
-    expect(ready('nightshift/main').tokens[0].repoBranch).toEqual({
-      repo: 'nightshift',
+    expect(ready('kolux/main').tokens[0].repoBranch).toEqual({
+      repo: 'kolux',
       branch: 'main'
     })
     expect(ready('feature').tokens[0].repoBranch).toBeNull()

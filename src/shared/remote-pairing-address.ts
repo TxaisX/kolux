@@ -92,14 +92,14 @@ export function parseHostAccessLink(input: string): ParseHostAccessLinkResult {
     return {
       ok: false,
       kind: 'invalid-input',
-      message: 'Enter a Nightshift access link or bare pairing code.'
+      message: 'Enter a Kolux access link or bare pairing code.'
     }
   }
   if (pairing.scope === 'mobile') {
     return {
       ok: false,
       kind: 'mobile-only',
-      message: 'This link grants mobile-only access. Generate a link for another Nightshift client.'
+      message: 'This link grants mobile-only access. Generate a link for another Kolux client.'
     }
   }
   let endpoint: URL

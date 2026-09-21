@@ -38,8 +38,8 @@
       ]
     },
     {
-      "name": "nightshift-cli",
-      "sourcePath": "skills/nightshift-cli",
+      "name": "kolux-cli",
+      "sourcePath": "skills/kolux-cli",
       "releaseRevision": 38,
       "packageDigest": "360942b5700f66a7c6ebfa65acd22aab12bcc6ec121bc34c4e3e1e9c3a286e80",
       "gitTreeSha": "dab2ffede793438530ad967b6e2db19c0ca6df72",
@@ -56,8 +56,8 @@
       ]
     },
     {
-      "name": "nightshift-emulator",
-      "sourcePath": "skills/nightshift-emulator",
+      "name": "kolux-emulator",
+      "sourcePath": "skills/kolux-emulator",
       "releaseRevision": 9,
       "packageDigest": "cbbc3949356a9e3e03924f6a739be3039a07bdcb9c43fae5779a506011b95830",
       "gitTreeSha": "d3f4266e3b9696660efd5093bbd0e866587288f2",
@@ -74,8 +74,8 @@
       ]
     },
     {
-      "name": "nightshift-emulator-android",
-      "sourcePath": "skills/nightshift-emulator-android",
+      "name": "kolux-emulator-android",
+      "sourcePath": "skills/kolux-emulator-android",
       "releaseRevision": 7,
       "packageDigest": "475bc1a9e93c79d4ecda50c976d3f01c767c4b247ec5c76e17d4e2a85abb0a38",
       "gitTreeSha": "8a65dcd2cc01ed12f20f0c404d90247094afeea7",
@@ -92,8 +92,8 @@
       ]
     },
     {
-      "name": "nightshift-linear",
-      "sourcePath": "skills/nightshift-linear",
+      "name": "kolux-linear",
+      "sourcePath": "skills/kolux-linear",
       "releaseRevision": 10,
       "packageDigest": "6473026561e979c1a32a6a83b730d941da6841e396eaad1f2491514c2ffa1fda",
       "gitTreeSha": "fc92e9e05cfefc07d59dfd3978c1836007f9fedd",
@@ -110,8 +110,8 @@
       ]
     },
     {
-      "name": "nightshift-per-workspace-env",
-      "sourcePath": "skills/nightshift-per-workspace-env",
+      "name": "kolux-per-workspace-env",
+      "sourcePath": "skills/kolux-per-workspace-env",
       "releaseRevision": 7,
       "packageDigest": "d9aafe8c8b6c14355801c0c76a8513d1ba9588f5533349a95be56ff6a0b76c0b",
       "gitTreeSha": "4364c2292280193c219b233af7a9b9965e2d3b7d",

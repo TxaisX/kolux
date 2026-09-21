@@ -68,7 +68,7 @@ describe('secret protection report deferral wiring', () => {
     // before the profile is resolved would key the state off a path that does not exist yet.
     // Anchored on code, never a comment — a reworded comment silently becomes -1.
     const ready = entrySource.indexOf('void app.whenReady().then(async () => {')
-    const profile = source.indexOf('const profile = ensureActiveNightshiftProfile()')
+    const profile = source.indexOf('const profile = ensureActiveKoluxProfile()')
     const schedule = source.indexOf(SCHEDULE)
 
     expect(ready).toBeGreaterThanOrEqual(0)

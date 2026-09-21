@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { WorkerTerminalResourceRow } from '../../../../orchestration/worker-terminal-ownership'
 import { stopStructuredWorker } from '../../orchestration-structured-worker-lifecycle'
@@ -18,7 +18,7 @@ export async function stopStructuredWorkerForRelease(args: {
   structured: StructuredWorkerIdentity
   dispatchId: string
   resource: WorkerTerminalResourceRow
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   archiveSource: string | null
   archiveStatus: string | null
@@ -36,7 +36,7 @@ export async function stopStructuredWorkerForRelease(args: {
       processAction: stop.closeAttempted ? 'closed_agent_terminal' : 'none',
       archive: { source: args.archiveSource, status: args.archiveStatus },
       lastError: unknown.release_error ?? stop.reason,
-      recovery: `Inspect with: nightshift orchestration worker-show --dispatch ${dispatchId} --json — then repeat worker-release with the same --retry-request.`
+      recovery: `Inspect with: kolux orchestration worker-show --dispatch ${dispatchId} --json — then repeat worker-release with the same --retry-request.`
     }
   }
   const settled = db.settleWorkerTerminalRelease(resource.id)

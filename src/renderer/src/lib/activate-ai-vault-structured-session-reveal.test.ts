@@ -135,7 +135,7 @@ describe('revealStructuredSession', () => {
 
   it('reads a version block as a host too old, not as a lost connection', async () => {
     mocks.environmentIdFor.mockReturnValue('env-1')
-    const blocked = Object.assign(new Error('Update the Nightshift server'), {
+    const blocked = Object.assign(new Error('Update the Kolux server'), {
       code: RUNTIME_COMPAT_BLOCK_CODE
     })
     mocks.supports.mockRejectedValue(blocked)

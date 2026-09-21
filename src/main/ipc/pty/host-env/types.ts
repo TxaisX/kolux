@@ -14,9 +14,9 @@ export type BuildPtyHostEnvOptions = {
   selectedCodexHomePath: string | null
   skipCodexHomeEnv?: boolean
   /** System-default real-home routing (flag ON): inject no managed CODEX_HOME,
-   *  and strip only an inherited Nightshift-owned override so nested Nightshift panes do not
+   *  and strip only an inherited Kolux-owned override so nested Kolux panes do not
    *  leak the parent's managed home. A user-set CODEX_HOME is preserved. */
-  stripInheritedNightshiftCodexHome?: boolean
+  stripInheritedKoluxCodexHome?: boolean
   /** Launch command the renderer chose (e.g. 'pi', 'omp', 'claude'); resolves the per-agent
    *  extension target for Pi/OMP. Undefined for bare shells → defaults to Pi. NEVER infer from
    *  disk presence (cross-agent shadowing when both dirs exist). */
@@ -29,7 +29,7 @@ export type BuildPtyHostEnvOptions = {
   agentStatusHooksEnabled: boolean
   codexStatusHooksEnabled?: boolean
   networkProxySettings?: NetworkProxySettings
-  /** Headless paired runtimes hand browser launches to the client-hosted Nightshift browser. */
+  /** Headless paired runtimes hand browser launches to the client-hosted Kolux browser. */
   routeBrowserOpensToClient?: boolean
   /** Keep indexed Git config off the sparse daemon wire; the daemon appends guard entries after merging its inherited env. */
   deferGitConfigGuardToDaemon?: boolean

@@ -31,8 +31,8 @@ vi.mock('@/hooks/useInstalledAgentSkills', async (importOriginal) => ({
 
 vi.mock('@/lib/agent-skill-cli-prerequisite', () => ({
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE: 'CLI registration notice',
-  ensureNightshiftCliAvailableForAgentSkillTerminal: vi.fn(async () => null),
-  isNightshiftCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
+  ensureKoluxCliAvailableForAgentSkillTerminal: vi.fn(async () => null),
+  isKoluxCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
     status?.state === 'installed' && status.pathConfigured
 }))
 
@@ -55,11 +55,11 @@ let container: HTMLDivElement | null = null
 function cliStatus(): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
+    commandName: 'kolux',
     commandPath: null,
     pathDirectory: null,
     pathConfigured: false,
-    launcherPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
     installMethod: null,
     supported: true,
     state: 'not_installed',
@@ -72,14 +72,14 @@ function cliStatus(): CliInstallStatus {
 function discoveredSkill(overrides: Partial<DiscoveredSkill>): DiscoveredSkill {
   return {
     id: 'skill-1',
-    name: 'nightshift-linear',
+    name: 'kolux-linear',
     description: null,
     providers: ['agent-skills'],
     sourceKind: 'home',
     sourceLabel: 'Agent skills home',
     rootPath: '/Users/test/.agents/skills',
-    directoryPath: '/Users/test/.agents/skills/nightshift-linear',
-    skillFilePath: '/Users/test/.agents/skills/nightshift-linear/SKILL.md',
+    directoryPath: '/Users/test/.agents/skills/kolux-linear',
+    skillFilePath: '/Users/test/.agents/skills/kolux-linear/SKILL.md',
     installed: true,
     updatedAt: null,
     ...overrides
@@ -151,12 +151,12 @@ describe('LinearAgentSkillSetupPrompt update command', () => {
   })
 
   it('uses the canonical update command when the canonical Linear skill is installed', async () => {
-    mocks.skillState.skills = [discoveredSkill({ name: 'nightshift-linear' })]
+    mocks.skillState.skills = [discoveredSkill({ name: 'kolux-linear' })]
 
     await renderPrompt()
 
     expect(mocks.panelProps.at(-1)).toEqual(
-      expect.objectContaining({ installedCommand: 'npx skills update nightshift-linear --global' })
+      expect.objectContaining({ installedCommand: 'npx skills update kolux-linear --global' })
     )
   })
 
@@ -171,15 +171,12 @@ describe('LinearAgentSkillSetupPrompt update command', () => {
   })
 
   it('prefers the canonical update command when both Linear skill names are installed', async () => {
-    mocks.skillState.skills = [
-      discoveredSkill({ name: 'nightshift-linear' }),
-      legacyLinearSkillPath()
-    ]
+    mocks.skillState.skills = [discoveredSkill({ name: 'kolux-linear' }), legacyLinearSkillPath()]
 
     await renderPrompt()
 
     expect(mocks.panelProps.at(-1)).toEqual(
-      expect.objectContaining({ installedCommand: 'npx skills update nightshift-linear --global' })
+      expect.objectContaining({ installedCommand: 'npx skills update kolux-linear --global' })
     )
   })
 })

@@ -1,12 +1,12 @@
 import type { JSX } from 'react'
 import {
-  NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_CLI_SKILL_NAME,
-  NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+  KOLUX_CLI_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_NAME,
+  KOLUX_CLI_SKILL_UPDATE_COMMAND
 } from '@/lib/agent-feature-install-commands'
 import {
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE,
-  ensureNightshiftCliAvailableForAgentSkillTerminal
+  ensureKoluxCliAvailableForAgentSkillTerminal
 } from '@/lib/agent-skill-cli-prerequisite'
 import { BROWSER_USE_ENABLED_STORAGE_KEY } from '@/lib/browser-use-setup-state'
 import type { InstalledAgentSkillState } from '@/hooks/useInstalledAgentSkills'
@@ -28,23 +28,17 @@ export function BrowserUseSkillSetupCard(props: {
   const { compact, terminalHeightPx, skill } = props
   const activeSkillRuntime = useActiveProjectSkillRuntime()
   const installCommand = !activeSkillRuntime.installDisabledReason
-    ? buildSkillCommandForRuntime(
-        NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-        activeSkillRuntime.agentRuntime
-      )
-    : NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND
+    ? buildSkillCommandForRuntime(KOLUX_CLI_SKILL_INSTALL_COMMAND, activeSkillRuntime.agentRuntime)
+    : KOLUX_CLI_SKILL_INSTALL_COMMAND
   const updateCommand = !activeSkillRuntime.installDisabledReason
-    ? buildSkillCommandForRuntime(
-        NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND,
-        activeSkillRuntime.agentRuntime
-      )
-    : NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+    ? buildSkillCommandForRuntime(KOLUX_CLI_SKILL_UPDATE_COMMAND, activeSkillRuntime.agentRuntime)
+    : KOLUX_CLI_SKILL_UPDATE_COMMAND
 
   const handleBeforeOpenTerminal = async (): Promise<void> => {
     useAppStore.getState().recordFeatureInteraction('agent-browser-setup')
     await (activeSkillRuntime.agentRuntime?.runtime === 'wsl'
       ? ensureWslCliAvailableForAgentSkillTerminal(activeSkillRuntime.agentRuntime)
-      : ensureNightshiftCliAvailableForAgentSkillTerminal())
+      : ensureKoluxCliAvailableForAgentSkillTerminal())
     localStorage.setItem(BROWSER_USE_ENABLED_STORAGE_KEY, '1')
   }
 
@@ -57,7 +51,7 @@ export function BrowserUseSkillSetupCard(props: {
       )}
       description={translate(
         'auto.components.feature.wall.BrowserUseSkillSetupCard.cbc45022d4',
-        "Enables agents to navigate and verify pages in Nightshift's browser."
+        "Enables agents to navigate and verify pages in Kolux's browser."
       )}
       command={installCommand}
       installedCommand={updateCommand}
@@ -83,7 +77,7 @@ export function BrowserUseSkillSetupCard(props: {
       showRecheckWhenInstalled={false}
       onRecheck={skill.refresh}
       freshnessSkillName={
-        activeSkillRuntime.canUseLocalSkillFreshness ? NIGHTSHIFT_CLI_SKILL_NAME : undefined
+        activeSkillRuntime.canUseLocalSkillFreshness ? KOLUX_CLI_SKILL_NAME : undefined
       }
     />
   )

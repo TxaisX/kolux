@@ -8,13 +8,13 @@ import {
 describe('launch agent brief', () => {
   it('puts the task first and the rules after it', () => {
     const prompt = composeLaunchAgentPrompt('  fix the login bug  ', 'anhinga')
-    expect(prompt.startsWith('fix the login bug\n\n<nightshift-launch-brief>')).toBe(true)
+    expect(prompt.startsWith('fix the login bug\n\n<kolux-launch-brief>')).toBe(true)
     expect(prompt).toContain('context7')
   })
 
   it('gives each agent a handoff file named after its own worktree', () => {
     expect(composeLaunchAgentPrompt('x', 'bonefish')).toContain(launchAgentHandoffPath('bonefish'))
-    expect(launchAgentHandoffPath('bonefish')).toBe('.nightshift/handoffs/bonefish.md')
+    expect(launchAgentHandoffPath('bonefish')).toBe('.kolux/handoffs/bonefish.md')
   })
 
   it('carries a role brief inside the rules so it never names the branch', () => {

@@ -3,7 +3,7 @@ import { win32 as pathWin32 } from 'node:path'
 import { isWindowsGitBashShellPath, resolveWindowsGitBashShellPath } from '../../git-bash'
 import { isPwshAvailable } from '../../pwsh'
 import { isHostCodexHomeForWsl, isWslCodexHomeForHost } from '../../pty/codex-home-wsl-env'
-import { addNightshiftWslInteropEnv } from '../../pty/wsl-nightshift-env'
+import { addKoluxWslInteropEnv } from '../../pty/wsl-kolux-env'
 import {
   POWERLEVEL10K_WIZARD_DISABLE_ENV,
   seedPowerlevel10kWizardEnv
@@ -22,7 +22,7 @@ import {
   type WindowsShellSpawnAttempt
 } from '../../providers/windows-shell-fallback-chain'
 import {
-  NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
+  KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
   resolveWindowsShellLaunchArgs
 } from '../../providers/windows-shell-args'
 import { resolveUnixShellPath } from '../../providers/local-pty-utils'
@@ -33,7 +33,7 @@ import {
   recognizeAgentProcessFromCommandLine,
   type RecognizedAgentProcess
 } from '../../../shared/agent-process-recognition'
-import { NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV } from '../../../shared/hermes-startup-query'
+import { KOLUX_HERMES_STARTUP_QUERY_ENV } from '../../../shared/hermes-startup-query'
 import { WINDOWS_GIT_BASH_SHELL } from '../../../shared/windows-terminal-shell'
 import { getShellLaunchConfig, resolvePtyShellPath } from '../shell-ready'
 import { resolveWslSessionContext } from '../wsl-session-context'
@@ -98,9 +98,9 @@ export function createPtyShellLaunchPlan(
     }
     if (
       pathWin32.basename(shellPath).toLowerCase() === 'cmd.exe' &&
-      env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+      env.KOLUX_CODEX_LAUNCH_PREFLIGHT
     ) {
-      env[NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV] = '"'
+      env[KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV] = '"'
     }
     windowsFallbackAttempts = buildWindowsPowerShellSpawnAttempts({
       shellPath,
@@ -123,7 +123,7 @@ export function createPtyShellLaunchPlan(
         resolveSafePtyDefaultCwd(),
         resolvedWslContext,
         opts.command,
-        env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+        env.KOLUX_CODEX_LAUNCH_PREFLIGHT
       )
       shellArgs = resolved.shellArgs
       spawnCwd = resolved.effectiveCwd
@@ -139,11 +139,11 @@ export function createPtyShellLaunchPlan(
         const launchWslDistro = resolvedWslContext?.distro
         if (launchWslDistro && launchWslDistro !== codexHomeWslInfo.distro) {
           delete env.CODEX_HOME
-          delete env.NIGHTSHIFT_CODEX_HOME
+          delete env.KOLUX_CODEX_HOME
         } else {
           env.CODEX_HOME = codexHomeWslInfo.linuxPath
-          env.NIGHTSHIFT_CODEX_HOME = codexHomeWslInfo.linuxPath
-          addWslEnvKeys(env, ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+          env.KOLUX_CODEX_HOME = codexHomeWslInfo.linuxPath
+          addWslEnvKeys(env, ['CODEX_HOME', 'KOLUX_CODEX_HOME'])
           if (!launchWslDistro) {
             const resolved = resolveWindowsShellLaunchArgs(
               shellPath,
@@ -151,7 +151,7 @@ export function createPtyShellLaunchPlan(
               resolveSafePtyDefaultCwd(),
               { distro: codexHomeWslInfo.distro },
               opts.command,
-              env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+              env.KOLUX_CODEX_LAUNCH_PREFLIGHT
             )
             shellArgs = resolved.shellArgs
             spawnCwd = resolved.effectiveCwd
@@ -162,22 +162,22 @@ export function createPtyShellLaunchPlan(
         }
       } else if (isHostCodexHomeForWsl(env.CODEX_HOME)) {
         delete env.CODEX_HOME
-        delete env.NIGHTSHIFT_CODEX_HOME
+        delete env.KOLUX_CODEX_HOME
       } else if (env.CODEX_HOME) {
-        addWslEnvKeys(env, ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+        addWslEnvKeys(env, ['CODEX_HOME', 'KOLUX_CODEX_HOME'])
       }
       if (env.CLAUDE_CONFIG_DIR) {
         addWslEnvKeys(env, ['CLAUDE_CONFIG_DIR'])
       }
-      if (env[NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV] !== undefined) {
-        addWslEnvKeys(env, [NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV])
+      if (env[KOLUX_HERMES_STARTUP_QUERY_ENV] !== undefined) {
+        addWslEnvKeys(env, [KOLUX_HERMES_STARTUP_QUERY_ENV])
       }
     } else if (codexHomeWslInfo || isWslCodexHomeForHost(env.CODEX_HOME)) {
       delete env.CODEX_HOME
-      delete env.NIGHTSHIFT_CODEX_HOME
+      delete env.KOLUX_CODEX_HOME
     }
     if (pathWin32.basename(shellPath).toLowerCase() === 'wsl.exe') {
-      addNightshiftWslInteropEnv(env)
+      addKoluxWslInteropEnv(env)
     }
   } else {
     rescrubDaemonPtyEnvironment(env, opts)
@@ -197,7 +197,7 @@ export function createPtyShellLaunchPlan(
           startupCommandDelivery: opts.startupCommandDelivery,
           shellPath
         }))
-    delete env.NIGHTSHIFT_SHELL_FEATURES
+    delete env.KOLUX_SHELL_FEATURES
     const shellLaunch = getShellLaunchConfig(
       shellPath,
       selectShellStartupFeatures({

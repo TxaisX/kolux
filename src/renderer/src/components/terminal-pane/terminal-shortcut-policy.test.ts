@@ -297,7 +297,7 @@ describe('resolveTerminalShortcutAction', () => {
         undefined,
         getWindowsShiftEnterEncoding,
         () => true,
-        'nightshift-first',
+        'kolux-first',
         hasCtrlEnterCsiUAuthority
       )
     }

@@ -1,8 +1,8 @@
 import type { WriteSettlement } from '../../../shared/pty-write-settlement'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { agentSessionPtyWriteGate } from '../agent-session-pty-write-gate'
-import { NightshiftRuntimeWithWriteOrchestrationPointerPty } from '../nightshift-runtime-write-orchestration-pointer-pty'
-import { NightshiftRuntimeWithGetPtyRecordForPaneKey } from '../nightshift-runtime-get-pty-record-for-pane-key'
+import { KoluxRuntimeWithWriteOrchestrationPointerPty } from '../kolux-runtime-write-orchestration-pointer-pty'
+import { KoluxRuntimeWithGetPtyRecordForPaneKey } from '../kolux-runtime-get-pty-record-for-pane-key'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
 
 const SESSION_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
@@ -11,13 +11,13 @@ const PTY_ID = 'pty_adopted'
 // Both methods are protected, and a subclass is the sanctioned way to reach them. The probes
 // borrow the REAL implementations through the real prototype chain; a re-declared copy would pin
 // nothing.
-class PointerWriteProbe extends NightshiftRuntimeWithWriteOrchestrationPointerPty {
+class PointerWriteProbe extends KoluxRuntimeWithWriteOrchestrationPointerPty {
   probeWritePointer(ptyId: string, data: string): WriteSettlement | Promise<WriteSettlement> {
     return this.writeOrchestrationPointerPty(ptyId, data)
   }
 }
 
-class MailboxTargetProbe extends NightshiftRuntimeWithGetPtyRecordForPaneKey {
+class MailboxTargetProbe extends KoluxRuntimeWithGetPtyRecordForPaneKey {
   probeResolveTarget(mailboxHandle: string): unknown {
     return this.resolveStructuredMailboxTarget(mailboxHandle)
   }

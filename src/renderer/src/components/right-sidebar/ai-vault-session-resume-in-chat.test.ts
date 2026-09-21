@@ -9,13 +9,13 @@ type ResumeInChatSession = Parameters<
   typeof resolveAiVaultSessionResumeInChatEligibility
 >[0]['session']
 
-const WORKSPACE_PATH = '/repo/nightshift'
+const WORKSPACE_PATH = '/repo/kolux'
 
 function session(overrides: Partial<ResumeInChatSession> = {}): ResumeInChatSession {
   return {
     agent: 'claude',
     cwd: WORKSPACE_PATH,
-    filePath: '/home/dev/.claude/projects/-repo-nightshift/session-1.jsonl',
+    filePath: '/home/dev/.claude/projects/-repo-kolux/session-1.jsonl',
     executionHostId: 'local',
     messageCount: 12,
     previewMessages: [],
@@ -28,7 +28,7 @@ function eligibility(
 ) {
   return resolveAiVaultSessionResumeInChatEligibility({
     session: session(),
-    targetWorkspaceId: 'repo-1::/repo/nightshift',
+    targetWorkspaceId: 'repo-1::/repo/kolux',
     targetWorkspacePath: WORKSPACE_PATH,
     structuredRouteAvailable: true,
     ...overrides
@@ -37,7 +37,7 @@ function eligibility(
 
 describe('resolveAiVaultSessionResumeInChatEligibility', () => {
   it('offers the chat for a local Claude row in its own workspace', () => {
-    expect(eligibility()).toEqual({ available: true, workspaceId: 'repo-1::/repo/nightshift' })
+    expect(eligibility()).toEqual({ available: true, workspaceId: 'repo-1::/repo/kolux' })
   })
 
   it.each(['hermes', 'grok', 'opencode'] as AiVaultSession['agent'][])(
@@ -56,7 +56,7 @@ describe('resolveAiVaultSessionResumeInChatEligibility', () => {
       eligibility({
         session: {
           ...session(),
-          structuredSession: { sessionId: 'claude_1', workspaceId: 'repo-1::/repo/nightshift' }
+          structuredSession: { sessionId: 'claude_1', workspaceId: 'repo-1::/repo/kolux' }
         }
       })
     ).toEqual({ available: false, reason: 'already-structured' })
@@ -144,8 +144,8 @@ describe('workspace matching, which only Claude is bound by', () => {
   it('treats Windows spellings of one directory as the same workspace', () => {
     expect(
       eligibility({
-        session: session({ cwd: 'C:\\Users\\Dev\\repo\\Nightshift\\' }),
-        targetWorkspacePath: 'c:/users/dev/repo/nightshift'
+        session: session({ cwd: 'C:\\Users\\Dev\\repo\\Kolux\\' }),
+        targetWorkspacePath: 'c:/users/dev/repo/kolux'
       })
     ).toMatchObject({ available: true })
   })
@@ -153,20 +153,18 @@ describe('workspace matching, which only Claude is bound by', () => {
 
 describe('aiVaultSessionCwdMatchesWorkspace', () => {
   it('ignores separator, case, and a trailing slash', () => {
-    expect(aiVaultSessionCwdMatchesWorkspace('C:\\repo\\Nightshift', 'c:/repo/nightshift')).toBe(
-      true
-    )
-    expect(aiVaultSessionCwdMatchesWorkspace('/repo/nightshift/', '/repo/nightshift')).toBe(true)
-    expect(aiVaultSessionCwdMatchesWorkspace(' /repo/nightshift ', '/repo/nightshift')).toBe(true)
+    expect(aiVaultSessionCwdMatchesWorkspace('C:\\repo\\Kolux', 'c:/repo/kolux')).toBe(true)
+    expect(aiVaultSessionCwdMatchesWorkspace('/repo/kolux/', '/repo/kolux')).toBe(true)
+    expect(aiVaultSessionCwdMatchesWorkspace(' /repo/kolux ', '/repo/kolux')).toBe(true)
   })
 
   it('never calls a missing path a match', () => {
-    expect(aiVaultSessionCwdMatchesWorkspace(null, '/repo/nightshift')).toBe(false)
-    expect(aiVaultSessionCwdMatchesWorkspace('/repo/nightshift', null)).toBe(false)
+    expect(aiVaultSessionCwdMatchesWorkspace(null, '/repo/kolux')).toBe(false)
+    expect(aiVaultSessionCwdMatchesWorkspace('/repo/kolux', null)).toBe(false)
     expect(aiVaultSessionCwdMatchesWorkspace('', '')).toBe(false)
   })
 
   it('does not treat a sibling directory as the same workspace', () => {
-    expect(aiVaultSessionCwdMatchesWorkspace('/repo/nightshift-2', '/repo/nightshift')).toBe(false)
+    expect(aiVaultSessionCwdMatchesWorkspace('/repo/kolux-2', '/repo/kolux')).toBe(false)
   })
 })

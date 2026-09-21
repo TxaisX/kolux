@@ -252,7 +252,7 @@ export class IosEmulatorBackend implements EmulatorBackend {
         )
       }
     }
-    // Why: serve-sim/CoreSimulator can surface Simulator.app while Nightshift embeds the stream.
+    // Why: serve-sim/CoreSimulator can surface Simulator.app while Kolux embeds the stream.
     await hideNativeSimulatorApp().catch(() => {})
     return { ...info, streamCodec: 'mjpeg', backend: 'ios' }
   }

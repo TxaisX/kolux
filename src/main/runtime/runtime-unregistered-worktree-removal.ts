@@ -17,8 +17,8 @@ import {
 } from '../ipc/worktree-remote'
 import {
   assertWorktreeDoesNotContainRegisteredWorktree,
-  canCleanupUnregisteredNightshiftLeftoverDirectory,
-  canCleanupUnregisteredNightshiftWorktreeDirectory,
+  canCleanupUnregisteredKoluxLeftoverDirectory,
+  canCleanupUnregisteredKoluxWorktreeDirectory,
   canSafelyRemoveOrphanedWorktreeDirectory,
   isDangerousWorktreeRemovalPath,
   ORPHANED_WORKTREE_DIRECTORY_MESSAGE,
@@ -52,7 +52,7 @@ export async function removeRuntimeUnregisteredWorktree(args: {
 }): Promise<{}> {
   const { repo, target, registeredWorktrees, removedMeta, route } = args
   let canCleanOrphanedDirectory = false
-  if (canCleanupUnregisteredNightshiftWorktreeDirectory({ meta: removedMeta })) {
+  if (canCleanupUnregisteredKoluxWorktreeDirectory({ meta: removedMeta })) {
     if (route.kind === 'ssh') {
       const fsProvider = route.fsProvider
       if (!fsProvider) {
@@ -93,7 +93,7 @@ export async function removeRuntimeUnregisteredWorktree(args: {
     const access = getLocalWorktreePathAccess(args.localOptions)
     const runtimeWorktreePath = toLocalWorktreeRuntimePath(target.path, args.localOptions)
     if (
-      await canCleanupUnregisteredNightshiftLeftoverDirectory({
+      await canCleanupUnregisteredKoluxLeftoverDirectory({
         meta: removedMeta,
         worktreePath: target.path,
         runtimeWorktreePath,

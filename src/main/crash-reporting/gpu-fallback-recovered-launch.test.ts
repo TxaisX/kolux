@@ -56,7 +56,7 @@ describe('promptForGpuFallbackRecoveredLaunch', () => {
       defaultId: 0,
       cancelId: 0,
       title: 'Safe Graphics Mode is Active',
-      message: 'Nightshift recovered in Safe Graphics Mode.',
+      message: 'Kolux recovered in Safe Graphics Mode.',
       detail:
         'Safe Graphics Mode was enabled after repeated graphics crashes. Keep it for stability, or restart and try hardware acceleration again.'
     })

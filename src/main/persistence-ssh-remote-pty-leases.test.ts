@@ -90,7 +90,7 @@ async function storeWithBoundSshPane(): Promise<Awaited<ReturnType<typeof create
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -792,7 +792,7 @@ describe('Store', () => {
  */
 describe('ssh remote pty lease route-retirement marks survive the disk round trip', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })

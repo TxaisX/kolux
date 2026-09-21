@@ -10,7 +10,7 @@ import {
   openWorkspacePortInBrowser,
   publishWorkspacePortScanForHost,
   refreshWorkspacePortScanAfterStop,
-  resolvePortOpenInNightshiftBrowser,
+  resolvePortOpenInKoluxBrowser,
   scanWorkspacePortsForTarget,
   workspacePortRuntimeTargetKey
 } from '@/lib/workspace-port-actions'
@@ -149,7 +149,7 @@ export function LocalWorkspacePortsPanel({ isVisible }: { isVisible: boolean }):
         runtimeTarget,
         createBrowserTab,
         setRemoteBrowserPageHandle,
-        openInNightshiftBrowser: resolvePortOpenInNightshiftBrowser({
+        openInKoluxBrowser: resolvePortOpenInKoluxBrowser({
           settings,
           event,
           isMac: navigator.userAgent.includes('Mac')

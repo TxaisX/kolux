@@ -174,7 +174,7 @@ export function execFileCapture(
         args,
         {
           cwd: options.cwd,
-          // Why: git.exe is console-subsystem and Nightshift's main process owns no
+          // Why: git.exe is console-subsystem and Kolux's main process owns no
           // console, so every spawn without this flashes a conhost that takes
           // foreground. Git runs on nearly every interaction (#14543).
           windowsHide: true,

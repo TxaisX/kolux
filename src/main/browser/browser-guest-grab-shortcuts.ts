@@ -27,7 +27,7 @@ export function setupGrabShortcutForwarding(args: {
       if (!renderer) {
         return
       }
-      // Why: a focused guest swallows bare keys; during an active grab pick, plain C/S are Nightshift's copy/screenshot, not page typing.
+      // Why: a focused guest swallows bare keys; during an active grab pick, plain C/S are Kolux's copy/screenshot, not page typing.
       event.preventDefault()
       renderer.send('browser:grabActionShortcut', { browserPageId: browserTabId, key: bareKey })
       return

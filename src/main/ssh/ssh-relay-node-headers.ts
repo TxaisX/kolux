@@ -20,7 +20,7 @@
 import { shellEscape } from './ssh-connection-utils'
 
 /** Shell variable the probe answers into; namespaced so it cannot collide with npm's own. */
-const NODEDIR_SHELL_VAR = 'NIGHTSHIFT_NODE_HEADERS_DIR'
+const NODEDIR_SHELL_VAR = 'KOLUX_NODE_HEADERS_DIR'
 
 /**
  * Prints the running Node's install prefix when `<prefix>/include/node/node_version.h` matches
@@ -41,7 +41,7 @@ export const LOCAL_NODE_HEADERS_PROBE_JS = [
  * Stdout marker naming what the probe found, printed before the compile so the answer is in the
  * captured output of any failure that follows. `none` means no matching local headers.
  */
-export const LOCAL_NODE_HEADERS_MARKER_PREFIX = 'NIGHTSHIFT-NODE-HEADERS:'
+export const LOCAL_NODE_HEADERS_MARKER_PREFIX = 'KOLUX-NODE-HEADERS:'
 
 /**
  * POSIX-sh prefix (`...; `) that exports node-gyp's `nodedir` for the rest of the command line
@@ -72,7 +72,7 @@ export function exportLocalNodeHeadersPrefix(nodePath: string): string {
 export function localNodeHeadersFromOutput(output: string): string | null | undefined {
   // Why the head is stripped first: a failed exec's message is `Command "<command>" failed
   // (exit N): <output>`, and <command> quotes this prefix verbatim -- including the marker's
-  // `echo`. Scanning from the start would match that copy and return `${NIGHTSHIFT_NODE_HEADERS_DIR:-
+  // `echo`. Scanning from the start would match that copy and return `${KOLUX_NODE_HEADERS_DIR:-
   // none}"...` as a "dir". Only what follows the head is the host's answer.
   const head = output.match(EXEC_FAILURE_HEAD_RE)
   const hostOutput = head ? output.slice(head[0].length) : output

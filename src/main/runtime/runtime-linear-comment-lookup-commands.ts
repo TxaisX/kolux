@@ -24,7 +24,7 @@ export class RuntimeLinearCommentLookupCommands extends RuntimeLinearWriteResult
           'The reply target is not a comment on this issue.',
           {
             nextSteps: [
-              'Run `nightshift linear issue <id> --comments --json` to list valid comment ids.'
+              'Run `kolux linear issue <id> --comments --json` to list valid comment ids.'
             ]
           }
         )
@@ -98,7 +98,7 @@ export class RuntimeLinearCommentLookupCommands extends RuntimeLinearWriteResult
     }
     if (isLinearAuthError(error)) {
       return linearError('linear_auth_expired', 'Linear authentication expired.', {
-        nextSteps: ['Reconnect Linear from Nightshift settings.']
+        nextSteps: ['Reconnect Linear from Kolux settings.']
       })
     }
     return linearError(classifyLinearError(error), linearMessage(error))

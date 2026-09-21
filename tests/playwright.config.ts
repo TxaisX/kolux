@@ -1,7 +1,7 @@
 import { defineConfig } from '@stablyai/playwright-test'
 
 /**
- * Playwright config for Nightshift E2E tests.
+ * Playwright config for Kolux E2E tests.
  *
  * Run:
  *   pnpm run test:e2e              — build + run all tests (headless)
@@ -45,7 +45,7 @@ export default defineConfig({
       testMatch: '**/*.spec.ts',
       grepInvert: /@headful/,
       metadata: {
-        nightshiftHeadful: false
+        koluxHeadful: false
       }
     },
     {
@@ -53,7 +53,7 @@ export default defineConfig({
       testMatch: '**/*.spec.ts',
       grep: /@headful/,
       metadata: {
-        nightshiftHeadful: true
+        koluxHeadful: true
       }
     }
   ]

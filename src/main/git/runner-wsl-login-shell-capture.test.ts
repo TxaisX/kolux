@@ -40,13 +40,13 @@ function createMockChild(): EventEmitter & { stdout: EventEmitter; stderr: Event
 /** Stand in for the guest shell: banner first, then the payload inside the command's fence. */
 function respondWithFencedPayload(payload: Buffer | string): void {
   execFileMock.mockImplementation((_command, args, _options, callback) => {
-    const nonce = /__NIGHTSHIFT_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(String(args.at(-1)))?.[1] ?? ''
+    const nonce = /__KOLUX_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(String(args.at(-1)))?.[1] ?? ''
     const body = typeof payload === 'string' ? Buffer.from(payload, 'utf8') : payload
     const stdout = Buffer.concat([
       Buffer.from(BANNER, 'utf8'),
-      Buffer.from(`__NIGHTSHIFT_WSL_CAPTURE_BEGIN_${nonce}__`, 'utf8'),
+      Buffer.from(`__KOLUX_WSL_CAPTURE_BEGIN_${nonce}__`, 'utf8'),
       body,
-      Buffer.from(`__NIGHTSHIFT_WSL_CAPTURE_END_${nonce}__`, 'utf8')
+      Buffer.from(`__KOLUX_WSL_CAPTURE_END_${nonce}__`, 'utf8')
     ])
     queueMicrotask(() => callback?.(null, stdout, Buffer.alloc(0)))
     return createMockChild()
@@ -95,9 +95,9 @@ describe('WSL login-shell reads are fenced', () => {
   function respondToSshPolicyProbe(configured: string): void {
     execFileMock.mockImplementation((_command, args, _options, callback) => {
       const script = String(args.at(-1))
-      const nonce = /__NIGHTSHIFT_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(script)?.[1] ?? ''
+      const nonce = /__KOLUX_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(script)?.[1] ?? ''
       const stdout = script.includes('core.sshCommand')
-        ? `${BANNER}__NIGHTSHIFT_WSL_CAPTURE_BEGIN_${nonce}__${configured}__NIGHTSHIFT_WSL_CAPTURE_END_${nonce}__`
+        ? `${BANNER}__KOLUX_WSL_CAPTURE_BEGIN_${nonce}__${configured}__KOLUX_WSL_CAPTURE_END_${nonce}__`
         : 'ok'
       queueMicrotask(() => callback?.(null, stdout, ''))
       return createMockChild()

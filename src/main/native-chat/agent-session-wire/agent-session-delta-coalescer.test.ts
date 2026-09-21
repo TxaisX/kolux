@@ -204,13 +204,13 @@ describe('agent-session delta coalescer', () => {
 
     expect(emitted).toEqual([
       {
-        text: 'ééé\n[Nightshift: streamed output truncated]',
+        text: 'ééé\n[Kolux: streamed output truncated]',
         observedBytes: 48,
         truncated: true
       }
     ])
     expect(instance.snapshot('item-1')).toEqual({
-      text: 'ééé\n[Nightshift: streamed output truncated]',
+      text: 'ééé\n[Kolux: streamed output truncated]',
       observedBytes: 55,
       truncated: true
     })

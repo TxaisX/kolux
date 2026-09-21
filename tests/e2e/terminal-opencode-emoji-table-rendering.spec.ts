@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   sendToTerminal,
@@ -38,7 +38,7 @@ type CursorBlinkSample = {
   paintedCursorCellCount: number
 }
 
-const EMOJI_TABLE_MARKER = 'NIGHTSHIFT_EMOJI_TABLE_RENDER_DONE'
+const EMOJI_TABLE_MARKER = 'KOLUX_EMOJI_TABLE_RENDER_DONE'
 
 function emojiTableScript(marker: string): string {
   const table = [
@@ -255,30 +255,30 @@ async function enableRiskyTerminalRendererPath(page: Page): Promise<void> {
 
 test.describe('OpenCode emoji table terminal rendering', () => {
   test('keeps emoji table output visually sane and restores the cursor', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await enableRiskyTerminalRendererPath(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await enableRiskyTerminalRendererPath(koluxPage)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 20_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 20_000)
     const runId = randomUUID()
     const marker = `${EMOJI_TABLE_MARKER}_${runId}`
-    const scriptPath = path.join(testRepoPath, `.nightshift-opencode-emoji-table-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-opencode-emoji-table-${runId}.mjs`)
     writeFileSync(scriptPath, emojiTableScript(marker))
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
-      await waitForTerminalOutput(nightshiftPage, marker, 10_000)
-      await nightshiftPage.waitForTimeout(250)
-      await forceCursorProbeTheme(nightshiftPage)
-      await nightshiftPage.waitForTimeout(50)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await waitForTerminalOutput(koluxPage, marker, 10_000)
+      await koluxPage.waitForTimeout(250)
+      await forceCursorProbeTheme(koluxPage)
+      await koluxPage.waitForTimeout(50)
 
-      const renderState = await readActiveTerminalRenderState(nightshiftPage)
-      const blinkSamples = await sampleCursorBlink(nightshiftPage)
+      const renderState = await readActiveTerminalRenderState(koluxPage)
+      const blinkSamples = await sampleCursorBlink(koluxPage)
 
       testInfo.annotations.push({
         type: 'opencode-emoji-table-rendering',
@@ -301,37 +301,37 @@ test.describe('OpenCode emoji table terminal rendering', () => {
   })
 
   test('local real OpenCode demo keeps table rendering and cursor visible', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.skip(
-      process.env.NIGHTSHIFT_E2E_REAL_OPENCODE !== '1',
-      'Set NIGHTSHIFT_E2E_REAL_OPENCODE=1 to exercise the locally installed OpenCode TUI'
+      process.env.KOLUX_E2E_REAL_OPENCODE !== '1',
+      'Set KOLUX_E2E_REAL_OPENCODE=1 to exercise the locally installed OpenCode TUI'
     )
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await enableRiskyTerminalRendererPath(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await enableRiskyTerminalRendererPath(koluxPage)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     await sendToTerminal(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       'opencode run --demo --interactive "Give me markdown table dummy data a long table with emojis in it"\r'
     )
     try {
-      await waitForTerminalOutput(nightshiftPage, 'Give me markdown table', 15_000)
-      await waitForTerminalOutput(nightshiftPage, 'Emoji', 60_000)
-      await waitForTerminalOutput(nightshiftPage, 'Alice', 60_000)
-      await nightshiftPage.waitForTimeout(1_500)
+      await waitForTerminalOutput(koluxPage, 'Give me markdown table', 15_000)
+      await waitForTerminalOutput(koluxPage, 'Emoji', 60_000)
+      await waitForTerminalOutput(koluxPage, 'Alice', 60_000)
+      await koluxPage.waitForTimeout(1_500)
 
       await testInfo.attach('real-opencode-demo-table', {
-        body: await nightshiftPage.screenshot({ fullPage: true }),
+        body: await koluxPage.screenshot({ fullPage: true }),
         contentType: 'image/png'
       })
 
-      const renderState = await readActiveTerminalRenderState(nightshiftPage)
+      const renderState = await readActiveTerminalRenderState(koluxPage)
       testInfo.annotations.push({
         type: 'real-opencode-demo-rendering',
         description: JSON.stringify(renderState)
@@ -339,7 +339,7 @@ test.describe('OpenCode emoji table terminal rendering', () => {
       expect(renderState.coreCursorHidden).toBe(false)
       expect(renderState.cursorVisibleElementCount).toBeGreaterThan(0)
     } finally {
-      await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
     }
   })
 })

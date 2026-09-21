@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import { CLIPBOARD_TEXT_MEASURE_YIELD_CODE_UNITS } from '../../../shared/clipboard-text'
 import {
@@ -13,7 +13,7 @@ import {
   TERMINAL_INPUT_TOO_LARGE_ERROR
 } from '../../../shared/terminal-input'
 
-function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): NightshiftRuntimeService {
+function stubRuntime(overrides: Partial<KoluxRuntimeService> = {}): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     beginMobileInputFloor: vi.fn((ptyId: string, clientId: string) => ({
@@ -23,7 +23,7 @@ function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): Nightsh
       rollback: vi.fn()
     })),
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 function makeRequest(method: string, params?: unknown): RpcRequest {

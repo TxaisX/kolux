@@ -36,7 +36,7 @@ export function getMarkdownRenderMode({
   }
 
   // Why: rich view is the user's "formatted markdown" choice, not a promise
-  // that Tiptap owns the document. Now that Nightshift has a dedicated preview tab,
+  // that Tiptap owns the document. Now that Kolux has a dedicated preview tab,
   // unsafe rich documents should stay editable in source mode here instead of
   // silently turning the current editor tab into a read-only preview surface.
   return hasRichModeUnsupportedContent ? 'source' : 'rich-editor'

@@ -1,6 +1,6 @@
 /** STA-1840 regression: known blank-terminal handles request a bounded renderer mount. */
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 type HandleSeed = {
   handle: string
@@ -27,10 +27,10 @@ type RuntimeInternals = {
 }
 
 function seedRuntime(seeds: HandleSeed[]): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   send: ReturnType<typeof vi.fn>
 } {
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   const internals = runtime as unknown as RuntimeInternals
   for (const seed of seeds) {
     internals.handles.set(seed.handle, {
@@ -48,7 +48,7 @@ function seedRuntime(seeds: HandleSeed[]): {
 
 describe('mobile terminal subscribe tab mount', () => {
   it('keeps a waiting real-tab handle usable when the mount binds its first PTY', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const syncGraph = (ptyId: string | null): void => {
       runtime.syncWindowGraph(1, {
         tabs: [

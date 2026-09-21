@@ -12,7 +12,7 @@ import { withCliRuntimeOnPath } from '../../shared/node-cli-command-resolution'
 import { CODEX_READ_ONLY_APP_SERVER_ARGS } from '../codex-cli/codex-read-only-app-server-args'
 import { terminateCodexProbeChild } from '../rate-limits/codex-probe-termination'
 import { getSpawnArgsForWindows } from '../win32-utils'
-import { getNightshiftUserDataPath } from './codex-home-paths'
+import { getKoluxUserDataPath } from './codex-home-paths'
 import {
   BACKFILL_PENDING_MIN_SESSION_FILES,
   countCodexSessionFilesUpTo,
@@ -183,7 +183,7 @@ export async function runCodexStateDbBackfillRecovery(
 export function resolveCodexBackfillSupervisorLockRoot(codexHomePath: string): string {
   const homeKey = normalizeRuntimePathForComparison(codexHomePath)
   const digest = createHash('sha256').update(homeKey).digest('hex')
-  return join(getNightshiftUserDataPath(), 'codex-state-db-backfill-locks', digest)
+  return join(getKoluxUserDataPath(), 'codex-state-db-backfill-locks', digest)
 }
 
 function scopeRecoveryHostIdentity(hostIdentity: string, codexHomePath: string): string {

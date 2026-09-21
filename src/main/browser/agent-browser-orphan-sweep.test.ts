@@ -9,9 +9,9 @@ import { sweepOrphanedAgentBrowserSessions } from './agent-browser-orphan-sweep'
 
 type Spec = { args?: readonly string[] }
 
-const BIN = '/opt/nightshift/agent-browser'
+const BIN = '/opt/kolux/agent-browser'
 const SCOPED = {
-  env: { AGENT_BROWSER_SOCKET_DIR: '/tmp/nightshift-ab-0123456789abcdef' },
+  env: { AGENT_BROWSER_SOCKET_DIR: '/tmp/kolux-ab-0123456789abcdef' },
   ownsSocketDirectory: true
 }
 
@@ -42,44 +42,44 @@ describe('agent-browser orphan sweep', () => {
   })
 
   it('closes tab daemons left by a previous run', async () => {
-    respond(['nightshift-tab-aaa', 'nightshift-tab-bbb'])
+    respond(['kolux-tab-aaa', 'kolux-tab-bbb'])
 
     const closed = await sweepOrphanedAgentBrowserSessions({ binaryPath: BIN, ...SCOPED })
 
-    expect(closed).toEqual(['nightshift-tab-aaa', 'nightshift-tab-bbb'])
+    expect(closed).toEqual(['kolux-tab-aaa', 'kolux-tab-bbb'])
     expect(closedArgs()).toEqual([
-      ['--session', 'nightshift-tab-aaa', 'close'],
-      ['--session', 'nightshift-tab-bbb', 'close']
+      ['--session', 'kolux-tab-aaa', 'close'],
+      ['--session', 'kolux-tab-bbb', 'close']
     ])
   })
 
-  it('never closes a daemon outside Nightshift tab naming', async () => {
-    respond(['default', 'agent1', 'nightshift-nightshiftd-deadbeef', 'nightshift-tab-aaa'])
+  it('never closes a daemon outside Kolux tab naming', async () => {
+    respond(['default', 'agent1', 'kolux-koluxd-deadbeef', 'kolux-tab-aaa'])
 
     await sweepOrphanedAgentBrowserSessions({ binaryPath: BIN, ...SCOPED })
 
-    expect(closedArgs()).toEqual([['--session', 'nightshift-tab-aaa', 'close']])
+    expect(closedArgs()).toEqual([['--session', 'kolux-tab-aaa', 'close']])
   })
 
   it('leaves sessions this run already owns alone', async () => {
-    respond(['nightshift-tab-live', 'nightshift-tab-orphan'])
+    respond(['kolux-tab-live', 'kolux-tab-orphan'])
 
     await sweepOrphanedAgentBrowserSessions({
       binaryPath: BIN,
       ...SCOPED,
-      isSessionLive: (name) => name === 'nightshift-tab-live'
+      isSessionLive: (name) => name === 'kolux-tab-live'
     })
 
-    expect(closedArgs()).toEqual([['--session', 'nightshift-tab-orphan', 'close']])
+    expect(closedArgs()).toEqual([['--session', 'kolux-tab-orphan', 'close']])
   })
 
-  // Why: without a socket dir Nightshift derived itself, `session list` can reach daemons another Nightshift
+  // Why: without a socket dir Kolux derived itself, `session list` can reach daemons another Kolux
   // profile owns (Windows named pipes, or an inherited AGENT_BROWSER_SOCKET_DIR). Idle timeout bounds those.
   it.each([
     ['no socket directory at all', { PATH: 'C:\\Windows' }],
-    ['a socket directory Nightshift inherited', { AGENT_BROWSER_SOCKET_DIR: '/tmp/shared-ab' }]
+    ['a socket directory Kolux inherited', { AGENT_BROWSER_SOCKET_DIR: '/tmp/shared-ab' }]
   ])('does not enumerate with %s', async (_label, env) => {
-    respond(['nightshift-tab-aaa'])
+    respond(['kolux-tab-aaa'])
 
     const closed = await sweepOrphanedAgentBrowserSessions({
       binaryPath: BIN,
@@ -121,13 +121,13 @@ describe('agent-browser orphan sweep', () => {
           code: 0,
           signal: null,
           stdout: JSON.stringify({
-            data: { sessions: ['nightshift-tab-aaa', 'nightshift-tab-bbb'] }
+            data: { sessions: ['kolux-tab-aaa', 'kolux-tab-bbb'] }
           }),
           stderr: '',
           timedOut: false
         })
       }
-      if (spec.args?.[1] === 'nightshift-tab-aaa') {
+      if (spec.args?.[1] === 'kolux-tab-aaa') {
         return Promise.reject(new Error('spawn failed'))
       }
       return Promise.resolve({ code: 0, signal: null, stdout: '', stderr: '', timedOut: false })
@@ -135,11 +135,11 @@ describe('agent-browser orphan sweep', () => {
 
     const closed = await sweepOrphanedAgentBrowserSessions({ binaryPath: BIN, ...SCOPED })
 
-    expect(closed).toEqual(['nightshift-tab-bbb'])
+    expect(closed).toEqual(['kolux-tab-bbb'])
   })
 
   it('bounds every child it starts', async () => {
-    respond(['nightshift-tab-aaa'])
+    respond(['kolux-tab-aaa'])
 
     await sweepOrphanedAgentBrowserSessions({ binaryPath: BIN, ...SCOPED })
 
@@ -150,20 +150,20 @@ describe('agent-browser orphan sweep', () => {
 })
 
 describe('sweep kill switch', () => {
-  const previous = process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP
+  const previous = process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP
 
   afterEach(() => {
     if (previous === undefined) {
-      delete process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP
+      delete process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP
     } else {
-      process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP = previous
+      process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP = previous
     }
   })
 
   // Why: the idle bound is an env passthrough an operator can raise and the quit close is
   // self-bounded, so the sweep is the only new behaviour whose failure would need a revert.
-  it('enumerates nothing when disabled, even when Nightshift owns the socket directory', async () => {
-    process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP = '1'
+  it('enumerates nothing when disabled, even when Kolux owns the socket directory', async () => {
+    process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP = '1'
     runProcessMock.mockClear()
 
     const closed = await sweepOrphanedAgentBrowserSessions({
@@ -177,7 +177,7 @@ describe('sweep kill switch', () => {
   })
 
   it('still sweeps when the flag holds any other value', async () => {
-    process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP = '0'
+    process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP = '0'
     runProcessMock.mockClear()
     runProcessMock.mockResolvedValue({ code: 0, stdout: '{"data":{"sessions":[]}}', stderr: '' })
 

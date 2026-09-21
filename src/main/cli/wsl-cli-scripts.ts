@@ -1,34 +1,34 @@
-const MANAGED_MARKER = '# Nightshift managed WSL CLI launcher'
-const BRIDGE_MANAGED_MARKER = '# Nightshift managed WSL CLI PowerShell bridge'
+const MANAGED_MARKER = '# Kolux managed WSL CLI launcher'
+const BRIDGE_MANAGED_MARKER = '# Kolux managed WSL CLI PowerShell bridge'
 
 export function buildWslLauncher(
   windowsLauncherPath: string,
-  bridgePath = '${XDG_DATA_HOME:-$HOME/.local/share}/nightshift/nightshift-wsl-bridge.ps1'
+  bridgePath = '${XDG_DATA_HOME:-$HOME/.local/share}/kolux/kolux-wsl-bridge.ps1'
 ): string {
   const encodedTarget = Buffer.from(windowsLauncherPath, 'utf8').toString('base64')
   return `#!/usr/bin/env bash
 set -euo pipefail
 ${MANAGED_MARKER}
-# NIGHTSHIFT_WIN_LAUNCHER_B64=${encodedTarget}
-NIGHTSHIFT_WIN_LAUNCHER=${quoteShell(windowsLauncherPath)}
-NIGHTSHIFT_BRIDGE_PS1=${quoteShell(bridgePath)}
+# KOLUX_WIN_LAUNCHER_B64=${encodedTarget}
+KOLUX_WIN_LAUNCHER=${quoteShell(windowsLauncherPath)}
+KOLUX_BRIDGE_PS1=${quoteShell(bridgePath)}
 if command -v powershell.exe >/dev/null 2>&1; then
-  NIGHTSHIFT_POWERSHELL=powershell.exe
+  KOLUX_POWERSHELL=powershell.exe
 elif [ -x /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe ]; then
-  NIGHTSHIFT_POWERSHELL=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+  KOLUX_POWERSHELL=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
 else
-  echo "Nightshift WSL CLI requires Windows interop and could not find powershell.exe." >&2
+  echo "Kolux WSL CLI requires Windows interop and could not find powershell.exe." >&2
   exit 1
 fi
 # Why: a shell can outlive a deleted worktree; keep explicit CLI selectors and
 # help usable, and repair cwd before any WSL interop tool tries to resolve it.
-NIGHTSHIFT_WSL_CWD=$(pwd -P 2>/dev/null) || {
-  NIGHTSHIFT_WSL_CWD=/
+KOLUX_WSL_CWD=$(pwd -P 2>/dev/null) || {
+  KOLUX_WSL_CWD=/
   cd /
 }
-NIGHTSHIFT_BRIDGE_PS1_WIN=$(wslpath -w "$NIGHTSHIFT_BRIDGE_PS1")
-NIGHTSHIFT_WSL_CWD_WIN=$(wslpath -w "$NIGHTSHIFT_WSL_CWD")
-exec "$NIGHTSHIFT_POWERSHELL" -NoProfile -ExecutionPolicy Bypass -File "$NIGHTSHIFT_BRIDGE_PS1_WIN" "$NIGHTSHIFT_WIN_LAUNCHER" -WslCwd "$NIGHTSHIFT_WSL_CWD_WIN" "$@"
+KOLUX_BRIDGE_PS1_WIN=$(wslpath -w "$KOLUX_BRIDGE_PS1")
+KOLUX_WSL_CWD_WIN=$(wslpath -w "$KOLUX_WSL_CWD")
+exec "$KOLUX_POWERSHELL" -NoProfile -ExecutionPolicy Bypass -File "$KOLUX_BRIDGE_PS1_WIN" "$KOLUX_WIN_LAUNCHER" -WslCwd "$KOLUX_WSL_CWD_WIN" "$@"
 `
 }
 
@@ -67,14 +67,14 @@ $exitCode = 0
 try {
   # Why: a param block prefix-binds forwarded flags such as --for in PowerShell 5.1.
   if ($args.Count -lt 1) {
-    throw 'Invalid Nightshift WSL CLI bridge invocation.'
+    throw 'Invalid Kolux WSL CLI bridge invocation.'
   }
-  [string]$NightshiftLauncher = $args[0]
+  [string]$KoluxLauncher = $args[0]
   [string]$WslCwd = ''
   [int]$ForwardArgStart = 1
   if ($args.Count -ge 2 -and $args[1] -eq '-WslCwd') {
     if ($args.Count -lt 3) {
-      throw 'Invalid Nightshift WSL CLI bridge invocation.'
+      throw 'Invalid Kolux WSL CLI bridge invocation.'
     }
     $WslCwd = $args[2]
     $ForwardArgStart = 3
@@ -84,15 +84,15 @@ try {
     $ForwardArgs = @($args[$ForwardArgStart..($args.Count - 1)])
   }
   if ([string]::IsNullOrEmpty($WslCwd)) {
-    Remove-Item Env:NIGHTSHIFT_CLI_CWD -ErrorAction SilentlyContinue
+    Remove-Item Env:KOLUX_CLI_CWD -ErrorAction SilentlyContinue
   } else {
-    $env:NIGHTSHIFT_CLI_CWD = $WslCwd
+    $env:KOLUX_CLI_CWD = $WslCwd
   }
-  $LauncherDirectory = Split-Path -Parent $NightshiftLauncher
+  $LauncherDirectory = Split-Path -Parent $KoluxLauncher
   Push-Location -LiteralPath $LauncherDirectory
   # Why: Windows PowerShell 5.1 cannot losslessly splat strings to native argv.
   $StartInfo = [System.Diagnostics.ProcessStartInfo]::new()
-  $StartInfo.FileName = $NightshiftLauncher
+  $StartInfo.FileName = $KoluxLauncher
   $StartInfo.Arguments = (($ForwardArgs | ForEach-Object {
     ConvertTo-NativeCommandLineArgument $_
   }) -join ' ')
@@ -106,7 +106,7 @@ try {
   $StartInfo.WorkingDirectory = $LauncherDirectory
   $Process = [System.Diagnostics.Process]::Start($StartInfo)
   if ($null -eq $Process) {
-    throw 'Unable to start the Nightshift Windows CLI launcher.'
+    throw 'Unable to start the Kolux Windows CLI launcher.'
   }
   $Process.WaitForExit()
   $exitCode = $Process.ExitCode
@@ -121,8 +121,8 @@ exit $exitCode
 
 export function getBridgePathFromCommandPath(commandPath: string): string {
   // Why: both the current Linux command and the legacy pre-rename command
-  // share one WSL bridge under ~/.local/share/nightshift.
-  return `${commandPath.replace(/\/\.local\/bin\/(?:nightshift|nightshift-ide)$/, '/.local/share/nightshift')}/nightshift-wsl-bridge.ps1`
+  // share one WSL bridge under ~/.local/share/kolux.
+  return `${commandPath.replace(/\/\.local\/bin\/(?:kolux|kolux-ide)$/, '/.local/share/kolux')}/kolux-wsl-bridge.ps1`
 }
 
 export function buildSafeReplaceGuard(path: string, managedMarker: string): string {
@@ -130,10 +130,10 @@ export function buildSafeReplaceGuard(path: string, managedMarker: string): stri
   const quotedMarker = quoteShell(managedMarker)
   return [
     `if [ -L ${quotedPath} ]; then`,
-    '  echo "__NIGHTSHIFT_CONFLICT__"',
+    '  echo "__KOLUX_CONFLICT__"',
     '  exit 23',
     `elif [ -e ${quotedPath} ] && { [ ! -f ${quotedPath} ] || ! grep -Fq ${quotedMarker} ${quotedPath}; }; then`,
-    '  echo "__NIGHTSHIFT_CONFLICT__"',
+    '  echo "__KOLUX_CONFLICT__"',
     '  exit 23',
     'fi'
   ].join('\n')
@@ -141,18 +141,18 @@ export function buildSafeReplaceGuard(path: string, managedMarker: string): stri
 
 export function buildRegistrationLockPrelude(commandPath: string): string {
   const lockDir = getPosixDirname(getBridgePathFromCommandPath(commandPath))
-  // Why: the per-distro queue only serializes one Nightshift process; flock covers
+  // Why: the per-distro queue only serializes one Kolux process; flock covers
   // a second install (e.g. stable + nightly) mutating the same distro files.
   return [
     `if command -v flock >/dev/null 2>&1 && mkdir -p ${quoteShell(lockDir)} 2>/dev/null; then`,
-    `  exec 9>${quoteShell(`${lockDir}/.nightshift-wsl-cli.lock`)}`,
+    `  exec 9>${quoteShell(`${lockDir}/.kolux-wsl-cli.lock`)}`,
     '  flock -x -w 30 9',
     'fi'
   ].join('\n')
 }
 
 export function buildManagedLegacyRemoveCommand(quotedLegacyCommandPath: string): string {
-  // Why: remove only the Nightshift-managed pre-rename wrapper; user-owned `nightshift`
+  // Why: remove only the Kolux-managed pre-rename wrapper; user-owned `kolux`
   // commands and symlinks must survive.
   return `if [ ! -L ${quotedLegacyCommandPath} ] && [ -f ${quotedLegacyCommandPath} ] && grep -Fq ${quoteShell(MANAGED_MARKER)} ${quotedLegacyCommandPath}; then rm -f ${quotedLegacyCommandPath}; fi`
 }
@@ -167,14 +167,14 @@ export function buildSafeRemoveCommand(commandPath: string, legacyCommandPath?: 
     buildSafeReplaceGuard(commandPath, MANAGED_MARKER),
     buildSafeReplaceGuard(bridgePath, BRIDGE_MANAGED_MARKER),
     `rm -f ${quoteShell(commandPath)} ${quoteShell(bridgePath)}`,
-    // Why: leaving a managed legacy `nightshift` behind lets startup reconciliation
+    // Why: leaving a managed legacy `kolux` behind lets startup reconciliation
     // re-adopt it as opt-in proof and silently undo this removal.
     ...(legacyCommandPath ? [buildManagedLegacyRemoveCommand(quoteShell(legacyCommandPath))] : [])
   ].join('\n')
 }
 
 export function parseManagedLauncherTarget(content: string): string | null {
-  const encoded = content.match(/^# NIGHTSHIFT_WIN_LAUNCHER_B64=([A-Za-z0-9+/=]+)$/m)?.[1]
+  const encoded = content.match(/^# KOLUX_WIN_LAUNCHER_B64=([A-Za-z0-9+/=]+)$/m)?.[1]
   if (encoded) {
     try {
       return Buffer.from(encoded, 'base64').toString('utf8')
@@ -183,7 +183,7 @@ export function parseManagedLauncherTarget(content: string): string | null {
     }
   }
 
-  const legacyTarget = content.match(/^NIGHTSHIFT_WIN_LAUNCHER='((?:[^']|'"'"')*)'$/m)?.[1]
+  const legacyTarget = content.match(/^KOLUX_WIN_LAUNCHER='((?:[^']|'"'"')*)'$/m)?.[1]
   return legacyTarget ? legacyTarget.replaceAll(`'"'"'`, "'") : null
 }
 

@@ -1,4 +1,4 @@
-// Opt in: NIGHTSHIFT_LOCAL_METADATA_PRUNE_BENCH=1 pnpm test src/main/persistence/tracking-repos/local-worktree-metadata-batch-pruning.bench.test.ts
+// Opt in: KOLUX_LOCAL_METADATA_PRUNE_BENCH=1 pnpm test src/main/persistence/tracking-repos/local-worktree-metadata-batch-pruning.bench.test.ts
 import { performance } from 'node:perf_hooks'
 import { describe, expect, it, vi } from 'vitest'
 import { getDefaultPersistedState } from '../../../shared/constants'
@@ -15,7 +15,7 @@ import {
   pruneSessionlessMissingLocalWorktreeMetadataForRepo
 } from './missing-local-worktree-metadata-pruning'
 
-const describeBench = process.env.NIGHTSHIFT_LOCAL_METADATA_PRUNE_BENCH ? describe : describe.skip
+const describeBench = process.env.KOLUX_LOCAL_METADATA_PRUNE_BENCH ? describe : describe.skip
 const ROW_COUNT = 2_709
 const REPO: Repo = {
   id: 'repo-1',

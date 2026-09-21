@@ -195,7 +195,7 @@ export function SkillBundleInstallFlow(props: {
           operation.status === 'reconnect-required'
             ? translate(
                 'auto.components.skills.install.reconnectBeforeInstalling',
-                'Reconnect your Nightshift account before installing.'
+                'Reconnect your Kolux account before installing.'
               )
             : operation.message
         )
@@ -214,7 +214,7 @@ export function SkillBundleInstallFlow(props: {
       setError(
         translate(
           'auto.components.skills.install.bundleVerificationFailed',
-          'Installation failed before Nightshift could verify the requested bundle.'
+          'Installation failed before Kolux could verify the requested bundle.'
         )
       )
     } finally {

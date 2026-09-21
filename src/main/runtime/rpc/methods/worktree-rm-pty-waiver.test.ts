@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { WORKTREE_METHODS } from './worktree'
 
-function makeRuntime(): NightshiftRuntimeService {
+function makeRuntime(): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     dedupeWorktreeCreate: <T>(_repo: string, _id: string | undefined, run: () => Promise<T>) =>
       run(),
     showManagedWorktree: vi.fn().mockResolvedValue({ hostId: 'ssh:builder' }),
     removeManagedWorktree: vi.fn().mockResolvedValue({})
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 // Why (#11960): waiving the proof that every PTY stopped must ride its own field.

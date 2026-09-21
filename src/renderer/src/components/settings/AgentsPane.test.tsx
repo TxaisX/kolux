@@ -245,21 +245,21 @@ describe('AgentsPane', () => {
     expect(markup).not.toContain('aria-label="Agent runtime"')
     expect(markup).toContain('Keep computer awake')
     expect(markup).toContain(
-      'Choose On, Agent, or Off. Agent mode stays awake while agents are working. Nightshift also asks this device to stay awake when the lid is closed, subject to its power policy.'
+      'Choose On, Agent, or Off. Agent mode stays awake while agents are working. Kolux also asks this device to stay awake when the lid is closed, subject to its power policy.'
     )
     expect(markup).toContain('role="radiogroup"')
     expect(markup).toContain('>Agent<')
   })
 
   it('hides desktop-only awake modes in paired web clients', () => {
-    ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+    ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
     try {
       expect(renderPane(getDefaultSettings('/tmp'))).not.toContain('Keep computer awake')
       expect(
         matchesSettingsSearch('awake', getAgentsPaneSearchEntries({ includeAgentAwake: false }))
       ).toBe(false)
     } finally {
-      delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+      delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
     }
   })
 

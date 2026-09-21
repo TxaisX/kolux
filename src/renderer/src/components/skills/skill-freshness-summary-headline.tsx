@@ -56,7 +56,7 @@ export function SummaryHeadline({
         <Loader2 className="size-4 animate-spin" />
         {translate(
           'auto.components.skills.SkillFreshnessUpdateDialog.checking',
-          'Checking installed Nightshift skills…'
+          'Checking installed Kolux skills…'
         )}
       </div>
     )
@@ -66,7 +66,7 @@ export function SummaryHeadline({
       <p className="text-xs text-muted-foreground">
         {translate(
           'auto.components.skills.SkillFreshnessUpdateDialog.none',
-          'No installed Nightshift skills found.'
+          'No installed Kolux skills found.'
         )}
       </p>
     )
@@ -77,7 +77,7 @@ export function SummaryHeadline({
         <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
         {translate(
           'auto.components.skills.SkillFreshnessUpdateDialog.success',
-          'All installed Nightshift skills are up to date.'
+          'All installed Kolux skills are up to date.'
         )}
       </div>
     )
@@ -90,7 +90,7 @@ export function SummaryHeadline({
         <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
         {translate(
           'auto.components.skills.SkillFreshnessUpdateDialog.attention',
-          'Some installed Nightshift skills were left out of the update.'
+          'Some installed Kolux skills were left out of the update.'
         )}
       </div>
     )
@@ -103,7 +103,7 @@ export function SummaryHeadline({
         <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
         {translate(
           'auto.components.skills.SkillFreshnessUpdateDialog.scanIncomplete',
-          'Nightshift could not finish checking plugin-managed skills.'
+          'Kolux could not finish checking plugin-managed skills.'
         )}
       </div>
     )

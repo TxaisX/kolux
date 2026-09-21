@@ -12,7 +12,7 @@ import {
   type DockerSshRelayProcessSnapshot
 } from './docker-ssh-relay-processes'
 import { assertRuntimeSshStatus } from './nested-runtime-ssh-state'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 
 type NestedRelayRoute = {
   label: string

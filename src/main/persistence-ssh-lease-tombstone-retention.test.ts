@@ -15,7 +15,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({ getCohortAtEmit: () => ({}) })
 
 describe('operator-closed SSH lease tombstones', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

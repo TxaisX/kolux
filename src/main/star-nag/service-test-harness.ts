@@ -16,8 +16,8 @@ export type TestWindow = {
 export type StarNagMocks = {
   appMock: { getVersion: Mock }
   browserWindowMock: { getAllWindows: Mock<() => TestWindow[]> }
-  checkNightshiftStarredMock: Mock
-  starNightshiftMock: Mock
+  checkKoluxStarredMock: Mock
+  starKoluxMock: Mock
   trackMock: Mock
   getCohortAtEmitMock: Mock<() => { nth_repo_added: number }>
   ipcMainHandleMock: Mock
@@ -38,10 +38,10 @@ export function resetStarNagMocks(mocks: StarNagMocks): void {
   mocks.appMock.getVersion.mockReturnValue('1.2.3')
   mocks.browserWindowMock.getAllWindows.mockReset()
   mocks.browserWindowMock.getAllWindows.mockReturnValue([])
-  mocks.checkNightshiftStarredMock.mockReset()
-  mocks.checkNightshiftStarredMock.mockResolvedValue(false)
-  mocks.starNightshiftMock.mockReset()
-  mocks.starNightshiftMock.mockResolvedValue(true)
+  mocks.checkKoluxStarredMock.mockReset()
+  mocks.checkKoluxStarredMock.mockResolvedValue(false)
+  mocks.starKoluxMock.mockReset()
+  mocks.starKoluxMock.mockResolvedValue(true)
   mocks.trackMock.mockReset()
   mocks.getCohortAtEmitMock.mockReset()
   mocks.getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 3 })

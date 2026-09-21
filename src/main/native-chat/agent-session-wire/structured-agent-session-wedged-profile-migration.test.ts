@@ -143,7 +143,7 @@ function openHost(overrides: Partial<StructuredAgentSessionHostDeps> = {}): void
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-wedged-profile-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-wedged-profile-'))
   resetHostTestOperationIds()
   acquire = vi.fn(async ({ fence }) => ({
     process: {

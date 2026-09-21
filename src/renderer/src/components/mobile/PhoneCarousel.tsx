@@ -119,7 +119,7 @@ export function PhoneCarousel(): React.JSX.Element {
           role="img"
           aria-label={translate(
             'auto.components.mobile.PhoneCarousel.89c7713645',
-            'Nightshift Mobile home screen'
+            'Kolux Mobile home screen'
           )}
         >
           <HomeSlide tapping={tappingSlide === 0} />

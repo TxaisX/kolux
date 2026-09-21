@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 
 type CapabilityProbe = {
   calls: number
@@ -9,9 +9,9 @@ type CapabilityProbe = {
 
 test('PTY capability lookup keeps renderer JavaScript responsive while main is stalled', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     const getCapabilities = window.api.pty.getAuthoritativeBufferSnapshotCapabilities
     if (!getCapabilities) {
       throw new Error('PTY snapshot capability API is unavailable')
@@ -36,7 +36,7 @@ test('PTY capability lookup keeps renderer JavaScript responsive while main is s
   })
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         () =>
           (window as typeof window & { __capabilityProbe?: CapabilityProbe }).__capabilityProbe
             ?.calls ?? 0
@@ -49,7 +49,7 @@ test('PTY capability lookup keeps renderer JavaScript responsive while main is s
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_500)
     return Date.now() - startedAt
   })
-  const metrics = await nightshiftPage.evaluate(() => {
+  const metrics = await koluxPage.evaluate(() => {
     const probe = (window as typeof window & { __capabilityProbe?: CapabilityProbe })
       .__capabilityProbe
     if (!probe) {

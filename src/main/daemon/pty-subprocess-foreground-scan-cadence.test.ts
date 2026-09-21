@@ -107,9 +107,9 @@ describe('daemon pty foreground scan cadence', () => {
     isPwshAvailableMock.mockReset()
     isPwshAvailableMock.mockReturnValue(false)
     resolveAgentForegroundProcessMock.mockReset()
-    previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
+    previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
     userDataPath = mkdtempSync(join(tmpdir(), 'daemon-pty-scan-cadence-test-'))
-    process.env.NIGHTSHIFT_USER_DATA_PATH = userDataPath
+    process.env.KOLUX_USER_DATA_PATH = userDataPath
     platform = Object.getOwnPropertyDescriptor(process, 'platform')
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(BASE_TIME_MS)
@@ -121,9 +121,9 @@ describe('daemon pty foreground scan cadence', () => {
       Object.defineProperty(process, 'platform', platform)
     }
     if (previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
     }
     rmSync(userDataPath, { recursive: true, force: true })
   })

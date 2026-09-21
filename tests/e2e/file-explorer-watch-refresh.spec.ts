@@ -1,21 +1,19 @@
 import { renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { openFileExplorer } from './helpers/file-explorer'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
-test('refreshes the visible tree after external Windows file changes', async ({
-  nightshiftPage
-}) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await nightshiftPage.evaluate(() => window.__store?.getState().setRightSidebarOpen(false))
+test('refreshes the visible tree after external Windows file changes', async ({ koluxPage }) => {
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await koluxPage.evaluate(() => window.__store?.getState().setRightSidebarOpen(false))
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().rightSidebarOpen))
+    .poll(() => koluxPage.evaluate(() => window.__store?.getState().rightSidebarOpen))
     .toBe(false)
-  await openFileExplorer(nightshiftPage)
+  await openFileExplorer(koluxPage)
 
-  const worktreePath = await nightshiftPage.evaluate(() => {
+  const worktreePath = await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     const worktreeId = state?.activeWorktreeId
     if (!state || !worktreeId) {
@@ -35,17 +33,17 @@ test('refreshes the visible tree after external Windows file changes', async ({
   const originalPath = path.join(worktreePath, originalName)
   const renamedPath = path.join(worktreePath, renamedName)
   const row = (name: string) =>
-    nightshiftPage
+    koluxPage
       .locator('[data-file-explorer-row]')
-      .filter({ has: nightshiftPage.getByText(name, { exact: true }) })
+      .filter({ has: koluxPage.getByText(name, { exact: true }) })
 
   rmSync(originalPath, { force: true })
   rmSync(renamedPath, { force: true })
   try {
     await expect(row('README.md')).toBeVisible({ timeout: 10_000 })
-    await nightshiftPage.waitForTimeout(2_000)
+    await koluxPage.waitForTimeout(2_000)
 
-    writeFileSync(originalPath, 'created outside Nightshift\n')
+    writeFileSync(originalPath, 'created outside Kolux\n')
     await expect(row(originalName)).toBeVisible({ timeout: 10_000 })
 
     renameSync(originalPath, renamedPath)

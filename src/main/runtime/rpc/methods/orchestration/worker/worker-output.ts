@@ -4,7 +4,7 @@ import type {
   OrchestrationWorkerReadSource
 } from '../../../../../../shared/orchestration-worker-output'
 import type { RuntimeTerminalState } from '../../../../../../shared/runtime-types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import {
   createWorkerOutputSourceIdentity,
@@ -17,7 +17,7 @@ import { getSshFilesystemProvider } from '../../../../../providers/ssh-filesyste
 import { isWslHookRelayConnectionId } from '../../../../../../shared/wsl-hook-relay-contract'
 
 export async function readExactWorkerOutput(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   dispatchId: string
   terminalHandle: string
   workerState: string

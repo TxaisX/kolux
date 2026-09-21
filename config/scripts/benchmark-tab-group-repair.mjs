@@ -8,7 +8,7 @@ import { build } from 'esbuild'
 
 const root = resolve(import.meta.dirname, '../..')
 const source = join(root, 'src/renderer/src/store/slices/tab-group-reference-repair.ts')
-const directory = await mkdtemp(join(tmpdir(), 'nightshift-tab-repair-'))
+const directory = await mkdtemp(join(tmpdir(), 'kolux-tab-repair-'))
 const current = await readFile(source, 'utf8')
 const indexed = `const orderedTabIds = new Set(group.tabOrder)
     const missingTabIds = ownedTabIds.filter((tabId) => !orderedTabIds.has(tabId))`

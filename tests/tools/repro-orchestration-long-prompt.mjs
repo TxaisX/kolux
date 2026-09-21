@@ -90,7 +90,7 @@ function parseCliJson(output) {
   return JSON.parse(text)
 }
 
-async function callNightshift(cli, args, options = {}) {
+async function callKolux(cli, args, options = {}) {
   const result = await runCommand(cli, [...args, '--json'], options)
   const parsed = parseCliJson(result.stdout)
   if (parsed.ok === false) {
@@ -102,14 +102,14 @@ async function callNightshift(cli, args, options = {}) {
 function buildLongSpec(sizeKb, marker) {
   const targetBytes = sizeKb * 1024
   const header = [
-    `NIGHTSHIFT_LONG_PROMPT_REPRO_START ${marker}`,
+    `KOLUX_LONG_PROMPT_REPRO_START ${marker}`,
     'This task is intentionally long so orchestration dispatch crosses terminal input chunks.',
     'The receiver expects the end marker to arrive before the submit byte.'
   ].join('\n')
   const lines = [header]
   let index = 0
   while (
-    Buffer.byteLength(`${lines.join('\n')}\nNIGHTSHIFT_LONG_PROMPT_REPRO_END ${marker}`, 'utf8') <
+    Buffer.byteLength(`${lines.join('\n')}\nKOLUX_LONG_PROMPT_REPRO_END ${marker}`, 'utf8') <
     targetBytes
   ) {
     lines.push(
@@ -117,7 +117,7 @@ function buildLongSpec(sizeKb, marker) {
     )
     index += 1
   }
-  lines.push(`NIGHTSHIFT_LONG_PROMPT_REPRO_END ${marker}`)
+  lines.push(`KOLUX_LONG_PROMPT_REPRO_END ${marker}`)
   return lines.join('\n')
 }
 
@@ -150,14 +150,14 @@ async function tryCloseTerminal(cli, handle, cwd) {
     return
   }
   try {
-    await callNightshift(cli, ['terminal', 'close', '--terminal', handle], { cwd })
+    await callKolux(cli, ['terminal', 'close', '--terminal', handle], { cwd })
   } catch {
     // Best-effort cleanup; the report is more useful than a close failure.
   }
 }
 
 async function parentMain() {
-  const cli = argValue('cli', process.env.NIGHTSHIFT_REPRO_CLI ?? 'nightshift')
+  const cli = argValue('cli', process.env.KOLUX_REPRO_CLI ?? 'kolux')
   const mode = argValue('mode', DEFAULT_MODE)
   if (!new Set(['wire', 'codex-like']).has(mode)) {
     throw new Error('--mode must be wire or codex-like')
@@ -171,15 +171,15 @@ async function parentMain() {
   const spec = buildLongSpec(sizeKb, marker)
   const tempDir = path.join(
     tmpdir(),
-    `nightshift-orchestration-long-prompt-${process.pid}-${Date.now()}`
+    `kolux-orchestration-long-prompt-${process.pid}-${Date.now()}`
   )
   await mkdir(tempDir, { recursive: true })
   const workerReportPath = path.join(tempDir, 'worker-report.json')
 
   console.log(`runtime: ${cli} status`)
-  await callNightshift(cli, ['status'], { cwd })
+  await callKolux(cli, ['status'], { cwd })
 
-  const coordinator = await callNightshift(
+  const coordinator = await callKolux(
     cli,
     [
       'terminal',
@@ -213,7 +213,7 @@ async function parentMain() {
     '--timeout-ms',
     String(timeoutMs)
   ].join(' ')
-  const worker = await callNightshift(
+  const worker = await callKolux(
     cli,
     [
       'terminal',
@@ -234,7 +234,7 @@ async function parentMain() {
 
   let taskId = null
   try {
-    await callNightshift(
+    await callKolux(
       cli,
       [
         'terminal',
@@ -248,7 +248,7 @@ async function parentMain() {
       ],
       { cwd }
     )
-    const task = await callNightshift(
+    const task = await callKolux(
       cli,
       [
         'orchestration',
@@ -267,7 +267,7 @@ async function parentMain() {
       throw new Error('Could not create orchestration task')
     }
 
-    const dispatch = await callNightshift(
+    const dispatch = await callKolux(
       cli,
       [
         'orchestration',
@@ -375,7 +375,7 @@ function parseInjectedIds(text) {
 }
 
 async function fakeWorkerMain() {
-  const cli = argValue('cli', process.env.NIGHTSHIFT_REPRO_CLI ?? 'nightshift')
+  const cli = argValue('cli', process.env.KOLUX_REPRO_CLI ?? 'kolux')
   const mode = argValue('mode', DEFAULT_MODE)
   const reportPath = argValue('report')
   const marker = argValue('marker')
@@ -398,7 +398,7 @@ async function fakeWorkerMain() {
       return { attempted: false, reason: 'missing-dispatch-identifiers' }
     }
     try {
-      await callNightshift(cli, [
+      await callKolux(cli, [
         'orchestration',
         'send',
         '--to',
@@ -449,7 +449,7 @@ async function fakeWorkerMain() {
     report.workerDone = await sendWorkerDone(ids, report)
     await writeFile(reportPath, JSON.stringify(report, null, 2))
     process.stdout.write(
-      `\nNIGHTSHIFT_REPRO_REPORT ${report.contractOk ? 'ok' : 'failed'} ${reportPath}\n`
+      `\nKOLUX_REPRO_REPORT ${report.contractOk ? 'ok' : 'failed'} ${reportPath}\n`
     )
     process.exit(report.contractOk ? 0 : 7)
   }
@@ -477,12 +477,12 @@ async function main() {
     console.log(`Usage:
   node tests/tools/repro-orchestration-long-prompt.mjs [--mode codex-like|wire] [--size-kb 80]
 
-The parent mode requires a running Nightshift runtime and creates temporary Nightshift
+The parent mode requires a running Kolux runtime and creates temporary Kolux
 terminals. The fake worker records whether orchestration dispatch delivered a
 long prompt in a safe agent-input contract.
 
 Options:
-  --cli <path>         Nightshift CLI command (default: NIGHTSHIFT_REPRO_CLI or nightshift)
+  --cli <path>         Kolux CLI command (default: KOLUX_REPRO_CLI or kolux)
   --worktree <path>   Worktree path for temporary terminals (default: cwd)
   --timeout-ms <n>    Wait budget for terminal/report operations
   --keep-terminals    Leave temporary terminals open for inspection

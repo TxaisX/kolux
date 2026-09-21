@@ -1,8 +1,8 @@
 import type { SkillInstallDestination } from '../../shared/skill-install-contract'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 export async function classifySkillCloudInstallTarget(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   input: { environmentId?: string; destination: SkillInstallDestination }
 ): Promise<'local' | 'remote'> {
   return input.environmentId || (await runtime.skillInstallDestinationUsesSsh(input.destination))

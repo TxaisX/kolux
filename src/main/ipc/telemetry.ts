@@ -23,7 +23,7 @@ import type { EventName, EventProps, OptInVia } from '../../shared/telemetry-eve
 let storeRef: Store | null = null
 
 const MAIN_OWNED_TELEMETRY_EVENTS = new Set<EventName>([
-  'app_starred_nightshift',
+  'app_starred_kolux',
   'daemon_adopted',
   'daemon_audit_eligibility',
   'daemon_pty_cwd_denied',
@@ -98,7 +98,7 @@ export function registerTelemetryHandlers(store: Store): void {
     return setOptIn(via, optedIn)
   })
 
-  // Read-only getter: lets the Privacy pane see env-var blocks (DO_NOT_TRACK/NIGHTSHIFT_TELEMETRY_DISABLED/CI), which are main-side state the renderer can't read.
+  // Read-only getter: lets the Privacy pane see env-var blocks (DO_NOT_TRACK/KOLUX_TELEMETRY_DISABLED/CI), which are main-side state the renderer can't read.
   ipcMain.handle('telemetry:getConsentState', (): ConsentState => {
     if (!storeRef) {
       // Fail closed: no store means we can't honor the stored preference, so surface pending_banner, not a misleading 'enabled'.

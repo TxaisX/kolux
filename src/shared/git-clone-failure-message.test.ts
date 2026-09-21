@@ -11,32 +11,32 @@ describe('getGitCloneFailureMessage', () => {
       getGitCloneFailureMessage(
         [
           'Cloning into \u001b[32morca\u001b[0m...\r',
-          "fatal: destination path 'nightshift' already exists and is not an empty directory.\n"
+          "fatal: destination path 'kolux' already exists and is not an empty directory.\n"
         ].join(''),
-        { clonePath: '/work/nightshift' }
+        { clonePath: '/work/kolux' }
       )
     ).toBe(
-      'Destination already exists and is not empty: /work/nightshift. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
+      'Destination already exists and is not empty: /work/kolux. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
     )
   })
 
   it('prefers the last fatal line over a trailing fragment', () => {
     expect(
       getGitCloneFailureMessage(
-        "fatal: destination path 'nightshift' already exists and is not an empty directory.\r\nand the repository exists.\n"
+        "fatal: destination path 'kolux' already exists and is not an empty directory.\r\nand the repository exists.\n"
       )
     ).toBe(
-      'Destination already exists and is not empty: nightshift. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
+      'Destination already exists and is not empty: kolux. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
     )
   })
 
   it('uses the known clone path for relay destination fragments', () => {
     expect(
       getGitCloneFailureMessage('Clone failed: and the repository exists.', {
-        clonePath: '/srv/nightshift'
+        clonePath: '/srv/kolux'
       })
     ).toBe(
-      'Destination already exists and is not empty: /srv/nightshift. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
+      'Destination already exists and is not empty: /srv/kolux. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
     )
   })
 

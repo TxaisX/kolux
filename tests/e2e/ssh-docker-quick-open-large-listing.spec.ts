@@ -1,5 +1,5 @@
 /**
- * #12547 acceptance: open a repository the size of Nightshift's own checkout over SSH and list its files.
+ * #12547 acceptance: open a repository the size of Kolux's own checkout over SSH and list its files.
  *
  * The remote tree is seeded from this repository's real `git ls-files` output, so the payload has
  * the shape that broke: ~22.6k paths averaging 58 characters, whose 20,001-row page serializes to
@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { connectDockerSshRelayTarget } from './helpers/docker-ssh-relay-connection'
 import {
   cleanupDockerSshRelayTarget,
@@ -25,9 +25,9 @@ import { ensureDockerSshRelayImage } from './helpers/docker-ssh-relay-image'
 import { waitForSessionReady } from './helpers/store'
 import { shouldIncludeQuickOpenPath } from '../../src/shared/quick-open-filter'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
-const REMOTE_REPO_PATH = '/tmp/nightshift-quick-open-large-listing-repo'
-const REMOTE_PATH_LIST = '/tmp/nightshift-quick-open-large-listing-paths.txt'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
+const REMOTE_REPO_PATH = '/tmp/kolux-quick-open-large-listing-repo'
+const REMOTE_PATH_LIST = '/tmp/kolux-quick-open-large-listing-paths.txt'
 /** What the desktop client asks for; a full page is what it reads as "there is more". */
 const CLIENT_PAGE_SIZE = 20_001
 
@@ -45,7 +45,7 @@ function thisRepositoryTrackedPaths(): string[] {
 }
 
 function seedRemoteTree(target: DockerSshRelayTarget, paths: string[]): void {
-  const stagingDir = mkdtempSync(path.join(tmpdir(), 'nightshift-quick-open-large-listing-'))
+  const stagingDir = mkdtempSync(path.join(tmpdir(), 'kolux-quick-open-large-listing-'))
   try {
     const localList = path.join(stagingDir, 'paths.txt')
     writeFileSync(localList, `${paths.join('\n')}\n`)
@@ -72,7 +72,7 @@ function seedRemoteTree(target: DockerSshRelayTarget, paths: string[]): void {
       `cd ${shellQuote(REMOTE_REPO_PATH)}`,
       'git init -q',
       'git config user.email e2e@test.local',
-      'git config user.name "Nightshift Docker SSH E2E"',
+      'git config user.name "Kolux Docker SSH E2E"',
       `node -e ${shellQuote(`eval(Buffer.from('${encoded}', 'base64').toString('utf8'))`)}`,
       'git add -A',
       'git commit -q -m "seed monorepo-shaped tree"'
@@ -80,10 +80,10 @@ function seedRemoteTree(target: DockerSshRelayTarget, paths: string[]): void {
   )
 }
 
-test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run the Docker SSH relay lane')
+test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run the Docker SSH relay lane')
 
 test('lists a monorepo-sized remote workspace, with and without a client page size (#12547)', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(420_000)
   let target: DockerSshRelayTarget | null = null
@@ -104,13 +104,13 @@ test('lists a monorepo-sized remote workspace, with and without a client page si
     target = startDockerSshRelayTarget(testInfo)
     seedRemoteTree(target, trackedPaths)
 
-    await waitForSessionReady(nightshiftPage)
-    const connected = await connectDockerSshRelayTarget(nightshiftPage, target, {
+    await waitForSessionReady(koluxPage)
+    const connected = await connectDockerSshRelayTarget(koluxPage, target, {
       remotePath: REMOTE_REPO_PATH
     })
 
     const listFiles = async (maxResults?: number): Promise<string[]> =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         ({ connectionId, rootPath, maxResults }) =>
           window.api.fs.listFiles({
             rootPath,

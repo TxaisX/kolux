@@ -22,9 +22,9 @@ vi.mock('fs', () => ({
 
 vi.mock('./relay-protocol', () => ({
   RELAY_VERSION: '0.1.0',
-  RELAY_REMOTE_DIR: '.nightshift-remote',
+  RELAY_REMOTE_DIR: '.kolux-remote',
   parseUnameToRelayPlatform: vi.fn().mockReturnValue('linux-x64'),
-  RELAY_SENTINEL: 'NIGHTSHIFT-RELAY v0.1.0 READY\n',
+  RELAY_SENTINEL: 'KOLUX-RELAY v0.1.0 READY\n',
   RELAY_SENTINEL_TIMEOUT_MS: 10_000
 }))
 
@@ -104,23 +104,23 @@ describe('cross-version isolation', () => {
     const mockExec = vi.mocked(execCommand)
 
     // Simulated remote where:
-    //   v1 dir = ~/.nightshift-remote/relay-0.1.0+111111111111/  (live daemon, listening)
-    //   v2 dir = ~/.nightshift-remote/relay-0.1.0+222222222222/  (does not yet exist)
+    //   v1 dir = ~/.kolux-remote/relay-0.1.0+111111111111/  (live daemon, listening)
+    //   v2 dir = ~/.kolux-remote/relay-0.1.0+222222222222/  (does not yet exist)
     // The v2 client has fullVersion='0.1.0+222222222222' (from the fs mock above).
     //
     mockExec.mockImplementation((_conn, command) => {
-      if (command.includes('__NIGHTSHIFT_UPLOAD_STAGE_SLOT__')) {
+      if (command.includes('__KOLUX_UPLOAD_STAGE_SLOT__')) {
         return Promise.resolve(
-          '__NIGHTSHIFT_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0'
+          '__KOLUX_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0'
         )
       }
-      if (command.includes('__NIGHTSHIFT_UPLOAD_STAGE_PROMOTION__')) {
+      if (command.includes('__KOLUX_UPLOAD_STAGE_PROMOTION__')) {
         return Promise.resolve(
-          '__NIGHTSHIFT_UPLOAD_STAGE_PROMOTION__.sftp-namespace-00000000000000000000000000000000:PROMOTED'
+          '__KOLUX_UPLOAD_STAGE_PROMOTION__.sftp-namespace-00000000000000000000000000000000:PROMOTED'
         )
       }
-      if (command.includes('__NIGHTSHIFT_REMOTE_PLATFORM__')) {
-        return Promise.resolve('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+      if (command.includes('__KOLUX_REMOTE_PLATFORM__')) {
+        return Promise.resolve('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
       }
       if (command === 'echo $HOME') {
         return Promise.resolve('/home/u')
@@ -137,8 +137,8 @@ describe('cross-version isolation', () => {
       if (command.startsWith('if mkdir ') && command.includes('.install-lock')) {
         return Promise.resolve('OK')
       }
-      if (command.includes('NIGHTSHIFT-NPTY-PROBE-OK')) {
-        return Promise.resolve('NIGHTSHIFT-NPTY-PROBE-OK\n')
+      if (command.includes('KOLUX-NPTY-PROBE-OK')) {
+        return Promise.resolve('KOLUX-NPTY-PROBE-OK\n')
       }
       if (command.includes('process.stdout.write("READY")')) {
         return Promise.resolve('READY')
@@ -146,7 +146,7 @@ describe('cross-version isolation', () => {
       if (command.includes('test -S') && command.includes('echo ALIVE || echo DEAD')) {
         return Promise.resolve('DEAD')
       }
-      if (command.includes('__NIGHTSHIFT_RELAY_GC_FIND_STATUS__')) {
+      if (command.includes('__KOLUX_RELAY_GC_FIND_STATUS__')) {
         return Promise.resolve('relay-0.1.0+111111111111\nrelay-0.1.0+222222222222\n')
       }
       if (command.includes('relay-0.1.0+111111111111/.install-lock')) {

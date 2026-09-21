@@ -40,7 +40,7 @@ export function MonacoMarkdownAnnotationOverlay({
       {selectionAnnotationTarget && shouldShowMarkdownAnnotations && !commentPopover ? (
         <button
           type="button"
-          className="nightshift-diff-comment-add-btn"
+          className="kolux-diff-comment-add-btn"
           style={{
             display: 'flex',
             top: Math.max(4, selectionAnnotationTarget.top - 22),

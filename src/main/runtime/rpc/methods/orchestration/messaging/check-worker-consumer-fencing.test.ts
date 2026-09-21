@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RpcContext } from '../../../core'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
@@ -19,7 +19,7 @@ type CheckResult = {
 describe('orchestration.check on a re-attached Dispatch', () => {
   const h = createOrchestrationRpcHarness()
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
 
   afterEach(() => {

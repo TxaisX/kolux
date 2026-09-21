@@ -3,7 +3,7 @@ const { writeSync } = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
 
-const EVIDENCE_PREFIX = 'NIGHTSHIFT_NODE_PTY_CAPABILITY_EVIDENCE='
+const EVIDENCE_PREFIX = 'KOLUX_NODE_PTY_CAPABILITY_EVIDENCE='
 const EXPECTED_ROLES = new Set([
   'target-shell',
   'target-launcher-exited',
@@ -62,7 +62,7 @@ function buildGrandchildLaunch(channel, fixtureToken) {
   return {
     program: path.join(process.env.SystemRoot, 'System32', 'wscript.exe'),
     args: [
-      path.join(__dirname, 'real-nightshift-detached-launcher.vbs'),
+      path.join(__dirname, 'real-kolux-detached-launcher.vbs'),
       process.execPath,
       __filename,
       '--grandchild-member',
@@ -249,7 +249,7 @@ async function exercise(resourcesDir, fixtureExecutable) {
   }
 
   const fixtureToken = randomBytes(32).toString('hex')
-  const channel = `\\\\.\\pipe\\nightshift-pty-native-capability-${fixtureToken}`
+  const channel = `\\\\.\\pipe\\kolux-pty-native-capability-${fixtureToken}`
   const fixtures = createFixtureServer(channel, fixtureToken)
   stage('fixture-listen:start')
   await waitForBarrier(fixtures.listening, 'fixture server listen')
@@ -418,7 +418,7 @@ async function main() {
     return
   }
   if (mode === '--exit-contract-fixture') {
-    process.stdout.write('NIGHTSHIFT_ONE_SHOT_EVIDENCE=flushed\n')
+    process.stdout.write('KOLUX_ONE_SHOT_EVIDENCE=flushed\n')
     setInterval(() => {}, 60_000)
     return
   }

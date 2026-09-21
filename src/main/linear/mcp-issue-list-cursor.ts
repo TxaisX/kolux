@@ -1,6 +1,6 @@
 import { linearError } from './issue-context-errors'
 
-export const ISSUE_LIST_CURSOR_PREFIX = 'nightshift.linear.v1.'
+export const ISSUE_LIST_CURSOR_PREFIX = 'kolux.linear.v1.'
 
 export function encodeIssueListCursor(workspaceId: string, providerCursor: string): string {
   return (
@@ -68,7 +68,7 @@ export function resolveIssueListCursor(request: {
   }
   if (cursor.startsWith(ISSUE_LIST_CURSOR_PREFIX)) {
     throw cursorWorkspaceError(
-      'Cursor was issued by Nightshift but is malformed or truncated.',
+      'Cursor was issued by Kolux but is malformed or truncated.',
       'Re-run list-issues without --cursor, then page with the nextCursor it returns.'
     )
   }

@@ -26,7 +26,7 @@ const { forkMock, existsSyncMock, mkdtempSyncMock, parcelSubscribeMock, rmSyncMo
   () => ({
     forkMock: vi.fn(),
     existsSyncMock: vi.fn(),
-    mkdtempSyncMock: vi.fn(() => '/tmp/nightshift-watcher-canary-rewrite-test'),
+    mkdtempSyncMock: vi.fn(() => '/tmp/kolux-watcher-canary-rewrite-test'),
     parcelSubscribeMock: vi.fn(),
     rmSyncMock: vi.fn()
   })

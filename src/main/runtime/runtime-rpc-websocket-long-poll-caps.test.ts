@@ -4,9 +4,9 @@ import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
 import type WebSocket from 'ws'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { DeviceRegistry } from './device-registry'
 import {
   withCurrentOrchestrationContract,
@@ -35,15 +35,15 @@ class FakeWebSocket extends EventEmitter {
   readyState = this.OPEN
 }
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('caps WebSocket long-polls and aborts them when the socket closes', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
     const db = new OrchestrationDb(':memory:')
     runtime.setOrchestrationDb(db)
     // A consuming check now requires a live pane; these transport tests only need it to block.
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: false,
@@ -114,15 +114,15 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('applies the ask sub-cap on the WebSocket path and releases both counters on close', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
     const db = new OrchestrationDb(':memory:')
     runtime.setOrchestrationDb(db)
     // A consuming check now requires a live pane; these transport tests only need it to block.
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
     seedSupervisedAskWorkers(db, ['term_w0', 'term_w1', 'term_w2'])
     // Why: cap 4 → ask sub-cap 2, so the third ask must be shed while waits keep the other half.
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: false,
@@ -205,9 +205,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('shares one socket close listener across concurrent WebSocket dispatches', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as NightshiftRuntimeService
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath, enableWebSocket: false })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as KoluxRuntimeService
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath, enableWebSocket: false })
     server['deviceRegistry'] = new DeviceRegistry(userDataPath)
     const entry = server['deviceRegistry']!.addDevice('runtime-test', 'runtime')
     const ws = new FakeWebSocket()

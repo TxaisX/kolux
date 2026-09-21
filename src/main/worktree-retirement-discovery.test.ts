@@ -14,33 +14,30 @@ const SECOND = MARINE_CREATURES[1].toLowerCase()
 
 describe('extractBucketLeafCandidates', () => {
   it('takes everything past the encoded parent as the leaf', () => {
-    expect(extractBucketLeafCandidates(`-w-nightshift-${FIRST}`, ['-w-nightshift'])).toEqual([
-      FIRST
-    ])
+    expect(extractBucketLeafCandidates(`-w-kolux-${FIRST}`, ['-w-kolux'])).toEqual([FIRST])
   })
 
   it('does not treat the parent directory as a leaf when the workspace name is numeric', () => {
-    // Real data: `-Users-x-nightshift-workspaces-nightshift-7474` must not retire `nightshift`, which is in the pool.
+    // Real data: `-Users-x-kolux-workspaces-kolux-7474` must not retire `kolux`, which is in the pool.
     expect(
-      extractBucketLeafCandidates('-w-workspaces-nightshift-7474', ['-w-workspaces-nightshift'])
+      extractBucketLeafCandidates('-w-workspaces-kolux-7474', ['-w-workspaces-kolux'])
     ).toEqual(['7474'])
   })
 
   it('offers the first segment too, so an agent run in a subdirectory still retires the leaf', () => {
-    expect(
-      extractBucketLeafCandidates(`-w-nightshift-${FIRST}-packages-api`, ['-w-nightshift'])
-    ).toEqual([`${FIRST}-packages-api`, FIRST])
+    expect(extractBucketLeafCandidates(`-w-kolux-${FIRST}-packages-api`, ['-w-kolux'])).toEqual([
+      `${FIRST}-packages-api`,
+      FIRST
+    ])
   })
 
   it('rejects a sibling directory that shares the parent prefix', () => {
-    expect(extractBucketLeafCandidates(`-w-nightshiftdyne-${FIRST}`, ['-w-nightshift'])).toEqual([])
-    expect(
-      extractBucketLeafCandidates(`-w-nightshift-secret-${FIRST}`, ['-w-nightshift-fix'])
-    ).toEqual([])
+    expect(extractBucketLeafCandidates(`-w-koluxdyne-${FIRST}`, ['-w-kolux'])).toEqual([])
+    expect(extractBucketLeafCandidates(`-w-kolux-secret-${FIRST}`, ['-w-kolux-fix'])).toEqual([])
   })
 
   it('yields nothing for the parent bucket itself', () => {
-    expect(extractBucketLeafCandidates('-w-nightshift', ['-w-nightshift'])).toEqual([])
+    expect(extractBucketLeafCandidates('-w-kolux', ['-w-kolux'])).toEqual([])
   })
 })
 
@@ -64,7 +61,7 @@ describe('discoverRetiredWorktreeNames', () => {
     buckets: readonly string[],
     run: (home: string) => Promise<void>
   ): Promise<void> {
-    const home = await mkdtemp(join(tmpdir(), 'nightshift-retirement-home-'))
+    const home = await mkdtemp(join(tmpdir(), 'kolux-retirement-home-'))
     try {
       for (const bucket of buckets) {
         await mkdir(join(home, '.claude', 'projects', bucket), { recursive: true })
@@ -80,8 +77,8 @@ describe('discoverRetiredWorktreeNames', () => {
     // no workspace root until the first create. Reporting that as incomplete would turn the
     // one-time seed into a rescan on every composer open for the life of the process.
     const retired = await discoverRetiredWorktreeNames({
-      workspaceRoots: [join(tmpdir(), 'nightshift-retirement-absent-root')],
-      home: join(tmpdir(), 'nightshift-retirement-absent-home'),
+      workspaceRoots: [join(tmpdir(), 'kolux-retirement-absent-root')],
+      home: join(tmpdir(), 'kolux-retirement-absent-home'),
       env: {}
     })
 
@@ -90,9 +87,9 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('matches a plain POSIX workspace root', async () => {
-    await withFakeHome([`-Users-ada-nightshift-workspaces-nightshift-${FIRST}`], async (home) => {
+    await withFakeHome([`-Users-ada-kolux-workspaces-kolux-${FIRST}`], async (home) => {
       const retired = await discoverRetiredWorktreeNames({
-        workspaceRoots: ['/Users/ada/nightshift/workspaces/nightshift'],
+        workspaceRoots: ['/Users/ada/kolux/workspaces/kolux'],
         home,
         env: {}
       })
@@ -113,9 +110,9 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('matches a dot-directory root, where the separator run encodes to two dashes', async () => {
-    await withFakeHome([`-Users-ada--nightshift-worktrees-${FIRST}`], async (home) => {
+    await withFakeHome([`-Users-ada--kolux-worktrees-${FIRST}`], async (home) => {
       const retired = await discoverRetiredWorktreeNames({
-        workspaceRoots: ['/Users/ada/.nightshift/worktrees'],
+        workspaceRoots: ['/Users/ada/.kolux/worktrees'],
         home,
         env: {}
       })
@@ -124,11 +121,11 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('matches a Windows drive root', async () => {
-    // `getDefaultWorkspaceDir` returns `C:\Users\<user>\nightshift\workspaces` on Windows, so an encoder
+    // `getDefaultWorkspaceDir` returns `C:\Users\<user>\kolux\workspaces` on Windows, so an encoder
     // that collapsed `:\` rejected every bucket on that platform by default.
-    await withFakeHome([`C--Users-ada-nightshift-workspaces-${FIRST}`], async (home) => {
+    await withFakeHome([`C--Users-ada-kolux-workspaces-${FIRST}`], async (home) => {
       const retired = await discoverRetiredWorktreeNames({
-        workspaceRoots: ['C:\\Users\\ada\\nightshift\\workspaces'],
+        workspaceRoots: ['C:\\Users\\ada\\kolux\\workspaces'],
         home,
         env: {}
       })
@@ -137,9 +134,9 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('matches a WSL UNC root', async () => {
-    await withFakeHome([`--wsl--Ubuntu-home-ada-nightshift-workspaces-${FIRST}`], async (home) => {
+    await withFakeHome([`--wsl--Ubuntu-home-ada-kolux-workspaces-${FIRST}`], async (home) => {
       const retired = await discoverRetiredWorktreeNames({
-        workspaceRoots: ['\\\\wsl$\\Ubuntu\\home\\ada\\nightshift\\workspaces'],
+        workspaceRoots: ['\\\\wsl$\\Ubuntu\\home\\ada\\kolux\\workspaces'],
         home,
         env: {},
         // Stubbed even though this case asserts the host-side bucket: the real resolver shells out
@@ -153,12 +150,12 @@ describe('discoverRetiredWorktreeNames', () => {
   it('ignores buckets belonging to a sibling root with the same prefix', async () => {
     await withFakeHome(
       [
-        `-Users-ada-nightshift-workspaces-nightshiftdyne-${FIRST}`,
-        `-Users-ada-nightshift-workspaces-nightshift-${SECOND}`
+        `-Users-ada-kolux-workspaces-koluxdyne-${FIRST}`,
+        `-Users-ada-kolux-workspaces-kolux-${SECOND}`
       ],
       async (home) => {
         const retired = await discoverRetiredWorktreeNames({
-          workspaceRoots: ['/Users/ada/nightshift/workspaces/nightshift'],
+          workspaceRoots: ['/Users/ada/kolux/workspaces/kolux'],
           home,
           env: {}
         })
@@ -168,7 +165,7 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('reads buckets from CLAUDE_CONFIG_DIR when it is set', async () => {
-    const configDir = await mkdtemp(join(tmpdir(), 'nightshift-retirement-config-'))
+    const configDir = await mkdtemp(join(tmpdir(), 'kolux-retirement-config-'))
     await withFakeHome([`-Users-ada-w-${SECOND}`], async (home) => {
       try {
         await mkdir(join(configDir, 'projects', `-Users-ada-w-${FIRST}`), { recursive: true })
@@ -189,17 +186,17 @@ describe('discoverRetiredWorktreeNames', () => {
     // The agent for a WSL workspace is spawned through `wsl.exe`, so it runs inside the distro:
     // its cwd is `/home/ada/...`, and its bucket lands in the distro's own home — not the
     // Windows-side one. After the workspace directory is gone, that bucket is the only evidence.
-    const distroHome = await mkdtemp(join(tmpdir(), 'nightshift-retirement-distro-'))
+    const distroHome = await mkdtemp(join(tmpdir(), 'kolux-retirement-distro-'))
     await withFakeHome([], async (home) => {
       try {
         await mkdir(
-          join(distroHome, '.claude', 'projects', `-home-ada-nightshift-workspaces-${FIRST}`),
+          join(distroHome, '.claude', 'projects', `-home-ada-kolux-workspaces-${FIRST}`),
           {
             recursive: true
           }
         )
         const retired = await discoverRetiredWorktreeNames({
-          workspaceRoots: ['\\\\wsl.localhost\\Ubuntu\\home\\ada\\nightshift\\workspaces'],
+          workspaceRoots: ['\\\\wsl.localhost\\Ubuntu\\home\\ada\\kolux\\workspaces'],
           home,
           env: {},
           resolveWslHome: async (distro) => (distro === 'Ubuntu' ? distroHome : null)
@@ -214,10 +211,10 @@ describe('discoverRetiredWorktreeNames', () => {
   it('still reads the Windows-side home for a WSL root when the distro home cannot be resolved', async () => {
     // A stopped distro must not cost the retirements the host can still see.
     await withFakeHome(
-      [`--wsl-localhost-Ubuntu-home-ada-nightshift-workspaces-${FIRST}`],
+      [`--wsl-localhost-Ubuntu-home-ada-kolux-workspaces-${FIRST}`],
       async (home) => {
         const retired = await discoverRetiredWorktreeNames({
-          workspaceRoots: ['\\\\wsl.localhost\\Ubuntu\\home\\ada\\nightshift\\workspaces'],
+          workspaceRoots: ['\\\\wsl.localhost\\Ubuntu\\home\\ada\\kolux\\workspaces'],
           home,
           env: {},
           resolveWslHome: async () => null
@@ -228,7 +225,7 @@ describe('discoverRetiredWorktreeNames', () => {
   })
 
   it('retires live workspace directories alongside surviving buckets', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-retirement-roots-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-retirement-roots-'))
     await withFakeHome([], async (home) => {
       try {
         await mkdir(join(root, SECOND), { recursive: true })

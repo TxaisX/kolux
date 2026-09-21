@@ -65,7 +65,7 @@ export function createSystemCommandChannel(): MockSystemCommandChannel {
   channel.stderr = new EventEmitter()
   channel.close = vi.fn()
   queueMicrotask(() => {
-    channel.emit('data', Buffer.from('NIGHTSHIFT-SYSTEM-SSH-OK'))
+    channel.emit('data', Buffer.from('KOLUX-SYSTEM-SSH-OK'))
     channel.emit('close', 0)
   })
   return channel
@@ -112,7 +112,7 @@ export function createPendingSystemSshProcess(): MockSystemSshProcess {
 export function createSystemSshProcess(): MockSystemSshProcess {
   const proc = createPendingSystemSshProcess()
   queueMicrotask(() => {
-    proc.stdout.emit('data', Buffer.from('NIGHTSHIFT-SYSTEM-SSH-READY'))
+    proc.stdout.emit('data', Buffer.from('KOLUX-SYSTEM-SSH-READY'))
   })
   return proc
 }

@@ -130,7 +130,7 @@ describe('Windows shell PATH hydration', () => {
     proc.stdout.emit(
       'data',
       Buffer.from(
-        'profile banner\r\n__NIGHTSHIFT_SHELL_PATH__C:\\profile-node;C:\\Windows__NIGHTSHIFT_SHELL_PATH__'
+        'profile banner\r\n__KOLUX_SHELL_PATH__C:\\profile-node;C:\\Windows__KOLUX_SHELL_PATH__'
       )
     )
     proc.emit('close', 0, null)
@@ -159,7 +159,7 @@ describe('Windows shell PATH hydration', () => {
 
     proc.stdout.emit(
       'data',
-      Buffer.from('__NIGHTSHIFT_SHELL_PATH__C:\\git-node;C:\\Windows__NIGHTSHIFT_SHELL_PATH__')
+      Buffer.from('__KOLUX_SHELL_PATH__C:\\git-node;C:\\Windows__KOLUX_SHELL_PATH__')
     )
     proc.emit('close', 0, null)
 

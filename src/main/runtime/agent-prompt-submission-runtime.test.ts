@@ -8,7 +8,7 @@ import {
   AGENT_PROMPT_TEST_WORKTREE_PATH,
   createAgentPromptSubmissionRuntime
 } from './agent-prompt-submission-runtime-test-fixture'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { makeStore } from './runtime-rpc-worktree-store-fixtures'
 
 const createPromptRuntime = createAgentPromptSubmissionRuntime
@@ -334,7 +334,7 @@ describe('agent prompt submission runtime', () => {
     vi.setSystemTime(1_000)
     let handle = ''
     const writes: string[] = []
-    const runtime = new NightshiftRuntimeService(makeStore() as never, undefined, {
+    const runtime = new KoluxRuntimeService(makeStore() as never, undefined, {
       getAgentStatusSnapshot: () => [
         {
           paneKey: 'prompt-pane',
@@ -469,7 +469,7 @@ describe('agent prompt submission runtime', () => {
   })
 
   // Why: hook rows reach the runtime through this provider, which has no window and no OSC title —
-  // the same path a headless `nightshift serve` host and a minimized desktop window take.
+  // the same path a headless `kolux serve` host and a minimized desktop window take.
   async function createHookOnlyPromptRuntime(
     hook: {
       state: 'done' | 'working'
@@ -477,13 +477,13 @@ describe('agent prompt submission runtime', () => {
     },
     launchAgent: 'kimi' | 'codex' = 'kimi'
   ): Promise<{
-    runtime: NightshiftRuntimeService
+    runtime: KoluxRuntimeService
     handle: string
     writes: string[]
   }> {
     let handle = ''
     const writes: string[] = []
-    const runtime = new NightshiftRuntimeService(makeStore() as never, undefined, {
+    const runtime = new KoluxRuntimeService(makeStore() as never, undefined, {
       getAgentStatusSnapshot: () => [
         {
           paneKey: 'prompt-pane',

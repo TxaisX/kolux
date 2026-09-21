@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a problem with Nightshift
+description: Report a problem with Kolux
 title: '[Bug]: '
 type: Bug
 labels:
@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Use this form for Nightshift bugs. Include enough detail for someone else to reproduce the issue.
+        Use this form for Kolux bugs. Include enough detail for someone else to reproduce the issue.
 
         Please write your issue in English.
 
@@ -25,10 +25,10 @@ body:
       required: true
 
   - type: input
-    id: nightshift_version
+    id: kolux_version
     attributes:
-      label: Nightshift version
-      description: Include the exact Nightshift version if you can. You can find it in `Nightshift > About Nightshift`.
+      label: Kolux version
+      description: Include the exact Kolux version if you can. You can find it in `Kolux > About Kolux`.
       placeholder: v0.14.2
     validations:
       required: false
@@ -40,7 +40,7 @@ body:
       description: Describe the bug in your own words. Include a short summary, reproduction steps, and anything else that seems relevant.
       placeholder: |
         Short summary:
-        Nightshift crashes when ...
+        Kolux crashes when ...
 
         What happened?
 

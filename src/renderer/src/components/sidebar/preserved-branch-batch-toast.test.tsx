@@ -118,7 +118,7 @@ describe('showPreservedBranchBatchToast', () => {
       expect.objectContaining({ dismissible: true, duration: Infinity })
     )
     expect(body.textContent).toContain('Kept branches do not retain workspace folders')
-    expect(body.textContent).toContain('Nightshift may continue freeing workspace disk space')
+    expect(body.textContent).toContain('Kolux may continue freeing workspace disk space')
 
     await clickButton(body, 'Review 2 Branches')
 

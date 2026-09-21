@@ -32,7 +32,7 @@ import {
 import {
   mergeHookInstallDetail,
   parseDevinHooksConfigText,
-  readConfigFromNightshiftOverlapDetail,
+  readConfigFromKoluxOverlapDetail,
   readDevinHooksConfig,
   readDevinHooksSource,
   serializeDevinHooksConfig
@@ -43,8 +43,8 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     return [
       '@echo off',
       'setlocal',
-      // Why: endpoint file holds the live port/token; a PTY that outlives a Nightshift restart carries stale env, so `call` it to refresh (else PTY env).
-      'if defined NIGHTSHIFT_AGENT_HOOK_ENDPOINT if exist "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" 2>nul',
+      // Why: endpoint file holds the live port/token; a PTY that outlives a Kolux restart carries stale env, so `call` it to refresh (else PTY env).
+      'if defined KOLUX_AGENT_HOOK_ENDPOINT if exist "%KOLUX_AGENT_HOOK_ENDPOINT%" call "%KOLUX_AGENT_HOOK_ENDPOINT%" 2>nul',
       ...buildWindowsHookEnvironmentGuardLines(),
       buildWindowsAgentHookPostCommand('devin'),
       'exit /b 0',
@@ -57,27 +57,27 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     '#!/bin/sh',
     ...buildPosixHookPayloadCapture(),
     ...buildPosixHookSpoolLines('devin'),
-    // Why: endpoint file holds the live port/token; PTYs that outlive a Nightshift restart carry stale env, so source it to reach the new server (else PTY env).
+    // Why: endpoint file holds the live port/token; PTYs that outlive a Kolux restart carry stale env, so source it to reach the new server (else PTY env).
     // Why: silence the `.` builtin (2>/dev/null + `|| :`) so a TOCTOU race or CRLF-mangled line can't leak shell parse errors into agent transcripts (fail-open).
-    'if [ -n "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] && [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ]; then',
-    '  . "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
+    'if [ -n "$KOLUX_AGENT_HOOK_ENDPOINT" ] && [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ]; then',
+    '  . "$KOLUX_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
-    'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
+    'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
     '  spool_hook_event',
     '  exit 0',
     'fi',
     // Why: worktreeId embeds a filesystem path, so hand-building JSON in shell is unsafe (quotes/newlines); post as form fields instead.
     // Why: pipe payload to curl's stdin (payload@-) not an inline arg, so large tool output stays off the command line (EDR false positives).
-    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${NIGHTSHIFT_AGENT_HOOK_PORT}/hook/devin" \\',
+    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${KOLUX_AGENT_HOOK_PORT}/hook/devin" \\',
     '  --connect-timeout 0.5 --max-time 1.5 \\',
     '  -H "Content-Type: application/x-www-form-urlencoded" \\',
-    '  -H "X-Nightshift-Agent-Hook-Token: ${NIGHTSHIFT_AGENT_HOOK_TOKEN}" \\',
-    '  --data-urlencode "paneKey=${NIGHTSHIFT_PANE_KEY}" \\',
-    '  --data-urlencode "tabId=${NIGHTSHIFT_TAB_ID}" \\',
-    '  --data-urlencode "launchToken=${NIGHTSHIFT_AGENT_LAUNCH_TOKEN}" \\',
-    '  --data-urlencode "worktreeId=${NIGHTSHIFT_WORKTREE_ID}" \\',
-    '  --data-urlencode "env=${NIGHTSHIFT_AGENT_HOOK_ENV}" \\',
-    '  --data-urlencode "version=${NIGHTSHIFT_AGENT_HOOK_VERSION}" \\',
+    '  -H "X-Kolux-Agent-Hook-Token: ${KOLUX_AGENT_HOOK_TOKEN}" \\',
+    '  --data-urlencode "paneKey=${KOLUX_PANE_KEY}" \\',
+    '  --data-urlencode "tabId=${KOLUX_TAB_ID}" \\',
+    '  --data-urlencode "launchToken=${KOLUX_AGENT_LAUNCH_TOKEN}" \\',
+    '  --data-urlencode "worktreeId=${KOLUX_WORKTREE_ID}" \\',
+    '  --data-urlencode "env=${KOLUX_AGENT_HOOK_ENV}" \\',
+    '  --data-urlencode "version=${KOLUX_AGENT_HOOK_VERSION}" \\',
     '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
     'exit 0',
     ''
@@ -138,7 +138,7 @@ export class DevinHookService {
       state,
       configPath,
       managedHooksPresent,
-      detail: mergeHookInstallDetail(detail, readConfigFromNightshiftOverlapDetail(config))
+      detail: mergeHookInstallDetail(detail, readConfigFromKoluxOverlapDetail(config))
     }
   }
 
@@ -174,7 +174,7 @@ export class DevinHookService {
     // Why: remote-Windows is out of scope for v1; process.platform here is the local box, not the remote, so assume POSIX.
     const remoteConfigPath = getDevinRemoteConfigPath(remoteHome)
     const remoteScriptFileName = getDevinPosixManagedScriptFileName()
-    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.nightshift/agent-hooks/${remoteScriptFileName}`
+    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.kolux/agent-hooks/${remoteScriptFileName}`
     // Why: SFTP I/O fails far more often than local fs; wrap the flow so failures surface as a structured error, not an unhandled rejection.
     try {
       // Why: Devin config.json is JSONC (comments), so JSON.parse rejects it; parse via jsonc-parser.
@@ -196,7 +196,7 @@ export class DevinHookService {
       const nextConfig = applyDevinManagedHooks(config, command, remoteScriptFileName)
 
       // Why: write script before settings so a mid-install failure never leaves settings.json referencing a missing script.
-      // Why: SSH remotes use POSIX `.sh` hooks even when Nightshift runs on Windows; never derive remote script syntax from local OS.
+      // Why: SSH remotes use POSIX `.sh` hooks even when Kolux runs on Windows; never derive remote script syntax from local OS.
       await writeManagedScriptRemote(sftp, remoteScriptPath, getManagedScript('posix'))
       await writeHooksJsonRemote(sftp, remoteConfigPath, nextConfig, {
         serialized: serializeDevinHooksConfig(body, nextConfig)

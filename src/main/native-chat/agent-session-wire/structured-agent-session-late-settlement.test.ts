@@ -64,7 +64,7 @@ function submissions(): unknown {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-wire-late-settle-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-wire-late-settle-'))
   resetHostTestOperationIds()
   dispatch = vi.fn(async () => accepted())
   closeSession = vi.fn(async () => true)

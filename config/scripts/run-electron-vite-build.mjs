@@ -35,7 +35,7 @@ child.on('exit', (code, signal) => {
   // boot graph is exactly what a stray static import silently regresses. The
   // target gate keeps the parallel runner's concurrent main/preload builds from
   // reading out/renderer while the renderer target is still writing it.
-  const target = process.env.NIGHTSHIFT_ELECTRON_VITE_TARGET
+  const target = process.env.KOLUX_ELECTRON_VITE_TARGET
   const builtRenderer =
     (!target || target === 'renderer') && fs.existsSync(path.join(RENDERER_BUILD_DIR, 'index.html'))
   process.exit(builtRenderer ? verifyRendererBootGraph() : 0)

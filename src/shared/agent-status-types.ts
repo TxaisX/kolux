@@ -63,7 +63,7 @@ export type AgentStateHistoryEntry = {
   /** When this state was first reported. */
   startedAt: number
   /** True when this `done` was a cancellation (agent hook like Claude `is_interrupt`,
-   *  or Nightshift's guarded fallback). Always falsy for non-`done` states so retention logic can preserve it. */
+   *  or Kolux's guarded fallback). Always falsy for non-`done` states so retention logic can preserve it. */
   interrupted?: boolean
 }
 
@@ -153,7 +153,7 @@ export type AgentStatusEntry = {
    *  so `lastAssistantMessage` is already cleared by the time a subscriber observes it. */
   lastCompletedAssistantMessage?: string
   /** True when this `done` was reached via interrupt, not normal completion
-   *  (agent-reported or Nightshift's guarded fallback). Undefined otherwise. */
+   *  (agent-reported or Kolux's guarded fallback). Undefined otherwise. */
   interrupted?: boolean
   /** True when this `done` is a session boundary, not a completed turn. See AgentStatusPayload. */
   sessionBoundary?: boolean
@@ -164,7 +164,7 @@ export type AgentStatusEntry = {
    *  none are tracked; the sidebar derives indented child rows from it. */
   subagents?: AgentSubagentSnapshot[]
   /** Provider-owned conversation/session id captured from hook payloads.
-   *  Used only for exact CLI resume; Nightshift terminal ids are not agent-session ids. */
+   *  Used only for exact CLI resume; Kolux terminal ids are not agent-session ids. */
   providerSession?: AgentProviderSessionMetadata
   /** False when the status belongs to a non-terminal owner that restores itself. */
   terminalResumeEligible?: false

@@ -19,7 +19,7 @@ export function getRealHomeConfigTomlPath(): string {
   return join(getSystemCodexHomePath(), 'config.toml')
 }
 
-/** Nightshift-side state dir; nothing extra is ever written into the user's ~/.codex. */
+/** Kolux-side state dir; nothing extra is ever written into the user's ~/.codex. */
 function getRealHomeHookStateDir(userDataPath: string): string {
   return join(userDataPath, 'codex-real-home-hooks')
 }
@@ -33,11 +33,11 @@ export function assertHooksJsonGeneration(
   if (currentRaw !== expectedRaw || resolveHooksJsonWritePath(hooksJsonPath) !== hooksWritePath) {
     // Why: the pre-mutation RPC can overlap a user's editor save. Abort rather
     // than atomically replacing a newer file with the stale parsed snapshot.
-    throw new Error('Codex hooks.json changed while Nightshift prepared its trust repair')
+    throw new Error('Codex hooks.json changed while Kolux prepared its trust repair')
   }
 }
 
-/** One-time pristine copy of the user's file, kept under Nightshift's userData. */
+/** One-time pristine copy of the user's file, kept under Kolux's userData. */
 export function backupRealHomeHooksJsonOnce(
   userDataPath: string,
   previousRaw: string | null
@@ -46,8 +46,10 @@ export function backupRealHomeHooksJsonOnce(
     return
   }
   const backupDir = getRealHomeHookStateDir(userDataPath)
-  const backupPath = join(backupDir, 'hooks.json.pre-nightshift')
-  if (existsSync(backupPath)) {
+  const backupPath = join(backupDir, 'hooks.json.pre-kolux')
+  // Why: a pre-rename Nightshift install already took the one-time pristine copy; don't overwrite it with a now-modified snapshot.
+  const legacyBackupPath = join(backupDir, 'hooks.json.pre-nightshift')
+  if (existsSync(backupPath) || existsSync(legacyBackupPath)) {
     return
   }
   // Why: this lane mutates the user's real Codex home. If the required
@@ -72,7 +74,7 @@ export function restoreRealHomeHooksJson(
   writeFileAtomically(hooksJsonPath, previousRaw, { mode: previousMode })
 }
 
-/** Places Nightshift's managed hook in `definitions`, reusing its existing slot when
+/** Places Kolux's managed hook in `definitions`, reusing its existing slot when
  *  one is unambiguous so no later user trust position shifts. */
 export function reconcileManagedHookDefinition(
   current: HookDefinition[],
@@ -96,7 +98,7 @@ export function reconcileManagedHookDefinition(
     const hasDirectCommand = directCommandKeys.some((key) => typeof definition[key] === 'string')
     if (definition.matcher === undefined && !hasDirectCommand) {
       const definitions = [...current]
-      // Why: users can append groups or handlers after Nightshift's first install.
+      // Why: users can append groups or handlers after Kolux's first install.
       // Reusing the exact slot preserves all later positional trust keys.
       const hooks = [...definition.hooks!]
       hooks[handlerIndex] = buildManagedCommandHook(command)

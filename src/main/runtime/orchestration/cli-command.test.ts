@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { resolveTerminalOrchestrationCliCommand } from './cli-command'
 
 describe('resolveTerminalOrchestrationCliCommand', () => {
-  it('uses nightshift-ide for a pane recorded as WSL', () => {
+  it('uses kolux-ide for a pane recorded as WSL', () => {
     expect(
       resolveTerminalOrchestrationCliCommand({
         connectionId: null,
         isWsl: true,
         worktreeId: 'repo::C:\\repo'
       })
-    ).toBe('nightshift-ide')
+    ).toBe('kolux-ide')
   })
 
   it('uses project runtime and WSL paths when restored pane metadata is unavailable', () => {
@@ -30,31 +30,31 @@ describe('resolveTerminalOrchestrationCliCommand', () => {
           }
         }
       })
-    ).toBe('nightshift-ide')
+    ).toBe('kolux-ide')
     expect(
       resolveTerminalOrchestrationCliCommand({
         connectionId: null,
         isWsl: null,
         worktreeId: 'repo::\\\\wsl.localhost\\Ubuntu\\home\\alice\\repo'
       })
-    ).toBe('nightshift-ide')
+    ).toBe('kolux-ide')
   })
 
-  it('preserves native and SSH bare-nightshift commands', () => {
+  it('preserves native and SSH bare-kolux commands', () => {
     expect(
       resolveTerminalOrchestrationCliCommand({
         connectionId: null,
         isWsl: false,
         worktreeId: 'repo::/home/alice/repo'
       })
-    ).toBe('nightshift')
+    ).toBe('kolux')
     expect(
       resolveTerminalOrchestrationCliCommand({
         connectionId: 'ssh-1',
         isWsl: null,
         worktreeId: 'repo::\\\\wsl.localhost\\Ubuntu\\home\\alice\\repo'
       })
-    ).toBe('nightshift')
+    ).toBe('kolux')
   })
 
   it('uses the runtime-provided command locally but never leaks it to SSH', () => {
@@ -63,16 +63,16 @@ describe('resolveTerminalOrchestrationCliCommand', () => {
         connectionId: null,
         isWsl: true,
         worktreeId: 'repo::C:\\repo',
-        runtimeCliCommand: 'nightshift-dev'
+        runtimeCliCommand: 'kolux-dev'
       })
-    ).toBe('nightshift-dev')
+    ).toBe('kolux-dev')
     expect(
       resolveTerminalOrchestrationCliCommand({
         connectionId: 'ssh-1',
         isWsl: true,
         worktreeId: 'repo::C:\\repo',
-        runtimeCliCommand: 'nightshift-dev'
+        runtimeCliCommand: 'kolux-dev'
       })
-    ).toBe('nightshift')
+    ).toBe('kolux')
   })
 })

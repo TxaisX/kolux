@@ -22,10 +22,7 @@ export type ComposerProviderRuntimeSyncInput = Pick<
 >
 
 import { useEffect, useCallback, useRef } from 'react'
-import type {
-  SetupAgentStartupPolicy,
-  NightshiftHooks
-} from '../../../../shared/nightshift-yaml-hook-types'
+import type { SetupAgentStartupPolicy, KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { useAppStore } from '@/store'
 import { isGitRepoKind } from '../../../../shared/repo-kind'
 import { toast } from 'sonner'
@@ -217,7 +214,7 @@ export function useComposerProviderRuntimeSync(input: ComposerProviderRuntimeSyn
   )
 
   const commitHookCheckIfCurrent = useCallback(
-    (targetContextKey: string, hooks: NightshiftHooks | null): boolean => {
+    (targetContextKey: string, hooks: KoluxHooks | null): boolean => {
       if (selectedRepoHookContextKey !== targetContextKey) {
         return false
       }

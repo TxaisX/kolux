@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { CDPSession, Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   focusActiveTerminalInput,
@@ -477,40 +477,40 @@ test.describe('Korean IME terminal committing Enter chords', () => {
     for (const redispatchAfterKeyup of [false, true]) {
       const order = redispatchAfterKeyup ? 'keyup-before-redispatch' : 'redispatch-before-keyup'
       test(`${chord.name} sends once with ${order}`, async ({
-        nightshiftPage,
+        koluxPage,
         testRepoPath
       }, testInfo) => {
         test.skip(chord.windowsOnly && process.platform !== 'win32', 'Windows IME ownership')
-        await waitForSessionReady(nightshiftPage)
-        await waitForActiveWorktree(nightshiftPage)
-        await ensureTerminalVisible(nightshiftPage)
-        await waitForActiveTerminalManager(nightshiftPage, 30_000)
+        await waitForSessionReady(koluxPage)
+        await waitForActiveWorktree(koluxPage)
+        await ensureTerminalVisible(koluxPage)
+        await waitForActiveTerminalManager(koluxPage, 30_000)
 
-        const ptyId = await waitForActivePanePtyId(nightshiftPage)
+        const ptyId = await waitForActivePanePtyId(koluxPage)
         const runId = randomUUID()
-        const scriptPath = path.join(testRepoPath, `.nightshift-korean-ime-harness-${runId}.cjs`)
-        const session = await nightshiftPage.context().newCDPSession(nightshiftPage)
+        const scriptPath = path.join(testRepoPath, `.kolux-korean-ime-harness-${runId}.cjs`)
+        const session = await koluxPage.context().newCDPSession(koluxPage)
 
         try {
           writeFileSync(scriptPath, terminalImeHarnessScript(runId))
-          await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
-          await waitForTerminalOutput(nightshiftPage, `IME_HARNESS_READY_${runId}`, 10_000, 20_000)
-          await focusActiveTerminalInput(nightshiftPage)
-          await installImeKeyEventLog(nightshiftPage)
+          await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+          await waitForTerminalOutput(koluxPage, `IME_HARNESS_READY_${runId}`, 10_000, 20_000)
+          await focusActiveTerminalInput(koluxPage)
+          await installImeKeyEventLog(koluxPage)
 
           // 하 하 하 with the first two syllables committed by Space and the last
           // one left composing, so the Enter chord is the committing keystroke.
-          await composeHangulSyllable(session, nightshiftPage)
-          await commitSyllableAndSpace(session, nightshiftPage)
-          await composeHangulSyllable(session, nightshiftPage)
-          await commitSyllableAndSpace(session, nightshiftPage)
+          await composeHangulSyllable(session, koluxPage)
+          await commitSyllableAndSpace(session, koluxPage)
+          await composeHangulSyllable(session, koluxPage)
+          await commitSyllableAndSpace(session, koluxPage)
           if (chord.preHeldModifier) {
             await dispatchHeldModifier(session, chord.preHeldModifier, 'rawKeyDown')
           }
-          await composeHangulSyllable(session, nightshiftPage)
+          await composeHangulSyllable(session, koluxPage)
           await dispatchCommittingEnterChord(
             session,
-            nightshiftPage,
+            koluxPage,
             chord.modifiers,
             chord.redispatchedModifiers ?? chord.modifiers,
             redispatchAfterKeyup,
@@ -520,26 +520,22 @@ test.describe('Korean IME terminal committing Enter chords', () => {
             await dispatchHeldModifier(session, chord.preHeldModifier, 'keyUp')
           }
 
-          await chord.assertOutcome(nightshiftPage)
+          await chord.assertOutcome(koluxPage)
           await dispatchPlainEnter(session)
           await expect
-            .poll(() => readReceived(nightshiftPage), {
+            .poll(() => readReceived(koluxPage), {
               timeout: 10_000,
               message: 'the next physical Enter must not be consumed by stale IME state'
             })
             .toBe(chord.expectedAfterPlainEnter.received)
-          expect(await readSubmitted(nightshiftPage)).toEqual(
-            chord.expectedAfterPlainEnter.submitted
-          )
-          await attachEvidence(nightshiftPage, testInfo, `korean-${chord.slug}-${order}-commit`)
+          expect(await readSubmitted(koluxPage)).toEqual(chord.expectedAfterPlainEnter.submitted)
+          await attachEvidence(koluxPage, testInfo, `korean-${chord.slug}-${order}-commit`)
         } finally {
-          await attachEvidence(
-            nightshiftPage,
-            testInfo,
-            `korean-${chord.slug}-${order}-final`
-          ).catch(() => undefined)
+          await attachEvidence(koluxPage, testInfo, `korean-${chord.slug}-${order}-final`).catch(
+            () => undefined
+          )
           await session.detach().catch(() => undefined)
-          await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+          await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
           rmSync(scriptPath, { force: true })
         }
       })

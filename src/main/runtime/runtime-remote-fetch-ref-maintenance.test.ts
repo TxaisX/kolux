@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Why: Nightshift's fetches are what create the loose-ref backlog (they suppress
+// Why: Kolux's fetches are what create the loose-ref backlog (they suppress
 // git's auto-maintenance), so the fetch controller is where the idle sweep has
 // to be armed. These tests pin that wiring and the per-repo busy signal it
 // hands the sweep.

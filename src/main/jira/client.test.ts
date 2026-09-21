@@ -27,19 +27,14 @@ function mkdtempLike(prefix: string): string {
 }
 
 function tokenPathForSite(siteId: string): string {
-  return join(
-    tempHome,
-    '.nightshift',
-    'jira-tokens',
-    `${Buffer.from(siteId).toString('base64url')}.enc`
-  )
+  return join(tempHome, '.kolux', 'jira-tokens', `${Buffer.from(siteId).toString('base64url')}.enc`)
 }
 
 function writeJiraFiles(siteId: string, token: string | Buffer): void {
-  const nightshiftDir = join(tempHome, '.nightshift')
-  mkdirSync(join(nightshiftDir, 'jira-tokens'), { recursive: true })
+  const koluxDir = join(tempHome, '.kolux')
+  mkdirSync(join(koluxDir, 'jira-tokens'), { recursive: true })
   writeFileSync(
-    join(nightshiftDir, 'jira-sites.json'),
+    join(koluxDir, 'jira-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -67,10 +62,10 @@ function writeMultiSiteFiles(
   sites: { id: string; token: string | Buffer }[],
   selectedSiteId: string
 ): void {
-  const nightshiftDir = join(tempHome, '.nightshift')
-  mkdirSync(join(nightshiftDir, 'jira-tokens'), { recursive: true })
+  const koluxDir = join(tempHome, '.kolux')
+  mkdirSync(join(koluxDir, 'jira-tokens'), { recursive: true })
   writeFileSync(
-    join(nightshiftDir, 'jira-sites.json'),
+    join(koluxDir, 'jira-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -137,7 +132,7 @@ async function loadClientModule(options: SafeStorageMockOptions = {}) {
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('nightshift-jira-client-')
+  tempHome = mkdtempLike('kolux-jira-client-')
   fetchMock = vi.fn(async () => {
     throw new Error('fetch should not be called')
   })
@@ -219,7 +214,7 @@ describe('Jira client credential storage', () => {
     const headers = netFetchMock.mock.calls[0]?.[1]?.headers as Headers
     const userAgent = headers.get('User-Agent') ?? ''
     expect(netFetchMock.mock.calls[0]?.[1]?.method).toBe('POST')
-    expect(userAgent).toBe('Nightshift')
+    expect(userAgent).toBe('Kolux')
     expect(userAgent).not.toMatch(/Mozilla|Chrome|Safari|AppleWebKit/i)
   })
 
@@ -545,10 +540,10 @@ describe('Jira client credential storage', () => {
 
   it('uses Basic auth for stored self-hosted sites that carry a username', async () => {
     const siteId = 'site-server-basic'
-    const nightshiftDir = join(tempHome, '.nightshift')
-    mkdirSync(join(nightshiftDir, 'jira-tokens'), { recursive: true })
+    const koluxDir = join(tempHome, '.kolux')
+    mkdirSync(join(koluxDir, 'jira-tokens'), { recursive: true })
     writeFileSync(
-      join(nightshiftDir, 'jira-sites.json'),
+      join(koluxDir, 'jira-sites.json'),
       JSON.stringify({
         version: 1,
         activeSiteId: siteId,
@@ -643,7 +638,7 @@ describe('Jira client credential storage', () => {
     // Two PATs (both with empty email) to the same host must not collide onto
     // one id and silently overwrite each other — the viewer identity keys them.
     const stored = JSON.parse(
-      readFileSync(join(tempHome, '.nightshift', 'jira-sites.json'), 'utf-8')
+      readFileSync(join(tempHome, '.kolux', 'jira-sites.json'), 'utf-8')
     ) as {
       sites: { accountId: string }[]
     }
@@ -653,10 +648,10 @@ describe('Jira client credential storage', () => {
 
   it('uses Bearer auth and REST v2 for stored self-hosted sites', async () => {
     const siteId = 'site-server'
-    const nightshiftDir = join(tempHome, '.nightshift')
-    mkdirSync(join(nightshiftDir, 'jira-tokens'), { recursive: true })
+    const koluxDir = join(tempHome, '.kolux')
+    mkdirSync(join(koluxDir, 'jira-tokens'), { recursive: true })
     writeFileSync(
-      join(nightshiftDir, 'jira-sites.json'),
+      join(koluxDir, 'jira-sites.json'),
       JSON.stringify({
         version: 1,
         activeSiteId: siteId,
@@ -720,7 +715,7 @@ describe('Jira client credential storage', () => {
     expect(resolveProxyMock).toHaveBeenCalledWith('https://example.atlassian.net/rest/api/3/myself')
     expect(netFetchMock).toHaveBeenCalledTimes(1)
     const headers = netFetchMock.mock.calls[0]?.[1]?.headers as Headers
-    expect(headers.get('User-Agent')).toBe('Nightshift')
+    expect(headers.get('User-Agent')).toBe('Kolux')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

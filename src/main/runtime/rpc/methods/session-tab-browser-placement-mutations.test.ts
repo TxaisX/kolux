@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcDispatchStreamingOptions } from '../dispatcher-stream-options'
 import { SESSION_TAB_METHODS } from './session-tabs'
@@ -18,7 +18,7 @@ describe('session tab browser placement mutations', () => {
       getRuntimeId: () => 'test-runtime',
       listMobileSessionTabs: vi.fn().mockResolvedValue(snapshot),
       activateMobileSessionTab: vi.fn().mockResolvedValue(snapshot)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const visible = await dispatch(dispatcher, 'session.tabs.activate', {
@@ -44,7 +44,7 @@ describe('session tab browser placement mutations', () => {
       getRuntimeId: () => 'test-runtime',
       listMobileSessionTabs: vi.fn().mockResolvedValue(mixedPlacementSnapshot()),
       moveMobileSessionTab: vi.fn().mockResolvedValue({ moved: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatch(dispatcher, 'session.tabs.move', {
@@ -69,7 +69,7 @@ describe('session tab browser placement mutations', () => {
       getRuntimeId: () => 'test-runtime',
       listMobileSessionTabs: vi.fn().mockResolvedValue(mixedPlacementSnapshot()),
       closeMobileSessionTab: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatch(dispatcher, 'session.tabs.close', {
@@ -87,7 +87,7 @@ describe('session tab browser placement mutations', () => {
       getRuntimeId: () => 'test-runtime',
       listMobileSessionTabs: vi.fn().mockResolvedValue(mixedPlacementSnapshot()),
       closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatch(

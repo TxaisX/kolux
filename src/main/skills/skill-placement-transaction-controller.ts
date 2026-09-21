@@ -119,8 +119,8 @@ export function createSkillPlacementTransaction(input: {
           destinationPath: join(destination.rootPath, name),
           rootPath: destination.rootPath,
           desired: destinations.includes(destination),
-          stagingPath: join(destination.rootPath, `.${name}.nightshift-placement-staging-${id}`),
-          backupPath: join(destination.rootPath, `.${name}.nightshift-placement-backup-${id}`)
+          stagingPath: join(destination.rootPath, `.${name}.kolux-placement-staging-${id}`),
+          backupPath: join(destination.rootPath, `.${name}.kolux-placement-backup-${id}`)
         })),
         ...(providerRootOverrides ? { providerRootOverrides } : {}),
         ...(input.wslDistro ? { wslDistro: input.wslDistro } : {})

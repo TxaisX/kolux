@@ -31,9 +31,9 @@ type SkillSshTransferInput = {
 
 function allowedOrigins(requireHttps: boolean): string[] {
   const origins = ['https://storage.googleapis.com']
-  if (!requireHttps && process.env.NIGHTSHIFT_SKILL_PACKAGE_DOWNLOAD_ORIGINS) {
+  if (!requireHttps && process.env.KOLUX_SKILL_PACKAGE_DOWNLOAD_ORIGINS) {
     origins.push(
-      ...process.env.NIGHTSHIFT_SKILL_PACKAGE_DOWNLOAD_ORIGINS.split(',')
+      ...process.env.KOLUX_SKILL_PACKAGE_DOWNLOAD_ORIGINS.split(',')
         .map((origin) => origin.trim())
         .filter(Boolean)
     )

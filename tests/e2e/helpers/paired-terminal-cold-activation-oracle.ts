@@ -1,7 +1,7 @@
 import type { Page } from '@stablyai/playwright-test'
 import { TERMINAL_PAIRED_PARKING_RUNTIME_CAPABILITY } from '../../../src/shared/protocol-version'
 import { toWebTerminalSurfaceTabId } from '../../../src/shared/terminal-surface-id'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 import {
   callColdActivationRuntime,
   expectStableColdActivationMountState,

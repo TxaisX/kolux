@@ -10,7 +10,7 @@ const OWNER_FILE_PATTERN = /^owner-([\da-f-]{36})\.json$/i
 type GrokHookOwner = { token: string; pid: number }
 
 function ownerDirectory(): string {
-  return join(homedir(), '.nightshift', 'agent-hooks', 'grok-owners')
+  return join(homedir(), '.kolux', 'agent-hooks', 'grok-owners')
 }
 
 function ownerPath(directory = ownerDirectory()): string {
@@ -86,7 +86,7 @@ export async function hasLivePeer(
         owner = candidate as GrokHookOwner
       }
     } catch {
-      // Invalid Nightshift-owned records cannot prove a live peer and are pruned below.
+      // Invalid Kolux-owned records cannot prove a live peer and are pruned below.
     }
     if (!owner) {
       await rm(path, { force: true })

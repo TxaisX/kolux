@@ -19,7 +19,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -67,7 +67,7 @@ async function startHookListener(): Promise<{
       posts.push({
         payload: form.get('payload'),
         paneKey: form.get('paneKey'),
-        token: req.headers['x-nightshift-agent-hook-token'] as string | null
+        token: req.headers['x-kolux-agent-hook-token'] as string | null
       })
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end('{}')
@@ -134,7 +134,7 @@ function seedCmdAutoRunTarget(home: string): void {
 
 function hookEnvironment(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const base = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith('NIGHTSHIFT_'))
+    Object.entries(process.env).filter(([key]) => !key.startsWith('KOLUX_'))
   )
   return { ...base, ...extra }
 }
@@ -144,7 +144,7 @@ describe('Windows managed hook launcher', () => {
   // this keeps a ConPTY host from being reintroduced unnoticed by a POSIX-only CI leg.
   it('does not re-host the hook on a pseudoconsole', () => {
     const hook = getWindowsManagedLifecycleHook(
-      'C:\\Users\\alice\\.nightshift\\agent-hooks\\claude-hook.cmd'
+      'C:\\Users\\alice\\.kolux\\agent-hooks\\claude-hook.cmd'
     )
     expect(hook.command).not.toMatch(/conhost/i)
     expect(hook.args).toBeUndefined()
@@ -166,7 +166,7 @@ describe.skipIf(process.platform !== 'win32')('Windows managed hook payload deli
   })
 
   it('delivers the piped payload to the hook listener through cmd.exe and Git Bash', async () => {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-hook-payload-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-hook-payload-'))
     homedirMock.mockReturnValue(home)
     seedCmdAutoRunTarget(home)
     expect(new ClaudeHookService().install().state).toBe('installed')
@@ -179,7 +179,7 @@ describe.skipIf(process.platform !== 'win32')('Windows managed hook payload deli
     const registeredCommand = settings.hooks.PreToolUse[0].hooks[0].command
     // ...with one exception: a cmd-safe profile must reach the script with no interpreter in
     // front of it, or #18875's per-event PowerShell start-up has quietly come back.
-    if (WINDOWS_CMD_SAFE_PATH.test(join(home, '.nightshift', 'agent-hooks', 'claude-hook.cmd'))) {
+    if (WINDOWS_CMD_SAFE_PATH.test(join(home, '.kolux', 'agent-hooks', 'claude-hook.cmd'))) {
       expect(registeredCommand).not.toMatch(/powershell|-EncodedCommand/i)
     }
 
@@ -188,9 +188,9 @@ describe.skipIf(process.platform !== 'win32')('Windows managed hook payload deli
     const env = hookEnvironment({
       USERPROFILE: home,
       HOME: home,
-      NIGHTSHIFT_AGENT_HOOK_PORT: String(listener.port),
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: HOOK_TOKEN,
-      NIGHTSHIFT_PANE_KEY: PANE_KEY
+      KOLUX_AGENT_HOOK_PORT: String(listener.port),
+      KOLUX_AGENT_HOOK_TOKEN: HOOK_TOKEN,
+      KOLUX_PANE_KEY: PANE_KEY
     })
 
     const shells = [

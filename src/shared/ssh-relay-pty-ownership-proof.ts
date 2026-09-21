@@ -12,7 +12,7 @@ import {
  *
  *  The rule #9819 proposed — "pane-bound and the app no longer owns or leases it" — is not that
  *  proof. Absence from a client-side set is `unverifiable` by construction
- *  (`docs/reference/ssh-execution-boundary.md`): a second machine running the same Nightshift build
+ *  (`docs/reference/ssh-execution-boundary.md`): a second machine running the same Kolux build
  *  connects to the SAME relay and displaces the session owner, and its PTYs are missing from THIS
  *  client's store for exactly the same reason a genuine orphan is. Sweeping on local absence alone
  *  would let one laptop reap another laptop's live agents.
@@ -35,7 +35,7 @@ export type RelayPtyOwnershipEvidence = {
   /** Non-empty when the host still advertises an adoptable agent session on this PTY. */
   agentSessionOwners?: readonly unknown[]
   /** What the OWNING host saw in the pane on the same listing. This answers a different question
-   *  from `agentSessionOwners`: that one asks whether Nightshift REGISTERED an agent session here, this
+   *  from `agentSessionOwners`: that one asks whether Kolux REGISTERED an agent session here, this
    *  one asks whether anything at all is running. A `claude` the user typed by hand registers
    *  nothing, so only this can see it. */
   foregroundProcessEvidence?: ForegroundProcessEvidence

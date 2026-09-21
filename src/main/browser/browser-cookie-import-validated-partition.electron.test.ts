@@ -154,7 +154,7 @@ run().catch((error) => {
 }
 
 async function runFixture(): Promise<FixtureResult> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-validated-partition-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-validated-partition-'))
   fixtureRoots.push(root)
   const bundlePath = join(root, 'cookie-import-validated.cjs')
   const bundleEntryPath = join(root, 'cookie-import-validated.ts')

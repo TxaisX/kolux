@@ -6,7 +6,7 @@ vi.mock('../runtime-client', () => {
   class RuntimeClient {
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
   }
 
   class RuntimeClientError extends Error {
@@ -37,7 +37,7 @@ vi.mock('../runtime-client', () => {
 import { main } from '../index'
 import { buildWorktree, okFixture, queueFixtures, worktreeListFixture } from '../test-fixtures'
 
-describe('nightshift computer action CLI routing', () => {
+describe('kolux computer action CLI routing', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     callMock.mockReset()
@@ -128,7 +128,7 @@ describe('nightshift computer action CLI routing', () => {
 
     const output = vi.mocked(console.log).mock.calls[0][0]
     expect(output).toContain(
-      'Use `nightshift computer get-app-state --app com.apple.finder --session manual --window-index 1 --restore-window`'
+      'Use `kolux computer get-app-state --app com.apple.finder --session manual --window-index 1 --restore-window`'
     )
   })
 

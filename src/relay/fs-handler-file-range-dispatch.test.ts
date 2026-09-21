@@ -37,7 +37,7 @@ let filePath: string
 let underTest: ReturnType<typeof createHandlerUnderTest>
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-relay-range-dispatch-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-relay-range-dispatch-'))
   filePath = join(root, 'data.jsonl')
   await writeFile(filePath, '0123456789')
   underTest = createHandlerUnderTest()

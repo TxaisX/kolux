@@ -10,10 +10,10 @@ import type {
   ArtifactWriteRequest
 } from '../../shared/artifacts'
 import { assertArtifactSharingAllowed } from '../../shared/artifact-sharing-gate'
-import { ensureActiveNightshiftProfile } from '../nightshift-profiles/profile-index-store'
-import { getNightshiftCloudAuthConfig } from '../nightshift-profiles/profile-cloud-auth-config'
-import { prepareArtifactCloudUse } from '../nightshift-profiles/profile-artifact-cloud-cleanup'
-import { runWithFreshNightshiftCloudSession } from '../nightshift-profiles/profile-cloud-session-refresh'
+import { ensureActiveKoluxProfile } from '../kolux-profiles/profile-index-store'
+import { getKoluxCloudAuthConfig } from '../kolux-profiles/profile-cloud-auth-config'
+import { prepareArtifactCloudUse } from '../kolux-profiles/profile-artifact-cloud-cleanup'
+import { runWithFreshKoluxCloudSession } from '../kolux-profiles/profile-cloud-session-refresh'
 import {
   allowsArtifactCloudAuthOverride,
   resolveArtifactCloudApiUrl
@@ -26,10 +26,10 @@ import {
   refreshArtifactShareRecordExpiration,
   removeArtifactShareRecords
 } from './artifact-share-record-store'
-import type { ActiveNightshiftProfileState } from '../nightshift-profiles/profile-index-store'
+import type { ActiveKoluxProfileState } from '../kolux-profiles/profile-index-store'
 import { artifactRequest, artifactWriteBody } from './artifact-cloud-request'
 import { ArtifactPublisher } from './artifact-publisher'
-import { NightshiftCloudRequestError } from '../nightshift-profiles/profile-cloud-client'
+import { KoluxCloudRequestError } from '../kolux-profiles/profile-cloud-client'
 
 type ArtifactAuthContext = {
   profileId: string
@@ -50,7 +50,7 @@ async function deleteArtifactRequest(
     })
   } catch (error) {
     if (
-      !(error instanceof NightshiftCloudRequestError) ||
+      !(error instanceof KoluxCloudRequestError) ||
       error.statusCode !== 404 ||
       error.errorCode !== 'artifact_not_found'
     ) {
@@ -64,7 +64,7 @@ function tokenFingerprint(token: string): string {
 }
 
 function authContext(
-  active: ActiveNightshiftProfileState,
+  active: ActiveKoluxProfileState,
   scope: ArtifactShareScope,
   userDataPath: string,
   expectedCloud?: { userId: string; profileId: string; organizationId: string }
@@ -74,7 +74,7 @@ function authContext(
     profileId: active.profile.id,
     scope,
     assertCurrent: () => {
-      const current = ensureActiveNightshiftProfile(userDataPath)
+      const current = ensureActiveKoluxProfile(userDataPath)
       const cloudCurrent =
         !expectedCloud ||
         (current.profile.cloud?.userId === expectedCloud.userId &&
@@ -86,7 +86,7 @@ function authContext(
         !isArtifactShareLifecycleCurrent(active.profile.id, userDataPath, lifecycleGeneration)
       ) {
         throw new Error(
-          'The signed-in Nightshift account changed while the artifact request was running.'
+          'The signed-in Kolux account changed while the artifact request was running.'
         )
       }
     }
@@ -94,12 +94,12 @@ function authContext(
 }
 
 function storedSessionAuthContext(
-  active: ActiveNightshiftProfileState,
+  active: ActiveKoluxProfileState,
   apiOrigin: string,
   userDataPath: string
 ): ArtifactAuthContext {
   if (!active.profile.cloud) {
-    throw new Error('The active Nightshift profile is not linked to a cloud account.')
+    throw new Error('The active Kolux profile is not linked to a cloud account.')
   }
   return authContext(
     active,
@@ -119,7 +119,7 @@ function storedSessionAuthContext(
 }
 
 function explicitTokenAuthContext(
-  active: ActiveNightshiftProfileState,
+  active: ActiveKoluxProfileState,
   apiOrigin: string,
   token: string,
   userDataPath: string
@@ -205,7 +205,7 @@ export class ArtifactCloudService {
           auth.scope
         )
         if (!record) {
-          throw new Error('This file has not been shared from the active Nightshift profile.')
+          throw new Error('This file has not been shared from the active Kolux profile.')
         }
         return this.publisher.runForSlug(record.slug, auth, async () => {
           auth.assertCurrent()
@@ -247,7 +247,7 @@ export class ArtifactCloudService {
           auth.scope
         )
         if (!record) {
-          throw new Error('This file has not been shared from the active Nightshift profile.')
+          throw new Error('This file has not been shared from the active Kolux profile.')
         }
         return this.publisher.runForSlug(record.slug, auth, async () => {
           auth.assertCurrent()
@@ -278,7 +278,7 @@ export class ArtifactCloudService {
     operation: (token: string, apiUrl: string, auth: ArtifactAuthContext) => Promise<T>
   ): Promise<ArtifactCloudOperation<T>> {
     const apiUrl = resolveArtifactCloudApiUrl(options.apiUrl)
-    const active = ensureActiveNightshiftProfile(this.userDataPath)
+    const active = ensureActiveKoluxProfile(this.userDataPath)
     prepareArtifactCloudUse(active.profile, this.userDataPath)
     if (options.authToken?.trim()) {
       if (!allowsArtifactCloudAuthOverride()) {
@@ -295,11 +295,11 @@ export class ArtifactCloudService {
         value
       }
     }
-    const config = getNightshiftCloudAuthConfig()
+    const config = getKoluxCloudAuthConfig()
     if (!config.configured) {
       return { status: 'unconfigured', message: config.setupMessage }
     }
-    const result = await runWithFreshNightshiftCloudSession(
+    const result = await runWithFreshKoluxCloudSession(
       config.config,
       active,
       this.userDataPath,

@@ -34,7 +34,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     const inspected = await this.inspectStableSymlink(commandPath, launcherPath)
     if (inspected.status.state === 'conflict') {
       throw new Error(
-        `Refusing to replace non-Nightshift command at ${commandPath}. Remove it and register again if it is no longer needed.`
+        `Refusing to replace non-Kolux command at ${commandPath}. Remove it and register again if it is no longer needed.`
       )
     }
     if (inspected.status.state === 'installed') {
@@ -55,7 +55,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     if (!(await capturedExpectedEntry(quarantine, inspected))) {
       await this.restoreQuarantinedCommand(quarantine, commandPath)
       throw new Error(
-        `Refusing to replace non-Nightshift command at ${commandPath}. Remove it and register again if it is no longer needed.`
+        `Refusing to replace non-Kolux command at ${commandPath}. Remove it and register again if it is no longer needed.`
       )
     }
 
@@ -71,14 +71,14 @@ export class CliCommandInstallation extends CliCommandInspection {
   protected async removeSymlink(commandPath: string): Promise<void> {
     const launcherPath = await this.resolveLauncherPath()
     if (!launcherPath) {
-      throw new Error('The Nightshift CLI launcher is no longer available.')
+      throw new Error('The Kolux CLI launcher is no longer available.')
     }
     const inspected = await this.inspectStableSymlink(commandPath, launcherPath)
     if (inspected.status.state === 'not_installed') {
       return
     }
     if (inspected.status.state === 'conflict') {
-      throw new Error(`Refusing to remove non-Nightshift command at ${commandPath}.`)
+      throw new Error(`Refusing to remove non-Kolux command at ${commandPath}.`)
     }
 
     let quarantine: CommandQuarantine
@@ -93,7 +93,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     }
     if (!(await capturedExpectedEntry(quarantine, inspected))) {
       await this.restoreQuarantinedCommand(quarantine, commandPath)
-      throw new Error(`Refusing to remove non-Nightshift command at ${commandPath}.`)
+      throw new Error(`Refusing to remove non-Kolux command at ${commandPath}.`)
     }
     await this.discardQuarantinedCommand(quarantine)
   }
@@ -173,7 +173,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     const extractedRoot = await ensureAppImageExtractedRoot(extractionOptions)
     if (!extractedRoot) {
       throw new Error(
-        `Could not extract the Nightshift AppImage at ${this.appImagePath}. Check that it is executable and that ${this.appImageCacheRootPath} has free space.`
+        `Could not extract the Kolux AppImage at ${this.appImagePath}. Check that it is executable and that ${this.appImageCacheRootPath} has free space.`
       )
     }
     return extractedRoot
@@ -294,7 +294,7 @@ export class CliCommandInstallation extends CliCommandInspection {
     )
     const installed = await this.inspectStableSymlink(commandPath, launcherPath)
     if (installed.status.state !== 'installed') {
-      throw new Error(`Could not register the Nightshift command at ${commandPath}.`)
+      throw new Error(`Could not register the Kolux command at ${commandPath}.`)
     }
   }
 

@@ -20,7 +20,7 @@ afterAll(async () => {
 describe('asar-transparent rm', () => {
   it('removes a tree recursively where `original-fs` is unresolvable', async () => {
     expect(process.versions.electron).toBeUndefined()
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-asar-transparent-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-asar-transparent-'))
     roots.push(root)
     const target = join(root, 'wt-1700000000000-abcdef01')
     await mkdir(join(target, 'nested'), { recursive: true })
@@ -33,7 +33,7 @@ describe('asar-transparent rm', () => {
   })
 
   it('honours `force: false` rather than swallowing a missing path', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-asar-transparent-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-asar-transparent-'))
     roots.push(root)
 
     await expect(rm(join(root, 'absent'), { recursive: true })).rejects.toMatchObject({

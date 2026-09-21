@@ -25,8 +25,8 @@ export const hostOptions: ProjectHostSetupOption[] = [
     hostId: 'local',
     repoId: 'repo-a',
     label: 'Local Mac',
-    detail: 'Nightshift',
-    path: '/Users/alice/nightshift'
+    detail: 'Kolux',
+    path: '/Users/alice/kolux'
   },
   {
     kind: 'needs-setup',

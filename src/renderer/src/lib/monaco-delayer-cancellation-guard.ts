@@ -8,7 +8,7 @@ type MonacoDelayerInstance = {
 }
 
 type GuardedDelayerPrototype = MonacoDelayerInstance & {
-  __nightshiftDelayerCancellationGuardInstalled?: true
+  __koluxDelayerCancellationGuardInstalled?: true
 }
 
 function isMonacoCancellationError(error: unknown): boolean {
@@ -21,7 +21,7 @@ function isMonacoCancellationError(error: unknown): boolean {
 
 export function installMonacoDelayerCancellationGuard(): void {
   const delayerPrototype = Delayer.prototype as GuardedDelayerPrototype
-  if (delayerPrototype.__nightshiftDelayerCancellationGuardInstalled) {
+  if (delayerPrototype.__koluxDelayerCancellationGuardInstalled) {
     return
   }
 
@@ -39,5 +39,5 @@ export function installMonacoDelayerCancellationGuard(): void {
     }
     originalCancel.call(this)
   }
-  delayerPrototype.__nightshiftDelayerCancellationGuardInstalled = true
+  delayerPrototype.__koluxDelayerCancellationGuardInstalled = true
 }

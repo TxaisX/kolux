@@ -5,19 +5,19 @@ import { createRoot, type Root } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  NIGHTSHIFT_LINEAR_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_LINEAR_SKILL_NAME
+  KOLUX_LINEAR_SKILL_INSTALL_COMMAND,
+  KOLUX_LINEAR_SKILL_NAME
 } from '@/lib/agent-feature-install-commands'
 import { getLinearUsageExamples } from '@/lib/linear-usage-examples'
 import { LinearAgentSkillPane } from './LinearAgentSkillPane'
 
-const UPDATE_COMMAND = 'npx skills update nightshift-linear --global'
+const UPDATE_COMMAND = 'npx skills update kolux-linear --global'
 
 const mocks = vi.hoisted(() => ({
   panelProps: [] as Record<string, unknown>[],
   runtime: 'native' as 'native' | 'wsl',
   skillInstalled: true,
-  updateSkillName: 'nightshift-linear',
+  updateSkillName: 'kolux-linear',
   linearConnected: true,
   visibleTaskProviders: ['github', 'linear'] as string[],
   openSettingsPage: vi.fn(),
@@ -135,7 +135,7 @@ describe('LinearAgentSkillPane', () => {
     mocks.panelProps.length = 0
     mocks.runtime = 'native'
     mocks.skillInstalled = true
-    mocks.updateSkillName = 'nightshift-linear'
+    mocks.updateSkillName = 'kolux-linear'
     mocks.linearConnected = true
     mocks.visibleTaskProviders = ['github', 'linear']
     mocks.openSettingsPage.mockClear()
@@ -205,7 +205,7 @@ describe('LinearAgentSkillPane', () => {
     expect(examples).toHaveLength(5)
     for (const example of examples) {
       expect(markup).toContain(example.title)
-      expect(example.prompt).toContain('/nightshift-linear')
+      expect(example.prompt).toContain('/kolux-linear')
       expect(example.prompt).not.toContain('{{value0}}')
     }
   })
@@ -220,14 +220,14 @@ describe('LinearAgentSkillPane', () => {
     )
   })
 
-  it('passes the nightshift-linear install/update commands and freshness on a local runtime', async () => {
+  it('passes the kolux-linear install/update commands and freshness on a local runtime', async () => {
     await renderPane()
 
     expect(mocks.panelProps.at(-1)).toEqual(
       expect.objectContaining({
-        command: NIGHTSHIFT_LINEAR_SKILL_INSTALL_COMMAND,
+        command: KOLUX_LINEAR_SKILL_INSTALL_COMMAND,
         installedCommand: UPDATE_COMMAND,
-        freshnessSkillName: NIGHTSHIFT_LINEAR_SKILL_NAME
+        freshnessSkillName: KOLUX_LINEAR_SKILL_NAME
       })
     )
   })

@@ -1,10 +1,10 @@
 import { ChevronRight } from 'lucide-react'
 import type {
   HookCommandSourcePolicy,
-  NightshiftHooks,
+  KoluxHooks,
   SetupAgentStartupPolicy,
   SetupRunPolicy
-} from '../../../../shared/nightshift-yaml-hook-types'
+} from '../../../../shared/kolux-yaml-hook-types'
 import { translate } from '@/i18n/i18n'
 import { matchesSettingsSearch } from './settings-search'
 import { SettingsSwitch } from './SettingsFormControls'
@@ -82,7 +82,7 @@ function getCommandSourcePolicyOptions(): PolicyOption<HookCommandSourcePolicy>[
       policy: 'shared-only',
       label: translate(
         'auto.components.settings.RepositoryHooksSection.d88b6ff88f',
-        'nightshift.yaml only'
+        'kolux.yaml only'
       ),
       description: translate(
         'auto.components.settings.RepositoryHooksSection.29397e8bbc',
@@ -94,7 +94,7 @@ function getCommandSourcePolicyOptions(): PolicyOption<HookCommandSourcePolicy>[
       label: translate('auto.components.settings.RepositoryHooksSection.83dc78202a', 'Local only'),
       description: translate(
         'auto.components.settings.RepositoryHooksSection.0e8b2a520d',
-        'Ignore nightshift.yaml; run only your local commands.'
+        'Ignore kolux.yaml; run only your local commands.'
       )
     },
     {
@@ -102,7 +102,7 @@ function getCommandSourcePolicyOptions(): PolicyOption<HookCommandSourcePolicy>[
       label: translate('auto.components.settings.RepositoryHooksSection.8d6c56bff8', 'Run both'),
       description: translate(
         'auto.components.settings.RepositoryHooksSection.8561b0665f',
-        'nightshift.yaml first, then your local commands.'
+        'kolux.yaml first, then your local commands.'
       )
     }
   ]
@@ -176,7 +176,7 @@ function getCommandSourceLabel(policy: HookCommandSourcePolicy): string {
   if (policy === 'shared-only') {
     return translate(
       'auto.components.settings.RepositoryHooksSection.d88b6ff88f',
-      'nightshift.yaml only'
+      'kolux.yaml only'
     )
   }
   if (policy === 'local-only') {
@@ -199,7 +199,7 @@ export function RepositoryHookCommandSourceSetting({
   searchQuery: string
   selectedPolicy: HookCommandSourcePolicy
   yamlState: string
-  yamlHooks: NightshiftHooks | null
+  yamlHooks: KoluxHooks | null
   copiedTemplate: boolean
   isAdvancedOpen: boolean
   onSelectPolicy: (policy: HookCommandSourcePolicy) => void
@@ -212,12 +212,12 @@ export function RepositoryHookCommandSourceSetting({
       title: translate('auto.components.settings.RepositoryHooksSection.c9bc1bfd8f', 'Advanced'),
       description: translate(
         'auto.components.settings.RepositoryHooksSection.610d90fdbd',
-        'Command source and nightshift.yaml details.'
+        'Command source and kolux.yaml details.'
       ),
       keywords: [
         translate('auto.components.settings.RepositoryHooksSection.c5a55a2d2e', 'advanced'),
         translate('auto.components.settings.RepositoryHooksSection.4611b78617', 'command source'),
-        translate('auto.components.settings.RepositoryHooksSection.39da2ae12f', 'nightshift.yaml'),
+        translate('auto.components.settings.RepositoryHooksSection.39da2ae12f', 'kolux.yaml'),
         translate('auto.components.settings.RepositoryHooksSection.d2b3016c20', 'shared'),
         translate('auto.components.settings.RepositoryHooksSection.2d03a514db', 'local'),
         translate('auto.components.settings.RepositoryHooksSection.0518758f38', 'both'),
@@ -253,7 +253,7 @@ export function RepositoryHookCommandSourceSetting({
           <span className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.RepositoryHooksSection.bbbd6e0bc4',
-              'Command source & nightshift.yaml'
+              'Command source & kolux.yaml'
             )}
           </span>
         </div>
@@ -275,7 +275,7 @@ export function RepositoryHookCommandSourceSetting({
               <code className="rounded bg-muted px-1 py-0.5">
                 {translate(
                   'auto.components.settings.RepositoryHooksSection.39da2ae12f',
-                  'nightshift.yaml'
+                  'kolux.yaml'
                 )}
               </code>{' '}
               {translate(

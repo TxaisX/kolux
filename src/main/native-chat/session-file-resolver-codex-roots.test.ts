@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as WslModule from '../wsl'
 import type * as WslRunningPathFilterModule from '../wsl-running-path-filter'
 
-const MANAGED_HOME = '/tmp/nightshift-user-data/codex-runtime-home/home'
+const MANAGED_HOME = '/tmp/kolux-user-data/codex-runtime-home/home'
 
 // Why: only the path-only variant may run on the resolve poll — the getter
 // mkdirSyncs the runtime home, which is launch-time work and blocks the main
 // thread on every tick.
 vi.mock('../codex/codex-home-paths', () => ({
-  getNightshiftManagedCodexHomePath: vi.fn(() => MANAGED_HOME),
-  resolveNightshiftManagedCodexHomePath: vi.fn(() => MANAGED_HOME)
+  getKoluxManagedCodexHomePath: vi.fn(() => MANAGED_HOME),
+  resolveKoluxManagedCodexHomePath: vi.fn(() => MANAGED_HOME)
 }))
 
 // Keeps the WSL fallback tier inert so this stays a host-roots test on any platform.
@@ -31,13 +31,13 @@ vi.mock('../ai-vault/session-scanner-discovery', () => ({
 }))
 
 import { join } from 'node:path'
-import { getNightshiftManagedCodexHomePath } from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath } from '../codex/codex-home-paths'
 import { resetHostReadableTranscriptPathCacheForTests } from './host-readable-transcript-path'
 import { resolveSessionFilePath } from './session-file-resolver'
 
 beforeEach(() => {
   resetHostReadableTranscriptPathCacheForTests()
-  vi.mocked(getNightshiftManagedCodexHomePath).mockClear()
+  vi.mocked(getKoluxManagedCodexHomePath).mockClear()
   scanned.dirs = []
 })
 
@@ -46,6 +46,6 @@ describe('codex sessions roots', () => {
     await resolveSessionFilePath('codex', 'sess-1')
 
     expect(scanned.dirs).toContain(join(MANAGED_HOME, 'sessions'))
-    expect(vi.mocked(getNightshiftManagedCodexHomePath)).not.toHaveBeenCalled()
+    expect(vi.mocked(getKoluxManagedCodexHomePath)).not.toHaveBeenCalled()
   })
 })

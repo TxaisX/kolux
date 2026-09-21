@@ -10,7 +10,7 @@ import { publishMultiplexInitialSnapshot } from './terminal/terminal-multiplex-i
 import { TerminalSourceRangeRegistry } from '../terminal-source-range-registry'
 import { initializeMultiplexStream } from './terminal/terminal-multiplex-stream-initialization'
 import type { TerminalMultiplexConnection } from './terminal/terminal-multiplex-connection'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { TerminalMultiplexStream } from './terminal/terminal-stream-types'
 
 // These assertions protect the permanent binary publication seam while its state machine
@@ -141,7 +141,7 @@ describe('terminal stream extraction characterization', () => {
       getTerminalSize: vi.fn(() => ({ cols: 80, rows: 24 })),
       getMobileDisplayMode: vi.fn(() => 'fit'),
       getLayout: vi.fn(() => null)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const state = {
       runtime,
       streams: new Map([[stream.streamId, stream]]),
@@ -180,7 +180,7 @@ describe('terminal stream extraction characterization', () => {
     const streams = new Map()
     const runtime = {
       attachRemoteTerminalSourceRangeConsumer: vi.fn(() => false)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const state = {
       runtime,
       connectionId: 'connection',

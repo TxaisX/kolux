@@ -53,7 +53,7 @@ afterEach(async () => {
 })
 
 async function makeFixture(): Promise<string> {
-  const cacheRootPath = await mkdtemp(join(tmpdir(), 'nightshift-stable-appimage-launcher-'))
+  const cacheRootPath = await mkdtemp(join(tmpdir(), 'kolux-stable-appimage-launcher-'))
   created.push(cacheRootPath)
   return cacheRootPath
 }
@@ -169,7 +169,7 @@ describe.skipIf(process.platform === 'win32')('AppImage stable launcher', () => 
   it('preserves an oversized foreign launcher without treating its marker as ownership', async () => {
     const cacheRootPath = await makeFixture()
     const launcherPath = resolveAppImageStableLauncherPath(cacheRootPath)
-    const content = `#!/usr/bin/env bash\n# nightshift-appimage-stable-launcher\n${'x'.repeat(20_000)}`
+    const content = `#!/usr/bin/env bash\n# kolux-appimage-stable-launcher\n${'x'.repeat(20_000)}`
     await mkdir(dirname(launcherPath), { recursive: true })
     await writeFile(launcherPath, content, { mode: 0o755 })
 

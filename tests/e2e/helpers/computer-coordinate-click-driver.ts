@@ -2,14 +2,14 @@ import type {
   ComputerActionResult,
   ComputerSnapshotResult
 } from '../../../src/shared/runtime-types'
-import { parseJsonOutput, runNightshiftCli } from './computer-driver'
+import { parseJsonOutput, runKoluxCli } from './computer-driver'
 
 export async function doubleClickTextEditWord(): Promise<{
   action: ComputerActionResult['action']
   replacedWord: boolean
 }> {
   const filler = Array(10).fill('wordword').join('\n')
-  await runNightshiftCli([
+  await runKoluxCli([
     'computer',
     'hotkey',
     '--app',
@@ -18,7 +18,7 @@ export async function doubleClickTextEditWord(): Promise<{
     'CmdOrCtrl+A',
     '--no-screenshot'
   ])
-  await runNightshiftCli([
+  await runKoluxCli([
     'computer',
     'paste-text',
     '--app',
@@ -30,7 +30,7 @@ export async function doubleClickTextEditWord(): Promise<{
 
   const clicked = parseJsonOutput<{ result: ComputerActionResult }>(
     (
-      await runNightshiftCli([
+      await runKoluxCli([
         'computer',
         'click',
         '--app',
@@ -47,7 +47,7 @@ export async function doubleClickTextEditWord(): Promise<{
     ).stdout
   )
   const marker = `zz${Date.now()}zz`
-  await runNightshiftCli([
+  await runKoluxCli([
     'computer',
     'type-text',
     '--app',
@@ -59,7 +59,7 @@ export async function doubleClickTextEditWord(): Promise<{
 
   const after = parseJsonOutput<{ result: ComputerSnapshotResult }>(
     (
-      await runNightshiftCli([
+      await runKoluxCli([
         'computer',
         'get-app-state',
         '--app',
@@ -82,12 +82,12 @@ export async function clickCapturedTextEditOpenDialog(): Promise<{
 }> {
   const before = parseJsonOutput<{
     result: { windows: { id?: number | null }[] }
-  }>((await runNightshiftCli(['computer', 'list-windows', '--app', 'TextEdit', '--json'])).stdout)
+  }>((await runKoluxCli(['computer', 'list-windows', '--app', 'TextEdit', '--json'])).stdout)
   const existingWindowIds = new Set(before.result.windows.map((window) => window.id))
 
   const opened = parseJsonOutput<{ result: ComputerActionResult }>(
     (
-      await runNightshiftCli([
+      await runKoluxCli([
         'computer',
         'hotkey',
         '--app',
@@ -103,7 +103,7 @@ export async function clickCapturedTextEditOpenDialog(): Promise<{
   const dialog = opened.result.snapshot.window
   const clicked = parseJsonOutput<{ result: ComputerActionResult }>(
     (
-      await runNightshiftCli([
+      await runKoluxCli([
         'computer',
         'click',
         '--app',
@@ -121,7 +121,7 @@ export async function clickCapturedTextEditOpenDialog(): Promise<{
   )
   const after = parseJsonOutput<{
     result: { windows: { id?: number | null }[] }
-  }>((await runNightshiftCli(['computer', 'list-windows', '--app', 'TextEdit', '--json'])).stdout)
+  }>((await runKoluxCli(['computer', 'list-windows', '--app', 'TextEdit', '--json'])).stdout)
 
   return {
     clickPath: clicked.result.action?.path,

@@ -32,7 +32,7 @@ export async function listCleanupGitWorktrees(
   }
   if (route.kind === 'ssh') {
     if (!route.provider) {
-      // Why: cleanup should reflect only workspaces Nightshift can currently inspect.
+      // Why: cleanup should reflect only workspaces Kolux can currently inspect.
       return { route, gitWorktrees: [] }
     }
     const provider = route.provider
@@ -73,7 +73,7 @@ export function handleRepoWorktreeListError(args: {
     console.error('Workspace cleanup repo scan failed', error)
   }
   if (isRemoteWorkspaceCleanupHost(repo) && !targeted) {
-    // Why: broad cleanup only shows remote workspaces Nightshift can inspect now.
+    // Why: broad cleanup only shows remote workspaces Kolux can inspect now.
     // A remote repo that fails mid-scan is omitted, not bannered.
     return { scannedAt, candidates: [], errors: [] }
   }

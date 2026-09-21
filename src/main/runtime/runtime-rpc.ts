@@ -1,6 +1,6 @@
 // Why: the single security boundary for the bundled CLI — auth-token enforcement, metadata publication, transport orchestration.
 import { RuntimeRpcShutdown } from './runtime-rpc/runtime-rpc-shutdown'
-import type { NightshiftRuntimeRpcServerOptions } from './runtime-rpc/runtime-rpc-pairing-types'
+import type { KoluxRuntimeRpcServerOptions } from './runtime-rpc/runtime-rpc-pairing-types'
 
 export type {
   PairingOfferUnavailableReason,
@@ -10,8 +10,8 @@ export type { MobilePairingConnectionContext } from './runtime-rpc/runtime-rpc-p
 export type { RuntimeLongPollClass } from './runtime-rpc/runtime-rpc-long-poll'
 export { classifyRuntimeLongPoll } from './runtime-rpc/runtime-rpc-long-poll'
 
-export class NightshiftRuntimeRpcServer extends RuntimeRpcShutdown {
-  constructor(options: NightshiftRuntimeRpcServerOptions) {
+export class KoluxRuntimeRpcServer extends RuntimeRpcShutdown {
+  constructor(options: KoluxRuntimeRpcServerOptions) {
     super(options)
   }
 }

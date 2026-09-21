@@ -229,9 +229,9 @@ function ActivityThreadHoverCardContent({
           onIssueMenuOpenChange={detailsHoverControl.handleIssueMenuOpenChange}
           onCopyIssueLink={secondary.hoverIssue?.url ? handleCopyIssueLink : undefined}
           onEditIssue={foundation.handleEditIssue}
-          onOpenGitHubIssueInNightshift={
-            secondary.handleOpenGitHubIssueInNightshift
-              ? dismissAndRun(secondary.handleOpenGitHubIssueInNightshift)
+          onOpenGitHubIssueInKolux={
+            secondary.handleOpenGitHubIssueInKolux
+              ? dismissAndRun(secondary.handleOpenGitHubIssueInKolux)
               : undefined
           }
           onOpenIssueInBrowser={
@@ -256,18 +256,17 @@ function ActivityThreadHoverCardContent({
               )}
               actions={
                 <>
-                  {secondary.hoverLinearIssue.url &&
-                    secondary.handleOpenLinearIssueInNightshift && (
-                      <MetadataActionIcon
-                        label={translate(
-                          'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
-                          'Open in Nightshift'
-                        )}
-                        onClick={dismissAndRun(secondary.handleOpenLinearIssueInNightshift)}
-                      >
-                        <MonitorUp className="size-3" />
-                      </MetadataActionIcon>
-                    )}
+                  {secondary.hoverLinearIssue.url && secondary.handleOpenLinearIssueInKolux && (
+                    <MetadataActionIcon
+                      label={translate(
+                        'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
+                        'Open in Kolux'
+                      )}
+                      onClick={dismissAndRun(secondary.handleOpenLinearIssueInKolux)}
+                    >
+                      <MonitorUp className="size-3" />
+                    </MetadataActionIcon>
+                  )}
                   {secondary.hoverLinearIssue.url && (
                     <MetadataActionIcon
                       label={translate(
@@ -339,7 +338,7 @@ function ActivityThreadHoverCardContent({
           review={secondary.hoverReview}
           reviewMenuOpen={detailsHoverControl.reviewMenuOpen}
           onReviewMenuOpenChange={detailsHoverControl.handleReviewMenuOpenChange}
-          onOpenReviewInNightshift={secondary.handleOpenReviewInNightshift}
+          onOpenReviewInKolux={secondary.handleOpenReviewInKolux}
           onOpenReviewInBrowser={
             secondary.hoverReview?.url ? secondary.handleOpenReviewInBrowser : undefined
           }

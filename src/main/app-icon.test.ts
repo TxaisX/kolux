@@ -33,19 +33,19 @@ vi.mock('../../resources/icon-dev.png?asset', () => ({
   default: 'classic-dev-icon'
 }))
 
-vi.mock('../../resources/app-icons/nightshift-watercolor.png?asset', () => ({
+vi.mock('../../resources/app-icons/kolux-watercolor.png?asset', () => ({
   default: 'watercolor-icon'
 }))
 
-vi.mock('../../resources/app-icons/nightshift-watercolor.png?asset&asarUnpack', () => ({
+vi.mock('../../resources/app-icons/kolux-watercolor.png?asset&asarUnpack', () => ({
   default: 'watercolor-icon-unpacked'
 }))
 
-vi.mock('../../resources/app-icons/nightshift-blue.png?asset', () => ({
+vi.mock('../../resources/app-icons/kolux-blue.png?asset', () => ({
   default: 'blue-icon'
 }))
 
-vi.mock('../../resources/app-icons/nightshift-blue.png?asset&asarUnpack', () => ({
+vi.mock('../../resources/app-icons/kolux-blue.png?asset&asarUnpack', () => ({
   default: 'blue-icon-unpacked'
 }))
 
@@ -125,7 +125,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('watercolor', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -137,8 +137,8 @@ describe('app icon selection', () => {
       expect.arrayContaining(['-e', expect.stringContaining('setIcon:image forFile:appPath')]),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_BUNDLE_PATH: '/Applications/Nightshift.app',
-          NIGHTSHIFT_APP_ICON_PATH: 'watercolor-icon-unpacked'
+          KOLUX_APP_BUNDLE_PATH: '/Applications/Kolux.app',
+          KOLUX_APP_ICON_PATH: 'watercolor-icon-unpacked'
         })
       }),
       expect.any(Function)
@@ -162,7 +162,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('classic', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -178,7 +178,7 @@ describe('app icon selection', () => {
       ]),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_BUNDLE_PATH: '/Applications/Nightshift.app'
+          KOLUX_APP_BUNDLE_PATH: '/Applications/Kolux.app'
         }),
         timeout: 10_000
       }),
@@ -186,7 +186,7 @@ describe('app icon selection', () => {
     )
     expect(execFile).toHaveBeenCalledWith(
       '/usr/bin/xattr',
-      ['-d', 'com.apple.FinderInfo', '/Applications/Nightshift.app'],
+      ['-d', 'com.apple.FinderInfo', '/Applications/Kolux.app'],
       expect.objectContaining({
         timeout: 10_000
       }),
@@ -194,7 +194,7 @@ describe('app icon selection', () => {
     )
     expect(execFile).toHaveBeenCalledWith(
       '/usr/bin/xattr',
-      ['-d', 'com.apple.ResourceFork', '/Applications/Nightshift.app'],
+      ['-d', 'com.apple.ResourceFork', '/Applications/Kolux.app'],
       expect.objectContaining({
         timeout: 10_000
       }),
@@ -224,7 +224,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('classic', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -258,7 +258,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('classic', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -291,7 +291,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('watercolor', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -299,13 +299,13 @@ describe('app icon selection', () => {
     await waitForQueuedPersistence()
 
     persistMacDockIcon('blue', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
     })
     persistMacDockIcon('classic', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -317,7 +317,7 @@ describe('app icon selection', () => {
       expect.any(Array),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_ICON_PATH: 'watercolor-icon-unpacked'
+          KOLUX_APP_ICON_PATH: 'watercolor-icon-unpacked'
         })
       }),
       expect.any(Function)
@@ -332,7 +332,7 @@ describe('app icon selection', () => {
       expect.any(Array),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_ICON_PATH: 'blue-icon-unpacked'
+          KOLUX_APP_ICON_PATH: 'blue-icon-unpacked'
         })
       }),
       expect.any(Function)
@@ -346,7 +346,7 @@ describe('app icon selection', () => {
       ]),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_BUNDLE_PATH: '/Applications/Nightshift.app'
+          KOLUX_APP_BUNDLE_PATH: '/Applications/Kolux.app'
         }),
         timeout: 10_000
       }),
@@ -359,7 +359,7 @@ describe('app icon selection', () => {
     expect(execFile).toHaveBeenNthCalledWith(
       3,
       '/usr/bin/xattr',
-      ['-d', 'com.apple.FinderInfo', '/Applications/Nightshift.app'],
+      ['-d', 'com.apple.FinderInfo', '/Applications/Kolux.app'],
       expect.objectContaining({
         timeout: 10_000
       }),
@@ -368,7 +368,7 @@ describe('app icon selection', () => {
     expect(execFile).toHaveBeenNthCalledWith(
       4,
       '/usr/bin/xattr',
-      ['-d', 'com.apple.ResourceFork', '/Applications/Nightshift.app'],
+      ['-d', 'com.apple.ResourceFork', '/Applications/Kolux.app'],
       expect.objectContaining({
         timeout: 10_000
       }),
@@ -405,7 +405,7 @@ describe('app icon selection', () => {
     )
 
     persistMacDockIcon('watercolor', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -413,7 +413,7 @@ describe('app icon selection', () => {
     await waitForQueuedPersistenceMicrotasks()
 
     persistMacDockIcon('blue', {
-      appBundlePath: '/Applications/Nightshift.app',
+      appBundlePath: '/Applications/Kolux.app',
       execFile,
       isDevApp: false,
       platform: 'darwin'
@@ -439,7 +439,7 @@ describe('app icon selection', () => {
       expect.any(Array),
       expect.objectContaining({
         env: expect.objectContaining({
-          NIGHTSHIFT_APP_ICON_PATH: 'blue-icon-unpacked'
+          KOLUX_APP_ICON_PATH: 'blue-icon-unpacked'
         }),
         timeout: 10_000
       }),

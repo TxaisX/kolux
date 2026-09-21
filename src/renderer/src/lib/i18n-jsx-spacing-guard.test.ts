@@ -21,7 +21,7 @@ const CASES: GuardCase[] = [
   {
     file: 'components/sidebar/SetupScriptPromptCardViews.tsx',
     afterFallback: 'This repo ignores shared',
-    label: 'shared nightshift.yaml'
+    label: 'shared kolux.yaml'
   },
   {
     file: 'components/sidebar/SetupScriptPromptCardViews.tsx',
@@ -36,17 +36,17 @@ const CASES: GuardCase[] = [
   {
     file: 'components/settings/RepositoryHooksYamlStatus.tsx',
     afterFallback: 'Example',
-    label: 'Example nightshift.yaml template'
+    label: 'Example kolux.yaml template'
   },
   {
     file: 'components/settings/RepositoryHookScriptSetting.tsx',
     afterFallback: 'Edit',
-    label: 'Edit nightshift.yaml'
+    label: 'Edit kolux.yaml'
   },
   {
     file: 'components/settings/RepositoryHookPolicySettings.tsx',
     afterFallback: 'When both',
-    label: 'When both nightshift.yaml'
+    label: 'When both kolux.yaml'
   },
   {
     file: 'components/settings/GitPane.tsx',

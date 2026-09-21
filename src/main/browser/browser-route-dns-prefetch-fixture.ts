@@ -16,10 +16,10 @@ export type BrowserRouteDnsPrefetchProbeResult = {
 }
 
 export async function runBrowserRouteDnsPrefetchProbe(): Promise<BrowserRouteDnsPrefetchProbeResult> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-browser-dns-prefetch-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-browser-dns-prefetch-'))
   const unique = `${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`
-  const probeHost = `nightshift-prefetch-${unique}.invalid`
-  const controlHost = `nightshift-control-${unique}.invalid`
+  const probeHost = `kolux-prefetch-${unique}.invalid`
+  const controlHost = `kolux-control-${unique}.invalid`
   const sockets = new Set<Socket>()
   const socks = createServer((socket) => socket.destroy())
   let result: BrowserRouteDnsPrefetchProbeResult | null = null

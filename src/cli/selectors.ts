@@ -49,7 +49,7 @@ export async function resolveCallerDistroPathSelector(
   client: RuntimeClient
 ): Promise<string> {
   // Why not WSL_DISTRO_NAME: it is also set for a Linux-native CLI whose runtime stores
-  // POSIX paths, so it would name a distro for a caller that has none. NIGHTSHIFT_CLI_CWD, which
+  // POSIX paths, so it would name a distro for a caller that has none. KOLUX_CLI_CWD, which
   // the WSL launcher always sets and which arrives here as the invocation cwd, proves it.
   const callerDistro = parseWslUncPath(cwd)?.distro
   const linuxPath = selector.startsWith('path:') ? selector.slice(5) : ''
@@ -128,7 +128,7 @@ export async function resolveCurrentWorktreeSelector(
   if (!enclosingWorktree) {
     throw new RuntimeClientError(
       'selector_not_found',
-      `No Nightshift-managed worktree contains the current directory: ${currentPath}`
+      `No Kolux-managed worktree contains the current directory: ${currentPath}`
     )
   }
 
@@ -202,7 +202,7 @@ export async function getBrowserWorktreeSelector(
 
 // Why: mirrors browser's implicit active-tab targeting. When --terminal is
 // omitted, resolve the active terminal in the current worktree so commands
-// like `nightshift terminal send --text "hello" --enter` Just Work.
+// like `kolux terminal send --text "hello" --enter` Just Work.
 export async function getTerminalHandle(
   flags: Map<string, string | boolean>,
   cwd: string,
@@ -277,7 +277,7 @@ export async function getComputerCommandTarget(
 export type EmulatorCliTarget = {
   worktree?: string
   device?: string
-  emulator?: string // Nightshift id from list
+  emulator?: string // Kolux id from list
 }
 
 export async function getEmulatorWorktreeSelector(
@@ -299,11 +299,11 @@ export async function getEmulatorWorktreeSelector(
   if (client.isRemote) {
     return undefined
   }
-  const terminalWorktreeId = process.env.NIGHTSHIFT_WORKTREE_ID
+  const terminalWorktreeId = process.env.KOLUX_WORKTREE_ID
   if (terminalWorktreeId?.trim()) {
     return terminalWorktreeId
   }
-  const folderWorkspaceId = process.env.NIGHTSHIFT_WORKSPACE_ID?.trim()
+  const folderWorkspaceId = process.env.KOLUX_WORKSPACE_ID?.trim()
   if (folderWorkspaceId?.startsWith('folder:')) {
     return folderWorkspaceId
   }

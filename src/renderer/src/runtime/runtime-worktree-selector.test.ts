@@ -9,8 +9,8 @@ describe('toRuntimeWorktreeSelector', () => {
   it('addresses raw worktree IDs as runtime ID selectors', () => {
     expect(toRuntimeWorktreeSelector('wt-1')).toBe('id:wt-1')
     expect(
-      toRuntimeWorktreeSelector('repo-1::C:/Users/me/nightshift/workspaces/nightshift/new-worktree')
-    ).toBe('id:repo-1::C:/Users/me/nightshift/workspaces/nightshift/new-worktree')
+      toRuntimeWorktreeSelector('repo-1::C:/Users/me/kolux/workspaces/kolux/new-worktree')
+    ).toBe('id:repo-1::C:/Users/me/kolux/workspaces/kolux/new-worktree')
   })
 
   it('preserves existing ID selectors and empty values', () => {

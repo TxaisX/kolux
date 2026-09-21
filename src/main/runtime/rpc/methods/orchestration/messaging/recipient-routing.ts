@@ -1,7 +1,7 @@
 import type { LegacyAdoptedMailboxOwner, OrchestrationDb } from '../../../../orchestration/db'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { DispatchContextRow, DispatchStatus } from '../../../../orchestration/types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 
 const ACTIVE_DISPATCH_STATUSES: readonly DispatchStatus[] = ['pending', 'dispatched']
 
@@ -48,7 +48,7 @@ export type BareRecipientResolution =
     }
 
 export function resolveBareOrchestrationRecipient(params: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   handle: string
   senderRunId?: string

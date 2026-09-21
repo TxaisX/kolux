@@ -11,7 +11,7 @@ import {
 
 export const BUILTIN_TERMINAL_THEME_NAMES = getThemeNames()
 
-export const DEFAULT_TERMINAL_THEME_DARK = 'Nightshift Dark'
+export const DEFAULT_TERMINAL_THEME_DARK = 'Kolux Dark'
 export const DEFAULT_TERMINAL_THEME_LIGHT = 'Builtin Tango Light'
 export const DEFAULT_TERMINAL_DIVIDER_DARK = '#3f3f46'
 const DEFAULT_TERMINAL_DIVIDER_LIGHT = '#d4d4d8'

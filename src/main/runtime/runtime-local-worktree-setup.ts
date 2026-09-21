@@ -65,7 +65,7 @@ export async function prepareRuntimeLocalWorktreeSetup(args: {
       })
     }
   } else if (hooks?.scripts.setup && effectiveDecision !== 'skip') {
-    const skipped = `nightshift.yaml setup hook skipped for ${worktreePath}; pass --setup run to run it.`
+    const skipped = `kolux.yaml setup hook skipped for ${worktreePath}; pass --setup run to run it.`
     warning = warning ? `${warning} Also ${skipped}` : skipped
     console.warn(`[hooks] ${skipped}`)
   }

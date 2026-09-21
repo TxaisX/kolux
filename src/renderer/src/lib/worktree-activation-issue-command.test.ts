@@ -13,10 +13,10 @@ describe('ensureWorktreeHasInitialTerminal', () => {
     const store = createMockStore()
 
     ensureWorktreeHasInitialTerminal(store, 'wt-1', undefined, undefined, {
-      runnerScriptPath: '/tmp/repo/.git/nightshift/issue-command-runner.sh',
+      runnerScriptPath: '/tmp/repo/.git/kolux/issue-command-runner.sh',
       envVars: {
-        NIGHTSHIFT_ROOT_PATH: '/tmp/repo',
-        NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktrees/wt-1'
+        KOLUX_ROOT_PATH: '/tmp/repo',
+        KOLUX_WORKTREE_PATH: '/tmp/worktrees/wt-1'
       }
     })
 
@@ -26,10 +26,10 @@ describe('ensureWorktreeHasInitialTerminal', () => {
     expect(store.setActiveTab).toHaveBeenCalledWith('tab-1')
     expect(store.queueTabSetupSplit).not.toHaveBeenCalled()
     expect(store.queueTabIssueCommandSplit).toHaveBeenCalledWith('tab-1', {
-      command: 'bash /tmp/repo/.git/nightshift/issue-command-runner.sh',
+      command: 'bash /tmp/repo/.git/kolux/issue-command-runner.sh',
       env: {
-        NIGHTSHIFT_ROOT_PATH: '/tmp/repo',
-        NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktrees/wt-1'
+        KOLUX_ROOT_PATH: '/tmp/repo',
+        KOLUX_WORKTREE_PATH: '/tmp/worktrees/wt-1'
       }
     })
   })
@@ -38,14 +38,14 @@ describe('ensureWorktreeHasInitialTerminal', () => {
     const store = createMockStore()
 
     ensureWorktreeHasInitialTerminal(store, 'wt-1', undefined, undefined, {
-      runnerScriptPath: 'C:\\repo\\.git\\nightshift\\issue-command-runner.sh',
+      runnerScriptPath: 'C:\\repo\\.git\\kolux\\issue-command-runner.sh',
       shell: { family: 'posix', executable: 'wsl.exe' },
-      envVars: { NIGHTSHIFT_ROOT_PATH: 'C:\\repo' }
+      envVars: { KOLUX_ROOT_PATH: 'C:\\repo' }
     })
 
     expect(store.queueTabIssueCommandSplit).toHaveBeenCalledWith('tab-1', {
-      command: 'bash /mnt/c/repo/.git/nightshift/issue-command-runner.sh',
-      env: { NIGHTSHIFT_ROOT_PATH: 'C:\\repo' }
+      command: 'bash /mnt/c/repo/.git/kolux/issue-command-runner.sh',
+      env: { KOLUX_ROOT_PATH: 'C:\\repo' }
     })
   })
 
@@ -58,24 +58,24 @@ describe('ensureWorktreeHasInitialTerminal', () => {
       'wt-1',
       undefined,
       {
-        runnerScriptPath: '/tmp/repo/.git/nightshift/setup-runner.sh',
-        envVars: { NIGHTSHIFT_ROOT_PATH: '/tmp/repo' }
+        runnerScriptPath: '/tmp/repo/.git/kolux/setup-runner.sh',
+        envVars: { KOLUX_ROOT_PATH: '/tmp/repo' }
       },
       {
-        runnerScriptPath: '/tmp/repo/.git/nightshift/issue-command-runner.sh',
-        envVars: { NIGHTSHIFT_ROOT_PATH: '/tmp/repo' }
+        runnerScriptPath: '/tmp/repo/.git/kolux/issue-command-runner.sh',
+        envVars: { KOLUX_ROOT_PATH: '/tmp/repo' }
       }
     )
 
     expect(store.queueTabStartupCommand).not.toHaveBeenCalled()
     expect(store.queueTabSetupSplit).toHaveBeenCalledWith('tab-1', {
-      command: 'bash /tmp/repo/.git/nightshift/setup-runner.sh',
-      env: { NIGHTSHIFT_ROOT_PATH: '/tmp/repo' },
+      command: 'bash /tmp/repo/.git/kolux/setup-runner.sh',
+      env: { KOLUX_ROOT_PATH: '/tmp/repo' },
       direction: 'vertical'
     })
     expect(store.queueTabIssueCommandSplit).toHaveBeenCalledWith('tab-1', {
-      command: 'bash /tmp/repo/.git/nightshift/issue-command-runner.sh',
-      env: { NIGHTSHIFT_ROOT_PATH: '/tmp/repo' }
+      command: 'bash /tmp/repo/.git/kolux/issue-command-runner.sh',
+      env: { KOLUX_ROOT_PATH: '/tmp/repo' }
     })
   })
 

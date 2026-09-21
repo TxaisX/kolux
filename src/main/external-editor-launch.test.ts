@@ -39,7 +39,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
     )
 
     expect(
-      resolveExternalEditorLaunchSpec('idea', 'C:\\workspaces\\nightshift', {
+      resolveExternalEditorLaunchSpec('idea', 'C:\\workspaces\\kolux', {
         platform: 'win32',
         fileExists: (candidate) => candidate === `${installBin}\\idea64.exe`
       })
@@ -47,7 +47,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
       kind: 'executable',
       hideWindowsConsole: true,
       spawnCmd: `${installBin}\\idea64.exe`,
-      spawnArgs: ['C:\\workspaces\\nightshift']
+      spawnArgs: ['C:\\workspaces\\kolux']
     })
     // Why: a bare PATH `idea64` may belong to a different, stale install.
     expect(resolveCliCommandMock).toHaveBeenCalledWith('idea', { platform: 'win32' })
@@ -61,7 +61,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
     )
 
     expect(
-      resolveExternalEditorLaunchSpec('goland64', 'C:\\workspaces\\nightshift', {
+      resolveExternalEditorLaunchSpec('goland64', 'C:\\workspaces\\kolux', {
         platform: 'win32',
         fileExists: (candidate) => candidate === `${installBin}\\goland64.exe`
       }).spawnCmd
@@ -75,7 +75,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
     )
 
     expect(
-      resolveExternalEditorLaunchSpec('idea', 'C:\\workspaces\\nightshift', {
+      resolveExternalEditorLaunchSpec('idea', 'C:\\workspaces\\kolux', {
         platform: 'win32',
         fileExists: () => false
       })
@@ -84,7 +84,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
       hideWindowsConsole: true,
       detachedGui: true,
       spawnCmd: toolboxShim,
-      spawnArgs: ['C:\\workspaces\\nightshift']
+      spawnArgs: ['C:\\workspaces\\kolux']
     })
   })
 
@@ -175,17 +175,17 @@ describe('resolveExternalEditorLaunchSpec', () => {
 
   // Why: `start` re-parses argv, so only JetBrains shims may take that path.
   it.each([
-    ['code', 'C:\\Tools\\code.cmd', ['C:\\workspaces\\nightshift']],
+    ['code', 'C:\\Tools\\code.cmd', ['C:\\workspaces\\kolux']],
     [
       'cursor',
       'C:\\Users\\me\\AppData\\Local\\Programs\\cursor\\bin\\cursor.cmd',
-      ['--new-window', 'C:\\workspaces\\nightshift']
+      ['--new-window', 'C:\\workspaces\\kolux']
     ]
   ])('does not detach the %s batch shim through start', (command, resolvedCommand, spawnArgs) => {
     resolveCliCommandMock.mockImplementation(() => resolvedCommand)
 
     expect(
-      resolveExternalEditorLaunchSpec(command, 'C:\\workspaces\\nightshift', { platform: 'win32' })
+      resolveExternalEditorLaunchSpec(command, 'C:\\workspaces\\kolux', { platform: 'win32' })
     ).toEqual({
       kind: 'executable',
       hideWindowsConsole: true,
@@ -249,14 +249,14 @@ describe('resolveExternalEditorLaunchSpec', () => {
 
   it('runs GUI compound Windows commands verbatim instead of re-parsing them under start', () => {
     expect(
-      resolveExternalEditorLaunchSpec('code --reuse-window', 'C:\\workspaces\\nightshift', {
+      resolveExternalEditorLaunchSpec('code --reuse-window', 'C:\\workspaces\\kolux', {
         platform: 'win32'
       })
     ).toEqual({
       kind: 'shell',
       hideWindowsConsole: true,
       spawnCmd: getCmdExePath(),
-      spawnArgs: ['/d', '/s', '/c', 'code --reuse-window C:\\workspaces\\nightshift']
+      spawnArgs: ['/d', '/s', '/c', 'code --reuse-window C:\\workspaces\\kolux']
     })
   })
 
@@ -275,14 +275,14 @@ describe('resolveExternalEditorLaunchSpec', () => {
     expect(
       resolveExternalEditorLaunchSpec(
         'C:\\Program Files\\Neovim\\bin\\nvim.exe',
-        'C:\\workspaces\\nightshift',
+        'C:\\workspaces\\kolux',
         { platform: 'win32' }
       )
     ).toEqual({
       kind: 'executable',
       hideWindowsConsole: false,
       spawnCmd: 'C:\\Program Files\\Neovim\\bin\\nvim.exe',
-      spawnArgs: ['C:\\workspaces\\nightshift']
+      spawnArgs: ['C:\\workspaces\\kolux']
     })
   })
 
@@ -290,27 +290,27 @@ describe('resolveExternalEditorLaunchSpec', () => {
     expect(
       resolveExternalEditorLaunchSpec(
         '"C:\\Program Files\\Neovim\\bin\\nvim.exe"',
-        'C:\\workspaces\\nightshift',
+        'C:\\workspaces\\kolux',
         { platform: 'win32' }
       )
     ).toEqual({
       kind: 'executable',
       hideWindowsConsole: false,
       spawnCmd: 'C:\\Program Files\\Neovim\\bin\\nvim.exe',
-      spawnArgs: ['C:\\workspaces\\nightshift']
+      spawnArgs: ['C:\\workspaces\\kolux']
     })
   })
 
   it('shows the Windows console for NeoVim shell commands with arguments', () => {
     expect(
-      resolveExternalEditorLaunchSpec('nvim --clean', 'C:\\workspaces\\nightshift', {
+      resolveExternalEditorLaunchSpec('nvim --clean', 'C:\\workspaces\\kolux', {
         platform: 'win32'
       })
     ).toEqual({
       kind: 'shell',
       hideWindowsConsole: false,
       spawnCmd: getCmdExePath(),
-      spawnArgs: ['/d', '/s', '/c', 'nvim --clean C:\\workspaces\\nightshift']
+      spawnArgs: ['/d', '/s', '/c', 'nvim --clean C:\\workspaces\\kolux']
     })
   })
 
@@ -396,7 +396,7 @@ describe('resolveExternalEditorLaunchSpec', () => {
     ])
   })
 
-  it.each(['C:\\workspaces\\nightshift', '\\\\server\\share\\project'])(
+  it.each(['C:\\workspaces\\kolux', '\\\\server\\share\\project'])(
     'keeps the non-WSL Windows path %s local',
     (pathValue) => {
       expect(

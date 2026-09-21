@@ -91,7 +91,7 @@ export function AccountsPane({
     wslDistros,
     wslCapabilitiesLoading
   )
-  // Why: with a Remote Nightshift Server active the server owns provider accounts
+  // Why: with a Remote Kolux Server active the server owns provider accounts
   // (see #7973); every list/select/remove below must scope to it, not host/WSL.
   const isRemoteAccountScope = hasRemoteProviderAccountOwner(settings)
   const activeRuntimeEnvironmentId = settings.activeRuntimeEnvironmentId?.trim() || null

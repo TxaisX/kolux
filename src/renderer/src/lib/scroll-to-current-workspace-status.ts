@@ -1,5 +1,5 @@
 export const SCROLL_TO_CURRENT_WORKSPACE_REVEAL_REQUEST_EVENT =
-  'nightshift-scroll-to-current-workspace-reveal-request'
+  'kolux-scroll-to-current-workspace-reveal-request'
 
 export type ScrollToCurrentWorkspaceRevealRequestDetail =
   | {

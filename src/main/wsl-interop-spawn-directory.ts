@@ -7,8 +7,8 @@ import { homedir } from 'node:os'
  * Why this exists (#16463): the WSL command builders set `cwd: undefined`,
  * meaning "the directory is already expressed inside the command" — but that is
  * not what `undefined` means to `CreateProcessW`. libuv passes NULL for
- * `lpCurrentDirectory`, and NULL means *inherit the parent's*. Nightshift launched by
- * `nightshift-ide` from a WSL shell inherits `\\wsl.localhost\<distro>\...\<worktree>`
+ * `lpCurrentDirectory`, and NULL means *inherit the parent's*. Kolux launched by
+ * `kolux-ide` from a WSL shell inherits `\\wsl.localhost\<distro>\...\<worktree>`
  * as its Win32 cwd; Linux can delete that directory out from under a Windows
  * process across the 9P share, and from then on `CreateProcessW` fails
  * `ERROR_PATH_NOT_FOUND` — surfaced by libuv as `spawn wsl.exe ENOENT`, for the
@@ -51,7 +51,7 @@ export function resolveWslInteropSpawnCwd(): string | undefined {
   // A root is fine here — nothing scans this directory, it is only the value
   // `CreateProcessW` receives for `lpCurrentDirectory`.
   const candidates: (string | undefined)[] = [
-    env.NIGHTSHIFT_USER_DATA_PATH,
+    env.KOLUX_USER_DATA_PATH,
     env.USERPROFILE,
     env.HOMEDRIVE && env.HOMEPATH ? `${env.HOMEDRIVE}${env.HOMEPATH}` : undefined,
     homedir(),

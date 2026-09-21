@@ -21,7 +21,7 @@ export function shouldShowWorktree(args: {
   importedExternalWorktreePaths?: readonly string[] | undefined
   visibilitySource?: ReturnType<WorktreeVisibilitySourceMatcher>
 }): boolean {
-  if (args.isSelectedCheckout || args.ownership === 'nightshift-managed') {
+  if (args.isSelectedCheckout || args.ownership === 'kolux-managed') {
     return true
   }
   if (

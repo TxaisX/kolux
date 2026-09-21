@@ -10,8 +10,8 @@ Create independent Tasks before the first wait. Encode only real dependencies,
 then use the ready view as external memory:
 
 ```text
-NIGHTSHIFT orchestration task-create --spec "<dependent work>" --deps <json_array> --json
-NIGHTSHIFT orchestration task-list --ready --brief --json
+KOLUX orchestration task-create --spec "<dependent work>" --deps <json_array> --json
+KOLUX orchestration task-list --ready --brief --json
 ```
 
 `--brief` collapses whitespace and caps echoed specs at 160 characters;
@@ -27,11 +27,11 @@ so the worker inherits the user's configured agent default. Add `--effort` only
 when that model supports it:
 
 ```text
-NIGHTSHIFT orchestration worker-start --task <task_id> --worktree current --agent claude --model opus --effort high --json
+KOLUX orchestration worker-start --task <task_id> --worktree current --agent claude --model opus --effort high --json
 ```
 
 `--effort` requires `--model`; neither option combines with `--terminal`. A
-connected worker server must advertise launch-preference support before Nightshift
+connected worker server must advertise launch-preference support before Kolux
 forwards either field. Compare `launch.requested` with `launch.effective`; never
 claim a model or effort from requested arguments alone.
 
@@ -42,8 +42,8 @@ same exact agent has immediate follow-up work, recover the proven handle and
 transfer cleanup ownership to the new Dispatch:
 
 ```text
-NIGHTSHIFT orchestration worker-show --dispatch <dispatch_id> --json
-NIGHTSHIFT orchestration worker-start --task <next_task_id> --terminal <agent_terminal_handle> --json
+KOLUX orchestration worker-show --dispatch <dispatch_id> --json
+KOLUX orchestration worker-start --task <next_task_id> --terminal <agent_terminal_handle> --json
 ```
 
 Otherwise explicitly retain or release the settled worker. Do not leave it live

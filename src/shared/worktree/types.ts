@@ -3,7 +3,7 @@ import type { AutomationExecutionTargetType } from '../automations-types'
 import type { TaskSourceContext } from '../task-source-context'
 import type { TuiAgent } from '../tui-agent'
 import type { DiffComment, MobileDiffReviewState } from '../diff-comment-types'
-import type { EphemeralVmCheckoutMode } from '../nightshift-yaml-hook-types'
+import type { EphemeralVmCheckoutMode } from '../kolux-yaml-hook-types'
 import type { BuiltInWorktreeVisibilitySourceId } from '../repo-types'
 import type { WorktreeIdentity } from './identity'
 
@@ -109,12 +109,12 @@ export type Worktree = {
   /** User-authored sidebar ordering. Higher values render earlier in Manual sort. */
   manualOrder?: number
   lastActivityAt: number
-  /** Set once when Nightshift creates the worktree. Absent for worktrees discovered
+  /** Set once when Kolux creates the worktree. Absent for worktrees discovered
    *  on disk or persisted before this field existed. Used by the sidebar to
    *  grant newly-created worktrees a short grace window at the top of Recent,
    *  immune to ambient PTY-bump reordering in other worktrees. */
   createdAt?: number
-  /** Agent selected when Nightshift originally created the worktree. Used only to
+  /** Agent selected when Kolux originally created the worktree. Used only to
    *  seed a replacement terminal if the user later reopens the worktree after
    *  closing every visible surface. */
   createdWithAgent?: TuiAgent
@@ -132,7 +132,7 @@ export type Worktree = {
   sparsePresetId?: string
   /** Intended create base for stale-base probes. Persisted metadata, not UI drift state. */
   baseRef?: string
-  /** Remote/branch Nightshift should publish review commits to when it created this worktree. */
+  /** Remote/branch Kolux should publish review commits to when it created this worktree. */
   pushTarget?: GitPushTarget
   /** Path-derived worktree ids this worktree had before folder renames. */
   priorWorktreeIds?: string[]
@@ -143,13 +143,13 @@ export type Worktree = {
   cliProvenance?: CliWorkspaceProvenance
 } & GitWorktreeInfo
 
-/** Provenance for workspaces created through `nightshift worktree create`. Absent on
+/** Provenance for workspaces created through `kolux worktree create`. Absent on
  *  workspaces created before this field existed and on every non-CLI create, so
  *  consumers must read "missing" as "not CLI-created". */
 export type CliWorkspaceProvenance = {
   kind: 'created-by-cli'
   createdAt: number
-  /** Nightshift terminal the CLI ran inside, when the caller had one — distinguishes
+  /** Kolux terminal the CLI ran inside, when the caller had one — distinguishes
    *  an agent-issued create from one hand-typed in an external shell. */
   callerTerminalHandle?: string
   /** Agent requested via `--agent`, when one was passed. */
@@ -185,7 +185,7 @@ export type GitPushTarget = {
   remoteName: string
   branchName: string
   remoteUrl?: string
-  /** True when Nightshift added this remote while preparing a fork-PR worktree. */
+  /** True when Kolux added this remote while preparing a fork-PR worktree. */
   remoteCreated?: boolean
 }
 
@@ -202,11 +202,7 @@ export type GitHubPrStartPoint = {
   maintainerCanModify?: boolean
 }
 
-export type WorktreeOwnership =
-  | 'nightshift-managed'
-  | 'external'
-  | 'unknown-legacy'
-  | 'agent-scratch'
+export type WorktreeOwnership = 'kolux-managed' | 'external' | 'unknown-legacy' | 'agent-scratch'
 
 export type DetectedWorktreeListSource = 'git' | 'metadata-fallback' | 'session-fallback'
 

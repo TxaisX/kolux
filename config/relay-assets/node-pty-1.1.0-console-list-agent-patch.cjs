@@ -46,7 +46,7 @@ function patchNodePtyConsoleListAgent(relayDir = process.cwd()) {
     throw new Error('Refusing to patch unexpected node-pty console-list agent source')
   }
   const patchedSource = inspected.source.replace(ORIGINAL_BODY, PATCHED_BODY)
-  const temporaryPath = `${inspected.agentPath}.nightshift-patch-${process.pid}`
+  const temporaryPath = `${inspected.agentPath}.kolux-patch-${process.pid}`
   // Why: a terminated remote install must leave either known source version recoverable on reconnect.
   try {
     writeFileSync(temporaryPath, patchedSource)

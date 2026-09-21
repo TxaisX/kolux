@@ -86,7 +86,7 @@ function renderMenu(overrides: Record<string, unknown> = {}): string {
     ],
     quickCommandHostLoadFailed: false,
     quickCommandHostOwnershipPending: false,
-    quickCommandRepoLabel: 'Nightshift',
+    quickCommandRepoLabel: 'Kolux',
     onQuickCommand: vi.fn(),
     onAddQuickCommand: vi.fn(),
     onToggleExpand: vi.fn(),
@@ -258,7 +258,7 @@ describe('TerminalContextMenu', () => {
       ]
     })
 
-    expect(rendered).toContain('Nightshift')
+    expect(rendered).toContain('Kolux')
     expect(rendered).toContain('Global')
     expect(rendered).not.toContain('Local Mac')
   })

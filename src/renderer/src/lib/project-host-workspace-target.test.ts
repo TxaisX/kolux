@@ -58,30 +58,27 @@ function makeSetup(
 
 describe('project-host workspace target resolution', () => {
   it('falls back to a local setup for a local-only repo', () => {
-    const repo = makeRepo('nightshift')
+    const repo = makeRepo('kolux')
 
     const resolution = resolveWorkspaceCreationTarget({ eligibleRepos: [repo] })
 
     expect(resolution).toMatchObject({
       status: 'ready',
       target: {
-        projectId: 'repo:nightshift',
+        projectId: 'repo:kolux',
         hostId: 'local',
-        projectHostSetupId: 'nightshift',
-        repoId: 'nightshift'
+        projectHostSetupId: 'kolux',
+        repoId: 'kolux'
       }
     })
   })
 
   it('chooses the focused host setup when one project exists on multiple hosts', () => {
-    const repos = [
-      makeRepo('nightshift-local'),
-      makeRepo('nightshift-ssh', { connectionId: 'openclaw-2' })
-    ]
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift-local', 'nightshift-ssh'])]
+    const repos = [makeRepo('kolux-local'), makeRepo('kolux-ssh', { connectionId: 'openclaw-2' })]
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux-local', 'kolux-ssh'])]
     const projectHostSetups = [
-      makeSetup('nightshift-local', 'github:TxaisX/nightshift', 'local', 'nightshift-local'),
-      makeSetup('nightshift-ssh', 'github:TxaisX/nightshift', 'ssh:openclaw-2', 'nightshift-ssh')
+      makeSetup('kolux-local', 'github:TxaisX/nightshift', 'local', 'kolux-local'),
+      makeSetup('kolux-ssh', 'github:TxaisX/nightshift', 'ssh:openclaw-2', 'kolux-ssh')
     ]
 
     expect(
@@ -92,19 +89,19 @@ describe('project-host workspace target resolution', () => {
         projectId: 'github:TxaisX/nightshift',
         focusedHostScope: 'ssh:openclaw-2'
       })
-    ).toBe('nightshift-ssh')
+    ).toBe('kolux-ssh')
   })
 
   it('matches duplicate repo ids to the setup execution host', () => {
-    const localRepo = makeRepo('nightshift', { path: '/local/nightshift' })
-    const sshRepo = makeRepo('nightshift', {
-      path: '/remote/nightshift',
+    const localRepo = makeRepo('kolux', { path: '/local/kolux' })
+    const sshRepo = makeRepo('kolux', {
+      path: '/remote/kolux',
       connectionId: 'builder'
     })
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
     const projectHostSetups = [
-      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'nightshift'),
-      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'nightshift')
+      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'kolux'),
+      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'kolux')
     ]
 
     const resolution = resolveWorkspaceCreationTarget({
@@ -118,18 +115,18 @@ describe('project-host workspace target resolution', () => {
       status: 'ready',
       target: {
         hostId: 'ssh:builder',
-        repo: { path: '/remote/nightshift', connectionId: 'builder' }
+        repo: { path: '/remote/kolux', connectionId: 'builder' }
       }
     })
   })
 
   it('keeps a focused duplicate repo id on its selected host', () => {
-    const localRepo = makeRepo('nightshift', { path: '/local/nightshift' })
-    const sshRepo = makeRepo('nightshift', { path: '/remote/nightshift', connectionId: 'builder' })
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
+    const localRepo = makeRepo('kolux', { path: '/local/kolux' })
+    const sshRepo = makeRepo('kolux', { path: '/remote/kolux', connectionId: 'builder' })
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
     const projectHostSetups = [
-      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'nightshift'),
-      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'nightshift')
+      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'kolux'),
+      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'kolux')
     ]
 
     expect(
@@ -137,7 +134,7 @@ describe('project-host workspace target resolution', () => {
         eligibleRepos: [localRepo, sshRepo],
         projects,
         projectHostSetups,
-        draftRepoId: 'nightshift',
+        draftRepoId: 'kolux',
         focusedHostScope: 'ssh:builder'
       })
     ).toMatchObject({
@@ -145,18 +142,18 @@ describe('project-host workspace target resolution', () => {
       target: {
         hostId: 'ssh:builder',
         projectHostSetupId: 'ssh-setup',
-        repo: { path: '/remote/nightshift', connectionId: 'builder' }
+        repo: { path: '/remote/kolux', connectionId: 'builder' }
       }
     })
   })
 
   it('resolves duplicate repo ids to a ready setup when no host is focused', () => {
-    const localRepo = makeRepo('nightshift', { path: '/local/nightshift' })
-    const sshRepo = makeRepo('nightshift', { path: '/remote/nightshift', connectionId: 'builder' })
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
+    const localRepo = makeRepo('kolux', { path: '/local/kolux' })
+    const sshRepo = makeRepo('kolux', { path: '/remote/kolux', connectionId: 'builder' })
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
     const projectHostSetups = [
-      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'nightshift'),
-      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'nightshift')
+      makeSetup('local-setup', 'github:TxaisX/nightshift', 'local', 'kolux'),
+      makeSetup('ssh-setup', 'github:TxaisX/nightshift', 'ssh:builder', 'kolux')
     ]
 
     expect(
@@ -164,7 +161,7 @@ describe('project-host workspace target resolution', () => {
         eligibleRepos: [localRepo, sshRepo],
         projects,
         projectHostSetups,
-        draftRepoId: 'nightshift',
+        draftRepoId: 'kolux',
         focusedHostScope: 'all',
         actionableHostIds: new Set(['local', 'ssh:builder'])
       })
@@ -173,23 +170,21 @@ describe('project-host workspace target resolution', () => {
       target: {
         hostId: 'local',
         projectHostSetupId: 'local-setup',
-        repoId: 'nightshift',
-        repo: { path: '/local/nightshift' }
+        repoId: 'kolux',
+        repo: { path: '/local/kolux' }
       }
     })
   })
 
   it('resolves an explicit project and host to the matching setup', () => {
     const repos = [
-      makeRepo('nightshift-local'),
-      makeRepo('nightshift-runtime', { executionHostId: 'runtime:gpu-1' })
+      makeRepo('kolux-local'),
+      makeRepo('kolux-runtime', { executionHostId: 'runtime:gpu-1' })
     ]
-    const projects = [
-      makeProject('github:TxaisX/nightshift', ['nightshift-local', 'nightshift-runtime'])
-    ]
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux-local', 'kolux-runtime'])]
     const projectHostSetups = [
-      makeSetup('nightshift-local', 'github:TxaisX/nightshift', 'local', 'nightshift-local'),
-      makeSetup('nightshift-runtime', 'github:TxaisX/nightshift', 'runtime:gpu-1', 'nightshift-runtime')
+      makeSetup('kolux-local', 'github:TxaisX/nightshift', 'local', 'kolux-local'),
+      makeSetup('kolux-runtime', 'github:TxaisX/nightshift', 'runtime:gpu-1', 'kolux-runtime')
     ]
 
     const resolution = resolveWorkspaceCreationTarget({
@@ -205,8 +200,8 @@ describe('project-host workspace target resolution', () => {
       target: {
         projectId: 'github:TxaisX/nightshift',
         hostId: 'runtime:gpu-1',
-        projectHostSetupId: 'nightshift-runtime',
-        repoId: 'nightshift-runtime'
+        projectHostSetupId: 'kolux-runtime',
+        repoId: 'kolux-runtime'
       }
     })
   })
@@ -215,37 +210,32 @@ describe('project-host workspace target resolution', () => {
     // Why: the run-target picker renders one row per host. A draft persisted before that collapse
     // can still name a duplicate local setup; creation must land in the displayed path, not a
     // transient worktree path the user never sees.
-    const repos = [makeRepo('nightshift-main'), makeRepo('nightshift-worktree')]
-    const projects = [
-      makeProject('github:TxaisX/nightshift', ['nightshift-main', 'nightshift-worktree'])
-    ]
+    const repos = [makeRepo('kolux-main'), makeRepo('kolux-worktree')]
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux-main', 'kolux-worktree'])]
     const projectHostSetups = [
-      makeSetup('nightshift-main', 'github:TxaisX/nightshift', 'local', 'nightshift-main'),
-      makeSetup('nightshift-worktree', 'github:TxaisX/nightshift', 'local', 'nightshift-worktree')
+      makeSetup('kolux-main', 'github:TxaisX/nightshift', 'local', 'kolux-main'),
+      makeSetup('kolux-worktree', 'github:TxaisX/nightshift', 'local', 'kolux-worktree')
     ]
 
     const resolution = resolveWorkspaceCreationTarget({
       eligibleRepos: repos,
       projects,
       projectHostSetups,
-      projectHostSetupId: 'nightshift-worktree'
+      projectHostSetupId: 'kolux-worktree'
     })
 
     expect(resolution).toMatchObject({
       status: 'ready',
-      target: { projectHostSetupId: 'nightshift-main', repoId: 'nightshift-main', hostId: 'local' }
+      target: { projectHostSetupId: 'kolux-main', repoId: 'kolux-main', hostId: 'local' }
     })
   })
 
   it('keeps an explicit setup id that is the only one on its host', () => {
-    const repos = [
-      makeRepo('nightshift-local'),
-      makeRepo('nightshift-ssh', { connectionId: 'builder' })
-    ]
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift-local', 'nightshift-ssh'])]
+    const repos = [makeRepo('kolux-local'), makeRepo('kolux-ssh', { connectionId: 'builder' })]
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux-local', 'kolux-ssh'])]
     const projectHostSetups = [
-      makeSetup('nightshift-local', 'github:TxaisX/nightshift', 'local', 'nightshift-local'),
-      makeSetup('nightshift-ssh', 'github:TxaisX/nightshift', 'ssh:builder', 'nightshift-ssh')
+      makeSetup('kolux-local', 'github:TxaisX/nightshift', 'local', 'kolux-local'),
+      makeSetup('kolux-ssh', 'github:TxaisX/nightshift', 'ssh:builder', 'kolux-ssh')
     ]
 
     expect(
@@ -253,13 +243,13 @@ describe('project-host workspace target resolution', () => {
         eligibleRepos: repos,
         projects,
         projectHostSetups,
-        projectHostSetupId: 'nightshift-ssh'
+        projectHostSetupId: 'kolux-ssh'
       })
     ).toMatchObject({
       status: 'ready',
       target: {
-        projectHostSetupId: 'nightshift-ssh',
-        repoId: 'nightshift-ssh',
+        projectHostSetupId: 'kolux-ssh',
+        repoId: 'kolux-ssh',
         hostId: 'ssh:builder'
       }
     })
@@ -267,25 +257,23 @@ describe('project-host workspace target resolution', () => {
 
   it('does not merge same-name repos without shared project identity', () => {
     const repos = [
-      makeRepo('personal-nightshift', { displayName: 'nightshift' }),
-      makeRepo('work-nightshift', { displayName: 'nightshift', connectionId: 'work-linux' })
+      makeRepo('personal-kolux', { displayName: 'kolux' }),
+      makeRepo('work-kolux', { displayName: 'kolux', connectionId: 'work-linux' })
     ]
 
     expect(
       resolveWorkspaceCreationRepoId({
         eligibleRepos: repos,
-        projectId: 'repo:personal-nightshift',
+        projectId: 'repo:personal-kolux',
         focusedHostScope: 'ssh:work-linux'
       })
-    ).toBe('personal-nightshift')
+    ).toBe('personal-kolux')
   })
 
   it('reports unavailable when the project is not set up on the selected host', () => {
-    const repo = makeRepo('nightshift')
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
-    const projectHostSetups = [
-      makeSetup('nightshift', 'github:TxaisX/nightshift', 'local', 'nightshift')
-    ]
+    const repo = makeRepo('kolux')
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
+    const projectHostSetups = [makeSetup('kolux', 'github:TxaisX/nightshift', 'local', 'kolux')]
 
     expect(
       resolveWorkspaceCreationTarget({
@@ -302,11 +290,11 @@ describe('project-host workspace target resolution', () => {
   })
 
   it('does not fall back to another host when only a host is selected', () => {
-    const localRepo = makeRepo('nightshift-local')
-    const remoteRepo = makeRepo('nightshift-ssh', { connectionId: 'builder' })
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift-local', 'nightshift-ssh'])]
+    const localRepo = makeRepo('kolux-local')
+    const remoteRepo = makeRepo('kolux-ssh', { connectionId: 'builder' })
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux-local', 'kolux-ssh'])]
     const projectHostSetups = [
-      makeSetup('nightshift-local', 'github:TxaisX/nightshift', 'local', 'nightshift-local')
+      makeSetup('kolux-local', 'github:TxaisX/nightshift', 'local', 'kolux-local')
     ]
 
     expect(
@@ -314,7 +302,7 @@ describe('project-host workspace target resolution', () => {
         eligibleRepos: [localRepo, remoteRepo],
         projects,
         projectHostSetups,
-        draftRepoId: 'nightshift-local',
+        draftRepoId: 'kolux-local',
         hostId: 'ssh:builder',
         actionableHostIds: new Set(['local', 'ssh:builder'])
       })
@@ -325,10 +313,10 @@ describe('project-host workspace target resolution', () => {
   })
 
   it('reports setup-not-ready when the selected host has pending setup metadata', () => {
-    const repo = makeRepo('nightshift')
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
+    const repo = makeRepo('kolux')
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
     const projectHostSetups = [
-      makeSetup('nightshift', 'github:TxaisX/nightshift', 'local', 'nightshift'),
+      makeSetup('kolux', 'github:TxaisX/nightshift', 'local', 'kolux'),
       makeSetup('gpu-pending', 'github:TxaisX/nightshift', 'runtime:gpu', '', {
         path: '',
         setupState: 'setting-up',
@@ -351,10 +339,10 @@ describe('project-host workspace target resolution', () => {
   })
 
   it('reports unavailable when an explicit setup is not ready', () => {
-    const repo = makeRepo('nightshift')
-    const projects = [makeProject('github:TxaisX/nightshift', ['nightshift'])]
+    const repo = makeRepo('kolux')
+    const projects = [makeProject('github:TxaisX/nightshift', ['kolux'])]
     const projectHostSetups = [
-      makeSetup('nightshift', 'github:TxaisX/nightshift', 'local', 'nightshift', {
+      makeSetup('kolux', 'github:TxaisX/nightshift', 'local', 'kolux', {
         setupState: 'setting-up'
       })
     ]
@@ -364,7 +352,7 @@ describe('project-host workspace target resolution', () => {
         eligibleRepos: [repo],
         projects,
         projectHostSetups,
-        projectHostSetupId: 'nightshift'
+        projectHostSetupId: 'kolux'
       })
     ).toEqual({
       status: 'unavailable',
@@ -394,10 +382,10 @@ describe('project-host workspace target resolution', () => {
   it('does not silently switch an explicit setup id to an actionable sibling host', () => {
     const remoteRepo = makeRepo('remote-repo', { connectionId: 'removed' })
     const localRepo = makeRepo('local-repo')
-    const projects = [makeProject('repo:nightshift', ['remote-repo', 'local-repo'])]
+    const projects = [makeProject('repo:kolux', ['remote-repo', 'local-repo'])]
     const projectHostSetups = [
-      makeSetup('removed-setup', 'repo:nightshift', 'ssh:removed', 'remote-repo'),
-      makeSetup('local-setup', 'repo:nightshift', 'local', 'local-repo')
+      makeSetup('removed-setup', 'repo:kolux', 'ssh:removed', 'remote-repo'),
+      makeSetup('local-setup', 'repo:kolux', 'local', 'local-repo')
     ]
 
     expect(

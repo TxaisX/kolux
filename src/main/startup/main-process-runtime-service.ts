@@ -1,10 +1,10 @@
 import { app } from 'electron'
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { getLocalPtyProvider, getSshPtyProvider, clearProviderPtyState } from '../ipc/pty'
 import { agentHookServer } from '../agent-hooks/server'
 import { browserManager } from '../browser/browser-manager'
 import { loadAgentSessionClaimSigner } from '../runtime/agent-session-claim-identity'
-import { getProfileUserDataPath } from '../nightshift-profiles/profile-storage-paths'
+import { getProfileUserDataPath } from '../kolux-profiles/profile-storage-paths'
 import { prepareCodexAiVaultSessionResume } from '../codex/codex-ai-vault-session-resume'
 import { resolveHostCodexSessionSourceHome } from '../codex/codex-session-source-home'
 import { isAgentStatusHooksEnabled } from '../agent-hooks/managed-agent-hook-controls'
@@ -35,7 +35,7 @@ export function getDesktopWindowStatus(): RuntimeDesktopWindowStatus {
   return value === 'ready' ? 'openable' : value
 }
 
-export function initializeMainProcessRuntime(): NightshiftRuntimeService {
+export function initializeMainProcessRuntime(): KoluxRuntimeService {
   const store = state.store
   const stats = state.stats
   if (!store || !stats) {
@@ -64,9 +64,9 @@ export function initializeMainProcessRuntime(): NightshiftRuntimeService {
       )
   }
   // Why here and not in the window listener: `subscribeEnrichedStatus` also fires under headless
-  // `nightshift serve`, which never opens one, and the fleet path runs there too.
+  // `kolux serve`, which never opens one, and the fleet path runs there too.
   const observedPaneIdentities = new AgentStatusObservedPaneIdentities()
-  const runtime = new NightshiftRuntimeService(store, stats, {
+  const runtime = new KoluxRuntimeService(store, stats, {
     agentSessionClaimSigner: loadAgentSessionClaimSigner(
       getProfileUserDataPath(),
       getProfileUserDataPath()
@@ -139,7 +139,7 @@ export function initializeMainProcessRuntime(): NightshiftRuntimeService {
   return runtime
 }
 
-export function configureRuntimeServices(runtime: NightshiftRuntimeService): void {
+export function configureRuntimeServices(runtime: KoluxRuntimeService): void {
   const store = state.store
   const claudeAccounts = state.claudeAccounts
   const codexAccounts = state.codexAccounts
@@ -155,7 +155,7 @@ export function configureRuntimeServices(runtime: NightshiftRuntimeService): voi
   runtime.setSkillCloudService(new SkillCloudService(app.getPath('userData')))
   runtime.setAccountServices({ claudeAccounts, codexAccounts, rateLimits })
   runtime.setCommitMessageAgentEnvironmentResolvers({
-    // Why: Codex hooks/auth live in Nightshift's managed runtime home even for the default path, so every launch must resolve CODEX_HOME via runtime-home.
+    // Why: Codex hooks/auth live in Kolux's managed runtime home even for the default path, so every launch must resolve CODEX_HOME via runtime-home.
     prepareForCodexLaunch: prepareCodexRuntimeHomeForLaunch,
     prepareForClaudeLaunch: (target) => state.claudeRuntimeAuth!.prepareForClaudeLaunch(target)
   })

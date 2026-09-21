@@ -19,7 +19,7 @@ export function getUsageProviderAccountsSectionId(
     case 'grok':
       return 'accounts-grok'
     case 'kimi':
-      // Why: Nightshift must not mutate Kimi's CLI-owned credential lifecycle.
+      // Why: Kolux must not mutate Kimi's CLI-owned credential lifecycle.
       return null
   }
 }

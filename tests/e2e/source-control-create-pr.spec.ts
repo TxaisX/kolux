@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import type { CreateHostedReviewResult } from '../../src/shared/hosted-review'
 
@@ -127,7 +127,7 @@ async function seedCreatePREligibleBranch(
       number: 73,
       title: 'Create PR from E2E',
       state: 'open' as const,
-      url: 'https://github.com/acme/nightshift/pull/73',
+      url: 'https://github.com/acme/kolux/pull/73',
       checksStatus: 'pending' as const,
       updatedAt: '2026-05-15T00:00:00.000Z',
       mergeable: 'UNKNOWN' as const
@@ -193,7 +193,7 @@ async function seedCreatePREligibleBranch(
         return {
           ok: true as const,
           number: 73,
-          url: 'https://github.com/acme/nightshift/pull/73'
+          url: 'https://github.com/acme/kolux/pull/73'
         }
       }
     }))
@@ -205,29 +205,27 @@ async function seedCreatePREligibleBranch(
 }
 
 test.describe('Source Control create pull request', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('creates the pull request from the Source Control primary action', async ({
-    nightshiftPage
-  }) => {
-    const { branch, worktreeId } = await seedCreatePREligibleBranch(nightshiftPage)
-    await openSourceControl(nightshiftPage, worktreeId)
-    await forceCreatePREligibleStatus(nightshiftPage, worktreeId, branch)
+  test('creates the pull request from the Source Control primary action', async ({ koluxPage }) => {
+    const { branch, worktreeId } = await seedCreatePREligibleBranch(koluxPage)
+    await openSourceControl(koluxPage, worktreeId)
+    await forceCreatePREligibleStatus(koluxPage, worktreeId, branch)
 
-    const titleInput = nightshiftPage.getByRole('textbox', { name: 'Pull request title' })
-    const descriptionInput = nightshiftPage.getByRole('textbox', {
+    const titleInput = koluxPage.getByRole('textbox', { name: 'Pull request title' })
+    const descriptionInput = koluxPage.getByRole('textbox', {
       name: 'Pull request description'
     })
-    const createButton = getCreatePRComposerSubmitButton(nightshiftPage)
+    const createButton = getCreatePRComposerSubmitButton(koluxPage)
     await expect(createButton).toBeVisible({ timeout: 10_000 })
     await expect(createButton).toBeEnabled()
     await expect(titleInput).toHaveValue('E2e secondary')
-    await expect(
-      nightshiftPage.getByRole('combobox', { name: 'Pull request base branch' })
-    ).toHaveValue('main')
+    await expect(koluxPage.getByRole('combobox', { name: 'Pull request base branch' })).toHaveValue(
+      'main'
+    )
     await expect(descriptionInput).toHaveValue('')
     await descriptionInput.fill('- Initial commit for E2E')
     await expect(createButton).toBeEnabled()
@@ -236,7 +234,7 @@ test.describe('Source Control create pull request', () => {
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               (window as unknown as { __createPRPayloads: CreatePRPayload[] }).__createPRPayloads
                 .length
@@ -245,7 +243,7 @@ test.describe('Source Control create pull request', () => {
       )
       .toBe(1)
 
-    const payloads = await nightshiftPage.evaluate(
+    const payloads = await koluxPage.evaluate(
       () => (window as unknown as { __createPRPayloads: CreatePRPayload[] }).__createPRPayloads
     )
     expect(payloads).toHaveLength(1)
@@ -260,36 +258,36 @@ test.describe('Source Control create pull request', () => {
   })
 
   test('surfaces create failures without clearing the pull request composer', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const failureMessage = 'Create PR failed: GitHub API rate limit exceeded'
-    const { branch, worktreeId } = await seedCreatePREligibleBranch(nightshiftPage, {
+    const { branch, worktreeId } = await seedCreatePREligibleBranch(koluxPage, {
       createResult: {
         ok: false,
         code: 'unknown',
         error: failureMessage
       }
     })
-    await openSourceControl(nightshiftPage, worktreeId)
-    await forceCreatePREligibleStatus(nightshiftPage, worktreeId, branch)
+    await openSourceControl(koluxPage, worktreeId)
+    await forceCreatePREligibleStatus(koluxPage, worktreeId, branch)
 
-    const titleInput = nightshiftPage.getByRole('textbox', { name: 'Pull request title' })
-    const descriptionInput = nightshiftPage.getByRole('textbox', {
+    const titleInput = koluxPage.getByRole('textbox', { name: 'Pull request title' })
+    const descriptionInput = koluxPage.getByRole('textbox', {
       name: 'Pull request description'
     })
-    const createButton = getCreatePRComposerSubmitButton(nightshiftPage)
+    const createButton = getCreatePRComposerSubmitButton(koluxPage)
     await expect(createButton).toBeVisible({ timeout: 10_000 })
     await titleInput.fill('Failing PR from E2E')
     await descriptionInput.fill('This draft should survive a failed create attempt.')
     await expect(createButton).toBeEnabled()
     await createButton.click()
 
-    await expect(nightshiftPage.getByText(failureMessage)).toBeVisible()
+    await expect(koluxPage.getByText(failureMessage)).toBeVisible()
     await expect(titleInput).toHaveValue('Failing PR from E2E')
     await expect(descriptionInput).toHaveValue('This draft should survive a failed create attempt.')
-    await expect(
-      nightshiftPage.getByRole('combobox', { name: 'Pull request base branch' })
-    ).toHaveValue('main')
+    await expect(koluxPage.getByRole('combobox', { name: 'Pull request base branch' })).toHaveValue(
+      'main'
+    )
     await expect(createButton).toBeEnabled()
   })
 })

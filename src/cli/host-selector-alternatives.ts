@@ -75,7 +75,7 @@ export function ambiguousEnvironments(
   return byName.length > 1 ? byName : []
 }
 
-// Why: a paired Nightshift server and an SSH target are different machines reached different ways, but
+// Why: a paired Kolux server and an SSH target are different machines reached different ways, but
 // a caller only knows "the machine called X". When X misses on one axis, the useful answer is
 // almost always that it exists on the other — so say which, and give the exact flag.
 export function crossKindNextSteps(
@@ -88,12 +88,12 @@ export function crossKindNextSteps(
   const environment = findEnvironmentByName(alternatives.environments, name)
   if (requested !== 'ssh' && ssh) {
     steps.push(
-      `"${name}" is an SSH target on this Nightshift host, not a paired server. Use --host ssh:${ssh.id}.`
+      `"${name}" is an SSH target on this Kolux host, not a paired server. Use --host ssh:${ssh.id}.`
     )
   }
   if (requested !== 'environment' && environment) {
     steps.push(
-      `"${name}" is a paired Nightshift server, not an SSH target. Use --environment ${environment.name}.`
+      `"${name}" is a paired Kolux server, not an SSH target. Use --environment ${environment.name}.`
     )
   }
   return steps
@@ -178,7 +178,7 @@ export async function resolveSshHostTargetId(
   }
   throw new RuntimeClientError(
     'invalid_argument',
-    `Unknown SSH target in --host ssh:${targetId}: this Nightshift host has no SSH target named or with id ${targetId}.`,
+    `Unknown SSH target in --host ssh:${targetId}: this Kolux host has no SSH target named or with id ${targetId}.`,
     {
       knownSshTargets: targets,
       knownEnvironments: environments,
@@ -186,7 +186,7 @@ export async function resolveSshHostTargetId(
         ...crossKindNextSteps(targetId, { sshTargets: targets, environments }, 'ssh'),
         ...(targets.length > 0
           ? [`Known SSH targets: ${targets.map((target) => target.label).join(', ')}.`]
-          : ['This Nightshift host has no SSH targets registered.'])
+          : ['This Kolux host has no SSH targets registered.'])
       ]
     }
   )

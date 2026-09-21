@@ -56,7 +56,7 @@ describe('patched dependencies', () => {
 
     // A copy, because a --frozen-lockfile run still rewrites parts of the
     // lockfile this repo does not track, and the real one must not move.
-    const scratch = mkdtempSync(join(tmpdir(), 'nightshift-frozen-install-'))
+    const scratch = mkdtempSync(join(tmpdir(), 'kolux-frozen-install-'))
     try {
       for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
         copyFileSync(join(PROJECT_DIR, file), join(scratch, file))
@@ -99,7 +99,7 @@ describe('patched dependencies', () => {
     const pnpm = resolvePnpmInvocation()
     expect(pnpm, 'pnpm must be installed; it is the only thing that can check this').not.toBeNull()
 
-    const scratch = mkdtempSync(join(tmpdir(), 'nightshift-patch-apply-'))
+    const scratch = mkdtempSync(join(tmpdir(), 'kolux-patch-apply-'))
     try {
       mkdirSync(join(scratch, 'config', 'patches'), { recursive: true })
       copyFileSync(
@@ -110,7 +110,7 @@ describe('patched dependencies', () => {
         join(scratch, 'package.json'),
         `${JSON.stringify(
           {
-            name: 'nightshift-patch-apply-probe',
+            name: 'kolux-patch-apply-probe',
             version: '1.0.0',
             dependencies: { '@vscode/windows-process-tree': '0.8.0' }
           },

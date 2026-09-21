@@ -64,7 +64,7 @@ function makeGitHubReview(title: string): HostedReviewInfo {
     provider: 'github',
     number: 42,
     title,
-    url: 'https://github.com/acme/nightshift/pull/42'
+    url: 'https://github.com/acme/kolux/pull/42'
   }
 }
 

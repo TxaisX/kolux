@@ -204,7 +204,7 @@ export function AppearanceInterfaceSection({
                 'Titlebar App Name'
               )}
               description={titlebarEntry?.description}
-              keywords={titlebarEntry?.keywords ?? ['titlebar', 'nightshift', 'app', 'name']}
+              keywords={titlebarEntry?.keywords ?? ['titlebar', 'kolux', 'app', 'name']}
             >
               <SettingsSwitchRow
                 label={translate(
@@ -232,11 +232,11 @@ export function AppearanceInterfaceSection({
                     'auto.components.settings.AppearancePane.2edf606c46',
                     'Minimize to Tray on Close'
                   )}
-                  // Why: platform constraint + "close keeps Nightshift running" consequence are
+                  // Why: platform constraint + "close keeps Kolux running" consequence are
                   // both non-obvious from the label alone.
                   description={translate(
                     'auto.components.settings.AppearancePane.b707773a0d',
-                    'When enabled, closing the window keeps Nightshift running in the system tray instead of quitting.'
+                    'When enabled, closing the window keeps Kolux running in the system tray instead of quitting.'
                   )}
                   checked={settings.minimizeToTrayOnClose === true}
                   onChange={() =>
@@ -258,7 +258,7 @@ export function AppearanceInterfaceSection({
                   // activation and the close-keeps-running lifecycle stay intact.
                   description={translate(
                     'settings.appearance.menuBarIcon.description',
-                    'Keep a Nightshift shortcut and activity indicator in the macOS menu bar.'
+                    'Keep a Kolux shortcut and activity indicator in the macOS menu bar.'
                   )}
                   checked={settings.showMenuBarIcon !== false}
                   onChange={() =>

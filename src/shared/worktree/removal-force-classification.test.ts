@@ -52,9 +52,9 @@ describe('classifyWorktreeForceDeleteReason for unstopped PTYs', () => {
 })
 
 // The live verdict escalates the delete toast to "Force Delete will kill them", so it must
-// come from Nightshift's own detail — not from the worktree id, which is a user-chosen path.
+// come from Kolux's own detail — not from the worktree id, which is a user-chosen path.
 describe('isProvenLivePtyRemovalError', () => {
-  it('reads the verdict Nightshift actually recorded', () => {
+  it('reads the verdict Kolux actually recorded', () => {
     expect(isProvenLivePtyRemovalError(liveError)).toBe(true)
     expect(isProvenLivePtyRemovalError(unverifiableError)).toBe(false)
   })

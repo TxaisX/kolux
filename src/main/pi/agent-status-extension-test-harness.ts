@@ -41,14 +41,14 @@ export type AgentStatusExtensionHarness = {
 }
 
 const BASE_ENV = {
-  NIGHTSHIFT_PANE_KEY: 'pane-1',
-  NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'launch-1',
-  NIGHTSHIFT_TAB_ID: 'tab-1',
-  NIGHTSHIFT_WORKTREE_ID: 'tree-1',
-  NIGHTSHIFT_AGENT_HOOK_PORT: '4321',
-  NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token-1',
-  NIGHTSHIFT_AGENT_HOOK_ENV: 'env-1',
-  NIGHTSHIFT_AGENT_HOOK_VERSION: '1.2.3'
+  KOLUX_PANE_KEY: 'pane-1',
+  KOLUX_AGENT_LAUNCH_TOKEN: 'launch-1',
+  KOLUX_TAB_ID: 'tab-1',
+  KOLUX_WORKTREE_ID: 'tree-1',
+  KOLUX_AGENT_HOOK_PORT: '4321',
+  KOLUX_AGENT_HOOK_TOKEN: 'token-1',
+  KOLUX_AGENT_HOOK_ENV: 'env-1',
+  KOLUX_AGENT_HOOK_VERSION: '1.2.3'
 } satisfies Record<string, string>
 
 // Why: ownership keys on process.pid, so reload and child-process tests need

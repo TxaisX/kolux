@@ -11,7 +11,7 @@ describe('real WSL terminal lane', () => {
     'config/scripts/verify-playwright-participation.mjs',
     'src/main/wsl-availability.ts',
     'src/main/wsl/wsl-runner.ts',
-    'src/main/pty/wsl-nightshift-env.ts',
+    'src/main/pty/wsl-kolux-env.ts',
     'src/shared/wsl-login-shell-command.ts',
     'src/shared/windows-terminal-shell.ts',
     'tests/e2e/helpers/wsl-golden-stub-agent.ts',

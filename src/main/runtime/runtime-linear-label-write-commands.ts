@@ -33,9 +33,7 @@ export class RuntimeLinearLabelWriteCommands extends RuntimeLinearProjectWriteCo
           : `Multiple labels exactly matched "${input}".`,
         {
           labels: labels.map((label) => ({ id: label.id, name: label.name })),
-          nextSteps: [
-            'Run `nightshift linear team labels --team <key-or-id> --json` and retry by id.'
-          ]
+          nextSteps: ['Run `kolux linear team labels --team <key-or-id> --json` and retry by id.']
         }
       )
     })

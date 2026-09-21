@@ -3,34 +3,34 @@
 import PackageDescription
 
 let package = Package(
-    name: "NightshiftComputerUseMacOS",
+    name: "KoluxComputerUseMacOS",
     platforms: [
         .macOS(.v14)
     ],
     products: [
         .library(
-            name: "NightshiftComputerUseMacOSCore",
-            targets: ["NightshiftComputerUseMacOSCore"]
+            name: "KoluxComputerUseMacOSCore",
+            targets: ["KoluxComputerUseMacOSCore"]
         ),
         .executable(
-            name: "nightshift-computer-use-macos",
-            targets: ["NightshiftComputerUseMacOS"]
+            name: "kolux-computer-use-macos",
+            targets: ["KoluxComputerUseMacOS"]
         )
     ],
     targets: [
         .target(
-            name: "NightshiftComputerUseMacOSCore",
-            path: "Sources/NightshiftComputerUseMacOSCore"
+            name: "KoluxComputerUseMacOSCore",
+            path: "Sources/KoluxComputerUseMacOSCore"
         ),
         .executableTarget(
-            name: "NightshiftComputerUseMacOS",
-            dependencies: ["NightshiftComputerUseMacOSCore"],
-            path: "Sources/NightshiftComputerUseMacOS"
+            name: "KoluxComputerUseMacOS",
+            dependencies: ["KoluxComputerUseMacOSCore"],
+            path: "Sources/KoluxComputerUseMacOS"
         ),
         .testTarget(
-            name: "NightshiftComputerUseMacOSTests",
-            dependencies: ["NightshiftComputerUseMacOSCore"],
-            path: "Tests/NightshiftComputerUseMacOSTests"
+            name: "KoluxComputerUseMacOSTests",
+            dependencies: ["KoluxComputerUseMacOSCore"],
+            path: "Tests/KoluxComputerUseMacOSTests"
         )
     ]
 )

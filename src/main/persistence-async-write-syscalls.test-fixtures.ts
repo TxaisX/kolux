@@ -52,7 +52,7 @@ export function consumerRecovery(clientInstanceId: string) {
 }
 
 export function dataFile(dir: string): string {
-  return join(dir, 'nightshift-data.json')
+  return join(dir, 'kolux-data.json')
 }
 
 export function deferred(): { promise: Promise<void>; resolve: () => void } {
@@ -73,7 +73,7 @@ export function seedStaleBackup(dir: string): void {
 export function ringSnapshot(dir: string): Record<string, string> {
   const snapshot: Record<string, string> = {}
   for (const name of readdirSync(dir).sort()) {
-    if (name === 'nightshift-data.json' || name.startsWith('nightshift-data.json.bak.')) {
+    if (name === 'kolux-data.json' || name.startsWith('kolux-data.json.bak.')) {
       snapshot[name] = readFileSync(join(dir, name), 'utf-8')
     }
   }

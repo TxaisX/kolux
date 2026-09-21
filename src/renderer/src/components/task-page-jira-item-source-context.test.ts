@@ -28,9 +28,9 @@ const SITES: JiraSite[] = [
 ]
 
 const ISSUE = {
-  key: 'NIGHTSHIFT-123',
+  key: 'KOLUX-123',
   siteId: 'site-b',
-  project: { key: 'NIGHTSHIFT' }
+  project: { key: 'KOLUX' }
 } as JiraIssue
 
 describe('TaskPage Jira item source context', () => {
@@ -48,7 +48,7 @@ describe('TaskPage Jira item source context', () => {
         provider: 'jira',
         siteId: 'site-b',
         siteUrl: 'https://b.atlassian.net/jira',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       }
     })
   })

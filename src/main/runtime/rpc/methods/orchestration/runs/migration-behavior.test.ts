@@ -4,7 +4,7 @@ import {
   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import { RpcDispatcher } from '../../../dispatcher'
@@ -21,9 +21,9 @@ describe('orchestration migration behavior', () => {
     }
   })
 
-  function createRuntime(): { db: OrchestrationDb; runtime: NightshiftRuntimeService } {
+  function createRuntime(): { db: OrchestrationDb; runtime: KoluxRuntimeService } {
     const db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)
     return { db, runtime }
@@ -265,7 +265,7 @@ describe('orchestration migration behavior', () => {
     databases.push(db)
 
     const calls: { method: string; params: unknown }[] = []
-    const runtime = new NightshiftRuntimeService(null, undefined, {
+    const runtime = new KoluxRuntimeService(null, undefined, {
       orchestrationEnvironmentTransport: {
         resolve: () => ({
           environmentId: 'environment_windows',

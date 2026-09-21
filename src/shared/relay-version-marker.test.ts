@@ -8,7 +8,7 @@ import { RELAY_VERSION_MARKER_MAX_BYTES, readRelayVersionMarkerSync } from './re
 const roots: string[] = []
 
 function createVersionFile(contents: string): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-relay-version-marker-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-relay-version-marker-'))
   roots.push(root)
   const filePath = join(root, '.version')
   writeFileSync(filePath, contents)

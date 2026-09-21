@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RpcContext } from '../../../core'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { RuntimeTerminalSummary } from '../../../../../../shared/runtime-types'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 
@@ -35,7 +35,7 @@ function terminalSummary(handle: string): RuntimeTerminalSummary {
 describe('orchestration send and reply receipts', () => {
   const h = createOrchestrationRpcHarness()
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let activeRunId: string | undefined
 

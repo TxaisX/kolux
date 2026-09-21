@@ -15,7 +15,7 @@ describe('browser client host id argument', () => {
   // id out of the middle of someone else's flag.
   it('reads back the id it formatted, from the middle of a real argv', () => {
     const argv = [
-      '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+      '/Applications/Kolux.app/Contents/MacOS/Kolux',
       '--type=renderer',
       `--wrapped-flag=${formatBrowserClientHostIdArgument('decoy')}`,
       '--enable-sandbox',
@@ -44,8 +44,8 @@ describe('browser client host id argument', () => {
   it.each([
     ['an argv with no such argument', ['--type=renderer', '--enable-sandbox']],
     ['an empty argv', []],
-    ['a flag whose value is empty', ['--nightshift-browser-client-host-id=']],
-    ['a different flag that starts the same way', ['--nightshift-browser-client-host-idle=1']]
+    ['a flag whose value is empty', ['--kolux-browser-client-host-id=']],
+    ['a different flag that starts the same way', ['--kolux-browser-client-host-idle=1']]
   ])('reports no id for %s', (_label, argv) => {
     expect(readBrowserClientHostIdArgument(argv)).toBeNull()
   })
@@ -54,7 +54,7 @@ describe('browser client host id argument', () => {
   // on one side alone reads exactly like a client that hosts nothing.
   it('formats the argument main and the preload have to agree on', () => {
     expect(formatBrowserClientHostIdArgument(HOST_ID)).toBe(
-      `--nightshift-browser-client-host-id=${HOST_ID}`
+      `--kolux-browser-client-host-id=${HOST_ID}`
     )
   })
 })

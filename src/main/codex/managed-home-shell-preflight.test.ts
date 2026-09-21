@@ -25,7 +25,7 @@ import {
 const roots: string[] = []
 
 function makeRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-shell-preflight-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-codex-shell-preflight-'))
   roots.push(root)
   return root
 }
@@ -39,14 +39,14 @@ afterEach(() => {
 })
 
 describe('managed Codex shell preflight', () => {
-  it('accepts the Nightshift shared runtime home', () => {
+  it('accepts the Kolux shared runtime home', () => {
     const userDataPath = makeRoot()
     const home = join(userDataPath, 'codex-runtime-home', 'home')
     mkdirSync(home, { recursive: true })
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: home, NIGHTSHIFT_CODEX_HOME: home },
+        { CODEX_HOME: home, KOLUX_CODEX_HOME: home },
         userDataPath
       )
     ).toBe(home)
@@ -56,7 +56,7 @@ describe('managed Codex shell preflight', () => {
     const userDataPath = makeRoot()
     const home = join(userDataPath, 'codex-accounts', 'account-1', 'home')
     mkdirSync(home, { recursive: true })
-    writeFileSync(join(home, '.nightshift-managed-home'), 'account-1\n')
+    writeFileSync(join(home, '.kolux-managed-home'), 'account-1\n')
     const install = vi.fn(() => ({
       agent: 'codex' as const,
       state: 'installed' as const,
@@ -64,7 +64,7 @@ describe('managed Codex shell preflight', () => {
       managedHooksPresent: true,
       detail: null
     }))
-    const env = { CODEX_HOME: home, NIGHTSHIFT_CODEX_HOME: home }
+    const env = { CODEX_HOME: home, KOLUX_CODEX_HOME: home }
 
     expect(
       await prepareManagedCodexHomeBeforeShellLaunch({
@@ -96,19 +96,19 @@ describe('managed Codex shell preflight', () => {
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: userHome, NIGHTSHIFT_CODEX_HOME: userHome },
+        { CODEX_HOME: userHome, KOLUX_CODEX_HOME: userHome },
         userDataPath
       )
     ).toBeNull()
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: userHome, NIGHTSHIFT_CODEX_HOME: managedHome },
+        { CODEX_HOME: userHome, KOLUX_CODEX_HOME: managedHome },
         userDataPath
       )
     ).toBeNull()
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: managedHome, NIGHTSHIFT_CODEX_HOME: undefined },
+        { CODEX_HOME: managedHome, KOLUX_CODEX_HOME: undefined },
         userDataPath
       )
     ).toBeNull()
@@ -123,7 +123,7 @@ describe('managed Codex shell preflight', () => {
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: candidate, NIGHTSHIFT_CODEX_HOME: candidate },
+        { CODEX_HOME: candidate, KOLUX_CODEX_HOME: candidate },
         userDataPath
       )
     ).toBeNull()
@@ -134,13 +134,13 @@ describe('managed Codex shell preflight', () => {
     const outside = makeRoot()
     const accountDir = join(userDataPath, 'codex-accounts', 'account-1')
     mkdirSync(accountDir, { recursive: true })
-    writeFileSync(join(outside, '.nightshift-managed-home'), 'account-1\n')
+    writeFileSync(join(outside, '.kolux-managed-home'), 'account-1\n')
     symlinkSync(outside, join(accountDir, 'home'))
     const candidate = join(accountDir, 'home')
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: candidate, NIGHTSHIFT_CODEX_HOME: candidate },
+        { CODEX_HOME: candidate, KOLUX_CODEX_HOME: candidate },
         userDataPath
       )
     ).toBeNull()
@@ -151,11 +151,11 @@ describe('managed Codex shell preflight', () => {
     const candidate = join(userDataPath, 'home')
     mkdirSync(join(userDataPath, 'codex-accounts'))
     mkdirSync(candidate)
-    writeFileSync(join(candidate, '.nightshift-managed-home'), '..\n')
+    writeFileSync(join(candidate, '.kolux-managed-home'), '..\n')
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: candidate, NIGHTSHIFT_CODEX_HOME: candidate },
+        { CODEX_HOME: candidate, KOLUX_CODEX_HOME: candidate },
         userDataPath
       )
     ).toBeNull()
@@ -166,12 +166,12 @@ describe('managed Codex shell preflight', () => {
     const outside = makeRoot()
     const candidate = join(userDataPath, 'codex-accounts', 'account-1', 'home')
     mkdirSync(join(outside, 'account-1', 'home'), { recursive: true })
-    writeFileSync(join(outside, 'account-1', 'home', '.nightshift-managed-home'), 'account-1\n')
+    writeFileSync(join(outside, 'account-1', 'home', '.kolux-managed-home'), 'account-1\n')
     symlinkSync(outside, join(userDataPath, 'codex-accounts'))
 
     expect(
       resolveManagedCodexShellPreflightHome(
-        { CODEX_HOME: candidate, NIGHTSHIFT_CODEX_HOME: candidate },
+        { CODEX_HOME: candidate, KOLUX_CODEX_HOME: candidate },
         userDataPath
       )
     ).toBeNull()
@@ -179,12 +179,12 @@ describe('managed Codex shell preflight', () => {
 })
 
 describe('managed WSL Codex shell preflight', () => {
-  const home = '/home/jin/.local/share/nightshift/codex-runtime-home/home'
+  const home = '/home/jin/.local/share/kolux/codex-runtime-home/home'
   const runtimeHome =
-    '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.local\\share\\nightshift\\codex-runtime-home\\home'
+    '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.local\\share\\kolux\\codex-runtime-home\\home'
   const env = {
     CODEX_HOME: home,
-    NIGHTSHIFT_CODEX_HOME: home,
+    KOLUX_CODEX_HOME: home,
     WSL_DISTRO_NAME: 'Ubuntu-24.04'
   }
 
@@ -231,15 +231,15 @@ describe('managed WSL Codex shell preflight', () => {
   it.each([
     [
       'a user home',
-      { ...env, CODEX_HOME: '/home/jin/.codex', NIGHTSHIFT_CODEX_HOME: '/home/jin/.codex' }
+      { ...env, CODEX_HOME: '/home/jin/.codex', KOLUX_CODEX_HOME: '/home/jin/.codex' }
     ],
-    ['unequal routing markers', { ...env, NIGHTSHIFT_CODEX_HOME: `${home}-other` }],
+    ['unequal routing markers', { ...env, KOLUX_CODEX_HOME: `${home}-other` }],
     [
       'a parent traversal',
       {
         ...env,
         CODEX_HOME: `/home/jin/../jin${home.slice('/home/jin'.length)}`,
-        NIGHTSHIFT_CODEX_HOME: `/home/jin/../jin${home.slice('/home/jin'.length)}`
+        KOLUX_CODEX_HOME: `/home/jin/../jin${home.slice('/home/jin'.length)}`
       }
     ],
     [
@@ -247,7 +247,7 @@ describe('managed WSL Codex shell preflight', () => {
       {
         ...env,
         CODEX_HOME: `/home/./jin${home.slice('/home/jin'.length)}`,
-        NIGHTSHIFT_CODEX_HOME: `/home/./jin${home.slice('/home/jin'.length)}`
+        KOLUX_CODEX_HOME: `/home/./jin${home.slice('/home/jin'.length)}`
       }
     ],
     [
@@ -255,7 +255,7 @@ describe('managed WSL Codex shell preflight', () => {
       {
         ...env,
         CODEX_HOME: 'C:\\Users\\jin\\.codex',
-        NIGHTSHIFT_CODEX_HOME: 'C:\\Users\\jin\\.codex'
+        KOLUX_CODEX_HOME: 'C:\\Users\\jin\\.codex'
       }
     ],
     ['a missing distro', { ...env, WSL_DISTRO_NAME: '' }],
@@ -265,7 +265,7 @@ describe('managed WSL Codex shell preflight', () => {
       {
         ...env,
         CODEX_HOME: home.replace('/jin/', '/jin//'),
-        NIGHTSHIFT_CODEX_HOME: home.replace('/jin/', '/jin//')
+        KOLUX_CODEX_HOME: home.replace('/jin/', '/jin//')
       }
     ]
   ])('rejects %s', (_label, candidate) => {
@@ -274,15 +274,15 @@ describe('managed WSL Codex shell preflight', () => {
   })
 
   it('preserves a recorded runtime spelling for a managed account home', () => {
-    const directHome = '/home/jin/.local/share/nightshift/codex-accounts/account-1/home'
+    const directHome = '/home/jin/.local/share/kolux/codex-accounts/account-1/home'
     const directRuntimeHome =
-      '\\\\wsl$\\Ubuntu-24.04\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\account-1\\home'
+      '\\\\wsl$\\Ubuntu-24.04\\home\\jin\\.local\\share\\kolux\\codex-accounts\\account-1\\home'
     recordManagedWslCodexHome('Ubuntu-24.04', directRuntimeHome)
 
     expect(
       resolveManagedWslCodexShellPreflightTarget({
         CODEX_HOME: directHome,
-        NIGHTSHIFT_CODEX_HOME: directHome,
+        KOLUX_CODEX_HOME: directHome,
         WSL_DISTRO_NAME: 'ubuntu-24.04'
       })
     ).toEqual({ runtimeHomePath: directRuntimeHome, wslDistro: 'ubuntu-24.04' })
@@ -295,7 +295,7 @@ describe('managed WSL Codex shell preflight', () => {
     expect(
       resolveManagedWslCodexShellPreflightTarget({
         CODEX_HOME: systemHome,
-        NIGHTSHIFT_CODEX_HOME: systemHome,
+        KOLUX_CODEX_HOME: systemHome,
         WSL_DISTRO_NAME: 'Ubuntu-24.04'
       })
     ).toBeNull()

@@ -170,7 +170,7 @@ describe('browserManager', () => {
 
     const restore = await browserManager.acquireAutomationVisibility(guest.id)
     const acquireScript = rendererExecuteJavaScriptMock.mock.calls[0]?.[0]
-    expect(acquireScript).toContain('__nightshiftBrowserAutomationVisibility')
+    expect(acquireScript).toContain('__koluxBrowserAutomationVisibility')
     expect(acquireScript).toContain('bridge.acquire("page-automation")')
     expect(acquireScript).not.toContain('setActiveBrowserTab')
     expect(acquireScript).not.toContain('setActiveTabType')
@@ -465,7 +465,7 @@ describe('browserManager', () => {
     expect(restoreScript).toContain('state.setActiveTabType("terminal");')
   })
 
-  it('does not focus the Nightshift window while preparing a screenshot', async () => {
+  it('does not focus the Kolux window while preparing a screenshot', async () => {
     const rendererExecuteJavaScriptMock = vi.fn().mockResolvedValueOnce({
       prevTabType: 'terminal',
       prevActiveWorktreeId: 'wt-1',

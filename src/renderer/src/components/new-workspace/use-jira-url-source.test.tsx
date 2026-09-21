@@ -107,10 +107,10 @@ describe('useJiraUrlSource', () => {
     const siteB = site('site-b', 'second@example.com')
     const context = sourceContext()
     mocks.readJiraStatus.mockResolvedValue(status([siteA, siteB], 'all'))
-    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('NIGHTSHIFT-123', 'site-b'))
+    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('KOLUX-123', 'site-b'))
     const { result } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
+        value: 'https://company.atlassian.net/browse/KOLUX-123',
         enabled: true,
         sourceContext: context
       })
@@ -130,11 +130,11 @@ describe('useJiraUrlSource', () => {
 
     expect(mocks.lookupJiraIssueSummary).toHaveBeenCalledWith(
       expect.objectContaining({ hostId: 'local' }),
-      'NIGHTSHIFT-123',
+      'KOLUX-123',
       'site-b',
       { force: false, signal: expect.any(AbortSignal) }
     )
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-123')
+    expect(result.current.issue?.key).toBe('KOLUX-123')
     expect(result.current.boundSourceContext).toMatchObject({
       provider: 'jira',
       hostId: 'local',
@@ -144,7 +144,7 @@ describe('useJiraUrlSource', () => {
         provider: 'jira',
         siteId: 'site-b',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       }
     })
   })
@@ -152,12 +152,12 @@ describe('useJiraUrlSource', () => {
   it('reuses an already-loaded connection instead of re-reading status', async () => {
     const context = sourceContext()
     const loaded = { status: status([site('site-a')], 'site-a'), loaded: true }
-    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('NIGHTSHIFT-1'))
+    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('KOLUX-1'))
     // Explicit: clearAllMocks keeps prior implementations, so the retry read must be this test's.
     mocks.readJiraStatus.mockResolvedValue(status([site('site-a')], 'site-a'))
     const { result } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1',
+        value: 'https://company.atlassian.net/browse/KOLUX-1',
         enabled: true,
         sourceContext: context,
         connection: loaded
@@ -167,23 +167,23 @@ describe('useJiraUrlSource', () => {
     await advanceLookup()
 
     expect(mocks.readJiraStatus).not.toHaveBeenCalled()
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-1')
+    expect(result.current.issue?.key).toBe('KOLUX-1')
 
     act(() => result.current.retry())
     await advanceLookup()
 
     // A forced retry still needs a fresh read — the cached answer is what failed.
     expect(mocks.readJiraStatus).toHaveBeenCalledTimes(1)
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-1')
+    expect(result.current.issue?.key).toBe('KOLUX-1')
   })
 
   it('re-reads status when the loaded connection has no sites to match', async () => {
     const context = sourceContext()
     mocks.readJiraStatus.mockResolvedValue(status([site('site-a')], 'site-a'))
-    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('NIGHTSHIFT-1'))
+    mocks.lookupJiraIssueSummary.mockResolvedValue(issue('KOLUX-1'))
     const { result } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1',
+        value: 'https://company.atlassian.net/browse/KOLUX-1',
         enabled: true,
         sourceContext: context,
         connection: { status: status([], 'site-a'), loaded: true }
@@ -193,7 +193,7 @@ describe('useJiraUrlSource', () => {
     await advanceLookup()
 
     expect(mocks.readJiraStatus).toHaveBeenCalledTimes(1)
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-1')
+    expect(result.current.issue?.key).toBe('KOLUX-1')
   })
 
   it('discards a late issue response after the URL changes', async () => {
@@ -208,11 +208,11 @@ describe('useJiraUrlSource', () => {
         _siteId: string,
         options: { signal?: AbortSignal }
       ) => {
-        if (key === 'NIGHTSHIFT-1') {
+        if (key === 'KOLUX-1') {
           oldSignal = options.signal
           return oldIssue.promise
         }
-        return Promise.resolve(issue('NIGHTSHIFT-2'))
+        return Promise.resolve(issue('KOLUX-2'))
       }
     )
     const { result, rerender } = renderHook(
@@ -222,31 +222,29 @@ describe('useJiraUrlSource', () => {
           enabled: true,
           sourceContext: context
         }),
-      { initialProps: { value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1' } }
+      { initialProps: { value: 'https://company.atlassian.net/browse/KOLUX-1' } }
     )
     await advanceLookup()
 
-    rerender({ value: 'https://company.atlassian.net/browse/NIGHTSHIFT-2' })
+    rerender({ value: 'https://company.atlassian.net/browse/KOLUX-2' })
     await advanceLookup()
     expect(oldSignal?.aborted).toBe(true)
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-2')
+    expect(result.current.issue?.key).toBe('KOLUX-2')
 
     await act(async () => {
-      oldIssue.resolve(issue('NIGHTSHIFT-1'))
+      oldIssue.resolve(issue('KOLUX-1'))
       await oldIssue.promise
     })
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-2')
+    expect(result.current.issue?.key).toBe('KOLUX-2')
   })
 
   it('forces Retry past an invalid fulfilled summary result', async () => {
     const context = sourceContext()
     mocks.readJiraStatus.mockResolvedValue(status([site('site-a')], 'site-a'))
-    mocks.lookupJiraIssueSummary
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(issue('NIGHTSHIFT-1'))
+    mocks.lookupJiraIssueSummary.mockResolvedValueOnce(null).mockResolvedValueOnce(issue('KOLUX-1'))
     const { result } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1',
+        value: 'https://company.atlassian.net/browse/KOLUX-1',
         enabled: true,
         sourceContext: context
       })
@@ -258,16 +256,11 @@ describe('useJiraUrlSource', () => {
     act(() => result.current.retry())
     await advanceLookup()
 
-    expect(result.current.issue?.key).toBe('NIGHTSHIFT-1')
-    expect(mocks.lookupJiraIssueSummary).toHaveBeenLastCalledWith(
-      context,
-      'NIGHTSHIFT-1',
-      'site-a',
-      {
-        force: true,
-        signal: expect.any(AbortSignal)
-      }
-    )
+    expect(result.current.issue?.key).toBe('KOLUX-1')
+    expect(mocks.lookupJiraIssueSummary).toHaveBeenLastCalledWith(context, 'KOLUX-1', 'site-a', {
+      force: true,
+      signal: expect.any(AbortSignal)
+    })
   })
 
   it('stops a late status response after unmount before starting an issue read', async () => {
@@ -276,7 +269,7 @@ describe('useJiraUrlSource', () => {
     mocks.readJiraStatus.mockReturnValue(lateStatus.promise)
     const { unmount } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1',
+        value: 'https://company.atlassian.net/browse/KOLUX-1',
         enabled: true,
         sourceContext: context
       })
@@ -297,7 +290,7 @@ describe('useJiraUrlSource', () => {
     mocks.assertRuntimeEnvironmentCapability.mockRejectedValueOnce(new Error('update-runtime'))
     const { result } = renderHook(() =>
       useJiraUrlSource({
-        value: 'https://company.atlassian.net/browse/NIGHTSHIFT-1',
+        value: 'https://company.atlassian.net/browse/KOLUX-1',
         enabled: true,
         sourceContext: context
       })

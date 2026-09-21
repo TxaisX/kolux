@@ -45,23 +45,23 @@ nodeModule.registerHooks({
   }
 })
 
-const ITERATIONS = Number(process.env.NIGHTSHIFT_FRAME_CHUNK_BENCH_ITERATIONS ?? '40')
-const GATE_ITERATIONS = Number(process.env.NIGHTSHIFT_FRAME_GATE_BENCH_ITERATIONS ?? '2000')
-const WARMUP = Number(process.env.NIGHTSHIFT_FRAME_CHUNK_BENCH_WARMUP ?? '8')
-const ROUNDS = Number(process.env.NIGHTSHIFT_FRAME_CHUNK_BENCH_ROUNDS ?? '6')
+const ITERATIONS = Number(process.env.KOLUX_FRAME_CHUNK_BENCH_ITERATIONS ?? '40')
+const GATE_ITERATIONS = Number(process.env.KOLUX_FRAME_GATE_BENCH_ITERATIONS ?? '2000')
+const WARMUP = Number(process.env.KOLUX_FRAME_CHUNK_BENCH_WARMUP ?? '8')
+const ROUNDS = Number(process.env.KOLUX_FRAME_CHUNK_BENCH_ROUNDS ?? '6')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_FRAME_CHUNK_BENCH_ITERATIONS', ITERATIONS],
-  ['NIGHTSHIFT_FRAME_GATE_BENCH_ITERATIONS', GATE_ITERATIONS],
-  ['NIGHTSHIFT_FRAME_CHUNK_BENCH_WARMUP', WARMUP],
-  ['NIGHTSHIFT_FRAME_CHUNK_BENCH_ROUNDS', ROUNDS]
+  ['KOLUX_FRAME_CHUNK_BENCH_ITERATIONS', ITERATIONS],
+  ['KOLUX_FRAME_GATE_BENCH_ITERATIONS', GATE_ITERATIONS],
+  ['KOLUX_FRAME_CHUNK_BENCH_WARMUP', WARMUP],
+  ['KOLUX_FRAME_CHUNK_BENCH_ROUNDS', ROUNDS]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
   }
 }
 if (ROUNDS % 2 !== 0) {
-  throw new Error(`NIGHTSHIFT_FRAME_CHUNK_BENCH_ROUNDS must be even so each arm leads equally`)
+  throw new Error(`KOLUX_FRAME_CHUNK_BENCH_ROUNDS must be even so each arm leads equally`)
 }
 
 const CHUNK_SOURCE = readFileSync(

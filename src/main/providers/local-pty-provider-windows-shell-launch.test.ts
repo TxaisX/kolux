@@ -45,7 +45,7 @@ vi.mock('fs', () => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn(() => '/tmp/nightshift-user-data')
+    getPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 }))
 
@@ -69,7 +69,7 @@ vi.mock('../pty-descendant-termination', () => ({
 const WINDOWS_POWERSHELL_ABS = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
 const PWSH7_ABS = 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'
 const CMD_ABS = 'C:\\Windows\\System32\\cmd.exe'
-const CODEX_LAUNCH_PREFLIGHT = 'C:\\Program Files\\Nightshift\\nightshift.exe'
+const CODEX_LAUNCH_PREFLIGHT = 'C:\\Program Files\\Kolux\\kolux.exe'
 vi.mock('./windows-powershell-executable', () => ({
   resolveWindowsPowerShellExecutablePath: (family: 'pwsh.exe' | 'powershell.exe') =>
     family === 'pwsh.exe' ? PWSH7_ABS : WINDOWS_POWERSHELL_ABS,
@@ -165,7 +165,7 @@ describe('LocalPtyProvider', () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
           env.CODEX_HOME = 'C:\\Users\\jin\\.codex'
-          env.NIGHTSHIFT_CODEX_HOME = 'C:\\Users\\jin\\.codex'
+          env.KOLUX_CODEX_HOME = 'C:\\Users\\jin\\.codex'
           return env
         }
       })
@@ -179,7 +179,7 @@ describe('LocalPtyProvider', () => {
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[0]).toBe('wsl.exe')
       expect(spawnCall[2].env.CODEX_HOME).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_CODEX_HOME).toBeUndefined()
     })
 
     it('does not pass a WSL managed Codex home into Windows terminals', async () => {
@@ -187,9 +187,9 @@ describe('LocalPtyProvider', () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
           env.CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
-          env.NIGHTSHIFT_CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
+          env.KOLUX_CODEX_HOME =
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
           return env
         }
       })
@@ -202,7 +202,7 @@ describe('LocalPtyProvider', () => {
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[2].env.CODEX_HOME).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_CODEX_HOME).toBeUndefined()
     })
 
     it('preserves an explicit Linux Codex home for WSL terminals', async () => {
@@ -231,9 +231,9 @@ describe('LocalPtyProvider', () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
           env.CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
-          env.NIGHTSHIFT_CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
+          env.KOLUX_CODEX_HOME =
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
           return env
         }
       })
@@ -246,14 +246,12 @@ describe('LocalPtyProvider', () => {
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[0]).toBe('wsl.exe')
-      expect(spawnCall[2].env.CODEX_HOME).toBe(
-        '/home/jin/.local/share/nightshift/codex-accounts/a/home'
-      )
-      expect(spawnCall[2].env.NIGHTSHIFT_CODEX_HOME).toBe(
-        '/home/jin/.local/share/nightshift/codex-accounts/a/home'
+      expect(spawnCall[2].env.CODEX_HOME).toBe('/home/jin/.local/share/kolux/codex-accounts/a/home')
+      expect(spawnCall[2].env.KOLUX_CODEX_HOME).toBe(
+        '/home/jin/.local/share/kolux/codex-accounts/a/home'
       )
       expect(spawnCall[2].env.WSLENV).toContain('CODEX_HOME')
-      expect(spawnCall[2].env.WSLENV).toContain('NIGHTSHIFT_CODEX_HOME')
+      expect(spawnCall[2].env.WSLENV).toContain('KOLUX_CODEX_HOME')
     })
 
     it('does not pass a WSL managed Codex home into a different WSL distro', async () => {
@@ -261,9 +259,9 @@ describe('LocalPtyProvider', () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
           env.CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
-          env.NIGHTSHIFT_CODEX_HOME =
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
+          env.KOLUX_CODEX_HOME =
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
           return env
         }
       })
@@ -277,7 +275,7 @@ describe('LocalPtyProvider', () => {
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[0]).toBe('wsl.exe')
       expect(spawnCall[2].env.CODEX_HOME).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_CODEX_HOME).toBeUndefined()
     })
 
     it('uses the preferred WSL distro for Windows cwd WSL terminals', async () => {
@@ -302,7 +300,7 @@ describe('LocalPtyProvider', () => {
         '-c',
         expect.stringContaining("cd '/mnt/c/Users/jin/repo'")
       ])
-      expect(spawnCall[1][5]).toContain('exec "$_nightshift_wsl_shell" -l')
+      expect(spawnCall[1][5]).toContain('exec "$_kolux_wsl_shell" -l')
       expect(spawnCall[2].env.HISTFILE).toContain('terminal-history-wsl/Debian')
     })
 
@@ -488,17 +486,17 @@ describe('LocalPtyProvider', () => {
       expect(spawnMock).toHaveBeenCalledTimes(callsBeforeSpawn)
     })
 
-    it('marks Nightshift terminal handle for WSL import when buildSpawnEnv opts in', async () => {
+    it('marks Kolux terminal handle for WSL import when buildSpawnEnv opts in', async () => {
       Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
       const savedCodexHome = process.env.CODEX_HOME
-      const savedNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
+      const savedKoluxCodexHome = process.env.KOLUX_CODEX_HOME
       delete process.env.CODEX_HOME
-      delete process.env.NIGHTSHIFT_CODEX_HOME
+      delete process.env.KOLUX_CODEX_HOME
       provider.configure({
         buildSpawnEnv: (_id, env, ctx) => {
-          env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_wsl'
+          env.KOLUX_TERMINAL_HANDLE = 'term_wsl'
           if (ctx?.isWsl) {
-            env.WSLENV = 'NIGHTSHIFT_TERMINAL_HANDLE/u'
+            env.WSLENV = 'KOLUX_TERMINAL_HANDLE/u'
           }
           return env
         }
@@ -509,7 +507,7 @@ describe('LocalPtyProvider', () => {
           cols: 80,
           rows: 24,
           cwd: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo',
-          env: { NIGHTSHIFT_HERMES_STARTUP_QUERY: 'line one\nline two' }
+          env: { KOLUX_HERMES_STARTUP_QUERY: 'line one\nline two' }
         })
       } finally {
         if (savedCodexHome === undefined) {
@@ -517,20 +515,20 @@ describe('LocalPtyProvider', () => {
         } else {
           process.env.CODEX_HOME = savedCodexHome
         }
-        if (savedNightshiftCodexHome === undefined) {
-          delete process.env.NIGHTSHIFT_CODEX_HOME
+        if (savedKoluxCodexHome === undefined) {
+          delete process.env.KOLUX_CODEX_HOME
         } else {
-          process.env.NIGHTSHIFT_CODEX_HOME = savedNightshiftCodexHome
+          process.env.KOLUX_CODEX_HOME = savedKoluxCodexHome
         }
       }
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[0]).toBe('wsl.exe')
-      expect(spawnCall[2].env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_wsl')
+      expect(spawnCall[2].env.KOLUX_TERMINAL_HANDLE).toBe('term_wsl')
       expect(spawnCall[2].env.WSLENV?.split(':')).toEqual(
         expect.arrayContaining([
-          'NIGHTSHIFT_TERMINAL_HANDLE/u',
-          'NIGHTSHIFT_HERMES_STARTUP_QUERY',
+          'KOLUX_TERMINAL_HANDLE/u',
+          'KOLUX_HERMES_STARTUP_QUERY',
           POWERLEVEL10K_WIZARD_DISABLE_ENV
         ])
       )
@@ -593,7 +591,7 @@ describe('LocalPtyProvider', () => {
         getWindowsShell: () => 'git-bash',
         buildSpawnEnv: (_id, env) => ({
           ...env,
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
         })
       })
 
@@ -627,7 +625,7 @@ describe('LocalPtyProvider', () => {
           env: expect.objectContaining({
             CHERE_INVOKING: '1',
             PYTHONUTF8: '1',
-            NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
+            KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
           })
         })
       )
@@ -640,7 +638,7 @@ describe('LocalPtyProvider', () => {
         getWindowsShell: () => 'cmd.exe',
         buildSpawnEnv: (_id, env) => ({
           ...env,
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
         })
       })
 
@@ -656,12 +654,12 @@ describe('LocalPtyProvider', () => {
         'cmd.exe',
         [
           '/K',
-          'chcp 65001 > nul & if defined NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT call %NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
+          'chcp 65001 > nul & if defined KOLUX_CODEX_LAUNCH_PREFLIGHT call %KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%KOLUX_CODEX_LAUNCH_PREFLIGHT%%KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
         ],
         expect.objectContaining({
           env: expect.objectContaining({
-            NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT,
-            NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE: '"'
+            KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT,
+            KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE: '"'
           })
         })
       )

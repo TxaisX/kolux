@@ -3,7 +3,7 @@
 ## Status
 
 Adopted for the main-process worktree resolution cache
-(`NightshiftRuntimeService.listRepoWorktreesForResolution`). It keeps the existing
+(`KoluxRuntimeService.listRepoWorktreesForResolution`). It keeps the existing
 30-second freshness contract for externally created, removed, moved, locked, and
 re-checked-out worktrees while removing the `git worktree list` subprocess that
 previously ran for every registered repository every 30 seconds.
@@ -25,7 +25,7 @@ distinction changes the fix:
   (`RESOLVED_WORKTREE_CACHE_TTL_MS`). Any caller polling faster than 1 Hz
   recomputes the snapshot.
 - `computeResolvedWorktrees` fans out over **every** registered repo
-  (`src/main/runtime/nightshift-runtime.ts`), calling
+  (`src/main/runtime/kolux-runtime.ts`), calling
   `listRepoWorktreesForResolution` per repo.
 - That per-repo call is backed by `worktreeScanCache` with a **30-second** TTL.
   When it expires, the next poll shells out.
@@ -39,12 +39,12 @@ _who_ pays, not _how often_. Steady-state subprocess volume is therefore
 `repos / 30 s`, independent of poll rate, which is exactly the observed
 ~1 sweep / 30.5 s.
 
-The in-Nightshift mutation surface is already event-driven: create, remove, rename,
+The in-Kolux mutation surface is already event-driven: create, remove, rename,
 folder-rename, sparse edits, repo add/update/remove, SSH reconnect, and
 mixed-version remote invalidation all call
 `invalidateWorktreeScanCacheForRepo` / `invalidateResolvedWorktreeCache`
 (≈40 call sites). The 30-second TTL exists for exactly one reason: discovering
-worktree changes made **outside** Nightshift (`git worktree add/remove/move/prune`,
+worktree changes made **outside** Kolux (`git worktree add/remove/move/prune`,
 `git checkout` in another worktree, `rm -rf` of a worktree directory).
 
 That is a filesystem question, and the filesystem can answer it without a
@@ -166,7 +166,7 @@ the TTL alone would have refreshed.
 
 | Change                                                                | Before            | After             |
 | --------------------------------------------------------------------- | ----------------- | ----------------- |
-| Nightshift-initiated create/remove/rename/sparse/repo edit                  | immediate (event) | immediate (event) |
+| Kolux-initiated create/remove/rename/sparse/repo edit                  | immediate (event) | immediate (event) |
 | SSH reconnect / provider generation bump                              | immediate (event) | immediate (event) |
 | External `worktree add/remove/move/prune/lock`                        | ≤ 30 s            | ≤ 30 s            |
 | External `git checkout` / `commit` / `reset` in any worktree          | ≤ 30 s            | ≤ 30 s            |
@@ -176,7 +176,7 @@ the TTL alone would have refreshed.
 | SSH / WSL repos, folder workspaces                                    | unchanged         | unchanged         |
 
 The two regressions are bounded by the reconciliation interval and are both
-changes Nightshift does not make itself.
+changes Kolux does not make itself.
 
 ### Main-thread cost
 
@@ -201,7 +201,7 @@ help.
 ### Residual risk
 
 A repo registered at a UNC path (`\\wsl$\...`) but executed by the local Windows
-Git runtime is still probed, because it is not WSL-routed from Nightshift's point of
+Git runtime is still probed, because it is not WSL-routed from Kolux's point of
 view. The probe is correct there and strictly cheaper than the subprocess it
 replaces, but its filesystem calls cross the 9p boundary like the existing
 sparse-checkout probes already do.

@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 
-export function configureFederationWorkerRuntime(runtime: NightshiftRuntimeService): void {
+export function configureFederationWorkerRuntime(runtime: KoluxRuntimeService): void {
   vi.spyOn(runtime, 'validateOrchestrationAgentLauncher').mockImplementation(() => {})
   vi.spyOn(runtime, 'showRepo').mockResolvedValue({ id: 'windows-repo', kind: 'git' } as never)
   vi.spyOn(runtime, 'createManagedWorktree').mockResolvedValue({
@@ -33,7 +33,7 @@ export function configureFederationWorkerRuntime(runtime: NightshiftRuntimeServi
     'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
   )
   vi.spyOn(runtime, 'getTerminalProcessIncarnation').mockReturnValue('windows_runtime:pty:1')
-  vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+  vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
   vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
     handle: 'term_windows_worker',
     accepted: true,

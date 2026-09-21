@@ -197,7 +197,7 @@ describe('handleOscLink', () => {
     expect(openUrlMock).not.toHaveBeenCalled()
   })
 
-  it('uses the system browser for shift+cmd/ctrl+click even when Nightshift browser tabs are enabled', () => {
+  it('uses the system browser for shift+cmd/ctrl+click even when Kolux browser tabs are enabled', () => {
     setPlatform('Windows')
     storeState.settings = { openLinksInApp: true }
 

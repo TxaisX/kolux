@@ -16,7 +16,7 @@ import { createStore, testState } from '../persistence-test-harness'
 vi.mock('electron', () => ({
   app: {
     getPath: () => testStateDirRef.dir,
-    getName: () => 'nightshift',
+    getName: () => 'kolux',
     getVersion: () => '0.0.0'
   },
   BrowserWindow: { fromId: () => null, getAllWindows: () => [] },
@@ -56,7 +56,7 @@ async function makeStore() {
 
 describe('host-created terminal close durability', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-close-durability-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-close-durability-'))
     testStateDirRef.dir = testState.dir
   })
 
@@ -114,7 +114,7 @@ describe('host-created terminal close durability', () => {
  *  fence-advancing path, or arming the fence from the create path, fails here. */
 describe('topology fence census', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-fence-census-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-fence-census-'))
     testStateDirRef.dir = testState.dir
   })
 

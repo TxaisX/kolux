@@ -284,7 +284,7 @@ describe('keybindings', () => {
     expect(
       keybindingMatchesAction('tab.closeAll', linuxCloseAll, 'linux', undefined, {
         context: 'terminal',
-        terminalShortcutPolicy: 'nightshift-first'
+        terminalShortcutPolicy: 'kolux-first'
       })
     ).toBe(true)
     // Why: close-all is a workspace tab command, so terminal-first mode should

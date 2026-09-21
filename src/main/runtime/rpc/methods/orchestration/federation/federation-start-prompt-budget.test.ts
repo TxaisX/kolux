@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
@@ -13,7 +13,7 @@ describe('federation attach-start prompt budget', () => {
 
   it('rejects an 8 MiB Task spec before attachment, worktree, terminal, or prompt effects', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const createAttachment = vi.spyOn(db, 'createRemoteDispatchAttachment')
     const createWorktree = vi.spyOn(runtime, 'createManagedWorktree')

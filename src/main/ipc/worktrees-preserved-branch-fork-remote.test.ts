@@ -225,13 +225,13 @@ describe('registerWorktreeHandlers', () => {
     expect(forceDeleteLocalBranchMock).not.toHaveBeenCalled()
   })
 
-  it('removes an unused Nightshift-created fork remote after deleting its worktree', async () => {
+  it('removes an unused Kolux-created fork remote after deleting its worktree', async () => {
     mockKnownFeatureWorktree()
     removeWorktreeMock.mockResolvedValue(undefined)
     const pushTarget = {
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'feature/from-fork',
-      remoteUrl: 'https://github.com/contributor/nightshift.git',
+      remoteUrl: 'https://github.com/contributor/kolux.git',
       remoteCreated: true
     }
     store.getWorktreeMeta.mockReturnValue(makeWorktreeMeta({ pushTarget }))
@@ -243,7 +243,7 @@ describe('registerWorktreeHandlers', () => {
         throw new Error('no branch config')
       }
       if (args[0] === 'remote' && args[1] === 'get-url') {
-        return { stdout: 'https://github.com/contributor/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/contributor/kolux.git\n', stderr: '' }
       }
       return { stdout: '', stderr: '' }
     })
@@ -253,20 +253,20 @@ describe('registerWorktreeHandlers', () => {
     })
 
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
-      ['remote', 'remove', 'pr-contributor-nightshift'],
+      ['remote', 'remove', 'pr-contributor-kolux'],
       {
         cwd: '/workspace/repo'
       }
     )
   })
 
-  it('keeps a Nightshift-created fork remote while another worktree still uses it', async () => {
+  it('keeps a Kolux-created fork remote while another worktree still uses it', async () => {
     mockKnownFeatureWorktree()
     removeWorktreeMock.mockResolvedValue(undefined)
     const pushTarget = {
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'feature/from-fork',
-      remoteUrl: 'https://github.com/contributor/nightshift.git',
+      remoteUrl: 'https://github.com/contributor/kolux.git',
       remoteCreated: true
     }
     store.getWorktreeMeta.mockReturnValue(makeWorktreeMeta({ pushTarget }))
@@ -285,7 +285,7 @@ describe('registerWorktreeHandlers', () => {
     })
 
     expect(gitExecFileAsyncMock).not.toHaveBeenCalledWith(
-      ['remote', 'remove', 'pr-contributor-nightshift'],
+      ['remote', 'remove', 'pr-contributor-kolux'],
       expect.any(Object)
     )
   })
@@ -294,9 +294,9 @@ describe('registerWorktreeHandlers', () => {
     mockKnownFeatureWorktree()
     removeWorktreeMock.mockResolvedValue(undefined)
     const pushTarget = {
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'feature/from-fork',
-      remoteUrl: 'https://github.com/contributor/nightshift.git',
+      remoteUrl: 'https://github.com/contributor/kolux.git',
       remoteCreated: true
     }
     store.getWorktreeMeta.mockReturnValue(makeWorktreeMeta({ pushTarget }))
@@ -314,7 +314,7 @@ describe('registerWorktreeHandlers', () => {
         throw new Error('no branch config')
       }
       if (args[0] === 'remote' && args[1] === 'get-url') {
-        return { stdout: 'https://github.com/contributor/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/contributor/kolux.git\n', stderr: '' }
       }
       return { stdout: '', stderr: '' }
     })
@@ -324,7 +324,7 @@ describe('registerWorktreeHandlers', () => {
     })
 
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
-      ['remote', 'remove', 'pr-contributor-nightshift'],
+      ['remote', 'remove', 'pr-contributor-kolux'],
       {
         cwd: '/workspace/repo'
       }

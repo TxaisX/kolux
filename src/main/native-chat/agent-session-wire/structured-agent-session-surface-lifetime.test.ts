@@ -118,7 +118,7 @@ function waitOutSeveralGraceWindows(): Promise<void> {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-surface-lifetime-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-surface-lifetime-'))
   resetHostTestOperationIds()
   sink = null
   hostErrors = []

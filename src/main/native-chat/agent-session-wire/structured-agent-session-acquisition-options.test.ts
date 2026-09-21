@@ -104,7 +104,7 @@ function expectSettledAttachLease(record: AgentSessionRecord | null): void {
 
 describe('structured session acquisition options', () => {
   it('persists create defaults before the first provider acquisition', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-create-options-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-create-options-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -134,7 +134,7 @@ describe('structured session acquisition options', () => {
   })
 
   it('replays a create retried after the host re-resolved different options', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-create-retry-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-create-retry-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -168,7 +168,7 @@ describe('structured session acquisition options', () => {
   })
 
   it('persists provider options before proving a resumed legacy record', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-acquisition-options-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-acquisition-options-'))
     const storeDir = join(root, 'store')
     const store = await AgentSessionRecordStore.open({ directory: storeDir, hostId: 'local' })
 
@@ -238,7 +238,7 @@ describe('structured session acquisition options', () => {
   })
 
   it('releases an acquisition when provider options cannot be read', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-acquisition-options-failure-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-acquisition-options-failure-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -286,7 +286,7 @@ describe('structured session acquisition options', () => {
       ['cleanup error', 'throws']
     ] as const)('atomically settles the lease and operation after %s', async (_case, cleanup) => {
       const exitProven = cleanup === true
-      root = await mkdtemp(join(tmpdir(), `nightshift-acquisition-${failurePoint}-`))
+      root = await mkdtemp(join(tmpdir(), `kolux-acquisition-${failurePoint}-`))
       const storeDir = join(root, 'store')
       const store = await AgentSessionRecordStore.open({ directory: storeDir, hostId: 'local' })
       const base = adapter({

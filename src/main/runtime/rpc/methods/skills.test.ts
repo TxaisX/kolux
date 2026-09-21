@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RpcContext } from '../core'
 
 vi.mock('electron', () => ({
-  app: { getPath: () => '/nightshift-state', isPackaged: true }
+  app: { getPath: () => '/kolux-state', isPackaged: true }
 }))
 
 vi.mock('../../../skills/skill-discovery-target', () => ({

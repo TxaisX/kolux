@@ -8,8 +8,8 @@ import { MOBILE_RELAY_CLOSE_CODE } from '../../../shared/mobile-relay-close-code
 import { RelayControlClient } from './relay-control-client'
 
 const encoder = new TextEncoder()
-const HOST_PROOF_DOMAIN = 'nightshift-relay-host-proof/v1'
-const CHALLENGE_DOMAIN = 'nightshift-relay-host-challenge/v1'
+const HOST_PROOF_DOMAIN = 'kolux-relay-host-proof/v1'
+const CHALLENGE_DOMAIN = 'kolux-relay-host-challenge/v1'
 
 function concat(parts: readonly Uint8Array[]): Uint8Array {
   const output = new Uint8Array(parts.reduce((total, part) => total + part.byteLength, 0))
@@ -195,7 +195,7 @@ describe('RelayControlClient', () => {
         resolve({
           socket,
           authorization: String(request.headers.authorization),
-          capabilities: String(request.headers['x-nightshift-host-capabilities']),
+          capabilities: String(request.headers['x-kolux-host-capabilities']),
           path: request.url ?? ''
         })
       )

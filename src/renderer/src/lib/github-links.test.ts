@@ -9,21 +9,21 @@ import { WORK_ITEM_LINK_QUERY_MAX_BYTES } from './work-item-link-query-bounds'
 
 describe('buildGitHubRepoUrl', () => {
   it('builds a GitHub repository URL from an owner/repo slug', () => {
-    expect(buildGitHubRepoUrl({ owner: 'TxaisX', repo: 'nightshift' })).toBe(
+    expect(buildGitHubRepoUrl({ owner: 'TxaisX', repo: 'kolux' })).toBe(
       'https://github.com/TxaisX/nightshift'
     )
   })
 
   it('encodes path segments', () => {
-    expect(buildGitHubRepoUrl({ owner: 'stably ai', repo: 'nightshift/tools' })).toBe(
-      'https://github.com/stably%20ai/nightshift%2Ftools'
+    expect(buildGitHubRepoUrl({ owner: 'stably ai', repo: 'kolux/tools' })).toBe(
+      'https://github.com/stably%20ai/kolux%2Ftools'
     )
   })
 
   it('links hosted slugs to their GitHub Enterprise server', () => {
-    expect(
-      buildGitHubRepoUrl({ owner: 'team', repo: 'nightshift', host: 'github.acme-corp.com' })
-    ).toBe('https://github.acme-corp.com/team/nightshift')
+    expect(buildGitHubRepoUrl({ owner: 'team', repo: 'kolux', host: 'github.acme-corp.com' })).toBe(
+      'https://github.acme-corp.com/team/kolux'
+    )
   })
 })
 
@@ -72,7 +72,7 @@ describe('parseGitHubIssueOrPRNumber', () => {
 describe('parseGitHubIssueOrPRLink', () => {
   it('parses slug, number, and type for direct item URLs', () => {
     expect(parseGitHubIssueOrPRLink('https://github.com/TxaisX/nightshift/pull/123')).toEqual({
-      slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+      slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
       number: 123,
       type: 'pr'
     })
@@ -91,7 +91,7 @@ describe('parseGitHubIssueOrPRLink', () => {
       type: 'pr'
     })
     expect(parseGitHubIssueOrPRLink('https://github.com/TxaisX/nightshift/issues/923')).toEqual({
-      slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+      slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
       number: 923,
       type: 'issue'
     })
@@ -141,7 +141,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'https://github.com/TxaisX/nightshift/issues/923',
       directNumber: 923,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
         number: 923,
         type: 'issue'
       }
@@ -153,7 +153,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'https://github.com/TxaisX/nightshift/pull/6934',
       directNumber: 6934,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
         number: 6934,
         type: 'pr'
       }
@@ -165,7 +165,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'HTTPS://github.com/TxaisX/nightshift/pull/6934',
       directNumber: 6934,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
         number: 6934,
         type: 'pr'
       }

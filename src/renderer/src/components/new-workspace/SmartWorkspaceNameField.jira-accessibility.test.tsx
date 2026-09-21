@@ -175,7 +175,7 @@ function renderField(
       repos={[]}
       repoId="repo-1"
       onRepoChange={vi.fn()}
-      value={overrides.value ?? 'https://company.atlassian.net/browse/NIGHTSHIFT-123'}
+      value={overrides.value ?? 'https://company.atlassian.net/browse/KOLUX-123'}
       onValueChange={overrides.onValueChange ?? vi.fn()}
       onGitHubItemSelect={vi.fn()}
       onBranchSelect={vi.fn()}
@@ -264,7 +264,7 @@ describe('SmartWorkspaceNameField Jira accessibility', () => {
       selectedSource: {
         kind: 'github-issue',
         label: 'Issue #123',
-        url: 'https://github.com/nightshift/ide/issues/123'
+        url: 'https://github.com/kolux/ide/issues/123'
       }
     })
 
@@ -278,7 +278,7 @@ describe('SmartWorkspaceNameField Jira accessibility', () => {
     expect(onClearSelectedSource).toHaveBeenCalledOnce()
 
     fireEvent.keyDown(pill as HTMLElement, { key: 'Enter', altKey: true })
-    expect(shellMock.openUrl).toHaveBeenCalledWith('https://github.com/nightshift/ide/issues/123')
+    expect(shellMock.openUrl).toHaveBeenCalledWith('https://github.com/kolux/ide/issues/123')
     expect(onPlainEnter).not.toHaveBeenCalled()
   })
 
@@ -351,7 +351,7 @@ describe('SmartWorkspaceNameField Jira accessibility', () => {
   it('replaces the combined field value only for recognized Jira URL pastes', () => {
     const onValueChange = vi.fn()
     renderField({ value: 'existing-name', onValueChange })
-    const jiraUrl = 'https://company.atlassian.net/browse/NIGHTSHIFT-456'
+    const jiraUrl = 'https://company.atlassian.net/browse/KOLUX-456'
     const input = screen.getByRole('textbox')
     const event = createEvent.paste(input, {
       clipboardData: { getData: () => jiraUrl }
@@ -398,12 +398,12 @@ describe('SmartWorkspaceNameField Jira accessibility', () => {
     jiraSearchMock.mockResolvedValueOnce([
       {
         id: 'jira-1',
-        key: 'NIGHTSHIFT-123',
+        key: 'KOLUX-123',
         siteId: 'site-a',
         siteName: 'Company Jira',
         title: 'Disambiguate Jira search',
-        url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-        project: { id: 'project-1', key: 'NIGHTSHIFT', name: 'Nightshift' },
+        url: 'https://company.atlassian.net/browse/KOLUX-123',
+        project: { id: 'project-1', key: 'KOLUX', name: 'Kolux' },
         issueType: { id: 'type-1', name: 'Task' },
         status: { id: 'status-1', name: 'Open', categoryKey: 'new', categoryName: 'To Do' },
         labels: [],
@@ -411,13 +411,13 @@ describe('SmartWorkspaceNameField Jira accessibility', () => {
         updatedAt: '2026-01-01T00:00:00.000Z'
       }
     ])
-    renderField({ jiraSourceContext: true, value: 'NIGHTSHIFT-123' })
+    renderField({ jiraSourceContext: true, value: 'KOLUX-123' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Jira' }))
 
     expect(
       await screen.findByRole('button', {
-        name: /NIGHTSHIFT-123.*Disambiguate Jira search.*Company Jira.*ada@example.com/
+        name: /KOLUX-123.*Disambiguate Jira search.*Company Jira.*ada@example.com/
       })
     ).not.toBeNull()
   })

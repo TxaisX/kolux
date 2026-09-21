@@ -84,7 +84,7 @@ const AUTOMATIONS: Automation[] = [
 async function createStore() {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({
       ...getDefaultPersistedState(testState.dir),
       repos: REPOS,
@@ -101,8 +101,8 @@ async function createStore() {
   const store = new Store()
   const service = new AutomationService(store, { tickMs: 60_000 })
   // Manual runs arrive over the shared runtime RPC surface for every transport.
-  const { NightshiftRuntimeService } = await import('../runtime/nightshift-runtime')
-  const runtime = new NightshiftRuntimeService(store as never)
+  const { KoluxRuntimeService } = await import('../runtime/kolux-runtime')
+  const runtime = new KoluxRuntimeService(store as never)
   runtime.setAutomationService(service)
   return { store, service, runtime }
 }

@@ -43,7 +43,7 @@ export function resolveRemoteCliHandle(
   env: Record<string, string>,
   flagName: string
 ): string {
-  return optionalRemoteCliString(flags, flagName) ?? env.NIGHTSHIFT_TERMINAL_HANDLE ?? 'unknown'
+  return optionalRemoteCliString(flags, flagName) ?? env.KOLUX_TERMINAL_HANDLE ?? 'unknown'
 }
 
 export function requiredRemoteCliString(

@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   dockerSshRelayRepoSentinel,
@@ -17,7 +17,7 @@ import {
   rePairPairedElectronClient,
   type PairedElectronClient
 } from './helpers/paired-electron-client'
-import { createRestartSession } from './helpers/nightshift-restart'
+import { createRestartSession } from './helpers/kolux-restart'
 import {
   encodeTerminalStreamFrame,
   encodeTerminalStreamJson,
@@ -32,12 +32,11 @@ import {
 } from './helpers/nested-runtime-ssh-client-route'
 
 const isDockerNestedRuntimeRun =
-  process.env.NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH === '1' &&
-  process.env.NIGHTSHIFT_E2E_WEB_CLIENT === '1'
+  process.env.KOLUX_E2E_NESTED_RUNTIME_SSH === '1' && process.env.KOLUX_E2E_WEB_CLIENT === '1'
 
 test.skip(
   !isDockerNestedRuntimeRun,
-  'Run with NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH=1 and NIGHTSHIFT_E2E_WEB_CLIENT=1'
+  'Run with KOLUX_E2E_NESTED_RUNTIME_SSH=1 and KOLUX_E2E_WEB_CLIENT=1'
 )
 
 test.describe.configure({ mode: 'serial' })
@@ -157,7 +156,7 @@ async function readRemoteShellPid(
 }
 
 test('isolates nested SSH worktrees across two HUB runtimes', async ({
-  nightshiftAppExtraEnv: _nightshiftAppExtraEnv
+  koluxAppExtraEnv: _koluxAppExtraEnv
 }, testInfo) => {
   test.setTimeout(720_000)
   const hubA = createRestartSession(testInfo)
@@ -367,11 +366,11 @@ test('isolates nested SSH worktrees across two HUB runtimes', async ({
 })
 
 test('routes nested SSH through a HUB without shared-control capability', async ({
-  nightshiftAppExtraEnv: _nightshiftAppExtraEnv
+  koluxAppExtraEnv: _koluxAppExtraEnv
 }, testInfo) => {
   test.setTimeout(360_000)
   const hub = createRestartSession(testInfo, {
-    NIGHTSHIFT_E2E_DISABLE_RUNTIME_SHARED_CONTROL: '1'
+    KOLUX_E2E_DISABLE_RUNTIME_SHARED_CONTROL: '1'
   })
   let target: DockerSshRelayTarget | null = null
   let client: PairedElectronClient | null = null
@@ -420,7 +419,7 @@ test('routes nested SSH through a HUB without shared-control capability', async 
 })
 
 test('quarantines an old terminal stream after same-ID HUB re-pair', async ({
-  nightshiftAppExtraEnv: _nightshiftAppExtraEnv
+  koluxAppExtraEnv: _koluxAppExtraEnv
 }, testInfo) => {
   test.setTimeout(720_000)
   const hub = createRestartSession(testInfo)
@@ -668,7 +667,7 @@ test('quarantines an old terminal stream after same-ID HUB re-pair', async ({
 })
 
 test('restores a paired nested SSH route after the HUB restarts', async ({
-  nightshiftAppExtraEnv: _nightshiftAppExtraEnv
+  koluxAppExtraEnv: _koluxAppExtraEnv
 }, testInfo) => {
   test.setTimeout(720_000)
   const hub = createRestartSession(testInfo)
@@ -697,7 +696,7 @@ test('restores a paired nested SSH route after the HUB restarts', async ({
     const shellPidBeforeRestart = await readRemoteShellPid(
       client,
       beforeRestart.ptyId,
-      'NIGHTSHIFT_SHELL_BEFORE_RESTART_'
+      'KOLUX_SHELL_BEFORE_RESTART_'
     )
     const preRestartEnvironmentId = client.environmentId
 
@@ -739,7 +738,7 @@ test('restores a paired nested SSH route after the HUB restarts', async ({
       await readRemoteShellPid(
         client,
         afterRestartWithoutRepair.ptyId,
-        'NIGHTSHIFT_SHELL_AFTER_RESTART_'
+        'KOLUX_SHELL_AFTER_RESTART_'
       )
     ).toBe(shellPidBeforeRestart)
 

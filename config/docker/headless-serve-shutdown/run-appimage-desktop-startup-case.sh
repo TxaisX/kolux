@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-appimage=${1:-/input/nightshift.AppImage}
+appimage=${1:-/input/kolux.AppImage}
 startup_timeout_seconds=90
 if [[ $# -gt 1 ]]; then
   echo "usage: run-appimage-desktop-startup-case.sh [appimage]" >&2
@@ -9,26 +9,26 @@ if [[ $# -gt 1 ]]; then
 fi
 
 if ((EUID == 0)); then
-  if ! state_dir=$(mktemp -d /tmp/nightshift-appimage-startup.XXXXXX); then
+  if ! state_dir=$(mktemp -d /tmp/kolux-appimage-startup.XXXXXX); then
     echo 'FAIL: unable to create the AppImage startup state directory' >&2
     exit 1
   fi
-  if ! chown nightshift:nightshift "$state_dir"; then
-    echo "FAIL: unable to hand the AppImage startup state directory to nightshift: $state_dir" >&2
+  if ! chown kolux:kolux "$state_dir"; then
+    echo "FAIL: unable to hand the AppImage startup state directory to kolux: $state_dir" >&2
     rm -rf -- "$state_dir" || true
     exit 1
   fi
-  exec runuser --user nightshift --preserve-environment -- env \
-    NIGHTSHIFT_STARTUP_STATE_DIR="$state_dir" \
-    NIGHTSHIFT_STARTUP_STATE_DIR_CLEANUP=1 \
+  exec runuser --user kolux --preserve-environment -- env \
+    KOLUX_STARTUP_STATE_DIR="$state_dir" \
+    KOLUX_STARTUP_STATE_DIR_CLEANUP=1 \
     "$0" "$@"
 fi
 
-remove_state_dir_on_exit=${NIGHTSHIFT_STARTUP_STATE_DIR_CLEANUP:-0}
-if [[ -n "${NIGHTSHIFT_STARTUP_STATE_DIR:-}" ]]; then
-  state_dir=$NIGHTSHIFT_STARTUP_STATE_DIR
+remove_state_dir_on_exit=${KOLUX_STARTUP_STATE_DIR_CLEANUP:-0}
+if [[ -n "${KOLUX_STARTUP_STATE_DIR:-}" ]]; then
+  state_dir=$KOLUX_STARTUP_STATE_DIR
 else
-  if ! state_dir=$(mktemp -d /tmp/nightshift-appimage-startup.XXXXXX); then
+  if ! state_dir=$(mktemp -d /tmp/kolux-appimage-startup.XXXXXX); then
     echo 'FAIL: unable to create the AppImage startup state directory' >&2
     exit 1
   fi
@@ -145,7 +145,7 @@ dump_logs() {
 
 cleanup_state_dir() {
   [[ "$remove_state_dir_on_exit" == 1 ]] || return 0
-  [[ "$state_dir" =~ ^/tmp/nightshift-appimage-startup\.[^/]+$ ]] || return 0
+  [[ "$state_dir" =~ ^/tmp/kolux-appimage-startup\.[^/]+$ ]] || return 0
   [[ -d "$state_dir" && ! -L "$state_dir" && -O "$state_dir" ]] || return 0
   rm -rf -- "$state_dir"
 }
@@ -205,7 +205,7 @@ export XDG_CONFIG_HOME="$state_dir/config"
 export XDG_CACHE_HOME="$state_dir/cache"
 export XDG_RUNTIME_DIR="$state_dir/runtime"
 export LIBGL_ALWAYS_SOFTWARE=1
-export NIGHTSHIFT_STARTUP_DIAGNOSTICS=1
+export KOLUX_STARTUP_DIAGNOSTICS=1
 ulimit -c 0
 
 [[ -r "$appimage" ]] || { echo "FAIL: AppImage is not readable: $appimage" >&2; exit 1; }

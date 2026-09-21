@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../shared/constants'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import { SettingsUpdate } from './client-settings-schemas'
 
 vi.mock('electron', () => ({
-  app: { getPath: () => '/nightshift-state', isPackaged: true }
+  app: { getPath: () => '/kolux-state', isPackaged: true }
 }))
 
-function runtimeWithSharing(agentSkillSharingEnabled: unknown): NightshiftRuntimeService {
-  return new NightshiftRuntimeService({
+function runtimeWithSharing(agentSkillSharingEnabled: unknown): KoluxRuntimeService {
+  return new KoluxRuntimeService({
     getSettings: () => ({ ...getDefaultSettings('/tmp'), agentSkillSharingEnabled })
   } as never)
 }

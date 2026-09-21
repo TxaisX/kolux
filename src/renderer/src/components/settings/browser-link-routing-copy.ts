@@ -23,12 +23,12 @@ export function getBrowserLinkRoutingDescription(
   if (modifierInverts) {
     return translate(
       'auto.components.settings.BrowserLinkRoutingSetting.descriptionBase',
-      "Open http(s) links in Nightshift's built-in browser — from the terminal, markdown, and the editor."
+      "Open http(s) links in Kolux's built-in browser — from the terminal, markdown, and the editor."
     )
   }
   return translate(
     'auto.components.settings.BrowserLinkRoutingSetting.description',
-    "Open http(s) links in Nightshift's built-in browser — from the terminal, markdown, and the editor. {{shortcut}} always uses your system browser.",
+    "Open http(s) links in Kolux's built-in browser — from the terminal, markdown, and the editor. {{shortcut}} always uses your system browser.",
     { shortcut: getBrowserLinkRoutingShortcutLabel(platform) }
   )
 }
@@ -46,13 +46,13 @@ export function getLinkRoutingModifierTitle(openLinksInApp: boolean): string {
         'Hold Shift to open in your web browser'
       )
     : translate(
-        'auto.components.settings.BrowserLinkRoutingModifierSetting.titleNightshift',
-        'Hold Shift to open in Nightshift'
+        'auto.components.settings.BrowserLinkRoutingModifierSetting.titleKolux',
+        'Hold Shift to open in Kolux'
       )
 }
 
-// Why: the Nightshift branch is enabled-state copy — with the toggle off the chord
-// still lands on the system browser, so it must not promise Nightshift in present tense.
+// Why: the Kolux branch is enabled-state copy — with the toggle off the chord
+// still lands on the system browser, so it must not promise Kolux in present tense.
 export function getLinkRoutingModifierDescription({
   openLinksInApp,
   isMac
@@ -64,12 +64,12 @@ export function getLinkRoutingModifierDescription({
   return openLinksInApp
     ? translate(
         'auto.components.settings.BrowserLinkRoutingModifierSetting.descriptionSystem',
-        'Links open in Nightshift, so {{chord}}+click sends one to your system browser instead.',
+        'Links open in Kolux, so {{chord}}+click sends one to your system browser instead.',
         { chord }
       )
     : translate(
-        'auto.components.settings.BrowserLinkRoutingModifierSetting.descriptionNightshift',
-        "Links open in your system browser. When enabled, {{chord}}+click opens one in Nightshift's built-in browser instead.",
+        'auto.components.settings.BrowserLinkRoutingModifierSetting.descriptionKolux',
+        "Links open in your system browser. When enabled, {{chord}}+click opens one in Kolux's built-in browser instead.",
         { chord }
       )
 }

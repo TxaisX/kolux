@@ -147,9 +147,9 @@ describe('worktree remote runtime mutations', () => {
       provider: 'jira' as const,
       type: 'issue' as const,
       number: 0,
-      title: 'NIGHTSHIFT-123 Link Jira',
-      url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Link Jira',
+      url: 'https://company.atlassian.net/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     }
     const linkedTaskSourceContext = {
       kind: 'task-source' as const,
@@ -160,7 +160,7 @@ describe('worktree remote runtime mutations', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       }
     }
     const createWorktree = store.getState().createWorktree
@@ -199,9 +199,9 @@ describe('worktree remote runtime mutations', () => {
         provider: 'jira',
         type: 'issue',
         number: 0,
-        title: 'NIGHTSHIFT-123 Link Jira',
-        url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-        jiraIdentifier: 'NIGHTSHIFT-123'
+        title: 'KOLUX-123 Link Jira',
+        url: 'https://company.atlassian.net/browse/KOLUX-123',
+        jiraIdentifier: 'KOLUX-123'
       }
     }
 
@@ -248,11 +248,11 @@ describe('worktree remote runtime mutations', () => {
         undefined,
         {
           command: "codex 'summarize repo'",
-          env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+          env: { KOLUX_AGENT_MODE: 'direct' },
           launchConfig: {
             agentCommand: 'codex',
             agentArgs: '--model gpt-5',
-            agentEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' }
+            agentEnv: { KOLUX_AGENT_MODE: 'direct' }
           }
         }
       )
@@ -268,11 +268,11 @@ describe('worktree remote runtime mutations', () => {
           displayName: 'Launch agent',
           createdWithAgent: 'codex',
           startupCommand: "codex 'summarize repo'",
-          startupEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+          startupEnv: { KOLUX_AGENT_MODE: 'direct' },
           startupLaunchConfig: {
             agentCommand: 'codex',
             agentArgs: '--model gpt-5',
-            agentEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' }
+            agentEnv: { KOLUX_AGENT_MODE: 'direct' }
           },
           activate: true
         })
@@ -352,7 +352,7 @@ describe('worktree remote runtime mutations', () => {
         undefined,
         {
           command: "claude --prefill 'summarize repo'",
-          env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+          env: { KOLUX_AGENT_MODE: 'direct' },
           telemetry: {
             agent_kind: 'claude-code',
             launch_source: 'new_workspace_composer',
@@ -371,7 +371,7 @@ describe('worktree remote runtime mutations', () => {
         createdWithAgent: 'claude',
         startup: {
           command: "claude --prefill 'summarize repo'",
-          env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+          env: { KOLUX_AGENT_MODE: 'direct' },
           telemetry: {
             agent_kind: 'claude-code',
             launch_source: 'new_workspace_composer',

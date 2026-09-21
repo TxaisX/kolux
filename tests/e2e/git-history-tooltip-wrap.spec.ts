@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import { openSourceControlForWorktree } from './helpers/worktree-registration'
 
@@ -49,7 +49,7 @@ async function cleanupCommitWorktree(
 }
 
 test('keeps conventional commit-message lines intact in the history tooltip', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath,
   registerPostElectronShutdownCleanup
 }) => {
@@ -63,15 +63,15 @@ test('keeps conventional commit-message lines intact in the history tooltip', as
     stdio: ['pipe', 'pipe', 'pipe']
   })
 
-  await nightshiftPage.setViewportSize({ width: 1440, height: 900 })
-  await waitForSessionReady(nightshiftPage)
-  await openSourceControlForWorktree(nightshiftPage, testRepoPath, fixture.worktreePath)
+  await koluxPage.setViewportSize({ width: 1440, height: 900 })
+  await waitForSessionReady(koluxPage)
+  await openSourceControlForWorktree(koluxPage, testRepoPath, fixture.worktreePath)
 
-  const commitsToggle = nightshiftPage.getByRole('button', { name: /Commits/ })
+  const commitsToggle = koluxPage.getByRole('button', { name: /Commits/ })
   await expect(commitsToggle).toBeVisible()
   await commitsToggle.click()
 
-  const row = nightshiftPage.getByTestId('git-history-row').filter({ hasText: subject })
+  const row = koluxPage.getByTestId('git-history-row').filter({ hasText: subject })
   await expect(row).toBeVisible({ timeout: 10_000 })
   await expect(row).not.toHaveAttribute('title')
   const trigger = row.locator('[data-slot="tooltip-trigger"]').filter({ hasText: subject })
@@ -79,12 +79,12 @@ test('keeps conventional commit-message lines intact in the history tooltip', as
   await trigger.hover({ position: { x: 20, y: 10 } })
   await trigger.hover({ position: { x: 40, y: 10 } })
 
-  const tooltip = nightshiftPage
+  const tooltip = koluxPage
     .locator('[data-slot="tooltip-content"]')
     .filter({ hasText: reportedLine })
   await expect(tooltip).toBeVisible()
   await expect(tooltip).toContainText(commitMessage)
-  await nightshiftPage.evaluate(async () => {
+  await koluxPage.evaluate(async () => {
     await document.fonts.ready
   })
 

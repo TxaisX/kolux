@@ -114,7 +114,7 @@ describe('RelayAgentHookServer host-given coordinates (WSL relay)', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Nightshift-Agent-Hook-Token': 'wrong-token'
+        'X-Kolux-Agent-Hook-Token': 'wrong-token'
       },
       body: '{}'
     })
@@ -125,7 +125,7 @@ describe('RelayAgentHookServer host-given coordinates (WSL relay)', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Nightshift-Agent-Hook-Token': 'host-issued-token'
+        'X-Kolux-Agent-Hook-Token': 'host-issued-token'
       },
       body: JSON.stringify({
         paneKey: PANE_KEY,
@@ -162,10 +162,10 @@ describe('RelayAgentHookServer host-given coordinates (WSL relay)', () => {
       // agents re-source it and MUST see the actual fallback port, not the
       // occupied preferred port.
       const published = parseEndpointFile(readFileSync(endpointFilePath, 'utf8'))
-      expect(published.NIGHTSHIFT_AGENT_HOOK_PORT).toBe(String(port))
-      expect(published.NIGHTSHIFT_AGENT_HOOK_PORT).not.toBe(String(occupiedPort))
-      expect(published.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe(token)
-      expect(published.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('host-issued-token')
+      expect(published.KOLUX_AGENT_HOOK_PORT).toBe(String(port))
+      expect(published.KOLUX_AGENT_HOOK_PORT).not.toBe(String(occupiedPort))
+      expect(published.KOLUX_AGENT_HOOK_TOKEN).toBe(token)
+      expect(published.KOLUX_AGENT_HOOK_TOKEN).toBe('host-issued-token')
     } finally {
       await new Promise<void>((resolve) => occupant.close(() => resolve()))
     }
@@ -175,16 +175,16 @@ describe('RelayAgentHookServer host-given coordinates (WSL relay)', () => {
 describe('wsl hook relay endpoint contract', () => {
   it('derives the endpoint dir from guest home and the restart-stable instance key', () => {
     expect(wslHookRelayEndpointDir('/home/u', 'abc123')).toBe(
-      '/home/u/.nightshift-wsl/agent-hooks/instance-abc123'
+      '/home/u/.kolux-wsl/agent-hooks/instance-abc123'
     )
     expect(wslHookRelayEndpointDir('/home/u/', 'abc123')).toBe(
-      '/home/u/.nightshift-wsl/agent-hooks/instance-abc123'
+      '/home/u/.kolux-wsl/agent-hooks/instance-abc123'
     )
   })
 
   it('names the guest endpoint file endpoint.env regardless of host platform', () => {
     expect(wslHookRelayEndpointFilePath('/home/u', 'k1')).toBe(
-      '/home/u/.nightshift-wsl/agent-hooks/instance-k1/endpoint.env'
+      '/home/u/.kolux-wsl/agent-hooks/instance-k1/endpoint.env'
     )
   })
 

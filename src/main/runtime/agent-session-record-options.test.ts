@@ -10,7 +10,7 @@ const SESSION = 'session-options'
 let directory: string
 
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-agent-session-options-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-agent-session-options-'))
 })
 
 afterEach(async () => {

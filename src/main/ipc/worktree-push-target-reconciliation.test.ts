@@ -5,7 +5,7 @@ import type { GitPushTarget } from '../../shared/worktree/types'
 import type { GitRemoteExec, WorktreePushTargetStore } from './worktree-push-target-cleanup'
 import {
   _resetPrRemoteReconciliationRateLimitForTests,
-  isNightshiftGeneratedPrRemoteName,
+  isKoluxGeneratedPrRemoteName,
   reconcileOrphanedPrRemotesWithExec
 } from './worktree-push-target-reconciliation'
 
@@ -13,8 +13,8 @@ type ExecMock = Mock<GitRemoteExec>
 
 const REPO_PATH = '/repo-root'
 const REPO_ID = 'repo-1'
-const FORK_URL = 'git@github.com:contributor/nightshift.git'
-const FORK_REMOTE = 'pr-contributor-nightshift'
+const FORK_URL = 'git@github.com:contributor/kolux.git'
+const FORK_REMOTE = 'pr-contributor-kolux'
 
 function worktreeId(suffix: string): string {
   return `${REPO_ID}::${suffix}`
@@ -79,23 +79,23 @@ function removeCalls(exec: ExecMock): string[][] {
     .filter((args) => args[0] === 'remote' && args[1] === 'remove')
 }
 
-describe('isNightshiftGeneratedPrRemoteName', () => {
-  it('matches Nightshift-generated names, including disambiguated ones', () => {
-    expect(isNightshiftGeneratedPrRemoteName('pr-head')).toBe(true)
-    expect(isNightshiftGeneratedPrRemoteName('pr-contributor-nightshift')).toBe(true)
-    expect(isNightshiftGeneratedPrRemoteName('pr-head-2')).toBe(true)
-    expect(isNightshiftGeneratedPrRemoteName('pr-contributor-nightshift-3')).toBe(true)
+describe('isKoluxGeneratedPrRemoteName', () => {
+  it('matches Kolux-generated names, including disambiguated ones', () => {
+    expect(isKoluxGeneratedPrRemoteName('pr-head')).toBe(true)
+    expect(isKoluxGeneratedPrRemoteName('pr-contributor-kolux')).toBe(true)
+    expect(isKoluxGeneratedPrRemoteName('pr-head-2')).toBe(true)
+    expect(isKoluxGeneratedPrRemoteName('pr-contributor-kolux-3')).toBe(true)
   })
 
   it('does not match unrelated remote names', () => {
-    expect(isNightshiftGeneratedPrRemoteName('origin')).toBe(false)
-    expect(isNightshiftGeneratedPrRemoteName('upstream')).toBe(false)
-    expect(isNightshiftGeneratedPrRemoteName('project-remote')).toBe(false)
+    expect(isKoluxGeneratedPrRemoteName('origin')).toBe(false)
+    expect(isKoluxGeneratedPrRemoteName('upstream')).toBe(false)
+    expect(isKoluxGeneratedPrRemoteName('project-remote')).toBe(false)
   })
 })
 
 describe('reconcileOrphanedPrRemotesWithExec', () => {
-  it('leaves a remote alone when no worktree metadata ever proves Nightshift created it (user-created, ambiguous)', async () => {
+  it('leaves a remote alone when no worktree metadata ever proves Kolux created it (user-created, ambiguous)', async () => {
     // Same naming shape a user could coincidentally pick; no pushTarget anywhere claims it.
     const exec = makeExec({ remotes: remoteLines([{ name: FORK_REMOTE, url: FORK_URL }]) })
     const reclaimed = await reconcileOrphanedPrRemotesWithExec(
@@ -109,7 +109,7 @@ describe('reconcileOrphanedPrRemotesWithExec', () => {
     expect(removeCalls(exec)).toEqual([])
   })
 
-  it('leaves a remote alone that is not shaped like a Nightshift-generated pr-* remote', async () => {
+  it('leaves a remote alone that is not shaped like a Kolux-generated pr-* remote', async () => {
     const exec = makeExec({
       remotes: remoteLines([{ name: 'my-fork', url: FORK_URL }])
     })
@@ -173,9 +173,9 @@ describe('reconcileOrphanedPrRemotesWithExec', () => {
     expect(removeCalls(exec)).toEqual([['remote', 'remove', FORK_REMOTE]])
   })
 
-  it('reclaims a remote left behind by a worktree removed outside Nightshift (path 3)', async () => {
+  it('reclaims a remote left behind by a worktree removed outside Kolux (path 3)', async () => {
     const exec = makeExec({ remotes: remoteLines([{ name: FORK_REMOTE, url: FORK_URL }]) })
-    // Metadata still records the (now-vanished) worktree's Nightshift-created pushTarget.
+    // Metadata still records the (now-vanished) worktree's Kolux-created pushTarget.
     const reclaimed = await reconcileOrphanedPrRemotesWithExec(
       REPO_PATH,
       REPO_ID,

@@ -1,5 +1,5 @@
 import type { BrowserWindow, IpcMainEvent, IpcMainInvokeEvent, WebContents } from 'electron'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { IPtyProvider } from '../../../providers/types'
 import { isPtyWriteUnavailableError } from '../../../providers/pty-write-unavailable-error'
 import {
@@ -24,7 +24,7 @@ import {
 } from '../delivery/visibility-state'
 
 // Why the name stayed: every caller already treats this as 'is this a trusted first-party
-// Nightshift renderer', and a tracked terminal window is exactly that — same preload, same
+// Kolux renderer', and a tracked terminal window is exactly that — same preload, same
 // trust level as the main window, just a second BrowserWindow.
 export function isMainWindowPtyIpcEvent(
   event: IpcMainEvent | IpcMainInvokeEvent,
@@ -45,7 +45,7 @@ export type PtyViewportClaimPayload = { id: string; cols: number; rows: number }
 
 export function createPtyWriteInput(deps: {
   mainWindow: BrowserWindow
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   clearHiddenRendererResizeOutput: (id: string) => void
 }): {
   writePtyInput: (args: PtyWritePayload) => boolean | Promise<boolean>

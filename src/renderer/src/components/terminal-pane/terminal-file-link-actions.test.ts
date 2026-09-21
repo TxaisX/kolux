@@ -61,7 +61,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('terminal file link actions', () => {
-  it('offers Nightshift and system-default actions for a local file', () => {
+  it('offers Kolux and system-default actions for a local file', () => {
     const request = vi.fn()
     expect(
       handleTerminalFileLink('/repo/src/main.ts', 12, 4, plainEvent(), deps, context(request))

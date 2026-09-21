@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HEADLESS_LEAF_ID, TEST_WORKTREE_ID, store } from './nightshift-runtime-test-fixtures.spec'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { HEADLESS_LEAF_ID, TEST_WORKTREE_ID, store } from './kolux-runtime-test-fixtures.spec'
+import { KoluxRuntimeService } from './kolux-runtime'
 import type { SshRemotePtyLease } from '../../shared/ssh-types'
 
 // Which `expired` SSH leases may answer "this pane is still recoverable". A pane accumulates leases
@@ -46,7 +46,7 @@ function leaseFor(ptyId: string, marks: Partial<SshRemotePtyLease> = {}): SshRem
 }
 
 function readerWithLeases(leases: SshRemotePtyLease[]): LeaseReader {
-  return new NightshiftRuntimeService({
+  return new KoluxRuntimeService({
     ...store,
     getSshRemotePtyLeases: () => leases
   }) as unknown as LeaseReader
@@ -97,7 +97,7 @@ describe('recent expired SSH lease candidacy', () => {
   it('collects the same tabs the per-tab reader reports, in one sweep of the leases', () => {
     const leases = [leaseFor('pty-1', { supersededBy: 'pty-2' }), leaseFor('pty-2')]
     let sweeps = 0
-    const reader = new NightshiftRuntimeService({
+    const reader = new KoluxRuntimeService({
       ...store,
       getSshRemotePtyLeases: () => {
         sweeps += 1

@@ -23,7 +23,7 @@ vi.mock('./plugin-git-repository', () => ({
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-marketplace-installer-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-marketplace-installer-'))
   roots.push(root)
   return root
 }
@@ -49,14 +49,14 @@ function marketplace(): PluginMarketplace {
 async function writeCurrentPlugin(destination: string): Promise<void> {
   await mkdir(destination, { recursive: true })
   await writeFile(
-    join(destination, 'nightshift-plugin.json'),
+    join(destination, 'kolux-plugin.json'),
     JSON.stringify({
       manifestVersion: 1,
       id: git.id,
       publisher: git.publisher,
       name: 'Notes',
       version: git.version,
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       capabilities: []
     })

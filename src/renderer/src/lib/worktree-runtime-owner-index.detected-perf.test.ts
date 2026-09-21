@@ -191,7 +191,7 @@ describe('detected worktree index performance', () => {
       }
     }
     writeFileSync(
-      join(tmpdir(), 'nightshift-detected-worktree-index-bench.json'),
+      join(tmpdir(), 'kolux-detected-worktree-index-bench.json'),
       `${JSON.stringify(report, null, 2)}\n`
     )
 

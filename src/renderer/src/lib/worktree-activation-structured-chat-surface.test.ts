@@ -22,8 +22,8 @@ afterEach(() => {
 })
 
 const setup = {
-  runnerScriptPath: '/tmp/repo/.git/nightshift/setup-runner.sh',
-  envVars: { NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
+  runnerScriptPath: '/tmp/repo/.git/kolux/setup-runner.sh',
+  envVars: { KOLUX_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
 }
 
 // Why: a native-chat create used to land the user on a bare "Terminal 1" beside the chat,
@@ -50,7 +50,7 @@ describe('seeding beside a caller-provided chat surface', () => {
       recordInteraction: false
     })
     expect(store.queueTabStartupCommand).toHaveBeenCalledWith('tab-1', {
-      command: 'bash /tmp/repo/.git/nightshift/setup-runner.sh',
+      command: 'bash /tmp/repo/.git/kolux/setup-runner.sh',
       env: setup.envVars
     })
   })
@@ -79,14 +79,14 @@ describe('seeding beside a caller-provided chat surface', () => {
       'wt-1',
       undefined,
       undefined,
-      { command: 'nightshift issue run' },
+      { command: 'kolux issue run' },
       undefined,
       { callerProvidesSurface: true }
     )
 
     expect(createTab).toHaveBeenCalledTimes(1)
     expect(store.queueTabIssueCommandSplit).toHaveBeenCalledWith('tab-1', {
-      command: 'nightshift issue run',
+      command: 'kolux issue run',
       env: undefined
     })
   })

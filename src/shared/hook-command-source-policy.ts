@@ -1,4 +1,4 @@
-import type { HookCommandSourcePolicy } from './nightshift-yaml-hook-types'
+import type { HookCommandSourcePolicy } from './kolux-yaml-hook-types'
 
 export function normalizeHookCommandSourcePolicy(policy: unknown): HookCommandSourcePolicy {
   if (policy === 'local-only' || policy === 'run-both' || policy === 'shared-only') {

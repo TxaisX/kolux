@@ -28,18 +28,18 @@ export function stripRemotePaneEnvWhenHooksDisabled(
   }
   if (
     !env ||
-    (!('NIGHTSHIFT_PANE_KEY' in env) &&
-      !('NIGHTSHIFT_TAB_ID' in env) &&
-      !('NIGHTSHIFT_WORKTREE_ID' in env) &&
-      !('NIGHTSHIFT_AGENT_LAUNCH_TOKEN' in env))
+    (!('KOLUX_PANE_KEY' in env) &&
+      !('KOLUX_TAB_ID' in env) &&
+      !('KOLUX_WORKTREE_ID' in env) &&
+      !('KOLUX_AGENT_LAUNCH_TOKEN' in env))
   ) {
     return env
   }
   const stripped = { ...env }
-  delete stripped.NIGHTSHIFT_PANE_KEY
-  delete stripped.NIGHTSHIFT_TAB_ID
-  delete stripped.NIGHTSHIFT_WORKTREE_ID
-  delete stripped.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+  delete stripped.KOLUX_PANE_KEY
+  delete stripped.KOLUX_TAB_ID
+  delete stripped.KOLUX_WORKTREE_ID
+  delete stripped.KOLUX_AGENT_LAUNCH_TOKEN
   return stripped
 }
 

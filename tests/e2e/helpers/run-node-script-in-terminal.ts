@@ -26,7 +26,7 @@ export function stageNodeScriptForTerminal(
 ): StagedTerminalNodeScript {
   const dir = options.dir ?? tmpdir()
   mkdirSync(dir, { recursive: true })
-  const prefix = options.prefix ?? 'nightshift-e2e-terminal-node'
+  const prefix = options.prefix ?? 'kolux-e2e-terminal-node'
   const scriptPath = path.join(dir, `${prefix}-${randomUUID()}.cjs`)
   writeFileSync(scriptPath, source)
   // Why: forward slashes are valid for node on Windows and parse identically in

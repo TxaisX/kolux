@@ -216,7 +216,7 @@ function getHostSetupAvailability(host: ExecutionHostRegistryEntry): {
   if (host.health === 'blocked') {
     return {
       isAvailable: false,
-      detail: 'Nightshift server version is incompatible'
+      detail: 'Kolux server version is incompatible'
     }
   }
   // Why: disconnected hosts cannot confirm project setup or runtime capabilities,
@@ -241,7 +241,7 @@ function getHostSetupAvailability(host: ExecutionHostRegistryEntry): {
     ) {
       return {
         isAvailable: false,
-        detail: 'Update Nightshift on this host to set up projects'
+        detail: 'Update Kolux on this host to set up projects'
       }
     }
   }

@@ -15,7 +15,7 @@ function makeProductionSession(index: number, title = `session-${index}`): AiVau
     agent: 'codex',
     sessionId: `session-${index}`,
     title,
-    cwd: '/Users/ada/nightshift',
+    cwd: '/Users/ada/kolux',
     branch: 'nwparker/ai-vault-session-list-identity',
     model: 'gpt-5',
     filePath: `/sessions/session-${index}.jsonl`,

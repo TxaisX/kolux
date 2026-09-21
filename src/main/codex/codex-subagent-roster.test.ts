@@ -412,8 +412,8 @@ describe('CodexSubagentRoster', () => {
     )
 
     expect(appended.map((entry) => entry.identity)).toEqual([
-      { provider: 'nightshift', clientMessageId: `codex-subagents:${THREAD}:${TURN}` },
-      { provider: 'nightshift', clientMessageId: `codex-subagents:${THREAD}:outside-turn` }
+      { provider: 'kolux', clientMessageId: `codex-subagents:${THREAD}:${TURN}` },
+      { provider: 'kolux', clientMessageId: `codex-subagents:${THREAD}:outside-turn` }
     ])
   })
 

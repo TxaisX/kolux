@@ -4,7 +4,7 @@ export type DesktopWindowChromeInput = {
 }
 
 export function isPairedWebClientWindow(): boolean {
-  return (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ === true
+  return (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ === true
 }
 
 export function isLocalWindowsDesktopClient(): boolean {

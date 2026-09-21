@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import {
   syncSystemCodexResourcesIntoManagedHome,
   getSystemCodexHomePath,
-  resolveNightshiftManagedCodexHomePath
+  resolveKoluxManagedCodexHomePath
 } from '../codex/codex-home-paths'
 import { syncSystemConfigIntoManagedCodexHome } from '../codex/codex-config-mirror'
 import { startCodexAccountSessionBridgeInBackground } from '../codex/codex-account-session-bridge'
@@ -123,7 +123,7 @@ export abstract class CodexRuntimeHomeManagedHome extends CodexRuntimeHomeSync {
 
   // Why: Codex's own `/resume` picker only lists rollouts under the launch
   // CODEX_HOME, so a self-contained account home starts out with no history at
-  // all. Hardlink every other Nightshift-visible home's rollouts in — after launch,
+  // all. Hardlink every other Kolux-visible home's rollouts in — after launch,
   // since history trees can be large — so switching accounts no longer hides
   // the user's conversations.
   protected startSelfContainedSessionBridgeForLaunch(perAccountHome: string): void {
@@ -139,7 +139,7 @@ export abstract class CodexRuntimeHomeManagedHome extends CodexRuntimeHomeSync {
       // home they actually record sessions in; falls back to the real ~/.codex.
       resolveHostCodexSessionSourceHome(this.store.getSettings()) ?? getSystemCodexHomePath(),
       // Why: path only — a per-account install must not materialize the mirror.
-      resolveNightshiftManagedCodexHomePath(),
+      resolveKoluxManagedCodexHomePath(),
       ...this.getManagedHostAccountHomesForSessionDiscovery()
     ]
   }

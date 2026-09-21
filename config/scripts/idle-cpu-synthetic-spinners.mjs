@@ -6,10 +6,10 @@ export async function installSyntheticVisibleSpinners(page, count, animation, st
     animation === 'steps' ? `1s steps(${steps}, end) infinite` : '1s linear infinite'
   await page.addStyleTag({
     content: `
-      @keyframes nightshift-idle-bench-spin {
+      @keyframes kolux-idle-bench-spin {
         to { transform: rotate(360deg); }
       }
-      .nightshift-idle-bench-spinner-host {
+      .kolux-idle-bench-spinner-host {
         position: fixed;
         top: 16px;
         right: 16px;
@@ -19,24 +19,24 @@ export async function installSyntheticVisibleSpinners(page, count, animation, st
         gap: 8px;
         pointer-events: none;
       }
-      .nightshift-idle-bench-spinner {
+      .kolux-idle-bench-spinner {
         width: 10px;
         height: 10px;
         border: 2px solid rgb(234 179 8);
         border-top-color: transparent;
         border-radius: 9999px;
-        animation: nightshift-idle-bench-spin ${animationTiming};
+        animation: kolux-idle-bench-spin ${animationTiming};
       }
     `
   })
   await page.evaluate((spinnerCount) => {
-    document.querySelector('[data-nightshift-idle-bench-spinners]')?.remove()
+    document.querySelector('[data-kolux-idle-bench-spinners]')?.remove()
     const host = document.createElement('div')
-    host.className = 'nightshift-idle-bench-spinner-host'
-    host.setAttribute('data-nightshift-idle-bench-spinners', String(spinnerCount))
+    host.className = 'kolux-idle-bench-spinner-host'
+    host.setAttribute('data-kolux-idle-bench-spinners', String(spinnerCount))
     for (let index = 0; index < spinnerCount; index += 1) {
       const spinner = document.createElement('div')
-      spinner.className = 'nightshift-idle-bench-spinner'
+      spinner.className = 'kolux-idle-bench-spinner'
       host.appendChild(spinner)
     }
     document.body.appendChild(host)

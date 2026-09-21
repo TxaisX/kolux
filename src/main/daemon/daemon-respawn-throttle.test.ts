@@ -50,7 +50,7 @@ describe('DaemonSpawner crash-loop containment', () => {
   it('stops forking once the daemon has died repeatedly inside the window', async () => {
     const launcher = vi.fn(async () => handle)
     const spawner = new DaemonSpawner({
-      runtimeDir: '/tmp/nightshiftd-throttle-test',
+      runtimeDir: '/tmp/koluxd-throttle-test',
       launcher,
       respawnThrottle: new DaemonRespawnThrottle({ maxAttempts: 3, windowMs: 60_000 })
     })
@@ -68,7 +68,7 @@ describe('DaemonSpawner crash-loop containment', () => {
   it('does not count a cached handle as a new attempt', async () => {
     const launcher = vi.fn(async () => handle)
     const spawner = new DaemonSpawner({
-      runtimeDir: '/tmp/nightshiftd-throttle-test',
+      runtimeDir: '/tmp/koluxd-throttle-test',
       launcher,
       respawnThrottle: new DaemonRespawnThrottle({ maxAttempts: 2, windowMs: 60_000 })
     })
@@ -81,7 +81,7 @@ describe('DaemonSpawner crash-loop containment', () => {
   it('lets an operator restart clear containment', async () => {
     const launcher = vi.fn(async () => handle)
     const spawner = new DaemonSpawner({
-      runtimeDir: '/tmp/nightshiftd-throttle-test',
+      runtimeDir: '/tmp/koluxd-throttle-test',
       launcher,
       respawnThrottle: new DaemonRespawnThrottle({ maxAttempts: 1, windowMs: 60_000 })
     })

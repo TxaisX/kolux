@@ -27,10 +27,10 @@ describe('live-remote-bulk-open-freeze-metrics', () => {
   it('builds worktree selectors from id/path', () => {
     expect(
       worktreeSelector({
-        id: 'repo::C:/Users/neil/nightshift/nightshift',
-        path: 'C:/Users/neil/nightshift/nightshift'
+        id: 'repo::C:/Users/neil/kolux/kolux',
+        path: 'C:/Users/neil/kolux/kolux'
       })
-    ).toBe('id:repo::C:/Users/neil/nightshift/nightshift')
+    ).toBe('id:repo::C:/Users/neil/kolux/kolux')
     expect(worktreeSelector({ path: '/tmp/x' })).toBe('path:/tmp/x')
     expect(worktreeSelector({})).toBeNull()
   })
@@ -148,12 +148,12 @@ describe('live-remote-bulk-open-freeze-metrics', () => {
   })
 
   it('rejects invalid numeric environment values', () => {
-    process.env.NIGHTSHIFT_FREEZE_TEST_NUMBER = 'not-a-number'
-    expect(() => readFreezeNumberEnv('NIGHTSHIFT_FREEZE_TEST_NUMBER', 5)).toThrow(
-      'Invalid NIGHTSHIFT_FREEZE_TEST_NUMBER'
+    process.env.KOLUX_FREEZE_TEST_NUMBER = 'not-a-number'
+    expect(() => readFreezeNumberEnv('KOLUX_FREEZE_TEST_NUMBER', 5)).toThrow(
+      'Invalid KOLUX_FREEZE_TEST_NUMBER'
     )
-    delete process.env.NIGHTSHIFT_FREEZE_TEST_NUMBER
-    expect(readFreezeNumberEnv('NIGHTSHIFT_FREEZE_TEST_NUMBER', 5)).toBe(5)
+    delete process.env.KOLUX_FREEZE_TEST_NUMBER
+    expect(readFreezeNumberEnv('KOLUX_FREEZE_TEST_NUMBER', 5)).toBe(5)
   })
 
   it('distinguishes recovered hard stall from permanent lockup', () => {

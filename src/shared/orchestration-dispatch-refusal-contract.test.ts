@@ -15,7 +15,7 @@ describe('buildInjectRejectionMessage', () => {
     expect(message).toContain('no recognized agent detected')
   })
 
-  it('names every agent Nightshift recognizes, including agy', () => {
+  it('names every agent Kolux recognizes, including agy', () => {
     expect(message).toMatch(/\bagy\b/)
     for (const config of Object.values(TUI_AGENT_CONFIG)) {
       expect(message).toContain(config.expectedProcess)

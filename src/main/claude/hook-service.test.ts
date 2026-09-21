@@ -48,17 +48,17 @@ function hasManagedCommand(hook: TestHook, matcher: (command: string | undefined
 }
 
 describe('getWindowsManagedLifecycleHook', () => {
-  const SAFE_SCRIPT_PATH = 'C:\\Users\\alice\\.nightshift\\agent-hooks\\claude-hook.cmd'
-  const UNSAFE_SCRIPT_PATH = 'C:\\Users\\%name%\\a^b&c\\.nightshift\\agent-hooks\\claude-hook.cmd'
+  const SAFE_SCRIPT_PATH = 'C:\\Users\\alice\\.kolux\\agent-hooks\\claude-hook.cmd'
+  const UNSAFE_SCRIPT_PATH = 'C:\\Users\\%name%\\a^b&c\\.kolux\\agent-hooks\\claude-hook.cmd'
 
   it('registers the script itself, with no interpreter in front of it (#18875)', () => {
     // Why this is the whole point: the encoded launcher spent a PowerShell start-up per hook
-    // event (471ms vs 201ms measured) before the .cmd could reach its NIGHTSHIFT_PANE_KEY guard, and
+    // event (471ms vs 201ms measured) before the .cmd could reach its KOLUX_PANE_KEY guard, and
     // its orphan outlived the hook's timeout kill still holding the stdout the agent reads.
     const hook = getWindowsManagedLifecycleHook(SAFE_SCRIPT_PATH, { gitBashAvailable: true })
 
     expect(hook.args).toBeUndefined()
-    expect(hook.command).toBe('C:/Users/alice/.nightshift/agent-hooks/claude-hook.cmd || echo {}')
+    expect(hook.command).toBe('C:/Users/alice/.kolux/agent-hooks/claude-hook.cmd || echo {}')
     expect(hook.command).not.toMatch(/powershell|-EncodedCommand|conhost/i)
     // Why: Git Bash/MSYS mangles backslash paths and rewrites slash-prefixed switches.
     expect(hook.command).not.toMatch(/\\/)
@@ -76,7 +76,7 @@ describe('getWindowsManagedLifecycleHook', () => {
     const encoded = hook.command.match(/-EncodedCommand (\S+)$/)?.[1]
     const decoded = Buffer.from(encoded ?? '', 'base64').toString('utf16le')
     expect(decoded).toContain('$env:USERPROFILE')
-    expect(decoded).toContain('.nightshift\\agent-hooks\\claude-hook.cmd')
+    expect(decoded).toContain('.kolux\\agent-hooks\\claude-hook.cmd')
   })
 
   it('falls back to the encoded launcher when Git Bash is not resolvable', () => {
@@ -183,7 +183,7 @@ function createFakeSftp(): { sftp: SFTPWrapper; fs: FakeFs } {
 
 describe('ClaudeHookService.install', () => {
   it('installs managed hooks into Claude settings and preserves user Bedrock settings', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-hooks-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-hooks-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -208,7 +208,7 @@ describe('ClaudeHookService.install', () => {
                 hooks: [
                   {
                     type: 'command',
-                    command: '/Users/old/.nightshift/agent-hooks/claude-hook.sh'
+                    command: '/Users/old/.kolux/agent-hooks/claude-hook.sh'
                   }
                 ]
               }
@@ -251,14 +251,14 @@ describe('ClaudeHookService.install', () => {
       ).toBe(true)
       expect(
         legacyHooks.some((hook: TestHook) =>
-          hook.command.includes('/Users/old/.nightshift/agent-hooks/claude-hook.sh')
+          hook.command.includes('/Users/old/.kolux/agent-hooks/claude-hook.sh')
         )
       ).toBe(false)
       expect(hasManagedCommand(legacy.hooks.StopFailure[0].hooks[0], isClaudeManagedCommand)).toBe(
         true
       )
       const managedScript = readFileSync(
-        join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME),
+        join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME),
         'utf-8'
       )
       expect(managedScript).toContain('DEVIN_PROJECT_DIR')
@@ -275,7 +275,7 @@ describe('ClaudeHookService.install', () => {
   })
 
   it('installs the managed statusLine command and forwards rate_limits posts', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-statusline-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-statusline-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -286,22 +286,22 @@ describe('ClaudeHookService.install', () => {
       ) as { statusLine?: { type: string; command: string } }
       expect(settings.statusLine?.type).toBe('command')
       expect(settings.statusLine?.command).toContain(
-        '"${HOME-}/.nightshift/agent-hooks/claude-statusline.cmd"'
+        '"${HOME-}/.kolux/agent-hooks/claude-statusline.cmd"'
       )
       expect(settings.statusLine?.command).toContain(
-        '"${HOME-}/.nightshift/agent-hooks/claude-statusline.sh"'
+        '"${HOME-}/.kolux/agent-hooks/claude-statusline.sh"'
       )
       expect(settings.statusLine?.command).not.toContain(tmpHome.replaceAll('\\', '/'))
 
       const script = readFileSync(
-        join(tmpHome, '.nightshift', 'agent-hooks', STATUSLINE_SCRIPT_FILE_NAME),
+        join(tmpHome, '.kolux', 'agent-hooks', STATUSLINE_SCRIPT_FILE_NAME),
         'utf-8'
       )
       expect(script).toContain('/statusline/claude')
       // Why: non-subscriber sessions never carry rate_limits; both branches must guard before spawning curl.
       if (process.platform === 'win32') {
         expect(script).toContain('findstr.exe" /c:\\"rate_limits\\"')
-        expect(script).toContain('--data-urlencode "payload@%NIGHTSHIFT_STATUSLINE_PAYLOAD_FILE%"')
+        expect(script).toContain('--data-urlencode "payload@%KOLUX_STATUSLINE_PAYLOAD_FILE%"')
       } else {
         expect(script).toContain('"rate_limits"')
         expect(script).toContain('--data-urlencode "payload@-"')
@@ -313,7 +313,7 @@ describe('ClaudeHookService.install', () => {
   })
 
   it('never overwrites a user-owned statusLine command', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-user-statusline-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-user-statusline-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -351,7 +351,7 @@ describe('ClaudeHookService.install', () => {
   })
 
   it('removes the managed statusLine on remove()', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-statusline-remove-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-statusline-remove-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -366,7 +366,7 @@ describe('ClaudeHookService.install', () => {
   })
 
   it('does not re-install a managed statusLine the user deleted, until remove() resets the opt-out', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-statusline-optout-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-statusline-optout-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -383,7 +383,7 @@ describe('ClaudeHookService.install', () => {
       new ClaudeHookService().install()
       expect(JSON.parse(readFileSync(settingsPath, 'utf-8')).statusLine).toBeUndefined()
 
-      // A Nightshift-level remove() resets the opt-out memory, so a fresh install re-adds it.
+      // A Kolux-level remove() resets the opt-out memory, so a fresh install re-adds it.
       new ClaudeHookService().remove()
       new ClaudeHookService().install()
       expect(JSON.parse(readFileSync(settingsPath, 'utf-8')).statusLine).toBeTruthy()
@@ -394,7 +394,7 @@ describe('ClaudeHookService.install', () => {
   })
 
   it('keeps refreshing a still-managed statusLine across installs', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-statusline-refresh-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-statusline-refresh-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -412,7 +412,7 @@ describe('ClaudeHookService.install', () => {
   it.skipIf(process.platform !== 'win32')(
     'pins the encoded-launcher fallback for a profile path the shells cannot carry bare',
     () => {
-      const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift claude home with spaces '))
+      const tmpHome = mkdtempSync(join(tmpdir(), 'kolux claude home with spaces '))
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
       try {
@@ -422,7 +422,7 @@ describe('ClaudeHookService.install', () => {
           readFileSync(join(tmpHome, '.claude', 'settings.json'), 'utf-8')
         ) as { hooks: Record<string, { hooks: TestHook[] }[]> }
 
-        const scriptPath = join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
+        const scriptPath = join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
 
         for (const eventName of ['UserPromptSubmit', 'Stop', 'StopFailure']) {
           const hook = settings.hooks[eventName]?.[0]?.hooks?.[0]
@@ -433,7 +433,7 @@ describe('ClaudeHookService.install', () => {
           const encoded = hook?.command.match(/-EncodedCommand (\S+)$/)?.[1]
           const decoded = Buffer.from(encoded ?? '', 'base64').toString('utf16le')
           expect(decoded).toContain('$env:USERPROFILE')
-          expect(decoded).toContain(`.nightshift\\agent-hooks\\${CLAUDE_SCRIPT_FILE_NAME}`)
+          expect(decoded).toContain(`.kolux\\agent-hooks\\${CLAUDE_SCRIPT_FILE_NAME}`)
         }
       } finally {
         vi.unstubAllEnvs()
@@ -445,10 +445,10 @@ describe('ClaudeHookService.install', () => {
   it.skipIf(process.platform !== 'win32')(
     'installs the bare script path on every event when the profile path is cmd-safe (#18875)',
     () => {
-      const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-direct-'))
+      const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-direct-'))
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
-      const scriptPath = join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
+      const scriptPath = join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
       // Why: a runner whose tmpdir carries a space (a profile-scoped TEMP) belongs to the
       // fallback case above, not this one; skip rather than assert the wrong contract.
       if (!WINDOWS_CMD_SAFE_PATH.test(scriptPath)) {
@@ -482,10 +482,10 @@ describe('ClaudeHookService.install', () => {
   it.skipIf(process.platform !== 'win32')(
     'sweeps a previously installed encoded launcher on reinstall, keeping user hooks',
     () => {
-      const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-migrate-'))
+      const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-migrate-'))
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
-      const scriptPath = join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
+      const scriptPath = join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
       if (!WINDOWS_CMD_SAFE_PATH.test(scriptPath)) {
         vi.unstubAllEnvs()
         rmSync(tmpHome, { recursive: true, force: true })
@@ -531,10 +531,10 @@ describe('ClaudeHookService.install', () => {
       // Why: the direct shape bakes the profile path in, where the encoded launcher resolved
       // %USERPROFILE% at run time (STA-3348). That is only safe because a moved profile is
       // caught here and rewritten, so this is the test that carries the replaced contract.
-      const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-moved-'))
+      const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-moved-'))
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
-      const scriptPath = join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
+      const scriptPath = join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME)
       if (!WINDOWS_CMD_SAFE_PATH.test(scriptPath)) {
         vi.unstubAllEnvs()
         rmSync(tmpHome, { recursive: true, force: true })
@@ -543,8 +543,7 @@ describe('ClaudeHookService.install', () => {
       try {
         const settingsPath = join(tmpHome, '.claude', 'settings.json')
         mkdirSync(join(tmpHome, '.claude'), { recursive: true })
-        const staleCommand =
-          'C:/Users/someone-else/.nightshift/agent-hooks/claude-hook.cmd || echo {}'
+        const staleCommand = 'C:/Users/someone-else/.kolux/agent-hooks/claude-hook.cmd || echo {}'
         const stale = { type: 'command', command: staleCommand, timeout: 10 }
         writeFileSync(
           settingsPath,
@@ -577,13 +576,13 @@ describe('ClaudeHookService.install', () => {
   it.skipIf(process.platform !== 'win32')(
     'posts from the managed .cmd via curl.exe, not a second PowerShell',
     () => {
-      const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-curl-'))
+      const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-curl-'))
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
       try {
         expect(new ClaudeHookService().install().state).toBe('installed')
         const script = readFileSync(
-          join(tmpHome, '.nightshift', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME),
+          join(tmpHome, '.kolux', 'agent-hooks', CLAUDE_SCRIPT_FILE_NAME),
           'utf-8'
         )
         expect(script).toContain('%SystemRoot%\\System32\\curl.exe')
@@ -602,13 +601,13 @@ describe('ClaudeHookService.install', () => {
 
 describe('backgrounded-session pane guard (#9236)', () => {
   // Why: a `--bg` / `/background` worker runs under the shared daemon and inherits the
-  // env of whichever pane started that daemon, so NIGHTSHIFT_PANE_KEY names a pane the session
+  // env of whichever pane started that daemon, so KOLUX_PANE_KEY names a pane the session
   // does not run in. CLAUDE_JOB_DIR is set only in those workers, so it is the signal to
   // decline rather than post a pane identity the worker cannot prove is current.
   it('declines to post from a daemon worker, before spawning curl', async () => {
     const { sftp, fs } = createFakeSftp()
     expect((await new ClaudeHookService().installRemote(sftp, '/home/dev')).state).toBe('installed')
-    const script = fs.files.get('/home/dev/.nightshift/agent-hooks/claude-hook.sh')!
+    const script = fs.files.get('/home/dev/.kolux/agent-hooks/claude-hook.sh')!
 
     expect(script).toContain('if [ -n "$CLAUDE_JOB_DIR" ]; then')
     // Why: the guard is worthless if it runs after the post it is meant to prevent.
@@ -622,7 +621,7 @@ describe('backgrounded-session pane guard (#9236)', () => {
   it('guards the statusline too, on both branches', () => {
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
     for (const target of ['darwin', 'win32'] as const) {
-      const tmpHome = mkdtempSync(join(tmpdir(), `nightshift-claude-sl-${target}-`))
+      const tmpHome = mkdtempSync(join(tmpdir(), `kolux-claude-sl-${target}-`))
       Object.defineProperty(process, 'platform', { value: target, configurable: true })
       vi.stubEnv('HOME', tmpHome)
       vi.stubEnv('USERPROFILE', tmpHome)
@@ -631,7 +630,7 @@ describe('backgrounded-session pane guard (#9236)', () => {
         const script = readFileSync(
           join(
             tmpHome,
-            '.nightshift',
+            '.kolux',
             'agent-hooks',
             target === 'win32' ? 'claude-statusline.cmd' : 'claude-statusline.sh'
           ),
@@ -644,7 +643,7 @@ describe('backgrounded-session pane guard (#9236)', () => {
         // Why: the guard is worthless if it runs after the post it is meant to prevent.
         expect(script.indexOf('CLAUDE_JOB_DIR')).toBeLessThan(script.indexOf('curl'))
         if (target === 'win32') {
-          // Why: a worker is outside a Nightshift pane, where reading stdin to EOF never returns (#11549).
+          // Why: a worker is outside a Kolux pane, where reading stdin to EOF never returns (#11549).
           expect(guard).not.toContain(WINDOWS_HOOK_STDIN_DRAIN_LABEL)
         }
       } finally {
@@ -655,16 +654,16 @@ describe('backgrounded-session pane guard (#9236)', () => {
     }
   })
 
-  it('exits rather than draining stdin on Windows, where a worker has no Nightshift pane', () => {
+  it('exits rather than draining stdin on Windows, where a worker has no Kolux pane', () => {
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')!
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-claude-bg-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-claude-bg-'))
     Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
       expect(new ClaudeHookService().install().state).toBe('installed')
       const script = readFileSync(
-        join(tmpHome, '.nightshift', 'agent-hooks', 'claude-hook.cmd'),
+        join(tmpHome, '.kolux', 'agent-hooks', 'claude-hook.cmd'),
         'utf-8'
       )
       const guard = script.split('\r\n').find((line) => line.includes('CLAUDE_JOB_DIR'))
@@ -708,11 +707,11 @@ describe('ClaudeHookService.installRemote', () => {
     ]) {
       expect(parsed.hooks[event]).toBeTruthy()
       const cmd = parsed.hooks[event][0].hooks[0].command as string
-      expect(cmd).toContain('"${HOME-}/.nightshift/agent-hooks/claude-hook.sh"')
-      expect(cmd).not.toContain('/home/dev/.nightshift/agent-hooks/claude-hook.sh')
+      expect(cmd).toContain('"${HOME-}/.kolux/agent-hooks/claude-hook.sh"')
+      expect(cmd).not.toContain('/home/dev/.kolux/agent-hooks/claude-hook.sh')
     }
     // Managed script body
-    const script = fs.files.get('/home/dev/.nightshift/agent-hooks/claude-hook.sh')
+    const script = fs.files.get('/home/dev/.kolux/agent-hooks/claude-hook.sh')
     expect(script).toContain('#!/bin/sh')
     expect(script).toContain('DEVIN_PROJECT_DIR')
     // Why: remote guard paths must still return neutral JSON (#14818).
@@ -722,16 +721,16 @@ describe('ClaudeHookService.installRemote', () => {
     // Why: payload stays on stdin, while metadata headers avoid URL-encoded IDS signatures.
     expect(script).toContain('printf \'%s\' "$payload" | curl')
     expect(script).toContain('-H "Content-Type: application/json"')
-    expect(script).toContain('nightshift_hook_metadata=$(printf')
-    expect(script).toContain('unset NIGHTSHIFT_AGENT_HOOK_TRANSPORT')
-    expect(script).toContain('-H "X-Nightshift-Agent-Hook-Meta: ${nightshift_hook_metadata}"')
+    expect(script).toContain('kolux_hook_metadata=$(printf')
+    expect(script).toContain('unset KOLUX_AGENT_HOOK_TRANSPORT')
+    expect(script).toContain('-H "X-Kolux-Agent-Hook-Meta: ${kolux_hook_metadata}"')
     expect(script).toContain('--data-binary @-')
     expect(script).toContain('--data-urlencode "payload@-"')
-    expect(fs.modes.get('/home/dev/.nightshift/agent-hooks/claude-hook.sh')).toBe(0o755)
+    expect(fs.modes.get('/home/dev/.kolux/agent-hooks/claude-hook.sh')).toBe(0o755)
     // Why: no remote statusLine — this path serves SSH remotes and WSL guests, whose relay
     // listener doesn't route /statusline/claude and whose accounts aren't attributable locally.
     expect(parsed.statusLine).toBeUndefined()
-    expect(fs.files.get('/home/dev/.nightshift/agent-hooks/claude-statusline.sh')).toBeUndefined()
+    expect(fs.files.get('/home/dev/.kolux/agent-hooks/claude-statusline.sh')).toBeUndefined()
   })
 
   it('reports parse error when remote settings.json cannot be parsed', async () => {
@@ -760,7 +759,7 @@ describe('ClaudeHookService.installRemote', () => {
                 {
                   type: 'command',
                   command:
-                    'if [ -x /home/dev/.nightshift/agent-hooks/claude-hook.sh ]; then /bin/sh /home/dev/.nightshift/agent-hooks/claude-hook.sh; fi'
+                    'if [ -x /home/dev/.kolux/agent-hooks/claude-hook.sh ]; then /bin/sh /home/dev/.kolux/agent-hooks/claude-hook.sh; fi'
                 }
               ]
             }
@@ -770,7 +769,7 @@ describe('ClaudeHookService.installRemote', () => {
     )
     await svc.installRemote(sftp, '/home/dev')
     const parsed = JSON.parse(fs.files.get('/home/dev/.claude/settings.json')!)
-    // Original user-authored entry survives, while stale Nightshift entries are
+    // Original user-authored entry survives, while stale Kolux entries are
     // replaced with the current managed hook command.
     const stopDefs = parsed.hooks.Stop as { hooks: { command: string }[] }[]
     const userCmds = stopDefs.flatMap((d) => d.hooks.map((h) => h.command))
@@ -788,7 +787,7 @@ describe('OpenClaudeHookService-compatible install', () => {
     })
 
   it('installs managed hooks into OpenClaude settings without touching Claude settings', () => {
-    const tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-openclaude-hooks-'))
+    const tmpHome = mkdtempSync(join(tmpdir(), 'kolux-openclaude-hooks-'))
     vi.stubEnv('HOME', tmpHome)
     vi.stubEnv('USERPROFILE', tmpHome)
     try {
@@ -807,21 +806,15 @@ describe('OpenClaudeHookService-compatible install', () => {
       for (const event of ['UserPromptSubmit', 'Stop', 'StopFailure']) {
         const command = parsed.hooks[event][0].hooks[0].command as string
         expect(isOpenClaudeManagedCommand(command)).toBe(true)
-        expect(command).toContain('"${HOME-}/.nightshift/agent-hooks/openclaude-hook.cmd"')
-        expect(command).toContain('"${HOME-}/.nightshift/agent-hooks/openclaude-hook.sh"')
+        expect(command).toContain('"${HOME-}/.kolux/agent-hooks/openclaude-hook.cmd"')
+        expect(command).toContain('"${HOME-}/.kolux/agent-hooks/openclaude-hook.sh"')
         expect(command).not.toContain(tmpHome.replaceAll('\\', '/'))
       }
       expect(
-        readFileSync(
-          join(tmpHome, '.nightshift', 'agent-hooks', OPENCLAUDE_SCRIPT_FILE_NAME),
-          'utf-8'
-        )
+        readFileSync(join(tmpHome, '.kolux', 'agent-hooks', OPENCLAUDE_SCRIPT_FILE_NAME), 'utf-8')
       ).toContain('/hook/claude')
       expect(
-        readFileSync(
-          join(tmpHome, '.nightshift', 'agent-hooks', OPENCLAUDE_SCRIPT_FILE_NAME),
-          'utf-8'
-        )
+        readFileSync(join(tmpHome, '.kolux', 'agent-hooks', OPENCLAUDE_SCRIPT_FILE_NAME), 'utf-8')
       ).not.toContain('DEVIN_PROJECT_DIR')
       // Why: the statusline usage feed is Claude-only; OpenClaude installs must not set statusLine.
       expect(parsed.statusLine).toBeUndefined()
@@ -844,9 +837,9 @@ describe('OpenClaudeHookService-compatible install', () => {
     })
     const parsed = JSON.parse(fs.files.get('/home/dev/.openclaude/settings.json')!)
     const command = parsed.hooks.StopFailure[0].hooks[0].command as string
-    expect(command).toContain('"${HOME-}/.nightshift/agent-hooks/openclaude-hook.sh"')
-    expect(command).not.toContain('/home/dev/.nightshift/agent-hooks/openclaude-hook.sh')
-    expect(fs.files.get('/home/dev/.nightshift/agent-hooks/openclaude-hook.sh')).toContain(
+    expect(command).toContain('"${HOME-}/.kolux/agent-hooks/openclaude-hook.sh"')
+    expect(command).not.toContain('/home/dev/.kolux/agent-hooks/openclaude-hook.sh')
+    expect(fs.files.get('/home/dev/.kolux/agent-hooks/openclaude-hook.sh')).toContain(
       '/hook/claude'
     )
   })

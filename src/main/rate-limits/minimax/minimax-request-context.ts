@@ -33,7 +33,7 @@ function getMiniMaxReferer(endpoint: MiniMaxEndpoint): string {
   return `${consoleOrigin}/console/usage`
 }
 
-const MINIMAX_SESSION_PARTITION = 'nightshift-minimax-rate-limit-fetch'
+const MINIMAX_SESSION_PARTITION = 'kolux-minimax-rate-limit-fetch'
 const SENSITIVE_COOKIE_NAMES = new Set([
   '_token',
   '_twpid',

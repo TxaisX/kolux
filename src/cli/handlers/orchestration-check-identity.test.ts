@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const callMock = vi.hoisted(() => vi.fn())
 const getTerminalHandleMock = vi.hoisted(() => vi.fn())
-const originalTerminalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
-const originalPaneKey = process.env.NIGHTSHIFT_PANE_KEY
+const originalTerminalHandle = process.env.KOLUX_TERMINAL_HANDLE
+const originalPaneKey = process.env.KOLUX_PANE_KEY
 
 const printResultMock = vi.hoisted(() => vi.fn())
 vi.mock('../format', () => ({ printResult: printResultMock }))
@@ -16,20 +16,20 @@ describe('orchestration check identity', () => {
     callMock.mockReset().mockResolvedValue({ result: { messages: [], count: 0 } })
     printResultMock.mockReset()
     getTerminalHandleMock.mockReset()
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_PANE_KEY
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_PANE_KEY
   })
 
   afterEach(() => {
     if (originalTerminalHandle === undefined) {
-      delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
+      delete process.env.KOLUX_TERMINAL_HANDLE
     } else {
-      process.env.NIGHTSHIFT_TERMINAL_HANDLE = originalTerminalHandle
+      process.env.KOLUX_TERMINAL_HANDLE = originalTerminalHandle
     }
     if (originalPaneKey === undefined) {
-      delete process.env.NIGHTSHIFT_PANE_KEY
+      delete process.env.KOLUX_PANE_KEY
     } else {
-      process.env.NIGHTSHIFT_PANE_KEY = originalPaneKey
+      process.env.KOLUX_PANE_KEY = originalPaneKey
     }
   })
 
@@ -42,8 +42,8 @@ describe('orchestration check identity', () => {
     } as never)
 
   it('carries the caller pane key when the environment handle may be stale', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_coord'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_coord:leaf_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_coord'
+    process.env.KOLUX_PANE_KEY = 'tab_coord:leaf_coord'
     getTerminalHandleMock.mockRejectedValue(new Error('active terminal fallback is unsafe'))
 
     await invokeCheck(new Map<string, string | boolean>([['wait', true]]))
@@ -60,7 +60,7 @@ describe('orchestration check identity', () => {
   })
 
   it('keeps an explicit legacy terminal handle scoped to that handle', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_env'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_env'
 
     await invokeCheck(new Map<string, string | boolean>([['terminal', 'term_legacy_worker']]))
 
@@ -75,7 +75,7 @@ describe('orchestration check identity', () => {
   })
 
   it('preserves the pinned legacy --inject check signature', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_legacy_worker'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_legacy_worker'
 
     await invokeCheck(
       new Map<string, string | boolean>([

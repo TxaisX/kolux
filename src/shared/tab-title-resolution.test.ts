@@ -120,7 +120,7 @@ describe('tab title resolution', () => {
     ).toBe('Run tests')
   })
 
-  it('keeps OpenCode native and Nightshift-generated title behavior intact', () => {
+  it('keeps OpenCode native and Kolux-generated title behavior intact', () => {
     const aiVaultTitle = {
       agent: 'codex' as const,
       sessionId: 'codex-session',
@@ -131,7 +131,7 @@ describe('tab title resolution', () => {
         {
           customTitle: null,
           aiVaultTitle,
-          generatedTitle: 'Nightshift generated',
+          generatedTitle: 'Kolux generated',
           title: 'OC | OpenCode native'
         },
         true
@@ -139,10 +139,10 @@ describe('tab title resolution', () => {
     ).toBe('OC | OpenCode native')
     expect(
       resolveTerminalTabTitle(
-        { customTitle: null, generatedTitle: 'Nightshift generated', title: '⠋ albacore' },
+        { customTitle: null, generatedTitle: 'Kolux generated', title: '⠋ albacore' },
         true
       )
-    ).toBe('Nightshift generated')
+    ).toBe('Kolux generated')
   })
 
   it('uses the same priority for unified tab labels', () => {

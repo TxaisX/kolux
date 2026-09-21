@@ -34,9 +34,9 @@ describe('getProvisionedRootResumeIntegrityError', () => {
       schemaVersion: 2,
       checkoutMode: 'provisioned-root',
       connection: {
-        type: 'nightshift-server',
+        type: 'kolux-server',
         pairingCode: 'pairing-code',
-        projectRoot: '/workspace/nightshift'
+        projectRoot: '/workspace/kolux'
       }
     }
 
@@ -52,14 +52,14 @@ function provisionedSshResult(target: Partial<RecipeSshTarget> = {}): EphemeralV
     checkoutMode: 'provisioned-root',
     connection: {
       type: 'ssh',
-      projectRoot: '/workspace/nightshift',
+      projectRoot: '/workspace/kolux',
       target: {
         label: 'VM',
         host: 'host',
         port: 22,
-        username: 'nightshift',
-        identityFile: '/keys/nightshift',
-        identityAgent: '/agents/nightshift',
+        username: 'kolux',
+        identityFile: '/keys/kolux',
+        identityAgent: '/agents/kolux',
         ...target
       }
     }

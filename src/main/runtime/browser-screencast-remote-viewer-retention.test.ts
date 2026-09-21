@@ -5,7 +5,7 @@
  * The renderer half of the chain lives in tests/e2e/host-guest-paint-retention-remote-viewer.
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import {
   createScreencastHarness,
   HARNESS_PAGE_ID as PAGE
@@ -51,7 +51,7 @@ describe('browser screencast remote viewer signal', () => {
     const browserRemoteViewersChanged = vi.fn()
     runtime.setNotifier({
       browserRemoteViewersChanged
-    } as unknown as Parameters<NightshiftRuntimeService['setNotifier']>[0])
+    } as unknown as Parameters<KoluxRuntimeService['setNotifier']>[0])
 
     const first = subscribe({ connectionId: 'conn-a', clientKind: 'runtime' })
     await first.streaming()

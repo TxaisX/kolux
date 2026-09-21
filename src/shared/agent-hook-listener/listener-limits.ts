@@ -1,4 +1,4 @@
-import { NIGHTSHIFT_HOOK_PROTOCOL_VERSION } from '../agent-hook-types'
+import { KOLUX_HOOK_PROTOCOL_VERSION } from '../agent-hook-types'
 import { REMOTE_AGENT_HOOK_ENV } from '../agent-hook-relay'
 import type { HookListenerState } from './listener-state'
 
@@ -40,13 +40,13 @@ export function warnOnHookEnvOrVersionMismatch(
   const { version, env, expectedEnv } = fields
   if (
     version &&
-    version !== NIGHTSHIFT_HOOK_PROTOCOL_VERSION &&
+    version !== KOLUX_HOOK_PROTOCOL_VERSION &&
     !state.warnedVersions.has(version) &&
     state.warnedVersions.size < MAX_WARNED_KEYS
   ) {
     state.warnedVersions.add(version)
     console.warn(
-      `[agent-hooks] received hook v${version}; server expects v${NIGHTSHIFT_HOOK_PROTOCOL_VERSION}. ` +
+      `[agent-hooks] received hook v${version}; server expects v${KOLUX_HOOK_PROTOCOL_VERSION}. ` +
         'Reinstall agent hooks from Settings to upgrade the managed script.'
     )
   }
@@ -56,7 +56,7 @@ export function warnOnHookEnvOrVersionMismatch(
       state.warnedEnvs.add(key)
       console.warn(
         `[agent-hooks] received ${env} hook on ${expectedEnv} server. ` +
-          'Likely a stale terminal from another Nightshift install.'
+          'Likely a stale terminal from another Kolux install.'
       )
     }
   }

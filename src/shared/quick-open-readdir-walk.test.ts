@@ -40,7 +40,7 @@ function staged(mode: string, path: string, sha = SHA1): string {
 }
 
 async function makeTempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-quick-open-readdir-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-quick-open-readdir-'))
   tempDirs.push(root)
   return root
 }

@@ -3,16 +3,9 @@ import { gitExecMutatesRepository } from './git-exec-mutation'
 
 describe('gitExecMutatesRepository', () => {
   it.each([
-    [
-      [
-        'remote',
-        'add',
-        'pr-contributor-nightshift',
-        'https://github.com/contributor/nightshift.git'
-      ]
-    ],
-    [['remote', 'remove', 'pr-contributor-nightshift']],
-    [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift']],
+    [['remote', 'add', 'pr-contributor-kolux', 'https://github.com/contributor/kolux.git']],
+    [['remote', 'remove', 'pr-contributor-kolux']],
+    [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
     [['commit', '--allow-empty', '-m', 'Initial commit']],
     [['init']]
   ])('treats %j as mutating', (args) => {

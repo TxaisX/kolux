@@ -3,17 +3,17 @@ import { expect } from '@stablyai/playwright-test'
 
 const TOGGLE_RENDER_TIMEOUT_MS = 10_000
 
-export const NESTED_TOGGLE_FIXTURE_DIRECTORY = '.nightshift-e2e-markdown-nested-toggle'
+export const NESTED_TOGGLE_FIXTURE_DIRECTORY = '.kolux-e2e-markdown-nested-toggle'
 
 export const NESTED_TOGGLE_BODY_TEXT = 'Get back to ppl'
 
 export const NESTED_TOGGLE_MARKDOWN = [
   '# 08/27/2026',
   '',
-  '<details class="nightshift-details" data-nightshift-toggle="heading-3" open>',
+  '<details class="kolux-details" data-kolux-toggle="heading-3" open>',
   '<summary>08/26/2026</summary>',
   '',
-  '<details class="nightshift-details" open>',
+  '<details class="kolux-details" open>',
   '<summary>goals</summary>',
   '',
   '- Get back to ppl',
@@ -29,7 +29,7 @@ export const NESTED_TOGGLE_MARKDOWN = [
 // An inner toggle carrying unsupported attributes cannot become an editable
 // node, so the whole block must still fall back to byte-preserving passthrough.
 export const UNSUPPORTED_NESTED_TOGGLE_MARKDOWN = [
-  '<details class="nightshift-details" open>',
+  '<details class="kolux-details" open>',
   '<summary>outer</summary>',
   '',
   '<details id="not-a-toggle">',
@@ -63,7 +63,7 @@ export async function readRenderedToggles(page: Page): Promise<RenderedToggles> 
       summaries: toggles.map(
         (toggle) => toggle.querySelector('summary')?.textContent?.trim() ?? ''
       ),
-      variants: toggles.map((toggle) => toggle.getAttribute('data-nightshift-toggle')),
+      variants: toggles.map((toggle) => toggle.getAttribute('data-kolux-toggle')),
       passthroughBlockCount: editor?.querySelectorAll('[data-raw-markdown-html-block]').length ?? 0
     }
   })
@@ -143,10 +143,8 @@ export async function expectSentinelInsideNestedToggle(
 }
 
 export function expectFileKeepsNesting(fileContents: string, sentinel: string): void {
-  const outerOpen = fileContents.indexOf(
-    '<details class="nightshift-details" data-nightshift-toggle='
-  )
-  const innerOpen = fileContents.indexOf('<details class="nightshift-details" open>')
+  const outerOpen = fileContents.indexOf('<details class="kolux-details" data-kolux-toggle=')
+  const innerOpen = fileContents.indexOf('<details class="kolux-details" open>')
   const firstClose = fileContents.indexOf('</details>')
   const sentinelAt = fileContents.indexOf(sentinel)
 

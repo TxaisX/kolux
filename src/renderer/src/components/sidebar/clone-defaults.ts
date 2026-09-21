@@ -15,7 +15,7 @@ export function getDefaultCloneParent(workspaceDir: string): string {
     return workspaceDir
   }
 
-  // Why: default Nightshift worktrees live under "workspaces"; clones should sit beside that tree.
+  // Why: default Kolux worktrees live under "workspaces"; clones should sit beside that tree.
   const parent = separatorIndex === -1 ? '' : trimmed.slice(0, separatorIndex)
   if (parent === '' && trimmed.startsWith('/')) {
     return '/'

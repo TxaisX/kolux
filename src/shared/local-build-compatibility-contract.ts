@@ -1,6 +1,6 @@
 export const LOCAL_BUILD_COMPATIBILITY_CONTRACT = {
   formatVersion: 1,
-  appId: 'com.txais.nightshift',
+  appId: 'com.txais.kolux',
   stateSchemaVersion: 1,
   readableStateSchemaVersions: [1],
   daemonProtocolVersion: 36,

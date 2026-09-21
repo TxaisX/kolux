@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // this normalizer test focused instead of booting the full Store fixture.
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-persistence-right-sidebar-tab-test'
+    getPath: () => '/tmp/kolux-persistence-right-sidebar-tab-test'
   },
   safeStorage: {
     isEncryptionAvailable: () => false,
@@ -30,16 +30,14 @@ describe('normalizeRightSidebarTab', () => {
   })
 
   it('preserves well-formed plugin panel tabs', () => {
-    expect(normalizeRightSidebarTab('plugin:nightshift-samples.my-plugin/dashboard')).toBe(
-      'plugin:nightshift-samples.my-plugin/dashboard'
+    expect(normalizeRightSidebarTab('plugin:kolux-samples.my-plugin/dashboard')).toBe(
+      'plugin:kolux-samples.my-plugin/dashboard'
     )
   })
 
   it('normalizes malformed plugin tabs to the default tab', () => {
-    expect(normalizeRightSidebarTab('plugin:nightshift-samples.my-plugin')).toBe('explorer')
-    expect(normalizeRightSidebarTab('plugin:nightshift-samples.my-plugin/panel/extra')).toBe(
-      'explorer'
-    )
+    expect(normalizeRightSidebarTab('plugin:kolux-samples.my-plugin')).toBe('explorer')
+    expect(normalizeRightSidebarTab('plugin:kolux-samples.my-plugin/panel/extra')).toBe('explorer')
     expect(normalizeRightSidebarTab('plugin:My_Plugin/Panel!')).toBe('explorer')
   })
 

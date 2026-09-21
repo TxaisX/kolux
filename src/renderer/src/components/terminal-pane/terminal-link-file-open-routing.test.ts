@@ -49,7 +49,7 @@ vi.mock('@/lib/runtime-workspace-file-route', () => ({
 installTerminalLinkTestEnvironment(doubles)
 
 describe('handleOscLink', () => {
-  it('opens local .html file paths in Nightshift browser tabs with the platform modifier', async () => {
+  it('opens local .html file paths in Kolux browser tabs with the platform modifier', async () => {
     setPlatform('Macintosh')
 
     openDetectedFilePath('/tmp/report.html', null, null, deps)
@@ -72,7 +72,7 @@ describe('handleOscLink', () => {
     })
   })
 
-  it('also opens local .htm paths in Nightshift browser tabs with the platform modifier', async () => {
+  it('also opens local .htm paths in Kolux browser tabs with the platform modifier', async () => {
     setPlatform('Macintosh')
 
     openDetectedFilePath('/tmp/legacy.HTM', null, null, deps)
@@ -88,7 +88,7 @@ describe('handleOscLink', () => {
     expect(openFilePathMock).not.toHaveBeenCalled()
   })
 
-  it('opens local file paths in Nightshift and reveals default column 1 with the platform modifier', async () => {
+  it('opens local file paths in Kolux and reveals default column 1 with the platform modifier', async () => {
     setPlatform('Macintosh')
 
     openDetectedFilePath('/tmp/src/main.ts', 42, null, deps)
@@ -160,7 +160,7 @@ describe('handleOscLink', () => {
     )
   })
 
-  it('preserves explicit column for Nightshift opens from :line:column links', async () => {
+  it('preserves explicit column for Kolux opens from :line:column links', async () => {
     setPlatform('Macintosh')
 
     openDetectedFilePath('/tmp/src/main.ts', 42, 7, deps)
@@ -236,7 +236,7 @@ describe('handleOscLink', () => {
     expect(setPendingEditorRevealMock).not.toHaveBeenCalled()
   })
 
-  it('falls back to Nightshift when shift+cmd/ctrl-click system default open fails', async () => {
+  it('falls back to Kolux when shift+cmd/ctrl-click system default open fails', async () => {
     setPlatform('Macintosh')
     openFilePathMock.mockResolvedValueOnce(false)
 
@@ -280,7 +280,7 @@ describe('handleOscLink', () => {
     expect(setPendingEditorRevealMock).toHaveBeenCalledWith(null)
   })
 
-  it('ignores stale async completion so latest local click wins for Nightshift open and reveal', async () => {
+  it('ignores stale async completion so latest local click wins for Kolux open and reveal', async () => {
     setPlatform('Macintosh')
     const firstStat = createDeferred<{ isDirectory: boolean }>()
     const secondStat = createDeferred<{ isDirectory: boolean }>()

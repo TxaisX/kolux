@@ -3,7 +3,7 @@ import type {
   TerminalPreviewConnectResult,
   TerminalPreviewSnapshot
 } from '../../shared/terminal-preview'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { isDashboardPopoutRenderer } from '../window/dashboard-popout-window'
 import { isTerminalSessionWindowRendererForPty } from '../window/terminal-session-window-registry'
 import { isTrustedUIRenderer } from './ui'
@@ -33,7 +33,7 @@ function isTerminalPreviewRenderer(sender: WebContents, ptyId: unknown): ptyId i
   )
 }
 /** Pop-out terminal transport with an atomic snapshot/live boundary. */
-export function registerTerminalPreviewHandlers(runtime: NightshiftRuntimeService): void {
+export function registerTerminalPreviewHandlers(runtime: KoluxRuntimeService): void {
   ipcMain.removeHandler('terminalPreview:connect')
   ipcMain.removeHandler('terminalPreview:unsubscribe')
   ipcMain.removeHandler('terminalPreview:input')

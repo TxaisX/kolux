@@ -9,7 +9,7 @@ export const AWAIT_CLICK_SCRIPT = `(async function() {
   // Electron always unwraps it to the resolved payload.
   return await new Promise(function(resolve, reject) {
     'use strict';
-    var grab = window.__nightshiftGrab;
+    var grab = window.__koluxGrab;
     if (!grab) {
       reject(new Error('Grab not armed'));
       return;
@@ -65,7 +65,7 @@ export const AWAIT_CLICK_SCRIPT = `(async function() {
       var payload = extractSelectedPayload(el);
       if (!payload) return;
       grab.freezeHighlight();
-      resolve({ __nightshiftContextMenu: true, payload: payload });
+      resolve({ __koluxContextMenu: true, payload: payload });
     }
 
     grab.host.addEventListener('click', onClick, true);
@@ -78,14 +78,14 @@ export const AWAIT_CLICK_SCRIPT = `(async function() {
       grab.cleanup();
       // Why: teardown cancellation is a normal user flow; resolving a marker
       // avoids a noisy guest-console Error while main still treats it as cancel.
-      resolve({ __nightshiftCancelled: true });
+      resolve({ __koluxCancelled: true });
     };
   });
 })()`
 
 export const FINALIZE_SCRIPT = `(function() {
   'use strict';
-  var grab = window.__nightshiftGrab;
+  var grab = window.__koluxGrab;
   if (!grab) return null;
   var el = grab.getCurrentElement();
   if (!el) return null;
@@ -103,7 +103,7 @@ export const FINALIZE_SCRIPT = `(function() {
 // extractHover: read payload but keep overlay/listeners active so the user can keep picking (C/S shortcut copy, no click).
 export const EXTRACT_HOVER_SCRIPT = `(function() {
   'use strict';
-  var grab = window.__nightshiftGrab;
+  var grab = window.__koluxGrab;
   if (!grab) return null;
   var el = grab.getCurrentElement();
   if (!el) return null;
@@ -116,10 +116,10 @@ export const EXTRACT_HOVER_SCRIPT = `(function() {
 
 export const TEARDOWN_SCRIPT = `(function() {
   'use strict';
-  var grab = window.__nightshiftGrab;
+  var grab = window.__koluxGrab;
   if (!grab) return true;
   // If there's an active awaitClick Promise, cancel it: cancelAwait resolves
-  // it with the __nightshiftCancelled marker so the executeJavaScript call in main
+  // it with the __koluxCancelled marker so the executeJavaScript call in main
   // settles the grab op as a cancellation.
   if (grab.cancelAwait) {
     grab.cancelAwait();

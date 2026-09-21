@@ -23,7 +23,7 @@ async function getLiveDaemonProtocols(): Promise<{
   if (!provider) {
     const localProvider = getLocalPtyProvider()
     if (!(localProvider instanceof LocalPtyProvider)) {
-      throw new Error('Could not verify terminal preservation. Restart Nightshift and try again.')
+      throw new Error('Could not verify terminal preservation. Restart Kolux and try again.')
     }
     const localProcesses = await localProvider.listProcesses()
     if (localProcesses.length > 0) {
@@ -35,7 +35,7 @@ async function getLiveDaemonProtocols(): Promise<{
   }
   if (provider instanceof DegradedDaemonPtyProvider) {
     throw new Error(
-      'Local build switching is blocked while the terminal service is in fallback mode. Restart Nightshift first.'
+      'Local build switching is blocked while the terminal service is in fallback mode. Restart Kolux first.'
     )
   }
   const adapters =

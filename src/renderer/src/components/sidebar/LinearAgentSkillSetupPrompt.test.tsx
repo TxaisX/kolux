@@ -17,8 +17,8 @@ import {
   projectWslRuntime
 } from './LinearAgentSkillSetupPrompt-test-fixtures'
 
-const HOST_DISMISS_STORAGE_KEY = 'nightshift.linearTicketsSkill.setupDismissed.host'
-const FEDORA_DISMISS_STORAGE_KEY = 'nightshift.linearTicketsSkill.setupDismissed.wsl.Fedora'
+const HOST_DISMISS_STORAGE_KEY = 'kolux.linearTicketsSkill.setupDismissed.host'
+const FEDORA_DISMISS_STORAGE_KEY = 'kolux.linearTicketsSkill.setupDismissed.wsl.Fedora'
 
 const mocks = vi.hoisted(() => ({
   skillState: {
@@ -43,8 +43,8 @@ vi.mock('@/hooks/useInstalledAgentSkills', async (importOriginal) => ({
 
 vi.mock('@/lib/agent-skill-cli-prerequisite', () => ({
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE: 'CLI registration notice',
-  ensureNightshiftCliAvailableForAgentSkillTerminal: mocks.ensureCli,
-  isNightshiftCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
+  ensureKoluxCliAvailableForAgentSkillTerminal: mocks.ensureCli,
+  isKoluxCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
     status?.state === 'installed' && status.pathConfigured
 }))
 
@@ -185,7 +185,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     const rendered = await renderPrompt({ linked: true, remote: false })
 
     expect(rendered.textContent).toContain('Set up Linear agent skill')
-    expect(rendered.textContent).toContain('Nightshift CLI and Linear agent skill are missing')
+    expect(rendered.textContent).toContain('Kolux CLI and Linear agent skill are missing')
     expect(rendered.textContent).toContain('Install it for host agent handoffs')
     expect(mocks.useInstalledAgentSkillNames).toHaveBeenCalledWith(
       LINEAR_AGENT_SKILL_NAMES,
@@ -290,7 +290,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     expect(document.body.textContent).toContain('npx skills add')
     expect(mocks.panelProps.at(-1)).toEqual(
       expect.objectContaining({
-        installedCommand: 'npx skills update nightshift-linear --global',
+        installedCommand: 'npx skills update kolux-linear --global',
         terminalShellOverride: 'powershell.exe',
         terminalRuntime: expect.objectContaining({ runtime: 'wsl', wslDistro: 'Fedora' }),
         getPrerequisiteStatus: expect.any(Function)
@@ -382,7 +382,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     await settleRender()
 
     expect(document.body.querySelector('[data-testid="linear-skill-inline-panel"]')).not.toBeNull()
-    expect(document.body.textContent).toContain('nightshift-linear')
+    expect(document.body.textContent).toContain('kolux-linear')
 
     const installButton = Array.from(document.body.querySelectorAll('button')).find(
       (button) => button.textContent === 'Mock install'
@@ -403,9 +403,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     expect(document.body.textContent).toContain(
       'Enable agents to read and edit the attached Linear ticket.'
     )
-    expect(document.body.textContent).toContain(
-      'Nightshift CLI and Linear agent skill are missing.'
-    )
+    expect(document.body.textContent).toContain('Kolux CLI and Linear agent skill are missing.')
     expect(document.body.textContent).toContain('Mock install')
     // Why: the permanent opt-out is an EyeOff icon (no visible text); the casual
     // dismiss is the dialog ×. Neither "Not now" nor any dismiss label shows as text.
@@ -641,7 +639,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     expect(document.body.textContent).toContain(
       'Enable agents to read and edit the attached Linear ticket.'
     )
-    expect(document.body.textContent).toContain('Nightshift CLI is missing.')
+    expect(document.body.textContent).toContain('Kolux CLI is missing.')
     expect(document.body.textContent).not.toContain('Linear ticket access is ready')
   })
 
@@ -684,7 +682,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
     expect(document.body.textContent).toContain(
       'Enable agents to read and edit the attached Linear ticket.'
     )
-    expect(document.body.textContent).toContain('Nightshift CLI is missing.')
+    expect(document.body.textContent).toContain('Kolux CLI is missing.')
     expect(document.body.textContent).not.toContain('Linear ticket access is ready')
   })
 
@@ -724,7 +722,7 @@ describe('LinearAgentSkillSetupPrompt', () => {
       'Enable agents to read and edit the attached Linear ticket.'
     )
     expect(document.body.textContent).toContain('Linear agent skill is missing.')
-    expect(document.body.textContent).not.toContain('Nightshift CLI is missing.')
+    expect(document.body.textContent).not.toContain('Kolux CLI is missing.')
   })
 
   it('ignores older same-context CLI refreshes that finish after a newer Re-check', async () => {

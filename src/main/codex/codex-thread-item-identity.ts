@@ -41,7 +41,7 @@ export function readCodexThreadItem(value: unknown): CodexThreadItem | null {
 /**
  * Durable identity for a Codex item, or null for one that has none.
  *
- * Non-message items fall back to the `nightshift` namespace keyed by the Codex item
+ * Non-message items fall back to the `kolux` namespace keyed by the Codex item
  * id. That id is unstable across resume, so those rows are live-session detail
  * that a recovered journal simply will not contain — which is correct: Codex
  * itself does not persist them either.
@@ -61,5 +61,5 @@ export function codexItemIdentity(input: {
       ordinal: input.ordinals.ordinalFor(input.threadId, turnId, item.id)
     }
   }
-  return { provider: 'nightshift', clientMessageId: `codex-item:${input.threadId}:${item.id}` }
+  return { provider: 'kolux', clientMessageId: `codex-item:${input.threadId}:${item.id}` }
 }

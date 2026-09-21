@@ -26,7 +26,7 @@ export type CliRegistrationActions = {
 function unknownReason(): string {
   return translate(
     'auto.components.settings.CliSection.installFailureUnknownReason',
-    'Nightshift could not finish CLI registration and reported no reason.'
+    'Kolux could not finish CLI registration and reported no reason.'
   )
 }
 

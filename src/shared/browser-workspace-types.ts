@@ -62,7 +62,7 @@ export type BrowserViewportScrollState = {
 
 /**
  * A page that shows a workspace document rather than a URL. The document is the identity: the grant
- * and the `nightshift-preview://` URL it is served over are minted when the page mounts and replaced on a
+ * and the `kolux-preview://` URL it is served over are minted when the page mounts and replaced on a
  * hard reload, so neither may be stored, persisted or published — this is what is, and `url` stays
  * the blank URL for the whole life of such a page.
  */
@@ -121,7 +121,7 @@ export type BrowserPage = {
 export type BrowserWorkspace = {
   id: string
   worktreeId: string
-  /** Stable display label for the outer Nightshift tab ("Browser 1", "Browser 2", …).
+  /** Stable display label for the outer Kolux tab ("Browser 1", "Browser 2", …).
    *  Optional so sessions persisted before this field was added fall back
    *  gracefully to the URL-derived label in getBrowserTabLabel. */
   label?: string
@@ -137,7 +137,7 @@ export type BrowserWorkspace = {
   activePageId?: string | null
   pageIds?: string[]
   // Why: the active page owns real browser chrome state now, but the top-level
-  // Nightshift tab strip still renders one workspace entry. Mirror the active page's
+  // Kolux tab strip still renders one workspace entry. Mirror the active page's
   // title/url/loading metadata here so existing workspace-level UI can stay
   // stable while Phase 2 introduces nested browser pages.
   url: string

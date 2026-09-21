@@ -47,7 +47,7 @@ describe('subscribeRemoteRuntimeRequest', () => {
         onError: vi.fn()
       })
     ).rejects.toThrow(
-      'Remote Nightshift runtime closed the connection (1013: Maximum connections reached).'
+      'Remote Kolux runtime closed the connection (1013: Maximum connections reached).'
     )
   })
 
@@ -346,11 +346,11 @@ describe('sendRemoteRuntimeRequest', () => {
     const server = await createClosingServer(1013, 'Maximum connections reached')
 
     await expect(sendRemoteRuntimeRequest(server.pairing, 'status.get', {}, 1000)).rejects.toThrow(
-      'Remote Nightshift runtime closed the connection (1013: Maximum connections reached).'
+      'Remote Kolux runtime closed the connection (1013: Maximum connections reached).'
     )
   })
 
-  it('classifies a non-Nightshift handshake as a host identity mismatch', async () => {
+  it('classifies a non-Kolux handshake as a host identity mismatch', async () => {
     const server = await createInvalidHandshakeServer()
 
     await expect(
@@ -657,7 +657,7 @@ async function createInvalidHandshakeServer(): Promise<{ pairing: PairingOffer }
   const wss = new WebSocketServer({ host: '127.0.0.1', port: 0 })
   servers.push(wss)
   wss.on('connection', (ws) => {
-    ws.once('message', () => ws.send(JSON.stringify({ type: 'not_nightshift' })))
+    ws.once('message', () => ws.send(JSON.stringify({ type: 'not_kolux' })))
   })
 
   await new Promise<void>((resolve) => wss.once('listening', resolve))

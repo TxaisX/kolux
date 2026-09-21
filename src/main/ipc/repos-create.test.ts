@@ -1,5 +1,5 @@
 /**
- * Unit tests for repos:create (nightshift#763).
+ * Unit tests for repos:create (kolux#763).
  *
  * Pins the invariants that matter here:
  *   - Name validation catches empty/slash/./.. before any fs I/O.
@@ -110,7 +110,7 @@ describe('repos:create', () => {
     webContents: { send: vi.fn() }
   }
   const tmpPath = (...segments: string[]): string => join('/tmp', ...segments)
-  const defaultProjectParent = join('/Users/alice', 'nightshift', 'projects')
+  const defaultProjectParent = join('/Users/alice', 'kolux', 'projects')
   // The value a fresh install seeds Settings -> Workspace Directory with.
   const defaultWorkspaceDir = getDefaultWorkspaceDir('/Users/alice')
 
@@ -163,7 +163,7 @@ describe('repos:create', () => {
     await expect(callDefaultCreateProjectParent()).resolves.toBe(defaultProjectParent)
   })
 
-  // ── create-project default parent (nightshift#14767) ────────────────────
+  // ── create-project default parent (kolux#14767) ────────────────────
 
   it('defaults new projects to a configured Workspace Directory', async () => {
     mockStore.getSettings.mockReturnValue({ workspaceDir: 'J:\\PROJECTS' })
@@ -179,7 +179,7 @@ describe('repos:create', () => {
   })
 
   it.each([undefined, '', '   '])(
-    'falls back to ~/nightshift/projects for a blank workspace directory: %p',
+    'falls back to ~/kolux/projects for a blank workspace directory: %p',
     async (workspaceDir) => {
       mockStore.getSettings.mockReturnValue({ workspaceDir })
       await expect(callDefaultCreateProjectParent()).resolves.toBe(defaultProjectParent)
@@ -202,10 +202,10 @@ describe('repos:create', () => {
   it('ignores a Windows seeded workspace directory regardless of drive-letter case', async () => {
     homedirMock.mockReturnValue('C:\\Users\\alice')
     mockStore.getSettings.mockReturnValue({
-      workspaceDir: 'c:\\users\\alice\\nightshift\\workspaces'
+      workspaceDir: 'c:\\users\\alice\\kolux\\workspaces'
     })
     await expect(callDefaultCreateProjectParent()).resolves.toBe(
-      join('C:\\Users\\alice', 'nightshift', 'projects')
+      join('C:\\Users\\alice', 'kolux', 'projects')
     )
   })
 

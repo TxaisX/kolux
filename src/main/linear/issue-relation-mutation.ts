@@ -12,7 +12,7 @@ type RelationMutationResponse = {
 }
 
 const CREATE_RELATION_MUTATION = `
-  mutation NightshiftLinearCreateIssueRelation($input: IssueRelationCreateInput!) {
+  mutation KoluxLinearCreateIssueRelation($input: IssueRelationCreateInput!) {
     issueRelationCreate(input: $input) {
       success
       issueRelation {
@@ -26,7 +26,7 @@ const CREATE_RELATION_MUTATION = `
 `
 
 const DELETE_RELATION_MUTATION = `
-  mutation NightshiftLinearDeleteIssueRelation($id: String!) {
+  mutation KoluxLinearDeleteIssueRelation($id: String!) {
     issueRelationDelete(id: $id) { success }
   }
 `

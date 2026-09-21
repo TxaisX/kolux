@@ -4,7 +4,7 @@ import { createSeededTestRepo } from './helpers/seeded-test-repo'
 import { cleanupTestRepository } from './global-teardown'
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   UUID_RE,
@@ -23,23 +23,23 @@ type LocalhostSshTarget = {
   identityFile?: string
 }
 
-const RUN_LOCALHOST_SSH = process.env.NIGHTSHIFT_E2E_SSH_LOCALHOST === '1'
+const RUN_LOCALHOST_SSH = process.env.KOLUX_E2E_SSH_LOCALHOST === '1'
 const RUN_REMOTE_HOOKS =
-  process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS === undefined ||
-  (process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS.trim() !== '' &&
-    process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS.trim() !== '0')
+  process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS === undefined ||
+  (process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS.trim() !== '' &&
+    process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS.trim() !== '0')
 
 function parsePort(value: string | undefined): number {
   const parsed = Number(value ?? '22')
   if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
     return parsed
   }
-  throw new Error(`Invalid NIGHTSHIFT_E2E_SSH_PORT: ${value}`)
+  throw new Error(`Invalid KOLUX_E2E_SSH_PORT: ${value}`)
 }
 
 function currentUsername(): string {
   return (
-    process.env.NIGHTSHIFT_E2E_SSH_USER ??
+    process.env.KOLUX_E2E_SSH_USER ??
     process.env.USER ??
     process.env.USERNAME ??
     os.userInfo().username
@@ -47,14 +47,14 @@ function currentUsername(): string {
 }
 
 function readLocalhostSshTarget(): LocalhostSshTarget {
-  const configHost = process.env.NIGHTSHIFT_E2E_SSH_CONFIG_HOST?.trim()
-  const host = process.env.NIGHTSHIFT_E2E_SSH_HOST?.trim() ?? (configHost ? '' : '127.0.0.1')
-  const identityFile = process.env.NIGHTSHIFT_E2E_SSH_IDENTITY_FILE?.trim()
+  const configHost = process.env.KOLUX_E2E_SSH_CONFIG_HOST?.trim()
+  const host = process.env.KOLUX_E2E_SSH_HOST?.trim() ?? (configHost ? '' : '127.0.0.1')
+  const identityFile = process.env.KOLUX_E2E_SSH_IDENTITY_FILE?.trim()
 
   return {
     label: `Localhost SSH E2E ${Date.now()}`,
     host,
-    port: parsePort(process.env.NIGHTSHIFT_E2E_SSH_PORT),
+    port: parsePort(process.env.KOLUX_E2E_SSH_PORT),
     username: currentUsername(),
     ...(configHost ? { configHost } : {}),
     ...(identityFile ? { identityFile } : {})
@@ -66,7 +66,7 @@ function shellQuote(value: string): string {
 }
 
 function marker(name: string): string {
-  return `__NIGHTSHIFT_${name}_${Date.now()}__`
+  return `__KOLUX_${name}_${Date.now()}__`
 }
 
 function emitMarkerCommand(value: string): string {
@@ -117,20 +117,20 @@ async function postCodexHook(
     page,
     ptyId,
     [
-      'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
-      '  echo __NIGHTSHIFT_AGENT_HOOK_ENV_MISSING__',
+      'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
+      '  echo __KOLUX_AGENT_HOOK_ENV_MISSING__',
       'else',
       `  hook_payload=${shellQuote(JSON.stringify(payload))}`,
       '  (',
       '    sleep 0.1',
-      '    if curl -sS -X POST "http://127.0.0.1:${NIGHTSHIFT_AGENT_HOOK_PORT}/hook/codex" \\',
+      '    if curl -sS -X POST "http://127.0.0.1:${KOLUX_AGENT_HOOK_PORT}/hook/codex" \\',
       '      -H "Content-Type: application/x-www-form-urlencoded" \\',
-      '      -H "X-Nightshift-Agent-Hook-Token: ${NIGHTSHIFT_AGENT_HOOK_TOKEN}" \\',
-      '      --data-urlencode "paneKey=${NIGHTSHIFT_PANE_KEY}" \\',
-      '      --data-urlencode "tabId=${NIGHTSHIFT_TAB_ID}" \\',
-      '      --data-urlencode "worktreeId=${NIGHTSHIFT_WORKTREE_ID}" \\',
-      '      --data-urlencode "env=${NIGHTSHIFT_AGENT_HOOK_ENV}" \\',
-      '      --data-urlencode "version=${NIGHTSHIFT_AGENT_HOOK_VERSION}" \\',
+      '      -H "X-Kolux-Agent-Hook-Token: ${KOLUX_AGENT_HOOK_TOKEN}" \\',
+      '      --data-urlencode "paneKey=${KOLUX_PANE_KEY}" \\',
+      '      --data-urlencode "tabId=${KOLUX_TAB_ID}" \\',
+      '      --data-urlencode "worktreeId=${KOLUX_WORKTREE_ID}" \\',
+      '      --data-urlencode "env=${KOLUX_AGENT_HOOK_ENV}" \\',
+      '      --data-urlencode "version=${KOLUX_AGENT_HOOK_VERSION}" \\',
       '      --data-urlencode "payload=${hook_payload}" >/dev/null; then',
       `      ${emitMarkerCommand(hookPostedMarker)}`,
       '    fi',
@@ -144,28 +144,28 @@ async function postCodexHook(
 test.describe('Localhost SSH', () => {
   test.skip(
     !RUN_LOCALHOST_SSH,
-    'Set NIGHTSHIFT_E2E_SSH_LOCALHOST=1 to run this local-machine-only SSH E2E test.'
+    'Set KOLUX_E2E_SSH_LOCALHOST=1 to run this local-machine-only SSH E2E test.'
   )
   test.skip(
     !RUN_REMOTE_HOOKS,
-    'Unset NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS or set it to 1 so remote PTYs keep pane identity and forward hook events.'
+    'Unset KOLUX_FEATURE_REMOTE_AGENT_HOOKS or set it to 1 so remote PTYs keep pane identity and forward hook events.'
   )
   test.skip(process.platform === 'win32', 'Localhost SSH hook E2E uses POSIX hook scripts.')
 
   test('routes a terminal and agent-hook status over localhost SSH', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }) => {
     test.slow()
     // The relay persists workspace sessions by path across fresh client profiles.
     const testRepoPath = createSeededTestRepo({ publishPath: false })
     registerPostElectronShutdownCleanup(async () => cleanupTestRepository(testRepoPath))
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
 
     const target = readLocalhostSshTarget()
     const remote = await connectSshTestTarget(
-      nightshiftPage,
+      koluxPage,
       // Limit orphan relay lifetime if the test app exits before cleanup.
       { ...target, relayGracePeriodSeconds: 1 },
       { remotePath: testRepoPath, displayName: 'Localhost SSH E2E' }
@@ -178,10 +178,10 @@ test.describe('Localhost SSH', () => {
     })
 
     await expect(remote.targetId).toBeTruthy()
-    await ensureTerminalVisible(nightshiftPage, 30_000)
-    await waitForActiveTerminalManager(nightshiftPage, 45_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage, 45_000)
-    const paneKey = await nightshiftPage.evaluate(() => {
+    await ensureTerminalVisible(koluxPage, 30_000)
+    await waitForActiveTerminalManager(koluxPage, 45_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage, 45_000)
+    const paneKey = await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('Store unavailable')
@@ -208,7 +208,7 @@ test.describe('Localhost SSH', () => {
     })
     const paneKeyLeafId = paneKey.slice(paneKey.indexOf(':') + 1)
     expect(paneKeyLeafId).toMatch(UUID_RE)
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const state = window as unknown as {
         __sshAgentStatusEvents?: unknown[]
         __sshAgentStatusUnsubscribe?: () => void
@@ -221,33 +221,33 @@ test.describe('Localhost SSH', () => {
     })
 
     const terminalMarker = marker('LOCALHOST_SSH')
-    await execInTerminal(nightshiftPage, ptyId, emitMarkerCommand(terminalMarker))
-    await waitForTerminalOutput(nightshiftPage, terminalMarker, 20_000)
+    await execInTerminal(koluxPage, ptyId, emitMarkerCommand(terminalMarker))
+    await waitForTerminalOutput(koluxPage, terminalMarker, 20_000)
 
     const envMarker = marker('AGENT_HOOK_ENV_OK')
     const envFailedMarker = marker('AGENT_HOOK_ENV_BAD')
     await execInTerminal(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       [
-        `if [ "$NIGHTSHIFT_PANE_KEY" = ${shellQuote(paneKey)} ] && [ -n "$NIGHTSHIFT_AGENT_HOOK_PORT" ] && [ -n "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] && /bin/sh -c 'test -n "$NIGHTSHIFT_PANE_KEY" && test -n "$NIGHTSHIFT_AGENT_HOOK_PORT" && test -n "$NIGHTSHIFT_AGENT_HOOK_TOKEN"'; then`,
+        `if [ "$KOLUX_PANE_KEY" = ${shellQuote(paneKey)} ] && [ -n "$KOLUX_AGENT_HOOK_PORT" ] && [ -n "$KOLUX_AGENT_HOOK_TOKEN" ] && /bin/sh -c 'test -n "$KOLUX_PANE_KEY" && test -n "$KOLUX_AGENT_HOOK_PORT" && test -n "$KOLUX_AGENT_HOOK_TOKEN"'; then`,
         `  ${emitMarkerCommand(envMarker)}`,
         'else',
-        '  token_state=${NIGHTSHIFT_AGENT_HOOK_TOKEN:+set}',
-        `  printf '%s pane=%s port=%s token=%s endpoint=%s\\n' ${shellQuote(envFailedMarker)} "$NIGHTSHIFT_PANE_KEY" "$NIGHTSHIFT_AGENT_HOOK_PORT" "$token_state" "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT"`,
+        '  token_state=${KOLUX_AGENT_HOOK_TOKEN:+set}',
+        `  printf '%s pane=%s port=%s token=%s endpoint=%s\\n' ${shellQuote(envFailedMarker)} "$KOLUX_PANE_KEY" "$KOLUX_AGENT_HOOK_PORT" "$token_state" "$KOLUX_AGENT_HOOK_ENDPOINT"`,
         'fi'
       ].join('\n')
     )
-    await waitForTerminalOutput(nightshiftPage, envMarker, 20_000)
+    await waitForTerminalOutput(koluxPage, envMarker, 20_000)
 
     const pluginOverlayMarker = marker('AGENT_PLUGIN_OVERLAYS_OK')
     const pluginOverlayFailedMarker = marker('AGENT_PLUGIN_OVERLAYS_BAD')
     await execInTerminal(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       [
-        'opencode_status_file="$OPENCODE_CONFIG_DIR/plugins/nightshift-opencode-status.js"',
-        'pi_status_file="$HOME/.pi/agent/extensions/nightshift-agent-status.ts"',
+        'opencode_status_file="$OPENCODE_CONFIG_DIR/plugins/kolux-opencode-status.js"',
+        'pi_status_file="$HOME/.pi/agent/extensions/kolux-agent-status.ts"',
         'if [ -n "$OPENCODE_CONFIG_DIR" ] && [ -f "$opencode_status_file" ] && [ -f "$pi_status_file" ]; then',
         `  ${emitMarkerCommand(pluginOverlayMarker)}`,
         'else',
@@ -255,11 +255,11 @@ test.describe('Localhost SSH', () => {
         'fi'
       ].join('\n')
     )
-    await waitForTerminalOutput(nightshiftPage, pluginOverlayMarker, 20_000)
+    await waitForTerminalOutput(koluxPage, pluginOverlayMarker, 20_000)
 
-    const prompt = `nightshift ssh e2e prompt ${Date.now()}`
+    const prompt = `kolux ssh e2e prompt ${Date.now()}`
     await postCodexHook(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       { hook_event_name: 'UserPromptSubmit', prompt },
       'AGENT_HOOK_POSTED'
@@ -268,7 +268,7 @@ test.describe('Localhost SSH', () => {
     await expect
       .poll(
         async () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             ({ paneKey, prompt, targetId, worktreeId }) => {
               const state = window.__store?.getState()
               const entries = Object.values(state?.agentStatusByPaneKey ?? {})
@@ -293,18 +293,18 @@ test.describe('Localhost SSH', () => {
       )
       .toBe(true)
 
-    const ctrlPrompt = `nightshift ssh ctrl-c interrupt ${Date.now()}`
+    const ctrlPrompt = `kolux ssh ctrl-c interrupt ${Date.now()}`
     await postCodexHook(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       { hook_event_name: 'UserPromptSubmit', prompt: ctrlPrompt },
       'AGENT_HOOK_CTRL_WORKING'
     )
-    await focusTerminal(nightshiftPage)
-    await nightshiftPage.keyboard.press('Control+C')
-    await nightshiftPage.waitForTimeout(750)
+    await focusTerminal(koluxPage)
+    await koluxPage.keyboard.press('Control+C')
+    await koluxPage.waitForTimeout(750)
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ paneKey, prompt, targetId, worktreeId }) => {
           const state = window.__store?.getState()
           const entry = state?.agentStatusByPaneKey[paneKey]
@@ -340,7 +340,7 @@ test.describe('Localhost SSH', () => {
     })
 
     await postCodexHook(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       {
         hook_event_name: 'PreToolUse',
@@ -352,7 +352,7 @@ test.describe('Localhost SSH', () => {
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             ({ paneKey }) => {
               const entry = window.__store?.getState().agentStatusByPaneKey[paneKey]
               return {
@@ -367,18 +367,18 @@ test.describe('Localhost SSH', () => {
       )
       .toEqual({ state: 'working', interrupted: undefined, prompt: ctrlPrompt })
 
-    const escapePrompt = `nightshift ssh escape interrupt ${Date.now()}`
+    const escapePrompt = `kolux ssh escape interrupt ${Date.now()}`
     await postCodexHook(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       { hook_event_name: 'UserPromptSubmit', prompt: escapePrompt },
       'AGENT_HOOK_ESCAPE_WORKING'
     )
-    await focusTerminal(nightshiftPage)
-    await nightshiftPage.keyboard.press('Escape')
-    await nightshiftPage.waitForTimeout(750)
+    await focusTerminal(koluxPage)
+    await koluxPage.keyboard.press('Escape')
+    await koluxPage.waitForTimeout(750)
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ paneKey }) => {
           const entry = window.__store?.getState().agentStatusByPaneKey[paneKey]
           return {

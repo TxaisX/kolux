@@ -4,7 +4,7 @@ import {
   AGENT_HOOK_NOTIFICATION_METHOD,
   AGENT_HOOK_REQUEST_REPLAY_METHOD,
   AGENT_HOOK_SHED_FIELDS_KEY,
-  NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV,
+  KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV,
   createShedSubagentsField,
   isAgentHookSource,
   isRemoteAgentHooksEnabled,
@@ -62,27 +62,15 @@ describe('isRemoteAgentHooksEnabled', () => {
   })
 
   it('is off for empty / "0"', () => {
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '' })).toBe(
-      false
-    )
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '0' })).toBe(
-      false
-    )
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '   ' })).toBe(
-      false
-    )
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '' })).toBe(false)
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '0' })).toBe(false)
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '   ' })).toBe(false)
   })
 
   it('is on for any other non-empty value', () => {
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '1' })).toBe(
-      true
-    )
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: 'on' })).toBe(
-      true
-    )
-    expect(isRemoteAgentHooksEnabled({ [NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]: 'true' })).toBe(
-      true
-    )
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: '1' })).toBe(true)
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: 'on' })).toBe(true)
+    expect(isRemoteAgentHooksEnabled({ [KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]: 'true' })).toBe(true)
   })
 })
 

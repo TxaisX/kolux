@@ -138,7 +138,7 @@ describe('#8832 hard-wrapped path candidates glue next-line text into URLs', () 
   it.each([
     ['Chinese label', '说明: 中文路径/文件.ts'],
     ['Windows path', 'C:\\Users\\demo\\project\\README.md'],
-    ['POSIX path', '/usr/local/bin/nightshift'],
+    ['POSIX path', '/usr/local/bin/kolux'],
     ['relative path', './src/main/index.ts'],
     ['UNC-ish path', '\\\\server\\share\\file.txt']
   ])('does not glue a mid-row URL to a next-line %s', (_label, nextLine) => {

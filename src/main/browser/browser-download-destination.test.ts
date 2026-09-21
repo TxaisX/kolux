@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { BrowserDownloadDestinationReservations } from './browser-download-destination'
 
 describe('BrowserDownloadDestinationReservations', () => {
-  const downloadsPath = path.join(path.sep, 'Users', 'nightshift', 'Downloads')
+  const downloadsPath = path.join(path.sep, 'Users', 'kolux', 'Downloads')
 
   it('uses the downloads folder and preserves a safe basename', () => {
     const reservations = new BrowserDownloadDestinationReservations({
@@ -19,7 +19,7 @@ describe('BrowserDownloadDestinationReservations', () => {
       savePath: path.join(downloadsPath, 'report.csv'),
       reservationKey: path.resolve(downloadsPath, 'report.csv')
     })
-    expect(reservations.reserve('C:\\Users\\nightshift\\Downloads\\budget.xlsx').filename).toBe(
+    expect(reservations.reserve('C:\\Users\\kolux\\Downloads\\budget.xlsx').filename).toBe(
       'budget.xlsx'
     )
   })
@@ -70,7 +70,7 @@ describe('BrowserDownloadDestinationReservations', () => {
 
   it('uses case-insensitive path identity on Windows and macOS', () => {
     const windowsReservations = new BrowserDownloadDestinationReservations({
-      downloadsPath: 'C:\\Users\\nightshift\\Downloads',
+      downloadsPath: 'C:\\Users\\kolux\\Downloads',
       pathExists: vi.fn(() => false),
       platform: 'win32'
     })

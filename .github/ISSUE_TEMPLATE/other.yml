@@ -1,5 +1,5 @@
 name: Other
-description: Report another Nightshift issue type
+description: Report another Kolux issue type
 title: '[Other]: '
 body:
   - type: markdown

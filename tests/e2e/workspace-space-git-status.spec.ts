@@ -2,19 +2,19 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { loadWorktreesUntilPathsPresent } from './helpers/worktree-registration'
 
 test.describe('Workspace Space git status checks', () => {
   test('checks every scanned deletable row, including rows after the first 50', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    // Why: on symlinked tmpdirs (/var→/private/var on macOS, /tmp→… on CI) Nightshift
+    // Why: on symlinked tmpdirs (/var→/private/var on macOS, /tmp→… on CI) Kolux
     // registers worktrees under their realpath, so the parent must be canonical
     // before `git worktree add` or the recorded paths won't match and rows drop.
     const worktreeParent = realpathSync(
-      mkdtempSync(path.join(os.tmpdir(), 'nightshift-space-git-status-'))
+      mkdtempSync(path.join(os.tmpdir(), 'kolux-space-git-status-'))
     )
     const worktreePaths = Array.from({ length: 60 }, (_, index) =>
       path.join(worktreeParent, `worktree-${index}`)
@@ -31,7 +31,7 @@ test.describe('Workspace Space git status checks', () => {
         realpathSync(worktreePath)
       )
 
-      const repoId = await nightshiftPage.evaluate((testRepoPath) => {
+      const repoId = await koluxPage.evaluate((testRepoPath) => {
         const store = window.__store
         if (!store) {
           throw new Error('Expected e2e store to be exposed')
@@ -45,9 +45,9 @@ test.describe('Workspace Space git status checks', () => {
 
       // Why: the 60 worktrees were added via raw git, so poll past the 5s scan
       // cache TTL until every path registers before deriving the space rows.
-      await loadWorktreesUntilPathsPresent(nightshiftPage, repoId, registeredWorktreePaths)
+      await loadWorktreesUntilPathsPresent(koluxPage, repoId, registeredWorktreePaths)
 
-      const rowDisplayNames = await nightshiftPage.evaluate(
+      const rowDisplayNames = await koluxPage.evaluate(
         async ({ testRepoPath, worktreePaths }) => {
           const store = window.__store
           if (!store) {
@@ -137,7 +137,7 @@ test.describe('Workspace Space git status checks', () => {
       // Why: `toHaveCount(0)` passes trivially while the list is still empty, so
       // every row has to be on screen before the absent-status assertion means
       // anything.
-      const rowCheckboxes = nightshiftPage.getByRole('checkbox', {
+      const rowCheckboxes = koluxPage.getByRole('checkbox', {
         name: new RegExp(
           `^Select (?:${rowDisplayNames
             .map((displayName) => displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
@@ -146,7 +146,7 @@ test.describe('Workspace Space git status checks', () => {
       })
       await expect(rowCheckboxes).toHaveCount(rowDisplayNames.length, { timeout: 30_000 })
 
-      await expect(nightshiftPage.getByText('Keep: git not checked')).toHaveCount(0, {
+      await expect(koluxPage.getByText('Keep: git not checked')).toHaveCount(0, {
         timeout: 30_000
       })
     } finally {

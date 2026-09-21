@@ -29,14 +29,14 @@ export const EphemeralVmCleanupStatusSchema = z.enum([
 
 export type EphemeralVmCleanupStatus = z.infer<typeof EphemeralVmCleanupStatusSchema>
 
-export const EphemeralVmRuntimeConnectionModeSchema = z.enum(['nightshift-server', 'ssh'])
+export const EphemeralVmRuntimeConnectionModeSchema = z.enum(['kolux-server', 'ssh'])
 
 const EphemeralVmRuntimeRecipeSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().min(1),
     create: z.string().min(1),
-    checkoutMode: z.enum(['nightshift-worktree', 'provisioned-root']).optional(),
+    checkoutMode: z.enum(['kolux-worktree', 'provisioned-root']).optional(),
     description: z.string().min(1).optional(),
     suspend: z.string().min(1).optional(),
     resume: z.string().min(1).optional(),

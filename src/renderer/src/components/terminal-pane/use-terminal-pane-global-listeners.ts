@@ -84,7 +84,7 @@ export function useTerminalPaneGlobalListeners(controller: TerminalPaneCloseCont
     macOptionAsAltRef,
     paneKittyKeyboardModesRef,
     keybindings,
-    terminalShortcutPolicy: settings?.terminalShortcutPolicy ?? 'nightshift-first'
+    terminalShortcutPolicy: settings?.terminalShortcutPolicy ?? 'kolux-first'
   })
   useTerminalPaneGlobalEffects({
     tabId,
@@ -107,7 +107,7 @@ export function useTerminalPaneGlobalListeners(controller: TerminalPaneCloseCont
 
   useEffect(() => {
     if (
-      !(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ ||
+      !(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ ||
       !isVisible ||
       !isActive
     ) {

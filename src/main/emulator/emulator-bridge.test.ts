@@ -59,7 +59,7 @@ vi.mock('os', async (importOriginal) => {
 })
 
 import { EmulatorBridge } from './emulator-bridge'
-import { RuntimeEmulatorCommands } from '../runtime/nightshift-runtime-emulator'
+import { RuntimeEmulatorCommands } from '../runtime/kolux-runtime-emulator'
 
 function session(deviceUdid: string): EmulatorSessionInfo {
   return {
@@ -92,7 +92,7 @@ describe('EmulatorBridge helper ownership', () => {
     netFetchMock.mockReset()
   })
 
-  it('stops the previous Nightshift-managed helper when a worktree switches devices', async () => {
+  it('stops the previous Kolux-managed helper when a worktree switches devices', async () => {
     const bridge = new EmulatorBridge()
     bridge.registerActiveEmulator('wt-1', session('device-old'), { managed: true })
 
@@ -111,7 +111,7 @@ describe('EmulatorBridge helper ownership', () => {
     expect(bridge.getActiveForWorktree('wt-1')).toBeNull()
   })
 
-  it('shuts down the previous Nightshift-managed device when requested', async () => {
+  it('shuts down the previous Kolux-managed device when requested', async () => {
     const bridge = new EmulatorBridge()
     bridge.registerActiveEmulator('wt-1', session('device-old'), { managed: true })
 
@@ -166,7 +166,7 @@ describe('EmulatorBridge helper ownership', () => {
     expect(bridge.getActiveForWorktree('wt-1')).toBeNull()
   })
 
-  it('only kills Nightshift-managed helpers during app shutdown cleanup', async () => {
+  it('only kills Kolux-managed helpers during app shutdown cleanup', async () => {
     const bridge = new EmulatorBridge()
     bridge.registerActiveEmulator('wt-managed', session('device-managed'), { managed: true })
     bridge.registerActiveEmulator('wt-external', session('device-external'))

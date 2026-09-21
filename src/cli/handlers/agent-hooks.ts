@@ -29,7 +29,7 @@ const WSL_CODEX_PREPARE_TIMEOUT_MS = 50_000
 
 function getDataPath(): string {
   const userDataPath = getDefaultUserDataPath()
-  const indexPath = join(userDataPath, 'nightshift-profile-index.json')
+  const indexPath = join(userDataPath, 'kolux-profile-index.json')
   for (const candidate of [indexPath, `${indexPath}.bak`]) {
     try {
       const parsed: unknown = JSON.parse(readFileSync(candidate, 'utf-8'))
@@ -42,13 +42,13 @@ function getDataPath(): string {
         /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(profileId) &&
         parsed.profiles.some((profile) => isRecord(profile) && profile.id === profileId)
       ) {
-        return join(userDataPath, 'profiles', profileId, 'nightshift-data.json')
+        return join(userDataPath, 'profiles', profileId, 'kolux-data.json')
       }
     } catch {
       // Try the profile-index backup, then the legacy pre-profile path.
     }
   }
-  return join(userDataPath, 'nightshift-data.json')
+  return join(userDataPath, 'kolux-data.json')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -214,7 +214,7 @@ export const AGENT_HOOK_HANDLERS: Record<string, CommandHandler> = {
           'agentHooks.prepareCodexForWslPane',
           {
             codexHome: process.env.CODEX_HOME ?? '',
-            nightshiftCodexHome: process.env.NIGHTSHIFT_CODEX_HOME ?? '',
+            koluxCodexHome: process.env.KOLUX_CODEX_HOME ?? '',
             wslDistro: process.env.WSL_DISTRO_NAME
           },
           { timeoutMs: WSL_CODEX_PREPARE_TIMEOUT_MS }

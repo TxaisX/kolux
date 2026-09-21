@@ -76,7 +76,7 @@ describe('useGitHubSlugMetadata', () => {
 
     function LabelsProbe(): null {
       renders += 1
-      const metadata = useRepoLabelsBySlug('TxaisX', 'nightshift', {
+      const metadata = useRepoLabelsBySlug('TxaisX', 'kolux', {
         activeRuntimeEnvironmentId: null
       })
       labels = metadata.data
@@ -89,7 +89,7 @@ describe('useGitHubSlugMetadata', () => {
     expect(labels).toEqual(['bug'])
     expect(apiMocks.listLabelsBySlug).toHaveBeenCalledExactlyOnceWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'github.com'
     })
     expect(renders).toBeLessThanOrEqual(4)
@@ -105,7 +105,7 @@ describe('useGitHubSlugMetadata', () => {
 
     function AssigneesProbe(): null {
       renders += 1
-      const metadata = useRepoAssigneesBySlug('TxaisX', 'nightshift', ['jinwoo'], {
+      const metadata = useRepoAssigneesBySlug('TxaisX', 'kolux', ['jinwoo'], {
         activeRuntimeEnvironmentId: null
       })
       assigneeLogins = metadata.data.map((user) => user.login)
@@ -118,7 +118,7 @@ describe('useGitHubSlugMetadata', () => {
     expect(assigneeLogins).toEqual(['jinwoo'])
     expect(apiMocks.listAssignableUsersBySlug).toHaveBeenCalledExactlyOnceWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'github.com',
       seedLogins: ['jinwoo']
     })
@@ -135,7 +135,7 @@ describe('useGitHubSlugMetadata', () => {
 
     function FailingLabelsProbe(): null {
       renders += 1
-      const metadata = useRepoLabelsBySlug('TxaisX', 'nightshift', {
+      const metadata = useRepoLabelsBySlug('TxaisX', 'kolux', {
         activeRuntimeEnvironmentId: null
       })
       error = metadata.error
@@ -159,7 +159,7 @@ describe('useGitHubSlugMetadata', () => {
     function LabelsProbe(): null {
       useRepoLabelsBySlug(
         'TxaisX',
-        'nightshift',
+        'kolux',
         { activeRuntimeEnvironmentId: null },
         'ghe.example.com'
       )
@@ -171,7 +171,7 @@ describe('useGitHubSlugMetadata', () => {
 
     expect(apiMocks.listLabelsBySlug).toHaveBeenCalledExactlyOnceWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'ghe.example.com'
     })
   })
@@ -183,7 +183,7 @@ describe('useGitHubSlugMetadata', () => {
 
     function FailingAssigneesProbe(): null {
       renders += 1
-      const metadata = useRepoAssigneesBySlug('TxaisX', 'nightshift', ['jinwoo'], {
+      const metadata = useRepoAssigneesBySlug('TxaisX', 'kolux', ['jinwoo'], {
         activeRuntimeEnvironmentId: null
       })
       error = metadata.error

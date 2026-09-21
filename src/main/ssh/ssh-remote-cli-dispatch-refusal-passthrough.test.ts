@@ -11,8 +11,8 @@ vi.mock('../persistence', () => ({
   getCanonicalUserDataPath: () => '/host/user-data'
 }))
 
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
-import { runRemoteNightshiftCli } from './ssh-remote-nightshift-cli'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
+import { runRemoteKoluxCli } from './ssh-remote-kolux-cli'
 
 // Why: the SSH bridge captures the host CLI child's stdout and exit code without reparsing; this
 // pins that a typed refusal envelope and its nonzero exit reach the remote agent unchanged.
@@ -39,12 +39,12 @@ it('relays typed dispatch refusal codes from the host CLI unchanged', async () =
     _meta: { runtimeId: 'runtime_1' }
   }
 
-  const resultPromise = runRemoteNightshiftCli(
-    new NightshiftRuntimeService(),
+  const resultPromise = runRemoteKoluxCli(
+    new KoluxRuntimeService(),
     {
       argv: ['orchestration', 'dispatch', '--task', 'task_1', '--to', 'term_w', '--json'],
       cwd: '/home/alice/repo',
-      env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh' }
+      env: { KOLUX_TERMINAL_HANDLE: 'term_ssh' }
     },
     {
       execPath: '/host/electron',

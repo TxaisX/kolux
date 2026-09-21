@@ -8,7 +8,7 @@ const {
   collectDiagnosticBundleMock,
   getDiagnosticsStatusMock,
   recordCrashBreadcrumbMock,
-  resolveDiagnosticNightshiftChannelMock,
+  resolveDiagnosticKoluxChannelMock,
   spanEndMock,
   startSpanMock,
   submitFeedbackMock
@@ -21,7 +21,7 @@ const {
     collectDiagnosticBundleMock: vi.fn(),
     getDiagnosticsStatusMock: vi.fn(),
     recordCrashBreadcrumbMock: vi.fn(),
-    resolveDiagnosticNightshiftChannelMock: vi.fn(),
+    resolveDiagnosticKoluxChannelMock: vi.fn(),
     spanEndMock,
     startSpanMock: vi.fn(() => ({
       traceId: 'trace-id',
@@ -68,7 +68,7 @@ vi.mock('../observability', () => ({
 }))
 
 vi.mock('../observability/diagnostic-upload-endpoint', () => ({
-  resolveDiagnosticNightshiftChannel: resolveDiagnosticNightshiftChannelMock
+  resolveDiagnosticKoluxChannel: resolveDiagnosticKoluxChannelMock
 }))
 
 vi.mock('../observability/tracer', () => ({
@@ -128,8 +128,8 @@ describe('registerCrashReportingHandlers', () => {
       traceFilePath: '/tmp/main.trace.ndjson',
       traceFamilySize: 25
     })
-    resolveDiagnosticNightshiftChannelMock.mockReset()
-    resolveDiagnosticNightshiftChannelMock.mockReturnValue('stable')
+    resolveDiagnosticKoluxChannelMock.mockReset()
+    resolveDiagnosticKoluxChannelMock.mockReturnValue('stable')
     startSpanMock.mockClear()
     spanEndMock.mockClear()
     submitFeedbackMock.mockReset()
@@ -204,7 +204,7 @@ describe('registerCrashReportingHandlers', () => {
       reportId: pending.id,
       notes: 'current notes',
       submissionFailure: {
-        error: 'fallback failed at C:\\Users\\alice\\Nightshift',
+        error: 'fallback failed at C:\\Users\\alice\\Kolux',
         diagnosticContext: {
           status: 'not_uploaded',
           reason: 'attachment token=super-secret-value',
@@ -321,7 +321,7 @@ describe('registerCrashReportingHandlers', () => {
       }
     })
     expect(collectDiagnosticBundleMock).toHaveBeenCalledWith(
-      expect.objectContaining({ lookbackMinutes: 3 * 24 * 60, nightshiftChannel: 'stable' })
+      expect.objectContaining({ lookbackMinutes: 3 * 24 * 60, koluxChannel: 'stable' })
     )
     expect(submitFeedbackMock).toHaveBeenCalledWith({
       feedback: expect.stringContaining('Report ID: not captured'),

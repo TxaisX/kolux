@@ -487,7 +487,7 @@ describe('connectPanePty', () => {
       {
         id: 'repo1',
         connectionId: null,
-        displayName: 'nightshift',
+        displayName: 'kolux',
         executionHostId: 'runtime:env-1'
       }
     ]
@@ -631,7 +631,7 @@ describe('connectPanePty', () => {
       {
         id: 'repo1',
         connectionId: null,
-        displayName: 'nightshift',
+        displayName: 'kolux',
         executionHostId: 'runtime:legacy-env'
       }
     ]

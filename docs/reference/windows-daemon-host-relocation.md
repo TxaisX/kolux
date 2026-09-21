@@ -1,13 +1,13 @@
 # Windows daemon-host relocation
 
 On Windows the terminal daemon does not run from the install directory. Before it forks the
-daemon, Nightshift materializes a trimmed copy of its own runtime under
-`%LOCALAPPDATA%\Nightshift\daemon-host\<app version>\` and forks the daemon from there
+daemon, Kolux materializes a trimmed copy of its own runtime under
+`%LOCALAPPDATA%\Kolux\daemon-host\<app version>\` and forks the daemon from there
 (`src/main/daemon/daemon-host-relocation.ts`). This is what keeps live terminals alive across an
 auto-update and across a crash of the main process.
 
 Read this before changing the copy plan, the host exe name, the LOCALAPPDATA layout, or
-`config/nsis/nightshift-installer-hooks.nsh`.
+`config/nsis/kolux-installer-hooks.nsh`.
 
 ## What the relocation actually escapes
 
@@ -39,7 +39,7 @@ The host exe keeps the app exe's own file name (`daemonHostExeName()` returns
 under its original name.
 
 An earlier revision copied it as `orca-terminal-daemon.exe` specifically so the fallback
-`taskkill /IM Nightshift.exe` could not match. That bought survival on the rare no-PowerShell host and
+`taskkill /IM Kolux.exe` could not match. That bought survival on the rare no-PowerShell host and
 cost a textbook defence-evasion signature: _a process copies its own image into a user-writable
 directory under a different name so a kill-by-image-name cannot match it, then runs detached and
 survives the installer._ Microsoft Defender for Endpoint flagged it as MITRE **T1036
@@ -65,7 +65,7 @@ that loop. Low probability (fallback branch _and_ an unkillable daemon), but it 
 What this does **not** buy. Two things bound the win honestly:
 
 - The strongest T1036 indicator is a PE-resource-vs-disk-name mismatch, and it was **never firing**:
-  the shipped binary's `OriginalFilename` is empty (only `InternalName = Nightshift` is set), so there was
+  the shipped binary's `OriginalFilename` is empty (only `InternalName = Kolux` is set), so there was
   no embedded name for the old disk name to contradict.
 - The remaining behaviour — a signed app copying its own ~225 MB image into user-writable
   `%LOCALAPPDATA%` and running it detached under `ELECTRON_RUN_AS_NODE=1` — is still execution from
@@ -80,7 +80,7 @@ stop being scored.
 | Option                                                                        | Why not                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Materialize the tree from the NSIS installer                                  | The daemon host is ~246 MB. Writing it at install time doubles install footprint and lengthens the window in which the app is down during a silent update. Worse, on a per-machine install (`INSTALL_MODE_PER_ALL_USERS`) the installer runs as the installing admin, so `$LOCALAPPDATA` is the wrong user's — every other user still needs the runtime path, which means the runtime self-copy stays in the product and the signal is only made rarer.                                                                                                  |
-| Ship a second signed `orca-terminal-daemon.exe` in the installer              | `Nightshift.exe` is 235,555,328 bytes (224.6 MiB). electron-builder's NSIS uses solid LZMA with a 64 MB dictionary, so a second copy 224 MB downstream does not dedupe; the compressed installer grows by roughly a whole compressed Electron binary, paid by every user on every update download. It also does not remove the runtime copy — the helper still has to reach `%LOCALAPPDATA%` to escape the sweep — so it buys the same signal reduction as the verbatim copy at a large download cost.                                                         |
+| Ship a second signed `orca-terminal-daemon.exe` in the installer              | `Kolux.exe` is 235,555,328 bytes (224.6 MiB). electron-builder's NSIS uses solid LZMA with a 64 MB dictionary, so a second copy 224 MB downstream does not dedupe; the compressed installer grows by roughly a whole compressed Electron binary, paid by every user on every update download. It also does not remove the runtime copy — the helper still has to reach `%LOCALAPPDATA%` to escape the sweep — so it buys the same signal reduction as the verbatim copy at a large download cost.                                                         |
 | Override `customCheckAppRunning` to force a path-scoped kill on both branches | Cheap to write (~6 lines: `!include "getProcessInfo.nsh"`, `Var pid`, and a macro that pins `IsPowerShellAvailable`, reusing upstream's dialog, retry loop and elevated handling) — but wrong at any size. Forcing the PowerShell branch on a host where PowerShell is genuinely absent makes `FIND_PROCESS` and `KILL_PROCESS` silently no-op, so the installer proceeds with the **real app** still running and its files in use. That is a worse outcome than the cold restore it would prevent, so this is not worth doing ever, not merely not now. |
 | Hardlink instead of copy                                                      | Avoids the 246 MB entirely and is not a "copy" at all, but is NTFS-and-same-volume-only and introduces fresh failure modes (link counts, AV interception, cross-volume installs). Worth revisiting deliberately, not as part of a signal fix.                                                                                                                                                                                                                                                                                                            |
 
@@ -92,7 +92,7 @@ stop being scored.
 - The daemon is identified by **PID and command line**, never by image name — in the product
   (`daemon-pid-file-parse`, `daemon-process-inspection`) and in the harness
   (`tests/tools/win-update-e2e/daemon-processes.mjs`). Nothing may start matching on the exe name.
-- `config/nsis/nightshift-installer-hooks.nsh` kills the daemon by image name. That now also matches the
+- `config/nsis/kolux-installer-hooks.nsh` kills the daemon by image name. That now also matches the
   app's own exe, which is correct on a genuine uninstall — the product is being removed — but its
   `${isUpdated}` guard must stay: electron-builder runs the uninstaller during every update's
   `uninstallOldVersion`, and killing the daemon there defeats the whole feature. The legacy

@@ -196,7 +196,7 @@ describe('useIpcEvents updater integration', () => {
         },
         browser: {
           onGuestLoadFailed: () => () => {},
-          onOpenLinkInNightshiftTab: () => () => {},
+          onOpenLinkInKoluxTab: () => () => {},
           onNavigationUpdate: () => () => {},
           onActivateView: () => () => {},
           onPaneFocus: () => () => {}

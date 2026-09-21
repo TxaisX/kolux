@@ -40,7 +40,7 @@ async function interruptedUpdate(phase: SkillInstallJournalV1['phase']): Promise
   stateDirectory: string
   journal: SkillInstallJournalV1
 }> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-recovery-test-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-recovery-test-'))
   roots.push(root)
   const first = await packageVersion(root, 'version_1', '# First')
   const second = await packageVersion(root, 'version_2', '# Second')
@@ -62,9 +62,9 @@ async function interruptedUpdate(phase: SkillInstallJournalV1['phase']): Promise
   if (!previous) {
     throw new Error('fixture receipt missing')
   }
-  const extractionPath = join(destinationRoot, '.nightshift-skill-extract-recovery')
-  const stagingPath = join(destinationRoot, '.recovery-skill.nightshift-staging-recovery')
-  const backupPath = join(destinationRoot, '.recovery-skill.nightshift-backup-recovery')
+  const extractionPath = join(destinationRoot, '.kolux-skill-extract-recovery')
+  const stagingPath = join(destinationRoot, '.recovery-skill.kolux-staging-recovery')
+  const backupPath = join(destinationRoot, '.recovery-skill.kolux-backup-recovery')
   await extractSkillPackageArchive({
     archivePath: second.archivePath,
     destinationDirectory: extractionPath,

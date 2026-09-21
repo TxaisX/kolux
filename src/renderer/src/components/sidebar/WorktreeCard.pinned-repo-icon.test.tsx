@@ -64,16 +64,16 @@ vi.mock('./WorktreeCardAgents', () => ({
 
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
-  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'nightshift:test-close-context-menus',
+  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'kolux:test-close-context-menus',
   WORKTREE_NATIVE_CONTEXT_MENU_ATTR: 'data-worktree-native-context-menu',
-  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-nightshift-context-menu-scope'
+  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-kolux-context-menu-scope'
 }))
 
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
     path: '/repo',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#999999',
     repoIcon: { type: 'emoji', emoji: '🦊' },
     addedAt: 1,
@@ -128,7 +128,7 @@ describe('WorktreeCard pinned repo icon', () => {
       )
 
       expect(markup).toContain('🦊')
-      expect(markup).toContain('Project nightshift')
+      expect(markup).toContain('Project kolux')
     },
     WORKTREE_CARD_IMPORT_TIMEOUT_MS
   )
@@ -147,7 +147,7 @@ describe('WorktreeCard pinned repo icon', () => {
       )
 
       expect(markup).not.toContain('🦊')
-      expect(markup).not.toContain('Project nightshift')
+      expect(markup).not.toContain('Project kolux')
     },
     WORKTREE_CARD_IMPORT_TIMEOUT_MS
   )
@@ -168,7 +168,7 @@ describe('WorktreeCard pinned repo icon', () => {
       )
 
       expect(markup).toContain('🦊')
-      expect(markup).toContain('Project nightshift')
+      expect(markup).toContain('Project kolux')
       expect(markup).not.toContain('data-worktree-card-meta-row=""')
     },
     WORKTREE_CARD_IMPORT_TIMEOUT_MS

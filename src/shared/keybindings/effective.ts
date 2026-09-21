@@ -70,7 +70,7 @@ export function getEffectiveKeybindingsForDefinition(
 export function normalizeTerminalShortcutPolicy(
   policy: TerminalShortcutPolicy | null | undefined
 ): TerminalShortcutPolicy {
-  return policy === 'terminal-first' ? 'terminal-first' : 'nightshift-first'
+  return policy === 'terminal-first' ? 'terminal-first' : 'kolux-first'
 }
 
 export function isKeybindingAllowedInTerminal(definition: KeybindingDefinition): boolean {
@@ -88,8 +88,8 @@ export function keybindingIsActiveInContext(
   if (options.context !== 'terminal') {
     return true
   }
-  // Why: Nightshift-first keeps app shortcuts inside terminals; terminal-first is the escape hatch for shells and TUIs.
-  if (normalizeTerminalShortcutPolicy(options.terminalShortcutPolicy) === 'nightshift-first') {
+  // Why: Kolux-first keeps app shortcuts inside terminals; terminal-first is the escape hatch for shells and TUIs.
+  if (normalizeTerminalShortcutPolicy(options.terminalShortcutPolicy) === 'kolux-first') {
     return true
   }
   return isKeybindingAllowedInTerminal(definition)

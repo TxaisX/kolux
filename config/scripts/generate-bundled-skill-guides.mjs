@@ -15,11 +15,11 @@ const REPO_ROOT = path.resolve(SCRIPT_DIR, '..', '..')
 const CANONICAL_GUIDE_NAMES = [
   'computer-use',
   'linear-tickets',
-  'nightshift-cli',
-  'nightshift-emulator',
-  'nightshift-emulator-android',
-  'nightshift-linear',
-  'nightshift-per-workspace-env',
+  'kolux-cli',
+  'kolux-emulator',
+  'kolux-emulator-android',
+  'kolux-linear',
+  'kolux-per-workspace-env',
   'orchestration'
 ]
 
@@ -28,27 +28,27 @@ const CANONICAL_GUIDE_NAMES = [
 const GUIDE_ALIASES = {
   'computer-use': [],
   'linear-tickets': [],
-  'nightshift-cli': [],
-  'nightshift-emulator': [],
-  'nightshift-emulator-android': [],
-  'nightshift-linear': [],
-  'nightshift-per-workspace-env': [],
+  'kolux-cli': [],
+  'kolux-emulator': [],
+  'kolux-emulator-android': [],
+  'kolux-linear': [],
+  'kolux-per-workspace-env': [],
   orchestration: []
 }
 
 // Why: a stubbed topic ships a hybrid discovery stub as its installable projection while
-// `nightshift skills get <topic>` still serves the full version-matched guide from the binary.
+// `kolux skills get <topic>` still serves the full version-matched guide from the binary.
 // Migrating a topic here is effectively one-way — earlier fat installs rely on the stub
 // landing to converge — so entries are added as skills convert, never removed. The stub
 // body lives in skill-stubs/<topic>.md; the projection reuses the guide's own frontmatter.
 const STUB_TOPICS = [
   'computer-use',
   'linear-tickets',
-  'nightshift-cli',
-  'nightshift-emulator',
-  'nightshift-emulator-android',
-  'nightshift-linear',
-  'nightshift-per-workspace-env',
+  'kolux-cli',
+  'kolux-emulator',
+  'kolux-emulator-android',
+  'kolux-linear',
+  'kolux-per-workspace-env',
   'orchestration'
 ]
 

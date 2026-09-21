@@ -71,9 +71,9 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 
 describe('protected-secret async write retention', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-protected-secret-write-race-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-protected-secret-write-race-'))
     cipherState.available = true
-    renameGate.sourcePrefix = join(testState.dir, 'nightshift-data.json')
+    renameGate.sourcePrefix = join(testState.dir, 'kolux-data.json')
     renameGate.release = null
     renameGate.started = null
     vi.useFakeTimers()

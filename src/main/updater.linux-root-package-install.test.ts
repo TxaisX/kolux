@@ -36,10 +36,10 @@ const packageSha512 = Buffer.alloc(64).toString('base64')
 
 function downloadedEvent(packageType: LinuxRootPackageType): Record<string, unknown> {
   const fileName =
-    packageType === 'deb' ? 'nightshift-ide_1.0.61_amd64.deb' : 'nightshift-ide-1.0.61.x86_64.rpm'
+    packageType === 'deb' ? 'kolux-ide_1.0.61_amd64.deb' : 'kolux-ide-1.0.61.x86_64.rpm'
   return {
     version: '1.0.61',
-    downloadedFile: join(tmpdir(), 'nightshift-updater', 'pending', fileName),
+    downloadedFile: join(tmpdir(), 'kolux-updater', 'pending', fileName),
     files: [{ url: fileName, sha512: packageSha512 }]
   }
 }
@@ -113,7 +113,7 @@ describe('updater Linux root packages', () => {
 
       expect(lastStatus(send)).toEqual({
         state: 'error',
-        message: 'Quit Nightshift before running the system package install command.',
+        message: 'Quit Kolux before running the system package install command.',
         recovery: {
           kind: 'linux-package-install',
           packageType,
@@ -154,7 +154,7 @@ describe('updater Linux root packages', () => {
       updater,
       {
         version: '1.0.61',
-        downloadedFile: join(tmpdir(), 'Nightshift-1.0.61.AppImage'),
+        downloadedFile: join(tmpdir(), 'Kolux-1.0.61.AppImage'),
         files: []
       },
       true
@@ -222,18 +222,13 @@ describe('updater Linux root packages', () => {
 
     await reachDownloaded(updater, {
       version: '1.0.61',
-      downloadedFile: join(
-        tmpdir(),
-        'nightshift-updater',
-        'pending',
-        'nightshift-ide_1.0.61_amd64.deb'
-      ),
-      files: [{ url: 'nightshift-ide_1.0.61_amd64.deb', sha512: packageSha512 }]
+      downloadedFile: join(tmpdir(), 'kolux-updater', 'pending', 'kolux-ide_1.0.61_amd64.deb'),
+      files: [{ url: 'kolux-ide_1.0.61_amd64.deb', sha512: packageSha512 }]
     })
     expect(lastStatus(send)).toEqual({
       state: 'error',
       message:
-        'Nightshift could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.',
+        'Kolux could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.',
       version: '1.0.61',
       retryable: false
     })

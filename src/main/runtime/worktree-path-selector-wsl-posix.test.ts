@@ -36,7 +36,7 @@ vi.mock('../git/worktree', async (importOriginal) => ({
 
 import { isWslUncPathForCallerLinuxPath } from '../../shared/cross-platform-path'
 import { parseWslUncPath } from '../../shared/wsl-paths'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const UBUNTU = 'Ubuntu-24.04'
 const DEBIAN = 'Debian'
@@ -111,9 +111,9 @@ function scanReports(registrations: readonly Registration[]): void {
   })
 }
 
-function makeRuntime(registrations: readonly Registration[]): NightshiftRuntimeService {
+function makeRuntime(registrations: readonly Registration[]): KoluxRuntimeService {
   scanReports(registrations)
-  return new NightshiftRuntimeService(makeStore(registrations) as never)
+  return new KoluxRuntimeService(makeStore(registrations) as never)
 }
 
 /**
@@ -122,7 +122,7 @@ function makeRuntime(registrations: readonly Registration[]): NightshiftRuntimeS
  * Mirrored rather than imported — `src/cli` is outside this file's tsconfig project.
  */
 async function selectorTheCliWouldSend(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   callerCwd: string,
   typedPath: string
 ): Promise<string> {

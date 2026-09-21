@@ -1,5 +1,5 @@
 import type { MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { formatMessageBanner } from '../../../../orchestration/formatter'
 import { exposeMessages } from './mailbox-message-receipt'
@@ -16,7 +16,7 @@ type RemoteAttachment = NonNullable<
 
 export async function checkWorkerMailbox(args: {
   params: CheckParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   handle: string
   paneKey: string | undefined

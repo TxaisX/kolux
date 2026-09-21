@@ -68,18 +68,20 @@ describe('OpenCode hook plugin source', () => {
     expect(primarySource).toContain('post("SessionStart", { sessionID: info.id })')
     expect(familySource).toContain('http://127.0.0.1:${coords.port}/hook/mimo-code')
     expect(familySource).not.toContain('post("SessionStart", { sessionID: info.id })')
-    expect(familySource).toContain('export const NightshiftOpenCodeStatusPlugin')
+    expect(familySource).toContain('export const KoluxOpenCodeStatusPlugin')
   })
 
   it('keeps generated plugin bytes stable across the module split', () => {
     const digest = (source: string): string => createHash('sha256').update(source).digest('hex')
 
+    // Why pinned hash changed here: the Nightshift->Kolux rename changed embedded brand
+    // strings (class name, header name) in the generated plugin source; re-pinned post-rename.
     expect(digest(getOpenCodePluginSource())).toBe(
-      'd14859a36c88aefe3a45cd232789503296e0a23438b151c773414bad64ab8eaa'
+      '4f34c8032d3598cd84e789c14ae1168b03300abd68ac5d0e9d9ba2ad4c22a142'
     )
     expect(
       digest(getOpenCodeFamilyPluginSource('/hook/mimo-code', { emitSessionStart: false }))
-    ).toBe('4de14bee0c27ce55f29f70b19aa6ce9967e09b098bba139fb88f0511af7d4fca')
+    ).toBe('926738d360ac4d52f0782f2e0cba131e960e760f040c0a7b1e43c97a5e2821e0')
   })
 
   it('filters child sessions via parentID lookup before forwarding events', () => {
@@ -108,30 +110,30 @@ describe('OpenCode hook plugin source', () => {
   it('still accepts an optional opaque plugin context instead of destructuring', () => {
     const source = _internals.getOpenCodePluginSource()
 
-    expect(source).toContain('export const NightshiftOpenCodeStatusPlugin = async (_ctx) => {')
+    expect(source).toContain('export const KoluxOpenCodeStatusPlugin = async (_ctx) => {')
     expect(source).toContain('const client = _ctx?.client;')
   })
 
   it('resolves hook coords from the endpoint file before falling back to process.env', () => {
-    // Why: a forked session freezes the prior Nightshift's PORT/TOKEN in env; prefer the on-disk endpoint file or it posts to a dead port after restart.
+    // Why: a forked session freezes the prior Kolux's PORT/TOKEN in env; prefer the on-disk endpoint file or it posts to a dead port after restart.
     const source = _internals.getOpenCodePluginSource()
 
     expect(source).toContain('function readEndpointFile()')
-    expect(source).toContain('process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT')
+    expect(source).toContain('process.env.KOLUX_AGENT_HOOK_ENDPOINT')
     // Parser accepts both `KEY=VALUE` (Unix) and `set KEY=VALUE` (Windows):
     expect(source).toContain('/^(?:set\\s+)?([A-Z0-9_]+)=(.*)$/')
     expect(source).toContain('function resolveHookCoords()')
     // File takes precedence over env — the whole point of v2:
     expect(source).toContain(
-      'port: fileEnv.NIGHTSHIFT_AGENT_HOOK_PORT || process.env.NIGHTSHIFT_AGENT_HOOK_PORT'
+      'port: fileEnv.KOLUX_AGENT_HOOK_PORT || process.env.KOLUX_AGENT_HOOK_PORT'
     )
     expect(source).toContain(
-      'token: fileEnv.NIGHTSHIFT_AGENT_HOOK_TOKEN || process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN'
+      'token: fileEnv.KOLUX_AGENT_HOOK_TOKEN || process.env.KOLUX_AGENT_HOOK_TOKEN'
     )
     // post() uses the resolved coords, not a cached-at-startup url:
     expect(source).toContain('const coords = resolveHookCoords();')
     expect(source).toContain('`http://127.0.0.1:${coords.port}/hook/opencode`')
-    expect(source).toContain('"X-Nightshift-Agent-Hook-Token": coords.token')
+    expect(source).toContain('"X-Kolux-Agent-Hook-Token": coords.token')
   })
 
   it('caches the parsed endpoint file on mtime+size+inode to skip re-reads per post', () => {
@@ -234,7 +236,7 @@ describe('OpenCodeHookService buildPtyEnv / clearPty round-trip', () => {
   let userDataDir: string
 
   beforeAll(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-hooks-'))
+    userDataDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-hooks-'))
     getPathMock.mockImplementation((name: string) => {
       if (name === 'userData') {
         return userDataDir
@@ -259,11 +261,11 @@ describe('OpenCodeHookService buildPtyEnv / clearPty round-trip', () => {
     expect(env.OPENCODE_CONFIG_DIR).toBeTruthy()
     expect(env.OPENCODE_CONFIG_DIR).toBe(join(userDataDir, 'opencode-hooks', 'shared'))
 
-    const pluginPath = join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js')
+    const pluginPath = join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js')
     expect(existsSync(pluginPath)).toBe(true)
     // Sanity-check the file has plugin source, not a stray write.
     const pluginSource = readFileSync(pluginPath, 'utf8')
-    expect(pluginSource).toContain('NightshiftOpenCodeStatusPlugin')
+    expect(pluginSource).toContain('KoluxOpenCodeStatusPlugin')
     expect(pluginSource).toContain('messageID: part.messageID')
   })
 
@@ -293,7 +295,7 @@ describe('OpenCodeHookService buildPtyEnv / clearPty round-trip', () => {
   it('buildPtyEnv preserves a user-set OPENCODE_CONFIG_DIR when the id is unusable', () => {
     // Why: even when the id is rejected, don't blow away the user's own OPENCODE_CONFIG_DIR.
     const service = new OpenCodeHookService()
-    const userDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-userdir-'))
+    const userDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-userdir-'))
     try {
       expect(service.buildPtyEnv('', userDir)).toEqual({ OPENCODE_CONFIG_DIR: userDir })
     } finally {
@@ -306,9 +308,9 @@ describe('OpenCodeHookService buildPtyEnv / clearPty round-trip', () => {
     const env = service.buildPtyEnv(plainUuidId)
 
     expect(env.OPENCODE_CONFIG_DIR).toBe(join(userDataDir, 'opencode-hooks', 'shared'))
-    expect(
-      existsSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js'))
-    ).toBe(true)
+    expect(existsSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js'))).toBe(
+      true
+    )
 
     service.clearPty(plainUuidId)
     expect(existsSync(env.OPENCODE_CONFIG_DIR!)).toBe(true)
@@ -322,7 +324,7 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
   let userConfigDir: string
 
   beforeAll(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-overlay-userdata-'))
+    userDataDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-overlay-userdata-'))
     getPathMock.mockImplementation((name: string) => {
       if (name === 'userData') {
         return userDataDir
@@ -336,7 +338,7 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
   })
 
   beforeEach(() => {
-    userConfigDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-overlay-userconfig-'))
+    userConfigDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-overlay-userconfig-'))
     // Realistic user config: top-level files plus a plugins/ dir with a user plugin.
     writeFileSync(join(userConfigDir, 'opencode.json'), '{"userTheme":"solarized"}')
     writeFileSync(join(userConfigDir, 'auth.json'), 'user-auth-token')
@@ -360,7 +362,7 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
     )
   }
 
-  it('builds an overlay under userData and exposes user config + Nightshift plugin together', () => {
+  it('builds an overlay under userData and exposes user config + Kolux plugin together', () => {
     const service = new OpenCodeHookService()
     const env = service.buildPtyEnv(ptyId, userConfigDir)
 
@@ -380,14 +382,10 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
       'export default () => {}'
     )
 
-    // Nightshift's status plugin is a sibling, not a replacement.
-    const nightshiftPluginPath = join(
-      env.OPENCODE_CONFIG_DIR!,
-      'plugins',
-      'nightshift-opencode-status.js'
-    )
-    expect(existsSync(nightshiftPluginPath)).toBe(true)
-    expect(readFileSync(nightshiftPluginPath, 'utf8')).toContain('NightshiftOpenCodeStatusPlugin')
+    // Kolux's status plugin is a sibling, not a replacement.
+    const koluxPluginPath = join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js')
+    expect(existsSync(koluxPluginPath)).toBe(true)
+    expect(readFileSync(koluxPluginPath, 'utf8')).toContain('KoluxOpenCodeStatusPlugin')
 
     expectUserConfigIntact()
   })
@@ -395,14 +393,14 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
   it.skipIf(process.platform === 'win32')(
     'mirrors top-level entries via symlinks so plugins/ is a real directory',
     () => {
-      // Why: only plugins/ needs per-entry mirroring (Nightshift drops a sibling); other entries are single symlinks so user edits propagate live.
+      // Why: only plugins/ needs per-entry mirroring (Kolux drops a sibling); other entries are single symlinks so user edits propagate live.
       const service = new OpenCodeHookService()
       const env = service.buildPtyEnv(ptyId, userConfigDir)
 
       const overlay = env.OPENCODE_CONFIG_DIR!
       expect(lstatSync(join(overlay, 'opencode.json')).isSymbolicLink()).toBe(true)
       expect(lstatSync(join(overlay, 'auth.json')).isSymbolicLink()).toBe(true)
-      // plugins/ must be a real dir in the overlay so Nightshift can drop its sibling plugin.
+      // plugins/ must be a real dir in the overlay so Kolux can drop its sibling plugin.
       expect(lstatSync(join(overlay, 'plugins')).isDirectory()).toBe(true)
       expect(lstatSync(join(overlay, 'plugins')).isSymbolicLink()).toBe(false)
       // user-plugin.js inside plugins/ is mirrored entry-by-entry.
@@ -410,37 +408,34 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
     }
   )
 
-  it("does not overwrite a user plugin file with the same filename as Nightshift's plugin", () => {
-    // Why: a user plugin named nightshift-opencode-status.js must not be symlinked into the overlay, or writeFileSync would clobber it.
-    const userNightshiftSentinel = 'USER OWNED NIGHTSHIFT-NAMED PLUGIN — DO NOT CLOBBER'
-    writeFileSync(
-      join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'),
-      userNightshiftSentinel
-    )
+  it("does not overwrite a user plugin file with the same filename as Kolux's plugin", () => {
+    // Why: a user plugin named kolux-opencode-status.js must not be symlinked into the overlay, or writeFileSync would clobber it.
+    const userKoluxSentinel = 'USER OWNED KOLUX-NAMED PLUGIN — DO NOT CLOBBER'
+    writeFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), userKoluxSentinel)
 
     const service = new OpenCodeHookService()
     const env = service.buildPtyEnv(ptyId, userConfigDir)
 
     // User's source file must be untouched.
-    expect(
-      readFileSync(join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'), 'utf8')
-    ).toBe(userNightshiftSentinel)
+    expect(readFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe(
+      userKoluxSentinel
+    )
 
-    // Overlay copy is Nightshift's real plugin source, not the user's file.
+    // Overlay copy is Kolux's real plugin source, not the user's file.
     const overlayPlugin = readFileSync(
-      join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js'),
+      join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js'),
       'utf8'
     )
-    expect(overlayPlugin).toContain('NightshiftOpenCodeStatusPlugin')
-    expect(overlayPlugin).not.toBe(userNightshiftSentinel)
+    expect(overlayPlugin).toContain('KoluxOpenCodeStatusPlugin')
+    expect(overlayPlugin).not.toBe(userKoluxSentinel)
     expectUserConfigIntact()
   })
 
   it.skipIf(process.platform === 'win32')(
     'does not write through a symlinked plugins/ directory into the user filesystem',
     () => {
-      // Why: writing Nightshift's plugin through a symlinked plugins/ would leak into the user's fs (docs/opencode-config-dir-collision.md).
-      const realPluginsDir = mkdtempSync(join(tmpdir(), 'nightshift-real-plugins-'))
+      // Why: writing Kolux's plugin through a symlinked plugins/ would leak into the user's fs (docs/opencode-config-dir-collision.md).
+      const realPluginsDir = mkdtempSync(join(tmpdir(), 'kolux-real-plugins-'))
       try {
         writeFileSync(join(realPluginsDir, 'real-plugin.js'), 'REAL USER PLUGIN')
 
@@ -451,13 +446,13 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
         const service = new OpenCodeHookService()
         const env = service.buildPtyEnv(ptyId, userConfigDir)
 
-        // The user's real filesystem must NOT receive Nightshift's status plugin.
-        expect(existsSync(join(realPluginsDir, 'nightshift-opencode-status.js'))).toBe(false)
+        // The user's real filesystem must NOT receive Kolux's status plugin.
+        expect(existsSync(join(realPluginsDir, 'kolux-opencode-status.js'))).toBe(false)
         // Overlay's plugins/ must be a real dir, else writes leak into the user's filesystem.
         expect(lstatSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins')).isSymbolicLink()).toBe(false)
-        // Nightshift's status plugin lands in the overlay only.
+        // Kolux's status plugin lands in the overlay only.
         expect(
-          existsSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js'))
+          existsSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js'))
         ).toBe(true)
         // User's real plugin is reachable via the overlay (plugins mirrored entry-by-entry after resolving the symlink target).
         expect(
@@ -470,9 +465,9 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
   )
 
   it("preserves the user's OPENCODE_CONFIG_DIR when the path does not exist", () => {
-    // Why: leave a nonexistent user path alone so OpenCode surfaces the typo instead of Nightshift silently hiding it.
+    // Why: leave a nonexistent user path alone so OpenCode surfaces the typo instead of Kolux silently hiding it.
     const service = new OpenCodeHookService()
-    const missingPath = join(tmpdir(), `nightshift-opencode-nope-${Date.now()}`)
+    const missingPath = join(tmpdir(), `kolux-opencode-nope-${Date.now()}`)
     expect(existsSync(missingPath)).toBe(false)
 
     const env = service.buildPtyEnv(ptyId, missingPath)
@@ -542,11 +537,8 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
     const env = service.buildPtyEnv(ptyId, userConfigDir)
 
     expect(
-      readFileSync(
-        join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js'),
-        'utf8'
-      )
-    ).toContain('NightshiftOpenCodeStatusPlugin')
+      readFileSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'kolux-opencode-status.js'), 'utf8')
+    ).toContain('KoluxOpenCodeStatusPlugin')
     expectUserConfigIntact()
   })
 

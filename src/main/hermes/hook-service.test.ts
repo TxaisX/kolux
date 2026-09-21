@@ -17,7 +17,7 @@ describe('HermesHookService', () => {
 
   beforeEach(() => {
     previousHermesHome = process.env.HERMES_HOME
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-hermes-hooks-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-hermes-hooks-'))
     process.env.HERMES_HOME = homeDir
   })
 
@@ -48,7 +48,7 @@ describe('HermesHookService', () => {
     expect(config.plugins.enabled).toContain(_internals.HERMES_PLUGIN_NAME)
   })
 
-  it('preserves other enabled plugins and removes Nightshift from disabled list', () => {
+  it('preserves other enabled plugins and removes Kolux from disabled list', () => {
     writeFileSync(
       join(homeDir, 'config.yaml'),
       [
@@ -123,7 +123,7 @@ describe('HermesHookService', () => {
     expect(output.toLowerCase()).toContain('enabled')
   }, 20_000)
 
-  it('registered plugin hooks post normalized JSON to Nightshift', async () => {
+  it('registered plugin hooks post normalized JSON to Kolux', async () => {
     const pythonAvailable = spawnSync('python3', ['--version'], { encoding: 'utf-8' }).status === 0
     if (!pythonAvailable) {
       return
@@ -137,7 +137,7 @@ describe('HermesHookService', () => {
         req.on('end', () => {
           try {
             expect(req.url).toBe('/hook/hermes')
-            expect(req.headers['x-nightshift-agent-hook-token']).toBe('token-1')
+            expect(req.headers['x-kolux-agent-hook-token']).toBe('token-1')
             res.writeHead(204)
             res.end()
             clearTimeout(timeout)
@@ -164,7 +164,7 @@ describe('HermesHookService', () => {
         const initPath = join(homeDir, 'plugins', _internals.HERMES_PLUGIN_NAME, '__init__.py')
         const script = [
           'import importlib.util',
-          `spec = importlib.util.spec_from_file_location("nightshift_status", ${JSON.stringify(initPath)})`,
+          `spec = importlib.util.spec_from_file_location("kolux_status", ${JSON.stringify(initPath)})`,
           'mod = importlib.util.module_from_spec(spec)',
           'spec.loader.exec_module(mod)',
           'class Ctx:',
@@ -188,14 +188,14 @@ describe('HermesHookService', () => {
           {
             env: {
               ...process.env,
-              NIGHTSHIFT_AGENT_HOOK_PORT: String(address.port),
-              NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token-1',
-              NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-              NIGHTSHIFT_PANE_KEY: PANE_KEY,
-              NIGHTSHIFT_TAB_ID: 'tab-1',
-              NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-              NIGHTSHIFT_AGENT_HOOK_ENV: 'production',
-              NIGHTSHIFT_AGENT_HOOK_VERSION: '1'
+              KOLUX_AGENT_HOOK_PORT: String(address.port),
+              KOLUX_AGENT_HOOK_TOKEN: 'token-1',
+              KOLUX_AGENT_HOOK_ENDPOINT: '',
+              KOLUX_PANE_KEY: PANE_KEY,
+              KOLUX_TAB_ID: 'tab-1',
+              KOLUX_WORKTREE_ID: 'wt-1',
+              KOLUX_AGENT_HOOK_ENV: 'production',
+              KOLUX_AGENT_HOOK_VERSION: '1'
             },
             encoding: 'utf-8'
           },
@@ -235,7 +235,7 @@ describe('HermesHookService', () => {
     const initPath = join(homeDir, 'plugins', _internals.HERMES_PLUGIN_NAME, '__init__.py')
     const script = [
       'import importlib.util, json',
-      `spec = importlib.util.spec_from_file_location("nightshift_status", ${JSON.stringify(initPath)})`,
+      `spec = importlib.util.spec_from_file_location("kolux_status", ${JSON.stringify(initPath)})`,
       'mod = importlib.util.module_from_spec(spec)',
       'spec.loader.exec_module(mod)',
       'payload = mod._payload_for_event("post_tool_call", {',

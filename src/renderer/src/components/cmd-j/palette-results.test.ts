@@ -93,8 +93,8 @@ const sections: SettingsNavSection[] = [
     icon: Settings,
     searchEntries: [
       {
-        title: 'Nightshift CLI',
-        description: 'Register or remove the nightshift shell command.',
+        title: 'Kolux CLI',
+        description: 'Register or remove the kolux shell command.',
         keywords: ['cli', 'path', 'terminal', 'command', 'shell command'],
         cmdJKeywords: ['cli', 'path', 'command', 'shell command'],
         targetSectionId: 'cli'
@@ -120,10 +120,10 @@ const sections: SettingsNavSection[] = [
   },
   {
     id: 'servers',
-    title: 'Remote Nightshift Servers',
-    description: 'Pair remote Nightshift runtimes.',
+    title: 'Remote Kolux Servers',
+    description: 'Pair remote Kolux runtimes.',
     icon: Settings,
-    searchEntries: [{ title: 'Remote Nightshift Servers' }],
+    searchEntries: [{ title: 'Remote Kolux Servers' }],
     group: 'remote'
   },
   {
@@ -250,7 +250,7 @@ describe('Cmd+J palette middle-band ranking', () => {
     ['browser', 'settings:browser'],
     ['quick commands', 'settings:quick-commands'],
     ['add quick command', 'add-quick-command'],
-    ['nightshift cli', 'settings:general:cli'],
+    ['kolux cli', 'settings:general:cli'],
     ['shell command', 'settings:general:cli']
   ])('ranks %s first', (query, expectedId) => {
     expect(top(query)).toBe(expectedId)
@@ -262,8 +262,8 @@ describe('Cmd+J palette middle-band ranking', () => {
     )
 
     expect(cliResult).toMatchObject({
-      title: 'Nightshift CLI',
-      description: 'Register or remove the nightshift shell command.',
+      title: 'Kolux CLI',
+      description: 'Register or remove the kolux shell command.',
       sectionId: 'general',
       targetSectionId: 'cli'
     })
@@ -276,7 +276,7 @@ describe('Cmd+J palette middle-band ranking', () => {
       {
         id: 'linear',
         title: 'Linear',
-        description: 'How Linear works in Nightshift.',
+        description: 'How Linear works in Kolux.',
         icon: Settings,
         searchEntries: [],
         group: 'capabilities'

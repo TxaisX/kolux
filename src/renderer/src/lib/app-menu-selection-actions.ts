@@ -1,4 +1,4 @@
-export const APP_MENU_SELECTION_ACTION_EVENT = 'nightshift-app-menu-selection-action'
+export const APP_MENU_SELECTION_ACTION_EVENT = 'kolux-app-menu-selection-action'
 
 export type AppMenuSelectionAction = 'copy' | 'select-all'
 

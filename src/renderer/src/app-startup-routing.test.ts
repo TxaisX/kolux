@@ -601,13 +601,13 @@ describe('renderer startup runtime routing', () => {
     expect(checkpointBlock).toContain('shutdownCheckpointPersist.run')
     expect(checkpointBlock).toContain('shutdownCheckpointPersist.abandonAttempt')
     expect(source).toContain(
-      'window.addEventListener(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)'
+      'window.addEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)'
     )
     expect(source).toContain(
-      'NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,\n      shutdownCheckpoint.abortAfterCheckpointFailure'
+      'KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,\n      shutdownCheckpoint.abortAfterCheckpointFailure'
     )
     expect(source).toContain(
-      'window.addEventListener(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.abandonAttempt)'
+      'window.addEventListener(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.abandonAttempt)'
     )
     expect(source).toContain("window.addEventListener('beforeunload', persistBeforeUnload)")
     expect(source.match(/window\.addEventListener\('beforeunload'/g) ?? []).toHaveLength(1)

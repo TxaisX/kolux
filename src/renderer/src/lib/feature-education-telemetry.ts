@@ -16,8 +16,8 @@ import {
 import { track } from './telemetry'
 
 const SETUP_GUIDE_TELEMETRY_COMPLETED_STEPS_STORAGE_KEY =
-  'nightshift.setupGuideTelemetryCompletedSteps.v1'
-const TERMINAL_PANE_SPLIT_TELEMETRY_STORAGE_KEY = 'nightshift.terminalPaneSplitTelemetry.v1'
+  'kolux.setupGuideTelemetryCompletedSteps.v1'
+const TERMINAL_PANE_SPLIT_TELEMETRY_STORAGE_KEY = 'kolux.terminalPaneSplitTelemetry.v1'
 
 type FeatureEducationTelemetryEventName = Extract<
   EventName,

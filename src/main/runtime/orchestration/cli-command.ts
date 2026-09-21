@@ -2,7 +2,7 @@ import type { ProjectExecutionRuntimeResolution } from '../../../shared/project-
 import { isWslUncPath } from '../../../shared/wsl-paths'
 import { splitWorktreeIdForFilesystem } from '../../../shared/worktree/id'
 
-export type OrchestrationCliCommand = 'nightshift' | 'nightshift-dev' | 'nightshift-ide'
+export type OrchestrationCliCommand = 'kolux' | 'kolux-dev' | 'kolux-ide'
 
 export function resolveTerminalOrchestrationCliCommand(args: {
   connectionId: string | null
@@ -12,18 +12,18 @@ export function resolveTerminalOrchestrationCliCommand(args: {
   runtimeCliCommand?: OrchestrationCliCommand
 }): OrchestrationCliCommand {
   if (args.connectionId) {
-    return 'nightshift'
+    return 'kolux'
   }
   if (args.runtimeCliCommand) {
     return args.runtimeCliCommand
   }
   if (args.isWsl !== null && args.isWsl !== undefined) {
-    return args.isWsl ? 'nightshift-ide' : 'nightshift'
+    return args.isWsl ? 'kolux-ide' : 'kolux'
   }
   if (args.projectRuntime?.status === 'resolved' && args.projectRuntime.runtime.kind === 'wsl') {
-    return 'nightshift-ide'
+    return 'kolux-ide'
   }
 
   const worktreePath = splitWorktreeIdForFilesystem(args.worktreeId)?.worktreePath
-  return worktreePath && isWslUncPath(worktreePath) ? 'nightshift-ide' : 'nightshift'
+  return worktreePath && isWslUncPath(worktreePath) ? 'kolux-ide' : 'kolux'
 }

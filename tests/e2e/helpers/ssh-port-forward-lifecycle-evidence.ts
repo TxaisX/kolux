@@ -47,20 +47,18 @@ export function startRemoteHttpListener(
   execDockerSshRelayTargetCommand(
     target,
     [
-      `nohup node -e ${shellQuote(script)} >/tmp/nightshift-http-${port}.log 2>&1 < /dev/null &`,
-      `echo $! >/tmp/nightshift-http-${port}.pid`
+      `nohup node -e ${shellQuote(script)} >/tmp/kolux-http-${port}.log 2>&1 < /dev/null &`,
+      `echo $! >/tmp/kolux-http-${port}.pid`
     ].join(' ')
   )
-  return Number(execDockerSshRelayTargetCommand(target, `cat /tmp/nightshift-http-${port}.pid`))
+  return Number(execDockerSshRelayTargetCommand(target, `cat /tmp/kolux-http-${port}.pid`))
 }
 
 export function readRemoteListenerIdentity(
   target: DockerSshRelayTarget,
   port: number
 ): { pid: number; executable: string; command: string } {
-  const pid = Number(
-    execDockerSshRelayTargetCommand(target, `cat /tmp/nightshift-http-${port}.pid`)
-  )
+  const pid = Number(execDockerSshRelayTargetCommand(target, `cat /tmp/kolux-http-${port}.pid`))
   return {
     pid,
     executable: execDockerSshRelayTargetCommand(target, `readlink /proc/${pid}/exe`),

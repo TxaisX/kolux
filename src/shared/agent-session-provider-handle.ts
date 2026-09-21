@@ -184,7 +184,7 @@ export function appendAgentSessionProviderHandleLink(
     agentSessionProviderHandleRoot(link.handle) === agentSessionProviderHandleRoot(head.handle)
   if (link.origin === 'resumed' && !sameRoot) {
     // Why: a resume that lands on another identity root forked; recording it as a resume would
-    // make Nightshift claim continuity the provider never gave.
+    // make Kolux claim continuity the provider never gave.
     throw new Error('agent_session_provider_handle_forked')
   }
   if (link.origin === 'forked') {

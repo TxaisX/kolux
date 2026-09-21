@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { gitExecFileAsync } from '../../git/runner'
 import { mapWithConcurrency } from '../../../shared/map-with-concurrency'
-import { DEFAULT_GITIGNORE_CONTENT, LARGE_FILE_BYTES_THRESHOLD, looksLikeSecretFile } from './initial-commit-defaults'
+import {
+  DEFAULT_GITIGNORE_CONTENT,
+  LARGE_FILE_BYTES_THRESHOLD,
+  looksLikeSecretFile
+} from './initial-commit-defaults'
 import type {
   InitialCommitPreviewFile,
   InitialCommitPreviewResult
@@ -30,7 +34,7 @@ export async function computeInitialCommitPreview(
   let tempExcludeFile: string | null = null
   const excludeArgs: string[] = []
   if (!gitignoreExists) {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-gitignore-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-gitignore-'))
     tempExcludeFile = join(dir, 'default.gitignore')
     await writeFile(tempExcludeFile, DEFAULT_GITIGNORE_CONTENT, 'utf-8')
     excludeArgs.push(`--exclude-from=${tempExcludeFile}`)

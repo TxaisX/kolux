@@ -77,13 +77,13 @@ function resolveOwnedWslClaudeManagedAuthPath(account: InactiveClaudeAccount): s
   }
   const linuxPath = account.wslLinuxAuthPath ?? wslInfo.linuxPath
   if (
-    !linuxPath.includes('/.local/share/nightshift/claude-accounts/') ||
+    !linuxPath.includes('/.local/share/kolux/claude-accounts/') ||
     !linuxPath.endsWith(`/${account.id}/auth`)
   ) {
     return null
   }
   try {
-    const markerPath = path.join(account.managedAuthPath, '.nightshift-managed-claude-auth')
+    const markerPath = path.join(account.managedAuthPath, '.kolux-managed-claude-auth')
     if (
       !existsSync(markerPath) ||
       lstatSync(markerPath).isSymbolicLink() ||

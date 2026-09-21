@@ -12,7 +12,7 @@ import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
 import { expect, test } from '@stablyai/playwright-test'
-import { createRestartSession } from './helpers/nightshift-restart'
+import { createRestartSession } from './helpers/kolux-restart'
 
 const execFileAsync = promisify(execFile)
 
@@ -48,9 +48,9 @@ async function commitRepository(
     repository,
     [
       '-c',
-      'user.name=Nightshift Test',
+      'user.name=Kolux Test',
       '-c',
-      'user.email=nightshift-test@example.invalid',
+      'user.email=kolux-test@example.invalid',
       'commit',
       '--quiet',
       '-m',
@@ -98,47 +98,38 @@ async function configureFixtureGit(home: string, repositories: string): Promise<
 }
 
 async function createMarketplaceFixture(): Promise<MarketplaceFixture> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-marketplace-e2e-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-marketplace-e2e-'))
   const repositories = join(root, 'repositories')
   const home = join(root, 'home')
   await mkdir(repositories, { recursive: true })
   await mkdir(home, { recursive: true })
   const gitEnvironment = await configureFixtureGit(home, repositories)
+  await copyLaunchPlugin(repositories, 'kolux-portuguese', 'txais.kolux-portuguese', gitEnvironment)
   await copyLaunchPlugin(
     repositories,
-    'nightshift-portuguese',
-    'txais.nightshift-portuguese',
+    'kolux-multipass-recipes',
+    'txais.kolux-multipass-recipes',
     gitEnvironment
   )
   await copyLaunchPlugin(
     repositories,
-    'nightshift-multipass-recipes',
-    'txais.nightshift-multipass-recipes',
-    gitEnvironment
-  )
-  await copyLaunchPlugin(
-    repositories,
-    'nightshift-navigation-shortcuts',
-    'txais.nightshift-navigation-shortcuts',
+    'kolux-navigation-shortcuts',
+    'txais.kolux-navigation-shortcuts',
     gitEnvironment
   )
 
-  const marketplaceRepository = join(repositories, 'nightshift-plugins.git')
+  const marketplaceRepository = join(repositories, 'kolux-plugins.git')
   await mkdir(marketplaceRepository, { recursive: true })
   await writeFile(
-    join(marketplaceRepository, 'nightshift-marketplace.json'),
+    join(marketplaceRepository, 'kolux-marketplace.json'),
     `${JSON.stringify(
       {
-        name: 'Nightshift Plugins',
+        name: 'Kolux Plugins',
         owner: 'TxaisX',
         plugins: [
-          ['txais.nightshift-portuguese', 'nightshift-portuguese', 'languages'],
-          ['txais.nightshift-multipass-recipes', 'nightshift-multipass-recipes', 'vm-recipes'],
-          [
-            'txais.nightshift-navigation-shortcuts',
-            'nightshift-navigation-shortcuts',
-            'keybindings'
-          ]
+          ['txais.kolux-portuguese', 'kolux-portuguese', 'languages'],
+          ['txais.kolux-multipass-recipes', 'kolux-multipass-recipes', 'vm-recipes'],
+          ['txais.kolux-navigation-shortcuts', 'kolux-navigation-shortcuts', 'keybindings']
         ].map(([id, repository, category]) => ({
           id,
           source: {
@@ -208,7 +199,7 @@ async function enableInstalledPluginThroughUi(
 }
 
 async function applyInstalledLanguage(page: Page): Promise<void> {
-  const languageId = 'plugin:txais.nightshift-portuguese/pt-BR'
+  const languageId = 'plugin:txais.kolux-portuguese/pt-BR'
   await page.evaluate(() => {
     const state = window.__store?.getState()
     if (!state) {
@@ -219,9 +210,7 @@ async function applyInstalledLanguage(page: Page): Promise<void> {
   await expect(page.locator('[data-settings-section="appearance"]')).toBeVisible()
   await page.evaluate(() => window.__store?.setState({ settingsSearchQuery: 'Language' }))
   await page.getByRole('combobox', { name: 'Language' }).click()
-  await page
-    .getByRole('option', { name: 'pt-BR — txais.nightshift-portuguese', exact: true })
-    .click()
+  await page.getByRole('option', { name: 'pt-BR — txais.kolux-portuguese', exact: true }).click()
   await expect
     .poll(() => page.evaluate(() => window.__store?.getState().settings?.uiLanguage))
     .toBe(languageId)
@@ -245,13 +234,13 @@ async function runMarketplaceJourney(page: Page): Promise<void> {
     .toMatchObject({
       sources: [expect.objectContaining({ official: true, stale: false })],
       listings: expect.arrayContaining([
-        expect.objectContaining({ pluginKey: 'txais.nightshift-portuguese', official: true }),
+        expect.objectContaining({ pluginKey: 'txais.kolux-portuguese', official: true }),
         expect.objectContaining({
-          pluginKey: 'txais.nightshift-multipass-recipes',
+          pluginKey: 'txais.kolux-multipass-recipes',
           official: true
         }),
         expect.objectContaining({
-          pluginKey: 'txais.nightshift-navigation-shortcuts',
+          pluginKey: 'txais.kolux-navigation-shortcuts',
           official: true
         })
       ])
@@ -259,19 +248,19 @@ async function runMarketplaceJourney(page: Page): Promise<void> {
 
   await installMarketplacePluginThroughUi(
     page,
-    'txais.nightshift-portuguese',
+    'txais.kolux-portuguese',
     'Português do Brasil',
     'Review plugin'
   )
   await installMarketplacePluginThroughUi(
     page,
-    'txais.nightshift-multipass-recipes',
+    'txais.kolux-multipass-recipes',
     'Multipass VM Recipes',
     'Review plugin content'
   )
   await enableInstalledPluginThroughUi(
     page,
-    'txais.nightshift-navigation-shortcuts',
+    'txais.kolux-navigation-shortcuts',
     'Review plugin content'
   )
 

@@ -257,7 +257,7 @@ describe('updater check failure handling', () => {
     {
       assetStatus: publishingIncident.missingWindowsAssetStatus,
       caseName: 'asset 404',
-      manifestText: 'version: 1.4.142\nfiles:\n  - url: nightshift-windows-setup.exe'
+      manifestText: 'version: 1.4.142\nfiles:\n  - url: kolux-windows-setup.exe'
     }
   ])(
     'maps $caseName into neutral artifact-readiness status and diagnostics',

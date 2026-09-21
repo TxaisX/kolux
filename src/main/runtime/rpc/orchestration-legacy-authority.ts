@@ -6,9 +6,9 @@ import type {
 } from '../orchestration/types'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type {
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   OrchestrationCompatibilityCallerAuthority
-} from '../nightshift-runtime'
+} from '../kolux-runtime'
 import { LEGACY_CONTRACT_VERSION } from '../orchestration/db'
 import type { RpcRequest } from './core'
 import {
@@ -26,7 +26,7 @@ export type LegacyPrincipalCandidate = {
 }
 
 export function resolveAttestedLegacyPrincipal(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   evidence?: OrchestrationCompatibilityEvidence
   candidate: LegacyPrincipalCandidate
   authority?: OrchestrationCompatibilityCallerAuthority
@@ -45,7 +45,7 @@ export function resolveAttestedLegacyPrincipal(args: {
 }
 
 export function verifyAttestedLegacyCandidate(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   evidence?: OrchestrationCompatibilityEvidence
   candidate: LegacyPrincipalCandidate
 }) {
@@ -72,7 +72,7 @@ export function verifyAttestedLegacyCandidate(args: {
 }
 
 export class LegacyCompatibilityAuthority {
-  constructor(private readonly runtime: NightshiftRuntimeService) {}
+  constructor(private readonly runtime: KoluxRuntimeService) {}
 
   resolveWorkerDispatch(
     request: RpcRequest,

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -27,7 +27,7 @@ const REBOUND_COORDINATOR_HANDLE = 'term_rebound_coord'
 type Harness = {
   db: OrchestrationDb
   dispatcher: RpcDispatcher
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   adoptedRunId: string
   taskId: string
   dispatchId: string
@@ -46,7 +46,7 @@ afterEach(() => {
 })
 
 function createHarness(): Harness {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-legacy-takeover-delivery-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-legacy-takeover-delivery-'))
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
   const before = new OrchestrationDb(dbPath)
@@ -73,7 +73,7 @@ function createHarness(): Harness {
   const db = new OrchestrationDb(dbPath)
   databases.push(db)
   const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
     handle === COORDINATOR_HANDLE

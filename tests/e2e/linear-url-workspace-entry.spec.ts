@@ -1,6 +1,6 @@
 import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import type { LinearIssue } from '../../src/shared/linear/issue-types'
 
@@ -36,7 +36,7 @@ async function installLinearFixture(
 ): Promise<void> {
   await page.evaluate(
     ({ resolvedIssue, lookupDelayMs }) => {
-      Reflect.deleteProperty(window, '__nightshiftTestReleaseLinearLookup')
+      Reflect.deleteProperty(window, '__koluxTestReleaseLinearLookup')
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -73,7 +73,7 @@ async function installLinearFixture(
         fetchLinearIssue: async (_identifier: string, workspaceId?: string | null) => {
           await (lookupDelayMs === null
             ? new Promise<void>((resolve) => {
-                Reflect.set(window, '__nightshiftTestReleaseLinearLookup', resolve)
+                Reflect.set(window, '__koluxTestReleaseLinearLookup', resolve)
               })
             : new Promise<void>((resolve) => window.setTimeout(resolve, lookupDelayMs)))
           return resolvedIssue && workspaceId === resolvedIssue.workspaceId ? resolvedIssue : null
@@ -86,11 +86,11 @@ async function installLinearFixture(
 
 async function releaseHeldLinearLookup(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const release = Reflect.get(window, '__nightshiftTestReleaseLinearLookup')
+    const release = Reflect.get(window, '__koluxTestReleaseLinearLookup')
     if (typeof release !== 'function') {
       throw new Error('Linear lookup is not held')
     }
-    Reflect.deleteProperty(window, '__nightshiftTestReleaseLinearLookup')
+    Reflect.deleteProperty(window, '__koluxTestReleaseLinearLookup')
     release()
   })
 }
@@ -109,39 +109,39 @@ async function openJumpPalette(electronApp: ElectronApplication): Promise<void> 
 }
 
 test.describe('Linear URL workspace entry', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await installLinearFixture(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await installLinearFixture(koluxPage)
   })
 
   test('pasting into the composer selects the Linear issue without ArrowDown', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await installLinearFixture(nightshiftPage, LINEAR_ISSUE, null)
-    await openSidebarWorkspaceComposer(nightshiftPage)
-    const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+    await installLinearFixture(koluxPage, LINEAR_ISSUE, null)
+    await openSidebarWorkspaceComposer(koluxPage)
+    const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
     const input = dialog.locator('[data-workspace-name-input="true"]')
     await expect(input).toBeVisible()
 
-    await pasteLinearUrl(nightshiftPage, input)
+    await pasteLinearUrl(koluxPage, input)
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
-          () => typeof Reflect.get(window, '__nightshiftTestReleaseLinearLookup') === 'function'
+        koluxPage.evaluate(
+          () => typeof Reflect.get(window, '__koluxTestReleaseLinearLookup') === 'function'
         )
       )
       .toBe(true)
     await input.press('Enter')
     await expect(input).toHaveValue(LINEAR_URL)
     await expect(dialog.locator('[data-workspace-source-pill="true"]')).toHaveCount(0)
-    await releaseHeldLinearLookup(nightshiftPage)
+    await releaseHeldLinearLookup(koluxPage)
 
-    const issueRow = nightshiftPage.getByRole('option', {
+    const issueRow = koluxPage.getByRole('option', {
       name: `${LINEAR_ISSUE.identifier} ${LINEAR_ISSUE.title}`,
       exact: true
     })
-    const useNameRow = nightshiftPage.getByRole('option', {
+    const useNameRow = koluxPage.getByRole('option', {
       name: `Use "${LINEAR_URL}" as workspace name`,
       exact: true
     })
@@ -166,15 +166,15 @@ test.describe('Linear URL workspace entry', () => {
   })
 
   test('a Linear URL lookup miss falls back to an arbitrary workspace name', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await installLinearFixture(nightshiftPage, null)
-    await openSidebarWorkspaceComposer(nightshiftPage)
-    const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+    await installLinearFixture(koluxPage, null)
+    await openSidebarWorkspaceComposer(koluxPage)
+    const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
     const input = dialog.locator('[data-workspace-name-input="true"]')
 
-    await pasteLinearUrl(nightshiftPage, input)
-    const useNameRow = nightshiftPage.getByRole('option', {
+    await pasteLinearUrl(koluxPage, input)
+    const useNameRow = koluxPage.getByRole('option', {
       name: `Use "${LINEAR_URL}" as workspace name`,
       exact: true
     })
@@ -195,16 +195,16 @@ test.describe('Linear URL workspace entry', () => {
 
   test('pasting into Cmd+J previews the Linear issue and opens the linked composer', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     await openJumpPalette(electronApp)
-    const palette = nightshiftPage.getByRole('dialog', { name: 'Jump to...' })
+    const palette = koluxPage.getByRole('dialog', { name: 'Jump to...' })
     const input = palette.getByPlaceholder(
       'Search chats, terminals, worktrees, settings, and actions...'
     )
     await expect(input).toBeVisible()
 
-    await pasteLinearUrl(nightshiftPage, input)
+    await pasteLinearUrl(koluxPage, input)
 
     const preview = palette.locator(
       '[data-cmd-j-linear-issue-preview="true"][data-cmd-j-linear-issue-state="resolved"]'
@@ -218,7 +218,7 @@ test.describe('Linear URL workspace entry', () => {
     })
 
     await input.press('Enter')
-    const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+    const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
     const sourcePill = dialog.locator('[data-workspace-source-pill="true"]')
     await expect(sourcePill).toContainText(LINEAR_ISSUE.title)
     await expect(dialog.getByPlaceholder('Workspace name')).toHaveValue(EXPECTED_WORKSPACE_NAME)

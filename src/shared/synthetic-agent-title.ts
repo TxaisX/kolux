@@ -57,7 +57,7 @@ export const SYNTHETIC_AGENT_TITLE_PROFILES: Record<string, SyntheticAgentTitleP
     permissionLabel: 'OMP - action required',
     idleLabel: 'OMP ready',
     titleIdentityGroup: 'pi-compatible',
-    // Why: on a Nightshift-hosted pane it is Nightshift's own injected titlebar extension writing the
+    // Why: on a Kolux-hosted pane it is Kolux's own injected titlebar extension writing the
     // working title (src/main/pi/titlebar-extension-source.ts). See pi above.
     synthesizeWorkingTitle: false
   },

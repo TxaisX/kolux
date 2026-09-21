@@ -44,7 +44,7 @@ export function buildDirectWorkItemStartup(args: {
     nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable(
       args.launchConnectionId
     ),
-    // Why: SSH hosts run the plain `nightshift` shim, so the Linux-only `nightshift-ide` rename is not applied.
+    // Why: SSH hosts run the plain `kolux` shim, so the Linux-only `kolux-ide` rename is not applied.
     isRemote: typeof args.launchConnectionId === 'string'
   })
 }

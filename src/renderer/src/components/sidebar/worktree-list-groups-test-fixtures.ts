@@ -7,8 +7,8 @@ export const LOCAL_HOST_LABEL = getExecutionHostLabel('local')
 
 export const repo: Repo = {
   id: 'repo-1',
-  path: '/tmp/nightshift',
-  displayName: 'nightshift',
+  path: '/tmp/kolux',
+  displayName: 'kolux',
   badgeColor: '#000000',
   addedAt: 0
 }
@@ -16,7 +16,7 @@ export const repo: Repo = {
 export const worktree: Worktree = {
   id: 'wt-1',
   repoId: repo.id,
-  path: '/tmp/nightshift-feature',
+  path: '/tmp/kolux-feature',
   branch: 'refs/heads/feature/super-critical',
   head: 'abc123',
   isBare: false,
@@ -37,8 +37,8 @@ export const repoMap = new Map([[repo.id, repo]])
 
 export const remoteRepo: Repo = {
   id: 'repo-remote',
-  path: '/home/alice/nightshift',
-  displayName: 'nightshift',
+  path: '/home/alice/kolux',
+  displayName: 'kolux',
   badgeColor: '#111111',
   addedAt: 1,
   connectionId: 'gpu-vm'
@@ -48,13 +48,13 @@ export const remoteWorktree: Worktree = {
   ...worktree,
   id: 'wt-remote',
   repoId: remoteRepo.id,
-  path: '/home/alice/nightshift-feature',
+  path: '/home/alice/kolux-feature',
   displayName: 'remote feature'
 }
 
 export const project: Project = {
   id: 'github:TxaisX/nightshift',
-  displayName: 'Nightshift',
+  displayName: 'Kolux',
   badgeColor: '#737373',
   sourceRepoIds: [repo.id, remoteRepo.id],
   createdAt: 1,

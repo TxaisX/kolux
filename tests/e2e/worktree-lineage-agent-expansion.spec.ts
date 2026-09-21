@@ -1,14 +1,14 @@
 import type { Page } from '@stablyai/playwright-test'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { seedLineageScenario } from './worktree-lineage-state'
 import { worktreeRow } from './worktree-row-locators'
 
-// Set NIGHTSHIFT_CAPTURE_EVIDENCE=1 to also write before/after screenshots to
+// Set KOLUX_CAPTURE_EVIDENCE=1 to also write before/after screenshots to
 // pr-evidence/. Off by default so CI just runs the behavioral assertions.
-const CAPTURE_EVIDENCE = process.env.NIGHTSHIFT_CAPTURE_EVIDENCE === '1'
+const CAPTURE_EVIDENCE = process.env.KOLUX_CAPTURE_EVIDENCE === '1'
 const SHOT_DIR = resolve(process.cwd(), 'pr-evidence')
 
 async function captureSidebar(page: Page, name: string): Promise<void> {
@@ -72,41 +72,41 @@ function childWorkspacesChip(page: Page, parentId: string) {
 test.describe('Worktree lineage agent-list expansion independence', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('toggling child worktrees does not collapse the expanded agent summary', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
-    const parentRow = worktreeRow(nightshiftPage, parentId)
-    const childRow = worktreeRow(nightshiftPage, childId)
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
+    const parentRow = worktreeRow(koluxPage, parentId)
+    const childRow = worktreeRow(koluxPage, childId)
 
     await parentRow.click()
     await expect(parentRow).toHaveAttribute('aria-current', 'page')
 
-    await seedTwoParentAgents(nightshiftPage, parentId)
+    await seedTwoParentAgents(koluxPage, parentId)
 
     // Both sections present: the "2 agents" summary and the child-workspaces chip.
-    await expect(compactSummary(nightshiftPage, parentId)).toBeVisible({ timeout: 10_000 })
-    await expect(childWorkspacesChip(nightshiftPage, parentId)).toBeVisible()
+    await expect(compactSummary(koluxPage, parentId)).toBeVisible({ timeout: 10_000 })
+    await expect(childWorkspacesChip(koluxPage, parentId)).toBeVisible()
     await expect(childRow).toBeVisible()
-    await expect(compactSummary(nightshiftPage, parentId)).toHaveAttribute('aria-expanded', 'false')
-    await captureSidebar(nightshiftPage, '1-before-both-collapsed.png')
+    await expect(compactSummary(koluxPage, parentId)).toHaveAttribute('aria-expanded', 'false')
+    await captureSidebar(koluxPage, '1-before-both-collapsed.png')
 
     // Expand the agent summary.
-    await compactSummary(nightshiftPage, parentId).click()
-    await expect(compactSummary(nightshiftPage, parentId)).toHaveAttribute('aria-expanded', 'true')
-    await captureSidebar(nightshiftPage, '2-agents-expanded.png')
+    await compactSummary(koluxPage, parentId).click()
+    await expect(compactSummary(koluxPage, parentId)).toHaveAttribute('aria-expanded', 'true')
+    await captureSidebar(koluxPage, '2-agents-expanded.png')
 
     // Collapse the child worktrees via the chip. This remounts the parent card.
-    await childWorkspacesChip(nightshiftPage, parentId).click()
+    await childWorkspacesChip(koluxPage, parentId).click()
     await expect(childRow).toBeHidden()
 
     // FIXED: the agent summary stays expanded despite the card remount.
-    await expect(compactSummary(nightshiftPage, parentId)).toHaveAttribute('aria-expanded', 'true')
-    await captureSidebar(nightshiftPage, '3-after-children-toggle-agents-still-expanded.png')
+    await expect(compactSummary(koluxPage, parentId)).toHaveAttribute('aria-expanded', 'true')
+    await captureSidebar(koluxPage, '3-after-children-toggle-agents-still-expanded.png')
   })
 })

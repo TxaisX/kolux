@@ -28,7 +28,7 @@ type StarNagApi = {
   dismiss: ReturnType<typeof vi.fn>
   later: ReturnType<typeof vi.fn>
   openWeb: ReturnType<typeof vi.fn>
-  starNightshift: ReturnType<typeof vi.fn>
+  starKolux: ReturnType<typeof vi.fn>
 }
 
 type ShellApi = {
@@ -96,7 +96,7 @@ describe('StarNagToastHost', () => {
       dismiss: vi.fn().mockResolvedValue(undefined),
       later: vi.fn().mockResolvedValue(undefined),
       openWeb: vi.fn().mockResolvedValue(undefined),
-      starNightshift: vi.fn().mockResolvedValue(true)
+      starKolux: vi.fn().mockResolvedValue(true)
     }
     shell = {
       openUrl: vi.fn().mockResolvedValue(undefined)
@@ -125,7 +125,7 @@ describe('StarNagToastHost', () => {
 
     expect(toastContainer.textContent).toContain('Onboarding completed!')
     expect(toastContainer.textContent).toContain(
-      'If you’re enjoying Nightshift so far, a GitHub star helps other developers discover it.'
+      'If you’re enjoying Kolux so far, a GitHub star helps other developers discover it.'
     )
     expect(toastContainer.textContent).toContain('Star on GitHub')
     expect((customToastMock.mock.calls[0][1] as CustomToastOptions).dismissible).toBe(false)
@@ -138,7 +138,7 @@ describe('StarNagToastHost', () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(starNag.starNightshift).toHaveBeenCalledTimes(1)
+    expect(starNag.starKolux).toHaveBeenCalledTimes(1)
     expect(toastContainer.textContent).toContain('Starred — thank you!')
   })
 
@@ -161,13 +161,13 @@ describe('StarNagToastHost', () => {
 
     expect(shell.openUrl).toHaveBeenCalledWith('https://github.com/TxaisX/nightshift')
     expect(starNag.openWeb).toHaveBeenCalledTimes(1)
-    expect(starNag.starNightshift).not.toHaveBeenCalled()
+    expect(starNag.starKolux).not.toHaveBeenCalled()
     expect(toastContainer.textContent).toContain('GitHub opened')
     expect(toastContainer.textContent).not.toContain('GitHub opened in your browser.')
   })
 
   it('switches to the explicit GitHub fallback when direct star fails', async () => {
-    starNag.starNightshift.mockResolvedValueOnce(false)
+    starNag.starKolux.mockResolvedValueOnce(false)
     ;({ root, container } = renderHost())
 
     act(() => showCallback?.({ mode: 'gh', surface: 'toast' }))
@@ -182,7 +182,7 @@ describe('StarNagToastHost', () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(starNag.starNightshift).toHaveBeenCalledTimes(1)
+    expect(starNag.starKolux).toHaveBeenCalledTimes(1)
     expect(shell.openUrl).not.toHaveBeenCalled()
     expect(starNag.openWeb).not.toHaveBeenCalled()
     expect(toastContainer.textContent).toContain('Open GitHub')
@@ -223,7 +223,7 @@ describe('StarNagToastHost', () => {
 
   it('does not allow unresolved close while the primary action is busy', async () => {
     const pendingStar = createDeferred<boolean>()
-    starNag.starNightshift.mockReturnValueOnce(pendingStar.promise)
+    starNag.starKolux.mockReturnValueOnce(pendingStar.promise)
     ;({ root, container } = renderHost())
 
     act(() => showCallback?.({ mode: 'gh', surface: 'toast' }))

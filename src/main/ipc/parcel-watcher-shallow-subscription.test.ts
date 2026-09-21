@@ -45,7 +45,7 @@ describe('shallow watcher subscription', () => {
   })
 
   it('emits only included primary files, including an existing nested directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-shallow-watcher-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-shallow-watcher-'))
     try {
       await mkdir(join(root, 'logs'))
       const events: string[] = []
@@ -81,7 +81,7 @@ describe('shallow watcher subscription', () => {
   })
 
   it('does not forward events after unsubscribe', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-shallow-watcher-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-shallow-watcher-'))
     try {
       const events: string[] = []
       const subscription = startShallowWatcher(
@@ -104,7 +104,7 @@ describe('shallow watcher subscription', () => {
   })
 
   it('rebinds a nested directory that is replaced, which leaves fs.watch deaf', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-shallow-watcher-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-shallow-watcher-'))
     try {
       await mkdir(join(root, 'logs'))
       const events: string[] = []
@@ -133,7 +133,7 @@ describe('shallow watcher subscription', () => {
   })
 
   it('reuses the nested binding for an ordinary change event', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-shallow-watcher-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-shallow-watcher-'))
     try {
       await mkdir(join(root, 'logs'))
       const subscription = startShallowWatcher(

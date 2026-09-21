@@ -15,7 +15,7 @@ let root: string
 let journal: AgentSessionJournal
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-send-idempotency-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-send-idempotency-'))
   journal = await journals.open({
     identity: {
       sessionId: 'session-1',

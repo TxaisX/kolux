@@ -3,11 +3,11 @@ import type { GlobalSettings } from './global-settings-types'
 export const AGENT_SKILL_SHARING_DISABLED_CODE = 'agent_skill_sharing_disabled'
 
 export const AGENT_SKILL_SHARING_DISABLED_MESSAGE =
-  'Publishing skill links from agents and the Nightshift CLI is off for this device.'
+  'Publishing skill links from agents and the Kolux CLI is off for this device.'
 
 export const AGENT_SKILL_SHARING_DISABLED_NEXT_STEPS: readonly string[] = [
-  'Open Settings → Share Skills in the Nightshift desktop app on this device.',
-  'Turn on "Allow agents and the Nightshift CLI to publish skill links".',
+  'Open Settings → Share Skills in the Kolux desktop app on this device.',
+  'Turn on "Allow agents and the Kolux CLI to publish skill links".',
   'Run the share command again.'
 ]
 

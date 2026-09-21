@@ -11,7 +11,7 @@ import { spawnProcess } from '../../shared/child-process/run-process'
  * `process.env.NoDefaultCurrentDirectoryInExePath`, changing how Windows resolves
  * executables for every later subprocess, and a missing or incompatible install
  * would take normal runtime startup down with it. The ordinary
- * `NightshiftRuntimeService` graph reaches the Claude transport module, so only a
+ * `KoluxRuntimeService` graph reaches the Claude transport module, so only a
  * deferred import keeps that boundary — and only a walk of the real import graph
  * keeps the next static import from quietly restoring it.
  */

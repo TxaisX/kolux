@@ -1,7 +1,7 @@
 /**
  * Shared oracle for "a host-created terminal stays the live terminal".
  *
- * Every retention spec (paired desktop host, windowless `nightshift serve`, local
+ * Every retention spec (paired desktop host, windowless `kolux serve`, local
  * unpaired CLI) imports this file unchanged, so the topologies are judged by
  * identical code and none can be claimed to prove another by accident.
  *
@@ -58,7 +58,7 @@ function isDaemonShapedPtyId(ptyId: string, worktreeId: string): boolean {
 }
 
 export function createRetentionFixtureDirectory(): string {
-  return mkdtempSync(path.join(os.tmpdir(), 'nightshift-host-terminal-retention-'))
+  return mkdtempSync(path.join(os.tmpdir(), 'kolux-host-terminal-retention-'))
 }
 
 /** Long-lived stand-in for the agent a CLI dispatch spawns: it never exits, so
@@ -117,7 +117,7 @@ function readySignatures(sinkPath: string): string[] {
 }
 
 /**
- * `nightshift terminal create`: the host-initiated background create. Sibling paths
+ * `kolux terminal create`: the host-initiated background create. Sibling paths
  * are deliberately NOT used — `session.tabs.createTerminal` routes through
  * createRuntimeOwnedMobileSessionTerminal, which persists its binding on every
  * revision and would pass without exercising this seam at all.

@@ -52,7 +52,7 @@ export function powerShellCommand(
   const compressed = encodedPowerShellCommand(selfExtractingPowerShellScript(script), executable)
   if (compressed.length > WINDOWS_REMOTE_COMMAND_LINE_BUDGET_CHARS) {
     throw new Error(
-      `Remote Windows command needs ${compressed.length} characters; Nightshift budgets ${WINDOWS_REMOTE_COMMAND_LINE_BUDGET_CHARS} for a line sshd hands to cmd.exe, which itself refuses more than ${CMD_EXE_COMMAND_LINE_MAX_CHARS}.`
+      `Remote Windows command needs ${compressed.length} characters; Kolux budgets ${WINDOWS_REMOTE_COMMAND_LINE_BUDGET_CHARS} for a line sshd hands to cmd.exe, which itself refuses more than ${CMD_EXE_COMMAND_LINE_MAX_CHARS}.`
     )
   }
   return compressed
@@ -62,17 +62,17 @@ function encodedPowerShellCommand(script: string, executable: WindowsPowerShellE
   return `${executable} -NoProfile -NonInteractive -EncodedCommand ${encodePowerShellCommand(script)}`
 }
 
-/** Nightshift-prefixed names so the payload can never shadow the bootstrap's own state. */
+/** Kolux-prefixed names so the payload can never shadow the bootstrap's own state. */
 function selfExtractingPowerShellScript(script: string): string {
   const payload = gzipSync(Buffer.from(script, 'utf-8'), { level: 9 }).toString('base64')
   return [
-    `$NightshiftScriptBytes = [Convert]::FromBase64String('${payload}')`,
-    '$NightshiftScriptMemory = New-Object System.IO.MemoryStream -ArgumentList (,$NightshiftScriptBytes)',
-    '$NightshiftScriptGzip = New-Object System.IO.Compression.GZipStream -ArgumentList $NightshiftScriptMemory, ([System.IO.Compression.CompressionMode]::Decompress)',
-    '$NightshiftScriptReader = New-Object System.IO.StreamReader -ArgumentList $NightshiftScriptGzip, ([System.Text.Encoding]::UTF8)',
-    '$NightshiftScriptText = $NightshiftScriptReader.ReadToEnd()',
-    '$NightshiftScriptReader.Dispose()',
-    'Invoke-Expression $NightshiftScriptText'
+    `$KoluxScriptBytes = [Convert]::FromBase64String('${payload}')`,
+    '$KoluxScriptMemory = New-Object System.IO.MemoryStream -ArgumentList (,$KoluxScriptBytes)',
+    '$KoluxScriptGzip = New-Object System.IO.Compression.GZipStream -ArgumentList $KoluxScriptMemory, ([System.IO.Compression.CompressionMode]::Decompress)',
+    '$KoluxScriptReader = New-Object System.IO.StreamReader -ArgumentList $KoluxScriptGzip, ([System.Text.Encoding]::UTF8)',
+    '$KoluxScriptText = $KoluxScriptReader.ReadToEnd()',
+    '$KoluxScriptReader.Dispose()',
+    'Invoke-Expression $KoluxScriptText'
   ].join('\n')
 }
 
@@ -84,7 +84,7 @@ export function decodeRemotePowerShellScript(command: string): string {
   }
   const script = Buffer.from(encoded, 'base64').toString('utf16le')
   const payload = script.match(
-    /^\$NightshiftScriptBytes = \[Convert\]::FromBase64String\('([A-Za-z0-9+/=]+)'\)/u
+    /^\$KoluxScriptBytes = \[Convert\]::FromBase64String\('([A-Za-z0-9+/=]+)'\)/u
   )?.[1]
   return payload ? gunzipSync(Buffer.from(payload, 'base64')).toString('utf-8') : script
 }

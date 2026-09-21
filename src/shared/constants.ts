@@ -1,8 +1,8 @@
-import { nightshiftWorkspacesDirOverride } from './nightshift-workspaces-dir'
+import { koluxWorkspacesDirOverride } from './kolux-workspaces-dir'
 import type { GlobalSettings } from './global-settings-types'
 import type { NotificationSettings } from './notification-settings-types'
 import type { OnboardingChecklistState, OnboardingState } from './onboarding-state-types'
-import type { RepoHookSettings } from './nightshift-yaml-hook-types'
+import type { RepoHookSettings } from './kolux-yaml-hook-types'
 import type { PersistedState } from './persisted-state-types'
 import type { AgentActivityDisplayMode } from './ui-chrome-types'
 import type { WorkspaceSessionState } from './workspace-session-state-types'
@@ -38,9 +38,9 @@ export function normalizeAgentActivityDisplayMode(value: unknown): AgentActivity
 export const ONBOARDING_FINAL_STEP = 5
 export const ONBOARDING_FLOW_VERSION = 4
 
-export const NIGHTSHIFT_BROWSER_PARTITION = 'persist:nightshift-browser'
+export const KOLUX_BROWSER_PARTITION = 'persist:kolux-browser'
 // Why: inert blank-tab URL shared by main/renderer so the attach policy can allow just this one data URL and reject others.
-export const NIGHTSHIFT_BROWSER_BLANK_URL = 'data:text/html,'
+export const KOLUX_BROWSER_BLANK_URL = 'data:text/html,'
 
 // Why: Electron's invoke error path preserves only message text, so signal reconnect via this stable token.
 export const SSH_TERMINATE_RECONNECT_REQUIRED = 'SSH_TERMINATE_RECONNECT_REQUIRED'
@@ -152,10 +152,7 @@ export function getDefaultOnboardingState(): OnboardingState {
 export function getDefaultWorkspaceDir(homeDir: string): string {
   const separator = homeDir.includes('\\') ? '\\' : '/'
   const trimmedHomeDir = homeDir.replace(/[\\/]+$/, '')
-  return (
-    nightshiftWorkspacesDirOverride() ??
-    [trimmedHomeDir, 'nightshift', 'workspaces'].join(separator)
-  )
+  return koluxWorkspacesDirOverride() ?? [trimmedHomeDir, 'kolux', 'workspaces'].join(separator)
 }
 
 export function getDefaultSettings(homedir: string): GlobalSettings {

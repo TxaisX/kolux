@@ -10,7 +10,7 @@ import {
   setAppEnvironment,
   type AppEnvironment
 } from '../shared/app-environment'
-import { readNightshiftChromiumProcessPids } from './nightshift-chromium-process-pids'
+import { readKoluxChromiumProcessPids } from './kolux-chromium-process-pids'
 import { classifyWindowsTreeKillTarget } from './windows-pty-root-identity'
 import { terminateWindowsProcessTree } from './windows-process-tree-kill'
 import {
@@ -26,15 +26,15 @@ import {
 } from './crash-reporting/crash-breadcrumb-store'
 import { _resetTracerForTests, setActiveSink } from './observability/tracer'
 
-const NIGHTSHIFT_MAIN_PID = 1000
+const KOLUX_MAIN_PID = 1000
 const RENDERER_PID = 1001
 /** The standalone daemon is a sibling of the renderers, spawned by main. */
 const DAEMON_PID = 1500
 
-/** Nightshift's renderer is a direct child of the main process, so the ppid walk says `own`. */
+/** Kolux's renderer is a direct child of the main process, so the ppid walk says `own`. */
 const PROCESS_ROWS = [
-  { pid: RENDERER_PID, ppid: NIGHTSHIFT_MAIN_PID },
-  { pid: NIGHTSHIFT_MAIN_PID, ppid: 900 }
+  { pid: RENDERER_PID, ppid: KOLUX_MAIN_PID },
+  { pid: KOLUX_MAIN_PID, ppid: 900 }
 ]
 
 function appEnvironment(): AppEnvironment {
@@ -55,7 +55,7 @@ beforeEach(() => {
   previousEnvironment = hasAppEnvironment() ? getAppEnvironment() : null
   setAppEnvironment(appEnvironment())
   appMetricsMock.mockReturnValue([
-    { pid: NIGHTSHIFT_MAIN_PID, type: 'Browser' },
+    { pid: KOLUX_MAIN_PID, type: 'Browser' },
     { pid: RENDERER_PID, type: 'Tab' },
     { pid: 1002, type: 'GPU' }
   ])
@@ -77,15 +77,11 @@ afterEach(() => {
 
 describe('refusing to tree-kill our own Chromium processes', () => {
   it('reads the live Chromium pid set from the app environment', () => {
-    expect([...readNightshiftChromiumProcessPids()]).toEqual([
-      NIGHTSHIFT_MAIN_PID,
-      RENDERER_PID,
-      1002
-    ])
+    expect([...readKoluxChromiumProcessPids()]).toEqual([KOLUX_MAIN_PID, RENDERER_PID, 1002])
   })
 
   it('classifies a live renderer as foreign even though its ancestry reaches us', () => {
-    expect(classifyWindowsTreeKillTarget(RENDERER_PID, PROCESS_ROWS, NIGHTSHIFT_MAIN_PID)).toBe(
+    expect(classifyWindowsTreeKillTarget(RENDERER_PID, PROCESS_ROWS, KOLUX_MAIN_PID)).toBe(
       'foreign'
     )
   })
@@ -94,12 +90,12 @@ describe('refusing to tree-kill our own Chromium processes', () => {
     ['an empty pid set', new Set<number>()],
     ['the live pid set', undefined]
   ])(
-    'refuses a Nightshift renderer from a daemon host with %s, because no Chromium descends from it',
+    'refuses a Kolux renderer from a daemon host with %s, because no Chromium descends from it',
     (_case, ownChromiumPids) => {
-      // The standalone daemon and nightshiftd install no Chromium-backed AppEnvironment,
+      // The standalone daemon and koluxd install no Chromium-backed AppEnvironment,
       // so this set is empty there. The ancestry walk is what refuses instead: it
       // ends at the *killing* process's pid, and the renderer's chain reaches main.
-      const rows = [...PROCESS_ROWS, { pid: DAEMON_PID, ppid: NIGHTSHIFT_MAIN_PID }]
+      const rows = [...PROCESS_ROWS, { pid: DAEMON_PID, ppid: KOLUX_MAIN_PID }]
 
       expect(classifyWindowsTreeKillTarget(RENDERER_PID, rows, DAEMON_PID, ownChromiumPids)).toBe(
         'foreign'
@@ -111,14 +107,14 @@ describe('refusing to tree-kill our own Chromium processes', () => {
     // Falsifiable counterpart to the daemon case above: in main the ancestry walk
     // says `own`, so the pid set is load-bearing here and nowhere else.
     expect(
-      classifyWindowsTreeKillTarget(RENDERER_PID, PROCESS_ROWS, NIGHTSHIFT_MAIN_PID, new Set())
+      classifyWindowsTreeKillTarget(RENDERER_PID, PROCESS_ROWS, KOLUX_MAIN_PID, new Set())
     ).toBe('own')
   })
 
   it('still classifies a real PTY child of ours as own', () => {
-    const rows = [...PROCESS_ROWS, { pid: 7777, ppid: NIGHTSHIFT_MAIN_PID }]
+    const rows = [...PROCESS_ROWS, { pid: 7777, ppid: KOLUX_MAIN_PID }]
 
-    expect(classifyWindowsTreeKillTarget(7777, rows, NIGHTSHIFT_MAIN_PID)).toBe('own')
+    expect(classifyWindowsTreeKillTarget(7777, rows, KOLUX_MAIN_PID)).toBe('own')
   })
 
   it('never spawns taskkill against one of our own Chromium pids', async () => {
@@ -189,7 +185,7 @@ describe('refusing to tree-kill our own Chromium processes', () => {
   })
 
   /**
-   * Fail-open is the deliberate choice — see `nightshift-chromium-process-pids.ts` for
+   * Fail-open is the deliberate choice — see `kolux-chromium-process-pids.ts` for
    * why refusing everything is worse — so the crumb is the only thing that keeps
    * an unreadable metrics table distinguishable from a host that has no Chromium.
    */
@@ -198,10 +194,10 @@ describe('refusing to tree-kill our own Chromium processes', () => {
       throw new Error('getAppMetrics unavailable')
     })
 
-    expect([...readNightshiftChromiumProcessPids()]).toEqual([])
+    expect([...readKoluxChromiumProcessPids()]).toEqual([])
     // Coalesced: the gate reads this set on every kill, so a broken table must
     // not evict the ring it shares with the refusal crumb.
-    expect([...readNightshiftChromiumProcessPids()]).toEqual([])
+    expect([...readKoluxChromiumProcessPids()]).toEqual([])
     expect(
       admitSelfInitiatedTreeKill({
         pid: RENDERER_PID,

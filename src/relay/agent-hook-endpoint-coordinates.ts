@@ -1,16 +1,16 @@
 // Where in-box hook clients find this relay's loopback hook server: endpoint-directory naming
 // policy (per-user $HOME default, sibling-of-socket layout, Windows named-pipe path flattening) and
-// the NIGHTSHIFT_AGENT_HOOK_* env vars injected into relay-spawned PTYs. IO-free.
+// the KOLUX_AGENT_HOOK_* env vars injected into relay-spawned PTYs. IO-free.
 import { basename, dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 
 import {
-  NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-  NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+  KOLUX_HOOK_PROTOCOL_VERSION,
+  KOLUX_HOOK_RAW_JSON_TRANSPORT
 } from '../shared/agent-hook-types'
 
 // Why: relay's userData equivalent under $HOME so each user on a shared dev box gets their own 0o700 dir.
-const RELAY_HOOKS_DIR_NAME = '.nightshift-relay'
+const RELAY_HOOKS_DIR_NAME = '.kolux-relay'
 const RELAY_HOOKS_SUBDIR = 'agent-hooks'
 
 export function defaultEndpointDir(): string {
@@ -49,14 +49,14 @@ export function buildRelayHookPtyEnv(coordinates: {
     return {}
   }
   const env: Record<string, string> = {
-    NIGHTSHIFT_AGENT_HOOK_PORT: String(coordinates.port),
-    NIGHTSHIFT_AGENT_HOOK_TOKEN: coordinates.token,
-    NIGHTSHIFT_AGENT_HOOK_ENV: coordinates.env,
-    NIGHTSHIFT_AGENT_HOOK_VERSION: NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-    NIGHTSHIFT_AGENT_HOOK_TRANSPORT: NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+    KOLUX_AGENT_HOOK_PORT: String(coordinates.port),
+    KOLUX_AGENT_HOOK_TOKEN: coordinates.token,
+    KOLUX_AGENT_HOOK_ENV: coordinates.env,
+    KOLUX_AGENT_HOOK_VERSION: KOLUX_HOOK_PROTOCOL_VERSION,
+    KOLUX_AGENT_HOOK_TRANSPORT: KOLUX_HOOK_RAW_JSON_TRANSPORT
   }
   if (coordinates.endpointFileWritten) {
-    env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = coordinates.endpointFilePath
+    env.KOLUX_AGENT_HOOK_ENDPOINT = coordinates.endpointFilePath
   }
   return env
 }

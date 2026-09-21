@@ -62,7 +62,7 @@ import { join } from 'node:path'
 import { importCookiesFromBrowser, type DetectedBrowser } from './browser-cookie-import'
 import { createChromiumCookieTestDatabase } from './browser-cookie-import-test-database'
 
-const routePartition = `persist:nightshift-browser-v1-${'b'.repeat(64)}`
+const routePartition = `persist:kolux-browser-v1-${'b'.repeat(64)}`
 let tmpDir = ''
 let cookiesSetMock: ReturnType<typeof vi.fn>
 
@@ -80,7 +80,7 @@ function chromeBrowser(cookiesPath: string): DetectedBrowser {
 
 beforeEach(() => {
   // Why: macOS reports /private/var for a /var mkdtemp path, so resolve before comparing paths.
-  tmpDir = realpathSync(mkdtempSync(join(tmpdir(), 'nightshift-route-cookie-staging-')))
+  tmpDir = realpathSync(mkdtempSync(join(tmpdir(), 'kolux-route-cookie-staging-')))
   cookiesSetMock = vi.fn().mockResolvedValue(undefined)
   appGetPathMock.mockReset()
   appGetPathMock.mockReturnValue(join(tmpDir, 'userData'))

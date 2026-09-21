@@ -7,7 +7,7 @@ import { getWslGuestEnvironment, type WslGuestEnvironment } from './wsl-guest-en
 import { resolveWslExecutablePath } from './wsl-executable-path'
 
 /**
- * The single place Nightshift runs a program inside WSL.
+ * The single place Kolux runs a program inside WSL.
  *
  * Five things have to be decided per call -- separator, shell, stdout fencing,
  * WSLENV, payload transport -- and each has shipped wrong: #12964, #14288 /
@@ -158,7 +158,7 @@ function withGuestCwd(cwd: string | undefined, argv: readonly string[]): string[
   if (argv.length === 0) {
     throw new Error('WSL invocation has no command to run')
   }
-  return ['sh', '-c', 'cd "$1" || exit 1; shift; exec "$@"', 'nightshift-wsl', cwd, ...argv]
+  return ['sh', '-c', 'cd "$1" || exit 1; shift; exec "$@"', 'kolux-wsl', cwd, ...argv]
 }
 
 /** `<shell> -c`/`-s` for a script, otherwise the program itself. */
@@ -226,7 +226,7 @@ export async function runWslProcess(spec: WslSpec): Promise<WslResult> {
   // prepended after this point and are part of the same budget.
   const fullLine = [resolveWslExecutablePath(), ...buildWslExecArgs(spec.distro, argvForm)]
   // Argv is the default, but it has a hard ceiling that stdin does not. A user's
-  // `nightshift.yaml` hook is the one unbounded script Nightshift runs, so past the cap the
+  // `kolux.yaml` hook is the one unbounded script Kolux runs, so past the cap the
   // choice is between failing to spawn at all and accepting the stdin caveat.
   const delivery: 'argv' | 'stdin' =
     spec.script !== undefined && commandLineLength(fullLine) > MAX_COMMAND_LINE_CHARS
@@ -241,7 +241,7 @@ export async function runWslProcess(spec: WslSpec): Promise<WslResult> {
     program: resolveWslExecutablePath(),
     args: buildWslExecArgs(spec.distro, argv),
     // Name a Windows directory rather than inheriting one: an inherited cwd that
-    // is later deleted (the worktree Nightshift launched from) fails every later spawn
+    // is later deleted (the worktree Kolux launched from) fails every later spawn
     // (#16463). Never the guest cwd -- withGuestCwd still cds inside.
     cwd: resolveWslInteropSpawnCwd(),
     env: buildHostEnv(spec.env),

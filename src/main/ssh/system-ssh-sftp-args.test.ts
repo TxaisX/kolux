@@ -65,7 +65,7 @@ describe('translateSshArgsToSftpArgs', () => {
     expect(args).toEqual(['-o', 'ControlPath=none', '--', 'dev@win.example'])
   })
 
-  it('refuses any other -S, which would hand sftp an ssh binary Nightshift did not choose', () => {
+  it('refuses any other -S, which would hand sftp an ssh binary Kolux did not choose', () => {
     expect(() => translateSshArgsToSftpArgs(['-S', '/tmp/ctl.sock'])).toThrow(
       SftpArgTranslationError
     )

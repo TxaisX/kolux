@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { OpenFile } from '@/store/slices/editor'
 import {
-  NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT,
+  KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT,
   requestEditorSaveQuiesce
 } from '@/components/editor/editor-autosave'
 
@@ -49,7 +49,7 @@ export function useTerminalSaveDialog({
     }
 
     window.dispatchEvent(
-      new CustomEvent(NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT, {
+      new CustomEvent(KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT, {
         detail: { fileId: saveDialogFileId }
       })
     )

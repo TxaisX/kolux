@@ -31,7 +31,7 @@ async function createStore() {
 
 /** Simulate registry drift after a record was stored; the create path derives contexts itself. */
 function mutateDataFile(mutate: (state: { automations: Record<string, unknown>[] }) => void): void {
-  const file = join(testState.dir, 'nightshift-data.json')
+  const file = join(testState.dir, 'kolux-data.json')
   const state = JSON.parse(readFileSync(file, 'utf-8'))
   mutate(state)
   writeFileSync(file, JSON.stringify(state, null, 2), 'utf-8')
@@ -48,7 +48,7 @@ const makeRepo = (overrides: Partial<Repo> = {}): Repo => ({
 
 describe('AutomationService', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-automations-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-automations-test-'))
     vi.useFakeTimers()
   })
 

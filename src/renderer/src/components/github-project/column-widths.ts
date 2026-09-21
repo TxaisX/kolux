@@ -9,7 +9,7 @@
 // table never grows beyond its container.
 import type { GitHubProjectField } from '../../../../shared/github/project-types'
 
-const STORAGE_KEY = 'nightshift.githubProject.columnWidths'
+const STORAGE_KEY = 'kolux.githubProject.columnWidths'
 
 // Default fr weights — TITLE gets the most room; others sit at a
 // comfortable label-width. The numeric values are arbitrary ratios.

@@ -71,7 +71,7 @@ describe('PtyHandler', () => {
     await endPtyHandlerTest(handler, originalPlatform)
   })
 
-  it("does not forward Nightshift's own NODE_ENV into the spawned shell", async () => {
+  it("does not forward Kolux's own NODE_ENV into the spawned shell", async () => {
     // Why: NODE_ENV in the relay host process is a build-mode flag, not the
     // user's; leaking it breaks `next build` and Vitest in the terminal.
     const previous = process.env.NODE_ENV
@@ -172,15 +172,11 @@ describe('PtyHandler', () => {
   })
 
   it('does not inherit legacy attribution state from the relay process', async () => {
-    const keys = [
-      'NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION',
-      'NIGHTSHIFT_ATTRIBUTION_SHIM_DIR',
-      'PATH'
-    ] as const
+    const keys = ['KOLUX_ENABLE_GIT_ATTRIBUTION', 'KOLUX_ATTRIBUTION_SHIM_DIR', 'PATH'] as const
     const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
-    process.env.NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION = '1'
-    process.env.NIGHTSHIFT_ATTRIBUTION_SHIM_DIR = '/tmp/nightshift-terminal-attribution/posix'
-    process.env.PATH = '/tmp/nightshift-terminal-attribution/posix:/usr/bin'
+    process.env.KOLUX_ENABLE_GIT_ATTRIBUTION = '1'
+    process.env.KOLUX_ATTRIBUTION_SHIM_DIR = '/tmp/kolux-terminal-attribution/posix'
+    process.env.PATH = '/tmp/kolux-terminal-attribution/posix:/usr/bin'
 
     try {
       await dispatcher.callRequest('pty.spawn', { cols: 80, rows: 24 })
@@ -188,8 +184,8 @@ describe('PtyHandler', () => {
         env: Record<string, string>
       }
       expect(spawnedEnv.env.PATH).toBe('/usr/bin')
-      expect(spawnedEnv.env.NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION).toBeUndefined()
-      expect(spawnedEnv.env.NIGHTSHIFT_ATTRIBUTION_SHIM_DIR).toBeUndefined()
+      expect(spawnedEnv.env.KOLUX_ENABLE_GIT_ATTRIBUTION).toBeUndefined()
+      expect(spawnedEnv.env.KOLUX_ATTRIBUTION_SHIM_DIR).toBeUndefined()
 
       const state = (await dispatcher.callRequest('pty.serialize', {
         ids: [PTY_1]
@@ -209,8 +205,8 @@ describe('PtyHandler', () => {
         env: Record<string, string>
       }
       expect(revivedEnv.env.PATH).toBe('/usr/bin')
-      expect(revivedEnv.env.NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION).toBeUndefined()
-      expect(revivedEnv.env.NIGHTSHIFT_ATTRIBUTION_SHIM_DIR).toBeUndefined()
+      expect(revivedEnv.env.KOLUX_ENABLE_GIT_ATTRIBUTION).toBeUndefined()
+      expect(revivedEnv.env.KOLUX_ATTRIBUTION_SHIM_DIR).toBeUndefined()
     } finally {
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined) {
@@ -246,7 +242,7 @@ describe('PtyHandler', () => {
 
   describe('history isolation off', () => {
     // Why isolation OFF: injectRelayFishHistoryEnv runs only for a fish pane with
-    // isolation on, but fish EXPORTS fish_history, so a relay launched from a Nightshift
+    // isolation on, but fish EXPORTS fish_history, so a relay launched from a Kolux
     // fish pane inherits one on EVERY path — and it names someone else's worktree
     // (a desktop-minted name names a directory that does not exist here at all).
     it.each([
@@ -277,7 +273,7 @@ describe('PtyHandler', () => {
     it.each([
       [
         'a relay-minted path',
-        `${process.env.HOME ?? ''}/.nightshift-remote/terminal-history/aabbccddeeff0011-zsh_history`,
+        `${process.env.HOME ?? ''}/.kolux-remote/terminal-history/aabbccddeeff0011-zsh_history`,
         undefined
       ],
       [
@@ -307,47 +303,47 @@ describe('PtyHandler', () => {
     )
 
     // Why unconditionally, not only with isolation on: injectRelayHistoryEnv is
-    // what normally mints (and first clears) NIGHTSHIFT_HISTFILE, and it runs only
+    // what normally mints (and first clears) KOLUX_HISTFILE, and it runs only
     // with isolation on. An inherited one — the relay can be launched from an
-    // Nightshift pane — would otherwise reach the remote wrapper on the disabled and
+    // Kolux pane — would otherwise reach the remote wrapper on the disabled and
     // revive paths, re-exporting another worktree's history path (#11146) and
     // wrapping a zsh pane nothing asked to wrap.
     it.each([
       [
         'a relay-minted path',
-        `${process.env.HOME ?? ''}/.nightshift-remote/terminal-history/aabbccddeeff0011-zsh_history`
+        `${process.env.HOME ?? ''}/.kolux-remote/terminal-history/aabbccddeeff0011-zsh_history`
       ],
       ['a desktop-minted path', '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history'],
       ['a user value', '/home/me/.zsh_history']
     ])(
-      'drops %s inherited as NIGHTSHIFT_HISTFILE from the relay process env',
+      'drops %s inherited as KOLUX_HISTFILE from the relay process env',
       async (_kind, inherited) => {
-        const previous = process.env.NIGHTSHIFT_HISTFILE
-        process.env.NIGHTSHIFT_HISTFILE = inherited
+        const previous = process.env.KOLUX_HISTFILE
+        process.env.KOLUX_HISTFILE = inherited
         try {
           await dispatcher.callRequest('pty.spawn', { cols: 80, rows: 24 })
         } finally {
           if (previous === undefined) {
-            delete process.env.NIGHTSHIFT_HISTFILE
+            delete process.env.KOLUX_HISTFILE
           } else {
-            process.env.NIGHTSHIFT_HISTFILE = previous
+            process.env.KOLUX_HISTFILE = previous
           }
         }
 
         const spawnEnv = mockPtySpawn.mock.calls.at(-1)?.[2]?.env as Record<string, string>
-        expect(spawnEnv.NIGHTSHIFT_HISTFILE).toBeUndefined()
+        expect(spawnEnv.KOLUX_HISTFILE).toBeUndefined()
       }
     )
 
-    it('drops an NIGHTSHIFT_HISTFILE handed over in the client env', async () => {
+    it('drops an KOLUX_HISTFILE handed over in the client env', async () => {
       await dispatcher.callRequest('pty.spawn', {
         cols: 80,
         rows: 24,
-        env: { NIGHTSHIFT_HISTFILE: '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history' }
+        env: { KOLUX_HISTFILE: '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history' }
       })
 
       const spawnEnv = mockPtySpawn.mock.calls.at(-1)?.[2]?.env as Record<string, string>
-      expect(spawnEnv.NIGHTSHIFT_HISTFILE).toBeUndefined()
+      expect(spawnEnv.KOLUX_HISTFILE).toBeUndefined()
     })
 
     it('drops a desktop-minted session handed over in the client env', async () => {
@@ -366,7 +362,7 @@ describe('PtyHandler', () => {
     const wslWorktreeId = 'r::/remote/wsl-worktree'
     const wslHistoryFile = join(
       homedir(),
-      '.nightshift-remote',
+      '.kolux-remote',
       'terminal-history',
       `${hashWorktreeId(wslWorktreeId)}-bash_history`
     )
@@ -518,28 +514,28 @@ describe('PtyHandler', () => {
 
   it('applies env augmenters after process.env and renderer-supplied env (augmenter wins on key conflict)', async () => {
     handler.addEnvAugmenter(() => ({
-      NIGHTSHIFT_AGENT_HOOK_PORT: '12345',
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: 'abc-uuid',
+      KOLUX_AGENT_HOOK_PORT: '12345',
+      KOLUX_AGENT_HOOK_TOKEN: 'abc-uuid',
       // Why: also override a key the renderer supplied below so the test pins
       // the documented "augmenter wins on key conflict" invariant — see the
       // doc-comment on addEnvAugmenter in pty-handler.ts.
-      NIGHTSHIFT_PANE_KEY: 'augmenter-wins'
+      KOLUX_PANE_KEY: 'augmenter-wins'
     }))
 
     await dispatcher.callRequest('pty.spawn', {
       cols: 80,
       rows: 24,
-      env: { NIGHTSHIFT_PANE_KEY: 'tab-1:0', NIGHTSHIFT_TAB_ID: 'tab-1' }
+      env: { KOLUX_PANE_KEY: 'tab-1:0', KOLUX_TAB_ID: 'tab-1' }
     })
 
     expect(mockPtySpawn).toHaveBeenCalled()
     const callArgs = mockPtySpawn.mock.calls[0][2] as { env: Record<string, string> }
-    expect(callArgs.env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('12345')
-    expect(callArgs.env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('abc-uuid')
+    expect(callArgs.env.KOLUX_AGENT_HOOK_PORT).toBe('12345')
+    expect(callArgs.env.KOLUX_AGENT_HOOK_TOKEN).toBe('abc-uuid')
     // Augmenter override beats the renderer-supplied value:
-    expect(callArgs.env.NIGHTSHIFT_PANE_KEY).toBe('augmenter-wins')
+    expect(callArgs.env.KOLUX_PANE_KEY).toBe('augmenter-wins')
     // Renderer-supplied keys not in augmenter map flow through:
-    expect(callArgs.env.NIGHTSHIFT_TAB_ID).toBe('tab-1')
+    expect(callArgs.env.KOLUX_TAB_ID).toBe('tab-1')
   })
 
   it('passes PTY and explicit launch identity to env augmenters', async () => {
@@ -557,7 +553,7 @@ describe('PtyHandler', () => {
     })
 
     await dispatcher.callRequest('pty.spawn', {
-      env: { NIGHTSHIFT_PANE_KEY: 'tab-context:0' },
+      env: { KOLUX_PANE_KEY: 'tab-context:0' },
       launchAgent: 'pi'
     })
     await dispatcher.callRequest('pty.spawn', {})
@@ -568,7 +564,7 @@ describe('PtyHandler', () => {
       id: PTY_1,
       paneKey: 'tab-context:0',
       launchAgent: 'pi',
-      env: { NIGHTSHIFT_PANE_KEY: 'tab-context:0' }
+      env: { KOLUX_PANE_KEY: 'tab-context:0' }
     })
     expect(seenContexts[1]).toMatchObject({ id: PTY_2, paneKey: undefined })
     expect(firstEnv.env.OVERLAY_ID).toBe('tab-context:0')
@@ -611,16 +607,16 @@ describe('PtyHandler', () => {
     handler.addEnvAugmenter(() => ({
       TERM: 'augmenter-term',
       TERM_PROGRAM: 'augmenter-terminal',
-      NIGHTSHIFT_STALE_TEST_ENV: '/tmp/augmenter-stale'
+      KOLUX_STALE_TEST_ENV: '/tmp/augmenter-stale'
     }))
 
     await dispatcher.callRequest('pty.spawn', {
       env: {
         TERM: 'screen-256color',
         TERM_PROGRAM: 'renderer-terminal',
-        NIGHTSHIFT_STALE_TEST_ENV: '/tmp/renderer-stale'
+        KOLUX_STALE_TEST_ENV: '/tmp/renderer-stale'
       },
-      envToDelete: ['TERM_PROGRAM', 'NIGHTSHIFT_STALE_TEST_ENV']
+      envToDelete: ['TERM_PROGRAM', 'KOLUX_STALE_TEST_ENV']
     })
 
     const spawnEnv = mockPtySpawn.mock.calls[0][2] as {
@@ -632,7 +628,7 @@ describe('PtyHandler', () => {
     expect(spawnEnv.env.COLORTERM).toBe('truecolor')
     expect(spawnEnv.env.FORCE_HYPERLINK).toBe('1')
     expect(spawnEnv.env.TERM_PROGRAM).toBeUndefined()
-    expect(spawnEnv.env.NIGHTSHIFT_STALE_TEST_ENV).toBeUndefined()
+    expect(spawnEnv.env.KOLUX_STALE_TEST_ENV).toBeUndefined()
   })
 
   it('replaces an ambient TERM=dumb when no explicit TERM is supplied', async () => {
@@ -654,7 +650,7 @@ describe('PtyHandler', () => {
     }
     expect(spawnEnv.name).toBe('xterm-256color')
     expect(spawnEnv.env.TERM).toBe('xterm-256color')
-    expect(spawnEnv.env.TERM_PROGRAM).toBe('Nightshift')
+    expect(spawnEnv.env.TERM_PROGRAM).toBe('Kolux')
   })
 
   it('expands variables in PATH before spawning a Windows relay shell', async () => {
@@ -664,8 +660,8 @@ describe('PtyHandler', () => {
     try {
       await dispatcher.callRequest('pty.spawn', {
         env: {
-          NIGHTSHIFT_PATH_ROOT: 'C:\\Users\\nightshift\\AppData\\Local',
-          PATH: '%nightshift_path_root%\\agy\\bin;C:\\Windows'
+          KOLUX_PATH_ROOT: 'C:\\Users\\kolux\\AppData\\Local',
+          PATH: '%kolux_path_root%\\agy\\bin;C:\\Windows'
         }
       })
     } finally {
@@ -675,7 +671,7 @@ describe('PtyHandler', () => {
     }
 
     const spawnEnv = mockPtySpawn.mock.calls[0][2] as { env: Record<string, string> }
-    expect(spawnEnv.env.PATH).toBe('C:\\Users\\nightshift\\AppData\\Local\\agy\\bin;C:\\Windows')
+    expect(spawnEnv.env.PATH).toBe('C:\\Users\\kolux\\AppData\\Local\\agy\\bin;C:\\Windows')
   })
 
   it('uses the safe terminal default when TERM is deleted without a custom value', async () => {
@@ -710,12 +706,12 @@ describe('PtyHandler', () => {
     async () => {
       const oldShell = process.env.SHELL
       const oldHome = process.env.HOME
-      const oldNightshiftPi = process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
+      const oldKoluxPi = process.env.KOLUX_PI_CODING_AGENT_DIR
       const homeDir = mkdtempSync(join(tmpdir(), 'relay-pty-shell-launch-'))
 
       process.env.SHELL = '/bin/bash'
       process.env.HOME = homeDir
-      delete process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
+      delete process.env.KOLUX_PI_CODING_AGENT_DIR
       try {
         if (!existsSync('/bin/bash')) {
           return
@@ -723,9 +719,8 @@ describe('PtyHandler', () => {
 
         handler.addEnvAugmenter(() => ({
           OPENCODE_CONFIG_DIR: '/remote/overlay/opencode',
-          NIGHTSHIFT_OPENCODE_CONFIG_DIR: '/remote/overlay/opencode',
-          NIGHTSHIFT_OMP_STATUS_EXTENSION:
-            '/remote/.omp/agent/extensions/nightshift-agent-status.ts'
+          KOLUX_OPENCODE_CONFIG_DIR: '/remote/overlay/opencode',
+          KOLUX_OMP_STATUS_EXTENSION: '/remote/.omp/agent/extensions/kolux-agent-status.ts'
         }))
 
         await dispatcher.callRequest('pty.spawn', { env: { HOME: homeDir } })
@@ -740,24 +735,24 @@ describe('PtyHandler', () => {
         } else {
           process.env.HOME = oldHome
         }
-        if (oldNightshiftPi === undefined) {
-          delete process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
+        if (oldKoluxPi === undefined) {
+          delete process.env.KOLUX_PI_CODING_AGENT_DIR
         } else {
-          process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR = oldNightshiftPi
+          process.env.KOLUX_PI_CODING_AGENT_DIR = oldKoluxPi
         }
       }
 
       const shellArgs = mockPtySpawn.mock.calls[0][1]
       const spawnOptions = mockPtySpawn.mock.calls[0][2] as { env: Record<string, string> }
-      const rcfile = join(homeDir, '.nightshift-relay', 'shell-ready', 'bash', 'rcfile')
+      const rcfile = join(homeDir, '.kolux-relay', 'shell-ready', 'bash', 'rcfile')
 
       expect(shellArgs).toEqual(['--rcfile', rcfile])
-      expect(spawnOptions.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBe('/remote/overlay/opencode')
-      expect(spawnOptions.env.NIGHTSHIFT_PI_CODING_AGENT_DIR).toBeUndefined()
+      expect(spawnOptions.env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/remote/overlay/opencode')
+      expect(spawnOptions.env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
       expect(readFileSync(rcfile, 'utf8')).toContain(
-        'export OPENCODE_CONFIG_DIR="${NIGHTSHIFT_OPENCODE_CONFIG_DIR}"'
+        'export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"'
       )
-      expect(readFileSync(rcfile, 'utf8')).not.toContain('NIGHTSHIFT_PI_CODING_AGENT_DIR')
+      expect(readFileSync(rcfile, 'utf8')).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
       expect(readFileSync(rcfile, 'utf8')).toContain('command omp --extension')
 
       rmSync(homeDir, { recursive: true, force: true })

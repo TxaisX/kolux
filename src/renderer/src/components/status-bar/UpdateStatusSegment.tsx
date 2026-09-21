@@ -33,7 +33,7 @@ export function UpdateStatusSegment({
         label: `${pct}%`,
         tooltip: translate(
           'auto.components.status.bar.UpdateStatusSegment.248ee5d8ef',
-          'Nightshift v{{value0}} downloading… {{value1}}%',
+          'Kolux v{{value0}} downloading… {{value1}}%',
           { value0: status.version, value1: pct }
         ),
         ariaLabel: translate(
@@ -54,7 +54,7 @@ export function UpdateStatusSegment({
         ),
         tooltip: translate(
           'auto.components.status.bar.UpdateStatusSegment.9d13213a56',
-          'Nightshift v{{value0}} ready to install',
+          'Kolux v{{value0}} ready to install',
           { value0: readyVersion }
         ),
         ariaLabel: translate(

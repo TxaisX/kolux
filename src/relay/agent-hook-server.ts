@@ -3,8 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 
 import {
-  NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-  NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+  KOLUX_HOOK_PROTOCOL_VERSION,
+  KOLUX_HOOK_RAW_JSON_TRANSPORT
 } from '../shared/agent-hook-types'
 import {
   clearAllListenerCaches,
@@ -49,7 +49,7 @@ import {
 export type RelayHookForward = (envelope: AgentHookRelayEnvelope) => void
 
 export type RelayHookServerOptions = {
-  /** Where to put endpoint.env / endpoint.cmd. Defaults to `$HOME/.nightshift-relay/agent-hooks`. */
+  /** Where to put endpoint.env / endpoint.cmd. Defaults to `$HOME/.kolux-relay/agent-hooks`. */
   endpointDir?: string
   /** Env tag forwarded into hook payloads. Defaults to "remote", which main excludes from dev-vs-prod mismatch warnings. */
   env?: string
@@ -189,8 +189,8 @@ export class RelayAgentHookServer {
       port: this.port,
       token: this.token,
       env: this.env,
-      version: NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-      transport: NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+      version: KOLUX_HOOK_PROTOCOL_VERSION,
+      transport: KOLUX_HOOK_RAW_JSON_TRANSPORT
     })
     return this.endpointFileWritten
   }
@@ -255,7 +255,7 @@ export class RelayAgentHookServer {
       res.end()
       return
     }
-    if (req.headers['x-nightshift-agent-hook-token'] !== this.token) {
+    if (req.headers['x-kolux-agent-hook-token'] !== this.token) {
       res.writeHead(403)
       res.end()
       return

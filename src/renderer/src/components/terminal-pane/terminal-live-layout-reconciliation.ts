@@ -7,7 +7,7 @@ import { collectLeafIds } from './terminal-pane-layout-tree'
 
 /**
  * Whether a tab's split layout is owned by a host (web/mobile clients, or a
- * desktop client viewing a remote "Nightshift server" worktree) rather than built
+ * desktop client viewing a remote "Kolux server" worktree) rather than built
  * locally. Such layouts arrive via the host snapshot, so the live-layout
  * reconciler must materialize their panes. A desktop client only needs this for
  * remote-runtime tabs — local tabs split their panes directly.

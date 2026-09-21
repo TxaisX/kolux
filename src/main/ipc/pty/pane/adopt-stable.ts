@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { Store } from '../../../persistence'
 import { makePaneKey } from '../../../../shared/stable-pane-id'
 import { getProvider } from '../provider/registry'
@@ -11,7 +11,7 @@ import {
 import type { AdoptStablePaneArgs, AdoptStablePaneResult } from '../ipc/spawn-types'
 
 export async function adoptStablePane(
-  runtime: NightshiftRuntimeService | undefined,
+  runtime: KoluxRuntimeService | undefined,
   store: Store | undefined,
   args: AdoptStablePaneArgs
 ): Promise<AdoptStablePaneResult | null> {

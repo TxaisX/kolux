@@ -10,7 +10,7 @@ type SymlinkCleanupMarker = {
 }
 
 function markerPath(configPath: string): string {
-  return `${configPath}.nightshift-cleaned-symlink`
+  return `${configPath}.kolux-cleaned-symlink`
 }
 
 function hash(contents: string): string {

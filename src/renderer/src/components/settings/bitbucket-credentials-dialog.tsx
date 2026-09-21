@@ -175,7 +175,7 @@ export function BitbucketCredentialsDialog({
           <DialogDescription>
             {translate(
               'auto.components.settings.bitbucket.credentials.dialog.description',
-              'Use a Bitbucket Cloud credential to browse pull requests and build statuses. Nightshift verifies it before saving.'
+              'Use a Bitbucket Cloud credential to browse pull requests and build statuses. Kolux verifies it before saving.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -183,7 +183,7 @@ export function BitbucketCredentialsDialog({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.bitbucket.credentials.dialog.environmentManaged',
-              'Bitbucket is already configured through NIGHTSHIFT_BITBUCKET_* environment variables, which take precedence. Unset them to save a credential in Nightshift.'
+              'Bitbucket is already configured through KOLUX_BITBUCKET_* environment variables, which take precedence. Unset them to save a credential in Kolux.'
             )}
           </p>
         ) : (
@@ -354,11 +354,11 @@ export function BitbucketCredentialsDialog({
               {remoteRuntime
                 ? translate(
                     'auto.components.settings.bitbucket.credentials.dialog.remoteRuntime',
-                    'Stored on this machine, not on the active remote runtime — set NIGHTSHIFT_BITBUCKET_* there instead. Environment variables always take precedence over what you save here.'
+                    'Stored on this machine, not on the active remote runtime — set KOLUX_BITBUCKET_* there instead. Environment variables always take precedence over what you save here.'
                   )
                 : translate(
                     'auto.components.settings.bitbucket.credentials.dialog.storageNote',
-                    'Stored on this machine with encrypted storage when the OS keychain is available. NIGHTSHIFT_BITBUCKET_* environment variables always take precedence over what you save here.'
+                    'Stored on this machine with encrypted storage when the OS keychain is available. KOLUX_BITBUCKET_* environment variables always take precedence over what you save here.'
                   )}
             </p>
           </div>

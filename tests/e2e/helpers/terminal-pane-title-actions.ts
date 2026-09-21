@@ -4,7 +4,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 
 export async function setPaneTitleFromTerminalMenu(page: Page, title: string): Promise<void> {
   await openTerminalContextMenu(page)

@@ -38,16 +38,16 @@ function createFiles(root: string, directoryName: string, count: number, extensi
 export type PairedQuickOpenLargeTreeFixture = {
   dispose: () => void
   gitIgnoredTargetPath: string
-  nightshiftIgnoredTargetPath: string
+  koluxIgnoredTargetPath: string
   root: string
 }
 
 export function createPairedQuickOpenLargeTreeFixture(): PairedQuickOpenLargeTreeFixture {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-quick-open-large-tree-'))
+  const root = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-quick-open-large-tree-'))
   try {
     execFileSync('git', ['init'], { cwd: root, stdio: 'pipe' })
     writeFileSync(path.join(root, '.gitignore'), 'data/\n')
-    writeFileSync(path.join(root, '.nightshiftignore'), 'nightshift-ignored/\n')
+    writeFileSync(path.join(root, '.koluxignore'), 'kolux-ignored/\n')
 
     const visibleFileCount = LARGE_TREE_FILE_COUNT - LARGE_TREE_IGNORED_FILE_COUNT - 3
     createFiles(root, 'src', visibleFileCount, 'ts')
@@ -66,22 +66,22 @@ export function createPairedQuickOpenLargeTreeFixture(): PairedQuickOpenLargeTre
       ),
       path.join(root, ...gitIgnoredTargetPath.split('/'))
     )
-    const nightshiftIgnoredTargetPath = 'nightshift-ignored/sta-4354-nightshiftignore-target.ts'
-    mkdirSync(path.join(root, 'nightshift-ignored'))
-    closeSync(openSync(path.join(root, ...nightshiftIgnoredTargetPath.split('/')), 'w'))
+    const koluxIgnoredTargetPath = 'kolux-ignored/sta-4354-koluxignore-target.ts'
+    mkdirSync(path.join(root, 'kolux-ignored'))
+    closeSync(openSync(path.join(root, ...koluxIgnoredTargetPath.split('/')), 'w'))
     truncateSync(
       path.join(root, 'data', 'chunk-000000', `${LONG_STEM}000000.bin`),
       LARGE_TREE_NOMINAL_IGNORED_BYTES
     )
 
-    execFileSync('git', ['add', '.gitignore', '.nightshiftignore'], { cwd: root, stdio: 'pipe' })
+    execFileSync('git', ['add', '.gitignore', '.koluxignore'], { cwd: root, stdio: 'pipe' })
     execFileSync(
       'git',
       [
         '-c',
-        'user.name=Nightshift E2E',
+        'user.name=Kolux E2E',
         '-c',
-        'user.email=nightshift-e2e@example.invalid',
+        'user.email=kolux-e2e@example.invalid',
         'commit',
         '-m',
         'seed large-tree fixture'
@@ -91,7 +91,7 @@ export function createPairedQuickOpenLargeTreeFixture(): PairedQuickOpenLargeTre
     return {
       root,
       gitIgnoredTargetPath,
-      nightshiftIgnoredTargetPath,
+      koluxIgnoredTargetPath,
       dispose: () => rmSync(root, { recursive: true, force: true })
     }
   } catch (error) {

@@ -574,7 +574,7 @@ describe('killWithDescendantSweep', () => {
   })
 
   it('on Windows terminates the owning job instead of probing and taskkilling', async () => {
-    // The job names the tree Nightshift created, so there is nothing to prove: no
+    // The job names the tree Kolux created, so there is nothing to prove: no
     // process-table scrape, no parent-pid walk, no pid-recycle guess.
     const events: string[] = []
     const terminateOwnedTree = vi.fn(() => {

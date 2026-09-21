@@ -4,7 +4,7 @@
  * Trigger: reopening many remote sessions on Remote Server / SSH with agents.
  *
  * Topology under test:
- *   R1: headless Remote Nightshift host + paired desktop web client (paired-remote-server)
+ *   R1: headless Remote Kolux host + paired desktop web client (paired-remote-server)
  *
  * Measurement:
  *   renderer timer drift during hidden flood + bulk worktree/tab open.
@@ -20,7 +20,7 @@
  *   pnpm run test:e2e:remote-bulk-open-freeze
  */
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import {
   createRuntimeDesktopPairingOffer,
@@ -41,17 +41,17 @@ import {
 } from './helpers/terminal-host-focus-storm-oracle'
 
 const REPORT_DIR = path.join(process.cwd(), 'test-results', 'freeze-repro')
-const USE_DESKTOP_PAIR = process.env.NIGHTSHIFT_E2E_FREEZE_DESKTOP_PAIR === '1'
+const USE_DESKTOP_PAIR = process.env.KOLUX_E2E_FREEZE_DESKTOP_PAIR === '1'
 
 test('paired client host-focus storm keeps the latest terminal @freeze-repro', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(180_000)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedElectronClient(offer, testInfo, 'focus-storm')
   let disposeSessions: (() => Promise<void>) | null = null
   try {
-    const worktreeId = await nightshiftPage.evaluate(() => {
+    const worktreeId = await koluxPage.evaluate(() => {
       const id = window.__store?.getState().activeWorktreeId
       if (!id) {
         throw new Error('headed host has no active worktree')
@@ -93,7 +93,7 @@ test('paired client host-focus storm keeps the latest terminal @freeze-repro', a
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate((id) => {
+          koluxPage.evaluate((id) => {
             const state = window.__store?.getState()
             return {
               worktreeId: state?.activeWorktreeId ?? null,

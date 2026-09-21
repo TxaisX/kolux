@@ -36,25 +36,19 @@ function readSystemdUnitBlocks(doc, unitName) {
 describe('headless serve shutdown PR gate', () => {
   it('reads only exact, closed systemd unit blocks', () => {
     expect(
-      readSystemdUnitBlocks(
-        '# /etc/systemd/system/nightshift-serveXservice\n```',
-        'nightshift-serve.service'
-      )
+      readSystemdUnitBlocks('# /etc/systemd/system/kolux-serveXservice\n```', 'kolux-serve.service')
     ).toEqual([])
     expect(() =>
-      readSystemdUnitBlocks(
-        '# /etc/systemd/system/nightshift-serve.service\n',
-        'nightshift-serve.service'
-      )
-    ).toThrow('Missing closing code fence for nightshift-serve.service')
+      readSystemdUnitBlocks('# /etc/systemd/system/kolux-serve.service\n', 'kolux-serve.service')
+    ).toThrow('Missing closing code fence for kolux-serve.service')
     expect(() =>
       readSystemdUnitBlocks(
-        '# /etc/systemd/system/nightshift-serve.service\n' +
+        '# /etc/systemd/system/kolux-serve.service\n' +
           'KillMode=mixed\n' +
           '# /etc/systemd/system/other.service\n```',
-        'nightshift-serve.service'
+        'kolux-serve.service'
       )
-    ).toThrow('Missing closing code fence for nightshift-serve.service')
+    ).toThrow('Missing closing code fence for kolux-serve.service')
   })
 
   it('packages Linux artifacts before running the Docker signal oracle', () => {
@@ -75,7 +69,7 @@ describe('headless serve shutdown PR gate', () => {
     expect(markerStep.run).toContain('rpm2cpio')
     expect(steps.indexOf(markerStep)).toBeGreaterThan(steps.indexOf(packageStep))
     expect(shutdownStep.run).toBe(
-      'node config/scripts/run-headless-serve-shutdown-docker.mjs --appimage dist/nightshift-linux.AppImage'
+      'node config/scripts/run-headless-serve-shutdown-docker.mjs --appimage dist/kolux-linux.AppImage'
     )
     expect(launcherShutdownStep.run).toContain(
       'node config/scripts/run-headless-serve-shutdown-docker.mjs'
@@ -93,9 +87,7 @@ describe('headless serve shutdown PR gate', () => {
   it('keeps readiness polling finite and leak-free', () => {
     expect(signalCase).toContain('read_ready_line()')
     expect(signalCase).toContain("sed -u -n 's/^[^{]*//p'")
-    expect(signalCase).toContain(
-      'startup_timeout_seconds=${NIGHTSHIFT_STARTUP_TIMEOUT_SECONDS:-180}'
-    )
+    expect(signalCase).toContain('startup_timeout_seconds=${KOLUX_STARTUP_TIMEOUT_SECONDS:-180}')
     expect(signalCase).toContain('startup_deadline=$((SECONDS + startup_timeout_seconds))')
     expect(signalCase).toContain('while (( SECONDS < startup_deadline )); do')
     expect(signalCase).toContain('kill -0 "$app_pid" 2>/dev/null || break')
@@ -114,7 +106,7 @@ describe('headless serve shutdown PR gate', () => {
 
   it('checks that a serving-electron signal target owns the ready socket', () => {
     const ssRecord =
-      'LISTEN 0 128 127.0.0.1:41235 0.0.0.0:* users:(("nightshift-ide",pid=23,fd=7),("nightshift-ide",pid=25,fd=8))'
+      'LISTEN 0 128 127.0.0.1:41235 0.0.0.0:* users:(("kolux-ide",pid=23,fd=7),("kolux-ide",pid=25,fd=8))'
     expect([...ssRecord.matchAll(/pid=([0-9]+)/g)].map((match) => match[1])).toEqual(['23', '25'])
     expect(signalCase).toContain(
       'listener_before_pids=$(grep -oE \'pid=[0-9]+\' <<<"$listener_before" | cut -d= -f2 || true)'
@@ -131,7 +123,7 @@ describe('headless serve shutdown PR gate', () => {
       'runDesktopStartupOracle({ image, appImage, platform })'
     )
     const extractionCall = shutdownDockerRunner.indexOf(
-      "'timeout --kill-after=10s 120s /input/nightshift.AppImage --appimage-extract"
+      "'timeout --kill-after=10s 120s /input/kolux.AppImage --appimage-extract"
     )
     const signalLoop = shutdownDockerRunner.indexOf("for (const signal of ['INT', 'TERM'])")
     expect(startupCall).toBeGreaterThan(-1)
@@ -148,9 +140,9 @@ describe('headless serve shutdown PR gate', () => {
     expect(desktopStartupOracle).toContain(
       'FAIL: desktop launcher exited before ${reason} (status=${observed_status})'
     )
-    expect(desktopStartupOracle).toContain('NIGHTSHIFT_STARTUP_STATE_DIR_CLEANUP=1')
+    expect(desktopStartupOracle).toContain('KOLUX_STARTUP_STATE_DIR_CLEANUP=1')
     expect(desktopStartupOracle).toContain(
-      '[[ "$state_dir" =~ ^/tmp/nightshift-appimage-startup\\.[^/]+$ ]] || return 0'
+      '[[ "$state_dir" =~ ^/tmp/kolux-appimage-startup\\.[^/]+$ ]] || return 0'
     )
   })
 
@@ -159,7 +151,7 @@ describe('headless serve shutdown PR gate', () => {
       '[[ -x "$appimage" ]] || { echo "FAIL: AppImage is not executable: $appimage" >&2; exit 1; }'
     )
     expect(shutdownDockerRunner).toContain(
-      '\'test -r /input/nightshift.AppImage && test -x /input/nightshift.AppImage || { echo "FAIL: AppImage bind must be readable and executable" >&2; exit 1; }\''
+      '\'test -r /input/kolux.AppImage && test -x /input/kolux.AppImage || { echo "FAIL: AppImage bind must be readable and executable" >&2; exit 1; }\''
     )
   })
 
@@ -168,12 +160,12 @@ describe('headless serve shutdown PR gate', () => {
   })
 
   it('keeps owned Xvfb alive during the documented systemd graceful stop', () => {
-    const serveUnits = readSystemdUnitBlocks(headlessLinuxGuide, 'nightshift-serve.service')
+    const serveUnits = readSystemdUnitBlocks(headlessLinuxGuide, 'kolux-serve.service')
     const ownedXvfbUnits = serveUnits.filter((unit) => !/^Environment=DISPLAY=/m.test(unit))
     const managedXvfbUnits = serveUnits.filter((unit) => /^Environment=DISPLAY=/m.test(unit))
 
     expect(ownedXvfbUnits).toHaveLength(1)
-    expect(ownedXvfbUnits[0]).toMatch(/^ExecStart=.*nightshift-linux\.AppImage serve.*$/m)
+    expect(ownedXvfbUnits[0]).toMatch(/^ExecStart=.*kolux-linux\.AppImage serve.*$/m)
     expect(ownedXvfbUnits[0]).toMatch(/^KillMode=mixed$/m)
     expect(managedXvfbUnits).toHaveLength(1)
     expect(managedXvfbUnits[0]).not.toMatch(/^KillMode=/m)
@@ -190,26 +182,23 @@ describe('headless serve shutdown PR gate', () => {
       'A separately paired runtime is outside that boundary; local execution and SSH hosts reached through this runtime are not. An affected or unknown omission, missing scope, failed request or lost connection is `unverifiable`'
     )
     expect(headlessLinuxGuide).toContain(
-      'sudo -Hu nightshift /home/nightshift/.local/bin/nightshift-ide terminal list --json'
+      'sudo -Hu kolux /home/kolux/.local/bin/kolux-ide terminal list --json'
     )
-    expect(headlessLinuxGuide).not.toContain(
-      'sudo -Hu nightshift nightshift-ide terminal list --json'
-    )
+    expect(headlessLinuxGuide).not.toContain('sudo -Hu kolux kolux-ide terminal list --json')
     expect(headlessLinuxGuide).not.toContain('Two facts make this safe and predictable')
   })
 
   it('uses the registered CLI name from ordinary Linux shells', () => {
     const commandRule =
-      'The registered Linux CLI command is `nightshift-ide`, not `nightshift`, to avoid shadowing the GNOME Orca screen reader.'
+      'The registered Linux CLI command is `kolux-ide`, not `kolux`, to avoid shadowing the GNOME Orca screen reader.'
     const substitutionRule =
-      "From an ordinary shell outside that service user's managed environment, substitute `nightshift-ide` for `nightshift` in commands below."
-    const censusCommand =
-      '`sudo -Hu nightshift /home/nightshift/.local/bin/nightshift-ide terminal list --json`'
+      "From an ordinary shell outside that service user's managed environment, substitute `kolux-ide` for `kolux` in commands below."
+    const censusCommand = '`sudo -Hu kolux /home/kolux/.local/bin/kolux-ide terminal list --json`'
 
     expect(headlessLinuxProse).toContain(commandRule)
     expect(headlessLinuxProse).toContain(substitutionRule)
     expect(headlessLinuxProse).toContain(censusCommand)
-    expect(headlessLinuxGuide).toContain('best-effort dispatcher at `$HOME/.local/bin/nightshift`')
+    expect(headlessLinuxGuide).toContain('best-effort dispatcher at `$HOME/.local/bin/kolux`')
     expect(headlessLinuxProse.indexOf(substitutionRule)).toBeLessThan(
       headlessLinuxProse.indexOf(censusCommand)
     )

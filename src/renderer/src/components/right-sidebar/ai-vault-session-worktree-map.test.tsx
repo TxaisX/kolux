@@ -17,7 +17,7 @@ function makeSession(overrides: Partial<AiVaultSession>): AiVaultSession {
     agent: 'codex',
     sessionId: 'session-1',
     title: 'Find the pane',
-    cwd: '/repo/nightshift/src',
+    cwd: '/repo/kolux/src',
     branch: null,
     model: null,
     filePath: '/home/ada/.codex/session-1.jsonl',
@@ -38,10 +38,10 @@ function makeSession(overrides: Partial<AiVaultSession>): AiVaultSession {
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   return {
-    id: 'repo-1::/repo/nightshift',
+    id: 'repo-1::/repo/kolux',
     repoId: 'repo-1',
-    displayName: 'nightshift',
-    path: '/repo/nightshift',
+    displayName: 'kolux',
+    path: '/repo/kolux',
     head: 'abc123',
     branch: 'main',
     isBare: false,
@@ -62,8 +62,8 @@ function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
-    path: '/repo/nightshift',
-    displayName: 'nightshift',
+    path: '/repo/kolux',
+    displayName: 'kolux',
     badgeColor: '#737373',
     addedAt: 1,
     connectionId: null,
@@ -110,10 +110,10 @@ describe('useAiVaultSessionWorktreeMap', () => {
 
   it('render-time stamping matches per-session resolution for every status case', () => {
     const sshWorktree = makeWorktree({
-      id: 'repo-ssh::/srv/nightshift',
+      id: 'repo-ssh::/srv/kolux',
       repoId: 'repo-ssh',
       displayName: 'ssh',
-      path: '/srv/nightshift',
+      path: '/srv/kolux',
       hostId: 'ssh:target-1'
     })
     const archivedWorktree = makeWorktree({
@@ -122,12 +122,12 @@ describe('useAiVaultSessionWorktreeMap', () => {
       isArchived: true
     })
     const allWorktrees = [...worktrees, sshWorktree, archivedWorktree]
-    const allRepos = [...repos, makeRepo({ id: 'repo-ssh', path: '/srv/nightshift' })]
+    const allRepos = [...repos, makeRepo({ id: 'repo-ssh', path: '/srv/kolux' })]
     const allSessions = [
       sessionInA, // active worktree
       sessionInB, // non-active worktree
       sessionUnmatched, // no worktree match
-      makeSession({ id: 'codex:ssh', cwd: '/srv/nightshift/src', executionHostId: 'ssh:target-1' }),
+      makeSession({ id: 'codex:ssh', cwd: '/srv/kolux/src', executionHostId: 'ssh:target-1' }),
       makeSession({ id: 'codex:attic', cwd: '/repo/attic' }),
       makeSession({ id: 'codex:no-cwd', cwd: null, branch: 'feature/x' })
     ]

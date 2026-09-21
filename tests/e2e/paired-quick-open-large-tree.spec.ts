@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import {
   createRuntimeDesktopPairingOffer,
@@ -91,7 +91,7 @@ async function expectQuickOpenAndRuntimeHealthy(
       },
       { environmentId: client.environmentId, worktreeId, targetPath }
     )
-  for (const targetPath of [fixture.gitIgnoredTargetPath, fixture.nightshiftIgnoredTargetPath]) {
+  for (const targetPath of [fixture.gitIgnoredTargetPath, fixture.koluxIgnoredTargetPath]) {
     const filename = targetPath.split('/').at(-1)!
     const stat = await client.page.evaluate(
       async ({ environmentId, worktreeId, targetPath }) => {
@@ -146,7 +146,7 @@ async function expectQuickOpenAndRuntimeHealthy(
     })
     await expect(loading).toHaveCount(0)
     await expect(dialog).not.toContainText('Outbound reply buffer overflow')
-    await expect(dialog).not.toContainText('Remote Nightshift runtime closed the connection')
+    await expect(dialog).not.toContainText('Remote Kolux runtime closed the connection')
   }
 
   const response = await client.page.evaluate(
@@ -165,21 +165,21 @@ async function expectQuickOpenAndRuntimeHealthy(
 }
 
 test('finds paths beyond the old prefix on a headed paired runtime @headful', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(240_000)
   const fixture = createPairedQuickOpenLargeTreeFixture()
   let client: PairedElectronClient | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
-    await nightshiftPage.evaluate(async (repoPath) => {
+    await waitForSessionReady(koluxPage)
+    await koluxPage.evaluate(async (repoPath) => {
       const store = window.__store
       if (!store || !(await store.getState().addRepoPath(repoPath))) {
         throw new Error('headed host could not add the large-tree repo')
       }
     }, fixture.root)
     client = await launchPairedElectronClient(
-      await createRuntimeDesktopPairingOffer(nightshiftPage),
+      await createRuntimeDesktopPairingOffer(koluxPage),
       testInfo,
       'STA-4354 headed host'
     )

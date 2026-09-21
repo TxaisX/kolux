@@ -73,7 +73,7 @@ describe('isExecutionPolicyBlocked', () => {
 describe('windowsPowerShellRuntimeArgs', () => {
   it('never emits Bypass unless the caller escalated to it', () => {
     const preferred = windowsPowerShellRuntimeArgs(
-      'C:\\nightshift\\runtime.ps1',
+      'C:\\kolux\\runtime.ps1',
       PREFERRED_WINDOWS_EXECUTION_POLICY,
       ['-Serve']
     )
@@ -85,7 +85,7 @@ describe('windowsPowerShellRuntimeArgs', () => {
       '-ExecutionPolicy',
       'RemoteSigned',
       '-File',
-      'C:\\nightshift\\runtime.ps1',
+      'C:\\kolux\\runtime.ps1',
       '-Serve'
     ])
   })

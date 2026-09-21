@@ -82,51 +82,49 @@ describe('MarkdownPreview source link routing', () => {
   })
 
   it('derives a source root from floating file relative path', () => {
-    expect(deriveMarkdownPreviewSourceRoot('/tmp/nightshift/docs/note.md', 'docs/note.md')).toBe(
-      '/tmp/nightshift'
+    expect(deriveMarkdownPreviewSourceRoot('/tmp/kolux/docs/note.md', 'docs/note.md')).toBe(
+      '/tmp/kolux'
     )
   })
 
   it('falls back to the source file directory when no relative path is available', () => {
-    expect(deriveMarkdownPreviewSourceRoot('/tmp/nightshift/docs/note.md', null)).toBe(
-      '/tmp/nightshift/docs'
-    )
+    expect(deriveMarkdownPreviewSourceRoot('/tmp/kolux/docs/note.md', null)).toBe('/tmp/kolux/docs')
   })
 
   it('derives Windows source roots without dropping the drive separator', () => {
-    expect(deriveMarkdownPreviewSourceRoot('C:\\nightshift\\docs\\note.md', 'docs\\note.md')).toBe(
-      'C:/nightshift'
+    expect(deriveMarkdownPreviewSourceRoot('C:\\kolux\\docs\\note.md', 'docs\\note.md')).toBe(
+      'C:/kolux'
     )
   })
 
   it('falls back to the matching preview tab for preview-only source metadata', () => {
     const otherOwnerEdit = {
-      id: '/tmp/nightshift/docs/note.md',
-      filePath: '/tmp/nightshift/docs/note.md',
+      id: '/tmp/kolux/docs/note.md',
+      filePath: '/tmp/kolux/docs/note.md',
       relativePath: 'docs/note.md',
       worktreeId: 'wt-1',
       mode: 'edit'
     }
     const preview = {
-      id: 'markdown-preview::/tmp/nightshift/docs/note.md',
-      filePath: '/tmp/nightshift/docs/note.md',
+      id: 'markdown-preview::/tmp/kolux/docs/note.md',
+      filePath: '/tmp/kolux/docs/note.md',
       relativePath: 'docs/note.md',
       worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
       runtimeEnvironmentId: null,
       mode: 'markdown-preview',
-      markdownPreviewSourceFileId: '/tmp/nightshift/docs/note.md'
+      markdownPreviewSourceFileId: '/tmp/kolux/docs/note.md'
     }
 
     expect(
       findMarkdownPreviewSourceOpenFile([otherOwnerEdit, preview], {
-        sourceFileId: '/tmp/nightshift/docs/note.md',
-        filePath: '/tmp/nightshift/docs/note.md',
+        sourceFileId: '/tmp/kolux/docs/note.md',
+        filePath: '/tmp/kolux/docs/note.md',
         sourceWorktreeId: FLOATING_TERMINAL_WORKTREE_ID,
         sourceRuntimeEnvironmentId: null
       })
     ).toBe(preview)
     expect(deriveMarkdownPreviewSourceRoot(preview.filePath, preview.relativePath)).toBe(
-      '/tmp/nightshift'
+      '/tmp/kolux'
     )
   })
 

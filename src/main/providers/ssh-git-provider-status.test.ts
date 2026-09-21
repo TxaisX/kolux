@@ -145,7 +145,7 @@ describe('SshGitProvider', () => {
     mux.request.mockRejectedValueOnce(methodNotFound)
 
     await expect(provider.getSubmoduleStatus('/home/user/repo', 'vendor/lib')).rejects.toThrow(
-      'SSH submodule diff support is unavailable on this relay. Reconnect the SSH target to update Nightshift on the host, then try again.'
+      'SSH submodule diff support is unavailable on this relay. Reconnect the SSH target to update Kolux on the host, then try again.'
     )
   })
 

@@ -3,7 +3,7 @@ import {
   MobileNotificationReplayBuffer,
   type ReplayableMobileNotification
 } from './mobile-notification-replay'
-import type { MobileNotificationDispatchEvent } from './nightshift-runtime'
+import type { MobileNotificationDispatchEvent } from './kolux-runtime'
 
 function dispatch(
   buffer: MobileNotificationReplayBuffer,

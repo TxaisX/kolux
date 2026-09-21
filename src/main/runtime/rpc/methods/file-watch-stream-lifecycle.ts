@@ -1,9 +1,9 @@
 import { isWatcherProcessFailure } from '../../../ipc/parcel-watcher-process-failure'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { createFileWatchEventBatcher } from './file-watch-event-batcher'
 
 export async function runFileWatchStream(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   worktree: string
   connectionId?: string
   signal?: AbortSignal

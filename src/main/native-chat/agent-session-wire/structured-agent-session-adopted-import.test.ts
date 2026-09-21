@@ -136,9 +136,9 @@ async function attach(
 
 describe('adopting a provider conversation on create', () => {
   it('seeds the chain from the adopted handle and fills the journal from its transcript', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-adopt-import-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-adopt-import-'))
     const transcriptPath = join(root, 'rollout.jsonl')
-    await writeCodexRollout(transcriptPath, 'token NIGHTSHIFT-ADOPT-1')
+    await writeCodexRollout(transcriptPath, 'token KOLUX-ADOPT-1')
     const sessionAdapter = adapter()
 
     const result = await attach(transcriptPath, sessionAdapter)
@@ -147,11 +147,11 @@ describe('adopting a provider conversation on create', () => {
     // The adapter was asked to resume, not to start: the seeded chain is what tells it which
     // conversation this session owns.
     const page = (result as { value: { page: { items: unknown[] } } }).value.page
-    expect(JSON.stringify(page.items)).toContain('NIGHTSHIFT-ADOPT-1')
+    expect(JSON.stringify(page.items)).toContain('KOLUX-ADOPT-1')
   })
 
   it('replays create without replacing journal-only messages or rereading the source', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-adopt-replay-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-adopt-replay-'))
     const transcriptPath = join(root, 'rollout.jsonl')
     await writeCodexRollout(transcriptPath, 'original turn')
     const sessionAdapter = adapter()
@@ -180,7 +180,7 @@ describe('adopting a provider conversation on create', () => {
   it.each(['missing', 'oversized', 'empty', 'invalid', 'source-less'] as const)(
     'refuses %s source before claiming a conversation',
     async (kind) => {
-      root = await mkdtemp(join(tmpdir(), 'nightshift-adopt-preflight-'))
+      root = await mkdtemp(join(tmpdir(), 'kolux-adopt-preflight-'))
       const transcriptPath = join(root, 'rollout.jsonl')
       if (kind === 'oversized') {
         await writeCodexRollout(transcriptPath, 'original turn')
@@ -211,7 +211,7 @@ describe('adopting a provider conversation on create', () => {
   )
 
   it('still releases acquisition and closes the provisional journal on an import write failure', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-adopt-write-failure-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-adopt-write-failure-'))
     const transcriptPath = join(root, 'rollout.jsonl')
     await writeCodexRollout(transcriptPath, 'valid source')
     vi.spyOn(AgentSessionJournal.prototype, 'replaceEpochItems').mockRejectedValueOnce(
@@ -226,7 +226,7 @@ describe('adopting a provider conversation on create', () => {
   })
 
   it('prepares a valid source once before acquisition and imports those exact items', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-adopt-once-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-adopt-once-'))
     const transcriptPath = join(root, 'rollout.jsonl')
     await writeCodexRollout(transcriptPath, 'prepared before acquiring')
     const prepare = vi.spyOn(legacyImport, 'prepareLegacyTranscriptImport')

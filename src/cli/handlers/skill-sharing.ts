@@ -41,12 +41,12 @@ function stringFlag(ctx: HandlerContext, name: string): string | undefined {
 }
 
 function rejectForwardedSkillFilesystem(ctx: HandlerContext, command: string): void {
-  if (!process.env.NIGHTSHIFT_CLI_CWD && !ctx.client.isRemote) {
+  if (!process.env.KOLUX_CLI_CWD && !ctx.client.isRemote) {
     return
   }
   throw new RuntimeClientError(
     'invalid_environment',
-    `nightshift skills ${command} must run on the machine whose installed skills you want to use. Run the command from a Nightshift terminal on that machine.`
+    `kolux skills ${command} must run on the machine whose installed skills you want to use. Run the command from a Kolux terminal on that machine.`
   )
 }
 
@@ -74,7 +74,7 @@ function requireCloudOperation<T>(operation: SkillCloudOperation<T>): T {
     return operation.value
   }
   if (operation.status === 'reconnect-required') {
-    throw new RuntimeClientError('authentication_required', 'Sign in to Nightshift and try again.')
+    throw new RuntimeClientError('authentication_required', 'Sign in to Kolux and try again.')
   }
   throw new RuntimeClientError('authentication_unconfigured', operation.message)
 }
@@ -134,7 +134,7 @@ async function callShare(
     if (error instanceof RuntimeRpcFailureError && error.code === 'method_not_found') {
       throw new RuntimeClientError(
         'update_required',
-        'The connected Nightshift runtime does not support agent skill sharing yet. Update Nightshift on that machine and try again.'
+        'The connected Kolux runtime does not support agent skill sharing yet. Update Kolux on that machine and try again.'
       )
     }
     throw error
@@ -158,7 +158,7 @@ export const SKILL_SHARING_HANDLERS: Record<string, CommandHandler> = {
     if (skillSelectors.length === 0) {
       throw new RuntimeClientError(
         'invalid_argument',
-        'Select at least one installed skill with --skill. Run `nightshift skills installed` to list them.'
+        'Select at least one installed skill with --skill. Run `kolux skills installed` to list them.'
       )
     }
     const bundleLabel = stringFlag(ctx, 'bundle-name')

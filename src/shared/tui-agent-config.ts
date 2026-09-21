@@ -1,5 +1,5 @@
 import type { TuiAgent } from './tui-agent'
-import { getNightshiftCliCommandNameForPlatform } from './nightshift-cli-command-name'
+import { getKoluxCliCommandNameForPlatform } from './kolux-cli-command-name'
 
 export type AgentPromptInjectionMode =
   | 'argv'
@@ -76,17 +76,17 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
     preflightTrust: 'claude'
   },
   'claude-agent-teams': {
-    // Why: a Nightshift-provided launch mode, not a separate binary; detection follows the Nightshift CLI.
-    detectCmd: 'nightshift',
-    detectCmdAliases: ['nightshift-dev', 'nightshift-ide'],
-    // Why: require Claude too so fresh installs (Nightshift shim always present) don't report Agent Teams without an agent CLI.
+    // Why: a Kolux-provided launch mode, not a separate binary; detection follows the Kolux CLI.
+    detectCmd: 'kolux',
+    detectCmdAliases: ['kolux-dev', 'kolux-ide'],
+    // Why: require Claude too so fresh installs (Kolux shim always present) don't report Agent Teams without an agent CLI.
     detectRequiredCommands: ['claude'],
-    // Why: Windows/WSL use Claude's in-process Agent Teams fallback, not this Nightshift native-pane/tmux-shim wrapper.
+    // Why: Windows/WSL use Claude's in-process Agent Teams fallback, not this Kolux native-pane/tmux-shim wrapper.
     detectUnsupportedRuntimes: ['win32', 'wsl'],
-    launchCmd: 'nightshift claude-teams',
+    launchCmd: 'kolux claude-teams',
     launchCmdByPlatform: {
-      linux: `${getNightshiftCliCommandNameForPlatform('linux')} claude-teams`,
-      win32: `${getNightshiftCliCommandNameForPlatform('win32')} claude-teams`
+      linux: `${getKoluxCliCommandNameForPlatform('linux')} claude-teams`,
+      win32: `${getKoluxCliCommandNameForPlatform('win32')} claude-teams`
     },
     expectedProcess: 'claude',
     promptInjectionMode: 'stdin-after-start'
@@ -139,15 +139,15 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
   pi: {
     detectCmd: 'pi',
     promptInjectionMode: 'argv',
-    // Why: pi has no `--prefill` and paste-after-ready races its long startup; the nightshift-prefill extension seeds this env var instead.
-    draftPromptEnvVar: 'NIGHTSHIFT_PI_PREFILL',
+    // Why: pi has no `--prefill` and paste-after-ready races its long startup; the kolux-prefill extension seeds this env var instead.
+    draftPromptEnvVar: 'KOLUX_PI_PREFILL',
     // Why: Pi decodes CSI-u; Esc+CR submits after tool subprocesses reset live KKP state (#9703).
     windowsShiftEnterEncoding: 'csi-u'
   },
   omp: {
     detectCmd: 'omp',
     promptInjectionMode: 'argv',
-    draftPromptEnvVar: 'NIGHTSHIFT_OMP_PREFILL',
+    draftPromptEnvVar: 'KOLUX_OMP_PREFILL',
     // Why: OMP wraps Pi's TUI, so the bytes land in a Pi reader that decodes CSI-u (see pi above).
     windowsShiftEnterEncoding: 'csi-u'
   },
@@ -258,7 +258,7 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
   },
   hermes: {
     detectCmd: 'hermes',
-    // Why: bare `hermes` opens the classic REPL; `--tui` starts the full-screen agent UI Nightshift hosts.
+    // Why: bare `hermes` opens the classic REPL; `--tui` starts the full-screen agent UI Kolux hosts.
     launchCmd: 'hermes --tui',
     // Why: Hermes delivers the prompt via its startup-query contract, submitting only after the composer is ready.
     promptInjectionMode: 'hermes-query'
@@ -313,7 +313,7 @@ export function getTuiAgentLaunchCommand(
   platform: NodeJS.Platform,
   opts?: { isRemote?: boolean }
 ): string {
-  // Why: local-only nightshift-ide rename (avoids GNOME Orca clash) must not leak to Linux remotes, whose relay shim is always `nightshift`.
+  // Why: local-only kolux-ide rename (avoids GNOME Orca clash) must not leak to Linux remotes, whose relay shim is always `kolux`.
   if (opts?.isRemote && platform === 'linux') {
     return config.launchCmd
   }

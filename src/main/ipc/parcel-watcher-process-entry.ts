@@ -41,11 +41,11 @@ const CANARY_EVENT_TIMEOUT_MS = 5_000
 const CANARY_MAX_MISSES = 2
 
 async function startCanary(getStableActivityRevision: () => number | null): Promise<void> {
-  const configuredCanaryDir = process.env.NIGHTSHIFT_WATCHER_CANARY_DIR
+  const configuredCanaryDir = process.env.KOLUX_WATCHER_CANARY_DIR
   let canaryDir: string
   let lastEventAt = 0
   try {
-    canaryDir = configuredCanaryDir ?? mkdtempSync(join(tmpdir(), 'nightshift-watcher-canary-'))
+    canaryDir = configuredCanaryDir ?? mkdtempSync(join(tmpdir(), 'kolux-watcher-canary-'))
     const watcher = await import('@parcel/watcher')
     // Why: pin the Windows backend like the main subscriptions do, so the
     // canary never probes for Watchman.

@@ -44,7 +44,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       const target = String(args[0])
       if (
         writeControl.failPrimaryOpen &&
-        target.includes('nightshift-data.json.') &&
+        target.includes('kolux-data.json.') &&
         target.endsWith('.tmp')
       ) {
         throw Object.assign(new Error('profile mount rejected write'), { code: 'EIO' })
@@ -53,7 +53,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
     },
     rename: async (...args: Parameters<typeof actual.rename>) => {
       const target = String(args[1])
-      if (writeControl.blockPrimaryRename && target.endsWith('nightshift-data.json')) {
+      if (writeControl.blockPrimaryRename && target.endsWith('kolux-data.json')) {
         writeControl.markRenameStarted()
         await writeControl.renameRelease
       }
@@ -82,12 +82,12 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 function createStore(): Store {
   installFakeAppEnvironment({ getPath: () => testState.dir })
   initDataPath()
-  return new Store({ dataFile: join(testState.dir, 'nightshift-data.json') })
+  return new Store({ dataFile: join(testState.dir, 'kolux-data.json') })
 }
 
 describe('loading Store write-risk characterization', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-write-risk-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-write-risk-'))
     writeControl.reset()
     vi.useFakeTimers()
   })
@@ -108,9 +108,7 @@ describe('loading Store write-risk characterization', () => {
     writeControl.releaseRename()
     await store.waitForPendingWrite()
 
-    const persisted = JSON.parse(
-      readFileSync(join(testState.dir, 'nightshift-data.json'), 'utf-8')
-    ) as {
+    const persisted = JSON.parse(readFileSync(join(testState.dir, 'kolux-data.json'), 'utf-8')) as {
       ui: { sidebarWidth: number }
     }
     expect(persisted.ui.sidebarWidth).toBe(712)
@@ -133,9 +131,7 @@ describe('loading Store write-risk characterization', () => {
     writeControl.failPrimaryOpen = false
     store.updateUI({ sidebarWidth: 713 })
     await store.flushPendingOrThrowAsync()
-    const persisted = JSON.parse(
-      readFileSync(join(testState.dir, 'nightshift-data.json'), 'utf-8')
-    ) as {
+    const persisted = JSON.parse(readFileSync(join(testState.dir, 'kolux-data.json'), 'utf-8')) as {
       sshPtyConsumerRecoveries: { clientInstanceId: string }[]
     }
     expect(persisted.sshPtyConsumerRecoveries[0]?.clientInstanceId).toBe('client-1')

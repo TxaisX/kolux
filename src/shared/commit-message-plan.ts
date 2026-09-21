@@ -172,7 +172,7 @@ function keepFirstOptionOccurrence(tokens: string[], aliases: readonly string[])
 }
 
 /** Removes generated singleton options shadowed by user input. Recipe args
- *  outrank a command-override prefix, which outranks Nightshift's generated value. */
+ *  outrank a command-override prefix, which outranks Kolux's generated value. */
 function applySingletonOptionOverrides(args: {
   generatedArgs: string[]
   prefixArgs: string[]
@@ -310,7 +310,7 @@ export function planCommitMessageGeneration(
     return { ok: false, error: command.error }
   }
   // Why: repeating a singleton flag makes yargs-based CLIs parse it as an array and
-  // crash (OpenCode's `model.split('/')`). User values replace Nightshift's, never stack.
+  // crash (OpenCode's `model.split('/')`). User values replace Kolux's, never stack.
   const merged = applySingletonOptionOverrides({
     generatedArgs: baseArgs,
     prefixArgs: command.prefixArgs,

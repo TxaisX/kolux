@@ -43,7 +43,10 @@ const NO_CANDIDATE_PORT: WorkspacePort = {
 function useOpenPreviewCandidate(
   worktreeId: string,
   groupId: string
-): (candidate: WorkspacePreviewCandidate, localhostLabelRoute: LocalhostWorktreeLabelRoute | null) => void {
+): (
+  candidate: WorkspacePreviewCandidate,
+  localhostLabelRoute: LocalhostWorktreeLabelRoute | null
+) => void {
   const runtimeTarget = useWorktreeRuntimeTarget(worktreeId)
   const createBrowserTab = useAppStore((s) => s.createBrowserTab)
   const setRemoteBrowserPageHandle = useAppStore((s) => s.setRemoteBrowserPageHandle)
@@ -68,7 +71,7 @@ function useOpenPreviewCandidate(
             title: T('previewTabTitle', 'Preview · {{value0}}', { value0: candidate.label })
           }),
         setRemoteBrowserPageHandle,
-        openInNightshiftBrowser: true,
+        openInKoluxBrowser: true,
         localhostLabelRoute
       }).then((result) => {
         if (!result.ok) {
@@ -96,7 +99,9 @@ function PreviewCandidateMenuItem({
   onOpen: (candidate: WorkspacePreviewCandidate, route: LocalhostWorktreeLabelRoute | null) => void
 }): React.JSX.Element {
   const route = useLocalhostLabelRouteForPort(candidate.port)
-  return <DropdownMenuItem onSelect={() => onOpen(candidate, route)}>{candidate.label}</DropdownMenuItem>
+  return (
+    <DropdownMenuItem onSelect={() => onOpen(candidate, route)}>{candidate.label}</DropdownMenuItem>
+  )
 }
 
 /** "Preview" toolbar button — opens the focused workspace's detected dev
@@ -118,7 +123,9 @@ export default function WorkspacePreviewButton({
   const bestCandidate = candidates[0] ?? null
   const otherCandidates = candidates.slice(1)
   const openCandidate = useOpenPreviewCandidate(worktreeId, groupId)
-  const primaryLocalhostRoute = useLocalhostLabelRouteForPort(bestCandidate?.port ?? NO_CANDIDATE_PORT)
+  const primaryLocalhostRoute = useLocalhostLabelRouteForPort(
+    bestCandidate?.port ?? NO_CANDIDATE_PORT
+  )
 
   const previewLabel = T('preview', 'Preview')
   const noServerLabel = T('noServer', 'No dev server detected')

@@ -6,7 +6,7 @@ import {
 } from './markdown-editor-fixture'
 
 const DRAFT_SERIALIZATION_TIMEOUT_MS = 10_000
-const FIXTURE_DIRECTORY = '.nightshift-e2e-markdown-ordered-list'
+const FIXTURE_DIRECTORY = '.kolux-e2e-markdown-ordered-list'
 
 export {
   cleanupMarkdownFixture,

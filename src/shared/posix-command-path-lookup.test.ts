@@ -202,7 +202,7 @@ describe('buildPosixCommandPathLookupScript', () => {
         'set -e',
         buildPosixCommandPathLookupScript({
           kind: 'literal',
-          value: '__nightshift_missing_command_path_lookup__'
+          value: '__kolux_missing_command_path_lookup__'
         }),
         `printf '%s\\n' survived`
       ].join('\n')
@@ -226,7 +226,7 @@ describe('buildPosixCommandPathLookupScript', () => {
       value: "agent'; echo injected; '"
     })
 
-    expect(script).toContain(`_nightshift_lookup_command='agent'\\''; echo injected; '\\'''`)
+    expect(script).toContain(`_kolux_lookup_command='agent'\\''; echo injected; '\\'''`)
   })
 
   it.skipIf(!canRunWslSh())(
@@ -282,7 +282,7 @@ function withExecutableFixture(
   name: string,
   run: (directory: string, executable: string, root: string) => void
 ): void {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-path-lookup-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-path-lookup-'))
   const directory = join(root, 'bin')
   const executable = join(directory, name)
   try {

@@ -15,10 +15,10 @@ export async function resolveOrchestrationTerminalHandle(
   if (explicit) {
     return explicit
   }
-  const envHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
+  const envHandle = process.env.KOLUX_TERMINAL_HANDLE
   if (envHandle && envHandle.length > 0) {
     if (flagName === 'from' && options.validateEnvHandle) {
-      // Why: long-lived shells can retain a stale NIGHTSHIFT_TERMINAL_HANDLE after remint; don't bake it into coordinator preambles.
+      // Why: long-lived shells can retain a stale KOLUX_TERMINAL_HANDLE after remint; don't bake it into coordinator preambles.
       const live = await isLiveTerminalHandle(envHandle, client)
       if (!live) {
         const reminted = await resolveOrchestrationPaneTerminalHandle(client)
@@ -53,7 +53,7 @@ export async function resolveOrchestrationTerminalHandle(
  *
  * `terminal.resolveIdentity`, never `terminal.show`: `show` is a PTY verb, so it missed for a
  * structured worker and reported `terminal_handle_stale` for a handle that was perfectly live —
- * which then failed every coordinator verb, because the pane remint below needs an `NIGHTSHIFT_PANE_KEY`
+ * which then failed every coordinator verb, because the pane remint below needs an `KOLUX_PANE_KEY`
  * a structured child deliberately does not carry.
  */
 async function isLiveTerminalHandle(handle: string, client: RuntimeClient): Promise<boolean> {
@@ -112,7 +112,7 @@ async function resolveOrchestrationPaneTerminalHandle(
   client: RuntimeClient,
   options: { optional?: boolean } = {}
 ): Promise<string | undefined> {
-  const paneKey = process.env.NIGHTSHIFT_PANE_KEY
+  const paneKey = process.env.KOLUX_PANE_KEY
   if (!paneKey || paneKey.length === 0) {
     return undefined
   }
@@ -192,6 +192,6 @@ export function throwNoActiveSenderTerminal(): never {
   throw new RuntimeClientError(
     'no_active_sender_terminal',
     'Could not determine the sender terminal for this orchestration command. ' +
-      'Pass --from <terminal-handle> or run the command inside a live Nightshift terminal with NIGHTSHIFT_TERMINAL_HANDLE set.'
+      'Pass --from <terminal-handle> or run the command inside a live Kolux terminal with KOLUX_TERMINAL_HANDLE set.'
   )
 }

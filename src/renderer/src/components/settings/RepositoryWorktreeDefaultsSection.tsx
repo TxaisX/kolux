@@ -62,9 +62,9 @@ export function RepositoryWorktreeDefaultsSection({
         )}
         description={translate(
           'auto.components.settings.RepositoryPane.externalWorktreesDescription',
-          'Override whether worktrees created outside Nightshift appear for this project.'
+          'Override whether worktrees created outside Kolux appear for this project.'
         )}
-        keywords={[repo.displayName, 'external', 'non-Nightshift', 'visibility', 'sidebar']}
+        keywords={[repo.displayName, 'external', 'non-Kolux', 'visibility', 'sidebar']}
         className="space-y-2"
         forceVisible={forceVisible}
       >

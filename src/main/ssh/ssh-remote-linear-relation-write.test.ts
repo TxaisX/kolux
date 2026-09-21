@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { RpcDispatcher } from '../runtime/rpc/dispatcher'
 import { LINEAR_AGENT_ACCESS_METHODS } from '../runtime/rpc/methods/linear-agent-access'
 import { dispatchRemoteLinearRelationWrite } from './ssh-remote-linear-relation-write'
@@ -10,7 +10,7 @@ describe('SSH remote Linear relation writes', () => {
     const runtime = {
       getRuntimeId: () => 'runtime-test',
       linearIssueRelationWrite
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: LINEAR_AGENT_ACCESS_METHODS })
 
     const response = await dispatchRemoteLinearRelationWrite(
@@ -44,7 +44,7 @@ describe('SSH remote Linear relation writes', () => {
     const runtime = {
       getRuntimeId: () => 'runtime-test',
       linearIssueRelationWrite
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: LINEAR_AGENT_ACCESS_METHODS })
 
     const response = await dispatchRemoteLinearRelationWrite(

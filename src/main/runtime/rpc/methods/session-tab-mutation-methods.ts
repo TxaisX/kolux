@@ -1,5 +1,5 @@
 import { resolveRuntimeNavigationTarget } from '../../../../shared/runtime-navigation'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { defineMethod, type RpcAnyMethod } from '../core'
 import {
   assertProjectedSessionTabVisible,
@@ -128,7 +128,7 @@ export const SESSION_TAB_MUTATION_METHODS: RpcAnyMethod[] = [
 const projectSessionTabsForMutationClient = projectSessionTabsForClient
 
 async function assertVisibleMutationTab(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   worktree: string,
   tabId: string,
   pairedDeviceId: string | undefined,

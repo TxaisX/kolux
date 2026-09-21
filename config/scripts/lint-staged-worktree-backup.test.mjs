@@ -9,7 +9,7 @@ const BACKUP_REFS = 'refs/worktree/lint-staged-backups'
 const silentLogger = { error() {}, log() {}, warn() {} }
 
 it('keeps lint-staged backups isolated to the current worktree', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-lint-staged-worktree-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-lint-staged-worktree-'))
 
   try {
     const repo = join(root, 'repo')

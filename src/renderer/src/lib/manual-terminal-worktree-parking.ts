@@ -1,4 +1,4 @@
-export const MANUAL_TERMINAL_WORKTREE_PARK_EVENT = 'nightshift-manual-terminal-worktree-park'
+export const MANUAL_TERMINAL_WORKTREE_PARK_EVENT = 'kolux-manual-terminal-worktree-park'
 
 export type ManualTerminalWorktreeParkDetail = {
   worktreeId: string

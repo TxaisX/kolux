@@ -45,7 +45,7 @@ describe('relaunchApp', () => {
     )
   })
 
-  it('does not carry Nightshift PATH seeds into the replacement process', () => {
+  it('does not carry Kolux PATH seeds into the replacement process', () => {
     process.env.PATH = '/seeded/newest-nvm/bin:/usr/bin'
     _setLaunchPathForTests('/usr/bin')
     let inheritedPath: string | undefined

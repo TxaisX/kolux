@@ -25,9 +25,7 @@ export function parseSharedControlFrame(
   if (!sharedKey) {
     return {
       type: 'error',
-      error: invalidRemoteRuntimeResponseError(
-        'Remote Nightshift runtime returned a frame before E2EE.'
-      )
+      error: invalidRemoteRuntimeResponseError('Remote Kolux runtime returned a frame before E2EE.')
     }
   }
   const plaintext = decrypt(frame, sharedKey)
@@ -35,7 +33,7 @@ export function parseSharedControlFrame(
     return {
       type: 'error',
       error: invalidRemoteRuntimeResponseError(
-        'Remote Nightshift runtime returned an undecryptable frame.'
+        'Remote Kolux runtime returned an undecryptable frame.'
       )
     }
   }
@@ -103,12 +101,12 @@ export function getCleanupRequest(
 export function formatSharedControlCloseMessage(code: number, reason: Buffer): string {
   const reasonText = reason.toString().trim()
   if (code !== 1005 && code !== 1006 && reasonText) {
-    return `Remote Nightshift runtime closed the connection (${code}: ${reasonText}).`
+    return `Remote Kolux runtime closed the connection (${code}: ${reasonText}).`
   }
   if (code !== 1005 && code !== 1006) {
-    return `Remote Nightshift runtime closed the connection (${code}).`
+    return `Remote Kolux runtime closed the connection (${code}).`
   }
-  return 'Remote Nightshift runtime closed the connection.'
+  return 'Remote Kolux runtime closed the connection.'
 }
 
 export function sendSharedControlEncrypted(args: {

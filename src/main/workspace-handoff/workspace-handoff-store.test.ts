@@ -8,7 +8,7 @@ describe('WorkspaceHandoffStore', () => {
   let dir: string
 
   function makeStore(): WorkspaceHandoffStore {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-workspace-handoff-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-workspace-handoff-'))
     return new WorkspaceHandoffStore(() => dir)
   }
 
@@ -49,7 +49,7 @@ describe('WorkspaceHandoffStore', () => {
   })
 
   it('creates the directory on first write', () => {
-    const nested = join(mkdtempSync(join(tmpdir(), 'nightshift-workspace-handoff-')), 'nested')
+    const nested = join(mkdtempSync(join(tmpdir(), 'kolux-workspace-handoff-')), 'nested')
     const store = new WorkspaceHandoffStore(() => nested)
     store.write('abc123', 'text')
     expect(readFileSync(join(nested, 'abc123.json'), 'utf-8')).toContain('text')

@@ -20,7 +20,7 @@ function repo(id: string, overrides: Partial<Repo> = {}): Repo {
     displayName: id,
     badgeColor: '#111111',
     addedAt: 1,
-    upstream: { owner: 'TxaisX', repo: 'nightshift' },
+    upstream: { owner: 'TxaisX', repo: 'kolux' },
     ...overrides
   }
 }
@@ -28,9 +28,9 @@ function repo(id: string, overrides: Partial<Repo> = {}): Repo {
 function project(overrides: Partial<Project> = {}): Project {
   return {
     id: 'github:TxaisX/nightshift',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#111111',
-    providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+    providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
     sourceRepoIds: ['local-repo', 'ssh-repo'],
     createdAt: 1,
     updatedAt: 1,
@@ -44,8 +44,8 @@ function setup(overrides: Partial<ProjectHostSetup>): ProjectHostSetup {
     projectId: overrides.projectId ?? 'github:TxaisX/nightshift',
     hostId: overrides.hostId ?? 'local',
     repoId: overrides.repoId ?? 'local-repo',
-    path: overrides.path ?? '/tmp/nightshift',
-    displayName: overrides.displayName ?? 'nightshift',
+    path: overrides.path ?? '/tmp/kolux',
+    displayName: overrides.displayName ?? 'kolux',
     setupState: overrides.setupState ?? 'ready',
     setupMethod: overrides.setupMethod ?? 'legacy-repo',
     createdAt: 1,
@@ -86,7 +86,7 @@ describe('buildNewWorkspaceProjectOptions', () => {
         id: 'github:TxaisX/nightshift',
         kind: 'project',
         projectId: 'github:TxaisX/nightshift',
-        displayName: 'nightshift',
+        displayName: 'kolux',
         badgeColor: '#111111',
         detail: 'TxaisX/nightshift'
       }
@@ -395,9 +395,9 @@ describe('buildNewWorkspaceProjectOptions', () => {
     const options: NewWorkspaceProjectOption[] = [
       {
         kind: 'project',
-        id: 'nightshift',
-        projectId: 'nightshift',
-        displayName: 'Nightshift',
+        id: 'kolux',
+        projectId: 'kolux',
+        displayName: 'Kolux',
         badgeColor: '#111111',
         detail: 'TxaisX/nightshift'
       },
@@ -440,10 +440,10 @@ describe('buildNewWorkspaceProjectOptions', () => {
 describe('buildNewWorkspaceFolderSourceOptions', () => {
   it('keeps concrete source repos separate even when they are the same logical project', () => {
     const options = buildNewWorkspaceFolderSourceOptions([
-      repo('local-repo', { displayName: 'nightshift', path: '/tmp/nightshift' }),
+      repo('local-repo', { displayName: 'kolux', path: '/tmp/kolux' }),
       repo('ssh-repo', {
-        displayName: 'nightshift',
-        path: '/srv/nightshift',
+        displayName: 'kolux',
+        path: '/srv/kolux',
         connectionId: 'ssh:builder'
       })
     ])
@@ -452,10 +452,7 @@ describe('buildNewWorkspaceFolderSourceOptions', () => {
       'folder-source:local-repo',
       'folder-source:ssh-repo'
     ])
-    expect(options.map((option) => option.detail).sort()).toEqual([
-      '/srv/nightshift',
-      '/tmp/nightshift'
-    ])
+    expect(options.map((option) => option.detail).sort()).toEqual(['/srv/kolux', '/tmp/kolux'])
     expect(getRepoIdFromNewWorkspaceFolderSourceOptionId('folder-source:ssh-repo')).toBe('ssh-repo')
   })
 })

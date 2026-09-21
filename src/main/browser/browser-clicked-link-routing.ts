@@ -14,7 +14,7 @@ type BrowserClickedLinkRoutingState = {
 }
 
 type BrowserClickedLinkRoutingGlobal = typeof globalThis & {
-  __nightshiftBrowserClickedLinkRouting?: BrowserClickedLinkRoutingState
+  __koluxBrowserClickedLinkRouting?: BrowserClickedLinkRoutingState
 }
 
 /**
@@ -28,7 +28,7 @@ export function installBrowserClickedLinkRouting(
   allowUntrustedEvents = false
 ): void {
   const routingGlobal = globalThis as BrowserClickedLinkRoutingGlobal
-  const existing = routingGlobal.__nightshiftBrowserClickedLinkRouting
+  const existing = routingGlobal.__koluxBrowserClickedLinkRouting
   if (existing) {
     existing.foregroundFrameName = foregroundFrameName
     existing.backgroundFrameName = backgroundFrameName
@@ -76,7 +76,7 @@ export function installBrowserClickedLinkRouting(
       return
     }
     // Shift alone is browser-native new-window intent; keep OAuth and other
-    // opener-dependent window flows in Nightshift's guarded popup window.
+    // opener-dependent window flows in Kolux's guarded popup window.
     if (event.shiftKey && !modifierClick && !middleClick) {
       return
     }
@@ -116,7 +116,7 @@ export function installBrowserClickedLinkRouting(
       openInBackground ? state.backgroundFrameName : state.foregroundFrameName
     )
   }
-  routingGlobal.__nightshiftBrowserClickedLinkRouting = state
+  routingGlobal.__koluxBrowserClickedLinkRouting = state
 
   // Why: page click handlers must get the first chance to cancel or rewrite a
   // link; capture-phase interception breaks SPA routing and analytics handlers.

@@ -36,7 +36,7 @@ describe('agent hook spool', () => {
   })
 
   it('drops torn lines while retaining complete records', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-'))
     const file = join(dir, 'pane.jsonl')
     writeFileSync(
       file,
@@ -46,7 +46,7 @@ describe('agent hook spool', () => {
   })
 
   it('waits for a newline before replaying a complete-looking final record', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-unterminated-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-unterminated-'))
     const spool = join(dir, 'spool')
     mkdirSync(spool)
     const file = join(spool, 'pane-live.jsonl')
@@ -74,7 +74,7 @@ describe('agent hook spool', () => {
   })
 
   it('does not let historical empty pane files starve newer records', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-empty-files-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-empty-files-'))
     const spool = join(dir, 'spool')
     mkdirSync(spool)
     for (let index = 0; index < AGENT_HOOK_SPOOL_MAX_FILES; index += 1) {
@@ -96,7 +96,7 @@ describe('agent hook spool', () => {
   })
 
   it('rejects stale launch tokens before ingest and truncates in place', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-'))
     const spool = join(dir, 'spool')
     mkdirSync(spool)
     const file = join(spool, 'pane-1.jsonl')
@@ -117,7 +117,7 @@ describe('agent hook spool', () => {
   })
 
   it('ingests a record with the matching launch token', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-'))
     const spool = join(dir, 'spool')
     mkdirSync(spool)
     const file = join(spool, 'pane-1.jsonl')
@@ -136,7 +136,7 @@ describe('agent hook spool', () => {
   })
 
   it('replays a spooled Codex SubagentStop through the server after restart', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-spool-e2e-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-spool-e2e-'))
     const paneKey = makePaneKey('tab-spool', '00000000-0000-4000-8000-000000000001')
     const launchToken = 'generation-token'
     const first = new AgentHookServer()
@@ -179,7 +179,7 @@ describe('agent hook spool', () => {
   })
 
   it('rejects a stale remote replay against the hydrated launch-token fence', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-spool-remote-fence-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-spool-remote-fence-'))
     const paneKey = makePaneKey('tab-remote-fence', '00000000-0000-4000-8000-000000000003')
     const first = new AgentHookServer()
     const second = new AgentHookServer()
@@ -220,13 +220,13 @@ describe('agent hook spool', () => {
   })
 
   it('spools when the endpoint is present but the receiver is unavailable', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-failure-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-failure-'))
     const endpointDir = join(dir, 'agent-hooks')
     mkdirSync(endpointDir, { recursive: true })
     const endpoint = join(endpointDir, 'endpoint.env')
     writeFileSync(
       endpoint,
-      'NIGHTSHIFT_AGENT_HOOK_PORT=9\nNIGHTSHIFT_AGENT_HOOK_TOKEN=stale\nNIGHTSHIFT_AGENT_HOOK_ENV=production\nNIGHTSHIFT_AGENT_HOOK_VERSION=1\n'
+      'KOLUX_AGENT_HOOK_PORT=9\nKOLUX_AGENT_HOOK_TOKEN=stale\nKOLUX_AGENT_HOOK_ENV=production\nKOLUX_AGENT_HOOK_VERSION=1\n'
     )
     const script = join(dir, 'codex-hook.sh')
     writeFileSync(script, codexInternals.getManagedScript('posix'))
@@ -235,10 +235,10 @@ describe('agent hook spool', () => {
       input: '{"hook_event_name":"SubagentStop","agent_id":"child"}\n',
       env: {
         ...process.env,
-        NIGHTSHIFT_AGENT_HOOK_ENDPOINT: endpoint,
-        NIGHTSHIFT_PANE_KEY: 'tab-failure:0',
-        NIGHTSHIFT_TAB_ID: 'tab-failure',
-        NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'generation-token'
+        KOLUX_AGENT_HOOK_ENDPOINT: endpoint,
+        KOLUX_PANE_KEY: 'tab-failure:0',
+        KOLUX_TAB_ID: 'tab-failure',
+        KOLUX_AGENT_LAUNCH_TOKEN: 'generation-token'
       },
       timeout: 5000
     })
@@ -250,7 +250,7 @@ describe('agent hook spool', () => {
   })
 
   it('does not mark a non-terminal downtime replay as runtime-observed', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-spool-observed-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-spool-observed-'))
     const paneKey = makePaneKey('tab-observed', '00000000-0000-4000-8000-000000000002')
     const launchToken = 'observed-generation'
     const first = new AgentHookServer()

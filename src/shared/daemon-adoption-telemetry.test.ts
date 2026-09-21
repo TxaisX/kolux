@@ -7,40 +7,34 @@ describe('classifyDaemonSpawnerPath', () => {
 
   it('classifies the installed app, the ShipIt staging area, and everything else', () => {
     expect(
+      classifyDaemonSpawnerPath('/Applications/Kolux.app/Contents/MacOS/Kolux', alwaysExists)
+    ).toBe('applications')
+    expect(
       classifyDaemonSpawnerPath(
-        '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+        '/private/Applications/Kolux.app/Contents/MacOS/Kolux',
         alwaysExists
       )
     ).toBe('applications')
     expect(
       classifyDaemonSpawnerPath(
-        '/private/Applications/Nightshift.app/Contents/MacOS/Nightshift',
-        alwaysExists
-      )
-    ).toBe('applications')
-    expect(
-      classifyDaemonSpawnerPath(
-        '/Users/a/Library/Caches/com.txais.nightshift.ShipIt/update.abc/Nightshift.app/Contents/MacOS/Nightshift',
+        '/Users/a/Library/Caches/com.txais.kolux.ShipIt/update.abc/Kolux.app/Contents/MacOS/Kolux',
         alwaysExists
       )
     ).toBe('updater-cache')
     expect(
       classifyDaemonSpawnerPath(
-        '/Users/a/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+        '/Users/a/Applications/Kolux.app/Contents/MacOS/Kolux',
         alwaysExists
       )
     ).toBe('other')
-    expect(
-      classifyDaemonSpawnerPath('/tmp/NightshiftA.app/Contents/MacOS/Nightshift', alwaysExists)
-    ).toBe('other')
+    expect(classifyDaemonSpawnerPath('/tmp/KoluxA.app/Contents/MacOS/Kolux', alwaysExists)).toBe(
+      'other'
+    )
   })
 
   it('reports a deleted spawner as missing and an unrecorded one as unknown', () => {
     expect(
-      classifyDaemonSpawnerPath(
-        '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
-        () => false
-      )
+      classifyDaemonSpawnerPath('/Applications/Kolux.app/Contents/MacOS/Kolux', () => false)
     ).toBe('missing')
     expect(classifyDaemonSpawnerPath(null, alwaysExists)).toBe('unknown')
   })
@@ -80,7 +74,7 @@ describe('daemon_adopted / daemon_pty_cwd_denied schemas', () => {
 
   it('rejects leaked paths, versions, counts, and unknown enum values', () => {
     for (const leak of [
-      { spawner_exec_path: '/Users/alice/Library/Caches/ShipIt/Nightshift.app' },
+      { spawner_exec_path: '/Users/alice/Library/Caches/ShipIt/Kolux.app' },
       { app_version: '1.4.187' },
       { live_session_count: 3 },
       { cwd: '/Users/alice/Documents' }

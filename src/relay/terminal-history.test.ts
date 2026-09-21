@@ -11,7 +11,7 @@ import {
 } from './terminal-history'
 
 const worktreeId = 'relay-test::/remote/worktree'
-const historyDir = join(homedir(), '.nightshift-remote', 'terminal-history')
+const historyDir = join(homedir(), '.kolux-remote', 'terminal-history')
 const historyPrefix = hashWorktreeId(worktreeId)
 
 afterEach(() => {
@@ -47,9 +47,9 @@ describe('relay shell history', () => {
         'zsh_history'
       )
     ]
-  ])('replaces a %s HISTFILE inherited from a parent Nightshift', (_kind, inherited) => {
+  ])('replaces a %s HISTFILE inherited from a parent Kolux', (_kind, inherited) => {
     // HISTFILE is exported, so a relay (or the client that spawned it) started
-    // from a Nightshift pane would otherwise scope every remote pane to that one
+    // from a Kolux pane would otherwise scope every remote pane to that one
     // worktree's history file.
     const env: Record<string, string> = { HISTFILE: inherited }
 

@@ -53,7 +53,7 @@ function isJournal(value: unknown, ownerToken: string): value is SkillExtraction
     journal.destinationRoot.length <= 32_768 &&
     journal.extractionPath.length <= 32_768 &&
     normalized(dirname(journal.extractionPath)) === normalized(journal.destinationRoot) &&
-    basename(journal.extractionPath) === `.nightshift-skill-extract-${ownerToken}` &&
+    basename(journal.extractionPath) === `.kolux-skill-extract-${ownerToken}` &&
     (journal.wslDistro === undefined ||
       (typeof journal.wslDistro === 'string' &&
         journal.wslDistro.length > 0 &&
@@ -82,7 +82,7 @@ export async function beginSkillExtractionRecovery(
     operation: 'extract',
     ownerToken,
     destinationRoot,
-    extractionPath: join(destinationRoot, `.nightshift-skill-extract-${ownerToken}`),
+    extractionPath: join(destinationRoot, `.kolux-skill-extract-${ownerToken}`),
     ...(wslDistro ? { wslDistro } : {})
   }
   await writeSkillStateFile(journalPath(stateDirectory, ownerToken), journal)

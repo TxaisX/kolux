@@ -29,7 +29,7 @@ export function useTerminalWorkspaceStoreBindings(controller: TerminalWorkspaceF
   const activeTabType = useAppStore((state) => state.activeTabType)
   const keybindings = useAppStore((state) => state.keybindings)
   const terminalShortcutPolicy = useAppStore(
-    (state) => state.settings?.terminalShortcutPolicy ?? 'nightshift-first'
+    (state) => state.settings?.terminalShortcutPolicy ?? 'kolux-first'
   )
   const mobileEmulatorEnabled = useAppStore(
     (state) => state.settings?.mobileEmulatorEnabled !== false

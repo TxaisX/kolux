@@ -49,11 +49,11 @@ export function buildRemoteSettingsSections(
       id: 'servers',
       title: translate(
         'auto.hooks.useSettingsNavigationMetadata.de0c2907a1',
-        'Remote Nightshift Servers'
+        'Remote Kolux Servers'
       ),
       description: isWebClient
-        ? 'Connect this browser to a saved Nightshift server.'
-        : 'Pair remote Nightshift runtimes for persistent sessions, richer remote state, and web or mobile handoff.',
+        ? 'Connect this browser to a saved Kolux server.'
+        : 'Pair remote Kolux runtimes for persistent sessions, richer remote state, and web or mobile handoff.',
       icon: Server,
       searchEntries: [runtimeEnvironmentsSearchEntry],
       group: 'remote',
@@ -144,7 +144,7 @@ export function buildRemoteSettingsSections(
             title: translate('auto.hooks.useSettingsNavigationMetadata.pluginsTitle', 'Plugins'),
             description: translate(
               'auto.hooks.useSettingsNavigationMetadata.pluginsDescription',
-              'Install and manage experimental Nightshift plugins.'
+              'Install and manage experimental Kolux plugins.'
             ),
             icon: Blocks,
             searchEntries: getPluginsPaneSearchEntries(),
@@ -153,7 +153,7 @@ export function buildRemoteSettingsSections(
         ]
       : []),
     // Why: one nav row per project, not per repo row — a project set up on
-    // multiple hosts (local + a Remote Nightshift Server, or two clones) collapses to
+    // multiple hosts (local + a Remote Kolux Server, or two clones) collapses to
     // a single entry. Derived from repos alone so this list matches the panes.
     ...buildSettingsProjectList(repos).map(({ project, representativeRepoId, setups }) => {
       const representativeRepo = reposById.get(representativeRepoId) ?? repos[0]

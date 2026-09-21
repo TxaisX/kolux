@@ -17,7 +17,7 @@ import { createLocalFileSink, getRotatedFamilySize, listRotatedFiles } from './l
 let dir: string
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'nightshift-sink-'))
+  dir = mkdtempSync(join(tmpdir(), 'kolux-sink-'))
 })
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true })

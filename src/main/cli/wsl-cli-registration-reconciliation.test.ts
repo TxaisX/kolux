@@ -62,7 +62,7 @@ describe('reconcileManagedWslCliRegistrations', () => {
       userDataPath: '/user-data',
       appVersion: '1.4.138',
       listDistros: async () => ['Ubuntu'],
-      getHostLauncherTarget: async () => 'C:\\Nightshift\\resources\\bin\\nightshift.exe',
+      getHostLauncherTarget: async () => 'C:\\Kolux\\resources\\bin\\kolux.exe',
       registry,
       createInstaller: () => ({
         repairManagedRegistration: async () => ({
@@ -74,7 +74,7 @@ describe('reconcileManagedWslCliRegistrations', () => {
     })
 
     expect(registry.getCandidates).toHaveBeenCalledWith(['Ubuntu'], {
-      currentTarget: 'C:\\Nightshift\\resources\\bin\\nightshift.exe',
+      currentTarget: 'C:\\Kolux\\resources\\bin\\kolux.exe',
       appVersion: '1.4.138'
     })
     expect(registry.recordObservations).toHaveBeenCalledWith([
@@ -83,7 +83,7 @@ describe('reconcileManagedWslCliRegistrations', () => {
         inspected: true,
         managed: true,
         reconciled: {
-          target: 'C:\\Nightshift\\resources\\bin\\nightshift.exe',
+          target: 'C:\\Kolux\\resources\\bin\\kolux.exe',
           appVersion: '1.4.138'
         }
       }

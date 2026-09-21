@@ -71,7 +71,7 @@ function getTerminalTabActivityFlags(
     // Why: stale hook entries (>30m) are not authority; a slept/abandoned pane
     // must not keep a tab spinning. Same freshness gate as the sidebar.
     if (!isExplicitAgentStatusFresh(entry, now, AGENT_STATUS_STALE_AFTER_MS)) {
-      // Stale identity suppresses Nightshift's one-shot permission label without suppressing native titles.
+      // Stale identity suppresses Kolux's one-shot permission label without suppressing native titles.
       getOrCreateTerminalTabActivityFlags(flagsByTabId, identity.tabId).stalePaneIds.add(
         identity.paneId
       )

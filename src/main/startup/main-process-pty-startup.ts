@@ -28,7 +28,7 @@ import {
 import { startFirstWindowStartupServices } from './first-window-startup-services'
 import { logStartupMilestone } from './startup-diagnostics'
 import type { WindowsDesktopStartupServices } from './windows-desktop-shell-path-startup'
-import type { RuntimeWorktreeLifecycleEvent } from '../runtime/nightshift-runtime'
+import type { RuntimeWorktreeLifecycleEvent } from '../runtime/kolux-runtime'
 import { mainProcessState as state } from './main-process-state'
 
 export function emitPluginWorktreeLifecycle(event: RuntimeWorktreeLifecycleEvent): void {
@@ -80,7 +80,7 @@ export function handlePtyExit(id: string, exitSequence: number): void {
   state.codexSessionMigration?.finishLaunch(id, exitSequence)
 }
 
-/** A PTY that dies while Nightshift is down never runs the teardown that clears pane
+/** A PTY that dies while Kolux is down never runs the teardown that clears pane
  *  state, so hydrate can rebuild a Claude subagent roster that no later hook can
  *  retire — pinning the pane 'working' and locking its agent out of hibernation
  *  for good. Once provider and hook hydration settle, targeted PTY liveness can
@@ -160,7 +160,7 @@ export function startTerminalRuntimeStartupServices(): WindowsDesktopStartupServ
       state.codexRuntimeHome?.reconcileLegacySharedHomeForRetainedPanes()
       logStartupMilestone('startup-service-done', { service: 'daemon-pty-provider' })
     },
-    // Why: PTY spawn env reads NIGHTSHIFT_AGENT_HOOK_* from live server state, so the renderer awaits this before restored terminals reconnect.
+    // Why: PTY spawn env reads KOLUX_AGENT_HOOK_* from live server state, so the renderer awaits this before restored terminals reconnect.
     startAgentHookServer: async () => {
       const settings = state.store?.getSettings()
       if (!isAgentStatusHooksEnabled(settings)) {
@@ -175,7 +175,7 @@ export function startTerminalRuntimeStartupServices(): WindowsDesktopStartupServ
       })
       await agentHookServer.start({
         env: app.isPackaged ? 'production' : 'development',
-        // Why: hooks source this endpoint file at invocation time so old PTY env reaches the current process after restart; dev namespaces it (worktrees share `nightshift-dev`).
+        // Why: hooks source this endpoint file at invocation time so old PTY env reaches the current process after restart; dev namespaces it (worktrees share `kolux-dev`).
         userDataPath: app.getPath('userData'),
         endpointNamespace: state.devAgentHookEndpointNamespace
       })
@@ -190,7 +190,7 @@ export function startTerminalRuntimeStartupServices(): WindowsDesktopStartupServ
       track('daemon_start_failed', classifyError(error))
     },
     onAgentHookServerError: (error) => {
-      // Why: hook callbacks are sidebar enrichment only; Nightshift must still boot if the loopback receiver fails.
+      // Why: hook callbacks are sidebar enrichment only; Kolux must still boot if the loopback receiver fails.
       console.error('[agent-hooks] Failed to start local hook server:', error)
     }
   })

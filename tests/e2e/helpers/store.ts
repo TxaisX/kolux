@@ -1,7 +1,7 @@
 /**
- * Zustand store inspection helpers for Nightshift E2E tests.
+ * Zustand store inspection helpers for Kolux E2E tests.
  *
- * Why: In dev mode, Nightshift exposes `window.__store` (the Zustand useAppStore).
+ * Why: In dev mode, Kolux exposes `window.__store` (the Zustand useAppStore).
  * Reading store state gives tests reliable access to app state without
  * fragile DOM scraping.
  */

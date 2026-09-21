@@ -61,7 +61,7 @@ function createRendererPath(initialTitle?: string, deferDrain = false): TitleFac
 
 function createMainPath(initialTitle?: string): TitleFactPath {
   const events: TitleFactEvent[] = []
-  // Why: mirrors NightshiftRuntimeService.onPtyData — the per-PTY OSC 9999
+  // Why: mirrors KoluxRuntimeService.onPtyData — the per-PTY OSC 9999
   // processor strips status payloads before the title tracker sees the chunk.
   const processAgentStatusChunk = createAgentStatusOscProcessor()
   const tracker = createTerminalTitleTracker(
@@ -269,7 +269,7 @@ describe('main title tracker parity with the renderer transport processor', () =
     feedBoth(paths, 'plain output arms the timer\r\n')
 
     vi.advanceTimersByTime(2_000)
-    // Why: a chunk that is ONLY a Nightshift status payload strips to empty
+    // Why: a chunk that is ONLY a Kolux status payload strips to empty
     // cleanData; neither path may restart (or newly arm) the stale probe.
     feedBoth(paths, `${ESC}]9999;{"state":"working","agentType":"codex"}${BEL}`)
     vi.advanceTimersByTime(1_000)
@@ -393,21 +393,21 @@ describe('main tracker parity with renderer 133;D and PR-link byte parsers', () 
   })
 
   it('derives identical pr-link facts from split and repeated URLs', () => {
-    feedBoth(paths, 'Created https://github.com/acme/nightshift/pull/4')
-    feedBoth(paths, '2\r\nAlso https://github.com/acme/nightshift/pull/43 merged\r\n')
-    feedBoth(paths, 'again https://github.com/acme/nightshift/pull/42\r\n')
+    feedBoth(paths, 'Created https://github.com/acme/kolux/pull/4')
+    feedBoth(paths, '2\r\nAlso https://github.com/acme/kolux/pull/43 merged\r\n')
+    feedBoth(paths, 'again https://github.com/acme/kolux/pull/42\r\n')
 
     expect(paths.main.events).toEqual(paths.renderer.events)
     expect(paths.main.events).toEqual([
-      ['pr-link', 'https://github.com/acme/nightshift/pull/42', 42],
-      ['pr-link', 'https://github.com/acme/nightshift/pull/43', 43]
+      ['pr-link', 'https://github.com/acme/kolux/pull/42', 42],
+      ['pr-link', 'https://github.com/acme/kolux/pull/43', 43]
     ])
   })
 
   it('ignores 133;D and PR URLs inside stripped OSC 9999 payloads in both paths', () => {
     feedBoth(
       paths,
-      `${ESC}]9999;{"state":"done","prompt":"https://github.com/acme/nightshift/pull/9"}${BEL}\r\n`
+      `${ESC}]9999;{"state":"done","prompt":"https://github.com/acme/kolux/pull/9"}${BEL}\r\n`
     )
 
     expect(paths.main.events).toEqual(paths.renderer.events)

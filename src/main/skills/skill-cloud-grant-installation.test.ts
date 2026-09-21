@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SkillCloudDownloadGrant } from '../../shared/skill-cloud-contract'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 const mocks = vi.hoisted(() => ({
   getRuntimeEnvironmentStatus: vi.fn(),
@@ -63,7 +63,7 @@ describe('installSkillCloudGrant', () => {
 
     await expect(
       installSkillCloudGrant(
-        {} as NightshiftRuntimeService,
+        {} as KoluxRuntimeService,
         grant,
         {
           operationId: 'operation-1',
@@ -119,7 +119,7 @@ describe('installSkillCloudGrant', () => {
     mocks.installSkillBundleOnRemoteRuntime.mockResolvedValue(result)
 
     await expect(
-      installSkillBundleCloudGrant({} as NightshiftRuntimeService, bundleGrant, {
+      installSkillBundleCloudGrant({} as KoluxRuntimeService, bundleGrant, {
         operationId: 'operation-1',
         environmentId: 'environment-1',
         selectedSkillIds: ['skill-1'],

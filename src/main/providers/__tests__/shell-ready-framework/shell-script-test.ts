@@ -75,15 +75,15 @@ export async function shellScriptTest(
       ...config.env,
       // Why: these examples inspect startup-file discovery, not the PTY-owner
       // protocol stream, so drop the tokens that write to stdout.
-      NIGHTSHIFT_SHELL_FEATURES: (config.env.NIGHTSHIFT_SHELL_FEATURES ?? '')
+      KOLUX_SHELL_FEATURES: (config.env.KOLUX_SHELL_FEATURES ?? '')
         .split(',')
         .filter((feature) => feature !== 'identity' && feature !== 'markers')
         .join(','),
       // Why: the framework creates user startup files under testHome after
       // computing the wrapper config; route wrapper discovery to that fixture.
       HOME: testHome,
-      NIGHTSHIFT_ORIG_ZDOTDIR: testHome,
-      NIGHTSHIFT_ZSHENV_SOURCE_DIR: testHome
+      KOLUX_ORIG_ZDOTDIR: testHome,
+      KOLUX_ZSHENV_SOURCE_DIR: testHome
     }
 
     const spawnOptions = {
@@ -129,7 +129,7 @@ export async function shellScriptTest(
 }
 
 const TEMP_PATH_PATTERN =
-  /\/(?:var\/folders|tmp)\/[^\s]+?\/(?:shell-test|nightshift|shell-ready)-[a-z]+-[a-z0-9-]+/g
+  /\/(?:var\/folders|tmp)\/[^\s]+?\/(?:shell-test|kolux|shell-ready)-[a-z]+-[a-z0-9-]+/g
 const PID_PATTERN = /\bpid:\s*\d+/gi
 
 function normalizeOutput(

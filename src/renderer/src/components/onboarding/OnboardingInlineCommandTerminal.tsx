@@ -4,7 +4,7 @@ import TerminalPane from '@/components/terminal-pane/TerminalPane'
 import { PASTE_TERMINAL_TEXT_EVENT, type PasteTerminalTextDetail } from '@/constants/terminal'
 import { focusTerminalTabSurface } from '@/lib/focus-terminal-tab-surface'
 import {
-  NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT,
+  KOLUX_TERMINAL_COMMAND_FINISHED_EVENT,
   type TerminalCommandFinishedEventDetail
 } from '@/hooks/terminal-command-finished-event'
 import { useAppStore } from '@/store'
@@ -107,9 +107,9 @@ export function OnboardingInlineCommandTerminal({
       }
       onCommandFinished(detail.exitCode)
     }
-    window.addEventListener(NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
+    window.addEventListener(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
     return () => {
-      window.removeEventListener(NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
+      window.removeEventListener(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
     }
   }, [onCommandFinished, worktreeId])
 

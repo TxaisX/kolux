@@ -7,7 +7,7 @@ import { argvRequestsServeMode, normalizeServeModeArgv } from './serve-mode-argv
 import {
   configureDevUserDataPath,
   configureElectronNetworkCompatibility,
-  configureNightshiftUserDataPathEnv,
+  configureKoluxUserDataPathEnv,
   disableUnsupportedChromiumFeatures,
   enableMainProcessGpuFeatures,
   installDevParentDisconnectQuit,
@@ -64,9 +64,11 @@ import { setWorktreeWatcherRemoval } from '../ipc/worktree-watcher-removal'
 import { desktopWorktreeWatcherRemoval } from '../ipc/filesystem-watcher'
 import { setDefaultProxySessionResolver } from '../network/proxy-settings'
 import { initDataPath, getCanonicalUserDataPath } from '../persistence'
+import { migrateLegacyNightshiftUserData } from './legacy-nightshift-userdata-migration'
+import { getMainE2EConfig } from '../e2e-config'
 import { applyMacPressAndHoldDefaultAtStartup } from '../macos-press-and-hold-default'
 import { initSessionParseCachePersistence } from '../ai-vault/session-parse-cache-persistence'
-import { initNightshiftProfilePaths } from '../nightshift-profiles/profile-index-store'
+import { initKoluxProfilePaths } from '../kolux-profiles/profile-index-store'
 import { initStatsPath } from '../stats/collector'
 import { initClaudeUsagePath } from '../claude-usage/store'
 import { initCodexUsagePath } from '../codex-usage/store'
@@ -138,7 +140,7 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   // Why (issue #9441): without this, one rejected background promise during startup restore kills main silently (exit 1, no crash report).
   installUnhandledRejectionLogging()
   // Why: expose the app version via process.env so main and the forked daemon can set TERM_PROGRAM_VERSION without importing electron.
-  process.env.NIGHTSHIFT_APP_VERSION = app.getVersion()
+  process.env.KOLUX_APP_VERSION = app.getVersion()
   configureRemoteServerUpdater({
     getSnapshot: getRemoteServerUpdaterSnapshot,
     check: checkForRemoteServerUpdate,
@@ -167,17 +169,26 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   installMainProcessTreeKillGate()
   const isDev = is.dev
   configureDevUserDataPath(isDev)
-  configureNightshiftUserDataPathEnv()
+  configureKoluxUserDataPathEnv()
   // Why these four lines are one step (#16761): the two above decide where userData lives, and
   // everything below may resolve a path. Installing the accessor any later leaves a window where an
-  // early resolve either throws — which is what killed `nightshift serve` — or, worse, memoizes the
+  // early resolve either throws — which is what killed `kolux serve` — or, worse, memoizes the
   // pre-override directory and silently writes user state to the wrong place for the whole session.
   // Safe this early: ElectronAppEnvironment holds no state and calls `app` lazily per accessor, so it
   // changes no timing, and initDataPath only joins strings.
   setAppEnvironment(new ElectronAppEnvironment())
-  // Why captured now: after the dev/E2E override above, and before app.setName('Nightshift') (whenReady)
+  // Why captured now: after the dev/E2E override above, and before app.setName('Kolux') (whenReady)
   // changes how userData resolves on a case-sensitive filesystem. See persistence.ts:20-28.
   initDataPath()
+  // Why here: before anything below reads userData (Store, profile index, usage stores, ...),
+  // and after initDataPath so the target is the same canonical dir everything else resolves.
+  // Cheap when there is nothing to migrate — one stat. Skipped for E2E/dev overrides: those use
+  // a disposable Node-level home (KOLUX_E2E_HOME_DIR) that node:os's homedir() — which this
+  // migration uses to find ~/.kolux — does not see, so running it there would reach into a real
+  // developer machine's home directory as a side effect of a test run.
+  if (!getMainE2EConfig().userDataDir) {
+    migrateLegacyNightshiftUserData(getCanonicalUserDataPath())
+  }
   state.startupDiagnosticsEnabled = isStartupDiagnosticsEnabled()
   if (state.startupDiagnosticsEnabled) {
     logStartupDiagnostic('before-single-instance-lock', {
@@ -186,11 +197,11 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
       platform: process.platform,
       osRelease: os.release(),
       userData: app.getPath('userData'),
-      e2eUserData: Boolean(process.env.NIGHTSHIFT_E2E_USER_DATA_DIR)
+      e2eUserData: Boolean(process.env.KOLUX_E2E_USER_DATA_DIR)
     })
     startEventLoopStallProbe()
   }
-  // Self-gated on NIGHTSHIFT_MAIN_THREAD_DIAGNOSTICS; runs the whole session to catch steady-state churn (issue #7576).
+  // Self-gated on KOLUX_MAIN_THREAD_DIAGNOSTICS; runs the whole session to catch steady-state churn (issue #7576).
   // Why the diff-cache counters ride along: a stamp the filesystem reports unstably makes the cache
   // look exactly like a cold start, and only the hit/miss/unprovable split tells the two apart.
   startMainThreadChurnProbe({ extraStats: () => ({ diffCache: settledDiffCache.stats() }) })
@@ -226,7 +237,7 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   // Why at process level, not per-window: pty.ts registers against injected surfaces so
   // it can load without electron, and an Electron main process always has ipcMain —
   // whether a window exists is irrelevant. Installing this in attachMainWindowServices
-  // meant `nightshift serve` registered its PTY handlers against no-ops before any window
+  // meant `kolux serve` registered its PTY handlers against no-ops before any window
   // attached, so a paired desktop owner never received them.
   setPtyHostBindings({ ipc: ipcMain, power: powerMonitor })
   // Why also at process level: the runtime's notification, window-lookup and
@@ -249,14 +260,14 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   // request in. A host without them rejects speech calls rather than pretending.
   setSpeechServiceFactories(electronSpeechServiceFactories)
   setWorktreeWatcherRemoval(desktopWorktreeWatcherRemoval)
-  // Why: couple to dev-parent only for electron-vite desktop runs; `nightshift serve`'s parent (CLI shim/background shell) isn't the intended server lifetime.
+  // Why: couple to dev-parent only for electron-vite desktop runs; `kolux serve`'s parent (CLI shim/background shell) isn't the intended server lifetime.
   const shouldCoupleToDevParent = isDev && !state.isServeMode
   installDevParentDisconnectQuit(shouldCoupleToDevParent)
   installDevParentWatchdog(shouldCoupleToDevParent)
   installDevParentSignalQuit(shouldCoupleToDevParent)
   // Why not at module scope with the other lifetime couplings (#16761): this resolves the handoff
   // path, so it throws until setAppEnvironment() above installs the accessor — which killed every
-  // `nightshift serve` process before it could listen. After initDataPath() specifically, so the
+  // `kolux serve` process before it could listen. After initDataPath() specifically, so the
   // path-equality check against the CLI's env var uses the dir captured before app.setName().
   // Safe to defer, and must stay synchronous: no 'disconnect' can be delivered until this module
   // finishes evaluating, so moving this behind an await would open a real orphan window.
@@ -269,7 +280,7 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
     filePath: join(getCanonicalUserDataPath(), 'ai-vault', 'session-parse-cache.json'),
     appVersion: app.getVersion()
   })
-  initNightshiftProfilePaths()
+  initKoluxProfilePaths()
   // Why: same timing as initDataPath — capture userData before app.setName changes it. See persistence.ts:20-28.
   initStatsPath()
   initClaudeUsagePath()

@@ -5,8 +5,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultSettings } from '../../../../shared/constants'
 import {
-  NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+  KOLUX_CLI_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_UPDATE_COMMAND
 } from '@/lib/agent-feature-install-commands'
 import { CliSection } from './CliSection'
 
@@ -80,7 +80,7 @@ describe('CliSection project runtime defaults', () => {
   it('exposes freshness only for a resolved local host runtime', () => {
     const settings = getDefaultSettings('/tmp')
     renderToStaticMarkup(<CliSection currentPlatform="darwin" settings={settings} />)
-    expect(capturedPanel.props?.freshnessSkillName).toBe('nightshift-cli')
+    expect(capturedPanel.props?.freshnessSkillName).toBe('kolux-cli')
 
     capturedPanel.canUseLocalSkillFreshness = false
     renderToStaticMarkup(<CliSection currentPlatform="darwin" settings={settings} />)
@@ -134,14 +134,14 @@ describe('CliSection project runtime defaults', () => {
     await capturedPanel.props?.onBeforeOpenTerminal()
 
     expect(capturedPanel.useInstalledAgentSkill).toHaveBeenCalledWith(
-      'nightshift-cli',
+      'kolux-cli',
       expect.objectContaining({
         discoveryTarget: { runtime: 'wsl', wslDistro: 'Ubuntu' },
         sourceKinds: ['global']
       })
     )
-    expect(capturedPanel.props?.command).toBe(NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND)
-    expect(capturedPanel.props?.installedCommand).toBe(NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND)
+    expect(capturedPanel.props?.command).toBe(KOLUX_CLI_SKILL_INSTALL_COMMAND)
+    expect(capturedPanel.props?.installedCommand).toBe(KOLUX_CLI_SKILL_UPDATE_COMMAND)
     expect(capturedPanel.props?.terminalRuntime).toEqual({
       runtime: 'wsl',
       wslDistro: 'Ubuntu',
@@ -154,17 +154,17 @@ describe('CliSection project runtime defaults', () => {
   it('renders an inline unknown PATH state without offering a mutation', async () => {
     const getInstallStatus = vi.fn().mockResolvedValue({
       platform: 'win32',
-      commandName: 'nightshift',
-      commandPath: 'C:\\Program Files\\Nightshift\\resources\\bin\\nightshift.exe',
-      pathDirectory: 'C:\\Program Files\\Nightshift\\resources\\bin',
+      commandName: 'kolux',
+      commandPath: 'C:\\Program Files\\Kolux\\resources\\bin\\kolux.exe',
+      pathDirectory: 'C:\\Program Files\\Kolux\\resources\\bin',
       pathConfigured: null,
-      launcherPath: 'C:\\Program Files\\Nightshift\\resources\\bin\\nightshift.exe',
+      launcherPath: 'C:\\Program Files\\Kolux\\resources\\bin\\kolux.exe',
       installMethod: 'wrapper',
       supported: true,
       state: 'installed',
-      currentTarget: 'C:\\Program Files\\Nightshift\\resources\\bin\\nightshift.exe',
+      currentTarget: 'C:\\Program Files\\Kolux\\resources\\bin\\kolux.exe',
       unsupportedReason: null,
-      detail: 'Nightshift could not read the Windows user PATH registry value.'
+      detail: 'Kolux could not read the Windows user PATH registry value.'
     })
     Object.assign(window, {
       api: {

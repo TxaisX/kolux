@@ -32,7 +32,7 @@ const PRIVATE_VALUES = {
   filename: 'salary-review.md',
   manifest: 'manifest={private-instructions}',
   acl: 'acl=private-user-id',
-  shareUrl: 'nightshift://skill-share/private-share-id',
+  shareUrl: 'kolux://skill-share/private-share-id',
   uploadPolicy: 'policy=private-signed-upload',
   downloadGrant: 'https://storage.googleapis.com/private-bucket/object?X-Goog-Signature=secret',
   credential: 'authorization=Bearer private-access-token'
@@ -137,7 +137,7 @@ beforeEach(() => {
     flush() {},
     close() {}
   }
-  directory = mkdtempSync(join(tmpdir(), 'nightshift-skill-observability-'))
+  directory = mkdtempSync(join(tmpdir(), 'kolux-skill-observability-'))
   setActiveSink(sink)
 })
 
@@ -181,7 +181,7 @@ describe('skill operation observability', () => {
       platform: 'darwin',
       arch: 'arm64',
       osRelease: 'test',
-      nightshiftChannel: 'dev'
+      koluxChannel: 'dev'
     })
 
     expect(bundle.payload).toContain('skill-install-unknown')

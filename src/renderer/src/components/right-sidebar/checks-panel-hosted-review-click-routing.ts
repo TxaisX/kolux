@@ -23,10 +23,10 @@ export function resolveChecksPanelHostedReviewHttpOpenOptions(
 }
 
 /** Where a Shift+modifier click lands, or null when it lands where a plain click already does. */
-export type ChecksPanelHostedReviewModifierDestination = 'system-browser' | 'nightshift' | null
+export type ChecksPanelHostedReviewModifierDestination = 'system-browser' | 'kolux' | null
 
 // Why: mirrors openHttpLink's routing inputs — with inverting on and Link Routing off the
-// modifier now reaches Nightshift here, so gating the hint on openLinksInApp alone hides a live gesture.
+// modifier now reaches Kolux here, so gating the hint on openLinksInApp alone hides a live gesture.
 export function resolveChecksPanelHostedReviewModifierDestination(
   settings:
     | {
@@ -39,14 +39,14 @@ export function resolveChecksPanelHostedReviewModifierDestination(
   hasWorktree: boolean
 ): ChecksPanelHostedReviewModifierDestination {
   // Why: trim to match openHttpLink — an untrimmed check hides the hint on a blank
-  // runtime id while the click still routes to Nightshift.
+  // runtime id while the click still routes to Kolux.
   if (!hasWorktree || settings?.activeRuntimeEnvironmentId?.trim()) {
     return null
   }
   if (settings?.openLinksInApp === true) {
     return 'system-browser'
   }
-  return settings?.openLinksInAppModifierInverts === true ? 'nightshift' : null
+  return settings?.openLinksInAppModifierInverts === true ? 'kolux' : null
 }
 
 export function openChecksPanelHostedReviewUrl({

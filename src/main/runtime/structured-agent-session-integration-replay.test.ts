@@ -22,7 +22,7 @@ import type { AgentJournalRenderItem } from '../../shared/agent-session-journal-
 import { attachFingerprintFields } from '../native-chat/agent-session-wire/structured-agent-session-attach'
 import { journalDirectoryFor } from '../native-chat/agent-session-journal/journal-paths'
 import { createTrackedJournalOpener } from '../native-chat/agent-session-journal/journal-store-test-open'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import type { RpcRequest, RpcResponse } from './rpc/core'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './rpc/methods/structured-agent-session'
@@ -235,7 +235,7 @@ function textOf(item: AgentJournalRenderItem): string {
 
 beforeEach(async () => {
   operations = 0
-  root = await mkdtemp(join(tmpdir(), 'nightshift-structured-integration-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-structured-integration-'))
   codex = fakeCodex()
   bootEnvironmentReads = 0
   codexOverrideReads = 0
@@ -283,7 +283,7 @@ beforeEach(async () => {
     })
   }
   dispatcher = new RpcDispatcher({
-    runtime: runtime as unknown as NightshiftRuntimeService,
+    runtime: runtime as unknown as KoluxRuntimeService,
     methods: STRUCTURED_AGENT_SESSION_METHODS
   })
 })
@@ -297,7 +297,7 @@ afterEach(async () => {
 describe('a structured codex session over agentSession.*', () => {
   it('replays a durable image send without dispatching it twice', async () => {
     const created = await ok<{ fence: number }>('agentSession.create', createIntentParams())
-    const path = '/tmp/nightshift-paste-image.png'
+    const path = '/tmp/kolux-paste-image.png'
     const body = {
       kind: 'message' as const,
       role: 'user' as const,

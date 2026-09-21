@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type * as BrowserClientHostIdModule from './browser-client-host-id'
 
 function profileDirectory(): string {
-  return mkdtempSync(join(tmpdir(), 'nightshift-host-id-'))
+  return mkdtempSync(join(tmpdir(), 'kolux-host-id-'))
 }
 
 async function freshModule(): Promise<typeof BrowserClientHostIdModule> {

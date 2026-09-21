@@ -178,9 +178,7 @@ function formatLegacyAwareCheckMessages(
           replyTarget.startsWith('run:') || replyTarget.startsWith('dispatch:')
             ? ''
             : ` --from ${replyTarget}`
-        lines.push(
-          `[Reply: nightshift orchestration reply --id ${message.id}${replyFrom} --body "..."]`
-        )
+        lines.push(`[Reply: kolux orchestration reply --id ${message.id}${replyFrom} --body "..."]`)
       }
       return lines.join('\n')
     })

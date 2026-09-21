@@ -52,8 +52,8 @@ export function bindDeferredColdRestoreAndSnapshot(session: ConnectPanePtySessio
       ? {
           ...env,
           ...session.paneIdentityEnv,
-          ...(env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
-            ? { NIGHTSHIFT_AGENT_LAUNCH_TOKEN: env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN }
+          ...(env.KOLUX_AGENT_LAUNCH_TOKEN
+            ? { KOLUX_AGENT_LAUNCH_TOKEN: env.KOLUX_AGENT_LAUNCH_TOKEN }
             : {})
         }
       : undefined

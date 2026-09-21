@@ -26,7 +26,7 @@ export type SshCliRuntimeAuthority = {
   attachmentId: string
 }
 
-export type RemoteNightshiftCliRequest = {
+export type RemoteKoluxCliRequest = {
   argv: string[]
   cwd: string
   env: Record<string, string>
@@ -35,14 +35,14 @@ export type RemoteNightshiftCliRequest = {
   runtimeAuthority?: SshCliRuntimeAuthority
 }
 
-export type RemoteNightshiftCliResult = {
+export type RemoteKoluxCliResult = {
   stdout: string
   stderr: string
   exitCode: number
-  postOutput?: RemoteNightshiftCliPostOutput
+  postOutput?: RemoteKoluxCliPostOutput
 }
 
-export type RemoteNightshiftCliPostOutput =
+export type RemoteKoluxCliPostOutput =
   | {
       kind: 'legacy_check_ack'
       terminal: string
@@ -73,11 +73,11 @@ export class HostCliUnavailableError extends Error {}
 
 // Only terminal identity may cross hosts; remote paths and Node options cannot.
 const REMOTE_CONTEXT_ENV_VARS = [
-  'NIGHTSHIFT_TERMINAL_HANDLE',
-  'NIGHTSHIFT_WORKTREE_ID',
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_AGENT_LAUNCH_TOKEN',
-  'NIGHTSHIFT_WORKSPACE_ID'
+  'KOLUX_TERMINAL_HANDLE',
+  'KOLUX_WORKTREE_ID',
+  'KOLUX_PANE_KEY',
+  'KOLUX_AGENT_LAUNCH_TOKEN',
+  'KOLUX_WORKSPACE_ID'
 ] as const
 
 // Bound output retained for the relay response.
@@ -113,17 +113,17 @@ export function buildHostCliEnv(args: {
   }
   // Why: bind the subprocess to this app instance's runtime metadata (dev and
   // parallel instances use non-default userData dirs).
-  env.NIGHTSHIFT_USER_DATA_PATH = args.userDataPath
+  env.KOLUX_USER_DATA_PATH = args.userDataPath
   // Why: the caller's working directory lives on the remote machine, so the
-  // subprocess cwd cannot be chdir'd there; NIGHTSHIFT_CLI_CWD carries it for
+  // subprocess cwd cannot be chdir'd there; KOLUX_CLI_CWD carries it for
   // cwd-based selectors like `--worktree active`.
-  env.NIGHTSHIFT_CLI_CWD = args.remoteCwd
+  env.KOLUX_CLI_CWD = args.remoteCwd
   // Why: recovery commands run on the SSH execution host through its relay shim.
-  env.NIGHTSHIFT_CLI_COMMAND = 'nightshift'
+  env.KOLUX_CLI_COMMAND = 'kolux'
   // Why: same node-mode hygiene as the shipped CLI launchers — stash and clear
   // NODE_OPTIONS so Electron's node bootstrap does not inherit them.
-  env.NIGHTSHIFT_NODE_OPTIONS = args.hostEnv.NODE_OPTIONS ?? ''
-  env.NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE = args.hostEnv.NODE_REPL_EXTERNAL_MODULE ?? ''
+  env.KOLUX_NODE_OPTIONS = args.hostEnv.NODE_OPTIONS ?? ''
+  env.KOLUX_NODE_REPL_EXTERNAL_MODULE = args.hostEnv.NODE_REPL_EXTERNAL_MODULE ?? ''
   delete env.NODE_OPTIONS
   delete env.NODE_REPL_EXTERNAL_MODULE
   delete env[ORCHESTRATION_COMPATIBILITY_HOST_KIND_ENV]
@@ -148,10 +148,10 @@ export function buildHostCliEnv(args: {
   return env
 }
 
-export async function runHostNightshiftCliPassthrough(
-  request: RemoteNightshiftCliRequest,
+export async function runHostKoluxCliPassthrough(
+  request: RemoteKoluxCliRequest,
   options: HostCliPassthroughOptions = {}
-): Promise<RemoteNightshiftCliResult> {
+): Promise<RemoteKoluxCliResult> {
   // Why: per-field lazy defaults keep the module testable — tests inject all
   // three, so no Electron API is touched outside the production path.
   const execPath = options.execPath ?? process.execPath
@@ -166,8 +166,8 @@ export async function runHostNightshiftCliPassthrough(
         appPath: app.getAppPath()
       })
     // Why: must match the userData dir the runtime RPC server writes metadata
-    // to (see index.ts NightshiftRuntimeRpcServer wiring), or the CLI subprocess
-    // reports "Nightshift is not running" against a healthy app.
+    // to (see index.ts KoluxRuntimeRpcServer wiring), or the CLI subprocess
+    // reports "Kolux is not running" against a healthy app.
     userDataPath = options.userDataPath ?? getCanonicalUserDataPath()
   } catch (err) {
     // Why: no Electron app context (or broken install paths) — degrade to the
@@ -187,7 +187,7 @@ export async function runHostNightshiftCliPassthrough(
   }
 
   if (!entryExists(cliEntryPath)) {
-    throw new HostCliUnavailableError(`Nightshift CLI entry not found at ${cliEntryPath}`)
+    throw new HostCliUnavailableError(`Kolux CLI entry not found at ${cliEntryPath}`)
   }
 
   const env = buildHostCliEnv({
@@ -199,7 +199,7 @@ export async function runHostNightshiftCliPassthrough(
     artifactInput: request.artifactInput
   })
 
-  return await new Promise<RemoteNightshiftCliResult>((resolve, reject) => {
+  return await new Promise<RemoteKoluxCliResult>((resolve, reject) => {
     let settled = false
     const child = spawn(execPath, [cliEntryPath, ...request.argv], {
       env,
@@ -222,7 +222,7 @@ export async function runHostNightshiftCliPassthrough(
       }
       resolve({
         stdout: stdout.toString(),
-        stderr: `${stderr.toString()}Nightshift CLI bridge timed out after ${killTimeoutMs}ms on the host.\n`,
+        stderr: `${stderr.toString()}Kolux CLI bridge timed out after ${killTimeoutMs}ms on the host.\n`,
         exitCode: 1
       })
     }, killTimeoutMs)
@@ -238,9 +238,7 @@ export async function runHostNightshiftCliPassthrough(
       // runnable at all — signal the caller to use the legacy fallback rather
       // than reporting a confusing per-command failure.
       reject(
-        new HostCliUnavailableError(
-          `Failed to launch the Nightshift CLI on the host: ${err.message}`
-        )
+        new HostCliUnavailableError(`Failed to launch the Kolux CLI on the host: ${err.message}`)
       )
     })
 
@@ -297,6 +295,6 @@ class CappedOutputCollector {
 
   toString(): string {
     const text = Buffer.concat(this.chunks).toString('utf8')
-    return this.truncated ? `${text}\n[nightshift ssh cli] output truncated\n` : text
+    return this.truncated ? `${text}\n[kolux ssh cli] output truncated\n` : text
   }
 }

@@ -17,7 +17,7 @@ export type { OrchestrationMessageWaiter } from './mailbox-pointer-eligibility'
 const DEFAULT_POINTER_ENTER_DELAY_MS = 500
 
 function pointerEnterDelayMs(): number {
-  const configured = Number(process.env.NIGHTSHIFT_E2E_ORCHESTRATION_POINTER_ENTER_DELAY_MS)
+  const configured = Number(process.env.KOLUX_E2E_ORCHESTRATION_POINTER_ENTER_DELAY_MS)
   return Number.isFinite(configured) && configured >= 1 && configured <= 60_000
     ? configured
     : DEFAULT_POINTER_ENTER_DELAY_MS

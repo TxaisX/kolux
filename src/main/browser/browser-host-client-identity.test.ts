@@ -8,7 +8,7 @@ import {
 } from './browser-host-client-identity'
 
 function profileDirectory(): string {
-  return mkdtempSync(join(tmpdir(), 'nightshift-host-identity-'))
+  return mkdtempSync(join(tmpdir(), 'kolux-host-identity-'))
 }
 
 describe('browser host client identity', () => {
@@ -23,7 +23,7 @@ describe('browser host client identity', () => {
     expect(first).toMatch(/^[0-9a-f-]{36}$/)
   })
 
-  it('gives each Nightshift profile its own hosting identity', () => {
+  it('gives each Kolux profile its own hosting identity', () => {
     expect(readOrCreateBrowserHostClientId(profileDirectory())).not.toBe(
       readOrCreateBrowserHostClientId(profileDirectory())
     )

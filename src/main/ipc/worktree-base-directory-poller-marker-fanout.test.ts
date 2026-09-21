@@ -80,7 +80,7 @@ describe('worktree base directory poller marker fan-out (#17828)', () => {
   }
 
   it('bounds concurrent `.git`-marker stats regardless of candidate count', async () => {
-    const root = await realpath(await mkdtemp(join(tmpdir(), 'nightshift-base-poller-fanout-')))
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'kolux-base-poller-fanout-')))
     cleanups.push(() => rm(root, { recursive: true, force: true }))
     const candidateCount = 200
     for (let i = 0; i < candidateCount; i++) {
@@ -106,7 +106,7 @@ describe('worktree base directory poller marker fan-out (#17828)', () => {
   })
 
   it('probes pending `.git` markers in bounded batches instead of one at a time', async () => {
-    const root = await realpath(await mkdtemp(join(tmpdir(), 'nightshift-base-poller-pending-')))
+    const root = await realpath(await mkdtemp(join(tmpdir(), 'kolux-base-poller-pending-')))
     cleanups.push(() => rm(root, { recursive: true, force: true }))
     const pendingCount = MARKER_PROBE_CONCURRENCY * 4
     for (let i = 0; i < pendingCount; i++) {

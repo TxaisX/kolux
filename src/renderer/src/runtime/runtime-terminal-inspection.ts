@@ -24,7 +24,7 @@ export type {
 export type RuntimeTerminalProcessInspection = TerminalProcessInspection
 
 const REMOTE_PTY_ID_PREFIX = 'remote:'
-const DESKTOP_RUNTIME_CLIENT = { id: 'nightshift-desktop', type: 'desktop' } as const
+const DESKTOP_RUNTIME_CLIENT = { id: 'kolux-desktop', type: 'desktop' } as const
 type TerminalLayoutsByTabId = ReturnType<typeof useAppStore.getState>['terminalLayoutsByTabId']
 type TerminalPaneOwner = {
   tabId: string

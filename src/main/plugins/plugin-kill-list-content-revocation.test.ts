@@ -13,16 +13,16 @@ import { hashPluginTree } from './plugin-content-hash'
 
 const roots: string[] = []
 const services: PluginService[] = []
-const pluginKey = 'nightshift-samples.recipes'
+const pluginKey = 'kolux-samples.recipes'
 
 function contentManifest(): PluginManifest {
   return pluginManifestSchema.parse({
     manifestVersion: 1,
     id: 'recipes',
-    publisher: 'nightshift-samples',
+    publisher: 'kolux-samples',
     name: 'Recipes',
     version: '1.0.0',
-    engines: { nightshift: '>=1.0.0' },
+    engines: { kolux: '>=1.0.0' },
     pluginApi: 1,
     contributes: {
       languagePacks: [{ locale: 'es', path: 'locales/es.json' }],
@@ -33,11 +33,11 @@ function contentManifest(): PluginManifest {
 }
 
 async function pluginRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-kill-content-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-kill-content-'))
   roots.push(root)
   await Promise.all([mkdir(join(root, 'locales')), mkdir(join(root, 'recipes'))])
   await Promise.all([
-    writeFile(join(root, 'nightshift-plugin.json'), JSON.stringify(contentManifest())),
+    writeFile(join(root, 'kolux-plugin.json'), JSON.stringify(contentManifest())),
     writeFile(join(root, 'locales', 'es.json'), JSON.stringify({ settings: 'Ajustes' })),
     writeFile(
       join(root, 'recipes', 'vm.json'),

@@ -45,8 +45,8 @@ function getDialogTitle(report: CrashReportRecord | null): string {
     return 'Report a crash'
   }
   return report && isReactErrorBoundaryReport(report)
-    ? 'Nightshift hit a recoverable UI error'
-    : 'Nightshift closed unexpectedly'
+    ? 'Kolux hit a recoverable UI error'
+    : 'Kolux closed unexpectedly'
 }
 
 function getDialogDescription(report: CrashReportRecord | null): string {
@@ -64,7 +64,7 @@ function getNotesPlaceholder(report: CrashReportRecord | null): string {
   }
   return report && isReactErrorBoundaryReport(report)
     ? 'Optional: what were you doing before this UI error?'
-    : 'Optional: what were you doing before Nightshift closed?'
+    : 'Optional: what were you doing before Kolux closed?'
 }
 
 type CrashReportDialogSurfaceProps = {
@@ -249,10 +249,7 @@ export function CrashReportDialogSurface({
                 <div className="font-medium text-foreground">{formatSummary(report)}</div>
                 <div className="mt-1 text-muted-foreground">
                   {new Date(report.createdAt).toLocaleString()} · {report.platform} {report.arch} ·
-                  {translate(
-                    'auto.components.crash.report.CrashReportDialog.835037edc9',
-                    'Nightshift'
-                  )}{' '}
+                  {translate('auto.components.crash.report.CrashReportDialog.835037edc9', 'Kolux')}{' '}
                   {report.appVersion}
                 </div>
               </div>

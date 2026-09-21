@@ -2,14 +2,14 @@ export function resolveOrchestrationCliExecutable(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform
 ): string {
-  const configured = env.NIGHTSHIFT_CLI_COMMAND?.trim()
+  const configured = env.KOLUX_CLI_COMMAND?.trim()
   if (configured) {
     return configured
   }
-  if (env.NIGHTSHIFT_DEV_REPO_ROOT) {
-    return 'nightshift-dev'
+  if (env.KOLUX_DEV_REPO_ROOT) {
+    return 'kolux-dev'
   }
-  return platform === 'linux' ? 'nightshift-ide' : 'nightshift'
+  return platform === 'linux' ? 'kolux-ide' : 'kolux'
 }
 
 export function buildOrchestrationRecoveryCommand(

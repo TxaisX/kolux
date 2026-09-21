@@ -13,7 +13,7 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { closeTerminalImePaneArena, openTerminalImePaneArena } from './terminal-ime-pane-arena'
 import {
   commitImeText,
@@ -70,30 +70,30 @@ const RECORDED_TRACE = JSON.parse(
 
 test.describe('Terminal 2-Set Korean preedit visibility', () => {
   test('shows every assembling jamo at non-zero size and commits the syllable ahead of the newline', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     const reader = createTerminalImeByteReader(testRepoPath, 1)
     let completed = false
     try {
-      await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
-      await expectPreeditHidden(nightshiftPage, 'before composing')
+      await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
+      await expectPreeditHidden(koluxPage, 'before composing')
 
       for (const frame of HAN_FRAMES) {
-        await composeHangulSyllable(arena.session, nightshiftPage, [frame])
-        await expectPreeditRendered(nightshiftPage, frame.preedit, `composing ${frame.preedit}`)
+        await composeHangulSyllable(arena.session, koluxPage, [frame])
+        await expectPreeditRendered(koluxPage, frame.preedit, `composing ${frame.preedit}`)
       }
 
       await commitImeText(arena.session, '한')
-      await expectPreeditHidden(nightshiftPage, 'after committing 한')
+      await expectPreeditHidden(koluxPage, 'after committing 한')
 
       await dispatchPlainEnter(arena.session)
 
-      const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+      const received = await waitForTerminalImeBytes(koluxPage, reader)
       expect(received).toEqual([Buffer.from('한\n').toString('hex')])
 
-      const trace = await readTerminalImeBoundaryTrace(nightshiftPage)
+      const trace = await readTerminalImeBoundaryTrace(koluxPage)
       // The ordering the user reported as broken: the syllable must precede the newline.
       expect(trace.onData.join('')).toBe('한\r')
       completed = true
@@ -104,21 +104,21 @@ test.describe('Terminal 2-Set Korean preedit visibility', () => {
   })
 
   test('keeps a preedit the IME resumes without a compositionstart visible', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Red on `main`, by design. xterm adds `.active` to the overlay only in its `compositionstart`
     // handler, so a preedit resumed by a bare `compositionupdate` is written into a hidden element
     // and the user composes blind while the committed bytes still land correctly — which is why no
     // byte-level assertion ever saw it. Pre-existing and broken in every shipped build; closed by
     // the visibility fix in xterm's own composition helper one layer below this one.
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     let completed = false
     try {
       // Synthesised, not replayed — see dispatchResumedCompositionUpdate for why the recorded
       // corpus cannot supply this ordering and why it is still reachable in production.
-      await dispatchResumedCompositionUpdate(nightshiftPage, '한')
+      await dispatchResumedCompositionUpdate(koluxPage, '한')
 
-      const sample = await samplePreeditOverlay(nightshiftPage)
+      const sample = await samplePreeditOverlay(koluxPage)
       expect(sample.found, 'no composition overlay exists').toBe(true)
       expect(sample.text, 'the resumed preedit text never reached the overlay').toBe('한')
       expect(
@@ -133,16 +133,16 @@ test.describe('Terminal 2-Set Korean preedit visibility', () => {
   })
 
   test('renders the preedit at every update of a recorded Windows/WSL Hangul session', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Pinned to the Windows policy because the trace is a Windows recording. Without the pin it
     // ran under whatever the runner reported — macOS locally, Linux on the CI shards — so the one
     // platform it was named for was the one platform it never exercised.
-    await applyImePlatformPolicy(nightshiftPage, 'windows')
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    await applyImePlatformPolicy(koluxPage, 'windows')
+    const arena = await openTerminalImePaneArena(koluxPage)
     let completed = false
     try {
-      const replay = await replayRecordedImeDomTrace(nightshiftPage, RECORDED_TRACE)
+      const replay = await replayRecordedImeDomTrace(koluxPage, RECORDED_TRACE)
       const updates = replay.samples.filter(
         (sample) => sample.type === 'compositionupdate' && sample.data.length > 0
       )
@@ -175,28 +175,28 @@ test.describe('Terminal 2-Set Korean preedit visibility', () => {
   })
 
   test('loses and duplicates nothing when back-to-back syllables commit at full speed', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     const reader = createTerminalImeByteReader(testRepoPath, 1)
     let completed = false
     try {
-      await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+      await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
       // No settle time between frames or between syllables: the cadence a fast typist produces,
       // and the one that used to drop or double a syllable at the boundary.
       for (let repetition = 0; repetition < 4; repetition += 1) {
-        await composeHangulSyllable(arena.session, nightshiftPage, HAN_FRAMES, 0)
+        await composeHangulSyllable(arena.session, koluxPage, HAN_FRAMES, 0)
         await commitImeText(arena.session, '한')
-        await composeHangulSyllable(arena.session, nightshiftPage, GEUL_FRAMES, 0)
+        await composeHangulSyllable(arena.session, koluxPage, GEUL_FRAMES, 0)
         await commitImeText(arena.session, '글')
       }
       await dispatchPlainEnter(arena.session)
 
-      const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+      const received = await waitForTerminalImeBytes(koluxPage, reader)
       expect(received).toEqual([Buffer.from(`${'한글'.repeat(4)}\n`).toString('hex')])
 
-      const trace = await readTerminalImeBoundaryTrace(nightshiftPage)
+      const trace = await readTerminalImeBoundaryTrace(koluxPage)
       expect(trace.onData.join('')).toBe(`${'한글'.repeat(4)}\r`)
       completed = true
     } finally {

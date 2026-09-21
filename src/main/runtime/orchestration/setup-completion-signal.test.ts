@@ -4,92 +4,90 @@ import { buildObservedSetupCommand, createSetupCompletionScanner } from './setup
 describe('orchestration setup completion signal', () => {
   it('preserves a POSIX setup exit code in a visible completion signal', () => {
     const { command } = buildObservedSetupCommand(
-      '/repo/.git/nightshift/setup-runner.sh',
+      '/repo/.git/kolux/setup-runner.sh',
       'posix',
       'token-posix'
     )
 
-    expect(command).toContain('bash /repo/.git/nightshift/setup-runner.sh')
-    expect(command).toContain('__NIGHTSHIFT_SETUP_COMPLETE__:token-posix:%s\\n')
+    expect(command).toContain('bash /repo/.git/kolux/setup-runner.sh')
+    expect(command).toContain('__KOLUX_SETUP_COMPLETE__:token-posix:%s\\n')
     expect(command).toContain('"$status"')
     expect(command).toContain('exit "$status"')
   })
 
   it('preserves a native Windows setup path and exit code without shell interpolation', () => {
-    const runnerPath = 'C:\\repo %name%!^&\\.git\\nightshift\\setup-runner.cmd'
+    const runnerPath = 'C:\\repo %name%!^&\\.git\\kolux\\setup-runner.cmd'
     const observed = buildObservedSetupCommand(runnerPath, 'windows', 'token-windows')
     const encodedCommand = observed.command.split(' ').at(-1)
     const script = Buffer.from(encodedCommand ?? '', 'base64').toString('utf16le')
 
     expect(observed.command).toContain('powershell.exe -NoLogo -NoProfile -NonInteractive')
-    expect(observed.env).toEqual({ NIGHTSHIFT_SETUP_RUNNER_PATH: runnerPath })
+    expect(observed.env).toEqual({ KOLUX_SETUP_RUNNER_PATH: runnerPath })
     expect(script).toContain('& $runner')
-    expect(script).toContain('__NIGHTSHIFT_SETUP_COMPLETE__:token-windows:')
+    expect(script).toContain('__KOLUX_SETUP_COMPLETE__:token-windows:')
     expect(script).toContain('exit $status')
     expect(script).not.toContain(runnerPath)
   })
 
   it('keeps a WSL runner on the POSIX completion path', () => {
     const { command } = buildObservedSetupCommand(
-      '\\\\wsl.localhost\\Ubuntu\\repo\\.git\\nightshift\\setup-runner.sh',
+      '\\\\wsl.localhost\\Ubuntu\\repo\\.git\\kolux\\setup-runner.sh',
       'windows',
       'token-wsl'
     )
 
-    expect(command).toContain('bash /repo/.git/nightshift/setup-runner.sh')
-    expect(command).toContain('__NIGHTSHIFT_SETUP_COMPLETE__:token-wsl:%s\\n')
+    expect(command).toContain('bash /repo/.git/kolux/setup-runner.sh')
+    expect(command).toContain('__KOLUX_SETUP_COMPLETE__:token-wsl:%s\\n')
     expect(command).toContain('exit "$status"')
   })
 
   it('routes a WSL-launched Windows-drive runner through its /mnt mount', () => {
     const { command } = buildObservedSetupCommand(
-      'C:\\repo\\.git\\nightshift\\setup-runner.sh',
+      'C:\\repo\\.git\\kolux\\setup-runner.sh',
       'windows',
       'token-mnt',
       { family: 'posix', executable: 'wsl.exe' }
     )
 
-    expect(command).toContain('bash /mnt/c/repo/.git/nightshift/setup-runner.sh')
+    expect(command).toContain('bash /mnt/c/repo/.git/kolux/setup-runner.sh')
     expect(command).not.toContain('bash /c/repo')
   })
 
   it('keeps a Git Bash runner on the MSYS drive form', () => {
     const { command } = buildObservedSetupCommand(
-      'C:\\repo\\.git\\nightshift\\setup-runner.sh',
+      'C:\\repo\\.git\\kolux\\setup-runner.sh',
       'windows',
       'token-git-bash',
       { family: 'posix' }
     )
 
-    expect(command).toContain('bash /c/repo/.git/nightshift/setup-runner.sh')
+    expect(command).toContain('bash /c/repo/.git/kolux/setup-runner.sh')
   })
 
   it('keeps a batch runner on the Windows completion path from a Git Bash pane', () => {
     // Regression (#6896): a Git Bash terminal with a batch setup script still gets a .cmd
     // runner; observing it must not shell out to bash or type a bare `cmd.exe /c` switch.
-    const runnerPath = 'C:\\repo\\.git\\nightshift\\setup-runner.cmd'
+    const runnerPath = 'C:\\repo\\.git\\kolux\\setup-runner.cmd'
     const observed = buildObservedSetupCommand(runnerPath, 'windows', 'token-git-bash-cmd', {
       family: 'posix'
     })
 
     expect(observed.command).toContain('powershell.exe -NoLogo -NoProfile -NonInteractive')
     expect(observed.command).not.toContain('bash ')
-    expect(observed.env).toEqual({ NIGHTSHIFT_SETUP_RUNNER_PATH: runnerPath })
+    expect(observed.env).toEqual({ KOLUX_SETUP_RUNNER_PATH: runnerPath })
   })
 
   it('recognizes one completion signal across output chunk boundaries', () => {
     const onComplete = vi.fn()
     const scanner = createSetupCompletionScanner('token-chunks', onComplete)
 
-    scanner.scan(
-      'installing...\r\n__NIGHTSHIFT_SETUP_COMPLETE__:wrong:0\r\n__NIGHTSHIFT_SETUP_COMP'
-    )
+    scanner.scan('installing...\r\n__KOLUX_SETUP_COMPLETE__:wrong:0\r\n__KOLUX_SETUP_COMP')
     scanner.scan('LETE__:token-chunks:1')
     expect(onComplete).not.toHaveBeenCalled()
     scanner.scan('7\r')
     expect(onComplete).not.toHaveBeenCalled()
     scanner.scan('\nPS C:\\repo>')
-    scanner.scan('__NIGHTSHIFT_SETUP_COMPLETE__:token-chunks:0\r\n')
+    scanner.scan('__KOLUX_SETUP_COMPLETE__:token-chunks:0\r\n')
 
     expect(onComplete).toHaveBeenCalledOnce()
     expect(onComplete).toHaveBeenCalledWith(17)

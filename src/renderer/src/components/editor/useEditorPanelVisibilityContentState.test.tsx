@@ -38,7 +38,7 @@ vi.mock('@/lib/runtime-workspace-file-route', () => ({
 
 vi.mock('@/store', () => ({ useAppStore: { getState: mocks.getState } }))
 
-import { NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT } from './editor-autosave'
+import { KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT } from './editor-autosave'
 import { useEditorPanelContentState } from './useEditorPanelContentState'
 
 type Deferred<T> = {
@@ -113,7 +113,7 @@ function Probe({
 function dispatchExternalChange(file: OpenFile): void {
   act(() => {
     window.dispatchEvent(
-      new CustomEvent(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
+      new CustomEvent(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
         detail: {
           worktreeId: file.worktreeId,
           worktreePath: '/repo',
@@ -127,7 +127,7 @@ function dispatchExternalChange(file: OpenFile): void {
 function ExternalChangeLayoutEmitter({ file }: { file: OpenFile }): null {
   useLayoutEffect(() => {
     window.dispatchEvent(
-      new CustomEvent(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
+      new CustomEvent(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
         detail: {
           worktreeId: file.worktreeId,
           worktreePath: '/repo',

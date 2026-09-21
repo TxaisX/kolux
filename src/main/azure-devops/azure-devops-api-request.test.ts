@@ -35,8 +35,8 @@ function serverRepoRef(): AzureDevOpsRepoRef {
 
 describe('Azure DevOps API request (STA-3494)', () => {
   beforeEach(() => {
-    process.env = { ...OLD_ENV, NIGHTSHIFT_AZURE_DEVOPS_TOKEN: 'pat-token' }
-    delete process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL
+    process.env = { ...OLD_ENV, KOLUX_AZURE_DEVOPS_TOKEN: 'pat-token' }
+    delete process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL
     _resetAzureDevOpsPreviewApiVersionCache()
   })
 
@@ -96,7 +96,7 @@ describe('Azure DevOps API request (STA-3494)', () => {
   })
 
   it('uses the remote-derived project base for Git endpoints when the configured base shares its origin', async () => {
-    process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL = SERVER_BASE
+    process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL = SERVER_BASE
     const paths: string[] = []
     globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
       paths.push(new URL(String(input)).pathname)
@@ -109,7 +109,7 @@ describe('Azure DevOps API request (STA-3494)', () => {
   })
 
   it('keeps a cross-origin configured base URL as an override for Git endpoints', async () => {
-    process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL = 'http://127.0.0.1:8123/acme/Project'
+    process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL = 'http://127.0.0.1:8123/acme/Project'
     const origins: string[] = []
     globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
       origins.push(new URL(String(input)).origin)
@@ -121,8 +121,7 @@ describe('Azure DevOps API request (STA-3494)', () => {
   })
 
   it('keeps a same-origin non-ancestor base URL as a Git endpoint override', async () => {
-    process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL =
-      'https://ado.example.com:8443/rewrite/MyProject'
+    process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL = 'https://ado.example.com:8443/rewrite/MyProject'
     const paths: string[] = []
     globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
       paths.push(new URL(String(input)).pathname)

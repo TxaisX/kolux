@@ -21,7 +21,7 @@
  * structural one.
  */
 import type { CDPSession } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { closeTerminalImePaneArena, openTerminalImePaneArena } from './terminal-ime-pane-arena'
 import { readTerminalImeBoundaryTrace } from './terminal-ime-boundary-probe'
 import {
@@ -130,21 +130,21 @@ const FULL_WIDTH_SESSION_PUNCTUATION = [
 
 test.describe('Terminal CJK IME committed text', () => {
   test('shows a growing Japanese phrase preedit and commits the converted kanji', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     const reader = createTerminalImeByteReader(testRepoPath, 1)
     let completed = false
     try {
-      await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
-      await expectPreeditHidden(nightshiftPage, 'before composing')
+      await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
+      await expectPreeditHidden(koluxPage, 'before composing')
       await dispatchImeProcessKey(arena.session, { key: 'Process', code: 'KeyN' })
 
       const widthByFrame = new Map<string, number>()
       for (const frame of JAPANESE_FRAMES) {
         await setImeComposition(arena.session, frame)
-        const sample = await expectPreeditRendered(nightshiftPage, frame, `composing ${frame}`)
+        const sample = await expectPreeditRendered(koluxPage, frame, `composing ${frame}`)
         widthByFrame.set(frame, sample.rect.width)
       }
       // A phrase-level preedit must widen as it grows. An overlay pinned to one cell renders only
@@ -153,10 +153,10 @@ test.describe('Terminal CJK IME committed text', () => {
       expect(widthByFrame.get('日本語')!).toBeGreaterThan(widthByFrame.get('に')!)
 
       await commitImeText(arena.session, '日本語')
-      await expectPreeditHidden(nightshiftPage, 'after committing 日本語')
+      await expectPreeditHidden(koluxPage, 'after committing 日本語')
       await dispatchPlainEnter(arena.session)
 
-      const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+      const received = await waitForTerminalImeBytes(koluxPage, reader)
       expect(received).toEqual([Buffer.from('日本語\n').toString('hex')])
       completed = true
     } finally {
@@ -168,23 +168,23 @@ test.describe('Terminal CJK IME committed text', () => {
   for (const shape of SUBSTITUTION_SHAPES) {
     for (const group of SUBSTITUTION_GROUPS) {
       test(`sends full-width ${group.label} and never their ASCII form when ${shape.name}`, async ({
-        nightshiftPage,
+        koluxPage,
         testRepoPath
       }, testInfo) => {
-        await applyImePlatformPolicy(nightshiftPage, 'mac')
-        const arena = await openTerminalImePaneArena(nightshiftPage)
+        await applyImePlatformPolicy(koluxPage, 'mac')
+        const arena = await openTerminalImePaneArena(koluxPage)
         const reader = createTerminalImeByteReader(testRepoPath, 1)
         const expected = group.keystrokes.map((keystroke) => keystroke.glyph).join('')
         let completed = false
         try {
-          await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+          await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
           for (const keystroke of group.keystrokes) {
             await shape.dispatch(arena.session, keystroke)
-            await nightshiftPage.waitForTimeout(60)
+            await koluxPage.waitForTimeout(60)
           }
           await dispatchPlainEnter(arena.session)
 
-          const sent = (await readTerminalImeBoundaryTrace(nightshiftPage)).onData.join('')
+          const sent = (await readTerminalImeBoundaryTrace(koluxPage)).onData.join('')
           for (const keystroke of group.keystrokes) {
             expect(
               sent,
@@ -193,7 +193,7 @@ test.describe('Terminal CJK IME committed text', () => {
           }
           expect(sent).toBe(`${expected}\r`)
 
-          const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+          const received = await waitForTerminalImeBytes(koluxPage, reader)
           expect(received).toEqual([Buffer.from(`${expected}\n`).toString('hex')])
           completed = true
         } finally {
@@ -210,20 +210,20 @@ test.describe('Terminal CJK IME committed text', () => {
   }
 
   test('forwards Chinese pinyin conversions and their trailing full-width stop together', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    await applyImePlatformPolicy(nightshiftPage, 'mac')
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    await applyImePlatformPolicy(koluxPage, 'mac')
+    const arena = await openTerminalImePaneArena(koluxPage)
     const reader = createTerminalImeByteReader(testRepoPath, 1)
     let completed = false
     try {
-      await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+      await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
       await dispatchImeProcessKey(arena.session, { key: 'Process', code: 'KeyN' })
       const widthByFrame = new Map<string, number>()
       for (const frame of ['n', 'ni', 'niha', 'nihao', '你好']) {
         await setImeComposition(arena.session, frame)
-        const sample = await expectPreeditRendered(nightshiftPage, frame, `composing ${frame}`)
+        const sample = await expectPreeditRendered(koluxPage, frame, `composing ${frame}`)
         widthByFrame.set(frame, sample.rect.width)
       }
       // Pinyin spends most of its life as a multi-letter romanisation before any Chinese appears,
@@ -233,7 +233,7 @@ test.describe('Terminal CJK IME committed text', () => {
       expect(widthByFrame.get('你好')!).toBeGreaterThan(widthByFrame.get('n')!)
 
       await commitImeText(arena.session, '你好')
-      await expectPreeditHidden(nightshiftPage, 'after committing 你好')
+      await expectPreeditHidden(koluxPage, 'after committing 你好')
 
       // The distinct risk here is the adjacency, not the substitution: the stop arrives with no
       // composition session immediately after one closed, so a tracker that still believes a
@@ -244,13 +244,13 @@ test.describe('Terminal CJK IME committed text', () => {
         code: 'Period',
         keyCode: 190
       })
-      await nightshiftPage.waitForTimeout(60)
+      await koluxPage.waitForTimeout(60)
       await dispatchPlainEnter(arena.session)
 
-      const trace = await readTerminalImeBoundaryTrace(nightshiftPage)
+      const trace = await readTerminalImeBoundaryTrace(koluxPage)
       expect(trace.onData.join('')).toBe('你好。\r')
 
-      const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+      const received = await waitForTerminalImeBytes(koluxPage, reader)
       expect(received).toEqual([Buffer.from('你好。\n').toString('hex')])
       completed = true
     } finally {
@@ -261,7 +261,7 @@ test.describe('Terminal CJK IME committed text', () => {
 
   for (const policy of ['windows', 'linux'] as const satisfies readonly ImePlatformPolicy[]) {
     test(`sends full-width punctuation committed through a composition session on ${policy}`, async ({
-      nightshiftPage,
+      koluxPage,
       testRepoPath
     }, testInfo) => {
       // SYNTHESISED, and the reason is worth stating: the recorded corpus contains no Windows or
@@ -271,23 +271,23 @@ test.describe('Terminal CJK IME committed text', () => {
       // what `Input.imeSetComposition` opens, rather than through the macOS insertText path the
       // tests above cover. The ASCII form is asserted absent rather than the substitution asserted
       // present, so this stays true of any design that never manufactures the ASCII byte.
-      await applyImePlatformPolicy(nightshiftPage, policy)
-      const arena = await openTerminalImePaneArena(nightshiftPage)
+      await applyImePlatformPolicy(koluxPage, policy)
+      const arena = await openTerminalImePaneArena(koluxPage)
       const reader = createTerminalImeByteReader(testRepoPath, 1)
       const expected = FULL_WIDTH_SESSION_PUNCTUATION.map((entry) => entry.glyph).join('')
       let completed = false
       try {
-        await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+        await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
         for (const entry of FULL_WIDTH_SESSION_PUNCTUATION) {
           await dispatchImeProcessKey(arena.session, { key: 'Process', code: entry.code })
           await setImeComposition(arena.session, entry.glyph)
-          await expectPreeditRendered(nightshiftPage, entry.glyph, `composing ${entry.glyph}`)
+          await expectPreeditRendered(koluxPage, entry.glyph, `composing ${entry.glyph}`)
           await commitImeText(arena.session, entry.glyph)
-          await expectPreeditHidden(nightshiftPage, `after committing ${entry.glyph}`)
+          await expectPreeditHidden(koluxPage, `after committing ${entry.glyph}`)
         }
         await dispatchPlainEnter(arena.session)
 
-        const sent = (await readTerminalImeBoundaryTrace(nightshiftPage)).onData.join('')
+        const sent = (await readTerminalImeBoundaryTrace(koluxPage)).onData.join('')
         for (const entry of FULL_WIDTH_SESSION_PUNCTUATION) {
           expect(sent, `${entry.glyph} reached the PTY as ASCII ${entry.ascii}`).not.toContain(
             entry.ascii
@@ -295,7 +295,7 @@ test.describe('Terminal CJK IME committed text', () => {
         }
         expect(sent).toBe(`${expected}\r`)
 
-        const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+        const received = await waitForTerminalImeBytes(koluxPage, reader)
         expect(received).toEqual([Buffer.from(`${expected}\n`).toString('hex')])
         completed = true
       } finally {

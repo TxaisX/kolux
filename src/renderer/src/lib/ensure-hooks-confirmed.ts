@@ -1,7 +1,7 @@
 import type { AppState } from '@/store/types'
-import type { NightshiftHooks } from '../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../shared/kolux-yaml-hook-types'
 import { resolveHookCommandSourcePolicy } from '../../../shared/hook-command-source-policy'
-import { hashNightshiftHookScript, type NightshiftHookScriptKind } from './nightshift-hook-trust'
+import { hashKoluxHookScript, type KoluxHookScriptKind } from './kolux-hook-trust'
 import {
   checkRuntimeHooks,
   readRuntimeIssueCommand,
@@ -15,7 +15,7 @@ import {
   type ExecutionHostId
 } from '../../../shared/execution-host'
 
-export type HookScriptKind = NightshiftHookScriptKind
+export type HookScriptKind = KoluxHookScriptKind
 
 const NEVER_CANCEL_TRUST_CHECK = (): boolean => false
 
@@ -32,7 +32,7 @@ export function __resetTrustPromptChainForTests(): void {
   trustPromptChain = Promise.resolve()
 }
 
-function getSetupTrustContent(yamlHooks: NightshiftHooks | null): string {
+function getSetupTrustContent(yamlHooks: KoluxHooks | null): string {
   const defaultTabCommands = (yamlHooks?.defaultTabs ?? [])
     .map((tab, index) => {
       const command = tab.command?.trim()
@@ -46,7 +46,7 @@ function getSetupTrustContent(yamlHooks: NightshiftHooks | null): string {
   return [yamlHooks?.scripts?.setup?.trim(), ...defaultTabCommands].filter(Boolean).join('\n\n')
 }
 
-function getVmRecipeTrustContent(yamlHooks: NightshiftHooks | null): string {
+function getVmRecipeTrustContent(yamlHooks: KoluxHooks | null): string {
   return (yamlHooks?.environmentRecipes ?? [])
     .map((recipe) =>
       [
@@ -97,7 +97,7 @@ function settingsForHookRepoOwner(
 
 function canUseRepoWideTrust(state: AppState, repoId: string): boolean {
   const hasDuplicateRepoId = state.repos.filter((repo) => repo.id === repoId).length > 1
-  return Boolean(state.trustedNightshiftHooks[repoId]?.all) && !hasDuplicateRepoId
+  return Boolean(state.trustedKoluxHooks[repoId]?.all) && !hasDuplicateRepoId
 }
 
 async function confirmScriptContent(
@@ -115,11 +115,11 @@ async function confirmScriptContent(
     return 'run'
   }
 
-  const contentHash = await hashNightshiftHookScript(scriptContent)
+  const contentHash = await hashKoluxHookScript(scriptContent)
   if (isCancelled()) {
     return 'skip'
   }
-  const existingHash = state.trustedNightshiftHooks[repoId]?.[scriptKind]?.contentHash
+  const existingHash = state.trustedKoluxHooks[repoId]?.[scriptKind]?.contentHash
   if (existingHash === contentHash) {
     return 'run'
   }
@@ -137,7 +137,7 @@ async function confirmScriptContent(
       settled = true
       resolve(decision)
     }
-    state.openModal('confirm-nightshift-yaml-hooks', {
+    state.openModal('confirm-kolux-yaml-hooks', {
       repoId,
       repoName,
       scriptKind,
@@ -252,7 +252,7 @@ export async function ensureHooksConfirmed(
     let scriptContent = ''
     try {
       if (scriptKind === 'issueCommand') {
-        // Local overrides are user-owned; only shared nightshift.yaml commands need repo trust.
+        // Local overrides are user-owned; only shared kolux.yaml commands need repo trust.
         // Why: hostId disambiguates duplicate repo ids on the local IPC path,
         // matching the checkRuntimeHooks call below.
         const result = await readRuntimeIssueCommand(
@@ -290,7 +290,7 @@ export async function ensureHooksConfirmed(
         if (result.status === 'error') {
           return 'skip'
         }
-        const yamlHooks = (result.hooks as NightshiftHooks | null) ?? null
+        const yamlHooks = (result.hooks as KoluxHooks | null) ?? null
         scriptContent =
           scriptKind === 'setup'
             ? getSetupTrustContent(yamlHooks)

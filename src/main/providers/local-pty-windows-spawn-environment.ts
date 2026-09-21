@@ -1,12 +1,12 @@
 import { win32 as pathWin32 } from 'node:path'
-import { NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV } from '../../shared/hermes-startup-query'
+import { KOLUX_HERMES_STARTUP_QUERY_ENV } from '../../shared/hermes-startup-query'
 import { isHostCodexHomeForWsl, isWslCodexHomeForHost } from '../pty/codex-home-wsl-env'
 import { addWslEnvKeys } from '../wsl-env'
 import { parseWslPath } from '../wsl'
 import { isWindowsGitBashShellPath } from '../git-bash'
 import type { LocalPtyLaunchPlan } from './local-pty-launch-plan'
 import {
-  NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
+  KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
   resolveWindowsShellLaunchArgs
 } from './windows-shell-args'
 import type { PtySpawnOptions } from './types'
@@ -22,12 +22,12 @@ export function finalizeWindowsLocalPtySpawnEnvironment(args: {
     if (codexHomeWslInfo) {
       if (plan.launchWslDistro && plan.launchWslDistro !== codexHomeWslInfo.distro) {
         delete env.CODEX_HOME
-        delete env.NIGHTSHIFT_CODEX_HOME
+        delete env.KOLUX_CODEX_HOME
       } else {
         env.CODEX_HOME = codexHomeWslInfo.linuxPath
-        env.NIGHTSHIFT_CODEX_HOME = codexHomeWslInfo.linuxPath
+        env.KOLUX_CODEX_HOME = codexHomeWslInfo.linuxPath
         // Why: wsl.exe only imports non-default env vars named in WSLENV.
-        addWslEnvKeys(env, ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+        addWslEnvKeys(env, ['CODEX_HOME', 'KOLUX_CODEX_HOME'])
         if (!plan.launchWslDistro) {
           const resolved = resolveWindowsShellLaunchArgs(
             plan.shellPath,
@@ -45,35 +45,35 @@ export function finalizeWindowsLocalPtySpawnEnvironment(args: {
         }
       }
     } else if (isHostCodexHomeForWsl(env.CODEX_HOME)) {
-      // Why: Nightshift's Codex home is host-local; WSL Codex must use its Linux-side ~/.codex, not a Windows path.
+      // Why: Kolux's Codex home is host-local; WSL Codex must use its Linux-side ~/.codex, not a Windows path.
       delete env.CODEX_HOME
-      delete env.NIGHTSHIFT_CODEX_HOME
+      delete env.KOLUX_CODEX_HOME
     } else if (env.CODEX_HOME) {
-      addWslEnvKeys(env, ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+      addWslEnvKeys(env, ['CODEX_HOME', 'KOLUX_CODEX_HOME'])
     }
     if (env.CLAUDE_CONFIG_DIR) {
       // Why: managed WSL Claude passes a Linux CLAUDE_CONFIG_DIR through wsl.exe; non-default vars need WSLENV import.
       addWslEnvKeys(env, ['CLAUDE_CONFIG_DIR'])
     }
-    if (env[NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV] !== undefined) {
+    if (env[KOLUX_HERMES_STARTUP_QUERY_ENV] !== undefined) {
       // Why: wsl.exe drops custom Windows env vars; the startup wrapper needs this imported inside WSL.
-      addWslEnvKeys(env, [NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV])
+      addWslEnvKeys(env, [KOLUX_HERMES_STARTUP_QUERY_ENV])
     }
   } else if (codexHomeWslInfo || isWslCodexHomeForHost(env.CODEX_HOME)) {
-    // Why: WSL Codex homes are Linux paths Windows can't use; also drop NIGHTSHIFT_CODEX_HOME (shell-ready restores CODEX_HOME from it).
+    // Why: WSL Codex homes are Linux paths Windows can't use; also drop KOLUX_CODEX_HOME (shell-ready restores CODEX_HOME from it).
     delete env.CODEX_HOME
-    delete env.NIGHTSHIFT_CODEX_HOME
+    delete env.KOLUX_CODEX_HOME
   }
 
   const shellBasename = pathWin32.basename(plan.shellPath).toLowerCase()
-  const codexLaunchPreflightCommand = env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+  const codexLaunchPreflightCommand = env.KOLUX_CODEX_LAUNCH_PREFLIGHT
   if (
     codexLaunchPreflightCommand &&
     (shellBasename === 'cmd.exe' || isWindowsGitBashShellPath(plan.shellPath))
   ) {
     if (shellBasename === 'cmd.exe') {
       // Why: node-pty backslash-escapes argv quotes; expand the quote inside cmd.exe instead.
-      env[NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV] = '"'
+      env[KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV] = '"'
     }
     const resolved = resolveWindowsShellLaunchArgs(
       plan.shellPath,

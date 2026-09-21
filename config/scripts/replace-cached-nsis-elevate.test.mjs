@@ -31,7 +31,7 @@ const scriptPath = join(projectRoot, 'config/scripts/replace-cached-nsis-elevate
 let scratch
 
 beforeEach(() => {
-  scratch = mkdtempSync(join(tmpdir(), 'nightshift elevate swap '))
+  scratch = mkdtempSync(join(tmpdir(), 'kolux elevate swap '))
 })
 
 afterEach(() => {
@@ -176,7 +176,7 @@ describe('the probe, not the scan, decides whether the swap worked', () => {
   // as its in-process promise key only — the extract dir is named for the custom URL's parent
   // segment, so a customNsisBinary bundle can sit outside `nsis*` entirely.
   it('covers a custom bundle the directory scan cannot match', async () => {
-    const relative = 'nightshift-nsis-mirror/nsis-custom-3.11-0zqp2/elevate.exe'
+    const relative = 'kolux-nsis-mirror/nsis-custom-3.11-0zqp2/elevate.exe'
     const cacheDir = makeCache(relative)
     const packed = join(cacheDir, ...relative.split('/'))
     const signed = join(scratch, 'signed-elevate.exe')

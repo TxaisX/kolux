@@ -5,7 +5,7 @@ export type SystemSshBuildArgsOptions = {
   configFile?: string
   resolvedConfig?: SystemSshResolvedConfig | null
   disableControlMaster?: boolean
-  suppressNightshiftControlMaster?: boolean
+  suppressKoluxControlMaster?: boolean
   gssapiOnly?: boolean
   nonInteractive?: boolean
   /**
@@ -27,7 +27,7 @@ export function buildSshArgs(target: SshTarget, options?: SystemSshBuildArgsOpti
   args.push('-o', options?.gssapiOnly || options?.nonInteractive ? 'BatchMode=yes' : 'BatchMode=no')
   if (options?.gssapiOnly) {
     // Why: the probe must neither authenticate with a key nor open an OpenSSH
-    // credential prompt; failure belongs to Nightshift's existing ssh2 prompt path.
+    // credential prompt; failure belongs to Kolux's existing ssh2 prompt path.
     args.push('-o', 'GSSAPIAuthentication=yes')
     args.push('-o', 'PreferredAuthentications=gssapi-with-mic')
   }
@@ -37,7 +37,7 @@ export function buildSshArgs(target: SshTarget, options?: SystemSshBuildArgsOpti
   // Why: ControlMaster multiplexes all SSH exec commands over a single connection,
   // eliminating the ~9s handshake overhead per command. Without this, each
   // spawnSystemSshCommand call opens a new TCP connection.
-  const controlPath = getNightshiftControlSocketPath(target, options)
+  const controlPath = getKoluxControlSocketPath(target, options)
   const forceDisableControlMaster =
     options?.disableControlMaster === true ||
     target.systemSshConnectionReuse === false ||
@@ -61,7 +61,7 @@ export function buildSshArgs(target: SshTarget, options?: SystemSshBuildArgsOpti
 
   // Why: a wildcard `Host *` block supplies ProxyCommand/ProxyJump for every alias, so an alias
   // whose own Host block was renamed or deleted still looks config-backed and gets dialled bare —
-  // as the wildcard's user, at the wildcard's host, discarding the endpoint Nightshift stored. Keep the
+  // as the wildcard's user, at the wildcard's host, discarding the endpoint Kolux stored. Keep the
   // system transport (OpenSSH must still apply that proxy) but state the stored endpoint, and only
   // where the config proves no block claims the alias.
   if (useConfigHost && options?.aliasClaimedByConfig === false) {
@@ -107,11 +107,11 @@ export function buildSshArgs(target: SshTarget, options?: SystemSshBuildArgsOpti
   return args
 }
 
-export function getNightshiftControlSocketPath(
+export function getKoluxControlSocketPath(
   target: SshTarget,
   options?: SystemSshBuildArgsOptions
 ): string | null {
-  if (shouldDisableNightshiftControlMaster(target, options)) {
+  if (shouldDisableKoluxControlMaster(target, options)) {
     return null
   }
   return getControlSocketPath(target, options?.resolvedConfig, options?.gssapiOnly === true)
@@ -130,8 +130,8 @@ export function getSystemSshBuildArgsFromOperationOptions(
   if (options?.disableControlMaster === true) {
     buildArgsOptions.disableControlMaster = true
   }
-  if (options?.suppressNightshiftControlMaster === true) {
-    buildArgsOptions.suppressNightshiftControlMaster = true
+  if (options?.suppressKoluxControlMaster === true) {
+    buildArgsOptions.suppressKoluxControlMaster = true
   }
   if (options?.gssapiOnly === true) {
     buildArgsOptions.gssapiOnly = true
@@ -145,17 +145,17 @@ export function getSystemSshBuildArgsFromOperationOptions(
   return Object.keys(buildArgsOptions).length === 0 ? undefined : buildArgsOptions
 }
 
-function shouldDisableNightshiftControlMaster(
+function shouldDisableKoluxControlMaster(
   target: SshTarget,
   options?: SystemSshBuildArgsOptions
 ): boolean {
-  // Why: unresolved ssh_config aliases could otherwise share one Nightshift socket
+  // Why: unresolved ssh_config aliases could otherwise share one Kolux socket
   // while OpenSSH routes them through mutable HostName/ProxyJump settings.
   const unresolvedConfigBackedTarget =
     isOpenSshConfigBackedTarget(target) && options?.resolvedConfig == null
   return (
     options?.disableControlMaster === true ||
-    options?.suppressNightshiftControlMaster === true ||
+    options?.suppressKoluxControlMaster === true ||
     target.systemSshConnectionReuse === false ||
     unresolvedConfigBackedTarget ||
     (hasUserConfiguredControlMaster(options?.resolvedConfig) && options?.gssapiOnly !== true)
@@ -169,7 +169,7 @@ function hasUserConfiguredControlMaster(
     return false
   }
   // Why: ControlPersist/ControlPath alone can reuse a master someone else
-  // created, but they do not create the setup-burst master Nightshift needs.
+  // created, but they do not create the setup-burst master Kolux needs.
   return (
     hasEnabledControlMaster(resolvedConfig.controlMaster) &&
     hasEnabledControlPath(resolvedConfig.controlPath)

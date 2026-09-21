@@ -1,9 +1,9 @@
 import type { BrowserWindow } from 'electron'
-import type { NightshiftRuntimeService } from '../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../runtime/kolux-runtime'
 import { wakeFolderRepoGitUpgradeWatch } from '../folder-repo-git-upgrade-wake'
 import { scheduleCurrentWorktreeBaseDirectoryWatcherSync } from '../worktree-base-directory-watcher'
 
-type RepoRemoteClientNotifier = Pick<NightshiftRuntimeService, 'notifyReposChangedForRemoteClients'>
+type RepoRemoteClientNotifier = Pick<KoluxRuntimeService, 'notifyReposChangedForRemoteClients'>
 
 // Why: notifyReposChanged is module-level and cannot close over a handler argument (#11994).
 let repoRemoteClientNotifier: RepoRemoteClientNotifier | null = null

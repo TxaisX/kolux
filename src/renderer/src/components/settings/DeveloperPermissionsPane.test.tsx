@@ -79,7 +79,7 @@ it('requests Local Network access without claiming a permission verdict', async 
     'Check for a macOS prompt',
     expect.objectContaining({
       description:
-        'If prompted, choose Allow. If no prompt appears, open System Settings and enable Nightshift under Privacy & Security → Local Network.',
+        'If prompted, choose Allow. If no prompt appears, open System Settings and enable Kolux under Privacy & Security → Local Network.',
       action: expect.objectContaining({ label: 'Open System Settings' })
     })
   )

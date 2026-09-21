@@ -55,11 +55,11 @@ describe('findCreatedWorktree', () => {
 
   it('keeps Windows drive, slash, and case normalization on the direct path', () => {
     const created = {
-      path: String.raw`C:\Users\Nightshift\feature`,
+      path: String.raw`C:\Users\Kolux\feature`,
       branch: 'refs/heads/other'
     }
 
-    expect(findCreatedWorktree([created], 'c:/users/nightshift/feature', 'feature', 'win32')).toBe(
+    expect(findCreatedWorktree([created], 'c:/users/kolux/feature', 'feature', 'win32')).toBe(
       created
     )
   })

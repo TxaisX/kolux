@@ -8,7 +8,11 @@ import { predictWorktreeMergeTreeConflict } from './worktree-merge-tree-predicti
 const tempRoots: string[] = []
 
 function git(cwd: string, args: string[]): string {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
+  return execFileSync('git', args, {
+    cwd,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  }).trim()
 }
 
 async function createRepoWithTwoWorktrees(): Promise<{
@@ -16,7 +20,7 @@ async function createRepoWithTwoWorktrees(): Promise<{
   worktreeAPath: string
   worktreeBPath: string
 }> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-overlap-merge-tree-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-overlap-merge-tree-'))
   tempRoots.push(root)
   const repoPath = join(root, 'repo')
   execFileSync('git', ['init', '--quiet', repoPath])

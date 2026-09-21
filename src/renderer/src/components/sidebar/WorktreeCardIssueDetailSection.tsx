@@ -24,7 +24,7 @@ type WorktreeCardIssueDetailSectionProps = {
   onCopyIssueLink?: () => void
   onOpenIssueInBrowser?: (url: string) => void
   onEditIssue?: (event: React.MouseEvent) => void
-  onOpenGitHubIssueInNightshift?: (event: React.MouseEvent) => void
+  onOpenGitHubIssueInKolux?: (event: React.MouseEvent) => void
 }
 
 export function WorktreeCardIssueDetailSection({
@@ -34,7 +34,7 @@ export function WorktreeCardIssueDetailSection({
   onCopyIssueLink,
   onOpenIssueInBrowser,
   onEditIssue,
-  onOpenGitHubIssueInNightshift
+  onOpenGitHubIssueInKolux
 }: WorktreeCardIssueDetailSectionProps): React.JSX.Element | null {
   if (!issue) {
     return null
@@ -94,8 +94,8 @@ export function WorktreeCardIssueDetailSection({
                     >
                       <Globe className="size-3.5" />
                       {translate(
-                        'auto.components.sidebar.WorktreeCardMeta.openInNightshiftBrowser',
-                        'Open in Nightshift browser'
+                        'auto.components.sidebar.WorktreeCardMeta.openInKoluxBrowser',
+                        'Open in Kolux browser'
                       )}
                     </DropdownMenuItem>
                   )}
@@ -119,13 +119,13 @@ export function WorktreeCardIssueDetailSection({
                 <Pencil className="size-3" />
               </MetadataActionIcon>
             )}
-            {issue.url && onOpenGitHubIssueInNightshift && (
+            {issue.url && onOpenGitHubIssueInKolux && (
               <MetadataActionIcon
                 label={translate(
                   'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
-                  'Open in Nightshift'
+                  'Open in Kolux'
                 )}
-                onClick={onOpenGitHubIssueInNightshift}
+                onClick={onOpenGitHubIssueInKolux}
               >
                 <MonitorUp className="size-3" />
               </MetadataActionIcon>

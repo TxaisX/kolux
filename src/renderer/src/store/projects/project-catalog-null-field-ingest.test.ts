@@ -11,8 +11,8 @@ import { fetchProjectHostSetupCompatibility, setupWithFetchedOwner } from './pro
 const repos = [
   {
     id: 'repo-1',
-    path: '/Users/alice/nightshift',
-    displayName: 'nightshift',
+    path: '/Users/alice/kolux',
+    displayName: 'kolux',
     badgeColor: '#000',
     addedAt: 1
   }
@@ -21,7 +21,7 @@ const repos = [
 const projects = [
   {
     id: 'repo:repo-1',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#000',
     sourceRepoIds: ['repo-1'],
     createdAt: 1,
@@ -58,17 +58,17 @@ function badSetups(): ProjectHostSetup[] {
     projectId: 'repo:repo-1',
     hostId: 'local',
     repoId: 'repo-1',
-    path: '/Users/alice/nightshift',
+    path: '/Users/alice/kolux',
     displayName,
     setupState: 'ready',
     setupMethod: 'legacy-repo',
     createdAt: 1,
     updatedAt: 1
   })
-  const corrupted = base('repo:repo-1::local::2', 'nightshift-2')
+  const corrupted = base('repo:repo-1::local::2', 'kolux-2')
   Reflect.set(corrupted, 'repoId', null)
   Reflect.set(corrupted, 'path', null)
-  return [base('repo:repo-1::local', 'nightshift'), corrupted]
+  return [base('repo:repo-1::local', 'kolux'), corrupted]
 }
 
 function stubProjectsApi(setups: ProjectHostSetup[], projectRows: Project[] = projects): void {
@@ -91,7 +91,7 @@ describe('project catalog ingest with non-string row fields', () => {
     expect(row?.path).toBe('')
   })
 
-  // Why: a remote host on a different Nightshift version is a first-class source of these rows, and
+  // Why: a remote host on a different Kolux version is a first-class source of these rows, and
   // decoders hand them over verbatim — the client cannot assume the host already repaired them.
   it('coerces on the remote adoption boundary too', () => {
     const adopted = setupWithFetchedOwner(badSetups()[1]!, {

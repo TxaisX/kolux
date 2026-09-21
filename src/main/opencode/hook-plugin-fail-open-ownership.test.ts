@@ -1,6 +1,6 @@
 /**
  * Executes the generated OpenCode plugin source because fail-open ownership
- * lives inside OpenCode's process, not in Nightshift's TypeScript runtime.
+ * lives inside OpenCode's process, not in Kolux's TypeScript runtime.
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -28,10 +28,10 @@ type RecordedPost = {
 }
 
 const ENV_KEYS = [
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_AGENT_HOOK_PORT',
-  'NIGHTSHIFT_AGENT_HOOK_TOKEN',
-  'NIGHTSHIFT_AGENT_HOOK_ENDPOINT'
+  'KOLUX_PANE_KEY',
+  'KOLUX_AGENT_HOOK_PORT',
+  'KOLUX_AGENT_HOOK_TOKEN',
+  'KOLUX_AGENT_HOOK_ENDPOINT'
 ] as const
 
 describe('OpenCode plugin fail-open ownership', () => {
@@ -41,16 +41,16 @@ describe('OpenCode plugin fail-open ownership', () => {
   let savedFetch: typeof globalThis.fetch
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-fail-open-plugin-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-fail-open-plugin-'))
     posts = []
     savedEnv = {}
     for (const key of ENV_KEYS) {
       savedEnv[key] = process.env[key]
     }
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:leaf-1'
-    process.env.NIGHTSHIFT_AGENT_HOOK_PORT = '45678'
-    process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN = 'test-token'
-    delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+    process.env.KOLUX_PANE_KEY = 'tab-1:leaf-1'
+    process.env.KOLUX_AGENT_HOOK_PORT = '45678'
+    process.env.KOLUX_AGENT_HOOK_TOKEN = 'test-token'
+    delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
     savedFetch = globalThis.fetch
     globalThis.fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       posts.push(readPayload(init))
@@ -88,12 +88,12 @@ describe('OpenCode plugin fail-open ownership', () => {
   }
 
   async function loadHooksWithContext(context: unknown): Promise<PluginHooks> {
-    const pluginPath = join(tempDir, 'nightshift-opencode-status.mjs')
+    const pluginPath = join(tempDir, 'kolux-opencode-status.mjs')
     writeFileSync(pluginPath, _internals.getOpenCodePluginSource())
     const module = (await import(pathToFileURL(pluginPath).href)) as {
-      NightshiftOpenCodeStatusPlugin: (ctx: unknown) => Promise<PluginHooks>
+      KoluxOpenCodeStatusPlugin: (ctx: unknown) => Promise<PluginHooks>
     }
-    return module.NightshiftOpenCodeStatusPlugin(context)
+    return module.KoluxOpenCodeStatusPlugin(context)
   }
 
   function status(type: 'busy' | 'idle' | 'retry', sessionID = 'root'): PluginEvent {

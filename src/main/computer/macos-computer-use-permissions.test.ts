@@ -9,8 +9,8 @@ import {
 
 const resolveHelperAppPathMock = vi.hoisted(() => vi.fn())
 const resolveHelperExecutablePathMock = vi.hoisted(() => vi.fn())
-const permissionStatusTempDir = '/tmp/nightshift-computer-use-permissions-test'
-const helperAppPath = '/Applications/Nightshift Computer Use.app'
+const permissionStatusTempDir = '/tmp/kolux-computer-use-permissions-test'
+const helperAppPath = '/Applications/Kolux Computer Use.app'
 const helperInfoPlistPath = join(helperAppPath, 'Contents', 'Info.plist')
 
 vi.mock('child_process', () => ({
@@ -59,7 +59,7 @@ describe('openComputerUsePermissions', () => {
     resolveHelperAppPathMock.mockReset()
     resolveHelperExecutablePathMock.mockReset()
     resolveHelperExecutablePathMock.mockReturnValue(
-      '/Applications/Nightshift Computer Use.app/Contents/MacOS/nightshift-computer-use-macos'
+      '/Applications/Kolux Computer Use.app/Contents/MacOS/kolux-computer-use-macos'
     )
     vi.mocked(mkdtemp).mockResolvedValue(permissionStatusTempDir)
     vi.mocked(stat).mockResolvedValue({} as Awaited<ReturnType<typeof stat>>)
@@ -73,11 +73,11 @@ describe('openComputerUsePermissions', () => {
   })
 
   it('does not launch the setup helper when all permissions are granted', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
 
     await expect(openComputerUsePermissions()).resolves.toEqual({
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       permissionId: undefined,
       openedSettings: false,
       launchedHelper: false,
@@ -89,18 +89,18 @@ describe('openComputerUsePermissions', () => {
     })
     expect(spawn).not.toHaveBeenCalledWith(
       '/usr/bin/open',
-      ['-n', '/Applications/Nightshift Computer Use.app', '--args', '--permissions'],
+      ['-n', '/Applications/Kolux Computer Use.app', '--args', '--permissions'],
       { detached: true, stdio: 'ignore' }
     )
   })
 
   it('launches the helper app in permissions mode', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
     mockPermissionStatus('{"accessibility":"granted","screenshots":"not-granted"}')
 
     await expect(openComputerUsePermissions()).resolves.toEqual({
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       permissionId: undefined,
       openedSettings: false,
       launchedHelper: true,
@@ -108,32 +108,32 @@ describe('openComputerUsePermissions', () => {
         { id: 'accessibility', status: 'granted' },
         { id: 'screenshots', status: 'not-granted' }
       ],
-      nextStep: 'Grant Screen Recording to Nightshift Computer Use, then retry get-app-state.'
+      nextStep: 'Grant Screen Recording to Kolux Computer Use, then retry get-app-state.'
     })
     expect(spawnSync).toHaveBeenCalledWith(
       '/usr/bin/pkill',
-      ['-f', 'nightshift-computer-use-macos[[:space:]]+--permission([[:space:]]|$)'],
+      ['-f', 'kolux-computer-use-macos[[:space:]]+--permission([[:space:]]|$)'],
       { stdio: 'ignore' }
     )
     expect(spawnSync).toHaveBeenCalledWith(
       '/usr/bin/pkill',
-      ['-f', 'nightshift-computer-use-macos[[:space:]]+--permissions([[:space:]]|$)'],
+      ['-f', 'kolux-computer-use-macos[[:space:]]+--permissions([[:space:]]|$)'],
       { stdio: 'ignore' }
     )
     expect(spawn).toHaveBeenCalledWith(
       '/usr/bin/open',
-      ['-n', '/Applications/Nightshift Computer Use.app', '--args', '--permissions'],
+      ['-n', '/Applications/Kolux Computer Use.app', '--args', '--permissions'],
       { detached: true, stdio: 'ignore' }
     )
   })
 
   it('launches a targeted permission helper flow', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
     mockPermissionStatus('{"accessibility":"not-granted","screenshots":"not-granted"}')
 
     await expect(openComputerUsePermissions('accessibility')).resolves.toEqual({
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       permissionId: 'accessibility',
       openedSettings: true,
       launchedHelper: true,
@@ -141,28 +141,22 @@ describe('openComputerUsePermissions', () => {
         { id: 'accessibility', status: 'not-granted' },
         { id: 'screenshots', status: 'not-granted' }
       ],
-      nextStep: 'Grant Accessibility to Nightshift Computer Use, then retry get-app-state.'
+      nextStep: 'Grant Accessibility to Kolux Computer Use, then retry get-app-state.'
     })
     expect(spawn).toHaveBeenCalledWith(
       '/usr/bin/open',
-      [
-        '-n',
-        '/Applications/Nightshift Computer Use.app',
-        '--args',
-        '--permission',
-        'accessibility'
-      ],
+      ['-n', '/Applications/Kolux Computer Use.app', '--args', '--permission', 'accessibility'],
       { detached: true, stdio: 'ignore' }
     )
   })
 
   it('launches a targeted permission helper even when that permission is already granted', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
     mockPermissionStatus('{"accessibility":"granted","screenshots":"not-granted"}')
 
     await expect(openComputerUsePermissions('accessibility')).resolves.toEqual({
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       permissionId: 'accessibility',
       openedSettings: true,
       launchedHelper: true,
@@ -170,17 +164,11 @@ describe('openComputerUsePermissions', () => {
         { id: 'accessibility', status: 'granted' },
         { id: 'screenshots', status: 'not-granted' }
       ],
-      nextStep: 'Grant Screen Recording to Nightshift Computer Use, then retry get-app-state.'
+      nextStep: 'Grant Screen Recording to Kolux Computer Use, then retry get-app-state.'
     })
     expect(spawn).toHaveBeenCalledWith(
       '/usr/bin/open',
-      [
-        '-n',
-        '/Applications/Nightshift Computer Use.app',
-        '--args',
-        '--permission',
-        'accessibility'
-      ],
+      ['-n', '/Applications/Kolux Computer Use.app', '--args', '--permission', 'accessibility'],
       { detached: true, stdio: 'ignore' }
     )
   })
@@ -207,32 +195,32 @@ describe('openComputerUsePermissions', () => {
     resolveHelperAppPathMock.mockReturnValue(null)
 
     await expect(openComputerUsePermissions()).rejects.toThrow(
-      'Nightshift Computer Use.app was not found'
+      'Kolux Computer Use.app was not found'
     )
   })
 
   it('throws when the helper executable is missing during setup', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
     resolveHelperExecutablePathMock.mockReturnValue(null)
 
     await expect(openComputerUsePermissions('accessibility')).rejects.toThrow(
-      '/Applications/Nightshift Computer Use.app/Contents/MacOS/nightshift-computer-use-macos was not found'
+      '/Applications/Kolux Computer Use.app/Contents/MacOS/kolux-computer-use-macos was not found'
     )
   })
 
   it('resets stale macOS TCC grants for the helper bundle id', async () => {
-    resolveHelperAppPathMock.mockReturnValue('/Applications/Nightshift Computer Use.app')
+    resolveHelperAppPathMock.mockReturnValue('/Applications/Kolux Computer Use.app')
     vi.mocked(readFile)
       .mockResolvedValueOnce('{"accessibility":"granted","screenshots":"granted"}')
       .mockResolvedValueOnce('{"accessibility":"not-granted","screenshots":"not-granted"}')
-    vi.mocked(execFileSync).mockReturnValueOnce('com.example.nightshift.computer-use\n')
+    vi.mocked(execFileSync).mockReturnValueOnce('com.example.kolux.computer-use\n')
     vi.mocked(spawnSync).mockReturnValue({ status: 0 } as ReturnType<typeof spawnSync>)
 
     await expect(resetComputerUsePermissions()).resolves.toEqual({
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       helperUnavailableReason: null,
-      bundleId: 'com.example.nightshift.computer-use',
+      bundleId: 'com.example.kolux.computer-use',
       permissions: [
         { id: 'accessibility', status: 'not-granted' },
         { id: 'screenshots', status: 'not-granted' }
@@ -245,12 +233,12 @@ describe('openComputerUsePermissions', () => {
     )
     expect(spawnSync).toHaveBeenCalledWith(
       '/usr/bin/tccutil',
-      ['reset', 'Accessibility', 'com.example.nightshift.computer-use'],
+      ['reset', 'Accessibility', 'com.example.kolux.computer-use'],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
     )
     expect(spawnSync).toHaveBeenCalledWith(
       '/usr/bin/tccutil',
-      ['reset', 'ScreenCapture', 'com.example.nightshift.computer-use'],
+      ['reset', 'ScreenCapture', 'com.example.kolux.computer-use'],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
     )
   })

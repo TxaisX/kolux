@@ -69,19 +69,19 @@ function getManagedScript(
       'setlocal',
       // Why: Claude-compatible permission hooks fail closed on empty stdout (#14818).
       'echo {}',
-      // Why: refresh endpoint coordinates for PTYs surviving a Nightshift restart.
-      'if defined NIGHTSHIFT_AGENT_HOOK_ENDPOINT if exist "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" 2>nul',
+      // Why: refresh endpoint coordinates for PTYs surviving a Kolux restart.
+      'if defined KOLUX_AGENT_HOOK_ENDPOINT if exist "%KOLUX_AGENT_HOOK_ENDPOINT%" call "%KOLUX_AGENT_HOOK_ENDPOINT%" 2>nul',
       // Why (#11549): the env guards must outrank the Devin skip — the Devin skip parks in more.com,
-      // and outside a Nightshift pane the caller can abandon stdin, so more.com never returns.
+      // and outside a Kolux pane the caller can abandon stdin, so more.com never returns.
       ...buildWindowsHookEnvironmentGuardLines(),
       // Why: a backgrounded session runs in a daemon worker that inherited the dispatching
-      // pane's env, so NIGHTSHIFT_PANE_KEY names a pane this session does not run in (#9236).
+      // pane's env, so KOLUX_PANE_KEY names a pane this session does not run in (#9236).
       // Why exit, not the drain label: the drain parks in more.com and a worker is outside
-      // a Nightshift pane — the abandoned-stdin hang #11549 guards against.
+      // a Kolux pane — the abandoned-stdin hang #11549 guards against.
       'if not "%CLAUDE_JOB_DIR%"=="" exit /b 0',
       ...(options.skipWhenDevinImportsClaude
         ? [
-            // Why: Devin imports .claude hooks by default; skip Nightshift's managed hook there so status posts stay attributed to Devin.
+            // Why: Devin imports .claude hooks by default; skip Kolux's managed hook there so status posts stay attributed to Devin.
             `if not "%DEVIN_PROJECT_DIR%"=="" goto :${WINDOWS_HOOK_STDIN_DRAIN_LABEL}`
           ]
         : []),
@@ -101,24 +101,24 @@ function getManagedScript(
     ...buildPosixHookSpoolLines('claude'),
     ...(options.skipWhenDevinImportsClaude
       ? [
-          // Why: Devin imports .claude hooks by default; skip Nightshift's managed hook there so status posts stay attributed to Devin.
+          // Why: Devin imports .claude hooks by default; skip Kolux's managed hook there so status posts stay attributed to Devin.
           'if [ -n "$DEVIN_PROJECT_DIR" ]; then',
           '  exit 0',
           'fi'
         ]
       : []),
     // Why: a backgrounded session runs in a daemon worker that inherited the dispatching
-    // pane's env, so NIGHTSHIFT_PANE_KEY names a pane this session does not run in (#9236).
+    // pane's env, so KOLUX_PANE_KEY names a pane this session does not run in (#9236).
     'if [ -n "$CLAUDE_JOB_DIR" ]; then',
     '  exit 0',
     'fi',
-    // Why: refresh endpoint coordinates for PTYs surviving a Nightshift restart.
+    // Why: refresh endpoint coordinates for PTYs surviving a Kolux restart.
     // Why: suppress parse errors so they neither leak nor trip outer set -e.
-    'if [ -n "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] && [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ]; then',
-    '  unset NIGHTSHIFT_AGENT_HOOK_TRANSPORT',
-    '  . "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
+    'if [ -n "$KOLUX_AGENT_HOOK_ENDPOINT" ] && [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ]; then',
+    '  unset KOLUX_AGENT_HOOK_TRANSPORT',
+    '  . "$KOLUX_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
-    'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
+    'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
     '  spool_hook_event',
     '  exit 0',
     'fi',
@@ -258,7 +258,7 @@ export class ClaudeHookService {
     // Why: remote Windows is unsupported; local process.platform cannot identify the remote OS.
     const remoteConfigPath = getRemoteConfigPath(remoteHome, this.options.settings)
     const remoteScriptFileName = getPosixManagedScriptFileName(this.options.settings)
-    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.nightshift/agent-hooks/${remoteScriptFileName}`
+    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.kolux/agent-hooks/${remoteScriptFileName}`
     // Why: surface fallible SFTP installs as structured errors.
     try {
       const config = await readHooksJsonRemote(sftp, remoteConfigPath)
@@ -331,7 +331,7 @@ export class ClaudeHookService {
     }
     if (this.options.agent === 'claude') {
       try {
-        // Why: a Nightshift-level uninstall resets the opt-out memory so a later re-enable installs the statusline again.
+        // Why: a Kolux-level uninstall resets the opt-out memory so a later re-enable installs the statusline again.
         rmSync(getStatusLineInstallMarkerPath(this.options.settings), { force: true })
       } catch {
         // ignore — marker cleanup is best-effort

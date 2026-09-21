@@ -81,11 +81,11 @@ describe('fetchClaudeRateLimits', () => {
 
   it('does not read inactive managed credentials from unowned auth paths', async () => {
     setPlatform('linux')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const unownedAuthPath = join(tempDir, 'unowned', 'auth')
     mkdirSync(unownedAuthPath, { recursive: true })
-    writeFileSync(join(unownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(unownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     writeFileSync(
       join(unownedAuthPath, '.credentials.json'),
       JSON.stringify({
@@ -111,11 +111,11 @@ describe('fetchClaudeRateLimits', () => {
 
   it('supplements inactive managed account OAuth usage with Fable from its usage panel', async () => {
     setPlatform('linux')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     const canonicalAuthPath = realpathSync(ownedAuthPath)
     writeFileSync(
       join(ownedAuthPath, '.credentials.json'),
@@ -166,7 +166,7 @@ describe('fetchClaudeRateLimits', () => {
 
   it('stages macOS inactive account credentials in a scoped Keychain for Fable preview', async () => {
     setPlatform('darwin')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     const credentialsJson = JSON.stringify({
@@ -176,7 +176,7 @@ describe('fetchClaudeRateLimits', () => {
       }
     })
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     const canonicalAuthPath = realpathSync(ownedAuthPath)
     vi.mocked(readManagedClaudeKeychainCredentials).mockResolvedValueOnce(credentialsJson)
     vi.mocked(fetchViaPty).mockResolvedValueOnce({
@@ -219,11 +219,11 @@ describe('fetchClaudeRateLimits', () => {
 
   it('cleans up scoped Keychain credentials when the inactive preview fails', async () => {
     setPlatform('darwin')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     const canonicalAuthPath = realpathSync(ownedAuthPath)
     vi.mocked(readManagedClaudeKeychainCredentials).mockResolvedValueOnce(
       JSON.stringify({ claudeAiOauth: { accessToken: 'managed-keychain-token' } })
@@ -248,7 +248,7 @@ describe('fetchClaudeRateLimits', () => {
 
   it('stages refreshed macOS inactive account credentials before Fable preview', async () => {
     setPlatform('darwin')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     const staleCredentialsJson = JSON.stringify({
@@ -259,7 +259,7 @@ describe('fetchClaudeRateLimits', () => {
       }
     })
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     vi.mocked(readManagedClaudeKeychainCredentials).mockResolvedValueOnce(staleCredentialsJson)
     netFetchMock.mockResolvedValueOnce(
       new Response(
@@ -325,11 +325,11 @@ describe('fetchClaudeRateLimits', () => {
 
   it('does not merge macOS inactive Fable preview when usage windows belong to another account', async () => {
     setPlatform('darwin')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     vi.mocked(readManagedClaudeKeychainCredentials).mockResolvedValueOnce(
       JSON.stringify({
         claudeAiOauth: {
@@ -373,11 +373,11 @@ describe('fetchClaudeRateLimits', () => {
 
   it('refreshes and persists an expiring inactive account before fetching usage', async () => {
     setPlatform('linux')
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-fetcher-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-fetcher-'))
     appGetPathMock.mockReturnValue(tempDir)
     const ownedAuthPath = join(tempDir, 'claude-accounts', 'account-1', 'auth')
     mkdirSync(ownedAuthPath, { recursive: true })
-    writeFileSync(join(ownedAuthPath, '.nightshift-managed-claude-auth'), 'account-1\n', 'utf-8')
+    writeFileSync(join(ownedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
     const credentialsPath = join(ownedAuthPath, '.credentials.json')
     writeFileSync(
       credentialsPath,

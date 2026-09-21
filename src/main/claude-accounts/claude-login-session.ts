@@ -96,7 +96,7 @@ async function createTemporaryClaudeConfigDir(
   location: ClaudeManagedAuthLocation
 ): Promise<ClaudeCommandConfig> {
   if (location.managedAuthRuntime !== 'wsl') {
-    const created = mkdtempSync(join(tmpdir(), 'nightshift-claude-login-'))
+    const created = mkdtempSync(join(tmpdir(), 'kolux-claude-login-'))
     let windowsPath = created
     try {
       windowsPath = realpathSync(created)
@@ -116,7 +116,7 @@ async function createTemporaryClaudeConfigDir(
     distro: location.wslDistro,
     loginPath: 'none',
     shell: 'bash',
-    script: 'mktemp -d "${TMPDIR:-/tmp}/nightshift-claude-login.XXXXXX"',
+    script: 'mktemp -d "${TMPDIR:-/tmp}/kolux-claude-login.XXXXXX"',
     timeoutMs: 5000
   })
   const linuxPath = created.stdout.replaceAll(String.fromCharCode(0), '').trim()

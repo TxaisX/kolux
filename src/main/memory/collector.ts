@@ -2,7 +2,7 @@
  * Memory dashboard collector.
  *
  * One snapshot covers two sources:
- *   - Nightshift's own Electron processes, via `getAppEnvironment().getAppMetrics()`, bucketed
+ *   - Kolux's own Electron processes, via `getAppEnvironment().getAppMetrics()`, bucketed
  *     into main / renderer / other.
  *   - Each registered PTY's process subtree, enumerated once from a host-
  *     wide process sweep (PowerShell CIM with a Typeperf fallback on Windows).

@@ -18,19 +18,19 @@ vi.mock('node:os', async () => {
 
 beforeEach(() => {
   vi.resetModules()
-  testState.userData = mkdtempSync(join(tmpdir(), 'nightshift-codex-e-migration-'))
-  testState.home = mkdtempSync(join(tmpdir(), 'nightshift-codex-e-home-'))
+  testState.userData = mkdtempSync(join(tmpdir(), 'kolux-codex-e-migration-'))
+  testState.home = mkdtempSync(join(tmpdir(), 'kolux-codex-e-home-'))
   for (const key of [
-    'NIGHTSHIFT_USER_DATA_PATH',
-    'NIGHTSHIFT_DISABLE_CODEX_TRUST_RPC',
+    'KOLUX_USER_DATA_PATH',
+    'KOLUX_DISABLE_CODEX_TRUST_RPC',
     'CODEX_HOME',
-    'NIGHTSHIFT_CODEX_HOME'
+    'KOLUX_CODEX_HOME'
   ]) {
     previousEnv[key] = process.env[key]
     delete process.env[key]
   }
-  process.env.NIGHTSHIFT_USER_DATA_PATH = testState.userData
-  process.env.NIGHTSHIFT_DISABLE_CODEX_TRUST_RPC = '1'
+  process.env.KOLUX_USER_DATA_PATH = testState.userData
+  process.env.KOLUX_DISABLE_CODEX_TRUST_RPC = '1'
   mkdirSync(systemHome(), { recursive: true })
   mkdirSync(sharedHome(), { recursive: true })
 })
@@ -239,7 +239,7 @@ describe('CodexRuntimeHomeService per-account takeover composition', () => {
   it('does not expose an untrusted persisted home through rollout discovery', async () => {
     const outsideHome = join(testState.userData, 'outside', 'account-1', 'home')
     mkdirSync(join(outsideHome, 'sessions'), { recursive: true })
-    writeFileSync(join(outsideHome, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(outsideHome, '.kolux-managed-home'), 'account-1\n', 'utf-8')
     writeFileSync(
       join(outsideHome, 'auth.json'),
       createAuth('one@example.com', 'acct-1', 'outside', 1_000),
@@ -279,7 +279,7 @@ function createManagedAccount(
 ): CodexManagedAccount {
   const home = join(testState.userData, 'codex-accounts', id, 'home')
   mkdirSync(home, { recursive: true })
-  writeFileSync(join(home, '.nightshift-managed-home'), `${id}\n`, 'utf-8')
+  writeFileSync(join(home, '.kolux-managed-home'), `${id}\n`, 'utf-8')
   writeFileSync(join(home, 'auth.json'), auth, 'utf-8')
   return managedAccountRecord(id, providerId, home, email)
 }

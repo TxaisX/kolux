@@ -20,9 +20,9 @@ const FILE_GROUPS = [
   {
     label: 'runtime removal',
     files: [
-      join(__dirname, 'nightshift-runtime-pty-foreground-process-reads.ts'),
-      join(__dirname, 'nightshift-runtime-resolve-worktree-removal-target.ts'),
-      join(__dirname, 'nightshift-runtime-remove-managed-worktree.ts')
+      join(__dirname, 'kolux-runtime-pty-foreground-process-reads.ts'),
+      join(__dirname, 'kolux-runtime-resolve-worktree-removal-target.ts'),
+      join(__dirname, 'kolux-runtime-remove-managed-worktree.ts')
     ]
   }
 ] as const

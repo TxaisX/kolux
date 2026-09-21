@@ -1,7 +1,7 @@
 import type { Page } from '@stablyai/playwright-test'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   getTerminalContent,
@@ -195,11 +195,11 @@ async function waitForCodexComposer(page: Page): Promise<string> {
 
 test.describe('local Codex terminal typing latency', () => {
   test('keeps Codex prompt typing responsive @local-real-codex', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.skip(
-      process.env.NIGHTSHIFT_E2E_REAL_CODEX !== '1',
-      'Set NIGHTSHIFT_E2E_REAL_CODEX=1 to exercise the locally installed Codex TUI'
+      process.env.KOLUX_E2E_REAL_CODEX !== '1',
+      'Set KOLUX_E2E_REAL_CODEX=1 to exercise the locally installed Codex TUI'
     )
     test.skip(process.platform === 'win32', 'local Codex command is POSIX-shell oriented')
 
@@ -214,43 +214,43 @@ test.describe('local Codex terminal typing latency', () => {
     )
     test.skip(!existsSync(codexSource), 'local Codex checkout is missing')
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const launchCommand =
       `cd ${JSON.stringify(codexSource)} && CODEX_HOME=${JSON.stringify(realCodexHome)} ` +
       'codex --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust\r'
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, launchCommand)
-      await dismissCodexPromptsIfPresent(nightshiftPage)
-      const composerMarker = await waitForCodexComposer(nightshiftPage)
+      await sendToTerminal(koluxPage, ptyId, launchCommand)
+      await dismissCodexPromptsIfPresent(koluxPage)
+      const composerMarker = await waitForCodexComposer(koluxPage)
       testInfo.annotations.push({
         type: 'codex-composer-ready-marker',
         description: composerMarker
       })
-      await focusActiveTerminalInput(nightshiftPage)
-      await forceCursorProbeTheme(nightshiftPage)
-      const blinkSamples = await sampleCursorBlink(nightshiftPage)
-      await focusActiveTerminalInput(nightshiftPage)
+      await focusActiveTerminalInput(koluxPage)
+      await forceCursorProbeTheme(koluxPage)
+      const blinkSamples = await sampleCursorBlink(koluxPage)
+      await focusActiveTerminalInput(koluxPage)
 
       const typed = Array.from(
         { length: TOTAL_KEYSTROKES },
         (_value, index) => TYPING_ALPHABET[index % TYPING_ALPHABET.length]
       ).join('')
-      await installCodexEchoLatencyProbe(nightshiftPage, typed)
+      await installCodexEchoLatencyProbe(koluxPage, typed)
       for (const char of typed) {
-        await nightshiftPage.keyboard.type(char)
+        await koluxPage.keyboard.type(char)
         // Why: spacing keys past one frame keeps each sample an isolated echo
         // instead of measuring a burst the scheduler coalesced into one write.
-        await nightshiftPage.waitForTimeout(KEYSTROKE_INTERVAL_MS)
+        await koluxPage.waitForTimeout(KEYSTROKE_INTERVAL_MS)
       }
       // Why: the last keystroke's echo can still be in flight when typing ends.
-      await nightshiftPage.waitForTimeout(1_000)
-      const report = await collectCodexEchoLatencyReport(nightshiftPage)
+      await koluxPage.waitForTimeout(1_000)
+      const report = await collectCodexEchoLatencyReport(koluxPage)
 
       const measured = report.samples.filter((sample) => sample.index >= WARMUP_KEYSTROKES)
       const parseLatencies = measured.map((sample) => sample.keyToParseMs)
@@ -284,7 +284,7 @@ test.describe('local Codex terminal typing latency', () => {
       expect(echo.p95).toBeLessThan(MAX_P95_ECHO_LATENCY_MS)
       expect(echo.max).toBeLessThan(MAX_WORST_ECHO_LATENCY_MS)
     } finally {
-      await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
     }
   })
 })

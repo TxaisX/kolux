@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   focusActiveTerminalInput,
   sendToTerminal,
@@ -116,7 +116,7 @@ async function installClipboardReadTerminalBlurRepro(app: ElectronApplication): 
   await app.evaluate(({ BrowserWindow, ipcMain }) => {
     type ClipboardReadHandler = (event: unknown, ...args: unknown[]) => unknown
     const global = globalThis as unknown as {
-      __nightshiftOriginalClipboardReadTextHandler?: ClipboardReadHandler
+      __koluxOriginalClipboardReadTextHandler?: ClipboardReadHandler
     }
     const invokeHandlers = (
       ipcMain as unknown as {
@@ -124,10 +124,10 @@ async function installClipboardReadTerminalBlurRepro(app: ElectronApplication): 
       }
     )._invokeHandlers
     const handler = invokeHandlers?.get('clipboard:readText')
-    if (!invokeHandlers || !handler || global.__nightshiftOriginalClipboardReadTextHandler) {
+    if (!invokeHandlers || !handler || global.__koluxOriginalClipboardReadTextHandler) {
       return
     }
-    global.__nightshiftOriginalClipboardReadTextHandler = handler
+    global.__koluxOriginalClipboardReadTextHandler = handler
     invokeHandlers.set('clipboard:readText', async (event, ...args) => {
       const windows = BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed())
       await Promise.all(
@@ -145,7 +145,7 @@ async function installClipboardReadTerminalBlurRepro(app: ElectronApplication): 
       )
       // Why: reproduce the focus churn window before the async clipboard read resolves.
       await new Promise((resolve) => setTimeout(resolve, 0))
-      return global.__nightshiftOriginalClipboardReadTextHandler!(event, ...args)
+      return global.__koluxOriginalClipboardReadTextHandler!(event, ...args)
     })
   })
 }
@@ -154,16 +154,16 @@ async function restoreClipboardReadTerminalBlurRepro(app: ElectronApplication): 
   await app.evaluate(({ ipcMain }) => {
     type ClipboardReadHandler = (event: unknown, ...args: unknown[]) => unknown
     const global = globalThis as unknown as {
-      __nightshiftOriginalClipboardReadTextHandler?: ClipboardReadHandler
+      __koluxOriginalClipboardReadTextHandler?: ClipboardReadHandler
     }
     const invokeHandlers = (
       ipcMain as unknown as {
         _invokeHandlers?: Map<string, ClipboardReadHandler>
       }
     )._invokeHandlers
-    if (invokeHandlers && global.__nightshiftOriginalClipboardReadTextHandler) {
-      invokeHandlers.set('clipboard:readText', global.__nightshiftOriginalClipboardReadTextHandler)
-      delete global.__nightshiftOriginalClipboardReadTextHandler
+    if (invokeHandlers && global.__koluxOriginalClipboardReadTextHandler) {
+      invokeHandlers.set('clipboard:readText', global.__koluxOriginalClipboardReadTextHandler)
+      delete global.__koluxOriginalClipboardReadTextHandler
     }
   })
 }
@@ -186,42 +186,42 @@ async function openTerminalContextMenu(page: Page): Promise<void> {
 test.describe('terminal paste ownership', () => {
   test('keyboard paste shortcuts send clipboard text to the focused terminal exactly once', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-paste-ownership-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-paste-ownership-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `PASTE_READY_${runId}`, 10_000)
 
       for (const [index, chord] of keyboardPasteChords().entries()) {
-        const payload = `NIGHTSHIFT_E2E_PASTE_${runId}_${index}`
+        const payload = `KOLUX_E2E_PASTE_${runId}_${index}`
         const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
         await clearTerminalPtyWriteLog(electronApp)
-        await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
-        await focusActiveTerminalInput(nightshiftPage)
+        await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+        await focusActiveTerminalInput(koluxPage)
 
-        await nightshiftPage.keyboard.press(chord)
-        await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+        await koluxPage.keyboard.press(chord)
+        await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
         const writes = (await readTerminalPtyWrites(electronApp)).join('')
         expect(countOccurrences(writes, payload), `${chord} PTY write count`).toBe(1)
       }
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -229,42 +229,42 @@ test.describe('terminal paste ownership', () => {
 
   test('keyboard paste survives transient terminal blur during clipboard read', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-paste-blur-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-paste-blur-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `PASTE_READY_${runId}`, 10_000)
 
-      const payload = `NIGHTSHIFT_E2E_TRANSIENT_BLUR_PASTE_${runId}`
+      const payload = `KOLUX_E2E_TRANSIENT_BLUR_PASTE_${runId}`
       const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
       await clearTerminalPtyWriteLog(electronApp)
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
-      await focusActiveTerminalInput(nightshiftPage)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await focusActiveTerminalInput(koluxPage)
       await installClipboardReadTerminalBlurRepro(electronApp)
 
-      await nightshiftPage.keyboard.press(keyboardPasteChords()[0])
-      await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+      await koluxPage.keyboard.press(keyboardPasteChords()[0])
+      await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
       const writes = (await readTerminalPtyWrites(electronApp)).join('')
       expect(countOccurrences(writes, payload), 'transient blur PTY write count').toBe(1)
     } finally {
       await restoreClipboardReadTerminalBlurRepro(electronApp).catch(() => undefined)
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -272,41 +272,41 @@ test.describe('terminal paste ownership', () => {
 
   test('terminal context-menu Paste sends clipboard text exactly once', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-paste-context-menu-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-paste-context-menu-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `PASTE_READY_${runId}`, 10_000)
 
-      const payload = `NIGHTSHIFT_E2E_CONTEXT_MENU_PASTE_${runId}`
+      const payload = `KOLUX_E2E_CONTEXT_MENU_PASTE_${runId}`
       const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
       await clearTerminalPtyWriteLog(electronApp)
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
-      await focusActiveTerminalInput(nightshiftPage)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await focusActiveTerminalInput(koluxPage)
 
-      await openTerminalContextMenu(nightshiftPage)
-      await nightshiftPage.getByRole('menuitem', { name: /Paste/ }).click()
-      await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+      await openTerminalContextMenu(koluxPage)
+      await koluxPage.getByRole('menuitem', { name: /Paste/ }).click()
+      await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
       const writes = (await readTerminalPtyWrites(electronApp)).join('')
       expect(countOccurrences(writes, payload), 'terminal context-menu PTY write count').toBe(1)
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -314,22 +314,22 @@ test.describe('terminal paste ownership', () => {
 
   test('Windows multiline keyboard paste normalizes terminal newlines with one PTY owner', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
     test.skip(process.platform !== 'win32', 'Windows multiline paste behavior is Windows-only')
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const sentinel = `NIGHTSHIFT_E2E_MULTILINE_DONE_${runId}`
+    const sentinel = `KOLUX_E2E_MULTILINE_DONE_${runId}`
     const payload = [
-      `NIGHTSHIFT_E2E_MULTILINE_${runId}`,
+      `KOLUX_E2E_MULTILINE_${runId}`,
       'line with spaces and tabs\tend',
       'PowerShell metacharacters: ` $ " \' ; | & < > @ { } ( )',
       'cmd metacharacters: % ! ^ & | < >',
@@ -337,29 +337,29 @@ test.describe('terminal paste ownership', () => {
       `mixed-newline-before\r\nlf-line\ncrlf-line\r\n${sentinel}`
     ].join('\n')
     // Why: xterm translates clipboard line endings to terminal Enter bytes;
-    // Nightshift's direct Windows bracketed-paste path must produce the same bytes.
+    // Kolux's direct Windows bracketed-paste path must produce the same bytes.
     const terminalText = payload.replace(/\r?\n/g, '\r')
-    const scriptPath = path.join(testRepoPath, `.nightshift-paste-multiline-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-paste-multiline-${runId}.mjs`)
     writeFileSync(scriptPath, pasteCollectScript(runId, sentinel, terminalText))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `PASTE_READY_${runId}`, 10_000)
 
       await clearTerminalPtyWriteLog(electronApp)
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
-      await focusActiveTerminalInput(nightshiftPage)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await focusActiveTerminalInput(koluxPage)
 
-      await nightshiftPage.keyboard.press('Control+V')
-      await waitForTerminalOutput(nightshiftPage, `PASTE_COMPLETE_${runId}:MATCH`, 10_000, 12_000)
+      await koluxPage.keyboard.press('Control+V')
+      await waitForTerminalOutput(koluxPage, `PASTE_COMPLETE_${runId}:MATCH`, 10_000, 12_000)
 
       const writes = (await readTerminalPtyWrites(electronApp)).join('')
       expect(countOccurrences(writes, terminalText), 'multiline payload PTY write count').toBe(1)
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -367,43 +367,43 @@ test.describe('terminal paste ownership', () => {
 
   test('right-click paste sends clipboard text to the focused terminal exactly once', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await nightshiftPage.evaluate(async () => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await koluxPage.evaluate(async () => {
       await window.__store?.getState().updateSettings({ terminalRightClickToPaste: true })
     })
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-paste-right-click-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-paste-right-click-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `PASTE_READY_${runId}`, 10_000)
 
-      const payload = `NIGHTSHIFT_E2E_RIGHT_CLICK_PASTE_${runId}`
+      const payload = `KOLUX_E2E_RIGHT_CLICK_PASTE_${runId}`
       const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
       await clearTerminalPtyWriteLog(electronApp)
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
-      await focusActiveTerminalInput(nightshiftPage)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await focusActiveTerminalInput(koluxPage)
 
-      await rightClickActiveTerminalSurface(nightshiftPage)
-      await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+      await rightClickActiveTerminalSurface(koluxPage)
+      await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
       const writes = (await readTerminalPtyWrites(electronApp)).join('')
       expect(countOccurrences(writes, payload), 'right-click PTY write count').toBe(1)
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }

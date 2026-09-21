@@ -4,12 +4,12 @@ import type {
   EphemeralVmRecipeDoctorCheck,
   EphemeralVmRecipeDoctorResult
 } from './ephemeral-vm-recipes'
-import type { NightshiftVmRecipe } from './nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from './kolux-yaml-hook-types'
 
 export function doctorEphemeralVmRecipe(args: {
   repoPath: string
   recipeId: string
-  recipes: readonly NightshiftVmRecipe[]
+  recipes: readonly KoluxVmRecipe[]
   localExecutionSupported?: boolean
 }): EphemeralVmRecipeDoctorResult {
   const checks: EphemeralVmRecipeDoctorCheck[] = []
@@ -27,7 +27,7 @@ export function doctorEphemeralVmRecipe(args: {
       id: 'repo.path',
       status: 'fail',
       message: `Repo path does not exist or is not a directory: ${args.repoPath}`,
-      remediation: 'Pass the local repo that contains nightshift.yaml.'
+      remediation: 'Pass the local repo that contains kolux.yaml.'
     })
     return buildDoctorResult(args.recipeId, args.repoPath, checks)
   }
@@ -123,7 +123,7 @@ function checkCommandPath(
       id,
       status: 'warn',
       message: `Command is not a repo-relative path: ${executable}`,
-      remediation: 'Use a repo-relative script such as ./scripts/nightshift-vm/start.sh.'
+      remediation: 'Use a repo-relative script such as ./scripts/kolux-vm/start.sh.'
     }
   }
   const scriptPath = join(repoPath, normalize(executable))

@@ -1,4 +1,4 @@
 provider: github
 owner: TxaisX
 repo: nightshift
-updaterCacheDirName: nightshift-updater
+updaterCacheDirName: kolux-updater

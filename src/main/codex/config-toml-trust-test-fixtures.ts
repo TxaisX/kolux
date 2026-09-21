@@ -9,7 +9,7 @@ export type TrustConfigFixture = {
 
 /** Throwaway home for a Codex `config.toml` trust test. */
 export function createTrustConfigFixture(): TrustConfigFixture {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-trust-test-'))
+  const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-codex-trust-test-'))
   return { tmpDir, configPath: join(tmpDir, 'config.toml') }
 }
 

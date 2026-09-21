@@ -34,7 +34,7 @@ const COMPRESSED_LOCK_OPTIONS: CheckoutLockOptions = {
 }
 
 function temporaryCacheRoot(): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-cross-version-checkout-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-cross-version-checkout-'))
   temporaryRoots.push(root)
   return root
 }

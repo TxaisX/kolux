@@ -19,7 +19,7 @@ let resolvedRm: Rm | undefined
 function resolveRm(): Rm {
   try {
     // Why require and not an import: `original-fs` only exists inside Electron, so vitest, the
-    // `nightshift` CLI and the plain-node entrypoints must resolve `node:fs/promises` instead — and there
+    // `kolux` CLI and the plain-node entrypoints must resolve `node:fs/promises` instead — and there
     // the shim does not exist either, so plain `fs` is already asar-transparent.
     const originalFs = createRequire(__filename)('original-fs') as { promises?: { rm?: Rm } }
     return typeof originalFs.promises?.rm === 'function' ? originalFs.promises.rm : nodeRm

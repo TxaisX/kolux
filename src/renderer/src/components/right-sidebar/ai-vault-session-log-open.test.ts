@@ -19,7 +19,7 @@ vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
 }))
 
-import { openAiVaultSessionLogInNightshift } from './ai-vault-session-log-open'
+import { openAiVaultSessionLogInKolux } from './ai-vault-session-log-open'
 
 const LOG_PATH = '/home/user/.claude/sessions/log.jsonl'
 
@@ -56,12 +56,12 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('openAiVaultSessionLogInNightshift', () => {
+describe('openAiVaultSessionLogInKolux', () => {
   it('authorizes the exact path and opens a permanent read-only local tab', async () => {
     const state = makeState()
     getStateMock.mockReturnValue(state)
 
-    await openAiVaultSessionLogInNightshift({ filePath: LOG_PATH, executionHostId: 'local' })
+    await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'local' })
 
     expect(authorizeMock).toHaveBeenCalledWith({ targetPath: LOG_PATH })
     expect(state.openFile).toHaveBeenCalledTimes(1)
@@ -89,9 +89,9 @@ describe('openAiVaultSessionLogInNightshift', () => {
     const state = makeState()
     getStateMock.mockReturnValue(state)
 
-    await openAiVaultSessionLogInNightshift({ filePath: '   ', executionHostId: 'local' })
-    await openAiVaultSessionLogInNightshift({ filePath: LOG_PATH, executionHostId: 'ssh:dev-box' })
-    await openAiVaultSessionLogInNightshift({
+    await openAiVaultSessionLogInKolux({ filePath: '   ', executionHostId: 'local' })
+    await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'ssh:dev-box' })
+    await openAiVaultSessionLogInKolux({
       filePath: '/home/user/.opencode/db.sqlite#sess_1',
       executionHostId: 'local'
     })
@@ -105,7 +105,7 @@ describe('openAiVaultSessionLogInNightshift', () => {
     getStateMock.mockReturnValue(state)
     authorizeMock.mockRejectedValue(new Error('denied'))
 
-    await openAiVaultSessionLogInNightshift({ filePath: LOG_PATH, executionHostId: 'local' })
+    await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'local' })
 
     expect(state.openFile).not.toHaveBeenCalled()
     expect(toastErrorMock).toHaveBeenCalledWith("Couldn't open log — path not authorized.")
@@ -116,7 +116,7 @@ describe('openAiVaultSessionLogInNightshift', () => {
     const stateAfter = makeState({ worktreesByRepo: {}, folderWorkspaces: [] })
     getStateMock.mockReturnValueOnce(state).mockReturnValue(stateAfter)
 
-    await openAiVaultSessionLogInNightshift({ filePath: LOG_PATH, executionHostId: 'local' })
+    await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'local' })
 
     expect(state.openFile).not.toHaveBeenCalled()
     expect(stateAfter.openFile).not.toHaveBeenCalled()
@@ -139,7 +139,7 @@ describe('openAiVaultSessionLogInNightshift', () => {
     })
     getStateMock.mockReturnValue(state)
 
-    await openAiVaultSessionLogInNightshift({ filePath: LOG_PATH, executionHostId: 'local' })
+    await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'local' })
 
     expect(state.openFile).toHaveBeenCalledTimes(1)
     expect(toastMock).toHaveBeenCalledWith('Log is already open for editing.')
@@ -157,11 +157,11 @@ describe('openAiVaultSessionLogInNightshift', () => {
         })
     )
 
-    const first = openAiVaultSessionLogInNightshift({
+    const first = openAiVaultSessionLogInKolux({
       filePath: LOG_PATH,
       executionHostId: 'local'
     })
-    const second = openAiVaultSessionLogInNightshift({
+    const second = openAiVaultSessionLogInKolux({
       filePath: LOG_PATH,
       executionHostId: 'local'
     })

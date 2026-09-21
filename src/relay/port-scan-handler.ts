@@ -164,7 +164,7 @@ export class PortScanHandler {
       // Why: every remaining pid costs a readdir plus one readlink per fd, and this scan repeats for
       // the life of the session. Without this the walk was O(all host processes x all fds) even once
       // every listener was already attributed, so its cost grew with the remote's process count and
-      // never came back down — the shape behind "SSH gets slower the longer Nightshift stays open".
+      // never came back down — the shape behind "SSH gets slower the longer Kolux stays open".
       if (result.size === inodes.size) {
         return result
       }

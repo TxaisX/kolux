@@ -10,7 +10,7 @@ import { createClaudeTuiResumeLaunchBuilder } from './claude-tui-resume-launch'
 
 function record(overrides: Partial<AgentSessionRecord> = {}): AgentSessionRecord {
   return {
-    sessionId: 'nightshift-session-1',
+    sessionId: 'kolux-session-1',
     provider: 'claude',
     location: {
       executionHostId: 'local',
@@ -76,7 +76,7 @@ describe('Claude TUI resume launch', () => {
       SAFE_PARENT: 'kept',
       SELECTED_ACCOUNT: 'one',
       CLAUDE_CONFIG_DIR: '/accounts/claude-one',
-      NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'spawn-one',
+      KOLUX_AGENT_LAUNCH_TOKEN: 'spawn-one',
       [CLAUDE_SPAWN_TOKEN_ENV]: 'spawn-one',
       ANTHROPIC_AUTH_TOKEN: 'selected-account-token'
     })
@@ -90,7 +90,7 @@ describe('Claude TUI resume launch', () => {
   })
 
   it('pairs the resumed Claude CLI with its sibling Node runtime', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-claude-resume-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-claude-resume-'))
     const binDir = join(root, 'bin')
     const claudeCommand = join(binDir, process.platform === 'win32' ? 'claude.cmd' : 'claude')
     const nodeCommand = join(binDir, process.platform === 'win32' ? 'node.cmd' : 'node')

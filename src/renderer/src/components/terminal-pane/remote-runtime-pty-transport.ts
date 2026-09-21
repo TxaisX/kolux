@@ -135,7 +135,7 @@ function isRemoteTerminalGoneMessage(message: string): boolean {
   )
 }
 
-/** PTY transport for a renderer pane backed by a terminal on a remote Nightshift runtime, over runtime RPC plus the multiplexed stream. */
+/** PTY transport for a renderer pane backed by a terminal on a remote Kolux runtime, over runtime RPC plus the multiplexed stream. */
 export function createRemoteRuntimePtyTransport(
   runtimeEnvironmentId: string,
   opts: IpcPtyTransportOptions = {}

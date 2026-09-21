@@ -19,7 +19,7 @@ const initialState = useAppStore.getState()
 const repo = {
   id: 'repo-1',
   path: '/repo',
-  displayName: 'Nightshift',
+  displayName: 'Kolux',
   badgeColor: '#000000',
   addedAt: NOW,
   kind: 'git',
@@ -150,7 +150,7 @@ describe('Agent Map workspace context menu', () => {
           authoritative: true,
           source: 'git',
           worktrees: [
-            { ...worktree, ownership: 'nightshift-managed', selectedCheckout: false, visible: true }
+            { ...worktree, ownership: 'kolux-managed', selectedCheckout: false, visible: true }
           ]
         }
       }
@@ -315,7 +315,7 @@ describe('Agent Map workspace context menu', () => {
       clientY: 110
     })
     const createWorktree = await screen.findByText(
-      'Create new worktree for Nightshift',
+      'Create new worktree for Kolux',
       {},
       { timeout: 5_000 }
     )
@@ -379,11 +379,11 @@ describe('Agent Map workspace context menu', () => {
 
     fireEvent.contextMenu(container.querySelector('[data-agent-map-project]')!)
     await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)))
-    expect(screen.queryByText('Create new worktree for Nightshift')).not.toBeInTheDocument()
+    expect(screen.queryByText('Create new worktree for Kolux')).not.toBeInTheDocument()
 
     act(() => {
       useAppStore.setState({ repos: [repo] })
     })
-    expect(screen.queryByText('Create new worktree for Nightshift')).not.toBeInTheDocument()
+    expect(screen.queryByText('Create new worktree for Kolux')).not.toBeInTheDocument()
   })
 })

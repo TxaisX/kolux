@@ -79,7 +79,7 @@ describe('automation host recovery', () => {
     expect(target.retry).toHaveBeenCalledWith(desktopSelf)
   })
 
-  it('deep-links a runtime to its update row in Remote Nightshift Servers settings', () => {
+  it('deep-links a runtime to its update row in Remote Kolux Servers settings', () => {
     const target = deps()
     runAutomationHostRecovery('update-server', RUNTIME_SSH, target)
     expect(target.openSettings).toHaveBeenCalledWith({

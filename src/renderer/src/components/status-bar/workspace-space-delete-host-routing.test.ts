@@ -25,7 +25,7 @@ import {
   toWorktreeDeleteIdentities
 } from '../sidebar/worktree-delete-request'
 
-const SHARED_ID = 'repo-1::/work/nightshift'
+const SHARED_ID = 'repo-1::/work/kolux'
 const LOCAL: ExecutionHostId = 'local'
 const SSH: ExecutionHostId = 'ssh:build-box'
 
@@ -33,8 +33,8 @@ function spaceRow(executionHostId: ExecutionHostId): WorkspaceSpaceWorktree {
   return {
     worktreeId: SHARED_ID,
     executionHostId,
-    displayName: 'nightshift',
-    path: '/work/nightshift',
+    displayName: 'kolux',
+    path: '/work/kolux',
     status: 'ok',
     canDelete: true,
     sizeBytes: 1
@@ -48,7 +48,7 @@ function storeRow(hostId: ExecutionHostId): Worktree {
     // the confirmed-target check compares against.
     instanceId: `instance-${hostId}`,
     repoId: 'repo-1',
-    path: '/work/nightshift',
+    path: '/work/kolux',
     isMainWorktree: false,
     hostId
   } as Worktree

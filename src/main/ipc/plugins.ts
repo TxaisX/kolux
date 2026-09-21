@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { z } from 'zod'
 import type { Store } from '../persistence'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import type {
   PluginPanelActionOutcome,
   PluginPanelEntry
@@ -90,7 +90,7 @@ function rendererPanelOwner(webContentsId: number): string {
 export function registerPluginHandlers(
   store: Store,
   pluginService: PluginService,
-  runtime: NightshiftRuntimeService | null,
+  runtime: KoluxRuntimeService | null,
   marketplaceServices?: PluginMarketplaceHandlerServices
 ): void {
   // The runtime IS the delegate: the structural PluginRuntimeDelegate type

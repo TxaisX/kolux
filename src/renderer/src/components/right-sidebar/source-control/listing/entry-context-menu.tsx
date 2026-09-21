@@ -67,7 +67,7 @@ export function SourceControlEntryContextMenu({
     void window.api.ui.writeClipboardText(relativePath)
   }, [relativePath])
 
-  const handleRevealInNightshiftExplorer = useCallback(() => {
+  const handleRevealInKoluxExplorer = useCallback(() => {
     if (!absolutePath) {
       return
     }
@@ -153,7 +153,7 @@ export function SourceControlEntryContextMenu({
           </ContextMenuSubContent>
         </ContextMenuSub>
         <ContextMenuSeparator />
-        <ContextMenuItem onSelect={handleRevealInNightshiftExplorer} disabled={!absolutePath}>
+        <ContextMenuItem onSelect={handleRevealInKoluxExplorer} disabled={!absolutePath}>
           <FolderOpen className="size-3.5" />
           {translate(
             'auto.components.right.sidebar.SourceControl.cc05b2d088',

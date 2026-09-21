@@ -30,7 +30,7 @@ export async function startSystemSshDynamicForwardProcess(
   }
   const args = buildSshArgs(target, {
     ...options,
-    suppressNightshiftControlMaster: true,
+    suppressKoluxControlMaster: true,
     disableControlMaster: true,
     nonInteractive: true
   })

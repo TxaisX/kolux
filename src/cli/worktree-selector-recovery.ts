@@ -46,10 +46,10 @@ export function worktreeSelectorRecovery(selector: string): WorktreeSelectorReco
     validSelectorForms: WORKTREE_SELECTOR_FORMS,
     suggestions,
     nextSteps: [
-      `No Nightshift workspace matched the worktree selector "${selector}".`,
+      `No Kolux workspace matched the worktree selector "${selector}".`,
       ...(suggestions.length > 0 ? [`Did you mean: ${suggestions.join(', ')}`] : []),
       `Valid selector forms: ${WORKTREE_SELECTOR_FORMS.join(', ')}.`,
-      'List the exact values with `nightshift worktree list --json`; a bare repository id is not a worktree id.'
+      'List the exact values with `kolux worktree list --json`; a bare repository id is not a worktree id.'
     ]
   }
 }

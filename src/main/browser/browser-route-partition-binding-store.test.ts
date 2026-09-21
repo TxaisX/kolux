@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserRoutePartitionBindingStore } from './browser-route-partition-binding-store'
 
 const partition =
-  'persist:nightshift-browser-v1-1111111111111111222222222222222233333333333333334444444444444444'
+  'persist:kolux-browser-v1-1111111111111111222222222222222233333333333333334444444444444444'
 const fingerprint = 'a'.repeat(64)
 const otherPartition = partition.replace(/1{16}/, '5555555555555555')
 const thirdPartition = partition.replace(/1{16}/, '6666666666666666')
@@ -20,11 +20,11 @@ afterEach(() => {
 })
 
 function createPath(): string {
-  return join(mkdtempSync(join(tmpdir(), 'nightshift-browser-route-bindings-')), 'bindings.json')
+  return join(mkdtempSync(join(tmpdir(), 'kolux-browser-route-bindings-')), 'bindings.json')
 }
 
 function createStorePaths(): { filePath: string; partitionDataRoot: string } {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-browser-route-store-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-browser-route-store-'))
   return {
     filePath: join(root, 'profile', 'bindings.json'),
     partitionDataRoot: join(root, 'Partitions')

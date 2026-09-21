@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -12,8 +12,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -24,7 +24,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -45,10 +45,10 @@ import { buildCurrentWorktreeSelector, main, normalizeWorktreeSelector } from '.
 import { buildWorktree, okFixture, queueFixtures, worktreeListFixture } from './test-fixtures'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -99,11 +99,11 @@ describe('nightshift cli worktree awareness', () => {
     expect(logSpy).toHaveBeenCalledTimes(1)
   })
 
-  it('resolves the invocation cwd from NIGHTSHIFT_CLI_CWD when no cwd is passed', async () => {
-    // Why: the SSH relay bridge runs the CLI on the Nightshift host with the remote
-    // shell's cwd carried in NIGHTSHIFT_CLI_CWD (#7716); cwd-based selectors must
+  it('resolves the invocation cwd from KOLUX_CLI_CWD when no cwd is passed', async () => {
+    // Why: the SSH relay bridge runs the CLI on the Kolux host with the remote
+    // shell's cwd carried in KOLUX_CLI_CWD (#7716); cwd-based selectors must
     // resolve against it, not the host process cwd.
-    process.env.NIGHTSHIFT_CLI_CWD = '/tmp/repo/feature/src'
+    process.env.KOLUX_CLI_CWD = '/tmp/repo/feature/src'
     try {
       queueFixtures(
         callMock,
@@ -127,23 +127,23 @@ describe('nightshift cli worktree awareness', () => {
         worktree: 'id:repo::/tmp/repo/feature'
       })
     } finally {
-      delete process.env.NIGHTSHIFT_CLI_CWD
+      delete process.env.KOLUX_CLI_CWD
     }
   })
 
   it.skipIf(process.platform === 'win32')(
-    'prepares and starts Claude Agent Teams in the current Nightshift terminal',
+    'prepares and starts Claude Agent Teams in the current Kolux terminal',
     async () => {
-      process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
+      process.env.KOLUX_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
       queueFixtures(
         callMock,
         okFixture('req_agent_teams_prepare', {
           launch: {
             env: {
               CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-              TMUX: '/tmp/nightshift-claude-agent-teams/team-1,0,1',
+              TMUX: '/tmp/kolux-claude-agent-teams/team-1,0,1',
               TMUX_PANE: '%1',
-              PATH: '/tmp/nightshift-shim:/usr/bin'
+              PATH: '/tmp/kolux-shim:/usr/bin'
             }
           }
         })
@@ -154,7 +154,7 @@ describe('nightshift cli worktree awareness', () => {
       expect(callMock).toHaveBeenCalledWith('agentTeams.prepareLaunch', {
         paneKey: 'tab-1:11111111-1111-4111-8111-111111111111',
         env: expect.objectContaining({
-          NIGHTSHIFT_PANE_KEY: 'tab-1:11111111-1111-4111-8111-111111111111'
+          KOLUX_PANE_KEY: 'tab-1:11111111-1111-4111-8111-111111111111'
         })
       })
       expect(spawnMock).toHaveBeenCalledWith('claude', ['--teammate-mode', 'auto'], {
@@ -170,16 +170,16 @@ describe('nightshift cli worktree awareness', () => {
   it.skipIf(process.platform === 'win32')(
     'passes Claude Agent Teams arguments through to Claude Code',
     async () => {
-      process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
+      process.env.KOLUX_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
       queueFixtures(
         callMock,
         okFixture('req_agent_teams_prepare', {
           launch: {
             env: {
               CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-              TMUX: '/tmp/nightshift-claude-agent-teams/team-1,0,1',
+              TMUX: '/tmp/kolux-claude-agent-teams/team-1,0,1',
               TMUX_PANE: '%1',
-              PATH: '/tmp/nightshift-shim:/usr/bin'
+              PATH: '/tmp/kolux-shim:/usr/bin'
             }
           }
         })
@@ -207,16 +207,16 @@ describe('nightshift cli worktree awareness', () => {
   it.skipIf(process.platform === 'win32')(
     'does not duplicate an explicit Claude teammate mode',
     async () => {
-      process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
+      process.env.KOLUX_PANE_KEY = 'tab-1:11111111-1111-4111-8111-111111111111'
       queueFixtures(
         callMock,
         okFixture('req_agent_teams_prepare', {
           launch: {
             env: {
               CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-              TMUX: '/tmp/nightshift-claude-agent-teams/team-1,0,1',
+              TMUX: '/tmp/kolux-claude-agent-teams/team-1,0,1',
               TMUX_PANE: '%1',
-              PATH: '/tmp/nightshift-shim:/usr/bin'
+              PATH: '/tmp/kolux-shim:/usr/bin'
             }
           }
         })

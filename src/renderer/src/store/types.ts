@@ -39,7 +39,7 @@ import type { PullRequestGenerationSlice } from './slices/pull-request-generatio
 import type { CommitMessageGenerationSlice } from './slices/commit-message-generation'
 import type { PinnedTabCloseConfirmSlice } from './slices/pinned-tab-close-confirm'
 import type { RecentlyClosedTabsSlice } from './slices/recently-closed-tabs'
-import type { NightshiftProfilesSlice } from './slices/nightshift-profiles'
+import type { KoluxProfilesSlice } from './slices/kolux-profiles'
 import type { NewIssueDraftSlice } from './slices/new-issue-draft'
 import type { TaskCreationDraftsSlice } from './slices/task-creation-drafts'
 import type { RemoteServerUpdatesSlice } from './slices/remote-server-updates'
@@ -84,7 +84,7 @@ export type AppState = RepoSlice &
   CommitMessageGenerationSlice &
   PinnedTabCloseConfirmSlice &
   RecentlyClosedTabsSlice &
-  NightshiftProfilesSlice &
+  KoluxProfilesSlice &
   NewIssueDraftSlice &
   TaskCreationDraftsSlice &
   RemoteServerUpdatesSlice &

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -62,27 +62,27 @@ function tabLocatorByTitle(page: Page, title: string): ReturnType<Page['locator'
 test.describe('editable context paste ownership', () => {
   test('context-menu paste into a rename textbox does not also write to the active terminal', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
-    await tabLocatorByTitle(nightshiftPage, originalTitle).dblclick()
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
+    await tabLocatorByTitle(koluxPage, originalTitle).dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
     await expect(renameInput).toBeVisible()
     await renameInput.fill('')
 
-    const payload = `NIGHTSHIFT_E2E_CONTEXT_TEXTBOX_${randomUUID()}`
-    await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+    const payload = `KOLUX_E2E_CONTEXT_TEXTBOX_${randomUUID()}`
+    await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
     await clearTerminalPtyWriteLog(electronApp)
     await expect(renameInput).toBeFocused()
 
@@ -93,6 +93,6 @@ test.describe('editable context paste ownership', () => {
     expect((await readTerminalPtyWrites(electronApp)).join('')).not.toContain(payload)
 
     await renameInput.press('Escape')
-    await expect(tabLocatorByTitle(nightshiftPage, originalTitle)).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, originalTitle)).toBeVisible()
   })
 })

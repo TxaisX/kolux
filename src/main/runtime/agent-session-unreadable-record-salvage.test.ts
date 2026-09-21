@@ -88,7 +88,7 @@ async function corruptPrimaryRecord(): Promise<string> {
 }
 
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-agent-session-salvage-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-agent-session-salvage-'))
 })
 
 afterEach(async () => {

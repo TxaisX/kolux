@@ -57,7 +57,7 @@ export function installTerminalKeydownFit(session: ConnectPanePtySession): void 
     ) {
       return
     }
-    // Why: user shell frameworks (bash-preexec/iTerm2) can replace Nightshift's
+    // Why: user shell frameworks (bash-preexec/iTerm2) can replace Kolux's
     // OSC 133;C hook, so a manually launched agent produces no command-start
     // signal at all. Enter at a shell-foreground prompt is the user-side
     // equivalent; the sample is gated to panes with no live agent identity

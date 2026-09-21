@@ -100,10 +100,10 @@ export function readVerifiedShebangInterpreter(filePath: string): string | null 
   return isExecutable(interpreter) ? interpreter : null
 }
 
-const POSIX_TOMBSTONE = String.raw`#!__NIGHTSHIFT_INTERPRETER__
+const POSIX_TOMBSTONE = String.raw`#!__KOLUX_INTERPRETER__
 set -u
 
-command_name="__NIGHTSHIFT_COMMAND__"
+command_name="__KOLUX_COMMAND__"
 # Why this shape, rather than dirname: an unresolvable external would leave the substitution empty
 # and cd into it succeeds, silently making wrapper_dir the cwd. With no slash the %/* strip yields the
 # file name rather than a directory, so that case takes $PWD. CDPATH is cleared because cd searches
@@ -116,7 +116,7 @@ case "$wrapper_src" in
   *) wrapper_dir="$PWD" ;;
 esac
 [[ -n "$wrapper_dir" ]] || wrapper_dir="$PWD"
-legacy_wrapper_dir="${SHELL_DOLLAR}{NIGHTSHIFT_ATTRIBUTION_SHIM_DIR:-}"
+legacy_wrapper_dir="${SHELL_DOLLAR}{KOLUX_ATTRIBUTION_SHIM_DIR:-}"
 cleaned_path="${SHELL_DOLLAR}{PATH:-}"
 
 filter_path() {
@@ -154,7 +154,7 @@ filter_path() {
       # when either path is gone, which is when the lexical test still holds, so neither alone is
       # enough.
       # Why only for an absolute target: bash resolves a relative -ef operand against the current
-      # directory, so a relative NIGHTSHIFT_ATTRIBUTION_SHIM_DIR let the cwd decide which PATH entry
+      # directory, so a relative KOLUX_ATTRIBUTION_SHIM_DIR let the cwd decide which PATH entry
       # counted as the legacy directory and got a legitimate one skipped.
       :
     elif [[ "$entry" -ef "$wrapper_dir" ]]; then
@@ -170,8 +170,8 @@ filter_path() {
 }
 
 filter_path
-unset NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION NIGHTSHIFT_GIT_COMMIT_TRAILER NIGHTSHIFT_GH_PR_FOOTER
-unset NIGHTSHIFT_GH_ISSUE_FOOTER NIGHTSHIFT_ATTRIBUTION_SHIM_DIR NIGHTSHIFT_REAL_GIT NIGHTSHIFT_REAL_GH NIGHTSHIFT_ATTRIBUTION_BYPASS
+unset KOLUX_ENABLE_GIT_ATTRIBUTION KOLUX_GIT_COMMIT_TRAILER KOLUX_GH_PR_FOOTER
+unset KOLUX_GH_ISSUE_FOOTER KOLUX_ATTRIBUTION_SHIM_DIR KOLUX_REAL_GIT KOLUX_REAL_GH KOLUX_ATTRIBUTION_BYPASS
 
 real_command=""
 if [[ "$path_entry_kept" == 1 ]]; then
@@ -181,7 +181,7 @@ if [[ -n "$real_command" && "$real_command" -ef "${SHELL_DOLLAR}{BASH_SOURCE[0]}
   real_command=""
 fi
 if [[ -z "$real_command" ]]; then
-  printf 'Nightshift compatibility wrapper could not locate %s on PATH.\n' "$command_name" >&2
+  printf 'Kolux compatibility wrapper could not locate %s on PATH.\n' "$command_name" >&2
   exit 127
 fi
 PATH="$cleaned_path" exec "$real_command" "$@"
@@ -191,8 +191,8 @@ export function renderLegacyTerminalPosixTombstone(
   command: 'git' | 'gh',
   interpreter: string = resolvePosixTombstoneInterpreter() ?? WINDOWS_POSIX_INTERPRETER
 ): string {
-  return POSIX_TOMBSTONE.replaceAll('__NIGHTSHIFT_INTERPRETER__', interpreter).replaceAll(
-    '__NIGHTSHIFT_COMMAND__',
+  return POSIX_TOMBSTONE.replaceAll('__KOLUX_INTERPRETER__', interpreter).replaceAll(
+    '__KOLUX_COMMAND__',
     command
   )
 }

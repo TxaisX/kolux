@@ -132,7 +132,7 @@ export async function getProjectViewTable(
       ok: false,
       error: {
         type: 'unsupported_layout',
-        message: `Nightshift renders table and roadmap views. This is a ${selectedView.layout.replace('_LAYOUT', '').toLowerCase()} view.`
+        message: `Kolux renders table and roadmap views. This is a ${selectedView.layout.replace('_LAYOUT', '').toLowerCase()} view.`
       },
       ...(typeof count === 'number' ? { totalCount: count } : {})
     }

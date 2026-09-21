@@ -1,5 +1,5 @@
 import type { WebContents } from 'electron'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 type SenderState = {
   connectionId: string
@@ -7,7 +7,7 @@ type SenderState = {
   subscriptions: Map<string, AbortController>
 }
 
-type CleanupRuntime = Pick<NightshiftRuntimeService, 'cleanupSubscriptionsForConnection'>
+type CleanupRuntime = Pick<KoluxRuntimeService, 'cleanupSubscriptionsForConnection'>
 
 export class DesktopRuntimeSenderLifecycle {
   private readonly senders = new Map<number, SenderState>()

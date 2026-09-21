@@ -26,13 +26,13 @@ afterEach(() => {
 })
 
 describe('hasCustomCodexHomeOverride', () => {
-  it('recognizes normalized aliases of Nightshift-owned CODEX_HOME', () => {
+  it('recognizes normalized aliases of Kolux-owned CODEX_HOME', () => {
     const managedHome = `${process.cwd()}${sep}codex-runtime-home${sep}home`
 
     expect(
       hasCustomCodexHomeOverride({
         CODEX_HOME: `${managedHome}${sep}.`,
-        NIGHTSHIFT_CODEX_HOME: managedHome
+        KOLUX_CODEX_HOME: managedHome
       })
     ).toBe(false)
   })
@@ -41,7 +41,7 @@ describe('hasCustomCodexHomeOverride', () => {
     expect(
       hasCustomCodexHomeOverride({
         CODEX_HOME: `${process.cwd()}${sep}custom-codex-home`,
-        NIGHTSHIFT_CODEX_HOME: `${process.cwd()}${sep}codex-runtime-home${sep}home`
+        KOLUX_CODEX_HOME: `${process.cwd()}${sep}codex-runtime-home${sep}home`
       })
     ).toBe(true)
   })
@@ -58,7 +58,7 @@ describe('hasCustomCodexHomeOverride', () => {
   it.skipIf(process.platform === 'win32')(
     'detects a pane-local shell startup override from its launch HOME',
     () => {
-      const paneHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-pane-home-'))
+      const paneHome = mkdtempSync(join(tmpdir(), 'kolux-codex-pane-home-'))
       temporaryHomes.push(paneHome)
       writeFileSync(join(paneHome, '.zshrc'), 'export CODEX_HOME="$HOME/custom-codex-home"\n')
 
@@ -86,12 +86,12 @@ describe('hasCustomCodexHomeOverride', () => {
   )
 
   // Why: a fish user who exports XDG_CONFIG_HOME from config.fish never passes it to
-  // a Dock-launched Nightshift, so the launch env is the only place it appears. Reading the
+  // a Dock-launched Kolux, so the launch env is the only place it appears. Reading the
   // main process env instead scans ~/.config and misses the override entirely.
   it.skipIf(process.platform === 'win32')(
     'resolves a fish override under the launch env XDG_CONFIG_HOME, not the process one',
     () => {
-      const paneHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-fish-home-'))
+      const paneHome = mkdtempSync(join(tmpdir(), 'kolux-codex-fish-home-'))
       temporaryHomes.push(paneHome)
       const configHome = join(paneHome, 'xdg')
       mkdirSync(join(configHome, 'fish'), { recursive: true })

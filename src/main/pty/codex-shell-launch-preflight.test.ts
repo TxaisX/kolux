@@ -25,7 +25,7 @@ const roots: string[] = []
 const zshAvailable = existsSync('/bin/zsh')
 const bashAvailable = existsSync('/bin/bash')
 // Why the shared lookup: it also finds a Homebrew fish that is off PATH, and it
-// carries the NIGHTSHIFT_REQUIRE_FISH contract asserted below.
+// carries the KOLUX_REQUIRE_FISH contract asserted below.
 const fishLookup = resolveFishBinary()
 const fishAvailable = fishLookup.available
 const pwshAvailable =
@@ -70,18 +70,18 @@ function createFishSandbox(prefix: string): { bin: string; preflight: string; ma
   mkdirSync(bin)
   symlinkSync(fishBinary, join(bin, 'fish'))
   const marker = join(root, 'preflight-ran')
-  const preflight = join(bin, 'nightshift-preflight')
+  const preflight = join(bin, 'kolux-preflight')
   writeExecutable(preflight, `#!/bin/sh\nprintf ran > ${JSON.stringify(marker)}\n`)
   return { bin, preflight, marker }
 }
 
-// Reports Nightshift's own wrapper (not a user-defined codex function) and any capture leak.
+// Reports Kolux's own wrapper (not a user-defined codex function) and any capture leak.
 const FISH_STATE_PROBE = `if functions -q codex; and functions codex | string match -q '*prepare-codex*'
   echo -n wrapper=YES
 else
   echo -n wrapper=NO
 end
-echo " var=[$__nightshift_codex_type]"`
+echo " var=[$__kolux_codex_type]"`
 
 function writeExecutable(path: string, content: string): void {
   writeFileSync(path, content)
@@ -104,7 +104,7 @@ function runAliasLaunch(
     '#!/bin/sh\nif [ -f "$CODEX_HOME/trusted" ]; then printf "normal\\n"; else printf "hooks-review\\n"; fi\n'
   )
   writeExecutable(
-    join(bin, 'nightshift-test'),
+    join(bin, 'kolux-test'),
     preflightSucceeds
       ? '#!/bin/sh\n[ "$1 $2 $3" = "agent hooks prepare-codex" ] || exit 2\nprintf "valid\\n" > "$CODEX_HOME/trusted"\n'
       : '#!/bin/sh\nexit 7\n'
@@ -130,17 +130,17 @@ function runAliasLaunch(
         ...process.env,
         PATH: `${bin}:${process.env.PATH ?? ''}`,
         CODEX_HOME: home,
-        NIGHTSHIFT_CODEX_HOME: home,
-        NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: join(bin, 'nightshift-test')
+        KOLUX_CODEX_HOME: home,
+        KOLUX_CODEX_LAUNCH_PREFLIGHT: join(bin, 'kolux-test')
       }
     }
   ).trim()
 }
 
-/** Launches a startup file that aliases the very name Nightshift wraps, then asserts the
+/** Launches a startup file that aliases the very name Kolux wraps, then asserts the
  *  wrapper installed, the preflight ran, and the user's alias still applies. */
 function expectNamedAliasSurvives(shell: string, enableAliases: string): void {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-named-alias-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-codex-named-alias-'))
   roots.push(root)
   const bin = join(root, 'bin')
   mkdirSync(bin)
@@ -150,7 +150,7 @@ function expectNamedAliasSurvives(shell: string, enableAliases: string): void {
     '#!/bin/sh\nprintf "launched args=[%s] author=[%s]\\n" "$*" "$GIT_AUTHOR_NAME"\n'
   )
   writeExecutable(
-    join(bin, 'nightshift-test'),
+    join(bin, 'kolux-test'),
     `#!/bin/sh\nprintf '%s' "$*" > ${JSON.stringify(preflightMarker)}\n`
   )
   // Why nested in `if true`: the shell parses a whole compound command before
@@ -177,7 +177,7 @@ function expectNamedAliasSurvives(shell: string, enableAliases: string): void {
       env: {
         ...process.env,
         PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-        NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: join(bin, 'nightshift-test')
+        KOLUX_CODEX_LAUNCH_PREFLIGHT: join(bin, 'kolux-test')
       }
     }
   )
@@ -196,8 +196,8 @@ afterEach(() => {
 
 describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', () => {
   it('repairs trust invalidated after shell creation before an alias launches Codex', () => {
-    const beforeRoot = mkdtempSync(join(tmpdir(), 'nightshift-codex-shell-before-'))
-    const afterRoot = mkdtempSync(join(tmpdir(), 'nightshift-codex-shell-after-'))
+    const beforeRoot = mkdtempSync(join(tmpdir(), 'kolux-codex-shell-before-'))
+    const afterRoot = mkdtempSync(join(tmpdir(), 'kolux-codex-shell-after-'))
     roots.push(beforeRoot, afterRoot)
 
     expect(runAliasLaunch(beforeRoot, '')).toBe('hooks-review')
@@ -205,7 +205,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
   })
 
   it.skipIf(!existsSync('/bin/zsh'))('repairs a zsh cx alias before Codex starts', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-zsh-alias-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-zsh-alias-'))
     roots.push(root)
 
     expect(runAliasLaunch(root, getPosixCodexShellLaunchPreflight(), '/bin/zsh')).toBe('normal')
@@ -220,7 +220,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
   })
 
   it('still launches Codex when the best-effort preflight fails', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-preflight-failure-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-preflight-failure-'))
     roots.push(root)
 
     expect(runAliasLaunch(root, getPosixCodexShellLaunchPreflight(), '/bin/bash', false)).toBe(
@@ -228,17 +228,14 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
     )
   })
 
-  it('does not trigger a preflight outside a Nightshift terminal', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-plain-shell-'))
+  it('does not trigger a preflight outside a Kolux terminal', () => {
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-plain-shell-'))
     roots.push(root)
     const bin = join(root, 'bin')
     const marker = join(root, 'preflight-ran')
     mkdirSync(bin)
     writeExecutable(join(bin, 'codex'), '#!/bin/sh\nprintf launched\n')
-    writeExecutable(
-      join(bin, 'nightshift-test'),
-      `#!/bin/sh\nprintf ran > ${JSON.stringify(marker)}\n`
-    )
+    writeExecutable(join(bin, 'kolux-test'), `#!/bin/sh\nprintf ran > ${JSON.stringify(marker)}\n`)
 
     const output = execFileSync(
       '/bin/bash',
@@ -264,7 +261,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
     it.skipIf(!existsSync(shell))(
       `keeps ${shell} startup alive under strict error handling when Codex is absent`,
       () => {
-        const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-strict-startup-'))
+        const root = mkdtempSync(join(tmpdir(), 'kolux-codex-strict-startup-'))
         roots.push(root)
 
         const output = execFileSync(
@@ -279,7 +276,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
             env: {
               ...process.env,
               PATH: root,
-              NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: 'nightshift-test'
+              KOLUX_CODEX_LAUNCH_PREFLIGHT: 'kolux-test'
             }
           }
         )
@@ -296,7 +293,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
         '--no-config',
         '-c',
         [
-          'set -gx NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT missing-preflight',
+          'set -gx KOLUX_CODEX_LAUNCH_PREFLIGHT missing-preflight',
           'function codex; echo custom-codex; end',
           getFishCodexShellLaunchPreflight(),
           'codex'
@@ -317,15 +314,15 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
   // Regression for #16893: an unquoted `(type -t codex)` expands to zero words when
   // codex is absent, so `test` saw `= file` (2 args) and printed "Missing argument
   // at index 3" on every fish pane launch. Needs a valid executable
-  // NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT so the `and` chain reaches the second `test`, and
+  // KOLUX_CODEX_LAUNCH_PREFLIGHT so the `and` chain reaches the second `test`, and
   // the real `-l -C` launch shape both shell-ready call sites use.
   it.skipIf(!fishAvailable)('stays silent and installs no wrapper when codex is absent', () => {
-    const { bin, preflight } = createFishSandbox('nightshift-codex-fish-absent-')
+    const { bin, preflight } = createFishSandbox('kolux-codex-fish-absent-')
 
     const result = spawnSync(
       join(bin, 'fish'),
       ['--no-config', '-l', '-C', getFishCodexShellLaunchPreflight(), '-c', FISH_STATE_PROBE],
-      { encoding: 'utf-8', env: { PATH: bin, NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflight } }
+      { encoding: 'utf-8', env: { PATH: bin, KOLUX_CODEX_LAUNCH_PREFLIGHT: preflight } }
     )
 
     expect(result.stderr).not.toContain('Missing argument')
@@ -334,13 +331,13 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
   })
 
   it.skipIf(!fishAvailable)('wraps codex and runs the preflight when codex is a real file', () => {
-    const { bin, preflight, marker } = createFishSandbox('nightshift-codex-fish-present-')
+    const { bin, preflight, marker } = createFishSandbox('kolux-codex-fish-present-')
     writeExecutable(join(bin, 'codex'), '#!/bin/sh\nprintf "real codex $*"\n')
 
     const output = execFileSync(
       join(bin, 'fish'),
       ['--no-config', '-l', '-C', getFishCodexShellLaunchPreflight(), '-c', 'codex hi'],
-      { encoding: 'utf-8', env: { PATH: bin, NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflight } }
+      { encoding: 'utf-8', env: { PATH: bin, KOLUX_CODEX_LAUNCH_PREFLIGHT: preflight } }
     )
 
     expect(output.trim()).toBe('real codex hi')
@@ -348,7 +345,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
   })
 
   it.skipIf(!fishAvailable)('leaves a codex alias unwrapped', () => {
-    const { bin, preflight } = createFishSandbox('nightshift-codex-fish-alias-')
+    const { bin, preflight } = createFishSandbox('kolux-codex-fish-alias-')
     writeExecutable(join(bin, 'codex'), '#!/bin/sh\nprintf "real codex"\n')
 
     const result = spawnSync(
@@ -361,7 +358,7 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
         '-c',
         FISH_STATE_PROBE
       ],
-      { encoding: 'utf-8', env: { PATH: bin, NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflight } }
+      { encoding: 'utf-8', env: { PATH: bin, KOLUX_CODEX_LAUNCH_PREFLIGHT: preflight } }
     )
 
     expect(result.stderr).not.toContain('Missing argument')
@@ -372,18 +369,18 @@ describe.skipIf(process.platform === 'win32')('Codex shell launch preflight', ()
 describe('PowerShell Codex shell launch preflight', () => {
   it('preserves a user-defined command', () => {
     expect(getPowerShellCodexShellLaunchPreflight()).toContain(
-      '$nightshiftCodexCommand.CommandType -in @("Application", "ExternalScript")'
+      '$koluxCodexCommand.CommandType -in @("Application", "ExternalScript")'
     )
   })
 
   it.skipIf(!pwshAvailable)('fails open when native errors are promoted', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-pwsh-failure-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-pwsh-failure-'))
     const bin = join(root, 'bin')
     roots.push(root)
     mkdirSync(bin)
     const executableSuffix = process.platform === 'win32' ? '.cmd' : ''
     writeExecutable(
-      join(bin, `nightshift-test${executableSuffix}`),
+      join(bin, `kolux-test${executableSuffix}`),
       process.platform === 'win32' ? '@exit /b 7\r\n' : '#!/bin/sh\nexit 7\n'
     )
     writeExecutable(
@@ -409,7 +406,7 @@ describe('PowerShell Codex shell launch preflight', () => {
         env: {
           ...process.env,
           PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: join(bin, `nightshift-test${executableSuffix}`)
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: join(bin, `kolux-test${executableSuffix}`)
         }
       }
     )
@@ -421,7 +418,7 @@ describe('PowerShell Codex shell launch preflight', () => {
 
 describe('Codex shell launch preflight command', () => {
   function makeCliRoot(): { root: string; userDataPath: string; resourcesPath: string } {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-preflight-cli-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-preflight-cli-'))
     roots.push(root)
     const userDataPath = join(root, 'user-data')
     const resourcesPath = join(root, 'resources')
@@ -431,9 +428,9 @@ describe('Codex shell launch preflight command', () => {
   }
 
   it.each([
-    { platform: 'darwin' as const, bundled: 'nightshift' },
-    { platform: 'linux' as const, bundled: 'nightshift-ide' },
-    { platform: 'win32' as const, bundled: 'nightshift.exe' }
+    { platform: 'darwin' as const, bundled: 'kolux' },
+    { platform: 'linux' as const, bundled: 'kolux-ide' },
+    { platform: 'win32' as const, bundled: 'kolux.exe' }
   ])('carries the verified bundled $platform launcher as an absolute path', (config) => {
     const { userDataPath, resourcesPath } = makeCliRoot()
     const launcherPath = join(resourcesPath, 'bin', config.bundled)
@@ -453,7 +450,7 @@ describe('Codex shell launch preflight command', () => {
 
   it('carries the verified dev launcher as an absolute path', () => {
     const { userDataPath, resourcesPath } = makeCliRoot()
-    const launcherPath = join(userDataPath, 'cli', 'bin', 'nightshift-dev')
+    const launcherPath = join(userDataPath, 'cli', 'bin', 'kolux-dev')
     writeExecutable(launcherPath, '#!/bin/sh\nexit 0\n')
 
     expect(
@@ -470,7 +467,7 @@ describe('Codex shell launch preflight command', () => {
 
   it('carries the packaged Windows launcher for WSLENV path translation', () => {
     const { userDataPath, resourcesPath } = makeCliRoot()
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift.exe')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux.exe')
     writeExecutable(launcherPath, '#!/bin/sh\nexit 0\n')
 
     expect(
@@ -478,7 +475,7 @@ describe('Codex shell launch preflight command', () => {
         hooksEnabled: true,
         isPackaged: true,
         isWsl: true,
-        managedHomePath: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
+        managedHomePath: '/home/jin/.local/share/kolux/codex-runtime-home/home',
         userDataPath,
         resourcesPath,
         platform: 'win32'
@@ -488,8 +485,8 @@ describe('Codex shell launch preflight command', () => {
 
   it('never returns an unqualified command name that a profile-rewritten PATH could hijack', () => {
     const { userDataPath, resourcesPath } = makeCliRoot()
-    writeExecutable(join(resourcesPath, 'bin', 'nightshift'), '#!/bin/sh\nexit 0\n')
-    writeExecutable(join(userDataPath, 'cli', 'bin', 'nightshift-dev'), '#!/bin/sh\nexit 0\n')
+    writeExecutable(join(resourcesPath, 'bin', 'kolux'), '#!/bin/sh\nexit 0\n')
+    writeExecutable(join(userDataPath, 'cli', 'bin', 'kolux-dev'), '#!/bin/sh\nexit 0\n')
 
     for (const isPackaged of [true, false]) {
       const command = resolveCodexShellLaunchPreflightCommand({
@@ -510,7 +507,7 @@ describe('Codex shell launch preflight command', () => {
     { label: 'the launcher path is a directory', create: 'directory' as const }
   ])('skips the preflight when $label', (config) => {
     const { userDataPath, resourcesPath } = makeCliRoot()
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux')
     if (config.create === 'directory') {
       mkdirSync(launcherPath)
     }
@@ -531,7 +528,7 @@ describe('Codex shell launch preflight command', () => {
     'skips the preflight when the launcher is not executable',
     () => {
       const { userDataPath, resourcesPath } = makeCliRoot()
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift')
+      const launcherPath = join(resourcesPath, 'bin', 'kolux')
       writeFileSync(launcherPath, '#!/bin/sh\nexit 0\n')
       chmodSync(launcherPath, 0o644)
 
@@ -569,7 +566,7 @@ describe('Codex shell launch preflight command', () => {
     { hooksEnabled: true, isWsl: false, managedHomePath: null }
   ])('does not enable an unsupported preflight for %o', (options) => {
     const { userDataPath, resourcesPath } = makeCliRoot()
-    writeExecutable(join(resourcesPath, 'bin', 'nightshift'), '#!/bin/sh\nexit 0\n')
+    writeExecutable(join(resourcesPath, 'bin', 'kolux'), '#!/bin/sh\nexit 0\n')
 
     expect(
       resolveCodexShellLaunchPreflightCommand({
@@ -587,10 +584,10 @@ describe('Codex shell launch preflight command', () => {
 // Program Files (Windows) both put spaces in it.
 describe.skipIf(process.platform === 'win32')('Codex preflight paths containing spaces', () => {
   function writeSpacedPreflight(root: string): { preflightPath: string; markerPath: string } {
-    const dir = join(root, 'Nightshift Dev.app', 'Contents', 'Resources', 'bin')
+    const dir = join(root, 'Kolux Dev.app', 'Contents', 'Resources', 'bin')
     mkdirSync(dir, { recursive: true })
     const markerPath = join(root, 'preflight-ran')
-    const preflightPath = join(dir, 'nightshift')
+    const preflightPath = join(dir, 'kolux')
     writeExecutable(
       preflightPath,
       `#!/bin/sh\n[ "$1 $2 $3" = "agent hooks prepare-codex" ] || exit 2\nprintf ran > ${JSON.stringify(markerPath)}\n`
@@ -599,7 +596,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
   }
 
   it('invokes a POSIX preflight whose absolute path contains spaces', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-spaced-posix-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-spaced-posix-'))
     roots.push(root)
     const bin = join(root, 'bin')
     mkdirSync(bin)
@@ -613,7 +610,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
         env: {
           ...process.env,
           PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflightPath
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: preflightPath
         }
       }
     )
@@ -622,7 +619,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
   })
 
   it.skipIf(!fishAvailable)('invokes a fish preflight whose absolute path contains spaces', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-spaced-fish-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-codex-spaced-fish-'))
     roots.push(root)
     const bin = join(root, 'bin')
     mkdirSync(bin)
@@ -633,7 +630,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
       env: {
         ...process.env,
         PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-        NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflightPath
+        KOLUX_CODEX_LAUNCH_PREFLIGHT: preflightPath
       }
     })
 
@@ -643,7 +640,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
   it.skipIf(!pwshAvailable)(
     'invokes a PowerShell preflight whose absolute path contains spaces',
     () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-spaced-pwsh-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-codex-spaced-pwsh-'))
       roots.push(root)
       const bin = join(root, 'bin')
       mkdirSync(bin)
@@ -658,7 +655,7 @@ describe.skipIf(process.platform === 'win32')('Codex preflight paths containing 
           env: {
             ...process.env,
             PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-            NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflightPath
+            KOLUX_CODEX_LAUNCH_PREFLIGHT: preflightPath
           }
         }
       )

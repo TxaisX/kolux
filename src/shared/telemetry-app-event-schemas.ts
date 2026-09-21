@@ -58,7 +58,7 @@ export const repoAddedSchema = z
   })
   .strict()
 
-export const appStarredNightshiftSchema = z
+export const appStarredKoluxSchema = z
   .object({
     source: appStarSourceSchema,
     nth_repo_added: nthRepoAddedSchema

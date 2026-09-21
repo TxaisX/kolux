@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   state: {
-    nightshiftProfileAuthStatus: { state: 'connected' } as { state: string } | null,
-    connectCurrentNightshiftProfile: vi.fn()
+    koluxProfileAuthStatus: { state: 'connected' } as { state: string } | null,
+    connectCurrentKoluxProfile: vi.fn()
   }
 }))
 
@@ -33,19 +33,19 @@ const published = {
   change: 'created' as const,
   item: {
     artifact: { slug: 'artifact-a' },
-    shareUrl: 'https://share.nightshift.invalid/a/artifact-a'
+    shareUrl: 'https://share.kolux.invalid/a/artifact-a'
   }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.state.nightshiftProfileAuthStatus = { state: 'connected' }
-  mocks.state.connectCurrentNightshiftProfile = mocks.connect
+  mocks.state.koluxProfileAuthStatus = { state: 'connected' }
+  mocks.state.connectCurrentKoluxProfile = mocks.connect
 })
 
 describe('artifact publish flow', () => {
   it('signs in before preparing and publishing the request', async () => {
-    mocks.state.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.state.koluxProfileAuthStatus = { state: 'local' }
     mocks.connect.mockResolvedValue({ status: 'connected' })
     mocks.callRuntimeRpc.mockResolvedValue({ status: 'ok', value: published })
     const createRequest = vi.fn().mockResolvedValue(request)
@@ -79,7 +79,7 @@ describe('artifact publish flow', () => {
   })
 
   it('surfaces sign-in failures without preparing the file', async () => {
-    mocks.state.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.state.koluxProfileAuthStatus = { state: 'local' }
     mocks.connect.mockRejectedValue(new Error('login failed'))
     const createRequest = vi.fn().mockResolvedValue(request)
 

@@ -31,7 +31,7 @@ import type {
 import { _internals } from './legacy-wsl-runtime-auth-drain'
 
 export function runApplyScript(options: DrainApplyInterference = {}): DrainApplyOutcome {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-drain-apply-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-drain-apply-'))
   const legacyHome = join(root, 'legacy')
   const targetHome = join(root, 'account')
   const binDir = join(root, 'bin')
@@ -76,7 +76,7 @@ if (
   result.status === 0 &&
   fs.existsSync(process.env.SESSION_COMMIT_MARKER) &&
   target.includes('/account/sessions/') &&
-  target.includes('.nightshift-bridge-')
+  target.includes('.kolux-bridge-')
 ) {
   const parent = spawnSync('/bin/ps', ['-o', 'ppid=', '-p', String(process.ppid)], {
     encoding: 'utf8'
@@ -106,15 +106,15 @@ const fs = require('node:fs')
 const args = process.argv.slice(2)
 if (
   process.env.KILL_DESTINATION_RECOVERY === '1' &&
-  args.at(-1)?.endsWith('.nightshift-drain-destination')
+  args.at(-1)?.endsWith('.kolux-drain-destination')
 ) {
   process.kill(process.ppid, 'SIGKILL')
   process.exit(1)
 }
 if (
   process.env.CROSS_FILESYSTEM_BRIDGE === '1' &&
-  args.at(-2)?.includes('.nightshift-drain-session-stage') &&
-  args.at(-1)?.includes('.nightshift-bridge-')
+  args.at(-2)?.includes('.kolux-drain-session-stage') &&
+  args.at(-1)?.includes('.kolux-bridge-')
 ) {
   process.exit(1)
 }
@@ -182,7 +182,7 @@ process.exit(result.status ?? 1)
           KILL_SESSION_LINK: options.killAfterSessionLink ? '1' : '0',
           KILL_SOURCE: options.killAfterSourceRemoval ? '1' : '0',
           PATH: `${binDir}:${process.env.PATH ?? ''}`,
-          SESSION_COMMIT_MARKER: `${markerPath}.nightshift-drain-session-commit`,
+          SESSION_COMMIT_MARKER: `${markerPath}.kolux-drain-session-commit`,
           REWRITE_AFTER: options.rewriteAfterHashCall ? String(options.rewriteAfterHashCall) : '',
           REWRITE_AFTER_SESSION_LINK:
             options.replaceTargetAfterSessionLink ||
@@ -198,7 +198,7 @@ process.exit(result.status ?? 1)
             options.rewriteTargetAfterSessionLink || options.replaceTargetAfterSessionLink
               ? targetAuthPath
               : options.rewriteQuarantineAfterSessionLink
-                ? `${markerPath}.nightshift-drain-live-source`
+                ? `${markerPath}.kolux-drain-live-source`
                 : legacyAuthPath,
           REWRITE_TARGET:
             options.rewriteTarget === 'source-credentials'
@@ -222,7 +222,7 @@ process.exit(result.status ?? 1)
     options.killDuringSessionCommit
   ) {
     if (options.rewriteQuarantineBeforeRecovery) {
-      const quarantinePath = `${markerPath}.nightshift-drain-live-source`
+      const quarantinePath = `${markerPath}.kolux-drain-live-source`
       chmodSync(quarantinePath, 0o600)
       writeFileSync(quarantinePath, NEWER_AUTH)
     }
@@ -260,16 +260,16 @@ process.exit(result.status ?? 1)
     targetSession: existsSync(join(targetHome, ...RETIRED_SESSION_SEGMENTS))
       ? readFileSync(join(targetHome, ...RETIRED_SESSION_SEGMENTS), 'utf8')
       : null,
-    sourceQuarantineAuth: existsSync(`${markerPath}.nightshift-drain-live-source`)
-      ? readFileSync(`${markerPath}.nightshift-drain-live-source`, 'utf8')
+    sourceQuarantineAuth: existsSync(`${markerPath}.kolux-drain-live-source`)
+      ? readFileSync(`${markerPath}.kolux-drain-live-source`, 'utf8')
       : null,
-    sourceRecoveryAuth: existsSync(`${markerPath}.nightshift-drain-source`)
-      ? readFileSync(`${markerPath}.nightshift-drain-source`, 'utf8')
+    sourceRecoveryAuth: existsSync(`${markerPath}.kolux-drain-source`)
+      ? readFileSync(`${markerPath}.kolux-drain-source`, 'utf8')
       : null,
-    destinationRecoveryAuth: existsSync(`${markerPath}.nightshift-drain-destination`)
-      ? readFileSync(`${markerPath}.nightshift-drain-destination`, 'utf8')
+    destinationRecoveryAuth: existsSync(`${markerPath}.kolux-drain-destination`)
+      ? readFileSync(`${markerPath}.kolux-drain-destination`, 'utf8')
       : null,
-    destinationRecoveryPathExists: existsSync(`${markerPath}.nightshift-drain-destination-path`),
-    sessionCommitMarkerExists: existsSync(`${markerPath}.nightshift-drain-session-commit`)
+    destinationRecoveryPathExists: existsSync(`${markerPath}.kolux-drain-destination-path`),
+    sessionCommitMarkerExists: existsSync(`${markerPath}.kolux-drain-session-commit`)
   }
 }

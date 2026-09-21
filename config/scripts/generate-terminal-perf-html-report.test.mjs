@@ -10,7 +10,7 @@ import {
 const tempDirs = []
 
 function makeTempDir() {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-terminal-perf-html-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-terminal-perf-html-'))
   tempDirs.push(dir)
   return dir
 }
@@ -77,7 +77,7 @@ describe('generate-terminal-perf-html-report', () => {
       }
     )
     expect(
-      parseHtmlReportArgs(['a.json'], { NIGHTSHIFT_E2E_TERMINAL_PERF_HTML_REPORT_PATH: 'env.html' })
+      parseHtmlReportArgs(['a.json'], { KOLUX_E2E_TERMINAL_PERF_HTML_REPORT_PATH: 'env.html' })
     ).toEqual({
       inputs: [{ label: 'a', path: 'a.json' }],
       outputPath: 'env.html'

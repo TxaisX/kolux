@@ -24,7 +24,7 @@ export const ORCHESTRATION_WORKER_LAUNCH_HANDLER: Record<string, CommandHandler>
       ) {
         throw new RuntimeClientError(
           'incompatible_runtime',
-          'The connected Nightshift runtime does not support worker model or effort overrides. Update or restart Nightshift and try again.'
+          'The connected Kolux runtime does not support worker model or effort overrides. Update or restart Kolux and try again.'
         )
       }
     }

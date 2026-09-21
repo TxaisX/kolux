@@ -48,10 +48,10 @@ function installedStatus(configPath: string): AgentHookInstallStatus {
 }
 
 beforeEach(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  tmpHome = mkdtempSync(join(tmpdir(), 'kolux-codex-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(tmpHome)
   getPathMock.mockImplementation((name: string) => {
     if (name === 'userData') {
@@ -73,9 +73,9 @@ afterEach(() => {
   rmSync(tmpHome, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })

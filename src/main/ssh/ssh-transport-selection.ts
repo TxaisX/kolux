@@ -74,14 +74,14 @@ export function shouldUseSystemSshTransport(
 ): boolean {
   if (isOpenSshConfigBackedTarget(target) && resolved) {
     return (
-      process.env.NIGHTSHIFT_SSH_FORCE_SYSTEM_TRANSPORT === '1' ||
+      process.env.KOLUX_SSH_FORCE_SYSTEM_TRANSPORT === '1' ||
       resolved.proxyUseFdpass === true ||
       resolved.proxyCommand != null ||
       resolved.proxyJump != null
     )
   }
   return (
-    process.env.NIGHTSHIFT_SSH_FORCE_SYSTEM_TRANSPORT === '1' ||
+    process.env.KOLUX_SSH_FORCE_SYSTEM_TRANSPORT === '1' ||
     target.proxyCommand != null ||
     target.jumpHost != null ||
     resolved?.proxyUseFdpass === true ||

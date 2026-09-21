@@ -213,7 +213,7 @@ async function executeHistoryGc(liveWorktreeIds: Set<string>, signal: AbortSigna
 }
 
 /** Run background GC to prune history directories for worktrees that are no
- *  longer in Nightshift's known live-worktree set. Resolves when the pass finishes. */
+ *  longer in Kolux's known live-worktree set. Resolves when the pass finishes. */
 export function runHistoryGc(liveWorktreeIds: Set<string>): Promise<void> {
   // Why join instead of starting a second pass: two walks would race each other's
   // tombstone renames, and the loser's `scheduleWorktreeHistoryTreeDeletion` would

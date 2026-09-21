@@ -34,7 +34,7 @@ function card(overrides: Partial<DashboardCard> = {}): DashboardCard {
     worktreeId: 'worktree-1',
     tabId: 'tab-1',
     leafId: 'leaf-1',
-    repoName: 'Nightshift',
+    repoName: 'Kolux',
     worktreeName: 'Dashboard',
     startedAt: 1,
     finishedAt: null,
@@ -77,7 +77,7 @@ describe('buildDashboardWorktreeLaunchOptions', () => {
     const workspace: DashboardWorkspace = {
       repoId: 'repo-1',
       worktreeId: 'empty-worktree',
-      repoName: 'Nightshift',
+      repoName: 'Kolux',
       worktreeName: 'Empty',
       hostKind: 'local',
       executionHostId: 'local',

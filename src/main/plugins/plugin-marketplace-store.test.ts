@@ -8,7 +8,7 @@ import { marketplaceSourceId, PluginMarketplaceStore } from './plugin-marketplac
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-marketplace-store-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-marketplace-store-'))
   roots.push(root)
   return root
 }

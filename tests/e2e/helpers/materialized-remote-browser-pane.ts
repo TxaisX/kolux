@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 
 export type MaterializedRemoteBrowserPane = {
   /** The client's local browser page id — the key its remote handle is stored under. */

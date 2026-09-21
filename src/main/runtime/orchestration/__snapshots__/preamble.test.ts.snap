@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`buildDispatchPreamble > renders a stable snapshot of the full preamble 1`] = `
-"You are working inside Nightshift, a multi-agent IDE. You are a dispatched worker.
+"You are working inside Kolux, a multi-agent IDE. You are a dispatched worker.
 Your coordinator's terminal handle is: term_COORD
 Your task ID is: task_SNAP
 
@@ -25,7 +25,7 @@ Slack, GitHub comments, or any other channel to reach a human during the run.
   # Never encode failure only in prose and never silently exit.
   # Include BOTH taskId and dispatchId in the payload so a late completion
   # from a failed retry cannot complete the current dispatch.
-  nightshift orchestration send --from term_WORKER --type worker_done --subject "<short status>" --body "<3-sentence summary: what you did, what you found, what's left>" --task-id task_SNAP --dispatch-id ctx_SNAP --outcome succeeded
+  kolux orchestration send --from term_WORKER --type worker_done --subject "<short status>" --body "<3-sentence summary: what you did, what you found, what's left>" --task-id task_SNAP --dispatch-id ctx_SNAP --outcome succeeded
 
   # BEHAVIOR RULE: send a heartbeat every 5 minutes
   # while actively working on the task. The coordinator uses this to
@@ -37,12 +37,12 @@ Slack, GitHub comments, or any other channel to reach a human during the run.
   # attributes the heartbeat to the specific dispatch context, not just
   # the task, so a straggler heartbeat from a previously-failed dispatch
   # cannot mask a hung retry.
-  nightshift orchestration send --from term_WORKER --type heartbeat --subject "alive" --task-id task_SNAP --dispatch-id ctx_SNAP --phase "<short: investigating|implementing|reviewing|waiting>"
+  kolux orchestration send --from term_WORKER --type heartbeat --subject "alive" --task-id task_SNAP --dispatch-id ctx_SNAP --phase "<short: investigating|implementing|reviewing|waiting>"
 
   # Ask the coordinator a question and block until it answers.
   #
   # BEHAVIOR RULE #1 (MUST NOT VIOLATE):
-  # NEVER use AskUserQuestion; use \`nightshift orchestration ask\`.
+  # NEVER use AskUserQuestion; use \`kolux orchestration ask\`.
   # AskUserQuestion opens a local TUI prompt that the
   # coordinator cannot see and cannot answer — your session will hang forever
   # waiting on a human. Every interactive question goes through \`ask\` below.
@@ -51,17 +51,17 @@ Slack, GitHub comments, or any other channel to reach a human during the run.
   # blocks until the coordinator replies, then prints the reply body. If the
   # call times out or disconnects, resume with the returned message ID instead
   # of creating a duplicate question.
-  nightshift orchestration ask --from term_WORKER --question "<your question>" --options "<optional,comma,separated>" --timeout-ms 600000
+  kolux orchestration ask --from term_WORKER --question "<your question>" --options "<optional,comma,separated>" --timeout-ms 600000
 
   # Escalate a blocker or failure (pre-completion, when you need the
   # coordinator to do something before you can continue):
-  nightshift orchestration send --from term_WORKER --type escalation --subject "Blocked: <reason>" --body "<details>" --task-id task_SNAP --dispatch-id ctx_SNAP
+  kolux orchestration send --from term_WORKER --type escalation --subject "Blocked: <reason>" --body "<details>" --task-id task_SNAP --dispatch-id ctx_SNAP
 
   # Read coordinator follow-ups. Nothing interrupts you: a durable message only
   # arrives when you look, so run this at each natural checkpoint — before you
   # start a new file and after a test run — and once more immediately before
   # you send worker_done, so a redirect lands before the task settles.
-  nightshift orchestration check --terminal term_WORKER --json
+  kolux orchestration check --terminal term_WORKER --json
 \`\`\`
 
 === AFTER YOU SEND worker_done ===
@@ -69,7 +69,7 @@ Slack, GitHub comments, or any other channel to reach a human during the run.
 worker_done ends your turn for this task. Your dispatched work is complete:
 stop, return to an idle prompt, and take no further actions — do NOT start
 new or unrelated work, do NOT run a sleep/poll loop, and do NOT keep calling
-\`nightshift orchestration check\`. The coordinator has already recorded your
+\`kolux orchestration check\`. The coordinator has already recorded your
 completion and expects no further output.
 
 A direct instruction from the user takes precedence over this idle rule.

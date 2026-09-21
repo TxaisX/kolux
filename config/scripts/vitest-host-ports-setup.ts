@@ -16,7 +16,7 @@ import { setSecretStore } from '../../src/shared/secret-store'
 // step and read it back in the next would otherwise lose it between them. Removed on
 // teardown — vitest builds one environment per test file, so without this a full run
 // leaves thousands of directories behind.
-const userData = mkdtempSync(join(tmpdir(), 'nightshift-vitest-userdata-'))
+const userData = mkdtempSync(join(tmpdir(), 'kolux-vitest-userdata-'))
 
 afterAll(() => {
   rmSync(userData, { recursive: true, force: true })

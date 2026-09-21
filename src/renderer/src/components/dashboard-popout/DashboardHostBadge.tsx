@@ -40,10 +40,10 @@ export function dashboardHostTooltipLabel({
       : translate('dashboardPopout.host.ssh', 'SSH host')
   }
   return label
-    ? translate('dashboardPopout.host.remoteNamed', 'Remote Nightshift host · {{host}}', {
+    ? translate('dashboardPopout.host.remoteNamed', 'Remote Kolux host · {{host}}', {
         host: label
       })
-    : translate('dashboardPopout.host.remote', 'Remote Nightshift host')
+    : translate('dashboardPopout.host.remote', 'Remote Kolux host')
 }
 
 export function DashboardHostBadge({

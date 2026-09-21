@@ -201,15 +201,15 @@ function configureSharedProjectCompatibilityMocks(
       ? localRepo
       : {
           ...localRepo,
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }
   const remoteRepoWithIdentity: Repo = {
     ...remoteRepo,
-    upstream: { owner: 'TxaisX', repo: 'nightshift' }
+    upstream: { owner: 'TxaisX', repo: 'kolux' }
   }
   const sharedLocalProject: Project = {
     id: sharedProjectId,
-    displayName: 'Nightshift',
+    displayName: 'Kolux',
     badgeColor: '#000',
     sourceRepoIds: ['local-repo'],
     localWindowsRuntimePreference: { kind: 'windows-host' },
@@ -218,7 +218,7 @@ function configureSharedProjectCompatibilityMocks(
   }
   const sharedRemoteProject: Project = {
     id: sharedProjectId,
-    displayName: 'Nightshift',
+    displayName: 'Kolux',
     badgeColor: '#111',
     sourceRepoIds: ['remote-repo'],
     ...(options.remoteProjectRuntimePreference
@@ -790,7 +790,7 @@ describe('fetchReposForAllHosts', () => {
       activeRepoId: 'remote-repo',
       filterRepoIds: ['remote-repo', 'stale-repo'],
       setupScriptPromptDismissedRepoIds: [remoteDismissalKey, staleDismissalKey],
-      trustedNightshiftHooks: {
+      trustedKoluxHooks: {
         'remote-repo': { all: { approvedAt: 1 } },
         'stale-repo': { all: { approvedAt: 2 } }
       }
@@ -804,7 +804,7 @@ describe('fetchReposForAllHosts', () => {
       remoteDismissalKey,
       staleDismissalKey
     ])
-    expect(store.getState().trustedNightshiftHooks).toEqual({
+    expect(store.getState().trustedKoluxHooks).toEqual({
       'remote-repo': { all: { approvedAt: 1 } },
       'stale-repo': { all: { approvedAt: 2 } }
     })
@@ -814,7 +814,7 @@ describe('fetchReposForAllHosts', () => {
     expect(store.getState().activeRepoId).toBe('remote-repo')
     expect(store.getState().filterRepoIds).toEqual(['remote-repo'])
     expect(store.getState().setupScriptPromptDismissedRepoIds).toEqual([remoteDismissalKey])
-    expect(store.getState().trustedNightshiftHooks).toEqual({
+    expect(store.getState().trustedKoluxHooks).toEqual({
       'remote-repo': { all: { approvedAt: 1 } }
     })
   })

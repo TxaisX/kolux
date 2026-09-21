@@ -2,7 +2,7 @@
 // ora, installers, any TUI animates them — so a title carrying nothing else must not
 // authorize a guarded send, which auto-submits with Enter into whatever owns the pane.
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { assertTerminalAgentSendable } from './rpc/terminal-agent-send-guard'
 import { detectAgentStatusFromTitle } from '../../shared/agent-detection'
 
@@ -29,11 +29,11 @@ async function createRuntimeWithTitle(
   launchAgent?: 'claude',
   verifiedLaunch = true
 ): Promise<{
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   handle: string
   getForegroundProcess: ReturnType<typeof vi.fn>
 }> {
-  const runtime = new NightshiftRuntimeService(null)
+  const runtime = new KoluxRuntimeService(null)
   const internals = runtime as unknown as {
     resolveTerminalWorkspaceLaunchScope: (selector: string) => Promise<unknown>
   }
@@ -91,10 +91,7 @@ async function createRuntimeWithTitle(
 
 const AUTHORIZED = 'authorized'
 
-async function guardedSendResult(
-  runtime: NightshiftRuntimeService,
-  handle: string
-): Promise<string> {
+async function guardedSendResult(runtime: KoluxRuntimeService, handle: string): Promise<string> {
   try {
     await assertTerminalAgentSendable({ runtime, handle, assertWritable: () => {} })
     return AUTHORIZED

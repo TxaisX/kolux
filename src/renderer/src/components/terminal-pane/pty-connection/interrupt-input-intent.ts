@@ -30,7 +30,7 @@ export function installInterruptInputIntent(session: ConnectPanePtySession): voi
       }
       // Why: restored idle agent TUIs can repaint after reattach SIGWINCH and
       // reapply DECSCUSR steady-bar; the normal working→idle reset will not
-      // fire because the agent was already idle before Nightshift restarted.
+      // fire because the agent was already idle before Kolux restarted.
       session.queueAgentIdleTerminalModeReset()
     }, REATTACH_IDLE_AGENT_CURSOR_RESET_DELAY_MS)
   }
@@ -70,7 +70,7 @@ export function installInterruptInputIntent(session: ConnectPanePtySession): voi
   ): void => {
     const state = useAppStore.getState()
     if (!entry) {
-      // Why: a Nightshift-started agent can exit before its first hook status. The
+      // Why: a Kolux-started agent can exit before its first hook status. The
       // launch registry was still created up front, so clear it on command exit.
       state.clearAgentLaunchConfig(session.cacheKey)
       return

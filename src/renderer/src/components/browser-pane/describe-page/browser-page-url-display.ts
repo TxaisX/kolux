@@ -1,5 +1,5 @@
 import type { BrowserPage as BrowserPageState } from '../../../../../shared/browser-workspace-types'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import {
   normalizeBrowserNavigationUrl,
   normalizeExternalBrowserUrl,
@@ -19,15 +19,15 @@ export function getBrowserPageRuntimeEnvironmentId(
 }
 
 export function toDisplayUrl(url: string): string {
-  return url === NIGHTSHIFT_BROWSER_BLANK_URL ? 'about:blank' : redactKagiSessionToken(url)
+  return url === KOLUX_BROWSER_BLANK_URL ? 'about:blank' : redactKagiSessionToken(url)
 }
 
 export function getBrowserDisplayTitle(title: string | null | undefined, url: string): string {
   if (
     url === 'about:blank' ||
-    url === NIGHTSHIFT_BROWSER_BLANK_URL ||
+    url === KOLUX_BROWSER_BLANK_URL ||
     title === 'about:blank' ||
-    title === NIGHTSHIFT_BROWSER_BLANK_URL ||
+    title === KOLUX_BROWSER_BLANK_URL ||
     !title
   ) {
     return 'New Tab'

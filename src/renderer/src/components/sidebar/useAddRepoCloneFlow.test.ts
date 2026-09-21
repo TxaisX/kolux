@@ -80,8 +80,8 @@ vi.mock('sonner', () => ({
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-cloned',
-    path: '/srv/nightshift',
-    displayName: 'nightshift',
+    path: '/srv/kolux',
+    displayName: 'kolux',
     badgeColor: '#999999',
     addedAt: 1,
     kind: 'git',
@@ -160,20 +160,18 @@ describe('useAddRepoCloneFlow', () => {
       step: 'clone',
       activeRuntimeEnvironmentId: null,
       sshTargetId: 'ssh-1',
-      workspaceDir: '/private/tmp/nightshift-setup-e2e.hOWO1f',
+      workspaceDir: '/private/tmp/kolux-setup-e2e.hOWO1f',
       fetchWorktrees: mocks.fetchWorktrees,
       onGitRepoReady: mocks.onGitRepoReady
     })
 
     expect(result.cloneDestination).toBe('')
-    expect(mocks.stateSetters[1]).not.toHaveBeenCalledWith(
-      '/private/tmp/nightshift-setup-e2e.hOWO1f'
-    )
+    expect(mocks.stateSetters[1]).not.toHaveBeenCalledWith('/private/tmp/kolux-setup-e2e.hOWO1f')
   })
 
   it('strips Electron IPC wrappers from clone errors', async () => {
     const cloneError =
-      'Clone failed: Destination already exists and is not empty: /srv/nightshift. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
+      'Clone failed: Destination already exists and is not empty: /srv/kolux. Choose a different parent folder, delete the existing folder, or add the existing repository instead.'
     mocks.cloneRemote.mockRejectedValue(
       new Error(`Error invoking remote method 'repos:cloneRemote': Error: ${cloneError}`)
     )

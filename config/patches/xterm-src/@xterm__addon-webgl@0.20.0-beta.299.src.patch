@@ -36,7 +36,7 @@ index 4977ad741065e26bbfd35bc50e7558a033b13340..f55805ddc3f266415f7f8e81e5b8c318
    private _pageLayoutVersion = 0;
    public get pageLayoutVersion(): number { return this._pageLayoutVersion; }
  
-+  // Nightshift diagnostics: read by terminal-render-desync-weight-probe.ts to tell a real
++  // Kolux diagnostics: read by terminal-render-desync-weight-probe.ts to tell a real
 +  // bold-collapse from a repaint problem. Canvas silently keeps its previous font when an
 +  // assignment fails to parse, which rasterizes glyphs at a stale weight.
 +  public fontProbeMismatchCount = 0;
@@ -73,7 +73,7 @@ index 4977ad741065e26bbfd35bc50e7558a033b13340..f55805ddc3f266415f7f8e81e5b8c318
    }
  
 +  /**
-+   * Nightshift diagnostic. Canvas ignores a font assignment it cannot parse and silently keeps the
++   * Kolux diagnostic. Canvas ignores a font assignment it cannot parse and silently keeps the
 +   * previous value, so a bad family or weight rasterizes every glyph at a stale weight. Record
 +   * the mismatch rather than correcting it: the goal is to tell that failure apart from a
 +   * repaint bug when a terminal renders bold-collapsed.
@@ -95,8 +95,8 @@ index 4977ad741065e26bbfd35bc50e7558a033b13340..f55805ddc3f266415f7f8e81e5b8c318
 +    this.fontProbeMismatchCount++;
 +    this.fontProbeLastMismatch = { desired, actual: this._tmpCtx.font };
 +    try {
-+      (globalThis as { __nightshiftAtlasFontProbe?: (mismatch: { desired: string, actual: string }) => void })
-+        .__nightshiftAtlasFontProbe?.(this.fontProbeLastMismatch);
++      (globalThis as { __koluxAtlasFontProbe?: (mismatch: { desired: string, actual: string }) => void })
++        .__koluxAtlasFontProbe?.(this.fontProbeLastMismatch);
 +    } catch {
 +      // Diagnostics only; a throwing listener must never break rasterization.
 +    }

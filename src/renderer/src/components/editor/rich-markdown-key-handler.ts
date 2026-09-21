@@ -203,7 +203,7 @@ export function createRichMarkdownKeyHandler(
       }
       flushPendingProseMirrorSelection(ed)
 
-      // Why: Nightshift's Tab handler runs before TipTap Table shortcuts and used to
+      // Why: Kolux's Tab handler runs before TipTap Table shortcuts and used to
       // always sink/lift lists, so table cell Tab/Shift-Tab never fired.
       if (!isComposingMarkdownInput(event, ed) && handleRichMarkdownTableTab(ed, event.shiftKey)) {
         return true

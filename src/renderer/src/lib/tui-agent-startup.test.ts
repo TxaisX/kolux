@@ -337,10 +337,10 @@ describe('buildAgentDraftLaunchPlan', () => {
     ).toBeNull()
   })
 
-  it('uses NIGHTSHIFT_PI_PREFILL env var for pi (no CLI flag exists)', () => {
+  it('uses KOLUX_PI_PREFILL env var for pi (no CLI flag exists)', () => {
     // Why: pi has no `--prefill` flag, and bracketed-paste-after-ready races
-    // against pi's lengthy startup output. The Nightshift overlay installs an
-    // `nightshift-prefill` extension that reads NIGHTSHIFT_PI_PREFILL on session_start
+    // against pi's lengthy startup output. The Kolux overlay installs an
+    // `kolux-prefill` extension that reads KOLUX_PI_PREFILL on session_start
     // and seeds the editor. Plan plumbs the env var without polluting the
     // shell command (no `FOO='...' pi` prefix typed into the terminal).
     expect(
@@ -352,9 +352,9 @@ describe('buildAgentDraftLaunchPlan', () => {
       })
     ).toEqual({
       agent: 'pi',
-      launchCommand: `pi; command test -n "$fish_pid" && set --erase -g NIGHTSHIFT_PI_PREFILL; command test -z "$fish_pid" && unset NIGHTSHIFT_PI_PREFILL; true`,
+      launchCommand: `pi; command test -n "$fish_pid" && set --erase -g KOLUX_PI_PREFILL; command test -z "$fish_pid" && unset KOLUX_PI_PREFILL; true`,
       expectedProcess: 'pi',
-      env: { NIGHTSHIFT_PI_PREFILL: 'https://github.com/acme/repo/issues/42' },
+      env: { KOLUX_PI_PREFILL: 'https://github.com/acme/repo/issues/42' },
       launchConfig: emptyLaunchConfig('pi')
     })
   })

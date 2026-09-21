@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   cleanupMarkdownFixture,
@@ -152,20 +152,18 @@ async function placeCaretAtHeadingStart(
 }
 
 test.describe('Markdown prose reflow', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await nightshiftPage.setViewportSize({ width: 1440, height: 900 })
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await koluxPage.setViewportSize({ width: 1440, height: 900 })
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('hard-wrapped prose reflows as one document paragraph', async ({
-    nightshiftPage
-  }, testInfo) => {
+  test('hard-wrapped prose reflows as one document paragraph', async ({ koluxPage }, testInfo) => {
     let filePath: string | null = null
 
     try {
-      filePath = await openHardWrappedFixture(nightshiftPage, testInfo)
-      const metrics = await getGoalParagraphMetrics(nightshiftPage)
+      filePath = await openHardWrappedFixture(koluxPage, testInfo)
+      const metrics = await getGoalParagraphMetrics(koluxPage)
 
       expect(metrics.paragraphCount).toBe(1)
       expect(metrics.sourceLineCount).toBe(4)
@@ -177,17 +175,17 @@ test.describe('Markdown prose reflow', () => {
   })
 
   test('deleting an inserted empty paragraph keeps hard-wrapped prose reflowing', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     let filePath: string | null = null
 
     try {
-      filePath = await openHardWrappedFixture(nightshiftPage, testInfo)
-      await placeCaretAtGoalParagraphEnd(nightshiftPage)
-      await nightshiftPage.keyboard.press('Enter')
-      await nightshiftPage.keyboard.press('Backspace')
+      filePath = await openHardWrappedFixture(koluxPage, testInfo)
+      await placeCaretAtGoalParagraphEnd(koluxPage)
+      await koluxPage.keyboard.press('Enter')
+      await koluxPage.keyboard.press('Backspace')
 
-      const metrics = await getGoalParagraphMetrics(nightshiftPage)
+      const metrics = await getGoalParagraphMetrics(koluxPage)
 
       expect(metrics.hardBreakCount).toBe(0)
       expect(metrics.paragraphCount).toBe(1)
@@ -200,19 +198,19 @@ test.describe('Markdown prose reflow', () => {
   })
 
   test('deleting slash text then the empty paragraph keeps hard-wrapped prose reflowing', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     let filePath: string | null = null
 
     try {
-      filePath = await openHardWrappedFixture(nightshiftPage, testInfo)
-      await placeCaretAtGoalParagraphEnd(nightshiftPage)
-      await nightshiftPage.keyboard.press('Enter')
-      await nightshiftPage.keyboard.type('/')
-      await nightshiftPage.keyboard.press('Backspace')
-      await nightshiftPage.keyboard.press('Backspace')
+      filePath = await openHardWrappedFixture(koluxPage, testInfo)
+      await placeCaretAtGoalParagraphEnd(koluxPage)
+      await koluxPage.keyboard.press('Enter')
+      await koluxPage.keyboard.type('/')
+      await koluxPage.keyboard.press('Backspace')
+      await koluxPage.keyboard.press('Backspace')
 
-      const metrics = await getGoalParagraphMetrics(nightshiftPage)
+      const metrics = await getGoalParagraphMetrics(koluxPage)
 
       expect(metrics.hardBreakCount).toBe(0)
       expect(metrics.paragraphCount).toBe(1)
@@ -225,16 +223,16 @@ test.describe('Markdown prose reflow', () => {
   })
 
   test('deleting the block boundary before a heading keeps hard-wrapped prose reflowing', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     let filePath: string | null = null
 
     try {
-      filePath = await openHardWrappedFixture(nightshiftPage, testInfo)
-      await placeCaretAtHeadingStart(nightshiftPage)
-      await nightshiftPage.keyboard.press('Backspace')
+      filePath = await openHardWrappedFixture(koluxPage, testInfo)
+      await placeCaretAtHeadingStart(koluxPage)
+      await koluxPage.keyboard.press('Backspace')
 
-      const metrics = await getGoalParagraphMetrics(nightshiftPage)
+      const metrics = await getGoalParagraphMetrics(koluxPage)
 
       expect(metrics.hardBreakCount).toBe(0)
       expect(metrics.paragraphCount).toBe(1)

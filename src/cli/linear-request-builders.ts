@@ -182,11 +182,9 @@ export function buildLinearCurrentContext(
   return {
     remote,
     ...(remote ? {} : { cwd }),
-    ...(process.env.NIGHTSHIFT_WORKTREE_ID
-      ? { worktreeId: process.env.NIGHTSHIFT_WORKTREE_ID }
-      : {}),
-    ...(process.env.NIGHTSHIFT_TERMINAL_HANDLE
-      ? { terminalHandle: process.env.NIGHTSHIFT_TERMINAL_HANDLE }
+    ...(process.env.KOLUX_WORKTREE_ID ? { worktreeId: process.env.KOLUX_WORKTREE_ID } : {}),
+    ...(process.env.KOLUX_TERMINAL_HANDLE
+      ? { terminalHandle: process.env.KOLUX_TERMINAL_HANDLE }
       : {})
   }
 }

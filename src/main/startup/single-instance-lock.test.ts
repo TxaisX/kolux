@@ -70,24 +70,19 @@ describe('acquireSingleInstanceLock', () => {
 
     const [registered] = fake.listeners['second-instance'] ?? []
     expect(registered).toBeDefined()
-    registered?.({}, ['/opt/nightshift/nightshift-linux.AppImage', '--serve'], '/home/nightshift')
+    registered?.({}, ['/opt/kolux/kolux-linux.AppImage', '--serve'], '/home/kolux')
 
     expect(onSecondInstance).toHaveBeenCalledTimes(1)
-    expect(onSecondInstance).toHaveBeenCalledWith([
-      '/opt/nightshift/nightshift-linux.AppImage',
-      '--serve'
-    ])
+    expect(onSecondInstance).toHaveBeenCalledWith(['/opt/kolux/kolux-linux.AppImage', '--serve'])
   })
 })
 
 describe('shouldActivateDesktopForSecondInstance', () => {
   it('ignores a duplicate serve launch but still activates for a desktop launch', () => {
-    // Why: a supervisor respawning `nightshift serve` must not open a window on a display-less host (#11935).
-    const serveArgv = ['/opt/nightshift/nightshift-linux.AppImage', '--serve']
+    // Why: a supervisor respawning `kolux serve` must not open a window on a display-less host (#11935).
+    const serveArgv = ['/opt/kolux/kolux-linux.AppImage', '--serve']
     expect(shouldActivateDesktopForSecondInstance(serveArgv)).toBe(false)
-    expect(
-      shouldActivateDesktopForSecondInstance(['/Applications/Nightshift.app/nightshift'])
-    ).toBe(true)
+    expect(shouldActivateDesktopForSecondInstance(['/Applications/Kolux.app/kolux'])).toBe(true)
   })
 
   it('ignores a duplicate CLI-form serve launch the CLI redirect never rewrote', () => {
@@ -95,7 +90,7 @@ describe('shouldActivateDesktopForSecondInstance', () => {
     // start reaches Electron in that shape, so a flag-only check would open a window on the live server.
     expect(
       shouldActivateDesktopForSecondInstance([
-        '/opt/nightshift/squashfs-root/nightshift-ide',
+        '/opt/kolux/squashfs-root/kolux-ide',
         'serve',
         '--port',
         '6768',
@@ -105,10 +100,7 @@ describe('shouldActivateDesktopForSecondInstance', () => {
     ).toBe(false)
     // A path argument that merely contains `serve` is still a desktop launch.
     expect(
-      shouldActivateDesktopForSecondInstance([
-        '/opt/nightshift/nightshift-ide',
-        '/home/u/serve-repo'
-      ])
+      shouldActivateDesktopForSecondInstance(['/opt/kolux/kolux-ide', '/home/u/serve-repo'])
     ).toBe(true)
   })
 
@@ -136,7 +128,7 @@ describe('shouldSkipSingleInstanceLock', () => {
       shouldSkipSingleInstanceLock({
         isDev: true,
         isServeMode: false,
-        env: { NIGHTSHIFT_E2E_ENFORCE_SINGLE_INSTANCE_LOCK: '1' }
+        env: { KOLUX_E2E_ENFORCE_SINGLE_INSTANCE_LOCK: '1' }
       })
     ).toBe(false)
   })
@@ -157,7 +149,7 @@ describe('shouldBypassSingleInstanceLock', () => {
   it('allows the hidden diagnostic bypass only for packaged macOS app launches', () => {
     expect(
       shouldBypassSingleInstanceLock({
-        env: { NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
+        env: { KOLUX_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
         isDev: false,
         isServeMode: false,
         platform: 'darwin'
@@ -165,7 +157,7 @@ describe('shouldBypassSingleInstanceLock', () => {
     ).toBe(true)
     expect(
       shouldBypassSingleInstanceLock({
-        env: { NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
+        env: { KOLUX_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
         isDev: true,
         isServeMode: false,
         platform: 'darwin'
@@ -173,7 +165,7 @@ describe('shouldBypassSingleInstanceLock', () => {
     ).toBe(false)
     expect(
       shouldBypassSingleInstanceLock({
-        env: { NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
+        env: { KOLUX_BYPASS_SINGLE_INSTANCE_LOCK: '1' },
         isDev: false,
         isServeMode: false,
         platform: 'linux'

@@ -26,13 +26,13 @@ function makeSettings(voiceEnabled = false): Pick<GlobalSettings, 'voice'> {
 function makeCliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
+    commandName: 'kolux',
     supported: true,
     state: 'installed',
-    commandPath: '/usr/local/bin/nightshift',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/MacOS/nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/MacOS/kolux',
     installMethod: 'symlink',
     currentTarget: null,
     unsupportedReason: null,
@@ -55,7 +55,7 @@ describe('feature tip startup gate', () => {
         settings: makeSettings(),
         suppressedByOnboardingThisSession: false
       })
-    ).toEqual({ kind: 'open', tipId: 'nightshift-cli' })
+    ).toEqual({ kind: 'open', tipId: 'kolux-cli' })
   })
 
   it('suppresses feature tips for first-time users while onboarding is showing', () => {
@@ -103,7 +103,7 @@ describe('feature tip startup gate', () => {
         settings: makeSettings(),
         suppressedByOnboardingThisSession: false
       })
-    ).toEqual({ kind: 'open', tipId: 'nightshift-cli' })
+    ).toEqual({ kind: 'open', tipId: 'kolux-cli' })
   })
 
   it('opens the CLI tip after voice dictation is already enabled', () => {
@@ -119,7 +119,7 @@ describe('feature tip startup gate', () => {
         settings: makeSettings(true),
         suppressedByOnboardingThisSession: false
       })
-    ).toEqual({ kind: 'open', tipId: 'nightshift-cli' })
+    ).toEqual({ kind: 'open', tipId: 'kolux-cli' })
   })
 
   it('opens the command palette tip after the CLI tip was marked seen', () => {
@@ -127,7 +127,7 @@ describe('feature tip startup gate', () => {
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: true,
-        featureTipsSeenIds: ['nightshift-cli'],
+        featureTipsSeenIds: ['kolux-cli'],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,
@@ -143,7 +143,7 @@ describe('feature tip startup gate', () => {
       getFeatureTipsAppOpenDecision({
         activeModal: 'none',
         cliInstalled: false,
-        featureTipsSeenIds: ['voice-dictation', 'nightshift-cli', 'cmd-j-palette'],
+        featureTipsSeenIds: ['voice-dictation', 'kolux-cli', 'cmd-j-palette'],
         featureInteractions: {},
         onboarding: existingUserOnboarding,
         persistedUIReady: true,

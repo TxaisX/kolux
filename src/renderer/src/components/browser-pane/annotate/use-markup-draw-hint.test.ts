@@ -2,7 +2,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const HINT_KEY = 'nightshift.browser.markup-draw-hint-seen'
+const HINT_KEY = 'kolux.browser.markup-draw-hint-seen'
 
 vi.mock('@/store', () => ({
   useAppStore: (selector: (state: { persistedUIReady: boolean }) => unknown) =>

@@ -31,7 +31,7 @@ let root: string
 let storePath: string
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-store-recovery-publish-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-store-recovery-publish-'))
   storePath = join(root, 'agent-sessions.json')
 })
 

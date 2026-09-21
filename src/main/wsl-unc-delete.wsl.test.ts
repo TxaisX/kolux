@@ -4,9 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { tryDeleteWslUncPath } from './wsl-unc-delete'
 
 const execFileAsync = promisify(execFile)
-const DISTRO = process.env.NIGHTSHIFT_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
-const runRealWsl =
-  process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WSL_DELETE_TEST === '1'
+const DISTRO = process.env.KOLUX_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
+const runRealWsl = process.platform === 'win32' && process.env.KOLUX_REAL_WSL_DELETE_TEST === '1'
 
 function unc(linuxPath: string): string {
   return `\\\\wsl.localhost\\${DISTRO}${linuxPath.replaceAll('/', '\\')}`
@@ -15,7 +14,7 @@ function unc(linuxPath: string): string {
 async function wsl(command: string, ...args: string[]): Promise<string> {
   const result = await execFileAsync(
     'wsl.exe',
-    ['-d', DISTRO, '--exec', 'sh', '-c', command, 'nightshift-wsl-test', ...args],
+    ['-d', DISTRO, '--exec', 'sh', '-c', command, 'kolux-wsl-test', ...args],
     { encoding: 'utf-8', timeout: 30000 }
   )
   return result.stdout.trim()
@@ -25,7 +24,7 @@ describe.skipIf(!runRealWsl)('WSL contained delete integration', () => {
   let fixtureRoot: string
 
   beforeAll(async () => {
-    fixtureRoot = await wsl("mktemp -d -p /tmp 'nightshift-wsl-delete-real.XXXXXX'")
+    fixtureRoot = await wsl("mktemp -d -p /tmp 'kolux-wsl-delete-real.XXXXXX'")
     await wsl(
       'mkdir -p "$1/vault" "$1/outside/file-parent" "$1/outside/dir-parent/session" "$1/vault/benign/session" && ' +
         'ln -s "$1/outside/file-parent" "$1/vault/file-link" && ' +
@@ -39,7 +38,7 @@ describe.skipIf(!runRealWsl)('WSL contained delete integration', () => {
   })
 
   afterAll(async () => {
-    if (/^\/tmp\/nightshift-wsl-delete-real\.[A-Za-z0-9]+$/u.test(fixtureRoot)) {
+    if (/^\/tmp\/kolux-wsl-delete-real\.[A-Za-z0-9]+$/u.test(fixtureRoot)) {
       await wsl('rm -rf -- "$1"', fixtureRoot)
     }
   })

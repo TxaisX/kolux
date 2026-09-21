@@ -55,7 +55,7 @@ function configHost(
     hostname: `${alias}.internal`,
     port: 22,
     username: 'deploy',
-    alreadyInNightshift: false,
+    alreadyInKolux: false,
     ...overrides
   }
 }
@@ -159,7 +159,7 @@ describe('SSH config picker tombstoned hosts', () => {
     await openPickerWith({
       hosts: [
         configHost('removed', { previouslyRemoved: true }),
-        configHost('kept', { alreadyInNightshift: true })
+        configHost('kept', { alreadyInKolux: true })
       ],
       totalHostCount: 2,
       newHostCount: 0,
@@ -168,11 +168,11 @@ describe('SSH config picker tombstoned hosts', () => {
 
     const removed = await screen.findByRole('button', { name: /removed/ })
     expect(removed.hasAttribute('disabled')).toBe(false)
-    expect(removed.textContent).toContain('Removed from Nightshift')
+    expect(removed.textContent).toContain('Removed from Kolux')
 
     const kept = screen.getByRole('button', { name: /kept/ })
     expect(kept.hasAttribute('disabled')).toBe(true)
-    expect(kept.textContent).toContain('In Nightshift')
+    expect(kept.textContent).toContain('In Kolux')
   })
 
   it('never claims the config is empty when every host is only tombstoned', async () => {
@@ -192,9 +192,9 @@ describe('SSH config picker tombstoned hosts', () => {
     await openPickerWith({ hosts: [], totalHostCount: 0, newHostCount: 0, matchCount: 0 })
 
     expect(await screen.findByText('No hosts in ~/.ssh/config')).toBeDefined()
-    expect(
-      screen.getByRole('button', { name: 'Add all to Nightshift' }).hasAttribute('disabled')
-    ).toBe(true)
+    expect(screen.getByRole('button', { name: 'Add all to Kolux' }).hasAttribute('disabled')).toBe(
+      true
+    )
   })
 })
 
@@ -202,7 +202,7 @@ describe('SSH config picker bulk add', () => {
   it('adds only new hosts and never re-adopts deleted aliases', async () => {
     const user = await openPicker()
 
-    await user.click(screen.getByRole('button', { name: /Add all 2 to Nightshift/ }))
+    await user.click(screen.getByRole('button', { name: /Add all 2 to Kolux/ }))
 
     await waitFor(() => expect(importConfig).toHaveBeenCalled())
     expect(importConfig).toHaveBeenCalledWith()

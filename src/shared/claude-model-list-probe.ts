@@ -7,7 +7,7 @@ import { assertJsonTextStructureWithinLimits } from './json-text-structure-limit
 // parsing yields no models and callers keep their seed list.
 export const CLAUDE_MODEL_LIST_STDIN = `${JSON.stringify({
   type: 'control_request',
-  request_id: 'nightshift-model-discovery',
+  request_id: 'kolux-model-discovery',
   request: { subtype: 'list_models' }
 })}\n`
 
@@ -109,7 +109,7 @@ export function parseClaudeModelList(stdout: string): ClaudeListedModel[] {
     for (const entry of models) {
       const model = toListedModel(entry)
       // Why: the `default` row mirrors whichever entry it currently resolves
-      // to; Nightshift's pickers manage their own default selection.
+      // to; Kolux's pickers manage their own default selection.
       if (!model || model.id === 'default' || seen.has(model.id)) {
         continue
       }

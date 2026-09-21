@@ -1,8 +1,8 @@
-# Nightshift
+# Kolux
 
 Run a team of AI coding agents in parallel on Windows, each in its own git worktree.
 
-Nightshift is a desktop workspace for agent-driven development. Point it at a repository, launch
+Kolux is a desktop workspace for agent-driven development. Point it at a repository, launch
 the agent CLIs you already have on your PATH, and every session gets an isolated worktree, its own
 terminals, and a status you can read at a glance.
 
@@ -11,7 +11,7 @@ terminals, and a status you can read at a glance.
 - **Isolated sessions.** Each agent works in its own git worktree, so parallel sessions never fight
   over the same checkout.
 - **Any agent on your PATH.** Claude Code, Codex, Gemini CLI, Copilot, OpenCode, Aider and others
-  are detected automatically. Nightshift launches them and bills through your own accounts; it
+  are detected automatically. Kolux launches them and bills through your own accounts; it
   bundles no models and no keys.
 - **One-click launch.** The `+` menu lists only the agents actually installed on the machine, so a
   new agent terminal is one click, or one keystroke once you bind a shortcut.
@@ -41,7 +41,7 @@ Install a fresh build from **PowerShell**, never Git Bash, which rewrites `/S` i
 silently drops the installer into its interactive UI:
 
 ```
-Start-Process dist\nightshift-windows-setup.exe -ArgumentList '/S','/currentuser' -Wait
+Start-Process dist\kolux-windows-setup.exe -ArgumentList '/S','/currentuser' -Wait
 ```
 
 Close any editor window holding the repository or the install folder first. An update moves every
@@ -50,23 +50,23 @@ names the process holding it.
 
 ## Command line
 
-The shipped CLI lives at `%LOCALAPPDATA%\Programs\nightshift\resources\bin\nightshift.cmd`.
+The shipped CLI lives at `%LOCALAPPDATA%\Programs\kolux\resources\bin\kolux.cmd`.
 
 ```
-nightshift status
-nightshift repo add --path <repo>
-nightshift worktree create --name x --repo path:<repo> --agent claude --prompt "..."
-nightshift terminal create --worktree name:x --command claude --focus
-nightshift orchestration run-create
+kolux status
+kolux repo add --path <repo>
+kolux worktree create --name x --repo path:<repo> --agent claude --prompt "..."
+kolux terminal create --worktree name:x --command claude --focus
+kolux orchestration run-create
 ```
 
-`nightshift --help` lists every command; `nightshift orchestration --full` documents the
+`kolux --help` lists every command; `kolux orchestration --full` documents the
 orchestration surface.
 
 ## Configuration
 
-- `NIGHTSHIFT_WORKSPACES_DIR` overrides where worktrees are created.
-- Keyboard shortcuts are user-owned in `~/.nightshift/keybindings.json`.
+- `KOLUX_WORKSPACES_DIR` overrides where worktrees are created.
+- Keyboard shortcuts are user-owned in `~/.kolux/keybindings.json`.
 
 ### Shortcuts that ship unbound
 
@@ -84,7 +84,7 @@ the ones you want. Among the most useful:
 | Open Tasks | The task list |
 
 Assign them in the shortcut list, or add them under the `platforms` block of
-`~/.nightshift/keybindings.json`, for example:
+`~/.kolux/keybindings.json`, for example:
 
 ```json
 {

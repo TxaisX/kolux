@@ -80,13 +80,13 @@ afterEach(async () => {
 })
 
 async function createMacCommandFixture() {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-cli-command-race-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-cli-command-race-'))
   createdRoots.push(root)
   const commandDirectory = join(root, 'bin')
-  const commandPath = join(commandDirectory, 'nightshift')
+  const commandPath = join(commandDirectory, 'kolux')
   const resourcesPath = join(root, 'Current.app', 'Contents', 'Resources')
-  const launcherPath = join(resourcesPath, 'bin', 'nightshift')
-  const staleLauncherPath = join(root, 'Old.app', 'Contents', 'Resources', 'bin', 'nightshift')
+  const launcherPath = join(resourcesPath, 'bin', 'kolux')
+  const staleLauncherPath = join(root, 'Old.app', 'Contents', 'Resources', 'bin', 'kolux')
   await mkdir(commandDirectory, { recursive: true })
   await mkdir(dirname(launcherPath), { recursive: true })
   await writeFile(launcherPath, '#!/usr/bin/env bash\n', { mode: 0o755 })
@@ -123,7 +123,7 @@ function createMacInstaller(
     isPackaged: true,
     userDataPath: join(fixture.root, 'user-data'),
     resourcesPath: fixture.resourcesPath,
-    execPath: join(fixture.root, 'Current.app', 'Contents', 'MacOS', 'Nightshift'),
+    execPath: join(fixture.root, 'Current.app', 'Contents', 'MacOS', 'Kolux'),
     appPath: join(fixture.root, 'Current.app', 'Contents', 'Resources', 'app.asar'),
     homePath: join(fixture.root, 'home'),
     commandPathOverride: fixture.commandPath,
@@ -133,12 +133,12 @@ function createMacInstaller(
 
 async function recoveryPath(commandDirectory: string): Promise<string> {
   const transactionName = (await readdir(commandDirectory)).find((name) =>
-    name.startsWith('.nightshift-cli-')
+    name.startsWith('.kolux-cli-')
   )
   if (!transactionName) {
     throw new Error('Expected a preserved CLI command transaction.')
   }
-  return join(commandDirectory, transactionName, 'nightshift')
+  return join(commandDirectory, transactionName, 'kolux')
 }
 
 async function rejectionFrom(operation: Promise<unknown>): Promise<Error> {
@@ -194,10 +194,10 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       }
     })
 
-    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Nightshift command')
+    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Kolux command')
     await expect(readlink(fixture.commandPath)).resolves.toBe(foreignTarget)
     expect(
-      (await readdir(fixture.commandDirectory)).some((name) => name.startsWith('.nightshift-cli-'))
+      (await readdir(fixture.commandDirectory)).some((name) => name.startsWith('.kolux-cli-'))
     ).toBe(false)
   })
 
@@ -209,8 +209,8 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       [
         '#!/usr/bin/env bash',
         `CLI='${oldCliPath}'`,
-        'export NIGHTSHIFT_NODE_OPTIONS="${NODE_OPTIONS-}"',
-        'export NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"',
+        'export KOLUX_NODE_OPTIONS="${NODE_OPTIONS-}"',
+        'export KOLUX_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"',
         'ELECTRON_RUN_AS_NODE=1 exec electron "$CLI" "$@"'
       ].join('\n')
     )
@@ -225,7 +225,7 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       }
     })
 
-    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Nightshift command')
+    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Kolux command')
     await expect(readFile(fixture.commandPath, 'utf8')).resolves.toBe(
       'foreign command written into the inspected inode'
     )
@@ -247,7 +247,7 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       }
     })
 
-    await expect(installer.remove()).rejects.toThrow('Refusing to remove non-Nightshift command')
+    await expect(installer.remove()).rejects.toThrow('Refusing to remove non-Kolux command')
     await expect(readlink(fixture.commandPath)).resolves.toBe(foreignTarget)
   })
 
@@ -301,15 +301,15 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
   })
 
   it('keeps a foreign legacy Linux command when readlink loses the inspection race', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-cli-legacy-race-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-cli-legacy-race-'))
     createdRoots.push(root)
     const homePath = join(root, 'home')
     const commandDirectory = join(homePath, '.local', 'bin')
     const resourcesPath = join(root, 'resources')
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift-ide')
-    const legacyPath = join(commandDirectory, 'nightshift')
-    const managedLegacyTarget = join(resourcesPath, 'bin', 'nightshift')
-    const foreignTarget = join(root, 'foreign-nightshift')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux-ide')
+    const legacyPath = join(commandDirectory, 'kolux')
+    const managedLegacyTarget = join(resourcesPath, 'bin', 'kolux')
+    const foreignTarget = join(root, 'foreign-kolux')
     await mkdir(commandDirectory, { recursive: true })
     await mkdir(dirname(launcherPath), { recursive: true })
     await writeFile(launcherPath, '#!/usr/bin/env bash\n', { mode: 0o755 })
@@ -322,7 +322,7 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       isPackaged: true,
       userDataPath: join(root, 'user-data'),
       resourcesPath,
-      execPath: join(root, 'nightshift-ide'),
+      execPath: join(root, 'kolux-ide'),
       appPath: join(root, 'resources', 'app.asar'),
       homePath,
       processPathEnv: commandDirectory
@@ -333,15 +333,15 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
   })
 
   it('keeps a foreign legacy Linux command whose quarantined inode is reused', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-cli-legacy-identity-race-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-cli-legacy-identity-race-'))
     createdRoots.push(root)
     const homePath = join(root, 'home')
     const commandDirectory = join(homePath, '.local', 'bin')
     const resourcesPath = join(root, 'resources')
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift-ide')
-    const legacyPath = join(commandDirectory, 'nightshift')
-    const managedTarget = join(resourcesPath, 'bin', 'nightshift')
-    const foreignTarget = join(root, 'foreign-nightshift')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux-ide')
+    const legacyPath = join(commandDirectory, 'kolux')
+    const managedTarget = join(resourcesPath, 'bin', 'kolux')
+    const foreignTarget = join(root, 'foreign-kolux')
     await mkdir(commandDirectory, { recursive: true })
     await mkdir(dirname(launcherPath), { recursive: true })
     await writeFile(launcherPath, '#!/usr/bin/env bash\n', { mode: 0o755 })
@@ -374,7 +374,7 @@ describe.skipIf(process.platform === 'win32')('CLI command filesystem races', ()
       isPackaged: true,
       userDataPath: join(root, 'user-data'),
       resourcesPath,
-      execPath: join(root, 'nightshift-ide'),
+      execPath: join(root, 'kolux-ide'),
       appPath: join(root, 'resources', 'app.asar'),
       homePath,
       processPathEnv: commandDirectory

@@ -4,7 +4,7 @@ import { selectedOrDetectedSkillProviders } from '../../shared/skill-install-pro
 import { resolveSkillProviderDestinations } from './skill-provider-destinations'
 
 const HOME = join('/home', 'dev')
-const WORKSPACE = join('/repos', 'nightshift')
+const WORKSPACE = join('/repos', 'kolux')
 
 describe('resolveSkillProviderDestinations', () => {
   it('gives an agent that reads the canonical root no placement of its own', () => {
@@ -123,7 +123,7 @@ describe('resolveSkillProviderDestinations', () => {
     ).toThrow('skill-install-provider-root-collision')
   })
 
-  it('ignores agents Nightshift cannot place skills for', () => {
+  it('ignores agents Kolux cannot place skills for', () => {
     expect(
       resolveSkillProviderDestinations({
         scope: 'global',

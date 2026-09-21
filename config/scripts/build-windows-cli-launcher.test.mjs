@@ -41,10 +41,10 @@ function itWindows(name, test) {
 
 describe('Windows CLI launcher', () => {
   it('reuses a compiled launcher that is at least as new as the C# source', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-cli-launcher-reuse-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-cli-launcher-reuse-'))
     try {
-      const sourcePath = join(root, 'NightshiftCliLauncher.cs')
-      const outputPath = join(root, '.build', 'nightshift.exe')
+      const sourcePath = join(root, 'KoluxCliLauncher.cs')
+      const outputPath = join(root, '.build', 'kolux.exe')
       mkdirSync(join(root, '.build'))
       writeFileSync(sourcePath, 'source\n')
       writeFileSync(outputPath, 'binary\n')
@@ -68,14 +68,14 @@ describe('Windows CLI launcher', () => {
   })
 
   itCrossHost('fails closed when the Windows launcher cannot be compiled on this host', () => {
-    const outputRoot = mkdtempSync(join(tmpdir(), 'nightshift cross-host launcher '))
+    const outputRoot = mkdtempSync(join(tmpdir(), 'kolux cross-host launcher '))
     try {
       const result = spawnSync(
         process.execPath,
         [
           'config/scripts/build-windows-cli-launcher.mjs',
           '--output',
-          join(outputRoot, 'nightshift.exe')
+          join(outputRoot, 'kolux.exe')
         ],
         { cwd: projectRoot, encoding: 'utf8' }
       )
@@ -92,7 +92,7 @@ describe('Windows CLI launcher', () => {
     // Why: both ProcessStartInfo env properties copy the process block into a case-insensitive
     // dictionary that throws when the inherited block holds PATH and Path (TxaisX/nightshift#12046).
     const source = readFileSync(
-      join(projectRoot, 'native', 'windows-cli-launcher', 'NightshiftCliLauncher.cs'),
+      join(projectRoot, 'native', 'windows-cli-launcher', 'KoluxCliLauncher.cs'),
       'utf8'
     )
     const code = source.replace(/^\s*\/\/.*$/gm, '')
@@ -103,21 +103,21 @@ describe('Windows CLI launcher', () => {
   })
 
   itWindows('preserves a multiline argument from PowerShell through the native launcher', () => {
-    const appRoot = mkdtempSync(join(tmpdir(), 'nightshift cli launcher '))
+    const appRoot = mkdtempSync(join(tmpdir(), 'kolux cli launcher '))
     try {
       const resourcesPath = join(appRoot, 'resources')
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift.exe')
+      const launcherPath = join(resourcesPath, 'bin', 'kolux.exe')
       const cliPath = join(resourcesPath, 'app.asar.unpacked', 'out', 'cli', 'index.js')
       mkdirSync(join(resourcesPath, 'bin'), { recursive: true })
       mkdirSync(dirname(cliPath), { recursive: true })
-      copyFileSync(process.execPath, join(appRoot, 'Nightshift.exe'))
+      copyFileSync(process.execPath, join(appRoot, 'Kolux.exe'))
       writeFileSync(
         cliPath,
         `process.stdout.write(JSON.stringify({
   argv: process.argv.slice(2),
   electronRunAsNode: process.env.ELECTRON_RUN_AS_NODE,
   nodeOptions: process.env.NODE_OPTIONS ?? null,
-  nightshiftNodeOptions: process.env.NIGHTSHIFT_NODE_OPTIONS ?? null
+  koluxNodeOptions: process.env.KOLUX_NODE_OPTIONS ?? null
 }))\n`,
         'utf8'
       )
@@ -136,15 +136,15 @@ describe('Windows CLI launcher', () => {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          '& $env:NIGHTSHIFT_TEST_LAUNCHER orchestration send --body $env:NIGHTSHIFT_TEST_BODY --json'
+          '& $env:KOLUX_TEST_LAUNCHER orchestration send --body $env:KOLUX_TEST_BODY --json'
         ],
         {
           encoding: 'utf8',
           env: {
             ...process.env,
             NODE_OPTIONS: '--no-warnings',
-            NIGHTSHIFT_TEST_BODY: body,
-            NIGHTSHIFT_TEST_LAUNCHER: launcherPath
+            KOLUX_TEST_BODY: body,
+            KOLUX_TEST_LAUNCHER: launcherPath
           }
         }
       )
@@ -154,7 +154,7 @@ describe('Windows CLI launcher', () => {
         argv: ['orchestration', 'send', '--body', body, '--json'],
         electronRunAsNode: '1',
         nodeOptions: null,
-        nightshiftNodeOptions: '--no-warnings'
+        koluxNodeOptions: '--no-warnings'
       })
     } finally {
       removeFixtureTree(appRoot)
@@ -162,10 +162,10 @@ describe('Windows CLI launcher', () => {
   })
 
   itWindows('survives an inherited environment block containing PATH and Path', () => {
-    const appRoot = mkdtempSync(join(tmpdir(), 'nightshift duplicate path launcher '))
+    const appRoot = mkdtempSync(join(tmpdir(), 'kolux duplicate path launcher '))
     try {
       const resourcesPath = join(appRoot, 'resources')
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift.exe')
+      const launcherPath = join(resourcesPath, 'bin', 'kolux.exe')
       const cliPath = join(resourcesPath, 'app.asar.unpacked', 'out', 'cli', 'index.js')
       const outputPath = join(appRoot, 'child-result.json')
       const harnessSourcePath = join(
@@ -178,10 +178,10 @@ describe('Windows CLI launcher', () => {
       const harnessPath = join(appRoot, 'DuplicatePathLauncher.exe')
       mkdirSync(dirname(launcherPath), { recursive: true })
       mkdirSync(dirname(cliPath), { recursive: true })
-      copyFileSync(process.execPath, join(appRoot, 'Nightshift.exe'))
+      copyFileSync(process.execPath, join(appRoot, 'Kolux.exe'))
       writeFileSync(
         cliPath,
-        `require('node:fs').writeFileSync(process.env.NIGHTSHIFT_TEST_OUTPUT, JSON.stringify({
+        `require('node:fs').writeFileSync(process.env.KOLUX_TEST_OUTPUT, JSON.stringify({
   electronRunAsNode: process.env.ELECTRON_RUN_AS_NODE,
   pathKeys: Object.keys(process.env).filter((key) => key.toLowerCase() === 'path')
 }))\n`,

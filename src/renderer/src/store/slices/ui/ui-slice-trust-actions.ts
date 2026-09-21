@@ -3,10 +3,10 @@ import { getSetupScriptPromptDismissalKey } from '../../../lib/setup-script-prom
 
 export function createUiTrustActions(set: UISliceSet, _get: UISliceGet): Partial<UISlice> {
   return {
-    trustedNightshiftHooks: {},
-    markNightshiftHookScriptConfirmed: (repoId, kind, contentHash) =>
+    trustedKoluxHooks: {},
+    markKoluxHookScriptConfirmed: (repoId, kind, contentHash) =>
       set((s) => {
-        const existing = s.trustedNightshiftHooks[repoId]
+        const existing = s.trustedKoluxHooks[repoId]
         const currentEntry = existing?.[kind]
         if (currentEntry?.contentHash === contentHash) {
           return s
@@ -15,35 +15,35 @@ export function createUiTrustActions(set: UISliceSet, _get: UISliceGet): Partial
           ...existing,
           [kind]: { contentHash, approvedAt: Date.now() }
         }
-        const next = { ...s.trustedNightshiftHooks, [repoId]: nextRepo }
-        window.api.ui.set({ trustedNightshiftHooks: next }).catch(console.error)
-        return { trustedNightshiftHooks: next }
+        const next = { ...s.trustedKoluxHooks, [repoId]: nextRepo }
+        window.api.ui.set({ trustedKoluxHooks: next }).catch(console.error)
+        return { trustedKoluxHooks: next }
       }),
-    markNightshiftHookRepoAlwaysTrusted: (repoId) =>
+    markKoluxHookRepoAlwaysTrusted: (repoId) =>
       set((s) => {
-        const existing = s.trustedNightshiftHooks[repoId]
+        const existing = s.trustedKoluxHooks[repoId]
         if (existing?.all) {
           return s
         }
         const next = {
-          ...s.trustedNightshiftHooks,
+          ...s.trustedKoluxHooks,
           [repoId]: {
             ...existing,
             all: { approvedAt: Date.now() }
           }
         }
-        window.api.ui.set({ trustedNightshiftHooks: next }).catch(console.error)
-        return { trustedNightshiftHooks: next }
+        window.api.ui.set({ trustedKoluxHooks: next }).catch(console.error)
+        return { trustedKoluxHooks: next }
       }),
-    clearNightshiftHookTrustForRepo: (repoId) =>
+    clearKoluxHookTrustForRepo: (repoId) =>
       set((s) => {
-        if (!(repoId in s.trustedNightshiftHooks)) {
+        if (!(repoId in s.trustedKoluxHooks)) {
           return s
         }
-        const next = { ...s.trustedNightshiftHooks }
+        const next = { ...s.trustedKoluxHooks }
         delete next[repoId]
-        window.api.ui.set({ trustedNightshiftHooks: next }).catch(console.error)
-        return { trustedNightshiftHooks: next }
+        window.api.ui.set({ trustedKoluxHooks: next }).catch(console.error)
+        return { trustedKoluxHooks: next }
       }),
     setupScriptPromptDismissedRepoIds: [],
     dismissSetupScriptPrompt: (repoHostIdentity) =>

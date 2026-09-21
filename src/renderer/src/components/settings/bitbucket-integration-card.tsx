@@ -232,7 +232,7 @@ function BitbucketCardNote(props: {
       <p className="text-xs text-muted-foreground">
         {translate(
           'auto.components.settings.bitbucket.integration.card.envManaged',
-          'Configured via environment variables. Unset the NIGHTSHIFT_BITBUCKET_* variables to manage this credential in Nightshift.'
+          'Configured via environment variables. Unset the KOLUX_BITBUCKET_* variables to manage this credential in Kolux.'
         )}
       </p>
     )
@@ -247,7 +247,7 @@ function BitbucketCardNote(props: {
             )
           : translate(
               'auto.components.settings.token.source.control.integration.cards.6154b02093',
-              'Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Nightshift if environment variables changed.'
+              'Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Kolux if environment variables changed.'
             )}
       </p>
     )
@@ -257,7 +257,7 @@ function BitbucketCardNote(props: {
       <p className="text-xs text-muted-foreground">
         {translate(
           'auto.components.settings.bitbucket.integration.card.storedCredential',
-          'Saved in Nightshift on this machine. NIGHTSHIFT_BITBUCKET_* environment variables take precedence when set.'
+          'Saved in Kolux on this machine. KOLUX_BITBUCKET_* environment variables take precedence when set.'
         )}
       </p>
     )
@@ -266,7 +266,7 @@ function BitbucketCardNote(props: {
     <p className="text-xs text-muted-foreground">
       {translate(
         'auto.components.settings.bitbucket.integration.card.notConfigured',
-        'Connect a Bitbucket Cloud account with an Atlassian API token or an access token. NIGHTSHIFT_BITBUCKET_* environment variables work too and take precedence.'
+        'Connect a Bitbucket Cloud account with an Atlassian API token or an access token. KOLUX_BITBUCKET_* environment variables work too and take precedence.'
       )}
     </p>
   )

@@ -12,11 +12,11 @@ const mocks = vi.hoisted(() => ({
   openSkillsPage: vi.fn(),
   updateSettings: vi.fn(),
   state: {
-    nightshiftProfileAuthStatus: { configured: true, state: 'connected' } as Record<
+    koluxProfileAuthStatus: { configured: true, state: 'connected' } as Record<
       string,
       unknown
     > | null,
-    nightshiftProfileConnecting: false,
+    koluxProfileConnecting: false,
     isWebClient: false,
     settings: { showSkillsButton: false, agentSkillSharingEnabled: false }
   }
@@ -34,8 +34,8 @@ vi.mock('@/store', () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       ...mocks.state,
-      connectCurrentNightshiftProfile: mocks.connect,
-      fetchNightshiftProfileAuthStatus: mocks.fetchAuthStatus,
+      connectCurrentKoluxProfile: mocks.connect,
+      fetchKoluxProfileAuthStatus: mocks.fetchAuthStatus,
       openSkillsPage: mocks.openSkillsPage,
       updateSettings: mocks.updateSettings
     })
@@ -49,8 +49,8 @@ describe('ShareSkillsSettingsPane', () => {
     mocks.fetchAuthStatus.mockReset()
     mocks.openSkillsPage.mockReset()
     mocks.updateSettings.mockReset()
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'connected' }
-    mocks.state.nightshiftProfileConnecting = false
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'connected' }
+    mocks.state.koluxProfileConnecting = false
     mocks.state.isWebClient = false
     Object.defineProperty(window, 'api', {
       configurable: true,
@@ -90,7 +90,7 @@ describe('ShareSkillsSettingsPane', () => {
 
   it('offers owner sign-in while explaining recipients stay signed out', async () => {
     const user = userEvent.setup()
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'local' }
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'local' }
     render(
       <TooltipProvider>
         <ShareSkillsSettingsPane />
@@ -99,7 +99,7 @@ describe('ShareSkillsSettingsPane', () => {
 
     expect(screen.getByText('Sign in to share skills')).toBeInTheDocument()
     expect(screen.getByText(/Recipients do not need an account/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Sign in to Nightshift' }))
+    await user.click(screen.getByRole('button', { name: 'Sign in to Kolux' }))
     expect(mocks.connect).toHaveBeenCalledOnce()
   })
 
@@ -113,7 +113,7 @@ describe('ShareSkillsSettingsPane', () => {
 
     await user.click(
       screen.getByRole('switch', {
-        name: 'Allow agents and the Nightshift CLI to publish skill links'
+        name: 'Allow agents and the Kolux CLI to publish skill links'
       })
     )
     expect(mocks.updateSettings).toHaveBeenCalledWith({ agentSkillSharingEnabled: true })
@@ -121,19 +121,19 @@ describe('ShareSkillsSettingsPane', () => {
 
   it('does not offer desktop publishing from the web client', () => {
     mocks.state.isWebClient = true
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'local' }
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'local' }
     render(
       <TooltipProvider>
         <ShareSkillsSettingsPane />
       </TooltipProvider>
     )
 
-    expect(screen.getByText(/available in the Nightshift desktop app/)).toBeInTheDocument()
+    expect(screen.getByText(/available in the Kolux desktop app/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Open Skills/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Sign in to Nightshift' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign in to Kolux' })).not.toBeInTheDocument()
     expect(
       screen.getByRole('switch', {
-        name: 'Allow agents and the Nightshift CLI to publish skill links'
+        name: 'Allow agents and the Kolux CLI to publish skill links'
       })
     ).toBeDisabled()
   })

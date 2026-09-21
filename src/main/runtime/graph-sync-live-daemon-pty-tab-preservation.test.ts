@@ -14,7 +14,7 @@ import type {
   RuntimeMobileSessionTabsRemovedResult,
   RuntimeMobileSessionTabsResult
 } from '../../shared/runtime-types'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => ({ isDestroyed: () => false })) },
@@ -64,7 +64,7 @@ function createHarness() {
     },
     flushOrThrow: () => {}
   }
-  const runtime = new NightshiftRuntimeService(store as never)
+  const runtime = new KoluxRuntimeService(store as never)
   runtime.setNotifier({
     closeTerminal: vi.fn(),
     closeTerminalTab: vi.fn(),
@@ -168,7 +168,7 @@ function createHarness() {
     }
   })
 
-  /** An `nightshift terminal create` on this host, through the real create path. */
+  /** An `kolux terminal create` on this host, through the real create path. */
   const createCliTerminal = async (worktreeId: string): Promise<string> => {
     await runtime.createTerminal(`id:${worktreeId}`, { focus: false })
     const tabId = spawnedTabIdByWorktree.get(worktreeId)
@@ -181,7 +181,7 @@ function createHarness() {
   }
 
   /** A renderer graph sync that mentions ONLY `worktreeIds` — i.e. the panes the
-   *  renderer currently has mounted. Any nightshift-cli dispatch triggers one.
+   *  renderer currently has mounted. Any kolux-cli dispatch triggers one.
    *  `version` must climb, or web clients drop the frame as stale. */
   let syncVersion = 0
   const syncRendererGraph = (worktreeIds: readonly string[]): void => {
@@ -251,7 +251,7 @@ describe('graph sync must not prune a tab whose daemon PTY is live', () => {
     await h.createCliTerminal(WT_CLI)
     expect(h.hasSnapshot(WT_CLI)).toBe(true)
 
-    // A nightshift-cli dispatch in another worktree drives a renderer graph sync that
+    // A kolux-cli dispatch in another worktree drives a renderer graph sync that
     // does not mention WT_CLI at all.
     h.syncRendererGraph([WT_OTHER])
     vi.advanceTimersByTime(300)

@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 const TARGET_INDEX = 24
@@ -18,7 +18,7 @@ type RowRemovalFrame = {
 }
 
 async function pauseForVisualProof(page: Page): Promise<void> {
-  if (process.env.NIGHTSHIFT_E2E_RECORD_VIDEO === '1') {
+  if (process.env.KOLUX_E2E_RECORD_VIDEO === '1') {
     await page.waitForTimeout(VISUAL_PROOF_PAUSE_MS)
   }
 }
@@ -224,36 +224,36 @@ async function finishRowRemovalSampling(page: Page): Promise<RowRemovalFrame[]> 
 }
 
 test('deleting the active scrolled worktree preserves position and closes the row gap', async ({
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await nightshiftPage.setViewportSize({ width: 1_200, height: 800 })
-  const { belowId, successorId, targetId } = await seedActiveDeletionRows(nightshiftPage)
-  await prepareScrolledActiveRow(nightshiftPage, targetId)
-  const target = nightshiftPage.locator(
+  await waitForSessionReady(koluxPage)
+  await koluxPage.setViewportSize({ width: 1_200, height: 800 })
+  const { belowId, successorId, targetId } = await seedActiveDeletionRows(koluxPage)
+  await prepareScrolledActiveRow(koluxPage, targetId)
+  const target = koluxPage.locator(
     `[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(targetId)}]`
   )
-  const below = nightshiftPage.locator(
+  const below = koluxPage.locator(
     `[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(belowId)}]`
   )
-  await pauseForVisualProof(nightshiftPage)
+  await pauseForVisualProof(koluxPage)
   const contextMenuScope = target.locator('[data-worktree-context-menu-scope="worktree"]')
   await expect(contextMenuScope).toBeVisible()
   await contextMenuScope.click({ button: 'right' })
-  const deleteItem = nightshiftPage.getByRole('menuitem', { name: /^Delete(?:\s|$)/ })
+  const deleteItem = koluxPage.getByRole('menuitem', { name: /^Delete(?:\s|$)/ })
   await expect(deleteItem).toBeVisible()
   await expect(deleteItem).toBeInViewport()
-  await pauseForVisualProof(nightshiftPage)
-  await startRowRemovalSampling(nightshiftPage, targetId, belowId)
+  await pauseForVisualProof(koluxPage)
+  await startRowRemovalSampling(koluxPage, targetId, belowId)
   await deleteItem.click()
 
   await expect(target).toHaveCount(0)
   await expect(below).toBeVisible()
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().activeWorktreeId ?? null))
+    .poll(() => koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId ?? null))
     .toBe(successorId)
-  const frames = await finishRowRemovalSampling(nightshiftPage)
-  await pauseForVisualProof(nightshiftPage)
+  const frames = await finishRowRemovalSampling(koluxPage)
+  await pauseForVisualProof(koluxPage)
   const mountedTops = frames.flatMap((frame) => (frame.belowTop === null ? [] : [frame.belowTop]))
   const firstRemovedFrame = frames.findIndex((frame) => !frame.targetExists)
   const scrollTopBeforeDelete = frames[0]?.scrollTop
@@ -272,21 +272,19 @@ test('deleting the active scrolled worktree preserves position and closes the ro
     scrollTopBeforeDelete - 1
   )
   await expect(
-    nightshiftPage.locator(
-      `[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(successorId)}]`
-    )
+    koluxPage.locator(`[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(successorId)}]`)
   ).toHaveCount(0)
 })
 
 test('reduced motion removes the active row without animating its neighbor', async ({
-  nightshiftPage
+  koluxPage
 }) => {
-  await nightshiftPage.emulateMedia({ reducedMotion: 'reduce' })
-  await waitForSessionReady(nightshiftPage)
-  const { belowId, targetId } = await seedActiveDeletionRows(nightshiftPage)
-  await prepareScrolledActiveRow(nightshiftPage, targetId)
+  await koluxPage.emulateMedia({ reducedMotion: 'reduce' })
+  await waitForSessionReady(koluxPage)
+  const { belowId, targetId } = await seedActiveDeletionRows(koluxPage)
+  await prepareScrolledActiveRow(koluxPage, targetId)
 
-  const animationCount = await nightshiftPage.evaluate(
+  const animationCount = await koluxPage.evaluate(
     async ({ belowId, targetId }) => {
       const store = window.__store
       if (!store) {

@@ -50,13 +50,23 @@ function WindowMeter({
           {usedPercent}%
         </span>
       </div>
-      <Progress value={usedPercent} className="h-1.5 bg-muted" indicatorClassName="bg-muted-foreground/60" />
-      {resetsInLabel ? <div className="text-[11px] text-muted-foreground">{resetsInLabel}</div> : null}
+      <Progress
+        value={usedPercent}
+        className="h-1.5 bg-muted"
+        indicatorClassName="bg-muted-foreground/60"
+      />
+      {resetsInLabel ? (
+        <div className="text-[11px] text-muted-foreground">{resetsInLabel}</div>
+      ) : null}
     </div>
   )
 }
 
-function ProviderStatusNote({ provider }: { provider: UsageOverviewProvider }): React.JSX.Element | null {
+function ProviderStatusNote({
+  provider
+}: {
+  provider: UsageOverviewProvider
+}): React.JSX.Element | null {
   if (provider.status === 'fetching') {
     return (
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -73,15 +83,22 @@ function ProviderStatusNote({ provider }: { provider: UsageOverviewProvider }): 
       </div>
     )
   }
-  if (provider.status === 'unavailable' && provider.windows.length === 0 && !provider.recentSessions) {
+  if (
+    provider.status === 'unavailable' &&
+    provider.windows.length === 0 &&
+    !provider.recentSessions
+  ) {
     return (
       <div className="text-xs text-muted-foreground">
         {provider.detected
           ? translate(
               'components.usage.UsageOverviewProviderCard.notTracked',
-              'Detected, but Nightshift does not track its usage yet.'
+              'Detected, but Kolux does not track its usage yet.'
             )
-          : translate('components.usage.UsageOverviewProviderCard.notDetected', 'Not detected on this machine.')}
+          : translate(
+              'components.usage.UsageOverviewProviderCard.notDetected',
+              'Not detected on this machine.'
+            )}
       </div>
     )
   }
@@ -133,7 +150,10 @@ export function UsageOverviewProviderCard({
       {hasRecentSessions ? (
         <div className="space-y-1 border-t border-border/50 pt-2">
           <div className="text-[11px] font-medium text-muted-foreground">
-            {translate('components.usage.UsageOverviewProviderCard.recentSessions', 'Recent sessions')}
+            {translate(
+              'components.usage.UsageOverviewProviderCard.recentSessions',
+              'Recent sessions'
+            )}
           </div>
           <ul className="max-h-32 space-y-1 overflow-y-auto scrollbar-sleek text-xs">
             {provider.recentSessions?.map((session) => (

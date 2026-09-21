@@ -1,14 +1,9 @@
 import { spawn, spawnSync } from 'node:child_process'
 import path from 'node:path'
 
-export const MAX_NIGHTSHIFT_RPC_OUTPUT_BYTES = 20 * 1024 * 1024
+export const MAX_KOLUX_RPC_OUTPUT_BYTES = 20 * 1024 * 1024
 
-export function appendNightshiftRpcOutput(
-  output,
-  chunk,
-  bytes,
-  limit = MAX_NIGHTSHIFT_RPC_OUTPUT_BYTES
-) {
+export function appendKoluxRpcOutput(output, chunk, bytes, limit = MAX_KOLUX_RPC_OUTPUT_BYTES) {
   const nextBytes = bytes + Buffer.byteLength(chunk)
   return {
     output: nextBytes > limit ? output : output + chunk,
@@ -17,60 +12,57 @@ export function appendNightshiftRpcOutput(
   }
 }
 
-export function resolveNightshiftCliCommand({
-  env = process.env,
-  platform = process.platform
-} = {}) {
-  if (env.NIGHTSHIFT_CLI_COMMAND?.trim()) {
-    return env.NIGHTSHIFT_CLI_COMMAND.trim()
+export function resolveKoluxCliCommand({ env = process.env, platform = process.platform } = {}) {
+  if (env.KOLUX_CLI_COMMAND?.trim()) {
+    return env.KOLUX_CLI_COMMAND.trim()
   }
-  if (env.NIGHTSHIFT_DEV_REPO_ROOT) {
-    return 'nightshift-dev'
+  if (env.KOLUX_DEV_REPO_ROOT) {
+    return 'kolux-dev'
   }
-  return platform === 'linux' ? 'nightshift-ide' : 'nightshift'
+  return platform === 'linux' ? 'kolux-ide' : 'kolux'
 }
 
-export function resolveNightshiftCliInvocation({
+export function resolveKoluxCliInvocation({
   env = process.env,
   platform = process.platform,
   nodeExecutable = process.execPath
 } = {}) {
-  const command = resolveNightshiftCliCommand({ env, platform })
+  const command = resolveKoluxCliCommand({ env, platform })
   const commandName = platform === 'win32' ? path.win32.basename(command).toLowerCase() : command
   if (
     platform === 'win32' &&
-    env.NIGHTSHIFT_DEV_REPO_ROOT &&
-    (commandName === 'nightshift-dev' || commandName === 'nightshift-dev.cmd')
+    env.KOLUX_DEV_REPO_ROOT &&
+    (commandName === 'kolux-dev' || commandName === 'kolux-dev.cmd')
   ) {
     const defaultUserDataPath = path.win32.join(
       env.APPDATA ?? path.win32.join(env.USERPROFILE ?? '', 'AppData', 'Roaming'),
-      'nightshift-dev'
+      'kolux-dev'
     )
     return {
       command: nodeExecutable,
-      prefixArgs: [path.win32.join(env.NIGHTSHIFT_DEV_REPO_ROOT, 'out', 'cli', 'index.js')],
+      prefixArgs: [path.win32.join(env.KOLUX_DEV_REPO_ROOT, 'out', 'cli', 'index.js')],
       env: {
         ...env,
-        NIGHTSHIFT_USER_DATA_PATH:
-          env.NIGHTSHIFT_USER_DATA_PATH ?? env.NIGHTSHIFT_DEV_USER_DATA_PATH ?? defaultUserDataPath,
-        NIGHTSHIFT_DEV_CLI_INVOCATION: '1',
-        NIGHTSHIFT_APP_EXECUTABLE:
-          env.NIGHTSHIFT_APP_EXECUTABLE ??
+        KOLUX_USER_DATA_PATH:
+          env.KOLUX_USER_DATA_PATH ?? env.KOLUX_DEV_USER_DATA_PATH ?? defaultUserDataPath,
+        KOLUX_DEV_CLI_INVOCATION: '1',
+        KOLUX_APP_EXECUTABLE:
+          env.KOLUX_APP_EXECUTABLE ??
           path.win32.join(
-            env.NIGHTSHIFT_DEV_REPO_ROOT,
+            env.KOLUX_DEV_REPO_ROOT,
             'node_modules',
             'electron',
             'dist',
             'electron.exe'
           ),
-        NIGHTSHIFT_APP_EXECUTABLE_NEEDS_APP_ROOT: '1'
+        KOLUX_APP_EXECUTABLE_NEEDS_APP_ROOT: '1'
       }
     }
   }
   return { command, prefixArgs: [] }
 }
 
-export function createNightshiftRpc({
+export function createKoluxRpc({
   envName,
   cliCommand,
   env = process.env,
@@ -78,8 +70,8 @@ export function createNightshiftRpc({
 }) {
   const cliInvocation = cliCommand
     ? { command: cliCommand, prefixArgs: [] }
-    : resolveNightshiftCliInvocation({ env, platform })
-  const commandLabel = cliCommand ?? resolveNightshiftCliCommand({ env, platform })
+    : resolveKoluxCliInvocation({ env, platform })
+  const commandLabel = cliCommand ?? resolveKoluxCliCommand({ env, platform })
   const commandArgs = (args, local) => [
     ...cliInvocation.prefixArgs,
     ...args,
@@ -87,12 +79,12 @@ export function createNightshiftRpc({
     '--json'
   ]
 
-  function nightshiftJsonSync(args, opts = {}) {
+  function koluxJsonSync(args, opts = {}) {
     const started = performance.now()
     const result = spawnSync(cliInvocation.command, commandArgs(args, opts.local), {
       encoding: 'utf8',
       env: cliInvocation.env,
-      maxBuffer: MAX_NIGHTSHIFT_RPC_OUTPUT_BYTES,
+      maxBuffer: MAX_KOLUX_RPC_OUTPUT_BYTES,
       timeout: opts.timeoutMs ?? 120_000
     })
     const elapsedMs = performance.now() - started
@@ -111,7 +103,7 @@ export function createNightshiftRpc({
     return { parsed, elapsedMs, result: parsed.result }
   }
 
-  function nightshiftJsonAsync(args, opts = {}) {
+  function koluxJsonAsync(args, opts = {}) {
     const started = performance.now()
     return new Promise((resolve, reject) => {
       const child = spawn(cliInvocation.command, commandArgs(args, opts.local), {
@@ -135,7 +127,7 @@ export function createNightshiftRpc({
         if (settled) {
           return stream
         }
-        const appended = appendNightshiftRpcOutput(stream, chunk, outputBytes)
+        const appended = appendKoluxRpcOutput(stream, chunk, outputBytes)
         outputBytes = appended.bytes
         if (appended.exceeded) {
           child.kill('SIGKILL')
@@ -207,12 +199,12 @@ export function createNightshiftRpc({
   async function runReconnectRefreshStorm(notes) {
     const started = performance.now()
     const jobs = [
-      () => nightshiftJsonAsync(['status'], { timeoutMs: 90_000 }),
-      () => nightshiftJsonAsync(['worktree', 'list'], { timeoutMs: 120_000 }),
-      () => nightshiftJsonAsync(['terminal', 'list'], { timeoutMs: 120_000 }),
-      () => nightshiftJsonAsync(['status'], { local: true, timeoutMs: 60_000 }),
-      () => nightshiftJsonAsync(['worktree', 'list'], { timeoutMs: 120_000 }),
-      () => nightshiftJsonAsync(['terminal', 'list'], { timeoutMs: 120_000 })
+      () => koluxJsonAsync(['status'], { timeoutMs: 90_000 }),
+      () => koluxJsonAsync(['worktree', 'list'], { timeoutMs: 120_000 }),
+      () => koluxJsonAsync(['terminal', 'list'], { timeoutMs: 120_000 }),
+      () => koluxJsonAsync(['status'], { local: true, timeoutMs: 60_000 }),
+      () => koluxJsonAsync(['worktree', 'list'], { timeoutMs: 120_000 }),
+      () => koluxJsonAsync(['terminal', 'list'], { timeoutMs: 120_000 })
     ]
     const results = await Promise.all(
       jobs.map(async (job, index) => {
@@ -236,14 +228,14 @@ export function createNightshiftRpc({
   async function runRestartProxy(notes) {
     const started = performance.now()
     try {
-      const opened = await nightshiftJsonAsync(['open'], { local: true, timeoutMs: 120_000 })
-      notes.push(`nightshift open ms=${opened.elapsedMs.toFixed(0)}`)
+      const opened = await koluxJsonAsync(['open'], { local: true, timeoutMs: 120_000 })
+      notes.push(`kolux open ms=${opened.elapsedMs.toFixed(0)}`)
     } catch (error) {
-      notes.push(`nightshift open failed: ${String(error).slice(0, 200)}`)
+      notes.push(`kolux open failed: ${String(error).slice(0, 200)}`)
     }
     const storm = await runReconnectRefreshStorm(notes)
     return { wallMs: performance.now() - started, storm }
   }
 
-  return { nightshiftJsonSync, nightshiftJsonAsync, runReconnectRefreshStorm, runRestartProxy }
+  return { koluxJsonSync, koluxJsonAsync, runReconnectRefreshStorm, runRestartProxy }
 }

@@ -94,10 +94,10 @@ export const AI_VAULT_AGENT_SOURCES: AiVaultAgentSourceTable = {
       uniqueCodexSessionsDirs([
         options.codexSessionsDir ?? CODEX_SESSIONS_DIR,
         ...wslHomeDirs.map((homeDir) => join(homeDir, '.codex', 'sessions')),
-        // Why: Nightshift-launched WSL Codex sessions use a Nightshift-owned CODEX_HOME,
+        // Why: Kolux-launched WSL Codex sessions use a Kolux-owned CODEX_HOME,
         // not the user's default ~/.codex history root.
         ...wslHomeDirs.map((homeDir) =>
-          join(homeDir, '.local', 'share', 'nightshift', 'codex-runtime-home', 'home', 'sessions')
+          join(homeDir, '.local', 'share', 'kolux', 'codex-runtime-home', 'home', 'sessions')
         ),
         ...(options.additionalCodexSessionsDirs ?? [])
       ]),

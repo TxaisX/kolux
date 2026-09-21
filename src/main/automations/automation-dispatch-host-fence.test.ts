@@ -58,7 +58,7 @@ function sshTarget(generation: number | undefined): SshTarget {
     label: 'devbox',
     host: 'devbox.internal',
     port: 22,
-    username: 'nightshift',
+    username: 'kolux',
     ...(generation === undefined ? {} : { generation })
   }
 }
@@ -179,7 +179,7 @@ async function evaluateAt(
 
 describe('scheduled dispatch fenced on the host the record captured', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-dispatch-fence-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-dispatch-fence-test-'))
     vi.useFakeTimers()
   })
 

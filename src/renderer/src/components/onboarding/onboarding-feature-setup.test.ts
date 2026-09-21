@@ -7,8 +7,8 @@ import type {
 import {
   buildAgentFeatureSkillInstallCommand,
   COMPUTER_USE_SKILL_NAME,
-  NIGHTSHIFT_CLI_SKILL_NAME,
-  NIGHTSHIFT_LINEAR_SKILL_NAME,
+  KOLUX_CLI_SKILL_NAME,
+  KOLUX_LINEAR_SKILL_NAME,
   ORCHESTRATION_SKILL_NAME
 } from '@/lib/agent-feature-install-commands'
 import { BROWSER_USE_ENABLED_STORAGE_KEY } from '@/lib/browser-use-setup-state'
@@ -30,10 +30,10 @@ import {
 import { getOnboardingFeatureSetupAgentRuntime } from './onboarding-feature-setup-runtime'
 
 const ALL_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
-  NIGHTSHIFT_CLI_SKILL_NAME,
+  KOLUX_CLI_SKILL_NAME,
   COMPUTER_USE_SKILL_NAME,
   ORCHESTRATION_SKILL_NAME,
-  NIGHTSHIFT_LINEAR_SKILL_NAME
+  KOLUX_LINEAR_SKILL_NAME
 ])
 const ORCHESTRATION_ONLY_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
   ORCHESTRATION_SKILL_NAME
@@ -41,22 +41,22 @@ const ORCHESTRATION_ONLY_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCo
 
 const INSTALLED_CLI_STATUS: CliInstallStatus = {
   platform: 'darwin',
-  commandName: 'nightshift',
-  commandPath: '/usr/local/bin/nightshift',
+  commandName: 'kolux',
+  commandPath: '/usr/local/bin/kolux',
   pathDirectory: '/usr/local/bin',
   pathConfigured: true,
-  launcherPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+  launcherPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
   installMethod: 'symlink',
   supported: true,
   state: 'installed',
-  currentTarget: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+  currentTarget: '/Applications/Kolux.app/Contents/MacOS/Kolux',
   unsupportedReason: null,
   detail: null
 }
 
 const GRANTED_COMPUTER_USE_STATUS: ComputerUsePermissionStatusResult = {
   platform: 'darwin',
-  helperAppPath: '/Applications/Nightshift Computer Use.app',
+  helperAppPath: '/Applications/Kolux Computer Use.app',
   helperUnavailableReason: null,
   permissions: [
     { id: 'accessibility', status: 'granted' },
@@ -66,7 +66,7 @@ const GRANTED_COMPUTER_USE_STATUS: ComputerUsePermissionStatusResult = {
 
 const OPENED_COMPUTER_USE_SETUP: ComputerUsePermissionSetupResult = {
   platform: 'darwin',
-  helperAppPath: '/Applications/Nightshift.app',
+  helperAppPath: '/Applications/Kolux.app',
   openedSettings: true,
   launchedHelper: true
 }
@@ -125,7 +125,7 @@ describe('onboarding feature setup runner', () => {
 
     expect(text).toBe(ALL_SKILL_INSTALL_COMMAND)
     expect(text).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --skill computer-use --skill orchestration --skill nightshift-linear --global'
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --skill computer-use --skill orchestration --skill kolux-linear --global'
     )
   })
 
@@ -238,7 +238,7 @@ describe('onboarding feature setup runner', () => {
       getComputerUsePermissionStatus: vi.fn(
         async (): Promise<ComputerUsePermissionStatusResult> => ({
           platform: 'darwin',
-          helperAppPath: '/Applications/Nightshift Computer Use.app',
+          helperAppPath: '/Applications/Kolux Computer Use.app',
           helperUnavailableReason: null,
           permissions: [
             { id: 'accessibility', status: 'not-granted' },
@@ -353,7 +353,7 @@ describe('onboarding feature setup runner', () => {
     const unavailableStatus: ComputerUsePermissionStatusResult = {
       platform: 'darwin',
       helperAppPath: null,
-      helperUnavailableReason: 'Nightshift Computer Use.app was not found',
+      helperUnavailableReason: 'Kolux Computer Use.app was not found',
       permissions: [
         { id: 'accessibility', status: 'not-granted' },
         { id: 'screenshots', status: 'not-granted' }
@@ -374,7 +374,7 @@ describe('onboarding feature setup runner', () => {
     expect(openComputerUsePermissionSetup).not.toHaveBeenCalled()
     expect(result.warnings).toContainEqual({
       featureId: 'computerUse',
-      message: 'Nightshift Computer Use.app was not found'
+      message: 'Kolux Computer Use.app was not found'
     })
   })
 
@@ -382,8 +382,8 @@ describe('onboarding feature setup runner', () => {
     const staleStatus: CliInstallStatus = {
       ...INSTALLED_CLI_STATUS,
       state: 'stale',
-      currentTarget: '/tmp/other-nightshift',
-      detail: '/usr/local/bin/nightshift points to a different launcher.'
+      currentTarget: '/tmp/other-kolux',
+      detail: '/usr/local/bin/kolux points to a different launcher.'
     }
     const showCliRegistrationPrompt = vi.fn(async () => undefined)
     const installCli = vi.fn(async () => INSTALLED_CLI_STATUS)
@@ -411,7 +411,7 @@ describe('onboarding feature setup runner', () => {
       ...INSTALLED_CLI_STATUS,
       platform: 'win32',
       pathConfigured: null,
-      detail: 'Nightshift could not read the Windows user PATH registry value.'
+      detail: 'Kolux could not read the Windows user PATH registry value.'
     }
     const deps = createDeps({ getCliStatus: vi.fn(async () => unknownStatus) })
 

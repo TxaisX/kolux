@@ -1,6 +1,6 @@
 import type { LocalNetworkConnectionTestResult } from '../../../../shared/developer-permissions-types'
 
-const STORAGE_KEY = 'nightshift.developer-permissions.local-network-last-success.v1'
+const STORAGE_KEY = 'kolux.developer-permissions.local-network-last-success.v1'
 
 export type LocalNetworkConnectionSuccess = Pick<
   LocalNetworkConnectionTestResult,

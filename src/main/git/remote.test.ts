@@ -42,10 +42,10 @@ describe('git remote operations', () => {
         return { stdout: 'review/pr-1738\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.review/pr-1738.remote')) {
-        return { stdout: 'pr-prateek-nightshift\n', stderr: '' }
+        return { stdout: 'pr-prateek-kolux\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.review/pr-1738.pushRemote')) {
-        return { stdout: 'pr-prateek-nightshift\n', stderr: '' }
+        return { stdout: 'pr-prateek-kolux\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.review/pr-1738.merge')) {
         return { stdout: 'refs/heads/prateek/fix-sidebar-agents-toggle\n', stderr: '' }
@@ -63,7 +63,7 @@ describe('git remote operations', () => {
       { cwd: '/repo' }
     )
     expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(
-      ['push', '--set-upstream', 'pr-prateek-nightshift', 'HEAD:prateek/fix-sidebar-agents-toggle'],
+      ['push', '--set-upstream', 'pr-prateek-kolux', 'HEAD:prateek/fix-sidebar-agents-toggle'],
       { cwd: '/repo' }
     )
   })
@@ -137,13 +137,13 @@ describe('git remote operations', () => {
         return { stdout: 'imp/chinese-translation\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.pushRemote')) {
-        return { stdout: 'https://github.com/pynickle/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/pynickle/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('remote.pushDefault')) {
         throw new Error('missing pushDefault')
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.remote')) {
-        return { stdout: 'https://github.com/pynickle/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/pynickle/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.merge')) {
         return { stdout: 'refs/heads/imp/chinese-translation\n', stderr: '' }
@@ -163,7 +163,7 @@ describe('git remote operations', () => {
       [
         'push',
         '--set-upstream',
-        'https://github.com/pynickle/nightshift.git',
+        'https://github.com/pynickle/kolux.git',
         'HEAD:imp/chinese-translation'
       ],
       { cwd: '/repo' }
@@ -182,7 +182,7 @@ describe('git remote operations', () => {
         throw new Error('missing pushDefault')
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.remote')) {
-        return { stdout: 'https://github.com/pynickle/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/pynickle/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.merge')) {
         return { stdout: 'refs/heads/imp/chinese-translation\n', stderr: '' }
@@ -190,22 +190,22 @@ describe('git remote operations', () => {
       if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
         return { stdout: 'https://github.com/TxaisX/nightshift.git\n', stderr: '' }
       }
-      if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'pr-pynickle-nightshift') {
-        return { stdout: 'https://github.com/pynickle/nightshift.git\n', stderr: '' }
+      if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'pr-pynickle-kolux') {
+        return { stdout: 'https://github.com/pynickle/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'remote' && args[1] === '-v') {
         return {
           stdout: [
             'origin\thttps://github.com/TxaisX/nightshift.git (fetch)',
             'origin\thttps://github.com/TxaisX/nightshift.git (push)',
-            'pr-pynickle-nightshift\thttps://github.com/pynickle/nightshift.git (fetch)',
-            'pr-pynickle-nightshift\thttps://github.com/pynickle/nightshift.git (push)'
+            'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (fetch)',
+            'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (push)'
           ].join('\n'),
           stderr: ''
         }
       }
       if (args[0] === 'remote') {
-        return { stdout: 'origin\npr-pynickle-nightshift\n', stderr: '' }
+        return { stdout: 'origin\npr-pynickle-kolux\n', stderr: '' }
       }
       return { stdout: '', stderr: '' }
     })
@@ -213,7 +213,7 @@ describe('git remote operations', () => {
     await gitPush('/repo', false)
 
     expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(
-      ['push', '--set-upstream', 'pr-pynickle-nightshift', 'HEAD:imp/chinese-translation'],
+      ['push', '--set-upstream', 'pr-pynickle-kolux', 'HEAD:imp/chinese-translation'],
       { cwd: '/repo' }
     )
   })
@@ -224,17 +224,17 @@ describe('git remote operations', () => {
     const remotes = [
       { name: 'origin', url: 'https://github.com/TxaisX/nightshift.git' },
       ...Array.from({ length: 56 }, (_, index) => ({
-        name: `pr-user${index}-nightshift`,
-        url: `https://github.com/user${index}/nightshift.git`
+        name: `pr-user${index}-kolux`,
+        url: `https://github.com/user${index}/kolux.git`
       })),
-      { name: 'pr-pynickle-nightshift', url: 'https://github.com/pynickle/nightshift.git' }
+      { name: 'pr-pynickle-kolux', url: 'https://github.com/pynickle/kolux.git' }
     ]
     gitExecFileAsyncMock.mockImplementation(async (args: string[]) => {
       if (args[0] === 'symbolic-ref') {
         return { stdout: 'imp/chinese-translation\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.remote')) {
-        return { stdout: 'https://github.com/pynickle/nightshift.git\n', stderr: '' }
+        return { stdout: 'https://github.com/pynickle/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.merge')) {
         return { stdout: 'refs/heads/imp/chinese-translation\n', stderr: '' }
@@ -261,7 +261,7 @@ describe('git remote operations', () => {
     const remoteReads = gitExecFileAsyncMock.mock.calls.filter(([args]) => args[0] === 'remote')
     expect(remoteReads.map(([args]) => args)).toEqual([['remote', '-v']])
     expect(gitExecFileAsyncMock).toHaveBeenLastCalledWith(
-      ['push', '--set-upstream', 'pr-pynickle-nightshift', 'HEAD:imp/chinese-translation'],
+      ['push', '--set-upstream', 'pr-pynickle-kolux', 'HEAD:imp/chinese-translation'],
       { cwd: '/repo' }
     )
   })
@@ -602,16 +602,16 @@ describe('git remote operations', () => {
           'fetch',
           '--no-write-fetch-head',
           'upstream',
-          expect.stringMatching(/^\+refs\/heads\/main:refs\/nightshift\/rebase\//),
+          expect.stringMatching(/^\+refs\/heads\/main:refs\/kolux\/rebase\//),
           '+refs/heads/main:refs/remotes/upstream/main'
         ],
         { ...REBASE_OPERATION_OPTIONS, timeout: REBASE_SOURCE_FETCH_TIMEOUT_MS }
       ],
       [
-        ['rebase', '--onto', expect.stringMatching(/^refs\/nightshift\/rebase\//), 'fork-point'],
+        ['rebase', '--onto', expect.stringMatching(/^refs\/kolux\/rebase\//), 'fork-point'],
         REBASE_OPERATION_OPTIONS
       ],
-      [['update-ref', '-d', expect.stringMatching(/^refs\/nightshift\/rebase\//)], { cwd: '/repo' }]
+      [['update-ref', '-d', expect.stringMatching(/^refs\/kolux\/rebase\//)], { cwd: '/repo' }]
     ])
 
     const fetchRefspec = gitExecFileAsyncMock.mock.calls[3][0][3]
@@ -637,7 +637,7 @@ describe('git remote operations', () => {
 
     expect(gitExecFileAsyncMock).toHaveBeenNthCalledWith(
       5,
-      ['rebase', '--onto', expect.stringMatching(/^refs\/nightshift\/rebase\//), 'fork-point'],
+      ['rebase', '--onto', expect.stringMatching(/^refs\/kolux\/rebase\//), 'fork-point'],
       REBASE_OPERATION_OPTIONS
     )
   })
@@ -660,7 +660,7 @@ describe('git remote operations', () => {
         'fetch',
         '--no-write-fetch-head',
         'upstream',
-        expect.stringMatching(/^\+refs\/heads\/main:refs\/nightshift\/rebase\//),
+        expect.stringMatching(/^\+refs\/heads\/main:refs\/kolux\/rebase\//),
         '+refs/heads/main:refs/remotes/upstream/main'
       ],
       { ...REBASE_OPERATION_OPTIONS, timeout: REBASE_SOURCE_FETCH_TIMEOUT_MS }

@@ -1,7 +1,7 @@
 import type { PiAgentKind } from '../../shared/pi-agent-kind'
 import { getPiOmpRuntimeDetectionSourceLines } from './agent-status-runtime-detection-source'
 
-export const NIGHTSHIFT_PI_EXTENSION_FILE = 'nightshift-titlebar-spinner.ts'
+export const KOLUX_PI_EXTENSION_FILE = 'kolux-titlebar-spinner.ts'
 
 export function getPiTitlebarExtensionSource(kind: PiAgentKind = 'pi'): string {
   // Why: OMP reports input waits through its own approval events, which the status
@@ -73,7 +73,7 @@ export function getPiTitlebarExtensionSource(kind: PiAgentKind = 'pi'): string {
     '// close a maintenance spinner — cap it so idle maintenance cannot strand a working title.',
     'const IDLE_COMPACTION_MAX_FRAMES = Math.ceil(300000 / FRAME_INTERVAL_MS)',
     '',
-    '// Why: `-` is the plain separator; `!` is the state marker Nightshift reads as needs-input',
+    '// Why: `-` is the plain separator; `!` is the state marker Kolux reads as needs-input',
     '// (src/shared/pi-state-title-marker.ts), so mobile and the CLI see the wait too.',
     'function getMarkedTitle(pi, marker) {',
     '  const cwd = process.cwd().split(/[\\\\/]/).filter(Boolean).at(-1) || process.cwd()',
@@ -113,15 +113,15 @@ export function getPiTitlebarExtensionSource(kind: PiAgentKind = 'pi'): string {
     '}',
     '',
     'export default function (pi) {',
-    '  if (!process.env.NIGHTSHIFT_PANE_KEY) return',
+    '  if (!process.env.KOLUX_PANE_KEY) return',
     ...(kind === 'pi'
       ? [
           '  // Why: child agents inherit the pane env, and the spinner is harmlessly',
           '  // per-process — but the needs-input marker is status the pane reports, so only',
-          '  // one process may assert it. Mirrors NIGHTSHIFT_PI_STATUS_OWNED in the status hook.',
-          '  const markerOwnerPid = process.env.NIGHTSHIFT_PI_TITLE_MARKER_OWNED',
+          '  // one process may assert it. Mirrors KOLUX_PI_STATUS_OWNED in the status hook.',
+          '  const markerOwnerPid = process.env.KOLUX_PI_TITLE_MARKER_OWNED',
           '  const ownsMarker = !markerOwnerPid || markerOwnerPid === String(process.pid)',
-          '  if (ownsMarker) process.env.NIGHTSHIFT_PI_TITLE_MARKER_OWNED = String(process.pid)'
+          '  if (ownsMarker) process.env.KOLUX_PI_TITLE_MARKER_OWNED = String(process.pid)'
         ]
       : []),
 

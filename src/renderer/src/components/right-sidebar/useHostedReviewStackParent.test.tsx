@@ -21,7 +21,7 @@ function makeReview(overrides: Partial<HostedReviewInfo> = {}): HostedReviewInfo
 
 const baseOptions = {
   enabled: true,
-  repoPath: '/repo/nightshift',
+  repoPath: '/repo/kolux',
   repoId: 'repo-1',
   base: 'feature/parent',
   repoDefaultBase: 'main',
@@ -45,7 +45,7 @@ describe('useHostedReviewStackParent', () => {
 
     await act(async () => vi.advanceTimersByTime(1))
 
-    expect(fetchHostedReviewForBranch).toHaveBeenCalledWith('/repo/nightshift', 'feature/parent', {
+    expect(fetchHostedReviewForBranch).toHaveBeenCalledWith('/repo/kolux', 'feature/parent', {
       repoId: 'repo-1',
       active: true
     })

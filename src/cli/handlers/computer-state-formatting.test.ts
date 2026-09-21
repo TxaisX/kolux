@@ -6,7 +6,7 @@ vi.mock('../runtime-client', () => {
   class RuntimeClient {
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
   }
 
   class RuntimeClientError extends Error {
@@ -37,7 +37,7 @@ vi.mock('../runtime-client', () => {
 import { main } from '../index'
 import { okFixture, queueFixtures } from '../test-fixtures'
 
-describe('nightshift computer get-app-state formatting', () => {
+describe('kolux computer get-app-state formatting', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     callMock.mockReset()
@@ -74,7 +74,7 @@ describe('nightshift computer get-app-state formatting', () => {
       expiresAt: expect.any(String)
     })
     expect(String(parsed.result.screenshot.path).replaceAll('\\', '/')).toContain(
-      'nightshift-computer-use/req_state-screenshot.png'
+      'kolux-computer-use/req_state-screenshot.png'
     )
   })
 

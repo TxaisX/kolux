@@ -97,17 +97,17 @@ describe('execution host registry', () => {
       // A VM-backed repo carries the hidden runtime-owned target on both fields.
       repos: [
         {
-          connectionId: 'runtime-ssh-nightshift-instance-1',
-          executionHostId: 'ssh:runtime-ssh-nightshift-instance-1'
+          connectionId: 'runtime-ssh-kolux-instance-1',
+          executionHostId: 'ssh:runtime-ssh-kolux-instance-1'
         },
         { connectionId: 'repo-ssh' }
       ],
       settings: { activeRuntimeEnvironmentId: null },
       // Even if a stale label leaked in, it must still be filtered out.
-      sshTargetLabels: new Map([['runtime-ssh-nightshift-instance-1', 'Hidden VM']])
+      sshTargetLabels: new Map([['runtime-ssh-kolux-instance-1', 'Hidden VM']])
     })
 
-    expect(hosts.some((h) => h.id.includes('runtime-ssh-nightshift-instance-1'))).toBe(false)
+    expect(hosts.some((h) => h.id.includes('runtime-ssh-kolux-instance-1'))).toBe(false)
     // The ordinary repo SSH host is still present.
     expect(hosts.some((h) => h.id === 'ssh:repo-ssh')).toBe(true)
   })
@@ -201,7 +201,7 @@ describe('execution host registry', () => {
                 reconnectAttempt: 1,
                 lastConnectedAt: 123,
                 lastClose: { code: 1006, reason: '' },
-                lastError: 'Remote Nightshift runtime closed the connection.'
+                lastError: 'Remote Kolux runtime closed the connection.'
               }
             }
           }
@@ -326,7 +326,7 @@ describe('execution host registry', () => {
       settings: { activeRuntimeEnvironmentId: null }
     })
 
-    // No live status means no evidence the Nightshift server is reachable, so it must
+    // No live status means no evidence the Kolux server is reachable, so it must
     // read 'disconnected' rather than defaulting to 'available'/"Connected".
     expect(hosts).toMatchObject([
       { id: 'local', health: 'local' },

@@ -15,7 +15,7 @@ it.each(['end', 'abort', 'timeout'] as const)(
       const notify = vi.fn()
       const mux = {
         request: vi.fn(async () => ({
-          __nightshiftGitResponseStream: {
+          __koluxGitResponseStream: {
             streamId: 7,
             totalBytes: encoded.length,
             chunkCount: 1000

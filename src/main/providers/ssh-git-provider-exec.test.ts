@@ -65,7 +65,7 @@ describe('SshGitProvider', () => {
     await expect(
       provider.clone(['clone', '--progress', '--', 'url', 'repo'], '/home/user')
     ).rejects.toThrow(
-      'SSH clone support is unavailable on this relay. Reconnect the SSH target to update Nightshift on the host, then try again.'
+      'SSH clone support is unavailable on this relay. Reconnect the SSH target to update Kolux on the host, then try again.'
     )
   })
 
@@ -105,13 +105,13 @@ describe('SshGitProvider', () => {
 
     await provider.execNonInteractive(
       '/bin/bash',
-      ['-lc', 'echo "$NIGHTSHIFT_WORKTREE_PATH"'],
+      ['-lc', 'echo "$KOLUX_WORKTREE_PATH"'],
       '/home/user/repo',
       120_000,
       undefined,
       {
-        NIGHTSHIFT_ROOT_PATH: '/home/user/repo',
-        NIGHTSHIFT_WORKTREE_PATH: '/home/user/repo-feature'
+        KOLUX_ROOT_PATH: '/home/user/repo',
+        KOLUX_WORKTREE_PATH: '/home/user/repo-feature'
       }
     )
 
@@ -119,13 +119,13 @@ describe('SshGitProvider', () => {
       'agent.execNonInteractive',
       {
         binary: '/bin/bash',
-        args: ['-lc', 'echo "$NIGHTSHIFT_WORKTREE_PATH"'],
+        args: ['-lc', 'echo "$KOLUX_WORKTREE_PATH"'],
         cwd: '/home/user/repo',
         stdin: null,
         timeoutMs: 120_000,
         env: {
-          NIGHTSHIFT_ROOT_PATH: '/home/user/repo',
-          NIGHTSHIFT_WORKTREE_PATH: '/home/user/repo-feature'
+          KOLUX_ROOT_PATH: '/home/user/repo',
+          KOLUX_WORKTREE_PATH: '/home/user/repo-feature'
         }
       },
       { timeoutMs: 125_000 }

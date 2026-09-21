@@ -17,8 +17,8 @@ import { listRelayBaseDirsCommand } from './ssh-remote-commands'
 import { gcOldRelayVersions } from './ssh-relay-versioned-install'
 import type { SshTarget } from '../../shared/ssh-types'
 
-const RUN_REVIEW_ORACLE = process.env.NIGHTSHIFT_REVIEW_SSH_UPLOAD_CANCEL === '1'
-const REMOTE_REPO = '/tmp/nightshift-pr-10207-real-repo'
+const RUN_REVIEW_ORACLE = process.env.KOLUX_REVIEW_SSH_UPLOAD_CANCEL === '1'
+const REMOTE_REPO = '/tmp/kolux-pr-10207-real-repo'
 
 type TargetFixture = {
   containerName: string
@@ -50,15 +50,15 @@ function dockerExec(fixture: TargetFixture, command: string): string {
 }
 
 function startTarget(): TargetFixture {
-  const image = process.env.NIGHTSHIFT_REVIEW_SSH_IMAGE
+  const image = process.env.KOLUX_REVIEW_SSH_IMAGE
   if (!image) {
-    throw new Error('NIGHTSHIFT_REVIEW_SSH_IMAGE is required')
+    throw new Error('KOLUX_REVIEW_SSH_IMAGE is required')
   }
-  const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-pr10207-ssh-'))
+  const tempDir = mkdtempSync(join(tmpdir(), 'kolux-pr10207-ssh-'))
   const identityFile = join(tempDir, 'id_ed25519')
   run('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', identityFile, '-q'])
   const publicKey = readFileSync(`${identityFile}.pub`, 'utf8').trim()
-  const containerName = `nightshift-pr10207-${randomUUID().slice(0, 12)}`
+  const containerName = `kolux-pr10207-${randomUUID().slice(0, 12)}`
   run(
     'docker',
     [
@@ -105,7 +105,7 @@ function stopTarget(fixture: TargetFixture | null): void {
 }
 
 function createConnection(fixture: TargetFixture): SshConnection {
-  const host = process.env.NIGHTSHIFT_REVIEW_SSH_TARGET_HOST ?? ''
+  const host = process.env.KOLUX_REVIEW_SSH_TARGET_HOST ?? ''
   if (!host || host === 'localhost' || host === '::1' || host.startsWith('127.')) {
     throw new Error(`Review SSH target must be non-loopback, received ${JSON.stringify(host)}`)
   }
@@ -123,7 +123,7 @@ function createConnection(fixture: TargetFixture): SshConnection {
 }
 
 function readInventory(fixture: TargetFixture, remoteRelayDir: string): RemoteInventory {
-  const stagePool = '/root/.nightshift-remote/.upload-stages'
+  const stagePool = '/root/.kolux-remote/.upload-stages'
   const raw = dockerExec(
     fixture,
     [
@@ -154,7 +154,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
 
   it('recovers a post-promotion install lock from a previous execution-host boot', async () => {
     const activeFixture = fixture as TargetFixture
-    const remoteRelayDir = '/root/.nightshift-remote/relay-reboot-lock-oracle'
+    const remoteRelayDir = '/root/.kolux-remote/relay-reboot-lock-oracle'
     const previousBootId = 'linux:00000000-0000-0000-0000-000000000000:0'
     dockerExec(
       activeFixture,
@@ -196,7 +196,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
     const localRelayDir = join(process.cwd(), 'out', 'relay', 'linux-arm64')
     const relayVersion = readFileSync(join(localRelayDir, '.version'), 'utf8').trim()
     const relayJsSize = statSync(join(localRelayDir, 'relay.js')).size
-    const remoteRelayDir = `/root/.nightshift-remote/relay-${relayVersion}`
+    const remoteRelayDir = `/root/.kolux-remote/relay-${relayVersion}`
     const connection = createConnection(activeFixture)
     await connection.connect()
     const sentinelPid = dockerExec(activeFixture, 'sleep 300 </dev/null >/dev/null 2>&1 & echo $!')
@@ -256,7 +256,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
     const partialRemoteBytes = Number(
       dockerExec(
         activeFixture,
-        "find /root/.nightshift-remote/.upload-stages -type f -path '*/slot-*/payload/relay.js' -printf '%s\\n'"
+        "find /root/.kolux-remote/.upload-stages -type f -path '*/slot-*/payload/relay.js' -printf '%s\\n'"
       )
     )
     const operationController = (
@@ -288,7 +288,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
       join(process.cwd(), 'out', 'relay', 'linux-arm64', '.version'),
       'utf8'
     ).trim()
-    const remoteRelayDir = `/root/.nightshift-remote/relay-${relayVersion}`
+    const remoteRelayDir = `/root/.kolux-remote/relay-${relayVersion}`
     const firstConnection = createConnection(activeFixture)
     const progress: string[] = []
     await firstConnection.connect()
@@ -302,7 +302,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
     ).rejects.toBe(unconfirmedCancellation)
     await firstConnection.disconnect()
     const firstInventory = readInventory(activeFixture, remoteRelayDir)
-    const expected = process.env.NIGHTSHIFT_REVIEW_EXPECT_RECOVERY === '1' ? 'recovered' : 'blocked'
+    const expected = process.env.KOLUX_REVIEW_EXPECT_RECOVERY === '1' ? 'recovered' : 'blocked'
     if (expected === 'recovered') {
       const secondAbandonedConnection = createConnection(activeFixture)
       await secondAbandonedConnection.connect()
@@ -348,11 +348,11 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
     if (expected === 'recovered') {
       const replacedStage = firstInventory.uploadStages[0]!
       const originalStage = `${replacedStage}.original`
-      const foreignTarget = '/root/nightshift-pr10207-foreign-stage-target'
-      const stagePool = '/root/.nightshift-remote/.upload-stages'
+      const foreignTarget = '/root/kolux-pr10207-foreign-stage-target'
+      const stagePool = '/root/.kolux-remote/.upload-stages'
       const symlinkStage = `${stagePool}/slot-2`
-      const ownerMarker = '.nightshift-upload-owner'
-      const identityMarker = '.nightshift-upload-identity'
+      const ownerMarker = '.kolux-upload-owner'
+      const identityMarker = '.kolux-upload-identity'
       dockerExec(
         activeFixture,
         [
@@ -364,7 +364,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
           `printf foreign > ${shellQuote(`${replacedStage}/payload/foreign`)}`,
           `printf alive > ${shellQuote(`${foreignTarget}/sentinel`)}`,
           `ln -s ${shellQuote(foreignTarget)} ${shellQuote(symlinkStage)}`,
-          `i=0; while [ "$i" -lt 15197 ]; do mkdir ${shellQuote(`/root/.nightshift-remote/relay-${relayVersion}.upload-scale-`)}"$i"; i=$((i + 1)); done`
+          `i=0; while [ "$i" -lt 15197 ]; do mkdir ${shellQuote(`/root/.kolux-remote/relay-${relayVersion}.upload-scale-`)}"$i"; i=$((i + 1)); done`
         ].join(' && ')
       )
       const adversarialInventory = readInventory(activeFixture, remoteRelayDir)
@@ -398,7 +398,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
 
       const listing = await execCommand(
         cleanupConnection,
-        listRelayBaseDirsCommand(getRemoteHostPlatform('linux-arm64'), '/root/.nightshift-remote')
+        listRelayBaseDirsCommand(getRemoteHostPlatform('linux-arm64'), '/root/.kolux-remote')
       )
       const gcStartedAt = Date.now()
       await gcOldRelayVersions(
@@ -430,7 +430,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
       const scaleEntries = Number(
         dockerExec(
           activeFixture,
-          `find /root/.nightshift-remote -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`relay-${relayVersion}.upload-scale-*`)} | wc -l`
+          `find /root/.kolux-remote -mindepth 1 -maxdepth 1 -type d -name ${shellQuote(`relay-${relayVersion}.upload-scale-*`)} | wc -l`
         )
       )
       expect(scaleEntries).toBe(15_197)
@@ -449,9 +449,9 @@ describe.skipIf(!RUN_REVIEW_ORACLE)('SSH relay upload cancellation recovery', ()
       expect(firstInventory.uploadStages.length).toBeGreaterThan(0)
       expect(finalInventory?.installLock).toBe(false)
       expect(finalInventory!.uploadStages).toEqual([
-        '/root/.nightshift-remote/.upload-stages/slot-0',
-        '/root/.nightshift-remote/.upload-stages/slot-0.original',
-        '/root/.nightshift-remote/.upload-stages/slot-2'
+        '/root/.kolux-remote/.upload-stages/slot-0',
+        '/root/.kolux-remote/.upload-stages/slot-0.original',
+        '/root/.kolux-remote/.upload-stages/slot-2'
       ])
     } else {
       expect(firstInventory.installLock).toBe(true)

@@ -15,9 +15,9 @@ import {
  *
  * Off by default; enabled via localStorage so a production build can arm it
  * from DevTools without a settings-schema change:
- *   localStorage.setItem('nightshift:render-desync-sentinel', '1')  // then reload
+ *   localStorage.setItem('kolux:render-desync-sentinel', '1')  // then reload
  */
-export const RENDER_DESYNC_SENTINEL_FLAG = 'nightshift:render-desync-sentinel'
+export const RENDER_DESYNC_SENTINEL_FLAG = 'kolux:render-desync-sentinel'
 
 type SentinelPane = {
   terminal: unknown

@@ -23,8 +23,8 @@ export function getDaemonHistoryDir(): string {
 export function getDaemonEntryPath(): string {
   const appPath = getAppEnvironment().getAppPath()
   // Why: packaged getAppPath() points at app.asar, so redirect to app.asar.unpacked where daemon-entry.js is fork-executable.
-  // Why asar and not isPackaged: nightshiftd is a packaged non-Electron host whose bundle root holds
-  // nightshiftd.js and daemon-entry.js side by side with no asar to redirect (see parcel-watcher-entry-path.ts).
+  // Why asar and not isPackaged: koluxd is a packaged non-Electron host whose bundle root holds
+  // koluxd.js and daemon-entry.js side by side with no asar to redirect (see parcel-watcher-entry-path.ts).
   const basePath = appPath.includes('app.asar')
     ? appPath.replace('app.asar', 'app.asar.unpacked')
     : appPath
@@ -40,9 +40,9 @@ export function resolvePackagedDarwinAppVersion(): string | null {
   return process.platform === 'darwin' && environment.isPackaged() ? environment.getVersion() : null
 }
 
-// Why: pass a log-file arg so field failures are diagnosable, but honor the NIGHTSHIFT_DIAGNOSTICS_DISABLED privacy switch.
+// Why: pass a log-file arg so field failures are diagnosable, but honor the KOLUX_DIAGNOSTICS_DISABLED privacy switch.
 export function daemonLogArgs(): string[] {
-  const disabled = (process.env.NIGHTSHIFT_DIAGNOSTICS_DISABLED ?? '').trim().toLowerCase()
+  const disabled = (process.env.KOLUX_DIAGNOSTICS_DISABLED ?? '').trim().toLowerCase()
   return disabled === '1' || disabled === 'true' ? [] : ['--log-file', getDaemonLogFilePath()]
 }
 

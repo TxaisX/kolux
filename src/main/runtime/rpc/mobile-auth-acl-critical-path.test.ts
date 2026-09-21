@@ -106,7 +106,7 @@ describe('mobile auth critical path', () => {
     timeline.length = 0
     process.env.SystemRoot = 'C:\\Windows'
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-auth-acl-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-auth-acl-'))
     hardenedByFake.clear()
     vi.mocked(runProcessSync).mockReset()
     vi.mocked(runProcess).mockReset()

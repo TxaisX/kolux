@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 type RightSidebarHeaderGeometry = {
@@ -12,19 +12,17 @@ type RightSidebarHeaderGeometry = {
 }
 
 test.describe('Right sidebar native titlebar spacing', () => {
-  test('top activity buttons follow the native desktop chrome layout', async ({
-    nightshiftPage
-  }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test('top activity buttons follow the native desktop chrome layout', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
 
     const hasDesktopWindowChrome = process.platform !== 'darwin'
-    expect(await nightshiftPage.evaluate(() => window.api.platform.get().platform)).toBe(
+    expect(await koluxPage.evaluate(() => window.api.platform.get().platform)).toBe(
       process.platform
     )
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available - is the app in dev mode?')
@@ -38,7 +36,7 @@ test.describe('Right sidebar native titlebar spacing', () => {
     })
 
     const measureHeader = async (): Promise<RightSidebarHeaderGeometry | null> =>
-      nightshiftPage.evaluate(() => {
+      koluxPage.evaluate(() => {
         const header = document.querySelector<HTMLElement>('.right-sidebar-header-inset')
         const strip = document.querySelector<HTMLElement>('.right-sidebar-activity-strip')
         const closeButton = header?.querySelector<HTMLButtonElement>(

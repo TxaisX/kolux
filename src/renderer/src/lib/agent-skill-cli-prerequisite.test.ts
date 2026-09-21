@@ -4,8 +4,8 @@ import type { CliInstallStatus } from '../../../shared/cli-install-types'
 import {
   CLI_PREREQUISITE_REGISTRATION_TOAST,
   CLI_PREREQUISITE_REGISTRATION_TOAST_DESCRIPTION,
-  ensureNightshiftCliAvailableForAgentSkillTerminal,
-  isNightshiftCliAvailableOnPath
+  ensureKoluxCliAvailableForAgentSkillTerminal,
+  isKoluxCliAvailableOnPath
 } from './agent-skill-cli-prerequisite'
 
 vi.mock('sonner', () => ({
@@ -19,11 +19,11 @@ vi.mock('sonner', () => ({
 function cliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
-    commandPath: '/usr/local/bin/nightshift',
+    commandName: 'kolux',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/MacOS/nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/MacOS/kolux',
     installMethod: 'symlink',
     supported: true,
     state: 'installed',
@@ -34,15 +34,15 @@ function cliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus 
   }
 }
 
-describe('isNightshiftCliAvailableOnPath', () => {
+describe('isKoluxCliAvailableOnPath', () => {
   it('requires the installed CLI command to be visible on PATH', () => {
-    expect(isNightshiftCliAvailableOnPath(cliStatus())).toBe(true)
-    expect(isNightshiftCliAvailableOnPath(cliStatus({ pathConfigured: false }))).toBe(false)
-    expect(isNightshiftCliAvailableOnPath(cliStatus({ state: 'not_installed' }))).toBe(false)
+    expect(isKoluxCliAvailableOnPath(cliStatus())).toBe(true)
+    expect(isKoluxCliAvailableOnPath(cliStatus({ pathConfigured: false }))).toBe(false)
+    expect(isKoluxCliAvailableOnPath(cliStatus({ state: 'not_installed' }))).toBe(false)
   })
 })
 
-describe('ensureNightshiftCliAvailableForAgentSkillTerminal', () => {
+describe('ensureKoluxCliAvailableForAgentSkillTerminal', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
@@ -69,7 +69,7 @@ describe('ensureNightshiftCliAvailableForAgentSkillTerminal', () => {
     })
 
     await expect(
-      ensureNightshiftCliAvailableForAgentSkillTerminal({
+      ensureKoluxCliAvailableForAgentSkillTerminal({
         onStatusChange,
         registrationPromptDelayMs: 0
       })
@@ -87,7 +87,7 @@ describe('ensureNightshiftCliAvailableForAgentSkillTerminal', () => {
     const initial = cliStatus({
       platform: 'win32',
       pathConfigured: null,
-      detail: 'Nightshift could not read the Windows user PATH registry value.'
+      detail: 'Kolux could not read the Windows user PATH registry value.'
     })
     const install = vi.fn()
     vi.stubGlobal('window', {
@@ -95,7 +95,7 @@ describe('ensureNightshiftCliAvailableForAgentSkillTerminal', () => {
     })
 
     await expect(
-      ensureNightshiftCliAvailableForAgentSkillTerminal({ registrationPromptDelayMs: 0 })
+      ensureKoluxCliAvailableForAgentSkillTerminal({ registrationPromptDelayMs: 0 })
     ).resolves.toBe(initial)
 
     expect(install).not.toHaveBeenCalled()
@@ -122,7 +122,7 @@ describe('ensureNightshiftCliAvailableForAgentSkillTerminal', () => {
       }
     })
 
-    const pending = ensureNightshiftCliAvailableForAgentSkillTerminal({
+    const pending = ensureKoluxCliAvailableForAgentSkillTerminal({
       registrationPromptDelayMs: 700
     })
     await vi.waitFor(() => {

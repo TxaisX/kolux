@@ -19,8 +19,8 @@ import {
 /**
  * Why: cursor-agent, GitHub Copilot CLI, and Codex gate first-launch in an
  * unfamiliar directory behind a "Do you trust this folder?" menu that consumes
- * keystrokes (numbered options / single-letter shortcuts). Nightshift's draft-URL
- * paste flow needs the input box, not the menu, so before Nightshift spawns the
+ * keystrokes (numbered options / single-letter shortcuts). Kolux's draft-URL
+ * paste flow needs the input box, not the menu, so before Kolux spawns the
  * agent it asks main to write the same trust artifacts the agents write
  * after the user accepts. Best-effort: any IO error is swallowed so a failed
  * trust write never blocks the workspace from opening.

@@ -47,7 +47,7 @@ describe('dismissOverlays', () => {
     expect(dialogClose.click).toHaveBeenCalledOnce()
     expect(windowClose.click).not.toHaveBeenCalled()
     expect(page.getByRole).toHaveBeenCalledWith('dialog', {
-      name: 'Let agents drive Nightshift with the Nightshift CLI'
+      name: 'Let agents drive Kolux with the Kolux CLI'
     })
   })
 

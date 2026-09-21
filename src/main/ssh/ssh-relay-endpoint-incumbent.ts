@@ -62,8 +62,8 @@ export type RelayEndpointIncumbent = {
   holdersEnumerable: boolean
 }
 
-const PROBE_BEGIN = 'NIGHTSHIFT-INCUMBENT-BEGIN'
-const PROBE_END = 'NIGHTSHIFT-INCUMBENT-END'
+const PROBE_BEGIN = 'KOLUX-INCUMBENT-BEGIN'
+const PROBE_END = 'KOLUX-INCUMBENT-END'
 const CONNECT_PROBE_TIMEOUT_MS = 1000
 
 // Why ES5 syntax: nodePath may be a host-resolved system node, not the bundled one.
@@ -296,7 +296,7 @@ export class RelayEndpointHeldError extends Error {
   constructor(readonly incumbent: RelayEndpointIncumbent) {
     super(
       `A live relay still owns ${incumbent.sockPath} and refused this connection ` +
-        `(${describeRelayEndpointIncumbent(incumbent)}). Nightshift will not replace it, because ` +
+        `(${describeRelayEndpointIncumbent(incumbent)}). Kolux will not replace it, because ` +
         'unlinking its socket would strand its terminals. Use Reset Relay for this host to ' +
         'stop it, then reconnect.'
     )
@@ -318,7 +318,7 @@ export class RelayEndpointUnresponsiveError extends Error {
   constructor(readonly incumbent: RelayEndpointIncumbent) {
     super(
       `A relay still owns ${incumbent.sockPath} but did not answer the handshake ` +
-        `(${describeRelayEndpointIncumbent(incumbent)}). Nightshift will retry rather than replace it; ` +
+        `(${describeRelayEndpointIncumbent(incumbent)}). Kolux will retry rather than replace it; ` +
         'if it never recovers, use Reset Relay for this host.'
     )
   }

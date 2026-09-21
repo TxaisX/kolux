@@ -19,7 +19,7 @@ type RegisteredRoute = LocalhostWorktreeLabelRoute & {
   target: URL
 }
 
-const NIGHTSHIFT_LOCALHOST_SUFFIX = '.nightshift.localhost'
+const KOLUX_LOCALHOST_SUFFIX = '.kolux.localhost'
 
 export class LocalhostWorktreeLabelProxy {
   private server: Server | null = null
@@ -116,7 +116,7 @@ export class LocalhostWorktreeLabelProxy {
       throw new Error('Localhost label proxy is not running.')
     }
     const url = new URL(target.toString())
-    url.hostname = `${label}${NIGHTSHIFT_LOCALHOST_SUFFIX}`
+    url.hostname = `${label}${KOLUX_LOCALHOST_SUFFIX}`
     url.port = String(this.listenPort)
     return url.toString()
   }
@@ -125,7 +125,7 @@ export class LocalhostWorktreeLabelProxy {
     const route = this.routeForRequest(request)
     if (!route) {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
-      response.end('Unknown Nightshift localhost label.')
+      response.end('Unknown Kolux localhost label.')
       return
     }
 
@@ -200,10 +200,10 @@ export class LocalhostWorktreeLabelProxy {
       String(request.headers.host ?? '')
         .split(':')[0]
         ?.toLowerCase() ?? ''
-    if (!host.endsWith(NIGHTSHIFT_LOCALHOST_SUFFIX)) {
+    if (!host.endsWith(KOLUX_LOCALHOST_SUFFIX)) {
       return null
     }
-    const label = host.slice(0, -NIGHTSHIFT_LOCALHOST_SUFFIX.length)
+    const label = host.slice(0, -KOLUX_LOCALHOST_SUFFIX.length)
     return this.routes.get(label) ?? null
   }
 }

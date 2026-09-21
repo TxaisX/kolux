@@ -80,8 +80,8 @@ const { join, resolve } = require('node:path')
  *
  *   - the pnpm patch does not cross the SSH boundary -- the remote `npm install` yields upstream's
  *     unpatched node-pty;
- *   - the nightshiftd prebuild matrix has no win32 entry (`MATRIX_SLOTS`,
- *     `config/scripts/build-nightshiftd-prebuilds.mjs`), so no Windows binary is ever compiled from
+ *   - the koluxd prebuild matrix has no win32 entry (`MATRIX_SLOTS`,
+ *     `config/scripts/build-koluxd-prebuilds.mjs`), so no Windows binary is ever compiled from
  *     patched source to ship;
  *   - a relay asset CAN patch native source and rebuild on the host -- that is exactly what
  *     `node-pty-1.1.0-master-cloexec-patch.cjs` does -- but it returns
@@ -106,7 +106,7 @@ const PATCH_TARGETS = [
     replacements: [
       [
         '                this._ptyNative.kill(this._pty, this._useConptyDll);\n                this._conoutSocketWorker.dispose();\n',
-        '                this._ptyNative.kill(this._pty, this._useConptyDll);\n                this._conoutSocketWorker.dispose();\n                // Nightshift: released AFTER the console-list fork and the native kill, not before them.\n                // Destroying conin first aborts teardown partway -- measured on a Windows SSH relay\n                // as +2 File and +1 Process handles per terminal, against +1 File unpatched.\n                this._inSocket.destroy();\n'
+        '                this._ptyNative.kill(this._pty, this._useConptyDll);\n                this._conoutSocketWorker.dispose();\n                // Kolux: released AFTER the console-list fork and the native kill, not before them.\n                // Destroying conin first aborts teardown partway -- measured on a Windows SSH relay\n                // as +2 File and +1 Process handles per terminal, against +1 File unpatched.\n                this._inSocket.destroy();\n'
       ]
     ]
   },
@@ -179,7 +179,7 @@ function patchNodePtyWindowsTeardown(relayDir = process.cwd()) {
       }
       patchedSource = patchedSource.replace(from, to)
     }
-    const temporaryPath = `${inspected.filePath}.nightshift-patch-${process.pid}`
+    const temporaryPath = `${inspected.filePath}.kolux-patch-${process.pid}`
     // Why: a terminated remote install must leave either known source version recoverable on reconnect.
     try {
       writeFileSync(temporaryPath, patchedSource)

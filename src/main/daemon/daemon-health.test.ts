@@ -298,7 +298,7 @@ describe('Linux process start-time parsing', () => {
     fields[0] = 'S'
     fields[19] = '987654'
 
-    expect(parseLinuxProcStartTicks(`123 (nightshift daemon) ${fields.join(' ')}`)).toBe(987654)
+    expect(parseLinuxProcStartTicks(`123 (kolux daemon) ${fields.join(' ')}`)).toBe(987654)
   })
 
   it('parses boot time seconds from proc stat output', () => {
@@ -308,9 +308,7 @@ describe('Linux process start-time parsing', () => {
   it('does not use line-array or whitespace-regex splitting', () => {
     const splitSpy = vi.spyOn(String.prototype, 'split')
 
-    parseLinuxProcStartTicks(
-      '123 (nightshift daemon) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 42'
-    )
+    parseLinuxProcStartTicks('123 (kolux daemon) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 42')
     parseLinuxBootTimeSeconds('cpu 1 2 3\nbtime 1700000000')
 
     const usedUnboundedSplit = splitSpy.mock.calls.some(
@@ -370,15 +368,15 @@ describe('parseWindowsProcessIdentityJson', () => {
   it('parses command line and start time from the CIM query output', () => {
     expect(
       parseWindowsProcessIdentityJson(
-        '{"cmd":"Nightshift.exe daemon-entry.js","start":1700000000000}\r\n'
+        '{"cmd":"Kolux.exe daemon-entry.js","start":1700000000000}\r\n'
       )
-    ).toEqual({ commandLine: 'Nightshift.exe daemon-entry.js', startedAtMs: 1_700_000_000_000 })
+    ).toEqual({ commandLine: 'Kolux.exe daemon-entry.js', startedAtMs: 1_700_000_000_000 })
   })
 
   it('returns a null start time when CreationDate was unavailable', () => {
     expect(
-      parseWindowsProcessIdentityJson('{"cmd":"Nightshift.exe daemon-entry.js","start":null}')
-    ).toEqual({ commandLine: 'Nightshift.exe daemon-entry.js', startedAtMs: null })
+      parseWindowsProcessIdentityJson('{"cmd":"Kolux.exe daemon-entry.js","start":null}')
+    ).toEqual({ commandLine: 'Kolux.exe daemon-entry.js', startedAtMs: null })
   })
 
   it('returns null for a missing process or inaccessible command line', () => {

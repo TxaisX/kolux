@@ -73,8 +73,8 @@ describe('Codex hook trust key lookup normalization', () => {
   it('compares mixed-case Windows hook sources by lookup identity', () => {
     expect(
       codexHookSourcePathsEqual(
-        'C:\\Users\\Rod\\AppData\\Roaming\\nightshift\\hooks.json',
-        'c:/users/rod/appdata/roaming/nightshift/hooks.json'
+        'C:\\Users\\Rod\\AppData\\Roaming\\kolux\\hooks.json',
+        'c:/users/rod/appdata/roaming/kolux/hooks.json'
       )
     ).toBe(true)
     expect(codexHookSourcePathsEqual('/home/User/hooks.json', '/home/user/hooks.json')).toBe(false)

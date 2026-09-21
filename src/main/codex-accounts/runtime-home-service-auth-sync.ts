@@ -76,7 +76,7 @@ export abstract class CodexRuntimeHomeAuthSync extends CodexRuntimeHomeLaunch {
         this.writeRuntimeAuth(runtimeAuth, { owner: 'system-default' })
         return
       }
-      // Why: mirror external logins/logouts into Nightshift's runtime home so unmanaged Codex sessions keep matching the current system-default state.
+      // Why: mirror external logins/logouts into Kolux's runtime home so unmanaged Codex sessions keep matching the current system-default state.
       this.captureSystemDefaultSnapshot({ force: true })
       this.writeRuntimeAuth(systemDefaultAuth, { owner: 'system-default' })
     } catch (error) {
@@ -164,7 +164,7 @@ export abstract class CodexRuntimeHomeAuthSync extends CodexRuntimeHomeLaunch {
           : provenanceStatus.kind === 'missing'
             ? (this.lastWrittenAuthJson ?? snapshot?.authJson ?? null)
             : null
-      // Why: only bytes Nightshift can prove it wrote belong to the compatibility
+      // Why: only bytes Kolux can prove it wrote belong to the compatibility
       // mirror; retained Codex or a managed transition owns every other value.
       if (knownSharedAuth === null) {
         return
@@ -220,7 +220,7 @@ export abstract class CodexRuntimeHomeAuthSync extends CodexRuntimeHomeLaunch {
     }
 
     if (options.detectExternalLogin && !existsSync(runtimeAuthPath)) {
-      // Why: with Nightshift owning CODEX_HOME, a deleted runtime auth.json is a local logout, not a cue to restore the user's real ~/.codex snapshot.
+      // Why: with Kolux owning CODEX_HOME, a deleted runtime auth.json is a local logout, not a cue to restore the user's real ~/.codex snapshot.
       this.persistRuntimeLogoutMarker()
       this.lastWrittenAuthJson = null
       this.persistSharedRuntimeAuthProvenance({ owner: 'system-default', authJson: null })
@@ -279,7 +279,7 @@ export abstract class CodexRuntimeHomeAuthSync extends CodexRuntimeHomeLaunch {
   }
 
   protected clearRuntimeAuthAfterSystemDefaultLogout(runtimeAuthPath: string): void {
-    // Why: a vanished ~/.codex auth means external logout for unmanaged sessions, even if runtime auth already refreshed in Nightshift's CODEX_HOME.
+    // Why: a vanished ~/.codex auth means external logout for unmanaged sessions, even if runtime auth already refreshed in Kolux's CODEX_HOME.
     rmSync(runtimeAuthPath, { force: true })
     this.captureSystemDefaultSnapshot({ force: true })
     this.persistRuntimeLogoutMarker()

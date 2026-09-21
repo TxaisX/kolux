@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 import {
   execInTerminal,
@@ -12,9 +12,9 @@ import {
   waitForTerminalOutput
 } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { PROTOCOL_VERSION } from '../../src/main/daemon/types'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 
 const PROVIDER_SESSION_ID = 'e2e-quit-resume-session'
 
@@ -22,8 +22,8 @@ function stubPersistedResumeCommand(userDataDir: string): void {
   const dataPath = path.join(
     userDataDir,
     'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
+    DEFAULT_LOCAL_KOLUX_PROFILE_ID,
+    'kolux-data.json'
   )
   const data = JSON.parse(readFileSync(dataPath, 'utf8')) as {
     workspaceSession?: {

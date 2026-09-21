@@ -3,20 +3,20 @@ export function formatFlagHelp(flag: string): string {
     agent: '--agent <id>          Launch a known TUI agent in the first terminal',
     'base-branch': '--base-branch <ref>    Base branch/ref to create the worktree from',
     command: '--command <text>       Command to run in the terminal on startup',
-    comment: '--comment <text>       Comment stored in Nightshift metadata',
+    comment: '--comment <text>       Comment stored in Kolux metadata',
     cursor: '--cursor <n>           Line cursor from a previous read (returns only new output)',
     action: '--action <name>       Secondary accessibility action name',
-    activate: '--activate             Reveal the new worktree in the Nightshift app',
+    activate: '--activate             Reveal the new worktree in the Kolux app',
     app: '--app <app>            App name, bundle ID, or pid:N',
     direction:
       '--direction <dir>      Direction: up|down|left|right for scroll, horizontal|vertical for split',
-    'display-name': '--display-name <name>  Override the Nightshift display name',
+    'display-name': '--display-name <name>  Override the Kolux display name',
     'element-index': '--element-index <n>   Element index from get-app-state',
     title: '--title <text>         Custom title for the terminal tab (omit to reset)',
     enter: '--enter                Append Enter after sending text',
     force:
       '--force                Force worktree removal when supported; does not force branch deletion',
-    focus: '--focus                Reveal the created terminal session in Nightshift',
+    focus: '--focus                Reveal the created terminal session in Kolux',
     for: '--for exit|tui-idle    Wait condition to satisfy',
     'from-element-index': '--from-element-index <n> Source element index from get-app-state',
     'from-x': '--from-x <x>           Source window-local x coordinate',
@@ -99,7 +99,7 @@ export function formatFlagHelp(flag: string): string {
     expression: '--expression <js>     JavaScript expression to evaluate',
     amount: '--amount <pixels>      Scroll distance in pixels',
     index: '--index <n>            Tab index to switch to',
-    page: '--page <id>            Stable browser page id from `nightshift tab list --json`',
+    page: '--page <id>            Stable browser page id from `kolux tab list --json`',
     profile: '--profile <id>        Browser profile id',
     'show-profile': '--show-profile        Include tab profile in text output',
     'no-ua-spoof': "--no-ua-spoof         Keep Electron's native user agent",
@@ -107,7 +107,7 @@ export function formatFlagHelp(flag: string): string {
   }
 
   if (flag === 'current') {
-    return '--current              Use the current Nightshift worktree linked Linear issue'
+    return '--current              Use the current Kolux worktree linked Linear issue'
   }
   if (flag === 'comments') {
     return '--comments             Include threaded Linear comments'

@@ -15,7 +15,7 @@ export function docPreviewFailureDetail(reason: DocPreviewFileFailureReason | nu
   // — only a subresource can be refused for its format, and that failure is a notice, not a panel.
   return translate(
     'auto.components.editor.HtmlDocPreview.documentUnreadablePanel',
-    'Nightshift could not read this file from the workspace.'
+    'Kolux could not read this file from the workspace.'
   )
 }
 
@@ -52,14 +52,14 @@ export function docPreviewAssetNotice(failures: DocPreviewFileFailure[]): string
   }
   return translate(
     'auto.components.editor.HtmlDocPreview.assetUnreadableNotice',
-    'Nightshift could not read {{path}} from the workspace.',
+    'Kolux could not read {{path}} from the workspace.',
     { path: first.relativePath }
   )
 }
 
 /**
  * Why the sentence names no file and does not count attempts: the document chooses both, and this
- * row is Nightshift's chrome. Constant text is also what makes repeated attempts unspammable — the
+ * row is Kolux's chrome. Constant text is also what makes repeated attempts unspammable — the
  * hundredth refusal renders exactly what the first one did.
  */
 export function docPreviewDownloadBlockedNotice(): string {

@@ -111,10 +111,10 @@ export function readEvents(outPath) {
 
 async function selftest() {
   assertWin32('window-watch --selftest')
-  const dir = mkdtempSync(path.join(tmpdir(), 'nightshift-winwatch-selftest-'))
+  const dir = mkdtempSync(path.join(tmpdir(), 'kolux-winwatch-selftest-'))
   const baselinePath = path.join(dir, 'baseline.json')
   const outPath = path.join(dir, 'events.jsonl')
-  const canary = `NIGHTSHIFT-E2E-SELFTEST-${Date.now()}`
+  const canary = `KOLUX-E2E-SELFTEST-${Date.now()}`
 
   console.log(`[selftest] baseline snapshot -> ${baselinePath}`)
   const baseline = captureBaseline(baselinePath)

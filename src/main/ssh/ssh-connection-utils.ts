@@ -162,7 +162,7 @@ export function wrapRemoteCommandForPosixShell(command: string): string {
     'decoded=$(printf %b "$@" && printf _) || exit $?; ' +
     'decoded=${decoded%_}; exec /bin/sh -c "$decoded"'
   const chunkArguments = encodedChunks.map(shellEscape).join(' ')
-  return `exec /bin/sh -c ${shellEscape(decodeAndRun)} nightshift-command ${chunkArguments}`
+  return `exec /bin/sh -c ${shellEscape(decodeAndRun)} kolux-command ${chunkArguments}`
 }
 
 export type SshExecOptions = {

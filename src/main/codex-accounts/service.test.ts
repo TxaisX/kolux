@@ -106,7 +106,7 @@ describe('CodexAccountService config sync', () => {
     )
     const expectSanitizedManagedConfig = (): void => {
       const entries = readHookTrustEntries(join(managedHomePath, 'config.toml'))
-      for (const key of fixture.nightshiftKeys) {
+      for (const key of fixture.koluxKeys) {
         expect(entries.has(key)).toBe(false)
       }
       // The launch-time hook mirror remaps user trust to this home's hooks.json.

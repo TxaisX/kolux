@@ -12,7 +12,7 @@ import { ANTIGRAVITY_PRE_TOOL_USE_DECISION } from './hook-events'
 // the agent allocates for each hook last long enough to see.
 const WINDOWS_ANTIGRAVITY_HOOK_POST_COMMAND = buildWindowsAgentHookPostCommand('antigravity', [
   // Why: Antigravity alone takes its event name from the wrapper's env, not the piped payload.
-  '  --data-urlencode "hook_event_name=%NIGHTSHIFT_ANTIGRAVITY_EVENT%" ^'
+  '  --data-urlencode "hook_event_name=%KOLUX_ANTIGRAVITY_EVENT%" ^'
 ])
 
 export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
@@ -22,14 +22,14 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
       // Why (#9358/#9941): inherited delayed expansion eats `!` out of the percent-expanded
       // curl args, mangling paneKey and dropping worktreeId. `!` is legal in a Windows path.
       'setlocal DisableDelayedExpansion',
-      'if /I "%NIGHTSHIFT_ANTIGRAVITY_EVENT%"=="Stop" (',
+      'if /I "%KOLUX_ANTIGRAVITY_EVENT%"=="Stop" (',
       '  echo {"decision":""}',
-      ') else if /I "%NIGHTSHIFT_ANTIGRAVITY_EVENT%"=="PreToolUse" (',
+      ') else if /I "%KOLUX_ANTIGRAVITY_EVENT%"=="PreToolUse" (',
       `  echo ${ANTIGRAVITY_PRE_TOOL_USE_DECISION}`,
       ') else (',
       '  echo {}',
       ')',
-      'if defined NIGHTSHIFT_AGENT_HOOK_ENDPOINT if exist "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" 2>nul',
+      'if defined KOLUX_AGENT_HOOK_ENDPOINT if exist "%KOLUX_AGENT_HOOK_ENDPOINT%" call "%KOLUX_AGENT_HOOK_ENDPOINT%" 2>nul',
       ...buildWindowsHookEnvironmentGuardLines(),
       WINDOWS_ANTIGRAVITY_HOOK_POST_COMMAND,
       'exit /b 0',
@@ -40,7 +40,7 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
 
   return [
     '#!/bin/sh',
-    'case "$NIGHTSHIFT_ANTIGRAVITY_EVENT" in',
+    'case "$KOLUX_ANTIGRAVITY_EVENT" in',
     '  Stop)',
     '    printf \'{"decision":""}\\n\'',
     '    ;;',
@@ -56,11 +56,11 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     // Why: some Antigravity events arrive without stdin but still need a
     // status post, so the shared capture maps empty input to an object.
     ...buildPosixHookPayloadCapture('empty-object'),
-    ...buildPosixHookSpoolLines('antigravity', 'NIGHTSHIFT_ANTIGRAVITY_EVENT'),
-    'if [ -n "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] && [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ]; then',
-    '  . "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
+    ...buildPosixHookSpoolLines('antigravity', 'KOLUX_ANTIGRAVITY_EVENT'),
+    'if [ -n "$KOLUX_AGENT_HOOK_ENDPOINT" ] && [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ]; then',
+    '  . "$KOLUX_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
-    'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
+    'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
     '  spool_hook_event',
     '  exit 0',
     'fi',
@@ -68,17 +68,17 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     // Why: pipe payload to curl's stdin (`payload@-`) instead of an inline
     // `payload=$VALUE` arg, so tens-of-KB tool output stays off the curl
     // command line (EDR command-line false positives). Wire body is identical.
-    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${NIGHTSHIFT_AGENT_HOOK_PORT}/hook/antigravity" \\',
+    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${KOLUX_AGENT_HOOK_PORT}/hook/antigravity" \\',
     '  --connect-timeout 0.5 --max-time 1.5 \\',
     '  -H "Content-Type: application/x-www-form-urlencoded" \\',
-    '  -H "X-Nightshift-Agent-Hook-Token: ${NIGHTSHIFT_AGENT_HOOK_TOKEN}" \\',
-    '  --data-urlencode "paneKey=${NIGHTSHIFT_PANE_KEY}" \\',
-    '  --data-urlencode "tabId=${NIGHTSHIFT_TAB_ID}" \\',
-    '  --data-urlencode "launchToken=${NIGHTSHIFT_AGENT_LAUNCH_TOKEN}" \\',
-    '  --data-urlencode "worktreeId=${NIGHTSHIFT_WORKTREE_ID}" \\',
-    '  --data-urlencode "env=${NIGHTSHIFT_AGENT_HOOK_ENV}" \\',
-    '  --data-urlencode "version=${NIGHTSHIFT_AGENT_HOOK_VERSION}" \\',
-    '  --data-urlencode "hook_event_name=${NIGHTSHIFT_ANTIGRAVITY_EVENT}" \\',
+    '  -H "X-Kolux-Agent-Hook-Token: ${KOLUX_AGENT_HOOK_TOKEN}" \\',
+    '  --data-urlencode "paneKey=${KOLUX_PANE_KEY}" \\',
+    '  --data-urlencode "tabId=${KOLUX_TAB_ID}" \\',
+    '  --data-urlencode "launchToken=${KOLUX_AGENT_LAUNCH_TOKEN}" \\',
+    '  --data-urlencode "worktreeId=${KOLUX_WORKTREE_ID}" \\',
+    '  --data-urlencode "env=${KOLUX_AGENT_HOOK_ENV}" \\',
+    '  --data-urlencode "version=${KOLUX_AGENT_HOOK_VERSION}" \\',
+    '  --data-urlencode "hook_event_name=${KOLUX_ANTIGRAVITY_EVENT}" \\',
     '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
     'exit 0',
     ''
@@ -92,20 +92,20 @@ export function getWindowsWrapperScript(eventName: string): string {
     // eats it out of the percent-expanded `%~dp0` — the wrapper then misses the core and
     // silently falls back on every event. Same reason the core disables it.
     'setlocal DisableDelayedExpansion',
-    `set "NIGHTSHIFT_ANTIGRAVITY_EVENT=${eventName}"`,
-    'set "NIGHTSHIFT_ANTIGRAVITY_CORE=%~dp0antigravity-hook.cmd"',
-    'if exist "%NIGHTSHIFT_ANTIGRAVITY_CORE%" (',
-    '  call "%NIGHTSHIFT_ANTIGRAVITY_CORE%"',
+    `set "KOLUX_ANTIGRAVITY_EVENT=${eventName}"`,
+    'set "KOLUX_ANTIGRAVITY_CORE=%~dp0antigravity-hook.cmd"',
+    'if exist "%KOLUX_ANTIGRAVITY_CORE%" (',
+    '  call "%KOLUX_ANTIGRAVITY_CORE%"',
     '  exit /b 0',
     ')',
-    'if /I "%NIGHTSHIFT_ANTIGRAVITY_EVENT%"=="Stop" (',
+    'if /I "%KOLUX_ANTIGRAVITY_EVENT%"=="Stop" (',
     '  echo {"decision":""}',
-    ') else if /I "%NIGHTSHIFT_ANTIGRAVITY_EVENT%"=="PreToolUse" (',
+    ') else if /I "%KOLUX_ANTIGRAVITY_EVENT%"=="PreToolUse" (',
     `  echo ${ANTIGRAVITY_PRE_TOOL_USE_DECISION}`,
     ') else (',
     '  echo {}',
     ')',
-    // Missing-core fallbacks obey the same outside-Nightshift stdin guard as the core.
+    // Missing-core fallbacks obey the same outside-Kolux stdin guard as the core.
     ...buildWindowsHookEnvironmentGuardLines(),
     WINDOWS_HOOK_STDIN_DRAIN_COMMAND,
     'exit /b 0',

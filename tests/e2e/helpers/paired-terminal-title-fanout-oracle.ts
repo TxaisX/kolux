@@ -1,7 +1,7 @@
 import type { Page } from '@stablyai/playwright-test'
 import type { RuntimeTerminalRead } from '../../../src/shared/runtime-types'
 import { TERMINAL_PAIRED_PARKING_RUNTIME_CAPABILITY } from '../../../src/shared/protocol-version'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 
 const INITIAL_TITLE = '⠋ Cursor Agent'
 const FINAL_TITLE = 'Cursor ready'

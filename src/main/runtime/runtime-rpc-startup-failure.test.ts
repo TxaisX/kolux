@@ -86,13 +86,13 @@ describe('runtime RPC startup failure reporting', () => {
     ['ENAMETOOLONG', 'invalid_path'],
     ['unexpected', 'unknown']
   ] as const)('classifies %s without exposing the raw error', (code, expected) => {
-    const error = Object.assign(new Error('/Users/private/nightshift-runtime.json'), { code })
+    const error = Object.assign(new Error('/Users/private/kolux-runtime.json'), { code })
 
     expect(classifyRuntimeRpcStartFailure(error)).toBe(expected)
   })
 
   it('classifies a code carried on a wrapped cause', () => {
-    const error = new Error('failed to publish nightshift-runtime.json', {
+    const error = new Error('failed to publish kolux-runtime.json', {
       cause: Object.assign(new Error('read-only volume'), { code: 'EROFS' })
     })
 
@@ -100,7 +100,7 @@ describe('runtime RPC startup failure reporting', () => {
   })
 
   it('walks past an unmapped wrapper code to the mapped cause', () => {
-    const error = Object.assign(new Error('failed to publish nightshift-runtime.json'), {
+    const error = Object.assign(new Error('failed to publish kolux-runtime.json'), {
       code: 'ERR_PUBLISH_FAILED',
       cause: Object.assign(new Error('permission denied'), { code: 'EACCES' })
     })
@@ -117,7 +117,7 @@ describe('runtime RPC startup failure reporting', () => {
 
   it('records a privacy-safe telemetry event', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const error = Object.assign(new Error('/Users/private/nightshift-runtime.json'), {
+    const error = Object.assign(new Error('/Users/private/kolux-runtime.json'), {
       code: 'EACCES'
     })
 
@@ -155,10 +155,10 @@ describe('runtime RPC startup failure reporting', () => {
       parentWindow,
       expect.objectContaining({
         type: 'error',
-        title: 'Nightshift CLI unavailable',
-        message: "Nightshift couldn't start its local command transport.",
+        title: 'Kolux CLI unavailable',
+        message: "Kolux couldn't start its local command transport.",
         detail: expect.stringMatching(
-          /nightshift status.*nightshift terminal.*orchestration.*Cause: metadata write failed/s
+          /kolux status.*kolux terminal.*orchestration.*Cause: metadata write failed/s
         )
       })
     )
@@ -167,13 +167,13 @@ describe('runtime RPC startup failure reporting', () => {
   // Why: a bare "restart" is only true for address_in_use — the other classes need the user to
   // change something, so each must reach the dialog with its own remediation.
   it.each([
-    ['EACCES', "Check permissions on Nightshift's data folder"],
-    ['EPERM', "Check permissions on Nightshift's data folder"],
+    ['EACCES', "Check permissions on Kolux's data folder"],
+    ['EPERM', "Check permissions on Kolux's data folder"],
     ['ENOSPC', 'Your disk may be full or read-only'],
     ['EROFS', 'Your disk may be full or read-only'],
     ['EINVAL', 'at a path that is too long'],
     ['ENAMETOOLONG', 'at a path that is too long'],
-    ['ENOENT', "Nightshift's data folder may be missing"],
+    ['ENOENT', "Kolux's data folder may be missing"],
     ['EADDRINUSE', 'Another process may be holding the port']
   ] as const)('guides the user on how to fix %s', async (code, guidance) => {
     const error = Object.assign(new Error('metadata write failed'), { code })
@@ -189,8 +189,8 @@ describe('runtime RPC startup failure reporting', () => {
     await showRuntimeRpcStartupFailureDialog(createParentWindow(), new Error('mystery'))
 
     const detail = showMessageBoxMock.mock.calls[0]?.[1]?.detail as string
-    expect(detail).toContain('Restart Nightshift to try again.')
-    expect(detail).not.toContain("Check permissions on Nightshift's data folder")
+    expect(detail).toContain('Restart Kolux to try again.')
+    expect(detail).not.toContain("Check permissions on Kolux's data folder")
   })
 
   it('truncates a runaway cause instead of pasting it whole into the dialog', async () => {

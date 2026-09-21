@@ -14,11 +14,11 @@ export function reviewHeadRemoteRefComponent(remote: string, remoteUrl: string):
 }
 
 export function githubPullRequestHeadLocalRef(remoteComponent: string, prNumber: number): string {
-  return `refs/nightshift/pull/${remoteComponent}/${prNumber}`
+  return `refs/kolux/pull/${remoteComponent}/${prNumber}`
 }
 
 export function gitlabMergeRequestHeadLocalRef(remoteComponent: string, mrIid: number): string {
-  return `refs/nightshift/merge-requests/${remoteComponent}/${mrIid}`
+  return `refs/kolux/merge-requests/${remoteComponent}/${mrIid}`
 }
 
 // Why: remote names may hold chars invalid in a ref component; the URL hash

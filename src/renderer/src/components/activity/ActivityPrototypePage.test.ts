@@ -186,7 +186,7 @@ describe('buildActivityEvents', () => {
       entries: {
         [PANE_KEY]: {
           ...makeWorkingEntryWithoutHistory(),
-          prompt: 'You are working inside Nightshift, a multi-agent IDE.',
+          prompt: 'You are working inside Kolux, a multi-agent IDE.',
           orchestration: {
             taskId: 'task-1',
             dispatchId: 'ctx-1',

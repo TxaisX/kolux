@@ -63,7 +63,7 @@ export function classifyCodexRateLimitWindows(
     }
   }
 
-  // Why: unknown app-server durations retain Nightshift's legacy primary/session and secondary/weekly mapping.
+  // Why: unknown app-server durations retain Kolux's legacy primary/session and secondary/weekly mapping.
   if (!session && primary && classifyWindowDuration(primary) === null) {
     session = primary
   }

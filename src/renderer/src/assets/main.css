@@ -16,7 +16,7 @@
 }
 
 @font-face {
-  font-family: 'Nightshift Nerd Font Symbols';
+  font-family: 'Kolux Nerd Font Symbols';
   src: url('./fonts/SymbolsNerdFontMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
@@ -138,23 +138,23 @@
     'SF Mono', SFMono-Regular, ui-monospace, 'Cascadia Code', Menlo, Consolas, 'Liberation Mono',
     monospace;
   --radius: 0.625rem;
-  --nightshift-security-background: #fff;
-  --nightshift-security-foreground: #0a0a0a;
-  --nightshift-security-card: #fff;
-  --nightshift-security-card-foreground: #0a0a0a;
-  --nightshift-security-popover: #fff;
-  --nightshift-security-popover-foreground: #0a0a0a;
-  --nightshift-security-primary: #171717;
-  --nightshift-security-primary-foreground: #fafafa;
-  --nightshift-security-secondary: #f5f5f5;
-  --nightshift-security-secondary-foreground: #171717;
-  --nightshift-security-muted: #f5f5f5;
-  --nightshift-security-muted-foreground: #737373;
-  --nightshift-security-accent: #f5f5f5;
-  --nightshift-security-accent-foreground: #171717;
-  --nightshift-security-border: #e5e5e5;
-  --nightshift-security-input: #e5e5e5;
-  --nightshift-security-ring: #a1a1a1;
+  --kolux-security-background: #fff;
+  --kolux-security-foreground: #0a0a0a;
+  --kolux-security-card: #fff;
+  --kolux-security-card-foreground: #0a0a0a;
+  --kolux-security-popover: #fff;
+  --kolux-security-popover-foreground: #0a0a0a;
+  --kolux-security-primary: #171717;
+  --kolux-security-primary-foreground: #fafafa;
+  --kolux-security-secondary: #f5f5f5;
+  --kolux-security-secondary-foreground: #171717;
+  --kolux-security-muted: #f5f5f5;
+  --kolux-security-muted-foreground: #737373;
+  --kolux-security-accent: #f5f5f5;
+  --kolux-security-accent-foreground: #171717;
+  --kolux-security-border: #e5e5e5;
+  --kolux-security-input: #e5e5e5;
+  --kolux-security-ring: #a1a1a1;
   --background: #fff;
   --editor-surface: #ffffff;
   /* Why: the Code work area sits a step below the chrome so panes read as the subject. */
@@ -258,23 +258,23 @@
 /* ── Dark Mode ───────────────────────────────────────── */
 
 .dark {
-  --nightshift-security-background: #0a0a0a;
-  --nightshift-security-foreground: #fafafa;
-  --nightshift-security-card: #171717;
-  --nightshift-security-card-foreground: #fafafa;
-  --nightshift-security-popover: #171717;
-  --nightshift-security-popover-foreground: #fafafa;
-  --nightshift-security-primary: #e5e5e5;
-  --nightshift-security-primary-foreground: #171717;
-  --nightshift-security-secondary: #262626;
-  --nightshift-security-secondary-foreground: #fafafa;
-  --nightshift-security-muted: #262626;
-  --nightshift-security-muted-foreground: #a1a1a1;
-  --nightshift-security-accent: #404040;
-  --nightshift-security-accent-foreground: #fafafa;
-  --nightshift-security-border: rgb(255 255 255 / 0.07);
-  --nightshift-security-input: rgb(255 255 255 / 0.15);
-  --nightshift-security-ring: #737373;
+  --kolux-security-background: #0a0a0a;
+  --kolux-security-foreground: #fafafa;
+  --kolux-security-card: #171717;
+  --kolux-security-card-foreground: #fafafa;
+  --kolux-security-popover: #171717;
+  --kolux-security-popover-foreground: #fafafa;
+  --kolux-security-primary: #e5e5e5;
+  --kolux-security-primary-foreground: #171717;
+  --kolux-security-secondary: #262626;
+  --kolux-security-secondary-foreground: #fafafa;
+  --kolux-security-muted: #262626;
+  --kolux-security-muted-foreground: #a1a1a1;
+  --kolux-security-accent: #404040;
+  --kolux-security-accent-foreground: #fafafa;
+  --kolux-security-border: rgb(255 255 255 / 0.07);
+  --kolux-security-input: rgb(255 255 255 / 0.15);
+  --kolux-security-ring: #737373;
   --background: #0a0a0a;
   --editor-surface: #1e1e1e;
   --workbench-surface: #0a0a0a;
@@ -373,23 +373,23 @@
 .plugin-security-chrome {
   /* Why: plugin themes may style the app, but provenance and consent must
      retain host-owned contrast so a pack cannot disguise a trust decision. */
-  --background: var(--nightshift-security-background);
-  --foreground: var(--nightshift-security-foreground);
-  --card: var(--nightshift-security-card);
-  --card-foreground: var(--nightshift-security-card-foreground);
-  --popover: var(--nightshift-security-popover);
-  --popover-foreground: var(--nightshift-security-popover-foreground);
-  --primary: var(--nightshift-security-primary);
-  --primary-foreground: var(--nightshift-security-primary-foreground);
-  --secondary: var(--nightshift-security-secondary);
-  --secondary-foreground: var(--nightshift-security-secondary-foreground);
-  --muted: var(--nightshift-security-muted);
-  --muted-foreground: var(--nightshift-security-muted-foreground);
-  --accent: var(--nightshift-security-accent);
-  --accent-foreground: var(--nightshift-security-accent-foreground);
-  --border: var(--nightshift-security-border);
-  --input: var(--nightshift-security-input);
-  --ring: var(--nightshift-security-ring);
+  --background: var(--kolux-security-background);
+  --foreground: var(--kolux-security-foreground);
+  --card: var(--kolux-security-card);
+  --card-foreground: var(--kolux-security-card-foreground);
+  --popover: var(--kolux-security-popover);
+  --popover-foreground: var(--kolux-security-popover-foreground);
+  --primary: var(--kolux-security-primary);
+  --primary-foreground: var(--kolux-security-primary-foreground);
+  --secondary: var(--kolux-security-secondary);
+  --secondary-foreground: var(--kolux-security-secondary-foreground);
+  --muted: var(--kolux-security-muted);
+  --muted-foreground: var(--kolux-security-muted-foreground);
+  --accent: var(--kolux-security-accent);
+  --accent-foreground: var(--kolux-security-accent-foreground);
+  --border: var(--kolux-security-border);
+  --input: var(--kolux-security-input);
+  --ring: var(--kolux-security-ring);
 }
 
 .linear-priority-bars {
@@ -454,7 +454,7 @@
 
 [data-sonner-toaster] [data-sonner-toast][data-styled='true'] [data-close-button] {
   /* Why: Sonner's dark-theme defaults can resolve the close icon and button
-     background to the same color; keep the X readable on both Nightshift themes. */
+     background to the same color; keep the X readable on both Kolux themes. */
   color: var(--popover-foreground);
   background: var(--popover);
   border-color: rgb(0 0 0 / 0.14);
@@ -2197,41 +2197,41 @@ html.native-shell .app-layout {
 
 /* ── Git conflict decorations ───────────────────────────────────── */
 
-.monaco-editor .nightshift-conflict-marker-line {
+.monaco-editor .kolux-conflict-marker-line {
   background: color-mix(in srgb, var(--destructive) 12%, transparent);
 }
 
-.monaco-editor .nightshift-conflict-section-line {
+.monaco-editor .kolux-conflict-section-line {
   border-left: 3px solid transparent;
 }
 
-.monaco-editor .nightshift-conflict-current-line {
+.monaco-editor .kolux-conflict-current-line {
   background: color-mix(in srgb, var(--git-decoration-modified) 12%, transparent);
   border-left-color: color-mix(in srgb, var(--git-decoration-modified) 72%, transparent);
 }
 
-.monaco-editor .nightshift-conflict-base-line {
+.monaco-editor .kolux-conflict-base-line {
   background: color-mix(in srgb, var(--muted-foreground) 7%, transparent);
   border-left-color: color-mix(in srgb, var(--muted-foreground) 36%, transparent);
 }
 
-.monaco-editor .nightshift-conflict-incoming-line {
+.monaco-editor .kolux-conflict-incoming-line {
   background: color-mix(in srgb, var(--git-decoration-renamed) 11%, transparent);
   border-left-color: color-mix(in srgb, var(--git-decoration-renamed) 68%, transparent);
 }
 
-.monaco-editor .nightshift-conflict-line-decoration {
+.monaco-editor .kolux-conflict-line-decoration {
   width: 4px !important;
   margin-left: 3px;
   background: var(--destructive);
   border-radius: 999px;
 }
 
-.monaco-editor .nightshift-conflict-margin {
+.monaco-editor .kolux-conflict-margin {
   background: color-mix(in srgb, var(--destructive) 8%, transparent);
 }
 
-.monaco-editor .nightshift-conflict-marker-label {
+.monaco-editor .kolux-conflict-marker-label {
   color: var(--destructive);
   font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 11px;
@@ -2670,12 +2670,12 @@ html.native-shell .app-layout {
   animation: feature-wall-meta-pulse 1100ms ease-out 1;
 }
 
-.nightshift-contextual-tour-target-rings {
+.kolux-contextual-tour-target-rings {
   border-radius: 9999px;
   pointer-events: none;
 }
 
-.nightshift-contextual-tour-target-rings::before {
+.kolux-contextual-tour-target-rings::before {
   content: '';
   position: absolute;
   inset: -2px;
@@ -2700,7 +2700,7 @@ html.native-shell .app-layout {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nightshift-contextual-tour-target-rings::before {
+  .kolux-contextual-tour-target-rings::before {
     animation: none;
     opacity: 0.72;
     transform: scale(1.28);
@@ -2713,7 +2713,7 @@ html.native-shell .app-layout {
    useDiffCommentDecorator. Keep it visually subtle until hovered so it does
    not distract from the diff itself. Left position overlaps the glyph margin
    so the affordance reads as "add comment on this line". */
-.nightshift-diff-comment-add-btn {
+.kolux-diff-comment-add-btn {
   position: absolute;
   left: 4px;
   width: 18px;
@@ -2737,27 +2737,27 @@ html.native-shell .app-layout {
     box-shadow 100ms ease;
 }
 
-.nightshift-diff-comment-add-btn:hover {
+.kolux-diff-comment-add-btn:hover {
   color: var(--primary);
   border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
   background: color-mix(in srgb, var(--primary) 12%, var(--background));
   box-shadow: 0 1px 4px color-mix(in srgb, var(--foreground) 16%, transparent);
 }
 
-.nightshift-diff-comment-add-btn:focus-visible {
+.kolux-diff-comment-add-btn:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
-.nightshift-diff-comment-range-highlight {
+.kolux-diff-comment-range-highlight {
   background: rgba(59, 130, 246, 0.14);
 }
 
-.dark .nightshift-diff-comment-range-highlight {
+.dark .kolux-diff-comment-range-highlight {
   background: rgba(96, 165, 250, 0.18);
 }
 
-.nightshift-diff-comment-inline {
+.kolux-diff-comment-inline {
   width: 100%;
   /* Why: Monaco's view-zone node already starts after the diff gutter. Avoid
      adding a second left inset so saved notes sit flush with the code column. */
@@ -2765,7 +2765,7 @@ html.native-shell .app-layout {
   box-sizing: border-box;
 }
 
-.nightshift-diff-comment-inline > .nightshift-diff-comment-card {
+.kolux-diff-comment-inline > .kolux-diff-comment-card {
   max-width: 420px;
 }
 
@@ -2777,7 +2777,7 @@ html.native-shell .app-layout {
    to produce roughly the same absolute luminance delta above its editor
    surface — the foreground color is different (white vs black) so equal
    percentages would not give equal contrast. Override lives in `.dark`. */
-.nightshift-diff-comment-card {
+.kolux-diff-comment-card {
   position: relative;
   /* Why: Monaco's view-lines overlay (data-mprt=8) is positioned absolutely on
      top of view-zone DOM. Without an explicit z-index here, clicks on
@@ -2801,7 +2801,7 @@ html.native-shell .app-layout {
     background-color 150ms ease;
 }
 
-.dark .nightshift-diff-comment-card {
+.dark .kolux-diff-comment-card {
   border-color: color-mix(in srgb, var(--foreground) 12%, var(--border));
   background: color-mix(in srgb, var(--foreground) 2%, var(--editor-surface));
   box-shadow:
@@ -2810,7 +2810,7 @@ html.native-shell .app-layout {
 }
 
 /* Content Column */
-.nightshift-diff-comment-content-col {
+.kolux-diff-comment-content-col {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -2819,7 +2819,7 @@ html.native-shell .app-layout {
 }
 
 /* Header Row */
-.nightshift-diff-comment-header {
+.kolux-diff-comment-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2828,7 +2828,7 @@ html.native-shell .app-layout {
 }
 
 /* Meta Group (Name, line, timestamp) */
-.nightshift-diff-comment-meta-group {
+.kolux-diff-comment-meta-group {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -2841,7 +2841,7 @@ html.native-shell .app-layout {
 }
 
 /* Action button pill: segmented control like Notion's Resolve / ... */
-.nightshift-diff-comment-actions-pill {
+.kolux-diff-comment-actions-pill {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -2853,12 +2853,12 @@ html.native-shell .app-layout {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.dark .nightshift-diff-comment-actions-pill {
+.dark .kolux-diff-comment-actions-pill {
   border-color: color-mix(in srgb, var(--foreground) 14%, var(--border));
   background: color-mix(in srgb, var(--foreground) 4%, var(--editor-surface));
 }
 
-.nightshift-diff-comment-pill-btn {
+.kolux-diff-comment-pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2876,24 +2876,24 @@ html.native-shell .app-layout {
     color 100ms ease;
 }
 
-.nightshift-diff-comment-edit {
+.kolux-diff-comment-edit {
   min-width: 28px;
   height: 24px;
   padding: 4px 7px;
   border-radius: 4px;
 }
 
-.nightshift-diff-comment-pill-btn:hover {
+.kolux-diff-comment-pill-btn:hover {
   background: color-mix(in srgb, var(--foreground) 6%, transparent);
   color: var(--foreground);
 }
 
-.nightshift-diff-comment-pill-btn-danger:hover {
+.kolux-diff-comment-pill-btn-danger:hover {
   background: color-mix(in srgb, var(--destructive) 10%, transparent);
   color: var(--destructive);
 }
 
-.nightshift-diff-comment-pill-divider {
+.kolux-diff-comment-pill-divider {
   width: 1px;
   height: 12px;
   background: color-mix(in srgb, var(--foreground) 12%, var(--border));
@@ -2901,7 +2901,7 @@ html.native-shell .app-layout {
 }
 
 /* Quote/Reference block: Warm, gorgeous Notion-like callout */
-.nightshift-diff-comment-quote {
+.kolux-diff-comment-quote {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -2913,7 +2913,7 @@ html.native-shell .app-layout {
   line-height: 1.35;
 }
 
-.nightshift-diff-comment-quote-text {
+.kolux-diff-comment-quote-text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -2922,7 +2922,7 @@ html.native-shell .app-layout {
 }
 
 /* Comment Body */
-.nightshift-diff-comment-body {
+.kolux-diff-comment-body {
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--foreground);
@@ -2932,7 +2932,7 @@ html.native-shell .app-layout {
 }
 
 /* Popover for adding new comment */
-.nightshift-diff-comment-popover {
+.kolux-diff-comment-popover {
   position: absolute;
   left: 56px;
   right: 24px;
@@ -2948,7 +2948,7 @@ html.native-shell .app-layout {
     0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.dark .nightshift-diff-comment-popover {
+.dark .kolux-diff-comment-popover {
   border-color: color-mix(in srgb, var(--foreground) 14%, var(--border));
   background: color-mix(in srgb, var(--foreground) 2%, var(--editor-surface));
   box-shadow:
@@ -2956,7 +2956,7 @@ html.native-shell .app-layout {
     0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.nightshift-diff-comment-popover-label {
+.kolux-diff-comment-popover-label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -2965,7 +2965,7 @@ html.native-shell .app-layout {
   margin-bottom: 2px;
 }
 
-.nightshift-diff-comment-popover-textarea {
+.kolux-diff-comment-popover-textarea {
   width: 100%;
   min-height: 56px;
   max-height: 240px;
@@ -2985,36 +2985,36 @@ html.native-shell .app-layout {
     box-shadow 150ms ease;
 }
 
-.dark .nightshift-diff-comment-popover-textarea {
+.dark .kolux-diff-comment-popover-textarea {
   border-color: color-mix(in srgb, var(--foreground) 10%, var(--border));
   background: color-mix(in srgb, var(--foreground) 3%, var(--editor-surface));
 }
 
-.nightshift-diff-comment-popover-textarea:focus {
+.kolux-diff-comment-popover-textarea:focus {
   border-color: color-mix(in srgb, var(--ring) 70%, var(--border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 18%, transparent);
 }
 
-.dark .nightshift-diff-comment-popover-textarea:focus {
+.dark .kolux-diff-comment-popover-textarea:focus {
   border-color: color-mix(in srgb, var(--ring) 70%, var(--border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 12%, transparent);
 }
 
-.nightshift-diff-comment-popover-textarea::-webkit-scrollbar {
+.kolux-diff-comment-popover-textarea::-webkit-scrollbar {
   width: 12px;
 }
 
-.nightshift-diff-comment-popover-textarea::-webkit-scrollbar-track {
+.kolux-diff-comment-popover-textarea::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.nightshift-diff-comment-popover-textarea::-webkit-scrollbar-thumb {
+.kolux-diff-comment-popover-textarea::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--muted-foreground, #737373) 28%, transparent);
   border: 3px solid transparent;
   background-clip: padding-box;
 }
 
-.nightshift-diff-comment-popover-footer {
+.kolux-diff-comment-popover-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3023,7 +3023,7 @@ html.native-shell .app-layout {
 }
 
 /* Why: tours need a distinct item surface without highlighting the underlying target. */
-.nightshift-contextual-tour-panel {
+.kolux-contextual-tour-panel {
   --contextual-tour-panel-surface: color-mix(in srgb, var(--foreground) 7%, var(--popover));
   --contextual-tour-panel-border: color-mix(in srgb, var(--foreground) 14%, var(--border));
   background: var(--contextual-tour-panel-surface);
@@ -3033,7 +3033,7 @@ html.native-shell .app-layout {
     0 10px 24px rgba(0, 0, 0, 0.18);
 }
 
-.dark .nightshift-contextual-tour-panel {
+.dark .kolux-contextual-tour-panel {
   --contextual-tour-panel-surface: color-mix(in srgb, var(--foreground) 10%, var(--popover));
   --contextual-tour-panel-border: color-mix(in srgb, var(--foreground) 16%, var(--border));
   box-shadow:

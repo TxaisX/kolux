@@ -91,7 +91,7 @@ describe('browserManager.setAnnotationViewportBridge', () => {
       expect.any(Number),
       [
         expect.objectContaining({
-          code: expect.stringContaining('__nightshiftBrowserAnnotationViewportBridge')
+          code: expect.stringContaining('__koluxBrowserAnnotationViewportBridge')
         })
       ],
       false

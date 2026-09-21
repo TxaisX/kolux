@@ -18,7 +18,7 @@ import {
  */
 describe('deleteWorktreeHistoryDir main-thread safety', () => {
   beforeEach(() => {
-    userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-history-async-'))
+    userDataDir = mkdtempSync(join(tmpdir(), 'kolux-history-async-'))
     installFakeAppEnvironment({ getPath: () => userDataDir })
   })
 

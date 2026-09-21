@@ -23,7 +23,7 @@ export type BrowserRouteH3EgressProbeResult = {
 export async function runBrowserRouteH3EgressProbe(
   protectedSession: boolean
 ): Promise<BrowserRouteH3EgressProbeResult> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-browser-h3-egress-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-browser-h3-egress-'))
   const webTransportObserver = createSocket('udp4')
   const forcedQuicObserver = createSocket('udp4')
   const sockets = new Set<Socket>()
@@ -95,7 +95,7 @@ function electronArgs(protectedSession: boolean, forcedQuicPort: number): string
     `--enable-features=${DIRECT_SOCKETS_FEATURES.join(',')}`
   ]
   if (protectedSession) {
-    // Why: the guest arm launches with the exact list Nightshift ships, so this proves the shipped switch, not a bare flag.
+    // Why: the guest arm launches with the exact list Kolux ships, so this proves the shipped switch, not a bare flag.
     args.push(`--disable-features=${DISABLED_CHROMIUM_FEATURES.join(',')}`)
   }
   return args

@@ -29,7 +29,7 @@ const items: ActivityBarItem[] = [
   { id: 'ports', icon: Files, title: 'Ports', shortcut: '', sshOnly: true },
   // Plugin panels carry no visibility flags, so they show in every context.
   {
-    id: 'plugin:nightshift-samples.my-plugin/dashboard',
+    id: 'plugin:kolux-samples.my-plugin/dashboard',
     icon: Files,
     title: 'Dashboard',
     shortcut: ''
@@ -44,7 +44,7 @@ describe('getVisibleRightSidebarActivityItems', () => {
         isFolderWorkspace: false,
         isSshRepo: false
       }).map((item) => item.id)
-    ).toEqual(['explorer', 'source-control', 'plugin:nightshift-samples.my-plugin/dashboard'])
+    ).toEqual(['explorer', 'source-control', 'plugin:kolux-samples.my-plugin/dashboard'])
 
     expect(
       getVisibleRightSidebarActivityItems(items, {
@@ -52,12 +52,7 @@ describe('getVisibleRightSidebarActivityItems', () => {
         isFolderWorkspace: false,
         isSshRepo: true
       }).map((item) => item.id)
-    ).toEqual([
-      'explorer',
-      'source-control',
-      'ports',
-      'plugin:nightshift-samples.my-plugin/dashboard'
-    ])
+    ).toEqual(['explorer', 'source-control', 'ports', 'plugin:kolux-samples.my-plugin/dashboard'])
   })
 
   it('shows Workspaces only for folder workspaces and hides git tabs for all folder scopes', () => {
@@ -72,7 +67,7 @@ describe('getVisibleRightSidebarActivityItems', () => {
       'workspaces',
       'pr-checks',
       'ports',
-      'plugin:nightshift-samples.my-plugin/dashboard'
+      'plugin:kolux-samples.my-plugin/dashboard'
     ])
 
     expect(
@@ -81,6 +76,6 @@ describe('getVisibleRightSidebarActivityItems', () => {
         isFolderWorkspace: false,
         isSshRepo: true
       }).map((item) => item.id)
-    ).toEqual(['explorer', 'ports', 'plugin:nightshift-samples.my-plugin/dashboard'])
+    ).toEqual(['explorer', 'ports', 'plugin:kolux-samples.my-plugin/dashboard'])
   })
 })

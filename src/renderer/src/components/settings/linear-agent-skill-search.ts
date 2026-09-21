@@ -27,8 +27,8 @@ export const getLinearAgentSkillPaneSearchEntries = createLocalizedCatalog(() =>
         'skill'
       ),
       ...translateSearchKeyword(
-        'auto.components.settings.linear.agent.skill.search.nightshiftLinear',
-        'nightshift-linear'
+        'auto.components.settings.linear.agent.skill.search.koluxLinear',
+        'kolux-linear'
       )
     ]
   }

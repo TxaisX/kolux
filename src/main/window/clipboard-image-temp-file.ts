@@ -28,7 +28,7 @@ export async function saveClipboardImageBufferAsTempFile(
 ): Promise<string> {
   assertClipboardImageByteLengthWithinLimit(buffer.byteLength)
 
-  const fileName = `nightshift-paste-${Date.now()}-${randomUUID()}.png`
+  const fileName = `kolux-paste-${Date.now()}-${randomUUID()}.png`
 
   if (args?.connectionId) {
     const provider = requireSshFilesystemProvider(args.connectionId)

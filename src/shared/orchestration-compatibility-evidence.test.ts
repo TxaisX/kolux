@@ -12,9 +12,9 @@ describe('orchestration compatibility evidence', () => {
   it('reads inherited pane evidence and a complete runtime-stamped WSL scope', () => {
     expect(
       readOrchestrationCompatibilityEvidence({
-        NIGHTSHIFT_TERMINAL_HANDLE: 'term_wsl',
-        NIGHTSHIFT_PANE_KEY: 'tab:leaf',
-        NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'launch-secret',
+        KOLUX_TERMINAL_HANDLE: 'term_wsl',
+        KOLUX_PANE_KEY: 'tab:leaf',
+        KOLUX_AGENT_LAUNCH_TOKEN: 'launch-secret',
         [ORCHESTRATION_COMPATIBILITY_HOST_KIND_ENV]: 'wsl',
         [ORCHESTRATION_COMPATIBILITY_HOST_ID_ENV]: 'local',
         [ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION_ENV]: 'Ubuntu'
@@ -30,7 +30,7 @@ describe('orchestration compatibility evidence', () => {
   it('rejects partial host stamps instead of accepting caller-chosen scope', () => {
     expect(
       readOrchestrationCompatibilityEvidence({
-        NIGHTSHIFT_PANE_KEY: 'tab:leaf',
+        KOLUX_PANE_KEY: 'tab:leaf',
         [ORCHESTRATION_COMPATIBILITY_HOST_KIND_ENV]: 'ssh',
         [ORCHESTRATION_COMPATIBILITY_HOST_ID_ENV]: 'saved-target',
         [ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION_ENV]: 'connection-only'

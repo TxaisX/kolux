@@ -16,7 +16,7 @@ vi.mock('./ui', () => mocks.ui)
 import { registerGitHubHandlers } from './github'
 import { createGitHubIpcHarness } from './github-ipc-test-harness'
 
-const { getAuthenticatedViewer: getAuthenticatedViewerMock, starNightshift: starNightshiftMock } =
+const { getAuthenticatedViewer: getAuthenticatedViewerMock, starKolux: starKoluxMock } =
   mocks.client
 const { track: trackMock } = mocks.telemetry
 const { getCohortAtEmit: getCohortAtEmitMock } = mocks.cohort
@@ -39,25 +39,25 @@ describe('registerGitHubHandlers', () => {
     expect(getAuthenticatedViewerMock).toHaveBeenCalled()
   })
 
-  it('emits app_starred_nightshift once after a successful star with cohort context', async () => {
-    starNightshiftMock.mockResolvedValue(true)
+  it('emits app_starred_kolux once after a successful star with cohort context', async () => {
+    starKoluxMock.mockResolvedValue(true)
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 3 })
 
     registerGitHubHandlers(store as never, stats as never)
 
-    await expect(handlers['gh:starNightshift'](null, 'settings')).resolves.toBe(true)
+    await expect(handlers['gh:starKolux'](null, 'settings')).resolves.toBe(true)
 
-    expect(starNightshiftMock).toHaveBeenCalledTimes(1)
+    expect(starKoluxMock).toHaveBeenCalledTimes(1)
     expect(getCohortAtEmitMock).toHaveBeenCalledTimes(1)
     expect(trackMock).toHaveBeenCalledTimes(1)
-    expect(trackMock).toHaveBeenCalledWith('app_starred_nightshift', {
+    expect(trackMock).toHaveBeenCalledWith('app_starred_kolux', {
       source: 'settings',
       nth_repo_added: 3
     })
   })
 
   it('accepts every app star source for success telemetry', async () => {
-    starNightshiftMock.mockResolvedValue(true)
+    starKoluxMock.mockResolvedValue(true)
 
     registerGitHubHandlers(store as never, stats as never)
 
@@ -68,7 +68,7 @@ describe('registerGitHubHandlers', () => {
       'settings',
       'landing'
     ] as const) {
-      await expect(handlers['gh:starNightshift'](null, source)).resolves.toBe(true)
+      await expect(handlers['gh:starKolux'](null, source)).resolves.toBe(true)
     }
 
     expect(trackMock).toHaveBeenCalledTimes(5)
@@ -81,37 +81,37 @@ describe('registerGitHubHandlers', () => {
     ])
   })
 
-  it('does not emit app_starred_nightshift when the star action returns false', async () => {
-    starNightshiftMock.mockResolvedValue(false)
+  it('does not emit app_starred_kolux when the star action returns false', async () => {
+    starKoluxMock.mockResolvedValue(false)
 
     registerGitHubHandlers(store as never, stats as never)
 
-    await expect(handlers['gh:starNightshift'](null, 'landing')).resolves.toBe(false)
+    await expect(handlers['gh:starKolux'](null, 'landing')).resolves.toBe(false)
 
-    expect(starNightshiftMock).toHaveBeenCalledTimes(1)
+    expect(starKoluxMock).toHaveBeenCalledTimes(1)
     expect(trackMock).not.toHaveBeenCalled()
     expect(getCohortAtEmitMock).not.toHaveBeenCalled()
   })
 
-  it('does not emit app_starred_nightshift when the star action throws', async () => {
-    starNightshiftMock.mockRejectedValue(new Error('gh failed'))
+  it('does not emit app_starred_kolux when the star action throws', async () => {
+    starKoluxMock.mockRejectedValue(new Error('gh failed'))
 
     registerGitHubHandlers(store as never, stats as never)
 
-    await expect(handlers['gh:starNightshift'](null, 'star_nag')).rejects.toThrow('gh failed')
+    await expect(handlers['gh:starKolux'](null, 'star_nag')).rejects.toThrow('gh failed')
 
     expect(trackMock).not.toHaveBeenCalled()
     expect(getCohortAtEmitMock).not.toHaveBeenCalled()
   })
 
   it('preserves star result but skips telemetry for an invalid IPC source', async () => {
-    starNightshiftMock.mockResolvedValue(true)
+    starKoluxMock.mockResolvedValue(true)
 
     registerGitHubHandlers(store as never, stats as never)
 
-    await expect(handlers['gh:starNightshift'](null, 'github_website')).resolves.toBe(true)
+    await expect(handlers['gh:starKolux'](null, 'github_website')).resolves.toBe(true)
 
-    expect(starNightshiftMock).toHaveBeenCalledTimes(1)
+    expect(starKoluxMock).toHaveBeenCalledTimes(1)
     expect(trackMock).not.toHaveBeenCalled()
     expect(getCohortAtEmitMock).not.toHaveBeenCalled()
   })

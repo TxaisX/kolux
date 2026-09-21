@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { SESSION_TABS_RETIREMENT_PROOF_DELTA_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import type {
   RuntimeMobileSessionRetiredTerminalSurface,
@@ -109,7 +109,7 @@ describe('session.tabs.subscribe retirement proof payload', () => {
           return () => {}
         }
       )
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const messages: string[] = []
     await dispatcher.dispatchStreaming(

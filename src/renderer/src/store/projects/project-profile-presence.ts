@@ -17,11 +17,11 @@ export function formatProjectPresenceProfileNames(profileNames: readonly string[
 
 export async function warnIfProjectKnownInAnotherProfile(
   repo: Repo,
-  activeNightshiftProfileId: string | null
+  activeKoluxProfileId: string | null
 ): Promise<void> {
-  const findProjectProfiles = window.api.nightshiftProfiles?.findProjectProfiles
+  const findProjectProfiles = window.api.koluxProfiles?.findProjectProfiles
   // Why: without an active profile ID the scan can't exclude the current profile and would false-positive on the just-added project.
-  if (!findProjectProfiles || !activeNightshiftProfileId) {
+  if (!findProjectProfiles || !activeKoluxProfileId) {
     return
   }
   try {
@@ -29,7 +29,7 @@ export async function warnIfProjectKnownInAnotherProfile(
       path: repo.path,
       connectionId: repo.connectionId ?? null,
       executionHostId: getRepoExecutionHostId(repo),
-      excludeProfileId: activeNightshiftProfileId
+      excludeProfileId: activeKoluxProfileId
     })
     const description = formatProjectPresenceProfileNames(
       result.projects.map((project) => project.profileName)

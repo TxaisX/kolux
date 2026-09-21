@@ -7,7 +7,7 @@ import { scanNestedRepos } from './nested-repo-discovery'
 let tempDirs: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'nightshift-nested-repos-'))
+  const dir = await mkdtemp(join(tmpdir(), 'kolux-nested-repos-'))
   tempDirs.push(dir)
   return dir
 }

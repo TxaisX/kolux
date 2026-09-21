@@ -92,7 +92,7 @@ export function useWorktreeCardSecondaryDetails({
   // reuses the same live-session count the sidebar badge already tracks.
   const liveSessionCount = useLiveSessionCount(worktree.id)
   const showAggregateCacheTimer = !compactCards && !(showInlineAgentList && liveSessionCount > 0)
-  const handleOpenGitHubIssueInNightshift = useCallback(
+  const handleOpenGitHubIssueInKolux = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       const issueUrl = hoverIssue && 'url' in hoverIssue ? hoverIssue.url : undefined
@@ -115,7 +115,7 @@ export function useWorktreeCardSecondaryDetails({
     },
     [hoverIssue, openTaskPage, repo]
   )
-  const handleOpenReviewInNightshift = useCallback(
+  const handleOpenReviewInKolux = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       if (!repo || !hoverReview?.url || hoverReview.provider !== 'github') {
@@ -211,7 +211,7 @@ export function useWorktreeCardSecondaryDetails({
         break
     }
   }, [hoverReview, hoverReviewProvider, updateWorktreeMeta, worktree.hostId, worktree.id])
-  const handleOpenLinearIssueInNightshift = useCallback(
+  const handleOpenLinearIssueInKolux = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       if (!linearIssue) {
@@ -252,14 +252,14 @@ export function useWorktreeCardSecondaryDetails({
     metaCliProvenance,
     metaComment,
     showInlineAgentList,
-    handleOpenGitHubIssueInNightshift,
+    handleOpenGitHubIssueInKolux,
     handleOpenIssueInBrowser,
-    handleOpenReviewInNightshift,
+    handleOpenReviewInKolux,
     canUnlinkReview,
     handleOpenReviewInBrowser,
     hasExplicitLinkedReview,
     handleUnlinkReview,
-    handleOpenLinearIssueInNightshift,
+    handleOpenLinearIssueInKolux,
     hasDetails,
     hasPorts,
     cacheStartedAt,

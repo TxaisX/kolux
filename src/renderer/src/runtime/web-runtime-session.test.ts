@@ -196,7 +196,7 @@ describe('refreshWebRuntimeSessionTabsSnapshot', () => {
 
 describe('activateWebRuntimeSessionWorktree', () => {
   beforeEach(() => {
-    vi.stubGlobal('__NIGHTSHIFT_WEB_CLIENT__', true)
+    vi.stubGlobal('__KOLUX_WEB_CLIENT__', true)
     mocks.getState.mockReturnValue({
       settings: {
         activeRuntimeEnvironmentId: ENVIRONMENT_ID

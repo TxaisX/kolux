@@ -40,8 +40,8 @@ export async function ensureDevLauncher(args: {
     mode: args.platform === 'win32' ? undefined : 0o755
   })
   if (args.commandName === DEV_COMMAND_NAME && args.platform !== 'win32') {
-    // Why: dev PTYs prepend this dir to PATH, so keep a local `nightshift` alias without claiming the global command.
-    await writeFile(join(dirname(launcherPath), 'nightshift'), content, {
+    // Why: dev PTYs prepend this dir to PATH, so keep a local `kolux` alias without claiming the global command.
+    await writeFile(join(dirname(launcherPath), 'kolux'), content, {
       encoding: 'utf8',
       mode: 0o755
     })
@@ -58,13 +58,13 @@ export function buildUnixDevLauncher(
 set -euo pipefail
 ELECTRON=${quoteShell(execPathValue)}
 CLI=${quoteShell(cliEntryPath)}
-export NIGHTSHIFT_USER_DATA_PATH=${quoteShell(userDataPath)}
-if [ -z "\${NIGHTSHIFT_APP_EXECUTABLE:-}" ]; then
-  export NIGHTSHIFT_APP_EXECUTABLE="$ELECTRON"
-  export NIGHTSHIFT_APP_EXECUTABLE_NEEDS_APP_ROOT=1
+export KOLUX_USER_DATA_PATH=${quoteShell(userDataPath)}
+if [ -z "\${KOLUX_APP_EXECUTABLE:-}" ]; then
+  export KOLUX_APP_EXECUTABLE="$ELECTRON"
+  export KOLUX_APP_EXECUTABLE_NEEDS_APP_ROOT=1
 fi
-export NIGHTSHIFT_NODE_OPTIONS="\${NODE_OPTIONS-}"
-export NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE="\${NODE_REPL_EXTERNAL_MODULE-}"
+export KOLUX_NODE_OPTIONS="\${NODE_OPTIONS-}"
+export KOLUX_NODE_REPL_EXTERNAL_MODULE="\${NODE_REPL_EXTERNAL_MODULE-}"
 unset NODE_OPTIONS
 unset NODE_REPL_EXTERNAL_MODULE
 ELECTRON_RUN_AS_NODE=1 exec "$ELECTRON" "$CLI" "$@"
@@ -80,13 +80,13 @@ export function buildWindowsDevLauncher(
 setlocal
 set "ELECTRON=${escapeWindowsBatchValue(execPathValue)}"
 set "CLI=${escapeWindowsBatchValue(cliEntryPath)}"
-set "NIGHTSHIFT_USER_DATA_PATH=${escapeWindowsBatchValue(userDataPath)}"
-if not defined NIGHTSHIFT_APP_EXECUTABLE (
-  set "NIGHTSHIFT_APP_EXECUTABLE=%ELECTRON%"
-  set "NIGHTSHIFT_APP_EXECUTABLE_NEEDS_APP_ROOT=1"
+set "KOLUX_USER_DATA_PATH=${escapeWindowsBatchValue(userDataPath)}"
+if not defined KOLUX_APP_EXECUTABLE (
+  set "KOLUX_APP_EXECUTABLE=%ELECTRON%"
+  set "KOLUX_APP_EXECUTABLE_NEEDS_APP_ROOT=1"
 )
-set "NIGHTSHIFT_NODE_OPTIONS=%NODE_OPTIONS%"
-set "NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE=%NODE_REPL_EXTERNAL_MODULE%"
+set "KOLUX_NODE_OPTIONS=%NODE_OPTIONS%"
+set "KOLUX_NODE_REPL_EXTERNAL_MODULE=%NODE_REPL_EXTERNAL_MODULE%"
 set NODE_OPTIONS=
 set NODE_REPL_EXTERNAL_MODULE=
 set ELECTRON_RUN_AS_NODE=1
@@ -97,15 +97,15 @@ set ELECTRON_RUN_AS_NODE=1
 export function buildWindowsForwarder(launcherPath: string): string {
   return `@echo off
 setlocal
-set "NIGHTSHIFT_LAUNCHER=${escapeWindowsBatchValue(launcherPath)}"
-"%NIGHTSHIFT_LAUNCHER%" %*
+set "KOLUX_LAUNCHER=${escapeWindowsBatchValue(launcherPath)}"
+"%KOLUX_LAUNCHER%" %*
 `
 }
 
 export function extractManagedUnixLauncherTarget(content: string): string | null {
   if (
     !content.includes('ELECTRON_RUN_AS_NODE=1') ||
-    !content.includes('NIGHTSHIFT_NODE_OPTIONS') ||
+    !content.includes('KOLUX_NODE_OPTIONS') ||
     !content.includes('NODE_REPL_EXTERNAL_MODULE')
   ) {
     return null
@@ -116,7 +116,7 @@ export function extractManagedUnixLauncherTarget(content: string): string | null
     return null
   }
 
-  // Why: only Nightshift's compiled CLI entrypoints count as managed; arbitrary Electron-launching scripts stay conflicts.
+  // Why: only Kolux's compiled CLI entrypoints count as managed; arbitrary Electron-launching scripts stay conflicts.
   return /(?:^|[/\\])(?:out|app\.asar\.unpacked[/\\]out)[/\\]cli[/\\]index\.js$/.test(cliPath)
     ? cliPath
     : null

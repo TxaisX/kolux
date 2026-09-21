@@ -3,7 +3,7 @@
  * actually closes, and Cmd+W raises exactly one dialog (the pane path delegates the
  * last-pane close to closeTerminalTab instead of probing a second time).
  */
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
 import {
   waitForSessionReady,
@@ -54,50 +54,48 @@ async function startBusyTerminal(page: Page): Promise<string> {
 
 test.describe.configure({ mode: 'serial' })
 
-test('middle-clicking a busy tab prompts, and cancelling keeps the tab', async ({
-  nightshiftPage
-}) => {
+test('middle-clicking a busy tab prompts, and cancelling keeps the tab', async ({ koluxPage }) => {
   test.setTimeout(120_000)
-  const busyTabId = await startBusyTerminal(nightshiftPage)
-  const busyTab = nightshiftPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
-  const tabsBefore = await nightshiftPage.locator(SORTABLE_TAB).count()
+  const busyTabId = await startBusyTerminal(koluxPage)
+  const busyTab = koluxPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
+  const tabsBefore = await koluxPage.locator(SORTABLE_TAB).count()
 
   await busyTab.click({ button: 'middle' })
 
-  await expect(closeDialogTitle(nightshiftPage)).toBeVisible({ timeout: 15_000 })
-  await nightshiftPage.getByRole('button', { name: /^Cancel$/ }).click()
-  await expect(closeDialogTitle(nightshiftPage)).toBeHidden()
+  await expect(closeDialogTitle(koluxPage)).toBeVisible({ timeout: 15_000 })
+  await koluxPage.getByRole('button', { name: /^Cancel$/ }).click()
+  await expect(closeDialogTitle(koluxPage)).toBeHidden()
   await expect(busyTab).toBeVisible()
-  expect(await nightshiftPage.locator(SORTABLE_TAB).count()).toBe(tabsBefore)
+  expect(await koluxPage.locator(SORTABLE_TAB).count()).toBe(tabsBefore)
 })
 
-test('confirming the X-button prompt closes the busy tab', async ({ nightshiftPage }) => {
+test('confirming the X-button prompt closes the busy tab', async ({ koluxPage }) => {
   test.setTimeout(120_000)
-  const busyTabId = await startBusyTerminal(nightshiftPage)
-  const busyTab = nightshiftPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
+  const busyTabId = await startBusyTerminal(koluxPage)
+  const busyTab = koluxPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
 
   await busyTab.hover()
   await busyTab.getByRole('button', { name: /^Close tab /i }).click()
-  await expect(closeDialogTitle(nightshiftPage)).toBeVisible({ timeout: 15_000 })
-  await nightshiftPage.getByRole('button', { name: /^Stop and Close$/ }).click()
+  await expect(closeDialogTitle(koluxPage)).toBeVisible({ timeout: 15_000 })
+  await koluxPage.getByRole('button', { name: /^Stop and Close$/ }).click()
 
   await expect(busyTab).toHaveCount(0, { timeout: 15_000 })
-  await expect(closeDialogTitle(nightshiftPage)).toBeHidden()
+  await expect(closeDialogTitle(koluxPage)).toBeHidden()
 })
 
-test('Cmd+W on a busy single-pane tab raises exactly one dialog', async ({ nightshiftPage }) => {
+test('Cmd+W on a busy single-pane tab raises exactly one dialog', async ({ koluxPage }) => {
   test.setTimeout(120_000)
-  const busyTabId = await startBusyTerminal(nightshiftPage)
-  const busyTab = nightshiftPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
+  const busyTabId = await startBusyTerminal(koluxPage)
+  const busyTab = koluxPage.locator(`${SORTABLE_TAB}[data-tab-id="${busyTabId}"]`).first()
 
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.press(process.platform === 'darwin' ? 'Meta+w' : 'Control+w')
-  await expect(closeDialogTitle(nightshiftPage)).toBeVisible({ timeout: 15_000 })
-  await nightshiftPage.getByRole('button', { name: /^Stop and Close$/ }).click()
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.press(process.platform === 'darwin' ? 'Meta+w' : 'Control+w')
+  await expect(closeDialogTitle(koluxPage)).toBeVisible({ timeout: 15_000 })
+  await koluxPage.getByRole('button', { name: /^Stop and Close$/ }).click()
 
   await expect(busyTab).toHaveCount(0, { timeout: 15_000 })
   // Why: the pane used to probe and prompt on its own before delegating to
   // closeTerminalTab, which now prompts too — a second dialog would mean a double prompt.
-  await nightshiftPage.waitForTimeout(1_500)
-  await expect(closeDialogTitle(nightshiftPage)).toBeHidden()
+  await koluxPage.waitForTimeout(1_500)
+  await expect(closeDialogTitle(koluxPage)).toBeHidden()
 })

@@ -6,12 +6,12 @@ import {
 import {
   LINEAR_TICKETS_SKILL_NAME,
   LINEAR_TICKETS_SKILL_UPDATE_COMMAND,
-  NIGHTSHIFT_LINEAR_SKILL_NAME,
-  NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND
+  KOLUX_LINEAR_SKILL_NAME,
+  KOLUX_LINEAR_SKILL_UPDATE_COMMAND
 } from '@/lib/agent-feature-install-commands'
 
 export type LinearAgentSkillUpdateTarget = {
-  skillName: typeof NIGHTSHIFT_LINEAR_SKILL_NAME | typeof LINEAR_TICKETS_SKILL_NAME
+  skillName: typeof KOLUX_LINEAR_SKILL_NAME | typeof LINEAR_TICKETS_SKILL_NAME
   command: string
 }
 
@@ -21,14 +21,14 @@ export function getLinearAgentSkillUpdateTarget(
   skills: readonly DiscoveredSkill[],
   installed: boolean
 ): LinearAgentSkillUpdateTarget {
-  const canonicalSkillInstalled = hasInstalledAgentSkill(skills, NIGHTSHIFT_LINEAR_SKILL_NAME, {
+  const canonicalSkillInstalled = hasInstalledAgentSkill(skills, KOLUX_LINEAR_SKILL_NAME, {
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
   })
   const legacySkillInstalled = hasInstalledAgentSkill(skills, LINEAR_TICKETS_SKILL_NAME, {
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
   })
   return !installed || canonicalSkillInstalled || !legacySkillInstalled
-    ? { skillName: NIGHTSHIFT_LINEAR_SKILL_NAME, command: NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND }
+    ? { skillName: KOLUX_LINEAR_SKILL_NAME, command: KOLUX_LINEAR_SKILL_UPDATE_COMMAND }
     : { skillName: LINEAR_TICKETS_SKILL_NAME, command: LINEAR_TICKETS_SKILL_UPDATE_COMMAND }
 }
 

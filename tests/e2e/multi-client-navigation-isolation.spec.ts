@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { worktreeRow, worktreeRowSurface } from './worktree-row-locators'
 
 type RuntimePairingOffer = {
@@ -20,7 +20,7 @@ type TestWorktreeIds = {
   clientA2: string
 }
 
-const isPairedBrowserRun = process.env.NIGHTSHIFT_E2E_WEB_CLIENT === '1'
+const isPairedBrowserRun = process.env.KOLUX_E2E_WEB_CLIENT === '1'
 
 test.skip(
   !isPairedBrowserRun,
@@ -129,7 +129,7 @@ async function expectActiveWorktree(page: Page, worktreeId: string): Promise<voi
 }
 
 test('keeps two paired browser clients and the host on independent worktrees', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp,
   testRepoPath
 }) => {
@@ -140,40 +140,40 @@ test('keeps two paired browser clients and the host on independent worktrees', a
   addGitWorktree(testRepoPath, branchB)
 
   await expect
-    .poll(() => loadTestWorktreeIds(nightshiftPage, branchA, branchB), {
+    .poll(() => loadTestWorktreeIds(koluxPage, branchA, branchB), {
       timeout: 30_000,
       message: 'Expected host plus three client-selectable worktrees'
     })
     .not.toBeNull()
 
   // Playwright's matcher does not narrow the polled value for TypeScript.
-  const ids = await loadTestWorktreeIds(nightshiftPage, branchA, branchB)
+  const ids = await loadTestWorktreeIds(koluxPage, branchA, branchB)
   if (!ids) {
     throw new Error('Test worktrees disappeared after discovery')
   }
 
-  await selectWorktree(nightshiftPage, ids.host)
+  await selectWorktree(koluxPage, ids.host)
 
   let clientA: Page | null = null
   let clientB: Page | null = null
   try {
-    const offerA = await createPairingOffer(nightshiftPage)
+    const offerA = await createPairingOffer(koluxPage)
     clientA = await openPairedClient(electronApp, offerA, ids.clientA)
     await selectWorktree(clientA, ids.clientA)
 
     // Why: rotation preserves used grants, so B is issued only after A has completed pairing.
-    const offerB = await createPairingOffer(nightshiftPage)
+    const offerB = await createPairingOffer(koluxPage)
     expect(offerB.deviceId).not.toBe(offerA.deviceId)
     clientB = await openPairedClient(electronApp, offerB, ids.clientB)
     await selectWorktree(clientB, ids.clientB)
 
     await expectActiveWorktree(clientA, ids.clientA)
-    await expectActiveWorktree(nightshiftPage, ids.host)
+    await expectActiveWorktree(koluxPage, ids.host)
 
     await selectWorktree(clientA, ids.clientA2)
 
     await expectActiveWorktree(clientB, ids.clientB)
-    await expectActiveWorktree(nightshiftPage, ids.host)
+    await expectActiveWorktree(koluxPage, ids.host)
   } finally {
     await clientB?.close()
     await clientA?.close()
@@ -181,7 +181,7 @@ test('keeps two paired browser clients and the host on independent worktrees', a
 })
 
 test('keeps a paired client workspace create-with-agent off the other client and the host', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp,
   testRepoPath
 }) => {
@@ -192,26 +192,26 @@ test('keeps a paired client workspace create-with-agent off the other client and
   addGitWorktree(testRepoPath, branchB)
 
   await expect
-    .poll(() => loadTestWorktreeIds(nightshiftPage, branchA, branchB), {
+    .poll(() => loadTestWorktreeIds(koluxPage, branchA, branchB), {
       timeout: 30_000,
       message: 'Expected host plus client-selectable worktrees'
     })
     .not.toBeNull()
-  const ids = await loadTestWorktreeIds(nightshiftPage, branchA, branchB)
+  const ids = await loadTestWorktreeIds(koluxPage, branchA, branchB)
   if (!ids) {
     throw new Error('Test worktrees disappeared after discovery')
   }
 
-  await selectWorktree(nightshiftPage, ids.host)
+  await selectWorktree(koluxPage, ids.host)
 
   let clientA: Page | null = null
   let clientB: Page | null = null
   try {
-    const offerA = await createPairingOffer(nightshiftPage)
+    const offerA = await createPairingOffer(koluxPage)
     clientA = await openPairedClient(electronApp, offerA, ids.clientA)
     await selectWorktree(clientA, ids.clientA)
 
-    const offerB = await createPairingOffer(nightshiftPage)
+    const offerB = await createPairingOffer(koluxPage)
     clientB = await openPairedClient(electronApp, offerB, ids.clientB)
     await selectWorktree(clientB, ids.clientB)
 
@@ -255,7 +255,7 @@ test('keeps a paired client workspace create-with-agent off the other client and
     await expect(worktreeRow(clientB, createdWorktreeId)).toBeVisible({ timeout: 30_000 })
     // ...while its view stays exactly where its own user left it.
     await expectActiveWorktree(clientB, ids.clientB)
-    await expectActiveWorktree(nightshiftPage, ids.host)
+    await expectActiveWorktree(koluxPage, ids.host)
 
     // The creator can still reach and open what it made, and doing so still moves nobody
     // else. This drives the store action directly, so the composer's automatic
@@ -263,12 +263,12 @@ test('keeps a paired client workspace create-with-agent off the other client and
     // host-side composer journey in worktree.spec.ts, not here.
     await selectWorktree(clientA, createdWorktreeId)
     await expectActiveWorktree(clientB, ids.clientB)
-    await expectActiveWorktree(nightshiftPage, ids.host)
+    await expectActiveWorktree(koluxPage, ids.host)
 
     // The observer keeps its own navigation authority afterwards.
     await selectWorktree(clientB, ids.clientA2)
     await expectActiveWorktree(clientA, createdWorktreeId)
-    await expectActiveWorktree(nightshiftPage, ids.host)
+    await expectActiveWorktree(koluxPage, ids.host)
   } finally {
     await clientB?.close()
     await clientA?.close()
@@ -277,16 +277,16 @@ test('keeps a paired client workspace create-with-agent off the other client and
 
 test('shows only provider-backed creation actions in paired web', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
-  const visibleWorktreeId = await nightshiftPage.evaluate(
+  const visibleWorktreeId = await koluxPage.evaluate(
     () => window.__store?.getState().activeWorktreeId
   )
   if (!visibleWorktreeId) {
     throw new Error('Host worktree was not active before paired web validation')
   }
 
-  const offer = await createPairingOffer(nightshiftPage)
+  const offer = await createPairingOffer(koluxPage)
   const client = await openPairedClient(electronApp, offer, visibleWorktreeId)
   try {
     await selectWorktree(client, visibleWorktreeId)
@@ -326,22 +326,22 @@ test('shows only provider-backed creation actions in paired web', async ({
 
 test('routes Add Project folder browsing through the paired host', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
-  const hostFolder = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-web-folder-'))
+  const hostFolder = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-web-folder-'))
   const folderName = path.basename(hostFolder)
   registerPostElectronShutdownCleanup(async () => {
     rmSync(hostFolder, { recursive: true, force: true })
   })
-  const visibleWorktreeId = await nightshiftPage.evaluate(
+  const visibleWorktreeId = await koluxPage.evaluate(
     () => window.__store?.getState().activeWorktreeId
   )
   if (!visibleWorktreeId) {
     throw new Error('Host worktree was not active before paired web validation')
   }
 
-  const offer = await createPairingOffer(nightshiftPage)
+  const offer = await createPairingOffer(koluxPage)
   const client = await openPairedClient(electronApp, offer, visibleWorktreeId)
   try {
     await openSidebarProjectDialog(client)

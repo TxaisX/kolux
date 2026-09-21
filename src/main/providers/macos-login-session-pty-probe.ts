@@ -2,12 +2,12 @@ import { execFile, type ExecFileException } from 'node:child_process'
 import { existsSync } from 'node:fs'
 
 const MACOS_EXPECT_PATH = '/usr/bin/expect'
-const LOGIN_PREFLIGHT_MARKER = 'NIGHTSHIFT_LOGIN_PREFLIGHT_OK'
-const LOGIN_PROBE_USERNAME_ENV = 'NIGHTSHIFT_LOGIN_PROBE_USERNAME'
+const LOGIN_PREFLIGHT_MARKER = 'KOLUX_LOGIN_PREFLIGHT_OK'
+const LOGIN_PROBE_USERNAME_ENV = 'KOLUX_LOGIN_PROBE_USERNAME'
 // Why: expect owns the PTY without adding a long-lived native handle to the daemon.
 const EXPECT_LOGIN_PROBE_SCRIPT =
   'log_user 1; ' +
-  'spawn -noecho /usr/bin/login -flpq $env(NIGHTSHIFT_LOGIN_PROBE_USERNAME) /usr/bin/printf NIGHTSHIFT_LOGIN_PREFLIGHT_OK; ' +
+  'spawn -noecho /usr/bin/login -flpq $env(KOLUX_LOGIN_PROBE_USERNAME) /usr/bin/printf KOLUX_LOGIN_PREFLIGHT_OK; ' +
   'send "\\004"; expect eof; wait; exit 0'
 
 export type LoginPreflightOutcome = {

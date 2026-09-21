@@ -80,7 +80,7 @@ export function UpdateDownloadingContent({
           ? release.description
           : translate(
               'auto.components.UpdateCard.93794ea932',
-              'Nightshift v{{value0}} is downloading.',
+              'Kolux v{{value0}} is downloading.',
               {
                 value0: version
               }
@@ -139,7 +139,7 @@ export function UpdateReadyToInstallContent({
       <p className="text-sm text-muted-foreground">
         {translate(
           'auto.components.UpdateCard.6714206e5a',
-          "Nightshift v{{value0}} is downloaded. Restart when you're ready.",
+          "Kolux v{{value0}} is downloaded. Restart when you're ready.",
           { value0: version }
         )}
       </p>

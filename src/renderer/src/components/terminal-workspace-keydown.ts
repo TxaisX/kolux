@@ -60,7 +60,7 @@ export function handleTerminalWorkspaceKeyDown(
       terminalShortcutPolicy
     })
   const notifyTerminalCapture = (actionId: KeybindingActionId): void => {
-    if (context !== 'terminal' || terminalShortcutPolicy !== 'nightshift-first') {
+    if (context !== 'terminal' || terminalShortcutPolicy !== 'kolux-first') {
       return
     }
     showTerminalShortcutCaptureNotification({

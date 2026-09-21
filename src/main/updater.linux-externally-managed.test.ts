@@ -28,10 +28,10 @@ vi.mock('./local-builds/local-build-switch', () => moduleFactories.localBuildSwi
 vi.mock('./local-builds/local-build-feed-server', () => moduleFactories.localBuildFeedServer())
 
 const EXTERNALLY_MANAGED_MESSAGE =
-  'This copy of Nightshift is managed by your system package manager, so Nightshift cannot install updates itself. Update Nightshift through your distribution instead.'
+  'This copy of Kolux is managed by your system package manager, so Kolux cannot install updates itself. Update Kolux through your distribution instead.'
 
 /** #17702: a repackaged install (AUR, Nix, container rebuild) inherits the .deb `package-type`
- *  marker but has no package manager that can apply a Nightshift-downloaded package. */
+ *  marker but has no package manager that can apply a Kolux-downloaded package. */
 warmUpdaterModule()
 
 describe('updater externally managed Linux installs', () => {

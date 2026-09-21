@@ -81,12 +81,12 @@ export class DaemonTerminalAdmission {
         request.id,
         payload.cancelAfterMs
       )
-      // Why gated: pty:spawn latency attribution (NIGHTSHIFT_PTY_SPAWN_TIMING=1) stops at the
+      // Why gated: pty:spawn latency attribution (KOLUX_PTY_SPAWN_TIMING=1) stops at the
       // client-side RPC round trip; this splits the daemon-side half of that round trip into
       // "prepare" (platform login preflight) vs. "host.createOrAttach" (the actual pty/shell
       // spawn) so a slow round trip can be attributed inside the daemon process, whose console
       // output is otherwise discarded (stdio 'ignore').
-      const admissionTimingEnabled = process.env.NIGHTSHIFT_PTY_SPAWN_TIMING === '1'
+      const admissionTimingEnabled = process.env.KOLUX_PTY_SPAWN_TIMING === '1'
       const prepareStartedAt = admissionTimingEnabled ? Date.now() : 0
       if (!attachOnly) {
         await this.options.preparations.prepareUnlessCanceled(payload.sessionId, spawnPreparation)

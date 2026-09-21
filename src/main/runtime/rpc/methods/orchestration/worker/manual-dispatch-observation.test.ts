@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
@@ -11,7 +11,7 @@ describe('manual Dispatch observation', () => {
 
   it('covers the real dispatch --inject entry path before observing the lane', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const coordinatorPaneKey = 'tab_coord:leaf_coord'
     const workerPaneKey = 'tab_worker:leaf_worker'
@@ -44,7 +44,7 @@ describe('manual Dispatch observation', () => {
       status: 'live',
       ptyIds: ['runtime_test:term_worker:1']
     })
-    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     const run = db.createRun({
       objective: 'STA-3848 repro',
       coordinatorHandle: 'term_coord',
@@ -95,7 +95,7 @@ describe('manual Dispatch observation', () => {
 
   it('keeps context-only reads truthful without supervising the operator pane', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'showTerminal').mockResolvedValue({
       handle: 'term_worker',
@@ -223,7 +223,7 @@ describe('manual Dispatch observation', () => {
 
   it('lists an unsupervised context-only dispatch even when process identity is absent', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'context-only listing',
@@ -265,7 +265,7 @@ describe('manual Dispatch observation', () => {
     ['orchestration.workerAbandon', 'abandoned']
   ] as const)('%s fences the assignment without closing the operator pane', async (name, state) => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const closeTerminal = vi.spyOn(runtime, 'closeTerminal')
     const task = db.createTask({

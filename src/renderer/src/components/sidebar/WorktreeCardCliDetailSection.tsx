@@ -22,18 +22,18 @@ export function WorktreeCardCliDetailSection({
     <WorktreeCardDetailSection>
       <DetailHeader
         icon={<SquareTerminal className="size-3 text-muted-foreground" />}
-        label={translate('auto.components.sidebar.WorktreeCardMeta.cliHeader', 'Nightshift CLI')}
+        label={translate('auto.components.sidebar.WorktreeCardMeta.cliHeader', 'Kolux CLI')}
       />
       <WorktreeCardDetailSectionContent className="space-y-1.5">
         <div className="text-[13px] font-semibold leading-snug text-foreground break-words">
           {provenance.callerTerminalHandle
             ? translate(
                 'auto.components.sidebar.WorktreeCardMeta.cliCreatedFromAgent',
-                'Created by an agent via `nightshift worktree create`'
+                'Created by an agent via `kolux worktree create`'
               )
             : translate(
                 'auto.components.sidebar.WorktreeCardMeta.cliCreatedFromShell',
-                'Created via `nightshift worktree create`'
+                'Created via `kolux worktree create`'
               )}
         </div>
         {agentLabel ? (

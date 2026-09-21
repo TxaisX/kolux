@@ -3,14 +3,14 @@ import type { RpcContext } from '../../../core'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { reconcileLifecycleMessage } from '../../../../orchestration/lifecycle-reconciliation'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 
 describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
   const { coordinatorPaneKey, findMethod } = h
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let activeRunId: string | undefined
 

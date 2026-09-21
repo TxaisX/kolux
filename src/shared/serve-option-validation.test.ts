@@ -35,7 +35,7 @@ describe('getServeFlagTypoError', () => {
   it('accepts exact serve flags and arbitrary Chromium switches', () => {
     expect(
       getServeFlagTypoError([
-        '/opt/nightshift/nightshift-ide',
+        '/opt/kolux/kolux-ide',
         '--serve',
         '--serve-no-pairing',
         '--disable-gpu',
@@ -48,7 +48,7 @@ describe('getServeFlagTypoError', () => {
   it.each(['--no-pair', '--no-pairng', '--no-paring', '--mobile-pairng'])(
     'suggests the intended pairing flag for %s',
     (flag) => {
-      expect(getServeFlagTypoError(['/opt/nightshift/nightshift-ide', '--serve', flag])).toMatch(
+      expect(getServeFlagTypoError(['/opt/kolux/kolux-ide', '--serve', flag])).toMatch(
         /Unknown flag .*Did you mean --(?:no-pairing|mobile-pairing)\?/i
       )
     }
@@ -56,26 +56,19 @@ describe('getServeFlagTypoError', () => {
 
   it('does not reinterpret tokens after --', () => {
     expect(
-      getServeFlagTypoError(['/opt/nightshift/nightshift-ide', '--serve', '--', '--no-pairng'])
+      getServeFlagTypoError(['/opt/kolux/kolux-ide', '--serve', '--', '--no-pairng'])
     ).toBeNull()
   })
 
   it('does not inspect an equals-form value as a flag', () => {
     expect(
-      getServeFlagTypoError([
-        '/opt/nightshift/nightshift-ide',
-        '--serve-pairing-address=--no-pairng'
-      ])
+      getServeFlagTypoError(['/opt/kolux/kolux-ide', '--serve-pairing-address=--no-pairng'])
     ).toBeNull()
   })
 
   it('keeps flag-shaped space values subject to typo validation', () => {
     expect(
-      getServeFlagTypoError([
-        '/opt/nightshift/nightshift-ide',
-        '--serve-pairing-address',
-        '--no-pairng'
-      ])
+      getServeFlagTypoError(['/opt/kolux/kolux-ide', '--serve-pairing-address', '--no-pairng'])
     ).toMatch(/Unknown flag --no-pairng.*--no-pairing/i)
   })
 })

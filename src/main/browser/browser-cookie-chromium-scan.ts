@@ -182,7 +182,7 @@ export function scanChromiumCookieRows(
     return {
       ok: false,
       reason:
-        'This Nightshift client cannot report cookies skipped for an unreadable site partition. Update Nightshift on this device and try again.'
+        'This Kolux client cannot report cookies skipped for an unreadable site partition. Update Kolux on this device and try again.'
     }
   }
   return null

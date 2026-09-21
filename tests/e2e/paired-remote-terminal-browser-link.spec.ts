@@ -8,7 +8,7 @@ import {
   sendClientGuestKeyboardInput,
   sendClientGuestPointerInput
 } from './helpers/client-hosted-browser-observer'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -159,7 +159,7 @@ function remoteTerminalHandle(ptyId: string): string {
 
 test('opens a paired-runtime terminal link on its owning host', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(240_000)
@@ -167,15 +167,15 @@ test('opens a paired-runtime terminal link on its owning host', async ({
   let client: PairedElectronClient | null = null
   let observerActive = false
   try {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    const hostPtyId = await waitForActivePanePtyId(nightshiftPage)
-    await execInTerminal(nightshiftPage, hostPtyId, `printf '%s\\n' ${JSON.stringify(fixture.url)}`)
-    await waitForTerminalOutput(nightshiftPage, fixture.url)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    const hostPtyId = await waitForActivePanePtyId(koluxPage)
+    await execInTerminal(koluxPage, hostPtyId, `printf '%s\\n' ${JSON.stringify(fixture.url)}`)
+    await waitForTerminalOutput(koluxPage, fixture.url)
 
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     client = await launchPairedElectronClient(offer, testInfo, 'Remote terminal browser link')
     const page = client.page
     const worktreeId = await expect
@@ -236,11 +236,11 @@ test('opens a paired-runtime terminal link on its owning host', async ({
     await expect(
       actionPopover.getByRole('button').filter({ hasText: 'System Browser' })
     ).toBeVisible()
-    const nightshiftBrowserAction = actionPopover
+    const koluxBrowserAction = actionPopover
       .getByRole('button')
-      .filter({ hasText: 'Nightshift Browser' })
-    await expect(nightshiftBrowserAction).toBeVisible()
-    await nightshiftBrowserAction.click()
+      .filter({ hasText: 'Kolux Browser' })
+    await expect(koluxBrowserAction).toBeVisible()
+    await koluxBrowserAction.click()
 
     const identity = await expect
       .poll(

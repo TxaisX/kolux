@@ -13,10 +13,7 @@ import {
 } from '../native-chat/structured-agent-session-history-adoption'
 import { resolveSessionFilePath } from '../native-chat/session-file-resolver'
 import { configuredAdditionalCodexHomePaths } from '../ai-vault/cached-session-list'
-import {
-  getNightshiftManagedCodexHomePath,
-  getSystemCodexHomePath
-} from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
 
 type AdoptionSettings = {
   codexManagedAccounts?: readonly { managedHomePath: string }[]
@@ -110,7 +107,7 @@ function structuredAdoptionAccountHomeCandidates(input: {
     input.selectedAccountHomePath,
     ...(input.settings.codexManagedAccounts ?? []).map((account) => account.managedHomePath),
     ...configuredAdditionalCodexHomePaths(),
-    getNightshiftManagedCodexHomePath(),
+    getKoluxManagedCodexHomePath(),
     getSystemCodexHomePath()
   ]
 }

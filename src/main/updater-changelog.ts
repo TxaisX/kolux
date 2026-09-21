@@ -10,7 +10,7 @@ type ChangelogEntry = {
   releaseNotesUrl: string
 }
 
-const CHANGELOG_URL = 'https://nightshift.invalid/changelog'
+const CHANGELOG_URL = 'https://kolux.invalid/changelog'
 // fork: this build is made from source and never contacts upstream servers
 const FORK_NO_PHONE_HOME = true
 
@@ -47,7 +47,7 @@ export async function fetchChangelog(
   if (FORK_NO_PHONE_HOME) {
     return null
   }
-  const res = await net.fetch('https://nightshift.invalid/whats-new/changelog.json', {
+  const res = await net.fetch('https://kolux.invalid/whats-new/changelog.json', {
     signal: AbortSignal.timeout(5000)
   })
   if (!res.ok) {

@@ -63,7 +63,7 @@ export function installMainWindowShortcutRouting(args: {
 
     const capturedTerminalActionId =
       focusedShortcutContext.context === 'terminal' &&
-      focusedShortcutContext.terminalShortcutPolicy === 'nightshift-first' &&
+      focusedShortcutContext.terminalShortcutPolicy === 'kolux-first' &&
       windowShortcutActionCapturesTerminal(action)
         ? getWindowShortcutActionId(action)
         : null
@@ -127,7 +127,7 @@ export function installMainWindowShortcutRouting(args: {
     }
 
     if (isMacAppPasteInput(input)) {
-      // Why: chat/terminal panes hold focus without native editable controls, so route Cmd+V through Nightshift's paste ownership.
+      // Why: chat/terminal panes hold focus without native editable controls, so route Cmd+V through Kolux's paste ownership.
       event.preventDefault()
       mainWindow.webContents.send('ui:appMenuPaste')
       return

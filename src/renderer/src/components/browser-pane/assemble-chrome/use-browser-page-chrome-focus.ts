@@ -4,7 +4,7 @@ import { getShortcutPlatform } from '@/hooks/useShortcutLabel'
 import { keybindingMatchesAction } from '../../../../../shared/keybindings'
 import {
   consumeBrowserFocusRequest,
-  NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT,
+  KOLUX_BROWSER_FOCUS_REQUEST_EVENT,
   type BrowserFocusRequestDetail
 } from '../host-guest/browser-focus'
 import { browserOverlayOwnsShortcutTarget } from '../describe-page/browser-overlay-shortcut-target'
@@ -244,9 +244,9 @@ export function useBrowserPageChromeFocus({
       focusGuestNow()
     }
     // Why: an already-active page never remounts, so listen for the event to consume the durable focus request immediately.
-    window.addEventListener(NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT, handleBrowserFocusRequest)
+    window.addEventListener(KOLUX_BROWSER_FOCUS_REQUEST_EVENT, handleBrowserFocusRequest)
     return () => {
-      window.removeEventListener(NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT, handleBrowserFocusRequest)
+      window.removeEventListener(KOLUX_BROWSER_FOCUS_REQUEST_EVENT, handleBrowserFocusRequest)
       cancelAddressBarFocusGrab()
     }
   }, [browserTabId, cancelAddressBarFocusGrab, focusGuestNow, isActive, startAddressBarFocusGrab])

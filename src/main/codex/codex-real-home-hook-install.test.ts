@@ -77,10 +77,10 @@ function grantUnavailable(): void {
 
 beforeEach(() => {
   grantMock.mockReset()
-  fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-real-home-hooks-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-real-home-hooks-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-real-home-hooks-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-real-home-hooks-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   mkdirSync(join(fakeHomeDir, '.codex'), { recursive: true })
   _internals.setLaneForTesting('pending')
@@ -92,9 +92,9 @@ afterEach(() => {
   rmSync(fakeHomeDir, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
@@ -117,7 +117,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     ).resolves.toBe('removed')
   })
 
-  it('creates hooks.json with the Nightshift entry in every managed event for a fresh home', async () => {
+  it('creates hooks.json with the Kolux entry in every managed event for a fresh home', async () => {
     grantSucceeds()
 
     const lane = await ensureRealHomeCodexHookState({
@@ -179,9 +179,9 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     expect(lane).toBe('unavailable')
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe(original)
     expect(grantMock).not.toHaveBeenCalled()
-    expect(
-      existsSync(join(userDataDir, 'codex-real-home-hooks', 'hooks.json.pre-nightshift'))
-    ).toBe(false)
+    expect(existsSync(join(userDataDir, 'codex-real-home-hooks', 'hooks.json.pre-kolux'))).toBe(
+      false
+    )
   })
 
   it('appends LAST and preserves user entries and trust positions', async () => {
@@ -206,7 +206,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     const plan = grantMock.mock.calls[0]![0] as CodexManagedTrustGrantPlan
     expect(plan.managedEntries.find((entry) => entry.eventLabel === 'stop')?.groupIndex).toBe(1)
     expect(
-      readFileSync(join(userDataDir, 'codex-real-home-hooks', 'hooks.json.pre-nightshift'), 'utf-8')
+      readFileSync(join(userDataDir, 'codex-real-home-hooks', 'hooks.json.pre-kolux'), 'utf-8')
     ).toBe(original)
   })
 
@@ -390,7 +390,7 @@ describe('ensureRealHomeCodexHookState (install)', () => {
     expect(plan.managedEntries.find((entry) => entry.eventLabel === 'stop')?.groupIndex).toBe(1)
   })
 
-  it("keeps later user handler trust positions stable inside Nightshift's hook group", async () => {
+  it("keeps later user handler trust positions stable inside Kolux's hook group", async () => {
     grantSucceeds()
     await ensureRealHomeCodexHookState({ hooksEnabled: true, userDataPath: userDataDir })
     const installed = readRealHooksJson()
@@ -427,7 +427,7 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     expect(readFileSync(getRealHooksJsonPath(), 'utf-8')).toBe('{ not json')
   })
 
-  it('rebases trust when a user appended hooks after Nightshift installed', async () => {
+  it('rebases trust when a user appended hooks after Kolux installed', async () => {
     grantSucceeds()
     const before = { type: 'command', command: 'before.sh' }
     writeFileSync(
@@ -483,7 +483,7 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     const operations: string[] = []
     rebaseInternals.setSessionRunner(async (request) => {
       operations.push(request.operation)
-      // A user save (or a second Nightshift instance) lands while the RPC runs.
+      // A user save (or a second Kolux instance) lands while the RPC runs.
       writeFileSync(getRealHooksJsonPath(), concurrentSave, 'utf-8')
       return {
         outcome: 'inspected',
@@ -505,7 +505,7 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     expect(readFileSync(getRealConfigTomlPath(), 'utf-8')).toBe(userTrustToml)
   })
 
-  it('removes only Nightshift entries and reports the removed lane', async () => {
+  it('removes only Kolux entries and reports the removed lane', async () => {
     grantSucceeds()
     const userStop = {
       matcher: 'deploy-*',
@@ -546,7 +546,7 @@ describe('ensureRealHomeCodexHookState (opt-out sweep)', () => {
     expect(existsSync(getRealHooksJsonPath())).toBe(false)
   })
 
-  it('removes only hash-proven Nightshift trust from a mixed hook group', async () => {
+  it('removes only hash-proven Kolux trust from a mixed hook group', async () => {
     const material = getCodexManagedHookInstallMaterial()
     const userCommand = 'my-user-hook.sh'
     writeFileSync(

@@ -33,7 +33,7 @@ function stateDotTooltipLabel(
     return 'Interrupted by user'
   }
   // Why: report the observation, not a verdict on the agent — the elapsed gap is what
-  // lets the user apply context Nightshift has no way to know (a long build, a slow download).
+  // lets the user apply context Kolux has no way to know (a long build, a slow download).
   return dotState === 'unverifiable'
     ? agentNoUpdateLabel(agent.entry, now)
     : agentStateLabel(dotState)

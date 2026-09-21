@@ -4,9 +4,9 @@ import type {
   RuntimeMobileSessionTabsSnapshot
 } from '../../shared/runtime-types'
 
-const { NightshiftRuntimeService } = await import('./nightshift-runtime-test-mocks.spec')
-await import('./nightshift-runtime-test-lifecycle.spec')
-const { store, TEST_WORKTREE_ID } = await import('./nightshift-runtime-test-fixtures.spec')
+const { KoluxRuntimeService } = await import('./kolux-runtime-test-mocks.spec')
+await import('./kolux-runtime-test-lifecycle.spec')
+const { store, TEST_WORKTREE_ID } = await import('./kolux-runtime-test-fixtures.spec')
 
 const retired = {
   parentTabId: 'tab',
@@ -25,10 +25,10 @@ type RuntimeInternals = {
 }
 
 function seedRuntimeWithStoredProof(): {
-  runtime: InstanceType<typeof NightshiftRuntimeService>
+  runtime: InstanceType<typeof KoluxRuntimeService>
   internals: RuntimeInternals
 } {
-  const runtime = new NightshiftRuntimeService(store)
+  const runtime = new KoluxRuntimeService(store)
   runtime.setPtyController({
     spawn: vi.fn().mockResolvedValue({ id: 'pty-runtime-fallback' }),
     write: () => true,

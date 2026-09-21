@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../../../../sqlite/sync-database'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import type { FederatedDispatchRow } from '../../../../orchestration/types'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { encodeWorkerListCursor } from './worker-list-cursor'
 import { ORCHESTRATION_WORKER_LIST_METHOD } from './worker-list-method'
 
@@ -22,7 +22,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('returns a complete filtered legacy result while current clients page above 100 rows', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Mixed-version worker inventory',
@@ -62,7 +62,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('fails an omitted-pagination legacy result above the explicit safety ceiling', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(db, 'listWorkerTerminalResources').mockReturnValue(
       Array.from({ length: 5_001 }, () => null) as never
@@ -76,7 +76,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('excludes later same-second rows that sort between snapshot cursors', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Stable worker inventory',
@@ -104,7 +104,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('continues a version-one snapshot cursor from an older runtime', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Compatible worker inventory',
@@ -127,7 +127,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('expires a pre-rowid cursor whose anchor row a reset deleted', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Old cursor',
@@ -158,7 +158,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('keeps filtered snapshot membership when a later worker changes state', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Stable filtered inventory',
@@ -194,7 +194,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('keeps an include-remote filtered page pinned across 32 concurrent snapshot allocations', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Pinned filtered inventory',
@@ -268,7 +268,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('does not allocate filtered snapshots when the first page has no more rows', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Snapshot-free terminal page',
@@ -303,7 +303,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('projects a 100-row page within six synchronous read statements', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Bounded worker inventory reads',
@@ -338,7 +338,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('aggregates exact inventory counts while preserving filtered totals', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Exact worker inventory counts',
@@ -378,7 +378,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('never re-emits a row whose worker registers between pages', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Stable order key',
@@ -417,7 +417,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('counts only the rows a pinned filtered cursor can still reach', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Pinned filtered counts',
@@ -452,7 +452,7 @@ describe('orchestration worker-list pagination', () => {
     'reads %i unreachable federated rows without a per-row query',
     async (workerCount) => {
       db = new OrchestrationDb(':memory:')
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db)
       const run = db.createRun({
         objective: 'Federated read cost',
@@ -474,7 +474,7 @@ describe('orchestration worker-list pagination', () => {
 
   it('filters and labels terminal state through one projection', async () => {
     db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const run = db.createRun({
       objective: 'Unsupervised owned resource',
@@ -523,7 +523,7 @@ describe('orchestration worker-list pagination', () => {
     // Both shapes used to resolve to a rowid past Run A's rows and report a finished, empty page.
     it('expires a v2 cursor that must be resolved from a foreign anchor', async () => {
       const { runA } = twoRuns()
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db!)
       const foreign = encodeWorkerListCursor({
         version: 2,
@@ -538,7 +538,7 @@ describe('orchestration worker-list pagination', () => {
 
     it('expires a v2 cursor that carries a foreign rowid', async () => {
       const { runA } = twoRuns()
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db!)
       const foreign = encodeWorkerListCursor({
         version: 2,
@@ -553,7 +553,7 @@ describe('orchestration worker-list pagination', () => {
 
     it('still pages the requested Run from its own anchor', async () => {
       const { runA } = twoRuns()
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db!)
       const own = encodeWorkerListCursor({
         version: 2,
@@ -569,7 +569,7 @@ describe('orchestration worker-list pagination', () => {
 })
 
 async function callWorkerList(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: Record<string, unknown>
 ): Promise<WorkerListResult> {
   const parsed = ORCHESTRATION_WORKER_LIST_METHOD.params?.parse(params)

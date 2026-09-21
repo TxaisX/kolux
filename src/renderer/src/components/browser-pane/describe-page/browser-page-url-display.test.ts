@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import {
   getBrowserDisplayTitle,
   getBrowserPageRuntimeEnvironmentId,
@@ -13,7 +13,7 @@ import type { BrowserPage as BrowserPageState } from '../../../../../shared/brow
 
 describe('browser page URL display', () => {
   it('maps the blank-tab sentinel to about:blank and redacts Kagi session tokens', () => {
-    expect(toDisplayUrl(NIGHTSHIFT_BROWSER_BLANK_URL)).toBe('about:blank')
+    expect(toDisplayUrl(KOLUX_BROWSER_BLANK_URL)).toBe('about:blank')
     expect(toDisplayUrl('https://kagi.com/search?q=a&token=secret')).not.toContain('secret')
   })
 
@@ -21,7 +21,7 @@ describe('browser page URL display', () => {
     expect(getBrowserDisplayTitle('Example', 'https://example.com')).toBe('Example')
     expect(getBrowserDisplayTitle(null, 'about:blank')).toBe('New Tab')
     expect(getBrowserDisplayTitle('about:blank', 'https://example.com')).toBe('New Tab')
-    expect(getBrowserDisplayTitle('Example', NIGHTSHIFT_BROWSER_BLANK_URL)).toBe('New Tab')
+    expect(getBrowserDisplayTitle('Example', KOLUX_BROWSER_BLANK_URL)).toBe('New Tab')
   })
 
   it('detects Chromium error pages', () => {
@@ -56,7 +56,7 @@ describe('browser page URL display', () => {
 
   it('opens only normalizable external URLs', () => {
     expect(getOpenableExternalUrl('https://example.com')).toBe('https://example.com/')
-    expect(getOpenableExternalUrl(NIGHTSHIFT_BROWSER_BLANK_URL)).toBeNull()
+    expect(getOpenableExternalUrl(KOLUX_BROWSER_BLANK_URL)).toBeNull()
   })
 
   it('retries a failed load by assigning the attempted URL instead of reload()', () => {

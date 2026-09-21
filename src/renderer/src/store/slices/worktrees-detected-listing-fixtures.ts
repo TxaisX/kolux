@@ -18,7 +18,7 @@ export function makeDetectedResult(
     ...overrides,
     worktrees: worktrees.map((worktree) => ({
       ...worktree,
-      ownership: 'nightshift-managed' as const,
+      ownership: 'kolux-managed' as const,
       selectedCheckout: false,
       visible: true
     }))

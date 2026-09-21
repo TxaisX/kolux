@@ -95,7 +95,7 @@ describe('getServeOptions', () => {
 
   it('shares cross-flag validation with the CLI-form launch', () => {
     const argv = normalizeServeModeArgv([
-      '/opt/nightshift/nightshift-ide',
+      '/opt/kolux/kolux-ide',
       'serve',
       '--no-pairing',
       '--mobile-pairing'

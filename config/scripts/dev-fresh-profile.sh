@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Launch `pn dev` with a fresh, isolated userData profile so the app behaves
 # like a first-time install (onboarding overlay paints, no persisted repos,
-# no saved sessions). Your real `nightshift-dev` profile is left untouched.
+# no saved sessions). Your real `kolux-dev` profile is left untouched.
 #
 # Usage:
 #   ./config/scripts/dev-fresh-profile.sh           # ephemeral temp profile, deleted on exit
 #   ./config/scripts/dev-fresh-profile.sh --keep    # keep the profile dir after exit
-#   NIGHTSHIFT_FRESH_PROFILE_DIR=/some/path ./config/scripts/dev-fresh-profile.sh   # use a fixed dir
+#   KOLUX_FRESH_PROFILE_DIR=/some/path ./config/scripts/dev-fresh-profile.sh   # use a fixed dir
 set -euo pipefail
 
 KEEP=0
@@ -23,13 +23,13 @@ for arg in "$@"; do
   esac
 done
 
-PROFILE_DIR="${NIGHTSHIFT_FRESH_PROFILE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/nightshift-fresh-profile.XXXXXXXX")}"
+PROFILE_DIR="${KOLUX_FRESH_PROFILE_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/kolux-fresh-profile.XXXXXXXX")}"
 mkdir -p "$PROFILE_DIR"
 
 cleanup() {
-  if [[ "$KEEP" -eq 0 && -z "${NIGHTSHIFT_FRESH_PROFILE_DIR:-}" ]]; then
+  if [[ "$KEEP" -eq 0 && -z "${KOLUX_FRESH_PROFILE_DIR:-}" ]]; then
     # Guard rm -rf against accidental empty/unrelated PROFILE_DIR.
-    [[ -n "${PROFILE_DIR:-}" && -d "$PROFILE_DIR" && "$PROFILE_DIR" == */nightshift-fresh-profile* ]] || return 0
+    [[ -n "${PROFILE_DIR:-}" && -d "$PROFILE_DIR" && "$PROFILE_DIR" == */kolux-fresh-profile* ]] || return 0
     rm -rf "$PROFILE_DIR"
     echo "[dev-fresh-profile] removed $PROFILE_DIR"
   else
@@ -40,4 +40,4 @@ trap cleanup EXIT
 
 echo "[dev-fresh-profile] using userData=$PROFILE_DIR"
 # Don't exec — we need the EXIT trap to fire so the temp profile gets cleaned up.
-NIGHTSHIFT_DEV_USER_DATA_PATH="$PROFILE_DIR" NIGHTSHIFT_DEV_SHOW_FIRST_RUN_EDUCATION=1 pnpm dev
+KOLUX_DEV_USER_DATA_PATH="$PROFILE_DIR" KOLUX_DEV_SHOW_FIRST_RUN_EDUCATION=1 pnpm dev

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   sendToTerminal,
@@ -108,25 +108,25 @@ async function readAtlasResetCount(page: Page): Promise<number> {
 
 test.describe('terminal image paste WebGL recovery @headful', () => {
   test('clears the WebGL atlas after a real image clipboard paste', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const marker = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-image-paste-redraw-${marker}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-image-paste-redraw-${marker}.mjs`)
     writeFileSync(scriptPath, imagePasteRedrawScript(marker))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
-      await waitForTerminalOutput(nightshiftPage, `READY_${marker}`, 10_000)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await waitForTerminalOutput(koluxPage, `READY_${marker}`, 10_000)
 
-      await forceWebgl(nightshiftPage)
-      const webglActive = await nightshiftPage
+      await forceWebgl(koluxPage)
+      const webglActive = await koluxPage
         .waitForFunction(
           () => {
             const state = window.__store?.getState()
@@ -147,21 +147,19 @@ test.describe('terminal image paste WebGL recovery @headful', () => {
         .then(() => true)
         .catch(() => false)
       test.skip(!webglActive, 'WebGL was not active in this headful environment')
-      expect(await patchAtlasCounter(nightshiftPage)).toBe(true)
+      expect(await patchAtlasCounter(koluxPage)).toBe(true)
 
-      await nightshiftPage.locator('.xterm-helper-textarea').first().focus()
-      await nightshiftPage.evaluate(
+      await koluxPage.locator('.xterm-helper-textarea').first().focus()
+      await koluxPage.evaluate(
         (dataUrl) => window.api.ui.writeClipboardImage(dataUrl),
         CLIPBOARD_IMAGE_DATA_URL
       )
-      await nightshiftPage.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V')
-      await waitForTerminalOutput(nightshiftPage, `DONE_${marker}`, 10_000)
+      await koluxPage.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V')
+      await waitForTerminalOutput(koluxPage, `DONE_${marker}`, 10_000)
 
-      await expect
-        .poll(() => readAtlasResetCount(nightshiftPage), { timeout: 2_000 })
-        .toBeGreaterThan(0)
+      await expect.poll(() => readAtlasResetCount(koluxPage), { timeout: 2_000 }).toBeGreaterThan(0)
     } finally {
-      await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       rmSync(scriptPath, { force: true })
     }
   })

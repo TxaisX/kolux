@@ -100,7 +100,7 @@ describe('issue source operations', () => {
   })
 
   it('gets a single issue from the issue owner/repo', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({
       stdout: JSON.stringify({
         number: 923,
@@ -124,9 +124,9 @@ describe('issue source operations', () => {
 
   it('routes local WSL issue operations through repo resolution and gh execution options', async () => {
     const localGitOptions = { wslDistro: 'Ubuntu' }
-    getIssueOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     resolveIssueSourceMock.mockResolvedValue({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
     ghExecFileAsyncMock
@@ -195,14 +195,14 @@ describe('issue source operations', () => {
         user: { login: 'octo', avatar_url: '', type: 'User' },
         body: 'Enterprise comment',
         created_at: '2026-07-16T00:00:00.000Z',
-        html_url: 'https://github.acme-corp.com/team/nightshift/pull/7#issuecomment-9'
+        html_url: 'https://github.acme-corp.com/team/kolux/pull/7#issuecomment-9'
       })
     })
 
     await expect(
       addIssueComment('/remote/repo', 7, 'Enterprise comment', 'ssh-1', {
         owner: 'team',
-        repo: 'nightshift',
+        repo: 'kolux',
         host: 'github.acme-corp.com'
       })
     ).resolves.toMatchObject({
@@ -215,7 +215,7 @@ describe('issue source operations', () => {
         'api',
         '-X',
         'POST',
-        'repos/team/nightshift/issues/7/comments',
+        'repos/team/kolux/issues/7/comments',
         '--raw-field',
         'body=Enterprise comment'
       ],
@@ -224,7 +224,7 @@ describe('issue source operations', () => {
   })
 
   it('lists issues from the issue owner/repo', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' })
 
     await expect(listIssues('/repo-root', 5)).resolves.toEqual({ items: [] })
@@ -244,7 +244,7 @@ describe('issue source operations', () => {
     // Why: parent design doc §3 — a 403 on a private upstream must not
     // masquerade as "No issues". The envelope carries an error the UI can
     // render as a banner with retry, not a silent empty list.
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockRejectedValueOnce(
       new Error('HTTP 403: Resource not accessible by integration')
     )
@@ -256,7 +256,7 @@ describe('issue source operations', () => {
   })
 
   it('creates issues in the issue owner/repo', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({
       stdout: JSON.stringify({
         number: 924,
@@ -285,7 +285,7 @@ describe('issue source operations', () => {
   })
 
   it('creates issues with labels and assignees', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({
       stdout: JSON.stringify({
         number: 925,
@@ -330,7 +330,7 @@ describe('issue source operations', () => {
     expect(body).toContain('data:image')
     expect(body).toHaveLength(133596)
 
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('HTTP 422: body is too long (maximum is 65536 characters)'))
       .mockResolvedValueOnce({
@@ -374,7 +374,7 @@ describe('issue source operations', () => {
   })
 
   it('recognizes the oversized-body response from structured gh stderr', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(
         Object.assign(new Error('Command failed: gh'), {
@@ -398,7 +398,7 @@ describe('issue source operations', () => {
   })
 
   it('does not retry unrelated create failures', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('HTTP 422: assignees is invalid'))
 
     await expect(createIssue('/repo-root', 'Invalid issue', 'Body')).resolves.toEqual({
@@ -410,7 +410,7 @@ describe('issue source operations', () => {
 
   it('stops when placeholder create fails during oversized-body recovery', async () => {
     const body = `data:image/png;base64,${'x'.repeat(100)}`
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('body is too long (maximum is 65536 characters)'))
       .mockRejectedValueOnce(new Error('HTTP 500: create failed'))
@@ -425,7 +425,7 @@ describe('issue source operations', () => {
   it('preserves fields during oversized-body recovery', async () => {
     const localGitOptions = { wslDistro: 'Ubuntu' }
     const body = `data:image/png;base64,${'x'.repeat(100)}`
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('body is too long (maximum is 65536 characters)'))
       .mockResolvedValueOnce({ stdout: JSON.stringify({ number: 927, url: 'issue-url' }) })
@@ -461,7 +461,7 @@ describe('issue source operations', () => {
   })
 
   it('reports partial success when oversized-body patch fails', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('body is too long (maximum is 65536 characters)'))
       .mockResolvedValueOnce({
@@ -482,7 +482,7 @@ describe('issue source operations', () => {
   })
 
   it('updates issue body through the REST issue endpoint', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '' })
 
     await expect(updateIssue('/repo-root', 924, { body: 'Updated body' })).resolves.toEqual({
@@ -502,7 +502,7 @@ describe('issue source operations', () => {
   })
 
   it('closes issues with completed, not planned, and duplicate reasons', async () => {
-    getIssueOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '' })
 
     await expect(
@@ -537,7 +537,7 @@ describe('issue source operations', () => {
   })
 
   it('reopens issues through gh issue reopen', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '' })
 
     await expect(updateIssue('/repo-root', 924, { state: 'open' })).resolves.toEqual({

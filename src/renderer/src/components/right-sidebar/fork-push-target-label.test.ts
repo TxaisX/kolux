@@ -4,7 +4,7 @@ import { describeForkPushTarget } from './source-control/panel/fork-push-target-
 
 function target(overrides: Partial<GitPushTarget>): GitPushTarget {
   return {
-    remoteName: 'pr-contributor-nightshift',
+    remoteName: 'pr-contributor-kolux',
     branchName: 'contributor/fix',
     ...overrides
   }
@@ -13,31 +13,31 @@ function target(overrides: Partial<GitPushTarget>): GitPushTarget {
 describe('describeForkPushTarget', () => {
   it('derives owner:branch from an SSH fork URL', () => {
     expect(
-      describeForkPushTarget(target({ remoteUrl: 'git@github.com:contributor/nightshift.git' }))
+      describeForkPushTarget(target({ remoteUrl: 'git@github.com:contributor/kolux.git' }))
     ).toBe('contributor:contributor/fix')
   })
 
   it('derives owner:branch from an HTTPS fork URL', () => {
     expect(
-      describeForkPushTarget(target({ remoteUrl: 'https://github.com/contributor/nightshift.git' }))
+      describeForkPushTarget(target({ remoteUrl: 'https://github.com/contributor/kolux.git' }))
     ).toBe('contributor:contributor/fix')
   })
 
   it('handles a URL without a .git suffix', () => {
     expect(
-      describeForkPushTarget(target({ remoteUrl: 'https://github.com/contributor/nightshift' }))
+      describeForkPushTarget(target({ remoteUrl: 'https://github.com/contributor/kolux' }))
     ).toBe('contributor:contributor/fix')
   })
 
   it('falls back to remoteName/branch when there is no remote URL', () => {
     expect(describeForkPushTarget(target({ remoteUrl: undefined }))).toBe(
-      'pr-contributor-nightshift/contributor/fix'
+      'pr-contributor-kolux/contributor/fix'
     )
   })
 
   it('works for non-GitHub hosts via the generic owner segment', () => {
     expect(
-      describeForkPushTarget(target({ remoteUrl: 'git@gitlab.com:contributor/nightshift.git' }))
+      describeForkPushTarget(target({ remoteUrl: 'git@gitlab.com:contributor/kolux.git' }))
     ).toBe('contributor:contributor/fix')
   })
 })

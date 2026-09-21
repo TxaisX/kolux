@@ -113,7 +113,7 @@ describe('orchestration worker release archive', () => {
 
   it('reads an immutable transcript snapshot after the provider file disappears', async () => {
     h.setup()
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-worker-release-snapshot-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-worker-release-snapshot-'))
     const transcriptPath = join(directory, 'rollout.jsonl')
     try {
       await writeFile(
@@ -158,7 +158,7 @@ describe('orchestration worker release archive', () => {
 
   it('preserves payload clipping metadata in the released transcript snapshot', async () => {
     h.setup()
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-worker-release-clipped-snapshot-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-worker-release-clipped-snapshot-'))
     const transcriptPath = join(directory, 'rollout.jsonl')
     try {
       await writeFile(

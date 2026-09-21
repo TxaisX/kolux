@@ -1,6 +1,6 @@
-export const ORCHESTRATION_SETUP_STATE_EVENT = 'nightshift:orchestration-setup-state'
-export const ORCHESTRATION_ENABLED_STORAGE_KEY = 'nightshift.orchestration.enabled'
-export const ORCHESTRATION_SETUP_DISMISSED_STORAGE_KEY = 'nightshift.orchestration.setupDismissed'
+export const ORCHESTRATION_SETUP_STATE_EVENT = 'kolux:orchestration-setup-state'
+export const ORCHESTRATION_ENABLED_STORAGE_KEY = 'kolux.orchestration.enabled'
+export const ORCHESTRATION_SETUP_DISMISSED_STORAGE_KEY = 'kolux.orchestration.setupDismissed'
 
 export function isOrchestrationSetupEnabled(): boolean {
   return localStorage.getItem(ORCHESTRATION_ENABLED_STORAGE_KEY) === '1'

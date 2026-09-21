@@ -6,8 +6,8 @@ import { getPluginPanelActivityItems, resolvePluginPanelIcon } from './plugin-pa
 const panel: ActivePluginPanel = {
   id: 'dashboard',
   title: 'Dashboard',
-  tabKey: 'plugin:nightshift-samples.demo/dashboard',
-  pluginKey: 'nightshift-samples.demo',
+  tabKey: 'plugin:kolux-samples.demo/dashboard',
+  pluginKey: 'kolux-samples.demo',
   pluginName: 'Demo'
 }
 
@@ -39,7 +39,7 @@ describe('getPluginPanelActivityItems', () => {
   it('projects watchdog failure into host-owned activity chrome', () => {
     expect(
       getPluginPanelActivityItems([panel], {
-        'plugin:nightshift-samples.demo/dashboard': true
+        'plugin:kolux-samples.demo/dashboard': true
       })[0]
     ).toMatchObject({
       id: panel.tabKey,

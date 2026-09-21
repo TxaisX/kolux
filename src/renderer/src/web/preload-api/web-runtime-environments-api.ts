@@ -36,7 +36,7 @@ export function createRuntimeEnvironmentsApi(): NonNullable<
     addFromPairingCode: async ({ name, pairingCode }) => {
       const offer = parseWebPairingInput(pairingCode)
       if (!offer) {
-        throw new Error('Invalid Nightshift pairing code.')
+        throw new Error('Invalid Kolux pairing code.')
       }
       const previousEnvironment = webRuntimeState.activeEnvironment
       closeActiveRuntimeClients()
@@ -113,7 +113,7 @@ export function createRuntimeEnvironmentsApi(): NonNullable<
           kind: 'host-unreachable',
           message: translate(
             'auto.web.webPreloadApi.remotePairingUnreachable',
-            'Cannot reach Nightshift at {{endpoint}}.',
+            'Cannot reach Kolux at {{endpoint}}.',
             { endpoint: parsed.value.displayEndpoint }
           )
         }
@@ -139,7 +139,7 @@ export function createRuntimeEnvironmentsApi(): NonNullable<
           kind: 'environment-save-failed',
           message: translate(
             'auto.web.webPreloadApi.remotePairingSaveFailed',
-            'Nightshift verified the host but could not save it. Check browser storage and try again.'
+            'Kolux verified the host but could not save it. Check browser storage and try again.'
           )
         }
       }

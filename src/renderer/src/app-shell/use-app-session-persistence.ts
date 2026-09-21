@@ -29,12 +29,12 @@ import {
   isWindowCloseCheckpointInProgress
 } from '../components/window-close-request-coordinator'
 import {
-  NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
+  KOLUX_APP_RESTART_ABORTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
 } from '../../../shared/updater-renderer-events'
 import {
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
-  NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+  KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT
 } from '../../../shared/renderer-shutdown-events'
 import type { AppState } from '../store/types'
 import { applyRemoteWorkspacePushStatus } from '../hooks/remote-workspace-push-status'
@@ -220,34 +220,31 @@ export function useAppSessionPersistence(): void {
     const persistBeforeUnload = createShutdownCheckpointBeforeUnloadHandler(shutdownCheckpoint)
     window.addEventListener('beforeunload', persistBeforeUnload)
     window.addEventListener(
-      NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+      KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
       shutdownCheckpoint.abortAfterCheckpointFailure
     )
-    window.addEventListener(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)
+    window.addEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)
     window.addEventListener(
-      NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+      KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
       shutdownCheckpoint.abandonAttempt
     )
     window.addEventListener(
-      NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT,
+      KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT,
       shutdownCheckpoint.abandonAttempt
     )
     return () => {
       window.removeEventListener('beforeunload', persistBeforeUnload)
       window.removeEventListener(
-        NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+        KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
         shutdownCheckpoint.abortAfterCheckpointFailure
       )
+      window.removeEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, shutdownCheckpoint.abandonAttempt)
       window.removeEventListener(
-        NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
+        KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
         shutdownCheckpoint.abandonAttempt
       )
       window.removeEventListener(
-        NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
-        shutdownCheckpoint.abandonAttempt
-      )
-      window.removeEventListener(
-        NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT,
+        KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT,
         shutdownCheckpoint.abandonAttempt
       )
     }

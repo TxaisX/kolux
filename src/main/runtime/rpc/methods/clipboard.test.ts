@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest, RpcResponse } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import {
   CLIPBOARD_IMAGE_MAX_BASE64_CHARS,
   CLIPBOARD_IMAGE_TOO_LARGE_ERROR
@@ -31,7 +31,7 @@ function makeRequest(method: string, params?: unknown): RpcRequest {
 }
 
 function makeDispatcher(): RpcDispatcher {
-  const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as NightshiftRuntimeService
+  const runtime = { getRuntimeId: () => 'test-runtime' } as unknown as KoluxRuntimeService
   return new RpcDispatcher({ runtime, methods: CLIPBOARD_METHODS })
 }
 
@@ -69,7 +69,7 @@ describe('clipboard RPC methods', () => {
 
   it('saves browser-provided clipboard image bytes on the runtime host', async () => {
     saveClipboardImageBufferAsTempFile.mockResolvedValue(
-      'C:\\Users\\alice\\AppData\\Local\\Temp\\nightshift-paste-image.png'
+      'C:\\Users\\alice\\AppData\\Local\\Temp\\kolux-paste-image.png'
     )
     const dispatcher = makeDispatcher()
 
@@ -82,7 +82,7 @@ describe('clipboard RPC methods', () => {
 
     expect(response).toMatchObject({
       ok: true,
-      result: 'C:\\Users\\alice\\AppData\\Local\\Temp\\nightshift-paste-image.png'
+      result: 'C:\\Users\\alice\\AppData\\Local\\Temp\\kolux-paste-image.png'
     })
     expect(saveClipboardImageBufferAsTempFile).toHaveBeenCalledWith(Buffer.from('png-bytes'), {
       connectionId: null
@@ -90,7 +90,7 @@ describe('clipboard RPC methods', () => {
   })
 
   it('records a successful direct mobile upload for only the authenticated client', async () => {
-    const path = '/tmp/nightshift-paste-image.png'
+    const path = '/tmp/kolux-paste-image.png'
     saveClipboardImageBufferAsTempFile.mockResolvedValue(path)
     const dispatcher = makeDispatcher()
 
@@ -106,7 +106,7 @@ describe('clipboard RPC methods', () => {
   })
 
   it('does not authorize a remote-host clipboard path for local structured delivery', async () => {
-    const path = '/tmp/nightshift-paste-image.png'
+    const path = '/tmp/kolux-paste-image.png'
     saveClipboardImageBufferAsTempFile.mockResolvedValue(path)
     const dispatcher = makeDispatcher()
 
@@ -154,7 +154,7 @@ describe('clipboard RPC methods', () => {
   })
 
   it('accepts chunked uploads and forwards the recorded connectionId on commit', async () => {
-    saveClipboardImageBufferAsTempFile.mockResolvedValue('/tmp/nightshift-paste-image.png')
+    saveClipboardImageBufferAsTempFile.mockResolvedValue('/tmp/kolux-paste-image.png')
     const dispatcher = makeDispatcher()
     const contentBase64 = Buffer.from('png-bytes').toString('base64')
 
@@ -192,15 +192,15 @@ describe('clipboard RPC methods', () => {
       dispatcher.dispatch(
         makeRequest('clipboard.commitImageUpload', { uploadId: uploadId.uploadId })
       )
-    ).resolves.toMatchObject({ ok: true, result: '/tmp/nightshift-paste-image.png' })
+    ).resolves.toMatchObject({ ok: true, result: '/tmp/kolux-paste-image.png' })
     expect(saveClipboardImageBufferAsTempFile).toHaveBeenCalledWith(Buffer.from('png-bytes'), {
       connectionId: 'ssh-1'
     })
-    expect(hasMobileClipboardImagePath('device-a', '/tmp/nightshift-paste-image.png')).toBe(false)
+    expect(hasMobileClipboardImagePath('device-a', '/tmp/kolux-paste-image.png')).toBe(false)
   })
 
   it('binds chunk mutation and provenance to the mobile client that started the upload', async () => {
-    saveClipboardImageBufferAsTempFile.mockResolvedValue('/tmp/nightshift-paste-image.png')
+    saveClipboardImageBufferAsTempFile.mockResolvedValue('/tmp/kolux-paste-image.png')
     const dispatcher = makeDispatcher()
     const contentBase64 = Buffer.from('png-bytes').toString('base64')
     const start = await callMobile(dispatcher, 'clipboard.startImageUpload', {
@@ -235,9 +235,9 @@ describe('clipboard RPC methods', () => {
     })
     await expect(
       callMobile(dispatcher, 'clipboard.commitImageUpload', { uploadId: uploadId.uploadId })
-    ).resolves.toMatchObject({ ok: true, result: '/tmp/nightshift-paste-image.png' })
-    expect(hasMobileClipboardImagePath('device-a', '/tmp/nightshift-paste-image.png')).toBe(true)
-    expect(hasMobileClipboardImagePath('device-b', '/tmp/nightshift-paste-image.png')).toBe(false)
+    ).resolves.toMatchObject({ ok: true, result: '/tmp/kolux-paste-image.png' })
+    expect(hasMobileClipboardImagePath('device-a', '/tmp/kolux-paste-image.png')).toBe(true)
+    expect(hasMobileClipboardImagePath('device-b', '/tmp/kolux-paste-image.png')).toBe(false)
   })
 
   it('rejects out-of-order chunk offsets', async () => {

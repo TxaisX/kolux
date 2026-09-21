@@ -8,7 +8,7 @@ import {
   isDirectClaudeCommand,
   type ClaudeAgentTeamsMode
 } from '../../shared/claude-agent-teams-tmux-compat'
-import { getNightshiftCliCommandNameForPlatform } from '../../shared/nightshift-cli-command-name'
+import { getKoluxCliCommandNameForPlatform } from '../../shared/kolux-cli-command-name'
 import { resolvePathEnvKey } from '../pty/windows-path-segment-merge'
 
 export type ClaudeAgentTeamsLaunchPlan = {
@@ -44,7 +44,7 @@ export async function buildClaudeAgentTeamsLaunchPlan(args: {
   }
   const shimBin = resolveClaudeAgentTeamsShimBin(args.baseEnv)
   if (!shimBin) {
-    // Why: without an absolute CLI path the shim would resolve a bare `nightshift` against the pane cwd, so degrade instead.
+    // Why: without an absolute CLI path the shim would resolve a bare `kolux` against the pane cwd, so degrade instead.
     return {
       command: addClaudeTeammateModeInProcess(args.command),
       env: { CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1' }
@@ -59,13 +59,13 @@ export async function buildClaudeAgentTeamsLaunchPlan(args: {
   }
 }
 
-/** Absolute path to the Nightshift CLI that backs the tmux shim, or null when none can be qualified. */
+/** Absolute path to the Kolux CLI that backs the tmux shim, or null when none can be qualified. */
 export function resolveClaudeAgentTeamsShimBin(
   env: Record<string, string | undefined> = process.env
 ): string | null {
   // Why: Windows callers pass an env spelt `Path`; reading only `PATH` there would find no CLI at all.
   const pathValue = env[resolvePathEnvKey(env, process.platform)]
-  const override = env.NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN
+  const override = env.KOLUX_AGENT_TEAMS_SHIM_BIN
   if (override) {
     // Why: a bare override name would be resolved by the shim's shell against its cwd, so qualify it or ignore it.
     const qualified = isAbsolute(override) ? override : findExecutableOnPath(override, pathValue)
@@ -78,15 +78,13 @@ export function resolveClaudeAgentTeamsShimBin(
     return bundled
   }
   return (
-    findExecutableOnPath(
-      process.platform === 'win32' ? 'nightshift-dev.cmd' : 'nightshift-dev',
-      pathValue
-    ) ?? findExecutableOnPath(getNightshiftCliCommandNameForPlatform(process.platform), pathValue)
+    findExecutableOnPath(process.platform === 'win32' ? 'kolux-dev.cmd' : 'kolux-dev', pathValue) ??
+    findExecutableOnPath(getKoluxCliCommandNameForPlatform(process.platform), pathValue)
   )
 }
 
 function defaultShimRoot(): string {
-  return join(homedir(), '.nightshift', 'claude-agent-teams-bin')
+  return join(homedir(), '.kolux', 'claude-agent-teams-bin')
 }
 
 function bundledLauncherPath(): string | null {
@@ -94,13 +92,13 @@ function bundledLauncherPath(): string | null {
     return null
   }
   if (process.platform === 'darwin') {
-    return join(process.resourcesPath, 'bin', 'nightshift')
+    return join(process.resourcesPath, 'bin', 'kolux')
   }
   if (process.platform === 'linux') {
-    return join(process.resourcesPath, 'bin', 'nightshift-ide')
+    return join(process.resourcesPath, 'bin', 'kolux-ide')
   }
   if (process.platform === 'win32') {
-    return join(process.resourcesPath, 'bin', 'nightshift.exe')
+    return join(process.resourcesPath, 'bin', 'kolux.exe')
   }
   return null
 }
@@ -132,21 +130,21 @@ function isExecutableFile(candidate: string): boolean {
 }
 
 // Why: an unqualified command name is resolved against the invoking pane's cwd (always on cmd.exe, and via `.`/empty
-// PATH entries on POSIX), so a stray `nightshift` next to the agent's files would run with the team token. Demand a
+// PATH entries on POSIX), so a stray `kolux` next to the agent's files would run with the team token. Demand a
 // fully-qualified binary instead of guessing one.
 function unixShimScript(): string {
   return [
     '#!/usr/bin/env sh',
     'set -eu',
-    'nightshift_bin=${NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN:-}',
-    'case $nightshift_bin in',
+    'kolux_bin=${KOLUX_AGENT_TEAMS_SHIM_BIN:-}',
+    'case $kolux_bin in',
     '  /*|[A-Za-z]:[\\\\/]*) ;;',
     '  *)',
-    '    echo "nightshift agent-teams tmux shim: NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN must be an absolute path" >&2',
+    '    echo "kolux agent-teams tmux shim: KOLUX_AGENT_TEAMS_SHIM_BIN must be an absolute path" >&2',
     '    exit 127',
     '    ;;',
     'esac',
-    'exec "$nightshift_bin" agent-teams-tmux "$@"',
+    'exec "$kolux_bin" agent-teams-tmux "$@"',
     ''
   ].join('\n')
 }
@@ -155,17 +153,17 @@ export function windowsClaudeAgentTeamsShimScript(): string {
   return [
     '@echo off',
     'setlocal',
-    'set "NIGHTSHIFT_SHIM_BIN=%NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN%"',
-    'if not defined NIGHTSHIFT_SHIM_BIN goto :unqualified',
-    'if "%NIGHTSHIFT_SHIM_BIN:~1,1%"==":" goto :run',
-    'if "%NIGHTSHIFT_SHIM_BIN:~0,2%"=="\\\\" goto :run',
+    'set "KOLUX_SHIM_BIN=%KOLUX_AGENT_TEAMS_SHIM_BIN%"',
+    'if not defined KOLUX_SHIM_BIN goto :unqualified',
+    'if "%KOLUX_SHIM_BIN:~1,1%"==":" goto :run',
+    'if "%KOLUX_SHIM_BIN:~0,2%"=="\\\\" goto :run',
     'goto :unqualified',
     ':run',
     // Why: no `call` — its extra percent-expansion pass would rewrite tmux pane args such as `%2` into batch parameters.
-    '"%NIGHTSHIFT_SHIM_BIN%" agent-teams-tmux %*',
+    '"%KOLUX_SHIM_BIN%" agent-teams-tmux %*',
     'exit /b %ERRORLEVEL%',
     ':unqualified',
-    'echo nightshift agent-teams tmux shim: NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN must be an absolute path 1>&2',
+    'echo kolux agent-teams tmux shim: KOLUX_AGENT_TEAMS_SHIM_BIN must be an absolute path 1>&2',
     'exit /b 127',
     ''
   ].join('\r\n')

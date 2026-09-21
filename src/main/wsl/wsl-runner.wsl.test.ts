@@ -10,13 +10,13 @@ import { resolveWslExecutablePath } from './wsl-executable-path'
  *
  * Gated behind an env var and win32 because it mutates the distro's `~/.profile`
  * to reproduce #14288. Run with:
- *   NIGHTSHIFT_REAL_WSL_RUNNER_TEST=1 pnpm vitest run src/main/wsl/wsl-runner.wsl.test.ts
+ *   KOLUX_REAL_WSL_RUNNER_TEST=1 pnpm vitest run src/main/wsl/wsl-runner.wsl.test.ts
  */
-const DISTRO = process.env.NIGHTSHIFT_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
-const enabled = process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WSL_RUNNER_TEST === '1'
+const DISTRO = process.env.KOLUX_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
+const enabled = process.platform === 'win32' && process.env.KOLUX_REAL_WSL_RUNNER_TEST === '1'
 const describeOnWsl = enabled ? describe : describe.skip
 
-const PROFILE = '/tmp/nightshift-wsl-runner-profile.bak'
+const PROFILE = '/tmp/kolux-wsl-runner-profile.bak'
 
 async function guest(script: string): Promise<string> {
   const result = await runProcess({
@@ -52,11 +52,11 @@ describeOnWsl('runWslProcess against a real distro', () => {
       loginPath: 'preferred',
       distro: DISTRO,
       program: '/bin/echo',
-      args: ['nightshift-probe-ok'],
+      args: ['kolux-probe-ok'],
       timeoutMs: 15_000
     })
     const elapsed = Date.now() - started
-    expect(result.stdout.trim()).toContain('nightshift-probe-ok')
+    expect(result.stdout.trim()).toContain('kolux-probe-ok')
     expect(elapsed).toBeLessThan(20_000)
   }, 60_000)
 
@@ -78,10 +78,10 @@ describeOnWsl('runWslProcess against a real distro', () => {
       loginPath: 'preferred',
       distro: DISTRO,
       program: '/bin/echo',
-      args: ['NIGHTSHIFT_PAYLOAD'],
+      args: ['KOLUX_PAYLOAD'],
       timeoutMs: 60_000
     })
-    expect(result.stdout.trim()).toBe('NIGHTSHIFT_PAYLOAD')
+    expect(result.stdout.trim()).toBe('KOLUX_PAYLOAD')
   }, 90_000)
 
   it('a script with quotes and $ arrives byte-identical', async () => {
@@ -96,7 +96,7 @@ describeOnWsl('runWslProcess against a real distro', () => {
       loginPath: 'preferred',
       distro: DISTRO,
       script,
-      args: ['NIGHTSHIFT_ARG'],
+      args: ['KOLUX_ARG'],
       timeoutMs: 30_000
     })
     expect(
@@ -104,15 +104,15 @@ describeOnWsl('runWslProcess against a real distro', () => {
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean)
-    ).toEqual(['NIGHTSHIFT_ARG', "it's fine", 'x'])
+    ).toEqual(['KOLUX_ARG', "it's fine", 'x'])
   }, 60_000)
 
   it('propagated env crosses the boundary via WSLENV', async () => {
     const result = await runWslProcess({
       loginPath: 'preferred',
       distro: DISTRO,
-      script: 'printf %s "$NIGHTSHIFT_WSLENV_PROBE"',
-      env: { NIGHTSHIFT_WSLENV_PROBE: 'crossed' },
+      script: 'printf %s "$KOLUX_WSLENV_PROBE"',
+      env: { KOLUX_WSLENV_PROBE: 'crossed' },
       timeoutMs: 30_000
     })
     expect(result.stdout.trim()).toBe('crossed')

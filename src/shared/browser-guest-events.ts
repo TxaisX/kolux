@@ -10,8 +10,8 @@ export type BrowserPopupEvent = {
   browserPageId: string
   /** Sanitized to origin/host so auth query params never leak into UI state. */
   origin: string
-  /** Whether Nightshift opened the target in Nightshift, opened it externally, or blocked it as unsafe. */
-  action: 'opened-in-nightshift' | 'opened-external' | 'blocked'
+  /** Whether Kolux opened the target in Kolux, opened it externally, or blocked it as unsafe. */
+  action: 'opened-in-kolux' | 'opened-external' | 'blocked'
 }
 
 export type BrowserDownloadRequestedEvent = {

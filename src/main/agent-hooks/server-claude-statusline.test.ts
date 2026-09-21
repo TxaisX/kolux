@@ -18,11 +18,11 @@ describe('AgentHookServer /statusline/claude', () => {
 
   function post(body: string, token?: string): Promise<Response> {
     const env = server.buildPtyEnv()
-    return fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/statusline/claude`, {
+    return fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/statusline/claude`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'X-Nightshift-Agent-Hook-Token': token ?? env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+        'X-Kolux-Agent-Hook-Token': token ?? env.KOLUX_AGENT_HOOK_TOKEN
       },
       body
     })

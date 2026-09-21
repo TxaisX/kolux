@@ -5,15 +5,15 @@ import { getCliLaunchArgs, maybeRedirectCliLaunch } from './cli-launch-redirect'
 const COMMAND_NAMES = ['project', 'serve', 'status', 'skills', 'worktree']
 
 const linux = {
-  resourcesPath: '/opt/Nightshift/resources',
-  execPath: '/opt/Nightshift/nightshift-ide',
+  resourcesPath: '/opt/Kolux/resources',
+  execPath: '/opt/Kolux/kolux-ide',
   get cliEntryPath(): string {
     return posix.join(this.resourcesPath, 'app.asar.unpacked', 'out', 'cli', 'index.js')
   }
 }
 const windows = {
-  resourcesPath: 'C:\\Users\\me\\AppData\\Local\\Programs\\Nightshift\\resources',
-  execPath: 'C:\\Users\\me\\AppData\\Local\\Programs\\Nightshift\\Nightshift.exe',
+  resourcesPath: 'C:\\Users\\me\\AppData\\Local\\Programs\\Kolux\\resources',
+  execPath: 'C:\\Users\\me\\AppData\\Local\\Programs\\Kolux\\Kolux.exe',
   get cliEntryPath(): string {
     return win32.join(this.resourcesPath, 'app.asar.unpacked', 'out', 'cli', 'index.js')
   }
@@ -112,12 +112,7 @@ describe('CLI launch redirect: command form', () => {
   it('redirects a direct binary launch with no AppImage env at all', () => {
     expect(
       getCliLaunchArgs(
-        [
-          '/home/u/.config/nightshift-runtime/versions/1.4.158/nightshift-ide',
-          'skills',
-          'get',
-          '--full'
-        ],
+        ['/home/u/.config/kolux-runtime/versions/1.4.158/kolux-ide', 'skills', 'get', '--full'],
         linux.cliEntryPath,
         linuxOptions
       )
@@ -293,9 +288,9 @@ describe('CLI launch redirect: spawning', () => {
         timeoutMs: null,
         env: expect.objectContaining({
           ELECTRON_RUN_AS_NODE: '1',
-          NIGHTSHIFT_CLI_LAUNCH_REDIRECTED: '1',
-          NIGHTSHIFT_NODE_OPTIONS: '--inspect',
-          NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE: 'external-loader'
+          KOLUX_CLI_LAUNCH_REDIRECTED: '1',
+          KOLUX_NODE_OPTIONS: '--inspect',
+          KOLUX_NODE_REPL_EXTERNAL_MODULE: 'external-loader'
         })
       })
     )
@@ -309,7 +304,7 @@ describe('CLI launch redirect: spawning', () => {
 
     const result = maybeRedirectCliLaunch({
       argv: [linux.execPath, 'status'],
-      env: { NIGHTSHIFT_CLI_LAUNCH_REDIRECTED: '1' },
+      env: { KOLUX_CLI_LAUNCH_REDIRECTED: '1' },
       platform: 'linux',
       isPackaged: true,
       resourcesPath: linux.resourcesPath,

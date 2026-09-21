@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { ensureTerminalVisible, getActiveWorktreeId, waitForActiveWorktree } from './helpers/store'
 import { BROWSER_GUEST_RECOVERY_ERROR_CODE } from '../../src/renderer/src/components/browser-pane/host-guest/browser-page-guest-recovery'
 import {
@@ -25,7 +25,7 @@ async function createBrowserFixture(
   page: Page,
   registerCleanup: (cleanup: () => Promise<void>) => void
 ): Promise<BrowserFixture> {
-  const fixtureDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-browser-recovery-'))
+  const fixtureDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-browser-recovery-'))
   registerCleanup(async () => {
     rmSync(fixtureDir, { recursive: true, force: true })
   })
@@ -82,28 +82,28 @@ async function readBrowserPageRecoveryState(
 
 test('browser chrome recovers a live registered file guest after renderer loss', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl, worktreeId } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
 
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({
       chromePresent: true,
       marker: 'painted-file-guest',
       url: fixtureUrl
     })
-  const before = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const before = await readBrowserGuestState(koluxPage, browserTab.id)
   expect(before.webContentsId).not.toBeNull()
   const beforeProcessId = await readGuestProcessId(electronApp, before.webContentsId!)
   await expect
     .poll(
       async () =>
-        (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.find(
+        (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.find(
           (tab) => tab.browserPageId === browserTab.activePageId
         ),
       { timeout: 10_000 }
@@ -114,25 +114,25 @@ test('browser chrome recovers a live registered file guest after renderer loss',
   expect(['crashed', 'killed']).toContain(crashDetails.reason)
 
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({
       chromePresent: true,
       marker: 'painted-file-guest',
       url: fixtureUrl
     })
-  const recovered = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const recovered = await readBrowserGuestState(koluxPage, browserTab.id)
   expect(recovered.webContentsId).toBe(before.webContentsId)
   await expect
     .poll(() => readGuestProcessId(electronApp, recovered.webContentsId!), { timeout: 10_000 })
     .not.toBe(beforeProcessId)
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId), { timeout: 10_000 })
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId), { timeout: 10_000 })
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: fixtureUrl }] }
     })
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     async ({ targetBrowserTabId, targetValue }) => {
       const overlay = document.querySelector(
         `[data-browser-overlay-tab-id="${targetBrowserTabId}"]`
@@ -144,13 +144,13 @@ test('browser chrome recovers a live registered file guest after renderer loss',
     },
     { targetBrowserTabId: browserTab.id, targetValue: 'unsaved-form-state' }
   )
-  await nightshiftPage.evaluate((browserPageId) => {
+  await koluxPage.evaluate((browserPageId) => {
     return window.api.browser.unregisterGuest({ browserPageId })
   }, browserTab.activePageId)
   await expect
     .poll(
       async () =>
-        (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.some(
+        (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.some(
           (tab) => tab.browserPageId === browserTab.activePageId
         ) ?? false
     )
@@ -160,19 +160,19 @@ test('browser chrome recovers a live registered file guest after renderer loss',
   })
   await expect
     .poll(async () =>
-      (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.find(
+      (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.find(
         (tab) => tab.browserPageId === browserTab.activePageId
       )
     )
     .toMatchObject({ browserPageId: browserTab.activePageId, url: fixtureUrl })
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({ chromePresent: true, marker: 'painted-file-guest', url: fixtureUrl })
-  const resumeRecovered = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const resumeRecovered = await readBrowserGuestState(koluxPage, browserTab.id)
   expect(resumeRecovered.webContentsId).toBe(recovered.webContentsId)
   expect(resumeRecovered.formValue).toBe('unsaved-form-state')
 
-  const backgroundTab = await nightshiftPage.evaluate(
+  const backgroundTab = await koluxPage.evaluate(
     ({ targetWorktreeId }) =>
       window.__store?.getState().createBrowserTab(targetWorktreeId, 'about:blank', {
         title: 'Background control',
@@ -182,22 +182,22 @@ test('browser chrome recovers a live registered file guest after renderer loss',
   )
   expect(backgroundTab?.id).toBeTruthy()
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, backgroundTab!.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, backgroundTab!.id), { timeout: 10_000 })
     .toMatchObject({ chromePresent: true })
 
   const beforeRendererReloadId = resumeRecovered.webContentsId
-  await nightshiftPage.reload()
-  await waitForActiveWorktree(nightshiftPage)
+  await koluxPage.reload()
+  await waitForActiveWorktree(koluxPage)
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({ chromePresent: true, marker: 'painted-file-guest', url: fixtureUrl })
-  const rendererReloaded = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const rendererReloaded = await readBrowserGuestState(koluxPage, browserTab.id)
   expect(rendererReloaded.webContentsId).not.toBe(beforeRendererReloadId)
 
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     window.__store?.getState().setActiveBrowserTab(targetBrowserTabId)
   }, backgroundTab!.id)
-  const hiddenBefore = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const hiddenBefore = await readBrowserGuestState(koluxPage, browserTab.id)
   const hiddenProcessId = await readGuestProcessId(electronApp, hiddenBefore.webContentsId!)
   await crashGuestRenderer(electronApp, hiddenBefore.webContentsId!)
   await expect
@@ -205,36 +205,36 @@ test('browser chrome recovers a live registered file guest after renderer loss',
       timeout: 10_000
     })
     .not.toBe(hiddenProcessId)
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     window.__store?.getState().setActiveBrowserTab(targetBrowserTabId)
   }, browserTab.id)
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({ chromePresent: true, marker: 'painted-file-guest', url: fixtureUrl })
 
   await verifyBrowserWorktreeRetentionAndRecovery({
     browserTab,
     electronApp,
     fixtureUrl,
-    page: nightshiftPage,
+    page: koluxPage,
     worktreeId
   })
 })
 
 test('dom-ready ID loss waits for validation without reloading the guest', async ({
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl, worktreeId } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-file-guest', url: fixtureUrl })
-  const before = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const before = await readBrowserGuestState(koluxPage, browserTab.id)
 
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     const overlay = document.querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"]`)
     const webview = overlay?.querySelector('webview') as Electron.WebviewTag
     const getWebContentsId = webview.getWebContentsId.bind(webview)
@@ -263,7 +263,7 @@ test('dom-ready ID loss waits for validation without reloading the guest', async
 
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         (targetBrowserTabId) =>
           document
             .querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"] webview`)
@@ -273,12 +273,12 @@ test('dom-ready ID loss waits for validation without reloading the guest', async
     )
     .toBe('true')
   await expect(
-    nightshiftPage.locator(
+    koluxPage.locator(
       `[data-browser-overlay-tab-id="${browserTab.id}"] webview[data-recovery-reload-attempted]`
     )
   ).toHaveCount(0)
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id), { timeout: 10_000 })
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id), { timeout: 10_000 })
     .toMatchObject({
       chromePresent: true,
       marker: 'painted-file-guest',
@@ -286,7 +286,7 @@ test('dom-ready ID loss waits for validation without reloading the guest', async
       webContentsId: before.webContentsId
     })
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId))
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId))
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: fixtureUrl }] }
@@ -295,22 +295,22 @@ test('dom-ready ID loss waits for validation without reloading the guest', async
 
 test('explicit navigation repairs a recovery error without dom-ready churn', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl, worktreeId } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-file-guest', url: fixtureUrl })
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     (browserPageId) => window.api.browser.unregisterGuest({ browserPageId }),
     browserTab.activePageId
   )
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     ({ browserPageId, validatedUrl, recoveryErrorCode }) => {
       window.__store?.getState().updateBrowserPageState(browserPageId, {
         loading: false,
@@ -328,9 +328,7 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
     }
   )
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toMatchObject({ loadErrorCode: BROWSER_GUEST_RECOVERY_ERROR_CODE })
 
   await electronApp.evaluate(({ ipcMain }) => {
@@ -344,20 +342,20 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
       return false
     })
   })
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     const overlay = document.querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"]`)
     overlay?.querySelector('webview')?.dispatchEvent(new Event('dom-ready'))
   }, browserTab.id)
   await expect
     .poll(async () =>
-      (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.some(
+      (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.some(
         (tab) => tab.browserPageId === browserTab.activePageId
       )
     )
     .toBe(false)
 
-  const addressBar = nightshiftPage.locator(
-    `[data-browser-overlay-tab-id="${browserTab.id}"] [data-nightshift-browser-address-bar="true"]`
+  const addressBar = koluxPage.locator(
+    `[data-browser-overlay-tab-id="${browserTab.id}"] [data-kolux-browser-address-bar="true"]`
   )
   let resolvePrecommitRequest: (() => void) | null = null
   const precommitRequest = new Promise<void>((resolve) => {
@@ -411,7 +409,7 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   await addressBar.fill(`${stalledOrigin}/precommit`)
   await addressBar.press('Enter')
   await precommitRequest
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     const overlay = document.querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"]`)
     const webview = overlay?.querySelector('webview')
     const inPageNavigation = Object.assign(new Event('did-navigate-in-page'), {
@@ -421,7 +419,7 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
     webview?.dispatchEvent(inPageNavigation)
     webview?.dispatchEvent(new Event('dom-ready'))
   }, browserTab.id)
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     () =>
       new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
@@ -437,15 +435,13 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   ).toBe(0)
   await expect
     .poll(async () =>
-      (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.some(
+      (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.some(
         (tab) => tab.browserPageId === browserTab.activePageId
       )
     )
     .toBe(false)
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toMatchObject({ loadErrorCode: BROWSER_GUEST_RECOVERY_ERROR_CODE })
 
   const committedStallUrl = `${stalledOrigin}/committed`
@@ -453,11 +449,9 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   await addressBar.press('Enter')
   await committedRequest
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toEqual({ loadErrorCode: BROWSER_GUEST_RECOVERY_ERROR_CODE, url: committedStallUrl })
-  await expect(nightshiftPage.getByText('Recovery fixture error', { exact: true })).toBeVisible()
+  await expect(koluxPage.getByText('Recovery fixture error', { exact: true })).toBeVisible()
   expect(
     await electronApp.evaluate(() => {
       const testState = globalThis as typeof globalThis & {
@@ -468,7 +462,7 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   ).toBe(0)
   await expect
     .poll(async () =>
-      (await listRegisteredBrowserPages(nightshiftPage, worktreeId)).result?.tabs?.some(
+      (await listRegisteredBrowserPages(koluxPage, worktreeId)).result?.tabs?.some(
         (tab) => tab.browserPageId === browserTab.activePageId
       )
     )
@@ -477,12 +471,10 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   await addressBar.press('Enter')
 
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toMatchObject({ loadErrorCode: null, url: fixtureUrl })
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId))
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId))
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: fixtureUrl }] }
@@ -496,11 +488,11 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
     })
   ).toBe(1)
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     (browserPageId) => window.api.browser.unregisterGuest({ browserPageId }),
     browserTab.activePageId
   )
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     ({ browserPageId, validatedUrl, recoveryErrorCode }) => {
       window.__store?.getState().updateBrowserPageState(browserPageId, {
         loading: false,
@@ -518,9 +510,7 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
     }
   )
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toMatchObject({ loadErrorCode: BROWSER_GUEST_RECOVERY_ERROR_CODE })
   await electronApp.evaluate(() => {
     const testState = globalThis as typeof globalThis & {
@@ -535,18 +525,16 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
   await redirectedRequest
 
   await expect
-    .poll(() =>
-      readBrowserPageRecoveryState(nightshiftPage, browserTab.id, browserTab.activePageId)
-    )
+    .poll(() => readBrowserPageRecoveryState(koluxPage, browserTab.id, browserTab.activePageId))
     .toMatchObject({ loadErrorCode: null, url: redirectedUrl })
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId))
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId))
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: redirectedUrl }] }
     })
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({
       chromePresent: true,
       marker: 'painted-redirected-guest',
@@ -564,18 +552,18 @@ test('explicit navigation repairs a recovery error without dom-ready churn', asy
 
 test('recovery error stays visible until toolbar retry repairs registration', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl, worktreeId } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-file-guest', url: fixtureUrl })
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     (browserPageId) => window.api.browser.unregisterGuest({ browserPageId }),
     browserTab.activePageId
   )
@@ -587,7 +575,7 @@ test('recovery error stays visible until toolbar retry repairs registration', as
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ workspaceId, browserPageId }) =>
             window.__store
               ?.getState()
@@ -602,7 +590,7 @@ test('recovery error stays visible until toolbar retry repairs registration', as
   await electronApp.evaluate(({ ipcMain }) => {
     ipcMain.handle('browser:isGuestRegistered', () => false)
   })
-  await nightshiftPage
+  await koluxPage
     .locator('[data-contextual-tour-target="browser-toolbar"]')
     .locator('button')
     .nth(2)
@@ -611,7 +599,7 @@ test('recovery error stays visible until toolbar retry repairs registration', as
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ workspaceId, browserPageId }) =>
             window.__store
               ?.getState()
@@ -623,10 +611,10 @@ test('recovery error stays visible until toolbar retry repairs registration', as
     )
     .toBeNull()
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ chromePresent: true, marker: 'painted-file-guest', url: fixtureUrl })
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId))
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId))
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: fixtureUrl }] }
@@ -634,18 +622,18 @@ test('recovery error stays visible until toolbar retry repairs registration', as
 })
 
 test('attachment keeps recovery error until document readiness', async ({
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-file-guest', url: fixtureUrl })
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     ({ workspaceId, browserPageId, validatedUrl, recoveryErrorCode }) => {
       window.__store?.getState().updateBrowserPageState(browserPageId, {
         loading: false,
@@ -669,12 +657,12 @@ test('attachment keeps recovery error until document readiness', async ({
       recoveryErrorCode: BROWSER_GUEST_RECOVERY_ERROR_CODE
     }
   )
-  await nightshiftPage
+  await koluxPage
     .locator('[data-contextual-tour-target="browser-toolbar"]')
     .locator('button')
     .nth(2)
     .click()
-  const recoveryErrorCode = await nightshiftPage.evaluate(
+  const recoveryErrorCode = await koluxPage.evaluate(
     ({ workspaceId, browserPageId }) =>
       new Promise<number | null>((resolve) => {
         requestAnimationFrame(() => {
@@ -724,34 +712,34 @@ async function revealHeadedWindow(electronApp: ElectronApplication, page: Page):
 
 test('minimized browser guest stays painted and registered after restore @headful', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }, testInfo) => {
   const { browserTab, fixtureUrl, worktreeId } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-file-guest', url: fixtureUrl })
-  const before = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const before = await readBrowserGuestState(koluxPage, browserTab.id)
 
-  await occludeHeadedWindow(electronApp, nightshiftPage)
-  await revealHeadedWindow(electronApp, nightshiftPage)
+  await occludeHeadedWindow(electronApp, koluxPage)
+  await revealHeadedWindow(electronApp, koluxPage)
 
   await expect
-    .poll(() => readBrowserGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readBrowserGuestState(koluxPage, browserTab.id))
     .toMatchObject({ chromePresent: true, marker: 'painted-file-guest', url: fixtureUrl })
-  const restored = await readBrowserGuestState(nightshiftPage, browserTab.id)
+  const restored = await readBrowserGuestState(koluxPage, browserTab.id)
   expect(restored.webContentsId).toBe(before.webContentsId)
   await expect
-    .poll(() => listRegisteredBrowserPages(nightshiftPage, worktreeId))
+    .poll(() => listRegisteredBrowserPages(koluxPage, worktreeId))
     .toMatchObject({
       ok: true,
       result: { tabs: [{ browserPageId: browserTab.activePageId, url: fixtureUrl }] }
     })
   const screenshotPath = testInfo.outputPath('browser-minimize-restore.png')
-  await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+  await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
   await testInfo.attach('browser-minimize-restore', {
     path: screenshotPath,
     contentType: 'image/png'

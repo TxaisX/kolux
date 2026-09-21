@@ -54,7 +54,7 @@ export function structuredSessionRecoveryIsResolvable(record: AgentSessionRecord
   return runtimeKind === 'native' || ownerProcess === null
 }
 
-/** Stopping a matched owner is only Nightshift's call when Nightshift owned its transport. A conflicted claim
+/** Stopping a matched owner is only Kolux's call when Kolux owned its transport. A conflicted claim
  *  means ownership was never settled, and a TUI child is the user's foreground agent. */
 function recoveryMayStopOwner(record: AgentSessionRecord): boolean {
   return record.lease.runtimeKind === 'native' && record.lease.claimStatus !== 'conflicted'

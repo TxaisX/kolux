@@ -5,8 +5,8 @@ import { app as electronApp, type BrowserWindow } from 'electron'
  * validation). These runs may use the machine, but must never take the OS
  * foreground away from whatever the developer is doing.
  *
- * NIGHTSHIFT_BACKGROUND_LAUNCH=1 keeps automation off screen. Native-focus specs
- * can use NIGHTSHIFT_E2E_FOREGROUND=1 only without an explicit background request.
+ * KOLUX_BACKGROUND_LAUNCH=1 keeps automation off screen. Native-focus specs
+ * can use KOLUX_E2E_FOREGROUND=1 only without an explicit background request.
  */
 
 type ActivationPolicyApp = {
@@ -14,27 +14,25 @@ type ActivationPolicyApp = {
   setActivationPolicy: (policy: 'accessory' | 'prohibited' | 'regular') => void
 }
 
-/** Reads NIGHTSHIFT_BACKGROUND_LAUNCH, NIGHTSHIFT_E2E_FOREGROUND, NIGHTSHIFT_E2E_HEADLESS, NIGHTSHIFT_E2E_HEADFUL. */
+/** Reads KOLUX_BACKGROUND_LAUNCH, KOLUX_E2E_FOREGROUND, KOLUX_E2E_HEADLESS, KOLUX_E2E_HEADFUL. */
 type PolicyEnv = Readonly<Record<string, string | undefined>>
 
 /** True when this process must not steal focus, raise windows, or activate the app. */
 export function isBackgroundLaunch(env: PolicyEnv = process.env): boolean {
-  if (env.NIGHTSHIFT_BACKGROUND_LAUNCH === '1') {
+  if (env.KOLUX_BACKGROUND_LAUNCH === '1') {
     return true
   }
-  if (env.NIGHTSHIFT_E2E_FOREGROUND === '1') {
+  if (env.KOLUX_E2E_FOREGROUND === '1') {
     return false
   }
-  return env.NIGHTSHIFT_E2E_HEADLESS === '1' || env.NIGHTSHIFT_E2E_HEADFUL === '1'
+  return env.KOLUX_E2E_HEADLESS === '1' || env.KOLUX_E2E_HEADFUL === '1'
 }
 
 /** True when no window should reach the screen at all (background or headless E2E; Playwright drives via CDP). */
 export function isWindowlessLaunch(env: PolicyEnv = process.env): boolean {
   return (
-    env.NIGHTSHIFT_BACKGROUND_LAUNCH === '1' ||
-    (isBackgroundLaunch(env) &&
-      env.NIGHTSHIFT_E2E_HEADLESS === '1' &&
-      env.NIGHTSHIFT_E2E_HEADFUL !== '1')
+    env.KOLUX_BACKGROUND_LAUNCH === '1' ||
+    (isBackgroundLaunch(env) && env.KOLUX_E2E_HEADLESS === '1' && env.KOLUX_E2E_HEADFUL !== '1')
   )
 }
 

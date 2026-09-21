@@ -34,7 +34,7 @@ describe('repos:previewPublish', () => {
     handleMock.mockImplementation((channel: string, handler: (...a: unknown[]) => unknown) => {
       handlers.set(channel, handler as (event: unknown, args: unknown) => unknown)
     })
-    root = await mkdtemp(join(tmpdir(), 'nightshift-preview-publish-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-preview-publish-'))
     git(['init', '-q'], root)
     git(['config', 'user.email', 'test@example.com'], root)
     git(['config', 'user.name', 'Test'], root)

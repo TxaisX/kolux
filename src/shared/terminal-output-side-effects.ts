@@ -1,6 +1,6 @@
 /**
  * Shared per-PTY terminal title side-effect tracking — the parser core behind both the renderer
- * transport (`createPtyOutputProcessor`) and main's per-PTY tracker (`NightshiftRuntimeService.onPtyData`).
+ * transport (`createPtyOutputProcessor`) and main's per-PTY tracker (`KoluxRuntimeService.onPtyData`).
  * Title semantics must not drift between the two paths.
  */
 
@@ -165,7 +165,7 @@ export function createTerminalTitleTracker(
   }
 
   function applyObservedTitle(rawTitle: string): void {
-    // Why: cursor-agent re-emits its bare native title mid-turn; passing it through would stomp Nightshift's synthesized spinner state.
+    // Why: cursor-agent re-emits its bare native title mid-turn; passing it through would stomp Kolux's synthesized spinner state.
     if (isCursorNativeAgentTitle(rawTitle)) {
       if (shouldSuppressCursorNativeTitle(lastEmittedTitle)) {
         return

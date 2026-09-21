@@ -20,7 +20,7 @@
 
 import { rm } from 'node:fs/promises'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   waitForSessionReady,
   waitForActiveWorktree,
@@ -84,13 +84,13 @@ async function getFocusedTerminalTabId(page: Page): Promise<string | null> {
 }
 
 test.describe('Tabs', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForStartupWorktreeRefresh(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const initialTabId = (await getActiveTabId(nightshiftPage))!
-    await expect(tabLocator(nightshiftPage, initialTabId)).toBeVisible()
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForStartupWorktreeRefresh(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const initialTabId = (await getActiveTabId(koluxPage))!
+    await expect(tabLocator(koluxPage, initialTabId)).toBeVisible()
   })
 
   /**
@@ -102,43 +102,37 @@ test.describe('Tabs', () => {
    * a tab-bar render regression. Clicking the real "+" button and then "New
    * Terminal" drives the same code path a user takes.
    */
-  test('clicking "+" then "New Terminal" creates a new terminal tab', async ({
-    nightshiftPage
-  }) => {
-    const tabsBefore = await countRenderedTabs(nightshiftPage)
+  test('clicking "+" then "New Terminal" creates a new terminal tab', async ({ koluxPage }) => {
+    const tabsBefore = await countRenderedTabs(koluxPage)
 
     // Why: hidden-window Electron can keep the animated terminal surface
     // invalidating Playwright's "stable" actionability check even though the
     // tab-bar button is visible and enabled.
-    await nightshiftPage.getByRole('button', { name: 'New tab' }).click({ force: true })
+    await koluxPage.getByRole('button', { name: 'New tab' }).click({ force: true })
     // Why: the "+" dropdown uses Radix <DropdownMenuItem>, which exposes the
     // label text as the accessible name once the menu is open.
-    const newTerminalMenuItem = nightshiftPage
-      .getByRole('menuitem', { name: /New Terminal/i })
-      .first()
+    const newTerminalMenuItem = koluxPage.getByRole('menuitem', { name: /New Terminal/i }).first()
     await newTerminalMenuItem.click()
     await expect(newTerminalMenuItem).toBeHidden({ timeout: 3_000 })
 
     // Final assertion is on the rendered tab count — the tab bar itself must
     // gain an element, not just the store.
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), {
+      .poll(() => countRenderedTabs(koluxPage), {
         timeout: 5_000,
         message: 'Clicking + → New Terminal did not render a new tab in the tab bar'
       })
       .toBeGreaterThan(tabsBefore)
 
-    const activeType = await getActiveTabType(nightshiftPage)
+    const activeType = await getActiveTabType(koluxPage)
     expect(activeType).toBe('terminal')
 
-    const storeActiveId = await getActiveTabId(nightshiftPage)
+    const storeActiveId = await getActiveTabId(koluxPage)
     expect(storeActiveId).not.toBeNull()
-    await expect(tabLocator(nightshiftPage, storeActiveId!)).toBeVisible()
+    await expect(tabLocator(koluxPage, storeActiveId!)).toBeVisible()
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(storeActiveId)
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 })
-      .toBe(storeActiveId)
-    await expect
-      .poll(() => getFocusedTerminalTabId(nightshiftPage), {
+      .poll(() => getFocusedTerminalTabId(koluxPage), {
         timeout: 5_000,
         message: 'Menu-created terminal tab did not receive keyboard focus'
       })
@@ -146,7 +140,7 @@ test.describe('Tabs', () => {
   })
 
   test('clicking "+" then "New Markdown" focuses the editor', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }) => {
     let createdFilePath: string | null = null
@@ -156,20 +150,18 @@ test.describe('Tabs', () => {
       }
     })
 
-    const preExistingFileIds = await nightshiftPage.evaluate(
+    const preExistingFileIds = await koluxPage.evaluate(
       () => window.__store?.getState().openFiles.map((file) => file.id) ?? []
     )
 
-    await nightshiftPage.getByRole('button', { name: 'New tab' }).click({ force: true })
-    const newMarkdownMenuItem = nightshiftPage
-      .getByRole('menuitem', { name: /New Markdown/i })
-      .first()
+    await koluxPage.getByRole('button', { name: 'New tab' }).click({ force: true })
+    const newMarkdownMenuItem = koluxPage.getByRole('menuitem', { name: /New Markdown/i }).first()
     await newMarkdownMenuItem.click()
 
     // Why: require an id that did not exist before the click, so an already-open
     // Markdown file can't satisfy the assertions (or be deleted by cleanup), and
     // record the path here so cleanup still has it if a later assertion fails.
-    const createdFileHandle = await nightshiftPage.waitForFunction(
+    const createdFileHandle = await koluxPage.waitForFunction(
       (knownFileIds) => {
         const state = window.__store?.getState()
         const file = state?.openFiles.find((candidate) => candidate.id === state.activeFileId)
@@ -184,7 +176,7 @@ test.describe('Tabs', () => {
     const createdFile = (await createdFileHandle.jsonValue())!
     createdFilePath = createdFile.filePath
 
-    const editor = nightshiftPage.locator('.rich-markdown-editor')
+    const editor = koluxPage.locator('.rich-markdown-editor')
     await expect(editor).toBeVisible({ timeout: 25_000 })
     await expect(newMarkdownMenuItem).toBeHidden({ timeout: 3_000 })
 
@@ -197,10 +189,10 @@ test.describe('Tabs', () => {
 
     const sentinel = `autofocus-${Date.now()}`
     // Why: typing through the page keyboard proves focus landed without an editor click.
-    await nightshiftPage.keyboard.type(sentinel)
+    await koluxPage.keyboard.type(sentinel)
     await expect(editor).toContainText(sentinel)
 
-    await nightshiftPage.evaluate((fileId) => {
+    await koluxPage.evaluate((fileId) => {
       window.__store?.getState().closeFile(fileId)
     }, createdFile.id)
     await expect(editor).toBeHidden()
@@ -210,20 +202,20 @@ test.describe('Tabs', () => {
    * User Prompt:
    * - New tab works
    */
-  test('Cmd/Ctrl+T creates a new terminal tab', async ({ nightshiftPage }) => {
+  test('Cmd/Ctrl+T creates a new terminal tab', async ({ koluxPage }) => {
     const isMac = process.platform === 'darwin'
     const mod = isMac ? 'Meta' : 'Control'
-    const tabsBefore = await countRenderedTabs(nightshiftPage)
+    const tabsBefore = await countRenderedTabs(koluxPage)
 
     // Why: focus body first so the window-level keydown handler on Terminal.tsx
     // actually sees the event. Without focus the key may be eaten by an
     // unrelated input (e.g. a stale search field from a previous test).
-    await nightshiftPage.evaluate(() => document.body.focus())
-    await nightshiftPage.keyboard.press(`${mod}+t`)
+    await koluxPage.evaluate(() => document.body.focus())
+    await koluxPage.keyboard.press(`${mod}+t`)
 
     // DOM-level count increased — confirms a new tab actually rendered.
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), {
+      .poll(() => countRenderedTabs(koluxPage), {
         timeout: 5_000,
         message: `${mod}+T did not add a tab to the tab bar`
       })
@@ -233,17 +225,15 @@ test.describe('Tabs', () => {
     // the active surface behind the strip; we rely on the store flag here only
     // to disambiguate terminal vs. editor vs. browser — the fact that *some*
     // tab is active is already proved by the DOM assertion below).
-    const activeType = await getActiveTabType(nightshiftPage)
+    const activeType = await getActiveTabType(koluxPage)
     expect(activeType).toBe('terminal')
 
     // The DOM must have exactly one active tab and it must match the store's
     // activeTabId — this is the load-bearing check that the render layer and
     // the state layer agree on what is selected.
-    const storeActiveId = await getActiveTabId(nightshiftPage)
+    const storeActiveId = await getActiveTabId(koluxPage)
     expect(storeActiveId).not.toBeNull()
-    await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 })
-      .toBe(storeActiveId)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(storeActiveId)
   })
 
   /**
@@ -256,39 +246,39 @@ test.describe('Tabs', () => {
    * checks DOM `data-active` to prove the selection actually paints onto the
    * right tab element.
    */
-  test('Cmd/Ctrl+Shift+] and Cmd/Ctrl+Shift+[ switch between tabs', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('Cmd/Ctrl+Shift+] and Cmd/Ctrl+Shift+[ switch between tabs', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Ensure we have at least 2 tabs — use the real "+" flow so a render
     // regression would fail setup before we even start the cycle check.
-    if ((await countRenderedTabs(nightshiftPage)) < 2) {
-      await nightshiftPage.getByRole('button', { name: 'New tab' }).click()
-      await nightshiftPage
+    if ((await countRenderedTabs(koluxPage)) < 2) {
+      await koluxPage.getByRole('button', { name: 'New tab' }).click()
+      await koluxPage
         .getByRole('menuitem', { name: /New Terminal/i })
         .first()
         .click()
       await expect
-        .poll(() => countRenderedTabs(nightshiftPage), { timeout: 5_000 })
+        .poll(() => countRenderedTabs(koluxPage), { timeout: 5_000 })
         .toBeGreaterThanOrEqual(2)
     }
 
-    const firstTabId = await getActiveTabId(nightshiftPage)
-    const orderedTabs = await getWorktreeTabs(nightshiftPage, worktreeId)
+    const firstTabId = await getActiveTabId(koluxPage)
+    const orderedTabs = await getWorktreeTabs(koluxPage, worktreeId)
     const secondTabId = orderedTabs.find((tab) => tab.id !== firstTabId)?.id
     expect(secondTabId).toBeTruthy()
 
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       window.__store?.getState().setActiveTab(tabId)
     }, secondTabId)
 
     // DOM assertion — the second tab must actually show the active indicator.
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(secondTabId)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(secondTabId)
 
     // Switch back.
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       window.__store?.getState().setActiveTab(tabId)
     }, firstTabId)
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(firstTabId)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(firstTabId)
   })
 
   /**
@@ -304,26 +294,26 @@ test.describe('Tabs', () => {
    * a real test: a pure store round-trip would not catch a regression where
    * the tab strip stopped re-rendering in the store's new order.
    */
-  test('dragging a tab to a new position reorders it', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('dragging a tab to a new position reorders it', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    if ((await countRenderedTabs(nightshiftPage)) < 2) {
-      await nightshiftPage.getByRole('button', { name: 'New tab' }).click()
-      await nightshiftPage
+    if ((await countRenderedTabs(koluxPage)) < 2) {
+      await koluxPage.getByRole('button', { name: 'New tab' }).click()
+      await koluxPage
         .getByRole('menuitem', { name: /New Terminal/i })
         .first()
         .click()
       await expect
-        .poll(() => countRenderedTabs(nightshiftPage), { timeout: 5_000 })
+        .poll(() => countRenderedTabs(koluxPage), { timeout: 5_000 })
         .toBeGreaterThanOrEqual(2)
     }
 
-    const domOrderBefore = await nightshiftPage.$$eval(SORTABLE_TAB, (nodes) =>
+    const domOrderBefore = await koluxPage.$$eval(SORTABLE_TAB, (nodes) =>
       nodes.map((n) => (n as HTMLElement).dataset.tabId ?? '')
     )
     expect(domOrderBefore.length).toBeGreaterThanOrEqual(2)
 
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -361,7 +351,7 @@ test.describe('Tabs', () => {
     await expect
       .poll(
         async () =>
-          nightshiftPage.$$eval(SORTABLE_TAB, (nodes) =>
+          koluxPage.$$eval(SORTABLE_TAB, (nodes) =>
             nodes.map((n) => (n as HTMLElement).dataset.tabId ?? '')
           ),
         { timeout: 3_000, message: 'Tab bar DOM order did not reflect the reorder' }
@@ -370,11 +360,11 @@ test.describe('Tabs', () => {
   })
 
   test('clicking tabs still switches after dragging a terminal tab to reorder', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -386,50 +376,50 @@ test.describe('Tabs', () => {
       }
     }, worktreeId)
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), { timeout: 5_000 })
+      .poll(() => countRenderedTabs(koluxPage), { timeout: 5_000 })
       .toBeGreaterThanOrEqual(2)
 
-    const domOrderBefore = await nightshiftPage.$$eval(SORTABLE_TAB, (nodes) =>
+    const domOrderBefore = await koluxPage.$$eval(SORTABLE_TAB, (nodes) =>
       nodes.map((n) => (n as HTMLElement).dataset.tabId ?? '')
     )
     const [firstTabId, secondTabId] = domOrderBefore
     expect(firstTabId).toBeTruthy()
     expect(secondTabId).toBeTruthy()
 
-    await tabLocator(nightshiftPage, firstTabId).click({ force: true })
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(firstTabId)
+    await tabLocator(koluxPage, firstTabId).click({ force: true })
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(firstTabId)
 
-    const firstTabBox = await tabLocator(nightshiftPage, firstTabId).boundingBox()
-    const secondTabBox = await tabLocator(nightshiftPage, secondTabId).boundingBox()
+    const firstTabBox = await tabLocator(koluxPage, firstTabId).boundingBox()
+    const secondTabBox = await tabLocator(koluxPage, secondTabId).boundingBox()
     expect(firstTabBox).not.toBeNull()
     expect(secondTabBox).not.toBeNull()
     const startX = firstTabBox!.x + firstTabBox!.width / 2
     const startY = firstTabBox!.y + firstTabBox!.height / 2
     const endX = secondTabBox!.x + secondTabBox!.width * 0.75
     const endY = secondTabBox!.y + secondTabBox!.height / 2
-    await nightshiftPage.mouse.move(startX, startY)
-    await nightshiftPage.mouse.down()
+    await koluxPage.mouse.move(startX, startY)
+    await koluxPage.mouse.down()
     // Why: this mirrors the release repro: drag a terminal tab across another
     // tab far enough for dnd-kit to commit a reorder, then release on the tab
     // strip before clicking tabs again.
-    await nightshiftPage.mouse.move(endX, endY, { steps: 8 })
-    await nightshiftPage.mouse.up()
+    await koluxPage.mouse.move(endX, endY, { steps: 8 })
+    await koluxPage.mouse.up()
 
     await expect
       .poll(
         async () =>
-          nightshiftPage.$$eval(SORTABLE_TAB, (nodes) =>
+          koluxPage.$$eval(SORTABLE_TAB, (nodes) =>
             nodes.map((n) => (n as HTMLElement).dataset.tabId ?? '')
           ),
         { timeout: 5_000, message: 'Terminal tab drag did not reorder the tab strip' }
       )
       .toEqual([secondTabId, firstTabId, ...domOrderBefore.slice(2)])
 
-    await tabLocator(nightshiftPage, firstTabId).click({ force: true })
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(firstTabId)
-    await tabLocator(nightshiftPage, secondTabId).click({ force: true })
+    await tabLocator(koluxPage, firstTabId).click({ force: true })
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(firstTabId)
+    await tabLocator(koluxPage, secondTabId).click({ force: true })
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'Tab click did not activate after a terminal tab reorder drag'
       })
@@ -446,15 +436,15 @@ test.describe('Tabs', () => {
    * the load-bearing check — it fails if the shortcut walks the right store
    * id but the tab bar stops painting the active indicator on that tab.
    */
-  test('Cmd/Ctrl+Shift+[ walks tabs in drag-reordered order', async ({ nightshiftPage }) => {
+  test('Cmd/Ctrl+Shift+[ walks tabs in drag-reordered order', async ({ koluxPage }) => {
     const isMac = process.platform === 'darwin'
     const mod = isMac ? 'Meta' : 'Control'
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Ensure at least 3 terminal tabs so the order cycle is non-trivial.
     // Why store-driven: we only need >=3 tabs to exist; the "+" flow is
     // already exercised by other tests in this file.
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -466,18 +456,18 @@ test.describe('Tabs', () => {
       }
     }, worktreeId)
     await expect
-      .poll(async () => (await getWorktreeTabs(nightshiftPage, worktreeId)).length, {
+      .poll(async () => (await getWorktreeTabs(koluxPage, worktreeId)).length, {
         timeout: 5_000
       })
       .toBeGreaterThanOrEqual(3)
 
-    const initialOrder = await getTabBarOrder(nightshiftPage, worktreeId)
+    const initialOrder = await getTabBarOrder(koluxPage, worktreeId)
     expect(initialOrder.length).toBeGreaterThanOrEqual(3)
     const [a, b, c] = initialOrder
 
     // Reorder via the same store call drag/drop uses: move the first tab to
     // the end so the visible order becomes [b, c, a].
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -495,25 +485,25 @@ test.describe('Tabs', () => {
       state.reorderUnifiedTabs(activeGroup.id, [...rest, first])
     }, worktreeId)
     await expect
-      .poll(async () => getTabBarOrder(nightshiftPage, worktreeId), {
+      .poll(async () => getTabBarOrder(koluxPage, worktreeId), {
         timeout: 3_000
       })
       .toEqual([b, c, a])
 
     // Activate the last tab in the new visible order, then walk left twice.
     // Expected cycle: a → c → b (i.e. walks the *new* order in reverse).
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       window.__store?.getState().setActiveTab(tabId)
     }, a)
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(a)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(a)
 
-    await nightshiftPage.keyboard.press(`${mod}+Shift+BracketLeft`)
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(c)
-    await expect(tabLocator(nightshiftPage, c)).toHaveAttribute('data-active', 'true')
+    await koluxPage.keyboard.press(`${mod}+Shift+BracketLeft`)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(c)
+    await expect(tabLocator(koluxPage, c)).toHaveAttribute('data-active', 'true')
 
-    await nightshiftPage.keyboard.press(`${mod}+Shift+BracketLeft`)
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 3_000 }).toBe(b)
-    await expect(tabLocator(nightshiftPage, b)).toHaveAttribute('data-active', 'true')
+    await koluxPage.keyboard.press(`${mod}+Shift+BracketLeft`)
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 3_000 }).toBe(b)
+    await expect(tabLocator(koluxPage, b)).toHaveAttribute('data-active', 'true')
   })
 
   /**
@@ -526,11 +516,11 @@ test.describe('Tabs', () => {
    * so the test fails if the store cleared the tab but the DOM didn't
    * re-render.
    */
-  test('closing a tab removes it from the tab bar', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('closing a tab removes it from the tab bar', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Need a second tab so we can close one without deactivating the worktree.
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -541,16 +531,16 @@ test.describe('Tabs', () => {
       }
     }, worktreeId)
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), { timeout: 5_000 })
+      .poll(() => countRenderedTabs(koluxPage), { timeout: 5_000 })
       .toBeGreaterThanOrEqual(2)
 
-    const tabsBefore = await countRenderedTabs(nightshiftPage)
-    const activeId = await getActiveTabId(nightshiftPage)
+    const tabsBefore = await countRenderedTabs(koluxPage)
+    const activeId = await getActiveTabId(koluxPage)
     expect(activeId).not.toBeNull()
-    await closeTabFromTabBar(nightshiftPage, activeId!)
+    await closeTabFromTabBar(koluxPage, activeId!)
 
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), {
+      .poll(() => countRenderedTabs(koluxPage), {
         timeout: 5_000,
         message: 'Clicking close did not remove the tab element from the DOM'
       })
@@ -565,10 +555,10 @@ test.describe('Tabs', () => {
    * the tab bar re-paints the active indicator after a close — a store-only
    * check would pass even if the indicator failed to shift.
    */
-  test('closing the active tab activates a neighbor tab', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('closing the active tab activates a neighbor tab', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -579,21 +569,21 @@ test.describe('Tabs', () => {
       }
     }, worktreeId)
     await expect
-      .poll(() => countRenderedTabs(nightshiftPage), { timeout: 5_000 })
+      .poll(() => countRenderedTabs(koluxPage), { timeout: 5_000 })
       .toBeGreaterThanOrEqual(2)
 
-    const activeTabBefore = await getActiveTabId(nightshiftPage)
+    const activeTabBefore = await getActiveTabId(koluxPage)
     expect(activeTabBefore).not.toBeNull()
 
-    await closeTabFromTabBar(nightshiftPage, activeTabBefore!)
+    await closeTabFromTabBar(koluxPage, activeTabBefore!)
 
     // Final DOM assertion: some *other* tab element now carries data-active.
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'After closing the active tab, no neighbor tab took over the active indicator'
       })
       .not.toBe(activeTabBefore)
-    await expect.poll(() => getDomActiveTabId(nightshiftPage), { timeout: 5_000 }).not.toBeNull()
+    await expect.poll(() => getDomActiveTabId(koluxPage), { timeout: 5_000 }).not.toBeNull()
   })
 })

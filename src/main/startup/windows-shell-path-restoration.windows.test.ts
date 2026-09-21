@@ -34,7 +34,7 @@ function resolveProbe(pathValue: string): string {
   delete env.Path
   const result = spawnSync(
     process.env.ComSpec ?? 'C:\\Windows\\System32\\cmd.exe',
-    ['/d', '/s', '/c', 'nightshift-path-probe.cmd'],
+    ['/d', '/s', '/c', 'kolux-path-probe.cmd'],
     { encoding: 'utf8', env }
   )
   expect(result.error).toBeUndefined()
@@ -51,15 +51,15 @@ describe.runIf(process.platform === 'win32')('Windows shell PATH restoration', (
 
   beforeEach(() => {
     _resetHydrateShellPathCache()
-    fixtureRoot = mkdtempSync(join(tmpdir(), 'nightshift-shell-path-'))
+    fixtureRoot = mkdtempSync(join(tmpdir(), 'kolux-shell-path-'))
     shellADir = join(fixtureRoot, 'shell-a')
     shellBDir = join(fixtureRoot, 'shell-b')
     shellBProfileDir = join(fixtureRoot, 'shell-b-profile')
     mkdirSync(shellADir)
     mkdirSync(shellBDir)
     mkdirSync(shellBProfileDir)
-    writeFileSync(join(shellADir, 'nightshift-path-probe.cmd'), '@echo shell-a\r\n')
-    writeFileSync(join(shellBDir, 'nightshift-path-probe.cmd'), '@echo shell-b\r\n')
+    writeFileSync(join(shellADir, 'kolux-path-probe.cmd'), '@echo shell-a\r\n')
+    writeFileSync(join(shellBDir, 'kolux-path-probe.cmd'), '@echo shell-b\r\n')
   })
 
   afterEach(() => {

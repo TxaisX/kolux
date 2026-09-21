@@ -1,6 +1,6 @@
 # Linux glibc Compatibility
 
-Nightshift's Linux builds target **stock Ubuntu 20.04 and newer** — glibc 2.31 and
+Kolux's Linux builds target **stock Ubuntu 20.04 and newer** — glibc 2.31 and
 libstdc++ `GLIBCXX_3.4.28` (also Debian 11, RHEL 9), on both x64 and arm64.
 Packaging enforces this floor automatically; keep it in mind when adding or
 upgrading native dependencies. (The optional speech feature is the one
@@ -26,7 +26,7 @@ and the dynamic loader then refuses to load it:
 /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by .../pty.node)
 ```
 
-Because the Nightshift main process loads node-pty at startup, that failure crashes the
+Because the Kolux main process loads node-pty at startup, that failure crashes the
 whole app before a window appears — this is exactly what shipped in v1.4.150 and
 broke launch on Ubuntu 20.04 ([#9902](https://github.com/TxaisX/nightshift/issues/9902)).
 
@@ -90,11 +90,11 @@ libstdc++ floor — its glibc needs are still checked. Speech-to-text therefore
 needs a host with libstdc++ from GCC 11+ (Ubuntu 21.10 / 22.04 LTS or newer); the
 app itself still launches on stock 20.04.
 
-**3. Check before loading, on hosts that ship without a compiler (`nightshiftd`).**
+**3. Check before loading, on hosts that ship without a compiler (`koluxd`).**
 The two gates above protect the packaged desktop app, where the binary is built and
-verified by the same pipeline. `nightshiftd` is deployed to hosts Nightshift never built on, so it
+verified by the same pipeline. `koluxd` is deployed to hosts Kolux never built on, so it
 adds a runtime precondition
-([`src/main/nightshiftd/node-pty-precondition.ts`](../../src/main/nightshiftd/node-pty-precondition.ts)),
+([`src/main/koluxd/node-pty-precondition.ts`](../../src/main/koluxd/node-pty-precondition.ts)),
 run from `main.ts` before anything requires `node-pty`. It loads the addon in a **child
 process**, so a binary the loader refuses — or one that aborts outright — is data rather
 than this process's death, and the operator gets a sentence naming the host's libc, its
@@ -104,9 +104,9 @@ as unverifiable and boots anyway, because a silent probe is not evidence. Whatev
 finds is published in `status.get`'s `degradations[]` under `terminal_unavailable`.
 
 **4. Ship the binary, built from patched sources.**
-[`config/scripts/build-nightshiftd-prebuilds.mjs`](../../config/scripts/build-nightshiftd-prebuilds.mjs)
-(`pnpm run build:nightshiftd-prebuilds`, after `build:nightshiftd`) compiles node-pty for the current
-host and files it under `out/nightshiftd/prebuilds/<slot>/`, where a slot is
+[`config/scripts/build-koluxd-prebuilds.mjs`](../../config/scripts/build-koluxd-prebuilds.mjs)
+(`pnpm run build:koluxd-prebuilds`, after `build:koluxd`) compiles node-pty for the current
+host and files it under `out/koluxd/prebuilds/<slot>/`, where a slot is
 `linux-{x64,arm64}-{glibc,musl}` or `darwin-{x64,arm64}`. libc is part of the slot name
 because node-pty's own loader falls back to `prebuilds/<platform>-<arch>` and cannot tell
 glibc from musl — a glibc binary parked there is loaded on Alpine and dies at `dlopen`.

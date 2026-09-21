@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 function isProcessAlive(pid: number): boolean {
@@ -19,12 +19,10 @@ function isProcessAlive(pid: number): boolean {
 // token is literally `claude` so PTY spawn recognition marks the session as an
 // agent; tab close → pty.kill routing is already covered by
 // terminal-parked-close-retirement.spec.ts, so this spec drives pty.kill.
-test('killing an agent PTY terminates its detached-pgid descendants', async ({
-  nightshiftPage
-}) => {
+test('killing an agent PTY terminates its detached-pgid descendants', async ({ koluxPage }) => {
   test.skip(process.platform === 'win32', 'descendant tree-kill is POSIX-only for now')
 
-  const stage = mkdtempSync(join(tmpdir(), 'nightshift-agent-descendant-'))
+  const stage = mkdtempSync(join(tmpdir(), 'kolux-agent-descendant-'))
   const markerPath = join(stage, 'detached-child.pid')
   const spawnerPath = join(stage, 'spawn-detached.cjs')
   writeFileSync(
@@ -49,10 +47,10 @@ test('killing an agent PTY terminates its detached-pgid descendants', async ({
 
   let detachedChildPid = 0
   try {
-    await waitForSessionReady(nightshiftPage)
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    const worktreeId = await waitForActiveWorktree(koluxPage)
 
-    const ptyId = await nightshiftPage.evaluate(
+    const ptyId = await koluxPage.evaluate(
       async ({ command, cwd, worktreeId: wt }) => {
         const result = await window.api.pty.spawn({
           cols: 120,
@@ -78,7 +76,7 @@ test('killing an agent PTY terminates its detached-pgid descendants', async ({
     expect(detachedChildPid).toBeGreaterThan(0)
     expect(isProcessAlive(detachedChildPid)).toBe(true)
 
-    await nightshiftPage.evaluate((id) => window.api.pty.kill(id), ptyId)
+    await koluxPage.evaluate((id) => window.api.pty.kill(id), ptyId)
 
     await expect
       .poll(() => isProcessAlive(detachedChildPid), {

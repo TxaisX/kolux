@@ -6,12 +6,12 @@ export const CLAUDE_CAN_USE_TOOL_SUBTYPE = 'can_use_tool'
 export const CLAUDE_REQUEST_USER_DIALOG_SUBTYPE = 'request_user_dialog'
 
 /**
- * The blocking control requests Nightshift answers, each mapped to the SDK consumer callback that
+ * The blocking control requests Kolux answers, each mapped to the SDK consumer callback that
  * answers it. This is the stable surface a real turn can block on: `can_use_tool` through
  * `canUseTool` and `request_user_dialog` through `onUserDialog`. Every other control-request
  * subtype the SDK routes (elicitation, oauth/host token refresh, mcp_message, hook_callback)
  * is either not surfaced to this consumer or fails closed inside the SDK; adding a new
- * blocking control Nightshift must answer means adding its callback here, and the catalog test
+ * blocking control Kolux must answer means adding its callback here, and the catalog test
  * fails if a named callback is missing.
  */
 export const CLAUDE_BLOCKING_CONTROL_CALLBACKS = {
@@ -30,7 +30,7 @@ export type ClaudePermissionCallbackDeps = {
 function denySafeResult(toolUseId: string | undefined): PermissionResult {
   return {
     behavior: 'deny',
-    message: 'Nightshift could not decode this permission request.',
+    message: 'Kolux could not decode this permission request.',
     ...(toolUseId ? { toolUseID: toolUseId } : {})
   }
 }
@@ -42,7 +42,7 @@ function denySafeResult(toolUseId: string | undefined): PermissionResult {
  * a malformed one is denied without registering. The SDK's abort signal fires on
  * `control_cancel_request` (a cancelled turn), which forgets the prompt and settles it with
  * `null` — never authorizing a tool. A late answer after abort finds no prompt and is refused
- * by `answerClaudePrompt`. `onUserDialog` is deny-safe; the CLI only emits dialog kinds Nightshift
+ * by `answerClaudePrompt`. `onUserDialog` is deny-safe; the CLI only emits dialog kinds Kolux
  * declares in `supportedDialogKinds`, which is empty.
  */
 export function buildClaudePermissionCallbacks(deps: ClaudePermissionCallbackDeps): {

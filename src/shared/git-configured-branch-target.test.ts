@@ -10,7 +10,7 @@ import {
 } from './git-configured-branch-target'
 
 const BRANCH = 'imp/translation'
-const FORK_URL = 'https://github.com/contributor/nightshift.git'
+const FORK_URL = 'https://github.com/contributor/kolux.git'
 const UPSTREAM_URL = 'https://github.com/TxaisX/nightshift.git'
 
 type RemoteRow = { name: string; fetchUrl: string; pushUrl?: string }
@@ -62,10 +62,10 @@ function makeRunner(fixture: Fixture): {
 const fiftyEightRemotes: RemoteRow[] = [
   { name: 'origin', fetchUrl: UPSTREAM_URL },
   ...Array.from({ length: 56 }, (_, index) => ({
-    name: `pr-user${index}-nightshift`,
-    fetchUrl: `https://github.com/user${index}/nightshift.git`
+    name: `pr-user${index}-kolux`,
+    fetchUrl: `https://github.com/user${index}/kolux.git`
   })),
-  { name: 'pr-contributor-nightshift', fetchUrl: FORK_URL }
+  { name: 'pr-contributor-kolux', fetchUrl: FORK_URL }
 ]
 
 describe('hasConfiguredBranchPushTarget', () => {

@@ -3,7 +3,7 @@ import { normalizeWslColdRestoreCwd } from './wsl-cold-restore-cwd'
 
 const base = {
   platform: 'win32' as const,
-  hostname: 'DESKTOP-NIGHTSHIFT',
+  hostname: 'DESKTOP-KOLUX',
   requestedCwd: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo',
   wslDistro: 'Ubuntu'
 }
@@ -13,8 +13,8 @@ describe('normalizeWslColdRestoreCwd', () => {
     ['C:\\work', 'C:\\work'],
     ['\\\\wsl.localhost\\ubuntu\\home\\jin', '\\\\wsl.localhost\\ubuntu\\home\\jin'],
     ['/home/jin', '\\\\wsl.localhost\\Ubuntu\\home\\jin'],
-    ['\\\\desktop-nightshift\\home\\jin', '\\\\wsl.localhost\\Ubuntu\\home\\jin'],
-    ['\\\\DESKTOP-NIGHTSHIFT\\mnt\\c\\work', 'C:\\work']
+    ['\\\\desktop-kolux\\home\\jin', '\\\\wsl.localhost\\Ubuntu\\home\\jin'],
+    ['\\\\DESKTOP-KOLUX\\mnt\\c\\work', 'C:\\work']
   ])('allows or repairs %s', (recoveredCwd, expected) => {
     expect(normalizeWslColdRestoreCwd({ ...base, recoveredCwd })).toBe(expected)
   })

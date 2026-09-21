@@ -77,16 +77,16 @@ describe('markdown document templates', () => {
     ).toHaveLength(0)
   })
 
-  it('discovers markdown files under .nightshift/templates and skips unsafe entries', async () => {
+  it('discovers markdown files under .kolux/templates and skips unsafe entries', async () => {
     const readDir = stubReadDir({
-      '/repo/.nightshift/templates': [
+      '/repo/.kolux/templates': [
         entry('daily-note.md'),
         entry('scratch.txt'),
         entry('linked.md', false, true),
         entry('nested', true),
         entry('node_modules', true)
       ],
-      '/repo/.nightshift/templates/nested': [entry('meeting.markdown'), entry('brief.mdx')]
+      '/repo/.kolux/templates/nested': [entry('meeting.markdown'), entry('brief.mdx')]
     })
 
     await expect(
@@ -101,33 +101,33 @@ describe('markdown document templates', () => {
       )
     ).resolves.toEqual([
       {
-        id: '.nightshift/templates/nested/brief.mdx',
+        id: '.kolux/templates/nested/brief.mdx',
         name: 'Brief',
-        filePath: '/repo/.nightshift/templates/nested/brief.mdx',
-        relativePath: '.nightshift/templates/nested/brief.mdx',
+        filePath: '/repo/.kolux/templates/nested/brief.mdx',
+        relativePath: '.kolux/templates/nested/brief.mdx',
         templateRelativePath: 'nested/brief.mdx',
         basename: 'brief.mdx'
       },
       {
-        id: '.nightshift/templates/daily-note.md',
+        id: '.kolux/templates/daily-note.md',
         name: 'Daily note',
-        filePath: '/repo/.nightshift/templates/daily-note.md',
-        relativePath: '.nightshift/templates/daily-note.md',
+        filePath: '/repo/.kolux/templates/daily-note.md',
+        relativePath: '.kolux/templates/daily-note.md',
         templateRelativePath: 'daily-note.md',
         basename: 'daily-note.md'
       },
       {
-        id: '.nightshift/templates/nested/meeting.markdown',
+        id: '.kolux/templates/nested/meeting.markdown',
         name: 'Meeting',
-        filePath: '/repo/.nightshift/templates/nested/meeting.markdown',
-        relativePath: '.nightshift/templates/nested/meeting.markdown',
+        filePath: '/repo/.kolux/templates/nested/meeting.markdown',
+        relativePath: '.kolux/templates/nested/meeting.markdown',
         templateRelativePath: 'nested/meeting.markdown',
         basename: 'meeting.markdown'
       }
     ])
 
     expect(readDir).toHaveBeenCalledWith({
-      dirPath: '/repo/.nightshift/templates',
+      dirPath: '/repo/.kolux/templates',
       connectionId: 'conn-1'
     })
   })
@@ -145,7 +145,7 @@ describe('markdown document templates', () => {
 
   it('keeps Windows file paths native while exposing root-relative template paths', async () => {
     stubReadDir({
-      'C:\\repo\\.nightshift\\templates': [entry('daily.md')]
+      'C:\\repo\\.kolux\\templates': [entry('daily.md')]
     })
 
     await expect(
@@ -155,10 +155,10 @@ describe('markdown document templates', () => {
       )
     ).resolves.toEqual([
       {
-        id: '.nightshift/templates/daily.md',
+        id: '.kolux/templates/daily.md',
         name: 'Daily',
-        filePath: 'C:\\repo\\.nightshift\\templates\\daily.md',
-        relativePath: '.nightshift/templates/daily.md',
+        filePath: 'C:\\repo\\.kolux\\templates\\daily.md',
+        relativePath: '.kolux/templates/daily.md',
         templateRelativePath: 'daily.md',
         basename: 'daily.md'
       }

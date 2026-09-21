@@ -58,7 +58,7 @@ export function parseDetailsAttributes(rawAttributes: string): Record<string, un
   // Why: validation accepts normal HTML whitespace around `=`, so parsing
   // must accept it too or an editable toggle loses its heading variant.
   const variantMatch = rawAttributes.match(
-    /\sdata-nightshift-toggle\s*=\s*(?:"(heading-[1-5])"|'(heading-[1-5])'|(heading-[1-5]))(?:\s|$)/i
+    /\sdata-kolux-toggle\s*=\s*(?:"(heading-[1-5])"|'(heading-[1-5])'|(heading-[1-5]))(?:\s|$)/i
   )
   return {
     open: /\sopen(?:\s|=|$)/i.test(rawAttributes),
@@ -77,11 +77,11 @@ export function detailsBodyHtmlToMarkdown(body: string): string {
 }
 
 export function renderDetailsAttributes(attrs: Record<string, unknown> | undefined): string {
-  const attributes = ['class="nightshift-details"']
+  const attributes = ['class="kolux-details"']
 
   const variant = parseToggleHeadingVariant(attrs?.variant)
   if (variant) {
-    attributes.push(`data-nightshift-toggle="${variant}"`)
+    attributes.push(`data-kolux-toggle="${variant}"`)
   }
 
   if (attrs?.open === true) {
@@ -184,12 +184,9 @@ function hasOnlySupportedDetailsAttributes(rawAttributes: string): boolean {
   return (
     rawAttributes
       .replace(/\s+open(?:\s*=\s*(?:""|"open"|''|'open'|open))?(?=\s|$)/giu, '')
+      .replace(/\s+class\s*=\s*(?:"kolux-details"|'kolux-details'|kolux-details)(?=\s|$)/giu, '')
       .replace(
-        /\s+class\s*=\s*(?:"nightshift-details"|'nightshift-details'|nightshift-details)(?=\s|$)/giu,
-        ''
-      )
-      .replace(
-        /\s+data-nightshift-toggle\s*=\s*(?:"heading-[1-5]"|'heading-[1-5]'|heading-[1-5])(?=\s|$)/giu,
+        /\s+data-kolux-toggle\s*=\s*(?:"heading-[1-5]"|'heading-[1-5]'|heading-[1-5])(?=\s|$)/giu,
         ''
       )
       .trim() === ''

@@ -49,7 +49,7 @@ import {
   diffPersistedUIWriteFields
 } from '../persisted-ui-write-baseline'
 import {
-  hydrateTrustedNightshiftHooks,
+  hydrateTrustedKoluxHooks,
   normalizeHydratedVisibleWorkspaceHostIds,
   preserveStringArrayIdentity,
   sanitizeHydratedActiveView,
@@ -221,10 +221,7 @@ export function createUiHydrationActions(set: UISliceSet, _get: UISliceGet): Par
             typeof ui.contextualToursAutoEligible === 'boolean'
               ? ui.contextualToursAutoEligible
               : null,
-          trustedNightshiftHooks: hydrateTrustedNightshiftHooks(
-            ui.trustedNightshiftHooks,
-            validRepoIds
-          ),
+          trustedKoluxHooks: hydrateTrustedKoluxHooks(ui.trustedKoluxHooks, validRepoIds),
           setupScriptPromptDismissedRepoIds:
             validRepoHostIdentities.size === 0
               ? sanitizeSetupScriptPromptDismissals(ui.setupScriptPromptDismissedRepoIds)

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftCloudAuthConfig } from '../../nightshift-profiles/profile-cloud-auth-config'
-import type { NightshiftRuntimeRpcServer } from '../runtime-rpc'
+import type { KoluxCloudAuthConfig } from '../../kolux-profiles/profile-cloud-auth-config'
+import type { KoluxRuntimeRpcServer } from '../runtime-rpc'
 
 const fakes = vi.hoisted(() => ({
   readRelayAuthContext: vi.fn(),
@@ -59,13 +59,13 @@ function service(): DesktopRelayService {
       getDevice: () => ({ deviceId: 'device-1', scope: 'mobile' }),
       getMobilePairingConnectionMode: () => 'automatic'
     })
-  } as unknown as NightshiftRuntimeRpcServer
+  } as unknown as KoluxRuntimeRpcServer
   return new DesktopRelayService({
     authConfig: {
       relayDirectorUrl: 'https://relay.example.test',
       relayTokenEndpoint: 'https://login.example.test/relay-token'
-    } as NightshiftCloudAuthConfig,
-    userDataPath: '/tmp/nightshift-relay-liveness-test',
+    } as KoluxCloudAuthConfig,
+    userDataPath: '/tmp/kolux-relay-liveness-test',
     appVersion: '1.4.188',
     runtimeRpc,
     onStatus: () => {}

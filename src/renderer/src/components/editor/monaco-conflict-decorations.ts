@@ -48,14 +48,14 @@ function makeMarkerDecoration(
     range: makeMarkerRange(lineNumber, line),
     options: {
       isWholeLine: true,
-      className: 'nightshift-conflict-marker-line',
-      linesDecorationsClassName: 'nightshift-conflict-line-decoration',
-      marginClassName: 'nightshift-conflict-margin',
+      className: 'kolux-conflict-marker-line',
+      linesDecorationsClassName: 'kolux-conflict-line-decoration',
+      marginClassName: 'kolux-conflict-margin',
       hoverMessage: { value: label },
       linesDecorationsTooltip: label,
       after: {
         content: ` ${label}`,
-        inlineClassName: 'nightshift-conflict-marker-label'
+        inlineClassName: 'kolux-conflict-marker-label'
       }
     }
   }
@@ -74,7 +74,7 @@ function makeSectionDecoration(
     range: makeWholeLineRange(startLineNumber, endLineNumber),
     options: {
       isWholeLine: true,
-      className: `nightshift-conflict-section-line nightshift-conflict-${section}-line`
+      className: `kolux-conflict-section-line kolux-conflict-${section}-line`
     }
   }
 }

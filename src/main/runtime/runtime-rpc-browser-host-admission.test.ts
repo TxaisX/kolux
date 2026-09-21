@@ -5,9 +5,9 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { WebSocket } from 'ws'
 import { DeviceRegistry } from './device-registry'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { defineStreamingMethod, type RpcRequest } from './rpc/core'
-import { classifyRuntimeLongPoll, NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { classifyRuntimeLongPoll, KoluxRuntimeRpcServer } from './runtime-rpc'
 import { withCurrentOrchestrationContract } from './runtime-rpc-test-harness'
 
 const request = (method: string, params?: unknown): RpcRequest => ({
@@ -27,7 +27,7 @@ describe('runtime RPC browser-host admission', () => {
   })
 
   it('reserves wait capacity and releases host admission on socket close', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-host-admission-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-host-admission-'))
     const aborted = vi.fn()
     const blockingMethod = (name: 'browser.clientHost.attach' | 'terminal.wait') =>
       defineStreamingMethod({
@@ -46,8 +46,8 @@ describe('runtime RPC browser-host admission', () => {
           })
         }
       })
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       longPollCap: 4,
       methods: [blockingMethod('browser.clientHost.attach'), blockingMethod('terminal.wait')]
@@ -99,15 +99,15 @@ describe('runtime RPC browser-host admission', () => {
   })
 
   it('reserves browser-host capacity for a second paired device', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-host-fairness-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-host-fairness-'))
     const blockingHost = defineStreamingMethod({
       name: 'browser.clientHost.attach',
       params: null,
       handler: async (_params, { signal }) =>
         await new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()))
     })
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       longPollCap: 16,
       methods: [blockingHost]
@@ -189,7 +189,7 @@ describe('runtime RPC browser-host admission', () => {
   })
 
   it('keeps a wait slot when asks and browser hosts fill their shared budget', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-host-wait-reserve-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-host-wait-reserve-'))
     const blockingMethod = (
       name: 'browser.clientHost.attach' | 'orchestration.ask' | 'terminal.wait'
     ) =>
@@ -199,8 +199,8 @@ describe('runtime RPC browser-host admission', () => {
         handler: async (_params, { signal }) =>
           await new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()))
       })
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       longPollCap: 4,
       methods: [

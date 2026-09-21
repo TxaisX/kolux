@@ -172,11 +172,11 @@ export function AppSection({
             isCollapsed
               ? translate(
                   'auto.components.status.bar.ResourceUsageStatusSegment.e419d27083',
-                  'Expand Nightshift'
+                  'Expand Kolux'
                 )
               : translate(
                   'auto.components.status.bar.ResourceUsageStatusSegment.53dd5560ae',
-                  'Collapse Nightshift'
+                  'Collapse Kolux'
                 )
           }
           aria-expanded={!isCollapsed}
@@ -189,10 +189,7 @@ export function AppSection({
         </button>
         <div className="flex-1 min-w-0 py-2 pr-3 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wide truncate text-muted-foreground">
-            {translate(
-              'auto.components.status.bar.ResourceUsageStatusSegment.288a4dd177',
-              'Nightshift'
-            )}
+            {translate('auto.components.status.bar.ResourceUsageStatusSegment.288a4dd177', 'Kolux')}
           </span>
           <div className="flex items-center gap-2 shrink-0">
             <Sparkline samples={app.history} />

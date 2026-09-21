@@ -37,10 +37,10 @@ const {
 let runtimeHomeDir: string
 
 beforeEach(() => {
-  testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-concurrent-home-'))
-  testState.userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-concurrent-userdata-'))
-  testState.previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = testState.userDataDir
+  testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-concurrent-home-'))
+  testState.userDataDir = mkdtempSync(join(tmpdir(), 'kolux-concurrent-userdata-'))
+  testState.previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = testState.userDataDir
   runtimeHomeDir = join(testState.userDataDir, 'codex-runtime-home', 'home')
   mkdirSync(runtimeHomeDir, { recursive: true })
   writeFileSync(join(runtimeHomeDir, 'hooks.json'), '{"hooks":{}}\n', 'utf-8')
@@ -54,16 +54,16 @@ afterEach(() => {
   setCodexTrustGrantTelemetry(() => {})
   codexAppServerCapabilityCache.clear()
   if (testState.previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = testState.previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = testState.previousUserDataPath
   }
-  delete process.env.NIGHTSHIFT_DISABLE_CODEX_TRUST_RPC
+  delete process.env.KOLUX_DISABLE_CODEX_TRUST_RPC
   rmSync(testState.fakeHomeDir, { recursive: true, force: true })
   rmSync(testState.userDataDir, { recursive: true, force: true })
 })
 
-const MANAGED_COMMAND = "/bin/sh '/tmp/nightshift/codex-hook.sh'"
+const MANAGED_COMMAND = "/bin/sh '/tmp/kolux/codex-hook.sh'"
 
 function managedEntry(eventLabel: CodexTrustEntry['eventLabel']): CodexTrustEntry {
   return {
@@ -186,7 +186,7 @@ describe('two Codex pane launches against one config.toml', () => {
     codexAppServerCapabilityCache.rememberSupported('native')
     const tomlPath = join(runtimeHomeDir, 'config.toml')
     const entries = [managedEntry('session_start')]
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-concurrent-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-concurrent-ws-'))
     let releaseSession!: () => void
     const sessionGate = new Promise<void>((resolve) => {
       releaseSession = resolve
@@ -391,7 +391,7 @@ describe('reentrancy under concurrency', () => {
     _internals.setGrantSessionRunner(
       writingSessionRunner({ tomlPath, entries, hashPrefix: 'sha256:nested-' })
     )
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-nested-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-nested-ws-'))
     try {
       // Installer lock order: runtime then system, with a grant and a preset
       // write nested inside both.

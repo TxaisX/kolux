@@ -122,7 +122,7 @@ function adapter(): StructuredAgentSessionAdapter {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-claude-handoff-options-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-claude-handoff-options-'))
   resetHostTestOperationIds()
   activeModel = DEFAULT_MODEL
   transcriptPath = join(root, 'claude.jsonl')

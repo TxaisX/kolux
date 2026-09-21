@@ -15,7 +15,7 @@ import { mirrorOmpPersistentSqliteFiles } from './omp-sqlite-overlay'
 const tempDirs: string[] = []
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-omp-sqlite-overlay-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-omp-sqlite-overlay-'))
   tempDirs.push(dir)
   return dir
 }

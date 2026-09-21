@@ -8,7 +8,7 @@ import {
 } from './kimi-hook-config-toml'
 
 const COMMAND =
-  "if [ -x '/home/u/.nightshift/agent-hooks/kimi-hook.sh' ]; then /bin/sh '/home/u/.nightshift/agent-hooks/kimi-hook.sh'; fi"
+  "if [ -x '/home/u/.kolux/agent-hooks/kimi-hook.sh' ]; then /bin/sh '/home/u/.kolux/agent-hooks/kimi-hook.sh'; fi"
 const isManaged = (command: string | undefined): boolean =>
   typeof command === 'string' && command.includes('agent-hooks/kimi-hook.sh')
 
@@ -52,7 +52,7 @@ describe('kimi managed hooks TOML block', () => {
     const once = applyManagedKimiHooks('default_model = "x"\n', COMMAND)
     const twice = applyManagedKimiHooks(once, COMMAND)
     expect(twice).toBe(once)
-    const markerCount = (twice.match(/nightshift-managed-kimi-hooks \(/g) ?? []).length
+    const markerCount = (twice.match(/kolux-managed-kimi-hooks \(/g) ?? []).length
     expect(markerCount).toBe(1)
   })
 
@@ -86,7 +86,7 @@ describe('kimi managed hooks TOML block', () => {
   it('recovers when a hand-edit deletes only the trailing end marker', () => {
     const installed = applyManagedKimiHooks('default_model = "x"\n', COMMAND)
     // Simulate a user deleting just the `# <<< ... <<<` end-marker line.
-    const orphaned = installed.replace(/\n# <<< nightshift-managed-kimi-hooks <<<\n?/, '\n')
+    const orphaned = installed.replace(/\n# <<< kolux-managed-kimi-hooks <<<\n?/, '\n')
     expect(orphaned).not.toContain('<<<')
     // The orphaned (still-active) hook tables are still recognized...
     expect(readManagedKimiHookEvents(orphaned, isManaged)).toEqual(new Set(KIMI_HOOK_EVENTS))
@@ -97,7 +97,7 @@ describe('kimi managed hooks TOML block', () => {
     })
     // ...and reinstall converges to a single block instead of duplicating.
     const reinstalled = applyManagedKimiHooks(orphaned, COMMAND)
-    expect((reinstalled.match(/nightshift-managed-kimi-hooks \(/g) ?? []).length).toBe(1)
+    expect((reinstalled.match(/kolux-managed-kimi-hooks \(/g) ?? []).length).toBe(1)
   })
 
   it('treats stale managed entries pointing at a moved script path as managed', () => {
@@ -105,5 +105,25 @@ describe('kimi managed hooks TOML block', () => {
       "if [ -x '/old/userData/agent-hooks/kimi-hook.sh' ]; then /bin/sh '/old/userData/agent-hooks/kimi-hook.sh'; fi"
     const stale = applyManagedKimiHooks('', staleCommand)
     expect(readManagedKimiHookEvents(stale, isManaged)).toEqual(new Set(KIMI_HOOK_EVENTS))
+  })
+
+  it('replaces a pre-rename nightshift-managed block instead of appending a second one', () => {
+    const legacyBlock = [
+      '# >>> nightshift-managed-kimi-hooks (managed by Nightshift; do not edit) >>>',
+      '[[hooks]]',
+      'event = "Stop"',
+      'command = "/old/agent-hooks/kimi-hook.sh"',
+      'timeout = 10',
+      '# <<< nightshift-managed-kimi-hooks <<<'
+    ].join('\n')
+    const preExisting = `default_model = "x"\n\n${legacyBlock}\n`
+
+    const installed = applyManagedKimiHooks(preExisting, COMMAND)
+    expect(installed).not.toContain('nightshift-managed-kimi-hooks')
+    expect((installed.match(/\[\[hooks\]\]/g) ?? []).length).toBe(KIMI_HOOK_EVENTS.length)
+    expect(readManagedKimiHookEvents(installed, isManaged)).toEqual(new Set(KIMI_HOOK_EVENTS))
+
+    const removed = removeManagedKimiHooks(preExisting)
+    expect(removed).toEqual({ text: 'default_model = "x"\n', changed: true })
   })
 })

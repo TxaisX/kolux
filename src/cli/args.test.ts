@@ -148,7 +148,7 @@ describe('parseArgs', () => {
         {
           path: ['emulator', 'permissions'],
           summary: 'Permissions',
-          usage: 'nightshift emulator permissions <op> <package> [permission]',
+          usage: 'kolux emulator permissions <op> <package> [permission]',
           allowedFlags: ['op', 'package', 'permission'],
           positionalArgs: ['op', 'package', 'permission']
         }
@@ -193,13 +193,13 @@ describe('command aliases', () => {
         ['worktree', 'delete']
       ],
       summary: 'Remove a worktree',
-      usage: 'nightshift worktree rm --worktree <selector>',
+      usage: 'kolux worktree rm --worktree <selector>',
       allowedFlags: ['worktree', 'force']
     },
     {
       path: ['repo', 'show'],
       summary: 'Show a repo',
-      usage: 'nightshift repo show --repo <selector>',
+      usage: 'kolux repo show --repo <selector>',
       allowedFlags: ['repo'],
       positionalArgs: ['repo']
     }
@@ -265,7 +265,7 @@ describe('validateCommandAndFlags', () => {
     {
       path: ['demo'],
       summary: 'Demo command',
-      usage: 'nightshift demo',
+      usage: 'kolux demo',
       allowedFlags: []
     }
   ]
@@ -308,7 +308,7 @@ describe('validateCommandAndFlags', () => {
       {
         path: ['worktree', 'rm'],
         summary: 'Remove a worktree',
-        usage: 'nightshift worktree rm',
+        usage: 'kolux worktree rm',
         allowedFlags: ['worktree', 'force', 'run-hooks']
       }
     ]
@@ -350,7 +350,7 @@ describe('validateCommandAndFlags', () => {
       {
         path: ['worktree', 'rm'],
         summary: 'Remove a worktree',
-        usage: 'nightshift worktree rm',
+        usage: 'kolux worktree rm',
         allowedFlags: []
       }
     ]
@@ -362,7 +362,7 @@ describe('validateCommandAndFlags', () => {
     } catch (error) {
       const data = (error as { data?: { suggestions: string[]; nextSteps: string[] } }).data
       expect(data?.suggestions).toContain('worktree rm')
-      expect(data?.nextSteps[0]).toContain('nightshift worktree rm')
+      expect(data?.nextSteps[0]).toContain('kolux worktree rm')
     }
   })
 })

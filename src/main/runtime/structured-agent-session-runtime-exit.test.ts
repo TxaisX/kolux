@@ -33,7 +33,7 @@ describe('structured session runtime provider-exit wiring', () => {
   })
 
   it('reacquires through the production callback and accepts a distinct next message', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-runtime-provider-exit-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-runtime-provider-exit-'))
     operations = 0
     const connections: {
       connection: CodexAppServerConnection
@@ -128,7 +128,7 @@ describe('structured session runtime provider-exit wiring', () => {
   })
 
   it('does not reacquire when the production exit callback comes from a requested close', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-runtime-requested-close-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-runtime-requested-close-'))
     operations = 0
     const connections: {
       connection: CodexAppServerConnection
@@ -204,7 +204,7 @@ describe('structured session runtime provider-exit wiring', () => {
   })
 
   it('waits for an in-flight recovery before tearing down the runtime', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-runtime-recovery-shutdown-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-runtime-recovery-shutdown-'))
     let releaseRecovery!: () => void
     const recoveryReleased = new Promise<void>((resolve) => {
       releaseRecovery = resolve

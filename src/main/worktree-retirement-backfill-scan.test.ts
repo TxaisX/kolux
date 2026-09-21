@@ -134,7 +134,7 @@ describe('runRetirementBackfillScan', () => {
     // so a late-but-correct listing is the normal case there, not an edge case.
     const store = {}
     const slow = await stallPastDeadline(store, 'ns')
-    const rescan = vi.fn(async () => found(['nightshift']))
+    const rescan = vi.fn(async () => found(['kolux']))
 
     slow.finish(['nautilus'])
     await vi.advanceTimersByTimeAsync(0)
@@ -148,7 +148,7 @@ describe('runRetirementBackfillScan', () => {
   it('does not memoize an incomplete answer, so a refused source is retried', async () => {
     const store = {}
     const partial = vi.fn(async () => found(['nautilus'], false))
-    const whole = vi.fn(async () => found(['nautilus', 'nightshift']))
+    const whole = vi.fn(async () => found(['nautilus', 'kolux']))
 
     await expect(runRetirementBackfillScan(store, 'ns', partial)).resolves.toEqual(
       new Set(['nautilus'])
@@ -156,17 +156,15 @@ describe('runRetirementBackfillScan', () => {
 
     await vi.advanceTimersByTimeAsync(RETIREMENT_BACKFILL_RETRY_AFTER_FAILURE_MS)
     await expect(runRetirementBackfillScan(store, 'ns', whole)).resolves.toEqual(
-      new Set(['nautilus', 'nightshift'])
+      new Set(['nautilus', 'kolux'])
     )
   })
 
   it('does not let one store inherit another store scan memo', async () => {
     const first = vi.fn(async () => found(['nautilus']))
-    const second = vi.fn(async () => found(['nightshift']))
+    const second = vi.fn(async () => found(['kolux']))
 
     await runRetirementBackfillScan({}, 'ns', first)
-    await expect(runRetirementBackfillScan({}, 'ns', second)).resolves.toEqual(
-      new Set(['nightshift'])
-    )
+    await expect(runRetirementBackfillScan({}, 'ns', second)).resolves.toEqual(new Set(['kolux']))
   })
 })

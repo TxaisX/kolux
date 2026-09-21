@@ -45,16 +45,16 @@ afterEach(async () => {
 })
 
 async function writePayload(rootPath: string, content = '#!/usr/bin/env bash\n'): Promise<string> {
-  const launcherPath = join(rootPath, 'resources', 'bin', 'nightshift-ide')
+  const launcherPath = join(rootPath, 'resources', 'bin', 'kolux-ide')
   await mkdir(dirname(launcherPath), { recursive: true })
   await writeFile(launcherPath, content, { mode: 0o755 })
   return launcherPath
 }
 
 async function makeExtractionFixture() {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-appimage-pruning-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-appimage-pruning-'))
   created.push(root)
-  const appImagePath = join(root, 'Nightshift.AppImage')
+  const appImagePath = join(root, 'Kolux.AppImage')
   await writeFile(appImagePath, '#!/usr/bin/env bash\n', { mode: 0o755 })
   return { root, appImagePath, cacheRootPath: join(root, 'cache') }
 }
@@ -200,7 +200,7 @@ describe('AppImage extraction pruning', () => {
   it.skipIf(process.platform === 'win32')(
     'restores a sibling endpoint that wins the uninstall rename race',
     async () => {
-      const cacheRootPath = await mkdtemp(join(tmpdir(), 'nightshift-appimage-pruning-'))
+      const cacheRootPath = await mkdtemp(join(tmpdir(), 'kolux-appimage-pruning-'))
       created.push(cacheRootPath)
       const ownerNamespace = join(cacheRootPath, 'a'.repeat(24))
       const siblingNamespace = join(cacheRootPath, 'b'.repeat(24))

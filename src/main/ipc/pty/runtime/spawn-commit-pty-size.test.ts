@@ -4,7 +4,7 @@ import { commitRuntimePtySpawn } from './spawn-commit'
 import { createRuntimePtySpawnState, type RuntimePtySpawnArgs } from './spawn-state'
 import type { PtyRuntimeControllerDeps } from './controller-deps'
 
-const PTY_ID = 'nightshift-pty-adopted'
+const PTY_ID = 'kolux-pty-adopted'
 const LIVE_GRID = { cols: 211, rows: 57 }
 
 function makeRuntime() {

@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -326,13 +326,13 @@ async function run(args: {
 }
 
 test('holds the guest title through host republishes of a client-hosted page', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(300_000)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   await run({ offer, repoPath: testRepoPath, testInfo })
 })

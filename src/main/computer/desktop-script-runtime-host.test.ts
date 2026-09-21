@@ -95,7 +95,7 @@ function createHost(
   const children: FakeRuntimeChild[] = []
   const specs: ProcessSpec[] = []
   const warnings: string[] = []
-  const host = new DesktopScriptRuntimeHost('C:\\nightshift\\runtime.ps1', {
+  const host = new DesktopScriptRuntimeHost('C:\\kolux\\runtime.ps1', {
     ...options,
     powerShellPath: () => 'C:\\Windows\\System32\\powershell.exe',
     warn: (message) => warnings.push(message),
@@ -164,7 +164,7 @@ describe('DesktopScriptRuntimeHost', () => {
       '-ExecutionPolicy',
       'RemoteSigned',
       '-File',
-      'C:\\nightshift\\runtime.ps1',
+      'C:\\kolux\\runtime.ps1',
       '-Serve'
     ])
     host.dispose()
@@ -655,7 +655,7 @@ describe('DesktopScriptRuntimeHost', () => {
   })
 
   it('reports itself unavailable when the helper cannot be spawned at all', async () => {
-    const host = new DesktopScriptRuntimeHost('C:\\nightshift\\runtime.ps1', {
+    const host = new DesktopScriptRuntimeHost('C:\\kolux\\runtime.ps1', {
       powerShellPath: () => 'C:\\Windows\\System32\\powershell.exe',
       warn: () => {},
       spawn: () => {

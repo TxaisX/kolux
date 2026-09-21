@@ -9,13 +9,13 @@ import { gitExecFileAsync, gitExecFileAsyncBuffer } from './git-exec-file'
 import { _resetGitAdmissionForTests } from './git-subprocess-admission'
 
 const tempRoots: string[] = []
-const originalAdmissionDisabled = process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+const originalAdmissionDisabled = process.env.KOLUX_GIT_ADMISSION_DISABLED
 
 afterEach(async () => {
   if (originalAdmissionDisabled === undefined) {
-    delete process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+    delete process.env.KOLUX_GIT_ADMISSION_DISABLED
   } else {
-    process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED = originalAdmissionDisabled
+    process.env.KOLUX_GIT_ADMISSION_DISABLED = originalAdmissionDisabled
   }
   _resetGitAdmissionForTests()
   await Promise.all(tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
@@ -23,18 +23,18 @@ afterEach(async () => {
 
 function setAdmissionDisabled(disabled: boolean): void {
   if (disabled) {
-    process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED = '1'
+    process.env.KOLUX_GIT_ADMISSION_DISABLED = '1'
   } else {
-    delete process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+    delete process.env.KOLUX_GIT_ADMISSION_DISABLED
   }
 }
 
 it('keeps real git output byte-identical with admission on and bypassed', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'nightshift-git-output-parity-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'kolux-git-output-parity-'))
   tempRoots.push(root)
   execFileSync('git', ['init', '-q'], { cwd: root })
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: root })
-  execFileSync('git', ['config', 'user.name', 'Nightshift Test'], { cwd: root })
+  execFileSync('git', ['config', 'user.name', 'Kolux Test'], { cwd: root })
   await writeFile(path.join(root, 'tracked.txt'), 'line one\nline two\n')
   await writeFile(path.join(root, 'blob.bin'), Buffer.from([0, 1, 2, 3, 255]))
   execFileSync('git', ['add', '.'], { cwd: root })

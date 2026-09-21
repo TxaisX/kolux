@@ -31,7 +31,7 @@ import { createWebMobileApi } from './preload-api/web-mobile-api'
 import { createWebNativeChatApi } from './preload-api/web-native-chat-api'
 import { createNotificationsApi } from './preload-api/web-notifications-api'
 import { createWebOnboardingApi } from './preload-api/web-onboarding-api'
-import { createWebNightshiftProfilesApi } from './preload-api/web-nightshift-profiles-api'
+import { createWebKoluxProfilesApi } from './preload-api/web-kolux-profiles-api'
 import { createWebPlatformApi } from './preload-api/web-platform-api'
 import { createRateLimitsApi } from './preload-api/web-rate-limits-api'
 import { createReposApi } from './preload-api/web-repositories-api'
@@ -54,8 +54,8 @@ import { readStoredWebRuntimeEnvironment } from './web-runtime-environment'
 
 export function installWebPreloadApi(): void {
   webRuntimeState.activeEnvironment = readStoredWebRuntimeEnvironment()
-  const webWindow = window as unknown as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }
-  webWindow.__NIGHTSHIFT_WEB_CLIENT__ = true
+  const webWindow = window as unknown as { __KOLUX_WEB_CLIENT__?: boolean }
+  webWindow.__KOLUX_WEB_CLIENT__ = true
   window.electron = createFallbackProxy(['electron']) as Window['electron']
   window.api = withFallback(createWebPreloadApi(), []) as PreloadApi
 }
@@ -66,7 +66,7 @@ function createWebPreloadApi(): Partial<PreloadApi> {
     ...createWebStarNagApi(),
     ...createWebPlatformApi(),
     ...createWebWorkspacePortsApi(),
-    ...createWebNightshiftProfilesApi(),
+    ...createWebKoluxProfilesApi(),
     ...createWebE2EApi(),
     ...createWebSettingsApi(),
     keybindings: createWebKeybindingsApi(),

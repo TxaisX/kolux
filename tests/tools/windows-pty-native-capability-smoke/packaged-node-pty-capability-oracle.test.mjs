@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { evaluatePackagedNodePtyCapability } from './packaged-node-pty-capability-oracle.mjs'
 
 const fixtureToken = 'a'.repeat(64)
-const channel = `\\\\.\\pipe\\nightshift-pty-native-capability-${fixtureToken}`
+const channel = `\\\\.\\pipe\\kolux-pty-native-capability-${fixtureToken}`
 
 function observation(pid, role) {
   return { pid, fixtureToken, role, channel }

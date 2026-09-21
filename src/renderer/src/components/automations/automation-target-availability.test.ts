@@ -394,7 +394,7 @@ describe('automation target availability', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'local',
             repoId: 'repo-1',
-            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
           }
         }),
         repo: makeRepo(),
@@ -424,7 +424,7 @@ describe('automation target availability', () => {
               provider: 'gitlab',
               projectId: 'TxaisX/nightshift',
               namespace: 'TxaisX',
-              project: 'nightshift',
+              project: 'kolux',
               webUrl: 'https://gitlab.com/TxaisX/nightshift'
             }
           }

@@ -10,7 +10,7 @@ if (!global.gc) {
   throw new Error('Run with node --expose-gc')
 }
 const root = resolve(import.meta.dirname, '../..')
-const directory = await mkdtemp(join(tmpdir(), 'nightshift-sentinel-retention-'))
+const directory = await mkdtemp(join(tmpdir(), 'kolux-sentinel-retention-'))
 const output = join(directory, 'sentinel.cjs')
 try {
   await build({

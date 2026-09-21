@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -11,8 +11,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -23,7 +23,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -43,41 +43,41 @@ vi.mock('child_process', async () => {
 import { main } from './index'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
     spawnMock
   })
 
-  it('lists saved environments even when NIGHTSHIFT_ENVIRONMENT is set', async () => {
-    process.env.NIGHTSHIFT_ENVIRONMENT = 'stale-env'
+  it('lists saved environments even when KOLUX_ENVIRONMENT is set', async () => {
+    process.env.KOLUX_ENVIRONMENT = 'stale-env'
     listEnvironmentsMock.mockReturnValue([addEnvironmentFromPairingCodeMock()])
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     await main(['environment', 'list', '--json'], '/tmp/repo')
 
-    expect(listEnvironmentsMock).toHaveBeenCalledWith('/tmp/nightshift-user-data')
+    expect(listEnvironmentsMock).toHaveBeenCalledWith('/tmp/kolux-user-data')
     expect(callMock).not.toHaveBeenCalled()
     expect(logSpy.mock.calls[0]?.[0]).not.toContain('token')
     expect(logSpy.mock.calls[0]?.[0]).not.toContain('publicKeyB64')
   })
 
-  it('adds saved environments even when NIGHTSHIFT_ENVIRONMENT is set', async () => {
-    process.env.NIGHTSHIFT_ENVIRONMENT = 'stale-env'
+  it('adds saved environments even when KOLUX_ENVIRONMENT is set', async () => {
+    process.env.KOLUX_ENVIRONMENT = 'stale-env'
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     await main(
-      ['environment', 'add', '--name', 'desk', '--pairing-code', 'nightshift://pair#abc', '--json'],
+      ['environment', 'add', '--name', 'desk', '--pairing-code', 'kolux://pair#abc', '--json'],
       '/tmp/repo'
     )
 
-    expect(addEnvironmentFromPairingCodeMock).toHaveBeenCalledWith('/tmp/nightshift-user-data', {
+    expect(addEnvironmentFromPairingCodeMock).toHaveBeenCalledWith('/tmp/kolux-user-data', {
       name: 'desk',
-      pairingCode: 'nightshift://pair#abc'
+      pairingCode: 'kolux://pair#abc'
     })
     expect(callMock).not.toHaveBeenCalled()
     expect(logSpy.mock.calls[0]?.[0]).not.toContain('token')

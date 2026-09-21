@@ -58,9 +58,9 @@ export function describeRuntimeCompatBlock(verdict: RuntimeCompatVerdict): strin
     return 'Runtime client and server are compatible.'
   }
   if (verdict.reason === 'client-too-old') {
-    return `This Nightshift client is too old for the selected server. Update Nightshift on this machine. Client protocol ${verdict.clientProtocolVersion}, server requires client protocol ${verdict.requiredClientProtocolVersion}.`
+    return `This Kolux client is too old for the selected server. Update Kolux on this machine. Client protocol ${verdict.clientProtocolVersion}, server requires client protocol ${verdict.requiredClientProtocolVersion}.`
   }
-  return `The selected Nightshift server is too old for this client. Update Nightshift on the server. Server protocol ${verdict.serverProtocolVersion}, client requires server protocol ${verdict.requiredServerProtocolVersion}.`
+  return `The selected Kolux server is too old for this client. Update Kolux on the server. Server protocol ${verdict.serverProtocolVersion}, client requires server protocol ${verdict.requiredServerProtocolVersion}.`
 }
 
 export type CompatVerdict =

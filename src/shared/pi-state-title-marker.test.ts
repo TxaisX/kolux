@@ -52,7 +52,7 @@ describe('Pi/OMP native state-title markers', () => {
     }
   )
 
-  // Why: an unrecognized marker means a protocol Nightshift has not been taught yet. Claiming a
+  // Why: an unrecognized marker means a protocol Kolux has not been taught yet. Claiming a
   // status from it would repeat this bug in the other direction, so the parser abstains
   // and the pre-existing Pi gates decide.
   it('abstains on a marker the table does not define', () => {

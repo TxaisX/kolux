@@ -1,16 +1,16 @@
 import { isWindowsAbsolutePathLike } from '../../../../shared/cross-platform-path'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import type { Repo } from '../../../../shared/repo-types'
 import { getEffectiveHooksFromConfig } from '../../../effective-hook-config'
-import { getEffectiveHooks, parseNightshiftYaml } from '../../../hooks'
+import { getEffectiveHooks, parseKoluxYaml } from '../../../hooks'
 import { getSshFilesystemProvider } from '../../../providers/ssh-filesystem-dispatch'
 import { requireSshGitProvider } from '../../../providers/ssh-git-dispatch'
-import { joinWorktreeRelativePath } from '../../../runtime/runtime-relative-paths'
+import { readRepoConfigYaml } from '../../../runtime/repo-config-yaml-fallback'
 import { getSetupRunnerEnvVars } from '../../../setup-hook-env-vars'
 
 const WORKTREE_ARCHIVE_HOOK_TIMEOUT_MS = 120_000
 
-export async function getArchiveHooksForRemoval(repo: Repo): Promise<NightshiftHooks | null> {
+export async function getArchiveHooksForRemoval(repo: Repo): Promise<KoluxHooks | null> {
   if (!repo.connectionId) {
     return getEffectiveHooks(repo)
   }
@@ -21,8 +21,8 @@ export async function getArchiveHooksForRemoval(repo: Repo): Promise<NightshiftH
   }
 
   try {
-    const result = await fsProvider.readFile(joinWorktreeRelativePath(repo.path, 'nightshift.yaml'))
-    const yamlHooks = result.isBinary ? null : parseNightshiftYaml(result.content)
+    const result = await readRepoConfigYaml(fsProvider, repo.path)
+    const yamlHooks = result == null || result.isBinary ? null : parseKoluxYaml(result.content)
     return getEffectiveHooksFromConfig(repo, yamlHooks)
   } catch {
     return getEffectiveHooksFromConfig(repo, null)

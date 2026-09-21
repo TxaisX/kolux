@@ -36,7 +36,7 @@ export function MarkdownPreviewSingleNoteSendMenu({
         }
       ]}
       targetModeLabel="This note"
-      triggerClassName="nightshift-diff-comment-pill-btn"
+      triggerClassName="kolux-diff-comment-pill-btn"
       disabledTooltip="Note already sent"
       onDelivered={onDelivered}
     />
@@ -98,12 +98,12 @@ export function MarkdownPreviewAnnotationComposer({
       className="markdown-annotation-composer"
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="nightshift-diff-comment-popover-label">
+      <div className="kolux-diff-comment-popover-label">
         {translate('auto.components.editor.MarkdownPreview.b1bfc04034', 'Selected text')}
       </div>
       <textarea
         ref={focusTextareaRef}
-        className="nightshift-diff-comment-popover-textarea"
+        className="kolux-diff-comment-popover-textarea"
         placeholder={translate(
           'auto.components.editor.MarkdownPreview.d737791433',
           'Add note for the AI'
@@ -128,7 +128,7 @@ export function MarkdownPreviewAnnotationComposer({
         }}
         rows={3}
       />
-      <div className="nightshift-diff-comment-popover-footer">
+      <div className="kolux-diff-comment-popover-footer">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
           {translate('auto.components.editor.MarkdownPreview.e4683f70c4', 'Cancel')}
         </Button>

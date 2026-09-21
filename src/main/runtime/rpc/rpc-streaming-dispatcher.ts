@@ -1,7 +1,7 @@
 import { isStreamingMethod, type RpcEnvelopeMeta, type RpcRegistry, type RpcRequest } from './core'
 
 import { errorResponse, successResponse } from './errors'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type {
   OrchestrationMutationExecutor,
   DurableMutationInvocation
@@ -17,7 +17,7 @@ import { needsLocalCallerFingerprint } from './dispatcher-caller-fingerprint'
 import { createDispatcherStreamingFeatureEmitter } from './dispatcher-streaming-feature-emitter'
 
 export type RpcStreamingDispatcherDependencies = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   registry: RpcRegistry
   orchestrationMutations: OrchestrationMutationExecutor
   legacyOrchestration: OrchestrationLegacyCompatibility

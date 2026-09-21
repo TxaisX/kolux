@@ -64,7 +64,7 @@ export function hasTrustedPackageManagerFor(packageType: LinuxRootPackageType): 
 
 /**
  * Builds the interactive command the user pastes into their own terminal. Every token except the
- * package path is a fixed literal, and the path is POSIX-single-quoted — Nightshift never runs this.
+ * package path is a fixed literal, and the path is POSIX-single-quoted — Kolux never runs this.
  */
 export function buildLinuxPackageInstallCommand(
   packageType: LinuxRootPackageType,

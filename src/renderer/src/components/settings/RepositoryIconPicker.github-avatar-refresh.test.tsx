@@ -33,8 +33,8 @@ globalThis.window = { api: { gh: apiMocks } }
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
-    path: '/workspace/nightshift',
-    displayName: 'nightshift',
+    path: '/workspace/kolux',
+    displayName: 'kolux',
     badgeColor: '#2563eb',
     addedAt: 1,
     kind: 'git',
@@ -77,7 +77,7 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
       }
     })
     apiMocks.repoUpstream.mockResolvedValueOnce(null)
-    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'nightshift' })
+    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'kolux' })
 
     act(() => {
       root.render(<RepositoryIconPicker repo={repo} updateRepo={updateRepo} />)
@@ -89,7 +89,7 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
         type: 'image',
         src: 'https://github.com/parkerrex.png?size=64',
         source: 'github',
-        label: 'parkerrex/nightshift'
+        label: 'parkerrex/kolux'
       }
     })
   })
@@ -98,7 +98,7 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
     const updateRepo = vi.fn()
     // A fork whose avatar tracks its parent org, resolved earlier while online.
     const repo = makeRepo({
-      upstream: { owner: 'TxaisX', repo: 'nightshift' },
+      upstream: { owner: 'TxaisX', repo: 'kolux' },
       repoIcon: {
         type: 'image',
         src: 'https://github.com/txais.png?size=64',
@@ -109,7 +109,7 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
     // Offline/unauthed: the parent lookup returns null. The same-name origin
     // owner must NOT be persisted over the parent identity.
     apiMocks.repoUpstream.mockResolvedValueOnce(null)
-    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'nightshift' })
+    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'kolux' })
 
     act(() => {
       root.render(<RepositoryIconPicker repo={repo} updateRepo={updateRepo} />)

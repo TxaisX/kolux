@@ -9,7 +9,7 @@ export async function createVerifiedSkillPlacementCopy(
   filesystem: SkillInstallFilesystem,
   fileModes?: readonly SkillInstalledFileMode[]
 ): Promise<void> {
-  const temporary = `${destinationPath}.nightshift-copy-${randomUUID()}`
+  const temporary = `${destinationPath}.kolux-copy-${randomUUID()}`
   try {
     await cp(canonicalPath, temporary, { recursive: true, verbatimSymlinks: true })
     const [source, copied] = await Promise.all([
@@ -33,8 +33,8 @@ export async function replaceOwnedSkillPlacementCopy(
   transaction?: { replacementPath: string; backupPath: string; retainBackup: boolean }
 ): Promise<void> {
   const replacement =
-    transaction?.replacementPath ?? `${destinationPath}.nightshift-copy-${randomUUID()}`
-  const backup = transaction?.backupPath ?? `${destinationPath}.nightshift-backup-${randomUUID()}`
+    transaction?.replacementPath ?? `${destinationPath}.kolux-copy-${randomUUID()}`
+  const backup = transaction?.backupPath ?? `${destinationPath}.kolux-backup-${randomUUID()}`
   try {
     await (transaction
       ? createSkillPlacementCopyAtMissingDestination(

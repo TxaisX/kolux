@@ -49,7 +49,7 @@ function deps(
     deps: {
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'local' } as const,
-      destinations: overrides.destinations ?? { primary: 'system', alternate: 'nightshift' },
+      destinations: overrides.destinations ?? { primary: 'system', alternate: 'kolux' },
       actionsEnabled: overrides.actionsEnabled ?? true,
       restoreFocus: vi.fn(),
       request: (request: LinkActionRequest) => requests.push(request)
@@ -96,7 +96,7 @@ describe('handleNativeChatWebLink', () => {
       kind: 'url'
     })
     expect(requests[0]?.primary.label).toBe('System Browser')
-    expect(requests[0]?.alternate?.label).toBe('Nightshift Browser')
+    expect(requests[0]?.alternate?.label).toBe('Kolux Browser')
   })
 
   it('routes the popover actions to their destinations', () => {
@@ -109,7 +109,7 @@ describe('handleNativeChatWebLink', () => {
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'local' },
       modifierHeld: false,
-      forceDestination: 'nightshift'
+      forceDestination: 'kolux'
     })
   })
 
@@ -135,7 +135,7 @@ describe('handleNativeChatWebLink', () => {
     )
     expect(mocks.openRoutedHttpLink).toHaveBeenCalledWith(
       'https://a/',
-      expect.objectContaining({ forceDestination: 'nightshift' })
+      expect.objectContaining({ forceDestination: 'kolux' })
     )
   })
 

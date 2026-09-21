@@ -8,7 +8,7 @@
  * committed glyph and the chord arrive by two different routes — the composition session-end
  * handler and the transport — and only their merged order is observable.
  */
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { closeTerminalImePaneArena, openTerminalImePaneArena } from './terminal-ime-pane-arena'
 import {
   commitImeText,
@@ -40,23 +40,23 @@ const CMD_LEFT_BYTE = '\x01'
 
 test.describe('Terminal 2-Set Korean composing-chord order', () => {
   test('sends the composing syllable before a Cmd+Left pressed during it', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     // Cmd+Left resolves to \x01 only under the macOS branch of the shortcut policy, so a Linux
     // runner produces no chord byte at all and the spec would pass by measuring nothing. Pinning
     // the renderer's platform is what lets the reported chord run on any shard; the assertion
     // below fails loudly if the override did not take.
-    await applyImePlatformPolicy(nightshiftPage, 'mac')
-    await expectImePlatformPolicy(nightshiftPage, 'mac')
+    await applyImePlatformPolicy(koluxPage, 'mac')
+    await expectImePlatformPolicy(koluxPage, 'mac')
 
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     const reader = createTerminalImeByteReader(testRepoPath, 1)
     let completed = false
     try {
-      await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+      await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
 
-      await composeHangulSyllable(arena.session, nightshiftPage, DA_FRAMES)
+      await composeHangulSyllable(arena.session, koluxPage, DA_FRAMES)
 
       // Pressed while the syllable is still in preedit. Before the fix this reached the pty
       // immediately, ahead of the 다 that had been typed first.
@@ -73,10 +73,10 @@ test.describe('Terminal 2-Set Korean composing-chord order', () => {
       // The held chord flushes a macrotask after the composition session ends. Enter is only here
       // to terminate the line for the reader, so let the chord land before adding it — otherwise
       // the newline overtakes it and the assertion measures the wrong pair.
-      await nightshiftPage.waitForTimeout(250)
+      await koluxPage.waitForTimeout(250)
       await dispatchPlainEnter(arena.session)
 
-      const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+      const received = await waitForTerminalImeBytes(koluxPage, reader)
       expect(received).toEqual([Buffer.from(`다${CMD_LEFT_BYTE}\n`).toString('hex')])
       completed = true
     } finally {

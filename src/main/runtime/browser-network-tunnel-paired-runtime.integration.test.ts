@@ -7,8 +7,8 @@ import { PairedRuntimeBrowserNetworkRoute } from '../browser/paired-runtime-brow
 import { PairedRuntimeBrowserHostLease } from '../browser/paired-runtime-browser-host-lease'
 import { parsePairingCode } from '../../shared/pairing'
 import { getBrowserHostLeaseRegistry } from './browser-host-lease-registry-instance'
-import { NightshiftRuntimeService } from './nightshift-runtime'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeService } from './kolux-runtime'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { ALL_RPC_METHODS } from './rpc/methods'
 
 const resources: (() => Promise<void> | void)[] = []
@@ -21,10 +21,10 @@ afterEach(async () => {
 
 describe('paired runtime browser network tunnel', () => {
   it('returns page command results on the exact authenticated attach connection', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-command-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-command-'))
     resources.push(() => rmSync(userDataPath, { recursive: true, force: true }))
-    const runtime = new NightshiftRuntimeService({} as never)
-    const rpc = new NightshiftRuntimeRpcServer({
+    const runtime = new KoluxRuntimeService({} as never)
+    const rpc = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -102,10 +102,10 @@ describe('paired runtime browser network tunnel', () => {
   })
 
   it('commits same-runtime reconciliation placement after a real paired command result', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-reconciliation-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-reconciliation-'))
     resources.push(() => rmSync(userDataPath, { recursive: true, force: true }))
-    const runtime = new NightshiftRuntimeService({} as never)
-    const rpc = new NightshiftRuntimeRpcServer({
+    const runtime = new KoluxRuntimeService({} as never)
+    const rpc = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -198,10 +198,10 @@ describe('paired runtime browser network tunnel', () => {
     const destinationAddress = await listen(destination)
     resources.push(() => closeServer(destination))
 
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-browser-tunnel-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-browser-tunnel-'))
     resources.push(() => rmSync(userDataPath, { recursive: true, force: true }))
-    const runtime = new NightshiftRuntimeService({} as never)
-    const rpc = new NightshiftRuntimeRpcServer({
+    const runtime = new KoluxRuntimeService({} as never)
+    const rpc = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,

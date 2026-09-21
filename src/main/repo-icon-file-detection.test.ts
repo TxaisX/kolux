@@ -146,7 +146,7 @@ describe('declared repo icons through production filesystem routes', () => {
     ['local', true],
     ['ssh', true]
   ] as const)('preserves declared icon detection on %s (no icon: %s)', async (kind, noIcon) => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-icon-href-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-icon-href-'))
     const source = noIcon
       ? 'a'.repeat(256 * 1024)
       : `${'a'.repeat(32768)}{ rel: "icon", href: "/first.png", href: "/chosen.png" }`

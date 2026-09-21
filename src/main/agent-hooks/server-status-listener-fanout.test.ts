@@ -450,7 +450,7 @@ describe('AgentHookServer listener replay', () => {
   })
 
   it('hydrates cached statuses as not observed in the current runtime', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-agent-hooks-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-agent-hooks-'))
     const firstServer = new AgentHookServer()
     const secondServer = new AgentHookServer()
     try {
@@ -487,25 +487,22 @@ describe('AgentHookServer listener replay', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBeTruthy()
-      expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBeTruthy()
+      expect(env.KOLUX_AGENT_HOOK_PORT).toBeTruthy()
+      expect(env.KOLUX_AGENT_HOOK_TOKEN).toBeTruthy()
 
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody({
-              hook_event_name: 'UserPromptSubmit',
-              prompt: 'replay me'
-            })
-          )
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody({
+            hook_event_name: 'UserPromptSubmit',
+            prompt: 'replay me'
+          })
+        )
+      })
       expect(response.status).toBe(204)
 
       const listener = vi.fn()

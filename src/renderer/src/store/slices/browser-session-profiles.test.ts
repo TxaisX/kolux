@@ -44,7 +44,7 @@ describe('createBrowserSlice runtime guard', () => {
           {
             id: 'default',
             scope: 'default',
-            partition: 'persist:nightshift-default',
+            partition: 'persist:kolux-default',
             label: 'Default',
             source: null
           }
@@ -70,7 +70,7 @@ describe('createBrowserSlice runtime guard', () => {
       {
         id: 'default',
         scope: 'default',
-        partition: 'persist:nightshift-default',
+        partition: 'persist:kolux-default',
         label: 'Default',
         source: null
       }
@@ -79,7 +79,7 @@ describe('createBrowserSlice runtime guard', () => {
       {
         id: 'default',
         scope: 'default',
-        partition: 'persist:nightshift-default',
+        partition: 'persist:kolux-default',
         label: 'Default',
         source: null
       }
@@ -127,7 +127,7 @@ describe('createBrowserSlice runtime guard', () => {
           {
             id: 'remote-default',
             scope: 'default',
-            partition: 'persist:nightshift-remote',
+            partition: 'persist:kolux-remote',
             label: 'Remote Default',
             source: null
           }
@@ -143,7 +143,7 @@ describe('createBrowserSlice runtime guard', () => {
       {
         id: 'local-default',
         scope: 'default',
-        partition: 'persist:nightshift-local',
+        partition: 'persist:kolux-local',
         label: 'Local Default',
         source: null
       }
@@ -317,7 +317,7 @@ describe('createBrowserSlice runtime guard', () => {
       {
         id: 'default',
         scope: 'default',
-        partition: 'persist:nightshift-default',
+        partition: 'persist:kolux-default',
         label: 'Default',
         source: null
       }
@@ -330,7 +330,7 @@ describe('createBrowserSlice runtime guard', () => {
       {
         id: 'default',
         scope: 'default',
-        partition: 'persist:nightshift-default',
+        partition: 'persist:kolux-default',
         label: 'Default',
         source: null
       }

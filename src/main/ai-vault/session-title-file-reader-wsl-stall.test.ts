@@ -54,7 +54,7 @@ beforeEach(async () => {
   resetSessionParseCacheForTests()
   mocks.lstat.mockReset()
   releaseStall = undefined
-  tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-title-stall-'))
+  tempRoot = await mkdtemp(join(tmpdir(), 'kolux-title-stall-'))
 })
 
 afterEach(async () => {

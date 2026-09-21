@@ -7,7 +7,7 @@
  *   fixed a regression where closing the active editor tab jumped to an
  *   arbitrary file. The existing `tabs.spec.ts` only covers terminal tab
  *   close; the editor/diff close path has no E2E guard today.
- * - PR #677 (`return to Nightshift landing screen after closing last terminal`)
+ * - PR #677 (`return to Kolux landing screen after closing last terminal`)
  *   plus editor.ts's `shouldDeactivateWorktree` branch (also hardened in
  *   tabs.ts's `closeUnifiedTab`) require that when a worktree's last visible
  *   surface closes, the app clears `activeWorktreeId` instead of leaving a
@@ -19,7 +19,7 @@
  *   file is one that is still open.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   waitForSessionReady,
   waitForActiveWorktree,
@@ -118,22 +118,20 @@ async function getActiveFileId(
 }
 
 test.describe('Tab Close Navigation', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   /**
    * Covers PR #693: closing the active editor tab should activate the visual
    * neighbor in the same worktree, not the first file in the list.
    */
-  test('closing the active editor tab activates its visual neighbor', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
+  test('closing the active editor tab activates its visual neighbor', async ({ koluxPage }) => {
+    const worktreeId = await waitForActiveWorktree(koluxPage)
 
-    const fileIds = await openSeededEditorTabs(nightshiftPage, worktreeId, [
+    const fileIds = await openSeededEditorTabs(koluxPage, worktreeId, [
       'package.json',
       'README.md',
       'tsconfig.json'
@@ -143,14 +141,12 @@ test.describe('Tab Close Navigation', () => {
     // Activate the middle tab and close it. The neighbor-picking logic in
     // closeFile should pick the file that sat immediately after the closed
     // one in the worktree's openFiles slice.
-    await setActiveFile(nightshiftPage, fileIds[1])
-    await expect
-      .poll(async () => getActiveFileId(nightshiftPage), { timeout: 3_000 })
-      .toBe(fileIds[1])
+    await setActiveFile(koluxPage, fileIds[1])
+    await expect.poll(async () => getActiveFileId(koluxPage), { timeout: 3_000 }).toBe(fileIds[1])
 
-    await closeFile(nightshiftPage, fileIds[1])
+    await closeFile(koluxPage, fileIds[1])
 
-    const openFilesAfter = await getOpenFiles(nightshiftPage, worktreeId)
+    const openFilesAfter = await getOpenFiles(koluxPage, worktreeId)
     const remainingIds = new Set(openFilesAfter.map((f) => f.id))
     expect(remainingIds.has(fileIds[1])).toBe(false)
 
@@ -162,7 +158,7 @@ test.describe('Tab Close Navigation', () => {
     // laxer assertion like "some open file is active" would have missed that
     // specific regression, since any order-agnostic fallback would still pass.
     await expect
-      .poll(async () => getActiveFileId(nightshiftPage), {
+      .poll(async () => getActiveFileId(koluxPage), {
         timeout: 5_000,
         message: 'expected the visual neighbor (tsconfig.json) to become active after close'
       })
@@ -170,9 +166,7 @@ test.describe('Tab Close Navigation', () => {
 
     // And the workspace must still be showing an editor, not silently flipping
     // back to terminal while editors remain open.
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 3_000 })
-      .toBe('editor')
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 3_000 }).toBe('editor')
   })
 
   /**
@@ -180,19 +174,17 @@ test.describe('Tab Close Navigation', () => {
    * openFiles list with editor tabs (contentType='diff') and route through
    * the same closeFile path, which is where #693 regressed.
    */
-  test('closing the active diff tab activates a still-open neighbor', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
+  test('closing the active diff tab activates a still-open neighbor', async ({ koluxPage }) => {
+    const worktreeId = await waitForActiveWorktree(koluxPage)
 
     // Seed two editor tabs + one diff tab in the same worktree.
-    const editorIds = await openSeededEditorTabs(nightshiftPage, worktreeId, [
+    const editorIds = await openSeededEditorTabs(koluxPage, worktreeId, [
       'package.json',
       'README.md'
     ])
     expect(editorIds.length).toBe(2)
 
-    const diffId = await nightshiftPage.evaluate((wId) => {
+    const diffId = await koluxPage.evaluate((wId) => {
       const store = window.__store
       if (!store) {
         return null
@@ -218,11 +210,11 @@ test.describe('Tab Close Navigation', () => {
     }, worktreeId)
 
     expect(diffId).not.toBeNull()
-    await expect.poll(async () => getActiveFileId(nightshiftPage), { timeout: 3_000 }).toBe(diffId)
+    await expect.poll(async () => getActiveFileId(koluxPage), { timeout: 3_000 }).toBe(diffId)
 
-    await closeFile(nightshiftPage, diffId!)
+    await closeFile(koluxPage, diffId!)
 
-    const openFilesAfter = await getOpenFiles(nightshiftPage, worktreeId)
+    const openFilesAfter = await getOpenFiles(koluxPage, worktreeId)
     const remainingIds = new Set(openFilesAfter.map((f) => f.id))
     expect(remainingIds.has(diffId!)).toBe(false)
     expect(remainingIds.size).toBe(2)
@@ -234,7 +226,7 @@ test.describe('Tab Close Navigation', () => {
     // remaining file, README.md (editorIds[1]). Asserting the exact ID makes
     // this a real guard against #693 instead of a tautology.
     await expect
-      .poll(async () => getActiveFileId(nightshiftPage), {
+      .poll(async () => getActiveFileId(koluxPage), {
         timeout: 5_000,
         message: 'expected README.md (last remaining) to become active after closing the diff tab'
       })
@@ -246,10 +238,8 @@ test.describe('Tab Close Navigation', () => {
    * when the last editor closes and no terminal/browser surface remains for
    * the worktree, the app must return to Landing (activeWorktreeId === null).
    */
-  test('closing the last visible surface returns the app to Landing', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
+  test('closing the last visible surface returns the app to Landing', async ({ koluxPage }) => {
+    const worktreeId = await waitForActiveWorktree(koluxPage)
 
     // Prepare the worktree so only a single editor tab is present as a
     // visible surface: no browser tabs and no terminal tabs.
@@ -262,7 +252,7 @@ test.describe('Tab Close Navigation', () => {
     // it here keeps the helpers below self-contained and the test's setup
     // order-independent instead of depending on whichever surface-close
     // happens to leave activeWorktreeId untouched.
-    await nightshiftPage.evaluate((wId) => {
+    await koluxPage.evaluate((wId) => {
       const store = window.__store
       if (!store) {
         return
@@ -287,13 +277,11 @@ test.describe('Tab Close Navigation', () => {
       }
     }, worktreeId)
 
-    const editorIds = await openSeededEditorTabs(nightshiftPage, worktreeId, ['package.json'])
+    const editorIds = await openSeededEditorTabs(koluxPage, worktreeId, ['package.json'])
     expect(editorIds.length).toBe(1)
 
-    await setActiveFile(nightshiftPage, editorIds[0])
-    await expect
-      .poll(async () => getActiveFileId(nightshiftPage), { timeout: 3_000 })
-      .toBe(editorIds[0])
+    await setActiveFile(koluxPage, editorIds[0])
+    await expect.poll(async () => getActiveFileId(koluxPage), { timeout: 3_000 }).toBe(editorIds[0])
 
     // Sanity: confirm the worktree has no backing terminal/browser surfaces
     // before we close the last editor. Otherwise the deactivate branch would
@@ -306,7 +294,7 @@ test.describe('Tab Close Navigation', () => {
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate((wId) => {
+          koluxPage.evaluate((wId) => {
             const store = window.__store
             if (!store) {
               throw new Error('window.__store is not available')
@@ -331,12 +319,12 @@ test.describe('Tab Close Navigation', () => {
       )
       .toEqual({ terminals: 0, browserTabs: 0 })
 
-    await closeFile(nightshiftPage, editorIds[0])
+    await closeFile(koluxPage, editorIds[0])
 
     // The worktree should be deselected. Landing renders when
     // activeWorktreeId === null.
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), {
+      .poll(async () => getActiveWorktreeId(koluxPage), {
         timeout: 5_000,
         message: 'activeWorktreeId was not cleared after closing the last visible surface'
       })

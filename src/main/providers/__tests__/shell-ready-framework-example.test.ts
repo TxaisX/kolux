@@ -54,7 +54,7 @@ source "$HOME/.config/zsh/env"
 EOF
 
       # Run: check discovered ZDOTDIR
-      zsh -c 'env | grep -E "^(NIGHTSHIFT_|ZDOTDIR|HOME)=" | sort'
+      zsh -c 'env | grep -E "^(KOLUX_|ZDOTDIR|HOME)=" | sort'
     `,
       { userDataPath }
     )

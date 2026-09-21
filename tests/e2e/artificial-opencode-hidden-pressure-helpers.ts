@@ -21,31 +21,30 @@ import type {
 export async function waitForMainHiddenDeliveryDrops<
   TMainPressure extends HiddenPressureMainSnapshot
 >(
-  nightshiftPage: Page,
+  koluxPage: Page,
   deps: { readMainPtyPressureDebug: (page: Page) => Promise<TMainPressure | null> },
   pressureOutputChars: number
 ): Promise<void> {
   await expect
     .poll(
-      async () =>
-        (await deps.readMainPtyPressureDebug(nightshiftPage))?.hiddenDeliveryDroppedChars ?? 0,
+      async () => (await deps.readMainPtyPressureDebug(koluxPage))?.hiddenDeliveryDroppedChars ?? 0,
       { timeout: 30_000, message: 'Main hidden-delivery gate did not drop hidden PTY output' }
     )
     .toBeGreaterThanOrEqual(pressureOutputChars)
 }
 
 export async function measureHiddenOutputRestoreLatency(
-  nightshiftPage: Page,
+  koluxPage: Page,
   worktreeId: string,
   runId: string
 ): Promise<number> {
   const restoreStart = performance.now()
-  await switchToWorktree(nightshiftPage, worktreeId)
+  await switchToWorktree(koluxPage, worktreeId)
   // Why resolve rather than read activeTabId: after a worktree switch the active tab can
   // still be the previous worktree's, or a non-terminal one; this picks the worktree's own.
-  const tabId = (await resolveActiveTabId(nightshiftPage)) ?? ''
+  const tabId = (await resolveActiveTabId(koluxPage)) ?? ''
   await expect
-    .poll(async () => (await readActiveScreen(nightshiftPage, tabId))?.rows.join('\n') ?? '', {
+    .poll(async () => (await readActiveScreen(koluxPage, tabId))?.rows.join('\n') ?? '', {
       timeout: 20_000,
       // One-second backoff can dominate the measured restore latency.
       intervals: [50],
@@ -57,13 +56,13 @@ export async function measureHiddenOutputRestoreLatency(
 
 export async function startHiddenPressureCommands({
   hiddenPanes,
-  nightshiftPage,
+  koluxPage,
   pressureOutputChars,
   pressureScriptPath,
   pressureStartDelayMs
 }: {
   hiddenPanes: HiddenPressurePane[]
-  nightshiftPage: Page
+  koluxPage: Page
   pressureOutputChars: number
   pressureScriptPath: string
   pressureStartDelayMs: number
@@ -71,7 +70,7 @@ export async function startHiddenPressureCommands({
   await Promise.all(
     hiddenPanes.map((pane, paneIndex) =>
       sendToTerminal(
-        nightshiftPage,
+        koluxPage,
         pane.ptyId,
         `node ${JSON.stringify(pressureScriptPath)} ${paneIndex} ${pressureOutputChars} ${pressureStartDelayMs}\r`
       )
@@ -79,14 +78,11 @@ export async function startHiddenPressureCommands({
   )
 }
 
-export async function switchToTypingWorkspace(
-  nightshiftPage: Page,
-  worktreeId: string
-): Promise<void> {
-  await switchToWorktree(nightshiftPage, worktreeId)
-  await expect.poll(() => getActiveWorktreeId(nightshiftPage), { timeout: 10_000 }).toBe(worktreeId)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
+export async function switchToTypingWorkspace(koluxPage: Page, worktreeId: string): Promise<void> {
+  await switchToWorktree(koluxPage, worktreeId)
+  await expect.poll(() => getActiveWorktreeId(koluxPage), { timeout: 10_000 }).toBe(worktreeId)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
 }
 
 export async function cleanupHiddenPressureScenario<
@@ -99,7 +95,7 @@ export async function cleanupHiddenPressureScenario<
   deps,
   firstWorktreeId,
   hiddenPanes,
-  nightshiftPage,
+  koluxPage,
   pressureScriptPath,
   secondWorktreeId,
   typingScriptPath
@@ -107,21 +103,19 @@ export async function cleanupHiddenPressureScenario<
   deps: HiddenPressureDeps<TMeasurement, TDebug, TScheduler, TMainPressure, TAckGate>
   firstWorktreeId: string
   hiddenPanes: HiddenPressurePane[]
-  nightshiftPage: Page
+  koluxPage: Page
   pressureScriptPath: string
   secondWorktreeId: string
   typingScriptPath: string
 }): Promise<void> {
-  await deps.releaseTerminalAckGate(nightshiftPage)
-  await switchToWorktree(nightshiftPage, firstWorktreeId).catch(() => undefined)
-  await waitForActivePanePtyId(nightshiftPage)
-    .then((ptyId) => sendToTerminal(nightshiftPage, ptyId, '\x03'))
+  await deps.releaseTerminalAckGate(koluxPage)
+  await switchToWorktree(koluxPage, firstWorktreeId).catch(() => undefined)
+  await waitForActivePanePtyId(koluxPage)
+    .then((ptyId) => sendToTerminal(koluxPage, ptyId, '\x03'))
     .catch(() => undefined)
-  await switchToWorktree(nightshiftPage, secondWorktreeId).catch(() => undefined)
+  await switchToWorktree(koluxPage, secondWorktreeId).catch(() => undefined)
   await Promise.all(
-    hiddenPanes.map((pane) =>
-      sendToTerminal(nightshiftPage, pane.ptyId, '\x03').catch(() => undefined)
-    )
+    hiddenPanes.map((pane) => sendToTerminal(koluxPage, pane.ptyId, '\x03').catch(() => undefined))
   )
   rmSync(typingScriptPath, { force: true })
   rmSync(pressureScriptPath, { force: true })

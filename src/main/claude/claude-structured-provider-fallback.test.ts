@@ -28,7 +28,7 @@ function message(
 ): ClaudeStructuredSessionEvent {
   return {
     type: 'message',
-    sessionId: 'nightshift-session',
+    sessionId: 'kolux-session',
     message: {
       type: role,
       uuid,
@@ -39,7 +39,7 @@ function message(
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-claude-provider-fallback-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-claude-provider-fallback-'))
 })
 
 afterEach(async () => {
@@ -59,7 +59,7 @@ describe('Claude provider fallback', () => {
     const translator = createClaudeJournalTranslator({ sink })
     const initEvent: ClaudeStructuredSessionEvent = {
       type: 'message',
-      sessionId: 'nightshift-session',
+      sessionId: 'kolux-session',
       message: {
         type: 'system',
         subtype: 'init',

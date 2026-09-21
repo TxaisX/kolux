@@ -36,12 +36,12 @@ afterEach(async () => {
 })
 
 async function makeFixture() {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-cli-appimage-ownership-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-cli-appimage-ownership-'))
   created.push(root)
-  const appImagePath = join(root, 'Nightshift.AppImage')
+  const appImagePath = join(root, 'Kolux.AppImage')
   const cacheRootPath = join(root, 'cache')
   const commandDirectory = join(root, 'home', '.local', 'bin')
-  const commandPath = join(commandDirectory, 'nightshift-ide')
+  const commandPath = join(commandDirectory, 'kolux-ide')
   await mkdir(commandDirectory, { recursive: true })
   await writeFile(appImagePath, '#!/usr/bin/env bash\n', { mode: 0o755 })
   return { root, appImagePath, cacheRootPath, commandDirectory, commandPath }
@@ -50,7 +50,7 @@ async function makeFixture() {
 async function extractPayload(_appImagePath: string, cwd: string): Promise<void> {
   const launcherDirectory = join(cwd, 'squashfs-root', 'resources', 'bin')
   await mkdir(launcherDirectory, { recursive: true })
-  await writeFile(join(launcherDirectory, 'nightshift-ide'), '#!/usr/bin/env bash\n', {
+  await writeFile(join(launcherDirectory, 'kolux-ide'), '#!/usr/bin/env bash\n', {
     mode: 0o755
   })
 }
@@ -61,7 +61,7 @@ function installerOptions(fixture: Fixture) {
     isPackaged: true,
     userDataPath: join(fixture.root, 'user-data'),
     resourcesPath: join(fixture.root, 'mount', 'resources'),
-    execPath: join(fixture.root, 'mount', 'nightshift-ide'),
+    execPath: join(fixture.root, 'mount', 'kolux-ide'),
     appPath: join(fixture.root, 'mount', 'resources', 'app.asar'),
     homePath: join(fixture.root, 'home'),
     processPathEnv: fixture.commandDirectory,
@@ -75,7 +75,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
   it('uses the mounted bundled launcher when only APPDIR is inherited', async () => {
     const fixture = await makeFixture()
     const resourcesPath = join(fixture.root, 'mounted', 'resources')
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift-ide')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux-ide')
     await mkdir(dirname(launcherPath), { recursive: true })
     await writeFile(launcherPath, '#!/usr/bin/env bash\n', { mode: 0o755 })
     vi.stubEnv('APPIMAGE', '')
@@ -86,7 +86,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
       isPackaged: true,
       userDataPath: join(fixture.root, 'user-data'),
       resourcesPath,
-      execPath: join(dirname(resourcesPath), 'nightshift-ide'),
+      execPath: join(dirname(resourcesPath), 'kolux-ide'),
       appPath: join(resourcesPath, 'app.asar'),
       homePath: join(fixture.root, 'home'),
       processPathEnv: fixture.commandDirectory,
@@ -107,7 +107,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
   it('ignores inherited APPIMAGE without the matching runtime identity', async () => {
     const fixture = await makeFixture()
     const resourcesPath = join(fixture.root, 'installed', 'resources')
-    const launcherPath = join(resourcesPath, 'bin', 'nightshift-ide')
+    const launcherPath = join(resourcesPath, 'bin', 'kolux-ide')
     await mkdir(dirname(launcherPath), { recursive: true })
     await writeFile(launcherPath, '#!/usr/bin/env bash\n', { mode: 0o755 })
     vi.stubEnv('APPIMAGE', fixture.appImagePath)
@@ -119,7 +119,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
       isPackaged: true,
       userDataPath: join(fixture.root, 'user-data'),
       resourcesPath,
-      execPath: join(fixture.root, 'installed', 'nightshift-ide'),
+      execPath: join(fixture.root, 'installed', 'kolux-ide'),
       appPath: join(resourcesPath, 'app.asar'),
       homePath: join(fixture.root, 'home'),
       processPathEnv: fixture.commandDirectory,
@@ -136,9 +136,9 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
     expect(extract).not.toHaveBeenCalled()
   })
 
-  it('refuses an arbitrary resources/bin/nightshift-ide symlink', async () => {
+  it('refuses an arbitrary resources/bin/kolux-ide symlink', async () => {
     const fixture = await makeFixture()
-    const foreignTarget = join(fixture.root, 'foreign', 'resources', 'bin', 'nightshift-ide')
+    const foreignTarget = join(fixture.root, 'foreign', 'resources', 'bin', 'kolux-ide')
     await symlink(foreignTarget, fixture.commandPath)
     const extract = vi.fn(extractPayload)
     const installer = new CliInstaller({
@@ -147,15 +147,15 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
     })
 
     await expect(installer.getStatus()).resolves.toMatchObject({ state: 'conflict' })
-    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Nightshift command')
+    await expect(installer.install()).rejects.toThrow('Refusing to replace non-Kolux command')
     await expect(readlink(fixture.commandPath)).resolves.toBe(foreignTarget)
     expect(extract).not.toHaveBeenCalled()
   })
 
-  it('leaves a foreign legacy resources/bin/nightshift symlink untouched', async () => {
+  it('leaves a foreign legacy resources/bin/kolux symlink untouched', async () => {
     const fixture = await makeFixture()
-    const legacyCommandPath = join(fixture.commandDirectory, 'nightshift')
-    const foreignTarget = join(fixture.root, 'foreign', 'resources', 'bin', 'nightshift')
+    const legacyCommandPath = join(fixture.commandDirectory, 'kolux')
+    const foreignTarget = join(fixture.root, 'foreign', 'resources', 'bin', 'kolux')
     await symlink(foreignTarget, legacyCommandPath)
 
     await expect(new CliInstaller(installerOptions(fixture)).install()).resolves.toMatchObject({
@@ -199,7 +199,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
       appImagePath: fixture.appImagePath,
       cacheRootPath: fixture.cacheRootPath
     })!
-    const relocatedPath = join(fixture.root, 'downloads', 'Nightshift.AppImage')
+    const relocatedPath = join(fixture.root, 'downloads', 'Kolux.AppImage')
     await mkdir(dirname(relocatedPath), { recursive: true })
     await rename(fixture.appImagePath, relocatedPath)
     const relocatedFixture = { ...fixture, appImagePath: relocatedPath }
@@ -231,9 +231,9 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
       'a'.repeat(24),
       'resources',
       'bin',
-      'nightshift-ide'
+      'kolux-ide'
     )
-    const foreignTarget = join(fixture.root, 'foreign', 'nightshift-ide')
+    const foreignTarget = join(fixture.root, 'foreign', 'kolux-ide')
     await symlink(ownedOldTarget, fixture.commandPath)
 
     class RacedInstaller extends CliInstaller {
@@ -253,20 +253,20 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
     }
 
     await expect(new RacedInstaller(installerOptions(fixture)).install()).rejects.toThrow(
-      'Refusing to replace non-Nightshift command'
+      'Refusing to replace non-Kolux command'
     )
     await expect(readlink(fixture.commandPath)).resolves.toBe(foreignTarget)
-    expect(
-      (await readdir(fixture.commandDirectory)).some((name) => name.includes('.nightshift-'))
-    ).toBe(false)
+    expect((await readdir(fixture.commandDirectory)).some((name) => name.includes('.kolux-'))).toBe(
+      false
+    )
   })
 
   // #15081 review: the Linux reclaim rule was narrowed to extracted-cache launchers, which left a
   // deb/rpm -> AppImage migration wedged on its own leftover symlink.
   it('reclaims a symlink left by a packaged deb/rpm install', async () => {
-    for (const directory of ['/opt/Nightshift', '/opt/nightshift-ide', '/opt/nightshift']) {
+    for (const directory of ['/opt/Kolux', '/opt/kolux-ide', '/opt/kolux']) {
       const fixture = await makeFixture()
-      await symlink(`${directory}/resources/bin/nightshift-ide`, fixture.commandPath)
+      await symlink(`${directory}/resources/bin/kolux-ide`, fixture.commandPath)
 
       await expect(new CliInstaller(installerOptions(fixture)).getStatus()).resolves.toMatchObject({
         state: 'stale'
@@ -276,7 +276,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI ownership', () => {
 
   it('still refuses a launcher-named symlink outside the packaged install tree', async () => {
     const fixture = await makeFixture()
-    await symlink('/opt/not-nightshift/resources/bin/nightshift-ide', fixture.commandPath)
+    await symlink('/opt/not-kolux/resources/bin/kolux-ide', fixture.commandPath)
 
     await expect(new CliInstaller(installerOptions(fixture)).getStatus()).resolves.toMatchObject({
       state: 'conflict'

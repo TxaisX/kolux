@@ -27,11 +27,11 @@ describe('resolveAdvertisedPairingEndpoint', () => {
     ['2001:db8::0', 'ws://[2001:db8::]:6768'],
     ['[2001:db8::4]:7443', 'ws://[2001:db8::4]:7443'],
     ['[0:0:0:0:0:0:0:1]:7443', 'ws://[::1]:7443'],
-    ['http://proxy.example.test/nightshift', 'ws://proxy.example.test/nightshift'],
-    ['https://proxy.example.test/nightshift', 'wss://proxy.example.test/nightshift'],
+    ['http://proxy.example.test/kolux', 'ws://proxy.example.test/kolux'],
+    ['https://proxy.example.test/kolux', 'wss://proxy.example.test/kolux'],
     [
-      'wss://proxy.example.test:8443/nightshift?route=runtime',
-      'wss://proxy.example.test:8443/nightshift?route=runtime'
+      'wss://proxy.example.test:8443/kolux?route=runtime',
+      'wss://proxy.example.test:8443/kolux?route=runtime'
     ]
   ])('normalizes %s', (input, expected) => {
     expect(resolveAdvertisedPairingEndpoint(bound, input)).toEqual({
@@ -119,7 +119,7 @@ describe('resolveAdvertisedPairingHostname', () => {
     ['100.64.1.20', '100.64.1.20'],
     ['192.168.1.5:6768', '192.168.1.5'],
     ['desktop', 'desktop'],
-    ['wss://proxy.example.test:8443/nightshift', 'proxy.example.test']
+    ['wss://proxy.example.test:8443/kolux', 'proxy.example.test']
   ])('reads the advertised host of %s', (input, hostname) => {
     expect(resolveAdvertisedPairingHostname(input)).toBe(hostname)
   })

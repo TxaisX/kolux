@@ -41,7 +41,7 @@ describe('inventory after the terminal host dies (#10087)', () => {
   it('lists processes after the host dies instead of failing the removal', async () => {
     // The reported failure: worktree remove inventories PTYs through
     // listProcesses, and a dead named pipe surfaced as
-    // `connect ENOENT \\?\pipe\nightshift-terminal-host-...`, blocking removal until
+    // `connect ENOENT \\?\pipe\kolux-terminal-host-...`, blocking removal until
     // the whole app was restarted. spawn already recovers from this; inventory
     // did not, so the destructive path was the one that could not heal.
     const { adapter, respawn } = healingAdapter()

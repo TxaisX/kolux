@@ -10,7 +10,7 @@ vi.mock('./codex-accounts/fs-utils', () => ({
   writeFileAtomically: (...args: unknown[]) => writeFileAtomically(...args)
 }))
 vi.mock('./persistence', () => ({
-  getCanonicalUserDataPath: () => '/tmp/nightshift-tcc-notice-test'
+  getCanonicalUserDataPath: () => '/tmp/kolux-tcc-notice-test'
 }))
 vi.mock('./macos-tcc-prompt-watch', () => ({
   MacosTccPromptWatch: class {

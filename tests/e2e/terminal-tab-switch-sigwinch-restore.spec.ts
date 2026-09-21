@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { stageNodeScriptForTerminal } from './helpers/run-node-script-in-terminal'
 import {
   ensureTerminalVisible,
@@ -58,7 +58,7 @@ function buildSigwinchResetProbeCommand(): string {
     'setInterval(()=>{},1000)'
   ].join(';')
   // Why: delivered via a temp file — `node -e` quoting is not PowerShell-safe (#8521).
-  return stageNodeScriptForTerminal(script, { prefix: 'nightshift-sigwinch-probe' }).command
+  return stageNodeScriptForTerminal(script, { prefix: 'kolux-sigwinch-probe' }).command
 }
 
 function buildSigwinchResetProbeSnapshot(label: string): string {
@@ -214,70 +214,67 @@ async function setHiddenSnapshotOverride(
 
 test.describe('Terminal tab switch SIGWINCH restore', () => {
   test('keeps an alternate-screen Codex viewport after hidden snapshot replay', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const shellTabId = (await getActiveTabId(nightshiftPage))!
+    const shellTabId = (await getActiveTabId(koluxPage))!
     const agentTabId = await createAgentMarkedTerminalTab(
-      nightshiftPage,
+      koluxPage,
       'codex',
       buildSigwinchResetProbeCommand()
     )
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPanePtyIdOnTab(nightshiftPage, agentTabId)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPanePtyIdOnTab(koluxPage, agentTabId)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 8_000), {
+      .poll(() => getTerminalContent(koluxPage, 8_000), {
         timeout: 10_000,
         message: 'SIGWINCH probe TUI did not paint its initial scrolled page'
       })
       .toContain(`VISIBLE_BEFORE_SWITCH page=${SIGWINCH_PROBE_PAGE}`)
-    const paneIdentity = await readPaneIdentityOnTab(nightshiftPage, agentTabId)
-    await sendToTerminal(nightshiftPage, paneIdentity.ptyId, 'ARM_SIGWINCH_PROBE\n')
+    const paneIdentity = await readPaneIdentityOnTab(koluxPage, agentTabId)
+    await sendToTerminal(koluxPage, paneIdentity.ptyId, 'ARM_SIGWINCH_PROBE\n')
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 8_000), {
+      .poll(() => getTerminalContent(koluxPage, 8_000), {
         timeout: 10_000,
         message: 'SIGWINCH probe TUI did not arm after startup settled'
       })
       .toContain(`ARMED_BEFORE_SWITCH page=${SIGWINCH_PROBE_PAGE}`)
-    await nightshiftPage.waitForTimeout(1_200)
-    const armedContentAfterSettle = await getTerminalContent(nightshiftPage, 8_000)
+    await koluxPage.waitForTimeout(1_200)
+    const armedContentAfterSettle = await getTerminalContent(koluxPage, 8_000)
     expect(armedContentAfterSettle).not.toContain('TOP_AFTER_SIGWINCH page=0')
     const paneKey = `${agentTabId}:${paneIdentity.leafId}`
 
-    await activateTerminalTab(nightshiftPage, shellTabId)
+    await activateTerminalTab(koluxPage, shellTabId)
     const hiddenFrame = ['\x1b[?2026h', 'hidden probe frame', '\x1b[?2026l'].join('\r\n')
-    await resetHiddenOutputDebug(nightshiftPage)
-    await injectPaneData(nightshiftPage, paneKey, hiddenFrame, {
+    await resetHiddenOutputDebug(koluxPage)
+    await injectPaneData(koluxPage, paneKey, hiddenFrame, {
       seq: hiddenFrame.length,
       rawLength: hiddenFrame.length
     })
 
     await expect
-      .poll(
-        async () => (await readHiddenOutputDebug(nightshiftPage))?.hiddenRendererSkipCount ?? 0,
-        {
-          timeout: 5_000,
-          message: 'Codex probe hidden output did not take the skipped renderer path'
-        }
-      )
+      .poll(async () => (await readHiddenOutputDebug(koluxPage))?.hiddenRendererSkipCount ?? 0, {
+        timeout: 5_000,
+        message: 'Codex probe hidden output did not take the skipped renderer path'
+      })
       .toBeGreaterThan(0)
-    await setHiddenSnapshotOverride(nightshiftPage, paneIdentity.ptyId, {
+    await setHiddenSnapshotOverride(koluxPage, paneIdentity.ptyId, {
       data: buildSigwinchResetProbeSnapshot('RESTORED_SNAPSHOT'),
       cols: paneIdentity.cols,
       rows: paneIdentity.rows,
       seq: hiddenFrame.length
     })
 
-    await activateTerminalTab(nightshiftPage, agentTabId)
+    await activateTerminalTab(koluxPage, agentTabId)
 
     await expect
       .poll(
         async () => {
-          const content = await getTerminalContent(nightshiftPage, 8_000)
+          const content = await getTerminalContent(koluxPage, 8_000)
           if (content.includes('TOP_AFTER_SIGWINCH page=0')) {
             return 'top'
           }
@@ -291,8 +288,8 @@ test.describe('Terminal tab switch SIGWINCH restore', () => {
         }
       )
       .toBe('snapshot')
-    await nightshiftPage.waitForTimeout(1_200)
-    const contentAfterSettle = await getTerminalContent(nightshiftPage, 8_000)
+    await koluxPage.waitForTimeout(1_200)
+    const contentAfterSettle = await getTerminalContent(koluxPage, 8_000)
     expect(contentAfterSettle).toContain(`RESTORED_SNAPSHOT page=${SIGWINCH_PROBE_PAGE}`)
     expect(contentAfterSettle).not.toContain('TOP_AFTER_SIGWINCH page=0')
   })

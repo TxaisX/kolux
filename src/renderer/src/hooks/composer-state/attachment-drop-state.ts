@@ -124,7 +124,7 @@ export function useAttachmentDropState(input: AttachmentDropStateInput) {
         }
         return { filePaths: [], folderPaths: [] }
       }
-      const destinationDir = joinPath(targetRepoPath, '.nightshift/drops')
+      const destinationDir = joinPath(targetRepoPath, '.kolux/drops')
       const sshExpectation = targetConnectionId
         ? captureDirectSshMutationExpectation(
             useAppStore.getState(),

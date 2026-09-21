@@ -17,7 +17,7 @@ type SftpCallback = (err: Error | null, resolved?: string) => void
 const NO_SUCH_SFTP_FILE = Object.assign(new Error('No such file'), { code: 2 })
 // Stdout of the relay-side pty-master cloexec patch; kept as a literal so the fixture states the
 // wire token it is standing in for rather than importing the module under test.
-const NODE_PTY_CLOEXEC_STATUS_PREFIX = 'NIGHTSHIFT-NPTY-CLOEXEC:'
+const NODE_PTY_CLOEXEC_STATUS_PREFIX = 'KOLUX-NPTY-CLOEXEC:'
 
 export function makeMockConnection(capture: SftpWriteCapture): SshConnection {
   // Why: production attaches/removes real listeners (including prependOnceListener), so the fake must be an emitter.
@@ -60,19 +60,19 @@ export type ExecResponse = string | { reject: string }
 // The answer a genuinely broken pair produces: a marker line naming both deps. A bare `MISSING`
 // names none, so it is unverifiable and must never stand in for this.
 export const BOTH_NATIVE_DEPS_MISSING_PROBE =
-  'NIGHTSHIFT-NATIVE-DEPS-MISSING:node-pty,@parcel/watcher\nMISSING'
+  'KOLUX-NATIVE-DEPS-MISSING:node-pty,@parcel/watcher\nMISSING'
 
 const STAGE_OWNER = '.sftp-namespace-00000000000000000000000000000000'
 
 export function makeStagedFirstInstallExecPrefix(): ExecResponse[] {
   return [
-    '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+    '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
     '/home/u',
     '', // bounded stale-stage recovery
-    `__NIGHTSHIFT_UPLOAD_STAGE_SLOT__${STAGE_OWNER}:slot-0`,
+    `__KOLUX_UPLOAD_STAGE_SLOT__${STAGE_OWNER}:slot-0`,
     '', // chmod staged node
     '', // final install namespace marker
-    `__NIGHTSHIFT_UPLOAD_STAGE_PROMOTION__${STAGE_OWNER}:PROMOTED`,
+    `__KOLUX_UPLOAD_STAGE_PROMOTION__${STAGE_OWNER}:PROMOTED`,
     // Shared native-deps cache probe; an empty answer is a miss, so the per-directory install runs.
     ''
   ]
@@ -82,7 +82,7 @@ export function makeStagedFirstInstallExecPrefix(): ExecResponse[] {
 // cannot compile node-pty, so the caller's resets must survive into the node-pty-less reinstall.
 export function makeRepairToolchainSkipExecResponses(): ExecResponse[] {
   return [
-    '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+    '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
     '/home/u',
     BOTH_NATIVE_DEPS_MISSING_PROBE, // health probe before lock
     BOTH_NATIVE_DEPS_MISSING_PROBE, // re-probe under the repair lock
@@ -90,7 +90,7 @@ export function makeRepairToolchainSkipExecResponses(): ExecResponse[] {
     { reject: 'gyp ERR! stack Error: not found: make' },
     'PKG apk', // toolchain probe: no HAVE lines
     '', // reset both deps + reinstall without node-pty
-    'NIGHTSHIFT-NATIVE-DEPS-MISSING:node-pty\nMISSING\n', // watcher probe: only node-pty still absent
+    'KOLUX-NATIVE-DEPS-MISSING:node-pty\nMISSING\n', // watcher probe: only node-pty still absent
     '', // cat probe stderr
     '', // rm -f probe stderr
     'DEAD',
@@ -149,7 +149,7 @@ export function makeExecResponses(opts: {
       // node-pty is always reported missing here; the probe never resolves OK, so cat + rm both run.
       opts.nodePtySkipWatcher === 'missing'
         ? `${BOTH_NATIVE_DEPS_MISSING_PROBE}\n`
-        : 'NIGHTSHIFT-NATIVE-DEPS-MISSING:node-pty\nMISSING\n',
+        : 'KOLUX-NATIVE-DEPS-MISSING:node-pty\nMISSING\n',
       '', // cat probe stderr
       '', // rm -f probe stderr
       '', // clean stage root
@@ -163,7 +163,7 @@ export function makeExecResponses(opts: {
     opts.probeStdoutOverride !== undefined
       ? opts.probeStdoutOverride
       : probe === 'ok'
-        ? 'NIGHTSHIFT-NPTY-PROBE-OK\n'
+        ? 'KOLUX-NPTY-PROBE-OK\n'
         : probe === 'missing'
           ? 'MISSING\n' // shell-level `|| echo MISSING` after require throw
           : probe === 'dir-gone'
@@ -179,7 +179,7 @@ export function makeExecResponses(opts: {
   const probeResolved = typeof probeSlot === 'string'
   let loadable = false
   if (probeResolved) {
-    const probeOk = probeSlot.includes('NIGHTSHIFT-NPTY-PROBE-OK')
+    const probeOk = probeSlot.includes('KOLUX-NPTY-PROBE-OK')
     loadable = probeOk
     if (!probeOk) {
       slots.push('') // cat stderr (graceful failure path captures detail)
@@ -188,9 +188,9 @@ export function makeExecResponses(opts: {
     if (!probeOk) {
       slots.push('') // npm rebuild with lifecycle scripts explicitly enabled
       slots.push('') // chmod prebuilds after rebuild
-      const repairProbe = opts.repairProbe === 'ok' ? 'NIGHTSHIFT-NPTY-PROBE-OK\n' : 'MISSING\n'
+      const repairProbe = opts.repairProbe === 'ok' ? 'KOLUX-NPTY-PROBE-OK\n' : 'MISSING\n'
       slots.push(repairProbe)
-      loadable = repairProbe.includes('NIGHTSHIFT-NPTY-PROBE-OK')
+      loadable = repairProbe.includes('KOLUX-NPTY-PROBE-OK')
       if (!loadable) {
         slots.push('') // cat stderr after unsuccessful rebuild
       }

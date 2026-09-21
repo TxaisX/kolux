@@ -7,9 +7,9 @@ import { createRequire } from 'node:module'
 
 const nacl = createRequire(import.meta.url)('tweetnacl')
 
-const TRANSCRIPT_DOMAIN = 'nightshift-mobile-e2ee/v2/transcript'
-const SALT_LABEL = utf8('nightshift-mobile-e2ee/v2/salt\0')
-const INFO_LABEL = utf8('nightshift-mobile-e2ee/v2/session\0')
+const TRANSCRIPT_DOMAIN = 'kolux-mobile-e2ee/v2/transcript'
+const SALT_LABEL = utf8('kolux-mobile-e2ee/v2/salt\0')
+const INFO_LABEL = utf8('kolux-mobile-e2ee/v2/session\0')
 const NONCE_LENGTH = 24
 const SESSION_ID_LENGTH = 32
 const HEADER_LENGTH = SESSION_ID_LENGTH + 1 + 1 + 8
@@ -72,7 +72,7 @@ export class PhoneE2EE {
       clientNonceB64: b64(this.clientNonce),
       capabilities: { framing: [2], payloadKinds: ['text', 'binary'] },
       context: {
-        protocol: 'nightshift-mobile-e2ee',
+        protocol: 'kolux-mobile-e2ee',
         initiator: 'mobile',
         responder: 'desktop',
         transport: 'relay',

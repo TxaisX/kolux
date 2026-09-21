@@ -6,7 +6,7 @@ import {
   installNativeFileDropHandlers
 } from './preload-runtime-support'
 import { appApi } from './api/app-bridge'
-import { nightshiftProfilesApi } from './api/nightshift-profiles-bridge'
+import { koluxProfilesApi } from './api/kolux-profiles-bridge'
 import { platformApi } from './api/platform-bridge'
 import { wslApi } from './api/wsl-bridge'
 import { pwshApi } from './api/pwsh-bridge'
@@ -102,7 +102,7 @@ const telemetryGetConsentStateApi: PreloadApi['telemetryGetConsentState'] = () =
 
 const api = {
   app: appApi,
-  nightshiftProfiles: nightshiftProfilesApi,
+  koluxProfiles: koluxProfilesApi,
   platform: platformApi,
   wsl: wslApi,
   pwsh: pwshApi,

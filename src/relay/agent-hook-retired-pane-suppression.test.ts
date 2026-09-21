@@ -27,9 +27,9 @@ async function postHook(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Nightshift-Agent-Hook-Token': token,
-      'X-Nightshift-Agent-Hook-Meta-Encoding': 'base64',
-      'X-Nightshift-Agent-Hook-Meta': hookMeta(paneKey)
+      'X-Kolux-Agent-Hook-Token': token,
+      'X-Kolux-Agent-Hook-Meta-Encoding': 'base64',
+      'X-Kolux-Agent-Hook-Meta': hookMeta(paneKey)
     },
     body: JSON.stringify({ hook_event_name: 'UserPromptSubmit', prompt })
   })

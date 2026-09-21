@@ -16,7 +16,7 @@ async function createTimedGitFixture(): Promise<{
   cwd: string
   env: NodeJS.ProcessEnv
 }> {
-  const root = await mkdtemp(path.join(tmpdir(), 'nightshift-git-timeout-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'kolux-git-timeout-'))
   tempRoots.push(root)
   const binDir = path.join(root, 'bin')
   const cwd = path.join(root, 'repo')
@@ -28,8 +28,8 @@ async function createTimedGitFixture(): Promise<{
     `#!/usr/bin/env node
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function run() {
-  if (process.env.NIGHTSHIFT_STUB_PROGRESSIVE === '1') {
-    const remaining = Math.max(0, Number(process.env.NIGHTSHIFT_STUB_EXIT_AT_MS) - Date.now())
+  if (process.env.KOLUX_STUB_PROGRESSIVE === '1') {
+    const remaining = Math.max(0, Number(process.env.KOLUX_STUB_EXIT_AT_MS) - Date.now())
     const step = remaining / 3
     await sleep(step)
     process.stdout.write('one')
@@ -39,7 +39,7 @@ async function run() {
     process.stdout.write('three')
     return
   }
-  await sleep(Number(process.env.NIGHTSHIFT_STUB_SLEEP_MS))
+  await sleep(Number(process.env.KOLUX_STUB_SLEEP_MS))
   process.stdout.write('done')
 }
 void run()
@@ -61,8 +61,8 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
         ...fixture,
         env: {
           ...fixture.env,
-          NIGHTSHIFT_STUB_PROGRESSIVE: '1',
-          NIGHTSHIFT_STUB_EXIT_AT_MS: String(Date.now() + 900)
+          KOLUX_STUB_PROGRESSIVE: '1',
+          KOLUX_STUB_EXIT_AT_MS: String(Date.now() + 900)
         },
         timeoutMsForTest: 1000,
         onStdout: (chunk) => {
@@ -78,7 +78,7 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
     await expect(
       gitExecFileAsync(['status', '--porcelain=v2'], {
         ...fixture,
-        env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '110' },
+        env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '110' },
         timeoutMsForTest: 100
       })
     ).rejects.toBeInstanceOf(GitCommandTimeoutError)
@@ -89,7 +89,7 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
     await expect(
       gitStreamStdout(['status'], {
         ...fixture,
-        env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '110' },
+        env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '110' },
         timeoutMsForTest: 100,
         onStdout: () => {}
       })
@@ -101,7 +101,7 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
     await expect(
       gitExecFileAsyncBuffer(['show', 'HEAD:file.bin'], {
         ...fixture,
-        env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '110' },
+        env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '110' },
         timeoutMsForTest: 100
       })
     ).rejects.toBeInstanceOf(GitCommandTimeoutError)
@@ -114,7 +114,7 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
       await expect(
         gitExecFileAsync([subcommand], {
           ...fixture,
-          env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '110' },
+          env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '110' },
           timeoutMsForTest: 100
         })
       ).resolves.toMatchObject({ stdout: 'done' })
@@ -122,7 +122,7 @@ describe.skipIf(process.platform === 'win32')('git read timeout behavior', () =>
   )
 })
 
-describe.skipIf(process.platform === 'win32' || process.env.NIGHTSHIFT_RUN_SLOW_GIT_SMOKE !== '1')(
+describe.skipIf(process.platform === 'win32' || process.env.KOLUX_RUN_SLOW_GIT_SMOKE !== '1')(
   'slow git read timeout smoke',
   () => {
     it('allows a 90 second read and terminates a 130 second wedge', async () => {
@@ -130,13 +130,13 @@ describe.skipIf(process.platform === 'win32' || process.env.NIGHTSHIFT_RUN_SLOW_
       await expect(
         gitExecFileAsync(['status'], {
           ...fixture,
-          env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '90000' }
+          env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '90000' }
         })
       ).resolves.toMatchObject({ stdout: 'done' })
       await expect(
         gitExecFileAsync(['status'], {
           ...fixture,
-          env: { ...fixture.env, NIGHTSHIFT_STUB_SLEEP_MS: '130000' }
+          env: { ...fixture.env, KOLUX_STUB_SLEEP_MS: '130000' }
         })
       ).rejects.toBeInstanceOf(GitCommandTimeoutError)
     }, 230_000)

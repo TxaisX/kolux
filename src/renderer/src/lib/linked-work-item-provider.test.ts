@@ -9,9 +9,9 @@ describe('getLinkedWorkItemProvider', () => {
         type: 'issue',
         provider: 'jira',
         number: 0,
-        title: 'NIGHTSHIFT-123 Fix Jira',
-        url: 'https://example.atlassian.net/browse/NIGHTSHIFT-123',
-        jiraIdentifier: 'NIGHTSHIFT-123'
+        title: 'KOLUX-123 Fix Jira',
+        url: 'https://example.atlassian.net/browse/KOLUX-123',
+        jiraIdentifier: 'KOLUX-123'
       },
       'jira'
     ],
@@ -20,8 +20,8 @@ describe('getLinkedWorkItemProvider', () => {
       {
         type: 'issue',
         number: 0,
-        title: 'NIGHTSHIFT-123 Fix Jira',
-        url: 'https://example.atlassian.net/browse/NIGHTSHIFT-123'
+        title: 'KOLUX-123 Fix Jira',
+        url: 'https://example.atlassian.net/browse/KOLUX-123'
       },
       'jira'
     ],

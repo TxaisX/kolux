@@ -36,19 +36,17 @@ nodeModule.registerHooks({
 })
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
-const WINDOW_MS = Number(process.env.NIGHTSHIFT_INSPECTION_BENCH_WINDOW_MS ?? '60000')
-const PANE_COUNTS = (process.env.NIGHTSHIFT_INSPECTION_BENCH_PANES ?? '1,2,4,8')
+const WINDOW_MS = Number(process.env.KOLUX_INSPECTION_BENCH_WINDOW_MS ?? '60000')
+const PANE_COUNTS = (process.env.KOLUX_INSPECTION_BENCH_PANES ?? '1,2,4,8')
   .split(',')
   .map((value) => Number(value.trim()))
 
 if (!Number.isSafeInteger(WINDOW_MS) || WINDOW_MS <= 0) {
-  throw new Error(
-    `NIGHTSHIFT_INSPECTION_BENCH_WINDOW_MS must be a positive integer, got ${WINDOW_MS}`
-  )
+  throw new Error(`KOLUX_INSPECTION_BENCH_WINDOW_MS must be a positive integer, got ${WINDOW_MS}`)
 }
 for (const paneCount of PANE_COUNTS) {
   if (!Number.isSafeInteger(paneCount) || paneCount <= 0) {
-    throw new Error(`NIGHTSHIFT_INSPECTION_BENCH_PANES entries must be positive, got ${paneCount}`)
+    throw new Error(`KOLUX_INSPECTION_BENCH_PANES entries must be positive, got ${paneCount}`)
   }
 }
 

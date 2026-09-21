@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
 import { RuntimeClient } from '../../src/cli/runtime/client'
 import type { RuntimeMobileSessionTabsResult } from '../../src/shared/runtime-types'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -201,7 +201,7 @@ async function openLinkFromRemotePane(page: Page, testInfo: TestInfo): Promise<v
   const frame = page.locator('[data-testid="remote-browser-frame"]:visible').first()
   await expect(frame).toBeVisible({ timeout: 60_000 })
   await frame.click({ button: 'right', position: { x: 60, y: 60 }, force: true })
-  const open = page.getByRole('menuitem', { name: 'Open Link In Nightshift Browser' })
+  const open = page.getByRole('menuitem', { name: 'Open Link In Kolux Browser' })
   await expect(open).toBeVisible({ timeout: 30_000 })
   await page.screenshot({
     path: testInfo.outputPath('sta-4231-owner-pinned-link-route.png'),
@@ -212,17 +212,17 @@ async function openLinkFromRemotePane(page: Page, testInfo: TestInfo): Promise<v
 
 test('returns a headed host page identity before owner-pinned navigation can time out @headful', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo: TestInfo) => {
   test.setTimeout(300_000)
   const fixture = await startHeldNavigationServer()
   let client: PairedElectronClient | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
     const hostClient = new RuntimeClient(userDataDir, 5_000)
     client = await launchPairedElectronClient(offer, testInfo, 'STA-4231 navigation deadline')
@@ -303,17 +303,17 @@ test('returns a headed host page identity before owner-pinned navigation can tim
 
 test('opens the held URL through the owner-pinned remote-pane link route @headful', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo: TestInfo) => {
   test.setTimeout(300_000)
   const fixture = await startHeldNavigationServer()
   let client: PairedElectronClient | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
     const hostClient = new RuntimeClient(userDataDir, 5_000)
     client = await launchPairedElectronClient(offer, testInfo, 'STA-4231 owner-pinned link route')

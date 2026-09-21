@@ -119,7 +119,7 @@ describe('desktop relay E2EE integration', () => {
       }
     })
 
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-relay-e2ee-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-relay-e2ee-'))
     userDataPaths.push(userDataPath)
     const registry = new DeviceRegistry(userDataPath)
     const device = registry.addDevice('Phone', 'mobile')

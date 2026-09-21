@@ -157,7 +157,7 @@ describe('listWorkItems', () => {
   })
 
   it('routes GHES work-item listing through the Enterprise host', async () => {
-    const ghes = { owner: 'team', repo: 'nightshift', host: 'github.acme-corp.com' }
+    const ghes = { owner: 'team', repo: 'kolux', host: 'github.acme-corp.com' }
     getIssueOwnerRepoMock.mockResolvedValue(ghes)
     getOwnerRepoMock.mockResolvedValue(ghes)
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '[]' })
@@ -760,8 +760,8 @@ describe('listWorkItems', () => {
   })
 
   it('marks fork PRs as cross-repository when REST payload only includes head.label', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
       stdout: JSON.stringify([
         {
@@ -797,7 +797,7 @@ describe('listWorkItems', () => {
         branchName: 'feat/onboarding-model-choice-782',
         baseRefName: 'main',
         headSha: 'head-1849',
-        prRepo: { owner: 'TxaisX', repo: 'nightshift' },
+        prRepo: { owner: 'TxaisX', repo: 'kolux' },
         isCrossRepository: true
       }
     ])

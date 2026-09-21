@@ -74,7 +74,7 @@ function runCommand(command, args, options = {}) {
   })
 }
 
-async function callNightshift(cli, args, cwd) {
+async function callKolux(cli, args, cwd) {
   const command = cli.endsWith('.mjs') ? process.execPath : cli
   const prefixArgs = cli.endsWith('.mjs') ? [cli] : []
   let stdout
@@ -113,7 +113,7 @@ async function readReport(reportPath, timeoutMs) {
 
 async function closeTerminal(cli, handle, cwd) {
   try {
-    await callNightshift(cli, ['terminal', 'close', '--terminal', handle], cwd)
+    await callKolux(cli, ['terminal', 'close', '--terminal', handle], cwd)
   } catch {
     // Best-effort fixture cleanup.
   }
@@ -123,7 +123,7 @@ async function waitForPermissionPrompt(cli, handle, cwd) {
   const deadline = Date.now() + 10_000
   let lastTerminal = null
   while (Date.now() < deadline) {
-    const shown = await callNightshift(cli, ['terminal', 'show', '--terminal', handle], cwd)
+    const shown = await callKolux(cli, ['terminal', 'show', '--terminal', handle], cwd)
     lastTerminal = shown.terminal ?? null
     if (lastTerminal?.agentWait) {
       return
@@ -137,7 +137,7 @@ async function waitForWorktreeSelector(cli, repoId, cwd) {
   const deadline = Date.now() + 10_000
   const expectedPath = path.resolve(cwd)
   while (Date.now() < deadline) {
-    const listed = await callNightshift(cli, ['worktree', 'list', '--repo', `id:${repoId}`], cwd)
+    const listed = await callKolux(cli, ['worktree', 'list', '--repo', `id:${repoId}`], cwd)
     const worktree = listed.worktrees?.find((candidate) => {
       const candidatePath = path.resolve(candidate.path)
       return process.platform === 'win32'
@@ -175,15 +175,12 @@ async function createFakeCodexCommand(tempDir, args) {
 }
 
 async function parentMain() {
-  const cli = argValue('cli', process.env.NIGHTSHIFT_REPRO_CLI ?? 'nightshift')
+  const cli = argValue('cli', process.env.KOLUX_REPRO_CLI ?? 'kolux')
   const cwd = path.resolve(argValue('worktree', process.cwd()))
   const timeoutMs = parsePositiveInteger('timeout-ms', DEFAULT_TIMEOUT_MS)
-  const tempDir = path.join(
-    tmpdir(),
-    `nightshift-terminal-send-submit-${process.pid}-${Date.now()}`
-  )
+  const tempDir = path.join(tmpdir(), `kolux-terminal-send-submit-${process.pid}-${Date.now()}`)
   const reportPath = path.resolve(argValue('report', path.join(tempDir, 'report.json')))
-  const marker = argValue('marker', `NIGHTSHIFT_TERMINAL_SEND_${process.pid}_${Date.now()}`)
+  const marker = argValue('marker', `KOLUX_TERMINAL_SEND_${process.pid}_${Date.now()}`)
   const prompt = `${marker} ${'slow composer payload '.repeat(24)}`
   const expectUnsubmitted = hasFlag('expect-unsubmitted')
   const expectBlocked = hasFlag('expect-blocked')
@@ -209,13 +206,13 @@ async function parentMain() {
         ...(expectBlocked ? ['--permission-before-send'] : []),
         ...(process.platform === 'win32' ? ['--allow-unframed-paste'] : [])
       ]))
-    const added = await callNightshift(cli, ['repo', 'add', '--path', cwd], cwd)
+    const added = await callKolux(cli, ['repo', 'add', '--path', cwd], cwd)
     const repoId = added.repo?.id
     if (!repoId) {
       throw new Error('repo add returned no id')
     }
     const worktreeSelector = await waitForWorktreeSelector(cli, repoId, cwd)
-    const created = await callNightshift(
+    const created = await callKolux(
       cli,
       [
         'terminal',
@@ -243,7 +240,7 @@ async function parentMain() {
       }
       await waitForPermissionPrompt(cli, handle, cwd)
     } else {
-      await callNightshift(
+      await callKolux(
         cli,
         ['terminal', 'wait', '--terminal', handle, '--for', 'tui-idle', '--timeout-ms', '10000'],
         cwd
@@ -252,7 +249,7 @@ async function parentMain() {
     let sendErrorCode = null
     let sendReceipt = null
     try {
-      sendReceipt = await callNightshift(
+      sendReceipt = await callKolux(
         cli,
         ['terminal', 'send', '--terminal', handle, '--text', prompt, '--enter'],
         cwd
@@ -268,7 +265,7 @@ async function parentMain() {
     let rescueSent = false
     if (!report && !expectUnsubmitted && !expectBlocked) {
       rescueSent = true
-      await callNightshift(cli, ['terminal', 'send', '--terminal', handle, '--enter'], cwd)
+      await callKolux(cli, ['terminal', 'send', '--terminal', handle, '--enter'], cwd)
       report = await readReport(reportPath, timeoutMs)
     }
     if (!report) {
@@ -371,9 +368,7 @@ async function fakeAgentMain() {
     }
     finished = true
     const report = await writeReport(true)
-    process.stdout.write(
-      `\nNIGHTSHIFT_TERMINAL_SEND_REPORT ${report.contractOk ? 'ok' : 'rescued'}\n`
-    )
+    process.stdout.write(`\nKOLUX_TERMINAL_SEND_REPORT ${report.contractOk ? 'ok' : 'rescued'}\n`)
     process.exit(report.contractOk ? 0 : 7)
   }
 

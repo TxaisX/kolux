@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { WORKTREE_METHODS } from './worktree'
 
-function makeRuntime(repoHostIds: (string | undefined)[] = ['local']): NightshiftRuntimeService {
+function makeRuntime(repoHostIds: (string | undefined)[] = ['local']): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     listRepos: () =>
       repoHostIds.map((executionHostId) => ({ id: 'repo-1', path: '/repo', executionHostId })),
     showManagedWorktree: vi.fn().mockResolvedValue({ id: 'wt-1', hostId: 'local' }),
     removeManagedWorktree: vi.fn().mockResolvedValue({})
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 const WORKTREE_ID = 'repo-1::/repo/wt'

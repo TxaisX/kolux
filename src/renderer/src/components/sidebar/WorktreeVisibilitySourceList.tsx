@@ -196,7 +196,7 @@ export default function WorktreeVisibilitySourceList({
   const sourceCounts = useMemo(() => {
     const counts = new Map<string, number>()
     for (const worktree of worktrees) {
-      if (worktree.selectedCheckout || worktree.ownership === 'nightshift-managed') {
+      if (worktree.selectedCheckout || worktree.ownership === 'kolux-managed') {
         continue
       }
       const key = sourceMatchKey(worktree.visibilitySource ?? classify(worktree.path))

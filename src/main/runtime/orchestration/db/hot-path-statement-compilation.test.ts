@@ -41,7 +41,7 @@ function openDatabase(path: string): OrchestrationDb {
 }
 
 function temporaryDatabasePath(): string {
-  const directory = mkdtempSync(join(tmpdir(), 'nightshift-orchestration-hot-path-'))
+  const directory = mkdtempSync(join(tmpdir(), 'kolux-orchestration-hot-path-'))
   temporaryDirectories.push(directory)
   return join(directory, 'orchestration.db')
 }

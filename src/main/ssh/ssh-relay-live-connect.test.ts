@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it, vi } from 'vitest'
 
 // Live end-to-end harness for ssh:connect against a real host. Skipped unless
-// NIGHTSHIFT_LIVE_SSH_HOST is set; never runs in normal CI or unit-test loops.
+// KOLUX_LIVE_SSH_HOST is set; never runs in normal CI or unit-test loops.
 vi.mock('electron', () => ({
   app: { getAppPath: () => process.cwd() }
 }))
@@ -12,13 +12,12 @@ import { resolveSshConfigHomePath } from './ssh-config-path-expansion'
 import { deployAndLaunchRelay } from './ssh-relay-deploy'
 import type { SshTarget } from '../../shared/ssh-types'
 
-const LIVE_HOST = process.env.NIGHTSHIFT_LIVE_SSH_HOST
-const LIVE_USER =
-  process.env.NIGHTSHIFT_LIVE_SSH_USER ?? process.env.USERNAME ?? process.env.USER ?? ''
+const LIVE_HOST = process.env.KOLUX_LIVE_SSH_HOST
+const LIVE_USER = process.env.KOLUX_LIVE_SSH_USER ?? process.env.USERNAME ?? process.env.USER ?? ''
 const LIVE_IDENTITY = resolveSshConfigHomePath(
-  process.env.NIGHTSHIFT_LIVE_SSH_IDENTITY ?? '~/.ssh/id_ed25519'
+  process.env.KOLUX_LIVE_SSH_IDENTITY ?? '~/.ssh/id_ed25519'
 )
-const rawLivePort = process.env.NIGHTSHIFT_LIVE_SSH_PORT
+const rawLivePort = process.env.KOLUX_LIVE_SSH_PORT
 const LIVE_PORT = rawLivePort ? Number.parseInt(rawLivePort, 10) : 22
 
 const startedAt = Date.now()
@@ -43,7 +42,7 @@ describe.skipIf(!LIVE_HOST)('live ssh:connect pipeline', () => {
 
   it('connects, deploys the relay, and spawns a real PTY', { timeout: 360_000 }, async () => {
     if (!Number.isInteger(LIVE_PORT) || LIVE_PORT < 1 || LIVE_PORT > 65535) {
-      throw new Error(`Invalid NIGHTSHIFT_LIVE_SSH_PORT: ${rawLivePort}`)
+      throw new Error(`Invalid KOLUX_LIVE_SSH_PORT: ${rawLivePort}`)
     }
 
     const target: SshTarget = {

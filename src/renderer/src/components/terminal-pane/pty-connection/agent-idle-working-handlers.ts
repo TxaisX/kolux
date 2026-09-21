@@ -45,10 +45,10 @@ export function installAgentIdleWorkingHandlers(session: ConnectPanePtySession):
     // Why: title reversion alone is not process death. The process/PTY tracker
     // owns removing agent rows when the TUI actually exits.
   }
-  // Why: inject NIGHTSHIFT_PANE_KEY so global Claude/Codex hooks can attribute their
-  // callbacks to the correct Nightshift pane without resolving worktrees from cwd.
+  // Why: inject KOLUX_PANE_KEY so global Claude/Codex hooks can attribute their
+  // callbacks to the correct Kolux pane without resolving worktrees from cwd.
   // The key matches the `${tabId}:${leafId}` composite used for cacheTimerByKey
-  // and agentStatusByPaneKey. Treat it as opaque outside Nightshift.
+  // and agentStatusByPaneKey. Treat it as opaque outside Kolux.
   session.state = useAppStore.getState()
   session.parsedWorkspaceKey = parseWorkspaceKey(session.deps.worktreeId)
   session.folderWorkspace =
@@ -57,17 +57,17 @@ export function installAgentIdleWorkingHandlers(session: ConnectPanePtySession):
           (workspace) => workspace.id === session.parsedWorkspaceKey.folderWorkspaceId
         )
       : null
-  session.workspaceEnv = { NIGHTSHIFT_WORKSPACE_ID: session.deps.worktreeId }
+  session.workspaceEnv = { KOLUX_WORKSPACE_ID: session.deps.worktreeId }
   if (session.folderWorkspace) {
-    session.workspaceEnv.NIGHTSHIFT_PROJECT_GROUP_ID = session.folderWorkspace.projectGroupId
-    session.workspaceEnv.NIGHTSHIFT_WORKSPACE_ROOT = session.folderWorkspace.folderPath
+    session.workspaceEnv.KOLUX_PROJECT_GROUP_ID = session.folderWorkspace.projectGroupId
+    session.workspaceEnv.KOLUX_WORKSPACE_ROOT = session.folderWorkspace.folderPath
   }
   session.paneIdentityEnv = {
     ...session.workspaceEnv,
-    NIGHTSHIFT_PANE_KEY: session.cacheKey,
-    NIGHTSHIFT_TAB_ID: session.deps.tabId,
-    NIGHTSHIFT_WORKTREE_ID: session.deps.worktreeId,
-    ...(session.launchToken ? { NIGHTSHIFT_AGENT_LAUNCH_TOKEN: session.launchToken } : {})
+    KOLUX_PANE_KEY: session.cacheKey,
+    KOLUX_TAB_ID: session.deps.tabId,
+    KOLUX_WORKTREE_ID: session.deps.worktreeId,
+    ...(session.launchToken ? { KOLUX_AGENT_LAUNCH_TOKEN: session.launchToken } : {})
   }
   session.paneEnv = {
     ...session.paneStartup?.env,

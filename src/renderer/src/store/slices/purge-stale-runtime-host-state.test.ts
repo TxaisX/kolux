@@ -59,7 +59,7 @@ function detected(
 ): DetectedWorktreeListResult['worktrees'][number] {
   return {
     ...makeWorktree({ id, repoId, hostId }),
-    ownership: 'nightshift-managed',
+    ownership: 'kolux-managed',
     selectedCheckout: true,
     visible: true
   } as DetectedWorktreeListResult['worktrees'][number]

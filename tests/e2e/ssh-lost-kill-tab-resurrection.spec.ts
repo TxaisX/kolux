@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePanePtyId, waitForActiveTerminalManager } from './helpers/terminal'
 import { createRemoteTerminalTab } from './helpers/docker-ssh-relay-terminal-tabs'
@@ -18,7 +18,7 @@ import {
   reconnectDisconnectedDockerSshRelayTarget
 } from './helpers/docker-ssh-relay-connection'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const DROP_CYCLES = 3
 
 test.use({ seedTestRepo: false })
@@ -166,7 +166,7 @@ async function runResurrectionCycles(
 }
 
 test.describe('SSH lost kill tab resurrection', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Docker SSH restore uses POSIX SSH tooling.')
 
   // STA-3374. A tab closed while the transport is down leaves an unterminated remote lease: the
@@ -176,10 +176,10 @@ test.describe('SSH lost kill tab resurrection', () => {
   // instead of minting a fresh one. The next reattach then re-mints the tab through
   // pty-binding-persistence.ts:145-160, and the resurrected tab never retires.
   test('does not resurrect tabs whose kill was lost to a killed relay daemon', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(600_000)
-    await runResurrectionCycles(nightshiftPage, testInfo, (target) => {
+    await runResurrectionCycles(koluxPage, testInfo, (target) => {
       dropRelayTransport(target)
     })
   })
@@ -188,11 +188,11 @@ test.describe('SSH lost kill tab resurrection', () => {
   // back. No daemon is killed. If this resurrects too, the bug needs no process death at all — a
   // laptop lid and a dropped link are enough.
   test('does not resurrect tabs closed while the host is disconnected', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(600_000)
-    await runResurrectionCycles(nightshiftPage, testInfo, async (_target, targetId) => {
-      await disconnectDockerSshRelayTarget(nightshiftPage, targetId)
+    await runResurrectionCycles(koluxPage, testInfo, async (_target, targetId) => {
+      await disconnectDockerSshRelayTarget(koluxPage, targetId)
     })
   })
 })

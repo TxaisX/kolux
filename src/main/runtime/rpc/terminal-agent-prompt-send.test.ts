@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { TERMINAL_METHODS } from './methods/terminal'
@@ -8,11 +8,11 @@ function makeRequest(params: unknown): RpcRequest {
   return { id: 'request', authToken: 'token', method: 'terminal.send', params }
 }
 
-function makeRuntime(overrides: Partial<NightshiftRuntimeService>): NightshiftRuntimeService {
+function makeRuntime(overrides: Partial<KoluxRuntimeService>): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 describe('terminal agent prompt send RPC', () => {
@@ -38,7 +38,7 @@ describe('terminal agent prompt send RPC', () => {
         text: 'review this change',
         enter: true,
         agentPrompt: true,
-        client: { id: 'nightshift-cli', type: 'desktop' }
+        client: { id: 'kolux-cli', type: 'desktop' }
       })
     )
 
@@ -73,7 +73,7 @@ describe('terminal agent prompt send RPC', () => {
         text: 'echo x',
         enter: true,
         agentPrompt: true,
-        client: { id: 'nightshift-cli', type: 'desktop' }
+        client: { id: 'kolux-cli', type: 'desktop' }
       })
     )
 
@@ -106,7 +106,7 @@ describe('terminal agent prompt send RPC', () => {
         terminal: 'terminal-1',
         text: 'echo x',
         enter: true,
-        client: { id: 'nightshift-cli', type: 'desktop' }
+        client: { id: 'kolux-cli', type: 'desktop' }
       }),
       { signal: controller.signal }
     )

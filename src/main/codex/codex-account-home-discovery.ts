@@ -1,6 +1,6 @@
 import { lstatSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { getNightshiftUserDataPath, getSystemCodexHomePath } from './codex-home-paths'
+import { getKoluxUserDataPath, getSystemCodexHomePath } from './codex-home-paths'
 import { assertOwnedHostCodexManagedHomePath } from '../codex-accounts/host-codex-managed-home-ownership'
 
 /** Session roots of per-account self-contained host Codex homes present on disk.
@@ -8,7 +8,7 @@ import { assertOwnedHostCodexManagedHomePath } from '../codex-accounts/host-code
  *  change must still be counted, and CLI callers have no settings store. WSL
  *  account homes live inside their distro and are scanned by their own lane. */
 export function getCodexAccountHomeSessionDirectories(): string[] {
-  const accountsRoot = join(getNightshiftUserDataPath(), 'codex-accounts')
+  const accountsRoot = join(getKoluxUserDataPath(), 'codex-accounts')
   try {
     return readdirSync(accountsRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())

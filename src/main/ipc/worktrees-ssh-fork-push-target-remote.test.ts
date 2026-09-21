@@ -146,36 +146,31 @@ describe('registerWorktreeHandlers', () => {
       name: 'contributor-fix',
       branchNameOverride: 'contributor/fix',
       pushTarget: {
-        remoteName: 'pr-contributor-nightshift',
+        remoteName: 'pr-contributor-kolux',
         branchName: 'contributor/fix',
-        remoteUrl: 'https://github.com/contributor/nightshift.git'
+        remoteUrl: 'https://github.com/contributor/kolux.git'
       }
     })
 
     expect(exec).not.toHaveBeenCalledWith(
-      [
-        'remote',
-        'add',
-        'pr-contributor-nightshift',
-        'https://github.com/contributor/nightshift.git'
-      ],
+      ['remote', 'add', 'pr-contributor-kolux', 'https://github.com/contributor/kolux.git'],
       '/remote/repo'
     )
     // fetchRemoteTrackingRef IS called once here, but for create's unrelated
     // base-ref refresh (origin/main) -- not for the fork remote, which defers.
     expect(provider.fetchRemoteTrackingRef).not.toHaveBeenCalledWith(
       '/remote/repo',
-      'pr-contributor-nightshift',
+      'pr-contributor-kolux',
       'contributor/fix',
-      'refs/remotes/pr-contributor-nightshift/contributor/fix'
+      'refs/remotes/pr-contributor-kolux/contributor/fix'
     )
     expect(store.setWorktreeMeta).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
         pushTarget: {
-          remoteName: 'pr-contributor-nightshift',
+          remoteName: 'pr-contributor-kolux',
           branchName: 'contributor/fix',
-          remoteUrl: 'https://github.com/contributor/nightshift.git'
+          remoteUrl: 'https://github.com/contributor/kolux.git'
         }
       })
     )
@@ -196,39 +191,31 @@ describe('registerWorktreeHandlers', () => {
       return { stdout: '', stderr: '' }
     })
     const fetchRemoteTrackingRef = vi.fn().mockResolvedValue(undefined)
-    const markRemoteNightshiftCreated = vi.fn().mockResolvedValue(undefined)
+    const markRemoteKoluxCreated = vi.fn().mockResolvedValue(undefined)
     const target = {
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'contributor/fix',
-      remoteUrl: 'https://github.com/contributor/nightshift.git'
+      remoteUrl: 'https://github.com/contributor/kolux.git'
     }
 
     const result = await materializeWorktreePushTargetRemoteSsh(
-      { exec, fetchRemoteTrackingRef, markRemoteNightshiftCreated } as unknown as SshGitProvider,
+      { exec, fetchRemoteTrackingRef, markRemoteKoluxCreated } as unknown as SshGitProvider,
       '/remote/repo',
       target
     )
 
     expect(result).toEqual({ ...target, remoteCreated: true })
     expect(exec).toHaveBeenCalledWith(
-      [
-        'remote',
-        'add',
-        'pr-contributor-nightshift',
-        'https://github.com/contributor/nightshift.git'
-      ],
+      ['remote', 'add', 'pr-contributor-kolux', 'https://github.com/contributor/kolux.git'],
       '/remote/repo'
     )
     expect(fetchRemoteTrackingRef).toHaveBeenCalledWith(
       '/remote/repo',
-      'pr-contributor-nightshift',
+      'pr-contributor-kolux',
       'contributor/fix',
-      'refs/remotes/pr-contributor-nightshift/contributor/fix'
+      'refs/remotes/pr-contributor-kolux/contributor/fix'
     )
-    expect(markRemoteNightshiftCreated).toHaveBeenCalledWith(
-      '/remote/repo',
-      'pr-contributor-nightshift'
-    )
+    expect(markRemoteKoluxCreated).toHaveBeenCalledWith('/remote/repo', 'pr-contributor-kolux')
   })
 
   // The relay-upgrade-messaging, fetch-failure rollback, and sibling-remote-preserved

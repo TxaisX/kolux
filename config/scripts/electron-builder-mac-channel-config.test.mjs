@@ -5,14 +5,14 @@ const require = createRequire(import.meta.url)
 const electronBuilderConfig = require('../electron-builder.config.cjs')
 
 const MUTABLE_BUILD_ENV = [
-  'NIGHTSHIFT_MAC_HOURLY',
-  'NIGHTSHIFT_MAC_DAILY',
-  'NIGHTSHIFT_MAC_ADHOC',
-  'NIGHTSHIFT_MAC_RELEASE',
-  'NIGHTSHIFT_HOURLY_BUILD_VERSION',
-  'NIGHTSHIFT_DAILY_BUILD_VERSION',
-  'NIGHTSHIFT_ADHOC_BUILD_VERSION',
-  'NIGHTSHIFT_LOCAL_BUILD_VERSION'
+  'KOLUX_MAC_HOURLY',
+  'KOLUX_MAC_DAILY',
+  'KOLUX_MAC_ADHOC',
+  'KOLUX_MAC_RELEASE',
+  'KOLUX_HOURLY_BUILD_VERSION',
+  'KOLUX_DAILY_BUILD_VERSION',
+  'KOLUX_ADHOC_BUILD_VERSION',
+  'KOLUX_LOCAL_BUILD_VERSION'
 ]
 
 /** Re-requires the config under a temporary env, then restores env and module cache. */
@@ -39,19 +39,19 @@ function withEnv(env, assert) {
   }
 }
 
-const withHourlyEnv = (assert) => withEnv({ NIGHTSHIFT_MAC_HOURLY: '1' }, assert)
-const withDailyEnv = (assert) => withEnv({ NIGHTSHIFT_MAC_DAILY: '1' }, assert)
-const withAdhocEnv = (assert) => withEnv({ NIGHTSHIFT_MAC_ADHOC: '1' }, assert)
+const withHourlyEnv = (assert) => withEnv({ KOLUX_MAC_HOURLY: '1' }, assert)
+const withDailyEnv = (assert) => withEnv({ KOLUX_MAC_DAILY: '1' }, assert)
+const withAdhocEnv = (assert) => withEnv({ KOLUX_MAC_ADHOC: '1' }, assert)
 
 describe('electron-builder mac channel config', () => {
   // Why: Squirrel.Mac swaps the .app in place only when the replacement carries the
   // same bundle id and a valid Developer ID signature. A hourly built on the local
-  // (com.txais.nightshift.local, ad-hoc) identity would be un-installable over a real
-  // Nightshift — the whole point of the channel.
+  // (com.txais.kolux.local, ad-hoc) identity would be un-installable over a real
+  // Kolux — the whole point of the channel.
   it('builds hourly artifacts with the release signing identity', () => {
     withHourlyEnv((config) => {
       expect(config.mac.appId).toBeUndefined()
-      expect(config.appId).toBe('com.txais.nightshift')
+      expect(config.appId).toBe('com.txais.kolux')
       expect(config.mac.hardenedRuntime).toBe(true)
       expect(config.forceCodeSigning).toBe(true)
     })
@@ -65,7 +65,7 @@ describe('electron-builder mac channel config', () => {
     withHourlyEnv((config) => {
       expect(config.mac.notarize).toBe(true)
     })
-    withEnv({ NIGHTSHIFT_MAC_RELEASE: '1' }, (config) => {
+    withEnv({ KOLUX_MAC_RELEASE: '1' }, (config) => {
       expect(config.mac.notarize).toBe(true)
     })
     expect(electronBuilderConfig.mac.notarize).toBe(false)
@@ -76,10 +76,10 @@ describe('electron-builder mac channel config', () => {
   // break update checks for every real user.
   it('publishes hourly builds to the separate hourly repo', () => {
     withHourlyEnv((config) => {
-      expect(config.publish).toMatchObject({ repo: 'nightshift-hourly', releaseType: 'prerelease' })
+      expect(config.publish).toMatchObject({ repo: 'kolux-hourly', releaseType: 'prerelease' })
     })
     expect(electronBuilderConfig.publish).toMatchObject({
-      repo: 'nightshift',
+      repo: 'kolux',
       releaseType: 'release'
     })
   })
@@ -87,8 +87,8 @@ describe('electron-builder mac channel config', () => {
   it('stamps hourly packages with the hourly version', () => {
     withEnv(
       {
-        NIGHTSHIFT_MAC_HOURLY: '1',
-        NIGHTSHIFT_HOURLY_BUILD_VERSION: '1.4.160-hourly.202607281400'
+        KOLUX_MAC_HOURLY: '1',
+        KOLUX_HOURLY_BUILD_VERSION: '1.4.160-hourly.202607281400'
       },
       (config) => {
         expect(config.extraMetadata).toEqual({ version: '1.4.160-hourly.202607281400' })
@@ -97,21 +97,21 @@ describe('electron-builder mac channel config', () => {
   })
 
   // Why adhoc carries the identical mac identity to hourly: it installs over a
-  // real Nightshift through the same updater path, so the same signing and the same TCC
+  // real Kolux through the same updater path, so the same signing and the same TCC
   // argument apply. Only the destination repo differs.
   it('builds adhoc artifacts with the release identity and its own repo', () => {
     withAdhocEnv((config) => {
-      expect(config.appId).toBe('com.txais.nightshift')
+      expect(config.appId).toBe('com.txais.kolux')
       expect(config.mac.hardenedRuntime).toBe(true)
       expect(config.mac.notarize).toBe(true)
       expect(config.forceCodeSigning).toBe(true)
-      expect(config.publish).toMatchObject({ repo: 'nightshift-adhoc', releaseType: 'prerelease' })
+      expect(config.publish).toMatchObject({ repo: 'kolux-adhoc', releaseType: 'prerelease' })
     })
   })
 
   it('stamps adhoc packages with the adhoc version', () => {
     withEnv(
-      { NIGHTSHIFT_MAC_ADHOC: '1', NIGHTSHIFT_ADHOC_BUILD_VERSION: '1.4.160-adhoc.20260728140533' },
+      { KOLUX_MAC_ADHOC: '1', KOLUX_ADHOC_BUILD_VERSION: '1.4.160-adhoc.20260728140533' },
       (config) => {
         expect(config.extraMetadata).toEqual({ version: '1.4.160-adhoc.20260728140533' })
       }
@@ -120,17 +120,17 @@ describe('electron-builder mac channel config', () => {
 
   it('builds daily artifacts with the release identity and its own repo', () => {
     withDailyEnv((config) => {
-      expect(config.appId).toBe('com.txais.nightshift')
+      expect(config.appId).toBe('com.txais.kolux')
       expect(config.mac.hardenedRuntime).toBe(true)
       expect(config.mac.notarize).toBe(true)
       expect(config.forceCodeSigning).toBe(true)
-      expect(config.publish).toMatchObject({ repo: 'nightshift-daily', releaseType: 'prerelease' })
+      expect(config.publish).toMatchObject({ repo: 'kolux-daily', releaseType: 'prerelease' })
     })
   })
 
   it('stamps daily packages with the daily version', () => {
     withEnv(
-      { NIGHTSHIFT_MAC_DAILY: '1', NIGHTSHIFT_DAILY_BUILD_VERSION: '1.4.160-daily.202607281300' },
+      { KOLUX_MAC_DAILY: '1', KOLUX_DAILY_BUILD_VERSION: '1.4.160-daily.202607281300' },
       (config) => {
         expect(config.extraMetadata).toEqual({ version: '1.4.160-daily.202607281300' })
       }
@@ -139,7 +139,7 @@ describe('electron-builder mac channel config', () => {
 
   // Why: the dev channels share every packaging decision except where they
   // publish, so a future edit that collapses them must not also collapse the
-  // repos — a branch or daily build landing in nightshift-hourly would be offered to
+  // repos — a branch or daily build landing in kolux-hourly would be offered to
   // everyone riding main's hourlies.
   it('keeps the dev channels on separate repos', () => {
     withHourlyEnv((hourly) => {

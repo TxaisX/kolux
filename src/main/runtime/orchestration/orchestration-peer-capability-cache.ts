@@ -1,7 +1,7 @@
 import type { RuntimeCapability } from '../../../shared/protocol-version'
 import type { RuntimeStatus } from '../../../shared/runtime-types'
 import { BoundedMap } from '../../../shared/bounded-map'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 const DEFAULT_MAX_PEERS = 128
 
@@ -271,10 +271,10 @@ export class OrchestrationPeerCapabilityCache {
   }
 }
 
-const cachesByRuntime = new WeakMap<NightshiftRuntimeService, OrchestrationPeerCapabilityCache>()
+const cachesByRuntime = new WeakMap<KoluxRuntimeService, OrchestrationPeerCapabilityCache>()
 
 export function getOrchestrationPeerCapabilityCache(
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 ): OrchestrationPeerCapabilityCache {
   let cache = cachesByRuntime.get(runtime)
   if (!cache) {

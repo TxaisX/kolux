@@ -17,7 +17,7 @@
 import { getStructuredAgentSessionHost } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 import { observeStructuredWorker } from './structured-worker-authority'
 import { closeStructuredAgentSessionChild } from './structured-agent-session-close'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 
 export type LiveStructuredSessionInWorkspace = {
   sessionId: string
@@ -25,7 +25,7 @@ export type LiveStructuredSessionInWorkspace = {
 }
 
 export type StructuredWorktreeSweepRuntime = Pick<
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   'forgetStructuredSessionMail' | 'retireStructuredAgentSessionTabFromSnapshot'
 >
 

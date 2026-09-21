@@ -34,7 +34,7 @@ export type SecretStore = {
  * Anchoring to the realm keeps one instance per process however often the module
  * registry is rebuilt.
  */
-const SLOT = Symbol.for('nightshift.host.secretStore')
+const SLOT = Symbol.for('kolux.host.secretStore')
 
 type Slot = { [SLOT]?: SecretStore | null }
 

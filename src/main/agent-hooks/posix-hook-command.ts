@@ -22,10 +22,10 @@ export function wrapPosixHookCommand(
       ? POSIX_HOOK_STDIN_DRAIN_COMMAND
       : `printf '%s\\n' ${quotePosixShellString(options.fallbackStdout)}; ${POSIX_HOOK_STDIN_DRAIN_COMMAND}`
   // Why an env guard and not just a file test: the managed script always exists, so without this
-  // the agent spawns a shell for it on every event and the script only then discovers Nightshift is not
+  // the agent spawns a shell for it on every event and the script only then discovers Kolux is not
   // listening and exits. The spawn has already happened by that point, which is the whole cost a
-  // standalone session was paying. `requiredEnvVar` names a variable Nightshift sets on the panes it
-  // launches, so a session Nightshift did not start short-circuits before spawning anything.
+  // standalone session was paying. `requiredEnvVar` names a variable Kolux sets on the panes it
+  // launches, so a session Kolux did not start short-circuits before spawning anything.
   const guards = [
     ...(options.requiredEnvVar ? [`[ -n "$${options.requiredEnvVar}" ]`] : []),
     `[ -f ${quoted} ]`,

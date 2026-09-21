@@ -186,7 +186,7 @@ describe('NativeChatStructuredSession', () => {
 
     const composer = screen.getByTestId('structured-composer')
     composer.focus()
-    window.dispatchEvent(new Event('nightshift-app-menu-paste', { cancelable: true }))
+    window.dispatchEvent(new Event('kolux-app-menu-paste', { cancelable: true }))
 
     expect(mocks.pasteFromClipboard).toHaveBeenCalledOnce()
   })

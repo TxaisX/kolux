@@ -4,8 +4,8 @@ import {
   writeEndpointFile
 } from '../../../shared/agent-hook-listener/endpoint-publication'
 import {
-  NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-  NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+  KOLUX_HOOK_PROTOCOL_VERSION,
+  KOLUX_HOOK_RAW_JSON_TRANSPORT
 } from '../../../shared/agent-hook-types'
 import { AgentHookServerIngestRemote } from './server-ingest-remote'
 
@@ -15,15 +15,15 @@ export abstract class AgentHookServerRuntimeEnv extends AgentHookServerIngestRem
       return {}
     }
     const env: Record<string, string> = {
-      NIGHTSHIFT_AGENT_HOOK_PORT: String(this.port),
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: this.token,
-      NIGHTSHIFT_AGENT_HOOK_ENV: this.env,
-      NIGHTSHIFT_AGENT_HOOK_VERSION: NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-      NIGHTSHIFT_AGENT_HOOK_TRANSPORT: NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+      KOLUX_AGENT_HOOK_PORT: String(this.port),
+      KOLUX_AGENT_HOOK_TOKEN: this.token,
+      KOLUX_AGENT_HOOK_ENV: this.env,
+      KOLUX_AGENT_HOOK_VERSION: KOLUX_HOOK_PROTOCOL_VERSION,
+      KOLUX_AGENT_HOOK_TRANSPORT: KOLUX_HOOK_RAW_JSON_TRANSPORT
     }
     // Why: hooks source this file at invocation; dev namespaces it so parallel `pnpm dev` runs don't steal each other's hooks.
     if (this.endpointFileWritten && this.endpointFilePathCache) {
-      env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = this.endpointFilePathCache
+      env.KOLUX_AGENT_HOOK_ENDPOINT = this.endpointFilePathCache
     }
     return env
   }
@@ -46,8 +46,8 @@ export abstract class AgentHookServerRuntimeEnv extends AgentHookServerIngestRem
       port: this.port,
       token: this.token,
       env: this.env,
-      version: NIGHTSHIFT_HOOK_PROTOCOL_VERSION,
-      transport: NIGHTSHIFT_HOOK_RAW_JSON_TRANSPORT
+      version: KOLUX_HOOK_PROTOCOL_VERSION,
+      transport: KOLUX_HOOK_RAW_JSON_TRANSPORT
     })
     this.endpointFileWritten = ok
   }

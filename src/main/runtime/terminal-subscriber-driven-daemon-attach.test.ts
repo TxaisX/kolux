@@ -8,13 +8,13 @@
  * mount — so a never-activated tab produced blank paired panes and empty CLI
  * tails while the PTY was alive.
  *
- * Harness: real NightshiftRuntimeService + real TERMINAL_METHODS multiplex handler,
+ * Harness: real KoluxRuntimeService + real TERMINAL_METHODS multiplex handler,
  * with an injected pty controller modeling a daemon provider whose data events
  * are deliverable ONLY after attach(id). No window is ever attached — every
- * assertion also holds for headless `nightshift serve`.
+ * assertion also holds for headless `kolux serve`.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { RpcDispatcher } from './rpc/dispatcher'
 import type { RpcRequest } from './rpc/core'
 import { TERMINAL_METHODS } from './rpc/methods/terminal'
@@ -47,7 +47,7 @@ type RuntimeInternals = {
   ) => Promise<unknown>
 }
 
-function internals(runtime: NightshiftRuntimeService): RuntimeInternals {
+function internals(runtime: KoluxRuntimeService): RuntimeInternals {
   return runtime as unknown as RuntimeInternals
 }
 
@@ -65,7 +65,7 @@ function createDaemonProviderModel(opts: { snapshotCapable: boolean }) {
   const attachCalls: string[] = []
   const resizeCalls: [string, number, number][] = []
   let nextAttachBarrier: { promise: Promise<void>; result: boolean } | null = null
-  let runtime: NightshiftRuntimeService | null = null
+  let runtime: KoluxRuntimeService | null = null
   const controller = {
     write: () => true,
     kill: () => true,
@@ -134,7 +134,7 @@ function createDaemonProviderModel(opts: { snapshotCapable: boolean }) {
       nextAttachBarrier = { promise, result }
       return release
     },
-    bind(target: NightshiftRuntimeService) {
+    bind(target: KoluxRuntimeService) {
       runtime = target
     },
     /** Daemon stream event → main ingestion, exactly like ipc/pty.ts wiring —
@@ -151,12 +151,12 @@ function createDaemonProviderModel(opts: { snapshotCapable: boolean }) {
 }
 
 function setupNeverAttachedDaemonSession(opts: { snapshotCapable: boolean; screen?: string }): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   model: ReturnType<typeof createDaemonProviderModel>
   handle: string
   mountSpy: ReturnType<typeof vi.spyOn>
 } {
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   const model = createDaemonProviderModel(opts)
   model.bind(runtime)
   runtime.setPtyController(model.controller as never)
@@ -174,7 +174,7 @@ function setupNeverAttachedDaemonSession(opts: { snapshotCapable: boolean; scree
   return { runtime, model, handle, mountSpy }
 }
 
-function startMultiplex(runtime: NightshiftRuntimeService, connectionId = 'conn-desktop') {
+function startMultiplex(runtime: KoluxRuntimeService, connectionId = 'conn-desktop') {
   const messages: { result?: { type?: string; streamId?: number | null } }[] = []
   const binaryFrames: Uint8Array<ArrayBufferLike>[] = []
   const handlers = new Map<

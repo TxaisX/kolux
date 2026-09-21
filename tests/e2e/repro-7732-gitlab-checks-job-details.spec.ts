@@ -1,7 +1,7 @@
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { openChecks } from './helpers/source-control-ai-generation'
 
@@ -12,8 +12,8 @@ const FIXTURE = {
   jobId: 987654,
   jobName: 'Purchase API Component Tests',
   stage: 'Component Tests',
-  webUrl: 'https://gitlab.example.test/acme/nightshift/-/jobs/987654',
-  mrUrl: 'https://gitlab.example.test/acme/nightshift/-/merge_requests/4242',
+  webUrl: 'https://gitlab.example.test/acme/kolux/-/jobs/987654',
+  mrUrl: 'https://gitlab.example.test/acme/kolux/-/merge_requests/4242',
   headSha: 'e2ee2ee2ee2ee2ee2ee2ee2ee2ee2ee2ee2ee2e',
   trace: [
     '$ pnpm test:component --project purchase-api',
@@ -24,7 +24,7 @@ const FIXTURE = {
 } as const
 
 const SCREENSHOT_DIR =
-  process.env.NIGHTSHIFT_GITLAB_CHECKS_JOB_DETAILS_SCREENSHOT_DIR ??
+  process.env.KOLUX_GITLAB_CHECKS_JOB_DETAILS_SCREENSHOT_DIR ??
   path.join(process.cwd(), 'test-results', 'gitlab-checks-job-details')
 
 // contextIsolation makes window.api non-writable, so stub at the IPC boundary in main.
@@ -114,41 +114,41 @@ async function linkGitLabMRToWorktree(page: Page, worktreeId: string): Promise<v
 
 test.describe('#7732 GitLab Checks panel job details', () => {
   test('expanding a failed pipeline job shows its log, not "No inline details"', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     await installGitLabChecksBackend(electronApp)
 
-    const worktreeId = await nightshiftPage.evaluate(
+    const worktreeId = await koluxPage.evaluate(
       () => window.__store?.getState().activeWorktreeId ?? null
     )
     if (!worktreeId) {
       throw new Error('E2E fixture did not expose an active worktree')
     }
     // Late startup UI hydration resets the active workspace + sidebar route; let it settle first.
-    await nightshiftPage.waitForTimeout(8_000)
+    await koluxPage.waitForTimeout(8_000)
 
-    const jobRow = nightshiftPage.getByText(`${FIXTURE.stage}: ${FIXTURE.jobName}`, { exact: true })
+    const jobRow = koluxPage.getByText(`${FIXTURE.stage}: ${FIXTURE.jobName}`, { exact: true })
     for (let attempt = 0; attempt < 40 && (await jobRow.count()) === 0; attempt++) {
-      await linkGitLabMRToWorktree(nightshiftPage, worktreeId)
-      await openChecks(nightshiftPage, worktreeId)
-      await nightshiftPage.waitForTimeout(500)
+      await linkGitLabMRToWorktree(koluxPage, worktreeId)
+      await openChecks(koluxPage, worktreeId)
+      await koluxPage.waitForTimeout(500)
     }
     await expect(jobRow).toBeVisible({ timeout: 15_000 })
 
     mkdirSync(SCREENSHOT_DIR, { recursive: true })
     await jobRow.click()
-    const noDetails = nightshiftPage.getByText('No inline details are available for this check.')
-    const viewFullLogs = nightshiftPage.getByRole('button', { name: 'View full logs' })
+    const noDetails = koluxPage.getByText('No inline details are available for this check.')
+    const viewFullLogs = koluxPage.getByRole('button', { name: 'View full logs' })
     for (let attempt = 0; attempt < 20; attempt++) {
       if ((await noDetails.count()) > 0 || (await viewFullLogs.count()) > 0) {
         break
       }
-      await nightshiftPage.waitForTimeout(500)
+      await koluxPage.waitForTimeout(500)
     }
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(SCREENSHOT_DIR, 'gitlab-checks-job-expanded.png')
     })
 

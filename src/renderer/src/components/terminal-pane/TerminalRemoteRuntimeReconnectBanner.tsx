@@ -50,7 +50,7 @@ export function TerminalRemoteRuntimeReconnectBanner({
             {retrying
               ? translate(
                   'auto.components.terminal.pane.TerminalRemoteRuntimeReconnectBanner.retryingBody',
-                  'Nightshift is retrying automatically. This terminal will resume if the connection returns.'
+                  'Kolux is retrying automatically. This terminal will resume if the connection returns.'
                 )
               : translate(
                   'auto.components.terminal.pane.TerminalRemoteRuntimeReconnectBanner.disconnectedBody',

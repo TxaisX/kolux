@@ -3,15 +3,12 @@ import {
   BROWSER_UNAVAILABLE_ERROR_CODE,
   type RuntimeBrowserUnavailableReason
 } from '../../shared/runtime-types'
-import type {
-  RuntimeBrowserCommandHost,
-  RuntimeBrowserCommands
-} from './nightshift-runtime-browser'
+import type { RuntimeBrowserCommandHost, RuntimeBrowserCommands } from './kolux-runtime-browser'
 
 /**
- * How `NightshiftRuntimeService` obtains its browser-automation commands.
+ * How `KoluxRuntimeService` obtains its browser-automation commands.
  *
- * Why a factory rather than a direct import: `nightshift-runtime-browser.ts` reaches the
+ * Why a factory rather than a direct import: `kolux-runtime-browser.ts` reaches the
  * whole Chromium cluster — `BrowserWindow`, `session`, `webContents`, cookie jars —
  * 15 modules that a Node host cannot load at all. Importing the class for its *type*
  * is free; constructing it is what drags the cluster in.

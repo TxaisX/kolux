@@ -11,8 +11,8 @@ import { useAppStore } from '@/store'
 import { MobileRelayBetaNotice } from './MobileRelayBetaNotice'
 export { getMobileSettingsPaneSearchEntries }
 
-const NIGHTSHIFT_IOS_APP_STORE_URL = 'https://apps.apple.com/app/nightshift-ide/id6766130217'
-const NIGHTSHIFT_ANDROID_APK_URL =
+const KOLUX_IOS_APP_STORE_URL = 'https://apps.apple.com/app/kolux-ide/id6766130217'
+const KOLUX_ANDROID_APK_URL =
   'https://github.com/TxaisX/nightshift/releases/download/mobile-android-v0.0.48/app-release.apk'
 
 export function MobileSettingsPane(): React.JSX.Element {
@@ -34,11 +34,11 @@ export function MobileSettingsPane(): React.JSX.Element {
           <p>
             {translate(
               'auto.components.settings.MobileSettingsPane.installIntro',
-              'Install Nightshift Mobile from the'
+              'Install Kolux Mobile from the'
             )}{' '}
             <button
               type="button"
-              onClick={() => void window.api.shell.openUrl(NIGHTSHIFT_IOS_APP_STORE_URL)}
+              onClick={() => void window.api.shell.openUrl(KOLUX_IOS_APP_STORE_URL)}
               className="cursor-pointer underline underline-offset-2 hover:text-foreground"
             >
               {translate('auto.components.settings.MobileSettingsPane.b5a2ed83ff', 'App Store')}
@@ -48,7 +48,7 @@ export function MobileSettingsPane(): React.JSX.Element {
               type="button"
               // Why: Android is moving to Google Play soon, but until then
               // link directly to the pinned APK asset for the current mobile release.
-              onClick={() => void window.api.shell.openUrl(NIGHTSHIFT_ANDROID_APK_URL)}
+              onClick={() => void window.api.shell.openUrl(KOLUX_ANDROID_APK_URL)}
               className="cursor-pointer underline underline-offset-2 hover:text-foreground"
             >
               {translate(
@@ -68,11 +68,11 @@ export function MobileSettingsPane(): React.JSX.Element {
       <SearchableSetting
         title={translate(
           'auto.components.settings.MobileSettingsPane.1de96ec8a6',
-          'Show Nightshift Mobile Button'
+          'Show Kolux Mobile Button'
         )}
         description={translate(
           'auto.components.settings.MobileSettingsPane.682293cadf',
-          'Show the Nightshift Mobile button at the top of the left sidebar.'
+          'Show the Kolux Mobile button at the top of the left sidebar.'
         )}
         keywords={getMobileSidebarShortcutSearchEntry().keywords}
       >
@@ -80,11 +80,11 @@ export function MobileSettingsPane(): React.JSX.Element {
         <SettingsSwitchRow
           label={translate(
             'auto.components.settings.MobileSettingsPane.1de96ec8a6',
-            'Show Nightshift Mobile Button'
+            'Show Kolux Mobile Button'
           )}
           description={translate(
             'auto.components.settings.MobileSettingsPane.d4f2b65f30',
-            'Show the Nightshift Mobile shortcut in the sidebar.'
+            'Show the Kolux Mobile shortcut in the sidebar.'
           )}
           checked={showMobileButton}
           onChange={() => updateSettings({ showMobileButton: !showMobileButton })}

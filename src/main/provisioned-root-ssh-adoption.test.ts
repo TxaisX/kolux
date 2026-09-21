@@ -19,13 +19,13 @@ import {
 import { adoptProvisionedRootSshCheckout } from './provisioned-root-ssh-adoption'
 
 const connectionId = 'runtime-ssh-test'
-const projectRoot = '/workspace/nightshift'
+const projectRoot = '/workspace/kolux'
 
 describe('adoptProvisionedRootSshCheckout', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-provisioned-root-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-provisioned-root-'))
     resetSshProviderAuthorities()
   })
 
@@ -100,7 +100,7 @@ describe('adoptProvisionedRootSshCheckout', () => {
     )
   })
 
-  it('rejects a recipe checkout on a branch Nightshift did not request', async () => {
+  it('rejects a recipe checkout on a branch Kolux did not request', async () => {
     seedRuntime(userDataPath, projectRoot)
     registerSshGitProvider(connectionId, {
       listWorktrees: vi
@@ -302,23 +302,23 @@ describe('adoptProvisionedRootSshCheckout', () => {
   })
 
   it('compares Windows checkout roots using runtime path semantics', async () => {
-    const windowsRoot = 'C:\\Workspace\\Nightshift'
+    const windowsRoot = 'C:\\Workspace\\Kolux'
     seedRuntime(userDataPath, windowsRoot)
     registerSshGitProvider(connectionId, {
-      listWorktrees: vi.fn().mockResolvedValue([gitWorktree('c:/workspace/nightshift/')]),
+      listWorktrees: vi.fn().mockResolvedValue([gitWorktree('c:/workspace/kolux/')]),
       exec: sparseCheckoutProbe(false)
     } as never)
     const { store } = makeStore()
 
     const result = await adoptProvisionedRootSshCheckout({
       userDataPath,
-      request: request('C:/WORKSPACE/NIGHTSHIFT'),
-      repo: repo('c:\\workspace\\nightshift'),
+      request: request('C:/WORKSPACE/KOLUX'),
+      repo: repo('c:\\workspace\\kolux'),
       store,
       isRepoCurrent: () => true
     })
 
-    expect(result.worktree.path).toBe('c:/workspace/nightshift/')
+    expect(result.worktree.path).toBe('c:/workspace/kolux/')
   })
 
   it('rejects sparse checkout enabled in the remote Git config', async () => {
@@ -368,7 +368,7 @@ function seedRuntime(userDataPath: string, root: string): void {
       checkoutMode: 'provisioned-root',
       connection: {
         type: 'ssh',
-        target: { label: 'Sandbox', host: '127.0.0.1', port: 22, username: 'nightshift' },
+        target: { label: 'Sandbox', host: '127.0.0.1', port: 22, username: 'kolux' },
         projectRoot: root
       }
     }
@@ -379,7 +379,7 @@ function repo(path: string): Repo {
   return {
     id: 'repo-1',
     path,
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#000000',
     addedAt: 1,
     connectionId,
@@ -432,7 +432,7 @@ function makeStore(): {
   }))
   return {
     store: {
-      getSettings: () => ({ nestWorkspaces: false, workspaceDir: '.nightshift/worktrees' }),
+      getSettings: () => ({ nestWorkspaces: false, workspaceDir: '.kolux/worktrees' }),
       setWorktreeMeta
     } as unknown as Store,
     setWorktreeMeta

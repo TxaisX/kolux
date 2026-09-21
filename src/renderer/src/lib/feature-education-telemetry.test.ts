@@ -117,7 +117,7 @@ describe('feature education telemetry helpers', () => {
     const storage = createMemoryStorage()
     vi.stubGlobal('localStorage', storage)
     storage.setItem(
-      'nightshift.setupGuideTelemetryCompletedSteps.v1',
+      'kolux.setupGuideTelemetryCompletedSteps.v1',
       JSON.stringify(['split-terminal', 'two-worktrees'])
     )
 

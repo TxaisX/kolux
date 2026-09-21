@@ -155,7 +155,7 @@ describe('runtime AI Vault session scanner', () => {
       ok: true,
       result: {
         useRealCodexHome: false,
-        substituteCodexHome: '/data/nightshift/codex-accounts/account-2/home'
+        substituteCodexHome: '/data/kolux/codex-accounts/account-2/home'
       }
     })
 
@@ -168,7 +168,7 @@ describe('runtime AI Vault session scanner', () => {
       })
     ).resolves.toEqual({
       useRealCodexHome: false,
-      substituteCodexHome: '/data/nightshift/codex-accounts/account-2/home'
+      substituteCodexHome: '/data/kolux/codex-accounts/account-2/home'
     })
   })
 

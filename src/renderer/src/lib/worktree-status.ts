@@ -24,7 +24,7 @@ export type WorktreeStatus =
 type WorktreeStatusHeuristicOptions = {
   liveAgentStatus?: LiveAgentWorktreeStatus
   agentStatusPaneIdsByTabId?: Record<string, ReadonlySet<string>>
-  /** Stale rows suppress Nightshift's generated permission labels; native title fallback stays live. */
+  /** Stale rows suppress Kolux's generated permission labels; native title fallback stays live. */
   stalePaneIdsByTabId?: Record<string, ReadonlySet<string>>
   terminalLayoutsByTabId?: Record<string, TerminalLayoutSnapshot | undefined>
   terminalLayoutRootsByTabId?: Record<string, TerminalPaneLayoutNode | null | undefined>

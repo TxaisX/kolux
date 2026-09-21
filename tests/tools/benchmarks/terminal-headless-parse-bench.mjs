@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * Decomposes cross-terminal pipeline results: feeds the same fixtures from
- * terminal-pipeline-bench through a bare @xterm/headless Terminal — no Nightshift
+ * terminal-pipeline-bench through a bare @xterm/headless Terminal — no Kolux
  * layers, no IPC, no rendering — to locate where throughput is lost.
  *
  * If headless xterm parses a fixture near the plain-text rate, the pipeline
- * gap for that fixture lives in Nightshift's layers (delivery, side-effect
+ * gap for that fixture lives in Kolux's layers (delivery, side-effect
  * scanning, renderer paint). If headless collapses too, the cost is intrinsic
  * to xterm.js's parser/buffer for that byte pattern.
  *

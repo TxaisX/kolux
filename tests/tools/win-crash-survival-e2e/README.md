@@ -1,14 +1,14 @@
 # win-crash-survival-e2e — packaged crash-survival proof harness
 
-**Windows only.** Proves that a **crash of Nightshift's main process** does not orphan
+**Windows only.** Proves that a **crash of Kolux's main process** does not orphan
 open terminal PTYs — the regression behind
 [GitHub #7742](https://github.com/TxaisX/nightshift/issues/7742) —
 with machine-checkable assertions against an **already-installed, packaged**
-`Nightshift.exe`.
+`Kolux.exe`.
 
 ## Why this exists
 
-On Windows, when Nightshift's main/renderer process crashed, open terminal PTYs were
+On Windows, when Kolux's main/renderer process crashed, open terminal PTYs were
 orphaned and PowerShell hard-crashed with a `0xE9` "No process is on the other
 end of the pipe" `FailFast`. Root cause: the terminal **daemon** (which hosts the
 ConPTYs) died together with the main process, severing the console pipe.
@@ -27,12 +27,12 @@ and adds only the crash step + its assertions.
 
 ## What it does
 
-1. **Launch** the installed `Nightshift.exe` under an isolated `userData` dir
-   (`NIGHTSHIFT_E2E_USER_DATA_DIR`), seeded with a fresh profile (onboarding dismissed
+1. **Launch** the installed `Kolux.exe` under an isolated `userData` dir
+   (`KOLUX_E2E_USER_DATA_DIR`), seeded with a fresh profile (onboarding dismissed
    plus one throwaway git repo), then open a plain terminal tab (the seeded
    workspace opens an agent tab, not a bare shell).
 2. **Stamp the interactive shell** — typing DIRECTLY into it (not a nested
-   `powershell`), set a per-shell env sentinel `NIGHTSHIFT_CRASH_SENTINEL=<canary>` and
+   `powershell`), set a per-shell env sentinel `KOLUX_CRASH_SENTINEL=<canary>` and
    record the shell's own `$PID`. The command finishes fast, leaving the shell
    idle at a live PSReadLine prompt — the exact state that FailFasts with `0xE9`
    on a broken build.
@@ -50,7 +50,7 @@ and adds only the crash step + its assertions.
    **unchanged** (the new main **adopts** the surviving daemon instead of forking
    a new one) and that the reattached UI is bound to the **same survivor shell** —
    a bounded, readiness-aware command on the exact restored tab reads back both
-   `NIGHTSHIFT_CRASH_SENTINEL` and the shell's `$PID`, which a freshly re-spawned shell
+   `KOLUX_CRASH_SENTINEL` and the shell's `$PID`, which a freshly re-spawned shell
    would not carry.
 7. **Scan the full crash-to-input window** and require the Windows **Application
    event log** to contain **zero** pwsh `FailFast` / `0xE9` events (matched by
@@ -60,7 +60,7 @@ and adds only the crash step + its assertions.
    **tree** (re-discovered fresh via `findDaemonProcesses(userData)`, which the
    surviving shell is a descendant of) and remove the temp profile. It never kills
    a PID captured earlier in the run (a recycled PID could hit an innocent
-   process), never installs/uninstalls, and never touches any other Nightshift on the box.
+   process), never installs/uninstalls, and never touches any other Kolux on the box.
 
 Exit code is `0` when every non-informational assertion passes, else `1` (`2` for
 a CLI usage error).
@@ -70,7 +70,7 @@ a CLI usage error).
 ```powershell
 pnpm win-crash-survival-e2e --expect survival
 # or explicitly point at an installed exe:
-node tests/tools/win-crash-survival-e2e/run.mjs --expect survival --exe-path "C:\Users\<you>\AppData\Local\Programs\nightshift\Nightshift.exe"
+node tests/tools/win-crash-survival-e2e/run.mjs --expect survival --exe-path "C:\Users\<you>\AppData\Local\Programs\kolux\Kolux.exe"
 ```
 
 ### Flags
@@ -78,7 +78,7 @@ node tests/tools/win-crash-survival-e2e/run.mjs --expect survival --exe-path "C:
 | Flag                 | Meaning                                                                                        |
 | -------------------- | ---------------------------------------------------------------------------------------------- |
 | `--expect <profile>` | Assertion profile (required): `survival` or `orphaned` (see below)                             |
-| `--exe-path <path>`  | Installed `Nightshift.exe` to drive (default: per-user install under `%LOCALAPPDATA%\Programs\Nightshift`) |
+| `--exe-path <path>`  | Installed `Kolux.exe` to drive (default: per-user install under `%LOCALAPPDATA%\Programs\Kolux`) |
 | `--soak-seconds <n>` | Post-crash observation window before relaunch (default `8`)                                    |
 | `--keep-profile`     | Skip temp-profile cleanup (debugging)                                                          |
 
@@ -103,7 +103,7 @@ node tests/tools/win-crash-survival-e2e/run.mjs --expect survival --exe-path "C:
 - The crash kills **only** the real Electron main of the instance this harness
   launched — resolved via `app.evaluate(() => process.pid)` (not the launcher stub
   `app.process()` returns) — `/F` with **no `/T`**. It never `taskkill`s by image
-  name or a scanned pid, so a developer's live Nightshift (a different `userData`, out of
+  name or a scanned pid, so a developer's live Kolux (a different `userData`, out of
   scope) is untouched.
 - **Teardown never kills a PID captured earlier in the run** (a recycled PID could
   hit an innocent process): daemon cleanup re-discovers this run's daemon fresh via

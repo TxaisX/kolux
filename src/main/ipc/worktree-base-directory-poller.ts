@@ -32,7 +32,7 @@ export function createWorktreePollerWindowVisibility(
   getWindow: () => WorktreePollerWindow | null
 ): WorktreePollerWindowVisibility {
   // Why: only park a window that has actually been shown and is now hidden. A window
-  // that has NEVER been shown is either headless (NIGHTSHIFT_E2E_HEADLESS keeps a live but
+  // that has NEVER been shown is either headless (KOLUX_E2E_HEADLESS keeps a live but
   // never-shown BrowserWindow) or still starting up — no show/restore signal is coming
   // to resume it, so parking it would starve worktree freshness forever. Treat
   // never-shown as visible and keep polling; only start parking once we've observed the
@@ -76,11 +76,11 @@ export type WorktreeBasePollerOptions = {
 // Why: these targets used to be recursive FSEvents subscriptions spanning the
 // entire workspace root (every worktree's full tree) and the repo's whole
 // common .git (objects included), forcing fseventsd to deliver all of that
-// churn to Nightshift just to observe a handful of shallow paths. The replacements
+// churn to Kolux just to observe a handful of shallow paths. The replacements
 // register at most one tiny-scope native stream (macOS git-common) and
 // otherwise poll with a dir-mtime gate, so idle cost is a couple of stat
 // calls per tick. 2s is fast enough for external `git worktree add/remove`;
-// Nightshift's own worktree operations notify the renderer directly.
+// Kolux's own worktree operations notify the renderer directly.
 export const WORKTREE_BASE_POLL_INTERVAL_MS = 2_000
 
 /** Watches the shallow paths a worktree base target cares about and emits

@@ -48,7 +48,7 @@ function validBackup(move: RemovalMove): boolean {
     typeof move.placement.path === 'string' &&
     typeof move.placement.topology === 'string' &&
     dirname(move.sourcePath) === dirname(move.backupPath) &&
-    basename(move.backupPath).startsWith(`.${basename(move.sourcePath)}.nightshift-remove-backup-`)
+    basename(move.backupPath).startsWith(`.${basename(move.sourcePath)}.kolux-remove-backup-`)
   )
 }
 

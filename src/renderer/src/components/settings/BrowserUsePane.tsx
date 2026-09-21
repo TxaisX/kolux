@@ -2,14 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { CliInstallStatus } from '../../../../shared/cli-install-types'
 import {
-  NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_CLI_SKILL_NAME,
-  NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+  KOLUX_CLI_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_NAME,
+  KOLUX_CLI_SKILL_UPDATE_COMMAND
 } from '@/lib/agent-feature-install-commands'
 import {
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE,
-  ensureNightshiftCliAvailableForAgentSkillTerminal,
-  isNightshiftCliAvailableOnPath
+  ensureKoluxCliAvailableForAgentSkillTerminal,
+  isKoluxCliAvailableOnPath
 } from '@/lib/agent-skill-cli-prerequisite'
 import { BROWSER_USE_ENABLED_STORAGE_KEY } from '@/lib/browser-use-setup-state'
 import {
@@ -57,17 +57,11 @@ export function BrowserUseSetup({
   const mountedRef = useMountedRef()
   const activeSkillRuntime = useActiveProjectSkillRuntime()
   const browserUseInstallCommand = !activeSkillRuntime.installDisabledReason
-    ? buildSkillCommandForRuntime(
-        NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-        activeSkillRuntime.agentRuntime
-      )
-    : NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND
+    ? buildSkillCommandForRuntime(KOLUX_CLI_SKILL_INSTALL_COMMAND, activeSkillRuntime.agentRuntime)
+    : KOLUX_CLI_SKILL_INSTALL_COMMAND
   const browserUseUpdateCommand = !activeSkillRuntime.installDisabledReason
-    ? buildSkillCommandForRuntime(
-        NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND,
-        activeSkillRuntime.agentRuntime
-      )
-    : NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+    ? buildSkillCommandForRuntime(KOLUX_CLI_SKILL_UPDATE_COMMAND, activeSkillRuntime.agentRuntime)
+    : KOLUX_CLI_SKILL_UPDATE_COMMAND
 
   const handleCliStatusChange = useCallback(
     (nextStatus: CliInstallStatus | null): void => {
@@ -133,7 +127,7 @@ export function BrowserUseSetup({
   const defaultProfile = browserSessionProfiles.find((p) => p.id === 'default')
   const cookiesImported = !!defaultProfile?.source
 
-  const cliEnabled = isNightshiftCliAvailableOnPath(cliStatus)
+  const cliEnabled = isKoluxCliAvailableOnPath(cliStatus)
   const cliPathNeedsAttention =
     cliStatus?.state === 'installed' && cliStatus.pathConfigured === false
   const cliSupported = cliStatus?.supported ?? false
@@ -143,7 +137,7 @@ export function BrowserUseSetup({
     loading: skillLoading,
     error: skillError,
     refresh: refreshSkill
-  } = useInstalledAgentSkill(NIGHTSHIFT_CLI_SKILL_NAME, {
+  } = useInstalledAgentSkill(KOLUX_CLI_SKILL_NAME, {
     enabled: browserUseEnabled,
     discoveryTarget: activeSkillRuntime.discoveryTarget,
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
@@ -158,17 +152,17 @@ export function BrowserUseSetup({
       const next =
         activeSkillRuntime.agentRuntime?.runtime === 'wsl'
           ? await ensureWslCliAvailableForAgentSkillTerminal(activeSkillRuntime.agentRuntime)
-          : await ensureNightshiftCliAvailableForAgentSkillTerminal({
+          : await ensureKoluxCliAvailableForAgentSkillTerminal({
               onStatusChange: handleCliStatusChange
             })
       if (activeSkillRuntime.agentRuntime?.runtime === 'wsl') {
         handleCliStatusChange(next)
       }
-      if (mountedRef.current && isNightshiftCliAvailableOnPath(next)) {
+      if (mountedRef.current && isKoluxCliAvailableOnPath(next)) {
         toast.success(
           translate(
             'auto.components.settings.BrowserUsePane.721aee31b4',
-            'Registered the Nightshift CLI in PATH.'
+            'Registered the Kolux CLI in PATH.'
           )
         )
       }
@@ -272,7 +266,7 @@ export function BrowserUseSetup({
           )}
           description={translate(
             'auto.components.settings.BrowserUsePane.68ea76eb71',
-            "Install the Browser Use skill so agents can operate Nightshift's browser."
+            "Install the Browser Use skill so agents can operate Kolux's browser."
           )}
           keywords={getBrowserUsePaneSearchEntries()[1].keywords}
           className={cn(
@@ -301,7 +295,7 @@ export function BrowserUseSetup({
               useAppStore.getState().recordFeatureInteraction('agent-browser-setup')
               await (activeSkillRuntime.agentRuntime?.runtime === 'wsl'
                 ? ensureWslCliAvailableForAgentSkillTerminal(activeSkillRuntime.agentRuntime)
-                : ensureNightshiftCliAvailableForAgentSkillTerminal({
+                : ensureKoluxCliAvailableForAgentSkillTerminal({
                     onStatusChange: handleCliStatusChange
                   }))
             }}

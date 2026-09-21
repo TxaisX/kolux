@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { WORKTREE_METHODS } from './worktree'
 
 // The watermark rides alongside the names rather than being expanded into them; a client
@@ -16,7 +16,7 @@ describe('worktree.listRetiredNames', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       listRetiredWorktreeNames: vi.fn().mockResolvedValue(RETIRED)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const request: RpcRequest = {
       id: 'req-1',
       authToken: 'tok',

@@ -13,7 +13,7 @@ import {
   SkillInstallResultSchema,
   SkillPackageIdentitySchema
 } from '../../shared/skill-install-contract'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import {
   supportsSkillRuntimeBundleInstall,
   supportsSkillRuntimeManagement
@@ -47,7 +47,7 @@ type BundlePreviewInput = z.infer<typeof SkillBundleInstallPreviewRequestSchema>
 
 const REMOTE_BUNDLE_PREVIEW_CONCURRENCY = 8
 
-async function previewBundleInstall(runtime: NightshiftRuntimeService, input: BundlePreviewInput) {
+async function previewBundleInstall(runtime: KoluxRuntimeService, input: BundlePreviewInput) {
   if (!input.environmentId) {
     return runtime.previewSharedSkillBundleInstallRequest(input)
   }
@@ -100,7 +100,7 @@ async function previewBundleInstall(runtime: NightshiftRuntimeService, input: Bu
   })
 }
 
-export function registerSkillInstallManagementIpcHandlers(runtime: NightshiftRuntimeService): void {
+export function registerSkillInstallManagementIpcHandlers(runtime: KoluxRuntimeService): void {
   handleMainWindowSkillIpc('skills:listWslDistros', async (_event, environmentIdValue: unknown) => {
     const environmentId = environmentIdSchema.optional().parse(environmentIdValue)
     if (!environmentId) {

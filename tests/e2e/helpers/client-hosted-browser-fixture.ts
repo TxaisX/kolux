@@ -1,8 +1,8 @@
 import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './nightshift-app'
-import { readRestartRendererState } from './nightshift-restart'
+import { expect } from './kolux-app'
+import { readRestartRendererState } from './kolux-restart'
 import type { PairedElectronClient } from './paired-electron-client'
 
 /**

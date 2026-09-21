@@ -46,7 +46,7 @@ function createMockProcess(): ChildProcess {
 }
 
 async function makeTempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-relay-git-list-files-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-relay-git-list-files-'))
   tempDirs.push(root)
   return root
 }

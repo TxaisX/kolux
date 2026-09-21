@@ -76,15 +76,15 @@ describe('checks panel hosted review click routing', () => {
 })
 
 describe('checks panel hosted review modifier hint destination', () => {
-  it('names the system browser when a plain click already opens in Nightshift', () => {
+  it('names the system browser when a plain click already opens in Kolux', () => {
     expect(resolveChecksPanelHostedReviewModifierDestination({ openLinksInApp: true }, true)).toBe(
       'system-browser'
     )
   })
 
-  // Why: inverting is inert while links already open in Nightshift — both meanings of the
+  // Why: inverting is inert while links already open in Kolux — both meanings of the
   // modifier land on the system browser, so checking inverts first would misname it.
-  it('names the system browser when inverting is on and links already open in Nightshift', () => {
+  it('names the system browser when inverting is on and links already open in Kolux', () => {
     expect(
       resolveChecksPanelHostedReviewModifierDestination(
         { openLinksInApp: true, openLinksInAppModifierInverts: true },
@@ -94,14 +94,14 @@ describe('checks panel hosted review modifier hint destination', () => {
   })
 
   // Why: this is the gesture the invert setting adds — without it the hint stays hidden
-  // and the only way to reach Nightshift from this button is undiscoverable.
-  it('names Nightshift when inverting is on and links open externally', () => {
+  // and the only way to reach Kolux from this button is undiscoverable.
+  it('names Kolux when inverting is on and links open externally', () => {
     expect(
       resolveChecksPanelHostedReviewModifierDestination(
         { openLinksInApp: false, openLinksInAppModifierInverts: true },
         true
       )
-    ).toBe('nightshift')
+    ).toBe('kolux')
   })
 
   it('stays silent while inverting is off and links open externally', () => {
@@ -111,7 +111,7 @@ describe('checks panel hosted review modifier hint destination', () => {
     expect(resolveChecksPanelHostedReviewModifierDestination(null, true)).toBeNull()
   })
 
-  // Why: openHttpLink refuses to route a remote-owned link into Nightshift, and openLinksInApp
+  // Why: openHttpLink refuses to route a remote-owned link into Kolux, and openLinksInApp
   // cannot apply there either, so neither destination is reachable.
   it('stays silent while a remote runtime is active', () => {
     expect(
@@ -133,7 +133,7 @@ describe('checks panel hosted review modifier hint destination', () => {
   })
 
   // Why: openHttpLink trims before treating a runtime as active, so a blank id must
-  // not suppress a hint for a click that still reaches Nightshift.
+  // not suppress a hint for a click that still reaches Kolux.
   it('ignores a blank runtime id', () => {
     expect(
       resolveChecksPanelHostedReviewModifierDestination(
@@ -144,10 +144,10 @@ describe('checks panel hosted review modifier hint destination', () => {
         },
         true
       )
-    ).toBe('nightshift')
+    ).toBe('kolux')
   })
 
-  // Why: openHttpLink gates routing to Nightshift on a worktree id, so without one the
+  // Why: openHttpLink gates routing to Kolux on a worktree id, so without one the
   // modifier lands in the system browser either way.
   it('stays silent without a worktree', () => {
     expect(

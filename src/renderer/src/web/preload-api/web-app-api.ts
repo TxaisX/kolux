@@ -10,7 +10,7 @@ export function createWebAppApi(): Partial<PreloadApi> {
     app: {
       getIdentity: () =>
         Promise.resolve({
-          name: 'Nightshift',
+          name: 'Kolux',
           isDev: false,
           devLabel: null,
           devBranch: null,

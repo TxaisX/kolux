@@ -263,7 +263,7 @@ describe('fetchMiniMaxRateLimits', () => {
   it('sets the cookie jar and sends browser-like request headers', async () => {
     netFetchMock.mockResolvedValueOnce(makeResponse(makeOkPayload(80)))
     await fetchMiniMaxRateLimits({ cookie: FULL_COOKIE })
-    expect(sessionFromPartitionMock).toHaveBeenCalledWith('nightshift-minimax-rate-limit-fetch')
+    expect(sessionFromPartitionMock).toHaveBeenCalledWith('kolux-minimax-rate-limit-fetch')
     expect(clearStorageDataMock).toHaveBeenCalledWith({
       origin: 'https://platform.minimax.io',
       storages: ['cookies']
@@ -287,7 +287,7 @@ describe('fetchMiniMaxRateLimits', () => {
     expect(init.headers['Sec-Fetch-Mode']).toBeUndefined()
     expect(init.headers['Sec-Fetch-Site']).toBeUndefined()
     expect(init.headers['User-Agent']).toMatch(/^Mozilla\/5\.0/)
-    expect(init.headers['User-Agent']).not.toContain('nightshift-minimax-usage')
+    expect(init.headers['User-Agent']).not.toContain('kolux-minimax-usage')
   })
 
   it('accepts quoted MiniMax cookie storage syntax', async () => {

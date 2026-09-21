@@ -11,7 +11,7 @@ describe('resolveModifierRouting', () => {
     for (const openLinksInApp of [true, false]) {
       for (const inverts of [true, false]) {
         expect(resolveModifierRouting(false, openLinksInApp, inverts)).toEqual({
-          wantsNightshift: false,
+          wantsKolux: false,
           wantsSystemBrowser: false
         })
       }
@@ -22,25 +22,25 @@ describe('resolveModifierRouting', () => {
   // byte-for-byte unchanged for every existing user.
   it('always forces the system browser when inverting is off', () => {
     expect(resolveModifierRouting(true, true, false)).toEqual({
-      wantsNightshift: false,
+      wantsKolux: false,
       wantsSystemBrowser: true
     })
     expect(resolveModifierRouting(true, false, false)).toEqual({
-      wantsNightshift: false,
+      wantsKolux: false,
       wantsSystemBrowser: true
     })
   })
 
-  it('still reaches the system browser when inverting and links open in Nightshift', () => {
+  it('still reaches the system browser when inverting and links open in Kolux', () => {
     expect(resolveModifierRouting(true, true, true)).toEqual({
-      wantsNightshift: false,
+      wantsKolux: false,
       wantsSystemBrowser: true
     })
   })
 
-  it('reaches Nightshift when inverting and links open in the system browser', () => {
+  it('reaches Kolux when inverting and links open in the system browser', () => {
     expect(resolveModifierRouting(true, false, true)).toEqual({
-      wantsNightshift: true,
+      wantsKolux: true,
       wantsSystemBrowser: false
     })
   })
@@ -82,7 +82,7 @@ describe('modifier routing across link source owners', () => {
     vi.unstubAllGlobals()
   })
 
-  it('still lets the inverting modifier pull a local link into Nightshift', () => {
+  it('still lets the inverting modifier pull a local link into Kolux', () => {
     storeState.settings = { openLinksInApp: false, openLinksInAppModifierInverts: true }
 
     openHttpLink('https://example.com/', {
@@ -96,7 +96,7 @@ describe('modifier routing across link source owners', () => {
     })
   })
 
-  it('lets an inverting modifier reach Nightshift on the owning runtime', () => {
+  it('lets an inverting modifier reach Kolux on the owning runtime', () => {
     storeState.settings = {
       openLinksInApp: false,
       openLinksInAppModifierInverts: true,

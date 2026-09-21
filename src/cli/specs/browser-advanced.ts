@@ -6,14 +6,14 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['cookie', 'get'],
     summary: 'Get cookies for the active tab (optionally filter by URL)',
-    usage: 'nightshift cookie get [--url <url>] [--worktree <selector>] [--json]',
+    usage: 'kolux cookie get [--url <url>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'url', 'worktree']
   },
   {
     path: ['cookie', 'set'],
     summary: 'Set a cookie',
     usage:
-      'nightshift cookie set --name <n> --value <v> [--domain <d>] [--path <p>] [--secure] [--httpOnly] [--sameSite <s>] [--expires <epoch>] [--worktree <selector>] [--json]',
+      'kolux cookie set --name <n> --value <v> [--domain <d>] [--path <p>] [--secure] [--httpOnly] [--sameSite <s>] [--expires <epoch>] [--worktree <selector>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'name',
@@ -32,7 +32,7 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
     destructive: true,
     summary: 'Delete a cookie by name',
     usage:
-      'nightshift cookie delete --name <n> [--domain <d>] [--url <u>] [--worktree <selector>] [--json]',
+      'kolux cookie delete --name <n> [--domain <d>] [--url <u>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'name', 'domain', 'url', 'worktree']
   },
   // ── Viewport ──
@@ -40,7 +40,7 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
     path: ['viewport'],
     summary: 'Set browser viewport size',
     usage:
-      'nightshift viewport --width <w> --height <h> [--scale <n>] [--mobile] [--worktree <selector>] [--json]',
+      'kolux viewport --width <w> --height <h> [--scale <n>] [--mobile] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'width', 'height', 'scale', 'mobile', 'worktree']
   },
   // ── Geolocation ──
@@ -48,26 +48,26 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
     path: ['geolocation'],
     summary: 'Override browser geolocation',
     usage:
-      'nightshift geolocation --latitude <lat> --longitude <lon> [--accuracy <n>] [--worktree <selector>] [--json]',
+      'kolux geolocation --latitude <lat> --longitude <lon> [--accuracy <n>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'latitude', 'longitude', 'accuracy', 'worktree']
   },
   // ── Request interception ──
   {
     path: ['intercept', 'enable'],
     summary: 'Enable request interception (pause matching requests)',
-    usage: 'nightshift intercept enable [--patterns <glob,...>] [--worktree <selector>] [--json]',
+    usage: 'kolux intercept enable [--patterns <glob,...>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'patterns', 'worktree']
   },
   {
     path: ['intercept', 'disable'],
     summary: 'Disable request interception',
-    usage: 'nightshift intercept disable [--worktree <selector>] [--json]',
+    usage: 'kolux intercept disable [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['intercept', 'list'],
     summary: 'List paused (intercepted) requests',
-    usage: 'nightshift intercept list [--worktree <selector>] [--json]',
+    usage: 'kolux intercept list [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   // TODO: add intercept continue/block once agent-browser supports per-request
@@ -76,88 +76,88 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['capture', 'start'],
     summary: 'Start capturing console and network events',
-    usage: 'nightshift capture start [--worktree <selector>] [--json]',
+    usage: 'kolux capture start [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['capture', 'stop'],
     summary: 'Stop capturing console and network events',
-    usage: 'nightshift capture stop [--worktree <selector>] [--json]',
+    usage: 'kolux capture stop [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['console'],
     summary: 'Show captured console log entries',
-    usage: 'nightshift console [--limit <n>] [--worktree <selector>] [--json]',
+    usage: 'kolux console [--limit <n>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'limit', 'worktree']
   },
   {
     path: ['network'],
     summary: 'Show captured network requests',
-    usage: 'nightshift network [--limit <n>] [--worktree <selector>] [--json]',
+    usage: 'kolux network [--limit <n>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'limit', 'worktree']
   },
   // ── Additional core commands ──
   {
     path: ['dblclick'],
     summary: 'Double-click element by ref',
-    usage: 'nightshift dblclick --element <ref> [--worktree <selector>] [--json]',
+    usage: 'kolux dblclick --element <ref> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'element', 'worktree']
   },
   {
     path: ['forward'],
     summary: 'Navigate forward in browser history',
-    usage: 'nightshift forward [--worktree <selector>] [--json]',
+    usage: 'kolux forward [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['scrollintoview'],
     summary: 'Scroll element into view',
-    usage: 'nightshift scrollintoview --element <ref> [--worktree <selector>] [--json]',
+    usage: 'kolux scrollintoview --element <ref> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'element', 'worktree']
   },
   {
     path: ['get'],
     summary: 'Get element property (text, html, value, url, title, count, box)',
-    usage: 'nightshift get --what <property> [--element <ref>] [--worktree <selector>] [--json]',
+    usage: 'kolux get --what <property> [--element <ref>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'what', 'element', 'worktree']
   },
   {
     path: ['is'],
     summary: 'Check element state (visible, enabled, checked)',
-    usage: 'nightshift is --what <state> --element <ref> [--worktree <selector>] [--json]',
+    usage: 'kolux is --what <state> --element <ref> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'what', 'element', 'worktree']
   },
   // ── Keyboard insert text ──
   {
     path: ['inserttext'],
     summary: 'Insert text without key events',
-    usage: 'nightshift inserttext --text <text> [--worktree <selector>] [--json]',
+    usage: 'kolux inserttext --text <text> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'text', 'worktree']
   },
   // ── Mouse commands ──
   {
     path: ['mouse', 'move'],
     summary: 'Move mouse to x,y coordinates',
-    usage: 'nightshift mouse move --x <n> --y <n> [--worktree <selector>] [--json]',
+    usage: 'kolux mouse move --x <n> --y <n> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'x', 'y', 'worktree']
   },
   {
     path: ['mouse', 'down'],
     summary: 'Press mouse button',
-    usage: 'nightshift mouse down [--button <left|right|middle>] [--worktree <selector>] [--json]',
+    usage: 'kolux mouse down [--button <left|right|middle>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'button', 'worktree']
   },
   {
     path: ['mouse', 'up'],
     summary: 'Release mouse button',
-    usage: 'nightshift mouse up [--button <left|right|middle>] [--worktree <selector>] [--json]',
+    usage: 'kolux mouse up [--button <left|right|middle>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'button', 'worktree']
   },
   {
     path: ['mouse', 'wheel'],
     summary: 'Scroll wheel',
-    usage: 'nightshift mouse wheel --dy <n> [--dx <n>] [--worktree <selector>] [--json]',
+    usage: 'kolux mouse wheel --dy <n> [--dx <n>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'dy', 'dx', 'worktree']
   },
   // ── Find (semantic locators) ──
@@ -165,121 +165,118 @@ export const BROWSER_ADVANCED_COMMAND_SPECS: CommandSpec[] = [
     path: ['find'],
     summary: 'Find element by semantic locator and perform action',
     usage:
-      'nightshift find --locator <type> --value <text> --action <action> [--text <text>] [--worktree <selector>] [--json]',
+      'kolux find --locator <type> --value <text> --action <action> [--text <text>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'locator', 'value', 'action', 'text', 'worktree']
   },
   // ── Set commands ──
   {
     path: ['set', 'device'],
     summary: 'Emulate a device',
-    usage: 'nightshift set device --name <device> [--worktree <selector>] [--json]',
+    usage: 'kolux set device --name <device> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'name', 'worktree']
   },
   {
     path: ['set', 'offline'],
     summary: 'Toggle offline mode',
-    usage: 'nightshift set offline [--state <on|off>] [--worktree <selector>] [--json]',
+    usage: 'kolux set offline [--state <on|off>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'state', 'worktree']
   },
   {
     path: ['set', 'headers'],
     summary: 'Set extra HTTP headers',
-    usage: 'nightshift set headers --headers <json> [--worktree <selector>] [--json]',
+    usage: 'kolux set headers --headers <json> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'headers', 'worktree']
   },
   {
     path: ['set', 'credentials'],
     summary: 'Set HTTP auth credentials',
-    usage:
-      'nightshift set credentials --user <user> --pass <pass> [--worktree <selector>] [--json]',
+    usage: 'kolux set credentials --user <user> --pass <pass> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'user', 'pass', 'worktree']
   },
   {
     path: ['set', 'media'],
     summary: 'Set color scheme and reduced motion preferences',
     usage:
-      'nightshift set media [--color-scheme <dark|light>] [--reduced-motion <reduce|no-preference>] [--worktree <selector>] [--json]',
+      'kolux set media [--color-scheme <dark|light>] [--reduced-motion <reduce|no-preference>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'color-scheme', 'reduced-motion', 'worktree']
   },
   // ── Clipboard commands ──
   {
     path: ['clipboard', 'read'],
     summary: 'Read clipboard contents',
-    usage: 'nightshift clipboard read [--worktree <selector>] [--json]',
+    usage: 'kolux clipboard read [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['clipboard', 'write'],
     summary: 'Write text to clipboard',
-    usage: 'nightshift clipboard write --text <text> [--worktree <selector>] [--json]',
+    usage: 'kolux clipboard write --text <text> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'text', 'worktree']
   },
   // ── Dialog commands ──
   {
     path: ['dialog', 'accept'],
     summary: 'Accept a browser dialog',
-    usage: 'nightshift dialog accept [--text <text>] [--worktree <selector>] [--json]',
+    usage: 'kolux dialog accept [--text <text>] [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'text', 'worktree']
   },
   {
     path: ['dialog', 'dismiss'],
     summary: 'Dismiss a browser dialog',
-    usage: 'nightshift dialog dismiss [--worktree <selector>] [--json]',
+    usage: 'kolux dialog dismiss [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   // ── Storage commands ──
   {
     path: ['storage', 'local', 'get'],
     summary: 'Get a localStorage value by key',
-    usage: 'nightshift storage local get --key <key> [--worktree <selector>] [--json]',
+    usage: 'kolux storage local get --key <key> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'key', 'worktree']
   },
   {
     path: ['storage', 'local', 'set'],
     summary: 'Set a localStorage value',
-    usage:
-      'nightshift storage local set --key <key> --value <value> [--worktree <selector>] [--json]',
+    usage: 'kolux storage local set --key <key> --value <value> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'key', 'value', 'worktree']
   },
   {
     path: ['storage', 'local', 'clear'],
     destructive: true,
     summary: 'Clear all localStorage',
-    usage: 'nightshift storage local clear [--worktree <selector>] [--json]',
+    usage: 'kolux storage local clear [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   {
     path: ['storage', 'session', 'get'],
     summary: 'Get a sessionStorage value by key',
-    usage: 'nightshift storage session get --key <key> [--worktree <selector>] [--json]',
+    usage: 'kolux storage session get --key <key> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'key', 'worktree']
   },
   {
     path: ['storage', 'session', 'set'],
     summary: 'Set a sessionStorage value',
-    usage:
-      'nightshift storage session set --key <key> --value <value> [--worktree <selector>] [--json]',
+    usage: 'kolux storage session set --key <key> --value <value> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'key', 'value', 'worktree']
   },
   {
     path: ['storage', 'session', 'clear'],
     destructive: true,
     summary: 'Clear all sessionStorage',
-    usage: 'nightshift storage session clear [--worktree <selector>] [--json]',
+    usage: 'kolux storage session clear [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'worktree']
   },
   // ── Download command ──
   {
     path: ['download'],
     summary: 'Download a file by clicking a selector',
-    usage: 'nightshift download --selector <ref> --path <path> [--worktree <selector>] [--json]',
+    usage: 'kolux download --selector <ref> --path <path> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'selector', 'path', 'worktree']
   },
   // ── Highlight command ──
   {
     path: ['highlight'],
     summary: 'Highlight an element by selector',
-    usage: 'nightshift highlight --selector <ref> [--worktree <selector>] [--json]',
+    usage: 'kolux highlight --selector <ref> [--worktree <selector>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'selector', 'worktree']
   }
 ]

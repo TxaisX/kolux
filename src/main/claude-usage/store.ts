@@ -62,12 +62,12 @@ function normalizePersistedState(state: ClaudeUsagePersistedState): ClaudeUsageP
 }
 
 export function initClaudeUsagePath(): void {
-  _claudeUsageFile = join(app.getPath('userData'), 'nightshift-claude-usage.json')
+  _claudeUsageFile = join(app.getPath('userData'), 'kolux-claude-usage.json')
 }
 
 function getClaudeUsageFile(): string {
   if (!_claudeUsageFile) {
-    _claudeUsageFile = join(app.getPath('userData'), 'nightshift-claude-usage.json')
+    _claudeUsageFile = join(app.getPath('userData'), 'kolux-claude-usage.json')
   }
   return _claudeUsageFile
 }

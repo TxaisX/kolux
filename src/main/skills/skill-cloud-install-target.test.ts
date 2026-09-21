@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { classifySkillCloudInstallTarget } from './skill-cloud-install-target'
 
-function runtime(usesSsh: boolean): NightshiftRuntimeService {
+function runtime(usesSsh: boolean): KoluxRuntimeService {
   return {
     skillInstallDestinationUsesSsh: vi.fn().mockResolvedValue(usesSsh)
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 describe('classifySkillCloudInstallTarget', () => {

@@ -71,7 +71,7 @@ function settledMeta(overrides: Partial<WorktreeMeta> = {}): WorktreeMeta {
   return {
     ...ownershipMeta,
     instanceId: 'instance-settled',
-    nightshiftCreatedAt: 1,
+    koluxCreatedAt: 1,
     lastActivityAt: 5,
     ...overrides
   } as WorktreeMeta
@@ -108,7 +108,7 @@ function buildDetectedGitWorktreesTwoPass(
   allMetaOverride?: Record<string, WorktreeMeta>
 ) {
   const settings = store.getSettings()
-  const knownNightshiftLayouts = ownership.buildKnownNightshiftWorkspaceLayouts(settings, target)
+  const knownKoluxLayouts = ownership.buildKnownKoluxWorkspaceLayouts(settings, target)
   const isLegacyRepoForVisibility = ownership.isLegacyRepoForExternalWorktreeVisibility(target)
   const liveWorktrees = dedupeWorktreesByPath(gitWorktrees.filter((info) => !info.prunable))
   const worktreeVisibilitySourceMatcher = createWorktreeVisibilitySourceMatcher(
@@ -131,7 +131,7 @@ function buildDetectedGitWorktreesTwoPass(
       worktree,
       meta,
       settings,
-      knownNightshiftLayouts,
+      knownKoluxLayouts,
       isLegacyRepoForVisibility,
       worktreeVisibilitySourceMatcher
     })
@@ -150,7 +150,7 @@ function buildDetectedGitWorktreesTwoPass(
       worktree: mergeWorktree(target.id, info, meta, target.displayName),
       meta,
       settings,
-      knownNightshiftLayouts,
+      knownKoluxLayouts,
       isLegacyRepoForVisibility,
       worktreeVisibilitySourceMatcher
     })
@@ -207,7 +207,7 @@ describe('buildDetectedGitWorktrees classification passes', () => {
 
   it.each([
     ['settled metadata', () => settledMeta()],
-    ['metadata needing discovery backfill', () => ({ nightshiftCreatedAt: 1 }) as WorktreeMeta],
+    ['metadata needing discovery backfill', () => ({ koluxCreatedAt: 1 }) as WorktreeMeta],
     ['no metadata at all', () => undefined]
   ])('emits a catalog deep-equal to the two-pass build for %s', (_label, makeMeta) => {
     const worktreeId = `${repo.id}::/workspace/one`

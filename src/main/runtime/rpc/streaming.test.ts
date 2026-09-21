@@ -2,18 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { RpcDispatcher } from './dispatcher'
 import { defineMethod, defineStreamingMethod, type RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import { createSubscriptionRegistryDouble } from './subscription-registry-test-double'
 
-function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): NightshiftRuntimeService {
+function stubRuntime(overrides: Partial<KoluxRuntimeService> = {}): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     // Why: subscribe streams register as remote view subscribers for Phase-5
     // query-authority suppression (terminal-query-authority.md).
     registerRemoteTerminalViewSubscriber: () => () => {},
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 function makeRequest(method: string, params?: unknown): RpcRequest {
@@ -57,10 +57,10 @@ describe('RpcDispatcher streaming', () => {
           name: 'terminal.subscribe',
           params: z.object({ terminal: z.string() }),
           handler: async (params, { runtime }, emit) => {
-            const read = await (runtime as NightshiftRuntimeService).readTerminal(params.terminal)
+            const read = await (runtime as KoluxRuntimeService).readTerminal(params.terminal)
             emit({ type: 'scrollback', lines: read.tail, truncated: read.truncated })
 
-            const leaf = (runtime as NightshiftRuntimeService).resolveLeafForHandle(params.terminal)
+            const leaf = (runtime as KoluxRuntimeService).resolveLeafForHandle(params.terminal)
             if (!leaf?.ptyId) {
               emit({ type: 'end' })
             }
@@ -160,7 +160,7 @@ describe('RpcDispatcher streaming', () => {
             emit({ type: 'scrollback', lines: '' })
 
             await new Promise<void>((resolve) => {
-              ;(runtime as NightshiftRuntimeService).registerSubscriptionCleanup('sub-1', () => {
+              ;(runtime as KoluxRuntimeService).registerSubscriptionCleanup('sub-1', () => {
                 emit({ type: 'end' })
                 resolve()
               })
@@ -171,7 +171,7 @@ describe('RpcDispatcher streaming', () => {
           name: 'test.unsubscribe',
           params: z.object({ subscriptionId: z.string() }),
           handler: async (params, { runtime }) => {
-            ;(runtime as NightshiftRuntimeService).cleanupSubscription(params.subscriptionId)
+            ;(runtime as KoluxRuntimeService).cleanupSubscription(params.subscriptionId)
             return { unsubscribed: true }
           }
         })

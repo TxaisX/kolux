@@ -50,7 +50,7 @@ export class CodexConfigMirror {
       return this.readHostConfig()
     }
 
-    const managedRootMarker = '/.local/share/nightshift/codex-accounts/'
+    const managedRootMarker = '/.local/share/kolux/codex-accounts/'
     const markerIndex = wslInfo.linuxPath.indexOf(managedRootMarker)
     if (markerIndex === -1) {
       return null
@@ -86,7 +86,7 @@ export class CodexConfigMirror {
     // Why: mirroring a custom-provider pin into an OAuth managed home makes
     // the new OAuth credentials inert; fail before login and leave user config intact.
     throw new Error(
-      `Nightshift cannot add a Codex OAuth account while ~/.codex/config.toml pins the custom provider ${JSON.stringify(modelProvider)}. Keep using the system-default account for this provider, or remove model_provider (or set it to "openai") before adding an OAuth account. Nightshift left your config unchanged.`
+      `Kolux cannot add a Codex OAuth account while ~/.codex/config.toml pins the custom provider ${JSON.stringify(modelProvider)}. Keep using the system-default account for this provider, or remove model_provider (or set it to "openai") before adding an OAuth account. Kolux left your config unchanged.`
     )
   }
 

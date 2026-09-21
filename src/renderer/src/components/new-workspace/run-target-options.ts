@@ -1,4 +1,4 @@
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import type {
   NeedsSetupProjectHostOption,
   ProjectHostSetupOption,
@@ -6,7 +6,7 @@ import type {
 } from '@/lib/project-host-setup-options'
 import { translate } from '@/i18n/i18n'
 
-export type EphemeralVmRecipeOption = NonNullable<NightshiftHooks['environmentRecipes']>[number]
+export type EphemeralVmRecipeOption = NonNullable<KoluxHooks['environmentRecipes']>[number]
 
 export const RUN_TARGET_ADD_HOST_KEY = 'add-host'
 export const RUN_TARGET_RECIPES_KEY = 'per-workspace-env'

@@ -23,7 +23,7 @@ import {
 } from '../../../../shared/structured-native-chat-launch-route'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { hasExplicitTuiLaunchCustomization } from '../../../../shared/tui-agent-launch-customization'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 
 export type WorkerStartMode = 'structured' | 'terminal'
 
@@ -150,7 +150,7 @@ export function decideWorkerStartMode(args: {
  * created, so a refusal becomes a terminal worker rather than a failed start.
  */
 export async function resolveWorkerStartModeOnHost(
-  runtime: Pick<NightshiftRuntimeService, 'getStructuredAgentSessionCreateSupport'>,
+  runtime: Pick<KoluxRuntimeService, 'getStructuredAgentSessionCreateSupport'>,
   mode: WorkerStartModeReceipt,
   worktreeId: string | undefined,
   agent: TuiAgent | undefined
@@ -166,7 +166,7 @@ export async function resolveWorkerStartModeOnHost(
 
 /** A host that cannot answer has not proved it can create one, so the worker stays a PTY agent. */
 async function readStructuredCreateSupport(
-  runtime: Pick<NightshiftRuntimeService, 'getStructuredAgentSessionCreateSupport'>,
+  runtime: Pick<KoluxRuntimeService, 'getStructuredAgentSessionCreateSupport'>,
   worktreeId: string,
   agent: TuiAgent | undefined
 ): Promise<{ supported: boolean; reason?: 'agent' | 'remote' | 'wsl' }> {
@@ -227,7 +227,7 @@ function downgraded(
 
 /** The store can be missing on a runtime that never opened one; that reads as no preference. */
 export function readWorkerStartModeSettings(
-  runtime: Pick<NightshiftRuntimeService, 'getClientSettings'>
+  runtime: Pick<KoluxRuntimeService, 'getClientSettings'>
 ): WorkerStartModeSettings | null {
   try {
     return runtime.getClientSettings()

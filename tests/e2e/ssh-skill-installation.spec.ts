@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
 import type { SkillInstallDestination } from '../../src/shared/skill-install-contract'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   execDockerSshRelayTargetCommand,
@@ -18,24 +18,24 @@ import {
   type RemoteSkillCloudFixture
 } from './helpers/remote-skill-cloud-fixture'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
-const REMOTE_FOLDER = '/tmp/nightshift-skill-folder-workspace'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
+const REMOTE_FOLDER = '/tmp/kolux-skill-folder-workspace'
 
 let cloud: RemoteSkillCloudFixture | null = null
 
 test.use({
   // oxlint-disable-next-line no-empty-pattern -- The server starts in beforeAll before this test fixture runs.
-  nightshiftAppExtraEnv: async ({}, provideEnv) => {
+  koluxAppExtraEnv: async ({}, provideEnv) => {
     if (!cloud) {
       throw new Error('Skill cloud fixture unavailable')
     }
     await provideEnv({
-      NIGHTSHIFT_ARTIFACTS_API_URL: cloud.origin,
-      NIGHTSHIFT_CLOUD_API_URL: cloud.origin,
-      NIGHTSHIFT_CLOUD_CLIENT_ID: 'skills-e2e-client',
-      NIGHTSHIFT_CLOUD_DEV_AUTH: '1',
-      NIGHTSHIFT_CLOUD_ALLOW_PLAINTEXT_SESSION: '1',
-      NIGHTSHIFT_SKILL_PACKAGE_DOWNLOAD_ORIGINS: cloud.origin
+      KOLUX_ARTIFACTS_API_URL: cloud.origin,
+      KOLUX_CLOUD_API_URL: cloud.origin,
+      KOLUX_CLOUD_CLIENT_ID: 'skills-e2e-client',
+      KOLUX_CLOUD_DEV_AUTH: '1',
+      KOLUX_CLOUD_ALLOW_PLAINTEXT_SESSION: '1',
+      KOLUX_SKILL_PACKAGE_DOWNLOAD_ORIGINS: cloud.origin
     })
   }
 })
@@ -53,11 +53,11 @@ test.afterAll(async () => {
 })
 
 test.describe('SSH skill installation', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Docker SSH tests use POSIX ssh tooling.')
 
   test('installs and removes global, Git-worktree, and folder copies through the real relay', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo: TestInfo) => {
     test.slow()
     const fixture = requireCloudFixture()
@@ -65,12 +65,10 @@ test.describe('SSH skill installation', () => {
     try {
       target = startDockerSshRelayTarget(testInfo)
       execDockerSshRelayTargetCommand(target, `mkdir -p ${REMOTE_FOLDER}`)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      const auth = await nightshiftPage.evaluate(() =>
-        window.api.nightshiftProfiles.connectCurrent()
-      )
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      const auth = await koluxPage.evaluate(() => window.api.koluxProfiles.connectCurrent())
       expect(auth.status).toBe('connected')
 
       const globalDestination: SkillInstallDestination = {
@@ -78,12 +76,12 @@ test.describe('SSH skill installation', () => {
         executionTarget: { kind: 'ssh', connectionId: remote.targetId }
       }
       await installAndVerify(
-        nightshiftPage,
+        koluxPage,
         target,
         globalDestination,
         '/root/.agents/skills/remote-e2e-skill'
       )
-      const globalInstalls = await nightshiftPage.evaluate(
+      const globalInstalls = await koluxPage.evaluate(
         (environmentId) => window.api.skills.listManagedInstalls(environmentId),
         `ssh:${remote.targetId}`
       )
@@ -99,9 +97,9 @@ test.describe('SSH skill installation', () => {
           }
         ]
       })
-      await previewUnchanged(nightshiftPage, globalDestination)
+      await previewUnchanged(koluxPage, globalDestination)
       await removeAndVerify(
-        nightshiftPage,
+        koluxPage,
         target,
         globalDestination,
         '/root/.agents/skills/remote-e2e-skill'
@@ -111,18 +109,18 @@ test.describe('SSH skill installation', () => {
         scope: 'workspace',
         worktreeId: remote.worktreeId
       }
-      const worktreePath = '/tmp/nightshift-docker-relay-perf-repo/.agents/skills/remote-e2e-skill'
-      await installAndVerify(nightshiftPage, target, worktreeDestination, worktreePath)
-      await removeAndVerify(nightshiftPage, target, worktreeDestination, worktreePath)
+      const worktreePath = '/tmp/kolux-docker-relay-perf-repo/.agents/skills/remote-e2e-skill'
+      await installAndVerify(koluxPage, target, worktreeDestination, worktreePath)
+      await removeAndVerify(koluxPage, target, worktreeDestination, worktreePath)
 
-      const folderWorkspaceId = await createRemoteFolderWorkspace(nightshiftPage, remote.targetId)
+      const folderWorkspaceId = await createRemoteFolderWorkspace(koluxPage, remote.targetId)
       const folderDestination: SkillInstallDestination = {
         scope: 'workspace',
         folderWorkspaceId
       }
       const folderPath = `${REMOTE_FOLDER}/.agents/skills/remote-e2e-skill`
-      await installAndVerify(nightshiftPage, target, folderDestination, folderPath)
-      await removeAndVerify(nightshiftPage, target, folderDestination, folderPath)
+      await installAndVerify(koluxPage, target, folderDestination, folderPath)
+      await removeAndVerify(koluxPage, target, folderDestination, folderPath)
 
       expect(fixture.requests.filter((request) => request.method === 'POST')).toHaveLength(3)
       expect(fixture.requests.filter((request) => request.path === '/package.tar.gz')).toHaveLength(

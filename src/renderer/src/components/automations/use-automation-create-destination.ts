@@ -44,7 +44,7 @@ export type AutomationCreateDestinationCheck =
   | { ok: false; notice: AutomationActionNotice }
 
 export type AutomationCreateDestinationInput = {
-  /** False whenever the dialog is closed or is not creating a Nightshift automation. */
+  /** False whenever the dialog is closed or is not creating a Kolux automation. */
   open: boolean
   catalog: AutomationHostCatalog
   entries: readonly AutomationHostCatalogEntry[]

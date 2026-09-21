@@ -1,5 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import type {
   RuntimeBrowserDriverState,
   RuntimeRendererSyncWindowGraph,
@@ -27,7 +27,7 @@ function boundTerminalFitRestore(pending: Promise<boolean>): Promise<boolean> {
   return Promise.race([pending, deadline]).finally(() => clearTimeout(timer))
 }
 
-export function registerRuntimeHandlers(runtime: NightshiftRuntimeService): void {
+export function registerRuntimeHandlers(runtime: KoluxRuntimeService): void {
   const pendingTerminalFitRestores = new Map<string, Promise<boolean>>()
   const desktopSenders = new DesktopRuntimeSenderLifecycle(runtime)
   ipcMain.removeHandler('runtime:syncWindowGraph')

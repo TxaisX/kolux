@@ -15,18 +15,18 @@ async function tempRoot(prefix: string): Promise<string> {
 }
 
 async function writeBundle(root: string, name = 'Skills'): Promise<{ path: string; hash: string }> {
-  const path = 'txais.nightshift-skills'
+  const path = 'txais.kolux-skills'
   const pluginRoot = join(root, path)
   await mkdir(pluginRoot, { recursive: true })
   await writeFile(
-    join(pluginRoot, 'nightshift-plugin.json'),
+    join(pluginRoot, 'kolux-plugin.json'),
     JSON.stringify({
       manifestVersion: 1,
-      id: 'nightshift-skills',
+      id: 'kolux-skills',
       publisher: 'TxaisX',
       name,
       version: '1.0.0',
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       capabilities: []
     })
@@ -43,7 +43,7 @@ async function writeIndex(root: string, path: string, contentHash: string): Prom
     join(root, 'bundled-plugins.json'),
     JSON.stringify({
       version: 1,
-      plugins: [{ pluginKey: 'txais.nightshift-skills', path, contentHash }]
+      plugins: [{ pluginKey: 'txais.kolux-skills', path, contentHash }]
     })
   )
 }
@@ -54,22 +54,22 @@ afterEach(async () => {
 
 describe('bundled plugin bootstrap', () => {
   it('installs release-indexed content once and keeps unchanged startup work bounded', async () => {
-    const root = await tempRoot('nightshift-bundled-resources-')
-    const userDataPath = await tempRoot('nightshift-bundled-user-data-')
+    const root = await tempRoot('kolux-bundled-resources-')
+    const userDataPath = await tempRoot('kolux-bundled-user-data-')
     const bundle = await writeBundle(root)
     await writeIndex(root, bundle.path, bundle.hash)
 
     await expect(
       bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
-    ).resolves.toEqual({ installed: ['txais.nightshift-skills'], unchanged: [], errors: [] })
+    ).resolves.toEqual({ installed: ['txais.kolux-skills'], unchanged: [], errors: [] })
     await expect(
       bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
-    ).resolves.toEqual({ installed: [], unchanged: ['txais.nightshift-skills'], errors: [] })
+    ).resolves.toEqual({ installed: [], unchanged: ['txais.kolux-skills'], errors: [] })
   })
 
   it('publishes an updated immutable bundle only when the indexed hash matches', async () => {
-    const root = await tempRoot('nightshift-bundled-resources-')
-    const userDataPath = await tempRoot('nightshift-bundled-user-data-')
+    const root = await tempRoot('kolux-bundled-resources-')
+    const userDataPath = await tempRoot('kolux-bundled-user-data-')
     const first = await writeBundle(root)
     await writeIndex(root, first.path, first.hash)
     await bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
@@ -79,36 +79,36 @@ describe('bundled plugin bootstrap', () => {
     const updated = await bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
 
     expect(updated).toEqual({
-      installed: ['txais.nightshift-skills'],
+      installed: ['txais.kolux-skills'],
       unchanged: [],
       errors: []
     })
     const lock = await readPluginLockfile(join(userDataPath, 'plugins'))
-    expect(lock.plugins['txais.nightshift-skills']?.contentHash).toBe(second.hash)
+    expect(lock.plugins['txais.kolux-skills']?.contentHash).toBe(second.hash)
   })
 
   it('repairs a missing or modified bundled current version', async () => {
-    const root = await tempRoot('nightshift-bundled-resources-')
-    const userDataPath = await tempRoot('nightshift-bundled-user-data-')
+    const root = await tempRoot('kolux-bundled-resources-')
+    const userDataPath = await tempRoot('kolux-bundled-user-data-')
     const bundle = await writeBundle(root)
     await writeIndex(root, bundle.path, bundle.hash)
     await bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
-    const versionDir = join(userDataPath, 'plugins', 'txais.nightshift-skills', bundle.hash)
-    await writeFile(join(versionDir, 'nightshift-plugin.json'), '{}')
+    const versionDir = join(userDataPath, 'plugins', 'txais.kolux-skills', bundle.hash)
+    await writeFile(join(versionDir, 'kolux-plugin.json'), '{}')
 
     await expect(
       bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
-    ).resolves.toEqual({ installed: ['txais.nightshift-skills'], unchanged: [], errors: [] })
+    ).resolves.toEqual({ installed: ['txais.kolux-skills'], unchanged: [], errors: [] })
 
     await rm(versionDir, { recursive: true, force: true })
     await expect(
       bootstrapBundledPlugins({ root, userDataPath, hostVersion: '1.4.0' })
-    ).resolves.toEqual({ installed: ['txais.nightshift-skills'], unchanged: [], errors: [] })
+    ).resolves.toEqual({ installed: ['txais.kolux-skills'], unchanged: [], errors: [] })
   })
 
   it('refuses mismatched release hashes before publication', async () => {
-    const root = await tempRoot('nightshift-bundled-resources-')
-    const userDataPath = await tempRoot('nightshift-bundled-user-data-')
+    const root = await tempRoot('kolux-bundled-resources-')
+    const userDataPath = await tempRoot('kolux-bundled-user-data-')
     const bundle = await writeBundle(root)
     await writeIndex(root, bundle.path, 'f'.repeat(64))
 

@@ -209,14 +209,14 @@ describe('resolveCodexPaneLaunchAccount', () => {
   it('attributes a mounted-drive WSL launch through its distro UNC spelling', () => {
     const account = managedAccount({
       id: 'drive-account',
-      managedHomePath: 'C:\\Users\\u\\nightshift\\codex-accounts\\drive-account\\home',
+      managedHomePath: 'C:\\Users\\u\\kolux\\codex-accounts\\drive-account\\home',
       managedHomeRuntime: 'wsl',
       wslDistro: 'Ubuntu',
-      wslLinuxHomePath: '/mnt/c/Users/u/nightshift/codex-accounts/drive-account/home'
+      wslLinuxHomePath: '/mnt/c/Users/u/kolux/codex-accounts/drive-account/home'
     })
     const args = {
       launchCodexHomePath:
-        '\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\u\\nightshift\\codex-accounts\\drive-account\\home',
+        '\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\u\\kolux\\codex-accounts\\drive-account\\home',
       systemCodexHomePath: SYSTEM_HOME,
       settings: settings({ wsl: { Ubuntu: 'drive-account' }, accounts: [account] }),
       target: { runtime: 'wsl' as const, wslDistro: 'Ubuntu' }

@@ -25,7 +25,7 @@ vi.mock('@/runtime/runtime-rpc-client', () => ({
   assertRuntimeEnvironmentCapability: runtimeRpcMocks.assertRuntimeEnvironmentCapability
 }))
 
-const prRepo = { host: 'github.com', owner: 'TxaisX', repo: 'nightshift-sta1015-sandbox' }
+const prRepo = { host: 'github.com', owner: 'TxaisX', repo: 'kolux-sta1015-sandbox' }
 const review: HostedReviewActionInfo = {
   provider: 'github',
   number: 1015,
@@ -167,7 +167,7 @@ describe('useHostedReviewActions', () => {
     expect(runtimeRpcMocks.assertRuntimeEnvironmentCapability).toHaveBeenCalledWith(
       'env-1',
       'github.markPRReadyForReview',
-      expect.stringContaining('newer Nightshift server')
+      expect.stringContaining('newer Kolux server')
     )
     expect(runtimeRpcMocks.callRuntimeRpc).toHaveBeenCalledWith(
       { kind: 'environment', environmentId: 'env-1' },
@@ -223,7 +223,7 @@ describe('useHostedReviewActions', () => {
     expect(runtimeRpcMocks.assertRuntimeEnvironmentCapability).toHaveBeenCalledWith(
       'env-1',
       'gitlab.updateMR.readyForReview.v1',
-      expect.stringContaining('newer Nightshift server')
+      expect.stringContaining('newer Kolux server')
     )
     expect(runtimeRpcMocks.callRuntimeRpc).toHaveBeenCalledWith(
       { kind: 'environment', environmentId: 'env-1' },

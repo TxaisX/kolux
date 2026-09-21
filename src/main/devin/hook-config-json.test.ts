@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   parseDevinHooksConfigText,
-  readConfigFromNightshiftOverlapDetail,
+  readConfigFromKoluxOverlapDetail,
   readDevinHooksConfig
 } from './hook-config-json'
 
@@ -12,7 +12,7 @@ describe('readDevinHooksConfig', () => {
   let dir: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-devin-jsonc-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-devin-jsonc-'))
   })
 
   afterEach(() => {
@@ -52,9 +52,9 @@ describe('readDevinHooksConfig', () => {
   })
 })
 
-describe('readConfigFromNightshiftOverlapDetail', () => {
+describe('readConfigFromKoluxOverlapDetail', () => {
   it('warns when legacy read_config_from imports Claude', () => {
-    const detail = readConfigFromNightshiftOverlapDetail({
+    const detail = readConfigFromKoluxOverlapDetail({
       hooks: {},
       read_config_from: ['claude', 'custom']
     })
@@ -64,7 +64,7 @@ describe('readConfigFromNightshiftOverlapDetail', () => {
   })
 
   it('warns when object-shaped read_config_from leaves Claude enabled', () => {
-    const detail = readConfigFromNightshiftOverlapDetail({
+    const detail = readConfigFromKoluxOverlapDetail({
       hooks: {},
       read_config_from: { claude: true }
     })
@@ -73,7 +73,7 @@ describe('readConfigFromNightshiftOverlapDetail', () => {
   })
 
   it('warns when read_config_from is omitted because imports default to enabled', () => {
-    const detail = readConfigFromNightshiftOverlapDetail({
+    const detail = readConfigFromKoluxOverlapDetail({
       hooks: {}
     })
 
@@ -81,7 +81,7 @@ describe('readConfigFromNightshiftOverlapDetail', () => {
   })
 
   it('does not warn when read_config_from disables Claude', () => {
-    const detail = readConfigFromNightshiftOverlapDetail({
+    const detail = readConfigFromKoluxOverlapDetail({
       hooks: {},
       read_config_from: { claude: false }
     })

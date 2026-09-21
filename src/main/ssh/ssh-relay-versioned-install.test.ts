@@ -69,9 +69,9 @@ describe('readLocalFullVersion', () => {
 })
 
 describe('computeRemoteRelayDir', () => {
-  it('joins remoteHome with .nightshift-remote and the version-keyed dir name', () => {
+  it('joins remoteHome with .kolux-remote and the version-keyed dir name', () => {
     expect(computeRemoteRelayDir('/home/u', '0.1.0+abc')).toBe(
-      '/home/u/.nightshift-remote/relay-0.1.0+abc'
+      '/home/u/.kolux-remote/relay-0.1.0+abc'
     )
   })
 })
@@ -560,14 +560,14 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('RELEASED')
       .mockResolvedValueOnce('')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const lastCmd = mockExec.mock.calls.at(-1)?.[1] ?? ''
     expect(lastCmd).toContain('rm -rf')
     expect(lastCmd).toContain('relay-0.1.0+aaa.gc-tombstone')
     const commands = mockExec.mock.calls.map(([, command]) => command)
     expect(
-      commands.some((command) => command === "rm -rf '/home/u/.nightshift-remote/relay-0.1.0+aaa'")
+      commands.some((command) => command === "rm -rf '/home/u/.kolux-remote/relay-0.1.0+aaa'")
     ).toBe(false)
   })
 
@@ -585,13 +585,13 @@ describe('gcOldRelayVersions', () => {
       )
       .mockResolvedValueOnce('')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const removeCommands = mockExec.mock.calls
       .map(([, command]) => command)
       .filter((command) => command.startsWith('rm -rf'))
     expect(removeCommands).toEqual([
-      "rm -rf '/home/u/.nightshift-remote/relay-0.1.0+abc.gc-tombstone.123.456'"
+      "rm -rf '/home/u/.kolux-remote/relay-0.1.0+abc.gc-tombstone.123.456'"
     ])
   })
 
@@ -606,7 +606,7 @@ describe('gcOldRelayVersions', () => {
     await gcOldRelayVersions(
       conn,
       'C:/Users/u',
-      'C:/Users/u/.nightshift-remote/relay-0.1.0+bbb',
+      'C:/Users/u/.kolux-remote/relay-0.1.0+bbb',
       windows
     )
 
@@ -623,8 +623,8 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce(tombstone)
       .mockResolvedValueOnce('')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const removeCommands = mockExec.mock.calls
       .map(([, command]) => command)
@@ -649,7 +649,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('LOST')
       .mockResolvedValueOnce('')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const releaseCommands = mockExec.mock.calls
       .map(([, command]) => command)
@@ -662,7 +662,7 @@ describe('gcOldRelayVersions', () => {
     mockExec
       .mockResolvedValueOnce('OPEN') // not locked
       .mockResolvedValueOnce('PARTIAL') // missing .install-complete
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     expect(cmds.some((c) => c.includes('rm -rf'))).toBe(false)
   })
@@ -672,7 +672,7 @@ describe('gcOldRelayVersions', () => {
     mockExec.mockResolvedValueOnce('LOCKED')
     // isLockStale: age ~now → not stale.
     mockExec.mockResolvedValueOnce('0\n')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     expect(cmds.some((c) => c.includes('rm -rf'))).toBe(false)
   })
@@ -694,7 +694,7 @@ describe('gcOldRelayVersions', () => {
     mockExec.mockResolvedValueOnce('MOVED')
     mockExec.mockResolvedValueOnce('RELEASED') // release sibling claim
     mockExec.mockResolvedValueOnce('') // remove tombstone
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const lastCmd = mockExec.mock.calls.at(-1)?.[1] ?? ''
     expect(lastCmd).toContain('rm -rf')
     expect(lastCmd).toContain('relay-0.1.0+aaa')
@@ -712,7 +712,7 @@ describe('gcOldRelayVersions', () => {
     mockExec.mockResolvedValueOnce('MOVED')
     mockExec.mockResolvedValueOnce('RELEASED')
     mockExec.mockResolvedValueOnce('')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     expect(cmds.some((c) => c.includes('rm -rf') && c.includes('relay-v0.1.0'))).toBe(true)
     // critically: no .install-complete probe on legacy dirs
@@ -723,7 +723,7 @@ describe('gcOldRelayVersions', () => {
     mockExec.mockResolvedValueOnce('relay-v0.1.0\n')
     mockExec.mockResolvedValueOnce('OPEN')
     mockExec.mockResolvedValueOnce('ALIVE') // socket alive → keep
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     expect(cmds.some((c) => c.includes('rm -rf'))).toBe(false)
   })
@@ -734,7 +734,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('OPEN')
       .mockResolvedValueOnce('COMPLETE')
       .mockResolvedValueOnce('ALIVE')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     expect(cmds.some((c) => c.includes('rm -rf'))).toBe(false)
   })
@@ -745,7 +745,7 @@ describe('gcOldRelayVersions', () => {
       .mockRejectedValueOnce(new Error('lock probe failed'))
       .mockResolvedValueOnce('INCONCLUSIVE')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     expect(mockExec).toHaveBeenCalledTimes(3)
   })
@@ -760,7 +760,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('COMPLETE')
       .mockResolvedValueOnce('INCONCLUSIVE')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     expect(mockExec).toHaveBeenCalledTimes(7)
   })
@@ -785,7 +785,7 @@ describe('gcOldRelayVersions', () => {
     await gcOldRelayVersions(
       conn,
       'C:/Users/u',
-      'C:/Users/u/.nightshift-remote/relay-0.1.0+bbb',
+      'C:/Users/u/.kolux-remote/relay-0.1.0+bbb',
       windows,
       {
         windowsNodePath: 'C:/Program Files/nodejs/node.exe',
@@ -797,13 +797,13 @@ describe('gcOldRelayVersions', () => {
     const script = decodePowerShellCommand(livenessCommand ?? '')
     expect(script).toContain('net.connect(pipe)')
     expect(script).toContain('.windows-active-pipe-')
-    expect(script).toContain('\\\\.\\pipe\\nightshift-relay-')
+    expect(script).toContain('\\\\.\\pipe\\kolux-relay-')
     expect(script).not.toContain('Win32_Process')
   })
 
   it('does not consider the current dir as a GC candidate', async () => {
     mockExec.mockResolvedValueOnce('relay-0.1.0+aaa\n')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+aaa')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+aaa')
     expect(mockExec.mock.calls.length).toBe(1) // only the listing
   })
 
@@ -822,7 +822,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('MOVED')
       .mockResolvedValueOnce('RELEASED')
       .mockResolvedValueOnce('')
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
     const cmds = mockExec.mock.calls.map(([, c]) => c)
     const rmCmds = cmds.filter((c) => c.startsWith('rm') && c.includes('gc-tombstone'))
     expect(rmCmds).toHaveLength(1)
@@ -843,13 +843,13 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('0')
       .mockResolvedValueOnce('RELEASED') // release GC sibling claim
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const commands = mockExec.mock.calls.map(([, command]) => command)
     expect(
       commands.some(
         (command) =>
-          command.startsWith("rm -rf '/home/u/.nightshift-remote/relay-0.1.0+aaa'") &&
+          command.startsWith("rm -rf '/home/u/.kolux-remote/relay-0.1.0+aaa'") &&
           !command.includes('.install-lock')
       )
     ).toBe(false)
@@ -869,7 +869,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('LOST')
       .mockResolvedValueOnce('LOST')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const commands = mockExec.mock.calls.map(([, command]) => command)
     expect(commands.some((command) => command.startsWith('mv '))).toBe(false)
@@ -890,7 +890,7 @@ describe('gcOldRelayVersions', () => {
       .mockRejectedValueOnce(new Error('move failed'))
       .mockResolvedValueOnce('RELEASED')
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const lastCommand = mockExec.mock.calls.at(-1)?.[1] ?? ''
     expect(lastCommand).toContain('rm -rf')
@@ -914,7 +914,7 @@ describe('gcOldRelayVersions', () => {
       .mockResolvedValueOnce('OWNED')
       .mockRejectedValueOnce(unconfirmed)
 
-    await gcOldRelayVersions(conn, '/home/u', '/home/u/.nightshift-remote/relay-0.1.0+bbb')
+    await gcOldRelayVersions(conn, '/home/u', '/home/u/.kolux-remote/relay-0.1.0+bbb')
 
     const releaseCommands = mockExec.mock.calls
       .map(([, command]) => command)

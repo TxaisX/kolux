@@ -12,7 +12,7 @@ afterEach(() => {
 })
 
 async function makePayloadTree(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-payload-removal-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-payload-removal-'))
   await mkdir(join(root, 'resources'), { recursive: true })
   // The real leak: Electron's fs patch reports a *.asar file as a directory.
   await writeFile(join(root, 'resources', 'app.asar'), 'asar-payload')
@@ -53,14 +53,14 @@ describe('removeExtractedAppImagePayload', () => {
   it('restores the previous asar setting after a failure', async () => {
     process.noAsar = false
     await expect(
-      removeExtractedAppImagePayload(join(tmpdir(), 'nightshift-missing', 'nested', '\0invalid'))
+      removeExtractedAppImagePayload(join(tmpdir(), 'kolux-missing', 'nested', '\0invalid'))
     ).rejects.toThrow()
     expect(process.noAsar).toBe(false)
   })
 
   it('is a no-op for a path that does not exist', async () => {
     await expect(
-      removeExtractedAppImagePayload(join(tmpdir(), 'nightshift-payload-removal-absent'))
+      removeExtractedAppImagePayload(join(tmpdir(), 'kolux-payload-removal-absent'))
     ).resolves.toBeUndefined()
   })
 })

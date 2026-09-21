@@ -213,7 +213,7 @@ export type GitLabProjectSettings = {
   recent: { host: string; path: string; lastOpenedAt: string }[]
 }
 
-// Why: only the four Todo target types Nightshift renders meaningfully; others (e.g. DesignManagement::Design) fall back to a generic "open URL".
+// Why: only the four Todo target types Kolux renders meaningfully; others (e.g. DesignManagement::Design) fall back to a generic "open URL".
 export type GitLabTodoTargetType = 'MergeRequest' | 'Issue' | 'Commit' | 'Note'
 
 export type GitLabTodo = {
@@ -252,7 +252,7 @@ export type GitLabPipelineJob = {
 
 // Why: aggregated detail for GitLabItemDialog; flattens discussions into one comments list (inline positioning is v1.5 work).
 export type GitLabWorkItemDetails = {
-  /** repoId is stamped by the renderer's caller — the main process doesn't know Nightshift's Repo.id. */
+  /** repoId is stamped by the renderer's caller — the main process doesn't know Kolux's Repo.id. */
   item: Omit<GitLabWorkItem, 'repoId'>
   body: string
   comments: MRComment[]

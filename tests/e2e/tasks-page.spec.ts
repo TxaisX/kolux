@@ -5,7 +5,7 @@
  * source controls and close affordance are present.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady, waitForActiveWorktree, getStoreState } from './helpers/store'
 import { GITHUB_TASK_SEARCH_IDLE_MS } from '../../src/renderer/src/components/use-github-task-search-commit'
 
@@ -140,10 +140,10 @@ async function openInstrumentedGitHubTasksPage(
       number: 999,
       title: 'Existing GitHub issue',
       state: 'open' as const,
-      url: 'https://github.com/nightshift/e2e/issues/999',
+      url: 'https://github.com/kolux/e2e/issues/999',
       labels: [],
       updatedAt: '2026-08-08T00:00:00Z',
-      author: 'nightshift-e2e',
+      author: 'kolux-e2e',
       repoId: repo.id,
       assignees: [],
       reviewRequests: []
@@ -152,7 +152,7 @@ async function openInstrumentedGitHubTasksPage(
     store.setState({
       repos: state.repos.map((candidate) =>
         candidate.id === repo.id
-          ? { ...candidate, upstream: { owner: 'nightshift', repo: 'e2e' } }
+          ? { ...candidate, upstream: { owner: 'kolux', repo: 'e2e' } }
           : candidate
       ),
       settings: {
@@ -214,19 +214,19 @@ async function resetTaskSearchRequestProbe(
 }
 
 test.describe('Tasks page', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('opening the tasks view renders the tasks UI', async ({ nightshiftPage }) => {
-    await openTasksPage(nightshiftPage)
+  test('opening the tasks view renders the tasks UI', async ({ koluxPage }) => {
+    await openTasksPage(koluxPage)
 
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe('tasks')
 
-    await expect(nightshiftPage.getByRole('button', { name: 'Close tasks' })).toBeVisible({
+    await expect(koluxPage.getByRole('button', { name: 'Close tasks' })).toBeVisible({
       timeout: 10_000
     })
 
@@ -236,7 +236,7 @@ test.describe('Tasks page', () => {
     await expect
       .poll(
         async () => {
-          renderedSources = await getRenderedTaskSources(nightshiftPage)
+          renderedSources = await getRenderedTaskSources(koluxPage)
           return renderedSources.length
         },
         {
@@ -249,7 +249,7 @@ test.describe('Tasks page', () => {
     await expect
       .poll(
         async () => {
-          renderedSources = await getRenderedTaskSources(nightshiftPage)
+          renderedSources = await getRenderedTaskSources(koluxPage)
           return renderedSources.some((source) => source.active)
         },
         {
@@ -259,31 +259,27 @@ test.describe('Tasks page', () => {
       )
       .toBe(true)
     if (renderedSources.some((source) => source.source === 'github' && source.active)) {
-      await expect(
-        nightshiftPage.getByRole('button', { name: 'Issues', exact: true })
-      ).toBeVisible()
-      await expect(nightshiftPage.getByRole('button', { name: 'PRs', exact: true })).toBeVisible()
-      await expect(
-        nightshiftPage.getByRole('button', { name: 'Projects', exact: true })
-      ).toBeVisible()
-      await expect(nightshiftPage.getByPlaceholder(/Search GitHub (issues|PRs)/i)).toBeVisible()
+      await expect(koluxPage.getByRole('button', { name: 'Issues', exact: true })).toBeVisible()
+      await expect(koluxPage.getByRole('button', { name: 'PRs', exact: true })).toBeVisible()
+      await expect(koluxPage.getByRole('button', { name: 'Projects', exact: true })).toBeVisible()
+      await expect(koluxPage.getByPlaceholder(/Search GitHub (issues|PRs)/i)).toBeVisible()
     }
   })
 
-  test('closing the tasks page returns to the previous view', async ({ nightshiftPage }) => {
-    const previousView = await getStoreState<string>(nightshiftPage, 'activeView')
+  test('closing the tasks page returns to the previous view', async ({ koluxPage }) => {
+    const previousView = await getStoreState<string>(koluxPage, 'activeView')
 
-    await openTasksPage(nightshiftPage)
+    await openTasksPage(koluxPage)
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe('tasks')
     // Sanity: the tasks UI actually painted before we close it.
-    await expect(nightshiftPage.getByRole('button', { name: 'Close tasks' })).toBeVisible()
+    await expect(koluxPage.getByRole('button', { name: 'Close tasks' })).toBeVisible()
 
-    await nightshiftPage.getByRole('button', { name: 'Close tasks' }).click()
+    await koluxPage.getByRole('button', { name: 'Close tasks' }).click()
 
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe(previousView)
     // Why: the load-bearing check is that the previous view's DOM actually
     // re-rendered — a store-only `activeView` assertion would pass even if the
@@ -292,85 +288,85 @@ test.describe('Tasks page', () => {
     // previous view was terminal (by far the common case in E2E setup), that
     // element must be visible. Tasks-close also hides the "Close tasks"
     // button regardless of previous view, so we assert that too.
-    await expect(nightshiftPage.getByRole('button', { name: 'Close tasks' })).toHaveCount(0)
+    await expect(koluxPage.getByRole('button', { name: 'Close tasks' })).toHaveCount(0)
     if (previousView === 'terminal') {
-      await expect(nightshiftPage.locator('.xterm').first()).toBeVisible({ timeout: 5_000 })
+      await expect(koluxPage.locator('.xterm').first()).toBeVisible({ timeout: 5_000 })
     }
   })
 
-  test('reopening restores the GitHub page and scroll position', async ({ nightshiftPage }) => {
-    await openMockedPaginatedGitHubTasks(nightshiftPage)
+  test('reopening restores the GitHub page and scroll position', async ({ koluxPage }) => {
+    await openMockedPaginatedGitHubTasks(koluxPage)
 
-    await nightshiftPage.getByRole('button', { name: 'Page 28', exact: true }).click()
-    await expect(nightshiftPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
+    await koluxPage.getByRole('button', { name: 'Page 28', exact: true }).click()
+    await expect(koluxPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
 
-    const list = nightshiftPage.locator('[data-task-list-scroll="github"]')
+    const list = koluxPage.locator('[data-task-list-scroll="github"]')
     await list.evaluate((element) => {
       element.scrollTop = 360
       element.dispatchEvent(new Event('scroll'))
     })
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(300)
 
-    await nightshiftPage.getByRole('button', { name: 'Close tasks' }).click()
+    await koluxPage.getByRole('button', { name: 'Close tasks' }).click()
     await expect(list).toHaveCount(0)
-    const clampedRowsStyle = await nightshiftPage.addStyleTag({
+    const clampedRowsStyle = await koluxPage.addStyleTag({
       content:
         '[data-task-list-scroll="github"] > .divide-y { max-height: 0 !important; overflow: hidden !important; }'
     })
-    await openTasksPage(nightshiftPage)
+    await openTasksPage(koluxPage)
 
-    await expect(
-      nightshiftPage.getByRole('button', { name: 'Page 28', exact: true })
-    ).toHaveAttribute('aria-current', 'page')
-    const restoredList = nightshiftPage.locator('[data-task-list-scroll="github"]')
+    await expect(koluxPage.getByRole('button', { name: 'Page 28', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+    const restoredList = koluxPage.locator('[data-task-list-scroll="github"]')
     await expect.poll(() => restoredList.evaluate((element) => element.scrollTop)).toBe(0)
     await clampedRowsStyle.evaluate((element) => element.remove())
-    await expect(nightshiftPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
+    await expect(koluxPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
     await expect
       .poll(() => restoredList.evaluate((element) => element.scrollTop))
       .toBeGreaterThan(300)
 
-    await nightshiftPage.getByText('Issue page 28 item 12', { exact: true }).click()
+    await koluxPage.getByText('Issue page 28 item 12', { exact: true }).click()
     await expect(restoredList).toHaveCount(0)
     await expect
       .poll(async () => {
-        const position = await getStoreState<{ scrollTop: number }>(
-          nightshiftPage,
-          'taskListPosition'
-        )
+        const position = await getStoreState<{ scrollTop: number }>(koluxPage, 'taskListPosition')
         return position.scrollTop
       })
       .toBeGreaterThan(300)
-    await nightshiftPage.getByRole('button', { name: 'GitHub list', exact: true }).click()
-    await expect(nightshiftPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
+    await koluxPage.getByRole('button', { name: 'GitHub list', exact: true }).click()
+    await expect(koluxPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
     await expect
       .poll(() => restoredList.evaluate((element) => element.scrollTop))
       .toBeGreaterThan(300)
 
-    await nightshiftPage.getByRole('button', { name: 'Close tasks' }).click()
-    const pendingRestoreStyle = await nightshiftPage.addStyleTag({
+    await koluxPage.getByRole('button', { name: 'Close tasks' }).click()
+    const pendingRestoreStyle = await koluxPage.addStyleTag({
       content:
         '[data-task-list-scroll="github"] > .divide-y { max-height: 0 !important; overflow: hidden !important; }'
     })
-    await openTasksPage(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('button', { name: 'Page 28', exact: true })
-    ).toHaveAttribute('aria-current', 'page')
-    await nightshiftPage.getByRole('button', { name: 'Page 1', exact: true }).click()
+    await openTasksPage(koluxPage)
+    await expect(koluxPage.getByRole('button', { name: 'Page 28', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+    await koluxPage.getByRole('button', { name: 'Page 1', exact: true }).click()
     await pendingRestoreStyle.evaluate((element) => element.remove())
-    await expect(
-      nightshiftPage.getByRole('button', { name: 'Page 1', exact: true })
-    ).toHaveAttribute('aria-current', 'page')
+    await expect(koluxPage.getByRole('button', { name: 'Page 1', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
     await expect
       .poll(() =>
-        nightshiftPage
+        koluxPage
           .locator('[data-task-list-scroll="github"]')
           .evaluate((element) => element.scrollTop)
       )
       .toBe(0)
 
-    await nightshiftPage.getByRole('button', { name: 'Page 28', exact: true }).click()
-    await expect(nightshiftPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
+    await koluxPage.getByRole('button', { name: 'Page 28', exact: true }).click()
+    await expect(koluxPage.getByText('Issue page 28 item 1', { exact: true })).toBeVisible()
     await restoredList.evaluate((element) => {
       element.scrollTop = 360
       element.dispatchEvent(new Event('scroll'))
@@ -378,27 +374,25 @@ test.describe('Tasks page', () => {
     await expect
       .poll(() => restoredList.evaluate((element) => element.scrollTop))
       .toBeGreaterThan(300)
-    await nightshiftPage.getByRole('button', { name: 'Close tasks' }).click()
+    await koluxPage.getByRole('button', { name: 'Close tasks' }).click()
 
-    const permanentlyClampedRowsStyle = await nightshiftPage.addStyleTag({
+    const permanentlyClampedRowsStyle = await koluxPage.addStyleTag({
       content:
         '[data-task-list-scroll="github"] > .divide-y { max-height: 0 !important; overflow: hidden !important; }'
     })
-    await openTasksPage(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('button', { name: 'Page 28', exact: true })
-    ).toHaveAttribute('aria-current', 'page')
+    await openTasksPage(koluxPage)
+    await expect(koluxPage.getByRole('button', { name: 'Page 28', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
     // Why the wait: outlives the 5s give-up that used to abandon the restore and
     // overwrite the remembered offset with the committed 0. A list that never paints
     // must defer the restore, never destroy the position.
-    await nightshiftPage.waitForTimeout(5_500)
-    await nightshiftPage.getByRole('button', { name: 'Close tasks' }).click()
+    await koluxPage.waitForTimeout(5_500)
+    await koluxPage.getByRole('button', { name: 'Close tasks' }).click()
     await expect
       .poll(async () => {
-        const position = await getStoreState<{ scrollTop: number }>(
-          nightshiftPage,
-          'taskListPosition'
-        )
+        const position = await getStoreState<{ scrollTop: number }>(koluxPage, 'taskListPosition')
         return position.scrollTop
       })
       .toBeGreaterThan(300)
@@ -406,20 +400,20 @@ test.describe('Tasks page', () => {
   })
 
   test('GitHub search waits for idle, keeps rows visible, and Enter does not double-fetch', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await openInstrumentedGitHubTasksPage(nightshiftPage)
+    await openInstrumentedGitHubTasksPage(koluxPage)
 
-    const input = nightshiftPage.getByPlaceholder('Search GitHub issues...')
-    const existingIssue = nightshiftPage.getByText('Existing GitHub issue', { exact: true })
+    const input = koluxPage.getByPlaceholder('Search GitHub issues...')
+    const existingIssue = koluxPage.getByText('Existing GitHub issue', { exact: true })
     await expect(input).toBeVisible()
     await expect(existingIssue).toBeVisible()
 
     await input.fill('')
     await expect
-      .poll(async () => readTaskSearchRequestProbe(nightshiftPage), { timeout: 2_000 })
+      .poll(async () => readTaskSearchRequestProbe(koluxPage), { timeout: 2_000 })
       .toEqual({ countQueries: ['is:issue is:open'], fetchQueries: ['is:issue is:open'] })
-    await resetTaskSearchRequestProbe(nightshiftPage)
+    await resetTaskSearchRequestProbe(koluxPage)
 
     await input.pressSequentially('rate', { delay: TASK_SEARCH_TYPING_DELAY_MS })
 
@@ -428,18 +422,18 @@ test.describe('Tasks page', () => {
     // The contract is that no prefix of the typed query is ever queried, not that the
     // probe is empty at one instant: exactly one request per surface, for the final value.
     await expect
-      .poll(async () => readTaskSearchRequestProbe(nightshiftPage), { timeout: 2_000 })
+      .poll(async () => readTaskSearchRequestProbe(koluxPage), { timeout: 2_000 })
       .toEqual({ countQueries: ['is:issue rate'], fetchQueries: ['is:issue rate'] })
 
-    await resetTaskSearchRequestProbe(nightshiftPage)
+    await resetTaskSearchRequestProbe(koluxPage)
     await input.pressSequentially('x')
     await input.press('Enter')
 
     await expect
-      .poll(async () => readTaskSearchRequestProbe(nightshiftPage), { timeout: 2_000 })
+      .poll(async () => readTaskSearchRequestProbe(koluxPage), { timeout: 2_000 })
       .toEqual({ countQueries: ['is:issue ratex'], fetchQueries: ['is:issue ratex'] })
-    await nightshiftPage.waitForTimeout(TASK_SEARCH_SETTLE_MS)
-    expect(await readTaskSearchRequestProbe(nightshiftPage)).toEqual({
+    await koluxPage.waitForTimeout(TASK_SEARCH_SETTLE_MS)
+    expect(await readTaskSearchRequestProbe(koluxPage)).toEqual({
       countQueries: ['is:issue ratex'],
       fetchQueries: ['is:issue ratex']
     })

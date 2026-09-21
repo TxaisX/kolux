@@ -39,7 +39,7 @@ export class WebRuntimeRequestRegistry {
       ) {
         this.pending.delete(id)
         window.clearTimeout(timeout)
-        reject(new Error('Remote Nightshift runtime is not connected.'))
+        reject(new Error('Remote Kolux runtime is not connected.'))
       }
     })
   }

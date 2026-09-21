@@ -44,7 +44,7 @@ export type AppMemory = UsageValues & {
   main: UsageValues
   renderer: UsageValues
   other: UsageValues
-  /** Oldest-first memory samples (bytes) for the whole Nightshift app; empty before the first snapshot. */
+  /** Oldest-first memory samples (bytes) for the whole Kolux app; empty before the first snapshot. */
   history: number[]
 }
 

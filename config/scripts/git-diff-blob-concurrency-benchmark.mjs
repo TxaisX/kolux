@@ -15,12 +15,12 @@ import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const ITERATIONS = Number(process.env.NIGHTSHIFT_DIFF_BLOB_BENCH_ITERATIONS ?? '10')
-const WARMUP = Number(process.env.NIGHTSHIFT_DIFF_BLOB_BENCH_WARMUP ?? '3')
+const ITERATIONS = Number(process.env.KOLUX_DIFF_BLOB_BENCH_ITERATIONS ?? '10')
+const WARMUP = Number(process.env.KOLUX_DIFF_BLOB_BENCH_WARMUP ?? '3')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_DIFF_BLOB_BENCH_ITERATIONS', ITERATIONS],
-  ['NIGHTSHIFT_DIFF_BLOB_BENCH_WARMUP', WARMUP]
+  ['KOLUX_DIFF_BLOB_BENCH_ITERATIONS', ITERATIONS],
+  ['KOLUX_DIFF_BLOB_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)

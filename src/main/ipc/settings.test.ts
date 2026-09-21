@@ -470,8 +470,8 @@ describe('registerSettingsHandlers', () => {
     ) => Promise<unknown>
 
     await handler(settingsInvokeEvent, {
-      pluginConsents: { 'nightshift-samples.demo': 'sha256-forged' },
-      disabledPlugins: ['nightshift-samples.demo']
+      pluginConsents: { 'kolux-samples.demo': 'sha256-forged' },
+      disabledPlugins: ['kolux-samples.demo']
     })
 
     expect(store.updateSettings).toHaveBeenCalledWith(

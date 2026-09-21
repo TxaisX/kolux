@@ -3,8 +3,8 @@ import type { GlobalSettings } from '../../shared/global-settings-types'
 import type * as GitRemoteModule from '../git/remote'
 import type * as GitStatusModule from '../git/status'
 import type * as SshGitDispatchModule from '../providers/ssh-git-dispatch'
-import type { ResolvedRuntimeGitWorktree } from './nightshift-runtime-git'
-import { RuntimeGitCommands } from './nightshift-runtime-git'
+import type { ResolvedRuntimeGitWorktree } from './kolux-runtime-git'
+import { RuntimeGitCommands } from './kolux-runtime-git'
 import { SSH_GIT_PROVIDER_UNAVAILABLE_MESSAGE } from '../providers/ssh-git-dispatch'
 
 const mocks = vi.hoisted(() => ({

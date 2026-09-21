@@ -42,7 +42,7 @@ describe('ensureWindowsUserDataAclGrant', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(os.tmpdir(), 'nightshift-acl-test-'))
+    userDataPath = mkdtempSync(join(os.tmpdir(), 'kolux-acl-test-'))
   })
 
   afterEach(() => {

@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { ORCHESTRATION_METHODS } from './rpc/methods/orchestration'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => tmpdir()), isPackaged: false },
@@ -62,10 +62,10 @@ function createRuntime(
   db: OrchestrationDb,
   terminalHandle = TERMINAL_HANDLE
 ): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   write: ReturnType<typeof vi.fn>
 } {
-  const runtime = new NightshiftRuntimeService(null, undefined, {
+  const runtime = new KoluxRuntimeService(null, undefined, {
     attestAgentHookCompatibilityAuthority: ({ paneKey }) =>
       paneKey === PANE_KEY ? { paneKey, source: 'current_hook' } : null
   })
@@ -108,7 +108,7 @@ function createRuntime(
   return { runtime, write }
 }
 
-async function driveToLiveIdle(runtime: NightshiftRuntimeService): Promise<void> {
+async function driveToLiveIdle(runtime: KoluxRuntimeService): Promise<void> {
   await runtime.listTerminals()
   const working = runtime.acceptPtyDataBounded(PTY_ID, '\x1b]0;Codex working\x07', 1)
   const done = runtime.acceptPtyDataBounded(PTY_ID, '\x1b]0;Codex done\x07', 2)
@@ -116,7 +116,7 @@ async function driveToLiveIdle(runtime: NightshiftRuntimeService): Promise<void>
 }
 
 async function check(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: Record<string, unknown> = {}
 ): Promise<CheckResult> {
   const terminal = typeof params.terminal === 'string' ? params.terminal : TERMINAL_HANDLE
@@ -152,9 +152,9 @@ async function runBuiltCli(
   const child = spawn(process.execPath, [CLI_PATH, ...args], {
     env: {
       ...process.env,
-      NIGHTSHIFT_USER_DATA_PATH: userDataPath,
-      NIGHTSHIFT_TERMINAL_HANDLE: TERMINAL_HANDLE,
-      NIGHTSHIFT_PANE_KEY: PANE_KEY
+      KOLUX_USER_DATA_PATH: userDataPath,
+      KOLUX_TERMINAL_HANDLE: TERMINAL_HANDLE,
+      KOLUX_PANE_KEY: PANE_KEY
     },
     stdio: ['ignore', 'pipe', 'pipe']
   })
@@ -181,7 +181,7 @@ describe('STA-4325 message and delivery identity', () => {
 
   it('keeps pointer counts, filters, message IDs, and one fixed Delivery aligned through ack', async () => {
     vi.useFakeTimers()
-    const { db } = createDatabase('nightshift-sta-4325-identity-')
+    const { db } = createDatabase('kolux-sta-4325-identity-')
     const { runtime, write } = createRuntime(db)
     const run = db.createRun({
       objective: 'STA-4325 identity',
@@ -269,7 +269,7 @@ describe('STA-4325 message and delivery identity', () => {
 
   it('replays one outstanding Delivery across restart and wakes a filtered waiter once', async () => {
     vi.useFakeTimers()
-    const fixture = createDatabase('nightshift-sta-4325-restart-')
+    const fixture = createDatabase('kolux-sta-4325-restart-')
     const firstRuntime = createRuntime(fixture.db)
     const run = fixture.db.createRun({
       objective: 'STA-4325 restart',
@@ -341,7 +341,7 @@ describe('STA-4325 message and delivery identity', () => {
   })
 
   it('routes the complete direct backlog before rebinding forgets its old handle', () => {
-    const fixture = createDatabase('nightshift-sta-4325-rebind-backlog-')
+    const fixture = createDatabase('kolux-sta-4325-rebind-backlog-')
     const first = fixture.db.createRun({
       objective: 'Old coordinator',
       coordinatorHandle: TERMINAL_HANDLE,
@@ -391,7 +391,7 @@ describe('STA-4325 message and delivery identity', () => {
   })
 
   it('repairs committed mail sent to a forgotten handle after restart', async () => {
-    const fixture = createDatabase('nightshift-sta-4325-late-old-handle-')
+    const fixture = createDatabase('kolux-sta-4325-late-old-handle-')
     const run = fixture.db.createRun({
       objective: 'Late old-handle arrival',
       coordinatorHandle: TERMINAL_HANDLE,
@@ -438,10 +438,10 @@ describe('STA-4325 message and delivery identity', () => {
   itIfCliBuilt(
     'keeps the built CLI count and Delivery output aligned with isolated SQLite state',
     async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-sta-4325-cli-'))
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-sta-4325-cli-'))
       temporaryDirectories.push(userDataPath)
       const db = new OrchestrationDb(join(userDataPath, 'orchestration.db'))
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db)
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
         handle === TERMINAL_HANDLE ? PANE_KEY : null
@@ -467,7 +467,7 @@ describe('STA-4325 message and delivery identity', () => {
         runId: run.id,
         deliveryContract: 'current_delivery'
       })
-      const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+      const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
       await server.start()
 
       try {

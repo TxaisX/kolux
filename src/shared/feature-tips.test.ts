@@ -11,16 +11,12 @@ describe('feature tips', () => {
   it('orders new unseen tips before older unseen tips', () => {
     const tips = getOrderedUnseenFeatureTips({ seenTipIds: new Set<FeatureTipId>() })
 
-    expect(tips.map((tip) => tip.id)).toEqual([
-      'nightshift-cli',
-      'cmd-j-palette',
-      'voice-dictation'
-    ])
+    expect(tips.map((tip) => tip.id)).toEqual(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
   })
 
   it('skips tips the user has already seen', () => {
     const tips = getOrderedUnseenFeatureTips({
-      seenTipIds: new Set<FeatureTipId>(['voice-dictation', 'nightshift-cli', 'cmd-j-palette'])
+      seenTipIds: new Set<FeatureTipId>(['voice-dictation', 'kolux-cli', 'cmd-j-palette'])
     })
 
     expect(tips.map((tip) => tip.id)).toEqual([])
@@ -63,19 +59,19 @@ describe('feature tips', () => {
       })
     })
 
-    expect(tips.map((tip) => tip.id)).toEqual(['nightshift-cli', 'cmd-j-palette'])
+    expect(tips.map((tip) => tip.id)).toEqual(['kolux-cli', 'cmd-j-palette'])
   })
 
   it('normalizes persisted tip ids', () => {
     expect(
       normalizeFeatureTipIds([
         'feature-tour',
-        'nightshift-cli',
+        'kolux-cli',
         'bogus',
         'cmd-j-palette',
         'voice-dictation'
       ])
-    ).toEqual(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    ).toEqual(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
   })
 
   it('describes the command palette tip as a passive acknowledgement', () => {
@@ -92,11 +88,11 @@ describe('feature tips', () => {
   })
 
   it('describes the CLI tip as an install action with concrete workflows', () => {
-    const cliTip = FEATURE_TIPS.find((tip) => tip.id === 'nightshift-cli')
+    const cliTip = FEATURE_TIPS.find((tip) => tip.id === 'kolux-cli')
 
     expect(cliTip).toMatchObject({
       action: 'setup-cli',
-      title: 'Let agents drive Nightshift with the Nightshift CLI',
+      title: 'Let agents drive Kolux with the Kolux CLI',
       ctaLabel: 'Install CLI & Skills'
     })
     expect(cliTip?.description).toContain('coordinate child worktrees')

@@ -81,7 +81,7 @@ export async function rePairPairedElectronClient(
     process.env.GITHUB_ACTIONS === 'true' &&
     process.platform === 'linux' &&
     process.env.DISPLAY &&
-    process.env.NIGHTSHIFT_BACKGROUND_LAUNCH !== '1'
+    process.env.KOLUX_BACKGROUND_LAUNCH !== '1'
   ) {
     await revealPairedClientWindow(client)
   }

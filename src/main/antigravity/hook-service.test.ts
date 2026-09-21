@@ -28,7 +28,7 @@ const ANTIGRAVITY_POST_TOOL_USE_COMMAND =
   process.platform === 'win32' ? 'antigravity-post-tool-use.cmd' : 'antigravity-hook.sh'
 const ANTIGRAVITY_PRE_TOOL_USE_COMMAND =
   process.platform === 'win32' ? 'antigravity-pre-tool-use.cmd' : 'antigravity-hook.sh'
-// Why: the gate decision Nightshift is allowed to emit — "allow" would auto-approve every observed tool call.
+// Why: the gate decision Kolux is allowed to emit — "allow" would auto-approve every observed tool call.
 const PRE_TOOL_USE_DECISION = '{"decision":"ask"}'
 const POLICY_OVERRIDING_DECISIONS = ['allow', 'deny', 'force_ask', 'deny_unless_prior_grant']
 
@@ -48,7 +48,7 @@ describe('AntigravityHookService', () => {
   let homeDir: string
 
   beforeEach(() => {
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-home-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-antigravity-home-'))
     homedirMock.mockReturnValue(homeDir)
   })
 
@@ -67,49 +67,47 @@ describe('AntigravityHookService', () => {
     const config = JSON.parse(
       readFileSync(join(homeDir, '.gemini', 'config', 'hooks.json'), 'utf8')
     ) as {
-      'nightshift-status': Record<
+      'kolux-status': Record<
         string,
         { matcher?: string; command?: string; hooks?: { command: string }[] }[]
       >
     }
-    expect(Object.keys(config['nightshift-status']).sort()).toEqual(
+    expect(Object.keys(config['kolux-status']).sort()).toEqual(
       ['PostInvocation', 'PostToolUse', 'PreInvocation', 'PreToolUse', 'Stop'].sort()
     )
-    expect(config['nightshift-status'].PreToolUse[0].matcher).toBe('*')
-    expect(config['nightshift-status'].PreToolUse[0].hooks?.[0]?.command).toContain(
+    expect(config['kolux-status'].PreToolUse[0].matcher).toBe('*')
+    expect(config['kolux-status'].PreToolUse[0].hooks?.[0]?.command).toContain(
       ANTIGRAVITY_PRE_TOOL_USE_COMMAND
     )
-    expect(config['nightshift-status'].PostToolUse[0].matcher).toBe('*')
-    expect(config['nightshift-status'].PreInvocation[0].command).toContain(
+    expect(config['kolux-status'].PostToolUse[0].matcher).toBe('*')
+    expect(config['kolux-status'].PreInvocation[0].command).toContain(
       ANTIGRAVITY_PRE_INVOCATION_COMMAND
     )
     if (process.platform === 'win32') {
-      expect(config['nightshift-status'].PreInvocation[0].command).not.toContain(
-        'NIGHTSHIFT_ANTIGRAVITY_EVENT'
+      expect(config['kolux-status'].PreInvocation[0].command).not.toContain(
+        'KOLUX_ANTIGRAVITY_EVENT'
       )
     } else {
-      expect(config['nightshift-status'].PreInvocation[0].command).toContain(
-        "NIGHTSHIFT_ANTIGRAVITY_EVENT='PreInvocation'"
+      expect(config['kolux-status'].PreInvocation[0].command).toContain(
+        "KOLUX_ANTIGRAVITY_EVENT='PreInvocation'"
       )
-      expect(config['nightshift-status'].Stop[0].command).toContain(
-        "NIGHTSHIFT_ANTIGRAVITY_EVENT='Stop'"
-      )
+      expect(config['kolux-status'].Stop[0].command).toContain("KOLUX_ANTIGRAVITY_EVENT='Stop'")
     }
 
     const script = readFileSync(
-      join(homeDir, '.nightshift', 'agent-hooks', ANTIGRAVITY_SCRIPT_FILE_NAME),
+      join(homeDir, '.kolux', 'agent-hooks', ANTIGRAVITY_SCRIPT_FILE_NAME),
       'utf8'
     )
     expect(script).toContain('/hook/antigravity')
     if (process.platform === 'win32') {
       expect(script).not.toContain('powershell.exe')
       expect(script).toContain('%SystemRoot%\\System32\\curl.exe')
-      expect(script).toContain('hook_event_name=%NIGHTSHIFT_ANTIGRAVITY_EVENT%')
+      expect(script).toContain('hook_event_name=%KOLUX_ANTIGRAVITY_EVENT%')
       expect(script).toContain('--data-urlencode "payload@-"')
       // Why (#9358/#9941): delayed expansion eats `!` out of percent-expanded curl args.
       expect(script).toContain('setlocal DisableDelayedExpansion')
     } else {
-      expect(script).toContain('hook_event_name=${NIGHTSHIFT_ANTIGRAVITY_EVENT}')
+      expect(script).toContain('hook_event_name=${KOLUX_ANTIGRAVITY_EVENT}')
       expect(script).toContain(`payload=$(${POSIX_HOOK_STDIN_READER})`)
       expect(script).toContain("payload='{}'")
       expect(script).not.toContain('if [ -z "$payload" ]; then\n  exit 0\nfi')
@@ -133,15 +131,15 @@ describe('AntigravityHookService', () => {
 
       const result = spawnSync(
         '/bin/sh',
-        [join(homeDir, '.nightshift', 'agent-hooks', 'antigravity-hook.sh')],
+        [join(homeDir, '.kolux', 'agent-hooks', 'antigravity-hook.sh')],
         {
           env: {
             ...process.env,
-            NIGHTSHIFT_ANTIGRAVITY_EVENT: 'PreToolUse',
-            NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-            NIGHTSHIFT_AGENT_HOOK_PORT: '',
-            NIGHTSHIFT_AGENT_HOOK_TOKEN: '',
-            NIGHTSHIFT_PANE_KEY: ''
+            KOLUX_ANTIGRAVITY_EVENT: 'PreToolUse',
+            KOLUX_AGENT_HOOK_ENDPOINT: '',
+            KOLUX_AGENT_HOOK_PORT: '',
+            KOLUX_AGENT_HOOK_TOKEN: '',
+            KOLUX_PANE_KEY: ''
           },
           input: '{"toolCall":{"name":"run_command","args":{"CommandLine":"ls"}}}',
           encoding: 'utf8'
@@ -158,19 +156,19 @@ describe('AntigravityHookService', () => {
     'keeps answering the PreToolUse gate when the managed script is missing',
     () => {
       new AntigravityHookService().install()
-      rmSync(join(homeDir, '.nightshift', 'agent-hooks'), { recursive: true, force: true })
+      rmSync(join(homeDir, '.kolux', 'agent-hooks'), { recursive: true, force: true })
 
       const config = JSON.parse(
         readFileSync(join(homeDir, '.gemini', 'config', 'hooks.json'), 'utf8')
-      ) as { 'nightshift-status': Record<string, { hooks?: { command: string }[] }[]> }
-      const command = config['nightshift-status'].PreToolUse[0].hooks?.[0]?.command
+      ) as { 'kolux-status': Record<string, { hooks?: { command: string }[] }[]> }
+      const command = config['kolux-status'].PreToolUse[0].hooks?.[0]?.command
 
       const result = spawnSync('/bin/sh', ['-c', command!], {
         input: '{"toolCall":{"name":"run_command"}}',
         encoding: 'utf8'
       })
 
-      // Why: hooks.json lives in ~/.gemini and outlives ~/.nightshift, so a swept script must not deny every tool call.
+      // Why: hooks.json lives in ~/.gemini and outlives ~/.kolux, so a swept script must not deny every tool call.
       expect(result.status).toBe(0)
       expect(result.stdout).toBe(`${PRE_TOOL_USE_DECISION}\n`)
     }
@@ -180,15 +178,15 @@ describe('AntigravityHookService', () => {
     'leaves non-gate Antigravity events silent when the managed script is missing',
     () => {
       new AntigravityHookService().install()
-      rmSync(join(homeDir, '.nightshift', 'agent-hooks'), { recursive: true, force: true })
+      rmSync(join(homeDir, '.kolux', 'agent-hooks'), { recursive: true, force: true })
 
       const config = JSON.parse(
         readFileSync(join(homeDir, '.gemini', 'config', 'hooks.json'), 'utf8')
       ) as {
-        'nightshift-status': Record<string, { command?: string; hooks?: { command: string }[] }[]>
+        'kolux-status': Record<string, { command?: string; hooks?: { command: string }[] }[]>
       }
-      const postToolUse = config['nightshift-status'].PostToolUse[0].hooks?.[0]?.command
-      const preInvocation = config['nightshift-status'].PreInvocation[0].command
+      const postToolUse = config['kolux-status'].PostToolUse[0].hooks?.[0]?.command
+      const preInvocation = config['kolux-status'].PreInvocation[0].command
 
       for (const command of [postToolUse, preInvocation]) {
         const result = spawnSync('/bin/sh', ['-c', command!], { input: '{}', encoding: 'utf8' })
@@ -203,7 +201,7 @@ describe('AntigravityHookService', () => {
       const configPath = join(homeDir, '.gemini', 'config', 'hooks.json')
       const staleScriptPath = join(
         homeDir,
-        '.nightshift',
+        '.kolux',
         'agent-hooks',
         'antigravity-hook.cmd'
       ).replaceAll('/', '\\')
@@ -212,14 +210,14 @@ describe('AntigravityHookService', () => {
         configPath,
         `${JSON.stringify(
           {
-            'nightshift-status': {
+            'kolux-status': {
               PreToolUse: [
                 {
                   matcher: '*',
                   hooks: [
                     {
                       type: 'command',
-                      command: `cmd /d /s /c "set "NIGHTSHIFT_ANTIGRAVITY_EVENT=PreToolUse" && call "${staleScriptPath}""`
+                      command: `cmd /d /s /c "set "KOLUX_ANTIGRAVITY_EVENT=PreToolUse" && call "${staleScriptPath}""`
                     }
                   ]
                 }
@@ -241,12 +239,12 @@ describe('AntigravityHookService', () => {
       expect(status.state).toBe('installed')
 
       const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-        'nightshift-status': Record<
+        'kolux-status': Record<
           string,
           { matcher?: string; command?: string; hooks?: { command: string }[] }[]
         >
       }
-      expect(config['nightshift-status'].PreToolUse).toHaveLength(1)
+      expect(config['kolux-status'].PreToolUse).toHaveLength(1)
 
       const expectedWrappers = {
         PreInvocation: 'antigravity-pre-invocation.cmd',
@@ -256,20 +254,20 @@ describe('AntigravityHookService', () => {
         PostToolUse: 'antigravity-post-tool-use.cmd'
       }
       for (const [eventName, wrapperFileName] of Object.entries(expectedWrappers)) {
-        const definition = config['nightshift-status'][eventName][0]
+        const definition = config['kolux-status'][eventName][0]
         const command = ['PreToolUse', 'PostToolUse'].includes(eventName)
           ? definition.hooks?.[0]?.command
           : definition.command
         expect(createManagedCommandMatcher(wrapperFileName)(command)).toBe(true)
         expect(command).not.toContain('cmd /d /s /c')
-        expect(command).not.toContain('NIGHTSHIFT_ANTIGRAVITY_EVENT')
+        expect(command).not.toContain('KOLUX_ANTIGRAVITY_EVENT')
 
         const wrapper = readFileSync(
-          join(homeDir, '.nightshift', 'agent-hooks', wrapperFileName),
+          join(homeDir, '.kolux', 'agent-hooks', wrapperFileName),
           'utf8'
         )
-        expect(wrapper).toContain(`set "NIGHTSHIFT_ANTIGRAVITY_EVENT=${eventName}"`)
-        expect(wrapper).toContain('call "%NIGHTSHIFT_ANTIGRAVITY_CORE%"')
+        expect(wrapper).toContain(`set "KOLUX_ANTIGRAVITY_EVENT=${eventName}"`)
+        expect(wrapper).toContain('call "%KOLUX_ANTIGRAVITY_CORE%"')
         // Why: the wrapper is the stdin owner when the core script is gone, so it must answer the gate itself.
         if (eventName === 'PreToolUse') {
           expect(wrapper).toContain(`echo ${PRE_TOOL_USE_DECISION}`)
@@ -280,18 +278,18 @@ describe('AntigravityHookService', () => {
       }
 
       const script = readFileSync(
-        join(homeDir, '.nightshift', 'agent-hooks', 'antigravity-hook.cmd'),
+        join(homeDir, '.kolux', 'agent-hooks', 'antigravity-hook.cmd'),
         'utf8'
       )
       expect(script).toContain('/hook/antigravity')
       expect(script).not.toContain('powershell.exe')
       expect(script).toContain('%SystemRoot%\\System32\\curl.exe')
-      expect(script).toContain('hook_event_name=%NIGHTSHIFT_ANTIGRAVITY_EVENT%')
+      expect(script).toContain('hook_event_name=%KOLUX_ANTIGRAVITY_EVENT%')
       expect(script).toContain('setlocal DisableDelayedExpansion')
     })
   })
 
-  it('preserves user-authored hook bundles and entries in Nightshift bundle', () => {
+  it('preserves user-authored hook bundles and entries in Kolux bundle', () => {
     const configPath = join(homeDir, '.gemini', 'config', 'hooks.json')
     mkdirSync(dirname(configPath), { recursive: true })
     writeFileSync(
@@ -301,8 +299,8 @@ describe('AntigravityHookService', () => {
           'user-hook': {
             PreInvocation: [{ type: 'command', command: '/usr/local/bin/user-hook' }]
           },
-          'nightshift-status': {
-            PreInvocation: [{ type: 'command', command: '/usr/local/bin/nightshift-extra' }]
+          'kolux-status': {
+            PreInvocation: [{ type: 'command', command: '/usr/local/bin/kolux-extra' }]
           }
         },
         null,
@@ -314,11 +312,11 @@ describe('AntigravityHookService', () => {
 
     const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
       'user-hook': { PreInvocation: { command: string }[] }
-      'nightshift-status': { PreInvocation: { command: string }[] }
+      'kolux-status': { PreInvocation: { command: string }[] }
     }
     expect(config['user-hook'].PreInvocation[0].command).toBe('/usr/local/bin/user-hook')
-    const commands = config['nightshift-status'].PreInvocation.map((entry) => entry.command)
-    expect(commands).toContain('/usr/local/bin/nightshift-extra')
+    const commands = config['kolux-status'].PreInvocation.map((entry) => entry.command)
+    expect(commands).toContain('/usr/local/bin/kolux-extra')
     expect(commands.some((command) => command.includes(ANTIGRAVITY_PRE_INVOCATION_COMMAND))).toBe(
       true
     )
@@ -331,7 +329,7 @@ describe('AntigravityHookService', () => {
       configPath,
       `${JSON.stringify(
         {
-          'nightshift-status': {
+          'kolux-status': {
             OldEvent: [
               {
                 type: 'command',
@@ -354,24 +352,24 @@ describe('AntigravityHookService', () => {
     new AntigravityHookService().install()
 
     const config = JSON.parse(readFileSync(configPath, 'utf8')) as {
-      'nightshift-status': Record<string, { command?: string; hooks?: { command: string }[] }[]>
+      'kolux-status': Record<string, { command?: string; hooks?: { command: string }[] }[]>
     }
-    expect(config['nightshift-status'].OldEvent).toBeUndefined()
+    expect(config['kolux-status'].OldEvent).toBeUndefined()
     // Why: the pre-a480e6b7 PreToolUse entry pointed at a script with no gate branch; it must be replaced, not kept.
-    const preToolCommands = config['nightshift-status'].PreToolUse.flatMap((definition) =>
+    const preToolCommands = config['kolux-status'].PreToolUse.flatMap((definition) =>
       (definition.hooks ?? []).map((hook) => hook.command)
     )
     expect(preToolCommands).toHaveLength(1)
     expect(preToolCommands[0]).toContain(
-      join(homeDir, '.nightshift', 'agent-hooks', ANTIGRAVITY_PRE_TOOL_USE_COMMAND)
+      join(homeDir, '.kolux', 'agent-hooks', ANTIGRAVITY_PRE_TOOL_USE_COMMAND)
     )
     expect(preToolCommands[0]).not.toContain('/tmp/old/agent-hooks/antigravity-hook.sh')
-    const commands = config['nightshift-status'].PostToolUse.flatMap((definition) =>
+    const commands = config['kolux-status'].PostToolUse.flatMap((definition) =>
       (definition.hooks ?? []).map((hook) => hook.command)
     )
     expect(commands).toHaveLength(1)
     expect(commands[0]).toContain(
-      join(homeDir, '.nightshift', 'agent-hooks', ANTIGRAVITY_POST_TOOL_USE_COMMAND)
+      join(homeDir, '.kolux', 'agent-hooks', ANTIGRAVITY_POST_TOOL_USE_COMMAND)
     )
   })
 })

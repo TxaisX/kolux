@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
 import { exec } from 'node:child_process'
-import { parseNightshiftYaml } from '../shared/nightshift-yaml'
+import { parseKoluxYaml } from '../shared/kolux-yaml'
+import { resolveKoluxYamlPath } from '../shared/kolux-yaml-file-resolution'
 import { resolveHookCommandSourcePolicy } from '../shared/hook-command-source-policy'
 import { getEffectiveHooksFromConfig } from './effective-hook-config'
 import { getHookRuntimeTarget, getHookWslContext } from './hook-runtime-target'
@@ -12,7 +12,7 @@ import { dropIncoherentCondaActivationEnv } from './pty/conda-activation-env'
 import { toLinuxPath } from './wsl'
 import { runWslProcess } from './wsl/wsl-runner'
 import type { HookRuntimeTarget } from './hook-runtime-target'
-import type { NightshiftHooks } from '../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../shared/kolux-yaml-hook-types'
 import type { Repo } from '../shared/repo-types'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 
@@ -26,34 +26,34 @@ function getHookShell(): string | undefined {
   return '/bin/bash'
 }
 
-export { parseNightshiftYaml }
+export { parseKoluxYaml }
 
 /**
- * Load hooks from nightshift.yaml in the given repo root.
+ * Load hooks from kolux.yaml in the given repo root.
  */
-export function loadHooks(repoPath: string): NightshiftHooks | null {
-  const yamlPath = join(repoPath, 'nightshift.yaml')
+export function loadHooks(repoPath: string): KoluxHooks | null {
+  const yamlPath = resolveKoluxYamlPath(repoPath)
   if (!existsSync(yamlPath)) {
     return null
   }
 
   try {
     const content = readFileSync(yamlPath, 'utf-8')
-    return parseNightshiftYaml(content)
+    return parseKoluxYaml(content)
   } catch {
     return null
   }
 }
 
 /**
- * Check whether a nightshift.yaml exists for a repo.
+ * Check whether a kolux.yaml exists for a repo.
  */
 export function hasHooksFile(repoPath: string): boolean {
-  return existsSync(join(repoPath, 'nightshift.yaml'))
+  return existsSync(resolveKoluxYamlPath(repoPath))
 }
 
 // Why: detect unrecognised keys so the UI can suggest an update instead of showing a "could not be parsed" error.
-const RECOGNIZED_NIGHTSHIFT_YAML_KEYS = new Set([
+const RECOGNIZED_KOLUX_YAML_KEYS = new Set([
   'scripts',
   'setupAgentStartupPolicy',
   'issueCommand',
@@ -62,14 +62,14 @@ const RECOGNIZED_NIGHTSHIFT_YAML_KEYS = new Set([
   'worktree'
 ])
 
-/** True when `nightshift.yaml` has a top-level key this version of Nightshift does not handle. */
-export function hasUnrecognizedNightshiftYamlKeys(repoPath: string): boolean {
+/** True when `kolux.yaml` has a top-level key this version of Kolux does not handle. */
+export function hasUnrecognizedKoluxYamlKeys(repoPath: string): boolean {
   try {
-    const content = readFileSync(join(repoPath, 'nightshift.yaml'), 'utf-8')
+    const content = readFileSync(resolveKoluxYamlPath(repoPath), 'utf-8')
     for (const line of iterateLfScriptLines(content)) {
       // Why: match bare `key:` at end-of-line too, since a mapping with a block value on the next line is valid YAML.
       const m = line.match(/^([A-Za-z][A-Za-z0-9_-]*):(\s|$)/)
-      if (m != null && !RECOGNIZED_NIGHTSHIFT_YAML_KEYS.has(m[1])) {
+      if (m != null && !RECOGNIZED_KOLUX_YAML_KEYS.has(m[1])) {
         return true
       }
     }
@@ -79,7 +79,7 @@ export function hasUnrecognizedNightshiftYamlKeys(repoPath: string): boolean {
   }
 }
 
-export function getEffectiveHooks(repo: Repo, worktreePath?: string): NightshiftHooks | null {
+export function getEffectiveHooks(repo: Repo, worktreePath?: string): KoluxHooks | null {
   const hooksRoot = worktreePath ?? repo.path
   return getEffectiveHooksFromConfig(repo, loadHooks(hooksRoot))
 }
@@ -133,7 +133,7 @@ export function runHook(
   const wslInfo = getHookWslContext(cwd, runtimeTarget)
 
   if (wslInfo) {
-    // Why: hook scripts run inside WSL, so translate the NIGHTSHIFT_* Windows UNC paths to Linux paths.
+    // Why: hook scripts run inside WSL, so translate the KOLUX_* Windows UNC paths to Linux paths.
     const envVars = getSetupEnvVars(repo, cwd)
     const wslEnv: Record<string, string> = {}
     for (const [key, value] of Object.entries(envVars)) {
@@ -159,7 +159,7 @@ export function runHook(
       distro: wslInfo.distro ?? undefined,
       loginPath: 'preferred',
       script,
-      // Why pinned: these are user-authored nightshift.yaml scripts and the native
+      // Why pinned: these are user-authored kolux.yaml scripts and the native
       // path runs /bin/bash. Defaulting to sh would fail bash-only hooks on WSL
       // only -- a downgrade the user never asked for.
       shell: 'bash',

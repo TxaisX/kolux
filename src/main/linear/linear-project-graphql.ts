@@ -1,4 +1,4 @@
-export const NIGHTSHIFT_PROJECT_FIELDS = `
+export const KOLUX_PROJECT_FIELDS = `
   id
   slugId
   name
@@ -55,8 +55,8 @@ export const NIGHTSHIFT_PROJECT_FIELDS = `
   }
 `
 
-export const NIGHTSHIFT_PROJECT_DETAIL_FIELDS = `
-  ${NIGHTSHIFT_PROJECT_FIELDS}
+export const KOLUX_PROJECT_DETAIL_FIELDS = `
+  ${KOLUX_PROJECT_FIELDS}
   projectMilestones(first: 20) {
     nodes {
       id
@@ -88,7 +88,7 @@ export const NIGHTSHIFT_PROJECT_DETAIL_FIELDS = `
   }
 `
 
-export const NIGHTSHIFT_ISSUE_FIELDS = `
+export const KOLUX_ISSUE_FIELDS = `
   id
   identifier
   title
@@ -122,10 +122,10 @@ export const NIGHTSHIFT_ISSUE_FIELDS = `
 `
 
 export const PROJECTS_QUERY = `
-  query NightshiftLinearProjects($first: Int, $filter: ProjectFilter, $orderBy: PaginationOrderBy) {
+  query KoluxLinearProjects($first: Int, $filter: ProjectFilter, $orderBy: PaginationOrderBy) {
     projects(first: $first, filter: $filter, orderBy: $orderBy) {
       nodes {
-        ${NIGHTSHIFT_PROJECT_FIELDS}
+        ${KOLUX_PROJECT_FIELDS}
       }
       pageInfo {
         hasNextPage
@@ -135,10 +135,10 @@ export const PROJECTS_QUERY = `
 `
 
 export const SEARCH_PROJECTS_QUERY = `
-  query NightshiftLinearProjectSearch($term: String!, $first: Int, $after: String) {
+  query KoluxLinearProjectSearch($term: String!, $first: Int, $after: String) {
     searchProjects(term: $term, first: $first, after: $after) {
       nodes {
-        ${NIGHTSHIFT_PROJECT_FIELDS}
+        ${KOLUX_PROJECT_FIELDS}
       }
       pageInfo {
         hasNextPage
@@ -149,26 +149,26 @@ export const SEARCH_PROJECTS_QUERY = `
 `
 
 export const PROJECT_QUERY = `
-  query NightshiftLinearProject($id: String!) {
+  query KoluxLinearProject($id: String!) {
     project(id: $id) {
-      ${NIGHTSHIFT_PROJECT_DETAIL_FIELDS}
+      ${KOLUX_PROJECT_DETAIL_FIELDS}
     }
   }
 `
 
 export const CREATE_PROJECT_MUTATION = `
-  mutation NightshiftLinearProjectCreate($input: ProjectCreateInput!) {
+  mutation KoluxLinearProjectCreate($input: ProjectCreateInput!) {
     projectCreate(input: $input) {
       success
       project {
-        ${NIGHTSHIFT_PROJECT_DETAIL_FIELDS}
+        ${KOLUX_PROJECT_DETAIL_FIELDS}
       }
     }
   }
 `
 
 export const PROJECT_ISSUES_QUERY = `
-  query NightshiftLinearProjectIssues(
+  query KoluxLinearProjectIssues(
     $id: String!,
     $first: Int,
     $after: String,
@@ -177,7 +177,7 @@ export const PROJECT_ISSUES_QUERY = `
     project(id: $id) {
       issues(first: $first, after: $after, orderBy: $orderBy) {
         nodes {
-          ${NIGHTSHIFT_ISSUE_FIELDS}
+          ${KOLUX_ISSUE_FIELDS}
         }
         pageInfo {
           hasNextPage
@@ -189,7 +189,7 @@ export const PROJECT_ISSUES_QUERY = `
 `
 
 export const PROJECT_TEAMS_QUERY = `
-  query NightshiftLinearProjectTeams($id: String!, $first: Int, $after: String) {
+  query KoluxLinearProjectTeams($id: String!, $first: Int, $after: String) {
     project(id: $id) {
       teams(first: $first, after: $after) {
         nodes {

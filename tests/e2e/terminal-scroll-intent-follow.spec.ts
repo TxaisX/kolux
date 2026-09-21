@@ -1,6 +1,6 @@
 import type { Page } from '@stablyai/playwright-test'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -238,51 +238,51 @@ async function startStreamingFixturePhase1(page: Page): Promise<string> {
 
 test.describe('terminal scroll intent keeps following output', () => {
   test('a sub-row wheel-up that never moves the viewport must not stop follow-output', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const ptyId = await startStreamingFixturePhase1(nightshiftPage)
+    const ptyId = await startStreamingFixturePhase1(koluxPage)
 
     // A -2px delta is far below one cell height: xterm scrolls zero rows, but
     // the intent listener still observes the trackpad-jitter-shaped wheel.
-    await dispatchSubRowWheelUp(nightshiftPage)
-    await nightshiftPage.waitForTimeout(INTENT_SETTLE_WAIT_MS)
+    await dispatchSubRowWheelUp(koluxPage)
+    await koluxPage.waitForTimeout(INTENT_SETTLE_WAIT_MS)
 
     // Any byte releases the fixture's phase-2 stream.
-    await sendToTerminal(nightshiftPage, ptyId, 'g')
-    await waitForMarkerAtBottom(nightshiftPage, 'STREAM_PHASE2_DONE')
+    await sendToTerminal(koluxPage, ptyId, 'g')
+    await waitForMarkerAtBottom(koluxPage, 'STREAM_PHASE2_DONE')
   })
 
   test('a plain Home keypress delivered to the app must not stop follow-output', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await startStreamingFixturePhase1(nightshiftPage)
+    await startStreamingFixturePhase1(koluxPage)
 
     // The Home escape sequence reaching the fixture's stdin doubles as the
     // phase-2 release, exactly like a user pressing Home mid-generation.
-    await dispatchPlainHomeKeydown(nightshiftPage)
-    await waitForMarkerAtBottom(nightshiftPage, 'STREAM_PHASE2_DONE')
+    await dispatchPlainHomeKeydown(koluxPage)
+    await waitForMarkerAtBottom(koluxPage, 'STREAM_PHASE2_DONE')
   })
 
-  test('a real wheel pin stays fixed while visible output streams', async ({ nightshiftPage }) => {
-    const ptyId = await startStreamingFixturePhase1(nightshiftPage)
+  test('a real wheel pin stays fixed while visible output streams', async ({ koluxPage }) => {
+    const ptyId = await startStreamingFixturePhase1(koluxPage)
 
-    await dispatchRealWheel(nightshiftPage, -240)
+    await dispatchRealWheel(koluxPage, -240)
     await expect
       .poll(async () => {
-        const probe = await probeActiveViewport(nightshiftPage, 'STREAM_PHASE1_DONE')
+        const probe = await probeActiveViewport(koluxPage, 'STREAM_PHASE1_DONE')
         return probe ? probe.baseY - probe.viewportY : 0
       })
       .toBeGreaterThan(1)
-    const pinned = await probeActiveViewport(nightshiftPage, 'STREAM_PHASE1_DONE')
+    const pinned = await probeActiveViewport(koluxPage, 'STREAM_PHASE1_DONE')
     if (!pinned) {
       throw new Error('terminal viewport unavailable after wheel pin')
     }
 
-    await sendToTerminal(nightshiftPage, ptyId, 'g')
+    await sendToTerminal(koluxPage, ptyId, 'g')
     await expect
       .poll(
         async () => {
-          const probe = await probeActiveViewport(nightshiftPage, 'STREAM_PHASE2_DONE')
+          const probe = await probeActiveViewport(koluxPage, 'STREAM_PHASE2_DONE')
           return Boolean(probe && probe.containsMarker && probe.viewportY === pinned.viewportY)
         },
         { timeout: 30_000, message: 'visible streaming output moved the wheel-pinned viewport' }
@@ -290,33 +290,31 @@ test.describe('terminal scroll intent keeps following output', () => {
       .toBe(true)
   })
 
-  test('typing after a pinned write is queued resumes follow-output', async ({
-    nightshiftPage
-  }) => {
-    await startStreamingFixturePhase1(nightshiftPage)
-    const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
-    await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
+  test('typing after a pinned write is queued resumes follow-output', async ({ koluxPage }) => {
+    await startStreamingFixturePhase1(koluxPage)
+    const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
+    await waitForTerminalPtyDataInjector(koluxPage, paneKey)
 
-    await dispatchRealWheel(nightshiftPage, -320)
+    await dispatchRealWheel(koluxPage, -320)
     await expect
       .poll(async () => {
-        const probe = await probeActiveViewport(nightshiftPage, 'STREAM_PHASE1_DONE')
+        const probe = await probeActiveViewport(koluxPage, 'STREAM_PHASE1_DONE')
         return probe ? probe.baseY - probe.viewportY : 0
       })
       .toBeGreaterThan(2)
 
     // Hold the xterm write call so typing deterministically lands between the
     // old per-write intent capture and its completion-time enforcement from #8625.
-    await injectQueuedWriteThenType(nightshiftPage, paneKey)
+    await injectQueuedWriteThenType(koluxPage, paneKey)
     await expect
       .poll(
         async () => {
-          const probe = await probeActiveViewport(nightshiftPage, 'STREAM_PHASE1_DONE')
+          const probe = await probeActiveViewport(koluxPage, 'STREAM_PHASE1_DONE')
           return probe ? probe.baseY - probe.viewportY : Number.NaN
         },
         { timeout: 5_000, intervals: [25] }
       )
       .toBe(0)
-    await waitForMarkerAtBottom(nightshiftPage, 'STREAM_PHASE2_DONE')
+    await waitForMarkerAtBottom(koluxPage, 'STREAM_PHASE2_DONE')
   })
 })

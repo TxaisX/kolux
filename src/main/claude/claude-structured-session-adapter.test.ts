@@ -637,7 +637,7 @@ describe('ClaudeStructuredSessionAdapter acquisition cleanup', () => {
     expect(error).not.toBeInstanceOf(AgentSessionAcquisitionRootExitObservedError)
   })
 
-  it('never releases for a root Nightshift never saw leave', async () => {
+  it('never releases for a root Kolux never saw leave', async () => {
     const error = await failedStart({ root: 'live', tree: 'unverifiable' })
 
     expect(error).toBeInstanceOf(AgentSessionAcquisitionExitUnprovenError)

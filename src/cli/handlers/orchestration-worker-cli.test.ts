@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const callMock = vi.fn()
 const originalExitCode = process.exitCode
-const originalCliCommand = process.env.NIGHTSHIFT_CLI_COMMAND
+const originalCliCommand = process.env.KOLUX_CLI_COMMAND
 
 type RecoveryWorkerStartResult = {
   taskId: string
@@ -28,15 +28,15 @@ describe('orchestration worker-start CLI contract', () => {
     callMock.mockReset()
     vi.mocked(printResult).mockReset()
     process.exitCode = undefined
-    delete process.env.NIGHTSHIFT_CLI_COMMAND
+    delete process.env.KOLUX_CLI_COMMAND
   })
 
   afterEach(() => {
     process.exitCode = originalExitCode
     if (originalCliCommand === undefined) {
-      delete process.env.NIGHTSHIFT_CLI_COMMAND
+      delete process.env.KOLUX_CLI_COMMAND
     } else {
-      process.env.NIGHTSHIFT_CLI_COMMAND = originalCliCommand
+      process.env.KOLUX_CLI_COMMAND = originalCliCommand
     }
   })
 
@@ -201,12 +201,12 @@ describe('orchestration worker-start CLI contract', () => {
   })
 
   it.each([
-    ['JSON', 'nightshift-dev', true],
-    ['plain', 'nightshift-ide', false]
+    ['JSON', 'kolux-dev', true],
+    ['plain', 'kolux-ide', false]
   ] as const)(
     'renders %s recovery commands through the resolved %s executable',
     async (_format, executable, json) => {
-      process.env.NIGHTSHIFT_CLI_COMMAND = executable
+      process.env.KOLUX_CLI_COMMAND = executable
       callMock.mockResolvedValue({
         result: {
           taskId: 'task_1',
@@ -215,8 +215,8 @@ describe('orchestration worker-start CLI contract', () => {
           effects: [],
           residualResources: [],
           nextCommands: [
-            'nightshift orchestration worker-show --dispatch ctx_unknown --json',
-            'nightshift orchestration worker-abandon --dispatch ctx_unknown --json'
+            'kolux orchestration worker-show --dispatch ctx_unknown --json',
+            'kolux orchestration worker-abandon --dispatch ctx_unknown --json'
           ]
         }
       })
@@ -255,7 +255,7 @@ describe('orchestration worker-start CLI contract', () => {
         state: 'failed',
         failedStage: 'dispatch_input',
         lastError:
-          'The target terminal is in Structured Chat. Switch it to Terminal, then retry `nightshift orchestration worker-start`.',
+          'The target terminal is in Structured Chat. Switch it to Terminal, then retry `kolux orchestration worker-start`.',
         effects: [],
         residualResources: []
       }
@@ -288,9 +288,9 @@ describe('orchestration worker-start CLI contract', () => {
         state: 'failed',
         failedStage: 'dispatch_input',
         lastError:
-          'The target terminal is in Structured Chat. Switch it to Terminal, then retry `nightshift orchestration worker-start`.'
+          'The target terminal is in Structured Chat. Switch it to Terminal, then retry `kolux orchestration worker-start`.'
       })
-    ).toMatch(/Structured Chat.*Switch it to Terminal.*nightshift orchestration worker-start/s)
+    ).toMatch(/Structured Chat.*Switch it to Terminal.*kolux orchestration worker-start/s)
   })
 
   it('prints a reveal warning for a live background worker', async () => {

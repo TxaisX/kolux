@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForSessionReady } from './helpers/store'
 import {
   getTerminalContent,
@@ -113,28 +113,28 @@ async function captureProof(page: Page, testInfo: TestInfo, name: string): Promi
 
 test.describe('Issue #12656 terminal link tooltip', () => {
   test('clears hover state without permanently shrinking the terminal', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
 
-    const url = `https://example.com/nightshift-issue-12656-${randomUUID().slice(0, 8)}`
+    const url = `https://example.com/kolux-issue-12656-${randomUUID().slice(0, 8)}`
     await sendToTerminal(
-      nightshiftPage,
+      koluxPage,
       ptyId,
       `printf 'issue-12656-output-%02d\\n' $(seq 1 64); printf '${url}\\n'\r`
     )
-    await waitForTerminalOutput(nightshiftPage, url)
+    await waitForTerminalOutput(koluxPage, url)
 
     let probe: LinkProbe | null = null
     await expect
       .poll(
         async () => {
-          probe = await locateUrl(nightshiftPage, url)
+          probe = await locateUrl(koluxPage, url)
           return probe
         },
         { timeout: 5_000, message: 'URL did not become visible in the terminal viewport' }
@@ -143,36 +143,36 @@ test.describe('Issue #12656 terminal link tooltip', () => {
     if (!probe) {
       throw new Error('URL probe disappeared before hover')
     }
-    const idle = await readTooltipState(nightshiftPage, probe.tabId)
+    const idle = await readTooltipState(koluxPage, probe.tabId)
     expect(Math.abs(idle.paneBottom - idle.terminalBottom)).toBeLessThanOrEqual(1)
     await expect
       .poll(async () => {
-        const currentProbe = await locateUrl(nightshiftPage, url)
+        const currentProbe = await locateUrl(koluxPage, url)
         if (!currentProbe) {
           return { display: 'none', text: '' }
         }
         probe = currentProbe
-        await moveToLink(nightshiftPage, currentProbe)
-        return readTooltipState(nightshiftPage, currentProbe.tabId)
+        await moveToLink(koluxPage, currentProbe)
+        return readTooltipState(koluxPage, currentProbe.tabId)
       })
       .toMatchObject({ display: '', text: expect.stringContaining(url) })
 
-    const hovered = await readTooltipState(nightshiftPage, probe.tabId)
+    const hovered = await readTooltipState(koluxPage, probe.tabId)
     expect(hovered.text).toContain(url)
     expect(hovered.tooltipHeight).toBeGreaterThan(0)
     expect(Math.abs(hovered.paneBottom - hovered.terminalBottom)).toBeLessThanOrEqual(1)
     expect(Math.abs(hovered.paneBottom - hovered.tooltipBottom)).toBeLessThanOrEqual(1)
     expect(hovered.tooltipTop).toBeLessThan(hovered.terminalBottom)
-    await captureProof(nightshiftPage, testInfo, 'issue-12656-fixed-hover.png')
+    await captureProof(koluxPage, testInfo, 'issue-12656-fixed-hover.png')
 
-    await nightshiftPage.evaluate(() => window.dispatchEvent(new Event('blur')))
+    await koluxPage.evaluate(() => window.dispatchEvent(new Event('blur')))
     await expect
-      .poll(() => readTooltipState(nightshiftPage, probe.tabId))
+      .poll(() => readTooltipState(koluxPage, probe.tabId))
       .toMatchObject({ display: 'none', cursor: 'text' })
-    const cleared = await readTooltipState(nightshiftPage, probe.tabId)
+    const cleared = await readTooltipState(koluxPage, probe.tabId)
     expect(Math.abs(cleared.paneBottom - cleared.terminalBottom)).toBeLessThanOrEqual(1)
-    await captureProof(nightshiftPage, testInfo, 'issue-12656-fixed-after-blur.png')
+    await captureProof(koluxPage, testInfo, 'issue-12656-fixed-after-blur.png')
 
-    await expect.poll(() => getTerminalContent(nightshiftPage)).toContain(url)
+    await expect.poll(() => getTerminalContent(koluxPage)).toContain(url)
   })
 })

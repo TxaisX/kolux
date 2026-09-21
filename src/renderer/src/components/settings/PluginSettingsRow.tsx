@@ -220,7 +220,7 @@ export function PluginSettingsRow({
               <span>
                 {translate(
                   'auto.components.settings.PluginSettingsRow.killListMessage',
-                  "Nightshift's safety list disabled this plugin: {{value0}}",
+                  "Kolux's safety list disabled this plugin: {{value0}}",
                   { value0: plugin.blockedByKillList.reason }
                 )}
                 {plugin.blockedByKillList.advisoryUrl ? (

@@ -17,7 +17,7 @@ describe('orchestration migration from every prior version stamp', () => {
 
   it('opens and reopens a complete schema stamped at every prior version', () => {
     for (let version = 0; version < SCHEMA_VERSION; version += 1) {
-      const dir = mkdtempSync(join(tmpdir(), `nightshift-migration-v${version}-`))
+      const dir = mkdtempSync(join(tmpdir(), `kolux-migration-v${version}-`))
       tempDirs.push(dir)
       const dbPath = join(dir, 'orchestration.db')
       new OrchestrationDb(dbPath).close()

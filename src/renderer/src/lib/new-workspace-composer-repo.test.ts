@@ -99,38 +99,34 @@ describe('new-workspace-composer-repo', () => {
   })
 
   describe('resolveComposerActiveRepoId', () => {
-    const localNightshift = makeRepo('local-nightshift', {
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+    const localKolux = makeRepo('local-kolux', {
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
-    const runtimeNightshift = makeRepo('runtime-nightshift', {
-      connectionId: 'runtime-ssh-nightshift-1',
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+    const runtimeKolux = makeRepo('runtime-kolux', {
+      connectionId: 'runtime-ssh-kolux-1',
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
     const otherProject = makeRepo('noqa', { upstream: { owner: 'TxaisX', repo: 'noqa' } })
-    const repos = [otherProject, localNightshift, runtimeNightshift]
+    const repos = [otherProject, localKolux, runtimeKolux]
     const eligibleRepos = getComposerEligibleRepos(repos)
 
     it('maps an active runtime-owned SSH repo to its local same-project sibling', () => {
-      expect(resolveComposerActiveRepoId(repos, eligibleRepos, 'runtime-nightshift')).toBe(
-        'local-nightshift'
-      )
+      expect(resolveComposerActiveRepoId(repos, eligibleRepos, 'runtime-kolux')).toBe('local-kolux')
     })
 
     it('leaves a normal active repo unchanged', () => {
-      expect(resolveComposerActiveRepoId(repos, eligibleRepos, 'local-nightshift')).toBe(
-        'local-nightshift'
-      )
+      expect(resolveComposerActiveRepoId(repos, eligibleRepos, 'local-kolux')).toBe('local-kolux')
     })
 
     it('keeps the runtime repo id when no same-project sibling is eligible', () => {
-      const onlyRuntime = [runtimeNightshift]
+      const onlyRuntime = [runtimeKolux]
       expect(
         resolveComposerActiveRepoId(
           onlyRuntime,
           getComposerEligibleRepos(onlyRuntime),
-          'runtime-nightshift'
+          'runtime-kolux'
         )
-      ).toBe('runtime-nightshift')
+      ).toBe('runtime-kolux')
     })
 
     it('passes through null/undefined active repo', () => {

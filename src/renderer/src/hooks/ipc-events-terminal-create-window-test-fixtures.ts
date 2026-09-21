@@ -158,7 +158,7 @@ export function buildTerminalCreateWindow(args: {
       },
       browser: {
         onGuestLoadFailed: () => () => {},
-        onOpenLinkInNightshiftTab: () => () => {},
+        onOpenLinkInKoluxTab: () => () => {},
         onNavigationUpdate: () => () => {},
         onActivateView: () => () => {},
         onPaneFocus: () => () => {}

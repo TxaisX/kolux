@@ -90,7 +90,7 @@ export function getBitbucketConnectionStatus(): BitbucketConnectionStatus {
       account: null,
       authMode: env.accessToken ? 'token' : 'basic',
       email: env.email,
-      baseUrl: envValue('NIGHTSHIFT_BITBUCKET_API_BASE_URL')
+      baseUrl: envValue('KOLUX_BITBUCKET_API_BASE_URL')
     }
   }
   if (hasStoredBitbucketCredential()) {

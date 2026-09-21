@@ -7,10 +7,10 @@ import { canSkipAgentBrowserSessionReset } from './agent-browser-session-reset'
 
 const owned = {
   ownsSocketDirectory: true,
-  socketDirectory: '/tmp/nightshift-ab-profile',
-  sessionName: 'nightshift-tab-page'
+  socketDirectory: '/tmp/kolux-ab-profile',
+  sessionName: 'kolux-tab-page'
 }
-const socketPath = join(owned.socketDirectory, 'nightshift-tab-page.sock')
+const socketPath = join(owned.socketDirectory, 'kolux-tab-page.sock')
 
 beforeEach(() => {
   lstatSync.mockReset()

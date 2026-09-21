@@ -33,12 +33,12 @@ import { UsageProviderStoreLifecycle } from '../usage/usage-provider-store-lifec
 let _openCodeUsageFile: string | null = null
 
 export function initOpenCodeUsagePath(): void {
-  _openCodeUsageFile = join(app.getPath('userData'), 'nightshift-opencode-usage.json')
+  _openCodeUsageFile = join(app.getPath('userData'), 'kolux-opencode-usage.json')
 }
 
 function getOpenCodeUsageFile(): string {
   if (!_openCodeUsageFile) {
-    _openCodeUsageFile = join(app.getPath('userData'), 'nightshift-opencode-usage.json')
+    _openCodeUsageFile = join(app.getPath('userData'), 'kolux-opencode-usage.json')
   }
   return _openCodeUsageFile
 }

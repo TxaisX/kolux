@@ -24,19 +24,19 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
     }
   }
 
-  it('writes nightshift-opencode-status.js into the overlay and returns that dir', () => {
+  it('writes kolux-opencode-status.js into the overlay and returns that dir', () => {
     withHome((home) => {
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
-      const source = '// nightshift opencode status plugin\nexport const Plugin = () => ({})\n'
+      const source = '// kolux opencode status plugin\nexport const Plugin = () => ({})\n'
       const res = install({ opencodePluginSource: source })
 
       expect(res.installed.opencode).toBe(true)
       const dir = res.overlayDirs.opencode
       expect(typeof dir).toBe('string')
-      const pluginPath = join(dir as string, 'plugins', 'nightshift-opencode-status.js')
+      const pluginPath = join(dir as string, 'plugins', 'kolux-opencode-status.js')
       expect(existsSync(pluginPath)).toBe(true)
       expect(readFileSync(pluginPath, 'utf8')).toBe(source)
     })
@@ -46,7 +46,7 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
     withHome((home) => {
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       const source = '// v1\n'
       const dir = install({ opencodePluginSource: source }).overlayDirs.opencode as string
@@ -69,14 +69,14 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
       // this branch today; it exists so a plugin-only overlay can't outlive a source
       // dir becoming resolvable. Simulated by mutating the env the factory captured.
       const userConfig = join(home, 'my-opencode')
-      const env = { HOME: home, NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1' } as NodeJS.ProcessEnv
+      const env = { HOME: home, KOLUX_WSL_HOOK_INSTANCE: 'inst1' } as NodeJS.ProcessEnv
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), env)
       const source = '// v1\n'
       install({ opencodePluginSource: source })
 
       mkdirSync(userConfig, { recursive: true })
       writeFileSync(join(userConfig, 'opencode.json'), '{"model":"late"}')
-      env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR = userConfig
+      env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = userConfig
 
       const dir = install({ opencodePluginSource: source }).overlayDirs.opencode as string
       expect(readFileSync(join(dir, 'opencode.json'), 'utf8')).toBe('{"model":"late"}')
@@ -87,16 +87,16 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
     withHome((home) => {
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       const source = '// v1\n'
       const dir = install({ opencodePluginSource: source }).overlayDirs.opencode as string
       // Why: a rebuild that failed after the wipe leaves the dir but not the plugin;
       // an existsSync on the dir alone would call that a cache hit forever.
-      rmSync(join(dir, 'plugins', 'nightshift-opencode-status.js'))
+      rmSync(join(dir, 'plugins', 'kolux-opencode-status.js'))
 
       expect(install({ opencodePluginSource: source }).overlayDirs.opencode).toBe(dir)
-      expect(existsSync(join(dir, 'plugins', 'nightshift-opencode-status.js'))).toBe(true)
+      expect(existsSync(join(dir, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
     })
   })
 
@@ -104,14 +104,12 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
     withHome((home) => {
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       install({ opencodePluginSource: '// v1\n' })
-      // Why: a mid-session Nightshift upgrade ships new plugin source; future spawns must see it.
+      // Why: a mid-session Kolux upgrade ships new plugin source; future spawns must see it.
       const dir = install({ opencodePluginSource: '// v2\n' }).overlayDirs.opencode as string
-      expect(readFileSync(join(dir, 'plugins', 'nightshift-opencode-status.js'), 'utf8')).toBe(
-        '// v2\n'
-      )
+      expect(readFileSync(join(dir, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe('// v2\n')
     })
   })
 
@@ -119,14 +117,14 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
     withHome((home) => {
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       const source = '// v1\n'
       const dir = install({ opencodePluginSource: source }).overlayDirs.opencode as string
       rmSync(dir, { recursive: true, force: true })
 
       expect(install({ opencodePluginSource: source }).overlayDirs.opencode).toBe(dir)
-      expect(existsSync(join(dir, 'plugins', 'nightshift-opencode-status.js'))).toBe(true)
+      expect(existsSync(join(dir, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
     })
   })
 
@@ -140,13 +138,13 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
 
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR: userConfig,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_OPENCODE_SOURCE_CONFIG_DIR: userConfig,
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       const dir = install({ opencodePluginSource: '// v1\n' }).overlayDirs.opencode as string
 
       expect(readFileSync(join(dir, 'opencode.json'), 'utf8')).toBe('{"model":"user-set"}')
-      expect(existsSync(join(dir, 'plugins', 'nightshift-opencode-status.js'))).toBe(true)
+      expect(existsSync(join(dir, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
     })
   })
 
@@ -161,12 +159,12 @@ describe.skipIf(process.platform === 'win32')('createInstallPluginsHandler (gues
 
       const install = createInstallPluginsHandler(new PluginOverlayManager({ homeDir: home }), {
         HOME: home,
-        NIGHTSHIFT_WSL_HOOK_INSTANCE: 'inst1'
+        KOLUX_WSL_HOOK_INSTANCE: 'inst1'
       } as NodeJS.ProcessEnv)
       const dir = install({ opencodePluginSource: '// v1\n' }).overlayDirs.opencode as string
 
       expect(existsSync(join(dir, 'opencode.json'))).toBe(false)
-      expect(existsSync(join(dir, 'plugins', 'nightshift-opencode-status.js'))).toBe(true)
+      expect(existsSync(join(dir, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
     })
   })
 

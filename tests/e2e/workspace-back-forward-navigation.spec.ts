@@ -10,7 +10,7 @@
  *   - Shortcuts no-op in non-terminal views (buttons also hidden there).
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
 import {
   waitForSessionReady,
@@ -85,60 +85,58 @@ const isMac = process.platform === 'darwin'
 const mod = isMac ? 'Meta' : 'Control'
 
 test.describe('Workspace Back/Forward Navigation', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
-  test('buttons are hidden outside the terminal view', async ({ nightshiftPage }) => {
-    await expect(await getBackButton(nightshiftPage)).toBeVisible()
-    await expect(await getForwardButton(nightshiftPage)).toBeVisible()
+  test('buttons are hidden outside the terminal view', async ({ koluxPage }) => {
+    await expect(await getBackButton(koluxPage)).toBeVisible()
+    await expect(await getForwardButton(koluxPage)).toBeVisible()
 
     // Why: Settings and other views outside the navigation history stack must
     // not render the buttons at all, rather than merely disabling them.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store!.getState().openSettingsPage()
     })
 
-    await expect(await getBackButton(nightshiftPage)).toHaveCount(0)
-    await expect(await getForwardButton(nightshiftPage)).toHaveCount(0)
+    await expect(await getBackButton(koluxPage)).toHaveCount(0)
+    await expect(await getForwardButton(koluxPage)).toHaveCount(0)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store!.getState().setActiveView('terminal')
     })
-    await expect(await getBackButton(nightshiftPage)).toBeVisible()
+    await expect(await getBackButton(koluxPage)).toBeVisible()
   })
 
-  test('both buttons disabled at cold start with a single history entry', async ({
-    nightshiftPage
-  }) => {
+  test('both buttons disabled at cold start with a single history entry', async ({ koluxPage }) => {
     // The test fixture already activated a worktree during setup, so one entry
     // may or may not exist. Reset the slice to a known empty baseline, then
     // record the current worktree as the single entry.
-    const activeId = await getActiveWorktreeId(nightshiftPage)
+    const activeId = await getActiveWorktreeId(koluxPage)
     expect(activeId).not.toBeNull()
 
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, activeId!)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, activeId!)
 
-    const back = await getBackButton(nightshiftPage)
-    const forward = await getForwardButton(nightshiftPage)
+    const back = await getBackButton(koluxPage)
+    const forward = await getForwardButton(koluxPage)
     await expect(back).toBeDisabled()
     await expect(forward).toBeDisabled()
   })
 
-  test('clicking Back and Forward walks the history stack', async ({ nightshiftPage }) => {
-    const worktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test('clicking Back and Forward walks the history stack', async ({ koluxPage }) => {
+    const worktreeIds = await getAllWorktreeIds(koluxPage)
     test.skip(worktreeIds.length < 2, 'Need at least two worktrees to exercise back/forward')
     const [primaryId, secondaryId] = worktreeIds
 
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, primaryId)
-    await seedVisit(nightshiftPage, secondaryId)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, primaryId)
+    await seedVisit(koluxPage, secondaryId)
 
-    const back = await getBackButton(nightshiftPage)
-    const forward = await getForwardButton(nightshiftPage)
+    const back = await getBackButton(koluxPage)
+    const forward = await getForwardButton(koluxPage)
     await expect(back).toBeEnabled()
     await expect(forward).toBeDisabled()
 
@@ -146,12 +144,12 @@ test.describe('Workspace Back/Forward Navigation', () => {
     // worktree is currently active". `aria-selected` is reserved for batch
     // multi-select state, so a store-only `activeWorktreeId` check would miss
     // render-layer regressions in the active row.
-    const primaryRow = worktreeRow(nightshiftPage, primaryId)
-    const secondaryRow = worktreeRow(nightshiftPage, secondaryId)
+    const primaryRow = worktreeRow(koluxPage, primaryId)
+    const secondaryRow = worktreeRow(koluxPage, secondaryId)
 
     await back.click()
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), {
+      .poll(async () => getActiveWorktreeId(koluxPage), {
         message: 'Back click did not activate the previous worktree'
       })
       .toBe(primaryId)
@@ -162,7 +160,7 @@ test.describe('Workspace Back/Forward Navigation', () => {
 
     await forward.click()
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), {
+      .poll(async () => getActiveWorktreeId(koluxPage), {
         message: 'Forward click did not re-activate the next worktree'
       })
       .toBe(secondaryId)
@@ -171,25 +169,23 @@ test.describe('Workspace Back/Forward Navigation', () => {
     await expect(forward).toBeDisabled()
   })
 
-  test('re-activating the current worktree is a no-op (dedupe)', async ({ nightshiftPage }) => {
-    const activeId = await getActiveWorktreeId(nightshiftPage)
+  test('re-activating the current worktree is a no-op (dedupe)', async ({ koluxPage }) => {
+    const activeId = await getActiveWorktreeId(koluxPage)
     expect(activeId).not.toBeNull()
 
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, activeId!)
-    await seedVisit(nightshiftPage, activeId!)
-    await seedVisit(nightshiftPage, activeId!)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, activeId!)
+    await seedVisit(koluxPage, activeId!)
+    await seedVisit(koluxPage, activeId!)
 
-    const snapshot = await getNavHistorySnapshot(nightshiftPage)
+    const snapshot = await getNavHistorySnapshot(koluxPage)
     expect(snapshot.history).toEqual([activeId])
     expect(snapshot.index).toBe(0)
-    await expect(await getBackButton(nightshiftPage)).toBeDisabled()
+    await expect(await getBackButton(koluxPage)).toBeDisabled()
   })
 
-  test('new navigation after going back truncates the forward stack', async ({
-    nightshiftPage
-  }) => {
-    const worktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test('new navigation after going back truncates the forward stack', async ({ koluxPage }) => {
+    const worktreeIds = await getAllWorktreeIds(koluxPage)
     test.skip(worktreeIds.length < 2, 'Need at least two worktrees to exercise forward truncation')
     const [primaryId, secondaryId] = worktreeIds
 
@@ -198,85 +194,83 @@ test.describe('Workspace Back/Forward Navigation', () => {
     // from mid-history). The current-entry dedupe should kick in, but if we
     // instead activate secondary while sitting on primary mid-history, the
     // forward entry pointing at secondary must be truncated.
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, primaryId)
-    await seedVisit(nightshiftPage, secondaryId)
-    await (await getBackButton(nightshiftPage)).click()
-    await expect.poll(() => getActiveWorktreeId(nightshiftPage)).toBe(primaryId)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, primaryId)
+    await seedVisit(koluxPage, secondaryId)
+    await (await getBackButton(koluxPage)).click()
+    await expect.poll(() => getActiveWorktreeId(koluxPage)).toBe(primaryId)
 
     // Forward button is live — a forward entry exists.
-    await expect(await getForwardButton(nightshiftPage)).toBeEnabled()
+    await expect(await getForwardButton(koluxPage)).toBeEnabled()
 
     // Fresh activation from mid-history. Using secondary again is the simplest
     // way to prove truncation happened: after this call, the stack must be
     // [primary, secondary] with index=1, so Forward is disabled even though
     // there *was* a forward entry moments ago.
-    await seedVisit(nightshiftPage, secondaryId)
-    const snapshot = await getNavHistorySnapshot(nightshiftPage)
+    await seedVisit(koluxPage, secondaryId)
+    const snapshot = await getNavHistorySnapshot(koluxPage)
     expect(snapshot.history).toEqual([primaryId, secondaryId])
     expect(snapshot.index).toBe(1)
-    await expect(await getForwardButton(nightshiftPage)).toBeDisabled()
+    await expect(await getForwardButton(koluxPage)).toBeDisabled()
   })
 
-  test(`${isMac ? 'Cmd' : 'Ctrl'}+Alt+Left/Right shortcuts walk history`, async ({
-    nightshiftPage
-  }) => {
-    const worktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test(`${isMac ? 'Cmd' : 'Ctrl'}+Alt+Left/Right shortcuts walk history`, async ({ koluxPage }) => {
+    const worktreeIds = await getAllWorktreeIds(koluxPage)
     test.skip(worktreeIds.length < 2, 'Need at least two worktrees to exercise shortcuts')
     const [primaryId, secondaryId] = worktreeIds
 
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, primaryId)
-    await seedVisit(nightshiftPage, secondaryId)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, primaryId)
+    await seedVisit(koluxPage, secondaryId)
 
     // Why: focus body so the window-level keydown capture handler runs without
     // an `isEditableTarget` bail-out. The xterm helper textarea is explicitly
     // treated as non-editable, but body is the simplest stable target in a
     // hidden-window Electron run.
-    await nightshiftPage.evaluate(() => document.body.focus())
+    await koluxPage.evaluate(() => document.body.focus())
 
-    await nightshiftPage.keyboard.press(`${mod}+Alt+ArrowLeft`)
+    await koluxPage.keyboard.press(`${mod}+Alt+ArrowLeft`)
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), {
+      .poll(async () => getActiveWorktreeId(koluxPage), {
         message: `${mod}+Alt+Left did not navigate back`
       })
       .toBe(primaryId)
 
-    await nightshiftPage.keyboard.press(`${mod}+Alt+ArrowRight`)
+    await koluxPage.keyboard.press(`${mod}+Alt+ArrowRight`)
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), {
+      .poll(async () => getActiveWorktreeId(koluxPage), {
         message: `${mod}+Alt+Right did not navigate forward`
       })
       .toBe(secondaryId)
   })
 
-  test('shortcut is a no-op in settings view', async ({ nightshiftPage }) => {
-    const worktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test('shortcut is a no-op in settings view', async ({ koluxPage }) => {
+    const worktreeIds = await getAllWorktreeIds(koluxPage)
     test.skip(worktreeIds.length < 2, 'Need at least two worktrees to exercise settings gating')
     const [primaryId, secondaryId] = worktreeIds
 
-    await resetNavHistory(nightshiftPage)
-    await seedVisit(nightshiftPage, primaryId)
-    await seedVisit(nightshiftPage, secondaryId)
+    await resetNavHistory(koluxPage)
+    await seedVisit(koluxPage, primaryId)
+    await seedVisit(koluxPage, secondaryId)
 
     // Enter settings. The back shortcut must not change the active worktree,
     // matching the view-guard in App.tsx and useIpcEvents.ts.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store!.getState().openSettingsPage()
     })
     await expect
-      .poll(async () => nightshiftPage.evaluate(() => window.__store!.getState().activeView))
+      .poll(async () => koluxPage.evaluate(() => window.__store!.getState().activeView))
       .toBe('settings')
 
-    const idBefore = await getActiveWorktreeId(nightshiftPage)
-    await nightshiftPage.evaluate(() => document.body.focus())
-    await nightshiftPage.keyboard.press(`${mod}+Alt+ArrowLeft`)
+    const idBefore = await getActiveWorktreeId(koluxPage)
+    await koluxPage.evaluate(() => document.body.focus())
+    await koluxPage.keyboard.press(`${mod}+Alt+ArrowLeft`)
 
     // Give any erroneous nav a beat to land, then assert the active worktree
     // and the slice index both stayed put.
-    await nightshiftPage.waitForTimeout(150)
-    expect(await getActiveWorktreeId(nightshiftPage)).toBe(idBefore)
-    const snapshot = await getNavHistorySnapshot(nightshiftPage)
+    await koluxPage.waitForTimeout(150)
+    expect(await getActiveWorktreeId(koluxPage)).toBe(idBefore)
+    const snapshot = await getNavHistorySnapshot(koluxPage)
     expect(snapshot.index).toBe(1)
   })
 })

@@ -75,7 +75,7 @@ export function buildDefaultSettings(args: {
     terminalCursorStyle: 'block',
     terminalCursorStyleDefaultedToBlock: true,
     terminalCursorBlink: true,
-    terminalThemeDark: 'Nightshift Dark',
+    terminalThemeDark: 'Kolux Dark',
     terminalDividerColorDark: '#3f3f46',
     terminalUseSeparateLightTheme: true,
     terminalThemeLight: 'Builtin Tango Light',
@@ -145,8 +145,8 @@ export function buildDefaultSettings(args: {
     showMobileButton: false,
     showPinnedWorktreesInGroups: false,
     ctrlTabOrderMode: 'mru',
-    // Why: Nightshift-first keeps core shortcuts working from a focused terminal; TUI-ownership users opt in.
-    terminalShortcutPolicy: 'nightshift-first',
+    // Why: Kolux-first keeps core shortcuts working from a focused terminal; TUI-ownership users opt in.
+    terminalShortcutPolicy: 'kolux-first',
     floatingTerminalEnabled: true,
     browserClientHostedRemoteEnabled: true,
     floatingTerminalDefaultedForAllUsers: true,

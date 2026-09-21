@@ -24,10 +24,7 @@ type ComposerAsyncStateInput = Pick<
 >
 
 import { useState, useRef, useEffect } from 'react'
-import type {
-  NightshiftHooks,
-  SetupAgentStartupPolicy
-} from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks, SetupAgentStartupPolicy } from '../../../../shared/kolux-yaml-hook-types'
 import type { IssueCommandReadResult } from '@/runtime/runtime-hooks-client'
 import type { WorkspaceCreateErrorDisplay } from '@/lib/workspace-create-error-format'
 import type { GitHubWorkItem } from '../../../../shared/github/work-item-types'
@@ -60,7 +57,7 @@ export function useComposerAsyncState(input: ComposerAsyncStateInput) {
   } = input
   const { getInitialAutoManagedWorkspaceName, getInitialGitHubPrStartPointSelection } = decisions
 
-  const [yamlHooks, setYamlHooks] = useState<NightshiftHooks | null>(null)
+  const [yamlHooks, setYamlHooks] = useState<KoluxHooks | null>(null)
 
   const [checkedHooksContextKey, setCheckedHooksContextKey] = useState<string | null>(null)
 

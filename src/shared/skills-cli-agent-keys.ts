@@ -1,20 +1,20 @@
 import type { TuiAgent } from './tui-agent'
 
 /**
- * The community `skills` CLI's own `--agent` key for each agent Nightshift detects.
+ * The community `skills` CLI's own `--agent` key for each agent Kolux detects.
  *
  * Why: `skills add` validates `--agent` against its own namespace and exits 1 on
  * an unknown key, so anything we are not certain of maps to null and is dropped
- * rather than guessed. Nightshift ids and skills keys agree less often than they look
+ * rather than guessed. Kolux ids and skills keys agree less often than they look
  * (`claude` is `claude-code`, `rovo` is `rovodev`, `aug` is `augment`), and some
- * near-matches are different products — Nightshift's `aider` CLI is not the CLI's
- * `aider-desk`, and Nightshift's `openclaude` is its `openclaw` in name only, so it
- * follows Nightshift's own rule that OpenClaude reads Claude-owned roots.
+ * near-matches are different products — Kolux's `aider` CLI is not the CLI's
+ * `aider-desk`, and Kolux's `openclaude` is its `openclaw` in name only, so it
+ * follows Kolux's own rule that OpenClaude reads Claude-owned roots.
  */
 export const SKILLS_CLI_AGENT_KEY_BY_TUI_AGENT = {
   claude: 'claude-code',
   'claude-agent-teams': 'claude-code',
-  // Why: Nightshift states OpenClaude reads Claude-owned roots (native-chat-agent-profiles).
+  // Why: Kolux states OpenClaude reads Claude-owned roots (native-chat-agent-profiles).
   openclaude: 'claude-code',
   codex: 'codex',
   autohand: 'autohand-code',
@@ -48,13 +48,13 @@ export const SKILLS_CLI_AGENT_KEY_BY_TUI_AGENT = {
   grok: 'grok',
   devin: 'devin',
   ante: null,
-  // Why: Nightshift detects trae by `traecli`, an alias only TRAE CN ships.
+  // Why: Kolux detects trae by `traecli`, an alias only TRAE CN ships.
   trae: 'trae-cn'
 } satisfies Record<TuiAgent, string | null>
 
 /**
  * The shared `.agents/skills` target every universal agent reads. Always included
- * so agents Nightshift cannot map still receive the skill.
+ * so agents Kolux cannot map still receive the skill.
  */
 export const SKILLS_CLI_UNIVERSAL_AGENT_KEY = 'universal'
 
@@ -72,7 +72,7 @@ export function isSkillsCliAgentKeyShaped(value: string): boolean {
   return /^(?:\*|[a-z0-9][a-z0-9.-]*)$/i.test(value)
 }
 
-/** Map detected Nightshift agents onto `skills --agent` keys, plus the universal target. */
+/** Map detected Kolux agents onto `skills --agent` keys, plus the universal target. */
 export function toSkillsCliAgentKeys(detectedAgents: readonly TuiAgent[]): string[] {
   const keys = new Set<string>([SKILLS_CLI_UNIVERSAL_AGENT_KEY])
   for (const agent of detectedAgents) {

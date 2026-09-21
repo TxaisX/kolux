@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   waitForActivePaneHookDescriptor,
   waitForActivePanePtyId,
@@ -56,24 +56,24 @@ async function injectPtyOutput(page: Page, paneKey: string, data: string): Promi
 
 test('answers OSC foreground and background color queries from the active terminal theme', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   await installTerminalPtyWriteSpy(electronApp)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
 
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
-  const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
-  await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
-  await setActiveTerminalTheme(nightshiftPage, {
+  const ptyId = await waitForActivePanePtyId(koluxPage)
+  const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
+  await waitForTerminalPtyDataInjector(koluxPage, paneKey)
+  await setActiveTerminalTheme(koluxPage, {
     foreground: '#2e3434',
     background: 'rgba(255, 255, 255, 1)'
   })
   await clearTerminalPtyWriteLog(electronApp)
 
-  const injected = await injectPtyOutput(nightshiftPage, paneKey, '\x1b]10;?\x1b\\\x1b]11;?\x1b\\')
+  const injected = await injectPtyOutput(koluxPage, paneKey, '\x1b]10;?\x1b\\\x1b]11;?\x1b\\')
 
   expect(injected).toBe(true)
   await expect

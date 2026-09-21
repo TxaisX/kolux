@@ -18,7 +18,7 @@ import { buildBrowserSessionData } from './workspace-session-browser-tabs'
 
 export { buildActiveConnectionIdsAtShutdown }
 
-/** Why (issue #1158): require both flags so a hydration failure can't overwrite nightshift-data.json with empty error-path state. */
+/** Why (issue #1158): require both flags so a hydration failure can't overwrite kolux-data.json with empty error-path state. */
 export function shouldPersistWorkspaceSession(
   state: Pick<AppState, 'workspaceSessionReady' | 'hydrationSucceeded'>
 ): boolean {

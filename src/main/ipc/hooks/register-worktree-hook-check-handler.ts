@@ -2,14 +2,8 @@ import { ipcMain } from 'electron'
 import type { ExecutionHostId } from '../../../shared/execution-host'
 import { isFolderRepo } from '../../../shared/repo-kind'
 import { getSshFilesystemProvider } from '../../providers/ssh-filesystem-dispatch'
-import { joinWorktreeRelativePath } from '../../runtime/runtime-relative-paths'
-import {
-  parseNightshiftYaml,
-  hasHooksFile,
-  loadHooks,
-  hasUnrecognizedNightshiftYamlKeys
-} from '../../hooks'
-import { isENOENT } from '../filesystem-path-containment'
+import { readRepoConfigYaml } from '../../runtime/repo-config-yaml-fallback'
+import { parseKoluxYaml, hasHooksFile, loadHooks, hasUnrecognizedKoluxYamlKeys } from '../../hooks'
 import { resolveRepoForExecutionHost } from '../worktrees/repo-host-ownership'
 import type { WorktreeIpcContext } from '../worktrees/worktree-ipc-context'
 
@@ -40,18 +34,16 @@ export function registerWorktreeHookCheckHandler(context: WorktreeIpcContext): v
           return { status: 'error', hasHooks: false, hooks: null, mayNeedUpdate: false }
         }
         try {
-          const result = await fsProvider.readFile(
-            joinWorktreeRelativePath(repo.path, 'nightshift.yaml')
-          )
+          const result = await readRepoConfigYaml(fsProvider, repo.path)
           return {
             status: 'ok',
-            hasHooks: !result.isBinary,
-            hooks: result.isBinary ? null : parseNightshiftYaml(result.content),
+            hasHooks: result != null && !result.isBinary,
+            hooks: result == null || result.isBinary ? null : parseKoluxYaml(result.content),
             mayNeedUpdate: false
           }
-        } catch (error) {
+        } catch {
           return {
-            status: isENOENT(error) ? 'ok' : 'error',
+            status: 'error',
             hasHooks: false,
             hooks: null,
             mayNeedUpdate: false
@@ -61,8 +53,8 @@ export function registerWorktreeHookCheckHandler(context: WorktreeIpcContext): v
 
       const has = hasHooksFile(repo.path)
       const hooks = has ? loadHooks(repo.path) : null
-      // Why: unrecognised top-level keys mean the file is well-formed but from a newer Nightshift; suggest updating rather than "could not be parsed".
-      const mayNeedUpdate = has && !hooks && hasUnrecognizedNightshiftYamlKeys(repo.path)
+      // Why: unrecognised top-level keys mean the file is well-formed but from a newer Kolux; suggest updating rather than "could not be parsed".
+      const mayNeedUpdate = has && !hooks && hasUnrecognizedKoluxYamlKeys(repo.path)
       return {
         status: 'ok',
         hasHooks: has,

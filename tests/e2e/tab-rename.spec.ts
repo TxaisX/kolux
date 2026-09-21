@@ -5,7 +5,7 @@
  * - double-click a tab to rename it inline
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   waitForSessionReady,
   waitForActiveWorktree,
@@ -16,14 +16,14 @@ import {
 } from './helpers/store'
 
 test.describe('Tab Rename (Inline)', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
     // Why: clear any custom titles left by a previous test (the Electron app
     // persists across tests in the worker) so tab locators key off the default
     // title, not a stale rename like "My Custom Title".
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         return
@@ -93,16 +93,16 @@ test.describe('Tab Rename (Inline)', () => {
   }
 
   test('double-clicking a tab opens an inline rename input and Enter commits', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
     expect(originalTitle.length).toBeGreaterThan(0)
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, originalTitle)
+    const tabLocator = tabLocatorByTitle(koluxPage, originalTitle)
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
@@ -112,23 +112,23 @@ test.describe('Tab Rename (Inline)', () => {
     await renameInput.press('Enter')
 
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe('My Custom Title')
     await expect(renameInput).toBeHidden()
-    await expect(tabLocatorByTitle(nightshiftPage, 'My Custom Title')).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, 'My Custom Title')).toBeVisible()
   })
 
   test('context-menu Change Title opens a focused select-all rename input', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
     expect(originalTitle.length).toBeGreaterThan(0)
 
-    await tabLocatorByTitle(nightshiftPage, originalTitle).click({ button: 'right' })
-    await nightshiftPage.getByRole('menuitem', { name: /^Change Title(?:\s|$)/ }).click()
+    await tabLocatorByTitle(koluxPage, originalTitle).click({ button: 'right' })
+    await koluxPage.getByRole('menuitem', { name: /^Change Title(?:\s|$)/ }).click()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
@@ -141,19 +141,19 @@ test.describe('Tab Rename (Inline)', () => {
     await renameInput.press('Enter')
 
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe('Context Menu Title')
-    await expect(tabLocatorByTitle(nightshiftPage, 'Context Menu Title')).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, 'Context Menu Title')).toBeVisible()
   })
 
-  test('Escape during inline rename discards the edit', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+  test('Escape during inline rename discards the edit', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, originalTitle)
+    const tabLocator = tabLocatorByTitle(koluxPage, originalTitle)
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
@@ -168,27 +168,25 @@ test.describe('Tab Rename (Inline)', () => {
     // in-progress "Should Be Discarded" text would leave customTitle null
     // (Escape cleared it) yet flash the discarded label to the user — the
     // original title must still be the one rendered on the tab.
-    await expect(tabLocatorByTitle(nightshiftPage, originalTitle)).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, originalTitle)).toBeVisible()
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe(null)
   })
 
-  test('renaming to an empty string resets the tab to its default title', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('renaming to an empty string resets the tab to its default title', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Snapshot the default (non-custom) title first so the DOM assertion later
     // can verify the tab reverts to *this exact* rendered text — a store-only
     // `customTitle === null` check would pass even if the rendered label was
     // stuck on "Seeded Custom".
-    const defaultTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+    const defaultTitle = await getActiveTabTitle(koluxPage, worktreeId)
     expect(defaultTitle.length).toBeGreaterThan(0)
 
     // Why: seed a custom title directly via the store so this test asserts the
     // "empty string → reset" behavior independently from the double-click flow.
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -202,13 +200,13 @@ test.describe('Tab Rename (Inline)', () => {
     }, worktreeId)
 
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe('Seeded Custom')
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, 'Seeded Custom')
+    const tabLocator = tabLocatorByTitle(koluxPage, 'Seeded Custom')
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: 'Rename tab Seeded Custom',
       exact: true
     })
@@ -219,18 +217,18 @@ test.describe('Tab Rename (Inline)', () => {
 
     // User-observable DOM assertion: the tab element must re-render with the
     // original default title, not the "Seeded Custom" override.
-    await expect(tabLocatorByTitle(nightshiftPage, defaultTitle)).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, defaultTitle)).toBeVisible()
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe(null)
   })
 
-  test('clicking away (blur) commits the rename', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('clicking away (blur) commits the rename', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Why: need a second tab so we have something to click that isn't the
     // rename input itself. Seed both with known titles so we can locate them.
-    await nightshiftPage.evaluate((targetWorktreeId) => {
+    await koluxPage.evaluate((targetWorktreeId) => {
       const store = window.__store
       if (!store) {
         return
@@ -243,20 +241,20 @@ test.describe('Tab Rename (Inline)', () => {
     }, worktreeId)
 
     await expect
-      .poll(async () => (await getWorktreeTabs(nightshiftPage, worktreeId)).length, {
+      .poll(async () => (await getWorktreeTabs(koluxPage, worktreeId)).length, {
         timeout: 3_000
       })
       .toBeGreaterThanOrEqual(2)
 
-    const tabs = await getWorktreeTabs(nightshiftPage, worktreeId)
-    const activeId = await getActiveTabId(nightshiftPage)
+    const tabs = await getWorktreeTabs(koluxPage, worktreeId)
+    const activeId = await getActiveTabId(koluxPage)
     const activeTab = tabs.find((t) => t.id === activeId)!
     const otherTab = tabs.find((t) => t.id !== activeId)!
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, activeTab.title!)
+    const tabLocator = tabLocatorByTitle(koluxPage, activeTab.title!)
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${activeTab.title}`,
       exact: true
     })
@@ -265,12 +263,12 @@ test.describe('Tab Rename (Inline)', () => {
     await renameInput.fill('Committed By Blur')
     // Why: clicking the other tab triggers blur on the input, which should
     // run commitRename and save the typed title before the focus shifts.
-    await tabLocatorByTitle(nightshiftPage, otherTab.title!).click()
+    await tabLocatorByTitle(koluxPage, otherTab.title!).click()
 
     await expect(renameInput).toBeHidden()
-    await expect(tabLocatorByTitle(nightshiftPage, 'Committed By Blur')).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, 'Committed By Blur')).toBeVisible()
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ targetWorktreeId, targetTabId }) => {
           const store = window.__store
           const state = store!.getState()
@@ -285,15 +283,15 @@ test.describe('Tab Rename (Inline)', () => {
   })
 
   test('right-clicking during inline rename commits and opens context menu', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, originalTitle)
+    const tabLocator = tabLocatorByTitle(koluxPage, originalTitle)
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
@@ -307,14 +305,14 @@ test.describe('Tab Rename (Inline)', () => {
     await tabLocator.click({ button: 'right' })
 
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe('Committed By Right Click')
     await expect(renameInput).toBeHidden()
   })
 
-  test('terminal title updates do not resize neighboring tabs', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const tabIds = await nightshiftPage.evaluate((targetWorktreeId) => {
+  test('terminal title updates do not resize neighboring tabs', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const tabIds = await koluxPage.evaluate((targetWorktreeId) => {
       const state = window.__store!.getState()
       const existing = state.tabsByWorktree[targetWorktreeId] ?? []
       for (let index = existing.length; index < 3; index += 1) {
@@ -328,7 +326,7 @@ test.describe('Tab Rename (Inline)', () => {
     }, worktreeId)
 
     const tabs = tabIds.map((id) =>
-      nightshiftPage.locator(`[data-testid="sortable-tab"][data-tab-id="${id}"]`)
+      koluxPage.locator(`[data-testid="sortable-tab"][data-tab-id="${id}"]`)
     )
     await expect(tabs[2]!).toBeVisible()
     const before = await Promise.all(
@@ -341,7 +339,7 @@ test.describe('Tab Rename (Inline)', () => {
       'tabs must be above the 88px shrink floor for the stability check to mean anything'
     ).toBeGreaterThan(88)
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ tabId }) => {
         window
           .__store!.getState()
@@ -362,11 +360,9 @@ test.describe('Tab Rename (Inline)', () => {
     await expect(tabs[2]!).toHaveAttribute('data-active', 'true')
   })
 
-  test('rename input stays at a usable width when many tabs are open', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const targetTabId = await getActiveTabId(nightshiftPage)
+  test('rename input stays at a usable width when many tabs are open', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const targetTabId = await getActiveTabId(koluxPage)
     expect(targetTabId).not.toBeNull()
     const targetTitle = 'Width Target Tab'
 
@@ -377,7 +373,7 @@ test.describe('Tab Rename (Inline)', () => {
     // size — we assert ≥60px to allow a bit of slack for fonts/padding/
     // containers differing between environments. The meaningful guarantee is
     // that the input does not collapse to ~0 when flex space is saturated.
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ targetWorktreeId, targetTabId, targetTitle }) => {
         const store = window.__store
         if (!store) {
@@ -402,15 +398,15 @@ test.describe('Tab Rename (Inline)', () => {
     )
 
     await expect
-      .poll(async () => (await getWorktreeTabs(nightshiftPage, worktreeId)).length, {
+      .poll(async () => (await getWorktreeTabs(koluxPage, worktreeId)).length, {
         timeout: 5_000
       })
       .toBeGreaterThanOrEqual(15)
     await expect
-      .poll(async () => getActiveCustomTitle(nightshiftPage, worktreeId), { timeout: 3_000 })
+      .poll(async () => getActiveCustomTitle(koluxPage, worktreeId), { timeout: 3_000 })
       .toBe(targetTitle)
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, targetTitle)
+    const tabLocator = tabLocatorByTitle(koluxPage, targetTitle)
     await tabLocator.scrollIntoViewIfNeeded()
     await expect(tabLocator).toBeVisible()
     // Why: once 15 tabs are packed into the strip, the tab center can overlap
@@ -431,7 +427,7 @@ test.describe('Tab Rename (Inline)', () => {
       )
     })
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${targetTitle}`,
       exact: true
     })
@@ -441,17 +437,15 @@ test.describe('Tab Rename (Inline)', () => {
     expect(width).toBeGreaterThanOrEqual(60)
   })
 
-  test('middle-clicking inside the rename input does not close the tab', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const tabsBefore = (await getWorktreeTabs(nightshiftPage, worktreeId)).length
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
+  test('middle-clicking inside the rename input does not close the tab', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const tabsBefore = (await getWorktreeTabs(koluxPage, worktreeId)).length
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
 
-    const tabLocator = tabLocatorByTitle(nightshiftPage, originalTitle)
+    const tabLocator = tabLocatorByTitle(koluxPage, originalTitle)
     await tabLocator.dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
@@ -465,7 +459,7 @@ test.describe('Tab Rename (Inline)', () => {
     // The tab must still exist — no regression where editing-then-middle-click
     // accidentally closes the tab out from under the input.
     await expect(renameInput).toBeVisible()
-    await expect(tabLocatorByTitle(nightshiftPage, originalTitle)).toBeVisible()
-    expect((await getWorktreeTabs(nightshiftPage, worktreeId)).length).toBe(tabsBefore)
+    await expect(tabLocatorByTitle(koluxPage, originalTitle)).toBeVisible()
+    expect((await getWorktreeTabs(koluxPage, worktreeId)).length).toBe(tabsBefore)
   })
 })

@@ -1,9 +1,9 @@
 import { killAllProcessesForWorktree } from './worktree-teardown'
 import type { IPtyProvider } from '../providers/types'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 
 export type FolderWorkspacePtyTeardownDeps = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   getSshProvider: ((connectionId: string) => IPtyProvider | undefined) | null
   getLocalProvider: () => IPtyProvider | null
   onPtyStopped: ((ptyId: string) => void) | null

@@ -435,7 +435,7 @@ describe('connectPanePty', () => {
 
     expect(transport.serializeBuffer).toHaveBeenCalledTimes(1)
     expect(pane.terminal.write).not.toHaveBeenCalledWith(
-      expect.stringContaining('Nightshift skipped hidden terminal output'),
+      expect.stringContaining('Kolux skipped hidden terminal output'),
       expect.any(Function)
     )
     expect(pane.terminal.write).not.toHaveBeenCalledWith(

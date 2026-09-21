@@ -79,7 +79,7 @@ export function TerminalSlide(): React.JSX.Element {
           <span className="mp-term-dim">
             {translate(
               'auto.components.mobile.slides.TerminalSlide.e0f98be657',
-              'nightshift/feat-mobile-page'
+              'kolux/feat-mobile-page'
             )}
           </span>{' '}
           <span className="mp-term-prompt">$</span>{' '}
@@ -96,7 +96,7 @@ export function TerminalSlide(): React.JSX.Element {
           <span className="mp-term-dim">
             {translate(
               'auto.components.mobile.slides.TerminalSlide.336c0e070e',
-              'mobile/nightshift-mobile-sidebar-mock-v3.html'
+              'mobile/kolux-mobile-sidebar-mock-v3.html'
             )}
           </span>
         </span>
@@ -118,7 +118,7 @@ export function TerminalSlide(): React.JSX.Element {
           <span className="mp-term-dim">
             {translate(
               'auto.components.mobile.slides.TerminalSlide.336c0e070e',
-              'mobile/nightshift-mobile-sidebar-mock-v3.html'
+              'mobile/kolux-mobile-sidebar-mock-v3.html'
             )}
           </span>
         </span>

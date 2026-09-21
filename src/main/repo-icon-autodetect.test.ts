@@ -16,7 +16,7 @@ const PNG_1X1_BASE64 =
 const tempDirs: string[] = []
 
 async function makeTempRepoDir(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'nightshift-repo-icon-'))
+  const dir = await mkdtemp(join(tmpdir(), 'kolux-repo-icon-'))
   tempDirs.push(dir)
   return dir
 }
@@ -271,9 +271,12 @@ describe('detectRepoIcon', () => {
       JSON.stringify({ homepage: 'https://github.com/TxaisX/nightshift' })
     )
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(['remote', 'add', 'origin', 'https://github.com/TxaisX/nightshift.git'], {
-      cwd: repoPath
-    })
+    await gitExecFileAsync(
+      ['remote', 'add', 'origin', 'https://github.com/TxaisX/nightshift.git'],
+      {
+        cwd: repoPath
+      }
+    )
 
     await expect(
       detectRepoIcon({ repoPath, kind: 'git', executionHostId: 'local' })
@@ -299,7 +302,7 @@ describe('detectRepoIcon', () => {
   it('uses the resolved fork upstream for both metadata and the GitHub avatar', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/nightshift.git'], {
+    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/kolux.git'], {
       cwd: repoPath
     })
     await gitExecFileAsync(['remote', 'add', 'upstream', 'git@github.com:TxaisX/nightshift.git'], {
@@ -321,7 +324,7 @@ describe('detectRepoIcon', () => {
         label: 'TxaisX/nightshift'
       },
       // Why: fork parents resolve host-qualified so avatars/links stay on the fork's server.
-      upstream: { owner: 'txaisx', repo: 'nightshift', host: 'github.com' }
+      upstream: { owner: 'txaisx', repo: 'kolux', host: 'github.com' }
     })
   })
 

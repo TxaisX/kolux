@@ -160,7 +160,7 @@ describe('ensureVirtualDisplayForHeadlessServe', () => {
   })
 
   // removeStaleDisplayArtifacts unlinks the lock before the socket, so a crash between the two
-  // leaves a lockless socket on Nightshift's OWN :99. Adopting it would resurrect the orphan-socket bug.
+  // leaves a lockless socket on Kolux's OWN :99. Adopting it would resurrect the orphan-socket bug.
   it('does not adopt its own :99 socket when the lock is missing', async () => {
     setPlatform('linux')
     existsSyncMock.mockReturnValue(true)
@@ -224,7 +224,7 @@ describe('ensureVirtualDisplayForHeadlessServe', () => {
     killSpy.mockRestore()
   })
 
-  // A root-owned stale :99 socket (crashed system Xvfb, serve running as User=nightshift) cannot be
+  // A root-owned stale :99 socket (crashed system Xvfb, serve running as User=kolux) cannot be
   // unlinked, so our Xvfb refuses to bind and exits. Trusting the surviving socket set DISPLAY to a
   // dead server and Chromium died in Ozone init with SIGSEGV.
   it('reports failure when a stale socket blocks the Xvfb rebind', async () => {
@@ -335,7 +335,7 @@ describe('ensureVirtualDisplayForHeadlessServe', () => {
       expect(hasUsableLinuxDisplay({ WAYLAND_SOCKET: 'not-an-fd' })).toBe(false)
     })
 
-    // Nightshift's own teardown unlinks the lock before the socket, so a lockless :99 is our own
+    // Kolux's own teardown unlinks the lock before the socket, so a lockless :99 is our own
     // half-finished cleanup — trusting it because DISPLAY names it would accept a dead display.
     it('does not trust a lockless socket on its own managed display number', async () => {
       setPlatform('linux')

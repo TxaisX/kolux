@@ -2,7 +2,7 @@ import type { Page } from '@stablyai/playwright-test'
 import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   focusActiveTerminalInput,
   waitForActivePanePtyId,
@@ -207,50 +207,50 @@ async function measureTypingLatency(
 
 test.describe('Terminal typing latency vs scrollback history size', () => {
   test('typing stays responsive as terminal history grows', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     test.setTimeout(900_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-history-benchmark-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-history-benchmark-${runId}.mjs`)
     writeFileSync(scriptPath, historyEchoScript(runId))
     let commandSent = false
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       commandSent = true
-      await waitForRecentTerminalMarker(nightshiftPage, `HIST_READY_${runId}`, 10_000)
-      await focusActiveTerminalInput(nightshiftPage)
+      await waitForRecentTerminalMarker(koluxPage, `HIST_READY_${runId}`, 10_000)
+      await focusActiveTerminalInput(koluxPage)
 
       const phases: PhaseLatency[] = []
       let seq = 0
 
-      const baseline = await measureTypingLatency(nightshiftPage, runId, 'empty history', seq)
+      const baseline = await measureTypingLatency(koluxPage, runId, 'empty history', seq)
       phases.push(baseline.phase)
       seq = baseline.nextSeq
 
       for (const [phaseIndex] of FILL_PHASES.entries()) {
-        await nightshiftPage.keyboard.type('!')
+        await koluxPage.keyboard.type('!')
         await waitForRecentTerminalMarker(
-          nightshiftPage,
+          koluxPage,
           `HIST_FILL_DONE_${runId}_${phaseIndex + 1}`,
           FILL_DONE_TIMEOUT_MS
         )
         // Let the renderer drain queued output and let one daemon checkpoint
         // tick land before sampling, mirroring steady-state agent sessions.
-        await nightshiftPage.waitForTimeout(2_000)
-        await focusActiveTerminalInput(nightshiftPage)
+        await koluxPage.waitForTimeout(2_000)
+        await focusActiveTerminalInput(koluxPage)
         const cumulativeRows = FILL_PHASES.slice(0, phaseIndex + 1).reduce(
           (total, rows) => total + rows,
           0
         )
         const measured = await measureTypingLatency(
-          nightshiftPage,
+          koluxPage,
           runId,
           `after ${cumulativeRows} history rows`,
           seq
@@ -297,7 +297,7 @@ test.describe('Terminal typing latency vs scrollback history size', () => {
       }
     } finally {
       if (commandSent) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }

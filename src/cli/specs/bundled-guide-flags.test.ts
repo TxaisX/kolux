@@ -10,9 +10,8 @@ type GuideInvocation = {
   snippet: string
 }
 
-// Why: guides write examples as `nightshift ...`, `nightshift-dev ...`, or the `NIGHTSHIFT` placeholder.
-const CLI_INVOCATION =
-  /(?:^|[\s`(])(?:nightshift|nightshift-dev|nightshift-ide|NIGHTSHIFT)\s+([^\n`]*)/g
+// Why: guides write examples as `kolux ...`, `kolux-dev ...`, or the `KOLUX` placeholder.
+const CLI_INVOCATION = /(?:^|[\s`(])(?:kolux|kolux-dev|kolux-ide|KOLUX)\s+([^\n`]*)/g
 
 // Longest path first so `orchestration worker-start` never resolves as `orchestration worker`.
 const SPECS_BY_DEPTH: CommandSpec[] = [...COMMAND_SPECS].sort(
@@ -35,9 +34,9 @@ function collectGuideInvocations(): GuideInvocation[] {
       if (!spec) {
         continue
       }
-      // Why: a quoted flag value belongs to the nested program (`--command 'codex --model ...'`), not to nightshift.
-      const nightshiftArgs = invocation.replace(/'[^']*'|"[^"]*"/g, ' ')
-      const flags = [...nightshiftArgs.matchAll(/(?:^|[\s[(])--([a-z][a-z0-9-]*)/g)].map(
+      // Why: a quoted flag value belongs to the nested program (`--command 'codex --model ...'`), not to kolux.
+      const koluxArgs = invocation.replace(/'[^']*'|"[^"]*"/g, ' ')
+      const flags = [...koluxArgs.matchAll(/(?:^|[\s[(])--([a-z][a-z0-9-]*)/g)].map(
         (flag) => flag[1]
       )
       for (const flag of flags) {

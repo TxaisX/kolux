@@ -57,8 +57,8 @@ const restartSurvivalRoute = PR_E2E_SOURCE_ROUTES.find(
 describe('restart-survival E2E routing', () => {
   // Every file below carries behavior the restart spec is the only test that exercises end to end.
   it.each([
-    'src/main/runtime/nightshift-runtime.ts',
-    'src/main/runtime/nightshift-runtime-browser.ts',
+    'src/main/runtime/kolux-runtime.ts',
+    'src/main/runtime/kolux-runtime-browser.ts',
     'src/main/runtime/client-hosted-page-reconciliation-window.ts',
     'src/main/runtime/runtime-browser-client-page-adoption.ts',
     'src/main/runtime/runtime-browser-client-page-recovery.ts',
@@ -237,7 +237,7 @@ describe('PR E2E gate contract', () => {
   })
 
   it('maps SSH source edits onto the Docker-backed specs they can break', () => {
-    // Why: the Docker-SSH specs self-skip without NIGHTSHIFT_E2E_SSH_DOCKER, and the only
+    // Why: the Docker-SSH specs self-skip without KOLUX_E2E_SSH_DOCKER, and the only
     // trigger used to be "someone edited a spec" — four pane-restore regressions shipped
     // through that hole. Each mapped spec must exist, or the lane runs an empty file list.
     const sshSourceAuthorities = [
@@ -282,9 +282,7 @@ describe('PR E2E gate contract', () => {
       expect(existsSync(join(projectDir, spec)), spec).toBe(true)
       // Why: a spec that stops reading the flag would silently run without Docker.
       if (spec !== 'tests/e2e/ssh-startup-exec-readiness.spec.ts') {
-        expect(readFileSync(join(projectDir, spec), 'utf8'), spec).toContain(
-          'NIGHTSHIFT_E2E_SSH_DOCKER'
-        )
+        expect(readFileSync(join(projectDir, spec), 'utf8'), spec).toContain('KOLUX_E2E_SSH_DOCKER')
       }
     }
 
@@ -377,7 +375,7 @@ describe('PR E2E gate contract', () => {
   })
 
   it('gives every Docker-gated SSH spec a lane that runs it', () => {
-    // Why this shape: the sharded lanes set no NIGHTSHIFT_E2E_SSH_DOCKER, so a Docker-gated spec
+    // Why this shape: the sharded lanes set no KOLUX_E2E_SSH_DOCKER, so a Docker-gated spec
     // that no runner names runs nowhere and still reports green — the silent skip this file
     // exists to prevent. Asserting reachability rather than a literal keeps that true when
     // the lanes move.
@@ -400,7 +398,7 @@ describe('PR E2E gate contract', () => {
     // "how to run me" comment without gating on it. Why a regex rather than one literal: an
     // equally-valid spelling (double quotes, or a `!==` guard) would escape a fixed-string scan
     // and the spec would silently leave the contract.
-    const dockerGateExpression = /NIGHTSHIFT_E2E_SSH_DOCKER\s*[!=]==\s*['"]1['"]/
+    const dockerGateExpression = /KOLUX_E2E_SSH_DOCKER\s*[!=]==\s*['"]1['"]/
     const dockerGatedSpecs = readdirSync(join(projectDir, 'tests/e2e'))
       .filter((file) => file.endsWith('.spec.ts'))
       .map((file) => `tests/e2e/${file}`)
@@ -442,7 +440,7 @@ describe('PR E2E gate contract', () => {
   it('scopes the VM rollback oracle to the PR range and recipe schema authorities', () => {
     expect(rollbackStep.run).toContain('--merge-base "$BASE_SHA" "$HEAD_SHA"')
     expect(rollbackStep.run).toContain('src/shared/ephemeral-vm-recipes.ts')
-    expect(rollbackStep.run).toContain('src/shared/nightshift-yaml-hook-types.ts')
+    expect(rollbackStep.run).toContain('src/shared/kolux-yaml-hook-types.ts')
     expect(selectPrE2eSpecs(['src/shared/ephemeral-vm-recipes.ts'])).toEqual([
       'tests/e2e/ephemeral-vm-provisioned-root.spec.ts'
     ])
@@ -454,10 +452,7 @@ describe('PR E2E gate contract', () => {
         'src/renderer/src/components/tab-bar/TabBarQuickCommandsMenu.tsx',
         'tests/e2e/terminal-quick-command-pre-bind-recovery.spec.ts'
       ],
-      [
-        'src/main/runtime/nightshift-runtime-files.ts',
-        'tests/e2e/paired-quick-open-large-tree.spec.ts'
-      ],
+      ['src/main/runtime/kolux-runtime-files.ts', 'tests/e2e/paired-quick-open-large-tree.spec.ts'],
       [
         'src/renderer/src/runtime/sync-runtime-graph.ts',
         'tests/e2e/host-parked-pane-remote-viewer.spec.ts'
@@ -543,7 +538,7 @@ describe('PR E2E gate contract', () => {
     }
     expect(
       selectPrE2eSpecs([
-        'src/main/runtime/nightshift-runtime-files.ts',
+        'src/main/runtime/kolux-runtime-files.ts',
         'tests/e2e/paired-quick-open-large-tree.spec.ts'
       ])
     ).toEqual(['tests/e2e/paired-quick-open-large-tree.spec.ts'])
@@ -635,7 +630,7 @@ describe('PR E2E gate contract', () => {
     // reports as a pass. This repo already carries such specs; the point is that they are named
     // as gaps rather than counted as coverage.
     const nativeGateExpression =
-      /NIGHTSHIFT_E2E_NATIVE_(?:IBUS_HANGUL|MACOS_KOREAN)\s*[!=]==\s*['"]1['"]/
+      /KOLUX_E2E_NATIVE_(?:IBUS_HANGUL|MACOS_KOREAN)\s*[!=]==\s*['"]1['"]/
     const nativeGatedSpecs = readdirSync(join(projectDir, 'tests/e2e'))
       .filter((file) => file.endsWith('.spec.ts'))
       .map((file) => `tests/e2e/${file}`)

@@ -33,7 +33,7 @@ function sshTarget(overrides: Partial<SshTarget> = {}): SshTarget {
     id: 't1',
     label: 'build-box',
     host: 'build.example',
-    user: 'nightshift',
+    user: 'kolux',
     generation: 3,
     ...overrides
   } as SshTarget
@@ -199,9 +199,9 @@ describe('probe scope retention', () => {
   })
 })
 
-describe('Nightshift automation traffic priority', () => {
-  it('parks queued probes while Nightshift automation work holds the installed lease', async () => {
-    // Nightshift CRUD and dispatch arrive through the runtime methods, which take the
+describe('Kolux automation traffic priority', () => {
+  it('parks queued probes while Kolux automation work holds the installed lease', async () => {
+    // Kolux CRUD and dispatch arrive through the runtime methods, which take the
     // lease through the hook this registration installed on the service.
     const lease = state.service.externalProbePriority
     expect(lease).not.toBeNull()

@@ -14,7 +14,7 @@
  * the main-owned snapshot, WITHOUT a reload and WITHOUT any visibilitychange.
  */
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady, waitForActiveWorktree, ensureTerminalVisible } from './helpers/store'
 import {
   waitForActiveTerminalManager,
@@ -41,35 +41,35 @@ async function getDeliverySnapshot(page: Page): Promise<DeliverySnapshot> {
 }
 
 test.describe('terminal stuck-occlusion recovery', () => {
-  test.afterEach(async ({ nightshiftPage }) => {
+  test.afterEach(async ({ koluxPage }) => {
     // Drop the instance shadow so the prototype getter (real state) rules
     // again, and fire one genuine visibilitychange to restore tracker trust.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       delete (document as { visibilityState?: string }).visibilityState
       document.dispatchEvent(new Event('visibilitychange'))
     })
   })
 
   test('a keystroke unlatches the hidden-delivery gate wedged by stale visibilityState', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
 
     // Live baseline: foreground delivery works. The $((…)) arithmetic keeps
     // the asserted string out of the typed command's local echo.
-    await execInTerminal(nightshiftPage, ptyId, 'echo live-before-$((41+1))')
+    await execInTerminal(koluxPage, ptyId, 'echo live-before-$((41+1))')
     await expect
-      .poll(async () => getTerminalContent(nightshiftPage), { timeout: 15_000 })
+      .poll(async () => getTerminalContent(koluxPage), { timeout: 15_000 })
       .toContain('live-before-42')
 
     // Emulate the Chromium occlusion wedge: visibilityState pins at 'hidden',
     // one last visibilitychange fires, then the tracker goes silent forever.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       Object.defineProperty(document, 'visibilityState', {
         get: () => 'hidden',
         configurable: true
@@ -80,60 +80,57 @@ test.describe('terminal stuck-occlusion recovery', () => {
     // The visible pane's pty gets marked hidden in main — the field state:
     // gate holding a pty that main's own visibility set says is visible.
     await expect
-      .poll(async () => (await getDeliverySnapshot(nightshiftPage)).hiddenDeliveryGatedPtyCount, {
+      .poll(async () => (await getDeliverySnapshot(koluxPage)).hiddenDeliveryGatedPtyCount, {
         timeout: 15_000
       })
       .toBeGreaterThan(0)
     expect(
-      (await getDeliverySnapshot(nightshiftPage)).hiddenDeliveryGatedVisiblePtyCount
+      (await getDeliverySnapshot(koluxPage)).hiddenDeliveryGatedVisiblePtyCount
     ).toBeGreaterThan(0)
 
     // The freeze repro: output produced now is dropped by main, not painted.
-    const droppedBefore = (await getDeliverySnapshot(nightshiftPage)).hiddenDeliveryDroppedChars
-    await execInTerminal(nightshiftPage, ptyId, 'echo occluded-$((70+8))')
+    const droppedBefore = (await getDeliverySnapshot(koluxPage)).hiddenDeliveryDroppedChars
+    await execInTerminal(koluxPage, ptyId, 'echo occluded-$((70+8))')
     await expect
-      .poll(async () => (await getDeliverySnapshot(nightshiftPage)).hiddenDeliveryDroppedChars, {
+      .poll(async () => (await getDeliverySnapshot(koluxPage)).hiddenDeliveryDroppedChars, {
         timeout: 15_000
       })
       .toBeGreaterThan(droppedBefore)
-    expect(await getTerminalContent(nightshiftPage)).not.toContain('occluded-78')
+    expect(await getTerminalContent(koluxPage)).not.toContain('occluded-78')
 
     // The staleness proof: one real keystroke while the document claims
     // hidden. No visibilitychange fires — recovery must ride the proof alone.
-    await nightshiftPage.keyboard.press('Shift')
+    await koluxPage.keyboard.press('Shift')
 
     // Gate unlatches and the missed output repaints from the main-owned
     // snapshot — no reload, visibilityState still reads 'hidden'.
     await expect
-      .poll(async () => getTerminalContent(nightshiftPage), { timeout: 30_000 })
+      .poll(async () => getTerminalContent(koluxPage), { timeout: 30_000 })
       .toContain('occluded-78')
     await expect
-      .poll(
-        async () => (await getDeliverySnapshot(nightshiftPage)).hiddenDeliveryGatedVisiblePtyCount,
-        {
-          timeout: 15_000
-        }
-      )
+      .poll(async () => (await getDeliverySnapshot(koluxPage)).hiddenDeliveryGatedVisiblePtyCount, {
+        timeout: 15_000
+      })
       .toBe(0)
 
     // Live delivery continues under the override.
-    await execInTerminal(nightshiftPage, ptyId, 'echo live-after-$((200+56))')
+    await execInTerminal(koluxPage, ptyId, 'echo live-after-$((200+56))')
     await expect
-      .poll(async () => getTerminalContent(nightshiftPage), { timeout: 15_000 })
+      .poll(async () => getTerminalContent(koluxPage), { timeout: 15_000 })
       .toContain('live-after-256')
 
     // The one-paste freeze report is prod-reachable and carries the episode's
     // history: the stale-visibility latch and gate transitions must be in the
     // renderer breadcrumbs, and main's per-pty table must be populated.
-    const report = await nightshiftPage.evaluate(() =>
+    const report = await koluxPage.evaluate(() =>
       (
         window as Window & {
-          __nightshiftTerminalFreezeReport?: () => Promise<{
+          __koluxTerminalFreezeReport?: () => Promise<{
             renderer: { breadcrumbs: { kind: string }[]; documentVisibilityProvenStale: boolean }
             main: { diagnostics: { perPty: unknown[]; breadcrumbs: { kind: string }[] } }
           }>
         }
-      ).__nightshiftTerminalFreezeReport?.()
+      ).__koluxTerminalFreezeReport?.()
     )
     if (!report) {
       throw new Error('freeze report global missing from prod-path renderer')

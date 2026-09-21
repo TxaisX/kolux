@@ -12,7 +12,7 @@ export const SSH_RELAY_CONFIGURE_GRACE_TIME_METHOD = 'relay.configureGraceTime'
 export type SshTarget = {
   id: string
   label: string
-  /** Internal owner for targets that Nightshift creates as implementation details.
+  /** Internal owner for targets that Kolux creates as implementation details.
    *  Owned targets are hidden from normal SSH-host management surfaces. */
   owner?: { type: 'on-demand-runtime'; runtimeId: string }
   /** Host alias to resolve through OpenSSH config (ssh -G). */
@@ -118,10 +118,10 @@ export type SshConfigHostSummary = {
   identityFile?: string
   proxyCommand?: string
   jumpHost?: string
-  /** True when a Nightshift SSH target already uses this config alias. */
-  alreadyInNightshift: boolean
+  /** True when a Kolux SSH target already uses this config alias. */
+  alreadyInKolux: boolean
   /**
-   * True when the user deleted this alias from Nightshift (tombstone). Still listed so they
+   * True when the user deleted this alias from Kolux (tombstone). Still listed so they
    * can re-pick it; passive import and "Add all" keep it out until re-adopt / save.
    */
   previouslyRemoved?: boolean

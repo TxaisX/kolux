@@ -66,14 +66,14 @@ describe('analyzeWorkspaceSpace capacity', () => {
   })
 
   it('fails a worktree closed when the portable scan exceeds its entry budget', async () => {
-    tempDir = await mkdtemp(join(tmpdir(), 'nightshift-space-capacity-'))
+    tempDir = await mkdtemp(join(tmpdir(), 'kolux-space-capacity-'))
     const repoPath = join(tempDir, 'repo')
     await mkdir(repoPath, { recursive: true })
     await Promise.all(['one', 'two', 'three'].map((name) => writeFile(join(repoPath, name), name)))
     const repo: Repo = {
       id: 'repo-1',
       path: repoPath,
-      displayName: 'nightshift',
+      displayName: 'kolux',
       badgeColor: '#000',
       addedAt: 0
     }

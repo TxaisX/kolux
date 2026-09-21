@@ -31,7 +31,7 @@ describe('RemoteRuntimeRequestResponseRouter authentication frames', () => {
     expect(finishError).toHaveBeenCalledOnce()
     expect(finishError.mock.calls[0][0]).toMatchObject({
       code: 'invalid_runtime_response',
-      message: 'Remote Nightshift runtime returned an invalid E2EE auth frame.',
+      message: 'Remote Kolux runtime returned an invalid E2EE auth frame.',
       pairingStage: 'host-identity'
     })
   })
@@ -48,7 +48,7 @@ describe('RemoteRuntimeRequestResponseRouter authentication frames', () => {
     expect(finishError).toHaveBeenCalledOnce()
     expect(finishError.mock.calls[0][0]).toMatchObject({
       code: 'unauthorized',
-      message: 'Remote Nightshift runtime rejected the pairing token.',
+      message: 'Remote Kolux runtime rejected the pairing token.',
       pairingStage: 'access-grant'
     })
   })

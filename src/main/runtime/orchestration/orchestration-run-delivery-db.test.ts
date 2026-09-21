@@ -189,7 +189,7 @@ describe('OrchestrationDb Run state', () => {
     })
 
     it('replays an outstanding batch after reopening the database', () => {
-      const dir = mkdtempSync(join(tmpdir(), 'nightshift-delivery-'))
+      const dir = mkdtempSync(join(tmpdir(), 'kolux-delivery-'))
       const dbPath = join(dir, 'orchestration.db')
       try {
         const firstDb = new OrchestrationDb(dbPath)

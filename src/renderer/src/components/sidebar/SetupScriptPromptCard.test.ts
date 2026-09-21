@@ -129,9 +129,9 @@ describe('getRenderedSetupScriptPromptState', () => {
   it('does not reuse a matching repo id from a different host', () => {
     expect(
       getRenderedSetupScriptPromptState({
-        promptState: prompt('repo-nightshift', 'local'),
-        activeRepoId: 'repo-nightshift',
-        activeRepoHostIdentity: repoIdentity('repo-nightshift', 'runtime:windows'),
+        promptState: prompt('repo-kolux', 'local'),
+        activeRepoId: 'repo-kolux',
+        activeRepoHostIdentity: repoIdentity('repo-kolux', 'runtime:windows'),
         lastVisiblePrompt: null
       })
     ).toBeNull()
@@ -153,18 +153,16 @@ describe('getRenderedSetupScriptPromptState', () => {
 
 describe('markSetupScriptPromptSaved', () => {
   it('does not apply a completed save to the same repo id on another host', () => {
-    const remote = prompt('repo-nightshift', 'runtime:windows')
+    const remote = prompt('repo-kolux', 'runtime:windows')
 
-    expect(markSetupScriptPromptSaved(remote, repoIdentity('repo-nightshift', 'local'))).toBe(
-      remote
-    )
+    expect(markSetupScriptPromptSaved(remote, repoIdentity('repo-kolux', 'local'))).toBe(remote)
   })
 
   it('marks the prompt for the saved host effective', () => {
     expect(
       markSetupScriptPromptSaved(
-        prompt('repo-nightshift', 'runtime:windows'),
-        repoIdentity('repo-nightshift', 'runtime:windows')
+        prompt('repo-kolux', 'runtime:windows'),
+        repoIdentity('repo-kolux', 'runtime:windows')
       )
     ).toMatchObject({ hasEffectiveSetup: true })
   })

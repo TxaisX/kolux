@@ -73,7 +73,7 @@ function handoffTransport(): StructuredAgentSessionHandoffTransport {
 }
 
 async function createHarness(options: { attached?: boolean; transport?: boolean } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-refusal-oracle-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-refusal-oracle-'))
   const store = await AgentSessionRecordStore.open({
     directory: join(root, 'store'),
     hostId: 'local'

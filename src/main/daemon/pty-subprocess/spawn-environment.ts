@@ -1,12 +1,12 @@
 import { delimiter } from 'node:path'
-import { dropInheritedNightshiftFishHistory } from '../../fish-history-session'
+import { dropInheritedKoluxFishHistory } from '../../fish-history-session'
 import { removeAppImageRuntimeEnv } from '../../pty/appimage-terminal-env'
 import { stripInheritedBuildModeEnv } from '../../pty/build-mode-env'
 import { dropIncoherentCondaActivationEnv } from '../../pty/conda-activation-env'
 import { stripLegacyTerminalShimEnv } from '../../pty/legacy-terminal-shim-dir'
 import { removeInheritedNoColor } from '../../pty/terminal-color-env'
 import { resolvePathEnvKey } from '../../pty/windows-environment-path'
-import { dropInheritedNightshiftHistFile } from '../../worktree-history-file-path'
+import { dropInheritedKoluxHistFile } from '../../worktree-history-file-path'
 import {
   gitCredentialPromptGuardEnv,
   mergeGitConfigEnvProtocol
@@ -20,10 +20,10 @@ import type { TuiAgent } from '../../../shared/tui-agent'
 import type { PtySubprocessOptions } from '../pty-subprocess'
 
 const PANE_IDENTITY_ENV_KEYS = [
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_TAB_ID',
-  'NIGHTSHIFT_WORKTREE_ID',
-  'NIGHTSHIFT_AGENT_LAUNCH_TOKEN'
+  'KOLUX_PANE_KEY',
+  'KOLUX_TAB_ID',
+  'KOLUX_WORKTREE_ID',
+  'KOLUX_AGENT_LAUNCH_TOKEN'
 ] as const
 const WINDOWS_PATH_ENV_KEY_RE = /^path$/i
 
@@ -45,15 +45,15 @@ function deleteRequestedDaemonEnvKeys(
   env: Record<string, string>,
   keys: readonly string[] | undefined
 ): void {
-  // Why: persistent daemon state can differ from Electron; delete CODEX_HOME only when its Nightshift overlay owns it.
-  const deleteNightshiftOwnedCodexHome =
-    keys?.includes('NIGHTSHIFT_CODEX_HOME') === true &&
-    env.NIGHTSHIFT_CODEX_HOME !== undefined &&
-    env.CODEX_HOME === env.NIGHTSHIFT_CODEX_HOME
+  // Why: persistent daemon state can differ from Electron; delete CODEX_HOME only when its Kolux overlay owns it.
+  const deleteKoluxOwnedCodexHome =
+    keys?.includes('KOLUX_CODEX_HOME') === true &&
+    env.KOLUX_CODEX_HOME !== undefined &&
+    env.CODEX_HOME === env.KOLUX_CODEX_HOME
   for (const key of keys ?? []) {
     delete env[key]
   }
-  if (deleteNightshiftOwnedCodexHome) {
+  if (deleteKoluxOwnedCodexHome) {
     delete env.CODEX_HOME
   }
 }
@@ -104,7 +104,7 @@ function promoteAgentTeamsShimPath(
   env: Record<string, string>,
   requestedPath: string | undefined
 ): void {
-  if (!env.NIGHTSHIFT_AGENT_TEAMS_TEAM_ID || !requestedPath) {
+  if (!env.KOLUX_AGENT_TEAMS_TEAM_ID || !requestedPath) {
     return
   }
   const normalizedRequestedPath =
@@ -126,11 +126,11 @@ function removeInheritedDevAgentHookEndpoint(
   explicitEnv: Record<string, string> | undefined
 ): void {
   if (
-    explicitEnv?.NIGHTSHIFT_AGENT_HOOK_ENV === 'development' &&
-    !explicitEnv.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+    explicitEnv?.KOLUX_AGENT_HOOK_ENV === 'development' &&
+    !explicitEnv.KOLUX_AGENT_HOOK_ENDPOINT
   ) {
     // Why: strip only stale inherited endpoints; a fresh explicit one is needed by hooks that scrub token-like env vars before exec.
-    delete env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+    delete env.KOLUX_AGENT_HOOK_ENDPOINT
   }
 }
 
@@ -139,8 +139,8 @@ export function createDaemonPtyEnvironment(opts: PtySubprocessOptions): Record<s
     ...mergeGitConfigEnvProtocol(stripInheritedBuildModeEnv(process.env), opts.env),
     TERM: 'xterm-256color',
     COLORTERM: 'truecolor',
-    TERM_PROGRAM: 'Nightshift',
-    TERM_PROGRAM_VERSION: process.env.NIGHTSHIFT_APP_VERSION ?? '0.0.0-dev',
+    TERM_PROGRAM: 'Kolux',
+    TERM_PROGRAM_VERSION: process.env.KOLUX_APP_VERSION ?? '0.0.0-dev',
     FORCE_HYPERLINK: '1'
   } as Record<string, string>
   stripLegacyTerminalShimEnv(env, process.platform)
@@ -151,13 +151,13 @@ export function createDaemonPtyEnvironment(opts: PtySubprocessOptions): Record<s
   }
   removeUnspecifiedPaneIdentityEnv(env, opts.env)
   if (opts.env?.fish_history === undefined) {
-    dropInheritedNightshiftFishHistory(env)
+    dropInheritedKoluxFishHistory(env)
   }
   if (opts.env?.HISTFILE === undefined) {
-    dropInheritedNightshiftHistFile(env)
+    dropInheritedKoluxHistFile(env)
   }
-  if (opts.env?.NIGHTSHIFT_HISTFILE === undefined) {
-    delete env.NIGHTSHIFT_HISTFILE
+  if (opts.env?.KOLUX_HISTFILE === undefined) {
+    delete env.KOLUX_HISTFILE
   }
   removeInheritedDevAgentHookEndpoint(env, opts.env)
   delete env.ELECTRON_RUN_AS_NODE

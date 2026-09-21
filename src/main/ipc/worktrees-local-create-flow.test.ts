@@ -440,7 +440,7 @@ describe('registerWorktreeHandlers', () => {
     expect(store.setWorktreeMeta).toHaveBeenCalledWith(
       'repo-1::../worktrees/feature',
       expect.objectContaining({
-        nightshiftCreationWorkspaceLayout: { path: '../worktrees', nestWorkspaces: false }
+        koluxCreationWorkspaceLayout: { path: '../worktrees', nestWorkspaces: false }
       })
     )
   })
@@ -634,7 +634,7 @@ describe('registerWorktreeHandlers', () => {
       createdWithAgent: 'claude',
       startup: {
         command: 'claude --prefill test',
-        env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+        env: { KOLUX_AGENT_MODE: 'direct' },
         viewMode: 'chat',
         telemetry: {
           agent_kind: 'claude',
@@ -665,7 +665,7 @@ describe('registerWorktreeHandlers', () => {
       {
         claudeAgentTeamsSourceCommand: 'claude --prefill test',
         command: 'claude --prefill test',
-        env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+        env: { KOLUX_AGENT_MODE: 'direct' },
         launchAgent: 'claude',
         viewMode: 'chat',
         startupCommandDelivery: undefined,
@@ -682,10 +682,10 @@ describe('registerWorktreeHandlers', () => {
       'id:repo-1::/workspace/improve-dashboard',
       {
         title: 'Setup',
-        command: expect.stringContaining('bash /workspace/repo/.git/nightshift/setup-runner.sh'),
+        command: expect.stringContaining('bash /workspace/repo/.git/kolux/setup-runner.sh'),
         env: {
-          NIGHTSHIFT_ROOT_PATH: '/workspace/repo',
-          NIGHTSHIFT_WORKTREE_PATH: '/workspace/improve-dashboard'
+          KOLUX_ROOT_PATH: '/workspace/repo',
+          KOLUX_WORKTREE_PATH: '/workspace/improve-dashboard'
         },
         activate: false
       }
@@ -698,7 +698,7 @@ describe('registerWorktreeHandlers', () => {
     const startupCommand = (startupCreateCall[1] as { command: string }).command
     const setupCommand = (setupCreateCall[1] as { command: string }).command
     expect(startupCommand).toBe('claude --prefill test')
-    expect(setupCommand).toBe('bash /workspace/repo/.git/nightshift/setup-runner.sh')
+    expect(setupCommand).toBe('bash /workspace/repo/.git/kolux/setup-runner.sh')
     expect(result.setup).toBeUndefined()
     expect(result.startupTerminal).toEqual({ spawned: true, surface: 'visible' })
     expect(runtimeStub.invalidateWorktreeCatalog).toHaveBeenCalledWith('repo-1')
@@ -734,11 +734,11 @@ describe('registerWorktreeHandlers', () => {
     getEffectiveHooksFromConfigMock.mockReturnValue({ scripts: { setup: 'pnpm install' } })
     shouldRunSetupForCreateMock.mockReturnValue(true)
     createSetupRunnerScriptMock.mockReturnValueOnce({
-      runnerScriptPath: 'C:\\workspace\\repo\\.git\\nightshift\\setup-runner.sh',
+      runnerScriptPath: 'C:\\workspace\\repo\\.git\\kolux\\setup-runner.sh',
       shell: { family: 'posix', executable: 'wsl.exe' },
       envVars: {
-        NIGHTSHIFT_ROOT_PATH: 'C:\\workspace\\repo',
-        NIGHTSHIFT_WORKTREE_PATH: 'C:\\workspace\\improve-dashboard'
+        KOLUX_ROOT_PATH: 'C:\\workspace\\repo',
+        KOLUX_WORKTREE_PATH: 'C:\\workspace\\improve-dashboard'
       },
       waitForAgentStartup: true
     })
@@ -752,7 +752,7 @@ describe('registerWorktreeHandlers', () => {
       createdWithAgent: 'claude',
       startup: {
         command: 'claude --prefill test',
-        env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+        env: { KOLUX_AGENT_MODE: 'direct' },
         telemetry: {
           agent_kind: 'claude',
           launch_source: 'new_workspace_composer',
@@ -763,10 +763,8 @@ describe('registerWorktreeHandlers', () => {
 
     expect(result.setup).toEqual(
       expect.objectContaining({
-        runnerScriptPath: 'C:\\workspace\\repo\\.git\\nightshift\\setup-runner.sh',
-        command: expect.stringContaining(
-          'bash /mnt/c/workspace/repo/.git/nightshift/setup-runner.sh'
-        )
+        runnerScriptPath: 'C:\\workspace\\repo\\.git\\kolux\\setup-runner.sh',
+        command: expect.stringContaining('bash /mnt/c/workspace/repo/.git/kolux/setup-runner.sh')
       })
     )
     expect(result.setup?.command).toContain('printf')

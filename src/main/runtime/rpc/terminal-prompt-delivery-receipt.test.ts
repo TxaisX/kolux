@@ -44,7 +44,7 @@ function request(
       enter: true,
       agentPrompt: true,
       waitSubmitMs,
-      client: { id: 'nightshift-cli', type: 'desktop' }
+      client: { id: 'kolux-cli', type: 'desktop' }
     }
   }
 }

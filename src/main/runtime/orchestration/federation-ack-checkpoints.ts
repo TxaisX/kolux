@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 export type FederationAckIdentity = {
   environmentId: string
@@ -15,22 +15,22 @@ export type FederationAckLease = {
   dispatchState: FederationAckDispatchState
 }
 
-const federationAckStates = new WeakMap<NightshiftRuntimeService, FederationAckRuntimeState>()
+const federationAckStates = new WeakMap<KoluxRuntimeService, FederationAckRuntimeState>()
 
-export function clearFederationAckCheckpoints(runtime: NightshiftRuntimeService): void {
+export function clearFederationAckCheckpoints(runtime: KoluxRuntimeService): void {
   federationAckStates.delete(runtime)
 }
 
 /** Drops one settled dispatch's checkpoint; the durable ack watermark keeps replay suppressed. */
 export function releaseFederationAckCheckpoint(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string
 ): void {
   federationAckStates.get(runtime)?.byDispatch.delete(dispatchId)
 }
 
 export function acquireFederationAckLease(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string
 ): FederationAckLease {
   let runtimeState = federationAckStates.get(runtime)
@@ -59,7 +59,7 @@ export function getFederationAckedThrough(
 }
 
 export function recordFederationAckCheckpoint(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   lease: FederationAckLease,
   checkpoint: FederationAckCheckpoint
 ): void {

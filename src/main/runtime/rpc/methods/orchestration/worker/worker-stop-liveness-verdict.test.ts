@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
@@ -8,11 +8,11 @@ import { ORCHESTRATION_METHODS } from '../../orchestration'
 // contact, not a death certificate.
 describe('worker-stop against a terminal we lost contact with', () => {
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
 
   beforeEach(() => {
     db = new OrchestrationDb(':memory:')
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockReturnValue(
       'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'

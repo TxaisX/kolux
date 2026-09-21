@@ -201,7 +201,7 @@ function questionOptions(
 }
 
 /** Prompts are live-session state Codex does not persist, so they are keyed in
- *  the Nightshift namespace rather than by `(threadId, turnId, ordinal)`. */
+ *  the Kolux namespace rather than by `(threadId, turnId, ordinal)`. */
 /** Keyed by the prompt, not by the tool item it is about: one shell item can
  *  ask several times, and each ask is its own journal row to answer. */
 export function codexPromptIdentity(input: {
@@ -213,7 +213,7 @@ export function codexPromptIdentity(input: {
   const threadId = codexJournalPromptIdPart(input.threadId)
   const promptKey = codexJournalPromptIdPart(input.promptKey)
   return {
-    provider: 'nightshift',
+    provider: 'kolux',
     clientMessageId: `codex-prompt:${threadId}:${promptKey}${suffix}`
   }
 }

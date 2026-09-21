@@ -10,7 +10,7 @@ import type {
   RuntimeSyncWindowGraphResult
 } from '../../shared/runtime-types'
 import type { WorkspaceSessionState } from '../../shared/workspace-session-state-types'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const WT_A = 'repo-1::/tmp/worktree-a'
 const WT_B = 'repo-1::/tmp/worktree-b'
@@ -73,7 +73,7 @@ type RuntimeInternals = {
 
 function createRuntime() {
   let session = makeSession()
-  const runtime = new NightshiftRuntimeService({
+  const runtime = new KoluxRuntimeService({
     ...storeBase,
     getWorkspaceSession: () => session,
     setWorkspaceSession: (next: WorkspaceSessionState) => {

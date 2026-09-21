@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getDefaultUIState } from '../../../../shared/constants'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { CLIENT_UI_METHODS } from './client-ui'
@@ -15,7 +15,7 @@ function makeDispatcher(): { dispatcher: RpcDispatcher; updateUIState: ReturnTyp
   const runtime = {
     getRuntimeId: () => 'test-runtime',
     updateUIState
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
   return { dispatcher: new RpcDispatcher({ runtime, methods: CLIENT_UI_METHODS }), updateUIState }
 }
 

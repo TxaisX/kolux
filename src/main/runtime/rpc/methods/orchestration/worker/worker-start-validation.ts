@@ -1,6 +1,6 @@
 import { isTuiAgent } from '../../../../../../shared/tui-agent-config'
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { FederationAttachStartInput } from '../federation/federation-start-schema'
 import {
@@ -51,7 +51,7 @@ export function validateFederatedWorkerStartPlacement(
 export function prepareLocalWorkerStart(args: {
   params: WorkerStartInput
   createsWorktree: boolean
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 }): { agent: TuiAgent | undefined; launch: WorkerStartLaunch } {
   const { params, createsWorktree, runtime } = args
   assertWorkerLaunchPreferencesCreateTerminal(params)
@@ -89,7 +89,7 @@ export function prepareLocalWorkerStart(args: {
 export function prepareFederationAttachmentWorkerStart(args: {
   params: FederationAttachStartInput
   createsWorktree: boolean
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 }): { agent: TuiAgent | undefined; launch: WorkerStartLaunch } {
   const { params, createsWorktree, runtime } = args
   assertWorkerLaunchPreferencesCreateTerminal(params)
@@ -132,7 +132,7 @@ export function prepareFederationAttachmentWorkerStart(args: {
 }
 
 function resolveWorkerStartAgent(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   terminal?: string
   agent?: string
   model?: string

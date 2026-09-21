@@ -140,7 +140,7 @@ describe('provider usage error copy', () => {
     const grok = provider({
       provider: 'grok',
       error:
-        'Grok sign-in expired — run grok on the computer running Nightshift; sign in if prompted. No chat message is needed.',
+        'Grok sign-in expired — run grok on the computer running Kolux; sign in if prompted. No chat message is needed.',
       usageMetadata: {
         failureKind: 'delegated-refresh-required',
         source: 'oauth'
@@ -149,15 +149,14 @@ describe('provider usage error copy', () => {
 
     expect(getProviderUsageStatusLabel(grok)).toBe('Run Grok to refresh')
     expect(getProviderUsageErrorMessage(grok)).toBe(
-      'Run grok in a terminal on the computer running Nightshift and wait for it to start. If prompted, complete sign-in, then retry usage. You do not need to send a chat message.'
+      'Run grok in a terminal on the computer running Kolux and wait for it to start. If prompted, complete sign-in, then retry usage. You do not need to send a chat message.'
     )
   })
 
   it('shows the exact Kimi CLI recovery flow for an expired read-only session', () => {
     const kimi = provider({
       provider: 'kimi',
-      error:
-        'Kimi session expired — run kimi on the computer running Nightshift, then retry usage.',
+      error: 'Kimi session expired — run kimi on the computer running Kolux, then retry usage.',
       usageMetadata: {
         failureKind: 'delegated-refresh-required',
         source: 'oauth'
@@ -166,7 +165,7 @@ describe('provider usage error copy', () => {
 
     expect(getProviderUsageStatusLabel(kimi)).toBe('Run Kimi to refresh')
     expect(getProviderUsageErrorMessage(kimi)).toBe(
-      'Run kimi in a terminal on the computer running Nightshift and wait for it to start, then retry usage.'
+      'Run kimi in a terminal on the computer running Kolux and wait for it to start, then retry usage.'
     )
   })
 

@@ -31,9 +31,9 @@ export type AgentDotState =
   | 'done'
   | 'idle'
   // Why: the pane still has a live PTY but its reporting stream has gone quiet past
-  // the staleness window. Distinct from 'idle' because Nightshift has evidence something is
+  // the staleness window. Distinct from 'idle' because Kolux has evidence something is
   // held there, and never rendered as 'done' or 'working' — it asserts nothing about
-  // the agent, only about what Nightshift last heard.
+  // the agent, only about what Kolux last heard.
   | 'unverifiable'
   // Why: the sidebar's title-based status flow (StatusIndicator/WorktreeCard)
   // collapses blocked + waiting into a single "needs attention" state. Keep

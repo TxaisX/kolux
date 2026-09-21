@@ -36,7 +36,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('fences a Run consumer rebound during a routing-page yield', async () => {
-    const db = createDatabase('nightshift-mailbox-run-routing-fence-')
+    const db = createDatabase('kolux-mailbox-run-routing-fence-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Run routing fence')
     for (let index = 0; index < 51; index += 1) {
@@ -61,7 +61,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('fences a Dispatch completed during a routing-page yield', async () => {
-    const db = createDatabase('nightshift-mailbox-dispatch-routing-fence-')
+    const db = createDatabase('kolux-mailbox-dispatch-routing-fence-')
     const harness = createRuntime(db)
     registerSecondPane(harness.runtime)
     const run = db.createRun({
@@ -144,7 +144,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('reconciles filtered-out mail when a Dispatch wait loses authority', async () => {
-    const db = createDatabase('nightshift-mailbox-dispatch-wait-fence-')
+    const db = createDatabase('kolux-mailbox-dispatch-wait-fence-')
     const harness = createRuntime(db)
     registerSecondPane(harness.runtime)
     const run = db.createRun({
@@ -193,7 +193,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('finishes only the captured inactive-Dispatch snapshot after cancellation', async () => {
-    const db = createDatabase('nightshift-mailbox-dispatch-migration-cancel-')
+    const db = createDatabase('kolux-mailbox-dispatch-migration-cancel-')
     const harness = createRuntime(db)
     registerSecondPane(harness.runtime)
     const run = db.createRun({
@@ -260,7 +260,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('drains current and stored Run handles in one check', async () => {
-    const db = createDatabase('nightshift-mailbox-split-run-handles-')
+    const db = createDatabase('kolux-mailbox-split-run-handles-')
     const harness = createRuntime(db)
     const run = db.createRun({
       objective: 'Split Run handles',
@@ -288,7 +288,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('drains current and stored Dispatch handles in one check', async () => {
-    const db = createDatabase('nightshift-mailbox-split-dispatch-handles-')
+    const db = createDatabase('kolux-mailbox-split-dispatch-handles-')
     const harness = createRuntime(db)
     const run = db.createRun({
       objective: 'Split Dispatch handles',
@@ -319,7 +319,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('routes only the direct-mail snapshot captured when the check starts', async () => {
-    const db = createDatabase('nightshift-mailbox-routing-snapshot-')
+    const db = createDatabase('kolux-mailbox-routing-snapshot-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Routing snapshot')
     for (let index = 0; index < 51; index += 1) {
@@ -348,7 +348,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('stops paged routing when the check is cancelled', async () => {
-    const db = createDatabase('nightshift-mailbox-routing-cancel-')
+    const db = createDatabase('kolux-mailbox-routing-cancel-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Routing cancellation')
     for (let index = 0; index < 101; index += 1) {
@@ -414,7 +414,7 @@ describe('orchestration mailbox routing races', () => {
   })
 
   it('uses a bounded indexed pane lookup for reminted Dispatch identity', () => {
-    const db = createDatabase('nightshift-mailbox-dispatch-pane-index-')
+    const db = createDatabase('kolux-mailbox-dispatch-pane-index-')
     const run = db.createRun({
       objective: 'Dispatch pane index',
       coordinatorHandle: 'term_coordinator',

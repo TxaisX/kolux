@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { STAR_NAG_INITIAL_THRESHOLD } from '../../shared/constants'
-import { checkNightshiftStarred } from '../github/client'
+import { checkKoluxStarred } from '../github/client'
 import type { Store } from '../persistence'
 import type { StatsCollector } from '../stats/collector'
 import { track } from '../telemetry/client'
@@ -80,7 +80,7 @@ export class StarNagService {
     ipcMain.handle('star-nag:complete', () => this.markCompleted())
     ipcMain.handle('star-nag:disable', () => this.disable())
     ipcMain.handle('star-nag:openWeb', () => this.openWeb())
-    ipcMain.handle('star-nag:starNightshift', () => this.starNightshiftFromNag())
+    ipcMain.handle('star-nag:starKolux', () => this.starKoluxFromNag())
     ipcMain.handle('star-nag:forceShow', () => this.forceShow())
     ipcMain.handle('star-nag:agentValueMoment', () => this.prepareAgentValueMoment())
     ipcMain.handle('star-nag:showAgentValueMoment', () => this.showPreparedAgentValueMoment())
@@ -114,11 +114,11 @@ export class StarNagService {
     }
     this.setEvaluating(true)
     try {
-      // Why: checkNightshiftStarred lets us skip users who already starred outside
+      // Why: checkKoluxStarred lets us skip users who already starred outside
       // the app. When gh cannot tell us, keep the prompt available but route
       // the renderer to the browser fallback instead of a dead direct-star
       // button.
-      const starred = await checkNightshiftStarred()
+      const starred = await checkKoluxStarred()
       if (this.store.getUI().starNagCompleted) {
         this.pendingForceShow = false
         return false
@@ -304,7 +304,7 @@ export class StarNagService {
     this.promptSession = null
   }
 
-  private async starNightshiftFromNag(): Promise<boolean> {
+  private async starKoluxFromNag(): Promise<boolean> {
     const session = this.promptSession
     if (!session) {
       return false
@@ -312,7 +312,7 @@ export class StarNagService {
     if (session.starAttemptPromise) {
       return session.starAttemptPromise
     }
-    const attempt = this.runStarNightshiftAttempt(session)
+    const attempt = this.runStarKoluxAttempt(session)
     session.starAttemptPromise = attempt
     try {
       return await attempt
@@ -323,7 +323,7 @@ export class StarNagService {
     }
   }
 
-  private async runStarNightshiftAttempt(session: StarNagPromptSession): Promise<boolean> {
+  private async runStarKoluxAttempt(session: StarNagPromptSession): Promise<boolean> {
     const starred = await runStarNagDirectStarAttempt(session)
     if (starred) {
       this.markCompleted()

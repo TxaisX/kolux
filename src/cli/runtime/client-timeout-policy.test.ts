@@ -26,7 +26,7 @@ afterEach(async () => {
 
 describe.skipIf(process.platform === 'win32')('RuntimeClient timeout policy', () => {
   it('does not crash while resolving terminal.wait defaults without params', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-client-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-client-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     const server = createServer((socket) => {
       sockets.add(socket)
@@ -46,7 +46,7 @@ describe.skipIf(process.platform === 'win32')('RuntimeClient timeout policy', ()
     servers.add(server)
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeFileSync(
-      join(userDataPath, 'nightshift-runtime.json'),
+      join(userDataPath, 'kolux-runtime.json'),
       JSON.stringify({
         runtimeId: 'runtime-1',
         pid: process.pid,

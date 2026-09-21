@@ -15,7 +15,7 @@ const temporaryRoots: string[] = []
 const savedEnvironment = {
   GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND,
   GIT_SSH_VARIANT: process.env.GIT_SSH_VARIANT,
-  NIGHTSHIFT_TEST_SSH_REPOSITORIES: process.env.NIGHTSHIFT_TEST_SSH_REPOSITORIES
+  KOLUX_TEST_SSH_REPOSITORIES: process.env.KOLUX_TEST_SSH_REPOSITORIES
 }
 
 async function runGit(cwd: string, args: string[]): Promise<void> {
@@ -39,9 +39,9 @@ async function createGitRepository(
   await runGit(repository, ['add', '--all'])
   await runGit(repository, [
     '-c',
-    'user.name=Nightshift Test',
+    'user.name=Kolux Test',
     '-c',
-    'user.email=nightshift-test@example.invalid',
+    'user.email=kolux-test@example.invalid',
     'commit',
     '--quiet',
     '-m',
@@ -69,19 +69,19 @@ afterEach(async () => {
 
 describe('private Git marketplace integration', () => {
   it('uses the caller SSH environment for marketplace preview and install', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-private-marketplace-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-private-marketplace-'))
     temporaryRoots.push(root)
     const pluginKey = 'private.private-locale'
     const pluginUrl = 'ssh://git@example.invalid/private/locale.git'
     const marketplaceUrl = 'ssh://git@example.invalid/private/marketplace.git'
     const pluginRepository = await createGitRepository(root, 'locale-source', {
-      'nightshift-plugin.json': JSON.stringify({
+      'kolux-plugin.json': JSON.stringify({
         manifestVersion: 1,
         id: 'private-locale',
         publisher: 'private',
         name: 'Private Locale',
         version: '1.0.0',
-        engines: { nightshift: '>=1.4.0' },
+        engines: { kolux: '>=1.4.0' },
         pluginApi: 1,
         contributes: {
           languagePacks: [{ locale: 'pt-BR', path: 'locale.json' }]
@@ -93,7 +93,7 @@ describe('private Git marketplace integration', () => {
       })
     })
     const marketplaceRepository = await createGitRepository(root, 'marketplace-source', {
-      'nightshift-marketplace.json': JSON.stringify({
+      'kolux-marketplace.json': JSON.stringify({
         name: 'Private Team Plugins',
         owner: 'private-team',
         plugins: [
@@ -113,7 +113,7 @@ describe('private Git marketplace integration', () => {
     )
     process.env.GIT_SSH_COMMAND = `${shellQuote(process.execPath.replaceAll('\\', '/'))} ${shellQuote(sshShim.replaceAll('\\', '/'))}`
     process.env.GIT_SSH_VARIANT = 'ssh'
-    process.env.NIGHTSHIFT_TEST_SSH_REPOSITORIES = JSON.stringify({
+    process.env.KOLUX_TEST_SSH_REPOSITORIES = JSON.stringify({
       '/private/locale.git': pluginRepository,
       '/private/marketplace.git': marketplaceRepository
     })

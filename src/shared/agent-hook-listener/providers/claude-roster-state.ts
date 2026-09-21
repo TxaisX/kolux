@@ -151,7 +151,7 @@ export function markClaudeLeadTurnInterrupted(state: HookListenerState, paneKey:
   state.claudeActiveSessionCronPaneKeys.delete(paneKey)
 }
 
-/** Rebuild a pane's working roster from a persisted snapshot; live activity confirms a seed, a complete task inventory may reap an unconfirmed one whose finish hook arrived while Nightshift was offline. */
+/** Rebuild a pane's working roster from a persisted snapshot; live activity confirms a seed, a complete task inventory may reap an unconfirmed one whose finish hook arrived while Kolux was offline. */
 export function seedClaudeSubagentRosterFromSnapshots(
   state: HookListenerState,
   paneKey: string,
@@ -171,7 +171,7 @@ export function seedClaudeSubagentRosterFromSnapshots(
       startedAt: snapshot.startedAt,
       agentType: snapshot.agentType,
       description: snapshot.description,
-      // Why: the seed can be a phantom (child finished while Nightshift was down, SubagentStop lost); let a PRESENT background_tasks list omitting the id remove it, not gate the pane 'working' forever.
+      // Why: the seed can be a phantom (child finished while Kolux was down, SubagentStop lost); let a PRESENT background_tasks list omitting the id remove it, not gate the pane 'working' forever.
       backgroundTasksAuthoritative: true,
       // Why: an idle parent never emits that list, so the inventory reap alone can strand the seed; mark it for the liveness reap below.
       restoredFromSnapshot: true
@@ -206,7 +206,7 @@ export function seedClaudeLeadTurnFromPersistedStatus(
 }
 
 /** Reap this pane's unconfirmed restored seeds because no live agent process backs
- *  the pane any more (its PTY died while Nightshift was down, so no finish hook could
+ *  the pane any more (its PTY died while Kolux was down, so no finish hook could
  *  arrive). Callers must have proven the pane is LOCAL-launched — a remote/SSH
  *  agent runs on the far host and can never appear in a local process index.
  *  Returns whether the roster changed. */

@@ -27,7 +27,7 @@ export function createBrowserApi(): NonNullable<Partial<PreloadApi>['browser']> 
     onNavigationUpdate: () => noopUnsubscribe,
     onActivateView: () => noopUnsubscribe,
     onPaneFocus: () => noopUnsubscribe,
-    onOpenLinkInNightshiftTab: () => noopUnsubscribe,
+    onOpenLinkInKoluxTab: () => noopUnsubscribe,
     cancelDownload: () => Promise.resolve(false),
     setGrabMode: () =>
       Promise.resolve({

@@ -1,11 +1,11 @@
 import type { RuntimeTerminalInteractiveWait } from '../../../../../../shared/runtime-types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { parseWorkerTerminalHostScope } from '../../../../orchestration/worker-terminal-process-liveness'
 import type { RemoteDispatchAttachmentRow } from '../../../../orchestration/types'
 
 export function requireHomeAttachment(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   callerFingerprint: string | undefined
 ): RemoteDispatchAttachmentRow {
@@ -20,10 +20,10 @@ export function requireHomeAttachment(
 }
 
 export async function inspectRemoteAttachment(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string
 ): Promise<{
-  terminal: Awaited<ReturnType<NightshiftRuntimeService['showTerminal']>> | null
+  terminal: Awaited<ReturnType<KoluxRuntimeService['showTerminal']>> | null
   exact: boolean
   status: 'unattached' | 'missing' | 'identity_changed' | 'live' | 'exited' | 'unverifiable'
   /** Set with `unverifiable`; names what we lost contact with. */

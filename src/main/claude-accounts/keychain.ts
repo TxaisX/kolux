@@ -4,7 +4,7 @@ import { realpathSync } from 'node:fs'
 import { userInfo } from 'node:os'
 
 const ACTIVE_CLAUDE_SERVICE = 'Claude Code-credentials'
-const NIGHTSHIFT_CLAUDE_SERVICE = 'Nightshift Claude Code Managed Credentials'
+const KOLUX_CLAUDE_SERVICE = 'Kolux Claude Code Managed Credentials'
 const KEYCHAIN_COMMAND_TIMEOUT_MS = 3_000
 
 type SecurityCommandResult = {
@@ -84,18 +84,18 @@ export async function deleteActiveClaudeKeychainCredentialsStrict(
 export async function readManagedClaudeKeychainCredentials(
   accountId: string
 ): Promise<string | null> {
-  return readKeychainPassword(NIGHTSHIFT_CLAUDE_SERVICE, accountId)
+  return readKeychainPassword(KOLUX_CLAUDE_SERVICE, accountId)
 }
 
 export async function writeManagedClaudeKeychainCredentials(
   accountId: string,
   contents: string
 ): Promise<void> {
-  await writeKeychainPassword(NIGHTSHIFT_CLAUDE_SERVICE, accountId, contents)
+  await writeKeychainPassword(KOLUX_CLAUDE_SERVICE, accountId, contents)
 }
 
 export async function deleteManagedClaudeKeychainCredentials(accountId: string): Promise<void> {
-  await deleteKeychainPassword(NIGHTSHIFT_CLAUDE_SERVICE, accountId)
+  await deleteKeychainPassword(KOLUX_CLAUDE_SERVICE, accountId)
 }
 
 const KEYCHAIN_ACCOUNT_PATTERN = /^[a-zA-Z0-9._-]+$/

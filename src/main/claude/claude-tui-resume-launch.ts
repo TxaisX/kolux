@@ -82,7 +82,7 @@ export function createClaudeTuiResumeLaunchBuilder(
         ...carriedAuth,
         ...configuredEnv,
         ...claudeConfigDirEnvPatch(record.accountHome.path, { env: inheritedEnv }),
-        NIGHTSHIFT_AGENT_LAUNCH_TOKEN: spawnToken,
+        KOLUX_AGENT_LAUNCH_TOKEN: spawnToken,
         [CLAUDE_SPAWN_TOKEN_ENV]: spawnToken
       },
       { inheritedEnv: deps.inheritedEnv }

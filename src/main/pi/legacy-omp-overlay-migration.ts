@@ -1,20 +1,20 @@
 import { cpSync, lstatSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import type { Dirent, Stats } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { NIGHTSHIFT_PI_AGENT_STATUS_EXTENSION_FILE } from './agent-status-extension-source'
-import { NIGHTSHIFT_PI_PREFILL_EXTENSION_FILE } from './prefill-extension-source'
-import { NIGHTSHIFT_PI_EXTENSION_FILE } from './titlebar-extension-source'
+import { KOLUX_PI_AGENT_STATUS_EXTENSION_FILE } from './agent-status-extension-source'
+import { KOLUX_PI_PREFILL_EXTENSION_FILE } from './prefill-extension-source'
+import { KOLUX_PI_EXTENSION_FILE } from './titlebar-extension-source'
 import { isSafeDescendCandidate } from '../pty/overlay-mirror'
 
-const LEGACY_PI_OVERLAY_MANIFEST_FILE = '.nightshift-pi-overlay-manifest.json'
-const LEGACY_OMP_OVERLAY_MIGRATION_MARKER_FILE = '.nightshift-omp-overlay-migration-complete'
+const LEGACY_PI_OVERLAY_MANIFEST_FILE = '.kolux-pi-overlay-manifest.json'
+const LEGACY_OMP_OVERLAY_MIGRATION_MARKER_FILE = '.kolux-omp-overlay-migration-complete'
 const PI_AGENT_SETTINGS_FILE = 'settings.json'
 const SQLITE_DATABASE_EXTENSION = '.db'
 const SQLITE_SIDECAR_SUFFIXES = ['-wal', '-shm', '-journal'] as const
 const MANAGED_EXTENSION_FILES = new Set([
-  NIGHTSHIFT_PI_EXTENSION_FILE,
-  NIGHTSHIFT_PI_PREFILL_EXTENSION_FILE,
-  NIGHTSHIFT_PI_AGENT_STATUS_EXTENSION_FILE
+  KOLUX_PI_EXTENSION_FILE,
+  KOLUX_PI_PREFILL_EXTENSION_FILE,
+  KOLUX_PI_AGENT_STATUS_EXTENSION_FILE
 ])
 
 type DeferredSidecar = {

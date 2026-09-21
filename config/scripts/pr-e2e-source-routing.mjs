@@ -49,7 +49,7 @@ export const PR_E2E_SOURCE_ROUTES = [
     id: 'ephemeral-vm-runtime.rollback-readable-sidecar',
     specs: ['tests/e2e/ephemeral-vm-provisioned-root.spec.ts'],
     matches: (file) =>
-      /^(?:src\/main\/ephemeral-vm-(?:runtime-(?:service|provisioning-persistence)|failed-start-cleanup)|src\/shared\/(?:ephemeral-vm-runtime-(?:store|feature-store|rollback-projection|runtimes)|ephemeral-vm-recipes|nightshift-yaml-hook-types))\.ts$/.test(
+      /^(?:src\/main\/ephemeral-vm-(?:runtime-(?:service|provisioning-persistence)|failed-start-cleanup)|src\/shared\/(?:ephemeral-vm-runtime-(?:store|feature-store|rollback-projection|runtimes)|ephemeral-vm-recipes|kolux-yaml-hook-types))\.ts$/.test(
         file
       )
   },
@@ -114,7 +114,7 @@ export const PR_E2E_SOURCE_ROUTES = [
   {
     // Why a route beside terminal-input.ime-and-synthetic-forwarding rather than more specs on
     // it: that route selects the CDP-synthetic specs, which drive composition through
-    // Input.imeSetComposition and so prove Nightshift's handling without an input method existing.
+    // Input.imeSetComposition and so prove Kolux's handling without an input method existing.
     // This one names the surface only a real ibus-hangul session can judge, and is the sole
     // trigger that puts the real-IME lane on a PR.
     id: 'terminal-ime.native-input-method',
@@ -137,7 +137,7 @@ export const PR_E2E_SOURCE_ROUTES = [
     specs: ['tests/e2e/paired-quick-open-large-tree.spec.ts'],
     matches: (file) =>
       isProductSource(file) &&
-      /^(?:src\/main\/ipc\/(?:filesystem-(?:list-files|search-file-paths)|rg-availability)\.ts|src\/main\/providers\/(?:filesystem-provider-contract|ssh-filesystem-provider(?:-capabilities)?)\.ts|src\/main\/runtime\/(?:nightshift-runtime-files|rpc\/methods\/files)\.ts|src\/relay\/(?:fs-handler(?:-install-rg|-list-files|-ripgrep-fallback)?|fs-list-files-fallback-chain)\.ts|src\/renderer\/src\/(?:components\/(?:QuickOpen|quick-open-file-list|quick-open-search)\.tsx?|runtime\/(?:runtime-file-client|runtime-legacy-quick-open-inventory)\.ts)|src\/shared\/(?:quick-open-(?:install-rg|path-search|transport-budget)|ripgrep-process-availability)\.ts)$/.test(
+      /^(?:src\/main\/ipc\/(?:filesystem-(?:list-files|search-file-paths)|rg-availability)\.ts|src\/main\/providers\/(?:filesystem-provider-contract|ssh-filesystem-provider(?:-capabilities)?)\.ts|src\/main\/runtime\/(?:kolux-runtime-files|rpc\/methods\/files)\.ts|src\/relay\/(?:fs-handler(?:-install-rg|-list-files|-ripgrep-fallback)?|fs-list-files-fallback-chain)\.ts|src\/renderer\/src\/(?:components\/(?:QuickOpen|quick-open-file-list|quick-open-search)\.tsx?|runtime\/(?:runtime-file-client|runtime-legacy-quick-open-inventory)\.ts)|src\/shared\/(?:quick-open-(?:install-rg|path-search|transport-budget)|ripgrep-process-availability)\.ts)$/.test(
         file
       )
   },
@@ -202,14 +202,14 @@ export const PR_E2E_SOURCE_ROUTES = [
   {
     // Why a second, wider pattern: restart survival breaks from seams that never say
     // "client-hosted" - page adoption, the host lease/reconciliation plan, the session-tab
-    // snapshot the client culls rows against. nightshift-runtime.ts is included despite its churn: it
+    // snapshot the client culls rows against. kolux-runtime.ts is included despite its churn: it
     // publishes the snapshot flag the client holds its rows on, and no narrower path names that
     // seam.
     id: 'client-hosted-browser.restart-survival',
     specs: ['tests/e2e/paired-client-hosted-browser-restart-survival.spec.ts'],
     matches: (file) =>
       isProductSource(file) &&
-      /^src\/.*(?:[Cc]lient-?[Hh]osted|browser-host-(?:lease|page|client-page)|browser-client-(?:host|page)|runtime-browser-(?:client-)?page|session-tabs-sync|host-session-snapshot-authority|nightshift-runtime(?:-browser)?\.ts|\/runtime-(?:status|types)\.ts)/.test(
+      /^src\/.*(?:[Cc]lient-?[Hh]osted|browser-host-(?:lease|page|client-page)|browser-client-(?:host|page)|runtime-browser-(?:client-)?page|session-tabs-sync|host-session-snapshot-authority|kolux-runtime(?:-browser)?\.ts|\/runtime-(?:status|types)\.ts)/.test(
         file
       )
   }

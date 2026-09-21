@@ -110,7 +110,7 @@ export type WorktreeApi = {
     skipArchive?: boolean
     snapshotPruneBatchId?: string
   }) => Promise<RemoveWorktreeResult>
-  // Forget a workspace from Nightshift only (no remote Git/FS work) — for workspaces pinned to a removed/disconnected SSH host.
+  // Forget a workspace from Kolux only (no remote Git/FS work) — for workspaces pinned to a removed/disconnected SSH host.
   forgetLocal: (args: {
     worktreeId: string
     hostId?: ExecutionHostId

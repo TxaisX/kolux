@@ -23,7 +23,7 @@ function item(overrides: Partial<ArtifactListItem['artifact']> = {}): ArtifactLi
       deletedAt: null,
       ...overrides
     },
-    shareUrl: 'https://share.nightshift.invalid/a/report-123'
+    shareUrl: 'https://share.kolux.invalid/a/report-123'
   }
 }
 

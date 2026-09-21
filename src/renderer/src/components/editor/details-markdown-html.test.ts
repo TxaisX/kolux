@@ -9,10 +9,9 @@ import {
 } from './details-markdown-html'
 
 function nestedToggles(depth: number): string {
-  let html =
-    '<details class="nightshift-details" open>\n<summary>leaf</summary>\n\nBody\n\n</details>'
+  let html = '<details class="kolux-details" open>\n<summary>leaf</summary>\n\nBody\n\n</details>'
   for (let level = depth - 1; level > 0; level -= 1) {
-    html = `<details class="nightshift-details" open>\n<summary>level ${level}</summary>\n\n${html}\n\n</details>`
+    html = `<details class="kolux-details" open>\n<summary>level ${level}</summary>\n\n${html}\n\n</details>`
   }
   return html
 }
@@ -65,21 +64,21 @@ describe('details markdown html', () => {
   it('accepts heading-5 toggle variants and rejects unsupported levels', () => {
     expect(parseToggleHeadingVariant('heading-5')).toBe('heading-5')
     expect(parseToggleHeadingVariant('heading-6')).toBeNull()
-    expect(parseDetailsAttributes(' data-nightshift-toggle="heading-5"')).toMatchObject({
+    expect(parseDetailsAttributes(' data-kolux-toggle="heading-5"')).toMatchObject({
       variant: 'heading-5'
     })
-    expect(parseDetailsAttributes(' data-nightshift-toggle="heading-6"')).toMatchObject({
+    expect(parseDetailsAttributes(' data-kolux-toggle="heading-6"')).toMatchObject({
       variant: null
     })
 
     const editableHeading5: DetailsHtmlBlock = {
       raw: '',
-      openingAttributes: ' data-nightshift-toggle="heading-5"',
+      openingAttributes: ' data-kolux-toggle="heading-5"',
       inner: '<summary>Toggle</summary><p>Body</p>'
     }
     const unsupportedHeading6: DetailsHtmlBlock = {
       raw: '',
-      openingAttributes: ' data-nightshift-toggle="heading-6"',
+      openingAttributes: ' data-kolux-toggle="heading-6"',
       inner: '<summary>Toggle</summary><p>Body</p>'
     }
 
@@ -97,10 +96,10 @@ describe('details markdown html', () => {
       Array.from(
         { length: count },
         (_, index) =>
-          `<details class="nightshift-details"${extra}>\n<summary>sibling ${index}</summary>\n\nBody\n\n</details>`
+          `<details class="kolux-details"${extra}>\n<summary>sibling ${index}</summary>\n\nBody\n\n</details>`
       ).join('\n\n')
     const wrap = (body: string): string =>
-      `<details class="nightshift-details">\n<summary>Outer</summary>\n\n${body}\n\n</details>`
+      `<details class="kolux-details">\n<summary>Outer</summary>\n\n${body}\n\n</details>`
 
     expect(isEditableHtml(wrap(siblings(40)))).toBe(true)
     // A single non-editable sibling must still reject, so sharing fence ranges
@@ -111,7 +110,7 @@ describe('details markdown html', () => {
   it('rejects a toggle whose nested toggle is not itself editable', () => {
     const block: DetailsHtmlBlock = {
       raw: '',
-      openingAttributes: ' class="nightshift-details"',
+      openingAttributes: ' class="kolux-details"',
       inner: '<summary>Outer</summary><details id="x"><summary>Inner</summary><p>Body</p></details>'
     }
 

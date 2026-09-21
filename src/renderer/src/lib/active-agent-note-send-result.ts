@@ -73,8 +73,8 @@ export function activeAgentNotesSendFailureMessage(
       break
     case 'partial-submit-failed':
       message = options.explicitTarget
-        ? 'The notes may already be pasted in the selected terminal, but Nightshift could not submit them.'
-        : 'The notes may already be pasted in the active terminal, but Nightshift could not submit them.'
+        ? 'The notes may already be pasted in the selected terminal, but Kolux could not submit them.'
+        : 'The notes may already be pasted in the active terminal, but Kolux could not submit them.'
       break
     case 'sent':
       message = ''

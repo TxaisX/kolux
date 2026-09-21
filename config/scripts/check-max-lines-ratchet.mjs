@@ -144,9 +144,7 @@ function printAddedFailure(added) {
     console.error(`    • ${target}\n        ↳ ${how}`)
   }
   console.error('')
-  console.error(
-    '  Nightshift caps file size (300 .ts / 400 .tsx / 600 .mjs / 800 test — non-blank,'
-  )
+  console.error('  Kolux caps file size (300 .ts / 400 .tsx / 600 .mjs / 800 test — non-blank,')
   console.error(
     '  non-comment lines). Existing oversized files are grandfathered; NEW ones are not.'
   )

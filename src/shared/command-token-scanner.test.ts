@@ -26,15 +26,13 @@ describe('command token scanner', () => {
   })
 
   it('preserves quoted command paths with spaces', () => {
-    expect(getFirstCommandToken('"C:\\Program Files\\Nightshift\\codex.cmd" --resume')).toBe(
-      'C:\\Program Files\\Nightshift\\codex.cmd'
+    expect(getFirstCommandToken('"C:\\Program Files\\Kolux\\codex.cmd" --resume')).toBe(
+      'C:\\Program Files\\Kolux\\codex.cmd'
     )
   })
 
   it('extracts path basenames without allocating path segment arrays', () => {
-    expect(getCommandTokenPathBasename('C:\\Program Files\\Nightshift\\codex.cmd')).toBe(
-      'codex.cmd'
-    )
+    expect(getCommandTokenPathBasename('C:\\Program Files\\Kolux\\codex.cmd')).toBe('codex.cmd')
     expect(getCommandTokenPathBasename('/usr/local/bin/omp')).toBe('omp')
   })
 

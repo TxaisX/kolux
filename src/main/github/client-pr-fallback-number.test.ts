@@ -134,7 +134,7 @@ describe('getPRForBranch', () => {
 
   it('reports upstream error when fallback branch discovery fails transiently then retry misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -174,7 +174,7 @@ describe('getPRForBranch', () => {
 
   it('propagates a Retry-After cooldown into the rate-limited retry schedule', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     // gh puts the diagnostic on `.stderr`; a secondary limit carries Retry-After.
@@ -202,7 +202,7 @@ describe('getPRForBranch', () => {
 
   it('reports no PR when fallback branch discovery cleanly misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: JSON.stringify([]) })
@@ -215,7 +215,7 @@ describe('getPRForBranch', () => {
 
   it('returns found when fallback branch discovery retry finds the PR', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -259,14 +259,14 @@ describe('getPRForBranch', () => {
       pr: {
         number: 42,
         title: 'Hydrated retry branch PR',
-        prRepo: { owner: 'TxaisX', repo: 'nightshift' }
+        prRepo: { owner: 'TxaisX', repo: 'kolux' }
       }
     })
   })
 
   it('lets fallback PR number recovery win after fallback branch queries throw', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -315,7 +315,7 @@ describe('getPRForBranch', () => {
 
   it('reports upstream error when fallback branch discovery has a network failure', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -332,7 +332,7 @@ describe('getPRForBranch', () => {
 
   it('reports a GitHub server error when fallback branch discovery receives 5xx responses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -350,8 +350,8 @@ describe('getPRForBranch', () => {
   it('keeps a pending fallback branch error when a later candidate cleanly misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
-        { owner: 'fork', repo: 'nightshift' }
+        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'fork', repo: 'kolux' }
       ],
       headRepo: null
     })
@@ -372,7 +372,7 @@ describe('getPRForBranch', () => {
         'pr',
         'list',
         '--repo',
-        'fork/nightshift',
+        'fork/kolux',
         '--head',
         'feature/test',
         '--state',
@@ -515,10 +515,10 @@ describe('getPRForBranch', () => {
 
   it('does not carry a merged upstream branch head repo into a fallback PR number', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
-      headRepo: { owner: 'origin-owner', repo: 'nightshift' }
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
+      headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
-    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'nightshift' })
+    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'kolux' })
     gitExecFileAsyncMock.mockResolvedValueOnce({
       stdout: 'local-created-from-pr\0fork/contributor/original\n',
       stderr: ''
@@ -579,7 +579,7 @@ describe('getPRForBranch', () => {
     expect(pr).toMatchObject({
       number: 42,
       title: 'Open fallback PR',
-      headRepo: { owner: 'origin-owner', repo: 'nightshift' }
+      headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
   })
 

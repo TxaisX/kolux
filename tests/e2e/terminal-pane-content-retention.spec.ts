@@ -5,7 +5,7 @@
  * - terminal panes retain state when switching tabs and when you make / close a pane / switch worktrees
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   discoverActivePtyId,
   execInTerminal,
@@ -39,69 +39,67 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - terminal panes retain state when switching tabs and when you make / close a pane / switch worktrees
    */
-  test('terminal pane retains content when switching tabs and back', async ({ nightshiftPage }) => {
+  test('terminal pane retains content when switching tabs and back', async ({ koluxPage }) => {
     // Write a unique marker to the current terminal
-    const ptyId = await discoverActivePtyId(nightshiftPage)
+    const ptyId = await discoverActivePtyId(koluxPage)
     const marker = `RETAIN_TEST_${Date.now()}`
-    await execInTerminal(nightshiftPage, ptyId, `echo ${marker}`)
-    await waitForTerminalOutput(nightshiftPage, marker)
+    await execInTerminal(koluxPage, ptyId, `echo ${marker}`)
+    await waitForTerminalOutput(koluxPage, marker)
 
     // Create a new terminal tab (Cmd/Ctrl+T) to switch away
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    await pressShortcut(nightshiftPage, 't')
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    await pressShortcut(koluxPage, 't')
 
     // Wait for the new tab to appear
     await expect
-      .poll(async () => (await getWorktreeTabs(nightshiftPage, worktreeId)).length, {
+      .poll(async () => (await getWorktreeTabs(koluxPage, worktreeId)).length, {
         timeout: 5_000
       })
       .toBeGreaterThanOrEqual(2)
 
     // Verify we're still on a terminal tab
-    const activeType = await getActiveTabType(nightshiftPage)
+    const activeType = await getActiveTabType(koluxPage)
     expect(activeType).toBe('terminal')
 
     // Switch back to the previous tab with Cmd/Ctrl+Shift+[
-    await pressShortcut(nightshiftPage, 'BracketLeft', { shift: true })
+    await pressShortcut(koluxPage, 'BracketLeft', { shift: true })
 
     // Verify the marker is still present
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 5_000
       })
       .toBe(true)
 
     // Clean up the extra tab
-    await pressShortcut(nightshiftPage, 'BracketRight', { shift: true })
-    await pressShortcut(nightshiftPage, 'w')
+    await pressShortcut(koluxPage, 'BracketRight', { shift: true })
+    await pressShortcut(koluxPage, 'w')
   })
 
   /**
    * User Prompt:
    * - terminal panes retain state when switching tabs and when you make / close a pane / switch worktrees
    */
-  test('terminal pane retains content when splitting and closing a pane', async ({
-    nightshiftPage
-  }) => {
+  test('terminal pane retains content when splitting and closing a pane', async ({ koluxPage }) => {
     // Write a unique marker to the current terminal
-    const ptyId = await discoverActivePtyId(nightshiftPage)
+    const ptyId = await discoverActivePtyId(koluxPage)
     const marker = `SPLIT_RETAIN_${Date.now()}`
-    await execInTerminal(nightshiftPage, ptyId, `echo ${marker}`)
-    await waitForTerminalOutput(nightshiftPage, marker)
+    await execInTerminal(koluxPage, ptyId, `echo ${marker}`)
+    await waitForTerminalOutput(koluxPage, marker)
 
-    const panesBefore = await countVisibleTerminalPanes(nightshiftPage)
+    const panesBefore = await countVisibleTerminalPanes(koluxPage)
 
     // Split the terminal right
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, panesBefore + 1)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, panesBefore + 1)
 
-    await focusLastTerminalPane(nightshiftPage)
-    await closeActiveTerminalPane(nightshiftPage)
-    await waitForPaneCount(nightshiftPage, panesBefore)
+    await focusLastTerminalPane(koluxPage)
+    await closeActiveTerminalPane(koluxPage)
+    await waitForPaneCount(koluxPage, panesBefore)
 
     // The original pane should still have our marker
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 5_000
       })
       .toBe(true)
@@ -111,34 +109,30 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - terminal panes retain state when switching tabs and when you make / close a pane / switch worktrees
    */
-  test('terminal pane retains content when switching worktrees and back', async ({
-    nightshiftPage
-  }) => {
-    const allWorktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test('terminal pane retains content when switching worktrees and back', async ({ koluxPage }) => {
+    const allWorktreeIds = await getAllWorktreeIds(koluxPage)
     if (allWorktreeIds.length < 2) {
       test.skip(true, 'Need at least 2 worktrees to test worktree switching')
       return
     }
 
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
     // Write a unique marker to the current terminal
-    const ptyId = await discoverActivePtyId(nightshiftPage)
+    const ptyId = await discoverActivePtyId(koluxPage)
     const marker = `WT_RETAIN_${Date.now()}`
-    await execInTerminal(nightshiftPage, ptyId, `echo ${marker}`)
-    await waitForTerminalOutput(nightshiftPage, marker)
+    await execInTerminal(koluxPage, ptyId, `echo ${marker}`)
+    await waitForTerminalOutput(koluxPage, marker)
 
     // Switch to a different worktree via the store
-    const otherId = await switchToOtherWorktree(nightshiftPage, worktreeId)
+    const otherId = await switchToOtherWorktree(koluxPage, worktreeId)
     expect(otherId).not.toBeNull()
-    await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), { timeout: 5_000 })
-      .toBe(otherId)
+    await expect.poll(async () => getActiveWorktreeId(koluxPage), { timeout: 5_000 }).toBe(otherId)
 
     // Switch back to the original worktree
-    await switchToWorktree(nightshiftPage, worktreeId)
+    await switchToWorktree(koluxPage, worktreeId)
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), { timeout: 5_000 })
+      .poll(async () => getActiveWorktreeId(koluxPage), { timeout: 5_000 })
       .toBe(worktreeId)
 
     // Why: after a worktree round-trip, the split-group container transitions
@@ -147,11 +141,11 @@ test.describe('Terminal Panes', () => {
     // after the worktree activation cascade. Waiting directly for the retained
     // marker proves the user-visible behavior without failing early on the
     // intermediate manager-remount timing.
-    await ensureTerminalVisible(nightshiftPage)
+    await ensureTerminalVisible(koluxPage)
 
     // The terminal should still contain our marker
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 20_000
       })
       .toBe(true)

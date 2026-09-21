@@ -1,6 +1,6 @@
 import { CdpWsProxy } from './cdp-ws-proxy'
 import { BrowserError } from './cdp-bridge'
-import { NIGHTSHIFT_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
+import { KOLUX_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
 import { AgentBrowserBridgeRawProcess } from './agent-browser-bridge-raw-process'
 import type { AgentBrowserCleanupOptions } from './agent-browser-bridge-types'
 import { AGENT_BROWSER_CLEANUP_TIMEOUT_MS } from './agent-browser-bridge-types'
@@ -38,7 +38,7 @@ export abstract class AgentBrowserBridgeLifecycle extends AgentBrowserBridgeRawP
    * has to say which page closed (#16367).
    */
   async onPageClosed(browserPageId: string): Promise<void> {
-    const sessionName = `${NIGHTSHIFT_TAB_SESSION_PREFIX}${browserPageId}`
+    const sessionName = `${KOLUX_TAB_SESSION_PREFIX}${browserPageId}`
     await this.destroySession(sessionName)
     this.pendingInterceptRestore.delete(sessionName)
   }
@@ -49,7 +49,7 @@ export abstract class AgentBrowserBridgeLifecycle extends AgentBrowserBridgeRawP
     previousWebContentsId?: number
   ): Promise<void> {
     // Why: an Electron process swap keeps browserPageId but gives a new webContentsId — destroy the session so the next command recreates it.
-    const sessionName = `${NIGHTSHIFT_TAB_SESSION_PREFIX}${browserPageId}`
+    const sessionName = `${KOLUX_TAB_SESSION_PREFIX}${browserPageId}`
     const session = this.sessions.get(sessionName)
     const oldWebContentsId = previousWebContentsId ?? session?.webContentsId
     const owningWorktreeId = this.browserManager.getWorktreeIdForTab(browserPageId)

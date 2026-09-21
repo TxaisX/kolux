@@ -103,9 +103,9 @@ describe('createPtySubprocess', () => {
         rows: 24,
         cwd: 'C:\\repo',
         env: {
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test',
-          NIGHTSHIFT_PATH_ROOT: 'C:\\Users\\nightshift\\AppData\\Local',
-          PATH: '%nightshift_path_root%\\agy\\bin;C:\\Windows'
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test',
+          KOLUX_PATH_ROOT: 'C:\\Users\\kolux\\AppData\\Local',
+          PATH: '%kolux_path_root%\\agy\\bin;C:\\Windows'
         }
       })
     } finally {
@@ -115,21 +115,21 @@ describe('createPtySubprocess', () => {
     }
 
     expect(spawnMock.mock.calls.at(-1)?.[2].env.PATH).toBe(
-      'C:\\Users\\nightshift\\AppData\\Local\\agy\\bin;C:\\Windows'
+      'C:\\Users\\kolux\\AppData\\Local\\agy\\bin;C:\\Windows'
     )
   })
 
-  it('does not inherit parent Nightshift pane identity when caller omits pane env', async () => {
+  it('does not inherit parent Kolux pane identity when caller omits pane env', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const saved = {
-      NIGHTSHIFT_PANE_KEY: process.env.NIGHTSHIFT_PANE_KEY,
-      NIGHTSHIFT_TAB_ID: process.env.NIGHTSHIFT_TAB_ID,
-      NIGHTSHIFT_WORKTREE_ID: process.env.NIGHTSHIFT_WORKTREE_ID
+      KOLUX_PANE_KEY: process.env.KOLUX_PANE_KEY,
+      KOLUX_TAB_ID: process.env.KOLUX_TAB_ID,
+      KOLUX_WORKTREE_ID: process.env.KOLUX_WORKTREE_ID
     }
-    process.env.NIGHTSHIFT_PANE_KEY = 'parent-tab:parent-leaf'
-    process.env.NIGHTSHIFT_TAB_ID = 'parent-tab'
-    process.env.NIGHTSHIFT_WORKTREE_ID = 'parent-worktree'
+    process.env.KOLUX_PANE_KEY = 'parent-tab:parent-leaf'
+    process.env.KOLUX_TAB_ID = 'parent-tab'
+    process.env.KOLUX_WORKTREE_ID = 'parent-worktree'
 
     try {
       await createPtySubprocess({ sessionId: 'test', cols: 80, rows: 24 })
@@ -144,22 +144,22 @@ describe('createPtySubprocess', () => {
     }
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
-    expect(env.NIGHTSHIFT_PANE_KEY).toBeUndefined()
-    expect(env.NIGHTSHIFT_TAB_ID).toBeUndefined()
-    expect(env.NIGHTSHIFT_WORKTREE_ID).toBeUndefined()
+    expect(env.KOLUX_PANE_KEY).toBeUndefined()
+    expect(env.KOLUX_TAB_ID).toBeUndefined()
+    expect(env.KOLUX_WORKTREE_ID).toBeUndefined()
   })
 
-  it('preserves explicit child Nightshift pane identity over parent env', async () => {
+  it('preserves explicit child Kolux pane identity over parent env', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const saved = {
-      NIGHTSHIFT_PANE_KEY: process.env.NIGHTSHIFT_PANE_KEY,
-      NIGHTSHIFT_TAB_ID: process.env.NIGHTSHIFT_TAB_ID,
-      NIGHTSHIFT_WORKTREE_ID: process.env.NIGHTSHIFT_WORKTREE_ID
+      KOLUX_PANE_KEY: process.env.KOLUX_PANE_KEY,
+      KOLUX_TAB_ID: process.env.KOLUX_TAB_ID,
+      KOLUX_WORKTREE_ID: process.env.KOLUX_WORKTREE_ID
     }
-    process.env.NIGHTSHIFT_PANE_KEY = 'parent-tab:parent-leaf'
-    process.env.NIGHTSHIFT_TAB_ID = 'parent-tab'
-    process.env.NIGHTSHIFT_WORKTREE_ID = 'parent-worktree'
+    process.env.KOLUX_PANE_KEY = 'parent-tab:parent-leaf'
+    process.env.KOLUX_TAB_ID = 'parent-tab'
+    process.env.KOLUX_WORKTREE_ID = 'parent-worktree'
 
     try {
       await createPtySubprocess({
@@ -167,9 +167,9 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: {
-          NIGHTSHIFT_PANE_KEY: 'child-tab:child-leaf',
-          NIGHTSHIFT_TAB_ID: 'child-tab',
-          NIGHTSHIFT_WORKTREE_ID: 'child-worktree'
+          KOLUX_PANE_KEY: 'child-tab:child-leaf',
+          KOLUX_TAB_ID: 'child-tab',
+          KOLUX_WORKTREE_ID: 'child-worktree'
         }
       })
     } finally {
@@ -183,22 +183,22 @@ describe('createPtySubprocess', () => {
     }
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
-    expect(env.NIGHTSHIFT_PANE_KEY).toBe('child-tab:child-leaf')
-    expect(env.NIGHTSHIFT_TAB_ID).toBe('child-tab')
-    expect(env.NIGHTSHIFT_WORKTREE_ID).toBe('child-worktree')
+    expect(env.KOLUX_PANE_KEY).toBe('child-tab:child-leaf')
+    expect(env.KOLUX_TAB_ID).toBe('child-tab')
+    expect(env.KOLUX_WORKTREE_ID).toBe('child-worktree')
   })
 
   it.each([
     // fish EXPORTS fish_history, so a daemon started from a fish pane would hand
     // every session the launching worktree's history file (STA-4682). Only the
     // name this spawn asked for — the isolated one, or the user's — may stand.
-    ['drops an inherited Nightshift fish_history', undefined, undefined],
-    ['keeps the session this spawn injected', 'nightshift_c0ffee', 'nightshift_c0ffee'],
+    ['drops an inherited Kolux fish_history', undefined, undefined],
+    ['keeps the session this spawn injected', 'kolux_c0ffee', 'kolux_c0ffee'],
     ['keeps a caller-supplied value', 'mine', 'mine']
   ])('%s', async (_name, requested, expected) => {
     spawnMock.mockReturnValue(mockPtyProcess())
     const saved = process.env.fish_history
-    process.env.fish_history = 'nightshift_abc123'
+    process.env.fish_history = 'kolux_abc123'
 
     try {
       await createPtySubprocess({
@@ -219,9 +219,9 @@ describe('createPtySubprocess', () => {
   })
 
   it.each([
-    // HISTFILE is exported too, so a daemon started from a Nightshift pane would hand
+    // HISTFILE is exported too, so a daemon started from a Kolux pane would hand
     // every session the launching worktree's history file.
-    ['drops an inherited Nightshift HISTFILE', undefined, undefined],
+    ['drops an inherited Kolux HISTFILE', undefined, undefined],
     [
       'keeps the path this spawn injected',
       '/fake/userData/terminal-history/00112233445566aa/zsh_history',
@@ -252,11 +252,11 @@ describe('createPtySubprocess', () => {
   })
 
   it.each([
-    // NIGHTSHIFT_HISTFILE is exported into every pane, so a daemon started from an
-    // Nightshift pane inherits one. Left in place it BOTH re-scopes the pane to
+    // KOLUX_HISTFILE is exported into every pane, so a daemon started from an
+    // Kolux pane inherits one. Left in place it BOTH re-scopes the pane to
     // another worktree's history file (#11146) and wraps a zsh pane nothing
     // asked to wrap, since `history` is selected on its presence.
-    ['drops an inherited Nightshift NIGHTSHIFT_HISTFILE', undefined, undefined],
+    ['drops an inherited Kolux KOLUX_HISTFILE', undefined, undefined],
     [
       'keeps the path this spawn injected',
       '/fake/userData/terminal-history/00112233445566aa/zsh_history',
@@ -265,8 +265,8 @@ describe('createPtySubprocess', () => {
     ['keeps a caller-supplied value', '/home/me/.zsh_history', '/home/me/.zsh_history']
   ])('%s', async (_name, requested, expected) => {
     spawnMock.mockReturnValue(mockPtyProcess())
-    const saved = process.env.NIGHTSHIFT_HISTFILE
-    process.env.NIGHTSHIFT_HISTFILE = '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history'
+    const saved = process.env.KOLUX_HISTFILE
+    process.env.KOLUX_HISTFILE = '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history'
 
     try {
       await createPtySubprocess({
@@ -274,21 +274,21 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         shellOverride: '/bin/zsh',
-        ...(requested === undefined ? {} : { env: { NIGHTSHIFT_HISTFILE: requested } })
+        ...(requested === undefined ? {} : { env: { KOLUX_HISTFILE: requested } })
       })
     } finally {
       if (saved === undefined) {
-        delete process.env.NIGHTSHIFT_HISTFILE
+        delete process.env.KOLUX_HISTFILE
       } else {
-        process.env.NIGHTSHIFT_HISTFILE = saved
+        process.env.KOLUX_HISTFILE = saved
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
-    expect(env.NIGHTSHIFT_HISTFILE).toBe(expected)
-    // The wrapping consequence: no inherited value may point a pane at Nightshift's
+    expect(env.KOLUX_HISTFILE).toBe(expected)
+    // The wrapping consequence: no inherited value may point a pane at Kolux's
     // ZDOTDIR that the client scoped no history for.
-    expect(env.NIGHTSHIFT_SHELL_FEATURES).toBe(expected === undefined ? undefined : 'history')
+    expect(env.KOLUX_SHELL_FEATURES).toBe(expected === undefined ? undefined : 'history')
   })
 
   it('does not inherit ELECTRON_RUN_AS_NODE from the daemon process env', async () => {
@@ -354,9 +354,9 @@ describe('createPtySubprocess', () => {
     const saved = Object.fromEntries(
       [...LEGACY_TERMINAL_SHIM_ENV_KEYS, 'PATH'].map((key) => [key, process.env[key]])
     )
-    process.env.NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION = '1'
-    process.env.NIGHTSHIFT_ATTRIBUTION_SHIM_DIR = '/tmp/nightshift-terminal-attribution/posix'
-    process.env.PATH = `/tmp/nightshift-terminal-attribution/posix${delimiter}/usr/bin`
+    process.env.KOLUX_ENABLE_GIT_ATTRIBUTION = '1'
+    process.env.KOLUX_ATTRIBUTION_SHIM_DIR = '/tmp/kolux-terminal-attribution/posix'
+    process.env.PATH = `/tmp/kolux-terminal-attribution/posix${delimiter}/usr/bin`
 
     try {
       await createPtySubprocess({ sessionId: 'test', cols: 80, rows: 24 })
@@ -378,8 +378,8 @@ describe('createPtySubprocess', () => {
   })
 
   it('does not inherit NODE_ENV from the daemon process env', async () => {
-    // Why: a dev-mode Nightshift forks the daemon with NODE_ENV=development; leaking
-    // Nightshift's build mode into user shells breaks `next build` and Vitest.
+    // Why: a dev-mode Kolux forks the daemon with NODE_ENV=development; leaking
+    // Kolux's build mode into user shells breaks `next build` and Vitest.
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const previous = process.env.NODE_ENV
@@ -442,19 +442,15 @@ describe('createPtySubprocess', () => {
       LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH
     }
     Object.defineProperty(process, 'platform', { value: 'linux' })
-    process.env.APPIMAGE = '/data/apps/nightshift.appimage'
-    process.env.APPDIR = '/tmp/.mount_nightshift123'
-    process.env.ARGV0 = '/data/apps/nightshift.appimage'
+    process.env.APPIMAGE = '/data/apps/kolux.appimage'
+    process.env.APPDIR = '/tmp/.mount_kolux123'
+    process.env.ARGV0 = '/data/apps/kolux.appimage'
     process.env.OWD = '/home/user/project'
-    process.env.APPIMAGE_LIBRARY_PATH = '/tmp/.mount_nightshift123/usr/lib'
-    process.env.PATH = [
-      '/tmp/.mount_nightshift123',
-      '/tmp/.mount_nightshift123/usr/sbin',
-      '/usr/bin'
-    ].join(delimiter)
-    process.env.LD_LIBRARY_PATH = ['/tmp/.mount_nightshift123/usr/lib', '/opt/audio/lib'].join(
+    process.env.APPIMAGE_LIBRARY_PATH = '/tmp/.mount_kolux123/usr/lib'
+    process.env.PATH = ['/tmp/.mount_kolux123', '/tmp/.mount_kolux123/usr/sbin', '/usr/bin'].join(
       delimiter
     )
+    process.env.LD_LIBRARY_PATH = ['/tmp/.mount_kolux123/usr/lib', '/opt/audio/lib'].join(delimiter)
 
     try {
       await createPtySubprocess({ sessionId: 'test', cols: 80, rows: 24 })
@@ -484,8 +480,8 @@ describe('createPtySubprocess', () => {
   it('does not inherit parent agent hook endpoint for development hook env', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
-    const previousEndpoint = process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
-    process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = '/tmp/stale-endpoint.env'
+    const previousEndpoint = process.env.KOLUX_AGENT_HOOK_ENDPOINT
+    process.env.KOLUX_AGENT_HOOK_ENDPOINT = '/tmp/stale-endpoint.env'
 
     try {
       await createPtySubprocess({
@@ -493,32 +489,32 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: {
-          NIGHTSHIFT_AGENT_HOOK_ENV: 'development',
-          NIGHTSHIFT_AGENT_HOOK_PORT: '1234',
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token',
-          NIGHTSHIFT_AGENT_HOOK_VERSION: '1'
+          KOLUX_AGENT_HOOK_ENV: 'development',
+          KOLUX_AGENT_HOOK_PORT: '1234',
+          KOLUX_AGENT_HOOK_TOKEN: 'token',
+          KOLUX_AGENT_HOOK_VERSION: '1'
         }
       })
     } finally {
       if (previousEndpoint === undefined) {
-        delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+        delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
       } else {
-        process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = previousEndpoint
+        process.env.KOLUX_AGENT_HOOK_ENDPOINT = previousEndpoint
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
-    expect(env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT).toBeUndefined()
-    expect(env.NIGHTSHIFT_AGENT_HOOK_ENV).toBe('development')
-    expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('1234')
-    expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('token')
+    expect(env.KOLUX_AGENT_HOOK_ENDPOINT).toBeUndefined()
+    expect(env.KOLUX_AGENT_HOOK_ENV).toBe('development')
+    expect(env.KOLUX_AGENT_HOOK_PORT).toBe('1234')
+    expect(env.KOLUX_AGENT_HOOK_TOKEN).toBe('token')
   })
 
   it('preserves explicit development agent hook endpoint files', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
-    const previousEndpoint = process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
-    process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = '/tmp/stale-endpoint.env'
+    const previousEndpoint = process.env.KOLUX_AGENT_HOOK_ENDPOINT
+    process.env.KOLUX_AGENT_HOOK_ENDPOINT = '/tmp/stale-endpoint.env'
 
     try {
       await createPtySubprocess({
@@ -526,26 +522,26 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: {
-          NIGHTSHIFT_AGENT_HOOK_ENV: 'development',
-          NIGHTSHIFT_AGENT_HOOK_PORT: '1234',
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token',
-          NIGHTSHIFT_AGENT_HOOK_VERSION: '1',
-          NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '/tmp/fresh-endpoint.env'
+          KOLUX_AGENT_HOOK_ENV: 'development',
+          KOLUX_AGENT_HOOK_PORT: '1234',
+          KOLUX_AGENT_HOOK_TOKEN: 'token',
+          KOLUX_AGENT_HOOK_VERSION: '1',
+          KOLUX_AGENT_HOOK_ENDPOINT: '/tmp/fresh-endpoint.env'
         }
       })
     } finally {
       if (previousEndpoint === undefined) {
-        delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+        delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
       } else {
-        process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = previousEndpoint
+        process.env.KOLUX_AGENT_HOOK_ENDPOINT = previousEndpoint
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)?.[2].env
-    expect(env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT).toBe('/tmp/fresh-endpoint.env')
-    expect(env.NIGHTSHIFT_AGENT_HOOK_ENV).toBe('development')
-    expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('1234')
-    expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('token')
+    expect(env.KOLUX_AGENT_HOOK_ENDPOINT).toBe('/tmp/fresh-endpoint.env')
+    expect(env.KOLUX_AGENT_HOOK_ENV).toBe('development')
+    expect(env.KOLUX_AGENT_HOOK_PORT).toBe('1234')
+    expect(env.KOLUX_AGENT_HOOK_TOKEN).toBe('token')
   })
 
   it('passes custom env to spawned process', async () => {
@@ -575,8 +571,8 @@ describe('createPtySubprocess', () => {
       env: {
         SHELL: '/bin/bash',
         TERM: 'screen-256color',
-        PATH: '/tmp/nightshift-agent-teams-bin:/usr/bin',
-        NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test'
+        PATH: '/tmp/kolux-agent-teams-bin:/usr/bin',
+        KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test'
       },
       envToDelete: ['TERM_PROGRAM']
     })
@@ -584,7 +580,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[2].name).toBe('screen-256color')
     expect(lastCall[2].env.TERM).toBe('screen-256color')
-    expect(lastCall[2].env.PATH.split(':')[0]).toBe('/tmp/nightshift-agent-teams-bin')
+    expect(lastCall[2].env.PATH.split(':')[0]).toBe('/tmp/kolux-agent-teams-bin')
     expect(lastCall[2].env.TERM_PROGRAM).toBeUndefined()
   })
 
@@ -602,8 +598,8 @@ describe('createPtySubprocess', () => {
         // Why: buildPtyHostEnv collapses Windows PATH onto one spelling before the daemon wire;
         // the daemon then spreads its own block underneath and can re-mint the other one.
         env: {
-          Path: '/tmp/nightshift-agent-teams-bin:/usr/bin',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test'
+          Path: '/tmp/kolux-agent-teams-bin:/usr/bin',
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test'
         }
       })
     } finally {
@@ -614,7 +610,7 @@ describe('createPtySubprocess', () => {
 
     const env = spawnMock.mock.calls.at(-1)![2].env
     expect(Object.keys(env).filter((key) => /^path$/i.test(key))).toEqual(['Path'])
-    expect(env.Path.split(':')[0]).toBe('/tmp/nightshift-agent-teams-bin')
+    expect(env.Path.split(':')[0]).toBe('/tmp/kolux-agent-teams-bin')
   })
 
   it('keeps the daemon `PATH` block when the requested env has no path key', async () => {

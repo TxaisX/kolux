@@ -601,7 +601,7 @@ describe('maybeAutoRenameBranchOnFirstWork', () => {
   })
 
   it('leaves ineligible branches untouched even when their leaf is a creature name', async () => {
-    const { deps, onRenamed } = makeDeps({ canRenameNightshiftCreatedBranch: () => false })
+    const { deps, onRenamed } = makeDeps({ canRenameKoluxCreatedBranch: () => false })
     await maybeAutoRenameBranchOnFirstWork(workingEvent(), deps)
     expect(generateBranchNameMock).not.toHaveBeenCalled()
     expect(onRenamed).not.toHaveBeenCalled()

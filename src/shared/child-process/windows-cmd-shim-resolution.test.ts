@@ -132,7 +132,7 @@ describeOnWindows('resolveWindowsCmdShim', () => {
   let env: NodeJS.ProcessEnv
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-shim-resolve-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-shim-resolve-'))
     env = { ...process.env }
     writeFileSync(join(dir, 'cli.js'), 'process.stdout.write("hi")\n')
     writeFileSync(join(dir, 'ci2.js'), '')
@@ -158,7 +158,7 @@ describeOnWindows('resolveWindowsCmdShim', () => {
   })
 
   it('prefers a node.exe sitting beside the shim, as the shim itself does', () => {
-    const sibling = mkdtempSync(join(tmpdir(), 'nightshift-shim-sibling-'))
+    const sibling = mkdtempSync(join(tmpdir(), 'kolux-shim-sibling-'))
     try {
       writeFileSync(join(sibling, 'node.exe'), '')
       writeFileSync(join(sibling, 'cli.js'), '')
@@ -220,7 +220,7 @@ describeOnWindows('resolveWindowsCmdShim', () => {
     expect(
       resolveWindowsCmdShim(shim, {
         ...env,
-        NIGHTSHIFT_DISABLE_CMD_SHIM_RESOLUTION: '1'
+        KOLUX_DISABLE_CMD_SHIM_RESOLUTION: '1'
       })
     ).toBeNull()
   })
@@ -244,9 +244,9 @@ describeOnWindows('resolveWindowsCmdShim', () => {
     // spawn. Proven by effect rather than by counting: `early` gains a node.exe
     // only AFTER the first resolution, so a second call that still answers
     // `late` cannot have re-walked PATH. Delete the node cache and this fails.
-    const early = mkdtempSync(join(tmpdir(), 'nightshift-shim-path-early-'))
-    const late = mkdtempSync(join(tmpdir(), 'nightshift-shim-path-late-'))
-    const shimDir = mkdtempSync(join(tmpdir(), 'nightshift-shim-path-'))
+    const early = mkdtempSync(join(tmpdir(), 'kolux-shim-path-early-'))
+    const late = mkdtempSync(join(tmpdir(), 'kolux-shim-path-late-'))
+    const shimDir = mkdtempSync(join(tmpdir(), 'kolux-shim-path-'))
     try {
       writeFileSync(join(late, 'node.exe'), '')
       writeFileSync(join(shimDir, 'cli.js'), '')
@@ -276,9 +276,9 @@ describeOnWindows('resolveWindowsCmdShim', () => {
     // runs. Scanning past it to `second\node.exe` would silently start a
     // different binary -- so resolution gives up and cmd.exe keeps the job.
     // Delete the PATHEXT loop and this returns the .exe instead of null.
-    const first = mkdtempSync(join(tmpdir(), 'nightshift-shim-ext-first-'))
-    const second = mkdtempSync(join(tmpdir(), 'nightshift-shim-ext-second-'))
-    const shimDir = mkdtempSync(join(tmpdir(), 'nightshift-shim-ext-'))
+    const first = mkdtempSync(join(tmpdir(), 'kolux-shim-ext-first-'))
+    const second = mkdtempSync(join(tmpdir(), 'kolux-shim-ext-second-'))
+    const shimDir = mkdtempSync(join(tmpdir(), 'kolux-shim-ext-'))
     try {
       writeFileSync(join(first, 'node.com'), '')
       const nodeExe = join(second, 'node.exe')
@@ -309,8 +309,8 @@ describeOnWindows('resolveWindowsCmdShim', () => {
     // which would fail the spawn with ENOENT where an uncached process falls
     // back to cmd.exe and succeeds. Delete the `statFile` on the cache hit and
     // this returns the deleted path instead of null.
-    const nodeDir = mkdtempSync(join(tmpdir(), 'nightshift-shim-gone-node-'))
-    const shimDir = mkdtempSync(join(tmpdir(), 'nightshift-shim-gone-'))
+    const nodeDir = mkdtempSync(join(tmpdir(), 'kolux-shim-gone-node-'))
+    const shimDir = mkdtempSync(join(tmpdir(), 'kolux-shim-gone-'))
     try {
       const nodeExe = join(nodeDir, 'node.exe')
       writeFileSync(nodeExe, '')

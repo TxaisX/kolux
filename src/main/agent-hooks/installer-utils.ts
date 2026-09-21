@@ -101,9 +101,9 @@ function decodePowerShellEncodedCommand(command: string): string | null {
   }
 }
 
-// Why: prod/dev/parallel Nightshift instances must write the same managed entry, not race between per-userData script paths.
+// Why: prod/dev/parallel Kolux instances must write the same managed entry, not race between per-userData script paths.
 export function getSharedManagedScriptPath(scriptFileName: string): string {
-  return join(homedir(), '.nightshift', 'agent-hooks', scriptFileName)
+  return join(homedir(), '.kolux', 'agent-hooks', scriptFileName)
 }
 
 export { wrapPosixHookCommand } from './posix-hook-command'
@@ -133,7 +133,7 @@ export function wrapWindowsHookCommand(
       ? ''
       : `Write-Output ${quotePowerShellString(options.fallbackStdout)}; `
   // Why the order: answer first (a gate event reads silence as deny), then the shared
-  // env guard, and only then own stdin — outside a Nightshift pane the caller may abandon the
+  // env guard, and only then own stdin — outside a Kolux pane the caller may abandon the
   // pipe, and ReadToEnd would strand the launcher there forever (#11549).
   const command = `${envPrefix}if (Test-Path -LiteralPath ${quoted} -PathType Leaf) { & ${quoted}; exit $LASTEXITCODE }; ${fallback}${WINDOWS_POWERSHELL_HOOK_ENVIRONMENT_GUARD}; [Console]::In.ReadToEnd() | Out-Null; exit 0`
   return wrapWindowsPowerShellEncodedCommand(command)
@@ -157,16 +157,16 @@ export function buildWindowsAgentHookPostCommand(
   // Why: PowerShell startup makes inline per-turn Codex hooks visibly slow, so mirror the POSIX curl path.
   // Why: fully-qualify curl so a repo-local curl.exe can't hijack hook payloads.
   return [
-    `"%SystemRoot%\\System32\\curl.exe" -sS -X POST "http://127.0.0.1:%NIGHTSHIFT_AGENT_HOOK_PORT%/hook/${source}" ^`,
+    `"%SystemRoot%\\System32\\curl.exe" -sS -X POST "http://127.0.0.1:%KOLUX_AGENT_HOOK_PORT%/hook/${source}" ^`,
     '  --connect-timeout 0.5 --max-time 1.5 ^',
     '  -H "Content-Type: application/x-www-form-urlencoded" ^',
-    '  -H "X-Nightshift-Agent-Hook-Token: %NIGHTSHIFT_AGENT_HOOK_TOKEN%" ^',
-    '  --data-urlencode "paneKey=%NIGHTSHIFT_PANE_KEY%" ^',
-    '  --data-urlencode "tabId=%NIGHTSHIFT_TAB_ID%" ^',
-    '  --data-urlencode "launchToken=%NIGHTSHIFT_AGENT_LAUNCH_TOKEN%" ^',
-    '  --data-urlencode "worktreeId=%NIGHTSHIFT_WORKTREE_ID%" ^',
-    '  --data-urlencode "env=%NIGHTSHIFT_AGENT_HOOK_ENV%" ^',
-    '  --data-urlencode "version=%NIGHTSHIFT_AGENT_HOOK_VERSION%" ^',
+    '  -H "X-Kolux-Agent-Hook-Token: %KOLUX_AGENT_HOOK_TOKEN%" ^',
+    '  --data-urlencode "paneKey=%KOLUX_PANE_KEY%" ^',
+    '  --data-urlencode "tabId=%KOLUX_TAB_ID%" ^',
+    '  --data-urlencode "launchToken=%KOLUX_AGENT_LAUNCH_TOKEN%" ^',
+    '  --data-urlencode "worktreeId=%KOLUX_WORKTREE_ID%" ^',
+    '  --data-urlencode "env=%KOLUX_AGENT_HOOK_ENV%" ^',
+    '  --data-urlencode "version=%KOLUX_AGENT_HOOK_VERSION%" ^',
     ...extraFormLines,
     '  --data-urlencode "payload@-" >nul 2>nul'
   ].join('\r\n')
@@ -176,16 +176,16 @@ export function buildWindowsAgentHookPostCommand(
 export function buildWindowsAgentHookCurlPostCommand(source: AgentHookSource): string {
   return [
     '"%SystemRoot%\\System32\\curl.exe" -sS -X POST',
-    `"http://127.0.0.1:%NIGHTSHIFT_AGENT_HOOK_PORT%/hook/${source}"`,
+    `"http://127.0.0.1:%KOLUX_AGENT_HOOK_PORT%/hook/${source}"`,
     '--connect-timeout 0.5 --max-time 1.5',
     '-H "Content-Type: application/x-www-form-urlencoded"',
-    '-H "X-Nightshift-Agent-Hook-Token: %NIGHTSHIFT_AGENT_HOOK_TOKEN%"',
-    '--data-urlencode "paneKey=%NIGHTSHIFT_PANE_KEY%"',
-    '--data-urlencode "tabId=%NIGHTSHIFT_TAB_ID%"',
-    '--data-urlencode "launchToken=%NIGHTSHIFT_AGENT_LAUNCH_TOKEN%"',
-    '--data-urlencode "worktreeId=%NIGHTSHIFT_WORKTREE_ID%"',
-    '--data-urlencode "env=%NIGHTSHIFT_AGENT_HOOK_ENV%"',
-    '--data-urlencode "version=%NIGHTSHIFT_AGENT_HOOK_VERSION%"',
+    '-H "X-Kolux-Agent-Hook-Token: %KOLUX_AGENT_HOOK_TOKEN%"',
+    '--data-urlencode "paneKey=%KOLUX_PANE_KEY%"',
+    '--data-urlencode "tabId=%KOLUX_TAB_ID%"',
+    '--data-urlencode "launchToken=%KOLUX_AGENT_LAUNCH_TOKEN%"',
+    '--data-urlencode "worktreeId=%KOLUX_WORKTREE_ID%"',
+    '--data-urlencode "env=%KOLUX_AGENT_HOOK_ENV%"',
+    '--data-urlencode "version=%KOLUX_AGENT_HOOK_VERSION%"',
     '--data-urlencode "payload@-"',
     '>nul 2>&1'
   ].join(' ')

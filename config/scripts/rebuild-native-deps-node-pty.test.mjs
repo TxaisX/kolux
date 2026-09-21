@@ -29,14 +29,14 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir, { platform: 'win32' })
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { nativeDir: '../build/Release/' })
         writeFakeWindowsRegistry(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath,
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath,
           npm_config_platform: 'win32',
           npm_config_arch: process.arch
         })
@@ -227,13 +227,13 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir, { platform: 'win32' })
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir)
         writeFakeWindowsProcessTree(projectDir)
         writeFakeNodePtyConptyPayload(projectDir, process.arch)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath,
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath,
           npm_config_platform: 'win32',
           npm_config_arch: process.arch
         })
@@ -249,20 +249,20 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
   )
 
   it.skipIf(process.platform !== 'win32')(
-    'rebuilds a loadable ConPTY native that lacks Nightshift job ownership',
+    'rebuilds a loadable ConPTY native that lacks Kolux job ownership',
     () => {
       const projectDir = mkTempProject()
 
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir, { platform: 'win32' })
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { ownsPtyJob: false })
         writeFakeWindowsRegistry(projectDir)
         writeFakeWindowsProcessTree(projectDir)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath,
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath,
           npm_config_platform: 'win32',
           npm_config_arch: process.arch
         })
@@ -286,12 +286,12 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir)
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir)
         writeNodePtyPatchFile(projectDir)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath
         })
 
         expect(result.status, result.stderr).toBe(0)
@@ -317,13 +317,13 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir)
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { nativeDir: '../build/Release/' })
         writeNodePtyPatchFile(projectDir)
         writePatchedNodePtyBuildArtifacts(projectDir)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath
         })
 
         expect(result.status, result.stderr).toBe(0)
@@ -345,19 +345,19 @@ describe('rebuild-native-deps patched node-pty rebuild', () => {
       try {
         const rebuildLogPath = join(projectDir, 'electron-rebuild.log')
         writeFakeUsableElectronPackage(projectDir)
-        writeFakeElectronRebuild(projectDir, { logPathEnv: 'NIGHTSHIFT_REBUILD_TEST_LOG' })
+        writeFakeElectronRebuild(projectDir, { logPathEnv: 'KOLUX_REBUILD_TEST_LOG' })
         writeFakeLoadableNodePty(projectDir, { nativeDir: '../prebuilds/darwin-arm64/' })
         writeNodePtyPatchFile(projectDir)
         writePatchedNodePtyBuildArtifacts(projectDir)
 
         const result = runRebuildScript(projectDir, {
-          NIGHTSHIFT_REBUILD_TEST_LOG: rebuildLogPath
+          KOLUX_REBUILD_TEST_LOG: rebuildLogPath
         })
 
         expect(result.status, result.stderr).toBe(0)
         expect(result.stdout).toContain('Rebuilding failed native modules: node-pty')
         expect(result.stdout).toContain(
-          "expected build/Release so Nightshift's node-pty patch is active"
+          "expected build/Release so Kolux's node-pty patch is active"
         )
 
         const rebuildCall = JSON.parse(readFileSync(rebuildLogPath, 'utf8').trim())

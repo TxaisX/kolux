@@ -29,7 +29,7 @@ const VALID_LINEAR_MODES = new Set<NonNullable<TaskResumeState['linearMode']>>([
   'issues',
   'projects',
   'views',
-  'in-nightshift'
+  'in-kolux'
 ])
 const VALID_JIRA_PRESETS = new Set<NonNullable<TaskResumeState['jiraPreset']>>([
   'assigned',

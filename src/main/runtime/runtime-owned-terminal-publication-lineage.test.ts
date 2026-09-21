@@ -2,14 +2,14 @@ import { expect, it, vi } from 'vitest'
 import type { RuntimeMobileSessionTabsResult } from '../../shared/runtime-types'
 
 // Fragments stay side-effect ordered: mocks, then lifecycle, then fixtures.
-const { NightshiftRuntimeService } = await import('./nightshift-runtime-test-mocks.spec')
-await import('./nightshift-runtime-test-lifecycle.spec')
-const { store, TEST_WORKTREE_ID } = await import('./nightshift-runtime-test-fixtures.spec')
+const { KoluxRuntimeService } = await import('./kolux-runtime-test-mocks.spec')
+await import('./kolux-runtime-test-lifecycle.spec')
+const { store, TEST_WORKTREE_ID } = await import('./kolux-runtime-test-fixtures.spec')
 
 it.each(['renderer:active-generation', 'headless:active-generation'])(
   'keeps %s live when runtime-owned creation supplements its inventory',
   async (publicationEpoch) => {
-    const runtime = new NightshiftRuntimeService(store)
+    const runtime = new KoluxRuntimeService(store)
     runtime.setPtyController({
       spawn: vi.fn().mockResolvedValue({ id: 'pty-runtime-fallback' }),
       write: () => true,

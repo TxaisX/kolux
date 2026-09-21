@@ -10,7 +10,7 @@ const CONFIG_PATH = resolve(import.meta.dirname, '../electron-builder.config.cjs
 function loadConfigWithEnv(env) {
   const saved = { ...process.env }
   for (const key of Object.keys(process.env)) {
-    if (key.startsWith('NIGHTSHIFT_')) {
+    if (key.startsWith('KOLUX_')) {
       delete process.env[key]
     }
   }
@@ -25,8 +25,8 @@ function loadConfigWithEnv(env) {
 }
 
 const WIN_ADHOC_ENV = {
-  NIGHTSHIFT_WIN_ADHOC: '1',
-  NIGHTSHIFT_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203'
+  KOLUX_WIN_ADHOC: '1',
+  KOLUX_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203'
 }
 
 afterEach(() => {
@@ -35,11 +35,11 @@ afterEach(() => {
 
 describe('electron-builder dev-channel identity', () => {
   it('keeps the SignPath publisherName on SignPath-signed stable Windows builds', () => {
-    const config = loadConfigWithEnv({ NIGHTSHIFT_WIN_SIGNPATH: '1' })
+    const config = loadConfigWithEnv({ KOLUX_WIN_SIGNPATH: '1' })
 
     expect(config.win.signtoolOptions.publisherName).toBe('SignPath Foundation')
     expect(config.win.verifyUpdateCodeSignature).toBeUndefined()
-    expect(config.publish.repo).toBe('nightshift')
+    expect(config.publish.repo).toBe('kolux')
     expect(config.publish.releaseType).toBe('release')
   })
 
@@ -67,7 +67,7 @@ describe('electron-builder dev-channel identity', () => {
   // the CI SignPath request. Carrying it must not drag a publisherName onto a
   // dev build, which is the failure the split above exists to prevent.
   it('carries the uninstaller sign hook without changing publisherName semantics', () => {
-    const signedEnv = { NIGHTSHIFT_WIN_SIGNPATH: '1' }
+    const signedEnv = { KOLUX_WIN_SIGNPATH: '1' }
     for (const env of [{}, signedEnv, WIN_ADHOC_ENV]) {
       const config = loadConfigWithEnv(env)
       expect(typeof config.win.signtoolOptions.sign).toBe('function')
@@ -79,9 +79,9 @@ describe('electron-builder dev-channel identity', () => {
   })
 
   it.each([
-    ['hourly', { NIGHTSHIFT_WIN_HOURLY: '1' }, 'nightshift-hourly'],
-    ['daily', { NIGHTSHIFT_WIN_DAILY: '1' }, 'nightshift-daily'],
-    ['adhoc', { NIGHTSHIFT_WIN_ADHOC: '1' }, 'nightshift-adhoc']
+    ['hourly', { KOLUX_WIN_HOURLY: '1' }, 'kolux-hourly'],
+    ['daily', { KOLUX_WIN_DAILY: '1' }, 'kolux-daily'],
+    ['adhoc', { KOLUX_WIN_ADHOC: '1' }, 'kolux-adhoc']
   ])('publishes %s Windows builds to its own repo as a prerelease', (_channel, env, repo) => {
     const config = loadConfigWithEnv(env)
 
@@ -89,7 +89,7 @@ describe('electron-builder dev-channel identity', () => {
     expect(config.publish.releaseType).toBe('prerelease')
   })
 
-  // Why: NIGHTSHIFT_MAC_* gates hardened runtime, notarization, and root-level
+  // Why: KOLUX_MAC_* gates hardened runtime, notarization, and root-level
   // forceCodeSigning. If the Windows variables leaked into that, the Windows job
   // would fail packaging for want of a cert it deliberately does not use.
   it('leaves mac release signing off for Windows dev builds', () => {
@@ -102,22 +102,22 @@ describe('electron-builder dev-channel identity', () => {
 
   it('still notarizes mac dev builds', () => {
     const config = loadConfigWithEnv({
-      NIGHTSHIFT_MAC_ADHOC: '1',
-      NIGHTSHIFT_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203'
+      KOLUX_MAC_ADHOC: '1',
+      KOLUX_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203'
     })
 
     expect(config.mac.notarize).toBe(true)
-    expect(config.publish.repo).toBe('nightshift-adhoc')
+    expect(config.publish.repo).toBe('kolux-adhoc')
   })
 })
 
 describe('collectDevChannelPackagingProblems', () => {
   const goodWinConfig = {
-    publish: { repo: 'nightshift-adhoc', releaseType: 'prerelease' },
+    publish: { repo: 'kolux-adhoc', releaseType: 'prerelease' },
     extraMetadata: { version: '1.4.178-adhoc.20260819010203' },
     win: { verifyUpdateCodeSignature: false }
   }
-  const env = { NIGHTSHIFT_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203' }
+  const env = { KOLUX_ADHOC_BUILD_VERSION: '1.4.178-adhoc.20260819010203' }
 
   it('accepts a correctly configured Windows dev build', () => {
     expect(
@@ -136,11 +136,11 @@ describe('collectDevChannelPackagingProblems', () => {
     const problems = collectDevChannelPackagingProblems({
       channel: 'adhoc',
       platform: 'win32',
-      config: { ...goodWinConfig, publish: { repo: 'nightshift', releaseType: 'release' } },
+      config: { ...goodWinConfig, publish: { repo: 'kolux', releaseType: 'release' } },
       env
     })
 
-    expect(problems.join('\n')).toContain('must publish to "nightshift-adhoc"')
+    expect(problems.join('\n')).toContain('must publish to "kolux-adhoc"')
     expect(problems.join('\n')).toContain('rebase it onto a main that does')
   })
 
@@ -177,7 +177,7 @@ describe('collectDevChannelPackagingProblems', () => {
         channel: 'adhoc',
         platform: 'darwin',
         config: {
-          publish: { repo: 'nightshift-adhoc', releaseType: 'prerelease' },
+          publish: { repo: 'kolux-adhoc', releaseType: 'prerelease' },
           extraMetadata: { version: '1.4.178-adhoc.20260819010203' },
           win: { signtoolOptions: { publisherName: 'SignPath Foundation' } }
         },

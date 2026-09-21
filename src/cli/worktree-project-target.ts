@@ -86,7 +86,7 @@ export async function resolveProjectCreateTarget(
     if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
       throw new RuntimeClientError(
         'incompatible_runtime',
-        'This Nightshift server does not support project host setup yet. Update Nightshift on the server and try again.'
+        'This Kolux server does not support project host setup yet. Update Kolux on the server and try again.'
       )
     }
     throw error

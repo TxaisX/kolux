@@ -35,7 +35,7 @@ function seedEnvironment(name: string, endpoint: string): string {
 }
 
 beforeEach(() => {
-  userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-tailscale-hint-'))
+  userDataPath = mkdtempSync(join(tmpdir(), 'kolux-tailscale-hint-'))
 })
 
 afterEach(() => {

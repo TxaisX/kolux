@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   removeWorktreeMock,
-  parseNightshiftYamlMock,
+  parseKoluxYamlMock,
   hasHooksFileMock,
   getSshGitProviderMock,
   getSshFilesystemProviderMock,
@@ -229,7 +229,7 @@ describe('registerWorktreeHandlers', () => {
     }
     store.getRepos.mockReturnValue([localRepo, sshRepo])
     getSshFilesystemProviderMock.mockReturnValue(fsProvider)
-    parseNightshiftYamlMock.mockReturnValue({ scripts: { archive: 'remote-cleanup' } })
+    parseKoluxYamlMock.mockReturnValue({ scripts: { archive: 'remote-cleanup' } })
 
     await expect(
       handlers['hooks:check'](null, {
@@ -242,7 +242,7 @@ describe('registerWorktreeHandlers', () => {
       hooks: { scripts: { archive: 'remote-cleanup' } },
       mayNeedUpdate: false
     })
-    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/nightshift.yaml')
+    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/kolux.yaml')
     expect(hasHooksFileMock).not.toHaveBeenCalled()
   })
 

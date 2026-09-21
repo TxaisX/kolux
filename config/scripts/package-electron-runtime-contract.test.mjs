@@ -172,10 +172,10 @@ describe('Electron runtime package contract', () => {
         command.indexOf('electron-builder')
       )
     }
-    expect(macReleaseCommand).toContain(' && NIGHTSHIFT_MAC_RELEASE=1 ')
+    expect(macReleaseCommand).toContain(' && KOLUX_MAC_RELEASE=1 ')
     expect(releaseCommands.get('linux-x64')).toContain(' && pnpm exec electron-builder ')
     expect(releaseCommands.get('linux-x64')).toContain('--linux AppImage deb rpm --x64')
-    expect(releaseCommands.get('linux-arm64')).toContain('NIGHTSHIFT_LINUX_ARM64_RELEASE=1')
+    expect(releaseCommands.get('linux-arm64')).toContain('KOLUX_LINUX_ARM64_RELEASE=1')
     expect(releaseCommands.get('linux-arm64')).toContain('--linux AppImage deb rpm --arm64')
     expect(releaseCommands.get('win')).toContain(
       '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm exec electron-builder '

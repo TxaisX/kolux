@@ -16,8 +16,8 @@ const mocks = vi.hoisted(() => ({
   browserWindowMock: {
     getAllWindows: vi.fn<() => TestWindow[]>(() => [])
   },
-  checkNightshiftStarredMock: vi.fn(),
-  starNightshiftMock: vi.fn(),
+  checkKoluxStarredMock: vi.fn(),
+  starKoluxMock: vi.fn(),
   trackMock: vi.fn(),
   getCohortAtEmitMock: vi.fn(() => ({ nth_repo_added: 3 })),
   ipcMainHandleMock: vi.fn()
@@ -32,8 +32,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../github/client', () => ({
-  checkNightshiftStarred: mocks.checkNightshiftStarredMock,
-  starNightshift: mocks.starNightshiftMock
+  checkKoluxStarred: mocks.checkKoluxStarredMock,
+  starKolux: mocks.starKoluxMock
 }))
 
 vi.mock('../telemetry/client', () => ({
@@ -44,7 +44,7 @@ vi.mock('../telemetry/cohort-classifier', () => ({
   getCohortAtEmit: mocks.getCohortAtEmitMock
 }))
 
-const { browserWindowMock, checkNightshiftStarredMock, trackMock } = mocks
+const { browserWindowMock, checkKoluxStarredMock, trackMock } = mocks
 const getIpcHandler = createIpcHandlerLookup(mocks.ipcMainHandleMock)
 
 describe('StarNagService', () => {
@@ -176,7 +176,7 @@ describe('StarNagService', () => {
   it('hides a superseded visible card when onboarding completion detects an existing star', async () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
-    checkNightshiftStarredMock.mockResolvedValueOnce(true)
+    checkKoluxStarredMock.mockResolvedValueOnce(true)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
@@ -196,9 +196,7 @@ describe('StarNagService', () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const deferredStarCheck = createDeferred<boolean | null>()
-    checkNightshiftStarredMock
-      .mockReturnValueOnce(deferredStarCheck.promise)
-      .mockResolvedValueOnce(null)
+    checkKoluxStarredMock.mockReturnValueOnce(deferredStarCheck.promise).mockResolvedValueOnce(null)
     const { service, emitAgentStarted, ui } = createHarness()
 
     service.start()
@@ -231,9 +229,7 @@ describe('StarNagService', () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const deferredStarCheck = createDeferred<boolean | null>()
-    checkNightshiftStarredMock
-      .mockReturnValueOnce(deferredStarCheck.promise)
-      .mockResolvedValueOnce(null)
+    checkKoluxStarredMock.mockReturnValueOnce(deferredStarCheck.promise).mockResolvedValueOnce(null)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()

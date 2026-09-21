@@ -204,11 +204,11 @@ describe('paneOwnsQueuedStartup', () => {
     observeConnect()
     // connectPanePty took it; the lifecycle nulls the outer slot so splits cannot replay it.
     deps.startup = null
-    splitPaneWithOneShotStartup(deps, { command: 'nightshift setup' }, () => {
+    splitPaneWithOneShotStartup(deps, { command: 'kolux setup' }, () => {
       observeConnect()
       return { id: 2 }
     })
-    splitPaneWithOneShotStartup(deps, { command: 'nightshift issue' }, () => {
+    splitPaneWithOneShotStartup(deps, { command: 'kolux issue' }, () => {
       observeConnect()
       return { id: 3 }
     })
@@ -219,16 +219,16 @@ describe('paneOwnsQueuedStartup', () => {
   // Why this case matters: a truthiness regression ("has a startup") passes the test above, because
   // the split payload is non-null there too. Only a structurally-identical payload separates them.
   it('denies ownership to a split payload structurally identical to the queued command', () => {
-    const queuedStartup = { command: 'nightshift setup' }
+    const queuedStartup = { command: 'kolux setup' }
 
-    expect(paneOwnsQueuedStartup({ command: 'nightshift setup' }, queuedStartup)).toBe(false)
+    expect(paneOwnsQueuedStartup({ command: 'kolux setup' }, queuedStartup)).toBe(false)
     expect(paneOwnsQueuedStartup(queuedStartup, queuedStartup)).toBe(true)
   })
 
   it('denies ownership when the tab queued nothing, so an unrelated pane cannot spend a slot', () => {
     expect(paneOwnsQueuedStartup(null, null)).toBe(false)
     expect(paneOwnsQueuedStartup(undefined, undefined)).toBe(false)
-    expect(paneOwnsQueuedStartup({ command: 'nightshift setup' }, null)).toBe(false)
+    expect(paneOwnsQueuedStartup({ command: 'kolux setup' }, null)).toBe(false)
   })
 })
 
@@ -316,7 +316,7 @@ describe('splitPaneWithOneShotStartup', () => {
 
     const createdPane = splitPaneWithOneShotStartup(
       deps,
-      { command: 'nightshift setup', env: { NIGHTSHIFT_ROLE: 'setup' } },
+      { command: 'kolux setup', env: { KOLUX_ROLE: 'setup' } },
       () => {
         seenStartupValues.push(deps.startup ?? null)
         return { id: 2 }
@@ -324,9 +324,7 @@ describe('splitPaneWithOneShotStartup', () => {
     )
 
     expect(createdPane).toEqual({ id: 2 })
-    expect(seenStartupValues).toEqual([
-      { command: 'nightshift setup', env: { NIGHTSHIFT_ROLE: 'setup' } }
-    ])
+    expect(seenStartupValues).toEqual([{ command: 'kolux setup', env: { KOLUX_ROLE: 'setup' } }])
     expect(deps.startup).toBeNull()
   })
 
@@ -338,7 +336,7 @@ describe('splitPaneWithOneShotStartup', () => {
 
     splitPaneWithOneShotStartup(
       deps,
-      { command: 'nightshift setup', env: { NIGHTSHIFT_ROLE: 'setup' } },
+      { command: 'kolux setup', env: { KOLUX_ROLE: 'setup' } },
       () => {
         seenStartupValues.push(deps.startup ?? null)
         return { id: 2 }
@@ -347,14 +345,14 @@ describe('splitPaneWithOneShotStartup', () => {
 
     expect(deps.startup).toBeNull()
 
-    splitPaneWithOneShotStartup(deps, { command: 'nightshift issue' }, () => {
+    splitPaneWithOneShotStartup(deps, { command: 'kolux issue' }, () => {
       seenStartupValues.push(deps.startup ?? null)
       return { id: 3 }
     })
 
     expect(seenStartupValues).toEqual([
-      { command: 'nightshift setup', env: { NIGHTSHIFT_ROLE: 'setup' } },
-      { command: 'nightshift issue' }
+      { command: 'kolux setup', env: { KOLUX_ROLE: 'setup' } },
+      { command: 'kolux issue' }
     ])
     expect(deps.startup).toBeNull()
 
@@ -373,9 +371,9 @@ describe('splitPaneWithOneShotStartup', () => {
       throw new Error('split failed')
     })
 
-    expect(() =>
-      splitPaneWithOneShotStartup(deps, { command: 'nightshift setup' }, splitPane)
-    ).toThrow('split failed')
+    expect(() => splitPaneWithOneShotStartup(deps, { command: 'kolux setup' }, splitPane)).toThrow(
+      'split failed'
+    )
 
     expect(splitPane).toHaveBeenCalledTimes(1)
     expect(deps.startup).toBeNull()

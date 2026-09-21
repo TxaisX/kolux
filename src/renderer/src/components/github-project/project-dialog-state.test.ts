@@ -36,75 +36,75 @@ describe('resolveRepoBackedProjectDialogState', () => {
 
 describe('resolveMissingRepoProjectDialogState', () => {
   it('clears fallback dialogs while the slug index is rebuilding', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
-    const repoNotInNightshift = { owner: 'TxaisX', repo: 'nightshift', url: null }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
 
     expect(
       resolveMissingRepoProjectDialogState({
         slugIndexReady: false,
         slugDialog,
-        repoNotInNightshift,
+        repoNotInKolux,
         lookupSlug: () => [{ id: 'repo-1' }],
         selectedRepoIds: new Set(['repo-1'])
       })
-    ).toEqual({ slugDialog: null, repoNotInNightshift: null })
+    ).toEqual({ slugDialog: null, repoNotInKolux: null })
   })
 
   it('clears slug fallback dialogs once the repo slug resolves', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
-    const repoNotInNightshift = { owner: 'other', repo: 'tool', url: null }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
+    const repoNotInKolux = { owner: 'other', repo: 'tool', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
-      repoNotInNightshift,
+      repoNotInKolux,
       lookupSlug: (slug) => (slug === 'TxaisX/nightshift' ? [{ id: 'repo-1' }] : []),
       selectedRepoIds: new Set(['repo-1'])
     })
 
     expect(result.slugDialog).toBeNull()
-    expect(result.repoNotInNightshift).toBe(repoNotInNightshift)
+    expect(result.repoNotInKolux).toBe(repoNotInKolux)
   })
 
-  it('clears repo-not-in-nightshift dialogs once the repo slug resolves', () => {
+  it('clears repo-not-in-kolux dialogs once the repo slug resolves', () => {
     const slugDialog = { origin: { owner: 'other', repo: 'tool' } }
-    const repoNotInNightshift = { owner: 'TxaisX', repo: 'nightshift', url: null }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
-      repoNotInNightshift,
+      repoNotInKolux,
       lookupSlug: (slug) => (slug === 'TxaisX/nightshift' ? [{ id: 'repo-1' }] : []),
       selectedRepoIds: new Set(['repo-1'])
     })
 
     expect(result.slugDialog).toBe(slugDialog)
-    expect(result.repoNotInNightshift).toBeNull()
+    expect(result.repoNotInKolux).toBeNull()
   })
 
   it('clears fallback dialogs when the repo is globally known but not selected', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
-    const repoNotInNightshift = { owner: 'TxaisX', repo: 'nightshift', url: null }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
-      repoNotInNightshift,
+      repoNotInKolux,
       lookupSlug: () => [{ id: 'repo-2' }],
       selectedRepoIds: new Set(['repo-1'])
     })
 
-    expect(result).toEqual({ slugDialog: null, repoNotInNightshift: null })
+    expect(result).toEqual({ slugDialog: null, repoNotInKolux: null })
   })
 
   it('keeps missing-repo fallback dialogs when there are no global matches', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
-    const repoNotInNightshift = { owner: 'TxaisX', repo: 'nightshift', url: null }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
-      repoNotInNightshift,
+      repoNotInKolux,
       lookupSlug: () => [],
       selectedRepoIds: new Set(['repo-1'])
     })
 
-    expect(result).toEqual({ slugDialog, repoNotInNightshift })
+    expect(result).toEqual({ slugDialog, repoNotInKolux })
   })
 })

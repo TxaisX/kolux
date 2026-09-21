@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { ensureTerminalVisible, getActiveWorktreeId, waitForActiveWorktree } from './helpers/store'
 
 type BrowserFixture = {
@@ -15,7 +15,7 @@ async function createBrowserFixture(
   page: Page,
   registerCleanup: (cleanup: () => Promise<void>) => void
 ): Promise<BrowserFixture> {
-  const fixtureDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-browser-attachment-'))
+  const fixtureDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-browser-attachment-'))
   registerCleanup(async () => {
     rmSync(fixtureDir, { recursive: true, force: true })
   })
@@ -72,20 +72,20 @@ async function readGuestState(page: Page, browserTabId: string) {
 
 test('resume validation waits for an attaching guest without replacing it', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const { browserTab, fixtureUrl } = await createBrowserFixture(
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   )
   await expect
-    .poll(() => readGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readGuestState(koluxPage, browserTab.id))
     .toMatchObject({ marker: 'painted-attachment-guest', url: fixtureUrl })
-  const before = await readGuestState(nightshiftPage, browserTab.id)
+  const before = await readGuestState(koluxPage, browserTab.id)
   expect(before.webContentsId).not.toBeNull()
 
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     const webview = document.querySelector(
       `[data-browser-overlay-tab-id="${targetBrowserTabId}"] webview`
     ) as Electron.WebviewTag
@@ -106,7 +106,7 @@ test('resume validation waits for an attaching guest without replacing it', asyn
     })
   }, browserTab.id)
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     (browserPageId) => window.api.browser.unregisterGuest({ browserPageId }),
     browserTab.activePageId
   )
@@ -116,7 +116,7 @@ test('resume validation waits for an attaching guest without replacing it', asyn
   })
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         (targetBrowserTabId) =>
           document
             .querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"] webview`)
@@ -125,14 +125,14 @@ test('resume validation waits for an attaching guest without replacing it', asyn
       )
     )
     .toBe('true')
-  await nightshiftPage.evaluate((targetBrowserTabId) => {
+  await koluxPage.evaluate((targetBrowserTabId) => {
     document
       .querySelector(`[data-browser-overlay-tab-id="${targetBrowserTabId}"] webview`)
       ?.dispatchEvent(new Event('dom-ready'))
   }, browserTab.id)
   await expect
     .poll(() =>
-      nightshiftPage.evaluate((targetBrowserTabId) => {
+      koluxPage.evaluate((targetBrowserTabId) => {
         const webview = document.querySelector(
           `[data-browser-overlay-tab-id="${targetBrowserTabId}"] webview`
         ) as Electron.WebviewTag | null
@@ -146,7 +146,7 @@ test('resume validation waits for an attaching guest without replacing it', asyn
     .toEqual({ forcedRead: 'true', identity: 'original', successfulRead: 'true' })
 
   await expect
-    .poll(() => readGuestState(nightshiftPage, browserTab.id))
+    .poll(() => readGuestState(koluxPage, browserTab.id))
     .toMatchObject({
       chromePresent: true,
       marker: 'painted-attachment-guest',
@@ -155,7 +155,7 @@ test('resume validation waits for an attaching guest without replacing it', asyn
     })
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         ({ browserPageId, webContentsId }) =>
           window.api.browser.isGuestRegistered({ browserPageId, webContentsId }),
         { browserPageId: browserTab.activePageId, webContentsId: before.webContentsId! }
@@ -164,7 +164,7 @@ test('resume validation waits for an attaching guest without replacing it', asyn
     .toBe(true)
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         ({ workspaceId, browserPageId }) =>
           window.__store
             ?.getState()

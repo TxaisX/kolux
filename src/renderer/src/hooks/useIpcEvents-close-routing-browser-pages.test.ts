@@ -195,7 +195,7 @@ describe('useIpcEvents browser tab close routing', () => {
         },
         browser: {
           onGuestLoadFailed: () => () => {},
-          onOpenLinkInNightshiftTab: () => () => {},
+          onOpenLinkInKoluxTab: () => () => {},
           onNavigationUpdate: () => () => {},
           onActivateView: () => () => {},
           onPaneFocus: () => () => {}
@@ -421,7 +421,7 @@ describe('useIpcEvents browser tab close routing', () => {
         },
         browser: {
           onGuestLoadFailed: () => () => {},
-          onOpenLinkInNightshiftTab: () => () => {},
+          onOpenLinkInKoluxTab: () => () => {},
           onNavigationUpdate: () => () => {},
           onActivateView: () => () => {},
           onPaneFocus: () => () => {}
@@ -642,7 +642,7 @@ describe('useIpcEvents browser tab close routing', () => {
         },
         browser: {
           onGuestLoadFailed: () => () => {},
-          onOpenLinkInNightshiftTab: () => () => {},
+          onOpenLinkInKoluxTab: () => () => {},
           onNavigationUpdate: () => () => {},
           onActivateView: () => () => {},
           onPaneFocus: () => () => {}

@@ -86,7 +86,7 @@ describe('workspaceSessionStateSchema field coverage', () => {
   it('round-trips the closed-tab tombstone map through parseWorkspaceSession', () => {
     // The regression this file exists for. Recorded on close, written to disk, stripped on the next
     // launch — so a close the transport never delivered resurrected after a quit-and-relaunch,
-    // which is precisely the reported shape ("every day I open nightshift and it opens more tabs").
+    // which is precisely the reported shape ("every day I open kolux and it opens more tabs").
     const parsed = parseWorkspaceSession({
       ...MINIMAL_SESSION,
       closedTerminalTabTombstonesByTabId: {

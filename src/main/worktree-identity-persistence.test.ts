@@ -26,7 +26,7 @@ describe('host-qualified worktree metadata', () => {
   }
 
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-worktree-identity-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-worktree-identity-'))
   })
 
   afterEach(() => {

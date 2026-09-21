@@ -28,7 +28,7 @@ import { PluginSecretsStore } from './plugin-secrets-store'
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-secrets-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-secrets-'))
   roots.push(root)
   return root
 }

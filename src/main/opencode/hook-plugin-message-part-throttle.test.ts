@@ -1,9 +1,9 @@
 /**
  * Executes the generated OpenCode plugin source (the artifact that runs inside
  * OpenCode's process) to verify streamed message.part.updated events are
- * coalesced and capped before POSTing to Nightshift's agent-hook server. The
+ * coalesced and capped before POSTing to Kolux's agent-hook server. The
  * un-throttled plugin re-posted the full accumulated reply per streamed
- * append — O(n²) bytes per turn — which saturated Nightshift's main + renderer
+ * append — O(n²) bytes per turn — which saturated Kolux's main + renderer
  * event loops on Windows and froze the UI mid-reply.
  */
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
@@ -34,11 +34,7 @@ type RecordedPost = {
 
 type PluginEventHandler = (input: { event: unknown }) => Promise<void>
 
-const ENV_KEYS = [
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_AGENT_HOOK_PORT',
-  'NIGHTSHIFT_AGENT_HOOK_TOKEN'
-] as const
+const ENV_KEYS = ['KOLUX_PANE_KEY', 'KOLUX_AGENT_HOOK_PORT', 'KOLUX_AGENT_HOOK_TOKEN'] as const
 
 describe('OpenCode plugin MessagePart throttling', () => {
   let tempDir: string
@@ -47,15 +43,15 @@ describe('OpenCode plugin MessagePart throttling', () => {
   let savedFetch: typeof globalThis.fetch
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-plugin-test-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-plugin-test-'))
     posts = []
     savedEnv = {}
     for (const key of ENV_KEYS) {
       savedEnv[key] = process.env[key]
     }
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:leaf-1'
-    process.env.NIGHTSHIFT_AGENT_HOOK_PORT = '45678'
-    process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN = 'test-token'
+    process.env.KOLUX_PANE_KEY = 'tab-1:leaf-1'
+    process.env.KOLUX_AGENT_HOOK_PORT = '45678'
+    process.env.KOLUX_AGENT_HOOK_TOKEN = 'test-token'
     savedFetch = globalThis.fetch
     globalThis.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
       posts.push({ url: String(url), body: JSON.parse(String(init?.body)) })
@@ -78,10 +74,10 @@ describe('OpenCode plugin MessagePart throttling', () => {
   })
 
   async function loadPluginEventHandler(): Promise<PluginEventHandler> {
-    const pluginPath = join(tempDir, 'nightshift-opencode-status.mjs')
+    const pluginPath = join(tempDir, 'kolux-opencode-status.mjs')
     writeFileSync(pluginPath, _internals.getOpenCodePluginSource())
     const module = (await import(pathToFileURL(pluginPath).href)) as {
-      NightshiftOpenCodeStatusPlugin: (ctx: unknown) => Promise<{ event: PluginEventHandler }>
+      KoluxOpenCodeStatusPlugin: (ctx: unknown) => Promise<{ event: PluginEventHandler }>
     }
     const client = {
       session: {
@@ -89,7 +85,7 @@ describe('OpenCode plugin MessagePart throttling', () => {
         list: async () => ({ data: [{ id: 'session-1' }] })
       }
     }
-    const hooks = await module.NightshiftOpenCodeStatusPlugin({ client })
+    const hooks = await module.KoluxOpenCodeStatusPlugin({ client })
     return hooks.event
   }
 

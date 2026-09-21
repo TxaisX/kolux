@@ -32,7 +32,7 @@ export function shouldShowRemoteDownloadAction(
     : Boolean(connectionId || runtimeDownloadContext)
   return (
     hasDownloadCapability &&
-    (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ !== true
+    (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ !== true
   )
 }
 
@@ -46,6 +46,6 @@ export function shouldShowCopyFileAction(
   return (
     (!connectionId || !node.isDirectory) &&
     selectionSize === 1 &&
-    (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ !== true
+    (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ !== true
   )
 }

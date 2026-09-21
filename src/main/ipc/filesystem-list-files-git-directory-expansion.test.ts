@@ -47,7 +47,7 @@ afterEach(async () => {
 
 describe('main Quick Open git directory expansion', () => {
   it('expands placeholders emitted by both directory-collapsing passes', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-main-git-ignored-dir-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-main-git-ignored-dir-'))
     tempDirs.push(root)
     await writeRel(root, 'dist/generated.js')
     await writeRel(root, 'scratch/notes.txt')
@@ -88,7 +88,7 @@ describe('main Quick Open git directory expansion', () => {
   })
 
   it('cancels both local Git passes when Quick Open abandons the request', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-main-git-cancel-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-main-git-cancel-'))
     tempDirs.push(root)
     const revParse = createMockProcess()
     const primary = createMockProcess()
@@ -112,7 +112,7 @@ describe('main Quick Open git directory expansion', () => {
   })
 
   it('kills a repository probe returned after cancellation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-main-git-probe-race-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-main-git-probe-race-'))
     tempDirs.push(root)
     const revParse = createMockProcess()
     let resolveRevParse!: (child: ChildProcess) => void
@@ -134,7 +134,7 @@ describe('main Quick Open git directory expansion', () => {
   })
 
   it('kills file scans returned after cancellation', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-main-git-scan-race-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-main-git-scan-race-'))
     tempDirs.push(root)
     const revParse = createMockProcess()
     const primary = createMockProcess()
@@ -169,7 +169,7 @@ describe('main Quick Open git directory expansion', () => {
   })
 
   it('cancels a pending sibling spawn when the primary scan fails', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-main-git-sibling-failure-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-main-git-sibling-failure-'))
     tempDirs.push(root)
     const revParse = createMockProcess()
     const primary = createMockProcess()

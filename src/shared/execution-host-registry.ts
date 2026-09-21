@@ -83,7 +83,7 @@ function runtimeHealth(
   compatibility: RuntimeCompatVerdict | null,
   remoteControl: RuntimeStatus['remoteControl'] | null | undefined
 ): ExecutionHostHealth {
-  // Why: with no live status we have no evidence the Nightshift server is reachable,
+  // Why: with no live status we have no evidence the Kolux server is reachable,
   // unless a ready shared-control socket already proved the transport is up.
   if (!status) {
     return remoteControl?.state === 'ready' ? 'available' : 'disconnected'
@@ -165,7 +165,7 @@ function addRuntimeHost(
     id: hostId,
     kind: 'runtime',
     label,
-    detail: 'Nightshift server',
+    detail: 'Kolux server',
     health: controlHealth ?? runtimeHealth(status, compatibility, remoteControl),
     compatibility: compatibility ?? undefined,
     capabilities: status?.capabilities,

@@ -31,7 +31,10 @@ import type { ProjectGroup } from '../../../../../../shared/project-group-types'
 import type { Repo } from '../../../../../../shared/repo-types'
 import type { WorktreeVisibilityDefaults } from '../../../../../../shared/global-settings-types'
 import { isFolderRepo, isGitRepoKind } from '../../../../../../shared/repo-kind'
-import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../../../../../../shared/execution-host'
+import {
+  getRepoExecutionHostId,
+  LOCAL_EXECUTION_HOST_ID
+} from '../../../../../../shared/execution-host'
 import {
   effectiveExternalWorktreeVisibility,
   isLegacyRepoForExternalWorktreeVisibility
@@ -56,7 +59,7 @@ function getWorktreeVisibilityMenuLabel(
     isLegacyRepoForExternalWorktreeVisibility(repo),
     visibilityDefaults
   )
-  return visibility === 'show' ? 'Hide non-Nightshift worktrees' : 'Show hidden worktrees'
+  return visibility === 'show' ? 'Hide non-Kolux worktrees' : 'Show hidden worktrees'
 }
 
 // Why: converting to git and publishing both run local git/gh commands the desktop

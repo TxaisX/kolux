@@ -13,7 +13,7 @@ export type TextControlPastePayloadOwnership =
       exceededLimit: false
     }
   | {
-      action: 'claim-nightshift'
+      action: 'claim-kolux'
       byteLength: number
       exceededLimit: true
     }
@@ -102,7 +102,7 @@ export function classifyTextControlPastePayloadOwnership(
   }
 
   return {
-    action: 'claim-nightshift',
+    action: 'claim-kolux',
     byteLength: ownershipMeasurement.byteLength,
     exceededLimit: true
   }

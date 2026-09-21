@@ -14,7 +14,7 @@ export class RelayCredentialMismatchError extends Error {
   constructor(readonly stderr?: string) {
     super(
       'The remote relay refused this connection: the endpoint credential on disk does not match ' +
-        'the one the running relay holds. Nightshift will not replace that relay while it holds terminals.'
+        'the one the running relay holds. Kolux will not replace that relay while it holds terminals.'
     )
   }
 }

@@ -87,7 +87,7 @@ function buildAppIfNeeded() {
 }
 
 function createGitRepo() {
-  const repoDir = mkdtempSync(path.join(tmpdir(), 'nightshift-wayland-gpu-repo-'))
+  const repoDir = mkdtempSync(path.join(tmpdir(), 'kolux-wayland-gpu-repo-'))
   run('git', ['init'], { cwd: repoDir, stdio: 'pipe' })
   run('git', ['config', 'user.email', 'wayland-gpu@test.local'], { cwd: repoDir, stdio: 'pipe' })
   run('git', ['config', 'user.name', 'Wayland GPU Test'], { cwd: repoDir, stdio: 'pipe' })
@@ -147,7 +147,7 @@ async function runValidation(mode) {
   buildAppIfNeeded()
 
   const repoPath = createGitRepo()
-  const userDataPath = mkdtempSync(path.join(tmpdir(), 'nightshift-wayland-gpu-userdata-'))
+  const userDataPath = mkdtempSync(path.join(tmpdir(), 'kolux-wayland-gpu-userdata-'))
   // Why: this harness cannot use the E2E flag because that disables Linux GPU,
   // but its Codex and Node home still must stay inside the disposable profile.
   const isolatedHome = path.join(userDataPath, 'home')
@@ -200,13 +200,13 @@ async function runValidation(mode) {
       ELECTRON_RUN_AS_NODE: _unused,
       DISPLAY: _display,
       CODEX_HOME: _codexHome,
-      NIGHTSHIFT_CODEX_HOME: _nightshiftCodexHome,
+      KOLUX_CODEX_HOME: _koluxCodexHome,
       ...env
     } = process.env
     void _unused
     void _display
     void _codexHome
-    void _nightshiftCodexHome
+    void _koluxCodexHome
     logPhase('launch.start')
     app = await runWithTimeout(
       'Electron launch',
@@ -216,8 +216,8 @@ async function runValidation(mode) {
           env: {
             ...env,
             NODE_ENV: 'development',
-            NIGHTSHIFT_BACKGROUND_LAUNCH: '1',
-            NIGHTSHIFT_DEV_USER_DATA_PATH: userDataPath,
+            KOLUX_BACKGROUND_LAUNCH: '1',
+            KOLUX_DEV_USER_DATA_PATH: userDataPath,
             HOME: isolatedHome,
             USERPROFILE: isolatedHome,
             ELECTRON_ENABLE_LOGGING: '1',
@@ -232,7 +232,7 @@ async function runValidation(mode) {
     app.process().stderr?.on('data', (chunk) => {
       const text = chunk.toString()
       stderrLines.push(...text.split(/\r?\n/).filter(Boolean))
-      if (process.env.NIGHTSHIFT_WAYLAND_GPU_VERBOSE === '1') {
+      if (process.env.KOLUX_WAYLAND_GPU_VERBOSE === '1') {
         process.stderr.write(text)
       }
     })

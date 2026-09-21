@@ -14,19 +14,18 @@ describe('getUntitledFileRoot', () => {
   it('falls back to the file root for floating markdown files', () => {
     expect(
       getUntitledFileRoot({
-        filePath:
-          '/Users/alice/Library/Application Support/Nightshift/floating-workspace/untitled.md',
+        filePath: '/Users/alice/Library/Application Support/Kolux/floating-workspace/untitled.md',
         relativePath: 'untitled.md'
       })
-    ).toBe('/Users/alice/Library/Application Support/Nightshift/floating-workspace')
+    ).toBe('/Users/alice/Library/Application Support/Kolux/floating-workspace')
   })
 
   it('handles nested untitled relative paths', () => {
     expect(
       getUntitledFileRoot({
-        filePath: '/tmp/nightshift/floating-workspace/notes/untitled.md',
+        filePath: '/tmp/kolux/floating-workspace/notes/untitled.md',
         relativePath: 'notes/untitled.md'
       })
-    ).toBe('/tmp/nightshift/floating-workspace')
+    ).toBe('/tmp/kolux/floating-workspace')
   })
 })

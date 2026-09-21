@@ -50,11 +50,11 @@ export function GeneralWorkspaceSettingsSection({
           )}
           description={translate(
             'auto.components.settings.GeneralWorkspaceSettingsSection.externalWorktreesDescription',
-            'Choose which worktrees created outside Nightshift appear by default on this host.'
+            'Choose which worktrees created outside Kolux appear by default on this host.'
           )}
           keywords={[
             'external',
-            'non-Nightshift',
+            'non-Kolux',
             'worktree',
             'visibility',
             'sidebar',

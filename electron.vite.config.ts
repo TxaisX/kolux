@@ -38,31 +38,31 @@ function isExternalMainModule(source: string): boolean {
 // shell export.
 //
 // CI injects real values via GitHub Actions secrets
-// (NIGHTSHIFT_BUILD_IDENTITY='stable' | 'rc', NIGHTSHIFT_POSTHOG_WRITE_KEY=phc_...);
+// (KOLUX_BUILD_IDENTITY='stable' | 'rc', KOLUX_POSTHOG_WRITE_KEY=phc_...);
 // every other build path resolves these env vars to undefined, which the
 // JSON.stringify below folds to the literal `null`. Ambient declarations
 // for the two constants live in `src/types/build-constants.d.ts`.
-const nightshiftBuildIdentity = process.env.NIGHTSHIFT_BUILD_IDENTITY
-const NIGHTSHIFT_BUILD_IDENTITY_LITERAL =
-  nightshiftBuildIdentity === 'stable' || nightshiftBuildIdentity === 'rc'
-    ? JSON.stringify(nightshiftBuildIdentity)
+const koluxBuildIdentity = process.env.KOLUX_BUILD_IDENTITY
+const KOLUX_BUILD_IDENTITY_LITERAL =
+  koluxBuildIdentity === 'stable' || koluxBuildIdentity === 'rc'
+    ? JSON.stringify(koluxBuildIdentity)
     : 'null'
-const nightshiftPostHogWriteKey = process.env.NIGHTSHIFT_POSTHOG_WRITE_KEY
-const NIGHTSHIFT_POSTHOG_WRITE_KEY_LITERAL =
-  typeof nightshiftPostHogWriteKey === 'string' && nightshiftPostHogWriteKey.length > 0
-    ? JSON.stringify(nightshiftPostHogWriteKey)
+const koluxPostHogWriteKey = process.env.KOLUX_POSTHOG_WRITE_KEY
+const KOLUX_POSTHOG_WRITE_KEY_LITERAL =
+  typeof koluxPostHogWriteKey === 'string' && koluxPostHogWriteKey.length > 0
+    ? JSON.stringify(koluxPostHogWriteKey)
     : 'null'
-const nightshiftDiagnosticsTokenUrl = process.env.NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL
-const NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL_LITERAL =
-  typeof nightshiftDiagnosticsTokenUrl === 'string' && nightshiftDiagnosticsTokenUrl.length > 0
-    ? JSON.stringify(nightshiftDiagnosticsTokenUrl)
+const koluxDiagnosticsTokenUrl = process.env.KOLUX_DIAGNOSTICS_TOKEN_URL
+const KOLUX_DIAGNOSTICS_TOKEN_URL_LITERAL =
+  typeof koluxDiagnosticsTokenUrl === 'string' && koluxDiagnosticsTokenUrl.length > 0
+    ? JSON.stringify(koluxDiagnosticsTokenUrl)
     : 'null'
 
 function createStartupDiagnosticsBanner(chunkName: string): string {
   return `
 ;(() => {
   const env = typeof process !== 'undefined' ? process.env : undefined
-  const mode = env?.NIGHTSHIFT_STARTUP_DIAGNOSTICS
+  const mode = env?.KOLUX_STARTUP_DIAGNOSTICS
   if (mode !== '1' && mode !== 'trace') {
     return
   }
@@ -87,7 +87,7 @@ function createStartupDiagnosticsBanner(chunkName: string): string {
     openSync = undefined
     writeSync = undefined
   }
-  const diagnosticFile = env?.NIGHTSHIFT_STARTUP_DIAGNOSTICS_FILE
+  const diagnosticFile = env?.KOLUX_STARTUP_DIAGNOSTICS_FILE
   if (typeof diagnosticFile === 'string' && diagnosticFile.length > 0 && typeof openSync === 'function') {
     try {
       diagnosticFileDescriptor = openSync(diagnosticFile, 'a', 0o600)
@@ -110,8 +110,8 @@ function createStartupDiagnosticsBanner(chunkName: string): string {
   }
   const chunkName = ${JSON.stringify(chunkName)}
   writeLine('[bootstrap] bundle-enter chunk=' + safeJson(chunkName) + ' pid=' + process.pid + ' ppid=' + process.ppid + ' execPath=' + safeJson(process.execPath) + ' argv=' + safeJson(process.argv) + ' electronRunAsNode=' + safeJson(env?.ELECTRON_RUN_AS_NODE ?? null))
-  if (!globalThis.__NIGHTSHIFT_BOOTSTRAP_EXIT_LOG_INSTALLED__) {
-    globalThis.__NIGHTSHIFT_BOOTSTRAP_EXIT_LOG_INSTALLED__ = true
+  if (!globalThis.__KOLUX_BOOTSTRAP_EXIT_LOG_INSTALLED__) {
+    globalThis.__KOLUX_BOOTSTRAP_EXIT_LOG_INSTALLED__ = true
     process.once('exit', (code) => {
       writeLine('[bootstrap] process-exit code=' + code)
       if (typeof closeSync === 'function' && typeof diagnosticFileDescriptor === 'number') {
@@ -131,12 +131,12 @@ function createStartupDiagnosticsBanner(chunkName: string): string {
       writeLine('[bootstrap] unhandled-rejection error=' + safeJson(String(message)))
     })
   }
-  if (mode === 'trace' && !globalThis.__NIGHTSHIFT_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__) {
-    globalThis.__NIGHTSHIFT_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__ = true
+  if (mode === 'trace' && !globalThis.__KOLUX_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__) {
+    globalThis.__KOLUX_BOOTSTRAP_REQUIRE_TRACE_INSTALLED__ = true
     try {
       const Module = require('node:module')
       const originalLoad = Module._load
-      const parsedTraceLimit = Number(env?.NIGHTSHIFT_STARTUP_DIAGNOSTICS_TRACE_LIMIT ?? 20000)
+      const parsedTraceLimit = Number(env?.KOLUX_STARTUP_DIAGNOSTICS_TRACE_LIMIT ?? 20000)
       const traceLimit = Number.isFinite(parsedTraceLimit) && parsedTraceLimit > 0 ? parsedTraceLimit : 20000
       let traceLineCount = 0
       let traceLimitReported = false
@@ -174,7 +174,7 @@ function createStartupDiagnosticsBanner(chunkName: string): string {
 
 function createMainBootstrapPlugin() {
   return {
-    name: 'nightshift-main-bootstrap',
+    name: 'kolux-main-bootstrap',
     generateBundle(_options, bundle) {
       const mainChunk = bundle['index.js']
       if (!mainChunk || mainChunk.type !== 'chunk') {
@@ -249,7 +249,7 @@ export const electronViteConfig: UserConfig = {
             'src/main/hang-watchdog/main-thread-hang-watchdog-entry.ts'
           ),
           // Why: electron-vite cleans out/main in dev. The dev CLI imports
-          // this path for `nightshift agent hooks ...`, so it must survive rebuilds.
+          // this path for `kolux agent hooks ...`, so it must survive rebuilds.
           'agent-hooks/managed-agent-hook-controls': resolve(
             'src/main/agent-hooks/managed-agent-hook-controls.ts'
           ),
@@ -272,9 +272,9 @@ export const electronViteConfig: UserConfig = {
     // Why: compile-time substitution for the telemetry gate. See the block
     // above for the full rationale.
     define: {
-      NIGHTSHIFT_BUILD_IDENTITY: NIGHTSHIFT_BUILD_IDENTITY_LITERAL,
-      NIGHTSHIFT_POSTHOG_WRITE_KEY: NIGHTSHIFT_POSTHOG_WRITE_KEY_LITERAL,
-      NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL: NIGHTSHIFT_DIAGNOSTICS_TOKEN_URL_LITERAL
+      KOLUX_BUILD_IDENTITY: KOLUX_BUILD_IDENTITY_LITERAL,
+      KOLUX_POSTHOG_WRITE_KEY: KOLUX_POSTHOG_WRITE_KEY_LITERAL,
+      KOLUX_DIAGNOSTICS_TOKEN_URL: KOLUX_DIAGNOSTICS_TOKEN_URL_LITERAL
     },
     // Why: @xterm/headless declares "exports": null in package.json, which
     // prevents Vite's default resolver from finding the CJS entry. Point

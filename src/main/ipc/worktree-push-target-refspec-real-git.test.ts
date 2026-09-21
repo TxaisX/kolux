@@ -3,7 +3,7 @@
 // prove the decision logic, but not that real `git remote add -t/--no-tags`, a plain
 // `git fetch <remote>`, and `git config --get-all/--unset-all/--add` behave the way this
 // fix assumes. In particular this proves the core claim of the fix: a minted remote never
-// imports more than the branch(es) Nightshift asked for, even from a fork with many branches.
+// imports more than the branch(es) Kolux asked for, even from a fork with many branches.
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -19,7 +19,7 @@ import { migrateForkRemoteRefspecsWithExec } from './worktree-push-target-refspe
 const execFileAsync = promisify(execFile)
 
 const REPO_ID = 'repo-1'
-const FORK_REMOTE = 'pr-contributor-nightshift'
+const FORK_REMOTE = 'pr-contributor-kolux'
 const TRACKED_BRANCH = 'contributor/fix'
 const OTHER_FORK_BRANCHES = Array.from({ length: 12 }, (_, i) => `contributor/unrelated-${i}`)
 
@@ -35,8 +35,8 @@ async function git(args: string[], cwd: string): Promise<string> {
 const execGit: GitRemoteExec = (args, cwd) => execFileAsync('git', args, { cwd })
 
 async function setIdentity(cwd: string): Promise<void> {
-  await git(['config', 'user.name', 'Nightshift Test'], cwd)
-  await git(['config', 'user.email', 'nightshift@example.test'], cwd)
+  await git(['config', 'user.name', 'Kolux Test'], cwd)
+  await git(['config', 'user.email', 'kolux@example.test'], cwd)
   await git(['config', 'commit.gpgSign', 'false'], cwd)
   await git(['config', 'core.hooksPath', '.git/no-hooks'], cwd)
 }
@@ -63,7 +63,7 @@ function storeOf(entries: Record<string, GitPushTarget | undefined>): WorktreePu
 
 beforeEach(async () => {
   // realpath: macOS hands out /var/... temp paths while Git reports /private/var/...
-  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'nightshift-fork-refspec-')))
+  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'kolux-fork-refspec-')))
   repoPath = join(scratchDir, 'repo')
   forkPath = join(scratchDir, 'fork')
   await mkdir(repoPath, { recursive: true })
@@ -110,7 +110,7 @@ describe('minting a fork remote against the real Git binary (#17828)', () => {
     ).resolves.toContain('--no-tags')
 
     // The critical claim: a later plain `git fetch <remote>` (no explicit refspec) --
-    // exactly what Nightshift's own Fetch action and any agent/user command run -- must not
+    // exactly what Kolux's own Fetch action and any agent/user command run -- must not
     // import the fork's other dozen branches.
     await git(['fetch', FORK_REMOTE], repoPath)
     await expect(trackedRefsUnder(FORK_REMOTE)).resolves.toEqual([
@@ -142,7 +142,7 @@ describe('minting a fork remote against the real Git binary (#17828)', () => {
     // Before this fix's trailing-`*` refspec, this exact command hard-failed with
     // "couldn't find remote ref" -- degrading a common agent/user action into a fatal error.
     await expect(git(['fetch'], repoPath)).resolves.toBeDefined()
-    // And `--prune` (Nightshift's own Fetch action) correctly reclaims the now-dead ref.
+    // And `--prune` (Kolux's own Fetch action) correctly reclaims the now-dead ref.
     await git(['fetch', '--prune'], repoPath)
     await expect(trackedRefsUnder(FORK_REMOTE)).resolves.toEqual([])
   })
@@ -168,7 +168,7 @@ describe('minting a fork remote against the real Git binary (#17828)', () => {
     expect(refs.sort()).toEqual(
       [`${FORK_REMOTE}/${TRACKED_BRANCH}`, `${FORK_REMOTE}/${secondBranch}`].sort()
     )
-    // Only the two branches Nightshift actually asked for -- not the other ten.
+    // Only the two branches Kolux actually asked for -- not the other ten.
     expect(refs).toHaveLength(2)
   })
 })

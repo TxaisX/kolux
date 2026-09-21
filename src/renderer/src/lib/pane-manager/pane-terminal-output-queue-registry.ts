@@ -107,10 +107,10 @@ export function getTerminalOutputMaxQueueChars(): number {
 }
 // Why: leading CAN aborts any partial escape sequence before the style reset so the backlog warning renders cleanly.
 export const BACKGROUND_BACKLOG_WARNING =
-  '\x18\x1b[0m\r\n[Nightshift skipped hidden terminal output because the backlog grew too large.]\r\n'
+  '\x18\x1b[0m\r\n[Kolux skipped hidden terminal output because the backlog grew too large.]\r\n'
 // Why a separate foreground message: a visible pane hitting the cap means the drain couldn't keep up with a flood (starved renderer), not merely output produced while hidden.
 export const FOREGROUND_BACKLOG_WARNING =
-  '\x18\x1b[0m\r\n[Nightshift skipped a burst of terminal output because the backlog grew too large.]\r\n'
+  '\x18\x1b[0m\r\n[Kolux skipped a burst of terminal output because the backlog grew too large.]\r\n'
 export const ALWAYS_REFRESH_FOREGROUND_SYNCHRONOUSLY = (): boolean => true
 
 export const queuedByTerminal = new Map<TerminalOutputTarget, QueueEntry>()

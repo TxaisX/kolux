@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
 import type { RuntimeTerminalSummary } from '../../../../../../shared/runtime-types'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { RpcContext, RpcRequest } from '../../../core'
 import { RpcDispatcher } from '../../../dispatcher'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
@@ -23,7 +23,7 @@ type GroupSendResult = {
 describe('orchestration recipient routing oracle', () => {
   const harness = createOrchestrationRpcHarness()
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let senderRunId: string
 

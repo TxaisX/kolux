@@ -139,7 +139,7 @@ export function resolveJournalItemId(
     body.kind !== 'message' ||
     body.role !== 'user' ||
     !identity ||
-    identity.provider === 'nightshift'
+    identity.provider === 'kolux'
   ) {
     return itemId
   }
@@ -196,7 +196,7 @@ function upsertItem(
   const submitted =
     existing.body.kind === 'message' &&
     existing.body.role === 'user' &&
-    parseAgentJournalItemKey(itemId)?.provider === 'nightshift'
+    parseAgentJournalItemKey(itemId)?.provider === 'kolux'
   state.items.set(itemId, {
     ...next,
     // Provider history may normalize text or omit local attachments from the original send.

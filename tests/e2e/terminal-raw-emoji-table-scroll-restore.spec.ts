@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -422,7 +422,7 @@ async function readTerminalRenderDiagnostics(page: Page): Promise<{
 async function closeFeatureTips(page: Page): Promise<void> {
   await page.evaluate(() => {
     const store = window.__store
-    store?.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store?.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store?.getState().activeModal === 'feature-tips') {
       store.getState().closeModal()
     }
@@ -452,8 +452,8 @@ async function expectAutoWebgl(page: Page): Promise<boolean> {
 }
 
 test.describe('Terminal raw emoji table scroll restore repro', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await nightshiftPage.evaluate(() => {
+  test.beforeEach(async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       ;(window as RawTableDebugWindow).getActiveTestPane = () => {
         const store = window.__store
         const state = store?.getState()
@@ -477,30 +477,30 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
   // Why: `auto` should start on the fast renderer for ordinary terminal output;
   // the emoji table golden below proves complex output does not disable it.
   test('uses WebGL by default for ordinary terminal output when available @terminal-rendering-golden', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    const marker = `NIGHTSHIFT_AUTO_WEBGL_SMOKE_${randomUUID()}`
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    const marker = `KOLUX_AUTO_WEBGL_SMOKE_${randomUUID()}`
 
-    await sendToTerminal(nightshiftPage, ptyId, `printf ${JSON.stringify(`${marker}\\n`)}\r`)
-    await waitForTerminalOutput(nightshiftPage, marker, 10_000)
+    await sendToTerminal(koluxPage, ptyId, `printf ${JSON.stringify(`${marker}\\n`)}\r`)
+    await waitForTerminalOutput(koluxPage, marker, 10_000)
 
-    const expectedWebgl = await expectAutoWebgl(nightshiftPage)
+    const expectedWebgl = await expectAutoWebgl(koluxPage)
     // Why: WebGL (re)attaches asynchronously via React visibility effects and a
     // transient ESC[?25l during a redraw can momentarily set cursorHidden. Let
     // those eventually-consistent fields settle before the single-shot golden
     // asserts so runner timing can't flake-block the release. hasComplexScriptOutput
     // stays single-shot: its not-ready default is also false, so timing can't
     // turn it into a false failure.
-    let diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+    let diagnostics = await readTerminalRenderDiagnostics(koluxPage)
     await expect
       .poll(
         async () => {
-          diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+          diagnostics = await readTerminalRenderDiagnostics(koluxPage)
           return diagnostics.hasWebgl === expectedWebgl && diagnostics.cursorHidden === false
         },
         {
@@ -517,13 +517,13 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
   // Why: this is the minimal golden for the v1.4.51 regression. It fails if
   // xterm underfits by one scrollbar column or counts ZWJ emoji as width 4.
   test('keeps raw emoji box table aligned after restore and scroll @terminal-rendering-golden', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'raw emoji table repro needs the seeded secondary worktree')
@@ -531,13 +531,13 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
       return
     }
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await setWideRenderedTableViewport(nightshiftPage)
-    await waitForActiveTerminalColumns(nightshiftPage, RAW_EMOJI_BOX_TABLE_WIDTH)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await setWideRenderedTableViewport(koluxPage)
+    await waitForActiveTerminalColumns(koluxPage, RAW_EMOJI_BOX_TABLE_WIDTH)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-raw-emoji-fixture-table-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-raw-emoji-fixture-table-${runId}.mjs`)
     writeFileSync(scriptPath, rawEmojiFixtureBoxTableScript(EMOJI_TABLE_FIXTURE, runId))
 
     try {
@@ -545,51 +545,51 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
       const frameTailMarker = rawEmojiFixtureFrameTailMarker(runId)
       // Why: the fixture marker is the shell-readiness signal here; an extra
       // Ctrl+C/Ctrl+U preflight can race Windows ConPTY startup and eat input.
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
       // Why: Windows ConPTY can return the PowerShell prompt while xterm is
       // still flushing synchronized output if the pane is hidden immediately.
       // This golden is about restored table geometry, not shell-flush timing.
-      await waitForTerminalOutput(nightshiftPage, completionMarker, 20_000, 30_000)
+      await waitForTerminalOutput(koluxPage, completionMarker, 20_000, 30_000)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 10_000,
           message: 'raw emoji table synchronized frame tail was not rendered'
         })
         .toContain(frameTailMarker)
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(1_000)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(1_000)
       // Why: switching back can replay hidden terminal contents immediately;
       // make the viewport wide before restore so the table cannot wrap first.
-      await setWideRenderedTableViewport(nightshiftPage)
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
+      await setWideRenderedTableViewport(koluxPage)
+      await switchToWorktree(koluxPage, firstWorktreeId)
       // Why: activating another worktree can restore the right sidebar. This
       // golden is about terminal renderer restore at a deliberately wide width.
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await setWideRenderedTableViewport(nightshiftPage)
-      await waitForActiveTerminalColumns(nightshiftPage, RAW_EMOJI_BOX_TABLE_WIDTH)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await setWideRenderedTableViewport(koluxPage)
+      await waitForActiveTerminalColumns(koluxPage, RAW_EMOJI_BOX_TABLE_WIDTH)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 30_000,
           message: 'raw emoji table marker did not survive workspace switch'
         })
         .toContain(completionMarker)
 
-      await scrollActiveTerminalToText(nightshiftPage, 'Singer')
-      await closeFeatureTips(nightshiftPage)
-      const expectedWebgl = await expectAutoWebgl(nightshiftPage)
+      await scrollActiveTerminalToText(koluxPage, 'Singer')
+      await closeFeatureTips(koluxPage)
+      const expectedWebgl = await expectAutoWebgl(koluxPage)
       // Why: after the worktree switch, WebGL reattaches asynchronously (React
       // visibility effect + attach backoff) and a transient ESC[?25l during the
       // restore redraw can momentarily set cursorHidden. Let those settle before
       // the single-shot golden asserts so runner timing can't flake-block the
       // release; the geometry/wrap/overpaint checks below stay single-shot as the
       // real regression signal.
-      let diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+      let diagnostics = await readTerminalRenderDiagnostics(koluxPage)
       await expect
         .poll(
           async () => {
-            diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+            diagnostics = await readTerminalRenderDiagnostics(koluxPage)
             return diagnostics.hasWebgl === expectedWebgl && diagnostics.cursorHidden === false
           },
           {
@@ -598,9 +598,9 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
           }
         )
         .toBe(true)
-      const overpaint = await readTerminalRightEdgeOverpaint(nightshiftPage)
-      const wrapDiagnostics = await readTerminalBoxTableWrapDiagnostics(nightshiftPage)
-      const singerGeometry = await readVisibleSingerRowGeometry(nightshiftPage)
+      const overpaint = await readTerminalRightEdgeOverpaint(koluxPage)
+      const wrapDiagnostics = await readTerminalBoxTableWrapDiagnostics(koluxPage)
+      const singerGeometry = await readVisibleSingerRowGeometry(koluxPage)
       testInfo.annotations.push({
         type: 'raw-emoji-table-singer-geometry',
         description: JSON.stringify(singerGeometry)
@@ -615,7 +615,7 @@ test.describe('Terminal raw emoji table scroll restore repro', () => {
       })
 
       const screenshotPath = testInfo.outputPath('raw-emoji-table-after-switch-scroll.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('raw-emoji-table-after-switch-scroll.png', {
         path: screenshotPath,
         contentType: 'image/png'

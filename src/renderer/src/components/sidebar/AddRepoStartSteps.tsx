@@ -161,7 +161,7 @@ export function AddRepoLocalStartStep({
           <DialogDescription>
             {translate(
               'auto.components.sidebar.AddRepoStartSteps.acf895cb42',
-              'Add a project to get started with Nightshift.'
+              'Add a project to get started with Kolux.'
             )}
           </DialogDescription>
         ) : null}

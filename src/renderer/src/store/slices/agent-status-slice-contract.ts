@@ -51,7 +51,7 @@ export type AgentStatusSlice = {
   /** Durable agent sessions captured on sleep (not live rows); power the one-click CLI resume on wake. */
   sleepingAgentSessionsByPaneKey: Record<string, SleepingAgentSessionRecord>
 
-  /** Ephemeral launch snapshots keyed by pane; hook payloads lack Nightshift launch settings, so the renderer supplies them from startup. */
+  /** Ephemeral launch snapshots keyed by pane; hook payloads lack Kolux launch settings, so the renderer supplies them from startup. */
   agentLaunchConfigByPaneKey: Record<string, AgentLaunchConfigRegistryEntry>
 
   /** Pane keys explicitly torn down, forbidden from re-retention on next disappearance; a one-shot suppressor consumed by the retention sync. */

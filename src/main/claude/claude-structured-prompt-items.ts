@@ -38,7 +38,7 @@ export function claudePromptIdentity(input: {
 }): AgentJournalItemIdentity {
   const suffix = input.questionId ? `:${input.questionId}` : ''
   return {
-    provider: 'nightshift',
+    provider: 'kolux',
     clientMessageId: `claude-prompt:${input.sessionId}:${input.promptKey}${suffix}`
   }
 }

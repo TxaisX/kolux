@@ -7,7 +7,7 @@ import {
   getWorktreeIdFromHostIdentity
 } from './host-qualified-identity'
 
-const WORKTREE_ID = 'repo-1::/work/nightshift'
+const WORKTREE_ID = 'repo-1::/work/kolux'
 
 describe('worktree host identity', () => {
   it('separates two hosts that publish the same id', () => {
@@ -45,7 +45,7 @@ describe('worktree host identity', () => {
   it('round-trips a workspace id that itself contains the separator', () => {
     // A workspace id is a repo id plus a filesystem path, so it may contain
     // anything; only the host half has to be separator-free.
-    const awkwardId = 'repo-1::/work/a|b/nightshift'
+    const awkwardId = 'repo-1::/work/a|b/kolux'
 
     expect(
       getWorktreeIdFromHostIdentity(

@@ -106,7 +106,7 @@ export function AutoRenameFailedDialog({
         <p className="text-sm text-muted-foreground">
           {translate(
             'auto.components.sidebar.AutoRenameFailedDialog.ff62a18580',
-            "Nightshift couldn't generate a branch name for"
+            "Kolux couldn't generate a branch name for"
           )}{' '}
           <span className="font-medium text-foreground">{worktreeName}</span>{' '}
           {translate(

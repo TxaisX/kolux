@@ -24,7 +24,11 @@ import { getOrCreateRendererRoot } from './lib/react-renderer-root'
 import { primeTerminalWebglAddon } from './lib/pane-manager/pane-webgl-renderer'
 import { SkillWarningPreviewLauncher } from './components/skills/SkillWarningPreviewLauncher'
 import { installBrowserClientPageRenderer } from './components/browser-pane/browser-client-page-renderer-installation'
+import { migrateLegacyLocalStoragePrefixes } from './lib/legacy-local-storage-prefix-migration'
 
+// Why first: every localStorage read below (theme, feature-wall, outbox, ...) must see
+// migrated keys, not the pre-rename "nightshift." spellings an upgrading profile still has.
+migrateLegacyLocalStoragePrefixes()
 recordRendererCrashBreadcrumb('renderer_bootstrap_started', { dev: import.meta.env.DEV })
 installRendererCrashDiagnostics()
 installTypingLatencyDiagnostic()
@@ -57,10 +61,10 @@ function RendererRoot(): React.JSX.Element {
     <RecoverableRenderErrorBoundary
       boundaryId="app.root"
       surface="app-root"
-      title={translate('app.recoverableError.rootTitle', 'Nightshift hit a renderer error.')}
+      title={translate('app.recoverableError.rootTitle', 'Kolux hit a renderer error.')}
       description={translate(
         'app.recoverableError.rootDescription',
-        'The app shell could not finish rendering. Retry to remount it, or relaunch Nightshift if the error persists.'
+        'The app shell could not finish rendering. Retry to remount it, or relaunch Kolux if the error persists.'
       )}
     >
       <App />

@@ -16,7 +16,7 @@ vi.mock('@/components/ui/tooltip', () => ({
 }))
 
 describe('StateIndicatorTooltip', () => {
-  it('uses Nightshift tooltip chrome with an explicit 200ms delay', () => {
+  it('uses Kolux tooltip chrome with an explicit 200ms delay', () => {
     const markup = renderToStaticMarkup(
       <StateIndicatorTooltip label="Monitoring background tasks">
         <span data-heartbeat="" />

@@ -21,7 +21,7 @@ describe('transferSkillPackageToRuntime', () => {
   let root = ''
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-skill-transfer-test-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-skill-transfer-test-'))
     mocks.callRuntimeEnvironment.mockReset()
     mocks.downloadSkillPackageGrant.mockReset()
   })

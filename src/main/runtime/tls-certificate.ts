@@ -7,8 +7,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, chmodSync } from 'node:fs'
 import { join } from 'node:path'
 
-const TLS_CERT_FILENAME = 'nightshift-tls-cert.pem'
-const TLS_KEY_FILENAME = 'nightshift-tls-key.pem'
+const TLS_CERT_FILENAME = 'kolux-tls-cert.pem'
+const TLS_KEY_FILENAME = 'kolux-tls-key.pem'
 
 export type TlsCertificate = {
   cert: string
@@ -51,7 +51,7 @@ export function loadOrCreateTlsCertificate(userDataPath: string): TlsCertificate
       '-days',
       '3650',
       '-subj',
-      '/CN=Nightshift Runtime',
+      '/CN=Kolux Runtime',
       '-keyout',
       keyPath_,
       '-out',

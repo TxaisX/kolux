@@ -7,8 +7,8 @@
  * possibly blocked) wait state and mis-stamp waitBlockedAt on its first chunk.
  */
 import { describe, expect, it } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
-import type { TerminalTailWaitState } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
+import type { TerminalTailWaitState } from './kolux-runtime'
 
 type PtyRecord = {
   connected: boolean
@@ -22,7 +22,7 @@ type RuntimeInternals = {
 
 describe('pruneDisconnectedPtyTranscript clears the wait-scan cache', () => {
   it('empties the tail and drops tailWaitState so resume recomputes', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const internals = runtime as unknown as RuntimeInternals
     const pty = internals.recordPtyWorktree('pty-1', 'wt-1', { connected: true })
 

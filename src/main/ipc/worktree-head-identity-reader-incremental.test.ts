@@ -39,7 +39,7 @@ describe('readGitCommonHeadIdentities (incremental)', () => {
   }
 
   async function makeCommonDir(): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-head-incremental-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-head-incremental-'))
     roots.push(root)
     const commonDir = join(root, 'checkout', '.git')
     await mkdir(commonDir, { recursive: true })
@@ -228,7 +228,7 @@ describe('readGitCommonHeadIdentities (incremental)', () => {
     expect(headOf(identities, pathB)).toBe(OID_D)
   })
 
-  it('keeps a worktree whose checkout was deleted behind Nightshift back', async () => {
+  it('keeps a worktree whose checkout was deleted behind Kolux back', async () => {
     const { commonDir, cache, pathA } = await seed()
     // Only the checkout is gone; git prunes the admin entry lazily, and the
     // structural listing — not this reader — owns the prunable verdict.

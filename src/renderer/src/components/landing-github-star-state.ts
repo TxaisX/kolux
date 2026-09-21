@@ -3,7 +3,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 export type LandingStarState = 'loading' | 'starred' | 'not-starred' | 'web-fallback' | 'hidden'
 
 /**
- * Resolve the viewer's Nightshift star state once per Landing mount.
+ * Resolve the viewer's Kolux star state once per Landing mount.
  *
  * Why it lives here and not in the star button: the button renders inside a
  * footer that is conditionally mounted on whether `repos` currently carries a
@@ -12,7 +12,7 @@ export type LandingStarState = 'loading' | 'starred' | 'not-starred' | 'web-fall
  * effect and forked another `gh api user/starred/...` (#18234). Landing itself
  * only mounts when the user navigates, so the check runs once per visit.
  */
-export function useLandingNightshiftStarState(): [
+export function useLandingKoluxStarState(): [
   LandingStarState,
   Dispatch<SetStateAction<LandingStarState>>
 ] {
@@ -20,7 +20,7 @@ export function useLandingNightshiftStarState(): [
 
   useEffect(() => {
     let cancelled = false
-    void window.api.gh.checkNightshiftStarred().then((result) => {
+    void window.api.gh.checkKoluxStarred().then((result) => {
       if (cancelled) {
         return
       }

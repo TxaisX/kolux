@@ -19,7 +19,7 @@ type AgentHookHandlerDependencies = {
   getPtyIdForPaneKey?: (paneKey: string) => string | undefined
 }
 
-// Why: install/remove are intentionally not exposed to the renderer. Nightshift
+// Why: install/remove are intentionally not exposed to the renderer. Kolux
 // auto-installs managed hooks at app startup (see src/main/index.ts), so a
 // renderer-triggered remove would be silently reverted on the next launch
 // and mislead the user.

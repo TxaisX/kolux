@@ -36,7 +36,7 @@ export async function configureGoldenStubAgent(
     async ({ agent, agentArgs, windowsShell }) => {
       const store = window.__store
       if (!store) {
-        throw new Error('Nightshift store is unavailable')
+        throw new Error('Kolux store is unavailable')
       }
       await store.getState().updateSettings({
         defaultTuiAgent: agent,

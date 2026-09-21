@@ -20,8 +20,8 @@ describePosix('live zsh subprocess tests', () => {
     let userDataPath: string
 
     beforeEach(async () => {
-      testHome = mkdtempSync(join(tmpdir(), 'nightshift-term-'))
-      userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-term-userdata-'))
+      testHome = mkdtempSync(join(tmpdir(), 'kolux-term-'))
+      userDataPath = mkdtempSync(join(tmpdir(), 'kolux-term-userdata-'))
       setTestUserDataPath(userDataPath)
     })
 
@@ -45,7 +45,7 @@ describePosix('live zsh subprocess tests', () => {
         TMUX_PANE: '%0'
       }
       delete cleanEnv.ZDOTDIR
-      delete cleanEnv.NIGHTSHIFT_ORIG_ZDOTDIR
+      delete cleanEnv.KOLUX_ORIG_ZDOTDIR
       cleanEnv.ZDOTDIR = config.env.ZDOTDIR
 
       const result = spawnSync('zsh', ['-c', 'echo "ZDOTDIR=${ZDOTDIR}"'], {
@@ -73,7 +73,7 @@ describePosix('live zsh subprocess tests', () => {
         LC_CTYPE: 'C.UTF-8'
       }
       delete cleanEnv.ZDOTDIR
-      delete cleanEnv.NIGHTSHIFT_ORIG_ZDOTDIR
+      delete cleanEnv.KOLUX_ORIG_ZDOTDIR
       cleanEnv.ZDOTDIR = config.env.ZDOTDIR
 
       const result = spawnSync('zsh', ['-c', 'echo "ZDOTDIR=${ZDOTDIR}"'], {
@@ -102,7 +102,7 @@ describePosix('live zsh subprocess tests', () => {
         const config = getShellReadyLaunchConfig('/bin/zsh')
 
         // Should preserve user's ZDOTDIR from spawn env, not fall back to /root
-        expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBe(userZdotdir)
+        expect(config.env.KOLUX_ORIG_ZDOTDIR).toBe(userZdotdir)
       } finally {
         if (previousZdotdir === undefined) {
           delete process.env.ZDOTDIR
@@ -117,13 +117,13 @@ describePosix('live zsh subprocess tests', () => {
       }
     })
 
-    it('re-discovers ZDOTDIR despite stale NIGHTSHIFT_ORIG_ZDOTDIR from previous session', async () => {
+    it('re-discovers ZDOTDIR despite stale KOLUX_ORIG_ZDOTDIR from previous session', async () => {
       const currentZdotdir = join(testHome, '.config', 'zsh-current')
       mkdirSync(currentZdotdir, { recursive: true })
       writeFileSync(join(testHome, '.zshenv'), `export ZDOTDIR="${currentZdotdir}"\n`)
 
-      const previousNightshiftZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
-      process.env.NIGHTSHIFT_ORIG_ZDOTDIR = '/opt/nightshift-old/shell-ready/zsh' // stale wrapper path
+      const previousKoluxZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
+      process.env.KOLUX_ORIG_ZDOTDIR = '/opt/kolux-old/shell-ready/zsh' // stale wrapper path
 
       try {
         const { getShellReadyLaunchConfig } = await importFreshLocalPtyShellReady()
@@ -132,7 +132,7 @@ describePosix('live zsh subprocess tests', () => {
         const cleanEnv: Record<string, string | undefined> = {
           ...process.env,
           HOME: testHome,
-          NIGHTSHIFT_ORIG_ZDOTDIR: '/opt/nightshift-old/shell-ready/zsh'
+          KOLUX_ORIG_ZDOTDIR: '/opt/kolux-old/shell-ready/zsh'
         }
         delete cleanEnv.ZDOTDIR
         cleanEnv.ZDOTDIR = config.env.ZDOTDIR
@@ -146,22 +146,22 @@ describePosix('live zsh subprocess tests', () => {
         // Should discover fresh value from .zshenv, not use stale wrapper path
         expect(result.stdout).toContain(`ZDOTDIR=${currentZdotdir}`)
       } finally {
-        if (previousNightshiftZdotdir === undefined) {
-          delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+        if (previousKoluxZdotdir === undefined) {
+          delete process.env.KOLUX_ORIG_ZDOTDIR
         } else {
-          process.env.NIGHTSHIFT_ORIG_ZDOTDIR = previousNightshiftZdotdir
+          process.env.KOLUX_ORIG_ZDOTDIR = previousKoluxZdotdir
         }
       }
     })
 
-    it('prioritizes fresh discovery over inherited NIGHTSHIFT_ORIG_ZDOTDIR', async () => {
+    it('prioritizes fresh discovery over inherited KOLUX_ORIG_ZDOTDIR', async () => {
       const freshZdotdir = join(testHome, '.config', 'zsh-updated')
       mkdirSync(freshZdotdir, { recursive: true })
       writeFileSync(join(testHome, '.zshenv'), `export ZDOTDIR="${freshZdotdir}"\n`)
 
-      const previousNightshiftZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+      const previousKoluxZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
       const oldZdotdir = join(testHome, '.config', 'zsh-old')
-      process.env.NIGHTSHIFT_ORIG_ZDOTDIR = oldZdotdir
+      process.env.KOLUX_ORIG_ZDOTDIR = oldZdotdir
 
       try {
         const { getShellReadyLaunchConfig } = await importFreshLocalPtyShellReady()
@@ -170,7 +170,7 @@ describePosix('live zsh subprocess tests', () => {
         const cleanEnv: Record<string, string | undefined> = {
           ...process.env,
           HOME: testHome,
-          NIGHTSHIFT_ORIG_ZDOTDIR: oldZdotdir
+          KOLUX_ORIG_ZDOTDIR: oldZdotdir
         }
         delete cleanEnv.ZDOTDIR
         cleanEnv.ZDOTDIR = config.env.ZDOTDIR
@@ -184,10 +184,10 @@ describePosix('live zsh subprocess tests', () => {
         // Should use fresh discovery (user updated .zshenv)
         expect(result.stdout).toContain(`ZDOTDIR=${freshZdotdir}`)
       } finally {
-        if (previousNightshiftZdotdir === undefined) {
-          delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+        if (previousKoluxZdotdir === undefined) {
+          delete process.env.KOLUX_ORIG_ZDOTDIR
         } else {
-          process.env.NIGHTSHIFT_ORIG_ZDOTDIR = previousNightshiftZdotdir
+          process.env.KOLUX_ORIG_ZDOTDIR = previousKoluxZdotdir
         }
       }
     })
@@ -214,10 +214,10 @@ describePosix('live zsh subprocess tests', () => {
       try {
         const { getShellReadyLaunchConfig } = await importFreshLocalPtyShellReady()
         const config = getShellReadyLaunchConfig('/bin/zsh')
-        // One channel now does what NIGHTSHIFT_ORIG_ZDOTDIR and NIGHTSHIFT_ZSHENV_SOURCE_DIR
+        // One channel now does what KOLUX_ORIG_ZDOTDIR and KOLUX_ZSHENV_SOURCE_DIR
         // split between them: the wrapper hands this back as ZDOTDIR, and zsh
         // reads .zshenv through it.
-        expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBe(inheritedZdotdir)
+        expect(config.env.KOLUX_ORIG_ZDOTDIR).toBe(inheritedZdotdir)
 
         const cleanEnv: Record<string, string | undefined> = {
           ...process.env,

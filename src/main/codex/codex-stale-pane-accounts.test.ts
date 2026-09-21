@@ -32,9 +32,9 @@ function settingsWithSelection(
 }
 
 beforeEach(() => {
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-codex-pane-accounts-'))
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataPath
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  userDataPath = mkdtempSync(join(tmpdir(), 'kolux-codex-pane-accounts-'))
+  process.env.KOLUX_USER_DATA_PATH = userDataPath
   _internals.resetCache()
 })
 
@@ -42,9 +42,9 @@ afterEach(() => {
   __resetShellStartupEnvCache()
   rmSync(userDataPath, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   _internals.resetCache()
 })

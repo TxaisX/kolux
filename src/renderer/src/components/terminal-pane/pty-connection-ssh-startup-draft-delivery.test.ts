@@ -169,7 +169,7 @@ describe('connectPanePty', () => {
       createDeps({ startup: { command: "claude 'say test'" } }) as never
     )
     await flushAsyncTicks()
-    capturedDataCallback.current?.('\x1b]777;nightshift-shell-ready\x07user@remote $ ')
+    capturedDataCallback.current?.('\x1b]777;kolux-shell-ready\x07user@remote $ ')
 
     expect(createdTransportOptions[0]).toEqual(
       expect.objectContaining({
@@ -556,7 +556,7 @@ describe('connectPanePty', () => {
       }
       expect(transport.sendInput).not.toHaveBeenCalled()
 
-      capturedDataCallback.current?.('\x1b]777;nightshift-shell-ready\x07user@remote $ ')
+      capturedDataCallback.current?.('\x1b]777;kolux-shell-ready\x07user@remote $ ')
       for (const fn of pendingTimeouts.splice(0)) {
         fn()
       }
@@ -619,7 +619,7 @@ describe('connectPanePty', () => {
       }
       expect(transport.sendInput).not.toHaveBeenCalled()
 
-      capturedDataCallback.current?.('\x1b]777;nightshift-shell-ready\x07user@remote $ ')
+      capturedDataCallback.current?.('\x1b]777;kolux-shell-ready\x07user@remote $ ')
       for (const fn of pendingTimeouts.splice(0)) {
         fn()
       }

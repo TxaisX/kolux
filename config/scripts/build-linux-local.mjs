@@ -9,12 +9,12 @@ const SUPPORTED_ARCHES = new Set(['x64', 'arm64'])
 export function resolveLinuxBuildArch({
   platform = process.platform,
   hostArch = process.arch,
-  requestedArch = process.env.NIGHTSHIFT_LINUX_BUILD_ARCH
+  requestedArch = process.env.KOLUX_LINUX_BUILD_ARCH
 } = {}) {
   const arch = requestedArch ?? (platform === 'linux' ? hostArch : 'x64')
   if (!SUPPORTED_ARCHES.has(arch)) {
     throw new Error(
-      `Unsupported Linux build architecture: ${arch}. Use NIGHTSHIFT_LINUX_BUILD_ARCH=x64|arm64.`
+      `Unsupported Linux build architecture: ${arch}. Use KOLUX_LINUX_BUILD_ARCH=x64|arm64.`
     )
   }
   return arch
@@ -48,9 +48,9 @@ export function runLocalLinuxBuild({
 } = {}) {
   const env = { ...environment }
   if (arch === 'arm64') {
-    env.NIGHTSHIFT_LINUX_ARM64_RELEASE = '1'
+    env.KOLUX_LINUX_ARM64_RELEASE = '1'
   } else {
-    delete env.NIGHTSHIFT_LINUX_ARM64_RELEASE
+    delete env.KOLUX_LINUX_ARM64_RELEASE
   }
   const pnpm = platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
   execFile(pnpm, buildLinuxElectronBuilderArgs(arch, extraArgs), {

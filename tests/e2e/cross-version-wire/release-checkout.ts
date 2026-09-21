@@ -14,7 +14,7 @@ const DEFAULT_CACHE_ROOT = join(REPO_ROOT, 'tests', 'e2e', '.cross-version-check
 // Bump when extraction or the alias rewrite changes so cached trees are rebuilt.
 const CHECKOUT_FORMAT = 3
 
-const BASELINE_REF_ENV = 'NIGHTSHIFT_CROSS_VERSION_BASELINE_REF'
+const BASELINE_REF_ENV = 'KOLUX_CROSS_VERSION_BASELINE_REF'
 const STABLE_DESKTOP_RELEASE_TAG = /^v\d+\.\d+\.\d+$/
 
 export type ReleaseCheckout = {

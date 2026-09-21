@@ -14,40 +14,38 @@ describe('tui agent detection commands', () => {
     expect(commands).toEqual([
       {
         id: 'claude-agent-teams',
-        cmd: 'nightshift',
+        cmd: 'kolux',
         requiredCommands: ['claude'],
         unsupportedRuntimes: ['win32', 'wsl']
       },
       {
         id: 'claude-agent-teams',
-        cmd: 'nightshift-dev',
+        cmd: 'kolux-dev',
         requiredCommands: ['claude'],
         unsupportedRuntimes: ['win32', 'wsl']
       },
       {
         id: 'claude-agent-teams',
-        cmd: 'nightshift-ide',
+        cmd: 'kolux-ide',
         requiredCommands: ['claude'],
         unsupportedRuntimes: ['win32', 'wsl']
       }
     ])
     expect(getTuiAgentDetectionProbeCommands(commands, 'linux')).toEqual([
-      'nightshift',
+      'kolux',
       'claude',
-      'nightshift-dev',
-      'nightshift-ide'
+      'kolux-dev',
+      'kolux-ide'
     ])
-    expect(resolveDetectedTuiAgentIds(commands, new Set(['nightshift']), 'linux')).toEqual([])
-    expect(
-      resolveDetectedTuiAgentIds(commands, new Set(['nightshift', 'claude']), 'linux')
-    ).toEqual(['claude-agent-teams'])
+    expect(resolveDetectedTuiAgentIds(commands, new Set(['kolux']), 'linux')).toEqual([])
+    expect(resolveDetectedTuiAgentIds(commands, new Set(['kolux', 'claude']), 'linux')).toEqual([
+      'claude-agent-teams'
+    ])
     expect(getTuiAgentDetectionProbeCommands(commands, 'win32')).toEqual([])
-    expect(
-      resolveDetectedTuiAgentIds(commands, new Set(['nightshift', 'claude']), 'win32')
-    ).toEqual([])
+    expect(resolveDetectedTuiAgentIds(commands, new Set(['kolux', 'claude']), 'win32')).toEqual([])
     expect(getTuiAgentDetectionProbeCommands(commands, 'wsl')).toEqual([])
-    expect(
-      resolveDetectedTuiAgentIds(commands, new Set(['nightshift-ide', 'claude']), 'wsl')
-    ).toEqual([])
+    expect(resolveDetectedTuiAgentIds(commands, new Set(['kolux-ide', 'claude']), 'wsl')).toEqual(
+      []
+    )
   })
 })

@@ -14,7 +14,7 @@ describe('spawnWslRelayProcess', () => {
 
     // Why (#16463): the guest path is inside the `sh -c` command, so the Windows
     // cwd only decides whether CreateProcessW succeeds. Omitting it inherits
-    // Nightshift's own — a `\\wsl.localhost` worktree the user can delete, after which
+    // Kolux's own — a `\\wsl.localhost` worktree the user can delete, after which
     // every relay launch fails `spawn wsl.exe ENOENT` for the rest of the session.
     expect(spawnMock).toHaveBeenCalledWith(
       'wsl.exe',

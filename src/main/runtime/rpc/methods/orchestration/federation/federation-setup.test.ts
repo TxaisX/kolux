@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { monitorFederatedSetup } from './federation-setup'
 
 describe('orchestration federated setup evidence', () => {
   const databases: OrchestrationDb[] = []
-  const runtimes: NightshiftRuntimeService[] = []
+  const runtimes: KoluxRuntimeService[] = []
 
   afterEach(() => {
     for (const runtime of runtimes.splice(0)) {
@@ -17,9 +17,9 @@ describe('orchestration federated setup evidence', () => {
     }
   })
 
-  function createRuntime(): { db: OrchestrationDb; runtime: NightshiftRuntimeService } {
+  function createRuntime(): { db: OrchestrationDb; runtime: KoluxRuntimeService } {
     const db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)
     runtimes.push(runtime)

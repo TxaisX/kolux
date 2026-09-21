@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { _resetTracerForTests, setActiveSink, type TracerSink } from '../../observability/tracer'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { SESSION_TAB_METHODS } from './methods/session-tabs'
@@ -69,7 +69,7 @@ describe('runtime close attribution topology', () => {
         visibleSessionTab(worktree, worktree.endsWith('a') ? 'tab-a' : 'tab-b')
       ),
       refuseUnattributedMobileSessionTabClose: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await dispatcher.dispatchStreaming(
@@ -142,7 +142,7 @@ describe('runtime close attribution topology', () => {
         visibleSessionTab(worktree, worktree.endsWith('a') ? 'tab-a' : 'tab-b')
       ),
       closeMobileSessionTab
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await Promise.all(
@@ -197,7 +197,7 @@ describe('runtime close attribution topology', () => {
       getRuntimeId: () => 'runtime-owner-3',
       closeTerminal,
       listSessions
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
     const context = {
       clientKind: 'runtime' as const,

@@ -97,10 +97,10 @@ function totalOnlyUsageRecord(timestamp: string, totalInputTokens: number): stri
 
 beforeEach(() => {
   delete process.env.CODEX_HOME
-  fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-usage-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-usage-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-usage-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-usage-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   getPathMock.mockImplementation((name: string) => {
     if (name === 'userData') {
@@ -119,15 +119,15 @@ afterEach(() => {
     process.env.CODEX_HOME = originalCodexHome
   }
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
 
 describe('getCodexSessionsDirectory', () => {
-  it('defaults to Nightshift-managed Codex runtime sessions', () => {
+  it('defaults to Kolux-managed Codex runtime sessions', () => {
     expect(getCodexSessionsDirectory()).toBe(
       join(userDataDir, 'codex-runtime-home', 'home', 'sessions')
     )
@@ -143,7 +143,7 @@ describe('getCodexSessionsDirectory', () => {
 })
 
 describe('listCodexSessionFiles', () => {
-  it('scans both Nightshift-managed and system Codex session homes', async () => {
+  it('scans both Kolux-managed and system Codex session homes', async () => {
     const runtimeSessionsDir = join(userDataDir, 'codex-runtime-home', 'home', 'sessions')
     const systemSessionsDir = join(fakeHomeDir, '.codex', 'sessions')
     mkdirSync(runtimeSessionsDir, { recursive: true })
@@ -165,7 +165,7 @@ describe('listCodexSessionFiles', () => {
     mkdirSync(systemSessionsDir, { recursive: true })
     mkdirSync(accountSessionsDir, { recursive: true })
     writeFileSync(
-      join(userDataDir, 'codex-accounts', 'acct-1', 'home', '.nightshift-managed-home'),
+      join(userDataDir, 'codex-accounts', 'acct-1', 'home', '.kolux-managed-home'),
       'acct-1\n',
       'utf-8'
     )
@@ -203,7 +203,7 @@ describe('listCodexSessionFiles', () => {
     const externalSessionsDir = join(externalHome, 'sessions')
     mkdirSync(accountDir, { recursive: true })
     mkdirSync(externalSessionsDir, { recursive: true })
-    writeFileSync(join(externalHome, '.nightshift-managed-home'), 'acct-redirected\n', 'utf-8')
+    writeFileSync(join(externalHome, '.kolux-managed-home'), 'acct-redirected\n', 'utf-8')
     writeFileSync(join(externalSessionsDir, 'unrelated.jsonl'), '{}\n', 'utf-8')
     symlinkSync(
       externalHome,
@@ -220,11 +220,7 @@ describe('listCodexSessionFiles', () => {
     const externalSessionsDir = join(fakeHomeDir, 'redirected-sessions')
     mkdirSync(accountHome, { recursive: true })
     mkdirSync(externalSessionsDir, { recursive: true })
-    writeFileSync(
-      join(accountHome, '.nightshift-managed-home'),
-      'acct-redirected-sessions\n',
-      'utf-8'
-    )
+    writeFileSync(join(accountHome, '.kolux-managed-home'), 'acct-redirected-sessions\n', 'utf-8')
     writeFileSync(join(externalSessionsDir, 'unrelated.jsonl'), '{}\n', 'utf-8')
     symlinkSync(
       externalSessionsDir,
@@ -258,7 +254,7 @@ describe('listCodexSessionFiles', () => {
       userDataDir,
       'codex-runtime-home',
       'home',
-      '.nightshift-session-copies'
+      '.kolux-session-copies'
     )
     const systemSessionsDir = join(fakeHomeDir, '.codex', 'sessions')
     mkdirSync(runtimeSessionsDir, { recursive: true })
@@ -296,7 +292,7 @@ describe('listCodexSessionFiles', () => {
       userDataDir,
       'codex-runtime-home',
       'home',
-      '.nightshift-session-copies'
+      '.kolux-session-copies'
     )
     const systemSessionsDir = join(fakeHomeDir, '.codex', 'sessions')
     mkdirSync(runtimeSessionsDir, { recursive: true })
@@ -335,7 +331,7 @@ describe('listCodexSessionFiles', () => {
       userDataDir,
       'codex-runtime-home',
       'home',
-      '.nightshift-session-copies'
+      '.kolux-session-copies'
     )
     const systemSessionsDir = join(fakeHomeDir, '.codex', 'sessions')
     mkdirSync(runtimeSessionsDir, { recursive: true })
@@ -604,7 +600,7 @@ describe('listCodexSessionFiles', () => {
       userDataDir,
       'codex-runtime-home',
       'home',
-      '.nightshift-session-copies'
+      '.kolux-session-copies'
     )
     const systemSessionsDir = join(fakeHomeDir, '.codex', 'sessions')
     mkdirSync(runtimeSessionsDir, { recursive: true })

@@ -44,7 +44,7 @@ const nativePosix = getRemoteHostPlatform(
 )
 const windows = getRemoteHostPlatform('win32-x64')
 const powerShellExecutable = [
-  process.env.NIGHTSHIFT_POWERSHELL_EXECUTABLE,
+  process.env.KOLUX_POWERSHELL_EXECUTABLE,
   ...(process.platform === 'win32' ? ['pwsh.exe', 'powershell.exe'] : ['pwsh'])
 ].find((candidate) => {
   if (!candidate) {
@@ -122,7 +122,7 @@ function runPowerShellCommand(executable: string, script: string): Promise<strin
 describe('ssh remote command builders', () => {
   it('keeps POSIX deploy commands POSIX-native', () => {
     expect(readRemoteHomeCommand(posix)).toBe('echo $HOME')
-    expect(makeRemoteDirectoryCommand(posix, '/home/me/.nightshift-remote')).toContain('mkdir -p')
+    expect(makeRemoteDirectoryCommand(posix, '/home/me/.kolux-remote')).toContain('mkdir -p')
     const probe = probeRelayInstalledCommand(posix, '/home/me/relay')
     expect(probe).toContain('test -d')
     expect(probe).toContain('managed-hook-runtime.js')
@@ -149,7 +149,7 @@ describe('ssh remote command builders', () => {
 
   // Stage a complete install, then remove one companion: the probe must flip.
   function stageRelayInstall(isWindows: boolean): string {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-relay-probe-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-relay-probe-'))
     for (const filename of relayArtifactFilenames(isWindows)) {
       writeFileSync(join(dir, filename), '')
     }
@@ -192,7 +192,7 @@ describe('ssh remote command builders', () => {
 
   it('uses encoded PowerShell for Windows deploy commands', () => {
     expect(readRemoteHomeCommand(windows)).toContain('powershell.exe')
-    expect(makeRemoteDirectoryCommand(windows, 'C:/Users/me/.nightshift-remote')).toContain(
+    expect(makeRemoteDirectoryCommand(windows, 'C:/Users/me/.kolux-remote')).toContain(
       '-EncodedCommand'
     )
     const probe = probeRelayInstalledCommand(windows, 'C:/Users/me/relay')
@@ -203,10 +203,10 @@ describe('ssh remote command builders', () => {
 
   it('uses a legacy-visible Windows lock directory with an exclusive owner file', () => {
     const mkdirScript = decodePowerShellCommand(
-      makeRemoteDirectoryCommand(windows, 'C:/Users/me/.nightshift-remote')
+      makeRemoteDirectoryCommand(windows, 'C:/Users/me/.kolux-remote')
     )
     const lockScript = decodePowerShellCommand(
-      tryCreateInstallLockCommand(windows, 'C:/Users/me/.nightshift-remote/relay/.install-lock')
+      tryCreateInstallLockCommand(windows, 'C:/Users/me/.kolux-remote/relay/.install-lock')
     )
 
     expect(mkdirScript).toContain('New-Item -ItemType Directory -Force -Path')
@@ -253,7 +253,7 @@ describe('ssh remote command builders', () => {
   })
 
   it('emits an explicit POSIX liveness result so GC can fail closed', () => {
-    const command = relayLivenessProbeCommand(posix, '/home/u/.nightshift-remote/relay-0.1.0')
+    const command = relayLivenessProbeCommand(posix, '/home/u/.kolux-remote/relay-0.1.0')
 
     expect(command).toContain('state=DEAD')
     expect(command).toContain('[ -S "$f" ] && state=ALIVE')
@@ -261,14 +261,10 @@ describe('ssh remote command builders', () => {
   })
 
   it('uses named pipe try-connect liveness for Windows GC', () => {
-    const command = relayLivenessProbeCommand(
-      windows,
-      'C:/Users/me/.nightshift-remote/relay-0.1.0',
-      {
-        nodePath: 'C:/Program Files/nodejs/node.exe',
-        pipePaths: ['\\\\.\\pipe\\nightshift-relay-1234567890abcdef1234']
-      }
-    )
+    const command = relayLivenessProbeCommand(windows, 'C:/Users/me/.kolux-remote/relay-0.1.0', {
+      nodePath: 'C:/Program Files/nodejs/node.exe',
+      pipePaths: ['\\\\.\\pipe\\kolux-relay-1234567890abcdef1234']
+    })
     const script = decodePowerShellCommand(command)
 
     expect(command).toContain('powershell.exe')
@@ -277,7 +273,7 @@ describe('ssh remote command builders', () => {
     expect(script).toContain('markerCount===0&&pipes.length===0')
     expect(script).toContain('C:\\Program Files\\nodejs')
     expect(script).not.toContain('Win32_Process')
-    expect(listRelayBaseDirsCommand(windows, 'C:/Users/me/.nightshift-remote')).toContain(
+    expect(listRelayBaseDirsCommand(windows, 'C:/Users/me/.kolux-remote')).toContain(
       '-EncodedCommand'
     )
   })
@@ -285,7 +281,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'bounds real POSIX GC output with more than the exec-cap stage population',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-relay-gc-scale-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-relay-gc-scale-'))
       try {
         for (let index = 0; index < 15_197; index += 1) {
           mkdirSync(join(root, `relay-0.1.0+abc.upload-${String(index).padStart(12, '0')}`))
@@ -309,7 +305,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'fails closed when real POSIX GC enumeration fails',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-relay-gc-failure-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-relay-gc-failure-'))
       try {
         const command = `find() { return 23; }\n${listRelayBaseDirsCommand(posix, root)}`
         await expect(runShellCommand(command)).rejects.toThrow('shell exited 1')
@@ -321,9 +317,9 @@ describe('ssh remote command builders', () => {
 
   it('escapes double quotes before passing JavaScript to native Windows commands', () => {
     const script = decodePowerShellCommand(
-      relayLivenessProbeCommand(windows, 'C:/Users/me/.nightshift-remote/relay-0.1.0', {
+      relayLivenessProbeCommand(windows, 'C:/Users/me/.kolux-remote/relay-0.1.0', {
         nodePath: 'C:/Program Files/nodejs/node.exe',
-        pipePaths: ['\\\\.\\pipe\\nightshift-relay-1234567890abcdef1234']
+        pipePaths: ['\\\\.\\pipe\\kolux-relay-1234567890abcdef1234']
       })
     )
 
@@ -336,7 +332,7 @@ describe('ssh remote command builders', () => {
       commandWithNodePath(
         windows,
         'C:/Program Files/nodejs/node.exe',
-        'C:/Users/me/.nightshift-remote/relay-0.1.0',
+        'C:/Users/me/.kolux-remote/relay-0.1.0',
         "'READY'"
       )
     )
@@ -346,7 +342,7 @@ describe('ssh remote command builders', () => {
 
   it('keeps the Windows install-lock try/catch parseable', () => {
     const script = decodePowerShellCommand(
-      tryCreateInstallLockCommand(windows, 'C:/Users/me/.nightshift-remote/relay/.install-lock')
+      tryCreateInstallLockCommand(windows, 'C:/Users/me/.kolux-remote/relay/.install-lock')
     )
 
     expect(script).toContain('$stream = $null; try {')
@@ -355,12 +351,9 @@ describe('ssh remote command builders', () => {
   })
 
   it('computes install-lock age on the remote host clock', () => {
-    const posixCommand = lockAgeSecondsCommand(
-      posix,
-      '/home/me/.nightshift-remote/relay/.install-lock'
-    )
+    const posixCommand = lockAgeSecondsCommand(posix, '/home/me/.kolux-remote/relay/.install-lock')
     const windowsScript = decodePowerShellCommand(
-      lockAgeSecondsCommand(windows, 'C:/Users/me/.nightshift-remote/relay/.install-lock')
+      lockAgeSecondsCommand(windows, 'C:/Users/me/.kolux-remote/relay/.install-lock')
     )
 
     expect(posixCommand).toContain('date +%s')
@@ -372,15 +365,11 @@ describe('ssh remote command builders', () => {
   it('serializes stale recovery with unbounded numbered sibling claims', () => {
     const posixCommand = tryStealInstallLockCommand(
       posix,
-      '/home/me/.nightshift-remote/relay/.install-lock',
+      '/home/me/.kolux-remote/relay/.install-lock',
       20 * 60
     )
     const windowsScript = decodePowerShellCommand(
-      tryStealInstallLockCommand(
-        windows,
-        'C:/Users/me/.nightshift-remote/relay/.install-lock',
-        20 * 60
-      )
+      tryStealInstallLockCommand(windows, 'C:/Users/me/.kolux-remote/relay/.install-lock', 20 * 60)
     )
 
     expect(posixCommand).toContain('.install-lock')
@@ -407,7 +396,7 @@ describe('ssh remote command builders', () => {
       const script = decodePowerShellCommand(
         tryStealInstallLockCommand(
           windows,
-          'C:/Users/nightshift-missing/.nightshift-remote/relay/.install-lock',
+          'C:/Users/kolux-missing/.kolux-remote/relay/.install-lock',
           20 * 60
         )
       )
@@ -426,7 +415,7 @@ describe('ssh remote command builders', () => {
   it.runIf(powerShell51Executable)(
     'lets only one Windows PowerShell 5.1 caller acquire an install lock',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-windows-race-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-windows-race-'))
       try {
         const lockPath = join(root, '.install-lock')
         const script = decodePowerShellCommand(tryCreateInstallLockCommand(windows, lockPath))
@@ -448,7 +437,7 @@ describe('ssh remote command builders', () => {
   it.runIf(powerShell51Executable)(
     'atomically replaces a fresh Windows lock only after the remote boot changes',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-windows-reboot-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-windows-reboot-'))
       try {
         const lockPath = join(root, '.install-lock')
         const acquire = decodePowerShellCommand(tryCreateInstallLockCommand(windows, lockPath))
@@ -484,7 +473,7 @@ describe('ssh remote command builders', () => {
   it.runIf(powerShell51Executable)(
     'recovers a stale Windows lock past abandoned steal generations',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-windows-stale-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-windows-stale-'))
       try {
         const lockPath = join(root, '.install-lock')
         mkdirSync(lockPath)
@@ -516,7 +505,7 @@ describe('ssh remote command builders', () => {
   it.runIf(powerShell51Executable)(
     'lets only one Windows PowerShell 5.1 caller replace a stale lock',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-windows-steal-race-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-windows-steal-race-'))
       try {
         const lockPath = join(root, '.install-lock')
         mkdirSync(lockPath)
@@ -544,7 +533,7 @@ describe('ssh remote command builders', () => {
   it.runIf(powerShellExecutable)(
     'keeps a new Windows lock visible to the previous directory-only GC probe',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-windows-compat-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-windows-compat-'))
       try {
         const lockPath = join(root, '.install-lock')
         const acquire = decodePowerShellCommand(tryCreateInstallLockCommand(windows, lockPath))
@@ -564,7 +553,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'recovers and cleans more than eight orphaned numbered steal claims',
     () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-'))
       try {
         const lockDir = join(root, '.install-lock')
         mkdirSync(lockDir)
@@ -593,7 +582,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'atomically replaces a fresh POSIX lock only after the execution host changes',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-reboot-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-reboot-'))
       try {
         const lockDir = join(root, '.install-lock')
         const acquire = tryCreateInstallLockCommand(nativePosix, lockDir)
@@ -623,7 +612,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'keeps a fresh legacy POSIX lock when no boot identity is available',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-legacy-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-legacy-'))
       try {
         const lockDir = join(root, '.install-lock')
         mkdirSync(lockDir)
@@ -648,7 +637,7 @@ describe('ssh remote command builders', () => {
   it.runIf(process.platform !== 'win32')(
     'lets only one POSIX caller move and recreate a stale install lock',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-install-lock-race-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-install-lock-race-'))
       try {
         const lockDir = join(root, '.install-lock')
         mkdirSync(lockDir)
@@ -671,22 +660,22 @@ describe('ssh remote command builders', () => {
 
   it('makes Windows remote directory changes fail before running scoped commands', () => {
     const scopedCommand = decodePowerShellCommand(
-      commandInRemoteDirectory(windows, 'C:/Users/me/.nightshift-remote/relay-0.1.0', "'READY'")
+      commandInRemoteDirectory(windows, 'C:/Users/me/.kolux-remote/relay-0.1.0', "'READY'")
     )
     const nodeScopedCommand = decodePowerShellCommand(
       commandWithNodePath(
         windows,
         'C:/Program Files/nodejs/node.exe',
-        'C:/Users/me/.nightshift-remote/relay-0.1.0',
+        'C:/Users/me/.kolux-remote/relay-0.1.0',
         "'READY'"
       )
     )
 
     expect(scopedCommand).toContain(
-      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me/.nightshift-remote/relay-0.1.0'"
+      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me/.kolux-remote/relay-0.1.0'"
     )
     expect(nodeScopedCommand).toContain(
-      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me/.nightshift-remote/relay-0.1.0'"
+      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me/.kolux-remote/relay-0.1.0'"
     )
   })
 })

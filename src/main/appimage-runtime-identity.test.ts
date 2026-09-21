@@ -25,11 +25,11 @@ function appImageHeader(machine: number): Buffer {
   return header
 }
 
-function createFixture(appDirName = '.mount_Nightshift123', machine = 0x3e) {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-appimage-identity-'))
-  const appImagePath = join(root, 'Applications', 'Nightshift.AppImage')
+function createFixture(appDirName = '.mount_Kolux123', machine = 0x3e) {
+  const root = mkdtempSync(join(tmpdir(), 'kolux-appimage-identity-'))
+  const appImagePath = join(root, 'Applications', 'Kolux.AppImage')
   const appDirPath = join(root, appDirName)
-  const execPath = join(appDirPath, 'nightshift-ide')
+  const execPath = join(appDirPath, 'kolux-ide')
   const resourcesPath = join(appDirPath, 'resources')
   const packageTypePath = join(resourcesPath, 'package-type')
   const packageMarkerPath = join(resourcesPath, 'app.asar.unpacked', 'out', 'package.json')
@@ -41,7 +41,7 @@ function createFixture(appDirName = '.mount_Nightshift123', machine = 0x3e) {
   writeFileSync(execPath, appImageHeader(machine), { mode: 0o755 })
   writeFileSync(
     packageMarkerPath,
-    JSON.stringify({ name: 'nightshift-compiled-output', type: 'commonjs', private: true })
+    JSON.stringify({ name: 'kolux-compiled-output', type: 'commonjs', private: true })
   )
   return {
     root,
@@ -68,7 +68,7 @@ afterEach(() => {
 
 describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', () => {
   it.each([
-    ['x64', 0x3e, '.mount_Nightshift123'],
+    ['x64', 0x3e, '.mount_Kolux123'],
     ['ARM64 extract-and-run', 0xb7, 'appimage_extracted_123']
   ])('accepts a complete %s AppImage runtime', (_architecture, machine, appDirName) => {
     const fixture = createFixture(appDirName, machine)
@@ -79,7 +79,7 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
 
   it('accepts an AppImage moved independently of its runtime directory', () => {
     const fixture = createFixture()
-    const movedPath = join(fixture.root, 'Moved Apps', 'Nightshift current.AppImage')
+    const movedPath = join(fixture.root, 'Moved Apps', 'Kolux current.AppImage')
     mkdirSync(dirname(movedPath), { recursive: true })
     renameSync(fixture.appImagePath, movedPath)
     fixture.identity.environment.APPIMAGE = movedPath
@@ -95,10 +95,10 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
 
   it.each([
     ['APPIMAGE', undefined],
-    ['APPIMAGE', 'relative/Nightshift.AppImage'],
+    ['APPIMAGE', 'relative/Kolux.AppImage'],
     ['APPDIR', undefined],
     ['APPDIR', 'relative/mount'],
-    ['APPIMAGE', '/tmp/Nightshift\0.AppImage']
+    ['APPIMAGE', '/tmp/Kolux\0.AppImage']
   ] as const)('rejects an unusable %s value', (key, value) => {
     const fixture = createFixture()
     expect(
@@ -152,7 +152,7 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
         chmodSync(join(fixture.appDirPath, 'AppRun'), 0o644)
     ],
     [
-      'the Nightshift package marker',
+      'the Kolux package marker',
       (fixture: ReturnType<typeof createFixture>) => rmSync(fixture.packageMarkerPath)
     ]
   ])('rejects a runtime missing %s', (_case, mutate) => {
@@ -176,7 +176,7 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
     expect(resolveAppImageRuntimeIdentity(fixture.identity)).toBeNull()
   })
 
-  it('rejects an inexact package-type marker without the Nightshift fallback', () => {
+  it('rejects an inexact package-type marker without the Kolux fallback', () => {
     const fixture = createFixture()
     rmSync(fixture.packageMarkerPath)
     writeFileSync(fixture.packageTypePath, 'appimage')
@@ -197,7 +197,7 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
     const externalMarker = join(fixture.root, 'foreign-package.json')
     writeFileSync(
       externalMarker,
-      JSON.stringify({ name: 'nightshift-compiled-output', type: 'commonjs' })
+      JSON.stringify({ name: 'kolux-compiled-output', type: 'commonjs' })
     )
     rmSync(fixture.packageMarkerPath)
     symlinkSync(externalMarker, fixture.packageMarkerPath)
@@ -209,8 +209,8 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
     expect(
       resolveAppImageRuntimeIdentity({
         ...fixture.identity,
-        execPath: join(fixture.root, 'opt', 'Nightshift', 'nightshift-ide'),
-        resourcesPath: join(fixture.root, 'opt', 'Nightshift', 'resources')
+        execPath: join(fixture.root, 'opt', 'Kolux', 'kolux-ide'),
+        resourcesPath: join(fixture.root, 'opt', 'Kolux', 'resources')
       })
     ).toBeNull()
   })
@@ -233,10 +233,8 @@ describe.skipIf(process.platform === 'win32')('resolveAppImageRuntimeIdentity', 
 
 describe('hasAppImagePathEnvironment', () => {
   it('requires the AppImage file path before treating the runtime as verifiable', () => {
-    expect(hasAppImagePathEnvironment({ APPIMAGE: '/tmp/Nightshift.AppImage' })).toBe(true)
-    expect(hasAppImagePathEnvironment({ APPDIR: '/tmp/.mount_Nightshift123' })).toBe(false)
-    expect(hasAppImagePathEnvironment({ APPIMAGE: '', APPDIR: '/tmp/.mount_Nightshift123' })).toBe(
-      false
-    )
+    expect(hasAppImagePathEnvironment({ APPIMAGE: '/tmp/Kolux.AppImage' })).toBe(true)
+    expect(hasAppImagePathEnvironment({ APPDIR: '/tmp/.mount_Kolux123' })).toBe(false)
+    expect(hasAppImagePathEnvironment({ APPIMAGE: '', APPDIR: '/tmp/.mount_Kolux123' })).toBe(false)
   })
 })

@@ -70,7 +70,7 @@ export async function installApi(userAgent?: string): Promise<{
 
 export function writeStoredRuntimeEnvironment(storage: Storage, environmentId = 'web-env-1'): void {
   storage.setItem(
-    'nightshift.web.runtimeEnvironment.v1',
+    'kolux.web.runtimeEnvironment.v1',
     JSON.stringify({
       id: environmentId,
       name: 'Test runtime',

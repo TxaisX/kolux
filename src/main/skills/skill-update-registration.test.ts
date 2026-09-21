@@ -7,7 +7,7 @@ import { readGloballyUpdatableSkillNames } from './skill-update-registration'
 const temporaryDirectories: string[] = []
 
 async function temporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-registration-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-registration-'))
   temporaryDirectories.push(root)
   return root
 }
@@ -59,9 +59,9 @@ describe('global skill update registration', () => {
       JSON.stringify({
         version: 3,
         skills: {
-          'nightshift-cli': {
+          'kolux-cli': {
             skillFolderHash: 'hash',
-            skillPath: 'skills/nightshift-cli/SKILL.md',
+            skillPath: 'skills/kolux-cli/SKILL.md',
             source: 'TxaisX/nightshift'
           }
         }
@@ -69,7 +69,7 @@ describe('global skill update registration', () => {
     )
 
     await expect(readGloballyUpdatableSkillNames({ homeDir: root, stateHome })).resolves.toEqual(
-      new Set(['nightshift-cli'])
+      new Set(['kolux-cli'])
     )
   })
 })

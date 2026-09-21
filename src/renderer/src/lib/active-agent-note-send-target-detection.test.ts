@@ -136,7 +136,7 @@ describe('active agent note send', () => {
     })
   })
 
-  it('offers the active terminal send target for a Nightshift-launched agent before hooks report', () => {
+  it('offers the active terminal send target for a Kolux-launched agent before hooks report', () => {
     testState.appState.tabsByWorktree = {
       'wt-1': [{ id: 'tab-1', launchAgent: 'codex' }]
     }

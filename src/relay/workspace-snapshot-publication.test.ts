@@ -39,7 +39,7 @@ function oversizedSession(worktrees: number, tabsPerWorktree: number): Record<st
   const tabsByWorktreePath: Record<string, unknown[]> = {}
   const terminalLayoutsByTabId: Record<string, unknown> = {}
   for (let w = 0; w < worktrees; w++) {
-    const worktreePath = `/home/dev/nightshift/workspaces/project/feature-branch-${w}`
+    const worktreePath = `/home/dev/kolux/workspaces/project/feature-branch-${w}`
     tabsByWorktreePath[worktreePath] = Array.from({ length: tabsPerWorktree }, (_, t) => ({
       id: `tab-${w}-${t}-1f7a4c2e-9b0d-4e51-8a63-2c9f0d1e4b7a`,
       title: `claude — feature-branch-${w} — pane ${t}`,
@@ -52,14 +52,14 @@ function oversizedSession(worktrees: number, tabsPerWorktree: number): Record<st
       terminalLayoutsByTabId[`tab-${w}-${t}-1f7a4c2e-9b0d-4e51-8a63-2c9f0d1e4b7a`] = {
         direction: 'row',
         panes: [
-          { id: `pane-${w}-${t}-a`, size: 50, remoteSessionId: `nightshift-remote-${w}-${t}-a` },
-          { id: `pane-${w}-${t}-b`, size: 50, remoteSessionId: `nightshift-remote-${w}-${t}-b` }
+          { id: `pane-${w}-${t}-a`, size: 50, remoteSessionId: `kolux-remote-${w}-${t}-a` },
+          { id: `pane-${w}-${t}-b`, size: 50, remoteSessionId: `kolux-remote-${w}-${t}-b` }
         ]
       }
     }
   }
   return {
-    activeWorktreePath: '/home/dev/nightshift/workspaces/project/feature-branch-0',
+    activeWorktreePath: '/home/dev/kolux/workspaces/project/feature-branch-0',
     activeTabId: 'tab-0-0-1f7a4c2e-9b0d-4e51-8a63-2c9f0d1e4b7a',
     tabsByWorktreePath,
     terminalLayoutsByTabId
@@ -72,7 +72,7 @@ describe('workspace snapshot publication over a bounded producer frame', () => {
   let written: Buffer[]
 
   beforeEach(() => {
-    baseDir = mkdtempSync(join(tmpdir(), 'nightshift-workspace-publication-'))
+    baseDir = mkdtempSync(join(tmpdir(), 'kolux-workspace-publication-'))
     written = []
     dispatcher = new RelayDispatcher(
       (data) => {

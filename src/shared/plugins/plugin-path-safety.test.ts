@@ -24,10 +24,10 @@ describe('plugin path portability', () => {
     const base = {
       manifestVersion: 1,
       id: 'demo',
-      publisher: 'nightshift-samples',
+      publisher: 'kolux-samples',
       name: 'Demo',
       version: '1.0.0',
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       contributes: { panels: [], commands: [], events: [] },
       capabilities: []

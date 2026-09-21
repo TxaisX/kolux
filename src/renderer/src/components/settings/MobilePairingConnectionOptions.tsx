@@ -4,7 +4,7 @@ import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { translate } from '../../i18n/i18n'
 import { useAppStore } from '../../store'
-import { useNightshiftProfileAuthStatusRefresh } from '@/hooks/use-nightshift-profile-auth-status-refresh'
+import { useKoluxProfileAuthStatusRefresh } from '@/hooks/use-kolux-profile-auth-status-refresh'
 import { cn } from '@/lib/utils'
 import type {
   MobileRelayStatus,
@@ -65,9 +65,9 @@ export function MobilePairingConnectionOptions({
   relayMintFailed?: boolean
   relayMintRetrying?: boolean
 }): React.JSX.Element {
-  const authStatus = useAppStore((state) => state.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((state) => state.nightshiftProfileConnecting)
-  const connect = useAppStore((state) => state.connectCurrentNightshiftProfile)
+  const authStatus = useAppStore((state) => state.koluxProfileAuthStatus)
+  const connecting = useAppStore((state) => state.koluxProfileConnecting)
+  const connect = useAppStore((state) => state.connectCurrentKoluxProfile)
   const [relayStatus, setRelayStatus] = useState<MobileRelayStatus>('offline')
   const [relayCellUrl, setRelayCellUrl] = useState<string | undefined>(undefined)
   const signedIn = authStatus?.state === 'connected'
@@ -109,7 +109,7 @@ export function MobilePairingConnectionOptions({
 
   const relayCell = relayCellUrl ? relayCellLabel(relayCellUrl) : null
 
-  useNightshiftProfileAuthStatusRefresh()
+  useKoluxProfileAuthStatusRefresh()
 
   useEffect(() => {
     let receivedEvent = false
@@ -161,13 +161,13 @@ export function MobilePairingConnectionOptions({
           onSelect={() => onChange('automatic')}
           title={translate(
             'auto.components.settings.MobilePairingConnectionOptions.anywhereTitle',
-            'Nightshift Relay'
+            'Kolux Relay'
           )}
           description={
             relayUnavailable
               ? translate(
                   'auto.components.settings.MobilePairingConnectionOptions.relayUnavailable',
-                  'Nightshift Relay isn’t available in this build. Use LAN.'
+                  'Kolux Relay isn’t available in this build. Use LAN.'
                 )
               : translate(
                   'auto.components.settings.MobilePairingConnectionOptions.anywhereDescription',

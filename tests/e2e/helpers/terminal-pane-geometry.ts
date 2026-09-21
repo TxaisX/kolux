@@ -3,7 +3,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 import { waitForPaneIdentitySnapshot } from './terminal'
 
 export async function readVisibleXtermContainerBox(

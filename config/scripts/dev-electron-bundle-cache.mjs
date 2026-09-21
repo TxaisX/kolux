@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 
 /** Written once a bundle is fully built; its absence is what marks a build still in flight. */
-export const DEV_BUNDLE_MARKER_FILENAME = 'nightshift-dev-electron-app.json'
+export const DEV_BUNDLE_MARKER_FILENAME = 'kolux-dev-electron-app.json'
 
 export function getDevBundleProcessTable(execFile = execFileSync) {
   // Not pgrep: macOS pgrep has no -a (a Linux procps extension) and silently prints bare PIDs,

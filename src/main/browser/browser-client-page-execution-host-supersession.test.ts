@@ -69,7 +69,7 @@ function createHarness() {
   })
 
   const dependencies = {
-    nightshiftProfileId: 'nightshift-profile-a',
+    koluxProfileId: 'kolux-profile-a',
     authorityConnectionIdentity: 'authority-record-a',
     legacyAuthorityConnectionIdentity: 'legacy-authority-record-a',
     storageScope: 'a'.repeat(64),

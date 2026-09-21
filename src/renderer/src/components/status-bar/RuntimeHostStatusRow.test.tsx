@@ -114,7 +114,7 @@ describe('RuntimeHostStatusRow', () => {
       />
     )
 
-    expect(container.textContent).toContain('Nightshift unavailable')
+    expect(container.textContent).toContain('Kolux unavailable')
     expect(container.textContent).toContain('SSH transport is connected')
     expect(container.textContent).toContain('may still be running')
     expect(container.textContent).toContain('Disconnect')

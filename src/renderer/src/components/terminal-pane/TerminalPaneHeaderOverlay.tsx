@@ -83,7 +83,7 @@ export default function TerminalPaneHeaderOverlay({
       data-pane-title-surface={titleUsesLightSurface ? 'light' : 'dark'}
       style={{
         display: terminalContentVisible ? undefined : 'none',
-        ['--nightshift-pane-title-bg' as string]: paneTitleBackground,
+        ['--kolux-pane-title-bg' as string]: paneTitleBackground,
         ...hiddenStartupStyle
       }}
     >

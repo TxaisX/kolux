@@ -146,9 +146,9 @@ async function installElectronPackageBinary(sharedEntry) {
   if (sharedEntry !== null && adoptSharedElectronDist(sharedEntry, electronDistDir)) {
     return
   }
-  const tempDir = mkdtempSync(resolve(tmpdir(), 'nightshift-electron-'))
+  const tempDir = mkdtempSync(resolve(tmpdir(), 'kolux-electron-'))
   const persistentCacheRoot =
-    process.env.NIGHTSHIFT_ELECTRON_PACKAGE_CACHE_ROOT || process.env.ELECTRON_CACHE || null
+    process.env.KOLUX_ELECTRON_PACKAGE_CACHE_ROOT || process.env.ELECTRON_CACHE || null
   const cacheRoot = persistentCacheRoot ?? join(tempDir, 'cache')
   const extractDir = join(tempDir, 'extract')
 
@@ -272,7 +272,7 @@ async function downloadElectronArtifactWithRetry(downloadOptions, { cacheRootIsP
 }
 
 function getDownloadRetryDelays() {
-  const configured = process.env.NIGHTSHIFT_ELECTRON_PACKAGE_RETRY_DELAYS_MS
+  const configured = process.env.KOLUX_ELECTRON_PACKAGE_RETRY_DELAYS_MS
   if (!configured) {
     // Why: GitHub release CDN returns intermittent 503 / HTTP2 stream refusals
     // under CI fan-out; a few short attempts still exhaust during outages.
@@ -281,9 +281,7 @@ function getDownloadRetryDelays() {
 
   const delays = configured.split(',').map(Number)
   if (delays.some((delay) => !Number.isSafeInteger(delay) || delay < 0)) {
-    throw new Error(
-      'NIGHTSHIFT_ELECTRON_PACKAGE_RETRY_DELAYS_MS must contain non-negative integers'
-    )
+    throw new Error('KOLUX_ELECTRON_PACKAGE_RETRY_DELAYS_MS must contain non-negative integers')
   }
   return delays
 }
@@ -442,17 +440,17 @@ function stageExtractedElectronDist(extractDir, nextDistDir) {
 }
 
 function getExtractorCommand(zipPath, extractDir) {
-  if (process.env.NIGHTSHIFT_ELECTRON_PACKAGE_EXTRACTOR) {
+  if (process.env.KOLUX_ELECTRON_PACKAGE_EXTRACTOR) {
     return {
       file: process.execPath,
-      args: [process.env.NIGHTSHIFT_ELECTRON_PACKAGE_EXTRACTOR, zipPath, extractDir],
-      label: `node ${process.env.NIGHTSHIFT_ELECTRON_PACKAGE_EXTRACTOR}`
+      args: [process.env.KOLUX_ELECTRON_PACKAGE_EXTRACTOR, zipPath, extractDir],
+      label: `node ${process.env.KOLUX_ELECTRON_PACKAGE_EXTRACTOR}`
     }
   }
 
   if (osPlatform() === 'win32') {
     return {
-      file: process.env.NIGHTSHIFT_POWERSHELL_BIN || 'powershell',
+      file: process.env.KOLUX_POWERSHELL_BIN || 'powershell',
       args: [
         '-NoProfile',
         '-NonInteractive',
@@ -469,7 +467,7 @@ function getExtractorCommand(zipPath, extractDir) {
   }
 
   return {
-    file: process.env.NIGHTSHIFT_UNZIP_BIN || 'unzip',
+    file: process.env.KOLUX_UNZIP_BIN || 'unzip',
     args: ['-q', zipPath, '-d', extractDir],
     label: 'unzip'
   }

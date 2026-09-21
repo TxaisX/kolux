@@ -74,7 +74,7 @@ async function loadClientModule() {
 function macOSProviderCapabilities() {
   return {
     platform: 'darwin',
-    provider: 'nightshift-computer-use-macos',
+    provider: 'kolux-computer-use-macos',
     providerVersion: '1.0.0',
     protocolVersion: 1,
     supports: {
@@ -95,7 +95,7 @@ describe('MacOSNativeProviderClient paste validation', () => {
     providers.length = 0
     mkdtempSyncMock.mockImplementation((prefix: string) => `${prefix}${sockets.length}`)
     resolveMacOSComputerUseExecutablePathMock.mockReturnValue(
-      '/Applications/Nightshift Computer Use.app/Contents/MacOS/nightshift-computer-use-macos'
+      '/Applications/Kolux Computer Use.app/Contents/MacOS/kolux-computer-use-macos'
     )
     spawnMock.mockImplementation(() => {
       const provider = new FakeProvider()

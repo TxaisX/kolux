@@ -5,7 +5,7 @@ import type { Repo } from '../../../shared/repo-types'
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
-    path: '/Users/test/src/nightshift',
+    path: '/Users/test/src/kolux',
     displayName: 'TxaisX/nightshift',
     badgeColor: '#22c55e',
     addedAt: 0,
@@ -34,16 +34,16 @@ describe('repo-search', () => {
 
   it('matches display names case-insensitively', () => {
     const repos = [
-      makeRepo({ id: '1', displayName: 'TxaisX/nightshift', path: '/repos/nightshift' }),
+      makeRepo({ id: '1', displayName: 'TxaisX/nightshift', path: '/repos/kolux' }),
       makeRepo({ id: '2', displayName: 'txais/noqa', path: '/repos/noqa' })
     ]
 
-    expect(searchRepos(repos, 'NIGHTSHIFT').map((repo) => repo.id)).toEqual(['1'])
+    expect(searchRepos(repos, 'KOLUX').map((repo) => repo.id)).toEqual(['1'])
   })
 
   it('falls back to matching repo paths', () => {
     const repos = [
-      makeRepo({ id: '1', displayName: 'frontend', path: '/src/team-a/nightshift' }),
+      makeRepo({ id: '1', displayName: 'frontend', path: '/src/team-a/kolux' }),
       makeRepo({ id: '2', displayName: 'backend', path: '/src/team-b/noqa' })
     ]
 
@@ -52,11 +52,11 @@ describe('repo-search', () => {
 
   it('keeps display-name matches ahead of path-only matches', () => {
     const repos = [
-      makeRepo({ id: '1', displayName: 'misc', path: '/src/nightshift-tools/misc' }),
-      makeRepo({ id: '2', displayName: 'nightshift', path: '/src/team-a/project' })
+      makeRepo({ id: '1', displayName: 'misc', path: '/src/kolux-tools/misc' }),
+      makeRepo({ id: '2', displayName: 'kolux', path: '/src/team-a/project' })
     ]
 
-    expect(searchRepos(repos, 'nightshift').map((repo) => repo.id)).toEqual(['2', '1'])
+    expect(searchRepos(repos, 'kolux').map((repo) => repo.id)).toEqual(['2', '1'])
   })
 
   it('rejects oversized pasted queries before reading repo names or paths', () => {

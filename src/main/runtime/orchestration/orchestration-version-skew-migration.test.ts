@@ -22,7 +22,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   function createLegacySchemaClaimingVersion(claimedVersion = 17): string {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-'))
     const dbPath = join(tempDir, 'orchestration.db')
     const raw = new Database(dbPath)
     raw.exec(`
@@ -193,7 +193,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('repairs recovery columns missing from a partially-upgraded v32 schema', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v32-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v32-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -234,7 +234,7 @@ describe('OrchestrationDb version-skew migration', () => {
   // The two v32 recovery columns were listed as unversioned, so every shipped database below v32
   // read as v6 and replayed the whole chain, re-running the v23 resource backfill over live rows.
   it('starts a genuine pre-v32 database at its own version, not the v6 floor', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v31-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v31-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -260,7 +260,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('repairs a nullable mailbox column written by an incomplete v34 schema', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v34-delivery-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v34-delivery-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -285,7 +285,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('backfills stable mailbox addresses for v33 Run deliveries', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v33-delivery-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v33-delivery-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     const run = db.createRun({
@@ -386,7 +386,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('cleans additive lifecycle rows when a v30 writer resets tasks before re-upgrade', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v30-reset-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v30-reset-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     const task = db.createTask({
@@ -426,7 +426,7 @@ describe('OrchestrationDb version-skew migration', () => {
     expect(db.db.prepare('SELECT * FROM attempt_observation_facts').all()).toEqual([])
   })
   it('repairs a v33 schema missing the pointer-enter column', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-version-skew-v33-pointer-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-version-skew-v33-pointer-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -458,7 +458,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('keeps a downgraded binary able to write Deliveries against a v34 database', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-downgrade-delivery-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-downgrade-delivery-'))
     db = new OrchestrationDb(join(tempDir, 'orchestration.db'))
     const run = db.createRun({
       objective: 'downgrade',
@@ -482,7 +482,7 @@ describe('OrchestrationDb version-skew migration', () => {
   // Why: v34 early-returns at >= 34 and every index probe uses IF NOT EXISTS, so a DB the pre-fix
   // build already stamped v34 kept the old shape until v35 repaired it against the stored SQL.
   it('repairs deliveries a pre-fix build already stamped v34', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-v34-already-stamped-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-v34-already-stamped-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -534,7 +534,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('rewrites a pointer-enter index a v34 database built on the = 1 predicate', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-v34-pointer-predicate-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-v34-pointer-predicate-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()
@@ -560,7 +560,7 @@ describe('OrchestrationDb version-skew migration', () => {
   })
 
   it('treats a v35 stamp over the wrong index predicate as skew', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-v35-predicate-skew-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-v35-predicate-skew-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()

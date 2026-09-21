@@ -96,7 +96,7 @@ describe('release E2E dispatch contract', () => {
       expect(job.needs).toEqual(['build', 'prepare-native-cache'])
       expect(downloadStep.with.name).toBe('e2e-build-out')
       expect(downloadStep.with.path).toBe('out/')
-      expect(runStep.run).toContain('NIGHTSHIFT_RELAY_PATH="$GITHUB_WORKSPACE/out/relay"')
+      expect(runStep.run).toContain('KOLUX_RELAY_PATH="$GITHUB_WORKSPACE/out/relay"')
     }
   })
 })

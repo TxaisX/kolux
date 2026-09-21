@@ -176,8 +176,8 @@ export class WslHookRelayManager {
       }
     }
     const coords = this.deps.hookCoordsEnv()
-    const port = Number(coords.NIGHTSHIFT_AGENT_HOOK_PORT ?? '')
-    if (!Number.isInteger(port) || port <= 0 || !coords.NIGHTSHIFT_AGENT_HOOK_TOKEN) {
+    const port = Number(coords.KOLUX_AGENT_HOOK_PORT ?? '')
+    if (!Number.isInteger(port) || port <= 0 || !coords.KOLUX_AGENT_HOOK_TOKEN) {
       return
     }
     const bundle = this.deps.resolveBundle()

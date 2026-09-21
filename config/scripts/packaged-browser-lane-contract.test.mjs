@@ -21,7 +21,7 @@ describe('packaged browser compatibility lane', () => {
     const download = steps.find((step) => step.name === 'Download pinned old release').run
     expect(download).toContain('gh release download v1.4.188')
     expect(download).toContain('hashlib.sha512(package.read_bytes())')
-    expect(download).toContain("extracted/'opt'/'Nightshift'/'nightshift-ide'")
+    expect(download).toContain("extracted/'opt'/'Kolux'/'kolux-ide'")
     expect(download).toContain('assert base64.')
     expect(download).toContain('decode()==expected')
     expect(download).toContain("['dpkg-deb'")

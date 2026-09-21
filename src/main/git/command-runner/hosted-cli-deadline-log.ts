@@ -3,7 +3,7 @@
  *
  * Why this exists: the deadline kill was completely silent. In #18234 a user's
  * `~/.local/bin/gh` wrapper (`exec mise x gh -- gh "$@"`) re-execed itself in
- * place at 100% CPU on every invocation, and the only evidence Nightshift produced was
+ * place at 100% CPU on every invocation, and the only evidence Kolux produced was
  * that GitHub features quietly did nothing. Diagnosing it took the reporter four
  * rounds of `strace`, `perf` and `/proc` spelunking. The resolved path below is
  * the single most useful fact — it names the wrapper.

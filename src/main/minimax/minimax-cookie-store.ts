@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { hardenExistingSecureFile, writeSecureFile } from '../../shared/secure-file'
 
 const MINIMAX_COOKIE_FILE = 'minimax-session-cookie.enc'
-const COOKIE_ENVELOPE_PREFIX = 'nightshift-minimax-cookie:v1:'
+const COOKIE_ENVELOPE_PREFIX = 'kolux-minimax-cookie:v1:'
 let cachedMiniMaxCookie: string | null = null
 let warnedMiniMaxCookieStatusHardenFailure = false
 
@@ -14,12 +14,12 @@ type MiniMaxCookieEnvelope = {
   payload: Buffer
 }
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
 function getMiniMaxCookiePath(): string {
-  return join(getNightshiftDir(), MINIMAX_COOKIE_FILE)
+  return join(getKoluxDir(), MINIMAX_COOKIE_FILE)
 }
 
 function encodeCookieEnvelope(kind: MiniMaxCookieEnvelope['kind'], payload: Buffer): string {

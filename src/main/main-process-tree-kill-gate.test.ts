@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
  *
  * `admitSelfInitiatedTreeKill` is only "one decision" for as long as every
  * pid-addressed `taskkill /pid <pid> /t /f` in Electron main asks it. Each such
- * kill can land on a recycled pid that is now one of Nightshift's own Chromium
+ * kill can land on a recycled pid that is now one of Kolux's own Chromium
  * processes (#10680), and an ungated one is also invisible to
  * `selfInitiatedTreeKillCount`, which makes a zero read as exculpatory when it
  * is not. A new family fails here rather than in the field.

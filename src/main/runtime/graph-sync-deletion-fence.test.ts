@@ -8,7 +8,7 @@ import type {
   RuntimeMobileSessionTabsResult,
   RuntimeMobileSessionTabsSnapshot
 } from '../../shared/runtime-types'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const WT = 'repo-1::/tmp/worktree-a'
 
@@ -90,7 +90,7 @@ describe('graph-sync deletion fence', () => {
         meta = undefined
       }
     }
-    const runtime = new NightshiftRuntimeService(store as never)
+    const runtime = new KoluxRuntimeService(store as never)
     const internals = runtime as unknown as FenceInternals
     const events: RuntimeMobileSessionTabsResult[] = []
     runtime.onMobileSessionTabsChanged((snapshot) => events.push(snapshot))

@@ -82,7 +82,7 @@ export async function fetchRuntimeAddProjectPathStatus(args: {
     FOLDER_WORKSPACE_PATH_STATUS_RUNTIME_CAPABILITY,
     translate(
       'auto.store.slices.repos.2975400634',
-      'Update Nightshift server to open non-Git folders on this runtime.'
+      'Update Kolux server to open non-Git folders on this runtime.'
     ),
     15_000
   )

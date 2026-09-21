@@ -10,7 +10,7 @@ const LOCK_RETRIES = {
   randomize: true
 }
 
-/** Serialize whole-file transactions across Nightshift processes sharing one execution host. */
+/** Serialize whole-file transactions across Kolux processes sharing one execution host. */
 export async function withAgentSessionStoreTransactionLock<T>(
   filePath: string,
   apply: () => Promise<T>

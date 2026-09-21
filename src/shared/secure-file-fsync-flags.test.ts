@@ -42,7 +42,7 @@ afterEach(() => {
 describe('secure file fsync flags', () => {
   const windowsIt = process.platform === 'win32' ? it : it.skip
   windowsIt('opens files read/write before fsync on Windows', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-file-fsync-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-file-fsync-'))
     createdPaths.push(directory)
     const path = join(directory, 'record.json')
     writeFileSync(path, '{}')
@@ -54,7 +54,7 @@ describe('secure file fsync flags', () => {
 
   const posixIt = process.platform === 'win32' ? it.skip : it
   posixIt('fsyncs files without owner-write permission', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-file-fsync-read-only-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-file-fsync-read-only-'))
     createdPaths.push(directory)
     const path = join(directory, 'record.json')
     writeFileSync(path, '{}')
@@ -65,7 +65,7 @@ describe('secure file fsync flags', () => {
   })
 
   posixIt('durably writes when umask removes owner-write from the temporary file', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-durable-file-fsync-read-only-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-durable-file-fsync-read-only-'))
     createdPaths.push(directory)
     const path = join(directory, 'record.json')
     const originalUmask = process.umask(0o200)
@@ -80,7 +80,7 @@ describe('secure file fsync flags', () => {
   })
 
   posixIt('opens directories read-only before fsync', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-directory-fsync-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-directory-fsync-'))
     createdPaths.push(directory)
 
     bestEffortFsyncDirectorySync(directory)

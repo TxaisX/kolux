@@ -98,7 +98,7 @@ export async function runRendererBackpressureRevisitScenario<
   maxWorstKeyLatencyMs,
   mainRendererPressureTargetChars,
   pressureOutputChars,
-  nightshiftPage,
+  koluxPage,
   testInfo,
   testRepoPath
 }: {
@@ -111,15 +111,13 @@ export async function runRendererBackpressureRevisitScenario<
   maxWorstKeyLatencyMs: number
   mainRendererPressureTargetChars: number
   pressureOutputChars: number
-  nightshiftPage: Page
+  koluxPage: Page
   testInfo: TestInfo
   testRepoPath: string
 }): Promise<void> {
-  await waitForSessionReady(nightshiftPage)
-  const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-  const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
-    (id) => id !== firstWorktreeId
-  )
+  await waitForSessionReady(koluxPage)
+  const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+  const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find((id) => id !== firstWorktreeId)
   expect(Boolean(secondWorktreeId), 'renderer backpressure revisit needs a second worktree').toBe(
     true
   )
@@ -129,54 +127,54 @@ export async function runRendererBackpressureRevisitScenario<
 
   const runId = randomUUID()
   const typingPtyReadyMarker = `OPENCODE_REVISIT_TYPING_PTY_READY_${runId}`
-  await switchToWorktree(nightshiftPage, secondWorktreeId)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const typingPtyId = await waitForActivePanePtyId(nightshiftPage)
-  await sendToTerminal(nightshiftPage, typingPtyId, `printf '\\n${typingPtyReadyMarker}\\n'\r`)
-  await waitForMarkerLatency(nightshiftPage, typingPtyReadyMarker, 10_000)
+  await switchToWorktree(koluxPage, secondWorktreeId)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const typingPtyId = await waitForActivePanePtyId(koluxPage)
+  await sendToTerminal(koluxPage, typingPtyId, `printf '\\n${typingPtyReadyMarker}\\n'\r`)
+  await waitForMarkerLatency(koluxPage, typingPtyReadyMarker, 10_000)
 
-  await switchToWorktree(nightshiftPage, firstWorktreeId)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const panes = await deps.ensureActiveWorktreePaneLoad(nightshiftPage, backgroundPaneCount + 1)
+  await switchToWorktree(koluxPage, firstWorktreeId)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const panes = await deps.ensureActiveWorktreePaneLoad(koluxPage, backgroundPaneCount + 1)
   const [revisitPane, ...loadPanes] = panes
-  await deps.focusPane(nightshiftPage, revisitPane.paneKey)
+  await deps.focusPane(koluxPage, revisitPane.paneKey)
 
-  const typingScriptPath = path.join(testRepoPath, `.nightshift-revisit-typing-${runId}.mjs`)
-  const pressureScriptPath = path.join(testRepoPath, `.nightshift-revisit-pressure-${runId}.mjs`)
+  const typingScriptPath = path.join(testRepoPath, `.kolux-revisit-typing-${runId}.mjs`)
+  const pressureScriptPath = path.join(testRepoPath, `.kolux-revisit-pressure-${runId}.mjs`)
   const revisitMarker = `OPENCODE_REVISIT_READY_${runId}`
   const pressureDoneMarker = `OPENCODE_PRESSURE_DONE_${runId}_0`
   deps.writeInteractivePromptScript(typingScriptPath, runId)
   writePressureOutputScript(pressureScriptPath, runId, 'tui')
-  await deps.resetTerminalPtyOutputDebug(nightshiftPage)
+  await deps.resetTerminalPtyOutputDebug(koluxPage)
   await deps.holdTerminalAckGate(
-    nightshiftPage,
+    koluxPage,
     loadPanes.map((pane) => pane.ptyId)
   )
   try {
     await startRealPtyPressureCommands({
       loadPanes,
-      nightshiftPage,
+      koluxPage,
       pressureOutputChars,
       pressureScriptPath
     })
-    const pressureBeforeSwitch = await deps.waitForMainPtyPressureBacklog(nightshiftPage)
+    const pressureBeforeSwitch = await deps.waitForMainPtyPressureBacklog(koluxPage)
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForTerminalPtyVisible(nightshiftPage, typingPtyId)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForTerminalPtyVisible(koluxPage, typingPtyId)
     const measurement = await deps.measureTypingDuringLoad(
-      nightshiftPage,
+      koluxPage,
       typingScriptPath,
       typingPtyId,
       runId
     )
-    const duringPressure = await deps.readMainPtyPressureDebug(nightshiftPage)
-    const ackGate = await deps.readTerminalAckGateDebug(nightshiftPage)
-    const scheduler = await deps.readTerminalOutputSchedulerDebug(nightshiftPage)
-    const hiddenDebug = await deps.readTerminalPtyOutputDebug(nightshiftPage)
+    const duringPressure = await deps.readMainPtyPressureDebug(koluxPage)
+    const ackGate = await deps.readTerminalAckGateDebug(koluxPage)
+    const scheduler = await deps.readTerminalOutputSchedulerDebug(koluxPage)
+    const hiddenDebug = await deps.readTerminalPtyOutputDebug(koluxPage)
     deps.annotateTypingMeasurement(
       testInfo,
       'opencode-main-pressure-worktree-revisit-typing',
@@ -201,14 +199,14 @@ export async function runRendererBackpressureRevisitScenario<
       duringPressure
     })
 
-    await switchToWorktree(nightshiftPage, firstWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await switchToWorktree(koluxPage, firstWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     // Why: hidden PaneManagers persist, so manager readiness alone can race the reveal commit.
-    await waitForTerminalPtyVisible(nightshiftPage, revisitPane.ptyId)
-    await deps.focusPane(nightshiftPage, revisitPane.paneKey)
-    await sendToTerminal(nightshiftPage, revisitPane.ptyId, `printf '\\n${revisitMarker}\\n'\r`)
-    const revisitLatencyMs = await waitForMarkerLatency(nightshiftPage, revisitMarker, 10_000)
+    await waitForTerminalPtyVisible(koluxPage, revisitPane.ptyId)
+    await deps.focusPane(koluxPage, revisitPane.paneKey)
+    await sendToTerminal(koluxPage, revisitPane.ptyId, `printf '\\n${revisitMarker}\\n'\r`)
+    const revisitLatencyMs = await waitForMarkerLatency(koluxPage, revisitMarker, 10_000)
     testInfo.annotations.push({
       type: 'opencode-main-pressure-worktree-revisit-marker',
       description: `panes=${panes.length + 1} revisit=${revisitLatencyMs.toFixed(
@@ -220,14 +218,10 @@ export async function runRendererBackpressureRevisitScenario<
     // bound rather than the unloaded worst-key budget.
     expect(revisitLatencyMs).toBeLessThan(maxRevisitLatencyMs)
 
-    await deps.releaseTerminalAckGate(nightshiftPage)
-    await deps.focusPane(nightshiftPage, loadPanes[0]?.paneKey ?? revisitPane.paneKey)
-    const pressureDrainLatencyMs = await waitForMarkerLatency(
-      nightshiftPage,
-      pressureDoneMarker,
-      20_000
-    )
-    const finalScheduler = await deps.readTerminalOutputSchedulerDebug(nightshiftPage)
+    await deps.releaseTerminalAckGate(koluxPage)
+    await deps.focusPane(koluxPage, loadPanes[0]?.paneKey ?? revisitPane.paneKey)
+    const pressureDrainLatencyMs = await waitForMarkerLatency(koluxPage, pressureDoneMarker, 20_000)
+    const finalScheduler = await deps.readTerminalOutputSchedulerDebug(koluxPage)
     testInfo.annotations.push({
       type: 'opencode-main-pressure-worktree-revisit-drain',
       description: `panes=${panes.length + 1} drain=${pressureDrainLatencyMs.toFixed(
@@ -241,13 +235,11 @@ export async function runRendererBackpressureRevisitScenario<
       maxRendererSchedulerQueuedChars
     )
   } finally {
-    await deps.releaseTerminalAckGate(nightshiftPage)
-    await sendToTerminal(nightshiftPage, typingPtyId, '\x03').catch(() => undefined)
-    await sendToTerminal(nightshiftPage, revisitPane.ptyId, '\x03').catch(() => undefined)
+    await deps.releaseTerminalAckGate(koluxPage)
+    await sendToTerminal(koluxPage, typingPtyId, '\x03').catch(() => undefined)
+    await sendToTerminal(koluxPage, revisitPane.ptyId, '\x03').catch(() => undefined)
     await Promise.all(
-      loadPanes.map((pane) =>
-        sendToTerminal(nightshiftPage, pane.ptyId, '\x03').catch(() => undefined)
-      )
+      loadPanes.map((pane) => sendToTerminal(koluxPage, pane.ptyId, '\x03').catch(() => undefined))
     )
     rmSync(typingScriptPath, { force: true })
     rmSync(pressureScriptPath, { force: true })

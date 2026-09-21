@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
@@ -11,11 +11,11 @@ const TERMINAL_HANDLE = 'term_remote'
 
 describe('federated worker release ownership', () => {
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
 
   beforeEach(() => {
     db = new OrchestrationDb(':memory:')
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockReturnValue(PANE_KEY)
     vi.spyOn(runtime, 'getTerminalProcessIncarnation').mockReturnValue(PROCESS_INCARNATION)

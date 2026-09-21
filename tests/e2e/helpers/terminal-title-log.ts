@@ -3,16 +3,16 @@ import type { Page } from '@stablyai/playwright-test'
 export async function installRendererTitleLog(page: Page): Promise<void> {
   await page.evaluate(() => {
     const w = window as unknown as {
-      __nightshiftE2eTitleLog?: string[]
-      __nightshiftE2eTitleUnsubscribe?: () => void
+      __koluxE2eTitleLog?: string[]
+      __koluxE2eTitleUnsubscribe?: () => void
     }
     const store = window.__store
     if (!store) {
       throw new Error('window.__store is not available')
     }
 
-    w.__nightshiftE2eTitleUnsubscribe?.()
-    w.__nightshiftE2eTitleLog = []
+    w.__koluxE2eTitleUnsubscribe?.()
+    w.__koluxE2eTitleLog = []
 
     const recordTitles = (): void => {
       const state = store.getState()
@@ -25,7 +25,7 @@ export async function installRendererTitleLog(page: Page): Promise<void> {
 
       for (const title of [...paneTitles, ...tabTitles]) {
         if (typeof title === 'string') {
-          w.__nightshiftE2eTitleLog!.push(title)
+          w.__koluxE2eTitleLog!.push(title)
         }
       }
     }
@@ -33,13 +33,13 @@ export async function installRendererTitleLog(page: Page): Promise<void> {
     // Why: shell prompts can immediately overwrite OSC titles. Logging every
     // renderer title state lets tests assert transient title frames landed.
     recordTitles()
-    w.__nightshiftE2eTitleUnsubscribe = store.subscribe(recordTitles)
+    w.__koluxE2eTitleUnsubscribe = store.subscribe(recordTitles)
   })
 }
 
 export async function getRendererTitleLog(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const w = window as unknown as { __nightshiftE2eTitleLog?: string[] }
-    return w.__nightshiftE2eTitleLog ?? []
+    const w = window as unknown as { __koluxE2eTitleLog?: string[] }
+    return w.__koluxE2eTitleLog ?? []
   })
 }

@@ -77,7 +77,7 @@ export function TaskPageLinearFilters({
                 ? 'border-border/50 bg-foreground/90 text-background'
                 : 'border-border/50 bg-transparent text-foreground hover:bg-muted/50'
             )
-            if (mode.id === 'in-nightshift') {
+            if (mode.id === 'in-kolux') {
               return (
                 <Tooltip key={mode.id}>
                   <TooltipTrigger asChild>
@@ -93,7 +93,7 @@ export function TaskPageLinearFilters({
                   <TooltipContent side="bottom" sideOffset={6}>
                     {translate(
                       'auto.components.TaskPage.linearModeHasWorktreeTooltip',
-                      'Linear tickets linked to a Nightshift workspace'
+                      'Linear tickets linked to a Kolux workspace'
                     )}
                   </TooltipContent>
                 </Tooltip>
@@ -175,7 +175,7 @@ export function TaskPageLinearFilters({
                 size="icon"
                 onClick={() => setLinearRefreshNonce((n) => n + 1)}
                 disabled={
-                  linearMode === 'issues' || linearMode === 'in-nightshift'
+                  linearMode === 'issues' || linearMode === 'in-kolux'
                     ? linearLoading
                     : linearMode === 'projects'
                       ? linearProjectsLoading || linearProjectDetailLoading
@@ -184,7 +184,7 @@ export function TaskPageLinearFilters({
                 aria-label={translate('auto.components.TaskPage.8964184a8b', 'Refresh Linear')}
                 className="size-8 border-border/50 bg-transparent hover:bg-muted/50 backdrop-blur-md supports-[backdrop-filter]:bg-transparent"
               >
-                {(linearMode === 'issues' || linearMode === 'in-nightshift') && linearLoading ? (
+                {(linearMode === 'issues' || linearMode === 'in-kolux') && linearLoading ? (
                   <LoaderCircle className="size-4 animate-spin" />
                 ) : linearMode === 'projects' &&
                   (linearProjectsLoading || linearProjectDetailLoading) ? (
@@ -204,7 +204,7 @@ export function TaskPageLinearFilters({
         </div>
       </div>
 
-      {linearMode === 'issues' || linearMode === 'in-nightshift' ? (
+      {linearMode === 'issues' || linearMode === 'in-kolux' ? (
         <div className="mt-3 flex min-w-0 items-center gap-2">
           {showLinearAttributeFilters ? (
             <LinearIssueAttributeFilterDropdowns
@@ -242,18 +242,18 @@ export function TaskPageLinearFilters({
                   setAppliedLinearSearch(trimmed)
                   setTaskResumeState({
                     linearQuery: trimmed,
-                    linearMode: linearMode === 'in-nightshift' ? 'in-nightshift' : 'issues'
+                    linearMode: linearMode === 'in-kolux' ? 'in-kolux' : 'issues'
                   })
-                  if (linearMode !== 'in-nightshift') {
+                  if (linearMode !== 'in-kolux') {
                     setLinearRefreshNonce((n) => n + 1)
                   }
                 }
               }}
               placeholder={
-                linearMode === 'in-nightshift'
+                linearMode === 'in-kolux'
                   ? translate(
                       'auto.components.TaskPage.linearHasWorktreeSearchPlaceholder',
-                      'Filter issues linked to a Nightshift workspace...'
+                      'Filter issues linked to a Kolux workspace...'
                     )
                   : translate('auto.components.TaskPage.eec0c5c079', 'Search Linear issues...')
               }
@@ -268,9 +268,9 @@ export function TaskPageLinearFilters({
                   setAppliedLinearSearch('')
                   setTaskResumeState({
                     linearQuery: '',
-                    linearMode: linearMode === 'in-nightshift' ? 'in-nightshift' : 'issues'
+                    linearMode: linearMode === 'in-kolux' ? 'in-kolux' : 'issues'
                   })
-                  if (linearMode !== 'in-nightshift') {
+                  if (linearMode !== 'in-kolux') {
                     setLinearRefreshNonce((n) => n + 1)
                   }
                 }}

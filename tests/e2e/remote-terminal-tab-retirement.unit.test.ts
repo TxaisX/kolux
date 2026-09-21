@@ -9,7 +9,7 @@ import {
   shouldApplyWebSessionTabsSnapshot,
   type WebSessionTabsSyncState
 } from '../../src/renderer/src/runtime/web-session-tabs-sync'
-import { NightshiftRuntimeService } from '../../src/main/runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../../src/main/runtime/kolux-runtime'
 
 vi.mock('../../src/renderer/src/store', () => ({
   useAppStore: { setState: vi.fn() }
@@ -129,7 +129,7 @@ describe('remote terminal tab retirement publication', () => {
   it('removes a permanent host exit from simultaneous viewers without stale resurrection', async () => {
     let session = makePersistedSession()
     const flushOrThrow = vi.fn()
-    const runtime = new NightshiftRuntimeService({
+    const runtime = new KoluxRuntimeService({
       getWorkspaceSession: () => session,
       setWorkspaceSession: (next) => {
         session = next

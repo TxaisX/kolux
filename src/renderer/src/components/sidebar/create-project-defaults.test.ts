@@ -8,25 +8,25 @@ import {
 
 describe('create project defaults', () => {
   it('builds the POSIX default project parent', () => {
-    expect(getDefaultCreateProjectParent('/Users/alice')).toBe('/Users/alice/nightshift/projects')
+    expect(getDefaultCreateProjectParent('/Users/alice')).toBe('/Users/alice/kolux/projects')
   })
 
   it('builds the Windows default project parent', () => {
     expect(getDefaultCreateProjectParent('C:\\Users\\alice')).toBe(
-      'C:\\Users\\alice\\nightshift\\projects'
+      'C:\\Users\\alice\\kolux\\projects'
     )
   })
 
   it('derives the runtime project default from a resolved server home', () => {
-    expect(getDefaultCreateProjectParent('/home/alice')).toBe('/home/alice/nightshift/projects')
+    expect(getDefaultCreateProjectParent('/home/alice')).toBe('/home/alice/kolux/projects')
   })
 
   it('joins path previews without mixing separators', () => {
-    expect(joinCreateProjectPath('/home/alice/nightshift/projects', 'demo')).toBe(
-      '/home/alice/nightshift/projects/demo'
+    expect(joinCreateProjectPath('/home/alice/kolux/projects', 'demo')).toBe(
+      '/home/alice/kolux/projects/demo'
     )
-    expect(joinCreateProjectPath('C:\\Users\\alice\\nightshift\\projects', 'demo')).toBe(
-      'C:\\Users\\alice\\nightshift\\projects\\demo'
+    expect(joinCreateProjectPath('C:\\Users\\alice\\kolux\\projects', 'demo')).toBe(
+      'C:\\Users\\alice\\kolux\\projects\\demo'
     )
   })
 
@@ -36,16 +36,16 @@ describe('create project defaults', () => {
         step: 'create',
         createParent: '',
         activeRuntimeEnvironmentId: null,
-        defaultParent: '/Users/alice/nightshift/projects',
+        defaultParent: '/Users/alice/kolux/projects',
         createStepAutoFilled: false
       })
-    ).toEqual({ parent: '/Users/alice/nightshift/projects' })
+    ).toEqual({ parent: '/Users/alice/kolux/projects' })
     expect(
       getCreateProjectDefaultParentAutoFill({
         step: 'create',
         createParent: '/tmp/project',
         activeRuntimeEnvironmentId: null,
-        defaultParent: '/Users/alice/nightshift/projects',
+        defaultParent: '/Users/alice/kolux/projects',
         createStepAutoFilled: false
       })
     ).toBeNull()
@@ -54,7 +54,7 @@ describe('create project defaults', () => {
         step: 'create',
         createParent: '',
         activeRuntimeEnvironmentId: null,
-        defaultParent: '/Users/alice/nightshift/projects',
+        defaultParent: '/Users/alice/kolux/projects',
         createStepAutoFilled: true
       })
     ).toBeNull()
@@ -66,7 +66,7 @@ describe('create project defaults', () => {
         step: 'create',
         createParent: '',
         activeRuntimeEnvironmentId: 'env-1',
-        defaultParent: '/Users/alice/nightshift/projects',
+        defaultParent: '/Users/alice/kolux/projects',
         createStepAutoFilled: false
       })
     ).toBeNull()
@@ -75,22 +75,22 @@ describe('create project defaults', () => {
   it('uses a short local summary only for the local default parent', () => {
     expect(
       formatCreateProjectParentSummary({
-        parent: '/Users/alice/nightshift/projects',
-        defaultParent: '/Users/alice/nightshift/projects'
+        parent: '/Users/alice/kolux/projects',
+        defaultParent: '/Users/alice/kolux/projects'
       })
-    ).toBe('~/nightshift/projects')
+    ).toBe('~/kolux/projects')
     expect(
       formatCreateProjectParentSummary({
-        parent: '/home/alice/nightshift/projects',
-        defaultParent: '/home/alice/nightshift/projects'
+        parent: '/home/alice/kolux/projects',
+        defaultParent: '/home/alice/kolux/projects'
       })
-    ).toBe('~/nightshift/projects')
+    ).toBe('~/kolux/projects')
     expect(
       formatCreateProjectParentSummary({
-        parent: 'C:\\Users\\alice\\nightshift\\projects',
-        defaultParent: 'C:\\Users\\alice\\nightshift\\projects'
+        parent: 'C:\\Users\\alice\\kolux\\projects',
+        defaultParent: 'C:\\Users\\alice\\kolux\\projects'
       })
-    ).toBe('~/nightshift/projects')
+    ).toBe('~/kolux/projects')
     expect(
       formatCreateProjectParentSummary({
         parent: '',
@@ -100,11 +100,11 @@ describe('create project defaults', () => {
     ).toBe('host folder not selected')
     expect(
       formatCreateProjectParentSummary({
-        parent: '/Users/alice/nightshift/projects',
-        defaultParent: '/Users/alice/nightshift/projects',
+        parent: '/Users/alice/kolux/projects',
+        defaultParent: '/Users/alice/kolux/projects',
         isRemoteHost: true
       })
-    ).toBe('/Users/alice/nightshift/projects')
+    ).toBe('/Users/alice/kolux/projects')
     expect(
       formatCreateProjectParentSummary({
         parent: '',
@@ -123,15 +123,15 @@ describe('create project defaults', () => {
     ).toBe('J:\\PROJECTS')
     expect(
       formatCreateProjectParentSummary({
-        parent: '/data/nightshift/projects',
-        defaultParent: '/data/nightshift/projects'
+        parent: '/data/kolux/projects',
+        defaultParent: '/data/kolux/projects'
       })
-    ).toBe('/data/nightshift/projects')
+    ).toBe('/data/kolux/projects')
     expect(
       formatCreateProjectParentSummary({
-        parent: 'D:\\code\\nightshift\\projects',
-        defaultParent: 'D:\\code\\nightshift\\projects'
+        parent: 'D:\\code\\kolux\\projects',
+        defaultParent: 'D:\\code\\kolux\\projects'
       })
-    ).toBe('D:\\code\\nightshift\\projects')
+    ).toBe('D:\\code\\kolux\\projects')
   })
 })

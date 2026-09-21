@@ -6,14 +6,14 @@ import type { ProcessResult } from '../shared/child-process/run-process'
 import {
   ensureMacPressAndHoldDefault,
   interpretDefaultsRead,
-  isNightshiftPreferencesDomain,
+  isKoluxPreferencesDomain,
   readBundleIdentifierFromExecutablePath,
   type PressAndHoldDecision,
   type PressAndHoldHost,
   type PressAndHoldRecord
 } from './macos-press-and-hold-default'
 
-const NIGHTSHIFT_DOMAIN = 'com.txais.nightshift'
+const KOLUX_DOMAIN = 'com.txais.kolux'
 
 type HostOverrides = Partial<PressAndHoldHost> & { record?: PressAndHoldRecord | null }
 
@@ -28,7 +28,7 @@ function createHost(overrides: HostOverrides = {}): {
   let stored = overrides.record ?? null
   const host: PressAndHoldHost = {
     platform: 'darwin',
-    resolveBundleIdentifier: () => NIGHTSHIFT_DOMAIN,
+    resolveBundleIdentifier: () => KOLUX_DOMAIN,
     readRecord: () => stored,
     writeRecord: (record) => {
       stored = record
@@ -46,7 +46,7 @@ function createHost(overrides: HostOverrides = {}): {
 }
 
 function terminalRecord(decision: PressAndHoldDecision): PressAndHoldRecord {
-  return { version: 1, decision, domain: NIGHTSHIFT_DOMAIN, decidedAt: '2026-01-01T00:00:00.000Z' }
+  return { version: 1, decision, domain: KOLUX_DOMAIN, decidedAt: '2026-01-01T00:00:00.000Z' }
 }
 
 describe('ensureMacPressAndHoldDefault', () => {
@@ -54,7 +54,7 @@ describe('ensureMacPressAndHoldDefault', () => {
     const { host, writes, records } = createHost()
 
     expect(ensureMacPressAndHoldDefault(host)).toBe('applied')
-    expect(writes).toEqual([{ domain: NIGHTSHIFT_DOMAIN, value: false }])
+    expect(writes).toEqual([{ domain: KOLUX_DOMAIN, value: false }])
     expect(records.at(-1)?.decision).toBe('applied')
   })
 
@@ -140,12 +140,12 @@ describe('ensureMacPressAndHoldDefault', () => {
       expect(writes).toEqual([])
     })
 
-    it('accepts Nightshift and its channel-scoped bundles, and nothing else', () => {
-      expect(isNightshiftPreferencesDomain('com.txais.nightshift')).toBe(true)
-      expect(isNightshiftPreferencesDomain('com.txais.nightshift.dev')).toBe(true)
-      expect(isNightshiftPreferencesDomain('com.github.Electron')).toBe(false)
+    it('accepts Kolux and its channel-scoped bundles, and nothing else', () => {
+      expect(isKoluxPreferencesDomain('com.txais.kolux')).toBe(true)
+      expect(isKoluxPreferencesDomain('com.txais.kolux.dev')).toBe(true)
+      expect(isKoluxPreferencesDomain('com.github.Electron')).toBe(false)
       // Why: a prefix test without the dot would accept a lookalike bundle id.
-      expect(isNightshiftPreferencesDomain('com.txais.nightshiftfake')).toBe(false)
+      expect(isKoluxPreferencesDomain('com.txais.koluxfake')).toBe(false)
     })
   })
 
@@ -164,7 +164,7 @@ describe('ensureMacPressAndHoldDefault', () => {
 
       const retry = createHost({ record: records.at(-1) })
       expect(ensureMacPressAndHoldDefault(retry.host)).toBe('applied')
-      expect(retry.writes).toEqual([{ domain: NIGHTSHIFT_DOMAIN, value: false }])
+      expect(retry.writes).toEqual([{ domain: KOLUX_DOMAIN, value: false }])
     })
   })
 
@@ -235,20 +235,20 @@ describe('readBundleIdentifierFromExecutablePath', () => {
   })
 
   function bundleWithPlist(body: string): string {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-press-hold-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-press-hold-'))
     roots.push(root)
-    mkdirSync(join(root, 'Nightshift.app', 'Contents', 'MacOS'), { recursive: true })
-    writeFileSync(join(root, 'Nightshift.app', 'Contents', 'Info.plist'), body)
-    return join(root, 'Nightshift.app', 'Contents', 'MacOS', 'Nightshift')
+    mkdirSync(join(root, 'Kolux.app', 'Contents', 'MacOS'), { recursive: true })
+    writeFileSync(join(root, 'Kolux.app', 'Contents', 'Info.plist'), body)
+    return join(root, 'Kolux.app', 'Contents', 'MacOS', 'Kolux')
   }
 
   it('reads CFBundleIdentifier from the plist beside the executable', () => {
     const exe = bundleWithPlist(
-      '<plist><dict>\n<key>CFBundleName</key>\n<string>Nightshift</string>\n' +
-        '<key>CFBundleIdentifier</key>\n\t<string>com.txais.nightshift</string>\n</dict></plist>'
+      '<plist><dict>\n<key>CFBundleName</key>\n<string>Kolux</string>\n' +
+        '<key>CFBundleIdentifier</key>\n\t<string>com.txais.kolux</string>\n</dict></plist>'
     )
 
-    expect(readBundleIdentifierFromExecutablePath(exe)).toBe('com.txais.nightshift')
+    expect(readBundleIdentifierFromExecutablePath(exe)).toBe('com.txais.kolux')
   })
 
   it('returns null when the plist is missing or carries no identifier', () => {
@@ -284,7 +284,7 @@ describe('startup wiring', () => {
     expect(callIndex).toBeGreaterThanOrEqual(0)
     expect(readyIndex).toBeGreaterThanOrEqual(0)
     expect(preflightCall).toBeGreaterThanOrEqual(0)
-    // Why after initDataPath: the record lives beside nightshift-data.json, and the canonical userData
+    // Why after initDataPath: the record lives beside kolux-data.json, and the canonical userData
     // path is only captured there.
     expect(callIndex).toBeGreaterThan(initDataPathIndex)
     expect(preflightCall).toBeLessThan(readyIndex)

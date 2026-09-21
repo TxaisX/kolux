@@ -1,5 +1,5 @@
 import { normalizeBrowserNavigationUrl } from '../../shared/browser-url'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../shared/constants'
 import type { WebContents } from 'electron'
 import {
   browserRoutePageKey,
@@ -82,7 +82,7 @@ export function isBrowserRouteGuestNavigationAllowed(
   try {
     const normalized = normalizeBrowserNavigationUrl(rawUrl)
     return (
-      normalized === NIGHTSHIFT_BROWSER_BLANK_URL ||
+      normalized === KOLUX_BROWSER_BLANK_URL ||
       Boolean(
         normalized &&
         !normalized.startsWith('file:') &&

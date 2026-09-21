@@ -15,7 +15,7 @@ export type StoredWebRuntimeEnvironment = Omit<PublicKnownRuntimeEnvironment, 'e
   }[]
 }
 
-const ENVIRONMENT_STORAGE_KEY = 'nightshift.web.runtimeEnvironment.v1'
+const ENVIRONMENT_STORAGE_KEY = 'kolux.web.runtimeEnvironment.v1'
 
 export function readStoredWebRuntimeEnvironment(): StoredWebRuntimeEnvironment | null {
   const raw = window.localStorage.getItem(ENVIRONMENT_STORAGE_KEY)
@@ -75,7 +75,7 @@ export function createStoredWebRuntimeEnvironment(args: {
   const compatibleEnvironmentIds = getCompatibleEnvironmentIds(args.previousEnvironment, args.offer)
   return {
     id,
-    name: args.name.trim() || 'Nightshift Server',
+    name: args.name.trim() || 'Kolux Server',
     createdAt: now,
     updatedAt: now,
     lastUsedAt: null,

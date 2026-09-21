@@ -7,7 +7,7 @@ import {
 } from '../../shared/plugins/plugin-kill-list'
 import { PluginKillListStore } from './plugin-kill-list-store'
 
-export const PLUGIN_KILL_LIST_URL = 'https://nightshift.invalid/plugins/kill-list.json'
+export const PLUGIN_KILL_LIST_URL = 'https://kolux.invalid/plugins/kill-list.json'
 // fork: this build is made from source and never contacts upstream servers
 const FORK_NO_PHONE_HOME = true
 const PLUGIN_KILL_LIST_DOWNLOAD_LIMIT = 4 * 1024 * 1024
@@ -42,7 +42,7 @@ export class PluginKillListService {
         this.currentList = killList
       })
       .catch((error) => {
-        // Why: an unusable cache must not prevent Nightshift from starting; a valid
+        // Why: an unusable cache must not prevent Kolux from starting; a valid
         // network refresh can still restore runtime revocations this session.
         console.warn('[plugins] ignoring invalid cached plugin safety list:', error)
         this.currentList = null

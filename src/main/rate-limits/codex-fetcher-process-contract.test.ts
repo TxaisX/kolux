@@ -54,7 +54,7 @@ if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(expectedArgs)) {
   )
   process.exit(2)
 }
-if (process.env.CODEX_HOME !== process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME) {
+if (process.env.CODEX_HOME !== process.env.KOLUX_EXPECTED_CODEX_HOME) {
   process.stderr.write('managed CODEX_HOME was not preserved\\n')
   process.exit(3)
 }
@@ -97,11 +97,11 @@ let previousExpectedHome: string | undefined
 
 describe('Codex rate-limit process contract', () => {
   beforeEach(() => {
-    tempRoot = mkdtempSync(join(tmpdir(), 'nightshift-codex-rate-limit-contract-'))
+    tempRoot = mkdtempSync(join(tmpdir(), 'kolux-codex-rate-limit-contract-'))
     stubPath = join(tempRoot, 'codex-contract.cjs')
     writeFileSync(stubPath, STUB_CODEX_SOURCE)
-    previousExpectedHome = process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME
-    process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME = join(tempRoot, 'managed-codex-home')
+    previousExpectedHome = process.env.KOLUX_EXPECTED_CODEX_HOME
+    process.env.KOLUX_EXPECTED_CODEX_HOME = join(tempRoot, 'managed-codex-home')
     resolveCodexCommandMock.mockReturnValue('codex')
     getSpawnArgsForWindowsMock.mockImplementation((_command: string, args: string[]) => ({
       spawnCmd: process.execPath,
@@ -111,9 +111,9 @@ describe('Codex rate-limit process contract', () => {
 
   afterEach(() => {
     if (previousExpectedHome === undefined) {
-      delete process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME
+      delete process.env.KOLUX_EXPECTED_CODEX_HOME
     } else {
-      process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME = previousExpectedHome
+      process.env.KOLUX_EXPECTED_CODEX_HOME = previousExpectedHome
     }
     rmSync(tempRoot, { recursive: true, force: true })
     vi.clearAllMocks()
@@ -122,7 +122,7 @@ describe('Codex rate-limit process contract', () => {
   it('starts a read-only non-interactive app-server with the managed home', async () => {
     await expect(
       fetchCodexRateLimits({
-        codexHomePath: process.env.NIGHTSHIFT_EXPECTED_CODEX_HOME,
+        codexHomePath: process.env.KOLUX_EXPECTED_CODEX_HOME,
         allowPtyFallback: false
       })
     ).resolves.toMatchObject({

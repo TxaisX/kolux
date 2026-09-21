@@ -4,24 +4,24 @@ import { join } from 'node:path'
 
 export const LEGACY_WORKSPACE_ID = 'legacy'
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
 function getLegacyTokenPath(): string {
-  return join(getNightshiftDir(), 'linear-token.enc')
+  return join(getKoluxDir(), 'linear-token.enc')
 }
 
 export function getLegacyViewerPath(): string {
-  return join(getNightshiftDir(), 'linear-viewer.json')
+  return join(getKoluxDir(), 'linear-viewer.json')
 }
 
 export function getWorkspaceFilePath(): string {
-  return join(getNightshiftDir(), 'linear-workspaces.json')
+  return join(getKoluxDir(), 'linear-workspaces.json')
 }
 
 function getWorkspaceTokenDir(): string {
-  return join(getNightshiftDir(), 'linear-tokens')
+  return join(getKoluxDir(), 'linear-tokens')
 }
 
 export function getWorkspaceTokenPath(workspaceId: string): string {
@@ -31,8 +31,8 @@ export function getWorkspaceTokenPath(workspaceId: string): string {
   return join(getWorkspaceTokenDir(), `${Buffer.from(workspaceId).toString('base64url')}.enc`)
 }
 
-export function ensureNightshiftDir(): void {
-  const dir = getNightshiftDir()
+export function ensureKoluxDir(): void {
+  const dir = getKoluxDir()
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }

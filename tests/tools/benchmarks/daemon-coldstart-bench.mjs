@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Nightshift daemon cold-start benchmark (Windows-focused).
+ * Kolux daemon cold-start benchmark (Windows-focused).
  *
  * Reproduces the "daemon was force-killed / machine rebooted" launch path:
  * every daemon pid file (current protocol + all legacy versions) is planted
@@ -13,7 +13,7 @@
  * Usage:
  *   node tests/tools/benchmarks/daemon-coldstart-bench.mjs --label baseline
  *     [--iterations 3] [--linger-ms 15000] [--timeout-ms 240000]
- *     [--exe <path-to-packaged-Nightshift.exe>]
+ *     [--exe <path-to-packaged-Kolux.exe>]
  *
  * Prereq (when not using --exe): `pnpm build:electron-vite` so out/ exists.
  * Results: tests/tools/benchmarks/results/daemon-coldstart-<label>-<timestamp>.json
@@ -172,15 +172,15 @@ function runIteration({ exe, fixtureDir, timeoutMs, lingerMs }) {
     mkdirSync(isolatedHome, { recursive: true })
     const env = {
       ...process.env,
-      NIGHTSHIFT_STARTUP_DIAGNOSTICS: '1',
-      NIGHTSHIFT_E2E_USER_DATA_DIR: fixtureDir,
+      KOLUX_STARTUP_DIAGNOSTICS: '1',
+      KOLUX_E2E_USER_DATA_DIR: fixtureDir,
       HOME: isolatedHome,
       USERPROFILE: isolatedHome,
-      NIGHTSHIFT_E2E_HOME_DIR: isolatedHome,
-      NIGHTSHIFT_E2E_HEADLESS: '1'
+      KOLUX_E2E_HOME_DIR: isolatedHome,
+      KOLUX_E2E_HEADLESS: '1'
     }
     delete env.CODEX_HOME
-    delete env.NIGHTSHIFT_CODEX_HOME
+    delete env.KOLUX_CODEX_HOME
     const child = spawn(command, commandArgs, {
       env,
       stdio: ['ignore', 'ignore', 'pipe']
@@ -299,7 +299,7 @@ function formatMs(value) {
 
 async function main() {
   const args = parseArgs(process.argv)
-  const fixtureDir = resolve(join(os.tmpdir(), 'nightshift-daemon-bench', 'userdata'))
+  const fixtureDir = resolve(join(os.tmpdir(), 'kolux-daemon-bench', 'userdata'))
   ensureFixture(fixtureDir)
 
   if (!args.exe && !existsSync(join(repoRoot, 'out', 'main', 'index.js'))) {

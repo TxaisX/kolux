@@ -20,7 +20,7 @@ function runGit(repoPath: string, args: string[]): void {
 }
 
 export function createIsolatedLargeDiffRepo(): IsolatedLargeDiffRepo {
-  const repoPath = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'nightshift-large-diff-repro-')))
+  const repoPath = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'kolux-large-diff-repro-')))
   runGit(repoPath, ['init'])
   runGit(repoPath, ['config', 'user.email', 'e2e@test.local'])
   runGit(repoPath, ['config', 'user.name', 'E2E Test'])
@@ -80,7 +80,7 @@ export function createIsolatedManyFileStagedDiffRepo(
   fileCount = 120,
   lineCount = 600
 ): IsolatedStagedLocaleDiffRepo {
-  const repoPath = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'nightshift-many-file-repro-')))
+  const repoPath = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'kolux-many-file-repro-')))
   runGit(repoPath, ['init'])
   runGit(repoPath, ['config', 'user.email', 'e2e@test.local'])
   runGit(repoPath, ['config', 'user.name', 'E2E Test'])
@@ -110,9 +110,7 @@ export function createIsolatedManyFileStagedDiffRepo(
 }
 
 export function createIsolatedStagedLocaleDiffRepo(): IsolatedStagedLocaleDiffRepo {
-  const repoPath = realpathSync(
-    mkdtempSync(path.join(os.tmpdir(), 'nightshift-staged-locale-repro-'))
-  )
+  const repoPath = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'kolux-staged-locale-repro-')))
   runGit(repoPath, ['init'])
   runGit(repoPath, ['config', 'user.email', 'e2e@test.local'])
   runGit(repoPath, ['config', 'user.name', 'E2E Test'])

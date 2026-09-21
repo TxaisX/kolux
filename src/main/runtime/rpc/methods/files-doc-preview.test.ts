@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { FILE_METHODS } from './files'
@@ -12,7 +12,7 @@ describe('files.readDocPreview', () => {
         content: '<h1>safe</h1>',
         isBinary: false
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: FILE_METHODS })
     const request: RpcRequest = {
       id: 'req-1',

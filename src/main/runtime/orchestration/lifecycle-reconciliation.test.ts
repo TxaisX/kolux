@@ -277,13 +277,13 @@ describe('lifecycle reconciliation', () => {
       type: 'worker_done',
       priority: 'high',
       subject: 'Rejected worker_done: Done',
-      body: expect.stringContaining('Nightshift rejected this worker_done')
+      body: expect.stringContaining('Kolux rejected this worker_done')
     })
     const persisted = db.getMessageById(message.id)
     expect(JSON.parse(persisted?.payload ?? '{}')).toMatchObject({
       taskId: task.id,
       dispatchId: dispatch.id,
-      _nightshiftLifecycleRejection: { code: 'sender_not_assignee' }
+      _koluxLifecycleRejection: { code: 'sender_not_assignee' }
     })
     const rereadLogs: string[] = []
     expect(
@@ -311,7 +311,7 @@ describe('lifecycle reconciliation', () => {
         taskId: task.id,
         dispatchId: dispatch.id,
         outcome: 'succeeded',
-        _nightshiftLifecycleRejection: {
+        _koluxLifecycleRejection: {
           code: 'sender_not_assignee',
           reason: 'caller supplied'
         }

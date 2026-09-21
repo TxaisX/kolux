@@ -46,7 +46,7 @@ const CRASHED_AT = 1_700_000_000_000
 beforeEach(async () => {
   parseMinidumpCrashSignatureMock.mockReset()
   parseMinidumpCrashSignatureMock.mockReturnValue({ annotations: {} })
-  dumpDir = await mkdtemp(path.join(os.tmpdir(), 'nightshift-crashpad-'))
+  dumpDir = await mkdtemp(path.join(os.tmpdir(), 'kolux-crashpad-'))
   _setCrashpadCaptureStateForTest({ dumpDirectory: dumpDir, started: true })
 })
 

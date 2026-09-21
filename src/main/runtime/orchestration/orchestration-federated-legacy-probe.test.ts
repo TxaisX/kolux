@@ -23,7 +23,7 @@ describe('federated mailbox legacy-adoption probe', () => {
     homeRunId = 'run_home',
     mailRunId = LEGACY_RUN_ID
   ): string {
-    directory = mkdtempSync(join(tmpdir(), 'nightshift-federated-legacy-probe-'))
+    directory = mkdtempSync(join(tmpdir(), 'kolux-federated-legacy-probe-'))
     const path = join(directory, 'orchestration.db')
     db = new OrchestrationDb(path)
     db.db
@@ -124,7 +124,7 @@ describe('federated mailbox legacy-adoption probe', () => {
   )
 
   it('keeps mail from a terminal in no Run across a reopen without replaying adoption', () => {
-    directory = mkdtempSync(join(tmpdir(), 'nightshift-unbound-mail-probe-'))
+    directory = mkdtempSync(join(tmpdir(), 'kolux-unbound-mail-probe-'))
     const path = join(directory, 'orchestration.db')
     db = new OrchestrationDb(path)
     const sent = db.insertMessage({ from: 'term_a', to: 'term_b', subject: 'hi' })

@@ -30,7 +30,7 @@ export function translateArgForWsl(arg: string): string {
 
 /**
  * Translate absolute Linux paths in git output back to Windows UNC paths.
- * Why: git-in-WSL emits Linux-native paths, but Nightshift reads files via Node fs, which needs Windows UNC.
+ * Why: git-in-WSL emits Linux-native paths, but Kolux reads files via Node fs, which needs Windows UNC.
  */
 export function translateWslOutputPaths(
   output: string,

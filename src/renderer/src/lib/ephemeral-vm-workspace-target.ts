@@ -30,7 +30,7 @@ export type PrepareEphemeralVmWorkspaceTargetResult =
       ok: true
       setup: ProjectHostSetupResult
       runtimeId: string
-      checkoutMode: 'nightshift-worktree' | 'provisioned-root'
+      checkoutMode: 'kolux-worktree' | 'provisioned-root'
       environmentId?: string
       expectedRefHead?: string
       stderr: string
@@ -76,12 +76,12 @@ export async function prepareEphemeralVmWorkspaceTarget(
       ? toSshExecutionHostId(provisioned.sshTargetId)
       : toRuntimeExecutionHostId(provisioned.environment.id)
 
-  if (provisioned.connectionType === 'nightshift-server') {
+  if (provisioned.connectionType === 'kolux-server') {
     try {
       await assertRuntimeEnvironmentCapability(
         provisioned.environment.id,
         PROJECT_HOST_SETUP_RUNTIME_CAPABILITY,
-        'The recipe-created Nightshift server does not support project setup.'
+        'The recipe-created Kolux server does not support project setup.'
       )
     } catch (error) {
       await cleanupProvisionedRuntime(provisioned.runtime.id)
@@ -144,7 +144,7 @@ export async function prepareEphemeralVmWorkspaceTarget(
     warnings: provisioned.warnings
   } satisfies PrepareEphemeralVmWorkspaceTargetResult
 
-  return provisioned.connectionType === 'nightshift-server'
+  return provisioned.connectionType === 'kolux-server'
     ? { ...success, environmentId: provisioned.environment.id }
     : success
 }

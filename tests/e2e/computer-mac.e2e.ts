@@ -6,12 +6,12 @@ import type {
 } from '../../src/shared/runtime-types'
 import {
   activateFinder,
-  ensureNightshiftRuntimeLaunched,
+  ensureKoluxRuntimeLaunched,
   ensureTextEditLaunched,
   findRoleIndex,
   killTextEdit,
   parseJsonOutput,
-  runNightshiftCli
+  runKoluxCli
 } from './helpers/computer-driver'
 import {
   clickCapturedTextEditOpenDialog,
@@ -19,11 +19,11 @@ import {
 } from './helpers/computer-coordinate-click-driver'
 
 const isMac = process.platform === 'darwin'
-const e2eOptIn = process.env.NIGHTSHIFT_COMPUTER_E2E === '1'
+const e2eOptIn = process.env.KOLUX_COMPUTER_E2E === '1'
 
 describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => {
   beforeAll(async () => {
-    await ensureNightshiftRuntimeLaunched()
+    await ensureKoluxRuntimeLaunched()
     await ensureTextEditLaunched()
   })
 
@@ -32,20 +32,14 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
   })
 
   test('list-apps includes TextEdit', async () => {
-    const result = await runNightshiftCli(['computer', 'list-apps', '--json'])
+    const result = await runKoluxCli(['computer', 'list-apps', '--json'])
     const envelope = parseJsonOutput<{ result: ComputerListAppsResult }>(result.stdout)
 
     expect(envelope.result.apps.some((app) => app.name === 'TextEdit')).toBe(true)
   })
 
   test('get-app-state returns TextEdit state', async () => {
-    const result = await runNightshiftCli([
-      'computer',
-      'get-app-state',
-      '--app',
-      'TextEdit',
-      '--json'
-    ])
+    const result = await runKoluxCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])
     const envelope = parseJsonOutput<{ result: ComputerSnapshotResult }>(result.stdout)
 
     expect(envelope.result.snapshot.app.name).toBe('TextEdit')
@@ -55,7 +49,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
 
   test('click, type-text, and re-observe show inserted text', async () => {
     const before = parseJsonOutput<{ result: ComputerSnapshotResult }>(
-      (await runNightshiftCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])).stdout
+      (await runKoluxCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])).stdout
     )
     const textTarget = findRoleIndex(
       before.result.snapshot.treeText,
@@ -63,7 +57,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
     )
     expect(textTarget).toBeGreaterThanOrEqual(0)
 
-    await runNightshiftCli([
+    await runKoluxCli([
       'computer',
       'click',
       '--app',
@@ -72,11 +66,11 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
       String(textTarget)
     ])
 
-    const marker = `nightshift computer e2e ${Date.now()}`
-    await runNightshiftCli(['computer', 'type-text', '--app', 'TextEdit', '--text', marker])
+    const marker = `kolux computer e2e ${Date.now()}`
+    await runKoluxCli(['computer', 'type-text', '--app', 'TextEdit', '--text', marker])
 
     const after = parseJsonOutput<{ result: ComputerSnapshotResult }>(
-      (await runNightshiftCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])).stdout
+      (await runKoluxCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])).stdout
     )
     expect(after.result.snapshot.treeText).toContain(marker)
   })
@@ -103,13 +97,13 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
   test('paste-text and hotkey verify TextEdit text replacement', async () => {
     const first = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'paste-text',
           '--app',
           'TextEdit',
           '--text',
-          'nightshift paste first',
+          'kolux paste first',
           '--no-screenshot',
           '--json'
         ])
@@ -120,7 +114,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
 
     const selectAll = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'hotkey',
           '--app',
@@ -135,10 +129,10 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
     expect(selectAll.result.action?.actionName).toBe('AXSelectAll')
     expect(selectAll.result.action?.verification?.state).toBe('verified')
 
-    const marker = `nightshift paste final ${Date.now()}`
+    const marker = `kolux paste final ${Date.now()}`
     const second = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'paste-text',
           '--app',
@@ -159,7 +153,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
 
     const after = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -170,13 +164,13 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
       ).stdout
     )
     expect(after.result.snapshot.treeText).toContain(marker)
-    expect(after.result.snapshot.treeText).not.toContain('nightshift paste first')
+    expect(after.result.snapshot.treeText).not.toContain('kolux paste first')
   })
 
   test('accessibility text actions work when TextEdit is not frontmost', async () => {
     const before = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -193,7 +187,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
     )
     expect(textTarget).toBeGreaterThanOrEqual(0)
 
-    await runNightshiftCli([
+    await runKoluxCli([
       'computer',
       'click',
       '--app',
@@ -204,20 +198,20 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
       '--no-screenshot'
     ])
 
-    await runNightshiftCli([
+    await runKoluxCli([
       'computer',
       'paste-text',
       '--app',
       'TextEdit',
       '--text',
-      'nightshift unfocused first',
+      'kolux unfocused first',
       '--no-screenshot'
     ])
     await activateFinder()
 
     const selectAll = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'hotkey',
           '--app',
@@ -232,10 +226,10 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
     expect(selectAll.result.action?.actionName).toBe('AXSelectAll')
     expect(selectAll.result.action?.verification?.state).toBe('verified')
 
-    const marker = `nightshift unfocused final ${Date.now()}`
+    const marker = `kolux unfocused final ${Date.now()}`
     const replacement = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'paste-text',
           '--app',
@@ -256,7 +250,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
 
     const after = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -267,23 +261,17 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (TextEdit)', () => 
       ).stdout
     )
     expect(after.result.snapshot.treeText).toContain(marker)
-    expect(after.result.snapshot.treeText).not.toContain('nightshift unfocused first')
+    expect(after.result.snapshot.treeText).not.toContain('kolux unfocused first')
   })
 
   test('screenshot capture returns image metadata', async () => {
-    const result = await runNightshiftCli([
-      'computer',
-      'get-app-state',
-      '--app',
-      'TextEdit',
-      '--json'
-    ])
+    const result = await runKoluxCli(['computer', 'get-app-state', '--app', 'TextEdit', '--json'])
     const envelope = parseJsonOutput<{ result: ComputerSnapshotResult }>(result.stdout)
 
     expect(envelope.result.screenshotStatus.state).toBe('captured')
     expect(envelope.result.screenshot?.format).toBe('png')
     expect(envelope.result.screenshot?.data).toBeUndefined()
     expect(envelope.result.screenshot?.dataOmitted).toBe(true)
-    expect(envelope.result.screenshot?.path).toContain('nightshift-computer-use')
+    expect(envelope.result.screenshot?.path).toContain('kolux-computer-use')
   })
 })

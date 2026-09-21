@@ -93,11 +93,11 @@ export function WarpThemeImportModal({
             {mode === 'yaml'
               ? translate(
                   'auto.components.settings.WarpThemeImportModal.yaml_description',
-                  'Import theme YAML files (Warp format) as Nightshift terminal themes.'
+                  'Import theme YAML files (Warp format) as Kolux terminal themes.'
                 )
               : translate(
                   'auto.components.settings.WarpThemeImportModal.description',
-                  'Import Warp themes as Nightshift terminal themes.'
+                  'Import Warp themes as Kolux terminal themes.'
                 )}
           </DialogDescription>
         </DialogHeader>
@@ -254,7 +254,7 @@ export function WarpThemeImportModal({
                 <p>
                   {translate(
                     'auto.components.settings.WarpThemeImportModal.builtin_themes_hint',
-                    "Warp's preloaded themes are part of the Warp app and can't be read from disk. Nightshift already includes most of them, like Dracula, Gruvbox, Solarized, and Tokyo Night."
+                    "Warp's preloaded themes are part of the Warp app and can't be read from disk. Kolux already includes most of them, like Dracula, Gruvbox, Solarized, and Tokyo Night."
                   )}
                 </p>
               ) : null}

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -11,8 +11,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -23,7 +23,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -57,10 +57,10 @@ function readFixture(overrides: Record<string, unknown> = {}) {
   })
 }
 
-describe('nightshift terminal read --screen', () => {
+describe('kolux terminal read --screen', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,

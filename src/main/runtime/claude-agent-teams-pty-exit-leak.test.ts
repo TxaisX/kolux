@@ -4,14 +4,14 @@
  *
  * `ClaudeAgentTeamsService.createLaunchEnv` adds a team (with a nested panes Map)
  * per agent-team leader launch. The only eviction was `removeTeamForLeaderHandle`,
- * called solely from `NightshiftRuntimeService.closeTerminal` (the explicit user-close IPC).
+ * called solely from `KoluxRuntimeService.closeTerminal` (the explicit user-close IPC).
  * The natural-exit teardown paths — `onPtyExit` and `dropDisconnectedPtyRecord` —
  * tore down every other per-pty map but never evicted the team. teamId is a fresh
  * `team-${randomUUID()}`, so when a leader shell exits on its own (agent finishes,
  * process dies, renderer reload) the team + nested panes Map leaked permanently.
  */
 import { describe, it, expect } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import type { ClaudeAgentTeamsService } from './claude-agent-teams-service'
 
 type RuntimeInternals = {
@@ -20,21 +20,17 @@ type RuntimeInternals = {
   dropDisconnectedPtyRecord: (ptyId: string) => void
 }
 
-function internals(runtime: NightshiftRuntimeService): RuntimeInternals {
+function internals(runtime: KoluxRuntimeService): RuntimeInternals {
   return runtime as unknown as RuntimeInternals
 }
 
-function registerTeam(
-  runtime: NightshiftRuntimeService,
-  ptyId: string,
-  leaderHandle: string
-): void {
+function registerTeam(runtime: KoluxRuntimeService, ptyId: string, leaderHandle: string): void {
   const { claudeAgentTeams, handleByPtyId } = internals(runtime)
   claudeAgentTeams.createLaunchEnv({
     leaderHandle,
     baseEnv: {},
-    shimDir: '/tmp/nightshift-shim',
-    shimBin: 'nightshift'
+    shimDir: '/tmp/kolux-shim',
+    shimBin: 'kolux'
   })
   // onPtyExit / dropDisconnectedPtyRecord resolve the leader handle via this map.
   handleByPtyId.set(ptyId, leaderHandle)
@@ -42,7 +38,7 @@ function registerTeam(
 
 describe('ClaudeAgentTeams eviction on natural PTY exit (leak regression)', () => {
   it('evicts the team when its leader PTY exits naturally (onPtyExit)', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerTeam(runtime, 'pty-leader', 'handle-leader')
     expect(internals(runtime).claudeAgentTeams.getActiveTeamCount()).toBe(1)
 
@@ -52,7 +48,7 @@ describe('ClaudeAgentTeams eviction on natural PTY exit (leak regression)', () =
   })
 
   it('evicts the team when the disconnected PTY record is pruned', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerTeam(runtime, 'pty-leader', 'handle-leader')
     expect(internals(runtime).claudeAgentTeams.getActiveTeamCount()).toBe(1)
 
@@ -62,7 +58,7 @@ describe('ClaudeAgentTeams eviction on natural PTY exit (leak regression)', () =
   })
 
   it('does not accumulate teams across many natural leader exits', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     for (let i = 0; i < 100; i++) {
       registerTeam(runtime, `pty-${i}`, `handle-${i}`)
       runtime.onPtyExit(`pty-${i}`, 0)
@@ -71,7 +67,7 @@ describe('ClaudeAgentTeams eviction on natural PTY exit (leak regression)', () =
   })
 
   it('leaves a concurrently-launched team intact when only one leader exits', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerTeam(runtime, 'pty-a', 'handle-a')
     registerTeam(runtime, 'pty-b', 'handle-b')
     expect(internals(runtime).claudeAgentTeams.getActiveTeamCount()).toBe(2)
@@ -83,7 +79,7 @@ describe('ClaudeAgentTeams eviction on natural PTY exit (leak regression)', () =
   })
 
   it('is a no-op for a PTY that never launched a team', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const { handleByPtyId } = internals(runtime)
     handleByPtyId.set('pty-plain', 'handle-plain') // a normal terminal, no team
     expect(internals(runtime).claudeAgentTeams.getActiveTeamCount()).toBe(0)

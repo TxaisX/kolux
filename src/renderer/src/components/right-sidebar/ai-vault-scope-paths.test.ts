@@ -7,10 +7,10 @@ import {
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   return {
-    id: 'repo-1::/repo/nightshift',
+    id: 'repo-1::/repo/kolux',
     repoId: 'repo-1',
-    displayName: 'nightshift',
-    path: '/repo/nightshift',
+    displayName: 'kolux',
+    path: '/repo/kolux',
     head: 'abc123',
     branch: 'main',
     isBare: false,
@@ -31,7 +31,7 @@ function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
 describe('deriveAiVaultWorkspaceScopePaths', () => {
   it('returns the active workspace path', () => {
     const active = makeWorktree()
-    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/nightshift'])
+    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/kolux'])
   })
 
   it('returns nothing without an active workspace', () => {
@@ -40,35 +40,35 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
 
   it('includes prior paths so renamed workspaces keep their transcripts', () => {
     const active = makeWorktree({
-      id: 'repo-1::/repo/nightshift-renamed',
-      path: '/repo/nightshift-renamed',
-      priorWorktreeIds: ['repo-1::/repo/nightshift']
+      id: 'repo-1::/repo/kolux-renamed',
+      path: '/repo/kolux-renamed',
+      priorWorktreeIds: ['repo-1::/repo/kolux']
     })
 
     expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual([
-      '/repo/nightshift-renamed',
-      '/repo/nightshift'
+      '/repo/kolux-renamed',
+      '/repo/kolux'
     ])
   })
 
   it('drops a prior path another live workspace now owns', () => {
     // Sessions are keyed by cwd alone, so claiming a path a live workspace
     // occupies would show that workspace's transcripts under this one.
-    const claimant = makeWorktree({ id: 'repo-1::/repo/nightshift', path: '/repo/nightshift' })
+    const claimant = makeWorktree({ id: 'repo-1::/repo/kolux', path: '/repo/kolux' })
     const active = makeWorktree({
-      id: 'repo-1::/repo/nightshift-renamed',
-      path: '/repo/nightshift-renamed',
-      priorWorktreeIds: ['repo-1::/repo/nightshift']
+      id: 'repo-1::/repo/kolux-renamed',
+      path: '/repo/kolux-renamed',
+      priorWorktreeIds: ['repo-1::/repo/kolux']
     })
 
     expect(deriveAiVaultWorkspaceScopePaths(active, [claimant, active])).toEqual([
-      '/repo/nightshift-renamed'
+      '/repo/kolux-renamed'
     ])
   })
 
   it('keeps a prior path the active workspace itself still owns', () => {
-    const active = makeWorktree({ priorWorktreeIds: ['repo-1::/repo/nightshift'] })
-    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/nightshift'])
+    const active = makeWorktree({ priorWorktreeIds: ['repo-1::/repo/kolux'] })
+    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/kolux'])
   })
 
   it('drops a claimed prior path regardless of where the claimant sits in the list', () => {
@@ -76,15 +76,15 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
     // exclude the active workspace up front, or listing it before a claimant
     // that shares the path would mask the claim.
     const active = makeWorktree({
-      id: 'repo-1::/repo/nightshift-renamed',
-      path: '/repo/nightshift-renamed',
-      priorWorktreeIds: ['repo-1::/repo/nightshift']
+      id: 'repo-1::/repo/kolux-renamed',
+      path: '/repo/kolux-renamed',
+      priorWorktreeIds: ['repo-1::/repo/kolux']
     })
-    const claimant = makeWorktree({ id: 'repo-1::/repo/nightshift', path: '/repo/nightshift' })
+    const claimant = makeWorktree({ id: 'repo-1::/repo/kolux', path: '/repo/kolux' })
     // The active workspace also listed at the prior path — the only shape where
     // a first-writer-wins map would name the active workspace the owner and so
     // report the path unclaimed.
-    const activeAtPriorPath = makeWorktree({ id: active.id, path: '/repo/nightshift' })
+    const activeAtPriorPath = makeWorktree({ id: active.id, path: '/repo/kolux' })
 
     for (const liveWorktrees of [
       [active, claimant],
@@ -93,7 +93,7 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
       [claimant, activeAtPriorPath]
     ]) {
       expect(deriveAiVaultWorkspaceScopePaths(active, liveWorktrees)).toEqual([
-        '/repo/nightshift-renamed'
+        '/repo/kolux-renamed'
       ])
     }
   })
@@ -101,7 +101,7 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
   it('derives workspace scope paths at scale', () => {
     // Separate from the session-scope guard: a quadratic dedupe reintroduced
     // only in the workspace pass would not surface there.
-    const prefix = '/Users/dev/nightshift/workspaces/nightshift-monorepo/feature-'
+    const prefix = '/Users/dev/kolux/workspaces/kolux-monorepo/feature-'
     const worktrees = Array.from({ length: 1200 }, (_, i) =>
       makeWorktree({ id: `repo-1::${prefix}${i}`, path: `${prefix}${i}` })
     )
@@ -122,7 +122,7 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
 
   it('ignores prior ids belonging to another repo', () => {
     const active = makeWorktree({ priorWorktreeIds: ['repo-2::/repo/other'] })
-    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/nightshift'])
+    expect(deriveAiVaultWorkspaceScopePaths(active, [active])).toEqual(['/repo/kolux'])
   })
 
   it('skips relative and blank paths', () => {
@@ -143,7 +143,7 @@ describe('deriveAiVaultScopeSessionPaths', () => {
     })
 
     expect(deriveAiVaultScopeSessionPaths(active, [active, sibling, otherRepo])).toEqual([
-      '/repo/nightshift',
+      '/repo/kolux',
       '/repo/feature'
     ])
   })
@@ -151,11 +151,11 @@ describe('deriveAiVaultScopeSessionPaths', () => {
   it('deduplicates paths that differ only by separators or trailing slash', () => {
     // The dedupe compares normalized keys; the first spelling is what ships.
     const active = makeWorktree()
-    const trailing = makeWorktree({ id: 'repo-1::a', path: '/repo/nightshift/' })
-    const doubled = makeWorktree({ id: 'repo-1::b', path: '/repo//nightshift' })
+    const trailing = makeWorktree({ id: 'repo-1::a', path: '/repo/kolux/' })
+    const doubled = makeWorktree({ id: 'repo-1::b', path: '/repo//kolux' })
 
     expect(deriveAiVaultScopeSessionPaths(active, [active, trailing, doubled])).toEqual([
-      '/repo/nightshift'
+      '/repo/kolux'
     ])
   })
 
@@ -176,7 +176,7 @@ describe('deriveAiVaultScopeSessionPaths', () => {
     // Path length matters as much as count: normalize() cost scales with it,
     // so short synthetic paths would understate the old shape. ~50 chars
     // matches the real profile this was measured on.
-    const prefix = '/Users/dev/nightshift/workspaces/nightshift-monorepo/feature-'
+    const prefix = '/Users/dev/kolux/workspaces/kolux-monorepo/feature-'
     const worktrees = Array.from({ length: 1200 }, (_, i) =>
       makeWorktree({ id: `repo-1::${prefix}${i}`, path: `${prefix}${i}` })
     )

@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { observeAgentStateFile } from './codex-path-observation'
-import { getNightshiftManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
 import {
   getCodexSettingsBaselinePath,
   observeCodexSettingsBaseline
@@ -17,13 +17,13 @@ import type {
  *
  * The mirror preserves the managed runtime config when the source is missing or
  * blank, which is silent by design — but the stall can persist for every launch
- * (a downed WSL distro, an unhydrated cloud-synced home), leaving "Nightshift ignores
+ * (a downed WSL distro, an unhydrated cloud-synced home), leaving "Kolux ignores
  * my config edits" with nothing to diagnose. Derived on demand from the same
  * predicates the mirror uses, so the two can never disagree.
  */
 export function getCodexConfigSyncStatus(
   homes: CodexSettingsPromotionHomes = {
-    runtimeHomePath: getNightshiftManagedCodexHomePath(),
+    runtimeHomePath: getKoluxManagedCodexHomePath(),
     systemHomePath: getSystemCodexHomePath()
   }
 ): CodexConfigSyncStatus {

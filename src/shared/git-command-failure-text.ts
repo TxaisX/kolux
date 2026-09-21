@@ -2,9 +2,9 @@
  * The text a failed Git invocation left behind, for the predicates that classify a
  * failure by what Git said.
  *
- * Why all three streams and not just `message` + `stderr`: the errors Nightshift classifies
+ * Why all three streams and not just `message` + `stderr`: the errors Kolux classifies
  * do not all come straight out of `execFile`. Node puts Git's stderr in both `message`
- * and `stderr`, but Nightshift also throws its own failures with the Git output on `stdout`
+ * and `stderr`, but Kolux also throws its own failures with the Git output on `stdout`
  * (`worktree remove`'s submodule retry attaches `git status --porcelain` output that
  * way on both the local runner and the relay). Reading all three is what keeps the
  * local and relay classifiers from disagreeing about the same error object.

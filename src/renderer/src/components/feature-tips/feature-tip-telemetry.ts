@@ -1,32 +1,28 @@
 import { track } from '@/lib/telemetry'
 import type { EventProps } from '../../../../shared/telemetry-events'
 
-export type NightshiftCliFeatureTipSource = EventProps<'nightshift_cli_feature_tip_shown'>['source']
-export type NightshiftCliFeatureTipSetupResult =
-  EventProps<'nightshift_cli_feature_tip_setup_result'>['result']
+export type KoluxCliFeatureTipSource = EventProps<'kolux_cli_feature_tip_shown'>['source']
+export type KoluxCliFeatureTipSetupResult =
+  EventProps<'kolux_cli_feature_tip_setup_result'>['result']
 export type CmdJPaletteFeatureTipSource = EventProps<'cmd_j_palette_feature_tip_shown'>['source']
 
-export function getNightshiftCliFeatureTipTelemetrySource(
-  value: unknown
-): NightshiftCliFeatureTipSource {
+export function getKoluxCliFeatureTipTelemetrySource(value: unknown): KoluxCliFeatureTipSource {
   return value === 'app_open' ? 'app_open' : 'manual'
 }
 
-export function trackNightshiftCliFeatureTipShown(source: NightshiftCliFeatureTipSource): void {
-  track('nightshift_cli_feature_tip_shown', { source })
+export function trackKoluxCliFeatureTipShown(source: KoluxCliFeatureTipSource): void {
+  track('kolux_cli_feature_tip_shown', { source })
 }
 
-export function trackNightshiftCliFeatureTipSetupClicked(
-  source: NightshiftCliFeatureTipSource
-): void {
-  track('nightshift_cli_feature_tip_setup_clicked', { source })
+export function trackKoluxCliFeatureTipSetupClicked(source: KoluxCliFeatureTipSource): void {
+  track('kolux_cli_feature_tip_setup_clicked', { source })
 }
 
-export function trackNightshiftCliFeatureTipSetupResult(
-  source: NightshiftCliFeatureTipSource,
-  result: NightshiftCliFeatureTipSetupResult
+export function trackKoluxCliFeatureTipSetupResult(
+  source: KoluxCliFeatureTipSource,
+  result: KoluxCliFeatureTipSetupResult
 ): void {
-  track('nightshift_cli_feature_tip_setup_result', { source, result })
+  track('kolux_cli_feature_tip_setup_result', { source, result })
 }
 
 export function trackCmdJPaletteFeatureTipShown(source: CmdJPaletteFeatureTipSource): void {

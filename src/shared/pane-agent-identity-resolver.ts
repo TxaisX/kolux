@@ -10,7 +10,7 @@ export type { PaneAgentEvidenceSource } from './pane-agent-evidence-sources'
  *
  * Today four ladders answer it independently — the tab icon, the open-tab/search occupant, the
  * sidebar title rows, and the sidebar hook-row fallback — and they disagree. Two of them consult
- * the terminal title before the launch record, so a string Nightshift parsed outranks a fact Nightshift owns.
+ * the terminal title before the launch record, so a string Kolux parsed outranks a fact Kolux owns.
  *
  * Two rules make this resolvable where reordering alone could not:
  *

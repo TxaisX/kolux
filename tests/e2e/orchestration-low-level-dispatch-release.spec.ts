@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { RuntimeClient } from '../../src/cli/runtime-client'
 import type { RuntimeTerminalListResult } from '../../src/shared/runtime-types'
 import { waitForSessionReady, ensureTerminalVisible } from './helpers/store'
@@ -9,17 +9,17 @@ import {
 } from './helpers/terminal'
 
 test('low-level Dispatches can be abandoned and stopped without closing their pane', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  await waitForActivePanePtyId(koluxPage)
 
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
-  const pane = await waitForActivePaneHookDescriptor(nightshiftPage)
+  const pane = await waitForActivePaneHookDescriptor(koluxPage)
   const resolved = await client.call<{ terminal: { handle: string } }>('terminal.resolvePane', {
     paneKey: pane.paneKey
   })

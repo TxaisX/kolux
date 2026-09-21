@@ -31,7 +31,7 @@ export function getPiAgentStatusHandlerSourceLines(kind: PiAgentKind): string[] 
         ]
       : []
   const ownerEnv =
-    kind === 'prime-agent' ? 'NIGHTSHIFT_PRIME_AGENT_STATUS_OWNED' : 'NIGHTSHIFT_PI_STATUS_OWNED'
+    kind === 'prime-agent' ? 'KOLUX_PRIME_AGENT_STATUS_OWNED' : 'KOLUX_PI_STATUS_OWNED'
 
   // Why: OMP suppresses its approval lifecycle unless an extension listens for it,
   // and it is the only signal that the run is parked on a permission prompt rather

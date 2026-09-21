@@ -383,7 +383,7 @@ describe('SshGitProvider', () => {
     await expect(
       provider.forceDeletePreservedBranch('/home/user/repo', 'you/fix-auth', 'abc123')
     ).rejects.toThrow(
-      'This SSH host is running an older Nightshift relay that cannot delete preserved branches. Reconnect to deploy the latest relay, then try again.'
+      'This SSH host is running an older Kolux relay that cannot delete preserved branches. Reconnect to deploy the latest relay, then try again.'
     )
   })
 
@@ -396,24 +396,24 @@ describe('SshGitProvider', () => {
     ).rejects.toBe(error)
   })
 
-  it('markRemoteNightshiftCreated sends the narrow provenance-marker request', async () => {
-    await provider.markRemoteNightshiftCreated('/home/user/repo', 'pr-contributor-nightshift')
-    expect(mux.request).toHaveBeenCalledWith('git.markRemoteNightshiftCreated', {
+  it('markRemoteKoluxCreated sends the narrow provenance-marker request', async () => {
+    await provider.markRemoteKoluxCreated('/home/user/repo', 'pr-contributor-kolux')
+    expect(mux.request).toHaveBeenCalledWith('git.markRemoteKoluxCreated', {
       repoPath: '/home/user/repo',
-      remoteName: 'pr-contributor-nightshift'
+      remoteName: 'pr-contributor-kolux'
     })
   })
 
-  it('markRemoteNightshiftCreated degrades to a one-time warning for an older relay', async () => {
-    mux.request.mockRejectedValue(methodNotFound('git.markRemoteNightshiftCreated'))
+  it('markRemoteKoluxCreated degrades to a one-time warning for an older relay', async () => {
+    mux.request.mockRejectedValue(methodNotFound('git.markRemoteKoluxCreated'))
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     try {
       await expect(
-        provider.markRemoteNightshiftCreated('/home/user/repo', 'pr-contributor-nightshift')
+        provider.markRemoteKoluxCreated('/home/user/repo', 'pr-contributor-kolux')
       ).resolves.toBeUndefined()
       await expect(
-        provider.markRemoteNightshiftCreated('/home/user/repo', 'pr-contributor-nightshift')
+        provider.markRemoteKoluxCreated('/home/user/repo', 'pr-contributor-kolux')
       ).resolves.toBeUndefined()
       expect(warnSpy).toHaveBeenCalledTimes(1)
     } finally {
@@ -421,12 +421,12 @@ describe('SshGitProvider', () => {
     }
   })
 
-  it('markRemoteNightshiftCreated rethrows non-method-not-found errors', async () => {
+  it('markRemoteKoluxCreated rethrows non-method-not-found errors', async () => {
     const error = new Error('remote config write failed')
     mux.request.mockRejectedValueOnce(error)
 
     await expect(
-      provider.markRemoteNightshiftCreated('/home/user/repo', 'pr-contributor-nightshift')
+      provider.markRemoteKoluxCreated('/home/user/repo', 'pr-contributor-kolux')
     ).rejects.toBe(error)
   })
 })

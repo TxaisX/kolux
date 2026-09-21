@@ -10,7 +10,7 @@ import {
   findWorkspace,
   mirrorWorkspaceFromActivePage
 } from '../browser-page-records'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import { closeRemoteBrowserPageInOwningEnvironment } from './browser-remote-close'
 import { releaseDocPreviewGrant } from '@/lib/doc-preview-grants'
 import {
@@ -60,7 +60,7 @@ export function createBrowserPageCreateActions(
         const shouldFocusAddressBar =
           shouldUpdateGlobalActiveSurface &&
           !page.docLocation &&
-          (page.url === 'about:blank' || page.url === NIGHTSHIFT_BROWSER_BLANK_URL)
+          (page.url === 'about:blank' || page.url === KOLUX_BROWSER_BLANK_URL)
 
         return {
           browserPagesByWorkspace: {

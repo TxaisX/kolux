@@ -27,11 +27,11 @@ describe('orchestration mailbox pointer CLI command', () => {
   })
 
   it.each([
-    ['dev WSL', { isWsl: true }, 'nightshift-dev'],
-    ['SSH', { connectionId: 'ssh-target', isWsl: true }, 'nightshift']
+    ['dev WSL', { isWsl: true }, 'kolux-dev'],
+    ['SSH', { connectionId: 'ssh-target', isWsl: true }, 'kolux']
   ])('renders the %s CLI command in a mailbox pointer', async (_name, options, command) => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-cli-command-')
+    const db = createDatabase('kolux-mailbox-cli-command-')
     const harness = createRuntime(db, options)
     const run = createBoundRun(db, 'CLI command Run')
     insertDirectRunMessage(db, run.id, 'Command-aware pointer')

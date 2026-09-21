@@ -4,7 +4,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OpenFile } from '@/store/slices/editor'
-import { NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT } from './editor-autosave'
+import { KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT } from './editor-autosave'
 import { useEditorCmdSaveRequest } from './useEditorCmdSaveRequest'
 
 const storeState = vi.hoisted(() => ({ editorDrafts: {} as Record<string, string> }))
@@ -91,7 +91,7 @@ describe('useEditorCmdSaveRequest', () => {
     })
     act(() => {
       window.dispatchEvent(
-        new CustomEvent(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, {
+        new CustomEvent(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, {
           detail: { fileId: visibleFile.id }
         })
       )
@@ -126,12 +126,12 @@ describe('useEditorCmdSaveRequest', () => {
     })
     act(() => {
       window.dispatchEvent(
-        new CustomEvent(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, {
+        new CustomEvent(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, {
           detail: { fileId: sourceFile.id }
         })
       )
       window.dispatchEvent(
-        new CustomEvent(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, {
+        new CustomEvent(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, {
           detail: { fileId: previewFile.id }
         })
       )

@@ -1,19 +1,19 @@
 // Throwaway interactive preview (untracked): opens Settings → Browser scrolled
 // to the new Remote browsing section and holds the app open for review.
-// Run: NIGHTSHIFT_SETTINGS_PREVIEW=1 pnpm exec playwright test --config tests/playwright.config.ts \
+// Run: KOLUX_SETTINGS_PREVIEW=1 pnpm exec playwright test --config tests/playwright.config.ts \
 //   --project electron-headless --workers=1 tests/e2e/browser-settings-preview.spec.ts
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 
 test.skip(
-  process.env.NIGHTSHIFT_SETTINGS_PREVIEW !== '1',
-  'Preview only; run with NIGHTSHIFT_SETTINGS_PREVIEW=1'
+  process.env.KOLUX_SETTINGS_PREVIEW !== '1',
+  'Preview only; run with KOLUX_SETTINGS_PREVIEW=1'
 )
 
 const HOLD_MINUTES = 20
 
 test('shows the remote browsing settings section and holds for review', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout((HOLD_MINUTES + 10) * 60_000)
 
@@ -26,7 +26,7 @@ test('shows the remote browsing settings section and holds for review', async ({
   })
 
   // Seed one opted-out SSH host so the "Route again" list renders too.
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     state?.updateSettings({ browserSshWorkspaceRoutingDisabledTargetIds: ['preview-target'] })
     window.__store?.setState({
@@ -40,10 +40,10 @@ test('shows the remote browsing settings section and holds for review', async ({
     state?.openSettingsPage()
   })
 
-  await expect(nightshiftPage.getByText('Remote browsing', { exact: true })).toBeVisible({
+  await expect(koluxPage.getByText('Remote browsing', { exact: true })).toBeVisible({
     timeout: 30_000
   })
 
   console.log(`\n=== SETTINGS PREVIEW READY — window stays up ${HOLD_MINUTES} minutes ===\n`)
-  await nightshiftPage.waitForTimeout(HOLD_MINUTES * 60_000)
+  await koluxPage.waitForTimeout(HOLD_MINUTES * 60_000)
 })

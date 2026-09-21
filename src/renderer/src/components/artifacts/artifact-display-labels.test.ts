@@ -21,7 +21,7 @@ function item(sourceContentType: string): ArtifactListItem {
       byteSize: 1,
       deletedAt: null
     },
-    shareUrl: 'https://share.nightshift.invalid/a/doc'
+    shareUrl: 'https://share.kolux.invalid/a/doc'
   }
 }
 

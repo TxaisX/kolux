@@ -9,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import { OrchestrationDb } from '../../orchestration/db'
 import { structuredWorkerIdentities } from '../../structured-worker-identity'
 import { createStructuredWorkerSession } from './orchestration-structured-worker-session'
@@ -60,13 +60,13 @@ function installHost(): { emit: (type: string) => void; unsubscribed: () => bool
 
 describe('the structured redrive edge', () => {
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
 
   beforeEach(() => {
     vi.useFakeTimers()
     structuredWorkerIdentities.clear()
     db = new OrchestrationDb(':memory:')
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'ensureStructuredAgentSessionHost').mockResolvedValue(undefined as never)
   })

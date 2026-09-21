@@ -5,7 +5,7 @@ import { retireBrowserRoutePartitionStorageForEnvironment } from './browser-rout
 import { PairedRuntimeBrowserClientHostComposition } from './paired-runtime-browser-client-host-composition'
 import { PairedRuntimeBrowserClientHostRegistry } from './paired-runtime-browser-client-host-registry'
 
-const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
+const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
 
 const leaseAuthority: BrowserClientHostLeaseAuthority = {
   authorityRuntimeId: 'runtime-a',

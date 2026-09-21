@@ -21,7 +21,7 @@ describe('repoIsRemote', () => {
   })
 
   it('keeps a runtime host with no nested SSH target local-shaped', () => {
-    // A runtime with no nested target is a full Nightshift install, not a relay shim, so it keeps the
+    // A runtime with no nested target is a full Kolux install, not a relay shim, so it keeps the
     // platform CLI name.
     expect(repoIsRemote({ connectionId: null, executionHostId: 'runtime:vm-1' })).toBe(false)
   })

@@ -3,7 +3,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { stripAnsiEscapeSequences } from '../../src/shared/ansi-escape-sequences'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   runNodeScriptInTerminal,
   stageNodeScriptForTerminal
@@ -44,37 +44,34 @@ test.describe('Quick Command startup recovery', () => {
   registerTerminalPaneMountReadiness()
 
   test('visible Quick Command survives a forced pre-bind recovery on one fresh PTY', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const siblingBefore = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    const siblingBefore = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const siblingPtyId = siblingBefore.panes[0]?.ptyId
     if (!siblingPtyId) {
       throw new Error('Sibling terminal has no live PTY')
     }
 
-    const siblingMarker = `NIGHTSHIFT_QUICK_COMMAND_SIBLING_${randomUUID()}`
+    const siblingMarker = `KOLUX_QUICK_COMMAND_SIBLING_${randomUUID()}`
     const siblingProbe = await runNodeScriptInTerminal(
-      nightshiftPage,
+      koluxPage,
       siblingPtyId,
       `process.stdout.write(${JSON.stringify(`${siblingMarker}\n`)})`
     )
-    await waitForTerminalOutput(nightshiftPage, siblingMarker)
+    await waitForTerminalOutput(koluxPage, siblingMarker)
     siblingProbe.cleanup()
 
-    const marker = `NIGHTSHIFT_QUICK_COMMAND_RECOVERY_${randomUUID()}`
+    const marker = `KOLUX_QUICK_COMMAND_RECOVERY_${randomUUID()}`
     const label = `Recovery sentinel ${randomUUID()}`
-    const identityPath = path.join(
-      os.tmpdir(),
-      `nightshift-quick-command-identity-${randomUUID()}.json`
-    )
+    const identityPath = path.join(os.tmpdir(), `kolux-quick-command-identity-${randomUUID()}.json`)
     const staged = stageNodeScriptForTerminal(
       `
 const { writeFileSync } = require('node:fs')
 const identity = {
   marker: ${JSON.stringify(marker)},
-  paneKey: process.env.NIGHTSHIFT_PANE_KEY || '',
+  paneKey: process.env.KOLUX_PANE_KEY || '',
   pid: process.pid,
-  tabId: process.env.NIGHTSHIFT_TAB_ID || ''
+  tabId: process.env.KOLUX_TAB_ID || ''
 }
 writeFileSync(${JSON.stringify(identityPath)}, JSON.stringify(identity), { flag: 'wx' })
 process.stdout.write(${JSON.stringify(`${marker}\n`)})
@@ -82,7 +79,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
     )
 
     try {
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         async ({ command, label }) => {
           const store = window.__store
           if (!store) {
@@ -109,12 +106,12 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
         { command: staged.command, label }
       )
 
-      const quickCommandButton = nightshiftPage.getByRole('button', {
+      const quickCommandButton = koluxPage.getByRole('button', {
         name: `Run quick command: ${label}`
       })
       await expect(quickCommandButton).toBeVisible()
       await quickCommandButton.click()
-      await nightshiftPage.evaluate(async () => {
+      await koluxPage.evaluate(async () => {
         const spawnBarrier = window.__terminalPtyPreSpawnE2EBarrier
         if (!spawnBarrier) {
           throw new Error('Terminal PTY pre-spawn E2E barrier unavailable')
@@ -122,7 +119,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
         await spawnBarrier.waitUntilBlocked()
       })
 
-      const blocked = await nightshiftPage.evaluate(() => {
+      const blocked = await koluxPage.evaluate(() => {
         const store = window.__store
         if (!store) {
           throw new Error('Renderer store unavailable')
@@ -144,7 +141,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       expect(blocked.pending).toBe(staged.command)
       expect(blocked.status).toBe('blocked')
 
-      await nightshiftPage.evaluate((tabId) => {
+      await koluxPage.evaluate((tabId) => {
         const store = window.__store
         if (!store) {
           throw new Error('Renderer store unavailable')
@@ -163,7 +160,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
         observe()
       }, blocked.tabId)
 
-      const remounted = await nightshiftPage.evaluate((tabId) => {
+      const remounted = await koluxPage.evaluate((tabId) => {
         const state = window.__store?.getState()
         if (!state) {
           throw new Error('Renderer store unavailable')
@@ -178,7 +175,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               ({ expectedGeneration, tabId }) => {
                 const state = window.__store?.getState()
                 const manager = window.__paneManagers?.get(tabId)
@@ -203,7 +200,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
           pending: staged.command,
           expectedGeneration: blocked.generation + 1
         })
-      await nightshiftPage.evaluate(() => window.__terminalPtyPreSpawnE2EBarrier?.release())
+      await koluxPage.evaluate(() => window.__terminalPtyPreSpawnE2EBarrier?.release())
 
       let targetPtyId = ''
       let targetLeafId = ''
@@ -214,7 +211,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
         ptyReady: boolean
         expectedGeneration: number
       }> =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ expectedGeneration, tabId }) => {
             const state = window.__store?.getState()
             const manager = window.__paneManagers?.get(tabId)
@@ -246,7 +243,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
             expectedGeneration: blocked.generation + 1
           })
       } catch (error) {
-        const diagnostics = await nightshiftPage.evaluate(() => ({
+        const diagnostics = await koluxPage.evaluate(() => ({
           ptyConnect: (window as Window & { __ptyConnectDiag?: string[] }).__ptyConnectDiag ?? [],
           barrier: window.__terminalPtyPreSpawnE2EBarrier?.status() ?? 'missing'
         }))
@@ -255,7 +252,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
         )
       }
 
-      const successor = await nightshiftPage.evaluate((tabId) => {
+      const successor = await koluxPage.evaluate((tabId) => {
         const pane = window.__paneManagers?.get(tabId)?.getPanes()[0]
         return {
           leafId: pane?.leafId ?? '',
@@ -268,7 +265,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       expect(targetLeafId).not.toBe('')
       expect(targetPtyId).not.toBe(siblingPtyId)
 
-      const queueObservations = await nightshiftPage.evaluate(() => {
+      const queueObservations = await koluxPage.evaluate(() => {
         const target = window as QueueObservationWindow
         target.__stopQuickCommandQueueObservations?.()
         target.__stopQuickCommandQueueObservations = undefined
@@ -280,14 +277,14 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate((tabId) => {
+            koluxPage.evaluate((tabId) => {
               const pane = window.__paneManagers?.get(tabId)?.getPanes()[0]
               return pane?.serializeAddon.serialize() ?? ''
             }, blocked.tabId),
           { message: 'Quick Command marker never reached the visible xterm' }
         )
         .toContain(marker)
-      const targetContent = await nightshiftPage.evaluate((tabId) => {
+      const targetContent = await koluxPage.evaluate((tabId) => {
         const pane = window.__paneManagers?.get(tabId)?.getPanes()[0]
         return pane?.serializeAddon.serialize() ?? ''
       }, blocked.tabId)
@@ -302,7 +299,7 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       })
       expect(identity.pid).toBeGreaterThan(0)
 
-      const ptyIdentity = await nightshiftPage.evaluate(
+      const ptyIdentity = await koluxPage.evaluate(
         async ({ siblingPtyId, siblingTabId, tabId, targetPtyId }) => {
           const state = window.__store?.getState()
           const layout = state?.terminalLayoutsByTabId[tabId]
@@ -327,25 +324,24 @@ process.stdout.write(${JSON.stringify(`${marker}\n`)})
       expect(ptyIdentity.siblingLive).toBe(true)
       expect(ptyIdentity.siblingStorePtyIds).toContain(siblingPtyId)
 
-      const siblingAfterMarker = `NIGHTSHIFT_QUICK_COMMAND_SIBLING_AFTER_${randomUUID()}`
-      await nightshiftPage.evaluate(
+      const siblingAfterMarker = `KOLUX_QUICK_COMMAND_SIBLING_AFTER_${randomUUID()}`
+      await koluxPage.evaluate(
         (tabId) => window.__store?.getState().setActiveTab(tabId),
         siblingBefore.tabId
       )
       await expect
-        .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().activeTabId))
+        .poll(() => koluxPage.evaluate(() => window.__store?.getState().activeTabId))
         .toBe(siblingBefore.tabId)
-      await focusActiveTerminalInput(nightshiftPage)
-      await nightshiftPage.keyboard.type(`echo ${siblingAfterMarker}`)
-      await nightshiftPage.keyboard.press('Enter')
+      await focusActiveTerminalInput(koluxPage)
+      await koluxPage.keyboard.type(`echo ${siblingAfterMarker}`)
+      await koluxPage.keyboard.press('Enter')
       await expect
         .poll(
-          async () =>
-            (await getTerminalContent(nightshiftPage)).split(siblingAfterMarker).length - 1
+          async () => (await getTerminalContent(koluxPage)).split(siblingAfterMarker).length - 1
         )
         .toBeGreaterThanOrEqual(1)
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => window.__terminalPtyPreSpawnE2EBarrier?.release())
         .catch(() => {})
       staged.cleanup()

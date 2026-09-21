@@ -257,7 +257,7 @@ export async function useIpcEventsForCloseRouting({
       },
       browser: {
         onGuestLoadFailed: () => () => {},
-        onOpenLinkInNightshiftTab: () => () => {},
+        onOpenLinkInKoluxTab: () => () => {},
         onNavigationUpdate: () => () => {},
         onActivateView: () => () => {},
         onPaneFocus: () => () => {}

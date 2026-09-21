@@ -23,15 +23,14 @@ const TELEMETRY_ENABLED = false
 // Eligible to transmit only if CI injected BOTH build-identity and write key; either alone fails closed, with no runtime env-var override (dev/contributor builds get `null`).
 // The `globalThis` reads are for vitest, which skips electron-vite's `define` pass — resolving to `IS_OFFICIAL_BUILD === false` there.
 const BUILD_IDENTITY: 'stable' | 'rc' | null =
-  typeof NIGHTSHIFT_BUILD_IDENTITY !== 'undefined'
-    ? NIGHTSHIFT_BUILD_IDENTITY
-    : ((globalThis as { NIGHTSHIFT_BUILD_IDENTITY?: 'stable' | 'rc' | null })
-        .NIGHTSHIFT_BUILD_IDENTITY ?? null)
+  typeof KOLUX_BUILD_IDENTITY !== 'undefined'
+    ? KOLUX_BUILD_IDENTITY
+    : ((globalThis as { KOLUX_BUILD_IDENTITY?: 'stable' | 'rc' | null }).KOLUX_BUILD_IDENTITY ??
+      null)
 const WRITE_KEY: string | null =
-  typeof NIGHTSHIFT_POSTHOG_WRITE_KEY !== 'undefined'
-    ? NIGHTSHIFT_POSTHOG_WRITE_KEY
-    : ((globalThis as { NIGHTSHIFT_POSTHOG_WRITE_KEY?: string | null })
-        .NIGHTSHIFT_POSTHOG_WRITE_KEY ?? null)
+  typeof KOLUX_POSTHOG_WRITE_KEY !== 'undefined'
+    ? KOLUX_POSTHOG_WRITE_KEY
+    : ((globalThis as { KOLUX_POSTHOG_WRITE_KEY?: string | null }).KOLUX_POSTHOG_WRITE_KEY ?? null)
 const IS_OFFICIAL_BUILD: boolean =
   (BUILD_IDENTITY === 'stable' || BUILD_IDENTITY === 'rc') &&
   typeof WRITE_KEY === 'string' &&
@@ -61,7 +60,7 @@ function buildCommonProps(installId: string, sid: string, channel: 'stable' | 'r
     os_release: osRelease(),
     install_id: installId,
     session_id: sid,
-    nightshift_channel: channel
+    kolux_channel: channel
   }
 }
 
@@ -162,7 +161,7 @@ function waitForCaptureEnqueue(client: PostHog, event: EventName, uuid: string):
   })
 }
 
-// No-op in contributor / non-official builds; only official stable/rc builds (CI-injected `NIGHTSHIFT_BUILD_IDENTITY` + `NIGHTSHIFT_POSTHOG_WRITE_KEY`) transmit.
+// No-op in contributor / non-official builds; only official stable/rc builds (CI-injected `KOLUX_BUILD_IDENTITY` + `KOLUX_POSTHOG_WRITE_KEY`) transmit.
 export function track<N extends EventName>(name: N, props: EventProps<N>): void {
   if (!testTransportEnabled && (!IS_OFFICIAL_BUILD || !TELEMETRY_ENABLED)) {
     return

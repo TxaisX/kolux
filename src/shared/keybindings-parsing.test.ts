@@ -13,11 +13,11 @@ import {
 
 describe('keybindings', () => {
   it('accepts bounded plugin command action IDs and rejects malformed variants', () => {
-    expect(isKeybindingActionId('plugin:nightshift-samples.tasks/open')).toBe(true)
-    expect(isKeybindingActionId('plugin:nightshift-samples.tasks/task.open-latest')).toBe(true)
+    expect(isKeybindingActionId('plugin:kolux-samples.tasks/open')).toBe(true)
+    expect(isKeybindingActionId('plugin:kolux-samples.tasks/task.open-latest')).toBe(true)
     expect(isKeybindingActionId('plugin:tasks/open')).toBe(false)
-    expect(isKeybindingActionId('plugin:nightshift-samples.tasks/../open')).toBe(false)
-    expect(isKeybindingActionId(`plugin:nightshift-samples.tasks/${'a'.repeat(401)}`)).toBe(false)
+    expect(isKeybindingActionId('plugin:kolux-samples.tasks/../open')).toBe(false)
+    expect(isKeybindingActionId(`plugin:kolux-samples.tasks/${'a'.repeat(401)}`)).toBe(false)
   })
 
   it('normalizes editable shortcut input and rejects unsafe bindings', () => {

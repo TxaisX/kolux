@@ -30,8 +30,8 @@ export function TerminalWindowSurface({
         aria-hidden={ptyGone || undefined}
         className={cn('w-full overflow-hidden p-1.5', ptyGone && 'invisible')}
         style={{
-          marginTop: 'var(--nightshift-pane-title-height)',
-          height: 'calc(100% - var(--nightshift-pane-title-height))'
+          marginTop: 'var(--kolux-pane-title-height)',
+          height: 'calc(100% - var(--kolux-pane-title-height))'
         }}
       />
     </div>

@@ -103,8 +103,8 @@ export function useFullSubmitSourcePreparation(input: FullSubmitSourcePreparatio
         return null
       }
 
-      // Why: only a name Nightshift generated may be retired — the creature pool contains ordinary words
-      // ("nightshift", "runner", "molly") a user can type deliberately and expect to reuse.
+      // Why: only a name Kolux generated may be retired — the creature pool contains ordinary words
+      // ("kolux", "runner", "molly") a user can type deliberately and expect to reuse.
       // The identity check is what a linked PR/issue seed makes necessary here; mobile's blank-create
       // path (NewWorktreeModal, `nameWasGenerated: !trimmedName`) has no other seed, so it can't
       // share this expression. Same rule, two submit paths — change both together.

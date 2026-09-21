@@ -48,7 +48,7 @@ describe('combined diff on-demand loading', () => {
   it('automatically loads tracked binaries numstat left uncounted, whatever the extension', () => {
     // `git diff --numstat` emits '-\t-' for any tracked binary; the extension
     // list will never cover them all (.icns, .tiff, extensionless).
-    for (const path of ['resources/build/icon.icns', 'assets/logo.tiff', 'bin/nightshift-helper']) {
+    for (const path of ['resources/build/icon.icns', 'assets/logo.tiff', 'bin/kolux-helper']) {
       expect(
         shouldLoadCombinedDiffOnDemand({ path, area: 'unstaged', hasCountedSiblings: true })
       ).toBe(false)

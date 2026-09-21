@@ -303,7 +303,7 @@ describe('AgentBrowserBridge', () => {
           if (args.includes('screenshot')) {
             const sessionName = args[args.indexOf('--session') + 1]
             lifecycleEvents.push(`command-${sessionName}`)
-            if (sessionName === 'nightshift-tab-tab-1' && !releaseFirstScreenshot) {
+            if (sessionName === 'kolux-tab-tab-1' && !releaseFirstScreenshot) {
               releaseFirstScreenshot = () => {
                 cb(null, JSON.stringify({ success: true, data: { path: '/tmp/tab-1.png' } }), '')
               }
@@ -328,7 +328,7 @@ describe('AgentBrowserBridge', () => {
       await vi.advanceTimersByTimeAsync(300)
 
       expect(lifecycleEvents).toContain('acquire-1')
-      expect(lifecycleEvents).toContain('command-nightshift-tab-tab-1')
+      expect(lifecycleEvents).toContain('command-kolux-tab-tab-1')
       expect(lifecycleEvents).not.toContain('acquire-2')
 
       expect(releaseFirstScreenshot).not.toBeNull()

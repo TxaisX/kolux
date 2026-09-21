@@ -76,8 +76,8 @@ describe('ui-locale', () => {
   })
 
   it('preserves a selected plugin language bundle id', () => {
-    expect(resolveUiLocale('plugin:nightshift-samples.portuguese/pt-BR')).toBe(
-      'plugin:nightshift-samples.portuguese/pt-BR'
+    expect(resolveUiLocale('plugin:kolux-samples.portuguese/pt-BR')).toBe(
+      'plugin:kolux-samples.portuguese/pt-BR'
     )
   })
 

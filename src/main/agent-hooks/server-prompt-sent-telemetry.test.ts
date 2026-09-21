@@ -32,22 +32,19 @@ describe('AgentHookServer prompt-sent telemetry', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody({
-              hook_event_name: 'UserPromptSubmit',
-              prompt: '  fix the spinner  '
-            })
-          )
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody({
+            hook_event_name: 'UserPromptSubmit',
+            prompt: '  fix the spinner  '
+          })
+        )
+      })
 
       expect(response.status).toBe(204)
       expect(trackMock).toHaveBeenCalledWith('agent_prompt_sent', {
@@ -471,31 +468,28 @@ describe('AgentHookServer prompt-sent telemetry', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/opencode`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody({
-              hook_event_name: 'MessagePart',
-              role: 'user',
-              text: 'fix',
-              messageID: 'msg-1'
-            })
-          )
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/opencode`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody({
+            hook_event_name: 'MessagePart',
+            role: 'user',
+            text: 'fix',
+            messageID: 'msg-1'
+          })
+        )
+      })
       const updatedResponse = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/opencode`,
+        `http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/opencode`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
           },
           body: JSON.stringify(
             buildBody({

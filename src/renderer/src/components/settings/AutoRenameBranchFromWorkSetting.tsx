@@ -159,7 +159,7 @@ export function AutoRenameBranchFromWorkSetting({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.AutoRenameBranchFromWorkSetting.12ea4a408d',
-              'When an agent starts working in a new workspace, Nightshift renames its auto-generated branch (e.g.'
+              'When an agent starts working in a new workspace, Kolux renames its auto-generated branch (e.g.'
             )}{' '}
             <code>
               {translate(
@@ -169,7 +169,7 @@ export function AutoRenameBranchFromWorkSetting({
             </code>
             {translate(
               'auto.components.settings.AutoRenameBranchFromWorkSetting.d9b65054ef',
-              ') to a short name summarizing the task. Only branches Nightshift named itself are renamed, and never after they have been pushed.'
+              ') to a short name summarizing the task. Only branches Kolux named itself are renamed, and never after they have been pushed.'
             )}
           </p>
         </div>
@@ -227,7 +227,7 @@ export function AutoRenameBranchFromWorkSetting({
                   </code>{' '}
                   {translate(
                     'auto.components.settings.AutoRenameBranchFromWorkSetting.69bf4830c2',
-                    "to include Nightshift's"
+                    "to include Kolux's"
                   )}{' '}
                   <Popover>
                     <PopoverTrigger asChild>
@@ -275,7 +275,7 @@ export function AutoRenameBranchFromWorkSetting({
                   </code>
                   {translate(
                     'auto.components.settings.AutoRenameBranchFromWorkSetting.5d569f5199',
-                    '. Nightshift generates only the final segment, like'
+                    '. Kolux generates only the final segment, like'
                   )}{' '}
                   <code className="font-mono">
                     {translate(

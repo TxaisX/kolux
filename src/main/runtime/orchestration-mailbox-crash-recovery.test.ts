@@ -33,7 +33,7 @@ describe('orchestration mailbox crash recovery', () => {
 
   it('does not replay Enter when Enter was accepted before settlement', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-enter-crash-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-enter-crash-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const firstDb = new OrchestrationDb(dbPath)
@@ -78,7 +78,7 @@ describe('orchestration mailbox crash recovery', () => {
   })
   it('rescans mailboxes a crash left mid-pointer, including dispatch mailboxes', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-restart-scan-')
+    const db = createDatabase('kolux-mailbox-restart-scan-')
     const run = createBoundRun(db, 'restart scan')
     const parked = db.insertMessage({
       from: 'term_worker',

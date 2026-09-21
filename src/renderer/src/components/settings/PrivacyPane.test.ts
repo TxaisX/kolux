@@ -91,8 +91,8 @@ describe('PrivacyPane — isEnvBlocked', () => {
     expect(isEnvBlocked({ effective: 'disabled', reason: 'do_not_track' })).toBe(true)
   })
 
-  it('returns true for NIGHTSHIFT_TELEMETRY_DISABLED', () => {
-    expect(isEnvBlocked({ effective: 'disabled', reason: 'nightshift_disabled' })).toBe(true)
+  it('returns true for KOLUX_TELEMETRY_DISABLED', () => {
+    expect(isEnvBlocked({ effective: 'disabled', reason: 'kolux_disabled' })).toBe(true)
   })
 
   it('returns true for CI', () => {
@@ -124,8 +124,8 @@ describe('PrivacyPane — envVarNameForReason', () => {
     expect(envVarNameForReason('do_not_track')).toBe('DO_NOT_TRACK')
   })
 
-  it('maps nightshift_disabled to NIGHTSHIFT_TELEMETRY_DISABLED', () => {
-    expect(envVarNameForReason('nightshift_disabled')).toBe('NIGHTSHIFT_TELEMETRY_DISABLED')
+  it('maps kolux_disabled to KOLUX_TELEMETRY_DISABLED', () => {
+    expect(envVarNameForReason('kolux_disabled')).toBe('KOLUX_TELEMETRY_DISABLED')
   })
 
   it('maps ci to CI', () => {
@@ -154,9 +154,9 @@ describe('PrivacyPane — computeBlockedReason', () => {
     expect(result).toEqual({ kind: 'env', reason: 'do_not_track' })
   })
 
-  it('names NIGHTSHIFT_TELEMETRY_DISABLED as the env reason when set', () => {
-    const result = computeBlockedReason({ effective: 'disabled', reason: 'nightshift_disabled' })
-    expect(result).toEqual({ kind: 'env', reason: 'nightshift_disabled' })
+  it('names KOLUX_TELEMETRY_DISABLED as the env reason when set', () => {
+    const result = computeBlockedReason({ effective: 'disabled', reason: 'kolux_disabled' })
+    expect(result).toEqual({ kind: 'env', reason: 'kolux_disabled' })
   })
 
   it('names CI as the env reason when set', () => {

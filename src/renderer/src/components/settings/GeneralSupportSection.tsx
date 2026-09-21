@@ -10,7 +10,7 @@ import { SettingsSubsectionHeader } from './SettingsFormControls'
 import { translate } from '@/i18n/i18n'
 
 // Do not deep-link to /stargazers: GitHub 404s that page for users without repo write access.
-const NIGHTSHIFT_GITHUB_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_GITHUB_URL = 'https://github.com/TxaisX/nightshift'
 
 type SupportState =
   | 'loading'
@@ -41,7 +41,7 @@ export function GeneralSupportSection({
 
   useEffect(() => {
     let cancelled = false
-    void window.api.gh.checkNightshiftStarred().then((result) => {
+    void window.api.gh.checkKoluxStarred().then((result) => {
       if (cancelled) {
         return
       }
@@ -59,7 +59,7 @@ export function GeneralSupportSection({
   const handleStarClick = async (): Promise<void> => {
     if (starState === 'web-fallback') {
       setStarState('opening-github')
-      await window.api.shell.openUrl(NIGHTSHIFT_GITHUB_URL)
+      await window.api.shell.openUrl(KOLUX_GITHUB_URL)
       if (mountedRef.current) {
         setStarState('web-fallback')
       }
@@ -69,7 +69,7 @@ export function GeneralSupportSection({
       return
     }
     setStarState('starring')
-    const ok = await window.api.gh.starNightshift('settings')
+    const ok = await window.api.gh.starKolux('settings')
     if (!ok) {
       if (mountedRef.current) {
         setStarState('web-fallback')
@@ -123,7 +123,7 @@ function SupportSection({
             <SettingsSubsectionHeader
               title={translate(
                 'auto.components.settings.GeneralSupportSection.55a87e5fd1',
-                'Support Nightshift'
+                'Support Kolux'
               )}
             />
             {state === 'loading' ? <SupportRowSkeleton /> : null}
@@ -160,7 +160,7 @@ function SupportRow({
     <SearchableSetting
       title={translate(
         'auto.components.settings.GeneralSupportSection.6922c1fa2b',
-        'Star Nightshift on GitHub'
+        'Star Kolux on GitHub'
       )}
       description={translate(
         'auto.components.settings.GeneralSupportSection.511782265b',
@@ -172,7 +172,7 @@ function SupportRow({
       <Label>
         {translate(
           'auto.components.settings.GeneralSupportSection.6922c1fa2b',
-          'Star Nightshift on GitHub'
+          'Star Kolux on GitHub'
         )}
       </Label>
       {state === 'starred' ? (

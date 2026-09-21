@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   DOCKER_SSH_RELAY_REMOTE_REPO_PATH,
@@ -33,57 +33,57 @@ function floodWithInputAcknowledgements(marker: string): string {
 }
 
 test.describe('five SSH panes under simultaneous output', () => {
-  test.skip(process.env.NIGHTSHIFT_E2E_SSH_DOCKER !== '1', 'Requires the Docker SSH target')
+  test.skip(process.env.KOLUX_E2E_SSH_DOCKER !== '1', 'Requires the Docker SSH target')
 
   test('each pane acknowledges keyboard input after hiding and reopening the flooding workspace', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
     test.setTimeout(420_000)
     const target = startDockerSshRelayTarget(testInfo)
     registerPostElectronShutdownCleanup(async () => cleanupDockerSshRelayTarget(target))
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await connectDockerSshRelayTarget(nightshiftPage, target, {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await connectDockerSshRelayTarget(koluxPage, target, {
       remotePath: DOCKER_SSH_RELAY_REMOTE_REPO_PATH
     })
-    await ensureTerminalVisible(nightshiftPage, 45_000)
-    await waitForActiveTerminalManager(nightshiftPage, 60_000)
+    await ensureTerminalVisible(koluxPage, 45_000)
+    await waitForActiveTerminalManager(koluxPage, 60_000)
     const runId = randomUUID()
     const owners: { leafId: string; ptyId: string; marker: string }[] = []
     for (let index = 0; index < 5; index++) {
       if (index > 0) {
-        await splitActiveTerminalPane(nightshiftPage, 'vertical')
-        await focusLastTerminalPane(nightshiftPage)
+        await splitActiveTerminalPane(koluxPage, 'vertical')
+        await focusLastTerminalPane(koluxPage)
       }
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-      const identity = await readPaneIdentitySnapshot(nightshiftPage)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 30_000)
+      const identity = await readPaneIdentitySnapshot(koluxPage)
       expect(identity?.activeLeafId).toBeTruthy()
       const marker = `FLOOD_${runId}_${index}`
       owners.push({ leafId: identity!.activeLeafId!, ptyId, marker })
-      await execInTerminal(nightshiftPage, ptyId, floodWithInputAcknowledgements(marker))
+      await execInTerminal(koluxPage, ptyId, floodWithInputAcknowledgements(marker))
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 80_000), { timeout: 60_000 })
+        .poll(() => getTerminalContent(koluxPage, 80_000), { timeout: 60_000 })
         .toMatch(new RegExp(`${marker}:[1-9][0-9]*:ACK=:`))
     }
     expect(new Set(owners.map((owner) => owner.ptyId)).size).toBe(5)
-    const identity = await readPaneIdentitySnapshot(nightshiftPage)
+    const identity = await readPaneIdentitySnapshot(koluxPage)
     expect(identity?.panes).toHaveLength(5)
     const tabId = identity!.tabId
-    const visibleTerminals = nightshiftPage.locator('.xterm:visible')
+    const visibleTerminals = koluxPage.locator('.xterm:visible')
     await expect(visibleTerminals).toHaveCount(5)
 
     for (let round = 0; round < 2; round++) {
-      await nightshiftPage.evaluate(() => window.__store!.getState().setActiveView('tasks'))
+      await koluxPage.evaluate(() => window.__store!.getState().setActiveView('tasks'))
       await expect
-        .poll(() => nightshiftPage.evaluate(() => window.__store!.getState().activeView))
+        .poll(() => koluxPage.evaluate(() => window.__store!.getState().activeView))
         .toBe('tasks')
       await expect(visibleTerminals).toHaveCount(0)
-      await nightshiftPage.evaluate(() => window.__store!.getState().setActiveView('terminal'))
+      await koluxPage.evaluate(() => window.__store!.getState().setActiveView('terminal'))
       await expect(visibleTerminals).toHaveCount(5)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
       for (const [index, owner] of owners.entries()) {
-        await nightshiftPage.evaluate(
+        await koluxPage.evaluate(
           ({ tabId, leafId }) => {
             const manager = window.__paneManagers!.get(tabId)!
             const paneId = manager.getNumericIdForLeaf(leafId)
@@ -94,10 +94,10 @@ test.describe('five SSH panes under simultaneous output', () => {
           },
           { tabId, leafId: owner.leafId }
         )
-        expect(await waitForActivePanePtyId(nightshiftPage)).toBe(owner.ptyId)
-        await focusActiveTerminalInput(nightshiftPage)
+        expect(await waitForActivePanePtyId(koluxPage)).toBe(owner.ptyId)
+        await focusActiveTerminalInput(koluxPage)
         const input = `input_${runId}_${round}_${index}`
-        const inputTrace = await nightshiftPage.evaluateHandle((tabId) => {
+        const inputTrace = await koluxPage.evaluateHandle((tabId) => {
           const manager = window.__paneManagers!.get(tabId)!
           const entries = manager.getPanes().map((pane) => ({
             ptyId: pane.container.dataset.ptyId,
@@ -116,13 +116,13 @@ test.describe('five SSH panes under simultaneous output', () => {
         }, tabId)
         // The remote process repeats its latest ACK, so flood eviction cannot hide it.
         try {
-          await nightshiftPage.keyboard.type(input)
-          await nightshiftPage.keyboard.press('Enter')
+          await koluxPage.keyboard.type(input)
+          await koluxPage.keyboard.press('Enter')
           await expect
-            .poll(() => getTerminalContent(nightshiftPage, 80_000), { timeout: 30_000 })
+            .poll(() => getTerminalContent(koluxPage, 80_000), { timeout: 30_000 })
             .toMatch(new RegExp(`${owner.marker}:[1-9][0-9]*:ACK=${input}:`))
         } catch (error) {
-          const panes = await nightshiftPage.evaluate((tabId) => {
+          const panes = await koluxPage.evaluate((tabId) => {
             const manager = window.__paneManagers!.get(tabId)!
             return manager.getPanes().map((pane) => ({
               active: pane === manager.getActivePane(),

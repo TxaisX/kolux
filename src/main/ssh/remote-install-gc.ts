@@ -1,5 +1,5 @@
 /**
- * The version-directory garbage collector, shared by the relay and nightshiftd.
+ * The version-directory garbage collector, shared by the relay and koluxd.
  *
  * It lives apart from `ssh-relay-versioned-install.ts` because it is the one piece both
  * models run, and because the ownership rule below is the whole point of separating them:
@@ -42,7 +42,7 @@ import { windowsRelayPipePathsForSocketName } from './ssh-relay-endpoints'
 import { isUnconfirmedSshCommandTermination } from './ssh-relay-exec-command'
 
 // Legacy relay dirs predate `.install-complete`; they need a liveness-only GC check so they
-// eventually drain. There is no nightshiftd equivalent — nightshiftd has never shipped without one.
+// eventually drain. There is no koluxd equivalent — koluxd has never shipped without one.
 const LEGACY_RELAY_DIR_REGEX = /^relay-v\d+\.\d+\.\d+$/
 const DEFAULT_REMOTE_HOST = getRemoteHostPlatform('linux-x64')
 
@@ -64,7 +64,7 @@ export type RemoteInstallGcOptions = {
   isDirLive: (dir: string) => Promise<boolean>
   /**
    * Directories this pass must never remove even when idle and complete, named by directory
-   * (not absolute path). nightshiftd passes its active and previous versions: the previous one is
+   * (not absolute path). koluxd passes its active and previous versions: the previous one is
    * the rollback target, and GC'ing it turns a recoverable bad update into a re-deploy.
    */
   pinnedDirNames?: readonly string[]

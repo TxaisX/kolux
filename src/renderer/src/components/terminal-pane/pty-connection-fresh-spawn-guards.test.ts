@@ -411,13 +411,13 @@ describe('connectPanePty', () => {
     connectPanePty(createPane(1) as never, createManager(1) as never, createDeps() as never)
     await flushAsyncTicks()
 
-    capturedDataCallback.current?.('Created https://github.com/acme/nightshift/pull/42\r\n')
+    capturedDataCallback.current?.('Created https://github.com/acme/kolux/pull/42\r\n')
 
     expect(mockStoreState.observeTerminalGitHubPullRequestLink).toHaveBeenCalledWith(
       'wt-1',
       expect.objectContaining({
-        url: 'https://github.com/acme/nightshift/pull/42',
-        slug: { owner: 'acme', repo: 'nightshift', host: 'github.com' },
+        url: 'https://github.com/acme/kolux/pull/42',
+        slug: { owner: 'acme', repo: 'kolux', host: 'github.com' },
         number: 42
       })
     )
@@ -444,9 +444,7 @@ describe('connectPanePty', () => {
 
     expect(deps.onPtyErrorRef.current).toHaveBeenCalledWith(
       1,
-      expect.stringContaining(
-        'Nightshift attempts background recovery for managed local and WSL homes'
-      )
+      expect.stringContaining('Kolux attempts background recovery for managed local and WSL homes')
     )
   })
 

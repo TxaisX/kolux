@@ -67,7 +67,7 @@ export async function buildRuntimePtySpawnOptions(
   ctx.spawnOptions.envToDelete = mergePtyEnvDeletions(
     authEnvToDelete,
     args.envToDelete ?? [],
-    // Why: disable old hosts without removing NIGHTSHIFT_REAL_* while their Windows shim remains on PATH.
+    // Why: disable old hosts without removing KOLUX_REAL_* while their Windows shim remains on PATH.
     ctx.isDaemonHostSpawn || args.connectionId ? LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS : [],
     ctx.isDaemonHostSpawn ? getInheritedAgentHookEnvKeysToDelete(ctx.env) : [],
     // Why: ungated, unlike the agent-hook keys — the local provider and the relay host also spread their own process.env into every spawn.
@@ -78,11 +78,11 @@ export async function buildRuntimePtySpawnOptions(
       ctx.spawnOptions.envToDelete,
       CODEX_HOME_ENV_KEYS
     )
-  } else if (ctx.stripInheritedNightshiftCodexHome) {
+  } else if (ctx.stripInheritedKoluxCodexHome) {
     // Why: the daemon owns a persistent inherited environment that may
-    // differ from main. NIGHTSHIFT_CODEX_HOME asks it to compare/delete the pair.
+    // differ from main. KOLUX_CODEX_HOME asks it to compare/delete the pair.
     ctx.spawnOptions.envToDelete = mergePtyEnvDeletions(ctx.spawnOptions.envToDelete, [
-      'NIGHTSHIFT_CODEX_HOME'
+      'KOLUX_CODEX_HOME'
     ])
   }
   if (ctx.codexResumeHomeSelected) {

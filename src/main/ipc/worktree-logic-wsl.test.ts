@@ -20,7 +20,7 @@ import {
   getWorktreePathSettings
 } from './worktree-logic'
 import {
-  buildKnownNightshiftWorkspaceLayouts,
+  buildKnownKoluxWorkspaceLayouts,
   classifyWorktreeOwnership
 } from '../../shared/worktree/ownership'
 import { relativePathInsideRoot } from '../../shared/cross-platform-path'
@@ -46,7 +46,7 @@ describe('computeWorktreePath WSL layout', () => {
     const root = await pendingRoot
     for (const name of ['feature', 'feature-2', 'feature-3']) {
       expect(computeWorktreePath(name, repoPath, settings, root)).toBe(
-        win32.join(home, 'nightshift', 'workspaces', 'repo', name)
+        win32.join(home, 'kolux', 'workspaces', 'repo', name)
       )
     }
     expect(getWslHomeAsyncMock).toHaveBeenCalledExactlyOnceWith('Ubuntu')
@@ -65,7 +65,7 @@ describe('computeWorktreePath WSL layout', () => {
         nestWorkspaces: true,
         workspaceDir: 'C:\\workspaces'
       })
-    ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\nightshift\\workspaces\\repo\\feature')
+    ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\kolux\\workspaces\\repo\\feature')
   })
 
   it('falls back to the configured Windows workspace when WSL home lookup fails', () => {
@@ -91,16 +91,16 @@ describe('computeWorktreePath WSL layout', () => {
     getWslHomeMock.mockReturnValue('\\\\wsl.localhost\\Ubuntu\\home\\jin')
     const repo = {
       path: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\repo',
-      worktreeBasePath: '/home/jin/src/.nightshift-worktrees'
+      worktreeBasePath: '/home/jin/src/.kolux-worktrees'
     }
     const settings = { nestWorkspaces: false, workspaceDir: 'C:\\workspaces' }
 
     expect(computeWorktreePath('feature', repo.path, getWorktreePathSettings(repo, settings))).toBe(
-      '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\.nightshift-worktrees\\feature'
+      '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\.kolux-worktrees\\feature'
     )
     // Why repeat: cached follow-up calls must resolve identically to the first.
     expect(computeWorktreePath('feature', repo.path, getWorktreePathSettings(repo, settings))).toBe(
-      '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\.nightshift-worktrees\\feature'
+      '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\.kolux-worktrees\\feature'
     )
     expect(getWslHomeMock).not.toHaveBeenCalled()
   })
@@ -163,7 +163,7 @@ describe('computeWorktreePath WSL layout', () => {
         repo.path,
         getWorktreePathSettings(repo, { nestWorkspaces: false, workspaceDir: 'C:\\workspaces' })
       )
-    ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\nightshift\\workspaces\\feature')
+    ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\kolux\\workspaces\\feature')
   })
 
   it('classifies whatever creation produces for Linux bases, dotted or not', () => {
@@ -190,12 +190,12 @@ describe('computeWorktreePath WSL layout', () => {
         repo.path,
         getWorktreePathSettings(repo, settings)
       )
-      const layouts = buildKnownNightshiftWorkspaceLayouts(
+      const layouts = buildKnownKoluxWorkspaceLayouts(
         { ...settings, workspaceDirHistory: [] },
         repo
       )
       // Why containment, not just ownership: a regressed resolver lands in the
-      // ~/nightshift/workspaces mirror layout, which also classifies 'external'.
+      // ~/kolux/workspaces mirror layout, which also classifies 'external'.
       // layouts[0] is the repo-base layout — it is always pushed first.
       expect(relativePathInsideRoot(layouts[0].path, createdPath)).not.toBeNull()
       expect(
@@ -203,7 +203,7 @@ describe('computeWorktreePath WSL layout', () => {
           repo,
           settings: { ...settings, workspaceDirHistory: [] },
           worktree: { path: createdPath, isMainWorktree: false },
-          knownNightshiftLayouts: layouts
+          knownKoluxLayouts: layouts
         })
       ).toBe('external')
     }
@@ -218,7 +218,7 @@ describe('computeWorktreePath WSL layout', () => {
     getWslHomeAsyncMock.mockResolvedValue('\\\\wsl.localhost\\Ubuntu\\home\\jin')
     const repo = {
       path: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\src\\repo',
-      worktreeBasePath: '/home/jin/src/.nightshift-worktrees'
+      worktreeBasePath: '/home/jin/src/.kolux-worktrees'
     }
     const pathSettings = getWorktreePathSettings(repo, {
       nestWorkspaces: false,
@@ -299,7 +299,7 @@ describe('computeWorktreePath WSL layout', () => {
           workspaceDir: 'C:\\workspaces',
           wslMirrorDistro: 'Ubuntu'
         })
-      ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\nightshift\\workspaces\\feature')
+      ).toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\kolux\\workspaces\\feature')
     })
 
     it('keeps Windows placement when the project has no WSL runtime', () => {
@@ -363,7 +363,7 @@ describe('computeWorktreePath WSL layout', () => {
           workspaceDir: 'C:\\workspaces',
           wslMirrorDistro: 'Ubuntu'
         })
-      ).resolves.toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\nightshift\\workspaces\\feature')
+      ).resolves.toBe('\\\\wsl.localhost\\Ubuntu\\home\\jin\\kolux\\workspaces\\feature')
     })
   })
 })

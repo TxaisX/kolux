@@ -86,7 +86,7 @@ describe('buildDispatchPreamble', () => {
     const result = buildDispatchPreamble(baseParams({ dispatchCapability: 'dcap_secret' }))
     const commandLines = result
       .split('\n')
-      .filter((line) => line.trimStart().startsWith('nightshift orchestration'))
+      .filter((line) => line.trimStart().startsWith('kolux orchestration'))
 
     expect(commandLines).toHaveLength(5)
     expect(result).not.toContain('\\\n')
@@ -244,39 +244,37 @@ describe('buildDispatchPreamble', () => {
     expect(result).toContain('refactor the auth module')
   })
 
-  it('uses nightshift CLI by default when devMode is not set', () => {
+  it('uses kolux CLI by default when devMode is not set', () => {
     const result = buildDispatchPreamble(baseParams())
-    expect(result).toContain('nightshift orchestration send')
-    expect(result).toContain('nightshift orchestration check')
-    expect(result).toContain('nightshift orchestration ask')
+    expect(result).toContain('kolux orchestration send')
+    expect(result).toContain('kolux orchestration check')
+    expect(result).toContain('kolux orchestration ask')
   })
 
-  it('uses nightshift-dev CLI when devMode is true', () => {
-    const result = buildDispatchPreamble(
-      baseParams({ devMode: true, cliCommand: 'nightshift-ide' })
-    )
-    expect(result).toContain('nightshift-dev orchestration send')
-    expect(result).toContain('nightshift-dev orchestration check')
-    expect(result).toContain('nightshift-dev orchestration ask')
-    const fragments = result.split('nightshift-dev')
+  it('uses kolux-dev CLI when devMode is true', () => {
+    const result = buildDispatchPreamble(baseParams({ devMode: true, cliCommand: 'kolux-ide' }))
+    expect(result).toContain('kolux-dev orchestration send')
+    expect(result).toContain('kolux-dev orchestration check')
+    expect(result).toContain('kolux-dev orchestration ask')
+    const fragments = result.split('kolux-dev')
     for (const fragment of fragments) {
-      expect(fragment).not.toMatch(/nightshift orchestration/)
+      expect(fragment).not.toMatch(/kolux orchestration/)
     }
   })
 
-  it('uses nightshift CLI when devMode is false', () => {
+  it('uses kolux CLI when devMode is false', () => {
     const result = buildDispatchPreamble(baseParams({ devMode: false }))
-    expect(result).toContain('nightshift orchestration send')
-    expect(result).toContain('nightshift orchestration check')
+    expect(result).toContain('kolux orchestration send')
+    expect(result).toContain('kolux orchestration check')
   })
 
-  it('uses the exact nightshift-ide command for packaged WSL workers', () => {
-    const result = buildDispatchPreamble(baseParams({ cliCommand: 'nightshift-ide' }))
+  it('uses the exact kolux-ide command for packaged WSL workers', () => {
+    const result = buildDispatchPreamble(baseParams({ cliCommand: 'kolux-ide' }))
 
-    expect(result).toContain('nightshift-ide orchestration send')
-    expect(result).toContain('nightshift-ide orchestration check')
-    expect(result).toContain('nightshift-ide orchestration ask')
-    expect(result).not.toMatch(/(^|\s)nightshift orchestration/m)
+    expect(result).toContain('kolux-ide orchestration send')
+    expect(result).toContain('kolux-ide orchestration check')
+    expect(result).toContain('kolux-ide orchestration ask')
+    expect(result).not.toMatch(/(^|\s)kolux orchestration/m)
   })
 
   it('appends a BASE DRIFT section when baseDrift.behind > 0', () => {

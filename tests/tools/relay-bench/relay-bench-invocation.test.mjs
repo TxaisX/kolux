@@ -225,13 +225,13 @@ describe('requireOrigin and requireDirector', () => {
   })
 
   it('exits 2 when the director origin is missing', () => {
-    const previous = process.env.NIGHTSHIFT_RELAY_BENCH_DIRECTOR
-    delete process.env.NIGHTSHIFT_RELAY_BENCH_DIRECTOR
+    const previous = process.env.KOLUX_RELAY_BENCH_DIRECTOR
+    delete process.env.KOLUX_RELAY_BENCH_DIRECTOR
     try {
       expect(captureRefusal(() => requireDirector(new Map(), 'usage'))?.code).toBe(2)
     } finally {
       if (previous !== undefined) {
-        process.env.NIGHTSHIFT_RELAY_BENCH_DIRECTOR = previous
+        process.env.KOLUX_RELAY_BENCH_DIRECTOR = previous
       }
     }
   })

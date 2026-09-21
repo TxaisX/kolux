@@ -9,7 +9,7 @@ import { randomUUID } from 'node:crypto'
 import type { Store } from '../persistence'
 import type { GlobalSettings } from '../../shared/global-settings-types'
 import type { Repo } from '../../shared/repo-types'
-import type { SetupAgentStartupPolicy } from '../../shared/nightshift-yaml-hook-types'
+import type { SetupAgentStartupPolicy } from '../../shared/kolux-yaml-hook-types'
 import type {
   LocalBaseRefRefreshResult,
   LocalBaseRefUpdateSuggestion
@@ -51,12 +51,12 @@ import { validateGitPushTarget } from '../git/push-target-validation'
 import { assertGitPushTargetShape } from '../../shared/git-push-target-validation'
 import { gitExecFileAsync } from '../git/runner'
 import type {
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   RemoteFetchResult,
   RemoteTrackingBase
-} from '../runtime/nightshift-runtime'
+} from '../runtime/kolux-runtime'
 import { getProjectHostSetupWorktreeMeta } from '../../shared/project-host-setup-lookup'
-import { getEffectiveHooks, loadHooks, parseNightshiftYaml } from '../hooks'
+import { getEffectiveHooks, loadHooks, parseKoluxYaml } from '../hooks'
 import { buildPosixRunnerScript, buildWindowsRunnerScript } from '../setup-runner-script-text'
 import { createSetupRunnerScript, resolveSetupRunnerShell } from '../worktree-runner-script'
 import { getSetupRunnerEnvVars } from '../setup-hook-env-vars'
@@ -137,7 +137,7 @@ import { formatWorktreeIncludeCopyWarning } from './worktree-include-copy-budget
 import { resolveWorktreeIncludePaths } from '../git/worktree-include-file'
 import { resolveWorktreeSharedDirectories } from '../git/worktree-shared-directories'
 import { normalizeSparseDirectories } from './sparse-checkout-directories'
-import { joinWorktreeRelativePath } from '../runtime/runtime-relative-paths'
+import { readRepoConfigYaml } from '../runtime/repo-config-yaml-fallback'
 import type { IFilesystemProvider } from '../providers/types'
 import {
   buildSetupRunnerCommand,
@@ -390,7 +390,7 @@ function countNonEmptyGitOutputLines(output: string): number {
 }
 
 export async function spawnLocalStartupAndSetupTerminals(args: {
-  runtime: NightshiftRuntimeService | undefined
+  runtime: KoluxRuntimeService | undefined
   worktree: Pick<Worktree, 'id' | 'path'>
   startup: CreateWorktreeArgs['startup']
   setup: CreateWorktreeResult['setup']
@@ -627,7 +627,7 @@ async function getOrStartSshWorktreeCreateFetch(
       return
     }
     await fetch()
-    // Why: SSH creation has no NightshiftRuntimeService to share; still reuse recent fetches for repeated creates on the same target.
+    // Why: SSH creation has no KoluxRuntimeService to share; still reuse recent fetches for repeated creates on the same target.
     rememberSshWorktreeCreateFetchCompletedAt(key)
   }).finally(() => {
     if (sshWorktreeCreateFetchInflight.get(key) === promise) {
@@ -1155,7 +1155,7 @@ async function adoptExistingForkRemoteForBranch(
     )
   }
   const restored = await restoreUpstreamAfterMaterialize(execGit, repoPath, target)
-  // Why: a remote another worktree minted is still Nightshift-owned. Without stamping ownership on
+  // Why: a remote another worktree minted is still Kolux-owned. Without stamping ownership on
   // the adopting worktree too, removing the minter leaves the survivor's metadata unowned and
   // #17842's sweep -- which gates solely on `remoteCreated` -- can never reclaim the remote.
   // Why derive: no caller supplies both -- IPC handlers pass a store with no repo id, runtime
@@ -1201,7 +1201,7 @@ function runForkRemoteAdoption<T>(
 // `setWorktreeMeta` write, so the store's `pushTarget.remoteCreated` flag stayed stale
 // forever for a lazily-minted remote -- invisible to #17842's orphan sweep
 // (`shouldReclaimPrRemote` gates solely on that flag) and to any SSH host whose relay
-// predates `markRemoteNightshiftCreated` (no git-config marker either). `setWorktreeMeta` is
+// predates `markRemoteKoluxCreated` (no git-config marker either). `setWorktreeMeta` is
 // optional on `WorktreePushTargetStore` so narrow test/reconciliation stores keep compiling.
 function persistMaterializedPushTargetIfCreated(
   store: WorktreePushTargetStore | undefined,
@@ -1256,7 +1256,7 @@ export async function cleanupUnusedWorktreePushTargetRemote(
     console.warn(`[worktrees] Failed to clean up fork PR remote for ${removedWorktreeId}`, error)
   }
   // Why: also catches remotes this specific removal couldn't reclaim (legacy metadata,
-  // a preserved branch since deleted, a worktree removed outside Nightshift) -- see
+  // a preserved branch since deleted, a worktree removed outside Kolux) -- see
   // worktree-push-target-reconciliation.ts. Rate-limited internally; safe to call every removal.
   // Not awaited: a repo with a large backlog (the scenario this exists for) can have dozens of
   // candidate remotes, each probed with a couple of git subprocesses -- that must never add
@@ -1303,7 +1303,7 @@ export async function prepareWorktreePushTargetSsh(
     const existingRemote = await findRemoteForUrl(execGit, repoPath, target.remoteUrl)
     if (existingRemote) {
       remoteName = existingRemote
-      // Why: a reused Nightshift-created fork remote must inherit ownership so deleting the final user can remove it.
+      // Why: a reused Kolux-created fork remote must inherit ownership so deleting the final user can remove it.
       remoteCreated = store
         ? isPushTargetRemoteCreatedByKnownWorktree(
             store,
@@ -1322,7 +1322,7 @@ export async function prepareWorktreePushTargetSsh(
         // Why: relays predating fork-remote support reject this exec by policy; name the fix instead of surfacing their rule.
         if (error instanceof Error && error.message.includes('Destructive git remote operations')) {
           throw new Error(
-            'This SSH host is running an older Nightshift relay that cannot add a fork remote for a PR workspace. Reconnect to deploy the latest relay, then try again.'
+            'This SSH host is running an older Kolux relay that cannot add a fork remote for a PR workspace. Reconnect to deploy the latest relay, then try again.'
           )
         }
         throw error
@@ -1331,7 +1331,7 @@ export async function prepareWorktreePushTargetSsh(
       try {
         // Why: repo-local provenance mirroring the local path (worktree-push-target-setup.ts).
         // A narrow RPC, not provider.exec: the relay's generic git.exec blocks all config writes.
-        await provider.markRemoteNightshiftCreated(repoPath, remoteName)
+        await provider.markRemoteKoluxCreated(repoPath, remoteName)
       } catch (error) {
         // Why: a remote with no provenance marker is unreclaimable -- cleanup only
         // runs off that marker, so a failure here must undo the add.
@@ -1486,21 +1486,16 @@ async function readRemoteEffectiveHooks(
   fsProvider: IFilesystemProvider,
   hooksRootPath: string
 ): Promise<ReturnType<typeof getEffectiveHooksFromConfig>> {
-  return getEffectiveHooksFromConfig(
-    repo,
-    await readRemoteNightshiftYaml(fsProvider, hooksRootPath)
-  )
+  return getEffectiveHooksFromConfig(repo, await readRemoteKoluxYaml(fsProvider, hooksRootPath))
 }
 
-async function readRemoteNightshiftYaml(
+async function readRemoteKoluxYaml(
   fsProvider: IFilesystemProvider,
   hooksRootPath: string
-): Promise<ReturnType<typeof parseNightshiftYaml>> {
+): Promise<ReturnType<typeof parseKoluxYaml>> {
   try {
-    const result = await fsProvider.readFile(
-      joinWorktreeRelativePath(hooksRootPath, 'nightshift.yaml')
-    )
-    return result.isBinary ? null : parseNightshiftYaml(result.content)
+    const result = await readRepoConfigYaml(fsProvider, hooksRootPath)
+    return result == null || result.isBinary ? null : parseKoluxYaml(result.content)
   } catch {
     return null
   }
@@ -1517,9 +1512,7 @@ async function createRemoteSetupRunnerScript(
   const useWindowsFormat = isWindowsAbsolutePathLike(worktreePath)
   // Why: SSH terminals choose their shell on the remote host; local Windows
   // preferences cannot safely select a remote runner format or launch command.
-  const runnerRelativePath = useWindowsFormat
-    ? 'nightshift/setup-runner.cmd'
-    : 'nightshift/setup-runner.sh'
+  const runnerRelativePath = useWindowsFormat ? 'kolux/setup-runner.cmd' : 'kolux/setup-runner.sh'
   const { stdout } = await gitProvider.exec(
     ['rev-parse', '--git-path', runnerRelativePath],
     worktreePath
@@ -2194,10 +2187,10 @@ export async function createRemoteWorktree(
     lastActivityAt: now,
     // Why: grace window atop Recent so ambient PTY bumps on others during create don't bury the new worktree. See smart-sort.ts `CREATE_GRACE_MS`.
     createdAt: now,
-    nightshiftCreatedAt: now,
-    nightshiftCreationSource: 'ssh',
+    koluxCreatedAt: now,
+    koluxCreationSource: 'ssh',
     creatorProvenance: { kind: 'host' },
-    nightshiftCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
+    koluxCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
     ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     ...(args.cliProvenance ? { cliProvenance: args.cliProvenance } : {}),
     baseRef: metadataBaseRef,
@@ -2254,13 +2247,13 @@ export async function createRemoteWorktree(
     now
   )
 
-  // Why: shared/symlink paths, `nightshift.yaml` shared directories, and `.worktreeinclude` copies are local-only; remote (SSH) support needs a new relay method + auth surface, so all are skipped here.
+  // Why: shared/symlink paths, `kolux.yaml` shared directories, and `.worktreeinclude` copies are local-only; remote (SSH) support needs a new relay method + auth surface, so all are skipped here.
 
   let setup: CreateWorktreeResult['setup']
   let defaultTabs: CreateWorktreeResult['defaultTabs']
   if (fsProvider) {
     await timing.time('prepare_setup', async () => {
-      const yamlHooks = await readRemoteNightshiftYaml(fsProvider, created.path)
+      const yamlHooks = await readRemoteKoluxYaml(fsProvider, created.path)
       const hooks = getEffectiveHooksFromConfig(repo, yamlHooks)
       try {
         defaultTabs = getDefaultTabsLaunch(yamlHooks, repo, args.setupDecision)
@@ -2323,7 +2316,7 @@ export async function createLocalWorktree(
   repo: Repo,
   store: Store,
   mainWindow: BrowserWindow,
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
 ): Promise<CreateWorktreeResult> {
   const timing = createWorktreeCreateTimingRecorder()
   const settings = store.getSettings()
@@ -2887,10 +2880,10 @@ export async function createLocalWorktree(
     lastActivityAt: now,
     // createdAt protects the new worktree from ambient PTY bumps for CREATE_GRACE_MS (see createRemoteWorktree above).
     createdAt: now,
-    nightshiftCreatedAt: now,
-    nightshiftCreationSource: 'desktop',
+    koluxCreatedAt: now,
+    koluxCreationSource: 'desktop',
     creatorProvenance: { kind: 'host' },
-    nightshiftCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
+    koluxCreationWorkspaceLayout: getWorktreeCreationLayout(repo, settings),
     ...(args.automationProvenance ? { automationProvenance: args.automationProvenance } : {}),
     ...(args.cliProvenance ? { cliProvenance: args.cliProvenance } : {}),
     baseRef: metadataBaseRef,
@@ -2968,7 +2961,7 @@ export async function createLocalWorktree(
     })
   }
 
-  // Why: project-level `nightshift.yaml` shared directories add to (never replace) the per-user
+  // Why: project-level `kolux.yaml` shared directories add to (never replace) the per-user
   // setting, so a repo's shared dirs reach every teammate (issue #10451).
   const [sharedDirectories, includePaths] = await Promise.all([
     timing.time('resolve_shared_directories', () =>
@@ -3001,7 +2994,7 @@ export async function createLocalWorktree(
     })
   }
 
-  // Why: the worktree's base-branch `nightshift.yaml` is authoritative; we don't re-gate on content parity with the primary checkout since benign divergence silently disabled setup (#1280).
+  // Why: the worktree's base-branch `kolux.yaml` is authoritative; we don't re-gate on content parity with the primary checkout since benign divergence silently disabled setup (#1280).
   let setup: CreateWorktreeResult['setup']
   let defaultTabs: CreateWorktreeResult['defaultTabs']
   await timing.time('prepare_setup', async () => {

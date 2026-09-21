@@ -39,8 +39,8 @@ describe('publishToRemoteUrl (real git plumbing)', () => {
   let bareRoot: string
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-publish-url-source-'))
-    bareRoot = await mkdtemp(join(tmpdir(), 'nightshift-publish-url-bare-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-publish-url-source-'))
+    bareRoot = await mkdtemp(join(tmpdir(), 'kolux-publish-url-bare-'))
     git(['init', '-q'], root)
     git(['config', 'user.email', 'test@example.com'], root)
     git(['config', 'user.name', 'Test'], root)
@@ -69,7 +69,7 @@ describe('publishToRemoteUrl (real git plumbing)', () => {
   it('rolls the remote back when the push fails', async () => {
     // Why: an empty, non-git directory is a deterministic push failure — `remote add`
     // never validates the target, only `push` actually talks to it.
-    const notARepo = await mkdtemp(join(tmpdir(), 'nightshift-publish-url-not-a-repo-'))
+    const notARepo = await mkdtemp(join(tmpdir(), 'kolux-publish-url-not-a-repo-'))
     const url = pathToFileURL(notARepo).toString()
 
     const outcome = await publishToRemoteUrl(root, url)
@@ -107,7 +107,7 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
       handlers.set(channel, handler as (event: unknown, args: unknown) => unknown)
     })
 
-    root = await mkdtemp(join(tmpdir(), 'nightshift-publish-gh-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-publish-gh-'))
     git(['init', '-q'], root)
     git(['config', 'user.email', 'test@example.com'], root)
     git(['config', 'user.name', 'Test'], root)
@@ -149,7 +149,10 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
   })
 
   it('creates a private repo by default, using the folder name, with the exact expected argv', async () => {
-    diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
+    diagnoseGhAuthMock.mockResolvedValue({
+      ghAvailable: true,
+      activeAccount: { host: 'github.com' }
+    })
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
 
     const result = await call({ repoId: repo.id, provider: 'github', confirmed: true })
@@ -172,7 +175,10 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
   })
 
   it('creates a public repo and a custom name when requested', async () => {
-    diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
+    diagnoseGhAuthMock.mockResolvedValue({
+      ghAvailable: true,
+      activeAccount: { host: 'github.com' }
+    })
     ghExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
 
     await call({
@@ -190,7 +196,10 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
   })
 
   it('rolls the local origin remote back when gh creates the repo but the push fails', async () => {
-    diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
+    diagnoseGhAuthMock.mockResolvedValue({
+      ghAvailable: true,
+      activeAccount: { host: 'github.com' }
+    })
     // Mirrors real `gh repo create --push`: it can add the local `origin` remote itself
     // before a push failure, leaving a half-published state this handler must undo.
     ghExecFileAsyncMock.mockImplementation(async () => {
@@ -213,7 +222,10 @@ describe('repos:publishRemote (github provider, stubbed gh)', () => {
   })
 
   it('rejects a repo name that looks like argument injection, without calling gh', async () => {
-    diagnoseGhAuthMock.mockResolvedValue({ ghAvailable: true, activeAccount: { host: 'github.com' } })
+    diagnoseGhAuthMock.mockResolvedValue({
+      ghAvailable: true,
+      activeAccount: { host: 'github.com' }
+    })
     const result = await call({ repoId: repo.id, provider: 'github', name: '-x', confirmed: true })
     expect(result).toMatchObject({ error: expect.stringContaining('cannot start with') })
     expect(ghExecFileAsyncMock).not.toHaveBeenCalled()

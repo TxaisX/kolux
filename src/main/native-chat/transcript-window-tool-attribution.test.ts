@@ -17,7 +17,7 @@ afterEach(async () => {
 })
 
 async function writeTranscript(records: unknown[]): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-native-chat-attribution-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-attribution-'))
   tempRoots.push(root)
   const filePath = join(root, 'transcript.jsonl')
   await writeFile(filePath, records.map((record) => JSON.stringify(record)).join('\n'))

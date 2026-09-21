@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { hardenExistingSecureFile, writeSecureFile } from '../../shared/secure-file'
 
 const MINIMAX_API_KEY_FILE = 'minimax-api-key.enc'
-const API_KEY_ENVELOPE_PREFIX = 'nightshift-minimax-api-key:v1:'
+const API_KEY_ENVELOPE_PREFIX = 'kolux-minimax-api-key:v1:'
 let cachedMiniMaxApiKey: string | null = null
 let warnedMiniMaxApiKeyStatusHardenFailure = false
 
@@ -14,12 +14,12 @@ type MiniMaxApiKeyEnvelope = {
   payload: Buffer
 }
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
 function getMiniMaxApiKeyPath(): string {
-  return join(getNightshiftDir(), MINIMAX_API_KEY_FILE)
+  return join(getKoluxDir(), MINIMAX_API_KEY_FILE)
 }
 
 function encodeApiKeyEnvelope(kind: MiniMaxApiKeyEnvelope['kind'], payload: Buffer): string {

@@ -26,12 +26,12 @@ describe('resolveWatcherProcessEntryPath', () => {
   })
 
   it('uses the unpacked nested entry for packaged apps', () => {
-    const appPath = path.join('C:', 'Nightshift', 'resources', 'app.asar')
+    const appPath = path.join('C:', 'Kolux', 'resources', 'app.asar')
 
     expect(resolveWatcherProcessEntryPath(appPath, true, () => true)).toBe(
       path.join(
         'C:',
-        'Nightshift',
+        'Kolux',
         'resources',
         'app.asar.unpacked',
         'out',
@@ -42,30 +42,26 @@ describe('resolveWatcherProcessEntryPath', () => {
   })
 
   it('uses the adjacent entry for a packaged host whose app root is not an asar', () => {
-    // nightshiftd: a packaged Node bundle that ships this child beside nightshiftd.js. Gating the
+    // koluxd: a packaged Node bundle that ships this child beside koluxd.js. Gating the
     // adjacent probe on isPackaged sent it to a desktop out/main that never exists here.
-    const nightshiftdRoot = path.join(path.sep, 'opt', 'nightshift')
-    const adjacentEntry = path.join(nightshiftdRoot, 'parcel-watcher-process-entry.js')
+    const koluxdRoot = path.join(path.sep, 'opt', 'kolux')
+    const adjacentEntry = path.join(koluxdRoot, 'parcel-watcher-process-entry.js')
 
     expect(
-      resolveWatcherProcessEntryPath(
-        nightshiftdRoot,
-        true,
-        (candidate) => candidate === adjacentEntry
-      )
+      resolveWatcherProcessEntryPath(koluxdRoot, true, (candidate) => candidate === adjacentEntry)
     ).toBe(adjacentEntry)
   })
 
   it('falls back to the nested entry when a non-asar packaged host ships no adjacent child', () => {
-    const nightshiftdRoot = path.join(path.sep, 'opt', 'nightshift')
+    const koluxdRoot = path.join(path.sep, 'opt', 'kolux')
 
-    expect(resolveWatcherProcessEntryPath(nightshiftdRoot, true, () => false)).toBe(
-      path.join(nightshiftdRoot, 'out', 'main', 'parcel-watcher-process-entry.js')
+    expect(resolveWatcherProcessEntryPath(koluxdRoot, true, () => false)).toBe(
+      path.join(koluxdRoot, 'out', 'main', 'parcel-watcher-process-entry.js')
     )
   })
 
   it('uses resourcesPath for packaged Electron-as-Node serve processes', () => {
-    const resourcesPath = path.join('Applications', 'Nightshift.app', 'Contents', 'Resources')
+    const resourcesPath = path.join('Applications', 'Kolux.app', 'Contents', 'Resources')
     const packagedEntry = path.join(
       resourcesPath,
       'app.asar.unpacked',
@@ -84,7 +80,7 @@ describe('resolveWatcherProcessEntryPath', () => {
   })
 
   it('keeps the cwd build fallback when resourcesPath has no packaged entry', () => {
-    const appRoot = path.join('workspace', 'nightshift')
+    const appRoot = path.join('workspace', 'kolux')
 
     expect(
       resolveWatcherProcessEntryPathWithoutApp(

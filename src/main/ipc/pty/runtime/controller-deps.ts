@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { Store } from '../../../persistence'
 import type { IPtyProvider } from '../../../providers/types'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
@@ -20,7 +20,7 @@ import type { AdoptStablePaneArgs, AdoptStablePaneResult } from '../ipc/spawn-ty
 import type { finishPtyShutdown } from '../provider/liveness'
 
 export type PtyRuntimeControllerDeps = {
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   store?: Store
   adoptStablePane: (args: AdoptStablePaneArgs) => Promise<AdoptStablePaneResult | null>
   getLocalPtyStartupPromise: (connectionId?: string | null) => Promise<void> | undefined

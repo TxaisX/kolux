@@ -2,16 +2,16 @@ import {
   STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY,
   type RuntimeCapability
 } from '../../../../shared/protocol-version'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcContext } from '../core'
 
 type StructuredPolicyContext = Pick<RpcContext, 'clientCapabilities' | 'clientKind'> & {
-  runtime?: Pick<NightshiftRuntimeService, 'getClientSettings'>
+  runtime?: Pick<KoluxRuntimeService, 'getClientSettings'>
   structuredNativeChatEnabled?: boolean
 }
 
 export function isStructuredNativeChatEnabled(
-  runtime: Pick<NightshiftRuntimeService, 'getClientSettings'>
+  runtime: Pick<KoluxRuntimeService, 'getClientSettings'>
 ): boolean {
   try {
     return runtime.getClientSettings().experimentalStructuredNativeChat === true

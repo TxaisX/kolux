@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Terminal E2E helpers for agent-browser + CDP testing against a running Nightshift
+ * Terminal E2E helpers for agent-browser + CDP testing against a running Kolux
  * dev build. Encapsulates patterns discovered during manual terminal testing:
  *
  *   - CDP key events do NOT work with xterm.js (canvas-based renderer)
@@ -10,9 +10,9 @@
  *   - The visible terminal's PTY ID must be discovered (not guessed)
  *
  * Usage:
- *   import { NightshiftTerminal } from './terminal-e2e-helpers.mjs'
+ *   import { KoluxTerminal } from './terminal-e2e-helpers.mjs'
  *
- *   const term = new NightshiftTerminal(9444)       // CDP port
+ *   const term = new KoluxTerminal(9444)       // CDP port
  *   await term.connect()
  *   const ptyId = await term.discoverActivePtyId()
  *   await term.send(ptyId, 'echo hello\r')
@@ -52,8 +52,8 @@ function evalInRenderer(port, js) {
   return ab(port, ['eval', js])
 }
 
-export class NightshiftTerminal {
-  /** @param {number} cdpPort — the --remote-debugging-port used when launching Nightshift */
+export class KoluxTerminal {
+  /** @param {number} cdpPort — the --remote-debugging-port used when launching Kolux */
   constructor(cdpPort) {
     this.port = cdpPort
   }
@@ -140,10 +140,7 @@ export class NightshiftTerminal {
    * @param {number} maxId — highest PTY ID to probe
    * @param {string} screenshotPath — where to save the screenshot
    */
-  probePtyIdWithScreenshot(
-    maxId = 10,
-    screenshotPath = tempScreenshotPath('nightshift-pty-probe.png')
-  ) {
+  probePtyIdWithScreenshot(maxId = 10, screenshotPath = tempScreenshotPath('kolux-pty-probe.png')) {
     for (let i = 1; i <= maxId; i++) {
       evalInRenderer(this.port, `window.api.pty.write('${i}', '\\x03\\x15echo PTY_ID_${i}\\r')`)
     }
@@ -185,18 +182,18 @@ export class NightshiftTerminal {
   }
 
   /**
-   * Take a screenshot of the Nightshift window.
+   * Take a screenshot of the Kolux window.
    *
    * @param {string} path — output file path
    * @returns {string} the screenshot path
    */
-  screenshot(path = tempScreenshotPath('nightshift-terminal.png')) {
+  screenshot(path = tempScreenshotPath('kolux-terminal.png')) {
     ab(this.port, ['screenshot', path])
     return path
   }
 
   /**
-   * Open a new terminal tab in Nightshift.
+   * Open a new terminal tab in Kolux.
    * @returns {void}
    */
   newTerminal() {
@@ -214,7 +211,7 @@ export class NightshiftTerminal {
     this.exec(ptyId, 'echo __LANG__=$LANG')
     sleep(1_000)
     // Screenshot and return for inspection
-    return this.screenshot(tempScreenshotPath('nightshift-lang-check.png'))
+    return this.screenshot(tempScreenshotPath('kolux-lang-check.png'))
   }
 }
 
@@ -228,8 +225,8 @@ if (process.argv[1]?.endsWith('terminal-e2e-helpers.mjs')) {
   const port = portIdx !== -1 ? Number(args[portIdx + 1]) : 9444
   const command = cmdIdx !== -1 ? args[cmdIdx + 1] : null
 
-  const term = new NightshiftTerminal(port)
-  console.log('Connecting to Nightshift on CDP port', port, '...')
+  const term = new KoluxTerminal(port)
+  console.log('Connecting to Kolux on CDP port', port, '...')
   term.connect()
   console.log('Connected.')
 

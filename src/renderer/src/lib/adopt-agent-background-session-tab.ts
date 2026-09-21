@@ -44,10 +44,10 @@ export function reserveAgentBackgroundSessionIdentity(args: {
     launchRegistration,
     paneEnv: {
       ...args.env,
-      NIGHTSHIFT_PANE_KEY: paneKey,
-      NIGHTSHIFT_TAB_ID: reservedTabId,
-      NIGHTSHIFT_WORKTREE_ID: args.worktreeId,
-      NIGHTSHIFT_AGENT_LAUNCH_TOKEN: launchToken
+      KOLUX_PANE_KEY: paneKey,
+      KOLUX_TAB_ID: reservedTabId,
+      KOLUX_WORKTREE_ID: args.worktreeId,
+      KOLUX_AGENT_LAUNCH_TOKEN: launchToken
     }
   }
 }

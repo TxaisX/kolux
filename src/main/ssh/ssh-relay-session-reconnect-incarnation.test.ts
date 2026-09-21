@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import type * as NodeCrypto from 'node:crypto'
 import { SshRelaySession } from './ssh-relay-session'
-import { runRemoteNightshiftCli } from './ssh-remote-nightshift-cli'
+import { runRemoteKoluxCli } from './ssh-remote-kolux-cli'
 import { createMockDeps, mockDeploySuccess } from './ssh-relay-session-test-fixtures'
 import { getDefaultWorkspaceSession } from '../../shared/constants'
 import type { SshRemotePtyLease } from '../../shared/ssh-types'
@@ -53,8 +53,8 @@ vi.mock('node:crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof NodeCrypto>()
   return { ...actual, randomUUID: vi.fn() }
 })
-vi.mock('./ssh-remote-nightshift-cli', () => ({
-  runRemoteNightshiftCli: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
+vi.mock('./ssh-remote-kolux-cli', () => ({
+  runRemoteKoluxCli: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
 }))
 vi.mock('./ssh-channel-multiplexer', () => ({
   SshChannelMultiplexer: class MockSshChannelMultiplexer {
@@ -176,7 +176,7 @@ describe('SshRelaySession reconnect incarnation ordering', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     muxInstances.splice(0)
-    delete process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
+    delete process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
     muxRequestMock.mockReset()
     muxRequestMock.mockResolvedValue([])
     vi.mocked(randomUUID).mockReset()
@@ -379,7 +379,7 @@ describe('SshRelaySession reconnect incarnation ordering', () => {
     resolveStaleHealthCheck('/')
     await staleReconnect
 
-    const winningCliHandler = muxInstances[2]?.requestHandlers.get('nightshift.cli')
+    const winningCliHandler = muxInstances[2]?.requestHandlers.get('kolux.cli')
     expect(winningCliHandler).toBeDefined()
     await winningCliHandler?.({
       argv: ['artifacts', 'share', 'report.html'],
@@ -397,7 +397,7 @@ describe('SshRelaySession reconnect incarnation ordering', () => {
       'target-1',
       winningIncarnation
     )
-    expect(vi.mocked(runRemoteNightshiftCli)).toHaveBeenCalledWith(
+    expect(vi.mocked(runRemoteKoluxCli)).toHaveBeenCalledWith(
       runtime,
       expect.objectContaining({
         stdin: '<h1>Remote</h1>',

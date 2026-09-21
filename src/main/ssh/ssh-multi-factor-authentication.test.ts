@@ -149,7 +149,7 @@ function makeResolved(port: number, identityFile: string[]): SshResolvedConfig {
 }
 
 /** Drives ssh2 the way SshConnection does: one credential per keyboard-interactive prompt. */
-function connectWithNightshiftConfig(
+function connectWithKoluxConfig(
   target: SshTarget,
   resolved: SshResolvedConfig | null,
   password: string | undefined,
@@ -189,7 +189,7 @@ describe('multi-stage SSH authentication', () => {
   let homeEnv: { HOME?: string; USERPROFILE?: string }
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-mfa-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-mfa-'))
     // Why: the cases below pass `resolved: null`, so `resolvePrivateKeys` falls through to
     // `findDefaultKeyFile`, which reads `~/.ssh/id_*` through `homedir()`. On a developer
     // machine that picks up a real key, and an encrypted one makes ssh2 reject with
@@ -221,12 +221,9 @@ describe('multi-stage SSH authentication', () => {
   it('answers a keyboard-interactive stage that follows a password partial success', async () => {
     const server = await startMultiFactorServer(['password', 'keyboard-interactive'])
     try {
-      const { ready, prompts } = connectWithNightshiftConfig(
-        makeTarget(server.port),
-        null,
-        PASSWORD,
-        [PASSCODE]
-      )
+      const { ready, prompts } = connectWithKoluxConfig(makeTarget(server.port), null, PASSWORD, [
+        PASSCODE
+      ])
 
       await expect(ready).resolves.toBeUndefined()
       expect(prompts).toEqual(['Duo passcode:'])
@@ -238,12 +235,10 @@ describe('multi-stage SSH authentication', () => {
   it('answers a second keyboard-interactive stage after the first partially succeeds', async () => {
     const server = await startMultiFactorServer(['keyboard-interactive', 'keyboard-interactive'])
     try {
-      const { ready, prompts } = connectWithNightshiftConfig(
-        makeTarget(server.port),
-        null,
-        undefined,
-        [PASSCODE, PASSCODE]
-      )
+      const { ready, prompts } = connectWithKoluxConfig(makeTarget(server.port), null, undefined, [
+        PASSCODE,
+        PASSCODE
+      ])
 
       await expect(ready).resolves.toBeUndefined()
       expect(prompts).toEqual(['Duo passcode:', 'Duo passcode:'])
@@ -256,7 +251,7 @@ describe('multi-stage SSH authentication', () => {
     const server = await startMultiFactorServer(['password', 'keyboard-interactive'])
     try {
       const target = makeTarget(server.port, { source: 'ssh-config', configHost: 'hpc' })
-      const { ready } = connectWithNightshiftConfig(
+      const { ready } = connectWithKoluxConfig(
         target,
         makeResolved(server.port, keyPaths),
         PASSWORD,

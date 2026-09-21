@@ -71,7 +71,7 @@ export function mergeWindowsPathSegments(
 
   const persisted = dedupeSegments(persistedSegments)
   const persistedKeys = new Set(persisted.map(normalizeSegmentKey))
-  // Why: keep launch-time and Nightshift-injected entries that have no persisted position.
+  // Why: keep launch-time and Kolux-injected entries that have no persisted position.
   const injected = dedupeSegments(
     currentSegments.filter((segment) => !persistedKeys.has(normalizeSegmentKey(segment)))
   )

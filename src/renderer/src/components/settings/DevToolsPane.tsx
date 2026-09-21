@@ -5,7 +5,7 @@ import { Badge } from '../ui/badge'
 import { SettingsSubsectionHeader } from './SettingsFormControls'
 import { showDeleteWorktreeFailureToast } from '../sidebar/delete-worktree-failure-toast'
 import { showLocalBaseRefUpdateSuggestionToast } from '../sidebar/local-base-ref-suggestion-toast'
-import { useNightshiftProfileAuthStatusRefresh } from '@/hooks/use-nightshift-profile-auth-status-refresh'
+import { useKoluxProfileAuthStatusRefresh } from '@/hooks/use-kolux-profile-auth-status-refresh'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
@@ -127,30 +127,27 @@ function showDeleteFailureToast(): void {
   })
 }
 
-// Dev-only preview of the first-party Nightshift Cloud sign-in. The sidebar/titlebar
+// Dev-only preview of the first-party Kolux Cloud sign-in. The sidebar/titlebar
 // account switcher is hidden in packaged builds while the feature is in
 // progress; this surfaces it (and its status) in dev when the env vars are set.
-function NightshiftCloudDevSubsection(): React.JSX.Element {
-  const authStatus = useAppStore((s) => s.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((s) => s.nightshiftProfileConnecting)
-  const connect = useAppStore((s) => s.connectCurrentNightshiftProfile)
-  const signOut = useAppStore((s) => s.signOutCurrentNightshiftProfile)
-  const refresh = useAppStore((s) => s.fetchNightshiftProfileAuthStatus)
+function KoluxCloudDevSubsection(): React.JSX.Element {
+  const authStatus = useAppStore((s) => s.koluxProfileAuthStatus)
+  const connecting = useAppStore((s) => s.koluxProfileConnecting)
+  const connect = useAppStore((s) => s.connectCurrentKoluxProfile)
+  const signOut = useAppStore((s) => s.signOutCurrentKoluxProfile)
+  const refresh = useAppStore((s) => s.fetchKoluxProfileAuthStatus)
   const configured = authStatus?.configured === true
   const connected = authStatus?.state === 'connected'
-  useNightshiftProfileAuthStatusRefresh()
+  useKoluxProfileAuthStatusRefresh()
 
   return (
     <section className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <SettingsSubsectionHeader
-          title={translate(
-            'auto.components.settings.DevToolsPane.nightshiftCloud',
-            'Nightshift Cloud'
-          )}
+          title={translate('auto.components.settings.DevToolsPane.koluxCloud', 'Kolux Cloud')}
           description={translate(
-            'auto.components.settings.DevToolsPane.nightshiftCloudDescription',
-            'Dev-only preview of first-party cloud sign-in. Hidden in production; in dev it also appears in the sidebar account switcher once NIGHTSHIFT_CLOUD_API_URL and NIGHTSHIFT_CLOUD_CLIENT_ID are set.'
+            'auto.components.settings.DevToolsPane.koluxCloudDescription',
+            'Dev-only preview of first-party cloud sign-in. Hidden in production; in dev it also appears in the sidebar account switcher once KOLUX_CLOUD_API_URL and KOLUX_CLOUD_CLIENT_ID are set.'
           )}
         />
         <Badge variant="outline" className="mt-0.5">
@@ -161,7 +158,7 @@ function NightshiftCloudDevSubsection(): React.JSX.Element {
       {configured ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            {translate('auto.components.settings.DevToolsPane.nightshiftCloudStatus', 'Status')}:{' '}
+            {translate('auto.components.settings.DevToolsPane.koluxCloudStatus', 'Status')}:{' '}
             <span className="font-medium text-foreground">{authStatus?.state}</span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -173,10 +170,7 @@ function NightshiftCloudDevSubsection(): React.JSX.Element {
                 disabled={connecting}
                 onClick={() => void signOut()}
               >
-                {translate(
-                  'auto.components.settings.DevToolsPane.nightshiftCloudSignOut',
-                  'Sign out'
-                )}
+                {translate('auto.components.settings.DevToolsPane.koluxCloudSignOut', 'Sign out')}
               </Button>
             ) : (
               <Button
@@ -187,14 +181,14 @@ function NightshiftCloudDevSubsection(): React.JSX.Element {
                 onClick={() => void connect()}
               >
                 {translate(
-                  'auto.components.settings.DevToolsPane.nightshiftCloudConnect',
+                  'auto.components.settings.DevToolsPane.koluxCloudConnect',
                   'Connect profile'
                 )}
               </Button>
             )}
             <Button type="button" variant="ghost" size="sm" onClick={() => void refresh()}>
               {translate(
-                'auto.components.settings.DevToolsPane.nightshiftCloudRefresh',
+                'auto.components.settings.DevToolsPane.koluxCloudRefresh',
                 'Refresh status'
               )}
             </Button>
@@ -204,8 +198,8 @@ function NightshiftCloudDevSubsection(): React.JSX.Element {
         <p className="text-xs text-muted-foreground">
           {authStatus?.setupMessage ??
             translate(
-              'auto.components.settings.DevToolsPane.nightshiftCloudNotConfigured',
-              'Set NIGHTSHIFT_CLOUD_API_URL and NIGHTSHIFT_CLOUD_CLIENT_ID to preview Nightshift Cloud sign-in in this dev build.'
+              'auto.components.settings.DevToolsPane.koluxCloudNotConfigured',
+              'Set KOLUX_CLOUD_API_URL and KOLUX_CLOUD_CLIENT_ID to preview Kolux Cloud sign-in in this dev build.'
             )}
         </p>
       )}
@@ -335,7 +329,7 @@ export function DevToolsPane(): React.JSX.Element {
         </div>
       </section>
 
-      <NightshiftCloudDevSubsection />
+      <KoluxCloudDevSubsection />
     </div>
   )
 }

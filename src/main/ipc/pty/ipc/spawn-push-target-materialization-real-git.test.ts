@@ -20,7 +20,7 @@ import { triggerPtySpawnPushTargetMaterialization } from './spawn-push-target-ma
 const execFileAsync = promisify(execFile)
 
 const REPO_ID = 'repo-1'
-const FORK_REMOTE = 'pr-contributor-nightshift'
+const FORK_REMOTE = 'pr-contributor-kolux'
 const TRACKED_BRANCH = 'contributor/fix'
 
 let scratchDir = ''
@@ -35,14 +35,14 @@ async function git(args: string[], cwd: string): Promise<string> {
 }
 
 async function setIdentity(cwd: string): Promise<void> {
-  await git(['config', 'user.name', 'Nightshift Test'], cwd)
-  await git(['config', 'user.email', 'nightshift@example.test'], cwd)
+  await git(['config', 'user.name', 'Kolux Test'], cwd)
+  await git(['config', 'user.email', 'kolux@example.test'], cwd)
   await git(['config', 'commit.gpgSign', 'false'], cwd)
 }
 
 beforeEach(async () => {
   // realpath: macOS hands out /var/... temp paths while Git reports /private/var/...
-  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'nightshift-pty-spawn-push-target-')))
+  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'kolux-pty-spawn-push-target-')))
   repoPath = join(scratchDir, 'repo')
   forkPath = join(scratchDir, 'fork')
   worktreeId = `${REPO_ID}::${repoPath}`

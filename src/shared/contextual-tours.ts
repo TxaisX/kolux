@@ -114,7 +114,7 @@ export const CONTEXTUAL_TOURS = [
       },
       {
         title: 'Stay logged in',
-        body: 'Bring your existing logins into Nightshift to stay signed in immediately.',
+        body: 'Bring your existing logins into Kolux to stay signed in immediately.',
         // Prefer the always-visible Import button; fall back to the overflow-menu
         // item only once the user has dismissed the import hint.
         targetSelector:
@@ -207,7 +207,7 @@ export const CONTEXTUAL_TOURS = [
     steps: [
       {
         title: 'Pick a project',
-        body: 'Nightshift isolates each task in its own worktree, branched off your base.',
+        body: 'Kolux isolates each task in its own worktree, branched off your base.',
         targetSelector: '[data-contextual-tour-target="workspace-creation-project"]',
         requiredForStart: true
       },

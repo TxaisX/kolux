@@ -8,7 +8,7 @@ import { planHermesStartupQuery } from './hermes-startup-query'
 const windowsIt = process.platform === 'win32' ? it : it.skip
 
 windowsIt('preserves the startup query and spaced custom args in native Windows argv', () => {
-  const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-hermes-startup-query-'))
+  const tempDir = mkdtempSync(join(tmpdir(), 'kolux-hermes-startup-query-'))
   const capturePath = join(tempDir, 'argv.json')
   const hermesPath = join(tempDir, 'hermes.exe')
   const prompt = [
@@ -27,7 +27,7 @@ windowsIt('preserves the startup query and spaced custom args in native Windows 
     )
     const plan = planHermesStartupQuery({
       baseCommand: `"${hermesPath}"`,
-      agentArgs: '--yolo --source "Nightshift automation validation"',
+      agentArgs: '--yolo --source "Kolux automation validation"',
       prompt,
       platform: 'win32',
       shell: 'powershell'
@@ -43,7 +43,7 @@ windowsIt('preserves the startup query and spaced custom args in native Windows 
       `--query=${prompt}`,
       '--yolo',
       '--source',
-      'Nightshift automation validation',
+      'Kolux automation validation',
       '--tui'
     ])
   } finally {

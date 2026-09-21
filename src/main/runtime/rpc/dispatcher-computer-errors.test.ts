@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { RpcDispatcher } from './dispatcher'
 import { defineMethod, InvalidArgumentError, type RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 function makeRequest(method: string, params?: unknown): RpcRequest {
   return { id: 'req-1', authToken: 'tok', method, params }
 }
 
-function makeRuntime(): NightshiftRuntimeService {
+function makeRuntime(): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime'
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 const METHODS = [

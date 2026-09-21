@@ -47,15 +47,15 @@ describe('locale-translation-policy', () => {
     ).toBe('Gemini')
   })
 
-  it('preserves nightshift URL scheme in Chinese', () => {
+  it('preserves kolux URL scheme in Chinese', () => {
     expect(
       repairTranslatedValue({
         key: 'auto.web.WebConnect.27393856e4',
-        enValue: 'nightshift://pair?code=...',
+        enValue: 'kolux://pair?code=...',
         localeValue: '虎鲸://pair?code=...',
         locale: 'zh'
       })
-    ).toBe('nightshift://pair?code=...')
+    ).toBe('kolux://pair?code=...')
   })
 
   it('skips machine translation for standalone brands', () => {

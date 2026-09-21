@@ -1,6 +1,6 @@
 import type { AgentLaunchPreferences } from '../../../../../../shared/agent-session-host-authority'
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { createStructuredWorkerSession } from '../../orchestration-structured-worker-session'
@@ -40,7 +40,7 @@ export type WorkerSetupReceipt = {
     | 'not_applicable'
 }
 
-export function requireWorkerAuthority(runtime: NightshiftRuntimeService, terminalHandle: string) {
+export function requireWorkerAuthority(runtime: KoluxRuntimeService, terminalHandle: string) {
   const authority = runtime.getOrchestrationDispatchAuthority(terminalHandle)
   const paneKey = authority?.paneKey ?? runtime.getTerminalPaneKey(terminalHandle)
   const processIncarnation =
@@ -57,7 +57,7 @@ export function requireWorkerAuthority(runtime: NightshiftRuntimeService, termin
 }
 
 export async function createExistingWorktreeWorkerTerminal(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   worktreeId: string
   agent: TuiAgent
   launchPreferences?: AgentLaunchPreferences
@@ -93,7 +93,7 @@ export async function createExistingWorktreeWorkerTerminal(args: {
  * consult the structured registry, so the handle minted here answers exactly like a PTY handle.
  */
 export async function createStructuredWorkerSessionForWorktree(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   worktreeId: string
   agent: TuiAgent
   dispatchId: string
@@ -145,11 +145,11 @@ export function applyWaitForSetupOutcome(
 }
 
 export async function createWorkerWorktree(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchId: string
   requestedWorktree: string
-  coordinatorWorktree: Awaited<ReturnType<NightshiftRuntimeService['showManagedWorktree']>>
+  coordinatorWorktree: Awaited<ReturnType<KoluxRuntimeService['showManagedWorktree']>>
   params: {
     repo?: string
     name?: string
@@ -163,7 +163,7 @@ export async function createWorkerWorktree(args: {
   launchPreferences?: AgentLaunchPreferences
   effects: WorkerEffect[]
 }): Promise<{
-  worktree: Awaited<ReturnType<NightshiftRuntimeService['showManagedWorktree']>>
+  worktree: Awaited<ReturnType<KoluxRuntimeService['showManagedWorktree']>>
   terminalHandle: string
   setupReceipt: WorkerSetupReceipt
 }> {
@@ -250,16 +250,14 @@ export async function createWorkerWorktree(args: {
     terminalId: setupTerminalHandle ?? setupTerminal?.id
   })
   return {
-    worktree: created.worktree as Awaited<
-      ReturnType<NightshiftRuntimeService['showManagedWorktree']>
-    >,
+    worktree: created.worktree as Awaited<ReturnType<KoluxRuntimeService['showManagedWorktree']>>,
     terminalHandle,
     setupReceipt
   }
 }
 
 export function monitorWorkerSetup(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   runId: string
   dispatchId: string

@@ -1,6 +1,6 @@
 import { openSidebarProjectDialog } from './helpers/sidebar-project-dialog'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   launchHeadlessPairedRuntimeHost,
   type HeadlessPairedRuntimeHost
@@ -14,8 +14,8 @@ import {
 import { waitForSessionReady } from './helpers/store'
 
 test.skip(
-  process.env.NIGHTSHIFT_E2E_WEB_CLIENT !== '1',
-  'Run with NIGHTSHIFT_E2E_WEB_CLIENT=1 so the paired web client is built'
+  process.env.KOLUX_E2E_WEB_CLIENT !== '1',
+  'Run with KOLUX_E2E_WEB_CLIENT=1 so the paired web client is built'
 )
 
 type HostHealth = 'blocked' | 'disconnected'
@@ -80,7 +80,7 @@ async function assertCreationActionsDisabled(args: {
     .filter({ hasText: args.hostName })
   await expect(hostOption).toHaveAttribute('aria-disabled', 'true')
   await expect(hostOption).toContainText(
-    args.health === 'blocked' ? 'Update Nightshift' : 'Disconnected'
+    args.health === 'blocked' ? 'Update Kolux' : 'Disconnected'
   )
   await args.page.keyboard.press('Escape')
   await args.page.screenshot({
@@ -126,11 +126,11 @@ async function runUnavailableHostJourney(args: {
 
 test('disables paired-web Add Project for a blocked or unavailable headed host @headful', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(240_000)
-  await waitForSessionReady(nightshiftPage)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   await runUnavailableHostJourney({
     app: electronApp,
     offer,

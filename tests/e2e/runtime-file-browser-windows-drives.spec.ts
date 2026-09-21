@@ -1,6 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient
@@ -11,11 +11,11 @@ test.describe('paired runtime Windows file browser', () => {
   test.skip(process.platform !== 'win32', 'Windows drive roots require a Windows runtime host')
 
   test('reports the runtime path flavor with Windows drive roots', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     const client = await launchPairedElectronClient(offer, testInfo, 'Windows drive browser')
 
     try {

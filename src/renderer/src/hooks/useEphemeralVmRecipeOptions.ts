@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../../shared/execution-host'
-import type { NightshiftVmRecipe } from '../../../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../../../shared/kolux-yaml-hook-types'
 
 type EphemeralVmRecipeOptionsArgs = {
   enabled: boolean
@@ -13,12 +13,12 @@ type EphemeralVmRecipeOptionsArgs = {
 }
 
 export function useEphemeralVmRecipeOptions(args: EphemeralVmRecipeOptionsArgs): {
-  recipes: NightshiftVmRecipe[]
+  recipes: KoluxVmRecipe[]
   selectedRecipeId: string | null
   setSelectedRecipeId: (recipeId: string | null) => void
   error: string | null
 } {
-  const [recipes, setRecipes] = useState<NightshiftVmRecipe[]>([])
+  const [recipes, setRecipes] = useState<KoluxVmRecipe[]>([])
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const requestGeneration = useRef(0)

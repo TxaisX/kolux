@@ -1,18 +1,18 @@
 import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 import { writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
-test.use({ nightshiftAppExtraEnv: { NIGHTSHIFT_BACKGROUND_LAUNCH: '1' } })
+test.use({ koluxAppExtraEnv: { KOLUX_BACKGROUND_LAUNCH: '1' } })
 
 test('Create more clears the GitHub PR source before the next worktree', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], {
     cwd: testRepoPath,
     encoding: 'utf8'
@@ -21,13 +21,13 @@ test('Create more clears the GitHub PR source before the next worktree', async (
     ipcMain.removeHandler('worktrees:resolvePrBase')
     ipcMain.handle('worktrees:resolvePrBase', () => ({ baseBranch }))
   }, sha)
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     const store = window.__store!
     const state = store.getState()
     store.setState({ settings: { ...state.settings!, defaultTuiAgent: 'blank' } })
   })
-  await openSidebarWorkspaceComposer(nightshiftPage)
-  await nightshiftPage.evaluate(() => {
+  await openSidebarWorkspaceComposer(koluxPage)
+  await koluxPage.evaluate(() => {
     const store = window.__store!
     const repoId = store.getState().repos[0].id
     const item = {
@@ -53,10 +53,10 @@ test('Create more clears the GitHub PR source before the next worktree', async (
       })
     })
   })
-  const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+  const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
   const input = dialog.locator('[data-workspace-name-input="true"]')
   await input.click()
-  await nightshiftPage
+  await koluxPage
     .getByRole('option', { name: '#4242 Fix workspace task reset', exact: true })
     .click()
   const pill = dialog.locator('[data-workspace-source-pill="true"]')
@@ -67,7 +67,7 @@ test('Create more clears the GitHub PR source before the next worktree', async (
   await expect(input).toHaveValue('')
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(() =>
+      koluxPage.evaluate(() =>
         window
           .__store!.getState()
           .allWorktrees()
@@ -75,7 +75,7 @@ test('Create more clears the GitHub PR source before the next worktree', async (
       )
     )
     .toBe(true)
-  const cdp = await nightshiftPage.context().newCDPSession(nightshiftPage)
+  const cdp = await koluxPage.context().newCDPSession(koluxPage)
   const screenshot = await cdp.send('Page.captureScreenshot')
   const proofPath = testInfo.outputPath('create-more-result.png')
   writeFileSync(proofPath, Buffer.from(screenshot.data, 'base64'))
@@ -93,7 +93,7 @@ test('Create more clears the GitHub PR source before the next worktree', async (
   await dialog.getByRole('button', { name: /^Create/ }).click()
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(() => {
+      koluxPage.evaluate(() => {
         const worktree = window
           .__store!.getState()
           .allWorktrees()

@@ -13,7 +13,7 @@ const FORCE_KILL_APP_SERVER = String.raw`
   const descendant = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 60000)"], {
     stdio: 'ignore'
   })
-  const exitMode = process.env.NIGHTSHIFT_TEST_PROVIDER_EXIT_MODE
+  const exitMode = process.env.KOLUX_TEST_PROVIDER_EXIT_MODE
   const send = (payload) => process.stdout.write(JSON.stringify(payload) + '\n')
   readline.createInterface({ input: process.stdin }).on('line', (line) => {
     const message = JSON.parse(line)
@@ -58,7 +58,7 @@ async function openServer(
       args: ['-e', FORCE_KILL_APP_SERVER],
       env: {
         [CODEX_SPAWN_TOKEN_ENV]: `teardown-test-${process.pid}-${iteration}`,
-        ...(exitMode ? { NIGHTSHIFT_TEST_PROVIDER_EXIT_MODE: exitMode } : {})
+        ...(exitMode ? { KOLUX_TEST_PROVIDER_EXIT_MODE: exitMode } : {})
       }
     },
     {

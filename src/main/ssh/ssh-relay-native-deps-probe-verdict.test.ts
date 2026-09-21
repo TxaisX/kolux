@@ -16,9 +16,9 @@ vi.mock('fs', () => ({
 
 vi.mock('./relay-protocol', () => ({
   RELAY_VERSION: '0.1.0',
-  RELAY_REMOTE_DIR: '.nightshift-remote',
+  RELAY_REMOTE_DIR: '.kolux-remote',
   parseUnameToRelayPlatform: vi.fn().mockReturnValue('linux-x64'),
-  RELAY_SENTINEL: 'NIGHTSHIFT-RELAY v0.1.0 READY\n',
+  RELAY_SENTINEL: 'KOLUX-RELAY v0.1.0 READY\n',
   RELAY_SENTINEL_TIMEOUT_MS: 10_000
 }))
 
@@ -46,7 +46,7 @@ vi.mock('./ssh-relay-install-marker', async (importOriginal) => ({
 
 vi.mock('./ssh-relay-versioned-install', () => ({
   readLocalFullVersion: vi.fn().mockReturnValue('0.1.0+testhash'),
-  computeRemoteRelayDir: (home: string, v: string) => `${home}/.nightshift-remote/relay-${v}`,
+  computeRemoteRelayDir: (home: string, v: string) => `${home}/.kolux-remote/relay-${v}`,
   isRelayAlreadyInstalled: vi.fn().mockResolvedValue(true),
   finalizeInstall: vi.fn().mockResolvedValue(undefined),
   abandonInstall: vi.fn().mockResolvedValue(undefined),
@@ -87,7 +87,7 @@ import {
 
 // Stdout of the relay-side pty-master cloexec patch, which runs on Linux hosts once a
 // freshly installed node-pty loads (#17915).
-const NPTY_CLOEXEC_PATCHED = 'NIGHTSHIFT-NPTY-CLOEXEC:patched\n'
+const NPTY_CLOEXEC_PATCHED = 'KOLUX-NPTY-CLOEXEC:patched\n'
 const NODE_PTY_RESET = "rm -rf 'node_modules/node-pty'"
 const WATCHER_RESET = "rm -rf 'node_modules/@parcel/watcher'"
 
@@ -133,7 +133,7 @@ describe('native-deps repair probe verdicts', () => {
   it('launches an intact relay when the health probe never answers', async () => {
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       { reject: 'SSH channel closed unexpectedly' }, // health probe: unverifiable, not MISSING
       '', // launch namespace marker
@@ -161,9 +161,7 @@ describe('native-deps repair probe verdicts', () => {
     expect(commands.some((command) => command.includes(WATCHER_RESET))).toBe(false)
     expect(commands.some((command) => command.includes('npm install'))).toBe(false)
     // Exactly one probe: an unverifiable answer must not fall through to the locked re-probe.
-    expect(
-      commands.filter((command) => command.includes('NIGHTSHIFT-NATIVE-DEPS-OK'))
-    ).toHaveLength(1)
+    expect(commands.filter((command) => command.includes('KOLUX-NATIVE-DEPS-OK'))).toHaveLength(1)
     expect(vi.mocked(finalizeInstall)).not.toHaveBeenCalled()
     expect(outcome, 'lost contact must not abort the connection').not.toBeInstanceOf(Error)
   })
@@ -173,7 +171,7 @@ describe('native-deps repair probe verdicts', () => {
     // (bad NODE_OPTIONS, OOM kill, exit 127). The shell answered; the answer is not about the deps.
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       'MISSING', // answered, no marker line: nothing here names a dep
       '', // launch namespace marker
@@ -194,9 +192,7 @@ describe('native-deps repair probe verdicts', () => {
     expect(commands.some((command) => command.includes(WATCHER_RESET))).toBe(false)
     expect(commands.some((command) => command.includes('npm install'))).toBe(false)
     // One probe only: an unverifiable answer must not fall through to the locked re-probe.
-    expect(
-      commands.filter((command) => command.includes('NIGHTSHIFT-NATIVE-DEPS-OK'))
-    ).toHaveLength(1)
+    expect(commands.filter((command) => command.includes('KOLUX-NATIVE-DEPS-OK'))).toHaveLength(1)
     expect(vi.mocked(finalizeInstall)).not.toHaveBeenCalled()
     expect(outcome, 'an unparseable answer must not abort the connection').not.toBeInstanceOf(Error)
     expect(warnings().some((message) => message.includes('NATIVE-DEPS-PROBE-UNPARSEABLE'))).toBe(
@@ -207,7 +203,7 @@ describe('native-deps repair probe verdicts', () => {
   it('carries the probe stderr into the unparseable-answer warning', async () => {
     const conn = makeMockConnection(sftpCapture)
     vi.mocked(execCommand)
-      .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+      .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
       .mockResolvedValueOnce('/home/u')
       .mockImplementationOnce((_conn, _command, options) => {
         options?.onStderr?.('node: --inspect-brk is not allowed in NODE_OPTIONS')
@@ -226,14 +222,14 @@ describe('native-deps repair probe verdicts', () => {
   it('still resets both deps when the probe names both', async () => {
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       BOTH_NATIVE_DEPS_MISSING_PROBE, // answered: both deps are genuinely broken
       BOTH_NATIVE_DEPS_MISSING_PROBE, // re-probe under the repair lock
       '', // SFTP-namespace install-owner marker (repair)
       '', // npm install native deps
       '', // chmod prebuilds
-      'NIGHTSHIFT-NPTY-PROBE-OK\n',
+      'KOLUX-NPTY-PROBE-OK\n',
       '', // rm probe stderr
       NPTY_CLOEXEC_PATCHED,
       'DEAD',
@@ -255,7 +251,7 @@ describe('native-deps repair probe verdicts', () => {
     vi.mocked(resolveRemoteNodePath).mockResolvedValueOnce('C:/Program Files/nodejs/node.exe')
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Windows AMD64',
+      '__KOLUX_REMOTE_PLATFORM__ Windows AMD64',
       'C:\\Users\\u',
       '', // health probe: PowerShell swallowed the native failure, so nothing names a dep
       '', // no persisted active pipe marker
@@ -279,16 +275,16 @@ describe('native-deps repair probe verdicts', () => {
 
   it('resets only the dep the probe names', async () => {
     const conn = makeMockConnection(sftpCapture)
-    const watcherMissing = 'NIGHTSHIFT-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING'
+    const watcherMissing = 'KOLUX-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING'
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       watcherMissing,
       watcherMissing, // re-probe under the repair lock
       '', // SFTP-namespace install-owner marker (repair)
       '', // npm install native deps
       '', // chmod prebuilds
-      'NIGHTSHIFT-NPTY-PROBE-OK\n',
+      'KOLUX-NPTY-PROBE-OK\n',
       '', // rm probe stderr
       NPTY_CLOEXEC_PATCHED,
       'DEAD',
@@ -306,9 +302,9 @@ describe('native-deps repair probe verdicts', () => {
   it('skips repair entirely when the probe answers OK', async () => {
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
-      'NIGHTSHIFT-NATIVE-DEPS-OK',
+      'KOLUX-NATIVE-DEPS-OK',
       '', // launch namespace marker
       'DEAD',
       'READY'
@@ -323,14 +319,14 @@ describe('native-deps repair probe verdicts', () => {
   it('keeps the answered reset scope when the locked re-probe cannot answer', async () => {
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
-      'NIGHTSHIFT-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // answered: only the watcher is broken
+      'KOLUX-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // answered: only the watcher is broken
       { reject: 'SSH channel closed unexpectedly' }, // re-probe under the lock: unverifiable
       '', // SFTP-namespace install-owner marker (repair)
       '', // npm install native deps
       '', // chmod prebuilds
-      'NIGHTSHIFT-NPTY-PROBE-OK\n',
+      'KOLUX-NPTY-PROBE-OK\n',
       '', // rm probe stderr
       NPTY_CLOEXEC_PATCHED,
       'DEAD',

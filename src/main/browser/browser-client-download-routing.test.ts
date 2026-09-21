@@ -53,7 +53,7 @@ function environment(input: {
         ok: true,
         result: {
           accepted: true,
-          workspaceRelativePath: `.nightshift/browser-downloads/${input.environmentId}.bin`
+          workspaceRelativePath: `.kolux/browser-downloads/${input.environmentId}.bin`
         },
         _meta: {}
       } as never

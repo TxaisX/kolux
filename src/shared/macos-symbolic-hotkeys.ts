@@ -163,7 +163,7 @@ function candidateBindings(actionId: KeybindingActionId, binding: string): strin
   )
 }
 
-/** Finds Nightshift bindings intercepted by Mission Control. */
+/** Finds Kolux bindings intercepted by Mission Control. */
 export function findMacSystemHotkeyConflicts(
   definitions: readonly KeybindingDefinition[],
   platform: NodeJS.Platform,

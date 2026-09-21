@@ -16,7 +16,7 @@ import type { ExecutionHostId } from '../../../shared/execution-host'
 import type { FolderWorkspace } from '../../../shared/folder-workspace-types'
 import type { Worktree } from '../../../shared/worktree/types'
 
-const SHARED_WORKTREE_ID = 'repo-shared::/work/nightshift-feature'
+const SHARED_WORKTREE_ID = 'repo-shared::/work/kolux-feature'
 
 // A production collision differs only by host: `worktreeId` is `repoId::path`,
 // so both rows necessarily carry the same repoId and path (see STA-4343's
@@ -24,13 +24,13 @@ const SHARED_WORKTREE_ID = 'repo-shared::/work/nightshift-feature'
 const localWorktree: Worktree = {
   id: SHARED_WORKTREE_ID,
   repoId: 'repo-shared',
-  path: '/work/nightshift-feature',
+  path: '/work/kolux-feature',
   hostId: 'local',
   head: 'abc123',
   branch: 'feature',
   isBare: false,
   isMainWorktree: false,
-  displayName: 'nightshift-feature',
+  displayName: 'kolux-feature',
   comment: '',
   linkedIssue: null,
   linkedPR: null,
@@ -46,8 +46,8 @@ const sshWorktree: Worktree = { ...localWorktree, hostId: 'ssh:build-box' }
 const localFolder: FolderWorkspace = {
   id: 'folder-shared',
   projectGroupId: 'group-shared',
-  name: 'nightshift',
-  folderPath: '/work/nightshift-local',
+  name: 'kolux',
+  folderPath: '/work/kolux-local',
   executionHostId: 'local',
   linkedTask: null,
   comment: '',
@@ -61,7 +61,7 @@ const localFolder: FolderWorkspace = {
 }
 const runtimeFolder: FolderWorkspace = {
   ...localFolder,
-  folderPath: '/remote/nightshift',
+  folderPath: '/remote/kolux',
   executionHostId: 'runtime:env-1'
 }
 
@@ -87,7 +87,7 @@ describe('projectWorkspaceSurfaces', () => {
   it('emits one surface per workspace id when two hosts publish the same worktree', () => {
     const surfaces = project({ worktrees: [localWorktree, sshWorktree] })
 
-    expect(surfaces).toEqual([{ id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' }])
+    expect(surfaces).toEqual([{ id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' }])
   })
 
   it('never emits a duplicate id, so mount loops cannot reuse a React key', () => {
@@ -115,7 +115,7 @@ describe('projectWorkspaceSurfaces', () => {
       activeWorkspaceResolvedHostId: 'runtime:env-1'
     })
 
-    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/remote/nightshift' }])
+    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/remote/kolux' }])
   })
 
   it('keeps the first row when no resolved host disambiguates the folder collision', () => {
@@ -123,7 +123,7 @@ describe('projectWorkspaceSurfaces', () => {
       folderWorkspaces: [runtimeFolder, localFolder]
     })
 
-    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/remote/nightshift' }])
+    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/remote/kolux' }])
   })
 
   it('keeps first-wins for a colliding folder workspace that is not the active one', () => {
@@ -136,12 +136,12 @@ describe('projectWorkspaceSurfaces', () => {
       activeWorkspaceResolvedHostId: 'runtime:env-1'
     })
 
-    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/work/nightshift-local' }])
+    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/work/kolux-local' }])
     expect(warn).toHaveBeenCalledWith(
       '[workspace-surface] dropping colliding folder path',
       expect.objectContaining({
-        kept: '/work/nightshift-local',
-        dropped: '/remote/nightshift'
+        kept: '/work/kolux-local',
+        dropped: '/remote/kolux'
       })
     )
     warn.mockRestore()
@@ -156,7 +156,7 @@ describe('projectWorkspaceSurfaces', () => {
       activeWorkspaceResolvedHostId: 'local'
     })
 
-    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/work/nightshift-local' }])
+    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/work/kolux-local' }])
   })
 
   it('switches the active folder path from first-wins to the host that hydrates', () => {
@@ -174,8 +174,8 @@ describe('projectWorkspaceSurfaces', () => {
       activeWorkspaceResolvedHostId: 'runtime:env-1'
     })
 
-    expect(hydrating).toEqual([{ id: 'folder:folder-shared', path: '/work/nightshift-local' }])
-    expect(hydrated).toEqual([{ id: 'folder:folder-shared', path: '/remote/nightshift' }])
+    expect(hydrating).toEqual([{ id: 'folder:folder-shared', path: '/work/kolux-local' }])
+    expect(hydrated).toEqual([{ id: 'folder:folder-shared', path: '/remote/kolux' }])
     // The id is what mounts; only the path moves, so the transition is no remount.
     expect(hydrated[0]?.id).toBe(hydrating[0]?.id)
   })
@@ -185,19 +185,19 @@ describe('projectWorkspaceSurfaces', () => {
     // mount prune drops ids that leave the projection.
     const surfaces = project({ worktrees: [localWorktree] })
 
-    expect(surfaces).toEqual([{ id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' }])
+    expect(surfaces).toEqual([{ id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' }])
   })
 
   it('keeps distinct workspaces on one host', () => {
     const otherWorktree: Worktree = {
       ...localWorktree,
-      id: 'repo-shared::/work/nightshift-other',
-      path: '/work/nightshift-other'
+      id: 'repo-shared::/work/kolux-other',
+      path: '/work/kolux-other'
     }
 
     expect(project({ worktrees: [localWorktree, otherWorktree] })).toEqual([
-      { id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' },
-      { id: 'repo-shared::/work/nightshift-other', path: '/work/nightshift-other' }
+      { id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' },
+      { id: 'repo-shared::/work/kolux-other', path: '/work/kolux-other' }
     ])
   })
 })
@@ -220,8 +220,8 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
   it('emits every distinct id from a mixed local, SSH, runtime and folder catalog', () => {
     const distinctWorktree: Worktree = {
       ...sshWorktree,
-      id: 'repo-shared::/work/nightshift-ssh-only',
-      path: '/work/nightshift-ssh-only'
+      id: 'repo-shared::/work/kolux-ssh-only',
+      path: '/work/kolux-ssh-only'
     }
     const distinctFolder: FolderWorkspace = {
       ...runtimeFolder,
@@ -243,8 +243,8 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
   it('mounts a local-only catalog whose rows never name a host', () => {
     const otherUnqualified: Worktree = {
       ...unqualifiedWorktree,
-      id: 'repo-shared::/work/nightshift-other',
-      path: '/work/nightshift-other'
+      id: 'repo-shared::/work/kolux-other',
+      path: '/work/kolux-other'
     }
 
     expect(
@@ -253,9 +253,9 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
         folderWorkspaces: [localOnlyFolder]
       })
     ).toEqual([
-      { id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' },
-      { id: 'repo-shared::/work/nightshift-other', path: '/work/nightshift-other' },
-      { id: 'folder:folder-local-only', path: '/work/nightshift-local' }
+      { id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' },
+      { id: 'repo-shared::/work/kolux-other', path: '/work/kolux-other' },
+      { id: 'folder:folder-local-only', path: '/work/kolux-local' }
     ])
   })
 
@@ -263,16 +263,16 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
     // `composeWorktreeHostIdentity` gives an unqualified row its own bucket, so
     // the pair survives the host-qualified index and must still collapse to one id.
     expect(project({ worktrees: [unqualifiedWorktree, localWorktree] })).toEqual([
-      { id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' }
+      { id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' }
     ])
     expect(project({ worktrees: [localWorktree, unqualifiedWorktree] })).toEqual([
-      { id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' }
+      { id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' }
     ])
   })
 
   it('collapses two SSH hosts publishing one worktree id, with no local row present', () => {
     expect(project({ worktrees: [sshWorktree, secondSshWorktree] })).toEqual([
-      { id: SHARED_WORKTREE_ID, path: '/work/nightshift-feature' }
+      { id: SHARED_WORKTREE_ID, path: '/work/kolux-feature' }
     ])
   })
 
@@ -285,14 +285,14 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
 
     expect(surfaces).toEqual([
       { id: 'folder-shared', path: '/work/collide' },
-      { id: 'folder:folder-shared', path: '/work/nightshift-local' }
+      { id: 'folder:folder-shared', path: '/work/kolux-local' }
     ])
   })
 
   it('collapses folder rows across three hosts to one surface without losing the id', () => {
     const sshFolder: FolderWorkspace = {
       ...localFolder,
-      folderPath: '/ssh/nightshift',
+      folderPath: '/ssh/kolux',
       executionHostId: undefined,
       connectionId: 'build-box'
     }
@@ -303,7 +303,7 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
       activeWorkspaceResolvedHostId: 'ssh:build-box'
     })
 
-    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/ssh/nightshift' }])
+    expect(surfaces).toEqual([{ id: 'folder:folder-shared', path: '/ssh/kolux' }])
   })
 
   it('does not let a folder row that names no host win the local tie-break', () => {
@@ -311,7 +311,7 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
     // would mount the unstamped row's path over the row that really is local.
     const unstampedPeer: FolderWorkspace = {
       ...localFolder,
-      folderPath: '/unknown/nightshift',
+      folderPath: '/unknown/kolux',
       executionHostId: undefined,
       connectionId: undefined
     }
@@ -322,7 +322,7 @@ describe('projectWorkspaceSurfaces never under-selects', () => {
         activeWorkspaceId: 'folder:folder-shared',
         activeWorkspaceResolvedHostId: 'local'
       })
-    ).toEqual([{ id: 'folder:folder-shared', path: '/work/nightshift-local' }])
+    ).toEqual([{ id: 'folder:folder-shared', path: '/work/kolux-local' }])
   })
 
   it('emits nothing extra and nothing missing for an empty catalog', () => {

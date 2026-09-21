@@ -68,7 +68,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -709,7 +709,7 @@ describe('Store', () => {
       sshPtyConsumerRecoveries: { ownerLease: string }[]
     }
     expect(persisted.sshPtyConsumerRecoveries[0]?.ownerLease).not.toBe('secret-owner-lease')
-    expect(existsSync(join(testState.dir, 'nightshift-github-cache.json'))).toBe(false)
+    expect(existsSync(join(testState.dir, 'kolux-github-cache.json'))).toBe(false)
 
     const reloaded = await createStore()
     expect(reloaded.getSshPtyConsumerRecovery('ssh-1')).toEqual({
@@ -751,7 +751,7 @@ describe('Store', () => {
       label: 'SSH 1',
       host: 'example.test',
       port: 22,
-      username: 'nightshift'
+      username: 'kolux'
     })
     await store.upsertSshPtyConsumerRecovery({
       targetId: 'ssh-1',

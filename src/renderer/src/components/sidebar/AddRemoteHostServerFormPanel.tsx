@@ -41,7 +41,7 @@ export function AddRemoteHostServerFormPanel({
         <DialogDescription>
           {translate(
             'auto.components.sidebar.AddRemoteHostDialog.serverDescription',
-            'Pair with Nightshift running on another computer.'
+            'Pair with Kolux running on another computer.'
           )}
         </DialogDescription>
       </DialogHeader>

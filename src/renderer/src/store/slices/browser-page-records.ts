@@ -4,7 +4,7 @@ import type {
   BrowserWorkspace
 } from '../../../../shared/browser-workspace-types'
 import { browserPageDocLocationsEqual } from '../../../../shared/browser-page-doc-location'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../shared/constants'
 import { redactKagiSessionToken } from '../../../../shared/browser-url'
 import { isDocPreviewUrl } from '../../../../shared/doc-preview-scheme'
 import { basename } from '@/lib/path'
@@ -38,9 +38,9 @@ export function normalizeBrowserTitle(
   }
   if (
     url === 'about:blank' ||
-    url === NIGHTSHIFT_BROWSER_BLANK_URL ||
+    url === KOLUX_BROWSER_BLANK_URL ||
     title === 'about:blank' ||
-    title === NIGHTSHIFT_BROWSER_BLANK_URL ||
+    title === KOLUX_BROWSER_BLANK_URL ||
     !title
   ) {
     // Why: don't surface the internal blank-guest URL as a title (leaks an impl detail, looks broken); show "New Tab" instead.
@@ -61,7 +61,7 @@ export function buildBrowserPage(
   // Why the url is overridden rather than trusted: this is the one place a page's url is minted,
   // and it is read by persistence, the mobile publisher, history and the address bar. A grant URL
   // reaching any of them would outlive the grant and name a document that machine cannot read.
-  const normalizedUrl = docLocation ? NIGHTSHIFT_BROWSER_BLANK_URL : normalizeUrl(url)
+  const normalizedUrl = docLocation ? KOLUX_BROWSER_BLANK_URL : normalizeUrl(url)
   return {
     id: browserPageId ?? createBrowserUuid(),
     workspaceId,

@@ -18,7 +18,7 @@ import { ClientHostedBrowserPagePane } from './ClientHostedBrowserPagePane'
 type PopupEvent = {
   browserPageId: string
   origin: string
-  action: 'opened-in-nightshift' | 'opened-external' | 'blocked'
+  action: 'opened-in-kolux' | 'opened-external' | 'blocked'
 }
 
 let popups = paneChannel<PopupEvent>()
@@ -82,7 +82,7 @@ describe('ClientHostedBrowserPagePane popup notices', () => {
     emitPopup()
 
     expect(toastMocks.message).toHaveBeenCalledWith(
-      'https://accounts.example.com tried to open a popup Nightshift does not support here.',
+      'https://accounts.example.com tried to open a popup Kolux does not support here.',
       { id: 'browser-popup:page-a:blocked:https://accounts.example.com' }
     )
   })
@@ -99,10 +99,10 @@ describe('ClientHostedBrowserPagePane popup notices', () => {
     expect(new Set(ids).size).toBe(1)
   })
 
-  it('silences in-Nightshift opens but reports external opens', () => {
+  it('silences in-Kolux opens but reports external opens', () => {
     renderPane()
 
-    emitPopup({ action: 'opened-in-nightshift' })
+    emitPopup({ action: 'opened-in-kolux' })
     expect(toastMocks.message).not.toHaveBeenCalled()
     emitPopup({ action: 'opened-external' })
     expect(toastMocks.message).toHaveBeenCalledExactlyOnceWith(

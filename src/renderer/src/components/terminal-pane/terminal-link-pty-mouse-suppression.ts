@@ -85,7 +85,7 @@ export function installTerminalLinkPtyMouseSuppression(
     }
     restore()
     previousMouseEventsRequireAlt = Boolean(terminal.options.mouseEventsRequireAlt)
-    // Why: a Nightshift-owned link gesture must not also reach a mouse-aware child TUI.
+    // Why: a Kolux-owned link gesture must not also reach a mouse-aware child TUI.
     terminal.options.mouseEventsRequireAlt = true
     ownerDocument?.addEventListener('mouseup', queueRestore)
     ownerWindow?.addEventListener('blur', restore)

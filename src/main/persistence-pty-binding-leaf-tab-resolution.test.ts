@@ -17,7 +17,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({ getCohortAtEmit: () => ({}) })
 
 describe('findTerminalTabIdForLeaf after persistPtyBinding grafts a leaf', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })

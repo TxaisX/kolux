@@ -150,7 +150,7 @@ export const getExperimentalPaneSearchEntries = createLocalizedCatalog(
       ),
       description: translate(
         'auto.components.settings.experimental.search.agentHibernation.description',
-        'Stops idle background agent terminals after the configured idle window and resumes supported sessions when opened again. Agent sleep preserves launch options for agents started by Nightshift; manually started agents may resume with current Nightshift defaults.'
+        'Stops idle background agent terminals after the configured idle window and resumes supported sessions when opened again. Agent sleep preserves launch options for agents started by Kolux; manually started agents may resume with current Kolux defaults.'
       ),
       keywords: [
         ...translateSearchKeyword(

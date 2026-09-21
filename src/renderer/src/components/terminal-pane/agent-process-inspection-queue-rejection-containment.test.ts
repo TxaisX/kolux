@@ -38,7 +38,7 @@ describe('agent process inspection queue rejection containment', () => {
         run: () =>
           Promise.reject(
             new Error(
-              "Error invoking remote method 'runtimeEnvironments:call': RemoteRuntimeClientError: Could not connect to the remote Nightshift runtime."
+              "Error invoking remote method 'runtimeEnvironments:call': RemoteRuntimeClientError: Could not connect to the remote Kolux runtime."
             )
           )
       })

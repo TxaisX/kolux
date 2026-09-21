@@ -6,7 +6,7 @@ import { prepareDevCliTerminalWrappers } from './dev-cli-terminal-wrapper.mjs'
 
 describe('dev CLI terminal wrappers', () => {
   it('writes profile-scoped Windows wrappers for worker terminals', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nightshift-dev-terminal-wrapper-'))
+    const root = mkdtempSync(path.join(tmpdir(), 'kolux-dev-terminal-wrapper-'))
     const userDataPath = path.join(root, 'profile')
     prepareDevCliTerminalWrappers({
       repoRoot: root,
@@ -15,23 +15,18 @@ describe('dev CLI terminal wrappers', () => {
       platform: 'win32'
     })
 
-    const wrapper = readFileSync(
-      path.join(userDataPath, 'cli', 'bin', 'nightshift-dev.cmd'),
-      'utf8'
-    )
-    expect(wrapper).toContain(`set "NIGHTSHIFT_USER_DATA_PATH=${userDataPath}"`)
-    expect(wrapper).toContain('set "NIGHTSHIFT_DEV_CLI_INVOCATION=1"')
+    const wrapper = readFileSync(path.join(userDataPath, 'cli', 'bin', 'kolux-dev.cmd'), 'utf8')
+    expect(wrapper).toContain(`set "KOLUX_USER_DATA_PATH=${userDataPath}"`)
+    expect(wrapper).toContain('set "KOLUX_DEV_CLI_INVOCATION=1"')
     expect(wrapper).toContain(`node "${path.join(root, 'out', 'cli', 'index.js')}" %*`)
-    expect(readFileSync(path.join(userDataPath, 'cli', 'bin', 'nightshift.cmd'), 'utf8')).toBe(
-      wrapper
-    )
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift-dev.cmd'), 'utf8')).toBe(wrapper)
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift.cmd'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(userDataPath, 'cli', 'bin', 'kolux.cmd'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux-dev.cmd'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux.cmd'), 'utf8')).toBe(wrapper)
   })
 
   it('escapes literal percent signs in every Windows batch path', () => {
     const root = path.join(
-      mkdtempSync(path.join(tmpdir(), 'nightshift-dev-terminal-wrapper-')),
+      mkdtempSync(path.join(tmpdir(), 'kolux-dev-terminal-wrapper-')),
       '%repo%'
     )
     const userDataPath = path.join(root, '%profile%')
@@ -43,25 +38,20 @@ describe('dev CLI terminal wrappers', () => {
       platform: 'win32'
     })
 
-    const wrapper = readFileSync(
-      path.join(userDataPath, 'cli', 'bin', 'nightshift-dev.cmd'),
-      'utf8'
-    )
+    const wrapper = readFileSync(path.join(userDataPath, 'cli', 'bin', 'kolux-dev.cmd'), 'utf8')
+    expect(wrapper).toContain(`set "KOLUX_USER_DATA_PATH=${userDataPath.replaceAll('%', '%%')}"`)
     expect(wrapper).toContain(
-      `set "NIGHTSHIFT_USER_DATA_PATH=${userDataPath.replaceAll('%', '%%')}"`
-    )
-    expect(wrapper).toContain(
-      `set "NIGHTSHIFT_APP_EXECUTABLE=${electronExecutable.replaceAll('%', '%%')}"`
+      `set "KOLUX_APP_EXECUTABLE=${electronExecutable.replaceAll('%', '%%')}"`
     )
     expect(wrapper).toContain(
       `node "${path.join(root, 'out', 'cli', 'index.js').replaceAll('%', '%%')}" %*`
     )
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift-dev.cmd'), 'utf8')).toBe(wrapper)
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift.cmd'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux-dev.cmd'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux.cmd'), 'utf8')).toBe(wrapper)
   })
 
   it('writes executable-style POSIX wrappers with the same profile identity', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nightshift-dev-terminal-wrapper-'))
+    const root = mkdtempSync(path.join(tmpdir(), 'kolux-dev-terminal-wrapper-'))
     const userDataPath = path.join(root, 'profile')
     prepareDevCliTerminalWrappers({
       repoRoot: root,
@@ -70,14 +60,14 @@ describe('dev CLI terminal wrappers', () => {
       platform: 'linux'
     })
 
-    const wrapper = readFileSync(path.join(userDataPath, 'cli', 'bin', 'nightshift-dev'), 'utf8')
-    expect(wrapper).toContain(`export NIGHTSHIFT_USER_DATA_PATH=${JSON.stringify(userDataPath)}`)
-    expect(wrapper).toContain('export NIGHTSHIFT_DEV_CLI_INVOCATION=1')
+    const wrapper = readFileSync(path.join(userDataPath, 'cli', 'bin', 'kolux-dev'), 'utf8')
+    expect(wrapper).toContain(`export KOLUX_USER_DATA_PATH=${JSON.stringify(userDataPath)}`)
+    expect(wrapper).toContain('export KOLUX_DEV_CLI_INVOCATION=1')
     expect(wrapper).toContain(
       `exec node ${JSON.stringify(path.join(root, 'out', 'cli', 'index.js'))}`
     )
-    expect(readFileSync(path.join(userDataPath, 'cli', 'bin', 'nightshift'), 'utf8')).toBe(wrapper)
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift-dev'), 'utf8')).toBe(wrapper)
-    expect(readFileSync(path.join(root, 'out', 'bin', 'nightshift'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(userDataPath, 'cli', 'bin', 'kolux'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux-dev'), 'utf8')).toBe(wrapper)
+    expect(readFileSync(path.join(root, 'out', 'bin', 'kolux'), 'utf8')).toBe(wrapper)
   })
 })

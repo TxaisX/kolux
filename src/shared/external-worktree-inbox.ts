@@ -60,14 +60,14 @@ function isUserFacingExternalWorktree(worktree: DetectedWorktree): boolean {
   // Why: agent plumbing stays outside the discovery inbox even when its separate visibility policy shows it.
   return (
     !worktree.selectedCheckout &&
-    worktree.ownership !== 'nightshift-managed' &&
+    worktree.ownership !== 'kolux-managed' &&
     worktree.ownership !== 'agent-scratch'
   )
 }
 
 // Why: per-path recovery remains available while either repo visibility policy is off.
 function isImportableExternalWorktree(worktree: DetectedWorktree): boolean {
-  return !worktree.selectedCheckout && worktree.ownership !== 'nightshift-managed'
+  return !worktree.selectedCheckout && worktree.ownership !== 'kolux-managed'
 }
 
 export function getHiddenImportableExternalWorktrees(
@@ -81,7 +81,7 @@ export function getHiddenImportableExternalWorktrees(
   )
 }
 
-export function getVisibleNonNightshiftWorktrees(
+export function getVisibleNonKoluxWorktrees(
   detected: DetectedWorktreeListResult | undefined
 ): DetectedWorktree[] {
   if (detected?.authoritative !== true) {
@@ -89,7 +89,7 @@ export function getVisibleNonNightshiftWorktrees(
   }
   return detected.worktrees.filter(
     (worktree) =>
-      worktree.visible && !worktree.selectedCheckout && worktree.ownership !== 'nightshift-managed'
+      worktree.visible && !worktree.selectedCheckout && worktree.ownership !== 'kolux-managed'
   )
 }
 

@@ -21,7 +21,7 @@ describe('AmpHookService', () => {
   let homeDir: string
 
   beforeEach(() => {
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-amp-home-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-amp-home-'))
     homedirMock.mockReturnValue(homeDir)
   })
 
@@ -30,7 +30,7 @@ describe('AmpHookService', () => {
     rmSync(homeDir, { recursive: true, force: true })
   })
 
-  it('installs a Nightshift-managed Amp system plugin', () => {
+  it('installs a Kolux-managed Amp system plugin', () => {
     const status = new AmpHookService().install()
 
     expect(status).toMatchObject({
@@ -57,8 +57,8 @@ describe('AmpHookService', () => {
     expect(source).toContain('enqueuePost("tool.call"')
     expect(source).not.toContain('await post("tool.call"')
     expect(source).not.toContain('postQueue = postQueue.then')
-    expect(source).toContain('process.env.NIGHTSHIFT_PANE_KEY')
-    expect(source).toContain('process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT')
+    expect(source).toContain('process.env.KOLUX_PANE_KEY')
+    expect(source).toContain('process.env.KOLUX_AGENT_HOOK_ENDPOINT')
   })
 
   it('does not overwrite an existing user-authored Amp plugin file', () => {
@@ -76,7 +76,7 @@ describe('AmpHookService', () => {
     expect(readFileSync(pluginPath, 'utf-8')).toBe('export default function userPlugin() {}\n')
   })
 
-  it('removes only Nightshift-managed Amp plugin files', () => {
+  it('removes only Kolux-managed Amp plugin files', () => {
     const service = new AmpHookService()
     const installed = service.install()
     expect(existsSync(installed.configPath)).toBe(true)

@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
 
 type MeterFixture = {
@@ -33,61 +33,59 @@ async function setDictationVisualState(
 }
 
 async function pauseForRecordedProof(page: Page): Promise<void> {
-  if (process.env.NIGHTSHIFT_E2E_RECORD_VIDEO === '1') {
+  if (process.env.KOLUX_E2E_RECORD_VIDEO === '1') {
     await page.waitForTimeout(700)
   }
 }
 
-test('dictation grapes react across the visible recording lifecycle', async ({
-  nightshiftPage
-}) => {
+test('dictation grapes react across the visible recording lifecycle', async ({ koluxPage }) => {
   const quiet = { level: 0, isSpeaking: false, isClipping: false }
-  await setDictationVisualState(nightshiftPage, 'listening', quiet)
+  await setDictationVisualState(koluxPage, 'listening', quiet)
 
-  const indicator = nightshiftPage.getByTestId('dictation-indicator')
+  const indicator = koluxPage.getByTestId('dictation-indicator')
   const status = indicator.getByRole('status')
   await expect(indicator).toBeVisible()
   await expect(status).toHaveText('Listening')
   await expect(indicator.getByTestId('dictation-grapes').locator('span')).toHaveCount(9)
   await expect(indicator.getByRole('button', { name: 'Stop dictation' })).toBeVisible()
-  await nightshiftPage.emulateMedia({ reducedMotion: 'reduce' })
+  await koluxPage.emulateMedia({ reducedMotion: 'reduce' })
   await expect(indicator.getByTestId('dictation-grapes').locator('span').first()).toHaveCSS(
     'transition-property',
     'none'
   )
-  await nightshiftPage.emulateMedia({ reducedMotion: 'no-preference' })
-  await pauseForRecordedProof(nightshiftPage)
+  await koluxPage.emulateMedia({ reducedMotion: 'no-preference' })
+  await pauseForRecordedProof(koluxPage)
 
   const speaking = {
     level: 0.76,
     isSpeaking: true,
     isClipping: false
   }
-  await setDictationVisualState(nightshiftPage, 'listening', speaking)
+  await setDictationVisualState(koluxPage, 'listening', speaking)
   await expect(indicator.getByText('Speaking')).toBeVisible()
   await expect(status).toHaveText('Listening')
-  await pauseForRecordedProof(nightshiftPage)
+  await pauseForRecordedProof(koluxPage)
 
   const clipping = { ...speaking, level: 1, isClipping: true }
-  await setDictationVisualState(nightshiftPage, 'listening', clipping)
+  await setDictationVisualState(koluxPage, 'listening', clipping)
   await expect(status).toHaveText('Too loud')
   await expect(indicator).toHaveClass(/text-destructive/)
-  await pauseForRecordedProof(nightshiftPage)
+  await pauseForRecordedProof(koluxPage)
 
   await setDictationVisualState(
-    nightshiftPage,
+    koluxPage,
     'listening',
     speaking,
     'The visualizer follows every word without covering the workspace.'
   )
   await expect(
-    nightshiftPage.getByText('The visualizer follows every word without covering the workspace.')
+    koluxPage.getByText('The visualizer follows every word without covering the workspace.')
   ).toBeVisible()
   await expect(status).toHaveText('Listening')
-  await pauseForRecordedProof(nightshiftPage)
+  await pauseForRecordedProof(koluxPage)
 
-  await setDictationVisualState(nightshiftPage, 'stopping', quiet)
+  await setDictationVisualState(koluxPage, 'stopping', quiet)
   await expect(status).toHaveText('Processing…')
   await expect(indicator.getByRole('button', { name: 'Stop dictation' })).toHaveCount(0)
-  await pauseForRecordedProof(nightshiftPage)
+  await pauseForRecordedProof(koluxPage)
 })

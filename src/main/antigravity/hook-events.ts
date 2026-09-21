@@ -1,4 +1,4 @@
-export const ANTIGRAVITY_HOOK_BUNDLE_NAME = 'nightshift-status'
+export const ANTIGRAVITY_HOOK_BUNDLE_NAME = 'kolux-status'
 
 export const ANTIGRAVITY_EVENTS = [
   {
@@ -26,7 +26,7 @@ export const ANTIGRAVITY_EVENTS = [
 ] as const
 
 // Why: Antigravity requires a decision on PreToolUse and reads silence as deny (#2426). Of the documented values
-// only "ask" defers to the user's permission config — "allow" would auto-approve every tool call Nightshift observes.
+// only "ask" defers to the user's permission config — "allow" would auto-approve every tool call Kolux observes.
 export const ANTIGRAVITY_PRE_TOOL_USE_DECISION = '{"decision":"ask"}'
 
 export type AntigravityEvent = (typeof ANTIGRAVITY_EVENTS)[number]

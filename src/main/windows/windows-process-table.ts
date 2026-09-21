@@ -5,7 +5,7 @@ import { reportWindowsCommandLineRecoveryHealth } from './windows-command-line-r
 import { readWindowsProcessRowsWithCim } from './windows-process-table-cim-scan'
 
 /**
- * The only place Nightshift reads the Windows process table.
+ * The only place Kolux reads the Windows process table.
  *
  * Every previous reader forked `powershell.exe` to run a `Get-CimInstance
  * Win32_Process` scan (with a `wmic` fallback that Windows 11 24H2 has

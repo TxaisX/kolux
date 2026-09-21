@@ -43,7 +43,7 @@ describe('windows-process-tree node-gyp rebuild', () => {
   })
 
   it('copies node-addon-api headers into the patched include dir', () => {
-    const packageDir = mkdtempSync(join(tmpdir(), 'nightshift-windows-process-tree-headers-'))
+    const packageDir = mkdtempSync(join(tmpdir(), 'kolux-windows-process-tree-headers-'))
     try {
       const nodeAddonApiDir = join(packageDir, 'node_modules', 'node-addon-api')
       mkdirSync(nodeAddonApiDir, { recursive: true })
@@ -68,7 +68,7 @@ describe('inspecting a compiled windows-process-tree addon', () => {
   let dir
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-windows-process-tree-addon-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-windows-process-tree-addon-'))
   })
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true })
@@ -105,7 +105,7 @@ describe('windows-process-tree CreationTime patch assertion', () => {
   let dir
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-windows-process-tree-creation-time-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-windows-process-tree-creation-time-'))
   })
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true })

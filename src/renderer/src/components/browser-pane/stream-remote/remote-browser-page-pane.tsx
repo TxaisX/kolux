@@ -352,7 +352,7 @@ export function RemoteBrowserPagePane({
         <RemoteBrowserPageContextMenu
           contextMenu={contextMenu}
           onDismiss={() => setContextMenu(null)}
-          onOpenLinkInNightshiftBrowser={() => {
+          onOpenLinkInKoluxBrowser={() => {
             const linkUrl = contextMenu.linkUrl!
             setContextMenu(null)
             void openWorkspaceBrowserTab({

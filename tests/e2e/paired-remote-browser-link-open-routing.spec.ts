@@ -8,7 +8,7 @@ import {
   type HeadlessPairedRuntimeHost
 } from './helpers/headless-paired-runtime-host'
 import { readHostBrowserPageUrls } from './helpers/host-session-tabs'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   launchPairedElectronClient,
   type PairedElectronClient
@@ -216,9 +216,9 @@ async function openLinkFromRemotePaneContextMenu(page: Page): Promise<void> {
   await expect(page.getByTestId('remote-browser-context-menu')).toBeVisible({ timeout: 30_000 })
   // The item only renders once the remote hit-test resolves an anchor, so this wait is the
   // wait for the link lookup itself.
-  const openInNightshift = page.getByRole('menuitem', { name: 'Open Link In Nightshift Browser' })
-  await expect(openInNightshift).toBeVisible({ timeout: 30_000 })
-  await openInNightshift.click()
+  const openInKolux = page.getByRole('menuitem', { name: 'Open Link In Kolux Browser' })
+  await expect(openInKolux).toBeVisible({ timeout: 30_000 })
+  await openInKolux.click()
 }
 
 test('opens a remote pane link on the pane runtime and refuses to fall back to the client', async ({

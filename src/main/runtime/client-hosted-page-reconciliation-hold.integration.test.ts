@@ -1,11 +1,11 @@
 /**
- * Drives the real publication seam: a real NightshiftRuntimeService answering the same session-tabs call
+ * Drives the real publication seam: a real KoluxRuntimeService answering the same session-tabs call
  * the client subscribes through. The window's own unit tests can only prove it answers correctly
  * once asked -- they cannot prove the runtime asks it, or asks it per client.
  */
 import { describe, expect, it } from 'vitest'
 import type { WorkspaceSessionState } from '../../shared/workspace-session-state-types'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const WT = 'repo-1::/tmp/worktree-a'
 const DEVICE_A = 'device-a'
@@ -39,7 +39,7 @@ const storeBase = {
   })
 }
 
-function createRuntime(): NightshiftRuntimeService {
+function createRuntime(): KoluxRuntimeService {
   let session: WorkspaceSessionState = {
     activeRepoId: 'repo-1',
     activeWorktreeId: WT,
@@ -47,7 +47,7 @@ function createRuntime(): NightshiftRuntimeService {
     tabsByWorktree: {},
     terminalLayoutsByTabId: {}
   }
-  return new NightshiftRuntimeService({
+  return new KoluxRuntimeService({
     ...storeBase,
     getWorkspaceSession: () => session,
     setWorkspaceSession: (next: WorkspaceSessionState) => {

@@ -12,6 +12,6 @@ export type TelemetryConsentState =
   | { effective: 'enabled' }
   | {
       effective: 'disabled'
-      reason: 'do_not_track' | 'nightshift_disabled' | 'ci' | 'user_opt_out'
+      reason: 'do_not_track' | 'kolux_disabled' | 'ci' | 'user_opt_out'
     }
   | { effective: 'pending_banner' }

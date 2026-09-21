@@ -11,7 +11,7 @@ const PANE = makePaneKey('tab-1', LEAF)
 let dir: string
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'nightshift-ended-process-'))
+  dir = mkdtempSync(join(tmpdir(), 'kolux-ended-process-'))
 })
 
 afterEach(() => {

@@ -8,7 +8,7 @@ import { GhAuthErrorHelp } from './GhAuthErrorHelp'
 import type { GitHubProjectViewSummary } from '../../../../shared/github/project-types'
 import type { GitHubProjectViewError } from '../../../../shared/github/project-result-types'
 
-const NIGHTSHIFT_FEATURE_REQUEST_URL = 'https://github.com/TxaisX/nightshift/issues/new'
+const KOLUX_FEATURE_REQUEST_URL = 'https://github.com/TxaisX/nightshift/issues/new'
 
 export function ProjectViewTabStrip({
   views,
@@ -69,8 +69,8 @@ function ProjectViewTab({
           ? view.name
           : translate(
               'auto.components.github.project.ProjectViewWrapper.2edf5e7e77',
-              "{{value0}} — Nightshift doesn't support {{value1}} project views yet. File a feature request at {{value2}}.",
-              { value0: view.name, value1: layoutLabel, value2: NIGHTSHIFT_FEATURE_REQUEST_URL }
+              "{{value0}} — Kolux doesn't support {{value1}} project views yet. File a feature request at {{value2}}.",
+              { value0: view.name, value1: layoutLabel, value2: KOLUX_FEATURE_REQUEST_URL }
             )
       }
       className={cn(
@@ -89,7 +89,7 @@ function ProjectViewTab({
   if (supported) {
     return tab
   }
-  const message = `Nightshift doesn't support ${layoutLabel} project views yet.`
+  const message = `Kolux doesn't support ${layoutLabel} project views yet.`
   return (
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>
@@ -98,7 +98,7 @@ function ProjectViewTab({
           aria-label={translate(
             'auto.components.github.project.ProjectViewWrapper.55de4fb57a',
             '{{value0}}. {{value1}} File a feature request at {{value2}}.',
-            { value0: view.name, value1: message, value2: NIGHTSHIFT_FEATURE_REQUEST_URL }
+            { value0: view.name, value1: message, value2: KOLUX_FEATURE_REQUEST_URL }
           )}
           className="inline-flex shrink-0 cursor-not-allowed rounded-t-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
@@ -111,14 +111,14 @@ function ProjectViewTab({
             {message}{' '}
             {translate(
               'auto.components.github.project.ProjectViewStates.ac83c45672',
-              'Switch to a Table or Roadmap view to work with this project in Nightshift.'
+              'Switch to a Table or Roadmap view to work with this project in Kolux.'
             )}
           </p>
           <Button
             type="button"
             size="xs"
             variant="outline"
-            onClick={() => void window.api.shell.openUrl(NIGHTSHIFT_FEATURE_REQUEST_URL)}
+            onClick={() => void window.api.shell.openUrl(KOLUX_FEATURE_REQUEST_URL)}
           >
             {translate(
               'auto.components.github.project.ProjectViewWrapper.4d2a77a119',
@@ -156,13 +156,13 @@ export function ProjectViewErrorState({
   }
   const copy =
     error.type === 'too_large'
-      ? `This view has ${totalCount ?? 'many'} items — too large to render in Nightshift. Narrow the view's filter on GitHub.`
+      ? `This view has ${totalCount ?? 'many'} items — too large to render in Kolux. Narrow the view's filter on GitHub.`
       : error.type === 'unsupported_layout'
         ? // Why: an older paired host still reports roadmaps as unsupported, so this
           // copy must not name the layout — the tab strip already does that.
           translate(
             'auto.components.github.project.ProjectViewStates.e4cc8b14f2',
-            'Nightshift renders table and roadmap project views. This view uses a layout it cannot render yet.'
+            'Kolux renders table and roadmap project views. This view uses a layout it cannot render yet.'
           )
         : error.type === 'not_found'
           ? 'Could not find this project or view.'

@@ -31,7 +31,7 @@ describe('canonicalizeWslLinuxPath', () => {
       () => '/'
     )
 
-    expect(plan?.commandScriptPath).toBe('/.nightshift/agent-hooks/codex-hook.sh')
+    expect(plan?.commandScriptPath).toBe('/.kolux/agent-hooks/codex-hook.sh')
     expect(plan?.trustConfigPath).toBe('/hooks.json')
   })
 
@@ -55,7 +55,7 @@ describe('canonicalizeWslLinuxPath', () => {
       '--exec',
       'sh',
       '-c',
-      `if [ ! -d "$1" ]; then printf '%s\\n' '__NIGHTSHIFT_WSL_PATH_MISSING__'; exit 0; fi; readlink -f -- "$1"`,
+      `if [ ! -d "$1" ]; then printf '%s\\n' '__KOLUX_WSL_PATH_MISSING__'; exit 0; fi; readlink -f -- "$1"`,
       'sh',
       '/home/alias'
     ])
@@ -75,12 +75,12 @@ describe('canonicalizeWslLinuxPath', () => {
   it('resolves a custom automount root and notifies the first launch', () => {
     setPlatform('win32')
     const settled = vi.fn()
-    const windowsPath = 'D:\\nightshift\\codex-runtime-home\\home'
+    const windowsPath = 'D:\\kolux\\codex-runtime-home\\home'
 
     expect(
       _internals.canonicalizeWslLinuxPath(
         'Ubuntu',
-        '/mnt/d/nightshift/codex-runtime-home/home',
+        '/mnt/d/kolux/codex-runtime-home/home',
         windowsPath,
         settled
       )
@@ -94,16 +94,16 @@ describe('canonicalizeWslLinuxPath', () => {
       '--exec',
       'sh',
       '-c',
-      `resolved=$(wslpath -a -u "$1") || exit; if [ ! -d "$resolved" ]; then printf '%s\\n' '__NIGHTSHIFT_WSL_PATH_MISSING__'; exit 0; fi; readlink -f -- "$resolved"`,
+      `resolved=$(wslpath -a -u "$1") || exit; if [ ! -d "$resolved" ]; then printf '%s\\n' '__KOLUX_WSL_PATH_MISSING__'; exit 0; fi; readlink -f -- "$resolved"`,
       'sh',
       windowsPath
     ])
     expect(options).toMatchObject({ timeout: 5000, windowsHide: true })
 
-    callback(null, '/windows/d/nightshift/codex-runtime-home/home\n')
+    callback(null, '/windows/d/kolux/codex-runtime-home/home\n')
     expect(settled).toHaveBeenCalledWith({
       status: 'resolved',
-      canonicalPath: '/windows/d/nightshift/codex-runtime-home/home'
+      canonicalPath: '/windows/d/kolux/codex-runtime-home/home'
     })
   })
 
@@ -168,7 +168,7 @@ describe('canonicalizeWslLinuxPath', () => {
       error: Error | null,
       stdout: string
     ) => void
-    secondCallback(null, '__NIGHTSHIFT_WSL_PATH_MISSING__\n')
+    secondCallback(null, '__KOLUX_WSL_PATH_MISSING__\n')
 
     expect(settled).toHaveBeenCalledWith({ status: 'missing' })
     expect(_internals.canonicalizeWslLinuxPath('Ubuntu', '/home/alias')).toBeNull()

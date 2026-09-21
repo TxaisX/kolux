@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Two seams because the two tiers spawn differently: the full evidence reader still forks
-// through node:child_process, the cheap reader through Nightshift's runProcess entry point.
+// through node:child_process, the cheap reader through Kolux's runProcess entry point.
 const { execFileMock, runProcessMock } = vi.hoisted(() => ({
   execFileMock: vi.fn(),
   runProcessMock: vi.fn()

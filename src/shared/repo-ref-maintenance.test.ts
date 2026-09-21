@@ -18,7 +18,7 @@ const THRESHOLD = 5
 const roots: string[] = []
 
 async function refsDirectoryWith(looseRefs: number): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-ref-maintenance-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-ref-maintenance-'))
   roots.push(root)
   const refs = join(root, 'refs', 'remotes', 'origin')
   await mkdir(refs, { recursive: true })
@@ -30,7 +30,7 @@ async function refsDirectoryWith(looseRefs: number): Promise<string> {
 
 /** More directories than `countLooseRefs` will visit, but very few files. */
 async function saturatingRefsDirectory(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-ref-maintenance-wide-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-ref-maintenance-wide-'))
   roots.push(root)
   const refs = join(root, 'refs')
   for (let index = 0; index < 4200; index += 1) {
@@ -460,7 +460,7 @@ describe('RepoRefMaintenance single-flight and backoff', () => {
   })
 
   it('counts a pack that could not lock every ref as a success', async () => {
-    // Field-observed on a machine running several Nightshift sessions: a branch moved
+    // Field-observed on a machine running several Kolux sessions: a branch moved
     // mid-pack, Git reported an error, and 36,688 loose refs still became 3.
     // Retrying that aggressively would be wrong -- the backlog is gone.
     const refs = await refsDirectoryWith(THRESHOLD + 2)

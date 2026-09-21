@@ -1,7 +1,7 @@
 /**
  * #12547: a full `fs.listFiles` reply for a real monorepo does not fit the relay's control lane.
  *
- * Nightshift's own checkout is ~22.6k tracked paths averaging 58 characters, so a 20,001-row page
+ * Kolux's own checkout is ~22.6k tracked paths averaging 58 characters, so a 20,001-row page
  * serializes to ~1.2MB — past `DISPATCHER_CONTROL_QUEUE_MAX_BYTES`, which demotes it to the
  * `legacy-response` lane where an unrelated producer backlog can refuse it. Refusing at a fixed row
  * or byte ceiling only moves where that shows up; streaming removes it, so these run the real

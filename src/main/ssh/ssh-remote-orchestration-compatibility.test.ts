@@ -12,11 +12,11 @@ vi.mock('../persistence', () => ({
 }))
 
 import { OrchestrationDb } from '../runtime/orchestration/db'
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import type Database from '../sqlite/sync-database'
 import type { HostCliPassthroughOptions } from './ssh-remote-cli-host-passthrough'
-import { runRemoteNightshiftCli } from './ssh-remote-nightshift-cli'
-import { acknowledgeRemoteNightshiftCliPostOutput } from './ssh-remote-orchestration-post-output'
+import { runRemoteKoluxCli } from './ssh-remote-kolux-cli'
+import { acknowledgeRemoteKoluxCliPostOutput } from './ssh-remote-orchestration-post-output'
 import { createRootDispatch } from '../runtime/orchestration/db/root-dispatch-test-fixture'
 
 const LEGACY_FALLBACK_OPTIONS: HostCliPassthroughOptions = {
@@ -30,14 +30,14 @@ const WORKER_PANE = 'tab_legacy_ssh:33333333-3333-4333-8333-333333333333'
 const COORDINATOR_HANDLE = 'term_legacy_ssh_coord'
 const COORDINATOR_PANE = 'tab_legacy_coord:44444444-4444-4444-8444-444444444444'
 const WORKER_ENV = {
-  NIGHTSHIFT_TERMINAL_HANDLE: WORKER_HANDLE,
-  NIGHTSHIFT_PANE_KEY: WORKER_PANE,
-  NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'legacy-ssh-token'
+  KOLUX_TERMINAL_HANDLE: WORKER_HANDLE,
+  KOLUX_PANE_KEY: WORKER_PANE,
+  KOLUX_AGENT_LAUNCH_TOKEN: 'legacy-ssh-token'
 }
 const COORDINATOR_ENV = {
-  NIGHTSHIFT_TERMINAL_HANDLE: COORDINATOR_HANDLE,
-  NIGHTSHIFT_PANE_KEY: COORDINATOR_PANE,
-  NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'legacy-ssh-coordinator-token'
+  KOLUX_TERMINAL_HANDLE: COORDINATOR_HANDLE,
+  KOLUX_PANE_KEY: COORDINATOR_PANE,
+  KOLUX_AGENT_LAUNCH_TOKEN: 'legacy-ssh-coordinator-token'
 }
 const RUNTIME_AUTHORITY = {
   kind: 'ssh' as const,
@@ -81,7 +81,7 @@ function createLegacyRuntime() {
     )
     .run(run.id)
 
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
     handle === WORKER_HANDLE ? WORKER_PANE : handle === COORDINATOR_HANDLE ? COORDINATOR_PANE : null
@@ -90,11 +90,11 @@ function createLegacyRuntime() {
     const worker =
       evidence?.terminalHandle === WORKER_HANDLE &&
       evidence.paneKey === WORKER_PANE &&
-      evidence.launchToken === WORKER_ENV.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+      evidence.launchToken === WORKER_ENV.KOLUX_AGENT_LAUNCH_TOKEN
     const coordinator =
       evidence?.terminalHandle === COORDINATOR_HANDLE &&
       evidence.paneKey === COORDINATOR_PANE &&
-      evidence.launchToken === COORDINATOR_ENV.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+      evidence.launchToken === COORDINATOR_ENV.KOLUX_AGENT_LAUNCH_TOKEN
     if (
       (!worker && !coordinator) ||
       evidence.host?.kind !== 'ssh' ||
@@ -107,12 +107,12 @@ function createLegacyRuntime() {
       ? {
           terminalHandle: WORKER_HANDLE,
           paneKey: WORKER_PANE,
-          launchToken: WORKER_ENV.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+          launchToken: WORKER_ENV.KOLUX_AGENT_LAUNCH_TOKEN
         }
       : {
           terminalHandle: COORDINATOR_HANDLE,
           paneKey: COORDINATOR_PANE,
-          launchToken: COORDINATOR_ENV.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+          launchToken: COORDINATOR_ENV.KOLUX_AGENT_LAUNCH_TOKEN
         }
     return {
       hostScope: { kind: 'ssh', targetId: RUNTIME_AUTHORITY.targetId },
@@ -144,8 +144,8 @@ describe('legacy SSH orchestration fallback', () => {
     }
 
     try {
-      const first = await runRemoteNightshiftCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
-      const replay = await runRemoteNightshiftCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
+      const first = await runRemoteKoluxCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
+      const replay = await runRemoteKoluxCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
 
       expect(JSON.parse(first.stdout)).toMatchObject({
         result: {
@@ -163,12 +163,12 @@ describe('legacy SSH orchestration fallback', () => {
       })
       expect(db.getMessageById(message.id)?.read).toBe(0)
 
-      await acknowledgeRemoteNightshiftCliPostOutput(runtime, {
+      await acknowledgeRemoteKoluxCliPostOutput(runtime, {
         postOutput: first.postOutput!,
         env: WORKER_ENV,
         runtimeAuthority: RUNTIME_AUTHORITY
       })
-      const afterAck = await runRemoteNightshiftCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
+      const afterAck = await runRemoteKoluxCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
 
       expect(JSON.parse(afterAck.stdout)).toMatchObject({ result: { messages: [], count: 0 } })
       expect(afterAck.postOutput).toBeUndefined()
@@ -189,7 +189,7 @@ describe('legacy SSH orchestration fallback', () => {
     })
 
     try {
-      const peek = await runRemoteNightshiftCli(
+      const peek = await runRemoteKoluxCli(
         runtime,
         {
           argv: ['orchestration', 'check', '--peek', '--format', '--json'],
@@ -243,7 +243,7 @@ describe('legacy SSH orchestration fallback', () => {
     }
 
     try {
-      const checked = await runRemoteNightshiftCli(
+      const checked = await runRemoteKoluxCli(
         runtime,
         {
           ...baseRequest,
@@ -255,7 +255,7 @@ describe('legacy SSH orchestration fallback', () => {
       expect(checked.stdout).toContain(`${message.id} [status] from=${WORKER_HANDLE}`)
       expect(spawn).not.toHaveBeenCalled()
 
-      const checkedJson = await runRemoteNightshiftCli(
+      const checkedJson = await runRemoteKoluxCli(
         runtime,
         {
           ...baseRequest,
@@ -268,7 +268,7 @@ describe('legacy SSH orchestration fallback', () => {
       }
       expect(result.result.messages).toEqual([expect.objectContaining({ id: message.id })])
 
-      const acknowledged = await runRemoteNightshiftCli(
+      const acknowledged = await runRemoteKoluxCli(
         runtime,
         {
           ...baseRequest,
@@ -317,8 +317,8 @@ describe('legacy SSH orchestration fallback', () => {
     }
 
     try {
-      const first = await runRemoteNightshiftCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
-      const replay = await runRemoteNightshiftCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
+      const first = await runRemoteKoluxCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
+      const replay = await runRemoteKoluxCli(runtime, request, LEGACY_FALLBACK_OPTIONS)
       const sqlite = (db as unknown as { db: Database.Database }).db
 
       const firstResult = JSON.parse(first.stdout) as { messageId: string; timedOut: boolean }
@@ -363,7 +363,7 @@ describe('legacy SSH orchestration fallback', () => {
       .run(answer.message.id)
 
     try {
-      const result = await runRemoteNightshiftCli(
+      const result = await runRemoteKoluxCli(
         runtime,
         {
           argv: ['orchestration', 'ask', '--resume', pending.question.message_id, '--json'],
@@ -388,7 +388,7 @@ describe('legacy SSH orchestration fallback', () => {
       })
       expect(db.getMessageById(answer.message.id)?.read).toBe(0)
 
-      await acknowledgeRemoteNightshiftCliPostOutput(runtime, {
+      await acknowledgeRemoteKoluxCliPostOutput(runtime, {
         postOutput: result.postOutput!,
         env: WORKER_ENV,
         runtimeAuthority: RUNTIME_AUTHORITY
@@ -415,7 +415,7 @@ describe('legacy SSH orchestration fallback', () => {
       const before = countMessages()
 
       try {
-        const result = await runRemoteNightshiftCli(
+        const result = await runRemoteKoluxCli(
           runtime,
           {
             argv: [
@@ -460,7 +460,7 @@ describe('legacy SSH orchestration fallback', () => {
     const before = countMessages()
 
     try {
-      const result = await runRemoteNightshiftCli(
+      const result = await runRemoteKoluxCli(
         runtime,
         {
           argv: [...commandArgv, '--retry-request', '--json'],
@@ -491,7 +491,7 @@ describe('legacy SSH orchestration fallback', () => {
     const { db, runtime } = createLegacyRuntime()
 
     try {
-      const result = await runRemoteNightshiftCli(
+      const result = await runRemoteKoluxCli(
         runtime,
         {
           argv: [...commandArgv, '--retry-request', 'ssh-check-1', '--json'],

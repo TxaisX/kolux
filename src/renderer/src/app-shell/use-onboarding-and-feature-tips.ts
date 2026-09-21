@@ -8,7 +8,7 @@ import {
 } from '../components/feature-tips/feature-tip-startup-gate'
 import {
   trackCmdJPaletteFeatureTipShown,
-  trackNightshiftCliFeatureTipShown
+  trackKoluxCliFeatureTipShown
 } from '../components/feature-tips/feature-tip-telemetry'
 import { useAppStore } from '../store'
 import type { OnboardingState } from '../../../shared/onboarding-state-types'
@@ -113,8 +113,8 @@ export function useOnboardingAndFeatureTips() {
     }
 
     promptedThisSessionRef.current = true
-    if (featureTipsDecision.tipId === 'nightshift-cli') {
-      trackNightshiftCliFeatureTipShown('app_open')
+    if (featureTipsDecision.tipId === 'kolux-cli') {
+      trackKoluxCliFeatureTipShown('app_open')
     } else if (featureTipsDecision.tipId === 'cmd-j-palette') {
       trackCmdJPaletteFeatureTipShown('app_open')
     }

@@ -14,7 +14,7 @@ import type { WorkspaceSessionState } from '../../../shared/workspace-session-st
 vi.mock('electron', () => ({
   app: {
     getPath: () => tmpdir(),
-    getName: () => 'nightshift-test',
+    getName: () => 'kolux-test',
     getVersion: () => '0.0.0-test',
     isPackaged: false,
     on: () => {},
@@ -73,8 +73,8 @@ function session(activeTabId: string): WorkspaceSessionState {
 describe('persisted state survives a save/load round trip', () => {
   it('reloads settings, secrets and both session partitions unchanged', () => {
     const dataFile = join(
-      realpathSync(mkdtempSync(join(tmpdir(), 'nightshift-store-round-trip-'))),
-      'nightshift-data.json'
+      realpathSync(mkdtempSync(join(tmpdir(), 'kolux-store-round-trip-'))),
+      'kolux-data.json'
     )
     const written = openStore(dataFile)
     written.updateSettings({
@@ -101,7 +101,7 @@ describe('persisted state survives a save/load round trip', () => {
     expect(Buffer.from(onDisk.settings.opencodeSessionCookie, 'base64').toString('utf8')).toContain(
       'cookie-é-value'
     )
-    expect(bytes.toString('utf8')).not.toContain('nightshift-secret-slot-')
+    expect(bytes.toString('utf8')).not.toContain('kolux-secret-slot-')
 
     const reloaded = openStore(dataFile)
     expect(reloaded.getSettings().opencodeSessionCookie).toBe(before.settings.opencodeSessionCookie)

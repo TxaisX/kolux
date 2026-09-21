@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from './constants'
+import { KOLUX_BROWSER_BLANK_URL } from './constants'
 import {
   buildSearchUrl,
   classifySchemeLessLocalDevAddress,
@@ -119,8 +119,8 @@ describe('browser-url helpers', () => {
 
   it('keeps normal web URLs and blank tabs in the allowed set', () => {
     expect(normalizeBrowserNavigationUrl('https://example.com')).toBe('https://example.com/')
-    expect(normalizeBrowserNavigationUrl('')).toBe(NIGHTSHIFT_BROWSER_BLANK_URL)
-    expect(normalizeBrowserNavigationUrl('about:blank')).toBe(NIGHTSHIFT_BROWSER_BLANK_URL)
+    expect(normalizeBrowserNavigationUrl('')).toBe(KOLUX_BROWSER_BLANK_URL)
+    expect(normalizeBrowserNavigationUrl('about:blank')).toBe(KOLUX_BROWSER_BLANK_URL)
   })
 
   it('rejects non-web schemes for in-app navigation', () => {
@@ -160,8 +160,8 @@ describe('browser-url helpers', () => {
     expect(normalizeBrowserNavigationUrl('C:\\Users\\me\\My Site\\index #1.html')).toBe(
       'file:///C:/Users/me/My%20Site/index%20%231.html'
     )
-    expect(normalizeBrowserNavigationUrl('C:\\tmp\\nightshift & 100% ! ^\\index.html')).toBe(
-      'file:///C:/tmp/nightshift%20%26%20100%25%20!%20%5E/index.html'
+    expect(normalizeBrowserNavigationUrl('C:\\tmp\\kolux & 100% ! ^\\index.html')).toBe(
+      'file:///C:/tmp/kolux%20%26%20100%25%20!%20%5E/index.html'
     )
   })
 

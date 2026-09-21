@@ -8,7 +8,7 @@ import { mkdtemp } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   countVisibleTerminalPanes,
@@ -405,25 +405,22 @@ async function completeWorkspaceCreationTour(page: Page, workspaceName: string):
 test.describe('Existing-user golden core flow', () => {
   test('adds project, creates workspace, opens a terminal tab, and splits a pane', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const repoPath = await createGitRepo(
-      'nightshift-e2e-golden-existing-',
-      'golden-existing-project'
-    )
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const repoPath = await createGitRepo('kolux-e2e-golden-existing-', 'golden-existing-project')
 
-    await addProjectFromSidebar(nightshiftPage, electronApp, repoPath)
+    await addProjectFromSidebar(koluxPage, electronApp, repoPath)
     const workspaceName = `golden-existing-${Date.now()}`
-    await createWorkspace(nightshiftPage, workspaceName)
-    await expectActiveWorkspaceBelongsToRepo(nightshiftPage, workspaceName, repoPath)
-    await ensureTerminalVisible(nightshiftPage)
-    await expectTerminalSurface(nightshiftPage)
-    await waitForTerminalPaneManager(nightshiftPage)
+    await createWorkspace(koluxPage, workspaceName)
+    await expectActiveWorkspaceBelongsToRepo(koluxPage, workspaceName, repoPath)
+    await ensureTerminalVisible(koluxPage)
+    await expectTerminalSurface(koluxPage)
+    await waitForTerminalPaneManager(koluxPage)
 
-    await createTerminalTabThroughMenu(nightshiftPage)
-    await splitTerminalPaneAndAssertIdentity(nightshiftPage)
+    await createTerminalTabThroughMenu(koluxPage)
+    await splitTerminalPaneAndAssertIdentity(koluxPage)
   })
 })
 
@@ -432,51 +429,45 @@ test.describe('New-user golden core flow', () => {
 
   test('completes onboarding, adds a project, and follows the workspace tour handoff', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+    await waitForSessionReady(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
-    await selectCodexAgent(nightshiftPage)
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
-    await chooseOppositeTheme(nightshiftPage)
-    await continueOnboarding(nightshiftPage)
-    await continueThroughOptionalSetupToNotifications(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('button', { name: /Send Test Notification/i })
-    ).toBeVisible()
-    await chooseNotificationSound(nightshiftPage)
-    await continueFromNotificationsToAddProject(nightshiftPage)
+    await selectCodexAgent(koluxPage)
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
+    await chooseOppositeTheme(koluxPage)
+    await continueOnboarding(koluxPage)
+    await continueThroughOptionalSetupToNotifications(koluxPage)
+    await expect(koluxPage.getByRole('button', { name: /Send Test Notification/i })).toBeVisible()
+    await chooseNotificationSound(koluxPage)
+    await continueFromNotificationsToAddProject(koluxPage)
 
-    const repoPath = await createGitRepo('nightshift-e2e-golden-new-', 'golden-new-project')
+    const repoPath = await createGitRepo('kolux-e2e-golden-new-', 'golden-new-project')
     await chooseFolderInNativeDialog(electronApp, repoPath)
-    await nightshiftPage
+    await koluxPage
       .getByRole('button', { name: /Browse for a folder|Open a folder|Browse folder/i })
       .click()
-    await waitForRepoLoaded(nightshiftPage, repoPath)
-    await expectProjectVisible(nightshiftPage, repoPath)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await expectTerminalSurface(nightshiftPage)
-    await waitForTerminalPaneManager(nightshiftPage)
+    await waitForRepoLoaded(koluxPage, repoPath)
+    await expectProjectVisible(koluxPage, repoPath)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await expectTerminalSurface(koluxPage)
+    await waitForTerminalPaneManager(koluxPage)
 
-    await requestAgentSessionsTour(nightshiftPage)
-    const paneCountBeforeTourSplit = await countVisibleTerminalPanes(nightshiftPage)
-    await nightshiftPage.getByRole('button', { name: /^Split terminal$/ }).click()
-    await waitForPaneCount(nightshiftPage, paneCountBeforeTourSplit + 1)
-    await waitForPaneIdentitySnapshot(nightshiftPage, paneCountBeforeTourSplit + 1)
+    await requestAgentSessionsTour(koluxPage)
+    const paneCountBeforeTourSplit = await countVisibleTerminalPanes(koluxPage)
+    await koluxPage.getByRole('button', { name: /^Split terminal$/ }).click()
+    await waitForPaneCount(koluxPage, paneCountBeforeTourSplit + 1)
+    await waitForPaneIdentitySnapshot(koluxPage, paneCountBeforeTourSplit + 1)
 
     await expect(
-      nightshiftPage.getByRole('dialog', { name: /Start another task in parallel/i })
+      koluxPage.getByRole('dialog', { name: /Start another task in parallel/i })
     ).toBeVisible()
-    const createControl = nightshiftPage
+    const createControl = koluxPage
       .locator('[data-contextual-tour-target="workspace-create-control"]')
       .first()
     await expect(createControl).toBeVisible()
@@ -487,7 +478,7 @@ test.describe('New-user golden core flow', () => {
     await createControl.click()
 
     const workspaceName = `golden-new-${Date.now()}`
-    await completeWorkspaceCreationTour(nightshiftPage, workspaceName)
-    await expectActiveWorkspaceBelongsToRepo(nightshiftPage, workspaceName, repoPath)
+    await completeWorkspaceCreationTour(koluxPage, workspaceName)
+    await expectActiveWorkspaceBelongsToRepo(koluxPage, workspaceName, repoPath)
   })
 })

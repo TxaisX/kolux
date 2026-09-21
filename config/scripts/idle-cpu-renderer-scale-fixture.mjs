@@ -184,7 +184,7 @@ export async function collectRendererCensus(page, configuredLineageDepth) {
     ).length
     let diagnosticCensus = null
     try {
-      diagnosticCensus = window.__nightshiftTypingDiagnostic?.report().census ?? null
+      diagnosticCensus = window.__koluxTypingDiagnostic?.report().census ?? null
     } catch {}
     const collapsedLineageGroups = [...lineageParentIds].filter((parentId) =>
       state.collapsedGroups.has(`lineage:${parentId}`)

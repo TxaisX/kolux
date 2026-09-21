@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { isStreamingMethod } from '../core'
 import { ACCOUNT_METHODS } from './accounts'
 
@@ -38,7 +38,7 @@ describe('account RPC methods', () => {
     }
   ])('allows local-socket $methodName calls', async (testCase) => {
     const add = vi.fn().mockResolvedValue({ accounts: [] })
-    const runtime = { [testCase.runtimeMethod]: add } as unknown as NightshiftRuntimeService
+    const runtime = { [testCase.runtimeMethod]: add } as unknown as KoluxRuntimeService
     const addMethod = method(testCase.methodName)
     if (isStreamingMethod(addMethod)) {
       throw new Error(`${testCase.methodName} must be a request method`)
@@ -56,7 +56,7 @@ describe('account RPC methods', () => {
     const runtime = {
       addClaudeAccountFromConfigDir: vi.fn(),
       addCodexAccountFromHome: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const addMethod = method(methodName)
     if (isStreamingMethod(addMethod)) {
       throw new Error(`${methodName} must be a request method`)
@@ -64,7 +64,7 @@ describe('account RPC methods', () => {
 
     for (const clientKind of ['mobile', 'runtime'] as const) {
       await expect(addMethod.handler(params, { runtime, clientKind })).rejects.toThrow(
-        /only available on the Nightshift host runtime/
+        /only available on the Kolux host runtime/
       )
     }
     expect(runtime.addClaudeAccountFromConfigDir).not.toHaveBeenCalled()
@@ -76,7 +76,7 @@ describe('account RPC methods', () => {
     const runtime = {
       refreshAccountsForMobile: vi.fn().mockResolvedValue(undefined),
       getAccountsSnapshot: vi.fn(() => snapshot)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const list = method('accounts.list')
     if (isStreamingMethod(list)) {
       throw new Error('accounts.list must be a request method')
@@ -92,7 +92,7 @@ describe('account RPC methods', () => {
     const runtime = {
       refreshAccountsForMobile: vi.fn().mockResolvedValue(undefined),
       getAccountsSnapshot: vi.fn(() => snapshot)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const list = method('accounts.list')
     if (isStreamingMethod(list)) {
       throw new Error('accounts.list must be a request method')
@@ -118,7 +118,7 @@ describe('account RPC methods', () => {
       snapshot: { claude: null, codex: null }
     }
     const consumeCodexRateLimitResetCredit = vi.fn().mockResolvedValue(result)
-    const runtime = { consumeCodexRateLimitResetCredit } as unknown as NightshiftRuntimeService
+    const runtime = { consumeCodexRateLimitResetCredit } as unknown as KoluxRuntimeService
     const reset = method('accounts.consumeCodexResetCredit')
     if (isStreamingMethod(reset)) {
       throw new Error('accounts.consumeCodexResetCredit must be a request method')
@@ -158,7 +158,7 @@ describe('account RPC methods', () => {
     const selectCodexAccountForTarget = vi
       .fn()
       .mockResolvedValue({ accounts: [], activeAccountId: null })
-    const runtime = { selectCodexAccountForTarget } as unknown as NightshiftRuntimeService
+    const runtime = { selectCodexAccountForTarget } as unknown as KoluxRuntimeService
     const select = method('accounts.selectCodexForTarget')
     if (isStreamingMethod(select)) {
       throw new Error('accounts.selectCodexForTarget must be a request method')
@@ -205,7 +205,7 @@ describe('account RPC methods', () => {
       }),
       refreshAccountsForMobile: vi.fn().mockResolvedValue(undefined),
       refreshAccountsForMobileSubscriber: vi.fn().mockResolvedValue(undefined)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const subscribe = method('accounts.subscribe')
     if (!isStreamingMethod(subscribe)) {
       throw new Error('accounts.subscribe must be a streaming method')

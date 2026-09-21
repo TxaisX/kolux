@@ -70,10 +70,10 @@ describe('shared agent-hook-listener', () => {
   it('normalizes a raw JSON hook body with metadata headers', async () => {
     const req = createReadableRequest({
       'content-type': 'application/json',
-      'x-nightshift-pane-key': paneKey,
-      'x-nightshift-worktree-id': 'repo::/tmp/work',
-      'x-nightshift-agent-hook-env': 'production',
-      'x-nightshift-agent-hook-version': '1'
+      'x-kolux-pane-key': paneKey,
+      'x-kolux-worktree-id': 'repo::/tmp/work',
+      'x-kolux-agent-hook-env': 'production',
+      'x-kolux-agent-hook-version': '1'
     })
     const body = readRequestBody(req as unknown as IncomingMessage)
     req.emit('data', Buffer.from('{"hook_event_name":"UserPromptSubmit","prompt":"hello"}'))
@@ -94,8 +94,8 @@ describe('shared agent-hook-listener', () => {
     const merged = mergeAgentHookRequestHeaders(
       { hook_event_name: 'UserPromptSubmit', prompt: 'hello' },
       {
-        'x-nightshift-agent-hook-meta-encoding': 'base64',
-        'x-nightshift-agent-hook-meta': packedMetadata(
+        'x-kolux-agent-hook-meta-encoding': 'base64',
+        'x-kolux-agent-hook-meta': packedMetadata(
           paneKey,
           'tab-1',
           '',
@@ -124,8 +124,8 @@ describe('shared agent-hook-listener', () => {
       prompt: 'hello'
     }
     const merged = mergeAgentHookRequestHeaders(rawBody, {
-      'x-nightshift-pane-key': paneKey,
-      'x-nightshift-tab-id': 'tab-1'
+      'x-kolux-pane-key': paneKey,
+      'x-kolux-tab-id': 'tab-1'
     })
 
     expect(merged).toMatchObject({ paneKey, tabId: 'tab-1', payload: rawBody })
@@ -250,10 +250,10 @@ describe('shared agent-hook-listener', () => {
       })
       expect(ok).toBe(true)
       const text = readFileSync(finalPath, 'utf8')
-      expect(text).toContain('NIGHTSHIFT_AGENT_HOOK_PORT=12345')
-      expect(text).toContain('NIGHTSHIFT_AGENT_HOOK_TOKEN=abcdef-0123')
-      expect(text).toContain('NIGHTSHIFT_AGENT_HOOK_VERSION=1')
-      expect(text).toContain('NIGHTSHIFT_AGENT_HOOK_TRANSPORT=raw-json-v1')
+      expect(text).toContain('KOLUX_AGENT_HOOK_PORT=12345')
+      expect(text).toContain('KOLUX_AGENT_HOOK_TOKEN=abcdef-0123')
+      expect(text).toContain('KOLUX_AGENT_HOOK_VERSION=1')
+      expect(text).toContain('KOLUX_AGENT_HOOK_TRANSPORT=raw-json-v1')
       // POSIX 0o600 — owner read/write only.
       if (process.platform !== 'win32') {
         const mode = statSync(finalPath).mode & 0o777

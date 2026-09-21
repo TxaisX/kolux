@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import type { CommandHandler } from '../dispatch'
 import { RuntimeClientError } from '../runtime-client'
-import { parseNightshiftYaml } from '../../shared/nightshift-yaml'
+import { parseKoluxYaml } from '../../shared/kolux-yaml'
+import { resolveKoluxYamlPath } from '../../shared/kolux-yaml-file-resolution'
 import {
   getEphemeralVmRecipeResultProjectRoot,
   type EphemeralVmRecipeDoctorCheck,
@@ -19,7 +19,7 @@ import {
   runEphemeralVmRecipeCleanup,
   runEphemeralVmRecipeStart
 } from '../../shared/ephemeral-vm-recipe-runner'
-import type { NightshiftVmRecipe } from '../../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../../shared/kolux-yaml-hook-types'
 
 export const VM_HANDLERS: Record<string, CommandHandler> = {
   'vm recipe doctor': async ({ flags, cwd, json }) => {
@@ -44,7 +44,7 @@ export const VM_HANDLERS: Record<string, CommandHandler> = {
 }
 
 function doctorRecipe(repoPath: string, recipeId: string): DoctorResult {
-  const yamlPath = join(repoPath, 'nightshift.yaml')
+  const yamlPath = resolveKoluxYamlPath(repoPath)
   if (!existsSync(yamlPath)) {
     return {
       recipeId,
@@ -52,23 +52,23 @@ function doctorRecipe(repoPath: string, recipeId: string): DoctorResult {
       ok: false,
       checks: [
         {
-          id: 'nightshift_yaml.exists',
+          id: 'kolux_yaml.exists',
           status: 'fail',
-          message: `No nightshift.yaml found at ${yamlPath}`,
-          remediation: 'Add environmentRecipes to the repo nightshift.yaml.'
+          message: `No kolux.yaml found at ${yamlPath}`,
+          remediation: 'Add environmentRecipes to the repo kolux.yaml.'
         }
       ]
     }
   }
 
-  const hooks = parseNightshiftYaml(readTextFile(yamlPath))
+  const hooks = parseKoluxYaml(readTextFile(yamlPath))
   const parseCheck: EphemeralVmRecipeDoctorCheck = {
-    id: 'nightshift_yaml.parse',
+    id: 'kolux_yaml.parse',
     status: hooks ? 'pass' : 'fail',
     message: hooks
-      ? 'nightshift.yaml parsed successfully.'
-      : 'nightshift.yaml has no supported Nightshift config.',
-    ...(hooks ? {} : { remediation: 'Add an environmentRecipes entry to nightshift.yaml.' })
+      ? 'kolux.yaml parsed successfully.'
+      : 'kolux.yaml has no supported Kolux config.',
+    ...(hooks ? {} : { remediation: 'Add an environmentRecipes entry to kolux.yaml.' })
   }
   const result = doctorEphemeralVmRecipe({
     repoPath,
@@ -262,8 +262,8 @@ function buildProvisionFailureRemediation(stderr: string, stdout: string): strin
     : 'Check recipe stderr and ensure stdout contains the VM recipe result JSON.'
 }
 
-function loadRecipe(repoPath: string, recipeId: string): NightshiftVmRecipe | null {
-  const hooks = parseNightshiftYaml(readTextFile(join(repoPath, 'nightshift.yaml')))
+function loadRecipe(repoPath: string, recipeId: string): KoluxVmRecipe | null {
+  const hooks = parseKoluxYaml(readTextFile(resolveKoluxYamlPath(repoPath)))
   return hooks?.environmentRecipes?.find((entry) => entry.id === recipeId) ?? null
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import { DEFAULT_APP_FONT_FAMILY } from '../../../../shared/constants'
 import { useAppStore } from '../../store'
@@ -77,7 +77,7 @@ export function useSettingsStoreModel() {
   )
 
   const [repoHooksMap, setRepoHooksMap] = useState<
-    Record<string, { hasHooks: boolean; hooks: NightshiftHooks | null; mayNeedUpdate: boolean }>
+    Record<string, { hasHooks: boolean; hooks: KoluxHooks | null; mayNeedUpdate: boolean }>
   >({})
   const systemPrefersDark = useSystemPrefersDark()
   const isWindows = isWindowsUserAgent()

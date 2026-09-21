@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import type { Locator, Page } from '@playwright/test'
 
@@ -36,7 +36,7 @@ async function seedUntrackedFile(
     }
 
     const separator = worktree.path.includes('\\') ? '\\' : '/'
-    const fileName = requestedFileName ?? `nightshift-discard-confirm-${Date.now()}.txt`
+    const fileName = requestedFileName ?? `kolux-discard-confirm-${Date.now()}.txt`
     const relativePath = fileName
     await window.api.fs.writeFile({
       filePath: `${worktree.path}${separator}${relativePath}`,
@@ -129,42 +129,42 @@ async function expectDeleteDialogLayout(page: Page, fileName: string): Promise<v
 }
 
 test.describe('Source Control discard confirmation', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('keeps long untracked-file confirmation usable and deletes on confirm', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const seededFile = await seedUntrackedFile(
-      nightshiftPage,
-      `nightshift-discard-confirm-${'x'.repeat(96)}.txt`
+      koluxPage,
+      `kolux-discard-confirm-${'x'.repeat(96)}.txt`
     )
-    await openSourceControl(nightshiftPage)
+    await openSourceControl(koluxPage)
 
-    const row = nightshiftPage
+    const row = koluxPage
       .locator('[data-testid="source-control-entry"]')
       .filter({ hasText: seededFile.fileName })
     await expect(row).toBeVisible()
 
     await deleteUntrackedFileFromRow(row)
-    await expectDeleteDialogLayout(nightshiftPage, seededFile.fileName)
+    await expectDeleteDialogLayout(koluxPage, seededFile.fileName)
 
-    await nightshiftPage.getByRole('button', { name: 'Cancel' }).click()
+    await koluxPage.getByRole('button', { name: 'Cancel' }).click()
     await expect(row).toBeVisible()
 
     await deleteUntrackedFileFromRow(row)
-    await confirmPendingDelete(nightshiftPage)
+    await confirmPendingDelete(koluxPage)
 
     await expect(
-      nightshiftPage.getByRole('dialog', { name: `Delete "${seededFile.fileName}"?` })
+      koluxPage.getByRole('dialog', { name: `Delete "${seededFile.fileName}"?` })
     ).toHaveCount(0)
     await expect(row).toHaveCount(0, { timeout: 10_000 })
 
-    await refreshGitStatus(nightshiftPage)
+    await refreshGitStatus(koluxPage)
     await expect(
-      nightshiftPage.locator('[data-testid="source-control-entry"]').filter({
+      koluxPage.locator('[data-testid="source-control-entry"]').filter({
         hasText: seededFile.fileName
       })
     ).toHaveCount(0)

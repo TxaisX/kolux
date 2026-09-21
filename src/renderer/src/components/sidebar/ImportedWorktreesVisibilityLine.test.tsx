@@ -29,7 +29,7 @@ const hiddenWorktrees = [
   {
     id: 'hidden-4',
     displayName: 'ssh-worktree',
-    path: '/srv/repos/nightshift/ssh-worktree',
+    path: '/srv/repos/kolux/ssh-worktree',
     branch: 'refs/heads/ssh-worktree'
   }
 ]
@@ -40,7 +40,7 @@ function renderLine(
   return renderToStaticMarkup(
     <TooltipProvider>
       <ImportedWorktreesVisibilityLine
-        repoDisplayName="nightshift"
+        repoDisplayName="kolux"
         hiddenWorktrees={hiddenWorktrees}
         placement="repo-group"
         pending={false}
@@ -58,13 +58,13 @@ describe('ImportedWorktreesVisibilityLine', () => {
     const markup = renderLine()
 
     expect(markup).toContain('Hiding 4 discovered worktrees')
-    expect(markup).toContain('Expand hidden worktrees for nightshift')
+    expect(markup).toContain('Expand hidden worktrees for kolux')
     expect(markup).toContain(
-      'Keep 4 discovered worktrees hidden for nightshift; recover from the project menu'
+      'Keep 4 discovered worktrees hidden for kolux; recover from the project menu'
     )
     expect(markup).toContain('aria-expanded="false"')
     expect(markup).not.toContain('Imported 4 existing worktrees')
-    expect(markup).not.toContain('Nightshift found 4 worktrees')
+    expect(markup).not.toContain('Kolux found 4 worktrees')
     expect(markup).not.toContain('repo options')
     expect(markup).not.toContain('Reveal')
     expect(markup).not.toContain('Always show')
@@ -77,9 +77,9 @@ describe('ImportedWorktreesVisibilityLine', () => {
     const markup = renderLine({ hostContextLabel: 'openclaw' })
 
     expect(markup).toContain('openclaw')
-    expect(markup).toContain('Expand hidden worktrees for nightshift on openclaw')
+    expect(markup).toContain('Expand hidden worktrees for kolux on openclaw')
     expect(markup).toContain(
-      'Keep 4 discovered worktrees hidden for nightshift on openclaw; recover from the project menu'
+      'Keep 4 discovered worktrees hidden for kolux on openclaw; recover from the project menu'
     )
   })
 
@@ -90,13 +90,13 @@ describe('ImportedWorktreesVisibilityLine', () => {
       onKeepHidden: undefined
     })
 
-    expect(markup).toContain('Hiding 4 discovered worktrees in nightshift on openclaw')
+    expect(markup).toContain('Hiding 4 discovered worktrees in kolux on openclaw')
   })
 
   it('scopes pinned fallback copy to the repo name without a dismiss action', () => {
     const markup = renderLine({ placement: 'pinned-fallback', onKeepHidden: undefined })
 
-    expect(markup).toContain('Hiding 4 discovered worktrees in nightshift')
+    expect(markup).toContain('Hiding 4 discovered worktrees in kolux')
     expect(markup).not.toContain('Review')
     expect(markup).not.toContain('Keep hidden - recover from the project menu')
   })
@@ -106,12 +106,12 @@ describe('ImportedWorktreesVisibilityLine', () => {
       {
         id: 'windows-hidden',
         displayName: 'FeatureX',
-        path: 'C:\\Repos\\Nightshift\\FeatureX'
+        path: 'C:\\Repos\\Kolux\\FeatureX'
       }
     ])
 
-    expect(groups).toMatchObject([{ path: 'C:/Repos/Nightshift' }])
-    expect(groups[0]?.path).not.toBe('C:\\Repos\\Nightshift')
+    expect(groups).toMatchObject([{ path: 'C:/Repos/Kolux' }])
+    expect(groups[0]?.path).not.toBe('C:\\Repos\\Kolux')
   })
 
   it('keeps Windows drive roots as parent path labels', () => {

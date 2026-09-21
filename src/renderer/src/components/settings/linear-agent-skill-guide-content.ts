@@ -27,11 +27,11 @@ export function getLinearGuideNotes(): LinearGuideNote[] {
       icon: Slash,
       title: translate(
         'auto.components.settings.LinearAgentSkillGuide.noteSlashTitle',
-        'Mention /nightshift-linear'
+        'Mention /kolux-linear'
       ),
       body: translate(
         'auto.components.settings.LinearAgentSkillGuide.noteSlashBody',
-        'In chat, use /nightshift-linear (or ask in plain language) so the agent loads the skill for that turn.'
+        'In chat, use /kolux-linear (or ask in plain language) so the agent loads the skill for that turn.'
       )
     },
     {

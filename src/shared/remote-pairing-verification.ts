@@ -66,7 +66,7 @@ export function verifyRemotePairingRuntimeStatus(
     return {
       ok: false,
       kind: 'access-link-invalid',
-      message: 'This link grants mobile-only access. Generate a link for another Nightshift client.'
+      message: 'This link grants mobile-only access. Generate a link for another Kolux client.'
     }
   }
   const versionFields = [
@@ -99,8 +99,8 @@ export function verifyRemotePairingRuntimeStatus(
       kind: 'protocol-incompatible',
       message:
         compatibility.reason === 'client-too-old'
-          ? 'Update this Nightshift client before adding the remote host.'
-          : 'Update Nightshift on the remote host before adding it.'
+          ? 'Update this Kolux client before adding the remote host.'
+          : 'Update Kolux on the remote host before adding it.'
     }
   }
   if (!hasValidRuntimeStatusShape(status)) {

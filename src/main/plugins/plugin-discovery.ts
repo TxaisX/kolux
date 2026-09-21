@@ -7,7 +7,7 @@ import {
   isQualifiedPluginKey,
   parsePluginManifest,
   qualifiedPluginKey,
-  satisfiesNightshiftEngineRange,
+  satisfiesKoluxEngineRange,
   type PluginManifest
 } from '../../shared/plugins/plugin-manifest'
 import {
@@ -107,11 +107,11 @@ async function readManifestDir(
   }
   const manifest = parsed.manifest
   const pluginKey = qualifiedPluginKey(manifest)
-  if (!satisfiesNightshiftEngineRange(hostVersion, manifest.engines.nightshift)) {
+  if (!satisfiesKoluxEngineRange(hostVersion, manifest.engines.kolux)) {
     return {
       pluginKey,
       rootDir,
-      error: `requires Nightshift ${manifest.engines.nightshift} (this is ${hostVersion})`,
+      error: `requires Kolux ${manifest.engines.kolux} (this is ${hostVersion})`,
       isDev
     }
   }

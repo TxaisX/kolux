@@ -167,7 +167,7 @@ describe('OrchestrationPane', () => {
     mocks.panelProps.length = 0
     mocks.skillInstalled = true
     mocks.updateSettings.mockReset()
-    delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+    delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
   })
 
   it('keeps skill setup visible after install and shows agent coverage plus examples', () => {
@@ -243,7 +243,7 @@ describe('OrchestrationPane', () => {
   })
 
   it('keeps host-only nested depth out of paired web clients', () => {
-    ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+    ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
     const markup = renderToStaticMarkup(<OrchestrationPane {...getPaneProps()} />)
 
     expect(markup).not.toContain('Nested worker depth')

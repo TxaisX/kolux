@@ -22,11 +22,22 @@ import { getStatusPluginOwnershipSource } from './status-plugin-ownership-source
 import { getStatusPluginLifecycleSource } from './status-plugin-lifecycle-source'
 import { getStatusPluginFactorySource } from './status-plugin-factory-source'
 
-const NIGHTSHIFT_OPENCODE_PLUGIN_FILE = 'nightshift-opencode-status.js'
+const KOLUX_OPENCODE_PLUGIN_FILE = 'kolux-opencode-status.js'
+// Why: pre-rename Kolux wrote this filename; OpenCode loads every plugins/*.js file, so a stale
+// copy left in a mirrored/shared plugins dir would keep firing the managed hook a second time.
+const PRE_RENAME_OPENCODE_PLUGIN_FILE = 'nightshift-opencode-status.js'
+
+function removeLegacyOpenCodePlugin(pluginsDir: string): void {
+  try {
+    unlinkSync(join(pluginsDir, PRE_RENAME_OPENCODE_PLUGIN_FILE))
+  } catch {
+    // Absent is the common case; a real failure is non-fatal for this best-effort sweep.
+  }
+}
 const OPENCODE_LEGACY_HOOKS_DIR = 'opencode-hooks'
 const OPENCODE_OVERLAY_DIR = 'opencode-config-overlays'
 const OPENCODE_SHARED_CONFIG_DIR = 'shared'
-const OPENCODE_OVERLAY_MANIFEST_FILE = '.nightshift-opencode-overlay-manifest.json'
+const OPENCODE_OVERLAY_MANIFEST_FILE = '.kolux-opencode-overlay-manifest.json'
 
 type OpenCodeOverlayManifest = {
   topLevelEntries: string[]
@@ -73,7 +84,7 @@ export class OpenCodeHookService {
 
   buildPtyEnv(ptyId: string, existingConfigDir?: string | undefined): Record<string, string> {
     if (!isUsableId(ptyId)) {
-      // Why: on a bad id, still preserve a user-set OPENCODE_CONFIG_DIR; only the Nightshift status plugin is forfeited.
+      // Why: on a bad id, still preserve a user-set OPENCODE_CONFIG_DIR; only the Kolux status plugin is forfeited.
       return existingConfigDir ? { OPENCODE_CONFIG_DIR: existingConfigDir } : {}
     }
 
@@ -149,17 +160,17 @@ export class OpenCodeHookService {
 
     const overlayPluginsDir = join(overlayDir, 'plugins')
     for (const entryName of manifest.pluginEntries) {
-      if (entryName === NIGHTSHIFT_OPENCODE_PLUGIN_FILE) {
+      if (entryName === KOLUX_OPENCODE_PLUGIN_FILE) {
         continue
       }
       safeRemoveTree(join(overlayPluginsDir, entryName))
     }
   }
 
-  // Why: mirror user config entries as symlinks so edits propagate live; only plugins/ becomes a real overlay dir so Nightshift can drop a sibling plugin file.
+  // Why: mirror user config entries as symlinks so edits propagate live; only plugins/ becomes a real overlay dir so Kolux can drop a sibling plugin file.
   private mirrorUserConfig(sourceDir: string, overlayDir: string): void {
     const previousManifest = this.readOverlayManifest(overlayDir)
-    // Why: overlays persist across terminals; remove only Nightshift-mirrored paths so stale user config clears but OpenCode runtime dirs (node_modules) survive.
+    // Why: overlays persist across terminals; remove only Kolux-mirrored paths so stale user config clears but OpenCode runtime dirs (node_modules) survive.
     this.clearManifestEntries(overlayDir, previousManifest)
 
     const nextManifest: OpenCodeOverlayManifest = { topLevelEntries: [], pluginEntries: [] }
@@ -186,8 +197,8 @@ export class OpenCodeHookService {
           const overlayPluginsDir = join(overlayDir, 'plugins')
           mkdirSync(overlayPluginsDir, { recursive: true })
           for (const pluginEntry of readdirSync(resolvedSource, { withFileTypes: true })) {
-            // Why: skip a user plugin sharing Nightshift's filename; mirroring it would let writePluginIntoOverlay clobber the user's file.
-            if (pluginEntry.name === NIGHTSHIFT_OPENCODE_PLUGIN_FILE) {
+            // Why: skip a user plugin sharing Kolux's filename; mirroring it would let writePluginIntoOverlay clobber the user's file.
+            if (pluginEntry.name === KOLUX_OPENCODE_PLUGIN_FILE) {
               continue
             }
             mirrorEntry(
@@ -211,13 +222,14 @@ export class OpenCodeHookService {
   private writePluginIntoOverlay(overlayDir: string): void {
     const pluginsDir = join(overlayDir, 'plugins')
     mkdirSync(pluginsDir, { recursive: true })
-    const pluginPath = join(pluginsDir, NIGHTSHIFT_OPENCODE_PLUGIN_FILE)
+    const pluginPath = join(pluginsDir, KOLUX_OPENCODE_PLUGIN_FILE)
     try {
       unlinkSync(pluginPath)
     } catch {
       // File may not exist on a fresh overlay; a real failure surfaces on writeFileSync below.
     }
     writeFileSync(pluginPath, getOpenCodePluginSource())
+    removeLegacyOpenCodePlugin(pluginsDir)
   }
 
   private writeSharedPluginConfig(): string | null {
@@ -225,7 +237,8 @@ export class OpenCodeHookService {
     const pluginsDir = join(configDir, 'plugins')
     try {
       mkdirSync(pluginsDir, { recursive: true })
-      writeFileSync(join(pluginsDir, NIGHTSHIFT_OPENCODE_PLUGIN_FILE), getOpenCodePluginSource())
+      writeFileSync(join(pluginsDir, KOLUX_OPENCODE_PLUGIN_FILE), getOpenCodePluginSource())
+      removeLegacyOpenCodePlugin(pluginsDir)
     } catch {
       // Why: userData can be locked on Windows (EPERM/EBUSY); plugin is non-critical, so spawn without it.
       return null

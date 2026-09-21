@@ -7,7 +7,7 @@
  * the overlay renders on first paint without any setup.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import type { Page } from '@stablyai/playwright-test'
 import type { GlobalSettings } from '../../src/shared/global-settings-types'
@@ -153,31 +153,29 @@ test.describe('Onboarding flow', () => {
   // spec actually exercises the first-launch flow.
   test.use({ dismissOnboarding: false })
 
-  test.beforeEach(async ({ nightshiftPage }) => {
-    // Per-test userData is freshly minted by the nightshiftPage fixture, so persisted
+  test.beforeEach(async ({ koluxPage }) => {
+    // Per-test userData is freshly minted by the koluxPage fixture, so persisted
     // onboarding state defaults to `closedAt: null, lastCompletedStep: -1` and
     // the overlay paints on its own once App's bootstrap effect resolves.
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
   })
 
-  test('renders on first launch with the agent step active', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('renders on first launch with the agent step active', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
-    await expectOnboardingProgress(nightshiftPage, /^1 of [345]$/)
-    await expect(onboardingFooterButton(nightshiftPage, /^Continue\b/)).toBeVisible()
-    await expect(onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toBeVisible()
+    await expectOnboardingProgress(koluxPage, /^1 of [345]$/)
+    await expect(onboardingFooterButton(koluxPage, /^Continue\b/)).toBeVisible()
+    await expect(onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toBeVisible()
     // Why: Back is not rendered on the first step (was previously rendered-but-
     // disabled with `disabled:invisible`, now conditionally mounted).
-    await expect(nightshiftPage.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0)
+    await expect(koluxPage.getByRole('button', { name: 'Back', exact: true })).toHaveCount(0)
     // Footer hint shows the platform-correct continue shortcut (⌘ on Mac,
     // Ctrl elsewhere). Match either form so the test runs cross-platform.
     // Why: scope to the footer action so background UI shortcut hints cannot
     // false-positive this assertion.
     await expect(
-      onboardingFooterButton(nightshiftPage, /^Continue\b/)
+      onboardingFooterButton(koluxPage, /^Continue\b/)
         .locator('span')
         .filter({ hasText: /⌘|Ctrl/ })
         .first()
@@ -185,11 +183,9 @@ test.describe('Onboarding flow', () => {
   })
 
   test('Continue advances steps, persists progress, and applies user-visible settings', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
@@ -200,7 +196,7 @@ test.describe('Onboarding flow', () => {
     // agents are detected, otherwise behind the "Show N more agents" details
     // expander — open it if codex isn't visible.
     const targetAgent: TuiAgent = 'codex'
-    const codexButton = nightshiftPage.getByRole('button', { name: /^Codex\s/ })
+    const codexButton = koluxPage.getByRole('button', { name: /^Codex\s/ })
     // Why: isVisible() is a one-shot probe — on slow renderer paint it would
     // race the wizard mount and falsely take the "show more agents" branch.
     // waitFor with a small timeout actually retries until the button paints.
@@ -210,17 +206,15 @@ test.describe('Onboarding flow', () => {
       .then(() => true)
       .catch(() => false)
     if (!codexVisible) {
-      await nightshiftPage.getByText(/Show \d+ more agents/).click()
+      await koluxPage.getByText(/Show \d+ more agents/).click()
     }
     await codexButton.click()
 
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
-    await expectOnboardingProgress(nightshiftPage, /^2 of [345]$/)
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
+    await expectOnboardingProgress(koluxPage, /^2 of [345]$/)
     await expect
-      .poll(async () => (await getOnboardingState(nightshiftPage)).lastCompletedStep, {
+      .poll(async () => (await getOnboardingState(koluxPage)).lastCompletedStep, {
         timeout: 5_000,
         message: 'lastCompletedStep did not advance to 1 after first Continue'
       })
@@ -228,7 +222,7 @@ test.describe('Onboarding flow', () => {
     // The agent choice must be persisted to settings (the user will see this
     // pre-selected when they later open a new tab / agent picker).
     await expect
-      .poll(async () => (await getSettings(nightshiftPage)).defaultTuiAgent, { timeout: 5_000 })
+      .poll(async () => (await getSettings(koluxPage)).defaultTuiAgent, { timeout: 5_000 })
       .toBe(targetAgent)
 
     // --- Step 2: theme ---
@@ -238,61 +232,56 @@ test.describe('Onboarding flow', () => {
     // applies the choice immediately, not just on Continue.
     // Why: 'system' resolves async on mount, so wait for the class to settle
     // before snapshotting — otherwise startingTheme can be stale.
-    await nightshiftPage.waitForFunction(
+    await koluxPage.waitForFunction(
       () =>
         document.documentElement.classList.contains('dark') ||
         document.documentElement.classList.contains('light')
     )
-    const startingTheme = await getDocumentThemeClass(nightshiftPage)
+    const startingTheme = await getDocumentThemeClass(koluxPage)
     const oppositeTheme: 'dark' | 'light' = startingTheme === 'dark' ? 'light' : 'dark'
     const oppositeTileName = oppositeTheme === 'light' ? /Bright & crisp/ : /Easy on the eyes/
-    await nightshiftPage.getByRole('button', { name: oppositeTileName }).click()
+    await koluxPage.getByRole('button', { name: oppositeTileName }).click()
     await expect
-      .poll(async () => getDocumentThemeClass(nightshiftPage), { timeout: 5_000 })
+      .poll(async () => getDocumentThemeClass(koluxPage), { timeout: 5_000 })
       .toBe(oppositeTheme)
 
-    await continueOnboarding(nightshiftPage)
+    await continueOnboarding(koluxPage)
     // Why: the theme Continue persists step 2, then persists *through* any
     // skipped optional steps (integrations is skipped when gh is installed,
     // windows_terminal off macOS), so lastCompletedStep can land at 2, 3, or 4.
     // Key off the settled "theme step committed" lower bound rather than a fixed
     // window that assumed integrations always renders.
     await expect
-      .poll(async () => (await getOnboardingState(nightshiftPage)).lastCompletedStep, {
+      .poll(async () => (await getOnboardingState(koluxPage)).lastCompletedStep, {
         timeout: 5_000,
         message: 'lastCompletedStep did not advance past the theme step after second Continue'
       })
       .toBeGreaterThanOrEqual(2)
     await expect
-      .poll(async () => (await getSettings(nightshiftPage)).theme, { timeout: 5_000 })
+      .poll(async () => (await getSettings(koluxPage)).theme, { timeout: 5_000 })
       .toBe(oppositeTheme)
-    await continueThroughOptionalTaskSourcesAndWindowsTerminal(nightshiftPage)
-    await expectOnboardingProgress(nightshiftPage, /^[345] of [345]$/)
+    await continueThroughOptionalTaskSourcesAndWindowsTerminal(koluxPage)
+    await expectOnboardingProgress(koluxPage, /^[345] of [345]$/)
     await expect
-      .poll(
-        async () => [3, 4].includes((await getOnboardingState(nightshiftPage)).lastCompletedStep),
-        {
-          timeout: 5_000,
-          message: 'lastCompletedStep did not include optional setup progress'
-        }
-      )
+      .poll(async () => [3, 4].includes((await getOnboardingState(koluxPage)).lastCompletedStep), {
+        timeout: 5_000,
+        message: 'lastCompletedStep did not include optional setup progress'
+      })
       .toBe(true)
 
     // --- Step 3: notifications ---
-    await expectOnboardingNotificationSound(nightshiftPage, /System Default/i)
-    await expect(
-      nightshiftPage.getByRole('button', { name: /Send Test Notification/i })
-    ).toBeVisible()
-    await expectOnboardingCustomSoundOption(nightshiftPage)
+    await expectOnboardingNotificationSound(koluxPage, /System Default/i)
+    await expect(koluxPage.getByRole('button', { name: /Send Test Notification/i })).toBeVisible()
+    await expectOnboardingCustomSoundOption(koluxPage)
 
-    await continueFromPostNotificationsToRepo(nightshiftPage)
+    await continueFromPostNotificationsToRepo(koluxPage)
 
     // Verify the source defaults land without asking users to configure each
     // source in the onboarding UI.
     await expect
       .poll(
         async () => {
-          const s = await getSettings(nightshiftPage)
+          const s = await getSettings(koluxPage)
           return {
             agentTaskComplete: s.notifications.agentTaskComplete,
             terminalBell: s.notifications.terminalBell,
@@ -312,7 +301,7 @@ test.describe('Onboarding flow', () => {
     await expect
       .poll(
         async () => {
-          const state = await getOnboardingState(nightshiftPage)
+          const state = await getOnboardingState(koluxPage)
           return {
             closedAt: state.closedAt === null ? null : 'set',
             outcome: state.outcome,
@@ -330,60 +319,54 @@ test.describe('Onboarding flow', () => {
       })
   })
 
-  test('Cmd/Ctrl+Enter advances steps like Continue', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('Cmd/Ctrl+Enter advances steps like Continue', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
     // Why: the OS the renderer reports drives whether Cmd or Ctrl is the
     // accelerator (OnboardingFlow.tsx checks navigator.userAgent).
-    const isMac = await nightshiftPage.evaluate(() => navigator.userAgent.includes('Mac'))
+    const isMac = await koluxPage.evaluate(() => navigator.userAgent.includes('Mac'))
     const accelerator = isMac ? 'Meta+Enter' : 'Control+Enter'
 
     // Why: in headless Linux CI the window-level capture-phase listener can
     // miss synthetic keyboard events when no element holds focus. Click an
     // inert area inside the overlay first to anchor focus, then press.
-    await nightshiftPage.locator('footer').click({ position: { x: 1, y: 1 } })
-    await nightshiftPage.keyboard.press(accelerator)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
+    await koluxPage.locator('footer').click({ position: { x: 1, y: 1 } })
+    await koluxPage.keyboard.press(accelerator)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
     await expect
-      .poll(async () => (await getOnboardingState(nightshiftPage)).lastCompletedStep, {
+      .poll(async () => (await getOnboardingState(koluxPage)).lastCompletedStep, {
         timeout: 5_000
       })
       .toBe(1)
   })
 
   test('Skip opens Add Project, saves the selected agent, and completes onboarding', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
-    const codexButton = nightshiftPage.getByRole('button', { name: /^Codex\s/ })
+    const codexButton = koluxPage.getByRole('button', { name: /^Codex\s/ })
     const codexVisible = await codexButton
       .first()
       .waitFor({ state: 'visible', timeout: 1_000 })
       .then(() => true)
       .catch(() => false)
     if (!codexVisible) {
-      await nightshiftPage.getByText(/Show \d+ more agents/).click()
+      await koluxPage.getByText(/Show \d+ more agents/).click()
     }
     await codexButton.click()
 
-    await onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
+    await onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
 
-    await expectAddProjectDialog(nightshiftPage)
+    await expectAddProjectDialog(koluxPage)
 
     await expect
       .poll(
         async () => {
-          const state = await getOnboardingState(nightshiftPage)
+          const state = await getOnboardingState(koluxPage)
           return {
             closedAt: state.closedAt === null ? null : 'set',
             outcome: state.outcome,
@@ -400,50 +383,44 @@ test.describe('Onboarding flow', () => {
         lastCompletedStep: ONBOARDING_FINAL_STEP
       })
     await expect
-      .poll(async () => (await getSettings(nightshiftPage)).defaultTuiAgent, { timeout: 5_000 })
+      .poll(async () => (await getSettings(koluxPage)).defaultTuiAgent, { timeout: 5_000 })
       .toBe('codex')
   })
 
-  test('Skip from theme restores the entry theme choice', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('Skip from theme restores the entry theme choice', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
 
-    await nightshiftPage.waitForFunction(
+    await koluxPage.waitForFunction(
       () =>
         document.documentElement.classList.contains('dark') ||
         document.documentElement.classList.contains('light')
     )
-    const entryTheme = (await getSettings(nightshiftPage)).theme
-    const startingTheme = await getDocumentThemeClass(nightshiftPage)
+    const entryTheme = (await getSettings(koluxPage)).theme
+    const startingTheme = await getDocumentThemeClass(koluxPage)
     const oppositeTheme: 'dark' | 'light' = startingTheme === 'dark' ? 'light' : 'dark'
     const oppositeTileName = oppositeTheme === 'light' ? /Bright & crisp/ : /Easy on the eyes/
-    await nightshiftPage.getByRole('button', { name: oppositeTileName }).click()
+    await koluxPage.getByRole('button', { name: oppositeTileName }).click()
     await expect
-      .poll(async () => getDocumentThemeClass(nightshiftPage), { timeout: 5_000 })
+      .poll(async () => getDocumentThemeClass(koluxPage), { timeout: 5_000 })
       .toBe(oppositeTheme)
 
-    await onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
+    await onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
 
-    await expectAddProjectDialog(nightshiftPage)
+    await expectAddProjectDialog(koluxPage)
     await expect
-      .poll(async () => (await getSettings(nightshiftPage)).theme, { timeout: 5_000 })
+      .poll(async () => (await getSettings(koluxPage)).theme, { timeout: 5_000 })
       .toBe(entryTheme)
     await expect
-      .poll(async () => getDocumentThemeClass(nightshiftPage), { timeout: 5_000 })
+      .poll(async () => getDocumentThemeClass(koluxPage), { timeout: 5_000 })
       .toBe(startingTheme)
   })
 
-  test('Skip preserves runtime server project setup UI', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('Skip preserves runtime server project setup UI', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
     // Why: since #10011 `settings:set` strips activeRuntimeEnvironmentId — the
@@ -458,7 +435,7 @@ test.describe('Onboarding flow', () => {
       deviceToken: 'e2e-device-token',
       publicKeyB64: 'ZTJlLXB1YmxpYy1rZXk'
     })
-    const environmentId = await nightshiftPage.evaluate(async (code) => {
+    const environmentId = await koluxPage.evaluate(async (code) => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -499,81 +476,71 @@ test.describe('Onboarding flow', () => {
       return environment.id
     }, pairingCode)
     await expect
-      .poll(async () => (await getSettings(nightshiftPage)).activeRuntimeEnvironmentId, {
+      .poll(async () => (await getSettings(koluxPage)).activeRuntimeEnvironmentId, {
         timeout: 5_000
       })
       .toBe(environmentId)
 
-    await onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
+    await onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON).click()
 
-    await expectAddProjectDialog(nightshiftPage)
+    await expectAddProjectDialog(koluxPage)
     // The runtime env is selected as the Add Project host and the browse action
     // is host-scoped, proving the server project-setup UI is preserved on skip.
     await expect(
-      nightshiftPage.getByText('Existing Git repository or folder on this host')
+      koluxPage.getByText('Existing Git repository or folder on this host')
     ).toBeVisible()
-    await expect(nightshiftPage.getByRole('button', { name: /Browse folder/i })).toBeVisible()
-    await expect(nightshiftPage.getByRole('button', { name: /Clone from URL/i })).toBeVisible()
-    await expect(nightshiftPage.getByRole('button', { name: /Create new project/i })).toBeVisible()
-    await expect(onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(
-      0
-    )
-    expect((await getOnboardingState(nightshiftPage)).closedAt).not.toBeNull()
+    await expect(koluxPage.getByRole('button', { name: /Browse folder/i })).toBeVisible()
+    await expect(koluxPage.getByRole('button', { name: /Clone from URL/i })).toBeVisible()
+    await expect(koluxPage.getByRole('button', { name: /Create new project/i })).toBeVisible()
+    await expect(onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(0)
+    expect((await getOnboardingState(koluxPage)).closedAt).not.toBeNull()
   })
 
-  test('Skip from notifications does not request permission', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('Skip from notifications does not request permission', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
-    await continueFromThemeToNotifications(nightshiftPage)
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
+    await continueFromThemeToNotifications(koluxPage)
 
-    await nightshiftPage.evaluate(() => {
-      localStorage.removeItem('nightshift.e2e.notificationPermissionRequested')
+    await koluxPage.evaluate(() => {
+      localStorage.removeItem('kolux.e2e.notificationPermissionRequested')
       window.api.notifications.requestPermission = async () => {
-        localStorage.setItem('nightshift.e2e.notificationPermissionRequested', '1')
+        localStorage.setItem('kolux.e2e.notificationPermissionRequested', '1')
         return { supported: true, platform: 'darwin', requested: true }
       }
     })
-    await expectOnboardingNotificationSound(nightshiftPage, /System Default/i)
+    await expectOnboardingNotificationSound(koluxPage, /System Default/i)
 
-    await expect(onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(
-      0
-    )
-    await continueOnboarding(nightshiftPage)
+    await expect(onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(0)
+    await continueOnboarding(koluxPage)
 
-    await expectAddProjectDialog(nightshiftPage)
+    await expectAddProjectDialog(koluxPage)
     await expect
       .poll(
         async () =>
-          nightshiftPage.evaluate(() =>
-            localStorage.getItem('nightshift.e2e.notificationPermissionRequested')
+          koluxPage.evaluate(() =>
+            localStorage.getItem('kolux.e2e.notificationPermissionRequested')
           ),
         { timeout: 5_000 }
       )
       .toBeNull()
   })
 
-  test('selected agent button reports aria-pressed=true', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('selected agent button reports aria-pressed=true', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
-    const codexButton = nightshiftPage.getByRole('button', { name: /^Codex\s/ })
+    const codexButton = koluxPage.getByRole('button', { name: /^Codex\s/ })
     const codexVisible = await codexButton
       .first()
       .waitFor({ state: 'visible', timeout: 1_000 })
       .then(() => true)
       .catch(() => false)
     if (!codexVisible) {
-      await nightshiftPage.getByText(/Show \d+ more agents/).click()
+      await koluxPage.getByText(/Show \d+ more agents/).click()
     }
     await codexButton.click()
     // Why: AgentButton now sets aria-pressed so screen readers and assistive
@@ -581,25 +548,21 @@ test.describe('Onboarding flow', () => {
     await expect(codexButton).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test('notification sound choice persists on Continue', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('notification sound choice persists on Continue', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
-    await continueFromThemeToNotifications(nightshiftPage)
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
+    await continueFromThemeToNotifications(koluxPage)
 
-    await chooseOnboardingNotificationSound(nightshiftPage, /^Ding$/i)
+    await chooseOnboardingNotificationSound(koluxPage, /^Ding$/i)
 
-    await continueFromPostNotificationsToRepo(nightshiftPage)
+    await continueFromPostNotificationsToRepo(koluxPage)
     await expect
       .poll(
         async () => {
-          const s = await getSettings(nightshiftPage)
+          const s = await getSettings(koluxPage)
           return {
             agentTaskComplete: s.notifications.agentTaskComplete,
             terminalBell: s.notifications.terminalBell,
@@ -612,75 +575,65 @@ test.describe('Onboarding flow', () => {
   })
 
   test('typing in the clone-url input does not hijack Enter as a global shortcut', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
     // Advance to the Add Project dialog.
-    await continueOnboarding(nightshiftPage)
-    await continueOnboarding(nightshiftPage)
-    await continueFromPostNotificationsToRepo(nightshiftPage)
-    await nightshiftPage.getByRole('button', { name: /Clone from URL/i }).click()
+    await continueOnboarding(koluxPage)
+    await continueOnboarding(koluxPage)
+    await continueFromPostNotificationsToRepo(koluxPage)
+    await koluxPage.getByRole('button', { name: /Clone from URL/i }).click()
 
     // Why: focus the clone-url input and press Cmd/Ctrl+Enter. The capture-
     // phase keydown handler should bail via isEditableTarget, so the dialog
     // should remain visible and the empty clone form must not submit.
-    const isMac = await nightshiftPage.evaluate(() => navigator.userAgent.includes('Mac'))
+    const isMac = await koluxPage.evaluate(() => navigator.userAgent.includes('Mac'))
     const accelerator = isMac ? 'Meta+Enter' : 'Control+Enter'
-    const input = nightshiftPage.getByPlaceholder('https://github.com/user/repo.git')
+    const input = koluxPage.getByPlaceholder('https://github.com/user/repo.git')
     await input.click()
     await input.press(accelerator)
     // Brief wait so any (incorrect) handler firing would have already happened.
-    await nightshiftPage.waitForTimeout(250)
-    await expect(nightshiftPage.getByRole('heading', { name: /Clone from URL/i })).toBeVisible()
+    await koluxPage.waitForTimeout(250)
+    await expect(koluxPage.getByRole('heading', { name: /Clone from URL/i })).toBeVisible()
     await expect(input).toBeVisible()
-    expect((await getOnboardingState(nightshiftPage)).closedAt).not.toBeNull()
+    expect((await getOnboardingState(koluxPage)).closedAt).not.toBeNull()
   })
 
-  test('Back returns to the previous step without losing progress', async ({ nightshiftPage }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+  test('Back returns to the previous step without losing progress', async ({ koluxPage }) => {
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
     await expect
-      .poll(async () => (await getOnboardingState(nightshiftPage)).lastCompletedStep, {
+      .poll(async () => (await getOnboardingState(koluxPage)).lastCompletedStep, {
         timeout: 5_000
       })
       .toBe(1)
 
     // Why: exact match — the app sidebar also exposes a "Go back" button that
     // would otherwise match this regex.
-    await nightshiftPage.getByRole('button', { name: 'Back', exact: true }).click()
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible()
-    await expectOnboardingProgress(nightshiftPage, /^1 of [345]$/)
+    await koluxPage.getByRole('button', { name: 'Back', exact: true }).click()
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible()
+    await expectOnboardingProgress(koluxPage, /^1 of [345]$/)
 
     // Why: "without losing progress" means persisted lastCompletedStep stays
     // at 1 — Back rewinds the visible step but must not roll persistence back.
     // Poll because persistence flushes async via IPC after the Back click.
     await expect
-      .poll(async () => (await getOnboardingState(nightshiftPage)).lastCompletedStep, {
+      .poll(async () => (await getOnboardingState(koluxPage)).lastCompletedStep, {
         timeout: 5_000
       })
       .toBe(1)
   })
 
   test('final notification step can be dismissed via Escape or click-off', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible({
       timeout: 15_000
     })
 
@@ -688,40 +641,32 @@ test.describe('Onboarding flow', () => {
     // Add Project, so the footer offers no "Skip to project setup" shortcut —
     // but click-off and Escape must still open the skip-confirmation dialog like
     // every other step, so the modal never feels stuck.
-    await continueOnboarding(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Make it feel like home/i })
-    ).toBeVisible()
-    await continueFromThemeToNotifications(nightshiftPage)
+    await continueOnboarding(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Make it feel like home/i })).toBeVisible()
+    await continueFromThemeToNotifications(koluxPage)
 
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Set up notifications/i })
-    ).toBeVisible()
-    await expect(onboardingFooterButton(nightshiftPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(
-      0
-    )
+    await expect(koluxPage.getByRole('heading', { name: /Set up notifications/i })).toBeVisible()
+    await expect(onboardingFooterButton(koluxPage, SKIP_TO_PROJECT_SETUP_BUTTON)).toHaveCount(0)
 
     // Escape opens the confirmation; "No, keep going" returns to the step with
     // onboarding still open.
-    await nightshiftPage.keyboard.press('Escape')
-    await expectOnboardingSkipConfirmationOpen(nightshiftPage)
-    await nightshiftPage.getByRole('button', { name: /No, keep going/i }).click()
-    await expectOnboardingSkipConfirmationClosed(nightshiftPage)
-    await expect(
-      nightshiftPage.getByRole('heading', { name: /Set up notifications/i })
-    ).toBeVisible()
-    expect((await getOnboardingState(nightshiftPage)).closedAt).toBeNull()
+    await koluxPage.keyboard.press('Escape')
+    await expectOnboardingSkipConfirmationOpen(koluxPage)
+    await koluxPage.getByRole('button', { name: /No, keep going/i }).click()
+    await expectOnboardingSkipConfirmationClosed(koluxPage)
+    await expect(koluxPage.getByRole('heading', { name: /Set up notifications/i })).toBeVisible()
+    expect((await getOnboardingState(koluxPage)).closedAt).toBeNull()
 
     // Click-off opens the confirmation; Skip dismisses onboarding outright (no
     // Add Project handoff — that is the primary button's job).
-    await nightshiftPage.locator('[data-onboarding-overlay]').click({ position: { x: 8, y: 40 } })
-    await expectOnboardingSkipConfirmationOpen(nightshiftPage)
-    await nightshiftPage.getByRole('button', { name: /^Skip$/ }).click()
+    await koluxPage.locator('[data-onboarding-overlay]').click({ position: { x: 8, y: 40 } })
+    await expectOnboardingSkipConfirmationOpen(koluxPage)
+    await koluxPage.getByRole('button', { name: /^Skip$/ }).click()
 
     await expect
       .poll(
         async () => {
-          const state = await getOnboardingState(nightshiftPage)
+          const state = await getOnboardingState(koluxPage)
           return {
             closedAt: state.closedAt === null ? null : 'set',
             outcome: state.outcome,

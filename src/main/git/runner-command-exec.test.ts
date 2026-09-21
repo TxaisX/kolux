@@ -324,7 +324,7 @@ describe('runner execFile timeout handling', () => {
     mockWedgedCliSpawn(child)
     const processKill = mockProcessGroupSignals()
     try {
-      const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fnightshift/issues'], {
+      const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fkolux/issues'], {
         cwd: '/repo'
       })
       const rejection = expect(promise).rejects.toThrow('glab timed out.')
@@ -425,12 +425,12 @@ describe('runner execFile timeout handling', () => {
 
     await ghExecFileAsync(['api', 'user'], {
       cwd: '/repo',
-      env: { ...process.env, GH_PROMPT_DISABLED: '0', NIGHTSHIFT_TEST_ENV: 'kept' },
+      env: { ...process.env, GH_PROMPT_DISABLED: '0', KOLUX_TEST_ENV: 'kept' },
       timeout: 1234
     })
 
     expect(capturedEnv?.GH_PROMPT_DISABLED).toBe('0')
-    expect(capturedEnv?.NIGHTSHIFT_TEST_ENV).toBe('kept')
+    expect(capturedEnv?.KOLUX_TEST_ENV).toBe('kept')
   })
 
   // Issue #5308: git read-path calls must be forced non-interactive so a
@@ -687,7 +687,7 @@ describe('runner execFile timeout handling', () => {
         'wsl.exe',
         ['-d', 'Ubuntu', '--exec', 'sh', '-lc', expect.any(String)],
         // Why a concrete directory (#16463): `undefined` makes CreateProcessW inherit
-        // Nightshift's own cwd, a deletable WSL UNC path when it was launched from a
+        // Kolux's own cwd, a deletable WSL UNC path when it was launched from a
         // worktree. The Linux directory still rides inside the command (/mnt/c/repo,
         // asserted below).
         expect.objectContaining({ cwd: expect.any(String) }),
@@ -698,7 +698,7 @@ describe('runner execFile timeout handling', () => {
       const gitCall = execFileMock.mock.calls.find((call) => String(call[1]?.[5]).includes("'git'"))
       const shellCommand = gitCall?.[1]?.[5] as string
       expect(shellCommand).toContain('getent passwd')
-      expect(shellCommand).toContain('exec "$_nightshift_wsl_shell" -ilc')
+      expect(shellCommand).toContain('exec "$_kolux_wsl_shell" -ilc')
       expect(shellCommand).toContain('/mnt/c/repo')
       expect(shellCommand).toContain("'git'")
       expect(shellCommand).toContain('status')
@@ -724,7 +724,7 @@ describe('runner execFile timeout handling', () => {
         'wsl.exe',
         ['-d', 'Ubuntu', '--exec', 'bash', '-c', expect.any(String)],
         // Why a concrete directory (#16463): `undefined` makes CreateProcessW inherit
-        // Nightshift's own cwd, a deletable WSL UNC path when it was launched from a
+        // Kolux's own cwd, a deletable WSL UNC path when it was launched from a
         // worktree. The Linux directory still rides inside the command (/mnt/c/repo,
         // asserted below).
         expect.objectContaining({ cwd: expect.any(String) }),

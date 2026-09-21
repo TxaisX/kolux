@@ -34,7 +34,7 @@ describe('repos:previewInitialCommit', () => {
     handleMock.mockImplementation((channel: string, handler: (...a: unknown[]) => unknown) => {
       handlers.set(channel, handler as (event: unknown, args: unknown) => unknown)
     })
-    root = await mkdtemp(join(tmpdir(), 'nightshift-preview-initial-commit-handler-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-preview-initial-commit-handler-'))
     gitInit(root)
     repo = {
       id: 'repo-1',

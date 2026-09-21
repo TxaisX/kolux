@@ -2,19 +2,19 @@
 
 macOS opens the accent picker when a key is held unless an application opts out in its preferences
 domain. That prevents held keys from repeating in terminal applications such as vim. On the first
-eligible launch, Nightshift writes:
+eligible launch, Kolux writes:
 
 ```sh
-defaults write com.txais.nightshift ApplePressAndHoldEnabled -bool false
+defaults write com.txais.kolux ApplePressAndHoldEnabled -bool false
 ```
 
-The write is scoped to Nightshift's packaged bundle domain. Bare Electron development bundles and
+The write is scoped to Kolux's packaged bundle domain. Bare Electron development bundles and
 non-macOS platforms are left untouched. A fresh write is conservatively treated as taking effect
 on the next launch.
 
 ## Precedence and decision record
 
-Nightshift checks for an explicit domain value before writing. Either `true` or `false` is treated as a
+Kolux checks for an explicit domain value before writing. Either `true` or `false` is treated as a
 user choice and preserved. Only an unset key receives the `false` default.
 
 The decision is stored once in
@@ -30,20 +30,20 @@ timeouts, and other exit statuses leave the preference alone.
 
 ## Restoring the accent picker
 
-Set the preference explicitly, then restart Nightshift:
+Set the preference explicitly, then restart Kolux:
 
 ```sh
-defaults write com.txais.nightshift ApplePressAndHoldEnabled -bool true
+defaults write com.txais.kolux ApplePressAndHoldEnabled -bool true
 ```
 
-After Nightshift has recorded its one-time decision, deleting the key also restores the macOS default
-without Nightshift recreating it:
+After Kolux has recorded its one-time decision, deleting the key also restores the macOS default
+without Kolux recreating it:
 
 ```sh
-defaults delete com.txais.nightshift ApplePressAndHoldEnabled
+defaults delete com.txais.kolux ApplePressAndHoldEnabled
 ```
 
-Development and prerelease channels may use a channel-suffixed Nightshift bundle identifier; use that
+Development and prerelease channels may use a channel-suffixed Kolux bundle identifier; use that
 domain instead when applicable.
 
 ## Reverting

@@ -118,8 +118,8 @@ export function getLinuxRootPackageType(): LinuxRootPackageType | null {
 
 /**
  * Whether the marker claims a root package format this host cannot install. Repackagers (AUR, Nix,
- * container rebuilds) unpack Nightshift's .deb and inherit its `package-type` verbatim, so the marker
- * describes the artifact Nightshift was built as, never the system that now owns the install. Without a
+ * container rebuilds) unpack Kolux's .deb and inherit its `package-type` verbatim, so the marker
+ * describes the artifact Kolux was built as, never the system that now owns the install. Without a
  * matching package manager no downloaded package can ever be applied here.
  *
  * A false positive is impossible by construction: this reuses the exact manager lists and resolver

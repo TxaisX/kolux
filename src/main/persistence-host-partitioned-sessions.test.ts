@@ -60,7 +60,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store host-partitioned workspace sessions', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

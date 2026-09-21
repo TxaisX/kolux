@@ -111,7 +111,7 @@ export function toLegacyDetectedWorktreeResult(
     source: 'session-fallback',
     worktrees: worktrees.map((worktree) => ({
       ...worktree,
-      ownership: 'nightshift-managed',
+      ownership: 'kolux-managed',
       selectedCheckout: false,
       visible: true
     }))

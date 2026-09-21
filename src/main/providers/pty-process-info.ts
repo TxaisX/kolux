@@ -11,7 +11,7 @@ export type PtyProcessInfo = {
   title: string
   /** Owning worktree when the provider can report it authoritatively. */
   worktreeId?: string
-  /** Trusted NIGHTSHIFT_TERMINAL_HANDLE exported into this PTY, when known. */
+  /** Trusted KOLUX_TERMINAL_HANDLE exported into this PTY, when known. */
   terminalHandle?: string
   /** Exact WSL owner reported by the PTY provider; null means native Windows. */
   wslDistro?: string | null
@@ -21,7 +21,7 @@ export type PtyProcessInfo = {
   /** Age measured on the OWNING host's clock. Absent means the host did not measure it, which is
    *  not the same as "new" or "old" — a reader that needs an age must defer instead of assuming. */
   hostAgeMs?: number
-  /** True when the host spawned this PTY for a Nightshift pane, false for a bare host shell. Absent from
+  /** True when the host spawned this PTY for a Kolux pane, false for a bare host shell. Absent from
    *  a host that never published it; absence is neither value. */
   paneBound?: boolean
   /** The client identity the OWNING host recorded as having asked it to create this PTY. Absent

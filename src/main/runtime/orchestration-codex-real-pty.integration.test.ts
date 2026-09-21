@@ -30,7 +30,7 @@ vi.mock('electron', () => ({
   webContents: { fromId: vi.fn(() => null) }
 }))
 
-const binary = process.env.NIGHTSHIFT_REPRO_CODEX_BINARY
+const binary = process.env.KOLUX_REPRO_CODEX_BINARY
 const trials = (['before', 'after'] as const).flatMap((arrival) =>
   [1, 2, 3].map((trial) => ({ arrival, trial }))
 )
@@ -39,7 +39,7 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 it.skipIf(!binary || process.platform === 'win32').each(trials)(
   'submits mail arriving $arrival a real Codex completion (trial $trial)',
   async ({ arrival }) => {
-    const directory = realpathSync(mkdtempSync(join(tmpdir(), 'nightshift-codex-mailbox-')))
+    const directory = realpathSync(mkdtempSync(join(tmpdir(), 'kolux-codex-mailbox-')))
     const workspace = join(directory, 'work')
     mkdirSync(workspace)
     const trace: { ms: number; kind: string; value: unknown }[] = []
@@ -95,7 +95,7 @@ it.skipIf(!binary || process.platform === 'win32').each(trials)(
     }
     const hooks = new AgentHookServer()
     await hooks.start()
-    const db = createDatabase('nightshift-codex-mailbox-db-')
+    const db = createDatabase('kolux-codex-mailbox-db-')
     const { runtime } = createRuntime(db, {
       getAgentStatusSnapshot: () => hooks.getStatusSnapshot()
     })
@@ -117,7 +117,7 @@ it.skipIf(!binary || process.platform === 'win32').each(trials)(
         runtime.ingestSyntheticTitleFrame(PTY_ID, `\x1b]0;${title}\x07`)
       }
     })
-    const script = join(directory, 'nightshift-hook.sh')
+    const script = join(directory, 'kolux-hook.sh')
     writeFileSync(script, getManagedScript('posix'))
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
     writeFileSync(
@@ -161,7 +161,7 @@ it.skipIf(!binary || process.platform === 'win32').each(trials)(
     const env = Object.fromEntries(
       Object.entries(process.env).filter(
         ([key, value]) =>
-          value !== undefined && !key.startsWith('NIGHTSHIFT_') && !key.startsWith('CODEX_')
+          value !== undefined && !key.startsWith('KOLUX_') && !key.startsWith('CODEX_')
       )
     ) as Record<string, string>
     const terminal = pty.spawn(
@@ -177,11 +177,11 @@ it.skipIf(!binary || process.platform === 'win32').each(trials)(
           ...hooks.buildPtyEnv(),
           CODEX_HOME: directory,
           TERM: 'xterm-256color',
-          NIGHTSHIFT_BACKGROUND_LAUNCH: '1',
-          NIGHTSHIFT_PANE_KEY: PANE_KEY,
-          NIGHTSHIFT_TAB_ID: TAB_ID,
-          NIGHTSHIFT_WORKTREE_ID: WORKTREE_ID,
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: LAUNCH_TOKEN
+          KOLUX_BACKGROUND_LAUNCH: '1',
+          KOLUX_PANE_KEY: PANE_KEY,
+          KOLUX_TAB_ID: TAB_ID,
+          KOLUX_WORKTREE_ID: WORKTREE_ID,
+          KOLUX_AGENT_LAUNCH_TOKEN: LAUNCH_TOKEN
         }
       }
     )

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { spawnLocalStartupAndSetupTerminals } from './worktree-remote'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import type { GlobalSettings } from '../../shared/global-settings-types'
 
-function makeRuntime(createTerminal: ReturnType<typeof vi.fn>): NightshiftRuntimeService {
-  return { createTerminal } as unknown as NightshiftRuntimeService
+function makeRuntime(createTerminal: ReturnType<typeof vi.fn>): KoluxRuntimeService {
+  return { createTerminal } as unknown as KoluxRuntimeService
 }
 
 describe('spawnLocalStartupAndSetupTerminals focus flag', () => {

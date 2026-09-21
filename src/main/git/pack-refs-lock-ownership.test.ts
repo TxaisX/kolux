@@ -7,7 +7,7 @@ import { PackRefsLockOwnership } from './pack-refs-lock-ownership'
 const roots: string[] = []
 
 async function gitCommonDir(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-pack-refs-lock-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-pack-refs-lock-'))
   roots.push(root)
   return root
 }
@@ -15,7 +15,7 @@ async function gitCommonDir(): Promise<string> {
 function paths(commonDir: string): { lock: string; marker: string } {
   return {
     lock: join(commonDir, 'packed-refs.lock'),
-    marker: join(commonDir, 'packed-refs.nightshift-owner')
+    marker: join(commonDir, 'packed-refs.kolux-owner')
   }
 }
 

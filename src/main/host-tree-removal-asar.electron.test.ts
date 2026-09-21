@@ -106,7 +106,7 @@ describe('removeHostTree against a tree holding an asar archive', () => {
   it.runIf(FIXTURE_ASAR)(
     'removes the whole tree under the real Electron binary',
     async () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-host-tree-asar-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-host-tree-asar-'))
       roots.push(root)
       const bundlePath = join(root, 'host-tree-removal.cjs')
       await bundleHostTreeRemoval(bundlePath)

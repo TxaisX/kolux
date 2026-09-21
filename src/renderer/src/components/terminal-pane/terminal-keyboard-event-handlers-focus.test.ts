@@ -75,7 +75,7 @@ describe('terminal keyboard pane ownership', () => {
       searchOpenRef: { current: false },
       searchStateRef: { current: { query: '', caseSensitive: false, regex: false } },
       keybindings: undefined,
-      terminalShortcutPolicy: 'nightshift-first',
+      terminalShortcutPolicy: 'kolux-first',
       getKeyboardSplitTelemetrySource: () => 'keyboard'
     } as never)
 

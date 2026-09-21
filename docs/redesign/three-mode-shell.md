@@ -13,14 +13,14 @@ prototype wins for behavior and this doc wins for scope.
 
 Every competing desktop app for coding agents (Conductor, Superset, Emdash, Devin Desktop,
 Kiro Crew, Sculptor, Vibe Kanban, Codex app, Cursor, Warp, Zed) opens on a session list
-and a transcript. The human is a spectator who scrolls. Nightshift already has three things
+and a transcript. The human is a spectator who scrolls. Kolux already has three things
 none of them show: **hosts** (local, WSL, SSH), **orchestration** (runs, tasks, dispatch,
 mailboxes in the CLI), and **launch shapes**. None of them are visible in the renderer
 today. The redesign gives them a face and turns the app into a desk the operator works
 from, not a wall of terminals they watch.
 
 Survey report (19 products, screenshots, pattern matrix):
-`G:\OneDrive\Documents\nightshift-ui-survey\index.html`.
+`G:\OneDrive\Documents\kolux-ui-survey\index.html`.
 
 ## The three modes
 
@@ -59,9 +59,9 @@ Session state uses exactly four words, matching the SSH execution-boundary contr
   chips. Geist for text, the mono token for paths and terminal-adjacent UI.
 - The Code mode work area is **darker than the chrome**. Two parts: `--workbench-surface`
   paints the tab-group body, splits and empty panes one step below the chrome, and the
-  default dark terminal theme is now `Nightshift Dark` (`#0d0d0d`) instead of Ghostty's
+  default dark terminal theme is now `Kolux Dark` (`#0d0d0d`) instead of Ghostty's
   `#282c34`, which was the lightest surface on screen. Profiles still on the old default
-  move once via `terminalThemeDarkDefaultedToNightshift`; a theme the user picked is never
+  move once via `terminalThemeDarkDefaultedToKolux`; a theme the user picked is never
   touched. Editor and diff panes stay on `--editor-surface`, one step lighter, so edits
   read as the subject.
 - Row metadata order everywhere: what it is, where it is, what changed, how old.
@@ -186,7 +186,7 @@ Status as of 2026-09-14 is in brackets.
 9. **Per-workspace handoff** documents and hand-to-agent. [done]
 
 Each slice: tests pass, typecheck, lint, and a runtime check by driving the app in the
-background (`NIGHTSHIFT_BACKGROUND_LAUNCH=1`). Green tests were not enough before; see
+background (`KOLUX_BACKGROUND_LAUNCH=1`). Green tests were not enough before; see
 `HANDOFF.md`.
 
 ## Open questions

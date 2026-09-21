@@ -1,4 +1,4 @@
-import type { NightshiftHooks } from '../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../shared/kolux-yaml-hook-types'
 import type { PublicKnownRuntimeEnvironment } from '../../shared/runtime-environments'
 import type { EphemeralVmRecipeDoctorResult } from '../../shared/ephemeral-vm-recipes'
 import type { EphemeralVmRecipeResultWarning } from '../../shared/ephemeral-vm-recipe-diagnostics'
@@ -8,8 +8,8 @@ export type EphemeralVmApi = {
   listRecipes: (args: { repoId: string }) => Promise<{
     status: 'ok' | 'error'
     repoPath: string | null
-    recipes: NightshiftHooks['environmentRecipes']
-    diagnostics: NonNullable<NightshiftHooks['environmentRecipeDiagnostics']>
+    recipes: KoluxHooks['environmentRecipes']
+    diagnostics: NonNullable<KoluxHooks['environmentRecipeDiagnostics']>
     message?: string
   }>
   listRecipeCatalog: () => Promise<
@@ -17,8 +17,8 @@ export type EphemeralVmApi = {
       repoId: string
       repoName: string
       repoPath: string
-      recipes: NonNullable<NightshiftHooks['environmentRecipes']>
-      diagnostics: NonNullable<NightshiftHooks['environmentRecipeDiagnostics']>
+      recipes: NonNullable<KoluxHooks['environmentRecipes']>
+      diagnostics: NonNullable<KoluxHooks['environmentRecipeDiagnostics']>
     }[]
   >
   doctor: (args: { repoId: string; recipeId: string }) => Promise<EphemeralVmRecipeDoctorResult>
@@ -34,7 +34,7 @@ export type EphemeralVmApi = {
   }) => Promise<
     | {
         ok: true
-        connectionType: 'nightshift-server'
+        connectionType: 'kolux-server'
         runtime: EphemeralVmRuntimeRecord
         environment: PublicKnownRuntimeEnvironment
         stderr: string

@@ -66,7 +66,7 @@ afterEach(async () => {
 
 describe('structured session provider restore', () => {
   it('restores a durable Claude session tab with its recorded provider', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-provider-restore-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-provider-restore-'))
     resetHostTestOperationIds()
     const storeDirectory = join(root, 'store')
     const store = await AgentSessionRecordStore.open({ directory: storeDirectory, hostId: 'local' })

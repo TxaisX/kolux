@@ -130,19 +130,19 @@ describe('key encoding', () => {
   })
 
   it('separates the provider namespaces', () => {
-    const nightshift = agentJournalItemKey({ provider: 'nightshift', clientMessageId: 'x' })
+    const kolux = agentJournalItemKey({ provider: 'kolux', clientMessageId: 'x' })
     const legacy = agentJournalItemKey({
       provider: 'legacy',
       agent: 'claude',
       sessionId: 'x',
       recordId: 'x'
     })
-    expect(nightshift).not.toBe(legacy)
+    expect(kolux).not.toBe(legacy)
   })
 
   it('derives the submission slot from the same function the reducer uses', () => {
     expect(agentJournalSubmissionKey('cm_42')).toBe(
-      agentJournalItemKey({ provider: 'nightshift', clientMessageId: 'cm_42' })
+      agentJournalItemKey({ provider: 'kolux', clientMessageId: 'cm_42' })
     )
   })
 })
@@ -212,13 +212,13 @@ describe('oversized identity bounding on Unicode boundaries', () => {
   it('keeps an astral character that lands entirely inside the head', () => {
     const inside = `${'a'.repeat(38)}😀${'x'.repeat(1100)}`
     const bounded = boundJournalKeyComponent(inside)
-    expect(bounded.startsWith(`${'a'.repeat(38)}😀~nightshift-oversized~`)).toBe(true)
+    expect(bounded.startsWith(`${'a'.repeat(38)}😀~kolux-oversized~`)).toBe(true)
     expect(() => encodeURIComponent(bounded)).not.toThrow()
   })
 
   it('drops only the split surrogate from the straddling head', () => {
     const bounded = boundJournalKeyComponent(STRADDLING)
-    expect(bounded.startsWith(`${'a'.repeat(39)}~nightshift-oversized~`)).toBe(true)
+    expect(bounded.startsWith(`${'a'.repeat(39)}~kolux-oversized~`)).toBe(true)
     expect(() => encodeURIComponent(bounded)).not.toThrow()
   })
 })

@@ -3,7 +3,7 @@ import { isTuiAgent } from '../../../../shared/tui-agent-config'
 import { isAgentStatusHooksEnabled } from '../../../agent-hooks/managed-agent-hook-controls'
 import { isSafePtySessionId } from '../../../daemon/pty-session-id'
 import { isNativeWindowsLocalPtySpawn } from '../../../runtime/terminal-model-query-authority'
-import { stampWslOrchestrationCompatibilityHost } from '../../../pty/wsl-nightshift-env'
+import { stampWslOrchestrationCompatibilityHost } from '../../../pty/wsl-kolux-env'
 import { ensureCodexStateDbBackfillRecoveryStarted } from '../../../codex/codex-state-db-backfill-recovery'
 import { buildPtyHostEnv } from '../host-env/assembly'
 import {
@@ -11,7 +11,7 @@ import {
   getCodexSelectionTargetForPty,
   resolveCodexHomeAfterManagedAuthReadiness,
   shouldSkipCodexHomeEnvForWindowsShell,
-  shouldStripInheritedNightshiftCodexHome,
+  shouldStripInheritedKoluxCodexHome,
   isCodexStatusHooksEnabled,
   codexHomePathsEqual
 } from '../host-env/codex-home'
@@ -112,9 +112,9 @@ export async function assemblePtyIpcSpawnCodexEnv(ctx: PtyIpcSpawnState): Promis
     shouldSkipCodexHomeEnvForWindowsShell(ctx.effectiveShellOverride, ctx.cwd) &&
     !ctx.selectedCodexHomePath
   const ptySettings = ctx.isDaemonHostSpawn ? ctx.deps.getSettings?.() : undefined
-  ctx.stripInheritedNightshiftCodexHome =
+  ctx.stripInheritedKoluxCodexHome =
     ctx.isDaemonHostSpawn &&
-    shouldStripInheritedNightshiftCodexHome({
+    shouldStripInheritedKoluxCodexHome({
       target: ctx.codexSelectionTarget,
       selectedCodexHomePath: ctx.selectedCodexHomePath,
       skipCodexHomeEnv: ctx.skipCodexHomeEnv,
@@ -139,7 +139,7 @@ export async function assemblePtyIpcSpawnCodexEnv(ctx: PtyIpcSpawnState): Promis
         userDataPath: getAppEnvironment().getPath('userData'),
         selectedCodexHomePath: ctx.selectedCodexHomePath,
         skipCodexHomeEnv: ctx.skipCodexHomeEnv,
-        stripInheritedNightshiftCodexHome: ctx.stripInheritedNightshiftCodexHome,
+        stripInheritedKoluxCodexHome: ctx.stripInheritedKoluxCodexHome,
         launchCommand: ctx.launchCommand,
         launchAgent: isTuiAgent(args.launchAgent) ? args.launchAgent : undefined,
         isWsl: shouldSkipCodexHomeEnvForWindowsShell(ctx.effectiveShellOverride, ctx.cwd),

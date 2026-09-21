@@ -44,12 +44,12 @@ test.describe('Source Control Create PR intent worktree switching', () => {
   test.describe.configure({ mode: 'serial' })
 
   test('keeps Create PR intent running after switching worktrees', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     const { primaryWorktreeId, prWorktreeId, prWorktreePath, primaryBranch } =
-      await seedCreatePrComposer(nightshiftPage)
+      await seedCreatePrComposer(koluxPage)
 
     const screenshotDir = path.join(
       process.cwd(),
@@ -62,7 +62,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
       contentType: 'text/plain'
     })
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ prWorktreeId, primaryBranch }) => {
         const store =
           window.__store ??
@@ -140,7 +140,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
             return {
               ok: true as const,
               number: 74,
-              url: 'https://github.com/acme/nightshift/pull/74'
+              url: 'https://github.com/acme/kolux/pull/74'
             }
           },
           gitStatusByWorktree: {
@@ -161,8 +161,8 @@ test.describe('Source Control Create PR intent worktree switching', () => {
       { prWorktreeId, primaryBranch }
     )
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    const createPr = nightshiftPage.getByRole('button', { name: 'Create PR' }).first()
+    await openSourceControl(koluxPage, prWorktreeId)
+    const createPr = koluxPage.getByRole('button', { name: 'Create PR' }).first()
     await expect(createPr).toBeVisible({ timeout: 10_000 })
     await expect(createPr).toBeEnabled()
     await createPr.click()
@@ -170,7 +170,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               (window as unknown as { __createPRIntentPushStarted: boolean })
                 .__createPRIntentPushStarted
@@ -178,12 +178,12 @@ test.describe('Source Control Create PR intent worktree switching', () => {
         { timeout: 10_000 }
       )
       .toBe(true)
-    await openSourceControl(nightshiftPage, primaryWorktreeId)
+    await openSourceControl(koluxPage, primaryWorktreeId)
 
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               (window as unknown as { __createPRIntentPayloads: unknown[] })
                 .__createPRIntentPayloads.length
@@ -192,7 +192,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
       )
       .toBe(1)
 
-    const completedWhileSwitchedEvidence = await nightshiftPage.evaluate(() => {
+    const completedWhileSwitchedEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -202,8 +202,8 @@ test.describe('Source Control Create PR intent worktree switching', () => {
     expect(completedWhileSwitchedEvidence.activeWorktreeId).toBe(primaryWorktreeId)
     expect(completedWhileSwitchedEvidence.rightSidebarTab).toBe('source-control')
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    const payloads = await nightshiftPage.evaluate(
+    await openSourceControl(koluxPage, prWorktreeId)
+    const payloads = await koluxPage.evaluate(
       () =>
         (
           window as unknown as {
@@ -222,7 +222,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
         worktreePath: prWorktreePath
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-create-pr-intent-completed-after-switch.png')
     })
     await writeEvidence(testInfo, screenshotDir, 'create-pr-intent-switch-evidence.json', {
@@ -234,13 +234,13 @@ test.describe('Source Control Create PR intent worktree switching', () => {
   })
 
   test('carries unavailable dirty intent through push to the final create preflight', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const { prWorktreeId, prWorktreePath } = await seedCreatePrComposer(nightshiftPage)
-    const remoteRoot = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-create-pr-remote-'))
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const { prWorktreeId, prWorktreePath } = await seedCreatePrComposer(koluxPage)
+    const remoteRoot = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-create-pr-remote-'))
     const remotePath = path.join(remoteRoot, 'origin.git')
     execFileSync('git', ['init', '--bare', remotePath])
     // Why: the seeded worktree may already define origin, so make the add idempotent.
@@ -253,7 +253,7 @@ test.describe('Source Control Create PR intent worktree switching', () => {
     createStagedCommitMessageChange(prWorktreePath)
 
     const finalCreateError = 'Unavailable lookup intent reached final create preflight'
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ prWorktreeId, finalCreateError }) => {
         const store =
           window.__store ??
@@ -280,9 +280,9 @@ test.describe('Source Control Create PR intent worktree switching', () => {
               ? {
                   ...repo,
                   gitRemoteIdentity: {
-                    canonicalKey: 'github.com/acme/nightshift',
+                    canonicalKey: 'github.com/acme/kolux',
                     remoteName: 'origin',
-                    remoteUrl: 'https://github.com/acme/nightshift.git'
+                    remoteUrl: 'https://github.com/acme/kolux.git'
                   }
                 }
               : repo
@@ -317,21 +317,21 @@ test.describe('Source Control Create PR intent worktree switching', () => {
       { prWorktreeId, finalCreateError }
     )
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    await expect(nightshiftPage.getByText('e2e-commit-message-generation.txt')).toBeVisible({
+    await openSourceControl(koluxPage, prWorktreeId)
+    await expect(koluxPage.getByText('e2e-commit-message-generation.txt')).toBeVisible({
       timeout: 10_000
     })
-    await nightshiftPage
+    await koluxPage
       .getByRole('textbox', { name: 'Commit message' })
       .fill('Exercise unavailable Create PR intent')
-    const createPr = nightshiftPage.getByRole('button', { name: 'Create PR' }).first()
+    const createPr = koluxPage.getByRole('button', { name: 'Create PR' }).first()
     await expect(createPr).toBeEnabled()
     await createPr.click()
 
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               (window as unknown as { __unavailableIntentPushFinished: boolean })
                 .__unavailableIntentPushFinished
@@ -339,6 +339,6 @@ test.describe('Source Control Create PR intent worktree switching', () => {
         { timeout: 10_000 }
       )
       .toBe(true)
-    await expect(nightshiftPage.getByText(finalCreateError)).toBeVisible({ timeout: 10_000 })
+    await expect(koluxPage.getByText(finalCreateError)).toBeVisible({ timeout: 10_000 })
   })
 })

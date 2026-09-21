@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import {
-  getTerminalUrlNightshiftBrowserHint,
+  getTerminalUrlKoluxBrowserHint,
   getTerminalUrlSystemBrowserHint
 } from '../terminal-pane/terminal-link-open-hints'
 import type { ChecksPanelReview } from './checks-panel-review'
@@ -75,8 +75,8 @@ export function ChecksPanelReviewHeader({
   const modifierHint =
     modifierHintDestination === 'system-browser'
       ? getTerminalUrlSystemBrowserHint()
-      : modifierHintDestination === 'nightshift'
-        ? getTerminalUrlNightshiftBrowserHint()
+      : modifierHintDestination === 'kolux'
+        ? getTerminalUrlKoluxBrowserHint()
         : null
   const title = modifierHint ? `${openTitle}. ${modifierHint}` : openTitle
 

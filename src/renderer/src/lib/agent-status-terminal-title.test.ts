@@ -16,11 +16,8 @@ describe('resolveAgentStatusTerminalTitle', () => {
 
   it('keeps descriptive completed titles that are already non-working', () => {
     expect(
-      resolveAgentStatusTerminalTitle(
-        { agentType: 'cursor', state: 'done' },
-        'Nightshift Cursor Done'
-      )
-    ).toBe('Nightshift Cursor Done')
+      resolveAgentStatusTerminalTitle({ agentType: 'cursor', state: 'done' }, 'Kolux Cursor Done')
+    ).toBe('Kolux Cursor Done')
   })
 
   it('uses permission titles for synthetic agents waiting on user input', () => {

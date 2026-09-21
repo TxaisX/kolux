@@ -5,7 +5,7 @@ import type { CodexUsagePersistedState } from './types'
 import { createStoreWithState, setupCodexUsageStoreEnv } from './store-test-harness'
 
 const { getPathMock } = vi.hoisted(() => ({
-  getPathMock: vi.fn(() => '/tmp/nightshift-test-userdata')
+  getPathMock: vi.fn(() => '/tmp/kolux-test-userdata')
 }))
 
 vi.mock('electron', () => ({
@@ -38,7 +38,7 @@ describe('CodexUsageStore', () => {
     await store.refresh(true)
 
     const persistedJson = readFileSync(
-      join(storeEnv.tempUserData, 'nightshift-codex-usage.json'),
+      join(storeEnv.tempUserData, 'kolux-codex-usage.json'),
       'utf-8'
     )
     expect(scanCodexUsageFiles).toHaveBeenCalledWith([], [])

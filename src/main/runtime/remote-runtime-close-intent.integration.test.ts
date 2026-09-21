@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { expect, it, vi } from 'vitest'
 import { parsePairingCode } from '../../shared/pairing'
 import { RemoteRuntimeRequestConnection } from '../../shared/remote-runtime-request-connection'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import type { KoluxRuntimeService } from './kolux-runtime'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 
 const TEST_TIMEOUT_MS = 15_000
 const REQUEST_TIMEOUT_MS = 5_000
@@ -14,7 +14,7 @@ it(
   'binds encrypted close-intent capability to the real runtime RPC context',
   { timeout: TEST_TIMEOUT_MS },
   async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-close-intent-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-close-intent-'))
     const refuseUnattributedMobileSessionTabClose = vi.fn().mockResolvedValue({
       closed: true,
       refused: true,
@@ -52,8 +52,8 @@ it(
       listMobileSessionTabs,
       refuseUnattributedMobileSessionTabClose,
       closeMobileSessionTab
-    } as unknown as NightshiftRuntimeService
-    const server = new NightshiftRuntimeRpcServer({
+    } as unknown as KoluxRuntimeService
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,

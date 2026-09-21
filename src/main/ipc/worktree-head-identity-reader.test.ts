@@ -21,7 +21,7 @@ describe('readGitCommonHeadIdentities', () => {
   })
 
   async function makeCommonDir(): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-head-reader-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-head-reader-'))
     roots.push(root)
     const commonDir = join(root, 'checkout', '.git')
     await mkdir(commonDir, { recursive: true })
@@ -145,7 +145,7 @@ describe('readGitCommonHeadIdentities', () => {
   })
 
   it('omits the primary row for non-standard common dir layouts', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-head-reader-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-head-reader-'))
     roots.push(root)
     const commonDir = join(root, 'bare-repo')
     await mkdir(commonDir, { recursive: true })

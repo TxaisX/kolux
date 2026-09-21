@@ -69,7 +69,7 @@ export function buildFolderDetectedWorktrees(store: Store, repo: Repo): Detected
       worktree,
       meta: store.getWorktreeMeta(worktree.id),
       settings,
-      knownNightshiftLayouts: [],
+      knownKoluxLayouts: [],
       isLegacyRepoForVisibility: true,
       worktreeVisibilitySourceMatcher
     })
@@ -108,7 +108,7 @@ export function buildDisconnectedDetectedWorktrees(
       worktree,
       meta,
       settings,
-      knownNightshiftLayouts: [],
+      knownKoluxLayouts: [],
       isLegacyRepoForVisibility: true,
       worktreeVisibilitySourceMatcher
     })

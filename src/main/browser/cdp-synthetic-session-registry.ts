@@ -56,14 +56,14 @@ export class CdpSyntheticSessionRegistry {
   private nextSyntheticPageSessionId(): string {
     this.nextClientSessionOrdinal += 1
     return this.nextClientSessionOrdinal === 1
-      ? 'nightshift-proxy-session'
-      : `nightshift-proxy-session-${this.nextClientSessionOrdinal}`
+      ? 'kolux-proxy-session'
+      : `kolux-proxy-session-${this.nextClientSessionOrdinal}`
   }
 
   private nextSyntheticBrowserSessionId(): string {
     this.nextClientBrowserSessionOrdinal += 1
     return this.nextClientBrowserSessionOrdinal === 1
-      ? 'nightshift-proxy-browser-session'
-      : `nightshift-proxy-browser-session-${this.nextClientBrowserSessionOrdinal}`
+      ? 'kolux-proxy-browser-session'
+      : `kolux-proxy-browser-session-${this.nextClientBrowserSessionOrdinal}`
   }
 }

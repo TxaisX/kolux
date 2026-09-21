@@ -12,7 +12,7 @@ function makeSyntheticInventory() {
   return {
     appDir: 'C:\\App',
     unpackedRoot,
-    hostExe: { name: 'Nightshift.exe', ...f('C:\\App\\Nightshift.exe') },
+    hostExe: { name: 'Kolux.exe', ...f('C:\\App\\Kolux.exe') },
     runtimeData: [
       { name: 'icudtl.dat', ...f('C:\\App\\icudtl.dat') },
       { name: 'snapshot_blob.bin', ...f('C:\\App\\snapshot_blob.bin') },
@@ -97,7 +97,7 @@ function run() {
     const plan = resolveTierFileSet(inv, tier)
     check(`${tier}: no warnings`, plan.warnings.length === 0)
     const dests = plan.ops.map((o) => o.destRel)
-    check(`${tier}: has exe`, dests.includes('Nightshift.exe'))
+    check(`${tier}: has exe`, dests.includes('Kolux.exe'))
     check(`${tier}: has icu`, dests.includes('icudtl.dat'))
     // destRel mirrors the full win-unpacked layout so the require-closure and
     // node-pty native resolution work verbatim from the copy.
@@ -122,33 +122,32 @@ function run() {
   check('missing node-pty warns', resolveTierFileSet(brokenInv, 'full').warnings.length > 0)
 
   // ── Module-path filter ──────────────────────────────────────────────
-  const appDir = 'C:\\Users\\me\\AppData\\Local\\Programs\\nightshift'
+  const appDir = 'C:\\Users\\me\\AppData\\Local\\Programs\\kolux'
   const modules = [
-    'C:\\Users\\me\\AppData\\Local\\Programs\\nightshift\\Nightshift.exe',
+    'C:\\Users\\me\\AppData\\Local\\Programs\\kolux\\Kolux.exe',
     'C:\\Windows\\System32\\kernel32.dll',
-    'C:\\Users\\me\\AppData\\Local\\nightshift-daemon-host\\Nightshift.exe'
+    'C:\\Users\\me\\AppData\\Local\\kolux-daemon-host\\Kolux.exe'
   ]
   const resident = findAppDirResidentModules(modules, appDir)
   check('detects app-dir module', resident.length === 1)
   check(
     'detects the right module',
-    resident[0].toLowerCase().includes('programs\\nightshift\\nightshift.exe')
+    resident[0].toLowerCase().includes('programs\\kolux\\kolux.exe')
   )
-  // Sibling-prefix must NOT match (C:\...\nightshift vs C:\...\nightshift-daemon-host).
+  // Sibling-prefix must NOT match (C:\...\kolux vs C:\...\kolux-daemon-host).
   check(
     'sibling prefix not matched',
-    findAppDirResidentModules(['C:\\a\\nightshift-daemon-host\\x.dll'], 'C:\\a\\nightshift')
-      .length === 0
+    findAppDirResidentModules(['C:\\a\\kolux-daemon-host\\x.dll'], 'C:\\a\\kolux').length === 0
   )
   // Forward/back-slash + case normalization.
   check(
     'slash + case normalized',
-    findAppDirResidentModules(['c:/a/NIGHTSHIFT/x.dll'], 'C:\\A\\nightshift').length === 1
+    findAppDirResidentModules(['c:/a/KOLUX/x.dll'], 'C:\\A\\kolux').length === 1
   )
   check(
     'relocated host has zero app-dir modules',
     findAppDirResidentModules(
-      ['C:\\work\\daemon-host\\Nightshift.exe', 'C:\\Windows\\System32\\ntdll.dll'],
+      ['C:\\work\\daemon-host\\Kolux.exe', 'C:\\Windows\\System32\\ntdll.dll'],
       appDir
     ).length === 0
   )

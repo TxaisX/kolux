@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { isStreamingMethod, type RpcContext } from '../core'
 
 const { installForRuntimeHomeSerializedMock, realpathMock } = vi.hoisted(() => ({
@@ -18,9 +18,9 @@ import {
   recordManagedWslCodexHome
 } from '../../../codex/managed-wsl-codex-home-registry'
 
-const LINUX_HOME = '/home/jin/.local/share/nightshift/codex-runtime-home/home'
+const LINUX_HOME = '/home/jin/.local/share/kolux/codex-runtime-home/home'
 const RUNTIME_HOME =
-  '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.local\\share\\nightshift\\codex-runtime-home\\home'
+  '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.local\\share\\kolux\\codex-runtime-home\\home'
 
 function prepareMethod() {
   const method = AGENT_HOOK_METHODS.find(
@@ -35,13 +35,13 @@ function prepareMethod() {
 function runtimeWithSettings(
   enabled = true,
   disabledTuiAgents: string[] = []
-): NightshiftRuntimeService {
+): KoluxRuntimeService {
   return {
     getClientSettings: vi.fn(() => ({
       agentStatusHooksEnabled: enabled,
       disabledTuiAgents
     }))
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 describe('agent hook RPC methods', () => {
@@ -59,7 +59,7 @@ describe('agent hook RPC methods', () => {
     const method = prepareMethod()
     const params = method.params!.parse({
       codexHome: LINUX_HOME,
-      nightshiftCodexHome: LINUX_HOME,
+      koluxCodexHome: LINUX_HOME,
       wslDistro: 'Ubuntu-24.04'
     })
 
@@ -76,8 +76,8 @@ describe('agent hook RPC methods', () => {
   ])('does not install when hooks are disabled (%s, %j)', async (enabled, disabledTuiAgents) => {
     const method = prepareMethod()
     const params = method.params!.parse({
-      codexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
-      nightshiftCodexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
+      codexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
+      koluxCodexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
       wslDistro: 'Ubuntu-24.04'
     })
 
@@ -90,8 +90,8 @@ describe('agent hook RPC methods', () => {
   it.each(['runtime', 'mobile'] as const)('rejects non-local %s callers', async (clientKind) => {
     const method = prepareMethod()
     const params = method.params!.parse({
-      codexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
-      nightshiftCodexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
+      codexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
+      koluxCodexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
       wslDistro: 'Ubuntu-24.04'
     })
 
@@ -100,7 +100,7 @@ describe('agent hook RPC methods', () => {
         runtime: runtimeWithSettings(),
         clientKind
       } as RpcContext)
-    ).rejects.toThrow(/only available to the local Nightshift CLI/)
+    ).rejects.toThrow(/only available to the local Kolux CLI/)
     expect(installForRuntimeHomeSerializedMock).not.toHaveBeenCalled()
   })
 
@@ -108,8 +108,8 @@ describe('agent hook RPC methods', () => {
     installForRuntimeHomeSerializedMock.mockRejectedValue(new Error('install failed'))
     const method = prepareMethod()
     const params = method.params!.parse({
-      codexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
-      nightshiftCodexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
+      codexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
+      koluxCodexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
       wslDistro: 'Ubuntu-24.04'
     })
 
@@ -126,7 +126,7 @@ describe('agent hook RPC methods', () => {
     const method = prepareMethod()
     const params = method.params!.parse({
       codexHome: LINUX_HOME,
-      nightshiftCodexHome: LINUX_HOME,
+      koluxCodexHome: LINUX_HOME,
       wslDistro: 'Ubuntu-24.04'
     })
 
@@ -139,8 +139,8 @@ describe('agent hook RPC methods', () => {
 
     expect(() =>
       method.params!.parse({
-        codexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
-        nightshiftCodexHome: '/home/jin/.local/share/nightshift/codex-runtime-home/home',
+        codexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
+        koluxCodexHome: '/home/jin/.local/share/kolux/codex-runtime-home/home',
         wslDistro: 'Ubuntu\\..\\host'
       })
     ).toThrow()

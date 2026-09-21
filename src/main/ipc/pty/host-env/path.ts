@@ -19,7 +19,7 @@ export function promoteAgentTeamsShimPath(
   env: Record<string, string> | undefined,
   requestedPath: string | undefined
 ): void {
-  if (!env?.NIGHTSHIFT_AGENT_TEAMS_TEAM_ID) {
+  if (!env?.KOLUX_AGENT_TEAMS_TEAM_ID) {
     return
   }
   const shimPath = firstPathEntry(requestedPath)
@@ -33,7 +33,7 @@ export function promoteAgentTeamsShimPath(
   const remaining = currentPath
     .split(delimiter)
     .filter((entry) => entry.length > 0 && entry !== shimPath)
-  // Why: host env injection prepends Nightshift's shims; Claude Agent Teams must still resolve our fake tmux before any real tmux.
+  // Why: host env injection prepends Kolux's shims; Claude Agent Teams must still resolve our fake tmux before any real tmux.
   env[currentPathKey] = [shimPath, ...remaining].join(delimiter)
 }
 

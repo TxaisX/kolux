@@ -37,14 +37,14 @@ function countGlobalSettingsFields(source) {
 }
 
 const SETTINGS_FIELDS = countGlobalSettingsFields(TYPES_SOURCE)
-const ROWS = Number.parseInt(process.env.NIGHTSHIFT_OWNER_SETTINGS_BENCH_ROWS ?? '43', 10)
-const WRITES = Number.parseInt(process.env.NIGHTSHIFT_OWNER_SETTINGS_BENCH_WRITES ?? '2000', 10)
-const WARMUP = Number.parseInt(process.env.NIGHTSHIFT_OWNER_SETTINGS_BENCH_WARMUP ?? '200', 10)
+const ROWS = Number.parseInt(process.env.KOLUX_OWNER_SETTINGS_BENCH_ROWS ?? '43', 10)
+const WRITES = Number.parseInt(process.env.KOLUX_OWNER_SETTINGS_BENCH_WRITES ?? '2000', 10)
+const WARMUP = Number.parseInt(process.env.KOLUX_OWNER_SETTINGS_BENCH_WARMUP ?? '200', 10)
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_OWNER_SETTINGS_BENCH_ROWS', ROWS],
-  ['NIGHTSHIFT_OWNER_SETTINGS_BENCH_WRITES', WRITES],
-  ['NIGHTSHIFT_OWNER_SETTINGS_BENCH_WARMUP', WARMUP]
+  ['KOLUX_OWNER_SETTINGS_BENCH_ROWS', ROWS],
+  ['KOLUX_OWNER_SETTINGS_BENCH_WRITES', WRITES],
+  ['KOLUX_OWNER_SETTINGS_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)

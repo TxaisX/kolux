@@ -51,7 +51,7 @@ describe('runtime transport timeout validation', () => {
 // Windows does not support Unix domain sockets in the same way.
 describe.skipIf(process.platform === 'win32')('runtime transport', () => {
   it('refreshes the per-call timeout when the runtime sends keepalive frames', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-transport-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-transport-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     const server = createServer((socket) => {
       sockets.add(socket)
@@ -109,7 +109,7 @@ describe.skipIf(process.platform === 'win32')('runtime transport', () => {
   })
 
   it('rejects promptly when the runtime closes the socket before responding', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-transport-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-transport-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     const server = createServer((socket) => {
       sockets.add(socket)
@@ -134,7 +134,7 @@ describe.skipIf(process.platform === 'win32')('runtime transport', () => {
     await expect(sendRequest(metadata, 'status.get', undefined, 60000)).rejects.toMatchObject({
       code: 'runtime_unavailable',
       message:
-        'The Nightshift runtime closed the connection before responding. Restart Nightshift and try again.'
+        'The Kolux runtime closed the connection before responding. Restart Kolux and try again.'
     })
     expect(Date.now() - start).toBeLessThan(5000)
   })

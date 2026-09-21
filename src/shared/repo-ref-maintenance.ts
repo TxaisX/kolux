@@ -200,7 +200,7 @@ export class RepoRefMaintenance {
 
   /**
    * `counted` spends the give-up budget. Waiting behind another repository's
-   * pack, or yielding to work Nightshift asked us to yield to, does not: both end on
+   * pack, or yielding to work Kolux asked us to yield to, does not: both end on
    * their own, so charging for them would let a busy machine starve a repo
    * until its next fetch. Only "the app is busy" is charged.
    */
@@ -318,7 +318,7 @@ export class RepoRefMaintenance {
     }
     span.setAttribute('git.pack_refs_ms', this.now() - startedAt)
     // Judge by the backlog, not by the exit code. On a machine running several
-    // Nightshift sessions a branch moving mid-pack is the normal case, and Git's
+    // Kolux sessions a branch moving mid-pack is the normal case, and Git's
     // response -- leave that one ref loose, pack the rest -- is the correct one.
     // Measured in the field: 36,688 loose refs down to 3, reported as an error.
     const after = await countLooseRefs(refsDirectory, budget, signal)
@@ -331,7 +331,7 @@ export class RepoRefMaintenance {
     this.settle(key, span, 'packed', REF_MAINTENANCE_PACKED_COOLDOWN_MS)
   }
 
-  /** Record an aborted attempt: retry soon if Nightshift yielded, back off if it stalled. */
+  /** Record an aborted attempt: retry soon if Kolux yielded, back off if it stalled. */
   private yieldTo(
     key: string,
     tracked: TrackedRepo,

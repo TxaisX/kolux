@@ -49,7 +49,7 @@ function localManagedCodexEvents(): string[] {
 }
 
 describe('CodexHookService', () => {
-  // Why (#16441): install promotes in-Nightshift approvals into ~/.codex/config.toml
+  // Why (#16441): install promotes in-Kolux approvals into ~/.codex/config.toml
   // and mirrors that file into the managed home, so holding only the runtime
   // lane still lets it land inside a real-home grant's capture->restore window.
   it('waits for an in-flight mutation of the system config.toml', async () => {
@@ -100,7 +100,7 @@ describe('CodexHookService', () => {
     expect(existsSync(managedHooksJsonPath)).toBe(true)
   })
 
-  it('installs PermissionRequest with trust so Codex approval prompts reach Nightshift', async () => {
+  it('installs PermissionRequest with trust so Codex approval prompts reach Kolux', async () => {
     const systemCodexHome = join(homes.tmpHome, '.codex')
     mkdirSync(systemCodexHome, { recursive: true })
     writeFileSync(
@@ -136,7 +136,7 @@ describe('CodexHookService', () => {
 
     const perAccountHome = join(homes.userDataDir, 'codex-accounts', 'account-1', 'home')
     mkdirSync(perAccountHome, { recursive: true })
-    writeFileSync(join(perAccountHome, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(perAccountHome, '.kolux-managed-home'), 'account-1\n', 'utf-8')
 
     const status = await new CodexHookService().install(perAccountHome)
     expect(status.state).toBe('installed')
@@ -191,7 +191,7 @@ describe('CodexHookService', () => {
   it.skipIf(process.platform !== 'win32')(
     'wraps the managed hook command when the profile path contains a space (#6078)',
     async () => {
-      const spaceHome = join(tmpdir(), 'nightshift home with spaces')
+      const spaceHome = join(tmpdir(), 'kolux home with spaces')
       mkdirSync(spaceHome, { recursive: true })
       homedirMock.mockReturnValue(spaceHome)
       try {
@@ -221,7 +221,7 @@ describe('CodexHookService', () => {
   it.skipIf(process.platform !== 'win32')(
     'keeps the encoded launcher when the profile path contains cmd metacharacters',
     async () => {
-      const metacharHome = join(tmpdir(), 'nightshift %NIGHTSHIFT_TEST% ^ home')
+      const metacharHome = join(tmpdir(), 'kolux %KOLUX_TEST% ^ home')
       mkdirSync(metacharHome, { recursive: true })
       homedirMock.mockReturnValue(metacharHome)
       try {
@@ -263,9 +263,7 @@ describe('CodexHookService', () => {
       // Why: the temp home is normally cmd-safe; guard so a runner whose tmpdir
       // holds an exotic character still asserts the correct (fallback) branch.
       const command = hooksConfig.hooks.Stop?.[0]?.hooks?.[0]?.command ?? ''
-      const cmdSafe = /^[A-Za-z0-9_.:\\~-]+$/.test(
-        join(homes.tmpHome, '.nightshift', 'agent-hooks')
-      )
+      const cmdSafe = /^[A-Za-z0-9_.:\\~-]+$/.test(join(homes.tmpHome, '.kolux', 'agent-hooks'))
       if (cmdSafe) {
         expect(command).not.toMatch(/powershell/i)
         expect(command).toMatch(/\\agent-hooks\\codex-hook\.cmd$/)
@@ -282,7 +280,7 @@ describe('CodexHookService', () => {
     'posts hook payloads via the curl-based managed script preserving UTF-8 and spaced metadata',
     async () => {
       await new CodexHookService().install()
-      const scriptPath = join(homedir(), '.nightshift', 'agent-hooks', 'codex-hook.cmd')
+      const scriptPath = join(homedir(), '.kolux', 'agent-hooks', 'codex-hook.cmd')
       expect(existsSync(scriptPath)).toBe(true)
 
       // Why: resolve when the listener has fully read the hook POST. spawnSync
@@ -314,25 +312,25 @@ describe('CodexHookService', () => {
           prompt: '你好世界',
           hook_event_name: 'UserPromptSubmit'
         })
-        // Why: this suite may run inside a Nightshift-launched terminal whose env
-        // already carries NIGHTSHIFT_AGENT_HOOK_ENDPOINT/PORT/TOKEN. The managed
+        // Why: this suite may run inside a Kolux-launched terminal whose env
+        // already carries KOLUX_AGENT_HOOK_ENDPOINT/PORT/TOKEN. The managed
         // script sources that endpoint file, so leave it out or the hook posts
-        // to the live Nightshift instead of this test's listener.
+        // to the live Kolux instead of this test's listener.
         const cleanEnv = { ...process.env }
         for (const key of Object.keys(cleanEnv)) {
-          if (key.startsWith('NIGHTSHIFT_')) {
+          if (key.startsWith('KOLUX_')) {
             delete cleanEnv[key]
           }
         }
         const child = spawn('cmd.exe', ['/d', '/c', scriptPath], {
           env: {
             ...cleanEnv,
-            NIGHTSHIFT_AGENT_HOOK_PORT: String(port),
-            NIGHTSHIFT_AGENT_HOOK_TOKEN: 'tok123',
-            NIGHTSHIFT_PANE_KEY: '42:leaf-abc',
-            NIGHTSHIFT_TAB_ID: '42',
-            NIGHTSHIFT_WORKTREE_ID: 'C:\\work trees\\my repo & co',
-            NIGHTSHIFT_AGENT_HOOK_VERSION: '1'
+            KOLUX_AGENT_HOOK_PORT: String(port),
+            KOLUX_AGENT_HOOK_TOKEN: 'tok123',
+            KOLUX_PANE_KEY: '42:leaf-abc',
+            KOLUX_TAB_ID: '42',
+            KOLUX_WORKTREE_ID: 'C:\\work trees\\my repo & co',
+            KOLUX_AGENT_HOOK_VERSION: '1'
           }
         })
         child.stdin.end(payload)
@@ -341,7 +339,7 @@ describe('CodexHookService', () => {
 
         const received = await receivedPromise
         const params = new URLSearchParams(received.body)
-        expect(received.headers['x-nightshift-agent-hook-token']).toBe('tok123')
+        expect(received.headers['x-kolux-agent-hook-token']).toBe('tok123')
         expect(params.get('paneKey')).toBe('42:leaf-abc')
         expect(params.get('worktreeId')).toBe('C:\\work trees\\my repo & co')
         expect(JSON.parse(params.get('payload') ?? '{}').prompt).toBe('你好世界')
@@ -351,15 +349,15 @@ describe('CodexHookService', () => {
     }
   )
 
-  it('keeps hooks isolated by Nightshift userData instead of mutating system ~/.codex', async () => {
+  it('keeps hooks isolated by Kolux userData instead of mutating system ~/.codex', async () => {
     const systemCodexHome = join(homes.tmpHome, '.codex')
     const systemHooksPath = join(systemCodexHome, 'hooks.json')
     const existingSystemHooks = '{"hooks":{"Stop":[{"hooks":[{"command":"user-hook"}]}]}}\n'
     mkdirSync(systemCodexHome, { recursive: true })
     writeFileSync(systemHooksPath, existingSystemHooks, 'utf-8')
 
-    const devUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-codex-user-data-'))
-    const prodUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-prod-codex-user-data-'))
+    const devUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-dev-codex-user-data-'))
+    const prodUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-prod-codex-user-data-'))
     try {
       getPathMock.mockImplementation((name: string) => {
         if (name === 'userData') {
@@ -367,7 +365,7 @@ describe('CodexHookService', () => {
         }
         throw new Error(`unexpected app.getPath(${name})`)
       })
-      process.env.NIGHTSHIFT_USER_DATA_PATH = devUserDataDir
+      process.env.KOLUX_USER_DATA_PATH = devUserDataDir
       expect((await new CodexHookService().install()).state).toBe('installed')
 
       getPathMock.mockImplementation((name: string) => {
@@ -376,7 +374,7 @@ describe('CodexHookService', () => {
         }
         throw new Error(`unexpected app.getPath(${name})`)
       })
-      process.env.NIGHTSHIFT_USER_DATA_PATH = prodUserDataDir
+      process.env.KOLUX_USER_DATA_PATH = prodUserDataDir
       expect((await new CodexHookService().install()).state).toBe('installed')
 
       const devHooksPath = join(devUserDataDir, 'codex-runtime-home', 'home', 'hooks.json')
@@ -411,7 +409,7 @@ describe('CodexHookService', () => {
       ).toBe(true)
       expect(readFileSync(systemHooksPath, 'utf-8')).toBe(existingSystemHooks)
     } finally {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = homes.userDataDir
+      process.env.KOLUX_USER_DATA_PATH = homes.userDataDir
       rmSync(devUserDataDir, { recursive: true, force: true })
       rmSync(prodUserDataDir, { recursive: true, force: true })
     }

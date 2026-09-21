@@ -6,7 +6,7 @@ import { commitPtyIpcSpawn } from './spawn-commit'
 import { createPtyIpcSpawnState, type PtyIpcSpawnState } from './spawn-state'
 import type { PtySpawnIpcArgs, PtySpawnIpcDeps } from './spawn-types'
 
-const SESSION_ID = 'nightshift-pty-session-1'
+const SESSION_ID = 'kolux-pty-session-1'
 /** What a pane that mounted while `display:none` reports: xterm's unmeasured default. */
 const HIDDEN_PANE_REQUEST = { cols: 80, rows: 24 }
 /** The grid the surviving daemon session is actually running at. */

@@ -62,7 +62,7 @@ describe('orchestration request-show', () => {
 
     await expect(runRequestShow()).rejects.toMatchObject({
       code: 'incompatible_runtime',
-      message: expect.stringContaining('Update Nightshift on the server')
+      message: expect.stringContaining('Update Kolux on the server')
     })
   })
 })

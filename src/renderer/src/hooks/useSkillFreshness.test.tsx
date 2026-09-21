@@ -89,16 +89,14 @@ describe('useSkillFreshness', () => {
     window.api = { skills: { freshnessInventory } } as never
 
     await act(async () => root?.render(<Probe enabled={false} />))
-    await act(async () =>
-      window.dispatchEvent(new Event('nightshift:installed-agent-skills-changed'))
-    )
+    await act(async () => window.dispatchEvent(new Event('kolux:installed-agent-skills-changed')))
     await act(async () => state?.refresh())
 
     expect(freshnessInventory).not.toHaveBeenCalled()
     expect(state).toMatchObject({ inventory: null, loading: false, error: null })
     expect(
       addEventListener.mock.calls.filter(
-        ([name]) => name === 'focus' || name === 'nightshift:installed-agent-skills-changed'
+        ([name]) => name === 'focus' || name === 'kolux:installed-agent-skills-changed'
       )
     ).toHaveLength(0)
   })
@@ -107,7 +105,7 @@ describe('useSkillFreshness', () => {
     const second = deferred<SkillFreshnessInventory>()
     const freshnessInventory = vi
       .fn()
-      .mockResolvedValueOnce(inventory(1, ['nightshift-cli']))
+      .mockResolvedValueOnce(inventory(1, ['kolux-cli']))
       .mockReturnValueOnce(second.promise)
     window.api = { skills: { freshnessInventory } } as never
     const renderProbes = (enabled: boolean): void => {
@@ -121,15 +119,13 @@ describe('useSkillFreshness', () => {
 
     await act(async () => renderProbes(true))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
-    expect(state?.inventory?.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(state?.inventory?.eligibleUpdateNames).toEqual(['kolux-cli'])
 
     await act(async () => renderProbes(true))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
 
     await act(async () => renderProbes(false))
-    await act(async () =>
-      window.dispatchEvent(new Event('nightshift:installed-agent-skills-changed'))
-    )
+    await act(async () => window.dispatchEvent(new Event('kolux:installed-agent-skills-changed')))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
     expect(state).toMatchObject({ inventory: null, loading: false })
 
@@ -162,9 +158,7 @@ describe('useSkillFreshness', () => {
     await act(async () => window.dispatchEvent(new Event('focus')))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
 
-    await act(async () =>
-      window.dispatchEvent(new Event('nightshift:installed-agent-skills-changed'))
-    )
+    await act(async () => window.dispatchEvent(new Event('kolux:installed-agent-skills-changed')))
     await act(async () => second.resolve(inventory(2)))
     expect(freshnessInventory).toHaveBeenCalledTimes(2)
     expect(state?.inventory?.scannedAt).toBe(2)
@@ -176,12 +170,12 @@ describe('useSkillFreshness', () => {
     const second = deferred<SkillFreshnessInventory>()
     const freshnessInventory = vi
       .fn()
-      .mockResolvedValueOnce(inventory(1, ['nightshift-cli']))
+      .mockResolvedValueOnce(inventory(1, ['kolux-cli']))
       .mockReturnValueOnce(second.promise)
     window.api = { skills: { freshnessInventory } } as never
 
     await act(async () => root?.render(<Probe />))
-    expect(state?.inventory?.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(state?.inventory?.eligibleUpdateNames).toEqual(['kolux-cli'])
 
     await act(async () => window.dispatchEvent(new Event('focus')))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
@@ -214,9 +208,7 @@ describe('useSkillFreshness', () => {
     await act(async () => first.resolve(inventory(1)))
     expect(freshnessInventory).toHaveBeenCalledTimes(1)
 
-    await act(async () =>
-      window.dispatchEvent(new Event('nightshift:installed-agent-skills-changed'))
-    )
+    await act(async () => window.dispatchEvent(new Event('kolux:installed-agent-skills-changed')))
     await act(async () => second.resolve(inventory(2)))
     expect(freshnessInventory).toHaveBeenCalledTimes(2)
   })
@@ -266,9 +258,7 @@ describe('useSkillFreshness', () => {
     await act(async () => root?.render(<Probe />))
     expect(state?.inventory?.scannedAt).toBe(1)
 
-    await act(async () =>
-      window.dispatchEvent(new Event('nightshift:installed-agent-skills-changed'))
-    )
+    await act(async () => window.dispatchEvent(new Event('kolux:installed-agent-skills-changed')))
     expect(state?.inventory).toBeNull()
     expect(state?.loading).toBe(true)
 
@@ -297,7 +287,7 @@ describe('useSkillFreshness', () => {
     expect(addEventListener.mock.calls.filter(([name]) => name === 'focus')).toHaveLength(1)
     expect(
       addEventListener.mock.calls.filter(
-        ([name]) => name === 'nightshift:installed-agent-skills-changed'
+        ([name]) => name === 'kolux:installed-agent-skills-changed'
       )
     ).toHaveLength(1)
 
@@ -306,7 +296,7 @@ describe('useSkillFreshness', () => {
     expect(removeEventListener.mock.calls.filter(([name]) => name === 'focus')).toHaveLength(1)
     expect(
       removeEventListener.mock.calls.filter(
-        ([name]) => name === 'nightshift:installed-agent-skills-changed'
+        ([name]) => name === 'kolux:installed-agent-skills-changed'
       )
     ).toHaveLength(1)
   })

@@ -114,7 +114,7 @@ describe('sendNativeChatMessage', () => {
     expect(sendRuntimePtyInput).not.toHaveBeenCalled()
   })
 
-  it('matches nightshift-runtime writeTerminalAction Enter gap (500ms)', () => {
+  it('matches kolux-runtime writeTerminalAction Enter gap (500ms)', () => {
     expect(NATIVE_CHAT_SUBMIT_DELAY_MS).toBe(500)
   })
 
@@ -328,14 +328,14 @@ describe('sendNativeChatMessageWithImageAttachments', () => {
 
   it('clears the line, then bracket-pastes image paths before prompt text', () => {
     const handle = sendNativeChatMessageWithImageAttachments(SETTINGS, PTY, 'what do you see?', [
-      '/tmp/nightshift-paste-image.png'
+      '/tmp/kolux-paste-image.png'
     ])
 
     expect(handle.settleAfterMs).toBe(
       NATIVE_CHAT_IMAGE_ATTACHMENT_SETTLE_MS + NATIVE_CHAT_SUBMIT_DELAY_MS
     )
 
-    const framedImageWithSeparator = '\x1b[200~/tmp/nightshift-paste-image.png\x1b[201~ '
+    const framedImageWithSeparator = '\x1b[200~/tmp/kolux-paste-image.png\x1b[201~ '
     expectWriteOrder(sendRuntimePtyInput.mock.calls, [
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
       framedImageWithSeparator
@@ -351,14 +351,14 @@ describe('sendNativeChatMessageWithImageAttachments', () => {
 
   it('does not append a trailing separator on an attachment-only send', () => {
     const handle = sendNativeChatMessageWithImageAttachments(SETTINGS, PTY, '', [
-      '/tmp/nightshift-paste-image.png'
+      '/tmp/kolux-paste-image.png'
     ])
 
     expect(handle.settleAfterMs).toBe(NATIVE_CHAT_SUBMIT_DELAY_MS)
 
     expectWriteOrder(sendRuntimePtyInput.mock.calls, [
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
-      '\x1b[200~/tmp/nightshift-paste-image.png\x1b[201~'
+      '\x1b[200~/tmp/kolux-paste-image.png\x1b[201~'
     ])
 
     vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_DELAY_MS - 1)
@@ -370,13 +370,11 @@ describe('sendNativeChatMessageWithImageAttachments', () => {
   })
 
   it('treats whitespace-only prompt input as attachment-only', () => {
-    sendNativeChatMessageWithImageAttachments(SETTINGS, PTY, '   ', [
-      '/tmp/nightshift-paste-image.png'
-    ])
+    sendNativeChatMessageWithImageAttachments(SETTINGS, PTY, '   ', ['/tmp/kolux-paste-image.png'])
 
     expectWriteOrder(sendRuntimePtyInput.mock.calls, [
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
-      '\x1b[200~/tmp/nightshift-paste-image.png\x1b[201~'
+      '\x1b[200~/tmp/kolux-paste-image.png\x1b[201~'
     ])
   })
 
@@ -392,7 +390,7 @@ describe('sendNativeChatMessageWithImageAttachments', () => {
 
   it('cancels deferred prompt and Enter writes after the attachment path', () => {
     const handle = sendNativeChatMessageWithImageAttachments(SETTINGS, PTY, 'describe', [
-      '/tmp/nightshift-paste-image.png'
+      '/tmp/kolux-paste-image.png'
     ])
     handle.cancel()
     vi.runAllTimers()
@@ -400,7 +398,7 @@ describe('sendNativeChatMessageWithImageAttachments', () => {
     // Pre-clear + image body + cancel clear; no Enter.
     expectWriteOrder(sendRuntimePtyInput.mock.calls, [
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT,
-      '\x1b[200~/tmp/nightshift-paste-image.png\x1b[201~ ',
+      '\x1b[200~/tmp/kolux-paste-image.png\x1b[201~ ',
       NATIVE_CHAT_CLEAR_UNSUBMITTED_INPUT
     ])
     expect(sendRuntimePtyInput.mock.calls.some((call) => call[2] === NATIVE_CHAT_SUBMIT)).toBe(

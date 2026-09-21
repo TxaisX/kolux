@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { getBundledLauncherPath } from '../cli/bundled-cli-launcher-path'
 
 const DEV_LAUNCHER_DIR = ['cli', 'bin']
-const DEV_COMMAND_NAME = 'nightshift-dev'
+const DEV_COMMAND_NAME = 'kolux-dev'
 
 export type CodexShellLaunchPreflightCommandOptions = {
   hooksEnabled: boolean
@@ -18,13 +18,13 @@ export type CodexShellLaunchPreflightCommandOptions = {
   platform?: NodeJS.Platform
 }
 
-/** Absolute path of the Nightshift CLI the preflight must execute, or null to skip it.
+/** Absolute path of the Kolux CLI the preflight must execute, or null to skip it.
  *
- *  Why absolute: the value rides in NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT and is invoked
+ *  Why absolute: the value rides in KOLUX_CODEX_LAUNCH_PREFLIGHT and is invoked
  *  from the codex() wrapper, which shell-ready emits *after* the user's profile
  *  scripts run. Those scripts routinely rewrite PATH, so an unqualified name
- *  would be resolved against a PATH Nightshift neither controls nor can predict —
- *  handing Nightshift's managed Codex environment to an unidentified program. When no
+ *  would be resolved against a PATH Kolux neither controls nor can predict —
+ *  handing Kolux's managed Codex environment to an unidentified program. When no
  *  path verifies, skipping the preflight is the predictable degradation. */
 export function resolveCodexShellLaunchPreflightCommand(
   options: CodexShellLaunchPreflightCommandOptions
@@ -71,16 +71,16 @@ export function getPosixCodexShellLaunchPreflight(): string {
 # report the alias text, and the subshell leaves the user's own alias intact.
 # Why || : twice — zsh alone aborts inside the substitution, but every shell's
 # assignment adopts its exit status, so an absent codex trips set -e in bash too.
-__nightshift_codex_binary="$(unalias codex 2>/dev/null || :; command -v codex 2>/dev/null || :)"
-if [[ -n "\${NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT:-}" && -x "\${NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT}" && -n "\${__nightshift_codex_binary:-}" && -x "\${__nightshift_codex_binary}" ]]; then
+__kolux_codex_binary="$(unalias codex 2>/dev/null || :; command -v codex 2>/dev/null || :)"
+if [[ -n "\${KOLUX_CODEX_LAUNCH_PREFLIGHT:-}" && -x "\${KOLUX_CODEX_LAUNCH_PREFLIGHT}" && -n "\${__kolux_codex_binary:-}" && -x "\${__kolux_codex_binary}" ]]; then
   # Why the function reserved word: it suppresses alias expansion of the name,
   # which otherwise rewrites this header at parse time and aborts the whole file.
   function codex {
-    "\${NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT}" agent hooks prepare-codex >/dev/null 2>&1 || :
+    "\${KOLUX_CODEX_LAUNCH_PREFLIGHT}" agent hooks prepare-codex >/dev/null 2>&1 || :
     command codex "$@"
   }
 fi
-unset __nightshift_codex_binary
+unset __kolux_codex_binary
 `
 }
 
@@ -88,34 +88,34 @@ export function getFishCodexShellLaunchPreflight(): string {
   return `# Why captured: an unquoted (type -t codex) expands to zero words when codex is
 # absent, leaving "test = file" — fish then errors instead of failing closed.
 # Quoting in place is not the fix; fish never substitutes inside double quotes.
-set -l __nightshift_codex_type (type -t codex 2>/dev/null)
-if test -x "$NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT"; and test "$__nightshift_codex_type" = file
+set -l __kolux_codex_type (type -t codex 2>/dev/null)
+if test -x "$KOLUX_CODEX_LAUNCH_PREFLIGHT"; and test "$__kolux_codex_type" = file
   function codex
-    command "$NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT" agent hooks prepare-codex >/dev/null 2>&1; or true
+    command "$KOLUX_CODEX_LAUNCH_PREFLIGHT" agent hooks prepare-codex >/dev/null 2>&1; or true
     command codex $argv
   end
 end
-set -e __nightshift_codex_type`
+set -e __kolux_codex_type`
 }
 
 export function getPowerShellCodexShellLaunchPreflight(): string {
-  return `$nightshiftCodexCommand = Get-Command codex -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($env:NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT -and $nightshiftCodexCommand -and
-    $nightshiftCodexCommand.CommandType -in @("Application", "ExternalScript")) {
+  return `$koluxCodexCommand = Get-Command codex -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($env:KOLUX_CODEX_LAUNCH_PREFLIGHT -and $koluxCodexCommand -and
+    $koluxCodexCommand.CommandType -in @("Application", "ExternalScript")) {
     function Global:codex {
         try {
-            & $env:NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT agent hooks prepare-codex *> $null
+            & $env:KOLUX_CODEX_LAUNCH_PREFLIGHT agent hooks prepare-codex *> $null
         } catch {
         }
-        $nightshiftCodexExecutable = Get-Command codex -CommandType Application,ExternalScript -ErrorAction SilentlyContinue | Select-Object -First 1
-        if (-not $nightshiftCodexExecutable) {
+        $koluxCodexExecutable = Get-Command codex -CommandType Application,ExternalScript -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $koluxCodexExecutable) {
             Write-Error "codex executable not found"
             $global:LASTEXITCODE = 127
             return
         }
-        & $nightshiftCodexExecutable.Source @args
+        & $koluxCodexExecutable.Source @args
         $global:LASTEXITCODE = $LASTEXITCODE
     }
 }
-Remove-Variable nightshiftCodexCommand -ErrorAction SilentlyContinue`
+Remove-Variable koluxCodexCommand -ErrorAction SilentlyContinue`
 }

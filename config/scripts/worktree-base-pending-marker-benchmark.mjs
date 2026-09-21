@@ -8,24 +8,24 @@ import { join } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { createJiti } from 'jiti'
 
-const CANDIDATE_COUNT = Number(process.env.NIGHTSHIFT_PENDING_MARKER_BENCH_CANDIDATES ?? '64')
-const TOTAL_TICKS = Number(process.env.NIGHTSHIFT_PENDING_MARKER_BENCH_TICKS ?? '900')
-const STEADY_TICKS = Number(process.env.NIGHTSHIFT_PENDING_MARKER_BENCH_STEADY_TICKS ?? '300')
+const CANDIDATE_COUNT = Number(process.env.KOLUX_PENDING_MARKER_BENCH_CANDIDATES ?? '64')
+const TOTAL_TICKS = Number(process.env.KOLUX_PENDING_MARKER_BENCH_TICKS ?? '900')
+const STEADY_TICKS = Number(process.env.KOLUX_PENDING_MARKER_BENCH_STEADY_TICKS ?? '300')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_PENDING_MARKER_BENCH_CANDIDATES', CANDIDATE_COUNT],
-  ['NIGHTSHIFT_PENDING_MARKER_BENCH_TICKS', TOTAL_TICKS],
-  ['NIGHTSHIFT_PENDING_MARKER_BENCH_STEADY_TICKS', STEADY_TICKS]
+  ['KOLUX_PENDING_MARKER_BENCH_CANDIDATES', CANDIDATE_COUNT],
+  ['KOLUX_PENDING_MARKER_BENCH_TICKS', TOTAL_TICKS],
+  ['KOLUX_PENDING_MARKER_BENCH_STEADY_TICKS', STEADY_TICKS]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
   }
 }
 if (STEADY_TICKS >= TOTAL_TICKS) {
-  throw new Error('NIGHTSHIFT_PENDING_MARKER_BENCH_STEADY_TICKS must be smaller than total ticks')
+  throw new Error('KOLUX_PENDING_MARKER_BENCH_STEADY_TICKS must be smaller than total ticks')
 }
 
-const root = await mkdtemp(join(os.tmpdir(), 'nightshift-pending-marker-bench-'))
+const root = await mkdtemp(join(os.tmpdir(), 'kolux-pending-marker-bench-'))
 const markerPaths = new Set()
 for (let index = 0; index < CANDIDATE_COUNT; index += 1) {
   const candidate = join(root, `ordinary-folder-${index}`)

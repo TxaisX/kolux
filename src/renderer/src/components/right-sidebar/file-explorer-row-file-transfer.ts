@@ -89,7 +89,7 @@ export async function copyFileToOsClipboard(
   )
   const stagingFailureMessage = translate(
     'auto.components.right.sidebar.FileExplorerRow.clipboardStagingUnavailable',
-    "Could not copy the file because Nightshift's temporary storage is unavailable"
+    "Could not copy the file because Kolux's temporary storage is unavailable"
   )
   try {
     const result = await window.api.ui.writeClipboardFile(

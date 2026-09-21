@@ -18,7 +18,7 @@ import { buildLinearIssueWorkspaceAttachmentIndex } from '@/lib/linear-issue-wor
 import {
   collectLinkedLinearIssueRefsFromWorktrees,
   linkedLinearIssueRefsSignature
-} from '@/components/task-page-linear-in-nightshift-issues'
+} from '@/components/task-page-linear-in-kolux-issues'
 export function useTaskPageLinearFilterSelection(model: TaskPageLinearListSelectionPreludeModel) {
   const {
     allWorktrees,
@@ -116,7 +116,7 @@ export function useTaskPageLinearFilterSelection(model: TaskPageLinearListSelect
     () => buildLinearIssueWorkspaceAttachmentIndex(linearAttachmentWorkspaces),
     [linearAttachmentWorkspaces]
   )
-  const inNightshiftLinkedLinearRefs = useMemo(
+  const inKoluxLinkedLinearRefs = useMemo(
     () =>
       collectLinkedLinearIssueRefsFromWorktrees(linearAttachmentWorkspaces, {
         workspaceId: selectedLinearWorkspaceId,
@@ -124,15 +124,15 @@ export function useTaskPageLinearFilterSelection(model: TaskPageLinearListSelect
       }),
     [linearAttachmentWorkspaces, linearStatus.workspaces, selectedLinearWorkspaceId]
   )
-  const inNightshiftLinkedLinearRefsSignature = useMemo(
-    () => linkedLinearIssueRefsSignature(inNightshiftLinkedLinearRefs),
-    [inNightshiftLinkedLinearRefs]
+  const inKoluxLinkedLinearRefsSignature = useMemo(
+    () => linkedLinearIssueRefsSignature(inKoluxLinkedLinearRefs),
+    [inKoluxLinkedLinearRefs]
   )
-  const inNightshiftLinkedLinearRefsRef = useRef(inNightshiftLinkedLinearRefs)
-  // Keep latest linked refs for the in-nightshift loader without re-running it on identity churn.
+  const inKoluxLinkedLinearRefsRef = useRef(inKoluxLinkedLinearRefs)
+  // Keep latest linked refs for the in-kolux loader without re-running it on identity churn.
   useEffect(() => {
-    inNightshiftLinkedLinearRefsRef.current = inNightshiftLinkedLinearRefs
-  }, [inNightshiftLinkedLinearRefs])
+    inKoluxLinkedLinearRefsRef.current = inKoluxLinkedLinearRefs
+  }, [inKoluxLinkedLinearRefs])
   const nextModel = model as typeof model & {
     linearAttributePrimaryTeam: typeof linearAttributePrimaryTeam
     applyLinearAttributeFilter: typeof applyLinearAttributeFilter
@@ -140,9 +140,9 @@ export function useTaskPageLinearFilterSelection(model: TaskPageLinearListSelect
     showLinearAttributeFilters: typeof showLinearAttributeFilters
     linearAttachmentWorkspaces: typeof linearAttachmentWorkspaces
     linearIssueAttachmentIndex: typeof linearIssueAttachmentIndex
-    inNightshiftLinkedLinearRefs: typeof inNightshiftLinkedLinearRefs
-    inNightshiftLinkedLinearRefsSignature: typeof inNightshiftLinkedLinearRefsSignature
-    inNightshiftLinkedLinearRefsRef: typeof inNightshiftLinkedLinearRefsRef
+    inKoluxLinkedLinearRefs: typeof inKoluxLinkedLinearRefs
+    inKoluxLinkedLinearRefsSignature: typeof inKoluxLinkedLinearRefsSignature
+    inKoluxLinkedLinearRefsRef: typeof inKoluxLinkedLinearRefsRef
   }
   nextModel.linearAttributePrimaryTeam = linearAttributePrimaryTeam
   nextModel.applyLinearAttributeFilter = applyLinearAttributeFilter
@@ -150,9 +150,9 @@ export function useTaskPageLinearFilterSelection(model: TaskPageLinearListSelect
   nextModel.showLinearAttributeFilters = showLinearAttributeFilters
   nextModel.linearAttachmentWorkspaces = linearAttachmentWorkspaces
   nextModel.linearIssueAttachmentIndex = linearIssueAttachmentIndex
-  nextModel.inNightshiftLinkedLinearRefs = inNightshiftLinkedLinearRefs
-  nextModel.inNightshiftLinkedLinearRefsSignature = inNightshiftLinkedLinearRefsSignature
-  nextModel.inNightshiftLinkedLinearRefsRef = inNightshiftLinkedLinearRefsRef
+  nextModel.inKoluxLinkedLinearRefs = inKoluxLinkedLinearRefs
+  nextModel.inKoluxLinkedLinearRefsSignature = inKoluxLinkedLinearRefsSignature
+  nextModel.inKoluxLinkedLinearRefsRef = inKoluxLinkedLinearRefsRef
   return nextModel
 }
 export type TaskPageLinearFilterSelectionModel = ReturnType<typeof useTaskPageLinearFilterSelection>

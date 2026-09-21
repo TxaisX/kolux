@@ -6,7 +6,7 @@ import {
 } from './browser-route-identity'
 
 const identity = {
-  nightshiftProfileId: 'nightshift/profile:alpha',
+  koluxProfileId: 'kolux/profile:alpha',
   browserProfileId: 'browser/profile:default',
   authorityConnectionIdentity: 'paired/runtime:authority',
   executionHostIdentity: 'ssh/target:private.example'
@@ -14,10 +14,10 @@ const identity = {
 
 /** Shipping-shaped inputs whose derived names are frozen: both are persisted on disk. */
 const pinnedIdentity = {
-  nightshiftProfileId: 'nightshift/profile:alpha',
+  koluxProfileId: 'kolux/profile:alpha',
   browserProfileId: 'browser/profile:default',
   authorityConnectionIdentity: 'paired-runtime:authority-a',
-  executionHostIdentity: '["nightshift-browser-execution-host-storage",1,"authority","env-a"]'
+  executionHostIdentity: '["kolux-browser-execution-host-storage",1,"authority","env-a"]'
 }
 
 describe('browser route partition identity', () => {
@@ -26,7 +26,7 @@ describe('browser route partition identity', () => {
     const second = deriveBrowserRoutePartition({ ...identity })
 
     expect(second).toEqual(first)
-    expect(first.partition).toMatch(/^persist:nightshift-browser-v1-[a-f0-9]{64}$/)
+    expect(first.partition).toMatch(/^persist:kolux-browser-v1-[a-f0-9]{64}$/)
     expect(first.bindingFingerprint).toMatch(/^[a-f0-9]{64}$/)
     expect(first.partition.slice('persist:'.length)).toMatch(/^[a-z0-9-]+$/)
     for (const rawIdentity of Object.values(identity)) {
@@ -38,12 +38,12 @@ describe('browser route partition identity', () => {
   it('keeps delimiter-containing components structurally distinct', () => {
     const left = deriveBrowserRoutePartition({
       ...identity,
-      nightshiftProfileId: 'a',
+      koluxProfileId: 'a',
       browserProfileId: 'b:c'
     })
     const right = deriveBrowserRoutePartition({
       ...identity,
-      nightshiftProfileId: 'a:b',
+      koluxProfileId: 'a:b',
       browserProfileId: 'c'
     })
 
@@ -66,7 +66,7 @@ describe('browser route partition identity', () => {
   it('makes every identity component load-bearing', () => {
     const derived = [
       identity,
-      { ...identity, nightshiftProfileId: 'nightshift/profile:beta' },
+      { ...identity, koluxProfileId: 'kolux/profile:beta' },
       { ...identity, browserProfileId: 'browser/profile:work' },
       { ...identity, authorityConnectionIdentity: 'paired/runtime:other' },
       { ...identity, executionHostIdentity: 'ssh/target:other.example' }
@@ -81,7 +81,7 @@ describe('browser route partition identity', () => {
   it('pins the derived partition and fingerprint against silent relocation', () => {
     expect(deriveBrowserRoutePartition(pinnedIdentity)).toEqual({
       partition:
-        'persist:nightshift-browser-v1-955a5db671b210d053d64d1e557d8cdf1e60e1e6cb710a033f1b5cd1b61e6586',
+        'persist:kolux-browser-v1-955a5db671b210d053d64d1e557d8cdf1e60e1e6cb710a033f1b5cd1b61e6586',
       bindingFingerprint: 'fe69d9d83ab889b68eeb185f12821e4e0e77dcc91fc4cb7672c88e7818a4ded7'
     })
   })
@@ -94,22 +94,22 @@ describe('browser route partition identity', () => {
 
   // Why: removal deletes every partition carrying the scope, so a scope missing either
   // component wipes storage the removed record never owned.
-  it('scopes partition ownership to one nightshift profile and one environment', () => {
+  it('scopes partition ownership to one kolux profile and one environment', () => {
     const scope = deriveBrowserRoutePartitionStorageScope({
-      nightshiftProfileId: 'nightshift/profile:alpha',
+      koluxProfileId: 'kolux/profile:alpha',
       environmentId: 'environment-a'
     })
 
     expect(scope).toBe('2821c92c85c9724ddb6136aeeec266a84fc5a9ea00f61faacef8db89bea79fb4')
     expect(
       deriveBrowserRoutePartitionStorageScope({
-        nightshiftProfileId: 'nightshift/profile:alpha',
+        koluxProfileId: 'kolux/profile:alpha',
         environmentId: 'environment-b'
       })
     ).not.toBe(scope)
     expect(
       deriveBrowserRoutePartitionStorageScope({
-        nightshiftProfileId: 'nightshift/profile:beta',
+        koluxProfileId: 'kolux/profile:beta',
         environmentId: 'environment-a'
       })
     ).not.toBe(scope)

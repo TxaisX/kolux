@@ -8,7 +8,7 @@ const WINDOWS_DRIVE_LETTER_PATH = /^[A-Za-z]:\\/
  * Shortest launcher for a managed Windows `.cmd` hook: the script path itself (#18875).
  *
  * The encoded PowerShell launcher spent a full interpreter start-up per hook event to reach a
- * script that exits at its first `NIGHTSHIFT_PANE_KEY` guard, and left a stdout-holding orphan behind
+ * script that exits at its first `KOLUX_PANE_KEY` guard, and left a stdout-holding orphan behind
  * when the hook's timeout kill landed. Measurements and the EDR trade are in
  * `docs/reference/windows-edr-posture.md`.
  *

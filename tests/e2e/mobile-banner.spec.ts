@@ -1,5 +1,5 @@
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveWorktreeId,
@@ -28,21 +28,21 @@ import {
 test.describe.configure({ mode: 'serial' })
 
 test('mobile subscribe mounts overlay; collapse → chip; Take back dismisses', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
   await installRestoreTerminalFitRecorder(electronApp)
 
-  const overlay = nightshiftPage.locator('.mobile-driver-banner')
+  const overlay = koluxPage.locator('.mobile-driver-banner')
   await expect(overlay).toHaveCount(0)
 
   // Fire the IPC events main emits when a mobile client subscribes in 'auto'
-  // mode (handleMobileSubscribe in src/main/runtime/nightshift-runtime.ts). The
+  // mode (handleMobileSubscribe in src/main/runtime/kolux-runtime.ts). The
   // renderer's listener calls setFitOverride + setDriverForPty, the banner
   // observes the change, and MobileDriverOverlay mounts in loud mode.
   await sendMobileSubscribeIpc(electronApp, { ptyId, cols: 45, rows: 20 })
@@ -50,7 +50,7 @@ test('mobile subscribe mounts overlay; collapse → chip; Take back dismisses', 
   await expect(overlay).toBeVisible({ timeout: 15_000 })
   await expect(overlay).toContainText(/from your phone/i)
   await expect(overlay).toContainText(/your phone is in control/i)
-  await expectExpandedOverlayLeavesPaneReadable(nightshiftPage, ptyId)
+  await expectExpandedOverlayLeavesPaneReadable(koluxPage, ptyId)
 
   const takeBackThisTerminal = overlay.getByRole('button', { name: /take back this terminal/i })
   const takeBackAllTerminals = overlay.getByRole('button', { name: /take back all terminals/i })
@@ -59,7 +59,7 @@ test('mobile subscribe mounts overlay; collapse → chip; Take back dismisses', 
   await expect(takeBackAllTerminals).toBeVisible()
   await expect(collapse).toBeVisible()
 
-  await captureAttachment(nightshiftPage, testInfo, 'overlay-loud.png')
+  await captureAttachment(koluxPage, testInfo, 'overlay-loud.png')
 
   // Click Collapse → loud overlay swaps to the corner chip while the lock stays
   // engaged. The user can keep watching live mobile output while the chip
@@ -68,13 +68,13 @@ test('mobile subscribe mounts overlay; collapse → chip; Take back dismisses', 
   await expect(overlay).toContainText(/phone driving/i)
   await expect(overlay.getByRole('button', { name: /take back/i })).toBeVisible()
   await expect(overlay).not.toContainText(/your phone is in control/i)
-  await expectChipIsCompactInPane(nightshiftPage, ptyId)
+  await expectChipIsCompactInPane(koluxPage, ptyId)
 
-  await captureAttachment(nightshiftPage, testInfo, 'overlay-collapsed.png')
+  await captureAttachment(koluxPage, testInfo, 'overlay-collapsed.png')
 
   await overlay.getByRole('button', { name: /phone driving/i }).click()
   await expect(overlay).toContainText(/your phone is in control/i)
-  await expectExpandedOverlayLeavesPaneReadable(nightshiftPage, ptyId)
+  await expectExpandedOverlayLeavesPaneReadable(koluxPage, ptyId)
 
   await collapse.click()
   await expect(overlay).not.toContainText(/your phone is in control/i)
@@ -90,17 +90,17 @@ test('mobile subscribe mounts overlay; collapse → chip; Take back dismisses', 
 })
 
 test('held phone-fit state mounts restore overlay without collapse', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
   await installRestoreTerminalFitRecorder(electronApp)
 
-  const overlay = nightshiftPage.locator('.mobile-driver-banner')
+  const overlay = koluxPage.locator('.mobile-driver-banner')
   await expect(overlay).toHaveCount(0)
 
   // Held-fit is the post-mobile-disconnect state: the phone-fit override remains
@@ -116,9 +116,9 @@ test('held phone-fit state mounts restore overlay without collapse', async ({
   await expect(overlay.getByRole('button', { name: /restore all terminals/i })).toBeVisible()
   await expect(overlay.getByRole('button', { name: /^collapse$/i })).toHaveCount(0)
   await expect(overlay.getByRole('button', { name: /take back/i })).toHaveCount(0)
-  await expectExpandedOverlayLeavesPaneReadable(nightshiftPage, ptyId)
+  await expectExpandedOverlayLeavesPaneReadable(koluxPage, ptyId)
 
-  await captureAttachment(nightshiftPage, testInfo, 'overlay-held-fit.png')
+  await captureAttachment(koluxPage, testInfo, 'overlay-held-fit.png')
 
   await overlay.getByRole('button', { name: /restore this terminal/i }).click()
   await expectRestoreTerminalFitCalls(electronApp, [ptyId])
@@ -127,32 +127,32 @@ test('held phone-fit state mounts restore overlay without collapse', async ({
 })
 
 test('restore this terminal refits the active restored pane', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
   await installRestoreTerminalFitAutoRestoreRecorder(electronApp)
 
   await sendHeldPhoneFitIpc(electronApp, { ptyId, cols: 1, rows: 20 })
-  await expect(nightshiftPage.locator('.mobile-driver-banner')).toHaveCount(1, { timeout: 15_000 })
+  await expect(koluxPage.locator('.mobile-driver-banner')).toHaveCount(1, { timeout: 15_000 })
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, ptyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, ptyId), {
       message: 'test harness should hold the active pane in the bad narrow state'
     })
     .toBeLessThanOrEqual(2)
 
-  await nightshiftPage
+  await koluxPage
     .locator(`[data-pty-id="${ptyId}"] .mobile-driver-banner`)
     .getByRole('button', { name: /restore this terminal/i })
     .click()
 
   await expectRestoreTerminalFitCalls(electronApp, [ptyId])
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, ptyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, ptyId), {
       timeout: 5_000,
       message: 'Restore this terminal should refit the active restored pane'
     })
@@ -160,16 +160,16 @@ test('restore this terminal refits the active restored pane', async ({
 })
 
 test('restore all refits non-focused restored terminal panes', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  await splitActiveTerminalPane(nightshiftPage, 'vertical')
-  const ptyIds = await waitForVisiblePanePtyIds(nightshiftPage, 2)
-  const focusPtyId = await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  await splitActiveTerminalPane(koluxPage, 'vertical')
+  const ptyIds = await waitForVisiblePanePtyIds(koluxPage, 2)
+  const focusPtyId = await waitForActivePanePtyId(koluxPage)
   const inactivePtyId = ptyIds.find((ptyId) => ptyId !== focusPtyId)
   if (!inactivePtyId || !focusPtyId) {
     throw new Error('Expected two visible terminal panes with PTY bindings')
@@ -178,23 +178,23 @@ test('restore all refits non-focused restored terminal panes', async ({
 
   await sendHeldPhoneFitIpc(electronApp, { ptyId: inactivePtyId, cols: 45, rows: 20 })
   await sendHeldPhoneFitIpc(electronApp, { ptyId: focusPtyId, cols: 45, rows: 20 })
-  await expect(nightshiftPage.locator('.mobile-driver-banner')).toHaveCount(2, { timeout: 15_000 })
+  await expect(koluxPage.locator('.mobile-driver-banner')).toHaveCount(2, { timeout: 15_000 })
 
-  await forcePaneToOneColumn(nightshiftPage, inactivePtyId)
+  await forcePaneToOneColumn(koluxPage, inactivePtyId)
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, inactivePtyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, inactivePtyId), {
       message: 'test harness should force the non-focused pane into the bad narrow state'
     })
     .toBeLessThanOrEqual(2)
 
-  await nightshiftPage
+  await koluxPage
     .locator(`[data-pty-id="${focusPtyId}"] .mobile-driver-banner`)
     .getByRole('button', { name: /restore all terminals/i })
     .click()
 
   await expectRestoreTerminalFitCallSet(electronApp, [inactivePtyId, focusPtyId])
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, inactivePtyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, inactivePtyId), {
       timeout: 5_000,
       message: 'Restore all should refit the non-focused restored pane'
     })
@@ -202,12 +202,12 @@ test('restore all refits non-focused restored terminal panes', async ({
 })
 
 test('restore all recovers a hidden workspace held at narrow terminal geometry', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-  const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+  await waitForSessionReady(koluxPage)
+  const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+  const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
     (worktreeId) => worktreeId !== firstWorktreeId
   )
   test.skip(!secondWorktreeId, 'hidden-workspace restore repro needs the seeded secondary worktree')
@@ -215,55 +215,51 @@ test('restore all recovers a hidden workspace held at narrow terminal geometry',
     return
   }
 
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  const hiddenWorkspacePtyId = await waitForActivePanePtyId(nightshiftPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  const hiddenWorkspacePtyId = await waitForActivePanePtyId(koluxPage)
   await sendHeldPhoneFitIpc(electronApp, { ptyId: hiddenWorkspacePtyId, cols: 45, rows: 20 })
-  await expect(nightshiftPage.locator('.mobile-driver-banner')).toHaveCount(1, { timeout: 15_000 })
+  await expect(koluxPage.locator('.mobile-driver-banner')).toHaveCount(1, { timeout: 15_000 })
 
-  await forcePaneToOneColumnAndSwitchWorktree(
-    nightshiftPage,
-    hiddenWorkspacePtyId,
-    secondWorktreeId
-  )
+  await forcePaneToOneColumnAndSwitchWorktree(koluxPage, hiddenWorkspacePtyId, secondWorktreeId)
   await expect
-    .poll(() => getActiveWorktreeId(nightshiftPage), {
+    .poll(() => getActiveWorktreeId(koluxPage), {
       timeout: 5_000,
       message: 'second worktree should become active before restore-all'
     })
     .toBe(secondWorktreeId)
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, hiddenWorkspacePtyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, hiddenWorkspacePtyId), {
       message: 'test harness should hold workspace 1 in the bad narrow state'
     })
     .toBeLessThanOrEqual(2)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  const activeWorkspacePtyId = await waitForActivePanePtyId(nightshiftPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  const activeWorkspacePtyId = await waitForActivePanePtyId(koluxPage)
   await installRestoreTerminalFitAutoRestoreRecorder(electronApp)
   await sendHeldPhoneFitIpc(electronApp, { ptyId: activeWorkspacePtyId, cols: 45, rows: 20 })
   await expect(
-    nightshiftPage.locator(`[data-pty-id="${activeWorkspacePtyId}"] .mobile-driver-banner`)
+    koluxPage.locator(`[data-pty-id="${activeWorkspacePtyId}"] .mobile-driver-banner`)
   ).toBeVisible({ timeout: 15_000 })
 
-  await nightshiftPage
+  await koluxPage
     .locator(`[data-pty-id="${activeWorkspacePtyId}"] .mobile-driver-banner`)
     .getByRole('button', { name: /restore all terminals/i })
     .click()
 
   await expectRestoreTerminalFitCallSet(electronApp, [hiddenWorkspacePtyId, activeWorkspacePtyId])
 
-  await switchToWorktree(nightshiftPage, firstWorktreeId)
+  await switchToWorktree(koluxPage, firstWorktreeId)
   await expect
-    .poll(() => getActiveWorktreeId(nightshiftPage), {
+    .poll(() => getActiveWorktreeId(koluxPage), {
       timeout: 5_000,
       message: 'first worktree should become active after restore-all'
     })
     .toBe(firstWorktreeId)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
   await expect
-    .poll(() => getPaneTerminalCols(nightshiftPage, hiddenWorkspacePtyId), {
+    .poll(() => getPaneTerminalCols(koluxPage, hiddenWorkspacePtyId), {
       timeout: 5_000,
       message: 'Restore all should refit the hidden workspace when it becomes visible'
     })

@@ -1,4 +1,4 @@
-import type { RuntimeFileCommands } from './nightshift-runtime-files'
+import type { RuntimeFileCommands } from './kolux-runtime-files'
 
 type RuntimeFileCommandName =
   | 'listMobileFiles'

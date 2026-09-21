@@ -13,7 +13,7 @@ function run(command, args, options = {}) {
 }
 
 function createFixture() {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-install-node-action-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-install-node-action-'))
   const workspace = join(root, 'checkout')
   const detachedCwd = join(root, 'action cwd')
   const bin = join(root, 'bin')

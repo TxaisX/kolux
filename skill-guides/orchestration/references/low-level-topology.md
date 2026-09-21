@@ -5,9 +5,9 @@ or terminal topology. It is not the normal supervised loop and is never a full
 handoff recipe.
 
 ```text
-NIGHTSHIFT terminal create --worktree active --title <task_name> --command "<agent_command>" --json
-NIGHTSHIFT terminal wait --terminal <handle> --for tui-idle --timeout-ms 60000 --json
-NIGHTSHIFT orchestration dispatch --task <task_id> --to <handle> --inject --json
+KOLUX terminal create --worktree active --title <task_name> --command "<agent_command>" --json
+KOLUX terminal wait --terminal <handle> --for tui-idle --timeout-ms 60000 --json
+KOLUX orchestration dispatch --task <task_id> --to <handle> --inject --json
 ```
 
 Wait for readiness only when startup could lose injected input. Prefer

@@ -14,7 +14,7 @@ import * as pty from 'node-pty'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveGitBashPath } from '../git-bash'
 import {
-  NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
+  KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV,
   resolveWindowsShellLaunchArgs
 } from './windows-shell-args'
 
@@ -22,7 +22,7 @@ const describeWindows = process.platform === 'win32' ? describe : describe.skip
 const tempDirs: string[] = []
 
 function makeTempDir(): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift shell preflight '))
+  const root = mkdtempSync(join(tmpdir(), 'kolux shell preflight '))
   tempDirs.push(root)
   return root
 }
@@ -36,14 +36,14 @@ function linkNodeExecutable(destination: string): void {
 }
 
 function writeFailingPreflight(root: string): string {
-  const executable = join(root, 'nightshift preflight.exe')
+  const executable = join(root, 'kolux preflight.exe')
   linkNodeExecutable(executable)
   writeFileSync(
     join(root, 'agent'),
     [
       "const { writeFileSync } = require('node:fs')",
       "if (process.argv.slice(2).join(' ') !== 'hooks prepare-codex') process.exit(2)",
-      "writeFileSync(process.env.NIGHTSHIFT_PREFLIGHT_MARKER, 'ran')",
+      "writeFileSync(process.env.KOLUX_PREFLIGHT_MARKER, 'ran')",
       'process.exit(7)'
     ].join('\n')
   )
@@ -143,9 +143,9 @@ describeWindows('Windows Codex shell preflight runtime', () => {
       cwd: root,
       env: {
         ...process.env,
-        NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflight,
-        [NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV]: '"',
-        NIGHTSHIFT_PREFLIGHT_MARKER: preflightMarker
+        KOLUX_CODEX_LAUNCH_PREFLIGHT: preflight,
+        [KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE_ENV]: '"',
+        KOLUX_PREFLIGHT_MARKER: preflightMarker
       }
     })
 
@@ -170,8 +170,8 @@ describeWindows('Windows Codex shell preflight runtime', () => {
     const preflightMarker = join(root, 'git-bash-preflight-ran')
     const codexMarker = join(root, 'git-bash-codex-ran')
     const codexPathMarker = join(root, 'git-bash-codex-path')
-    const previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-    process.env.NIGHTSHIFT_USER_DATA_PATH = join(root, 'user data')
+    const previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+    process.env.KOLUX_USER_DATA_PATH = join(root, 'user data')
 
     try {
       const resolved = resolveWindowsShellLaunchArgs(
@@ -190,13 +190,13 @@ describeWindows('Windows Codex shell preflight runtime', () => {
           ...withPathEntry(process.env, join(root, 'bin')),
           CHERE_INVOKING: '1',
           HOME: root,
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: preflight,
-          NIGHTSHIFT_PREFLIGHT_MARKER: preflightMarker,
-          NIGHTSHIFT_CODEX_MARKER: codexMarker,
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: preflight,
+          KOLUX_PREFLIGHT_MARKER: preflightMarker,
+          KOLUX_CODEX_MARKER: codexMarker,
           TERM: 'xterm-256color'
         },
         input:
-          "type -P codex > git-bash-codex-path\ncodex -e \"require('node:fs').writeFileSync(process.env.NIGHTSHIFT_CODEX_MARKER,'ran')\"\nexit\n",
+          "type -P codex > git-bash-codex-path\ncodex -e \"require('node:fs').writeFileSync(process.env.KOLUX_CODEX_MARKER,'ran')\"\nexit\n",
         // Paired "Windows low spec" QA measured 12.7–15.8s across four runs: Git Bash
         // cold-starts two large Node executables for AV scanning, so allow 25s without
         // inflating the faster cmd.exe budget.
@@ -204,9 +204,9 @@ describeWindows('Windows Codex shell preflight runtime', () => {
       })
     } finally {
       if (previousUserDataPath === undefined) {
-        delete process.env.NIGHTSHIFT_USER_DATA_PATH
+        delete process.env.KOLUX_USER_DATA_PATH
       } else {
-        process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+        process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
       }
     }
 

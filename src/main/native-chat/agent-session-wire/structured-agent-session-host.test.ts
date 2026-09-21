@@ -124,7 +124,7 @@ async function seedApproval(optionId = 'allow'): Promise<{ itemId: string; revis
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-wire-host-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-wire-host-'))
   resetHostTestOperationIds()
   ordinal = 0
   acquire = vi.fn(async ({ fence }) => ({
@@ -287,7 +287,7 @@ describe('attach', () => {
       return originalAppend(...args)
     })
     events?.appendItem(
-      { provider: 'nightshift', clientMessageId: 'old-journal-write' },
+      { provider: 'kolux', clientMessageId: 'old-journal-write' },
       { kind: 'status', text: 'old journal write' }
     )
     await vi.waitFor(() => expect(append).toHaveBeenCalledOnce())
@@ -596,7 +596,7 @@ describe('respondToPrompt', () => {
     expect(result.ok).toBe(true)
     const page = host.history({ sessionId: SESSION, direction: 'tail' })
     const statusId = agentJournalItemKey({
-      provider: 'nightshift',
+      provider: 'kolux',
       clientMessageId: `${prompt.itemId}#delivery`
     })
     expect(page.ok && page.page.items.some((entry) => entry.itemId === statusId)).toBe(true)

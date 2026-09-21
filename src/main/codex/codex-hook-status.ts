@@ -20,11 +20,11 @@ import {
 import { getCodexHookTrustSignature } from './codex-hook-identity'
 import { getCodexLedgerTrustedHash } from './codex-managed-trust-reconciliation'
 import { readCurrentNativeCodexTrustGrantLedgerHome } from './codex-trust-grant-host'
-import { getNightshiftManagedCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath } from './codex-home-paths'
 
 export function getCodexHookStatusAfterInstall(
   recentGrantEntries: readonly CodexTrustEntry[] | null,
-  runtimeHomePath: string = getNightshiftManagedCodexHomePath()
+  runtimeHomePath: string = getKoluxManagedCodexHomePath()
 ): AgentHookInstallStatus {
   const configPath = getConfigPath(runtimeHomePath)
   const scriptPath = getManagedScriptPath()

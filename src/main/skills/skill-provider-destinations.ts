@@ -5,15 +5,15 @@ import {
   type SkillInstallProviderId
 } from '../../shared/skill-install-providers'
 
-export type NightshiftSkillProviderId = SkillInstallProviderId
+export type KoluxSkillProviderId = SkillInstallProviderId
 
 export type SkillProviderDestination = {
-  provider: NightshiftSkillProviderId
+  provider: KoluxSkillProviderId
   readsCanonicalRoot: boolean
   rootPath: string
 }
 
-export type SkillProviderRootOverrides = Partial<Record<NightshiftSkillProviderId, string>>
+export type SkillProviderRootOverrides = Partial<Record<KoluxSkillProviderId, string>>
 
 function normalizedPath(path: string): string {
   const normalized = resolve(path)

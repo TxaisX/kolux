@@ -13,7 +13,7 @@ const DEFAULT_MARKETING_REPO = path.join(
   'Stably',
   'nightshift-marketing-website'
 )
-const MARKETING_REPO = process.env.NIGHTSHIFT_MARKETING_REPO || DEFAULT_MARKETING_REPO
+const MARKETING_REPO = process.env.KOLUX_MARKETING_REPO || DEFAULT_MARKETING_REPO
 const DEST_ROOT = path.join(ROOT, 'resources', 'onboarding', 'feature-wall')
 
 const TILES = [
@@ -30,8 +30,8 @@ const TILES = [
   },
   {
     id: 'tile-03',
-    gifRelativePath: 'public/whats-new/nightshift-github.gif',
-    posterRelativePath: 'public/whats-new/posters/nightshift-github.jpg'
+    gifRelativePath: 'public/whats-new/kolux-github.gif',
+    posterRelativePath: 'public/whats-new/posters/kolux-github.jpg'
   },
   {
     id: 'tile-04',
@@ -40,8 +40,8 @@ const TILES = [
   },
   {
     id: 'tile-05',
-    gifRelativePath: 'public/whats-new/nightshift-design-mode.gif',
-    posterRelativePath: 'public/whats-new/posters/nightshift-design-mode.jpg'
+    gifRelativePath: 'public/whats-new/kolux-design-mode.gif',
+    posterRelativePath: 'public/whats-new/posters/kolux-design-mode.jpg'
   },
   {
     id: 'tile-06',
@@ -60,8 +60,8 @@ const TILES = [
   },
   {
     id: 'tile-09',
-    gifRelativePath: 'public/whats-new/nightshift-cli-demo.gif',
-    posterRelativePath: 'public/whats-new/posters/nightshift-cli-demo.jpg'
+    gifRelativePath: 'public/whats-new/kolux-cli-demo.gif',
+    posterRelativePath: 'public/whats-new/posters/kolux-cli-demo.jpg'
   },
   {
     id: 'tile-10',
@@ -75,8 +75,8 @@ const TILES = [
   },
   {
     id: 'tile-12',
-    gifRelativePath: 'public/whats-new/nightshift-markdown-editor.gif',
-    posterRelativePath: 'public/whats-new/posters/nightshift-markdown-editor.jpg'
+    gifRelativePath: 'public/whats-new/kolux-markdown-editor.gif',
+    posterRelativePath: 'public/whats-new/posters/kolux-markdown-editor.jpg'
   }
 ]
 

@@ -100,13 +100,13 @@ function bindRoutePartition(
   const derived = resolveBrowserRoutePartitionBinding({
     bindings,
     identity: {
-      nightshiftProfileId: routeIdentity.nightshiftProfileId,
+      koluxProfileId: routeIdentity.koluxProfileId,
       browserProfileId,
       authorityConnectionIdentity: routeIdentity.authorityConnectionIdentity,
       executionHostIdentity: routeIdentity.executionHostIdentity
     },
     legacyIdentity: {
-      nightshiftProfileId: routeIdentity.nightshiftProfileId,
+      koluxProfileId: routeIdentity.koluxProfileId,
       browserProfileId,
       authorityConnectionIdentity: routeIdentity.legacyAuthorityConnectionIdentity,
       executionHostIdentity: routeIdentity.legacyExecutionHostIdentity

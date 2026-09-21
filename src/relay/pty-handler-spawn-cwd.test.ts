@@ -51,7 +51,7 @@ describe('relay pty spawn cwd (#15296)', () => {
       mockPtyInstance,
       mockCreateShellPromptReadinessProbe
     }))
-    root = mkdtempSync(join(tmpdir(), 'nightshift-relay-cwd-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-relay-cwd-'))
   })
 
   afterEach(async () => {
@@ -59,7 +59,7 @@ describe('relay pty spawn cwd (#15296)', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
-  it('spawns a folder workspace in NIGHTSHIFT_WORKSPACE_ROOT instead of the host default', async () => {
+  it('spawns a folder workspace in KOLUX_WORKSPACE_ROOT instead of the host default', async () => {
     // Why: `folder:<uuid>` carries no path, so the worktree-id split yields nothing and the
     // configured root — delivered in the same env — was silently replaced by $HOME.
     const workspaceRoot = join(root, 'workspace')
@@ -70,9 +70,9 @@ describe('relay pty spawn cwd (#15296)', () => {
       cols: 80,
       rows: 24,
       env: {
-        NIGHTSHIFT_WORKSPACE_ID: workspaceId,
-        NIGHTSHIFT_WORKTREE_ID: workspaceId,
-        NIGHTSHIFT_WORKSPACE_ROOT: workspaceRoot
+        KOLUX_WORKSPACE_ID: workspaceId,
+        KOLUX_WORKTREE_ID: workspaceId,
+        KOLUX_WORKSPACE_ROOT: workspaceRoot
       }
     })
 
@@ -89,9 +89,9 @@ describe('relay pty spawn cwd (#15296)', () => {
         rows: 24,
         launchAgent: 'claude',
         env: {
-          NIGHTSHIFT_WORKSPACE_ID: workspaceId,
-          NIGHTSHIFT_WORKTREE_ID: workspaceId,
-          NIGHTSHIFT_WORKSPACE_ROOT: join(root, 'gone')
+          KOLUX_WORKSPACE_ID: workspaceId,
+          KOLUX_WORKTREE_ID: workspaceId,
+          KOLUX_WORKSPACE_ROOT: join(root, 'gone')
         }
       })
     ).rejects.toThrow(/Cannot determine the working directory/)
@@ -104,7 +104,7 @@ describe('relay pty spawn cwd (#15296)', () => {
         cols: 80,
         rows: 24,
         launchAgent: 'claude',
-        env: { NIGHTSHIFT_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a' }
+        env: { KOLUX_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a' }
       })
     ).rejects.toThrow(/Cannot determine the working directory/)
     expect(mockPtySpawn).not.toHaveBeenCalled()
@@ -132,7 +132,7 @@ describe('relay pty spawn cwd (#15296)', () => {
       cols: 80,
       rows: 24,
       cwd: requested,
-      env: { NIGHTSHIFT_WORKTREE_ID: 'folder:abc', NIGHTSHIFT_WORKSPACE_ROOT: workspaceRoot }
+      env: { KOLUX_WORKTREE_ID: 'folder:abc', KOLUX_WORKSPACE_ROOT: workspaceRoot }
     })
 
     expect(spawnCwd()).toBe(requested)
@@ -150,7 +150,7 @@ describe('relay pty spawn cwd (#15296)', () => {
     await dispatcher.callRequest('pty.spawn', {
       cols: 80,
       rows: 24,
-      env: { NIGHTSHIFT_WORKTREE_ID: 'folder:abc', NIGHTSHIFT_WORKSPACE_ROOT: missing }
+      env: { KOLUX_WORKTREE_ID: 'folder:abc', KOLUX_WORKSPACE_ROOT: missing }
     })
 
     expect(spawnCwd()).toBe(process.env.HOME || homedir())
@@ -170,7 +170,7 @@ describe('relay pty spawn cwd when the relay is not the execution host', () => {
       mockCreateShellPromptReadinessProbe
     }))
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    root = mkdtempSync(join(tmpdir(), 'nightshift-relay-wsl-cwd-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-relay-wsl-cwd-'))
   })
 
   afterEach(async () => {
@@ -189,9 +189,9 @@ describe('relay pty spawn cwd when the relay is not the execution host', () => {
       launchAgent: 'claude',
       shellOverride: 'wsl.exe',
       env: {
-        NIGHTSHIFT_WORKSPACE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
-        NIGHTSHIFT_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
-        NIGHTSHIFT_WORKSPACE_ROOT: '/home/u/guest-only-project'
+        KOLUX_WORKSPACE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
+        KOLUX_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
+        KOLUX_WORKSPACE_ROOT: '/home/u/guest-only-project'
       }
     })
 
@@ -206,9 +206,9 @@ describe('relay pty spawn cwd when the relay is not the execution host', () => {
         launchAgent: 'claude',
         shellOverride: 'powershell.exe',
         env: {
-          NIGHTSHIFT_WORKSPACE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
-          NIGHTSHIFT_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
-          NIGHTSHIFT_WORKSPACE_ROOT: join(root, 'gone')
+          KOLUX_WORKSPACE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
+          KOLUX_WORKTREE_ID: 'folder:b1706d92-9d05-4932-8360-01e00b54305a',
+          KOLUX_WORKSPACE_ROOT: join(root, 'gone')
         }
       })
     ).rejects.toThrow(/Cannot determine the working directory/)

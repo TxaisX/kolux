@@ -300,7 +300,7 @@ describe('daemon-init: runRestartDaemon (7-step sequence)', () => {
   })
 
   it('answers daemonOwnsFreshPersistentPtys honestly for each installed provider', async () => {
-    // What nightshiftd publishes as `canRecoverPersistentLocalPtys` and as the readiness health
+    // What koluxd publishes as `canRecoverPersistentLocalPtys` and as the readiness health
     // verdict. Answering true under degraded routing would advertise recovery for terminals
     // that die with the runtime process.
     const mod = await importFresh()

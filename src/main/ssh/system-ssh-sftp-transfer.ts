@@ -74,8 +74,8 @@ function systemSftpCandidates(sshPath: string | null, platform: NodeJS.Platform)
 
 /** Locate the sftp client paired with the system ssh binary. Returns null when there is none. */
 export function findSystemSftp(): string | null {
-  if (process.env.NIGHTSHIFT_SYSTEM_SFTP_PATH) {
-    return process.env.NIGHTSHIFT_SYSTEM_SFTP_PATH
+  if (process.env.KOLUX_SYSTEM_SFTP_PATH) {
+    return process.env.KOLUX_SYSTEM_SFTP_PATH
   }
   const sshPath = findSystemSsh()
   for (const candidate of systemSftpCandidates(sshPath, process.platform)) {

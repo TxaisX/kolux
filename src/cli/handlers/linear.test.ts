@@ -7,13 +7,13 @@ vi.mock('../runtime-client', async () => {
     readonly isRemote: boolean
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
 
     constructor(
       _userDataPath?: string,
       _requestTimeoutMs?: number,
-      remotePairingCode = process.env.NIGHTSHIFT_PAIRING_CODE ?? null,
-      environmentSelector = process.env.NIGHTSHIFT_ENVIRONMENT ?? null
+      remotePairingCode = process.env.KOLUX_PAIRING_CODE ?? null,
+      environmentSelector = process.env.KOLUX_ENVIRONMENT ?? null
     ) {
       this.isRemote = Boolean(remotePairingCode || environmentSelector)
     }
@@ -34,20 +34,20 @@ vi.mock('../runtime-client', async () => {
 import { main } from '../index'
 import { okFixture, queueFixtures } from '../test-fixtures'
 
-describe('nightshift linear CLI handlers', () => {
+describe('kolux linear CLI handlers', () => {
   const originalEnv = { ...process.env }
 
   beforeEach(() => {
     vi.restoreAllMocks()
     callMock.mockReset()
     process.env = { ...originalEnv }
-    // Why: these tests can run inside a Nightshift-managed terminal, which exports
+    // Why: these tests can run inside a Kolux-managed terminal, which exports
     // real worktree/terminal/pairing env hints; clear them so handler context
     // assertions stay deterministic.
-    delete process.env.NIGHTSHIFT_WORKTREE_ID
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_PAIRING_CODE
-    delete process.env.NIGHTSHIFT_ENVIRONMENT
+    delete process.env.KOLUX_WORKTREE_ID
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_PAIRING_CODE
+    delete process.env.KOLUX_ENVIRONMENT
     process.exitCode = undefined
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -179,9 +179,9 @@ describe('nightshift linear CLI handlers', () => {
   })
 
   it('passes verified current-context hints without resolving cwd for remote runtimes', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_123'
-    process.env.NIGHTSHIFT_WORKTREE_ID = 'repo::/srv/app'
-    process.env.NIGHTSHIFT_PAIRING_CODE = 'nightshift://pair?payload=bad'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_123'
+    process.env.KOLUX_WORKTREE_ID = 'repo::/srv/app'
+    process.env.KOLUX_PAIRING_CODE = 'kolux://pair?payload=bad'
     queueFixtures(callMock, okFixture('req_linear', issueResult()))
 
     await main(['linear', 'issue', '--current', '--comments', '--json'], '/client/repo')

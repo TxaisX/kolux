@@ -9,27 +9,27 @@ const encode = (offer) => Buffer.from(JSON.stringify(offer), 'utf8').toString('b
 describe('decodeOffer', () => {
   it('decodes a well-formed pairing link', () => {
     const offer = { relay: { cellUrl: 'https://cell.example', relayHostId: 'A'.repeat(16) } }
-    expect(decodeOffer(`nightshift://pair?code=${encode(offer)}`)).toEqual(offer)
+    expect(decodeOffer(`kolux://pair?code=${encode(offer)}`)).toEqual(offer)
   })
 
   it('ignores parameters after the code', () => {
     const offer = { deviceToken: 'token' }
-    expect(decodeOffer(`nightshift://pair?code=${encode(offer)}&v=2`)).toEqual(offer)
+    expect(decodeOffer(`kolux://pair?code=${encode(offer)}&v=2`)).toEqual(offer)
   })
 
   it.each([
-    [undefined, /nightshift:\/\/pair/],
-    ['', /nightshift:\/\/pair/],
-    ['https://example.com/?code=abc', /nightshift:\/\/pair/],
-    ['nightshift://pair', /no code= parameter/],
-    ['nightshift://pair?code=', /not base64url/],
-    ['nightshift://pair?code=not base64', /not base64url/],
+    [undefined, /kolux:\/\/pair/],
+    ['', /kolux:\/\/pair/],
+    ['https://example.com/?code=abc', /kolux:\/\/pair/],
+    ['kolux://pair', /no code= parameter/],
+    ['kolux://pair?code=', /not base64url/],
+    ['kolux://pair?code=not base64', /not base64url/],
     [
-      `nightshift://pair?code=${Buffer.from('not json').toString('base64url')}`,
+      `kolux://pair?code=${Buffer.from('not json').toString('base64url')}`,
       /did not decode to JSON/
     ],
-    [`nightshift://pair?code=${Buffer.from('[1,2]').toString('base64url')}`, /offer object/],
-    [`nightshift://pair?code=${Buffer.from('null').toString('base64url')}`, /offer object/]
+    [`kolux://pair?code=${Buffer.from('[1,2]').toString('base64url')}`, /offer object/],
+    [`kolux://pair?code=${Buffer.from('null').toString('base64url')}`, /offer object/]
   ])('refuses %j', (value, message) => {
     expect(() => decodeOffer(value)).toThrow(message)
   })

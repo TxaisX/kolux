@@ -8,8 +8,7 @@ export type GitHubWorkItemDetailsCacheMutation = {
   number: number
 }
 
-const GITHUB_WORK_ITEM_DETAILS_CACHE_MUTATED_EVENT =
-  'nightshift:github-work-item-details-cache-mutated'
+const GITHUB_WORK_ITEM_DETAILS_CACHE_MUTATED_EVENT = 'kolux:github-work-item-details-cache-mutated'
 
 export function emitGitHubWorkItemDetailsCacheMutation(
   payload: GitHubWorkItemDetailsCacheMutation

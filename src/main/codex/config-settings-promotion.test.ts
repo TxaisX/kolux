@@ -60,10 +60,10 @@ let userDataDir: string
 let previousUserDataPath: string | undefined
 
 beforeEach(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-settings-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-settings-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  tmpHome = mkdtempSync(join(tmpdir(), 'kolux-codex-settings-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-settings-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(tmpHome)
   promotionTestState.failAtomicWrite = false
   promotionTestState.atomicWritePaths.length = 0
@@ -78,9 +78,9 @@ afterEach(() => {
   rmSync(tmpHome, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
@@ -98,7 +98,7 @@ function runtimeConfigPath(): string {
 }
 
 function baselinePath(): string {
-  return join(runtimeHomeDir(), '.nightshift-config-settings-baseline.json')
+  return join(runtimeHomeDir(), '.kolux-config-settings-baseline.json')
 }
 
 function writeSystemConfig(content: string): void {
@@ -289,7 +289,7 @@ describe('codex settings write-back promotion', () => {
   })
 
   it('keeps runtime-only settings when promotion has to create ~/.codex/config.toml', () => {
-    // Why: `codex mcp add` inside a Nightshift-launched Codex writes into the runtime
+    // Why: `codex mcp add` inside a Kolux-launched Codex writes into the runtime
     // home. Seeding ~/.codex from the promoted keys alone made the next mirror
     // treat that skeleton as authoritative and delete the MCP server for good.
     expect(existsSync(join(tmpHome, '.codex'))).toBe(false)
@@ -304,7 +304,7 @@ describe('codex settings write-back promotion', () => {
     expect(readRuntimeConfig()).toContain('[mcp_servers.linear]')
     expect(readRuntimeConfig()).toContain('[features]')
     expect(readRuntimeConfig()).toContain('model = "o4"')
-    // Trust stays runtime-owned; Nightshift must not write it into the real ~/.codex.
+    // Trust stays runtime-owned; Kolux must not write it into the real ~/.codex.
     expect(readRuntimeConfig()).toContain('[projects."/repo"]')
     expect(readSystemConfig()).not.toContain('[projects."/repo"]')
     expect(readSystemConfig()).toContain('[mcp_servers.linear]')
@@ -487,7 +487,7 @@ describe('codex [tui] settings write-back promotion', () => {
     writeSystemConfig('model = "gpt-5"\n')
     syncSystemConfigIntoManagedCodexHome()
 
-    // The user customizes the status line/theme inside Nightshift-launched Codex.
+    // The user customizes the status line/theme inside Kolux-launched Codex.
     writeFileSync(runtimeConfigPath(), `${readRuntimeConfig()}\n${CODEX_TUI_BLOCK}`, 'utf-8')
     syncSystemConfigIntoManagedCodexHome()
 

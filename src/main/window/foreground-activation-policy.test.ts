@@ -26,40 +26,34 @@ function makeWindow(destroyed = false): BrowserWindow & {
 
 describe('isBackgroundLaunch', () => {
   it('covers headless and headful E2E plus opted-in dev launches', () => {
-    expect(isBackgroundLaunch({ NIGHTSHIFT_E2E_HEADLESS: '1' })).toBe(true)
-    expect(isBackgroundLaunch({ NIGHTSHIFT_E2E_HEADFUL: '1' })).toBe(true)
-    expect(isBackgroundLaunch({ NIGHTSHIFT_BACKGROUND_LAUNCH: '1' })).toBe(true)
+    expect(isBackgroundLaunch({ KOLUX_E2E_HEADLESS: '1' })).toBe(true)
+    expect(isBackgroundLaunch({ KOLUX_E2E_HEADFUL: '1' })).toBe(true)
+    expect(isBackgroundLaunch({ KOLUX_BACKGROUND_LAUNCH: '1' })).toBe(true)
     expect(isBackgroundLaunch({})).toBe(false)
   })
 
   it('keeps an explicit background request despite inherited foreground flags', () => {
-    expect(
-      isBackgroundLaunch({ NIGHTSHIFT_BACKGROUND_LAUNCH: '1', NIGHTSHIFT_E2E_FOREGROUND: '1' })
-    ).toBe(true)
+    expect(isBackgroundLaunch({ KOLUX_BACKGROUND_LAUNCH: '1', KOLUX_E2E_FOREGROUND: '1' })).toBe(
+      true
+    )
   })
 
   it('lets native-focus specs opt back into the foreground', () => {
-    expect(
-      isBackgroundLaunch({ NIGHTSHIFT_E2E_HEADFUL: '1', NIGHTSHIFT_E2E_FOREGROUND: '1' })
-    ).toBe(false)
-    expect(
-      isWindowlessLaunch({ NIGHTSHIFT_E2E_HEADLESS: '1', NIGHTSHIFT_E2E_FOREGROUND: '1' })
-    ).toBe(false)
+    expect(isBackgroundLaunch({ KOLUX_E2E_HEADFUL: '1', KOLUX_E2E_FOREGROUND: '1' })).toBe(false)
+    expect(isWindowlessLaunch({ KOLUX_E2E_HEADLESS: '1', KOLUX_E2E_FOREGROUND: '1' })).toBe(false)
   })
 })
 
 describe('isWindowlessLaunch', () => {
   it('keeps explicit background launches hidden while headful E2E can paint', () => {
-    expect(isWindowlessLaunch({ NIGHTSHIFT_E2E_HEADLESS: '1' })).toBe(true)
-    expect(isWindowlessLaunch({ NIGHTSHIFT_E2E_HEADLESS: '1', NIGHTSHIFT_E2E_HEADFUL: '1' })).toBe(
-      false
-    )
-    expect(isWindowlessLaunch({ NIGHTSHIFT_BACKGROUND_LAUNCH: '1' })).toBe(true)
+    expect(isWindowlessLaunch({ KOLUX_E2E_HEADLESS: '1' })).toBe(true)
+    expect(isWindowlessLaunch({ KOLUX_E2E_HEADLESS: '1', KOLUX_E2E_HEADFUL: '1' })).toBe(false)
+    expect(isWindowlessLaunch({ KOLUX_BACKGROUND_LAUNCH: '1' })).toBe(true)
     expect(
       isWindowlessLaunch({
-        NIGHTSHIFT_BACKGROUND_LAUNCH: '1',
-        NIGHTSHIFT_E2E_HEADFUL: '1',
-        NIGHTSHIFT_E2E_FOREGROUND: '1'
+        KOLUX_BACKGROUND_LAUNCH: '1',
+        KOLUX_E2E_HEADFUL: '1',
+        KOLUX_E2E_FOREGROUND: '1'
       })
     ).toBe(true)
   })
@@ -68,21 +62,21 @@ describe('isWindowlessLaunch', () => {
 describe('showWindowWithoutStealingFocus', () => {
   it('keeps a headless window off screen', () => {
     const window = makeWindow()
-    showWindowWithoutStealingFocus(window, { NIGHTSHIFT_E2E_HEADLESS: '1' })
+    showWindowWithoutStealingFocus(window, { KOLUX_E2E_HEADLESS: '1' })
     expect(window.show).not.toHaveBeenCalled()
     expect(window.showInactive).not.toHaveBeenCalled()
   })
 
   it('never reveals an explicitly background window', () => {
     const window = makeWindow()
-    showWindowWithoutStealingFocus(window, { NIGHTSHIFT_BACKGROUND_LAUNCH: '1' })
+    showWindowWithoutStealingFocus(window, { KOLUX_BACKGROUND_LAUNCH: '1' })
     expect(window.showInactive).not.toHaveBeenCalled()
     expect(window.show).not.toHaveBeenCalled()
   })
 
   it('still reveals explicitly headful E2E without activation', () => {
     const window = makeWindow()
-    showWindowWithoutStealingFocus(window, { NIGHTSHIFT_E2E_HEADFUL: '1' })
+    showWindowWithoutStealingFocus(window, { KOLUX_E2E_HEADFUL: '1' })
     expect(window.showInactive).toHaveBeenCalledOnce()
     expect(window.show).not.toHaveBeenCalled()
   })
@@ -109,7 +103,7 @@ describe('applyBackgroundActivationPolicy', () => {
     }
   }
 
-  it.each(['NIGHTSHIFT_E2E_HEADLESS', 'NIGHTSHIFT_BACKGROUND_LAUNCH'])(
+  it.each(['KOLUX_E2E_HEADLESS', 'KOLUX_BACKGROUND_LAUNCH'])(
     'drops the macOS Dock tile and menu bar for %s',
     (flag) => {
       const app = makeApp()
@@ -129,7 +123,7 @@ describe('applyBackgroundActivationPolicy', () => {
     const headful = makeApp()
     applyBackgroundActivationPolicy({
       app: headful,
-      env: { NIGHTSHIFT_E2E_HEADLESS: '1', NIGHTSHIFT_E2E_HEADFUL: '1' },
+      env: { KOLUX_E2E_HEADLESS: '1', KOLUX_E2E_HEADFUL: '1' },
       platform: 'darwin'
     })
     expect(headful.setActivationPolicy).not.toHaveBeenCalled()
@@ -144,7 +138,7 @@ describe('applyBackgroundActivationPolicy', () => {
     expect(
       applyBackgroundActivationPolicy({
         app,
-        env: { NIGHTSHIFT_E2E_HEADLESS: '1' },
+        env: { KOLUX_E2E_HEADLESS: '1' },
         platform: 'win32'
       })
     ).toBe(false)

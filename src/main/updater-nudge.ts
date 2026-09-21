@@ -15,7 +15,7 @@ export async function fetchNudge(): Promise<NudgeConfig | null> {
     return null
   }
   try {
-    const res = await net.fetch('https://nightshift.invalid/whats-new/nudge.json', {
+    const res = await net.fetch('https://kolux.invalid/whats-new/nudge.json', {
       signal: AbortSignal.timeout(5000)
     })
     if (!res.ok) {

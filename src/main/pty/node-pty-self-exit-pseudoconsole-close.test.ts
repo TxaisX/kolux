@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
  * A shell that exits by itself must still close its pseudoconsole.
  *
  * `ClosePseudoConsole` is the only thing that reaps a ConPTY's console host —
- * Nightshift's own job-ownership patch says so, because `CreatePseudoConsole` spawns
+ * Kolux's own job-ownership patch says so, because `CreatePseudoConsole` spawns
  * that host before the per-pty job exists and it is therefore not a job member.
  * Upstream node-pty calls it from exactly one place, `PtyKill`, which begins by
  * looking the baton up by id — and the exit watcher in `SetupExitCallback`

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { TERMINAL_METHODS } from './terminal'
 import {
   TerminalMultiplexLegacyAckFrame,
@@ -56,13 +56,13 @@ function schemaFor(name: string) {
   }
   return method.params
 }
-async function invoke(name: string, params: unknown, runtime: Partial<NightshiftRuntimeService>) {
+async function invoke(name: string, params: unknown, runtime: Partial<KoluxRuntimeService>) {
   const method = TERMINAL_METHODS.find((candidate) => candidate.name === name)
   if (!method?.params || 'stream' in method) {
     throw new Error(`Missing unary terminal method: ${name}`)
   }
   return method.handler(method.params.parse(params), {
-    runtime: runtime as NightshiftRuntimeService
+    runtime: runtime as KoluxRuntimeService
   })
 }
 
@@ -156,7 +156,7 @@ describe('terminal RPC manifest characterization', () => {
       recoverTerminalPane: vi.fn(async () => recovered),
       showTerminal: vi.fn(async () => shown),
       splitTerminal: vi.fn(async () => split)
-    } as unknown as Partial<NightshiftRuntimeService>
+    } as unknown as Partial<KoluxRuntimeService>
 
     await expect(invoke('terminal.resolvePane', { paneKey: 'pane' }, runtime)).resolves.toEqual({
       terminal: pane
@@ -190,7 +190,7 @@ describe('terminal RPC manifest characterization', () => {
         ) => create(selector, 'term-preallocated')
       ),
       createTerminal
-    } as unknown as Partial<NightshiftRuntimeService>
+    } as unknown as Partial<KoluxRuntimeService>
     const selector = 'ssh://windows-host/C:/Users/dev/repo'
 
     await expect(

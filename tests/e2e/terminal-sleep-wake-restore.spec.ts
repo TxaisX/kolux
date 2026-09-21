@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -183,12 +183,12 @@ function writeSleepWakePayloadScript(scriptPath: string, payload: string): void 
 
 test.describe('Terminal sleep wake restore', () => {
   test('restores slept terminal output and accepts fresh input after wake', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'sleep wake restore needs the seeded secondary worktree')
@@ -196,35 +196,35 @@ test.describe('Terminal sleep wake restore', () => {
       return
     }
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
     const restoreMarker = `SLEEP_WAKE_RESTORE_${runId}`
     const freshMarker = `SLEEP_WAKE_FRESH_${runId}`
     const expectedMarkers = sleepWakeExpectedMarkers(runId)
-    const scriptPath = path.join(testRepoPath, `.nightshift-sleep-wake-restore-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-sleep-wake-restore-${runId}.mjs`)
     writeSleepWakePayloadScript(scriptPath, richSleepWakePayload(runId))
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
-      await waitForTerminalOutput(nightshiftPage, restoreMarker, 10_000, 20_000)
-      const beforeSleepDebug = await readSleepWakeTerminalDebug(nightshiftPage, secondWorktreeId)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await waitForTerminalOutput(koluxPage, restoreMarker, 10_000, 20_000)
+      const beforeSleepDebug = await readSleepWakeTerminalDebug(koluxPage, secondWorktreeId)
       for (const marker of expectedMarkers) {
-        expect(await mainSnapshotContains(nightshiftPage, ptyId, marker)).toBe(true)
+        expect(await mainSnapshotContains(koluxPage, ptyId, marker)).toBe(true)
       }
 
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
-      await sleepWorktreeTerminals(nightshiftPage, secondWorktreeId)
-      const afterSleepDebug = await readSleepWakeTerminalDebug(nightshiftPage, secondWorktreeId)
+      await switchToWorktree(koluxPage, firstWorktreeId)
+      await sleepWorktreeTerminals(koluxPage, secondWorktreeId)
+      const afterSleepDebug = await readSleepWakeTerminalDebug(koluxPage, secondWorktreeId)
       await expect
-        .poll(() => readLivePtyCountForWorktree(nightshiftPage, secondWorktreeId), {
+        .poll(() => readLivePtyCountForWorktree(koluxPage, secondWorktreeId), {
           timeout: 10_000,
           message: 'sleep did not release live PTYs for the background worktree'
         })
         .toBe(0)
       await expect
-        .poll(() => readRemoteSleepOracle(nightshiftPage, secondWorktreeId), {
+        .poll(() => readRemoteSleepOracle(koluxPage, secondWorktreeId), {
           timeout: 10_000,
           message: 'first sleep did not converge host terminal liveness and worktree projection'
         })
@@ -234,12 +234,12 @@ test.describe('Terminal sleep wake restore', () => {
           worktreePsHasAttachedPty: false
         })
 
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      const awakePtyId = await waitForActivePanePtyId(nightshiftPage)
-      const afterWakeDebug = await readSleepWakeTerminalDebug(nightshiftPage, secondWorktreeId)
-      const awakeTerminalContent = await getTerminalContent(nightshiftPage, 20_000)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      const awakePtyId = await waitForActivePanePtyId(koluxPage)
+      const afterWakeDebug = await readSleepWakeTerminalDebug(koluxPage, secondWorktreeId)
+      const awakeTerminalContent = await getTerminalContent(koluxPage, 20_000)
       for (const marker of expectedMarkers) {
         expect
           .soft(awakeTerminalContent.includes(marker), {
@@ -259,9 +259,9 @@ test.describe('Terminal sleep wake restore', () => {
           })
           .toBe(true)
       }
-      await waitForTerminalOutput(nightshiftPage, restoreMarker, 15_000, 20_000)
-      await sendToTerminal(nightshiftPage, awakePtyId, `printf '\\n${freshMarker}\\n'\r`)
-      await waitForTerminalOutput(nightshiftPage, freshMarker, 10_000, 20_000)
+      await waitForTerminalOutput(koluxPage, restoreMarker, 15_000, 20_000)
+      await sendToTerminal(koluxPage, awakePtyId, `printf '\\n${freshMarker}\\n'\r`)
+      await waitForTerminalOutput(koluxPage, freshMarker, 10_000, 20_000)
     } finally {
       rmSync(scriptPath, { force: true })
     }

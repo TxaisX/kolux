@@ -32,8 +32,8 @@ describe('CodexAccountService.addAccountFromHome', () => {
   it('imports and switches personal and enterprise accounts sharing an email independently', async () => {
     vi.doMock('../codex-cli/command', () => ({ resolveCodexCommand: () => 'codex' }))
     const sourceHomes = [
-      mkdtempSync(join(tmpdir(), 'nightshift-codex-personal-')),
-      mkdtempSync(join(tmpdir(), 'nightshift-codex-enterprise-'))
+      mkdtempSync(join(tmpdir(), 'kolux-codex-personal-')),
+      mkdtempSync(join(tmpdir(), 'kolux-codex-enterprise-'))
     ]
     const email = 'same@example.com'
     const credentials = ['plus', 'enterprise'].map((plan) => {
@@ -99,7 +99,7 @@ describe('CodexAccountService.addAccountFromHome', () => {
 
   it('registers a managed Codex account by importing an authenticated CODEX_HOME', async () => {
     vi.doMock('../codex-cli/command', () => ({ resolveCodexCommand: () => 'codex' }))
-    const sourceHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-source-'))
+    const sourceHome = mkdtempSync(join(tmpdir(), 'kolux-codex-source-'))
     writeFileSync(
       join(sourceHome, 'auth.json'),
       createCodexAuthJson('new@example.com', 'provider-account-1', 'refresh-token'),
@@ -133,7 +133,7 @@ describe('CodexAccountService.addAccountFromHome', () => {
 
   it('restores settings and runtime selection when post-write activation fails', async () => {
     vi.doMock('../codex-cli/command', () => ({ resolveCodexCommand: () => 'codex' }))
-    const sourceHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-source-rollback-'))
+    const sourceHome = mkdtempSync(join(tmpdir(), 'kolux-codex-source-rollback-'))
     writeFileSync(
       join(sourceHome, 'auth.json'),
       createCodexAuthJson('new@example.com', 'provider-account-1', 'refresh-token'),
@@ -172,7 +172,7 @@ describe('CodexAccountService.addAccountFromHome', () => {
 
   it('rejects when the source home has no auth.json', async () => {
     vi.doMock('../codex-cli/command', () => ({ resolveCodexCommand: () => 'codex' }))
-    const sourceHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-source-empty-'))
+    const sourceHome = mkdtempSync(join(tmpdir(), 'kolux-codex-source-empty-'))
 
     try {
       const settings = createSettings()

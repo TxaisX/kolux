@@ -10,13 +10,13 @@ const descendant = spawn(process.execPath, ['-e', 'setInterval(() => {}, 60_000)
   stdio: 'ignore',
   windowsHide: true
 })
-console.log(`NIGHTSHIFT_GENERATION_CANARY_READY ${label} ${nonce} ${descendant.pid}`)
+console.log(`KOLUX_GENERATION_CANARY_READY ${label} ${nonce} ${descendant.pid}`)
 
 const input = readline.createInterface({ input: process.stdin })
 input.on('line', (line) => {
   const prefix = `PING ${label} `
   if (line.startsWith(prefix)) {
-    console.log(`NIGHTSHIFT_GENERATION_CANARY_ACK ${label} ${line.slice(prefix.length)}`)
+    console.log(`KOLUX_GENERATION_CANARY_ACK ${label} ${line.slice(prefix.length)}`)
   }
 })
 

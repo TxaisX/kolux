@@ -255,8 +255,8 @@ export default function AiVaultSessionDropLayer({
             // must fail loudly rather than silently resume under it.
             throw new Error(
               result.substituteCodexHome
-                ? 'This session was dragged from an older Nightshift window, so Nightshift cannot retarget it to the selected Codex account. Resume it from the Session History panel instead.'
-                : 'Nightshift could not prepare this legacy Codex session. Retry resume.'
+                ? 'This session was dragged from an older Kolux window, so Kolux cannot retarget it to the selected Codex account. Resume it from the Session History panel instead.'
+                : 'Kolux could not prepare this legacy Codex session. Retry resume.'
             )
           }
           const providerSession = getAiVaultAgentProviderSession({

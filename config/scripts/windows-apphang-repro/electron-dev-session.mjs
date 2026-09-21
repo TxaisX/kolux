@@ -42,7 +42,7 @@ export async function pickFreePort() {
 }
 
 export function createGpuUserDataDirectory(gpuMode) {
-  const userDataDir = mkdtempSync(path.join(os.tmpdir(), `nightshift-apphang-${gpuMode}-userdata-`))
+  const userDataDir = mkdtempSync(path.join(os.tmpdir(), `kolux-apphang-${gpuMode}-userdata-`))
   createCompletedOnboardingProfile(userDataDir)
   return userDataDir
 }
@@ -51,7 +51,7 @@ export function launchDevApp({ cdpPort, userDataDir }) {
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
   delete env.CODEX_HOME
-  delete env.NIGHTSHIFT_CODEX_HOME
+  delete env.KOLUX_CODEX_HOME
   const isolatedHome = path.join(userDataDir, 'home')
   mkdirSync(isolatedHome, { recursive: true })
   Object.assign(env, {
@@ -60,11 +60,11 @@ export function launchDevApp({ cdpPort, userDataDir }) {
     NODE_ENV: 'development',
     // Why: this disposable repro profile must not add real-home Codex work to
     // app-hang measurements or expose the developer's Codex state.
-    NIGHTSHIFT_DEV_USER_DATA_PATH: userDataDir,
+    KOLUX_DEV_USER_DATA_PATH: userDataDir,
     HOME: isolatedHome,
     USERPROFILE: isolatedHome,
-    NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-    NIGHTSHIFT_STARTUP_DIAGNOSTICS: '1',
+    KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+    KOLUX_STARTUP_DIAGNOSTICS: '1',
     REMOTE_DEBUGGING_PORT: String(cdpPort),
     VITE_EXPOSE_STORE: 'true'
   })
@@ -159,7 +159,7 @@ export async function connectToApp(cdpPort) {
 
 export async function installRendererProbe(page) {
   await page.evaluate(() => {
-    if (globalThis.__nightshiftApphangProbe) {
+    if (globalThis.__koluxApphangProbe) {
       return
     }
     const probe = {
@@ -178,7 +178,7 @@ export async function installRendererProbe(page) {
       probe.lastTickAt = now
       probe.samples += 1
     }, probe.intervalMs)
-    globalThis.__nightshiftApphangProbe = { probe, timer }
+    globalThis.__koluxApphangProbe = { probe, timer }
   })
 }
 
@@ -323,7 +323,7 @@ export async function collectRendererDiagnostics(page) {
             allPaneManagersDiagnostics,
             webglContextCounts,
             webglIdentity: readWebglIdentity(),
-            rendererProbe: globalThis.__nightshiftApphangProbe?.probe ?? null,
+            rendererProbe: globalThis.__koluxApphangProbe?.probe ?? null,
             ptySessions: await timed('PTY sessions', window.api?.pty?.listSessions?.()),
             rendererDeliveryDebug: await timed(
               'renderer delivery debug',

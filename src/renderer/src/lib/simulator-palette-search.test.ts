@@ -336,7 +336,7 @@ describe('simulator-palette-search', () => {
       makeEntry({
         tab: makeTab({ label: 'Phone Preview' }),
         worktree: makeWorktree({ displayName: 'Checkout Flow' }),
-        repoName: 'nightshift/mobile-client',
+        repoName: 'kolux/mobile-client',
         worktreeSortIndex: 1,
         isCurrentTab: false,
         isCurrentWorktree: false
@@ -427,7 +427,7 @@ describe('simulator-palette-search', () => {
           displayName: undefined as unknown as string,
           branch: 'refs/heads/feature/mobile-emulator'
         }),
-        repoName: 'nightshift',
+        repoName: 'kolux',
         worktreeSortIndex: 0,
         isCurrentTab: false,
         isCurrentWorktree: false
@@ -449,7 +449,7 @@ describe('simulator-palette-search', () => {
           branch: undefined as unknown as string,
           path: '/repos/design-review'
         }),
-        repoName: 'nightshift',
+        repoName: 'kolux',
         worktreeSortIndex: 0,
         isCurrentTab: false,
         isCurrentWorktree: false

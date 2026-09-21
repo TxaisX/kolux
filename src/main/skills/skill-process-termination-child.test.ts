@@ -6,7 +6,7 @@ import { beginSkillExtractionRecovery } from './skill-extraction-recovery'
 import { installLocalSkillPackage } from './skill-install-transaction'
 import { removeLocalSharedSkill } from './skill-remove-transaction'
 
-const CHILD = process.env.NIGHTSHIFT_SKILL_PROCESS_CHILD === '1'
+const CHILD = process.env.KOLUX_SKILL_PROCESS_CHILD === '1'
 
 async function packageVersion(root: string, versionId: string, heading: string) {
   const source = join(root, `source-${versionId}`)
@@ -25,12 +25,12 @@ async function packageVersion(root: string, versionId: string, heading: string) 
 
 async function stopAtBoundary(phase: string, boundary: string): Promise<void> {
   if (
-    phase !== process.env.NIGHTSHIFT_SKILL_CRASH_PHASE ||
-    boundary !== process.env.NIGHTSHIFT_SKILL_CRASH_BOUNDARY
+    phase !== process.env.KOLUX_SKILL_CRASH_PHASE ||
+    boundary !== process.env.KOLUX_SKILL_CRASH_BOUNDARY
   ) {
     return
   }
-  const marker = process.env.NIGHTSHIFT_SKILL_CRASH_MARKER
+  const marker = process.env.KOLUX_SKILL_CRASH_MARKER
   if (!marker) {
     throw new Error('missing-crash-marker')
   }
@@ -46,13 +46,13 @@ async function stopAtBoundary(phase: string, boundary: string): Promise<void> {
 
 describe.runIf(CHILD)('skill process termination child', () => {
   it('stops at the requested durable boundary', async () => {
-    const root = process.env.NIGHTSHIFT_SKILL_CRASH_ROOT
+    const root = process.env.KOLUX_SKILL_CRASH_ROOT
     if (!root) {
       throw new Error('missing-crash-root')
     }
     const destinationRoot = join(root, 'skills')
     const stateDirectory = join(root, 'state')
-    if (process.env.NIGHTSHIFT_SKILL_CRASH_OPERATION === 'extract') {
+    if (process.env.KOLUX_SKILL_CRASH_OPERATION === 'extract') {
       const extraction = await beginSkillExtractionRecovery(stateDirectory, destinationRoot)
       await mkdir(extraction.extractionPath, { recursive: true })
       await writeFile(join(extraction.extractionPath, 'partial'), 'partial bytes')
@@ -69,7 +69,7 @@ describe.runIf(CHILD)('skill process termination child', () => {
       destinationIdentity: 'global:process-test',
       hostIdentity: 'process-test'
     })
-    if (process.env.NIGHTSHIFT_SKILL_CRASH_OPERATION === 'remove') {
+    if (process.env.KOLUX_SKILL_CRASH_OPERATION === 'remove') {
       await removeLocalSharedSkill(
         {
           operationId: 'remove',

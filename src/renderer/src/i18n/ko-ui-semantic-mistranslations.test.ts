@@ -5,11 +5,11 @@ import ko from './locales/ko.json'
 
 const correctedValues = {
   'auto.components.settings.AutoRenameBranchFromWorkSetting.d9b65054ef':
-    ') 작업을 요약하는 짧은 이름으로 변경됩니다. Nightshift가 직접 이름 붙인 브랜치만 이름을 바꾸며, 푸시된 후에는 이름을 바꾸지 않습니다.',
+    ') 작업을 요약하는 짧은 이름으로 변경됩니다. Kolux가 직접 이름 붙인 브랜치만 이름을 바꾸며, 푸시된 후에는 이름을 바꾸지 않습니다.',
   'auto.components.settings.source.control.action.recipe.options.commitMessage':
     '스테이징된 변경 사항에서 commit 메시지를 생성합니다.',
-  'auto.components.settings.DevToolsPane.nightshiftCloudDescription':
-    '자사 클라우드 로그인의 개발자 전용 미리보기. 프로덕션에서는 숨겨집니다. 개발 환경에서는 NIGHTSHIFT_CLOUD_API_URL과 NIGHTSHIFT_CLOUD_CLIENT_ID가 설정되면 사이드바 계정 전환기에도 표시됩니다.',
+  'auto.components.settings.DevToolsPane.koluxCloudDescription':
+    '자사 클라우드 로그인의 개발자 전용 미리보기. 프로덕션에서는 숨겨집니다. 개발 환경에서는 KOLUX_CLOUD_API_URL과 KOLUX_CLOUD_CLIENT_ID가 설정되면 사이드바 계정 전환기에도 표시됩니다.',
   'auto.components.settings.EphemeralVmsPane.whatTitle': '이 스킬로 함께 하는 작업',
   'auto.components.settings.EphemeralVmsPane.recipes': '레시피',
   'auto.components.right.sidebar.SourceControl.a5e5a11090':
@@ -20,9 +20,9 @@ const correctedValues = {
   'auto.components.right.sidebar.source.control.primary.action.5a477d80cb':
     '모든 변경 사항 스테이징',
   'auto.components.settings.DeveloperPermissionsPane.f903bf20b5':
-    '터미널과 개발 도구가 로컬 네트워크의 서비스에 연결할 수 있도록 허용합니다. macOS는 이 권한의 현재 상태를 Nightshift에 보고하지 않습니다.',
+    '터미널과 개발 도구가 로컬 네트워크의 서비스에 연결할 수 있도록 허용합니다. macOS는 이 권한의 현재 상태를 Kolux에 보고하지 않습니다.',
   'auto.components.sidebar.AddRemoteHostDialog.sshImportSynced':
-    '{{value0}} 호스트{{value1}}을(를) Nightshift에 추가했습니다.',
+    '{{value0}} 호스트{{value1}}을(를) Kolux에 추가했습니다.',
   'auto.components.editor.CheckRunJobs.1c0a4d7e02': '성공',
   'components.native-chat.approval.allow': '허용',
   'components.native-chat.approval.deny': '거부'

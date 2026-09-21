@@ -119,7 +119,7 @@ async function installManagedHooksIntoWslRuntimeExclusively(
     })
     if (grant.lane === 'fallback') {
       // Why: WSL runtime homes may carry user hook approvals we did not rebuild
-      // here; only upsert Nightshift's entries instead of sweeping the whole source.
+      // here; only upsert Kolux's entries instead of sweeping the whole source.
       upsertHookTrustEntries(plan.tomlPath, trustEntries)
     }
   } catch (error) {

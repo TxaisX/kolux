@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 type InventoryInternals = {
   sessionTabsInventoryWaiters: Set<() => void>
 }
 
-function createInventoryRuntime(): NightshiftRuntimeService {
-  const runtime = new NightshiftRuntimeService()
+function createInventoryRuntime(): KoluxRuntimeService {
+  const runtime = new KoluxRuntimeService()
   runtime.setPtyController({ listProcesses: vi.fn(async () => []) } as never)
   return runtime
 }
 
-async function waitForInventoryWaiter(runtime: NightshiftRuntimeService): Promise<void> {
+async function waitForInventoryWaiter(runtime: KoluxRuntimeService): Promise<void> {
   const internals = runtime as unknown as InventoryInternals
   for (let index = 0; index < 20 && internals.sessionTabsInventoryWaiters.size === 0; index += 1) {
     await Promise.resolve()
@@ -171,7 +171,7 @@ describe('authoritative session tab inventory publication', () => {
   })
 
   it('retries once and serves an unlabeled scan when the PTY census is unavailable', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const collect = vi.spyOn(
       runtime as unknown as { collectAllMobileSessionTabs: () => Promise<unknown> },
       'collectAllMobileSessionTabs'
@@ -409,7 +409,7 @@ describe('authoritative session tab inventory publication', () => {
   })
 
   it('reports no authoritative support behind the e2e disable override', () => {
-    vi.stubEnv('NIGHTSHIFT_E2E_DISABLE_AUTHORITATIVE_SESSION_TABS_INVENTORY', '1')
+    vi.stubEnv('KOLUX_E2E_DISABLE_AUTHORITATIVE_SESSION_TABS_INVENTORY', '1')
     try {
       expect(createInventoryRuntime().supportsAuthoritativeSessionTabsInventory()).toBe(false)
     } finally {

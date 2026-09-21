@@ -14,7 +14,7 @@ import {
   setPlatform
 } from './claude-account-service-test-harness'
 
-const CLAUDE_SERVICE_TEST_ROOT = join(tmpdir(), 'nightshift-claude-service-capture-test')
+const CLAUDE_SERVICE_TEST_ROOT = join(tmpdir(), 'kolux-claude-service-capture-test')
 
 vi.mock('electron', () => ({
   app: {
@@ -120,7 +120,7 @@ describe('ClaudeAccountService credential capture', () => {
   })
 
   it('falls back to captured credentials file on macOS', async () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-capture-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-claude-capture-'))
     writeFileSync(join(tempDir, '.credentials.json'), '{"token":"file"}\n', 'utf-8')
     vi.mocked(readActiveClaudeKeychainCredentialsStrict)
       .mockResolvedValueOnce(null)

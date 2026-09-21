@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import { getAppEnvironment } from '../../../shared/app-environment'
-import type { NightshiftRuntimeService } from '../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../runtime/kolux-runtime'
 import type { Store } from '../../persistence'
 import type { GlobalSettings } from '../../../shared/global-settings-types'
 import { LocalPtyProvider } from '../../providers/local-pty-provider'
@@ -59,11 +59,11 @@ import {
   resolveCodexResumeLaunch,
   stripSequencedStartupResumeArgv
 } from './host-env/codex-resume'
-import { ensureLinuxTerminalNightshiftCliShimDir } from '../../cli/linux-terminal-nightshift-cli-shim'
+import { ensureLinuxTerminalKoluxCliShimDir } from '../../cli/linux-terminal-kolux-cli-shim'
 
 export function registerPtyHandlers(
   mainWindow: BrowserWindow,
-  runtime?: NightshiftRuntimeService,
+  runtime?: KoluxRuntimeService,
   getSelectedCodexHomePath?: GetSelectedCodexHomePath,
   getSettings?: () => GlobalSettings,
   prepareClaudeAuth?: PrepareClaudeAuth,
@@ -73,7 +73,7 @@ export function registerPtyHandlers(
   if (process.platform === 'linux') {
     const appEnvironment = getAppEnvironment()
     if (appEnvironment.isPackaged()) {
-      ensureLinuxTerminalNightshiftCliShimDir({ userDataPath: appEnvironment.getPath('userData') })
+      ensureLinuxTerminalKoluxCliShimDir({ userDataPath: appEnvironment.getPath('userData') })
     }
   }
   const ipcMain = getPtyIpc()

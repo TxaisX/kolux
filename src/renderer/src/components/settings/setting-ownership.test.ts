@@ -34,7 +34,7 @@ describe('getSettingOwnershipSummary', () => {
     const summary = getSettingOwnershipSummary('terminalQuickCommands')
 
     expect(summary.ownership).toBe('host-collection')
-    expect(summary.description).toContain('selected Nightshift host')
+    expect(summary.description).toContain('selected Kolux host')
     expect(summary.description).toContain('remain available in remote workspaces')
   })
 })

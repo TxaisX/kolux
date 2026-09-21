@@ -2,16 +2,16 @@
 set -euo pipefail
 
 signal_name=${1:?signal name is required}
-app_root=${NIGHTSHIFT_TEST_APP_ROOT:-/artifacts/root}
-signal_target_kind=${NIGHTSHIFT_SIGNAL_TARGET:-app}
-entrypoint_kind=${NIGHTSHIFT_TEST_ENTRYPOINT:-app}
-int_delivery=${NIGHTSHIFT_INT_DELIVERY:-foreground-process-group}
+app_root=${KOLUX_TEST_APP_ROOT:-/artifacts/root}
+signal_target_kind=${KOLUX_SIGNAL_TARGET:-app}
+entrypoint_kind=${KOLUX_TEST_ENTRYPOINT:-app}
+int_delivery=${KOLUX_INT_DELIVERY:-foreground-process-group}
 # Packaged Electron startup can approach 90s on a cold CI runner; leave room
 # for the readiness line to reach the log before the observer deadline.
-startup_timeout_seconds=${NIGHTSHIFT_STARTUP_TIMEOUT_SECONDS:-180}
+startup_timeout_seconds=${KOLUX_STARTUP_TIMEOUT_SECONDS:-180}
 
 if ((EUID == 0)); then
-  exec runuser --user nightshift --preserve-environment -- "$0" "$@"
+  exec runuser --user kolux --preserve-environment -- "$0" "$@"
 fi
 
 case "$signal_name" in
@@ -19,7 +19,7 @@ case "$signal_name" in
   *) echo "unsupported signal: $signal_name" >&2; exit 64 ;;
 esac
 
-state_dir=$(mktemp -d "/tmp/nightshift-shutdown-${signal_name}.XXXXXX")
+state_dir=$(mktemp -d "/tmp/kolux-shutdown-${signal_name}.XXXXXX")
 stdout_log="$state_dir/stdout.log"
 stderr_log="$state_dir/stderr.log"
 ulimit -c 0
@@ -43,9 +43,9 @@ chmod 700 "$XDG_RUNTIME_DIR"
 
 case "$entrypoint_kind" in
   app) entrypoint=("$app_root/AppRun" --no-sandbox) ;;
-  appimage) entrypoint=(/input/nightshift.AppImage --appimage-extract-and-run --no-sandbox) ;;
+  appimage) entrypoint=(/input/kolux.AppImage --appimage-extract-and-run --no-sandbox) ;;
   launcher)
-    entrypoint=("$app_root/resources/bin/nightshift-ide")
+    entrypoint=("$app_root/resources/bin/kolux-ide")
     ;;
   *) echo "unsupported entrypoint: $entrypoint_kind" >&2; exit 64 ;;
 esac
@@ -60,7 +60,7 @@ app_start_ticks=$(awk '{print $22}' "/proc/$app_pid/stat")
 # finite snapshots instead; each parser invocation has a definite EOF.
 read_ready_line() {
   sed -u -n 's/^[^{]*//p' "$stdout_log" \
-    | jq --unbuffered -Rnc 'first(inputs | fromjson? | select(.type == "nightshift_server_ready" and .schemaVersion == 1))'
+    | jq --unbuffered -Rnc 'first(inputs | fromjson? | select(.type == "kolux_server_ready" and .schemaVersion == 1))'
 }
 
 ready_line=''
@@ -77,21 +77,21 @@ if [[ -z "$ready_line" ]]; then
 fi
 if [[ -z "$ready_line" ]]; then
   cat "$stdout_log" "$stderr_log" >&2
-  echo "FAIL: entrypoint exited or timed out before nightshift_server_ready" >&2
+  echo "FAIL: entrypoint exited or timed out before kolux_server_ready" >&2
   exit 1
 fi
 
 registered_cli_verified=false
 if [[ "$entrypoint_kind" == appimage ]]; then
-  registered_cli="$HOME/.local/bin/nightshift-ide"
-  expected_target="$XDG_CACHE_HOME/nightshift/appimage/launcher/nightshift-ide"
+  registered_cli="$HOME/.local/bin/kolux-ide"
+  expected_target="$XDG_CACHE_HOME/kolux/appimage/launcher/kolux-ide"
   actual_target=$(readlink "$registered_cli" 2>/dev/null || true)
   if [[ "$actual_target" != "$expected_target" ]]; then
     echo "FAIL: registered CLI target is ${actual_target:-missing}; expected $expected_target" >&2
     exit 1
   fi
   if ! registered_help=$("$registered_cli" --help 2>&1) \
-    || [[ "$registered_help" != *'Usage: nightshift <command>'* ]]; then
+    || [[ "$registered_help" != *'Usage: kolux <command>'* ]]; then
     echo "FAIL: registered CLI did not execute the packaged help command" >&2
     printf '%s\n' "$registered_help" >&2
     exit 1
@@ -192,7 +192,7 @@ for shutdown_poll in {0..50}; do
     fi
   done
   owned_residue=$(ps -eo pid=,ppid=,stat=,args= | awk -v state="$state_dir" \
-    '($0 ~ state || $0 ~ /\/artifacts\/root\/nightshift-ide/ || $0 ~ /[X]vfb :99 /) && $0 !~ /awk -v state=/ {print}' || true)
+    '($0 ~ state || $0 ~ /\/artifacts\/root\/kolux-ide/ || $0 ~ /[X]vfb :99 /) && $0 !~ /awk -v state=/ {print}' || true)
   if [[ -z "$listener_after" && -z "$owned_residue" ]] \
     && ((${#survivors[@]} == 0)); then
     break

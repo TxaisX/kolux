@@ -89,12 +89,12 @@ vi.mock('electron', () => ({
   nativeTheme: nativeThemeMock
 }))
 
-vi.mock('../../../resources/tray/nightshift-menu-barTemplate.png?asset&asarUnpack', () => ({
-  default: '/assets/nightshift-menu-barTemplate.png'
+vi.mock('../../../resources/tray/kolux-menu-barTemplate.png?asset&asarUnpack', () => ({
+  default: '/assets/kolux-menu-barTemplate.png'
 }))
 
-vi.mock('../../../resources/tray/nightshift-menu-barTemplate@2x.png?asset&asarUnpack', () => ({
-  default: '/assets/nightshift-menu-barTemplate@2x.png'
+vi.mock('../../../resources/tray/kolux-menu-barTemplate@2x.png?asset&asarUnpack', () => ({
+  default: '/assets/kolux-menu-barTemplate@2x.png'
 }))
 
 vi.mock('../app-icon', () => ({
@@ -201,12 +201,8 @@ describe('createSystemTray', () => {
 
     expect(trayInstances).toHaveLength(1)
     expect(trayInstances[0].image).toBe(resizedImage)
-    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Nightshift')
-    expect(builtMenuItems().map((item) => item.label)).toEqual([
-      'Open Nightshift',
-      undefined,
-      'Quit'
-    ])
+    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Kolux')
+    expect(builtMenuItems().map((item) => item.label)).toEqual(['Open Kolux', undefined, 'Quit'])
     const clickHandler = trayInstances[0].on.mock.calls.find((call) => call[0] === 'click')?.[1]
     expect(clickHandler).toBeTypeOf('function')
 
@@ -232,7 +228,7 @@ describe('createSystemTray', () => {
       dataURL: 'data:image/png;base64,mac-retina'
     })
     expect(builtMenuItems().map((item) => item.label)).toEqual([
-      'Open Nightshift',
+      'Open Kolux',
       undefined,
       'Settings',
       'Check for Updates...',
@@ -243,7 +239,7 @@ describe('createSystemTray', () => {
     expect(nativeThemeMock.on).toHaveBeenCalledWith('updated', expect.any(Function))
 
     for (const [label, callback] of [
-      ['Open Nightshift', options.onOpen],
+      ['Open Kolux', options.onOpen],
       ['Settings', options.onOpenSettings],
       ['Check for Updates...', options.onCheckForUpdates],
       ['Quit', options.onQuit]
@@ -295,9 +291,9 @@ describe('dev instance indicator', () => {
     expect(devBadgeImage.setTemplateImage).toHaveBeenCalledWith(true)
     expect(trayInstances[0].image).toBe(devBadgeImage)
     expect(trayInstances[0].setTitle).not.toHaveBeenCalled()
-    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Nightshift DEV (my-branch)')
+    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Kolux DEV (my-branch)')
     expect(builtMenuItems()[0]).toMatchObject({
-      label: 'Nightshift DEV (my-branch)',
+      label: 'Kolux DEV (my-branch)',
       enabled: false
     })
   })
@@ -335,8 +331,8 @@ describe('dev instance indicator', () => {
 
     createSystemTray(createOptions({ isDevInstance: true }))
 
-    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Nightshift DEV')
-    expect(builtMenuItems()[0]).toMatchObject({ label: 'Nightshift DEV', enabled: false })
+    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Kolux DEV')
+    expect(builtMenuItems()[0]).toMatchObject({ label: 'Kolux DEV', enabled: false })
   })
 
   it('keeps the DEV marker in the tooltip across the attention toggle', async () => {
@@ -348,10 +344,10 @@ describe('dev instance indicator', () => {
 
     setTrayAttention(true)
     flushTraySceneMutation()
-    expect(created.setToolTip).toHaveBeenCalledWith('Nightshift DEV (my-branch) - activity waiting')
+    expect(created.setToolTip).toHaveBeenCalledWith('Kolux DEV (my-branch) - activity waiting')
     setTrayAttention(false)
     flushTraySceneMutation()
-    expect(created.setToolTip).toHaveBeenLastCalledWith('Nightshift DEV (my-branch)')
+    expect(created.setToolTip).toHaveBeenLastCalledWith('Kolux DEV (my-branch)')
   })
 
   it('marks the Windows tooltip without badging the icon', async () => {
@@ -360,10 +356,10 @@ describe('dev instance indicator', () => {
 
     createSystemTray(createOptions({ isDevInstance: true, devInstanceLabel: 'my-branch' }))
 
-    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Nightshift DEV (my-branch)')
+    expect(trayInstances[0].setToolTip).toHaveBeenCalledWith('Kolux DEV (my-branch)')
     expect(stampDevBadgeMock).not.toHaveBeenCalled()
     expect(builtMenuItems()[0]).toMatchObject({
-      label: 'Nightshift DEV (my-branch)',
+      label: 'Kolux DEV (my-branch)',
       enabled: false
     })
   })
@@ -376,7 +372,7 @@ describe('dev instance indicator', () => {
 
     expect(stampDevBadgeMock).not.toHaveBeenCalled()
     expect(trayInstances[0].image).toBe(baseMacImage)
-    expect(builtMenuItems()[0].label).toBe('Open Nightshift')
+    expect(builtMenuItems()[0].label).toBe('Open Kolux')
   })
 })
 
@@ -435,13 +431,13 @@ describe('setTrayAttention', () => {
     })
     expect(attentionImage.setTemplateImage).toHaveBeenCalledWith(false)
     expect(created.setImage).toHaveBeenCalledWith(attentionImage)
-    expect(created.setToolTip).toHaveBeenCalledWith('Nightshift - activity waiting')
+    expect(created.setToolTip).toHaveBeenCalledWith('Kolux - activity waiting')
 
     setTrayAttention(false)
     flushTraySceneMutation()
     expect(baseMacImage.setTemplateImage).toHaveBeenLastCalledWith(true)
     expect(created.setImage).toHaveBeenLastCalledWith(baseMacImage)
-    expect(created.setToolTip).toHaveBeenLastCalledWith('Nightshift')
+    expect(created.setToolTip).toHaveBeenLastCalledWith('Kolux')
   })
 
   it('recomposes active macOS attention when the system appearance changes', async () => {
@@ -607,7 +603,7 @@ describe('macOS hardening', () => {
     setTrayAttention(true)
     expect(() => flushTraySceneMutation()).not.toThrow()
     expect(created.setImage).toHaveBeenLastCalledWith(baseMacImage)
-    expect(created.setToolTip).toHaveBeenLastCalledWith('Nightshift')
+    expect(created.setToolTip).toHaveBeenLastCalledWith('Kolux')
     expect(warn).toHaveBeenCalledWith(
       '[system-tray] macOS attention icon failed; showing plain icon',
       expect.any(Error)

@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import {
   attachMutationReplayNudge,
   type MutationReplayNudge
@@ -52,7 +52,7 @@ export function messageReplayNudge(receipt: unknown): MutationReplayNudge | unde
 }
 
 export function replayMutationNudge(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   replayNudge: MutationReplayNudge
 ): void {
   if (replayNudge.kind === 'federation') {

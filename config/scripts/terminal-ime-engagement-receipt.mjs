@@ -2,13 +2,13 @@
  * The proof that a native IME run was real.
  *
  * Playwright reports a skipped test as a pass, so every documented way this harness fails open —
- * an unset NIGHTSHIFT_E2E_NATIVE_IBUS_HANGUL, a renamed test the grep no longer selects, a stale
+ * an unset KOLUX_E2E_NATIVE_IBUS_HANGUL, a renamed test the grep no longer selects, a stale
  * ibus-daemon that wins the XIM selection and leaves the session with no engine — produces a
  * green run that exercised nothing. The specs append a receipt only after they have observed
  * real composition events, and the runner requires one per expected test.
  */
 
-export const IME_ENGAGEMENT_RECEIPT_ENV = 'NIGHTSHIFT_E2E_IME_ENGAGEMENT_RECEIPT'
+export const IME_ENGAGEMENT_RECEIPT_ENV = 'KOLUX_E2E_IME_ENGAGEMENT_RECEIPT'
 
 /** The tests that must each leave a receipt. Pinned so deleting one cannot quietly shrink the lane. */
 export const EXPECTED_NATIVE_IME_TESTS = [

@@ -41,7 +41,7 @@ const SETTINGS_NAV_TARGETS = [
   'artifacts',
   'share-skills',
   'automations',
-  'nightshift-account',
+  'kolux-account',
   'linear',
   'setup-guide',
   'servers',
@@ -52,7 +52,7 @@ const SETTINGS_NAV_TARGETS = [
 
 const SETTINGS_NAV_INTENTS = [
   'add-quick-command',
-  'add-remote-nightshift-server',
+  'add-remote-kolux-server',
   'add-ssh-host'
 ] as const
 

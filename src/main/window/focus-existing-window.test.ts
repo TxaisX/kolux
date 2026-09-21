@@ -80,9 +80,9 @@ function makeTimer(): {
 
 // These cases exercise foreground behavior against Electron mocks.
 beforeEach(() => {
-  vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADLESS', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADFUL', undefined)
+  vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADLESS', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADFUL', undefined)
 })
 afterEach(() => vi.unstubAllEnvs())
 
@@ -90,8 +90,8 @@ describe('focusExistingMainWindow', () => {
   it.each(['darwin', 'linux', 'win32'] as const)(
     'never restores or activates a background window on %s',
     (platform) => {
-      vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', '1')
-      vi.stubEnv('NIGHTSHIFT_E2E_FOREGROUND', '1')
+      vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', '1')
+      vi.stubEnv('KOLUX_E2E_FOREGROUND', '1')
       const app = makeFakeApp()
       const window = makeFakeWindow({ minimized: true })
       const timer = makeTimer()

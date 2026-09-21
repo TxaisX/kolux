@@ -65,7 +65,7 @@ export function getWorktreeJumpPaletteEmptyState(controller: WorktreeJumpPalette
     ),
     subtitle: translate(
       'auto.components.WorktreeJumpPalette.f7fda8d562',
-      'Create a worktree or open a tab in Nightshift to get started.'
+      'Create a worktree or open a tab in Kolux to get started.'
     )
   }
 }

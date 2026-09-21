@@ -12,21 +12,21 @@ import type {
 function getEnvVars(): { name: string; description: string }[] {
   return [
     {
-      name: '$NIGHTSHIFT_ROOT_PATH',
+      name: '$KOLUX_ROOT_PATH',
       description: translate(
         'auto.components.settings.RepositoryHooksSection.30952c4aa4',
         'Path to the main repo checkout. Useful for copying shared files, like .env, into a worktree.'
       )
     },
     {
-      name: '$NIGHTSHIFT_WORKTREE_PATH',
+      name: '$KOLUX_WORKTREE_PATH',
       description: translate(
         'auto.components.settings.RepositoryHooksSection.54c73d88d0',
         'Path to the worktree being created. Setup commands run from this directory.'
       )
     },
     {
-      name: '$NIGHTSHIFT_WORKSPACE_NAME',
+      name: '$KOLUX_WORKSPACE_NAME',
       description: translate(
         'auto.components.settings.RepositoryHooksSection.0fa21e19ec',
         'Name of the workspace, usually based on the branch name.'
@@ -150,7 +150,7 @@ export function RepositoryHookScriptSetting({
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
               {translate(
                 'auto.components.settings.RepositoryHooksSection.39da2ae12f',
-                'nightshift.yaml'
+                'kolux.yaml'
               )}
               <span className="font-normal text-emerald-700/80 dark:text-emerald-300/80">
                 {translate(
@@ -164,7 +164,7 @@ export function RepositoryHookScriptSetting({
               <code className="rounded bg-muted px-1 py-0.5">
                 {translate(
                   'auto.components.settings.RepositoryHooksSection.39da2ae12f',
-                  'nightshift.yaml'
+                  'kolux.yaml'
                 )}
               </code>{' '}
               {translate(
@@ -254,11 +254,11 @@ export function LocalCommandSourceNotice({
             {notice.kind === 'checking'
               ? translate(
                   'auto.components.settings.RepositoryHooksSection.7f78e5eea6',
-                  'Local scripts are saved. Nightshift is still checking nightshift.yaml before it can recommend which script source to use.'
+                  'Local scripts are saved. Kolux is still checking kolux.yaml before it can recommend which script source to use.'
                 )
               : translate(
                   'auto.components.settings.RepositoryHooksSection.0ce113fd7b',
-                  'Local scripts are saved, but Script Source is set to nightshift.yaml only.'
+                  'Local scripts are saved, but Script Source is set to kolux.yaml only.'
                 )}
           </p>
         </div>

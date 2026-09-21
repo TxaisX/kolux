@@ -330,7 +330,7 @@ describe('runtime-status slice', () => {
       expect.objectContaining({
         id: 'runtime-environment-disconnected:env-a',
         description:
-          'Check that Nightshift is running on this server and that your network connection is working, then try again.',
+          'Check that Kolux is running on this server and that your network connection is working, then try again.',
         action: expect.objectContaining({ label: 'Try again' })
       })
     )

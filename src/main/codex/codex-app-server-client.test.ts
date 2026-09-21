@@ -116,7 +116,7 @@ function createStubRequest(options: {
   managedCommand: string
   timeoutMs?: number
 }): { request: CodexHookTrustGrantRequest; recordFile: string; pidFile: string } {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-stub-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-codex-stub-'))
   tempRoots.push(root)
   const stubPath = join(root, 'stub-app-server.cjs')
   writeFileSync(stubPath, STUB_SERVER_SOURCE)
@@ -148,7 +148,7 @@ function createStubRequest(options: {
   }
 }
 
-const MANAGED_COMMAND = "/bin/sh '/tmp/nightshift/codex-hook.sh'"
+const MANAGED_COMMAND = "/bin/sh '/tmp/kolux/codex-hook.sh'"
 
 function managedHook(key: string, trustStatus = 'untrusted'): StubHook {
   return { key, command: MANAGED_COMMAND, currentHash: `sha256:hash-of-${key}`, trustStatus }
@@ -428,7 +428,7 @@ describe('runCodexHookTrustGrantSession', () => {
   it('surfaces spawn failures as regular errors, not capability signals', async () => {
     const request: CodexHookTrustGrantRequest = {
       invocation: {
-        command: join(tmpdir(), 'nightshift-codex-missing-binary-does-not-exist'),
+        command: join(tmpdir(), 'kolux-codex-missing-binary-does-not-exist'),
         cliPath: null,
         args: [],
         timeoutMs: 2_000

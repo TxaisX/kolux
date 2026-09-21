@@ -1,16 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { folderWorkspaceKey } from '../../shared/workspace-scope'
 import {
-  getNightshiftProfileDataFile,
+  getKoluxProfileDataFile,
   getProfileUserDataPath
-} from '../nightshift-profiles/profile-storage-paths'
-import {
-  getNightshiftProfileIndexPath,
-  readProfileIndex
-} from '../nightshift-profiles/profile-index-store'
+} from '../kolux-profiles/profile-storage-paths'
+import { getKoluxProfileIndexPath, readProfileIndex } from '../kolux-profiles/profile-index-store'
 
 /**
- * Worktree ids owned by Nightshift profiles OTHER than the running one.
+ * Worktree ids owned by Kolux profiles OTHER than the running one.
  *
  * Why the history GC needs these: terminal history is keyed by worktree id
  * under `userData/terminal-history`, which has no profile segment, and fish
@@ -31,7 +28,7 @@ export function getOtherProfileWorktreeIdsForHistoryGc(userDataPath = getProfile
   unreadableProfiles: number
 } {
   const ids = new Set<string>()
-  const index = readProfileIndex(getNightshiftProfileIndexPath(userDataPath))
+  const index = readProfileIndex(getKoluxProfileIndexPath(userDataPath))
   if (!index) {
     return { ids, unreadableProfiles: 0 }
   }
@@ -40,7 +37,7 @@ export function getOtherProfileWorktreeIdsForHistoryGc(userDataPath = getProfile
     if (profile.id === index.activeProfileId) {
       continue
     }
-    const collected = readProfileWorktreeIds(getNightshiftProfileDataFile(profile.id, userDataPath))
+    const collected = readProfileWorktreeIds(getKoluxProfileDataFile(profile.id, userDataPath))
     if (!collected) {
       unreadableProfiles += 1
       continue

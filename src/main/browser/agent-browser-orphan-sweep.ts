@@ -1,7 +1,7 @@
 import { runProcess } from '../../shared/child-process/run-process'
 
-/** Session-name namespace Nightshift gives one daemon per browser tab. */
-export const NIGHTSHIFT_TAB_SESSION_PREFIX = 'nightshift-tab-'
+/** Session-name namespace Kolux gives one daemon per browser tab. */
+export const KOLUX_TAB_SESSION_PREFIX = 'kolux-tab-'
 
 const SWEEP_TIMEOUT_MS = 5_000
 const SWEEP_MAX_OUTPUT_BYTES = 256 * 1024
@@ -25,22 +25,22 @@ function parseSessionNames(stdout: string): string[] {
 }
 
 /**
- * Close agent-browser daemons left behind by a previous Nightshift run.
+ * Close agent-browser daemons left behind by a previous Kolux run.
  *
  * A crash (or SIGKILL) leaves one daemon per open tab with nobody holding its
  * name; `closeStaleAgentBrowserSession` only resets the single name a new tab
  * is about to reuse, so the rest persist. This closes them through
  * agent-browser's own CLI rather than by walking pids.
  *
- * Scoping — this only runs when Nightshift derived the socket directory itself
+ * Scoping — this only runs when Kolux derived the socket directory itself
  * (`ownsSocketDirectory`), because that private per-profile directory is what
- * proves the enumeration can only see this Nightshift profile's daemons. An inherited
- * `AGENT_BROWSER_SOCKET_DIR` can be shared with a second Nightshift profile, and
+ * proves the enumeration can only see this Kolux profile's daemons. An inherited
+ * `AGENT_BROWSER_SOCKET_DIR` can be shared with a second Kolux profile, and
  * Windows gets none at all (named pipes make the directory moot); both cases
- * skip the sweep rather than run a `session list` that could close a daemon Nightshift
+ * skip the sweep rather than run a `session list` that could close a daemon Kolux
  * does not own, and stay bounded by `AGENT_BROWSER_IDLE_TIMEOUT_MS` instead.
  *
- * `NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP=1` turns it off in the field. The other two
+ * `KOLUX_DISABLE_AGENT_BROWSER_SWEEP=1` turns it off in the field. The other two
  * behaviours this PR adds are already recoverable without a build — the idle bound
  * is an env passthrough an operator can raise, and the quit close is bounded by its
  * own timeout — but a sweep that closes the wrong daemon, or spawns one process per
@@ -52,7 +52,7 @@ export async function sweepOrphanedAgentBrowserSessions(options: {
   ownsSocketDirectory: boolean
   isSessionLive?: (sessionName: string) => boolean
 }): Promise<string[]> {
-  if (!options.ownsSocketDirectory || process.env.NIGHTSHIFT_DISABLE_AGENT_BROWSER_SWEEP === '1') {
+  if (!options.ownsSocketDirectory || process.env.KOLUX_DISABLE_AGENT_BROWSER_SWEEP === '1') {
     return []
   }
   let listed: string[]
@@ -71,10 +71,7 @@ export async function sweepOrphanedAgentBrowserSessions(options: {
 
   const closed: string[] = []
   for (const sessionName of listed) {
-    if (
-      !sessionName.startsWith(NIGHTSHIFT_TAB_SESSION_PREFIX) ||
-      options.isSessionLive?.(sessionName)
-    ) {
+    if (!sessionName.startsWith(KOLUX_TAB_SESSION_PREFIX) || options.isSessionLive?.(sessionName)) {
       continue
     }
     try {

@@ -87,7 +87,7 @@ describe('browser session profile IPC', () => {
         selectedProfile: 'Default'
       }
     ] as never)
-    routeIdentityMock.mockReturnValue({ nightshiftProfileId: 'profile-a' })
+    routeIdentityMock.mockReturnValue({ koluxProfileId: 'profile-a' })
 
     const handler = clientHostDetectHandler()
 
@@ -115,7 +115,7 @@ describe('browser session profile IPC', () => {
     const profile = {
       id: 'profile-google',
       scope: 'isolated',
-      partition: 'persist:nightshift-browser-session-profile-google',
+      partition: 'persist:kolux-browser-session-profile-google',
       label: 'Google',
       source: null,
       userAgentMode: 'native'

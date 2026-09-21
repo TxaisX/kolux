@@ -32,15 +32,15 @@ export function runRecoveryScript(options: {
   sourceRecoveryExists: boolean
   status: number
 } {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-drain-recovery-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-drain-recovery-'))
   const legacyHome = join(root, 'legacy')
   const targetHome = join(root, 'account')
   mkdirSync(legacyHome)
   mkdirSync(targetHome)
   const markerPath = join(root, 'drain-marker.json')
-  const sourceRecoveryPath = `${markerPath}.nightshift-drain-source`
-  const destinationRecoveryPath = `${markerPath}.nightshift-drain-destination`
-  const destinationRecoveryTargetPath = `${markerPath}.nightshift-drain-destination-path`
+  const sourceRecoveryPath = `${markerPath}.kolux-drain-source`
+  const destinationRecoveryPath = `${markerPath}.kolux-drain-destination`
+  const destinationRecoveryTargetPath = `${markerPath}.kolux-drain-destination-path`
   const sourceAuthPath = join(legacyHome, 'auth.json')
   const destinationAuthPath = join(targetHome, 'auth.json')
   writeFileSync(sourceRecoveryPath, SOURCE_AUTH, { mode: 0o400 })
@@ -84,7 +84,7 @@ export function runAbsentLegacyHomeScript(options: {
   markerExists: boolean
   status: number
 } {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-drain-absent-home-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-drain-absent-home-'))
   const legacyHome = join(root, 'legacy')
   const activeHome = join(root, 'absent-active-home')
   const markerPath = options.markerParentMissing

@@ -1,11 +1,11 @@
-// Why this exists: the NSIS uninstaller is the one Nightshift binary SignPath never
+// Why this exists: the NSIS uninstaller is the one Kolux binary SignPath never
 // saw. app-builder-lib builds it in a separate makensis pass, hands it to the
 // packager's sign hook, embeds it in the installer, then deletes it
 // (NsisTarget.computeScriptAndSignUninstaller → packager.signIf(uninstallerPath),
 // then `unlink(defines.UNINSTALLER_OUT_FILE)`). That hook is the only moment the
 // file exists on disk, so it is the only place a post-hoc signer can reach it.
 //
-// Nightshift does not sign during electron-builder — SignPath signs afterwards, behind
+// Kolux does not sign during electron-builder — SignPath signs afterwards, behind
 // a human approval — so instead of signing, this hook relays: build 1 exports the
 // unsigned uninstaller so CI can put it in the existing inner-binaries SignPath
 // request, and the rebuild-from-signed-tree pass swaps the signed bytes back in
@@ -90,8 +90,8 @@ const VERDICT_MESSAGES = {
 function signWindowsUninstallerViaSignPath(configuration) {
   const paths = {
     filePath: configuration?.path,
-    exportPath: process.env.NIGHTSHIFT_WIN_UNINSTALLER_EXPORT_PATH || undefined,
-    signedPath: process.env.NIGHTSHIFT_WIN_UNINSTALLER_SIGNED_PATH || undefined
+    exportPath: process.env.KOLUX_WIN_UNINSTALLER_EXPORT_PATH || undefined,
+    signedPath: process.env.KOLUX_WIN_UNINSTALLER_SIGNED_PATH || undefined
   }
   const verdict = relayNsisUninstaller(paths)
   const message = VERDICT_MESSAGES[verdict]

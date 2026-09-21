@@ -23,7 +23,7 @@ describe('OrchestrationDb v37 to v38 migration', () => {
 
   /** A v37 database with one pending question on a settled Dispatch and one on an active one. */
   function createV37Database(): { path: string; settled: string; active: string } {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-v38-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-v38-'))
     const dbPath = join(tempDir, 'orchestration.db')
     const seed = new OrchestrationDb(dbPath)
     const run = seed.createRun({

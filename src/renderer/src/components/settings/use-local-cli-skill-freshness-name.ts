@@ -1,10 +1,10 @@
-import { NIGHTSHIFT_CLI_SKILL_NAME } from '@/lib/agent-feature-install-commands'
+import { KOLUX_CLI_SKILL_NAME } from '@/lib/agent-feature-install-commands'
 import { useActiveProjectSkillRuntime } from '@/hooks/useActiveProjectSkillRuntime'
 import type { LocalAgentRuntime } from './CliSkillRuntimeSetup'
 
 export function useLocalCliSkillFreshnessName(agentRuntime: LocalAgentRuntime): string | undefined {
   const activeSkillRuntime = useActiveProjectSkillRuntime()
   return agentRuntime.runtime === 'host' && activeSkillRuntime.canUseLocalSkillFreshness
-    ? NIGHTSHIFT_CLI_SKILL_NAME
+    ? KOLUX_CLI_SKILL_NAME
     : undefined
 }

@@ -338,23 +338,21 @@ describe('terminal path helpers', () => {
 
   describe('plain-text file:// URIs', () => {
     it('extracts a printed file:// URI as a file link resolving to its path', () => {
-      const line = 'Report: file:///Users/dev/nightshift/report.html'
+      const line = 'Report: file:///Users/dev/kolux/report.html'
       const link = extractTerminalFileLinks(line).find(
-        (candidate) => candidate.displayText === 'file:///Users/dev/nightshift/report.html'
+        (candidate) => candidate.displayText === 'file:///Users/dev/kolux/report.html'
       )
-      expect(link).toMatchObject({ pathText: '/Users/dev/nightshift/report.html' })
-      expect(resolveTerminalFileLink(link!, '/Users/dev/nightshift')).toEqual({
-        absolutePath: '/Users/dev/nightshift/report.html',
+      expect(link).toMatchObject({ pathText: '/Users/dev/kolux/report.html' })
+      expect(resolveTerminalFileLink(link!, '/Users/dev/kolux')).toEqual({
+        absolutePath: '/Users/dev/kolux/report.html',
         line: null,
         column: null
       })
     })
 
     it('does not also emit a bare-path link for the URI body', () => {
-      const links = extractTerminalFileLinks('file:///Users/dev/nightshift/report.html')
-      expect(links.map((link) => link.displayText)).toEqual([
-        'file:///Users/dev/nightshift/report.html'
-      ])
+      const links = extractTerminalFileLinks('file:///Users/dev/kolux/report.html')
+      expect(links.map((link) => link.displayText)).toEqual(['file:///Users/dev/kolux/report.html'])
     })
 
     it('exposes file:// URIs to the hover candidate pass as well', () => {

@@ -57,7 +57,7 @@ export async function createWebRuntimeSessionTerminalResult(
         status: 'failed',
         message: translate(
           'auto.runtime.webRuntimeSession.remoteHostDisconnected',
-          'The workspace is not connected to a remote Nightshift host.'
+          'The workspace is not connected to a remote Kolux host.'
         )
       }
     }

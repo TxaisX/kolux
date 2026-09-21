@@ -57,7 +57,7 @@ function makeAutomation(overrides: Partial<Automation> = {}): Automation {
       hostId: 'runtime:gpu',
       projectHostSetupId: 'setup-gpu',
       repoId: 'repo-1',
-      path: '/srv/nightshift'
+      path: '/srv/kolux'
     },
     ...overrides
   }
@@ -130,7 +130,7 @@ describe('automation host client', () => {
   it('encodes exact machine selectors for the create wire input', () => {
     const automation = makeAutomation({
       workspaceMode: 'existing',
-      workspaceId: 'repo-1::/srv/nightshift'
+      workspaceId: 'repo-1::/srv/kolux'
     })
     const input: AutomationCreateInput = {
       name: automation.name,
@@ -149,7 +149,7 @@ describe('automation host client', () => {
 
     expect(toRuntimeAutomationCreateInput(input)).toMatchObject({
       repo: 'id:repo-1',
-      workspace: 'id:repo-1::/srv/nightshift'
+      workspace: 'id:repo-1::/srv/kolux'
     })
     // A per-run workspace states no workspace selector at all.
     expect(
@@ -165,7 +165,7 @@ describe('automation host client', () => {
         hostId: 'ssh:devbox',
         projectHostSetupId: 'setup-devbox',
         repoId: 'repo-1',
-        path: '/srv/nightshift'
+        path: '/srv/kolux'
       }
     })
     const sourceTarget = { kind: 'environment' as const, environmentId: 'gpu' }

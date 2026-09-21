@@ -44,7 +44,7 @@ describe('repo slice skipped-onboarding folder startup', () => {
     const store = createTestStore()
     store.setState({
       settings: {
-        ...getDefaultSettings('/tmp/nightshift-workspaces'),
+        ...getDefaultSettings('/tmp/kolux-workspaces'),
         defaultTuiAgent: 'codex'
       }
     })

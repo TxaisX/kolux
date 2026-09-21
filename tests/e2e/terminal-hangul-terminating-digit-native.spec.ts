@@ -11,7 +11,7 @@
  *
  *   Xvfb :65 -extension GLX &
  *   DISPLAY=:65 gnome-shell --nested --wayland     # nested, NOT --headless
- *   NIGHTSHIFT_E2E_NATIVE_IBUS_HANGUL=1 NIGHTSHIFT_E2E_IME_INJECTOR=nested npx playwright test \
+ *   KOLUX_E2E_NATIVE_IBUS_HANGUL=1 KOLUX_E2E_IME_INJECTOR=nested npx playwright test \
  *     tests/e2e/terminal-hangul-terminating-digit-native.spec.ts
  *
  * Nested Wayland prerequisites:
@@ -42,7 +42,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { appendImeEngagementReceipt } from './terminal-ime-engagement-receipt'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
@@ -64,33 +64,27 @@ import {
 } from './terminal-ime-byte-reader'
 
 const NATIVE_COMMAND_TIMEOUT_MS = 10_000
-const REPETITIONS = Number(process.env.NIGHTSHIFT_E2E_DIGIT_REPETITIONS ?? 3)
-const INJECTOR = process.env.NIGHTSHIFT_E2E_IME_INJECTOR ?? 'xdotool'
-const WAYLAND_INJECT =
-  process.env.NIGHTSHIFT_E2E_WAYLAND_INJECT ?? '/tmp/ime15299/wayland-inject.py'
+const REPETITIONS = Number(process.env.KOLUX_E2E_DIGIT_REPETITIONS ?? 3)
+const INJECTOR = process.env.KOLUX_E2E_IME_INJECTOR ?? 'xdotool'
+const WAYLAND_INJECT = process.env.KOLUX_E2E_WAYLAND_INJECT ?? '/tmp/ime15299/wayland-inject.py'
 // The nested compositor is one X11 window; keys land on it and mutter routes
 // them to the focused Wayland client through the IME.
-const NESTED_FOCUS_CMD =
-  process.env.NIGHTSHIFT_E2E_NESTED_FOCUS_CMD ?? '/tmp/ime15299/focus-nested.sh'
+const NESTED_FOCUS_CMD = process.env.KOLUX_E2E_NESTED_FOCUS_CMD ?? '/tmp/ime15299/focus-nested.sh'
 // Dubeolsik: d=ㅇ, k=ㅏ, so `d k` composes 아 and the digit terminates it.
-const KEY_TOKENS = (process.env.NIGHTSHIFT_E2E_DIGIT_KEYS ?? 'd k 1 Return')
-  .split(' ')
-  .filter(Boolean)
-const EXPECTED_LINE = process.env.NIGHTSHIFT_E2E_DIGIT_EXPECTED ?? '아1'
+const KEY_TOKENS = (process.env.KOLUX_E2E_DIGIT_KEYS ?? 'd k 1 Return').split(' ').filter(Boolean)
+const EXPECTED_LINE = process.env.KOLUX_E2E_DIGIT_EXPECTED ?? '아1'
 
 test.use({
-  nightshiftAppExtraEnv: {
+  koluxAppExtraEnv: {
     GTK_IM_MODULE: 'ibus',
     IBUS_ENABLE_SYNC_MODE: '1',
     QT_IM_MODULE: 'ibus',
     XMODIFIERS: '@im=ibus',
-    ...(process.env.NIGHTSHIFT_E2E_EXTRA_APP_ENV
-      ? (JSON.parse(process.env.NIGHTSHIFT_E2E_EXTRA_APP_ENV) as Record<string, string>)
+    ...(process.env.KOLUX_E2E_EXTRA_APP_ENV
+      ? (JSON.parse(process.env.KOLUX_E2E_EXTRA_APP_ENV) as Record<string, string>)
       : {})
   },
-  nightshiftAppExtraArgs: (process.env.NIGHTSHIFT_E2E_EXTRA_APP_ARGS ?? '')
-    .split(' ')
-    .filter(Boolean)
+  koluxAppExtraArgs: (process.env.KOLUX_E2E_EXTRA_APP_ARGS ?? '').split(' ').filter(Boolean)
 })
 
 function injectKeys(tokens: string[]): void {
@@ -132,7 +126,7 @@ function captureNestedScreen(name: string): void {
 
 async function focusNativeTerminalWindow(page: Page): Promise<void> {
   await focusActiveTerminalInput(page)
-  const title = `NIGHTSHIFT_NATIVE_IBUS_${randomUUID()}`
+  const title = `KOLUX_NATIVE_IBUS_${randomUUID()}`
   await page.evaluate((nextTitle) => {
     document.title = nextTitle
   }, title)
@@ -175,11 +169,11 @@ async function writeEvidence(
 }
 
 test.describe('Hangul terminating digit @headful', () => {
-  test.skip(process.env.NIGHTSHIFT_E2E_NATIVE_IBUS_HANGUL !== '1', 'native ibus harness only')
+  test.skip(process.env.KOLUX_E2E_NATIVE_IBUS_HANGUL !== '1', 'native ibus harness only')
 
   test('a digit typed right after a Hangul syllable reaches the pty', async ({
     electronApp,
-    nightshiftPage: page,
+    koluxPage: page,
     testRepoPath
   }, testInfo) => {
     const launchDiagnostics = await electronApp.evaluate(({ app: electron, BrowserWindow }) => ({

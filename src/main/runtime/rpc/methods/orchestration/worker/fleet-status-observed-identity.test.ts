@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentStatusOrchestrationContext } from '../../../../../../shared/agent-status-types'
 import { AgentHookServer } from '../../../../../agent-hooks/server'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import { NightshiftRuntimeWithGetOrchestrationDispatchAuthority } from '../../../../nightshift-runtime-get-orchestration-dispatch-authority'
+import { KoluxRuntimeWithGetOrchestrationDispatchAuthority } from '../../../../kolux-runtime-get-orchestration-dispatch-authority'
 import {
   AgentStatusObservedPaneIdentities,
   recordObservedAgentStatusPaneIdentity
@@ -32,7 +32,7 @@ type ObservedWorld = {
   runProcess: (handle: string, incarnation: string) => void
   dispatchPane: (paneKey: string, dispatchId: string | null) => void
   ingest: (paneKey: string, state: 'working' | 'waiting') => void
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 }
 
 /** Real hook server, real ingest-time capture, real fleet snapshot accessor. */
@@ -76,10 +76,10 @@ function createWorld(): ObservedWorld {
       }),
     runtime: {
       getOrchestrationFleetAgentStatusSnapshot: () =>
-        NightshiftRuntimeWithGetOrchestrationDispatchAuthority.prototype.getOrchestrationFleetAgentStatusSnapshot.call(
+        KoluxRuntimeWithGetOrchestrationDispatchAuthority.prototype.getOrchestrationFleetAgentStatusSnapshot.call(
           host as never
         )
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
   }
 }
 

@@ -10,7 +10,7 @@ export function createMobileE2EEV2Fixture(): {
   sharedSecret: Uint8Array
 } {
   const context = {
-    protocol: 'nightshift-mobile-e2ee' as const,
+    protocol: 'kolux-mobile-e2ee' as const,
     initiator: 'mobile' as const,
     responder: 'desktop' as const,
     transport: 'relay' as const,

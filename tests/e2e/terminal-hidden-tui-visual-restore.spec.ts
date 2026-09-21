@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { alternateScreenFixtureScript } from './alternate-screen-fixture-script'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { runNodeScriptInTerminal } from './helpers/run-node-script-in-terminal'
 import {
   ensureTerminalVisible,
@@ -208,17 +208,17 @@ async function writeHiddenSideEffectBurst(
   const payload = `\x07\x1b]0;${title}\x07${marker}\n`
   const script = `process.stdout.write(${JSON.stringify(payload)}); setTimeout(() => process.exit(0), 30000)`
   // Why: delivered via a temp file — `node -e` quoting is not PowerShell-safe (#8521).
-  await runNodeScriptInTerminal(page, ptyId, script, { prefix: 'nightshift-hidden-side-effect' })
+  await runNodeScriptInTerminal(page, ptyId, script, { prefix: 'kolux-hidden-side-effect' })
 }
 
 test.describe('Hidden terminal TUI visual restore', () => {
   test('restores hidden full-screen TUI output without visible corruption', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'hidden TUI restore needs the seeded secondary worktree')
@@ -226,17 +226,17 @@ test.describe('Hidden terminal TUI visual restore', () => {
       return
     }
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const hiddenSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const hiddenSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const hiddenPane = hiddenSnapshot.panes[0]
     if (!hiddenPane?.ptyId) {
       throw new Error('hidden visual restore pane did not bind a PTY')
     }
-    await switchToWorktree(nightshiftPage, firstWorktreeId)
+    await switchToWorktree(koluxPage, firstWorktreeId)
     await expect
-      .poll(() => getActiveWorktreeId(nightshiftPage), {
+      .poll(() => getActiveWorktreeId(koluxPage), {
         timeout: 10_000,
         message: 'first worktree did not become active before hidden TUI injection'
       })
@@ -244,48 +244,48 @@ test.describe('Hidden terminal TUI visual restore', () => {
 
     const runId = randomUUID()
     const finalMarker = `VISUAL_RESTORE_FINAL_${runId}_24`
-    const scriptPath = path.join(testRepoPath, `.nightshift-hidden-tui-visual-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-hidden-tui-visual-${runId}.mjs`)
     writeHiddenFrameScript(scriptPath, runId)
-    await resetHiddenDebug(nightshiftPage)
+    await resetHiddenDebug(koluxPage)
     try {
-      await writeHiddenFrames(nightshiftPage, hiddenPane.ptyId, scriptPath)
-      await resetHiddenDebug(nightshiftPage)
+      await writeHiddenFrames(koluxPage, hiddenPane.ptyId, scriptPath)
+      await resetHiddenDebug(koluxPage)
 
       // Why: hidden-delivery gate contract — the bulk TUI frames must be
       // withheld in main (dropped after model ingestion), not delivered and
       // skipped renderer-side.
       await expect
-        .poll(() => readMainHiddenDeliveryDroppedChars(nightshiftPage), {
+        .poll(() => readMainHiddenDeliveryDroppedChars(koluxPage), {
           timeout: 10_000,
           message: 'visually rich hidden TUI output was not withheld from the renderer'
         })
         .toBeGreaterThan(1024)
       await expect
-        .poll(() => readMainSnapshotSource(nightshiftPage, hiddenPane.ptyId!), {
+        .poll(() => readMainSnapshotSource(koluxPage, hiddenPane.ptyId!), {
           timeout: 10_000,
           message: 'visually rich hidden TUI source did not come from headless model'
         })
         .toBe('headless')
 
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
 
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 12_000), {
+        .poll(() => getTerminalContent(koluxPage, 12_000), {
           timeout: 10_000,
           message: 'hidden TUI final frame did not restore when the workspace became visible'
         })
         .toContain(finalMarker)
 
-      const content = await getTerminalContent(nightshiftPage, 12_000)
+      const content = await getTerminalContent(koluxPage, 12_000)
       expect(content).toContain(`Frame 024`)
       expect(content).toContain('╭')
       expect(content).toContain('├')
       expect(content).toContain('█')
-      expect(content).not.toContain('Nightshift skipped hidden terminal output')
+      expect(content).not.toContain('Kolux skipped hidden terminal output')
       await expect
-        .poll(() => readTuiCursorState(nightshiftPage), {
+        .poll(() => readTuiCursorState(koluxPage), {
           timeout: 5_000,
           message: 'restored TUI cursor stayed hidden after final frame'
         })
@@ -295,24 +295,24 @@ test.describe('Hidden terminal TUI visual restore', () => {
         })
 
       const screenshotPath = testInfo.outputPath('hidden-tui-restore-final.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('hidden-tui-restore-final.png', {
         path: screenshotPath,
         contentType: 'image/png'
       })
     } finally {
-      await sendToTerminal(nightshiftPage, hiddenPane.ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, hiddenPane.ptyId, '\x03').catch(() => undefined)
       rmSync(scriptPath, { force: true })
     }
   })
 
   test('keeps newer live output correct after plain hidden output restores', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'hidden TUI restore needs the seeded secondary worktree')
@@ -320,19 +320,19 @@ test.describe('Hidden terminal TUI visual restore', () => {
       return
     }
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const hiddenSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const hiddenSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const hiddenPane = hiddenSnapshot.panes[0]
     if (!hiddenPane?.ptyId) {
       throw new Error('hidden visual restore pane did not bind a PTY')
     }
     const paneKey = `${hiddenSnapshot.tabId}:${hiddenPane.leafId}`
 
-    await switchToWorktree(nightshiftPage, firstWorktreeId)
+    await switchToWorktree(koluxPage, firstWorktreeId)
     await expect
-      .poll(() => getActiveWorktreeId(nightshiftPage), {
+      .poll(() => getActiveWorktreeId(koluxPage), {
         timeout: 10_000,
         message: 'first worktree did not become active before hidden TUI injection'
       })
@@ -342,45 +342,45 @@ test.describe('Hidden terminal TUI visual restore', () => {
     const hiddenFrame = lowRiskRestoreFrame(runId, 40)
     const liveFrame = lowRiskRestoreFrame(runId, 41)
     const finalMarker = `VISUAL_RESTORE_FINAL_${runId}_41`
-    const scriptPath = path.join(testRepoPath, `.nightshift-low-risk-hidden-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-low-risk-hidden-${runId}.mjs`)
     writeLowRiskFrameScript(scriptPath, hiddenFrame)
-    await resetHiddenDebug(nightshiftPage)
-    await sendToTerminal(nightshiftPage, hiddenPane.ptyId, `node ${JSON.stringify(scriptPath)}\r`)
-    await resetHiddenDebug(nightshiftPage)
+    await resetHiddenDebug(koluxPage)
+    await sendToTerminal(koluxPage, hiddenPane.ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+    await resetHiddenDebug(koluxPage)
 
     // Why: hidden-delivery gate contract — even plain hidden output is
     // dropped in main, so the withheld signal is main's dropped counter.
     await expect
-      .poll(() => readMainHiddenDeliveryDroppedChars(nightshiftPage), {
+      .poll(() => readMainHiddenDeliveryDroppedChars(koluxPage), {
         timeout: 10_000,
         message: 'plain hidden injected output was not withheld from the renderer'
       })
       .toBeGreaterThan(0)
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await injectPaneData(nightshiftPage, paneKey, liveFrame, {
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await injectPaneData(koluxPage, paneKey, liveFrame, {
       seq: hiddenFrame.length + liveFrame.length,
       rawLength: liveFrame.length
     })
 
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 12_000), {
+      .poll(() => getTerminalContent(koluxPage, 12_000), {
         timeout: 10_000,
         message: 'newer live TUI frame did not render after hidden output restored'
       })
       .toContain(finalMarker)
 
-    const content = await getTerminalContent(nightshiftPage, 12_000)
+    const content = await getTerminalContent(koluxPage, 12_000)
     expect(content).toContain(`LOW_RISK_RESTORE_FRAME_${runId}_41`)
     expect(content).toContain('progress=041')
     expect(content.indexOf(`LOW_RISK_RESTORE_FRAME_${runId}_41`)).toBeGreaterThan(
       content.indexOf(`LOW_RISK_RESTORE_FRAME_${runId}_40`)
     )
-    expect(content).not.toContain('Nightshift skipped hidden terminal output')
+    expect(content).not.toContain('Kolux skipped hidden terminal output')
     await expect
-      .poll(() => readTuiCursorState(nightshiftPage), {
+      .poll(() => readTuiCursorState(koluxPage), {
         timeout: 5_000,
         message: 'live TUI cursor stayed hidden after hidden output restored'
       })
@@ -389,7 +389,7 @@ test.describe('Hidden terminal TUI visual restore', () => {
         initialized: true
       })
     const screenshotPath = testInfo.outputPath('hidden-tui-live-output-final.png')
-    await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+    await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
     await testInfo.attach('hidden-tui-live-output-final.png', {
       path: screenshotPath,
       contentType: 'image/png'
@@ -398,12 +398,12 @@ test.describe('Hidden terminal TUI visual restore', () => {
   })
 
   test('restores rich synchronized TUI output from the headless model', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'hidden TUI restore needs the seeded secondary worktree')
@@ -411,17 +411,17 @@ test.describe('Hidden terminal TUI visual restore', () => {
       return
     }
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const hiddenSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const hiddenSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const hiddenPane = hiddenSnapshot.panes[0]
     if (!hiddenPane?.ptyId) {
       throw new Error('hidden rich model pane did not bind a PTY')
     }
-    await switchToWorktree(nightshiftPage, firstWorktreeId)
+    await switchToWorktree(koluxPage, firstWorktreeId)
     await expect
-      .poll(() => getActiveWorktreeId(nightshiftPage), {
+      .poll(() => getActiveWorktreeId(koluxPage), {
         timeout: 10_000,
         message: 'first worktree did not become active before hidden rich model restore'
       })
@@ -429,47 +429,47 @@ test.describe('Hidden terminal TUI visual restore', () => {
 
     const runId = randomUUID()
     const finalMarker = `VISUAL_RESTORE_FINAL_${runId}_24`
-    const scriptPath = path.join(testRepoPath, `.nightshift-hidden-rich-model-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-hidden-rich-model-${runId}.mjs`)
     writeHiddenFrameScript(scriptPath, runId)
-    await resetHiddenDebug(nightshiftPage)
+    await resetHiddenDebug(koluxPage)
     try {
-      await writeHiddenFrames(nightshiftPage, hiddenPane.ptyId, scriptPath)
-      await resetHiddenDebug(nightshiftPage)
+      await writeHiddenFrames(koluxPage, hiddenPane.ptyId, scriptPath)
+      await resetHiddenDebug(koluxPage)
 
       // Why: hidden-delivery gate contract — synchronized rich frames are
       // withheld in main; the headless model snapshot is the restore source.
       await expect
-        .poll(() => readMainHiddenDeliveryDroppedChars(nightshiftPage), {
+        .poll(() => readMainHiddenDeliveryDroppedChars(koluxPage), {
           timeout: 10_000,
           message: 'rich hidden TUI output was not withheld from the renderer'
         })
         .toBeGreaterThan(0)
       await expect
-        .poll(() => readMainSnapshotSource(nightshiftPage, hiddenPane.ptyId!), {
+        .poll(() => readMainSnapshotSource(koluxPage, hiddenPane.ptyId!), {
           timeout: 10_000,
           message: 'rich hidden TUI source did not come from headless model'
         })
         .toBe('headless')
 
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
 
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 12_000), {
+        .poll(() => getTerminalContent(koluxPage, 12_000), {
           timeout: 10_000,
           message: 'rich headless TUI frame did not restore when visible'
         })
         .toContain(finalMarker)
 
-      const content = await getTerminalContent(nightshiftPage, 12_000)
+      const content = await getTerminalContent(koluxPage, 12_000)
       expect(content).toContain(`Frame 024`)
       expect(content).toContain('╭')
       expect(content).toContain('├')
       expect(content).toContain('█')
-      expect(content).not.toContain('Nightshift skipped hidden terminal output')
+      expect(content).not.toContain('Kolux skipped hidden terminal output')
       await expect
-        .poll(() => readTuiCursorState(nightshiftPage), {
+        .poll(() => readTuiCursorState(koluxPage), {
           timeout: 5_000,
           message: 'rich headless TUI cursor stayed hidden after restore'
         })
@@ -479,23 +479,23 @@ test.describe('Hidden terminal TUI visual restore', () => {
         })
 
       const screenshotPath = testInfo.outputPath('hidden-rich-model-restore-final.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('hidden-rich-model-restore-final.png', {
         path: screenshotPath,
         contentType: 'image/png'
       })
     } finally {
-      await sendToTerminal(nightshiftPage, hiddenPane.ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, hiddenPane.ptyId, '\x03').catch(() => undefined)
       rmSync(scriptPath, { force: true })
     }
   })
 
   test('keeps hidden terminal side effects live while hidden output may restore', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'hidden side-effect guard needs the seeded secondary worktree')
@@ -503,18 +503,18 @@ test.describe('Hidden terminal TUI visual restore', () => {
       return
     }
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const hiddenSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const hiddenSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const hiddenPane = hiddenSnapshot.panes[0]
     if (!hiddenPane?.ptyId) {
       throw new Error('hidden side-effect pane did not bind a PTY')
     }
 
-    await switchToWorktree(nightshiftPage, firstWorktreeId)
+    await switchToWorktree(koluxPage, firstWorktreeId)
     await expect
-      .poll(() => getActiveWorktreeId(nightshiftPage), {
+      .poll(() => getActiveWorktreeId(koluxPage), {
         timeout: 10_000,
         message: 'first worktree did not become active before hidden side-effect burst'
       })
@@ -523,39 +523,33 @@ test.describe('Hidden terminal TUI visual restore', () => {
     const runId = randomUUID()
     const hiddenTitle = `Hidden model side effects ${runId}`
     const marker = `HIDDEN_SIDE_EFFECT_MARKER_${runId}`
-    await resetHiddenDebug(nightshiftPage)
-    await writeHiddenSideEffectBurst(nightshiftPage, hiddenPane.ptyId, hiddenTitle, marker)
+    await resetHiddenDebug(koluxPage)
+    await writeHiddenSideEffectBurst(koluxPage, hiddenPane.ptyId, hiddenTitle, marker)
 
     await expect
-      .poll(
-        () => getRuntimePaneTitle(nightshiftPage, hiddenSnapshot.tabId, hiddenPane.numericPaneId),
-        {
-          timeout: 10_000,
-          message: 'hidden OSC title did not update renderer-visible model state'
-        }
-      )
+      .poll(() => getRuntimePaneTitle(koluxPage, hiddenSnapshot.tabId, hiddenPane.numericPaneId), {
+        timeout: 10_000,
+        message: 'hidden OSC title did not update renderer-visible model state'
+      })
       .toBe(hiddenTitle)
     await expect
-      .poll(
-        async () => (await getUnreadTerminalTabIds(nightshiftPage)).includes(hiddenSnapshot.tabId),
-        {
-          timeout: 10_000,
-          message: 'hidden BEL did not mark the hidden terminal tab unread'
-        }
-      )
+      .poll(async () => (await getUnreadTerminalTabIds(koluxPage)).includes(hiddenSnapshot.tabId), {
+        timeout: 10_000,
+        message: 'hidden BEL did not mark the hidden terminal tab unread'
+      })
       .toBe(true)
     await expect
-      .poll(() => readMainSnapshotSource(nightshiftPage, hiddenPane.ptyId!), {
+      .poll(() => readMainSnapshotSource(koluxPage, hiddenPane.ptyId!), {
         timeout: 10_000,
         message: 'hidden side-effect restore did not use the runtime headless snapshot'
       })
       .toBe('headless')
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await switchToWorktree(koluxPage, secondWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 12_000), {
+      .poll(() => getTerminalContent(koluxPage, 12_000), {
         timeout: 10_000,
         message: 'hidden side-effect marker did not restore when the workspace became visible'
       })

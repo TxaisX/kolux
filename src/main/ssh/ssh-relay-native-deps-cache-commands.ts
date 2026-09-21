@@ -17,14 +17,14 @@ import {
 } from './ssh-relay-native-deps-cache'
 import { joinRemotePath, type RemoteHostPlatform } from './ssh-remote-platform'
 
-export const RELAY_NATIVE_CACHE_LINKED = '__NIGHTSHIFT_NATIVE_CACHE__LINKED'
-export const RELAY_NATIVE_CACHE_SEEDED = '__NIGHTSHIFT_NATIVE_CACHE__SEEDED'
-export const RELAY_NATIVE_CACHE_MISS = '__NIGHTSHIFT_NATIVE_CACHE__MISS'
-export const RELAY_NATIVE_CACHE_PROMOTED = '__NIGHTSHIFT_NATIVE_CACHE__PROMOTED'
-export const RELAY_NATIVE_CACHE_NOT_PROMOTED = '__NIGHTSHIFT_NATIVE_CACHE__NOT_PROMOTED'
-export const RELAY_NATIVE_CACHE_LIST_OK = '__NIGHTSHIFT_NATIVE_CACHE__LIST_OK'
-export const RELAY_NATIVE_CACHE_REFS_OK = '__NIGHTSHIFT_NATIVE_CACHE__REFS_OK'
-export const RELAY_NATIVE_CACHE_REFS_ERR = '__NIGHTSHIFT_NATIVE_CACHE__REFS_ERR'
+export const RELAY_NATIVE_CACHE_LINKED = '__KOLUX_NATIVE_CACHE__LINKED'
+export const RELAY_NATIVE_CACHE_SEEDED = '__KOLUX_NATIVE_CACHE__SEEDED'
+export const RELAY_NATIVE_CACHE_MISS = '__KOLUX_NATIVE_CACHE__MISS'
+export const RELAY_NATIVE_CACHE_PROMOTED = '__KOLUX_NATIVE_CACHE__PROMOTED'
+export const RELAY_NATIVE_CACHE_NOT_PROMOTED = '__KOLUX_NATIVE_CACHE__NOT_PROMOTED'
+export const RELAY_NATIVE_CACHE_LIST_OK = '__KOLUX_NATIVE_CACHE__LIST_OK'
+export const RELAY_NATIVE_CACHE_REFS_OK = '__KOLUX_NATIVE_CACHE__REFS_OK'
+export const RELAY_NATIVE_CACHE_REFS_ERR = '__KOLUX_NATIVE_CACHE__REFS_ERR'
 
 /**
  * How old an entry without `.deps-complete` must be before another deploy may reclaim it. Well
@@ -77,7 +77,7 @@ export function ensureRelayNativeDepsCacheCommand(
   deps: Readonly<Record<string, string>>
 ): string {
   const { entry, target, nodeModules, root } = cachePaths(paths)
-  // Why grep the sibling's manifest: an older Nightshift pinned different versions, and a
+  // Why grep the sibling's manifest: an older Kolux pinned different versions, and a
   // toolchain-skip host wrote one with node-pty removed. Both must fail to qualify.
   const depGuards = Object.entries(deps).map(
     ([name, version]) => `grep -F -q ${shellEscape(`"${name}":"${version}"`)} "$pj" || continue`
@@ -182,7 +182,7 @@ export function listRelayNativeDepsCacheEntriesCommand(
 }
 
 /**
- * Every symlinked `node_modules` under `~/.nightshift-remote/`, as its raw target.
+ * Every symlinked `node_modules` under `~/.kolux-remote/`, as its raw target.
  *
  * The scan is deliberately wider than `relay-*`: a directory this client does not recognise still
  * counts as a referrer. An unreadable link or an overrun listing answers `REFS_ERR`, which stops

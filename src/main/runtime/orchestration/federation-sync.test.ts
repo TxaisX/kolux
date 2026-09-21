@@ -3,7 +3,7 @@ import {
   ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_FLEET_SNAPSHOT_RUNTIME_CAPABILITY
 } from '../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationDb } from './db'
 import {
   acquireFederationAckLease,
@@ -52,7 +52,7 @@ describe('federation relay parsing', () => {
         }
       })
       db.recordWorkerStage({ dispatchId: dispatch.id, stage: 'ready', state: 'ready' })
-      const runtime = new NightshiftRuntimeService()
+      const runtime = new KoluxRuntimeService()
       runtime.setOrchestrationDb(db)
       vi.spyOn(runtime, 'resolveOrchestrationWorkerServer').mockReturnValue({
         peerFingerprint: 'windows_peer_fingerprint'
@@ -205,7 +205,7 @@ describe('federation relay acknowledgments', () => {
         federated.remote_runtime_epoch = epoch
       }
     } as never
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'resolveOrchestrationWorkerServer').mockReturnValue({
       peerFingerprint: federated.peer_fingerprint
@@ -364,7 +364,7 @@ describe('federation relay acknowledgments', () => {
     })
     let pulled = [relayItem(1)]
     let rejectAck = true
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'resolveOrchestrationWorkerServer').mockReturnValue({
       peerFingerprint: 'windows_peer_fingerprint'
@@ -463,7 +463,7 @@ describe('federation relay acknowledgments', () => {
       to_home_acknowledged_sequence: 0
     }
     let pendingToWorker = [{ sequence: 1 }]
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb({
       getFederatedDispatch: () => federated,
       getDispatchContextById: () => ({ run_id: 'run_home', task_id: 'task_home' }),

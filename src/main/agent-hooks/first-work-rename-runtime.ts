@@ -6,14 +6,14 @@ import { rememberBranchRenameFailureOutput } from './branch-rename-failure-outpu
 import { renameWorktreeFolderOnFirstWork } from './first-work-folder-rename'
 import { moveWorktree } from '../git/worktree'
 import type { Store } from '../persistence'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 const ENABLE_FIRST_WORK_FOLDER_RENAME = false
 
 export function firstWorkRenameDeps(
   store: Store,
   runtime: Pick<
-    NightshiftRuntimeService,
+    KoluxRuntimeService,
     | 'getCommitMessageAgentEnvironmentResolvers'
     | 'notifyFolderWorkspaceChanged'
     | 'notifyBranchRenamed'
@@ -42,10 +42,10 @@ export function firstWorkRenameDeps(
         ? store.getFolderWorkspace(scope.folderWorkspaceId)?.pendingFirstAgentMessageRename === true
         : store.getWorktreeMeta(worktreeId)?.pendingFirstAgentMessageRename === true
     },
-    canRenameNightshiftCreatedBranch: (worktreeId) => {
+    canRenameKoluxCreatedBranch: (worktreeId) => {
       const meta = store.getWorktreeMeta(worktreeId)
-      // Why: a user branch could coincidentally match a creature name; only Nightshift-stamped worktrees are safe to auto-rename.
-      return !!meta?.nightshiftCreationSource && meta.preserveBranchOnDelete !== true
+      // Why: a user branch could coincidentally match a creature name; only Kolux-stamped worktrees are safe to auto-rename.
+      return !!meta?.koluxCreationSource && meta.preserveBranchOnDelete !== true
     },
     setDisplayName: (worktreeId, displayName) => {
       rememberBranchRenameFailureOutput(worktreeId, null)

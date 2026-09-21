@@ -27,7 +27,7 @@ describe('CommandCodeHookService', () => {
   let homeDir: string
 
   beforeEach(() => {
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-command-code-home-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-command-code-home-'))
     homedirMock.mockReturnValue(homeDir)
   })
 
@@ -55,7 +55,7 @@ describe('CommandCodeHookService', () => {
       process.platform === 'win32' ? WINDOWS_POWERSHELL_LAUNCHER : /command-code-hook/
     )
     if (process.platform !== 'win32') {
-      expect(config.hooks.PreToolUse[0].hooks[0].command).toContain(join(homeDir, '.nightshift'))
+      expect(config.hooks.PreToolUse[0].hooks[0].command).toContain(join(homeDir, '.kolux'))
     }
     if (process.platform !== 'win32') {
       expect(config.hooks.PreToolUse[0].hooks[0].command).toMatch(/^if \[ -f /)
@@ -69,7 +69,7 @@ describe('CommandCodeHookService', () => {
   it.skipIf(process.platform !== 'win32')(
     'wraps the managed hook command to survive spaces in the profile path (#6078)',
     () => {
-      const spaceHome = join(tmpdir(), 'nightshift command-code home with spaces')
+      const spaceHome = join(tmpdir(), 'kolux command-code home with spaces')
       mkdirSync(spaceHome, { recursive: true })
       homedirMock.mockReturnValue(spaceHome)
       try {
@@ -92,21 +92,21 @@ describe('CommandCodeHookService', () => {
 
     const scriptFileName =
       process.platform === 'win32' ? 'command-code-hook.cmd' : 'command-code-hook.sh'
-    const script = readFileSync(join(homeDir, '.nightshift', 'agent-hooks', scriptFileName), 'utf8')
+    const script = readFileSync(join(homeDir, '.kolux', 'agent-hooks', scriptFileName), 'utf8')
 
     if (process.platform === 'win32') {
       expect(script).toContain('sourceEndpointByPort')
-      expect(script).toContain('nightshift-dev\\agent-hooks')
-      expect(script).toContain('set NIGHTSHIFT_AGENT_HOOK_PORT=')
+      expect(script).toContain('kolux-dev\\agent-hooks')
+      expect(script).toContain('set KOLUX_AGENT_HOOK_PORT=')
     } else {
       expect(script).toContain('Command Code strips TOKEN-like env vars')
       expect(script).toContain('Command Code sanitizes hook subprocess env')
-      expect(script).toContain('__nightshift_read_ancestor_var')
-      expect(script).toContain('__nightshift_fill_from_endpoint_file')
-      expect(script).toContain('[ "$__nightshift_endpoint_port" != "$NIGHTSHIFT_AGENT_HOOK_PORT" ]')
-      expect(script).toContain('NIGHTSHIFT_PANE_KEY')
-      expect(script).toContain('NIGHTSHIFT_AGENT_LAUNCH_TOKEN')
-      expect(script).toContain('nightshift-dev/agent-hooks')
+      expect(script).toContain('__kolux_read_ancestor_var')
+      expect(script).toContain('__kolux_fill_from_endpoint_file')
+      expect(script).toContain('[ "$__kolux_endpoint_port" != "$KOLUX_AGENT_HOOK_PORT" ]')
+      expect(script).toContain('KOLUX_PANE_KEY')
+      expect(script).toContain('KOLUX_AGENT_LAUNCH_TOKEN')
+      expect(script).toContain('kolux-dev/agent-hooks')
       expect(script).toContain('endpoint_port=')
     }
   })
@@ -120,10 +120,10 @@ describe('CommandCodeHookService', () => {
     writeFileSync(
       staleEndpointPath,
       [
-        'NIGHTSHIFT_AGENT_HOOK_PORT=9',
-        'NIGHTSHIFT_AGENT_HOOK_TOKEN=stale-token',
-        'NIGHTSHIFT_AGENT_HOOK_ENV=development',
-        'NIGHTSHIFT_AGENT_HOOK_VERSION=1',
+        'KOLUX_AGENT_HOOK_PORT=9',
+        'KOLUX_AGENT_HOOK_TOKEN=stale-token',
+        'KOLUX_AGENT_HOOK_ENV=development',
+        'KOLUX_AGENT_HOOK_VERSION=1',
         ''
       ].join('\n')
     )
@@ -138,7 +138,7 @@ describe('CommandCodeHookService', () => {
       req.on('end', () => {
         requests.push({
           body,
-          token: req.headers['x-nightshift-agent-hook-token']
+          token: req.headers['x-kolux-agent-hook-token']
         })
         res.statusCode = 204
         res.end()
@@ -148,19 +148,19 @@ describe('CommandCodeHookService', () => {
     try {
       await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
       const address = server.address() as AddressInfo
-      const scriptPath = join(homeDir, '.nightshift', 'agent-hooks', 'command-code-hook.sh')
+      const scriptPath = join(homeDir, '.kolux', 'agent-hooks', 'command-code-hook.sh')
       const child = spawn('/bin/sh', [scriptPath], {
         env: {
           ...process.env,
           HOME: homeDir,
-          NIGHTSHIFT_AGENT_HOOK_ENDPOINT: staleEndpointPath,
-          NIGHTSHIFT_AGENT_HOOK_PORT: String(address.port),
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'current-token',
-          NIGHTSHIFT_PANE_KEY: 'tab:leaf',
-          NIGHTSHIFT_TAB_ID: 'tab',
-          NIGHTSHIFT_WORKTREE_ID: 'worktree',
-          NIGHTSHIFT_AGENT_HOOK_ENV: 'development',
-          NIGHTSHIFT_AGENT_HOOK_VERSION: '1'
+          KOLUX_AGENT_HOOK_ENDPOINT: staleEndpointPath,
+          KOLUX_AGENT_HOOK_PORT: String(address.port),
+          KOLUX_AGENT_HOOK_TOKEN: 'current-token',
+          KOLUX_PANE_KEY: 'tab:leaf',
+          KOLUX_TAB_ID: 'tab',
+          KOLUX_WORKTREE_ID: 'worktree',
+          KOLUX_AGENT_HOOK_ENV: 'development',
+          KOLUX_AGENT_HOOK_VERSION: '1'
         },
         stdio: ['pipe', 'ignore', 'pipe']
       })

@@ -63,7 +63,7 @@ function browserSession() {
 
 describe('remote session startup ownership', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-remote-session-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-remote-session-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })

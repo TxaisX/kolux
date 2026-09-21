@@ -676,7 +676,7 @@ describe('RemoteRuntimeSharedControlConnection', () => {
     const connection = new RemoteRuntimeSharedControlConnection(server.pairing)
 
     await expect(connection.request('worktree.ps', undefined, 1000)).rejects.toThrow(
-      'Remote Nightshift runtime closed the connection'
+      'Remote Kolux runtime closed the connection'
     )
     expect(connection.getDiagnostics()).toMatchObject({
       state: 'reconnecting',

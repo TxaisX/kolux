@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { DiscoveredSkill } from '../../../shared/skills'
 import {
   LINEAR_TICKETS_SKILL_UPDATE_COMMAND,
-  NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND
+  KOLUX_LINEAR_SKILL_UPDATE_COMMAND
 } from './agent-feature-install-commands'
 import { getLinearAgentSkillUpdateTarget } from './linear-agent-skill-update-command'
 
@@ -25,18 +25,18 @@ function skill(name: string): DiscoveredSkill {
 describe('getLinearAgentSkillUpdateTarget', () => {
   it('targets the canonical skill for missing, canonical, and dual-name installs', () => {
     expect(getLinearAgentSkillUpdateTarget([], false)).toEqual({
-      skillName: 'nightshift-linear',
-      command: NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND
+      skillName: 'kolux-linear',
+      command: KOLUX_LINEAR_SKILL_UPDATE_COMMAND
     })
-    expect(getLinearAgentSkillUpdateTarget([skill('nightshift-linear')], true)).toEqual({
-      skillName: 'nightshift-linear',
-      command: NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND
+    expect(getLinearAgentSkillUpdateTarget([skill('kolux-linear')], true)).toEqual({
+      skillName: 'kolux-linear',
+      command: KOLUX_LINEAR_SKILL_UPDATE_COMMAND
     })
     expect(
-      getLinearAgentSkillUpdateTarget([skill('nightshift-linear'), skill('linear-tickets')], true)
+      getLinearAgentSkillUpdateTarget([skill('kolux-linear'), skill('linear-tickets')], true)
     ).toEqual({
-      skillName: 'nightshift-linear',
-      command: NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND
+      skillName: 'kolux-linear',
+      command: KOLUX_LINEAR_SKILL_UPDATE_COMMAND
     })
   })
 

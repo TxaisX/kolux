@@ -133,7 +133,7 @@ describe('worktree teardown and structured agent sessions', () => {
 
   it('closes best-effort for a folder-workspace removal, which requires no stop proof', async () => {
     // Those paths sweep and kill PTYs without `requirePhysicalStop`, so the structured sweep used
-    // to no-op there and left a live session bound to a workspace Nightshift was about to forget. They
+    // to no-op there and left a live session bound to a workspace Kolux was about to forget. They
     // do not refuse: the root is shared so no checkout vanishes, and one of them is a never-throw
     // forget that a refusal would wedge.
     const host = installHost({ records: [record('s1', WORKTREE)] })

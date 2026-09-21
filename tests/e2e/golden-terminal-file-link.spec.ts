@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { openFileExplorer } from './helpers/file-explorer'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
@@ -102,18 +102,16 @@ async function clickLink(page: Page, probe: LinkProbe): Promise<void> {
   await page.mouse.click(target.x, target.y)
 }
 
-test('opens a terminal file link and observes an external edit @golden', async ({
-  nightshiftPage
-}) => {
+test('opens a terminal file link and observes an external edit @golden', async ({ koluxPage }) => {
   test.setTimeout(180_000)
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
-  await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
+  await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
 
-  const worktreePath = await nightshiftPage.evaluate((id) => {
+  const worktreePath = await koluxPage.evaluate((id) => {
     return (
       Object.values(window.__store?.getState().worktreesByRepo ?? {})
         .flat()
@@ -130,25 +128,25 @@ test('opens a terminal file link and observes an external edit @golden', async (
   const changedMarker = `golden-external-edit-${Date.now()}`
 
   try {
-    await openFileExplorer(nightshiftPage)
-    const explorerRow = nightshiftPage
+    await openFileExplorer(koluxPage)
+    const explorerRow = koluxPage
       .locator('[data-file-explorer-row]')
       .filter({ hasText: 'package.json' })
       .first()
     await expect(explorerRow).toBeVisible({ timeout: 15_000 })
 
     const command = nodeTerminalCommand(['-e', `console.log(${JSON.stringify(printedPath)})`])
-    await sendToTerminal(nightshiftPage, ptyId, `${command}\r`)
+    await sendToTerminal(koluxPage, ptyId, `${command}\r`)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, LINK_SCAN_CHAR_LIMIT), { timeout: 15_000 })
+      .poll(() => getTerminalContent(koluxPage, LINK_SCAN_CHAR_LIMIT), { timeout: 15_000 })
       .toContain(printedPath)
 
     let probe: LinkProbe | null = null
     await expect
       .poll(
         async () => {
-          probe = await locateLink(nightshiftPage, printedPath)
-          return probe ? hoverLink(nightshiftPage, probe) : null
+          probe = await locateLink(koluxPage, printedPath)
+          return probe ? hoverLink(koluxPage, probe) : null
         },
         { timeout: 10_000, message: 'cwd-relative file path did not become clickable' }
       )
@@ -156,9 +154,9 @@ test('opens a terminal file link and observes an external edit @golden', async (
     if (!probe) {
       throw new Error('terminal file link disappeared before activation')
     }
-    await clickLink(nightshiftPage, probe)
+    await clickLink(koluxPage, probe)
 
-    const actionPopover = nightshiftPage.locator('[data-terminal-link-action-popover]')
+    const actionPopover = koluxPage.locator('[data-terminal-link-action-popover]')
     await expect(actionPopover).toBeVisible()
     // Why: destination is the resolved absolute path; Windows may use `\`.
     await expect
@@ -172,14 +170,14 @@ test('opens a terminal file link and observes an external edit @golden', async (
       .toContain(resolvedDestination)
     await actionPopover.getByRole('button', { name: /Open file/i }).click()
 
-    const editorHeader = nightshiftPage.locator('.editor-header-path').first()
+    const editorHeader = koluxPage.locator('.editor-header-path').first()
     await expect(editorHeader).toContainText('package.json', { timeout: 20_000 })
     await expect(explorerRow).toHaveAttribute('data-selected', 'true', { timeout: 10_000 })
     await expect
       .poll(
         async () =>
           canonicalFileIdentity(
-            (await nightshiftPage.evaluate(() => window.__monacoEditorE2E?.filePath)) ?? ''
+            (await koluxPage.evaluate(() => window.__monacoEditorE2E?.filePath)) ?? ''
           ),
         { timeout: 20_000, message: 'Monaco opened a different file identity' }
       )
@@ -189,8 +187,8 @@ test('opens a terminal file link and observes an external edit @golden', async (
     await expect
       .poll(
         async () => {
-          const snapshot = await nightshiftPage.evaluate(() => window.__monacoEditorE2E?.snapshot())
-          const reloadVisible = await nightshiftPage
+          const snapshot = await koluxPage.evaluate(() => window.__monacoEditorE2E?.snapshot())
+          const reloadVisible = await koluxPage
             .getByRole('button', { name: 'Reload from Disk' })
             .isVisible()
             .catch(() => false)
@@ -205,12 +203,12 @@ test('opens a terminal file link and observes an external edit @golden', async (
 })
 
 test('reuses a terminal file link already open in a sibling workspace @golden', async ({
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(180_000)
-  await waitForSessionReady(nightshiftPage)
-  const sourceWorktreeId = await waitForActiveWorktree(nightshiftPage)
-  const worktrees = await nightshiftPage.evaluate((sourceId) => {
+  await waitForSessionReady(koluxPage)
+  const sourceWorktreeId = await waitForActiveWorktree(koluxPage)
+  const worktrees = await koluxPage.evaluate((sourceId) => {
     const state = window.__store?.getState()
     const entries = Object.values(state?.worktreesByRepo ?? {}).flat()
     return {
@@ -227,7 +225,7 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
   }
 
   const filePath = path.join(sibling.path, 'package.json')
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     ({ filePath, sourceWorktreeId, siblingWorktreeId }) => {
       const state = window.__store?.getState()
       if (!state) {
@@ -246,9 +244,9 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
     { filePath, sourceWorktreeId, siblingWorktreeId: sibling.id }
   )
 
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  await nightshiftPage.evaluate(() => {
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     state?.setSidebarOpen(false)
     state?.setRightSidebarOpen(false)
@@ -256,7 +254,7 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(() => {
+        koluxPage.evaluate(() => {
           const state = window.__store?.getState()
           const tabId = state?.activeTabId
           const manager = tabId ? window.__paneManagers?.get(tabId) : null
@@ -265,21 +263,21 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
       { message: 'terminal did not expand after closing the sidebars' }
     )
     .toBeGreaterThan(120)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-  await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+  const ptyId = await waitForActivePanePtyId(koluxPage, 30_000)
+  await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
   const printedPath = process.platform === 'win32' ? filePath.replaceAll('\\', '/') : filePath
   const command = nodeTerminalCommand(['-e', `console.log(${JSON.stringify(printedPath)})`])
-  await sendToTerminal(nightshiftPage, ptyId, `${command}\r`)
+  await sendToTerminal(koluxPage, ptyId, `${command}\r`)
   await expect
-    .poll(() => getTerminalContent(nightshiftPage, LINK_SCAN_CHAR_LIMIT), { timeout: 15_000 })
+    .poll(() => getTerminalContent(koluxPage, LINK_SCAN_CHAR_LIMIT), { timeout: 15_000 })
     .toContain(printedPath)
 
   let probe: LinkProbe | null = null
   await expect
     .poll(
       async () => {
-        probe = await locateLink(nightshiftPage, printedPath)
-        return probe ? hoverLink(nightshiftPage, probe) : null
+        probe = await locateLink(koluxPage, printedPath)
+        return probe ? hoverLink(koluxPage, probe) : null
       },
       { timeout: 10_000, message: 'sibling file path did not become clickable' }
     )
@@ -287,17 +285,17 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
   if (!probe) {
     throw new Error('sibling file link disappeared before activation')
   }
-  await clickLink(nightshiftPage, probe)
-  const actionPopover = nightshiftPage.locator('[data-terminal-link-action-popover]')
+  await clickLink(koluxPage, probe)
+  const actionPopover = koluxPage.locator('[data-terminal-link-action-popover]')
   await expect(actionPopover).toBeVisible()
   await actionPopover.getByRole('button', { name: /Open file/i }).click()
 
-  const editorHeader = nightshiftPage.locator('.editor-header-path').first()
+  const editorHeader = koluxPage.locator('.editor-header-path').first()
   await expect(editorHeader).toContainText('package.json', { timeout: 20_000 })
   await expect
     .poll(
       async () => {
-        const rendered = await nightshiftPage.evaluate(() => ({
+        const rendered = await koluxPage.evaluate(() => ({
           filePath: window.__monacoEditorE2E?.filePath ?? '',
           activeWorktreeId: window.__store?.getState()?.activeWorktreeId ?? null
         }))
@@ -309,5 +307,5 @@ test('reuses a terminal file link already open in a sibling workspace @golden', 
       { timeout: 20_000, message: 'sibling workspace never rendered the linked file' }
     )
     .toEqual({ filePath: canonicalFileIdentity(filePath), activeWorktreeId: sibling.id })
-  await expect(nightshiftPage.getByText('Loading...', { exact: true })).toHaveCount(0)
+  await expect(koluxPage.getByText('Loading...', { exact: true })).toHaveCount(0)
 })

@@ -1,13 +1,13 @@
 import { Play } from 'lucide-react'
 import type React from 'react'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { Button } from '../ui/button'
 import { translate } from '@/i18n/i18n'
 
 type RecipeCatalogEntry = Awaited<
   ReturnType<typeof window.api.ephemeralVm.listRecipeCatalog>
 >[number]
-type Recipe = NonNullable<NightshiftHooks['environmentRecipes']>[number]
+type Recipe = NonNullable<KoluxHooks['environmentRecipes']>[number]
 
 export function EphemeralVmRecipeRow({
   entry,

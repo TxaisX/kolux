@@ -23,13 +23,13 @@ function encodeUtf8(value: string): string {
 
 function buildPidRelayScript(command: string, args: string[], pidFilePath: string): string {
   const decode =
-    'function Read-NightshiftValue([string]$Value) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Value)) }'
-  const encodedArgs = args.map((arg) => `(Read-NightshiftValue '${encodeUtf8(arg)}')`).join(',')
+    'function Read-KoluxValue([string]$Value) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Value)) }'
+  const encodedArgs = args.map((arg) => `(Read-KoluxValue '${encodeUtf8(arg)}')`).join(',')
   return [
     decode,
-    `$Command = Read-NightshiftValue '${encodeUtf8(command)}'`,
+    `$Command = Read-KoluxValue '${encodeUtf8(command)}'`,
     `$Arguments = @(${encodedArgs})`,
-    `[IO.File]::WriteAllText((Read-NightshiftValue '${encodeUtf8(pidFilePath)}'), [string]$PID)`,
+    `[IO.File]::WriteAllText((Read-KoluxValue '${encodeUtf8(pidFilePath)}'), [string]$PID)`,
     '& $Command @Arguments',
     'if ($null -eq $LASTEXITCODE) { exit 0 }',
     'exit $LASTEXITCODE'
@@ -69,7 +69,7 @@ export function buildWindowsHostInteractiveLoginSpawn(
   args: string[]
 ): WindowsHostInteractiveLoginSpawn {
   const { spawnCmd, spawnArgs } = getSpawnArgsForWindows(command, args)
-  const pidFilePath = join(tmpdir(), `nightshift-interactive-login-${randomUUID()}.pid`)
+  const pidFilePath = join(tmpdir(), `kolux-interactive-login-${randomUUID()}.pid`)
   const powershell = win32.join(
     process.env.SystemRoot ?? 'C:\\Windows',
     'System32',

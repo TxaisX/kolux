@@ -12,7 +12,7 @@ import type {
   ClaudeStreamJsonLaunch,
   openClaudeStreamJsonConnection
 } from '../claude/claude-stream-json-connection'
-import { claudeSessionIdForNightshiftSession } from '../claude/claude-structured-launch-resolution'
+import { claudeSessionIdForKoluxSession } from '../claude/claude-structured-launch-resolution'
 import {
   CLAUDE_SPAWN_TOKEN_ENV,
   claudeProviderHandleLink
@@ -23,7 +23,7 @@ import type {
   StructuredAgentSessionHandoffTransport,
   StructuredTuiOwner
 } from '../native-chat/agent-session-wire/structured-agent-session-handoff-types'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import type { RpcRequest, RpcResponse } from './rpc/core'
 import type { ClaudeStructuredAuthPolicy } from '../claude-accounts/claude-structured-auth-policy'
 import { RpcDispatcher } from './rpc/dispatcher'
@@ -35,7 +35,7 @@ import {
 } from './structured-agent-session-runtime'
 
 const SESSION = 'claude-integration-1'
-const PROVIDER_SESSION = claudeSessionIdForNightshiftSession(SESSION)
+const PROVIDER_SESSION = claudeSessionIdForKoluxSession(SESSION)
 const WORKSPACE = 'workspace-claude'
 // Why 'runtime': this file exercises the Claude structured integration over agentSession.*, not the
 // mobile surface — nothing here asserts anything mobile-specific, and its sibling integration
@@ -320,7 +320,7 @@ beforeEach(async () => {
     ANTHROPIC_AUTH_TOKEN: 'configured-token',
     ANTHROPIC_BASE_URL: 'https://gateway.example.test'
   }
-  root = await mkdtemp(join(tmpdir(), 'nightshift-claude-structured-integration-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-claude-structured-integration-'))
   transcriptPath = join(root, 'claude-home', 'projects', 'workspace', `${PROVIDER_SESSION}.jsonl`)
   await mkdir(join(root, 'claude-home', 'projects', 'workspace'), { recursive: true })
   resolveSessionFilePath.mockResolvedValue(transcriptPath)
@@ -418,7 +418,7 @@ beforeEach(async () => {
     cleanupSubscriptionsByPrefix: () => {}
   }
   dispatcher = new RpcDispatcher({
-    runtime: runtime as unknown as NightshiftRuntimeService,
+    runtime: runtime as unknown as KoluxRuntimeService,
     methods: STRUCTURED_AGENT_SESSION_METHODS
   })
 })

@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   cleanupMarkdownFixture,
@@ -19,7 +19,7 @@ const TABLE_MARKDOWN = `| Name | Value |
 `
 
 const SCRATCH_DIR =
-  process.env.NIGHTSHIFT_TABLE_ROW_BACKSPACE_SCREENSHOT_DIR ??
+  process.env.KOLUX_TABLE_ROW_BACKSPACE_SCREENSHOT_DIR ??
   path.join(process.cwd(), 'test-results', 'table-row-backspace')
 
 async function selectionCellText(page: {
@@ -53,15 +53,15 @@ async function tableRowCount(page: {
 }
 
 test.describe('Markdown table keyboard', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('Tab/Shift-Tab move between cells and empty-row Backspace deletes the row', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    const context = await getActiveWorktreeContext(nightshiftPage)
+    const context = await getActiveWorktreeContext(koluxPage)
     let filePath: string | null = null
 
     try {
@@ -71,8 +71,8 @@ test.describe('Markdown table keyboard', () => {
         testInfo.workerIndex,
         TABLE_MARKDOWN
       )
-      await openMarkdownFixture(nightshiftPage, context, filePath)
-      const editor = await waitForRichMarkdownEditor(nightshiftPage)
+      await openMarkdownFixture(koluxPage, context, filePath)
+      const editor = await waitForRichMarkdownEditor(koluxPage)
 
       await expect(editor.locator('tr')).toHaveCount(4, { timeout: 10_000 })
       await expect(editor.getByText('keep')).toBeVisible()
@@ -81,35 +81,35 @@ test.describe('Markdown table keyboard', () => {
       // ── Tab / Shift-Tab cell navigation ────────────────────────────
       await editor.getByText('keep').click()
 
-      await nightshiftPage.keyboard.press('Tab')
+      await koluxPage.keyboard.press('Tab')
       await expect
-        .poll(async () => selectionCellText(nightshiftPage), {
+        .poll(async () => selectionCellText(koluxPage), {
           timeout: 5_000,
           message: 'Tab should move from keep → a'
         })
         .toBe('a')
 
       // Next Tab lands in the empty body row (no text).
-      await nightshiftPage.keyboard.press('Tab')
+      await koluxPage.keyboard.press('Tab')
       await expect
-        .poll(async () => selectionCellText(nightshiftPage), {
+        .poll(async () => selectionCellText(koluxPage), {
           timeout: 5_000,
           message: 'Tab should wrap into the empty body row'
         })
         .toBe('')
 
-      await nightshiftPage.keyboard.press('Shift+Tab')
+      await koluxPage.keyboard.press('Shift+Tab')
       await expect
-        .poll(async () => selectionCellText(nightshiftPage), {
+        .poll(async () => selectionCellText(koluxPage), {
           timeout: 5_000,
           message: 'Shift-Tab should return to previous cell (a)'
         })
         .toBe('a')
 
       // Enter moves down a column, landing in the empty body row.
-      await nightshiftPage.keyboard.press('Enter')
+      await koluxPage.keyboard.press('Enter')
       await expect
-        .poll(async () => selectionCellText(nightshiftPage), {
+        .poll(async () => selectionCellText(koluxPage), {
           timeout: 5_000,
           message: 'Enter should move down into the empty body row'
         })
@@ -120,14 +120,14 @@ test.describe('Markdown table keyboard', () => {
       await editor.screenshot({
         path: path.join(SCRATCH_DIR, 'electron-table-row-backspace-before.png')
       })
-      await nightshiftPage.screenshot({
+      await koluxPage.screenshot({
         path: path.join(SCRATCH_DIR, 'electron-table-row-backspace-before-window.png')
       })
 
-      await nightshiftPage.keyboard.press('Backspace')
+      await koluxPage.keyboard.press('Backspace')
 
       await expect
-        .poll(async () => tableRowCount(nightshiftPage), {
+        .poll(async () => tableRowCount(koluxPage), {
           timeout: 5_000,
           message: 'Empty body row should be removed after Backspace'
         })
@@ -139,12 +139,12 @@ test.describe('Markdown table keyboard', () => {
       await editor.screenshot({
         path: path.join(SCRATCH_DIR, 'electron-table-row-backspace-after.png')
       })
-      await nightshiftPage.screenshot({
+      await koluxPage.screenshot({
         path: path.join(SCRATCH_DIR, 'electron-table-row-backspace-after-window.png')
       })
 
       // Hold a beat so the video recording captures the final table state.
-      await nightshiftPage.waitForTimeout(800)
+      await koluxPage.waitForTimeout(800)
     } finally {
       await cleanupMarkdownFixture(filePath)
     }

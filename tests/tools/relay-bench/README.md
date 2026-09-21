@@ -29,8 +29,8 @@ decoding, and none of them opens a socket.
 - Do not point the bench at a desktop you do not own.
 
 No script here has a production default. Every one of them refuses to open a socket unless
-`NIGHTSHIFT_RELAY_BENCH_LIVE=1` is set, and the two that talk to the director require its origin from
-`--director=<origin>` or `NIGHTSHIFT_RELAY_BENCH_DIRECTOR`. Without those, they print usage and exit 2.
+`KOLUX_RELAY_BENCH_LIVE=1` is set, and the two that talk to the director require its origin from
+`--director=<origin>` or `KOLUX_RELAY_BENCH_DIRECTOR`. Without those, they print usage and exit 2.
 That keeps an accidental or automated invocation inert instead of live traffic.
 
 The guards are in `relay-bench-invocation.mjs` and `relay-bench-state-file.mjs`, and
@@ -71,17 +71,17 @@ npx vitest run --config config/vitest.config.ts tests/tools/relay-bench
 Start a relay-enabled dev app hidden, with remote debugging on:
 
 ```bash
-NIGHTSHIFT_BACKGROUND_LAUNCH=1 \
+KOLUX_BACKGROUND_LAUNCH=1 \
 REMOTE_DEBUGGING_PORT=9222 \
-NIGHTSHIFT_CLOUD_API_URL=https://login.nightshift.invalid \
-NIGHTSHIFT_CLOUD_CLIENT_ID=nightshift-desktop \
-NIGHTSHIFT_DEV_USER_DATA_PATH=/tmp/nightshift-relay-bench-profile \
-NIGHTSHIFT_RELAY_REGION_OVERRIDE=us-central1 \
+KOLUX_CLOUD_API_URL=https://login.kolux.invalid \
+KOLUX_CLOUD_CLIENT_ID=kolux-desktop \
+KOLUX_DEV_USER_DATA_PATH=/tmp/kolux-relay-bench-profile \
+KOLUX_RELAY_REGION_OVERRIDE=us-central1 \
 pnpm run dev
 ```
 
-`NIGHTSHIFT_DEV_USER_DATA_PATH` keeps the bench pairing out of your real profile.
-`NIGHTSHIFT_RELAY_REGION_OVERRIDE` pins the cell region, which is what you want when comparing a change
+`KOLUX_DEV_USER_DATA_PATH` keeps the bench pairing out of your real profile.
+`KOLUX_RELAY_REGION_OVERRIDE` pins the cell region, which is what you want when comparing a change
 rather than comparing regions. Both are optional.
 
 Sign in, then read the pairing offer out of the hidden renderer:
@@ -90,12 +90,12 @@ Sign in, then read the pairing offer out of the hidden renderer:
 node tests/tools/relay-bench/cdp-eval.mjs 9222 'window.api.mobile.getPairingQR({})'
 ```
 
-The `nightshift://pair?code=...` value in that output is the pairing link.
+The `kolux://pair?code=...` value in that output is the pairing link.
 
 ## Commands
 
 ```bash
-export NIGHTSHIFT_RELAY_BENCH_LIVE=1
+export KOLUX_RELAY_BENCH_LIVE=1
 BENCH=tests/tools/relay-bench/relay-phone-connect-bench.mjs
 
 # One-time: dial the invite, provision a resume credential, save the bundle. The pairing link
@@ -103,7 +103,7 @@ BENCH=tests/tools/relay-bench/relay-phone-connect-bench.mjs
 pbpaste | node $BENCH pair /tmp/relay-bench/state.json
 
 # Or from a file you protect yourself, which `pair` requires to be mode 0600:
-umask 077 && printf '%s' '<nightshift://pair?code=...>' > /tmp/relay-bench/pair.txt
+umask 077 && printf '%s' '<kolux://pair?code=...>' > /tmp/relay-bench/pair.txt
 node $BENCH pair /tmp/relay-bench/state.json --pairing-url-file=/tmp/relay-bench/pair.txt
 rm /tmp/relay-bench/pair.txt
 
@@ -154,11 +154,11 @@ Two supporting scripts:
   selection with the same probe, sample count, and spread rule, and prints why each region passed
   or failed. A region whose every probe fails reports `UNREACHABLE`, not `ok`.
 
-Both take the director from `--director` or `NIGHTSHIFT_RELAY_BENCH_DIRECTOR`, and both need
-`NIGHTSHIFT_RELAY_BENCH_LIVE=1`:
+Both take the director from `--director` or `KOLUX_RELAY_BENCH_DIRECTOR`, and both need
+`KOLUX_RELAY_BENCH_LIVE=1`:
 
 ```bash
-NIGHTSHIFT_RELAY_BENCH_LIVE=1 NIGHTSHIFT_RELAY_BENCH_DIRECTOR=<director origin> \
+KOLUX_RELAY_BENCH_LIVE=1 KOLUX_RELAY_BENCH_DIRECTOR=<director origin> \
   node tests/tools/relay-bench/region-probe-replay.mjs --rounds=3
 ```
 
@@ -206,4 +206,4 @@ node tests/tools/relay-bench/cdp-eval.mjs 9222 'window.api.mobile.listDevices()'
 ```
 
 Then delete `state.json`. If you used
-`NIGHTSHIFT_DEV_USER_DATA_PATH`, removing that directory drops the pairing with it.
+`KOLUX_DEV_USER_DATA_PATH`, removing that directory drops the pairing with it.

@@ -60,7 +60,7 @@ export function describeQuoteStrippedJsonFlag(flagName: string, raw: string): st
     `--${flagName} is not valid JSON: its quotes are missing.\n` +
     'If you ran this from Windows PowerShell 5.1, it strips inner quotes when building a native ' +
     'command line, so a correct value can still arrive damaged.\n' +
-    `Pass it through a variable instead: $v = '<json>'; nightshift ... --${flagName} $v — or run the ` +
+    `Pass it through a variable instead: $v = '<json>'; kolux ... --${flagName} $v — or run the ` +
     'command from cmd.exe, Git Bash, or PowerShell 7+.'
   )
 }

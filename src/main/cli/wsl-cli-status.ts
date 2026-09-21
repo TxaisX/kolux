@@ -1,7 +1,7 @@
 import type { CliInstallStatus } from '../../shared/cli-install-types'
 import { getBridgePathFromCommandPath, getPosixDirname, quoteShell } from './wsl-cli-scripts'
 
-const WSL_COMMAND_NAME = 'nightshift-ide'
+const WSL_COMMAND_NAME = 'kolux-ide'
 
 export type ReadyWslCliState = {
   distro: string
@@ -20,20 +20,20 @@ export async function readWslCliCommandFile(
     distro,
     [
       `if [ -L ${quoteShell(commandPath)} ]; then`,
-      '  printf __NIGHTSHIFT_NOT_FILE__',
+      '  printf __KOLUX_NOT_FILE__',
       `elif [ ! -e ${quoteShell(commandPath)} ]; then`,
-      '  printf __NIGHTSHIFT_MISSING__',
+      '  printf __KOLUX_MISSING__',
       `elif [ ! -f ${quoteShell(commandPath)} ]; then`,
-      '  printf __NIGHTSHIFT_NOT_FILE__',
+      '  printf __KOLUX_NOT_FILE__',
       'else',
       `  cat ${quoteShell(commandPath)}`,
       'fi'
     ].join('\n')
   )
-  if (output === '__NIGHTSHIFT_MISSING__') {
+  if (output === '__KOLUX_MISSING__') {
     return null
   }
-  if (output === '__NIGHTSHIFT_NOT_FILE__') {
+  if (output === '__KOLUX_NOT_FILE__') {
     return 'not_file'
   }
   return output
@@ -112,7 +112,7 @@ export async function resolveReadyWslCliState(args: {
     return {
       status: unsupportedWslCliStatus(
         hostStatus.unsupportedReason ?? 'launcher_missing',
-        hostStatus.detail ?? 'The Windows Nightshift CLI launcher is missing.'
+        hostStatus.detail ?? 'The Windows Kolux CLI launcher is missing.'
       )
     }
   }
@@ -138,7 +138,7 @@ export async function resolveReadyWslCliState(args: {
     return {
       status: unsupportedWslCliStatus(
         'launcher_missing',
-        'WSL Windows interop is unavailable; Nightshift cannot launch the Windows CLI from WSL.'
+        'WSL Windows interop is unavailable; Kolux cannot launch the Windows CLI from WSL.'
       )
     }
   }

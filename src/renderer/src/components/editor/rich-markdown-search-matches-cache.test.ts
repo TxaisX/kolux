@@ -62,7 +62,7 @@ describe('rich markdown search match reuse', () => {
   })
 })
 
-it.skipIf(process.env.NIGHTSHIFT_SEARCH_CACHE_BENCH !== '1')(
+it.skipIf(process.env.KOLUX_SEARCH_CACHE_BENCH !== '1')(
   'benchmarks repeated live-match checks',
   () => {
     for (const blockCount of [250, 1000]) {

@@ -179,7 +179,7 @@ describe('resolveAgentForegroundProcess', () => {
         pid: 102,
         ppid: 101,
         name: 'pi.exe',
-        commandLine: 'pi.exe --cwd C:\\repo\\nightshift'
+        commandLine: 'pi.exe --cwd C:\\repo\\kolux'
       },
       {
         pid: 103,
@@ -190,7 +190,7 @@ describe('resolveAgentForegroundProcess', () => {
     ])
 
     await expect(
-      resolveAgentForegroundProcess(100, 'pi.exe', { contextPaths: ['C:\\repo\\nightshift'] })
+      resolveAgentForegroundProcess(100, 'pi.exe', { contextPaths: ['C:\\repo\\kolux'] })
     ).resolves.toBe('omp')
   })
 
@@ -748,7 +748,7 @@ describe('resolveAgentForegroundProcess', () => {
         ppid: 100,
         name: 'node.exe',
         commandLine:
-          'node C:\\Users\\dev\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\bin\\codex.js --cwd C:\\repo\\nightshift'
+          'node C:\\Users\\dev\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\bin\\codex.js --cwd C:\\repo\\kolux'
       },
       {
         pid: 102,
@@ -761,7 +761,7 @@ describe('resolveAgentForegroundProcess', () => {
 
     await expect(
       resolveAgentForegroundProcess(100, 'powershell.exe', {
-        contextPaths: ['C:\\repo\\nightshift']
+        contextPaths: ['C:\\repo\\kolux']
       })
     ).resolves.toBe('codex')
   })
@@ -779,19 +779,19 @@ describe('resolveAgentForegroundProcess', () => {
         pid: 101,
         ppid: 100,
         name: 'codex.exe',
-        commandLine: 'codex --cwd C:\\repo\\nightshift'
+        commandLine: 'codex --cwd C:\\repo\\kolux'
       },
       {
         pid: 102,
         ppid: 101,
         name: 'gemini.exe',
-        commandLine: 'gemini --cwd C:\\repo\\nightshift'
+        commandLine: 'gemini --cwd C:\\repo\\kolux'
       }
     ])
 
     await expect(
       resolveAgentForegroundProcess(100, 'powershell.exe', {
-        contextPaths: ['C:\\repo\\nightshift']
+        contextPaths: ['C:\\repo\\kolux']
       })
     ).resolves.toBe('gemini')
   })
@@ -809,19 +809,19 @@ describe('resolveAgentForegroundProcess', () => {
         pid: 101,
         ppid: 100,
         name: 'codex.exe',
-        commandLine: 'codex --cwd C:\\repo\\nightshift'
+        commandLine: 'codex --cwd C:\\repo\\kolux'
       },
       {
         pid: 102,
         ppid: 100,
         name: 'gemini.exe',
-        commandLine: 'gemini --cwd C:\\repo\\nightshift'
+        commandLine: 'gemini --cwd C:\\repo\\kolux'
       }
     ])
 
     await expect(
       resolveAgentForegroundProcess(100, 'powershell.exe', {
-        contextPaths: ['C:\\repo\\nightshift']
+        contextPaths: ['C:\\repo\\kolux']
       })
     ).resolves.toBe('powershell.exe')
   })

@@ -8,7 +8,7 @@ import type { Repo } from '../../../../shared/repo-types'
 import type { DetectedWorktreeListResult } from '../../../../shared/worktree/types'
 import {
   getHiddenImportableExternalWorktrees,
-  getVisibleNonNightshiftWorktrees
+  getVisibleNonKoluxWorktrees
 } from '../../../../shared/external-worktree-inbox'
 import { relativePathInsideRoot } from '../../../../shared/cross-platform-path'
 
@@ -41,7 +41,7 @@ export default function HiddenWorktreeRecoveryList({
           worktree.path.toLocaleLowerCase().includes(normalizedQuery)
       )
     : hidden
-  const discoveredCount = hidden.length + getVisibleNonNightshiftWorktrees(detected).length
+  const discoveredCount = hidden.length + getVisibleNonKoluxWorktrees(detected).length
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => listRef.current,
@@ -174,7 +174,7 @@ export default function HiddenWorktreeRecoveryList({
                     )
                   : translate(
                       'auto.components.sidebar.WorktreeVisibilityDialog.noneFound',
-                      'No non-Nightshift worktrees found'
+                      'No non-Kolux worktrees found'
                     )}
             </div>
             <div className="text-xs text-muted-foreground">
@@ -190,7 +190,7 @@ export default function HiddenWorktreeRecoveryList({
                     )
                   : translate(
                       'auto.components.sidebar.WorktreeVisibilityDialog.appearWhenDetected',
-                      'New worktrees will appear here when Nightshift detects them.'
+                      'New worktrees will appear here when Kolux detects them.'
                     )}
             </div>
           </div>

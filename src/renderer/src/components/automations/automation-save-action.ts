@@ -7,7 +7,7 @@ import {
 import { translate } from '@/i18n/i18n'
 import { parseDraftTime } from './automation-draft-model'
 import { saveHermesAutomation } from './automation-hermes-save'
-import { saveNightshiftAutomation } from './automation-nightshift-save'
+import { saveKoluxAutomation } from './automation-kolux-save'
 import type { AutomationSaveContext } from './automation-save-context'
 
 /** Validates editor input then delegates the provider-specific save transaction. */
@@ -96,7 +96,7 @@ export function createAutomationSaveAction(context: AutomationSaveContext) {
       }
       await (isHermesSave
         ? saveHermesAutomation(context)
-        : saveNightshiftAutomation(context, { hour, minute, now }))
+        : saveKoluxAutomation(context, { hour, minute, now }))
     } catch (error) {
       if (isHermesSave) {
         await context.pageRefresh.refresh().catch(() => undefined)

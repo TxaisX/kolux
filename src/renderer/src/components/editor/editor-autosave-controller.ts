@@ -1,9 +1,9 @@
 import {
   getOpenFilesForExternalFileChange,
-  NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
-  NIGHTSHIFT_EDITOR_QUIESCE_FILE_SAVES_EVENT,
-  NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT,
-  NIGHTSHIFT_EDITOR_SAVE_FILE_EVENT,
+  KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+  KOLUX_EDITOR_QUIESCE_FILE_SAVES_EVENT,
+  KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT,
+  KOLUX_EDITOR_SAVE_FILE_EVENT,
   type EditorSaveFileDetail,
   type EditorSaveQuiesceDetail
 } from './editor-autosave'
@@ -16,8 +16,8 @@ import { createEditorSaveQueue, type AppStoreApi } from './editor-save-queue'
 import { createEditorRestartSaveHandlers } from './editor-restart-save-handlers'
 import { createEditorExternalChangeTabReset } from './editor-external-change-tab-reset'
 import {
-  NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT,
-  NIGHTSHIFT_EDITOR_SAVE_DIRTY_FILES_EVENT
+  KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT,
+  KOLUX_EDITOR_SAVE_DIRTY_FILES_EVENT
 } from '../../../../shared/editor-save-events'
 
 export function attachEditorAutosaveController(store: AppStoreApi): () => void {
@@ -118,48 +118,42 @@ export function attachEditorAutosaveController(store: AppStoreApi): () => void {
   syncAutoSave()
 
   window.addEventListener(
-    NIGHTSHIFT_EDITOR_SAVE_DIRTY_FILES_EVENT,
+    KOLUX_EDITOR_SAVE_DIRTY_FILES_EVENT,
     handleSaveDirtyFiles as EventListener
   )
   window.addEventListener(
-    NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT,
+    KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT,
     handlePrepareHotExit as EventListener
   )
+  window.addEventListener(KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT, handleSaveAndClose as EventListener)
+  window.addEventListener(KOLUX_EDITOR_SAVE_FILE_EVENT, handleSaveFile as EventListener)
+  window.addEventListener(KOLUX_EDITOR_QUIESCE_FILE_SAVES_EVENT, handleQuiesce as EventListener)
   window.addEventListener(
-    NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT,
-    handleSaveAndClose as EventListener
-  )
-  window.addEventListener(NIGHTSHIFT_EDITOR_SAVE_FILE_EVENT, handleSaveFile as EventListener)
-  window.addEventListener(
-    NIGHTSHIFT_EDITOR_QUIESCE_FILE_SAVES_EVENT,
-    handleQuiesce as EventListener
-  )
-  window.addEventListener(
-    NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+    KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
     handleExternalFileChange as EventListener
   )
 
   return () => {
     unsubscribe()
     window.removeEventListener(
-      NIGHTSHIFT_EDITOR_SAVE_DIRTY_FILES_EVENT,
+      KOLUX_EDITOR_SAVE_DIRTY_FILES_EVENT,
       handleSaveDirtyFiles as EventListener
     )
     window.removeEventListener(
-      NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT,
+      KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT,
       handlePrepareHotExit as EventListener
     )
     window.removeEventListener(
-      NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT,
+      KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT,
       handleSaveAndClose as EventListener
     )
-    window.removeEventListener(NIGHTSHIFT_EDITOR_SAVE_FILE_EVENT, handleSaveFile as EventListener)
+    window.removeEventListener(KOLUX_EDITOR_SAVE_FILE_EVENT, handleSaveFile as EventListener)
     window.removeEventListener(
-      NIGHTSHIFT_EDITOR_QUIESCE_FILE_SAVES_EVENT,
+      KOLUX_EDITOR_QUIESCE_FILE_SAVES_EVENT,
       handleQuiesce as EventListener
     )
     window.removeEventListener(
-      NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+      KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
       handleExternalFileChange as EventListener
     )
     saveQueue.dispose()

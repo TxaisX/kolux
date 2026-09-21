@@ -1,7 +1,7 @@
 // Kimi Code keeps all preferences in TOML (`~/.kimi-code/config.toml`) and reads
 // lifecycle hooks from an array of `[[hooks]]` tables. There is no JSON settings
 // file to reuse the shared JSON installer with, and no TOML library is vendored,
-// so Nightshift manages only its own marker-delimited block: install rewrites the
+// so Kolux manages only its own marker-delimited block: install rewrites the
 // block, remove strips it, and arbitrary user config outside the markers is left
 // untouched. Appending table headers is always valid TOML, so the block can live
 // at the end of any existing file.
@@ -9,7 +9,7 @@
 import { MANAGED_HOOK_TIMEOUT_SECONDS } from '../agent-hooks/installer-utils'
 import { escapeRegex } from '../../shared/string-utils'
 
-// Why: mirror the Claude-compatible events Nightshift normalizes for status. Kimi uses
+// Why: mirror the Claude-compatible events Kolux normalizes for status. Kimi uses
 // these exact event names (see normalizeKimiEvent), so each maps to a
 // working/waiting/done transition.
 export const KIMI_HOOK_EVENTS = [
@@ -22,8 +22,15 @@ export const KIMI_HOOK_EVENTS = [
   'StopFailure'
 ] as const
 
-const BLOCK_START = '# >>> nightshift-managed-kimi-hooks (managed by Nightshift; do not edit) >>>'
-const BLOCK_END = '# <<< nightshift-managed-kimi-hooks <<<'
+const BLOCK_START = '# >>> kolux-managed-kimi-hooks (managed by Kolux; do not edit) >>>'
+const BLOCK_END = '# <<< kolux-managed-kimi-hooks <<<'
+
+// Why: repos written before the Nightshift->Kolux rename still carry this block marker; a
+// config.toml with only the old markers would otherwise get a second block appended instead of
+// replaced, registering the managed hook twice.
+const PRE_RENAME_BLOCK_START =
+  '# >>> nightshift-managed-kimi-hooks (managed by Nightshift; do not edit) >>>'
+const PRE_RENAME_BLOCK_END = '# <<< nightshift-managed-kimi-hooks <<<'
 
 // Matches the managed block plus any blank lines immediately preceding it so
 // repeated install/remove cycles do not accumulate whitespace. The `|$`
@@ -31,14 +38,23 @@ const BLOCK_END = '# <<< nightshift-managed-kimi-hooks <<<'
 // BLOCK_END marker is missing (e.g. a hand-edit deleted it): the managed block
 // is always written last, so this recovers orphaned hook tables and lets
 // install re-converge in one step instead of appending a duplicate block.
-const MANAGED_BLOCK_RE = new RegExp(
-  `\\n*${escapeRegex(BLOCK_START)}[\\s\\S]*?(?:${escapeRegex(BLOCK_END)}[^\\n]*|$)`,
-  'g'
-)
+function buildManagedBlockRe(blockStart: string, blockEnd: string): RegExp {
+  return new RegExp(
+    `\\n*${escapeRegex(blockStart)}[\\s\\S]*?(?:${escapeRegex(blockEnd)}[^\\n]*|$)`,
+    'g'
+  )
+}
+
+const MANAGED_BLOCK_RE = buildManagedBlockRe(BLOCK_START, BLOCK_END)
+const LEGACY_MANAGED_BLOCK_RE = buildManagedBlockRe(PRE_RENAME_BLOCK_START, PRE_RENAME_BLOCK_END)
+
+function stripManagedKimiBlocks(configText: string): string {
+  return configText.replace(MANAGED_BLOCK_RE, '').replace(LEGACY_MANAGED_BLOCK_RE, '')
+}
 
 // TOML basic (double-quoted) string. The managed command may contain single
 // quotes (from POSIX quoting) but no double quotes or backslashes on the paths
-// Nightshift generates; escape both defensively anyway.
+// Kolux generates; escape both defensively anyway.
 function tomlBasicString(value: string): string {
   const escaped = value
     .replace(/\\/g, '\\\\')
@@ -68,7 +84,7 @@ export function buildManagedKimiHooksBlock(command: string): string {
 }
 
 export function applyManagedKimiHooks(configText: string, command: string): string {
-  const withoutManaged = configText.replace(MANAGED_BLOCK_RE, '').replace(/\s+$/, '')
+  const withoutManaged = stripManagedKimiBlocks(configText).replace(/\s+$/, '')
   const block = buildManagedKimiHooksBlock(command)
   return withoutManaged.length > 0 ? `${withoutManaged}\n\n${block}\n` : `${block}\n`
 }
@@ -77,7 +93,7 @@ export function removeManagedKimiHooks(configText: string): { text: string; chan
   // Why: compare instead of MANAGED_BLOCK_RE.test() — the regex carries the `g`
   // flag, so .test() advances lastIndex and would behave inconsistently across
   // calls. .replace() ignores/resets lastIndex, so it is safe to reuse.
-  const stripped = configText.replace(MANAGED_BLOCK_RE, '')
+  const stripped = stripManagedKimiBlocks(configText)
   if (stripped === configText) {
     return { text: configText, changed: false }
   }
@@ -86,7 +102,7 @@ export function removeManagedKimiHooks(configText: string): { text: string; chan
 }
 
 // Returns the managed events present in the block whose command still matches an
-// Nightshift-managed script (by filename, so a moved userData path is still swept).
+// Kolux-managed script (by filename, so a moved userData path is still swept).
 export function readManagedKimiHookEvents(
   configText: string,
   isManagedCommand: (command: string | undefined) => boolean

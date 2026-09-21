@@ -1,42 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 function installRegistryMock(): {
-  configureForNightshiftProfileMock: ReturnType<typeof vi.fn>
-  configureRouteSessionsForNightshiftProfileMock: ReturnType<typeof vi.fn>
-  configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock: ReturnType<typeof vi.fn>
+  configureForKoluxProfileMock: ReturnType<typeof vi.fn>
+  configureRouteSessionsForKoluxProfileMock: ReturnType<typeof vi.fn>
+  configurePairedRuntimeBrowserClientHostsForKoluxProfileMock: ReturnType<typeof vi.fn>
   collectOrphanedBrowserRoutePartitionStorageMock: ReturnType<typeof vi.fn>
   applyPendingCookieImportMock: ReturnType<typeof vi.fn>
   initializeBrowserSessionsFromPersistedStateMock: ReturnType<typeof vi.fn>
 } {
-  const configureForNightshiftProfileMock = vi.fn()
-  const configureRouteSessionsForNightshiftProfileMock = vi.fn()
-  const configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock = vi.fn()
+  const configureForKoluxProfileMock = vi.fn()
+  const configureRouteSessionsForKoluxProfileMock = vi.fn()
+  const configurePairedRuntimeBrowserClientHostsForKoluxProfileMock = vi.fn()
   const collectOrphanedBrowserRoutePartitionStorageMock = vi.fn(async () => [])
   const applyPendingCookieImportMock = vi.fn()
   const initializeBrowserSessionsFromPersistedStateMock = vi.fn()
 
   vi.doMock('./browser-session-registry', () => ({
     browserSessionRegistry: {
-      configureForNightshiftProfile: configureForNightshiftProfileMock,
+      configureForKoluxProfile: configureForKoluxProfileMock,
       applyPendingCookieImport: applyPendingCookieImportMock,
       initializeBrowserSessionsFromPersistedState: initializeBrowserSessionsFromPersistedStateMock
     }
   }))
   vi.doMock('./browser-route-session-runtime', () => ({
-    configureRouteSessionsForNightshiftProfile: configureRouteSessionsForNightshiftProfileMock
+    configureRouteSessionsForKoluxProfile: configureRouteSessionsForKoluxProfileMock
   }))
   vi.doMock('./browser-route-partition-storage-runtime', () => ({
     collectOrphanedBrowserRoutePartitionStorage: collectOrphanedBrowserRoutePartitionStorageMock
   }))
   vi.doMock('./paired-runtime-browser-client-host-runtime', () => ({
-    configurePairedRuntimeBrowserClientHostsForNightshiftProfile:
-      configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock
+    configurePairedRuntimeBrowserClientHostsForKoluxProfile:
+      configurePairedRuntimeBrowserClientHostsForKoluxProfileMock
   }))
 
   return {
-    configureForNightshiftProfileMock,
-    configureRouteSessionsForNightshiftProfileMock,
-    configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock,
+    configureForKoluxProfileMock,
+    configureRouteSessionsForKoluxProfileMock,
+    configurePairedRuntimeBrowserClientHostsForKoluxProfileMock,
     collectOrphanedBrowserRoutePartitionStorageMock,
     applyPendingCookieImportMock,
     initializeBrowserSessionsFromPersistedStateMock
@@ -63,40 +63,40 @@ describe('initializeBrowserSessionsForApp', () => {
     )
   })
 
-  it('configures the active Nightshift profile before replaying browser sessions', async () => {
+  it('configures the active Kolux profile before replaying browser sessions', async () => {
     const {
-      configureForNightshiftProfileMock,
-      configureRouteSessionsForNightshiftProfileMock,
-      configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock,
+      configureForKoluxProfileMock,
+      configureRouteSessionsForKoluxProfileMock,
+      configurePairedRuntimeBrowserClientHostsForKoluxProfileMock,
       applyPendingCookieImportMock,
       initializeBrowserSessionsFromPersistedStateMock
     } = installRegistryMock()
     const { initializeBrowserSessionsForApp } = await import('./browser-session-startup')
 
     initializeBrowserSessionsForApp({
-      nightshiftProfileId: 'local-work',
+      koluxProfileId: 'local-work',
       profileDirectory: '/profiles/local-work'
     })
 
-    expect(configureForNightshiftProfileMock).toHaveBeenCalledWith({
-      nightshiftProfileId: 'local-work',
+    expect(configureForKoluxProfileMock).toHaveBeenCalledWith({
+      koluxProfileId: 'local-work',
       profileDirectory: '/profiles/local-work'
     })
-    expect(configureRouteSessionsForNightshiftProfileMock).toHaveBeenCalledWith({
-      nightshiftProfileId: 'local-work',
+    expect(configureRouteSessionsForKoluxProfileMock).toHaveBeenCalledWith({
+      koluxProfileId: 'local-work',
       profileDirectory: '/profiles/local-work'
     })
-    expect(configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock).toHaveBeenCalledWith({
-      nightshiftProfileId: 'local-work'
+    expect(configurePairedRuntimeBrowserClientHostsForKoluxProfileMock).toHaveBeenCalledWith({
+      koluxProfileId: 'local-work'
     })
-    expect(configureForNightshiftProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(configureForKoluxProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
       applyPendingCookieImportMock.mock.invocationCallOrder[0]
     )
-    expect(configureRouteSessionsForNightshiftProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(configureRouteSessionsForKoluxProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
       applyPendingCookieImportMock.mock.invocationCallOrder[0]
     )
     expect(
-      configurePairedRuntimeBrowserClientHostsForNightshiftProfileMock.mock.invocationCallOrder[0]
+      configurePairedRuntimeBrowserClientHostsForKoluxProfileMock.mock.invocationCallOrder[0]
     ).toBeLessThan(applyPendingCookieImportMock.mock.invocationCallOrder[0])
     expect(applyPendingCookieImportMock.mock.invocationCallOrder[0]).toBeLessThan(
       initializeBrowserSessionsFromPersistedStateMock.mock.invocationCallOrder[0]
@@ -105,19 +105,19 @@ describe('initializeBrowserSessionsForApp', () => {
 
   it('sweeps orphaned route partitions once the profile binding runtime is configured', async () => {
     const {
-      configureRouteSessionsForNightshiftProfileMock,
+      configureRouteSessionsForKoluxProfileMock,
       collectOrphanedBrowserRoutePartitionStorageMock
     } = installRegistryMock()
     const { initializeBrowserSessionsForApp } = await import('./browser-session-startup')
 
     initializeBrowserSessionsForApp({
-      nightshiftProfileId: 'local-work',
+      koluxProfileId: 'local-work',
       profileDirectory: '/profiles/local-work'
     })
 
     expect(collectOrphanedBrowserRoutePartitionStorageMock).toHaveBeenCalledOnce()
     // Hoisting the sweep above the binding runtime leaves it with no active profile and it collects nothing.
-    expect(configureRouteSessionsForNightshiftProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(configureRouteSessionsForKoluxProfileMock.mock.invocationCallOrder[0]).toBeLessThan(
       collectOrphanedBrowserRoutePartitionStorageMock.mock.invocationCallOrder[0]
     )
   })

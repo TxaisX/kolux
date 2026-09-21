@@ -58,7 +58,7 @@ export default function SuppressExternalWorktreeInboxDialog({
           >
             {translate(
               'auto.components.sidebar.SuppressExternalWorktreeInboxDialog.8c0b2e7a41',
-              'Open Non-Nightshift worktrees settings'
+              'Open Non-Kolux worktrees settings'
             )}
           </button>
         </div>

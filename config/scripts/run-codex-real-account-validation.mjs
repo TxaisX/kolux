@@ -34,12 +34,12 @@ const RESTRICTED_ENV_KEYS = [
   'HOMEDRIVE',
   'HOMEPATH',
   'CODEX_HOME',
-  'NIGHTSHIFT_CODEX_HOME',
-  'NIGHTSHIFT_E2E_HOME_DIR',
-  'NIGHTSHIFT_E2E_USER_DATA_DIR',
-  'NIGHTSHIFT_USER_DATA_PATH',
+  'KOLUX_CODEX_HOME',
+  'KOLUX_E2E_HOME_DIR',
+  'KOLUX_E2E_USER_DATA_DIR',
+  'KOLUX_USER_DATA_PATH',
   'ZDOTDIR',
-  'NIGHTSHIFT_ORIG_ZDOTDIR',
+  'KOLUX_ORIG_ZDOTDIR',
   'BASH_ENV',
   'ENV',
   'ELECTRON_RUN_AS_NODE'
@@ -78,15 +78,15 @@ export function createValidationEnv(inheritedEnv, layout) {
     HOME: layout.homeDir,
     USERPROFILE: layout.homeDir,
     NODE_ENV: 'development',
-    NIGHTSHIFT_E2E_HOME_DIR: layout.homeDir,
-    NIGHTSHIFT_E2E_USER_DATA_DIR: layout.userDataDir,
-    NIGHTSHIFT_USER_DATA_PATH: layout.userDataDir
+    KOLUX_E2E_HOME_DIR: layout.homeDir,
+    KOLUX_E2E_USER_DATA_DIR: layout.userDataDir,
+    KOLUX_USER_DATA_PATH: layout.userDataDir
   }
 }
 
 export async function createValidationLayout(options = {}) {
   const primaryHome = path.resolve(options.primaryHome ?? os.homedir())
-  const envTempParent = process.env.NIGHTSHIFT_CODEX_VALIDATION_TEMP_PARENT?.trim()
+  const envTempParent = process.env.KOLUX_CODEX_VALIDATION_TEMP_PARENT?.trim()
   const tempParent = path.resolve(options.tempParent ?? (envTempParent || os.tmpdir()))
   // Why: guards must compare canonical paths — a symlinked temp parent must
   // not smuggle the disposable root inside the primary home.
@@ -100,10 +100,10 @@ export async function createValidationLayout(options = {}) {
   if (samePath(tempParentReal, primaryHomeReal) || isWithin(tempParentReal, primaryHomeReal)) {
     throw new Error(
       `Refusing to place the disposable validation root inside the primary home (${primaryHome}). ` +
-        'Pass --temp-parent <dir> or set NIGHTSHIFT_CODEX_VALIDATION_TEMP_PARENT to a directory outside it.'
+        'Pass --temp-parent <dir> or set KOLUX_CODEX_VALIDATION_TEMP_PARENT to a directory outside it.'
     )
   }
-  const tempRoot = await mkdtemp(path.join(tempParent, 'nightshift-codex-real-'))
+  const tempRoot = await mkdtemp(path.join(tempParent, 'kolux-codex-real-'))
   const homeDir = path.join(tempRoot, 'home')
   const userDataDir = path.join(tempRoot, 'user-data')
   await Promise.all([
@@ -132,7 +132,7 @@ async function seedCompletedProfile(layout) {
     ui: { contextualToursAutoEligible: false, projectOrderManualDefaultNoticeDismissed: true }
   }
   await writeFile(
-    path.join(layout.userDataDir, 'nightshift-data.json'),
+    path.join(layout.userDataDir, 'kolux-data.json'),
     `${JSON.stringify(profile, null, 2)}\n`
   )
 }
@@ -357,20 +357,20 @@ function buildAppIfNeeded(repoRoot, skipBuild) {
 }
 
 function validationCliCommand() {
-  if (process.env.NIGHTSHIFT_VALIDATION_CLI) {
-    return process.env.NIGHTSHIFT_VALIDATION_CLI
+  if (process.env.KOLUX_VALIDATION_CLI) {
+    return process.env.KOLUX_VALIDATION_CLI
   }
-  if (process.env.NIGHTSHIFT_CLI_COMMAND) {
-    return process.env.NIGHTSHIFT_CLI_COMMAND
+  if (process.env.KOLUX_CLI_COMMAND) {
+    return process.env.KOLUX_CLI_COMMAND
   }
-  return process.platform === 'linux' ? 'nightshift-ide' : 'nightshift'
+  return process.platform === 'linux' ? 'kolux-ide' : 'kolux'
 }
 
 async function probeTerminalEnvironment(terminalHandle, launchEnv) {
-  const marker = `__NIGHTSHIFT_CODEX_VALIDATION_${randomUUID()}__`
+  const marker = `__KOLUX_CODEX_VALIDATION_${randomUUID()}__`
   const command = [
     'node -e',
-    `"console.log('${marker}:' + JSON.stringify({home: require('node:os').homedir(), codexHome: process.env.CODEX_HOME || null, nightshiftCodexHome: process.env.NIGHTSHIFT_CODEX_HOME || null}))"`
+    `"console.log('${marker}:' + JSON.stringify({home: require('node:os').homedir(), codexHome: process.env.CODEX_HOME || null, koluxCodexHome: process.env.KOLUX_CODEX_HOME || null}))"`
   ].join(' ')
   const cli = validationCliCommand()
   execFileSync(
@@ -466,7 +466,7 @@ async function main() {
   })
   const reportPath =
     options.reportPath ??
-    path.join(os.tmpdir(), `nightshift-codex-real-account-${options.scenario}-${Date.now()}.json`)
+    path.join(os.tmpdir(), `kolux-codex-real-account-${options.scenario}-${Date.now()}.json`)
   const launchEnv = createValidationEnv(process.env, layout)
   let app = null
   let tripwire = null
@@ -523,7 +523,7 @@ async function main() {
       app = await electron.launch({
         args: [mainPath],
         // Why: a validation run must not pull the window over the developer's work.
-        env: { ...launchEnv, NIGHTSHIFT_BACKGROUND_LAUNCH: '1' }
+        env: { ...launchEnv, KOLUX_BACKGROUND_LAUNCH: '1' }
       })
       report.electronPaths = await app.evaluate(({ app: electronApp }) => ({
         home: electronApp.getPath('home'),

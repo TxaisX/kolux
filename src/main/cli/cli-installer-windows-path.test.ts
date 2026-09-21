@@ -40,13 +40,13 @@ describe('CliInstaller', () => {
 
   it('creates a windows wrapper and updates the user PATH', async () => {
     const fixture = await makeFixture()
-    const installPath = join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd')
+    const installPath = join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd')
     let userPath = 'C:\\Windows\\System32'
     const installer = new CliInstaller({
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
       commandPathOverride: installPath,
       userPathReader: async () => userPathRead(userPath),
@@ -58,30 +58,30 @@ describe('CliInstaller', () => {
     const installed = await installer.install()
     expect(installed.state).toBe('installed')
     expect(installed.pathConfigured).toBe(true)
-    expect(userPath).toContain(join(fixture.root, 'Programs', 'Nightshift', 'bin'))
+    expect(userPath).toContain(join(fixture.root, 'Programs', 'Kolux', 'bin'))
 
     const wrapperContent = await readFile(installPath, 'utf8')
-    expect(wrapperContent).toContain('NIGHTSHIFT_LAUNCHER=')
-    expect(wrapperContent).toContain('nightshift.cmd')
+    expect(wrapperContent).toContain('KOLUX_LAUNCHER=')
+    expect(wrapperContent).toContain('kolux.cmd')
     const launcherContent = await readFile(installed.launcherPath as string, 'utf8')
-    expect(launcherContent).toContain(`set "NIGHTSHIFT_USER_DATA_PATH=${fixture.userDataPath}"`)
-    expect(launcherContent).toContain('set "NIGHTSHIFT_APP_EXECUTABLE=%ELECTRON%"')
+    expect(launcherContent).toContain(`set "KOLUX_USER_DATA_PATH=${fixture.userDataPath}"`)
+    expect(launcherContent).toContain('set "KOLUX_APP_EXECUTABLE=%ELECTRON%"')
 
     const removed = await installer.remove()
     expect(removed.state).toBe('not_installed')
-    expect(userPath).not.toContain(join(fixture.root, 'Programs', 'Nightshift', 'bin'))
+    expect(userPath).not.toContain(join(fixture.root, 'Programs', 'Kolux', 'bin'))
   })
 
   it.each(['UnauthorizedAccessException', 'SecurityException'])(
     'rejects with a friendly message for Windows PATH denial: %s',
     async (permissionMarker) => {
       const fixture = await makeFixture()
-      const installPath = join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd')
+      const installPath = join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd')
       const installer = new CliInstaller({
         platform: 'win32',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+        execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
         appPath: fixture.appPath,
         commandPathOverride: installPath,
         userPathReader: async () => userPathRead('C:\\Windows\\System32'),
@@ -113,9 +113,9 @@ describe('CliInstaller', () => {
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
-      commandPathOverride: join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd'),
+      commandPathOverride: join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd'),
       userPathReader: async () => userPathRead('C:\\Windows\\System32'),
       userPathWriter
     })
@@ -134,12 +134,12 @@ describe('CliInstaller', () => {
     'propagates a non-permission Windows PATH write error unchanged: %s',
     async (_name, message) => {
       const fixture = await makeFixture()
-      const installPath = join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd')
+      const installPath = join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd')
       const installer = new CliInstaller({
         platform: 'win32',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+        execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
         appPath: fixture.appPath,
         commandPathOverride: installPath,
         userPathReader: async () => userPathRead('C:\\Windows\\System32'),
@@ -156,17 +156,17 @@ describe('CliInstaller', () => {
 
   it('reports an unknown Windows PATH without spawning PowerShell', async () => {
     const fixture = await makeFixture()
-    const installPath = join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd')
+    const installPath = join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd')
     const installer = new CliInstaller({
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
       commandPathOverride: installPath,
       userPathReader: async () => ({
         state: 'unknown',
-        detail: 'Nightshift could not read the Windows user PATH registry value.'
+        detail: 'Kolux could not read the Windows user PATH registry value.'
       })
     })
 
@@ -185,12 +185,12 @@ describe('CliInstaller', () => {
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
-      commandPathOverride: join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd'),
+      commandPathOverride: join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd'),
       userPathReader: async () => ({
         state: 'unknown',
-        detail: 'Nightshift could not read the Windows user PATH registry value.'
+        detail: 'Kolux could not read the Windows user PATH registry value.'
       }),
       userPathWriter
     })
@@ -201,7 +201,7 @@ describe('CliInstaller', () => {
 
   it('bypasses cached status data before a Windows PATH mutation', async () => {
     const fixture = await makeFixture()
-    const installPath = join(fixture.root, 'Programs', 'Nightshift', 'bin', 'nightshift.cmd')
+    const installPath = join(fixture.root, 'Programs', 'Kolux', 'bin', 'kolux.cmd')
     const pathDirectory = dirname(installPath)
     let registryPath = 'C:\\Tools'
     const registryReader = new WindowsUserPathRegistryReader({
@@ -220,7 +220,7 @@ describe('CliInstaller', () => {
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
       commandPathOverride: installPath,
       userPathReader: () => registryReader.read(),
@@ -240,17 +240,17 @@ describe('CliInstaller', () => {
 
   it('matches expandable Windows PATH entries case-insensitively without rewriting them', async () => {
     const fixture = await makeFixture()
-    const installPath = join(fixture.root, 'Local App Data', 'Nightshift', 'bin', 'nightshift.cmd')
+    const installPath = join(fixture.root, 'Local App Data', 'Kolux', 'bin', 'kolux.cmd')
     const userPathWriter = vi.fn()
     const installer = new CliInstaller({
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
       commandPathOverride: installPath,
       windowsEnvironment: { LOCALAPPDATA: join(fixture.root, 'Local App Data') },
-      userPathReader: async () => userPathRead('%localappdata%\\Nightshift\\bin\\', true),
+      userPathReader: async () => userPathRead('%localappdata%\\Kolux\\bin\\', true),
       userPathWriter
     })
 
@@ -263,32 +263,32 @@ describe('CliInstaller', () => {
 
   it('does not expand environment variables stored in a REG_SZ Windows PATH', async () => {
     const fixture = await makeFixture()
-    const installPath = join(fixture.root, 'Local App Data', 'Nightshift', 'bin', 'nightshift.cmd')
+    const installPath = join(fixture.root, 'Local App Data', 'Kolux', 'bin', 'kolux.cmd')
     const pathDirectory = dirname(installPath)
     const userPathWriter = vi.fn()
     const installer = new CliInstaller({
       platform: 'win32',
       isPackaged: false,
       userDataPath: fixture.userDataPath,
-      execPath: 'C:\\Users\\me\\AppData\\Local\\Nightshift\\Nightshift.exe',
+      execPath: 'C:\\Users\\me\\AppData\\Local\\Kolux\\Kolux.exe',
       appPath: fixture.appPath,
       commandPathOverride: installPath,
       windowsEnvironment: { LOCALAPPDATA: join(fixture.root, 'Local App Data') },
-      userPathReader: async () => userPathRead('%LOCALAPPDATA%\\Nightshift\\bin'),
+      userPathReader: async () => userPathRead('%LOCALAPPDATA%\\Kolux\\bin'),
       userPathWriter
     })
 
     await installer.install()
 
-    expect(userPathWriter).toHaveBeenCalledWith(`%LOCALAPPDATA%\\Nightshift\\bin;${pathDirectory}`)
+    expect(userPathWriter).toHaveBeenCalledWith(`%LOCALAPPDATA%\\Kolux\\bin;${pathDirectory}`)
   })
 
   it('resolves custom-install packaged Windows command path from resourcesPath', async () => {
     const fixture = await makeFixture()
     const localAppDataPath = join(fixture.root, 'AppData', 'Local')
-    const resourcesPath = join(fixture.root, 'D Custom Nightshift', 'resources')
+    const resourcesPath = join(fixture.root, 'D Custom Kolux', 'resources')
     await mkdir(join(resourcesPath, 'bin'), { recursive: true })
-    await writeFile(join(resourcesPath, 'bin', 'nightshift.exe'), 'native launcher', 'utf8')
+    await writeFile(join(resourcesPath, 'bin', 'kolux.exe'), 'native launcher', 'utf8')
 
     const installer = new CliInstaller({
       platform: 'win32',
@@ -296,20 +296,20 @@ describe('CliInstaller', () => {
       resourcesPath,
       localAppDataPath,
       userDataPath: fixture.userDataPath,
-      execPath: join(fixture.root, 'D Custom Nightshift', 'Nightshift.exe'),
+      execPath: join(fixture.root, 'D Custom Kolux', 'Kolux.exe'),
       appPath: fixture.appPath,
       userPathReader: async () => userPathRead(null),
       userPathWriter: async () => {}
     })
 
     const status = await installer.getStatus()
-    expect(status.commandPath).toBe(join(resourcesPath, 'bin', 'nightshift.exe'))
+    expect(status.commandPath).toBe(join(resourcesPath, 'bin', 'kolux.exe'))
   })
 
   it('keeps a bundled Windows launcher installed when the user PATH read is unknown', async () => {
     const fixture = await makeFixture()
     const resourcesPath = join(fixture.root, 'resources')
-    const bundledLauncher = join(resourcesPath, 'bin', 'nightshift.exe')
+    const bundledLauncher = join(resourcesPath, 'bin', 'kolux.exe')
     await mkdir(dirname(bundledLauncher), { recursive: true })
     await writeFile(bundledLauncher, 'native launcher', 'utf8')
 
@@ -318,11 +318,11 @@ describe('CliInstaller', () => {
       isPackaged: true,
       resourcesPath,
       userDataPath: fixture.userDataPath,
-      execPath: join(fixture.root, 'Nightshift.exe'),
+      execPath: join(fixture.root, 'Kolux.exe'),
       appPath: fixture.appPath,
       userPathReader: async () => ({
         state: 'unknown',
-        detail: 'Nightshift could not read the Windows user PATH registry value.'
+        detail: 'Kolux could not read the Windows user PATH registry value.'
       })
     })
 
@@ -336,8 +336,8 @@ describe('CliInstaller', () => {
   it('does not overwrite the packaged Windows launcher while registering PATH', async () => {
     const fixture = await makeFixture()
     const localAppDataPath = join(fixture.root, 'AppData', 'Local')
-    const resourcesPath = join(fixture.root, 'D Custom Nightshift', 'resources')
-    const bundledLauncher = join(resourcesPath, 'bin', 'nightshift.exe')
+    const resourcesPath = join(fixture.root, 'D Custom Kolux', 'resources')
+    const bundledLauncher = join(resourcesPath, 'bin', 'kolux.exe')
     const bundledContent = 'native launcher'
     await mkdir(dirname(bundledLauncher), { recursive: true })
     await writeFile(bundledLauncher, bundledContent, 'utf8')
@@ -349,7 +349,7 @@ describe('CliInstaller', () => {
       resourcesPath,
       localAppDataPath,
       userDataPath: fixture.userDataPath,
-      execPath: join(fixture.root, 'D Custom Nightshift', 'Nightshift.exe'),
+      execPath: join(fixture.root, 'D Custom Kolux', 'Kolux.exe'),
       appPath: fixture.appPath,
       userPathReader: async () => userPathRead(userPath),
       userPathWriter: async (value) => {

@@ -4,20 +4,20 @@
 // observes to a report file, and plays back the steps listed in a scenario file.
 //
 // Env contract (set by the test):
-//   NIGHTSHIFT_SDK_CONTRACT_SCENARIO_PATH — JSON file
+//   KOLUX_SDK_CONTRACT_SCENARIO_PATH — JSON file
 //     { steps: Step[], controlResponses?: { [subtype]: <response> } } where a Step is
 //     { emit: <frame> } | { awaitUserMessage: true } | { stderr: <text> } |
 //     { awaitControlResponse: <request_id> } | { delayMs: <n> } | { exit: <code> }
-//   NIGHTSHIFT_SDK_CONTRACT_REPORT_PATH — where argv/env observations are written
-//   NIGHTSHIFT_SDK_CONTRACT_IGNORE_SIGTERM — trap SIGTERM/SIGINT and outlive stdin close
-//   NIGHTSHIFT_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS — record control requests but never answer
-//   NIGHTSHIFT_SDK_CONTRACT_DESCENDANT — fork an idle grandchild and report its pid
+//   KOLUX_SDK_CONTRACT_REPORT_PATH — where argv/env observations are written
+//   KOLUX_SDK_CONTRACT_IGNORE_SIGTERM — trap SIGTERM/SIGINT and outlive stdin close
+//   KOLUX_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS — record control requests but never answer
+//   KOLUX_SDK_CONTRACT_DESCENDANT — fork an idle grandchild and report its pid
 import { spawn } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 
-const scenarioPath = process.env.NIGHTSHIFT_SDK_CONTRACT_SCENARIO_PATH
-const reportPath = process.env.NIGHTSHIFT_SDK_CONTRACT_REPORT_PATH
+const scenarioPath = process.env.KOLUX_SDK_CONTRACT_SCENARIO_PATH
+const reportPath = process.env.KOLUX_SDK_CONTRACT_REPORT_PATH
 
 const report = {
   argv: process.argv.slice(1),
@@ -38,12 +38,12 @@ writeReport()
 
 const scenario = scenarioPath ? JSON.parse(readFileSync(scenarioPath, 'utf8')) : { steps: [] }
 
-if (process.env.NIGHTSHIFT_SDK_CONTRACT_IGNORE_SIGTERM) {
+if (process.env.KOLUX_SDK_CONTRACT_IGNORE_SIGTERM) {
   process.on('SIGTERM', () => {})
   process.on('SIGINT', () => {})
   setInterval(() => {}, 1_000_000)
 }
-if (process.env.NIGHTSHIFT_SDK_CONTRACT_DESCENDANT) {
+if (process.env.KOLUX_SDK_CONTRACT_DESCENDANT) {
   const descendant = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000000)'], {
     stdio: 'ignore'
   })
@@ -90,7 +90,7 @@ createInterface({ input: process.stdin }).on('line', (line) => {
   if (frame.type === 'control_request') {
     report.controlRequests.push(frame)
     writeReport()
-    if (process.env.NIGHTSHIFT_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS) {
+    if (process.env.KOLUX_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS) {
       return
     }
     emit({

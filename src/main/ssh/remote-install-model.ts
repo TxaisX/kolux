@@ -1,16 +1,16 @@
 /**
- * The two things Nightshift installs into `~/.nightshift-remote/`, and the rules that keep them from
+ * The two things Kolux installs into `~/.kolux-remote/`, and the rules that keep them from
  * touching each other.
  *
- * `docs/design/shipping-nightshiftd.html` §06 settles that on-disk coexistence is permanent: the
- * relay is the dumb execution host for SSH-target users, nightshiftd is the peer for paired
- * environments, and no plan item retires either. So `relay-<version>/` and `nightshiftd-<version>/`
+ * `docs/design/shipping-koluxd.html` §06 settles that on-disk coexistence is permanent: the
+ * relay is the dumb execution host for SSH-target users, koluxd is the peer for paired
+ * environments, and no plan item retires either. So `relay-<version>/` and `koluxd-<version>/`
  * sit side by side forever, and the namespace has to be a parameter rather than a literal.
  *
  * GC ownership is the trap that parameterization creates. Each model garbage-collects ONLY
  * its own directories — see `remoteInstallDirOwner`. Relay's regex happened to be narrow
  * enough already; making the prefix a parameter is exactly what could have widened it into
- * deleting a live nightshiftd tree, so the ownership rule is asserted here rather than left to
+ * deleting a live koluxd tree, so the ownership rule is asserted here rather than left to
  * whichever regex a caller passes.
  */
 import {
@@ -19,12 +19,12 @@ import {
   RELAY_VERSION_FILENAME
 } from '../../shared/relay-artifacts'
 import {
-  nightshiftdArtifactFilenames,
-  NIGHTSHIFTD_INSTALL_COMPLETE_FILENAME,
-  NIGHTSHIFTD_VERSION_FILENAME
-} from '../../shared/nightshiftd-artifacts'
+  koluxdArtifactFilenames,
+  KOLUXD_INSTALL_COMPLETE_FILENAME,
+  KOLUXD_VERSION_FILENAME
+} from '../../shared/koluxd-artifacts'
 
-export type RemoteInstallModelId = 'relay' | 'nightshiftd'
+export type RemoteInstallModelId = 'relay' | 'koluxd'
 
 export type RemoteInstallModel = {
   readonly id: RemoteInstallModelId
@@ -41,26 +41,26 @@ export type RemoteInstallModel = {
 export const RELAY_INSTALL_MODEL: RemoteInstallModel = {
   id: 'relay',
   dirPrefix: 'relay',
-  nativeDepsPackageName: 'nightshift-relay',
+  nativeDepsPackageName: 'kolux-relay',
   versionFilename: RELAY_VERSION_FILENAME,
   installCompleteFilename: RELAY_INSTALL_COMPLETE_FILENAME,
   requiredArtifacts: (isWindows) => relayArtifactFilenames(isWindows)
 }
 
-export const NIGHTSHIFTD_INSTALL_MODEL: RemoteInstallModel = {
-  id: 'nightshiftd',
-  dirPrefix: 'nightshiftd',
-  nativeDepsPackageName: 'nightshift-nightshiftd',
-  versionFilename: NIGHTSHIFTD_VERSION_FILENAME,
-  installCompleteFilename: NIGHTSHIFTD_INSTALL_COMPLETE_FILENAME,
-  // Why the parameter is ignored: nightshiftd's forked children are the same three .js files on
+export const KOLUXD_INSTALL_MODEL: RemoteInstallModel = {
+  id: 'koluxd',
+  dirPrefix: 'koluxd',
+  nativeDepsPackageName: 'kolux-koluxd',
+  versionFilename: KOLUXD_VERSION_FILENAME,
+  installCompleteFilename: KOLUXD_INSTALL_COMPLETE_FILENAME,
+  // Why the parameter is ignored: koluxd's forked children are the same three .js files on
   // every host. The Windows-only console-list agent patch is a relay/node-pty concern.
-  requiredArtifacts: () => nightshiftdArtifactFilenames()
+  requiredArtifacts: () => koluxdArtifactFilenames()
 }
 
 export const REMOTE_INSTALL_MODELS: readonly RemoteInstallModel[] = [
   RELAY_INSTALL_MODEL,
-  NIGHTSHIFTD_INSTALL_MODEL
+  KOLUXD_INSTALL_MODEL
 ]
 
 /**
@@ -104,11 +104,11 @@ export function remoteInstallListingRegexSource(model: RemoteInstallModel): stri
 }
 
 /**
- * Which model owns a directory found in `~/.nightshift-remote/`, or null for anything neither
+ * Which model owns a directory found in `~/.kolux-remote/`, or null for anything neither
  * model created.
  *
  * This is the answer to §06 falsifier 1's first half: **the model that created a directory
- * owns it, and nothing else may delete it.** A relay GC pass that saw `nightshiftd-0.1.0+abc`
+ * owns it, and nothing else may delete it.** A relay GC pass that saw `koluxd-0.1.0+abc`
  * would be looking at the live install of a peer whose lifecycle it has no view into — the
  * SSH-execution-boundary collapse in directory form.
  */
@@ -128,9 +128,9 @@ export function remoteInstallGcPermits(model: RemoteInstallModel, dirName: strin
 
 export type RemoteInstallInventory = Record<RemoteInstallModelId | 'unknown', string[]>
 
-/** Group a raw `~/.nightshift-remote/` listing by owning model, for diagnostics and the client's choice. */
+/** Group a raw `~/.kolux-remote/` listing by owning model, for diagnostics and the client's choice. */
 export function inventoryRemoteInstallDirs(dirNames: readonly string[]): RemoteInstallInventory {
-  const inventory: RemoteInstallInventory = { relay: [], nightshiftd: [], unknown: [] }
+  const inventory: RemoteInstallInventory = { relay: [], koluxd: [], unknown: [] }
   for (const name of dirNames) {
     const owner = remoteInstallDirOwner(name)
     if (owner) {

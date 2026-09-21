@@ -34,7 +34,7 @@ type AgentDetectionCommand = {
 
 const SUPPORTED_POSIX_SHELLS = new Set(['sh', 'dash', 'bash', 'zsh', 'fish'])
 const CONSERVATIVE_SYSTEM_SHELL_DIRS = new Set(['/bin', '/usr/bin'])
-const AGENT_PATH_PREFIX = '__NIGHTSHIFT_AGENT_PATH__'
+const AGENT_PATH_PREFIX = '__KOLUX_AGENT_PATH__'
 
 export class PreflightHandler {
   private dispatcher: RelayDispatcher

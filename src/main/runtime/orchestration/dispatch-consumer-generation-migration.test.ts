@@ -24,7 +24,7 @@ describe('OrchestrationDb v35 to v36 migration', () => {
 
   /** Builds a current database, then strips it back to the v35 shape it would have on disk. */
   function createV35Database(): { path: string; dispatchId: string; deliveryId: string } {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-db-v36-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-db-v36-'))
     const dbPath = join(tempDir, 'orchestration.db')
     const seed = new OrchestrationDb(dbPath)
     const run = seed.createRun({

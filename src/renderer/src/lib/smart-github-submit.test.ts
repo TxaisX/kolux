@@ -13,7 +13,7 @@ describe('getSmartGitHubSubmitIntent', () => {
       kind: 'link',
       host: 'github.com',
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2049,
       type: 'pr'
     })
@@ -21,7 +21,7 @@ describe('getSmartGitHubSubmitIntent', () => {
       kind: 'link',
       host: 'github.com',
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2050,
       type: 'issue'
     })
@@ -64,7 +64,7 @@ describe('getSmartGitHubSubmitIntent', () => {
       kind: 'link',
       host: 'github.com',
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2049,
       type: 'pr'
     })
@@ -75,7 +75,7 @@ describe('getSmartGitHubSubmitIntent', () => {
       kind: 'link',
       host: 'github.com',
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2050,
       type: 'issue'
     })
@@ -113,7 +113,7 @@ describe('lookupSmartGitHubSubmitItem', () => {
     const intent = {
       kind: 'link' as const,
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2049,
       type: 'pr' as const
     }
@@ -143,7 +143,7 @@ describe('lookupSmartGitHubSubmitItem', () => {
     const intent = {
       kind: 'link' as const,
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2049,
       type: 'pr' as const
     }
@@ -218,7 +218,7 @@ describe('lookupSmartGitHubSubmitItem', () => {
     const intent = {
       kind: 'link' as const,
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 2049,
       type: 'pr' as const
     }

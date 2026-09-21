@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { SINGLE_INSTANCE_ALREADY_RUNNING_EXIT_CODE } from './single-instance-lock'
 
-// Why #11935: a pre-`ready` graceful quit is deferred, so a lock-losing headless `nightshift serve`
+// Why #11935: a pre-`ready` graceful quit is deferred, so a lock-losing headless `kolux serve`
 // kept booting into Linux Ozone/X11 init, died with SIGSEGV, and systemd restarted it forever
 // until the leaked AppImage FUSE mounts hit the kernel's 1000-mount ceiling.
 
@@ -50,7 +50,7 @@ describe('headless lock-loss exit contract', () => {
   })
 
   it('makes every documented serve unit treat a duplicate owner as terminal', () => {
-    const serveUnits = readSystemdUnitBlocks(doc).get('nightshift-serve.service') ?? []
+    const serveUnits = readSystemdUnitBlocks(doc).get('kolux-serve.service') ?? []
 
     expect(serveUnits.length).toBeGreaterThan(0)
     for (const unit of serveUnits) {
@@ -65,22 +65,22 @@ describe('headless lock-loss exit contract', () => {
   it('clears the start limit before every scripted start, which a tripped burst would refuse', () => {
     const lines = doc.split('\n')
     const startLines = lines.flatMap((line, index) =>
-      /^\s*sudo systemctl start nightshift-serve/.test(line) ? [index] : []
+      /^\s*sudo systemctl start kolux-serve/.test(line) ? [index] : []
     )
 
     expect(startLines.length).toBeGreaterThan(0)
     for (const index of startLines) {
       expect(lines.slice(Math.max(0, index - 3), index).join('\n')).toContain(
-        'systemctl reset-failed nightshift-serve'
+        'systemctl reset-failed kolux-serve'
       )
     }
   })
 
   it('leaves the Xvfb unit free to self-heal from a transient display flap', () => {
-    const xvfbUnits = readSystemdUnitBlocks(doc).get('nightshift-xvfb.service') ?? []
+    const xvfbUnits = readSystemdUnitBlocks(doc).get('kolux-xvfb.service') ?? []
 
     expect(xvfbUnits.length).toBeGreaterThan(0)
-    // Why: a start limit here would down the display unit permanently and take nightshift-serve with it.
+    // Why: a start limit here would down the display unit permanently and take kolux-serve with it.
     for (const unit of xvfbUnits) {
       expect(unit).not.toContain('StartLimitBurst=')
     }

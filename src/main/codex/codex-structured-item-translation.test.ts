@@ -149,7 +149,7 @@ describe('codex item identity', () => {
     expect(ordinals.ordinalFor(THREAD_ID, 'turn-2', 'item-1')).toBe(0)
   })
 
-  it('keys a non-message item and a turnless message in the nightshift namespace', () => {
+  it('keys a non-message item and a turnless message in the kolux namespace', () => {
     const ordinals = new CodexTurnOrdinals()
     const command = codexItemIdentity({
       threadId: THREAD_ID,
@@ -165,11 +165,11 @@ describe('codex item identity', () => {
     })
 
     expect(command).toEqual({
-      provider: 'nightshift',
+      provider: 'kolux',
       clientMessageId: 'codex-item:thread-abc:item-2'
     })
     expect(orphan).toEqual({
-      provider: 'nightshift',
+      provider: 'kolux',
       clientMessageId: 'codex-item:thread-abc:item-1'
     })
   })
@@ -722,30 +722,30 @@ describe('codex item bodies', () => {
       codexItemBody({
         type: 'webSearch',
         id: 'w',
-        query: 'nightshift release notes',
-        action: { type: 'search', query: 'nightshift release notes', queries: null },
+        query: 'kolux release notes',
+        action: { type: 'search', query: 'kolux release notes', queries: null },
         results: null
       })
     ).toEqual({
       kind: 'tool-call',
       name: 'web_search',
       input: {
-        query: 'nightshift release notes',
+        query: 'kolux release notes',
         description: 'search',
-        action: { type: 'search', query: 'nightshift release notes', queries: null }
+        action: { type: 'search', query: 'kolux release notes', queries: null }
       },
       state: 'completed'
     })
   })
 
   it('carries the web search hits as the call output', () => {
-    const results = [{ title: 'Nightshift 1.0', url: 'https://example.com/notes' }]
+    const results = [{ title: 'Kolux 1.0', url: 'https://example.com/notes' }]
     expect(
       codexItemBody({
         type: 'webSearch',
         id: 'w',
-        query: 'nightshift release notes',
-        action: { type: 'search', query: 'nightshift release notes', queries: null },
+        query: 'kolux release notes',
+        action: { type: 'search', query: 'kolux release notes', queries: null },
         results
       })
     ).toMatchObject({

@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import type { WorktreeMeta } from '../../../../shared/worktree/meta-types'
 import { displayNameUpdatePinsLabel } from '../../../../shared/worktree/display-name-provenance'
 import { parseExecutionHostId } from '../../../../shared/execution-host'
-import { stripNightshiftProvenanceMetaUpdates } from '../../../worktree-removal-safety'
+import { stripKoluxProvenanceMetaUpdates } from '../../../worktree-removal-safety'
 import { getRepoIdFromWorktreeId } from '../../../../shared/worktree/id'
 import type {
   ListDesktopLineageForHostArgs,
@@ -46,7 +46,7 @@ export function registerWorktreeMetadataHandlers(context: WorktreeIpcContext): v
               firstAgentMessageRenameError: null
             }
           : validatedUpdates
-      const sanitizedUpdates = stripNightshiftProvenanceMetaUpdates(updates)
+      const sanitizedUpdates = stripKoluxProvenanceMetaUpdates(updates)
       const meta = executionHostId
         ? store.setWorktreeMetaForHost(args.worktreeId, executionHostId, sanitizedUpdates)
         : store.setWorktreeMeta(args.worktreeId, sanitizedUpdates)

@@ -167,16 +167,16 @@ describe('preflight', () => {
     await expect(detectInstalledAgents()).resolves.toEqual(['claude', 'cursor'])
   })
 
-  it('does not report Claude Agent Teams when only the Nightshift shim is present', async () => {
+  it('does not report Claude Agent Teams when only the Kolux shim is present', async () => {
     execFileAsyncMock.mockImplementation(async (command, args) => {
       if (command !== 'which') {
         throw new Error(`unexpected command ${String(command)}`)
       }
-      if (String(args[0]) === 'nightshift') {
+      if (String(args[0]) === 'kolux') {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '/Applications/Nightshift.app/Contents/MacOS/nightshift\n',
+          stdout: '/Applications/Kolux.app/Contents/MacOS/kolux\n',
           stderr: '',
           timedOut: false
         }
@@ -187,7 +187,7 @@ describe('preflight', () => {
     await expect(detectInstalledAgents()).resolves.toEqual([])
   })
 
-  it('reports Claude Agent Teams when both Nightshift and Claude are present', async () => {
+  it('reports Claude Agent Teams when both Kolux and Claude are present', async () => {
     execFileAsyncMock.mockImplementation(async (command, args) => {
       if (command !== 'which') {
         throw new Error(`unexpected command ${String(command)}`)
@@ -201,11 +201,11 @@ describe('preflight', () => {
           timedOut: false
         }
       }
-      if (String(args[0]) === 'nightshift') {
+      if (String(args[0]) === 'kolux') {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '/Applications/Nightshift.app/Contents/MacOS/nightshift\n',
+          stdout: '/Applications/Kolux.app/Contents/MacOS/kolux\n',
           stderr: '',
           timedOut: false
         }
@@ -234,11 +234,11 @@ describe('preflight', () => {
           timedOut: false
         }
       }
-      if (String(args[0]) === 'nightshift') {
+      if (String(args[0]) === 'kolux') {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '/mock/windows/programs/nightshift.cmd\n',
+          stdout: '/mock/windows/programs/kolux.cmd\n',
           stderr: '',
           timedOut: false
         }
@@ -403,7 +403,7 @@ describe('preflight', () => {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '__NIGHTSHIFT_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
+          stdout: '__KOLUX_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
           stderr: '',
           timedOut: false
         }
@@ -423,14 +423,14 @@ describe('preflight', () => {
       value: 'win32'
     })
     runWslProcessMock.mockImplementation(async ({ script }: { script: string }) => {
-      expect(script).not.toContain("'nightshift'")
-      expect(script).not.toContain("'nightshift-dev'")
-      expect(script).not.toContain("'nightshift-ide'")
+      expect(script).not.toContain("'kolux'")
+      expect(script).not.toContain("'kolux-dev'")
+      expect(script).not.toContain("'kolux-ide'")
       if (script.includes("'claude'")) {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '__NIGHTSHIFT_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
+          stdout: '__KOLUX_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
           stderr: '',
           timedOut: false
         }
@@ -485,7 +485,7 @@ describe('preflight', () => {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '__NIGHTSHIFT_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
+          stdout: '__KOLUX_AGENT_PATH__claude\t/home/test/.local/bin/claude\n',
           stderr: '',
           timedOut: false
         }
@@ -515,7 +515,7 @@ describe('preflight', () => {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '__NIGHTSHIFT_AGENT_PATH__codex\t/home/test/.local/bin/codex\n',
+          stdout: '__KOLUX_AGENT_PATH__codex\t/home/test/.local/bin/codex\n',
           stderr: '',
           timedOut: false
         }

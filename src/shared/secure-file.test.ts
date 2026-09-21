@@ -116,7 +116,7 @@ describe('hardenSecurePath', () => {
   })
 
   it('rewrites Windows ACLs through icacls, purging explicit ACEs before granting', async () => {
-    hardenSecurePath('C:\\Users\\me\\.nightshift\\secret.json', {
+    hardenSecurePath('C:\\Users\\me\\.kolux\\secret.json', {
       isDirectory: false,
       platform: 'win32'
     })
@@ -131,13 +131,10 @@ describe('hardenSecurePath', () => {
     const specs = vi.mocked(runProcess).mock.calls.map(([spec]) => spec)
     expect(specs.every((spec) => spec.program === 'C:\\Windows\\System32\\icacls.exe')).toBe(true)
     // Verify runs first, so an already-correct DACL is never rewritten.
-    expect(specs[0]!.args?.slice(0, 2)).toEqual([
-      'C:\\Users\\me\\.nightshift\\secret.json',
-      '/save'
-    ])
-    expect(specs[1]!.args).toEqual(['C:\\Users\\me\\.nightshift\\secret.json', '/reset', '/q'])
+    expect(specs[0]!.args?.slice(0, 2)).toEqual(['C:\\Users\\me\\.kolux\\secret.json', '/save'])
+    expect(specs[1]!.args).toEqual(['C:\\Users\\me\\.kolux\\secret.json', '/reset', '/q'])
     expect(specs[2]!.args).toEqual([
-      'C:\\Users\\me\\.nightshift\\secret.json',
+      'C:\\Users\\me\\.kolux\\secret.json',
       '/inheritance:r',
       '/grant:r',
       `*${USER_SID}:(F)`,
@@ -148,17 +145,14 @@ describe('hardenSecurePath', () => {
       '/q'
     ])
     // The apply is read back: a loosened ACL has to be detectable, not just overwritten.
-    expect(specs[3]!.args?.slice(0, 2)).toEqual([
-      'C:\\Users\\me\\.nightshift\\secret.json',
-      '/save'
-    ])
+    expect(specs[3]!.args?.slice(0, 2)).toEqual(['C:\\Users\\me\\.kolux\\secret.json', '/save'])
     expect(specs[2]!.timeoutMs).toBe(5000)
   })
 
   // BLOCKING 1: re-running /reset on an already-correct DACL restores the inherited (broader) one
   // for the few ms until the grant pass lands, for no gain. A correct DACL must be left alone.
   it('leaves an already-correct ACL untouched instead of rewriting it', async () => {
-    const target = 'C:\\Users\\me\\.nightshift\\secret.json'
+    const target = 'C:\\Users\\me\\.kolux\\secret.json'
     hardenedByFake.set(target, '')
 
     hardenSecurePath(target, { isDirectory: false, platform: 'win32' })
@@ -185,7 +179,7 @@ describe('hardenSecurePath', () => {
     ['read-only rights', `D:PAI(A;;FR;;;BA)(A;;FA;;;SY)(A;;FA;;;${USER_SID})`, 'not full control']
   ])('rejects a verified DACL granting %s', async (_label, sddl, expected) => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const target = 'C:\\Users\\me\\.nightshift\\secret.json'
+    const target = 'C:\\Users\\me\\.kolux\\secret.json'
     forcedBadSddl.set(target, sddl)
 
     hardenSecurePath(target, { isDirectory: false, platform: 'win32' })
@@ -327,7 +321,7 @@ describe('hardenSecurePath', () => {
     const now = vi.spyOn(performance, 'now').mockImplementation(() => clock)
     let wallClock = Date.parse('2026-01-01T00:00:00Z')
     const wallNow = vi.spyOn(Date, 'now').mockImplementation(() => wallClock)
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     let sidLookupFails = true
@@ -361,7 +355,7 @@ describe('hardenSecurePath', () => {
   }
 
   function writeFailingHardenTarget(): string {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
@@ -376,11 +370,11 @@ describe('hardenSecurePath', () => {
   // /c makes icacls exit 0 while printing "Failed processing 1 files" — a silent no-op by another route.
   it('never passes the icacls /c continue-on-error flag', async () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     // Cover both runners: the write path is synchronous, the directory re-harden is not.
     writeSecureFile(join(userDataPath, 'secret.json'), 'contents')
-    hardenSecurePath('C:\\Users\\me\\.nightshift\\other.json', {
+    hardenSecurePath('C:\\Users\\me\\.kolux\\other.json', {
       isDirectory: false,
       platform: 'win32'
     })
@@ -397,7 +391,7 @@ describe('hardenSecurePath', () => {
   })
 
   it('adds inheritable rules when hardening a Windows directory', async () => {
-    hardenSecurePath('C:\\Users\\me\\.nightshift', { isDirectory: true, platform: 'win32' })
+    hardenSecurePath('C:\\Users\\me\\.kolux', { isDirectory: true, platform: 'win32' })
     await flushAsyncAcl()
 
     const grantArgs = vi
@@ -412,7 +406,7 @@ describe('hardenSecurePath', () => {
     vi.mocked(runProcess).mockRejectedValue(new Error('access denied'))
 
     expect(() =>
-      hardenSecurePath('C:\\Users\\me\\.nightshift\\secret.json', {
+      hardenSecurePath('C:\\Users\\me\\.kolux\\secret.json', {
         isDirectory: false,
         platform: 'win32'
       })
@@ -426,7 +420,7 @@ describe('hardenSecurePath', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.mocked(runProcess).mockResolvedValue({ ...OK, code: 5, stderr: 'Access is denied.' })
 
-    hardenSecurePath('C:\\Users\\me\\.nightshift\\secret.json', {
+    hardenSecurePath('C:\\Users\\me\\.kolux\\secret.json', {
       isDirectory: false,
       platform: 'win32'
     })
@@ -435,7 +429,7 @@ describe('hardenSecurePath', () => {
     expect(warn).toHaveBeenCalledWith(
       '[secure-path.windows-acl] failed to restrict path',
       expect.objectContaining({
-        targetPath: 'C:\\Users\\me\\.nightshift\\secret.json',
+        targetPath: 'C:\\Users\\me\\.kolux\\secret.json',
         stage: 'reset',
         detail: 'Access is denied.'
       })
@@ -452,7 +446,7 @@ describe('hardenSecurePath', () => {
       }
       return { ...OK, code: 5, stderr: 'Access is denied.' }
     })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
 
     writeSecureFile(join(userDataPath, 'secret.json'), 'contents')
@@ -466,7 +460,7 @@ describe('hardenSecurePath', () => {
 
   // Paths past MAX_PATH make icacls report "cannot find the path specified"; the extended prefix is the escape.
   it('uses the extended-length prefix for paths past MAX_PATH', async () => {
-    const longPath = `C:\\Users\\me\\.nightshift\\${'d'.repeat(300)}\\secret.json`
+    const longPath = `C:\\Users\\me\\.kolux\\${'d'.repeat(300)}\\secret.json`
     hardenSecurePath(longPath, { isDirectory: false, platform: 'win32' })
     await flushAsyncAcl()
 
@@ -477,7 +471,7 @@ describe('hardenSecurePath', () => {
 
   it('caches successful existing-file hardening within a process', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
@@ -497,7 +491,7 @@ describe('hardenSecurePath', () => {
       maxKeyBytes: 4096,
       maxTotalKeyBytes: 8192
     })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const paths = ['first.json', 'second.json', 'third.json'].map((name) =>
       join(userDataPath, name)
@@ -525,7 +519,7 @@ describe('hardenSecurePath', () => {
       maxKeyBytes: 4096,
       maxTotalKeyBytes: 8192
     })
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(root)
     const directories = ['first', 'second', 'third'].map((name) => join(root, name))
     const files = directories.map((dir) => {
@@ -551,7 +545,7 @@ describe('hardenSecurePath', () => {
 
   it('re-hardens an existing file when its metadata changes after caching', async () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
@@ -568,7 +562,7 @@ describe('hardenSecurePath', () => {
 
   it('keeps post-rename target hardening on every write while caching the directory', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
 
@@ -593,13 +587,13 @@ describe('hardenSecurePath', () => {
   // never matched. Directories must be path-cached for the process lifetime.
   it('does not re-harden the parent directory when its mtime changes between reads', async () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
 
     // Simulate the env-store read loop: hardenExistingSecureFile called many times while
-    // another part of Nightshift writes to the same directory (changing its mtime).
+    // another part of Kolux writes to the same directory (changing its mtime).
     hardenExistingSecureFile(targetPath)
     await waitForFileTimestampTick()
     // Simulate a write to another file in the same dir (changes dir mtime)
@@ -614,7 +608,7 @@ describe('hardenSecurePath', () => {
 
   it('does not re-harden an unchanged file on repeated reads', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
@@ -628,7 +622,7 @@ describe('hardenSecurePath', () => {
   })
 
   it('applies the read-path ACL asynchronously without blocking (async runProcess)', () => {
-    hardenSecurePath('C:\\Users\\me\\.nightshift\\secret.json', {
+    hardenSecurePath('C:\\Users\\me\\.kolux\\secret.json', {
       isDirectory: false,
       platform: 'win32'
     })
@@ -644,7 +638,7 @@ describe('hardenSecurePath', () => {
   // parent's inherited (broader) ACL for the duration of the spawn.
   it('hardens the credential file synchronously while keeping the directory async', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
 
@@ -665,7 +659,7 @@ describe('hardenSecurePath', () => {
   // trusted.
   it('retries the credential-file ACL on the next write when the sync apply fails', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
 
@@ -702,7 +696,7 @@ describe('hardenSecurePath', () => {
   // exercised through the write path rather than the read path).
   it('hardens the directory exactly once across many writes despite mtime churn', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
 
     for (let i = 0; i < 5; i++) {
@@ -718,7 +712,7 @@ describe('hardenSecurePath', () => {
   // POSIX hardening uses chmodSync only.
   it('never spawns icacls on non-win32 platforms', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
 
@@ -731,7 +725,7 @@ describe('hardenSecurePath', () => {
 
   posixModeIt('re-hardens a POSIX directory when its metadata changes after caching', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const targetPath = join(userDataPath, 'secret.json')
     writeFileSync(targetPath, '{}')
@@ -752,7 +746,7 @@ describe('hardenSecurePath', () => {
       maxKeyBytes: 4096,
       maxTotalKeyBytes: 8192
     })
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-secure-file-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-secure-file-'))
     tempDirs.push(userDataPath)
     const firstPath = join(userDataPath, 'first.json')
     const secondPath = join(userDataPath, 'second.json')

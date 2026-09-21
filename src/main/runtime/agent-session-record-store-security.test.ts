@@ -36,7 +36,7 @@ function reserveRequest(): AgentSessionReserveRequest {
 }
 
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-agent-session-security-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-agent-session-security-'))
 })
 
 afterEach(async () => {

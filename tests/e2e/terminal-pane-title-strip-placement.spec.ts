@@ -4,7 +4,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   moveTerminalPaneByLeafId,
   readPaneIdentitySnapshot,
@@ -58,44 +58,42 @@ test.describe.configure({ mode: 'serial' })
 test.describe('Terminal Panes', () => {
   registerTerminalPaneMountReadiness()
 
-  test('Set Title strip activates its pane and accepts file-path drops', async ({
-    nightshiftPage
-  }) => {
+  test('Set Title strip activates its pane and accepts file-path drops', async ({ koluxPage }) => {
     const title = `Drop target title ${Date.now()}`
     const droppedPath = `/tmp/title-drop-${Date.now()}.txt`
 
-    await setPaneTitleFromTerminalMenu(nightshiftPage, title)
-    const initialSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await setPaneTitleFromTerminalMenu(koluxPage, title)
+    const initialSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const titledLeafId = initialSnapshot.activeLeafId ?? initialSnapshot.panes[0]?.leafId
     if (!titledLeafId) {
       throw new Error('No titled pane leaf id found before split')
     }
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const splitSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const splitSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const otherPane = splitSnapshot.panes.find((pane) => pane.leafId !== titledLeafId)
     if (!otherPane) {
       throw new Error('No inactive pane found for title-strip drop test')
     }
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ tabId, paneId }) => {
         window.__paneManagers?.get(tabId)?.setActivePane(paneId, { focus: false })
       },
       { tabId: splitSnapshot.tabId, paneId: otherPane.numericPaneId }
     )
     await expect
-      .poll(async () => (await readPaneIdentitySnapshot(nightshiftPage))?.activeLeafId ?? null)
+      .poll(async () => (await readPaneIdentitySnapshot(koluxPage))?.activeLeafId ?? null)
       .toBe(otherPane.leafId)
 
-    const titleBar = nightshiftPage.locator('.pane-title-bar', { hasText: title }).first()
+    const titleBar = koluxPage.locator('.pane-title-bar', { hasText: title }).first()
     await expect(titleBar).toHaveAttribute('data-native-file-drop-target', 'terminal')
     await expect(titleBar).toHaveAttribute('data-terminal-tab-id', splitSnapshot.tabId)
 
     await titleBar.evaluate((element, path) => {
       const dataTransfer = new DataTransfer()
-      dataTransfer.setData('text/x-nightshift-file-path', path)
+      dataTransfer.setData('text/x-kolux-file-path', path)
       element.dispatchEvent(
         new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer })
       )
@@ -105,69 +103,67 @@ test.describe('Terminal Panes', () => {
     }, droppedPath)
 
     await expect
-      .poll(async () => (await readPaneIdentitySnapshot(nightshiftPage))?.activeLeafId ?? null, {
+      .poll(async () => (await readPaneIdentitySnapshot(koluxPage))?.activeLeafId ?? null, {
         timeout: 5_000,
         message: 'Title-strip drop did not activate the titled pane'
       })
       .toBe(titledLeafId)
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(droppedPath), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(droppedPath), {
         timeout: 5_000,
         message: 'Title-strip drop did not paste into the titled pane terminal'
       })
       .toBe(true)
   })
 
-  test('Set Title overlay follows its pane after same-count pane move', async ({
-    nightshiftPage
-  }) => {
+  test('Set Title overlay follows its pane after same-count pane move', async ({ koluxPage }) => {
     const title = `Moved overlay title ${Date.now()}`
 
-    await setPaneTitleFromTerminalMenu(nightshiftPage, title)
-    const initialSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await setPaneTitleFromTerminalMenu(koluxPage, title)
+    const initialSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const titledLeafId = initialSnapshot.activeLeafId ?? initialSnapshot.panes[0]?.leafId
     if (!titledLeafId) {
       throw new Error('No titled pane leaf id found before move')
     }
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const beforeMove = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const beforeMove = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const target = beforeMove.panes.find((pane) => pane.leafId !== titledLeafId)
     if (!target) {
       throw new Error('No target pane found for titled pane move')
     }
-    const beforeOrder = await readTerminalPaneDomLeafOrder(nightshiftPage)
+    const beforeOrder = await readTerminalPaneDomLeafOrder(koluxPage)
 
-    await expectPaneTitleAttachedToLeaf(nightshiftPage, title, titledLeafId)
-    await moveTerminalPaneByLeafId(nightshiftPage, titledLeafId, target.leafId, 'right')
+    await expectPaneTitleAttachedToLeaf(koluxPage, title, titledLeafId)
+    await moveTerminalPaneByLeafId(koluxPage, titledLeafId, target.leafId, 'right')
 
     await expect
-      .poll(async () => readTerminalPaneDomLeafOrder(nightshiftPage), {
+      .poll(async () => readTerminalPaneDomLeafOrder(koluxPage), {
         timeout: 10_000,
         message: 'Pane move did not update DOM order'
       })
       .not.toEqual(beforeOrder)
-    await expectPaneTitleAttachedToLeaf(nightshiftPage, title, titledLeafId)
+    await expectPaneTitleAttachedToLeaf(koluxPage, title, titledLeafId)
   })
 
   test('Set Title keeps the pane drag handle available over the title strip', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const title = `Draggable title ${Date.now()}`
 
-    await setPaneTitleFromTerminalMenu(nightshiftPage, title)
-    const initialSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await setPaneTitleFromTerminalMenu(koluxPage, title)
+    const initialSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const titledLeafId = initialSnapshot.activeLeafId ?? initialSnapshot.panes[0]?.leafId
     if (!titledLeafId) {
       throw new Error('No titled pane leaf id found before split')
     }
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    await expectPaneTitleAttachedToLeaf(nightshiftPage, title, titledLeafId)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    await expectPaneTitleAttachedToLeaf(koluxPage, title, titledLeafId)
 
-    const titleTopHit = await nightshiftPage.evaluate(
+    const titleTopHit = await koluxPage.evaluate(
       ({ title, titledLeafId }) => {
         const titleBar = Array.from(document.querySelectorAll<HTMLElement>('.pane-title-bar')).find(
           (element) => element.textContent?.includes(title)
@@ -200,39 +196,37 @@ test.describe('Terminal Panes', () => {
     expect(titleTopHit?.pointerEvents).toBe('auto')
     expect(Math.abs((titleTopHit?.handleTop ?? 0) - (titleTopHit?.titleTop ?? 0))).toBeLessThan(1)
 
-    await nightshiftPage.locator('.pane-title-bar', { hasText: title }).click({
+    await koluxPage.locator('.pane-title-bar', { hasText: title }).click({
       position: { x: 20, y: 18 }
     })
-    await expect(nightshiftPage.locator('.pane-title-input')).toBeVisible()
+    await expect(koluxPage.locator('.pane-title-input')).toBeVisible()
   })
 
-  test('@headful Set Title pane can be dragged from the title strip', async ({
-    nightshiftPage
-  }) => {
+  test('@headful Set Title pane can be dragged from the title strip', async ({ koluxPage }) => {
     const title = `Dragged title ${Date.now()}`
 
-    await setPaneTitleFromTerminalMenu(nightshiftPage, title)
-    const initialSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    await setPaneTitleFromTerminalMenu(koluxPage, title)
+    const initialSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const titledLeafId = initialSnapshot.activeLeafId ?? initialSnapshot.panes[0]?.leafId
     if (!titledLeafId) {
       throw new Error('No titled pane leaf id found before drag')
     }
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const beforeDrag = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const beforeDrag = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const target = beforeDrag.panes.find((pane) => pane.leafId !== titledLeafId)
     if (!target) {
       throw new Error('No target pane found for titled pane drag')
     }
-    const beforeOrder = await readTerminalPaneDomLeafOrder(nightshiftPage)
+    const beforeOrder = await readTerminalPaneDomLeafOrder(koluxPage)
 
-    const titleDragHandle = nightshiftPage
+    const titleDragHandle = koluxPage
       .locator('.pane-title-bar', { hasText: title })
       .locator('.pane-title-drag-handle')
     await expect(titleDragHandle).toBeVisible({ timeout: 3_000 })
     const sourceBox = await titleDragHandle.boundingBox()
-    const targetBox = await nightshiftPage
+    const targetBox = await koluxPage
       .locator(`.pane[data-leaf-id="${target.leafId}"]`)
       .boundingBox()
     expect(sourceBox).not.toBeNull()
@@ -242,23 +236,23 @@ test.describe('Terminal Panes', () => {
     const targetDropX =
       sourceIndex < targetIndex ? targetBox!.x + targetBox!.width - 8 : targetBox!.x + 8
 
-    await nightshiftPage.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + 4)
-    await nightshiftPage.mouse.down()
-    await nightshiftPage.mouse.move(targetDropX, targetBox!.y + targetBox!.height / 2, {
+    await koluxPage.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + 4)
+    await koluxPage.mouse.down()
+    await koluxPage.mouse.move(targetDropX, targetBox!.y + targetBox!.height / 2, {
       steps: 20
     })
-    await nightshiftPage.mouse.up()
+    await koluxPage.mouse.up()
 
     await expect
-      .poll(async () => readTerminalPaneDomLeafOrder(nightshiftPage), {
+      .poll(async () => readTerminalPaneDomLeafOrder(koluxPage), {
         timeout: 10_000,
         message: 'Title-strip pane drag did not update DOM order'
       })
       .not.toEqual(beforeOrder)
-    const afterDrag = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    const afterDrag = await waitForPaneIdentitySnapshot(koluxPage, 2)
     expect(afterDrag.panes.map((pane) => pane.leafId).sort()).toEqual(
       beforeDrag.panes.map((pane) => pane.leafId).sort()
     )
-    await expectPaneTitleAttachedToLeaf(nightshiftPage, title, titledLeafId)
+    await expectPaneTitleAttachedToLeaf(koluxPage, title, titledLeafId)
   })
 })

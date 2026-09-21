@@ -17,19 +17,19 @@ async function createInstalledPlugin(options: { worker: boolean }): Promise<{
   rootDir: string
   manifest: PluginManifest
 }> {
-  const userDataPath = await mkdtemp(join(tmpdir(), 'nightshift-plugin-service-integrity-'))
+  const userDataPath = await mkdtemp(join(tmpdir(), 'kolux-plugin-service-integrity-'))
   roots.push(userDataPath)
-  const pluginKey = 'nightshift-samples.demo'
+  const pluginKey = 'kolux-samples.demo'
   const pluginDir = join(userDataPath, 'plugins', pluginKey)
   const stagingDir = join(pluginDir, 'staging')
   await mkdir(stagingDir, { recursive: true })
   const manifest = pluginManifestSchema.parse({
     manifestVersion: 1,
     id: 'demo',
-    publisher: 'nightshift-samples',
+    publisher: 'kolux-samples',
     name: 'Demo',
     version: '1.0.0',
-    engines: { nightshift: '>=1.0.0' },
+    engines: { kolux: '>=1.0.0' },
     pluginApi: 1,
     ...(options.worker ? { main: 'worker.js' } : {}),
     contributes: {
@@ -39,7 +39,7 @@ async function createInstalledPlugin(options: { worker: boolean }): Promise<{
     },
     capabilities: []
   })
-  await writeFile(join(stagingDir, 'nightshift-plugin.json'), JSON.stringify(manifest))
+  await writeFile(join(stagingDir, 'kolux-plugin.json'), JSON.stringify(manifest))
   await writeFile(join(stagingDir, 'panel.html'), '<h1>Panel</h1>')
   await writeFile(join(stagingDir, 'payload.txt'), 'original')
   if (options.worker) {

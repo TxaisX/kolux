@@ -5,7 +5,7 @@
  * no phone had ever touched.
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { BROWSER_SCREENCAST_METHODS } from './rpc/methods/browser-screencast'
 import {
@@ -112,7 +112,7 @@ describe('browser.screencast RPC wiring', () => {
         getRuntimeId: () => 'test-runtime',
         browserScreencast,
         cleanupSubscription: vi.fn()
-      } as unknown as NightshiftRuntimeService
+      } as unknown as KoluxRuntimeService
       const dispatcher = new RpcDispatcher({ runtime, methods: BROWSER_SCREENCAST_METHODS })
 
       await dispatcher.dispatchStreaming(

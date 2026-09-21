@@ -57,7 +57,7 @@ async function installCaptureHook(
       "process.stdin.on('data', (chunk) => { input += chunk })",
       "process.stdin.on('end', () => {",
       '  const payload = JSON.parse(input)',
-      '  payload.launchToken = process.env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN',
+      '  payload.launchToken = process.env.KOLUX_AGENT_LAUNCH_TOKEN',
       '  appendFileSync(process.argv[2], `${JSON.stringify(payload)}\\n`)',
       '})',
       ''
@@ -130,7 +130,7 @@ function spawnResumeTui(args: string[], env: Record<string, string>): RunningTui
 
 function structuredIdentity(providerSessionId: string): AgentSessionJournalIdentity {
   return {
-    sessionId: 'nightshift-real-claude-resume',
+    sessionId: 'kolux-real-claude-resume',
     workspaceId: 'workspace-real',
     hostId: 'local',
     agent: 'claude',
@@ -170,7 +170,7 @@ afterEach(async () => {
 
 describe.skipIf(!claudeAuthenticated)('real Claude TUI resume proof', () => {
   it('resumes a product-created structured session and proves its exact child', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-claude-tui-resume-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-claude-tui-resume-'))
     roots.push(root)
     const { eventsPath, settingsPath } = await installCaptureHook(root)
     const providerSessionId = randomUUID()
@@ -202,13 +202,13 @@ describe.skipIf(!claudeAuthenticated)('real Claude TUI resume proof', () => {
       })
       await expect(
         adapter.dispatch({
-          sessionId: 'nightshift-real-claude-resume',
+          sessionId: 'kolux-real-claude-resume',
           clientMessageId: 'real-product-turn',
           fence: 1,
           body: {
             kind: 'message',
             role: 'user',
-            blocks: [{ type: 'text', text: 'Reply only with NIGHTSHIFT_RESUME_READY.' }]
+            blocks: [{ type: 'text', text: 'Reply only with KOLUX_RESUME_READY.' }]
           }
         })
       ).resolves.toMatchObject({ state: 'accepted' })
@@ -220,7 +220,7 @@ describe.skipIf(!claudeAuthenticated)('real Claude TUI resume proof', () => {
       await adapter.closeAll()
 
       const record = {
-        sessionId: 'nightshift-real-claude-resume',
+        sessionId: 'kolux-real-claude-resume',
         provider: 'claude',
         location: { workspaceId: 'workspace-real' },
         accountHome: { variable: 'CLAUDE_CONFIG_DIR', path: claudeConfigDir },

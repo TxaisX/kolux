@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import {
   blockDockerSshRelayTargetTcpForwarding,
@@ -44,7 +44,7 @@ const COOKIE_PAIR = `${SSH_REMOTE_ONLY_COOKIE_NAME}=${SSH_REMOTE_ONLY_COOKIE_VAL
 const LOGIN_URL = `${SSH_REMOTE_ONLY_ORIGIN}/login`
 const ECHO_URL = `${SSH_REMOTE_ONLY_ORIGIN}/echo/session`
 const OPT_OUT_URL = `${SSH_REMOTE_ONLY_ORIGIN}/echo/opt-out`
-const ROUTE_PARTITION_RE = /^persist:nightshift-browser-v1-[a-f0-9]{64}$/
+const ROUTE_PARTITION_RE = /^persist:kolux-browser-v1-[a-f0-9]{64}$/
 
 const FORWARDING_BLOCKED_TITLE = 'The SSH server blocks browser traffic'
 const SSH_UNAVAILABLE_TITLE = 'SSH connection unavailable'
@@ -68,8 +68,8 @@ type ReloadOutcome = {
 }
 
 test.skip(
-  process.env.NIGHTSHIFT_E2E_LOCAL_SSH_BROWSER !== '1',
-  'Run with NIGHTSHIFT_E2E_LOCAL_SSH_BROWSER=1 (requires Docker)'
+  process.env.KOLUX_E2E_LOCAL_SSH_BROWSER !== '1',
+  'Run with KOLUX_E2E_LOCAL_SSH_BROWSER=1 (requires Docker)'
 )
 
 // Why: every workspace here is created on the SSH target, so the seeded local repo is dead weight
@@ -270,20 +270,20 @@ function censusFor(
 }
 
 test('routes SSH-workspace browsing through the SSH host, fail-closed across a real drop', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(900_000)
   let target: DockerSshRelayTarget | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
 
     target = startDockerSshRelayTarget(testInfo)
     startSshRemoteOnlyBrowserFixture(target)
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+    const remote = await connectDockerSshRelayTarget(koluxPage, target)
     const worktreeId = remote.worktreeId
 
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ repoId, worktreeId }) =>
           (window.__store?.getState().worktreesByRepo[repoId] ?? []).find(
             (worktree) => worktree.id === worktreeId
@@ -293,7 +293,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
       'the workspace must execute on the directly-connected SSH target'
     ).toBe(`ssh:${remote.targetId}`)
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         (repoId) =>
           window.__store?.getState().repos.find((repo) => repo.id === repoId)?.connectionId ?? null,
         remote.repoId
@@ -303,12 +303,12 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
 
     // Installed before the first tab: a webview that mounts on the wrong session and is replaced
     // milliseconds later is invisible to any after-the-fact DOM read.
-    await installBrowserPaneMountCensus(nightshiftPage)
+    await installBrowserPaneMountCensus(koluxPage)
 
     // (1) Remote-only origin renders -- the causal egress oracle.
-    const loginTab = await createBrowserTab(nightshiftPage, worktreeId, LOGIN_URL, 'SSH login')
+    const loginTab = await createBrowserTab(koluxPage, worktreeId, LOGIN_URL, 'SSH login')
     const loginMarker = await waitForTabMarker(
-      nightshiftPage,
+      koluxPage,
       loginTab.id,
       'the SSH-routed guest never rendered the container-only origin'
     )
@@ -317,13 +317,13 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     )
 
     // (2) Partition shape + the gate's fail-closed mount order.
-    const loginProbe = await probeTabWebview(nightshiftPage, loginTab.id)
+    const loginProbe = await probeTabWebview(koluxPage, loginTab.id)
     expect(
       loginProbe?.partition,
       'SSH-workspace pages must mount on a derived route partition'
     ).toMatch(ROUTE_PARTITION_RE)
 
-    const routedCensus = await readBrowserPaneMountCensus(nightshiftPage)
+    const routedCensus = await readBrowserPaneMountCensus(koluxPage)
     await testInfo.attach('mount-census-routed', {
       body: JSON.stringify(routedCensus, null, 2),
       contentType: 'application/json'
@@ -358,19 +358,19 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     ).toBeNull()
 
     // A second tab on the same partition proves the cookie jar is shared before the drop.
-    const echoTab = await createBrowserTab(nightshiftPage, worktreeId, ECHO_URL, 'SSH echo')
+    const echoTab = await createBrowserTab(koluxPage, worktreeId, ECHO_URL, 'SSH echo')
     const echoMarker = await waitForTabMarker(
-      nightshiftPage,
+      koluxPage,
       echoTab.id,
       'the second SSH-routed guest never rendered the container-only origin'
     )
     expect(echoMarker, 'the pre-drop request must carry the planted cookie').toContain(COOKIE_PAIR)
     expect(
-      (await probeTabWebview(nightshiftPage, echoTab.id))?.partition,
+      (await probeTabWebview(koluxPage, echoTab.id))?.partition,
       'both SSH-workspace tabs must share one route partition'
     ).toBe(loginProbe?.partition)
 
-    const beforeDrop = await readSshState(nightshiftPage, remote.targetId)
+    const beforeDrop = await readSshState(koluxPage, remote.targetId)
     expect(beforeDrop.status).toBe('connected')
     expect(beforeDrop.connectionGeneration).not.toBeNull()
     const requestsBeforeDrop = readSshRemoteOnlyRequests(target).length
@@ -385,7 +385,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     await expect
       .poll(
         async () => {
-          dropOutcome = await reloadTab(nightshiftPage, echoTab.id, 30_000)
+          dropOutcome = await reloadTab(koluxPage, echoTab.id, 30_000)
           return dropOutcome.outcome
         },
         {
@@ -400,11 +400,11 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
       contentType: 'application/json'
     })
     expect(
-      await readPageLoadError(nightshiftPage, echoTab.id),
+      await readPageLoadError(koluxPage, echoTab.id),
       'the fenced page must surface a load failure in the product state'
     ).not.toBeNull()
     expect(
-      (await probeTabWebview(nightshiftPage, echoTab.id))?.marker ?? null,
+      (await probeTabWebview(koluxPage, echoTab.id))?.marker ?? null,
       'the fenced page must not still be showing remote content'
     ).toBeNull()
     expect(
@@ -413,7 +413,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     ).toBe(requestsBeforeDrop)
 
     // Reconnect: same SOCKS port, new SSH generation, same tab.
-    const afterDrop = await reconnectSshTarget(nightshiftPage, remote.targetId)
+    const afterDrop = await reconnectSshTarget(koluxPage, remote.targetId)
     expect(
       afterDrop.connectionGeneration,
       'a reconnect must mint a new SSH connection generation'
@@ -423,7 +423,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     await expect
       .poll(
         async () => {
-          recoveryOutcome = await reloadTab(nightshiftPage, echoTab.id, 30_000)
+          recoveryOutcome = await reloadTab(koluxPage, echoTab.id, 30_000)
           return recoveryOutcome.outcome
         },
         {
@@ -434,7 +434,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
       )
       .toBe('loaded')
     const recoveredMarker = await waitForTabMarker(
-      nightshiftPage,
+      koluxPage,
       echoTab.id,
       'the reconnected guest never re-rendered the container-only origin'
     )
@@ -443,7 +443,7 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
       'the post-reconnect request must still carry the cookie planted before the drop'
     ).toContain(COOKIE_PAIR)
     expect(
-      (await probeTabWebview(nightshiftPage, echoTab.id))?.partition,
+      (await probeTabWebview(koluxPage, echoTab.id))?.partition,
       'a reconnect must not mint a fresh partition'
     ).toBe(loginProbe?.partition)
 
@@ -465,39 +465,39 @@ test('routes SSH-workspace browsing through the SSH host, fail-closed across a r
     // (5) Opt-out: a new tab must mount unrouted -- and then it cannot reach the origin at all,
     // which is the negative control for every rendered marker above.
     const requestsBeforeOptOut = readSshRemoteOnlyRequests(target).length
-    await nightshiftPage.evaluate(async () => {
+    await koluxPage.evaluate(async () => {
       await window.__store?.getState().updateSettings({ browserSshWorkspaceRoutingEnabled: false })
     })
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () => window.__store?.getState().settings?.browserSshWorkspaceRoutingEnabled ?? null
           ),
         { timeout: 30_000, message: 'the routing opt-out never reached the renderer store' }
       )
       .toBe(false)
 
-    const optOutTab = await createBrowserTab(nightshiftPage, worktreeId, OPT_OUT_URL, 'SSH opt-out')
+    const optOutTab = await createBrowserTab(koluxPage, worktreeId, OPT_OUT_URL, 'SSH opt-out')
     await expect
-      .poll(async () => (await probeTabWebview(nightshiftPage, optOutTab.id))?.partition ?? null, {
+      .poll(async () => (await probeTabWebview(koluxPage, optOutTab.id))?.partition ?? null, {
         timeout: 60_000,
         message: 'the opt-out tab never attached a guest'
       })
       .not.toBeNull()
-    const optOutPartition = (await probeTabWebview(nightshiftPage, optOutTab.id))?.partition
+    const optOutPartition = (await probeTabWebview(koluxPage, optOutTab.id))?.partition
     expect(
       optOutPartition,
       'with routing disabled a new tab must not mount on a route partition'
     ).not.toMatch(ROUTE_PARTITION_RE)
 
-    const optOutCensus = censusFor(await readBrowserPaneMountCensus(nightshiftPage), optOutTab.id)
+    const optOutCensus = censusFor(await readBrowserPaneMountCensus(koluxPage), optOutTab.id)
     expect(
       optOutCensus.some((entry) => entry.kind === 'gate-preparing'),
       'the opt-out pane must skip the SSH-routing gate entirely'
     ).toBe(false)
     await expect
-      .poll(async () => (await reloadTab(nightshiftPage, optOutTab.id, 30_000)).outcome, {
+      .poll(async () => (await reloadTab(koluxPage, optOutTab.id, 30_000)).outcome, {
         timeout: 120_000,
         intervals: [1_000, 2_000],
         message: 'an unrouted guest reached the container-only origin, so the oracle is not causal'
@@ -550,15 +550,15 @@ async function startHostPublishedOrigin(): Promise<{ url: string; close: () => P
  * nothing about which machine opened the socket.
  */
 test('holds the mount and offers a working local escape hatch when the SSH host is unavailable', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(900_000)
   let target: DockerSshRelayTarget | null = null
   let hostOrigin: { url: string; close: () => Promise<void> } | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
     // Why: the gate's cards are asserted by their user-visible English text.
-    await nightshiftPage.evaluate(async () => {
+    await koluxPage.evaluate(async () => {
       await window.__store?.getState().updateSettings({ uiLanguage: 'en' })
     })
 
@@ -566,16 +566,16 @@ test('holds the mount and offers a working local escape hatch when the SSH host 
     target = startDockerSshRelayTarget(testInfo)
     // The container-only origin stays healthy for the whole test; nothing may ever reach it.
     startSshRemoteOnlyBrowserFixture(target)
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+    const remote = await connectDockerSshRelayTarget(koluxPage, target)
     const worktreeId = remote.worktreeId
 
-    await installBrowserPaneMountCensus(nightshiftPage)
-    await nightshiftPage.evaluate(
+    await installBrowserPaneMountCensus(koluxPage)
+    await koluxPage.evaluate(
       async (targetId) => window.api.ssh.disconnect({ targetId }),
       remote.targetId
     )
     await expect
-      .poll(async () => (await readSshState(nightshiftPage, remote.targetId)).status, {
+      .poll(async () => (await readSshState(koluxPage, remote.targetId)).status, {
         timeout: 60_000,
         message: 'the SSH target never left the connected state'
       })
@@ -583,18 +583,18 @@ test('holds the mount and offers a working local escape hatch when the SSH host 
 
     // (a) The gate holds the mount: no guest may exist while routing is unavailable.
     const strandedTab = await createBrowserTab(
-      nightshiftPage,
+      koluxPage,
       worktreeId,
       hostOrigin.url,
       'SSH unavailable'
     )
-    const strandedPane = nightshiftPage.locator(`[data-browser-overlay-tab-id="${strandedTab.id}"]`)
+    const strandedPane = koluxPage.locator(`[data-browser-overlay-tab-id="${strandedTab.id}"]`)
     await expect(
       strandedPane.getByText(SSH_UNAVAILABLE_TITLE),
       'an unreachable SSH host must be classified, not reported as a generic failure'
     ).toBeVisible({ timeout: 180_000 })
 
-    const strandedCensus = await readBrowserPaneMountCensus(nightshiftPage)
+    const strandedCensus = await readBrowserPaneMountCensus(koluxPage)
     await testInfo.attach('mount-census-ssh-unavailable', {
       body: JSON.stringify(censusFor(strandedCensus, strandedTab.id), null, 2),
       contentType: 'application/json'
@@ -624,7 +624,7 @@ test('holds the mount and offers a working local escape hatch when the SSH host 
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               window.__store?.getState().settings?.browserSshWorkspaceRoutingDisabledTargetIds ??
               null
@@ -633,21 +633,18 @@ test('holds the mount and offers a working local escape hatch when the SSH host 
       )
       .toContain(remote.targetId)
     await expect
-      .poll(async () => (await probeTabWebview(nightshiftPage, strandedTab.id))?.marker ?? null, {
+      .poll(async () => (await probeTabWebview(koluxPage, strandedTab.id))?.marker ?? null, {
         timeout: 120_000,
         intervals: [250, 500, 1_000],
         message: 'the escape hatch never produced a page that could load from this device'
       })
       .toBe(LOCAL_DEVICE_MARKER)
-    const escapedPartition = (await probeTabWebview(nightshiftPage, strandedTab.id))?.partition
+    const escapedPartition = (await probeTabWebview(koluxPage, strandedTab.id))?.partition
     expect(
       escapedPartition,
       'the explicit local-browsing choice must mount off the route partition'
     ).not.toMatch(ROUTE_PARTITION_RE)
-    for (const entry of censusFor(
-      await readBrowserPaneMountCensus(nightshiftPage),
-      strandedTab.id
-    )) {
+    for (const entry of censusFor(await readBrowserPaneMountCensus(koluxPage), strandedTab.id)) {
       if (entry.kind === 'webview') {
         expect(
           entry.partition,
@@ -686,15 +683,15 @@ test('holds the mount and offers a working local escape hatch when the SSH host 
  * render a marker, and no amount of "it failed either way" could hide it.
  */
 test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway routed', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(900_000)
   let target: DockerSshRelayTarget | null = null
   let hostOrigin: { url: string; close: () => Promise<void> } | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
     // Why: the gate's cards are asserted by their user-visible English text.
-    await nightshiftPage.evaluate(async () => {
+    await koluxPage.evaluate(async () => {
       await window.__store?.getState().updateSettings({ uiLanguage: 'en' })
     })
 
@@ -706,20 +703,20 @@ test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway route
 
     // Connecting at all runs git over SSH, so a green connect is the standing proof that the
     // terminal plane is untouched by the policy — the whole reason this case needs explaining.
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+    const remote = await connectDockerSshRelayTarget(koluxPage, target)
     expect(
-      (await readSshState(nightshiftPage, remote.targetId)).status,
+      (await readSshState(koluxPage, remote.targetId)).status,
       'the SSH target itself must stay healthy; only forwarding is denied'
     ).toBe('connected')
 
-    await installBrowserPaneMountCensus(nightshiftPage)
+    await installBrowserPaneMountCensus(koluxPage)
     const blockedTab = await createBrowserTab(
-      nightshiftPage,
+      koluxPage,
       remote.worktreeId,
       hostOrigin.url,
       'Forwarding blocked'
     )
-    const blockedPane = nightshiftPage.locator(`[data-browser-overlay-tab-id="${blockedTab.id}"]`)
+    const blockedPane = koluxPage.locator(`[data-browser-overlay-tab-id="${blockedTab.id}"]`)
 
     // The card: classified from the wire reason code, not from prose.
     await expect(
@@ -737,7 +734,7 @@ test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway route
       ).toBeVisible()
     }
 
-    const blockedCensus = censusFor(await readBrowserPaneMountCensus(nightshiftPage), blockedTab.id)
+    const blockedCensus = censusFor(await readBrowserPaneMountCensus(koluxPage), blockedTab.id)
     await testInfo.attach('mount-census-forwarding-blocked', {
       body: JSON.stringify(blockedCensus, null, 2),
       contentType: 'application/json'
@@ -758,7 +755,7 @@ test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway route
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               window.__store?.getState().settings
                 ?.browserSshWorkspaceRoutingProbeSkippedTargetIds ?? null
@@ -771,16 +768,13 @@ test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway route
       .toContain(remote.targetId)
 
     await expect
-      .poll(async () => (await probeTabWebview(nightshiftPage, blockedTab.id))?.partition ?? null, {
+      .poll(async () => (await probeTabWebview(koluxPage, blockedTab.id))?.partition ?? null, {
         timeout: 120_000,
         intervals: [250, 500, 1_000],
         message: '"Try anyway" never mounted a guest'
       })
       .not.toBeNull()
-    const overrideCensus = censusFor(
-      await readBrowserPaneMountCensus(nightshiftPage),
-      blockedTab.id
-    )
+    const overrideCensus = censusFor(await readBrowserPaneMountCensus(koluxPage), blockedTab.id)
     const overrideWebviews = overrideCensus.filter((entry) => entry.kind === 'webview')
     expect(overrideWebviews.length, '"Try anyway" attached no guest to inspect').toBeGreaterThan(0)
     for (const entry of overrideWebviews) {
@@ -794,18 +788,18 @@ test('classifies a real AllowTcpForwarding no refusal and keeps Try anyway route
     // The decisive assertion: this URL is reachable from this machine and nowhere else, so a
     // marker here would mean the override had quietly demoted the page to local egress.
     await expect
-      .poll(() => readPageLoadError(nightshiftPage, blockedTab.id), {
+      .poll(() => readPageLoadError(koluxPage, blockedTab.id), {
         timeout: 180_000,
         intervals: [500, 1_000, 2_000],
         message: 'the page loaded even though the SSH server refuses the forwarding it needs'
       })
       .not.toBeNull()
     await testInfo.attach('try-anyway-load-error', {
-      body: JSON.stringify(await readPageLoadError(nightshiftPage, blockedTab.id)),
+      body: JSON.stringify(await readPageLoadError(koluxPage, blockedTab.id)),
       contentType: 'application/json'
     })
     expect(
-      (await probeTabWebview(nightshiftPage, blockedTab.id))?.marker ?? null,
+      (await probeTabWebview(koluxPage, blockedTab.id))?.marker ?? null,
       'the device-only origin rendering would mean the page escaped onto the local network'
     ).toBeNull()
     expect(

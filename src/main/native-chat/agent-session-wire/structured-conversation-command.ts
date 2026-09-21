@@ -189,7 +189,7 @@ export function runStructuredConversationCommand(
               throw new Error('Compaction is unavailable for this provider.')
             }
             const identity = {
-              provider: 'nightshift' as const,
+              provider: 'kolux' as const,
               clientMessageId: `compact:${clientOperationId}`
             }
             await ctx.journal.appendItem(

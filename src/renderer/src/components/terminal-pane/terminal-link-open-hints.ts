@@ -1,4 +1,4 @@
-import { canSourceOwnerOpenInNightshift } from '@/lib/http-link-destinations'
+import { canSourceOwnerOpenInKolux } from '@/lib/http-link-destinations'
 import type { HttpLinkSourceOwner } from '@/lib/http-link-routing'
 
 export function isMacPlatform(): boolean {
@@ -16,11 +16,11 @@ export function getTerminalFileOpenHint(showActions = true): string {
     : `${prefix}Ctrl+click to open, or Shift+Ctrl+click for default app`
 }
 
-export function getTerminalNightshiftFileOpenHint(showActions = true): string {
+export function getTerminalKoluxFileOpenHint(showActions = true): string {
   const prefix = showActions ? 'Click for actions or ' : ''
   return isMacPlatform()
-    ? `${prefix}⌘+click to open in Nightshift`
-    : `${prefix}Ctrl+click to open in Nightshift`
+    ? `${prefix}⌘+click to open in Kolux`
+    : `${prefix}Ctrl+click to open in Kolux`
 }
 
 // Why: local HTML paths keep Shift+modifier as the system-browser shortcut.
@@ -37,7 +37,7 @@ export type TerminalUrlOpenHintOptions = {
   showActions?: boolean
 }
 
-// Why: remote owners advertise Nightshift only when their existing browser route is eligible.
+// Why: remote owners advertise Kolux only when their existing browser route is eligible.
 export function terminalUrlOpenHintOptionsFor(
   settings:
     | {
@@ -50,24 +50,24 @@ export function terminalUrlOpenHintOptionsFor(
   sourceOwner?: HttpLinkSourceOwner,
   canOpenOwnedBrowser = false
 ): TerminalUrlOpenHintOptions {
-  const sourceCanOpenInNightshift = sourceOwner
-    ? canSourceOwnerOpenInNightshift(sourceOwner, canOpenOwnedBrowser)
+  const sourceCanOpenInKolux = sourceOwner
+    ? canSourceOwnerOpenInKolux(sourceOwner, canOpenOwnedBrowser)
     : !settings?.activeRuntimeEnvironmentId?.trim()
   return {
     openLinksInApp: settings?.openLinksInApp === true,
-    modifierInverts: settings?.openLinksInAppModifierInverts === true && sourceCanOpenInNightshift
+    modifierInverts: settings?.openLinksInAppModifierInverts === true && sourceCanOpenInKolux
   }
 }
 
 // Why: with modifierInverts on, Shift no longer always means "system browser" —
 // it means "the other one" — so the hint has to name the actual destination.
 export function getTerminalUrlOpenHint(options: TerminalUrlOpenHintOptions = {}): string {
-  const invertsToNightshift = options.modifierInverts === true && options.openLinksInApp !== true
+  const invertsToKolux = options.modifierInverts === true && options.openLinksInApp !== true
   const prefix = terminalLinkActionHintPrefix(options.showActions !== false)
-  if (invertsToNightshift) {
+  if (invertsToKolux) {
     return isMacPlatform()
-      ? `${prefix}⌘+click to open, or ⇧⌘+click to open in Nightshift`
-      : `${prefix}Ctrl+click to open, or Shift+Ctrl+click to open in Nightshift`
+      ? `${prefix}⌘+click to open, or ⇧⌘+click to open in Kolux`
+      : `${prefix}Ctrl+click to open, or Shift+Ctrl+click to open in Kolux`
   }
   return isMacPlatform()
     ? `${prefix}⌘+click to open, or ⇧⌘+click for system browser`
@@ -80,10 +80,8 @@ export function getTerminalUrlSystemBrowserHint(): string {
 
 // Why: the mirror of the system-browser hint for surfaces where inverting sends the
 // modifier the other way; a plain click there already opens the system browser.
-export function getTerminalUrlNightshiftBrowserHint(): string {
-  return isMacPlatform()
-    ? '⇧⌘+click to open in Nightshift'
-    : 'Shift+Ctrl+click to open in Nightshift'
+export function getTerminalUrlKoluxBrowserHint(): string {
+  return isMacPlatform() ? '⇧⌘+click to open in Kolux' : 'Shift+Ctrl+click to open in Kolux'
 }
 
 export function getTerminalWorktreePathOpenHint(

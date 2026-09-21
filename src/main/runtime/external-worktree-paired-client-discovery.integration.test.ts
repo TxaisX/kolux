@@ -7,7 +7,7 @@ import { scheduleWorktreeBaseNotification } from '../ipc/worktree-base-directory
 import { createWorktreeHeadIdentityRefreshState } from '../ipc/worktree-head-identity-refresh'
 import { EMPTY_HEAD_IDENTITY_SCOPE } from '../ipc/worktree-head-identity-scope'
 import { setWorktreeCatalogRemoteClientNotifier } from '../ipc/watched-worktree-catalog-notification'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import {
   authenticate,
   createReader,
@@ -18,7 +18,7 @@ import {
   type PairedSession,
   type ResponseReader
 } from './paired-client-navigation-test-harness'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 
 vi.mock('../git/worktree', () => ({
   listWorktrees: vi.fn(),
@@ -67,7 +67,7 @@ function catalogPaths(response: Record<string, unknown>): string[] {
 }
 
 describe('external worktree discovery for paired clients', () => {
-  const servers: NightshiftRuntimeRpcServer[] = []
+  const servers: KoluxRuntimeRpcServer[] = []
   const sessions: PairedSession[] = []
   const readers: ResponseReader[] = []
   const tempDirs: string[] = []
@@ -91,11 +91,11 @@ describe('external worktree discovery for paired clients', () => {
   it('publishes one host-scoped catalog invalidation to two paired clients', async () => {
     vi.mocked(listWorktrees).mockResolvedValue([initialWorktree])
     vi.mocked(listWorktreesStrict).mockResolvedValue([initialWorktree])
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     setWorktreeCatalogRemoteClientNotifier(runtime)
     const userDataPath = mkdtempSync(join(tmpdir(), 'o-ewd-'))
     tempDirs.push(userDataPath)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -274,11 +274,11 @@ describe('external worktree discovery for paired clients', () => {
     let scanCount = 0
     vi.mocked(listWorktrees).mockResolvedValue([initialWorktree])
     vi.mocked(listWorktreesStrict).mockResolvedValue([initialWorktree, externalWorktree])
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     setWorktreeCatalogRemoteClientNotifier(runtime)
     const userDataPath = mkdtempSync(join(tmpdir(), 'o-ewd-race-'))
     tempDirs.push(userDataPath)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -395,7 +395,7 @@ describe('external worktree discovery for paired clients', () => {
       ...store.getRepos(),
       { ...localRepo, path: '/remote/repo', connectionId: 'ssh-target-1' }
     ]
-    const runtime = new NightshiftRuntimeService({
+    const runtime = new KoluxRuntimeService({
       ...store,
       getRepo: (id: string) => collidingRepos.find((repo) => repo.id === id),
       getRepos: () => collidingRepos
@@ -403,7 +403,7 @@ describe('external worktree discovery for paired clients', () => {
     setWorktreeCatalogRemoteClientNotifier(runtime)
     const userDataPath = mkdtempSync(join(tmpdir(), 'o-ewd-collision-'))
     tempDirs.push(userDataPath)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -455,11 +455,11 @@ describe('external worktree discovery for paired clients', () => {
   })
 
   it('does not publish a host-blind event for a nested SSH watcher', async () => {
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     setWorktreeCatalogRemoteClientNotifier(runtime)
     const userDataPath = mkdtempSync(join(tmpdir(), 'o-ewd-ssh-owner-'))
     tempDirs.push(userDataPath)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -514,10 +514,10 @@ describe('external worktree discovery for paired clients', () => {
   it('keeps the shared runtime publication valid without a headed renderer', async () => {
     vi.mocked(listWorktrees).mockResolvedValue([initialWorktree])
     vi.mocked(listWorktreesStrict).mockResolvedValue([initialWorktree])
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     const userDataPath = mkdtempSync(join(tmpdir(), 'o-ewd-h-'))
     tempDirs.push(userDataPath)
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,

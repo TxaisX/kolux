@@ -102,7 +102,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
       finishError(
         new RemoteRuntimeClientError(
           'runtime_timeout',
-          'Timed out waiting for the remote Nightshift runtime to respond.',
+          'Timed out waiting for the remote Kolux runtime to respond.',
           { pairingStage: router.pairingStage }
         )
       )
@@ -154,7 +154,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
         finishError(
           new RemoteRuntimeClientError(
             'remote_runtime_unavailable',
-            'Remote Nightshift runtime request was released before it could be sent.'
+            'Remote Kolux runtime request was released before it could be sent.'
           )
         )
         return
@@ -205,7 +205,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
       finishError(
         new RemoteRuntimeClientError(
           'remote_runtime_unavailable',
-          'Could not connect to the remote Nightshift runtime.',
+          'Could not connect to the remote Kolux runtime.',
           { pairingStage: router.pairingStage }
         )
       )
@@ -231,7 +231,7 @@ export async function sendRemoteRuntimeRequestOnSocket<TResult>(
         finishError(
           new RemoteRuntimeClientError(
             'invalid_runtime_response',
-            'Remote Nightshift runtime returned an unexpected binary frame.',
+            'Remote Kolux runtime returned an unexpected binary frame.',
             {
               pairingStage:
                 router.state === 'awaiting_ready' ? 'host-identity' : router.pairingStage

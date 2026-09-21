@@ -9,7 +9,7 @@ import {
   startDockerSshRelayTarget,
   type DockerSshRelayTarget
 } from './helpers/docker-ssh-relay-target'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   getTerminalContent,
@@ -18,8 +18,8 @@ import {
   waitForActiveTerminalManager
 } from './helpers/terminal'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
-const REMOTE_IMAGE_PATH = '/tmp/nightshift-ssh-external-preview.png'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
+const REMOTE_IMAGE_PATH = '/tmp/kolux-ssh-external-preview.png'
 const IMAGE_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR4AWN8z8DwnwEJMDGgAcICAO2mBAXmO4drAAAAAElFTkSuQmCC'
 
@@ -103,11 +103,11 @@ async function activateTerminalLink(page: Page, probe: LinkProbe, text: string):
 }
 
 test.describe('SSH external image preview', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'The disposable SSH host uses POSIX tooling.')
 
   test('opens an image outside the worktree from a terminal link', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
     test.slow()
@@ -122,52 +122,48 @@ test.describe('SSH external image preview', () => {
         `printf '%s' ${shellQuote(IMAGE_BASE64)} | base64 -d > ${shellQuote(REMOTE_IMAGE_PATH)}`
       )
 
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target, {
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target, {
         remotePath: DOCKER_SSH_RELAY_REMOTE_REPO_PATH
       })
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
       const readyMarker = `SSH_PREVIEW_READY_${Date.now()}`
       const encodedReadyMarker = Buffer.from(readyMarker).toString('base64')
       await sendToTerminal(
-        nightshiftPage,
+        koluxPage,
         ptyId,
         `printf '%s' ${shellQuote(encodedReadyMarker)} | base64 -d; printf '\\n'\r`
       )
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 15_000,
           message: 'SSH terminal did not execute the readiness marker'
         })
         .toContain(readyMarker)
 
-      await sendToTerminal(
-        nightshiftPage,
-        ptyId,
-        `printf '%s\\n' ${shellQuote(REMOTE_IMAGE_PATH)}\r`
-      )
+      await sendToTerminal(koluxPage, ptyId, `printf '%s\\n' ${shellQuote(REMOTE_IMAGE_PATH)}\r`)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 15_000,
           message: 'External image path did not reach the SSH terminal'
         })
         .toContain(REMOTE_IMAGE_PATH)
 
-      const probe = await findTerminalLink(nightshiftPage, REMOTE_IMAGE_PATH)
-      await activateTerminalLink(nightshiftPage, probe, REMOTE_IMAGE_PATH)
+      const probe = await findTerminalLink(koluxPage, REMOTE_IMAGE_PATH)
+      await activateTerminalLink(koluxPage, probe, REMOTE_IMAGE_PATH)
 
-      const preview = nightshiftPage.locator(`img[alt="${REMOTE_IMAGE_PATH.split('/').at(-1)}"]`)
+      const preview = koluxPage.locator(`img[alt="${REMOTE_IMAGE_PATH.split('/').at(-1)}"]`)
       await expect(preview).toBeVisible({ timeout: 30_000 })
       expect(await preview.evaluate((element) => (element as HTMLImageElement).naturalWidth)).toBe(
         2
       )
       expect(await preview.getAttribute('src')).toBe(`data:image/png;base64,${IMAGE_BASE64}`)
-      await expect(nightshiftPage.getByText('Unable to load file', { exact: true })).toHaveCount(0)
+      await expect(koluxPage.getByText('Unable to load file', { exact: true })).toHaveCount(0)
 
-      const state = await nightshiftPage.evaluate((filePath) => {
+      const state = await koluxPage.evaluate((filePath) => {
         const file = window.__store?.getState().openFiles.find((item) => item.filePath === filePath)
         return file
           ? {
@@ -189,7 +185,7 @@ test.describe('SSH external image preview', () => {
         createHash('sha256').update(Buffer.from(IMAGE_BASE64, 'base64')).digest('hex')
       )
       await testInfo.attach('ssh-external-image-preview', {
-        body: await nightshiftPage.screenshot(),
+        body: await koluxPage.screenshot(),
         contentType: 'image/png'
       })
     } finally {

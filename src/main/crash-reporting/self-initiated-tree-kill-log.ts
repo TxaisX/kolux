@@ -3,7 +3,7 @@ import type { ProcessTreeKillScope } from '../../shared/child-process/process-tr
 import { recordCoalescedDurableCrashBreadcrumb } from './durable-crash-breadcrumb'
 
 /**
- * Records the force-kills Nightshift itself issues, so a later `render-process-gone`
+ * Records the force-kills Kolux itself issues, so a later `render-process-gone`
  * can say whether we were holding the knife.
  *
  * Why: on Windows a `taskkill /T /F` we issue and an external one produce the
@@ -46,8 +46,8 @@ import { recordCoalescedDurableCrashBreadcrumb } from './durable-crash-breadcrum
  *
  * A daemon or relay kill missing from the count is a diagnostics gap, not a
  * missed suspect: those hosts cannot reach a Chromium pid in the first place
- * (see `nightshift-chromium-process-pids.ts`), and a group or Job-Object kill can
- * only contain what Nightshift put in it. Absence is evidence, not proof.
+ * (see `kolux-chromium-process-pids.ts`), and a group or Job-Object kill can
+ * only contain what Kolux put in it. Absence is evidence, not proof.
  */
 
 /** Which mechanism issued the kill; each has a different blast radius. */
@@ -83,9 +83,9 @@ let selfInitiatedKills: SelfInitiatedTreeKill[] = []
 
 /**
  * Whether the kill was addressed by pid and so could have reached a process
- * Nightshift did not put in its target: `taskkill /T /F` walks whatever tree the pid
+ * Kolux did not put in its target: `taskkill /T /F` walks whatever tree the pid
  * owns at kill time, including a recycled pid that is now our renderer. A
- * process group or Job Object contains only what Nightshift placed there, so it is
+ * process group or Job Object contains only what Kolux placed there, so it is
  * structurally incapable of taking a Chromium process with it.
  */
 function isPidAddressedTreeKill(scope: SelfInitiatedTreeKillScope): boolean {
@@ -148,7 +148,7 @@ export function recordSelfInitiatedTreeKill({
 /**
  * A tree-kill we refused because the target is one of our own Chromium
  * processes. Falsifiable on purpose: this crumb appearing in a field bundle is
- * direct proof that Nightshift was about to kill its own renderer.
+ * direct proof that Kolux was about to kill its own renderer.
  */
 export function recordRefusedOwnChromiumTreeKill(target: {
   pid: number
@@ -180,7 +180,7 @@ function describeSelfInitiatedTreeKill(kill: SelfInitiatedTreeKill, goneAt: numb
 }
 
 /**
- * Kills Nightshift issued near `goneAt`, split by whether the mechanism could have
+ * Kills Kolux issued near `goneAt`, split by whether the mechanism could have
  * reached a Chromium process at all — `selfInitiatedTreeKillCount` is the
  * discriminating one, and a pty-scoped sweep must never inflate it. Empty when
  * no instrumented choke point fired; see the module doc for what that omits.

@@ -12,7 +12,7 @@ import { normalizeWindowsRemotePath } from './ssh-remote-platform'
  * means a retry never meets its predecessor's lock; the abandoned file is cleaned up best-effort
  * and never treated as proof of anything.
  */
-export const WINDOWS_STAGED_WRITE_SUFFIX = '.nightshift-partial'
+export const WINDOWS_STAGED_WRITE_SUFFIX = '.kolux-partial'
 
 export function makeWindowsStagingPath(remotePath: string): string {
   return `${remotePath}${WINDOWS_STAGED_WRITE_SUFFIX}-${randomBytes(6).toString('hex')}`

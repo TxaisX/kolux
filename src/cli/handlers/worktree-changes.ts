@@ -40,7 +40,9 @@ async function resolveFolderTarget(
   return { kind: 'folder', folderWorkspaceId, folderPath: folder.folderPath }
 }
 
-async function findEnclosingFolderWorkspace(ctx: HandlerContext): Promise<FolderWorkspaceRow | undefined> {
+async function findEnclosingFolderWorkspace(
+  ctx: HandlerContext
+): Promise<FolderWorkspaceRow | undefined> {
   if (ctx.client.isRemote) {
     return undefined
   }
@@ -52,7 +54,7 @@ async function findEnclosingFolderWorkspace(ctx: HandlerContext): Promise<Folder
 
 /**
  * Read-only worktree selector resolution for `worktree changes`/`worktree overlap`. A folder
- * workspace (a Nightshift-managed plain folder, not a git worktree — see the Folder Workspace
+ * workspace (a Kolux-managed plain folder, not a git worktree — see the Folder Workspace
  * Use Case in AGENTS.md) is not resolvable through `worktree.*`, so an explicit `folder:<id>`
  * selector, or the cwd matching a registered folder workspace when `--worktree` is omitted,
  * short-circuits to the folder branch instead of failing with `selector_not_found`.
@@ -66,7 +68,10 @@ async function resolveWorktreeChangesTarget(ctx: HandlerContext): Promise<Worktr
       return await resolveFolderTarget(ctx, scope.folderWorkspaceId)
     }
     if (raw !== 'active' && raw !== 'current') {
-      return { kind: 'worktree', worktree: await normalizeWorktreeSelectorForCaller(raw, cwd, client) }
+      return {
+        kind: 'worktree',
+        worktree: await normalizeWorktreeSelectorForCaller(raw, cwd, client)
+      }
     }
   }
   try {
@@ -111,7 +116,11 @@ export const WORKTREE_CHANGES_HANDLERS: Record<string, CommandHandler> = {
   'worktree changes': async (ctx) => {
     const target = await resolveWorktreeChangesTarget(ctx)
     if (target.kind === 'folder') {
-      printResult(synthesizeLocalResult(folderChangesResult(target)), ctx.json, formatWorktreeChanges)
+      printResult(
+        synthesizeLocalResult(folderChangesResult(target)),
+        ctx.json,
+        formatWorktreeChanges
+      )
       return
     }
     const result = await ctx.client.call<RuntimeWorktreeChangesResult>('worktree.changes', {
@@ -122,7 +131,11 @@ export const WORKTREE_CHANGES_HANDLERS: Record<string, CommandHandler> = {
   'worktree overlap': async (ctx) => {
     const target = await resolveWorktreeChangesTarget(ctx)
     if (target.kind === 'folder') {
-      printResult(synthesizeLocalResult(folderOverlapResult(target)), ctx.json, formatWorktreeOverlap)
+      printResult(
+        synthesizeLocalResult(folderOverlapResult(target)),
+        ctx.json,
+        formatWorktreeOverlap
+      )
       return
     }
     const result = await ctx.client.call<RuntimeWorktreeOverlapResult>('worktree.overlap', {

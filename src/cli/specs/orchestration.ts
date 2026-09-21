@@ -7,7 +7,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'run-create'],
     summary: 'Create and bind a lightweight orchestration Run',
     usage:
-      'nightshift orchestration run-create --objective <text> [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration run-create --objective <text> [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'objective', 'from', 'retry-request'],
     notes: [
       'A Run is a namespace and home inbox. It never schedules or places workers.',
@@ -18,7 +18,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'run-use'],
     summary: 'Bind this coordinator terminal to an existing Run',
     usage:
-      'nightshift orchestration run-use --id <run_id> [--from <handle>] [--takeover-legacy] [--retry-request <id>] [--json]',
+      'kolux orchestration run-use --id <run_id> [--from <handle>] [--takeover-legacy] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'from', 'takeover-legacy', 'retry-request'],
     notes: [
       '--takeover-legacy must run in the live coordinator agent terminal it binds; it preserves existing worker assignments.'
@@ -27,26 +27,26 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['orchestration', 'run-current'],
     summary: 'Show the Run bound to this coordinator terminal',
-    usage: 'nightshift orchestration run-current [--from <handle>] [--json]',
+    usage: 'kolux orchestration run-current [--from <handle>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'from']
   },
   {
     path: ['orchestration', 'run-list'],
     summary: 'List lightweight orchestration Runs',
-    usage: 'nightshift orchestration run-list [--limit <n>] [--cursor <cursor>] [--json]',
+    usage: 'kolux orchestration run-list [--limit <n>] [--cursor <cursor>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'limit', 'cursor']
   },
   {
     path: ['orchestration', 'run-show'],
     summary: 'Show one lightweight orchestration Run',
-    usage: 'nightshift orchestration run-show --id <run_id> [--json]',
+    usage: 'kolux orchestration run-show --id <run_id> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id']
   },
   {
     path: ['orchestration', 'send'],
     summary: 'Send an inter-agent message',
     usage:
-      'nightshift orchestration send --subject <text> [--to <run:id|dispatch:id|legacy_handle>] [--run <run_id>] [--from <handle>] [--body <text>] [--type <type>] [--priority <level>] [--thread-id <id>] [--payload <json>] [--task-id <id>] [--dispatch-id <id>] [--outcome <succeeded|failed>] [--files-modified <csv>] [--report-path <path>] [--phase <text>] [--retry-request <id>] [--json]',
+      'kolux orchestration send --subject <text> [--to <run:id|dispatch:id|legacy_handle>] [--run <run_id>] [--from <handle>] [--body <text>] [--type <type>] [--priority <level>] [--thread-id <id>] [--payload <json>] [--task-id <id>] [--dispatch-id <id>] [--outcome <succeeded|failed>] [--files-modified <csv>] [--report-path <path>] [--phase <text>] [--retry-request <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'to',
@@ -69,12 +69,12 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     ],
     notes: [
       'Valid --type values: status, dispatch, worker_done, merge_ready, escalation, handoff, decision_gate, question, heartbeat.',
-      'To answer a worker question, use orchestration reply --id <msg_id> --body <text> with the same Nightshift CLI executable.',
+      'To answer a worker question, use orchestration reply --id <msg_id> --body <text> with the same Kolux CLI executable.',
       'On Windows PowerShell, quote group addresses such as --to "@all" or --to "@worktree:<id>".',
       "worker_done and heartbeat are exact-Dispatch signals and cannot target groups; omit --to to use the Dispatch's Run mailbox.",
       'worker_done requires --outcome succeeded or --outcome failed.',
       'From an active Dispatch, an omitted recipient defaults to its owning Run mailbox.',
-      'Use --to dispatch:<id> for attempt-specific coordinator guidance; Nightshift durably relays it to a connected worker server.',
+      'Use --to dispatch:<id> for attempt-specific coordinator guidance; Kolux durably relays it to a connected worker server.',
       'A worker_done with the active task/dispatch IDs completes that task only from the dispatched pane. When stable pane identity is unavailable, the sender handle must exactly match the dispatch assignee; injected preambles include the correct --from value.',
       'Prefer --task-id/--dispatch-id/etc. over raw --payload JSON in worker commands; PowerShell strips JSON quotes easily.'
     ]
@@ -83,7 +83,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'check'],
     summary: 'Check messages for a terminal',
     usage:
-      'nightshift orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--json]\n' +
+      'kolux orchestration check [--terminal <handle>] [--run <run_id>] [--ack <delivery_id>] [--unread | --peek | --all] [--types <type,...>] [--format] [--wait] [--timeout-ms <n>] [--retry-request <id>] [--json]\n' +
       "  default: return the bound Run's oldest unacknowledged FIFO batch.\n" +
       '  --ack: acknowledge the prior whole batch before checking/waiting.\n' +
       '  --peek: return only unread messages without marking them read.\n' +
@@ -118,20 +118,20 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'reply'],
     summary: 'Reply to a message',
     usage:
-      'nightshift orchestration reply --id <msg_id> --body <text> [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration reply --id <msg_id> --body <text> [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'body', 'run', 'from', 'retry-request']
   },
   {
     path: ['orchestration', 'inbox'],
     summary: 'Show messages across (or for) recipients',
-    usage: 'nightshift orchestration inbox [--limit <n>] [--terminal <handle>] [--full] [--json]',
+    usage: 'kolux orchestration inbox [--limit <n>] [--terminal <handle>] [--full] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'limit', 'terminal', 'full']
   },
   {
     path: ['orchestration', 'task-create'],
     summary: 'Create an orchestration task',
     usage:
-      'nightshift orchestration task-create --spec <text> [--task-title <text>] [--display-name <text>] [--deps <json_array>] [--parent <task_id>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration task-create --spec <text> [--task-title <text>] [--display-name <text>] [--deps <json_array>] [--parent <task_id>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'spec',
@@ -148,7 +148,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'task-list'],
     summary: 'List orchestration tasks',
     usage:
-      'nightshift orchestration task-list [--status <status>] [--ready] [--brief] [--run <run_id>] [--from <handle>] [--json]',
+      'kolux orchestration task-list [--status <status>] [--ready] [--brief] [--run <run_id>] [--from <handle>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'status', 'ready', 'brief', 'run', 'from'],
     notes: ['--brief collapses whitespace and caps each spec at 160 characters.']
   },
@@ -156,7 +156,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'task-update'],
     summary: 'Update a task status',
     usage:
-      'nightshift orchestration task-update --id <task_id> --status <status> [--result <json>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration task-update --id <task_id> --status <status> [--result <json>] [--run <run_id>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'status', 'result', 'run', 'from', 'retry-request'],
     notes: ['Valid --status values: pending, ready, dispatched, completed, failed, blocked.']
   },
@@ -165,7 +165,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'dispatch'],
     summary: 'Dispatch a task to a terminal',
     usage:
-      'nightshift orchestration dispatch --task <task_id> --to <handle> [--from <handle>] [--run <run_id>] [--inject] [--dry-run] [--return-preamble] [--retry-request <id>] [--json]',
+      'kolux orchestration dispatch --task <task_id> --to <handle> [--from <handle>] [--run <run_id>] [--inject] [--dry-run] [--return-preamble] [--retry-request <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'task',
@@ -181,11 +181,11 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['orchestration', 'request-show'],
     summary: 'Ask whether one orchestration mutation request already took effect',
-    usage: 'nightshift orchestration request-show --request <request_id> [--json]',
+    usage: 'kolux orchestration request-show --request <request_id> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'request'],
     notes: [
       'Read-only: it never starts, retries, or settles anything, so it is safe to run after any lost response.',
-      'completed means the mutation landed and --retry-request replays the recorded outcome instead of starting a second one. pending means the original mutation is still running or Nightshift restarted before recording its outcome; wait for a live original command, otherwise replay with --retry-request.',
+      'completed means the mutation landed and --retry-request replays the recorded outcome instead of starting a second one. pending means the original mutation is still running or Kolux restarted before recording its outcome; wait for a live original command, otherwise replay with --retry-request.',
       'absent means this runtime holds no receipt for that request under your caller identity: it never arrived, it failed before recording anything, or the receipt was pruned. Absent is not proof that nothing happened.'
     ]
   },
@@ -193,14 +193,14 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'dispatch-show'],
     summary: 'Show dispatch context for a task',
     usage:
-      'nightshift orchestration dispatch-show --task <task_id> [--preamble] [--from <handle>] [--json]',
+      'kolux orchestration dispatch-show --task <task_id> [--preamble] [--from <handle>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'task', 'preamble', 'from']
   },
   {
     path: ['orchestration', 'ask'],
     summary: 'Ask the coordinator a question and block until answered',
     usage:
-      'nightshift orchestration ask (--question <text> | --resume <message_id>) [--to <run:id>] [--run <run_id>] [--options <csv>] [--timeout-ms <n>] [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration ask (--question <text> | --resume <message_id>) [--to <run:id>] [--run <run_id>] [--options <csv>] [--timeout-ms <n>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'to',
@@ -223,7 +223,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     aliases: [['orchestration', 'run']],
     summary: 'Retired: load the current orchestration skill',
     usage:
-      'nightshift orchestration coordinator-start --spec <text> [--from <handle>] [--poll-interval-ms <n>] [--max-concurrent <n>] [--worktree <selector>] [--json]',
+      'kolux orchestration coordinator-start --spec <text> [--from <handle>] [--poll-interval-ms <n>] [--max-concurrent <n>] [--worktree <selector>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'spec',
@@ -241,7 +241,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'coordinator-stop'],
     aliases: [['orchestration', 'run-stop']],
     summary: 'Retired: load the current orchestration skill',
-    usage: 'nightshift orchestration coordinator-stop [--json]',
+    usage: 'kolux orchestration coordinator-stop [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
     notes: [
       'This command performs no effects and returns the exact `skills get orchestration --full` recovery action.'
@@ -251,21 +251,21 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'gate-create'],
     summary: 'Create a decision gate blocking a task',
     usage:
-      'nightshift orchestration gate-create --task <task_id> --question <text> [--options <json_array>] [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration gate-create --task <task_id> --question <text> [--options <json_array>] [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'task', 'question', 'options', 'from', 'retry-request']
   },
   {
     path: ['orchestration', 'gate-resolve'],
     summary: 'Resolve a pending decision gate',
     usage:
-      'nightshift orchestration gate-resolve --id <gate_id> --resolution <text> [--from <handle>] [--retry-request <id>] [--json]',
+      'kolux orchestration gate-resolve --id <gate_id> --resolution <text> [--from <handle>] [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id', 'resolution', 'from', 'retry-request']
   },
   {
     path: ['orchestration', 'gate-list'],
     summary: 'List decision gates',
     usage:
-      'nightshift orchestration gate-list [--task <task_id>] [--status <status>] [--run <run_id>] [--from <handle>] [--json]',
+      'kolux orchestration gate-list [--task <task_id>] [--status <status>] [--run <run_id>] [--from <handle>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'task', 'status', 'run', 'from'],
     notes: ['--run inspects a named Run without binding; otherwise gates are scoped to the caller.']
   },
@@ -273,7 +273,7 @@ export const ORCHESTRATION_COMMAND_SPECS: CommandSpec[] = [
     path: ['orchestration', 'reset'],
     summary: 'Reset one explicit orchestration state scope',
     usage:
-      'nightshift orchestration reset (--all | --tasks | --messages) [--retry-request <id>] [--json]',
+      'kolux orchestration reset (--all | --tasks | --messages) [--retry-request <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'all', 'tasks', 'messages', 'retry-request']
   }
 ]

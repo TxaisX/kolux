@@ -24,26 +24,26 @@ describe('getTerminalUrlOpenHint', () => {
     )
   })
 
-  // Why: with links already opening in Nightshift, inverting still lands on the system
-  // browser, so the hint must not promise Nightshift.
-  it('keeps the system-browser wording when inverting but links open in Nightshift', () => {
+  // Why: with links already opening in Kolux, inverting still lands on the system
+  // browser, so the hint must not promise Kolux.
+  it('keeps the system-browser wording when inverting but links open in Kolux', () => {
     stubPlatform(true)
     expect(getTerminalUrlOpenHint({ openLinksInApp: true, modifierInverts: true })).toContain(
       'for system browser'
     )
   })
 
-  it('names Nightshift when inverting and links open externally', () => {
+  it('names Kolux when inverting and links open externally', () => {
     stubPlatform(true)
     expect(getTerminalUrlOpenHint({ openLinksInApp: false, modifierInverts: true })).toBe(
-      'Click for actions, ⌘+click to open, or ⇧⌘+click to open in Nightshift'
+      'Click for actions, ⌘+click to open, or ⇧⌘+click to open in Kolux'
     )
   })
 
   it('uses the Ctrl chord off macOS', () => {
     stubPlatform(false)
     expect(getTerminalUrlOpenHint({ openLinksInApp: false, modifierInverts: true })).toBe(
-      'Click for actions, Ctrl+click to open, or Shift+Ctrl+click to open in Nightshift'
+      'Click for actions, Ctrl+click to open, or Shift+Ctrl+click to open in Kolux'
     )
   })
 
@@ -55,7 +55,7 @@ describe('getTerminalUrlOpenHint', () => {
         modifierInverts: true,
         showActions: false
       })
-    ).toBe('Ctrl+click to open, or Shift+Ctrl+click to open in Nightshift')
+    ).toBe('Ctrl+click to open, or Shift+Ctrl+click to open in Kolux')
   })
 })
 
@@ -69,8 +69,8 @@ describe('terminalUrlOpenHintOptionsFor', () => {
     ).toEqual({ openLinksInApp: false, modifierInverts: true })
   })
 
-  // Why: openHttpLink refuses to route a remote-owned URL into Nightshift, so promising
-  // "open in Nightshift" there would advertise a click that lands somewhere else.
+  // Why: openHttpLink refuses to route a remote-owned URL into Kolux, so promising
+  // "open in Kolux" there would advertise a click that lands somewhere else.
   it('drops inversion while a remote runtime is active', () => {
     stubPlatform(true)
     const options = terminalUrlOpenHintOptionsFor({
@@ -102,7 +102,7 @@ describe('terminalUrlOpenHintOptionsFor', () => {
 
   // Why: a workspace-bound remote pane routes externally even with no globally
   // active runtime, so the global setting alone would advertise an impossible
-  // "open in Nightshift" destination.
+  // "open in Kolux" destination.
   it.each([
     ['runtime', { kind: 'runtime', runtimeEnvironmentId: 'env-1' }] as const,
     ['ssh', { kind: 'ssh', connectionId: 'conn-1' }] as const,
@@ -123,7 +123,7 @@ describe('terminalUrlOpenHintOptionsFor', () => {
   })
 
   // Why: the clicked pane's owner wins over the global runtime — a local pane
-  // can still reach Nightshift while some other pane's runtime is active.
+  // can still reach Kolux while some other pane's runtime is active.
   it('keeps inversion for a local pane while a remote runtime is active', () => {
     stubPlatform(true)
     const options = terminalUrlOpenHintOptionsFor(
@@ -136,10 +136,10 @@ describe('terminalUrlOpenHintOptionsFor', () => {
     )
 
     expect(options.modifierInverts).toBe(true)
-    expect(getTerminalUrlOpenHint(options)).toContain('to open in Nightshift')
+    expect(getTerminalUrlOpenHint(options)).toContain('to open in Kolux')
   })
 
-  it('keeps inversion for a runtime pane when its host can open a Nightshift browser', () => {
+  it('keeps inversion for a runtime pane when its host can open a Kolux browser', () => {
     const options = terminalUrlOpenHintOptionsFor(
       {
         openLinksInApp: false,

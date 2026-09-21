@@ -31,7 +31,7 @@ afterEach(() => {
 })
 
 function userDataPath(): string {
-  const path = mkdtempSync(join(tmpdir(), 'nightshift-relay-region-log-'))
+  const path = mkdtempSync(join(tmpdir(), 'kolux-relay-region-log-'))
   tempPaths.push(path)
   return path
 }
@@ -47,7 +47,7 @@ function sampledProbe(samples: Record<string, number[]>) {
 
 function writeCache(path: string, region: string | null, expiresAt: number): void {
   writeFileSync(
-    join(path, 'nightshift-relay-region-preference.json'),
+    join(path, 'kolux-relay-region-preference.json'),
     JSON.stringify({ v: 1, directorUrl: DIRECTOR, region, expiresAt })
   )
 }

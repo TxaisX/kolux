@@ -60,7 +60,7 @@ describe('PTY mailbox reservation cleanup', () => {
   it.each(['current', 'before-pointer-columns'])(
     'installs the lookup on first open of an existing %s database',
     (version) => {
-      const dir = mkdtempSync(join(tmpdir(), 'nightshift-pointer-release-'))
+      const dir = mkdtempSync(join(tmpdir(), 'kolux-pointer-release-'))
       const path = join(dir, 'orchestration.db')
       try {
         new OrchestrationDb(path).close()

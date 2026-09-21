@@ -1,10 +1,10 @@
 // Operating rules appended to every agent a launch wave starts. Sent to the agent, not shown in UI, so not localized.
-const BRIEF_OPEN = '<nightshift-launch-brief>'
-const BRIEF_CLOSE = '</nightshift-launch-brief>'
+const BRIEF_OPEN = '<kolux-launch-brief>'
+const BRIEF_CLOSE = '</kolux-launch-brief>'
 const BRIEF_PATTERN = new RegExp(`${BRIEF_OPEN}[\\s\\S]*?${BRIEF_CLOSE}`, 'g')
 
 export function launchAgentHandoffPath(worktreeName: string): string {
-  return `.nightshift/handoffs/${worktreeName}.md`
+  return `.kolux/handoffs/${worktreeName}.md`
 }
 
 export function buildLaunchAgentBrief(worktreeName: string, roleBrief?: string | null): string {

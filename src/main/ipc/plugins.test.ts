@@ -23,19 +23,19 @@ beforeEach(() => {
 describe('plugin consent IPC schema', () => {
   it('requires the fingerprint reviewed by the caller', () => {
     expect(() =>
-      parsePluginConsentArgs({ pluginKey: 'nightshift-samples.demo', decision: 'approve' })
+      parsePluginConsentArgs({ pluginKey: 'kolux-samples.demo', decision: 'approve' })
     ).toThrow()
   })
 
   it('accepts an explicit reviewed fingerprint', () => {
     expect(
       parsePluginConsentArgs({
-        pluginKey: 'nightshift-samples.demo',
+        pluginKey: 'kolux-samples.demo',
         reviewedFingerprint: 'sha256-reviewed',
         decision: 'approve'
       })
     ).toEqual({
-      pluginKey: 'nightshift-samples.demo',
+      pluginKey: 'kolux-samples.demo',
       reviewedFingerprint: 'sha256-reviewed',
       decision: 'approve'
     })
@@ -101,27 +101,27 @@ describe('plugin removal authority', () => {
   it('allows installed rows but refuses dev overrides and unknown keys', () => {
     const service = {
       getDiscovered: () => [
-        { pluginKey: 'nightshift-samples.installed', isDev: false },
-        { pluginKey: 'nightshift-samples.dev', isDev: true }
+        { pluginKey: 'kolux-samples.installed', isDev: false },
+        { pluginKey: 'kolux-samples.dev', isDev: true }
       ]
     } as unknown as PluginService
 
-    expect(canRemoveInstalledPlugin(service, 'nightshift-samples.installed')).toBe(true)
-    expect(canRemoveInstalledPlugin(service, 'nightshift-samples.dev')).toBe(false)
-    expect(canRemoveInstalledPlugin(service, 'nightshift-samples.unknown')).toBe(false)
+    expect(canRemoveInstalledPlugin(service, 'kolux-samples.installed')).toBe(true)
+    expect(canRemoveInstalledPlugin(service, 'kolux-samples.dev')).toBe(false)
+    expect(canRemoveInstalledPlugin(service, 'kolux-samples.unknown')).toBe(false)
   })
 
   it('refuses bundled installs because startup would restore them', () => {
     const service = {
-      getDiscovered: () => [{ pluginKey: 'txais.nightshift-theme', isDev: false }]
+      getDiscovered: () => [{ pluginKey: 'txais.kolux-theme', isDev: false }]
     } as unknown as PluginService
     const lock = {
       version: 1,
       plugins: {
-        'txais.nightshift-theme': {
-          pluginKey: 'txais.nightshift-theme',
+        'txais.kolux-theme': {
+          pluginKey: 'txais.kolux-theme',
           version: '1.0.0',
-          source: { kind: 'bundled', bundleId: 'txais.nightshift-theme' },
+          source: { kind: 'bundled', bundleId: 'txais.kolux-theme' },
           resolvedCommit: null,
           contentHash: 'a'.repeat(64),
           consentFingerprint: 'reviewed',
@@ -130,7 +130,7 @@ describe('plugin removal authority', () => {
       }
     } satisfies PluginLockfile
 
-    expect(canRemoveInstalledPlugin(service, 'txais.nightshift-theme', lock)).toBe(false)
+    expect(canRemoveInstalledPlugin(service, 'txais.kolux-theme', lock)).toBe(false)
   })
 })
 

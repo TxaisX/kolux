@@ -38,7 +38,7 @@ import type { LinearApi } from './api/linear-api'
 import type { MobileApi } from './api/mobile-api'
 import type { NativeChatApi } from './api/native-chat-api'
 import type { OnboardingApi, StarNagApi } from './api/onboarding-api'
-import type { NightshiftProfileApi } from './api/nightshift-profile-api'
+import type { KoluxProfileApi } from './api/kolux-profile-api'
 import type {
   ComputerUsePermissionsApi,
   DeveloperPermissionsApi,
@@ -70,7 +70,7 @@ type Merged<T> = { [K in keyof T]: T[K] }
 
 export type PreloadApi = {
   app: AppApi
-  nightshiftProfiles: NightshiftProfileApi
+  koluxProfiles: KoluxProfileApi
   platform: PlatformApi
   e2e: E2EApi
   repos: RepositoryApi

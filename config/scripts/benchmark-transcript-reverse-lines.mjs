@@ -99,7 +99,7 @@ const cases = [
     10000
   ]
 ]
-const directory = mkdtempSync(join(tmpdir(), 'nightshift-transcript-benchmark-'))
+const directory = mkdtempSync(join(tmpdir(), 'kolux-transcript-benchmark-'))
 try {
   for (const [name, text, iterations] of cases) {
     const file = join(directory, 'transcript.jsonl')

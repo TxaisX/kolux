@@ -12,7 +12,7 @@ const bashAvailable = existsSync('/bin/bash')
 /** Sources the omp wrapper from a startup file that already aliased `omp`, then
  *  asserts the file parsed to its end and the alias still reaches the binary. */
 function expectAliasedOmpNameSurvives(shell: string, enableAliases: string): void {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-omp-alias-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-omp-alias-'))
   roots.push(root)
   const bin = join(root, 'bin')
   mkdirSync(bin)
@@ -40,7 +40,7 @@ function expectAliasedOmpNameSurvives(shell: string, enableAliases: string): voi
       env: {
         ...process.env,
         PATH: `${bin}${delimiter}${process.env.PATH ?? ''}`,
-        NIGHTSHIFT_OMP_STATUS_EXTENSION: extension
+        KOLUX_OMP_STATUS_EXTENSION: extension
       }
     }
   )
@@ -58,7 +58,7 @@ afterEach(() => {
 
 // Why: a user alias named omp used to expand into the wrapper's own `omp()`
 // header, and the shell abandons the rest of the startup file at that syntax
-// error — taking every hook Nightshift defines below the wrapper with it.
+// error — taking every hook Kolux defines below the wrapper with it.
 describe.skipIf(process.platform === 'win32')('omp wrapper under a user alias named omp', () => {
   it.skipIf(!bashAvailable)('keeps a user alias named omp working in bash', () => {
     expectAliasedOmpNameSurvives('/bin/bash', 'shopt -s expand_aliases')

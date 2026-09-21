@@ -75,10 +75,10 @@ export function installMainWindowCloseLifecycle(args: {
     if (store.getUI().trayMinimizeNoticeShown !== true) {
       try {
         new Notification({
-          title: 'Nightshift',
+          title: 'Kolux',
           body: translateMain(
             'tray.minimizeNotice.body',
-            'Nightshift is still running in the system tray'
+            'Kolux is still running in the system tray'
           )
         }).show()
       } catch {

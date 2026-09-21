@@ -7,7 +7,7 @@ const WORKTREE_ID = 'repo-1::/workspace/app'
 function createHost(overrides: Partial<RuntimeSkillCommandHost> = {}): RuntimeSkillCommandHost {
   return {
     getRuntimeId: () => 'runtime-1',
-    getUserDataPath: () => '/tmp/nightshift-skill-authority-test',
+    getUserDataPath: () => '/tmp/kolux-skill-authority-test',
     isPackaged: () => true,
     getSettings: () => ({}),
     listRepos: () => [{ id: 'repo-1', path: '/workspace/app' }],

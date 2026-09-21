@@ -21,7 +21,7 @@ describe('toSftpRemotePath', () => {
     expect(toSftpRemotePath('/C:/Users/dev/f.bin')).toBe('/C:/Users/dev/f.bin')
   })
 
-  it('converts the separators Nightshift stores paths with', () => {
+  it('converts the separators Kolux stores paths with', () => {
     expect(toSftpRemotePath('C:\\Users\\dev\\f.bin')).toBe('/C:/Users/dev/f.bin')
   })
 

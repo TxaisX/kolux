@@ -19,12 +19,12 @@ afterEach(() => {
 
 describe('E2E global teardown ownership', () => {
   it('removes every linked run worktree and preserves unrelated siblings', () => {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-teardown-contract-'))
+    const root = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-teardown-contract-'))
     roots.push(root)
-    const repoPath = path.join(root, 'nightshift-e2e-repo-run')
-    const firstWorktreePath = path.join(root, 'nightshift-e2e-worktree-owned')
+    const repoPath = path.join(root, 'kolux-e2e-repo-run')
+    const firstWorktreePath = path.join(root, 'kolux-e2e-worktree-owned')
     const secondWorktreePath = path.join(root, 'e2e-test-owned')
-    const concurrentWorktreePath = path.join(root, 'nightshift-e2e-worktree-concurrent')
+    const concurrentWorktreePath = path.join(root, 'kolux-e2e-worktree-concurrent')
     const unrelatedTestPath = path.join(root, 'e2e-test-unrelated')
     mkdirSync(repoPath)
     mkdirSync(concurrentWorktreePath)

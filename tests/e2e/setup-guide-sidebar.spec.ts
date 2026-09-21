@@ -1,6 +1,6 @@
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import type { SkillDiscoveryResult } from '../../src/shared/skills'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { getStoreState, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const CHECKLIST_TEXT = 'Onboarding checklist'
@@ -11,56 +11,56 @@ type SetupGuideFlashMonitor = {
 }
 
 test.describe('Setup guide sidebar entry', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('does not flash while completed setup waits for capability readiness', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     await installBlockedCompletedCapabilityFakes(electronApp)
-    await nightshiftPage.reload()
-    await nightshiftPage.waitForFunction(() => Boolean(window.__store), null, { timeout: 30_000 })
-    await waitForSessionReady(nightshiftPage)
-    await seedCompletedSetupExceptCapabilityReadiness(nightshiftPage)
+    await koluxPage.reload()
+    await koluxPage.waitForFunction(() => Boolean(window.__store), null, { timeout: 30_000 })
+    await waitForSessionReady(koluxPage)
+    await seedCompletedSetupExceptCapabilityReadiness(koluxPage)
 
     await expect
-      .poll(async () => getStoreState<boolean>(nightshiftPage, 'setupGuideSidebarDismissed'), {
+      .poll(async () => getStoreState<boolean>(koluxPage, 'setupGuideSidebarDismissed'), {
         timeout: 5_000
       })
       .toBe(false)
-    await expect(nightshiftPage.getByText(CHECKLIST_TEXT)).toHaveCount(0)
+    await expect(koluxPage.getByText(CHECKLIST_TEXT)).toHaveCount(0)
 
-    await startSetupGuideFlashMonitor(nightshiftPage)
+    await startSetupGuideFlashMonitor(koluxPage)
 
-    await setActiveViewForFlashProbe(nightshiftPage, 'tasks')
+    await setActiveViewForFlashProbe(koluxPage, 'tasks')
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe('tasks')
-    await nightshiftPage.waitForTimeout(500)
+    await koluxPage.waitForTimeout(500)
 
-    await setActiveViewForFlashProbe(nightshiftPage, 'automations')
+    await setActiveViewForFlashProbe(koluxPage, 'automations')
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe('automations')
-    await nightshiftPage.waitForTimeout(500)
+    await koluxPage.waitForTimeout(500)
 
-    await setActiveViewForFlashProbe(nightshiftPage, 'mobile')
+    await setActiveViewForFlashProbe(koluxPage, 'mobile')
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'), { timeout: 5_000 })
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'), { timeout: 5_000 })
       .toBe('mobile')
-    await nightshiftPage.waitForTimeout(500)
+    await koluxPage.waitForTimeout(500)
 
-    const flashSamples = await stopSetupGuideFlashMonitor(nightshiftPage)
+    const flashSamples = await stopSetupGuideFlashMonitor(koluxPage)
     expect(flashSamples, `setup guide sidebar flashed at ${flashSamples.join(', ')}`).toEqual([])
 
     // Unblock pending skill discovery IPC calls before teardown. Completion
     // after release is covered by the focused progress unit tests.
     await releaseBlockedSkillDiscovery(electronApp)
-    await nightshiftPage.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('nightshift:installed-agent-skills-changed'))
+    await koluxPage.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('kolux:installed-agent-skills-changed'))
     })
   })
 })
@@ -107,9 +107,9 @@ async function installBlockedCompletedCapabilityFakes(
       providers: ['agent-skills'],
       sourceKind: 'home',
       sourceLabel: 'E2E skill home',
-      rootPath: '/tmp/nightshift-e2e-skills',
-      directoryPath: `/tmp/nightshift-e2e-skills/${name}`,
-      skillFilePath: `/tmp/nightshift-e2e-skills/${name}/SKILL.md`,
+      rootPath: '/tmp/kolux-e2e-skills',
+      directoryPath: `/tmp/kolux-e2e-skills/${name}`,
+      skillFilePath: `/tmp/kolux-e2e-skills/${name}/SKILL.md`,
       installed: true,
       updatedAt: 1
     })
@@ -119,7 +119,7 @@ async function installBlockedCompletedCapabilityFakes(
       await waitForSkillDiscoveryRelease()
       return {
         skills: [
-          makeSkill('nightshift-cli', 'e2e-nightshift-cli'),
+          makeSkill('kolux-cli', 'e2e-kolux-cli'),
           makeSkill('computer-use', 'e2e-computer-use'),
           makeSkill('orchestration', 'e2e-orchestration')
         ],

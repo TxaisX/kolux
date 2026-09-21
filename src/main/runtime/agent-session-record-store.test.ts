@@ -126,7 +126,7 @@ async function establishOwner(
 }
 
 beforeEach(async () => {
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-agent-session-store-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-agent-session-store-'))
 })
 
 afterEach(async () => {

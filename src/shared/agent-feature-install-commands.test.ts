@@ -2,41 +2,41 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAgentFeatureSkillInstallArgs,
   buildAgentFeatureSkillInstallCommand,
-  NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_INSTALL_COMMAND,
   buildAgentFeatureSkillUpdateArgs,
   buildAgentFeatureSkillUpdateCommand,
   COMPUTER_USE_SKILL_UPDATE_COMMAND,
   EPHEMERAL_VMS_SKILL_UPDATE_COMMAND,
   LINEAR_TICKETS_SKILL_UPDATE_COMMAND,
-  NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND,
-  NIGHTSHIFT_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND,
+  KOLUX_LINEAR_SKILL_UPDATE_COMMAND,
+  KOLUX_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_UPDATE_COMMAND,
   ORCHESTRATION_SKILL_UPDATE_COMMAND
 } from './agent-feature-install-commands'
 
 describe('agent feature skill commands', () => {
   it('builds a global install command by default', () => {
-    expect(buildAgentFeatureSkillInstallCommand(['nightshift-cli'])).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --global'
+    expect(buildAgentFeatureSkillInstallCommand(['kolux-cli'])).toBe(
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global'
     )
   })
 
   it('drops --global when installing locally', () => {
-    expect(buildAgentFeatureSkillInstallCommand(['nightshift-cli'], { global: false })).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli'
+    expect(buildAgentFeatureSkillInstallCommand(['kolux-cli'], { global: false })).toBe(
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli'
     )
   })
 
   it('repeats --skill per name for multi-skill installs', () => {
-    expect(buildAgentFeatureSkillInstallCommand(['nightshift-cli', 'orchestration'])).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --skill orchestration --global'
+    expect(buildAgentFeatureSkillInstallCommand(['kolux-cli', 'orchestration'])).toBe(
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --skill orchestration --global'
     )
-    expect(buildAgentFeatureSkillInstallArgs(['nightshift-cli', 'orchestration'])).toEqual([
+    expect(buildAgentFeatureSkillInstallArgs(['kolux-cli', 'orchestration'])).toEqual([
       'skills',
       'add',
       'https://github.com/TxaisX/nightshift',
       '--skill',
-      'nightshift-cli',
+      'kolux-cli',
       '--skill',
       'orchestration',
       '--global'
@@ -46,16 +46,16 @@ describe('agent feature skill commands', () => {
   it('keeps the copyable Settings commands interactive by default', () => {
     // Why: -y skips the agent picker. A human pasting from Settings should still
     // get it; only an unattended spawn opts in.
-    expect(buildAgentFeatureSkillInstallCommand(['nightshift-cli'])).not.toContain('-y')
-    expect(buildAgentFeatureSkillUpdateCommand('nightshift-cli')).not.toContain('-y')
-    expect(NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND).not.toContain('-y')
-    expect(NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND).not.toContain('-y')
+    expect(buildAgentFeatureSkillInstallCommand(['kolux-cli'])).not.toContain('-y')
+    expect(buildAgentFeatureSkillUpdateCommand('kolux-cli')).not.toContain('-y')
+    expect(KOLUX_CLI_SKILL_INSTALL_COMMAND).not.toContain('-y')
+    expect(KOLUX_CLI_SKILL_UPDATE_COMMAND).not.toContain('-y')
   })
 
   it('refuses to skip prompts without an install target', () => {
     // Why: -y with no --agent is the one combination that makes `skills add`
     // install into every agent it knows (~75). No caller may express it.
-    expect(() => buildAgentFeatureSkillInstallCommand(['nightshift-cli'], { yes: true })).toThrow(
+    expect(() => buildAgentFeatureSkillInstallCommand(['kolux-cli'], { yes: true })).toThrow(
       'An install target is required when skipping prompts.'
     )
   })
@@ -65,10 +65,10 @@ describe('agent feature skill commands', () => {
     // drops a `-`-leading --agent value, which empties its target list and
     // installs into every agent it knows.
     expect(() =>
-      buildAgentFeatureSkillInstallCommand(['nightshift-cli'], { yes: true, agents: ['-y'] })
+      buildAgentFeatureSkillInstallCommand(['kolux-cli'], { yes: true, agents: ['-y'] })
     ).toThrow('"-y" is not a usable install target.')
     expect(() =>
-      buildAgentFeatureSkillInstallArgs(['nightshift-cli'], {
+      buildAgentFeatureSkillInstallArgs(['kolux-cli'], {
         yes: true,
         agents: ['universal', 'a b']
       })
@@ -77,20 +77,20 @@ describe('agent feature skill commands', () => {
 
   it('appends -y and the targets for an unattended run', () => {
     expect(
-      buildAgentFeatureSkillInstallCommand(['nightshift-cli'], { yes: true, agents: ['universal'] })
+      buildAgentFeatureSkillInstallCommand(['kolux-cli'], { yes: true, agents: ['universal'] })
     ).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --global --agent universal -y'
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global --agent universal -y'
+    )
+    expect(buildAgentFeatureSkillUpdateCommand(['kolux-cli'], { global: false, yes: true })).toBe(
+      'npx skills update kolux-cli --project -y'
     )
     expect(
-      buildAgentFeatureSkillUpdateCommand(['nightshift-cli'], { global: false, yes: true })
-    ).toBe('npx skills update nightshift-cli --project -y')
-    expect(
-      buildAgentFeatureSkillInstallArgs(['nightshift-cli'], {
+      buildAgentFeatureSkillInstallArgs(['kolux-cli'], {
         yes: true,
         agents: ['universal']
       }).at(-1)
     ).toBe('-y')
-    expect(buildAgentFeatureSkillUpdateArgs(['nightshift-cli'], { yes: true }).at(-1)).toBe('-y')
+    expect(buildAgentFeatureSkillUpdateArgs(['kolux-cli'], { yes: true }).at(-1)).toBe('-y')
   })
 
   it('builds single-skill update commands', () => {
@@ -100,41 +100,39 @@ describe('agent feature skill commands', () => {
   })
 
   it('trims and rejects blank update skill names', () => {
-    expect(buildAgentFeatureSkillUpdateCommand('  nightshift-cli  ')).toBe(
-      'npx skills update nightshift-cli --global'
+    expect(buildAgentFeatureSkillUpdateCommand('  kolux-cli  ')).toBe(
+      'npx skills update kolux-cli --global'
     )
     expect(() => buildAgentFeatureSkillUpdateCommand('   ')).toThrow('A skill name is required.')
   })
 
   it('builds multi-skill update commands and selects project scope for --local', () => {
-    expect(buildAgentFeatureSkillUpdateCommand(['nightshift-cli', 'orchestration'])).toBe(
-      'npx skills update nightshift-cli orchestration --global'
+    expect(buildAgentFeatureSkillUpdateCommand(['kolux-cli', 'orchestration'])).toBe(
+      'npx skills update kolux-cli orchestration --global'
     )
-    expect(buildAgentFeatureSkillUpdateCommand(['nightshift-cli'], { global: false })).toBe(
-      'npx skills update nightshift-cli --project'
+    expect(buildAgentFeatureSkillUpdateCommand(['kolux-cli'], { global: false })).toBe(
+      'npx skills update kolux-cli --project'
     )
-    expect(buildAgentFeatureSkillUpdateArgs(['nightshift-cli'], { global: false })).toEqual([
+    expect(buildAgentFeatureSkillUpdateArgs(['kolux-cli'], { global: false })).toEqual([
       'skills',
       'update',
-      'nightshift-cli',
+      'kolux-cli',
       '--project'
     ])
     expect(() => buildAgentFeatureSkillUpdateCommand([])).toThrow('A skill name is required.')
   })
 
   it('exports single-skill update constants without changing install bundles', () => {
-    expect(NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND).toBe('npx skills update nightshift-cli --global')
+    expect(KOLUX_CLI_SKILL_UPDATE_COMMAND).toBe('npx skills update kolux-cli --global')
     expect(COMPUTER_USE_SKILL_UPDATE_COMMAND).toBe('npx skills update computer-use --global')
     expect(ORCHESTRATION_SKILL_UPDATE_COMMAND).toBe('npx skills update orchestration --global')
     expect(EPHEMERAL_VMS_SKILL_UPDATE_COMMAND).toBe(
-      'npx skills update nightshift-per-workspace-env --global'
+      'npx skills update kolux-per-workspace-env --global'
     )
-    expect(NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND).toBe(
-      'npx skills update nightshift-linear --global'
-    )
+    expect(KOLUX_LINEAR_SKILL_UPDATE_COMMAND).toBe('npx skills update kolux-linear --global')
     expect(LINEAR_TICKETS_SKILL_UPDATE_COMMAND).toBe('npx skills update linear-tickets --global')
-    expect(NIGHTSHIFT_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND).toBe(
-      buildAgentFeatureSkillInstallCommand(['nightshift-cli', 'orchestration'])
+    expect(KOLUX_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND).toBe(
+      buildAgentFeatureSkillInstallCommand(['kolux-cli', 'orchestration'])
     )
   })
 })

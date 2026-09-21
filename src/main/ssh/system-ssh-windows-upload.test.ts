@@ -73,7 +73,7 @@ const target = {
   port: 22
 } as unknown as SshTarget
 const hostPlatform = getRemoteHostPlatform('win32-x64')
-const remoteRoot = 'C:/Users/dev/.nightshift-remote'
+const remoteRoot = 'C:/Users/dev/.kolux-remote'
 
 /** Recover the script from `powershell.exe ... -EncodedCommand <base64 utf-16le>`. */
 function decodePowerShellCommand(command: string): string {
@@ -179,8 +179,8 @@ beforeEach(() => {
   failAtSpawn = -1
   clearWindowsRemoteWriteCapabilitiesForTests()
   waitForChannelCloseSpy.mockClear()
-  localDir = mkdtempSync(join(tmpdir(), 'nightshift-win-upload-'))
-  process.env.NIGHTSHIFT_SYSTEM_SFTP_PATH = '/usr/bin/sftp'
+  localDir = mkdtempSync(join(tmpdir(), 'kolux-win-upload-'))
+  process.env.KOLUX_SYSTEM_SFTP_PATH = '/usr/bin/sftp'
   runProcessMock.mockReset()
   acceptSftp()
   spawnSystemSshCommandMock.mockReset()
@@ -200,7 +200,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  delete process.env.NIGHTSHIFT_SYSTEM_SFTP_PATH
+  delete process.env.KOLUX_SYSTEM_SFTP_PATH
   await rm(localDir, { recursive: true, force: true })
 })
 
@@ -230,9 +230,9 @@ describe('Windows upload over sftp', () => {
     expect(sftpBatches[0]!.script.split('\n').filter(Boolean)).toEqual([
       '-mkdir "/C:/Users"',
       '-mkdir "/C:/Users/dev"',
-      '-mkdir "/C:/Users/dev/.nightshift-remote"',
-      '-mkdir "/C:/Users/dev/.nightshift-remote/a"',
-      '-mkdir "/C:/Users/dev/.nightshift-remote/a/b"',
+      '-mkdir "/C:/Users/dev/.kolux-remote"',
+      '-mkdir "/C:/Users/dev/.kolux-remote/a"',
+      '-mkdir "/C:/Users/dev/.kolux-remote/a/b"',
       expect.stringContaining('put ') as unknown as string
     ])
   })
@@ -247,7 +247,7 @@ describe('Windows upload over sftp', () => {
     // A backslash destination silently writes a file named `C` and still exits 0, so the leading
     // slash and forward separators are correctness, not style.
     expect(putDestination(putLines()[0]!)).toMatch(
-      /^\/C:\/Users\/dev\/\.nightshift-remote\/relay\.js\.nightshift-partial-[0-9a-f]{12}$/
+      /^\/C:\/Users\/dev\/\.kolux-remote\/relay\.js\.kolux-partial-[0-9a-f]{12}$/
     )
   })
 
@@ -381,7 +381,7 @@ describe('Windows upload over sftp', () => {
     expect(commands.some((command) => command.script.includes('StreamReader([Console]::'))).toBe(
       false
     )
-    expect(sftpBatches[0]!.script).toContain('-mkdir "/C:/Users/dev/.nightshift-remote"')
+    expect(sftpBatches[0]!.script).toContain('-mkdir "/C:/Users/dev/.kolux-remote"')
   })
 
   it('sweeps the staged bytes when the publish is the thing that fails', async () => {
@@ -470,7 +470,7 @@ describe('Windows upload over sftp', () => {
     })
 
     expect(putLines()).toHaveLength(1)
-    expect(putDestination(putLines()[0]!)).toContain('/C:/Users/dev/.nightshift-remote/b.js')
+    expect(putDestination(putLines()[0]!)).toContain('/C:/Users/dev/.kolux-remote/b.js')
   })
 
   it('does not let a local filename sftp cannot quote become a verdict either', async () => {

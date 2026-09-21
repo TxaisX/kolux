@@ -71,7 +71,7 @@ const CAPTURES = {
   },
   /** `set +m; sleep 300 &`. With job control OFF the job does not get its own process group — it
    *  keeps the SHELL's pgid. So the tty carries exactly one process group, and that group is
-   *  running a build. Reproduced independently on a real Ubuntu host through a Nightshift pane. */
+   *  running a build. Reproduced independently on a real Ubuntu host through a Kolux pane. */
   setMinusMBackground: {
     rootPid: 12,
     table: [

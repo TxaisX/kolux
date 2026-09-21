@@ -25,8 +25,8 @@ export function structuredWorkerTerminalRefusal(
   }
   const error = new Error(
     `${handle} is an agent session, not a terminal, so terminal commands cannot address it. ` +
-      'Read its output with `nightshift terminal read` or `nightshift orchestration worker-read --source transcript`, ' +
-      'send it work with `nightshift orchestration send`, and open it from its chat tab.'
+      'Read its output with `kolux terminal read` or `kolux orchestration worker-read --source transcript`, ' +
+      'send it work with `kolux orchestration send`, and open it from its chat tab.'
   )
   Object.assign(error, { code: AGENT_SESSION_HAS_NO_TERMINAL })
   return error

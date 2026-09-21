@@ -154,7 +154,7 @@ function measure(db, iterations, mutation) {
 }
 
 const options = parseArgs(process.argv)
-const fixtureDir = mkdtempSync(join(tmpdir(), 'nightshift-mutation-receipt-bench-'))
+const fixtureDir = mkdtempSync(join(tmpdir(), 'kolux-mutation-receipt-bench-'))
 try {
   const legacyPath = join(fixtureDir, 'legacy.db')
   const optimizedPath = join(fixtureDir, 'optimized.db')

@@ -37,7 +37,7 @@ export class ClaudeAgentTeamsService {
     const pathValue = [args.shimDir, args.baseEnv[pathKey]]
       .filter(Boolean)
       .join(process.platform === 'win32' ? ';' : ':')
-    const tmuxValue = `/tmp/nightshift-claude-agent-teams/${teamId},0,1`
+    const tmuxValue = `/tmp/kolux-claude-agent-teams/${teamId},0,1`
     const env: Record<string, string> = {
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
       [pathKey]: pathValue,
@@ -45,19 +45,19 @@ export class ClaudeAgentTeamsService {
       TMUX_PANE: leaderPane,
       TERM: 'screen-256color',
       COLORTERM: args.baseEnv.COLORTERM || 'truecolor',
-      NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: teamId,
-      NIGHTSHIFT_AGENT_TEAMS_TOKEN: token,
-      NIGHTSHIFT_AGENT_TEAMS_LEADER_PANE: leaderPane,
-      NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR: args.shimDir
+      KOLUX_AGENT_TEAMS_TEAM_ID: teamId,
+      KOLUX_AGENT_TEAMS_TOKEN: token,
+      KOLUX_AGENT_TEAMS_LEADER_PANE: leaderPane,
+      KOLUX_AGENT_TEAMS_SHIM_DIR: args.shimDir
     }
     if (args.shimBin) {
-      env.NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN = args.shimBin
+      env.KOLUX_AGENT_TEAMS_SHIM_BIN = args.shimBin
     }
-    if (args.baseEnv.NIGHTSHIFT_PAIRING_CODE) {
-      env.NIGHTSHIFT_PAIRING_CODE = args.baseEnv.NIGHTSHIFT_PAIRING_CODE
+    if (args.baseEnv.KOLUX_PAIRING_CODE) {
+      env.KOLUX_PAIRING_CODE = args.baseEnv.KOLUX_PAIRING_CODE
     }
-    if (args.baseEnv.NIGHTSHIFT_ENVIRONMENT) {
-      env.NIGHTSHIFT_ENVIRONMENT = args.baseEnv.NIGHTSHIFT_ENVIRONMENT
+    if (args.baseEnv.KOLUX_ENVIRONMENT) {
+      env.KOLUX_ENVIRONMENT = args.baseEnv.KOLUX_ENVIRONMENT
     }
 
     const leader: TeamPane = { fakePaneId: leaderPane, handle: args.leaderHandle, index: 0 }
@@ -66,7 +66,7 @@ export class ClaudeAgentTeamsService {
       token,
       leaderPane,
       leaderHandle: args.leaderHandle,
-      sessionName: 'nightshift',
+      sessionName: 'kolux',
       windowIndex: '0',
       tmuxValue,
       baseEnv: env,

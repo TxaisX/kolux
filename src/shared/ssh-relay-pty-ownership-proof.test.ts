@@ -74,7 +74,7 @@ describe('planRelayPtySweep', () => {
   })
 
   it('never sweeps a pane the host observes running a named foreground process', () => {
-    // The hand-launched agent: the user typed `claude` in a pane, so Nightshift registered no agent
+    // The hand-launched agent: the user typed `claude` in a pane, so Kolux registered no agent
     // session and agentSessionOwners is empty. Only the host's own observation can see it.
     const plan = planRelayPtySweep(
       [

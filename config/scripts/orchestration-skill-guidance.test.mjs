@@ -44,7 +44,7 @@ describe('orchestration skill routing', () => {
       '"another worktree"',
       'lightweight terminal prompts',
       'shell commands',
-      'Nightshift worktree management',
+      'Kolux worktree management',
       'reading or waiting on terminals'
     ]) {
       expect(description).toContain(trigger)
@@ -55,10 +55,10 @@ describe('orchestration skill routing', () => {
     const description = readDescription()
 
     expect(description).toContain(
-      "Use Computer Use for external browser windows, webviews, Nightshift app UI, or desktop UI outside Nightshift's embedded browser only when the task requires OS/window-level control such as focus, menus, dialogs, coordinates, or screenshots."
+      "Use Computer Use for external browser windows, webviews, Kolux app UI, or desktop UI outside Kolux's embedded browser only when the task requires OS/window-level control such as focus, menus, dialogs, coordinates, or screenshots."
     )
     expect(description).toContain(
-      "`nightshift-cli` for Nightshift's embedded pages and a page-automation tool such as Playwright or CDP for external pages."
+      "`kolux-cli` for Kolux's embedded pages and a page-automation tool such as Playwright or CDP for external pages."
     )
   })
 })
@@ -98,7 +98,7 @@ describe('orchestration kernel', () => {
     expect(kernel).toContain('Compatibility operator')
     expect(kernel).toContain('Ordinary terminal agent')
     expect(kernel).toContain('Model or effort selection does not make a handoff supervised')
-    expect(squash(kernel)).toContain('Never substitute a non-Nightshift subagent tool')
+    expect(squash(kernel)).toContain('Never substitute a non-Kolux subagent tool')
   })
 
   it('makes Dispatch identity, remote uncertainty, folders, and mixed versions a safety floor', () => {
@@ -148,7 +148,7 @@ describe('orchestration kernel', () => {
       "If `worker-start` exits non-zero, do not relaunch. Read the receipt's `failedStage` and `residualResources`"
     )
     expect(kernel).toContain('operator-created process unsupervised')
-    expect(kernel).not.toMatch(/^NIGHTSHIFT terminal create/mu)
+    expect(kernel).not.toMatch(/^KOLUX terminal create/mu)
   })
 
   it('makes worker-start --spec the default and keeps task-create for planned fan-out', () => {
@@ -164,7 +164,7 @@ describe('orchestration kernel', () => {
     expect(kernel).toContain("`worker-list`'s `projection.liveness` is the fleet verdict")
     expect(kernel).toContain("`worker-show`'s `observation.status` is PTY liveness only")
     expect(kernel).toContain('After three consecutive empty waits')
-    expect(kernel).toContain('`NIGHTSHIFT orchestration worker-list --include-remote --json`')
+    expect(kernel).toContain('`KOLUX orchestration worker-list --include-remote --json`')
     expect(kernel).toContain('defaults to the bound Run; `--run <run_id>` overrides')
     expect(kernel).toContain(
       '`projection.attention` categories, `projection.attention.requiresAction`, and literal `projection.nextAction` argv'
@@ -200,7 +200,7 @@ describe('orchestration kernel', () => {
 
     expect(kernel).toContain('Read coordinator follow-ups at each natural checkpoint')
     expect(kernel).toContain('once more immediately before `worker_done`')
-    expect(kernel).toContain('`NIGHTSHIFT orchestration check --terminal <your_handle> --json`')
+    expect(kernel).toContain('`KOLUX orchestration check --terminal <your_handle> --json`')
   })
 
   it('requires full Delivery processing and settled-terminal accounting before ack', () => {
@@ -273,14 +273,14 @@ describe('owned orchestration references', () => {
     expect([...new Set(routed)].sort()).toEqual(shipped)
     // Why the table and not every mention: prose may cite a reference the gate table already routes.
     expect(tableRoutes.sort()).toEqual(shipped)
-    expect(kernel).toContain('NIGHTSHIFT skills get orchestration --full')
+    expect(kernel).toContain('KOLUX skills get orchestration --full')
     // Why: the selector is the cheap path, so the kernel must teach it first and keep
     // `--full` only as the fallback for a CLI build that predates it.
     expect(squash(kernel)).toContain(
-      'run `NIGHTSHIFT skills get orchestration --reference references/<file>.md`'
+      'run `KOLUX skills get orchestration --reference references/<file>.md`'
     )
     expect(squash(kernel)).toContain(
-      'If the CLI rejects `--reference`, run `NIGHTSHIFT skills get orchestration --full`'
+      'If the CLI rejects `--reference`, run `KOLUX skills get orchestration --full`'
     )
     expect(squash(kernel)).toContain('If an older CLI rejects `--full`')
   })
@@ -312,7 +312,7 @@ describe('owned orchestration references', () => {
     expect(reference).toContain('Use `--outcome failed`')
     expect(reference).toContain('After `worker_done`, end the dispatched turn and idle')
     expect(squash(reference)).toContain(
-      'NIGHTSHIFT orchestration check --terminal <worker_handle> --json'
+      'KOLUX orchestration check --terminal <worker_handle> --json'
     )
     expect(squash(reference)).toContain('once more immediately before `worker_done`')
     expect(squash(reference)).toContain(
@@ -344,7 +344,7 @@ describe('owned orchestration references', () => {
 
     expect(reference).toContain('--worktree current --agent codex')
     expect(squash(reference)).toContain(
-      'A worktree selector needs the full `<repo-id>::<path>` value Nightshift returned, passed as `id:<newFullWorktreeId>`; a bare repo id is not a worktree id'
+      'A worktree selector needs the full `<repo-id>::<path>` value Kolux returned, passed as `id:<newFullWorktreeId>`; a bare repo id is not a worktree id'
     )
     expect(reference).toContain('--worktree new-child')
     expect(reference).toContain('--worktree new-top-level')
@@ -356,13 +356,13 @@ describe('owned orchestration references', () => {
     )
     expect(reference).toContain('`live`, `unverifiable`, or `exited`')
     expect(squash(reference)).toContain('unknown stream opcodes can be silently dropped')
-    expect(reference).toContain('printed `nightshift-ide`')
+    expect(reference).toContain('printed `kolux-ide`')
     expect(squash(reference)).toContain(
-      'NIGHTSHIFT project setup-existing-folder --project <project_id> --host <host_id> --path <abs_path> --kind folder --json'
+      'KOLUX project setup-existing-folder --project <project_id> --host <host_id> --path <abs_path> --kind folder --json'
     )
     expect(squash(reference)).toContain('and rejects a plain directory')
     expect(reference).toContain(
-      'NIGHTSHIFT orchestration worker-list --run <run_id> --include-remote --json'
+      'KOLUX orchestration worker-list --run <run_id> --include-remote --json'
     )
     expect(squash(reference)).toContain(
       'enumerate remote workers with `--include-remote` or every one of them reads `unverifiable`'
@@ -420,7 +420,7 @@ describe('owned orchestration references', () => {
   it('names worker-list as the enumerating command and the agent-liveness authority', () => {
     const reference = squash(readReference('recovery-and-cleanup.md'))
 
-    expect(reference).toContain('NIGHTSHIFT orchestration worker-list --run <run_id> --json')
+    expect(reference).toContain('KOLUX orchestration worker-list --run <run_id> --json')
     expect(reference).toContain("`worker-show`'s `observation.status` is PTY liveness only")
     expect(reference).toContain(
       '`projection.attention.categories`, `projection.attention.requiresAction`'
@@ -428,7 +428,7 @@ describe('owned orchestration references', () => {
     expect(reference).toContain('`projection.nextAction` argv')
     expect(reference).toContain('the fleet verdict decides')
     expect(reference).toContain(
-      'NIGHTSHIFT orchestration worker-list --run <run_id> --include-remote --json'
+      'KOLUX orchestration worker-list --run <run_id> --include-remote --json'
     )
     expect(reference).toContain('reads `unverifiable` until you enumerate with `--include-remote`')
     expect(reference).toContain('follow `page.nextCursor` with `--cursor <value>`')
@@ -484,12 +484,12 @@ describe('orchestration install stub', () => {
     const stub = readFileSync(stubPath, 'utf8')
 
     expect(stub).toContain('discovery stub')
-    expect(stub).toContain('NIGHTSHIFT skills get orchestration')
-    expect(stub).toContain('NIGHTSHIFT_CLI_COMMAND')
-    expect(stub).toContain('nightshift-dev')
-    expect(stub).toContain('nightshift-ide')
+    expect(stub).toContain('KOLUX skills get orchestration')
+    expect(stub).toContain('KOLUX_CLI_COMMAND')
+    expect(stub).toContain('kolux-dev')
+    expect(stub).toContain('kolux-ide')
     expect(stub).toContain('GNOME Orca screen reader')
-    expect(stub).not.toMatch(/^nightshift /mu)
+    expect(stub).not.toMatch(/^kolux /mu)
   })
 
   it('performs no orchestration mutation before loading the guide', () => {

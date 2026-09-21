@@ -13,7 +13,7 @@ import { initGitRepoWithEmptyCommit } from './git-init-with-empty-commit'
 
 /**
  * Turns an existing local, non-git folder into a git repo so it can host worktrees
- * (nightshift "Make it a git repo" flow off the non-git-folder dialog). Only ever an
+ * (kolux "Make it a git repo" flow off the non-git-folder dialog). Only ever an
  * empty initial commit — the user's existing files are never staged or committed.
  */
 export function registerRepoInitGitHandler(mainWindow: BrowserWindow, store: Store): void {

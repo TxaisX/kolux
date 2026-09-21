@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { EmulatorPaneSession, SimulatorDeviceRow } from './emulator-pane-types'
 
-export const EMULATOR_LOCAL_SHUTDOWN_EVENT = 'nightshift:emulator-shutdown'
+export const EMULATOR_LOCAL_SHUTDOWN_EVENT = 'kolux:emulator-shutdown'
 
 type UseEmulatorPaneSessionEventsArgs = {
   worktreeId: string
@@ -31,8 +31,8 @@ export function useEmulatorPaneSessionEvents({
       applySession(detail.info, true)
       void refreshDevices(detail.info.deviceUdid || detail.info.device)
     }
-    window.addEventListener('nightshift:emulator-auto-attach', onAuto)
-    return () => window.removeEventListener('nightshift:emulator-auto-attach', onAuto)
+    window.addEventListener('kolux:emulator-auto-attach', onAuto)
+    return () => window.removeEventListener('kolux:emulator-auto-attach', onAuto)
   }, [applySession, refreshDevices, worktreeId])
 
   useEffect(() => {

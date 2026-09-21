@@ -3,15 +3,15 @@ import { argvRequestsServeMode } from './serve-mode-argv'
 import { writeStartupDiagnosticLine, type StartupDiagnosticSink } from './startup-diagnostics'
 
 export const SINGLE_INSTANCE_LOCK_FAILURE_MESSAGE =
-  '[single-instance] Another Nightshift instance is already running for this userData profile; exiting this launch after requesting the existing window. If no Nightshift process is running, this may be an Electron/macOS single-instance lock failure.'
-export const SINGLE_INSTANCE_LOCK_BYPASS_ENV = 'NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK'
-export const SINGLE_INSTANCE_LOCK_E2E_ENFORCE_ENV = 'NIGHTSHIFT_E2E_ENFORCE_SINGLE_INSTANCE_LOCK'
+  '[single-instance] Another Kolux instance is already running for this userData profile; exiting this launch after requesting the existing window. If no Kolux process is running, this may be an Electron/macOS single-instance lock failure.'
+export const SINGLE_INSTANCE_LOCK_BYPASS_ENV = 'KOLUX_BYPASS_SINGLE_INSTANCE_LOCK'
+export const SINGLE_INSTANCE_LOCK_E2E_ENFORCE_ENV = 'KOLUX_E2E_ENFORCE_SINGLE_INSTANCE_LOCK'
 export const SINGLE_INSTANCE_LOCK_BYPASS_MESSAGE =
-  '[single-instance] NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK=1 is set; bypassing the packaged macOS single-instance lock for diagnostics. Do not use this with another Nightshift instance running for the same profile.'
+  '[single-instance] KOLUX_BYPASS_SINGLE_INSTANCE_LOCK=1 is set; bypassing the packaged macOS single-instance lock for diagnostics. Do not use this with another Kolux instance running for the same profile.'
 // Why: stable "another process owns this profile" contract that systemd RestartPreventExitStatus= keys off; changing it silently un-fixes #11935.
 export const SINGLE_INSTANCE_ALREADY_RUNNING_EXIT_CODE = 3
 
-// Why: a duplicate `nightshift serve` is a supervisor artifact, not a user asking for a window; fail open when argv is unavailable.
+// Why: a duplicate `kolux serve` is a supervisor artifact, not a user asking for a window; fail open when argv is unavailable.
 // Why not `argv.includes('--serve')`: the documented systemd unit runs `<binary> serve --port …`, so a
 // duplicate start hands this handler CLI-form argv the CLI redirect never rewrote (#12677) — matching only
 // the flag form would promote the live headless server to a desktop window, un-fixing #11935.
@@ -20,12 +20,12 @@ export function shouldActivateDesktopForSecondInstance(argv: readonly string[] =
 }
 
 /**
- * Why: Nightshift writes two canonical discovery files into `<userData>/`:
- * `nightshift-runtime.json` (RPC endpoint + authToken for the bundled CLI) and
+ * Why: Kolux writes two canonical discovery files into `<userData>/`:
+ * `kolux-runtime.json` (RPC endpoint + authToken for the bundled CLI) and
  * `agent-hooks/endpoint.env` (hook port + token for cursor-agent/claude/codex
  * scripts). Without a single-instance lock, every AppImage/.app double-click
  * boots a fresh Electron main that clobbers both files. When the most recent
- * instance quits, metadata points at a dead pid and `nightshift status` reports
+ * instance quits, metadata points at a dead pid and `kolux status` reports
  * `stale_bootstrap` even though the original process is still running.
  *
  * This helper centralises the lock gate so it is testable in isolation and
@@ -34,7 +34,7 @@ export function shouldActivateDesktopForSecondInstance(argv: readonly string[] =
  *
  * Electron derives the lock identity from the current `userData` path, so
  * callers MUST invoke this AFTER `configureDevUserDataPath(is.dev)` — that
- * way dev (`nightshift-dev` userData) and packaged (`nightshift` userData) runs lock in
+ * way dev (`kolux-dev` userData) and packaged (`kolux` userData) runs lock in
  * separate namespaces instead of serialising against each other.
  */
 export function acquireSingleInstanceLock(

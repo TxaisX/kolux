@@ -1,12 +1,12 @@
 /**
  * E2E tests for splitting terminal panes and the stable UUID leaf identity each
- * split pane carries into its PTY binding, NIGHTSHIFT_PANE_KEY, and context menu.
+ * split pane carries into its PTY binding, KOLUX_PANE_KEY, and context menu.
  *
  * User Prompt:
  * - terminal panes can be split
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   UUID_RE,
   discoverActivePtyId,
@@ -30,13 +30,13 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - terminal panes can be split
    */
-  test('can split terminal pane right', async ({ nightshiftPage }) => {
-    const paneCountBefore = await countVisibleTerminalPanes(nightshiftPage)
+  test('can split terminal pane right', async ({ koluxPage }) => {
+    const paneCountBefore = await countVisibleTerminalPanes(koluxPage)
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, paneCountBefore + 1)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, paneCountBefore + 1)
 
-    const paneCountAfter = await countVisibleTerminalPanes(nightshiftPage)
+    const paneCountAfter = await countVisibleTerminalPanes(koluxPage)
     expect(paneCountAfter).toBe(paneCountBefore + 1)
   })
 
@@ -44,23 +44,23 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - terminal panes can be split
    */
-  test('can split terminal pane down', async ({ nightshiftPage }) => {
-    const paneCountBefore = await countVisibleTerminalPanes(nightshiftPage)
+  test('can split terminal pane down', async ({ koluxPage }) => {
+    const paneCountBefore = await countVisibleTerminalPanes(koluxPage)
 
-    await splitActiveTerminalPane(nightshiftPage, 'horizontal')
-    await waitForPaneCount(nightshiftPage, paneCountBefore + 1)
+    await splitActiveTerminalPane(koluxPage, 'horizontal')
+    await waitForPaneCount(koluxPage, paneCountBefore + 1)
 
-    const paneCountAfter = await countVisibleTerminalPanes(nightshiftPage)
+    const paneCountAfter = await countVisibleTerminalPanes(koluxPage)
     expect(paneCountAfter).toBe(paneCountBefore + 1)
   })
 
-  test('split panes persist PTY bindings by stable UUID leaf id', async ({ nightshiftPage }) => {
-    const paneCountBefore = await countVisibleTerminalPanes(nightshiftPage)
+  test('split panes persist PTY bindings by stable UUID leaf id', async ({ koluxPage }) => {
+    const paneCountBefore = await countVisibleTerminalPanes(koluxPage)
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, paneCountBefore + 1)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, paneCountBefore + 1)
 
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, paneCountBefore + 1)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, paneCountBefore + 1)
     const leafIds = snapshot.panes.map((pane) => pane.leafId)
     const ptyIds = snapshot.panes.map((pane) => pane.ptyId)
 
@@ -76,42 +76,42 @@ test.describe('Terminal Panes', () => {
     ).toBe(false)
   })
 
-  test('terminal process receives NIGHTSHIFT_PANE_KEY with the active UUID leaf id', async ({
-    nightshiftPage
+  test('terminal process receives KOLUX_PANE_KEY with the active UUID leaf id', async ({
+    koluxPage
   }) => {
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const activeLeafId = snapshot.activeLeafId ?? snapshot.panes[0]?.leafId
     if (!activeLeafId) {
       throw new Error('No active pane leaf id found')
     }
 
     const expectedPaneKey = `${snapshot.tabId}:${activeLeafId}`
-    const ptyId = await discoverActivePtyId(nightshiftPage)
-    const marker = `NIGHTSHIFT_PANE_KEY_E2E_${Date.now()}`
+    const ptyId = await discoverActivePtyId(koluxPage)
+    const marker = `KOLUX_PANE_KEY_E2E_${Date.now()}`
 
-    await execInTerminal(nightshiftPage, ptyId, `printf '${marker}=%s\\n' "$NIGHTSHIFT_PANE_KEY"`)
-    await waitForTerminalOutput(nightshiftPage, `${marker}=${expectedPaneKey}`)
+    await execInTerminal(koluxPage, ptyId, `printf '${marker}=%s\\n' "$KOLUX_PANE_KEY"`)
+    await waitForTerminalOutput(koluxPage, `${marker}=${expectedPaneKey}`)
 
     expect(activeLeafId).toMatch(UUID_RE)
   })
 
-  test('terminal context menu copies the stable pane ID', async ({ nightshiftPage }) => {
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+  test('terminal context menu copies the stable pane ID', async ({ koluxPage }) => {
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const leafId = snapshot.panes[0]?.leafId
     if (!leafId) {
       throw new Error('No terminal pane leaf id found')
     }
     const expectedPaneKey = `${snapshot.tabId}:${leafId}`
 
-    await openTerminalContextMenu(nightshiftPage)
-    await nightshiftPage.getByText('Copy Pane ID', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await koluxPage.getByText('Copy Pane ID', { exact: true }).click()
 
     await expect
-      .poll(() => nightshiftPage.evaluate(() => window.api.ui.readClipboardText()), {
+      .poll(() => koluxPage.evaluate(() => window.api.ui.readClipboardText()), {
         timeout: 3_000
       })
       .toBe(expectedPaneKey)
-    await expect(nightshiftPage.getByText('Pane ID copied', { exact: true })).toBeVisible()
+    await expect(koluxPage.getByText('Pane ID copied', { exact: true })).toBeVisible()
     expect(leafId).toMatch(UUID_RE)
   })
 })

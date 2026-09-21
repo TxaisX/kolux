@@ -85,9 +85,9 @@ describe('CdpPdfStreamStore', () => {
     const handle = store.create(Buffer.from('pdf'))
 
     expect(store.ownsHandle({ handle })).toBe(true)
-    expect(handle).toMatch(/^nightshift-pdf-[\da-f-]{36}-\d+$/)
+    expect(handle).toMatch(/^kolux-pdf-[\da-f-]{36}-\d+$/)
     expect(store.ownsHandle({ handle: 'trace-stream' })).toBe(false)
-    expect(store.ownsHandle({ handle: 'nightshift-pdf-forged-1' })).toBe(false)
+    expect(store.ownsHandle({ handle: 'kolux-pdf-forged-1' })).toBe(false)
     expect(store.ownsHandle({})).toBe(false)
   })
 

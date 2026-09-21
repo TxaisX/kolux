@@ -30,8 +30,8 @@ function lastArgv(): string[] {
 function fencedEcho(payload = ''): void {
   runProcessMock.mockImplementation(async (spec: { args: string[] }) => {
     const script = spec.args.at(-1) ?? ''
-    const begin = /__NIGHTSHIFT_WSL_CAPTURE_BEGIN_[a-z0-9]+__/.exec(script)?.[0] ?? ''
-    const end = /__NIGHTSHIFT_WSL_CAPTURE_END_[a-z0-9]+__/.exec(script)?.[0] ?? ''
+    const begin = /__KOLUX_WSL_CAPTURE_BEGIN_[a-z0-9]+__/.exec(script)?.[0] ?? ''
+    const end = /__KOLUX_WSL_CAPTURE_END_[a-z0-9]+__/.exec(script)?.[0] ?? ''
     return {
       environmentResolved: true,
       code: 0,
@@ -155,7 +155,7 @@ describe('scripts', () => {
 
   it('falls back to stdin for a script too large for a command line', async () => {
     // A user hook is the one unbounded script here (`run-both` concatenates two
-    // nightshift.yaml scripts, and a vendored installer is ~15KB). Windows caps the
+    // kolux.yaml scripts, and a vendored installer is ~15KB). Windows caps the
     // command line at 32767, so argv would fail to spawn at all; stdin still
     // runs it, which is the lesser loss.
     seedWslGuestEnvironmentForTests(undefined, ENVIRONMENT)

@@ -62,7 +62,7 @@ function startTurn(state: HookListenerState) {
   deliverIfRegistered(state, hook('UserPromptSubmit', TURN_PROMPT_ID, { prompt: 'do the thing' }))
 }
 
-/** The row AgentHookServer.hydrate() rebuilds for a pane that was stuck `working` when Nightshift last
+/** The row AgentHookServer.hydrate() rebuilds for a pane that was stuck `working` when Kolux last
  *  exited: the previous session's connectionId, the unconfirmed flag, and — when the turn had
  *  spawned one — a child that exists only as a disk snapshot. */
 function hydrateStuckRow(
@@ -106,13 +106,13 @@ describe('Claude compact hook registration', () => {
   it('writes PostCompact, and no PreCompact, into the settings Claude actually reads', () => {
     const written = applyManagedHooks(
       { hooks: {} },
-      { type: 'command', command: 'nightshift-claude-hook' },
+      { type: 'command', command: 'kolux-claude-hook' },
       'claude-hook.sh'
     )
     const postCompact = written.hooks?.PostCompact ?? []
     expect(
       postCompact.some((definition) =>
-        (definition.hooks ?? []).some((entry) => entry.command === 'nightshift-claude-hook')
+        (definition.hooks ?? []).some((entry) => entry.command === 'kolux-claude-hook')
       )
     ).toBe(true)
     expect(written.hooks?.PreCompact).toBeUndefined()

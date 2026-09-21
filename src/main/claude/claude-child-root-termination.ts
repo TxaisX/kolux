@@ -15,7 +15,7 @@ type RootTerminationInput = {
 /**
  * Kills the root through the handle Node owns rather than through its pid, which
  * is why no identity probe gates it: libuv drops that handle in the same turn it
- * reaps, so the signal either reaches the process Nightshift spawned or reaches
+ * reaps, so the signal either reaches the process Kolux spawned or reaches
  * nothing. A probe here could only let an unreadable process table cost the tree
  * the one fallback that still works once every table read has failed.
  *

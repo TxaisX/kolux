@@ -14,7 +14,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -35,7 +35,7 @@ import { WINDOWS_HOOK_STDIN_DRAIN_COMMAND } from '../agent-hooks/hook-stdin-cont
 // delayed expansion cmd eats it out of a percent-expanded curl argument, so bake one into
 // every value the script forwards rather than asserting the `setlocal` line alone.
 const PANE_KEY = 'tab-1:leaf-1!bang'
-const WORKTREE_ID = 'repo-1::C:\\Users\\alice\\nightshift\\feature!branch'
+const WORKTREE_ID = 'repo-1::C:\\Users\\alice\\kolux\\feature!branch'
 const HOOK_TOKEN = 'antigravity-payload-delivery-token'
 // Why: exercise the sizes and bytes a real hook carries — a multi-KB body crosses the pipe
 // in several chunks, and non-ASCII catches a launcher that recodes stdin through a code page.
@@ -74,7 +74,7 @@ async function startHookListener(): Promise<{
         paneKey: form.get('paneKey'),
         worktreeId: form.get('worktreeId'),
         hookEventName: form.get('hook_event_name'),
-        token: (req.headers['x-nightshift-agent-hook-token'] as string | undefined) ?? null,
+        token: (req.headers['x-kolux-agent-hook-token'] as string | undefined) ?? null,
         contentType: (req.headers['content-type'] as string | undefined) ?? null
       })
       res.writeHead(200, { 'content-type': 'application/json' })
@@ -102,7 +102,7 @@ const DELAYED_EXPANSION_STATES = ['off', 'on'] as const satisfies readonly Delay
 function runWrapper(
   wrapperPath: string,
   env: NodeJS.ProcessEnv,
-  // Why: `null` abandons stdin instead of closing it — the shape a caller outside a Nightshift
+  // Why: `null` abandons stdin instead of closing it — the shape a caller outside a Kolux
   // pane produces, and the only way to prove the env guard exits before reading (#11549).
   stdinPayload: string | null = PAYLOAD,
   delayedExpansion: DelayedExpansion = 'off'
@@ -147,7 +147,7 @@ function runWrapper(
 
 function hookEnvironment(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const base = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith('NIGHTSHIFT_'))
+    Object.entries(process.env).filter(([key]) => !key.startsWith('KOLUX_'))
   )
   return { ...base, ...extra }
 }
@@ -167,11 +167,7 @@ describe('Antigravity Windows hook post command', () => {
     const drain = script.indexOf(WINDOWS_HOOK_STDIN_DRAIN_COMMAND)
     const answer = script.lastIndexOf('echo {}')
     expect(drain).toBeGreaterThan(answer)
-    for (const key of [
-      'NIGHTSHIFT_AGENT_HOOK_PORT',
-      'NIGHTSHIFT_AGENT_HOOK_TOKEN',
-      'NIGHTSHIFT_PANE_KEY'
-    ]) {
+    for (const key of ['KOLUX_AGENT_HOOK_PORT', 'KOLUX_AGENT_HOOK_TOKEN', 'KOLUX_PANE_KEY']) {
       const guard = script.indexOf(`if "%${key}%"=="" exit /b 0`)
       expect(guard, key).toBeGreaterThan(answer)
       expect(guard, key).toBeLessThan(drain)
@@ -190,8 +186,8 @@ describe('Antigravity Windows hook post command', () => {
 
     expect(script).not.toMatch(/powershell/i)
     expect(script).toContain('"%SystemRoot%\\System32\\curl.exe" -sS -X POST')
-    expect(script).toContain('http://127.0.0.1:%NIGHTSHIFT_AGENT_HOOK_PORT%/hook/antigravity')
-    expect(script).toContain('--data-urlencode "hook_event_name=%NIGHTSHIFT_ANTIGRAVITY_EVENT%"')
+    expect(script).toContain('http://127.0.0.1:%KOLUX_AGENT_HOOK_PORT%/hook/antigravity')
+    expect(script).toContain('--data-urlencode "hook_event_name=%KOLUX_ANTIGRAVITY_EVENT%"')
     // Why: keep the payload off the command line so multi-KB tool output cannot trip an
     // EDR oversized-command-line rule.
     expect(script).toContain('--data-urlencode "payload@-"')
@@ -218,11 +214,11 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
     // Why the `!` in the directory: it lands in the wrapper's `%~dp0`, which is what an
     // inherited delayed expansion eats (#9358/#9941). Without it the `/v:on` leg below
     // proves nothing about the core lookup.
-    home = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-hook!bang-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-antigravity-hook!bang-'))
     homedirMock.mockReturnValue(home)
     expect(new AntigravityHookService().install().state).toBe('installed')
 
-    const hooksDir = join(home, '.nightshift', 'agent-hooks')
+    const hooksDir = join(home, '.kolux', 'agent-hooks')
     const coreScript = readFileSync(join(hooksDir, 'antigravity-hook.cmd'), 'utf8')
     expect(coreScript).not.toMatch(/powershell/i)
 
@@ -231,10 +227,10 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
     const env = hookEnvironment({
       USERPROFILE: home,
       HOME: home,
-      NIGHTSHIFT_AGENT_HOOK_PORT: String(listener.port),
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: HOOK_TOKEN,
-      NIGHTSHIFT_PANE_KEY: PANE_KEY,
-      NIGHTSHIFT_WORKTREE_ID: WORKTREE_ID
+      KOLUX_AGENT_HOOK_PORT: String(listener.port),
+      KOLUX_AGENT_HOOK_TOKEN: HOOK_TOKEN,
+      KOLUX_PANE_KEY: PANE_KEY,
+      KOLUX_WORKTREE_ID: WORKTREE_ID
     })
 
     for (const delayedExpansion of DELAYED_EXPANSION_STATES) {
@@ -278,20 +274,20 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
   // `{}` before posting; curl forwards the empty body, so prove the post still happens — the
   // listener's matching allowance is covered in agent-hook-listener-antigravity.test.ts.
   it('still posts a status event when the agent supplies no payload', async () => {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-hook-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-antigravity-hook-'))
     homedirMock.mockReturnValue(home)
     expect(new AntigravityHookService().install().state).toBe('installed')
 
     const listener = await startHookListener()
     server = listener.server
     const result = await runWrapper(
-      join(home, '.nightshift', 'agent-hooks', 'antigravity-pre-invocation.cmd'),
+      join(home, '.kolux', 'agent-hooks', 'antigravity-pre-invocation.cmd'),
       hookEnvironment({
         USERPROFILE: home,
         HOME: home,
-        NIGHTSHIFT_AGENT_HOOK_PORT: String(listener.port),
-        NIGHTSHIFT_AGENT_HOOK_TOKEN: HOOK_TOKEN,
-        NIGHTSHIFT_PANE_KEY: PANE_KEY
+        KOLUX_AGENT_HOOK_PORT: String(listener.port),
+        KOLUX_AGENT_HOOK_TOKEN: HOOK_TOKEN,
+        KOLUX_PANE_KEY: PANE_KEY
       }),
       ''
     )
@@ -308,15 +304,15 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
   // Why a helper: the missing-core cases all need a real install with the core removed, which
   // is the shape an AV quarantine or a half-finished uninstall leaves behind.
   async function installWithoutCore(): Promise<string> {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-fallback-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-antigravity-fallback-'))
     homedirMock.mockReturnValue(home)
     expect(new AntigravityHookService().install().state).toBe('installed')
-    const hooksDir = join(home, '.nightshift', 'agent-hooks')
+    const hooksDir = join(home, '.kolux', 'agent-hooks')
     rmSync(join(hooksDir, 'antigravity-hook.cmd'))
     return hooksDir
   }
 
-  it.each(['NIGHTSHIFT_AGENT_HOOK_PORT', 'NIGHTSHIFT_AGENT_HOOK_TOKEN', 'NIGHTSHIFT_PANE_KEY'])(
+  it.each(['KOLUX_AGENT_HOOK_PORT', 'KOLUX_AGENT_HOOK_TOKEN', 'KOLUX_PANE_KEY'])(
     'answers every missing-core event with abandoned stdin and no %s',
     async (missingKey) => {
       const hooksDir = await installWithoutCore()
@@ -325,9 +321,9 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
       const env = hookEnvironment({
         USERPROFILE: home,
         HOME: home,
-        NIGHTSHIFT_AGENT_HOOK_PORT: String(listener.port),
-        NIGHTSHIFT_AGENT_HOOK_TOKEN: HOOK_TOKEN,
-        NIGHTSHIFT_PANE_KEY: PANE_KEY,
+        KOLUX_AGENT_HOOK_PORT: String(listener.port),
+        KOLUX_AGENT_HOOK_TOKEN: HOOK_TOKEN,
+        KOLUX_PANE_KEY: PANE_KEY,
         [missingKey]: ''
       })
       for (const event of ANTIGRAVITY_EVENTS) {
@@ -342,7 +338,7 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
     90_000
   )
 
-  // Why: the guard must not cost the valid path its drain — with the Nightshift env present the
+  // Why: the guard must not cost the valid path its drain — with the Kolux env present the
   // fallback still owns stdin, so the agent's payload write completes instead of breaking.
   it('still drains a closed payload for every missing-core event inside a pane', async () => {
     const hooksDir = await installWithoutCore()
@@ -351,9 +347,9 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
     const env = hookEnvironment({
       USERPROFILE: home,
       HOME: home,
-      NIGHTSHIFT_AGENT_HOOK_PORT: String(listener.port),
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: HOOK_TOKEN,
-      NIGHTSHIFT_PANE_KEY: PANE_KEY
+      KOLUX_AGENT_HOOK_PORT: String(listener.port),
+      KOLUX_AGENT_HOOK_TOKEN: HOOK_TOKEN,
+      KOLUX_PANE_KEY: PANE_KEY
     })
     for (const event of ANTIGRAVITY_EVENTS) {
       const result = await runWrapper(join(hooksDir, event.windowsWrapperFileName), env)
@@ -367,16 +363,16 @@ describe.skipIf(process.platform !== 'win32')('Antigravity Windows hook payload 
   }, 60_000)
 
   it('exits without reading stdin when the pane env is missing', async () => {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-hook-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-antigravity-hook-'))
     homedirMock.mockReturnValue(home)
     expect(new AntigravityHookService().install().state).toBe('installed')
 
     const listener = await startHookListener()
     server = listener.server
-    // Why (#11549): outside a Nightshift pane the caller may abandon stdin rather than close it,
+    // Why (#11549): outside a Kolux pane the caller may abandon stdin rather than close it,
     // so the guard must exit before the read — otherwise the console lingers indefinitely.
     const result = await runWrapper(
-      join(home, '.nightshift', 'agent-hooks', 'antigravity-pre-tool-use.cmd'),
+      join(home, '.kolux', 'agent-hooks', 'antigravity-pre-tool-use.cmd'),
       hookEnvironment({ USERPROFILE: home, HOME: home }),
       null
     )

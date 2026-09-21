@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import { runProcess } from '../../src/shared/child-process/run-process'
 
@@ -9,12 +9,12 @@ test.use({ seedTestRepo: false })
 
 for (const delayCreateResponse of [false, true]) {
   test(`created groups survive sidebar expansion (${delayCreateResponse ? 'refresh first' : 'ordinary timing'})`, async ({
-    nightshiftPage,
+    koluxPage,
     electronApp,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'nightshift-group-visibility-')))
+    await waitForSessionReady(koluxPage)
+    const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), 'kolux-group-visibility-')))
     registerPostElectronShutdownCleanup(async () => {
       rmSync(root, { recursive: true, force: true })
     })
@@ -43,7 +43,7 @@ for (const delayCreateResponse of [false, true]) {
         expect(result.code, result.stderr).toBe(0)
       }
     }
-    const repoIds = await nightshiftPage.evaluate(async (paths) => {
+    const repoIds = await koluxPage.evaluate(async (paths) => {
       const store = window.__store!
       for (const repoPath of paths) {
         await window.api.repos.add({ path: repoPath })
@@ -81,14 +81,14 @@ for (const delayCreateResponse of [false, true]) {
         })
       })
     }
-    const creation = nightshiftPage.evaluate(() =>
+    const creation = koluxPage.evaluate(() =>
       window.__store!.getState().createProjectGroup('Crowded group')
     )
     if (delayCreateResponse) {
       try {
         await expect
           .poll(() =>
-            nightshiftPage.evaluate(() =>
+            koluxPage.evaluate(() =>
               window
                 .__store!.getState()
                 .projectGroups.some((group) => group.name === 'Crowded group')
@@ -110,7 +110,7 @@ for (const delayCreateResponse of [false, true]) {
     if (!createdGroup) {
       throw new Error('Group creation failed')
     }
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       async ({ repoIds, groupId }) => {
         const store = window.__store!
         for (const repoId of repoIds.slice(0, 2)) {
@@ -125,7 +125,7 @@ for (const delayCreateResponse of [false, true]) {
       { repoIds, groupId: createdGroup.id }
     )
 
-    const scroller = nightshiftPage.locator('[data-worktree-sidebar]')
+    const scroller = koluxPage.locator('[data-worktree-sidebar]')
     const group = scroller.locator(`[data-project-group-header-id="${createdGroup.id}"]`)
     const groupedRepos = repoIds
       .slice(0, 2)
@@ -133,7 +133,7 @@ for (const delayCreateResponse of [false, true]) {
     for (const repo of groupedRepos) {
       await expect(repo).toBeVisible()
     }
-    await nightshiftPage.screenshot({ path: testInfo.outputPath('before-expansion.png') })
+    await koluxPage.screenshot({ path: testInfo.outputPath('before-expansion.png') })
     for (const repoId of repoIds.slice(2, 12)) {
       const repo = scroller.locator(`[data-repo-header-id="${repoId}"]`)
       await expect
@@ -158,7 +158,7 @@ for (const delayCreateResponse of [false, true]) {
       }
     }
     await expect(group).toHaveCount(1)
-    await nightshiftPage.evaluate(() => window.__store!.getState().fetchProjectGroups())
+    await koluxPage.evaluate(() => window.__store!.getState().fetchProjectGroups())
     await expect(group).toHaveCount(1)
     await group.click()
     for (const repo of groupedRepos) {
@@ -168,6 +168,6 @@ for (const delayCreateResponse of [false, true]) {
     for (const repo of groupedRepos) {
       await expect(repo).toBeVisible()
     }
-    await nightshiftPage.screenshot({ path: testInfo.outputPath('after-expansion.png') })
+    await koluxPage.screenshot({ path: testInfo.outputPath('after-expansion.png') })
   })
 }

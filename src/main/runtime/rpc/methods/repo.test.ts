@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { REPO_METHODS } from './repo'
 import { WORKTREE_VISIBILITY_DEFAULTS_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { REPO_SEARCH_REFS_MAX_LIMIT } from '../../../../shared/repo-search-limits'
@@ -15,7 +15,7 @@ describe('repo RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       searchRepoRefs: vi.fn().mockResolvedValue({ refs: [], truncated: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -40,7 +40,7 @@ describe('repo RPC methods', () => {
       enrichMissingRepoGitRemoteIdentities: vi.fn(),
       listRepos: () => [{ id: 'repo-1', path: '/repo', externalWorktreeVisibilityLegacy: false }],
       getClientSettings: () => ({ worktreeVisibilityDefaults: { external: 'show' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
     const legacyReplies: string[] = []
     const currentReplies: string[] = []
@@ -71,7 +71,7 @@ describe('repo RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       addRepo: vi.fn().mockResolvedValue(repo),
       getClientSettings: () => ({ worktreeVisibilityDefaults: { external: 'show' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const legacyResponse = await dispatcher.dispatch(
@@ -108,7 +108,7 @@ describe('repo RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       updateProject: vi.fn().mockReturnValue(project)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -135,7 +135,7 @@ describe('repo RPC methods', () => {
       createRepo: vi.fn().mockResolvedValue({
         repo: { id: 'repo-1', path: '/srv/projects/new-app', kind: 'git' }
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -157,7 +157,7 @@ describe('repo RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       isGitAvailable: vi.fn().mockResolvedValue(true)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(makeRequest('repo.gitAvailable'))
@@ -174,26 +174,26 @@ describe('repo RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       cloneRepo: vi.fn().mockResolvedValue({
         id: 'repo-1',
-        path: '/srv/projects/nightshift',
+        path: '/srv/projects/kolux',
         kind: 'git'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
       makeRequest('repo.clone', {
-        url: 'https://github.com/example/nightshift.git',
+        url: 'https://github.com/example/kolux.git',
         destination: '/srv/projects'
       })
     )
 
     expect(runtime.cloneRepo).toHaveBeenCalledWith(
-      'https://github.com/example/nightshift.git',
+      'https://github.com/example/kolux.git',
       '/srv/projects'
     )
     expect(response).toMatchObject({
       ok: true,
-      result: { repo: { id: 'repo-1', path: '/srv/projects/nightshift' } }
+      result: { repo: { id: 'repo-1', path: '/srv/projects/kolux' } }
     })
   })
 
@@ -202,10 +202,10 @@ describe('repo RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       showRepo: vi.fn().mockResolvedValue({
         id: 'repo-1',
-        path: '/srv/projects/nightshift',
+        path: '/srv/projects/kolux',
         kind: 'git'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(makeRequest('repo.show', { repo: 'repo-1' }))
@@ -213,7 +213,7 @@ describe('repo RPC methods', () => {
     expect(runtime.showRepo).toHaveBeenCalledWith('repo-1')
     expect(response).toMatchObject({
       ok: true,
-      result: { repo: { id: 'repo-1', path: '/srv/projects/nightshift' } }
+      result: { repo: { id: 'repo-1', path: '/srv/projects/kolux' } }
     })
   })
 
@@ -230,7 +230,7 @@ describe('repo RPC methods', () => {
           updatedAt: 2
         }
       ])
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -255,7 +255,7 @@ describe('repo RPC methods', () => {
         createdAt: 1,
         updatedAt: 2
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -283,7 +283,7 @@ describe('repo RPC methods', () => {
         hasHooksFile: true,
         hooks: { scripts: { setup: 'pnpm install' } },
         setupRunPolicy: 'run-by-default',
-        source: 'nightshift.yaml',
+        source: 'kolux.yaml',
         setupTrust: {
           contentHash: 'hash-1',
           scriptContent: 'pnpm install'
@@ -306,11 +306,11 @@ describe('repo RPC methods', () => {
         localContent: null,
         sharedContent: 'Fix {{artifact_url}}',
         effectiveContent: 'Fix {{artifact_url}}',
-        localFilePath: '/srv/repo/.nightshift/issue-command',
+        localFilePath: '/srv/repo/.kolux/issue-command',
         source: 'shared'
       }),
       writeRepoIssueCommand: vi.fn().mockResolvedValue({ ok: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const hooksResponse = await dispatcher.dispatch(makeRequest('repo.hooks', { repo: 'repo-1' }))
@@ -343,7 +343,7 @@ describe('repo RPC methods', () => {
         path: '/srv/repo',
         issueSourcePreference: 'origin'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -370,7 +370,7 @@ describe('repo RPC methods', () => {
         path: '/srv/repo',
         forkSyncMode: 'safe-auto'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -397,7 +397,7 @@ describe('repo RPC methods', () => {
         path: '/srv/repo',
         agentWorktreeVisibility: 'show'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -420,7 +420,7 @@ describe('repo RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       updateRepo: vi.fn().mockResolvedValue({ id: 'repo-1', path: '/srv/repo' })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     await dispatcher.dispatch(
@@ -452,7 +452,7 @@ describe('repo RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       updateRepo: vi.fn().mockResolvedValue({ id: 'repo-1', path: '/srv/repo' })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     await dispatcher.dispatch(
@@ -473,24 +473,24 @@ describe('repo RPC methods', () => {
       updateRepo: vi.fn().mockResolvedValue({
         id: 'repo-1',
         path: '/srv/repo',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
       makeRequest('repo.update', {
         repo: 'repo-1',
-        updates: { upstream: { owner: 'TxaisX', repo: 'nightshift' } }
+        updates: { upstream: { owner: 'TxaisX', repo: 'kolux' } }
       })
     )
 
     expect(runtime.updateRepo).toHaveBeenCalledWith('repo-1', {
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
     expect(response).toMatchObject({
       ok: true,
-      result: { repo: { id: 'repo-1', upstream: { owner: 'TxaisX', repo: 'nightshift' } } }
+      result: { repo: { id: 'repo-1', upstream: { owner: 'TxaisX', repo: 'kolux' } } }
     })
   })
 
@@ -535,7 +535,7 @@ describe('repo RPC methods', () => {
       getFolderWorkspacePathStatus: vi
         .fn()
         .mockResolvedValue({ path: '/srv/platform', exists: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     await dispatcher.dispatch(makeRequest('projectGroup.list'))
@@ -648,7 +648,7 @@ describe('repo RPC methods', () => {
         alreadyKnownCount: 0,
         failedCount: 0
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -680,7 +680,7 @@ describe('repo RPC methods', () => {
         alreadyKnownCount: 0,
         failedCount: 0
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: REPO_METHODS })
 
     const response = await dispatcher.dispatch(

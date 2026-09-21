@@ -25,7 +25,7 @@ export function ShortcutTerminalPolicyControl({
       )}
       description={translate(
         'auto.components.settings.ShortcutTerminalPolicyControl.0f55c6f15c',
-        'Choose whether Nightshift or the focused terminal wins when shortcuts overlap.'
+        'Choose whether Kolux or the focused terminal wins when shortcuts overlap.'
       )}
       keywords={keywords}
       className="max-w-none"
@@ -52,10 +52,10 @@ export function ShortcutTerminalPolicyControl({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="nightshift-first">
+              <SelectItem value="kolux-first">
                 {translate(
                   'auto.components.settings.ShortcutTerminalPolicyControl.63308571d8',
-                  'Nightshift first'
+                  'Kolux first'
                 )}
               </SelectItem>
               <SelectItem value="terminal-first">

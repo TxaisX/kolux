@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 
-export const SERVE_UPDATE_HANDOFF_PATH_ENV = 'NIGHTSHIFT_SERVE_UPDATE_HANDOFF_PATH'
+export const SERVE_UPDATE_HANDOFF_PATH_ENV = 'KOLUX_SERVE_UPDATE_HANDOFF_PATH'
 export const SERVE_UPDATE_HANDOFF_FILE = 'serve-update-handoff.json'
 
 export type ServeUpdateHandoffState =
@@ -29,7 +29,7 @@ export type ServeUpdateHandoffState =
     }
 
 export type ServeSupervisorMessage = {
-  type: 'nightshift:serve-ready'
+  type: 'kolux:serve-ready'
   version: string
   runtimeId: string
 }
@@ -67,7 +67,7 @@ export function parseServeSupervisorMessage(value: unknown): ServeSupervisorMess
   }
   const message = value as Record<string, unknown>
   if (
-    message.type !== 'nightshift:serve-ready' ||
+    message.type !== 'kolux:serve-ready' ||
     typeof message.version !== 'string' ||
     message.version.length === 0 ||
     typeof message.runtimeId !== 'string' ||

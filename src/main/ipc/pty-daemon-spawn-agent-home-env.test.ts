@@ -39,7 +39,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -93,7 +93,7 @@ describe('registerPtyHandlers', () => {
           rows: 24,
           command: 'codex resume session-a',
           env: { CODEX_HOME: '/custom/codex', REMOVE_ME: 'stale' },
-          envToDelete: ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME', 'REMOVE_ME'],
+          envToDelete: ['CODEX_HOME', 'KOLUX_CODEX_HOME', 'REMOVE_ME'],
           launchAgent: 'codex',
           resumeProviderSession: {
             key: 'session_id',
@@ -105,7 +105,7 @@ describe('registerPtyHandlers', () => {
         const env = daemonSpawn.mock.calls.at(-1)![0].env
         expect(selectedHome).not.toHaveBeenCalled()
         expect(env.CODEX_HOME).toBe(systemHome)
-        expect(env.NIGHTSHIFT_CODEX_HOME).toBe(systemHome)
+        expect(env.KOLUX_CODEX_HOME).toBe(systemHome)
         expect(env.REMOVE_ME).toBeUndefined()
       })
       it('keeps the authoritative home for runtime-created daemon resumes', async () => {
@@ -156,7 +156,7 @@ describe('registerPtyHandlers', () => {
           rows: 24,
           command: 'codex resume session-a',
           env: { CODEX_HOME: '/custom/codex', REMOVE_ME: 'stale' },
-          envToDelete: ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME', 'REMOVE_ME'],
+          envToDelete: ['CODEX_HOME', 'KOLUX_CODEX_HOME', 'REMOVE_ME'],
           launchAgent: 'codex',
           resumeProviderSession: {
             key: 'session_id',
@@ -167,10 +167,10 @@ describe('registerPtyHandlers', () => {
 
         const spawnOptions = daemonSpawn.mock.calls.at(-1)?.[0] as DaemonSpawnCall
         expect(spawnOptions.env.CODEX_HOME).toBe(systemHome)
-        expect(spawnOptions.env.NIGHTSHIFT_CODEX_HOME).toBe(systemHome)
+        expect(spawnOptions.env.KOLUX_CODEX_HOME).toBe(systemHome)
         expect(spawnOptions.env.REMOVE_ME).toBeUndefined()
         expect(spawnOptions.envToDelete ?? []).not.toContain('CODEX_HOME')
-        expect(spawnOptions.envToDelete ?? []).not.toContain('NIGHTSHIFT_CODEX_HOME')
+        expect(spawnOptions.envToDelete ?? []).not.toContain('KOLUX_CODEX_HOME')
         expect(spawnOptions.envToDelete).toContain('REMOVE_ME')
       })
       it('prepares Codex project trust before a daemon-backed interactive launch', async () => {
@@ -212,12 +212,11 @@ describe('registerPtyHandlers', () => {
         try {
           const spawnOptions = await daemonSpawnAndGetOptions(
             {},
-            () => 'C:\\Users\\test\\AppData\\Roaming\\Nightshift\\codex-runtime-home\\home',
+            () => 'C:\\Users\\test\\AppData\\Roaming\\Kolux\\codex-runtime-home\\home',
             undefined,
             {
-              CODEX_HOME: 'C:\\Users\\test\\AppData\\Roaming\\Nightshift\\codex-runtime-home\\home',
-              NIGHTSHIFT_CODEX_HOME:
-                'C:\\Users\\test\\AppData\\Roaming\\Nightshift\\codex-runtime-home\\home'
+              CODEX_HOME: 'C:\\Users\\test\\AppData\\Roaming\\Kolux\\codex-runtime-home\\home',
+              KOLUX_CODEX_HOME: 'C:\\Users\\test\\AppData\\Roaming\\Kolux\\codex-runtime-home\\home'
             },
             {
               cwd: '\\\\wsl.localhost\\Ubuntu\\home\\test\\repo',
@@ -226,9 +225,9 @@ describe('registerPtyHandlers', () => {
           )
           const { env } = spawnOptions
           expect(env.CODEX_HOME).toBeUndefined()
-          expect(env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+          expect(env.KOLUX_CODEX_HOME).toBeUndefined()
           expect(spawnOptions.envToDelete).toEqual(
-            expect.arrayContaining(['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+            expect.arrayContaining(['CODEX_HOME', 'KOLUX_CODEX_HOME'])
           )
         } finally {
           Object.defineProperty(process, 'platform', {
@@ -246,19 +245,18 @@ describe('registerPtyHandlers', () => {
         try {
           const spawnOptions = await daemonSpawnAndGetOptions(
             {},
-            () => 'C:\\Users\\test\\AppData\\Roaming\\Nightshift\\codex-runtime-home\\home',
+            () => 'C:\\Users\\test\\AppData\\Roaming\\Kolux\\codex-runtime-home\\home',
             undefined,
             {
               CODEX_HOME: 'C:\\Users\\test\\.codex',
-              NIGHTSHIFT_CODEX_HOME:
-                'C:\\Users\\test\\AppData\\Roaming\\Nightshift\\codex-runtime-home\\home'
+              KOLUX_CODEX_HOME: 'C:\\Users\\test\\AppData\\Roaming\\Kolux\\codex-runtime-home\\home'
             },
             { shellOverride: 'wsl.exe' }
           )
           expect(spawnOptions.env.CODEX_HOME).toBeUndefined()
-          expect(spawnOptions.env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+          expect(spawnOptions.env.KOLUX_CODEX_HOME).toBeUndefined()
           expect(spawnOptions.envToDelete).toEqual(
-            expect.arrayContaining(['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'])
+            expect.arrayContaining(['CODEX_HOME', 'KOLUX_CODEX_HOME'])
           )
         } finally {
           Object.defineProperty(process, 'platform', {
@@ -274,8 +272,8 @@ describe('registerPtyHandlers', () => {
           })
           // Why: relay not connected yet → never cross the Windows overlay path into WSL.
           expect(env.OPENCODE_CONFIG_DIR).toBeUndefined()
-          expect(env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBeUndefined()
-          expect(env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
+          expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
+          expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
         })
       })
       it('does not install or inject a Prime extension for an explicit WSL launch', async () => {
@@ -283,7 +281,7 @@ describe('registerPtyHandlers', () => {
           const env = await daemonSpawnAndGetEnv(
             {
               PRIME_AGENT_CODING_AGENT_DIR: 'C:\\Users\\test\\.prime\\agent',
-              NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION: 'C:\\stale\\nightshift-agent-status.ts'
+              KOLUX_PRIME_AGENT_STATUS_EXTENSION: 'C:\\stale\\kolux-agent-status.ts'
             },
             undefined,
             undefined,
@@ -292,9 +290,9 @@ describe('registerPtyHandlers', () => {
           )
 
           expect(piBuildPtyEnvMock).not.toHaveBeenCalled()
-          expect(env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR).toBeUndefined()
-          expect(env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION).toBeUndefined()
-          expect(env.NIGHTSHIFT_WSL_HOOK_INSTANCE).toBeUndefined()
+          expect(env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR).toBeUndefined()
+          expect(env.KOLUX_PRIME_AGENT_STATUS_EXTENSION).toBeUndefined()
+          expect(env.KOLUX_WSL_HOOK_INSTANCE).toBeUndefined()
           expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBe('C:\\Users\\test\\.prime\\agent')
         })
       })
@@ -307,41 +305,41 @@ describe('registerPtyHandlers', () => {
           expect(piBuildPtyEnvMock.mock.calls.some(([, , kind]) => kind === 'prime-agent')).toBe(
             false
           )
-          expect(env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION).toBeUndefined()
+          expect(env.KOLUX_PRIME_AGENT_STATUS_EXTENSION).toBeUndefined()
           expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBeUndefined()
         })
       })
       it('points OPENCODE_CONFIG_DIR at the guest overlay when the WSL relay reports it', async () => {
-        const guestDir = '/home/jin/.nightshift-relay/opencode-overlays/abc'
+        const guestDir = '/home/jin/.kolux-relay/opencode-overlays/abc'
         const spy = vi.spyOn(wslHookRelayManager, 'getOpenCodeOverlayDir').mockReturnValue(guestDir)
         try {
           await withWin32Platform(async () => {
             const env = await daemonSpawnAndGetEnv(
-              { NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR: '/home/jin/.config/opencode' },
+              { KOLUX_OPENCODE_SOURCE_CONFIG_DIR: '/home/jin/.config/opencode' },
               undefined,
               undefined,
               undefined,
               { shellOverride: 'wsl.exe' }
             )
             expect(env.OPENCODE_CONFIG_DIR).toBe(guestDir)
-            expect(env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBe(guestDir)
+            expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBe(guestDir)
             // The Windows-side source pointer must not cross into the guest.
-            expect(env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
+            expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
           })
         } finally {
           spy.mockRestore()
         }
       })
-      it('strips the daemon-inherited Nightshift-owned CODEX_HOME for real-home routing', async () => {
+      it('strips the daemon-inherited Kolux-owned CODEX_HOME for real-home routing', async () => {
         const spawnOptions = await daemonSpawnAndGetOptions(
           {},
           () => null,
           () => ({ codexSystemDefaultRealHomeEnabled: true }) as never,
-          { CODEX_HOME: '/managed/home', NIGHTSHIFT_CODEX_HOME: '/managed/home' }
+          { CODEX_HOME: '/managed/home', KOLUX_CODEX_HOME: '/managed/home' }
         )
         expect(spawnOptions.env.CODEX_HOME).toBeUndefined()
-        expect(spawnOptions.env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
-        expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['NIGHTSHIFT_CODEX_HOME']))
+        expect(spawnOptions.env.KOLUX_CODEX_HOME).toBeUndefined()
+        expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['KOLUX_CODEX_HOME']))
         // The daemon compares its own merged values before deleting CODEX_HOME.
         expect(spawnOptions.envToDelete).not.toContain('CODEX_HOME')
       })
@@ -350,15 +348,15 @@ describe('registerPtyHandlers', () => {
           {},
           () => null,
           () => ({ codexSystemDefaultRealHomeEnabled: true }) as never,
-          { CODEX_HOME: '/home/me/.config/codex', NIGHTSHIFT_CODEX_HOME: undefined }
+          { CODEX_HOME: '/home/me/.config/codex', KOLUX_CODEX_HOME: undefined }
         )
-        expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['NIGHTSHIFT_CODEX_HOME']))
+        expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['KOLUX_CODEX_HOME']))
         expect(spawnOptions.envToDelete).not.toEqual(expect.arrayContaining(['CODEX_HOME']))
       })
       it('does not strip the daemon-inherited CODEX_HOME when the flag is OFF', async () => {
         const spawnOptions = await daemonSpawnAndGetOptions({}, () => null, undefined, {
           CODEX_HOME: '/managed/home',
-          NIGHTSHIFT_CODEX_HOME: '/managed/home'
+          KOLUX_CODEX_HOME: '/managed/home'
         })
         expect(spawnOptions.envToDelete ?? []).not.toEqual(expect.arrayContaining(['CODEX_HOME']))
       })
@@ -393,7 +391,7 @@ describe('registerPtyHandlers', () => {
         )
         expect(spawnOptions.env.CLAUDE_CODE_CHILD_SESSION).toBe('1')
       })
-      it('prepends the bare-nightshift CLI shim dir to PATH for packaged Linux spawns', async () => {
+      it('prepends the bare-kolux CLI shim dir to PATH for packaged Linux spawns', async () => {
         const originalPlatform = process.platform
         Object.defineProperty(process, 'platform', {
           configurable: true,
@@ -405,11 +403,11 @@ describe('registerPtyHandlers', () => {
             PATH: ['/usr/local/bin', '/usr/bin'].join(delimiter)
           })
           const entries = env.PATH.split(delimiter)
-          const shimDir = join('/tmp/nightshift-user-data', 'linux-nightshift-cli-shim')
-          // Why: bare `nightshift` must resolve to the Nightshift CLI before /usr/bin/orca (the GNOME screen reader) in Nightshift terminals (#7904).
+          const shimDir = join('/tmp/kolux-user-data', 'linux-kolux-cli-shim')
+          // Why: bare `kolux` must resolve to the Kolux CLI before /usr/bin/orca (the GNOME screen reader) in Kolux terminals (#7904).
           expect(entries.indexOf(shimDir)).toBeGreaterThanOrEqual(0)
           expect(entries.indexOf(shimDir)).toBeLessThan(entries.indexOf('/usr/bin'))
-          expect(env.NIGHTSHIFT_CLI_COMMAND).toBeUndefined()
+          expect(env.KOLUX_CLI_COMMAND).toBeUndefined()
         } finally {
           Object.defineProperty(process, 'platform', {
             configurable: true,
@@ -421,11 +419,11 @@ describe('registerPtyHandlers', () => {
         const resourcesPathDescriptor = Object.getOwnPropertyDescriptor(process, 'resourcesPath')
         Object.defineProperty(process, 'resourcesPath', {
           configurable: true,
-          value: '/tmp/nightshift-resources'
+          value: '/tmp/kolux-resources'
         })
         try {
           const env = await daemonSpawnAndGetEnv({ PATH: '/usr/bin' })
-          expect(env.PATH.split(delimiter)[0]).toBe(join('/tmp/nightshift-resources', 'bin'))
+          expect(env.PATH.split(delimiter)[0]).toBe(join('/tmp/kolux-resources', 'bin'))
         } finally {
           if (resourcesPathDescriptor) {
             Object.defineProperty(process, 'resourcesPath', resourcesPathDescriptor)
@@ -436,20 +434,20 @@ describe('registerPtyHandlers', () => {
       })
       it('injects the agent-hook receiver env on the daemon path', async () => {
         const env = await daemonSpawnAndGetEnv({})
-        expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('5678')
-        expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('agent-token')
+        expect(env.KOLUX_AGENT_HOOK_PORT).toBe('5678')
+        expect(env.KOLUX_AGENT_HOOK_TOKEN).toBe('agent-token')
       })
       it('deletes stale Claude scoped settings env from daemon-hosted PTYs', async () => {
         const spawnOptions = await daemonSpawnAndGetOptions({}, undefined, undefined, {
-          NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS:
-            '/tmp/nightshift/agent-hooks/claude-agent-status-settings.json'
+          KOLUX_CLAUDE_AGENT_STATUS_SETTINGS:
+            '/tmp/kolux/agent-hooks/claude-agent-status-settings.json'
         })
-        expect(spawnOptions.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS).toBeUndefined()
+        expect(spawnOptions.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS).toBeUndefined()
         expect(spawnOptions.envToDelete).toEqual(
-          expect.arrayContaining(['NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS'])
+          expect.arrayContaining(['KOLUX_CLAUDE_AGENT_STATUS_SETTINGS'])
         )
-        expect(spawnOptions.env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('5678')
-        expect(spawnOptions.env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('agent-token')
+        expect(spawnOptions.env.KOLUX_AGENT_HOOK_PORT).toBe('5678')
+        expect(spawnOptions.env.KOLUX_AGENT_HOOK_TOKEN).toBe('agent-token')
       })
       it('asks surviving pre-upgrade daemons to delete legacy attribution env', async () => {
         const spawnOptions = await daemonSpawnAndGetOptions({})
@@ -457,8 +455,8 @@ describe('registerPtyHandlers', () => {
         expect(spawnOptions.envToDelete).toEqual(
           expect.arrayContaining([...LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS])
         )
-        expect(spawnOptions.envToDelete).not.toContain('NIGHTSHIFT_REAL_GIT')
-        expect(spawnOptions.envToDelete).not.toContain('NIGHTSHIFT_REAL_GH')
+        expect(spawnOptions.envToDelete).not.toContain('KOLUX_REAL_GIT')
+        expect(spawnOptions.envToDelete).not.toContain('KOLUX_REAL_GH')
       })
       it('deletes stale Claude scoped settings env from runtime-created daemon PTYs', async () => {
         type RuntimeSpawnController = {
@@ -480,8 +478,8 @@ describe('registerPtyHandlers', () => {
           onPtyExit: vi.fn(),
           onPtyData: vi.fn()
         }
-        process.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS =
-          '/tmp/nightshift/agent-hooks/claude-agent-status-settings.json'
+        process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS =
+          '/tmp/kolux/agent-hooks/claude-agent-status-settings.json'
         handlers.clear()
         registerPtyHandlers(mainWindow as never, runtime as never)
         const controller = runtime.setPtyController.mock.calls[0]?.[0] as RuntimeSpawnController
@@ -489,12 +487,12 @@ describe('registerPtyHandlers', () => {
         await controller.spawn({ cols: 80, rows: 24, worktreeId: 'wt-runtime', env: {} })
 
         const spawnOptions = daemonSpawn.mock.calls.at(-1)?.[0] as DaemonSpawnCall
-        expect(spawnOptions.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS).toBeUndefined()
+        expect(spawnOptions.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS).toBeUndefined()
         expect(spawnOptions.envToDelete).toEqual(
-          expect.arrayContaining(['NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS'])
+          expect.arrayContaining(['KOLUX_CLAUDE_AGENT_STATUS_SETTINGS'])
         )
-        expect(spawnOptions.env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('5678')
-        expect(spawnOptions.env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('agent-token')
+        expect(spawnOptions.env.KOLUX_AGENT_HOOK_PORT).toBe('5678')
+        expect(spawnOptions.env.KOLUX_AGENT_HOOK_TOKEN).toBe('agent-token')
       })
       it('asks surviving pre-upgrade daemons to delete legacy attribution env for runtime PTYs', async () => {
         type RuntimeSpawnController = {
@@ -524,11 +522,11 @@ describe('registerPtyHandlers', () => {
         expect(spawnOptions.envToDelete).toEqual(
           expect.arrayContaining([...LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS])
         )
-        expect(spawnOptions.envToDelete).not.toContain('NIGHTSHIFT_REAL_GIT')
-        expect(spawnOptions.envToDelete).not.toContain('NIGHTSHIFT_REAL_GH')
+        expect(spawnOptions.envToDelete).not.toContain('KOLUX_REAL_GIT')
+        expect(spawnOptions.envToDelete).not.toContain('KOLUX_REAL_GH')
       })
       it('strips inherited Claude child-session stamps from runtime-created PTYs', async () => {
-        // Why: the runtime controller is the `nightshift` CLI / automation spawn path and
+        // Why: the runtime controller is the `kolux` CLI / automation spawn path and
         // assembles envToDelete separately from the renderer's pty:spawn handler;
         // without its own case the two paths can silently drift apart.
         type RuntimeSpawnController = {

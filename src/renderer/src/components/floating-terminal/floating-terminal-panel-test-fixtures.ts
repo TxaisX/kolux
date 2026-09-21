@@ -78,7 +78,7 @@ export function makeFile(overrides: Partial<OpenFile> = {}): OpenFile {
   const id = overrides.id ?? 'file-1'
   return {
     id,
-    filePath: overrides.filePath ?? `/tmp/nightshift/${id}.md`,
+    filePath: overrides.filePath ?? `/tmp/kolux/${id}.md`,
     relativePath: overrides.relativePath ?? `${id}.md`,
     worktreeId: overrides.worktreeId ?? FLOATING_TERMINAL_WORKTREE_ID,
     language: overrides.language ?? 'markdown',

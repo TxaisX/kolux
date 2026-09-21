@@ -1,7 +1,7 @@
 import type { BrowserTabSwitchResult } from '../../shared/runtime-types'
 import { BrowserError } from './cdp-bridge'
 import { AgentBrowserBridgeShutdown } from './agent-browser-bridge-shutdown'
-import { NIGHTSHIFT_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
+import { KOLUX_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
 import type {
   EnqueueTargetedCommandOptions,
   ResolvedBrowserCommandTarget
@@ -65,7 +65,7 @@ export abstract class AgentBrowserBridgeQueue extends AgentBrowserBridgeShutdown
   ): Promise<T> {
     this.assertCommandAdmission()
     const target = this.resolveCommandTarget(worktreeId, browserPageId, options.requireScopedTarget)
-    const sessionName = `${NIGHTSHIFT_TAB_SESSION_PREFIX}${target.browserPageId}`
+    const sessionName = `${KOLUX_TAB_SESSION_PREFIX}${target.browserPageId}`
 
     if (options.ensureSession !== false) {
       await this.ensureSession(sessionName, target.browserPageId, target.webContentsId)

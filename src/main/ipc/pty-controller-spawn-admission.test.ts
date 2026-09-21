@@ -6,7 +6,7 @@ import {
 } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import type { AgentSessionOwnerBinding } from '../../shared/agent-session-host-authority'
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import {
   registerPtyHandlers,
   clearProviderPtyState,
@@ -43,7 +43,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -72,7 +72,7 @@ describe('registerPtyHandlers', () => {
   it('rejects renderer persistence when a local PTY exits before spawn settles', async () => {
     const ptyId = 'pty-renderer-early-exit'
     const incarnationId = 'incarnation-renderer-early-exit'
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const registerRuntimePty = vi.spyOn(runtime, 'registerPty')
     const provider = createAgentClaimProvider({
       spawn: vi.fn(async () => {
@@ -350,7 +350,7 @@ describe('registerPtyHandlers', () => {
       ptyId: 'pty-adopted-exit',
       surface: recoveredAgentSurface
     }
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const provider = createAgentClaimProvider({
       sessions: [
         {

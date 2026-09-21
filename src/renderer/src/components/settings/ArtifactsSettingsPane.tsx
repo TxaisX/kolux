@@ -2,7 +2,7 @@ import { ArrowRight, Files } from 'lucide-react'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import { Button } from '@/components/ui/button'
 import { SettingsSwitchRow } from './SettingsFormControls'
-import { useNightshiftProfileAuthStatusRefresh } from '@/hooks/use-nightshift-profile-auth-status-refresh'
+import { useKoluxProfileAuthStatusRefresh } from '@/hooks/use-kolux-profile-auth-status-refresh'
 import { useAppStore } from '@/store'
 import { isWebClientLocation } from '@/lib/web-client-location'
 import { translate } from '@/i18n/i18n'
@@ -17,16 +17,16 @@ export function ArtifactsSettingsPane({
   updateSettings: (updates: Partial<GlobalSettings>) => Promise<void>
 }): React.JSX.Element {
   const openArtifactsPage = useAppStore((state) => state.openArtifactsPage)
-  const authStatus = useAppStore((state) => state.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((state) => state.nightshiftProfileConnecting)
-  const connect = useAppStore((state) => state.connectCurrentNightshiftProfile)
+  const authStatus = useAppStore((state) => state.koluxProfileAuthStatus)
+  const connecting = useAppStore((state) => state.koluxProfileConnecting)
+  const connect = useAppStore((state) => state.connectCurrentKoluxProfile)
   const signedIn = authStatus?.state === 'connected'
   // Why: the capability lives in the desktop host's store and is deliberately absent from the
   // settings.update allowlist, so a web client can only mirror it — never grant it.
   const isWebClient = isWebClientLocation()
   const sharingEnabled = settings.artifactSharingEnabled === true
 
-  useNightshiftProfileAuthStatusRefresh()
+  useKoluxProfileAuthStatusRefresh()
 
   const howToSteps: HowToStep[] = [
     ...(sharingEnabled
@@ -41,7 +41,7 @@ export function ArtifactsSettingsPane({
             description: isWebClient
               ? translate(
                   'auto.components.settings.artifacts.enableStepWebDescription',
-                  'Open Settings → Artifacts in the Nightshift desktop app on the host device and enable publishing.'
+                  'Open Settings → Artifacts in the Kolux desktop app on the host device and enable publishing.'
                 )
               : translate(
                   'auto.components.settings.artifacts.enableStepDescription',
@@ -70,10 +70,7 @@ export function ArtifactsSettingsPane({
     },
     {
       key: 'manage',
-      title: translate(
-        'auto.components.settings.artifacts.manageStepTitle',
-        'Manage it in Nightshift'
-      ),
+      title: translate('auto.components.settings.artifacts.manageStepTitle', 'Manage it in Kolux'),
       description: translate(
         'auto.components.settings.artifacts.manageStepDescription',
         'Open Artifacts from the sidebar to preview or remove links.'
@@ -124,7 +121,7 @@ export function ArtifactsSettingsPane({
             <p className="text-xs leading-relaxed text-muted-foreground">
               {translate(
                 'auto.components.settings.artifacts.signInDescription',
-                'Use your Nightshift account to upload artifacts and manage their public links.'
+                'Use your Kolux account to upload artifacts and manage their public links.'
               )}
             </p>
           </div>
@@ -138,7 +135,7 @@ export function ArtifactsSettingsPane({
               ? translate('auto.components.settings.artifacts.signingIn', 'Signing in…')
               : authStatus?.state === 'reconnect-required'
                 ? translate('auto.components.settings.artifacts.signInAgain', 'Sign in again')
-                : translate('auto.components.settings.artifacts.signIn', 'Sign in to Nightshift')}
+                : translate('auto.components.settings.artifacts.signIn', 'Sign in to Kolux')}
           </Button>
         </section>
       ) : null}

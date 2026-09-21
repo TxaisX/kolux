@@ -2,7 +2,7 @@ import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 import type { ElectronApplication, Locator, Page } from '@stablyai/playwright-test'
 import type { GitHubWorkItem } from '../../src/shared/github/work-item-types'
 import type { GitLabWorkItem } from '../../src/shared/gitlab-types'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const TARGET_URL = 'https://github.com/TxaisX/nightshift/issues/4242'
@@ -157,7 +157,7 @@ async function installHeldGitHubLookup(
     }
     fixture.__githubUrlLookupStarted = false
     ipcMain.removeHandler('gh:repoSlug')
-    ipcMain.handle('gh:repoSlug', () => ({ owner: 'TxaisX', repo: 'nightshift' }))
+    ipcMain.handle('gh:repoSlug', () => ({ owner: 'TxaisX', repo: 'kolux' }))
     ipcMain.removeHandler('gh:workItemByOwnerRepo')
     ipcMain.handle('gh:workItemByOwnerRepo', () => {
       fixture.__githubUrlLookupStarted = true
@@ -249,34 +249,34 @@ async function releaseGitLabLookup(electronApp: ElectronApplication): Promise<vo
 
 test('a pasted GitHub URL never selects a stale cached issue', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await installHeldGitHubLookup(electronApp, nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await installHeldGitHubLookup(electronApp, koluxPage)
 
-  await openSidebarWorkspaceComposer(nightshiftPage)
-  const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+  await openSidebarWorkspaceComposer(koluxPage)
+  const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
   const input = dialog.locator('[data-workspace-name-input="true"]')
   await expect(input).toBeVisible()
   await input.click()
 
-  const wrongOption = nightshiftPage.getByRole('option', {
+  const wrongOption = koluxPage.getByRole('option', {
     name: `#17 ${WRONG_TITLE}`,
     exact: true
   })
-  const targetOption = nightshiftPage.getByRole('option', {
+  const targetOption = koluxPage.getByRole('option', {
     name: `#4242 ${TARGET_TITLE}`,
     exact: true
   })
   await expect(wrongOption).toBeVisible()
 
   const frameKey = '__githubUrlTransitionFrames'
-  await startTransitionCapture(nightshiftPage, frameKey, WRONG_TITLE, TARGET_TITLE)
+  await startTransitionCapture(koluxPage, frameKey, WRONG_TITLE, TARGET_TITLE)
 
-  await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), TARGET_URL)
+  await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), TARGET_URL)
   await input.focus()
-  await nightshiftPage.keyboard.press(pasteChord())
+  await koluxPage.keyboard.press(pasteChord())
   await expect
     .poll(() =>
       electronApp.evaluate(() => {
@@ -285,53 +285,47 @@ test('a pasted GitHub URL never selects a stale cached issue', async ({
       })
     )
     .toBe(true)
-  await expectLookupHeldWithoutStaleRow(
-    nightshiftPage,
-    frameKey,
-    TARGET_URL,
-    wrongOption,
-    targetOption
-  )
+  await expectLookupHeldWithoutStaleRow(koluxPage, frameKey, TARGET_URL, wrongOption, targetOption)
 
   await releaseGitHubLookup(electronApp)
-  await expectExactTargetAfterLookup(nightshiftPage, frameKey, TARGET_URL, targetOption)
+  await expectExactTargetAfterLookup(koluxPage, frameKey, TARGET_URL, targetOption)
 
   await testInfo.attach('github-url-smart-input-fixed.png', {
-    body: await nightshiftPage.screenshot(),
+    body: await koluxPage.screenshot(),
     contentType: 'image/png'
   })
 })
 
 test('a pasted GitLab URL never selects a stale cached merge request', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await installHeldGitLabLookup(electronApp, nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await installHeldGitLabLookup(electronApp, koluxPage)
 
-  await openSidebarWorkspaceComposer(nightshiftPage)
-  const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+  await openSidebarWorkspaceComposer(koluxPage)
+  const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
   const input = dialog.locator('[data-workspace-name-input="true"]')
   await expect(input).toBeVisible()
   await input.click()
 
-  const wrongOption = nightshiftPage.getByRole('option', {
+  const wrongOption = koluxPage.getByRole('option', {
     name: `!17 ${GITLAB_WRONG_TITLE}`,
     exact: true
   })
-  const targetOption = nightshiftPage.getByRole('option', {
+  const targetOption = koluxPage.getByRole('option', {
     name: `!4242 ${GITLAB_TARGET_TITLE}`,
     exact: true
   })
   await expect(wrongOption).toBeVisible()
 
   const frameKey = '__gitlabUrlTransitionFrames'
-  await startTransitionCapture(nightshiftPage, frameKey, GITLAB_WRONG_TITLE, GITLAB_TARGET_TITLE)
+  await startTransitionCapture(koluxPage, frameKey, GITLAB_WRONG_TITLE, GITLAB_TARGET_TITLE)
 
-  await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), GITLAB_TARGET_URL)
+  await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), GITLAB_TARGET_URL)
   await input.focus()
-  await nightshiftPage.keyboard.press(pasteChord())
+  await koluxPage.keyboard.press(pasteChord())
   await expect
     .poll(() =>
       electronApp.evaluate(() => {
@@ -341,7 +335,7 @@ test('a pasted GitLab URL never selects a stale cached merge request', async ({
     )
     .toBe(true)
   await expectLookupHeldWithoutStaleRow(
-    nightshiftPage,
+    koluxPage,
     frameKey,
     GITLAB_TARGET_URL,
     wrongOption,
@@ -349,10 +343,10 @@ test('a pasted GitLab URL never selects a stale cached merge request', async ({
   )
 
   await releaseGitLabLookup(electronApp)
-  await expectExactTargetAfterLookup(nightshiftPage, frameKey, GITLAB_TARGET_URL, targetOption)
+  await expectExactTargetAfterLookup(koluxPage, frameKey, GITLAB_TARGET_URL, targetOption)
 
   await testInfo.attach('gitlab-url-smart-input-fixed.png', {
-    body: await nightshiftPage.screenshot(),
+    body: await koluxPage.screenshot(),
     contentType: 'image/png'
   })
 })

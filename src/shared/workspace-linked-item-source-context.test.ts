@@ -7,9 +7,9 @@ const JIRA_ITEM: WorkspaceLinkedItem = {
   provider: 'jira',
   type: 'issue',
   number: 0,
-  title: 'NIGHTSHIFT-123 Link Jira',
-  url: 'https://company.atlassian.net/jira/browse/NIGHTSHIFT-123',
-  jiraIdentifier: 'NIGHTSHIFT-123'
+  title: 'KOLUX-123 Link Jira',
+  url: 'https://company.atlassian.net/jira/browse/KOLUX-123',
+  jiraIdentifier: 'KOLUX-123'
 }
 
 const JIRA_CONTEXT: TaskSourceContext = {
@@ -21,7 +21,7 @@ const JIRA_CONTEXT: TaskSourceContext = {
     provider: 'jira',
     siteId: 'site-1',
     siteUrl: 'https://company.atlassian.net/jira',
-    projectKey: 'NIGHTSHIFT'
+    projectKey: 'KOLUX'
   }
 }
 
@@ -50,7 +50,7 @@ describe('workspace linked-item source context', () => {
     ).toBe(false)
     expect(
       isWorkspaceLinkedItemSourceContextMatch(
-        { ...JIRA_ITEM, jiraIdentifier: 'NIGHTSHIFT-999' },
+        { ...JIRA_ITEM, jiraIdentifier: 'KOLUX-999' },
         JIRA_CONTEXT
       )
     ).toBe(false)

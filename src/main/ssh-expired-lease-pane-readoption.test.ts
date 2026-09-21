@@ -62,7 +62,7 @@ function storeWithBoundRemotePane(): ReturnType<typeof createStore> {
  */
 describe('a pane whose SSH lease expired can still be re-adopted', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {
@@ -112,7 +112,7 @@ describe('recovery through createTerminal reattaches before it respawns', () => 
   }
 
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

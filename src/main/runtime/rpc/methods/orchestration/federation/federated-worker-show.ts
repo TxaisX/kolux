@@ -2,7 +2,7 @@ import type { OrchestrationFleetWorker } from '../../../../../../shared/orchestr
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { DispatchContextRow, FederatedDispatchRow } from '../../../../orchestration/types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import {
   callFederatedWorkerShow,
   exposeDispatchContext,
@@ -17,7 +17,7 @@ import { applyFederatedFleetObservations } from './federated-fleet-snapshot'
  *  only covers local panes, so a federated Dispatch got a fabricated `unverifiable` beside the
  *  execution host's real answer, and the guide makes the fleet verdict the one that decides. */
 export function projectFederatedFleetWorker(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchId: string
   environmentId: string
@@ -54,7 +54,7 @@ export function projectFederatedFleetWorker(args: {
 }
 
 export async function showFederatedWorker(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchId: string
   dispatch: DispatchContextRow

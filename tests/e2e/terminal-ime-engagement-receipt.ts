@@ -3,7 +3,7 @@ import path from 'node:path'
 import type { TerminalImeBoundaryTrace } from './terminal-ime-boundary-probe'
 
 /** Kept identical to config/scripts/terminal-ime-engagement-receipt.mjs; pinned by a contract test. */
-const IME_ENGAGEMENT_RECEIPT_ENV = 'NIGHTSHIFT_E2E_IME_ENGAGEMENT_RECEIPT'
+const IME_ENGAGEMENT_RECEIPT_ENV = 'KOLUX_E2E_IME_ENGAGEMENT_RECEIPT'
 
 const HANGUL_SYLLABLE = /[\uac00-\ud7af]/
 

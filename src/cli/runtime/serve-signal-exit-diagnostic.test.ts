@@ -35,7 +35,7 @@ function superviseUntilExit(code: number | null, signal: NodeJS.Signals | null):
 
 function superviseChild(child: FakeChildProcess): Promise<number> {
   return superviseForegroundServe({
-    executable: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+    executable: '/Applications/Kolux.app/Contents/MacOS/Kolux',
     childArgs: ['--serve'],
     spawnOptions: {},
     spawnChild: vi.fn() as never,
@@ -62,7 +62,7 @@ describe('serveSignalExitError', () => {
     expect(error.data).toMatchObject({
       nextSteps: [
         expect.stringContaining('macOS desktop login'),
-        expect.stringContaining('~/Library/Logs/DiagnosticReports/Nightshift-*.ips')
+        expect.stringContaining('~/Library/Logs/DiagnosticReports/Kolux-*.ips')
       ]
     })
   })
@@ -71,7 +71,7 @@ describe('serveSignalExitError', () => {
     for (const platform of ['linux', 'win32'] as const) {
       const error = serveSignalExitError('SIGABRT', platform)
 
-      expect(error.message).toBe('Nightshift serve exited via SIGABRT.')
+      expect(error.message).toBe('Kolux serve exited via SIGABRT.')
       expect(error.data).toBeUndefined()
     }
   })
@@ -79,13 +79,13 @@ describe('serveSignalExitError', () => {
   it('does not claim the macOS cause for other darwin signals', () => {
     const error = serveSignalExitError('SIGKILL', 'darwin')
 
-    expect(error.message).toBe('Nightshift serve exited via SIGKILL.')
+    expect(error.message).toBe('Kolux serve exited via SIGKILL.')
     expect(error.data).toBeUndefined()
   })
 
   it('stays clear when neither a code nor a signal is reported', () => {
     expect(serveSignalExitError(null, 'darwin').message).toBe(
-      'Nightshift serve exited without reporting an exit code or signal.'
+      'Kolux serve exited without reporting an exit code or signal.'
     )
   })
 })
@@ -116,7 +116,7 @@ describe('superviseForegroundServe signal exits', () => {
     expect(child.kill).toHaveBeenCalledTimes(2)
 
     child.emit('exit', null, 'SIGKILL')
-    await expect(supervised).rejects.toThrow('Nightshift serve exited via SIGKILL.')
+    await expect(supervised).rejects.toThrow('Kolux serve exited via SIGKILL.')
   })
 
   it('lets a shared-console Windows child handle Ctrl-C gracefully', async () => {
@@ -166,11 +166,11 @@ describe('superviseForegroundServe signal exits', () => {
 
   it('does not terminate an exited child when update handoff completion fails late', async () => {
     vi.useFakeTimers()
-    const missingParent = await mkdtemp(join(tmpdir(), 'nightshift-serve-missing-handoff-'))
+    const missingParent = await mkdtemp(join(tmpdir(), 'kolux-serve-missing-handoff-'))
     await rm(missingParent, { recursive: true })
     const child = new FakeChildProcess()
     const supervised = superviseForegroundServe({
-      executable: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+      executable: '/Applications/Kolux.app/Contents/MacOS/Kolux',
       childArgs: ['--serve'],
       spawnOptions: {},
       spawnChild: vi.fn() as never,
@@ -187,7 +187,7 @@ describe('superviseForegroundServe signal exits', () => {
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
 
     child.emit('message', {
-      type: 'nightshift:serve-ready',
+      type: 'kolux:serve-ready',
       version: '1.0.61',
       runtimeId: 'runtime-new'
     })
@@ -210,7 +210,7 @@ describe('superviseForegroundServe signal exits', () => {
     setPlatform('linux')
 
     await expect(superviseUntilExit(null, 'SIGABRT')).rejects.toThrow(
-      'Nightshift serve exited via SIGABRT.'
+      'Kolux serve exited via SIGABRT.'
     )
   })
 

@@ -1,5 +1,5 @@
 import { expect, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import type { RuntimeBrowserDriverState } from '../../shared/runtime-types'
 
 export const HARNESS_WORKTREE_ID = 'repo-1::/tmp/worktree-a'
@@ -43,7 +43,7 @@ export type ScreencastSubscriber = {
 }
 
 export type ScreencastHarness = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   subscribe: (options: {
     connectionId: string
     clientKind?: 'mobile' | 'runtime'
@@ -56,7 +56,7 @@ export type ScreencastHarness = {
  * drive the real subscription state machine without a browser.
  */
 export function createScreencastHarness(): ScreencastHarness {
-  const runtime = new NightshiftRuntimeService(store as unknown as never)
+  const runtime = new KoluxRuntimeService(store as unknown as never)
   let seq = 0
   const browserScreencast = vi.fn(async () => {
     const subscriptionId = `browser-screencast:${HARNESS_PAGE_ID}:${++seq}`

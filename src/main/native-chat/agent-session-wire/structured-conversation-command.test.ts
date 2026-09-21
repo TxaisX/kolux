@@ -44,7 +44,7 @@ beforeEach(async () => {
   resetHostTestOperationIds()
   acquisitions = 0
   compact.mockReset().mockResolvedValue({})
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-conversation-command-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-conversation-command-'))
   store = await AgentSessionRecordStore.open({
     directory: join(directory, 'store'),
     hostId: 'local'

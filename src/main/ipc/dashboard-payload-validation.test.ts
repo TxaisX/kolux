@@ -41,7 +41,7 @@ const SNAPSHOT = {
       leafId: 'leaf-1',
       parentPaneKey: 'tab-parent:leaf-parent',
       parentWorktreeId: 'parent-worktree-1',
-      repoName: 'Nightshift',
+      repoName: 'Kolux',
       worktreeName: 'Dashboard',
       hostKind: 'ssh',
       executionHostId: 'ssh:build-box',
@@ -64,7 +64,7 @@ const SNAPSHOT = {
     {
       repoId: 'repo-1',
       worktreeId: 'worktree-1',
-      repoName: 'Nightshift',
+      repoName: 'Kolux',
       worktreeName: 'Dashboard',
       parentWorktreeId: 'parent-worktree-1',
       hostKind: 'ssh',
@@ -80,7 +80,7 @@ const SNAPSHOT = {
   ],
   showIdle: false,
   filterOptions: {
-    projects: [{ id: 'repo-1', label: 'Nightshift' }],
+    projects: [{ id: 'repo-1', label: 'Kolux' }],
     workspaceStatuses: [{ id: 'in-review', label: 'In review', color: 'emerald' }]
   }
 } satisfies DashboardSnapshot

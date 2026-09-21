@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -20,7 +20,7 @@ import {
   reconnectDockerSshRelayTarget
 } from './helpers/docker-ssh-relay-connection'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const KEY_LATENCY_SAMPLES = 'abcdefghij'
 const MAX_MEDIAN_KEY_LATENCY_MS = 500
 const MAX_WORST_KEY_LATENCY_MS = 2_000
@@ -145,31 +145,27 @@ async function stopRemoteLoad(page: Page, ptyId: string): Promise<void> {
 }
 
 test.describe('Docker SSH relay perf', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH relay perf.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH relay perf.')
   test.skip(process.platform === 'win32', 'Docker SSH relay perf uses POSIX ssh tooling.')
 
   test('keeps remote typing responsive while the Linux relay streams TUI output', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
 
       const runId = String(Date.now())
-      await execInTerminal(
-        nightshiftPage,
-        ptyId,
-        `node -e ${shellQuote(remoteTypingLoadScript(runId))}`
-      )
-      await waitForTerminalOutput(nightshiftPage, `REMOTE_TUI_READY_${runId}`, 30_000, 80_000)
-      const measurement = await measureRemoteTyping(nightshiftPage, ptyId, runId)
+      await execInTerminal(koluxPage, ptyId, `node -e ${shellQuote(remoteTypingLoadScript(runId))}`)
+      await waitForTerminalOutput(koluxPage, `REMOTE_TUI_READY_${runId}`, 30_000, 80_000)
+      const measurement = await measureRemoteTyping(koluxPage, ptyId, runId)
       const summary = `median=${measurement.medianLatencyMs.toFixed(
         1
       )}ms worst=${measurement.worstLatencyMs.toFixed(1)}ms samples=${measurement.latencies
@@ -182,14 +178,14 @@ test.describe('Docker SSH relay perf', () => {
       })
       expect(measurement.medianLatencyMs).toBeLessThan(MAX_MEDIAN_KEY_LATENCY_MS)
       expect(measurement.worstLatencyMs).toBeLessThan(MAX_WORST_KEY_LATENCY_MS)
-      await stopRemoteLoad(nightshiftPage, ptyId)
+      await stopRemoteLoad(koluxPage, ptyId)
     } finally {
       cleanupDockerSshRelayTarget(target)
     }
   })
 
   test('keeps active remote typing responsive while a background SSH PTY stream is ACK-stalled', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
@@ -197,37 +193,37 @@ test.describe('Docker SSH relay perf', () => {
     let activePtyId: string | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      backgroundPtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      backgroundPtyId = await waitForActivePanePtyId(koluxPage, 60_000)
 
       const runId = String(Date.now())
       await execInTerminal(
-        nightshiftPage,
+        koluxPage,
         backgroundPtyId,
         `node -e ${shellQuote(remoteBackgroundFloodScript(runId))}`
       )
-      await waitForTerminalOutput(nightshiftPage, `REMOTE_ACK_FLOOD_READY_${runId}`, 30_000, 80_000)
-      await holdSshPtyAckGate(nightshiftPage, [backgroundPtyId])
-      await nightshiftPage.evaluate((ptyId) => window.api.pty.write(ptyId, 'g'), backgroundPtyId)
+      await waitForTerminalOutput(koluxPage, `REMOTE_ACK_FLOOD_READY_${runId}`, 30_000, 80_000)
+      await holdSshPtyAckGate(koluxPage, [backgroundPtyId])
+      await koluxPage.evaluate((ptyId) => window.api.pty.write(ptyId, 'g'), backgroundPtyId)
 
-      await splitActiveTerminalPane(nightshiftPage, 'vertical')
-      await focusLastTerminalPane(nightshiftPage)
-      activePtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await splitActiveTerminalPane(koluxPage, 'vertical')
+      await focusLastTerminalPane(koluxPage)
+      activePtyId = await waitForActivePanePtyId(koluxPage, 60_000)
       expect(activePtyId).not.toBe(backgroundPtyId)
 
       const activeRunId = `${runId}_active`
       await execInTerminal(
-        nightshiftPage,
+        koluxPage,
         activePtyId,
         `node -e ${shellQuote(remoteTypingLoadScript(activeRunId))}`
       )
-      await waitForTerminalOutput(nightshiftPage, `REMOTE_TUI_READY_${activeRunId}`, 30_000, 80_000)
+      await waitForTerminalOutput(koluxPage, `REMOTE_TUI_READY_${activeRunId}`, 30_000, 80_000)
       const heldAckPressure = expect.poll(
-        async () => (await readSshPtyAckGate(nightshiftPage))?.heldAckChars ?? 0,
+        async () => (await readSshPtyAckGate(koluxPage))?.heldAckChars ?? 0,
         {
           timeout: 30_000,
           message: 'remote background SSH PTY stream did not build held ACK pressure'
@@ -235,8 +231,8 @@ test.describe('Docker SSH relay perf', () => {
       )
       await heldAckPressure.toBe(MIN_HELD_SSH_ACK_CHARS)
 
-      const measurement = await measureRemoteTyping(nightshiftPage, activePtyId, activeRunId)
-      const ackGate = await readSshPtyAckGate(nightshiftPage)
+      const measurement = await measureRemoteTyping(koluxPage, activePtyId, activeRunId)
+      const ackGate = await readSshPtyAckGate(koluxPage)
       const summary = `median=${measurement.medianLatencyMs.toFixed(
         1
       )}ms worst=${measurement.worstLatencyMs.toFixed(1)}ms heldAckChars=${
@@ -253,58 +249,54 @@ test.describe('Docker SSH relay perf', () => {
       expect(measurement.medianLatencyMs).toBeLessThan(MAX_MEDIAN_KEY_LATENCY_MS)
       expect(measurement.worstLatencyMs).toBeLessThan(MAX_WORST_KEY_LATENCY_MS)
 
-      await releaseSshPtyAckGate(nightshiftPage)
-      const releasedAckGate = await readSshPtyAckGate(nightshiftPage)
+      await releaseSshPtyAckGate(koluxPage)
+      const releasedAckGate = await readSshPtyAckGate(koluxPage)
       expect(releasedAckGate?.heldAckChars ?? 0).toBe(0)
     } finally {
-      await releaseSshPtyAckGate(nightshiftPage).catch(() => undefined)
+      await releaseSshPtyAckGate(koluxPage).catch(() => undefined)
       if (activePtyId) {
-        await stopRemoteLoad(nightshiftPage, activePtyId).catch(() => undefined)
+        await stopRemoteLoad(koluxPage, activePtyId).catch(() => undefined)
       }
       if (backgroundPtyId) {
-        await stopRemoteLoad(nightshiftPage, backgroundPtyId).catch(() => undefined)
+        await stopRemoteLoad(koluxPage, backgroundPtyId).catch(() => undefined)
       }
       cleanupDockerSshRelayTarget(target)
     }
   })
 
   test('keeps remote typing responsive while relay file streams and git churn are active', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
 
       const runId = String(Date.now())
       // Large remote binaries: each read streams ~8MB of fs.streamChunk frames
       // over the same SSH channel that carries the pty echo.
-      const loadFile = `/tmp/nightshift-relay-load-${runId}.png`
+      const loadFile = `/tmp/kolux-relay-load-${runId}.png`
       const loadFiles = [loadFile, loadFile]
       await execInTerminal(
-        nightshiftPage,
+        koluxPage,
         ptyId,
         `dd if=/dev/urandom of=${shellQuote(loadFile)} bs=1M count=8 status=none && ` +
           `echo LOAD_FILES_READY_${runId}`
       )
-      await waitForTerminalOutput(nightshiftPage, `LOAD_FILES_READY_${runId}`, 60_000, 80_000)
+      await waitForTerminalOutput(koluxPage, `LOAD_FILES_READY_${runId}`, 60_000, 80_000)
 
-      await execInTerminal(
-        nightshiftPage,
-        ptyId,
-        `node -e ${shellQuote(remoteTypingLoadScript(runId))}`
-      )
-      await waitForTerminalOutput(nightshiftPage, `REMOTE_TUI_READY_${runId}`, 30_000, 80_000)
+      await execInTerminal(koluxPage, ptyId, `node -e ${shellQuote(remoteTypingLoadScript(runId))}`)
+      await waitForTerminalOutput(koluxPage, `REMOTE_TUI_READY_${runId}`, 30_000, 80_000)
 
       // Background relay pressure: continuous large file reads plus git status
       // refreshes, mirroring file preview + source-control churn while typing.
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ targetId, files, repoPath }) => {
           const state = { stopped: false, reads: 0, errors: [] as string[] }
           ;(window as unknown as { __sshRelayLoad: typeof state }).__sshRelayLoad = state
@@ -331,10 +323,10 @@ test.describe('Docker SSH relay perf', () => {
         }
       )
       // Let the bulk load ramp before measuring.
-      await nightshiftPage.waitForTimeout(1_000)
+      await koluxPage.waitForTimeout(1_000)
 
-      const measurement = await measureRemoteTyping(nightshiftPage, ptyId, runId)
-      const load = await nightshiftPage.evaluate(() => {
+      const measurement = await measureRemoteTyping(koluxPage, ptyId, runId)
+      const load = await koluxPage.evaluate(() => {
         const state = (
           window as unknown as {
             __sshRelayLoad: { stopped: boolean; reads: number; errors: string[] }
@@ -361,30 +353,30 @@ test.describe('Docker SSH relay perf', () => {
       expect(load.reads).toBeGreaterThan(0)
       expect(measurement.medianLatencyMs).toBeLessThan(MAX_MEDIAN_KEY_LATENCY_MS)
       expect(measurement.worstLatencyMs).toBeLessThan(MAX_WORST_KEY_LATENCY_MS)
-      await stopRemoteLoad(nightshiftPage, ptyId)
+      await stopRemoteLoad(koluxPage, ptyId)
     } finally {
       cleanupDockerSshRelayTarget(target)
     }
   })
 
   test('keeps an SSH workspace terminal usable after disconnect and reconnect', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const beforePtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const beforePtyId = await waitForActivePanePtyId(koluxPage, 60_000)
       const beforeMarker = `SSH_RECONNECT_BEFORE_${Date.now()}`
       const beforeCommand = encodedRemoteNodeCommand(`process.stdout.write('${beforeMarker}\\n')`)
       expect(beforeCommand).not.toContain(beforeMarker)
-      await execInTerminal(nightshiftPage, beforePtyId, beforeCommand)
-      await waitForTerminalOutput(nightshiftPage, beforeMarker, 20_000, 60_000)
+      await execInTerminal(koluxPage, beforePtyId, beforeCommand)
+      await waitForTerminalOutput(koluxPage, beforeMarker, 20_000, 60_000)
       const recoveryStartedMarker = `SSH_RECONNECT_RECOVERY_STARTED_${Date.now()}`
       const recoveryMarker = `SSH_RECONNECT_RECOVERY_${Date.now()}`
       const recoveryScript = [
@@ -400,14 +392,14 @@ test.describe('Docker SSH relay perf', () => {
       const recoveryCommand = encodedRemoteNodeCommand(recoveryScript)
       expect(recoveryCommand).not.toContain(recoveryStartedMarker)
       expect(recoveryCommand).not.toContain(recoveryMarker)
-      await execInTerminal(nightshiftPage, beforePtyId, recoveryCommand)
-      await waitForTerminalOutput(nightshiftPage, recoveryStartedMarker, 30_000, 80_000)
+      await execInTerminal(koluxPage, beforePtyId, recoveryCommand)
+      await waitForTerminalOutput(koluxPage, recoveryStartedMarker, 30_000, 80_000)
 
-      await reconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const afterPtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-      await waitForTerminalOutput(nightshiftPage, recoveryMarker, 30_000, 80_000)
+      await reconnectDockerSshRelayTarget(koluxPage, remote.targetId)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const afterPtyId = await waitForActivePanePtyId(koluxPage, 60_000)
+      await waitForTerminalOutput(koluxPage, recoveryMarker, 30_000, 80_000)
       const afterMarker = `SSH_RECONNECT_AFTER_${Date.now()}`
       const remoteProofPath = `/tmp/${afterMarker}`
       const afterCommand = encodedRemoteNodeCommand(
@@ -419,8 +411,8 @@ test.describe('Docker SSH relay perf', () => {
         ].join(';')
       )
       expect(afterCommand).not.toContain(afterMarker)
-      await execInTerminal(nightshiftPage, afterPtyId, afterCommand)
-      await waitForTerminalOutput(nightshiftPage, afterMarker, 20_000, 60_000)
+      await execInTerminal(koluxPage, afterPtyId, afterCommand)
+      await waitForTerminalOutput(koluxPage, afterMarker, 20_000, 60_000)
       expect(execDockerSshRelayTargetCommand(target, `cat ${shellQuote(remoteProofPath)}`)).toBe(
         afterMarker
       )

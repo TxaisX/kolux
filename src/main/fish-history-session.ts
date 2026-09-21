@@ -9,33 +9,33 @@ import { isAbsolute, join } from 'node:path'
  * where `<name>` comes only from the `fish_history` variable, and there is no
  * custom-directory knob. So the session NAME is the only isolation lever, and
  * the file necessarily lands in the user's fish data dir rather than inside
- * Nightshift's history tree. That is why deletion needs its own path here instead of
+ * Kolux's history tree. That is why deletion needs its own path here instead of
  * riding the tree tombstone the way bash/zsh history does.
  *
  * `XDG_DATA_HOME` is deliberately not redirected: that would move every other
  * tool's data for the session, not just fish's history.
  */
-const SESSION_PREFIX = 'nightshift_'
-const RELAY_SESSION_PREFIX = 'nightshift_relay_'
-const SAFE_SESSION_NAME = /^nightshift_(?:relay_)?[0-9a-f]{1,64}$/
+const SESSION_PREFIX = 'kolux_'
+const RELAY_SESSION_PREFIX = 'kolux_relay_'
+const SAFE_SESSION_NAME = /^kolux_(?:relay_)?[0-9a-f]{1,64}$/
 /** Deliberately does NOT match the relay prefix. A relay host keyed by its
- *  CLIENT's worktree ids shares the one fish data dir with any desktop Nightshift on
+ *  CLIENT's worktree ids shares the one fish data dir with any desktop Kolux on
  *  the same machine, whose live set knows nothing of those ids — so an
  *  attributable name is the only thing keeping that sweep off remote history.
  *  Relay files are removed by exact name when their worktree goes away. */
-const NIGHTSHIFT_HISTORY_FILE = /^nightshift_([0-9a-f]{1,64})_history$/
+const KOLUX_HISTORY_FILE = /^kolux_([0-9a-f]{1,64})_history$/
 
 export function isSafeFishHistorySession(session: unknown): session is string {
   return typeof session === 'string' && SAFE_SESSION_NAME.test(session)
 }
 
-/** Drop a `fish_history` this process inherited from an outer Nightshift.
- *  fish EXPORTS the variable, so a Nightshift launched from a fish pane hands the
+/** Drop a `fish_history` this process inherited from an outer Kolux.
+ *  fish EXPORTS the variable, so a Kolux launched from a fish pane hands the
  *  LAUNCHING worktree's session name to every pane of the nested app, which then
- *  writes into that worktree's history file (STA-4682). Only Nightshift-minted names
+ *  writes into that worktree's history file (STA-4682). Only Kolux-minted names
  *  match, so a user's own `fish_history` survives; desktop and relay drop each
  *  other's names deliberately, since neither owns the other's worktree ids. */
-export function dropInheritedNightshiftFishHistory(env: Record<string, string | undefined>): void {
+export function dropInheritedKoluxFishHistory(env: Record<string, string | undefined>): void {
   if (isSafeFishHistorySession(env.fish_history)) {
     delete env.fish_history
   }
@@ -51,7 +51,7 @@ export function relayFishHistorySessionName(worktreeHash: string): string {
 }
 
 /** The directory fish will write history into, for a given environment.
- *  Resolve this from the PTY's SPAWN env: Nightshift can be launched with a different
+ *  Resolve this from the PTY's SPAWN env: Kolux can be launched with a different
  *  `XDG_DATA_HOME`/`HOME` than the shells it spawns, and fish follows its own. */
 export function resolveFishHistoryDir(env: NodeJS.ProcessEnv = process.env): string {
   const xdg = env.XDG_DATA_HOME?.trim()
@@ -76,7 +76,7 @@ function removeHistoryFile(path: string): boolean {
 
 /** Delete one worktree's fish history file, trying every directory it could be in.
  *  Callers pass the directory recorded at spawn time plus this process's own, since
- *  the two disagree whenever Nightshift's environment differs from the PTY's. */
+ *  the two disagree whenever Kolux's environment differs from the PTY's. */
 export function deleteFishHistoryFile(session: string, dirs: Iterable<string>): boolean {
   if (!isSafeFishHistorySession(session)) {
     return false
@@ -89,12 +89,12 @@ export function deleteFishHistoryFile(session: string, dirs: Iterable<string>): 
 }
 
 /**
- * Delete every Nightshift-minted fish history file whose worktree is gone.
+ * Delete every Kolux-minted fish history file whose worktree is gone.
  *
  * Why a sweep and not just per-worktree deletion: the history file outlives the
  * directory that names it. A crash between tombstone and removal, a hand-deleted
  * history dir, or a file written by an older build all orphan one, and only a
- * scan of the data dir can find those. Matching on Nightshift's own `nightshift_<hex>_`
+ * scan of the data dir can find those. Matching on Kolux's own `kolux_<hex>_`
  * prefix means the user's real `fish_history` is never a candidate.
  *
  * `minAgeMs` mirrors the age guard the history-tree GC already applies: the
@@ -105,7 +105,7 @@ export function deleteFishHistoryFile(session: string, dirs: Iterable<string>): 
  *
  * Refuses to run at all on an empty live set: that cannot be told apart from a
  * store that failed to hydrate, and unlike the tree GC this deletes files
- * outside Nightshift's own directory.
+ * outside Kolux's own directory.
  */
 export function sweepOrphanedFishHistoryFiles(
   liveWorktreeHashes: ReadonlySet<string>,
@@ -125,7 +125,7 @@ export function sweepOrphanedFishHistoryFiles(
       continue
     }
     for (const entry of entries) {
-      const hash = NIGHTSHIFT_HISTORY_FILE.exec(entry)?.[1]
+      const hash = KOLUX_HISTORY_FILE.exec(entry)?.[1]
       if (!hash || liveWorktreeHashes.has(hash)) {
         continue
       }

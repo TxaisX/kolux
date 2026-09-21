@@ -32,10 +32,10 @@ export const FEATURE_WALL_SETUP_STEPS: readonly FeatureWallSetupStep[] = [
   },
   {
     id: 'browser',
-    name: "Use Nightshift's browser",
-    subtitle: "Use Nightshift's browser",
+    name: "Use Kolux's browser",
+    subtitle: "Use Kolux's browser",
     description:
-      'Browse your web app without leaving Nightshift. Grab any element and send its exact source and styles to an agent with one click.'
+      'Browse your web app without leaving Kolux. Grab any element and send its exact source and styles to an agent with one click.'
   },
   {
     id: 'notifications',
@@ -51,10 +51,10 @@ export const FEATURE_WALL_SETUP_STEPS: readonly FeatureWallSetupStep[] = [
   },
   {
     id: 'agent-capabilities',
-    name: 'Enable Nightshift CLI',
-    subtitle: 'Enable Nightshift CLI',
+    name: 'Enable Kolux CLI',
+    subtitle: 'Enable Kolux CLI',
     description:
-      'Register the Nightshift shell command and install agent skills for browser, computer, and orchestration workflows.'
+      'Register the Kolux shell command and install agent skills for browser, computer, and orchestration workflows.'
   },
   {
     id: 'task-sources',
@@ -74,7 +74,7 @@ export const FEATURE_WALL_SETUP_STEPS: readonly FeatureWallSetupStep[] = [
     name: 'Start work in multiple repos',
     subtitle: 'Start work in multiple repos',
     description:
-      'Bring your key repos into Nightshift so you can start agent work without hunting for folders.'
+      'Bring your key repos into Kolux so you can start agent work without hunting for folders.'
   }
 ] as const
 

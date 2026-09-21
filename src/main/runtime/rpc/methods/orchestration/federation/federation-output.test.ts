@@ -10,7 +10,7 @@ import {
   ORCHESTRATION_FEDERATION_RELEASE_ARCHIVE_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_STRUCTURED_READ_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import type { RpcRequest } from '../../../core'
@@ -24,8 +24,8 @@ describe('orchestration federated worker output', () => {
   let workerDb: OrchestrationDb
   let workerDbDirectory: string
   let workerDbPath: string
-  let homeRuntime: NightshiftRuntimeService
-  let workerRuntime: NightshiftRuntimeService
+  let homeRuntime: KoluxRuntimeService
+  let workerRuntime: KoluxRuntimeService
   let homeDispatcher: RpcDispatcher
   let workerDispatcher: RpcDispatcher
   let workerSupportsStructuredRead: boolean
@@ -38,11 +38,11 @@ describe('orchestration federated worker output', () => {
 
   beforeEach(() => {
     homeDb = new OrchestrationDb(':memory:')
-    workerDbDirectory = mkdtempSync(join(tmpdir(), 'nightshift-federated-output-db-'))
+    workerDbDirectory = mkdtempSync(join(tmpdir(), 'kolux-federated-output-db-'))
     workerDbPath = join(workerDbDirectory, 'worker.db')
     workerDb = new OrchestrationDb(workerDbPath)
     databases.push(homeDb, workerDb)
-    workerRuntime = new NightshiftRuntimeService()
+    workerRuntime = new KoluxRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
     workerDispatcher = new RpcDispatcher({
       runtime: workerRuntime,
@@ -130,7 +130,7 @@ describe('orchestration federated worker output', () => {
         })) as RuntimeRpcResponse<unknown>
       }
     }
-    homeRuntime = new NightshiftRuntimeService(null, undefined, {
+    homeRuntime = new KoluxRuntimeService(null, undefined, {
       orchestrationEnvironmentTransport: transport
     })
     homeRuntime.setOrchestrationDb(homeDb)
@@ -182,7 +182,7 @@ describe('orchestration federated worker output', () => {
     }
   }
 
-  function configureWorkerRuntime(runtime: NightshiftRuntimeService): void {
+  function configureWorkerRuntime(runtime: KoluxRuntimeService): void {
     vi.spyOn(runtime, 'validateOrchestrationAgentLauncher').mockImplementation(() => {})
     vi.spyOn(runtime, 'showRepo').mockResolvedValue({
       id: 'windows-repo',
@@ -214,7 +214,7 @@ describe('orchestration federated worker output', () => {
       'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     )
     vi.spyOn(runtime, 'getTerminalProcessIncarnation').mockReturnValue('windows_runtime:pty:1')
-    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
       handle: 'term_windows_worker',
       accepted: true,
@@ -261,7 +261,7 @@ describe('orchestration federated worker output', () => {
       workerDb = new OrchestrationDb(workerDbPath)
       databases.push(workerDb)
     }
-    workerRuntime = new NightshiftRuntimeService()
+    workerRuntime = new KoluxRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
     configureWorkerRuntime(workerRuntime)
     workerDispatcher = new RpcDispatcher({
@@ -397,7 +397,7 @@ describe('orchestration federated worker output', () => {
 
   it('reads the exact transcript on the worker server without leaking its path home', async () => {
     const dispatchId = await startRemoteWorker()
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-federated-worker-output-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-federated-worker-output-'))
     const transcriptPath = join(directory, 'windows-session.jsonl')
     await writeFile(
       transcriptPath,

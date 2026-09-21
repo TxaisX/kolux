@@ -12,17 +12,13 @@ import {
   type RuntimeMetadataOwnershipWatch
 } from './runtime-metadata-ownership-watch'
 
-// Counts blocking fs calls against nightshift-runtime.json so the poll tick's I/O stays off the main thread.
+// Counts blocking fs calls against kolux-runtime.json so the poll tick's I/O stays off the main thread.
 const metadataSyncCalls = vi.hoisted(() => {
   const state = { recording: false, calls: [] as string[] }
   return {
     state,
     record(fn: string, target: unknown): void {
-      if (
-        state.recording &&
-        typeof target === 'string' &&
-        target.endsWith('nightshift-runtime.json')
-      ) {
+      if (state.recording && typeof target === 'string' && target.endsWith('kolux-runtime.json')) {
         state.calls.push(fn)
       }
     }
@@ -55,7 +51,7 @@ vi.mock('node:fs/promises', async () => {
     readFile: (async (target: unknown, options: never) => {
       const call = (): unknown =>
         (actual.readFile as (...args: never[]) => unknown)(target as never, options)
-      if (typeof target !== 'string' || !target.endsWith('nightshift-runtime.json')) {
+      if (typeof target !== 'string' || !target.endsWith('kolux-runtime.json')) {
         return call()
       }
       metadataReadGate.reads += 1
@@ -101,7 +97,7 @@ function record(overrides: Partial<RuntimeMetadata> = {}): RuntimeMetadata {
   return {
     runtimeId: OWNED_RUNTIME_ID,
     pid: OWNED_PID,
-    transports: [{ kind: 'unix', endpoint: '/tmp/nightshift-owner.sock' }],
+    transports: [{ kind: 'unix', endpoint: '/tmp/kolux-owner.sock' }],
     authToken: 'secret',
     startedAt: 100,
     ...overrides
@@ -213,7 +209,7 @@ describe('watchRuntimeMetadataOwnership', () => {
   }
 
   function makeUserDataPath(): string {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-ownership-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-ownership-'))
     userDataPaths.push(userDataPath)
     return userDataPath
   }

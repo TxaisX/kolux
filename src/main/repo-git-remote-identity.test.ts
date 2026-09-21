@@ -5,11 +5,11 @@ import { probeGitRemoteIdentity } from './repo-git-remote-identity'
 
 vi.mock('./git/runner', () => ({ gitExecFileAsync: vi.fn() }))
 
-const gitlabRemote = 'origin\tgit@gitlab.example.com:team/nightshift.git (fetch)\n'
+const gitlabRemote = 'origin\tgit@gitlab.example.com:team/kolux.git (fetch)\n'
 const gitlabIdentity = {
-  canonicalKey: 'gitlab.example.com/team/nightshift',
+  canonicalKey: 'gitlab.example.com/team/kolux',
   remoteName: 'origin',
-  remoteUrl: 'git@gitlab.example.com:team/nightshift.git'
+  remoteUrl: 'git@gitlab.example.com:team/kolux.git'
 }
 
 const registered: string[] = []
@@ -35,7 +35,7 @@ describe('probeGitRemoteIdentity', () => {
   it('resolves the canonical identity for a non-GitHub remote', async () => {
     vi.mocked(gitExecFileAsync).mockResolvedValue({ stdout: gitlabRemote, stderr: '' })
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'local')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'local')).resolves.toEqual({
       status: 'resolved',
       identity: gitlabIdentity
     })
@@ -44,7 +44,7 @@ describe('probeGitRemoteIdentity', () => {
   it('settles on no-remote when git answers with nothing usable', async () => {
     vi.mocked(gitExecFileAsync).mockResolvedValue({ stdout: '', stderr: '' })
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'local')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'local')).resolves.toEqual({
       status: 'no-remote'
     })
   })
@@ -56,11 +56,11 @@ describe('probeGitRemoteIdentity', () => {
       'origin\tgit@gitlab.example.com:team/other.git (fetch)\n'
     )
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'ssh:m4air')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'ssh:m4air')).resolves.toEqual({
       status: 'resolved',
       identity: gitlabIdentity
     })
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'ssh:openclaw')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'ssh:openclaw')).resolves.toEqual({
       status: 'resolved',
       identity: {
         canonicalKey: 'gitlab.example.com/team/other',
@@ -74,7 +74,7 @@ describe('probeGitRemoteIdentity', () => {
   })
 
   it('reports unavailable when the SSH host has no connected git provider', async () => {
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'ssh:builder')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'ssh:builder')).resolves.toEqual({
       status: 'unavailable'
     })
     expect(gitExecFileAsync).not.toHaveBeenCalled()
@@ -86,7 +86,7 @@ describe('probeGitRemoteIdentity', () => {
   it('refuses a runtime host even when its nested SSH target is registered on this client', async () => {
     const nested = registerHost('nested-1')
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'runtime:env-a')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'runtime:env-a')).resolves.toEqual({
       status: 'unavailable'
     })
     expect(nested).not.toHaveBeenCalled()
@@ -96,7 +96,7 @@ describe('probeGitRemoteIdentity', () => {
   it('reports unavailable when the local git command fails', async () => {
     vi.mocked(gitExecFileAsync).mockRejectedValue(new Error('not a git repository'))
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'local')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'local')).resolves.toEqual({
       status: 'unavailable'
     })
   })
@@ -106,12 +106,12 @@ describe('probeGitRemoteIdentity', () => {
     registerSshGitProvider('builder', { exec } as never)
     registered.push('builder')
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'ssh:builder')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'ssh:builder')).resolves.toEqual({
       status: 'unavailable'
     })
     expect(exec).toHaveBeenCalledWith(
       ['remote', '-v'],
-      '/repos/nightshift',
+      '/repos/kolux',
       expect.objectContaining({ timeoutMs: expect.any(Number) })
     )
     expect(gitExecFileAsync).not.toHaveBeenCalled()
@@ -120,7 +120,7 @@ describe('probeGitRemoteIdentity', () => {
   it('settles on no-remote for an SSH repo git answered for with no remotes', async () => {
     registerHost('builder', '')
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'ssh:builder')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'ssh:builder')).resolves.toEqual({
       status: 'no-remote'
     })
   })
@@ -129,12 +129,12 @@ describe('probeGitRemoteIdentity', () => {
     vi.mocked(gitExecFileAsync).mockResolvedValue({ stdout: gitlabRemote, stderr: '' })
     const controller = new AbortController()
 
-    await probeGitRemoteIdentity('/repos/nightshift', 'local', { signal: controller.signal })
+    await probeGitRemoteIdentity('/repos/kolux', 'local', { signal: controller.signal })
 
     expect(gitExecFileAsync).toHaveBeenCalledWith(
       ['remote', '-v'],
       expect.objectContaining({
-        cwd: '/repos/nightshift',
+        cwd: '/repos/kolux',
         timeout: expect.any(Number),
         signal: controller.signal
       })
@@ -147,11 +147,11 @@ describe('probeGitRemoteIdentity', () => {
     const exec = registerHost('builder')
     const controller = new AbortController()
 
-    await probeGitRemoteIdentity('/repos/nightshift', 'ssh:builder', { signal: controller.signal })
+    await probeGitRemoteIdentity('/repos/kolux', 'ssh:builder', { signal: controller.signal })
 
     expect(exec).toHaveBeenCalledWith(
       ['remote', '-v'],
-      '/repos/nightshift',
+      '/repos/kolux',
       expect.objectContaining({ timeoutMs: expect.any(Number), signal: controller.signal })
     )
     const relayRequestTimeoutMs = 30_000
@@ -161,7 +161,7 @@ describe('probeGitRemoteIdentity', () => {
   it('maps a timed-out local probe to unavailable, never no-remote', async () => {
     vi.mocked(gitExecFileAsync).mockRejectedValue(new Error('git timed out.'))
 
-    await expect(probeGitRemoteIdentity('/repos/nightshift', 'local')).resolves.toEqual({
+    await expect(probeGitRemoteIdentity('/repos/kolux', 'local')).resolves.toEqual({
       status: 'unavailable'
     })
   })
@@ -174,7 +174,7 @@ describe('probeGitRemoteIdentity', () => {
     controller.abort()
 
     await expect(
-      probeGitRemoteIdentity('/repos/nightshift', 'local', { signal: controller.signal })
+      probeGitRemoteIdentity('/repos/kolux', 'local', { signal: controller.signal })
     ).resolves.toEqual({ status: 'unavailable' })
   })
 })

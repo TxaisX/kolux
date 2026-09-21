@@ -59,9 +59,9 @@ function isInstallJournal(value: unknown, canonicalPath: string): value is Skill
     journal.operation === 'install' &&
     typeof journal.phase === 'string' &&
     journal.canonicalPath === canonicalPath &&
-    ownedPath(journal.extractionPath, '.nightshift-skill-extract-') &&
-    ownedPath(journal.stagingPath, `.${name}.nightshift-staging-`) &&
-    ownedPath(journal.backupPath, `.${name}.nightshift-backup-`) &&
+    ownedPath(journal.extractionPath, '.kolux-skill-extract-') &&
+    ownedPath(journal.stagingPath, `.${name}.kolux-staging-`) &&
+    ownedPath(journal.backupPath, `.${name}.kolux-backup-`) &&
     journal.extractionPath !== journal.stagingPath &&
     journal.extractionPath !== journal.backupPath &&
     journal.stagingPath !== journal.backupPath &&

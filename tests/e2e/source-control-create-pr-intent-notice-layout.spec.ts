@@ -3,7 +3,7 @@
  * AI settings" link. In a minimum-width sidebar the link must not share the
  * message's row, or it squeezes the sentence into a one-word-per-line column.
  */
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   createStagedCommitMessageChange,
@@ -14,17 +14,16 @@ import { RIGHT_SIDEBAR_MIN_WIDTH } from '../../src/renderer/src/components/right
 
 test.describe('Source Control Create PR intent notice layout', () => {
   test('keeps the settings link off the message row at the minimum sidebar width', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const { prWorktreeId, prWorktreePath, primaryBranch } =
-      await seedCreatePrComposer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const { prWorktreeId, prWorktreePath, primaryBranch } = await seedCreatePrComposer(koluxPage)
     // A real staged change with no commit draft is what routes the intent run
     // into the "configure Source Control AI" notice, which carries the link.
     createStagedCommitMessageChange(prWorktreePath)
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ prWorktreeId, primaryBranch }) => {
         const store = window.__store
         if (!store) {
@@ -61,23 +60,23 @@ test.describe('Source Control Create PR intent notice layout', () => {
       { prWorktreeId, primaryBranch }
     )
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    await nightshiftPage.evaluate((minWidth) => {
+    await openSourceControl(koluxPage, prWorktreeId)
+    await koluxPage.evaluate((minWidth) => {
       window.__store?.getState().setRightSidebarWidth(minWidth)
     }, RIGHT_SIDEBAR_MIN_WIDTH)
 
-    const createPr = nightshiftPage.getByRole('button', { name: 'Create PR' }).first()
+    const createPr = koluxPage.getByRole('button', { name: 'Create PR' }).first()
     await expect(createPr).toBeVisible({ timeout: 10_000 })
     await expect(createPr).toBeEnabled()
     await createPr.click()
 
-    const notice = nightshiftPage.locator('#commit-area-create-pr-intent')
+    const notice = koluxPage.locator('#commit-area-create-pr-intent')
     const settingsLink = notice.getByRole('button', { name: 'Source Control AI settings' })
     await expect(settingsLink).toBeVisible({ timeout: 20_000 })
 
-    if (process.env.NIGHTSHIFT_PR_INTENT_NOTICE_SCREENSHOT_PATH) {
-      await nightshiftPage.evaluate(() => document.documentElement.classList.add('dark'))
-      await notice.screenshot({ path: process.env.NIGHTSHIFT_PR_INTENT_NOTICE_SCREENSHOT_PATH })
+    if (process.env.KOLUX_PR_INTENT_NOTICE_SCREENSHOT_PATH) {
+      await koluxPage.evaluate(() => document.documentElement.classList.add('dark'))
+      await notice.screenshot({ path: process.env.KOLUX_PR_INTENT_NOTICE_SCREENSHOT_PATH })
     }
 
     // The layout contract: the link starts below the message's last line.

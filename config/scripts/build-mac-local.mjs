@@ -37,8 +37,8 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     {
       env: {
         ...process.env,
-        NIGHTSHIFT_BUILD_COMMIT: identity.commit,
-        NIGHTSHIFT_LOCAL_BUILD_VERSION: identity.version
+        KOLUX_BUILD_COMMIT: identity.commit,
+        KOLUX_LOCAL_BUILD_VERSION: identity.version
       },
       stdio: 'inherit'
     }

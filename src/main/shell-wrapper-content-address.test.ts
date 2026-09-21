@@ -18,14 +18,14 @@ function builderFor(marker: string): ShellWrapperFileBuilder {
 }
 
 function makeBase(): string {
-  return mkdtempSync(join(tmpdir(), 'nightshift-wrapper-address-'))
+  return mkdtempSync(join(tmpdir(), 'kolux-wrapper-address-'))
 }
 
 describe('resolveShellWrapperRoot', () => {
   it('gives builds with different wrapper contents different trees', () => {
     const base = makeBase()
-    expect(resolveShellWrapperRoot(base, builderFor('NIGHTSHIFT_SHELL_READY_MARKER'))).not.toEqual(
-      resolveShellWrapperRoot(base, builderFor('NIGHTSHIFT_SHELL_FEATURES'))
+    expect(resolveShellWrapperRoot(base, builderFor('KOLUX_SHELL_READY_MARKER'))).not.toEqual(
+      resolveShellWrapperRoot(base, builderFor('KOLUX_SHELL_FEATURES'))
     )
   })
 

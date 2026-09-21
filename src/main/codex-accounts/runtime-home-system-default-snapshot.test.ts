@@ -394,7 +394,7 @@ describe('CodexRuntimeHomeService', () => {
     settings.activeCodexManagedAccountId = 'account-1'
     service.syncForCurrentSelection()
 
-    // A stale or external process overwrites runtime with auth Nightshift cannot
+    // A stale or external process overwrites runtime with auth Kolux cannot
     // verify against the outgoing managed account.
     writeFileSync(runtimeAuthPath, '{"account":"external-login"}\n', 'utf-8')
 

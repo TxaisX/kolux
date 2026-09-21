@@ -22,28 +22,28 @@ export function concurrentLookupDetail(input: ChecksPanelReviewStateInput): stri
   if (input.reviewLookup === 'positive_unresolved') {
     return translate(
       'auto.components.right.sidebar.checks.panel.review.detail.positive',
-      'Nightshift also has saved {{reviewLabel}} information that it could not verify.',
+      'Kolux also has saved {{reviewLabel}} information that it could not verify.',
       { reviewLabel }
     )
   }
   if (isRateLimitRefresh(refresh)) {
     return translate(
       'auto.components.right.sidebar.checks.panel.review.detail.rate_limited',
-      'Nightshift also could not check {{reviewLabel}} status because {{provider}} is temporarily limiting requests.',
+      'Kolux also could not check {{reviewLabel}} status because {{provider}} is temporarily limiting requests.',
       { reviewLabel, provider: providerName }
     )
   }
   if (refresh?.errorType === 'network') {
     return translate(
       'auto.components.right.sidebar.checks.panel.review.detail.network',
-      'Nightshift also could not check {{reviewLabel}} status because this environment could not reach {{provider}}.',
+      'Kolux also could not check {{reviewLabel}} status because this environment could not reach {{provider}}.',
       { reviewLabel, provider: providerName }
     )
   }
   if (refresh?.status === 'error' || isHardRefreshError(refresh)) {
     return translate(
       'auto.components.right.sidebar.checks.panel.review.detail.untyped',
-      'Nightshift also could not confirm whether this branch already has a {{reviewLabel}}.',
+      'Kolux also could not confirm whether this branch already has a {{reviewLabel}}.',
       { reviewLabel }
     )
   }
@@ -112,7 +112,7 @@ export function transientRefreshState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.unknown_error.body',
-        'The lookup failed, so Nightshift could not confirm whether this branch already has a {{reviewLabel}}.',
+        'The lookup failed, so Kolux could not confirm whether this branch already has a {{reviewLabel}}.',
         { reviewLabel }
       )
     }
@@ -126,7 +126,7 @@ export function transientRefreshState(
     ),
     description: translate(
       'auto.components.right.sidebar.checks.panel.review.untyped.body',
-      'Nightshift could not confirm whether this branch already has a {{reviewLabel}}. Retry to check again.',
+      'Kolux could not confirm whether this branch already has a {{reviewLabel}}. Retry to check again.',
       { reviewLabel }
     )
   }
@@ -180,7 +180,7 @@ const HARD_ERROR_COPY: Record<
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.cli.body',
       fallback:
-        'Nightshift could not run {{provider}} CLI in this environment. Set it up here, then retry.'
+        'Kolux could not run {{provider}} CLI in this environment. Set it up here, then retry.'
     }
   }
 }
@@ -215,7 +215,7 @@ const SKIPPED_COPY: Partial<
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.skipped.disconnected.body',
       fallback:
-        "This repository's execution host is disconnected, so Nightshift cannot refresh {{reviewLabel}} status."
+        "This repository's execution host is disconnected, so Kolux cannot refresh {{reviewLabel}} status."
     },
     recovery: ['retry']
   },
@@ -237,8 +237,7 @@ const SKIPPED_COPY: Partial<
     },
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.skipped.archived.body',
-      fallback:
-        'This repository is archived, so Nightshift is not refreshing {{reviewLabel}} status.'
+      fallback: 'This repository is archived, so Kolux is not refreshing {{reviewLabel}} status.'
     },
     recovery: []
   },
@@ -249,8 +248,7 @@ const SKIPPED_COPY: Partial<
     },
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.skipped.not_git.body',
-      fallback:
-        'Nightshift could not treat this folder as a Git repository for {{reviewLabel}} status.'
+      fallback: 'Kolux could not treat this folder as a Git repository for {{reviewLabel}} status.'
     },
     recovery: []
   },
@@ -262,7 +260,7 @@ const SKIPPED_COPY: Partial<
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.skipped.remote.body',
       fallback:
-        'Nightshift could not refresh {{reviewLabel}} status for this remote context. Retry after the host is available.'
+        'Kolux could not refresh {{reviewLabel}} status for this remote context. Retry after the host is available.'
     },
     recovery: ['retry']
   }

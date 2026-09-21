@@ -144,7 +144,7 @@ describe('makeMiniMaxRequestHeaders', () => {
     expect(headers['Accept-Language']).toBe('en-US,en;q=0.9')
     expect(headers.Referer).toBe('https://platform.minimax.io/console/usage')
     expect(headers['User-Agent']).toMatch(/^Mozilla\/5\.0/)
-    expect(headers['User-Agent']).not.toContain('nightshift-minimax-usage')
+    expect(headers['User-Agent']).not.toContain('kolux-minimax-usage')
   })
 
   it('switches the Referer to the CN console when endpointMode is "cn" (#14264)', () => {
@@ -199,7 +199,7 @@ describe('fetchMiniMaxWithSessionCookieJar', () => {
       signal: controller.signal,
       endpointMode: 'overseas'
     })
-    expect(sessionFromPartitionMock).toHaveBeenCalledWith('nightshift-minimax-rate-limit-fetch')
+    expect(sessionFromPartitionMock).toHaveBeenCalledWith('kolux-minimax-rate-limit-fetch')
     expect(clearStorageDataMock).toHaveBeenCalledTimes(2)
     expect(clearStorageDataMock).toHaveBeenNthCalledWith(1, {
       origin: 'https://platform.minimax.io',
@@ -244,7 +244,7 @@ describe('fetchMiniMaxWithSessionCookieJar', () => {
 
   it('clears the dedicated MiniMax partition on demand', async () => {
     await clearMiniMaxSessionCookieJar()
-    expect(sessionFromPartitionMock).toHaveBeenCalledWith('nightshift-minimax-rate-limit-fetch')
+    expect(sessionFromPartitionMock).toHaveBeenCalledWith('kolux-minimax-rate-limit-fetch')
     expect(clearStorageDataMock).toHaveBeenCalledWith({
       origin: 'https://platform.minimax.io',
       storages: ['cookies']
@@ -355,7 +355,7 @@ describe('fetchMiniMaxWithManualCookieHeader', () => {
       endpointMode: 'overseas'
     })
     expect(result.transport).toBe('manual-cookie-header')
-    expect(sessionFromPartitionMock).toHaveBeenCalledWith('nightshift-minimax-rate-limit-fetch')
+    expect(sessionFromPartitionMock).toHaveBeenCalledWith('kolux-minimax-rate-limit-fetch')
     expect(clearStorageDataMock).toHaveBeenCalledTimes(2)
     expect(cookiesSetMock).not.toHaveBeenCalled()
     expect(netFetchMock).toHaveBeenCalledTimes(1)

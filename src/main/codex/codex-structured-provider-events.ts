@@ -76,7 +76,7 @@ export function deliverCodexServerRequest(
     session.connection.respondWithError(
       request.id,
       -32001,
-      `Nightshift could not durably record ${request.method} prompt (${admission.reason})`
+      `Kolux could not durably record ${request.method} prompt (${admission.reason})`
     )
   }
   return admission

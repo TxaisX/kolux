@@ -31,9 +31,9 @@ function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   }
 }
 
-const nightshiftRepo: Repo = {
+const koluxRepo: Repo = {
   id: 'repo-1',
-  path: '/repo/nightshift',
+  path: '/repo/kolux',
   displayName: 'TxaisX/nightshift',
   badgeColor: '#22c55e',
   addedAt: 0
@@ -41,8 +41,8 @@ const nightshiftRepo: Repo = {
 
 function gitLabRepo(canonicalKey: string): Repo {
   return {
-    ...nightshiftRepo,
-    displayName: 'nightshift',
+    ...koluxRepo,
+    displayName: 'kolux',
     gitRemoteIdentity: {
       canonicalKey,
       remoteName: 'origin',
@@ -54,8 +54,8 @@ function gitLabRepo(canonicalKey: string): Repo {
 /** Basename displayName: the common non-fork case, where only the remote identifies the repo. */
 function gitHubRepo(canonicalKey: string): Repo {
   return {
-    ...nightshiftRepo,
-    displayName: 'nightshift',
+    ...koluxRepo,
+    displayName: 'kolux',
     gitRemoteIdentity: {
       canonicalKey,
       remoteName: 'origin',
@@ -69,7 +69,7 @@ describe('parseCmdJTaskSourceUrl', () => {
     expect(parseCmdJTaskSourceUrl('https://github.com/TxaisX/nightshift/issues/14198')).toEqual({
       provider: 'github',
       link: {
-        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
         type: 'issue',
         number: 14198
       }
@@ -77,7 +77,7 @@ describe('parseCmdJTaskSourceUrl', () => {
     expect(parseCmdJTaskSourceUrl('https://github.com/TxaisX/nightshift/pull/12789')).toEqual({
       provider: 'github',
       link: {
-        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
         type: 'pr',
         number: 12789
       }
@@ -94,15 +94,15 @@ describe('parseCmdJTaskSourceUrl', () => {
       intent: { identifier: 'STA-4052', organizationUrlKey: 'stably' }
     })
     expect(
-      parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+      parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     ).toMatchObject({
       provider: 'gitlab',
       link: { type: 'mr', number: 17 }
     })
-    expect(parseCmdJTaskSourceUrl('https://company.atlassian.net/browse/NIGHTSHIFT-123')).toEqual({
+    expect(parseCmdJTaskSourceUrl('https://company.atlassian.net/browse/KOLUX-123')).toEqual({
       provider: 'jira',
       parsed: {
-        issueKey: 'NIGHTSHIFT-123',
+        issueKey: 'KOLUX-123',
         origin: 'https://company.atlassian.net',
         sitePath: ''
       }
@@ -146,7 +146,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedIssue: 14198 }),
         intent: intent!,
-        repo: nightshiftRepo
+        repo: koluxRepo
       })
     ).toMatchObject({
       worktreeId: 'wt-1',
@@ -157,7 +157,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedIssue: 14198 }),
         intent: intent!,
-        repo: { ...nightshiftRepo, displayName: 'other/repo' }
+        repo: { ...koluxRepo, displayName: 'other/repo' }
       })
     ).toBeNull()
   })
@@ -176,7 +176,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
           }
         }),
         intent: intent!,
-        repo: nightshiftRepo
+        repo: koluxRepo
       })
     ).toMatchObject({ matchedFields: ['pr'] })
   })
@@ -195,7 +195,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
           }
         }),
         intent: intent!,
-        repo: { ...nightshiftRepo, displayName: 'Repo 1' }
+        repo: { ...koluxRepo, displayName: 'Repo 1' }
       })
     ).toMatchObject({ matchedFields: ['pr'], supportingText: { text: 'PR #12789' } })
   })
@@ -285,9 +285,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('normalizes host case, port, and owner case before comparing GitHub identities', () => {
-    const intent = parseCmdJTaskSourceUrl(
-      'https://GHE.Example.com:8443/Txais/Nightshift/pull/12789'
-    )
+    const intent = parseCmdJTaskSourceUrl('https://GHE.Example.com:8443/Txais/Kolux/pull/12789')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedPR: 12789 }),
@@ -303,7 +301,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedPR: 12789 }),
         intent: intent!,
-        repo: { ...nightshiftRepo, displayName: 'nightshift' }
+        repo: { ...koluxRepo, displayName: 'kolux' }
       })
     ).toMatchObject({ matchedFields: ['pr'] })
     expect(
@@ -321,7 +319,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
         remoteUrl: 'git@github.com:TxaisX/nightshift.git'
       }
     }
-    const intent = parseCmdJTaskSourceUrl('https://github.com/me/nightshift/pull/12789')
+    const intent = parseCmdJTaskSourceUrl('https://github.com/me/kolux/pull/12789')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedPR: 12789 }),
@@ -372,7 +370,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
         worktree: makeWorktree({ linkedPR: 12789 }),
         intent: intent!,
         repo: {
-          ...nightshiftRepo,
+          ...koluxRepo,
           gitRemoteIdentity: {
             canonicalKey: 'git-mirror.example.com/TxaisX/nightshift',
             remoteName: 'origin',
@@ -405,7 +403,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('rejects a GitLab MR URL from a different project than the stored URL', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({
@@ -425,7 +423,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('matches a GitLab MR URL for the same project', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({
@@ -435,7 +433,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
             type: 'mr',
             number: 17,
             title: 'Same project MR',
-            url: 'https://gitlab.com/acme/nightshift/-/merge_requests/17'
+            url: 'https://gitlab.com/acme/kolux/-/merge_requests/17'
           }
         }),
         intent: intent!,
@@ -448,7 +446,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('does not match a GitLab issue URL against a stored MR of the same number', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({
@@ -458,7 +456,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
             type: 'issue',
             number: 17,
             title: 'Issue',
-            url: 'https://gitlab.com/acme/nightshift/-/issues/17'
+            url: 'https://gitlab.com/acme/kolux/-/issues/17'
           }
         }),
         intent: intent!
@@ -467,7 +465,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('does not match a GitLab URL on a different host for the same project path', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({
@@ -477,17 +475,17 @@ describe('matchWorktreePaletteTaskUrl', () => {
             type: 'mr',
             number: 17,
             title: 'Self-hosted MR',
-            url: 'https://gitlab.example.com/acme/nightshift/-/merge_requests/17'
+            url: 'https://gitlab.example.com/acme/kolux/-/merge_requests/17'
           }
         }),
         intent: intent!,
-        repo: gitLabRepo('gitlab.example.com/acme/nightshift')
+        repo: gitLabRepo('gitlab.example.com/acme/kolux')
       })
     ).toBeNull()
   })
 
   it('gates a stored GitLab number with no work item on the repo remote identity', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
@@ -499,18 +497,18 @@ describe('matchWorktreePaletteTaskUrl', () => {
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
         intent: intent!,
-        repo: gitLabRepo('gitlab.com/acme/nightshift')
+        repo: gitLabRepo('gitlab.com/acme/kolux')
       })
     ).toMatchObject({ matchedFields: ['mr'] })
   })
 
   it('matches GitLab remotes whose host is an SSH alias or www form of gitlab.com', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     for (const canonicalKey of [
       // altssh.gitlab.com is GitLab's port-443 SSH endpoint; `gitlab-work` is an ssh-config alias.
-      'altssh.gitlab.com/acme/nightshift',
-      'gitlab-work/acme/nightshift',
-      'www.gitlab.com/acme/nightshift'
+      'altssh.gitlab.com/acme/kolux',
+      'gitlab-work/acme/kolux',
+      'www.gitlab.com/acme/kolux'
     ]) {
       expect(
         matchWorktreePaletteTaskUrl({
@@ -524,18 +522,18 @@ describe('matchWorktreePaletteTaskUrl', () => {
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
         intent: intent!,
-        repo: gitLabRepo('gitlab.example.com/acme/nightshift')
+        repo: gitLabRepo('gitlab.example.com/acme/kolux')
       })
     ).toBeNull()
   })
 
   it('stays permissive for GitLab numbers when the repo remote identity is unknown', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
         intent: intent!,
-        repo: nightshiftRepo
+        repo: koluxRepo
       })
     ).toMatchObject({ matchedFields: ['mr'] })
     expect(
@@ -551,17 +549,17 @@ describe('matchWorktreePaletteTaskUrl', () => {
     // `deriveGitRemoteIdentity` prefers `upstream`, so the fork's own `origin` is not visible here;
     // an MR URL from the fork itself is the accepted false negative of gating on the known project.
     const forkRepo: Repo = {
-      ...gitLabRepo('gitlab.com/acme/nightshift'),
+      ...gitLabRepo('gitlab.com/acme/kolux'),
       gitRemoteIdentity: {
-        canonicalKey: 'gitlab.com/acme/nightshift',
+        canonicalKey: 'gitlab.com/acme/kolux',
         remoteName: 'upstream',
-        remoteUrl: 'git@gitlab.com:acme/nightshift.git'
+        remoteUrl: 'git@gitlab.com:acme/kolux.git'
       }
     }
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
-        intent: parseCmdJTaskSourceUrl('https://gitlab.com/me/nightshift/-/merge_requests/17')!,
+        intent: parseCmdJTaskSourceUrl('https://gitlab.com/me/kolux/-/merge_requests/17')!,
         repo: forkRepo
       })
     ).toBeNull()
@@ -569,7 +567,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
-        intent: parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')!,
+        intent: parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')!,
         repo: forkRepo
       })
     ).toMatchObject({ matchedFields: ['mr'] })
@@ -577,16 +575,16 @@ describe('matchWorktreePaletteTaskUrl', () => {
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree({ linkedGitLabMR: 17 }),
-        intent: parseCmdJTaskSourceUrl('https://gitlab.com/me/nightshift/-/merge_requests/17')!,
-        repo: gitLabRepo('gitlab.com/acme/nightshift')
+        intent: parseCmdJTaskSourceUrl('https://gitlab.com/me/kolux/-/merge_requests/17')!,
+        repo: gitLabRepo('gitlab.com/acme/kolux')
       })
     ).toBeNull()
   })
 
   it('matches both GitLab issue URL forms and rejects other projects', () => {
     for (const url of [
-      'https://gitlab.com/acme/nightshift/-/issues/17',
-      'https://gitlab.com/acme/nightshift/-/work_items/17'
+      'https://gitlab.com/acme/kolux/-/issues/17',
+      'https://gitlab.com/acme/kolux/-/work_items/17'
     ]) {
       const intent = parseCmdJTaskSourceUrl(url)
       expect(intent).toMatchObject({ provider: 'gitlab', link: { type: 'issue', number: 17 } })
@@ -594,7 +592,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
         matchWorktreePaletteTaskUrl({
           worktree: makeWorktree({ linkedGitLabIssue: 17 }),
           intent: intent!,
-          repo: gitLabRepo('gitlab.com/acme/nightshift')
+          repo: gitLabRepo('gitlab.com/acme/kolux')
         })
       ).toMatchObject({
         matchedFields: ['issue'],
@@ -611,7 +609,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('matches a GitLab MR URL via the linked review URL', () => {
-    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')
+    const intent = parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')
     expect(
       matchWorktreePaletteTaskUrl({
         worktree: makeWorktree(),
@@ -622,7 +620,7 @@ describe('matchWorktreePaletteTaskUrl', () => {
           number: 17,
           title: 'Fork MR',
           state: 'open',
-          url: 'https://gitlab.com/acme/nightshift/-/merge_requests/17',
+          url: 'https://gitlab.com/acme/kolux/-/merge_requests/17',
           status: 'pending',
           updatedAt: '2026-01-01T00:00:00Z',
           mergeable: 'UNKNOWN'
@@ -809,7 +807,7 @@ describe('getCmdJTaskUrlCreatePreview', () => {
     ).toBe('GitHub pull request')
     expect(
       getCmdJTaskUrlCreatePreview(
-        parseCmdJTaskSourceUrl('https://gitlab.com/acme/nightshift/-/merge_requests/17')!
+        parseCmdJTaskSourceUrl('https://gitlab.com/acme/kolux/-/merge_requests/17')!
       )
     ).toMatchObject({
       provider: 'gitlab',
@@ -818,11 +816,11 @@ describe('getCmdJTaskUrlCreatePreview', () => {
     })
     expect(
       getCmdJTaskUrlCreatePreview(
-        parseCmdJTaskSourceUrl('https://company.atlassian.net/browse/NIGHTSHIFT-123')!
+        parseCmdJTaskSourceUrl('https://company.atlassian.net/browse/KOLUX-123')!
       )
     ).toMatchObject({
       provider: 'jira',
-      identifier: 'NIGHTSHIFT-123',
+      identifier: 'KOLUX-123',
       kindLabel: 'Jira issue'
     })
   })

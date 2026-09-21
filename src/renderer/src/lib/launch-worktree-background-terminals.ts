@@ -56,9 +56,9 @@ function buildPaneEnv(
 ): Record<string, string> {
   return {
     ...env,
-    NIGHTSHIFT_PANE_KEY: makePaneKey(tabId, leafId),
-    NIGHTSHIFT_TAB_ID: tabId,
-    NIGHTSHIFT_WORKTREE_ID: worktreeId
+    KOLUX_PANE_KEY: makePaneKey(tabId, leafId),
+    KOLUX_TAB_ID: tabId,
+    KOLUX_WORKTREE_ID: worktreeId
   }
 }
 

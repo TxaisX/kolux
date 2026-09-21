@@ -11,9 +11,9 @@ vi.mock('fs', () => ({
 
 vi.mock('./relay-protocol', () => ({
   RELAY_VERSION: '0.1.0',
-  RELAY_REMOTE_DIR: '.nightshift-remote',
+  RELAY_REMOTE_DIR: '.kolux-remote',
   parseUnameToRelayPlatform: vi.fn(() => 'linux-x64'),
-  RELAY_SENTINEL: 'NIGHTSHIFT-RELAY v0.1.0 READY\n',
+  RELAY_SENTINEL: 'KOLUX-RELAY v0.1.0 READY\n',
   RELAY_SENTINEL_TIMEOUT_MS: 10_000
 }))
 
@@ -32,7 +32,7 @@ vi.mock('./ssh-remote-node-resolution', () => ({
 
 vi.mock('./ssh-relay-versioned-install', () => ({
   readLocalFullVersion: vi.fn().mockReturnValue('0.1.0+abcdef012345'),
-  computeRemoteRelayDir: (home: string, v: string) => `${home}/.nightshift-remote/relay-${v}`,
+  computeRemoteRelayDir: (home: string, v: string) => `${home}/.kolux-remote/relay-${v}`,
   isRelayAlreadyInstalled: vi.fn().mockResolvedValue(true),
   finalizeInstall: vi.fn().mockResolvedValue(undefined),
   abandonInstall: vi.fn().mockResolvedValue(undefined),
@@ -80,18 +80,18 @@ function makeMockConnection(): SshConnection {
 // The daemon is present and its listener accepts (a SIGSTOPped relay still does — the kernel
 // backlog answers), but nothing on the host can enumerate who holds the socket.
 const LIVE_UNENUMERABLE_PROBE = [
-  'NIGHTSHIFT-INCUMBENT-BEGIN',
+  'KOLUX-INCUMBENT-BEGIN',
   'PRESENT=yes',
   'LISTEN=accepted',
   'HOLDERS_SOURCE=unavailable',
-  'NIGHTSHIFT-INCUMBENT-END'
+  'KOLUX-INCUMBENT-END'
 ].join('\n')
 
 function queueAliveSocketThenProbe(): void {
   vi.mocked(execCommand)
-    .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+    .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
     .mockResolvedValueOnce('/home/user')
-    .mockResolvedValueOnce('NIGHTSHIFT-NATIVE-DEPS-OK')
+    .mockResolvedValueOnce('KOLUX-NATIVE-DEPS-OK')
     .mockResolvedValueOnce('') // launch namespace marker
     .mockResolvedValueOnce('ALIVE')
     .mockResolvedValueOnce(LIVE_UNENUMERABLE_PROBE)
@@ -109,9 +109,7 @@ function launchedDaemon(conn: SshConnection): boolean {
 describe('deployAndLaunchRelay honours the incumbent verdict', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(execCommand)
-      .mockReset()
-      .mockResolvedValue('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+    vi.mocked(execCommand).mockReset().mockResolvedValue('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
     vi.mocked(waitForSentinel).mockReset()
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -138,9 +136,9 @@ describe('deployAndLaunchRelay honours the incumbent verdict', () => {
   it('still launches fresh when the socket probe itself fails', async () => {
     const conn = makeMockConnection()
     vi.mocked(execCommand)
-      .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+      .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
       .mockResolvedValueOnce('/home/user')
-      .mockResolvedValueOnce('NIGHTSHIFT-NATIVE-DEPS-OK')
+      .mockResolvedValueOnce('KOLUX-NATIVE-DEPS-OK')
       .mockResolvedValueOnce('') // launch namespace marker
       .mockRejectedValueOnce(new Error('test -S: transport hiccup'))
       .mockResolvedValueOnce('READY')

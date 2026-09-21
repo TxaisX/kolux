@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 export type FederatedLifecycleSettlement =
   | { action: 'completed' | 'failed'; authority: 'run_home' }
@@ -17,10 +17,10 @@ export function areFederatedLifecycleSettlementsEqual(
 
 type Waiter = (settlement: FederatedLifecycleSettlement) => void
 
-const waitersByRuntime = new WeakMap<NightshiftRuntimeService, Map<string, Set<Waiter>>>()
+const waitersByRuntime = new WeakMap<KoluxRuntimeService, Map<string, Set<Waiter>>>()
 
 export function publishFederatedLifecycleSettlement(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   sequence: number,
   settlement: FederatedLifecycleSettlement
@@ -32,7 +32,7 @@ export function publishFederatedLifecycleSettlement(
 }
 
 export function waitForFederatedLifecycleSettlement(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   sequence: number,
   options: { timeoutMs: number; signal?: AbortSignal }
@@ -66,7 +66,7 @@ export function waitForFederatedLifecycleSettlement(
   })
 }
 
-function getRuntimeWaiters(runtime: NightshiftRuntimeService): Map<string, Set<Waiter>> {
+function getRuntimeWaiters(runtime: KoluxRuntimeService): Map<string, Set<Waiter>> {
   const existing = waitersByRuntime.get(runtime)
   if (existing) {
     return existing

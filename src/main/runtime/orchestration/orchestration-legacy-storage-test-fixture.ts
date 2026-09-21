@@ -25,7 +25,7 @@ export function createLegacyStorageCutoverFixture(): {
   fixture: LegacyStorageCutoverFixture
   tempDir: string
 } {
-  const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-legacy-storage-'))
+  const tempDir = mkdtempSync(join(tmpdir(), 'kolux-legacy-storage-'))
   const dbPath = join(tempDir, 'orchestration.db')
   const first = new OrchestrationDb(dbPath)
   const currentRun = first.createRun({
@@ -109,7 +109,7 @@ export function createLegacyStorageCutoverFixture(): {
     subject: 'Rejected heartbeat',
     type: 'heartbeat',
     payload: JSON.stringify({
-      _nightshiftLifecycleRejection: { code: 'migration', reason: 'cutover' }
+      _koluxLifecycleRejection: { code: 'migration', reason: 'cutover' }
     })
   })
   const lookalike = first.insertMessage({
@@ -118,7 +118,7 @@ export function createLegacyStorageCutoverFixture(): {
     to: 'term_legacy_coord',
     subject: 'Ordinary legacy mail',
     payload: JSON.stringify({
-      userData: { _nightshiftLifecycleRejection: { code: 'not-a-top-level-audit-marker' } }
+      userData: { _koluxLifecycleRejection: { code: 'not-a-top-level-audit-marker' } }
     })
   })
   const malformedRejections = [
@@ -127,35 +127,35 @@ export function createLegacyStorageCutoverFixture(): {
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'Invalid JSON marker',
-      payload: '{"_nightshiftLifecycleRejection":'
+      payload: '{"_koluxLifecycleRejection":'
     }),
     first.insertMessage({
       runId: 'run_legacy_local',
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'Array marker',
-      payload: JSON.stringify({ _nightshiftLifecycleRejection: [] })
+      payload: JSON.stringify({ _koluxLifecycleRejection: [] })
     }),
     first.insertMessage({
       runId: 'run_legacy_local',
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'String marker',
-      payload: JSON.stringify({ _nightshiftLifecycleRejection: 'migration' })
+      payload: JSON.stringify({ _koluxLifecycleRejection: 'migration' })
     }),
     first.insertMessage({
       runId: 'run_legacy_local',
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'Incomplete marker',
-      payload: JSON.stringify({ _nightshiftLifecycleRejection: { code: 'migration' } })
+      payload: JSON.stringify({ _koluxLifecycleRejection: { code: 'migration' } })
     }),
     first.insertMessage({
       runId: 'run_legacy_local',
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'Non-string marker fields',
-      payload: JSON.stringify({ _nightshiftLifecycleRejection: { code: 19, reason: false } })
+      payload: JSON.stringify({ _koluxLifecycleRejection: { code: 19, reason: false } })
     }),
     first.insertMessage({
       runId: 'run_legacy_local',
@@ -163,7 +163,7 @@ export function createLegacyStorageCutoverFixture(): {
       to: 'term_legacy_coord',
       subject: 'Array root',
       payload: JSON.stringify([
-        { _nightshiftLifecycleRejection: { code: 'migration', reason: 'nested' } }
+        { _koluxLifecycleRejection: { code: 'migration', reason: 'nested' } }
       ])
     }),
     first.insertMessage({
@@ -171,7 +171,7 @@ export function createLegacyStorageCutoverFixture(): {
       from: 'term_legacy_worker',
       to: 'term_legacy_coord',
       subject: 'String root',
-      payload: JSON.stringify('_nightshiftLifecycleRejection')
+      payload: JSON.stringify('_koluxLifecycleRejection')
     })
   ]
   first.close()

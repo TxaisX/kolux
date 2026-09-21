@@ -16,7 +16,7 @@ import {
 } from './linear-agent-skill-setup-reminder-toast'
 import { getExistingLinearAgentSkillSetupReminderState } from './linear-agent-skill-setup-reminders'
 
-const HOST_DISMISS_STORAGE_KEY = 'nightshift.linearTicketsSkill.setupDismissed.host'
+const HOST_DISMISS_STORAGE_KEY = 'kolux.linearTicketsSkill.setupDismissed.host'
 
 const mocks = vi.hoisted(() => ({
   skillState: {
@@ -50,8 +50,8 @@ vi.mock('@/hooks/useInstalledAgentSkills', async (importOriginal) => ({
 
 vi.mock('@/lib/agent-skill-cli-prerequisite', () => ({
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE: 'CLI registration notice',
-  ensureNightshiftCliAvailableForAgentSkillTerminal: mocks.ensureCli,
-  isNightshiftCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
+  ensureKoluxCliAvailableForAgentSkillTerminal: mocks.ensureCli,
+  isKoluxCliAvailableOnPath: (status: CliInstallStatus | null | undefined) =>
     status?.state === 'installed' && status.pathConfigured
 }))
 
@@ -95,15 +95,15 @@ let container: HTMLDivElement | null = null
 function cliStatus(overrides: Partial<CliInstallStatus>): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
-    commandPath: '/usr/local/bin/nightshift',
+    commandName: 'kolux',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
     installMethod: 'symlink',
     supported: true,
     state: 'installed',
-    currentTarget: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+    currentTarget: '/Applications/Kolux.app/Contents/MacOS/Kolux',
     unsupportedReason: null,
     detail: null,
     ...overrides
@@ -218,11 +218,11 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
       'Enable agents to read and edit the attached Linear ticket.'
     )
     expect(toast.warning).toHaveBeenCalledWith(
-      'Nightshift CLI and Linear skill are missing',
+      'Kolux CLI and Linear skill are missing',
       expect.objectContaining({
-        id: 'linear-agent-skill-setup-nightshift.linearTicketsSkill.setupDismissed.host',
+        id: 'linear-agent-skill-setup-kolux.linearTicketsSkill.setupDismissed.host',
         description:
-          'Install the Nightshift CLI and the Linear skill to enable your agents to read and edit Linear tasks.',
+          'Install the Kolux CLI and the Linear skill to enable your agents to read and edit Linear tasks.',
         action: {
           label: 'Set up',
           onClick: expect.any(Function)
@@ -231,16 +231,15 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
     )
   })
 
-  it('does not repeat the Nightshift CLI in CLI-only reminder toast copy', async () => {
+  it('does not repeat the Kolux CLI in CLI-only reminder toast copy', async () => {
     mocks.skillState.installed = true
     await snoozeInitialModal({ linked: true, remote: false, surface: 'modal' })
     await renderPrompt({ linked: true, remote: false, surface: 'modal' })
 
     expect(toast.warning).toHaveBeenCalledWith(
-      'Nightshift CLI is missing',
+      'Kolux CLI is missing',
       expect.objectContaining({
-        description:
-          'Install the Nightshift CLI to enable your agents to read and edit Linear tasks.'
+        description: 'Install the Kolux CLI to enable your agents to read and edit Linear tasks.'
       })
     )
   })
@@ -250,10 +249,10 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
     await renderPrompt({ linked: true, remote: true, surface: 'modal' })
 
     expect(toast.warning).toHaveBeenCalledWith(
-      'Nightshift CLI and Linear skill are missing',
+      'Kolux CLI and Linear skill are missing',
       expect.objectContaining({
         description:
-          'Install the Nightshift CLI and the Linear skill to enable your agents to read and edit Linear tasks. Remote agent environments may need their own setup.'
+          'Install the Kolux CLI and the Linear skill to enable your agents to read and edit Linear tasks. Remote agent environments may need their own setup.'
       })
     )
   })
@@ -275,10 +274,10 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
     await renderPrompt(wslProps)
 
     expect(toast.warning).toHaveBeenCalledWith(
-      'Nightshift CLI and Linear skill are missing',
+      'Kolux CLI and Linear skill are missing',
       expect.objectContaining({
         description:
-          'Install the Nightshift CLI and the Linear skill to enable your agents to read and edit Linear tasks. This setup runs in the selected WSL agent runtime.'
+          'Install the Kolux CLI and the Linear skill to enable your agents to read and edit Linear tasks. This setup runs in the selected WSL agent runtime.'
       })
     )
   })
@@ -299,7 +298,7 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
     )
     expect(document.body.textContent).toContain('Mock install')
     expect(toast.dismiss).toHaveBeenCalledWith(
-      'linear-agent-skill-setup-nightshift.linearTicketsSkill.setupDismissed.host'
+      'linear-agent-skill-setup-kolux.linearTicketsSkill.setupDismissed.host'
     )
   })
 
@@ -325,7 +324,7 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
 
     expect(getExistingLinearAgentSkillSetupReminderState(HOST_DISMISS_STORAGE_KEY)).toBeUndefined()
     expect(toast.dismiss).toHaveBeenCalledWith(
-      'linear-agent-skill-setup-nightshift.linearTicketsSkill.setupDismissed.host'
+      'linear-agent-skill-setup-kolux.linearTicketsSkill.setupDismissed.host'
     )
   })
 
@@ -355,7 +354,7 @@ describe('LinearAgentSkillSetupPrompt reminder toast', () => {
 
     expect(window.localStorage.getItem(HOST_DISMISS_STORAGE_KEY)).toBe('1')
     expect(toast.dismiss).toHaveBeenCalledWith(
-      'linear-agent-skill-setup-nightshift.linearTicketsSkill.setupDismissed.host'
+      'linear-agent-skill-setup-kolux.linearTicketsSkill.setupDismissed.host'
     )
   })
 })

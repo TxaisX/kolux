@@ -99,7 +99,7 @@ export function suggestCommands(specs: CommandSpec[], commandPath: string[]): st
 export function unknownCommandData(specs: CommandSpec[], commandPath: string[]): CommandErrorData {
   const suggestions = suggestCommands(specs, commandPath)
   const nextSteps = suggestions.length
-    ? [`Did you mean: ${suggestions.map((path) => `nightshift ${path}`).join(', ')}`]
+    ? [`Did you mean: ${suggestions.map((path) => `kolux ${path}`).join(', ')}`]
     : []
   return { suggestions, nextSteps }
 }

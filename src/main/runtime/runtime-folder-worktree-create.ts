@@ -75,9 +75,9 @@ export async function createRuntimeFolderWorktree(args: {
       : {}),
     lastActivityAt: now,
     createdAt: now,
-    nightshiftCreatedAt: now,
-    nightshiftCreationSource: 'runtime',
-    nightshiftCreationWorkspaceLayout: {
+    koluxCreatedAt: now,
+    koluxCreationSource: 'runtime',
+    koluxCreationWorkspaceLayout: {
       path: settings.workspaceDir,
       nestWorkspaces: settings.nestWorkspaces
     },

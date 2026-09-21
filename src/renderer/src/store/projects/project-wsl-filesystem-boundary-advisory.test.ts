@@ -18,7 +18,7 @@ const WSL_DEFAULT = {
 } as unknown as GlobalSettings
 
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
-  return { id: 'repo-1', path: 'C:\\Users\\alice\\nightshift', ...overrides } as Repo
+  return { id: 'repo-1', path: 'C:\\Users\\alice\\kolux', ...overrides } as Repo
 }
 
 function makeProject(overrides: Partial<Project> = {}): Project {
@@ -60,7 +60,7 @@ describe('warnIfProjectCrossesWslFilesystemBoundary', () => {
 
   it('stays silent for a project already inside the distro', () => {
     warnIfProjectCrossesWslFilesystemBoundary(
-      makeRepo({ path: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\alice\\nightshift' }),
+      makeRepo({ path: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\alice\\kolux' }),
       [makeProject()],
       WSL_DEFAULT
     )

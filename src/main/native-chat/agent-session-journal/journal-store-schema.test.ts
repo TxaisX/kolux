@@ -74,7 +74,7 @@ async function appendRawRow(epoch: string, seq: number, rowJson: string): Promis
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-schema-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-schema-'))
   clock = 1_000
 })
 

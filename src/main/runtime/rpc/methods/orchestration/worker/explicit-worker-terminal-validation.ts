@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { isStructuredWorkerHandle } from '../../../../structured-worker-identity'
 
@@ -10,7 +10,7 @@ import { isStructuredWorkerHandle } from '../../../../structured-worker-identity
  * dispatch's to take, and a pane with no agent cannot read a preamble at all.
  */
 export async function assertExplicitWorkerTerminalUsable(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   terminal: string
   from: string
   coordinatorPane: string | null

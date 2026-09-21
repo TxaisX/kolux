@@ -5,7 +5,7 @@ export type BrowserFocusRequestDetail = {
   target: BrowserFocusTarget
 }
 
-export const NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT = 'nightshift:browser-focus-request'
+export const KOLUX_BROWSER_FOCUS_REQUEST_EVENT = 'kolux:browser-focus-request'
 
 const FOCUS_REQUEST_TTL_MS = 30_000
 
@@ -67,7 +67,7 @@ export function queueBrowserFocusRequest(detail: BrowserFocusRequestDetail): voi
 /** Queue + announce so a mounting browser pane and live listeners both see the request. */
 export function requestBrowserFocus(detail: BrowserFocusRequestDetail): void {
   queueBrowserFocusRequest(detail)
-  window.dispatchEvent(new CustomEvent(NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT, { detail }))
+  window.dispatchEvent(new CustomEvent(KOLUX_BROWSER_FOCUS_REQUEST_EVENT, { detail }))
 }
 
 export function consumeBrowserFocusRequest(pageId: string): BrowserFocusTarget | null {

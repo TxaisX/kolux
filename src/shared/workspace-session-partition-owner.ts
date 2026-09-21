@@ -19,7 +19,7 @@ import {
  * Both partitions hold real data written by shipping builds, so neither side can simply adopt the
  * other's answer: flipping a resolver orphans whichever store it stops reading. Converging needs a
  * read-both transition (generalize `workspaceSessionPartitionIdsForHost`) and should converge on
- * `host-partition`, since Nightshift Remote — SSH's successor — is already partitioned as `runtime:*`.
+ * `host-partition`, since Kolux Remote — SSH's successor — is already partitioned as `runtime:*`.
  * Until then this function preserves today's behaviour exactly on both sides.
  */
 export type WorkspaceSessionSshOwnership = 'local-partition' | 'host-partition'

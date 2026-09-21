@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { FILE_METHODS } from './files'
 
 function makeRequest(method: string, params?: unknown): RpcRequest {
@@ -21,7 +21,7 @@ describe('files.listAll page size', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       listRuntimeFiles: vi.fn().mockResolvedValue(['src/index.ts'])
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: FILE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -41,7 +41,7 @@ describe('files.listAll page size', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       listRuntimeFiles: vi.fn().mockResolvedValue(['src/index.ts'])
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: FILE_METHODS })
 
     const response = await dispatcher.dispatch(

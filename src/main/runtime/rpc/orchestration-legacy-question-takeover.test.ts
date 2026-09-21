@@ -7,7 +7,7 @@ import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchest
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
 import { OrchestrationDb } from '../orchestration/db'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { ORCHESTRATION_METHODS } from './methods/orchestration'
@@ -35,7 +35,7 @@ function createHarness(options?: { seedCutoverQuestion?: boolean; seedCutoverAns
   cutoverQuestionId?: string
   cutoverAnswerId?: string
 } {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-legacy-question-takeover-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-legacy-question-takeover-'))
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
   const before = new OrchestrationDb(dbPath)
@@ -86,7 +86,7 @@ function createHarness(options?: { seedCutoverQuestion?: boolean; seedCutoverAns
 
   const db = new OrchestrationDb(dbPath)
   databases.push(db)
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
     handle === WORKER_HANDLE

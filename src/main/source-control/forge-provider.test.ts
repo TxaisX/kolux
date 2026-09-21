@@ -122,8 +122,8 @@ describe('forge provider interface', () => {
   })
 
   it('preserves the existing hosted provider detection order', async () => {
-    getProjectSlugMock.mockResolvedValue({ host: 'gitlab.com', path: 'team/nightshift' })
-    getRepoSlugMock.mockResolvedValue({ owner: 'team', repo: 'nightshift' })
+    getProjectSlugMock.mockResolvedValue({ host: 'gitlab.com', path: 'team/kolux' })
+    getRepoSlugMock.mockResolvedValue({ owner: 'team', repo: 'kolux' })
 
     await expect(
       detectHostedReviewProvider({ executionHostId: 'local', repoPath: '/repo' })
@@ -139,13 +139,13 @@ describe('forge provider interface', () => {
   it('detects a GitHub Enterprise Server remote as the GitHub provider, not Gitea', async () => {
     // Regression for #8312: a GHES host is not github.com, so github.com-only
     // slug parsing returns null. Detection must claim it via the enterprise
-    // resolver instead of falling through to Gitea's demand for NIGHTSHIFT_GITEA_TOKEN.
+    // resolver instead of falling through to Gitea's demand for KOLUX_GITEA_TOKEN.
     getProjectSlugMock.mockResolvedValue(null)
     // Why: getRepoSlug resolves hosted identities itself now — a GHES remote
     // comes back host-qualified instead of null + separate enterprise fallback.
     getRepoSlugMock.mockResolvedValue({
       owner: 'team',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'github.acme-corp.com'
     })
 
@@ -172,7 +172,7 @@ describe('forge provider interface', () => {
     getGiteaRepoSlugMock.mockResolvedValue({
       host: 'gitea.example.com',
       owner: 'team',
-      repo: 'nightshift',
+      repo: 'kolux',
       apiBaseUrl: 'https://gitea.example.com/api/v1',
       webBaseUrl: 'https://gitea.example.com'
     })
@@ -201,7 +201,7 @@ describe('forge provider interface', () => {
     createGitHubPullRequestMock.mockResolvedValue({
       ok: true,
       number: 12,
-      url: 'https://github.com/team/nightshift/pull/12'
+      url: 'https://github.com/team/kolux/pull/12'
     })
 
     const provider = getForgeProviderById('github')
@@ -219,7 +219,7 @@ describe('forge provider interface', () => {
     ).resolves.toEqual({
       ok: true,
       number: 12,
-      url: 'https://github.com/team/nightshift/pull/12'
+      url: 'https://github.com/team/kolux/pull/12'
     })
     expect(createGitHubPullRequestMock).toHaveBeenCalledWith(
       '/repo',
@@ -237,7 +237,7 @@ describe('forge provider interface', () => {
     createBitbucketPullRequestMock.mockResolvedValue({
       ok: true,
       number: 23,
-      url: 'https://bitbucket.org/team/nightshift/pull-requests/23'
+      url: 'https://bitbucket.org/team/kolux/pull-requests/23'
     })
 
     const provider = getForgeProviderById('bitbucket')
@@ -250,7 +250,7 @@ describe('forge provider interface', () => {
     await expect(provider.createReview?.('/repo', input, 'local')).resolves.toEqual({
       ok: true,
       number: 23,
-      url: 'https://bitbucket.org/team/nightshift/pull-requests/23'
+      url: 'https://bitbucket.org/team/kolux/pull-requests/23'
     })
     expect(createBitbucketPullRequestMock).toHaveBeenCalledWith('/repo', input, 'local')
   })
@@ -259,7 +259,7 @@ describe('forge provider interface', () => {
     createGitLabMergeRequestMock.mockResolvedValue({
       ok: true,
       number: 44,
-      url: 'https://gitlab.com/team/nightshift/-/merge_requests/44'
+      url: 'https://gitlab.com/team/kolux/-/merge_requests/44'
     })
 
     const provider = getForgeProviderById('gitlab')
@@ -277,7 +277,7 @@ describe('forge provider interface', () => {
     ).resolves.toEqual({
       ok: true,
       number: 44,
-      url: 'https://gitlab.com/team/nightshift/-/merge_requests/44'
+      url: 'https://gitlab.com/team/kolux/-/merge_requests/44'
     })
     expect(createGitLabMergeRequestMock).toHaveBeenCalledWith(
       '/repo',
@@ -295,7 +295,7 @@ describe('forge provider interface', () => {
     createAzureDevOpsPullRequestMock.mockResolvedValue({
       ok: true,
       number: 88,
-      url: 'https://dev.azure.com/acme/Project/_git/nightshift/pullrequest/88'
+      url: 'https://dev.azure.com/acme/Project/_git/kolux/pullrequest/88'
     })
 
     const provider = getForgeProviderById('azure-devops')
@@ -313,7 +313,7 @@ describe('forge provider interface', () => {
     ).resolves.toEqual({
       ok: true,
       number: 88,
-      url: 'https://dev.azure.com/acme/Project/_git/nightshift/pullrequest/88'
+      url: 'https://dev.azure.com/acme/Project/_git/kolux/pullrequest/88'
     })
     expect(createAzureDevOpsPullRequestMock).toHaveBeenCalledWith(
       '/repo',
@@ -331,7 +331,7 @@ describe('forge provider interface', () => {
     createGiteaPullRequestMock.mockResolvedValue({
       ok: true,
       number: 19,
-      url: 'https://git.example.com/team/nightshift/pulls/19'
+      url: 'https://git.example.com/team/kolux/pulls/19'
     })
 
     const provider = getForgeProviderById('gitea')
@@ -349,7 +349,7 @@ describe('forge provider interface', () => {
     ).resolves.toEqual({
       ok: true,
       number: 19,
-      url: 'https://git.example.com/team/nightshift/pulls/19'
+      url: 'https://git.example.com/team/kolux/pulls/19'
     })
     expect(createGiteaPullRequestMock).toHaveBeenCalledWith(
       '/repo',
@@ -371,7 +371,7 @@ describe('forge provider interface', () => {
         number: 7,
         title: 'Provider branch',
         state: 'open',
-        url: 'https://github.com/team/nightshift/pull/7',
+        url: 'https://github.com/team/kolux/pull/7',
         checksStatus: 'success',
         updatedAt: '2026-05-29T00:00:00.000Z',
         mergeable: 'MERGEABLE'

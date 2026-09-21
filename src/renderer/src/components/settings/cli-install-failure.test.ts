@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest'
 import type { CliInstallStatus } from '../../../../shared/cli-install-types'
 import { readCliInstallFailure, readCliInstallRejection } from './cli-install-failure'
 
-const FALLBACK = 'Nightshift could not finish CLI registration and reported no reason.'
+const FALLBACK = 'Kolux could not finish CLI registration and reported no reason.'
 
 function cliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
-    commandPath: '/usr/local/bin/nightshift',
+    commandName: 'kolux',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/Resources/bin/nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/Resources/bin/kolux',
     installMethod: 'symlink',
     supported: true,
     state: 'installed',
@@ -34,12 +34,12 @@ describe('readCliInstallFailure', () => {
           state: 'unsupported',
           supported: false,
           unsupportedReason: 'launcher_missing',
-          detail: 'The bundled CLI launcher is missing from this Nightshift build.'
+          detail: 'The bundled CLI launcher is missing from this Kolux build.'
         }),
         FALLBACK
       )
     ).toEqual({
-      reason: 'The bundled CLI launcher is missing from this Nightshift build.',
+      reason: 'The bundled CLI launcher is missing from this Kolux build.',
       conflictCommandPath: null
     })
   })
@@ -49,13 +49,13 @@ describe('readCliInstallFailure', () => {
       readCliInstallFailure(
         cliStatus({
           state: 'conflict',
-          detail: '/usr/local/bin/nightshift exists but is not a Nightshift symlink.'
+          detail: '/usr/local/bin/kolux exists but is not a Kolux symlink.'
         }),
         FALLBACK
       )
     ).toEqual({
-      reason: '/usr/local/bin/nightshift exists but is not a Nightshift symlink.',
-      conflictCommandPath: '/usr/local/bin/nightshift'
+      reason: '/usr/local/bin/kolux exists but is not a Kolux symlink.',
+      conflictCommandPath: '/usr/local/bin/kolux'
     })
   })
 
@@ -72,14 +72,14 @@ describe('readCliInstallRejection', () => {
     expect(
       readCliInstallRejection(
         new Error(
-          "Error invoking remote method 'cli:install': Error: Refusing to replace non-Nightshift " +
-            'command at /usr/local/bin/nightshift. Remove it and register again if it is no longer needed.'
+          "Error invoking remote method 'cli:install': Error: Refusing to replace non-Kolux " +
+            'command at /usr/local/bin/kolux. Remove it and register again if it is no longer needed.'
         ),
         FALLBACK
       )
     ).toEqual({
       reason:
-        'Refusing to replace non-Nightshift command at /usr/local/bin/nightshift. ' +
+        'Refusing to replace non-Kolux command at /usr/local/bin/kolux. ' +
         'Remove it and register again if it is no longer needed.',
       conflictCommandPath: null
     })
@@ -88,9 +88,9 @@ describe('readCliInstallRejection', () => {
   it('keeps the registration-lock remedy that names the lock file', () => {
     const failure = readCliInstallRejection(
       new Error(
-        "Error invoking remote method 'cli:install': Error: Timed out waiting for another Nightshift " +
-          'process to finish CLI registration (waited 330s). If no other Nightshift is running, remove ' +
-          '/home/u/.cache/nightshift/appimage/.cli-registration.lock and retry.'
+        "Error invoking remote method 'cli:install': Error: Timed out waiting for another Kolux " +
+          'process to finish CLI registration (waited 330s). If no other Kolux is running, remove ' +
+          '/home/u/.cache/kolux/appimage/.cli-registration.lock and retry.'
       ),
       FALLBACK
     )

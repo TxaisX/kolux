@@ -13,8 +13,8 @@ import {
 type ExecMock = Mock<GitRemoteExec>
 
 const REPO = '/repo-root'
-const FORK_SSH = 'git@github.com:contributor/nightshift.git'
-const FORK_HTTPS = 'https://github.com/contributor/nightshift.git'
+const FORK_SSH = 'git@github.com:contributor/kolux.git'
+const FORK_HTTPS = 'https://github.com/contributor/kolux.git'
 
 /** Real `git remote -v` shape: a fetch row and a push row per remote, tab-separated. */
 export function renderRemoteVerbose(remotes: Record<string, string>): string {
@@ -69,7 +69,7 @@ function callsMatching(exec: ExecMock, head: string[]): string[][] {
 
 function forkTarget(overrides: Partial<GitPushTarget> = {}): GitPushTarget {
   return {
-    remoteName: 'pr-contributor-nightshift',
+    remoteName: 'pr-contributor-kolux',
     branchName: 'contributor/fix',
     remoteUrl: FORK_SSH,
     ...overrides
@@ -83,17 +83,17 @@ describe('prepareWorktreePushTargetWithExec', () => {
     const result = await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
 
     expect(callsMatching(exec, ['remote', 'add'])).toEqual([
-      ['remote', 'add', '-t', 'contributor/fix', '--no-tags', 'pr-contributor-nightshift', FORK_SSH]
+      ['remote', 'add', '-t', 'contributor/fix', '--no-tags', 'pr-contributor-kolux', FORK_SSH]
     ])
     expect(callsMatching(exec, ['fetch'])).toEqual([
       [
         'fetch',
-        'pr-contributor-nightshift',
-        '+refs/heads/contributor/fix*:refs/remotes/pr-contributor-nightshift/contributor/fix*'
+        'pr-contributor-kolux',
+        '+refs/heads/contributor/fix*:refs/remotes/pr-contributor-kolux/contributor/fix*'
       ]
     ])
     expect(result).toEqual({
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'contributor/fix',
       remoteUrl: FORK_SSH,
       remoteCreated: true
@@ -107,28 +107,26 @@ describe('prepareWorktreePushTargetWithExec', () => {
 
     // Why: cleanup's ownership check must survive a store purge (worktree-push-target-cleanup.ts).
     // Narrowing the refspec (#17887) also writes `config` calls, so scope to the marker itself.
-    expect(
-      callsMatching(exec, ['config', 'remote.pr-contributor-nightshift.nightshift-created'])
-    ).toEqual([['config', 'remote.pr-contributor-nightshift.nightshift-created', 'true']])
+    expect(callsMatching(exec, ['config', 'remote.pr-contributor-kolux.kolux-created'])).toEqual([
+      ['config', 'remote.pr-contributor-kolux.kolux-created', 'true']
+    ])
   })
 
   it('does not record provenance when reusing an existing remote', async () => {
     const exec = makeRepoExec({
       origin: 'git@github.com:TxaisX/nightshift.git',
-      'pr-contributor-nightshift': FORK_HTTPS
+      'pr-contributor-kolux': FORK_HTTPS
     })
 
     await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
 
-    expect(
-      callsMatching(exec, ['config', 'remote.pr-contributor-nightshift.nightshift-created'])
-    ).toEqual([])
+    expect(callsMatching(exec, ['config', 'remote.pr-contributor-kolux.kolux-created'])).toEqual([])
   })
 
   it('reuses an existing remote pointing at the same fork (SSH vs HTTPS) without adding', async () => {
     const exec = makeRepoExec({
       origin: 'git@github.com:TxaisX/nightshift.git',
-      'pr-contributor-nightshift': FORK_HTTPS
+      'pr-contributor-kolux': FORK_HTTPS
     })
 
     const result = await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
@@ -137,13 +135,13 @@ describe('prepareWorktreePushTargetWithExec', () => {
     expect(callsMatching(exec, ['fetch'])).toEqual([
       [
         'fetch',
-        'pr-contributor-nightshift',
-        '+refs/heads/contributor/fix*:refs/remotes/pr-contributor-nightshift/contributor/fix*'
+        'pr-contributor-kolux',
+        '+refs/heads/contributor/fix*:refs/remotes/pr-contributor-kolux/contributor/fix*'
       ]
     ])
     // remoteCreated omitted because the predicate says no known worktree owns it.
     expect(result).toEqual({
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'contributor/fix',
       remoteUrl: FORK_SSH
     })
@@ -160,23 +158,15 @@ describe('prepareWorktreePushTargetWithExec', () => {
 
   it('disambiguates with a numeric suffix when the preferred remote name is taken by a different URL', async () => {
     const exec = makeRepoExec({
-      'pr-contributor-nightshift': 'git@github.com:someone-else/nightshift.git'
+      'pr-contributor-kolux': 'git@github.com:someone-else/kolux.git'
     })
 
     const result = await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
 
     expect(callsMatching(exec, ['remote', 'add'])).toEqual([
-      [
-        'remote',
-        'add',
-        '-t',
-        'contributor/fix',
-        '--no-tags',
-        'pr-contributor-nightshift-2',
-        FORK_SSH
-      ]
+      ['remote', 'add', '-t', 'contributor/fix', '--no-tags', 'pr-contributor-kolux-2', FORK_SSH]
     ])
-    expect(result.remoteName).toBe('pr-contributor-nightshift-2')
+    expect(result.remoteName).toBe('pr-contributor-kolux-2')
     expect(result.remoteCreated).toBe(true)
   })
 
@@ -215,32 +205,32 @@ describe('findRemoteForUrl', () => {
 
 describe('remoteAlreadyMatchesUrl', () => {
   it('matches an exact URL', async () => {
-    const exec = makeRepoExec({ 'pr-contributor-nightshift': FORK_SSH })
+    const exec = makeRepoExec({ 'pr-contributor-kolux': FORK_SSH })
     await expect(
-      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-nightshift', FORK_SSH)
+      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-kolux', FORK_SSH)
     ).resolves.toBe(true)
   })
 
   it('matches by GitHub owner/repo across URL protocols', async () => {
-    const exec = makeRepoExec({ 'pr-contributor-nightshift': FORK_HTTPS })
+    const exec = makeRepoExec({ 'pr-contributor-kolux': FORK_HTTPS })
     await expect(
-      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-nightshift', FORK_SSH)
+      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-kolux', FORK_SSH)
     ).resolves.toBe(true)
   })
 
   it('returns false when the named remote points elsewhere', async () => {
     const exec = makeRepoExec({
-      'pr-contributor-nightshift': 'git@github.com:someone-else/nightshift.git'
+      'pr-contributor-kolux': 'git@github.com:someone-else/kolux.git'
     })
     await expect(
-      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-nightshift', FORK_SSH)
+      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-kolux', FORK_SSH)
     ).resolves.toBe(false)
   })
 
   it('returns false when the named remote does not exist', async () => {
     const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
     await expect(
-      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-nightshift', FORK_SSH)
+      remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-kolux', FORK_SSH)
     ).resolves.toBe(false)
   })
 })
@@ -270,7 +260,7 @@ describe('configureCreatedWorktreePushTargetWithExec', () => {
     )
 
     expect(exec).toHaveBeenCalledWith(
-      ['branch', '--set-upstream-to', 'pr-contributor-nightshift/contributor/fix', 'local-branch'],
+      ['branch', '--set-upstream-to', 'pr-contributor-kolux/contributor/fix', 'local-branch'],
       '/wt/path'
     )
     expect(result).toBe(target)
@@ -285,7 +275,7 @@ describe('restoreUpstreamAfterMaterialize', () => {
     const result = await restoreUpstreamAfterMaterialize(exec, '/wt/path', target)
 
     expect(exec).toHaveBeenCalledWith(
-      ['branch', '--set-upstream-to', 'pr-contributor-nightshift/contributor/fix', 'local-branch'],
+      ['branch', '--set-upstream-to', 'pr-contributor-kolux/contributor/fix', 'local-branch'],
       '/wt/path'
     )
     expect(result).toBe(target)
@@ -332,7 +322,7 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
         exec,
         REPO,
         {
-          remoteName: 'pr-contributor-nightshift',
+          remoteName: 'pr-contributor-kolux',
           branchName: 'contributor/fix',
           remoteUrl: FORK_SSH
         },
@@ -341,12 +331,12 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
     ).rejects.toThrow('network unreachable')
 
     expect(callsMatching(exec, ['remote', 'remove'])).toEqual([
-      ['remote', 'remove', 'pr-contributor-nightshift']
+      ['remote', 'remove', 'pr-contributor-kolux']
     ])
-    expect(remotes).not.toHaveProperty('pr-contributor-nightshift')
+    expect(remotes).not.toHaveProperty('pr-contributor-kolux')
   })
 
-  it('keeps a reused remote Nightshift did not add when the fetch fails', async () => {
+  it('keeps a reused remote Kolux did not add when the fetch fails', async () => {
     const remotes: Record<string, string> = {
       origin: 'git@github.com:TxaisX/nightshift.git',
       existing: FORK_SSH
@@ -363,7 +353,7 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
         exec,
         REPO,
         {
-          remoteName: 'pr-contributor-nightshift',
+          remoteName: 'pr-contributor-kolux',
           branchName: 'contributor/fix',
           remoteUrl: FORK_SSH
         },
@@ -380,7 +370,7 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
   it('keeps a reused remote a sibling worktree owns when the fetch fails', async () => {
     const remotes: Record<string, string> = {
       origin: 'git@github.com:TxaisX/nightshift.git',
-      'pr-contributor-nightshift': FORK_HTTPS
+      'pr-contributor-kolux': FORK_HTTPS
     }
     const exec = vi.fn<GitRemoteExec>(async (args: string[]) => {
       if (args[0] === 'fetch') {
@@ -394,6 +384,6 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
     ).rejects.toThrow('network unreachable')
 
     expect(callsMatching(exec, ['remote', 'remove'])).toEqual([])
-    expect(remotes['pr-contributor-nightshift']).toBe(FORK_HTTPS)
+    expect(remotes['pr-contributor-kolux']).toBe(FORK_HTTPS)
   })
 })

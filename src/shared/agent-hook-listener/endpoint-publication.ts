@@ -35,13 +35,13 @@ export function writeEndpointFile(
   const tmpPath = join(endpointDir, `.endpoint-${process.pid}-${randomUUID()}.tmp`)
   const prefix = process.platform === 'win32' ? 'set ' : ''
   const valuesToWrite: [string, string][] = [
-    ['NIGHTSHIFT_AGENT_HOOK_PORT', String(fields.port)],
-    ['NIGHTSHIFT_AGENT_HOOK_TOKEN', fields.token],
-    ['NIGHTSHIFT_AGENT_HOOK_ENV', fields.env],
-    ['NIGHTSHIFT_AGENT_HOOK_VERSION', fields.version]
+    ['KOLUX_AGENT_HOOK_PORT', String(fields.port)],
+    ['KOLUX_AGENT_HOOK_TOKEN', fields.token],
+    ['KOLUX_AGENT_HOOK_ENV', fields.env],
+    ['KOLUX_AGENT_HOOK_VERSION', fields.version]
   ]
   if (fields.transport) {
-    valuesToWrite.push(['NIGHTSHIFT_AGENT_HOOK_TRANSPORT', fields.transport])
+    valuesToWrite.push(['KOLUX_AGENT_HOOK_TRANSPORT', fields.transport])
   }
   for (const [key, value] of valuesToWrite) {
     if (!isShellSafeEndpointValue(value)) {

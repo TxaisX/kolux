@@ -26,7 +26,7 @@ export async function buildPtyIpcSpawnOptions(
 ): Promise<{ isReattach: true } | null> {
   const args = ctx.args
   ctx.spawnEnv = ctx.preAllocatedHandle
-    ? { ...ctx.env, NIGHTSHIFT_TERMINAL_HANDLE: ctx.preAllocatedHandle }
+    ? { ...ctx.env, KOLUX_TERMINAL_HANDLE: ctx.preAllocatedHandle }
     : ctx.env
   const envToDelete = ctx.claudeAuth?.stripAuthEnv
     ? [...CLAUDE_AUTH_ENV_VARS, 'ANTHROPIC_CUSTOM_HEADERS']
@@ -35,14 +35,14 @@ export async function buildPtyIpcSpawnOptions(
     envToDelete,
     args.envToDelete ?? [],
     ctx.agentTeamsEnvToDelete ?? [],
-    // Why: disable old hosts without removing NIGHTSHIFT_REAL_* while their Windows shim remains on PATH.
+    // Why: disable old hosts without removing KOLUX_REAL_* while their Windows shim remains on PATH.
     ctx.isDaemonHostSpawn || args.connectionId ? LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS : [],
     ctx.isDaemonHostSpawn ? getInheritedAgentHookEnvKeysToDelete(ctx.spawnEnv) : [],
     getInheritedClaudeSessionStampEnvKeysToDelete(ctx.spawnEnv),
     ctx.skipCodexHomeEnv ? CODEX_HOME_ENV_KEYS : [],
     // Why: the persistent daemon compares its own merged CODEX_HOME pair;
     // main cannot safely decide ownership for a process it may not parent.
-    ctx.stripInheritedNightshiftCodexHome ? ['NIGHTSHIFT_CODEX_HOME'] : []
+    ctx.stripInheritedKoluxCodexHome ? ['KOLUX_CODEX_HOME'] : []
   )
   if (ctx.codexResumeHomeSelected) {
     ctx.combinedEnvToDelete = removeCodexHomeDeletionRequests(ctx.combinedEnvToDelete)

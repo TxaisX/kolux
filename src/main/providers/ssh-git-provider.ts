@@ -94,7 +94,7 @@ export class SshGitProvider extends SshGitWorktreeProvider implements IGitProvid
       } catch (error) {
         if (isJsonRpcMethodNotFoundError(error)) {
           throw new Error(
-            'SSH clone support is unavailable on this relay. Reconnect the SSH target to update Nightshift on the host, then try again.'
+            'SSH clone support is unavailable on this relay. Reconnect the SSH target to update Kolux on the host, then try again.'
           )
         }
         throw error

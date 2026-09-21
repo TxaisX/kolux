@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -11,8 +11,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -23,7 +23,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -44,10 +44,10 @@ import { main } from './index'
 import { okFixture, queueFixtures } from './test-fixtures'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -64,7 +64,7 @@ describe('nightshift cli worktree awareness', () => {
           url: 'https://example.com',
           title: 'Example',
           active: true,
-          worktreeId: 'repo-1::/srv/nightshift/feature'
+          worktreeId: 'repo-1::/srv/kolux/feature'
         }
       })
     )

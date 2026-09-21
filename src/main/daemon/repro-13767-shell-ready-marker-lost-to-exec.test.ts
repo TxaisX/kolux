@@ -9,7 +9,7 @@ import { Session } from './session'
 const describePosix = process.platform === 'win32' ? describe.skip : describe
 const hasZsh = process.platform !== 'win32' && spawnSync('/bin/zsh', ['--version']).status === 0
 const hasBash = process.platform !== 'win32' && spawnSync('/bin/bash', ['--version']).status === 0
-const COMMAND_OUTPUT = 'NIGHTSHIFT_STARTUP_COMMAND_RAN'
+const COMMAND_OUTPUT = 'KOLUX_STARTUP_COMMAND_RAN'
 // A second Bash install with its own canonical path -- the shape a login profile
 // switches to (`exec /opt/homebrew/bin/bash`) and the one #18768 stalled on. A
 // symlink cannot stand in: both sides are realpath'd before they are compared.
@@ -24,7 +24,7 @@ if (process.platform !== 'win32' && !alternateBashPath) {
     '[repro-13767] no second Bash install with a distinct realpath; skipping the alternate-install recovery tests'
   )
 }
-const READ_STARTED_FILE = '.nightshift-read-started'
+const READ_STARTED_FILE = '.kolux-read-started'
 
 type ShellFixture = {
   name: string
@@ -43,7 +43,7 @@ const FIXTURES: ShellFixture[] = [
     shellPath: '/bin/zsh',
     startupFile: '.zprofile',
     replacement: 'exec -a kiro-cli-term /bin/zsh -o noglobalrcs -l -i',
-    command: `printf 'NIGHTSHIFT_STARTUP_%s:PF=%s\\n' COMMAND_RAN "\${(j:,:)precmd_functions}"\r`,
+    command: `printf 'KOLUX_STARTUP_%s:PF=%s\\n' COMMAND_RAN "\${(j:,:)precmd_functions}"\r`,
     instrumentationOutput: `${COMMAND_OUTPUT}:PF=`,
     secretRead: `: > "$HOME/${READ_STARTED_FILE}"; read -sk 1\n`,
     childRead: `/bin/zsh -fc ': > "$HOME/${READ_STARTED_FILE}"; read -sk 1'\n`
@@ -53,7 +53,7 @@ const FIXTURES: ShellFixture[] = [
     shellPath: '/bin/zsh',
     startupFile: '.zshenv',
     replacement: 'exec /bin/zsh -o noglobalrcs -l -i',
-    command: `printf 'NIGHTSHIFT_STARTUP_%s:PF=%s\\n' COMMAND_RAN "\${(j:,:)precmd_functions}"\r`,
+    command: `printf 'KOLUX_STARTUP_%s:PF=%s\\n' COMMAND_RAN "\${(j:,:)precmd_functions}"\r`,
     instrumentationOutput: `${COMMAND_OUTPUT}:PF=`,
     secretRead: `: > "$HOME/${READ_STARTED_FILE}"; read -sk 1\n`,
     childRead: `/bin/zsh -fc ': > "$HOME/${READ_STARTED_FILE}"; read -sk 1'\n`
@@ -63,7 +63,7 @@ const FIXTURES: ShellFixture[] = [
     shellPath: '/bin/bash',
     startupFile: '.bash_profile',
     replacement: 'exec -a figterm-test /bin/bash --noprofile --norc -l -i',
-    command: `printf 'NIGHTSHIFT_STARTUP_%s:PC=%s\\n' COMMAND_RAN "$PROMPT_COMMAND"\r`,
+    command: `printf 'KOLUX_STARTUP_%s:PC=%s\\n' COMMAND_RAN "$PROMPT_COMMAND"\r`,
     instrumentationOutput: `${COMMAND_OUTPUT}:PC=`,
     secretRead: `: > "$HOME/${READ_STARTED_FILE}"; read -s -n 1\n`,
     childRead: `/bin/bash --noprofile --norc -c ': > "$HOME/${READ_STARTED_FILE}"; read -s -n 1'\n`
@@ -139,10 +139,10 @@ async function startFixture(
   extraFiles: Record<string, string> = {},
   pathEnv: string = process.env.PATH ?? '/usr/bin:/bin'
 ): Promise<RunningFixture> {
-  const tempHome = mkdtempSync(join(tmpdir(), 'nightshift-shell-ready-exec-'))
+  const tempHome = mkdtempSync(join(tmpdir(), 'kolux-shell-ready-exec-'))
   const previousHome = process.env.HOME
   const previousZdotdir = process.env.ZDOTDIR
-  const previousOrigZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+  const previousOrigZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
   let subprocess: Awaited<ReturnType<typeof createPtySubprocess>> | undefined
   let session: Session | undefined
   let consoleWarnSpy: { mockRestore: () => void } | undefined
@@ -153,7 +153,7 @@ async function startFixture(
     }
     process.env.HOME = tempHome
     delete process.env.ZDOTDIR
-    delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+    delete process.env.KOLUX_ORIG_ZDOTDIR
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     subprocess = await createPtySubprocess({
@@ -169,7 +169,7 @@ async function startFixture(
         SHELL: fixture.shellPath,
         TERM: 'xterm-256color'
       },
-      envToDelete: ['NIGHTSHIFT_EXEC_REPRO_DONE', 'NIGHTSHIFT_ORIG_ZDOTDIR', 'ZDOTDIR']
+      envToDelete: ['KOLUX_EXEC_REPRO_DONE', 'KOLUX_ORIG_ZDOTDIR', 'ZDOTDIR']
     })
     session = new Session({
       sessionId: `repro-13767-${fixture.startupFile}`,
@@ -236,7 +236,7 @@ function restoreEnvironment(
 ): void {
   setEnvironmentValue('HOME', home)
   setEnvironmentValue('ZDOTDIR', zdotdir)
-  setEnvironmentValue('NIGHTSHIFT_ORIG_ZDOTDIR', originalZdotdir)
+  setEnvironmentValue('KOLUX_ORIG_ZDOTDIR', originalZdotdir)
 }
 
 function setEnvironmentValue(key: string, value: string | undefined): void {
@@ -250,8 +250,8 @@ function setEnvironmentValue(key: string, value: string | undefined): void {
 async function runExecOracle(fixture: ShellFixture): Promise<void> {
   const running = await startFixture(
     fixture,
-    `if [[ -z "\${NIGHTSHIFT_EXEC_REPRO_DONE:-}" ]]; then
-  export NIGHTSHIFT_EXEC_REPRO_DONE=1
+    `if [[ -z "\${KOLUX_EXEC_REPRO_DONE:-}" ]]; then
+  export KOLUX_EXEC_REPRO_DONE=1
   ${fixture.replacement}
 fi
 `
@@ -261,7 +261,7 @@ fi
     expect(running.session.shellState).toBe('ready')
     expect(count(running.output(), COMMAND_OUTPUT)).toBe(1)
     expect(running.output()).toContain(fixture.instrumentationOutput)
-    expect(running.output()).not.toContain('nightshift-shell-start')
+    expect(running.output()).not.toContain('kolux-shell-start')
   } finally {
     await running.cleanup()
   }
@@ -278,7 +278,7 @@ async function runReadOracle(fixture: ShellFixture, child: boolean): Promise<voi
     running.subprocess.write('x\r')
     await waitForOutput(running.subscribe, () => running.output().includes(COMMAND_OUTPUT))
     expect(count(running.output(), COMMAND_OUTPUT)).toBe(1)
-    expect(running.output()).not.toContain('nightshift-shell-start')
+    expect(running.output()).not.toContain('kolux-shell-start')
   } finally {
     await running.cleanup()
   }
@@ -326,8 +326,8 @@ describePosix('#13767 shell-ready marker loss across exec', () => {
     async () => {
       const running = await startFixture(
         zshFixture,
-        `if [[ -z "\${NIGHTSHIFT_EXEC_REPRO_DONE:-}" ]]; then
-  export NIGHTSHIFT_EXEC_REPRO_DONE=1
+        `if [[ -z "\${KOLUX_EXEC_REPRO_DONE:-}" ]]; then
+  export KOLUX_EXEC_REPRO_DONE=1
   exec env ZDOTDIR="$HOME" /bin/zsh -o noglobalrcs -l -i
 fi
 `,
@@ -409,8 +409,8 @@ zle -N zle-line-init
     async () => {
       const running = await startFixture(
         zshFixture,
-        `if [[ -z "\${NIGHTSHIFT_EXEC_REPRO_DONE:-}" ]]; then
-  export NIGHTSHIFT_EXEC_REPRO_DONE=1
+        `if [[ -z "\${KOLUX_EXEC_REPRO_DONE:-}" ]]; then
+  export KOLUX_EXEC_REPRO_DONE=1
   exec env ZDOTDIR="$HOME" /bin/zsh -o noglobalrcs -l -i
 fi
 `,
@@ -434,8 +434,8 @@ fi
 
   const bashFixture = FIXTURES[2] as ShellFixture
   const alternateBashTest = alternateBashPath ? it : it.skip
-  const alternateBashProfile = `if [[ -z "\${NIGHTSHIFT_EXEC_REPRO_DONE:-}" ]]; then
-  export NIGHTSHIFT_EXEC_REPRO_DONE=1
+  const alternateBashProfile = `if [[ -z "\${KOLUX_EXEC_REPRO_DONE:-}" ]]; then
+  export KOLUX_EXEC_REPRO_DONE=1
   exec ${alternateBashPath ?? '/bin/bash'} --noprofile --norc -l -i
 fi
 `
@@ -453,7 +453,7 @@ fi
         await waitForOutput(running.subscribe, () => running.output().includes(COMMAND_OUTPUT))
         expect(running.session.shellState).toBe('ready')
         expect(count(running.output(), COMMAND_OUTPUT)).toBe(1)
-        expect(running.output()).not.toContain('nightshift-shell-start')
+        expect(running.output()).not.toContain('kolux-shell-start')
       } finally {
         await running.cleanup()
       }

@@ -45,7 +45,7 @@ export class EmulatorBridge {
   }
 
   // Aggregated device list across host-supported backends (iOS simulators +
-  // Android devices/AVDs), for the unified `nightshift emulator list`.
+  // Android devices/AVDs), for the unified `kolux emulator list`.
   async listAllDevices(): Promise<EmulatorDevice[]> {
     return listAvailableEmulatorDevices(this.backends)
   }
@@ -310,7 +310,7 @@ export class EmulatorBridge {
     }
     throw new EmulatorError(
       'emulator_no_active',
-      'No active emulator for this worktree — use nightshift emulator attach or open the pane'
+      'No active emulator for this worktree — use kolux emulator attach or open the pane'
     )
   }
 

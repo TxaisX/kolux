@@ -50,7 +50,7 @@ function mutateDataFile(
     automationRuns: Record<string, unknown>[]
   }) => void
 ): void {
-  const file = join(testState.dir, 'nightshift-data.json')
+  const file = join(testState.dir, 'kolux-data.json')
   const state = JSON.parse(readFileSync(file, 'utf-8'))
   mutate(state)
   writeFileSync(file, JSON.stringify(state, null, 2), 'utf-8')
@@ -58,7 +58,7 @@ function mutateDataFile(
 
 describe('AutomationService prechecks', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-automations-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-automations-test-'))
     runAutomationPrecheckMock.mockReset()
     vi.useFakeTimers()
   })

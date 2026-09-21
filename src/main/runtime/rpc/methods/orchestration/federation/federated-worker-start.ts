@@ -9,7 +9,7 @@ import {
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
 import { orchestrationMigrationData } from '../../../../../../shared/orchestration-rpc-contract'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { WorkerStartInput } from '../worker/worker-start-schema'
@@ -35,7 +35,7 @@ import { parseTaskDeps } from '../worker/task-deps-argument'
 
 export async function startFederatedWorker(args: {
   params: WorkerStartInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   runId: string
   task?: { id: string; spec: string; status: string }

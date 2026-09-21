@@ -125,7 +125,7 @@ export function AgentSessionSourceHomeInput({
           <TooltipContent side="top" sideOffset={6} className="max-w-xs">
             {translate(
               'auto.components.settings.AgentsPane.codexSessionSourceTooltip',
-              'Nightshift runs Codex in an isolated home. Point this at your existing Codex home to import that session history. Empty uses ~/.codex.'
+              'Kolux runs Codex in an isolated home. Point this at your existing Codex home to import that session history. Empty uses ~/.codex.'
             )}
           </TooltipContent>
         </Tooltip>

@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { readHookEndpoint } from './helpers/agent-hook-endpoint'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
@@ -10,26 +10,26 @@ import {
 } from './helpers/terminal'
 
 test('Pi modal hooks show the existing waiting-for-input indicator', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }, testInfo) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
   const endpoint = await readHookEndpoint(electronApp)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
   const marker = '__PI_MODAL_STATUS_READY__'
-  await sendToTerminal(nightshiftPage, ptyId, `printf '${marker}\\n'\r`)
-  await waitForTerminalOutput(nightshiftPage, marker)
-  const { paneKey, worktreeId } = await waitForActivePaneHookDescriptor(nightshiftPage)
+  await sendToTerminal(koluxPage, ptyId, `printf '${marker}\\n'\r`)
+  await waitForTerminalOutput(koluxPage, marker)
+  const { paneKey, worktreeId } = await waitForActivePaneHookDescriptor(koluxPage)
 
   async function emit(payload: Record<string, unknown>): Promise<void> {
     const response = await fetch(`http://127.0.0.1:${endpoint.port}/hook/pi`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Nightshift-Agent-Hook-Token': endpoint.token
+        'X-Kolux-Agent-Hook-Token': endpoint.token
       },
       body: JSON.stringify({
         paneKey,
@@ -44,29 +44,29 @@ test('Pi modal hooks show the existing waiting-for-input indicator', async ({
   }
 
   // Terminal tabs present both waiting and blocked as "Needs attention".
-  const waiting = nightshiftPage.locator('[aria-label="Needs attention"]')
+  const waiting = koluxPage.locator('[aria-label="Needs attention"]')
   await emit({ hook_event_name: 'before_agent_start', prompt: 'Pi modal status check' })
-  await expect(nightshiftPage.locator('[aria-label="Working"]').first()).toBeVisible()
-  await nightshiftPage.screenshot({ path: testInfo.outputPath('before-working.png') })
+  await expect(koluxPage.locator('[aria-label="Working"]').first()).toBeVisible()
+  await koluxPage.screenshot({ path: testInfo.outputPath('before-working.png') })
 
   await emit({ hook_event_name: 'ui_prompt_start', ui_prompt_active: true })
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         (key) => window.__store?.getState().agentStatusByPaneKey[key]?.state,
         paneKey
       )
     )
     .toBe('waiting')
   await expect(waiting.first()).toBeVisible()
-  await nightshiftPage.screenshot({ path: testInfo.outputPath('after-waiting.png') })
+  await koluxPage.screenshot({ path: testInfo.outputPath('after-waiting.png') })
   await emit({ hook_event_name: 'tool_execution_end', tool_name: 'bash', ui_prompt_active: true })
   await expect(waiting.first()).toBeVisible()
 
   await emit({ hook_event_name: 'ui_prompt_end', is_idle: false })
   await expect(waiting).toHaveCount(0)
-  await expect(nightshiftPage.locator('[aria-label="Working"]').first()).toBeVisible()
+  await expect(koluxPage.locator('[aria-label="Working"]').first()).toBeVisible()
   await emit({ hook_event_name: 'agent_end' })
-  await expect(nightshiftPage.locator('[aria-label="Working"]')).toHaveCount(0)
+  await expect(koluxPage.locator('[aria-label="Working"]')).toHaveCount(0)
   await expect(waiting).toHaveCount(0)
 })

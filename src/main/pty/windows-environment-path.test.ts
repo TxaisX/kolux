@@ -490,13 +490,13 @@ describe('mergePersistedWindowsPath', () => {
   it('expands variables already present in the inherited PATH', () => {
     const execFileSync = vi.fn().mockReturnValue('    Path    REG_SZ    \r\n')
     const env = {
-      NIGHTSHIFT_PATH_ROOT: 'C:\\Users\\nightshift\\AppData\\Local',
-      Path: '%nightshift_path_root%\\agy\\bin;C:\\Windows'
+      KOLUX_PATH_ROOT: 'C:\\Users\\kolux\\AppData\\Local',
+      Path: '%kolux_path_root%\\agy\\bin;C:\\Windows'
     }
 
     mergePersistedWindowsPath(env, { platform: 'win32', execFileSync, env })
 
-    expect(env.Path).toBe('C:\\Users\\nightshift\\AppData\\Local\\agy\\bin;C:\\Windows')
+    expect(env.Path).toBe('C:\\Users\\kolux\\AppData\\Local\\agy\\bin;C:\\Windows')
   })
 
   it('adopts persisted machine and user PATH ordering', () => {
@@ -514,7 +514,7 @@ describe('mergePersistedWindowsPath', () => {
         [
           '',
           'HKEY_CURRENT_USER\\Environment',
-          '    Path    REG_EXPAND_SZ    C:\\Users\\me\\AppData\\Local\\Nightshift\\bin;C:\\Existing',
+          '    Path    REG_EXPAND_SZ    C:\\Users\\me\\AppData\\Local\\Kolux\\bin;C:\\Existing',
           ''
         ].join('\r\n')
       )
@@ -523,7 +523,7 @@ describe('mergePersistedWindowsPath', () => {
     mergePersistedWindowsPath(env, { platform: 'win32', execFileSync })
 
     expect(env.Path).toBe(
-      'C:\\Windows\\System32;C:\\Existing;C:\\Users\\me\\AppData\\Local\\Nightshift\\bin'
+      'C:\\Windows\\System32;C:\\Existing;C:\\Users\\me\\AppData\\Local\\Kolux\\bin'
     )
   })
 
@@ -589,7 +589,7 @@ describe('mergePersistedWindowsPath', () => {
   })
 
   it('keeps injected entries ahead of the persisted PATH', () => {
-    const injected = 'C:\\Users\\me\\AppData\\Local\\Nightshift\\resources\\bin'
+    const injected = 'C:\\Users\\me\\AppData\\Local\\Kolux\\resources\\bin'
     const python = 'C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python314\\'
     const windowsApps = 'C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps'
     const execFileSync = vi

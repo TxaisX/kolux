@@ -5,7 +5,7 @@ const DRAG_MARGIN = 8
 const TITLEBAR_SAFE_TOP = 36
 
 export const FLOATING_TERMINAL_TRIGGER_POSITION_STORAGE_KEY =
-  'nightshift-floating-terminal-trigger-position-v2'
+  'kolux-floating-terminal-trigger-position-v2'
 
 export type FloatingTerminalTriggerPosition = {
   left: number

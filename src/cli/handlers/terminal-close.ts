@@ -71,7 +71,7 @@ export const terminalCloseHandler: CommandHandler = async ({ flags, client, cwd,
       if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
         throw new RuntimeClientError(
           'incompatible_runtime',
-          'This Nightshift host does not support closing every terminal in a workspace yet. Update Nightshift on the host and try again.'
+          'This Kolux host does not support closing every terminal in a workspace yet. Update Kolux on the host and try again.'
         )
       }
       throw error

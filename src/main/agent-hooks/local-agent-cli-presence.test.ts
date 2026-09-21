@@ -85,7 +85,7 @@ describe('detectLocalManagedAgentCliPresence', () => {
   })
 
   it('expands Windows home-relative override paths with Windows separators', async () => {
-    const overridePath = 'C:\\Users\\nightshift\\bin\\claude.cmd'
+    const overridePath = 'C:\\Users\\kolux\\bin\\claude.cmd'
     const probe = vi.fn(async (filePath: string) => filePath === overridePath)
     const result = await detectLocalManagedAgentCliPresence(
       [claudeTarget],
@@ -94,7 +94,7 @@ describe('detectLocalManagedAgentCliPresence', () => {
         pathEnv: '',
         fileProbe: { isExecutableFile: probe },
         platform: 'win32',
-        homeDir: 'C:\\Users\\nightshift'
+        homeDir: 'C:\\Users\\kolux'
       }
     )
 
@@ -103,7 +103,7 @@ describe('detectLocalManagedAgentCliPresence', () => {
   })
 
   it('expands home-relative override paths', async () => {
-    const probe = vi.fn(async (filePath: string) => filePath === '/home/nightshift/bin/codex')
+    const probe = vi.fn(async (filePath: string) => filePath === '/home/kolux/bin/codex')
     const result = await detectLocalManagedAgentCliPresence(
       [codexTarget],
       { agentCmdOverrides: { codex: '~/bin/codex --profile work' } },
@@ -112,12 +112,12 @@ describe('detectLocalManagedAgentCliPresence', () => {
         pathDelimiter: ':',
         fileProbe: { isExecutableFile: probe },
         platform: 'linux',
-        homeDir: '/home/nightshift'
+        homeDir: '/home/kolux'
       }
     )
 
     expect(result.codex?.state).toBe('found')
-    expect(probe).toHaveBeenCalledWith('/home/nightshift/bin/codex')
+    expect(probe).toHaveBeenCalledWith('/home/kolux/bin/codex')
   })
 
   it('reports relative override paths as unknown', async () => {
@@ -190,7 +190,7 @@ describe('detectLocalManagedAgentCliPresence', () => {
   it.runIf(process.platform !== 'win32')(
     'accepts executable symlinks and rejects broken symlinks',
     async () => {
-      tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-cli-presence-'))
+      tmpDir = mkdtempSync(join(tmpdir(), 'kolux-cli-presence-'))
       const binDir = join(tmpDir, 'bin')
       mkdirSync(binDir)
       const targetPath = join(tmpDir, 'codex-real')

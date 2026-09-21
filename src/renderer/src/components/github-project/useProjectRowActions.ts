@@ -40,7 +40,7 @@ export function useProjectRowActions({
   const [slugDialog, setSlugDialog] = useState<{ origin: GitHubItemDialogProjectOrigin } | null>(
     null
   )
-  const [repoNotInNightshift, setRepoNotInNightshift] = useState<{
+  const [repoNotInKolux, setRepoNotInKolux] = useState<{
     owner: string
     repo: string
     host?: string
@@ -68,15 +68,15 @@ export function useProjectRowActions({
   const missingDialogs = resolveMissingRepoProjectDialogState({
     slugIndexReady,
     slugDialog,
-    repoNotInNightshift,
+    repoNotInKolux,
     lookupSlug,
     selectedRepoIds
   })
   if (missingDialogs.slugDialog !== slugDialog) {
     setSlugDialog(missingDialogs.slugDialog)
   }
-  if (missingDialogs.repoNotInNightshift !== repoNotInNightshift) {
-    setRepoNotInNightshift(missingDialogs.repoNotInNightshift)
+  if (missingDialogs.repoNotInKolux !== repoNotInKolux) {
+    setRepoNotInKolux(missingDialogs.repoNotInKolux)
   }
 
   const buildOrigin = useCallback(
@@ -195,7 +195,7 @@ export function useProjectRowActions({
         return
       }
       if (resolution.status === 'no_global_match') {
-        setRepoNotInNightshift({
+        setRepoNotInKolux({
           owner: origin.owner,
           repo: origin.repo,
           host: origin.host,
@@ -232,7 +232,7 @@ export function useProjectRowActions({
     missingDialogs,
     setDialogRepoItem,
     setSlugDialog,
-    setRepoNotInNightshift,
+    setRepoNotInKolux,
     openDialog,
     startWork,
     ...rowMutations

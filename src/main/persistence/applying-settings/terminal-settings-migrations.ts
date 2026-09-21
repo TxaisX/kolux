@@ -1,7 +1,4 @@
-import type {
-  GlobalSettings,
-  NightshiftWorkspaceLayout
-} from '../../../shared/global-settings-types'
+import type { GlobalSettings, KoluxWorkspaceLayout } from '../../../shared/global-settings-types'
 import { normalizeRuntimePathForComparison } from '../../../shared/cross-platform-path'
 import {
   legacyTerminalScrollbackBytesToRows,
@@ -17,7 +14,7 @@ import {
 export function buildWorkspaceDirHistoryForUpdate(
   current: GlobalSettings,
   updates: Partial<GlobalSettings>
-): NightshiftWorkspaceLayout[] | null {
+): KoluxWorkspaceLayout[] | null {
   if (!('workspaceDir' in updates) && !('nestWorkspaces' in updates)) {
     return null
   }
@@ -120,7 +117,7 @@ export function migrateTerminalTuiScrollSensitivityDefault(settings: GlobalSetti
   }
 }
 
-export function getWorkspaceLayoutHistoryKey(layout: NightshiftWorkspaceLayout): string {
+export function getWorkspaceLayoutHistoryKey(layout: KoluxWorkspaceLayout): string {
   return `${normalizeRuntimePathForComparison(layout.path)}:${layout.nestWorkspaces}`
 }
 

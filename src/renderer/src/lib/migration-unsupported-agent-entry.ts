@@ -31,7 +31,7 @@ export function migrationUnsupportedToAgentStatusEntry(
         terminalTitle: 'Migration unsupported',
         stateHistory: [],
         lastAssistantMessage:
-          'Restart this terminal so Nightshift can attach a stable UUID pane key to agent hooks.'
+          'Restart this terminal so Kolux can attach a stable UUID pane key to agent hooks.'
       }
 
   cachedMigrationUnsupportedEntries.set(entry, converted)

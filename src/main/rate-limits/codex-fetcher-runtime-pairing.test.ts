@@ -49,7 +49,7 @@ function makeRpcChild() {
 
 /** A CLI installed under one version manager entry, with its sibling node. */
 function makeVersionManagerCli(cliName = 'codex'): { bin: string; cli: string } {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-fetch-pair-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-fetch-pair-'))
   const bin = join(root, '.nvm', 'versions', 'node', 'v20.11.0', 'bin')
   mkdirSync(bin, { recursive: true })
   for (const name of ['node', 'node.exe', cliName]) {

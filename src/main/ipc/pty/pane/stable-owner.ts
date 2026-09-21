@@ -3,7 +3,7 @@ import { makePaneKey, parsePaneKey } from '../../../../shared/stable-pane-id'
 import { UNVERIFIED_PROCESS_EXIT_CODE } from '../../../../shared/terminal-exit-cause'
 import type { Store } from '../../../persistence'
 import { retireTerminalSurfaceFromPersistence } from '../../../runtime/mobile-session-terminal-persistence-retirement'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { IPtyProvider, PtySpawnOptions, PtySpawnResult } from '../../../providers/types'
 import { parseAppSshPtyId } from '../../../providers/ssh-pty-id'
 import {
@@ -65,7 +65,7 @@ export function resolvePersistedStablePaneOwner(
 }
 
 export function resolveStablePaneOwner(
-  runtime: NightshiftRuntimeService | undefined,
+  runtime: KoluxRuntimeService | undefined,
   store: Store | undefined,
   paneKey: string | null | undefined,
   worktreeId: string | undefined,
@@ -74,9 +74,8 @@ export function resolveStablePaneOwner(
   if (!paneKey || !worktreeId) {
     return null
   }
-  let resolved: ReturnType<NightshiftRuntimeService['resolveTerminalPane']> | null = null
-  let resolvedHandleCandidate: ReturnType<NightshiftRuntimeService['resolveTerminalPane']> | null =
-    null
+  let resolved: ReturnType<KoluxRuntimeService['resolveTerminalPane']> | null = null
+  let resolvedHandleCandidate: ReturnType<KoluxRuntimeService['resolveTerminalPane']> | null = null
   if (runtime && typeof runtime.resolveTerminalPane === 'function') {
     try {
       const candidate = runtime.resolveTerminalPane(paneKey, worktreeId)
@@ -159,7 +158,7 @@ export function retirePersistedStablePaneOwner(
 }
 
 export type StablePaneSpawnContext = {
-  runtime: NightshiftRuntimeService | undefined
+  runtime: KoluxRuntimeService | undefined
   store?: Store
   provider: IPtyProvider
   spawnOptions: PtySpawnOptions

@@ -1,8 +1,8 @@
 import type {
   HookCommandSourcePolicy,
-  NightshiftHooks,
+  KoluxHooks,
   RepoHookSettings
-} from '../../../../shared/nightshift-yaml-hook-types'
+} from '../../../../shared/kolux-yaml-hook-types'
 import type { Repo } from '../../../../shared/repo-types'
 import { DEFAULT_REPO_HOOK_SETTINGS } from './SettingsConstants'
 import { translate } from '@/i18n/i18n'
@@ -32,7 +32,7 @@ export function getLocalHookFields(): readonly [LocalHookField, LocalHookField] 
       ),
       placeholder: translate(
         'auto.components.settings.RepositoryHooksSection.a3fc966677',
-        '# e.g. pnpm install cp "$NIGHTSHIFT_ROOT_PATH/.env" "$NIGHTSHIFT_WORKTREE_PATH/.env"'
+        '# e.g. pnpm install cp "$KOLUX_ROOT_PATH/.env" "$KOLUX_WORKTREE_PATH/.env"'
       )
     },
     {
@@ -47,7 +47,7 @@ export function getLocalHookFields(): readonly [LocalHookField, LocalHookField] 
       ),
       placeholder: translate(
         'auto.components.settings.RepositoryHooksSection.9b821fa19d',
-        '# e.g. echo "Cleaning up $NIGHTSHIFT_WORKSPACE_NAME"'
+        '# e.g. echo "Cleaning up $KOLUX_WORKSPACE_NAME"'
       )
     }
   ]
@@ -114,7 +114,7 @@ export function getLocalCommandSourcePolicyNotice({
       }
 }
 
-export function renderYamlScriptPreview(hooks: NightshiftHooks | null): string {
+export function renderYamlScriptPreview(hooks: KoluxHooks | null): string {
   const formatScript = (key: string, command?: string): string =>
     command ? `\n  ${key}: |\n${command.replace(/^/gm, '    ')}` : ''
   const issueCommand = hooks?.issueCommand

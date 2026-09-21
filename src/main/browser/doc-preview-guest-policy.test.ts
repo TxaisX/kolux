@@ -310,7 +310,7 @@ describe('doc preview guest policy', () => {
     it.each([
       'file:///etc/passwd',
       'javascript:fetch("https://attacker.test")',
-      'nightshift-preview://a/b',
+      'kolux-preview://a/b',
       '/Users/alice/secrets.txt',
       ''
     ])('drops a reported click on %s, which is not the web', (url) => {

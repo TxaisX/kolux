@@ -9,7 +9,7 @@
  * - Maturity: experimental pending CI soak history.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   cleanupMarkdownFixture,
@@ -33,12 +33,12 @@ type OverlapHitTest = {
 }
 
 test.describe('Rich markdown link bubble stacking', () => {
-  test('link actions stay above the right Explorer', async ({ nightshiftPage }, testInfo) => {
-    await nightshiftPage.setViewportSize({ width: 1920, height: 1080 })
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test('link actions stay above the right Explorer', async ({ koluxPage }, testInfo) => {
+    await koluxPage.setViewportSize({ width: 1920, height: 1080 })
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
 
-    const context = await getActiveWorktreeContext(nightshiftPage)
+    const context = await getActiveWorktreeContext(koluxPage)
     let filePath: string | null = null
 
     try {
@@ -48,10 +48,10 @@ test.describe('Rich markdown link bubble stacking', () => {
         testInfo.workerIndex,
         MARKDOWN
       )
-      await openMarkdownFixture(nightshiftPage, context, filePath)
-      await waitForRichMarkdownEditor(nightshiftPage)
+      await openMarkdownFixture(koluxPage, context, filePath)
+      await waitForRichMarkdownEditor(koluxPage)
 
-      await nightshiftPage.evaluate(() => {
+      await koluxPage.evaluate(() => {
         const store = window.__store
         if (!store) {
           throw new Error('window.__store is not available — is the app in dev mode?')
@@ -63,20 +63,20 @@ test.describe('Rich markdown link bubble stacking', () => {
         })
       })
 
-      const explorer = nightshiftPage.locator('[data-nightshift-explorer-shell]')
-      const link = nightshiftPage.locator(`.rich-markdown-editor a[href="${LINK_HREF}"]`)
+      const explorer = koluxPage.locator('[data-kolux-explorer-shell]')
+      const link = koluxPage.locator(`.rich-markdown-editor a[href="${LINK_HREF}"]`)
       await expect(explorer).toBeVisible()
       await expect(link).toBeVisible()
 
       await link.click()
 
-      const bubble = nightshiftPage.locator('.rich-markdown-link-bubble')
+      const bubble = koluxPage.locator('.rich-markdown-link-bubble')
       await expect(bubble).toBeVisible()
       await expect(bubble.locator('.rich-markdown-link-url')).toContainText('https://example.com')
 
-      const overlap = await nightshiftPage.evaluate((): OverlapHitTest => {
+      const overlap = await koluxPage.evaluate((): OverlapHitTest => {
         const bubble = document.querySelector<HTMLElement>('.rich-markdown-link-bubble')
-        const explorer = document.querySelector<HTMLElement>('[data-nightshift-explorer-shell]')
+        const explorer = document.querySelector<HTMLElement>('[data-kolux-explorer-shell]')
         if (!bubble || !explorer) {
           throw new Error('Link bubble or Explorer was not rendered')
         }
@@ -118,18 +118,16 @@ test.describe('Rich markdown link bubble stacking', () => {
       expect(await input.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
       await expect(input).toBeFocused()
       await expect(bubble).toBeVisible()
-      await nightshiftPage.keyboard.press('Escape')
+      await koluxPage.keyboard.press('Escape')
       await expect(bubble.locator('.rich-markdown-link-url')).toBeVisible()
 
       await explorer.getByPlaceholder('Find files').click()
       await expect(bubble).toHaveCount(0)
 
-      await nightshiftPage
-        .getByRole('heading', { name: 'Rich markdown link overlay repro' })
-        .click()
+      await koluxPage.getByRole('heading', { name: 'Rich markdown link overlay repro' }).click()
       await link.click()
       await expect(bubble).toBeVisible()
-      const originalEditorZoom = await nightshiftPage.evaluate(() => {
+      const originalEditorZoom = await koluxPage.evaluate(() => {
         const store = window.__store
         if (!store) {
           throw new Error('window.__store is not available — is the app in dev mode?')
@@ -139,16 +137,14 @@ test.describe('Rich markdown link bubble stacking', () => {
         return zoom
       })
       await expect(bubble).toHaveCount(0)
-      await nightshiftPage.evaluate((zoom) => {
+      await koluxPage.evaluate((zoom) => {
         window.__store?.getState().setEditorFontZoomLevel(zoom)
       }, originalEditorZoom)
 
-      await nightshiftPage
-        .getByRole('heading', { name: 'Rich markdown link overlay repro' })
-        .click()
+      await koluxPage.getByRole('heading', { name: 'Rich markdown link overlay repro' }).click()
       await link.click()
       await expect(bubble).toBeVisible()
-      await nightshiftPage.evaluate(() => {
+      await koluxPage.evaluate(() => {
         const store = window.__store
         if (!store) {
           throw new Error('window.__store is not available — is the app in dev mode?')

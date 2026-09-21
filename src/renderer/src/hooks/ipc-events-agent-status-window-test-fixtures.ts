@@ -95,7 +95,7 @@ export function buildWindowApi(args: {
       browser: {
         onGuestLoadFailed: () => () => {},
         onPaneFocus: () => () => {},
-        onOpenLinkInNightshiftTab: () => () => {},
+        onOpenLinkInKoluxTab: () => () => {},
         onNavigationUpdate: () => () => {},
         onActivateView: () => () => {}
       },

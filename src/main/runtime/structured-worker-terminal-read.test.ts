@@ -9,8 +9,8 @@ vi.mock('../native-chat/agent-session-wire/structured-agent-session-registry', (
 }))
 
 const { readStructuredWorkerTerminal } = await import('./structured-worker-terminal-read')
-const { NightshiftRuntimeWithResolveTerminalPane } =
-  await import('./nightshift-runtime-resolve-terminal-pane')
+const { KoluxRuntimeWithResolveTerminalPane } =
+  await import('./kolux-runtime-resolve-terminal-pane')
 const {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
@@ -162,15 +162,12 @@ describe('reading a structured worker through the terminal-read path', () => {
     // could be perfect and a peer would still get `terminal_handle_stale` if nothing called it.
     const handle = registerWorker()
     installHost({ items: [message('i1', 'hello')] })
-    const runtime = Object.assign(
-      Object.create(NightshiftRuntimeWithResolveTerminalPane.prototype),
-      {
-        getOrchestrationDbIfAvailable: () => null,
-        getLivePtyForHandle: () => {
-          throw new Error('the PTY lookup must never be reached for a structured worker')
-        }
+    const runtime = Object.assign(Object.create(KoluxRuntimeWithResolveTerminalPane.prototype), {
+      getOrchestrationDbIfAvailable: () => null,
+      getLivePtyForHandle: () => {
+        throw new Error('the PTY lookup must never be reached for a structured worker')
       }
-    ) as { readTerminal: (handle: string, opts?: object) => Promise<{ tail: string[] }> }
+    }) as { readTerminal: (handle: string, opts?: object) => Promise<{ tail: string[] }> }
     await expect(runtime.readTerminal(handle)).resolves.toMatchObject({
       tail: ['[assistant] hello'],
       source: 'stream'

@@ -30,13 +30,13 @@ describe('CliInstaller', () => {
     vi.restoreAllMocks()
   })
 
-  // Why: this test creates a Unix symlink to /tmp/not-nightshift, which only applies on macOS/Linux.
+  // Why: this test creates a Unix symlink to /tmp/not-kolux, which only applies on macOS/Linux.
   it.skipIf(process.platform === 'win32')(
     'refuses to replace an unknown symlink at the command path',
     async () => {
       const fixture = await makeFixture()
-      const installPath = join(fixture.root, 'bin', 'nightshift')
-      const existingTarget = '/tmp/not-nightshift'
+      const installPath = join(fixture.root, 'bin', 'kolux')
+      const existingTarget = '/tmp/not-kolux'
       await mkdir(join(fixture.root, 'bin'), { recursive: true })
       await symlink(existingTarget, installPath)
 
@@ -44,7 +44,7 @@ describe('CliInstaller', () => {
         platform: 'darwin',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+        execPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
         appPath: fixture.appPath,
         commandPathOverride: installPath
       })
@@ -53,31 +53,22 @@ describe('CliInstaller', () => {
         state: 'conflict',
         supported: true
       })
-      await expect(installer.install()).rejects.toThrow(
-        'Refusing to replace non-Nightshift command'
-      )
+      await expect(installer.install()).rejects.toThrow('Refusing to replace non-Kolux command')
       await expect(readlink(installPath)).resolves.toBe(existingTarget)
     }
   )
 
-  // Why: packaged app moves can leave a symlink to an older Nightshift-owned launcher;
+  // Why: packaged app moves can leave a symlink to an older Kolux-owned launcher;
   // those are safe to refresh, unlike arbitrary user symlinks.
   it.skipIf(process.platform === 'win32')(
-    'replaces stale packaged Nightshift launcher symlinks',
+    'replaces stale packaged Kolux launcher symlinks',
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, 'bin')
-      const installPath = join(commandDir, 'nightshift')
+      const installPath = join(commandDir, 'kolux')
       const resourcesPath = join(fixture.root, 'Current.app', 'Contents', 'Resources')
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift')
-      const oldLauncherPath = join(
-        fixture.root,
-        'Old.app',
-        'Contents',
-        'Resources',
-        'bin',
-        'nightshift'
-      )
+      const launcherPath = join(resourcesPath, 'bin', 'kolux')
+      const oldLauncherPath = join(fixture.root, 'Old.app', 'Contents', 'Resources', 'bin', 'kolux')
       await mkdir(commandDir, { recursive: true })
       await mkdir(join(resourcesPath, 'bin'), { recursive: true })
       await writeFile(launcherPath, '#!/usr/bin/env bash\n', 'utf8')
@@ -100,17 +91,17 @@ describe('CliInstaller', () => {
     }
   )
 
-  // Why: old dev/package experiments wrote a generated Nightshift launcher file
-  // directly into /usr/local/bin/nightshift. That broke profiling because Settings
+  // Why: old dev/package experiments wrote a generated Kolux launcher file
+  // directly into /usr/local/bin/kolux. That broke profiling because Settings
   // treated the regular file as a hard conflict and would not self-heal it.
   it.skipIf(process.platform === 'win32')(
     'replaces stale generated Unix launcher files',
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, 'bin')
-      const installPath = join(commandDir, 'nightshift')
+      const installPath = join(commandDir, 'kolux')
       const resourcesPath = join(fixture.root, 'Current.app', 'Contents', 'Resources')
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift')
+      const launcherPath = join(resourcesPath, 'bin', 'kolux')
       const oldCliPath = join(fixture.root, 'OldWorktree', 'out', 'cli', 'index.js')
       await mkdir(commandDir, { recursive: true })
       await mkdir(join(resourcesPath, 'bin'), { recursive: true })
@@ -122,8 +113,8 @@ describe('CliInstaller', () => {
           'set -euo pipefail',
           "ELECTRON='/tmp/Old.app/Contents/MacOS/Electron'",
           `CLI='${oldCliPath}'`,
-          'export NIGHTSHIFT_NODE_OPTIONS="${NODE_OPTIONS-}"',
-          'export NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"',
+          'export KOLUX_NODE_OPTIONS="${NODE_OPTIONS-}"',
+          'export KOLUX_NODE_REPL_EXTERNAL_MODULE="${NODE_REPL_EXTERNAL_MODULE-}"',
           'unset NODE_OPTIONS',
           'unset NODE_REPL_EXTERNAL_MODULE',
           'ELECTRON_RUN_AS_NODE=1 "$ELECTRON" "$CLI" "$@"',
@@ -154,12 +145,12 @@ describe('CliInstaller', () => {
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, 'bin')
-      const installPath = join(commandDir, 'nightshift')
+      const installPath = join(commandDir, 'kolux')
       const resourcesPath = await createPackagedMacLauncher(fixture.root)
       await mkdir(commandDir, { recursive: true })
       await writeFile(
         installPath,
-        '#!/usr/bin/env bash\nELECTRON_RUN_AS_NODE=1 /tmp/not-nightshift "$@"\n',
+        '#!/usr/bin/env bash\nELECTRON_RUN_AS_NODE=1 /tmp/not-kolux "$@"\n',
         'utf8'
       )
 
@@ -175,26 +166,24 @@ describe('CliInstaller', () => {
         state: 'conflict',
         currentTarget: null
       })
-      await expect(installer.install()).rejects.toThrow(
-        'Refusing to replace non-Nightshift command'
-      )
-      await expect(readFile(installPath, 'utf8')).resolves.toContain('/tmp/not-nightshift')
+      await expect(installer.install()).rejects.toThrow('Refusing to replace non-Kolux command')
+      await expect(readFile(installPath, 'utf8')).resolves.toContain('/tmp/not-kolux')
     }
   )
 
   // Why: a dev build can temporarily own the public command on developer
-  // machines; packaged Nightshift should treat that as stale, not a hard conflict.
+  // machines; packaged Kolux should treat that as stale, not a hard conflict.
   it.skipIf(process.platform === 'win32')(
     'replaces stale sibling dev launcher symlinks from packaged installs',
     async () => {
       const fixture = await makeFixture()
-      for (const devLauncherName of ['nightshift', 'nightshift-dev']) {
+      for (const devLauncherName of ['kolux', 'kolux-dev']) {
         const caseRoot = join(fixture.root, devLauncherName)
         const commandDir = join(caseRoot, 'bin')
-        const installPath = join(commandDir, 'nightshift')
-        const userDataPath = join(caseRoot, 'nightshift')
+        const installPath = join(commandDir, 'kolux')
+        const userDataPath = join(caseRoot, 'kolux')
         const resourcesPath = join(caseRoot, 'Current.app', 'Contents', 'Resources')
-        const launcherPath = join(resourcesPath, 'bin', 'nightshift')
+        const launcherPath = join(resourcesPath, 'bin', 'kolux')
         const devLauncherPath = join(`${userDataPath}-dev`, 'cli', 'bin', devLauncherName)
         await mkdir(commandDir, { recursive: true })
         await mkdir(join(resourcesPath, 'bin'), { recursive: true })

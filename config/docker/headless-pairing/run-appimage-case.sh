@@ -2,17 +2,17 @@
 set -euo pipefail
 
 case_name=${1:?launch case is required}
-appimage=${NIGHTSHIFT_TEST_APPIMAGE:-/artifacts/squashfs-root/AppRun}
-timeout_seconds=${NIGHTSHIFT_STARTUP_TIMEOUT_SECONDS:-12}
-pairing_address=${NIGHTSHIFT_PAIRING_ADDRESS:-127.0.0.1}
-port=${NIGHTSHIFT_SERVE_PORT:-0}
-state_dir="/tmp/nightshift-${case_name}"
+appimage=${KOLUX_TEST_APPIMAGE:-/artifacts/squashfs-root/AppRun}
+timeout_seconds=${KOLUX_STARTUP_TIMEOUT_SECONDS:-12}
+pairing_address=${KOLUX_PAIRING_ADDRESS:-127.0.0.1}
+port=${KOLUX_SERVE_PORT:-0}
+state_dir="/tmp/kolux-${case_name}"
 
 if ((EUID == 0)); then
   mkdir -p "$state_dir/config" "$state_dir/cache"
-  chown -R nightshift:nightshift "$state_dir"
+  chown -R kolux:kolux "$state_dir"
   # Why: packaged serve should exercise the same unprivileged account required by production systemd guidance.
-  exec runuser --user nightshift --preserve-environment -- "$0" "$@"
+  exec runuser --user kolux --preserve-environment -- "$0" "$@"
 fi
 
 mkdir -p "$state_dir/config" "$state_dir/cache"
@@ -26,14 +26,14 @@ else
 fi
 
 app_args=("${launcher[@]}")
-if [[ ${NIGHTSHIFT_TEST_NO_SANDBOX:-1} == 1 ]]; then
+if [[ ${KOLUX_TEST_NO_SANDBOX:-1} == 1 ]]; then
   app_args+=(--no-sandbox)
 fi
 app_args+=(serve --port "$port" --pairing-address "$pairing_address")
-if [[ ${NIGHTSHIFT_READY_JSON:-0} == 1 ]]; then
+if [[ ${KOLUX_READY_JSON:-0} == 1 ]]; then
   app_args+=(--json)
 fi
-if [[ ${NIGHTSHIFT_NO_PAIRING:-0} == 1 ]]; then
+if [[ ${KOLUX_NO_PAIRING:-0} == 1 ]]; then
   app_args+=(--no-pairing)
 fi
 
@@ -60,10 +60,10 @@ export HOME="$state_dir"
 export XDG_CONFIG_HOME="$state_dir/config"
 export XDG_CACHE_HOME="$state_dir/cache"
 if [[ $is_appimage == 0 ]]; then
-  export APPDIR=${NIGHTSHIFT_TEST_APPDIR:-"$(dirname "$appimage")"}
+  export APPDIR=${KOLUX_TEST_APPDIR:-"$(dirname "$appimage")"}
 fi
 
-if [[ ${NIGHTSHIFT_KEEP_RUNNING:-0} == 1 ]]; then
+if [[ ${KOLUX_KEEP_RUNNING:-0} == 1 ]]; then
   exec "${command[@]}"
 fi
 

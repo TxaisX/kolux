@@ -1,6 +1,6 @@
 import type { Page } from '@stablyai/playwright-test'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -286,17 +286,17 @@ async function dispatchTuiWheel(
 
 test.describe('terminal TUI wheel reports', () => {
   test('notched mouse wheel ticks produce immediate mouse-reporting TUI scroll reports', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await nightshiftPage.evaluate(() =>
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await koluxPage.evaluate(() =>
       window.__store?.getState().updateSettings({ terminalTuiScrollSensitivity: 1 })
     )
 
-    const samples = await probeSmallMouseWheelReports(nightshiftPage, 4)
+    const samples = await probeSmallMouseWheelReports(koluxPage, 4)
 
     expect(
       samples.map((sample) => sample.reportDelta),
@@ -307,7 +307,7 @@ test.describe('terminal TUI wheel reports', () => {
 
   test('fullscreen mouse-reporting TUI scroll distance follows wheel magnitude @headful', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     await electronApp.evaluate(({ BrowserWindow }) => {
       const win = BrowserWindow.getAllWindows()[0]
@@ -328,38 +328,38 @@ test.describe('terminal TUI wheel reports', () => {
         )
       )
       .toBe(true)
-    await nightshiftPage.waitForTimeout(1200)
+    await koluxPage.waitForTimeout(1200)
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await nightshiftPage.evaluate(() =>
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await koluxPage.evaluate(() =>
       window.__store?.getState().updateSettings({ terminalTuiScrollSensitivity: 1 })
     )
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await execInTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(VISIBLE_TUI_FIXTURE_PATH)}`)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await execInTerminal(koluxPage, ptyId, `node ${JSON.stringify(VISIBLE_TUI_FIXTURE_PATH)}`)
 
     await expect
-      .poll(() => readVisibleTuiOffset(nightshiftPage), {
+      .poll(() => readVisibleTuiOffset(koluxPage), {
         timeout: 10_000,
         message: 'visible fullscreen TUI did not render numbered rows'
       })
       .toBe(0)
 
-    await dispatchTuiWheel(nightshiftPage, {
+    await dispatchTuiWheel(koluxPage, {
       deltaY: 10,
       wheelDeltaY: PHYSICAL_MOUSE_WHEEL_DELTA
     })
     await expect
-      .poll(() => readVisibleTuiOffset(nightshiftPage), {
+      .poll(() => readVisibleTuiOffset(koluxPage), {
         timeout: 5_000,
         message: 'single notched wheel tick did not visibly scroll the TUI'
       })
       .toBe(1)
 
-    const cellHeight = await nightshiftPage.evaluate(() => {
+    const cellHeight = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       const worktreeId = state?.activeWorktreeId
       const tabId =
@@ -377,35 +377,35 @@ test.describe('terminal TUI wheel reports', () => {
       return screen.getBoundingClientRect().height / pane.terminal.rows
     })
 
-    await dispatchTuiWheel(nightshiftPage, {
+    await dispatchTuiWheel(koluxPage, {
       deltaY: cellHeight * 12,
       wheelDeltaY: PHYSICAL_MOUSE_WHEEL_DELTA * 12
     })
 
     await expect
-      .poll(() => readVisibleTuiOffset(nightshiftPage), {
+      .poll(() => readVisibleTuiOffset(koluxPage), {
         timeout: 5_000,
         message: 'larger wheel movement did not visibly move the TUI farther'
       })
       .toBe(7)
   })
 
-  test('TUI scroll setting scales notched mouse wheel reports', async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await nightshiftPage.evaluate(() =>
+  test('TUI scroll setting scales notched mouse wheel reports', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await koluxPage.evaluate(() =>
       window.__store?.getState().updateSettings({ terminalTuiScrollSensitivity: 5 })
     )
 
-    const slow = await probeTimedSmallMouseWheelReports(nightshiftPage, {
+    const slow = await probeTimedSmallMouseWheelReports(koluxPage, {
       drainWaitMs: 120,
       intervalMs: 220,
       ticks: 5
     })
-    await nightshiftPage.waitForTimeout(220)
-    const paced = await probeTimedSmallMouseWheelReports(nightshiftPage, {
+    await koluxPage.waitForTimeout(220)
+    const paced = await probeTimedSmallMouseWheelReports(koluxPage, {
       drainWaitMs: 220,
       intervalMs: 80,
       ticks: 5

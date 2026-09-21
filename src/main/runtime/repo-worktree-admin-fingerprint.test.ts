@@ -29,7 +29,7 @@ async function fingerprint(path = repoPath): Promise<string | null> {
 
 beforeEach(async () => {
   // realpath: macOS hands out /var/... temp paths while Git records /private/var/... in `gitdir`.
-  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'nightshift-worktree-fingerprint-')))
+  scratchDir = await realpath(await mkdtemp(join(tmpdir(), 'kolux-worktree-fingerprint-')))
   repoPath = join(scratchDir, 'repo')
   worktreePath = join(scratchDir, 'trees', 'feature')
   await mkdir(repoPath, { recursive: true })

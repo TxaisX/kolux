@@ -90,7 +90,7 @@ describe('computer RPC methods', () => {
   it('returns provider capabilities through the sidecar', async () => {
     const result = {
       platform: 'darwin',
-      provider: 'nightshift-computer-use-macos',
+      provider: 'kolux-computer-use-macos',
       protocolVersion: 1
     }
     computerMocks.callComputerSidecarCapabilities.mockResolvedValue(result)
@@ -102,7 +102,7 @@ describe('computer RPC methods', () => {
   it('opens computer-use permission setup', async () => {
     const result = {
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       openedSettings: false,
       launchedHelper: true
     }
@@ -115,7 +115,7 @@ describe('computer RPC methods', () => {
   it('returns computer-use permission status', async () => {
     const result = {
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       helperUnavailableReason: null,
       permissions: [{ id: 'accessibility', status: 'granted' }]
     }

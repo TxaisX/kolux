@@ -116,7 +116,7 @@ describe('getUnavailableWorkspacePortHosts', () => {
     ])
   })
 
-  // Why: a paired web client's userAgent is not the Nightshift host's platform, so the
+  // Why: a paired web client's userAgent is not the Kolux host's platform, so the
   // caller labels the local host from the scan's own platform.
   it("carries the failed scan's platform, and null when it is unknown", () => {
     expect(

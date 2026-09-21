@@ -198,7 +198,7 @@ export function exitEmptyDetailsBody(editor: Editor): boolean {
   return true
 }
 
-const NightshiftDetails = Details.extend({
+const KoluxDetails = Details.extend({
   // Why: details summary Enter must run before StarterKit's generic paragraph
   // splitting so typing a toggle title then pressing Enter moves into the body.
   priority: 1000,
@@ -209,10 +209,10 @@ const NightshiftDetails = Details.extend({
       variant: {
         default: null,
         parseHTML: (element) =>
-          parseToggleHeadingVariant(element.getAttribute('data-nightshift-toggle')),
+          parseToggleHeadingVariant(element.getAttribute('data-kolux-toggle')),
         renderHTML: ({ variant }) => {
           const parsed = parseToggleHeadingVariant(variant)
-          return parsed ? { 'data-nightshift-toggle': parsed } : {}
+          return parsed ? { 'data-kolux-toggle': parsed } : {}
         }
       }
     }
@@ -287,7 +287,7 @@ const NightshiftDetails = Details.extend({
   }
 })
 
-const NightshiftDetailsContent = DetailsContent.extend({
+const KoluxDetailsContent = DetailsContent.extend({
   // Why: detailsContent's double-Enter escape must run before StarterKit's
   // generic paragraph split, otherwise users can get stuck inside a toggle.
   priority: 1000,
@@ -307,15 +307,15 @@ const NightshiftDetailsContent = DetailsContent.extend({
   }
 })
 
-export function createNightshiftDetailsExtensions(): AnyExtension[] {
+export function createKoluxDetailsExtensions(): AnyExtension[] {
   return [
-    NightshiftDetails.configure({
+    KoluxDetails.configure({
       persist: true,
       HTMLAttributes: {
-        class: 'nightshift-details'
+        class: 'kolux-details'
       }
     }),
     DetailsSummary,
-    NightshiftDetailsContent
+    KoluxDetailsContent
   ]
 }

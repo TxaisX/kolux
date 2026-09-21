@@ -27,7 +27,7 @@ afterEach(async () => {
 
 function writeRuntimeConnection(userDataPath: string, endpoint: string, runtimeId: string): void {
   writeFileSync(
-    join(userDataPath, 'nightshift-runtime.json'),
+    join(userDataPath, 'kolux-runtime.json'),
     JSON.stringify({
       runtimeId,
       pid: 1,
@@ -58,7 +58,7 @@ function expectPromptRetryBlockedJson(error: unknown, requestId: string): void {
 
 describe('RuntimeClient orchestration recovery identity', () => {
   it('rejects a worker-start timeout whose client grace would overflow timers', () => {
-    const client = new RuntimeClient(undefined, 60_000, null, null, 'nightshift')
+    const client = new RuntimeClient(undefined, 60_000, null, null, 'kolux')
     const resolve = (
       client as unknown as {
         resolveMethodTimeoutMs: (method: string, params?: unknown) => number
@@ -72,7 +72,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
   })
 
   it('attaches the request and exact retry identity to a real RPC failure response', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-recovery-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-recovery-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     const server = createServer((socket) => {
       let buffer = ''
@@ -109,7 +109,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-1')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
     try {
       await client.call('orchestration.workerStart', { task: 'task_1' })
       throw new Error('expected worker-start failure')
@@ -127,10 +127,10 @@ describe('RuntimeClient orchestration recovery identity', () => {
       expect(recovered.data).toMatchObject({
         orchestrationRequestId: expect.any(String),
         dispatchId: 'dispatch_1',
-        originalCommand: ['nightshift', 'orchestration', 'worker-start', '--task', 'task_1'],
+        originalCommand: ['kolux', 'orchestration', 'worker-start', '--task', 'task_1'],
         recovery: {
           queryCommand: [
-            'nightshift',
+            'kolux',
             'orchestration',
             'worker-show',
             '--dispatch',
@@ -138,7 +138,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
             '--json'
           ],
           retryCommand: [
-            'nightshift',
+            'kolux',
             'orchestration',
             'worker-start',
             '--task',
@@ -153,7 +153,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
   })
 
   it('keeps durable prompt retry when failure metadata proves the preflight runtime', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-current-prompt-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-current-prompt-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     const server = createServer((socket) => {
       socket.once('data', (data) => {
@@ -172,7 +172,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
     const error = await client
       .call(
         'terminal.send',
@@ -182,7 +182,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
           enter: true,
           interrupt: false,
           agentPrompt: true,
-          client: { id: 'nightshift-cli', type: 'desktop' }
+          client: { id: 'kolux-cli', type: 'desktop' }
         },
         {
           terminalPromptPreflight: { runtimeId: 'runtime-current' },
@@ -200,7 +200,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
   })
 
   it('keeps the prompt retry ID when the attested runtime times out in transport', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-rt-timeout-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-rt-timeout-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     let receivedRequest: Record<string, unknown> | undefined
     const server = createServer((socket) => {
@@ -212,7 +212,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
 
-    const client = new RuntimeClient(userDataPath, 200, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 200, null, null, 'kolux')
     const error = await client
       .call(
         'terminal.send',
@@ -222,7 +222,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
           enter: true,
           interrupt: false,
           agentPrompt: true,
-          client: { id: 'nightshift-cli', type: 'desktop' }
+          client: { id: 'kolux-cli', type: 'desktop' }
         },
         {
           terminalPromptPreflight: { runtimeId: 'runtime-current' },
@@ -244,7 +244,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
   })
 
   it('blocks retry when a downgraded runtime rejects after capability preflight', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-downgraded-prompt-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-downgraded-prompt-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     let receivedRequest: Record<string, unknown> | undefined
     const server = createServer((socket) => {
@@ -265,7 +265,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
     const error = await client
       .call(
         'terminal.send',
@@ -275,7 +275,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
           enter: true,
           interrupt: false,
           agentPrompt: true,
-          client: { id: 'nightshift-cli', type: 'desktop' }
+          client: { id: 'kolux-cli', type: 'desktop' }
         },
         {
           terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
@@ -291,7 +291,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
   })
 
   it('blocks retry when a downgraded runtime loses the prompt reply', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-lost-prompt-reply-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-lost-prompt-reply-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     let receivedRequest: Record<string, unknown> | undefined
     const server = createServer((socket) => {
@@ -305,7 +305,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
     const error = await client
       .call(
         'terminal.send',
@@ -315,7 +315,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
           enter: true,
           interrupt: false,
           agentPrompt: true,
-          client: { id: 'nightshift-cli', type: 'desktop' }
+          client: { id: 'kolux-cli', type: 'desktop' }
         },
         {
           terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
@@ -329,11 +329,11 @@ describe('RuntimeClient orchestration recovery identity', () => {
     expect(error).toBeInstanceOf(RuntimeClientError)
     expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
     expectPromptRetryBlockedJson(error, 'prompt-downgraded-lost-reply')
-    expect(JSON.stringify((error as RuntimeClientError).data)).not.toContain('Update Nightshift')
+    expect(JSON.stringify((error as RuntimeClientError).data)).not.toContain('Update Kolux')
   })
 
   it('reports an unknown legacy prompt outcome without advertising an unsafe retry', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-legacy-prompt-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-legacy-prompt-'))
     const endpoint = join(userDataPath, 'runtime.sock')
     let receivedRequest: Record<string, unknown> | undefined
     const server = createServer((socket) => {
@@ -346,7 +346,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
     await new Promise<void>((resolve) => server.listen(endpoint, resolve))
     writeRuntimeConnection(userDataPath, endpoint, 'runtime-legacy')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'nightshift')
+    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
     const error = await client
       .call(
         'terminal.send',
@@ -356,7 +356,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
           enter: true,
           interrupt: false,
           agentPrompt: true,
-          client: { id: 'nightshift-cli', type: 'desktop' }
+          client: { id: 'kolux-cli', type: 'desktop' }
         },
         { legacyTerminalPrompt: true }
       )
@@ -371,7 +371,7 @@ describe('RuntimeClient orchestration recovery identity', () => {
         retrySafe: false,
         nextSteps: expect.arrayContaining([
           'Inspect the terminal output and agent state without sending input.',
-          'Update Nightshift on the execution host before future prompt sends that need durable retry.'
+          'Update Kolux on the execution host before future prompt sends that need durable retry.'
         ])
       }
     })

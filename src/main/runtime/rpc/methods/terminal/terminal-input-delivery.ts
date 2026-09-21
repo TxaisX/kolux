@@ -2,9 +2,9 @@ import { isAgentSessionPtyWriteRefusedError } from '../../../../../shared/agent-
 import { InvalidArgumentError } from '../../core'
 import type {
   DriverState,
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   SubscriptionRegistration
-} from '../../../nightshift-runtime'
+} from '../../../kolux-runtime'
 import {
   TERMINAL_INPUT_MAX_BYTES,
   TERMINAL_INPUT_TOO_LARGE_ERROR,
@@ -13,7 +13,7 @@ import {
 import type { TerminalViewportClient } from './terminal-stream-types'
 
 export function isTerminalInputLockedForClient(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   ptyId: string,
   client: TerminalViewportClient | undefined
 ): boolean {
@@ -53,7 +53,7 @@ export function resolveMobileFloorClientId(
 export type TerminalStreamInputOutcome = 'delivered' | 'rejected' | 'failed'
 
 export function watchSubscriptionLifetime(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   ptyId: string,
   signal: AbortSignal | undefined,
   registration: SubscriptionRegistration
@@ -102,7 +102,7 @@ export function isTerminalStreamInputRejection(error: unknown): boolean {
 }
 
 export async function sendTerminalStreamInput(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   args: {
     terminal: string
     text: string
@@ -140,7 +140,7 @@ export async function sendTerminalStreamInput(
 }
 
 export type MobileInputFloorClaimHolder = {
-  current: ReturnType<NightshiftRuntimeService['beginMobileInputFloor']>
+  current: ReturnType<KoluxRuntimeService['beginMobileInputFloor']>
 }
 
 export async function commitMobileInputFloorClaim(
@@ -179,7 +179,7 @@ export function isTerminalSendGuardNotWritable(error: unknown): boolean {
 }
 
 export function assertTerminalSendExactPtyBinding(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   handle: string,
   expectedPtyId: string | undefined
 ): void {

@@ -16,12 +16,12 @@ import { browserPageDocLocationsEqual } from '../../../shared/browser-page-doc-l
 import type { BrowserPageDocLocation } from '../../../shared/browser-workspace-types'
 import { findPage } from '@/store/slices/browser-page-records'
 import type { BrowserPageConversionLeg } from '@/store/slices/browser-page-conversion'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../shared/constants'
 
 export type PreviewableLanguage = 'html'
 /** Still the answer for flows that need a real `file://` URL (e.g. dropping a file on a browser pane). */
 export const REMOTE_FILE_BROWSER_UNSUPPORTED_MESSAGE =
-  'Open in Nightshift Browser is only available for local files.'
+  'Open in Kolux Browser is only available for local files.'
 
 /** Localized lazily: a module constant would freeze the language at import time. */
 function pairedOutsideWorktreeMessage(): string {
@@ -36,7 +36,7 @@ function pairedOutsideWorktreeMessage(): string {
  *
  * `browser-tab` keeps local workspaces on the pre-existing embedded browser tab.
  * `doc-preview` renders the document locally from the owning workspace's disk
- * over the `nightshift-preview` scheme, which is the only option for SSH and paired
+ * over the `kolux-preview` scheme, which is the only option for SSH and paired
  * workspaces: client-hosted browser guests refuse `file:` by design, and a
  * `file://` URL would resolve on the wrong machine anyway.
  */
@@ -149,7 +149,7 @@ export function getWorkspaceFileBrowserOpenTarget(params: {
 }): WorkspaceFileBrowserOpenTarget {
   if (getConnectionIdForFile(params.worktreeId, params.filePath) !== null) {
     // Why: Chromium resolves file:// URLs on the local machine. Remote files
-    // need a Nightshift-served URL before the browser can render them correctly.
+    // need a Kolux-served URL before the browser can render them correctly.
     return {
       status: 'unsupported',
       reason: 'remote-worktree',
@@ -187,7 +187,7 @@ function openDocPreviewTab(
     }
     return
   }
-  state.createBrowserTab(params.worktreeId, NIGHTSHIFT_BROWSER_BLANK_URL, {
+  state.createBrowserTab(params.worktreeId, KOLUX_BROWSER_BLANK_URL, {
     docLocation,
     title: basename(params.filePath) || params.filePath,
     targetGroupId: params.targetGroupId,

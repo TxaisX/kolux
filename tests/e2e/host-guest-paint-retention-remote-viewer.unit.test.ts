@@ -13,7 +13,7 @@
  * viewer receiving frames only while the host operator happened to be looking at the same page.
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../src/main/runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../src/main/runtime/kolux-runtime'
 import {
   createScreencastHarness,
   HARNESS_PAGE_ID as PAGE
@@ -34,7 +34,7 @@ vi.mock('electron', () => ({
 }))
 
 function hostGuestIsPaintable(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   hostIsLookingAtThisPage: boolean
 ): boolean {
   hydrateBrowserDrivers(

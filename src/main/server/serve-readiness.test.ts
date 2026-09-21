@@ -4,25 +4,25 @@ import {
   ServeReadinessPublisher,
   type ServeReadiness
 } from './serve-readiness'
-import type { NightshiftdHealth } from '../nightshiftd/nightshiftd-health'
+import type { KoluxdHealth } from '../koluxd/koluxd-health'
 
 const ready: ServeReadiness = {
   runtimeId: 'runtime-1',
   boundEndpoint: 'ws://0.0.0.0:6768',
-  advertisedEndpoint: 'wss://nightshift.example.test/runtime',
+  advertisedEndpoint: 'wss://kolux.example.test/runtime',
   managedWslCliReconciliation: 'settled',
   pairing: {
     available: true,
-    url: 'nightshift://pair?code=secret',
-    endpoint: 'wss://nightshift.example.test/runtime',
+    url: 'kolux://pair?code=secret',
+    endpoint: 'wss://kolux.example.test/runtime',
     deviceId: 'device-1',
-    webClientUrl: 'https://nightshift.example.test/runtime/web-index.html#pairing=secret',
+    webClientUrl: 'https://kolux.example.test/runtime/web-index.html#pairing=secret',
     scope: 'runtime',
     qr: null
   }
 }
 
-const health: NightshiftdHealth = {
+const health: KoluxdHealth = {
   buildHash: 'abc123def4567890',
   buildVersion: '1.4.0',
   nodeVersion: '20.11.0',
@@ -35,7 +35,7 @@ const health: NightshiftdHealth = {
     ownsFreshSessions: true,
     pid: 4242,
     buildVersion: '1.4.0',
-    entryPath: '/opt/nightshiftd/daemon-entry.js',
+    entryPath: '/opt/koluxd/daemon-entry.js',
     protocolVersion: 36,
     selfTest: { ok: true, coverage: 'pty-spawn', verdict: 'healthy', durationMs: 12 }
   }
@@ -51,22 +51,22 @@ describe('ServeReadinessPublisher', () => {
     expect(write).toHaveBeenCalledOnce()
     expect(write).toHaveBeenCalledWith(
       expect.stringContaining(
-        'Nightshift server ready\nBound endpoint: ws://0.0.0.0:6768\nAdvertised endpoint: wss://nightshift.example.test/runtime'
+        'Kolux server ready\nBound endpoint: ws://0.0.0.0:6768\nAdvertised endpoint: wss://kolux.example.test/runtime'
       )
     )
     expect(write).toHaveBeenCalledWith(
-      expect.stringContaining('Pairing URL: nightshift://pair?code=secret\n')
+      expect.stringContaining('Pairing URL: kolux://pair?code=secret\n')
     )
   })
 
   it('publishes a versioned JSON contract with explicit endpoints and pairing availability', () => {
     expect(JSON.parse(renderServeReadiness(ready, { mode: 'json' }))).toEqual({
-      type: 'nightshift_server_ready',
+      type: 'kolux_server_ready',
       schemaVersion: 1,
       runtimeId: 'runtime-1',
       endpoint: 'ws://0.0.0.0:6768',
       boundEndpoint: 'ws://0.0.0.0:6768',
-      advertisedEndpoint: 'wss://nightshift.example.test/runtime',
+      advertisedEndpoint: 'wss://kolux.example.test/runtime',
       managedWslCliReconciliation: 'settled',
       pairing: ready.pairing
     })
@@ -92,7 +92,7 @@ describe('ServeReadinessPublisher', () => {
 
   it('preserves the recipe JSON contract', () => {
     expect(renderServeReadiness(ready, { mode: 'recipe-json', projectRoot: '/workspace' })).toBe(
-      '{"schemaVersion":1,"pairingCode":"nightshift://pair?code=secret","projectRoot":"/workspace"}'
+      '{"schemaVersion":1,"pairingCode":"kolux://pair?code=secret","projectRoot":"/workspace"}'
     )
   })
 
@@ -151,7 +151,7 @@ describe('ServeReadinessPublisher', () => {
     const human = renderServeReadiness(failed, { mode: 'human' })
     // An operator reading the ready block must not have to infer this from a missing line.
     expect(human).toContain('PTY self-test FAILED')
-    expect(human).toContain('terminals survive a nightshiftd restart: NO')
+    expect(human).toContain('terminals survive a koluxd restart: NO')
   })
 
   it('rejects concurrent and later duplicate publications', async () => {

@@ -1,6 +1,6 @@
 import { ArrowRight, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useNightshiftProfileAuthStatusRefresh } from '@/hooks/use-nightshift-profile-auth-status-refresh'
+import { useKoluxProfileAuthStatusRefresh } from '@/hooks/use-kolux-profile-auth-status-refresh'
 import { translate } from '@/i18n/i18n'
 import { isWebClientLocation } from '@/lib/web-client-location'
 import { useAppStore } from '@/store'
@@ -13,14 +13,14 @@ export function ShareSkillsSettingsPane(): React.JSX.Element {
   const openSkillsSharedLinks = useAppStore((state) => state.openSkillsSharedLinks)
   const settings = useAppStore((state) => state.settings)
   const updateSettings = useAppStore((state) => state.updateSettings)
-  const authStatus = useAppStore((state) => state.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((state) => state.nightshiftProfileConnecting)
-  const connect = useAppStore((state) => state.connectCurrentNightshiftProfile)
+  const authStatus = useAppStore((state) => state.koluxProfileAuthStatus)
+  const connecting = useAppStore((state) => state.koluxProfileConnecting)
+  const connect = useAppStore((state) => state.connectCurrentKoluxProfile)
   const signedIn = authStatus?.state === 'connected'
   const isWebClient = isWebClientLocation()
   const agentSharingEnabled = settings?.agentSkillSharingEnabled === true
 
-  useNightshiftProfileAuthStatusRefresh()
+  useKoluxProfileAuthStatusRefresh()
 
   const steps: HowToStep[] = [
     {
@@ -72,7 +72,7 @@ export function ShareSkillsSettingsPane(): React.JSX.Element {
         <p className="text-xs leading-relaxed text-muted-foreground">
           {translate(
             'auto.components.settings.shareSkills.linkDescription',
-            'Shared bundles are not searchable or listed in Nightshift. The link is the credential, so send it only to people you trust.'
+            'Shared bundles are not searchable or listed in Kolux. The link is the credential, so send it only to people you trust.'
           )}
         </p>
       </section>
@@ -80,7 +80,7 @@ export function ShareSkillsSettingsPane(): React.JSX.Element {
       <SettingsSwitchRow
         label={translate(
           'auto.components.settings.shareSkills.allowAgentPublishing',
-          'Allow agents and the Nightshift CLI to publish skill links'
+          'Allow agents and the Kolux CLI to publish skill links'
         )}
         description={
           isWebClient
@@ -123,11 +123,11 @@ export function ShareSkillsSettingsPane(): React.JSX.Element {
               {isWebClient
                 ? translate(
                     'auto.components.settings.shareSkills.signInWebDescription',
-                    'Publishing and link management are available in the Nightshift desktop app.'
+                    'Publishing and link management are available in the Kolux desktop app.'
                   )
                 : translate(
                     'auto.components.settings.shareSkills.signInDescription',
-                    'Use your Nightshift account to publish bundles and manage their links. Recipients do not need an account.'
+                    'Use your Kolux account to publish bundles and manage their links. Recipients do not need an account.'
                   )}
             </p>
           </div>
@@ -142,10 +142,7 @@ export function ShareSkillsSettingsPane(): React.JSX.Element {
                 ? translate('auto.components.settings.shareSkills.signingIn', 'Signing in…')
                 : authStatus?.state === 'reconnect-required'
                   ? translate('auto.components.settings.shareSkills.signInAgain', 'Sign in again')
-                  : translate(
-                      'auto.components.settings.shareSkills.signIn',
-                      'Sign in to Nightshift'
-                    )}
+                  : translate('auto.components.settings.shareSkills.signIn', 'Sign in to Kolux')}
             </Button>
           ) : null}
         </section>

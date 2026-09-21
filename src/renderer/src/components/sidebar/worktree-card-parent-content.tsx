@@ -43,11 +43,11 @@ export function WorktreeCardParentContent({
     handleRenameTitle,
     handleEditIssue,
     handleEditComment,
-    handleOpenGitHubIssueInNightshift,
+    handleOpenGitHubIssueInKolux,
     handleOpenIssueInBrowser,
     linearIssue,
-    handleOpenLinearIssueInNightshift,
-    handleOpenReviewInNightshift,
+    handleOpenLinearIssueInKolux,
+    handleOpenReviewInKolux,
     handleOpenReviewInBrowser,
     handleOpenAutomation,
     handleOpenAutomationRun,
@@ -95,20 +95,18 @@ export function WorktreeCardParentContent({
         onRenameWorkspaceTitle={affiliateListMode ? undefined : handleRenameTitle}
         onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        onOpenGitHubIssueInNightshift={
+        onOpenGitHubIssueInKolux={
           hoverIssue && 'url' in hoverIssue && hoverIssue.url
-            ? handleOpenGitHubIssueInNightshift
+            ? handleOpenGitHubIssueInKolux
             : undefined
         }
         onOpenIssueInBrowser={
           hoverIssue && 'url' in hoverIssue && hoverIssue.url ? handleOpenIssueInBrowser : undefined
         }
-        onOpenLinearIssueInNightshift={
-          linearIssue?.url ? handleOpenLinearIssueInNightshift : undefined
-        }
-        onOpenReviewInNightshift={
+        onOpenLinearIssueInKolux={linearIssue?.url ? handleOpenLinearIssueInKolux : undefined}
+        onOpenReviewInKolux={
           hoverReview?.url && hoverReview.provider === 'github'
-            ? handleOpenReviewInNightshift
+            ? handleOpenReviewInKolux
             : undefined
         }
         onOpenReviewInBrowser={hoverReview?.url ? handleOpenReviewInBrowser : undefined}

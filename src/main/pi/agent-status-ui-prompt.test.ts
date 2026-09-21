@@ -4,7 +4,7 @@ import { PANE_KEY } from '../../shared/agent-hook-listener-test-harness'
 import { createHookListenerState } from '../../shared/agent-hook-listener/listener-state'
 import { createAgentStatusExtensionHarness } from './agent-status-extension-test-harness'
 
-const HOOK_ENV = { NIGHTSHIFT_PANE_KEY: PANE_KEY, NIGHTSHIFT_AGENT_HOOK_ENV: 'production' }
+const HOOK_ENV = { KOLUX_PANE_KEY: PANE_KEY, KOLUX_AGENT_HOOK_ENV: 'production' }
 
 function createHarness() {
   const state = createHookListenerState()

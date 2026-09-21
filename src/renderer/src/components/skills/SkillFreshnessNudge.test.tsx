@@ -26,15 +26,15 @@ function placement(
   overrides: Partial<SkillFreshnessInstallation> = {}
 ): SkillFreshnessInstallation {
   return {
-    id: 'nightshift-cli',
-    name: 'nightshift-cli',
+    id: 'kolux-cli',
+    name: 'kolux-cli',
     rootId: 'home-agents',
     providers: ['agent-skills'],
     sourceKind: 'home',
     sourceLabel: 'Agent skills home',
-    unresolvedPath: '/home/.agents/skills/nightshift-cli',
-    resolvedPath: '/home/.agents/skills/nightshift-cli',
-    physicalIdentity: 'physical-nightshift-cli',
+    unresolvedPath: '/home/.agents/skills/kolux-cli',
+    resolvedPath: '/home/.agents/skills/kolux-cli',
+    physicalIdentity: 'physical-kolux-cli',
     topology: 'canonical-copy',
     status: 'outdated',
     installedReleaseRevision: 1,
@@ -52,7 +52,7 @@ function eligibleInventory(): SkillFreshnessInventory {
   return {
     schemaVersion: 1,
     installations: [placement()],
-    eligibleUpdateNames: ['nightshift-cli'],
+    eligibleUpdateNames: ['kolux-cli'],
     scanIssues: [],
     scannedAt: 1
   }
@@ -112,7 +112,7 @@ async function rerenderNudge(): Promise<void> {
   })
 }
 
-const DISMISSAL_KEY = ['physical-nightshift-cli', 'nightshift-cli', '2'].join('\0')
+const DISMISSAL_KEY = ['physical-kolux-cli', 'kolux-cli', '2'].join('\0')
 
 describe('SkillFreshnessNudge', () => {
   beforeEach(() => {
@@ -261,12 +261,12 @@ describe('SkillFreshnessNudge', () => {
           id: 'repo-copy',
           topology: 'repo-scope',
           sourceKind: 'repo',
-          unresolvedPath: '/home/projects/work/.agents/skills/nightshift-cli',
-          resolvedPath: '/home/projects/work/.agents/skills/nightshift-cli',
-          physicalIdentity: 'physical-repo-nightshift-cli'
+          unresolvedPath: '/home/projects/work/.agents/skills/kolux-cli',
+          resolvedPath: '/home/projects/work/.agents/skills/kolux-cli',
+          physicalIdentity: 'physical-repo-kolux-cli'
         })
       ],
-      eligibleUpdateNames: ['nightshift-cli'],
+      eligibleUpdateNames: ['kolux-cli'],
       scanIssues: [],
       scannedAt: 1
     }
@@ -289,10 +289,10 @@ describe('SkillFreshnessNudge', () => {
           id: 'repo-copy',
           topology: 'repo-scope',
           sourceKind: 'repo',
-          physicalIdentity: 'physical-repo-nightshift-cli-after-checkout'
+          physicalIdentity: 'physical-repo-kolux-cli-after-checkout'
         })
       ],
-      eligibleUpdateNames: ['nightshift-cli'],
+      eligibleUpdateNames: ['kolux-cli'],
       scanIssues: [],
       scannedAt: 2
     }

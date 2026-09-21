@@ -24,7 +24,7 @@ describe('runMacosLoginSessionPtyProbe', () => {
     const abortController = new AbortController()
     execFileMock.mockImplementation(
       (_file: string, _args: string[], _options: unknown, callback: ExecFileCallback) => {
-        callback(null, '^D\b\bNIGHTSHIFT_LOGIN_PREFLIGHT_OK', '')
+        callback(null, '^D\b\bKOLUX_LOGIN_PREFLIGHT_OK', '')
         return { stdin: { end: stdinEndMock } }
       }
     )
@@ -37,12 +37,12 @@ describe('runMacosLoginSessionPtyProbe', () => {
       [
         '-c',
         expect.stringContaining(
-          'spawn -noecho /usr/bin/login -flpq $env(NIGHTSHIFT_LOGIN_PROBE_USERNAME)'
+          'spawn -noecho /usr/bin/login -flpq $env(KOLUX_LOGIN_PROBE_USERNAME)'
         )
       ],
       expect.objectContaining({
         cwd: '/Users/ada',
-        env: expect.objectContaining({ NIGHTSHIFT_LOGIN_PROBE_USERNAME: 'ada' }),
+        env: expect.objectContaining({ KOLUX_LOGIN_PROBE_USERNAME: 'ada' }),
         killSignal: 'SIGKILL',
         maxBuffer: 1_024,
         signal: abortController.signal,

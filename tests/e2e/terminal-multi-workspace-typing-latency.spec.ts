@@ -11,7 +11,7 @@
  *   echo-half   = pty echo    -> marker visible in the xterm buffer
  * All three clocks are epoch ms on one machine, so the halves add up.
  *
- * Scenarios are gated behind NIGHTSHIFT_TYPING_BENCH=1 (they are benchmarks that
+ * Scenarios are gated behind KOLUX_TYPING_BENCH=1 (they are benchmarks that
  * may legitimately "fail" while the bug reproduces, not CI regression gates).
  * Entry point: pnpm bench:multi-workspace-typing  (see
  * config/scripts/run-multi-workspace-typing-bench.mjs for knobs). Results are
@@ -22,7 +22,7 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   measurePacedTyping,
   type LatencyStats,
@@ -54,19 +54,19 @@ import {
   writeTypingEchoProbeScript
 } from './sustained-agent-typing-load-scripts'
 
-const BENCH_ENABLED = process.env.NIGHTSHIFT_TYPING_BENCH === '1'
+const BENCH_ENABLED = process.env.KOLUX_TYPING_BENCH === '1'
 
 function readPositiveInt(name: string, fallback: number): number {
   const value = Number(process.env[name])
   return Number.isInteger(value) && value > 0 ? value : fallback
 }
 
-const LOAD_PANES = readPositiveInt('NIGHTSHIFT_TYPING_BENCH_LOAD_PANES', 4)
-const LOAD_RATE_KBPS = readPositiveInt('NIGHTSHIFT_TYPING_BENCH_RATE_KBPS', 256)
-const KEY_COUNT = readPositiveInt('NIGHTSHIFT_TYPING_BENCH_KEYS', 32)
-const KEY_CADENCE_MS = readPositiveInt('NIGHTSHIFT_TYPING_BENCH_KEY_CADENCE_MS', 250)
-const CPU_WORKERS = readPositiveInt('NIGHTSHIFT_TYPING_BENCH_CPU_WORKERS', 0)
-const BENCH_LABEL = process.env.NIGHTSHIFT_TYPING_BENCH_LABEL ?? 'dev'
+const LOAD_PANES = readPositiveInt('KOLUX_TYPING_BENCH_LOAD_PANES', 4)
+const LOAD_RATE_KBPS = readPositiveInt('KOLUX_TYPING_BENCH_RATE_KBPS', 256)
+const KEY_COUNT = readPositiveInt('KOLUX_TYPING_BENCH_KEYS', 32)
+const KEY_CADENCE_MS = readPositiveInt('KOLUX_TYPING_BENCH_KEY_CADENCE_MS', 250)
+const CPU_WORKERS = readPositiveInt('KOLUX_TYPING_BENCH_CPU_WORKERS', 0)
+const BENCH_LABEL = process.env.KOLUX_TYPING_BENCH_LABEL ?? 'dev'
 
 // Load must outlive setup (pane splits, worktree switches) plus the typing
 // window; generously padded because setup time varies with pane count.
@@ -229,24 +229,24 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
   test.setTimeout(10 * 60 * 1000)
 
   test('baseline: paced typing with no agent load', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     test.skip(!BENCH_ENABLED, 'Bench-only: run via pnpm bench:multi-workspace-typing')
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const typingPtyId = await waitForActivePanePtyId(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const typingPtyId = await waitForActivePanePtyId(koluxPage)
 
     const runId = randomUUID()
-    const probePath = path.join(testRepoPath, `.nightshift-mwt-probe-${runId}.mjs`)
-    const sidecarPath = path.join(testRepoPath, `.nightshift-mwt-arrivals-${runId}.jsonl`)
+    const probePath = path.join(testRepoPath, `.kolux-mwt-probe-${runId}.mjs`)
+    const sidecarPath = path.join(testRepoPath, `.kolux-mwt-arrivals-${runId}.jsonl`)
     writeTypingEchoProbeScript(probePath, runId, sidecarPath)
     try {
-      await resetDeliveryDebug(nightshiftPage)
-      await startTypingProbe(nightshiftPage, typingPtyId, probePath, runId)
-      const measurement = await measurePacedTyping(nightshiftPage, runId, sidecarPath, {
+      await resetDeliveryDebug(koluxPage)
+      await startTypingProbe(koluxPage, typingPtyId, probePath, runId)
+      const measurement = await measurePacedTyping(koluxPage, runId, sidecarPath, {
         keyCount: KEY_COUNT,
         keyCadenceMs: KEY_CADENCE_MS
       })
@@ -254,26 +254,26 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
         testInfo,
         'baseline',
         measurement,
-        await readSchedulerDebug(nightshiftPage),
-        await readMainDeliveryDebug(nightshiftPage)
+        await readSchedulerDebug(koluxPage),
+        await readMainDeliveryDebug(koluxPage)
       )
       expect(measurement.missingEchoCount).toBe(0)
       expect(measurement.totalMs?.p50 ?? Number.POSITIVE_INFINITY).toBeLessThan(250)
     } finally {
-      await stopPtysQuietly(nightshiftPage, [typingPtyId])
+      await stopPtysQuietly(koluxPage, [typingPtyId])
       rmSync(probePath, { force: true })
       rmSync(sidecarPath, { force: true })
     }
   })
 
   test('typing under sustained hidden multi-workspace agent load', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     test.skip(!BENCH_ENABLED, 'Bench-only: run via pnpm bench:multi-workspace-typing')
-    await waitForSessionReady(nightshiftPage)
-    const typingWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const loadWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    const typingWorktreeId = await waitForActiveWorktree(koluxPage)
+    const loadWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== typingWorktreeId
     )
     expect(Boolean(loadWorktreeId), 'bench needs the seeded secondary worktree').toBe(true)
@@ -282,40 +282,39 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
     }
 
     const runId = randomUUID()
-    const loadPath = path.join(testRepoPath, `.nightshift-mwt-load-${runId}.mjs`)
-    const probePath = path.join(testRepoPath, `.nightshift-mwt-probe-${runId}.mjs`)
-    const sidecarPath = path.join(testRepoPath, `.nightshift-mwt-arrivals-${runId}.jsonl`)
+    const loadPath = path.join(testRepoPath, `.kolux-mwt-load-${runId}.mjs`)
+    const probePath = path.join(testRepoPath, `.kolux-mwt-probe-${runId}.mjs`)
+    const sidecarPath = path.join(testRepoPath, `.kolux-mwt-arrivals-${runId}.jsonl`)
     writeSustainedAgentLoadScript(loadPath, runId, testRepoPath)
     writeTypingEchoProbeScript(probePath, runId, sidecarPath)
 
     const cpuWorkers = spawnCpuPressureWorkers()
     let loadPanes: TerminalLoadPane[] = []
     try {
-      await switchToWorktree(nightshiftPage, loadWorktreeId)
-      loadPanes = await ensureActiveWorktreePaneLoad(nightshiftPage, LOAD_PANES)
-      await startSustainedLoadInPanes(nightshiftPage, loadPanes, loadPath, runId, testRepoPath)
+      await switchToWorktree(koluxPage, loadWorktreeId)
+      loadPanes = await ensureActiveWorktreePaneLoad(koluxPage, LOAD_PANES)
+      await startSustainedLoadInPanes(koluxPage, loadPanes, loadPath, runId, testRepoPath)
 
-      await switchToWorktree(nightshiftPage, typingWorktreeId)
+      await switchToWorktree(koluxPage, typingWorktreeId)
       await expect
-        .poll(() => getActiveWorktreeId(nightshiftPage), { timeout: 10_000 })
+        .poll(() => getActiveWorktreeId(koluxPage), { timeout: 10_000 })
         .toBe(typingWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      const typingPtyId = await waitForActivePanePtyId(nightshiftPage)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      const typingPtyId = await waitForActivePanePtyId(koluxPage)
 
-      await resetDeliveryDebug(nightshiftPage)
+      await resetDeliveryDebug(koluxPage)
       // Load is flowing when the hidden-delivery gate starts dropping the
       // background worktree's bytes — the topology the complaint describes.
       await expect
         .poll(
-          async () =>
-            (await readMainDeliveryDebug(nightshiftPage))?.hiddenDeliveryDroppedChars ?? 0,
+          async () => (await readMainDeliveryDebug(koluxPage))?.hiddenDeliveryDroppedChars ?? 0,
           { timeout: 30_000, message: 'hidden load never started flowing' }
         )
         .toBeGreaterThan(0)
 
-      await startTypingProbe(nightshiftPage, typingPtyId, probePath, runId)
-      const measurement = await measurePacedTyping(nightshiftPage, runId, sidecarPath, {
+      await startTypingProbe(koluxPage, typingPtyId, probePath, runId)
+      const measurement = await measurePacedTyping(koluxPage, runId, sidecarPath, {
         keyCount: KEY_COUNT,
         keyCadenceMs: KEY_CADENCE_MS
       })
@@ -323,24 +322,24 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
         testInfo,
         `hidden-load-${LOAD_PANES}x${LOAD_RATE_KBPS}kbps-cpu${CPU_WORKERS}`,
         measurement,
-        await readSchedulerDebug(nightshiftPage),
-        await readMainDeliveryDebug(nightshiftPage)
+        await readSchedulerDebug(koluxPage),
+        await readMainDeliveryDebug(koluxPage)
       )
       // Hang detector only — the JSON report is the benchmark output. A
       // reproduced regression shows up as large percentiles, not a hard fail.
       expect(measurement.missingEchoCount).toBe(0)
 
-      await stopPtysQuietly(nightshiftPage, [typingPtyId])
+      await stopPtysQuietly(koluxPage, [typingPtyId])
     } finally {
       for (const worker of cpuWorkers) {
         worker.kill('SIGKILL')
       }
-      await switchToWorktree(nightshiftPage, loadWorktreeId).catch(() => undefined)
+      await switchToWorktree(koluxPage, loadWorktreeId).catch(() => undefined)
       await stopPtysQuietly(
-        nightshiftPage,
+        koluxPage,
         loadPanes.map((pane) => pane.ptyId)
       )
-      await switchToWorktree(nightshiftPage, typingWorktreeId).catch(() => undefined)
+      await switchToWorktree(koluxPage, typingWorktreeId).catch(() => undefined)
       rmSync(loadPath, { force: true })
       rmSync(probePath, { force: true })
       rmSync(sidecarPath, { force: true })
@@ -349,19 +348,19 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
   })
 
   test('typing under sustained visible split agent load', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     test.skip(!BENCH_ENABLED, 'Bench-only: run via pnpm bench:multi-workspace-typing')
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
     const runId = randomUUID()
-    const loadPath = path.join(testRepoPath, `.nightshift-mwt-load-${runId}.mjs`)
-    const probePath = path.join(testRepoPath, `.nightshift-mwt-probe-${runId}.mjs`)
-    const sidecarPath = path.join(testRepoPath, `.nightshift-mwt-arrivals-${runId}.jsonl`)
+    const loadPath = path.join(testRepoPath, `.kolux-mwt-load-${runId}.mjs`)
+    const probePath = path.join(testRepoPath, `.kolux-mwt-probe-${runId}.mjs`)
+    const sidecarPath = path.join(testRepoPath, `.kolux-mwt-arrivals-${runId}.jsonl`)
     writeSustainedAgentLoadScript(loadPath, runId, testRepoPath)
     writeTypingEchoProbeScript(probePath, runId, sidecarPath)
 
@@ -370,14 +369,14 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
     try {
       // Pane 0 types; the rest replay the agent stream side by side — the
       // "Claude Code running in a visible split" shape.
-      panes = await ensureActiveWorktreePaneLoad(nightshiftPage, 2)
+      panes = await ensureActiveWorktreePaneLoad(koluxPage, 2)
       const [typingPane, ...loadPanes] = panes
-      await startSustainedLoadInPanes(nightshiftPage, loadPanes, loadPath, runId, testRepoPath)
-      await focusPane(nightshiftPage, typingPane.paneKey)
+      await startSustainedLoadInPanes(koluxPage, loadPanes, loadPath, runId, testRepoPath)
+      await focusPane(koluxPage, typingPane.paneKey)
 
-      await resetDeliveryDebug(nightshiftPage)
-      await startTypingProbe(nightshiftPage, typingPane.ptyId, probePath, runId)
-      const measurement = await measurePacedTyping(nightshiftPage, runId, sidecarPath, {
+      await resetDeliveryDebug(koluxPage)
+      await startTypingProbe(koluxPage, typingPane.ptyId, probePath, runId)
+      const measurement = await measurePacedTyping(koluxPage, runId, sidecarPath, {
         keyCount: KEY_COUNT,
         keyCadenceMs: KEY_CADENCE_MS
       })
@@ -385,8 +384,8 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
         testInfo,
         `visible-split-${LOAD_RATE_KBPS}kbps-cpu${CPU_WORKERS}`,
         measurement,
-        await readSchedulerDebug(nightshiftPage),
-        await readMainDeliveryDebug(nightshiftPage)
+        await readSchedulerDebug(koluxPage),
+        await readMainDeliveryDebug(koluxPage)
       )
       expect(measurement.missingEchoCount).toBe(0)
     } finally {
@@ -394,7 +393,7 @@ test.describe('Multi-workspace sustained typing latency bench', () => {
         worker.kill('SIGKILL')
       }
       await stopPtysQuietly(
-        nightshiftPage,
+        koluxPage,
         panes.map((pane) => pane.ptyId)
       )
       rmSync(loadPath, { force: true })

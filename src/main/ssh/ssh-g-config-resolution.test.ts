@@ -90,7 +90,7 @@ describe('siteConfigMayRestrictHostKeys', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'nightshift-site-ssh-config-'))
+    dir = await mkdtemp(join(tmpdir(), 'kolux-site-ssh-config-'))
   })
 
   afterEach(async () => {

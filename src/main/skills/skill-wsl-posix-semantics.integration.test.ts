@@ -18,9 +18,8 @@ import { detectSkillProvidersInWsl } from './skill-wsl-provider-detection'
 import { createWslSkillInstallFilesystem } from './skill-wsl-install-filesystem'
 
 const execFileAsync = promisify(execFile)
-const DISTRO = process.env.NIGHTSHIFT_REAL_WSL_SKILL_DISTRO ?? 'Ubuntu-24.04'
-const RUN_REAL_WSL =
-  process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WSL_SKILL_TEST === '1'
+const DISTRO = process.env.KOLUX_REAL_WSL_SKILL_DISTRO ?? 'Ubuntu-24.04'
+const RUN_REAL_WSL = process.platform === 'win32' && process.env.KOLUX_REAL_WSL_SKILL_TEST === '1'
 
 async function runWsl(...args: string[]): Promise<string> {
   const { stdout } = await execFileAsync('wsl.exe', ['-d', DISTRO, '--exec', ...args], {
@@ -52,9 +51,9 @@ describe.runIf(RUN_REAL_WSL)('real WSL POSIX skill semantics', () => {
   let guestRoot = ''
 
   beforeAll(async () => {
-    localRoot = await mkdtemp(join(tmpdir(), 'nightshift-wsl-posix-semantics-'))
-    guestRoot = await runWsl('mktemp', '-d', '/tmp/nightshift-skill-posix.XXXXXX')
-    if (!guestRoot.startsWith('/tmp/nightshift-skill-posix.')) {
+    localRoot = await mkdtemp(join(tmpdir(), 'kolux-wsl-posix-semantics-'))
+    guestRoot = await runWsl('mktemp', '-d', '/tmp/kolux-skill-posix.XXXXXX')
+    if (!guestRoot.startsWith('/tmp/kolux-skill-posix.')) {
       throw new Error('unexpected-wsl-posix-root')
     }
     await runWsl('mkdir', '-p', `${guestRoot}/home`)
@@ -62,7 +61,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL POSIX skill semantics', () => {
 
   afterAll(async () => {
     await rm(localRoot, { recursive: true, force: true })
-    if (guestRoot.startsWith('/tmp/nightshift-skill-posix.')) {
+    if (guestRoot.startsWith('/tmp/kolux-skill-posix.')) {
       await runWsl('rm', '-rf', '--', guestRoot)
     }
   })
@@ -110,7 +109,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL POSIX skill semantics', () => {
       archivePath,
       scope: 'global',
       homeDirectory,
-      nightshiftStateDirectory: join(localRoot, 'state'),
+      koluxStateDirectory: join(localRoot, 'state'),
       detectedProviders: [],
       destinationIdentity: 'global:wsl-posix',
       hostIdentity: 'windows-2',
@@ -161,7 +160,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL POSIX skill semantics', () => {
       expectedArchiveSha256: bundle.archiveSha256,
       scope: 'global',
       homeDirectory,
-      nightshiftStateDirectory: join(localRoot, 'bundle-state'),
+      koluxStateDirectory: join(localRoot, 'bundle-state'),
       detectedProviders: [],
       destinationIdentity: 'global:wsl-bundle',
       hostIdentity: 'windows-2',

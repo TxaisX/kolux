@@ -1,4 +1,4 @@
-import { getNightshiftProfileBrowserSessionPartition } from '../../shared/nightshift-profiles'
+import { getKoluxProfileBrowserSessionPartition } from '../../shared/kolux-profiles'
 import type { BrowserSessionProfile } from '../../shared/browser-workspace-types'
 
 const BROWSER_SESSION_PROFILE_ID_RE =
@@ -7,7 +7,7 @@ const BROWSER_SESSION_PROFILE_ID_RE =
 // Why: validate on-disk profile shape so a tampered JSON file can't inject an arbitrary partition into the will-attach-webview allowlist.
 export function isValidPersistedBrowserSessionProfile(
   profile: unknown,
-  activeNightshiftProfileId: string
+  activeKoluxProfileId: string
 ): profile is BrowserSessionProfile {
   if (!profile || typeof profile !== 'object') {
     return false
@@ -22,17 +22,17 @@ export function isValidPersistedBrowserSessionProfile(
     (candidate.userAgentMode === undefined ||
       candidate.userAgentMode === 'clean' ||
       candidate.userAgentMode === 'native') &&
-    isProfileOwnedSessionPartition(candidate.id, candidate.partition, activeNightshiftProfileId)
+    isProfileOwnedSessionPartition(candidate.id, candidate.partition, activeKoluxProfileId)
   )
 }
 
 function isProfileOwnedSessionPartition(
   profileId: string,
   partition: string,
-  activeNightshiftProfileId: string
+  activeKoluxProfileId: string
 ): boolean {
   return (
     BROWSER_SESSION_PROFILE_ID_RE.test(profileId) &&
-    partition === getNightshiftProfileBrowserSessionPartition(activeNightshiftProfileId, profileId)
+    partition === getKoluxProfileBrowserSessionPartition(activeKoluxProfileId, profileId)
   )
 }

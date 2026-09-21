@@ -6,7 +6,7 @@ import type {
   BrowserRoutePageGuestIdentity
 } from './browser-route-page-authority'
 
-export const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
+export const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
 
 export function createCommand(
   type: 'createPage' | 'navigate',
@@ -78,7 +78,7 @@ export function createHarness(options: { maxPages?: number } = {}) {
     })
   }
   const dependencies = {
-    nightshiftProfileId: 'nightshift-profile-a',
+    koluxProfileId: 'kolux-profile-a',
     authorityConnectionIdentity: 'authority-record-a',
     legacyAuthorityConnectionIdentity: 'legacy-authority-record-a',
     storageScope: 'a'.repeat(64),

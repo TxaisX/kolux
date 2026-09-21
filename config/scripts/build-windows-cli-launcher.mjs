@@ -22,7 +22,7 @@ export function shouldReuseCompiledWindowsCliLauncher(
 }
 
 function defaultOutputPath(projectRoot) {
-  return join(projectRoot, 'native', 'windows-cli-launcher', '.build', 'nightshift.exe')
+  return join(projectRoot, 'native', 'windows-cli-launcher', '.build', 'kolux.exe')
 }
 
 function findFrameworkCompiler(env) {
@@ -45,25 +45,25 @@ function readArg(name) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.platform !== 'win32') {
     // Why: electron-builder treats a skipped native build like success and can
-    // continue toward a Windows package whose declared nightshift.exe does not exist.
+    // continue toward a Windows package whose declared kolux.exe does not exist.
     throw new Error(
       'Windows CLI launcher compilation requires a Windows host; refusing to package without it.'
     )
   }
 
   const repoRoot = resolve(import.meta.dirname, '../..')
-  const sourcePath = join(repoRoot, 'native', 'windows-cli-launcher', 'NightshiftCliLauncher.cs')
+  const sourcePath = join(repoRoot, 'native', 'windows-cli-launcher', 'KoluxCliLauncher.cs')
   const outputPath = readArg('--output') ?? defaultOutputPath(repoRoot)
   const compilerPath = findFrameworkCompiler(process.env)
 
   if (!compilerPath) {
-    throw new Error('Unable to find the .NET Framework C# compiler required for nightshift.exe.')
+    throw new Error('Unable to find the .NET Framework C# compiler required for kolux.exe.')
   }
 
   mkdirSync(dirname(outputPath), { recursive: true })
   if (
     shouldReuseCompiledWindowsCliLauncher(outputPath, sourcePath, {
-      reuseCached: process.env.NIGHTSHIFT_REUSE_WINDOWS_CLI_LAUNCHER === '1'
+      reuseCached: process.env.KOLUX_REUSE_WINDOWS_CLI_LAUNCHER === '1'
     })
   ) {
     console.log(`[native-build] reusing Windows CLI launcher at ${outputPath}`)

@@ -27,7 +27,7 @@ async function loadStoreModule() {
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('nightshift-openai-key-store-')
+  tempHome = mkdtempLike('kolux-openai-key-store-')
   safeStorageMock.decryptString.mockClear()
   safeStorageMock.encryptString.mockClear()
   safeStorageMock.isEncryptionAvailable.mockClear()
@@ -39,9 +39,9 @@ function mkdtempLike(prefix: string): string {
 }
 
 function writeStoredOpenAiKey(value: string): void {
-  const nightshiftDir = join(tempHome, '.nightshift')
-  mkdirSync(nightshiftDir, { recursive: true })
-  writeFileSync(join(nightshiftDir, 'openai-speech-token.enc'), value)
+  const koluxDir = join(tempHome, '.kolux')
+  mkdirSync(koluxDir, { recursive: true })
+  writeFileSync(join(koluxDir, 'openai-speech-token.enc'), value)
 }
 
 describe('OpenAI speech API key store', () => {
@@ -84,7 +84,7 @@ describe('OpenAI speech API key store', () => {
     const store = await loadStoreModule()
 
     expect(store.hasOpenAiSpeechApiKey()).toBe(false)
-    expect(existsSync(join(tempHome, '.nightshift'))).toBe(false)
+    expect(existsSync(join(tempHome, '.kolux'))).toBe(false)
     expect(safeStorageMock.decryptString).not.toHaveBeenCalled()
   })
 })

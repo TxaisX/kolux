@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { Store } from '../../../persistence/loading-store/store'
 import type {
   ListDesktopLineageForHostArgs,
@@ -13,9 +13,7 @@ import { filterLineageForHost } from './workspace-lineage-filtering'
 
 export const LINEAGE_HYDRATION_TIMEOUT_MS = 5_000
 
-export async function hydrateLineageWithinDeadline(
-  runtime: NightshiftRuntimeService
-): Promise<boolean> {
+export async function hydrateLineageWithinDeadline(runtime: KoluxRuntimeService): Promise<boolean> {
   let timeout: ReturnType<typeof setTimeout> | undefined
   const hydration = Promise.resolve()
     .then(() => runtime.hydrateInferredWorktreeLineage())
@@ -37,7 +35,7 @@ export async function hydrateLineageWithinDeadline(
 
 export async function listDesktopLineageForHost(
   store: Store,
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   args: ListDesktopLineageForHostArgs
 ): Promise<HostLineageSnapshot> {
   const parsedHost = parseExecutionHostId(args?.executionHostId)

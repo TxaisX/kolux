@@ -64,7 +64,7 @@ const sessionFor = (worktreeId: string, tabId = 'tab-1') => ({
 
 describe('deregistered repo residue', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-orphan-sweep-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-orphan-sweep-'))
   })
 
   afterEach(() => {

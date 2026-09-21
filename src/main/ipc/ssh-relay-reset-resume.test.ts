@@ -82,7 +82,7 @@ describe('SSH IPC handlers', () => {
   })
 
   // A force-stop that threw observed nothing about the remote shells, so expiring their leases
-  // would record a verdict Nightshift never obtained (docs/reference/ssh-execution-boundary.md).
+  // would record a verdict Kolux never obtained (docs/reference/ssh-execution-boundary.md).
   it('ssh:resetRelay keeps leases alive when the force-stop never reported a result', async () => {
     const target: SshTarget = {
       id: 'ssh-1',

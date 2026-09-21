@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   configureGoldenStubAgent,
   getGoldenStubAgentLaunchEnv,
@@ -48,53 +48,53 @@ async function getKittyKeyboardFlags(page: Page): Promise<number | null> {
 
 test('resets standard keyboard bytes after a protocol-mode agent exits on ConPTY', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   await installTerminalPtyWriteSpy(electronApp)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
   // Grok is the supported native ConPTY exception to Kitty protocol withholding.
-  await configureGoldenStubAgent(nightshiftPage, {
+  await configureGoldenStubAgent(koluxPage, {
     agent: 'grok',
     agentArgs: '--keyboard-protocol --grok'
   })
-  await launchGoldenStubAgentFromNewTab(nightshiftPage, /^Grok(?:\s|$)/i)
+  await launchGoldenStubAgentFromNewTab(koluxPage, /^Grok(?:\s|$)/i)
 
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
-  await expect.poll(() => getKittyKeyboardFlags(nightshiftPage), { timeout: 10_000 }).toBe(1)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
+  await expect.poll(() => getKittyKeyboardFlags(koluxPage), { timeout: 10_000 }).toBe(1)
 
   await clearTerminalPtyWriteLog(electronApp)
   // Kitty flag 1 preserves plain Enter; modified Enter proves CSI-u input.
-  await nightshiftPage.keyboard.press('Shift+Enter')
-  await nightshiftPage.keyboard.type('exit')
-  await nightshiftPage.keyboard.press('Enter')
-  await waitForTerminalOutput(nightshiftPage, GOLDEN_STUB_EXIT_MARKER, 15_000)
+  await koluxPage.keyboard.press('Shift+Enter')
+  await koluxPage.keyboard.type('exit')
+  await koluxPage.keyboard.press('Enter')
+  await waitForTerminalOutput(koluxPage, GOLDEN_STUB_EXIT_MARKER, 15_000)
   const protocolWrites = (await readTerminalPtyWriteEntries(electronApp))
     .filter((entry) => entry.id === ptyId)
     .map((entry) => entry.data)
     .join('')
   expect(protocolWrites).toContain('\x1b[13;2u')
   expect(protocolWrites).toContain('\r')
-  await expect.poll(() => getKittyKeyboardFlags(nightshiftPage), { timeout: 10_000 }).toBe(0)
+  await expect.poll(() => getKittyKeyboardFlags(koluxPage), { timeout: 10_000 }).toBe(0)
 
   await clearTerminalPtyWriteLog(electronApp)
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.type("Write-Output ('CONPTY_KEYBOARD_' + '")
-  await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), 'REET_')
-  await nightshiftPage.keyboard.press('Control+V')
-  await nightshiftPage.keyboard.press('ArrowLeft')
-  await nightshiftPage.keyboard.press('ArrowLeft')
-  await nightshiftPage.keyboard.press('ArrowLeft')
-  await nightshiftPage.keyboard.type('S')
-  await nightshiftPage.keyboard.press('ArrowRight')
-  await nightshiftPage.keyboard.press('ArrowRight')
-  await nightshiftPage.keyboard.press('ArrowRight')
-  await nightshiftPage.keyboard.type('EXECUTEX')
-  await nightshiftPage.keyboard.press('Backspace')
-  await nightshiftPage.keyboard.type("D')")
-  await nightshiftPage.keyboard.press('Enter')
-  await waitForTerminalOutput(nightshiftPage, 'CONPTY_KEYBOARD_RESET_EXECUTED', 15_000)
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.type("Write-Output ('CONPTY_KEYBOARD_' + '")
+  await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), 'REET_')
+  await koluxPage.keyboard.press('Control+V')
+  await koluxPage.keyboard.press('ArrowLeft')
+  await koluxPage.keyboard.press('ArrowLeft')
+  await koluxPage.keyboard.press('ArrowLeft')
+  await koluxPage.keyboard.type('S')
+  await koluxPage.keyboard.press('ArrowRight')
+  await koluxPage.keyboard.press('ArrowRight')
+  await koluxPage.keyboard.press('ArrowRight')
+  await koluxPage.keyboard.type('EXECUTEX')
+  await koluxPage.keyboard.press('Backspace')
+  await koluxPage.keyboard.type("D')")
+  await koluxPage.keyboard.press('Enter')
+  await waitForTerminalOutput(koluxPage, 'CONPTY_KEYBOARD_RESET_EXECUTED', 15_000)
 
   const shellWrites = (await readTerminalPtyWriteEntries(electronApp))
     .filter((entry) => entry.id === ptyId)

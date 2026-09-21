@@ -1,20 +1,20 @@
 import { createRoot, type Root } from 'react-dom/client'
 
 type RendererRootHotData = {
-  nightshiftRendererRoot?: Root
+  koluxRendererRoot?: Root
 }
 
 export function getOrCreateRendererRoot(
   container: HTMLElement,
   hotData?: RendererRootHotData
 ): Root {
-  const existingRoot = hotData?.nightshiftRendererRoot
+  const existingRoot = hotData?.koluxRendererRoot
   if (existingRoot) {
     return existingRoot
   }
   const root = createRoot(container)
   if (hotData) {
-    hotData.nightshiftRendererRoot = root
+    hotData.koluxRendererRoot = root
   }
   return root
 }

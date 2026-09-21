@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Page } from '@stablyai/playwright-test'
 import { alternateScreenFixtureScript } from './alternate-screen-fixture-script'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { stageNodeScriptForTerminal } from './helpers/run-node-script-in-terminal'
 import { parkHiddenTabBehindDecoy } from './helpers/terminal-hidden-parking'
 import {
@@ -20,10 +20,10 @@ import {
 import { nodeTerminalCommand } from './terminal-node-command'
 import { waitForPtyShellEcho } from './terminal-pty-readiness'
 
-const PARKING_DELAY_MS = Number(process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS) || 500
+const PARKING_DELAY_MS = Number(process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS) || 500
 
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
+  koluxAppExtraEnv: { KOLUX_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
 })
 
 type LinkProbe = { clientX: number; clientY: number; tabId: string }
@@ -111,7 +111,7 @@ async function activateTerminalTab(page: Page, tabId: string): Promise<void> {
   await page.evaluate((tabId) => {
     const state = window.__store?.getState()
     if (!state) {
-      throw new Error('Nightshift store unavailable')
+      throw new Error('Kolux store unavailable')
     }
     state.setActiveTabType('terminal')
     state.setActiveTab(tabId)
@@ -121,40 +121,40 @@ async function activateTerminalTab(page: Page, tabId: string): Promise<void> {
 }
 
 test('restores and opens an OSC 8 link after its terminal is cold-parked', async ({
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await nightshiftPage.evaluate(async () => {
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await koluxPage.evaluate(async () => {
     await window.__store?.getState().updateSettings({
       openLinksInApp: true,
       openLinksInAppPreferencePrompted: true
     })
   })
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const tabId = await getActiveTabId(nightshiftPage)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
-  await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const tabId = await getActiveTabId(koluxPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
+  await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
 
   const label = `#${randomUUID().slice(0, 6)}`
-  const url = `https://example.com/nightshift-osc8-${randomUUID()}`
+  const url = `https://example.com/kolux-osc8-${randomUUID()}`
   const linkedOutput = `\x1b[?1049h\x1b[2J\x1b[H\x1b]8;id=cold-park;${url}\x1b\\${label}\x1b]8;;\x1b\\\n`
   // Why staged rather than `node -e`: PowerShell mangles the escapes (#8521), and it
   // keeps the label out of the command line so the readiness poll below cannot be
   // satisfied by the shell's own echo. `staged.command` is bypassed because it runs a
   // bare `node`; nodeTerminalCommand pins process.execPath for Windows CI's PATH.
   const staged = stageNodeScriptForTerminal(alternateScreenFixtureScript(linkedOutput), {
-    prefix: 'nightshift-osc8-cold-park'
+    prefix: 'kolux-osc8-cold-park'
   })
   try {
-    await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([staged.scriptPath])}\r`)
-    await expect.poll(() => getTerminalContent(nightshiftPage, 4_000)).toContain(label)
+    await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([staged.scriptPath])}\r`)
+    await expect.poll(() => getTerminalContent(koluxPage, 4_000)).toContain(label)
 
-    const baselineProbe = await locateLink(nightshiftPage, label)
-    await nightshiftPage.mouse.move(baselineProbe.clientX, baselineProbe.clientY)
+    const baselineProbe = await locateLink(koluxPage, label)
+    await koluxPage.mouse.move(baselineProbe.clientX, baselineProbe.clientY)
     await expect
-      .poll(() => readLinkState(nightshiftPage, tabId, label))
+      .poll(() => readLinkState(koluxPage, tabId, label))
       .toMatchObject({
         bufferType: 'alternate',
         serializedUri: true,
@@ -162,16 +162,16 @@ test('restores and opens an OSC 8 link after its terminal is cold-parked', async
         uri: url
       })
 
-    await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, tabId, {
+    await parkHiddenTabBehindDecoy(koluxPage, worktreeId, tabId, {
       parkDelayMs: PARKING_DELAY_MS
     })
-    await activateTerminalTab(nightshiftPage, tabId)
-    await expect.poll(() => getTerminalContent(nightshiftPage, 4_000)).toContain(label)
+    await activateTerminalTab(koluxPage, tabId)
+    await expect.poll(() => getTerminalContent(koluxPage, 4_000)).toContain(label)
 
-    const restoredProbe = await locateLink(nightshiftPage, label)
-    await nightshiftPage.mouse.move(restoredProbe.clientX, restoredProbe.clientY)
+    const restoredProbe = await locateLink(koluxPage, label)
+    await koluxPage.mouse.move(restoredProbe.clientX, restoredProbe.clientY)
     await expect
-      .poll(() => readLinkState(nightshiftPage, tabId, label))
+      .poll(() => readLinkState(koluxPage, tabId, label))
       .toMatchObject({
         bufferType: 'alternate',
         serializedUri: true,
@@ -179,19 +179,19 @@ test('restores and opens an OSC 8 link after its terminal is cold-parked', async
         uri: url
       })
 
-    const isMac = await nightshiftPage.evaluate(() => navigator.userAgent.includes('Mac'))
+    const isMac = await koluxPage.evaluate(() => navigator.userAgent.includes('Mac'))
     const modifier = isMac ? 'Meta' : 'Control'
-    await nightshiftPage.keyboard.down(modifier)
-    await nightshiftPage.mouse.down()
-    await nightshiftPage.mouse.up()
-    await nightshiftPage.keyboard.up(modifier)
+    await koluxPage.keyboard.down(modifier)
+    await koluxPage.mouse.down()
+    await koluxPage.mouse.up()
+    await koluxPage.keyboard.up(modifier)
     await expect
       .poll(async () =>
-        (await getBrowserTabs(nightshiftPage, worktreeId)).some((tab) => tab.url === url)
+        (await getBrowserTabs(koluxPage, worktreeId)).some((tab) => tab.url === url)
       )
       .toBe(true)
   } finally {
-    await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+    await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
     staged.cleanup()
   }
 })

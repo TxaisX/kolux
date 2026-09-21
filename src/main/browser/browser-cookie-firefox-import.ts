@@ -24,7 +24,7 @@ export async function importCookiesFromFirefox(
 ): Promise<BrowserCookieImportResult> {
   diag(`importCookiesFromFirefox: partition="${targetPartition}"`)
 
-  const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-cookie-import-'))
+  const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-cookie-import-'))
   const tmpCookiesPath = join(tmpDir, 'cookies.sqlite')
 
   try {

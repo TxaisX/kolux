@@ -249,7 +249,7 @@ export function recordProcessGoneCrash(
       ...event.details,
       ...mainProcessLifecycle,
       ...siblingDetails,
-      // Why: a Nightshift-issued kill and an external one are identical in every other
+      // Why: a Kolux-issued kill and an external one are identical in every other
       // recorded field, so this is what answers "did we do this to ourselves?"
       ...selfInitiatedTreeKillDetails(goneAt)
     },

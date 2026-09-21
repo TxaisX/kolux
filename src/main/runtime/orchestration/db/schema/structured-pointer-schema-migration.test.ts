@@ -43,7 +43,7 @@ describe('structured pointer schema migration', () => {
   })
 
   it('admits the structured archive kind and keeps existing rows', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-structured-migration-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-structured-migration-'))
     tempRoots.push(root)
     const path = join(root, 'orchestration.db')
     seedLegacyDatabase(path)

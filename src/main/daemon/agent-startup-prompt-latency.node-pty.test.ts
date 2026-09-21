@@ -13,7 +13,7 @@ async function launch(
   slow: boolean,
   legacy = false
 ): Promise<{ output: string; ms: number }> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-startup-latency-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-startup-latency-'))
   const bash = shell.endsWith('bash')
   const pause = slow ? 'sleep 0.6\n' : ''
   const prompt = slow ? "PS1='$(sleep 0.3)prompt> '\n" : "PS1='prompt> '\n"
@@ -23,7 +23,7 @@ async function launch(
   )
   vi.stubEnv('HOME', root)
   vi.stubEnv('ZDOTDIR', root)
-  vi.stubEnv('NIGHTSHIFT_ORIG_ZDOTDIR', root)
+  vi.stubEnv('KOLUX_ORIG_ZDOTDIR', root)
   let session: Session | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
   let legacyTimer: ReturnType<typeof setTimeout> | undefined
@@ -90,13 +90,13 @@ describe('agent startup at the rendered shell prompt', () => {
       const before = await launch(shell, true, true)
       expect(before.output.split(COMMAND)).toHaveLength(3)
       const result = await launch(shell, true)
-      expect(result.output).not.toContain('nightshift-shell-ready')
+      expect(result.output).not.toContain('kolux-shell-ready')
       expect(result.output.split(COMMAND)).toHaveLength(2)
       expect(result.output.indexOf('prompt> ')).toBeLessThan(result.output.indexOf(COMMAND))
     }
   )
 
-  it.skipIf(!process.env.NIGHTSHIFT_STARTUP_BENCH || SHELLS.length === 0)(
+  it.skipIf(!process.env.KOLUX_STARTUP_BENCH || SHELLS.length === 0)(
     'compares legacy input timing with prompt delivery',
     async () => {
       for (const shell of SHELLS) {
@@ -106,13 +106,13 @@ describe('agent startup at the rendered shell prompt', () => {
           for (let i = 0; i < 5; i++) {
             legacy.push((await launch(shell, slow, true)).ms)
             const result = await launch(shell, slow)
-            expect(result.output).not.toContain('nightshift-shell-ready')
+            expect(result.output).not.toContain('kolux-shell-ready')
             expect(result.output.split(COMMAND)).toHaveLength(2)
             current.push(result.ms)
           }
           const result = JSON.stringify({ shell, slow, legacy, current })
-          if (process.env.NIGHTSHIFT_STARTUP_BENCH_OUTPUT) {
-            appendFileSync(process.env.NIGHTSHIFT_STARTUP_BENCH_OUTPUT, `${result}\n`)
+          if (process.env.KOLUX_STARTUP_BENCH_OUTPUT) {
+            appendFileSync(process.env.KOLUX_STARTUP_BENCH_OUTPUT, `${result}\n`)
           }
           console.log(result)
         }

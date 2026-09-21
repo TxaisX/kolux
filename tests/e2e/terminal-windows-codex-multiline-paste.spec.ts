@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
-import { attachRepoAndOpenTerminal } from './helpers/nightshift-restart'
+import { test, expect } from './helpers/kolux-app'
+import { attachRepoAndOpenTerminal } from './helpers/kolux-restart'
 import {
   focusActiveTerminalInput,
   getTerminalContent,
@@ -13,7 +13,7 @@ import {
 } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
-const DRAFT = 'NIGHTSHIFT_CODEX_PASTE_DRAFT_SHOULD_STAY_UNSENT'
+const DRAFT = 'KOLUX_CODEX_PASTE_DRAFT_SHOULD_STAY_UNSENT'
 const CODEX_TRUST_PROMPT_RE = /Do[\s\S]*you[\s\S]*trust[\s\S]*contents/i
 
 function pastePayload(repeats = 4): string {
@@ -130,63 +130,63 @@ test.describe('Windows Codex multiline paste', () => {
   test.use({ seedTestRepo: false })
 
   test('multiline Ctrl+V keeps the existing Codex draft unsent @local-real-codex', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
     test.skip(process.platform !== 'win32', 'Windows ConPTY coverage is Windows-only')
     test.skip(
-      process.env.NIGHTSHIFT_E2E_REAL_CODEX !== '1',
-      'Set NIGHTSHIFT_E2E_REAL_CODEX=1 to exercise the locally installed Codex TUI'
+      process.env.KOLUX_E2E_REAL_CODEX !== '1',
+      'Set KOLUX_E2E_REAL_CODEX=1 to exercise the locally installed Codex TUI'
     )
     test.slow()
 
-    await waitForSessionReady(nightshiftPage)
-    await activateTestRepository(nightshiftPage, testRepoPath)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await activateTestRepository(koluxPage, testRepoPath)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await sendToTerminal(nightshiftPage, ptyId, 'codex -m nightshift-e2e-invalid-model\r')
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await sendToTerminal(koluxPage, ptyId, 'codex -m kolux-e2e-invalid-model\r')
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 12_000), { timeout: 20_000 })
+      .poll(() => getTerminalContent(koluxPage, 12_000), { timeout: 20_000 })
       .toMatch(/Do[\s\S]*you[\s\S]*trust[\s\S]*contents|OpenAI Codex/i)
-    if (CODEX_TRUST_PROMPT_RE.test(await getTerminalContent(nightshiftPage, 12_000))) {
-      await sendToTerminal(nightshiftPage, ptyId, '\r')
+    if (CODEX_TRUST_PROMPT_RE.test(await getTerminalContent(koluxPage, 12_000))) {
+      await sendToTerminal(koluxPage, ptyId, '\r')
     }
-    await waitForTerminalOutput(nightshiftPage, 'OpenAI Codex', 20_000, 30_000)
-    await waitForCodexComposerReady(nightshiftPage)
-    await enableTerminalAccessibilityDom(nightshiftPage, ptyId)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.type(DRAFT)
-    const terminalDom = nightshiftPage.locator(
+    await waitForTerminalOutput(koluxPage, 'OpenAI Codex', 20_000, 30_000)
+    await waitForCodexComposerReady(koluxPage)
+    await enableTerminalAccessibilityDom(koluxPage, ptyId)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.type(DRAFT)
+    const terminalDom = koluxPage.locator(
       `[data-pty-id=${JSON.stringify(ptyId)}] .xterm-accessibility-tree`
     )
     await expect(terminalDom).toContainText(DRAFT, { timeout: 10_000 })
-    await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), pastePayload())
+    await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), pastePayload())
 
-    await nightshiftPage.keyboard.press('Control+V')
+    await koluxPage.keyboard.press('Control+V')
     await expect(terminalDom).toContainText('[Pasted Content', { timeout: 10_000 })
     await expect(terminalDom).toContainText(DRAFT)
-    await nightshiftPage.waitForTimeout(2_000)
+    await koluxPage.waitForTimeout(2_000)
     await expect(terminalDom).not.toContainText('Working')
     await expect(terminalDom).not.toContainText('unexpected status 404')
   })
 
   test('delivers a normalized large paste through native ConPTY', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
     test.skip(process.platform !== 'win32', 'Windows ConPTY coverage is Windows-only')
     test.slow()
 
-    await waitForSessionReady(nightshiftPage)
-    await activateTestRepository(nightshiftPage, testRepoPath)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await activateTestRepository(koluxPage, testRepoPath)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const payload = pastePayload(110)
     const expectedText = payload.replace(/\r?\n/g, '\r')
     // Why: assert on the normalized size so the payload keeps exercising the
@@ -194,19 +194,19 @@ test.describe('Windows Codex multiline paste', () => {
     // post-normalization bytes.
     expect(Buffer.byteLength(expectedText, 'utf8')).toBeGreaterThan(64 * 1024)
     const expectedHash = createHash('sha256').update(expectedText).digest('hex')
-    const marker = `NIGHTSHIFT_LARGE_PASTE_${randomUUID().replaceAll('-', '')}`
+    const marker = `KOLUX_LARGE_PASTE_${randomUUID().replaceAll('-', '')}`
     const scriptPath = path.join(testRepoPath, `.${marker}.mjs`)
     writeFileSync(scriptPath, pasteCollectorScript(expectedText.length, expectedHash, marker))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
-      await waitForTerminalOutput(nightshiftPage, `${marker}_READY`, 10_000, 12_000)
-      await enableTerminalAccessibilityDom(nightshiftPage, ptyId)
-      await focusActiveTerminalInput(nightshiftPage)
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await waitForTerminalOutput(koluxPage, `${marker}_READY`, 10_000, 12_000)
+      await enableTerminalAccessibilityDom(koluxPage, ptyId)
+      await focusActiveTerminalInput(koluxPage)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
 
-      await nightshiftPage.keyboard.press('Control+V')
-      const terminalDom = nightshiftPage.locator(
+      await koluxPage.keyboard.press('Control+V')
+      const terminalDom = koluxPage.locator(
         `[data-pty-id=${JSON.stringify(ptyId)}] .xterm-accessibility-tree`
       )
       await expect(terminalDom).toContainText(`${marker}_RESULT:MATCH`, { timeout: 30_000 })

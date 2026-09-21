@@ -71,7 +71,7 @@ async function removeInstalledEndpoint(
 
   const displacedPath = join(
     dirname(endpointPath),
-    `.nightshift-preserved-installed-${process.pid}-${randomUUID()}`
+    `.kolux-preserved-installed-${process.pid}-${randomUUID()}`
   )
   try {
     await rename(endpointPath, displacedPath)

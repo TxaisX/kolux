@@ -23,7 +23,7 @@ export function createPairedTerminalParkingFixture(): {
   command: (marker: string) => string
   dispose: () => void
 } {
-  const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-retention-memory-'))
+  const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-retention-memory-'))
   const fixturePath = path.join(scratch, 'paired-retention-memory.mjs')
   writeFileSync(
     fixturePath,

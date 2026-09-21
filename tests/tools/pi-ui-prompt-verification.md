@@ -2,20 +2,20 @@
 
 Use Pi 0.84.4 or newer. Older Pi does not emit `ui_prompt_start` / `ui_prompt_end`.
 The checked-in extension only opens dialogs; it does not call a model or send synthetic
-Nightshift hook events.
+Kolux hook events.
 
-1. Launch an isolated Nightshift development instance with CDP using the Electron skill.
-2. Open one terminal in a git worktree or folder workspace. Start Pi with Nightshift's
+1. Launch an isolated Kolux development instance with CDP using the Electron skill.
+2. Open one terminal in a git worktree or folder workspace. Start Pi with Kolux's
    generated status extension and this additional extension:
 
    ```sh
-   pi --offline --no-session -e /absolute/path/to/nightshift/tests/tools/pi-ui-prompt-extension.mjs
+   pi --offline --no-session -e /absolute/path/to/kolux/tests/tools/pi-ui-prompt-extension.mjs
    ```
 
    If launching Pi directly through `node` or disabling extension discovery, explicitly
-   load Nightshift's generated `nightshift-agent-status.ts` with another `-e` argument.
+   load Kolux's generated `kolux-agent-status.ts` with another `-e` argument.
 
-3. Leave Pi at its input editor, then run from the Nightshift repository:
+3. Leave Pi at its input editor, then run from the Kolux repository:
 
    ```sh
    node tests/tools/pi-ui-prompt-cdp-smoke.mjs http://127.0.0.1:9333 /path/to/proof
@@ -28,8 +28,8 @@ then backend `done` plus the visible completion icon. Screenshots are saved for 
 states. Custom-dialog cancellation sends a plain Escape through the real PTY;
 the standard dialogs use browser keyboard events.
 
-For manual verification, run `/nightshift-modal select`, `/nightshift-modal confirm`,
-`/nightshift-modal input`, `/nightshift-modal editor`, or `/nightshift-modal custom` inside Pi.
+For manual verification, run `/kolux-modal select`, `/kolux-modal confirm`,
+`/kolux-modal input`, `/kolux-modal editor`, or `/kolux-modal custom` inside Pi.
 
 The separate runtime test covers active-agent close (`working`), idle close (`done`),
 overlap, unrelated tool events, and rejected dialog promises using Pi's actual runner:

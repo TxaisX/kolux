@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -36,15 +36,15 @@ async function activateTerminalTab(page: Page, tabId: string): Promise<void> {
 for (const exitMode of ['normal', 'sigkill'] as const) {
   test(`clears modes when a child TUI exits via ${exitMode} while its shell survives hidden`, async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     await installTerminalPtyWriteSpy(electronApp)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const shellTabId = (await getActiveTabId(nightshiftPage))!
+    const shellTabId = (await getActiveTabId(koluxPage))!
     const child = [
       "process.stdin.setRawMode?.(true); process.stdin.resume(); process.stdout.write('\\x1b[?1049h\\x1b[?1003h\\x1b[?1006h\\x1b[?25lCHILD_TUI_STARTED\\r\\n')",
       ...(exitMode === 'normal'
@@ -60,9 +60,9 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       "child.on('exit', () => process.stdout.write('\\r\\nCHILD_TUI_KILLED\\r\\n'))"
     ].join(' ')
     const command = stageNodeScriptForTerminal(parent, {
-      prefix: 'nightshift-child-tui-kill'
+      prefix: 'kolux-child-tui-kill'
     }).command
-    const tuiTabId = await nightshiftPage.evaluate(
+    const tuiTabId = await koluxPage.evaluate(
       ({ command }) => {
         const state = window.__store?.getState()
         const worktreeId = state?.activeWorktreeId
@@ -78,41 +78,39 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       { command }
     )
 
-    await expect.poll(() => getActiveTabId(nightshiftPage), { timeout: 5_000 }).toBe(tuiTabId)
-    const tuiPtyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-    const tuiIdentity = await readPaneIdentitySnapshot(nightshiftPage)
+    await expect.poll(() => getActiveTabId(koluxPage), { timeout: 5_000 }).toBe(tuiTabId)
+    const tuiPtyId = await waitForActivePanePtyId(koluxPage, 30_000)
+    const tuiIdentity = await readPaneIdentitySnapshot(koluxPage)
     expect(tuiIdentity?.activeLeafId).not.toBeNull()
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 6_000), { timeout: 20_000 })
+      .poll(() => getTerminalContent(koluxPage, 6_000), { timeout: 20_000 })
       .toContain('CHILD_TUI_FRAME')
     await expect
       .poll(async () => {
-        const match = (await getTerminalContent(nightshiftPage, 6_000)).match(/CHILD_TUI_PID_(\d+)/)
+        const match = (await getTerminalContent(koluxPage, 6_000)).match(/CHILD_TUI_PID_(\d+)/)
         return match?.[1] ?? null
       })
       .not.toBeNull()
-    const childPid = (await getTerminalContent(nightshiftPage, 6_000)).match(
-      /CHILD_TUI_PID_(\d+)/
-    )?.[1]
+    const childPid = (await getTerminalContent(koluxPage, 6_000)).match(/CHILD_TUI_PID_(\d+)/)?.[1]
     expect(childPid).toBeDefined()
-    await activateTerminalTab(nightshiftPage, shellTabId)
-    const shellPtyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
+    await activateTerminalTab(koluxPage, shellTabId)
+    const shellPtyId = await waitForActivePanePtyId(koluxPage, 30_000)
     const exitSignal = exitMode === 'normal' ? 'SIGTERM' : 'SIGKILL'
     const killCommand = stageNodeScriptForTerminal(`process.kill(${childPid!}, '${exitSignal}')`, {
-      prefix: 'nightshift-child-tui-external-kill'
+      prefix: 'kolux-child-tui-external-kill'
     }).command
-    await execInTerminal(nightshiftPage, shellPtyId, killCommand)
+    await execInTerminal(koluxPage, shellPtyId, killCommand)
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(async (ptyId) => {
+          koluxPage.evaluate(async (ptyId) => {
             const processName = await window.api.pty.getForegroundProcess(ptyId)
             return processName?.toLowerCase() ?? null
           }, tuiPtyId),
         { timeout: 8_000 }
       )
       .toMatch(/^(bash|zsh|sh|fish)(\.exe)?$/)
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ paneKey, tabId }) => {
         const state = window.__store?.getState()
         const worktreeId = state?.activeWorktreeId
@@ -130,16 +128,16 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       { paneKey: `${tuiTabId}:${tuiIdentity!.activeLeafId!}`, tabId: tuiTabId }
     )
     await clearTerminalPtyWriteLog(electronApp)
-    await activateTerminalTab(nightshiftPage, tuiTabId)
+    await activateTerminalTab(koluxPage, tuiTabId)
 
-    const revealedPtyId = await nightshiftPage.evaluate((tabId) => {
+    const revealedPtyId = await koluxPage.evaluate((tabId) => {
       const manager = window.__paneManagers?.get(tabId)
       return manager?.getActivePane?.()?.container?.dataset?.ptyId ?? null
     }, tuiTabId)
     expect(revealedPtyId).not.toBeNull()
     await expect
       .poll(async () => {
-        const snapshot = await nightshiftPage.evaluate(
+        const snapshot = await koluxPage.evaluate(
           (ptyId) => window.api.pty.getMainBufferSnapshot(ptyId, { scrollbackRows: 5000 }),
           revealedPtyId!
         )
@@ -148,7 +146,7 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       .toBe(true)
     await expect
       .poll(() =>
-        nightshiftPage.evaluate((tabId) => {
+        koluxPage.evaluate((tabId) => {
           const manager = window.__paneManagers?.get(tabId)
           const pane = manager?.getActivePane?.() ?? manager?.getPanes?.()[0]
           return {
@@ -167,12 +165,12 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
     // it and it survives on the normal buffer.
     if (exitMode === 'normal') {
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 6_000), { timeout: 8_000 })
+        .poll(() => getTerminalContent(koluxPage, 6_000), { timeout: 8_000 })
         .toContain('CHILD_TUI_KILLED')
     }
 
     const shellInputMarker = 'SHELL_INPUT_AFTER_TUI_KILL'
-    await execInTerminal(nightshiftPage, revealedPtyId!, `printf ${shellInputMarker}`)
+    await execInTerminal(koluxPage, revealedPtyId!, `printf ${shellInputMarker}`)
     await expect
       .poll(async () => {
         const writes = await readTerminalPtyWriteEntries(electronApp)
@@ -182,13 +180,13 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       })
       .toBe(true)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 6_000), { timeout: 8_000 })
+      .poll(() => getTerminalContent(koluxPage, 6_000), { timeout: 8_000 })
       .toContain(shellInputMarker)
 
-    const terminalScreen = nightshiftPage.locator(`[data-pty-id="${revealedPtyId}"] .xterm-screen`)
+    const terminalScreen = koluxPage.locator(`[data-pty-id="${revealedPtyId}"] .xterm-screen`)
     await terminalScreen.hover({ position: { x: 20, y: 20 } })
-    await nightshiftPage.mouse.wheel(0, 120)
-    await nightshiftPage.evaluate(
+    await koluxPage.mouse.wheel(0, 120)
+    await koluxPage.evaluate(
       () =>
         new Promise<void>((resolve) =>
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
@@ -202,7 +200,7 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
     expect(ptyWrites.some((data) => data.includes(`${escape}[<`))).toBe(false)
     expect(ptyWrites.some((data) => data.includes(`${escape}[M`))).toBe(false)
 
-    const terminalState = await nightshiftPage.evaluate((tabId) => {
+    const terminalState = await koluxPage.evaluate((tabId) => {
       const manager = window.__paneManagers?.get(tabId)
       const pane = manager?.getActivePane?.() ?? manager?.getPanes?.()[0]
       return {
@@ -211,14 +209,14 @@ for (const exitMode of ['normal', 'sigkill'] as const) {
       }
     }, tuiTabId)
     expect(terminalState).toEqual({ buffer: 'normal', mouse: 'none' })
-    expect(await getTerminalContent(nightshiftPage, 6_000)).not.toMatch(/\[<\d+;\d+;\d+[Mm]/)
+    expect(await getTerminalContent(koluxPage, 6_000)).not.toMatch(/\[<\d+;\d+;\d+[Mm]/)
 
-    await activateTerminalTab(nightshiftPage, shellTabId)
-    expect(await waitForActivePanePtyId(nightshiftPage, 30_000)).toBe(shellPtyId)
+    await activateTerminalTab(koluxPage, shellTabId)
+    expect(await waitForActivePanePtyId(koluxPage, 30_000)).toBe(shellPtyId)
     const unrelatedMarker = 'UNRELATED_SHELL_STILL_LIVE'
-    await execInTerminal(nightshiftPage, shellPtyId, `printf ${unrelatedMarker}`)
+    await execInTerminal(koluxPage, shellPtyId, `printf ${unrelatedMarker}`)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 6_000), { timeout: 8_000 })
+      .poll(() => getTerminalContent(koluxPage, 6_000), { timeout: 8_000 })
       .toContain(unrelatedMarker)
   })
 }

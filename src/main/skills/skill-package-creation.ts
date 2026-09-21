@@ -73,7 +73,7 @@ async function createSkillPackageArchiveUnobserved(
     throw new Error('skill-package-skill-markdown-required')
   }
   await dependencies.afterSourceObserved?.()
-  const workDirectory = await mkdtemp(join(tmpdir(), 'nightshift-skill-package-'))
+  const workDirectory = await mkdtemp(join(tmpdir(), 'kolux-skill-package-'))
   const stagedSkill = join(workDirectory, 'skill')
   const verificationDirectory = join(workDirectory, 'verification')
   const temporaryArchive = `${input.archivePath}.${process.pid}.${randomUUID()}.tmp`

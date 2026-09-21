@@ -11,7 +11,7 @@ import {
 } from '../agent-hooks/hook-stdin-contract'
 import { getCursorHookResponse, type CursorEvent } from './hook-events'
 
-const CURSOR_HOOK_RESPONSE_ENV = 'NIGHTSHIFT_CURSOR_HOOK_RESPONSE'
+const CURSOR_HOOK_RESPONSE_ENV = 'KOLUX_CURSOR_HOOK_RESPONSE'
 
 export function getPosixManagedCommand(scriptPath: string, eventName: CursorEvent): string {
   const response = getCursorHookResponse(eventName)
@@ -40,8 +40,8 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
       'setlocal',
       // Why: Cursor permission hooks fail closed on empty/invalid stdout (#15462).
       `if defined ${CURSOR_HOOK_RESPONSE_ENV} (echo %${CURSOR_HOOK_RESPONSE_ENV}%) else (echo {})`,
-      // Why: source current endpoint coordinates for PTYs surviving a Nightshift restart.
-      'if defined NIGHTSHIFT_AGENT_HOOK_ENDPOINT if exist "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" 2>nul',
+      // Why: source current endpoint coordinates for PTYs surviving a Kolux restart.
+      'if defined KOLUX_AGENT_HOOK_ENDPOINT if exist "%KOLUX_AGENT_HOOK_ENDPOINT%" call "%KOLUX_AGENT_HOOK_ENDPOINT%" 2>nul',
       ...buildWindowsHookEnvironmentGuardLines(),
       buildWindowsAgentHookPostCommand('cursor'),
       'exit /b 0',
@@ -61,25 +61,25 @@ export function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     ...buildPosixHookPayloadCapture(),
     ...buildPosixHookSpoolLines('cursor'),
     // Why: refresh endpoint coordinates so surviving PTYs keep reporting.
-    'if [ -n "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] && [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ]; then',
-    '  . "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
+    'if [ -n "$KOLUX_AGENT_HOOK_ENDPOINT" ] && [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ]; then',
+    '  . "$KOLUX_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
-    'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
+    'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
     '  spool_hook_event',
     '  exit 0',
     'fi',
     // Why: post form fields because path-bearing worktree IDs are unsafe in hand-built JSON.
     // Why: pipe payload to curl stdin to keep large output off the command line.
-    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${NIGHTSHIFT_AGENT_HOOK_PORT}/hook/cursor" \\',
+    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${KOLUX_AGENT_HOOK_PORT}/hook/cursor" \\',
     '  --connect-timeout 0.5 --max-time 1.5 \\',
     '  -H "Content-Type: application/x-www-form-urlencoded" \\',
-    '  -H "X-Nightshift-Agent-Hook-Token: ${NIGHTSHIFT_AGENT_HOOK_TOKEN}" \\',
-    '  --data-urlencode "paneKey=${NIGHTSHIFT_PANE_KEY}" \\',
-    '  --data-urlencode "tabId=${NIGHTSHIFT_TAB_ID}" \\',
-    '  --data-urlencode "launchToken=${NIGHTSHIFT_AGENT_LAUNCH_TOKEN}" \\',
-    '  --data-urlencode "worktreeId=${NIGHTSHIFT_WORKTREE_ID}" \\',
-    '  --data-urlencode "env=${NIGHTSHIFT_AGENT_HOOK_ENV}" \\',
-    '  --data-urlencode "version=${NIGHTSHIFT_AGENT_HOOK_VERSION}" \\',
+    '  -H "X-Kolux-Agent-Hook-Token: ${KOLUX_AGENT_HOOK_TOKEN}" \\',
+    '  --data-urlencode "paneKey=${KOLUX_PANE_KEY}" \\',
+    '  --data-urlencode "tabId=${KOLUX_TAB_ID}" \\',
+    '  --data-urlencode "launchToken=${KOLUX_AGENT_LAUNCH_TOKEN}" \\',
+    '  --data-urlencode "worktreeId=${KOLUX_WORKTREE_ID}" \\',
+    '  --data-urlencode "env=${KOLUX_AGENT_HOOK_ENV}" \\',
+    '  --data-urlencode "version=${KOLUX_AGENT_HOOK_VERSION}" \\',
     '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
     'exit 0',
     ''

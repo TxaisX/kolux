@@ -8,7 +8,7 @@ import type { AgentJournalItemIdentity } from './agent-session-journal-types'
 
 const KEY_DELIMITER = ':'
 const VERBATIM_BOUNDED_COMPONENT_TAG = '%FF'
-const BOUNDED_COMPONENT_PATTERN = /^[\s\S]{0,40}~nightshift-oversized~(?:[1-9]\d*)~[0-9a-f]{16}$/
+const BOUNDED_COMPONENT_PATTERN = /^[\s\S]{0,40}~kolux-oversized~(?:[1-9]\d*)~[0-9a-f]{16}$/
 const PARSED_JOURNAL_ITEM_KEY = Symbol('parsedJournalItemKey')
 
 type ParsedJournalItemIdentity = AgentJournalItemIdentity & {
@@ -40,7 +40,7 @@ export function boundJournalKeyComponent(value: string): string {
   }
   const h1 = fnv1a32(value, 0x811c9dc5).toString(16).padStart(8, '0')
   const h2 = fnv1a32(value, 0x0100_0193).toString(16).padStart(8, '0')
-  return `${wellFormedBoundedHead(value, 40)}~nightshift-oversized~${value.length}~${h1}${h2}`
+  return `${wellFormedBoundedHead(value, 40)}~kolux-oversized~${value.length}~${h1}${h2}`
 }
 
 /** The diagnostic head must be valid Unicode for `encodeURIComponent`: a pair
@@ -139,8 +139,8 @@ export function agentJournalItemKey(identity: AgentJournalItemIdentity): string 
   if (identity.provider === 'claude') {
     return ['claude', encodePart(identity.sessionId), encodePart(identity.uuid)].join(KEY_DELIMITER)
   }
-  if (identity.provider === 'nightshift') {
-    return ['nightshift', encodePart(identity.clientMessageId)].join(KEY_DELIMITER)
+  if (identity.provider === 'kolux') {
+    return ['kolux', encodePart(identity.clientMessageId)].join(KEY_DELIMITER)
   }
   return [
     'legacy',
@@ -152,7 +152,7 @@ export function agentJournalItemKey(identity: AgentJournalItemIdentity): string 
 
 /** Key for the pre-dispatch submission placeholder, before any provider echo. */
 export function agentJournalSubmissionKey(clientMessageId: string): string {
-  return agentJournalItemKey({ provider: 'nightshift', clientMessageId })
+  return agentJournalItemKey({ provider: 'kolux', clientMessageId })
 }
 
 /**
@@ -192,7 +192,7 @@ export function parseAgentJournalItemKey(key: string): AgentJournalItemIdentity 
       preserveExactKey
     )
   }
-  if (provider === 'nightshift' && rest.length === 1) {
+  if (provider === 'kolux' && rest.length === 1) {
     return parsedIdentity({ provider, clientMessageId: rest[0] as string }, key, preserveExactKey)
   }
   if (provider === 'legacy' && rest.length === 3) {

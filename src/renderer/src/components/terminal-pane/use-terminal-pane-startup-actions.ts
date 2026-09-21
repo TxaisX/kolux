@@ -182,15 +182,15 @@ export function useTerminalPaneStartupActions(controller: TerminalPaneStoreContr
         return openLinksInAppPreferencePromiseRef.current
       }
       const preferencePromise = (async () => {
-        const openInNightshift = await requestLinkRoutingPreference({
+        const openInKolux = await requestLinkRoutingPreference({
           openLinksInAppDefault: settingsRef.current?.openLinksInApp === true,
           url
         })
         await updateSettings({
-          openLinksInApp: openInNightshift,
+          openLinksInApp: openInKolux,
           openLinksInAppPreferencePrompted: true
         })
-        return openInNightshift
+        return openInKolux
       })()
       openLinksInAppPreferencePromiseRef.current = preferencePromise
       void preferencePromise.finally(() => {

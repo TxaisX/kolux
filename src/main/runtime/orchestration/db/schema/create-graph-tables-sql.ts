@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS dispatch_contexts (
   retry_of_dispatch_id TEXT,
   creator_dispatch_id TEXT,
   -- Who created this row. A row whose creator is its own assignee is bookkeeping, not delegation,
-  -- so it must not count as a nesting parent. Null on rows written before v37 and for Nightshift's loop.
+  -- so it must not count as a nesting parent. Null on rows written before v37 and for Kolux's loop.
   creator_handle      TEXT,
   creator_pane_key    TEXT,
   host_scope          TEXT,
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS dispatch_contexts (
     CHECK(status IN ('pending', 'dispatched', 'completed', 'failed', 'circuit_broken')),
   failure_count       INTEGER NOT NULL DEFAULT 0,
   last_failure        TEXT,
-  -- Why the process is gone, when Nightshift could establish it. See TerminalExitCause.
+  -- Why the process is gone, when Kolux could establish it. See TerminalExitCause.
   termination_reason  TEXT,
   -- Nesting depth: a root coordinator's worker is 1, its worker's worker is 2.
   -- Defaults to 1 so an unstamped row fails closed rather than reading as a root.

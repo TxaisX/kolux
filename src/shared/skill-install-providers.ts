@@ -1,5 +1,5 @@
 /**
- * Agents Nightshift can place an installed skill for.
+ * Agents Kolux can place an installed skill for.
  *
  * `null` segments mean the agent reads the canonical `.agents/skills` root at
  * that scope, so it needs no placement of its own. Ids match the detection ids
@@ -95,7 +95,7 @@ export function skillInstallProvider(
   return PROVIDERS_BY_ID.get(id)
 }
 
-/** Detected agents Nightshift can actually place skills for, in registry order. */
+/** Detected agents Kolux can actually place skills for, in registry order. */
 export function installableSkillProviders(
   detectedProviders: readonly string[]
 ): SkillInstallProviderDefinition[] {

@@ -257,7 +257,7 @@ describe('createGitHubSlice.refreshGitHubForWorktreeIfStale', () => {
             number: 44,
             title: 'Hosted review fallback PR',
             state: 'open',
-            url: 'https://github.com/acme/nightshift/pull/44',
+            url: 'https://github.com/acme/kolux/pull/44',
             status: 'pending',
             updatedAt: '2026-03-28T00:00:00Z',
             mergeable: 'UNKNOWN'

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { readSkillInstallReceipt } from './skill-install-provenance'
 import { recoverPendingSkillTransactions } from './skill-transaction-startup-recovery'
 
-const RUN_REAL_PROCESS = process.env.NIGHTSHIFT_REAL_PROCESS_SKILL_TEST === '1'
+const RUN_REAL_PROCESS = process.env.KOLUX_REAL_PROCESS_SKILL_TEST === '1'
 const require = createRequire(import.meta.url)
 const vitestBin = join(dirname(require.resolve('vitest/package.json')), 'vitest.mjs')
 const childTest = resolve('src/main/skills/skill-process-termination-child.test.ts')
@@ -129,13 +129,13 @@ async function terminateAtBoundary(root: string, crashCase: CrashCase): Promise<
       cwd: process.cwd(),
       env: {
         ...process.env,
-        NIGHTSHIFT_REAL_PROCESS_SKILL_TEST: '0',
-        NIGHTSHIFT_SKILL_PROCESS_CHILD: '1',
-        NIGHTSHIFT_SKILL_CRASH_ROOT: root,
-        NIGHTSHIFT_SKILL_CRASH_MARKER: marker,
-        NIGHTSHIFT_SKILL_CRASH_OPERATION: crashCase.operation,
-        NIGHTSHIFT_SKILL_CRASH_PHASE: crashCase.phase,
-        NIGHTSHIFT_SKILL_CRASH_BOUNDARY: crashCase.boundary
+        KOLUX_REAL_PROCESS_SKILL_TEST: '0',
+        KOLUX_SKILL_PROCESS_CHILD: '1',
+        KOLUX_SKILL_CRASH_ROOT: root,
+        KOLUX_SKILL_CRASH_MARKER: marker,
+        KOLUX_SKILL_CRASH_OPERATION: crashCase.operation,
+        KOLUX_SKILL_CRASH_PHASE: crashCase.phase,
+        KOLUX_SKILL_CRASH_BOUNDARY: crashCase.boundary
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true
@@ -176,7 +176,7 @@ describe.runIf(RUN_REAL_PROCESS)('skill process termination recovery', () => {
   it.each(cases)(
     'recovers $operation $phase $boundary process death',
     async (crashCase) => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-process-crash-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-skill-process-crash-'))
       roots.push(root)
       await terminateAtBoundary(root, crashCase)
 
@@ -196,7 +196,7 @@ describe.runIf(RUN_REAL_PROCESS)('skill process termination recovery', () => {
       }
       expect(
         (await readdir(join(root, 'skills')).catch(() => [])).filter((name) =>
-          name.includes('.nightshift-')
+          name.includes('.kolux-')
         )
       ).toEqual([])
     },

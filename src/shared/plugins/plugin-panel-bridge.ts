@@ -12,11 +12,11 @@ import { isPluginPanelAction } from './plugin-host-api'
  * bridge is a transport, not a second contract.
  */
 
-export const PANEL_ACTION_REQUEST_TYPE = 'nightshift-panel-action'
-export const PANEL_ACTION_RESULT_TYPE = 'nightshift-panel-action-result'
-export const PANEL_PING_TYPE = 'nightshift-panel-ping'
-export const PANEL_PONG_TYPE = 'nightshift-panel-pong'
-export const PLUGIN_PANEL_FRAME_NAME_PREFIX = 'nightshift-plugin-panel:'
+export const PANEL_ACTION_REQUEST_TYPE = 'kolux-panel-action'
+export const PANEL_ACTION_RESULT_TYPE = 'kolux-panel-action-result'
+export const PANEL_PING_TYPE = 'kolux-panel-ping'
+export const PANEL_PONG_TYPE = 'kolux-panel-pong'
+export const PLUGIN_PANEL_FRAME_NAME_PREFIX = 'kolux-plugin-panel:'
 
 /** Per-plugin bridge budgets, enforced host-side. */
 export const PANEL_MESSAGE_MAX_BYTES = 64 * 1024

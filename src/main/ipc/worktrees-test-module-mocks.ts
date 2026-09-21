@@ -68,7 +68,7 @@ export const createIssueCommandRunnerScriptMock: ModuleMock = vi.fn()
 export const createSetupRunnerScriptMock: ModuleMock = vi.fn()
 export const getEffectiveHooksFromConfigMock: ModuleMock = vi.fn()
 export const getDefaultTabsLaunchMock: ModuleMock = vi.fn()
-export const parseNightshiftYamlMock: ModuleMock = vi.fn()
+export const parseKoluxYamlMock: ModuleMock = vi.fn()
 export const shouldRunSetupForCreateMock: ModuleMock = vi.fn()
 export const buildPosixRunnerScriptMock: StringArgMock = vi.fn()
 export const buildWindowsRunnerScriptMock: StringArgMock = vi.fn()
@@ -204,7 +204,7 @@ export const sshTargetRegistryModuleMock = () => ({
 export const hooksModuleMock = () => ({
   getEffectiveHooks: getEffectiveHooksMock,
   loadHooks: loadHooksMock,
-  parseNightshiftYaml: parseNightshiftYamlMock,
+  parseKoluxYaml: parseKoluxYamlMock,
   runHook: runHookMock,
   hasHooksFile: hasHooksFileMock
 })

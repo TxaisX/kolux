@@ -1,14 +1,14 @@
 /**
- * What a client does when it finds both a relay and a nightshiftd installed on one host.
+ * What a client does when it finds both a relay and a koluxd installed on one host.
  *
- * `docs/design/shipping-nightshiftd.html` §06 draws the line the boundary doc actually draws:
+ * `docs/design/shipping-koluxd.html` §06 draws the line the boundary doc actually draws:
  * two *directories* on disk are fine and permanent; two *registered targets* for one
  * machine are forbidden, because that is what splits a machine's worktrees across two
  * identities (`docs/reference/ssh-execution-boundary.md`).
  *
  * So the model is never inferred from the filesystem. It is decided by how the user
  * registered the host, and the on-disk inventory is only ever diagnostic. Inferring it —
- * "a nightshiftd dir exists, so prefer nightshiftd" — would let a GC pass, a half-finished install or
+ * "a koluxd dir exists, so prefer koluxd" — would let a GC pass, a half-finished install or
  * a stale tree silently re-point a live connection at a different execution identity.
  */
 import { inventoryRemoteInstallDirs, type RemoteInstallModelId } from './remote-install-model'
@@ -20,7 +20,7 @@ import { inventoryRemoteInstallDirs, type RemoteInstallModelId } from './remote-
  * target for a machine they have already paired, and the point of this module is to refuse
  * it loudly instead of picking one.
  */
-export type RemoteHostRegistration = 'ssh-target' | 'nightshiftd-peer' | 'both' | 'none'
+export type RemoteHostRegistration = 'ssh-target' | 'koluxd-peer' | 'both' | 'none'
 
 export type RemoteInstallSelection =
   | {
@@ -43,7 +43,7 @@ export type RemoteInstallSelection =
  */
 export function selectRemoteInstallModel(input: {
   registration: RemoteHostRegistration
-  /** Raw directory names under `~/.nightshift-remote/`, as listed on the host. */
+  /** Raw directory names under `~/.kolux-remote/`, as listed on the host. */
   installedDirNames: readonly string[]
 }): RemoteInstallSelection {
   if (input.registration === 'both') {
@@ -51,7 +51,7 @@ export function selectRemoteInstallModel(input: {
       outcome: 'refuse',
       code: 'remote_host_registered_under_both_models',
       reason:
-        'This machine is registered both as an SSH target and as a paired nightshiftd peer. One ' +
+        'This machine is registered both as an SSH target and as a paired koluxd peer. One ' +
         'machine must have one execution identity, or its worktrees and terminals split ' +
         'across two owners that cannot see each other. Remove one registration. Leaving ' +
         'both install directories on disk is fine and expected.'
@@ -63,19 +63,19 @@ export function selectRemoteInstallModel(input: {
       code: 'remote_host_not_registered',
       reason:
         'This machine has no execution model registered. Add it as an SSH target or pair it ' +
-        'as a nightshiftd peer; what is already installed on it does not decide which it is.'
+        'as a koluxd peer; what is already installed on it does not decide which it is.'
     }
   }
-  const model: RemoteInstallModelId = input.registration === 'ssh-target' ? 'relay' : 'nightshiftd'
+  const model: RemoteInstallModelId = input.registration === 'ssh-target' ? 'relay' : 'koluxd'
   const inventory = inventoryRemoteInstallDirs(input.installedDirNames)
-  const coexisting = model === 'relay' ? inventory.nightshiftd : inventory.relay
+  const coexisting = model === 'relay' ? inventory.koluxd : inventory.relay
   return {
     outcome: 'use',
     model,
     coexisting,
     note:
       coexisting.length > 0
-        ? `This host also has ${coexisting.length} ${model === 'relay' ? 'nightshiftd' : 'relay'} ` +
+        ? `This host also has ${coexisting.length} ${model === 'relay' ? 'koluxd' : 'relay'} ` +
           `install directory(ies) (${coexisting.join(', ')}). They are left untouched: each ` +
           'model garbage-collects only its own namespace.'
         : null

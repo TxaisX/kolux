@@ -73,7 +73,7 @@ describe('GitHandler', () => {
     expect(methods).toContain('git.removeWorktree')
     expect(methods).toContain('git.worktreeIsClean')
     expect(methods).toContain('git.refreshLocalBaseRefForWorktreeCreate')
-    expect(methods).toContain('git.markRemoteNightshiftCreated')
+    expect(methods).toContain('git.markRemoteKoluxCreated')
     expect(methods).toContain('git.renameCurrentBranch')
     expect(methods).toContain('git.forceDeletePreservedBranch')
     expect(methods).toContain('git.exec')
@@ -198,25 +198,21 @@ describe('GitHandler', () => {
     })
   })
 
-  describe('markRemoteNightshiftCreated', () => {
+  describe('markRemoteKoluxCreated', () => {
     it('writes the provenance marker via config, not the generic git.exec path', async () => {
       gitInit(tmpDir)
-      execFileSync(
-        'git',
-        ['remote', 'add', 'pr-contributor-nightshift', 'https://example.com/x.git'],
-        {
-          cwd: tmpDir
-        }
-      )
+      execFileSync('git', ['remote', 'add', 'pr-contributor-kolux', 'https://example.com/x.git'], {
+        cwd: tmpDir
+      })
 
-      await dispatcher.callRequest('git.markRemoteNightshiftCreated', {
+      await dispatcher.callRequest('git.markRemoteKoluxCreated', {
         repoPath: tmpDir,
-        remoteName: 'pr-contributor-nightshift'
+        remoteName: 'pr-contributor-kolux'
       })
 
       const value = execFileSync(
         'git',
-        ['config', '--get', 'remote.pr-contributor-nightshift.nightshift-created'],
+        ['config', '--get', 'remote.pr-contributor-kolux.kolux-created'],
         { cwd: tmpDir, encoding: 'utf-8' }
       ).trim()
       expect(value).toBe('true')
@@ -225,7 +221,7 @@ describe('GitHandler', () => {
     it('rejects a remote name that is not a plain config-key segment', async () => {
       gitInit(tmpDir)
       await expect(
-        dispatcher.callRequest('git.markRemoteNightshiftCreated', {
+        dispatcher.callRequest('git.markRemoteKoluxCreated', {
           repoPath: tmpDir,
           remoteName: 'bad name; rm -rf'
         })

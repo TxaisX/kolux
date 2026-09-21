@@ -36,9 +36,9 @@ function envValue(name: string): string | null {
 
 function getAuthConfig(): AzureDevOpsCreateAuthConfig {
   return {
-    pat: envValue('NIGHTSHIFT_AZURE_DEVOPS_TOKEN') ?? envValue('NIGHTSHIFT_AZURE_DEVOPS_PAT'),
-    accessToken: envValue('NIGHTSHIFT_AZURE_DEVOPS_ACCESS_TOKEN'),
-    username: envValue('NIGHTSHIFT_AZURE_DEVOPS_USERNAME')
+    pat: envValue('KOLUX_AZURE_DEVOPS_TOKEN') ?? envValue('KOLUX_AZURE_DEVOPS_PAT'),
+    accessToken: envValue('KOLUX_AZURE_DEVOPS_ACCESS_TOKEN'),
+    username: envValue('KOLUX_AZURE_DEVOPS_USERNAME')
   }
 }
 
@@ -126,7 +126,7 @@ function classifyCreateError(error: unknown): CreateHostedReviewResult {
       ok: false,
       code: 'auth_required',
       error:
-        'Create PR failed: Azure DevOps is not authenticated. Next step: set NIGHTSHIFT_AZURE_DEVOPS_TOKEN in this environment.'
+        'Create PR failed: Azure DevOps is not authenticated. Next step: set KOLUX_AZURE_DEVOPS_TOKEN in this environment.'
     }
   }
   if (status === 409 || lower.includes('already exists') || lower.includes('active pull request')) {

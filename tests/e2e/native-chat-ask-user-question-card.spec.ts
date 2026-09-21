@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
 import type { GlobalSettings } from '../../src/shared/global-settings-types'
@@ -103,18 +103,18 @@ function pendingAskTranscript(args: { sessionId: string; userText: string }): st
 
 test.describe('Desktop chat AskUserQuestion card (#11761)', () => {
   test('renders the answerable question card from the transcript when live status carries no ask', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const descriptor = await waitForActivePaneHookDescriptor(nightshiftPage)
+    const descriptor = await waitForActivePaneHookDescriptor(koluxPage)
     const [tabId] = descriptor.paneKey.split(':')
     const sessionId = `e2e-ask-card-${randomUUID()}`
 
-    const scratchDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-ask-card-'))
+    const scratchDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-ask-card-'))
     const transcriptPath = path.join(scratchDir, `${sessionId}.jsonl`)
     const screenshotDir = path.join(process.cwd(), 'validation-screenshots', 'ask-user-question')
     mkdirSync(screenshotDir, { recursive: true })
@@ -123,40 +123,40 @@ test.describe('Desktop chat AskUserQuestion card (#11761)', () => {
       const userText = 'Reformat the config file for me'
       writeFileSync(transcriptPath, pendingAskTranscript({ sessionId, userText }))
 
-      await enableNativeChatSetting(nightshiftPage)
-      await seedStatusWithoutAskPayload(nightshiftPage, {
+      await enableNativeChatSetting(koluxPage)
+      await seedStatusWithoutAskPayload(koluxPage, {
         paneKey: descriptor.paneKey,
         worktreeId: descriptor.worktreeId,
         sessionId,
         transcriptPath
       })
-      await toggleTerminalTabToChatView(nightshiftPage, {
+      await toggleTerminalTabToChatView(koluxPage, {
         tabId,
         worktreeId: descriptor.worktreeId
       })
 
-      await expect(nightshiftPage.locator('[data-native-chat-root="true"]')).toBeVisible({
+      await expect(koluxPage.locator('[data-native-chat-root="true"]')).toBeVisible({
         timeout: 15_000
       })
-      await expect(nightshiftPage.getByText(userText)).toBeVisible({ timeout: 30_000 })
+      await expect(koluxPage.getByText(userText)).toBeVisible({ timeout: 30_000 })
 
       // The pre-fix build leaves the composer mounted here and never renders a
       // card, so this assertion is what actually gates the regression.
-      await expect(nightshiftPage.getByText(QUESTION)).toBeVisible({ timeout: 10_000 })
-      await expect(nightshiftPage.getByRole('button', { name: /Spaces/ })).toBeVisible()
-      await nightshiftPage.screenshot({ path: path.join(screenshotDir, '01-question-card.png') })
+      await expect(koluxPage.getByText(QUESTION)).toBeVisible({ timeout: 10_000 })
+      await expect(koluxPage.getByRole('button', { name: /Spaces/ })).toBeVisible()
+      await koluxPage.screenshot({ path: path.join(screenshotDir, '01-question-card.png') })
 
       // The submit button reads "Skip" until an option is chosen; picking one is
       // what proves the card is answerable rather than merely rendered.
-      await nightshiftPage.getByRole('button', { name: /Spaces/ }).click()
-      await expect(nightshiftPage.getByRole('button', { name: 'Submit' })).toBeVisible()
-      await nightshiftPage.screenshot({ path: path.join(screenshotDir, '02-option-selected.png') })
+      await koluxPage.getByRole('button', { name: /Spaces/ }).click()
+      await expect(koluxPage.getByRole('button', { name: 'Submit' })).toBeVisible()
+      await koluxPage.screenshot({ path: path.join(screenshotDir, '02-option-selected.png') })
 
-      await nightshiftPage.getByRole('button', { name: 'Submit' }).click()
+      await koluxPage.getByRole('button', { name: 'Submit' }).click()
       // The card owns the composer slot, so its disappearance is the visible
       // signal that the answer was accepted and chat input came back.
-      await expect(nightshiftPage.getByText(QUESTION)).toHaveCount(0, { timeout: 20_000 })
-      await nightshiftPage.screenshot({ path: path.join(screenshotDir, '03-answered.png') })
+      await expect(koluxPage.getByText(QUESTION)).toHaveCount(0, { timeout: 20_000 })
+      await koluxPage.screenshot({ path: path.join(screenshotDir, '03-answered.png') })
     } finally {
       rmSync(scratchDir, { recursive: true, force: true })
     }

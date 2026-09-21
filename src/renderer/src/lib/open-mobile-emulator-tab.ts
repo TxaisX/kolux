@@ -35,7 +35,7 @@ function dispatchPrelaunchedSession(worktreeId: string, info: EmulatorStreamInfo
   }
   window.setTimeout(() => {
     window.dispatchEvent(
-      new CustomEvent('nightshift:emulator-auto-attach', {
+      new CustomEvent('kolux:emulator-auto-attach', {
         detail: { worktreeId, info }
       })
     )

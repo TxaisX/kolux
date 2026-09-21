@@ -74,7 +74,7 @@ export type UpdateStatus = (
       // three-state ambiguity (undefined vs null vs present) and makes exhaustive
       // checks straightforward.
       changelog: ChangelogData | null
-      /** Linux only: a package manager owns this install, so Nightshift cannot apply the update itself.
+      /** Linux only: a package manager owns this install, so Kolux cannot apply the update itself.
        *  Additive and optional — older clients simply keep offering their own download. */
       externallyManaged?: boolean
     }

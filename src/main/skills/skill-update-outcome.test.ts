@@ -46,61 +46,46 @@ function placement(
 describe('skillUpdateFailedNames', () => {
   it('treats a convergent copy that is now current as landed', () => {
     expect(
-      skillUpdateFailedNames(['nightshift-cli'], [placement('nightshift-cli', 'current')], noLocks)
+      skillUpdateFailedNames(['kolux-cli'], [placement('kolux-cli', 'current')], noLocks)
     ).toEqual([])
   })
 
   it('reports a copy the run left outdated', () => {
     expect(
-      skillUpdateFailedNames(['nightshift-cli'], [placement('nightshift-cli', 'outdated')], noLocks)
-    ).toEqual(['nightshift-cli'])
+      skillUpdateFailedNames(['kolux-cli'], [placement('kolux-cli', 'outdated')], noLocks)
+    ).toEqual(['kolux-cli'])
   })
 
   it('reports a half-written bundle instead of reading it as success', () => {
     // The old "still eligible?" test passed here: an unrecognized copy is not
     // eligible either, so a corrupt write looked identical to a clean update.
     expect(
-      skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'unrecognized')],
-        noLocks
-      )
-    ).toEqual(['nightshift-cli'])
+      skillUpdateFailedNames(['kolux-cli'], [placement('kolux-cli', 'unrecognized')], noLocks)
+    ).toEqual(['kolux-cli'])
   })
 
   it('reports an unreadable copy', () => {
     expect(
-      skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'inaccessible')],
-        noLocks
-      )
-    ).toEqual(['nightshift-cli'])
+      skillUpdateFailedNames(['kolux-cli'], [placement('kolux-cli', 'inaccessible')], noLocks)
+    ).toEqual(['kolux-cli'])
   })
 
   it('reports a skill the run removed outright', () => {
-    expect(skillUpdateFailedNames(['nightshift-cli'], [], noLocks)).toEqual(['nightshift-cli'])
+    expect(skillUpdateFailedNames(['kolux-cli'], [], noLocks)).toEqual(['kolux-cli'])
   })
 
   it('accepts a revision newer than this build ships', () => {
     // The CLI pulls from the source repo, which runs ahead of the bundled manifest.
     expect(
-      skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'newer-known')],
-        noLocks
-      )
+      skillUpdateFailedNames(['kolux-cli'], [placement('kolux-cli', 'newer-known')], noLocks)
     ).toEqual([])
   })
 
   it('ignores placements the update command never writes to', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [
-          placement('nightshift-cli', 'current'),
-          placement('nightshift-cli', 'outdated', 'plugin-cache')
-        ],
+        ['kolux-cli'],
+        [placement('kolux-cli', 'current'), placement('kolux-cli', 'outdated', 'plugin-cache')],
         noLocks
       )
     ).toEqual([])
@@ -109,21 +94,18 @@ describe('skillUpdateFailedNames', () => {
   it('fails the name when any convergent alias was left behind', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [
-          placement('nightshift-cli', 'current'),
-          placement('nightshift-cli', 'outdated', 'provider-alias')
-        ],
+        ['kolux-cli'],
+        [placement('kolux-cli', 'current'), placement('kolux-cli', 'outdated', 'provider-alias')],
         noLocks
       )
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it('judges each requested name independently', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli', 'orchestration'],
-        [placement('nightshift-cli', 'current'), placement('orchestration', 'outdated')],
+        ['kolux-cli', 'orchestration'],
+        [placement('kolux-cli', 'current'), placement('orchestration', 'outdated')],
         noLocks
       )
     ).toEqual(['orchestration'])
@@ -134,9 +116,9 @@ describe('skillUpdateFailedNames', () => {
     // the CLI's own record of what it wrote.
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle')],
-        new Map([['nightshift-cli', 'ahead-of-bundle']])
+        ['kolux-cli'],
+        [placement('kolux-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle')],
+        new Map([['kolux-cli', 'ahead-of-bundle']])
       )
     ).toEqual([])
   })
@@ -144,45 +126,45 @@ describe('skillUpdateFailedNames', () => {
   it('still reports unrecognized content whose bytes do not match the lock', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'unrecognized', 'canonical-copy', 'half-written-bytes')],
-        new Map([['nightshift-cli', 'ahead-of-bundle']])
+        ['kolux-cli'],
+        [placement('kolux-cli', 'unrecognized', 'canonical-copy', 'half-written-bytes')],
+        new Map([['kolux-cli', 'ahead-of-bundle']])
       )
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it('still reports unrecognized content when the skill has no lock entry', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle')],
+        ['kolux-cli'],
+        [placement('kolux-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle')],
         noLocks
       )
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it('never forgives an outdated copy, even at the lock hash', () => {
     // Lock == disk on an outdated copy means the command provably wrote nothing.
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
-        [placement('nightshift-cli', 'outdated', 'canonical-copy', 'locked-revision')],
-        new Map([['nightshift-cli', 'locked-revision']])
+        ['kolux-cli'],
+        [placement('kolux-cli', 'outdated', 'canonical-copy', 'locked-revision')],
+        new Map([['kolux-cli', 'locked-revision']])
       )
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it('does not let a lock-matching canonical copy excuse a degraded alias', () => {
     expect(
       skillUpdateFailedNames(
-        ['nightshift-cli'],
+        ['kolux-cli'],
         [
-          placement('nightshift-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle'),
-          placement('nightshift-cli', 'inaccessible', 'provider-alias')
+          placement('kolux-cli', 'unrecognized', 'canonical-copy', 'ahead-of-bundle'),
+          placement('kolux-cli', 'inaccessible', 'provider-alias')
         ],
-        new Map([['nightshift-cli', 'ahead-of-bundle']])
+        new Map([['kolux-cli', 'ahead-of-bundle']])
       )
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 })
 
@@ -197,15 +179,15 @@ describe('skillUpdateFailedNames over a real inventory', () => {
   })
 
   async function postCutFixture(): Promise<{ homeDir: string; installedTreeSha: string }> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-outcome-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-skill-outcome-'))
     temporaryDirectories.push(root)
     const homeDir = join(root, 'home')
-    const skillDir = join(homeDir, '.agents', 'skills', 'nightshift-cli')
+    const skillDir = join(homeDir, '.agents', 'skills', 'kolux-cli')
     await mkdir(skillDir, { recursive: true })
     // Current bytes plus one upstream edit: content no snapshot in this build's
     // registry has ever seen, exactly what `skills update` installs after the
     // source repo moves past the release cut.
-    const current = await readFile(join(repoRoot, 'skills', 'nightshift-cli', 'SKILL.md'))
+    const current = await readFile(join(repoRoot, 'skills', 'kolux-cli', 'SKILL.md'))
     await writeFile(
       join(skillDir, 'SKILL.md'),
       Buffer.concat([current, Buffer.from('\nUpstream edit published after this build.\n')])
@@ -219,9 +201,9 @@ describe('skillUpdateFailedNames over a real inventory', () => {
       JSON.stringify({
         version: 3,
         skills: {
-          'nightshift-cli': {
+          'kolux-cli': {
             skillFolderHash,
-            skillPath: 'skills/nightshift-cli',
+            skillPath: 'skills/kolux-cli',
             source: 'github.com/TxaisX/nightshift'
           }
         }
@@ -245,13 +227,13 @@ describe('skillUpdateFailedNames over a real inventory', () => {
     // come from the lock — the scan now reclassifies that match to 'newer-known'
     // (the #11220 scan half), and the verdict accepts it either way.
     const canonical = inventory.installations.filter(
-      (entry) => entry.name === 'nightshift-cli' && entry.topology === 'canonical-copy'
+      (entry) => entry.name === 'kolux-cli' && entry.topology === 'canonical-copy'
     )
     expect(canonical).toHaveLength(1)
     expect(canonical[0].status).toBe('newer-known')
     expect(canonical[0].installedReleaseRevision).toBeNull()
 
-    expect(skillUpdateFailedNames(['nightshift-cli'], inventory.installations, locks)).toEqual([])
+    expect(skillUpdateFailedNames(['kolux-cli'], inventory.installations, locks)).toEqual([])
   })
 
   it('keeps failing the same content when the lock names different bytes', async () => {
@@ -266,8 +248,8 @@ describe('skillUpdateFailedNames over a real inventory', () => {
     })
     const locks = await readGloballyUpdatableSkillLocks({ homeDir })
 
-    expect(skillUpdateFailedNames(['nightshift-cli'], inventory.installations, locks)).toEqual([
-      'nightshift-cli'
+    expect(skillUpdateFailedNames(['kolux-cli'], inventory.installations, locks)).toEqual([
+      'kolux-cli'
     ])
   })
 })

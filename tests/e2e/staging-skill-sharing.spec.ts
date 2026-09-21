@@ -10,7 +10,7 @@ import type {
   SkillBundleShareInstallOperation,
   SkillSharePreview
 } from '../../src/shared/skill-sharing-contract'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   launchHeadlessPairedRuntimeHost,
   type HeadlessPairedRuntimeHost
@@ -21,40 +21,40 @@ import {
   stagingSkillSshTargetFromEnvironment
 } from './helpers/staging-skill-ssh-target'
 
-const RUN_STAGING = process.env.NIGHTSHIFT_E2E_SKILL_STAGING === '1'
-const AUTH_TOKEN = process.env.NIGHTSHIFT_CLOUD_AUTH_TOKEN?.trim()
-const PHYSICAL_HOST_PAIRING_URL = process.env.NIGHTSHIFT_E2E_SKILL_PHYSICAL_PAIRING_URL?.trim()
-const RUN_HEADLESS_PAIRED = process.env.NIGHTSHIFT_E2E_SKILL_PAIRED_HEADLESS === '1'
+const RUN_STAGING = process.env.KOLUX_E2E_SKILL_STAGING === '1'
+const AUTH_TOKEN = process.env.KOLUX_CLOUD_AUTH_TOKEN?.trim()
+const PHYSICAL_HOST_PAIRING_URL = process.env.KOLUX_E2E_SKILL_PHYSICAL_PAIRING_URL?.trim()
+const RUN_HEADLESS_PAIRED = process.env.KOLUX_E2E_SKILL_PAIRED_HEADLESS === '1'
 const PHYSICAL_WSL_DISTRO = 'Ubuntu-24.04'
-const SKILL_NAME = `nightshift-staging-${randomUUID().slice(0, 8)}`
+const SKILL_NAME = `kolux-staging-${randomUUID().slice(0, 8)}`
 const SSH_TARGET = RUN_STAGING ? stagingSkillSshTargetFromEnvironment() : null
 
 if (RUN_STAGING && !AUTH_TOKEN) {
-  throw new Error('NIGHTSHIFT_CLOUD_AUTH_TOKEN is required for the noninteractive staging journey.')
+  throw new Error('KOLUX_CLOUD_AUTH_TOKEN is required for the noninteractive staging journey.')
 }
 if (PHYSICAL_HOST_PAIRING_URL && RUN_HEADLESS_PAIRED) {
   throw new Error('staging physical pairing and headless pairing are mutually exclusive')
 }
 
 test.use({
-  nightshiftAppExtraEnv: {
-    NIGHTSHIFT_ARTIFACTS_API_URL: 'https://cloud-api-staging.nightshift.invalid',
-    NIGHTSHIFT_CLOUD_API_URL: 'https://auth-staging.nightshift.invalid',
-    NIGHTSHIFT_CLOUD_AUTH_URL: 'https://auth-staging.nightshift.invalid',
-    NIGHTSHIFT_CLOUD_CLIENT_ID: 'nightshift-desktop',
-    ...(AUTH_TOKEN ? { NIGHTSHIFT_CLOUD_AUTH_TOKEN: AUTH_TOKEN } : {})
+  koluxAppExtraEnv: {
+    KOLUX_ARTIFACTS_API_URL: 'https://cloud-api-staging.kolux.invalid',
+    KOLUX_CLOUD_API_URL: 'https://auth-staging.kolux.invalid',
+    KOLUX_CLOUD_AUTH_URL: 'https://auth-staging.kolux.invalid',
+    KOLUX_CLOUD_CLIENT_ID: 'kolux-desktop',
+    ...(AUTH_TOKEN ? { KOLUX_CLOUD_AUTH_TOKEN: AUTH_TOKEN } : {})
   }
 })
 
-test.skip(!RUN_STAGING, 'Set NIGHTSHIFT_E2E_SKILL_STAGING=1 to run the live staging journey.')
+test.skip(!RUN_STAGING, 'Set KOLUX_E2E_SKILL_STAGING=1 to run the live staging journey.')
 test.describe.configure({ mode: 'serial' })
 
 test('publishes, updates, revokes, and deletes without losing local state', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(12 * 60_000)
-  const sourceRoot = mkdtempSync(join(tmpdir(), 'nightshift-staging-skill-source-'))
+  const sourceRoot = mkdtempSync(join(tmpdir(), 'kolux-staging-skill-source-'))
   const source = join(sourceRoot, '.agents', 'skills', SKILL_NAME)
   const home = await electronApp.evaluate(({ app }) => app.getPath('home'))
   const globalSkill = join(home, '.agents', 'skills', SKILL_NAME)
@@ -65,17 +65,17 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
   try {
     if (RUN_HEADLESS_PAIRED) {
       pairedHost = await launchHeadlessPairedRuntimeHost()
-      physicalEnvironmentId = await addPhysicalHost(nightshiftPage, pairedHost.offer.pairingUrl)
+      physicalEnvironmentId = await addPhysicalHost(koluxPage, pairedHost.offer.pairingUrl)
     } else if (PHYSICAL_HOST_PAIRING_URL) {
-      physicalEnvironmentId = await addPhysicalHost(nightshiftPage, PHYSICAL_HOST_PAIRING_URL)
+      physicalEnvironmentId = await addPhysicalHost(koluxPage, PHYSICAL_HOST_PAIRING_URL)
     }
     if (SSH_TARGET) {
-      sshTargetId = await connectStagingSkillSshTarget(nightshiftPage, SSH_TARGET)
+      sshTargetId = await connectStagingSkillSshTarget(koluxPage, SSH_TARGET)
     }
     mkdirSync(source, { recursive: true })
     writeSkill(source, 'v1')
     const first = await publish(
-      nightshiftPage,
+      koluxPage,
       sourceRoot,
       'Initial staging journey',
       undefined,
@@ -85,7 +85,7 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
     )
     for (const target of externalTargets(physicalEnvironmentId, sshTargetId)) {
       const remoteFirst = await installVersion(
-        nightshiftPage,
+        koluxPage,
         first.published,
         target.destination,
         undefined,
@@ -94,35 +94,35 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
       expectPhysicalInstall(remoteFirst, first.published, target.kind)
       expect(existsSync(globalSkill)).toBe(false)
     }
-    const firstInstall = await installVersion(nightshiftPage, first.published, { scope: 'global' })
+    const firstInstall = await installVersion(koluxPage, first.published, { scope: 'global' })
     expectBundleOutcome(firstInstall, 'complete', 'installed')
     expect(readFileSync(join(globalSkill, 'SKILL.md'), 'utf8')).toContain('version: v1')
 
     writeSkill(globalSkill, 'local')
     writeSkill(source, 'v2')
     const second = await publish(
-      nightshiftPage,
+      koluxPage,
       sourceRoot,
       'Second immutable version',
       first.preview.packageId
     )
     for (const target of externalTargets(physicalEnvironmentId, sshTargetId)) {
       const remoteUpdate = await installVersion(
-        nightshiftPage,
+        koluxPage,
         second.published,
         target.destination,
         'replace-unmodified',
         target.installEnvironmentId
       )
       expectBundleOutcome(remoteUpdate, 'complete', 'updated')
-      await expectManagedRemoteVersion(nightshiftPage, target, second.published.version.versionId)
+      await expectManagedRemoteVersion(koluxPage, target, second.published.version.versionId)
     }
-    const conflict = await installVersion(nightshiftPage, second.published, { scope: 'global' })
+    const conflict = await installVersion(koluxPage, second.published, { scope: 'global' })
     expectBundleOutcome(conflict, 'partial', 'kept-local', 'modified')
     expect(readFileSync(join(globalSkill, 'SKILL.md'), 'utf8')).toContain('version: local')
 
     const update = await installVersion(
-      nightshiftPage,
+      koluxPage,
       second.published,
       { scope: 'global' },
       'replace-and-discard-local'
@@ -131,7 +131,7 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
     expect(readFileSync(join(globalSkill, 'SKILL.md'), 'utf8')).toContain('version: v2')
 
     const rollback = await installVersion(
-      nightshiftPage,
+      koluxPage,
       first.published,
       { scope: 'global' },
       'replace-unmodified'
@@ -141,23 +141,23 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
 
     for (const target of externalTargets(physicalEnvironmentId, sshTargetId)) {
       const remoteRollback = await installVersion(
-        nightshiftPage,
+        koluxPage,
         first.published,
         target.destination,
         'replace-unmodified',
         target.installEnvironmentId
       )
       expectBundleOutcome(remoteRollback, 'complete', 'updated')
-      await expectManagedRemoteVersion(nightshiftPage, target, first.published.version.versionId)
+      await expectManagedRemoteVersion(koluxPage, target, first.published.version.versionId)
     }
 
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         (shareId) => window.api.skills.revokeShare(shareId),
         first.published.share.id
       )
     ).toMatchObject({ status: 'ok' })
-    const revokedInstall = await nightshiftPage.evaluate(
+    const revokedInstall = await koluxPage.evaluate(
       async ({ shareId, skillId, versionId }) => {
         try {
           return await window.api.skills.installBundleShare({
@@ -180,9 +180,9 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
     expect(readFileSync(join(globalSkill, 'SKILL.md'), 'utf8')).toContain('version: v1')
 
     for (const target of externalTargets(physicalEnvironmentId, sshTargetId)) {
-      await expectManagedRemoteVersion(nightshiftPage, target, first.published.version.versionId)
+      await expectManagedRemoteVersion(koluxPage, target, first.published.version.versionId)
       expect(
-        await nightshiftPage.evaluate(
+        await koluxPage.evaluate(
           ({ environmentId, name, destination }) =>
             window.api.skills.removeInstall({
               ...(environmentId ? { environmentId } : {}),
@@ -198,22 +198,22 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
       ).toMatchObject({ status: 'ok', value: { status: 'removed' } })
     }
 
-    const removed = await nightshiftPage.evaluate(
+    const removed = await koluxPage.evaluate(
       (name) => window.api.skills.removeInstall({ name, destination: { scope: 'global' } }),
       SKILL_NAME
     )
     expect(removed).toMatchObject({ status: 'ok', value: { status: 'removed' } })
     expect(existsSync(globalSkill)).toBe(false)
     expect(
-      await nightshiftPage.evaluate((id) => window.api.skills.getPackage(id), packageId)
+      await koluxPage.evaluate((id) => window.api.skills.getPackage(id), packageId)
     ).toMatchObject({ status: 'ok' })
     expect(
-      await nightshiftPage.evaluate((id) => window.api.skills.deletePackage(id), packageId)
+      await koluxPage.evaluate((id) => window.api.skills.deletePackage(id), packageId)
     ).toMatchObject({ status: 'ok' })
     packageId = null
   } finally {
     for (const target of externalTargets(physicalEnvironmentId, sshTargetId)) {
-      await nightshiftPage
+      await koluxPage
         .evaluate(
           ({ environmentId, name, destination }) =>
             window.api.skills.removeInstall({
@@ -231,10 +231,10 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
         .catch(() => undefined)
     }
     if (sshTargetId) {
-      await removeStagingSkillSshTarget(nightshiftPage, sshTargetId).catch(() => undefined)
+      await removeStagingSkillSshTarget(koluxPage, sshTargetId).catch(() => undefined)
     }
     if (physicalEnvironmentId) {
-      await nightshiftPage
+      await koluxPage
         .evaluate(
           (selector) => window.api.runtimeEnvironments.remove({ selector }),
           physicalEnvironmentId
@@ -243,7 +243,7 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
     }
     await pairedHost?.dispose().catch(() => undefined)
     if (packageId) {
-      await nightshiftPage
+      await koluxPage
         .evaluate((id) => window.api.skills.deletePackage(id), packageId)
         .catch(() => undefined)
     }
@@ -255,7 +255,7 @@ test('publishes, updates, revokes, and deletes without losing local state', asyn
 function writeSkill(directory: string, version: string): void {
   writeFileSync(
     join(directory, 'SKILL.md'),
-    `---\nname: ${SKILL_NAME}\ndescription: Nightshift staging installation journey\n---\n\n# Staging journey\n\nversion: ${version}\n`
+    `---\nname: ${SKILL_NAME}\ndescription: Kolux staging installation journey\n---\n\n# Staging journey\n\nversion: ${version}\n`
   )
 }
 

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { runProcessMock } = vi.hoisted(() => ({ runProcessMock: vi.fn() }))
 
-// The cheap reader goes through Nightshift's single child-process entry point (windowsHide, argv
+// The cheap reader goes through Kolux's single child-process entry point (windowsHide, argv
 // encoding, tree termination); mock at that seam rather than node:child_process.
 vi.mock('./child-process/run-process', () => ({ runProcess: runProcessMock }))
 

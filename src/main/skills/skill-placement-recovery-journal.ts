@@ -185,8 +185,8 @@ function isJournal(value: unknown, canonicalPath: string): value is SkillPlaceme
           normalizedPath(join(destination.rootPath, name)) &&
         dirname(action.stagingPath) === dirname(action.destinationPath) &&
         dirname(action.backupPath) === dirname(action.destinationPath) &&
-        basename(action.stagingPath).startsWith(`.${name}.nightshift-placement-staging-`) &&
-        basename(action.backupPath).startsWith(`.${name}.nightshift-placement-backup-`) &&
+        basename(action.stagingPath).startsWith(`.${name}.kolux-placement-staging-`) &&
+        basename(action.backupPath).startsWith(`.${name}.kolux-placement-backup-`) &&
         action.stagingPath !== action.backupPath
       )
     })

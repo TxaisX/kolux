@@ -22,7 +22,7 @@ type PairedDevicesProps = {
 }
 
 type StoreState = {
-  nightshiftProfileAuthStatus: { state: 'connected' | 'local' }
+  koluxProfileAuthStatus: { state: 'connected' | 'local' }
   settingsSearchQuery: string
   settings: {
     mobileAutoRestoreFitMs: number | null
@@ -32,7 +32,7 @@ type StoreState = {
   }
   updateSettings: (patch: Record<string, unknown>) => Promise<void>
   recordFeatureInteraction: (feature: string) => void
-  fetchNightshiftProfileAuthStatus: () => Promise<unknown>
+  fetchKoluxProfileAuthStatus: () => Promise<unknown>
 }
 
 const mocks = vi.hoisted(() => {
@@ -176,7 +176,7 @@ describe('MobilePane pairing connection mode', () => {
     getPairingQR.mockReset().mockResolvedValue({
       available: true,
       qrDataUrl: 'data:image/png;base64,qr',
-      pairingUrl: 'nightshift://pair',
+      pairingUrl: 'kolux://pair',
       endpoint: 'ws://host',
       connectionMode: 'automatic'
     })
@@ -185,12 +185,12 @@ describe('MobilePane pairing connection mode', () => {
     mocks.revokeDevice.mockReset().mockResolvedValue({ revoked: true })
     updateSettings.mockReset().mockResolvedValue(undefined)
     mocks.holder.state = {
-      nightshiftProfileAuthStatus: { state: 'connected' },
+      koluxProfileAuthStatus: { state: 'connected' },
       settingsSearchQuery: '',
       settings: { mobileAutoRestoreFitMs: null },
       updateSettings,
       recordFeatureInteraction: vi.fn(),
-      fetchNightshiftProfileAuthStatus: vi.fn().mockResolvedValue(null)
+      fetchKoluxProfileAuthStatus: vi.fn().mockResolvedValue(null)
     }
     Object.defineProperty(window, 'api', {
       configurable: true,
@@ -223,7 +223,7 @@ describe('MobilePane pairing connection mode', () => {
   })
 
   it('keeps Anywhere selected but blocks generation when signed out', async () => {
-    mocks.holder.state.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.holder.state.koluxProfileAuthStatus = { state: 'local' }
     const user = userEvent.setup()
     render(<MobilePane />)
     expect(screen.getByTestId('mode')).toHaveTextContent('automatic')
@@ -262,7 +262,7 @@ describe('MobilePane pairing connection mode', () => {
     getPairingQR.mockResolvedValue({
       available: true,
       qrDataUrl: 'data:image/png;base64,local',
-      pairingUrl: 'nightshift://pair#local',
+      pairingUrl: 'kolux://pair#local',
       endpoint: 'ws://host',
       connectionMode: 'local-only'
     })
@@ -287,7 +287,7 @@ describe('MobilePane pairing connection mode', () => {
       available: true,
       qrDataUrl: null,
       qrError: 'encoding_failed',
-      pairingUrl: 'nightshift://pair?code=copy-fallback',
+      pairingUrl: 'kolux://pair?code=copy-fallback',
       endpoint: 'wss://host.example/large',
       connectionMode: 'automatic'
     })
@@ -342,7 +342,7 @@ describe('MobilePane pairing connection mode', () => {
     resolveRetry?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,relay',
-      pairingUrl: 'nightshift://relay',
+      pairingUrl: 'kolux://relay',
       endpoint: 'ws://relay',
       connectionMode: 'automatic'
     })
@@ -379,7 +379,7 @@ describe('MobilePane pairing connection mode', () => {
     getPairingQR.mockResolvedValueOnce({
       available: true,
       qrDataUrl: 'data:image/png;base64,local',
-      pairingUrl: 'nightshift://local',
+      pairingUrl: 'kolux://local',
       endpoint: 'ws://10.0.0.2',
       connectionMode: 'local-only'
     })
@@ -397,7 +397,7 @@ describe('MobilePane pairing connection mode', () => {
       resolveRetry?.({
         available: true,
         qrDataUrl: 'data:image/png;base64,stale-relay',
-        pairingUrl: 'nightshift://stale-relay',
+        pairingUrl: 'kolux://stale-relay',
         endpoint: 'ws://relay',
         connectionMode: 'automatic'
       })
@@ -629,7 +629,7 @@ describe('MobilePane pairing connection mode', () => {
     await waitFor(() => expect(getPairingQR).toHaveBeenCalledWith({ connectionMode: 'automatic' }))
 
     // Sign out while the Relay mint is still in flight.
-    mocks.holder.state.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.holder.state.koluxProfileAuthStatus = { state: 'local' }
     rerender(<MobilePane />)
 
     // The superseded response arrives; it must not paint a QR on a desktop that
@@ -637,7 +637,7 @@ describe('MobilePane pairing connection mode', () => {
     resolveQr?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,relay',
-      pairingUrl: 'nightshift://relay',
+      pairingUrl: 'kolux://relay',
       endpoint: 'ws://relay'
     })
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -661,7 +661,7 @@ describe('MobilePane pairing connection mode', () => {
 
     // Sign out while the Relay mint is still in flight; the superseded request
     // must drop loading so Generate isn't wedged disabled forever.
-    mocks.holder.state.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.holder.state.koluxProfileAuthStatus = { state: 'local' }
     rerender(<MobilePane />)
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
 
@@ -669,7 +669,7 @@ describe('MobilePane pairing connection mode', () => {
     resolveQr?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,relay',
-      pairingUrl: 'nightshift://relay',
+      pairingUrl: 'kolux://relay',
       endpoint: 'ws://relay'
     })
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -730,7 +730,7 @@ describe('MobilePane pairing connection mode', () => {
     getPairingQR.mockResolvedValue({
       available: true,
       qrDataUrl: 'data:image/png;base64,local',
-      pairingUrl: 'nightshift://pair#local',
+      pairingUrl: 'kolux://pair#local',
       endpoint: 'ws://host',
       connectionMode: 'local-only'
     })
@@ -739,13 +739,13 @@ describe('MobilePane pairing connection mode', () => {
     resolveQr?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,relay',
-      pairingUrl: 'nightshift://relay',
+      pairingUrl: 'kolux://relay',
       endpoint: 'ws://relay',
       connectionMode: 'automatic'
     })
     await waitFor(() => expect(screen.getByTestId('mode')).toHaveTextContent('local-only'))
     await waitFor(() =>
-      expect(screen.getByTestId('pairing-url')).not.toHaveTextContent('nightshift://relay')
+      expect(screen.getByTestId('pairing-url')).not.toHaveTextContent('kolux://relay')
     )
   })
 })
@@ -787,7 +787,7 @@ describe('MobilePane', () => {
     mocks.getPairingQR.mockReset().mockResolvedValue({
       available: true,
       qrDataUrl: 'data:image/png;base64,qr',
-      pairingUrl: 'nightshift://pair',
+      pairingUrl: 'kolux://pair',
       endpoint: 'ws://host'
     })
     mocks.listDevices.mockReset()
@@ -795,12 +795,12 @@ describe('MobilePane', () => {
     mocks.revokeDevice.mockReset()
     mocks.updateSettings.mockReset().mockResolvedValue(undefined)
     mocks.holder.state = {
-      nightshiftProfileAuthStatus: { state: 'connected' },
+      koluxProfileAuthStatus: { state: 'connected' },
       settingsSearchQuery: '',
       settings: { mobileAutoRestoreFitMs: null },
       updateSettings: mocks.updateSettings,
       recordFeatureInteraction: vi.fn(),
-      fetchNightshiftProfileAuthStatus: vi.fn().mockResolvedValue(null)
+      fetchKoluxProfileAuthStatus: vi.fn().mockResolvedValue(null)
     }
     Object.defineProperty(window, 'api', {
       configurable: true,

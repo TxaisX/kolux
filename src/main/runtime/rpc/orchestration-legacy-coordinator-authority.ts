@@ -1,7 +1,7 @@
 import type {
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   OrchestrationCompatibilityCallerAuthority
-} from '../nightshift-runtime'
+} from '../kolux-runtime'
 import type { OrchestrationDb } from '../orchestration/db'
 import type { LegacyCompatibilityPrincipalRow } from '../orchestration/types'
 import type { LegacyCoordinatorAuthorityProof, RpcRequest } from './core'
@@ -16,7 +16,7 @@ import {
 } from './orchestration-legacy-process-identity'
 
 export class LegacyCoordinatorAuthority {
-  constructor(private readonly runtime: NightshiftRuntimeService) {}
+  constructor(private readonly runtime: KoluxRuntimeService) {}
 
   resolve(
     request: RpcRequest,

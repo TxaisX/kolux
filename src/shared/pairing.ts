@@ -23,7 +23,7 @@ export function encodePairingOffer(offer: PairingOffer): string {
   }
   // Why: Android camera intents and Expo Router preserve query params more
   // reliably than URL fragments when launching a custom-scheme app.
-  return `nightshift://pair?code=${base64url}`
+  return `kolux://pair?code=${base64url}`
 }
 
 export function decodePairingOffer(url: string): PairingOffer {
@@ -32,9 +32,7 @@ export function decodePairingOffer(url: string): PairingOffer {
   }
   const code = extractPairingCodeFromUrl(url)
   if (!code) {
-    throw new Error(
-      'Invalid pairing URL: must start with nightshift://pair and include a pairing code'
-    )
+    throw new Error('Invalid pairing URL: must start with kolux://pair and include a pairing code')
   }
   return decodePairingBase64(code)
 }
@@ -46,9 +44,13 @@ function extractPairingCodeFromUrl(url: string): string | null {
   } catch {
     return null
   }
-  // Why: prefix checks accepted routes like `nightshift://pairing?...`; only the
-  // pairing deep-link host may carry runtime auth material.
-  if (parsed.protocol !== 'nightshift:' || parsed.hostname !== 'pair') {
+  // Why: prefix checks accepted routes like `kolux://pairing?...`; only the
+  // pairing deep-link host may carry runtime auth material. Also accept the
+  // pre-rename `nightshift://` scheme so an old pairing link/QR still works.
+  if (
+    (parsed.protocol !== 'kolux:' && parsed.protocol !== 'nightshift:') ||
+    parsed.hostname !== 'pair'
+  ) {
     return null
   }
   if (parsed.pathname !== '' && parsed.pathname !== '/') {
@@ -61,7 +63,7 @@ function extractPairingCodeFromUrl(url: string): string | null {
   return parsed.hash ? parsed.hash.slice(1) || null : null
 }
 
-// Why: accept either an `nightshift://pair?...` URL or the bare base64
+// Why: accept either an `kolux://pair?...` URL or the bare base64
 // string so the mobile paste-pair flow can take whichever the user
 // actually copied from desktop.
 export function parsePairingCode(input: string): PairingOffer | null {
@@ -73,7 +75,8 @@ export function parsePairingCode(input: string): PairingOffer | null {
     return null
   }
   try {
-    if (trimmed.toLowerCase().startsWith('nightshift://')) {
+    const lower = trimmed.toLowerCase()
+    if (lower.startsWith('kolux://') || lower.startsWith('nightshift://')) {
       return decodePairingOffer(trimmed)
     }
     return decodePairingBase64(trimmed)

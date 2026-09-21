@@ -403,7 +403,7 @@ export default function BrowserAddressBar({
         <PopoverTrigger asChild>
           <form
             ref={setAddressBarFormRef}
-            data-nightshift-browser-address-bar-overlay={overlay ? 'true' : undefined}
+            data-kolux-browser-address-bar-overlay={overlay ? 'true' : undefined}
             className={cn(
               'flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-1 shadow-sm',
               // Why: the toolbar row is the positioned ancestor, so the overlay
@@ -442,7 +442,7 @@ export default function BrowserAddressBar({
               }}
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
-              data-nightshift-browser-address-bar="true"
+              data-kolux-browser-address-bar="true"
               className="h-auto border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
               spellCheck={false}
               autoCapitalize="none"

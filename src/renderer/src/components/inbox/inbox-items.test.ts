@@ -15,8 +15,8 @@ const TAB_ID = 'tab-1'
 
 const repo: Repo = {
   id: 'repo-1',
-  path: '/tmp/nightshift',
-  displayName: 'nightshift',
+  path: '/tmp/kolux',
+  displayName: 'kolux',
   badgeColor: '#000000',
   addedAt: 0
 }
@@ -24,7 +24,7 @@ const repo: Repo = {
 const worktree: Worktree = {
   id: 'wt-1',
   repoId: repo.id,
-  path: '/tmp/nightshift-feature',
+  path: '/tmp/kolux-feature',
   branch: 'refs/heads/feature/foo',
   head: 'abc123',
   isBare: false,
@@ -36,7 +36,7 @@ const worktree: Worktree = {
   comment: '',
   isUnread: false,
   isPinned: false,
-  displayName: 'nightshift-feature',
+  displayName: 'kolux-feature',
   sortOrder: 0,
   lastActivityAt: 0
 }

@@ -6,7 +6,7 @@ import { makeTreeReadOnly, shareTree } from './space-sharing-copy.mjs'
 
 const IDENTITY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/
 // Sibling of path.txt, never inside dist: an install replaces dist wholesale.
-const MARKER_FILENAME = '.nightshift-shared-dist'
+const MARKER_FILENAME = '.kolux-shared-dist'
 
 /**
  * Where sibling worktrees of one repository keep their shared extracted Electron.
@@ -29,7 +29,7 @@ export function resolveSharedElectronDistEntry(options) {
   } catch {
     return null // Folder workspace, or no Git on PATH.
   }
-  const cacheRoot = path.join(gitCommonDir, 'nightshift-cache', 'electron')
+  const cacheRoot = path.join(gitCommonDir, 'kolux-cache', 'electron')
   return {
     cacheRoot,
     entryPath: path.join(cacheRoot, `${version}-${targetPlatform}-${targetArch}`),

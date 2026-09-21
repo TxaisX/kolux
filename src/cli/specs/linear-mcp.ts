@@ -6,7 +6,7 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
     path: ['linear', 'save-issue'],
     summary: 'Create or update a Linear issue',
     usage:
-      'nightshift linear save-issue [<id>] [--current] [--team <key|id>] [--title <title>] [--description <text> | --body-file <path|->] [--state <state>] [--assignee me|<user>|null] [--priority none|low|medium|high|urgent] [--estimate <number>|null] [--due-date <yyyy-mm-dd>|null] [--label <label>...] [--project <project>|null] [--parent-id <issue>|null] [--write-id <uuid>] [--workspace <id>] [--json]',
+      'kolux linear save-issue [<id>] [--current] [--team <key|id>] [--title <title>] [--description <text> | --body-file <path|->] [--state <state>] [--assignee me|<user>|null] [--priority none|low|medium|high|urgent] [--estimate <number>|null] [--due-date <yyyy-mm-dd>|null] [--label <label>...] [--project <project>|null] [--parent-id <issue>|null] [--write-id <uuid>] [--workspace <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'current',
@@ -29,9 +29,9 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
     ],
     positionalArgs: ['id'],
     examples: [
-      'nightshift linear save-issue --team ENG --title "Fix auth" --priority high --json',
-      'nightshift linear save-issue ENG-123 --title "Fix OAuth callback" --assignee me --json',
-      'nightshift linear save-issue --current --project null --due-date null --json'
+      'kolux linear save-issue --team ENG --title "Fix auth" --priority high --json',
+      'kolux linear save-issue ENG-123 --title "Fix OAuth callback" --assignee me --json',
+      'kolux linear save-issue --current --project null --due-date null --json'
     ],
     notes: [
       'Without <id> or --current, creates an issue and requires --team and --title.',
@@ -43,7 +43,7 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
     path: ['linear', 'list-issues'],
     summary: 'List Linear issues with MCP-compatible filters',
     usage:
-      'nightshift linear list-issues [--team <team>] [--cycle <cycle>] [--label <label>] [--limit <n>] [--query <text>] [--state <state>] [--cursor <cursor>] [--order-by createdAt|updatedAt] [--project <project>] [--release <release>] [--assignee <user|me|null>] [--delegate <user|me|null>] [--parent-id <issue|null>] [--priority <0-4>] [--created-at <datetime|duration>] [--updated-at <datetime|duration>] [--include-archived] [--workspace <id>|all] [--json]',
+      'kolux linear list-issues [--team <team>] [--cycle <cycle>] [--label <label>] [--limit <n>] [--query <text>] [--state <state>] [--cursor <cursor>] [--order-by createdAt|updatedAt] [--project <project>] [--release <release>] [--assignee <user|me|null>] [--delegate <user|me|null>] [--parent-id <issue|null>] [--priority <0-4>] [--created-at <datetime|duration>] [--updated-at <datetime|duration>] [--include-archived] [--workspace <id>|all] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'team',
@@ -66,10 +66,10 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
       'workspace'
     ],
     examples: [
-      'nightshift linear list-issues --team ENG --state started --assignee me --json',
-      'nightshift linear list-issues --query auth --updated-at -P7D --json',
-      'nightshift linear list-issues --assignee me --priority 1 --limit 100 --json',
-      'nightshift linear list-issues --cursor <cursor> --json'
+      'kolux linear list-issues --team ENG --state started --assignee me --json',
+      'kolux linear list-issues --query auth --updated-at -P7D --json',
+      'kolux linear list-issues --assignee me --priority 1 --limit 100 --json',
+      'kolux linear list-issues --cursor <cursor> --json'
     ],
     notes: [
       'Omitting --limit returns every match (result.meta.limit is null); --limit <n> caps the read.',
@@ -82,12 +82,12 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
     path: ['linear', 'relation', 'add'],
     summary: 'Add a Linear issue relation',
     usage:
-      'nightshift linear relation add [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]',
+      'kolux linear relation add [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'current', 'related', 'type', 'workspace', 'id'],
     positionalArgs: ['id'],
     examples: [
-      'nightshift linear relation add ENG-1 --related ENG-2 --type blocks --json',
-      'nightshift linear relation add --current --related ENG-2 --type blocked-by --json'
+      'kolux linear relation add ENG-1 --related ENG-2 --type blocks --json',
+      'kolux linear relation add --current --related ENG-2 --type blocked-by --json'
     ]
   },
   {
@@ -95,9 +95,9 @@ export const LINEAR_MCP_COMMAND_SPECS: CommandSpec[] = [
     aliases: [['linear', 'relation', 'rm']],
     summary: 'Remove a Linear issue relation',
     usage:
-      'nightshift linear relation remove [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]',
+      'kolux linear relation remove [<id>] [--current] --related <issue> --type blocks|blocked-by|related|duplicate-of [--workspace <id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'current', 'related', 'type', 'workspace', 'id'],
     positionalArgs: ['id'],
-    examples: ['nightshift linear relation remove ENG-1 --related ENG-2 --type related --json']
+    examples: ['kolux linear relation remove ENG-1 --related ENG-2 --type related --json']
   }
 ]

@@ -52,7 +52,7 @@ function renderHeader({
         title: isGitLab ? 'Fix GitLab MR creation' : 'fix: pr-bug-scan validated finding',
         state: 'open',
         url: isGitLab
-          ? 'https://gitlab.com/acme/nightshift/-/merge_requests/31'
+          ? 'https://gitlab.com/acme/kolux/-/merge_requests/31'
           : 'https://github.com/TxaisX/nightshift/pull/2964',
         status: 'pending',
         updatedAt: '2026-05-31T22:58:01Z',
@@ -82,7 +82,7 @@ describe('ChecksPanelReviewHeader', () => {
     expect(markup).toContain('More PR actions')
     expect(markup).toContain('Unlink PR from workspace')
     expect(markup).toContain(
-      'Nightshift will hide PR #2964 details for this workspace. The PR and branch on GitHub won’t be changed.'
+      'Kolux will hide PR #2964 details for this workspace. The PR and branch on GitHub won’t be changed.'
     )
     expect(markup).toContain('Link another PR')
     expect(markup).toContain('lucide-ellipsis')
@@ -97,16 +97,16 @@ describe('ChecksPanelReviewHeader', () => {
     expect(markup).not.toContain('⇧⌘+click')
   })
 
-  // Why: with inverting on and Link Routing off the modifier reaches Nightshift here, so the
-  // hint must name Nightshift rather than the destination a plain click already uses.
-  it('names Nightshift when the modifier inverts toward the built-in browser', () => {
-    expect(renderHeader({ modifierHintDestination: 'nightshift' })).toContain(
-      '⇧⌘+click to open in Nightshift'
+  // Why: with inverting on and Link Routing off the modifier reaches Kolux here, so the
+  // hint must name Kolux rather than the destination a plain click already uses.
+  it('names Kolux when the modifier inverts toward the built-in browser', () => {
+    expect(renderHeader({ modifierHintDestination: 'kolux' })).toContain(
+      '⇧⌘+click to open in Kolux'
     )
 
     vi.stubGlobal('navigator', { userAgent: 'Windows' })
-    expect(renderHeader({ modifierHintDestination: 'nightshift' })).toContain(
-      'Shift+Ctrl+click to open in Nightshift'
+    expect(renderHeader({ modifierHintDestination: 'kolux' })).toContain(
+      'Shift+Ctrl+click to open in Kolux'
     )
   })
 
@@ -134,7 +134,7 @@ describe('ChecksPanelReviewHeader', () => {
     expect(markup).toContain('More MR actions')
     expect(markup).toContain('Unlink MR from workspace')
     expect(markup).toContain(
-      'Nightshift will hide MR !31 details for this workspace. The MR and branch on GitLab won’t be changed.'
+      'Kolux will hide MR !31 details for this workspace. The MR and branch on GitLab won’t be changed.'
     )
     expect(markup).toContain('Link another MR')
   })

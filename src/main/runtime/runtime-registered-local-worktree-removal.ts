@@ -72,7 +72,7 @@ export async function removeRuntimeRegisteredLocalWorktree(args: {
       console.error(`[hooks] archive hook failed for ${canonicalPath}:`, result.output)
     }
   } else if (hooks?.scripts.archive) {
-    warning = `nightshift.yaml archive hook skipped for ${canonicalPath}; pass --run-hooks to run it.`
+    warning = `kolux.yaml archive hook skipped for ${canonicalPath}; pass --run-hooks to run it.`
     console.warn(`[hooks] ${warning}`)
   }
 

@@ -29,8 +29,8 @@ export type AutomationListResponseValidation =
   | { ok: false; error: AutomationListResponseFailure }
 
 const UNSUPPORTED_HOST_SCOPE_MESSAGE =
-  'This host does not support per-host automation lists. Update the Nightshift server to filter by host.'
-const INVALID_RESPONSE_MESSAGE = 'This host returned an automation list Nightshift could not read.'
+  'This host does not support per-host automation lists. Update the Kolux server to filter by host.'
+const INVALID_RESPONSE_MESSAGE = 'This host returned an automation list Kolux could not read.'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null

@@ -7,13 +7,11 @@ import {
   createRemoteClipboardTransferDirectory
 } from './clipboard-remote-file-staging'
 
-const BENCH_ENABLED = process.env.NIGHTSHIFT_CLIPBOARD_CLEANUP_BENCH === '1'
-const FOREIGN_ENTRY_COUNT = Number(
-  process.env.NIGHTSHIFT_CLIPBOARD_CLEANUP_BENCH_ENTRIES ?? 100_000
-)
+const BENCH_ENABLED = process.env.KOLUX_CLIPBOARD_CLEANUP_BENCH === '1'
+const FOREIGN_ENTRY_COUNT = Number(process.env.KOLUX_CLIPBOARD_CLEANUP_BENCH_ENTRIES ?? 100_000)
 const WARMUP_RUNS = 3
 const SAMPLE_RUNS_PER_ARM = 24
-const FIXTURE_PREFIX = 'nightshift-clipboard-cleanup-bench-'
+const FIXTURE_PREFIX = 'kolux-clipboard-cleanup-bench-'
 const NOW_MS = 1_760_000_000_000
 
 describe.skipIf(!BENCH_ENABLED)('remote clipboard cleanup benchmark', () => {
@@ -124,7 +122,7 @@ async function scanSharedTempRoot(root: string): Promise<void> {
   const directory = await opendir(root)
   try {
     for await (const entry of directory) {
-      if (entry.isDirectory() && entry.name.startsWith('nightshift-clipboard-file-')) {
+      if (entry.isDirectory() && entry.name.startsWith('kolux-clipboard-file-')) {
         // Reproduces the remaining shared-root iteration after #12917.
       }
     }

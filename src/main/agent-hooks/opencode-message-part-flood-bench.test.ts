@@ -53,7 +53,7 @@ describe('OpenCode MessagePart flood benchmark', () => {
 
   beforeEach(async () => {
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-bench-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-hook-bench-'))
     server = new AgentHookServer()
     listenerEvents = 0
     server.setListener(() => {
@@ -68,35 +68,32 @@ describe('OpenCode MessagePart flood benchmark', () => {
   })
 
   async function postMessagePart(env: Record<string, string>, text: string): Promise<void> {
-    const response = await fetch(
-      `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/opencode`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-        },
-        body: JSON.stringify({
-          paneKey: PANE,
-          tabId: 'tab-bench',
-          worktreeId: 'wt-bench',
-          env: 'production',
-          payload: {
-            hook_event_name: 'MessagePart',
-            role: 'assistant',
-            text,
-            messageID: 'msg-bench',
-            sessionID: 'session-bench'
-          }
-        })
-      }
-    )
+    const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/opencode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+      },
+      body: JSON.stringify({
+        paneKey: PANE,
+        tabId: 'tab-bench',
+        worktreeId: 'wt-bench',
+        env: 'production',
+        payload: {
+          hook_event_name: 'MessagePart',
+          role: 'assistant',
+          text,
+          messageID: 'msg-bench',
+          sessionID: 'session-bench'
+        }
+      })
+    })
     expect(response.status).toBe(204)
   }
 
   it('throttled plugin behavior cuts per-turn hook-pipeline bytes by >40x', async () => {
     const env = server.buildPtyEnv()
-    expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBeTruthy()
+    expect(env.KOLUX_AGENT_HOOK_PORT).toBeTruthy()
 
     // Legacy: full accumulated text per part update.
     let legacyBytes = 0

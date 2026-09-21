@@ -78,7 +78,7 @@ import { createPtySubprocess } from './pty-subprocess'
 import { mockPtyProcess, useDaemonPtySubprocessEnv } from './pty-subprocess-test-harness'
 
 const POWERSHELL_OSC133_COMMAND_ARGS = ['-NoLogo', '-NoExit', '-EncodedCommand', expect.any(String)]
-const CODEX_LAUNCH_PREFLIGHT = 'C:\\Program Files\\Nightshift\\nightshift.exe'
+const CODEX_LAUNCH_PREFLIGHT = 'C:\\Program Files\\Kolux\\kolux.exe'
 
 describe('createPtySubprocess', () => {
   useDaemonPtySubprocessEnv({
@@ -222,7 +222,7 @@ describe('createPtySubprocess', () => {
         rows: 24,
         shellOverride: 'cmd.exe',
         terminalWindowsPowerShellImplementation: 'pwsh.exe',
-        env: { NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
+        env: { KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
       })
     } finally {
       if (platform) {
@@ -234,10 +234,10 @@ describe('createPtySubprocess', () => {
       'cmd.exe',
       [
         '/K',
-        'chcp 65001 > nul & if defined NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT call %NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
+        'chcp 65001 > nul & if defined KOLUX_CODEX_LAUNCH_PREFLIGHT call %KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%KOLUX_CODEX_LAUNCH_PREFLIGHT%%KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
       ],
       expect.objectContaining({
-        env: expect.objectContaining({ NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE: '"' })
+        env: expect.objectContaining({ KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE: '"' })
       })
     )
   })
@@ -255,7 +255,7 @@ describe('createPtySubprocess', () => {
         sessionId: 'test',
         cols: 80,
         rows: 24,
-        cwd: 'C:\\repo\\nightshift',
+        cwd: 'C:\\repo\\kolux',
         shellOverride: 'powershell.exe',
         command: "& 'codex' '--no-alt-screen'"
       })
@@ -285,10 +285,10 @@ describe('createPtySubprocess', () => {
         sessionId: 'test',
         cols: 80,
         rows: 24,
-        cwd: 'C:\\repo\\nightshift',
+        cwd: 'C:\\repo\\kolux',
         shellOverride: 'cmd.exe',
         command: `codex ${'x'.repeat(7000)}`,
-        env: { NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
+        env: { KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
       })
     } finally {
       if (platform) {
@@ -300,7 +300,7 @@ describe('createPtySubprocess', () => {
       'cmd.exe',
       [
         '/K',
-        'chcp 65001 > nul & if defined NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT call %NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT%%NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
+        'chcp 65001 > nul & if defined KOLUX_CODEX_LAUNCH_PREFLIGHT call %KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE%%KOLUX_CODEX_LAUNCH_PREFLIGHT%%KOLUX_CODEX_LAUNCH_PREFLIGHT_CMD_QUOTE% agent hooks prepare-codex > nul 2>&1'
       ],
       expect.any(Object)
     )
@@ -321,7 +321,7 @@ describe('createPtySubprocess', () => {
         rows: 24,
         cwd: 'C:\\Users\\jin\\repo',
         shellOverride: 'C:\\PortableGit\\bin\\bash.exe',
-        env: { NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
+        env: { KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT }
       })
     } finally {
       if (platform) {
@@ -341,7 +341,7 @@ describe('createPtySubprocess', () => {
         cwd: 'C:\\Users\\jin\\repo',
         env: expect.objectContaining({
           CHERE_INVOKING: '1',
-          NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
+          KOLUX_CODEX_LAUNCH_PREFLIGHT: CODEX_LAUNCH_PREFLIGHT
         })
       })
     )
@@ -357,10 +357,10 @@ describe('createPtySubprocess', () => {
           sessionId: 'test',
           cols: 80,
           rows: 24,
-          cwd: 'C:\\definitely-missing-nightshift-cwd',
+          cwd: 'C:\\definitely-missing-kolux-cwd',
           shellOverride: 'powershell.exe'
         })
-      ).rejects.toThrow(/Working directory "C:\\definitely-missing-nightshift-cwd" does not exist/)
+      ).rejects.toThrow(/Working directory "C:\\definitely-missing-kolux-cwd" does not exist/)
     } finally {
       if (platform) {
         Object.defineProperty(process, 'platform', platform)
@@ -408,8 +408,8 @@ describe('createPtySubprocess', () => {
     spawnMock.mockImplementation(() => {
       throw new Error('File not found: ')
     })
-    const previousVersion = process.env.NIGHTSHIFT_APP_VERSION
-    process.env.NIGHTSHIFT_APP_VERSION = '1.4.178-test'
+    const previousVersion = process.env.KOLUX_APP_VERSION
+    process.env.KOLUX_APP_VERSION = '1.4.178-test'
 
     try {
       await expect(
@@ -420,13 +420,13 @@ describe('createPtySubprocess', () => {
           shellOverride: 'not-a-real-shell.exe'
         })
       ).rejects.toThrow(
-        /Daemon failed to spawn shell "not-a-real-shell\.exe" with cwd ".+": File not found:.*nightshift: 1\.4\.178-test/
+        /Daemon failed to spawn shell "not-a-real-shell\.exe" with cwd ".+": File not found:.*kolux: 1\.4\.178-test/
       )
     } finally {
       if (previousVersion === undefined) {
-        delete process.env.NIGHTSHIFT_APP_VERSION
+        delete process.env.KOLUX_APP_VERSION
       } else {
-        process.env.NIGHTSHIFT_APP_VERSION = previousVersion
+        process.env.KOLUX_APP_VERSION = previousVersion
       }
       if (platform) {
         Object.defineProperty(process, 'platform', platform)

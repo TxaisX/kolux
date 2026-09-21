@@ -2,7 +2,7 @@ import { expect, it } from 'vitest'
 import {
   createStaleTabCloseHarness,
   WORKTREE_ID
-} from './__fixtures__/nightshift-runtime-terminal-close-continuity-fixtures'
+} from './__fixtures__/kolux-runtime-terminal-close-continuity-fixtures'
 
 it('keeps host retirement proof across a later renderer publication', async () => {
   const harness = await createStaleTabCloseHarness({ headless: true })

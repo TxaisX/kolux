@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import {
   installReposRuntimeRoutingHarness,
   localRepo,
-  nightshiftProfileFindProjectProfiles,
+  koluxProfileFindProjectProfiles,
   projectGroupsMoveProject,
   projectsSetupExistingFolder,
   ptyKill,
@@ -215,12 +215,12 @@ describe('repo slice runtime routing', () => {
     })
     expect(reposAdd).not.toHaveBeenCalled()
     expect(reposPickFolder).not.toHaveBeenCalled()
-    expect(nightshiftProfileFindProjectProfiles).not.toHaveBeenCalled()
+    expect(koluxProfileFindProjectProfiles).not.toHaveBeenCalled()
   })
 
   it('warns when a local project is already present in another profile', async () => {
     reposAdd.mockResolvedValue({ repo: localRepo })
-    nightshiftProfileFindProjectProfiles.mockResolvedValue({
+    koluxProfileFindProjectProfiles.mockResolvedValue({
       projects: [
         {
           profileId: 'work',
@@ -232,14 +232,14 @@ describe('repo slice runtime routing', () => {
       ]
     })
     const store = createTestStore()
-    store.setState({ activeNightshiftProfileId: 'local-default' })
+    store.setState({ activeKoluxProfileId: 'local-default' })
 
     await expect(store.getState().addRepoPath('/local')).resolves.toEqual({
       ...localRepo,
       executionHostId: 'local'
     })
 
-    expect(nightshiftProfileFindProjectProfiles).toHaveBeenCalledWith({
+    expect(koluxProfileFindProjectProfiles).toHaveBeenCalledWith({
       path: '/local',
       connectionId: null,
       executionHostId: 'local',
@@ -255,7 +255,7 @@ describe('repo slice runtime routing', () => {
       id: 'github:TxaisX/nightshift',
       displayName: 'Project',
       badgeColor: '#000',
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
       sourceRepoIds: ['local-repo'],
       createdAt: 1,
       updatedAt: 1
@@ -294,7 +294,7 @@ describe('repo slice runtime routing', () => {
     expect(store.getState().projectHostSetups).toEqual([setup])
     expect(projectsSetupExistingFolder).toHaveBeenCalledWith({
       projectId: project.id,
-      projectProviderIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+      projectProviderIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
       hostId: 'local',
       path: '/local',
       kind: 'git'
@@ -673,7 +673,7 @@ describe('repo slice runtime routing', () => {
 
   it('removes SSH-owned repos through local IPC even when a runtime is focused', async () => {
     const store = createTestStore()
-    const worktreeId = `${sshRepo.id}::/home/nightshift/wt`
+    const worktreeId = `${sshRepo.id}::/home/kolux/wt`
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,
       repos: [sshRepo],
@@ -693,7 +693,7 @@ describe('repo slice runtime routing', () => {
 
   it('drops persisted visit timestamps for removed unhydrated SSH repos', async () => {
     const store = createTestStore()
-    const sshWorktreeId = `${sshRepo.id}::/home/nightshift/wt`
+    const sshWorktreeId = `${sshRepo.id}::/home/kolux/wt`
     const localWorktreeId = `${localRepo.id}::/local/wt`
     store.setState({
       repos: [sshRepo, localRepo],
@@ -719,7 +719,7 @@ describe('repo slice runtime routing', () => {
       _meta: { runtimeId: 'runtime-remote' }
     })
     const store = createTestStore()
-    const remoteWorktreeId = `${remoteRepo.id}::/srv/nightshift/wt`
+    const remoteWorktreeId = `${remoteRepo.id}::/srv/kolux/wt`
     const localWorktreeId = `${localRepo.id}::/local/wt`
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,

@@ -41,7 +41,7 @@ import {
 } from './browser-route-session-runtime'
 
 export type ClientHostRouteIdentity = {
-  nightshiftProfileId: string
+  koluxProfileId: string
   authorityConnectionIdentity: string
   executionHostIdentity: string
   /** Pre-migration pair, naming the partition an older build already populated. */
@@ -52,14 +52,14 @@ export type ClientHostRouteIdentity = {
 
 type ProductionBrowserClientHostStart = PairedRuntimeBrowserClientHostStart & {
   pairing: PairingOffer
-  nightshiftProfileId: string
+  koluxProfileId: string
   authorityConnectionIdentity: string
   legacyAuthorityConnectionIdentity: string
   storageScope: string
   environmentLabel: string
 }
 
-let activeNightshiftProfileId: string | null = null
+let activeKoluxProfileId: string | null = null
 /** Route identity of each live client host, for storage operations without a page. */
 const clientHostRouteIdentities = new Map<string, ClientHostRouteIdentity>()
 
@@ -90,7 +90,7 @@ const browserClientHosts =
           createNetworkRoutes(next.pairing, authority, next.storageScope, input.environmentId),
         createExecutor: (next, { retainNetworkRoute, onPageUnavailable }) => {
           executor = new BrowserClientPageCommandExecutor({
-            nightshiftProfileId: next.nightshiftProfileId,
+            koluxProfileId: next.koluxProfileId,
             authorityConnectionIdentity: next.authorityConnectionIdentity,
             legacyAuthorityConnectionIdentity: next.legacyAuthorityConnectionIdentity,
             storageScope: next.storageScope,
@@ -138,34 +138,34 @@ const browserClientHosts =
     }
   })
 
-export function configurePairedRuntimeBrowserClientHostsForNightshiftProfile(options: {
-  nightshiftProfileId: string
+export function configurePairedRuntimeBrowserClientHostsForKoluxProfile(options: {
+  koluxProfileId: string
 }): void {
-  if (activeNightshiftProfileId && activeNightshiftProfileId !== options.nightshiftProfileId) {
+  if (activeKoluxProfileId && activeKoluxProfileId !== options.koluxProfileId) {
     throw new Error('paired_runtime_browser_client_host_profile_conflict')
   }
-  activeNightshiftProfileId = options.nightshiftProfileId
+  activeKoluxProfileId = options.koluxProfileId
 }
 
 export async function startPairedRuntimeBrowserClientHost(options: {
   environment: KnownRuntimeEnvironment
   authorityRuntimeId: string
 }): Promise<BrowserClientHostLeaseAuthority> {
-  const nightshiftProfileId = activeNightshiftProfileId
-  if (!nightshiftProfileId) {
+  const koluxProfileId = activeKoluxProfileId
+  if (!koluxProfileId) {
     throw new Error('paired_runtime_browser_client_host_profile_unavailable')
   }
   const pairingRevision = options.environment.pairingRevision ?? options.environment.createdAt
   const pairing = getPreferredPairingOffer(options.environment)
   const storageScope = deriveBrowserRoutePartitionStorageScope({
-    nightshiftProfileId,
+    koluxProfileId,
     environmentId: options.environment.id
   })
   const routeIdentity: ClientHostRouteIdentity = {
-    nightshiftProfileId,
+    koluxProfileId,
     storageScope,
     authorityConnectionIdentity: authorityConnectionIdentity(
-      nightshiftProfileId,
+      koluxProfileId,
       options.environment.id,
       pairingRevision,
       pairing
@@ -173,7 +173,7 @@ export async function startPairedRuntimeBrowserClientHost(options: {
     // Why: settings-level operations target the server's own machine, not a nested SSH/WSL host.
     executionHostIdentity: browserAuthorityExecutionHostStorageIdentity(storageScope),
     legacyAuthorityConnectionIdentity: legacyAuthorityConnectionIdentity(
-      nightshiftProfileId,
+      koluxProfileId,
       options.environment.id,
       pairingRevision,
       options.authorityRuntimeId,
@@ -188,7 +188,7 @@ export async function startPairedRuntimeBrowserClientHost(options: {
     pairingRevision,
     authorityRuntimeId: options.authorityRuntimeId,
     pairing,
-    nightshiftProfileId,
+    koluxProfileId,
     storageScope: routeIdentity.storageScope,
     environmentLabel: options.environment.name,
     authorityConnectionIdentity: routeIdentity.authorityConnectionIdentity,
@@ -266,14 +266,14 @@ function createNetworkRoutes(
  * fresh partition on every remote restart, dropping the user's cookies.
  */
 function authorityConnectionIdentity(
-  nightshiftProfileId: string,
+  koluxProfileId: string,
   environmentId: string,
   pairingRevision: number,
   pairing: PairingOffer
 ): string {
   return connectionIdentityDigest([
     'paired-runtime-browser',
-    nightshiftProfileId,
+    koluxProfileId,
     environmentId,
     pairingRevision,
     pairing.publicKeyB64,
@@ -283,7 +283,7 @@ function authorityConnectionIdentity(
 
 /** Superseded per-process identity, kept only so its partition can be adopted. */
 function legacyAuthorityConnectionIdentity(
-  nightshiftProfileId: string,
+  koluxProfileId: string,
   environmentId: string,
   pairingRevision: number,
   authorityRuntimeId: string,
@@ -291,7 +291,7 @@ function legacyAuthorityConnectionIdentity(
 ): string {
   return connectionIdentityDigest([
     'paired-runtime-browser',
-    nightshiftProfileId,
+    koluxProfileId,
     environmentId,
     pairingRevision,
     authorityRuntimeId,
@@ -307,7 +307,7 @@ function connectionIdentityDigest(components: readonly unknown[]): string {
 // Why: staged remote bytes are main-owned scratch, never the user's visible Downloads folder.
 function browserClientFileStagingRoot(environmentId: string): string {
   const scope = createHash('sha256').update(environmentId).digest('hex').slice(0, 16)
-  return path.join(app.getPath('temp'), 'nightshift-browser-file-channel', scope)
+  return path.join(app.getPath('temp'), 'kolux-browser-file-channel', scope)
 }
 
 function reportBrowserClientHostError(error: Error): void {

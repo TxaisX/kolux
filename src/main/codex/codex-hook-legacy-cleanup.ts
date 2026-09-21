@@ -26,9 +26,13 @@ import { readCodexTrustGrantLedgerHomeForReconciliation } from './codex-managed-
 import { runExclusivelyForCodexTrustConfig } from './codex-trust-config-mutation-queue'
 import { mutateRealHomeHooksPreservingUserTrust } from './codex-user-hook-trust-rebase'
 
-const LEGACY_NIGHTSHIFT_PROFILE_NAME = 'nightshift-agent-status'
-const LEGACY_NIGHTSHIFT_PROFILE_BLOCK_START = '# BEGIN NIGHTSHIFT AGENT STATUS HOOKS'
-const LEGACY_NIGHTSHIFT_PROFILE_BLOCK_END = '# END NIGHTSHIFT AGENT STATUS HOOKS'
+const LEGACY_KOLUX_PROFILE_NAME = 'kolux-agent-status'
+const LEGACY_KOLUX_PROFILE_BLOCK_START = '# BEGIN KOLUX AGENT STATUS HOOKS'
+const LEGACY_KOLUX_PROFILE_BLOCK_END = '# END KOLUX AGENT STATUS HOOKS'
+// Why: repos/profiles written before the Nightshift->Kolux rename still carry this profile name/marker; sweep both.
+const PRE_RENAME_NIGHTSHIFT_PROFILE_NAME = 'nightshift-agent-status'
+const PRE_RENAME_NIGHTSHIFT_PROFILE_BLOCK_START = '# BEGIN NIGHTSHIFT AGENT STATUS HOOKS'
+const PRE_RENAME_NIGHTSHIFT_PROFILE_BLOCK_END = '# END NIGHTSHIFT AGENT STATUS HOOKS'
 
 // Why: when the real-home lane owns ~/.codex/hooks.json (system-default flag ON
 // with hooks enabled), the legacy system-home sweep must stand down or every
@@ -41,8 +45,12 @@ export function setSystemCodexHomeHookSweepSuppressed(gate: () => boolean): void
   systemCodexHomeHookSweepSuppressed = gate
 }
 
-function getLegacyCodexProfileTomlPath(): string {
-  return join(getSystemCodexHomePath(), `${LEGACY_NIGHTSHIFT_PROFILE_NAME}.config.toml`)
+function getLegacyCodexProfileTomlPaths(): string[] {
+  const home = getSystemCodexHomePath()
+  return [
+    join(home, `${LEGACY_KOLUX_PROFILE_NAME}.config.toml`),
+    join(home, `${PRE_RENAME_NIGHTSHIFT_PROFILE_NAME}.config.toml`)
+  ]
 }
 
 export function cleanupLegacySystemManagedHooks(): Promise<void> {
@@ -113,10 +121,10 @@ async function sweepLegacySystemManagedHooks(): Promise<void> {
     }
   }
 
-  // Why: Codex hooks moved to Nightshift's managed CODEX_HOME; stale ~/.codex entries would keep external Codex sessions reporting into Nightshift.
+  // Why: Codex hooks moved to Kolux's managed CODEX_HOME; stale ~/.codex entries would keep external Codex sessions reporting into Kolux.
   if (removedManagedHook) {
-    // Why: this is the user's system hooks file, not Nightshift's runtime copy.
-    // Remove only stale Nightshift hook entries and preserve other managers' metadata.
+    // Why: this is the user's system hooks file, not Kolux's runtime copy.
+    // Remove only stale Kolux hook entries and preserve other managers' metadata.
     const hooksWritePath = resolveHooksJsonWritePath(legacyConfigPath)
     const previousMode = statSync(hooksWritePath).mode
     await mutateRealHomeHooksPreservingUserTrust({
@@ -150,40 +158,46 @@ async function sweepLegacySystemManagedHooks(): Promise<void> {
 }
 
 function stripLegacyManagedProfileBlock(content: string): string {
-  const start = content.indexOf(LEGACY_NIGHTSHIFT_PROFILE_BLOCK_START)
-  if (start === -1) {
-    return content
+  for (const [blockStart, blockEnd] of [
+    [LEGACY_KOLUX_PROFILE_BLOCK_START, LEGACY_KOLUX_PROFILE_BLOCK_END],
+    [PRE_RENAME_NIGHTSHIFT_PROFILE_BLOCK_START, PRE_RENAME_NIGHTSHIFT_PROFILE_BLOCK_END]
+  ]) {
+    const start = content.indexOf(blockStart)
+    if (start === -1) {
+      continue
+    }
+    const endMarker = content.indexOf(blockEnd, start)
+    const end = endMarker === -1 ? content.length : endMarker + blockEnd.length
+    const before = content.slice(0, start).replace(/[ \t]*(?:\r?\n)*$/, '')
+    const after = content.slice(end).replace(/^(?:\r?\n)+/, '')
+    if (!before) {
+      return after
+    }
+    if (!after) {
+      return before.endsWith('\n') ? before : `${before}\n`
+    }
+    return `${before}\n\n${after}`
   }
-  const endMarker = content.indexOf(LEGACY_NIGHTSHIFT_PROFILE_BLOCK_END, start)
-  const end =
-    endMarker === -1 ? content.length : endMarker + LEGACY_NIGHTSHIFT_PROFILE_BLOCK_END.length
-  const before = content.slice(0, start).replace(/[ \t]*(?:\r?\n)*$/, '')
-  const after = content.slice(end).replace(/^(?:\r?\n)+/, '')
-  if (!before) {
-    return after
-  }
-  if (!after) {
-    return before.endsWith('\n') ? before : `${before}\n`
-  }
-  return `${before}\n\n${after}`
+  return content
 }
 
 function cleanupLegacyCodexProfileHooks(): void {
-  const profilePath = getLegacyCodexProfileTomlPath()
-  if (!existsSync(profilePath)) {
-    return
-  }
+  for (const profilePath of getLegacyCodexProfileTomlPaths()) {
+    if (!existsSync(profilePath)) {
+      continue
+    }
 
-  const existing = readFileSync(profilePath, 'utf-8')
-  const next = stripLegacyManagedProfileBlock(existing)
-  if (next === existing) {
-    return
-  }
-  // Why: #2778 wrote Nightshift hooks into a Codex profile file; runtime CODEX_HOME supersedes it, so remove only Nightshift's marked block.
-  if (next.trim().length === 0) {
-    unlinkSync(profilePath)
-  } else {
-    writeConfigAtomically(profilePath, next)
+    const existing = readFileSync(profilePath, 'utf-8')
+    const next = stripLegacyManagedProfileBlock(existing)
+    if (next === existing) {
+      continue
+    }
+    // Why: #2778 wrote Kolux hooks into a Codex profile file; runtime CODEX_HOME supersedes it, so remove only Kolux's marked block.
+    if (next.trim().length === 0) {
+      unlinkSync(profilePath)
+    } else {
+      writeConfigAtomically(profilePath, next)
+    }
   }
 }
 

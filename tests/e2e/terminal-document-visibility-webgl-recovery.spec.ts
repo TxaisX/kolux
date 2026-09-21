@@ -1,6 +1,6 @@
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { PNG } from 'pngjs'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   splitActiveTerminalPane,
@@ -283,22 +283,22 @@ async function dispatchDocumentVisibilityCycle(page: Page): Promise<void> {
 test.describe('terminal document visibility WebGL recovery', () => {
   test('@headful preserves the WebGL atlas and keeps terminal text painted after document visibility resumes', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
 
-    const webglActive = await forceWebgl(nightshiftPage)
+    const webglActive = await forceWebgl(koluxPage)
     test.skip(!webglActive, 'WebGL was not active in this Electron environment')
 
-    await writeStableTerminalContent(nightshiftPage)
-    expect(await patchAtlasCounter(nightshiftPage)).toBe(true)
-    expect(await countPatchedWebglAddons(nightshiftPage)).toBeGreaterThanOrEqual(2)
-    const baseline = await terminalScreenshots(nightshiftPage)
+    await writeStableTerminalContent(koluxPage)
+    expect(await patchAtlasCounter(koluxPage)).toBe(true)
+    expect(await countPatchedWebglAddons(koluxPage)).toBeGreaterThanOrEqual(2)
+    const baseline = await terminalScreenshots(koluxPage)
     expect(baseline.length).toBeGreaterThanOrEqual(2)
     const baselineInkPixels = baseline.map(countTerminalInkPixels)
     for (const inkPixels of baselineInkPixels) {
@@ -309,26 +309,26 @@ test.describe('terminal document visibility WebGL recovery', () => {
       // Why: this is the app-level background/foreground path where the
       // TerminalPane stays mounted and visible, so React pane visibility does
       // not run its normal resume recovery.
-      await resetAtlasResetCount(nightshiftPage)
+      await resetAtlasResetCount(koluxPage)
       const browserWindowVisibilityWorked = await tryBrowserWindowVisibilityCycle(
         electronApp,
-        nightshiftPage
+        koluxPage
       )
       console.log(
         `[visibility-webgl] browserWindowVisibilityWorked=${browserWindowVisibilityWorked}`
       )
       if (!browserWindowVisibilityWorked) {
-        await resetAtlasResetCount(nightshiftPage)
-        await dispatchDocumentVisibilityCycle(nightshiftPage)
+        await resetAtlasResetCount(koluxPage)
+        await dispatchDocumentVisibilityCycle(koluxPage)
       }
 
-      await waitForTerminalPaint(nightshiftPage)
+      await waitForTerminalPaint(koluxPage)
       expect(
-        await readAtlasResetCount(nightshiftPage),
+        await readAtlasResetCount(koluxPage),
         'ordinary document visibility resume cleared the shared WebGL atlas'
       ).toBe(0)
 
-      const afterResume = await terminalScreenshots(nightshiftPage)
+      const afterResume = await terminalScreenshots(koluxPage)
       for (const [index, baselineShot] of baseline.entries()) {
         await testInfo.attach(`visibility-webgl-baseline-${index}`, {
           body: baselineShot,

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { spawnMock, openCodeClearPtyMock, piClearPtyMock } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { makePaneKey } from '../../shared/stable-pane-id'
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import {
   SSH_PTY_IDENTITY_MISMATCH_ERROR,
   SSH_SESSION_EXPIRED_ERROR
@@ -46,7 +46,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -185,7 +185,7 @@ describe('registerPtyHandlers', () => {
     }
     const appPtyId = 'ssh:ssh-fresh-fail@@relay-pty'
     const incarnationId = 'incarnation-fresh-fail'
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const remoteShutdown = vi.fn(async () => {
       // Model the relay's exit callback winning before shutdown resolves.
       runtime.onPtyExit(appPtyId, 0, incarnationId)
@@ -246,7 +246,7 @@ describe('registerPtyHandlers', () => {
           sessionId: appPtyId,
           persistHostSessionBinding: true
         })
-      ).rejects.toThrow(/NIGHTSHIFT_TERMINAL_SESSION_STATE_SAVE_FAILED/)
+      ).rejects.toThrow(/KOLUX_TERMINAL_SESSION_STATE_SAVE_FAILED/)
 
       expect(remoteShutdown).toHaveBeenCalledWith(appPtyId, { immediate: true })
       expect(store.upsertSshRemotePtyLease).not.toHaveBeenCalled()
@@ -298,7 +298,7 @@ describe('registerPtyHandlers', () => {
       cols: 80,
       rows: 24,
       worktreeId: 'wt-1',
-      env: { NIGHTSHIFT_PANE_KEY: ` ${paneKey} ` }
+      env: { KOLUX_PANE_KEY: ` ${paneKey} ` }
     })
     const replacementGen = (await handlers.get('pty:declarePendingPaneSerializer')!(null, {
       paneKey
@@ -360,7 +360,7 @@ describe('registerPtyHandlers', () => {
         cols: 80,
         rows: 24,
         worktreeId: 'wt-1',
-        env: { NIGHTSHIFT_PANE_KEY: paneKey }
+        env: { KOLUX_PANE_KEY: paneKey }
       })
     }
 
@@ -441,7 +441,7 @@ describe('registerPtyHandlers', () => {
     expect(hasPendingRendererSerializerForPaneKey(paneKey)).toBe(false)
     expect(sender.once).not.toHaveBeenCalled()
   })
-  it('ignores renderer-provided NIGHTSHIFT_TERMINAL_HANDLE for local PTY spawns', async () => {
+  it('ignores renderer-provided KOLUX_TERMINAL_HANDLE for local PTY spawns', async () => {
     const runtime = {
       setPtyController: vi.fn(),
       noteTerminalSpawnCommand: vi.fn(),
@@ -455,15 +455,15 @@ describe('registerPtyHandlers', () => {
     await handlers.get('pty:spawn')!(null, {
       cols: 80,
       rows: 24,
-      env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_untrusted' }
+      env: { KOLUX_TERMINAL_HANDLE: 'term_untrusted' }
     })
 
     const spawnCall = spawnMock.mock.calls.at(-1)!
     const env = spawnCall[2].env as Record<string, string>
-    expect(env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_trusted')
+    expect(env.KOLUX_TERMINAL_HANDLE).toBe('term_trusted')
     expect(runtime.preAllocateHandleForPty).toHaveBeenCalledWith(expect.any(String))
   })
-  it('forwards the trusted Nightshift terminal handle into managed WSL terminals', async () => {
+  it('forwards the trusted Kolux terminal handle into managed WSL terminals', async () => {
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', {
       configurable: true,
@@ -494,26 +494,26 @@ describe('registerPtyHandlers', () => {
     const spawnCall = spawnMock.mock.calls.at(-1)!
     const env = spawnCall[2].env as Record<string, string>
     expect(spawnCall[0]).toBe('wsl.exe')
-    expect(env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_wsl')
-    expect(env.NIGHTSHIFT_USER_DATA_PATH).toBe('/tmp/nightshift-user-data')
-    expect(env.NIGHTSHIFT_CLI_COMMAND).toBe('nightshift-ide')
+    expect(env.KOLUX_TERMINAL_HANDLE).toBe('term_wsl')
+    expect(env.KOLUX_USER_DATA_PATH).toBe('/tmp/kolux-user-data')
+    expect(env.KOLUX_CLI_COMMAND).toBe('kolux-ide')
     expect(env.WSLENV?.split(':')).toEqual(
       expect.arrayContaining([
-        'NIGHTSHIFT_TERMINAL_HANDLE/u',
-        'NIGHTSHIFT_USER_DATA_PATH/p',
-        'NIGHTSHIFT_CLI_COMMAND/u',
-        'NIGHTSHIFT_AGENT_HOOK_PORT/u',
-        'NIGHTSHIFT_AGENT_HOOK_TOKEN/u',
+        'KOLUX_TERMINAL_HANDLE/u',
+        'KOLUX_USER_DATA_PATH/p',
+        'KOLUX_CLI_COMMAND/u',
+        'KOLUX_AGENT_HOOK_PORT/u',
+        'KOLUX_AGENT_HOOK_TOKEN/u',
         // Why: bare WSL shells no longer create ~/.omp; only status extension is exported (#10196).
-        'NIGHTSHIFT_OMP_STATUS_EXTENSION/p',
+        'KOLUX_OMP_STATUS_EXTENSION/p',
         'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD'
       ])
     )
     expect(env.WSLENV?.split(':')).not.toEqual(
-      expect.arrayContaining(['NIGHTSHIFT_OMP_SOURCE_AGENT_DIR/p'])
+      expect.arrayContaining(['KOLUX_OMP_SOURCE_AGENT_DIR/p'])
     )
   })
-  it('forces managed NIGHTSHIFT_USER_DATA_PATH for WSL spawns even when the caller provides a stale root', async () => {
+  it('forces managed KOLUX_USER_DATA_PATH for WSL spawns even when the caller provides a stale root', async () => {
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
     Object.defineProperty(process, 'platform', {
       configurable: true,
@@ -534,7 +534,7 @@ describe('registerPtyHandlers', () => {
         rows: 24,
         shellOverride: 'wsl.exe',
         env: {
-          NIGHTSHIFT_USER_DATA_PATH: '/tmp/stale-nightshift-user-data'
+          KOLUX_USER_DATA_PATH: '/tmp/stale-kolux-user-data'
         }
       })
     } finally {
@@ -546,6 +546,6 @@ describe('registerPtyHandlers', () => {
     const spawnCall = spawnMock.mock.calls.at(-1)!
     const env = spawnCall[2].env as Record<string, string>
     expect(spawnCall[0]).toBe('wsl.exe')
-    expect(env.NIGHTSHIFT_USER_DATA_PATH).toBe('/tmp/nightshift-user-data')
+    expect(env.KOLUX_USER_DATA_PATH).toBe('/tmp/kolux-user-data')
   })
 })

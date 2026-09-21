@@ -164,7 +164,7 @@ export function useDetectedAgents(
       if (detectedIds === null) {
         void state.ensureRuntimeDetectedAgents(targetId)
       } else if (detectedIds.length === 0 && isNewRemoteTarget) {
-        // Why: remote `nightshift serve` users can install/fix PATH without reconnecting;
+        // Why: remote `kolux serve` users can install/fix PATH without reconnecting;
         // retry once per mounted surface so the menu can pick that up.
         void state.ensureRuntimeDetectedAgents(targetId)
       }

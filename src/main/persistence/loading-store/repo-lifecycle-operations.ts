@@ -3,7 +3,7 @@ import type { Repo } from '../../../shared/repo-types'
 import {
   removeRepoFromHostWorkspaceSessions,
   removeRepoFromWorkspaceSession
-} from '../../nightshift-profiles/profile-project-session-state'
+} from '../../kolux-profiles/profile-project-session-state'
 import {
   getRepoExecutionHostId,
   parseExecutionHostId,

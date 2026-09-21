@@ -38,34 +38,34 @@ describe('PluginOverlayManager', () => {
     manager.setSources({ opencodePluginSource: 'export const X = 1' })
     const dir = manager.materializeOpenCode('tab-1:0')
     expect(dir).not.toBeNull()
-    const expected = join(dir!, 'plugins', 'nightshift-opencode-status.js')
+    const expected = join(dir!, 'plugins', 'kolux-opencode-status.js')
     expect(existsSync(expected)).toBe(true)
     expect(readFileSync(expected, 'utf8')).toBe('export const X = 1')
   })
 
-  it('mirrors a preexisting remote OpenCode config dir before adding Nightshift plugin', () => {
+  it('mirrors a preexisting remote OpenCode config dir before adding Kolux plugin', () => {
     const userConfigDir = join(homeDir, 'company-opencode')
     mkdirSync(join(userConfigDir, 'plugins'), { recursive: true })
     writeFileSync(join(userConfigDir, 'opencode.json'), '{"provider":"custom"}')
     writeFileSync(join(userConfigDir, 'plugins', 'user-plugin.js'), 'user plugin')
-    writeFileSync(join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'), 'user same-name')
+    writeFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), 'user same-name')
 
-    manager.setSources({ opencodePluginSource: 'nightshift plugin' })
+    manager.setSources({ opencodePluginSource: 'kolux plugin' })
     const dir = manager.materializeOpenCode('tab-opencode:0', userConfigDir)
 
     expect(dir).not.toBeNull()
     expect(readFileSync(join(dir!, 'opencode.json'), 'utf8')).toBe('{"provider":"custom"}')
     expect(readFileSync(join(dir!, 'plugins', 'user-plugin.js'), 'utf8')).toBe('user plugin')
-    expect(readFileSync(join(dir!, 'plugins', 'nightshift-opencode-status.js'), 'utf8')).toBe(
-      'nightshift plugin'
+    expect(readFileSync(join(dir!, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe(
+      'kolux plugin'
     )
-    expect(
-      readFileSync(join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'), 'utf8')
-    ).toBe('user same-name')
+    expect(readFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe(
+      'user same-name'
+    )
   })
 
   it('does not override a missing preexisting OpenCode config dir', () => {
-    manager.setSources({ opencodePluginSource: 'nightshift plugin' })
+    manager.setSources({ opencodePluginSource: 'kolux plugin' })
 
     expect(manager.materializeOpenCode('tab-missing:0', join(homeDir, 'missing'))).toBeNull()
   })
@@ -74,15 +74,15 @@ describe('PluginOverlayManager', () => {
     manager.setSources({ piExtensionSource: '// pi extension' })
     const result = manager.materializePi('tab-2:0')
     expect(result?.sourceAgentDir).toBeDefined()
-    const file = join(result!.sourceAgentDir!, 'extensions', 'nightshift-agent-status.ts')
+    const file = join(result!.sourceAgentDir!, 'extensions', 'kolux-agent-status.ts')
     expect(result?.statusExtensionPath).toBe(file)
     expect(existsSync(file)).toBe(true)
-    expect(readFileSync(file, 'utf8')).toContain('@nightshift-managed-pi-extension')
+    expect(readFileSync(file, 'utf8')).toContain('@kolux-managed-pi-extension')
   })
 
   it("does not overwrite a user's same-named remote Pi extension file", () => {
     const piAgentDir = join(homeDir, '.pi', 'agent')
-    const extensionFile = join(piAgentDir, 'extensions', 'nightshift-agent-status.ts')
+    const extensionFile = join(piAgentDir, 'extensions', 'kolux-agent-status.ts')
     mkdirSync(join(piAgentDir, 'extensions'), { recursive: true })
     writeFileSync(extensionFile, 'user-owned remote status extension')
 
@@ -103,16 +103,10 @@ describe('PluginOverlayManager', () => {
     expect(piResult?.sourceAgentDir).toBeDefined()
     expect(ompResult?.sourceAgentDir).toBeDefined()
     expect(
-      readFileSync(
-        join(piResult!.sourceAgentDir!, 'extensions', 'nightshift-agent-status.ts'),
-        'utf8'
-      )
+      readFileSync(join(piResult!.sourceAgentDir!, 'extensions', 'kolux-agent-status.ts'), 'utf8')
     ).toContain('// pi extension')
     expect(
-      readFileSync(
-        join(ompResult!.sourceAgentDir!, 'extensions', 'nightshift-agent-status.ts'),
-        'utf8'
-      )
+      readFileSync(join(ompResult!.sourceAgentDir!, 'extensions', 'kolux-agent-status.ts'), 'utf8')
     ).toContain('// omp extension')
   })
 
@@ -127,7 +121,7 @@ describe('PluginOverlayManager', () => {
     expect(readFileSync(result!.statusExtensionPath!, 'utf8')).not.toContain('// pi extension')
   })
 
-  it('installs Nightshift status extension into the remote default Pi agent dir', () => {
+  it('installs Kolux status extension into the remote default Pi agent dir', () => {
     const piAgentDir = join(homeDir, '.pi', 'agent')
     mkdirSync(join(piAgentDir, 'skills', 'my-skill'), { recursive: true })
     mkdirSync(join(piAgentDir, 'extensions', 'user-ext'), { recursive: true })
@@ -159,7 +153,7 @@ describe('PluginOverlayManager', () => {
       'user extension'
     )
     expect(readdirSync(join(dir!, 'extensions')).sort()).toEqual([
-      'nightshift-agent-status.ts',
+      'kolux-agent-status.ts',
       'user-ext'
     ])
     expect(JSON.parse(readFileSync(join(dir!, 'settings.json'), 'utf8'))).toEqual({
@@ -196,7 +190,7 @@ describe('PluginOverlayManager', () => {
     expect(dir).toBeDefined()
     expect(readFileSync(join(dir!, 'auth.json'), 'utf8')).toBe('custom token')
     expect(readFileSync(join(dir!, 'extensions', 'custom.ts'), 'utf8')).toBe('custom extension')
-    expect(readFileSync(join(dir!, 'extensions', 'nightshift-agent-status.ts'), 'utf8')).toContain(
+    expect(readFileSync(join(dir!, 'extensions', 'kolux-agent-status.ts'), 'utf8')).toContain(
       '// pi extension'
     )
   })
@@ -211,7 +205,7 @@ describe('PluginOverlayManager', () => {
     const content = 'agent.db relay credentials'
 
     expect(existsSync(sourcePath)).toBe(false)
-    expect(existsSync(join(homeDir, '.nightshift-relay', 'omp-overlays'))).toBe(false)
+    expect(existsSync(join(homeDir, '.kolux-relay', 'omp-overlays'))).toBe(false)
     expect(existsSync(join(sourceDir, 'history.db'))).toBe(false)
     writeFileSync(sourcePath, content)
 
@@ -248,7 +242,7 @@ describe('PluginOverlayManager', () => {
       expect(readFileSync(join(dir!, 'auth.json'), 'utf8')).toBe('pi token')
       const extensions = readdirSync(join(dir!, 'extensions')).sort()
       expect(extensions).toContain('pi-ext')
-      expect(extensions).toContain('nightshift-agent-status.ts')
+      expect(extensions).toContain('kolux-agent-status.ts')
       expect(extensions).not.toContain('omp-ext')
     })
 
@@ -267,7 +261,7 @@ describe('PluginOverlayManager', () => {
       expect(readFileSync(join(dir!, 'auth.json'), 'utf8')).toBe('omp token')
       const extensions = readdirSync(join(dir!, 'extensions')).sort()
       expect(extensions).toContain('omp-ext')
-      expect(extensions).toContain('nightshift-agent-status.ts')
+      expect(extensions).toContain('kolux-agent-status.ts')
       expect(extensions).not.toContain('pi-ext')
     })
 
@@ -286,7 +280,7 @@ describe('PluginOverlayManager', () => {
       // Pi-only home must NOT leak into the OMP home.
       expect(existsSync(join(dir!, 'auth.json'))).toBe(false)
       const extensions = readdirSync(join(dir!, 'extensions')).sort()
-      expect(extensions).toEqual(['nightshift-agent-status.ts'])
+      expect(extensions).toEqual(['kolux-agent-status.ts'])
     })
 
     it('bare-shell prep does not create missing remote agent homes (#10196)', () => {
@@ -306,10 +300,10 @@ describe('PluginOverlayManager', () => {
       const bareOmp = manager.materializePi('tab-bare-omp:0', undefined, 'omp', {
         materializeDefaultHome: false
       })
-      // Why: bare OMP keeps status via ~/.nightshift-relay/… without SOURCE_AGENT_DIR or ~/.omp.
+      // Why: bare OMP keeps status via ~/.kolux-relay/… without SOURCE_AGENT_DIR or ~/.omp.
       expect(bareOmp?.sourceAgentDir).toBeUndefined()
       expect(bareOmp?.statusExtensionPath).toEqual(
-        expect.stringContaining(join('.nightshift-relay', 'omp-managed-status-extension'))
+        expect.stringContaining(join('.kolux-relay', 'omp-managed-status-extension'))
       )
       expect(existsSync(bareOmp!.statusExtensionPath!)).toBe(true)
       expect(readFileSync(bareOmp!.statusExtensionPath!, 'utf8')).toContain('// omp extension')
@@ -361,7 +355,7 @@ describe('PluginOverlayManager', () => {
       writeFileSync(join(linkedTarget, 'keep.js'), 'do not delete')
       symlinkSync(linkedTarget, join(userConfigDir, 'plugins', 'linked-plugin'), 'dir')
 
-      manager.setSources({ opencodePluginSource: 'nightshift plugin' })
+      manager.setSources({ opencodePluginSource: 'kolux plugin' })
       const dir = manager.materializeOpenCode('tab-opencode-symlink:0', userConfigDir)!
       expect(existsSync(join(dir, 'plugins', 'linked-plugin'))).toBe(true)
 
@@ -378,9 +372,7 @@ describe('PluginOverlayManager', () => {
     manager.setSources({ opencodePluginSource: 'second' })
     const dirB = manager.materializeOpenCode('tab-stable:0')!
     expect(dirA).toBe(dirB)
-    expect(readFileSync(join(dirA, 'plugins', 'nightshift-opencode-status.js'), 'utf8')).toBe(
-      'second'
-    )
+    expect(readFileSync(join(dirA, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe('second')
   })
 
   it('hashes unsafe pane ids into portable overlay directory names', () => {
@@ -390,7 +382,7 @@ describe('PluginOverlayManager', () => {
     expect(dir).not.toBeNull()
     expect(basename(dir!)).toMatch(/^[a-f0-9]{32}$/)
     expect(dir).not.toContain('tab/with')
-    expect(existsSync(join(dir!, 'plugins', 'nightshift-opencode-status.js'))).toBe(true)
+    expect(existsSync(join(dir!, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
   })
 })
 
@@ -398,9 +390,9 @@ describe('resolvePiSourceAgentDir', () => {
   it('uses only the selected kind source shadow when resolving inherited overlays', () => {
     const env = {
       HOME: mkdtempSync(join(tmpdir(), 'plugin-overlay-env-')),
-      PI_CODING_AGENT_DIR: '/tmp/parent-nightshift-pi-overlay',
-      NIGHTSHIFT_PI_CODING_AGENT_DIR: '/tmp/parent-nightshift-pi-overlay',
-      NIGHTSHIFT_PI_SOURCE_AGENT_DIR: '/user/.pi/agent'
+      PI_CODING_AGENT_DIR: '/tmp/parent-kolux-pi-overlay',
+      KOLUX_PI_CODING_AGENT_DIR: '/tmp/parent-kolux-pi-overlay',
+      KOLUX_PI_SOURCE_AGENT_DIR: '/user/.pi/agent'
     }
     try {
       expect(resolvePiSourceAgentDir(env, undefined, 'pi')).toBe('/user/.pi/agent')
@@ -410,11 +402,11 @@ describe('resolvePiSourceAgentDir', () => {
     }
   })
 
-  it('keeps explicit PI_CODING_AGENT_DIR values when they are not Nightshift overlays', () => {
+  it('keeps explicit PI_CODING_AGENT_DIR values when they are not Kolux overlays', () => {
     const env = {
       HOME: mkdtempSync(join(tmpdir(), 'plugin-overlay-env-')),
       PI_CODING_AGENT_DIR: '/user/custom-omp-agent',
-      NIGHTSHIFT_PI_SOURCE_AGENT_DIR: '/user/.pi/agent'
+      KOLUX_PI_SOURCE_AGENT_DIR: '/user/.pi/agent'
     }
     try {
       expect(resolvePiSourceAgentDir(env, undefined, 'omp')).toBe('/user/custom-omp-agent')

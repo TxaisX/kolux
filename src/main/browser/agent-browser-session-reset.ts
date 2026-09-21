@@ -7,7 +7,7 @@ const SAFE_SESSION_NAME = /^[A-Za-z0-9_-]+$/
 /**
  * True when no daemon can be holding `sessionName`, so closing it would only start one.
  *
- * Only a Nightshift-derived socket directory proves that (`ownsSocketDirectory`): it is a
+ * Only a Kolux-derived socket directory proves that (`ownsSocketDirectory`): it is a
  * private per-profile `/tmp` directory, never an inherited one shared with a second
  * profile, and never Windows, which uses named pipes and leaves no socket to inspect.
  */

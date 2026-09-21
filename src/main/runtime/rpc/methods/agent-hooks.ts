@@ -5,7 +5,7 @@ import { defineMethod, type RpcMethod } from '../core'
 const PrepareCodexForWslPaneParams = z
   .object({
     codexHome: z.string().max(4_096),
-    nightshiftCodexHome: z.string().max(4_096),
+    koluxCodexHome: z.string().max(4_096),
     wslDistro: z
       .string()
       .trim()
@@ -21,13 +21,13 @@ export const AGENT_HOOK_METHODS: readonly RpcMethod[] = [
     params: PrepareCodexForWslPaneParams,
     handler: async (params, { runtime, clientKind }) => {
       if (clientKind !== undefined) {
-        throw new Error('Codex hook preparation is only available to the local Nightshift CLI.')
+        throw new Error('Codex hook preparation is only available to the local Kolux CLI.')
       }
       const settings = runtime.getClientSettings()
       return await prepareManagedWslCodexHomeBeforeShellLaunch({
         env: {
           CODEX_HOME: params.codexHome,
-          NIGHTSHIFT_CODEX_HOME: params.nightshiftCodexHome,
+          KOLUX_CODEX_HOME: params.koluxCodexHome,
           WSL_DISTRO_NAME: params.wslDistro
         },
         hooksEnabled:

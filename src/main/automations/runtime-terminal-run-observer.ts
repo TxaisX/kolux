@@ -188,7 +188,7 @@ export function createRuntimeAutomationRunTerminalObserver(
             return await buildUnobservedObservation(
               runtime,
               handle,
-              'Nightshift stopped watching this run after 6h without a completion signal.'
+              'Kolux stopped watching this run after 6h without a completion signal.'
             )
           }
         }

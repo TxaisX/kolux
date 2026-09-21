@@ -14,7 +14,7 @@ import {
   publicKeyToBase64
 } from '../../shared/e2ee-crypto'
 import { RuntimeClient } from './client'
-import { launchNightshiftApp } from './launch'
+import { launchKoluxApp } from './launch'
 import { addEnvironmentFromPairingCode } from './environments'
 import { RuntimeClientError } from './types'
 import {
@@ -31,7 +31,7 @@ import {
 } from '../../shared/protocol-version'
 
 vi.mock('./launch', () => ({
-  launchNightshiftApp: vi.fn()
+  launchKoluxApp: vi.fn()
 }))
 
 type TestRuntime = {
@@ -48,7 +48,7 @@ describe('CLI remote WebSocket transport', () => {
   const servers: TestRuntime[] = []
 
   afterEach(async () => {
-    vi.mocked(launchNightshiftApp).mockClear()
+    vi.mocked(launchKoluxApp).mockClear()
     await Promise.all(servers.splice(0).map((server) => server.close()))
   })
 
@@ -89,7 +89,7 @@ describe('CLI remote WebSocket transport', () => {
     )
   })
 
-  it('accepts a bare pairing payload as well as the nightshift URL wrapper', async () => {
+  it('accepts a bare pairing payload as well as the kolux URL wrapper', async () => {
     const runtime = await startTestRuntime('runtime-ws-2', {
       appVersion: '1.5.0',
       remoteUpdateSupport: {
@@ -148,16 +148,16 @@ describe('CLI remote WebSocket transport', () => {
       })
     )
 
-    const status = await client.openNightshift()
+    const status = await client.openKolux()
 
     expect(status.result.app.desktopWindowStatus).toBe('initializing')
-    expect(launchNightshiftApp).not.toHaveBeenCalled()
+    expect(launchKoluxApp).not.toHaveBeenCalled()
   })
 
   it('connects through a saved environment selector', async () => {
     const runtime = await startTestRuntime('runtime-env-1')
     servers.push(runtime)
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-cli-env-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-cli-env-'))
     addEnvironmentFromPairingCode(userDataPath, {
       name: 'remote-dev',
       pairingCode: encodePairingOffer({

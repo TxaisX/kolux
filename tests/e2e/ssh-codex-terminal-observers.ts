@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './helpers/nightshift-app'
+import { expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, switchToWorktree } from './helpers/store'
 import {
   execInTerminal,

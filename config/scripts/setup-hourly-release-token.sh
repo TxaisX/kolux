@@ -10,7 +10,7 @@
 #
 # The same App also serves adhoc-mac-build.yml and daily-mac-build.yml, which
 # read these same two secrets: one credential, one rotation, all dev channels.
-# Widening it to cover TxaisX/nightshift-adhoc / nightshift-daily is
+# Widening it to cover TxaisX/nightshift-adhoc / kolux-daily is
 # setup-adhoc-release-repo.sh / setup-daily-release-repo.sh's job.
 #
 # The key is read from a file and piped straight into `gh secret set`. It is never
@@ -54,7 +54,7 @@ cat <<EOF
 Create a GitHub App (one time — the key never expires)
 ──────────────────────────────────────────────────────
   1. Open:  https://github.com/organizations/txais/settings/apps/new
-  2. Name ..................  nightshift-hourly-release
+  2. Name ..................  kolux-hourly-release
      Homepage URL ..........  https://github.com/$HOURLY_REPO
      Webhook ...............  UNCHECK "Active"
   3. Repository permissions  ->  Contents: Read and write

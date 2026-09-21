@@ -67,7 +67,7 @@ export function resolveWorktreeMemoryNames(
   repoId: string
   repoName: string
 } {
-  // Nightshift worktree ids look like `${repoId}::${absolutePath}`.
+  // Kolux worktree ids look like `${repoId}::${absolutePath}`.
   const parsed = splitWorktreeIdForFilesystem(worktreeId)
   const repoId = parsed?.repoId ?? worktreeId
   const worktreePath = parsed?.worktreePath ?? ''

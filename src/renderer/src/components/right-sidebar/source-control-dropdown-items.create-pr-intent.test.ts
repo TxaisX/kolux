@@ -143,8 +143,8 @@ describe('resolveDropdownItems Create PR intent', () => {
   )
 
   it.each([
-    ['azure-devops', 'Set NIGHTSHIFT_AZURE_DEVOPS_TOKEN in this environment'],
-    ['gitea', 'Set NIGHTSHIFT_GITEA_TOKEN in this environment']
+    ['azure-devops', 'Set KOLUX_AZURE_DEVOPS_TOKEN in this environment'],
+    ['gitea', 'Set KOLUX_GITEA_TOKEN in this environment']
   ] as const)('uses token auth copy when %s PR creation needs authentication', (provider, hint) => {
     const items = resolveDropdownItems(
       inputs({

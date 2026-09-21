@@ -22,7 +22,7 @@ describe('getProjectHostCloneUrl', () => {
           providerIdentity: {
             provider: 'github',
             owner: ' txais ',
-            repo: ' nightshift '
+            repo: ' kolux '
           }
         })
       )
@@ -36,12 +36,12 @@ describe('getProjectHostCloneUrl', () => {
           providerIdentity: {
             provider: 'github',
             owner: 'enterprise owner',
-            repo: 'nightshift repo',
+            repo: 'kolux repo',
             host: 'github.acme-corp.com:8443'
           }
         })
       )
-    ).toBe('https://github.acme-corp.com:8443/enterprise%20owner/nightshift%20repo.git')
+    ).toBe('https://github.acme-corp.com:8443/enterprise%20owner/kolux%20repo.git')
   })
 
   it('rejects malformed or path-bearing Enterprise hosts', () => {
@@ -55,7 +55,7 @@ describe('getProjectHostCloneUrl', () => {
       expect(
         getProjectHostCloneUrl(
           createProject({
-            providerIdentity: { provider: 'github', owner: 'acme', repo: 'nightshift', host }
+            providerIdentity: { provider: 'github', owner: 'acme', repo: 'kolux', host }
           })
         )
       ).toBeNull()
@@ -70,7 +70,7 @@ describe('getProjectHostCloneUrl', () => {
           providerIdentity: {
             provider: 'github',
             owner: '',
-            repo: 'nightshift'
+            repo: 'kolux'
           }
         })
       )

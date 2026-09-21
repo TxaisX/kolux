@@ -10,7 +10,7 @@ import { createSkillPackageArchive } from './skill-package-creation'
 
 const execFileAsync = promisify(execFile)
 const RUN_REAL_WINDOWS =
-  process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WINDOWS_SKILL_TEST === '1'
+  process.platform === 'win32' && process.env.KOLUX_REAL_WINDOWS_SKILL_TEST === '1'
 
 describe.runIf(RUN_REAL_WINDOWS)('real Windows skill workspace installation', () => {
   let root = ''
@@ -37,12 +37,12 @@ describe.runIf(RUN_REAL_WINDOWS)('real Windows skill workspace installation', ()
   }
 
   beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-windows-skill-integration-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-windows-skill-integration-'))
     homeDirectory = join(root, 'host home-é')
     const repository = join(root, 'repository')
     gitWorktree = join(root, 'Git worktree-é')
     folderWorkspace = join(root, 'Folder workspace-é')
-    stateDirectory = join(root, 'nightshift state')
+    stateDirectory = join(root, 'kolux state')
     const source = join(root, 'Skill source-é')
     await Promise.all([
       mkdir(homeDirectory),
@@ -53,8 +53,8 @@ describe.runIf(RUN_REAL_WINDOWS)('real Windows skill workspace installation', ()
       writeFile(join(root, 'system.gitconfig'), '')
     ])
     await git(['init', '--quiet'], repository)
-    await git(['config', 'user.name', 'Nightshift Test'], repository)
-    await git(['config', 'user.email', 'nightshift@example.invalid'], repository)
+    await git(['config', 'user.name', 'Kolux Test'], repository)
+    await git(['config', 'user.email', 'kolux@example.invalid'], repository)
     await writeFile(join(repository, 'README.md'), 'fixture\n')
     await git(['add', 'README.md'], repository)
     await git(['commit', '--quiet', '-m', 'fixture'], repository)

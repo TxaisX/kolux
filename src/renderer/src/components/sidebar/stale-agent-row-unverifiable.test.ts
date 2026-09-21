@@ -1,12 +1,12 @@
 /**
- * A stale agent entry on a pane Nightshift STILL HOLDS A LIVE PTY FOR is not the same thing as a
+ * A stale agent entry on a pane Kolux STILL HOLDS A LIVE PTY FOR is not the same thing as a
  * pane with nothing running in it. Both used to decay to `idle`, which asserts "nothing here"
  * on no evidence at all — the exact substitution docs/reference/ssh-execution-boundary.md
  * exists to prevent (loss of contact is never evidence).
  *
- * The split is on evidence Nightshift already computes: `tabHasLivePty`. With a live PTY the row
+ * The split is on evidence Kolux already computes: `tabHasLivePty`. With a live PTY the row
  * reads `unverifiable` and reports the observer's own fact — how long the silence has run —
- * so the user can apply knowledge Nightshift does not have. With no PTY it stays `idle`.
+ * so the user can apply knowledge Kolux does not have. With no PTY it stays `idle`.
  *
  * Negative controls are the point of this suite: nothing may claim a pane FINISHED because
  * contact was lost, a fresh pane must still read `working`, and a pane with no agent must
@@ -59,7 +59,7 @@ function rowState(agentEntry: AgentStatusEntry, ptyIdsByTabId: Record<string, st
 const LIVE = { [TAB_ID]: ['pty-1'] }
 const NO_PTY: Record<string, string[]> = {}
 
-describe('a stale entry on a pane Nightshift still holds', () => {
+describe('a stale entry on a pane Kolux still holds', () => {
   it('reads `unverifiable`, not `idle` — the reporting stream stopped, not the pane', () => {
     expect(rowState(entry(), LIVE)).toBe('unverifiable')
   })
@@ -74,7 +74,7 @@ describe('a stale entry on a pane Nightshift still holds', () => {
     })
     expect(rows[0].state).not.toBe('done')
     expect(getAgentDotState(rows[0])).not.toBe('done')
-    // Nor the working spinner: Nightshift has no current evidence of work either.
+    // Nor the working spinner: Kolux has no current evidence of work either.
     expect(getAgentDotState(rows[0])).not.toBe('working')
     expect(getAgentDotState(rows[0])).toBe('unverifiable')
   })

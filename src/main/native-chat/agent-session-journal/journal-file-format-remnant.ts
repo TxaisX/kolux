@@ -1,7 +1,7 @@
 // A journal directory left behind by the pre-SQLite file format.
 //
 // Not `journal-legacy-import.ts`, which reads the PROVIDER's own transcript.
-// This is Nightshift's own `log.jsonl`, which no build after the SQLite move reads.
+// This is Kolux's own `log.jsonl`, which no build after the SQLite move reads.
 // Nothing imports it, so the session it belonged to opens empty and is
 // indistinguishable from a chat created seconds ago — same `session_created`
 // epoch, same empty timeline. The remnant is the one durable fact that tells
@@ -34,7 +34,7 @@ export function findJournalFileFormatRemnant(journalDir: string): string | null 
 
 /** One stable identity, so a reopen upserts the same row instead of adding one. */
 export const JOURNAL_FILE_FORMAT_REMNANT_DISCLOSURE_IDENTITY: AgentJournalItemIdentity = {
-  provider: 'nightshift',
+  provider: 'kolux',
   clientMessageId: 'journal-file-format-remnant'
 }
 
@@ -50,7 +50,7 @@ export function journalFileFormatRemnantDisclosure(input: {
     body: {
       kind: 'status',
       text: boundJournalStatusText(
-        `This chat's history was saved in an older format Nightshift no longer reads, so it starts ` +
+        `This chat's history was saved in an older format Kolux no longer reads, so it starts ` +
           `empty. The session still points at the same ${formatAgentTypeLabel(input.agent)} ` +
           `conversation — send a message to pick up where you left off. The original ` +
           `transcript is on the session's host at \`${input.transcriptPath}\``

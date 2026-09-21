@@ -17,96 +17,91 @@ const withSelf = <T>(rows: readonly T[]): (T | typeof SELF_PROCESS_ROW)[] => [
   ...rows
 ]
 
-const NIGHTSHIFT_PID = 5000
+const KOLUX_PID = 5000
 
 function link(pid: number, ppid: number): { pid: number; ppid: number } {
   return { pid, ppid }
 }
 
-/** Windows: services.exe → svchost.exe, a chain that never reaches Nightshift. */
+/** Windows: services.exe → svchost.exe, a chain that never reaches Kolux. */
 const SYSTEM_CHAIN = [link(4, 0), link(700, 4), link(900, 700)]
 
 describe('classifyWindowsTreeKillTarget', () => {
   it('accepts a ConPTY shell spawned directly by this process', () => {
-    const rows = [...SYSTEM_CHAIN, link(NIGHTSHIFT_PID, 900), link(4242, NIGHTSHIFT_PID)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('own')
+    const rows = [...SYSTEM_CHAIN, link(KOLUX_PID, 900), link(4242, KOLUX_PID)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('own')
   })
 
   it('accepts a winpty shell reached through the winpty-agent hop', () => {
     // node-pty falls back to winpty below Windows build 18309, so the shell's
-    // parent is winpty-agent.exe rather tha Nightshift itself.
-    const rows = [link(NIGHTSHIFT_PID, 900), link(6100, NIGHTSHIFT_PID), link(4242, 6100)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('own')
+    // parent is winpty-agent.exe rather tha Kolux itself.
+    const rows = [link(KOLUX_PID, 900), link(6100, KOLUX_PID), link(4242, 6100)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('own')
   })
 
-  it('documents that a recycled PID under another Nightshift pane still classifies as own', () => {
+  it('documents that a recycled PID under another Kolux pane still classifies as own', () => {
     // Dead PTY root 4242 recycled as a tool under a different pane's agent tree.
     // Ancestry still reaches us, so taskkill is allowed — wrong process, own tree.
     // Closing this needs spawn-time CreationDate / Job Object (#10680).
-    const rows = [
-      link(NIGHTSHIFT_PID, 900),
-      link(7000, NIGHTSHIFT_PID),
-      link(7100, 7000),
-      link(4242, 7100)
-    ]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('own')
+    const rows = [link(KOLUX_PID, 900), link(7000, KOLUX_PID), link(7100, 7000), link(4242, 7100)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('own')
   })
 
   it('rejects a recycled pid whose ancestry never reaches this process', () => {
-    const rows = [...SYSTEM_CHAIN, link(NIGHTSHIFT_PID, 900), link(4242, 900)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('foreign')
+    const rows = [...SYSTEM_CHAIN, link(KOLUX_PID, 900), link(4242, 900)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('foreign')
   })
 
   it('reports an exited root as absent rather than sweeping a stale pid', () => {
-    const rows = [...SYSTEM_CHAIN, link(NIGHTSHIFT_PID, 900)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('absent')
+    const rows = [...SYSTEM_CHAIN, link(KOLUX_PID, 900)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('absent')
   })
 
   it('rejects a recycled pid whose parent has itself already exited', () => {
     // The orphan's ppid names a vacated pid, so the chain dead-ends away from us.
-    const rows = [link(NIGHTSHIFT_PID, 900), link(4242, 31337)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('foreign')
+    const rows = [link(KOLUX_PID, 900), link(4242, 31337)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('foreign')
   })
 
-  it('rejects a chain longer than the ConPTY/winpty depth even if Nightshift is above it', () => {
+  it('rejects a chain longer than the ConPTY/winpty depth even if Kolux is above it', () => {
     const rows = [
-      link(NIGHTSHIFT_PID, 900),
-      link(10, NIGHTSHIFT_PID),
+      link(KOLUX_PID, 900),
+      link(10, KOLUX_PID),
       link(11, 10),
       link(12, 11),
       link(13, 12),
       link(4242, 13)
     ]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('foreign')
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('foreign')
   })
 
   it('never force-kills this process tree when the root pid is our own pid', () => {
-    const rows = [link(NIGHTSHIFT_PID, 900)]
-    expect(classifyWindowsTreeKillTarget(NIGHTSHIFT_PID, rows, NIGHTSHIFT_PID)).toBe('foreign')
+    const rows = [link(KOLUX_PID, 900)]
+    expect(classifyWindowsTreeKillTarget(KOLUX_PID, rows, KOLUX_PID)).toBe('foreign')
   })
 
   it.each([0, -1, 1.5, Number.NaN])('rejects the invalid root pid %s', (rootPid) => {
-    expect(
-      classifyWindowsTreeKillTarget(rootPid, [link(4242, NIGHTSHIFT_PID)], NIGHTSHIFT_PID)
-    ).toBe('foreign')
+    expect(classifyWindowsTreeKillTarget(rootPid, [link(4242, KOLUX_PID)], KOLUX_PID)).toBe(
+      'foreign'
+    )
   })
 
   it('treats duplicate rows for the root as unknown, not as ownership', () => {
-    const rows = [link(4242, NIGHTSHIFT_PID), link(4242, 900)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('unknown')
+    const rows = [link(4242, KOLUX_PID), link(4242, 900)]
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('unknown')
   })
 
   it('treats a cyclic table as unknown instead of looping', () => {
     const rows = [link(4242, 4243), link(4243, 4242)]
-    expect(classifyWindowsTreeKillTarget(4242, rows, NIGHTSHIFT_PID)).toBe('unknown')
+    expect(classifyWindowsTreeKillTarget(4242, rows, KOLUX_PID)).toBe('unknown')
   })
 })
 
 describe('verifyWindowsTreeKillTarget', () => {
   it('classifies a live win32 root against the fresh process table', async () => {
-    const readRows = vi.fn().mockResolvedValue([link(4242, NIGHTSHIFT_PID)])
+    const readRows = vi.fn().mockResolvedValue([link(4242, KOLUX_PID)])
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'win32' })
     ).resolves.toBe('own')
     expect(readRows).toHaveBeenCalledOnce()
   })
@@ -114,21 +109,21 @@ describe('verifyWindowsTreeKillTarget', () => {
   it('detects the recycled-pid case that taskkill /T /F must not touch', async () => {
     const readRows = vi.fn().mockResolvedValue([link(4242, 900), link(900, 4)])
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'win32' })
     ).resolves.toBe('foreign')
   })
 
   it('returns unknown when the Windows process table is unavailable', async () => {
     const readRows = vi.fn().mockResolvedValue(null)
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'win32' })
     ).resolves.toBe('unknown')
   })
 
   it('returns unknown when the process query rejects', async () => {
     const readRows = vi.fn().mockRejectedValue(new Error('process table unavailable'))
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'win32' })
     ).resolves.toBe('unknown')
   })
 
@@ -137,7 +132,7 @@ describe('verifyWindowsTreeKillTarget', () => {
       throw new Error('spawn EPERM')
     })
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'win32' })
     ).resolves.toBe('unknown')
   })
 
@@ -147,7 +142,7 @@ describe('verifyWindowsTreeKillTarget', () => {
       const readRows = vi.fn(() => new Promise<never>(() => {}))
       const pending = verifyWindowsTreeKillTarget(4242, {
         readRows,
-        ownerPid: NIGHTSHIFT_PID,
+        ownerPid: KOLUX_PID,
         platform: 'win32'
       })
       await vi.advanceTimersByTimeAsync(WINDOWS_ROOT_IDENTITY_TIMEOUT_MS)
@@ -160,7 +155,7 @@ describe('verifyWindowsTreeKillTarget', () => {
   it('skips the probe off Windows so POSIX teardown keeps its own guards', async () => {
     const readRows = vi.fn()
     await expect(
-      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: NIGHTSHIFT_PID, platform: 'darwin' })
+      verifyWindowsTreeKillTarget(4242, { readRows, ownerPid: KOLUX_PID, platform: 'darwin' })
     ).resolves.toBe('unknown')
     expect(readRows).not.toHaveBeenCalled()
   })
@@ -172,8 +167,8 @@ describe('verifyWindowsTreeKillTarget', () => {
 // churn #6288/#6667 fixed for POSIX. Exercises the real wiring, not a fake.
 describe('verifyWindowsTreeKillTarget scan volume', () => {
   const NATIVE_ROWS = [
-    { pid: NIGHTSHIFT_PID, ppid: 900, name: 'nightshift.exe', commandLine: 'nightshift.exe' },
-    { pid: 4242, ppid: NIGHTSHIFT_PID, name: 'pwsh.exe', commandLine: 'pwsh.exe' }
+    { pid: KOLUX_PID, ppid: 900, name: 'kolux.exe', commandLine: 'kolux.exe' },
+    { pid: 4242, ppid: KOLUX_PID, name: 'pwsh.exe', commandLine: 'pwsh.exe' }
   ]
 
   beforeEach(() => {
@@ -194,7 +189,7 @@ describe('verifyWindowsTreeKillTarget scan volume', () => {
   it('collapses a 32-wide teardown burst into a single process-table scan', async () => {
     const verdicts = await Promise.all(
       Array.from({ length: 32 }, () =>
-        verifyWindowsTreeKillTarget(4242, { ownerPid: NIGHTSHIFT_PID, platform: 'win32' })
+        verifyWindowsTreeKillTarget(4242, { ownerPid: KOLUX_PID, platform: 'win32' })
       )
     )
 

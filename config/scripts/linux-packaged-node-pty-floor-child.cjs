@@ -6,7 +6,7 @@ if (!resourcesDirectory) {
 }
 
 const pty = require(join(resourcesDirectory, 'node_modules', 'node-pty'))
-const expected = 'nightshift-node-pty-floor-ok'
+const expected = 'kolux-node-pty-floor-ok'
 let output = ''
 let settled = false
 const child = pty.spawn('/bin/sh', ['-c', `printf ${expected}; sleep 0.1`], {

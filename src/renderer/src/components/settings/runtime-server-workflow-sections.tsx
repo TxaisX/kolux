@@ -116,7 +116,7 @@ export function RuntimeServerShareSection({
         <p className="text-xs text-muted-foreground">
           {translate(
             'auto.components.settings.RuntimeEnvironmentsPane.advertiseThisAppHelp',
-            'Create access links for browsers, mobile clients, or another Nightshift client to connect back to this running app.'
+            'Create access links for browsers, mobile clients, or another Kolux client to connect back to this running app.'
           )}
         </p>
       </div>
@@ -126,13 +126,13 @@ export function RuntimeServerShareSection({
             <div className="text-sm font-medium">
               {translate(
                 'auto.components.settings.RuntimeEnvironmentsPane.6e1280ca55',
-                'Share this Nightshift server'
+                'Share this Kolux server'
               )}
             </div>
             <p className="text-xs text-muted-foreground">
               {translate(
                 'auto.components.settings.RuntimeEnvironmentsPane.84b9b2be05',
-                'Create a revocable access grant so a browser or another Nightshift client can connect.'
+                'Create a revocable access grant so a browser or another Kolux client can connect.'
               )}
             </p>
           </div>

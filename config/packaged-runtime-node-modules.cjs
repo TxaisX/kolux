@@ -249,7 +249,7 @@ function verifyPackagedMainRuntimeDeps(resourcesDir, asar = require('@electron/a
     // backslashes, and extractFile expects that same host-style path.
     const internalPath = entry.replace(/^[\\/]+/, '')
     const source = asar.extractFile(asarPath, internalPath).toString('utf8')
-    // Why the lookbehind: Nightshift has its own registry methods named `require`, so a
+    // Why the lookbehind: Kolux has its own registry methods named `require`, so a
     // minified `registry.require('some-id')` must not read as a bare specifier.
     // Why it readmits `...`: a dot that ends a spread is not member access, and
     // the two error directions are not symmetric -- a false positive fails the
@@ -375,12 +375,12 @@ function prunePackagedNodePty(resourcesDir, electronPlatformName, electronArch) 
 
   // Why delete only conpty.node: node-pty's loader tries build/Release, then
   // build/Debug, then prebuilds/<platform>-<arch>, swallowing every failure in
-  // between. Only the source build carries Nightshift's job-object exports, so an ABI
+  // between. Only the source build carries Kolux's job-object exports, so an ABI
   // mismatch or an AV quarantine of build/Release/conpty.node would silently
   // fall through to the UNPATCHED prebuild -- teardown back to guessing by PID
   // ancestry, with no error anywhere.
   //
-  // Why NOT the whole prebuilds/ tree: Nightshift's own patch deletes the
+  // Why NOT the whole prebuilds/ tree: Kolux's own patch deletes the
   // `conpty_console_list` and winpty `pty` gyp targets, so a Windows source
   // build emits conpty.node and nothing else. conpty_console_list.node,
   // pty.node, winpty.dll and winpty-agent.exe exist ONLY here. Removing them
@@ -465,7 +465,7 @@ function prunePackagedParcelWatcher(resourcesDir, electronPlatformName, electron
 // Why type declarations: they are compile-time only; the packaged app never resolves them.
 // Why source maps: they embed the original sources (megabytes for @linear/sdk alone) and
 // nothing in the packaged app turns on Node's source-map support, so they are never read.
-// Nightshift's own main-process maps live outside node_modules and ship as a separate release artifact.
+// Kolux's own main-process maps live outside node_modules and ship as a separate release artifact.
 function isPrunableTypeOrSourceMapArtifact(filename) {
   return TYPE_DECLARATION_ARTIFACT_RE.test(filename) || JS_SOURCE_MAP_ARTIFACT_RE.test(filename)
 }

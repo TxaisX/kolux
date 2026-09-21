@@ -24,7 +24,7 @@ import type { BrowserRouteSessionRegistry } from './browser-route-session-regist
 import type { BrowserRouteSessionHandle } from './browser-route-session-state'
 
 type BrowserClientPageCreationDependencies = {
-  nightshiftProfileId: string
+  koluxProfileId: string
   authorityConnectionIdentity: string
   legacyAuthorityConnectionIdentity: string
   storageScope: string
@@ -68,13 +68,13 @@ export async function createReservedBrowserClientPage(
     assertCurrentBrowserClientPageRenderer(renderer)
     routeSession = await dependencies.routeSessions.preparePage({
       identity: {
-        nightshiftProfileId: dependencies.nightshiftProfileId,
+        koluxProfileId: dependencies.koluxProfileId,
         browserProfileId: event.command.browserProfileId,
         authorityConnectionIdentity: dependencies.authorityConnectionIdentity,
         executionHostIdentity: route.executionHostIdentity
       },
       legacyIdentity: {
-        nightshiftProfileId: dependencies.nightshiftProfileId,
+        koluxProfileId: dependencies.koluxProfileId,
         browserProfileId: event.command.browserProfileId,
         authorityConnectionIdentity: dependencies.legacyAuthorityConnectionIdentity,
         executionHostIdentity: route.legacyExecutionHostIdentity

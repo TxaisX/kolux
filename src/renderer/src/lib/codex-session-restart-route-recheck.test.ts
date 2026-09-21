@@ -33,7 +33,7 @@ describe('Codex restored route notice recheck', () => {
             id: 'tab-1',
             ptyId: 'pty-1',
             worktreeId: 'wt1',
-            title: 'nightshift-1',
+            title: 'kolux-1',
             customTitle: null,
             color: null,
             sortOrder: 0,

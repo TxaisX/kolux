@@ -15,15 +15,15 @@ export const RECOVERABLE_CODES: ReadonlySet<string> = new Set([
 ])
 
 export const RECOVERABLE_MESSAGE_FRAGMENTS: readonly string[] = [
-  'could not connect to the remote nightshift runtime',
-  'remote nightshift runtime closed the connection',
-  'remote nightshift runtime connection closed',
-  'remote nightshift runtime is not connected',
+  'could not connect to the remote kolux runtime',
+  'remote kolux runtime closed the connection',
+  'remote kolux runtime connection closed',
+  'remote kolux runtime is not connected',
   RUNTIME_RPC_QUEUE_OVERLOAD_MESSAGE_FRAGMENT,
   'remote runtime connection closed',
   'remote runtime subscription closed before it started',
   'remote terminal stream is not connected',
-  'timed out waiting for the remote nightshift runtime'
+  'timed out waiting for the remote kolux runtime'
 ]
 
 export function isRuntimeRpcQueueOverloadError(error: RemoteRuntimeClientErrorLike): boolean {

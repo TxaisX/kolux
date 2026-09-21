@@ -151,7 +151,7 @@ describe('worktree git-common narrow watch (local native platforms)', () => {
   }
 
   async function makeCommonDir(withWorktrees: boolean): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-git-common-watch-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-git-common-watch-'))
     cleanups.push(() => rm(root, { recursive: true, force: true }))
     const commonDir = await realpath(root)
     if (withWorktrees) {

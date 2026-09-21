@@ -25,7 +25,7 @@ export type PaletteEvidenceFieldSource = IndexedPaletteEvidenceFieldSource & {
 }
 
 /**
- * A `left/right` token may cover two visible fields at once, e.g. `nightshift/main`
+ * A `left/right` token may cover two visible fields at once, e.g. `kolux/main`
  * meaning repo + branch. Both halves must hit or the token falls back to a
  * literal match inside one field.
  */

@@ -24,8 +24,8 @@ function sendJson(res: ServerResponse, body: unknown): void {
 
 describe('Azure DevOps hosted review integration', () => {
   beforeEach(() => {
-    process.env = { ...OLD_ENV, NIGHTSHIFT_AZURE_DEVOPS_TOKEN: 'local-pat' }
-    delete process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL
+    process.env = { ...OLD_ENV, KOLUX_AZURE_DEVOPS_TOKEN: 'local-pat' }
+    delete process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL
     _resetAzureDevOpsRepoRefCache()
   })
 
@@ -83,13 +83,13 @@ describe('Azure DevOps hosted review integration', () => {
     })
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
 
-    const repoPath = await mkdtemp(join(tmpdir(), 'nightshift-azure-review-'))
+    const repoPath = await mkdtemp(join(tmpdir(), 'kolux-azure-review-'))
     try {
       const address = server.address()
       if (!address || typeof address === 'string') {
         throw new Error('expected TCP server address')
       }
-      process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL = `http://127.0.0.1:${address.port}/acme/Project`
+      process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL = `http://127.0.0.1:${address.port}/acme/Project`
 
       await execFileAsync('git', ['init'], { cwd: repoPath })
       await execFileAsync(
@@ -192,13 +192,13 @@ describe('Azure DevOps hosted review integration', () => {
     })
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
 
-    const repoPath = await mkdtemp(join(tmpdir(), 'nightshift-azure-review-active-'))
+    const repoPath = await mkdtemp(join(tmpdir(), 'kolux-azure-review-active-'))
     try {
       const address = server.address()
       if (!address || typeof address === 'string') {
         throw new Error('expected TCP server address')
       }
-      process.env.NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL = `http://127.0.0.1:${address.port}/acme/Project`
+      process.env.KOLUX_AZURE_DEVOPS_API_BASE_URL = `http://127.0.0.1:${address.port}/acme/Project`
 
       await execFileAsync('git', ['init'], { cwd: repoPath })
       await execFileAsync(

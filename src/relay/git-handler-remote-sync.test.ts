@@ -228,7 +228,7 @@ describe('GitHandler', () => {
           }).trim()
         )
         expect(
-          execFileSync('git', ['for-each-ref', '--format=%(refname)', 'refs/nightshift/rebase'], {
+          execFileSync('git', ['for-each-ref', '--format=%(refname)', 'refs/kolux/rebase'], {
             cwd: tmpDir,
             encoding: 'utf-8'
           }).trim()
@@ -313,7 +313,7 @@ describe('GitHandler', () => {
           })
         ).toContain('rebase (finish)')
         expect(
-          execFileSync('git', ['for-each-ref', '--format=%(refname)', 'refs/nightshift/rebase'], {
+          execFileSync('git', ['for-each-ref', '--format=%(refname)', 'refs/kolux/rebase'], {
             cwd: targetDir,
             encoding: 'utf-8'
           }).trim()
@@ -486,7 +486,7 @@ describe('GitHandler', () => {
       await expect(
         dispatcher.callRequest('git.forkSync', {
           worktreePath: tmpDir,
-          expectedUpstream: { owner: '   ', repo: 'nightshift' }
+          expectedUpstream: { owner: '   ', repo: 'kolux' }
         })
       ).rejects.toThrow('Invalid expected upstream.')
     })
@@ -507,7 +507,7 @@ describe('GitHandler', () => {
       await expect(
         dispatcher.callRequest(
           'git.forkSync',
-          { worktreePath: tmpDir, expectedUpstream: { owner: 'TxaisX', repo: 'nightshift' } },
+          { worktreePath: tmpDir, expectedUpstream: { owner: 'TxaisX', repo: 'kolux' } },
           { isStale: () => false, signal: controller.signal }
         )
       ).rejects.toThrow(/abort/i)
@@ -611,7 +611,7 @@ describe('GitHandler', () => {
         // The ref is scoped by remote identity so soft-keep can never serve
         // another project's PR #42 out of the same object database.
         const component = reviewHeadRemoteRefComponent('origin', bareDir)
-        expect(result.localRef).toBe(`refs/nightshift/pull/${component}/42`)
+        expect(result.localRef).toBe(`refs/kolux/pull/${component}/42`)
         const actual = execFileSync('git', ['rev-parse', '--verify', result.localRef], {
           cwd: tmpDir,
           encoding: 'utf-8'
@@ -665,7 +665,7 @@ describe('GitHandler', () => {
         // The head is fetched into a dedicated ref (not shared FETCH_HEAD) so a
         // concurrent fetch can't retarget the caller's rev-parse of the checkout.
         const component = reviewHeadRemoteRefComponent('origin', bareDir)
-        expect(result.localRef).toBe(`refs/nightshift/merge-requests/${component}/42`)
+        expect(result.localRef).toBe(`refs/kolux/merge-requests/${component}/42`)
         const actual = execFileSync('git', ['rev-parse', '--verify', result.localRef], {
           cwd: tmpDir,
           encoding: 'utf-8'
@@ -708,7 +708,7 @@ describe('GitHandler', () => {
         })) as { localRef: string }
 
         const component = reviewHeadRemoteRefComponent('origin', bareDir)
-        expect(result.localRef).toBe(`refs/nightshift/merge-requests/${component}/77`)
+        expect(result.localRef).toBe(`refs/kolux/merge-requests/${component}/77`)
         const actual = execFileSync('git', ['rev-parse', '--verify', result.localRef], {
           cwd: tmpDir,
           encoding: 'utf-8'

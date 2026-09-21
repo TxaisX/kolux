@@ -4,7 +4,7 @@ import { generateKeyPair, publicKeyToBase64 } from './e2ee-crypto'
 import { openRemoteRuntimeWebSocket } from './remote-runtime-request-websocket'
 
 describe('openRemoteRuntimeWebSocket', () => {
-  it('detaches Nightshift callback listeners when cleaned up', () => {
+  it('detaches Kolux callback listeners when cleaned up', () => {
     const keyPair = generateKeyPair()
     const opened = openRemoteRuntimeWebSocket(
       {

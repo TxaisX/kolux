@@ -3,7 +3,7 @@ import {
   ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY,
   ORCHESTRATION_FEDERATION_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { startFederatedWorker } from './federated-worker-start'
 
@@ -18,7 +18,7 @@ describe('federated worker start receipt validation', () => {
 
   it('marks a malformed ready receipt outcome unknown without persisting resources', async () => {
     const db = new OrchestrationDb(':memory:')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     databases.push(db)
     const run = db.createRun({

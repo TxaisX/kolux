@@ -70,8 +70,8 @@ describe('detectWslCommandsOnPath', () => {
       environmentResolved: true,
       code: 0,
       stdout:
-        '__NIGHTSHIFT_AGENT_PATH__claude\t/usr/bin/claude\n' +
-        '__NIGHTSHIFT_AGENT_PATH__codex\t/home/user/.local/bin/codex\n',
+        '__KOLUX_AGENT_PATH__claude\t/usr/bin/claude\n' +
+        '__KOLUX_AGENT_PATH__codex\t/home/user/.local/bin/codex\n',
       stderr: '',
       timedOut: false
     })
@@ -85,8 +85,7 @@ describe('detectWslCommandsOnPath', () => {
     runWslProcessMock.mockResolvedValue({
       environmentResolved: true,
       code: 0,
-      stdout:
-        '__NIGHTSHIFT_AGENT_PATH__claude\tclaude\n' + '__NIGHTSHIFT_AGENT_PATH__codex\tC:\\spoof\n',
+      stdout: '__KOLUX_AGENT_PATH__claude\tclaude\n' + '__KOLUX_AGENT_PATH__codex\tC:\\spoof\n',
       stderr: '',
       timedOut: false
     })
@@ -108,7 +107,7 @@ describe('detectWslCommandsOnPath', () => {
       code: 0,
       stdout:
         'Welcome to Ubuntu! Run a command as administrator (user "root")...\n' +
-        '__NIGHTSHIFT_AGENT_PATH__claude\t/home/user/.nvm/versions/node/v20/bin/claude\n',
+        '__KOLUX_AGENT_PATH__claude\t/home/user/.nvm/versions/node/v20/bin/claude\n',
       stderr: '',
       timedOut: false
     })
@@ -142,7 +141,7 @@ it('does not veto a guest binary on an ordinary Linux mount under /mnt', async (
   runWslProcessMock.mockResolvedValue({
     environmentResolved: true,
     code: 0,
-    stdout: '__NIGHTSHIFT_AGENT_PATH__claude\t/mnt/d/tools/claude\n',
+    stdout: '__KOLUX_AGENT_PATH__claude\t/mnt/d/tools/claude\n',
     stderr: '',
     timedOut: false
   })
@@ -155,7 +154,7 @@ it('still counts a genuine guest install', async () => {
   runWslProcessMock.mockResolvedValue({
     environmentResolved: true,
     code: 0,
-    stdout: '__NIGHTSHIFT_AGENT_PATH__claude\t/home/alice/.nvm/versions/node/v20.1.0/bin/claude\n',
+    stdout: '__KOLUX_AGENT_PATH__claude\t/home/alice/.nvm/versions/node/v20.1.0/bin/claude\n',
     stderr: '',
     timedOut: false
   })
@@ -171,7 +170,7 @@ describe('the detection script itself, run by a real POSIX shell', () => {
   let home: string
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-wsl-detect-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-wsl-detect-'))
   })
   afterEach(() => {
     rmSync(home, { recursive: true, force: true })
@@ -192,7 +191,7 @@ describe('the detection script itself, run by a real POSIX shell', () => {
       stderr: '',
       timedOut: false
     })
-    await detectWslCommandsOnPath({ distro: 'Ubuntu' }, ['nightshift-fake-cli', 'nosuchtool'])
+    await detectWslCommandsOnPath({ distro: 'Ubuntu' }, ['kolux-fake-cli', 'nosuchtool'])
     const script = String(runWslProcessMock.mock.calls.at(-1)?.[0].script)
     const options: ExecFileSyncOptions = {
       encoding: 'utf8',
@@ -204,33 +203,31 @@ describe('the detection script itself, run by a real POSIX shell', () => {
   itPosix('finds an nvm-installed binary the login PATH would have shown', async () => {
     // #9725: without the login PATH this resolves to nothing and preflight
     // reports a working install as "not installed".
-    plant('.nvm/versions/node/v20.1.0/bin', 'nightshift-fake-cli')
+    plant('.nvm/versions/node/v20.1.0/bin', 'kolux-fake-cli')
     const out = await runScript()
-    expect(out).toContain('__NIGHTSHIFT_AGENT_PATH__nightshift-fake-cli')
-    expect(out).toContain('.nvm/versions/node/v20.1.0/bin/nightshift-fake-cli')
+    expect(out).toContain('__KOLUX_AGENT_PATH__kolux-fake-cli')
+    expect(out).toContain('.nvm/versions/node/v20.1.0/bin/kolux-fake-cli')
   })
 
   itPosix('finds a ~/.local/bin install', async () => {
-    plant('.local/bin', 'nightshift-fake-cli')
-    expect(await runScript()).toContain('__NIGHTSHIFT_AGENT_PATH__nightshift-fake-cli')
+    plant('.local/bin', 'kolux-fake-cli')
+    expect(await runScript()).toContain('__KOLUX_AGENT_PATH__kolux-fake-cli')
   })
 
   itPosix('still reports nothing for a command that is genuinely absent', async () => {
-    plant('.local/bin', 'nightshift-fake-cli')
+    plant('.local/bin', 'kolux-fake-cli')
     expect(await runScript()).not.toContain('nosuchtool')
   })
 
   itPosix('finds a CLI when $HOME contains a space', async () => {
     // The dir list is globbed, so an unquoted $HOME word-split into a relative
     // path and every CLI read as absent -- the #9725 symptom, from the fix.
-    const spaced = mkdtempSync(join(tmpdir(), 'nightshift has space-'))
+    const spaced = mkdtempSync(join(tmpdir(), 'kolux has space-'))
     const previous = home
     home = spaced
     try {
-      plant('.nvm/versions/node/v20.1.0/bin', 'nightshift-fake-cli')
-      expect(await runScript()).toContain(
-        `${spaced}/.nvm/versions/node/v20.1.0/bin/nightshift-fake-cli`
-      )
+      plant('.nvm/versions/node/v20.1.0/bin', 'kolux-fake-cli')
+      expect(await runScript()).toContain(`${spaced}/.nvm/versions/node/v20.1.0/bin/kolux-fake-cli`)
     } finally {
       home = previous
       rmSync(spaced, { recursive: true, force: true })
@@ -240,8 +237,8 @@ describe('the detection script itself, run by a real POSIX shell', () => {
   itPosix('does not report a directory as an installed CLI', async () => {
     // Directories are mode 755 and pass -x. Preflight would say installed and
     // the launch would fail later with EISDIR.
-    mkdirSync(join(home, '.local/bin/nightshift-fake-cli'), { recursive: true })
-    expect(await runScript()).not.toContain('__NIGHTSHIFT_AGENT_PATH__nightshift-fake-cli')
+    mkdirSync(join(home, '.local/bin/kolux-fake-cli'), { recursive: true })
+    expect(await runScript()).not.toContain('__KOLUX_AGENT_PATH__kolux-fake-cli')
   })
 
   itPosix.each([
@@ -250,8 +247,8 @@ describe('the detection script itself, run by a real POSIX shell', () => {
     '.fnm/aliases/default/bin',
     '.local/share/mise/shims'
   ])('covers %s, which the native fallback also probes', async (dir) => {
-    plant(dir, 'nightshift-fake-cli')
-    expect(await runScript()).toContain('__NIGHTSHIFT_AGENT_PATH__nightshift-fake-cli')
+    plant(dir, 'kolux-fake-cli')
+    expect(await runScript()).toContain('__KOLUX_AGENT_PATH__kolux-fake-cli')
   })
 })
 
@@ -264,7 +261,7 @@ describe('the PATH walk, run by a real POSIX shell', () => {
     // so it reports "not installed" for a user who has both -- turning the
     // false positive into the #9725 false negative. Skipping the component
     // mid-walk is what actually finds the guest binary.
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-walk-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-walk-'))
     try {
       const win = join(root, 'winmnt/c/npm')
       const nvm = join(root, 'home/.nvm/bin')
@@ -280,10 +277,7 @@ describe('the PATH walk, run by a real POSIX shell', () => {
         { kind: 'literal', value: 'claude' },
         { skipWindowsMountDirs: true }
         // Stand in for /proc/mounts, which a test host does not have.
-      ).replace(
-        /_nightshift_win_mounts=\$\([^)]*\)/,
-        `_nightshift_win_mounts=${join(root, 'winmnt')}`
-      )
+      ).replace(/_kolux_win_mounts=\$\([^)]*\)/, `_kolux_win_mounts=${join(root, 'winmnt')}`)
       const options: ExecFileSyncOptions = {
         encoding: 'utf8',
         env: { PATH: `${win}:${nvm}:/usr/bin:/bin` }
@@ -302,7 +296,7 @@ describe('the mount table read, counted against a real shell', () => {
   const itPosix = process.platform === 'win32' ? it.skip : it
 
   const runWithCountingAwk = async (commands: string[]): Promise<number> => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-awk-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-awk-'))
     try {
       const counter = join(root, 'count')
       const bin = join(root, 'bin')
@@ -350,7 +344,7 @@ describe('the mount table read, counted against a real shell', () => {
     // the variable inside the walk keeps the fork count at 1 and keeps the
     // single-command test green, while every agent after the first stops
     // skipping /mnt. A surviving mutant proved that gap.
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-memo-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-memo-'))
     try {
       const win = join(root, 'winmnt/c/npm')
       const guest = join(root, 'home/bin')
@@ -373,8 +367,8 @@ describe('the mount table read, counted against a real shell', () => {
       })
       await detectWslCommandsOnPath({ distro: 'Ubuntu' }, ['claude', 'codex'])
       const script = String(runWslProcessMock.mock.calls.at(-1)?.[0].script).replace(
-        /_nightshift_win_mounts=\$\([^)]*\)/,
-        `_nightshift_win_mounts=${join(root, 'winmnt')}`
+        /_kolux_win_mounts=\$\([^)]*\)/,
+        `_kolux_win_mounts=${join(root, 'winmnt')}`
       )
       const options: ExecFileSyncOptions = {
         encoding: 'utf8',
@@ -382,8 +376,8 @@ describe('the mount table read, counted against a real shell', () => {
       }
       const out = String(execFileSync('/bin/sh', ['-c', script], options))
       // BOTH must resolve behind the mount, not just the first.
-      expect(out).toContain(`__NIGHTSHIFT_AGENT_PATH__claude\t${join(guest, 'claude')}`)
-      expect(out).toContain(`__NIGHTSHIFT_AGENT_PATH__codex\t${join(guest, 'codex')}`)
+      expect(out).toContain(`__KOLUX_AGENT_PATH__claude\t${join(guest, 'claude')}`)
+      expect(out).toContain(`__KOLUX_AGENT_PATH__codex\t${join(guest, 'codex')}`)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

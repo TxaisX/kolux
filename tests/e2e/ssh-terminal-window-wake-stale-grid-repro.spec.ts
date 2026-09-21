@@ -1,6 +1,6 @@
 import type { Page } from '@stablyai/playwright-test'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { connectDockerSshRelayTarget } from './helpers/docker-ssh-relay-connection'
 import {
   cleanupDockerSshRelayTarget,
@@ -28,11 +28,11 @@ import {
   type Grid
 } from './ssh-terminal-stale-grid-probe'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const BASE_VIEWPORT = { width: 1160, height: 760 }
 
 async function startRemoteMonitor(page: Page, ptyId: string): Promise<void> {
-  const marker = `NIGHTSHIFT_SSH_WAKE_READY_${Date.now()}`
+  const marker = `KOLUX_SSH_WAKE_READY_${Date.now()}`
   await execInTerminal(page, ptyId, `printf '${marker}\\n'`)
   await waitForTerminalOutput(page, marker, 20_000, 60_000)
   await execInTerminal(page, ptyId, `node ${REMOTE_MONITOR_PATH} ${REMOTE_STATE_PATH}`)
@@ -46,31 +46,31 @@ function chooseStaleGrid(current: Grid): Grid {
 }
 
 test.describe('SSH terminal window-wake stale PTY grid repro', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH repro.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH repro.')
   test.skip(process.platform === 'win32', 'Docker SSH repro uses POSIX SSH tooling.')
 
   test('window focus heals a remote PTY whose applied grid drifted from xterm', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(240_000)
     let target: DockerSshRelayTarget | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
       const pageErrors: string[] = []
-      nightshiftPage.on('pageerror', (error) => pageErrors.push(error.message))
+      koluxPage.on('pageerror', (error) => pageErrors.push(error.message))
       installIdleGridMonitor(target)
-      await nightshiftPage.setViewportSize(BASE_VIEWPORT)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const identity = await nightshiftPage.evaluate(() => window.api.app.getIdentity())
+      await koluxPage.setViewportSize(BASE_VIEWPORT)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const identity = await koluxPage.evaluate(() => window.api.app.getIdentity())
       expect(identity.isDev).toBe(true)
       expect(identity.devWorktreeName).toBe(path.basename(process.cwd()))
 
-      await connectDockerSshRelayTarget(nightshiftPage, target, { relayGracePeriodSeconds: 300 })
-      await ensureTerminalVisible(nightshiftPage, 60_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-      await startRemoteMonitor(nightshiftPage, ptyId)
+      await connectDockerSshRelayTarget(koluxPage, target, { relayGracePeriodSeconds: 300 })
+      await ensureTerminalVisible(koluxPage, 60_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
+      await startRemoteMonitor(koluxPage, ptyId)
       await expect
         .poll(
           () => {
@@ -89,35 +89,32 @@ test.describe('SSH terminal window-wake stale PTY grid repro', () => {
           async () =>
             actualGridMatchesXterm(
               readRemoteGrid(target!),
-              await readRendererGrid(nightshiftPage, ptyId)
+              await readRendererGrid(koluxPage, ptyId)
             ),
           { timeout: 15_000, message: 'Remote PTY and xterm did not establish a matching baseline' }
         )
         .toBe(true)
 
-      const baseline = await readRendererGrid(nightshiftPage, ptyId)
+      const baseline = await readRendererGrid(koluxPage, ptyId)
       if (!baseline.xterm) {
         throw new Error('Active xterm grid unavailable')
       }
       const staleGrid = chooseStaleGrid(baseline.xterm)
-      await nightshiftPage.evaluate(
-        ({ id, grid }) => window.api.pty.resize(id, grid.cols, grid.rows),
-        {
-          id: ptyId,
-          grid: staleGrid
-        }
-      )
+      await koluxPage.evaluate(({ id, grid }) => window.api.pty.resize(id, grid.cols, grid.rows), {
+        id: ptyId,
+        grid: staleGrid
+      })
       await expect.poll(() => readRemoteGrid(target!).cols, { timeout: 5_000 }).toBe(staleGrid.cols)
       await expect.poll(() => readRemoteGrid(target!).rows, { timeout: 5_000 }).toBe(staleGrid.rows)
 
-      const drifted = await readRendererGrid(nightshiftPage, ptyId)
+      const drifted = await readRendererGrid(koluxPage, ptyId)
       expect(drifted.xterm).toEqual(baseline.xterm)
       expect(drifted.applied).toEqual(staleGrid)
 
-      await nightshiftPage.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await koluxPage.evaluate(() => window.dispatchEvent(new Event('focus')))
       const wakeResult = await sampleRemoteConvergence({
         cycle: 0,
-        page: nightshiftPage,
+        page: koluxPage,
         ptyId,
         target,
         timeoutMs: 3_000
@@ -125,20 +122,20 @@ test.describe('SSH terminal window-wake stale PTY grid repro', () => {
 
       if (!actualGridMatchesXterm(wakeResult.last.remote, wakeResult.last.renderer)) {
         await attachStaleGridEvidence(
-          nightshiftPage,
+          koluxPage,
           testInfo,
           'ssh-window-focus-stale-grid',
           wakeResult.stale
         )
         // Manual resize is the field workaround and proves the remote channel
         // can still deliver the corrective SIGWINCH.
-        await nightshiftPage.setViewportSize({
+        await koluxPage.setViewportSize({
           width: BASE_VIEWPORT.width + 24,
           height: BASE_VIEWPORT.height + 24
         })
         const manualResize = await sampleRemoteConvergence({
           cycle: 1,
-          page: nightshiftPage,
+          page: koluxPage,
           ptyId,
           target,
           timeoutMs: 6_000
@@ -186,7 +183,7 @@ test.describe('SSH terminal window-wake stale PTY grid repro', () => {
         description: JSON.stringify(evidence)
       })
       const healedScreenshot = testInfo.outputPath('ssh-window-focus-healed.png')
-      await nightshiftPage.screenshot({ path: healedScreenshot, fullPage: true })
+      await koluxPage.screenshot({ path: healedScreenshot, fullPage: true })
       await testInfo.attach('ssh-window-focus-healed.png', {
         path: healedScreenshot,
         contentType: 'image/png'

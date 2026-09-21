@@ -19,10 +19,10 @@ export function envValue(name: string): string | null {
 
 export function getEnvAuthConfig(): BitbucketAuthConfig {
   return {
-    baseUrl: envValue('NIGHTSHIFT_BITBUCKET_API_BASE_URL') ?? DEFAULT_API_BASE_URL,
-    accessToken: envValue('NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN'),
-    email: envValue('NIGHTSHIFT_BITBUCKET_EMAIL'),
-    apiToken: envValue('NIGHTSHIFT_BITBUCKET_API_TOKEN')
+    baseUrl: envValue('KOLUX_BITBUCKET_API_BASE_URL') ?? DEFAULT_API_BASE_URL,
+    accessToken: envValue('KOLUX_BITBUCKET_ACCESS_TOKEN'),
+    email: envValue('KOLUX_BITBUCKET_EMAIL'),
+    apiToken: envValue('KOLUX_BITBUCKET_API_TOKEN')
   }
 }
 

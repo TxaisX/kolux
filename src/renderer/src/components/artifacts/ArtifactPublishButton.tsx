@@ -34,9 +34,9 @@ export function ArtifactPublishButton({
   const [linkLookup, setLinkLookup] = useState<PublishedLinkLookup | null>(null)
   const lookupSequence = useRef(0)
   const popoverContentRef = useRef<HTMLDivElement>(null)
-  const authStatus = useAppStore((state) => state.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((state) => state.nightshiftProfileConnecting)
-  const connect = useAppStore((state) => state.connectCurrentNightshiftProfile)
+  const authStatus = useAppStore((state) => state.koluxProfileAuthStatus)
+  const connecting = useAppStore((state) => state.koluxProfileConnecting)
+  const connect = useAppStore((state) => state.connectCurrentKoluxProfile)
   const openSettingsPage = useAppStore((state) => state.openSettingsPage)
   const openSettingsTarget = useAppStore((state) => state.openSettingsTarget)
   const settings = useAppStore((state) => state.settings)
@@ -170,7 +170,7 @@ export function ArtifactPublishButton({
                 <p className="text-xs font-medium">
                   {translate(
                     'auto.components.artifacts.ArtifactPublishButton.accountTitle',
-                    'Nightshift account'
+                    'Kolux account'
                   )}
                 </p>
                 <p className="text-[11px] leading-4 text-muted-foreground">

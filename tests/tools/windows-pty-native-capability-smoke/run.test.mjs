@@ -7,8 +7,8 @@ const runnerSource = readFileSync(new URL('./run.mjs', import.meta.url), 'utf8')
 
 describe('packaged Windows native smoke runner boundary', () => {
   it('uses one checkout-owned runner for current and affected package paths', () => {
-    const current = packagedProbeInvocation('/ci/current/dist/win-unpacked/Nightshift.exe')
-    const affected = packagedProbeInvocation('/ci/1.4.158/dist/win-unpacked/Nightshift.exe')
+    const current = packagedProbeInvocation('/ci/current/dist/win-unpacked/Kolux.exe')
+    const affected = packagedProbeInvocation('/ci/1.4.158/dist/win-unpacked/Kolux.exe')
 
     expect(checkoutRunProcessPath()).toBe(path.resolve('out/shared/child-process/run-process.js'))
     expect(current.program).not.toBe(affected.program)

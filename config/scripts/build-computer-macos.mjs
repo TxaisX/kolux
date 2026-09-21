@@ -4,9 +4,9 @@ import path from 'node:path'
 
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 const packagePath = path.join(repoRoot, 'native', 'computer-use-macos')
-const binaryPath = path.join(packagePath, '.build', 'release', 'nightshift-computer-use-macos')
-const appPath = path.join(packagePath, '.build', 'release', 'Nightshift Computer Use.app')
-const appExecutablePath = path.join(appPath, 'Contents', 'MacOS', 'nightshift-computer-use-macos')
+const binaryPath = path.join(packagePath, '.build', 'release', 'kolux-computer-use-macos')
+const appPath = path.join(packagePath, '.build', 'release', 'Kolux Computer Use.app')
+const appExecutablePath = path.join(appPath, 'Contents', 'MacOS', 'kolux-computer-use-macos')
 const appIconPath = path.join(appPath, 'Contents', 'Resources', 'AppIcon.icns')
 const entitlementsPath = path.join(
   repoRoot,
@@ -14,9 +14,8 @@ const entitlementsPath = path.join(
   'build',
   'entitlements.computer-use.mac.plist'
 )
-const bundleId =
-  process.env.NIGHTSHIFT_COMPUTER_MACOS_BUNDLE_ID ?? 'com.txais.nightshift.computer-use'
-const displayName = 'Nightshift Computer Use'
+const bundleId = process.env.KOLUX_COMPUTER_MACOS_BUNDLE_ID ?? 'com.txais.kolux.computer-use'
+const displayName = 'Kolux Computer Use'
 const signingIdentity = resolveSigningIdentity()
 const universalTriples = ['arm64-apple-macosx', 'x86_64-apple-macosx']
 
@@ -31,7 +30,7 @@ createHelperApp()
 function buildUniversalBinary() {
   const builtBinaries = universalTriples.map((triple) => {
     run('swift', ['build', '-c', 'release', '--package-path', packagePath, '--triple', triple])
-    return path.join(packagePath, '.build', triple, 'release', 'nightshift-computer-use-macos')
+    return path.join(packagePath, '.build', triple, 'release', 'kolux-computer-use-macos')
   })
   mkdirSync(path.dirname(binaryPath), { recursive: true })
   run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
@@ -56,7 +55,7 @@ function createHelperApp() {
 
 function codesignArgs(identity, targetPath) {
   const args = ['--force', '--deep', '--sign', identity]
-  if (process.env.NIGHTSHIFT_MAC_RELEASE === '1' && identity !== '-') {
+  if (process.env.KOLUX_MAC_RELEASE === '1' && identity !== '-') {
     args.push('--options', 'runtime', '--timestamp', '--entitlements', entitlementsPath)
   }
   args.push(targetPath)
@@ -64,8 +63,7 @@ function codesignArgs(identity, targetPath) {
 }
 
 function resolveSigningIdentity() {
-  const explicitIdentity =
-    process.env.NIGHTSHIFT_COMPUTER_MACOS_SIGN_IDENTITY ?? process.env.CSC_NAME
+  const explicitIdentity = process.env.KOLUX_COMPUTER_MACOS_SIGN_IDENTITY ?? process.env.CSC_NAME
   if (explicitIdentity) {
     return explicitIdentity
   }
@@ -76,7 +74,7 @@ function resolveSigningIdentity() {
     return '-'
   }
   const developmentMatch = identities.stdout.match(/"([^"]*Apple Development:[^"]+)"/)
-  if (process.env.NIGHTSHIFT_MAC_RELEASE !== '1' && developmentMatch) {
+  if (process.env.KOLUX_MAC_RELEASE !== '1' && developmentMatch) {
     return developmentMatch[1]
   }
   const releaseMatch =
@@ -103,7 +101,7 @@ function infoPlist() {
   <key>CFBundleDevelopmentRegion</key>
   <string>en</string>
   <key>CFBundleExecutable</key>
-  <string>nightshift-computer-use-macos</string>
+  <string>kolux-computer-use-macos</string>
   <key>CFBundleIdentifier</key>
   <string>${escapePlist(bundleId)}</string>
   <key>CFBundleInfoDictionaryVersion</key>
@@ -125,9 +123,9 @@ function infoPlist() {
   <key>LSUIElement</key>
   <true/>
   <key>NSAccessibilityUsageDescription</key>
-  <string>Nightshift Computer Use needs Accessibility permission to read and interact with app interfaces when you ask Nightshift to use apps.</string>
+  <string>Kolux Computer Use needs Accessibility permission to read and interact with app interfaces when you ask Kolux to use apps.</string>
   <key>NSScreenCaptureUsageDescription</key>
-  <string>Nightshift Computer Use needs Screen Recording permission to capture app windows when you ask Nightshift to inspect your screen.</string>
+  <string>Kolux Computer Use needs Screen Recording permission to capture app windows when you ask Kolux to inspect your screen.</string>
 </dict>
 </plist>
 `

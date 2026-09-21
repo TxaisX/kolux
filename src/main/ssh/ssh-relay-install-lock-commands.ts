@@ -26,7 +26,7 @@ export function tryCreateInstallLockCommand(host: RemoteHostPlatform, lockDir: s
       'else echo BUSY; fi'
     ].join(' ')
   }
-  // Why: old Nightshift clients recognize only a directory at `.install-lock`, while
+  // Why: old Kolux clients recognize only a directory at `.install-lock`, while
   // concurrent New-Item calls can both report success in PowerShell 5.1. Keep
   // that directory marker and arbitrate ownership with an atomic child file.
   return powerShellCommand(

@@ -20,14 +20,14 @@ async function tempRoot(prefix: string): Promise<string> {
 
 async function writePlugin(root: string, publisher: string, id: string): Promise<void> {
   await writeFile(
-    join(root, 'nightshift-plugin.json'),
+    join(root, 'kolux-plugin.json'),
     JSON.stringify({
       manifestVersion: 1,
       id,
       publisher,
       name: 'Plugin',
       version: '1.0.0',
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       capabilities: []
     })
@@ -43,10 +43,10 @@ describe('plugin install trust', () => {
     [
       {
         kind: 'git',
-        url: 'https://github.com/attacker/nightshift-secrets.git',
+        url: 'https://github.com/attacker/kolux-secrets.git',
         ref: 'main'
       },
-      'reserved plugin identity community.nightshift-secrets must resolve to the txais organization'
+      'reserved plugin identity community.kolux-secrets must resolve to the txais organization'
     ],
     [
       {
@@ -57,47 +57,46 @@ describe('plugin install trust', () => {
       null
     ]
   ])('enforces reserved source organization', (source, expected) => {
-    expect(pluginInstallTrustError('community.nightshift-secrets', source)).toBe(expected)
+    expect(pluginInstallTrustError('community.kolux-secrets', source)).toBe(expected)
   })
 
   it('rejects locally installed reserved identities before publication', async () => {
-    const sourcePath = await tempRoot('nightshift-reserved-plugin-')
-    const pluginsDir = await tempRoot('nightshift-plugin-installs-')
-    await writePlugin(sourcePath, 'TxaisX', 'nightshift-skills')
+    const sourcePath = await tempRoot('kolux-reserved-plugin-')
+    const pluginsDir = await tempRoot('kolux-plugin-installs-')
+    await writePlugin(sourcePath, 'TxaisX', 'kolux-skills')
 
     await expect(
       installPluginFromLocalPath({ pluginsDir, sourcePath, hostVersion: '1.4.0' })
     ).resolves.toEqual({
       ok: false,
-      error:
-        'reserved plugin identity txais.nightshift-skills cannot be installed from a local path'
+      error: 'reserved plugin identity txais.kolux-skills cannot be installed from a local path'
     })
     await expect(readPluginLockfile(pluginsDir)).resolves.toEqual({ version: 1, plugins: {} })
   })
 
   it('allows the app-bundled path only for the complete official identity', async () => {
-    const sourcePath = await tempRoot('nightshift-bundled-plugin-')
-    const pluginsDir = await tempRoot('nightshift-plugin-installs-')
-    await writePlugin(sourcePath, 'TxaisX', 'nightshift-skills')
+    const sourcePath = await tempRoot('kolux-bundled-plugin-')
+    const pluginsDir = await tempRoot('kolux-plugin-installs-')
+    await writePlugin(sourcePath, 'TxaisX', 'kolux-skills')
 
     const result = await installBundledPlugin({
       pluginsDir,
       sourcePath,
       hostVersion: '1.4.0',
-      expectedPluginKey: 'txais.nightshift-skills'
+      expectedPluginKey: 'txais.kolux-skills'
     })
 
-    expect(result).toMatchObject({ ok: true, pluginKey: 'txais.nightshift-skills' })
+    expect(result).toMatchObject({ ok: true, pluginKey: 'txais.kolux-skills' })
     const lock = await readPluginLockfile(pluginsDir)
-    expect(lock.plugins['txais.nightshift-skills']?.source).toEqual({
+    expect(lock.plugins['txais.kolux-skills']?.source).toEqual({
       kind: 'bundled',
-      bundleId: 'txais.nightshift-skills'
+      bundleId: 'txais.kolux-skills'
     })
   })
 
   it('blocks a killed plugin even when the caller bypasses marketplace UI', async () => {
-    const sourcePath = await tempRoot('nightshift-killed-plugin-')
-    const pluginsDir = await tempRoot('nightshift-plugin-installs-')
+    const sourcePath = await tempRoot('kolux-killed-plugin-')
+    const pluginsDir = await tempRoot('kolux-plugin-installs-')
     await writePlugin(sourcePath, 'community', 'unsafe')
 
     await expect(
@@ -110,7 +109,7 @@ describe('plugin install trust', () => {
       })
     ).resolves.toEqual({
       ok: false,
-      error: "plugin is blocked by Nightshift's safety list: Security incident"
+      error: "plugin is blocked by Kolux's safety list: Security incident"
     })
   })
 })

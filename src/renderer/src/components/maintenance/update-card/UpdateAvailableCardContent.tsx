@@ -7,13 +7,13 @@ function isAnimatedGif(url: string | undefined): boolean {
   return typeof url === 'string' && url.toLowerCase().endsWith('.gif')
 }
 
-/** A package manager owns this install: the release is real but Nightshift can never apply it here. */
+/** A package manager owns this install: the release is real but Kolux can never apply it here. */
 function ExternallyManagedNote(): React.JSX.Element {
   return (
     <p className="text-xs leading-relaxed text-muted-foreground">
       {translate(
         'auto.components.UpdateCard.7f1a4c9e02',
-        'Your system package manager installed Nightshift, so update it from there — Nightshift cannot install this release itself.'
+        'Your system package manager installed Kolux, so update it from there — Kolux cannot install this release itself.'
       )}
     </p>
   )
@@ -142,7 +142,7 @@ export function UpdateAvailableSimpleContent({
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        {translate('auto.components.UpdateCard.05ad78a6d1', 'Nightshift v{{value0}} is ready.', {
+        {translate('auto.components.UpdateCard.05ad78a6d1', 'Kolux v{{value0}} is ready.', {
           value0: version
         })}
       </p>

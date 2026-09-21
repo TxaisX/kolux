@@ -145,7 +145,7 @@ export class GitResponseStreamRegistry {
       void this.pump(streamId, chunks, dispatcher, context)
     })
     return {
-      __nightshiftGitResponseStream: {
+      __koluxGitResponseStream: {
         streamId,
         totalBytes: payload.length,
         chunkCount: chunks.length

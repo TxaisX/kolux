@@ -51,7 +51,7 @@ const { importCookiesIntoClientRoutePartition } =
   await import('./browser-client-route-cookie-import')
 
 const routeIdentity = {
-  nightshiftProfileId: 'nightshift-profile-a',
+  koluxProfileId: 'kolux-profile-a',
   authorityConnectionIdentity: 'paired-runtime:authority-a',
   executionHostIdentity: 'execution-host-a',
   legacyAuthorityConnectionIdentity: 'paired-runtime:legacy-authority-a',
@@ -95,7 +95,7 @@ describe('importCookiesIntoClientRoutePartition', () => {
     expect(requireRouteBrowserProfileMock).toHaveBeenCalledWith('default')
     const [source, partition] = importCookiesFromBrowserMock.mock.calls[0] ?? []
     expect(source).toBe(chrome)
-    expect(partition).toMatch(/^persist:nightshift-browser-v1-[a-f0-9]{64}$/)
+    expect(partition).toMatch(/^persist:kolux-browser-v1-[a-f0-9]{64}$/)
     expect(bindingStore.set).toHaveBeenCalledWith(
       partition,
       expect.stringMatching(/^[a-f0-9]{64}$/),

@@ -32,7 +32,7 @@ describe('materializeServeSimRuntime', () => {
   })
 
   async function createRoot(): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-simcam-materializer-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-simcam-materializer-'))
     cleanupPaths.push(root)
     return root
   }

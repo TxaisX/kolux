@@ -57,7 +57,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -336,7 +336,7 @@ describe('Store', () => {
     const store = await createStore()
     store.setGitHubCache({ pr: { 'o/r#7': { fetchedAt: 7 } as never }, issue: {} })
     store.flush()
-    expect(existsSync(join(testState.dir, 'nightshift-github-cache.json'))).toBe(true)
+    expect(existsSync(join(testState.dir, 'kolux-github-cache.json'))).toBe(true)
 
     const restarted = await createStore()
     expect(restarted.getGitHubCache().pr['o/r#7']).toEqual({ fetchedAt: 7 })
@@ -345,8 +345,8 @@ describe('Store', () => {
   it('keeps GitHub cache sidecars scoped to explicit profile data files', async () => {
     const profileADir = join(testState.dir, 'profiles', 'a')
     const profileBDir = join(testState.dir, 'profiles', 'b')
-    const profileADataFile = join(profileADir, 'nightshift-data.json')
-    const profileBDataFile = join(profileBDir, 'nightshift-data.json')
+    const profileADataFile = join(profileADir, 'kolux-data.json')
+    const profileBDataFile = join(profileBDir, 'kolux-data.json')
     mkdirSync(profileADir, { recursive: true })
     mkdirSync(profileBDir, { recursive: true })
 

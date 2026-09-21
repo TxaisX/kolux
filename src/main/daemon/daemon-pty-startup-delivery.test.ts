@@ -80,7 +80,7 @@ describe('DaemonPtyAdapter startup delivery', () => {
       expect(lastSpawnOpts).toEqual(
         expect.objectContaining({ startupCommandDelivery: 'shell-ready' })
       )
-      lastSubprocess._simulateData('\x1b]777;nightshift-shell-ready\x07\r\nuser@host $ ')
+      lastSubprocess._simulateData('\x1b]777;kolux-shell-ready\x07\r\nuser@host $ ')
       await waitFor(() => vi.mocked(lastSubprocess.write).mock.calls.length > 0)
       expect(lastSubprocess.write).toHaveBeenCalledExactlyOnceWith('codex\n')
     }
@@ -98,7 +98,7 @@ describe('DaemonPtyAdapter startup delivery', () => {
     expect(lastSpawnOpts).toEqual(
       expect.objectContaining({ startupCommandDelivery: 'shell-ready' })
     )
-    lastSubprocess._simulateData('\x1b]777;nightshift-shell-ready\x07')
+    lastSubprocess._simulateData('\x1b]777;kolux-shell-ready\x07')
     lastSubprocess._simulateData('\r\nuser@host $ ')
 
     await waitFor(() => vi.mocked(lastSubprocess.write).mock.calls.length > 0)

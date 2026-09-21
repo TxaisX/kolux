@@ -7,12 +7,12 @@ vi.mock('@/lib/telemetry', () => ({
 }))
 
 import {
-  getNightshiftCliFeatureTipTelemetrySource,
+  getKoluxCliFeatureTipTelemetrySource,
   trackCmdJPaletteFeatureTipAcknowledged,
   trackCmdJPaletteFeatureTipShown,
-  trackNightshiftCliFeatureTipSetupClicked,
-  trackNightshiftCliFeatureTipSetupResult,
-  trackNightshiftCliFeatureTipShown
+  trackKoluxCliFeatureTipSetupClicked,
+  trackKoluxCliFeatureTipSetupResult,
+  trackKoluxCliFeatureTipShown
 } from './feature-tip-telemetry'
 
 describe('feature tip telemetry', () => {
@@ -21,16 +21,16 @@ describe('feature tip telemetry', () => {
   })
 
   it('keeps feature tip sources low-cardinality', () => {
-    expect(getNightshiftCliFeatureTipTelemetrySource('app_open')).toBe('app_open')
-    expect(getNightshiftCliFeatureTipTelemetrySource('settings')).toBe('manual')
-    expect(getNightshiftCliFeatureTipTelemetrySource(undefined)).toBe('manual')
+    expect(getKoluxCliFeatureTipTelemetrySource('app_open')).toBe('app_open')
+    expect(getKoluxCliFeatureTipTelemetrySource('settings')).toBe('manual')
+    expect(getKoluxCliFeatureTipTelemetrySource(undefined)).toBe('manual')
   })
 
   it('tracks CLI tip exposure once per explicit call', () => {
-    trackNightshiftCliFeatureTipShown('app_open')
+    trackKoluxCliFeatureTipShown('app_open')
 
     expect(trackMock).toHaveBeenCalledTimes(1)
-    expect(trackMock).toHaveBeenCalledWith('nightshift_cli_feature_tip_shown', {
+    expect(trackMock).toHaveBeenCalledWith('kolux_cli_feature_tip_shown', {
       source: 'app_open'
     })
   })
@@ -49,14 +49,14 @@ describe('feature tip telemetry', () => {
   })
 
   it('tracks setup click and result without raw CLI details', () => {
-    trackNightshiftCliFeatureTipSetupClicked('app_open')
-    trackNightshiftCliFeatureTipSetupResult('app_open', 'installed')
+    trackKoluxCliFeatureTipSetupClicked('app_open')
+    trackKoluxCliFeatureTipSetupResult('app_open', 'installed')
 
     expect(trackMock).toHaveBeenCalledTimes(2)
-    expect(trackMock).toHaveBeenNthCalledWith(1, 'nightshift_cli_feature_tip_setup_clicked', {
+    expect(trackMock).toHaveBeenNthCalledWith(1, 'kolux_cli_feature_tip_setup_clicked', {
       source: 'app_open'
     })
-    expect(trackMock).toHaveBeenNthCalledWith(2, 'nightshift_cli_feature_tip_setup_result', {
+    expect(trackMock).toHaveBeenNthCalledWith(2, 'kolux_cli_feature_tip_setup_result', {
       source: 'app_open',
       result: 'installed'
     })

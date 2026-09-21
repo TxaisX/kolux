@@ -9,7 +9,7 @@
 // picks out exactly one unclaimed item. Never by text equality: the same
 // question asked twice is two messages, and collapsing them silently loses one.
 //
-// Nightshift never re-sends on the user's behalf. An unresolved submission stays
+// Kolux never re-sends on the user's behalf. An unresolved submission stays
 // `unknown` — a displayed state meaning "delivery unconfirmed", neither sent nor
 // failed — and the user chooses to resend or discard.
 

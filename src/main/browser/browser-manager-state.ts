@@ -102,7 +102,7 @@ export abstract class BrowserManagerState extends BrowserManagerViewportScrollSt
     error: string | null
   ): void
   protected abstract getDownloadReceivedBytes(item: Electron.DownloadItem): number
-  protected abstract openLinkInNightshiftTab(
+  protected abstract openLinkInKoluxTab(
     browserTabId: string,
     rawUrl: string,
     activate?: boolean
@@ -222,7 +222,7 @@ export abstract class BrowserManagerState extends BrowserManagerViewportScrollSt
     if (browserTabId) {
       return { browserTabId, rootGuestWebContentsId: guestWebContentsId }
     }
-    // Route popups live in a Nightshift-built window, so they never pass through did-create-window and
+    // Route popups live in a Kolux-built window, so they never pass through did-create-window and
     // have no inherited context; their owning page comes from the route popup registry instead.
     const routeOpenerWebContentsId = resolveBrowserRouteGuestPopupOpener(guestWebContentsId)
     if (routeOpenerWebContentsId !== null) {

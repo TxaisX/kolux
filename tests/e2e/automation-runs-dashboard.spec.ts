@@ -6,13 +6,13 @@
  * still be usable.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
-test('opens the runs dashboard and returns to automations', async ({ nightshiftPage }) => {
-  await waitForSessionReady(nightshiftPage)
+test('opens the runs dashboard and returns to automations', async ({ koluxPage }) => {
+  await waitForSessionReady(koluxPage)
 
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     const store = window.__store
     if (!store) {
       throw new Error('window.__store is not available')
@@ -20,27 +20,25 @@ test('opens the runs dashboard and returns to automations', async ({ nightshiftP
     store.getState().openAutomationsPage()
   })
 
-  const runsButton = nightshiftPage.getByRole('button', { name: 'Runs' })
+  const runsButton = koluxPage.getByRole('button', { name: 'Runs' })
   await expect(runsButton).toBeVisible()
   await runsButton.click()
 
-  await expect(
-    nightshiftPage.getByRole('navigation', { name: 'Automations breadcrumb' })
-  ).toBeVisible()
-  await expect(nightshiftPage.getByText('Successful · 24h')).toBeVisible()
-  await expect(nightshiftPage.getByText('Failed · 24h')).toBeVisible()
-  await expect(nightshiftPage.getByText('Successful · 7d')).toBeVisible()
-  await expect(nightshiftPage.getByText('Failed · 7d')).toBeVisible()
-  await expect(nightshiftPage.getByRole('button', { name: 'Filters' })).toBeVisible()
-  await expect(nightshiftPage.getByRole('button', { name: 'Refresh runs' })).toBeVisible()
-  await expect(nightshiftPage.getByText('Automation', { exact: true })).toBeVisible()
-  await expect(nightshiftPage.getByText('Triggered', { exact: true })).toBeVisible()
-  await expect(nightshiftPage.getByText('Status', { exact: true })).toBeVisible()
+  await expect(koluxPage.getByRole('navigation', { name: 'Automations breadcrumb' })).toBeVisible()
+  await expect(koluxPage.getByText('Successful · 24h')).toBeVisible()
+  await expect(koluxPage.getByText('Failed · 24h')).toBeVisible()
+  await expect(koluxPage.getByText('Successful · 7d')).toBeVisible()
+  await expect(koluxPage.getByText('Failed · 7d')).toBeVisible()
+  await expect(koluxPage.getByRole('button', { name: 'Filters' })).toBeVisible()
+  await expect(koluxPage.getByRole('button', { name: 'Refresh runs' })).toBeVisible()
+  await expect(koluxPage.getByText('Automation', { exact: true })).toBeVisible()
+  await expect(koluxPage.getByText('Triggered', { exact: true })).toBeVisible()
+  await expect(koluxPage.getByText('Status', { exact: true })).toBeVisible()
 
-  await nightshiftPage
+  await koluxPage
     .getByRole('navigation', { name: 'Automations breadcrumb' })
     .getByRole('button', { name: 'Automations' })
     .click()
-  await expect(nightshiftPage.getByRole('heading', { name: 'Automations' })).toBeVisible()
+  await expect(koluxPage.getByRole('heading', { name: 'Automations' })).toBeVisible()
   await expect(runsButton).toBeVisible()
 })

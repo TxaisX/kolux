@@ -13,7 +13,7 @@ const guidePaths = [
 function documentedInvocations() {
   return guidePaths.flatMap((path) => {
     const text = readFileSync(path, 'utf8')
-    return [...text.matchAll(/NIGHTSHIFT orchestration ([a-z-]+)([^`\n]*)/gu)].map((match) => ({
+    return [...text.matchAll(/KOLUX orchestration ([a-z-]+)([^`\n]*)/gu)].map((match) => ({
       path,
       verb: match[1],
       flags: [...match[2].matchAll(/(?:^|\s)--([a-z][a-z-]*)/gu)].map((flag) => flag[1])

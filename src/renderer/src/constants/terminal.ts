@@ -1,21 +1,19 @@
 import type { TerminalPaneSplitSource } from '../../../shared/feature-education-telemetry'
 
-export const TOGGLE_TERMINAL_PANE_EXPAND_EVENT = 'nightshift-toggle-terminal-pane-expand'
-export const FOCUS_TERMINAL_PANE_EVENT = 'nightshift-focus-terminal-pane'
-export const PASTE_TERMINAL_TEXT_EVENT = 'nightshift-paste-terminal-text'
-export const SPLIT_TERMINAL_PANE_EVENT = 'nightshift-split-terminal-pane'
-export const REQUEST_ACTIVE_TERMINAL_PANE_SPLIT_EVENT =
-  'nightshift-request-active-terminal-pane-split'
-export const CLOSE_TERMINAL_PANE_EVENT = 'nightshift-close-terminal-pane'
-export const BACKGROUND_MOUNT_TERMINAL_WORKTREE_EVENT =
-  'nightshift-background-mount-terminal-worktree'
+export const TOGGLE_TERMINAL_PANE_EXPAND_EVENT = 'kolux-toggle-terminal-pane-expand'
+export const FOCUS_TERMINAL_PANE_EVENT = 'kolux-focus-terminal-pane'
+export const PASTE_TERMINAL_TEXT_EVENT = 'kolux-paste-terminal-text'
+export const SPLIT_TERMINAL_PANE_EVENT = 'kolux-split-terminal-pane'
+export const REQUEST_ACTIVE_TERMINAL_PANE_SPLIT_EVENT = 'kolux-request-active-terminal-pane-split'
+export const CLOSE_TERMINAL_PANE_EVENT = 'kolux-close-terminal-pane'
+export const BACKGROUND_MOUNT_TERMINAL_WORKTREE_EVENT = 'kolux-background-mount-terminal-worktree'
 
 // Why: mobile wake (experimental agent sleep) must fire the cold-restore
 // --resume of a worktree's mounted hidden hibernated panes without a desktop
 // hidden→visible reveal. Each mounted TerminalPane self-selects on this event
 // by worktreeId and invokes its own armed hibernation wake — a fanout, since
 // pane bindings are per-instance with no global registry.
-export const WAKE_HIBERNATED_AGENTS_WORKTREE_EVENT = 'nightshift-wake-hibernated-agents-worktree'
+export const WAKE_HIBERNATED_AGENTS_WORKTREE_EVENT = 'kolux-wake-hibernated-agents-worktree'
 
 // Why: sidebar open/close is an instantaneous width change. If we wait for
 // the ResizeObserver rAF (and the 150ms debounced global fit) to catch up,
@@ -26,7 +24,7 @@ export const WAKE_HIBERNATED_AGENTS_WORKTREE_EVENT = 'nightshift-wake-hibernated
 //
 // Continuous drags (sidebar-width drag, tab-group split drag) use the
 // per-pane ResizeObserver path instead.
-export const SYNC_FIT_PANES_EVENT = 'nightshift-sync-fit-panes'
+export const SYNC_FIT_PANES_EVENT = 'kolux-sync-fit-panes'
 /**
  * Ask every mounted terminal pane to even out its own split sizes.
  *
@@ -34,7 +32,7 @@ export const SYNC_FIT_PANES_EVENT = 'nightshift-sync-fit-panes'
  * menu command could walk. This mirrors SYNC_FIT_PANES_EVENT, which fans out the
  * same way for refits.
  */
-export const EQUALIZE_PANES_EVENT = 'nightshift-equalize-panes'
+export const EQUALIZE_PANES_EVENT = 'kolux-equalize-panes'
 
 export type FocusTerminalPaneDetail = {
   tabId: string

@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -14,8 +14,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -26,7 +26,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -47,10 +47,10 @@ import { main } from './index'
 import { encodePairingOffer, PAIRING_OFFER_VERSION } from '../shared/pairing'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -58,23 +58,23 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('runs vm recipe doctor locally without contacting the app runtime', async () => {
-    const repoPath = mkdtempSync(path.join(tmpdir(), 'nightshift-vm-doctor-'))
+    const repoPath = mkdtempSync(path.join(tmpdir(), 'kolux-vm-doctor-'))
     try {
-      mkdirSync(path.join(repoPath, 'scripts', 'nightshift-vm'), { recursive: true })
-      const startScript = path.join(repoPath, 'scripts', 'nightshift-vm', 'start.sh')
-      const cleanupScript = path.join(repoPath, 'scripts', 'nightshift-vm', 'cleanup.sh')
+      mkdirSync(path.join(repoPath, 'scripts', 'kolux-vm'), { recursive: true })
+      const startScript = path.join(repoPath, 'scripts', 'kolux-vm', 'start.sh')
+      const cleanupScript = path.join(repoPath, 'scripts', 'kolux-vm', 'cleanup.sh')
       writeFileSync(startScript, '#!/bin/sh\n')
       writeFileSync(cleanupScript, '#!/bin/sh\n')
       chmodSync(startScript, 0o755)
       chmodSync(cleanupScript, 0o755)
       writeFileSync(
-        path.join(repoPath, 'nightshift.yaml'),
+        path.join(repoPath, 'kolux.yaml'),
         [
           'environmentRecipes:',
           '  - id: cloud-sandbox',
           '    name: Cloud Sandbox',
-          '    create: ./scripts/nightshift-vm/start.sh',
-          '    destroy: ./scripts/nightshift-vm/cleanup.sh'
+          '    create: ./scripts/kolux-vm/start.sh',
+          '    destroy: ./scripts/kolux-vm/cleanup.sh'
         ].join('\n')
       )
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -91,7 +91,7 @@ describe('nightshift cli worktree awareness', () => {
       expect(output.ok).toBe(true)
       expect(output.checks).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ id: 'nightshift_yaml.parse', status: 'pass' }),
+          expect.objectContaining({ id: 'kolux_yaml.parse', status: 'pass' }),
           expect.objectContaining({ id: 'recipe.exists', status: 'pass' }),
           expect.objectContaining({ id: 'recipe.create', status: 'pass' }),
           expect.objectContaining({ id: 'recipe.destroy', status: 'pass' })
@@ -104,17 +104,17 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('warns when vm recipe doctor finds no cleanup hook', async () => {
-    const repoPath = mkdtempSync(path.join(tmpdir(), 'nightshift-vm-doctor-'))
+    const repoPath = mkdtempSync(path.join(tmpdir(), 'kolux-vm-doctor-'))
     try {
-      mkdirSync(path.join(repoPath, 'scripts', 'nightshift-vm'), { recursive: true })
-      writeFileSync(path.join(repoPath, 'scripts', 'nightshift-vm', 'start.sh'), '#!/bin/sh\n')
+      mkdirSync(path.join(repoPath, 'scripts', 'kolux-vm'), { recursive: true })
+      writeFileSync(path.join(repoPath, 'scripts', 'kolux-vm', 'start.sh'), '#!/bin/sh\n')
       writeFileSync(
-        path.join(repoPath, 'nightshift.yaml'),
+        path.join(repoPath, 'kolux.yaml'),
         [
           'environmentRecipes:',
           '  - id: manual-sandbox',
           '    name: Manual Sandbox',
-          '    create: ./scripts/nightshift-vm/start.sh'
+          '    create: ./scripts/kolux-vm/start.sh'
         ].join('\n')
       )
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -142,7 +142,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('runs vm recipe doctor provision mode and invokes cleanup', async () => {
-    const repoPath = mkdtempSync(path.join(tmpdir(), 'nightshift-vm-doctor-provision-'))
+    const repoPath = mkdtempSync(path.join(tmpdir(), 'kolux-vm-doctor-provision-'))
     const pairingCode = encodePairingOffer({
       v: PAIRING_OFFER_VERSION,
       endpoint: 'ws://sandbox.example.com:6767',
@@ -150,9 +150,9 @@ describe('nightshift cli worktree awareness', () => {
       publicKeyB64: 'public-key'
     })
     try {
-      mkdirSync(path.join(repoPath, 'scripts', 'nightshift-vm'), { recursive: true })
+      mkdirSync(path.join(repoPath, 'scripts', 'kolux-vm'), { recursive: true })
       writeFileSync(
-        path.join(repoPath, 'scripts', 'nightshift-vm', 'start.js'),
+        path.join(repoPath, 'scripts', 'kolux-vm', 'start.js'),
         [
           'console.log(JSON.stringify({',
           '  schemaVersion: 1,',
@@ -162,7 +162,7 @@ describe('nightshift cli worktree awareness', () => {
         ].join('\n')
       )
       writeFileSync(
-        path.join(repoPath, 'scripts', 'nightshift-vm', 'cleanup.js'),
+        path.join(repoPath, 'scripts', 'kolux-vm', 'cleanup.js'),
         [
           "const fs = require('fs')",
           "const input = fs.readFileSync(0, 'utf8')",
@@ -171,13 +171,13 @@ describe('nightshift cli worktree awareness', () => {
         ].join('\n')
       )
       writeFileSync(
-        path.join(repoPath, 'nightshift.yaml'),
+        path.join(repoPath, 'kolux.yaml'),
         [
           'environmentRecipes:',
           '  - id: cloud-sandbox',
           '    name: Cloud Sandbox',
-          `    create: ${JSON.stringify(`${process.execPath} ./scripts/nightshift-vm/start.js`)}`,
-          `    destroy: ${JSON.stringify(`${process.execPath} ./scripts/nightshift-vm/cleanup.js`)}`
+          `    create: ${JSON.stringify(`${process.execPath} ./scripts/kolux-vm/start.js`)}`,
+          `    destroy: ${JSON.stringify(`${process.execPath} ./scripts/kolux-vm/cleanup.js`)}`
         ].join('\n')
       )
       const { EventEmitter } = await import('node:events')
@@ -265,17 +265,17 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('returns the full create transcript when provision fails so the agent can self-diagnose', async () => {
-    const repoPath = mkdtempSync(path.join(tmpdir(), 'nightshift-vm-doctor-provision-fail-'))
+    const repoPath = mkdtempSync(path.join(tmpdir(), 'kolux-vm-doctor-provision-fail-'))
     try {
-      mkdirSync(path.join(repoPath, 'scripts', 'nightshift-vm'), { recursive: true })
-      writeFileSync(path.join(repoPath, 'scripts', 'nightshift-vm', 'start.js'), 'process.exit(0)')
+      mkdirSync(path.join(repoPath, 'scripts', 'kolux-vm'), { recursive: true })
+      writeFileSync(path.join(repoPath, 'scripts', 'kolux-vm', 'start.js'), 'process.exit(0)')
       writeFileSync(
-        path.join(repoPath, 'nightshift.yaml'),
+        path.join(repoPath, 'kolux.yaml'),
         [
           'environmentRecipes:',
           '  - id: cloud-sandbox',
           '    name: Cloud Sandbox',
-          `    create: ${JSON.stringify(`${process.execPath} ./scripts/nightshift-vm/start.js`)}`,
+          `    create: ${JSON.stringify(`${process.execPath} ./scripts/kolux-vm/start.js`)}`,
           '    destroy: none'
         ].join('\n')
       )

@@ -52,8 +52,7 @@ export function installBrowserClientPageRenderer(
 ): BrowserClientPageRendererInstallation | null {
   if (
     typeof window !== 'undefined' &&
-    (window as unknown as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ ===
-      true
+    (window as unknown as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ === true
   ) {
     return null
   }

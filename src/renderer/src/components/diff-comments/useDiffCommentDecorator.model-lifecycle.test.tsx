@@ -47,11 +47,11 @@ describe('useDiffCommentDecorator model lifecycle', () => {
         }),
       { initialProps: { monacoModelIdentity: 'modified-v1' } }
     )
-    const firstButton = editorDomNode.querySelector('.nightshift-diff-comment-add-btn')
+    const firstButton = editorDomNode.querySelector('.kolux-diff-comment-add-btn')
 
     hook.rerender({ monacoModelIdentity: 'modified-v2' })
 
-    const replacementButton = editorDomNode.querySelector('.nightshift-diff-comment-add-btn')
+    const replacementButton = editorDomNode.querySelector('.kolux-diff-comment-add-btn')
     expect(replacementButton).not.toBeNull()
     expect(replacementButton).not.toBe(firstButton)
     expect(disposeMouseMove).toHaveBeenCalledOnce()

@@ -1,10 +1,10 @@
-// Load with Pi's -e flag; /nightshift-modal exercises real dialogs without a model or API key.
+// Load with Pi's -e flag; /kolux-modal exercises real dialogs without a model or API key.
 export default function (pi) {
-  pi.registerCommand('nightshift-modal', {
-    description: 'Verify Nightshift status: select, confirm, input, editor, or custom',
+  pi.registerCommand('kolux-modal', {
+    description: 'Verify Kolux status: select, confirm, input, editor, or custom',
     handler: async (args, ctx) => {
       const kind = args.trim() || 'select'
-      const title = `Nightshift verification: ${kind}`
+      const title = `Kolux verification: ${kind}`
       let answer
       switch (kind) {
         case 'select':
@@ -38,7 +38,7 @@ export default function (pi) {
           return
       }
       ctx.ui.notify(
-        `Nightshift verification: ${kind} ${answer === undefined ? 'cancelled' : 'answered'}`
+        `Kolux verification: ${kind} ${answer === undefined ? 'cancelled' : 'answered'}`
       )
     }
   })

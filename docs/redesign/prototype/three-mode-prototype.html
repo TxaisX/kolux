@@ -1,4 +1,4 @@
-<title>Nightshift Three-Mode Concept</title>
+<title>Kolux Three-Mode Concept</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
 <style>
   :root { --page: #e9ebef; --page-ink: #16181d; --page-muted: #6a7280; }
@@ -291,7 +291,7 @@
 </style>
 
 <div class="intro">
-  <b>Nightshift · three-mode prototype</b>
+  <b>Kolux · three-mode prototype</b>
   <span>Windows 11 · 1440×900 · example data, everything is clickable</span>
   <span><kbd>Ctrl+1/2/3</kbd> modes · <kbd>Ctrl+K</kbd> search · <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>Ctrl+Enter</kbd> act · <kbd>Tab</kbd> cycle panes · <kbd>+</kbd>/<kbd>−</kbd> pane count · <kbd>N</kbd> launch agents</span>
 </div>
@@ -299,7 +299,7 @@
 <div class="stagewrap"><div class="stage" id="stage">
 <div class="win" id="win">
   <div class="tb">
-    <div class="l"><span class="glyph"><i></i></span><span class="brand">Nightshift</span><button class="chip btnlike" id="hostchip"></button><div class="menu" id="hostmenu" hidden></div></div>
+    <div class="l"><span class="glyph"><i></i></span><span class="brand">Kolux</span><button class="chip btnlike" id="hostchip"></button><div class="menu" id="hostmenu" hidden></div></div>
     <div class="c"><div class="seg" id="modeseg" role="tablist" aria-label="Mode">
       <button role="tab" data-mode="inbox">Inbox <span class="k">Ctrl+1</span></button>
       <button role="tab" data-mode="floor">Floor <span class="k">Ctrl+2</span></button>
@@ -329,7 +329,7 @@
         <div class="layoutbar"><span>Panes</span><div class="stepper" aria-label="Pane count"><button data-step="-1" title="Fewer panes">−</button><b id="panecount">2</b><button data-step="1" title="More panes">+</button></div><span class="k">+ / − keys · Ctrl+\ tidy · empty panes ask which agent to start</span><span class="grow"></span><div class="launchwrap"><button class="btn" id="launchbtn">Launch agents… <span class="k">N</span></button>
           <div class="launch" id="launch" hidden><h4>Launch agents</h4>
             <div class="row"><span class="muted" style="font-size:11px">How many agents</span><div class="stepper"><button data-lstep="-1">−</button><b id="lcount">3</b><button data-lstep="1">+</button></div><span class="k">one worktree each</span></div>
-            <label>Repository<select id="lrepo"><option>bridgemind-api</option><option>nightshift</option><option>bridgemind-website</option></select></label>
+            <label>Repository<select id="lrepo"><option>bridgemind-api</option><option>kolux</option><option>bridgemind-website</option></select></label>
             <label>Prompt<textarea id="lprompt" rows="2" placeholder="What should they work on?">Add rate limiting to the public API</textarea></label>
             <div class="lineup" id="llineup"></div>
             <div class="row"><span class="k" id="lnote"></span><span class="grow"></span><button class="btn ghost" id="lcancel">Cancel</button><button class="btn primary" id="lgo">Launch <span class="k">Ctrl+Enter</span></button></div>
@@ -373,13 +373,13 @@
       files: [{ dir: 'test/', name: 'subscription.e2e-spec.ts', st: 'M', add: 41 }], checks: [['E2E', '3 / 3', true], ['Typecheck', 'clean', true], ['Lint', 'not run', false]], pr: null,
       tr: [{ t: 'you', x: 'write the e2e for the cancelled-tier path' }, { t: 'row', v: 'Explored', g: 'test/auth.e2e-spec.ts' }, { t: 'row', v: 'Edit', g: 'test/subscription.e2e-spec.ts', add: 41 }, { t: 'row', v: 'Run', g: 'npm run test:e2e -- subscription', ok: '3 passed' }, { t: 'sum', x: 'Added the cancelled-tier regression. Runs green. Waiting on the guard\'s final error text before I lock the assertion.' }],
       raw: true, hist: [{ l: 34, w: 40, x: 'explore · write · run' }] },
-    { id: 'sidebar-badges', repo: 'nightshift', branch: 'sidebar-badges', host: 'pc', agent: 'claude', shape: 'Solo', age: 18, started: 58,
+    { id: 'sidebar-badges', repo: 'kolux', branch: 'sidebar-badges', host: 'pc', agent: 'claude', shape: 'Solo', age: 18, started: 58,
       title: 'Show how many sessions are live on each workspace row', short: 'Sidebar session badges', state: 'needs', need: 'merge', status: 'PR ready · #412', diff: [248, 31],
       files: [{ dir: 'src/renderer/src/components/sidebar/', name: 'SidebarWorkspaceRow.tsx', st: 'M', add: 61, del: 12 }, { dir: '…/sidebar/', name: 'SidebarSessionBadge.tsx', st: 'A', add: 48 }, { dir: 'src/renderer/src/stores/', name: 'agent-status-store.ts', st: 'M', add: 39, del: 9 }, { dir: '…/sidebar/', name: 'SidebarSessionBadge.test.tsx', st: 'A', add: 72 }, { dir: 'docs/', name: 'HANDOFF.md', st: 'M', add: 11, del: 2 }],
       checks: [['Tests', '21 / 21', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 412, state: 'ready' },
       tr: [{ t: 'you', x: 'show how many sessions are live on each workspace row, hidden at zero' }, { t: 'fold', x: '14 tool calls' }, { t: 'row', v: 'Edit', g: 'SidebarWorkspaceRow.tsx', add: 61, del: 12 }, { t: 'row', v: 'Run', g: 'pnpm test sidebar', ok: '21 passed' }, { t: 'sum', x: 'Per-workspace session badge added, hidden at zero. Reused the existing per-session status dots. PR #412 is open and every check is green.' }],
       hist: [{ l: 2, w: 58, x: 'done · 21/21 checks', kind: 'ok' }] },
-    { id: 'UI-Development', repo: 'nightshift', branch: 'UI-Development', host: 'wsl', agent: 'codex', shape: 'Pair', age: 6, started: 40,
+    { id: 'UI-Development', repo: 'kolux', branch: 'UI-Development', host: 'wsl', agent: 'codex', shape: 'Pair', age: 6, started: 40,
       title: 'Draft the three-mode shell behind a feature flag', short: 'Three-mode shell draft', state: 'needs', need: 'question', question: 'Which auth provider is canonical, Supabase or the custom JWT guard?', status: 'asked a question', diff: [0, 0],
       files: [], checks: [['Tests', 'not run', false], ['Typecheck', 'not run', false], ['Lint', 'not run', false]], pr: null,
       tr: [{ t: 'you', x: 'draft the three-mode shell behind a feature flag' }, { t: 'fold', x: 'Thought for 9s' }, { t: 'row', v: 'Explored', g: 'src/renderer/src/components/ · 23 files' }, { t: 'sum', x: 'Before I wire the session guard into the shell I need one decision from you.' }],
@@ -389,12 +389,12 @@
       files: [{ dir: 'docs/', name: 'charter.md', st: 'M', add: 120 }], checks: [['Build', 'unknown', false]], pr: null,
       tr: [{ t: 'you', x: 'rewrite the authority section of the charter' }, { t: 'row', v: 'Edit', g: 'docs/charter.md', add: 120 }, { t: 'sum', x: 'Last message 4 min ago. The host stopped answering; the agent may still be running. Loss of contact is not proof of exit.' }],
       hist: [{ l: 5, w: 60, x: 'rewrite authority section' }] },
-    { id: 'lint-split', repo: 'nightshift', branch: 'lint-split', host: 'pc', agent: 'gemini', shape: 'Solo', age: 60, started: 180,
+    { id: 'lint-split', repo: 'kolux', branch: 'lint-split', host: 'pc', agent: 'gemini', shape: 'Solo', age: 60, started: 180,
       title: 'Split every oversized file so lint passes with no carve-out', short: 'Split oversized files', state: 'done', status: 'merged', diff: [1292, 406],
       files: [{ dir: 'src/main/', name: 'agent-hooks.ts', st: 'M', add: 40, del: 380 }, { dir: 'src/main/', name: 'agent-hook-events.ts', st: 'A', add: 351 }], checks: [['Tests', '212 / 212', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 409, state: 'merged' },
       tr: [{ t: 'you', x: 'split every oversized file so lint passes with no carve-out' }, { t: 'fold', x: '31 tool calls' }, { t: 'row', v: 'Run', g: 'pnpm lint', ok: 'clean' }, { t: 'sum', x: 'Split every oversized file. Lint passes with no carve-out. Merged as #409.' }],
       hist: [{ l: 0, w: 30, x: 'split · lint', kind: 'ok' }] },
-    { id: 'update-button', repo: 'nightshift', branch: 'update-button', host: 'pc', agent: 'codex', shape: 'Solo', age: 180, started: 240,
+    { id: 'update-button', repo: 'kolux', branch: 'update-button', host: 'pc', agent: 'codex', shape: 'Solo', age: 180, started: 240,
       title: 'Add an update button to the sidebar footer', short: 'Update button in sidebar footer', state: 'done', status: 'merged', diff: [88, 4],
       files: [{ dir: '…/sidebar/', name: 'SidebarUpdateButton.tsx', st: 'A', add: 88 }], checks: [['Tests', '9 / 9', true], ['Typecheck', 'clean', true], ['Lint', 'clean', true]], pr: { n: 407, state: 'merged' },
       tr: [{ t: 'you', x: 'add an update button to the sidebar footer' }, { t: 'sum', x: 'Button walks Check → Update → Downloading → Restart. Merged as #407.' }], hist: [{ l: 0, w: 12, x: 'done', kind: 'ok' }] }

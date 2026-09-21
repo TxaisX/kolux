@@ -15,7 +15,7 @@ afterEach(async () => {
 
 describe('walkSessionFiles directory reader', () => {
   it('uses the injected reader for the root and nested directories', async () => {
-    tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-session-reader-'))
+    tempRoot = await mkdtemp(join(tmpdir(), 'kolux-session-reader-'))
     const nested = join(tempRoot, '2026', '08', '09')
     await mkdir(nested, { recursive: true })
     const rollout = join(nested, 'rollout-session.jsonl')

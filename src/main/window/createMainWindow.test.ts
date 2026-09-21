@@ -110,7 +110,7 @@ describe('createMainWindow', () => {
       ;(windowHandlers[event] ??= []).push(handler)
     }
     const webContents = {
-      getURL: vi.fn(() => 'file:///opt/nightshift/renderer/index.html'),
+      getURL: vi.fn(() => 'file:///opt/kolux/renderer/index.html'),
       isDestroyed: vi.fn(() => false),
       mainFrame: {},
       on: vi.fn((event, handler) => {
@@ -204,7 +204,7 @@ describe('createMainWindow', () => {
     expect(openExternalMock).toHaveBeenCalledTimes(4)
 
     const allowBlankEvent = { preventDefault: vi.fn() }
-    const allowBlankPrefs = { partition: 'persist:nightshift-browser' }
+    const allowBlankPrefs = { partition: 'persist:kolux-browser' }
     fire(
       'will-attach-webview',
       allowBlankEvent as never,
@@ -214,16 +214,16 @@ describe('createMainWindow', () => {
     expect(allowBlankEvent.preventDefault).not.toHaveBeenCalled()
     expect(allowBlankPrefs).toMatchObject({
       disableHtmlFullscreenWindowResize: true,
-      partition: 'persist:nightshift-browser',
+      partition: 'persist:kolux-browser',
       preload: expect.stringMatching(/browser-window-close-preload\.js$/),
       sandbox: true
     })
 
     routePartitionAllowedMock.mockImplementation(
-      (partition) => partition === 'persist:nightshift-browser-v1-route-partition'
+      (partition) => partition === 'persist:kolux-browser-v1-route-partition'
     )
     const allowRouteEvent = { preventDefault: vi.fn() }
-    const allowRoutePrefs = { partition: 'persist:nightshift-browser-v1-route-partition' }
+    const allowRoutePrefs = { partition: 'persist:kolux-browser-v1-route-partition' }
     fire(
       'will-attach-webview',
       allowRouteEvent as never,
@@ -232,14 +232,14 @@ describe('createMainWindow', () => {
     )
     expect(allowRouteEvent.preventDefault).not.toHaveBeenCalled()
     expect(allowRoutePrefs).toMatchObject({
-      partition: 'persist:nightshift-browser-v1-route-partition',
+      partition: 'persist:kolux-browser-v1-route-partition',
       sandbox: true
     })
     const denyRouteNavigationEvent = { preventDefault: vi.fn() }
     fire(
       'will-attach-webview',
       denyRouteNavigationEvent as never,
-      { partition: 'persist:nightshift-browser-v1-route-partition' } as never,
+      { partition: 'persist:kolux-browser-v1-route-partition' } as never,
       { src: 'https://example.com/' } as never
     )
     expect(denyRouteNavigationEvent.preventDefault).toHaveBeenCalledOnce()
@@ -248,7 +248,7 @@ describe('createMainWindow', () => {
     fire(
       'will-attach-webview',
       denyInlineHtmlEvent as never,
-      { partition: 'persist:nightshift-browser' } as never,
+      { partition: 'persist:kolux-browser' } as never,
       { src: 'data:text/html,<script>alert(1)</script>' } as never
     )
     expect(denyInlineHtmlEvent.preventDefault).toHaveBeenCalledTimes(1)
@@ -266,7 +266,7 @@ describe('createMainWindow', () => {
       preload: 'file:///tmp/untrusted-preload.js'
     }
     const hardenedPrefs = {
-      partition: 'persist:nightshift-browser',
+      partition: 'persist:kolux-browser',
       preload: '/tmp/untrusted-preload.js'
     }
     fire(
@@ -291,7 +291,7 @@ describe('createMainWindow', () => {
   it('stamps the browser host id into the renderer that owns the guests, and strips it from a guest that carries one', () => {
     const windowHandlers: Record<string, (...args: any[]) => void> = {}
     const webContents = {
-      getURL: vi.fn(() => 'file:///opt/nightshift/renderer/index.html'),
+      getURL: vi.fn(() => 'file:///opt/kolux/renderer/index.html'),
       isDestroyed: vi.fn(() => false),
       mainFrame: {},
       on: vi.fn((event, handler) => {
@@ -335,7 +335,7 @@ describe('createMainWindow', () => {
     // Electron would not have put there: what is pinned is that a guest cannot come out of the
     // handler holding the id, not that it arrives holding it.
     const guestPreferences = {
-      partition: 'persist:nightshift-browser',
+      partition: 'persist:kolux-browser',
       additionalArguments: [...(stamped ?? [])]
     }
     windowHandlers['will-attach-webview'](

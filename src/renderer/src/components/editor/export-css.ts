@@ -1,4 +1,4 @@
-// Why: this stylesheet targets the *exported* PDF document, not the live Nightshift
+// Why: this stylesheet targets the *exported* PDF document, not the live Kolux
 // pane. In-app CSS assumes sticky UI chrome, hover affordances, and app-shell
 // spacing that would look wrong when flattened to paper. Keeping export CSS
 // separate also means a future UI refactor can move live classes without
@@ -17,62 +17,62 @@ html, body {
   line-height: 1.6;
 }
 
-.nightshift-export-root {
+.kolux-export-root {
   padding: 0;
   max-width: 100%;
 }
 
-.nightshift-export-root h1,
-.nightshift-export-root h2,
-.nightshift-export-root h3,
-.nightshift-export-root h4,
-.nightshift-export-root h5,
-.nightshift-export-root h6 {
+.kolux-export-root h1,
+.kolux-export-root h2,
+.kolux-export-root h3,
+.kolux-export-root h4,
+.kolux-export-root h5,
+.kolux-export-root h6 {
   font-weight: 600;
   line-height: 1.25;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
 }
 
-.nightshift-export-root h1 { font-size: 1.9em; }
-.nightshift-export-root h2 { font-size: 1.5em; }
-.nightshift-export-root h3 { font-size: 1.25em; }
-.nightshift-export-root h4 { font-size: 1em; }
+.kolux-export-root h1 { font-size: 1.9em; }
+.kolux-export-root h2 { font-size: 1.5em; }
+.kolux-export-root h3 { font-size: 1.25em; }
+.kolux-export-root h4 { font-size: 1em; }
 
-.nightshift-export-root p,
-.nightshift-export-root blockquote,
-.nightshift-export-root ul,
-.nightshift-export-root ol,
-.nightshift-export-root pre,
-.nightshift-export-root table {
+.kolux-export-root p,
+.kolux-export-root blockquote,
+.kolux-export-root ul,
+.kolux-export-root ol,
+.kolux-export-root pre,
+.kolux-export-root table {
   margin-top: 0;
   margin-bottom: 1em;
 }
 
-.nightshift-export-root a {
+.kolux-export-root a {
   color: #0969da;
   text-decoration: underline;
 }
 
-.nightshift-export-root blockquote {
+.kolux-export-root blockquote {
   padding: 0 1em;
   color: #57606a;
   border-left: 0.25em solid #d0d7de;
 }
 
-.nightshift-export-root code,
-.nightshift-export-root pre {
+.kolux-export-root code,
+.kolux-export-root pre {
   font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
 }
 
-.nightshift-export-root code {
+.kolux-export-root code {
   background: #f6f8fa;
   padding: 0.2em 0.4em;
   border-radius: 4px;
 }
 
-.nightshift-export-root pre {
+.kolux-export-root pre {
   background: #f6f8fa;
   padding: 12px 16px;
   border-radius: 6px;
@@ -81,43 +81,43 @@ html, body {
   word-break: break-word;
 }
 
-.nightshift-export-root pre code {
+.kolux-export-root pre code {
   background: transparent;
   padding: 0;
   border-radius: 0;
   font-size: inherit;
 }
 
-.nightshift-export-root table {
+.kolux-export-root table {
   border-collapse: collapse;
   width: 100%;
 }
 
-.nightshift-export-root th,
-.nightshift-export-root td {
+.kolux-export-root th,
+.kolux-export-root td {
   border: 1px solid #d0d7de;
   padding: 6px 12px;
   text-align: left;
 }
 
-.nightshift-export-root th { background: #f6f8fa; }
+.kolux-export-root th { background: #f6f8fa; }
 
-.nightshift-export-root img,
-.nightshift-export-root svg {
+.kolux-export-root img,
+.kolux-export-root svg {
   max-width: 100%;
   height: auto;
 }
 
-.nightshift-export-root ul,
-.nightshift-export-root ol { padding-left: 2em; }
+.kolux-export-root ul,
+.kolux-export-root ol { padding-left: 2em; }
 
-.nightshift-export-root li { margin: 0.25em 0; }
+.kolux-export-root li { margin: 0.25em 0; }
 
-.nightshift-export-root input[type="checkbox"] {
+.kolux-export-root input[type="checkbox"] {
   margin-right: 0.4em;
 }
 
-.nightshift-export-root hr {
+.kolux-export-root hr {
   border: 0;
   border-top: 1px solid #d0d7de;
   margin: 1.5em 0;
@@ -130,7 +130,7 @@ html, body {
 .code-block-copy-btn,
 .markdown-preview-search,
 .rich-markdown-toolbar,
-[data-nightshift-export-hide="true"] {
+[data-kolux-export-hide="true"] {
   display: none !important;
 }
 

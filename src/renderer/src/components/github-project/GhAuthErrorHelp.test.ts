@@ -5,7 +5,7 @@ vi.mock('@/i18n/i18n', () => ({
   translate: (_key: string, fallback: string) => fallback
 }))
 
-import { buildRemediation, reloadNightshiftRenderer } from './GhAuthErrorHelp'
+import { buildRemediation, reloadKoluxRenderer } from './GhAuthErrorHelp'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -72,7 +72,7 @@ describe('GitHub Project auth remediation host routing', () => {
       location: { reload: locationReload }
     })
 
-    reloadNightshiftRenderer()
+    reloadKoluxRenderer()
     await vi.waitFor(() => expect(errors).toHaveBeenCalledTimes(1))
 
     expect(reload).toHaveBeenCalledTimes(1)

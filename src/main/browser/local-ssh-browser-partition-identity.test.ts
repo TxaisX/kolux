@@ -7,11 +7,11 @@ import {
 } from './browser-route-identity'
 import { localSshBrowserAuthorityConnectionIdentity } from './local-ssh-browser-partitions'
 
-function derive(nightshiftProfileId: string, browserProfileId: string, targetId: string) {
+function derive(koluxProfileId: string, browserProfileId: string, targetId: string) {
   return deriveBrowserRoutePartition({
-    nightshiftProfileId,
+    koluxProfileId,
     browserProfileId,
-    authorityConnectionIdentity: localSshBrowserAuthorityConnectionIdentity(nightshiftProfileId),
+    authorityConnectionIdentity: localSshBrowserAuthorityConnectionIdentity(koluxProfileId),
     executionHostIdentity: sshExecutionHostStorageIdentity(targetId)
   })
 }
@@ -22,7 +22,7 @@ describe('local ssh browser partition identity', () => {
     // composition silently logs every SSH workspace out. Recompute only for a
     // deliberate, migration-accompanied identity change.
     expect(derive('local-default', 'default', 'ssh-target-1').partition).toBe(
-      'persist:nightshift-browser-v1-5bd50510715cb753c62637e02be1e3e480ce8a5b1d8fc5d8b71205a2ff6181a4'
+      'persist:kolux-browser-v1-5bd50510715cb753c62637e02be1e3e480ce8a5b1d8fc5d8b71205a2ff6181a4'
     )
   })
 
@@ -39,12 +39,12 @@ describe('local ssh browser partition identity', () => {
     // removal clear the other owner's cookie jars.
     expect(
       deriveLocalSshBrowserRoutePartitionStorageScope({
-        nightshiftProfileId: 'local-default',
+        koluxProfileId: 'local-default',
         targetId: 'same-id'
       })
     ).not.toBe(
       deriveBrowserRoutePartitionStorageScope({
-        nightshiftProfileId: 'local-default',
+        koluxProfileId: 'local-default',
         environmentId: 'same-id'
       })
     )
@@ -55,7 +55,7 @@ describe('local ssh browser partition identity', () => {
     // future unification cannot strand a jar under a mismatched identity. Full
     // golden string — a dropped domain tag must fail, not pass by substring.
     expect(sshExecutionHostStorageIdentity('t-1')).toBe(
-      '["nightshift-browser-execution-host-storage",1,"ssh","t-1"]'
+      '["kolux-browser-execution-host-storage",1,"ssh","t-1"]'
     )
   })
 })

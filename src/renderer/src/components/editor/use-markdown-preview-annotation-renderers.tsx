@@ -136,7 +136,7 @@ export function useMarkdownPreviewAnnotationRenderers({
                     <>
                       <button
                         type="button"
-                        className="nightshift-diff-comment-pill-btn"
+                        className="kolux-diff-comment-pill-btn"
                         title={
                           copiedReviewNoteId === comment.id
                             ? translate(

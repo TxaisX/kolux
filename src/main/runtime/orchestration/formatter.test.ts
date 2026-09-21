@@ -73,16 +73,14 @@ describe('formatMessageBanner', () => {
   it('includes reply hint with message ID', () => {
     const banner = formatMessageBanner(makeMessage({ id: 'msg_xyz789' }))
     expect(banner).toContain(
-      '[Reply: nightshift orchestration reply --id msg_xyz789 --from term_coord --body "..."]'
+      '[Reply: kolux orchestration reply --id msg_xyz789 --from term_coord --body "..."]'
     )
   })
 
   it('lets the CLI resolve the live sender for Run and Dispatch addresses', () => {
     for (const to_handle of ['run:run_test', 'dispatch:dispatch_test']) {
       const banner = formatMessageBanner(makeMessage({ to_handle }))
-      expect(banner).toContain(
-        '[Reply: nightshift orchestration reply --id msg_test1 --body "..."]'
-      )
+      expect(banner).toContain('[Reply: kolux orchestration reply --id msg_test1 --body "..."]')
       expect(banner).not.toContain(`--from ${to_handle}`)
     }
   })
@@ -102,13 +100,13 @@ describe('formatMessageBanner', () => {
     const banner = formatMessageBanner(makeMessage({ id: 'msg_legacy' }), {
       authority: 'legacy_compatibility',
       supportedActionHints: [
-        'nightshift orchestration reply --id msg_legacy --from term_coord --body "..."'
+        'kolux orchestration reply --id msg_legacy --from term_coord --body "..."'
       ]
     })
 
     expect(banner).toContain('[LEGACY COMPATIBILITY]')
     expect(banner).toContain(
-      '[Supported action: nightshift orchestration reply --id msg_legacy --from term_coord --body "..."]'
+      '[Supported action: kolux orchestration reply --id msg_legacy --from term_coord --body "..."]'
     )
     expect(banner).not.toContain('[Reply:')
     expect(banner).not.toContain('acknowledgment')
@@ -117,20 +115,18 @@ describe('formatMessageBanner', () => {
   it('warns that a bounded legacy recovery replay may already have been seen', () => {
     const banner = formatMessageBanner(makeMessage(), {
       authority: 'legacy_recovery_replay',
-      supportedActionHints: ['nightshift orchestration check --ack delivery_legacy']
+      supportedActionHints: ['kolux orchestration check --ack delivery_legacy']
     })
 
     expect(banner).toContain('[LEGACY RECOVERY REPLAY — MAY HAVE BEEN SEEN]')
     expect(banner).toContain('bounded recovery replay may already have been seen')
-    expect(banner).toContain(
-      '[Supported action: nightshift orchestration check --ack delivery_legacy]'
-    )
+    expect(banner).toContain('[Supported action: kolux orchestration check --ack delivery_legacy]')
     expect(banner).not.toContain('[Reply:')
   })
 
   it('does not infer live compatibility from legacy database provenance', () => {
     const banner = formatMessageBanner(makeMessage({ run_id: 'run_legacy_local' }), {
-      supportedActionHints: ['nightshift orchestration check --ack delivery_legacy']
+      supportedActionHints: ['kolux orchestration check --ack delivery_legacy']
     })
 
     expect(banner).toContain('[LEGACY READ-ONLY]')
@@ -191,7 +187,7 @@ describe('formatMessagesForInjection', () => {
 describe('formatMessagePointer', () => {
   it('formats a singular pointer without message content', () => {
     expect(formatMessagePointer(1, 'run:run_1')).toBe(
-      '\nYou have 1 orchestration message. Run `nightshift orchestration check --run run_1`.\n'
+      '\nYou have 1 orchestration message. Run `kolux orchestration check --run run_1`.\n'
     )
   })
 
@@ -200,11 +196,11 @@ describe('formatMessagePointer', () => {
   })
 
   it('uses the terminal-resolved CLI command', () => {
-    expect(formatMessagePointer(1, 'run:run_wsl', 'nightshift-ide')).toContain(
-      '`nightshift-ide orchestration check --run run_wsl`'
+    expect(formatMessagePointer(1, 'run:run_wsl', 'kolux-ide')).toContain(
+      '`kolux-ide orchestration check --run run_wsl`'
     )
-    expect(formatMessagePointer(1, 'run:run_dev', 'nightshift-dev')).toContain(
-      '`nightshift-dev orchestration check --run run_dev`'
+    expect(formatMessagePointer(1, 'run:run_dev', 'kolux-dev')).toContain(
+      '`kolux-dev orchestration check --run run_dev`'
     )
   })
 })

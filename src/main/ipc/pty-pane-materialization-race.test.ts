@@ -36,7 +36,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -119,9 +119,9 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: makePaneKey(tabId, leafId),
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId
+        KOLUX_PANE_KEY: makePaneKey(tabId, leafId),
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId
       }
     })
     await new Promise<void>((resolve) => setImmediate(resolve))
@@ -216,7 +216,7 @@ describe('registerPtyHandlers', () => {
       sessionId: 'pty-runtime-reservation',
       tabId,
       leafId,
-      env: { NIGHTSHIFT_PANE_KEY: paneKey }
+      env: { KOLUX_PANE_KEY: paneKey }
     }
 
     const rendererSpawn = handlers.get('pty:spawn')!(null, {
@@ -351,9 +351,9 @@ describe('registerPtyHandlers', () => {
       tabId: 'tab-race',
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: paneKey,
-        NIGHTSHIFT_TAB_ID: 'tab-race',
-        NIGHTSHIFT_WORKTREE_ID: 'repo-1::/tmp'
+        KOLUX_PANE_KEY: paneKey,
+        KOLUX_TAB_ID: 'tab-race',
+        KOLUX_WORKTREE_ID: 'repo-1::/tmp'
       }
     }) as Promise<{ id: string }>
     await Promise.resolve()
@@ -366,7 +366,7 @@ describe('registerPtyHandlers', () => {
       worktreeId: 'repo-1::/tmp',
       tabId: 'tab-race',
       leafId,
-      env: { NIGHTSHIFT_PANE_KEY: paneKey },
+      env: { KOLUX_PANE_KEY: paneKey },
       persistHostSessionBinding: true
     })
     await vi.waitFor(() => expect(providerSpawn).toHaveBeenCalledTimes(1))
@@ -548,7 +548,7 @@ describe('registerPtyHandlers', () => {
         preAllocatedHandle: 'term-live-owner',
         tabId,
         leafId,
-        env: { NIGHTSHIFT_PANE_KEY: paneKey },
+        env: { KOLUX_PANE_KEY: paneKey },
         persistHostSessionBinding: true
       })
       ownerPublished = true
@@ -582,9 +582,9 @@ describe('registerPtyHandlers', () => {
         tabId,
         leafId,
         env: {
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: tabId,
-          NIGHTSHIFT_WORKTREE_ID: worktreeId
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: tabId,
+          KOLUX_WORKTREE_ID: worktreeId
         },
         telemetry: {
           agent_kind: 'codex',
@@ -651,7 +651,7 @@ describe('registerPtyHandlers', () => {
         preAllocatedHandle: 'term-live-owner',
         tabId,
         leafId,
-        env: { NIGHTSHIFT_PANE_KEY: paneKey },
+        env: { KOLUX_PANE_KEY: paneKey },
         persistHostSessionBinding: true,
         adoptedStablePane: adoptedOwner,
         agentSessionEnsure: {

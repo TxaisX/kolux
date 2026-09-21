@@ -58,7 +58,7 @@ export function notifyServeSupervisorReady(runtimeId: string): void {
     return
   }
   const message: ServeSupervisorMessage = {
-    type: 'nightshift:serve-ready',
+    type: 'kolux:serve-ready',
     version: app.getVersion(),
     runtimeId
   }

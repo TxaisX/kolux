@@ -6,25 +6,25 @@ import {
 
 describe('resolveArtifactCloudApiUrl', () => {
   it('uses the first-party production origin by default', () => {
-    expect(resolveArtifactCloudApiUrl(undefined, {}, true)).toBe('https://share.nightshift.invalid')
+    expect(resolveArtifactCloudApiUrl(undefined, {}, true)).toBe('https://share.kolux.invalid')
   })
 
   it('allows loopback HTTP only in development', () => {
     expect(
       resolveArtifactCloudApiUrl(
         undefined,
-        { NIGHTSHIFT_ARTIFACTS_API_URL: 'http://127.0.0.1:45961' },
+        { KOLUX_ARTIFACTS_API_URL: 'http://127.0.0.1:45961' },
         false
       )
     ).toBe('http://127.0.0.1:45961')
     expect(() => resolveArtifactCloudApiUrl('http://127.0.0.1:45961', {}, true)).toThrow(/HTTPS/)
   })
 
-  it('rejects origins that could receive a Nightshift access token', () => {
+  it('rejects origins that could receive a Kolux access token', () => {
     expect(() => resolveArtifactCloudApiUrl('https://example.com', {}, false)).toThrow(
-      /nightshift\.invalid/
+      /kolux\.invalid/
     )
-    expect(() => resolveArtifactCloudApiUrl('https://share.nightshift.invalid/path', {}, false)).toThrow(
+    expect(() => resolveArtifactCloudApiUrl('https://share.kolux.invalid/path', {}, false)).toThrow(
       /origin/
     )
   })

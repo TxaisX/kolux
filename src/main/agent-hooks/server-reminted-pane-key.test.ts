@@ -36,7 +36,7 @@ describe('reminted $$ pane keys on the OMP hook pipeline', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-reminted-pane-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-reminted-pane-'))
   })
 
   afterEach(() => {

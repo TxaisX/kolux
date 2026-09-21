@@ -74,7 +74,7 @@ export function makeBranchRenameDeps(
       getRepo: () => repo,
       getAgentEnvResolvers: () => undefined,
       getCurrentDisplayName: () => 'Nautilus-8',
-      canRenameNightshiftCreatedBranch: () => true,
+      canRenameKoluxCreatedBranch: () => true,
       setDisplayName,
       renameWorktreeFolder,
       setRenameError,

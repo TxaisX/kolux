@@ -22,7 +22,7 @@ function runtimeStatusLabel(state: RuntimeHostConnectionState): string {
     case 'runtime-unavailable':
       return translate(
         'auto.components.status.bar.SshStatusSegment.runtime_unavailable_transport_up',
-        'Nightshift unavailable'
+        'Kolux unavailable'
       )
     case 'workspace-window-closed':
       return translate(
@@ -99,22 +99,22 @@ function runtimeFailureSummary(state: RuntimeHostConnectionState): string {
     case 'runtime-unavailable':
       return translate(
         'auto.components.status.bar.RuntimeHostStatusRow.runtime_unavailable',
-        'SSH transport is connected, but the Nightshift runtime is unavailable'
+        'SSH transport is connected, but the Kolux runtime is unavailable'
       )
     case 'checking':
       return translate(
         'auto.components.status.bar.RuntimeHostStatusRow.checking_host',
-        'Nightshift is checking whether this host is reachable'
+        'Kolux is checking whether this host is reachable'
       )
     case 'reconnecting':
       return translate(
         'auto.components.status.bar.RuntimeHostStatusRow.restoring_connection',
-        'Nightshift is trying to restore the connection'
+        'Kolux is trying to restore the connection'
       )
     case 'disconnected':
       return translate(
         'auto.components.status.bar.RuntimeHostStatusRow.host_unreachable',
-        'Nightshift isn’t reachable on this host'
+        'Kolux isn’t reachable on this host'
       )
   }
 }
@@ -126,12 +126,12 @@ function runtimeFailureExplanation(state: RuntimeHostConnectionState): string | 
   if (state === 'runtime-unavailable') {
     return translate(
       'auto.components.status.bar.RuntimeHostStatusRow.runtime_unavailable_explanation',
-      'The remote host may still be running; only the Nightshift runtime connection is unavailable.'
+      'The remote host may still be running; only the Kolux runtime connection is unavailable.'
     )
   }
   return translate(
     'auto.components.status.bar.RuntimeHostStatusRow.contact_note',
-    'The host may still be running; only the Nightshift connection is unavailable.'
+    'The host may still be running; only the Kolux connection is unavailable.'
   )
 }
 

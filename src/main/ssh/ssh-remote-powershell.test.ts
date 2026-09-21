@@ -68,7 +68,7 @@ const POLICY_GATED_CONSTRUCTS = [
     pattern: /\.psm?1\b/i,
     catches: [
       `powerShellCommand("$script = 'C:\\tools\\deploy.ps1'")`,
-      `powerShellCommand("Import-Module '$dir\\nightshift.psm1'")`,
+      `powerShellCommand("Import-Module '$dir\\kolux.psm1'")`,
       `powerShellCommand("& '$root\\DEPLOY.PS1'")`
     ],
     ignores: [`const build = 'artifact.ps10'`]

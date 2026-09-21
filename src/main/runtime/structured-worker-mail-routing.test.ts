@@ -6,8 +6,8 @@ vi.mock('../native-chat/agent-session-wire/structured-agent-session-registry', (
   getStructuredAgentSessionHost: () => hostRef.current
 }))
 
-const { NightshiftRuntimeWithAdoptTerminalOrphansFromInventory } =
-  await import('./nightshift-runtime-adopt-terminal-orphans-from-inventory')
+const { KoluxRuntimeWithAdoptTerminalOrphansFromInventory } =
+  await import('./kolux-runtime-adopt-terminal-orphans-from-inventory')
 const {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
@@ -16,7 +16,7 @@ const {
 } = await import('./structured-worker-identity')
 
 const SESSION_ID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d'
-const prototype = NightshiftRuntimeWithAdoptTerminalOrphansFromInventory.prototype
+const prototype = KoluxRuntimeWithAdoptTerminalOrphansFromInventory.prototype
 const getLivePaneKey = prototype.getLiveTerminalPaneKey
 const resolveActiveTerminal = prototype.resolveActiveTerminal
 

@@ -13,12 +13,12 @@
  *   - heap growth      JS heap across repeated poll cycles (leak signal)
  *
  * Run a single scenario at a custom scale:
- *   NIGHTSHIFT_LARGE_FILE_COUNT=9500 npx playwright test \
+ *   KOLUX_LARGE_FILE_COUNT=9500 npx playwright test \
  *     tests/e2e/source-control-large-file-count.spec.ts \
  *     --config tests/playwright.config.ts --project electron-headless
  */
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import {
   hasCapturedGitStatusRetry,
@@ -61,8 +61,8 @@ type LoadMeasurement = {
   cycleMaxLagMs: number[]
 }
 
-async function addAndActivateRepo(nightshiftPage: Page, repoPath: string): Promise<string> {
-  const repoId = await nightshiftPage.evaluate(async (pathToRepo: string) => {
+async function addAndActivateRepo(koluxPage: Page, repoPath: string): Promise<string> {
+  const repoId = await koluxPage.evaluate(async (pathToRepo: string) => {
     const store = window.__store
     if (!store) {
       throw new Error('window.__store is not available')
@@ -79,7 +79,7 @@ async function addAndActivateRepo(nightshiftPage: Page, repoPath: string): Promi
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(async (targetRepoId: string) => {
+        koluxPage.evaluate(async (targetRepoId: string) => {
           const store = window.__store
           if (!store) {
             return 0
@@ -91,7 +91,7 @@ async function addAndActivateRepo(nightshiftPage: Page, repoPath: string): Promi
     )
     .toBeGreaterThan(0)
 
-  const worktreeId = await nightshiftPage.evaluate(
+  const worktreeId = await koluxPage.evaluate(
     ({ targetRepoId, pathToRepo }) => {
       const store = window.__store
       if (!store) {
@@ -116,24 +116,24 @@ async function addAndActivateRepo(nightshiftPage: Page, repoPath: string): Promi
   // assert the user-visible panel before timing its render. Clicking the
   // already-active activity button races the first cold status scan and tests
   // Playwright's two-frame actionability window instead of panel readiness.
-  const sourceControlButton = nightshiftPage.getByRole('button', { name: /^Source Control/ })
+  const sourceControlButton = koluxPage.getByRole('button', { name: /^Source Control/ })
   await expect(sourceControlButton).toBeVisible()
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().rightSidebarTab))
+    .poll(() => koluxPage.evaluate(() => window.__store?.getState().rightSidebarTab))
     .toBe('source-control')
-  await expect(nightshiftPage.getByRole('button', { name: 'Filter files by name' })).toBeVisible()
+  await expect(koluxPage.getByRole('button', { name: 'Filter files by name' })).toBeVisible()
 
   return worktreeId
 }
 
 async function unregisterLargeFileCountRepos(
-  nightshiftPage: Page,
+  koluxPage: Page,
   repoPaths: readonly string[]
 ): Promise<void> {
   // Why: remove disposable projects through the product so their terminals
   // and watcher subscriptions begin shutting down before Electron teardown.
   for (const repoPath of repoPaths) {
-    await nightshiftPage.evaluate(async (pathToRepo) => {
+    await koluxPage.evaluate(async (pathToRepo) => {
       const store = window.__store
       const repo = store?.getState().repos.find((entry) => entry.path === pathToRepo)
       if (repo) {
@@ -150,98 +150,95 @@ async function unregisterLargeFileCountRepos(
  * dedupes.
  */
 async function measureSourceControlLoad(
-  nightshiftPage: Page,
+  koluxPage: Page,
   args: { worktreeId: string; repoPath: string; expectedRows: number; pollCycles: number }
 ): Promise<LoadMeasurement> {
-  return await nightshiftPage.evaluate(
-    async ({ worktreeId, repoPath, expectedRows, pollCycles }) => {
-      const store = window.__store
-      if (!store) {
-        throw new Error('window.__store is not available')
-      }
+  return await koluxPage.evaluate(async ({ worktreeId, repoPath, expectedRows, pollCycles }) => {
+    const store = window.__store
+    if (!store) {
+      throw new Error('window.__store is not available')
+    }
 
-      const lagSamples: number[] = []
-      const probeIntervalMs = 50
-      let lastTick = performance.now()
-      const probe = window.setInterval(() => {
-        const now = performance.now()
-        lagSamples.push(Math.max(0, now - lastTick - probeIntervalMs))
-        lastTick = now
-      }, probeIntervalMs)
+    const lagSamples: number[] = []
+    const probeIntervalMs = 50
+    let lastTick = performance.now()
+    const probe = window.setInterval(() => {
+      const now = performance.now()
+      lagSamples.push(Math.max(0, now - lastTick - probeIntervalMs))
+      lastTick = now
+    }, probeIntervalMs)
 
-      const readHeapMb = (): number => {
-        const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
-        return memory ? memory.usedJSHeapSize / (1024 * 1024) : -1
-      }
+    const readHeapMb = (): number => {
+      const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+      return memory ? memory.usedJSHeapSize / (1024 * 1024) : -1
+    }
 
-      try {
-        const scanStart = performance.now()
-        const status = await window.api.git.status({ worktreePath: repoPath })
-        const scanMs = performance.now() - scanStart
-        const payloadBytes = JSON.stringify(status).length
+    try {
+      const scanStart = performance.now()
+      const status = await window.api.git.status({ worktreePath: repoPath })
+      const scanMs = performance.now() - scanStart
+      const payloadBytes = JSON.stringify(status).length
 
-        // Why: a virtualized panel mounts only viewport rows, so "all rows in
-        // the DOM" would never happen post-fix. First rows appearing is the
-        // user-visible "list loaded" moment either way.
-        const firstRowsTarget = Math.min(expectedRows, 30)
-        const renderStart = performance.now()
-        store.getState().setGitStatus(worktreeId, status)
-        let renderedRows = 0
-        while (performance.now() - renderStart < 60_000) {
-          renderedRows = document.querySelectorAll('[data-testid="source-control-entry"]').length
-          if (renderedRows >= firstRowsTarget) {
-            break
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 50))
-        }
-        const renderMs = performance.now() - renderStart
-        // Settle so the lag probe captures post-render layout/paint stalls too.
-        await new Promise((resolve) => window.setTimeout(resolve, 1_000))
+      // Why: a virtualized panel mounts only viewport rows, so "all rows in
+      // the DOM" would never happen post-fix. First rows appearing is the
+      // user-visible "list loaded" moment either way.
+      const firstRowsTarget = Math.min(expectedRows, 30)
+      const renderStart = performance.now()
+      store.getState().setGitStatus(worktreeId, status)
+      let renderedRows = 0
+      while (performance.now() - renderStart < 60_000) {
         renderedRows = document.querySelectorAll('[data-testid="source-control-entry"]').length
-        const heapUsedMbAfterRender = readHeapMb()
-
-        // Why: #8013 reports memory that keeps growing — replay the poll cycle
-        // (fresh scan, fresh entry array, store update) and track heap + lag.
-        const heapUsedMbPerCycle: number[] = []
-        const cycleMaxLagMs: number[] = []
-        let rescanMs = 0
-        for (let cycle = 0; cycle < pollCycles; cycle += 1) {
-          const cycleLagStart = lagSamples.length
-          const cycleScanStart = performance.now()
-          const cycleStatus = await window.api.git.status({ worktreePath: repoPath })
-          if (cycle === 0) {
-            // First rescan isolates warm-cache scan cost (untracked line-stat
-            // reads are mtime-cached after the initial scan).
-            rescanMs = performance.now() - cycleScanStart
-          }
-          store.getState().setGitStatus(worktreeId, cycleStatus)
-          await new Promise((resolve) => window.setTimeout(resolve, 500))
-          heapUsedMbPerCycle.push(readHeapMb())
-          cycleMaxLagMs.push(Math.max(0, ...lagSamples.slice(cycleLagStart)))
+        if (renderedRows >= firstRowsTarget) {
+          break
         }
-
-        const sorted = [...lagSamples].sort((a, b) => a - b)
-        return {
-          entryCount: status.entries.length,
-          didHitLimit: status.didHitLimit === true,
-          scanMs,
-          rescanMs,
-          payloadBytes,
-          renderMs,
-          renderedRows,
-          maxLagMs: sorted.length ? (sorted.at(-1) ?? 0) : 0,
-          p95LagMs: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : 0,
-          domNodeCount: document.getElementsByTagName('*').length,
-          heapUsedMbAfterRender,
-          heapUsedMbPerCycle,
-          cycleMaxLagMs
-        }
-      } finally {
-        window.clearInterval(probe)
+        await new Promise((resolve) => window.setTimeout(resolve, 50))
       }
-    },
-    args
-  )
+      const renderMs = performance.now() - renderStart
+      // Settle so the lag probe captures post-render layout/paint stalls too.
+      await new Promise((resolve) => window.setTimeout(resolve, 1_000))
+      renderedRows = document.querySelectorAll('[data-testid="source-control-entry"]').length
+      const heapUsedMbAfterRender = readHeapMb()
+
+      // Why: #8013 reports memory that keeps growing — replay the poll cycle
+      // (fresh scan, fresh entry array, store update) and track heap + lag.
+      const heapUsedMbPerCycle: number[] = []
+      const cycleMaxLagMs: number[] = []
+      let rescanMs = 0
+      for (let cycle = 0; cycle < pollCycles; cycle += 1) {
+        const cycleLagStart = lagSamples.length
+        const cycleScanStart = performance.now()
+        const cycleStatus = await window.api.git.status({ worktreePath: repoPath })
+        if (cycle === 0) {
+          // First rescan isolates warm-cache scan cost (untracked line-stat
+          // reads are mtime-cached after the initial scan).
+          rescanMs = performance.now() - cycleScanStart
+        }
+        store.getState().setGitStatus(worktreeId, cycleStatus)
+        await new Promise((resolve) => window.setTimeout(resolve, 500))
+        heapUsedMbPerCycle.push(readHeapMb())
+        cycleMaxLagMs.push(Math.max(0, ...lagSamples.slice(cycleLagStart)))
+      }
+
+      const sorted = [...lagSamples].sort((a, b) => a - b)
+      return {
+        entryCount: status.entries.length,
+        didHitLimit: status.didHitLimit === true,
+        scanMs,
+        rescanMs,
+        payloadBytes,
+        renderMs,
+        renderedRows,
+        maxLagMs: sorted.length ? (sorted.at(-1) ?? 0) : 0,
+        p95LagMs: sorted.length ? sorted[Math.floor(sorted.length * 0.95)] : 0,
+        domNodeCount: document.getElementsByTagName('*').length,
+        heapUsedMbAfterRender,
+        heapUsedMbPerCycle,
+        cycleMaxLagMs
+      }
+    } finally {
+      window.clearInterval(probe)
+    }
+  }, args)
 }
 
 function logMeasurement(
@@ -274,16 +271,16 @@ test.describe('Source Control large file count (#8013)', () => {
   test.use({ seedTestRepo: false })
 
   test('a large untracked set under the status cap stays responsive', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp,
     registerPostElectronShutdownCleanup
   }) => {
     test.setTimeout(600_000)
-    const untrackedFiles = Number(process.env.NIGHTSHIFT_LARGE_FILE_COUNT ?? '950')
-    // Why: NIGHTSHIFT_LARGE_FILE_BYTES gives untracked files realistic sizes so the
+    const untrackedFiles = Number(process.env.KOLUX_LARGE_FILE_COUNT ?? '950')
+    // Why: KOLUX_LARGE_FILE_BYTES gives untracked files realistic sizes so the
     // per-poll line-stat reads (cache-capped at 2,048 entries) become visible
     // in rescanMs instead of hiding behind ~30-byte fixture files.
-    const untrackedFileBytes = Number(process.env.NIGHTSHIFT_LARGE_FILE_BYTES ?? '0')
+    const untrackedFileBytes = Number(process.env.KOLUX_LARGE_FILE_BYTES ?? '0')
     const fixture = createLargeFileCountRepo({
       trackedFiles: 100,
       untrackedFiles,
@@ -291,10 +288,10 @@ test.describe('Source Control large file count (#8013)', () => {
     })
     registerPostElectronShutdownCleanup(() => removeLargeFileCountRepo(fixture.repoPath))
     try {
-      await waitForSessionReady(nightshiftPage)
-      const worktreeId = await addAndActivateRepo(nightshiftPage, fixture.repoPath)
+      await waitForSessionReady(koluxPage)
+      const worktreeId = await addAndActivateRepo(koluxPage, fixture.repoPath)
       const workingSetBeforeMb = await readRendererWorkingSetMb(electronApp)
-      const measurement = await measureSourceControlLoad(nightshiftPage, {
+      const measurement = await measureSourceControlLoad(koluxPage, {
         worktreeId,
         repoPath: fixture.repoPath,
         expectedRows: untrackedFiles,
@@ -321,24 +318,24 @@ test.describe('Source Control large file count (#8013)', () => {
         )
       }
     } finally {
-      await unregisterLargeFileCountRepos(nightshiftPage, [fixture.repoPath])
+      await unregisterLargeFileCountRepos(koluxPage, [fixture.repoPath])
     }
   })
 
   test('a large modified set under the status cap stays responsive', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp,
     registerPostElectronShutdownCleanup
   }) => {
     test.setTimeout(600_000)
-    const modifiedFiles = Number(process.env.NIGHTSHIFT_LARGE_FILE_COUNT ?? '750')
+    const modifiedFiles = Number(process.env.KOLUX_LARGE_FILE_COUNT ?? '750')
     const fixture = createLargeFileCountRepo({ trackedFiles: modifiedFiles, modifiedFiles })
     registerPostElectronShutdownCleanup(() => removeLargeFileCountRepo(fixture.repoPath))
     try {
-      await waitForSessionReady(nightshiftPage)
-      const worktreeId = await addAndActivateRepo(nightshiftPage, fixture.repoPath)
+      await waitForSessionReady(koluxPage)
+      const worktreeId = await addAndActivateRepo(koluxPage, fixture.repoPath)
       const workingSetBeforeMb = await readRendererWorkingSetMb(electronApp)
-      const measurement = await measureSourceControlLoad(nightshiftPage, {
+      const measurement = await measureSourceControlLoad(koluxPage, {
         worktreeId,
         repoPath: fixture.repoPath,
         expectedRows: modifiedFiles,
@@ -356,12 +353,12 @@ test.describe('Source Control large file count (#8013)', () => {
       expect(measurement.renderedRows).toBeLessThan(MAX_MOUNTED_ROWS)
       expect(measurement.maxLagMs).toBeLessThan(MAX_EVENT_LOOP_LAG_MS)
     } finally {
-      await unregisterLargeFileCountRepos(nightshiftPage, [fixture.repoPath])
+      await unregisterLargeFileCountRepos(koluxPage, [fixture.repoPath])
     }
   })
 
   test('a change set over the status cap degrades to the too-many-changes state', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp,
     registerPostElectronShutdownCleanup
   }) => {
@@ -370,8 +367,8 @@ test.describe('Source Control large file count (#8013)', () => {
     const fixture = createLargeFileCountRepo({ untrackedFiles })
     registerPostElectronShutdownCleanup(() => removeLargeFileCountRepo(fixture.repoPath))
     try {
-      await waitForSessionReady(nightshiftPage)
-      await nightshiftPage.evaluate(() => {
+      await waitForSessionReady(koluxPage)
+      await koluxPage.evaluate(() => {
         const probe = { lastTick: performance.now(), maxLagMs: 0, timer: 0 }
         probe.timer = window.setInterval(() => {
           const now = performance.now()
@@ -385,9 +382,9 @@ test.describe('Source Control large file count (#8013)', () => {
         ).__sourceControlActivationLagProbe = probe
       })
       const activationStart = performance.now()
-      const worktreeId = await addAndActivateRepo(nightshiftPage, fixture.repoPath)
+      const worktreeId = await addAndActivateRepo(koluxPage, fixture.repoPath)
       const activationMs = performance.now() - activationStart
-      const activationMaxLagMs = await nightshiftPage.evaluate(() => {
+      const activationMaxLagMs = await koluxPage.evaluate(() => {
         const target = window as unknown as {
           __sourceControlActivationLagProbe?: {
             maxLagMs: number
@@ -406,7 +403,7 @@ test.describe('Source Control large file count (#8013)', () => {
         `[large-file-count] initial-activation ${JSON.stringify({ activationMs, activationMaxLagMs })}`
       )
       const workingSetBeforeMb = await readRendererWorkingSetMb(electronApp)
-      const measurement = await measureSourceControlLoad(nightshiftPage, {
+      const measurement = await measureSourceControlLoad(koluxPage, {
         worktreeId,
         repoPath: fixture.repoPath,
         // The capped payload still carries DEFAULT_GIT_STATUS_LIMIT entries;
@@ -420,16 +417,16 @@ test.describe('Source Control large file count (#8013)', () => {
         rendererWorkingSetMb: { before: workingSetBeforeMb, after: workingSetAfterMb }
       })
 
-      const tooManyChangesBanner = nightshiftPage.getByTestId('too-many-changes-banner')
+      const tooManyChangesBanner = koluxPage.getByTestId('too-many-changes-banner')
       await expect(tooManyChangesBanner).toBeVisible()
-      if (process.env.NIGHTSHIFT_LARGE_FILE_SCREENSHOT_PATH) {
+      if (process.env.KOLUX_LARGE_FILE_SCREENSHOT_PATH) {
         // Narrowest supported sidebar is where the banner layout is worst.
-        await nightshiftPage.evaluate((minWidth) => {
+        await koluxPage.evaluate((minWidth) => {
           window.__store?.getState().setRightSidebarWidth(minWidth)
           document.documentElement.classList.add('dark')
         }, RIGHT_SIDEBAR_MIN_WIDTH)
         await tooManyChangesBanner.screenshot({
-          path: process.env.NIGHTSHIFT_LARGE_FILE_SCREENSHOT_PATH
+          path: process.env.KOLUX_LARGE_FILE_SCREENSHOT_PATH
         })
       }
 
@@ -442,7 +439,7 @@ test.describe('Source Control large file count (#8013)', () => {
 
       // Why: didHitLimit must park the worktree in the huge-status state so
       // background polling stops re-running tens-of-seconds git scans.
-      const hugeState = await nightshiftPage.evaluate(
+      const hugeState = await koluxPage.evaluate(
         (wId) => window.__store?.getState().gitStatusHugeByWorktree?.[wId] ?? null,
         worktreeId
       )
@@ -462,19 +459,19 @@ test.describe('Source Control large file count (#8013)', () => {
       await expect(tooManyChangesBanner).not.toBeVisible()
       await expect
         .poll(() =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             (wId) => window.__store?.getState().gitStatusHugeByWorktree?.[wId] ?? null,
             worktreeId
           )
         )
         .toBeNull()
     } finally {
-      await unregisterLargeFileCountRepos(nightshiftPage, [fixture.repoPath])
+      await unregisterLargeFileCountRepos(koluxPage, [fixture.repoPath])
     }
   })
 
   test('untracked line-stat cache stays effective up to the status cap', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }) => {
     test.setTimeout(600_000)
@@ -496,11 +493,11 @@ test.describe('Source Control large file count (#8013)', () => {
       })
       const largeRepoPath = largeRepo.repoPath
       registerPostElectronShutdownCleanup(() => removeLargeFileCountRepo(largeRepoPath))
-      await waitForSessionReady(nightshiftPage)
+      await waitForSessionReady(koluxPage)
 
       const warmRescanPerFileMs = async (repoPath: string, files: number): Promise<number> => {
-        const worktreeId = await addAndActivateRepo(nightshiftPage, repoPath)
-        const measurement = await measureSourceControlLoad(nightshiftPage, {
+        const worktreeId = await addAndActivateRepo(koluxPage, repoPath)
+        const measurement = await measureSourceControlLoad(koluxPage, {
           worktreeId,
           repoPath,
           expectedRows: files,
@@ -516,7 +513,7 @@ test.describe('Source Control large file count (#8013)', () => {
       )
       expect(largePerFileMs).toBeLessThan(smallPerFileMs * 2)
     } finally {
-      await unregisterLargeFileCountRepos(nightshiftPage, [
+      await unregisterLargeFileCountRepos(koluxPage, [
         smallRepo.repoPath,
         ...(largeRepo ? [largeRepo.repoPath] : [])
       ])
@@ -524,19 +521,19 @@ test.describe('Source Control large file count (#8013)', () => {
   })
 
   test('a large clean repo (tracked files only) loads instantly', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp,
     registerPostElectronShutdownCleanup
   }) => {
     test.setTimeout(600_000)
-    const trackedFiles = Number(process.env.NIGHTSHIFT_LARGE_FILE_COUNT ?? '15000')
+    const trackedFiles = Number(process.env.KOLUX_LARGE_FILE_COUNT ?? '15000')
     const fixture = createLargeFileCountRepo({ trackedFiles })
     registerPostElectronShutdownCleanup(() => removeLargeFileCountRepo(fixture.repoPath))
     try {
-      await waitForSessionReady(nightshiftPage)
-      const worktreeId = await addAndActivateRepo(nightshiftPage, fixture.repoPath)
+      await waitForSessionReady(koluxPage)
+      const worktreeId = await addAndActivateRepo(koluxPage, fixture.repoPath)
       const workingSetBeforeMb = await readRendererWorkingSetMb(electronApp)
-      const measurement = await measureSourceControlLoad(nightshiftPage, {
+      const measurement = await measureSourceControlLoad(koluxPage, {
         worktreeId,
         repoPath: fixture.repoPath,
         expectedRows: 0,
@@ -551,7 +548,7 @@ test.describe('Source Control large file count (#8013)', () => {
       expect(measurement.entryCount).toBe(0)
       expect(measurement.maxLagMs).toBeLessThan(MAX_EVENT_LOOP_LAG_MS)
     } finally {
-      await unregisterLargeFileCountRepos(nightshiftPage, [fixture.repoPath])
+      await unregisterLargeFileCountRepos(koluxPage, [fixture.repoPath])
     }
   })
 })

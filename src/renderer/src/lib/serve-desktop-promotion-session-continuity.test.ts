@@ -3,7 +3,7 @@
  * surviving daemon sessions + headless `serve` holding the single-instance lock
  * + a GUI activation attempt.
  *
- * The incident chain was: Cmd+Q leaves a packaged `nightshift serve` owning the
+ * The incident chain was: Cmd+Q leaves a packaged `kolux serve` owning the
  * profile lock, a forced relaunch reaches that headless process, it mounts a
  * desktop renderer, and hydration cold-restores panes whose daemon PTYs are
  * still alive — launching duplicate `codex resume <session>` agents and
@@ -38,10 +38,10 @@ const AGENT_PANES = [
   { tabId: 'tab-codex-2', leafId: '22222222-2222-4222-8222-222222222222', ptyId: 'daemon-pty-2' },
   { tabId: 'tab-codex-3', leafId: '33333333-3333-4333-8333-333333333333', ptyId: 'daemon-pty-3' }
 ] as const
-/** Argv macOS delivers for `open -n -a Nightshift` / Finder / Dock relaunch. */
-const DESKTOP_RELAUNCH_ARGV = ['/Applications/Nightshift.app/Contents/MacOS/Nightshift'] as const
+/** Argv macOS delivers for `open -n -a Kolux` / Finder / Dock relaunch. */
+const DESKTOP_RELAUNCH_ARGV = ['/Applications/Kolux.app/Contents/MacOS/Kolux'] as const
 const DUPLICATE_SERVE_ARGV = [
-  '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+  '/Applications/Kolux.app/Contents/MacOS/Kolux',
   '--serve',
   '--serve-json',
   '--serve-port',
@@ -223,7 +223,7 @@ describe('#8457 headless serve promotion preserves surviving agent sessions', ()
         platform: 'darwin',
         isDev: false,
         isServeMode: true,
-        env: { NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK: '1' }
+        env: { KOLUX_BYPASS_SINGLE_INSTANCE_LOCK: '1' }
       })
     ).toBe(false)
   })
@@ -246,7 +246,7 @@ describe('#8457 headless serve promotion preserves surviving agent sessions', ()
     expect(serve.blockedReasons).toEqual([])
   })
 
-  it('ignores a duplicate `nightshift serve` launch instead of promoting the headless owner', () => {
+  it('ignores a duplicate `kolux serve` launch instead of promoting the headless owner', () => {
     const serve = bootHeadlessServeOwner()
 
     serve.secondInstance(DUPLICATE_SERVE_ARGV)

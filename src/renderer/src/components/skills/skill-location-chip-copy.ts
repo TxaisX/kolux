@@ -38,7 +38,7 @@ export function chipTooltip(chip: SkillLocationChip): string {
     case 'newer':
       return translate(
         'auto.components.skills.SkillFreshnessRow.tipNewer',
-        'This copy is a later version than the one this build of Nightshift ships.'
+        'This copy is a later version than the one this build of Kolux ships.'
       )
     case 'unrecognized':
       return translate(
@@ -48,7 +48,7 @@ export function chipTooltip(chip: SkillLocationChip): string {
     case 'inaccessible':
       return translate(
         'auto.components.skills.SkillFreshnessRow.tipInaccessible',
-        'Nightshift couldn’t read this copy (a permissions or file error).'
+        'Kolux couldn’t read this copy (a permissions or file error).'
       )
     case 'duplicate':
       return translate(
@@ -58,7 +58,7 @@ export function chipTooltip(chip: SkillLocationChip): string {
     case 'external-link':
       return translate(
         'auto.components.skills.SkillFreshnessRow.tipExternalLink',
-        'A shortcut pointing outside Nightshift’s skill folders.'
+        'A shortcut pointing outside Kolux’s skill folders.'
       )
     case 'broken-link':
       return translate(

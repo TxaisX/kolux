@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import { OrchestrationDb } from '../../orchestration/db'
 import {
   mintStructuredWorkerPaneKey,
@@ -103,13 +103,13 @@ function normalizePreamble(preamble: string, handle: string, dispatchId: string)
 describe('a worker cannot tell which mode it is running in', () => {
   const coordinatorPaneKey = 'tab_coord:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
 
   beforeEach(() => {
     structuredPreambles.length = 0
     structuredWorkerIdentities.clear()
     db = new OrchestrationDb(':memory:')
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     // Deferred to the real getters for a structured handle, because resolving one through the
     // registry is exactly what is under test; stubbed only for the PTY handles that have no runtime.
@@ -139,7 +139,7 @@ describe('a worker cannot tell which mode it is running in', () => {
       status: 'running',
       exitCode: null
     })
-    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
       handle: TERMINAL_HANDLE,
       accepted: true,

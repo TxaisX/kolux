@@ -27,7 +27,7 @@ function claudeKey(path: string): string {
 }
 
 beforeEach(() => {
-  testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-claude-trust-'))
+  testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-claude-trust-'))
   // Why: the real dev/CI environment often runs with CLAUDE_CONFIG_DIR pointed at a live,
   // in-use `.claude.json` (this repo's own AGENTS.md notes CLAUDE_CONFIG_DIR usage) — without
   // clearing it here, ClaudeRuntimePathResolver ignores the mocked homedir() and every write in
@@ -50,7 +50,7 @@ afterEach(() => {
 
 describe('markClaudeProjectTrusted', () => {
   it('writes hasTrustDialogAccepted for the workspace after the collection window elapses', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-claude-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-claude-ws-'))
     try {
       let settled = false
       const marking = markClaudeProjectTrusted(workspace).then(() => {
@@ -71,7 +71,7 @@ describe('markClaudeProjectTrusted', () => {
   })
 
   it('never writes a Windows backslash key, which Claude would ignore', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-claude-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-claude-ws-'))
     try {
       const marking = markClaudeProjectTrusted(workspace)
       await vi.advanceTimersByTimeAsync(250)
@@ -92,7 +92,7 @@ describe('markClaudeProjectTrusted', () => {
   // within the window into one write closes that gap.
   it('batches worktrees marked within the same window into a single write, none resolving early', async () => {
     const worktrees = Array.from({ length: 6 }, () =>
-      mkdtempSync(join(tmpdir(), 'nightshift-claude-wave-'))
+      mkdtempSync(join(tmpdir(), 'kolux-claude-wave-'))
     )
     try {
       const settled = worktrees.map(() => false)
@@ -123,7 +123,7 @@ describe('markClaudeProjectTrusted', () => {
   })
 
   it('resolves without waiting when the workspace is already trusted', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-claude-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-claude-ws-'))
     try {
       writeFileSync(
         configPath(),
@@ -142,7 +142,7 @@ describe('markClaudeProjectTrusted', () => {
   })
 
   it('preserves existing config keys and other projects while marking a new one', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'nightshift-claude-ws-'))
+    const workspace = mkdtempSync(join(tmpdir(), 'kolux-claude-ws-'))
     try {
       writeFileSync(
         configPath(),

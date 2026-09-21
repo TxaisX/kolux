@@ -125,7 +125,7 @@ function getWorktreeAgentActivitySummaries(
     }
     if (!isExplicitAgentStatusFresh(entry, now, AGENT_STATUS_STALE_AFTER_MS)) {
       // Why: staleness ends this row's authority but not the pane's identity — see
-      // `stalePaneIdsByTabId`. Dropping both let Nightshift's self-authored permission title outlive
+      // `stalePaneIdsByTabId`. Dropping both let Kolux's self-authored permission title outlive
       // the row it came from and pin the card to a question nobody was asking.
       addStalePaneId(summary, paneIdentity.tabId, paneIdentity.paneId)
       continue

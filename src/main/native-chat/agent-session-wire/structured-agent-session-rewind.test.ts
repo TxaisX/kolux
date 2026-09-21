@@ -52,7 +52,7 @@ beforeEach(async () => {
   })
   failClaude = false
   acquires = []
-  directory = await mkdtemp(join(tmpdir(), 'nightshift-rewind-'))
+  directory = await mkdtemp(join(tmpdir(), 'kolux-rewind-'))
   store = await AgentSessionRecordStore.open({
     directory: join(directory, 'store'),
     hostId: 'local'
@@ -200,7 +200,7 @@ describe('host rewind', () => {
     'resolves accepted %s user submissions to provider targets',
     async (provider) => {
       const target = await seed(provider, true)
-      expect(target.startsWith('nightshift:')).toBe(true)
+      expect(target.startsWith('kolux:')).toBe(true)
       expect(await host.rewind(caller, params(target))).toMatchObject({ ok: true })
       expect(host.journalSnapshot(HOST_TEST_SESSION).items).toHaveLength(1)
       if (provider === 'codex') {
@@ -346,7 +346,7 @@ describe('host rewind', () => {
   it('refuses a rewind racing an active turn before provider execution', async () => {
     const target = await seed()
     sink.appendItem(
-      { provider: 'nightshift', clientMessageId: 'active' },
+      { provider: 'kolux', clientMessageId: 'active' },
       { kind: 'status', text: 'working', turnLifecycle: { turnId: 'active', state: 'running' } }
     )
     expect(await host.rewind(caller, params(target))).toMatchObject({

@@ -60,7 +60,7 @@ export function showOsc52ClipboardFailedToast(): void {
     {
       description: translate(
         'auto.components.terminal.pane.osc52.clipboard.failed.toast.fdd3e7e977',
-        'The terminal app requested a copy, but Nightshift could not confirm that it reached the system clipboard.'
+        'The terminal app requested a copy, but Kolux could not confirm that it reached the system clipboard.'
       ),
       duration: 12_000
     }

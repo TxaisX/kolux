@@ -30,7 +30,7 @@ describe('registerComputerUsePermissionHandlers', () => {
   it('launches the computer-use helper setup', async () => {
     const result = {
       platform: 'darwin',
-      helperAppPath: '/Applications/Nightshift Computer Use.app',
+      helperAppPath: '/Applications/Kolux Computer Use.app',
       permissionId: 'accessibility',
       openedSettings: false,
       launchedHelper: true

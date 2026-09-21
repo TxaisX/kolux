@@ -30,9 +30,7 @@ describe('detectPiAgentKindFromCommand', () => {
   it('returns "omp" for omp launched via an absolute path', () => {
     expect(detectPiAgentKindFromCommand('/usr/local/bin/omp')).toBe('omp')
     expect(detectPiAgentKindFromCommand('~/bin/omp.sh')).toBe('omp')
-    expect(detectPiAgentKindFromCommand('"C:\\Program Files\\Nightshift\\omp.exe" --resume')).toBe(
-      'omp'
-    )
+    expect(detectPiAgentKindFromCommand('"C:\\Program Files\\Kolux\\omp.exe" --resume')).toBe('omp')
   })
 
   it('returns "pi" for pi launched via an absolute path', () => {

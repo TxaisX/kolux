@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../shared/constants'
 
 const mocks = vi.hoisted(() => ({
   createWebRuntimeSessionBrowserTab: vi.fn(async (_args: Record<string, unknown>) => true)
@@ -22,7 +22,7 @@ describe('resolveBrowserReopenOnServerUrl', () => {
   })
 
   it('reopens blank rather than replaying something the new engine cannot restore', () => {
-    expect(resolveBrowserReopenOnServerUrl(NIGHTSHIFT_BROWSER_BLANK_URL)).toBeUndefined()
+    expect(resolveBrowserReopenOnServerUrl(KOLUX_BROWSER_BLANK_URL)).toBeUndefined()
     expect(resolveBrowserReopenOnServerUrl('about:blank')).toBeUndefined()
     expect(resolveBrowserReopenOnServerUrl('file:///etc/hosts')).toBeUndefined()
     expect(resolveBrowserReopenOnServerUrl('')).toBeUndefined()

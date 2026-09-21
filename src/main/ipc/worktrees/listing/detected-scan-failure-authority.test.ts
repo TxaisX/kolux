@@ -6,7 +6,7 @@ const gitExecFileAsyncMock = vi.hoisted(() => vi.fn())
 
 vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn(), removeHandler: vi.fn() },
-  app: { getPath: () => '/tmp/nightshift-test' }
+  app: { getPath: () => '/tmp/kolux-test' }
 }))
 vi.mock('../../../git/runner', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

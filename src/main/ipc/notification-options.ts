@@ -35,8 +35,8 @@ export function buildNotificationOptions(args: NotificationDispatchRequest): {
 
   if (args.source === 'test') {
     return {
-      title: 'Nightshift notifications are on',
-      body: 'This is a test notification from Nightshift.'
+      title: 'Kolux notifications are on',
+      body: 'This is a test notification from Kolux.'
     }
   }
 

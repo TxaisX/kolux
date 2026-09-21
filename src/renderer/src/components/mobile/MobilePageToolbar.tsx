@@ -57,7 +57,7 @@ export function MobilePageToolbar({
             onClick={onClose}
             aria-label={translate(
               'auto.components.mobile.MobilePageToolbar.9883b58693',
-              'Close Nightshift Mobile'
+              'Close Kolux Mobile'
             )}
           >
             <X className="size-4" />

@@ -3,13 +3,13 @@ import { buildRegistry, type RpcContext } from '../../../core'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 
 describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
   const { coordinatorPaneKey } = h
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
 
   function setup(withBoundRun = true): void {

@@ -147,7 +147,7 @@ describe('registerHostedReviewHandlers', () => {
     createHostedReviewMock.mockResolvedValueOnce({
       ok: true,
       number: 42,
-      url: 'https://github.com/acme/nightshift/pull/42'
+      url: 'https://github.com/acme/kolux/pull/42'
     })
 
     registerHostedReviewHandlers(store as never, stats as never)
@@ -175,7 +175,7 @@ describe('registerHostedReviewHandlers', () => {
     )
   })
 
-  // Why: without this the dirty preflight counts Nightshift's own shared symlinks as
+  // Why: without this the dirty preflight counts Kolux's own shared symlinks as
   // user work and Create Review tells the user to commit a link they cannot
   // commit (issue #10451). Nothing else asserts the handler supplies them.
   it('passes the repo shared link paths through local review creation', async () => {
@@ -278,7 +278,7 @@ describe('registerHostedReviewHandlers', () => {
       number: 42,
       title: 'Feature PR',
       state: 'open',
-      url: 'https://github.com/acme/nightshift/pull/42',
+      url: 'https://github.com/acme/kolux/pull/42',
       status: 'success',
       updatedAt: '2026-06-16T00:00:00.000Z',
       mergeable: 'MERGEABLE'
@@ -413,7 +413,7 @@ describe('registerHostedReviewHandlers', () => {
     createHostedReviewMock.mockResolvedValueOnce({
       ok: true,
       number: 42,
-      url: 'https://github.com/acme/nightshift/pull/42'
+      url: 'https://github.com/acme/kolux/pull/42'
     })
 
     registerHostedReviewHandlers(store as never, stats as never)
@@ -448,7 +448,7 @@ describe('registerHostedReviewHandlers', () => {
       expect.objectContaining({
         type: 'pr_created',
         repoId: 'repo-1',
-        meta: { prNumber: 42, prUrl: 'https://github.com/acme/nightshift/pull/42' }
+        meta: { prNumber: 42, prUrl: 'https://github.com/acme/kolux/pull/42' }
       })
     )
   })
@@ -457,9 +457,9 @@ describe('registerHostedReviewHandlers', () => {
     createStackedHostedReviewMock.mockResolvedValueOnce({
       ok: true,
       number: 43,
-      url: 'https://github.com/acme/nightshift/pull/43',
+      url: 'https://github.com/acme/kolux/pull/43',
       stackNumber: 50,
-      parentReview: { number: 42, url: 'https://github.com/acme/nightshift/pull/42' }
+      parentReview: { number: 42, url: 'https://github.com/acme/kolux/pull/42' }
     })
     registerHostedReviewHandlers(store as never, stats as never)
 

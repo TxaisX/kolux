@@ -1,1 +1,1 @@
-export const TOGGLE_QUICK_COMMANDS_MENU_EVENT = 'nightshift:toggleQuickCommandsMenu'
+export const TOGGLE_QUICK_COMMANDS_MENU_EVENT = 'kolux:toggleQuickCommandsMenu'

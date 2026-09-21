@@ -286,7 +286,7 @@ export type AutomationHostDiagnosticsBridge = {
 }
 
 type AutomationHostDiagnosticsWindow = Window & {
-  __nightshiftAutomationHostDiagnostic?: AutomationHostDiagnosticsBridge
+  __koluxAutomationHostDiagnostic?: AutomationHostDiagnosticsBridge
 }
 
 export function installAutomationHostDiagnostic(): void {
@@ -294,13 +294,13 @@ export function installAutomationHostDiagnostic(): void {
     return
   }
   const target = window as AutomationHostDiagnosticsWindow
-  if (target.__nightshiftAutomationHostDiagnostic) {
+  if (target.__koluxAutomationHostDiagnostic) {
     return
   }
-  target.__nightshiftAutomationHostDiagnostic = {
+  target.__koluxAutomationHostDiagnostic = {
     report: () => {
       const snapshot = automationHostDiagnostics.snapshot()
-      console.log('[nightshift] automation host cache diagnostics', snapshot)
+      console.log('[kolux] automation host cache diagnostics', snapshot)
       return snapshot
     },
     measureSerializedChars: (enabled = true) => {

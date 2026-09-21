@@ -76,8 +76,8 @@ export function buildSummary(
     topModel,
     topProject,
     // Why: the empty-state UX is scope/range specific. Using global persisted
-    // data here makes the Nightshift-only view render empty charts instead of the
-    // intended "no usage for this scope" message when only off-Nightshift logs exist.
+    // data here makes the Kolux-only view render empty charts instead of the
+    // intended "no usage for this scope" message when only off-Kolux logs exist.
     hasAnyClaudeData: filteredSessions.length > 0 || filteredDaily.length > 0
   }
 }

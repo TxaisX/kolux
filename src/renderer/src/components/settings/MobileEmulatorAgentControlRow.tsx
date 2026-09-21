@@ -1,12 +1,12 @@
 import { Import, Loader2 } from 'lucide-react'
 import {
-  NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND,
-  NIGHTSHIFT_CLI_SKILL_NAME,
-  NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND
+  KOLUX_CLI_SKILL_INSTALL_COMMAND,
+  KOLUX_CLI_SKILL_NAME,
+  KOLUX_CLI_SKILL_UPDATE_COMMAND
 } from '@/lib/agent-feature-install-commands'
 import {
   AGENT_SKILL_CLI_PREREQUISITE_NOTICE,
-  ensureNightshiftCliAvailableForAgentSkillTerminal
+  ensureKoluxCliAvailableForAgentSkillTerminal
 } from '@/lib/agent-skill-cli-prerequisite'
 import { cn } from '@/lib/utils'
 import { useActiveProjectSkillRuntime } from '@/hooks/useActiveProjectSkillRuntime'
@@ -20,10 +20,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { translate } from '@/i18n/i18n'
 
 const EMULATOR_CLI_COMMANDS = [
-  'nightshift emulator list --json',
-  'nightshift emulator attach "iPhone 16 Pro" --json',
-  'nightshift emulator tap 0.5 0.7 --json',
-  'nightshift emulator type "hello" --json'
+  'kolux emulator list --json',
+  'kolux emulator attach "iPhone 16 Pro" --json',
+  'kolux emulator tap 0.5 0.7 --json',
+  'kolux emulator type "hello" --json'
 ] as const
 
 export function MobileEmulatorAgentControlRow(): React.JSX.Element {
@@ -31,8 +31,8 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
   const activeSkillRuntime = useActiveProjectSkillRuntime()
   // Why: skill detection here scans the local host only, so keep building host
   // commands; routing them to a WSL runtime would install where we never look.
-  const cliSkillInstallCommand = buildSkillCommandForRuntime(NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND)
-  const cliSkillUpdateCommand = buildSkillCommandForRuntime(NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND)
+  const cliSkillInstallCommand = buildSkillCommandForRuntime(KOLUX_CLI_SKILL_INSTALL_COMMAND)
+  const cliSkillUpdateCommand = buildSkillCommandForRuntime(KOLUX_CLI_SKILL_UPDATE_COMMAND)
 
   const handleEnableCli = async (): Promise<void> => {
     await setup.handleEnableCli()
@@ -51,7 +51,7 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.MobileEmulatorAgentControlRow.ff4b7e65d6',
-              'Let coding agents control the active mobile emulator with Nightshift CLI commands.'
+              'Let coding agents control the active mobile emulator with Kolux CLI commands.'
             )}
           </p>
         </div>
@@ -76,13 +76,13 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
             <p className="text-sm font-medium">
               {translate(
                 'auto.components.settings.MobileEmulatorAgentControlRow.4f2205f3b6',
-                'Enable Nightshift CLI'
+                'Enable Kolux CLI'
               )}
             </p>
             <p className="text-xs text-muted-foreground">
               {translate(
                 'auto.components.settings.MobileEmulatorAgentControlRow.2fef055608',
-                'Registers the Nightshift CLI command so agents can control the active emulator from their shell.'
+                'Registers the Kolux CLI command so agents can control the active emulator from their shell.'
               )}
             </p>
             {setup.cliInstallStatus?.commandPath && setup.cliEnabled ? (
@@ -103,7 +103,7 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
               <p className="text-[11px] leading-snug text-muted-foreground">
                 {translate(
                   'auto.components.settings.MobileEmulatorAgentControlRow.3d34423e88',
-                  'Registering the Nightshift CLI'
+                  'Registering the Kolux CLI'
                 )}{' '}
                 {setup.cliInstallStatus?.commandPath ? (
                   <code className="rounded bg-muted px-1 py-0.5">
@@ -151,17 +151,17 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
             variant="inline"
             title={translate(
               'auto.components.settings.MobileEmulatorAgentControlRow.67e19ee03c',
-              'Nightshift CLI skill'
+              'Kolux CLI skill'
             )}
             description={translate(
               'auto.components.settings.MobileEmulatorAgentControlRow.d94ca6a623',
-              'Enables agents to use Nightshift CLI commands, including mobile emulator control.'
+              'Enables agents to use Kolux CLI commands, including mobile emulator control.'
             )}
             command={cliSkillInstallCommand}
             installedCommand={cliSkillUpdateCommand}
-            terminalTitle="Nightshift CLI skill setup"
-            terminalAriaLabel="Nightshift CLI skill install terminal"
-            terminalWorktreeId="settings-mobile-emulator-nightshift-cli-skill-terminal"
+            terminalTitle="Kolux CLI skill setup"
+            terminalAriaLabel="Kolux CLI skill install terminal"
+            terminalWorktreeId="settings-mobile-emulator-kolux-cli-skill-terminal"
             terminalShellOverride={activeSkillRuntime.terminalShellOverride}
             installed={setup.cliSkillInstalled}
             loading={setup.cliSkillLoading}
@@ -171,14 +171,14 @@ export function MobileEmulatorAgentControlRow(): React.JSX.Element {
             preInstallNotice={AGENT_SKILL_CLI_PREREQUISITE_NOTICE}
             openingHint={translate(
               'auto.components.settings.MobileEmulatorAgentControlRow.3941719a56',
-              'Checking Nightshift CLI before opening skill setup.'
+              'Checking Kolux CLI before opening skill setup.'
             )}
             onBeforeOpenTerminal={async () => {
-              await ensureNightshiftCliAvailableForAgentSkillTerminal()
+              await ensureKoluxCliAvailableForAgentSkillTerminal()
             }}
             onRecheck={setup.refreshCliSkill}
             freshnessSkillName={
-              activeSkillRuntime.canUseLocalSkillFreshness ? NIGHTSHIFT_CLI_SKILL_NAME : undefined
+              activeSkillRuntime.canUseLocalSkillFreshness ? KOLUX_CLI_SKILL_NAME : undefined
             }
           />
         </div>

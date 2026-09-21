@@ -4,7 +4,7 @@ export const PANE_AGENT_EVIDENCE_SOURCES = [
   'live-hook',
   /** The pane's foreground process, as read on the execution host. */
   'process',
-  /** Nightshift launched, resumed, or accepted a command for this agent. A fact Nightshift owns. */
+  /** Kolux launched, resumed, or accepted a command for this agent. A fact Kolux owns. */
   'launch',
   /** A provider hook from a turn that finished. Still authoritative about identity. */
   'completed-hook',

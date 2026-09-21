@@ -171,7 +171,7 @@ function getClaudeStatusAccountsFromSettings(
   }
 }
 
-// Why: with a Remote Nightshift Server, local GlobalSettings describe this desktop, not the owner — the server snapshot wins (#7973).
+// Why: with a Remote Kolux Server, local GlobalSettings describe this desktop, not the owner — the server snapshot wins (#7973).
 
 export function resolveClaudeStatusAccountState(
   settings: GlobalSettings | null | undefined,

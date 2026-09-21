@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 const SHORT_NAME = 'synthetic-short-prompt-demo'
@@ -8,12 +8,12 @@ const END_MARKER = 'SYNTHETIC-END-MARKER'
 const RESIZE_PROMPT = `Synthetic resize focus validation. ${'placeholder '.repeat(24)}`
 
 test('automation detail keeps short prompts readable and reveals a very long prompt at narrow width', async ({
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await nightshiftPage.setViewportSize({ width: 820, height: 700 })
+  await waitForSessionReady(koluxPage)
+  await koluxPage.setViewportSize({ width: 820, height: 700 })
 
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     async ({ shortName, resizeName, resizePrompt, longName, endMarker }) => {
       const store = window.__store
       if (!store) {
@@ -78,26 +78,26 @@ test('automation detail keeps short prompts readable and reveals a very long pro
     }
   )
 
-  await nightshiftPage.getByRole('button', { name: new RegExp(`^${SHORT_NAME}`) }).click()
-  await expect(nightshiftPage.getByText('Synthetic short prompt.')).toBeVisible()
-  await expect(nightshiftPage.getByRole('button', { name: 'Show more' })).toHaveCount(0)
+  await koluxPage.getByRole('button', { name: new RegExp(`^${SHORT_NAME}`) }).click()
+  await expect(koluxPage.getByText('Synthetic short prompt.')).toBeVisible()
+  await expect(koluxPage.getByRole('button', { name: 'Show more' })).toHaveCount(0)
 
-  await nightshiftPage.getByRole('button', { name: 'All automations' }).click()
-  await nightshiftPage.getByRole('button', { name: new RegExp(`^${RESIZE_NAME}`) }).click()
-  const resizePrompt = nightshiftPage.getByText(RESIZE_PROMPT)
-  const resizeToggle = nightshiftPage.getByRole('button', { name: 'Show more' })
+  await koluxPage.getByRole('button', { name: 'All automations' }).click()
+  await koluxPage.getByRole('button', { name: new RegExp(`^${RESIZE_NAME}`) }).click()
+  const resizePrompt = koluxPage.getByText(RESIZE_PROMPT)
+  const resizeToggle = koluxPage.getByRole('button', { name: 'Show more' })
   await expect(resizeToggle).toBeVisible()
   await resizeToggle.focus()
-  await nightshiftPage.setViewportSize({ width: 1400, height: 700 })
+  await koluxPage.setViewportSize({ width: 1400, height: 700 })
   await expect(resizeToggle).toHaveCount(0)
   await expect(resizePrompt).toBeFocused()
 
-  await nightshiftPage.setViewportSize({ width: 820, height: 700 })
-  await nightshiftPage.getByRole('button', { name: 'All automations' }).click()
-  await nightshiftPage.getByRole('button', { name: new RegExp(`^${LONG_NAME}`) }).click()
+  await koluxPage.setViewportSize({ width: 820, height: 700 })
+  await koluxPage.getByRole('button', { name: 'All automations' }).click()
+  await koluxPage.getByRole('button', { name: new RegExp(`^${LONG_NAME}`) }).click()
 
-  const prompt = nightshiftPage.getByText(new RegExp(END_MARKER))
-  const showMore = nightshiftPage.getByRole('button', { name: 'Show more' })
+  const prompt = koluxPage.getByText(new RegExp(END_MARKER))
+  const showMore = koluxPage.getByRole('button', { name: 'Show more' })
   await expect(showMore).toBeVisible()
   expect(await showMore.getAttribute('aria-controls')).toBe(await prompt.getAttribute('id'))
   const collapsedMetrics = await prompt.evaluate((element) => ({
@@ -109,8 +109,8 @@ test('automation detail keeps short prompts readable and reveals a very long pro
   expect(collapsedMetrics.lineClamp).toBe('4')
 
   await showMore.focus()
-  await nightshiftPage.keyboard.press('Enter')
-  await expect(nightshiftPage.getByRole('button', { name: 'Show less' })).toBeFocused()
+  await koluxPage.keyboard.press('Enter')
+  await expect(koluxPage.getByRole('button', { name: 'Show less' })).toBeFocused()
 
   const expandedMetrics = await prompt.evaluate((element) => ({
     clientHeight: element.clientHeight,

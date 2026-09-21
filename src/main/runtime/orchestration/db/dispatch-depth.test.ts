@@ -3,7 +3,7 @@ import { OrchestrationDb } from '../db'
 import { AmbiguousDispatchParentError } from './dispatch-depth'
 
 /**
- * These pin the fence Nightshift documented but never enforced: before this feature a
+ * These pin the fence Kolux documented but never enforced: before this feature a
  * dispatched worker could create its own Run and dispatch sub-workers freely.
  * Every rejection case here passes on the pre-change tree.
  */

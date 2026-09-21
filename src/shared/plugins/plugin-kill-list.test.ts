@@ -13,7 +13,7 @@ function entry(pluginKey = 'community.unsafe'): Record<string, unknown> {
   return {
     pluginKey,
     reason: 'Known malicious release',
-    advisoryUrl: 'https://nightshift.example/security/unsafe'
+    advisoryUrl: 'https://kolux.example/security/unsafe'
   }
 }
 
@@ -54,7 +54,7 @@ describe('pluginKillListSchema', () => {
     {
       version: 1,
       generatedAt: '2026-07-12T20:00:00Z',
-      plugins: [{ ...entry(), advisoryUrl: 'http://nightshift.example/advisory' }]
+      plugins: [{ ...entry(), advisoryUrl: 'http://kolux.example/advisory' }]
     }
   ])('rejects malformed or untrusted fields', (killList) => {
     expect(pluginKillListSchema.safeParse(killList).success).toBe(false)

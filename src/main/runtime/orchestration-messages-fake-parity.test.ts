@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { InMemoryOrchestrationMessages } from './nightshift-runtime-test-orchestration-messages.spec'
+import { InMemoryOrchestrationMessages } from './kolux-runtime-test-orchestration-messages.spec'
 import { OrchestrationDb } from './orchestration/db'
 import type { MessageType } from './orchestration/types'
 

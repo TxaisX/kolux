@@ -5,7 +5,7 @@ import { buildShortcutDefinitionCatalog } from './shortcut-definition-catalog'
 import { groupDefinitions } from './shortcut-groups'
 
 const pluginDefinition: KeybindingDefinition = {
-  id: 'plugin:nightshift-samples.tasks/open',
+  id: 'plugin:kolux-samples.tasks/open',
   title: 'Open Tasks — Tasks',
   group: 'Plugins',
   scope: 'global',
@@ -41,7 +41,7 @@ describe('shortcut groups', () => {
 
   it('reports a plugin default that shadows a built-in shortcut', () => {
     const command: ActivePluginCommand = {
-      pluginKey: 'nightshift-samples.tasks',
+      pluginKey: 'kolux-samples.tasks',
       pluginName: 'Tasks',
       id: 'open',
       title: 'Open Tasks',
@@ -58,7 +58,7 @@ describe('shortcut groups', () => {
       missionControlConflictMessage: 'Blocked by Mission Control.'
     })
 
-    expect(catalog.conflictByAction.get('plugin:nightshift-samples.tasks/open')).toEqual([
+    expect(catalog.conflictByAction.get('plugin:kolux-samples.tasks/open')).toEqual([
       expect.stringContaining('Go to File')
     ])
   })

@@ -37,7 +37,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -489,7 +489,7 @@ describe('registerPtyHandlers', () => {
         expect(runtime.onPtyExit).toHaveBeenCalledWith('remote-pty', -1, undefined)
         expect(runtime.onPtyExit).not.toHaveBeenCalledWith('remote-pty', 0, undefined)
       })
-      it('strips NIGHTSHIFT_PANE_KEY/TAB_ID/WORKTREE_ID from SSH spawn env when remote agent hooks are disabled', async () => {
+      it('strips KOLUX_PANE_KEY/TAB_ID/WORKTREE_ID from SSH spawn env when remote agent hooks are disabled', async () => {
         const sshSpawn = vi.fn(async (_opts: { env: Record<string, string> }) => ({
           id: 'ssh-pty'
         }))
@@ -517,17 +517,17 @@ describe('registerPtyHandlers', () => {
         } as never)
         handlers.clear()
         registerPtyHandlers(mainWindow as never)
-        const prevFlag = process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
-        process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS = '0'
+        const prevFlag = process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
+        process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS = '0'
         try {
           await handlers.get('pty:spawn')!(null, {
             cols: 80,
             rows: 24,
             env: {
               FOO: 'bar',
-              NIGHTSHIFT_PANE_KEY: 'tab-1:0',
-              NIGHTSHIFT_TAB_ID: 'tab-1',
-              NIGHTSHIFT_WORKTREE_ID: 'wt-1'
+              KOLUX_PANE_KEY: 'tab-1:0',
+              KOLUX_TAB_ID: 'tab-1',
+              KOLUX_WORKTREE_ID: 'wt-1'
             },
             tabId: 'tab-1',
             leafId: '11111111-1111-4111-8111-111111111111',
@@ -535,21 +535,21 @@ describe('registerPtyHandlers', () => {
           })
           const env = sshSpawn.mock.calls.at(-1)![0].env
           expect(env.FOO).toBe('bar')
-          expect(env.NIGHTSHIFT_PANE_KEY).toBeUndefined()
-          expect(env.NIGHTSHIFT_TAB_ID).toBeUndefined()
-          expect(env.NIGHTSHIFT_WORKTREE_ID).toBeUndefined()
-          expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBeUndefined()
+          expect(env.KOLUX_PANE_KEY).toBeUndefined()
+          expect(env.KOLUX_TAB_ID).toBeUndefined()
+          expect(env.KOLUX_WORKTREE_ID).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_TOKEN).toBeUndefined()
           // Why: the local hook server's userData-relative endpoint path is meaningless on the remote box; assert no leak.
-          expect(env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_ENDPOINT).toBeUndefined()
         } finally {
           if (prevFlag === undefined) {
-            delete process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
+            delete process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
           } else {
-            process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS = prevFlag
+            process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS = prevFlag
           }
         }
       })
-      it('forwards NIGHTSHIFT_PANE_KEY/TAB_ID/WORKTREE_ID over SSH by default', async () => {
+      it('forwards KOLUX_PANE_KEY/TAB_ID/WORKTREE_ID over SSH by default', async () => {
         const sshSpawn = vi.fn(async (_opts: { env: Record<string, string> }) => ({
           id: 'ssh-pty'
         }))
@@ -577,8 +577,8 @@ describe('registerPtyHandlers', () => {
         } as never)
         handlers.clear()
         registerPtyHandlers(mainWindow as never)
-        const prevFlag = process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
-        delete process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
+        const prevFlag = process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
+        delete process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
         try {
           const leafId = '22222222-2222-4222-8222-222222222222'
           const paneKey = makePaneKey('tab-2', leafId)
@@ -587,27 +587,27 @@ describe('registerPtyHandlers', () => {
             rows: 24,
             env: {
               FOO: 'bar',
-              NIGHTSHIFT_PANE_KEY: paneKey,
-              NIGHTSHIFT_TAB_ID: 'tab-2',
-              NIGHTSHIFT_WORKTREE_ID: 'wt-2'
+              KOLUX_PANE_KEY: paneKey,
+              KOLUX_TAB_ID: 'tab-2',
+              KOLUX_WORKTREE_ID: 'wt-2'
             },
             connectionId: 'ssh-1',
             tabId: 'tab-2',
             leafId
           })
           const env = sshSpawn.mock.calls.at(-1)![0].env
-          expect(env.NIGHTSHIFT_PANE_KEY).toBe(paneKey)
-          expect(env.NIGHTSHIFT_TAB_ID).toBe('tab-2')
-          expect(env.NIGHTSHIFT_WORKTREE_ID).toBe('wt-2')
+          expect(env.KOLUX_PANE_KEY).toBe(paneKey)
+          expect(env.KOLUX_TAB_ID).toBe('tab-2')
+          expect(env.KOLUX_WORKTREE_ID).toBe('wt-2')
           // Local hook server coords must NOT cross the wire — the relay is the source of truth.
-          expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBeUndefined()
-          expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBeUndefined()
-          expect(env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_TOKEN).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_PORT).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_ENDPOINT).toBeUndefined()
         } finally {
           if (prevFlag === undefined) {
-            delete process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
+            delete process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
           } else {
-            process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS = prevFlag
+            process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS = prevFlag
           }
         }
       })

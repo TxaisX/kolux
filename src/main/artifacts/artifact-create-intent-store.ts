@@ -21,7 +21,7 @@ import {
   fsyncFileSync,
   hardenSecurePath
 } from '../../shared/secure-file'
-import { getNightshiftProfileDirectory } from '../nightshift-profiles/profile-storage-paths'
+import { getKoluxProfileDirectory } from '../kolux-profiles/profile-storage-paths'
 import type { ArtifactWriteBody } from './artifact-cloud-request'
 import type { ArtifactShareScope } from './artifact-share-record-store'
 
@@ -40,7 +40,7 @@ export type ArtifactCreateIntent = {
 }
 
 function intentDirectory(profileId: string, userDataPath: string): string {
-  return join(getNightshiftProfileDirectory(profileId, userDataPath), 'artifact-create-intents')
+  return join(getKoluxProfileDirectory(profileId, userDataPath), 'artifact-create-intents')
 }
 
 function ensureIntentDirectory(profileId: string, userDataPath: string): string {

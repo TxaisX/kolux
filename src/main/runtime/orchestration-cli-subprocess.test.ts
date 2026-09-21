@@ -1,6 +1,6 @@
 // Why: subprocess-level test for the CLI keepalive behavior described in
 // design doc §3.4. Spawns the real compiled CLI with no TTY, points it at a
-// real in-process runtime via NIGHTSHIFT_USER_DATA_PATH, and asserts:
+// real in-process runtime via KOLUX_USER_DATA_PATH, and asserts:
 //   - the first keepalive line appears on stderr well under Claude Code's
 //     ~2 min Bash-tool silence budget (we verify with a shortened interval;
 //     production uses 15 s via the same code path)
@@ -20,9 +20,9 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 
 // Why: Vitest runs tests with `process.cwd()` pinned to the repo root, so
 // join against it to locate the compiled CLI regardless of where this test
@@ -39,8 +39,8 @@ async function runBuiltCli(
   const child = spawn(process.execPath, [CLI_PATH, ...args], {
     env: {
       ...process.env,
-      NIGHTSHIFT_USER_DATA_PATH: userDataPath,
-      NIGHTSHIFT_TERMINAL_HANDLE: 'term_cli',
+      KOLUX_USER_DATA_PATH: userDataPath,
+      KOLUX_TERMINAL_HANDLE: 'term_cli',
       ...extraEnv
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -65,17 +65,17 @@ async function runBuiltCli(
   }
 }
 
-describeIfBuilt('nightshift orchestration check --wait subprocess (§3.4)', () => {
+describeIfBuilt('kolux orchestration check --wait subprocess (§3.4)', () => {
   it('emits newline-flushed JSON keepalives to stderr while waiting', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-cli-sub-'))
-    const runtime = new NightshiftRuntimeService()
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-cli-sub-'))
+    const runtime = new KoluxRuntimeService()
     const db = new OrchestrationDb(':memory:')
     runtime.setOrchestrationDb(db)
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     await server.start()
 
     try {
-      // Why: use the NIGHTSHIFT_KEEPALIVE_INTERVAL_MS escape hatch to shrink the
+      // Why: use the KOLUX_KEEPALIVE_INTERVAL_MS escape hatch to shrink the
       // test to ~1 s wall time. Production callers never set this; the
       // production default (15 s) is exercised by §3.4's own unit tests
       // and by the fact that this same code path runs with the real
@@ -97,9 +97,9 @@ describeIfBuilt('nightshift orchestration check --wait subprocess (§3.4)', () =
         {
           env: {
             ...process.env,
-            NIGHTSHIFT_USER_DATA_PATH: userDataPath,
-            NIGHTSHIFT_TERMINAL_HANDLE: 'term_nobody',
-            NIGHTSHIFT_KEEPALIVE_INTERVAL_MS: String(keepaliveMs)
+            KOLUX_USER_DATA_PATH: userDataPath,
+            KOLUX_TERMINAL_HANDLE: 'term_nobody',
+            KOLUX_KEEPALIVE_INTERVAL_MS: String(keepaliveMs)
           },
           // Why: explicit pipe for all three fds so we can watch stderr
           // in real time; no TTY attached (Bash-tool parity).
@@ -192,10 +192,10 @@ describeIfBuilt('nightshift orchestration check --wait subprocess (§3.4)', () =
   }, 30_000)
 })
 
-describeIfBuilt('nightshift orchestration reset subprocess', () => {
+describeIfBuilt('kolux orchestration reset subprocess', () => {
   it('validates reset scopes against an isolated runtime through the built CLI', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-cli-reset-'))
-    const runtime = new NightshiftRuntimeService()
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-cli-reset-'))
+    const runtime = new KoluxRuntimeService()
     const db = new OrchestrationDb(':memory:')
     runtime.setOrchestrationDb(db)
     const coordinatorPaneKey = 'tab_cli:11111111-1111-4111-8111-111111111111'
@@ -214,7 +214,7 @@ describeIfBuilt('nightshift orchestration reset subprocess', () => {
       coordinatorHandle: 'term_cli',
       coordinatorPaneKey
     })
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     await server.start()
 
     try {
@@ -318,11 +318,11 @@ describeIfBuilt('nightshift orchestration reset subprocess', () => {
   }, 30_000)
 })
 
-describeIfBuilt('nightshift orchestration task readiness subprocess', () => {
+describeIfBuilt('kolux orchestration task readiness subprocess', () => {
   it('creates a late dependent as ready through the built CLI and runtime', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-cli-task-readiness-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-cli-task-readiness-'))
     const dbPath = join(userDataPath, 'orchestration.db')
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const db = new OrchestrationDb(dbPath)
     runtime.setOrchestrationDb(db)
     const coordinatorPaneKey = 'tab_cli:22222222-2222-4222-8222-222222222222'
@@ -334,7 +334,7 @@ describeIfBuilt('nightshift orchestration task readiness subprocess', () => {
       coordinatorHandle: 'term_cli',
       coordinatorPaneKey
     })
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     await server.start()
 
     try {

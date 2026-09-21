@@ -4,8 +4,8 @@ import path from 'node:path'
 
 const __dirname = import.meta.dirname
 const grandchildPath = path.join(__dirname, 'electron-vite-dev-grandchild.mjs')
-const pidFile = process.env.NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE
-const envFile = process.env.NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE
+const pidFile = process.env.KOLUX_DEV_WRAPPER_TEST_PID_FILE
+const envFile = process.env.KOLUX_DEV_WRAPPER_TEST_ENV_FILE
 
 const grandchild = spawn(process.execPath, [grandchildPath], {
   stdio: 'ignore'
@@ -52,7 +52,7 @@ process.once('SIGTERM', () => {
 })
 
 if (!pidFile) {
-  throw new Error('NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE is required')
+  throw new Error('KOLUX_DEV_WRAPPER_TEST_PID_FILE is required')
 }
 
 // Why: wrapper tests must clean up both the fake electron-vite CLI process and
@@ -64,13 +64,13 @@ if (envFile) {
     JSON.stringify(
       {
         args: process.argv.slice(2),
-        label: process.env.NIGHTSHIFT_DEV_INSTANCE_LABEL ?? null,
-        branch: process.env.NIGHTSHIFT_DEV_BRANCH ?? null,
-        worktreeName: process.env.NIGHTSHIFT_DEV_WORKTREE_NAME ?? null,
-        repoRoot: process.env.NIGHTSHIFT_DEV_REPO_ROOT ?? null,
-        badgeLabel: process.env.NIGHTSHIFT_DEV_DOCK_BADGE_LABEL ?? null,
-        dockTitle: process.env.NIGHTSHIFT_DEV_DOCK_TITLE ?? null,
-        stableName: process.env.NIGHTSHIFT_DEV_STABLE_NAME ?? null,
+        label: process.env.KOLUX_DEV_INSTANCE_LABEL ?? null,
+        branch: process.env.KOLUX_DEV_BRANCH ?? null,
+        worktreeName: process.env.KOLUX_DEV_WORKTREE_NAME ?? null,
+        repoRoot: process.env.KOLUX_DEV_REPO_ROOT ?? null,
+        badgeLabel: process.env.KOLUX_DEV_DOCK_BADGE_LABEL ?? null,
+        dockTitle: process.env.KOLUX_DEV_DOCK_TITLE ?? null,
+        stableName: process.env.KOLUX_DEV_STABLE_NAME ?? null,
         electronExecPath: process.env.ELECTRON_EXEC_PATH ?? null
       },
       null,

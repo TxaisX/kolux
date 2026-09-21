@@ -184,19 +184,19 @@ function buildRecipeEnv(
   return {
     ...process.env,
     ...env,
-    NIGHTSHIFT_VM_MODE: mode,
-    NIGHTSHIFT_VM_INSTANCE_ID: context.instanceId ?? '',
-    NIGHTSHIFT_RECIPE_ID: context.recipeId,
-    NIGHTSHIFT_PROJECT_ID: context.projectId ?? '',
-    NIGHTSHIFT_WORKSPACE_ID: context.workspaceId ?? '',
-    NIGHTSHIFT_WORKSPACE_NAME: context.workspaceName ?? '',
-    NIGHTSHIFT_REPO_PATH: context.repoPath,
-    NIGHTSHIFT_REPO_URL: context.repoUrl ?? '',
-    NIGHTSHIFT_REPO_BRANCH: context.branch ?? '',
-    NIGHTSHIFT_REPO_REF: context.ref ?? '',
-    NIGHTSHIFT_REPO_REF_HEAD: context.expectedRefHead ?? '',
-    NIGHTSHIFT_RECIPE_RESULT_SCHEMA_VERSION: String(resultSchemaVersion),
-    NIGHTSHIFT_VERSION: context.nightshiftVersion ?? ''
+    KOLUX_VM_MODE: mode,
+    KOLUX_VM_INSTANCE_ID: context.instanceId ?? '',
+    KOLUX_RECIPE_ID: context.recipeId,
+    KOLUX_PROJECT_ID: context.projectId ?? '',
+    KOLUX_WORKSPACE_ID: context.workspaceId ?? '',
+    KOLUX_WORKSPACE_NAME: context.workspaceName ?? '',
+    KOLUX_REPO_PATH: context.repoPath,
+    KOLUX_REPO_URL: context.repoUrl ?? '',
+    KOLUX_REPO_BRANCH: context.branch ?? '',
+    KOLUX_REPO_REF: context.ref ?? '',
+    KOLUX_REPO_REF_HEAD: context.expectedRefHead ?? '',
+    KOLUX_RECIPE_RESULT_SCHEMA_VERSION: String(resultSchemaVersion),
+    KOLUX_VERSION: context.koluxVersion ?? ''
   }
 }
 

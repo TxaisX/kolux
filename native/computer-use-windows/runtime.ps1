@@ -25,7 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public static class NightshiftDesktopWin32 {
+public static class KoluxDesktopWin32 {
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT {
         public int Left;
@@ -188,32 +188,32 @@ $MouseEvents = @{
     HorizontalWheel = 0x01000
 }
 
-function Write-NightshiftJson($Payload) {
+function Write-KoluxJson($Payload) {
     $Payload | ConvertTo-Json -Depth 100 -Compress
 }
 
-function New-NightshiftFrame([double]$X, [double]$Y, [double]$Width, [double]$Height) {
+function New-KoluxFrame([double]$X, [double]$Y, [double]$Width, [double]$Height) {
     if ($Width -le 0 -or $Height -le 0) { return $null }
     [pscustomobject]@{ x = $X; y = $Y; width = $Width; height = $Height }
 }
 
-function Read-NightshiftOperation([string]$Path) {
+function Read-KoluxOperation([string]$Path) {
     Get-Content -Raw -Encoding UTF8 -Path $Path | ConvertFrom-Json
 }
 
-function ConvertTo-NightshiftLParam([int]$X, [int]$Y) {
+function ConvertTo-KoluxLParam([int]$X, [int]$Y) {
     [IntPtr]((($Y -band 0xffff) -shl 16) -bor ($X -band 0xffff))
 }
 
-function ConvertTo-NightshiftWheelParam([int]$Delta) {
+function ConvertTo-KoluxWheelParam([int]$Delta) {
     [IntPtr](($Delta -band 0xffff) -shl 16)
 }
 
-function Get-NightshiftWindowProcesses {
+function Get-KoluxWindowProcesses {
     @(Get-Process | Where-Object { $_.MainWindowHandle -ne 0 } | Sort-Object ProcessName, Id)
 }
 
-function Find-NightshiftProcess([string]$Query) {
+function Find-KoluxProcess([string]$Query) {
     $needle = ""
     if ($null -ne $Query) { $needle = $Query.Trim() }
     if ([string]::IsNullOrWhiteSpace($needle)) { throw 'appNotFound("")' }
@@ -222,11 +222,11 @@ function Find-NightshiftProcess([string]$Query) {
     }
 
     $parsedProcessId = 0
-    $processes = Get-NightshiftWindowProcesses
+    $processes = Get-KoluxWindowProcesses
     if ([int]::TryParse($needle, [ref]$parsedProcessId)) {
         $match = $processes | Where-Object { $_.Id -eq $parsedProcessId } | Select-Object -First 1
         if ($null -ne $match) {
-            Assert-NightshiftProcessAllowed $match
+            Assert-KoluxProcessAllowed $match
             return $match
         }
     }
@@ -243,14 +243,14 @@ function Find-NightshiftProcess([string]$Query) {
         $_.MainWindowTitle -ilike "*$needle*"
     } | Select-Object -First 1
     if ($null -ne $match) {
-        Assert-NightshiftProcessAllowed $match
+        Assert-KoluxProcessAllowed $match
         return $match
     }
 
     throw "appNotFound(`"$Query`")"
 }
 
-function Assert-NightshiftProcessAllowed($Process) {
+function Assert-KoluxProcessAllowed($Process) {
     $values = @($Process.ProcessName, $Process.MainWindowTitle) | ForEach-Object { ([string]$_).ToLowerInvariant() }
     foreach ($fragment in $BlockedAppFragments) {
         foreach ($value in $values) {
@@ -261,7 +261,7 @@ function Assert-NightshiftProcessAllowed($Process) {
     }
 }
 
-function Test-NightshiftBrowserProcess($Process) {
+function Test-KoluxBrowserProcess($Process) {
     $name = ([string]$Process.ProcessName).ToLowerInvariant()
     $browserProcesses = @(
         "arc",
@@ -278,117 +278,117 @@ function Test-NightshiftBrowserProcess($Process) {
     $browserProcesses -contains $name
 }
 
-function Get-NightshiftRootElement($Process) {
+function Get-KoluxRootElement($Process) {
     if ($Process.MainWindowHandle -eq 0) {
         throw "No top-level UI Automation window is available for $($Process.ProcessName)."
     }
     [Windows.Automation.AutomationElement]::FromHandle([IntPtr]$Process.MainWindowHandle)
 }
 
-function Get-NightshiftWindowFrame($Process, $RootElement) {
-    $rect = New-Object NightshiftDesktopWin32+RECT
-    if ([NightshiftDesktopWin32]::GetWindowRect([IntPtr]$Process.MainWindowHandle, [ref]$rect)) {
-        return New-NightshiftFrame $rect.Left $rect.Top ($rect.Right - $rect.Left) ($rect.Bottom - $rect.Top)
+function Get-KoluxWindowFrame($Process, $RootElement) {
+    $rect = New-Object KoluxDesktopWin32+RECT
+    if ([KoluxDesktopWin32]::GetWindowRect([IntPtr]$Process.MainWindowHandle, [ref]$rect)) {
+        return New-KoluxFrame $rect.Left $rect.Top ($rect.Right - $rect.Left) ($rect.Bottom - $rect.Top)
     }
 
     try {
         $bounds = $RootElement.Current.BoundingRectangle
         if (-not $bounds.IsEmpty) {
-            return New-NightshiftFrame $bounds.X $bounds.Y $bounds.Width $bounds.Height
+            return New-KoluxFrame $bounds.X $bounds.Y $bounds.Width $bounds.Height
         }
     } catch {}
     $null
 }
 
-function Get-NightshiftWindowId($Process) {
+function Get-KoluxWindowId($Process) {
     [int64]$Process.MainWindowHandle
 }
 
-function Get-NightshiftAppName($Process) {
+function Get-KoluxAppName($Process) {
     if ($Process.ProcessName -eq "ApplicationFrameHost" -and -not [string]::IsNullOrWhiteSpace($Process.MainWindowTitle)) {
         return [string]$Process.MainWindowTitle
     }
     [string]$Process.ProcessName
 }
 
-function New-NightshiftAppRecord($Process) {
+function New-KoluxAppRecord($Process) {
     [pscustomobject]@{
-        name = Get-NightshiftAppName $Process
+        name = Get-KoluxAppName $Process
         bundleIdentifier = $Process.ProcessName
         bundleId = $Process.ProcessName
         pid = [int]$Process.Id
     }
 }
 
-function Assert-NightshiftWindowTarget($Process, $WindowId, $WindowIndex) {
+function Assert-KoluxWindowTarget($Process, $WindowId, $WindowIndex) {
     if ($null -ne $WindowIndex -and [int]$WindowIndex -ne 0) {
         throw "windowNotFound(`"$WindowIndex`")"
     }
-    if ($null -ne $WindowId -and [int64]$WindowId -ne (Get-NightshiftWindowId $Process)) {
+    if ($null -ne $WindowId -and [int64]$WindowId -ne (Get-KoluxWindowId $Process)) {
         throw "windowNotFound(`"$WindowId`")"
     }
 }
 
-function Restore-NightshiftWindow($Process) {
+function Restore-KoluxWindow($Process) {
     if ($Process.MainWindowHandle -eq 0) { return }
-    [void][NightshiftDesktopWin32]::ShowWindow([IntPtr]$Process.MainWindowHandle, 9)
-    [void][NightshiftDesktopWin32]::SetForegroundWindow([IntPtr]$Process.MainWindowHandle)
+    [void][KoluxDesktopWin32]::ShowWindow([IntPtr]$Process.MainWindowHandle, 9)
+    [void][KoluxDesktopWin32]::SetForegroundWindow([IntPtr]$Process.MainWindowHandle)
 }
 
-function Test-NightshiftWindowFocused([IntPtr]$WindowHandle) {
-    [NightshiftDesktopWin32]::GetForegroundWindow() -eq $WindowHandle
+function Test-KoluxWindowFocused([IntPtr]$WindowHandle) {
+    [KoluxDesktopWin32]::GetForegroundWindow() -eq $WindowHandle
 }
 
-function Wait-NightshiftWindowFocused([IntPtr]$WindowHandle, [int]$TimeoutMilliseconds) {
+function Wait-KoluxWindowFocused([IntPtr]$WindowHandle, [int]$TimeoutMilliseconds) {
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     while ($stopwatch.ElapsedMilliseconds -lt $TimeoutMilliseconds) {
-        if (Test-NightshiftWindowFocused $WindowHandle) { return $true }
+        if (Test-KoluxWindowFocused $WindowHandle) { return $true }
         Start-Sleep -Milliseconds 50
     }
-    Test-NightshiftWindowFocused $WindowHandle
+    Test-KoluxWindowFocused $WindowHandle
 }
 
-function Assert-NightshiftKeyboardFocus([IntPtr]$WindowHandle, $Operation) {
-    if (Test-NightshiftWindowFocused $WindowHandle) { return }
+function Assert-KoluxKeyboardFocus([IntPtr]$WindowHandle, $Operation) {
+    if (Test-KoluxWindowFocused $WindowHandle) { return }
     if ([bool]$Operation.restoreWindow) {
-        if (Wait-NightshiftWindowFocused $WindowHandle 500) { return }
+        if (Wait-KoluxWindowFocused $WindowHandle 500) { return }
         throw "window_not_focused: keyboard input requires the target window to be focused; restoreWindow was requested but the target window is still not focused; bring it forward manually or check desktop permissions"
     }
     throw "window_not_focused: keyboard input requires the target window to be focused; retry with --restore-window"
 }
 
-function Get-NightshiftElementFrame($Element, $WindowFrame) {
+function Get-KoluxElementFrame($Element, $WindowFrame) {
     try {
         $bounds = $Element.Current.BoundingRectangle
         if ($bounds.IsEmpty) { return $null }
         if ($null -eq $WindowFrame) {
-            return New-NightshiftFrame $bounds.X $bounds.Y $bounds.Width $bounds.Height
+            return New-KoluxFrame $bounds.X $bounds.Y $bounds.Width $bounds.Height
         }
-        New-NightshiftFrame ($bounds.X - $WindowFrame.x) ($bounds.Y - $WindowFrame.y) $bounds.Width $bounds.Height
+        New-KoluxFrame ($bounds.X - $WindowFrame.x) ($bounds.Y - $WindowFrame.y) $bounds.Width $bounds.Height
     } catch {
         $null
     }
 }
 
-function Get-NightshiftProperty($Element, [string]$Name) {
+function Get-KoluxProperty($Element, [string]$Name) {
     try { [string]$Element.Current.$Name } catch { "" }
 }
 
-function Get-NightshiftRuntimeId($Element) {
+function Get-KoluxRuntimeId($Element) {
     try { @($Element.GetRuntimeId()) } catch { @() }
 }
 
-function Test-NightshiftSensitiveElement($Element) {
+function Test-KoluxSensitiveElement($Element) {
     try {
         if ($Element.Current.IsPassword) { return $true }
     } catch {}
     $controlType = try { [string]$Element.Current.ControlType.ProgrammaticName } catch { "" }
     $parts = @(
-        (Get-NightshiftProperty $Element "LocalizedControlType"),
+        (Get-KoluxProperty $Element "LocalizedControlType"),
         $controlType,
-        (Get-NightshiftProperty $Element "Name"),
-        (Get-NightshiftProperty $Element "AutomationId"),
-        (Get-NightshiftProperty $Element "ClassName")
+        (Get-KoluxProperty $Element "Name"),
+        (Get-KoluxProperty $Element "AutomationId"),
+        (Get-KoluxProperty $Element "ClassName")
     )
     $haystack = (($parts -join " ") -replace "\s+", " ").ToLowerInvariant()
     foreach ($term in @("password", "passcode", "secret", "one-time code", "verification code")) {
@@ -397,9 +397,9 @@ function Test-NightshiftSensitiveElement($Element) {
     $haystack -match "(^|[^a-z0-9])pin([^a-z0-9]|$)"
 }
 
-function Get-NightshiftValueText($Element) {
+function Get-KoluxValueText($Element) {
     try {
-        if (Test-NightshiftSensitiveElement $Element) { return "[redacted]" }
+        if (Test-KoluxSensitiveElement $Element) { return "[redacted]" }
         $pattern = $Element.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern)
         $rawValue = $pattern.Current.Value
         $text = if ($null -eq $rawValue) { "" } else { [string]$rawValue }
@@ -410,7 +410,7 @@ function Get-NightshiftValueText($Element) {
     }
 }
 
-function Get-NightshiftActions($Element) {
+function Get-KoluxActions($Element) {
     $actions = New-Object System.Collections.Generic.List[string]
     foreach ($pattern in $Element.GetSupportedPatterns()) {
         $name = [string]$pattern.ProgrammaticName
@@ -423,18 +423,18 @@ function Get-NightshiftActions($Element) {
     @($actions | Select-Object -Unique)
 }
 
-function Get-NightshiftMeaningfulActions($Actions) {
+function Get-KoluxMeaningfulActions($Actions) {
     $noisy = @("Invoke", "ScrollToVisible", "ShowMenu")
     @($Actions | Where-Object { $noisy -notcontains $_ })
 }
 
-function Format-NightshiftSnapshotText([string]$Text) {
+function Format-KoluxSnapshotText([string]$Text) {
     if ([string]::IsNullOrWhiteSpace($Text)) { return "" }
     (($Text -replace "\s+", " ").Trim())
 }
 
-function Format-NightshiftValueSegment([string]$RoleKey, [string]$Title, [string]$Value) {
-    $clean = Format-NightshiftSnapshotText $Value
+function Format-KoluxValueSegment([string]$RoleKey, [string]$Title, [string]$Value) {
+    $clean = Format-KoluxSnapshotText $Value
     if ([string]::IsNullOrWhiteSpace($clean) -or $clean -eq $Title) { return "" }
     if ($RoleKey -eq "heading" -and $clean -match "^\d+$") { return "" }
     if ($RoleKey -in @("text", "edit", "document", "scroll bar", "progress bar")) {
@@ -443,8 +443,8 @@ function Format-NightshiftValueSegment([string]$RoleKey, [string]$Title, [string
     ", Value: $clean"
 }
 
-function Test-NightshiftSuppressChildren([string]$RoleKey, [string]$Title, [string]$Value, [string]$Summary) {
-    $hasCompactLabel = -not [string]::IsNullOrWhiteSpace($Title) -or -not [string]::IsNullOrWhiteSpace((Format-NightshiftSnapshotText $Value)) -or -not [string]::IsNullOrWhiteSpace((Format-NightshiftSnapshotText $Summary))
+function Test-KoluxSuppressChildren([string]$RoleKey, [string]$Title, [string]$Value, [string]$Summary) {
+    $hasCompactLabel = -not [string]::IsNullOrWhiteSpace($Title) -or -not [string]::IsNullOrWhiteSpace((Format-KoluxSnapshotText $Value)) -or -not [string]::IsNullOrWhiteSpace((Format-KoluxSnapshotText $Summary))
     $hasCompactLabel -and $RoleKey -in @(
         "button",
         "check box",
@@ -458,15 +458,15 @@ function Test-NightshiftSuppressChildren([string]$RoleKey, [string]$Title, [stri
     )
 }
 
-function Get-NightshiftTextSnippets($Element, [int]$Limit = 6, [int]$MaxDepth = 3) {
+function Get-KoluxTextSnippets($Element, [int]$Limit = 6, [int]$MaxDepth = 3) {
     $values = New-Object System.Collections.Generic.List[string]
     $seen = New-Object System.Collections.Generic.HashSet[string]
 
-    function Visit-NightshiftText($Node, [int]$Depth) {
+    function Visit-KoluxText($Node, [int]$Depth) {
         if ($values.Count -ge $Limit -or $Depth -gt $MaxDepth) { return }
         $role = try { [string]$Node.Current.LocalizedControlType } catch { "" }
         if ($role -match "text|link|label") {
-            foreach ($raw in @((Get-NightshiftProperty $Node "Name"), (Get-NightshiftValueText $Node))) {
+            foreach ($raw in @((Get-KoluxProperty $Node "Name"), (Get-KoluxValueText $Node))) {
                 $value = (($raw -replace "\s+", " ").Trim())
                 if (-not [string]::IsNullOrWhiteSpace($value) -and $seen.Add($value)) {
                     if ($value.Length -gt 80) { $value = $value.Substring(0, 80) + "..." }
@@ -478,59 +478,59 @@ function Get-NightshiftTextSnippets($Element, [int]$Limit = 6, [int]$MaxDepth = 
         try {
             $children = $Node.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition)
             for ($i = 0; $i -lt $children.Count; $i++) {
-                Visit-NightshiftText $children.Item($i) ($Depth + 1)
+                Visit-KoluxText $children.Item($i) ($Depth + 1)
                 if ($values.Count -ge $Limit) { return }
             }
         } catch {}
     }
 
-    Visit-NightshiftText $Element 0
+    Visit-KoluxText $Element 0
     @($values.ToArray())
 }
 
-function Test-NightshiftPlainTextSubtree($Element, [int]$MaxDepth = 4) {
-    $script:sawNightshiftText = $false
+function Test-KoluxPlainTextSubtree($Element, [int]$MaxDepth = 4) {
+    $script:sawKoluxText = $false
     $allowed = @("pane", "group", "custom", "unknown", "text", "link", "image")
 
-    function Visit-NightshiftPlainText($Node, [int]$Depth) {
+    function Visit-KoluxPlainText($Node, [int]$Depth) {
         if ($Depth -gt $MaxDepth) { return $false }
         $role = try { [string]$Node.Current.LocalizedControlType } catch { "" }
         $roleKey = $role.ToLowerInvariant()
         if ($allowed -notcontains $roleKey) { return $false }
-        if ($roleKey -match "text|link") { $script:sawNightshiftText = $true }
-        if (@(Get-NightshiftMeaningfulActions @(Get-NightshiftActions $Node)).Count -gt 0) { return $false }
+        if ($roleKey -match "text|link") { $script:sawKoluxText = $true }
+        if (@(Get-KoluxMeaningfulActions @(Get-KoluxActions $Node)).Count -gt 0) { return $false }
         try {
             $children = $Node.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition)
             for ($i = 0; $i -lt $children.Count; $i++) {
-                if (-not (Visit-NightshiftPlainText $children.Item($i) ($Depth + 1))) { return $false }
+                if (-not (Visit-KoluxPlainText $children.Item($i) ($Depth + 1))) { return $false }
             }
         } catch {}
         return $true
     }
 
-    (Visit-NightshiftPlainText $Element 0) -and $script:sawNightshiftText
+    (Visit-KoluxPlainText $Element 0) -and $script:sawKoluxText
 }
 
-function New-NightshiftElementRecord($Element, [int]$Index, $WindowFrame) {
+function New-KoluxElementRecord($Element, [int]$Index, $WindowFrame) {
     $controlType = try { [string]$Element.Current.ControlType.ProgrammaticName } catch { "" }
     $nativeWindowHandle = try { [int64]$Element.Current.NativeWindowHandle } catch { 0 }
     [pscustomobject]@{
         index = $Index
-        runtimeId = @(Get-NightshiftRuntimeId $Element)
-        automationId = Get-NightshiftProperty $Element "AutomationId"
-        name = Get-NightshiftProperty $Element "Name"
+        runtimeId = @(Get-KoluxRuntimeId $Element)
+        automationId = Get-KoluxProperty $Element "AutomationId"
+        name = Get-KoluxProperty $Element "Name"
         controlType = $controlType
-        localizedControlType = Get-NightshiftProperty $Element "LocalizedControlType"
-        className = Get-NightshiftProperty $Element "ClassName"
-        value = Get-NightshiftValueText $Element
-        isSelected = Test-NightshiftElementSelected $Element
+        localizedControlType = Get-KoluxProperty $Element "LocalizedControlType"
+        className = Get-KoluxProperty $Element "ClassName"
+        value = Get-KoluxValueText $Element
+        isSelected = Test-KoluxElementSelected $Element
         nativeWindowHandle = $nativeWindowHandle
-        frame = Get-NightshiftElementFrame $Element $WindowFrame
-        actions = @(Get-NightshiftActions $Element)
+        frame = Get-KoluxElementFrame $Element $WindowFrame
+        actions = @(Get-KoluxActions $Element)
     }
 }
 
-function Test-NightshiftElementSelected($Element) {
+function Test-KoluxElementSelected($Element) {
     try {
         $pattern = $Element.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern)
         return [bool]$pattern.Current.IsSelected
@@ -539,7 +539,7 @@ function Test-NightshiftElementSelected($Element) {
     }
 }
 
-function Render-NightshiftTree($RootElement, $WindowFrame, [bool]$CompactBrowserTabs = $false) {
+function Render-KoluxTree($RootElement, $WindowFrame, [bool]$CompactBrowserTabs = $false) {
     $records = New-Object System.Collections.Generic.List[object]
     $lines = New-Object System.Collections.Generic.List[string]
     $seen = New-Object System.Collections.Generic.HashSet[string]
@@ -550,7 +550,7 @@ function Render-NightshiftTree($RootElement, $WindowFrame, [bool]$CompactBrowser
         maxDepthReached = $false
     }
 
-    function Visit-NightshiftNode($Node, [int]$Depth) {
+    function Visit-KoluxNode($Node, [int]$Depth) {
         if ($records.Count -ge $MaxNodes -or $Depth -gt $MaxDepth) {
             $truncation.truncated = $true
             if ($Depth -gt $MaxDepth) { $truncation.maxDepthReached = $true }
@@ -559,39 +559,39 @@ function Render-NightshiftTree($RootElement, $WindowFrame, [bool]$CompactBrowser
         $identity = try { (@($Node.GetRuntimeId()) -join ".") } catch { [Guid]::NewGuid().ToString() }
         if (-not $seen.Add($identity)) { return }
 
-        $record = New-NightshiftElementRecord $Node $records.Count $WindowFrame
+        $record = New-KoluxElementRecord $Node $records.Count $WindowFrame
         $children = @()
         try {
             $children = @($Node.FindAll([Windows.Automation.TreeScope]::Children, [Windows.Automation.Condition]::TrueCondition))
         } catch {}
-        $meaningfulActions = @(Get-NightshiftMeaningfulActions $record.actions)
+        $meaningfulActions = @(Get-KoluxMeaningfulActions $record.actions)
         $title = if ([string]::IsNullOrWhiteSpace($record.name)) { $record.automationId } else { $record.name }
         $role = if ([string]::IsNullOrWhiteSpace($record.localizedControlType)) { $record.controlType } else { $record.localizedControlType }
         $roleKey = $role.ToLowerInvariant()
         $genericSummary = $null
         if (($roleKey -in @("pane", "group", "custom", "unknown")) -and [string]::IsNullOrWhiteSpace($title) -and [string]::IsNullOrWhiteSpace($record.value)) {
-            $snippets = @(Get-NightshiftTextSnippets $Node 8 4)
-            if ($snippets.Count -ge 2 -and (Test-NightshiftPlainTextSubtree $Node)) {
+            $snippets = @(Get-KoluxTextSnippets $Node 8 4)
+            if ($snippets.Count -ge 2 -and (Test-KoluxPlainTextSubtree $Node)) {
                 $genericSummary = ($snippets -join " ")
             }
         }
         if (($roleKey -in @("pane", "group", "custom", "unknown")) -and [string]::IsNullOrWhiteSpace($title) -and [string]::IsNullOrWhiteSpace($record.value) -and $meaningfulActions.Count -eq 0 -and $null -eq $genericSummary -and $children.Count -le 1) {
             for ($i = 0; $i -lt $children.Count; $i++) {
-                Visit-NightshiftNode $children.Item($i) $Depth
+                Visit-KoluxNode $children.Item($i) $Depth
             }
             return
         }
 
         $records.Add($record)
 
-        $line = "$($record.index) $role $(Format-NightshiftSnapshotText $title)".TrimEnd()
-        $line += Format-NightshiftValueSegment $roleKey $title $record.value
+        $line = "$($record.index) $role $(Format-KoluxSnapshotText $title)".TrimEnd()
+        $line += Format-KoluxValueSegment $roleKey $title $record.value
         if (-not [string]::IsNullOrWhiteSpace($genericSummary) -and $genericSummary -ne $title) {
-            $line += ", Text: " + (Format-NightshiftSnapshotText $genericSummary)
+            $line += ", Text: " + (Format-KoluxSnapshotText $genericSummary)
         } elseif ($roleKey -in @("row", "data item", "list item")) {
-            $rowSummary = @((Get-NightshiftTextSnippets $Node 6 3)) -join " "
+            $rowSummary = @((Get-KoluxTextSnippets $Node 6 3)) -join " "
             if (-not [string]::IsNullOrWhiteSpace($rowSummary) -and $rowSummary -ne $title) {
-                $line += ", Text: " + (Format-NightshiftSnapshotText $rowSummary)
+                $line += ", Text: " + (Format-KoluxSnapshotText $rowSummary)
             }
         }
         if ($meaningfulActions.Count -gt 0) {
@@ -599,24 +599,24 @@ function Render-NightshiftTree($RootElement, $WindowFrame, [bool]$CompactBrowser
         }
         $lines.Add(("`t" * $Depth) + $line)
 
-        if (-not [string]::IsNullOrWhiteSpace($genericSummary) -or (Test-NightshiftSuppressChildren $roleKey $title $record.value $genericSummary)) { return }
+        if (-not [string]::IsNullOrWhiteSpace($genericSummary) -or (Test-KoluxSuppressChildren $roleKey $title $record.value $genericSummary)) { return }
         $childLineStart = $lines.Count
         for ($i = 0; $i -lt $children.Count; $i++) {
-            Visit-NightshiftNode $children.Item($i) ($Depth + 1)
+            Visit-KoluxNode $children.Item($i) ($Depth + 1)
         }
         if ($CompactBrowserTabs) {
-            Compress-NightshiftRenderedBrowserTabs $records $lines $childLineStart ($Depth + 1)
+            Compress-KoluxRenderedBrowserTabs $records $lines $childLineStart ($Depth + 1)
         }
     }
 
-    Visit-NightshiftNode $RootElement 0
+    Visit-KoluxNode $RootElement 0
     [pscustomobject]@{ elements = @($records.ToArray()); lines = @($lines.ToArray()); truncation = $truncation }
 }
 
-function Compress-NightshiftRenderedBrowserTabs($Records, $Lines, [int]$StartLine, [int]$Depth) {
+function Compress-KoluxRenderedBrowserTabs($Records, $Lines, [int]$StartLine, [int]$Depth) {
     $tabLineIndexes = New-Object System.Collections.Generic.List[int]
     for ($lineIndex = $StartLine; $lineIndex -lt $Lines.Count; $lineIndex++) {
-        if (Test-NightshiftDirectRenderedBrowserTabLine ([string]$Lines[$lineIndex]) $Depth) {
+        if (Test-KoluxDirectRenderedBrowserTabLine ([string]$Lines[$lineIndex]) $Depth) {
             $tabLineIndexes.Add($lineIndex)
         }
     }
@@ -628,7 +628,7 @@ function Compress-NightshiftRenderedBrowserTabs($Records, $Lines, [int]$StartLin
     }
     $activeLineIndexes = New-Object System.Collections.Generic.HashSet[int]
     foreach ($lineIndex in $tabLineIndexes) {
-        if (Test-NightshiftActiveRenderedBrowserTabLine ([string]$Lines[$lineIndex]) $Depth $recordsByIndex) {
+        if (Test-KoluxActiveRenderedBrowserTabLine ([string]$Lines[$lineIndex]) $Depth $recordsByIndex) {
             [void]$activeLineIndexes.Add($lineIndex)
         }
     }
@@ -640,7 +640,7 @@ function Compress-NightshiftRenderedBrowserTabs($Records, $Lines, [int]$StartLin
     for ($i = $tabLineIndexes.Count - 1; $i -ge 0; $i--) {
         $lineIndex = $tabLineIndexes[$i]
         if ($activeLineIndexes.Contains($lineIndex)) { continue }
-        $recordIndex = Get-NightshiftRenderedElementIndex ([string]$Lines[$lineIndex]) $Depth
+        $recordIndex = Get-KoluxRenderedElementIndex ([string]$Lines[$lineIndex]) $Depth
         if ($null -ne $recordIndex) {
             [void]$omittedRecordIndexes.Add([int]$recordIndex)
         }
@@ -656,7 +656,7 @@ function Compress-NightshiftRenderedBrowserTabs($Records, $Lines, [int]$StartLin
     $Lines.Insert($insertionIndex, (("`t" * $Depth) + "... $omittedCount inactive browser tabs omitted"))
 }
 
-function Test-NightshiftDirectRenderedBrowserTabLine([string]$Line, [int]$Depth) {
+function Test-KoluxDirectRenderedBrowserTabLine([string]$Line, [int]$Depth) {
     $indent = "`t" * $Depth
     if (-not $Line.StartsWith($indent)) { return $false }
     $text = $Line.Substring($indent.Length)
@@ -664,21 +664,21 @@ function Test-NightshiftDirectRenderedBrowserTabLine([string]$Line, [int]$Depth)
     $text -match "^\d+ (page tab|tab item|tab)($|[ \(,])"
 }
 
-function Test-NightshiftActiveRenderedBrowserTabLine([string]$Line, [int]$Depth, $RecordsByIndex) {
+function Test-KoluxActiveRenderedBrowserTabLine([string]$Line, [int]$Depth, $RecordsByIndex) {
     if ($Line.Contains("(selected")) { return $true }
-    $recordIndex = Get-NightshiftRenderedElementIndex $Line $Depth
+    $recordIndex = Get-KoluxRenderedElementIndex $Line $Depth
     if ($null -eq $recordIndex -or -not $RecordsByIndex.ContainsKey([int]$recordIndex)) { return $false }
     $record = $RecordsByIndex[[int]$recordIndex]
-    [bool]$record.isSelected -or (Format-NightshiftSnapshotText $record.value) -eq "1"
+    [bool]$record.isSelected -or (Format-KoluxSnapshotText $record.value) -eq "1"
 }
 
-function Get-NightshiftRenderedElementIndex([string]$Line, [int]$Depth) {
+function Get-KoluxRenderedElementIndex([string]$Line, [int]$Depth) {
     $text = $Line.Substring(("`t" * $Depth).Length)
     if ($text -match "^(\d+)") { return [int]$Matches[1] }
     $null
 }
 
-function ConvertTo-NightshiftPngBytes([System.Drawing.Image]$Image) {
+function ConvertTo-KoluxPngBytes([System.Drawing.Image]$Image) {
     $stream = $null
     try {
         $stream = New-Object System.IO.MemoryStream
@@ -689,7 +689,7 @@ function ConvertTo-NightshiftPngBytes([System.Drawing.Image]$Image) {
     }
 }
 
-function New-NightshiftScreenshotPayload([byte[]]$Bytes, [int]$Width, [int]$Height, [double]$Scale) {
+function New-KoluxScreenshotPayload([byte[]]$Bytes, [int]$Width, [int]$Height, [double]$Scale) {
     [pscustomobject]@{
         base64 = [Convert]::ToBase64String($Bytes)
         width = $Width
@@ -698,7 +698,7 @@ function New-NightshiftScreenshotPayload([byte[]]$Bytes, [int]$Width, [int]$Heig
     }
 }
 
-function Resize-NightshiftBitmap([System.Drawing.Bitmap]$Source, [int]$Width, [int]$Height) {
+function Resize-KoluxBitmap([System.Drawing.Bitmap]$Source, [int]$Width, [int]$Height) {
     $resized = $null
     $graphics = $null
     try {
@@ -715,12 +715,12 @@ function Resize-NightshiftBitmap([System.Drawing.Bitmap]$Source, [int]$Width, [i
     }
 }
 
-function Get-NightshiftBoundedScreenshotPayload([System.Drawing.Bitmap]$Bitmap) {
+function Get-KoluxBoundedScreenshotPayload([System.Drawing.Bitmap]$Bitmap) {
     $originalWidth = [int][Math]::Max(1, $Bitmap.Width)
     $originalHeight = [int][Math]::Max(1, $Bitmap.Height)
-    $pngBytes = ConvertTo-NightshiftPngBytes $Bitmap
+    $pngBytes = ConvertTo-KoluxPngBytes $Bitmap
     if ($pngBytes.Length -le $MaxScreenshotPngBytes) {
-        return New-NightshiftScreenshotPayload $pngBytes $originalWidth $originalHeight 1.0
+        return New-KoluxScreenshotPayload $pngBytes $originalWidth $originalHeight 1.0
     }
 
     # Why: screenshots cross process boundaries as PNG base64 in JSON; cap noisy
@@ -736,10 +736,10 @@ function Get-NightshiftBoundedScreenshotPayload([System.Drawing.Bitmap]$Bitmap) 
 
         $resized = $null
         try {
-            $resized = Resize-NightshiftBitmap $Bitmap $width $height
-            $candidateBytes = ConvertTo-NightshiftPngBytes $resized
+            $resized = Resize-KoluxBitmap $Bitmap $width $height
+            $candidateBytes = ConvertTo-KoluxPngBytes $resized
             if ($candidateBytes.Length -le $MaxScreenshotPngBytes) {
-                return New-NightshiftScreenshotPayload $candidateBytes $width $height ($width / [double]$originalWidth)
+                return New-KoluxScreenshotPayload $candidateBytes $width $height ($width / [double]$originalWidth)
             }
         } finally {
             if ($null -ne $resized) { $resized.Dispose() }
@@ -756,7 +756,7 @@ function Get-NightshiftBoundedScreenshotPayload([System.Drawing.Bitmap]$Bitmap) 
     }
 }
 
-function Get-NightshiftScreenshot([bool]$IncludeScreenshot, $WindowFrame) {
+function Get-KoluxScreenshot([bool]$IncludeScreenshot, $WindowFrame) {
     if (-not $IncludeScreenshot -or $null -eq $WindowFrame) { return $null }
     $bitmap = $null
     $graphics = $null
@@ -766,7 +766,7 @@ function Get-NightshiftScreenshot([bool]$IncludeScreenshot, $WindowFrame) {
         $bitmap = New-Object System.Drawing.Bitmap $width, $height
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
         $graphics.CopyFromScreen([int][Math]::Round($WindowFrame.x), [int][Math]::Round($WindowFrame.y), 0, 0, $bitmap.Size)
-        Get-NightshiftBoundedScreenshotPayload $bitmap
+        Get-KoluxBoundedScreenshotPayload $bitmap
     } catch {
         $null
     } finally {
@@ -775,20 +775,20 @@ function Get-NightshiftScreenshot([bool]$IncludeScreenshot, $WindowFrame) {
     }
 }
 
-function New-NightshiftSnapshot([string]$Query, [bool]$IncludeScreenshot, $WindowId = $null, $WindowIndex = $null, [bool]$RestoreWindow = $false) {
-    $process = Find-NightshiftProcess $Query
-    if ($RestoreWindow) { Restore-NightshiftWindow $process }
-    Assert-NightshiftWindowTarget $process $WindowId $WindowIndex
-    $root = Get-NightshiftRootElement $process
-    $windowFrame = Get-NightshiftWindowFrame $process $root
-    $tree = Render-NightshiftTree $root $windowFrame (Test-NightshiftBrowserProcess $process)
-    $screenshot = Get-NightshiftScreenshot $IncludeScreenshot $windowFrame
+function New-KoluxSnapshot([string]$Query, [bool]$IncludeScreenshot, $WindowId = $null, $WindowIndex = $null, [bool]$RestoreWindow = $false) {
+    $process = Find-KoluxProcess $Query
+    if ($RestoreWindow) { Restore-KoluxWindow $process }
+    Assert-KoluxWindowTarget $process $WindowId $WindowIndex
+    $root = Get-KoluxRootElement $process
+    $windowFrame = Get-KoluxWindowFrame $process $root
+    $tree = Render-KoluxTree $root $windowFrame (Test-KoluxBrowserProcess $process)
+    $screenshot = Get-KoluxScreenshot $IncludeScreenshot $windowFrame
 
     [pscustomobject]@{
         snapshotId = [guid]::NewGuid().ToString()
-        app = New-NightshiftAppRecord $process
+        app = New-KoluxAppRecord $process
         windowTitle = $process.MainWindowTitle
-        windowId = Get-NightshiftWindowId $process
+        windowId = Get-KoluxWindowId $process
         windowBounds = $windowFrame
         screenshotPngBase64 = if ($null -ne $screenshot) { $screenshot.base64 } else { $null }
         screenshotWidth = if ($null -ne $screenshot) { $screenshot.width } else { $null }
@@ -805,16 +805,16 @@ function New-NightshiftSnapshot([string]$Query, [bool]$IncludeScreenshot, $Windo
     }
 }
 
-function Get-NightshiftAppList {
-    @(Get-NightshiftWindowProcesses | ForEach-Object {
-        New-NightshiftAppRecord $_
+function Get-KoluxAppList {
+    @(Get-KoluxWindowProcesses | ForEach-Object {
+        New-KoluxAppRecord $_
     })
 }
 
-function Get-NightshiftWindowList([string]$Query) {
-    $process = Find-NightshiftProcess $Query
-    $root = Get-NightshiftRootElement $process
-    $windowFrame = Get-NightshiftWindowFrame $process $root
+function Get-KoluxWindowList([string]$Query) {
+    $process = Find-KoluxProcess $Query
+    $root = Get-KoluxRootElement $process
+    $windowFrame = Get-KoluxWindowFrame $process $root
     $x = $null
     $y = $null
     $width = 0
@@ -825,13 +825,13 @@ function Get-NightshiftWindowList([string]$Query) {
         $width = [int][Math]::Max(0, [Math]::Round($windowFrame.width))
         $height = [int][Math]::Max(0, [Math]::Round($windowFrame.height))
     }
-    $app = New-NightshiftAppRecord $process
+    $app = New-KoluxAppRecord $process
     [pscustomobject]@{
         app = $app
         windows = @([pscustomobject]@{
             index = 0
             app = $app
-            id = Get-NightshiftWindowId $process
+            id = Get-KoluxWindowId $process
             title = $process.MainWindowTitle
             x = $x
             y = $y
@@ -840,15 +840,15 @@ function Get-NightshiftWindowList([string]$Query) {
             isMinimized = $false
             isOffscreen = $false
             screenIndex = $null
-            platform = [pscustomobject]@{ backend = "uia"; nativeWindowHandle = Get-NightshiftWindowId $process }
+            platform = [pscustomobject]@{ backend = "uia"; nativeWindowHandle = Get-KoluxWindowId $process }
         })
     }
 }
 
-function Get-NightshiftHandshake {
+function Get-KoluxHandshake {
     [pscustomobject]@{
         platform = "win32"
-        provider = "nightshift-computer-use-windows"
+        provider = "kolux-computer-use-windows"
         providerVersion = "1.0.0"
         protocolVersion = 1
         supports = [pscustomobject]@{
@@ -871,7 +871,7 @@ function Get-NightshiftHandshake {
     }
 }
 
-function Test-NightshiftSameRuntimeId($Left, $Right) {
+function Test-KoluxSameRuntimeId($Left, $Right) {
     if ($null -eq $Left -or $null -eq $Right -or $Left.Count -ne $Right.Count) { return $false }
     for ($i = 0; $i -lt $Left.Count; $i++) {
         if ([int]$Left[$i] -ne [int]$Right[$i]) { return $false }
@@ -879,7 +879,7 @@ function Test-NightshiftSameRuntimeId($Left, $Right) {
     $true
 }
 
-function Find-NightshiftElement($RootElement, $Record) {
+function Find-KoluxElement($RootElement, $Record) {
     if ($null -eq $Record) { return $null }
     if ($Record.index -eq 0) { return $RootElement }
 
@@ -887,7 +887,7 @@ function Find-NightshiftElement($RootElement, $Record) {
         $descendants = $RootElement.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition)
         for ($i = 0; $i -lt $descendants.Count; $i++) {
             $candidate = $descendants.Item($i)
-            if (Test-NightshiftSameRuntimeId @($candidate.GetRuntimeId()) @($Record.runtimeId)) {
+            if (Test-KoluxSameRuntimeId @($candidate.GetRuntimeId()) @($Record.runtimeId)) {
                 return $candidate
             }
         }
@@ -895,7 +895,7 @@ function Find-NightshiftElement($RootElement, $Record) {
     $null
 }
 
-function Invoke-NightshiftPrimaryAction($Element) {
+function Invoke-KoluxPrimaryAction($Element) {
     foreach ($pattern in @(
         [Windows.Automation.InvokePattern]::Pattern,
         [Windows.Automation.SelectionItemPattern]::Pattern,
@@ -911,7 +911,7 @@ function Invoke-NightshiftPrimaryAction($Element) {
     $false
 }
 
-function Invoke-NightshiftNamedAction($Element, [string]$Action) {
+function Invoke-KoluxNamedAction($Element, [string]$Action) {
     $wanted = ""
     if ($null -ne $Action) { $wanted = $Action.Trim().ToLowerInvariant() }
     switch ($wanted) {
@@ -936,7 +936,7 @@ function Invoke-NightshiftNamedAction($Element, [string]$Action) {
     }
 }
 
-function Set-NightshiftElementValue($Element, [string]$Value) {
+function Set-KoluxElementValue($Element, [string]$Value) {
     try {
         $pattern = $Element.GetCurrentPattern([Windows.Automation.ValuePattern]::Pattern)
         if (-not $pattern.Current.IsReadOnly) {
@@ -947,7 +947,7 @@ function Set-NightshiftElementValue($Element, [string]$Value) {
     $false
 }
 
-function Get-NightshiftRequiredNumber($Value, [string]$Name) {
+function Get-KoluxRequiredNumber($Value, [string]$Name) {
     if ($null -eq $Value) { throw "$Name is required" }
     $number = [double]$Value
     if ([double]::IsNaN($number) -or [double]::IsInfinity($number)) {
@@ -956,40 +956,40 @@ function Get-NightshiftRequiredNumber($Value, [string]$Name) {
     $number
 }
 
-function Get-NightshiftPositiveInteger($Value, [string]$Name) {
+function Get-KoluxPositiveInteger($Value, [string]$Name) {
     if ($null -eq $Value) { $Value = 1 }
     $number = [int]$Value
     if ($number -le 0) { throw "$Name must be a positive integer" }
     $number
 }
 
-function Get-NightshiftPositiveNumber($Value, [string]$Name) {
+function Get-KoluxPositiveNumber($Value, [string]$Name) {
     if ($null -eq $Value) { $Value = 1 }
-    $number = Get-NightshiftRequiredNumber $Value $Name
+    $number = Get-KoluxRequiredNumber $Value $Name
     if ($number -le 0) { throw "$Name must be a positive number" }
     $number
 }
 
-function Get-NightshiftRequiredString($Value, [string]$Name) {
+function Get-KoluxRequiredString($Value, [string]$Name) {
     if ($null -eq $Value) { throw "$Name is required" }
     $text = [string]$Value
     if ($text.Length -eq 0) { throw "$Name is required" }
     $text
 }
 
-function Get-NightshiftScreenPoint($Operation, $WindowFrame) {
+function Get-KoluxScreenPoint($Operation, $WindowFrame) {
     if ($null -ne $Operation.element) {
         throw "stale element frame; run get-app-state again and use a fresh element index"
     }
-    $x = Get-NightshiftRequiredNumber $Operation.x "x"
-    $y = Get-NightshiftRequiredNumber $Operation.y "y"
+    $x = Get-KoluxRequiredNumber $Operation.x "x"
+    $y = Get-KoluxRequiredNumber $Operation.y "y"
     @{
         x = [int][Math]::Round($WindowFrame.x + $x)
         y = [int][Math]::Round($WindowFrame.y + $y)
     }
 }
 
-function Get-NightshiftElementScreenPoint($Element) {
+function Get-KoluxElementScreenPoint($Element) {
     if ($null -eq $Element) { return $null }
     try {
         $rect = $Element.Current.BoundingRectangle
@@ -1003,9 +1003,9 @@ function Get-NightshiftElementScreenPoint($Element) {
     $null
 }
 
-function Send-NightshiftMouseClick([IntPtr]$WindowHandle, [int]$ScreenX, [int]$ScreenY, [string]$Button, [int]$Count, [string]$Modifiers) {
-    [void][NightshiftDesktopWin32]::SetForegroundWindow($WindowHandle)
-    [void][NightshiftDesktopWin32]::SetCursorPos($ScreenX, $ScreenY)
+function Send-KoluxMouseClick([IntPtr]$WindowHandle, [int]$ScreenX, [int]$ScreenY, [string]$Button, [int]$Count, [string]$Modifiers) {
+    [void][KoluxDesktopWin32]::SetForegroundWindow($WindowHandle)
+    [void][KoluxDesktopWin32]::SetCursorPos($ScreenX, $ScreenY)
     $buttonName = if ([string]::IsNullOrWhiteSpace($Button)) { "left" } else { $Button.ToLowerInvariant() }
     switch ($buttonName) {
         "left" { $down = $MouseEvents.LeftDown; $up = $MouseEvents.LeftUp }
@@ -1014,18 +1014,18 @@ function Send-NightshiftMouseClick([IntPtr]$WindowHandle, [int]$ScreenX, [int]$S
         default { throw "unsupported mouse button: $Button" }
     }
 
-    $modifierKeys = @(Get-NightshiftClickModifierVirtualKeys $Modifiers)
-    $clickCount = Get-NightshiftPositiveInteger $Count "click_count"
+    $modifierKeys = @(Get-KoluxClickModifierVirtualKeys $Modifiers)
+    $clickCount = Get-KoluxPositiveInteger $Count "click_count"
     if ($modifierKeys.Count -eq 0) {
         for ($i = 0; $i -lt $clickCount; $i++) {
-            [NightshiftDesktopWin32]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
+            [KoluxDesktopWin32]::mouse_event($down, 0, 0, 0, [UIntPtr]::Zero)
             Start-Sleep -Milliseconds 35
-            [NightshiftDesktopWin32]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
+            [KoluxDesktopWin32]::mouse_event($up, 0, 0, 0, [UIntPtr]::Zero)
         }
         return
     }
     for ($i = 0; $i -lt $clickCount; $i++) {
-        [NightshiftDesktopWin32]::SendModifiedClick(
+        [KoluxDesktopWin32]::SendModifiedClick(
             [byte[]]$modifierKeys,
             [uint32]$down,
             [uint32]$up
@@ -1034,40 +1034,40 @@ function Send-NightshiftMouseClick([IntPtr]$WindowHandle, [int]$ScreenX, [int]$S
     }
 }
 
-function Send-NightshiftDrag([IntPtr]$WindowHandle, $From, $To) {
-    [void][NightshiftDesktopWin32]::SetForegroundWindow($WindowHandle)
+function Send-KoluxDrag([IntPtr]$WindowHandle, $From, $To) {
+    [void][KoluxDesktopWin32]::SetForegroundWindow($WindowHandle)
     $startX = [int]$From.x
     $startY = [int]$From.y
     $endX = [int]$To.x
     $endY = [int]$To.y
-    [void][NightshiftDesktopWin32]::SetCursorPos($startX, $startY)
-    [NightshiftDesktopWin32]::mouse_event($MouseEvents.LeftDown, 0, 0, 0, [UIntPtr]::Zero)
+    [void][KoluxDesktopWin32]::SetCursorPos($startX, $startY)
+    [KoluxDesktopWin32]::mouse_event($MouseEvents.LeftDown, 0, 0, 0, [UIntPtr]::Zero)
     for ($step = 1; $step -le 12; $step++) {
         $x = [int][Math]::Round($startX + (($endX - $startX) * $step / 12))
         $y = [int][Math]::Round($startY + (($endY - $startY) * $step / 12))
-        [void][NightshiftDesktopWin32]::SetCursorPos($x, $y)
+        [void][KoluxDesktopWin32]::SetCursorPos($x, $y)
         Start-Sleep -Milliseconds 20
     }
-    [NightshiftDesktopWin32]::mouse_event($MouseEvents.LeftUp, 0, 0, 0, [UIntPtr]::Zero)
+    [KoluxDesktopWin32]::mouse_event($MouseEvents.LeftUp, 0, 0, 0, [UIntPtr]::Zero)
 }
 
-function Send-NightshiftText([IntPtr]$WindowHandle, [string]$Text) {
-    [void][NightshiftDesktopWin32]::SetForegroundWindow($WindowHandle)
+function Send-KoluxText([IntPtr]$WindowHandle, [string]$Text) {
+    [void][KoluxDesktopWin32]::SetForegroundWindow($WindowHandle)
     $hasNonAscii = $false
     foreach ($character in $Text.ToCharArray()) {
         if ([int][char]$character -gt 0x7F) { $hasNonAscii = $true; break }
     }
     if ($hasNonAscii) {
         foreach ($character in $Text.ToCharArray()) {
-            [void][NightshiftDesktopWin32]::PostMessage($WindowHandle, $WindowsMessages.Char, [IntPtr][int][char]$character, [IntPtr]::Zero)
+            [void][KoluxDesktopWin32]::PostMessage($WindowHandle, $WindowsMessages.Char, [IntPtr][int][char]$character, [IntPtr]::Zero)
             Start-Sleep -Milliseconds 8
         }
         return
     }
-    [System.Windows.Forms.SendKeys]::SendWait((ConvertTo-NightshiftSendKeysText $Text))
+    [System.Windows.Forms.SendKeys]::SendWait((ConvertTo-KoluxSendKeysText $Text))
 }
 
-function Get-NightshiftVirtualKey([string]$Key) {
+function Get-KoluxVirtualKey([string]$Key) {
     $normalized = $Key.ToLowerInvariant()
     $map = @{
         "return" = 0x0D; "enter" = 0x0D; "tab" = 0x09; "escape" = 0x1B; "esc" = 0x1B
@@ -1079,12 +1079,12 @@ function Get-NightshiftVirtualKey([string]$Key) {
     throw "Unsupported key: $Key"
 }
 
-function Send-NightshiftKey([IntPtr]$WindowHandle, [string]$Key) {
-    [void][NightshiftDesktopWin32]::SetForegroundWindow($WindowHandle)
-    [System.Windows.Forms.SendKeys]::SendWait((ConvertTo-NightshiftSendKeysKey $Key))
+function Send-KoluxKey([IntPtr]$WindowHandle, [string]$Key) {
+    [void][KoluxDesktopWin32]::SetForegroundWindow($WindowHandle)
+    [System.Windows.Forms.SendKeys]::SendWait((ConvertTo-KoluxSendKeysKey $Key))
 }
 
-function Get-NightshiftModifierVirtualKey([string]$Modifier) {
+function Get-KoluxModifierVirtualKey([string]$Modifier) {
     switch ($Modifier.ToLowerInvariant()) {
         { $_ -in @("ctrl", "control", "cmdorctrl", "commandorcontrol") } { return 0x11 }
         { $_ -in @("shift") } { return 0x10 }
@@ -1094,31 +1094,31 @@ function Get-NightshiftModifierVirtualKey([string]$Modifier) {
     }
 }
 
-function Get-NightshiftClickModifierVirtualKeys([string]$Modifiers) {
+function Get-KoluxClickModifierVirtualKeys([string]$Modifiers) {
     if ([string]::IsNullOrWhiteSpace($Modifiers)) { return @() }
     $parts = @($Modifiers.Split("+") | ForEach-Object { $_.Trim() })
     $emptyParts = @($parts | Where-Object { [string]::IsNullOrWhiteSpace($_) })
     if ($parts.Count -eq 0 -or $emptyParts.Count -gt 0) {
         throw "Click modifiers require modifier keys only"
     }
-    @($parts | ForEach-Object { Get-NightshiftModifierVirtualKey $_ })
+    @($parts | ForEach-Object { Get-KoluxModifierVirtualKey $_ })
 }
 
-function Send-NightshiftHotkey([IntPtr]$WindowHandle, [string]$KeySpec) {
+function Send-KoluxHotkey([IntPtr]$WindowHandle, [string]$KeySpec) {
     $parts = @($KeySpec.Split("+") | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     if ($parts.Count -eq 0) { throw "Unsupported key: $KeySpec" }
     $key = $parts[$parts.Count - 1]
     $prefix = ""
     if ($parts.Count -gt 1) {
         foreach ($modifier in $parts[0..($parts.Count - 2)]) {
-            $prefix += ConvertTo-NightshiftSendKeysModifier $modifier
+            $prefix += ConvertTo-KoluxSendKeysModifier $modifier
         }
     }
-    [void][NightshiftDesktopWin32]::SetForegroundWindow($WindowHandle)
-    [System.Windows.Forms.SendKeys]::SendWait($prefix + (ConvertTo-NightshiftSendKeysKey $key))
+    [void][KoluxDesktopWin32]::SetForegroundWindow($WindowHandle)
+    [System.Windows.Forms.SendKeys]::SendWait($prefix + (ConvertTo-KoluxSendKeysKey $key))
 }
 
-function ConvertTo-NightshiftSendKeysText([string]$Text) {
+function ConvertTo-KoluxSendKeysText([string]$Text) {
     $builder = New-Object System.Text.StringBuilder
     foreach ($character in $Text.ToCharArray()) {
         $value = [string]$character
@@ -1133,7 +1133,7 @@ function ConvertTo-NightshiftSendKeysText([string]$Text) {
     $builder.ToString()
 }
 
-function ConvertTo-NightshiftSendKeysKey([string]$Key) {
+function ConvertTo-KoluxSendKeysKey([string]$Key) {
     switch ($Key.ToLowerInvariant()) {
         { $_ -in @("return", "enter") } { return "{ENTER}" }
         "tab" { return "{TAB}" }
@@ -1151,13 +1151,13 @@ function ConvertTo-NightshiftSendKeysKey([string]$Key) {
         { $_ -in @("pagedown", "page_down") } { return "{PGDN}" }
         "insert" { return "{INSERT}" }
         default {
-            if ($Key.Length -eq 1) { return (ConvertTo-NightshiftSendKeysText $Key) }
+            if ($Key.Length -eq 1) { return (ConvertTo-KoluxSendKeysText $Key) }
             throw "Unsupported key: $Key"
         }
     }
 }
 
-function ConvertTo-NightshiftSendKeysModifier([string]$Modifier) {
+function ConvertTo-KoluxSendKeysModifier([string]$Modifier) {
     switch ($Modifier.ToLowerInvariant()) {
         { $_ -in @("ctrl", "control", "cmdorctrl", "commandorcontrol") } { return "^" }
         "shift" { return "+" }
@@ -1166,14 +1166,14 @@ function ConvertTo-NightshiftSendKeysModifier([string]$Modifier) {
     }
 }
 
-function Send-NightshiftPasteText([IntPtr]$WindowHandle, [string]$Text) {
+function Send-KoluxPasteText([IntPtr]$WindowHandle, [string]$Text) {
     $previous = $null
     $hadPrevious = $false
     try { $previous = [System.Windows.Forms.Clipboard]::GetDataObject() } catch {}
     $hadPrevious = $null -ne $previous
     try {
         Set-Clipboard -Value $Text
-        Send-NightshiftHotkey $WindowHandle "Ctrl+v"
+        Send-KoluxHotkey $WindowHandle "Ctrl+v"
     } finally {
         if ($hadPrevious) {
             try { [System.Windows.Forms.Clipboard]::SetDataObject($previous, $true) } catch {}
@@ -1183,33 +1183,33 @@ function Send-NightshiftPasteText([IntPtr]$WindowHandle, [string]$Text) {
     }
 }
 
-function Invoke-NightshiftOperation($Operation) {
+function Invoke-KoluxOperation($Operation) {
     $includeScreenshot = -not [bool]$Operation.noScreenshot
     if ($Operation.tool -eq "handshake") {
-        return [pscustomobject]@{ ok = $true; capabilities = Get-NightshiftHandshake }
+        return [pscustomobject]@{ ok = $true; capabilities = Get-KoluxHandshake }
     }
     if ($Operation.tool -eq "list_apps") {
-        return [pscustomobject]@{ ok = $true; apps = @(Get-NightshiftAppList) }
+        return [pscustomobject]@{ ok = $true; apps = @(Get-KoluxAppList) }
     }
     if ($Operation.tool -eq "list_windows") {
-        $list = Get-NightshiftWindowList $Operation.app
+        $list = Get-KoluxWindowList $Operation.app
         return [pscustomobject]@{ ok = $true; app = $list.app; windows = @($list.windows) }
     }
     if ($Operation.tool -eq "get_app_state") {
-        return [pscustomobject]@{ ok = $true; snapshot = New-NightshiftSnapshot $Operation.app $includeScreenshot $Operation.windowId $Operation.windowIndex ([bool]$Operation.restoreWindow) }
+        return [pscustomobject]@{ ok = $true; snapshot = New-KoluxSnapshot $Operation.app $includeScreenshot $Operation.windowId $Operation.windowIndex ([bool]$Operation.restoreWindow) }
     }
 
-    $process = Find-NightshiftProcess $Operation.app
-    if ([bool]$Operation.restoreWindow) { Restore-NightshiftWindow $process }
-    Assert-NightshiftWindowTarget $process $Operation.windowId $Operation.windowIndex
-    $root = Get-NightshiftRootElement $process
-    $windowFrame = if ($null -ne $Operation.windowBounds) { $Operation.windowBounds } else { Get-NightshiftWindowFrame $process $root }
-    $element = Find-NightshiftElement $root $Operation.element
-    $fromElement = Find-NightshiftElement $root $Operation.fromElement
-    $toElement = Find-NightshiftElement $root $Operation.toElement
+    $process = Find-KoluxProcess $Operation.app
+    if ([bool]$Operation.restoreWindow) { Restore-KoluxWindow $process }
+    Assert-KoluxWindowTarget $process $Operation.windowId $Operation.windowIndex
+    $root = Get-KoluxRootElement $process
+    $windowFrame = if ($null -ne $Operation.windowBounds) { $Operation.windowBounds } else { Get-KoluxWindowFrame $process $root }
+    $element = Find-KoluxElement $root $Operation.element
+    $fromElement = Find-KoluxElement $root $Operation.fromElement
+    $toElement = Find-KoluxElement $root $Operation.toElement
     $handle = [IntPtr]$process.MainWindowHandle
     if ($Operation.tool -in @("type_text", "press_key", "hotkey", "paste_text")) {
-        Assert-NightshiftKeyboardFocus $handle $Operation
+        Assert-KoluxKeyboardFocus $handle $Operation
     }
     $action = $null
 
@@ -1217,17 +1217,17 @@ function Invoke-NightshiftOperation($Operation) {
         "click" {
             # Why: agents expect a click into a target app to make the next
             # keyboard action safe, even when UI Automation handles the click.
-            Restore-NightshiftWindow $process
+            Restore-KoluxWindow $process
             $handledByPattern = $false
-            $clickCount = Get-NightshiftPositiveInteger $Operation.click_count "click_count"
+            $clickCount = Get-KoluxPositiveInteger $Operation.click_count "click_count"
             $hasModifiers = -not [string]::IsNullOrWhiteSpace([string]$Operation.modifiers)
             if (-not $hasModifiers -and $null -ne $element -and $Operation.mouse_button -ne "right" -and $Operation.mouse_button -ne "middle" -and $clickCount -le 1) {
-                $handledByPattern = Invoke-NightshiftPrimaryAction $element
+                $handledByPattern = Invoke-KoluxPrimaryAction $element
             }
             if (-not $handledByPattern) {
-                $point = Get-NightshiftElementScreenPoint $element
-                if ($null -eq $point) { $point = Get-NightshiftScreenPoint $Operation $windowFrame }
-                Send-NightshiftMouseClick $handle $point.x $point.y $Operation.mouse_button $clickCount $Operation.modifiers
+                $point = Get-KoluxElementScreenPoint $element
+                if ($null -eq $point) { $point = Get-KoluxScreenPoint $Operation $windowFrame }
+                Send-KoluxMouseClick $handle $point.x $point.y $Operation.mouse_button $clickCount $Operation.modifiers
                 $action = [pscustomobject]@{ path = "synthetic"; actionName = $null; fallbackReason = "actionUnsupported" }
             } else {
                 $action = [pscustomobject]@{ path = "accessibility"; actionName = "primaryAction"; fallbackReason = $null }
@@ -1235,13 +1235,13 @@ function Invoke-NightshiftOperation($Operation) {
         }
         "perform_secondary_action" {
             if ($null -eq $element) { throw "unknown element_index" }
-            if (-not (Invoke-NightshiftNamedAction $element $Operation.action)) {
+            if (-not (Invoke-KoluxNamedAction $element $Operation.action)) {
                 throw "$($Operation.action) is not a valid secondary action"
             }
             $action = [pscustomobject]@{ path = "accessibility"; actionName = $Operation.action; fallbackReason = $null }
         }
         "scroll" {
-            $delta = 120 * [int][Math]::Ceiling((Get-NightshiftPositiveNumber $Operation.pages "pages"))
+            $delta = 120 * [int][Math]::Ceiling((Get-KoluxPositiveNumber $Operation.pages "pages"))
             $mouseEvent = $MouseEvents.Wheel
             if ($Operation.direction -eq "down") {
                 $delta = -1 * $delta
@@ -1253,51 +1253,51 @@ function Invoke-NightshiftOperation($Operation) {
             } elseif ($Operation.direction -ne "up") {
                 throw "unsupported scroll direction: $($Operation.direction)"
             }
-            $point = Get-NightshiftElementScreenPoint $element
-            if ($null -eq $point) { $point = Get-NightshiftScreenPoint $Operation $windowFrame }
-            [void][NightshiftDesktopWin32]::SetForegroundWindow($handle)
-            [void][NightshiftDesktopWin32]::SetCursorPos([int]$point.x, [int]$point.y)
-            [NightshiftDesktopWin32]::mouse_event($mouseEvent, 0, 0, $delta, [UIntPtr]::Zero)
+            $point = Get-KoluxElementScreenPoint $element
+            if ($null -eq $point) { $point = Get-KoluxScreenPoint $Operation $windowFrame }
+            [void][KoluxDesktopWin32]::SetForegroundWindow($handle)
+            [void][KoluxDesktopWin32]::SetCursorPos([int]$point.x, [int]$point.y)
+            [KoluxDesktopWin32]::mouse_event($mouseEvent, 0, 0, $delta, [UIntPtr]::Zero)
             $action = [pscustomobject]@{ path = "synthetic"; actionName = "scroll"; fallbackReason = $null }
         }
         "drag" {
-            $from = Get-NightshiftElementScreenPoint $fromElement
+            $from = Get-KoluxElementScreenPoint $fromElement
             if ($null -eq $from -and $null -ne $Operation.fromElement) { throw "stale element frame; run get-app-state again and use a fresh element index" }
             if ($null -eq $from) {
                 $from = @{
-                    x = $windowFrame.x + (Get-NightshiftRequiredNumber $Operation.from_x "from_x")
-                    y = $windowFrame.y + (Get-NightshiftRequiredNumber $Operation.from_y "from_y")
+                    x = $windowFrame.x + (Get-KoluxRequiredNumber $Operation.from_x "from_x")
+                    y = $windowFrame.y + (Get-KoluxRequiredNumber $Operation.from_y "from_y")
                 }
             }
-            $to = Get-NightshiftElementScreenPoint $toElement
+            $to = Get-KoluxElementScreenPoint $toElement
             if ($null -eq $to -and $null -ne $Operation.toElement) { throw "stale element frame; run get-app-state again and use a fresh element index" }
             if ($null -eq $to) {
                 $to = @{
-                    x = $windowFrame.x + (Get-NightshiftRequiredNumber $Operation.to_x "to_x")
-                    y = $windowFrame.y + (Get-NightshiftRequiredNumber $Operation.to_y "to_y")
+                    x = $windowFrame.x + (Get-KoluxRequiredNumber $Operation.to_x "to_x")
+                    y = $windowFrame.y + (Get-KoluxRequiredNumber $Operation.to_y "to_y")
                 }
             }
-            Send-NightshiftDrag $handle $from $to
+            Send-KoluxDrag $handle $from $to
             $action = [pscustomobject]@{ path = "synthetic"; actionName = "drag"; fallbackReason = $null }
         }
         "type_text" {
-            Send-NightshiftText $handle (Get-NightshiftRequiredString $Operation.text "text")
+            Send-KoluxText $handle (Get-KoluxRequiredString $Operation.text "text")
             $action = [pscustomobject]@{ path = "synthetic"; actionName = "typeText"; fallbackReason = $null; verification = [pscustomobject]@{ state = "unverified"; reason = "synthetic_input" } }
         }
         "press_key" {
-            Send-NightshiftKey $handle (Get-NightshiftRequiredString $Operation.key "key")
+            Send-KoluxKey $handle (Get-KoluxRequiredString $Operation.key "key")
             $action = [pscustomobject]@{ path = "synthetic"; actionName = "pressKey"; fallbackReason = $null; verification = [pscustomobject]@{ state = "unverified"; reason = "synthetic_input" } }
         }
         "hotkey" {
-            Send-NightshiftHotkey $handle (Get-NightshiftRequiredString $Operation.key "key")
+            Send-KoluxHotkey $handle (Get-KoluxRequiredString $Operation.key "key")
             $action = [pscustomobject]@{ path = "synthetic"; actionName = "hotkey"; fallbackReason = $null; verification = [pscustomobject]@{ state = "unverified"; reason = "synthetic_input" } }
         }
         "paste_text" {
-            Send-NightshiftPasteText $handle (Get-NightshiftRequiredString $Operation.text "text")
+            Send-KoluxPasteText $handle (Get-KoluxRequiredString $Operation.text "text")
             $action = [pscustomobject]@{ path = "clipboard"; actionName = "paste"; fallbackReason = $null; verification = [pscustomobject]@{ state = "unverified"; reason = "clipboard_paste" } }
         }
         "set_value" {
-            if ($null -eq $element -or -not (Set-NightshiftElementValue $element ([string]$Operation.value))) {
+            if ($null -eq $element -or -not (Set-KoluxElementValue $element ([string]$Operation.value))) {
                 throw "element value is not settable"
             }
             $action = [pscustomobject]@{ path = "accessibility"; actionName = "setValue"; fallbackReason = $null }
@@ -1308,18 +1308,18 @@ function Invoke-NightshiftOperation($Operation) {
     }
 
     try {
-        $snapshot = New-NightshiftSnapshot $Operation.app $includeScreenshot $Operation.windowId $Operation.windowIndex
+        $snapshot = New-KoluxSnapshot $Operation.app $includeScreenshot $Operation.windowId $Operation.windowIndex
     } catch {
         if ($null -eq $Operation.windowId -and $null -eq $Operation.windowIndex) { throw }
         if ($null -eq $action.verification) {
             $action | Add-Member -NotePropertyName verification -NotePropertyValue ([pscustomobject]@{ state = "unverified"; reason = "window_changed" })
         }
-        $snapshot = New-NightshiftSnapshot $Operation.app $includeScreenshot $null $null
+        $snapshot = New-KoluxSnapshot $Operation.app $includeScreenshot $null $null
     }
     [pscustomobject]@{ ok = $true; action = $action; snapshot = $snapshot }
 }
 
-function Invoke-NightshiftServeLoop {
+function Invoke-KoluxServeLoop {
     # Announced before the first read, and after every Add-Type above: a caller
     # that never sees this line knows the helper cannot have read a request, let
     # alone synthesized a click, so replaying it is provably safe. Inferring that
@@ -1337,7 +1337,7 @@ function Invoke-NightshiftServeLoop {
         try {
             $operation = $line | ConvertFrom-Json
             $requestId = $operation.requestId
-            $response = Invoke-NightshiftOperation $operation
+            $response = Invoke-KoluxOperation $operation
         } catch {
             $response = [pscustomobject]@{ ok = $false; error = [string]$_.Exception.Message }
             # ConvertFrom-Json throws before the id is read, so recover it from the
@@ -1361,14 +1361,14 @@ function Invoke-NightshiftServeLoop {
 }
 
 if ($Serve) {
-    Invoke-NightshiftServeLoop
+    Invoke-KoluxServeLoop
 } elseif ([string]::IsNullOrWhiteSpace($OperationPath)) {
-    Write-NightshiftJson ([pscustomobject]@{ ok = $false; error = "runtime.ps1 requires an operation path or -Serve" })
+    Write-KoluxJson ([pscustomobject]@{ ok = $false; error = "runtime.ps1 requires an operation path or -Serve" })
 } else {
     try {
-        $operation = Read-NightshiftOperation $OperationPath
-        Write-NightshiftJson (Invoke-NightshiftOperation $operation)
+        $operation = Read-KoluxOperation $OperationPath
+        Write-KoluxJson (Invoke-KoluxOperation $operation)
     } catch {
-        Write-NightshiftJson ([pscustomobject]@{ ok = $false; error = [string]$_.Exception.Message })
+        Write-KoluxJson ([pscustomobject]@{ ok = $false; error = [string]$_.Exception.Message })
     }
 }

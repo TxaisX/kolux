@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   splitActiveTerminalPane,
   waitForActiveTerminalManager,
@@ -100,28 +100,26 @@ async function renderInactiveCursor(
 }
 
 test.describe('Terminal inactive cursor rendering', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPaneCount(nightshiftPage, 1, 30_000)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPaneCount(koluxPage, 1, 30_000)
   })
 
-  test('keeps an unfocused prompt cursor rendered as one block outline', async ({
-    nightshiftPage
-  }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    await placeInactiveCursorAtPrompt(nightshiftPage)
+  test('keeps an unfocused prompt cursor rendered as one block outline', async ({ koluxPage }) => {
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    await placeInactiveCursorAtPrompt(koluxPage)
 
-    const fixedBehavior = await renderInactiveCursor(nightshiftPage)
+    const fixedBehavior = await renderInactiveCursor(koluxPage)
     expect(fixedBehavior.terminalFocused).toBe(false)
     expect(fixedBehavior.cursorStyle).toBe('block')
     expect(fixedBehavior.cursorInactiveStyle).toBe('outline')
     expect(fixedBehavior.cursorClassName).toMatch(/xterm-cursor-outline|canvas renderer: outline/)
 
-    const oldBehavior = await renderInactiveCursor(nightshiftPage, 'outline')
+    const oldBehavior = await renderInactiveCursor(koluxPage, 'outline')
     expect(oldBehavior.terminalFocused).toBe(false)
     expect(oldBehavior.cursorStyle).toBe('block')
     expect(oldBehavior.cursorInactiveStyle).toBe('outline')

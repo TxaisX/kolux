@@ -1,9 +1,6 @@
 import type { BrowserScreencastResult } from '../../shared/runtime-types'
-import type {
-  RuntimeBrowserCommands,
-  RuntimeBrowserCommandHost
-} from './nightshift-runtime-browser'
-import { RuntimeEmulatorCommands } from './nightshift-runtime-emulator'
+import type { RuntimeBrowserCommands, RuntimeBrowserCommandHost } from './kolux-runtime-browser'
+import { RuntimeEmulatorCommands } from './kolux-runtime-emulator'
 import { RuntimeBrowserScreencastController } from './runtime-browser-screencast-controller'
 import { createRuntimeBrowserCommands } from './runtime-browser-commands-factory'
 import { RuntimeJiraCommands } from './runtime-jira-commands'

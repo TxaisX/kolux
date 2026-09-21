@@ -70,24 +70,24 @@ const GUIDANCE_BY_ERROR_CLASS: Readonly<
   permission_denied: {
     key: 'runtimeRpc.startupFailure.guidance.permissionDenied',
     fallback:
-      "Nightshift couldn't write its runtime file. Check permissions on Nightshift's data folder, then restart."
+      "Kolux couldn't write its runtime file. Check permissions on Kolux's data folder, then restart."
   },
   storage_unavailable: {
     key: 'runtimeRpc.startupFailure.guidance.storageUnavailable',
-    fallback: 'Your disk may be full or read-only. Free up space, then restart Nightshift.'
+    fallback: 'Your disk may be full or read-only. Free up space, then restart Kolux.'
   },
   invalid_path: {
     key: 'runtimeRpc.startupFailure.guidance.invalidPath',
     fallback:
-      "Nightshift's data folder may be missing, moved, or at a path that is too long. Restore it or use a shorter path, then restart Nightshift."
+      "Kolux's data folder may be missing, moved, or at a path that is too long. Restore it or use a shorter path, then restart Kolux."
   },
   address_in_use: {
     key: 'runtimeRpc.startupFailure.guidance.addressInUse',
-    fallback: 'Another process may be holding the port. Restart Nightshift to try again.'
+    fallback: 'Another process may be holding the port. Restart Kolux to try again.'
   },
   unknown: {
     key: 'runtimeRpc.startupFailure.guidance.unknown',
-    fallback: 'Restart Nightshift to try again.'
+    fallback: 'Restart Kolux to try again.'
   }
 }
 
@@ -100,14 +100,14 @@ function createRuntimeRpcStartupFailureDialogOptions(error: unknown): MessageBox
     defaultId: 0,
     cancelId: 0,
     noLink: true,
-    title: translateMain('runtimeRpc.startupFailure.title', 'Nightshift CLI unavailable'),
+    title: translateMain('runtimeRpc.startupFailure.title', 'Kolux CLI unavailable'),
     message: translateMain(
       'runtimeRpc.startupFailure.message',
-      "Nightshift couldn't start its local command transport."
+      "Kolux couldn't start its local command transport."
     ),
     detail: translateMain(
       'runtimeRpc.startupFailure.detail',
-      'Nightshift will continue to work, but commands such as nightshift status, nightshift terminal, and orchestration are unavailable for this session.\n\n{{guidance}}\n\nCause: {{cause}}',
+      'Kolux will continue to work, but commands such as kolux status, kolux terminal, and orchestration are unavailable for this session.\n\n{{guidance}}\n\nCause: {{cause}}',
       { cause, guidance: translateMain(key, fallback) }
     )
   }

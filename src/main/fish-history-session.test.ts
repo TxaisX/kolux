@@ -19,16 +19,16 @@ describe('fish history session naming', () => {
   it('mints a session name that is a valid fish variable value', () => {
     // fish falls back to the shared default for anything that is not a valid
     // variable name, which would silently un-isolate the worktree.
-    expect(SESSION_A).toBe('nightshift_a1b2c3d4e5f60718')
+    expect(SESSION_A).toBe('kolux_a1b2c3d4e5f60718')
     expect(SESSION_A).toMatch(/^[A-Za-z_][A-Za-z0-9_]*$/)
   })
 
   it.each([
-    ['nightshift_deadbeef', true],
-    ['nightshift_', false],
+    ['kolux_deadbeef', true],
+    ['kolux_', false],
     ['fish_history', false],
-    ['nightshift_../../etc/passwd', false],
-    ['nightshift_DEADBEEF', false],
+    ['kolux_../../etc/passwd', false],
+    ['kolux_DEADBEEF', false],
     ['', false],
     [undefined, false],
     [42, false]
@@ -65,7 +65,7 @@ describe('fish history deletion', () => {
   let fishDir: string
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-fish-history-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-fish-history-'))
     fishDir = join(root, 'fish')
     mkdirSync(fishDir, { recursive: true })
   })
@@ -123,7 +123,7 @@ describe('orphaned fish history sweep', () => {
   let fishDir: string
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-fish-sweep-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-fish-sweep-'))
     fishDir = join(root, 'fish')
     mkdirSync(fishDir, { recursive: true })
   })
@@ -142,13 +142,8 @@ describe('orphaned fish history sweep', () => {
   })
 
   it("never touches the user's own history files", () => {
-    // The whole safety of the sweep rests on the nightshift_<hex>_ prefix.
-    const untouched = [
-      'fish_history',
-      'work_history',
-      'nightshift_history',
-      'nightshift_nothex_history'
-    ]
+    // The whole safety of the sweep rests on the kolux_<hex>_ prefix.
+    const untouched = ['fish_history', 'work_history', 'kolux_history', 'kolux_nothex_history']
     for (const name of untouched) {
       writeFileSync(join(fishDir, name), 'mine\n')
     }
@@ -204,14 +199,14 @@ describe('orphaned fish history sweep', () => {
 
 /**
  * A relay host keyed by its CLIENT's worktree ids shares one fish data dir with
- * any desktop Nightshift on the same machine, whose live set knows nothing of those
+ * any desktop Kolux on the same machine, whose live set knows nothing of those
  * ids. The name is the only thing that keeps that sweep off remote history.
  */
 describe('relay fish history naming', () => {
   let relayRoot: string
 
   beforeEach(() => {
-    relayRoot = mkdtempSync(join(tmpdir(), 'nightshift-fish-relay-'))
+    relayRoot = mkdtempSync(join(tmpdir(), 'kolux-fish-relay-'))
   })
 
   afterEach(() => {

@@ -1,5 +1,5 @@
 import { normalizeBrowserNavigationUrl } from '../../../../../shared/browser-url'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import { parkBrowserPageViewport } from './browser-page-viewport'
 import { subscribeBrowserSystemResume } from './browser-system-resume'
 import {
@@ -168,8 +168,8 @@ export function bindBrowserPageWebviewListeners({
   if (needsInitialNavigation) {
     // Why: set src only after listeners attach so a fast localhost failure isn't missed; only non-blank tabs show the loading indicator.
     const initialUrl =
-      normalizeBrowserNavigationUrl(initialBrowserUrlRef.current) ?? NIGHTSHIFT_BROWSER_BLANK_URL
-    trackNextLoadingEventRef.current = initialUrl !== NIGHTSHIFT_BROWSER_BLANK_URL
+      normalizeBrowserNavigationUrl(initialBrowserUrlRef.current) ?? KOLUX_BROWSER_BLANK_URL
+    trackNextLoadingEventRef.current = initialUrl !== KOLUX_BROWSER_BLANK_URL
     lastKnownWebviewUrlRef.current = initialUrl
     webview.src = initialUrl
   } else if (isPaintableRef.current) {

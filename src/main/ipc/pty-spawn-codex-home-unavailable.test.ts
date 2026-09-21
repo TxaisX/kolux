@@ -34,7 +34,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -114,7 +114,7 @@ describe('registerPtyHandlers Codex launch refusal on an unreadable managed home
   const RESUME_SESSION = {
     key: 'session_id' as const,
     id: 'resume-session-1',
-    transcriptPath: '/tmp/nightshift-codex-rollout.jsonl'
+    transcriptPath: '/tmp/kolux-codex-rollout.jsonl'
   }
 
   function makeAuthUnreadable(): void {

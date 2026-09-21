@@ -10,7 +10,7 @@ describe('orchestration send command spec', () => {
     expect(sendSpec?.notes).toEqual(
       expect.arrayContaining([
         'Valid --type values: status, dispatch, worker_done, merge_ready, escalation, handoff, decision_gate, question, heartbeat.',
-        'To answer a worker question, use orchestration reply --id <msg_id> --body <text> with the same Nightshift CLI executable.'
+        'To answer a worker question, use orchestration reply --id <msg_id> --body <text> with the same Kolux CLI executable.'
       ])
     )
   })
@@ -44,7 +44,7 @@ describe('orchestration worker-start command spec', () => {
 
   it('does not promise uniformity it cannot deliver', () => {
     // The note used to promise "the same verbs, the same handle, and the same worker-read
-    // sources". All three clauses were false for a worker with no terminal: `nightshift terminal` verbs
+    // sources". All three clauses were false for a worker with no terminal: `kolux terminal` verbs
     // refuse its handle and `--source terminal` has nothing to serve. A spec agents read must not
     // carry a false promise — but it also must not name the worker kind, or a coordinator starts
     // branching on something no verb it runs behaves differently for. So it states the limitation

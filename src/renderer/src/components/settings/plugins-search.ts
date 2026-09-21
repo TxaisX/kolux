@@ -7,7 +7,7 @@ export const getPluginsPaneSearchEntries = createLocalizedCatalog((): SettingsSe
     title: translate('auto.components.settings.plugins.search.title', 'Plugins'),
     description: translate(
       'auto.components.settings.plugins.search.description',
-      'Install and manage experimental Nightshift plugins.'
+      'Install and manage experimental Kolux plugins.'
     ),
     keywords: [
       translate('auto.components.settings.plugins.search.install', 'install plugin'),
@@ -27,7 +27,7 @@ export function getPluginsSectionPresentation() {
     ),
     description: translate(
       'auto.components.settings.PluginsSettingsSection.description',
-      'Install and manage Nightshift plugins. Plugins run on this computer, even for SSH workspaces.'
+      'Install and manage Kolux plugins. Plugins run on this computer, even for SSH workspaces.'
     ),
     searchEntries: getPluginsPaneSearchEntries()
   }

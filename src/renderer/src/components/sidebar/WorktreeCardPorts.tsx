@@ -11,7 +11,7 @@ import {
   killWorkspacePortForTarget,
   openWorkspacePortInBrowser,
   refreshWorkspacePortScanAfterStop,
-  resolvePortOpenInNightshiftBrowser
+  resolvePortOpenInKoluxBrowser
 } from '@/lib/workspace-port-actions'
 import { useLocalhostLabelRouteForPort } from '@/lib/workspace-port-localhost-label-selector'
 import { addressForPort } from '@/lib/workspace-port-urls'
@@ -121,7 +121,7 @@ function WorktreePortRow({ port }: { port: WorkspacePort }): React.JSX.Element {
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
       recordFeatureInteraction('ports')
-      const openInNightshiftBrowser = resolvePortOpenInNightshiftBrowser({
+      const openInKoluxBrowser = resolvePortOpenInKoluxBrowser({
         settings,
         // Why: keyboard activations have detail=0; only pointer clicks carry
         // the modifier intent for the system-browser escape hatch.
@@ -133,7 +133,7 @@ function WorktreePortRow({ port }: { port: WorkspacePort }): React.JSX.Element {
         runtimeTarget,
         createBrowserTab,
         setRemoteBrowserPageHandle,
-        openInNightshiftBrowser,
+        openInKoluxBrowser,
         localhostLabelRoute
       }).then((result) => {
         if (!result.ok) {

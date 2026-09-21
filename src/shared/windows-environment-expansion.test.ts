@@ -35,9 +35,9 @@ describe('expandWindowsEnvironmentVariables', () => {
   it('expands names case-insensitively and preserves unknown variables', () => {
     expect(
       expandWindowsEnvironmentVariables('%localappdata%\\agy\\bin;%MISSING%\\bin', {
-        LOCALAPPDATA: 'C:\\Users\\nightshift\\AppData\\Local'
+        LOCALAPPDATA: 'C:\\Users\\kolux\\AppData\\Local'
       })
-    ).toBe('C:\\Users\\nightshift\\AppData\\Local\\agy\\bin;%MISSING%\\bin')
+    ).toBe('C:\\Users\\kolux\\AppData\\Local\\agy\\bin;%MISSING%\\bin')
   })
 
   it('expands variables with empty values', () => {
@@ -103,21 +103,21 @@ describe('expandWindowsEnvironmentVariables', () => {
 describe('expandWindowsPathEnvironmentVariables', () => {
   it('expands every Windows PATH casing without changing other variables', () => {
     const env = {
-      NIGHTSHIFT_PATH_ROOT: 'C:\\Users\\nightshift',
-      Path: '%NIGHTSHIFT_PATH_ROOT%\\bin',
-      PATH: '%nightshift_path_root%\\tools',
-      TEMPLATE: '%NIGHTSHIFT_PATH_ROOT%\\template'
+      KOLUX_PATH_ROOT: 'C:\\Users\\kolux',
+      Path: '%KOLUX_PATH_ROOT%\\bin',
+      PATH: '%kolux_path_root%\\tools',
+      TEMPLATE: '%KOLUX_PATH_ROOT%\\template'
     }
 
     expandWindowsPathEnvironmentVariables(env, 'win32')
 
-    expect(env.Path).toBe('C:\\Users\\nightshift\\bin')
-    expect(env.PATH).toBe('C:\\Users\\nightshift\\tools')
-    expect(env.TEMPLATE).toBe('%NIGHTSHIFT_PATH_ROOT%\\template')
+    expect(env.Path).toBe('C:\\Users\\kolux\\bin')
+    expect(env.PATH).toBe('C:\\Users\\kolux\\tools')
+    expect(env.TEMPLATE).toBe('%KOLUX_PATH_ROOT%\\template')
   })
 
   it('leaves non-Windows PATH values unchanged', () => {
-    const env = { ROOT: '/opt/nightshift', PATH: '%ROOT%/bin:/usr/bin' }
+    const env = { ROOT: '/opt/kolux', PATH: '%ROOT%/bin:/usr/bin' }
 
     expandWindowsPathEnvironmentVariables(env, 'linux')
 

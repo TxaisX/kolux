@@ -7,30 +7,30 @@
 // assignment out of the dotfiles is the only way to see a relocated data dir.
 export const REMOTE_NODE_PATH_PROBE_SCRIPT = `
 command -v node 2>/dev/null
-nightshift_dotfile_dirs() {
-  nightshift_var_name=$1
-  nightshift_dirs=$2
-  for nightshift_file in "$HOME/.profile" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.zprofile" "$HOME/.zshrc"
+kolux_dotfile_dirs() {
+  kolux_var_name=$1
+  kolux_dirs=$2
+  for kolux_file in "$HOME/.profile" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.zprofile" "$HOME/.zshrc"
   do
-    [ -r "$nightshift_file" ] || continue
-    nightshift_dir_from_file=$(sed -n "s/^[[:space:]]*export[[:space:]][[:space:]]*$nightshift_var_name[[:space:]]*=[[:space:]]*//p; s/^[[:space:]]*$nightshift_var_name[[:space:]]*=[[:space:]]*//p" "$nightshift_file" | tail -n 1)
-    case "$nightshift_dir_from_file" in
-      \\"*\\") nightshift_dir_from_file=\${nightshift_dir_from_file#\\"}; nightshift_dir_from_file=\${nightshift_dir_from_file%%\\"*} ;;
-      \\'*\\') nightshift_dir_from_file=\${nightshift_dir_from_file#\\'}; nightshift_dir_from_file=\${nightshift_dir_from_file%%\\'*} ;;
-      *) nightshift_dir_from_file=\${nightshift_dir_from_file%%[[:space:]]*} ;;
+    [ -r "$kolux_file" ] || continue
+    kolux_dir_from_file=$(sed -n "s/^[[:space:]]*export[[:space:]][[:space:]]*$kolux_var_name[[:space:]]*=[[:space:]]*//p; s/^[[:space:]]*$kolux_var_name[[:space:]]*=[[:space:]]*//p" "$kolux_file" | tail -n 1)
+    case "$kolux_dir_from_file" in
+      \\"*\\") kolux_dir_from_file=\${kolux_dir_from_file#\\"}; kolux_dir_from_file=\${kolux_dir_from_file%%\\"*} ;;
+      \\'*\\') kolux_dir_from_file=\${kolux_dir_from_file#\\'}; kolux_dir_from_file=\${kolux_dir_from_file%%\\'*} ;;
+      *) kolux_dir_from_file=\${kolux_dir_from_file%%[[:space:]]*} ;;
     esac
-    case "$nightshift_dir_from_file" in
-      '$XDG_DATA_HOME'*) nightshift_dir_from_file="\${XDG_DATA_HOME:-$HOME/.local/share}\${nightshift_dir_from_file#'$XDG_DATA_HOME'}" ;;
-      '$HOME'*) nightshift_dir_from_file="$HOME\${nightshift_dir_from_file#'$HOME'}" ;;
-      "~/"*) nightshift_dir_from_file="$HOME/\${nightshift_dir_from_file#\\~/}" ;;
+    case "$kolux_dir_from_file" in
+      '$XDG_DATA_HOME'*) kolux_dir_from_file="\${XDG_DATA_HOME:-$HOME/.local/share}\${kolux_dir_from_file#'$XDG_DATA_HOME'}" ;;
+      '$HOME'*) kolux_dir_from_file="$HOME\${kolux_dir_from_file#'$HOME'}" ;;
+      "~/"*) kolux_dir_from_file="$HOME/\${kolux_dir_from_file#\\~/}" ;;
     esac
-    [ -n "$nightshift_dir_from_file" ] && nightshift_dirs="$nightshift_dirs
-$nightshift_dir_from_file"
+    [ -n "$kolux_dir_from_file" ] && kolux_dirs="$kolux_dirs
+$kolux_dir_from_file"
   done
-  printf '%s\\n' "$nightshift_dirs"
+  printf '%s\\n' "$kolux_dirs"
 }
 nvm_dirs=\${NVM_DIR:-"$HOME/.nvm"}
-nvm_dirs=$(nightshift_dotfile_dirs NVM_DIR "$nvm_dirs")
+nvm_dirs=$(kolux_dotfile_dirs NVM_DIR "$nvm_dirs")
 printf '%s\\n' "$nvm_dirs" | while IFS= read -r nvm_dir
 do
   [ -n "$nvm_dir" ] || continue
@@ -40,7 +40,7 @@ do
   done
 done
 mise_dirs=\${MISE_DATA_DIR:-\${XDG_DATA_HOME:-$HOME/.local/share}/mise}
-mise_dirs=$(nightshift_dotfile_dirs MISE_DATA_DIR "$mise_dirs")
+mise_dirs=$(kolux_dotfile_dirs MISE_DATA_DIR "$mise_dirs")
 printf '%s\\n' "$mise_dirs" | while IFS= read -r mise_dir
 do
   [ -n "$mise_dir" ] || continue

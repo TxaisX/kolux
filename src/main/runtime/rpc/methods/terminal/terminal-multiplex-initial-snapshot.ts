@@ -24,7 +24,7 @@ export async function publishMultiplexInitialSnapshot(
   const { ptyId } = stream
   const isMobile = stream.isMobile
   const forcedInitialSnapshotTruncated =
-    process.env.NIGHTSHIFT_E2E_FORCE_REMOTE_TERMINAL_INITIAL_SNAPSHOT_TRUNCATED === '1'
+    process.env.KOLUX_E2E_FORCE_REMOTE_TERMINAL_INITIAL_SNAPSHOT_TRUNCATED === '1'
   let read = await runtime.readTerminal(request.terminal)
   let serialized = await serializeBudgetedMobileSnapshot(runtime, ptyId, isMobile)
   if (state.closed || streams.get(request.streamId) !== stream) {

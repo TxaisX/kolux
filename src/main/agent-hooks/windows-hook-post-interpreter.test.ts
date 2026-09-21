@@ -17,7 +17,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -75,20 +75,20 @@ describe('Windows managed hook post interpreter', () => {
   let home = ''
 
   beforeEach(() => {
-    previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-    isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-interpreter-user-data-'))
-    // Why: Nightshift-managed Codex hooks resolve through NIGHTSHIFT_USER_DATA_PATH before the mocked
+    previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+    isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-hook-interpreter-user-data-'))
+    // Why: Kolux-managed Codex hooks resolve through KOLUX_USER_DATA_PATH before the mocked
     // home; an inherited live path would let this test rewrite the developer's own hooks.
-    process.env.NIGHTSHIFT_USER_DATA_PATH = isolatedUserDataDir
-    home = mkdtempSync(join(tmpdir(), 'nightshift-hook-interpreter-'))
+    process.env.KOLUX_USER_DATA_PATH = isolatedUserDataDir
+    home = mkdtempSync(join(tmpdir(), 'kolux-hook-interpreter-'))
     homedirMock.mockReturnValue(home)
   })
 
   afterEach(() => {
     if (previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
     }
     rmSync(isolatedUserDataDir, { recursive: true, force: true })
     homedirMock.mockImplementation(() => process.env.HOME ?? tmpdir())
@@ -101,7 +101,7 @@ describe('Windows managed hook post interpreter', () => {
       for (const entry of BATCH_SCRIPT_INSTALLERS) {
         expect((await entry.install()).state, `${entry.agent} install status`).toBe('installed')
       }
-      const hooksDir = join(home, '.nightshift', 'agent-hooks')
+      const hooksDir = join(home, '.kolux', 'agent-hooks')
       return readdirSync(hooksDir)
         .filter((name) => name.endsWith('.cmd'))
         .map((name) => ({ name, body: readFileSync(join(hooksDir, name), 'utf8') }))
@@ -123,7 +123,7 @@ describe('Windows managed hook post interpreter', () => {
 
     // Why: `%~dp0` marks an event wrapper that only sets env and delegates to the core script.
     const isWrapper = (body: string): boolean => body.includes('%~dp0')
-    const posts = (body: string): boolean => body.includes('127.0.0.1:%NIGHTSHIFT_AGENT_HOOK_PORT%')
+    const posts = (body: string): boolean => body.includes('127.0.0.1:%KOLUX_AGENT_HOOK_PORT%')
 
     // Why: name the script that stopped posting rather than failing on a bare count.
     expect(

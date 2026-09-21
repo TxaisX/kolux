@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-// Nightshift Relay — remote-host daemon and reconnect bridge entry point.
+// Kolux Relay — remote-host daemon and reconnect bridge entry point.
 
 import { parseRelayLaunchOptions, readRelayEndpointCredential } from './relay-launch-options'
 import { runRelayConnectChannel } from './relay-connect-channel'
-import { runRelayNightshiftCliChannel } from './relay-nightshift-cli-channel'
+import { runRelayKoluxCliChannel } from './relay-kolux-cli-channel'
 import { runRelayDaemon } from './relay-daemon'
 import { relayLogLine } from './relay-diagnostic-log'
 
@@ -15,8 +15,8 @@ async function main(): Promise<void> {
     return
   }
   if (options.cliMode) {
-    const marker = process.argv.indexOf('--nightshift-cli')
-    await runRelayNightshiftCliChannel(
+    const marker = process.argv.indexOf('--kolux-cli')
+    await runRelayKoluxCliChannel(
       options.sockPath,
       marker === -1 ? [] : process.argv.slice(marker + 1),
       readRelayEndpointCredential(options.credentialFile)

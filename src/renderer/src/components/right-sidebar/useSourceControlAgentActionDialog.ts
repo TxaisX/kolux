@@ -181,8 +181,8 @@ export function useSourceControlAgentActionDialog({
       groupId,
       promptDelivery,
       launchPlatform,
-      // Why: an SSH host runs the plain `nightshift` shim; keep the previewed command
-      // label aligned with the real remote launch (no `nightshift-ide` rename).
+      // Why: an SSH host runs the plain `kolux` shim; keep the previewed command
+      // label aligned with the real remote launch (no `kolux-ide` rename).
       isRemote: typeof connectionId === 'string',
       launchSource,
       connectionUnavailable,

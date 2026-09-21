@@ -11,7 +11,7 @@ import {
 function makeEntry(overrides: Partial<AgentStatusEntry> = {}): AgentStatusEntry {
   return {
     state: 'working',
-    prompt: 'You are working inside Nightshift, a multi-agent IDE.',
+    prompt: 'You are working inside Kolux, a multi-agent IDE.',
     updatedAt: 1000,
     stateStartedAt: 900,
     paneKey: 'tab-1:leaf-1',

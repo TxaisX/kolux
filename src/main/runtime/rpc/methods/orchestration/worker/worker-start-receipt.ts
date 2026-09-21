@@ -57,14 +57,14 @@ export function failWorkerStartWithReceipt(args: {
     ...(agentSessionRefusal ? { agentSessionRefusal } : {}),
     ...(adopted
       ? {
-          recovery: `This start created a terminal that never ran the Task. Close it with: nightshift orchestration worker-release --dispatch ${args.dispatchId}`
+          recovery: `This start created a terminal that never ran the Task. Close it with: kolux orchestration worker-release --dispatch ${args.dispatchId}`
         }
       : {}),
     ...(unknown
       ? {
           nextCommands: [
-            `nightshift orchestration worker-show --dispatch ${args.dispatchId} --json`,
-            `nightshift orchestration worker-abandon --dispatch ${args.dispatchId} --json`
+            `kolux orchestration worker-show --dispatch ${args.dispatchId} --json`,
+            `kolux orchestration worker-abandon --dispatch ${args.dispatchId} --json`
           ]
         }
       : {})

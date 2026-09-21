@@ -50,7 +50,7 @@ describe('MobileEmulatorAgentControlRow freshness authority', () => {
 
   it('exposes local freshness only for a resolved local non-WSL runtime', () => {
     renderToStaticMarkup(<MobileEmulatorAgentControlRow />)
-    expect(mocks.freshnessSkillName).toBe('nightshift-cli')
+    expect(mocks.freshnessSkillName).toBe('kolux-cli')
 
     mocks.canUseLocalSkillFreshness = false
     renderToStaticMarkup(<MobileEmulatorAgentControlRow />)

@@ -119,8 +119,8 @@ import { registerGitLabHandlers } from './gitlab'
 function repo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-local',
-    path: '/local/nightshift',
-    displayName: 'Nightshift',
+    path: '/local/kolux',
+    displayName: 'Kolux',
     badgeColor: '#737373',
     addedAt: 1,
     ...overrides
@@ -180,7 +180,7 @@ describe('GitLab IPC handlers', () => {
   it('resolves repoId and source host context before listing work items', async () => {
     const remoteRepo = repo({
       id: 'repo-ssh',
-      path: '/ssh/nightshift',
+      path: '/ssh/kolux',
       connectionId: 'builder',
       executionHostId: toSshExecutionHostId('builder')
     })
@@ -203,7 +203,7 @@ describe('GitLab IPC handlers', () => {
     ).resolves.toEqual({ items: [] })
 
     expect(listWorkItemsMock).toHaveBeenCalledWith(
-      '/ssh/nightshift',
+      '/ssh/kolux',
       'opened',
       1,
       20,
@@ -219,14 +219,14 @@ describe('GitLab IPC handlers', () => {
     registerGitLabHandlers(storeWithRepos([repo()]) as Store)
 
     await ipcHandlers.get('gitlab:listMRs')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       state: 'opened',
       page: 1,
       perPage: 20,
       query: '  fix login  '
     })
     await ipcHandlers.get('gitlab:listWorkItems')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       state: 'opened',
       page: 1,
       perPage: 20,
@@ -236,7 +236,7 @@ describe('GitLab IPC handlers', () => {
     // Why (#6263): the trimmed query must land in the 6th positional arg —
     // previously the slot was hardcoded to `undefined`, so search never worked.
     expect(listMergeRequestsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'opened',
       1,
       20,
@@ -245,7 +245,7 @@ describe('GitLab IPC handlers', () => {
       null
     )
     expect(listWorkItemsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'opened',
       1,
       20,
@@ -260,12 +260,12 @@ describe('GitLab IPC handlers', () => {
     registerGitLabHandlers(storeWithRepos([repo()]) as Store)
 
     await ipcHandlers.get('gitlab:listMRs')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       query: '   '
     })
 
     expect(listMergeRequestsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'opened',
       1,
       20,
@@ -277,13 +277,13 @@ describe('GitLab IPC handlers', () => {
 
   it('rejects source context for a different host', async () => {
     registerGitLabHandlers(
-      storeWithRepos([repo({ id: 'repo-local', path: '/local/nightshift' })]) as Store
+      storeWithRepos([repo({ id: 'repo-local', path: '/local/kolux' })]) as Store
     )
 
     const handler = ipcHandlers.get('gitlab:listWorkItems')
     await expect(
       handler?.(null, {
-        repoPath: '/local/nightshift',
+        repoPath: '/local/kolux',
         repoId: 'repo-local',
         sourceContext: {
           kind: 'task-source',
@@ -299,7 +299,7 @@ describe('GitLab IPC handlers', () => {
   it('resolves pasted URL lookups by repoId and source host context', async () => {
     const remoteRepo = repo({
       id: 'repo-ssh',
-      path: '/ssh/nightshift',
+      path: '/ssh/kolux',
       connectionId: 'builder',
       executionHostId: toSshExecutionHostId('builder')
     })
@@ -313,7 +313,7 @@ describe('GitLab IPC handlers', () => {
     const handler = ipcHandlers.get('gitlab:workItemByPath')
     await expect(
       handler?.(null, {
-        repoPath: '/local/nightshift',
+        repoPath: '/local/kolux',
         repoId: 'repo-ssh',
         sourceContext: {
           kind: 'task-source',
@@ -330,7 +330,7 @@ describe('GitLab IPC handlers', () => {
     ).resolves.toMatchObject({ number: 42 })
 
     expect(getWorkItemByProjectRefMock).toHaveBeenCalledWith(
-      '/ssh/nightshift',
+      '/ssh/kolux',
       { host: 'gitlab.com', path: 'TxaisX/nightshift' },
       42,
       'issue',
@@ -343,7 +343,7 @@ describe('GitLab IPC handlers', () => {
     const projects: ReturnType<Store['getProjects']> = [
       {
         id: 'project-1',
-        displayName: 'Nightshift',
+        displayName: 'Kolux',
         badgeColor: 'blue',
         sourceRepoIds: ['repo-local'],
         localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' },
@@ -367,67 +367,62 @@ describe('GitLab IPC handlers', () => {
     registerGitLabHandlers(storeWithRepos([repo()], projects) as Store)
     const localGitOptions = { wslDistro: 'Ubuntu' }
 
-    await ipcHandlers.get('gitlab:projectSlug')?.(null, { repoPath: '/local/nightshift' })
+    await ipcHandlers.get('gitlab:projectSlug')?.(null, { repoPath: '/local/kolux' })
     await ipcHandlers.get('gitlab:mrForBranch')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       branch: 'feature/wsl'
     })
-    await ipcHandlers.get('gitlab:mr')?.(null, { repoPath: '/local/nightshift', iid: 8 })
+    await ipcHandlers.get('gitlab:mr')?.(null, { repoPath: '/local/kolux', iid: 8 })
     await ipcHandlers.get('gitlab:listMRs')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       state: 'opened',
       page: 1,
       perPage: 20
     })
     await ipcHandlers.get('gitlab:listWorkItems')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       state: 'opened',
       page: 1,
       perPage: 20
     })
     const issueListResult = await ipcHandlers.get('gitlab:listIssues')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       state: 'opened',
       limit: 20,
       page: 3
     })
-    await ipcHandlers.get('gitlab:issue')?.(null, { repoPath: '/local/nightshift', number: 7 })
+    await ipcHandlers.get('gitlab:issue')?.(null, { repoPath: '/local/kolux', number: 7 })
     await ipcHandlers.get('gitlab:createIssue')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       title: 'Title',
       body: 'Body'
     })
     await ipcHandlers.get('gitlab:updateIssue')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       number: 7,
       updates: { body: 'Updated' }
     })
     await ipcHandlers.get('gitlab:addIssueComment')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       number: 7,
       body: 'Comment'
     })
-    await ipcHandlers.get('gitlab:listLabels')?.(null, { repoPath: '/local/nightshift' })
-    await ipcHandlers.get('gitlab:listAssignableUsers')?.(null, { repoPath: '/local/nightshift' })
-    await ipcHandlers.get('gitlab:todos')?.(null, { repoPath: '/local/nightshift' })
+    await ipcHandlers.get('gitlab:listLabels')?.(null, { repoPath: '/local/kolux' })
+    await ipcHandlers.get('gitlab:listAssignableUsers')?.(null, { repoPath: '/local/kolux' })
+    await ipcHandlers.get('gitlab:todos')?.(null, { repoPath: '/local/kolux' })
 
     const hostedReviewOptions = { localGitExecOptions: localGitOptions }
-    expect(getProjectSlugMock).toHaveBeenCalledWith('/local/nightshift', null, hostedReviewOptions)
+    expect(getProjectSlugMock).toHaveBeenCalledWith('/local/kolux', null, hostedReviewOptions)
     expect(getMergeRequestForBranchMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'feature/wsl',
       null,
       null,
       hostedReviewOptions
     )
-    expect(getMergeRequestMock).toHaveBeenCalledWith(
-      '/local/nightshift',
-      8,
-      null,
-      hostedReviewOptions
-    )
+    expect(getMergeRequestMock).toHaveBeenCalledWith('/local/kolux', 8, null, hostedReviewOptions)
     expect(listMergeRequestsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'opened',
       1,
       20,
@@ -438,7 +433,7 @@ describe('GitLab IPC handlers', () => {
     )
     expect(issueListResult).toMatchObject({ totalPages: 3 })
     expect(listWorkItemsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'opened',
       1,
       20,
@@ -448,7 +443,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(listIssuesMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       20,
       undefined,
       'opened',
@@ -457,9 +452,9 @@ describe('GitLab IPC handlers', () => {
       localGitOptions,
       3
     )
-    expect(getIssueMock).toHaveBeenCalledWith('/local/nightshift', 7, null, localGitOptions)
+    expect(getIssueMock).toHaveBeenCalledWith('/local/kolux', 7, null, localGitOptions)
     expect(createIssueMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       'Title',
       'Body',
       undefined,
@@ -467,7 +462,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(updateIssueMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       7,
       { body: 'Updated' },
       undefined,
@@ -476,7 +471,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(addIssueCommentMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       7,
       'Comment',
       undefined,
@@ -484,19 +479,14 @@ describe('GitLab IPC handlers', () => {
       undefined,
       localGitOptions
     )
-    expect(listLabelsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
-      undefined,
-      null,
-      localGitOptions
-    )
+    expect(listLabelsMock).toHaveBeenCalledWith('/local/kolux', undefined, null, localGitOptions)
     expect(listAssignableUsersMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       undefined,
       null,
       localGitOptions
     )
-    expect(listTodosMock).toHaveBeenCalledWith('/local/nightshift', null, localGitOptions)
+    expect(listTodosMock).toHaveBeenCalledWith('/local/kolux', null, localGitOptions)
   })
 
   it('routes local WSL project GitLab MR details, review, job, and pasted URL IPC through project git options', async () => {
@@ -504,7 +494,7 @@ describe('GitLab IPC handlers', () => {
     const projects: ReturnType<Store['getProjects']> = [
       {
         id: 'project-1',
-        displayName: 'Nightshift',
+        displayName: 'Kolux',
         badgeColor: 'blue',
         sourceRepoIds: ['repo-local'],
         localWindowsRuntimePreference: { kind: 'wsl', distro: 'Ubuntu' },
@@ -536,47 +526,47 @@ describe('GitLab IPC handlers', () => {
     const localGitOptions = { wslDistro: 'Ubuntu' }
 
     await ipcHandlers.get('gitlab:workItemDetails')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       type: 'mr'
     })
-    await ipcHandlers.get('gitlab:closeMR')?.(null, { repoPath: '/local/nightshift', iid: 8 })
-    await ipcHandlers.get('gitlab:reopenMR')?.(null, { repoPath: '/local/nightshift', iid: 8 })
+    await ipcHandlers.get('gitlab:closeMR')?.(null, { repoPath: '/local/kolux', iid: 8 })
+    await ipcHandlers.get('gitlab:reopenMR')?.(null, { repoPath: '/local/kolux', iid: 8 })
     await ipcHandlers.get('gitlab:mergeMR')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       method: 'squash'
     })
     await ipcHandlers.get('gitlab:updateMR')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       updates: { title: 'Renamed' }
     })
     await ipcHandlers.get('gitlab:updateMRReviewers')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       reviewerIds: [1]
     })
     await ipcHandlers.get('gitlab:addMRComment')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       body: 'Comment'
     })
     await ipcHandlers.get('gitlab:addMRInlineComment')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       input: inlineInput
     })
     await ipcHandlers.get('gitlab:resolveMRDiscussion')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       iid: 8,
       discussionId: 'discussion-1',
       resolved: true
     })
-    await ipcHandlers.get('gitlab:jobTrace')?.(null, { repoPath: '/local/nightshift', jobId: 99 })
-    await ipcHandlers.get('gitlab:retryJob')?.(null, { repoPath: '/local/nightshift', jobId: 99 })
+    await ipcHandlers.get('gitlab:jobTrace')?.(null, { repoPath: '/local/kolux', jobId: 99 })
+    await ipcHandlers.get('gitlab:retryJob')?.(null, { repoPath: '/local/kolux', jobId: 99 })
     await ipcHandlers.get('gitlab:workItemByPath')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       host: 'gitlab.com',
       path: 'g/p',
       iid: 8,
@@ -584,7 +574,7 @@ describe('GitLab IPC handlers', () => {
     })
 
     expect(getWorkItemDetailsMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       'mr',
       undefined,
@@ -593,7 +583,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(closeMRMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       undefined,
       null,
@@ -601,7 +591,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(reopenMRMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       undefined,
       null,
@@ -609,7 +599,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(mergeMRMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       'squash',
       undefined,
@@ -618,7 +608,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(updateMRMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       { title: 'Renamed' },
       undefined,
@@ -627,7 +617,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(updateMRReviewersMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       [1],
       undefined,
@@ -636,7 +626,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(addMRCommentMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       'Comment',
       undefined,
@@ -645,7 +635,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(addMRInlineCommentMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       inlineInput,
       undefined,
@@ -654,7 +644,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(resolveMRDiscussionMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       8,
       'discussion-1',
       true,
@@ -664,7 +654,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(getJobTraceMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       99,
       undefined,
       null,
@@ -672,7 +662,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(retryJobMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       99,
       undefined,
       null,
@@ -680,7 +670,7 @@ describe('GitLab IPC handlers', () => {
       localGitOptions
     )
     expect(getWorkItemByProjectRefMock).toHaveBeenCalledWith(
-      '/local/nightshift',
+      '/local/kolux',
       { host: 'gitlab.com', path: 'g/p' },
       8,
       'mr',
@@ -701,11 +691,11 @@ describe('GitLab IPC handlers', () => {
     registerGitLabHandlers(storeWithRepos([repo()]) as Store)
 
     const raw = (await ipcHandlers.get('gitlab:jobTrace')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       jobId: 99
     })) as { ok: true; trace: string }
     const excerpt = (await ipcHandlers.get('gitlab:jobTrace')?.(null, {
-      repoPath: '/local/nightshift',
+      repoPath: '/local/kolux',
       jobId: 99,
       logExcerpt: true
     })) as { ok: true; trace: string }

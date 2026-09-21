@@ -113,10 +113,10 @@ it('connects the notice to the macOS prompt and keeps it open until closed', asy
   showNotice?.({ promptCount: 1 }, acknowledge)
 
   expect(toastWarning).toHaveBeenCalledWith(
-    'Seeing “Nightshift would like to access…” prompts?',
+    'Seeing “Kolux would like to access…” prompts?',
     expect.objectContaining({
       description:
-        'Permission messages from macOS may appear when an agent or terminal tool running in Nightshift attempts to access protected files. Grant Full Disk Access in Settings to reduce these prompts.'
+        'Permission messages from macOS may appear when an agent or terminal tool running in Kolux attempts to access protected files. Grant Full Disk Access in Settings to reduce these prompts.'
     })
   )
   const options = toastWarning.mock.calls[0]?.[1] as

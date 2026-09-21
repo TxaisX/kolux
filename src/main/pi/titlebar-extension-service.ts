@@ -1,20 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { getAppEnvironment } from '../../shared/app-environment'
 import { createHash } from 'node:crypto'
 import {
-  NIGHTSHIFT_PI_AGENT_STATUS_EXTENSION_FILE,
+  KOLUX_PI_AGENT_STATUS_EXTENSION_FILE,
   getPiAgentStatusExtensionSource
 } from './agent-status-extension-source'
 import {
-  NIGHTSHIFT_PI_PREFILL_EXTENSION_FILE,
+  KOLUX_PI_PREFILL_EXTENSION_FILE,
   getPiPrefillExtensionSource
 } from './prefill-extension-source'
-import {
-  NIGHTSHIFT_PI_EXTENSION_FILE,
-  getPiTitlebarExtensionSource
-} from './titlebar-extension-source'
+import { KOLUX_PI_EXTENSION_FILE, getPiTitlebarExtensionSource } from './titlebar-extension-source'
 import {
   isSafeDescendCandidate as sharedIsSafeDescendCandidate,
   safeRemoveOverlay
@@ -29,8 +26,30 @@ import type { PiAgentKind } from '../../shared/pi-agent-kind'
 export const isSafeDescendCandidate = sharedIsSafeDescendCandidate
 
 const PI_AGENT_SUBDIR = 'agent'
-const NIGHTSHIFT_MANAGED_EXTENSION_MARKER = '@nightshift-managed-pi-extension'
+const KOLUX_MANAGED_EXTENSION_MARKER = '@kolux-managed-pi-extension'
 const OMP_MANAGED_STATUS_EXTENSION_DIR = 'omp-managed-status-extension'
+
+// Why: Pi/OMP loads every extensions/*.ts file. A pre-rename kolux-*.ts extension named
+// nightshift-*.ts would keep firing the managed hook a second time under its old filename.
+const PRE_RENAME_MANAGED_EXTENSION_MARKER = '@nightshift-managed-pi-extension'
+const PRE_RENAME_MANAGED_EXTENSION_FILES = [
+  'nightshift-titlebar-spinner.ts',
+  'nightshift-prefill.ts',
+  'nightshift-agent-status.ts'
+]
+
+function sweepLegacyManagedExtensions(extensionsDir: string): void {
+  for (const fileName of PRE_RENAME_MANAGED_EXTENSION_FILES) {
+    const legacyPath = join(extensionsDir, fileName)
+    try {
+      if (readFileSync(legacyPath, 'utf8').includes(PRE_RENAME_MANAGED_EXTENSION_MARKER)) {
+        unlinkSync(legacyPath)
+      }
+    } catch {
+      // Absent or unreadable is the common case; best-effort sweep only.
+    }
+  }
+}
 
 type ManagedExtensionWriteResult = 'written' | 'skipped-user-owned' | 'failed'
 
@@ -42,7 +61,7 @@ type PiManagedExtensionEnv = {
 
 type LegacyOverlayAgentKind = Exclude<PiAgentKind, 'prime-agent'>
 
-// Why: old Nightshift versions used per-kind overlay roots. Keep the names so
+// Why: old Kolux versions used per-kind overlay roots. Keep the names so
 // upgrade-time cleanup can remove stale PTY-scoped Pi/OMP overlay dirs without
 // guessing which agent a terminated pane launched.
 const OVERLAY_ROOT_DIR_NAME: Record<LegacyOverlayAgentKind, string> = {
@@ -54,7 +73,7 @@ const OVERLAY_ROOT_DIR_NAME: Record<LegacyOverlayAgentKind, string> = {
 // by which `~/.<agent>/agent` dir happens to exist on disk first. A
 // cross-agent fallback (Pi -> OMP or vice versa) silently shadows the other
 // agent's user extensions when both are installed and the user picks the
-// shadowed one in Nightshift's per-launch agent picker.
+// shadowed one in Kolux's per-launch agent picker.
 const AGENT_HOME_DIR_NAME: Record<PiAgentKind, string> = {
   pi: '.pi',
   omp: '.omp',
@@ -69,10 +88,10 @@ function toSafeOverlayDirName(ptyId: string): string {
   return createHash('sha256').update(ptyId).digest('hex').slice(0, 32)
 }
 
-function withNightshiftManagedExtensionMarker(source: string): string {
-  return source.includes(NIGHTSHIFT_MANAGED_EXTENSION_MARKER)
+function withKoluxManagedExtensionMarker(source: string): string {
+  return source.includes(KOLUX_MANAGED_EXTENSION_MARKER)
     ? source
-    : `// ${NIGHTSHIFT_MANAGED_EXTENSION_MARKER}\n${source}`
+    : `// ${KOLUX_MANAGED_EXTENSION_MARKER}\n${source}`
 }
 
 export class PiTitlebarExtensionService {
@@ -87,7 +106,7 @@ export class PiTitlebarExtensionService {
   }
 
   private getPtyOverlayDir(ptyId: string, kind: LegacyOverlayAgentKind): string {
-    // Why: old Nightshift versions used PTY-scoped hashed overlays. Keep resolving
+    // Why: old Kolux versions used PTY-scoped hashed overlays. Keep resolving
     // that path so new spawns/teardowns can clean stale pre-migration dirs.
     return join(this.getOverlayRoot(kind), toSafeOverlayDirName(ptyId))
   }
@@ -105,7 +124,7 @@ export class PiTitlebarExtensionService {
 
   private canOverwriteManagedExtension(path: string): boolean {
     try {
-      return readFileSync(path, 'utf8').includes(NIGHTSHIFT_MANAGED_EXTENSION_MARKER)
+      return readFileSync(path, 'utf8').includes(KOLUX_MANAGED_EXTENSION_MARKER)
     } catch {
       return true
     }
@@ -135,7 +154,7 @@ export class PiTitlebarExtensionService {
       return undefined
     }
 
-    const fallbackPath = join(fallbackDir, NIGHTSHIFT_PI_AGENT_STATUS_EXTENSION_FILE)
+    const fallbackPath = join(fallbackDir, KOLUX_PI_AGENT_STATUS_EXTENSION_FILE)
     return this.writeManagedExtension(fallbackPath, source) === 'written' ? fallbackPath : undefined
   }
 
@@ -149,19 +168,20 @@ export class PiTitlebarExtensionService {
     } catch {
       return { sourceAgentDir }
     }
+    sweepLegacyManagedExtensions(extensionsDir)
 
     if (kind !== 'prime-agent') {
       this.writeManagedExtension(
-        join(extensionsDir, NIGHTSHIFT_PI_EXTENSION_FILE),
-        withNightshiftManagedExtensionMarker(getPiTitlebarExtensionSource(kind))
+        join(extensionsDir, KOLUX_PI_EXTENSION_FILE),
+        withKoluxManagedExtensionMarker(getPiTitlebarExtensionSource(kind))
       )
       this.writeManagedExtension(
-        join(extensionsDir, NIGHTSHIFT_PI_PREFILL_EXTENSION_FILE),
-        withNightshiftManagedExtensionMarker(getPiPrefillExtensionSource(kind))
+        join(extensionsDir, KOLUX_PI_PREFILL_EXTENSION_FILE),
+        withKoluxManagedExtensionMarker(getPiPrefillExtensionSource(kind))
       )
     }
-    const statusExtensionPath = join(extensionsDir, NIGHTSHIFT_PI_AGENT_STATUS_EXTENSION_FILE)
-    const statusSource = withNightshiftManagedExtensionMarker(getPiAgentStatusExtensionSource(kind))
+    const statusExtensionPath = join(extensionsDir, KOLUX_PI_AGENT_STATUS_EXTENSION_FILE)
+    const statusSource = withKoluxManagedExtensionMarker(getPiAgentStatusExtensionSource(kind))
     const statusResult = this.writeManagedExtension(statusExtensionPath, statusSource)
 
     return {
@@ -200,11 +220,9 @@ export class PiTitlebarExtensionService {
     const materializeDefaultHome = options?.materializeDefaultHome !== false
     if (!existsSync(sourceAgentDir) && !materializeDefaultHome) {
       if (kind === 'omp') {
-        const statusSource = withNightshiftManagedExtensionMarker(
-          getPiAgentStatusExtensionSource(kind)
-        )
+        const statusSource = withKoluxManagedExtensionMarker(getPiAgentStatusExtensionSource(kind))
         const statusExtensionPath = this.writeOmpFallbackStatusExtension(statusSource)
-        return statusExtensionPath ? { NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtensionPath } : {}
+        return statusExtensionPath ? { KOLUX_OMP_STATUS_EXTENSION: statusExtensionPath } : {}
       }
       return {}
     }
@@ -216,14 +234,14 @@ export class PiTitlebarExtensionService {
     const installed = this.installManagedExtensions(sourceAgentDir, kind)
     const env: Record<string, string> = {}
     if (kind === 'omp') {
-      env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR = installed.sourceAgentDir
+      env.KOLUX_OMP_SOURCE_AGENT_DIR = installed.sourceAgentDir
       if (installed.statusExtensionPath) {
-        env.NIGHTSHIFT_OMP_STATUS_EXTENSION = installed.statusExtensionPath
+        env.KOLUX_OMP_STATUS_EXTENSION = installed.statusExtensionPath
       }
     } else if (kind === 'prime-agent') {
-      env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR = installed.sourceAgentDir
+      env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR = installed.sourceAgentDir
     } else {
-      env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR = installed.sourceAgentDir
+      env.KOLUX_PI_SOURCE_AGENT_DIR = installed.sourceAgentDir
     }
     return env
   }

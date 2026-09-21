@@ -21,8 +21,8 @@ globalThis.window = { api: { gh: apiMocks } }
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
-    path: '/workspace/nightshift',
-    displayName: 'nightshift',
+    path: '/workspace/kolux',
+    displayName: 'kolux',
     badgeColor: '#2563eb',
     addedAt: 1,
     kind: 'git',
@@ -37,9 +37,9 @@ describe('repository GitHub avatar resolution', () => {
   })
 
   it('uses stored upstream by default and keeps the parent avatar for same-name forks', async () => {
-    const repo = makeRepo({ upstream: { owner: 'TxaisX', repo: 'nightshift' } })
+    const repo = makeRepo({ upstream: { owner: 'TxaisX', repo: 'kolux' } })
     // The fork's own origin owner — same repo name, so the parent avatar wins.
-    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'tmchow', repo: 'nightshift' })
+    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'tmchow', repo: 'kolux' })
 
     await expect(resolveRepositoryGitHubAvatar({ kind: 'local' }, repo)).resolves.toEqual({
       repoIcon: {
@@ -48,13 +48,13 @@ describe('repository GitHub avatar resolution', () => {
         source: 'github',
         label: 'TxaisX/nightshift'
       },
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
 
     expect(apiMocks.repoUpstream).not.toHaveBeenCalled()
     // Only the origin slug is consulted (for the renamed-fork check).
     expect(apiMocks.repoSlug).toHaveBeenCalledExactlyOnceWith({
-      repoPath: '/workspace/nightshift',
+      repoPath: '/workspace/kolux',
       repoId: 'repo-1'
     })
   })
@@ -101,7 +101,7 @@ describe('repository GitHub avatar resolution', () => {
       }
     })
     apiMocks.repoUpstream.mockResolvedValueOnce(null)
-    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'nightshift' })
+    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'kolux' })
 
     const resolution = await resolveRepositoryGitHubAvatar({ kind: 'local' }, repo, {
       forceLive: true
@@ -112,16 +112,16 @@ describe('repository GitHub avatar resolution', () => {
         type: 'image',
         src: 'https://github.com/parkerrex.png?size=64',
         source: 'github',
-        label: 'parkerrex/nightshift'
+        label: 'parkerrex/kolux'
       },
       upstream: null
     })
     expect(apiMocks.repoUpstream).toHaveBeenCalledExactlyOnceWith({
-      repoPath: '/workspace/nightshift',
+      repoPath: '/workspace/kolux',
       repoId: 'repo-1'
     })
     expect(apiMocks.repoSlug).toHaveBeenCalledExactlyOnceWith({
-      repoPath: '/workspace/nightshift',
+      repoPath: '/workspace/kolux',
       repoId: 'repo-1'
     })
     // upstream stays null (unchanged); only the avatar advances to the new owner.
@@ -130,7 +130,7 @@ describe('repository GitHub avatar resolution', () => {
         type: 'image',
         src: 'https://github.com/parkerrex.png?size=64',
         source: 'github',
-        label: 'parkerrex/nightshift'
+        label: 'parkerrex/kolux'
       }
     })
   })
@@ -166,7 +166,7 @@ describe('repository GitHub avatar resolution', () => {
     // A fork whose avatar tracks its parent org. The live upstream probe fails
     // (offline/unauthed → null), which must NOT downgrade to the origin slug.
     const repo = makeRepo({
-      upstream: { owner: 'TxaisX', repo: 'nightshift' },
+      upstream: { owner: 'TxaisX', repo: 'kolux' },
       repoIcon: {
         type: 'image',
         src: 'https://github.com/txais.png?size=64',
@@ -176,7 +176,7 @@ describe('repository GitHub avatar resolution', () => {
     })
     apiMocks.repoUpstream.mockResolvedValueOnce(null)
     // The fork's own origin owner — same repo name, so it must NOT replace the parent.
-    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'nightshift' })
+    apiMocks.repoSlug.mockResolvedValueOnce({ owner: 'parkerrex', repo: 'kolux' })
 
     const resolution = await resolveRepositoryGitHubAvatar({ kind: 'local' }, repo, {
       forceLive: true
@@ -189,7 +189,7 @@ describe('repository GitHub avatar resolution', () => {
         source: 'github',
         label: 'TxaisX/nightshift'
       },
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
     // Nothing changed, so no repo write is produced (no sticky null clobber).
     expect(buildRepositoryGitHubAvatarUpdate(repo, resolution)).toBeNull()

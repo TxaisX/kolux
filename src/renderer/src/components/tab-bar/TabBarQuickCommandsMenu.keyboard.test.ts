@@ -12,7 +12,7 @@ const appStoreMock = vi.hoisted(() => ({
     activeView: 'terminal' as 'terminal' | 'settings',
     keybindings: {} as Record<string, string[]>,
     settings: {
-      terminalShortcutPolicy: 'nightshift-first' as 'nightshift-first' | 'terminal-first'
+      terminalShortcutPolicy: 'kolux-first' as 'kolux-first' | 'terminal-first'
     }
   }
 }))
@@ -162,7 +162,7 @@ beforeEach(() => {
   keybindingsMock.matchAction.mockReturnValue(false)
   appStoreMock.state.activeView = 'terminal'
   appStoreMock.state.keybindings = {}
-  appStoreMock.state.settings.terminalShortcutPolicy = 'nightshift-first'
+  appStoreMock.state.settings.terminalShortcutPolicy = 'kolux-first'
   vi.stubGlobal('window', {
     addEventListener: vi.fn((type: string, handler: (e: KeyboardEvent) => void) => {
       windowListeners.set(type, handler)

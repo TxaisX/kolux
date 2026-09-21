@@ -40,7 +40,7 @@ import { _resetGitAdmissionForTests } from '../command-runner/git-subprocess-adm
 afterEach(() => _resetGitAdmissionForTests())
 
 const DISTRO = 'Ubuntu-24.04'
-const WSL_WORKTREE = `\\\\wsl$\\${DISTRO}\\home\\emilio\\projects\\nightshift`
+const WSL_WORKTREE = `\\\\wsl$\\${DISTRO}\\home\\emilio\\projects\\kolux`
 const TRACKED_PATHS = ['docs/architecture.md', 'src/main/git/runner.ts']
 // Stock Ubuntu writes this to *stdout* from the interactive login shell's rc.
 const BANNER = 'To run a command as administrator (user "root"), use "sudo <command>".\n\n'
@@ -61,16 +61,16 @@ function guestScript(args: unknown): string {
 
 /** Wrap the payload in the caller's own fence when it asked for one; otherwise hand it over raw. */
 function loginShellStdout(script: string, payload: string): string {
-  const nonce = /__NIGHTSHIFT_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(script)?.[1]
+  const nonce = /__KOLUX_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(script)?.[1]
   return nonce
-    ? `${BANNER}__NIGHTSHIFT_WSL_CAPTURE_BEGIN_${nonce}__${payload}__NIGHTSHIFT_WSL_CAPTURE_END_${nonce}__`
+    ? `${BANNER}__KOLUX_WSL_CAPTURE_BEGIN_${nonce}__${payload}__KOLUX_WSL_CAPTURE_END_${nonce}__`
     : `${BANNER}${payload}`
 }
 
 function gitCommandLines(): string[] {
   return execFileMock.mock.calls
     .map((call) => guestScript(call[1]))
-    .filter((script) => !script.includes('_nightshift_git_path='))
+    .filter((script) => !script.includes('_kolux_git_path='))
 }
 
 describe('WSL tracked-path listing behind a login-shell banner', () => {
@@ -82,7 +82,7 @@ describe('WSL tracked-path listing behind a login-shell banner', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     execFileMock.mockImplementation((_command, args, _options, callback) => {
       const script = guestScript(args)
-      if (script.includes('_nightshift_git_path=')) {
+      if (script.includes('_kolux_git_path=')) {
         // Distro exports GIT_* / XDG_CONFIG_HOME, so the direct-git read probe is rejected for good.
         queueMicrotask(() => callback?.(Object.assign(new Error('probe rejected'), { code: 78 })))
         return createMockChild()

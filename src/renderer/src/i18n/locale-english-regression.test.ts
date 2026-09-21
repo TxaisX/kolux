@@ -81,7 +81,7 @@ describe('locale catalogs reverted by a stale branch base (#10770)', () => {
   // present catalog value wins over the source fallback.
   it('keeps the English catalog in step with its live source string', () => {
     expect(lookup(en, 'auto.components.settings.EphemeralVmsPane.recipesHelp')).toBe(
-      'Recipes from nightshift.yaml and enabled plugins show up here, ready to launch a workspace on.'
+      'Recipes from kolux.yaml and enabled plugins show up here, ready to launch a workspace on.'
     )
   })
 

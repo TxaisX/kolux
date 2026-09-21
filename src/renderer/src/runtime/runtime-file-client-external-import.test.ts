@@ -136,7 +136,7 @@ describe('runtime file client', () => {
       params: { relativePath: string }
     }
     expect(smallWriteCall.params.relativePath).toMatch(
-      /^uploads\/assets\/\.logo\.png\.nightshift-upload-/
+      /^uploads\/assets\/\.logo\.png\.kolux-upload-/
     )
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(5, {
       selector: 'env-1',
@@ -265,7 +265,7 @@ describe('runtime file client', () => {
     const chunkWriteCall = runtimeEnvironmentCall.mock.calls[3]?.[0] as {
       params: { relativePath: string }
     }
-    expect(chunkWriteCall.params.relativePath).toMatch(/^uploads\/\.large\.bin\.nightshift-upload-/)
+    expect(chunkWriteCall.params.relativePath).toMatch(/^uploads\/\.large\.bin\.kolux-upload-/)
     expect(runtimeEnvironmentCall).toHaveBeenNthCalledWith(4, {
       selector: 'env-1',
       method: 'files.writeBase64Chunk',
@@ -562,9 +562,7 @@ describe('runtime file client', () => {
     if (!writeCall) {
       throw new Error('missing failed file write call')
     }
-    expect(writeCall.params.relativePath).toMatch(
-      /^uploads\/assets\/\.logo\.png\.nightshift-upload-/
-    )
+    expect(writeCall.params.relativePath).toMatch(/^uploads\/assets\/\.logo\.png\.kolux-upload-/)
     expect(runtimeEnvironmentCall).toHaveBeenLastCalledWith({
       selector: 'env-1',
       method: 'files.delete',

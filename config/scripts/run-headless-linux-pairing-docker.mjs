@@ -9,7 +9,7 @@ const commandArgs = process.argv.slice(2)
 const appImageArg = valueAfter('--appimage')
 const pairingOnly = commandArgs.includes('--pairing-only')
 if (!appImageArg) {
-  fail('Usage: run-headless-linux-pairing-docker.mjs --appimage /path/to/nightshift.AppImage')
+  fail('Usage: run-headless-linux-pairing-docker.mjs --appimage /path/to/kolux.AppImage')
 }
 const appImage = resolve(appImageArg)
 if (!existsSync(appImage)) {
@@ -17,25 +17,25 @@ if (!existsSync(appImage)) {
 }
 
 const suffix = `${process.pid}-${Date.now()}`
-const artifactVolume = `nightshift-headless-pairing-artifact-${suffix}`
-const network = `nightshift-headless-pairing-${suffix}`
+const artifactVolume = `kolux-headless-pairing-artifact-${suffix}`
+const network = `kolux-headless-pairing-${suffix}`
 const containers = new Set()
 const images = [
   {
     name: 'ubuntu-24.04',
-    tag: 'nightshift-headless-pairing:ubuntu-24.04',
+    tag: 'kolux-headless-pairing:ubuntu-24.04',
     base: 'ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90',
     libasound: 'libasound2t64'
   },
   {
     name: 'debian-13',
-    tag: 'nightshift-headless-pairing:debian-13',
+    tag: 'kolux-headless-pairing:debian-13',
     base: 'debian@sha256:020c0d20b9880058cbe785a9db107156c3c75c2ac944a6aa7ab59f2add76a7bd',
     libasound: 'libasound2t64'
   },
   {
     name: 'ubuntu-22.04-baseline',
-    tag: 'nightshift-headless-pairing:ubuntu-22.04',
+    tag: 'kolux-headless-pairing:ubuntu-22.04',
     base: 'ubuntu@sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982',
     libasound: 'libasound2'
   }
@@ -102,12 +102,12 @@ function extractAppImage(image) {
     '--entrypoint',
     'bash',
     '-v',
-    `${appImage}:/input/nightshift.AppImage:ro`,
+    `${appImage}:/input/kolux.AppImage:ro`,
     '-v',
     `${artifactVolume}:/artifacts`,
     image,
     '-lc',
-    'cp /input/nightshift.AppImage /artifacts/nightshift.AppImage && chmod +x /artifacts/nightshift.AppImage && cd /artifacts && ./nightshift.AppImage --appimage-extract >/dev/null && chmod -R a+rX /artifacts/squashfs-root'
+    'cp /input/kolux.AppImage /artifacts/kolux.AppImage && chmod +x /artifacts/kolux.AppImage && cd /artifacts && ./kolux.AppImage --appimage-extract >/dev/null && chmod -R a+rX /artifacts/squashfs-root'
   ])
 }
 
@@ -140,7 +140,7 @@ async function validateStartupMatrix() {
     launch: 'direct',
     mode: 'json',
     address: '127.0.0.1',
-    appPath: '/artifacts/nightshift.AppImage',
+    appPath: '/artifacts/kolux.AppImage',
     startupTimeoutMs: APPIMAGE_EXTRACTION_TIMEOUT_MS
   })
   validateReady(publicEntry.stdout, 'json', '127.0.0.1', { allowStdoutNoise: true })
@@ -181,9 +181,9 @@ async function validateAuthenticatedPairing() {
     image: images[0],
     launch: 'direct',
     mode: 'json',
-    address: 'ws://nightshift-pairing-server:6768/runtime?route=runtime',
+    address: 'ws://kolux-pairing-server:6768/runtime?route=runtime',
     port: '6768',
-    networkAlias: 'nightshift-pairing-server'
+    networkAlias: 'kolux-pairing-server'
   })
   const payload = readyJson(server.stdout)
   const client = runPairingClient(payload.pairing.url)
@@ -205,7 +205,7 @@ async function validateAuthenticatedPairing() {
   )
   assert(
     typeof statusResult?.runtime?.appVersion === 'string',
-    'paired server did not report its Nightshift app version'
+    'paired server did not report its Kolux app version'
   )
   assert(
     statusResult?.runtime?.capabilities?.includes('updater.remote-control.v1'),
@@ -225,9 +225,9 @@ async function validateUnreachableOffer() {
     image: images[0],
     launch: 'direct',
     mode: 'json',
-    address: 'nightshift-pairing-server:6769',
+    address: 'kolux-pairing-server:6769',
     port: '6768',
-    networkAlias: 'nightshift-pairing-server'
+    networkAlias: 'kolux-pairing-server'
   })
   const payload = readyJson(server.stdout)
   const client = runPairingClient(payload.pairing.url)
@@ -247,7 +247,7 @@ async function startAndWait({
   noPairing = false,
   startupTimeoutMs = STARTUP_TIMEOUT_MS
 }) {
-  const name = `nightshift-pairing-${suffix}-${containers.size}`
+  const name = `kolux-pairing-${suffix}-${containers.size}`
   const args = [
     'run',
     '-d',
@@ -260,18 +260,18 @@ async function startAndWait({
     network,
     ...(networkAlias ? ['--network-alias', networkAlias] : []),
     '-e',
-    'NIGHTSHIFT_KEEP_RUNNING=1',
+    'KOLUX_KEEP_RUNNING=1',
     '-e',
     'LIBGL_ALWAYS_SOFTWARE=1',
     '-e',
-    `NIGHTSHIFT_READY_JSON=${mode === 'json' ? '1' : '0'}`,
+    `KOLUX_READY_JSON=${mode === 'json' ? '1' : '0'}`,
     '-e',
-    `NIGHTSHIFT_PAIRING_ADDRESS=${address}`,
+    `KOLUX_PAIRING_ADDRESS=${address}`,
     '-e',
-    `NIGHTSHIFT_SERVE_PORT=${port}`,
+    `KOLUX_SERVE_PORT=${port}`,
     '-e',
-    `NIGHTSHIFT_TEST_APPIMAGE=${appPath}`,
-    ...(noPairing ? ['-e', 'NIGHTSHIFT_NO_PAIRING=1'] : []),
+    `KOLUX_TEST_APPIMAGE=${appPath}`,
+    ...(noPairing ? ['-e', 'KOLUX_NO_PAIRING=1'] : []),
     '-v',
     `${artifactVolume}:/artifacts:ro`,
     image.tag,
@@ -310,7 +310,7 @@ async function waitForReady(name, startupTimeoutMs) {
 
 function hasCompleteReadyContract(stdout) {
   if (
-    stdout.includes('Nightshift server ready\n') &&
+    stdout.includes('Kolux server ready\n') &&
     (stdout.includes('\nPairing URL: ') || stdout.includes('\nPairing guidance: '))
   ) {
     return true
@@ -321,7 +321,7 @@ function hasCompleteReadyContract(stdout) {
 function validateReady(logs, mode, expectedHost, options = {}) {
   if (mode === 'human') {
     assert(
-      (logs.match(/^Nightshift server ready$/gm) ?? []).length === 1,
+      (logs.match(/^Kolux server ready$/gm) ?? []).length === 1,
       'human ready marker is not exact-once'
     )
     assert(logs.includes('Bound endpoint: ws://0.0.0.0:'), 'human bound endpoint is missing')
@@ -329,7 +329,7 @@ function validateReady(logs, mode, expectedHost, options = {}) {
       logs.includes(`Advertised endpoint: ws://${expectedHost}:`),
       'human advertised endpoint is missing'
     )
-    assert(logs.includes('Pairing URL: nightshift://pair?code='), 'human pairing URL is missing')
+    assert(logs.includes('Pairing URL: kolux://pair?code='), 'human pairing URL is missing')
     return
   }
   if (!options.allowStdoutNoise) {
@@ -358,14 +358,14 @@ function readyJson(logs) {
 }
 
 function readyJsonObjects(logs) {
-  const marker = '{"type":"nightshift_server_ready"'
+  const marker = '{"type":"kolux_server_ready"'
   return logs
     .split(/\r?\n/)
     .map((line) => {
       const markerIndex = line.indexOf(marker)
       return markerIndex === -1 ? null : parseJson(line.slice(markerIndex))
     })
-    .filter((value) => value?.type === 'nightshift_server_ready')
+    .filter((value) => value?.type === 'kolux_server_ready')
 }
 
 function runPairingClient(pairingUrl) {

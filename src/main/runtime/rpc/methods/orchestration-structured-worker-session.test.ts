@@ -81,7 +81,7 @@ describe('structured worker session hold', () => {
     let envAtSpawn: Record<string, string> | undefined
     createSpy.mockImplementation(async (args: { envelope: { sessionId: string } }) => {
       // `attach` is what spawns the provider child, and the child's env is read from the registry
-      // at spawn time. Registering afterwards ships a worker with no NIGHTSHIFT_TERMINAL_HANDLE.
+      // at spawn time. Registering afterwards ships a worker with no KOLUX_TERMINAL_HANDLE.
       envAtSpawn = structuredWorkerChildIdentityEnv(args.envelope.sessionId, {})
       return { ok: true, value: { sessionId: args.envelope.sessionId } }
     })
@@ -92,9 +92,9 @@ describe('structured worker session hold', () => {
       dispatchId: 'd_spawn',
       onJournalActivity: () => {}
     })
-    expect(envAtSpawn?.NIGHTSHIFT_TERMINAL_HANDLE).toBe(created.identity.handle)
-    expect(envAtSpawn?.NIGHTSHIFT_CLI_COMMAND).toBe('nightshift')
-    expect(envAtSpawn?.NIGHTSHIFT_PANE_KEY).toBeUndefined()
+    expect(envAtSpawn?.KOLUX_TERMINAL_HANDLE).toBe(created.identity.handle)
+    expect(envAtSpawn?.KOLUX_CLI_COMMAND).toBe('kolux')
+    expect(envAtSpawn?.KOLUX_PANE_KEY).toBeUndefined()
     releaseStructuredWorkerSession('d_spawn')
   })
 
@@ -158,7 +158,7 @@ describe('structured worker session hold', () => {
       ok: false,
       refusal: {
         code: 'structured_agent_session_unsupported',
-        message: 'Nightshift cannot open a structured agent chat for this workspace.'
+        message: 'Kolux cannot open a structured agent chat for this workspace.'
       }
     }))
     await expect(

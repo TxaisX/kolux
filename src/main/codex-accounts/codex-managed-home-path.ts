@@ -57,16 +57,14 @@ export class CodexManagedHomePath {
       })
     }
     if (
-      !wslInfo.linuxPath.includes('/.local/share/nightshift/codex-accounts/') ||
+      !wslInfo.linuxPath.includes('/.local/share/kolux/codex-accounts/') ||
       !wslInfo.linuxPath.endsWith('/home')
     ) {
-      throw new Error('Managed WSL Codex home is outside Nightshift account storage.')
+      throw new Error('Managed WSL Codex home is outside Kolux account storage.')
     }
     if (
       expectedAccountId !== undefined &&
-      !wslInfo.linuxPath.endsWith(
-        `/.local/share/nightshift/codex-accounts/${expectedAccountId}/home`
-      )
+      !wslInfo.linuxPath.endsWith(`/.local/share/kolux/codex-accounts/${expectedAccountId}/home`)
     ) {
       throw new Error('Managed WSL Codex home does not match its persisted account ID.')
     }
@@ -81,9 +79,9 @@ export class CodexManagedHomePath {
     if (!this.pathsEqual(account.managedHomePath, expectedPath)) {
       throw originalError
     }
-    // Why: re-auth may recreate a lost empty home, but only at the exact Nightshift-owned path persisted for this account.
+    // Why: re-auth may recreate a lost empty home, but only at the exact Kolux-owned path persisted for this account.
     mkdirSync(expectedPath, { recursive: true })
-    writeFileSync(join(expectedPath, '.nightshift-managed-home'), `${account.id}\n`, 'utf-8')
+    writeFileSync(join(expectedPath, '.kolux-managed-home'), `${account.id}\n`, 'utf-8')
     return this.assert(expectedPath, account.id)
   }
 
@@ -95,7 +93,7 @@ export class CodexManagedHomePath {
       account.managedHomeRuntime !== 'wsl' ||
       account.wslDistro !== wslInfo.distro ||
       account.wslLinuxHomePath !== wslInfo.linuxPath ||
-      !wslInfo.linuxPath.endsWith(`/.local/share/nightshift/codex-accounts/${account.id}/home`)
+      !wslInfo.linuxPath.endsWith(`/.local/share/kolux/codex-accounts/${account.id}/home`)
     ) {
       return
     }
@@ -106,7 +104,7 @@ export class CodexManagedHomePath {
         'set -euo pipefail',
         `candidate=${quotePosixShell(wslInfo.linuxPath)}`,
         `expected_marker=${quotePosixShell(account.id)}`,
-        'marker="$candidate/.nightshift-managed-home"',
+        'marker="$candidate/.kolux-managed-home"',
         'if [ -e "$candidate" ] && [ ! -f "$marker" ]; then exit 41; fi',
         'if [ -f "$marker" ] && [ "$(cat "$marker")" != "$expected_marker" ]; then exit 42; fi',
         'mkdir -p -- "$candidate"',
@@ -134,10 +132,10 @@ export class CodexManagedHomePath {
         [
           'set -euo pipefail',
           `candidate=${quotePosixShell(wslInfo.linuxPath)}`,
-          'managed_root="${HOME%/}/.local/share/nightshift/codex-accounts"',
+          'managed_root="${HOME%/}/.local/share/kolux/codex-accounts"',
           'candidate_real=$(readlink -f -- "$candidate")',
           'managed_root_real=$(readlink -f -- "$managed_root")',
-          'test -f "$candidate_real/.nightshift-managed-home"',
+          'test -f "$candidate_real/.kolux-managed-home"',
           ...(expectedAccountId === undefined
             ? [
                 'case "$candidate_real" in "$managed_root_real"/*/home) printf "%s\\n" "$candidate_real" ;; *) exit 35 ;; esac'
@@ -145,7 +143,7 @@ export class CodexManagedHomePath {
             : [
                 `expected_marker=${quotePosixShell(expectedAccountId)}`,
                 'test "$candidate_real" = "$managed_root_real/$expected_marker/home"',
-                'test "$(cat "$candidate_real/.nightshift-managed-home")" = "$expected_marker"',
+                'test "$(cat "$candidate_real/.kolux-managed-home")" = "$expected_marker"',
                 'printf "%s\\n" "$candidate_real"'
               ])
         ].join('\n')
@@ -155,7 +153,7 @@ export class CodexManagedHomePath {
       }
       return toWindowsWslPath(canonicalLinuxPath, wslInfo.distro)
     } catch (error) {
-      throw new Error('Managed WSL Codex home is outside Nightshift account storage.', {
+      throw new Error('Managed WSL Codex home is outside Kolux account storage.', {
         cause: error
       })
     }
@@ -167,14 +165,14 @@ export class CodexManagedHomePath {
     expectedAccountId?: string
   ): string {
     if (linuxPath.split('/').includes('..')) {
-      throw new Error('Managed WSL Codex home is outside Nightshift account storage.')
+      throw new Error('Managed WSL Codex home is outside Kolux account storage.')
     }
     if (!existsSync(candidatePath)) {
       throw new Error('Managed Codex home directory does not exist on disk.')
     }
-    const markerPath = join(candidatePath, '.nightshift-managed-home')
+    const markerPath = join(candidatePath, '.kolux-managed-home')
     if (!existsSync(markerPath)) {
-      throw new Error('Managed Codex home is missing Nightshift ownership marker.')
+      throw new Error('Managed Codex home is missing Kolux ownership marker.')
     }
     if (
       expectedAccountId !== undefined &&

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NightshiftProfileAuthStatus } from '../../../../shared/nightshift-profiles'
+import type { KoluxProfileAuthStatus } from '../../../../shared/kolux-profiles'
 
 const mocks = vi.hoisted(() => ({
   authStatus: {
@@ -61,10 +61,10 @@ vi.mock('@/store', () => ({
 function storeState(): Record<string, unknown> {
   return {
     closeArtifactsPage: mocks.closePage,
-    connectCurrentNightshiftProfile: mocks.connect,
-    nightshiftProfileAuthStatus: mocks.authStatus,
-    nightshiftProfileConnecting: false,
-    refreshCurrentNightshiftProfileAuth: mocks.refreshAuth,
+    connectCurrentKoluxProfile: mocks.connect,
+    koluxProfileAuthStatus: mocks.authStatus,
+    koluxProfileConnecting: false,
+    refreshCurrentKoluxProfileAuth: mocks.refreshAuth,
     settings: mocks.settings,
     updateSettings: mocks.updateSettings,
     openSettingsPage: mocks.openSettingsPage,
@@ -92,7 +92,7 @@ describe('ArtifactsPage', () => {
     mocks.updateSettings.mockReset().mockResolvedValue(undefined)
     mocks.openSettingsPage.mockReset()
     mocks.openSettingsTarget.mockReset()
-    mocks.resolvePartition.mockReset().mockResolvedValue('persist:nightshift-default')
+    mocks.resolvePartition.mockReset().mockResolvedValue('persist:kolux-default')
     mocks.writeClipboardText.mockReset().mockResolvedValue(undefined)
     mocks.openUrl.mockReset().mockResolvedValue(undefined)
     mocks.toastSuccess.mockReset()
@@ -122,7 +122,7 @@ describe('ArtifactsPage', () => {
               updatedAt: '2026-08-02T12:00:00.000Z',
               version: 1
             },
-            shareUrl: 'https://share.nightshift.invalid/a/report-123'
+            shareUrl: 'https://share.kolux.invalid/a/report-123'
           }
         ]
       }
@@ -170,18 +170,20 @@ describe('ArtifactsPage', () => {
 
     await waitFor(() => {
       const preview = document.querySelector('webview[aria-label="Artifact preview"]')
-      expect(preview).toHaveAttribute('partition', 'persist:nightshift-default')
-      expect(preview).toHaveAttribute('src', 'https://share.nightshift.invalid/a/report-123?embed=1')
+      expect(preview).toHaveAttribute('partition', 'persist:kolux-default')
+      expect(preview).toHaveAttribute('src', 'https://share.kolux.invalid/a/report-123?embed=1')
     })
 
     fireEvent.click(copyButton)
     await waitFor(() =>
-      expect(mocks.writeClipboardText).toHaveBeenCalledWith('https://share.nightshift.invalid/a/report-123')
+      expect(mocks.writeClipboardText).toHaveBeenCalledWith(
+        'https://share.kolux.invalid/a/report-123'
+      )
     )
     expect(mocks.toastSuccess).toHaveBeenCalledWith('Artifact link copied')
 
     fireEvent.click(screen.getByRole('button', { name: 'Open in browser' }))
-    expect(mocks.openUrl).toHaveBeenCalledWith('https://share.nightshift.invalid/a/report-123')
+    expect(mocks.openUrl).toHaveBeenCalledWith('https://share.kolux.invalid/a/report-123')
   })
 
   it('shows a fallback when the desktop preview session is unavailable', async () => {
@@ -224,7 +226,7 @@ describe('ArtifactsPage', () => {
         'Open an HTML or Markdown file and select Share as artifact, or ask your agent to share it.'
       )
     ).toBeInTheDocument()
-    expect(screen.queryByText(/nightshift artifacts share/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/kolux artifacts share/)).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Open Settings → Artifacts' })
     ).not.toBeInTheDocument()
@@ -358,7 +360,7 @@ describe('ArtifactsPage', () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByText('Sign in to Nightshift again to load artifacts.')
+        screen.queryByText('Sign in to Kolux again to load artifacts.')
       ).not.toBeInTheDocument()
     )
   })
@@ -400,7 +402,7 @@ describe('ArtifactsPage', () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByText('Sign in to Nightshift again to load artifacts.')
+        screen.queryByText('Sign in to Kolux again to load artifacts.')
       ).not.toBeInTheDocument()
     )
   })
@@ -440,7 +442,7 @@ describe('ArtifactsPage', () => {
               updatedAt: '2026-08-02T12:00:00.000Z',
               version: 1
             },
-            shareUrl: 'https://share.nightshift.invalid/a/account-a-secret'
+            shareUrl: 'https://share.kolux.invalid/a/account-a-secret'
           }
         ]
       }
@@ -563,7 +565,7 @@ describe('ArtifactsPage', () => {
       configured: true,
       persistence: 'encrypted',
       state: 'connected'
-    } satisfies NightshiftProfileAuthStatus
+    } satisfies KoluxProfileAuthStatus
 
     expect(artifactAccountIdentity(status)).not.toBe(
       artifactAccountIdentity({ ...status, cloud: { ...status.cloud, activeOrgId: 'org-b' } })
@@ -597,6 +599,6 @@ function artifactListItem(title: string, slug: string): Record<string, unknown> 
       updatedAt: '2026-08-02T12:00:00.000Z',
       version: 1
     },
-    shareUrl: `https://share.nightshift.invalid/a/${slug}`
+    shareUrl: `https://share.kolux.invalid/a/${slug}`
   }
 }

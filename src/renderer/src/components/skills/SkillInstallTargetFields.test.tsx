@@ -72,7 +72,7 @@ describe('SkillInstallTargetFields', () => {
       runtimeStatus: new Map(),
       sshConnections: [],
       workspaceChoices: [
-        { id: 'wt-1', label: 'nightshift-main', kind: 'worktree' as const },
+        { id: 'wt-1', label: 'kolux-main', kind: 'worktree' as const },
         { id: 'wt-2', label: 'feature-skills', kind: 'worktree' as const },
         { id: 'folder_1', label: 'dotfiles', kind: 'folder' as const }
       ],
@@ -94,7 +94,7 @@ describe('SkillInstallTargetFields', () => {
     fireEvent.change(searchInput, { target: { value: 'feature' } })
 
     expect(screen.getByText('feature-skills ·')).toBeInTheDocument()
-    expect(screen.queryByText('nightshift-main ·')).toBeNull()
+    expect(screen.queryByText('kolux-main ·')).toBeNull()
 
     // Click matching item
     fireEvent.click(screen.getByText('feature-skills ·'))

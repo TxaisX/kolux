@@ -43,7 +43,7 @@ describe('classifySubprocessCommand', () => {
   })
 
   it.each([
-    // Nightshift's own spawns use --exec; `--`/`-e` still arrive from foreign wsl.exe processes.
+    // Kolux's own spawns use --exec; `--`/`-e` still arrive from foreign wsl.exe processes.
     ['--exec', '--exec'],
     ['-e', '-e'],
     ['--', '--']

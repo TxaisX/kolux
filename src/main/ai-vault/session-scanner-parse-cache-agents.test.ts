@@ -28,7 +28,7 @@ afterEach(async () => {
 })
 
 async function makeTempDir(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-parse-cache-agents-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-parse-cache-agents-'))
   tempRoots.push(root)
   return root
 }

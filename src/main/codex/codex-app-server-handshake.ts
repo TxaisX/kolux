@@ -8,7 +8,7 @@ export async function initializeCodexAppServerConnection(
   await connection.request(
     'initialize',
     {
-      clientInfo: { name: 'nightshift_desktop', title: 'Nightshift', version: '0.0.0' },
+      clientInfo: { name: 'kolux_desktop', title: 'Kolux', version: '0.0.0' },
       capabilities: {
         experimentalApi: true,
         requestAttestation: false,

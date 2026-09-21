@@ -239,14 +239,11 @@ export function NewWorkspaceComposerAdvancedSection({
                 </label>
                 <span className="rounded border border-border/50 bg-muted/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                   {setupConfig.source === 'yaml'
-                    ? translate(
-                        'auto.components.NewWorkspaceComposerCard.23bb365554',
-                        'nightshift.yaml'
-                      )
+                    ? translate('auto.components.NewWorkspaceComposerCard.23bb365554', 'kolux.yaml')
                     : setupConfig.source === 'both'
                       ? translate(
                           'auto.components.NewWorkspaceComposerCard.326a578923',
-                          'nightshift.yaml + local'
+                          'kolux.yaml + local'
                         )
                       : translate(
                           'auto.components.NewWorkspaceComposerCard.92e34f0311',

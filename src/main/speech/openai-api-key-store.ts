@@ -10,19 +10,19 @@ type StoredOpenAiKey = {
 const OPENAI_SPEECH_TOKEN_FILE = 'openai-speech-token.enc'
 let cachedOpenAiSpeechApiKey: string | null = null
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
-function ensureNightshiftDir(): void {
-  const dir = getNightshiftDir()
+function ensureKoluxDir(): void {
+  const dir = getKoluxDir()
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
 }
 
 function getOpenAiKeyPath(): string {
-  return join(getNightshiftDir(), OPENAI_SPEECH_TOKEN_FILE)
+  return join(getKoluxDir(), OPENAI_SPEECH_TOKEN_FILE)
 }
 
 function readLegacyJsonStoredOpenAiKey(): StoredOpenAiKey | null {
@@ -52,7 +52,7 @@ export function saveOpenAiSpeechApiKey(apiKey: string): void {
   if (!trimmed) {
     throw new Error('OpenAI API key is required')
   }
-  ensureNightshiftDir()
+  ensureKoluxDir()
   if (getSecretStore().isEncryptionAvailable()) {
     writeFileSync(getOpenAiKeyPath(), getSecretStore().encryptString(trimmed), { mode: 0o600 })
     cachedOpenAiSpeechApiKey = trimmed

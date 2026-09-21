@@ -94,8 +94,8 @@ export type UpdaterMocks = {
 // Why: macOS keeps the restart advice because quitting does re-stage a Squirrel update.
 export const PRE_COMMIT_INSTALL_FAILURE =
   process.platform === 'darwin'
-    ? 'Could not restart to install the update. Quit and reopen Nightshift, then try again.'
-    : 'Could not start the update installer. Nightshift remains open.'
+    ? 'Could not restart to install the update. Quit and reopen Kolux, then try again.'
+    : 'Could not start the update installer. Kolux remains open.'
 
 /**
  * Builds the electron/electron-updater mock graph `updater.ts` runs against, plus the module

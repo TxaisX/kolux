@@ -27,13 +27,13 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
   it.each([false, true])(
     'removes installed payloads and the legacy live endpoint (command missing: %s)',
     async (removeCommandFirst) => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-appimage-cli-remove-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-appimage-cli-remove-'))
       created.push(root)
-      const appImagePath = join(root, 'Nightshift.AppImage')
+      const appImagePath = join(root, 'Kolux.AppImage')
       const cacheRootPath = join(root, 'cache')
-      const commandPath = join(root, 'home', '.local', 'bin', 'nightshift-ide')
+      const commandPath = join(root, 'home', '.local', 'bin', 'kolux-ide')
       const resourcesPath = join(root, 'mount', 'resources')
-      const liveLauncherPath = join(resourcesPath, 'bin', 'nightshift-ide')
+      const liveLauncherPath = join(resourcesPath, 'bin', 'kolux-ide')
       await mkdir(join(resourcesPath, 'bin'), { recursive: true })
       await writeFile(appImagePath, '#!/usr/bin/env bash\n', { mode: 0o755 })
       await writeFile(liveLauncherPath, '#!/usr/bin/env bash\nprintf live', { mode: 0o755 })
@@ -46,7 +46,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
         isPackaged: true,
         userDataPath: join(root, 'user-data'),
         resourcesPath,
-        execPath: join(root, 'mount', 'nightshift-ide'),
+        execPath: join(root, 'mount', 'kolux-ide'),
         appPath: join(resourcesPath, 'app.asar'),
         homePath: join(root, 'home'),
         processPathEnv: join(root, 'home', '.local', 'bin'),
@@ -57,7 +57,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
           const payloadDirectory = join(cwd, 'squashfs-root', 'resources', 'bin')
           await mkdir(payloadDirectory, { recursive: true })
           await writeFile(
-            join(payloadDirectory, 'nightshift-ide'),
+            join(payloadDirectory, 'kolux-ide'),
             '#!/usr/bin/env bash\nprintf installed',
             {
               mode: 0o755
@@ -88,13 +88,13 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
   )
 
   it('does not remove a sibling AppImage registration or payload', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-appimage-cli-siblings-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-appimage-cli-siblings-'))
     created.push(root)
     const cacheRootPath = join(root, 'cache')
-    const commandPath = join(root, 'home', '.local', 'bin', 'nightshift-ide')
+    const commandPath = join(root, 'home', '.local', 'bin', 'kolux-ide')
     const resourcesPath = join(root, 'mount', 'resources')
-    const firstAppImagePath = join(root, 'Nightshift-stable.AppImage')
-    const secondAppImagePath = join(root, 'Nightshift-nightly.AppImage')
+    const firstAppImagePath = join(root, 'Kolux-stable.AppImage')
+    const secondAppImagePath = join(root, 'Kolux-nightly.AppImage')
     await mkdir(join(resourcesPath, 'bin'), { recursive: true })
     await Promise.all([
       writeFile(firstAppImagePath, '#!/usr/bin/env bash\n', { mode: 0o755 }),
@@ -105,7 +105,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
       isPackaged: true,
       userDataPath: join(root, 'user-data'),
       resourcesPath,
-      execPath: join(root, 'mount', 'nightshift-ide'),
+      execPath: join(root, 'mount', 'kolux-ide'),
       appPath: join(resourcesPath, 'app.asar'),
       homePath: join(root, 'home'),
       processPathEnv: join(root, 'home', '.local', 'bin'),
@@ -115,7 +115,7 @@ describe.skipIf(process.platform === 'win32')('AppImage CLI removal', () => {
       appImageExtractRunner: async (_path, cwd) => {
         const payloadDirectory = join(cwd, 'squashfs-root', 'resources', 'bin')
         await mkdir(payloadDirectory, { recursive: true })
-        await writeFile(join(payloadDirectory, 'nightshift-ide'), content, { mode: 0o755 })
+        await writeFile(join(payloadDirectory, 'kolux-ide'), content, { mode: 0o755 })
       }
     })
     class HookedInstaller extends CliInstaller {

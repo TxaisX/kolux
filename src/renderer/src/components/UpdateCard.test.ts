@@ -25,8 +25,8 @@ const RICH_CHANGELOG: ChangelogData = {
   release: {
     title: 'Inline Diffs',
     description: 'Review diffs without leaving the terminal.',
-    mediaUrl: 'https://nightshift.invalid/media/inline-diffs.png',
-    releaseNotesUrl: 'https://nightshift.invalid/changelog/1.2.0'
+    mediaUrl: 'https://kolux.invalid/media/inline-diffs.png',
+    releaseNotesUrl: 'https://kolux.invalid/changelog/1.2.0'
   },
   releasesBehind: 3
 }
@@ -508,7 +508,7 @@ describe('UpdateCard visibility gates', () => {
       computeVisibility({
         status: {
           state: 'error',
-          message: 'Quit Nightshift before running the system package install command.',
+          message: 'Quit Kolux before running the system package install command.',
           recovery: {
             kind: 'linux-package-install',
             packageType: 'deb',

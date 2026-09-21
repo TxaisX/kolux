@@ -11,7 +11,7 @@ import { useMountedRef } from '@/hooks/useMountedRef'
 function copiedNote(packageFileName: string): string {
   return translate(
     'auto.components.LinuxPackageInstallRecoveryCard.aa57fa4f80',
-    'Command copied. Quit Nightshift, run it in a system terminal to install {{value0}}, then reopen Nightshift.',
+    'Command copied. Quit Kolux, run it in a system terminal to install {{value0}}, then reopen Kolux.',
     {
       value0: packageFileName
     }
@@ -43,11 +43,11 @@ export function LinuxPackageInstallRecoveryCard({
   )
   const SUMMARY = translate(
     'auto.components.LinuxPackageInstallRecoveryCard.a7ac6ec78b',
-    'Nightshift downloaded the system package. Quit Nightshift before finishing the update from a terminal.'
+    'Kolux downloaded the system package. Quit Kolux before finishing the update from a terminal.'
   )
   const EXPLAINER = translate(
     'auto.components.LinuxPackageInstallRecoveryCard.82c6dbea00',
-    'Copy the command, quit Nightshift, and run it in a system terminal on the computer where Nightshift is installed. Reopen Nightshift after it finishes.'
+    'Copy the command, quit Kolux, and run it in a system terminal on the computer where Kolux is installed. Reopen Kolux after it finishes.'
   )
   const AGENT_NOTE = translate(
     'auto.components.LinuxPackageInstallRecoveryCard.53c4b8e148',
@@ -55,7 +55,7 @@ export function LinuxPackageInstallRecoveryCard({
   )
   const TRUST_NOTE = translate(
     'auto.components.LinuxPackageInstallRecoveryCard.b7e7c5bc95',
-    'Nightshift checks the downloaded file against the release metadata at the moment it builds this command. The system package itself is not signature-checked, and Nightshift cannot vouch for the file after that point.'
+    'Kolux checks the downloaded file against the release metadata at the moment it builds this command. The system package itself is not signature-checked, and Kolux cannot vouch for the file after that point.'
   )
   const CHECKING_LABEL = translate(
     'auto.components.LinuxPackageInstallRecoveryCard.c732bcbf8f',

@@ -5,12 +5,12 @@ import {
   registerUpdaterBeforeUnloadBypass
 } from './updater-beforeunload'
 import {
-  NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
-  NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
+  KOLUX_APP_RESTART_ABORTED_EVENT,
+  KOLUX_APP_RESTART_STARTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
 } from '../../../shared/updater-renderer-events'
-import { NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT } from '../../../shared/renderer-shutdown-events'
+import { KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT } from '../../../shared/renderer-shutdown-events'
 
 type WindowEventStub = Pick<Window, 'addEventListener' | 'removeEventListener' | 'dispatchEvent'>
 
@@ -32,11 +32,11 @@ describe('registerUpdaterBeforeUnloadBypass', () => {
     const cleanup = registerUpdaterBeforeUnloadBypass()
     expect(isUpdaterQuitAndInstallInProgress()).toBe(false)
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT))
     expect(isUpdaterQuitAndInstallInProgress()).toBe(true)
     expect(isIntentionalAppRestartInProgress()).toBe(true)
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT))
     expect(isUpdaterQuitAndInstallInProgress()).toBe(false)
     expect(isIntentionalAppRestartInProgress()).toBe(false)
 
@@ -47,11 +47,11 @@ describe('registerUpdaterBeforeUnloadBypass', () => {
     const cleanup = registerUpdaterBeforeUnloadBypass()
     expect(isIntentionalAppRestartInProgress()).toBe(false)
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_STARTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_APP_RESTART_STARTED_EVENT))
     expect(isIntentionalAppRestartInProgress()).toBe(true)
     expect(isUpdaterQuitAndInstallInProgress()).toBe(true)
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_APP_RESTART_ABORTED_EVENT))
     expect(isIntentionalAppRestartInProgress()).toBe(false)
 
     cleanup()
@@ -60,8 +60,8 @@ describe('registerUpdaterBeforeUnloadBypass', () => {
   it('ends restart progress when the shutdown checkpoint aborts preparation', () => {
     const cleanup = registerUpdaterBeforeUnloadBypass()
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_STARTED_EVENT))
-    window.dispatchEvent(new Event(NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_APP_RESTART_STARTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT))
 
     expect(isIntentionalAppRestartInProgress()).toBe(false)
     cleanup()
@@ -70,7 +70,7 @@ describe('registerUpdaterBeforeUnloadBypass', () => {
   it('resets the bypass flag during cleanup', () => {
     const cleanup = registerUpdaterBeforeUnloadBypass()
 
-    window.dispatchEvent(new Event(NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT))
     expect(isUpdaterQuitAndInstallInProgress()).toBe(true)
 
     cleanup()

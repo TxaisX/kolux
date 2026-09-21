@@ -1,4 +1,4 @@
-import type { NightshiftVmRecipe } from '../../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../../shared/kolux-yaml-hook-types'
 import { parsePluginVmRecipeArtifact } from '../../shared/plugins/plugin-vm-recipe-artifact'
 import {
   PLUGIN_VM_RECIPE_MAX_BYTES,
@@ -16,7 +16,7 @@ const VM_RECIPE_LOAD_CONCURRENCY = 4
 
 export type PluginVmRecipeRegistration = {
   pluginKey: string
-  recipe: NightshiftVmRecipe
+  recipe: KoluxVmRecipe
 }
 
 type VmRecipeLoadResult =

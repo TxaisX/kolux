@@ -76,7 +76,7 @@
         "0e587e31fb": "yaml",
         "2132b670da": "both",
         "7711ad5122": "Local setup command",
-        "addHostHint": "Register another machine or Nightshift server",
+        "addHostHint": "Register another machine or Kolux server",
         "cloneDestinationPlaceholder": "/parent/directory/on/host",
         "cloneHostSetup": "Clone",
         "cloneProjectOnHost": "Clone project",
@@ -205,7 +205,7 @@
         "ArtifactsPage": {
           "openArtifact": "Open artifact",
           "signInCopy": "Sign in to view and manage artifacts shared through your account.",
-          "signInHeading": "Sign in to Nightshift"
+          "signInHeading": "Sign in to Kolux"
         },
         "artifact-publish-flow": {
           "5cb4f5ec36": "Copy link"
@@ -340,7 +340,7 @@
         "report": {
           "CrashReportDialog": {
             "56a3dfa283": "Failed to send crash report.",
-            "835037edc9": "· Nightshift",
+            "835037edc9": "· Kolux",
             "b175e90213": "No crash report is available.",
             "b2e36f53a1": "Failed to send crash report. Diagnostic ticket {{value0}} was uploaded but not linked."
           }
@@ -470,7 +470,7 @@
                 }
               },
               "steps": {
-                "description": "Enable agents to manage and coordinate Nightshift workspaces to execute larger tasks.",
+                "description": "Enable agents to manage and coordinate Kolux workspaces to execute larger tasks.",
                 "name": "Orchestration",
                 "subtitle": "Orchestration"
               },
@@ -581,7 +581,7 @@
             "c3b81ddea2": "DRAFT_ISSUE"
           },
           "ProjectViewWrapper": {
-            "1bf8c01c8b": "Switch to a Table view to work with this project in Nightshift."
+            "1bf8c01c8b": "Switch to a Table view to work with this project in Kolux."
           }
         }
       },
@@ -651,18 +651,18 @@
           "a74c6d6b18": "not-installed"
         },
         "NotificationStep": {
-          "2c47f5465f": "Turn on Allow notifications for Nightshift in System Settings. This step updates automatically once enabled.",
+          "2c47f5465f": "Turn on Allow notifications for Kolux in System Settings. This step updates automatically once enabled.",
           "8124d085a6": "Open Mac Settings",
           "94562ba367": "macOS is asking for permission. Click Allow in the dialog and this step updates automatically.",
-          "aa36281b00": "Open System Settings and make sure Nightshift is allowed to send notifications.",
-          "d2dba86837": "Allow Nightshift in macOS"
+          "aa36281b00": "Open System Settings and make sure Kolux is allowed to send notifications.",
+          "d2dba86837": "Allow Kolux in macOS"
         },
         "OnboardingFlow": {
           "35bbaf5ae0": "notifications",
           "984338477a": "theme",
           "a5e5da02f7": "integrations",
           "c47e1bd149": "agent",
-          "ff92d15436": "Nightshift will notify you know when agents are done or need help."
+          "ff92d15436": "Kolux will notify you know when agents are done or need help."
         },
         "ThemeStep": {
           "ad19e5c916": "Importing…"
@@ -839,10 +839,10 @@
             "tooManyChanges": "Too many changes detected. Only the first {{value0}} changes are shown."
           },
           "SourceControlAgentActionDialogForm": {
-            "1bb611240f": "Use {basePrompt} for Nightshift's default prompt.",
+            "1bb611240f": "Use {basePrompt} for Kolux's default prompt.",
             "3e8f21954f": "error",
             "74168d7ada": "idle",
-            "d8f40128ee": "{basePrompt} is Nightshift's default prompt."
+            "d8f40128ee": "{basePrompt} is Kolux's default prompt."
           },
           "activity": {
             "bar": {
@@ -890,7 +890,7 @@
                   "title": "{{provider}} authentication failed"
                 },
                 "auth_required": {
-                  "body": "{{provider}} must be connected in this environment before Nightshift can create a {{reviewLabel}}.",
+                  "body": "{{provider}} must be connected in this environment before Kolux can create a {{reviewLabel}}.",
                   "title": "Connect {{provider}}"
                 },
                 "base_missing": {
@@ -898,7 +898,7 @@
                   "title": "Base branch not on remote"
                 },
                 "cli": {
-                  "body": "Nightshift could not run {{provider}} CLI in this environment. Set it up here, then retry.",
+                  "body": "Kolux could not run {{provider}} CLI in this environment. Set it up here, then retry.",
                   "title": "{{provider}} CLI unavailable"
                 },
                 "default_branch": {
@@ -914,7 +914,7 @@
                   "title": "Commit changes first"
                 },
                 "fork": {
-                  "body": "Nightshift cannot create a {{reviewLabel}} from this fork head here.",
+                  "body": "Kolux cannot create a {{reviewLabel}} from this fork head here.",
                   "title": "Fork head unsupported"
                 },
                 "needs_sync": {
@@ -935,7 +935,7 @@
                 },
                 "skipped": {
                   "archived": {
-                    "body": "This repository is archived, so Nightshift is not refreshing {{reviewLabel}} status.",
+                    "body": "This repository is archived, so Kolux is not refreshing {{reviewLabel}} status.",
                     "title": "Repository archived"
                   },
                   "bare": {
@@ -943,20 +943,20 @@
                     "title": "Bare repository"
                   },
                   "disconnected": {
-                    "body": "This repository's execution host is disconnected, so Nightshift cannot refresh {{reviewLabel}} status.",
+                    "body": "This repository's execution host is disconnected, so Kolux cannot refresh {{reviewLabel}} status.",
                     "title": "Host disconnected"
                   },
                   "not_git": {
-                    "body": "Nightshift could not treat this folder as a Git repository for {{reviewLabel}} status.",
+                    "body": "Kolux could not treat this folder as a Git repository for {{reviewLabel}} status.",
                     "title": "Not a Git repository"
                   },
                   "remote": {
-                    "body": "Nightshift could not refresh {{reviewLabel}} status for this remote context. Retry after the host is available.",
+                    "body": "Kolux could not refresh {{reviewLabel}} status for this remote context. Retry after the host is available.",
                     "title": "Remote-only context"
                   }
                 },
                 "unsupported": {
-                  "body": "This repository provider does not support creating a {{reviewLabel}} from Nightshift.",
+                  "body": "This repository provider does not support creating a {{reviewLabel}} from Kolux.",
                   "title": "{{reviewLabelCap}} not supported here"
                 }
               }
@@ -1053,7 +1053,7 @@
           "1fd1b1b6b4": "Cookie not set",
           "3455cf43fa": "Claude login.",
           "350b2a1aa7": "Use your current",
-          "4e32e030b2": "Stored locally. Nightshift sends it only to platform.minimax.io for usage refreshes.",
+          "4e32e030b2": "Stored locally. Kolux sends it only to platform.minimax.io for usage refreshes.",
           "566d9a99ab": "_token=…; minimax_group_id_v2=…",
           "5e08b0fe57": "Stored locally and sent only to platform.minimax.io for usage refreshes.",
           "79418c782a": "Open platform.minimax.io/console/usage in your browser, sign in, then copy the Cookie request header from DevTools (Network → any remains request → Cookie).",
@@ -1090,11 +1090,11 @@
           "df123171d1": "Not installed"
         },
         "AppearancePane": {
-          "0f28e7b30c": "Choose how Nightshift looks in the app window.",
-          "2df8f79aa5": "Show Nightshift in the titlebar.",
-          "42554f615f": "Choose the font used by the Nightshift interface.",
+          "0f28e7b30c": "Choose how Kolux looks in the app window.",
+          "2df8f79aa5": "Show Kolux in the titlebar.",
+          "42554f615f": "Choose the font used by the Kolux interface.",
           "4de76f6902": "Control what appears in the application titlebar.",
-          "5db6ba961f": "Show the Nightshift Mobile button at the top of the left sidebar.",
+          "5db6ba961f": "Show the Kolux Mobile button at the top of the left sidebar.",
           "622e1c3465": "Scale the entire application interface.",
           "661942ab7f": "Show the Tasks button at the top of the left sidebar.",
           "6a272ca553": "Titlebar",
@@ -1113,7 +1113,7 @@
         "AutoRenameBranchPromptEditor": {
           "0691753cf2": "Unsaved changes",
           "182d419b97": "built-in branch-name prompt",
-          "2f5dc661fe": "Appended to Nightshift's",
+          "2f5dc661fe": "Appended to Kolux's",
           "39278f4411": "; your branch prefix setting still applies.",
           "4416b25d29": "Prefer domain nouns from the task, avoid ticket IDs, and keep names reviewer-friendly.",
           "54ac229ad4": "Saving...",
@@ -1121,7 +1121,7 @@
           "63121132c0": "Discard",
           "7d6176f506": "Prompt",
           "af0831a590": "Saved",
-          "af2d9a2cc6": ". Nightshift generates only the final segment, like",
+          "af2d9a2cc6": ". Kolux generates only the final segment, like",
           "ebb942a2ec": "fix-login-flow"
         },
         "BrowserPane": {
@@ -1144,7 +1144,7 @@
         },
         "CliSkillRuntimeSetup": {
           "04325573f8": "WSL",
-          "0c9f3cf9da": "Choose where Nightshift checks and installs global agent skills.",
+          "0c9f3cf9da": "Choose where Kolux checks and installs global agent skills.",
           "7c776ff9d8": "wsl",
           "a58ba464ad": "Skill location",
           "f00d6aa9b5": "WSL is not available on this machine."
@@ -1203,7 +1203,7 @@
           "a0832ccdb1": "downloaded"
         },
         "GeneralWorkspaceSettingsSection": {
-          "externalWorktreesDescription": "Choose whether worktrees created outside Nightshift appear by default.",
+          "externalWorktreesDescription": "Choose whether worktrees created outside Kolux appear by default.",
           "hide": "Hide",
           "show": "Show"
         },
@@ -1211,7 +1211,7 @@
           "f35007e6e8": "git-username"
         },
         "GrokAccountsSection": {
-          "c3d4e5f6a7": "Signed in. Nightshift only reads that file on disk — run grok login again if usage fails.",
+          "c3d4e5f6a7": "Signed in. Kolux only reads that file on disk — run grok login again if usage fails.",
           "d4e5f6a7b8": "Session expired — run grok login in a terminal to refresh."
         },
         "IntegrationsPane": {
@@ -1222,7 +1222,7 @@
           "0879860c58": "Pull requests and build statuses via Bitbucket Cloud API tokens.",
           "09285e9fe6": "The GitHub CLI is installed but not authenticated. Run this command in a terminal:",
           "15cf990798": "Not authenticated",
-          "1a62c295c6": "Gitea credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Nightshift if environment variables changed.",
+          "1a62c295c6": "Gitea credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Kolux if environment variables changed.",
           "1fac9b4910": "{{value0}} · Pull requests and commit statuses",
           "2122e15517": "Each connected Linear workspace has one key stored by the active runtime. Full-access keys can cover all teams the key owner can access; restricted keys can be replaced any time.",
           "264a9b6128": "Linear",
@@ -1233,8 +1233,8 @@
           "35a3379372": "Install the GitLab CLI to enable merge requests, issues, and pipelines.",
           "3614887c40": "checking",
           "399cf46867": "Install GitHub CLI",
-          "3c3cf05c63": "Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Nightshift if environment variables changed.",
-          "44cde4aa01": "NIGHTSHIFT_BITBUCKET_API_TOKEN",
+          "3c3cf05c63": "Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Kolux if environment variables changed.",
+          "44cde4aa01": "KOLUX_BITBUCKET_API_TOKEN",
           "45bf5e6e4b": "Auth failed",
           "4831ba1083": "Re-check",
           "4972f3c95d": "configured",
@@ -1243,23 +1243,23 @@
           "4ee74d1470": "Set",
           "51000487c4": "gh auth login",
           "513abfe47d": "GitLab",
-          "5a1f86225a": "only when Nightshift cannot derive the API URL from the remote.",
-          "5ee6ef6405": "NIGHTSHIFT_AZURE_DEVOPS_TOKEN",
+          "5a1f86225a": "only when Kolux cannot derive the API URL from the remote.",
+          "5ee6ef6405": "KOLUX_AZURE_DEVOPS_TOKEN",
           "5efce6953d": "Azure DevOps",
-          "6193444689": "NIGHTSHIFT_GITEA_API_BASE_URL",
+          "6193444689": "KOLUX_GITEA_API_BASE_URL",
           "62b20292de": "error",
           "6355fe585e": "Pull requests and commit statuses for detected repositories",
           "6432f6522e": "Connected",
           "6791d7af95": "Pull requests and build statuses via Azure DevOps REST API tokens.",
           "67a9f26a80": ". Set",
           "6bd148dcb5": "Pull requests and commit statuses via the Gitea REST API.",
-          "6e0ff3403e": "NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN",
-          "6f317f5132": "only when Nightshift cannot derive the API base URL from the git remote.",
+          "6e0ff3403e": "KOLUX_BITBUCKET_ACCESS_TOKEN",
+          "6f317f5132": "only when Kolux cannot derive the API base URL from the git remote.",
           "70c5f74f36": "GitHub",
           "8489c0aa49": "Bitbucket",
           "8e078e480c": "Disconnect {{value0}}",
-          "8f960935c1": "NIGHTSHIFT_AZURE_DEVOPS_ACCESS_TOKEN",
-          "953b7bf6f7": "Azure DevOps credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Nightshift if environment variables changed.",
+          "8f960935c1": "KOLUX_AZURE_DEVOPS_ACCESS_TOKEN",
+          "953b7bf6f7": "Azure DevOps credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Kolux if environment variables changed.",
           "95b9a87e7e": "Test",
           "9707523939": "Pull requests and build statuses",
           "98ded79cd7": "{{value0}} workspace{{value1}} connected",
@@ -1268,15 +1268,15 @@
           "a6c2816115": "and",
           "a83cac5726": "Install GitLab CLI",
           "ae38fc62a8": "ok",
-          "ae6b7f5f40": "NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL",
-          "b8a7efb3f6": "NIGHTSHIFT_BITBUCKET_EMAIL",
+          "ae6b7f5f40": "KOLUX_AZURE_DEVOPS_API_BASE_URL",
+          "b8a7efb3f6": "KOLUX_BITBUCKET_EMAIL",
           "c0c8575e05": "Install the GitHub CLI to enable pull requests, issues, and checks.",
           "ce3c58cd63": ", or set",
           "d9467ab026": "Public repositories are detected from their git remote. Set",
           "de6a0d13ab": "Pull requests, issues, and checks via the",
           "e1bd5364e6": "Optional setup",
           "e3d5a24979": "Pull requests and build statuses for detected Azure Repos",
-          "e678d89e8c": "NIGHTSHIFT_GITEA_TOKEN",
+          "e678d89e8c": "KOLUX_GITEA_TOKEN",
           "e74de656ce": "glab auth login",
           "e7a961e1c5": "Configured",
           "e7b2dd46f9": "Testing…",
@@ -1298,11 +1298,11 @@
         },
         "MobileEmulatorAgentControlRow": {
           "1861982430": "Failed to load CLI status.",
-          "cdeaed9e37": "Registered the Nightshift CLI in PATH."
+          "cdeaed9e37": "Registered the Kolux CLI in PATH."
         },
         "MobileEmulatorSdkStatus": {
           "536026130e": "Emulator SDKs",
-          "dde0ec1cd8": "Toolchains Nightshift uses to run emulators. Android works on any OS via the Android SDK; iOS Simulators need Xcode on macOS."
+          "dde0ec1cd8": "Toolchains Kolux uses to run emulators. Android works on any OS via the Android SDK; iOS Simulators need Xcode on macOS."
         },
         "MobileNetworkInterfaceSection": {
           "1dc87a7fbc": "Tailscale",
@@ -1311,10 +1311,10 @@
           "39fad211d9": "Connect outside your Wi-Fi with a tailnet",
           "406a35121c": "Network Interface",
           "51d29927eb": "Install",
-          "63d5e4ae1e": "Regenerate the QR code and scan it from the Nightshift mobile app.",
+          "63d5e4ae1e": "Regenerate the QR code and scan it from the Kolux mobile app.",
           "668016be7a": "on your computer and phone.",
           "87985ba6f5": "In this Network Interface menu, choose the Tailscale address, usually a 100.x.y.z IP.",
-          "9fc5d203ff": "Nightshift Mobile connects directly to this computer. To use it away from the same LAN, put your computer and phone on the same private overlay network, then generate the QR code with that network address selected.",
+          "9fc5d203ff": "Kolux Mobile connects directly to this computer. To use it away from the same LAN, put your computer and phone on the same private overlay network, then generate the QR code with that network address selected.",
           "a9db5d771d": "Refresh network interfaces",
           "c541f67790": "Generate QR Code",
           "d536b5e20d": "Choose which network address to advertise in the QR code. Use your LAN address for same-network pairing, or an overlay network address (Tailscale, ZeroTier) for cross-network access."
@@ -1323,7 +1323,7 @@
           "relayDegradedNotice": "Relay couldn’t be reached — this code only works on your LAN or Tailscale. Regenerate to try again."
         },
         "MobileRelayBetaAvailability": {
-          "about": "About the Nightshift Relay beta",
+          "about": "About the Kolux Relay beta",
           "androidApk": "Android APK",
           "availability": "Available on",
           "beta": "Beta",
@@ -1340,13 +1340,13 @@
           "signIn": "Sign in",
           "signInPrompt": "Sign in on this desktop to connect from anywhere",
           "standby": "Standby — no relay devices",
-          "title": "Nightshift Relay",
+          "title": "Kolux Relay",
           "unavailable": "Unavailable"
         },
         "MobileSettingsPane": {
           "9a3c280e49": "GitHub Releases",
           "b0088412a1": "or the Android APK from",
-          "c8491c17ef": "Control Nightshift from your phone by scanning a QR code. Beta / early preview - expect bugs and breaking changes. Get the iOS app from the"
+          "c8491c17ef": "Control Kolux from your phone by scanning a QR code. Beta / early preview - expect bugs and breaking changes. Get the iOS app from the"
         },
         "NotificationsPane": {
           "274af61bc0": "system",
@@ -1422,12 +1422,12 @@
           "54ebacc600": "Server name",
           "55fcc964cd": "on the server and paste the printed pairing URL.",
           "7b5986c8df": "Saved {{value0}}. Use Active Server to switch when ready.",
-          "8cf8790697": "Saved servers route this browser through a paired Nightshift runtime.",
-          "960e901ae4": "nightshift serve --pairing-address <host>",
+          "8cf8790697": "Saved servers route this browser through a paired Kolux runtime.",
+          "960e901ae4": "kolux serve --pairing-address <host>",
           "9bc9b83474": "Pairing code",
-          "9f7665a01b": "Removing the active server first switches Nightshift back to Local desktop. Existing host sessions are left alone.",
+          "9f7665a01b": "Removing the active server first switches Kolux back to Local desktop. Existing host sessions are left alone.",
           "b2fda48c39": "Removing the active server disconnects this browser from that host. Existing host sessions are left alone.",
-          "c3d772c514": "nightshift://pair?code=...",
+          "c3d772c514": "kolux://pair?code=...",
           "e038625857": "Dev box",
           "f3a3d6d834": "{{value0}} capabilities",
           "f75ce1c7a5": "Local keeps today's desktop behavior. Saved servers route supported client calls through the remote runtime.",
@@ -1463,14 +1463,14 @@
         },
         "SshPane": {
           "94c5284560": "Targets",
-          "a7d28dff81": "Add a remote host to connect to it in Nightshift."
+          "a7d28dff81": "Add a remote host to connect to it in Kolux."
         },
         "SshTargetCard": {
           "47e94bd6ba": "connected",
           "f0871e6bfb": "connect"
         },
         "SshTargetForm": {
-          "137e88ce8d": "Remote terminals keep running after Nightshift disconnects from this host.",
+          "137e88ce8d": "Remote terminals keep running after Kolux disconnects from this host.",
           "29af933cd5": "New SSH Target",
           "4a342f44c1": "Advanced Connection",
           "92f80edbfd": "Remote Terminal Persistence",
@@ -1539,9 +1539,9 @@
         },
         "agent-awake-copy": {
           "95d3031db2": "Keeps this computer and display awake while agents are working. Lid-close behavior follows this device's power settings.",
-          "a42f6fbdd8": "Keeps this computer and display awake while agents are working. Nightshift also asks this device to stay awake when the lid is closed, subject to its power policy.",
+          "a42f6fbdd8": "Keeps this computer and display awake while agents are working. Kolux also asks this device to stay awake when the lid is closed, subject to its power policy.",
           "e5995ce268": "Keep computer awake while agents are working",
-          "modeDescriptionDefault": "Choose On, Agent, or Off. Agent mode stays awake while agents are working. Nightshift also asks this device to stay awake when the lid is closed, subject to its power policy.",
+          "modeDescriptionDefault": "Choose On, Agent, or Off. Agent mode stays awake while agents are working. Kolux also asks this device to stay awake when the lid is closed, subject to its power policy.",
           "modeDescriptionWindows": "Choose On, Agent, or Off. Agent mode stays awake while agents are working; lid-close behavior follows this device's power settings.",
           "modeTitle": "Keep computer awake"
         },
@@ -1551,7 +1551,7 @@
         },
         "agent-status-hooks-copy": {
           "7707c15abb": "Agent status hooks",
-          "a68a642835": "Shows working, waiting, and done states in Nightshift. Turn off to remove Nightshift-managed hooks and stop reinstalling them."
+          "a68a642835": "Shows working, waiting, and done states in Kolux. Turn off to remove Kolux-managed hooks and stop reinstalling them."
         },
         "agents": {
           "search": {
@@ -1598,7 +1598,7 @@
           }
         },
         "artifacts": {
-          "account": "Nightshift account",
+          "account": "Kolux account",
           "connected": "Connected",
           "enable": "Enable Artifacts",
           "enableDescription": "Add Artifacts to the sidebar so you can open and delete shared files.",
@@ -1617,7 +1617,7 @@
         "bitbucket": {
           "credentials": {
             "dialog": {
-              "remoteRuntime": "Bitbucket credentials saved here are stored on this local machine only. Set NIGHTSHIFT_BITBUCKET_* environment variables on the remote runtime instead."
+              "remoteRuntime": "Bitbucket credentials saved here are stored on this local machine only. Set KOLUX_BITBUCKET_* environment variables on the remote runtime instead."
             }
           }
         },
@@ -1669,7 +1669,7 @@
             "c61b14be7c": "grok",
             "db11502270": "Default Agent",
             "e2da948f59": "Pre-select an AI coding agent in the new-workspace composer.",
-            "e3b1d42f95": "Proxy URL for Nightshift network requests and local terminal children.",
+            "e3b1d42f95": "Proxy URL for Kolux network requests and local terminal children.",
             "e55d62dfa4": "launchpad",
             "eb8946b2c9": "Hosts that should bypass the configured HTTP proxy.",
             "f472e97440": "aider"
@@ -1734,7 +1734,7 @@
           "environments": {
             "search": {
               "3517fb2ec0": "Active Server",
-              "4575341c77": "Choose local desktop, add a saved remote Nightshift server, or generate a pairing URL."
+              "4575341c77": "Choose local desktop, add a saved remote Kolux server, or generate a pairing URL."
             }
           }
         },
@@ -1771,10 +1771,10 @@
             "control": {
               "integration": {
                 "cards": {
-                  "19416c874c": "NIGHTSHIFT_BITBUCKET_API_TOKEN",
-                  "63a7f47392": "NIGHTSHIFT_BITBUCKET_EMAIL",
+                  "19416c874c": "KOLUX_BITBUCKET_API_TOKEN",
+                  "63a7f47392": "KOLUX_BITBUCKET_EMAIL",
                   "a924e8dcd1": "Pull requests and build statuses via Bitbucket Cloud API tokens.",
-                  "e63fe8f627": "NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN",
+                  "e63fe8f627": "KOLUX_BITBUCKET_ACCESS_TOKEN",
                   "fc71a0e7aa": "and",
                   "statusAuthFailed": "Auth failed",
                   "statusConfigured": "Configured",
@@ -1811,7 +1811,7 @@
       "sidebar": {
         "AddRemoteHostDialog": {
           "pairingCode": "Pairing code",
-          "pairingCommand": "nightshift serve --pairing-address <host>",
+          "pairingCommand": "kolux serve --pairing-address <host>",
           "pairingHelpPrefix": "Run",
           "pairingHelpSuffix": "on the server and paste the printed pairing URL.",
           "serverName": "Server name",
@@ -1820,7 +1820,7 @@
           "sshPersistenceDefault": "Remote terminals on this host stay alive until you end them or reset the relay."
         },
         "AddRepoHostSelector": {
-          "addRemoteHostTooltip": "Choose SSH for a machine you can log into, or remote server for a Nightshift server.",
+          "addRemoteHostTooltip": "Choose SSH for a machine you can log into, or remote server for a Kolux server.",
           "local": "Local",
           "runtime": "Server",
           "ssh": "SSH"
@@ -1849,7 +1849,7 @@
           "63f36455cc": "Reconnect"
         },
         "LinearAgentSkillSetupPrompt": {
-          "missingBoth": "Nightshift CLI and Linear agent skill are missing.",
+          "missingBoth": "Kolux CLI and Linear agent skill are missing.",
           "panelDescription": "Install the host agent skill for linked Linear task handoffs.",
           "panelTitle": "Linear agent skill"
         },
@@ -1863,7 +1863,7 @@
         "ProjectGroupDeleteDialog": {
           "897e5d3d4c": "Delete Group and Remove Projects",
           "9be10d49ea": "and ungroup its projects.",
-          "eeabb8e8e4": "Remove {{value0}} contained {{value1}} from Nightshift"
+          "eeabb8e8e4": "Remove {{value0}} contained {{value1}} from Kolux"
         },
         "ProjectOrderManualDefaultNotice": {
           "822ff300ad": "Dismiss",
@@ -1978,8 +1978,8 @@
                 "0e0379f24a_other": "{{count}} branches kept",
                 "6310412304_one": "Review {{count}} Branch",
                 "6310412304_other": "Review {{count}} Branches",
-                "a3cdd9d9e6_one": "Git kept {{count}} local branch because it may contain unmerged commits. Kept branches do not retain workspace folders; their commits remain in the repository. Nightshift may continue freeing workspace disk space in the background.",
-                "a3cdd9d9e6_other": "Git kept {{count}} local branches because they may contain unmerged commits. Kept branches do not retain workspace folders; their commits remain in the repository. Nightshift may continue freeing workspace disk space in the background.",
+                "a3cdd9d9e6_one": "Git kept {{count}} local branch because it may contain unmerged commits. Kept branches do not retain workspace folders; their commits remain in the repository. Kolux may continue freeing workspace disk space in the background.",
+                "a3cdd9d9e6_other": "Git kept {{count}} local branches because they may contain unmerged commits. Kept branches do not retain workspace folders; their commits remain in the repository. Kolux may continue freeing workspace disk space in the background.",
                 "cea24c2b7d_one": "{{count}} workspace removed",
                 "cea24c2b7d_other": "{{count}} workspaces removed",
                 "d42f1f14e0_one": "Retry {{count}} Branch",
@@ -2037,18 +2037,18 @@
           "linkCopied": "Share link copied"
         },
         "SkillInstallDialog": {
-          "4a00d133c5": "Nightshift verifies access and package identity before changing the selected machine."
+          "4a00d133c5": "Kolux verifies access and package identity before changing the selected machine."
         },
         "SkillInstallManagementDialog": {
-          "070654c6d1": "Nightshift will preserve them unless you explicitly discard the local changes.",
+          "070654c6d1": "Kolux will preserve them unless you explicitly discard the local changes.",
           "1c9e7f420a": "Installed bundle skills",
           "2ae587d39c": "Retry incomplete coverage",
           "34c2ef9e71": "Install {{count}} skills",
-          "3677ae58e7": "Update, roll back, or safely remove versions installed by Nightshift.",
+          "3677ae58e7": "Update, roll back, or safely remove versions installed by Kolux.",
           "44d118a8f7": "Manage installed skills",
           "470d8d2476": "Confirm remove",
           "561e49ccd1": "Install selected version",
-          "64c71cf7b9": "No Nightshift-managed skill installs were found on this machine.",
+          "64c71cf7b9": "No Kolux-managed skill installs were found on this machine.",
           "74b70892ea": "Local files were modified",
           "86ed219b55": "Choose a version",
           "9c04bd0120": "Installed version",
@@ -2085,7 +2085,7 @@
           "descriptionV2": "Review the exact files, then publish an immutable version behind an unlisted link.",
           "newVersionDescription": "Review the exact files, then publish an immutable version to the existing Cloud package.",
           "peopleRequired": "Select at least one teammate.",
-          "readyDescription": "Recipients authenticate with Nightshift before they can inspect or install it.",
+          "readyDescription": "Recipients authenticate with Kolux before they can inspect or install it.",
           "readyDescriptionV2": "Anyone with this unlisted link can inspect and install the skills."
         },
         "SkillShareReviewContent": {
@@ -2216,10 +2216,10 @@
           "ResourceUsageStatusSegment": {
             "1b24a32d3a": "Memory",
             "4bb076fa89": "Kill",
-            "6449a95c78": "How much of this machine's physical RAM the Nightshift-tracked processes are sitting on.",
+            "6449a95c78": "How much of this machine's physical RAM the Kolux-tracked processes are sitting on.",
             "6d9793d4bc": "Resource Manager - Terminals",
             "996295bff2": "orphan terminal",
-            "9e2525c89f": "Resident memory held by Nightshift plus the processes under each worktree's terminals.",
+            "9e2525c89f": "Resident memory held by Kolux plus the processes under each worktree's terminals.",
             "e7ccce7e87": "of system RAM"
           },
           "SshStatusSegment": {
@@ -2447,7 +2447,7 @@
             "3eed73394f": "Your keyboard is paused"
           },
           "TerminalRemoteRuntimeReconnectBanner": {
-            "retryingBody": "Nightshift will retry for up to one minute. This terminal will resume if the connection returns."
+            "retryingBody": "Kolux will retry for up to one minute. This terminal will resume if the connection returns."
           },
           "TerminalSshReconnectOverlay": {
             "connectButton": "Connect",
@@ -2520,11 +2520,11 @@
             "d1094dd529": "Needs review",
             "d3eef9463d": "No inactive workspaces to delete.",
             "dba753e94f": "to delete",
-            "e0b5a4deaa": "Review inactive workspaces before deleting their local files and Nightshift state.",
+            "e0b5a4deaa": "Review inactive workspaces before deleting their local files and Kolux state.",
             "e94b1f8bb4": "Clear filters",
             "ee81adfcef": "View",
             "efb3843e75": "Filter and sort workspaces",
-            "f637f63882": "Resource Manager counts {{value0}}; this list found {{value1}}. That counter reads Nightshift's activity record alone, while this scan also checks each workspace's git history and skips disconnected remotes.",
+            "f637f63882": "Resource Manager counts {{value0}}; this list found {{value1}}. That counter reads Kolux's activity record alone, while this scan also checks each workspace's git history and skips disconnected remotes.",
             "f68d538c63": "No workspaces in this cleanup set.",
             "fc49f79434": "mixed",
             "gitFilter": "Git",
@@ -2557,7 +2557,7 @@
         "cookie": {
           "import": {
             "toast": {
-              "googleCookiesSkipped": "Google cookies were not imported. Open a browser in Nightshift on {{value0}} with this profile, then sign into Google."
+              "googleCookiesSkipped": "Google cookies were not imported. Open a browser in Kolux on {{value0}} with this profile, then sign into Google."
             }
           }
         }
@@ -2599,7 +2599,7 @@
           "4e6496f3d2": "{{value0}} deleted, branch kept",
           "670864ab52": "Keeping local {{value0}} up to date",
           "889487d8bb": "Dismiss",
-          "d1d78a7baa": "Git could not safely delete branch \"{{value0}}\"{{value1}}, so Nightshift kept it to avoid losing local commits.",
+          "d1d78a7baa": "Git could not safely delete branch \"{{value0}}\"{{value1}}, so Kolux kept it to avoid losing local commits.",
           "f4503ca505": "Open Settings > Git and try again.",
           "fa9299a66f": "Your new worktree is current, but local {{value0}} is {{value1}} {{value2}} behind. AI diffs may miss recent commits."
         }
@@ -2670,8 +2670,8 @@
     "onboarding": {
       "integrations": {
         "capabilities": {
-          "browseIssues": "Browse GitHub issues and pull requests in the Tasks view without leaving Nightshift",
-          "managePullRequests": "Read, comment on, and merge pull requests without leaving Nightshift",
+          "browseIssues": "Browse GitHub issues and pull requests in the Tasks view without leaving Kolux",
+          "managePullRequests": "Read, comment on, and merge pull requests without leaving Kolux",
           "reviewStatus": "See issue state, review status, and CI checks on every worktree",
           "startWorkspaceFromIssue": "Start a workspace from any GitHub issue or pull request, prefilled with its title and context"
         }
@@ -2746,11 +2746,11 @@
   "runtimeRpc": {
     "startupFailure": {
       "guidance": {
-        "addressInUse": "Another process may be holding the port. Restart Nightshift to try again.",
-        "invalidPath": "Nightshift's data folder may be missing, moved, or at a path that is too long. Restore it or use a shorter path, then restart Nightshift.",
-        "permissionDenied": "Nightshift couldn't write its runtime file. Check permissions on Nightshift's data folder, then restart.",
-        "storageUnavailable": "Your disk may be full or read-only. Free up space, then restart Nightshift.",
-        "unknown": "Restart Nightshift to try again."
+        "addressInUse": "Another process may be holding the port. Restart Kolux to try again.",
+        "invalidPath": "Kolux's data folder may be missing, moved, or at a path that is too long. Restore it or use a shorter path, then restart Kolux.",
+        "permissionDenied": "Kolux couldn't write its runtime file. Check permissions on Kolux's data folder, then restart.",
+        "storageUnavailable": "Your disk may be full or read-only. Free up space, then restart Kolux.",
+        "unknown": "Restart Kolux to try again."
       }
     }
   },

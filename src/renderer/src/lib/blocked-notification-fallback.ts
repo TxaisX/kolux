@@ -18,12 +18,12 @@ export function showBlockedNotificationFallbackToast(): void {
   toast.warning(
     translate(
       'auto.lib.blocked.notification.fallback.de50bef680',
-      'macOS is blocking Nightshift notifications'
+      'macOS is blocking Kolux notifications'
     ),
     {
       description: translate(
         'auto.components.onboarding.mac.notification.permission.card.721d2bedb6',
-        'Turn on Allow notifications for Nightshift in System Settings.'
+        'Turn on Allow notifications for Kolux in System Settings.'
       ),
       action: {
         label: translate(

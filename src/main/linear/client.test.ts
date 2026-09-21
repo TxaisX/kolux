@@ -26,10 +26,10 @@ function writeLegacyLinearFiles(token: string, viewer: Record<string, unknown>):
 }
 
 function writeLegacyLinearToken(token: string | Buffer, viewer: Record<string, unknown>): void {
-  const nightshiftDir = join(tempHome, '.nightshift')
-  mkdirSync(nightshiftDir, { recursive: true })
-  writeFileSync(join(nightshiftDir, 'linear-token.enc'), token)
-  writeFileSync(join(nightshiftDir, 'linear-viewer.json'), JSON.stringify(viewer), {
+  const koluxDir = join(tempHome, '.kolux')
+  mkdirSync(koluxDir, { recursive: true })
+  writeFileSync(join(koluxDir, 'linear-token.enc'), token)
+  writeFileSync(join(koluxDir, 'linear-viewer.json'), JSON.stringify(viewer), {
     encoding: 'utf-8'
   })
 }
@@ -37,7 +37,7 @@ function writeLegacyLinearToken(token: string | Buffer, viewer: Record<string, u
 function workspaceTokenPath(workspaceId: string): string {
   return join(
     tempHome,
-    '.nightshift',
+    '.kolux',
     'linear-tokens',
     `${Buffer.from(workspaceId).toString('base64url')}.enc`
   )
@@ -47,10 +47,10 @@ function writeMultiWorkspaceFiles(
   workspaces: { id: string; token: string | Buffer }[],
   selectedWorkspaceId: string
 ): void {
-  const nightshiftDir = join(tempHome, '.nightshift')
-  mkdirSync(join(nightshiftDir, 'linear-tokens'), { recursive: true })
+  const koluxDir = join(tempHome, '.kolux')
+  mkdirSync(join(koluxDir, 'linear-tokens'), { recursive: true })
   writeFileSync(
-    join(nightshiftDir, 'linear-workspaces.json'),
+    join(koluxDir, 'linear-workspaces.json'),
     JSON.stringify({
       version: 1,
       activeWorkspaceId: workspaces[0]?.id ?? null,
@@ -115,7 +115,7 @@ async function loadClientModule(options: SafeStorageMockOptions = {}) {
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('nightshift-linear-client-')
+  tempHome = mkdtempLike('kolux-linear-client-')
   fixtures = new Map([
     [
       'token-alpha',
@@ -212,10 +212,10 @@ describe('Linear client workspace storage', () => {
       workspaces: [{ id: 'org-alpha', organizationName: 'Alpha' }]
     })
     expect(status.workspaces?.some((workspace) => workspace.id === 'legacy')).toBe(false)
-    expect(existsSync(join(tempHome, '.nightshift', 'linear-token.enc'))).toBe(false)
-    expect(
-      readFileSync(join(tempHome, '.nightshift', 'linear-workspaces.json'), 'utf-8')
-    ).toContain('org-alpha')
+    expect(existsSync(join(tempHome, '.kolux', 'linear-token.enc'))).toBe(false)
+    expect(readFileSync(join(tempHome, '.kolux', 'linear-workspaces.json'), 'utf-8')).toContain(
+      'org-alpha'
+    )
   })
 
   it('preserves plaintext legacy token fallback when safeStorage cannot decrypt it', async () => {
@@ -240,7 +240,7 @@ describe('Linear client workspace storage', () => {
   })
 
   it('does not pass encrypted safeStorage bytes to the Linear SDK when encryption is unavailable', async () => {
-    const tokenPath = join(tempHome, '.nightshift', 'linear-token.enc')
+    const tokenPath = join(tempHome, '.kolux', 'linear-token.enc')
     writeLegacyLinearToken(Buffer.from([0x76, 0x31, 0x30, 0xff, 0xfe]), {
       displayName: 'Ada',
       email: 'ada@example.com',
@@ -265,7 +265,7 @@ describe('Linear client workspace storage', () => {
   })
 
   it('does not clear the Linear token when safeStorage decryption fails', async () => {
-    const tokenPath = join(tempHome, '.nightshift', 'linear-token.enc')
+    const tokenPath = join(tempHome, '.kolux', 'linear-token.enc')
     writeLegacyLinearToken(Buffer.from([0x76, 0x31, 0x30, 0xff, 0xfe]), {
       displayName: 'Ada',
       email: 'ada@example.com',

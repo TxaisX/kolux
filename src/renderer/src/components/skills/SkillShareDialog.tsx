@@ -32,11 +32,11 @@ function operationError(status: string): string {
   return status === 'reconnect-required'
     ? translate(
         'auto.components.skills.SkillShareDialog.reconnect',
-        'Reconnect your Nightshift account before sharing.'
+        'Reconnect your Kolux account before sharing.'
       )
     : translate(
         'auto.components.skills.SkillShareDialog.unconfigured',
-        'Connect a Nightshift Cloud account before sharing.'
+        'Connect a Kolux Cloud account before sharing.'
       )
 }
 
@@ -94,7 +94,7 @@ export function SkillShareDialog({
         ...(managedInstall ? { packageId: managedInstall.packageId } : {})
       })
       retainedPreparationId = nextPreview.preparationId
-      const auth = await window.api.nightshiftProfiles.authStatus()
+      const auth = await window.api.koluxProfiles.authStatus()
       return { nextPreview, auth, managedInstall }
     })()
       .then(async ({ nextPreview, auth, managedInstall }) => {
@@ -234,7 +234,7 @@ export function SkillShareDialog({
       setError(
         translate(
           'auto.components.skills.SkillShareDialog.cancelRequestFailed',
-          'Nightshift could not send the cancellation request. The upload may still finish.'
+          'Kolux could not send the cancellation request. The upload may still finish.'
         )
       )
     }

@@ -1,5 +1,5 @@
 import type { Locator } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { openChecks } from './helpers/source-control-ai-generation'
 import { seedPRCommentsSidebarFixture } from './helpers/pr-comments-sidebar-fixture'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
@@ -43,29 +43,29 @@ async function expectOpenTextNotShiftedLeft(
 }
 
 test.describe('PR comments sidebar cards view', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('groups open, conversation, and resolved comments in cards layout', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
 
-    const commentsSection = nightshiftPage.getByText('Comments', { exact: true })
+    const commentsSection = koluxPage.getByText('Comments', { exact: true })
     await expect(commentsSection).toBeVisible({ timeout: 10_000 })
 
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible()
-    await expect(nightshiftPage.getByText('Please update this handler before merge.')).toBeVisible()
-    await expect(nightshiftPage.getByText('coderabbitai')).toBeVisible()
-    await expect(nightshiftPage.getByText('LGTM on the overall approach.')).toBeVisible()
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible()
+    await expect(koluxPage.getByText('Please update this handler before merge.')).toBeVisible()
+    await expect(koluxPage.getByText('coderabbitai')).toBeVisible()
+    await expect(koluxPage.getByText('LGTM on the overall approach.')).toBeVisible()
 
-    const openThreadCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const openThreadCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
-    const conversationCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const conversationCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'LGTM on the overall approach.'
     })
     await expect(openThreadCard).toBeVisible()
@@ -79,38 +79,38 @@ test.describe('PR comments sidebar cards view', () => {
     )
     await expectOpenTextNotShiftedLeft(openThreadCard, conversationCard, 'coderabbitai', 'bob')
 
-    const resolvedTrigger = nightshiftPage.getByRole('button', { name: 'Resolved · 1' })
+    const resolvedTrigger = koluxPage.getByRole('button', { name: 'Resolved · 1' })
     await expect(resolvedTrigger).toBeVisible()
-    await expect(nightshiftPage.getByText('Already fixed upstream.')).toBeHidden()
+    await expect(koluxPage.getByText('Already fixed upstream.')).toBeHidden()
 
     await resolvedTrigger.click()
-    await expect(nightshiftPage.getByText('Already fixed upstream.')).toBeVisible()
-    await expect(nightshiftPage.getByText('Resolved', { exact: true })).toBeVisible()
+    await expect(koluxPage.getByText('Already fixed upstream.')).toBeVisible()
+    await expect(koluxPage.getByText('Resolved', { exact: true })).toBeVisible()
     await expect(
-      nightshiftPage
+      koluxPage
         .getByTestId('pr-comment-group')
         .filter({ hasText: 'Already fixed upstream.' })
         .getByRole('button', { name: 'Unresolve', exact: true })
     ).toBeVisible()
 
-    await expect(nightshiftPage.getByRole('button', { name: /^Add$/ })).toHaveCount(0)
+    await expect(koluxPage.getByRole('button', { name: /^Add$/ })).toHaveCount(0)
   })
 
-  test('can switch from grouped to chronological timeline order', async ({ nightshiftPage }) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
+  test('can switch from grouped to chronological timeline order', async ({ koluxPage }) => {
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
 
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
-    await nightshiftPage.getByRole('button', { name: 'Comment display options' }).click()
-    await nightshiftPage.getByRole('menuitemradio', { name: 'Timeline' }).click()
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
+    await koluxPage.getByRole('button', { name: 'Comment display options' }).click()
+    await koluxPage.getByRole('menuitemradio', { name: 'Timeline' }).click()
 
-    await expect(nightshiftPage.getByText('Needs review · 1')).toHaveCount(0)
-    await expect(nightshiftPage.getByText('Already fixed upstream.')).toBeVisible()
+    await expect(koluxPage.getByText('Needs review · 1')).toHaveCount(0)
+    await expect(koluxPage.getByText('Already fixed upstream.')).toBeVisible()
 
     const comments = [
-      nightshiftPage.getByText('Already fixed upstream.'),
-      nightshiftPage.getByText('Please update this handler before merge.'),
-      nightshiftPage.getByText('LGTM on the overall approach.')
+      koluxPage.getByText('Already fixed upstream.'),
+      koluxPage.getByText('Please update this handler before merge.'),
+      koluxPage.getByText('LGTM on the overall approach.')
     ]
     const positions = await Promise.all(
       comments.map(async (comment) => {
@@ -127,40 +127,40 @@ test.describe('PR comments sidebar cards view', () => {
   })
 
   test('adds reactions to conversation and review-thread comments', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
 
-    const reviewThreadCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const reviewThreadCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
     const threadReactionButton = reviewThreadCard.getByRole('button', { name: 'Add reaction' })
-    await nightshiftPage.screenshot({ path: testInfo.outputPath('reaction-before.png') })
+    await koluxPage.screenshot({ path: testInfo.outputPath('reaction-before.png') })
     await threadReactionButton.click()
-    await expect(nightshiftPage.getByRole('group', { name: 'Add reaction' })).toBeFocused()
-    await nightshiftPage.waitForTimeout(300)
-    await nightshiftPage.screenshot({ path: testInfo.outputPath('reaction-picker.png') })
-    await nightshiftPage.getByRole('button', { name: 'Add rocket reaction' }).click()
-    await expect(nightshiftPage.getByRole('group', { name: 'Add reaction' })).toBeHidden()
+    await expect(koluxPage.getByRole('group', { name: 'Add reaction' })).toBeFocused()
+    await koluxPage.waitForTimeout(300)
+    await koluxPage.screenshot({ path: testInfo.outputPath('reaction-picker.png') })
+    await koluxPage.getByRole('button', { name: 'Add rocket reaction' }).click()
+    await expect(koluxPage.getByRole('group', { name: 'Add reaction' })).toBeHidden()
     const selectedRocket = reviewThreadCard.getByRole('button', { name: '1 rocket reaction' })
     await expect(selectedRocket).toHaveAttribute('aria-pressed', 'true')
     await selectedRocket.focus()
-    await nightshiftPage.waitForTimeout(300)
-    await nightshiftPage.screenshot({ path: testInfo.outputPath('reaction-after.png') })
+    await koluxPage.waitForTimeout(300)
+    await koluxPage.screenshot({ path: testInfo.outputPath('reaction-after.png') })
     await selectedRocket.press('Enter')
     await expect(selectedRocket).toHaveCount(0)
     await expect(threadReactionButton).toBeFocused()
 
-    const conversationCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const conversationCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'LGTM on the overall approach.'
     })
     const conversationReactionButton = conversationCard.getByRole('button', {
       name: 'Add reaction'
     })
     await conversationReactionButton.click()
-    const conversationPicker = nightshiftPage.getByRole('group', { name: 'Add reaction' }).last()
+    const conversationPicker = koluxPage.getByRole('group', { name: 'Add reaction' }).last()
     const heartReactionButton = conversationPicker.getByRole('button', {
       name: 'Add heart reaction'
     })
@@ -169,14 +169,14 @@ test.describe('PR comments sidebar cards view', () => {
     await expect(
       conversationCard.getByRole('button', { name: '1 heart reaction' })
     ).toHaveAttribute('aria-pressed', 'true')
-    await expect(nightshiftPage.getByRole('button', { name: 'Add rocket reaction' })).toHaveCount(0)
+    await expect(koluxPage.getByRole('button', { name: 'Add rocket reaction' })).toHaveCount(0)
   })
 
-  test('keeps reaction focus while a remote mutation fails', async ({ nightshiftPage }) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
-    await nightshiftPage.evaluate(() => {
+  test('keeps reaction focus while a remote mutation fails', async ({ koluxPage }) => {
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
+    await koluxPage.evaluate(() => {
       window.__store?.setState({
         setPRCommentReaction: async () => {
           await new Promise((resolve) => window.setTimeout(resolve, 300))
@@ -185,13 +185,13 @@ test.describe('PR comments sidebar cards view', () => {
       })
     })
 
-    const reviewThreadCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const reviewThreadCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
     const addReaction = reviewThreadCard.getByRole('button', { name: 'Add reaction' })
     await addReaction.focus()
     await addReaction.press('Enter')
-    const picker = nightshiftPage.getByRole('group', { name: 'Add reaction' })
+    const picker = koluxPage.getByRole('group', { name: 'Add reaction' })
     await expect(picker).toBeFocused()
     const rocket = picker.getByRole('button', { name: /rocket reaction/ })
     await rocket.focus()
@@ -204,13 +204,13 @@ test.describe('PR comments sidebar cards view', () => {
     await expect(rocket).toBeFocused()
     await expect(rocket).toHaveAccessibleName('Add rocket reaction')
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.setState({ setPRCommentReaction: async () => true })
     })
     await rocket.press('Enter')
     const selectedRocket = reviewThreadCard.getByRole('button', { name: '1 rocket reaction' })
     await expect(selectedRocket).toHaveAttribute('aria-pressed', 'true')
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.setState({
         setPRCommentReaction: async () => {
           await new Promise((resolve) => window.setTimeout(resolve, 300))
@@ -229,14 +229,14 @@ test.describe('PR comments sidebar cards view', () => {
   })
 
   test('queues an open thread for the agent from the visible row action and menu fallback', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
 
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
 
-    const openThreadCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const openThreadCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
     await openThreadCard.hover()
@@ -245,13 +245,13 @@ test.describe('PR comments sidebar cards view', () => {
     await visibleQueueButton.click()
     await expect(visibleQueueButton).toBeHidden()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
+      koluxPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
     ).toBeVisible()
-    await expect(nightshiftPage.getByText('Queued', { exact: true })).toBeVisible()
+    await expect(koluxPage.getByText('Queued', { exact: true })).toBeVisible()
 
-    await nightshiftPage.getByRole('button', { name: 'Clear queued comments' }).click()
+    await koluxPage.getByRole('button', { name: 'Clear queued comments' }).click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
+      koluxPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
     ).toBeHidden()
     await openThreadCard.hover()
     await expect(visibleQueueButton).toBeVisible()
@@ -259,20 +259,20 @@ test.describe('PR comments sidebar cards view', () => {
     const actionsMenu = openThreadCard.getByRole('button', { name: 'More comment actions' })
     await actionsMenu.evaluate((element) => (element as HTMLElement).focus())
     await actionsMenu.press('Enter')
-    const queueMenuItem = nightshiftPage.getByRole('menuitem', { name: 'Queue for agent' })
+    const queueMenuItem = koluxPage.getByRole('menuitem', { name: 'Queue for agent' })
     await queueMenuItem.click({ force: true })
     await expect(queueMenuItem).toBeHidden()
 
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
+      koluxPage.getByRole('button', { name: 'Send 1 queued comments to AI' })
     ).toBeVisible()
-    await expect(nightshiftPage.getByText('Queued', { exact: true })).toBeVisible()
+    await expect(koluxPage.getByText('Queued', { exact: true })).toBeVisible()
 
-    const queuedCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const queuedCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
     const queuedCardBox = await queuedCard.boundingBox()
-    const checkboxBox = await nightshiftPage
+    const checkboxBox = await koluxPage
       .getByRole('checkbox', { name: 'Select comment' })
       .first()
       .boundingBox()
@@ -282,15 +282,15 @@ test.describe('PR comments sidebar cards view', () => {
     expect(checkboxBox.x - queuedCardBox.x).toBeGreaterThanOrEqual(8)
   })
 
-  test('keeps open card content aligned while the row menu is open', async ({ nightshiftPage }) => {
-    const { worktreeId } = await seedPRCommentsSidebarFixture(nightshiftPage)
-    await openChecks(nightshiftPage, worktreeId)
+  test('keeps open card content aligned while the row menu is open', async ({ koluxPage }) => {
+    const { worktreeId } = await seedPRCommentsSidebarFixture(koluxPage)
+    await openChecks(koluxPage, worktreeId)
 
-    await expect(nightshiftPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
-    const openThreadCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    await expect(koluxPage.getByText('Needs review · 1')).toBeVisible({ timeout: 10_000 })
+    const openThreadCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'Please update this handler before merge.'
     })
-    const conversationCard = nightshiftPage.getByTestId('pr-comment-group').filter({
+    const conversationCard = koluxPage.getByTestId('pr-comment-group').filter({
       hasText: 'LGTM on the overall approach.'
     })
 
@@ -298,7 +298,7 @@ test.describe('PR comments sidebar cards view', () => {
     const actionsMenu = openThreadCard.getByRole('button', { name: 'More comment actions' })
     await actionsMenu.evaluate((element) => (element as HTMLElement).focus())
     await actionsMenu.press('Enter')
-    await expect(nightshiftPage.getByRole('menuitem', { name: 'Queue for agent' })).toBeVisible()
+    await expect(koluxPage.getByRole('menuitem', { name: 'Queue for agent' })).toBeVisible()
 
     await expectOpenTextNotShiftedLeft(
       openThreadCard,

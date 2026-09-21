@@ -183,7 +183,7 @@ describe('SkillsPage', () => {
   })
 
   it('contains long cross-platform skill paths while preserving the full path', async () => {
-    const longPath = `C:\\Users\\nightshift\\${'nested-folder\\'.repeat(30)}SKILL.md`
+    const longPath = `C:\\Users\\kolux\\${'nested-folder\\'.repeat(30)}SKILL.md`
     const discover = vi.fn().mockResolvedValue({
       skills: [skill('long-path', { skillFilePath: longPath })],
       sources: [],

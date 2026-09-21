@@ -241,9 +241,9 @@ describe('SidebarSettingsHelpMenu', () => {
     expect(html).toContain('Onboarding')
   })
 
-  it('renders Restart Nightshift by default', () => {
+  it('renders Restart Kolux by default', () => {
     const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
-    expect(html).toContain('Restart Nightshift')
+    expect(html).toContain('Restart Kolux')
   })
 
   it('renders Docs link', () => {

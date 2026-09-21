@@ -210,11 +210,11 @@ describe('AgentHookServer listener replay', () => {
     try {
       const env = server.buildPtyEnv()
       const postHook = (payload: Record<string, unknown>): Promise<Response> =>
-        fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`, {
+        fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
           },
           body: JSON.stringify(buildBody(payload))
         })

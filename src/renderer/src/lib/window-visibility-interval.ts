@@ -67,7 +67,7 @@ export function installWindowVisibilityInterval(args: {
       visibleRun()
     }
     // Why: many callers shell out or cross IPC. Keep their interval alive only
-    // while Nightshift can present the refreshed data, but still refresh a visible
+    // while Kolux can present the refreshed data, but still refresh a visible
     // unfocused window so status UI does not go stale on a second display.
     intervalId = setIntervalFn(args.run, args.intervalMs)
   }

@@ -42,8 +42,8 @@ export class CodexManagedHomeLifecycle {
 
     const managedHomePath = join(this.paths.getRoot(), accountId, 'home')
     mkdirSync(managedHomePath, { recursive: true })
-    // Why: marker lets future cleanup prove the path belongs to Nightshift before deleting anything.
-    writeFileSync(join(managedHomePath, '.nightshift-managed-home'), `${accountId}\n`, 'utf-8')
+    // Why: marker lets future cleanup prove the path belongs to Kolux before deleting anything.
+    writeFileSync(join(managedHomePath, '.kolux-managed-home'), `${accountId}\n`, 'utf-8')
     return {
       managedHomePath: this.paths.assert(managedHomePath, accountId),
       managedHomeRuntime: 'host',
@@ -159,8 +159,8 @@ export class CodexManagedHomeLifecycle {
       throw new Error('Could not resolve the active WSL home directory for Codex login.')
     }
 
-    const linuxPath = `${home.replace(/\/$/, '')}/.local/share/nightshift/codex-accounts/${accountId}/home`
-    const markerPath = `${linuxPath}/.nightshift-managed-home`
+    const linuxPath = `${home.replace(/\/$/, '')}/.local/share/kolux/codex-accounts/${accountId}/home`
+    const markerPath = `${linuxPath}/.kolux-managed-home`
     const created = await runWslProcess({
       distro,
       loginPath: 'none',
@@ -200,14 +200,14 @@ export class CodexManagedHomeLifecycle {
           'set -euo pipefail',
           `candidate=${quotePosixShell(linuxHomePath)}`,
           `expected_marker=${quotePosixShell(expectedAccountId)}`,
-          'managed_root="${HOME%/}/.local/share/nightshift/codex-accounts"',
+          'managed_root="${HOME%/}/.local/share/kolux/codex-accounts"',
           'candidate_real=$(readlink -f -- "$candidate" 2>/dev/null || true)',
           'managed_root_real=$(readlink -f -- "$managed_root" 2>/dev/null || true)',
           'test -n "$candidate_real"',
           'test -n "$managed_root_real"',
           'case "$candidate_real" in "$managed_root_real"/*/home) ;; *) exit 0 ;; esac',
-          'test -f "$candidate_real/.nightshift-managed-home"',
-          'test "$(cat "$candidate_real/.nightshift-managed-home")" = "$expected_marker"',
+          'test -f "$candidate_real/.kolux-managed-home"',
+          'test "$(cat "$candidate_real/.kolux-managed-home")" = "$expected_marker"',
           'rm -rf -- "$candidate_real"',
           'parent_dir=$(dirname -- "$candidate_real")',
           'case "$parent_dir" in "$managed_root_real"/*) rmdir -- "$parent_dir" 2>/dev/null || true ;; esac'

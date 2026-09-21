@@ -74,14 +74,14 @@ describe('SSH config host picker search', () => {
       matchCount: 2,
       hasMore: false
     })
-    expect(result.hosts[0]).toMatchObject({ alias: 'prod', alreadyInNightshift: true })
+    expect(result.hosts[0]).toMatchObject({ alias: 'prod', alreadyInKolux: true })
   })
 
-  it('marks a case-only alias variant as already in Nightshift', () => {
+  it('marks a case-only alias variant as already in Kolux', () => {
     const result = searchSshConfigHosts([{ host: 'prod' }], [{ configHost: 'Prod', label: 'Prod' }])
 
     expect(result).toMatchObject({ totalHostCount: 1, newHostCount: 0 })
-    expect(result.hosts[0]).toMatchObject({ alias: 'prod', alreadyInNightshift: true })
+    expect(result.hosts[0]).toMatchObject({ alias: 'prod', alreadyInKolux: true })
   })
 
   it('lists suppressed aliases for re-pick but excludes them from Add-all newHostCount', () => {
@@ -94,14 +94,14 @@ describe('SSH config host picker search', () => {
       expect.objectContaining({
         alias: 'removed',
         previouslyRemoved: true,
-        alreadyInNightshift: false
+        alreadyInKolux: false
       }),
-      expect.objectContaining({ alias: 'active', alreadyInNightshift: false })
+      expect.objectContaining({ alias: 'active', alreadyInKolux: false })
     ])
     expect(result.hosts.find((host) => host.alias === 'active')?.previouslyRemoved).toBeUndefined()
   })
 
-  it('does not mark a host as previously removed when it is already in Nightshift', () => {
+  it('does not mark a host as previously removed when it is already in Kolux', () => {
     const result = searchSshConfigHosts(
       [{ host: 'prod' }],
       [{ configHost: 'prod', label: 'Production' }],
@@ -111,7 +111,7 @@ describe('SSH config host picker search', () => {
 
     expect(result.hosts[0]).toMatchObject({
       alias: 'prod',
-      alreadyInNightshift: true
+      alreadyInKolux: true
     })
     expect(result.hosts[0]?.previouslyRemoved).toBeUndefined()
     expect(result.newHostCount).toBe(0)

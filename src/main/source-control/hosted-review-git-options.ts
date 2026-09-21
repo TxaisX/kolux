@@ -7,8 +7,8 @@ export type HostedReviewLocalGitOptions = {
 
 export type HostedReviewExecutionOptions = {
   localGitExecOptions?: HostedReviewLocalGitOptions
-  /** Paths Nightshift may have symlinked into this worktree. An untracked entry that
-   *  is one of these is Nightshift's own artifact, not work the user can commit, so it
+  /** Paths Kolux may have symlinked into this worktree. An untracked entry that
+   *  is one of these is Kolux's own artifact, not work the user can commit, so it
    *  must not read as "dirty" and block review creation. */
   sharedLinkPaths?: readonly string[]
 }

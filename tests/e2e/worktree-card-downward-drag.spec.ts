@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 const SYNTHETIC_COUNT = 60
@@ -159,12 +159,12 @@ async function sampleMountedPreviewOffsets(
   }, sourceId)
 }
 
-test('dragging a virtualized worktree downward keeps rows stable', async ({ nightshiftPage }) => {
-  await waitForSessionReady(nightshiftPage)
-  await nightshiftPage.setViewportSize({ width: 1_000, height: 620 })
-  const { sourceId, nextId, idPrefix } = await seedVirtualizedManualWorktrees(nightshiftPage)
-  const scroller = nightshiftPage.locator('[data-worktree-sidebar]')
-  const source = nightshiftPage.locator(
+test('dragging a virtualized worktree downward keeps rows stable', async ({ koluxPage }) => {
+  await waitForSessionReady(koluxPage)
+  await koluxPage.setViewportSize({ width: 1_000, height: 620 })
+  const { sourceId, nextId, idPrefix } = await seedVirtualizedManualWorktrees(koluxPage)
+  const scroller = koluxPage.locator('[data-worktree-sidebar]')
+  const source = koluxPage.locator(
     `[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(sourceId)}]`
   )
   await scroller.evaluate((element) => {
@@ -177,7 +177,7 @@ test('dragging a virtualized worktree downward keeps rows stable', async ({ nigh
     const rect = element.getBoundingClientRect()
     return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
   })
-  const nextSource = nightshiftPage.locator(
+  const nextSource = koluxPage.locator(
     `[data-worktree-sidebar] [data-worktree-id=${JSON.stringify(nextId)}]`
   )
   const sourceStride = await nextSource.evaluate(
@@ -191,21 +191,18 @@ test('dragging a virtualized worktree downward keeps rows stable', async ({ nigh
     return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
   })
 
-  await nightshiftPage.mouse.move(
-    sourceBox.x + sourceBox.width / 2,
-    sourceBox.y + sourceBox.height / 2
-  )
-  await nightshiftPage.mouse.down()
+  await koluxPage.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2)
+  await koluxPage.mouse.down()
   try {
     const edgeX = scrollerBox.x + 2
     const edgeY = scrollerBox.y + scrollerBox.height - 8
     // Keep the pointer in the edge zone while the renderer advances autoscroll.
     for (let step = 0; step < 12; step++) {
-      await nightshiftPage.mouse.move(edgeX, edgeY, { steps: 2 })
+      await koluxPage.mouse.move(edgeX, edgeY, { steps: 2 })
       if ((await source.count()) === 0) {
         break
       }
-      await nightshiftPage.waitForTimeout(100)
+      await koluxPage.waitForTimeout(100)
     }
     if ((await source.count()) > 0) {
       for (let step = 0; step < 8 && (await source.count()) > 0; step++) {
@@ -216,7 +213,7 @@ test('dragging a virtualized worktree downward keeps rows stable', async ({ nigh
           )
           element.dispatchEvent(new Event('scroll', { bubbles: true }))
         })
-        await nightshiftPage.waitForTimeout(100)
+        await koluxPage.waitForTimeout(100)
       }
     }
     await expect
@@ -226,7 +223,7 @@ test('dragging a virtualized worktree downward keeps rows stable', async ({ nigh
       })
       .toBe(0)
 
-    const samples = await sampleMountedPreviewOffsets(nightshiftPage, sourceId)
+    const samples = await sampleMountedPreviewOffsets(koluxPage, sourceId)
     expect(samples.length).toBeGreaterThan(0)
     const observationsById = new Map<string, PreviewOffsetSample[]>()
     for (const sample of samples.flat()) {
@@ -262,11 +259,11 @@ test('dragging a virtualized worktree downward keeps rows stable', async ({ nigh
       expect(renderedReversal).toBeLessThanOrEqual(sourceStride)
     }
   } finally {
-    await nightshiftPage.mouse.up()
+    await koluxPage.mouse.up()
   }
 
-  await expect(nightshiftPage.locator('[data-worktree-sidebar-drag-preview="true"]')).toHaveCount(0)
-  await expect(nightshiftPage.locator('html')).not.toHaveAttribute(
+  await expect(koluxPage.locator('[data-worktree-sidebar-drag-preview="true"]')).toHaveCount(0)
+  await expect(koluxPage.locator('html')).not.toHaveAttribute(
     'data-worktree-sidebar-pointer-dragging'
   )
   await scroller.evaluate((element) => {

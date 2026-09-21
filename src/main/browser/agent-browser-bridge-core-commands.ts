@@ -8,7 +8,7 @@ import { assertClipboardTextWriteWithinLimitWithYield } from '../../shared/clipb
 import { normalizeBrowserNavigationUrl } from '../../shared/browser-url'
 import { iterateBrowserTextInsertionChunks } from './browser-text-insertion'
 import { BrowserError } from './cdp-bridge'
-import { NIGHTSHIFT_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
+import { KOLUX_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
 import { focusedValueSetExpression } from './agent-browser-bridge-input'
 import {
   AGENT_BROWSER_TEXT_ARGUMENT_MAX_BYTES,
@@ -97,7 +97,7 @@ export abstract class AgentBrowserBridgeCoreCommands extends AgentBrowserBridgeQ
           }
           if (!this.getWebContents(target.webContentsId)) {
             throw this.createPageUnavailableError(
-              `${NIGHTSHIFT_TAB_SESSION_PREFIX}${target.browserPageId}`
+              `${KOLUX_TAB_SESSION_PREFIX}${target.browserPageId}`
             )
           }
           // Why: ERR_ABORTED also covers a page vetoing unload; that navigation did not succeed.

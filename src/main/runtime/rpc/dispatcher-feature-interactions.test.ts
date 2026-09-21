@@ -4,12 +4,12 @@ import type { PersistedUIState } from '../../../shared/persisted-ui-state-types'
 import { getDefaultUIState } from '../../../shared/constants'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import {
-  NIGHTSHIFT_RUNTIME_RPC_BROWSER_UI_SOURCE,
-  NIGHTSHIFT_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY
+  KOLUX_RUNTIME_RPC_BROWSER_UI_SOURCE,
+  KOLUX_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY
 } from '../../../shared/runtime-rpc-feature-interaction-source'
 import { RpcDispatcher } from './dispatcher'
 import { defineMethod, defineStreamingMethod, type RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 function makeRequest(method: string, params: unknown = {}): RpcRequest {
   return {
@@ -23,7 +23,7 @@ function makeRequest(method: string, params: unknown = {}): RpcRequest {
   }
 }
 
-function makeRuntime(ui: PersistedUIState = getDefaultUIState()): NightshiftRuntimeService {
+function makeRuntime(ui: PersistedUIState = getDefaultUIState()): KoluxRuntimeService {
   let currentUI = ui
   return {
     getRuntimeId: () => 'test-runtime',
@@ -51,7 +51,7 @@ function makeRuntime(ui: PersistedUIState = getDefaultUIState()): NightshiftRunt
       getLegacyAdoption: () => undefined,
       resolveLegacyWorkerCandidate: () => undefined
     })
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 const METHODS = [
@@ -219,8 +219,7 @@ describe('RpcDispatcher feature interactions', () => {
     const runtime = makeRuntime()
     const dispatcher = new RpcDispatcher({ runtime, methods: METHODS })
     const browserPaneUiParams = {
-      [NIGHTSHIFT_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]:
-        NIGHTSHIFT_RUNTIME_RPC_BROWSER_UI_SOURCE
+      [KOLUX_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]: KOLUX_RUNTIME_RPC_BROWSER_UI_SOURCE
     }
 
     await dispatcher.dispatch(makeRequest('browser.viewport', browserPaneUiParams))

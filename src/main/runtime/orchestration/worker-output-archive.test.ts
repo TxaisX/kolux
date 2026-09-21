@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import * as sshFilesystemDispatch from '../../providers/ssh-filesystem-dispatch'
 import * as workerTranscriptRead from './worker-transcript-read'
 import { captureWorkerOutputArchive, summarizeWorkerOutputArchive } from './worker-output-archive'
@@ -38,7 +38,7 @@ describe('worker output archive WSL routing', () => {
   let transcriptReadSpy: { mockRestore: () => void } | undefined
 
   beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'nightshift-worker-archive-'))
+    directory = await mkdtemp(join(tmpdir(), 'kolux-worker-archive-'))
     transcriptPath = join(directory, 'session.jsonl')
     await writeFile(transcriptPath, `${codexMessage('wsl', 'WSL archive output')}\n`)
     sshProviderLookup = vi.spyOn(sshFilesystemDispatch, 'getSshFilesystemProvider')
@@ -87,7 +87,7 @@ describe('worker output archive WSL routing', () => {
     const runtime = {
       getExactWorkerProviderSession: vi.fn(() => session),
       readTerminal: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
 
     const result = await captureWorkerOutputArchive({
       runtime,
@@ -135,7 +135,7 @@ describe('worker output archive WSL routing', () => {
         truncated: false,
         status: 'live'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
 
     const result = await captureWorkerOutputArchive({
       runtime,
@@ -185,7 +185,7 @@ describe('worker output archive WSL routing', () => {
         truncated: false,
         status: 'running'
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
 
     const result = await captureWorkerOutputArchive({
       runtime,

@@ -1,5 +1,5 @@
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { MessageType } from '../orchestration/db'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import { bindCoordinatorMutationPayload } from '../orchestration/dispatch-message-binding'
@@ -14,7 +14,7 @@ import {
 } from './orchestration-legacy-operation'
 
 export async function handleLegacyLifecycleSend(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   authority: LegacyCompatibilityAuthority
   request: RpcRequest
   params: LegacySendParams

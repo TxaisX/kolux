@@ -365,7 +365,7 @@ describe('startStructuredAgentLaunch', () => {
     expect(toast.message).toHaveBeenCalledWith(
       "Structured chat isn't available",
       expect.objectContaining({
-        description: 'Nightshift tried to open a Codex terminal instead.'
+        description: 'Kolux tried to open a Codex terminal instead.'
       })
     )
   })

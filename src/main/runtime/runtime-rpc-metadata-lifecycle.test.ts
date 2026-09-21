@@ -2,10 +2,10 @@ import { existsSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import * as runtimeMetadataModule from './runtime-metadata'
 import { readRuntimeMetadata, writeRuntimeMetadata } from './runtime-metadata'
-import { createRuntimeTransportMetadata, NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { createRuntimeTransportMetadata, KoluxRuntimeRpcServer } from './runtime-rpc'
 import type { DeviceRegistry } from './device-registry'
 import type { RuntimeMetadata } from '../../shared/runtime-bootstrap'
 
@@ -25,11 +25,11 @@ vi.mock('../git/worktree', () => {
   }
 })
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('writes runtime metadata with transport details when started', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
 
     await server.start()
 
@@ -47,11 +47,11 @@ describe('NightshiftRuntimeRpcServer', () => {
 
   it('reclaims runtime metadata clobbered by a second instance that has since died', async () => {
     // Why: #7848 — a launch that slips past the single-instance lock republishes
-    // nightshift-runtime.json with its own pid, so the CLI reports stale_bootstrap
+    // kolux-runtime.json with its own pid, so the CLI reports stale_bootstrap
     // against this still-serving runtime once that instance exits.
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     await server.start()
     const published = readRuntimeMetadata(userDataPath)
 
@@ -70,11 +70,11 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('leaves runtime metadata owned by a live sibling runtime untouched', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     // Why: a synthetic owned pid frees the always-alive process.pid to stand in for
     // the sibling — Windows never assigns pid 1, so hardcoding it there reads as dead.
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       pid: 4242
     })
@@ -95,9 +95,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('stops reclaiming runtime metadata after the server is stopped', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath
     })
     await server.start()
@@ -126,9 +126,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   it('drops a republish from an ownership read that lands after the server stopped', async () => {
     // Why: the read is off-thread now, so a tick can outlive stop(); the cleared
     // activeTransports guard — not the interval teardown — is what stops it republishing.
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath, pid: 1001 })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath, pid: 1001 })
     await server.start()
 
     let releaseRead: (record: RuntimeMetadata | null) => void = () => {}
@@ -157,9 +157,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('flushes a lastSeen refresh scheduled while transports stop', async () => {
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
-      userDataPath: mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-')),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
+      userDataPath: mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-')),
       enableWebSocket: false
     })
     let pending = false
@@ -209,9 +209,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('leaves the last published metadata in place when a runtime stops', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       pid: 1001
@@ -229,9 +229,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('closes the socket if metadata publication fails during startup', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     const writeMetadataSpy = vi
       .spyOn(runtimeMetadataModule, 'writeRuntimeMetadata')
       .mockImplementationOnce(() => {

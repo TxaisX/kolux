@@ -20,8 +20,8 @@ describe('OffscreenBrowserBackend web preferences', () => {
     const webPreferencesBlock = sourceBetween(source, 'webPreferences: {', 'partition,')
 
     expect(source).toContain(
-      "import { NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES } from '../../shared/browser-guest-web-preferences'"
+      "import { KOLUX_BROWSER_GUEST_WEB_PREFERENCES } from '../../shared/browser-guest-web-preferences'"
     )
-    expect(webPreferencesBlock).toContain('...NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES')
+    expect(webPreferencesBlock).toContain('...KOLUX_BROWSER_GUEST_WEB_PREFERENCES')
   })
 })

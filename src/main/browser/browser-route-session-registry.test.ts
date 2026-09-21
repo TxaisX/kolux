@@ -6,7 +6,7 @@ import {
 } from './browser-route-session-registry'
 
 const identity = {
-  nightshiftProfileId: 'nightshift-profile-a',
+  koluxProfileId: 'kolux-profile-a',
   browserProfileId: 'browser-profile-a',
   authorityConnectionIdentity: 'authority-a',
   executionHostIdentity: 'execution-host-a'

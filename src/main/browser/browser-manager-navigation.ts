@@ -246,7 +246,7 @@ export abstract class BrowserManagerNavigation extends BrowserManagerVisibility 
     )
     this.forwardOrQueuePopupEvent(openerGuest.id, {
       origin: safeOrigin(targetUrl),
-      action: 'opened-in-nightshift'
+      action: 'opened-in-kolux'
     })
     // Why: match Electron's child-window lifecycle so closing the owning tab doesn't orphan session-bearing popups.
     const closePopupWithOpener = (): void => popup.close()

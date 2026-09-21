@@ -18,6 +18,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+// Why: pre-rename Kolux wrote its bundle under this top-level key; Antigravity loads every
+// registered bundle key, so a stale entry would keep firing the managed hook a second time.
+const PRE_RENAME_ANTIGRAVITY_HOOK_BUNDLE_NAME = 'nightshift-status'
+
 export function getBundle(config: HooksConfig): Record<string, unknown> {
   const existing = config[ANTIGRAVITY_HOOK_BUNDLE_NAME]
   return isRecord(existing) ? { ...existing } : {}
@@ -117,11 +121,13 @@ export function buildInstalledConfig(
   }
 
   config[ANTIGRAVITY_HOOK_BUNDLE_NAME] = bundle
+  delete config[PRE_RENAME_ANTIGRAVITY_HOOK_BUNDLE_NAME]
 }
 
 export function removeInstalledConfig(config: HooksConfig): void {
   const isManagedCommand = createAntigravityManagedCommandMatcher()
   const bundle = removeManagedCommandsFromBundle(getBundle(config), isManagedCommand)
+  delete config[PRE_RENAME_ANTIGRAVITY_HOOK_BUNDLE_NAME]
   if (Object.keys(bundle).length === 0) {
     delete config[ANTIGRAVITY_HOOK_BUNDLE_NAME]
     return

@@ -130,7 +130,7 @@ export const ISSUE_FIELDS = `
 `
 
 export const ISSUE_QUERY = `
-  query NightshiftAgentLinearIssue($id: String!) {
+  query KoluxAgentLinearIssue($id: String!) {
     issue(id: $id) {
       ${ISSUE_FIELDS}
     }
@@ -138,7 +138,7 @@ export const ISSUE_QUERY = `
 `
 
 export const SEARCH_QUERY = `
-  query NightshiftAgentLinearSearch($term: String!, $first: Int) {
+  query KoluxAgentLinearSearch($term: String!, $first: Int) {
     searchIssues(term: $term, first: $first) {
       nodes {
         ${ISSUE_FIELDS}
@@ -148,7 +148,7 @@ export const SEARCH_QUERY = `
 `
 
 export const COMMENTS_QUERY = `
-  query NightshiftAgentLinearIssueComments($id: String!, $first: Int, $after: String) {
+  query KoluxAgentLinearIssueComments($id: String!, $first: Int, $after: String) {
     issue(id: $id) {
       comments(first: $first, after: $after) {
         nodes {
@@ -166,7 +166,7 @@ export const COMMENTS_QUERY = `
 `
 
 export const CHILDREN_QUERY = `
-  query NightshiftAgentLinearIssueChildren($id: String!, $first: Int, $after: String) {
+  query KoluxAgentLinearIssueChildren($id: String!, $first: Int, $after: String) {
     issue(id: $id) {
       children(first: $first, after: $after) {
         nodes {
@@ -179,7 +179,7 @@ export const CHILDREN_QUERY = `
 `
 
 export const ATTACHMENTS_QUERY = `
-  query NightshiftAgentLinearIssueAttachments($id: String!, $first: Int, $after: String) {
+  query KoluxAgentLinearIssueAttachments($id: String!, $first: Int, $after: String) {
     issue(id: $id) {
       attachments(first: $first, after: $after) {
         nodes { id title url source subtitle createdAt }
@@ -190,7 +190,7 @@ export const ATTACHMENTS_QUERY = `
 `
 
 export const RELATIONS_QUERY = `
-  query NightshiftAgentLinearIssueRelations($id: String!, $first: Int, $after: String) {
+  query KoluxAgentLinearIssueRelations($id: String!, $first: Int, $after: String) {
     issue(id: $id) {
       relations(first: $first, after: $after) {
         nodes {
@@ -205,7 +205,7 @@ export const RELATIONS_QUERY = `
 `
 
 export const INVERSE_RELATIONS_QUERY = `
-  query NightshiftAgentLinearIssueInverseRelations($id: String!, $first: Int, $after: String) {
+  query KoluxAgentLinearIssueInverseRelations($id: String!, $first: Int, $after: String) {
     issue(id: $id) {
       inverseRelations(first: $first, after: $after) {
         nodes {

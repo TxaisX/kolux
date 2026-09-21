@@ -28,7 +28,7 @@ function runPrefix(nodePath: string): {
   const marker = localNodeHeadersFromOutput(result.stdout)
   const [nodedir = '', pkgNodedir = ''] = result.stdout
     .split('\n')
-    .filter((line) => !line.startsWith('NIGHTSHIFT-NODE-HEADERS:'))
+    .filter((line) => !line.startsWith('KOLUX-NODE-HEADERS:'))
   return { nodedir, pkgNodedir, marker }
 }
 
@@ -69,7 +69,7 @@ describe.skipIf(!POSIX)('exportLocalNodeHeadersPrefix', () => {
     // A symlinked node resolves execPath to the real binary, whose prefix is the real one; so
     // to stage a mismatch the probe must run a node whose execPath lands in the fake prefix.
     // A copy does that.
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-node-headers-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-node-headers-'))
     roots.push(root)
     const prefix = join(root, 'prefix')
     mkdirSync(join(prefix, 'bin'), { recursive: true })
@@ -88,7 +88,7 @@ describe.skipIf(!POSIX)('exportLocalNodeHeadersPrefix', () => {
   })
 
   it('leaves nodedir unset when the prefix has no headers at all', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-node-headers-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-node-headers-'))
     roots.push(root)
     const copied = join(root, 'bin', 'node')
     mkdirSync(dirname(copied), { recursive: true })
@@ -99,7 +99,7 @@ describe.skipIf(!POSIX)('exportLocalNodeHeadersPrefix', () => {
   })
 
   it('follows a symlinked node to the install that owns the headers', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-node-headers-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-node-headers-'))
     roots.push(root)
     const shim = fakeNodePrefix(root, '0.0.0')
     // The shim's own fake headers are ignored: execPath resolves to the real binary, and the
@@ -110,7 +110,7 @@ describe.skipIf(!POSIX)('exportLocalNodeHeadersPrefix', () => {
 
   it('clears an inherited nodedir when the probe finds no matching headers', () => {
     // A remote profile's stale nodedir must not survive past the version check.
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-node-headers-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-node-headers-'))
     roots.push(root)
     const copied = join(root, 'bin', 'node')
     mkdirSync(dirname(copied), { recursive: true })
@@ -134,33 +134,31 @@ describe.skipIf(!POSIX)('exportLocalNodeHeadersPrefix', () => {
     const script = `${exportLocalNodeHeadersPrefix('/nonexistent/node')}echo "after:$npm_config_nodedir"`
     const result = spawnSync('/bin/sh', ['-c', script], { encoding: 'utf8' })
     expect(result.status).toBe(0)
-    expect(result.stdout.trim()).toBe('NIGHTSHIFT-NODE-HEADERS:none\nafter:')
+    expect(result.stdout.trim()).toBe('KOLUX-NODE-HEADERS:none\nafter:')
   })
 })
 
 describe('localNodeHeadersFromOutput', () => {
   it('reads the host answer, not the copy of the marker echo quoted in an exec-failure head', () => {
     // The real shape: execCommand quotes the whole command line, prefix included, before the output.
-    const command = `export PATH='/usr/local/bin':$PATH && cd '/root/.nightshift-remote/relay-x' && ${exportLocalNodeHeadersPrefix('/usr/local/bin/node')}npm install node-pty 2>&1`
+    const command = `export PATH='/usr/local/bin':$PATH && cd '/root/.kolux-remote/relay-x' && ${exportLocalNodeHeadersPrefix('/usr/local/bin/node')}npm install node-pty 2>&1`
     const failed = (hostOutput: string): string =>
       `Command "${command}" failed (exit 1): ${hostOutput}`
     expect(
-      localNodeHeadersFromOutput(failed('NIGHTSHIFT-NODE-HEADERS:none\ngyp ERR! configure error'))
+      localNodeHeadersFromOutput(failed('KOLUX-NODE-HEADERS:none\ngyp ERR! configure error'))
     ).toBeNull()
     expect(
-      localNodeHeadersFromOutput(
-        failed('NIGHTSHIFT-NODE-HEADERS:/usr/local\ngyp ERR! configure error')
-      )
+      localNodeHeadersFromOutput(failed('KOLUX-NODE-HEADERS:/usr/local\ngyp ERR! configure error'))
     ).toBe('/usr/local')
     // No host output at all after the head: the command copy alone must not count as a marker.
     expect(localNodeHeadersFromOutput(failed(''))).toBeUndefined()
   })
 
   it('distinguishes an exported dir, an explicit none, and no marker at all', () => {
-    expect(localNodeHeadersFromOutput('x\nNIGHTSHIFT-NODE-HEADERS:/usr/local\ngyp ERR!')).toBe(
+    expect(localNodeHeadersFromOutput('x\nKOLUX-NODE-HEADERS:/usr/local\ngyp ERR!')).toBe(
       '/usr/local'
     )
-    expect(localNodeHeadersFromOutput('NIGHTSHIFT-NODE-HEADERS:none\ngyp ERR!')).toBeNull()
+    expect(localNodeHeadersFromOutput('KOLUX-NODE-HEADERS:none\ngyp ERR!')).toBeNull()
     expect(localNodeHeadersFromOutput('gyp ERR! only')).toBeUndefined()
   })
 })

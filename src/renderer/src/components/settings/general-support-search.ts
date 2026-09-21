@@ -4,10 +4,7 @@ import { translateSearchKeyword } from './settings-search-keywords'
 
 export const getGeneralSupportSearchEntries = createLocalizedCatalog(() => [
   {
-    title: translate(
-      'auto.components.settings.general.search.36a72f0d9e',
-      'Star Nightshift on GitHub'
-    ),
+    title: translate('auto.components.settings.general.search.36a72f0d9e', 'Star Kolux on GitHub'),
     description: translate(
       'auto.components.settings.general.search.e0b8c8bc25',
       'Support the project with a GitHub star via the gh CLI.'

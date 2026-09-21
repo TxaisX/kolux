@@ -19,8 +19,8 @@ afterEach(async () => {
 })
 
 describe('claude agent teams shim env', () => {
-  it('writes a private tmux shim that calls the Nightshift shim command', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-shim-'))
+  it('writes a private tmux shim that calls the Kolux shim command', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-shim-'))
     roots.push(root)
 
     await ensureClaudeAgentTeamsShimDir(root)
@@ -29,9 +29,9 @@ describe('claude agent teams shim env', () => {
   })
 
   it('builds native shim env only for direct Claude commands', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-cli-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-cli-'))
     roots.push(root)
-    const cliName = process.platform === 'win32' ? 'nightshift-dev.cmd' : 'nightshift-dev'
+    const cliName = process.platform === 'win32' ? 'kolux-dev.cmd' : 'kolux-dev'
     const cliPath = join(root, cliName)
     await writeFile(cliPath, '#!/usr/bin/env sh\n', 'utf8')
     if (process.platform !== 'win32') {
@@ -47,7 +47,7 @@ describe('claude agent teams shim env', () => {
         capturedShimBin = shimBin
         return {
           PATH: `${shimDir}:/usr/bin`,
-          TMUX: '/tmp/nightshift/fake,0,0',
+          TMUX: '/tmp/kolux/fake,0,0',
           TMUX_PANE: '%1'
         }
       }
@@ -80,9 +80,9 @@ describe('claude agent teams shim env', () => {
   })
 
   it('resolves the dev CLI wrapper for the tmux callback binary', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-cli-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-cli-'))
     roots.push(root)
-    const cliName = process.platform === 'win32' ? 'nightshift-dev.cmd' : 'nightshift-dev'
+    const cliName = process.platform === 'win32' ? 'kolux-dev.cmd' : 'kolux-dev'
     const cliPath = join(root, cliName)
     await writeFile(cliPath, '#!/usr/bin/env sh\n', 'utf8')
     if (process.platform !== 'win32') {
@@ -93,9 +93,9 @@ describe('claude agent teams shim env', () => {
   })
 
   it('refuses to resolve a CLI through relative PATH entries or a bare override', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-cli-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-cli-'))
     roots.push(root)
-    for (const name of ['nightshift', 'nightshift-ide', 'nightshift.cmd']) {
+    for (const name of ['kolux', 'kolux-ide', 'kolux.cmd']) {
       const path = join(root, name)
       await writeFile(path, '#!/usr/bin/env sh\n', 'utf8')
       if (process.platform !== 'win32') {
@@ -106,20 +106,20 @@ describe('claude agent teams shim env', () => {
     expect(resolveClaudeAgentTeamsShimBin({ PATH: '.' })).toBeNull()
     expect(resolveClaudeAgentTeamsShimBin({ PATH: '' })).toBeNull()
     expect(
-      resolveClaudeAgentTeamsShimBin({ PATH: '.', NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN: 'nightshift' })
+      resolveClaudeAgentTeamsShimBin({ PATH: '.', KOLUX_AGENT_TEAMS_SHIM_BIN: 'kolux' })
     ).toBeNull()
     // Why: a bare override is still honored when it maps to a real absolute PATH entry.
     expect(
-      resolveClaudeAgentTeamsShimBin({ PATH: root, NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN: 'nightshift' })
-    ).toBe(join(root, 'nightshift'))
+      resolveClaudeAgentTeamsShimBin({ PATH: root, KOLUX_AGENT_TEAMS_SHIM_BIN: 'kolux' })
+    ).toBe(join(root, 'kolux'))
   })
 
   it.skipIf(process.platform !== 'win32')(
     'resolves through the Windows `Path` env spelling',
     async () => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-cli-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-cli-'))
       roots.push(root)
-      const cliPath = join(root, 'nightshift.cmd')
+      const cliPath = join(root, 'kolux.cmd')
       await writeFile(cliPath, '@echo off\r\n', 'utf8')
 
       expect(resolveClaudeAgentTeamsShimBin({ Path: root })).toBe(cliPath)
@@ -145,15 +145,15 @@ describe('claude agent teams shim env', () => {
   })
 
   it.skipIf(process.platform === 'win32')(
-    'never runs a cwd-resolved nightshift when the shim bin is unqualified',
+    'never runs a cwd-resolved kolux when the shim bin is unqualified',
     async () => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-shim-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-shim-'))
       roots.push(root)
       await ensureClaudeAgentTeamsShimDir(root)
-      const cwd = await mkdtemp(join(tmpdir(), 'nightshift-agent-teams-cwd-'))
+      const cwd = await mkdtemp(join(tmpdir(), 'kolux-agent-teams-cwd-'))
       roots.push(cwd)
       const marker = join(cwd, 'hijacked')
-      for (const name of ['nightshift', 'nightshift-ide']) {
+      for (const name of ['kolux', 'kolux-ide']) {
         const decoy = join(cwd, name)
         await writeFile(decoy, `#!/usr/bin/env sh\ntouch ${JSON.stringify(marker)}\n`, 'utf8')
         await chmod(decoy, 0o755)
@@ -169,12 +169,12 @@ describe('claude agent teams shim env', () => {
       expect(hijack.stderr).toContain('absolute path')
       expect(existsSync(marker)).toBe(false)
 
-      const cli = join(cwd, 'fake-nightshift')
+      const cli = join(cwd, 'fake-kolux')
       await writeFile(cli, '#!/usr/bin/env sh\necho "ran $*"\n', 'utf8')
       await chmod(cli, 0o755)
       const qualified = spawnSync(join(root, 'tmux'), ['list-panes'], {
         cwd,
-        env: { PATH: `.:${process.env.PATH ?? ''}`, NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN: cli },
+        env: { PATH: `.:${process.env.PATH ?? ''}`, KOLUX_AGENT_TEAMS_SHIM_BIN: cli },
         encoding: 'utf8'
       })
 
@@ -186,10 +186,10 @@ describe('claude agent teams shim env', () => {
   it('writes a Windows shim that rejects an unqualified shim bin', () => {
     const script = windowsClaudeAgentTeamsShimScript()
 
-    expect(script).not.toMatch(/^set "NIGHTSHIFT_AGENT_TEAMS_SHIM_BIN=nightshift/m)
-    expect(script).toContain('if "%NIGHTSHIFT_SHIM_BIN:~1,1%"==":" goto :run')
+    expect(script).not.toMatch(/^set "KOLUX_AGENT_TEAMS_SHIM_BIN=kolux/m)
+    expect(script).toContain('if "%KOLUX_SHIM_BIN:~1,1%"==":" goto :run')
     // Why: `call` would re-expand `%2`-style tmux pane args as batch parameters.
-    expect(script).toContain('\r\n"%NIGHTSHIFT_SHIM_BIN%" agent-teams-tmux %*\r\n')
+    expect(script).toContain('\r\n"%KOLUX_SHIM_BIN%" agent-teams-tmux %*\r\n')
     expect(script).toContain('exit /b 127')
   })
 })

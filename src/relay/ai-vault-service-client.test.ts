@@ -292,8 +292,8 @@ describe('RelayAiVaultServiceClient', () => {
   })
 
   it('resolves the sidecar beside each bundled relay', () => {
-    expect(relayAiVaultServiceEntryPath('/opt/nightshift/relay')).toBe(
-      '/opt/nightshift/relay/relay-ai-vault-service.js'
+    expect(relayAiVaultServiceEntryPath('/opt/kolux/relay')).toBe(
+      '/opt/kolux/relay/relay-ai-vault-service.js'
     )
   })
 })

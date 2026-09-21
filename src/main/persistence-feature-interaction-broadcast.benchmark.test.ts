@@ -24,9 +24,9 @@ const INTERACTIONS = 200
 const tempDirs: string[] = []
 
 function createStore(name: string): { dataFile: string; store: Store } {
-  const dir = mkdtempSync(join(tmpdir(), `nightshift-ui-broadcast-${name}-`))
+  const dir = mkdtempSync(join(tmpdir(), `kolux-ui-broadcast-${name}-`))
   tempDirs.push(dir)
-  const dataFile = join(dir, 'nightshift-data.json')
+  const dataFile = join(dir, 'kolux-data.json')
   return { dataFile, store: new Store({ dataFile }) }
 }
 

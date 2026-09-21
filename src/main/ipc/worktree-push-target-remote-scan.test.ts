@@ -8,9 +8,9 @@ import { parseGitHubOwnerRepo } from '../github/gh-utils'
 import { findRemoteForUrl } from './worktree-push-target-setup'
 import type { GitRemoteExec } from './worktree-push-target-cleanup'
 
-const SSH_FORK = 'git@github.com:contributor/nightshift.git'
-const HTTPS_FORK = 'https://github.com/contributor/nightshift.git'
-const GITLAB_FORK = 'https://gitlab.com/contributor/nightshift.git'
+const SSH_FORK = 'git@github.com:contributor/kolux.git'
+const HTTPS_FORK = 'https://github.com/contributor/kolux.git'
+const GITLAB_FORK = 'https://gitlab.com/contributor/kolux.git'
 const UPSTREAM = 'https://github.com/TxaisX/nightshift.git'
 
 type RemoteRow = { name: string; fetchUrl: string; pushUrl?: string }
@@ -87,10 +87,10 @@ async function findRemoteForUrlPerRemote(
 const fiftyEightRemotes: RemoteRow[] = [
   { name: 'origin', fetchUrl: UPSTREAM },
   ...Array.from({ length: 56 }, (_, index) => ({
-    name: `pr-user${index}-nightshift`,
-    fetchUrl: `https://github.com/user${index}/nightshift.git`
+    name: `pr-user${index}-kolux`,
+    fetchUrl: `https://github.com/user${index}/kolux.git`
   })),
-  { name: 'pr-contributor-nightshift', fetchUrl: SSH_FORK }
+  { name: 'pr-contributor-kolux', fetchUrl: SSH_FORK }
 ]
 
 const matrix: { name: string; remotes: RemoteRow[]; lookupUrl: string }[] = [
@@ -149,7 +149,7 @@ const matrix: { name: string; remotes: RemoteRow[]; lookupUrl: string }[] = [
   {
     name: 'non-GitHub provider with a different host does not match',
     remotes: [{ name: 'gitlab-fork', fetchUrl: GITLAB_FORK }],
-    lookupUrl: 'https://bitbucket.org/contributor/nightshift.git'
+    lookupUrl: 'https://bitbucket.org/contributor/kolux.git'
   }
 ]
 

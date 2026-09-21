@@ -17,7 +17,7 @@ import {
   buildHostCliEnv,
   resolveHostCliEntryPath,
   resolveHostCliKillTimeoutMs,
-  runHostNightshiftCliPassthrough
+  runHostKoluxCliPassthrough
 } from './ssh-remote-cli-host-passthrough'
 import { resolveOrchestrationAskClientTimeoutMs } from '../../shared/orchestration-ask-timeout'
 import { remoteCliRequestTimeoutMs } from '../../relay/remote-cli-timeout'
@@ -65,15 +65,15 @@ describe('resolveHostCliEntryPath', () => {
 })
 
 describe('buildHostCliEnv', () => {
-  it('forwards only Nightshift terminal-context vars from the remote env', () => {
+  it('forwards only Kolux terminal-context vars from the remote env', () => {
     const env = buildHostCliEnv({
       hostEnv: { PATH: '/host/bin', NODE_OPTIONS: '--inspect' },
       remoteEnv: {
-        NIGHTSHIFT_TERMINAL_HANDLE: 'term_remote',
-        NIGHTSHIFT_WORKTREE_ID: 'repo::/home/alice/wt',
-        NIGHTSHIFT_PANE_KEY: 'pane-9',
-        NIGHTSHIFT_AGENT_LAUNCH_TOKEN: 'launch-secret',
-        NIGHTSHIFT_WORKSPACE_ID: 'ws-1',
+        KOLUX_TERMINAL_HANDLE: 'term_remote',
+        KOLUX_WORKTREE_ID: 'repo::/home/alice/wt',
+        KOLUX_PANE_KEY: 'pane-9',
+        KOLUX_AGENT_LAUNCH_TOKEN: 'launch-secret',
+        KOLUX_WORKSPACE_ID: 'ws-1',
         [ORCHESTRATION_COMPATIBILITY_HOST_KIND_ENV]: 'wsl',
         [ORCHESTRATION_COMPATIBILITY_HOST_ID_ENV]: 'caller-host',
         [ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION_ENV]: 'caller-incarnation',
@@ -82,7 +82,7 @@ describe('buildHostCliEnv', () => {
         // subprocess (PATH would break host binary lookup; user-data would
         // retarget the CLI at a different local instance).
         PATH: '/remote/bin',
-        NIGHTSHIFT_USER_DATA_PATH: '/remote/user-data'
+        KOLUX_USER_DATA_PATH: '/remote/user-data'
       },
       userDataPath: '/host/user-data',
       remoteCwd: '/home/alice/wt/sub',
@@ -94,39 +94,39 @@ describe('buildHostCliEnv', () => {
       }
     })
 
-    expect(env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_remote')
-    expect(env.NIGHTSHIFT_WORKTREE_ID).toBe('repo::/home/alice/wt')
-    expect(env.NIGHTSHIFT_PANE_KEY).toBe('pane-9')
-    expect(env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN).toBe('launch-secret')
-    expect(env.NIGHTSHIFT_WORKSPACE_ID).toBe('ws-1')
+    expect(env.KOLUX_TERMINAL_HANDLE).toBe('term_remote')
+    expect(env.KOLUX_WORKTREE_ID).toBe('repo::/home/alice/wt')
+    expect(env.KOLUX_PANE_KEY).toBe('pane-9')
+    expect(env.KOLUX_AGENT_LAUNCH_TOKEN).toBe('launch-secret')
+    expect(env.KOLUX_WORKSPACE_ID).toBe('ws-1')
     expect(env[ORCHESTRATION_COMPATIBILITY_HOST_KIND_ENV]).toBe('ssh')
     expect(env[ORCHESTRATION_COMPATIBILITY_HOST_ID_ENV]).toBe('saved-target')
     expect(env[ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION_ENV]).toBe('connection-incarnation')
     expect(env[ORCHESTRATION_COMPATIBILITY_ATTACHMENT_ENV]).toBe('runtime-attachment')
     expect(env.PATH).toBe('/host/bin')
-    expect(env.NIGHTSHIFT_USER_DATA_PATH).toBe('/host/user-data')
-    expect(env.NIGHTSHIFT_CLI_CWD).toBe('/home/alice/wt/sub')
-    expect(env.NIGHTSHIFT_CLI_COMMAND).toBe('nightshift')
+    expect(env.KOLUX_USER_DATA_PATH).toBe('/host/user-data')
+    expect(env.KOLUX_CLI_CWD).toBe('/home/alice/wt/sub')
+    expect(env.KOLUX_CLI_COMMAND).toBe('kolux')
     expect(env.ELECTRON_RUN_AS_NODE).toBe('1')
     expect(env.NODE_OPTIONS).toBeUndefined()
-    expect(env.NIGHTSHIFT_NODE_OPTIONS).toBe('--inspect')
+    expect(env.KOLUX_NODE_OPTIONS).toBe('--inspect')
   })
 
   it.each([
-    ['dev host', { NIGHTSHIFT_DEV_REPO_ROOT: '/repo', NIGHTSHIFT_CLI_COMMAND: 'nightshift-dev' }],
-    ['packaged Linux host', { NIGHTSHIFT_CLI_COMMAND: 'nightshift-ide' }],
+    ['dev host', { KOLUX_DEV_REPO_ROOT: '/repo', KOLUX_CLI_COMMAND: 'kolux-dev' }],
+    ['packaged Linux host', { KOLUX_CLI_COMMAND: 'kolux-ide' }],
     ['local host', {}],
-    ['WSL host', { WSL_DISTRO_NAME: 'Ubuntu', NIGHTSHIFT_CLI_COMMAND: 'nightshift-ide' }],
+    ['WSL host', { WSL_DISTRO_NAME: 'Ubuntu', KOLUX_CLI_COMMAND: 'kolux-ide' }],
     ['Windows host', { ComSpec: 'C:\\Windows\\System32\\cmd.exe' }]
   ])('pins %s recovery to the remote shim', (_name, hostEnv) => {
     const env = buildHostCliEnv({
       hostEnv,
-      remoteEnv: { NIGHTSHIFT_CLI_COMMAND: 'untrusted-remote-command' },
+      remoteEnv: { KOLUX_CLI_COMMAND: 'untrusted-remote-command' },
       userDataPath: '/host/user-data',
       remoteCwd: '/srv/repo'
     })
 
-    expect(env.NIGHTSHIFT_CLI_COMMAND).toBe('nightshift')
+    expect(env.KOLUX_CLI_COMMAND).toBe('kolux')
   })
 
   it('namespaces identical remote artifact paths by stable SSH target', () => {
@@ -260,16 +260,16 @@ describe('resolveHostCliKillTimeoutMs', () => {
   })
 })
 
-describe('runHostNightshiftCliPassthrough', () => {
+describe('runHostKoluxCliPassthrough', () => {
   it('spawns the bundled CLI entry with the remote argv and returns captured output', async () => {
     const child = createFakeChild()
     const spawn = vi.fn(() => child)
 
-    const resultPromise = runHostNightshiftCliPassthrough(
+    const resultPromise = runHostKoluxCliPassthrough(
       {
         argv: ['orchestration', 'task-create', '--spec', 'do the thing', '--json'],
         cwd: '/home/alice/wt',
-        env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_remote' }
+        env: { KOLUX_TERMINAL_HANDLE: 'term_remote' }
       },
       { ...BASE_OPTIONS, spawn: spawn as never }
     )
@@ -298,8 +298,8 @@ describe('runHostNightshiftCliPassthrough', () => {
       '--json'
     ])
     expect(options.env.ELECTRON_RUN_AS_NODE).toBe('1')
-    expect(options.env.NIGHTSHIFT_CLI_CWD).toBe('/home/alice/wt')
-    expect(options.env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_remote')
+    expect(options.env.KOLUX_CLI_CWD).toBe('/home/alice/wt')
+    expect(options.env.KOLUX_TERMINAL_HANDLE).toBe('term_remote')
     // Why: stdin must be closed even without a payload so CLI handlers that
     // stream stdin see EOF instead of hanging forever.
     expect(child.stdin.end).toHaveBeenCalledWith()
@@ -309,7 +309,7 @@ describe('runHostNightshiftCliPassthrough', () => {
     const child = createFakeChild()
     const spawn = vi.fn(() => child)
 
-    const resultPromise = runHostNightshiftCliPassthrough(
+    const resultPromise = runHostKoluxCliPassthrough(
       {
         argv: ['linear', 'comment', 'add', 'ENG-1', '--body-file', '-'],
         cwd: '/home/alice/wt',
@@ -330,7 +330,7 @@ describe('runHostNightshiftCliPassthrough', () => {
     const child = createFakeChild()
     const spawn = vi.fn(() => child)
 
-    const resultPromise = runHostNightshiftCliPassthrough(
+    const resultPromise = runHostKoluxCliPassthrough(
       { argv: ['worktree', 'show'], cwd: '/', env: {} },
       { ...BASE_OPTIONS, spawn: spawn as never }
     )
@@ -345,7 +345,7 @@ describe('runHostNightshiftCliPassthrough', () => {
   it('throws HostCliUnavailableError when the CLI entry is missing', async () => {
     const spawn = vi.fn()
     await expect(
-      runHostNightshiftCliPassthrough(
+      runHostKoluxCliPassthrough(
         { argv: ['status'], cwd: '/', env: {} },
         { ...BASE_OPTIONS, entryExists: () => false, spawn: spawn as never }
       )
@@ -356,7 +356,7 @@ describe('runHostNightshiftCliPassthrough', () => {
   it('rejects an invalid injected kill timeout before spawning', async () => {
     const spawn = vi.fn()
     await expect(
-      runHostNightshiftCliPassthrough(
+      runHostKoluxCliPassthrough(
         { argv: ['status'], cwd: '/', env: {} },
         { ...BASE_OPTIONS, spawn: spawn as never, killTimeoutMs: 2_147_483_648 }
       )
@@ -368,7 +368,7 @@ describe('runHostNightshiftCliPassthrough', () => {
     const child = createFakeChild()
     const spawn = vi.fn(() => child)
 
-    const resultPromise = runHostNightshiftCliPassthrough(
+    const resultPromise = runHostKoluxCliPassthrough(
       { argv: ['status'], cwd: '/', env: {} },
       { ...BASE_OPTIONS, spawn: spawn as never }
     )
@@ -385,7 +385,7 @@ describe('runHostNightshiftCliPassthrough', () => {
       const child = createFakeChild()
       const spawn = vi.fn(() => child)
 
-      const resultPromise = runHostNightshiftCliPassthrough(
+      const resultPromise = runHostKoluxCliPassthrough(
         { argv: ['terminal', 'wait', '--for', 'exit'], cwd: '/', env: {} },
         { ...BASE_OPTIONS, spawn: spawn as never, killTimeoutMs: 1000 }
       )
@@ -404,7 +404,7 @@ describe('runHostNightshiftCliPassthrough', () => {
     const child = createFakeChild()
     const spawn = vi.fn(() => child)
 
-    const resultPromise = runHostNightshiftCliPassthrough(
+    const resultPromise = runHostKoluxCliPassthrough(
       { argv: ['terminal', 'read'], cwd: '/', env: {} },
       { ...BASE_OPTIONS, spawn: spawn as never }
     )

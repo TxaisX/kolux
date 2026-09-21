@@ -37,7 +37,7 @@ describe('downloadFolderViaSftp', () => {
   })
 
   async function createDestination(): Promise<string> {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-ssh-folder-download-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-ssh-folder-download-'))
     roots.push(root)
     return join(root, 'src')
   }

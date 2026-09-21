@@ -554,7 +554,7 @@ describe('launchAgentInNewTab', () => {
     mockIsWebRuntimeSessionActive.mockReturnValue(true)
     mockCreateWebRuntimeSessionTerminal.mockResolvedValue({
       status: 'failed',
-      message: 'Upgrade the remote Nightshift host before starting or resuming agent sessions.'
+      message: 'Upgrade the remote Kolux host before starting or resuming agent sessions.'
     })
     store.settings = {
       agentCmdOverrides: {},
@@ -571,7 +571,7 @@ describe('launchAgentInNewTab', () => {
 
     await Promise.resolve()
     expect(mockToastError).toHaveBeenCalledWith(
-      'Upgrade the remote Nightshift host before starting or resuming agent sessions.'
+      'Upgrade the remote Kolux host before starting or resuming agent sessions.'
     )
     expect(mockSetActiveTabType).not.toHaveBeenCalled()
   })
@@ -722,7 +722,7 @@ describe('launchAgentInNewTab', () => {
         state: 'working',
         prompt: 'large generated prompt',
         agentType: 'command-code',
-        // Why: seeded from Nightshift's own prompt delivery, not a provider hook (STA-4293).
+        // Why: seeded from Kolux's own prompt delivery, not a provider hook (STA-4293).
         observation: expect.objectContaining({ origin: 'process', kind: 'transition' })
       },
       undefined,

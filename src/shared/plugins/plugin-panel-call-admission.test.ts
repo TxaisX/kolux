@@ -9,13 +9,13 @@ describe('createPluginPanelCallAdmission', () => {
       now: () => now
     })
 
-    expect(admission.admit('nightshift-samples.one', { method: 'one' })).toBeNull()
-    expect(admission.admit('nightshift-samples.one', { method: 'two' })).toBeNull()
-    expect(admission.admit('nightshift-samples.one', { method: 'three' })).toBe('rate_limited')
-    expect(admission.admit('nightshift-samples.two', { method: 'one' })).toBeNull()
+    expect(admission.admit('kolux-samples.one', { method: 'one' })).toBeNull()
+    expect(admission.admit('kolux-samples.one', { method: 'two' })).toBeNull()
+    expect(admission.admit('kolux-samples.one', { method: 'three' })).toBe('rate_limited')
+    expect(admission.admit('kolux-samples.two', { method: 'one' })).toBeNull()
 
     now = 1_000
-    expect(admission.admit('nightshift-samples.one', { method: 'four' })).toBeNull()
+    expect(admission.admit('kolux-samples.one', { method: 'four' })).toBeNull()
   })
 
   it('rejects oversized calls and can revoke a plugin budget', () => {
@@ -24,9 +24,9 @@ describe('createPluginPanelCallAdmission', () => {
       now: () => 0
     })
 
-    expect(admission.admit('nightshift-samples.one', { payload: 'x'.repeat(64) })).toBe('oversized')
-    expect(admission.admit('nightshift-samples.one', {})).toBe('rate_limited')
-    admission.clear('nightshift-samples.one')
-    expect(admission.admit('nightshift-samples.one', {})).toBeNull()
+    expect(admission.admit('kolux-samples.one', { payload: 'x'.repeat(64) })).toBe('oversized')
+    expect(admission.admit('kolux-samples.one', {})).toBe('rate_limited')
+    admission.clear('kolux-samples.one')
+    expect(admission.admit('kolux-samples.one', {})).toBeNull()
   })
 })

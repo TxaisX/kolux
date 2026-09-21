@@ -18,7 +18,7 @@ const entries = new Map([
 
 const references = [
   { key: 'plain.match', fallback: 'Save' },
-  { key: 'plain.drift', fallback: 'Name in Nightshift' },
+  { key: 'plain.drift', fallback: 'Name in Kolux' },
   { key: 'plain.conflicting', fallback: 'Retry' },
   { key: 'plain.conflicting', fallback: 'Try again' },
   { key: 'plain.dynamicDefault', fallback: undefined },

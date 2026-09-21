@@ -75,7 +75,7 @@ function makeLinearIssue(url: string): LinearIssue {
 }
 
 function makeRepo(id: string = REPO_ID, path: string = '/repo'): Repo {
-  return { id, path, displayName: 'nightshift', badgeColor: '#999999', addedAt: 1 }
+  return { id, path, displayName: 'kolux', badgeColor: '#999999', addedAt: 1 }
 }
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
@@ -298,7 +298,7 @@ describe('WorktreeMetaDialog issue link row', () => {
     openDialog({ worktree: { linkedLinearIssue: 'STA-335' } })
 
     fireEvent.change(issueInput(), {
-      target: { value: 'https://github.com/acme/nightshift/issues/77' }
+      target: { value: 'https://github.com/acme/kolux/issues/77' }
     })
 
     expect(providerChip().textContent).toContain('GitHub')
@@ -461,7 +461,7 @@ describe('WorktreeMetaDialog issue link row', () => {
     expect(providerChip().textContent).toContain('Linear')
   })
 
-  // A background `nightshift worktree set` must not move the baseline mid-edit: the
+  // A background `kolux worktree set` must not move the baseline mid-edit: the
   // field would read as dirty and a comment-only save would write the stale seed.
   it('keeps the baseline frozen when the store changes while open', async () => {
     openDialog({ worktree: { linkedLinearIssue: 'STA-335' } })

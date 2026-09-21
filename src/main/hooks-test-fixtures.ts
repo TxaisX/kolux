@@ -4,9 +4,9 @@ import { join } from 'node:path'
 
 export const TEST_REPO_PATH = join('/test/repo')
 export const TEST_WORKTREE_PATH = join('/test/worktree')
-export const TEST_REPO_NIGHTSHIFT_YAML_PATH = join(TEST_REPO_PATH, 'nightshift.yaml')
-export const TEST_WORKTREE_NIGHTSHIFT_YAML_PATH = join(TEST_WORKTREE_PATH, 'nightshift.yaml')
-export const TEST_ISSUE_COMMAND_PATH = join(TEST_REPO_PATH, '.nightshift', 'issue-command')
+export const TEST_REPO_KOLUX_YAML_PATH = join(TEST_REPO_PATH, 'kolux.yaml')
+export const TEST_WORKTREE_KOLUX_YAML_PATH = join(TEST_WORKTREE_PATH, 'kolux.yaml')
+export const TEST_ISSUE_COMMAND_PATH = join(TEST_REPO_PATH, '.kolux', 'issue-command')
 export const TEST_GITIGNORE_PATH = join(TEST_REPO_PATH, '.gitignore')
 
 /** Minimal repo record the hooks module reads; hookSettings shape varies per suite. */

@@ -280,8 +280,8 @@ describe('createEditorSlice activateMarkdownLink', () => {
 
     store.getState().openFile(
       {
-        filePath: '/remote/.nightshift/drops/log.txt',
-        relativePath: '.nightshift/drops/log.txt',
+        filePath: '/remote/.kolux/drops/log.txt',
+        relativePath: '.kolux/drops/log.txt',
         worktreeId: 'wt-1',
         language: 'text',
         mode: 'edit'
@@ -290,7 +290,7 @@ describe('createEditorSlice activateMarkdownLink', () => {
     )
 
     expect(store.getState().openFiles[0]).toMatchObject({
-      filePath: '/remote/.nightshift/drops/log.txt'
+      filePath: '/remote/.kolux/drops/log.txt'
     })
     expect(store.getState().openFiles[0]?.runtimeEnvironmentId).toBeNull()
   })
@@ -497,7 +497,7 @@ describe('createEditorSlice activateMarkdownLink', () => {
     })
   })
 
-  it('opens in-worktree file links in Nightshift', async () => {
+  it('opens in-worktree file links in Kolux', async () => {
     const store = createEditorStore()
     await store.getState().activateMarkdownLink('./image.png', {
       sourceFilePath: '/repo/docs/note.md',
@@ -540,7 +540,7 @@ describe('createEditorSlice activateMarkdownLink', () => {
     })
   })
 
-  it('opens explicit file URLs inside the worktree in Nightshift', async () => {
+  it('opens explicit file URLs inside the worktree in Kolux', async () => {
     const store = createEditorStore()
     await store.getState().activateMarkdownLink('file:///repo/docs/image.png', {
       sourceFilePath: '/repo/docs/note.md',
@@ -558,7 +558,7 @@ describe('createEditorSlice activateMarkdownLink', () => {
     expect(openFileUriMock).not.toHaveBeenCalled()
   })
 
-  it('opens explicit file URLs outside the worktree in Nightshift after authorizing them', async () => {
+  it('opens explicit file URLs outside the worktree in Kolux after authorizing them', async () => {
     const store = createEditorStore()
     await store.getState().activateMarkdownLink('file:///tmp/image.png', {
       sourceFilePath: '/repo/docs/note.md',

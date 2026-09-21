@@ -9,7 +9,7 @@ but React still receives its once-per-second lap notifications.
 We put a day's worth of laps into one animation. The wheel moves at the same
 speed, while sending one lap notification a day. Drawing visible wheels still
 costs something. This removes recurring bookkeeping from the input thread; it
-does not make rendering or the rest of Nightshift free.
+does not make rendering or the rest of Kolux free.
 
 ## How this builds on earlier changes
 
@@ -45,7 +45,7 @@ These are event dispatches, not component rerenders or 400 separate OS wakeups.
 
 ## Full-app benchmark
 
-The opt-in Playwright benchmark launches a fresh, hidden Nightshift app for each
+The opt-in Playwright benchmark launches a fresh, hidden Kolux app for each
 scenario. It creates real Git workspaces and seeds working statuses through the
 existing renderer fixture, including in-process subagent data. It renders the
 normal sidebar, virtualizer, lineage, agent rows, tabs, and terminal.
@@ -98,7 +98,7 @@ the two runs, not confidence intervals. No keys or echoes were missing.
 The consistent gain is less main-thread work: about 35%, 43%, 42%, and 50%
 less in these four scenarios. Native 2.2-second traces counted 6, 16, 324, and
 2,802 iteration events before, and zero in each new variant, without adding an
-iteration listener. That avoided work also exists in Nightshift itself, independently
+iteration listener. That avoided work also exists in Kolux itself, independently
 of the isolated fixture and CPU noise.
 
 Total CPU was roughly unchanged in the one-worktree cases. In this run it fell
@@ -134,18 +134,18 @@ remain included. CPU and typing were sampled separately.
 ## Reproduce
 
 ```sh
-NIGHTSHIFT_BACKGROUND_LAUNCH=1 pnpm bench:spinners --sample-ms=5000
-NIGHTSHIFT_BACKGROUND_LAUNCH=1 pnpm bench:spinners --verify-only --scale-factor=1
-NIGHTSHIFT_BACKGROUND_LAUNCH=1 pnpm bench:spinners --verify-only --scale-factor=2
-NIGHTSHIFT_BACKGROUND_LAUNCH=1 NIGHTSHIFT_SPINNER_BENCH=1 NIGHTSHIFT_SPINNER_KEYS=64 \
+KOLUX_BACKGROUND_LAUNCH=1 pnpm bench:spinners --sample-ms=5000
+KOLUX_BACKGROUND_LAUNCH=1 pnpm bench:spinners --verify-only --scale-factor=1
+KOLUX_BACKGROUND_LAUNCH=1 pnpm bench:spinners --verify-only --scale-factor=2
+KOLUX_BACKGROUND_LAUNCH=1 KOLUX_SPINNER_BENCH=1 KOLUX_SPINNER_KEYS=64 \
   pnpm test:e2e spinner-workspace-perf.spec.ts --workers=1
 ```
 
 The full-app command rebuilds in `e2e` mode. For a fresh build already made with
 `pnpm exec electron-vite build --mode e2e`, `SKIP_BUILD=1` reuses it. Do not reuse
-an old launch-policy build. `NIGHTSHIFT_SPINNER_SAMPLE_MS`, `NIGHTSHIFT_SPINNER_ROUNDS`,
-`NIGHTSHIFT_SPINNER_KEYS`, `NIGHTSHIFT_SPINNER_KEY_CADENCE_MS`, `NIGHTSHIFT_SPINNER_VARIANTS`, and
-`NIGHTSHIFT_SPINNER_OUTPUT` control the experiment. `NIGHTSHIFT_SPINNER_CPU=0` repeats only
+an old launch-policy build. `KOLUX_SPINNER_SAMPLE_MS`, `KOLUX_SPINNER_ROUNDS`,
+`KOLUX_SPINNER_KEYS`, `KOLUX_SPINNER_KEY_CADENCE_MS`, `KOLUX_SPINNER_VARIANTS`, and
+`KOLUX_SPINNER_OUTPUT` control the experiment. `KOLUX_SPINNER_CPU=0` repeats only
 typing; `--grep one-agent` selects one scenario. Reports, native traces, typing
 sidecars, and CDP screenshots are written under `.bench-fixtures/`. Run one
 benchmark at a time, without concurrent builds or tests.
@@ -185,7 +185,7 @@ An early isolated test suggested a 31% process-CPU reduction that a longer audit
 did not reproduce. The longer isolated audit measured original 104.04 versus
 long-cycle 92.32 CPU ms/s, and main-thread 10.08 versus 0.24 ms/s. A fixture with
 every ring far offscreen and containment enabled could also approach idle; that
-is not representative of Nightshift with visible animations. Neither result justifies
+is not representative of Kolux with visible animations. Neither result justifies
 claiming "free spinners" or a universal CPU percentage. Virtualized, unmounted
 rows already cost nothing, and this patch does not add offscreen culling.
 

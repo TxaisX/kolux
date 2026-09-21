@@ -79,7 +79,7 @@ export class AgentHookResultRetryScheduler {
     env?: string,
     version?: string
   ): void {
-    // Why: a nested non-codex CLI inherits NIGHTSHIFT_PANE_KEY, so clearing here would silently end a live codex poll.
+    // Why: a nested non-codex CLI inherits KOLUX_PANE_KEY, so clearing here would silently end a live codex poll.
     if (source !== 'codex') {
       return
     }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AgentHookServer } from '../../agent-hooks/server'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { RpcDispatcher } from './dispatcher'
 import {
   cleanupLegacyCompatibilityDispatcherHarnesses,
@@ -21,7 +21,7 @@ describe('legacy takeover by current runtime authority', () => {
   it('accepts a fresh current agent before its first hook observation', async () => {
     const harness = createHarness()
     const hookServer = new AgentHookServer()
-    const runtime = new NightshiftRuntimeService(null, undefined, {
+    const runtime = new KoluxRuntimeService(null, undefined, {
       attestAgentHookCompatibilityAuthority: (candidate) =>
         hookServer.attestCompatibilityAuthority(candidate)
     })
@@ -91,7 +91,7 @@ describe('legacy takeover by current runtime authority', () => {
 
   it('requires a runtime-issued SSH attachment for fresh launch proof', async () => {
     const harness = createHarness()
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const proof = currentEvidence('coordinator')
     const launchTokenHash = createHash('sha256').update(proof.launchToken!).digest('hex')
     const host = runtime.registerOrchestrationCompatibilitySshAttachment(

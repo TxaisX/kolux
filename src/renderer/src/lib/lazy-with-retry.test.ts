@@ -12,14 +12,14 @@ import {
   isIntentionalAppRestartInProgress,
   registerUpdaterBeforeUnloadBypass
 } from './updater-beforeunload'
-import { NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT } from '../../../shared/renderer-shutdown-events'
-import { NIGHTSHIFT_APP_RESTART_ABORTED_EVENT } from '../../../shared/updater-renderer-events'
+import { KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT } from '../../../shared/renderer-shutdown-events'
+import { KOLUX_APP_RESTART_ABORTED_EVENT } from '../../../shared/updater-renderer-events'
 import {
-  NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT,
+  KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT,
   type EditorPrepareHotExitDetail
 } from '../../../shared/editor-save-events'
 
-const RELOAD_GUARD_KEY = 'nightshift:lazy-chunk-reload-attempted'
+const RELOAD_GUARD_KEY = 'kolux:lazy-chunk-reload-attempted'
 const LANDED_RELOAD_GUARD_VALUE = 'doc-before-the-reload'
 const Comp: ComponentType = () => null
 const chunkParseError = (): SyntaxError => new SyntaxError("Unexpected token ']'")
@@ -398,19 +398,19 @@ describe('loadLazyWithRetry recovery reload vs the dirty-editor-tab unload veto'
     }
 
     window.addEventListener('beforeunload', dirtyTabGuard)
-    window.addEventListener(NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT, hotExitBackup)
+    window.addEventListener(KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT, hotExitBackup)
     vi.spyOn(window.location, 'reload').mockImplementation(() => {
       harness.restartLatchAtNavigation = isIntentionalAppRestartInProgress()
       const accepted = window.dispatchEvent(new Event('beforeunload', { cancelable: true }))
       harness.navigations.push(accepted ? 'landed' : 'cancelled')
       if (!accepted) {
-        window.dispatchEvent(new Event(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT))
+        window.dispatchEvent(new Event(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT))
       }
     })
 
     cleanupHarness = () => {
       window.removeEventListener('beforeunload', dirtyTabGuard)
-      window.removeEventListener(NIGHTSHIFT_EDITOR_PREPARE_HOT_EXIT_EVENT, hotExitBackup)
+      window.removeEventListener(KOLUX_EDITOR_PREPARE_HOT_EXIT_EVENT, hotExitBackup)
       cleanupBypass()
     }
     return harness
@@ -457,7 +457,7 @@ describe('loadLazyWithRetry recovery reload vs the dirty-editor-tab unload veto'
     const harness = installDirtyEditorTab({ hotExitBackupFails: true })
     const recordBreadcrumb = stubCrashReportsBreadcrumb()
     const restartAborted = vi.fn()
-    window.addEventListener(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT, restartAborted)
+    window.addEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, restartAborted)
     const error = chunkParseError()
 
     const loaded = loadLazyWithRetry(() => Promise.reject(error), {
@@ -488,7 +488,7 @@ describe('loadLazyWithRetry recovery reload vs the dirty-editor-tab unload veto'
         outcome: 'checkpoint-refused'
       }
     })
-    window.removeEventListener(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT, restartAborted)
+    window.removeEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, restartAborted)
   })
 
   it('clears recovery state when the host rejects the reload request', async () => {
@@ -522,7 +522,7 @@ describe('loadLazyWithRetry recovery reload vs the dirty-editor-tab unload veto'
 
   it('settles on the unload-prevented signal instead of waiting out the blind grace window', async () => {
     vi.spyOn(window.location, 'reload').mockImplementation(() => {
-      window.dispatchEvent(new Event(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT))
+      window.dispatchEvent(new Event(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT))
     })
     const error = chunkParseError()
 
@@ -545,7 +545,7 @@ describe('loadLazyWithRetry recovery reload vs the dirty-editor-tab unload veto'
 
   it('drops the stale guard after a vetoed reload but caps re-arming per document', async () => {
     const reload = vi.fn(() => {
-      window.dispatchEvent(new Event(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT))
+      window.dispatchEvent(new Event(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT))
     })
     vi.spyOn(window.location, 'reload').mockImplementation(reload)
     const error = chunkParseError()

@@ -84,7 +84,7 @@ export function RuntimeServersConnectSection({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.RuntimeEnvironmentsPane.connectToRemoteServersHelp',
-              'Pair another Nightshift runtime, then connect or disconnect it here.'
+              'Pair another Kolux runtime, then connect or disconnect it here.'
             )}
           </p>
         </div>

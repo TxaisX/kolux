@@ -31,7 +31,7 @@ describe('shouldShowNativeChatTypingIndicator', () => {
   it('hides as soon as the structured reply row arrives, before working clears', () => {
     expect(
       shouldShowNativeChatTypingIndicator({
-        messages: [message('u1', 'user'), message('nightshift-item', 'assistant')],
+        messages: [message('u1', 'user'), message('kolux-item', 'assistant')],
         isWorking: true
       })
     ).toBe(false)

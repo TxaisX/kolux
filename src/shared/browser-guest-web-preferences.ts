@@ -1,6 +1,6 @@
-export const NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES = {
+export const KOLUX_BROWSER_GUEST_WEB_PREFERENCES = {
   disableHtmlFullscreenWindowResize: true
 } as const
 
-export const NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE =
+export const KOLUX_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE =
   'disableHtmlFullscreenWindowResize=true'

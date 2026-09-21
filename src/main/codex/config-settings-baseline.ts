@@ -5,7 +5,7 @@ import { NodeFileReadTooLargeError } from '../../shared/node-bounded-file-reader
 import { join } from 'node:path'
 import { readAgentStateFileSync, readAgentStateJsonFileSync } from '../agent-state-file-reader'
 
-const SETTINGS_BASELINE_FILE = '.nightshift-config-settings-baseline.json'
+const SETTINGS_BASELINE_FILE = '.kolux-config-settings-baseline.json'
 
 export type CodexSettingsConflict = {
   runtime: string | null
@@ -25,7 +25,7 @@ type StoredSettingsBaseline = {
 
 /**
  * Why callers need three answers, not two: without a readable baseline,
- * promotion cannot distinguish an in-Codex edit from Nightshift's last mirror. An
+ * promotion cannot distinguish an in-Codex edit from Kolux's last mirror. An
  * unreadable baseline must stall that mirror; absent and unparseable still map
  * to `absent` because rebuilding those is the intent.
  */

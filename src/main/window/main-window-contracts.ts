@@ -20,7 +20,7 @@ export type CreateMainWindowOptions = {
     details: Electron.RenderProcessGoneDetails,
     webContentsId: number
   ) => void
-  /** Returns true when Nightshift should reload after renderer loss; update-relaunch/quit tear down children intentionally, so don't fight shutdown. */
+  /** Returns true when Kolux should reload after renderer loss; update-relaunch/quit tear down children intentionally, so don't fight shutdown. */
   shouldRecoverRenderer?: (
     details: Electron.RenderProcessGoneDetails,
     webContentsId: number

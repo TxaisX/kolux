@@ -14,7 +14,7 @@ import {
 
 /**
  * Shows the Full Disk Access hint after macOS raises a consent dialog naming
- * Nightshift (#9756). Users who never see one never see this.
+ * Kolux (#9756). Users who never see one never see this.
  */
 export function useMacosTccPromptNotice(): void {
   const openSettingsPage = useAppStore((s) => s.openSettingsPage)
@@ -42,12 +42,12 @@ export function useMacosTccPromptNotice(): void {
       toast.warning(
         translate(
           'auto.hooks.useMacosTccPromptNotice.title',
-          'Seeing “Nightshift would like to access…” prompts?'
+          'Seeing “Kolux would like to access…” prompts?'
         ),
         {
           description: translate(
             'auto.hooks.useMacosTccPromptNotice.description',
-            'Permission messages from macOS may appear when an agent or terminal tool running in Nightshift attempts to access protected files. Grant Full Disk Access in Settings to reduce these prompts.'
+            'Permission messages from macOS may appear when an agent or terminal tool running in Kolux attempts to access protected files. Grant Full Disk Access in Settings to reduce these prompts.'
           ),
           duration: Infinity,
           onDismiss: acknowledge,

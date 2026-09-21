@@ -1,8 +1,8 @@
 /**
  * Which daemon-entry.js the launcher forks, per deployment layout.
  *
- * The layout that matters here is nightshiftd's: a packaged host with NO asar, whose bundle root
- * holds `nightshiftd.js` and `daemon-entry.js` side by side (config/scripts/build-nightshiftd.mjs emits
+ * The layout that matters here is koluxd's: a packaged host with NO asar, whose bundle root
+ * holds `koluxd.js` and `daemon-entry.js` side by side (config/scripts/build-koluxd.mjs emits
  * exactly that). Resolving against `out/main` there would fork a path that does not exist,
  * and the failure would surface as "terminals do not persist" rather than as a missing file.
  */
@@ -51,8 +51,8 @@ const ASAR_UNPACKED_ENTRY = join(
   'main',
   'daemon-entry.js'
 )
-const NIGHTSHIFTD_ROOT = join('/opt', 'nightshiftd')
-const NIGHTSHIFTD_ADJACENT_ENTRY = join(NIGHTSHIFTD_ROOT, 'daemon-entry.js')
+const KOLUXD_ROOT = join('/opt', 'koluxd')
+const KOLUXD_ADJACENT_ENTRY = join(KOLUXD_ROOT, 'daemon-entry.js')
 
 /** Drive one launch under the given layout and return the entry path that was forked. */
 async function forkedDaemonEntryPath(layout: {
@@ -101,15 +101,15 @@ describe('daemon entry path per deployment layout', () => {
     )
   })
 
-  it('forks the entry beside nightshiftd.js on a packaged host with no asar', async () => {
-    // nightshiftd answers isPackaged() true; the question the resolver must ask is whether the app
+  it('forks the entry beside koluxd.js on a packaged host with no asar', async () => {
+    // koluxd answers isPackaged() true; the question the resolver must ask is whether the app
     // root is an asar archive, not whether the build is packaged.
     expect(
       await forkedDaemonEntryPath({
-        appPath: NIGHTSHIFTD_ROOT,
+        appPath: KOLUXD_ROOT,
         isPackaged: true,
-        existingEntry: NIGHTSHIFTD_ADJACENT_ENTRY
+        existingEntry: KOLUXD_ADJACENT_ENTRY
       })
-    ).toBe(NIGHTSHIFTD_ADJACENT_ENTRY)
+    ).toBe(KOLUXD_ADJACENT_ENTRY)
   })
 })

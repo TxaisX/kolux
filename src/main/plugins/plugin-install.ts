@@ -6,6 +6,7 @@ import {
   PLUGIN_MANIFEST_FILENAME,
   isQualifiedPluginKey
 } from '../../shared/plugins/plugin-manifest'
+import { resolvePluginManifestFilename } from './plugin-manifest-file'
 import {
   isAllowedPluginGitUrl,
   PLUGIN_COMMIT_PATTERN,
@@ -72,7 +73,7 @@ export async function installPluginFromLocalPath(input: {
   blockedPluginReason?: (pluginKey: string) => string | null
 }): Promise<PluginInstallResult> {
   return serializePluginMutation(input.pluginsDir, async () => {
-    if (!existsSync(join(input.sourcePath, PLUGIN_MANIFEST_FILENAME))) {
+    if (!existsSync(join(input.sourcePath, resolvePluginManifestFilename(input.sourcePath)))) {
       return { ok: false, error: `no ${PLUGIN_MANIFEST_FILENAME} found in ${input.sourcePath}` }
     }
     return installStagedPluginTree({
@@ -119,7 +120,7 @@ export async function installPluginFromGit(input: {
     return { ok: false, error: 'plugin Git URL must use HTTPS or SSH' }
   }
   return serializePluginMutation(input.pluginsDir, async () => {
-    const stagingDir = await mkdtemp(join(tmpdir(), 'nightshift-plugin-install-'))
+    const stagingDir = await mkdtemp(join(tmpdir(), 'kolux-plugin-install-'))
     try {
       const ref = input.ref.trim()
       const resolvedCommit = await checkoutPluginGitSource({
@@ -165,7 +166,7 @@ export async function installPluginFromMarketplace(input: {
     return { ok: false, error: 'invalid previewed plugin commit' }
   }
   return serializePluginMutation(input.pluginsDir, async () => {
-    const stagingDir = await mkdtemp(join(tmpdir(), 'nightshift-plugin-marketplace-install-'))
+    const stagingDir = await mkdtemp(join(tmpdir(), 'kolux-plugin-marketplace-install-'))
     try {
       const resolvedCommit = await checkoutPluginGitSource({
         url: input.plugin.url,
@@ -207,7 +208,7 @@ export async function rollbackInstalledPlugin(input: {
   }
   const blockedReason = input.blockedPluginReason?.(input.pluginKey)
   if (blockedReason) {
-    return { ok: false, error: `plugin is blocked by Nightshift's safety list: ${blockedReason}` }
+    return { ok: false, error: `plugin is blocked by Kolux's safety list: ${blockedReason}` }
   }
   return serializePluginMutation(input.pluginsDir, async () => {
     const pluginDir = join(input.pluginsDir, input.pluginKey)

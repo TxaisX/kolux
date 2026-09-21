@@ -58,7 +58,7 @@ export function useAutomationEditorActions({
     setEditingExternalTarget(null)
     setEditingDestination(null)
     setEditingHostStableKey(null)
-    setCreateTarget('nightshift')
+    setCreateTarget('kolux')
     const baseDraft: AutomationDraft = {
       name: '',
       prompt: '',
@@ -98,7 +98,7 @@ export function useAutomationEditorActions({
   const openEditDialog = async (row: AutomationListRow): Promise<void> => {
     const requestId = (editRequestRef.current += 1)
     setEditingExternalTarget(null)
-    setCreateTarget('nightshift')
+    setCreateTarget('kolux')
     const automationId = row.automation.id
     const reread = await dispatchAutomationReread(
       automationDispatchContext,

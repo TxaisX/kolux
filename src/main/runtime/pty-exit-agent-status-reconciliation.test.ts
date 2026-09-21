@@ -5,7 +5,7 @@
  * resolve, so it reconciles them — but only on a real death certificate.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { makePaneKey } from '../../shared/stable-pane-id'
 
 const LEAF = '11111111-1111-4111-8111-111111111111'
@@ -19,8 +19,8 @@ type RuntimeInternals = {
 function runtimeWithBoundPane(
   reconcile: (paneKeys: Iterable<string>) => void,
   options: { connectionId?: string } = {}
-): NightshiftRuntimeService {
-  const runtime = new NightshiftRuntimeService(null, undefined, {
+): KoluxRuntimeService {
+  const runtime = new KoluxRuntimeService(null, undefined, {
     reconcileAgentStatusForEndedProcess: reconcile
   })
   const ptys = (runtime as unknown as RuntimeInternals).ptysById

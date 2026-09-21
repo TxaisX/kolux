@@ -47,7 +47,7 @@ function duplicateIdRepos(): Repo[] {
 async function createStoreFromState(state: Record<string, unknown>) {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({ ...getDefaultPersistedState(testState.dir), ...state }),
     'utf-8'
   )
@@ -95,7 +95,7 @@ function staleLocalSetupState() {
 }
 
 beforeEach(() => {
-  testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-dup-repo-id-'))
+  testState.dir = mkdtempSync(join(tmpdir(), 'kolux-dup-repo-id-'))
 })
 
 afterEach(() => {

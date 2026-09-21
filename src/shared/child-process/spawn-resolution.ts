@@ -27,9 +27,9 @@ export function resolveSpawn(spec: ProcessSpec, platform: NodeJS.Platform): Reso
     cwd: spec.cwd,
     env: spec.env,
     stdio: spec.stdio ?? ['pipe', 'pipe', 'pipe'],
-    // Why unconditional: Nightshift's main process is GUI-subsystem and owns no
+    // Why unconditional: Kolux's main process is GUI-subsystem and owns no
     // console, so every console-subsystem child it starts gets a fresh visible
-    // conhost that takes foreground — keystrokes typed into a Nightshift terminal at
+    // conhost that takes foreground — keystrokes typed into a Kolux terminal at
     // that moment land in the black box instead.
     windowsHide: true,
     detached: spec.detached,

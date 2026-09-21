@@ -21,9 +21,9 @@ const input = {
   head: 'stack/child',
   title: 'Child'
 }
-const repository = { owner: 'acme', repo: 'nightshift', host: 'github.com' }
-const parentReview = { number: 41, url: 'https://github.com/acme/nightshift/pull/41' }
-const currentReview = { number: 42, url: 'https://github.com/acme/nightshift/pull/42' }
+const repository = { owner: 'acme', repo: 'kolux', host: 'github.com' }
+const parentReview = { number: 41, url: 'https://github.com/acme/kolux/pull/41' }
+const currentReview = { number: 42, url: 'https://github.com/acme/kolux/pull/42' }
 
 beforeEach(() => {
   prepareMock.mockReset()

@@ -158,8 +158,8 @@ export function updateSettings(
     sanitizedUpdates.autoRenameBranchFromWorkDefaultedOn = true
   }
   if ('terminalThemeDark' in updates) {
-    // Why: a theme the user chose must survive the one-shot Nightshift Dark default migration.
-    sanitizedUpdates.terminalThemeDarkDefaultedToNightshift = true
+    // Why: a theme the user chose must survive the one-shot Kolux Dark default migration.
+    sanitizedUpdates.terminalThemeDarkDefaultedToKolux = true
   }
   if ('openInApplications' in updates) {
     sanitizedUpdates.openInApplications = normalizeOpenInApplications(updates.openInApplications)

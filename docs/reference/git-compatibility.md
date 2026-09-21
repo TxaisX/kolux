@@ -2,14 +2,14 @@
 
 ## Scope
 
-Nightshift executes the user's Git binary on three kinds of execution host: native,
+Kolux executes the user's Git binary on three kinds of execution host: native,
 WSL, and SSH. Each host can have a different Git version, so compatibility
 state must be scoped to the host that actually runs the command.
 
 Git 2.25 is the core-workflow compatibility baseline for command selection. It
-is the oldest line that covers Nightshift's baseline use of porcelain v2, `branch
+is the oldest line that covers Kolux's baseline use of porcelain v2, `branch
 --show-current`, `restore`, and sparse checkout. Optional features that need a
-newer Git must degrade safely and cache the missing capability. Nightshift does not
+newer Git must degrade safely and cache the missing capability. Kolux does not
 currently block older Git at startup, but new command construction should not
 assume features introduced after this baseline.
 
@@ -22,7 +22,7 @@ When a newer Git feature materially improves correctness or performance:
 3. Run the preferred command through `GitCapabilityCache` so a rejection is
    remembered for the native host, WSL distro, or SSH provider that produced it.
 4. Retry after the cache interval so an in-place Git upgrade self-heals without
-   restarting Nightshift.
+   restarting Kolux.
 5. Test the first fallback, later calls that skip the rejected probe, concurrent
    probe coalescing, and execution-host isolation where applicable.
 
@@ -35,10 +35,10 @@ authority.
 
 | Capability                  | Preferred behavior                                                      | Compatibility behavior                                                                                                                                                                                     |
 | --------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetch-no-write-fetch-head` | Fetch a private rebase ref without changing worktree-local `FETCH_HEAD` | Serialize all Nightshift fetch/pull operations per worktree Git directory before Git 2.29                                                                                                                        |
+| `fetch-no-write-fetch-head` | Fetch a private rebase ref without changing worktree-local `FETCH_HEAD` | Serialize all Kolux fetch/pull operations per worktree Git directory before Git 2.29                                                                                                                        |
 | `worktree-list-z`           | NUL-delimited worktree paths with `prunable` marks                      | Line-block parser for Git before `worktree list -z` (2.36); the `prunable`/`locked` annotations still parse on Git 2.31–2.35, and a path-existence probe restores `prunable` detection for Git before 2.31 |
 | `rev-parse-path-format`     | Absolute repo metadata paths                                            | Resolve legacy relative output against the scanned repo                                                                                                                                                    |
-| `for-each-ref-exclude`      | Exclude remote HEAD before the output limit                             | Request extra refs, then filter remote HEAD in Nightshift                                                                                                                                                        |
+| `for-each-ref-exclude`      | Exclude remote HEAD before the output limit                             | Request extra refs, then filter remote HEAD in Kolux                                                                                                                                                        |
 | `merge-tree-write-tree`     | Derive real-merge conflicts and no-op tree proofs                       | Omit the conflict summary and keep conservative branch cleanup behavior before Git 2.38; `worktree overlap` reports `conflictPrediction: 'unverifiable'` for the same reason                              |
 | `merge-tree-merge-base`     | Supply the already-resolved merge base                                  | Use the older two-commit `merge-tree --write-tree` form                                                                                                                                                    |
 
@@ -57,8 +57,8 @@ in one record and pick at parse time.
 
 `simple-git` is a process wrapper around the installed Git binary. Its custom
 options and `raw` API pass arguments through to Git, so it cannot make a newer
-flag work on an older binary or choose Nightshift's semantic fallback automatically.
-It provides version reporting and subprocess queueing, but Nightshift already needs
+flag work on an older binary or choose Kolux's semantic fallback automatically.
+It provides version reporting and subprocess queueing, but Kolux already needs
 its own WSL/SSH routing, cancellation, tracing, redaction, process cleanup, and
 bounded output handling. Replacing the runner would move—not remove—the
 capability problem.

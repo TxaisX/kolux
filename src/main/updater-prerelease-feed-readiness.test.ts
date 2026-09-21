@@ -27,9 +27,9 @@ function buildManifest(tag: string): string {
   return [
     `version: ${version}`,
     'files:',
-    `  - url: Nightshift-${version}-arm64-mac.zip`,
+    `  - url: Kolux-${version}-arm64-mac.zip`,
     '    sha512: test',
-    `path: Nightshift-${version}-arm64-mac.zip`
+    `path: Kolux-${version}-arm64-mac.zip`
   ].join('\n')
 }
 
@@ -45,9 +45,9 @@ function buildWindowsManifest(version: string): string {
   return [
     `version: ${version}`,
     'files:',
-    '  - url: nightshift-windows-setup.exe',
+    '  - url: kolux-windows-setup.exe',
     '    sha512: test',
-    'path: nightshift-windows-setup.exe'
+    'path: kolux-windows-setup.exe'
   ].join('\n')
 }
 
@@ -382,11 +382,11 @@ describe('fetchNewerReleaseTagsWithReadiness', () => {
               [
                 `version: ${version}`,
                 'files:',
-                '  - url: nightshift-windows-setup.exe',
+                '  - url: kolux-windows-setup.exe',
                 '    sha512: test',
-                `  - url: Nightshift-${version}-mac.zip`,
+                `  - url: Kolux-${version}-mac.zip`,
                 '    sha512: test',
-                `path: Nightshift-${version}-mac.zip`
+                `path: Kolux-${version}-mac.zip`
               ].join('\n')
             )
         })
@@ -394,8 +394,8 @@ describe('fetchNewerReleaseTagsWithReadiness', () => {
 
       if (init?.method === 'HEAD') {
         const latest = url.includes('/v1.4.28/')
-        const unavailable = latest && url.endsWith('/Nightshift-1.4.28-mac.zip')
-        const missing = latest && url.endsWith('/nightshift-windows-setup.exe')
+        const unavailable = latest && url.endsWith('/Kolux-1.4.28-mac.zip')
+        const missing = latest && url.endsWith('/kolux-windows-setup.exe')
         return Promise.resolve({
           ok: !missing && !unavailable,
           status: missing ? publishingIncident.missingWindowsAssetStatus : unavailable ? 503 : 200,
@@ -435,16 +435,16 @@ describe('fetchNewerReleaseTagsWithReadiness', () => {
               [
                 'version: 1.4.28',
                 'files:',
-                '  - url: nightshift-windows-setup.exe',
+                '  - url: kolux-windows-setup.exe',
                 '    sha512: test',
-                '  - url: Nightshift-1.4.28-mac.zip',
+                '  - url: Kolux-1.4.28-mac.zip',
                 '    sha512: test'
               ].join('\n')
             )
         })
       }
       if (init?.method === 'HEAD') {
-        const isWindowsAsset = url.endsWith('/nightshift-windows-setup.exe')
+        const isWindowsAsset = url.endsWith('/kolux-windows-setup.exe')
         return Promise.resolve({
           ok: false,
           status: isWindowsAsset ? publishingIncident.missingWindowsAssetStatus : 503,
@@ -481,7 +481,7 @@ describe('fetchNewerReleaseTagsWithReadiness', () => {
               [
                 'version: 1.4.27',
                 'files:',
-                '  - url: https://downloads.example.com/Nightshift-1.4.27-arm64-mac.zip',
+                '  - url: https://downloads.example.com/Kolux-1.4.27-arm64-mac.zip',
                 '    sha512: test'
               ].join('\n')
             )
@@ -499,7 +499,7 @@ describe('fetchNewerReleaseTagsWithReadiness', () => {
     const { fetchNewerReleaseTag } = await import('./updater-prerelease-feed')
 
     expect(await fetchNewerReleaseTag('1.4.26')).toBe('v1.4.27')
-    expect(assetUrls).toEqual(['https://downloads.example.com/Nightshift-1.4.27-arm64-mac.zip'])
+    expect(assetUrls).toEqual(['https://downloads.example.com/Kolux-1.4.27-arm64-mac.zip'])
   })
 
   it('treats malformed updater manifests as not ready', async () => {

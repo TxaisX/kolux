@@ -5,7 +5,7 @@ import type { ContextualTourId } from './contextual-tours'
 import type { FeatureInteractionState } from './feature-interactions'
 import type { UsagePercentageDisplay } from './usage-percentage-display'
 import type { StatusBarUsageMode } from './status-bar-usage-mode'
-import type { PersistedTrustedNightshiftHooks } from './nightshift-yaml-hook-types'
+import type { PersistedTrustedKoluxHooks } from './kolux-yaml-hook-types'
 import type { CustomPet } from './pet-types'
 import type {
   ActivityGroupBy,
@@ -64,7 +64,7 @@ export type PersistedUIState = {
   hideDefaultBranchWorkspace: boolean
   /** Hide workspaces created by automation new-per-run dispatches. */
   hideAutomationGeneratedWorkspaces?: boolean
-  /** Hide workspaces created through `nightshift worktree create`. */
+  /** Hide workspaces created through `kolux worktree create`. */
   hideCliCreatedWorkspaces?: boolean
   /** Hide workspaces sitting on a detached HEAD; folder workspaces (no head at all) are unaffected. */
   hideDetachedHeadWorkspaces?: boolean
@@ -132,7 +132,7 @@ export type PersistedUIState = {
   releaseChannelOverride?: ReleaseChannel | null
   pendingUpdateNudgeId?: string | null
   dismissedUpdateNudgeId?: string | null
-  /** Whether Nightshift already tried triggering the macOS notification permission dialog; prevents re-firing every launch. */
+  /** Whether Kolux already tried triggering the macOS notification permission dialog; prevents re-firing every launch. */
   notificationPermissionRequested?: boolean
   /** Once the "your sessions won't be interrupted" reassurance card is seen, never show it again. */
   updateReassuranceSeen?: boolean
@@ -150,7 +150,7 @@ export type PersistedUIState = {
   setupGuideBrowserMilestoneLegacyComplete?: boolean
   /** User-dismissed browser import toolbar hint; import stays available from Settings > Browser and the overflow menu. */
   browserImportHintHidden?: boolean
-  /** Why: Windows-only. Set once on first hide to tray so the "Nightshift is still running" notice shows only once. */
+  /** Why: Windows-only. Set once on first hide to tray so the "Kolux is still running" notice shows only once. */
   trayMinimizeNoticeShown?: boolean
   /** Set by the OSC 52 default-on migration when it overrode a persisted `false`; the renderer shows one notice and clears it. */
   osc52ClipboardDefaultOnNoticePending?: boolean
@@ -200,13 +200,13 @@ export type PersistedUIState = {
   starNagAppVersion?: string | null
   /** Next agents-since-baseline threshold that fires the star-nag; starts at 35, doubles per dismissal without starring. */
   starNagNextThreshold?: number
-  /** Once the user has starred Nightshift (any entry point), permanently suppress the nag. */
+  /** Once the user has starred Kolux (any entry point), permanently suppress the nag. */
   starNagCompleted?: boolean
   /** Timestamp until which nonterminal dismissals suppress threshold prompts (force-show bypasses for dev/testing). */
   starNagDeferredUntil?: number | null
   /** App version that consumed the first value-moment ask; main-owned so remote/web clients can't spoof the once-per-version cap. */
   starNagAgentValueMomentAppVersion?: string | null
-  trustedNightshiftHooks?: PersistedTrustedNightshiftHooks
+  trustedKoluxHooks?: PersistedTrustedKoluxHooks
   setupScriptPromptDismissedRepoIds?: string[]
   /** Pet overlay visibility, separate from the experimentalPet settings flag so "Hide pet" is a reversible dismiss; absent = true. */
   petVisible?: boolean

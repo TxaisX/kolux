@@ -124,7 +124,7 @@ describe('CodexAccountService config sync', () => {
         const loginHome = options.env.CODEX_HOME
         expect(loginHome).toBeTruthy()
         const entries = readHookTrustEntries(join(loginHome!, 'config.toml'))
-        for (const key of fixture.nightshiftKeys) {
+        for (const key of fixture.koluxKeys) {
           expect(entries.has(key)).toBe(false)
         }
         expect(entries.has(fixture.userKey)).toBe(false)
@@ -198,7 +198,7 @@ describe('CodexAccountService config sync', () => {
       )
 
       await expect(service.addAccount()).rejects.toThrow(
-        'Nightshift cannot add a Codex OAuth account while ~/.codex/config.toml pins the custom provider "codex-lb". Keep using the system-default account for this provider, or remove model_provider (or set it to "openai") before adding an OAuth account. Nightshift left your config unchanged.'
+        'Kolux cannot add a Codex OAuth account while ~/.codex/config.toml pins the custom provider "codex-lb". Keep using the system-default account for this provider, or remove model_provider (or set it to "openai") before adding an OAuth account. Kolux left your config unchanged.'
       )
 
       expect(spawnMock).not.toHaveBeenCalled()
@@ -226,9 +226,7 @@ describe('CodexAccountService config sync', () => {
       (_command: string, _args: string[], options: { env: NodeJS.ProcessEnv }) => {
         const loginHome = options.env.CODEX_HOME
         expect(loginHome).toBeTruthy()
-        expect(readFileSync(join(loginHome!, '.nightshift-managed-home'), 'utf-8')).toBe(
-          'account-1\n'
-        )
+        expect(readFileSync(join(loginHome!, '.kolux-managed-home'), 'utf-8')).toBe('account-1\n')
         expect(readFileSync(join(loginHome!, 'config.toml'), 'utf-8')).toBe(canonicalConfig)
 
         const child = new EventEmitter() as EventEmitter & {
@@ -356,7 +354,7 @@ describe('CodexAccountService config sync', () => {
       ),
       managedHomeRuntime: 'wsl' as const,
       wslDistro: 'Ubuntu',
-      wslLinuxHomePath: '/home/test/.local/share/nightshift/codex-accounts/account-wsl/home',
+      wslLinuxHomePath: '/home/test/.local/share/kolux/codex-accounts/account-wsl/home',
       providerAccountId: 'provider-wsl',
       workspaceLabel: null,
       workspaceAccountId: 'provider-wsl',
@@ -560,7 +558,7 @@ describe('CodexAccountService config sync', () => {
     )
 
     await expect(service.reauthenticateAccount('account-1')).rejects.toThrow(
-      'Managed Codex home is missing Nightshift ownership marker.'
+      'Managed Codex home is missing Kolux ownership marker.'
     )
     expect(spawnMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()

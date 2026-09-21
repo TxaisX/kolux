@@ -35,10 +35,10 @@ type RecordedPost = {
 }
 
 const ENV_KEYS = [
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_AGENT_HOOK_PORT',
-  'NIGHTSHIFT_AGENT_HOOK_TOKEN',
-  'NIGHTSHIFT_AGENT_HOOK_ENDPOINT'
+  'KOLUX_PANE_KEY',
+  'KOLUX_AGENT_HOOK_PORT',
+  'KOLUX_AGENT_HOOK_TOKEN',
+  'KOLUX_AGENT_HOOK_ENDPOINT'
 ] as const
 
 describe('OpenCode plugin child attention', () => {
@@ -49,16 +49,16 @@ describe('OpenCode plugin child attention', () => {
   let pluginFactory: PluginFactory | undefined
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-child-attention-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-child-attention-'))
     posts = []
     savedEnv = {}
     for (const key of ENV_KEYS) {
       savedEnv[key] = process.env[key]
     }
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:leaf-1'
-    process.env.NIGHTSHIFT_AGENT_HOOK_PORT = '45678'
-    process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN = 'test-token'
-    delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+    process.env.KOLUX_PANE_KEY = 'tab-1:leaf-1'
+    process.env.KOLUX_AGENT_HOOK_PORT = '45678'
+    process.env.KOLUX_AGENT_HOOK_TOKEN = 'test-token'
+    delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
     pluginFactory = undefined
     savedFetch = globalThis.fetch
     globalThis.fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
@@ -88,12 +88,12 @@ describe('OpenCode plugin child attention', () => {
     })
   ): Promise<PluginHooks> {
     if (!pluginFactory) {
-      const pluginPath = join(tempDir, 'nightshift-opencode-status.mjs')
+      const pluginPath = join(tempDir, 'kolux-opencode-status.mjs')
       writeFileSync(pluginPath, _internals.getOpenCodePluginSource())
       const module = (await import(pathToFileURL(pluginPath).href)) as {
-        NightshiftOpenCodeStatusPlugin: PluginFactory
+        KoluxOpenCodeStatusPlugin: PluginFactory
       }
-      pluginFactory = module.NightshiftOpenCodeStatusPlugin
+      pluginFactory = module.KoluxOpenCodeStatusPlugin
     }
     return pluginFactory({
       client: {

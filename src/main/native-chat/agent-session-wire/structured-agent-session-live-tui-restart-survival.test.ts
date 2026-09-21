@@ -17,7 +17,7 @@ afterEach(async () => {
 
 describe('structured session live TUI restart survival', () => {
   it('does not stop a daemon-owned toggle TUI when restart adoption is unavailable', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-live-tui-restart-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-live-tui-restart-'))
     roots.push(root)
     const store = await AgentSessionRecordStore.open({ directory: root, hostId: 'local' })
     const reserved = await store.reserveOwner({
@@ -122,7 +122,7 @@ describe('structured session live TUI restart survival', () => {
   })
 
   it('persists the provider leaf returned by Claude re-proof before clearing recovery', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-claude-tui-restart-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-claude-tui-restart-'))
     roots.push(root)
     const sessionId = 'session-claude-live-tui-restart'
     const store = await AgentSessionRecordStore.open({ directory: root, hostId: 'local' })

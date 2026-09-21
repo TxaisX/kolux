@@ -88,7 +88,7 @@ describe('getSpawnArgsForWindows', () => {
     withPlatform('win32', () => {
       const { spawnCmd, spawnArgs } = getSpawnArgsForWindows(
         'C:\\Tools\\idea.cmd',
-        ['C:\\workspaces\\nightshift'],
+        ['C:\\workspaces\\kolux'],
         { detachedGui: true }
       )
       expect(spawnCmd).toBe(getCmdExePath())
@@ -105,7 +105,7 @@ describe('getSpawnArgsForWindows', () => {
         '/d',
         '/c',
         'C:\\Tools\\idea.cmd',
-        'C:\\workspaces\\nightshift'
+        'C:\\workspaces\\kolux'
       ])
       expect(spawnArgs[3]).toBe('')
       expect(spawnArgs).not.toContain('/K')
@@ -116,10 +116,8 @@ describe('getSpawnArgsForWindows', () => {
 
   it('keeps the waiting form for batch launches without detachedGui', () => {
     withPlatform('win32', () => {
-      const { spawnArgs } = getSpawnArgsForWindows('C:\\Tools\\idea.cmd', [
-        'C:\\workspaces\\nightshift'
-      ])
-      expect(spawnArgs).toEqual(['/d', '/c', 'C:\\Tools\\idea.cmd', 'C:\\workspaces\\nightshift'])
+      const { spawnArgs } = getSpawnArgsForWindows('C:\\Tools\\idea.cmd', ['C:\\workspaces\\kolux'])
+      expect(spawnArgs).toEqual(['/d', '/c', 'C:\\Tools\\idea.cmd', 'C:\\workspaces\\kolux'])
     })
   })
 
@@ -167,11 +165,11 @@ describe('getSpawnArgsForWindows', () => {
     withPlatform('win32', () => {
       const { spawnCmd, spawnArgs } = getSpawnArgsForWindows(
         'C:\\Program Files\\JetBrains\\IntelliJ IDEA\\bin\\idea64.exe',
-        ['C:\\workspaces\\nightshift'],
+        ['C:\\workspaces\\kolux'],
         { detachedGui: true }
       )
       expect(spawnCmd).toBe('C:\\Program Files\\JetBrains\\IntelliJ IDEA\\bin\\idea64.exe')
-      expect(spawnArgs).toEqual(['C:\\workspaces\\nightshift'])
+      expect(spawnArgs).toEqual(['C:\\workspaces\\kolux'])
     })
   })
 
@@ -282,7 +280,7 @@ describe('getSpawnArgsForWindows', () => {
 
 describe('resolveWindowsCommand', () => {
   it('finds package-manager .cmd shims on PATH before spawning fixed commands', () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-win-command-'))
+    const tempDir = mkdtempSync(join(tmpdir(), 'kolux-win-command-'))
     try {
       const pnpmShim = join(tempDir, 'pnpm.cmd')
       writeFileSync(pnpmShim, '@echo off\r\n')

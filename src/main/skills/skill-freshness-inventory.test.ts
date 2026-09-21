@@ -22,10 +22,10 @@ const temporaryDirectories: string[] = []
 
 const execFileAsync = promisify(execFile)
 
-// Why: hashed with real git, not Nightshift's tree-sha port — the port validating
+// Why: hashed with real git, not Kolux's tree-sha port — the port validating
 // itself here would prove nothing about matching the updater lock's hash.
 async function gitTreeShaOf(directory: string): Promise<string> {
-  const gitDir = await mkdtemp(join(tmpdir(), 'nightshift-skill-hash-'))
+  const gitDir = await mkdtemp(join(tmpdir(), 'kolux-skill-hash-'))
   temporaryDirectories.push(gitDir)
   const env = {
     ...process.env,
@@ -61,26 +61,25 @@ function snapshot(releaseRevision: number, markdown: string): SkillKnownSnapshot
 }
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-inventory-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-inventory-'))
   temporaryDirectories.push(root)
   const homeDir = join(root, 'home')
   const resourceRoot = join(root, 'resources')
   const skillResourceRoot = join(resourceRoot, 'skills')
   await mkdir(skillResourceRoot, { recursive: true })
 
-  const oldMarkdown = '---\nname: nightshift-cli\ndescription: Old official guide.\n---\n\n# Old\n'
+  const oldMarkdown = '---\nname: kolux-cli\ndescription: Old official guide.\n---\n\n# Old\n'
   const currentMarkdown =
-    '---\nname: nightshift-cli\ndescription: Current official guide.\n---\n\n# Current\n'
-  const newerMarkdown =
-    '---\nname: nightshift-cli\ndescription: Newer official guide.\n---\n\n# Newer\n'
+    '---\nname: kolux-cli\ndescription: Current official guide.\n---\n\n# Current\n'
+  const newerMarkdown = '---\nname: kolux-cli\ndescription: Newer official guide.\n---\n\n# Newer\n'
   const snapshots = [
     snapshot(1, oldMarkdown),
     snapshot(2, currentMarkdown),
     snapshot(3, newerMarkdown)
   ]
   const current: SkillCurrentBundleEntry = {
-    name: 'nightshift-cli',
-    sourcePath: 'skills/nightshift-cli',
+    name: 'kolux-cli',
+    sourcePath: 'skills/kolux-cli',
     ...snapshots[1]
   }
   await Promise.all([
@@ -90,9 +89,9 @@ async function fixture() {
         `${JSON.stringify({
           version: 3,
           skills: {
-            'nightshift-cli': {
+            'kolux-cli': {
               skillFolderHash: 'tracked-old-hash',
-              skillPath: 'skills/nightshift-cli/SKILL.md',
+              skillPath: 'skills/kolux-cli/SKILL.md',
               source: 'TxaisX/nightshift'
             }
           }
@@ -105,7 +104,7 @@ async function fixture() {
     ),
     writeFile(
       join(skillResourceRoot, 'snapshot-registry.json'),
-      `${JSON.stringify({ schemaVersion: 1, skills: { 'nightshift-cli': snapshots } }, null, 2)}\n`
+      `${JSON.stringify({ schemaVersion: 1, skills: { 'kolux-cli': snapshots } }, null, 2)}\n`
     ),
     writeFile(
       join(skillResourceRoot, 'release-mapping.json'),
@@ -113,9 +112,9 @@ async function fixture() {
         {
           schemaVersion: 1,
           releases: [
-            { appVersion: '1.0.0', skills: { 'nightshift-cli': 1 } },
-            { appVersion: '2.0.0', skills: { 'nightshift-cli': 2 } },
-            { appVersion: '3.0.0', skills: { 'nightshift-cli': 3 } }
+            { appVersion: '1.0.0', skills: { 'kolux-cli': 1 } },
+            { appVersion: '2.0.0', skills: { 'kolux-cli': 2 } },
+            { appVersion: '3.0.0', skills: { 'kolux-cli': 3 } }
           ]
         },
         null,
@@ -125,7 +124,7 @@ async function fixture() {
   ])
 
   const writeSkill = async (rootPath: string, markdown: string): Promise<string> => {
-    const directory = join(rootPath, 'nightshift-cli')
+    const directory = join(rootPath, 'kolux-cli')
     await mkdir(directory, { recursive: true })
     await writeFile(join(directory, 'SKILL.md'), markdown)
     return directory
@@ -147,9 +146,9 @@ async function writeSkillLockHash(homeDir: string, skillFolderHash: string): Pro
     `${JSON.stringify({
       version: 3,
       skills: {
-        'nightshift-cli': {
+        'kolux-cli': {
           skillFolderHash,
-          skillPath: 'skills/nightshift-cli/SKILL.md',
+          skillPath: 'skills/kolux-cli/SKILL.md',
           source: 'TxaisX/nightshift'
         }
       }
@@ -179,7 +178,7 @@ describe('read-only skill freshness inventory', () => {
 
     expect(inventory.installations.map((entry) => entry.status)).toEqual(['outdated'])
     expect(inventory.installations[0]?.installedAppVersion).toBe('1.0.0')
-    expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
   })
 
   it('does not offer an older copied bundle the external updater has never registered (#10791)', async () => {
@@ -207,7 +206,7 @@ describe('read-only skill freshness inventory', () => {
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.newerMarkdown)
     await test.writeSkill(
       join(test.homeDir, '.claude', 'skills'),
-      '---\nname: nightshift-cli\ndescription: User copy.\n---\n'
+      '---\nname: kolux-cli\ndescription: User copy.\n---\n'
     )
 
     const inventory = await inventorySkillFreshness({
@@ -250,7 +249,7 @@ describe('read-only skill freshness inventory', () => {
     expect(inventory.eligibleUpdateNames).toEqual([])
     // The user-visible verdict, across both halves of the fix: the row must read
     // up to date, not amber "may be modified… remove it" over the CLI's own install.
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('up-to-date')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('up-to-date')
   })
 
   it('reads up to date after the OS drops a sidecar into an untouched install', async () => {
@@ -275,7 +274,7 @@ describe('read-only skill freshness inventory', () => {
 
     expect(inventory.installations.map((entry) => entry.status)).toEqual(['current'])
     // The whole point: no amber, and nothing offered to "fix" a copy that is already right.
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('up-to-date')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('up-to-date')
     expect(inventory.eligibleUpdateNames).toEqual([])
   })
 
@@ -292,7 +291,7 @@ describe('read-only skill freshness inventory', () => {
     )
     const registryPath = join(test.resourceRoot, 'skills', 'snapshot-registry.json')
     const registry = JSON.parse(await readFile(registryPath, 'utf8'))
-    registry.skills['nightshift-cli'][0].files.push(legacy)
+    registry.skills['kolux-cli'][0].files.push(legacy)
     await writeFile(registryPath, `${JSON.stringify(registry, null, 2)}\n`)
 
     const upstreamMarkdown = `${test.newerMarkdown}\nUpstream edit no bundle has shipped.\n`
@@ -317,7 +316,7 @@ describe('read-only skill freshness inventory', () => {
       topology: 'canonical-copy',
       status: 'newer-known'
     })
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('up-to-date')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('up-to-date')
   })
 
   it('trusts the updater lock for upstream bytes beside an agent CLI sidecar (#12694)', async () => {
@@ -348,7 +347,7 @@ describe('read-only skill freshness inventory', () => {
       topology: 'canonical-copy',
       status: 'newer-known'
     })
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('up-to-date')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('up-to-date')
   })
 
   it('still trusts the lock when the upstream revision added a file (#11220 guard)', async () => {
@@ -379,7 +378,7 @@ describe('read-only skill freshness inventory', () => {
       topology: 'canonical-copy',
       status: 'newer-known'
     })
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('up-to-date')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('up-to-date')
   })
 
   it('still withholds an unwinnable update when a sidecar sits beside the stale copy', async () => {
@@ -430,7 +429,7 @@ describe('read-only skill freshness inventory', () => {
       topology: 'canonical-copy',
       status: 'unrecognized'
     })
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('needs-attention')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('needs-attention')
   })
 
   it('does not let the lock vouch for a same-name copy outside the placements it wrote', async () => {
@@ -438,7 +437,7 @@ describe('read-only skill freshness inventory', () => {
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.currentMarkdown)
     const independent = await test.writeSkill(
       join(test.homeDir, '.claude', 'skills'),
-      '---\nname: nightshift-cli\n---\n\nAnother tool.\n'
+      '---\nname: kolux-cli\n---\n\nAnother tool.\n'
     )
     await writeSkillLockHash(test.homeDir, await gitTreeShaOf(independent))
 
@@ -454,7 +453,7 @@ describe('read-only skill freshness inventory', () => {
         expect.objectContaining({ topology: 'independent-copy', status: 'unrecognized' })
       ])
     )
-    expect(getSkillFreshnessDisplayStatus(inventory, 'nightshift-cli')).toBe('needs-attention')
+    expect(getSkillFreshnessDisplayStatus(inventory, 'kolux-cli')).toBe('needs-attention')
   })
 
   it('retains full-file identity without projecting unused metadata', async () => {
@@ -489,7 +488,7 @@ describe('read-only skill freshness inventory', () => {
       )
       const claudeRoot = join(test.homeDir, '.claude', 'skills')
       await mkdir(claudeRoot, { recursive: true })
-      await symlink(canonical, join(claudeRoot, 'nightshift-cli'))
+      await symlink(canonical, join(claudeRoot, 'kolux-cli'))
 
       const inventory = await inventorySkillFreshness({
         currentAppVersion: '2.0.0',
@@ -501,7 +500,7 @@ describe('read-only skill freshness inventory', () => {
       expect(inventory.installations).toHaveLength(1)
       expect(inventory.installations[0]?.providers).toEqual(['agent-skills', 'claude'])
       expect(inventory.installations[0]?.topology).toBe('canonical-copy')
-      expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+      expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
     }
   )
 
@@ -516,7 +515,7 @@ describe('read-only skill freshness inventory', () => {
           const repoPath = join(test.root, `repo-${id}`)
           const root = join(repoPath, '.agents', 'skills')
           await mkdir(root, { recursive: true })
-          await symlink(shared, join(root, 'nightshift-cli'))
+          await symlink(shared, join(root, 'kolux-cli'))
           return { id, path: repoPath } as unknown as Repo
         })
       )
@@ -531,14 +530,14 @@ describe('read-only skill freshness inventory', () => {
       expect(
         inventory.installations.filter((entry) => entry.topology === 'repo-scope')
       ).toHaveLength(1)
-      expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+      expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
     }
   )
 
   it('keeps an unreadable foreign-home placement visible without withholding the update', async () => {
     const test = await fixture()
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.oldMarkdown)
-    const inaccessiblePath = join(test.homeDir, '.codex', 'skills', 'nightshift-cli')
+    const inaccessiblePath = join(test.homeDir, '.codex', 'skills', 'kolux-cli')
 
     const inventory = await inventorySkillFreshness({
       currentAppVersion: '2.0.0',
@@ -559,14 +558,14 @@ describe('read-only skill freshness inventory', () => {
     ])
     // Why: `--global` never writes another agent's home, so an unreadable copy there
     // cannot be harmed by the update and must not withhold it from the canonical copy.
-    expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
   })
 
   it('does not lose an inaccessible known repository placement', async () => {
     const test = await fixture()
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.oldMarkdown)
     const repoPath = join(test.root, 'repo')
-    const inaccessiblePath = join(repoPath, '.agents', 'skills', 'nightshift-cli')
+    const inaccessiblePath = join(repoPath, '.agents', 'skills', 'kolux-cli')
 
     const inventory = await inventorySkillFreshness({
       currentAppVersion: '2.0.0',
@@ -590,7 +589,7 @@ describe('read-only skill freshness inventory', () => {
         })
       ])
     )
-    expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
   })
 
   it.each([
@@ -621,7 +620,7 @@ describe('read-only skill freshness inventory', () => {
       })
 
       expect(inventory.installations.some((entry) => entry.topology === topology)).toBe(true)
-      expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+      expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
     }
   )
 
@@ -636,13 +635,10 @@ describe('read-only skill freshness inventory', () => {
       'plugins',
       'cache',
       'openai-bundled',
-      'nightshift-cli'
+      'kolux-cli'
     )
     await mkdir(pluginRoot, { recursive: true })
-    await writeFile(
-      join(pluginRoot, 'SKILL.md'),
-      '---\nname: nightshift-cli\n---\n\nAnother tool.\n'
-    )
+    await writeFile(join(pluginRoot, 'SKILL.md'), '---\nname: kolux-cli\n---\n\nAnother tool.\n')
 
     const inventory = await inventorySkillFreshness({
       currentAppVersion: '2.0.0',
@@ -665,7 +661,7 @@ describe('read-only skill freshness inventory', () => {
 
   it('reads a plugin-cache copy with untouched official files as current', async () => {
     // The deliberate posture change behind #12694: an unlisted neighbour is not evidence
-    // of an edit, so the bytes Nightshift owns decide alone — here and in every scope, not just
+    // of an edit, so the bytes Kolux owns decide alone — here and in every scope, not just
     // the canonical copy the updater writes. The drifted-SKILL.md case above still fails
     // closed, which is what keeps "unrecognized" meaningful.
     const test = await fixture()
@@ -677,14 +673,11 @@ describe('read-only skill freshness inventory', () => {
       'cache',
       'openai-bundled',
       'modified',
-      'nightshift-cli'
+      'kolux-cli'
     )
     await mkdir(withSidecarRoot, { recursive: true })
     await writeFile(join(withSidecarRoot, 'SKILL.md'), test.currentMarkdown)
-    await writeFile(
-      join(withSidecarRoot, 'README.md'),
-      'Neighbouring file Nightshift never shipped\n'
-    )
+    await writeFile(join(withSidecarRoot, 'README.md'), 'Neighbouring file Kolux never shipped\n')
 
     const inventory = await inventorySkillFreshness({
       currentAppVersion: '2.0.0',
@@ -711,7 +704,7 @@ describe('read-only skill freshness inventory', () => {
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.currentMarkdown)
     await test.writeSkill(
       join(test.homeDir, ...segments),
-      '---\nname: nightshift-cli\n---\n\nAnother tool.\n'
+      '---\nname: kolux-cli\n---\n\nAnother tool.\n'
     )
 
     const inventory = await inventorySkillFreshness({
@@ -727,7 +720,7 @@ describe('read-only skill freshness inventory', () => {
   it('does not classify an empty plugin-cache directory as a skill', async () => {
     const test = await fixture()
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.currentMarkdown)
-    const emptyRoot = join(test.homeDir, '.codex', 'plugins', 'cache', 'vendor', 'nightshift-cli')
+    const emptyRoot = join(test.homeDir, '.codex', 'plugins', 'cache', 'vendor', 'kolux-cli')
     await mkdir(emptyRoot, { recursive: true })
 
     const inventory = await inventorySkillFreshness({
@@ -761,7 +754,7 @@ describe('read-only skill freshness inventory', () => {
     const resourceRoot = join(test.resourceRoot, 'skills')
     const registryPath = join(resourceRoot, 'snapshot-registry.json')
     const registry = JSON.parse(await readFile(registryPath, 'utf8'))
-    registry.skills['nightshift-cli'].push(snapshot(4, test.currentMarkdown))
+    registry.skills['kolux-cli'].push(snapshot(4, test.currentMarkdown))
     await writeFile(registryPath, `${JSON.stringify(registry, null, 2)}\n`)
     await test.writeSkill(join(test.homeDir, '.agents', 'skills'), test.currentMarkdown)
 
@@ -804,7 +797,7 @@ describe('read-only skill freshness inventory', () => {
     )
     // Why: unscanned repositories only ever hold project skills, which the global
     // command does not touch, so the limit is reported without blocking the update.
-    expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
   })
 
   it('scans a real-shaped plugin cache completely and leaves eligibility unchanged', async () => {
@@ -816,7 +809,7 @@ describe('read-only skill freshness inventory', () => {
       'plugins',
       'cache',
       'openai-bundled',
-      'nightshift-cli',
+      'kolux-cli',
       '1.0.0'
     )
     await mkdir(join(packageRoot, '.codex-plugin'), { recursive: true })
@@ -843,7 +836,7 @@ describe('read-only skill freshness inventory', () => {
     )
     // Why: a plugin-cache copy is not convergent, so it neither grants nor withholds
     // the update. The outdated canonical copy alone decides, exactly as before.
-    expect(inventory.eligibleUpdateNames).toEqual(['nightshift-cli'])
+    expect(inventory.eligibleUpdateNames).toEqual(['kolux-cli'])
   })
 
   it('reports incomplete plugin coverage without inventing per-skill installations', async () => {
@@ -863,7 +856,7 @@ describe('read-only skill freshness inventory', () => {
 
     expect(inventory.installations).toHaveLength(1)
     expect(inventory.installations[0]).toMatchObject({
-      name: 'nightshift-cli',
+      name: 'kolux-cli',
       status: 'current',
       topology: 'canonical-copy'
     })
@@ -919,7 +912,7 @@ describe('read-only skill freshness inventory', () => {
       // is what pinned an unclearable "Needs attention" on every card in #10918.
       expect(inventory.installations).toEqual([
         expect.objectContaining({
-          name: 'nightshift-cli',
+          name: 'kolux-cli',
           status: 'current',
           topology: 'canonical-copy'
         })

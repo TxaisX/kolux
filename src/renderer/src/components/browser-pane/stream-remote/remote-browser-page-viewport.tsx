@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Globe, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import type {
   BrowserCertificateFailure,
   BrowserCertificateProceedResult,
@@ -82,7 +82,7 @@ export function RemoteBrowserPageViewport({
   const showRemoteFailureOverlay =
     Boolean(browserTab.loadError) &&
     remoteFailureUrl !== 'about:blank' &&
-    remoteFailureUrl !== NIGHTSHIFT_BROWSER_BLANK_URL
+    remoteFailureUrl !== KOLUX_BROWSER_BLANK_URL
 
   return (
     <div

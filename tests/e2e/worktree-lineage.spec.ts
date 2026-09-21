@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@stablyai/playwright-test'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   markWorkspaceTerminalSlept,
@@ -16,7 +16,7 @@ function worktreeOption(page: Page, worktreeId: string) {
 }
 
 async function captureEvidence(page: Page, name: string, locator?: Locator): Promise<void> {
-  if (process.env.NIGHTSHIFT_CAPTURE_EVIDENCE !== '1') {
+  if (process.env.KOLUX_CAPTURE_EVIDENCE !== '1') {
     return
   }
   const outputDir = resolve(process.cwd(), 'pr-evidence')
@@ -36,15 +36,15 @@ async function captureSidebarEvidence(page: Page, name: string): Promise<void> {
 test.describe('Worktree Lineage', () => {
   test.describe.configure({ mode: 'serial' })
 
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('renders existing child lineage in the sidebar', async ({ nightshiftPage }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
-    const parentRow = worktreeOption(nightshiftPage, parentId)
-    const childRow = worktreeOption(nightshiftPage, childId)
+  test('renders existing child lineage in the sidebar', async ({ koluxPage }) => {
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
+    const parentRow = worktreeOption(koluxPage, parentId)
+    const childRow = worktreeOption(koluxPage, childId)
 
     await expect(parentRow).toBeVisible()
     await parentRow.click()
@@ -55,7 +55,7 @@ test.describe('Worktree Lineage', () => {
     await expect(childToggle).toBeVisible({ timeout: 10_000 })
     await expect(childRow).toBeVisible()
 
-    const positions = await nightshiftPage.evaluate(
+    const positions = await koluxPage.evaluate(
       ({ parentId, childId }) => {
         const rowFor = (worktreeId: string) =>
           [...document.querySelectorAll<HTMLElement>('[data-worktree-id]')].find(
@@ -81,7 +81,7 @@ test.describe('Worktree Lineage', () => {
     await expect(childRow).toBeHidden()
 
     await parentRow.getByRole('button', { name: 'Show 1 child workspace' }).click()
-    await nightshiftPage.evaluate(async (childId) => {
+    await koluxPage.evaluate(async (childId) => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -94,7 +94,7 @@ test.describe('Worktree Lineage', () => {
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate((childId) => {
+          koluxPage.evaluate((childId) => {
             const store = window.__store
             return Boolean(store?.getState().worktreeLineageById[childId])
           }, childId),
@@ -108,11 +108,11 @@ test.describe('Worktree Lineage', () => {
   })
 
   test('renders legacy-only inline lineage when side-map hydration is absent', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage, { inlineOnly: true })
-    const parentRow = worktreeOption(nightshiftPage, parentId)
-    const childRow = worktreeOption(nightshiftPage, childId)
+    const { parentId, childId } = await seedLineageScenario(koluxPage, { inlineOnly: true })
+    const parentRow = worktreeOption(koluxPage, parentId)
+    const childRow = worktreeOption(koluxPage, childId)
 
     await expect(parentRow.getByRole('button', { name: 'Hide 1 child workspace' })).toBeVisible()
     await expect(childRow).toBeVisible()
@@ -125,15 +125,15 @@ test.describe('Worktree Lineage', () => {
         return parentBox && childBox ? childBox.y > parentBox.y : false
       })
       .toBe(true)
-    await captureSidebarEvidence(nightshiftPage, 'legacy-inline-lineage-nested.png')
+    await captureSidebarEvidence(koluxPage, 'legacy-inline-lineage-nested.png')
   })
 
   test('injects filtered parents structurally without showing a parent badge', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ parentId, childId }) => {
         const store = window.__store
         if (!store) {
@@ -163,14 +163,14 @@ test.describe('Worktree Lineage', () => {
       { parentId, childId }
     )
 
-    const parentRow = worktreeOption(nightshiftPage, parentId)
-    const childRow = worktreeOption(nightshiftPage, childId)
+    const parentRow = worktreeOption(koluxPage, parentId)
+    const childRow = worktreeOption(koluxPage, childId)
 
     await expect(parentRow).toBeVisible()
     await expect(childRow).toBeVisible()
     await expect(childRow).not.toContainText(/\bfrom\b/)
 
-    const positions = await nightshiftPage.evaluate(
+    const positions = await koluxPage.evaluate(
       ({ parentId, childId }) => {
         const rowFor = (worktreeId: string) =>
           [...document.querySelectorAll<HTMLElement>('[data-worktree-id]')].find(
@@ -193,27 +193,27 @@ test.describe('Worktree Lineage', () => {
   })
 
   test('updates nested child preview status when the child terminal sleeps', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
-    const parentRow = worktreeOption(nightshiftPage, parentId)
-    const childRow = worktreeOption(nightshiftPage, childId)
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
+    const parentRow = worktreeOption(koluxPage, parentId)
+    const childRow = worktreeOption(koluxPage, childId)
 
     await expect(parentRow).toBeVisible()
     await expect(childRow).toBeVisible()
 
-    const childTabId = await seedWorkspaceLiveTerminal(nightshiftPage, childId)
+    const childTabId = await seedWorkspaceLiveTerminal(koluxPage, childId)
     await expect(childRow).toContainText('Active')
 
-    await markWorkspaceTerminalSlept(nightshiftPage, { worktreeId: childId, tabId: childTabId })
+    await markWorkspaceTerminalSlept(koluxPage, { worktreeId: childId, tabId: childTabId })
     await expect(childRow).toContainText('Inactive')
   })
 
   test('sleeps a workspace and every descendant from the parent context menu', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
-    await nightshiftPage.evaluate((parentId) => {
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
+    await koluxPage.evaluate((parentId) => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -229,10 +229,10 @@ test.describe('Worktree Lineage', () => {
         )
       }))
     }, parentId)
-    const parentTabId = await seedWorkspaceLiveTerminal(nightshiftPage, parentId)
-    const childTabId = await seedWorkspaceLiveTerminal(nightshiftPage, childId)
+    const parentTabId = await seedWorkspaceLiveTerminal(koluxPage, parentId)
+    const childTabId = await seedWorkspaceLiveTerminal(koluxPage, childId)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -256,21 +256,21 @@ test.describe('Worktree Lineage', () => {
       window.api.ephemeralVm.suspendWorkspace = async () => null
     })
 
-    await worktreeOption(nightshiftPage, parentId).click({ button: 'right' })
-    const sleepSubtree = nightshiftPage.getByRole('menuitem', {
+    await worktreeOption(koluxPage, parentId).click({ button: 'right' })
+    const sleepSubtree = koluxPage.getByRole('menuitem', {
       name: 'Sleep with Descendants (1)'
     })
     await expect(sleepSubtree).toBeVisible()
     await expect(sleepSubtree).toBeEnabled()
     await expect(
-      nightshiftPage.getByRole('menuitem', { name: 'Delete with Descendants…' })
+      koluxPage.getByRole('menuitem', { name: 'Delete with Descendants…' })
     ).toBeVisible()
-    await captureEvidence(nightshiftPage, 'workspace-descendant-actions.png')
+    await captureEvidence(koluxPage, 'workspace-descendant-actions.png')
     await sleepSubtree.click()
 
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ parentTabId, childTabId }) => {
             const state = window.__store?.getState()
             return {
@@ -285,18 +285,18 @@ test.describe('Worktree Lineage', () => {
   })
 
   test('shows parent and child agent rows while the parent workspace is active', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { parentId, childId } = await seedLineageScenario(nightshiftPage)
-    const parentRow = worktreeOption(nightshiftPage, parentId)
-    const childRow = worktreeOption(nightshiftPage, childId)
+    const { parentId, childId } = await seedLineageScenario(koluxPage)
+    const parentRow = worktreeOption(koluxPage, parentId)
+    const childRow = worktreeOption(koluxPage, childId)
 
     await parentRow.click()
     await expect(parentRow).toHaveAttribute('aria-current', 'page')
     await expect(childRow).toBeVisible()
 
-    const parentAgentPrompt = await seedWorkspaceAgentStatus(nightshiftPage, parentId, 'PARENT')
-    const childAgentPrompt = await seedWorkspaceAgentStatus(nightshiftPage, childId, 'CHILD')
+    const parentAgentPrompt = await seedWorkspaceAgentStatus(koluxPage, parentId, 'PARENT')
+    const childAgentPrompt = await seedWorkspaceAgentStatus(koluxPage, childId, 'CHILD')
 
     await expect(
       parentRow.getByRole('treeitem').filter({ hasText: parentAgentPrompt })

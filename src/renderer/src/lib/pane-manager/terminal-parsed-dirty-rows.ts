@@ -3,7 +3,7 @@
  * since the last reset.
  *
  * Why: xterm's InputHandler already tracks exactly which viewport rows a parse
- * touched and asks the terminal to repaint them (`onRequestRefreshRows`). Nightshift's
+ * touched and asks the terminal to repaint them (`onRequestRefreshRows`). Kolux's
  * foreground settle re-issues that repaint so an in-place agent redraw is painted
  * now instead of a frame later. Re-issuing it as `0..rows-1` widened every
  * repaint to the whole grid — xterm's render debouncer unions ranges, so one

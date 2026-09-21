@@ -166,7 +166,7 @@ describe('FloatingTerminalPanel close behavior', () => {
   it('creates floating markdown files in local filesystem mode', async () => {
     setFloatingTabs([makeTab({ id: 'tab-1' })])
     vi.mocked(createUntitledMarkdownFileWithTemplateSelection).mockResolvedValue({
-      filePath: '/tmp/nightshift/floating-notes/untitled.md',
+      filePath: '/tmp/kolux/floating-notes/untitled.md',
       relativePath: 'untitled.md',
       worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
       language: 'markdown',
@@ -183,13 +183,13 @@ describe('FloatingTerminalPanel close behavior', () => {
     await flushAsyncWork()
 
     expect(createUntitledMarkdownFileWithTemplateSelection).toHaveBeenCalledWith(
-      '/tmp/nightshift/floating-notes',
+      '/tmp/kolux/floating-notes',
       FLOATING_TERMINAL_WORKTREE_ID,
       undefined,
       { activeRuntimeEnvironmentId: null }
     )
     expect(mocks.openFile).toHaveBeenCalledWith(
-      expect.objectContaining({ filePath: '/tmp/nightshift/floating-notes/untitled.md' }),
+      expect.objectContaining({ filePath: '/tmp/kolux/floating-notes/untitled.md' }),
       expect.objectContaining({ suppressActiveRuntimeFallback: true })
     )
   })
@@ -197,7 +197,7 @@ describe('FloatingTerminalPanel close behavior', () => {
   it('opens existing markdown documents through the floating picker', async () => {
     setFloatingTabs([makeTab({ id: 'tab-1' })])
     mocks.pickFloatingMarkdownDocument.mockResolvedValue({
-      filePath: '/tmp/nightshift/notes.md',
+      filePath: '/tmp/kolux/notes.md',
       relativePath: 'notes.md',
       basename: 'notes.md',
       name: 'notes'
@@ -211,7 +211,7 @@ describe('FloatingTerminalPanel close behavior', () => {
     expect(mocks.pickFloatingMarkdownDocument).toHaveBeenCalledWith()
     expect(mocks.openFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        filePath: '/tmp/nightshift/notes.md',
+        filePath: '/tmp/kolux/notes.md',
         relativePath: 'notes.md',
         runtimeEnvironmentId: null,
         worktreeId: FLOATING_TERMINAL_WORKTREE_ID

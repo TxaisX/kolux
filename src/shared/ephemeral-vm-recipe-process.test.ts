@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 function makeRepo(): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-vm-recipe-process-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-vm-recipe-process-'))
   tmpRoots.push(root)
   return root
 }

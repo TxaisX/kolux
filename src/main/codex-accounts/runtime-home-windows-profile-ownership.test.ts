@@ -4,21 +4,21 @@ import { CodexRuntimeHomeService } from './runtime-home-service'
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
 const originalCodexHome = process.env.CODEX_HOME
-const originalNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
+const originalKoluxCodexHome = process.env.KOLUX_CODEX_HOME
 
 afterEach(() => {
   if (originalPlatform) {
     Object.defineProperty(process, 'platform', originalPlatform)
   }
   restoreEnv('CODEX_HOME', originalCodexHome)
-  restoreEnv('NIGHTSHIFT_CODEX_HOME', originalNightshiftCodexHome)
+  restoreEnv('KOLUX_CODEX_HOME', originalKoluxCodexHome)
 })
 
 describe('Windows System Default Codex home ownership', () => {
   it('stays managed when PowerShell profile state cannot be inspected', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     delete process.env.CODEX_HOME
-    delete process.env.NIGHTSHIFT_CODEX_HOME
+    delete process.env.KOLUX_CODEX_HOME
 
     const service = Object.create(CodexRuntimeHomeService.prototype) as CodexRuntimeHomeService
     Object.defineProperty(service, 'store', { value: createStore() })

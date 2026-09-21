@@ -133,13 +133,11 @@ export async function prepareGitHubStackedPullRequest(
       )
     }
     if (parentPullRequests.length !== 1) {
-      return creationError(
-        `Nightshift found multiple open pull requests for the parent branch ${base}.`
-      )
+      return creationError(`Kolux found multiple open pull requests for the parent branch ${base}.`)
     }
     if (currentPullRequests.length > 1) {
       return creationError(
-        `Nightshift found multiple open pull requests for the current branch ${head}.`
+        `Kolux found multiple open pull requests for the current branch ${head}.`
       )
     }
     const parentReview = parentPullRequests[0]
@@ -175,7 +173,7 @@ export async function prepareGitHubStackedPullRequest(
       code: isStacksUnavailableError(error) ? 'validation' : 'unknown',
       error: isStacksUnavailableError(error)
         ? 'GitHub stacked pull requests are not available for this repository.'
-        : 'Nightshift could not verify the parent pull request. Retry in a moment.'
+        : 'Kolux could not verify the parent pull request. Retry in a moment.'
     }
   } finally {
     release()

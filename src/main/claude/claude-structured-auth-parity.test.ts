@@ -16,7 +16,7 @@ import {
   identityFor
 } from './claude-structured-session-test-support'
 
-const SESSION_ID = 'nightshift-session-auth'
+const SESSION_ID = 'kolux-session-auth'
 const IDENTITY = { sessionId: SESSION_ID } as Parameters<
   ReturnType<typeof createClaudeStructuredLaunchResolver>
 >[0]['identity']

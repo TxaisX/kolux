@@ -2,7 +2,7 @@ export const CODEX_BACKFILL_TIMEOUT_SIGNATURE = 'timed out waiting for state db 
 
 export const CODEX_BACKFILL_RECOVERY_NOTICE = [
   'Codex could not start because its session-history index is still incomplete.',
-  'Keep Nightshift open for a few minutes, then retry this pane. Nightshift attempts background recovery for managed local and WSL homes.'
+  'Keep Kolux open for a few minutes, then retry this pane. Kolux attempts background recovery for managed local and WSL homes.'
 ].join('\n')
 
 const ANSI_ESCAPE_PATTERN =

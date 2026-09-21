@@ -18,7 +18,7 @@ function readJson(filePath) {
 }
 
 function makeProject({ sourceText, enCatalog = {}, esCatalog = {} }) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nightshift-localization-catalog-'))
+  const root = mkdtempSync(path.join(tmpdir(), 'kolux-localization-catalog-'))
   const rendererDir = path.join(root, 'src', 'renderer', 'src', 'components')
   const mainDir = path.join(root, 'src', 'main')
   const localesDir = path.join(root, 'src', 'renderer', 'src', 'i18n', 'locales')
@@ -39,7 +39,7 @@ describe('verify-localization-catalog', () => {
   it('bootstraps English entries without fabricating target translations', async () => {
     const { root, localesDir } = makeProject({
       sourceText:
-        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Nightshift' })\n"
+        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Kolux' })\n"
     })
 
     await expect(verifyLocalizationCatalog(root, { fix: false })).resolves.toBe(1)
@@ -68,7 +68,7 @@ describe('verify-localization-catalog', () => {
   it('never overwrites mismatched translations or removes target-only entries', async () => {
     const { root, localesDir } = makeProject({
       sourceText:
-        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Nightshift' })\n",
+        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Kolux' })\n",
       enCatalog: { auto: { example: { greeting: 'Hello {{name}}' } } },
       esCatalog: {
         auto: {
@@ -91,7 +91,7 @@ describe('verify-localization-catalog', () => {
   it('accepts sparse target catalogs when existing placeholders match', async () => {
     const { root } = makeProject({
       sourceText:
-        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Nightshift' })\n",
+        "import { translate } from '@/i18n/i18n'\nexport const label = translate('auto.example.greeting', 'Hello {{name}}', { name: 'Kolux' })\n",
       enCatalog: {
         auto: { example: { greeting: 'Hello {{name}}', untranslated: 'English only' } }
       },

@@ -7,7 +7,7 @@ import {
 
 describe('headless paired runtime startup diagnostics', () => {
   it('redacts pairing URLs before truncation can remove their prefix', () => {
-    const pairingUrl = `nightshift://${'secret'.repeat(1_500)}`
+    const pairingUrl = `kolux://${'secret'.repeat(1_500)}`
     const diagnostic = new HeadlessPairedRuntimeStartupDiagnosticBuffer()
 
     diagnostic.append(Buffer.from(`prefix${pairingUrl}\n`))
@@ -18,16 +18,16 @@ describe('headless paired runtime startup diagnostics', () => {
 
   it('redacts pairing URLs split across chunks', () => {
     const diagnostic = new HeadlessPairedRuntimeStartupDiagnosticBuffer()
-    diagnostic.append(Buffer.from('nightshift://p'))
+    diagnostic.append(Buffer.from('kolux://p'))
     diagnostic.append(Buffer.from('airing-secret\nready'))
 
     expect(formatHeadlessPairedRuntimeStartupDiagnostics(diagnostic.read(), '')).toBe(
-      'stdout:\nnightshift://[redacted]\nready'
+      'stdout:\nkolux://[redacted]\nready'
     )
   })
 
   it('redacts encoded pairing material from web-client URLs', () => {
-    const pairingUrl = encodeURIComponent('nightshift://pairing-secret')
+    const pairingUrl = encodeURIComponent('kolux://pairing-secret')
     const diagnostic = new HeadlessPairedRuntimeStartupDiagnosticBuffer()
 
     diagnostic.append(Buffer.from(`https://host/web-index.html#pairing=${pairingUrl}\n`))
@@ -38,7 +38,7 @@ describe('headless paired runtime startup diagnostics', () => {
 
   it('drops oversized unfinished lines instead of retaining a pairing fragment', () => {
     const diagnostic = new HeadlessPairedRuntimeStartupDiagnosticBuffer()
-    diagnostic.append(Buffer.from(`nightshift://${'secret'.repeat(1_500)}`))
+    diagnostic.append(Buffer.from(`kolux://${'secret'.repeat(1_500)}`))
     diagnostic.append(Buffer.from('still-secret\nsafe'))
 
     expect(diagnostic.read()).toBe('safe')
@@ -57,27 +57,27 @@ describe('headless paired runtime readiness', () => {
     expect(
       parseHeadlessPairedRuntimePairingOffer(
         JSON.stringify({
-          type: 'nightshift_server_ready',
-          pairing: { available: true, url: 'nightshift://pairing-secret', webClientUrl: null }
+          type: 'kolux_server_ready',
+          pairing: { available: true, url: 'kolux://pairing-secret', webClientUrl: null }
         })
       )
-    ).toEqual({ pairingUrl: 'nightshift://pairing-secret' })
+    ).toEqual({ pairingUrl: 'kolux://pairing-secret' })
   })
 
   it('preserves an available web-client URL', () => {
     expect(
       parseHeadlessPairedRuntimePairingOffer(
         JSON.stringify({
-          type: 'nightshift_server_ready',
+          type: 'kolux_server_ready',
           pairing: {
             available: true,
-            url: 'nightshift://pairing-secret',
+            url: 'kolux://pairing-secret',
             webClientUrl: 'https://example.test/web-index.html#pairing=secret'
           }
         })
       )
     ).toEqual({
-      pairingUrl: 'nightshift://pairing-secret',
+      pairingUrl: 'kolux://pairing-secret',
       webClientUrl: 'https://example.test/web-index.html#pairing=secret'
     })
   })

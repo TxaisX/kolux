@@ -46,7 +46,7 @@ describe('resolveWorktreeIncludePaths', () => {
   let warn: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    repo = mkdtempSync(join(tmpdir(), 'nightshift-worktreeinclude-'))
+    repo = mkdtempSync(join(tmpdir(), 'kolux-worktreeinclude-'))
     gitExecFileAsyncMock.mockReset()
     warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   })

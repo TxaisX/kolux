@@ -29,7 +29,7 @@ function sshTarget(overrides: Partial<SshTarget> = {}): SshTarget {
     label: 'Build box',
     host: 'build.example',
     port: 22,
-    username: 'nightshift',
+    username: 'kolux',
     generation: 3,
     ...overrides
   }
@@ -44,8 +44,8 @@ function desktopSsh(targetId: string, targetGeneration: number): AutomationOwner
   return { authority: { kind: 'desktop' }, selector: { kind: 'ssh', targetId, targetGeneration } }
 }
 
-/** Stands in for the Nightshift automation store: readable, but never markable unavailable from here. */
-function nightshiftStoreHealth() {
+/** Stands in for the Kolux automation store: readable, but never markable unavailable from here. */
+function koluxStoreHealth() {
   return { read: vi.fn<() => void>(), markUnavailable: vi.fn<() => void>() }
 }
 
@@ -217,8 +217,8 @@ describe('scoped external automations', () => {
     expect(getActiveMultiplexer).not.toHaveBeenCalled()
   })
 
-  it('confines a manager failure to its own scope and never to Nightshift store health', async () => {
-    const health = nightshiftStoreHealth()
+  it('confines a manager failure to its own scope and never to Kolux store health', async () => {
+    const health = koluxStoreHealth()
     vi.mocked(getActiveMultiplexer).mockReturnValue(
       undefined as unknown as ReturnType<typeof getActiveMultiplexer>
     )

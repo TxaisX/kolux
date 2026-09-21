@@ -2,7 +2,7 @@ import { getSecretStore } from '../../shared/secret-store'
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import {
   LEGACY_WORKSPACE_ID,
-  ensureNightshiftDir,
+  ensureKoluxDir,
   ensureWorkspaceTokenDir,
   getWorkspaceTokenPath
 } from './linear-credential-paths'
@@ -44,7 +44,7 @@ function writeEncryptedToken(path: string, apiKey: string): void {
 }
 
 export function saveWorkspaceToken(workspaceId: string, apiKey: string): void {
-  ensureNightshiftDir()
+  ensureKoluxDir()
   if (workspaceId !== LEGACY_WORKSPACE_ID) {
     ensureWorkspaceTokenDir()
   }

@@ -1,7 +1,7 @@
 // Why: stdin ownership is a cross-agent process contract; one executable
 // matrix catches an unread early exit without duplicating template assertions.
 // Exception (#11549): Windows batch hooks give up stdin ownership on the
-// missing-Nightshift-env path, so their writer may break there.
+// missing-Kolux-env path, so their writer may break there.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { spawn } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -14,18 +14,18 @@ let isolatedUserDataDir = ''
 let previousUserDataPath: string | undefined
 
 beforeEach(() => {
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-stdin-user-data-'))
-  // Why: Nightshift-managed Codex hooks resolve through NIGHTSHIFT_USER_DATA_PATH before
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-hook-stdin-user-data-'))
+  // Why: Kolux-managed Codex hooks resolve through KOLUX_USER_DATA_PATH before
   // the mocked home; an inherited live path would let this test rewrite them.
-  process.env.NIGHTSHIFT_USER_DATA_PATH = isolatedUserDataDir
+  process.env.KOLUX_USER_DATA_PATH = isolatedUserDataDir
 })
 
 afterEach(() => {
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   rmSync(isolatedUserDataDir, { recursive: true, force: true })
 })
@@ -36,7 +36,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -171,7 +171,7 @@ function runHookProcess(
   executable: string,
   args: string[],
   env: NodeJS.ProcessEnv,
-  // Why: `abandon` leaves the pipe open and unwritten — the shape a caller outside a Nightshift
+  // Why: `abandon` leaves the pipe open and unwritten — the shape a caller outside a Kolux
   // pane produces, and the only one that can catch a read-to-EOF that never returns (#11549).
   stdin: 'close' | 'abandon' = 'close'
 ): Promise<HookRun> {
@@ -208,12 +208,12 @@ function runHookProcess(
 
 function hookEnvironment(extraEnv: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   const env = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith('NIGHTSHIFT_'))
+    Object.entries(process.env).filter(([key]) => !key.startsWith('KOLUX_'))
   )
   return {
     ...env,
     HOME: REMOTE_HOME,
-    NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
+    KOLUX_AGENT_HOOK_ENDPOINT: '',
     ...extraEnv
   }
 }
@@ -229,7 +229,7 @@ async function generatePosixScripts(): Promise<Map<string, string>> {
     const status = await entry.install(memory.sftp)
     expect(status.state, `${entry.agent} install status`).toBe('installed')
     const generated = [...memory.fs.files.entries()].filter(
-      ([path]) => path.includes('/.nightshift/agent-hooks/') && path.endsWith('.sh')
+      ([path]) => path.includes('/.kolux/agent-hooks/') && path.endsWith('.sh')
     )
     // Why: Claude ships a second managed script (the statusline usage feed); the stdin lifecycle contract applies to every generated script.
     expect(generated.length, `${entry.agent} generated scripts`).toBeGreaterThan(0)
@@ -256,8 +256,8 @@ async function withPlatform<T>(platform: NodeJS.Platform, run: () => T | Promise
 }
 
 describe('Windows managed hook stdin structure', () => {
-  it('exits immediately when Nightshift env is missing and keeps drain for other failures', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-stdin-windows-'))
+  it('exits immediately when Kolux env is missing and keeps drain for other failures', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'kolux-hook-stdin-windows-'))
     homedirMock.mockReturnValue(home)
     seedCmdAutoRunTarget(home)
     const previousGrokHome = process.env.GROK_HOME
@@ -270,7 +270,7 @@ describe('Windows managed hook stdin structure', () => {
           expect((await entry.install()).state, `${entry.agent} install status`).toBe('installed')
         }
       })
-      const hooksDir = join(home, '.nightshift', 'agent-hooks')
+      const hooksDir = join(home, '.kolux', 'agent-hooks')
       const fileNames = readdirSync(hooksDir)
       const mainBatchScripts = fileNames.filter(
         (name) => name.endsWith('-hook.cmd') && !name.startsWith('antigravity-')
@@ -281,27 +281,24 @@ describe('Windows managed hook stdin structure', () => {
         const script = readFileSync(join(hooksDir, fileName), 'utf8')
         // Why: missing-env path must not touch more.com — hang class from #11549.
         expect(script, `${fileName} port guard`).toContain(
-          'if "%NIGHTSHIFT_AGENT_HOOK_PORT%"=="" exit /b 0'
+          'if "%KOLUX_AGENT_HOOK_PORT%"=="" exit /b 0'
         )
         expect(script, `${fileName} token guard`).toContain(
-          'if "%NIGHTSHIFT_AGENT_HOOK_TOKEN%"=="" exit /b 0'
+          'if "%KOLUX_AGENT_HOOK_TOKEN%"=="" exit /b 0'
         )
-        expect(script, `${fileName} pane guard`).toContain(
-          'if "%NIGHTSHIFT_PANE_KEY%"=="" exit /b 0'
-        )
-        // Why: pin the rule, not today's three guards — a fourth NIGHTSHIFT_* guard routed to the
+        expect(script, `${fileName} pane guard`).toContain('if "%KOLUX_PANE_KEY%"=="" exit /b 0')
+        // Why: pin the rule, not today's three guards — a fourth KOLUX_* guard routed to the
         // drain would reintroduce #11549 with this suite green. The pattern spans the guard so
         // it catches both `if "%VAR%"==""` and `if not defined VAR`; the Devin skip names no
-        // NIGHTSHIFT_* var, so it stays exempt.
-        expect(
-          script,
-          `${fileName} no NIGHTSHIFT_* guard may route to the more.com drain`
-        ).not.toMatch(/NIGHTSHIFT_[A-Z_]+.*goto :?nightshift_agent_hook_drain_stdin/)
+        // KOLUX_* var, so it stays exempt.
+        expect(script, `${fileName} no KOLUX_* guard may route to the more.com drain`).not.toMatch(
+          /KOLUX_[A-Z_]+.*goto :?kolux_agent_hook_drain_stdin/
+        )
         // Why: the epilogue stays shared — claude-hook.cmd still jumps to it from the
         // Devin-imports-.claude skip, which now sits below these guards.
         expect(script, `${fileName} drain epilogue`).toContain(
           [
-            ':nightshift_agent_hook_drain_stdin',
+            ':kolux_agent_hook_drain_stdin',
             '"%SystemRoot%\\System32\\more.com" >nul 2>nul',
             'exit /b 0'
           ].join('\r\n')
@@ -309,21 +306,21 @@ describe('Windows managed hook stdin structure', () => {
       }
 
       // Why (#11549): the Devin skip is the only remaining in-script jump to more.com, so it
-      // must sit below the env guards — otherwise a Devin session outside a Nightshift pane still
+      // must sit below the env guards — otherwise a Devin session outside a Kolux pane still
       // parks there and strands the hook exactly like the pre-fix guards did.
       const claude = readFileSync(join(hooksDir, 'claude-hook.cmd'), 'utf8')
       expect(claude, 'claude devin guard present').toContain(
-        'if not "%DEVIN_PROJECT_DIR%"=="" goto :nightshift_agent_hook_drain_stdin'
+        'if not "%DEVIN_PROJECT_DIR%"=="" goto :kolux_agent_hook_drain_stdin'
       )
-      expect(claude.indexOf('if "%NIGHTSHIFT_PANE_KEY%"=="" exit /b 0')).toBeLessThan(
-        claude.indexOf('if not "%DEVIN_PROJECT_DIR%"=="" goto :nightshift_agent_hook_drain_stdin')
+      expect(claude.indexOf('if "%KOLUX_PANE_KEY%"=="" exit /b 0')).toBeLessThan(
+        claude.indexOf('if not "%DEVIN_PROJECT_DIR%"=="" goto :kolux_agent_hook_drain_stdin')
       )
 
       // Why (#11549 class): every Windows-local hook now guards before owning stdin —
       // the caller may abandon the pipe, and the payload is discarded on this path anyway.
       const copilot = readFileSync(join(hooksDir, 'copilot-hook.ps1'), 'utf8')
-      expect(copilot.indexOf('if (-not $env:NIGHTSHIFT_AGENT_HOOK_PORT')).toBeGreaterThan(-1)
-      expect(copilot.indexOf('if (-not $env:NIGHTSHIFT_AGENT_HOOK_PORT')).toBeLessThan(
+      expect(copilot.indexOf('if (-not $env:KOLUX_AGENT_HOOK_PORT')).toBeGreaterThan(-1)
+      expect(copilot.indexOf('if (-not $env:KOLUX_AGENT_HOOK_PORT')).toBeLessThan(
         copilot.indexOf('[Console]::In.ReadToEnd()')
       )
       // Why: the two encoded-PowerShell launchers own stdin themselves when the managed
@@ -333,11 +330,11 @@ describe('Windows managed hook stdin structure', () => {
       for (const [name, command] of [
         [
           'wrapWindowsHookCommand',
-          wrapWindowsHookCommand('C:\\missing\\nightshift-hook.cmd', {}, { fallbackStdout: '{}' })
+          wrapWindowsHookCommand('C:\\missing\\kolux-hook.cmd', {}, { fallbackStdout: '{}' })
         ],
         [
           'wrapRuntimeHomeHookCommand',
-          wrapRuntimeHomeHookCommand('missing-nightshift-hook', { neutralJsonWhenMissing: true })
+          wrapRuntimeHomeHookCommand('missing-kolux-hook', { neutralJsonWhenMissing: true })
         ]
       ] as const) {
         const decoded = decodeEncodedPowerShellCommand(command)
@@ -352,8 +349,8 @@ describe('Windows managed hook stdin structure', () => {
       }
 
       const kimi = readFileSync(join(hooksDir, 'kimi-hook.sh'), 'utf8')
-      expect(kimi.indexOf('if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ]')).toBeGreaterThan(-1)
-      expect(kimi.indexOf('if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ]')).toBeLessThan(
+      expect(kimi.indexOf('if [ -z "$KOLUX_AGENT_HOOK_PORT" ]')).toBeGreaterThan(-1)
+      expect(kimi.indexOf('if [ -z "$KOLUX_AGENT_HOOK_PORT" ]')).toBeLessThan(
         kimi.indexOf(`payload=$(${POSIX_HOOK_STDIN_READER})`)
       )
     } finally {
@@ -373,9 +370,9 @@ describe('Windows managed hook stdin structure', () => {
   })
 
   it.skipIf(process.platform !== 'win32')(
-    'exits 0 for every local script and missing-script launcher, dropping stdin only without Nightshift env',
+    'exits 0 for every local script and missing-script launcher, dropping stdin only without Kolux env',
     async () => {
-      const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-stdin-windows-live-'))
+      const home = mkdtempSync(join(tmpdir(), 'kolux-hook-stdin-windows-live-'))
       homedirMock.mockReturnValue(home)
       seedCmdAutoRunTarget(home)
       try {
@@ -383,7 +380,7 @@ describe('Windows managed hook stdin structure', () => {
         for (const entry of LOCAL_INSTALLERS) {
           expect((await entry.install()).state, `${entry.agent} install status`).toBe('installed')
         }
-        const hooksDir = join(home, '.nightshift', 'agent-hooks')
+        const hooksDir = join(home, '.kolux', 'agent-hooks')
         const mainScripts = readdirSync(hooksDir).filter(
           (name) =>
             name === 'antigravity-hook.cmd' ||
@@ -413,15 +410,15 @@ describe('Windows managed hook stdin structure', () => {
           const result = await runHookProcess(executable, args, hookEnvironment())
           expect(result.exitCode, `${fileName} exit code`).toBe(0)
           // Why (#11549 class): every Windows-local hook exits before owning stdin when the
-          // Nightshift env is missing, so the writer may break. hookEnvironment() strips every
-          // NIGHTSHIFT_* var, so this relaxation only ever covers the missing-env path — a
+          // Kolux env is missing, so the writer may break. hookEnvironment() strips every
+          // KOLUX_* var, so this relaxation only ever covers the missing-env path — a
           // happy-path case added to this loop must not reuse it.
           for (const error of result.stdinErrors) {
             expect(WRITER_BROKEN_BY_EARLY_EXIT, `${fileName} stdin error`).toContain(error.code)
           }
         }
 
-        const missingScript = 'C:\\missing\\nightshift-hook.cmd'
+        const missingScript = 'C:\\missing\\kolux-hook.cmd'
         // Why: the cmd fast path is intentionally a bare, directly-spawnable .cmd
         // path (Codex/Antigravity/Devin launch it as argv[0], not via cmd.exe), so
         // it cannot own stdin for a missing script — a cmd-builtin drain would make
@@ -438,7 +435,7 @@ describe('Windows managed hook stdin structure', () => {
           {
             name: 'portable Git Bash launcher',
             executable: gitBash,
-            args: ['-lc', wrapRuntimeHomeHookCommand('missing-nightshift-hook')]
+            args: ['-lc', wrapRuntimeHomeHookCommand('missing-kolux-hook')]
           }
         ]
         for (const launcher of launcherCases) {
@@ -461,9 +458,9 @@ describe('Windows managed hook stdin structure', () => {
             launcher.executable,
             launcher.args,
             hookEnvironment({
-              NIGHTSHIFT_AGENT_HOOK_PORT: '59999',
-              NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token',
-              NIGHTSHIFT_PANE_KEY: 'tab:leaf'
+              KOLUX_AGENT_HOOK_PORT: '59999',
+              KOLUX_AGENT_HOOK_TOKEN: 'token',
+              KOLUX_PANE_KEY: 'tab:leaf'
             })
           )
           expect(insideAPane.exitCode, `${launcher.name} in-pane exit code`).toBe(0)
@@ -490,7 +487,7 @@ describe('Windows managed hook stdin structure', () => {
   it.skipIf(process.platform !== 'win32')(
     'emits parseable JSON on stdout from the registered Claude hook command, through cmd.exe and Git Bash',
     async () => {
-      const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-stdout-json-'))
+      const home = mkdtempSync(join(tmpdir(), 'kolux-hook-stdout-json-'))
       homedirMock.mockReturnValue(home)
       const absentProfile = join(home, 'absent')
       seedCmdAutoRunTarget(home)
@@ -511,14 +508,14 @@ describe('Windows managed hook stdin structure', () => {
         ]
         // Why: cover guard exit, reached curl, and the launcher's missing-script fallback.
         const environments = [
-          { name: 'no Nightshift env', env: hookEnvironment({ USERPROFILE: home }) },
+          { name: 'no Kolux env', env: hookEnvironment({ USERPROFILE: home }) },
           {
-            name: 'Nightshift env with dead listener',
+            name: 'Kolux env with dead listener',
             env: hookEnvironment({
               USERPROFILE: home,
-              NIGHTSHIFT_AGENT_HOOK_PORT: '59999',
-              NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token',
-              NIGHTSHIFT_PANE_KEY: 'tab:leaf'
+              KOLUX_AGENT_HOOK_PORT: '59999',
+              KOLUX_AGENT_HOOK_TOKEN: 'token',
+              KOLUX_PANE_KEY: 'tab:leaf'
             })
           },
           {
@@ -552,7 +549,7 @@ describe('Windows managed hook stdin structure', () => {
 
 describe.skipIf(process.platform === 'win32')('managed hook stdin lifecycle', () => {
   it('emits neutral JSON when the Claude lifecycle script is missing', async () => {
-    const command = getRemoteManagedCommand('/home/dev/.nightshift/agent-hooks/claude-hook.sh')
+    const command = getRemoteManagedCommand('/home/dev/.kolux/agent-hooks/claude-hook.sh')
     const result = await runPosixHook(command)
 
     expect(result.exitCode).toBe(0)
@@ -571,14 +568,14 @@ describe.skipIf(process.platform === 'win32')('managed hook stdin lifecycle', ()
     }
   })
 
-  it('accepts a large payload without Nightshift environment or a broken writer', async () => {
+  it('accepts a large payload without Kolux environment or a broken writer', async () => {
     const scripts = await generatePosixScripts()
     for (const [agent, script] of scripts) {
       const extraEnv = agent.startsWith('command-code')
         ? {
-            NIGHTSHIFT_AGENT_HOOK_PORT: '1',
-            NIGHTSHIFT_AGENT_HOOK_TOKEN: 'test-token',
-            NIGHTSHIFT_PANE_KEY: 'test-pane'
+            KOLUX_AGENT_HOOK_PORT: '1',
+            KOLUX_AGENT_HOOK_TOKEN: 'test-token',
+            KOLUX_PANE_KEY: 'test-pane'
           }
         : {}
       const result = await runPosixHook(script, extraEnv)
@@ -595,7 +592,7 @@ describe.skipIf(process.platform === 'win32')('managed hook stdin lifecycle', ()
       expect(result.stdinErrors, `${agent} stdin errors`).toHaveLength(0)
     }
 
-    const missing = await runPosixHook(wrapPosixHookCommand('/missing/nightshift-hook.sh'), {
+    const missing = await runPosixHook(wrapPosixHookCommand('/missing/kolux-hook.sh'), {
       PATH: ''
     })
     expect(missing.exitCode, 'missing script launcher exit code').toBe(0)
@@ -612,7 +609,7 @@ describe.skipIf(process.platform === 'win32')('managed hook stdin lifecycle', ()
     // Why: a worktree-local `cat` must never receive the hook payload.
     ['PATH whose first cat is a decoy', '']
   ])('captures the whole payload with %s', async (label, pathValue) => {
-    const decoyDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-stdin-decoy-'))
+    const decoyDir = mkdtempSync(join(tmpdir(), 'kolux-hook-stdin-decoy-'))
     try {
       let effectivePath = pathValue
       if (label === 'PATH whose first cat is a decoy') {
@@ -642,7 +639,7 @@ describe.skipIf(process.platform === 'win32')('managed hook stdin lifecycle', ()
   })
 
   it('drains a large payload when the configured script is missing', async () => {
-    const result = await runPosixHook(wrapPosixHookCommand('/missing/nightshift-hook.sh'))
+    const result = await runPosixHook(wrapPosixHookCommand('/missing/kolux-hook.sh'))
     expect(result.exitCode).toBe(0)
     expect(result.stdinErrors).toHaveLength(0)
   })

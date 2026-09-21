@@ -149,10 +149,9 @@ export const ghMutationsAndProjectsApi = {
     ipcRenderer.on('gh:workItemMutated', listener)
     return () => ipcRenderer.removeListener('gh:workItemMutated', listener)
   },
-  checkNightshiftStarred: (): Promise<boolean | null> =>
-    ipcRenderer.invoke('gh:checkNightshiftStarred'),
-  starNightshift: (source: AppStarSource): Promise<boolean> =>
-    ipcRenderer.invoke('gh:starNightshift', source),
+  checkKoluxStarred: (): Promise<boolean | null> => ipcRenderer.invoke('gh:checkKoluxStarred'),
+  starKolux: (source: AppStarSource): Promise<boolean> =>
+    ipcRenderer.invoke('gh:starKolux', source),
   rateLimit: (args?: { force?: boolean }): Promise<GetRateLimitResult> =>
     ipcRenderer.invoke('gh:rateLimit', args),
   diagnoseAuth: (args?: { host?: string }): Promise<GhAuthDiagnostic> =>

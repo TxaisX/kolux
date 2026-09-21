@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { supportsStructuredAgentSessions } from './structured-agent-session-policy'
 
 function runtimeWithSetting(
   experimentalStructuredNativeChat: boolean
-): Pick<NightshiftRuntimeService, 'getClientSettings'> {
+): Pick<KoluxRuntimeService, 'getClientSettings'> {
   return {
     getClientSettings: () => ({ experimentalStructuredNativeChat })
-  } as unknown as Pick<NightshiftRuntimeService, 'getClientSettings'>
+  } as unknown as Pick<KoluxRuntimeService, 'getClientSettings'>
 }
 
 const CAPABLE = [STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY]
@@ -94,7 +94,7 @@ describe('supportsStructuredAgentSessions', () => {
           getClientSettings: () => {
             throw new Error('settings unavailable')
           }
-        } as unknown as Pick<NightshiftRuntimeService, 'getClientSettings'>
+        } as unknown as Pick<KoluxRuntimeService, 'getClientSettings'>
       })
     ).toBe(false)
   })

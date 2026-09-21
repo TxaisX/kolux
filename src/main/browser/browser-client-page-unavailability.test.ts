@@ -3,7 +3,7 @@ import type { BrowserClientHostCommandEvent } from '../../shared/browser-client-
 import type { BrowserRoutePageGuestIdentity } from './browser-route-page-authority'
 import { BrowserClientPageCommandExecutor } from './browser-client-page-command-executor'
 
-const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
+const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
 const registration = {
   partition,
   browserPageId: 'page-a',
@@ -67,7 +67,7 @@ function harness() {
   }
   const onPageUnavailable = vi.fn()
   const executor = new BrowserClientPageCommandExecutor({
-    nightshiftProfileId: 'profile-a',
+    koluxProfileId: 'profile-a',
     authorityConnectionIdentity: 'authority-a',
     legacyAuthorityConnectionIdentity: 'legacy-authority-a',
     storageScope: 'a'.repeat(64),

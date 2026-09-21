@@ -1,4 +1,4 @@
-// Run against an isolated Nightshift dev instance with Pi and pi-ui-prompt-extension.mjs loaded.
+// Run against an isolated Kolux dev instance with Pi and pi-ui-prompt-extension.mjs loaded.
 // Usage: node tests/tools/pi-ui-prompt-cdp-smoke.mjs http://127.0.0.1:9333 /path/to/proof
 import assert from 'node:assert/strict'
 import { mkdir } from 'node:fs/promises'
@@ -12,7 +12,7 @@ await mkdir(output, { recursive: true })
 const browser = await chromium.connectOverCDP(endpoint)
 try {
   const page = browser.contexts().flatMap((context) => context.pages())[0]
-  assert.ok(page, 'Nightshift renderer must be open')
+  assert.ok(page, 'Kolux renderer must be open')
   const identity = await page.evaluate(() => window.api.app.getIdentity())
   assert.equal(identity.isDev, true, 'Use an isolated development instance')
   console.log(JSON.stringify(identity))
@@ -34,7 +34,7 @@ try {
 
   for (const kind of ['select', 'confirm', 'input', 'editor', 'custom']) {
     for (const ending of kind === 'select' ? ['answer', 'cancel'] : ['cancel']) {
-      await input.pressSequentially(`/nightshift-modal ${kind}`, { delay: 10 })
+      await input.pressSequentially(`/kolux-modal ${kind}`, { delay: 10 })
       await input.press('Enter')
       await waitForState('waiting')
       await expect(attention).toBeVisible()

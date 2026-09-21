@@ -1,11 +1,13 @@
 import type { Repo } from '../../shared/repo-types'
-import { parseNightshiftYaml } from '../hooks'
+import { parseKoluxYaml } from '../hooks'
 import { readIssueCommand, writeIssueCommand } from '../issue-command-file'
 import { isENOENT } from '../ipc/filesystem-auth'
 import { getSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
 import type { IFilesystemProvider } from '../providers/types'
 import { isFolderRepo } from '../../shared/repo-kind'
 import { joinWorktreeRelativePath } from './runtime-relative-paths'
+import { readRepoKoluxDirFile } from './repo-kolux-dir-fallback'
+import { readRepoConfigYaml } from './repo-config-yaml-fallback'
 
 type RuntimeRepositoryIssueCommandDeps = {
   resolveRepo: (selector: string) => Promise<Repo>
@@ -28,7 +30,7 @@ export class RuntimeRepositoryIssueCommand {
     if (!repo.connectionId) {
       return readIssueCommand(repo.path)
     }
-    const issueCommandPath = joinWorktreeRelativePath(repo.path, '.nightshift/issue-command')
+    const issueCommandPath = joinWorktreeRelativePath(repo.path, '.kolux/issue-command')
     const fsProvider = getSshFilesystemProvider(repo.connectionId)
     if (!fsProvider) {
       return {
@@ -39,7 +41,7 @@ export class RuntimeRepositoryIssueCommand {
         source: 'none' as const
       }
     }
-    const localContent = await readRemoteOverride(fsProvider, issueCommandPath)
+    const localContent = await readRepoKoluxDirFile(fsProvider, repo.path, 'issue-command')
     const sharedContent = await readRemoteShared(fsProvider, repo.path)
     return {
       localContent,
@@ -63,7 +65,7 @@ export class RuntimeRepositoryIssueCommand {
       writeIssueCommand(repo.path, content)
       return { ok: true }
     }
-    const issueCommandPath = joinWorktreeRelativePath(repo.path, '.nightshift/issue-command')
+    const issueCommandPath = joinWorktreeRelativePath(repo.path, '.kolux/issue-command')
     const fsProvider = getSshFilesystemProvider(repo.connectionId)
     if (!fsProvider) {
       return { ok: true }
@@ -77,22 +79,10 @@ export class RuntimeRepositoryIssueCommand {
       })
       return { ok: true }
     }
-    await fsProvider.createDir(joinWorktreeRelativePath(repo.path, '.nightshift'))
-    await ensureRemoteNightshiftDirIgnored(fsProvider, repo.path)
+    await fsProvider.createDir(joinWorktreeRelativePath(repo.path, '.kolux'))
+    await ensureRemoteKoluxDirIgnored(fsProvider, repo.path)
     await fsProvider.writeFile(issueCommandPath, `${trimmed}\n`)
     return { ok: true }
-  }
-}
-
-async function readRemoteOverride(
-  fsProvider: IFilesystemProvider,
-  issueCommandPath: string
-): Promise<string | null> {
-  try {
-    const result = await fsProvider.readFile(issueCommandPath)
-    return result.isBinary ? null : result.content.trim() || null
-  } catch {
-    return null
   }
 }
 
@@ -101,16 +91,16 @@ async function readRemoteShared(
   repoPath: string
 ): Promise<string | null> {
   try {
-    const result = await fsProvider.readFile(joinWorktreeRelativePath(repoPath, 'nightshift.yaml'))
-    return result.isBinary
+    const result = await readRepoConfigYaml(fsProvider, repoPath)
+    return result == null || result.isBinary
       ? null
-      : parseNightshiftYaml(result.content)?.issueCommand?.trim() || null
+      : parseKoluxYaml(result.content)?.issueCommand?.trim() || null
   } catch {
     return null
   }
 }
 
-async function ensureRemoteNightshiftDirIgnored(
+async function ensureRemoteKoluxDirIgnored(
   fsProvider: IFilesystemProvider,
   repoPath: string
 ): Promise<void> {
@@ -120,26 +110,23 @@ async function ensureRemoteNightshiftDirIgnored(
     result = await fsProvider.readFile(gitignorePath)
   } catch (error) {
     if (!isENOENT(error)) {
-      console.warn('[runtime] Could not inspect remote .gitignore for .nightshift', error)
+      console.warn('[runtime] Could not inspect remote .gitignore for .kolux', error)
       return
     }
     try {
-      await fsProvider.writeFile(gitignorePath, '.nightshift\n')
+      await fsProvider.writeFile(gitignorePath, '.kolux\n')
     } catch (writeError) {
-      console.warn(
-        '[runtime] Could not update remote .gitignore to exclude .nightshift',
-        writeError
-      )
+      console.warn('[runtime] Could not update remote .gitignore to exclude .kolux', writeError)
     }
     return
   }
-  if (result.isBinary || /^\.nightshift\/?$/m.test(result.content)) {
+  if (result.isBinary || /^\.kolux\/?$/m.test(result.content)) {
     return
   }
   const separator = result.content.endsWith('\n') ? '' : '\n'
   try {
-    await fsProvider.writeFile(gitignorePath, `${result.content}${separator}.nightshift\n`)
+    await fsProvider.writeFile(gitignorePath, `${result.content}${separator}.kolux\n`)
   } catch (writeError) {
-    console.warn('[runtime] Could not update remote .gitignore to exclude .nightshift', writeError)
+    console.warn('[runtime] Could not update remote .gitignore to exclude .kolux', writeError)
   }
 }

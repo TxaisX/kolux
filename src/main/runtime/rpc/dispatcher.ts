@@ -11,7 +11,7 @@ import {
 import { errorResponse, successResponse } from './errors'
 import { ALL_RPC_METHODS } from './methods'
 import { emulatorProbe, emulatorProbeError } from '../../emulator/emulator-probe'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import {
   getOrchestrationMutationExecutor,
   type OrchestrationMutationExecutor
@@ -25,14 +25,14 @@ import { RpcStreamingDispatcher } from './rpc-streaming-dispatcher'
 import { invokeDispatcherUnaryMethod } from './dispatcher-unary-method-invocation'
 
 export type DispatcherOptions = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   methods?: readonly RpcAnyMethod[]
 }
 
 type DispatchCallOptions = RpcDispatchStreamingOptions
 
 export class RpcDispatcher {
-  private readonly runtime: NightshiftRuntimeService
+  private readonly runtime: KoluxRuntimeService
   private readonly registry: RpcRegistry
   private readonly orchestrationMutations: OrchestrationMutationExecutor
   private readonly legacyOrchestration: OrchestrationLegacyCompatibility

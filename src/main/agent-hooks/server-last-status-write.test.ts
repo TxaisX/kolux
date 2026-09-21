@@ -34,7 +34,7 @@ describe('Last-status persistence', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-laststatus-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-laststatus-'))
   })
 
   afterEach(() => {

@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActiveTerminalManager } from './helpers/terminal'
 import { analyzeRasterCursorCells, type RasterCursorCell } from './terminal-cursor-raster-probe'
@@ -698,59 +698,53 @@ async function captureQueuedMessageFrames(
 
 test.describe('Codex terminal cursor jitter repro', () => {
   test('keeps queued-message cursor out of the Working status row in native Windows Codex @headful', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.skip(process.platform !== 'win32', 'native Windows cursor repro only runs on Windows')
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await installPtyWriteDiagnostics(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await installPtyWriteDiagnostics(koluxPage)
     rmSync(ARTIFACT_DIR, { recursive: true, force: true })
     mkdirSync(ARTIFACT_DIR, { recursive: true })
 
     const shellCase = SHELL_CASES[0]!
-    const { tabId, ptyId } = await prepareCodexTerminal(nightshiftPage, shellCase)
-    await installPtyOutputDiagnostics(nightshiftPage)
-    await nightshiftPage.keyboard.type(CODEX_REPO_PROMPT)
-    await nightshiftPage.waitForTimeout(250)
-    await nightshiftPage.keyboard.press('Enter')
-    await nightshiftPage.waitForTimeout(1_000)
-    if (
-      !CODEX_WORKING_STATUS_RE.test(await getTerminalContentForTab(nightshiftPage, tabId, 8_000))
-    ) {
-      await nightshiftPage.keyboard.press('Enter')
+    const { tabId, ptyId } = await prepareCodexTerminal(koluxPage, shellCase)
+    await installPtyOutputDiagnostics(koluxPage)
+    await koluxPage.keyboard.type(CODEX_REPO_PROMPT)
+    await koluxPage.waitForTimeout(250)
+    await koluxPage.keyboard.press('Enter')
+    await koluxPage.waitForTimeout(1_000)
+    if (!CODEX_WORKING_STATUS_RE.test(await getTerminalContentForTab(koluxPage, tabId, 8_000))) {
+      await koluxPage.keyboard.press('Enter')
     }
-    await nightshiftPage.waitForTimeout(3_000)
-    const submittedContent = await getTerminalContentForTab(nightshiftPage, tabId, 8_000)
+    await koluxPage.waitForTimeout(3_000)
+    const submittedContent = await getTerminalContentForTab(koluxPage, tabId, 8_000)
     writeFileSync(path.join(ARTIFACT_DIR, 'queued-message-after-submit.txt'), submittedContent)
     await expect
       .poll(
         async () =>
-          CODEX_WORKING_STATUS_RE.test(
-            await getTerminalContentForTab(nightshiftPage, tabId, 8_000)
-          ),
+          CODEX_WORKING_STATUS_RE.test(await getTerminalContentForTab(koluxPage, tabId, 8_000)),
         {
           timeout: 30_000,
           message: 'Codex did not enter Working state'
         }
       )
       .toBe(true)
-    await applyCursorProbeTheme(nightshiftPage, tabId)
+    await applyCursorProbeTheme(koluxPage, tabId)
     const workingOnlyFrames = await captureQueuedMessageFrames(
-      nightshiftPage,
+      koluxPage,
       `${shellCase.label}-no-input`,
       tabId,
       ptyId,
       testInfo
     )
-    await nightshiftPage.keyboard.insertText('s')
+    await koluxPage.keyboard.insertText('s')
     await expect
       .poll(
         async () =>
-          (await readScreenLines(nightshiftPage, tabId)).some((line) =>
-            isQueuedInputLine(line.text)
-          ),
+          (await readScreenLines(koluxPage, tabId)).some((line) => isQueuedInputLine(line.text)),
         {
           timeout: 5_000,
           message: 'queued input did not appear before cursor capture'
@@ -758,15 +752,15 @@ test.describe('Codex terminal cursor jitter repro', () => {
       )
       .toBe(true)
     const frames = await captureQueuedMessageFrames(
-      nightshiftPage,
+      koluxPage,
       shellCase.label,
       tabId,
       ptyId,
       testInfo
     )
 
-    const snapshot = await readScreenSnapshot(nightshiftPage, shellCase.label, tabId, ptyId)
-    const rawChunks = await readPtyOutputDiagnostics(nightshiftPage)
+    const snapshot = await readScreenSnapshot(koluxPage, shellCase.label, tabId, ptyId)
+    const rawChunks = await readPtyOutputDiagnostics(koluxPage)
     const visibleWorkingOnlyCursorFrames = workingOnlyFrames.filter(isPromptCursorFrame)
     const unexpectedWorkingOnlyCursorFrames = workingOnlyFrames.filter(
       isUnexpectedVisibleCursorFrame

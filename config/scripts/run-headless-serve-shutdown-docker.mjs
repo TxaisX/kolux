@@ -12,7 +12,7 @@ const entrypoint = valueAfter('--entrypoint') ?? 'app'
 const intDelivery = valueAfter('--int-delivery') ?? 'foreground-process-group'
 const launcherExecOverlay = args.includes('--launcher-exec-overlay')
 if (!appImageArg) {
-  fail('Usage: run-headless-serve-shutdown-docker.mjs --appimage /path/to/nightshift.AppImage')
+  fail('Usage: run-headless-serve-shutdown-docker.mjs --appimage /path/to/kolux.AppImage')
 }
 if (!['app', 'serving-electron'].includes(signalTarget)) {
   fail(`Unsupported --signal-target: ${signalTarget}`)
@@ -38,8 +38,8 @@ if (!existsSync(appImage)) {
 }
 
 const suffix = `${process.pid}-${Date.now()}`
-const image = `nightshift-headless-serve-shutdown:${suffix}`
-const artifactVolume = `nightshift-headless-serve-shutdown-${suffix}`
+const image = `kolux-headless-serve-shutdown:${suffix}`
+const artifactVolume = `kolux-headless-serve-shutdown-${suffix}`
 const sha256 = createHash('sha256').update(readFileSync(appImage)).digest('hex')
 
 try {
@@ -78,20 +78,20 @@ try {
     '--entrypoint',
     'bash',
     '-v',
-    `${appImage}:/input/nightshift.AppImage:ro`,
+    `${appImage}:/input/kolux.AppImage:ro`,
     '-v',
     `${artifactVolume}:/artifacts`,
     image,
     '-lc',
     [
       'trap \'status=$?; if [ "$status" -ne 0 ]; then cat /artifacts/appimage-help.log /artifacts/appimage-extract.log 2>/dev/null || true; fi; exit "$status"\' EXIT',
-      'test -r /input/nightshift.AppImage && test -x /input/nightshift.AppImage || { echo "FAIL: AppImage bind must be readable and executable" >&2; exit 1; }',
-      'timeout --kill-after=5s 15s /input/nightshift.AppImage --appimage-help > /artifacts/appimage-help.log 2>&1',
+      'test -r /input/kolux.AppImage && test -x /input/kolux.AppImage || { echo "FAIL: AppImage bind must be readable and executable" >&2; exit 1; }',
+      'timeout --kill-after=5s 15s /input/kolux.AppImage --appimage-help > /artifacts/appimage-help.log 2>&1',
       'cd /artifacts',
-      'timeout --kill-after=10s 120s /input/nightshift.AppImage --appimage-extract > /artifacts/appimage-extract.log 2>&1',
+      'timeout --kill-after=10s 120s /input/kolux.AppImage --appimage-extract > /artifacts/appimage-extract.log 2>&1',
       'mv squashfs-root root',
       launcherExecOverlay
-        ? "sed -i 's/^ELECTRON_RUN_AS_NODE=1 /export ELECTRON_RUN_AS_NODE=1\\nexec /' /artifacts/root/resources/bin/nightshift-ide"
+        ? "sed -i 's/^ELECTRON_RUN_AS_NODE=1 /export ELECTRON_RUN_AS_NODE=1\\nexec /' /artifacts/root/resources/bin/kolux-ide"
         : ':',
       'chmod -R a+rX /artifacts/root',
       'rm /artifacts/appimage-help.log /artifacts/appimage-extract.log'
@@ -122,15 +122,15 @@ try {
         '--shm-size',
         '256m',
         '--name',
-        `nightshift-headless-serve-shutdown-${signal.toLowerCase()}-${suffix}`,
+        `kolux-headless-serve-shutdown-${signal.toLowerCase()}-${suffix}`,
         '-e',
-        `NIGHTSHIFT_SIGNAL_TARGET=${signalTarget}`,
+        `KOLUX_SIGNAL_TARGET=${signalTarget}`,
         '-e',
-        `NIGHTSHIFT_TEST_ENTRYPOINT=${entrypoint}`,
+        `KOLUX_TEST_ENTRYPOINT=${entrypoint}`,
         '-e',
-        `NIGHTSHIFT_INT_DELIVERY=${intDelivery}`,
+        `KOLUX_INT_DELIVERY=${intDelivery}`,
         '-v',
-        `${appImage}:/input/nightshift.AppImage:ro`,
+        `${appImage}:/input/kolux.AppImage:ro`,
         '-v',
         `${artifactVolume}:/artifacts:ro`,
         image,
@@ -173,15 +173,15 @@ function runDesktopStartupOracle({ image, appImage, platform }) {
     '--security-opt',
     'no-new-privileges',
     '--user',
-    'nightshift',
+    'kolux',
     '--entrypoint',
     '/usr/local/bin/run-appimage-desktop-startup-case',
     '-e',
-    'NIGHTSHIFT_STARTUP_DIAGNOSTICS=1',
+    'KOLUX_STARTUP_DIAGNOSTICS=1',
     '-v',
-    `${appImage}:/input/nightshift.AppImage:ro`,
+    `${appImage}:/input/kolux.AppImage:ro`,
     image,
-    '/input/nightshift.AppImage'
+    '/input/kolux.AppImage'
   ])
 }
 

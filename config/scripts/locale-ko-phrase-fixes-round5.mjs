@@ -48,9 +48,9 @@ export const KO_PHRASE_FIXES_ROUND5 = [
   },
   { pattern: /설정 > 통합/g, replacement: '설정 > 연동', whenEnIncludes: 'Integrations' },
   {
-    pattern: /Nightshift 기술/g,
-    replacement: 'Nightshift 스킬',
-    whenEnIncludes: 'Nightshift skill'
+    pattern: /Kolux 기술/g,
+    replacement: 'Kolux 스킬',
+    whenEnIncludes: 'Kolux skill'
   },
   { pattern: /확인하다 #/g, replacement: '체크 #', whenEnIncludes: 'check #' },
   { pattern: /제출하다\./g, replacement: '제출.', whenEnIncludes: 'to submit.' },

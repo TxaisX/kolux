@@ -1,7 +1,7 @@
 import { CapabilityProbeCache } from '../../shared/capability-probe-cache'
 
 // Why: suppress a known-missing RPC surface without pinning it forever — an
-// in-place codex upgrade during a long Nightshift session self-heals after the
+// in-place codex upgrade during a long Kolux session self-heals after the
 // interval, mirroring GitCapabilityCache's rationale.
 export const CODEX_APP_SERVER_CAPABILITY_RETRY_INTERVAL_MS = 30 * 60_000
 

@@ -22,7 +22,7 @@ const UI_ONLY_SELECTORS = [
   '.code-block-copy-btn',
   '.markdown-preview-search',
   '[class*="rich-markdown-search"]',
-  '[data-nightshift-export-hide="true"]'
+  '[data-kolux-export-hide="true"]'
 ]
 
 function basenameWithoutExt(filePath: string): string {

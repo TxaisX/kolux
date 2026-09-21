@@ -28,10 +28,10 @@ const LINEAR_ITEM = {
   }
 }
 const PRODUCT_WORKFLOW_PHRASES = [
-  'nightshift linear',
+  'kolux linear',
   'meta.partial',
   'install',
-  'enable it from Nightshift Settings',
+  'enable it from Kolux Settings',
   'Before planning or editing',
   'Full Linear context was not loaded',
   'linear-tickets completion flow',

@@ -72,7 +72,7 @@ describe('setWebRuntimeTabProps', () => {
   })
 
   it('pushes pin to the host via session.tabs.setTabProps for a remote tab', async () => {
-    vi.stubGlobal('__NIGHTSHIFT_WEB_CLIENT__', false)
+    vi.stubGlobal('__KOLUX_WEB_CLIENT__', false)
     mocks.getRuntimeEnvironmentIdForWorktree.mockReturnValue(ENVIRONMENT_ID)
     mocks.getState.mockReturnValue({})
     const runtimeCall = vi.fn().mockResolvedValue({ id: 'p', ok: true, result: { updated: true } })
@@ -100,7 +100,7 @@ describe('setWebRuntimeTabProps', () => {
   })
 
   it('maps mirrored browser/editor unified ids before setting host tab props', async () => {
-    vi.stubGlobal('__NIGHTSHIFT_WEB_CLIENT__', false)
+    vi.stubGlobal('__KOLUX_WEB_CLIENT__', false)
     mocks.getRuntimeEnvironmentIdForWorktree.mockReturnValue(ENVIRONMENT_ID)
     mocks.getState.mockReturnValue({})
     mocks.resolveHostSessionTabIdForWebSessionTab.mockImplementation(
@@ -132,7 +132,7 @@ describe('setWebRuntimeTabProps', () => {
   })
 
   it('no-ops for a worktree with no runtime environment (local tab)', () => {
-    vi.stubGlobal('__NIGHTSHIFT_WEB_CLIENT__', false)
+    vi.stubGlobal('__KOLUX_WEB_CLIENT__', false)
     mocks.getRuntimeEnvironmentIdForWorktree.mockReturnValue(null)
     mocks.getState.mockReturnValue({})
     const runtimeCall = vi.fn()

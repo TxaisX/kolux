@@ -26,11 +26,7 @@ vi.mock('./github-api-repository', async (importOriginal) =>
   )
 )
 
-import {
-  __resetNightshiftStarCheckForTests,
-  checkNightshiftStarred,
-  starNightshift
-} from './client'
+import { __resetKoluxStarCheckForTests, checkKoluxStarred, starKolux } from './client'
 import { resetOriginRepositoryCache } from './client-test-harness'
 
 const { execFileAsyncMock, ghExecFileAsyncMock, acquireMock, releaseMock } = clientMocks
@@ -42,7 +38,7 @@ async function flushMicrotasks(): Promise<void> {
   }
 }
 
-describe('checkNightshiftStarred', () => {
+describe('checkKoluxStarred', () => {
   beforeEach(async () => {
     resetOriginRepositoryCache()
     execFileAsyncMock.mockReset()
@@ -50,13 +46,13 @@ describe('checkNightshiftStarred', () => {
     acquireMock.mockReset()
     releaseMock.mockReset()
     acquireMock.mockResolvedValue(undefined)
-    __resetNightshiftStarCheckForTests()
+    __resetKoluxStarCheckForTests()
   })
 
   it('returns true only for an included successful GitHub response', async () => {
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: 'HTTP/2.0 204 No Content\r\n', stderr: '' })
 
-    await expect(checkNightshiftStarred()).resolves.toBe(true)
+    await expect(checkKoluxStarred()).resolves.toBe(true)
 
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
       ['api', '--include', 'user/starred/TxaisX/nightshift'],
@@ -67,19 +63,19 @@ describe('checkNightshiftStarred', () => {
   it('returns true for an HTTP 200 starred response', async () => {
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: 'HTTP/2.0 200 OK\r\n', stderr: '' })
 
-    await expect(checkNightshiftStarred()).resolves.toBe(true)
+    await expect(checkKoluxStarred()).resolves.toBe(true)
   })
 
   it('returns false for GitHub 404 not starred responses', async () => {
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('HTTP 404: Not Found'))
 
-    await expect(checkNightshiftStarred()).resolves.toBe(false)
+    await expect(checkKoluxStarred()).resolves.toBe(false)
   })
 
   it('returns null when gh exits successfully without response headers', async () => {
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '', stderr: '' })
 
-    await expect(checkNightshiftStarred()).resolves.toBe(null)
+    await expect(checkKoluxStarred()).resolves.toBe(null)
   })
 
   // ── #18234: an unbounded, unreaped, un-deduped star check ──────────────
@@ -87,7 +83,7 @@ describe('checkNightshiftStarred', () => {
   it('never spawns gh directly, so the spawn carries a deadline and a tree kill', async () => {
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: 'HTTP/2.0 204 No Content\r\n', stderr: '' })
 
-    await checkNightshiftStarred()
+    await checkKoluxStarred()
 
     // Why: the raw execFileAsync has no timeout, so a `gh` that never exits ran
     // forever at 100% CPU and was never reaped. ghExecFileAsync bounds the child
@@ -107,9 +103,9 @@ describe('checkNightshiftStarred', () => {
       })
     )
 
-    const first = checkNightshiftStarred()
-    const second = checkNightshiftStarred()
-    const third = checkNightshiftStarred()
+    const first = checkKoluxStarred()
+    const second = checkKoluxStarred()
+    const third = checkKoluxStarred()
     await flushMicrotasks()
 
     // Why: five call sites can ask at once; without coalescing each forked its
@@ -126,15 +122,15 @@ describe('checkNightshiftStarred', () => {
       .mockResolvedValueOnce({ stdout: 'HTTP/2.0 404 Not Found\r\n', stderr: '' })
       .mockResolvedValueOnce({ stdout: 'HTTP/2.0 204 No Content\r\n', stderr: '' })
 
-    await checkNightshiftStarred()
-    await expect(checkNightshiftStarred()).resolves.toBe(true)
+    await checkKoluxStarred()
+    await expect(checkKoluxStarred()).resolves.toBe(true)
     expect(ghExecFileAsyncMock).toHaveBeenCalledTimes(2)
   })
 
   it('releases its GitHub concurrency slot when gh fails or times out', async () => {
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('gh timed out.'))
 
-    await expect(checkNightshiftStarred()).resolves.toBe(null)
+    await expect(checkKoluxStarred()).resolves.toBe(null)
 
     // Why: a leaked slot is permanent — four of them wedge every GitHub feature
     // in the app for the rest of the session.
@@ -143,7 +139,7 @@ describe('checkNightshiftStarred', () => {
   })
 })
 
-describe('starNightshift', () => {
+describe('starKolux', () => {
   beforeEach(async () => {
     resetOriginRepositoryCache()
     execFileAsyncMock.mockReset()
@@ -151,13 +147,13 @@ describe('starNightshift', () => {
     acquireMock.mockReset()
     releaseMock.mockReset()
     acquireMock.mockResolvedValue(undefined)
-    __resetNightshiftStarCheckForTests()
+    __resetKoluxStarCheckForTests()
   })
 
   it('stars through the bounded gh runner and releases its slot', async () => {
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '', stderr: '' })
 
-    await expect(starNightshift()).resolves.toBe(true)
+    await expect(starKolux()).resolves.toBe(true)
 
     expect(execFileAsyncMock).not.toHaveBeenCalled()
     const [args, options] = ghExecFileAsyncMock.mock.calls[0]
@@ -169,7 +165,7 @@ describe('starNightshift', () => {
   it('reports failure and still releases its slot when gh times out', async () => {
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('gh timed out.'))
 
-    await expect(starNightshift()).resolves.toBe(false)
+    await expect(starKolux()).resolves.toBe(false)
     expect(releaseMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -182,8 +182,8 @@ describe('ai vault resume target ownership', () => {
   it('resolves runtime-owned worktree targets through their repo owner', () => {
     expect(
       getAiVaultResumeWorktreeTargetStatus({
-        worktreeId: 'repo-1::/repo/nightshift',
-        worktrees: [{ id: 'repo-1::/repo/nightshift', repoId: 'repo-1' }],
+        worktreeId: 'repo-1::/repo/kolux',
+        worktrees: [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1' }],
         repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'runtime:env-1' }]
       })
     ).toBe('runtime')
@@ -192,8 +192,8 @@ describe('ai vault resume target ownership', () => {
   it('prefers explicit worktree host ownership over repo ownership', () => {
     expect(
       getAiVaultResumeWorktreeTargetStatus({
-        worktreeId: 'repo-1::/repo/nightshift',
-        worktrees: [{ id: 'repo-1::/repo/nightshift', repoId: 'repo-1', hostId: 'ssh:ssh-1' }],
+        worktreeId: 'repo-1::/repo/kolux',
+        worktrees: [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1', hostId: 'ssh:ssh-1' }],
         repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'runtime:env-1' }]
       })
     ).toBe('ssh')
@@ -205,7 +205,7 @@ describe('ai vault resume target ownership', () => {
         makeState({
           repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'runtime:env-1' }]
         }),
-        'repo-1::/repo/nightshift'
+        'repo-1::/repo/kolux'
       )
     ).toBe('runtime')
   })
@@ -215,11 +215,11 @@ describe('ai vault resume target ownership', () => {
       getAiVaultResumeWorkspaceTargetStatus(
         makeState({
           worktreesByRepo: {
-            'repo-1': [{ id: 'repo-1::/repo/nightshift', repoId: 'repo-1' }]
+            'repo-1': [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1' }]
           },
           repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'runtime:env-1' }]
         }),
-        'worktree:repo-1::/repo/nightshift'
+        'worktree:repo-1::/repo/kolux'
       )
     ).toBe('runtime')
   })
@@ -229,13 +229,11 @@ describe('ai vault resume target ownership', () => {
       getAiVaultResumeWorkspaceTargetStatus(
         makeState({
           worktreesByRepo: {
-            'repo-1': [
-              { id: 'repo-1::/repo/nightshift', repoId: 'repo-1', hostId: 'runtime:env-1' }
-            ]
+            'repo-1': [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1', hostId: 'runtime:env-1' }]
           },
           repos: [{ id: 'repo-1', connectionId: 'ssh-1', executionHostId: 'ssh:ssh-1' }]
         }),
-        'worktree:repo-1::/repo/nightshift'
+        'worktree:repo-1::/repo/kolux'
       )
     ).toBe('runtime')
   })
@@ -243,17 +241,15 @@ describe('ai vault resume target ownership', () => {
   it('resolves exact execution host ids for active workspaces', () => {
     const state = makeState({
       worktreesByRepo: {
-        'repo-1': [{ id: 'repo-1::/repo/nightshift', repoId: 'repo-1', hostId: 'ssh:ssh-1' }]
+        'repo-1': [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1', hostId: 'ssh:ssh-1' }]
       },
       repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'local' }]
     })
 
-    expect(getAiVaultResumeWorkspaceExecutionHostId(state, 'repo-1::/repo/nightshift')).toBe(
+    expect(getAiVaultResumeWorkspaceExecutionHostId(state, 'repo-1::/repo/kolux')).toBe('ssh:ssh-1')
+    expect(getAiVaultResumeWorkspaceExecutionHostId(state, 'worktree:repo-1::/repo/kolux')).toBe(
       'ssh:ssh-1'
     )
-    expect(
-      getAiVaultResumeWorkspaceExecutionHostId(state, 'worktree:repo-1::/repo/nightshift')
-    ).toBe('ssh:ssh-1')
   })
 
   it('resolves local execution host ids for local workspaces', () => {
@@ -261,11 +257,11 @@ describe('ai vault resume target ownership', () => {
       getAiVaultResumeWorkspaceExecutionHostId(
         makeState({
           worktreesByRepo: {
-            'repo-1': [{ id: 'repo-1::/repo/nightshift', repoId: 'repo-1' }]
+            'repo-1': [{ id: 'repo-1::/repo/kolux', repoId: 'repo-1' }]
           },
           repos: [{ id: 'repo-1', connectionId: null, executionHostId: 'local' }]
         }),
-        'repo-1::/repo/nightshift'
+        'repo-1::/repo/kolux'
       )
     ).toBe('local')
   })

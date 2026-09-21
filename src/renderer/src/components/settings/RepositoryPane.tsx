@@ -1,8 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type {
-  NightshiftHooks,
-  RepoHookSettings
-} from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks, RepoHookSettings } from '../../../../shared/kolux-yaml-hook-types'
 import type { Project, ProjectUpdateArgs } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 import { getRepoKindLabel, isFolderRepo } from '../../../../shared/repo-kind'
@@ -48,7 +45,7 @@ const EMPTY_WSL_DISTROS: string[] = []
 
 type RepositoryPaneProps = {
   repo: Repo
-  yamlHooks: NightshiftHooks | null
+  yamlHooks: KoluxHooks | null
   hasHooksFile: boolean
   hooksInspectionReady: boolean
   mayNeedUpdate: boolean
@@ -160,7 +157,7 @@ export function RepositoryPane({
   }
 
   const handleCopyTemplate = async () => {
-    // Why: the missing-`nightshift.yaml` state is a migration aid, so copying the shared-template
+    // Why: the missing-`kolux.yaml` state is a migration aid, so copying the shared-template
     // snippet should be one click rather than forcing users to reconstruct the expected shape.
     await window.api.ui.writeClipboardText(`scripts:
   setup: |
@@ -266,7 +263,7 @@ export function RepositoryPane({
             )}
             description={translate(
               'auto.components.settings.RepositoryPane.removeProjectAllHosts',
-              'Remove this project from Nightshift on all configured hosts.'
+              'Remove this project from Kolux on all configured hosts.'
             )}
             keywords={[repo.displayName, 'delete', 'project', 'repository']}
             className="absolute top-0 right-0 z-10 w-auto max-w-none"

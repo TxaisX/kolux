@@ -30,7 +30,7 @@ function globalGroup(): ShortcutGroup {
 const baseOptions = {
   keybindings: {},
   conflictByAction: new Map(),
-  terminalShortcutPolicy: 'nightshift-first',
+  terminalShortcutPolicy: 'kolux-first',
   platform: 'darwin',
   managedBrowserCreationEnabled: false,
   mobileEmulatorCreationEnabled: false,
@@ -46,7 +46,7 @@ describe('buildShortcutRowVisibility', () => {
       groups: [creationGroup()],
       keybindings: {},
       conflictByAction: new Map(),
-      terminalShortcutPolicy: 'nightshift-first',
+      terminalShortcutPolicy: 'kolux-first',
       platform: 'darwin',
       managedBrowserCreationEnabled: false,
       mobileEmulatorCreationEnabled: false,

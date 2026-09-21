@@ -4,13 +4,13 @@ import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
 import type { RuntimeTerminalRead } from '../../src/shared/runtime-types'
 import { toWebTerminalSurfaceTabId } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient
 } from './helpers/paired-electron-client'
 
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-lossy-snapshot-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-lossy-snapshot-'))
 const fixturePath = path.join(scratch, 'lossy-snapshot-terminal.mjs')
 writeFileSync(
   fixturePath,
@@ -26,7 +26,7 @@ writeFileSync(
 
 test.afterAll(() => rmSync(scratch, { recursive: true, force: true }))
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_FORCE_REMOTE_TERMINAL_INITIAL_SNAPSHOT_TRUNCATED: '1' }
+  koluxAppExtraEnv: { KOLUX_E2E_FORCE_REMOTE_TERMINAL_INITIAL_SNAPSHOT_TRUNCATED: '1' }
 })
 
 function shellQuote(value: string): string {
@@ -80,30 +80,28 @@ async function callLocalRuntime<TResult>(
 }
 
 test('paints a nonempty lossy initial snapshot on a paired Electron client @headful', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(180_000)
   const marker = `REMOTE_LOSSY_INITIAL_${Date.now()}`
   const liveMarker = `REMOTE_LOSSY_LIVE_${Date.now()}`
   const markerPath = path.join(scratch, 'marker-value.txt')
   writeFileSync(markerPath, marker)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedElectronClient(offer, testInfo, 'lossy-initial-snapshot')
   let terminal: string | null = null
   try {
-    const worktreeId = await nightshiftPage.evaluate(
-      () => window.__store?.getState().activeWorktreeId
-    )
+    const worktreeId = await koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId)
     if (!worktreeId) {
       throw new Error('Headed host has no active worktree')
     }
-    await nightshiftPage.evaluate((id) => {
+    await koluxPage.evaluate((id) => {
       const state = window.__store?.getState()
       state?.setActiveView('terminal')
       state?.setActiveWorktree(id)
     }, worktreeId)
     await expect
-      .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().activeWorktreeId))
+      .poll(() => koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId))
       .toBe(worktreeId)
     await expect
       .poll(
@@ -121,7 +119,7 @@ test('paints a nonempty lossy initial snapshot on a paired Electron client @head
       .toBe(true)
     const created = await callLocalRuntime<{
       tab: { parentTabId: string; terminal: string | null }
-    }>(nightshiftPage, 'session.tabs.createTerminal', {
+    }>(koluxPage, 'session.tabs.createTerminal', {
       worktree: `id:${worktreeId}`,
       command: fixtureCommand(markerPath),
       activate: true,
@@ -137,7 +135,7 @@ test('paints a nonempty lossy initial snapshot on a paired Electron client @head
       .poll(
         async () => {
           const result = await callLocalRuntime<{ terminal: RuntimeTerminalRead }>(
-            nightshiftPage,
+            koluxPage,
             'terminal.read',
             { terminal, screen: true }
           )
@@ -147,7 +145,7 @@ test('paints a nonempty lossy initial snapshot on a paired Electron client @head
       )
       .toBe(true)
     const { terminal: hostEvidence } = await callLocalRuntime<{ terminal: RuntimeTerminalRead }>(
-      nightshiftPage,
+      koluxPage,
       'terminal.read',
       { terminal, screen: true }
     )
@@ -260,7 +258,7 @@ test('paints a nonempty lossy initial snapshot on a paired Electron client @head
       .poll(
         async () => {
           const result = await callLocalRuntime<{ terminal: RuntimeTerminalRead }>(
-            nightshiftPage,
+            koluxPage,
             'terminal.read',
             { terminal, screen: true }
           )

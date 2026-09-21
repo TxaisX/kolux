@@ -4,7 +4,7 @@ import { mkdtemp } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   focusActiveTerminalInput,
@@ -16,9 +16,7 @@ import {
 test.use({ dismissOnboarding: false, seedTestRepo: false })
 
 async function createGitRepo(): Promise<string> {
-  const root = realpathSync.native(
-    await mkdtemp(path.join(os.tmpdir(), 'nightshift-e2e-golden-fresh-'))
-  )
+  const root = realpathSync.native(await mkdtemp(path.join(os.tmpdir(), 'kolux-e2e-golden-fresh-')))
   const repoPath = path.join(root, 'golden-fresh-project')
   mkdirSync(repoPath)
   execFileSync('git', ['init'], { cwd: repoPath, stdio: 'pipe' })
@@ -56,53 +54,47 @@ async function selectCodexAndSkipToProject(page: Page): Promise<void> {
 
 test('fresh profile opens a live project terminal @golden', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  await expect(nightshiftPage.locator('#root')).toBeVisible()
-  await expect(
-    nightshiftPage.getByRole('heading', { name: /Pick your default agent/i })
-  ).toBeVisible()
+  await waitForSessionReady(koluxPage)
+  await expect(koluxPage.locator('#root')).toBeVisible()
+  await expect(koluxPage.getByRole('heading', { name: /Pick your default agent/i })).toBeVisible()
 
-  await selectCodexAndSkipToProject(nightshiftPage)
+  await selectCodexAndSkipToProject(koluxPage)
   const repoPath = await createGitRepo()
   registerPostElectronShutdownCleanup(async () =>
     rmSync(path.dirname(repoPath), { recursive: true, force: true })
   )
   await stubFolderPicker(electronApp, repoPath)
-  await nightshiftPage
+  await koluxPage
     .getByRole('button', { name: /Browse for a folder|Open a folder|Browse folder/i })
     .click()
 
-  await expect(
-    nightshiftPage.getByText(path.basename(repoPath), { exact: true }).first()
-  ).toBeVisible({
+  await expect(koluxPage.getByText(path.basename(repoPath), { exact: true }).first()).toBeVisible({
     timeout: 30_000
   })
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage, 30_000)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-  await expect
-    .poll(() => nightshiftPage.evaluate((id) => window.api.pty.hasPty(id), ptyId))
-    .toBe(true)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage, 30_000)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const ptyId = await waitForActivePanePtyId(koluxPage, 30_000)
+  await expect.poll(() => koluxPage.evaluate((id) => window.api.pty.hasPty(id), ptyId)).toBe(true)
 
-  const marker = `nightshift-e2e-fresh-${Date.now()}`
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.type(`echo ${marker}`)
-  await nightshiftPage.keyboard.press('Enter')
+  const marker = `kolux-e2e-fresh-${Date.now()}`
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.type(`echo ${marker}`)
+  await koluxPage.keyboard.press('Enter')
   await expect
-    .poll(async () => (await getTerminalContent(nightshiftPage)).split(marker).length - 1, {
+    .poll(async () => (await getTerminalContent(koluxPage)).split(marker).length - 1, {
       message: 'marker should appear in both the echoed command and command output'
     })
     .toBeGreaterThanOrEqual(2)
 
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.type('git rev-parse --show-toplevel')
-  await nightshiftPage.keyboard.press('Enter')
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.type('git rev-parse --show-toplevel')
+  await koluxPage.keyboard.press('Enter')
   await expect
-    .poll(async () => (await getTerminalContent(nightshiftPage)).replaceAll('\\', '/'), {
+    .poll(async () => (await getTerminalContent(koluxPage)).replaceAll('\\', '/'), {
       message: 'fresh project terminal should start in the selected repository'
     })
     .toContain(repoPath.replaceAll('\\', '/'))

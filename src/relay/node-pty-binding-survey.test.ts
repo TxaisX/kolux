@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isFlattenedNodePtyLoaderMessage } from '../main/nightshiftd/node-pty-loader-diagnosis'
+import { isFlattenedNodePtyLoaderMessage } from '../main/koluxd/node-pty-loader-diagnosis'
 import {
   collectNodePtyUnavailableDiagnosis,
   readNodeGypBuildRecord,
@@ -20,7 +20,7 @@ const FLATTENED =
 const roots: string[] = []
 
 function fixture(options: { binding?: boolean; configGypi?: string } = {}): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-node-pty-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-node-pty-'))
   roots.push(root)
   const dir = join(root, 'node-pty')
   mkdirSync(join(dir, 'lib'), { recursive: true })

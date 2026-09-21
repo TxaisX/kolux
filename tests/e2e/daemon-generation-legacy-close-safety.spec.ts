@@ -105,7 +105,7 @@ function launchLegacyCloseClient(options: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       NODE_PATH: path.join(process.cwd(), 'node_modules'),
-      NIGHTSHIFT_USER_DATA_PATH: runtime.userDataDir
+      KOLUX_USER_DATA_PATH: runtime.userDataDir
     },
     stdio: ['ignore', 'ignore', 'pipe', 'ipc']
   })

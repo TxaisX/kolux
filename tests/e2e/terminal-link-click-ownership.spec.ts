@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@playwright/test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   execInTerminal,
   sendToTerminal,
@@ -23,27 +23,27 @@ type LinkTarget = { x: number; y: number; mouseTrackingMode: string }
 type LinkMode = 'http' | 'osc'
 
 async function startMouseAwareLinkFixture(
-  nightshiftPage: Page,
+  koluxPage: Page,
   testInfo: TestInfo,
   linkMode: LinkMode = 'http'
 ): Promise<{ mouseLogPath: string; ptyId: string; target: LinkTarget }> {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage)
-  await waitForPaneCount(nightshiftPage, 1)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage)
+  await waitForPaneCount(koluxPage, 1)
 
-  const ptyId = await waitForActivePanePtyId(nightshiftPage)
+  const ptyId = await waitForActivePanePtyId(koluxPage)
   const mouseLogPath = testInfo.outputPath('child-mouse-reports.log')
   await execInTerminal(
-    nightshiftPage,
+    koluxPage,
     ptyId,
     `node ${JSON.stringify(FIXTURE_PATH)} ${JSON.stringify(mouseLogPath)} ${linkMode}`
   )
   const renderedLinkText = linkMode === 'osc' ? OSC_LINK_TEXT : LINK
-  await waitForTerminalOutput(nightshiftPage, 'LINK_MOUSE_READY')
+  await waitForTerminalOutput(koluxPage, 'LINK_MOUSE_READY')
 
-  const target = await nightshiftPage.evaluate((linkText) => {
+  const target = await koluxPage.evaluate((linkText) => {
     const state = window.__store?.getState()
     const worktreeId = state?.activeWorktreeId
     const tabId = worktreeId ? state?.activeTabIdByWorktree?.[worktreeId] : null
@@ -92,79 +92,70 @@ async function expectChildMouseReports(mouseLogPath: string): Promise<void> {
     .toBeGreaterThan(0)
 }
 
-async function expectNightshiftOwnedMouseOutcome(mouseLogPath: string): Promise<void> {
+async function expectKoluxOwnedMouseOutcome(mouseLogPath: string): Promise<void> {
   await new Promise<void>((resolve) => setTimeout(resolve, 1_000))
   expect(childMouseReportCount(mouseLogPath)).toBe(0)
 }
 
 test.describe('terminal link click ownership', () => {
-  test('a Nightshift-owned plain link click emits no child PTY mouse frames', async ({
-    nightshiftPage
+  test('a Kolux-owned plain link click emits no child PTY mouse frames', async ({
+    koluxPage
   }, testInfo) => {
-    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(
-      nightshiftPage,
-      testInfo
-    )
-    await nightshiftPage.mouse.click(target.x, target.y)
+    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(koluxPage, testInfo)
+    await koluxPage.mouse.click(target.x, target.y)
 
-    await expect(nightshiftPage.locator('[data-terminal-link-action-popover]')).toBeVisible()
-    await expect(nightshiftPage.locator('[data-terminal-link-destination]')).toHaveText(LINK)
+    await expect(koluxPage.locator('[data-terminal-link-action-popover]')).toBeVisible()
+    await expect(koluxPage.locator('[data-terminal-link-destination]')).toHaveText(LINK)
 
-    await expectNightshiftOwnedMouseOutcome(mouseLogPath)
+    await expectKoluxOwnedMouseOutcome(mouseLogPath)
 
-    await sendToTerminal(nightshiftPage, ptyId, 'q')
+    await sendToTerminal(koluxPage, ptyId, 'q')
   })
 
-  test('a Nightshift-owned OSC link click emits no child PTY mouse frames', async ({
-    nightshiftPage
+  test('a Kolux-owned OSC link click emits no child PTY mouse frames', async ({
+    koluxPage
   }, testInfo) => {
     const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(
-      nightshiftPage,
+      koluxPage,
       testInfo,
       'osc'
     )
-    await nightshiftPage.mouse.move(target.x, target.y)
-    await expect(nightshiftPage.locator('.xterm-hover')).toHaveCount(1)
-    await nightshiftPage.mouse.click(target.x, target.y)
+    await koluxPage.mouse.move(target.x, target.y)
+    await expect(koluxPage.locator('.xterm-hover')).toHaveCount(1)
+    await koluxPage.mouse.click(target.x, target.y)
 
-    await expect(nightshiftPage.locator('[data-terminal-link-action-popover]')).toBeVisible()
-    await expect(nightshiftPage.locator('[data-terminal-link-destination]')).toHaveText(LINK)
-    await expectNightshiftOwnedMouseOutcome(mouseLogPath)
+    await expect(koluxPage.locator('[data-terminal-link-action-popover]')).toBeVisible()
+    await expect(koluxPage.locator('[data-terminal-link-destination]')).toHaveText(LINK)
+    await expectKoluxOwnedMouseOutcome(mouseLogPath)
 
-    await sendToTerminal(nightshiftPage, ptyId, 'q')
+    await sendToTerminal(koluxPage, ptyId, 'q')
   })
 
   test('a plain click stays child-owned when link actions are disabled', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(
-      nightshiftPage,
-      testInfo
-    )
-    await nightshiftPage.evaluate(async () => {
+    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(koluxPage, testInfo)
+    await koluxPage.evaluate(async () => {
       await window.__store?.getState().updateSettings({ terminalLinkActionPopoverEnabled: false })
     })
 
-    await nightshiftPage.mouse.click(target.x, target.y)
+    await koluxPage.mouse.click(target.x, target.y)
 
-    await expect(nightshiftPage.locator('[data-terminal-link-action-popover]')).toHaveCount(0)
+    await expect(koluxPage.locator('[data-terminal-link-action-popover]')).toHaveCount(0)
     await expectChildMouseReports(mouseLogPath)
-    await sendToTerminal(nightshiftPage, ptyId, 'q')
+    await sendToTerminal(koluxPage, ptyId, 'q')
   })
 
-  test('a drag across a link stays child-owned', async ({ nightshiftPage }, testInfo) => {
-    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(
-      nightshiftPage,
-      testInfo
-    )
+  test('a drag across a link stays child-owned', async ({ koluxPage }, testInfo) => {
+    const { mouseLogPath, ptyId, target } = await startMouseAwareLinkFixture(koluxPage, testInfo)
 
-    await nightshiftPage.mouse.move(target.x, target.y)
-    await nightshiftPage.mouse.down()
-    await nightshiftPage.mouse.move(target.x + 12, target.y + 12, { steps: 3 })
-    await nightshiftPage.mouse.up()
+    await koluxPage.mouse.move(target.x, target.y)
+    await koluxPage.mouse.down()
+    await koluxPage.mouse.move(target.x + 12, target.y + 12, { steps: 3 })
+    await koluxPage.mouse.up()
 
-    await expect(nightshiftPage.locator('[data-terminal-link-action-popover]')).toHaveCount(0)
+    await expect(koluxPage.locator('[data-terminal-link-action-popover]')).toHaveCount(0)
     await expectChildMouseReports(mouseLogPath)
-    await sendToTerminal(nightshiftPage, ptyId, 'q')
+    await sendToTerminal(koluxPage, ptyId, 'q')
   })
 })

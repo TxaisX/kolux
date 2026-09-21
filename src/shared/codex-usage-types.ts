@@ -1,4 +1,4 @@
-export type CodexUsageScope = 'nightshift' | 'all'
+export type CodexUsageScope = 'kolux' | 'all'
 export type CodexUsageRange = '7d' | '30d' | '90d' | 'all'
 export type CodexUsageBreakdownKind = 'model' | 'project'
 

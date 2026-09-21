@@ -1,6 +1,6 @@
 import { writeFile } from 'node:fs/promises'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { getActiveTabId, getActiveWorktreeId, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -342,10 +342,10 @@ async function captureFirstRevealedFrame(page: Page, tabId: string): Promise<Buf
 }
 
 test.describe('terminal reveal paused-render recovery', () => {
-  test("reveal repaint forces a render through xterm's paused gate", async ({ nightshiftPage }) => {
-    // Why: __store / __paneManagers live on the main Nightshift renderer window
-    // (nightshiftPage), not Playwright's default first page.
-    const page = nightshiftPage
+  test("reveal repaint forces a render through xterm's paused gate", async ({ koluxPage }) => {
+    // Why: __store / __paneManagers live on the main Kolux renderer window
+    // (koluxPage), not Playwright's default first page.
+    const page = koluxPage
     await waitForSessionReady(page)
     await waitForActiveTerminalManager(page)
     const tabId = (await getActiveTabId(page))!
@@ -426,13 +426,13 @@ test.describe('terminal reveal paused-render recovery', () => {
   })
 
   test('@headful atlas recovery presents a synchronized-output WebGL frame', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    const tabId = (await getActiveTabId(nightshiftPage))!
-    await forceWebglOn(nightshiftPage, tabId)
-    const webglAttached = await nightshiftPage
+    await waitForSessionReady(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    const tabId = (await getActiveTabId(koluxPage))!
+    await forceWebglOn(koluxPage, tabId)
+    const webglAttached = await koluxPage
       .waitForFunction(
         (tabId) =>
           (window.__paneManagers?.get(tabId)?.getRenderingDiagnostics?.() ?? []).some(
@@ -447,33 +447,33 @@ test.describe('terminal reveal paused-render recovery', () => {
     if (!webglAttached) {
       return
     }
-    const installed = await installSynchronizedRevealProbe(nightshiftPage, tabId)
+    const installed = await installSynchronizedRevealProbe(koluxPage, tabId)
     expect(installed, 'WebGL renderer internals are available').toBe(true)
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'BASELINE_FRAME',
       background: 17,
       release: true
     })
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'REVEALED_FRAME',
       background: 52,
       release: false
     })
-    const held = await readSynchronizedRevealProbe(nightshiftPage)
+    const held = await readSynchronizedRevealProbe(koluxPage)
     expect(held.synchronizedOutput).toBe(true)
     expect(held.screen).toContain('REVEALED_FRAME')
 
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       window.__paneManagers?.get(tabId)?.scheduleRevealRepaint?.()
     }, tabId)
     await expect
-      .poll(async () => (await readSynchronizedRevealProbe(nightshiftPage)).atlasClears)
+      .poll(async () => (await readSynchronizedRevealProbe(koluxPage)).atlasClears)
       .toBeGreaterThan(0)
-    const afterReveal = await captureStableTabScreenshot(nightshiftPage, tabId)
+    const afterReveal = await captureStableTabScreenshot(koluxPage, tabId)
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'forceRendererPresent')
-    const afterForcedPresent = await captureStableTabScreenshot(nightshiftPage, tabId)
+    await callSynchronizedRevealProbe(koluxPage, 'forceRendererPresent')
+    const afterForcedPresent = await captureStableTabScreenshot(koluxPage, tabId)
     const diff = compareTerminalScreenshots(afterReveal, afterForcedPresent)
     const afterRevealPath = testInfo.outputPath('synchronized-frame-after-reveal.png')
     const afterForcedPresentPath = testInfo.outputPath(
@@ -504,14 +504,14 @@ test.describe('terminal reveal paused-render recovery', () => {
   })
 
   test('@headful reveal preserves the coherent frame until synchronized output releases', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    const tabId = (await getActiveTabId(nightshiftPage))!
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    await forceWebglOn(nightshiftPage, tabId)
-    const webglAttached = await nightshiftPage
+    await waitForSessionReady(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    const tabId = (await getActiveTabId(koluxPage))!
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    await forceWebglOn(koluxPage, tabId)
+    const webglAttached = await koluxPage
       .waitForFunction(
         (tabId) =>
           (window.__paneManagers?.get(tabId)?.getRenderingDiagnostics?.() ?? []).some(
@@ -526,37 +526,37 @@ test.describe('terminal reveal paused-render recovery', () => {
     if (!webglAttached) {
       return
     }
-    expect(await installSynchronizedRevealProbe(nightshiftPage, tabId)).toBe(true)
+    expect(await installSynchronizedRevealProbe(koluxPage, tabId)).toBe(true)
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'COHERENT_FRAME',
       background: 17,
       release: true
     })
-    const coherent = await captureStableTabScreenshot(nightshiftPage, tabId)
-    const beforeHide = await readSynchronizedRevealProbe(nightshiftPage)
-    const siblingTabId = await nightshiftPage.evaluate((worktreeId) => {
+    const coherent = await captureStableTabScreenshot(koluxPage, tabId)
+    const beforeHide = await readSynchronizedRevealProbe(koluxPage)
+    const siblingTabId = await koluxPage.evaluate((worktreeId) => {
       const state = window.__store?.getState()
       if (!state) {
         throw new Error('Renderer store unavailable')
       }
       return state.createTab(worktreeId, undefined, undefined, { activate: false }).id
     }, worktreeId)
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       (siblingTabId) => window.__store?.getState().setActiveTab(siblingTabId),
       siblingTabId
     )
-    await expect(nightshiftPage.locator(`[data-terminal-tab-id="${tabId}"]`)).toBeHidden()
+    await expect(koluxPage.locator(`[data-terminal-tab-id="${tabId}"]`)).toBeHidden()
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'PENDING_FRAME',
       background: 52,
       release: false
     })
-    await nightshiftPage.evaluate((tabId) => window.__store?.getState().setActiveTab(tabId), tabId)
-    await expect.poll(() => getActiveTabId(nightshiftPage)).toBe(tabId)
-    const held = await captureFirstRevealedFrame(nightshiftPage, tabId)
-    const heldState = await readSynchronizedRevealProbe(nightshiftPage)
+    await koluxPage.evaluate((tabId) => window.__store?.getState().setActiveTab(tabId), tabId)
+    await expect.poll(() => getActiveTabId(koluxPage)).toBe(tabId)
+    const held = await captureFirstRevealedFrame(koluxPage, tabId)
+    const heldState = await readSynchronizedRevealProbe(koluxPage)
     const heldDiff = compareTerminalScreenshots(coherent, held)
 
     expect(heldState.synchronizedOutput).toBe(true)
@@ -567,35 +567,35 @@ test.describe('terminal reveal paused-render recovery', () => {
       `held reveal preserves the coherent frame (diffRatio=${heldDiff.diffRatio})`
     ).toBe(true)
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'PENDING_FRAME',
       background: 52,
       release: true
     })
-    const released = await captureStableTabScreenshot(nightshiftPage, tabId)
-    const releaseState = await readSynchronizedRevealProbe(nightshiftPage)
-    await callSynchronizedRevealProbe(nightshiftPage, 'forceRendererPresent')
-    const direct = await captureStableTabScreenshot(nightshiftPage, tabId)
+    const released = await captureStableTabScreenshot(koluxPage, tabId)
+    const releaseState = await readSynchronizedRevealProbe(koluxPage)
+    await callSynchronizedRevealProbe(koluxPage, 'forceRendererPresent')
+    const direct = await captureStableTabScreenshot(koluxPage, tabId)
     const releasedDiff = compareTerminalScreenshots(released, direct)
 
-    await callSynchronizedRevealProbe(nightshiftPage, 'paintFrame', {
+    await callSynchronizedRevealProbe(koluxPage, 'paintFrame', {
       marker: 'WATCHDOG_FRAME',
       background: 88,
       release: false
     })
-    const beforeWatchdog = await readSynchronizedRevealProbe(nightshiftPage)
-    await nightshiftPage.evaluate((tabId) => {
+    const beforeWatchdog = await readSynchronizedRevealProbe(koluxPage)
+    await koluxPage.evaluate((tabId) => {
       window.__paneManagers?.get(tabId)?.scheduleRevealPresent?.()
     }, tabId)
     await expect
-      .poll(async () => (await readSynchronizedRevealProbe(nightshiftPage)).synchronizedOutput, {
+      .poll(async () => (await readSynchronizedRevealProbe(koluxPage)).synchronizedOutput, {
         timeout: 2_500
       })
       .toBe(false)
-    const watchdog = await captureStableTabScreenshot(nightshiftPage, tabId)
-    const watchdogState = await readSynchronizedRevealProbe(nightshiftPage)
-    await callSynchronizedRevealProbe(nightshiftPage, 'forceRendererPresent')
-    const watchdogDirect = await captureStableTabScreenshot(nightshiftPage, tabId)
+    const watchdog = await captureStableTabScreenshot(koluxPage, tabId)
+    const watchdogState = await readSynchronizedRevealProbe(koluxPage)
+    await callSynchronizedRevealProbe(koluxPage, 'forceRendererPresent')
+    const watchdogDirect = await captureStableTabScreenshot(koluxPage, tabId)
     const watchdogDiff = compareTerminalScreenshots(watchdog, watchdogDirect)
     const coherentPath = testInfo.outputPath('synchronized-coherent-before-hide.png')
     const heldPath = testInfo.outputPath('synchronized-coherent-while-held.png')

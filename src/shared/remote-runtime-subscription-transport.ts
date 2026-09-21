@@ -157,7 +157,7 @@ export async function subscribeRemoteRuntimeTransport<TResult>(
       fail(
         new RemoteRuntimeClientError(
           'runtime_timeout',
-          'Timed out waiting for the remote Nightshift runtime subscription to start.'
+          'Timed out waiting for the remote Kolux runtime subscription to start.'
         )
       )
     }, timeoutMs)
@@ -246,7 +246,7 @@ export async function subscribeRemoteRuntimeTransport<TResult>(
       fail(
         new RemoteRuntimeClientError(
           'remote_runtime_unavailable',
-          'Could not connect to the remote Nightshift runtime.'
+          'Could not connect to the remote Kolux runtime.'
         )
       )
     }
@@ -303,7 +303,7 @@ export async function subscribeRemoteRuntimeTransport<TResult>(
         fail(
           new RemoteRuntimeClientError(
             'remote_runtime_unavailable',
-            'Remote Nightshift runtime stopped responding; the stream connection was reset.'
+            'Remote Kolux runtime stopped responding; the stream connection was reset.'
           )
         )
         try {

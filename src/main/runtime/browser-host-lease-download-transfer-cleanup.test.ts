@@ -59,7 +59,7 @@ describe('runtime-side download transfer cleanup', () => {
     await vi.waitFor(() =>
       expect(getBrowserClientDownloadTransferStore(runtime).activeTransferCount()).toBe(0)
     )
-    expect(removed).toEqual(['.nightshift/browser-downloads/.incoming-transfer-page-a'])
+    expect(removed).toEqual(['.kolux/browser-downloads/.incoming-transfer-page-a'])
   })
 
   it('releases staged transfers of every page a fenced lease hosted', async () => {

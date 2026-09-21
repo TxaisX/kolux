@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { getBrowserHostLeaseRegistry } from '../../browser-host-lease-registry-instance'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { RpcDispatcher } from '../dispatcher'
 import { BROWSER_CLIENT_HOST_METHODS } from './browser-client-host'
 import { ALL_RPC_METHODS } from './index'
@@ -29,7 +29,7 @@ function request(
   }
 }
 
-function runtime(cleanups = new Map<string, () => void>()): NightshiftRuntimeService {
+function runtime(cleanups = new Map<string, () => void>()): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'runtime-a',
     getStartedAt: () => 1,
@@ -38,7 +38,7 @@ function runtime(cleanups = new Map<string, () => void>()): NightshiftRuntimeSer
     markClientHostedPagesReconciled: () => {},
     notifyMobileSessionTabsChanged: () => {},
     registerSubscriptionCleanup: (id: string, cleanup: () => void) => cleanups.set(id, cleanup)
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 describe('browser.clientHost.attach RPC', () => {

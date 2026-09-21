@@ -7,7 +7,7 @@ import { removeSafeUntrackedDiscardTarget } from './git-discard-path-safety'
 const tempRoots: string[] = []
 
 async function createWorktree(): Promise<string> {
-  const worktreePath = await mkdtemp(path.join(tmpdir(), 'nightshift-discard-safety-'))
+  const worktreePath = await mkdtemp(path.join(tmpdir(), 'kolux-discard-safety-'))
   tempRoots.push(worktreePath)
   return worktreePath
 }

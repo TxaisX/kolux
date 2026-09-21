@@ -92,7 +92,7 @@ describe('BrowserClientDownloadRelay', () => {
       const chunk = params as { offset: number; final: boolean; contentBase64: string }
       writes.push({ offset: chunk.offset, final: chunk.final, contentBase64: chunk.contentBase64 })
       return chunk.final
-        ? { accepted: true, workspaceRelativePath: '.nightshift/browser-downloads/report.pdf' }
+        ? { accepted: true, workspaceRelativePath: '.kolux/browser-downloads/report.pdf' }
         : { accepted: true }
     })
     const { filesystem, removed } = memoryFilesystem(Buffer.from('hello world'))
@@ -109,7 +109,7 @@ describe('BrowserClientDownloadRelay', () => {
     const destination = await route.complete('report.pdf')
 
     expect(destination).toEqual({
-      workspaceRelativePath: '.nightshift/browser-downloads/report.pdf',
+      workspaceRelativePath: '.kolux/browser-downloads/report.pdf',
       hostLabel: 'build-box'
     })
     expect(writes.at(0)?.offset).toBe(0)
@@ -149,7 +149,7 @@ describe('BrowserClientDownloadRelay', () => {
   })
 
   it('leaves nothing on disk under the real staging root once transfers settle', async () => {
-    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'nightshift-download-relay-')))
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'kolux-download-relay-')))
     const stagingRoot = path.join(root, 'downloads')
     // Why: a leftover from an earlier run only proves the sweep if it exists before construction.
     await mkdir(path.join(stagingRoot, 'crashed-transfer'), { recursive: true })
@@ -160,7 +160,7 @@ describe('BrowserClientDownloadRelay', () => {
         hostLabel: 'build-box',
         transport: negotiatedTransport((_method, params) =>
           (params as { final: boolean }).final
-            ? { accepted: true, workspaceRelativePath: '.nightshift/browser-downloads/report.pdf' }
+            ? { accepted: true, workspaceRelativePath: '.kolux/browser-downloads/report.pdf' }
             : { accepted: true }
         ),
         resolvePage: () => page

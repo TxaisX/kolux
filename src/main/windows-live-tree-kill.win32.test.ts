@@ -30,7 +30,7 @@ import { terminateWindowsProcessTree } from './windows-process-tree-kill'
 const describeOnWindows = process.platform === 'win32' ? describe : describe.skip
 
 /** Read live by the guard on every kill, so a case can flip it mid-test. */
-let nightshiftChromiumPids: number[] = []
+let koluxChromiumPids: number[] = []
 
 function appEnvironment(): AppEnvironment {
   return {
@@ -41,7 +41,7 @@ function appEnvironment(): AppEnvironment {
     onWillQuit: () => {},
     exit: () => {},
     getAppMetrics: (() =>
-      nightshiftChromiumPids.map((pid) => ({
+      koluxChromiumPids.map((pid) => ({
         pid,
         type: 'Tab'
       }))) as unknown as AppEnvironment['getAppMetrics']
@@ -110,9 +110,9 @@ async function spawnLiveTree(): Promise<{
 
 describeOnWindows('own-Chromium gate against real Windows process trees', () => {
   beforeEach(() => {
-    markerDirectory ||= mkdtempSync(join(tmpdir(), 'nightshift-live-tree-kill-'))
+    markerDirectory ||= mkdtempSync(join(tmpdir(), 'kolux-live-tree-kill-'))
     resetSelfInitiatedTreeKillLogForTest()
-    nightshiftChromiumPids = []
+    koluxChromiumPids = []
     setAppEnvironment(appEnvironment())
     installMainProcessTreeKillGate()
     observedSpawns.length = 0
@@ -121,7 +121,7 @@ describeOnWindows('own-Chromium gate against real Windows process trees', () => 
 
   afterEach(async () => {
     unsubscribe('child_process', observeSpawn)
-    nightshiftChromiumPids = []
+    koluxChromiumPids = []
     for (const leafPid of spawnedLeaves.splice(0)) {
       await terminateWindowsProcessTree(leafPid, { site: 'live-tree-kill-cleanup' })
     }
@@ -153,7 +153,7 @@ describeOnWindows('own-Chromium gate against real Windows process trees', () => 
 
   it('refused: the tree survives, nothing is recorded, and the handle kill still reaps the root', async () => {
     const { child, rootPid, leafPid } = await spawnLiveTree()
-    nightshiftChromiumPids = [rootPid]
+    koluxChromiumPids = [rootPid]
 
     await terminateWindowsProcessTree(rootPid, { site: 'live-tree-kill-refuse' })
 
@@ -173,7 +173,7 @@ describeOnWindows('own-Chromium gate against real Windows process trees', () => 
 
   it('signalProcessTree refused: the root goes by handle and the barrier reports unverified', async () => {
     const { child, rootPid, leafPid } = await spawnLiveTree()
-    nightshiftChromiumPids = [rootPid]
+    koluxChromiumPids = [rootPid]
     observedSpawns.length = 0
 
     await expect(signalProcessTree(child, 'SIGKILL')).resolves.toBe(false)

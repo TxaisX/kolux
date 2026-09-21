@@ -298,15 +298,15 @@ describe('registerWorktreeHandlers', () => {
   it('repairs legacy project ids when SSH worktree listing falls back to persisted metadata', async () => {
     const repo = {
       id: 'repo-ssh',
-      path: '/remote/nightshift',
-      displayName: 'nightshift',
+      path: '/remote/kolux',
+      displayName: 'kolux',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-target-1'
     }
     store.getRepo.mockReturnValue(repo)
     store.getAllWorktreeMeta.mockReturnValue({
-      'repo-ssh::/remote/nightshift': makeWorktreeMeta({
+      'repo-ssh::/remote/kolux': makeWorktreeMeta({
         instanceId: 'existing-instance',
         projectId: 'repo:repo-ssh',
         hostId: 'ssh:ssh-target-1',
@@ -320,8 +320,8 @@ describe('registerWorktreeHandlers', () => {
         projectId: 'github:TxaisX/nightshift',
         hostId: 'ssh:ssh-target-1',
         repoId: 'repo-ssh',
-        path: '/remote/nightshift',
-        displayName: 'nightshift',
+        path: '/remote/kolux',
+        displayName: 'kolux',
         setupState: 'ready',
         setupMethod: 'imported-existing-folder',
         createdAt: 0,
@@ -347,12 +347,12 @@ describe('registerWorktreeHandlers', () => {
     }[]
 
     expect(getSshGitProviderMock).toHaveBeenCalledWith('ssh-target-1')
-    expect(store.setWorktreeMeta).toHaveBeenCalledWith('repo-ssh::/remote/nightshift', {
+    expect(store.setWorktreeMeta).toHaveBeenCalledWith('repo-ssh::/remote/kolux', {
       projectId: 'github:TxaisX/nightshift'
     })
     expect(listed).toEqual([
       expect.objectContaining({
-        id: 'repo-ssh::/remote/nightshift',
+        id: 'repo-ssh::/remote/kolux',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'ssh:ssh-target-1',
         projectHostSetupId: 'repo-ssh',

@@ -246,14 +246,14 @@ async function main() {
   let daemonStreams
   let relay
   try {
-    tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-relay-watcher-fault-'))
+    tempRoot = await mkdtemp(join(tmpdir(), 'kolux-relay-watcher-fault-'))
     const watchRoot = await realpath(tempRoot)
     const pidFile = join(tempRoot, 'watcher.pid')
     const credentialFile = join(tempRoot, 'endpoint.credential')
     const protocol = await loadProtocol(tempRoot)
     const socketPath =
       process.platform === 'win32'
-        ? `\\\\.\\pipe\\nightshift-relay-watcher-fault-${process.pid}-${Date.now()}`
+        ? `\\\\.\\pipe\\kolux-relay-watcher-fault-${process.pid}-${Date.now()}`
         : join(tempRoot, 'relay.sock')
     await writeEndpointCredential(credentialFile)
 
@@ -275,7 +275,7 @@ async function main() {
       ],
       {
         cwd: dirname(relayEntry),
-        env: { ...process.env, NIGHTSHIFT_WATCHER_CHILD_PID_FILE: pidFile },
+        env: { ...process.env, KOLUX_WATCHER_CHILD_PID_FILE: pidFile },
         stdio: ['ignore', 'pipe', 'pipe']
       }
     )
@@ -301,7 +301,7 @@ async function main() {
     }
 
     const spawned = await relay.request('pty.spawn', { cols: 80, rows: 24, cwd: watchRoot })
-    const beforePtyMarker = `NIGHTSHIFT_PTY_BEFORE_${Date.now()}`
+    const beforePtyMarker = `KOLUX_PTY_BEFORE_${Date.now()}`
     let startIndex = relay.messageCount()
     relay.notify('pty.data', { id: spawned.id, data: `echo ${beforePtyMarker}\r` })
     await relay.waitForNotification(
@@ -343,7 +343,7 @@ async function main() {
     if (status.pid !== daemon.pid) {
       throw new Error('relay.status did not come from the original surviving relay process')
     }
-    const afterPtyMarker = `NIGHTSHIFT_PTY_AFTER_${Date.now()}`
+    const afterPtyMarker = `KOLUX_PTY_AFTER_${Date.now()}`
     startIndex = relay.messageCount()
     relay.notify('pty.data', { id: spawned.id, data: `echo ${afterPtyMarker}\r` })
     await relay.waitForNotification(

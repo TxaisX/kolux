@@ -14,7 +14,7 @@ import type {
 const repo: Repo = {
   id: 'repo-1',
   path: '/repo',
-  displayName: 'nightshift',
+  displayName: 'kolux',
   badgeColor: '#000000',
   addedAt: Date.UTC(2026, 4, 24),
   externalWorktreeVisibility: 'hide'
@@ -75,7 +75,7 @@ describe('getHiddenImportedWorktrees', () => {
         hidden,
         detectedWorktree({ id: 'visible', visible: true }),
         detectedWorktree({ id: 'selected', selectedCheckout: true }),
-        detectedWorktree({ id: 'nightshift-managed', ownership: 'nightshift-managed' }),
+        detectedWorktree({ id: 'kolux-managed', ownership: 'kolux-managed' }),
         detectedWorktree({
           id: 'agent-scratch',
           path: '/repo/.claude/worktrees/agent-1',

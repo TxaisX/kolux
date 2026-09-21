@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect } from 'react'
 import {
-  NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT,
+  KOLUX_BROWSER_FOCUS_REQUEST_EVENT,
   queueBrowserFocusRequest
 } from '@/components/browser-pane/host-guest/browser-focus'
 import { captureCmdJActiveGroupSnapshot } from '@/components/cmd-j/quick-action-context'
@@ -93,7 +93,7 @@ export function useWorktreeJumpPaletteSelectionLifecycle({
       previousBrowserFocusTargetRef.current =
         activeTabType === 'browser' &&
         document.activeElement instanceof HTMLElement &&
-        document.activeElement.closest('[data-nightshift-browser-address-bar="true"]')
+        document.activeElement.closest('[data-kolux-browser-address-bar="true"]')
           ? 'address-bar'
           : 'webview'
       previousFocusElementRef.current =
@@ -204,7 +204,7 @@ export function useWorktreeJumpPaletteSelectionLifecycle({
   const requestBrowserFocus = useCallback(
     (detail: { pageId: string; target: 'webview' | 'address-bar' }) => {
       queueBrowserFocusRequest(detail)
-      window.dispatchEvent(new CustomEvent(NIGHTSHIFT_BROWSER_FOCUS_REQUEST_EVENT, { detail }))
+      window.dispatchEvent(new CustomEvent(KOLUX_BROWSER_FOCUS_REQUEST_EVENT, { detail }))
     },
     []
   )

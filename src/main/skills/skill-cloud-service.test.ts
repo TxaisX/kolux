@@ -26,7 +26,7 @@ afterEach(() => {
 })
 
 function userDataPath(): string {
-  const path = mkdtempSync(join(tmpdir(), 'nightshift-skill-cloud-service-'))
+  const path = mkdtempSync(join(tmpdir(), 'kolux-skill-cloud-service-'))
   createdPaths.push(path)
   return path
 }
@@ -67,7 +67,7 @@ function publishRequest(archivePath: string, archiveSha256: string, compressedBy
 }
 
 describe('SkillCloudService bearer links', () => {
-  it('resolves and grants downloads without a Nightshift session', async () => {
+  it('resolves and grants downloads without a Kolux session', async () => {
     const requests: RequestInit[] = []
     vi.stubGlobal(
       'fetch',
@@ -96,7 +96,7 @@ describe('SkillCloudService bearer links', () => {
   })
 
   it('uses the development auth token without opening a profile session', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
+    vi.stubEnv('KOLUX_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
     const requests: RequestInit[] = []
     vi.stubGlobal(
       'fetch',
@@ -115,17 +115,19 @@ describe('SkillCloudService bearer links', () => {
 
   it('rejects the development auth token in packaged builds', async () => {
     packaged.value = true
-    vi.stubEnv('NIGHTSHIFT_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
+    vi.stubEnv('KOLUX_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
 
     await expect(
-      new SkillCloudService(userDataPath()).listOwnedShares({ apiUrl: 'https://share.nightshift.invalid' })
+      new SkillCloudService(userDataPath()).listOwnedShares({
+        apiUrl: 'https://share.kolux.invalid'
+      })
     ).rejects.toThrow('available only in development builds')
   })
 })
 
 describe('SkillCloudService publication retries', () => {
   it('reuses a reserved upload after its create response is lost', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
+    vi.stubEnv('KOLUX_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
     const root = userDataPath()
     const archivePath = join(root, 'package.tar.gz')
     const archive = Buffer.from('skill archive')
@@ -178,7 +180,7 @@ describe('SkillCloudService publication retries', () => {
   })
 
   it('finds the finalized version when retrying after its response is lost', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
+    vi.stubEnv('KOLUX_CLOUD_AUTH_TOKEN', 'desktop-e2e-token')
     const root = userDataPath()
     const archivePath = join(root, 'package.tar.gz')
     const archive = Buffer.from('skill archive')

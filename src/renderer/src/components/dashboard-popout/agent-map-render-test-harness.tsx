@@ -25,7 +25,7 @@ export function card(overrides: Partial<DashboardCard> = {}): DashboardCard {
     worktreeId: 'worktree-1',
     tabId: 'tab-1',
     leafId: 'leaf-1',
-    repoName: 'Nightshift',
+    repoName: 'Kolux',
     worktreeName: 'Agent map',
     conversationName: 'Agent alpha',
     startedAt: NOW - 10 * 60_000,

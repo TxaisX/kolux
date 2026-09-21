@@ -32,7 +32,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -151,9 +151,9 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: paneKey,
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId
+        KOLUX_PANE_KEY: paneKey,
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId
       }
     })
 
@@ -275,9 +275,9 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: paneKey,
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId
+        KOLUX_PANE_KEY: paneKey,
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId
       }
     })
 
@@ -413,9 +413,9 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: paneKey,
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId
+        KOLUX_PANE_KEY: paneKey,
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId
       }
     })
 

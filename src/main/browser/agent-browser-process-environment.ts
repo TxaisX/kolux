@@ -2,17 +2,17 @@ import { createHash } from 'node:crypto'
 import { chmodSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const AGENT_BROWSER_SOCKET_DIRECTORY_PREFIX = 'nightshift-ab-'
+const AGENT_BROWSER_SOCKET_DIRECTORY_PREFIX = 'kolux-ab-'
 
 /**
  * Lifetime bound for the agent-browser daemon.
  *
- * `agent-browser` is a client/daemon CLI: Nightshift only ever spawns the short-lived
- * client, which forks a daemon Nightshift holds no handle on and that reparents to
- * pid 1 immediately. Nothing in Nightshift can reap it — not teardown, not a pid walk
+ * `agent-browser` is a client/daemon CLI: Kolux only ever spawns the short-lived
+ * client, which forks a daemon Kolux holds no handle on and that reparents to
+ * pid 1 immediately. Nothing in Kolux can reap it — not teardown, not a pid walk
  * (see `windows-pty-job.ts` for why walking your own orphans is guesswork) —
- * and a SIGKILL'd Nightshift never runs teardown at all. The daemon's own idle timer
- * is the only bound that survives every way Nightshift can die (#16367).
+ * and a SIGKILL'd Kolux never runs teardown at all. The daemon's own idle timer
+ * is the only bound that survives every way Kolux can die (#16367).
  *
  * 10 minutes: >6x `EXEC_TIMEOUT_MS` (90s) so no command, retry chain, or normal
  * gap between two user commands can be cut short by it, while capping an
@@ -25,8 +25,8 @@ export const AGENT_BROWSER_IDLE_TIMEOUT_MS = 10 * 60 * 1000
 export type AgentBrowserProcessEnvironment = {
   env: NodeJS.ProcessEnv
   /**
-   * True only when Nightshift derived the socket directory itself. An inherited
-   * `AGENT_BROWSER_SOCKET_DIR` can be shared with another Nightshift profile, so it is
+   * True only when Kolux derived the socket directory itself. An inherited
+   * `AGENT_BROWSER_SOCKET_DIR` can be shared with another Kolux profile, so it is
    * no proof that `session list` under it sees only this profile's daemons.
    */
   ownsSocketDirectory: boolean

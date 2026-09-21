@@ -20,11 +20,9 @@ import { logStartupMilestone } from './startup-diagnostics'
 import { agentHookServer } from '../agent-hooks/server'
 import { emitPluginWorktreeLifecycle } from './main-process-pty-startup'
 import { mainProcessState as state } from './main-process-state'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
-export async function initializeMainProcessPlugins(
-  runtime: NightshiftRuntimeService
-): Promise<void> {
+export async function initializeMainProcessPlugins(runtime: KoluxRuntimeService): Promise<void> {
   const store = state.store
   const keybindings = state.keybindings
   if (!store || !keybindings) {
@@ -110,7 +108,7 @@ export async function initializeMainProcessPlugins(
         )
     }
   })
-  // Why: headless `nightshift serve` clients reach plugins through the runtime RPC
+  // Why: headless `kolux serve` clients reach plugins through the runtime RPC
   // methods, which resolve the service via this module-level setter. Consent
   // over RPC uses the same hash-keyed write path as the desktop dialog.
   setPluginServiceForRpc(state.pluginService, {

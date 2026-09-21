@@ -31,7 +31,7 @@ describe('writeFileAtomically', () => {
   let dir: string
 
   function setup(): string {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-fs-utils-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-fs-utils-'))
     return dir
   }
 
@@ -160,7 +160,7 @@ describe('writeFileAtomically', () => {
     setup()
     try {
       const target = join(dir, 'guarded.toml')
-      const held = `${target}.nightshift-guarded`
+      const held = `${target}.kolux-guarded`
       writeFileSync(held, 'baseline')
 
       expect(writeFileAtomicallyIfUnchanged(target, 'baseline', 'next')).toBe(true)
@@ -184,7 +184,7 @@ describe('writeFileAtomically', () => {
         'unsupported'
       )
       expect(readFileSync(target, 'utf-8')).toBe('baseline')
-      expect(existsSync(`${target}.nightshift-guarded`)).toBe(false)
+      expect(existsSync(`${target}.kolux-guarded`)).toBe(false)
     } finally {
       cleanup()
     }
@@ -216,7 +216,7 @@ describe('writeFileAtomically', () => {
       })
 
       expect(removeFileAtomicallyIfUnchanged(target, 'baseline')).toBe(false)
-      expect(existsSync(`${target}.nightshift-guarded`)).toBe(false)
+      expect(existsSync(`${target}.kolux-guarded`)).toBe(false)
     } finally {
       cleanup()
     }
@@ -245,7 +245,7 @@ describe('retrying file operations', () => {
   let dir: string
 
   function setup(): string {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-fs-utils-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-fs-utils-'))
     return dir
   }
 

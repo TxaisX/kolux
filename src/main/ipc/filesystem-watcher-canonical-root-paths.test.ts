@@ -93,16 +93,16 @@ describe('local filesystem watcher canonical root paths', () => {
   }
 
   it('reports symlink-resolved event paths under the subscribed root', async () => {
-    const worktreePath = resolve('/tmp/nightshift-link')
-    const payload = await emitAndCapture(worktreePath, resolve('/private/tmp/nightshift-real'), [
-      { path: resolve('/private/tmp/nightshift-real/src/agent-edit.ts'), type: 'update' }
+    const worktreePath = resolve('/tmp/kolux-link')
+    const payload = await emitAndCapture(worktreePath, resolve('/private/tmp/kolux-real'), [
+      { path: resolve('/private/tmp/kolux-real/src/agent-edit.ts'), type: 'update' }
     ])
 
     expect(payload.worktreePath).toBe(worktreePath)
     expect(payload.events).toEqual([
       {
         kind: 'update',
-        absolutePath: resolve('/tmp/nightshift-link/src/agent-edit.ts'),
+        absolutePath: resolve('/tmp/kolux-link/src/agent-edit.ts'),
         isDirectory: false
       }
     ])
@@ -111,20 +111,20 @@ describe('local filesystem watcher canonical root paths', () => {
   it.runIf(process.platform === 'darwin' || process.platform === 'win32')(
     'reports on-disk casing under the subscribed spelling',
     async () => {
-      const worktreePath = resolve('/tmp/nightshift-case/repo')
+      const worktreePath = resolve('/tmp/kolux-case/repo')
       const payload = await emitAndCapture(worktreePath, worktreePath, [
-        { path: resolve('/tmp/nightshift-case/Repo/src/agent-edit.ts'), type: 'update' }
+        { path: resolve('/tmp/kolux-case/Repo/src/agent-edit.ts'), type: 'update' }
       ])
 
       expect(payload.events[0]!.absolutePath).toBe(
-        resolve('/tmp/nightshift-case/repo/src/agent-edit.ts')
+        resolve('/tmp/kolux-case/repo/src/agent-edit.ts')
       )
     }
   )
 
   it('leaves already-matching event paths untouched', async () => {
-    const worktreePath = resolve('/tmp/nightshift-plain')
-    const eventPath = resolve('/tmp/nightshift-plain/src/agent-edit.ts')
+    const worktreePath = resolve('/tmp/kolux-plain')
+    const eventPath = resolve('/tmp/kolux-plain/src/agent-edit.ts')
     const payload = await emitAndCapture(worktreePath, worktreePath, [
       { path: eventPath, type: 'update' }
     ])

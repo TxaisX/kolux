@@ -18,8 +18,8 @@ export function createMobileRelayPairingFixtures(now: number): PairingFixture[] 
   }
   const relay = {
     v: 1 as const,
-    directorUrl: 'https://relay.nightshift.invalid',
-    cellUrl: 'https://relay-c1.nightshift.invalid',
+    directorUrl: 'https://relay.kolux.invalid',
+    cellUrl: 'https://relay-c1.kolux.invalid',
     assignmentEpoch: 7,
     relayHostId: 'AbCdEf0123_-xyZ9',
     inviteToken: INVITE_TOKEN,
@@ -65,12 +65,12 @@ export function createMobileRelayPairingFixtures(now: number): PairingFixture[] 
     },
     {
       name: 'non-canonical director origin is invalid',
-      payload: { ...directOffer, relay: { ...relay, directorUrl: 'https://relay.nightshift.invalid/' } },
+      payload: { ...directOffer, relay: { ...relay, directorUrl: 'https://relay.kolux.invalid/' } },
       expected: null
     },
     {
       name: 'non-HTTPS cell origin is invalid',
-      payload: { ...directOffer, relay: { ...relay, cellUrl: 'http://relay-c1.nightshift.invalid' } },
+      payload: { ...directOffer, relay: { ...relay, cellUrl: 'http://relay-c1.kolux.invalid' } },
       expected: null
     },
     {
@@ -136,5 +136,5 @@ export function createMobileRelayPairingFixtures(now: number): PairingFixture[] 
 export function encodePairingFixturePayload(payload: unknown): string {
   const json = JSON.stringify(payload)
   const code = Buffer.from(json, 'utf8').toString('base64url')
-  return `nightshift://pair?code=${code}`
+  return `kolux://pair?code=${code}`
 }

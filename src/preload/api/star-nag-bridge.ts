@@ -22,7 +22,7 @@ export const starNagApi = {
   complete: (): Promise<void> => ipcRenderer.invoke('star-nag:complete'),
   disable: (): Promise<void> => ipcRenderer.invoke('star-nag:disable'),
   openWeb: (): Promise<void> => ipcRenderer.invoke('star-nag:openWeb'),
-  starNightshift: (): Promise<boolean> => ipcRenderer.invoke('star-nag:starNightshift'),
+  starKolux: (): Promise<boolean> => ipcRenderer.invoke('star-nag:starKolux'),
   forceShow: (): Promise<void> => ipcRenderer.invoke('star-nag:forceShow'),
   agentValueMoment: (): Promise<{ status: 'ready'; mode: 'gh' | 'web' } | { status: 'skipped' }> =>
     ipcRenderer.invoke('star-nag:agentValueMoment'),

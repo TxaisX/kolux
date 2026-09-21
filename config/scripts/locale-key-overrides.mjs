@@ -17,9 +17,9 @@ const BASE_LOCALE_KEY_OVERRIDES = {
   'auto.components.right.sidebar.FileExplorerRow.0fec99bfd7': { zh: '创建副本' },
   'menu.reportCrash': { ko: '크래시 신고...', zh: '报告崩溃...', ja: 'クラッシュを報告...' },
   'menu.showMobileButton': {
-    ko: 'Nightshift 모바일 버튼 표시',
-    zh: '显示 Nightshift Mobile 按钮',
-    ja: 'Nightshift Mobile ボタンを表示'
+    ko: 'Kolux 모바일 버튼 표시',
+    zh: '显示 Kolux Mobile 按钮',
+    ja: 'Kolux Mobile ボタンを表示'
   },
   'menu.toggleLeftSidebar': {
     ko: '왼쪽 사이드바 표시/숨기기',
@@ -36,10 +36,10 @@ const BASE_LOCALE_KEY_OVERRIDES = {
     zh: '打开工作树面板',
     ja: 'ワークツリーパレットを開く'
   },
-  'menu.exploreNightshift': {
-    ko: 'Nightshift 둘러보기',
-    zh: '探索 Nightshift',
-    ja: 'Nightshift を探索'
+  'menu.exploreKolux': {
+    ko: 'Kolux 둘러보기',
+    zh: '探索 Kolux',
+    ja: 'Kolux を探索'
   },
   'worktreeJumpPalette.matchLabel.issue': { ko: '이슈', zh: '议题', ja: 'Issue' },
   'worktreeJumpPalette.matchLabel.comment': { ko: '댓글', zh: '评论', ja: 'コメント' },
@@ -183,7 +183,7 @@ const BASE_LOCALE_KEY_OVERRIDES = {
     zh: '打开 Linear 任务',
     ja: 'Linear タスクを開く'
   },
-  // Onboarding pill beside Nightshift Mobile: "New" marks a new feature, not a create action.
+  // Onboarding pill beside Kolux Mobile: "New" marks a new feature, not a create action.
   'auto.components.sidebar.SidebarNav.c86d83b5c3': {
     ko: '신규',
     zh: '新功能',
@@ -195,9 +195,9 @@ const BASE_LOCALE_KEY_OVERRIDES = {
     ja: 'Discord'
   },
   'auto.components.sidebar.SidebarSettingsHelpMenu.ad3d3ed7f1': {
-    ko: 'Nightshift 재시작',
-    zh: '重启 Nightshift',
-    ja: 'Nightshift を再起動'
+    ko: 'Kolux 재시작',
+    zh: '重启 Kolux',
+    ja: 'Kolux を再起動'
   },
   'auto.components.sidebar.workspace.status.5f9ca31a84': {
     ko: '대기 중',
@@ -220,9 +220,9 @@ const BASE_LOCALE_KEY_OVERRIDES = {
     ja: '終了中…'
   },
   'auto.components.status.bar.ResourceUsageStatusSegment.53dd5560ae': {
-    ko: 'Nightshift 접기',
-    zh: '折叠 Nightshift',
-    ja: 'Nightshift を折りたたむ'
+    ko: 'Kolux 접기',
+    zh: '折叠 Kolux',
+    ja: 'Kolux を折りたたむ'
   },
   'auto.components.settings.ManageSessionsSection.a06ababda0': {
     ko: '모두 강제 종료',
@@ -330,9 +330,9 @@ const BASE_LOCALE_KEY_OVERRIDES = {
     ja: 'Linear イシューを検索...'
   },
   'auto.web.WebConnect.e3bcd082ac': {
-    ko: 'Nightshift에 연결',
-    zh: '连接到 Nightshift',
-    ja: 'Nightshift に接続'
+    ko: 'Kolux에 연결',
+    zh: '连接到 Kolux',
+    ja: 'Kolux に接続'
   },
   'auto.App.caea5b51b9': {
     ko: '지금 재시작',

@@ -53,16 +53,16 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const queued = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/queued',
+      id: 'repo-ssh::/home/kolux/queued',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/queued',
+      path: '/home/kolux/queued',
       displayName: 'queued'
     })
     const detected = makeDetectedResult('repo-ssh', [queued], {
@@ -107,25 +107,25 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const existing = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/existing',
+      id: 'repo-ssh::/home/kolux/existing',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/existing',
+      path: '/home/kolux/existing',
       hostId: 'ssh:ssh-1',
       head: 'live-head',
       branch: 'refs/heads/live-branch'
     })
     const metadataExisting = { ...existing, head: '', branch: '' }
     const queued = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/queued',
+      id: 'repo-ssh::/home/kolux/queued',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/queued'
+      path: '/home/kolux/queued'
     })
     listKnownForExecutionHostMock.mockResolvedValueOnce({
       status: 'complete',
@@ -154,7 +154,7 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-shared',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
@@ -162,9 +162,9 @@ describe('fetchWorktrees', () => {
     }
     const localRepo = { ...sshRepo, path: '/local/repo', connectionId: undefined }
     const sshExisting = makeWorktree({
-      id: 'repo-shared::/home/nightshift/existing',
+      id: 'repo-shared::/home/kolux/existing',
       repoId: sshRepo.id,
-      path: '/home/nightshift/existing',
+      path: '/home/kolux/existing',
       hostId: 'ssh:ssh-1'
     })
     const localExisting = makeWorktree({
@@ -174,9 +174,9 @@ describe('fetchWorktrees', () => {
       hostId: LOCAL_EXECUTION_HOST_ID
     })
     const queued = makeWorktree({
-      id: 'repo-shared::/home/nightshift/queued',
+      id: 'repo-shared::/home/kolux/queued',
       repoId: sshRepo.id,
-      path: '/home/nightshift/queued'
+      path: '/home/kolux/queued'
     })
     listKnownForExecutionHostMock.mockResolvedValueOnce({
       status: 'complete',
@@ -206,23 +206,23 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const live = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/live',
+      id: 'repo-ssh::/home/kolux/live',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/live',
+      path: '/home/kolux/live',
       hostId: 'ssh:ssh-1'
     })
     // Why: deleted on the host, so an authoritative scan already purged it; the late metadata write must not resurrect it.
     const purged = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/purged',
+      id: 'repo-ssh::/home/kolux/purged',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/purged'
+      path: '/home/kolux/purged'
     })
     listKnownForExecutionHostMock.mockImplementationOnce(async (args) => {
       store.setState({
@@ -265,22 +265,22 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const live = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/live',
+      id: 'repo-ssh::/home/kolux/live',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/live',
+      path: '/home/kolux/live',
       hostId: 'ssh:ssh-1'
     })
     const stale = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/stale',
+      id: 'repo-ssh::/home/kolux/stale',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/stale'
+      path: '/home/kolux/stale'
     })
     listKnownForExecutionHostMock.mockResolvedValueOnce({
       status: 'complete',
@@ -310,7 +310,7 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-shared',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
@@ -323,9 +323,9 @@ describe('fetchWorktrees', () => {
       path: '/local/scanned'
     })
     const fromMetadata = makeWorktree({
-      id: 'repo-shared::/home/nightshift/queued',
+      id: 'repo-shared::/home/kolux/queued',
       repoId: sshRepo.id,
-      path: '/home/nightshift/queued'
+      path: '/home/kolux/queued'
     })
     const authoritative = makeDetectedResult(sshRepo.id, [scanned])
     listKnownForExecutionHostMock.mockResolvedValueOnce({
@@ -359,22 +359,22 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const live = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/live',
+      id: 'repo-ssh::/home/kolux/live',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/live',
+      path: '/home/kolux/live',
       hostId: 'ssh:ssh-1'
     })
     const deletedOnRemote = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/deleted',
+      id: 'repo-ssh::/home/kolux/deleted',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/deleted'
+      path: '/home/kolux/deleted'
     })
     const metadataResult = () => ({
       status: 'complete' as const,
@@ -412,22 +412,22 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
       connectionId: 'ssh-1'
     }
     const live = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/live',
+      id: 'repo-ssh::/home/kolux/live',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/live',
+      path: '/home/kolux/live',
       hostId: 'ssh:ssh-1'
     })
     const deletedOnRemote = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/deleted',
+      id: 'repo-ssh::/home/kolux/deleted',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/deleted'
+      path: '/home/kolux/deleted'
     })
     const connectedStates = createTestStore().getState().sshConnectionStates
     listKnownForExecutionHostMock.mockResolvedValueOnce({
@@ -493,7 +493,7 @@ describe('fetchWorktrees', () => {
     const store = createTestStore()
     const sshRepo = {
       id: 'repo-ssh',
-      path: '/home/nightshift/repo',
+      path: '/home/kolux/repo',
       displayName: 'SSH Repo',
       badgeColor: '#000',
       addedAt: 0,
@@ -517,16 +517,16 @@ describe('fetchWorktrees', () => {
   it('keeps worktree maps byte-identical for stale and malformed direct results', async () => {
     const store = createTestStore()
     const existing = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/existing',
+      id: 'repo-ssh::/home/kolux/existing',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/existing',
+      path: '/home/kolux/existing',
       hostId: 'ssh:ssh-1'
     })
     store.setState({
       repos: [
         {
           id: 'repo-ssh',
-          path: '/home/nightshift/repo',
+          path: '/home/kolux/repo',
           displayName: 'SSH Repo',
           badgeColor: '#000',
           addedAt: 0,
@@ -583,9 +583,9 @@ describe('fetchWorktrees', () => {
         request,
         makeDetectedResult('repo-ssh', [
           makeWorktree({
-            id: 'repo-ssh::/home/nightshift/stale',
+            id: 'repo-ssh::/home/kolux/stale',
             repoId: 'repo-ssh',
-            path: '/home/nightshift/stale'
+            path: '/home/kolux/stale'
           })
         ])
       )

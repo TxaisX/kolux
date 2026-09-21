@@ -24,7 +24,7 @@ import type { SwapVolumeFreeSpace } from './swap-volume-free-space'
 //     cache and other reclaimable memory).
 //   darwin — none. `free` stays low on healthy machines and
 //     fileBacked/purgeable are only a reclaimability proxy. The real signal
-//     needs `memory_pressure -Q`; Nightshift's reader for it
+//     needs `memory_pressure -Q`; Kolux's reader for it
 //     (src/main/memory/host-memory.ts) is on-demand, and spawning a subprocess
 //     on a 10 s app-lifetime timer costs more than the gap it closes.
 

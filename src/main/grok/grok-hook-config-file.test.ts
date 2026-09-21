@@ -20,9 +20,9 @@ describe('guarded Grok hook config mutation', () => {
   const dirs: string[] = []
 
   function makeConfigPath(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-grok-guard-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-grok-guard-'))
     dirs.push(dir)
-    return join(dir, 'nightshift-status.json')
+    return join(dir, 'kolux-status.json')
   }
 
   afterEach(() => {
@@ -135,7 +135,7 @@ describe('guarded Grok hook config mutation', () => {
     await started
 
     expect(readFileSync(configPath, 'utf8')).toBe(installed)
-    expect(readdirSync(dirname(configPath))).toEqual(['nightshift-status.json'])
+    expect(readdirSync(dirname(configPath))).toEqual(['kolux-status.json'])
     finishProbe(false)
     await expect(cleanup).resolves.toBe(false)
   })
@@ -202,6 +202,6 @@ describe('guarded Grok hook config mutation', () => {
     await expect(
       writeGrokHookConfigIfUnchanged(configPath, installed, '{"hooks":{}}\n')
     ).resolves.toBe(true)
-    expect(readdirSync(dir)).toEqual(['nightshift-status.json'])
+    expect(readdirSync(dir)).toEqual(['kolux-status.json'])
   })
 })

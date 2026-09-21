@@ -103,7 +103,7 @@ const COMPUTER_SCREENSHOT_CLEANUP_MARKER = '.last-cleanup'
 
 function computerScreenshotTempDir(): string {
   const outputDir =
-    process.env.NIGHTSHIFT_COMPUTER_SCREENSHOT_TMPDIR || join(tmpdir(), 'nightshift-computer-use')
+    process.env.KOLUX_COMPUTER_SCREENSHOT_TMPDIR || join(tmpdir(), 'kolux-computer-use')
   mkdirSync(outputDir, { recursive: true, mode: 0o700 })
   const stat = lstatSync(outputDir)
   if (!stat.isDirectory() || stat.isSymbolicLink()) {
@@ -221,7 +221,7 @@ function formatComputerFollowUpCommand(
   target: ComputerActionFollowUpTarget
 ): string {
   const args = [
-    'nightshift',
+    'kolux',
     'computer',
     'get-app-state',
     '--app',

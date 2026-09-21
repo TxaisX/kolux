@@ -127,7 +127,7 @@ export function registerSpeechHandlers(store: Store): void {
             if (newStatus !== 'granted') {
               throw new Error(
                 'Microphone access not granted. In System Settings > Privacy & Security > Microphone, ' +
-                  'click "+" and add the Electron app, then restart Nightshift.'
+                  'click "+" and add the Electron app, then restart Kolux.'
               )
             }
           }

@@ -25,7 +25,7 @@ const TARGET_CONNECTION_READ = /\b\w*[Tt]arget\??\.connectionId\b/
 function familyFiles(): string[] {
   return readdirSync(RUNTIME_DIR).filter(
     (name) =>
-      (name.startsWith('runtime-file-') || name === 'nightshift-runtime-file-commands.ts') &&
+      (name.startsWith('runtime-file-') || name === 'kolux-runtime-file-commands.ts') &&
       name.endsWith('.ts') &&
       !name.endsWith('.test.ts')
   )

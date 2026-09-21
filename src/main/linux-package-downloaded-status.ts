@@ -8,13 +8,13 @@ import { getLinuxPackageType } from './linux-update-package-type'
 import type { LinuxPackageArtifact } from './linux-package-update-recovery'
 
 export const LINUX_PACKAGE_MARKER_UNUSABLE_MESSAGE =
-  'Nightshift could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.'
+  'Kolux could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.'
 export const LINUX_PACKAGE_EXTERNALLY_MANAGED_MESSAGE =
-  'This copy of Nightshift is managed by your system package manager, so Nightshift cannot install updates itself. Update Nightshift through your distribution instead.'
+  'This copy of Kolux is managed by your system package manager, so Kolux cannot install updates itself. Update Kolux through your distribution instead.'
 export const LINUX_PACKAGE_MANUAL_INSTALL_MESSAGE =
-  'Quit Nightshift before running the system package install command.'
+  'Quit Kolux before running the system package install command.'
 const PACKAGE_METADATA_UNUSABLE_MESSAGE =
-  'The downloaded package metadata could not be verified. Quit Nightshift before downloading and installing the update from the official release page.'
+  'The downloaded package metadata could not be verified. Quit Kolux before downloading and installing the update from the official release page.'
 
 export function createLinuxPackageManualInstallStatus(
   artifact: Pick<LinuxPackageArtifact, 'packageType' | 'version'>

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
-import { runRemoteNightshiftCli } from './ssh-remote-nightshift-cli'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
+import { runRemoteKoluxCli } from './ssh-remote-kolux-cli'
 
 function createRuntime() {
   const linearSaveIssue = vi.fn(async (request: unknown) => ({
@@ -20,7 +20,7 @@ function createRuntime() {
     runtime: {
       getRuntimeId: () => 'runtime-test',
       linearSaveIssue
-    } as unknown as NightshiftRuntimeService,
+    } as unknown as KoluxRuntimeService,
     linearSaveIssue
   }
 }
@@ -28,7 +28,7 @@ function createRuntime() {
 describe('SSH remote Linear save issue', () => {
   it('forwards update fields, clears, stdin, and SSH context without losing types', async () => {
     const { runtime, linearSaveIssue } = createRuntime()
-    const result = await runRemoteNightshiftCli(runtime, {
+    const result = await runRemoteKoluxCli(runtime, {
       argv: [
         'linear',
         'save-issue',
@@ -49,8 +49,8 @@ describe('SSH remote Linear save issue', () => {
       ],
       cwd: '/home/alice/remote-repo',
       env: {
-        NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh',
-        NIGHTSHIFT_WORKTREE_ID: 'repo::remote'
+        KOLUX_TERMINAL_HANDLE: 'term_ssh',
+        KOLUX_WORKTREE_ID: 'repo::remote'
       },
       stdin: 'Updated description'
     })
@@ -82,10 +82,10 @@ describe('SSH remote Linear save issue', () => {
 
   it('forwards the team and title required for create mode', async () => {
     const { runtime, linearSaveIssue } = createRuntime()
-    const result = await runRemoteNightshiftCli(runtime, {
+    const result = await runRemoteKoluxCli(runtime, {
       argv: ['linear', 'save-issue', '--team', 'ENG', '--title', 'New issue', '--json'],
       cwd: '/home/alice/remote-repo',
-      env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh' }
+      env: { KOLUX_TERMINAL_HANDLE: 'term_ssh' }
     })
 
     expect(result.exitCode).toBe(0)
@@ -96,10 +96,10 @@ describe('SSH remote Linear save issue', () => {
 
   it('rejects remote body paths instead of reading from the wrong filesystem', async () => {
     const { runtime, linearSaveIssue } = createRuntime()
-    const result = await runRemoteNightshiftCli(runtime, {
+    const result = await runRemoteKoluxCli(runtime, {
       argv: ['linear', 'save-issue', 'ENG-123', '--body-file', 'body.md', '--json'],
       cwd: '/home/alice/remote-repo',
-      env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh' }
+      env: { KOLUX_TERMINAL_HANDLE: 'term_ssh' }
     })
 
     expect(result.exitCode).toBe(1)

@@ -8,7 +8,7 @@ import {
 import { createClaudeChildTreeReaper } from './claude-agent-sdk-exit-proof'
 
 const ROOT_PID = 500
-const NIGHTSHIFT_PGID = 400
+const KOLUX_PGID = 400
 const ROOT_STARTED_AT = 'Thu Sep 3 18:04:50 2026'
 /** The second both close-time walks land in. */
 const WALK_SECOND = 'Thu Sep 3 18:05:04 2026'
@@ -28,12 +28,12 @@ const LIVE_TREE: Cohort[] = [
 
 function rowsFor(cohorts: Cohort[]): ProcessTableRow[] {
   return [
-    { pid: ROOT_PID, ppid: 1, pgid: NIGHTSHIFT_PGID, startedAt: ROOT_STARTED_AT },
+    { pid: ROOT_PID, ppid: 1, pgid: KOLUX_PGID, startedAt: ROOT_STARTED_AT },
     ...cohorts.flatMap((cohort) =>
       cohort.pids.map((pid) => ({
         pid,
         ppid: ROOT_PID,
-        pgid: NIGHTSHIFT_PGID,
+        pgid: KOLUX_PGID,
         startedAt: cohort.startedAt
       }))
     )

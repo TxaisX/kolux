@@ -19,10 +19,10 @@ const LOCAL_RUNTIME = { kind: 'local' } as const
 
 export default function ArtifactsPage(): React.JSX.Element {
   const closePage = useAppStore((state) => state.closeArtifactsPage)
-  const authStatus = useAppStore((state) => state.nightshiftProfileAuthStatus)
-  const connecting = useAppStore((state) => state.nightshiftProfileConnecting)
-  const connect = useAppStore((state) => state.connectCurrentNightshiftProfile)
-  const refreshAuth = useAppStore((state) => state.refreshCurrentNightshiftProfileAuth)
+  const authStatus = useAppStore((state) => state.koluxProfileAuthStatus)
+  const connecting = useAppStore((state) => state.koluxProfileConnecting)
+  const connect = useAppStore((state) => state.connectCurrentKoluxProfile)
+  const refreshAuth = useAppStore((state) => state.refreshCurrentKoluxProfileAuth)
   const openSettingsPage = useAppStore((state) => state.openSettingsPage)
   const openSettingsTarget = useAppStore((state) => state.openSettingsTarget)
   const settings = useAppStore((state) => state.settings)
@@ -36,7 +36,7 @@ export default function ArtifactsPage(): React.JSX.Element {
   const signedIn = authStatus?.state === 'connected'
   const needsReconnect = authStatus?.state === 'reconnect-required'
   const openAccountSettings = (): void => {
-    openSettingsTarget({ pane: 'nightshift-account', repoId: null })
+    openSettingsTarget({ pane: 'kolux-account', repoId: null })
     openSettingsPage()
   }
   const {
@@ -129,8 +129,7 @@ export default function ArtifactsPage(): React.JSX.Element {
       return
     }
     const requestedAccountIsCurrent = (): boolean =>
-      artifactAccountIdentity(useAppStore.getState().nightshiftProfileAuthStatus) ===
-      requestedIdentity
+      artifactAccountIdentity(useAppStore.getState().koluxProfileAuthStatus) === requestedIdentity
     if (!requestedAccountIsCurrent()) {
       return
     }

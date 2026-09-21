@@ -10,9 +10,9 @@ vi.mock('../persistence', () => ({
   getCanonicalUserDataPath: () => '/host/user-data'
 }))
 
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import type { HostCliPassthroughOptions } from './ssh-remote-cli-host-passthrough'
-import { runRemoteNightshiftCli } from './ssh-remote-nightshift-cli'
+import { runRemoteKoluxCli } from './ssh-remote-kolux-cli'
 
 // Why: a missing CLI entry forces the legacy in-process bridge, the transport
 // an SSH-hosted agent actually reaches `terminal list` through.
@@ -25,7 +25,7 @@ const LEGACY_FALLBACK_OPTIONS: HostCliPassthroughOptions = {
 
 describe('remote CLI bridge terminal list', () => {
   it('relays the execution host and scope to an SSH-hosted caller', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     vi.spyOn(runtime, 'listTerminals').mockResolvedValue({
       terminals: [
         {
@@ -49,7 +49,7 @@ describe('remote CLI bridge terminal list', () => {
       hostScope: { hostIds: ['ssh:box-1'], omittedHostIds: ['local'] }
     })
 
-    const result = await runRemoteNightshiftCli(
+    const result = await runRemoteKoluxCli(
       runtime,
       { argv: ['terminal', 'list', '--json'], cwd: '/home/alice/repo', env: {} },
       LEGACY_FALLBACK_OPTIONS

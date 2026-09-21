@@ -2,11 +2,11 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { DaemonClient } from '../../src/main/daemon/client'
 import { getDaemonSocketPath, getDaemonTokenPath } from '../../src/main/daemon/daemon-spawner'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   waitForActivePaneHookDescriptor,
@@ -74,7 +74,7 @@ async function backgroundMountTab(page: Page, worktreeId: string, tabId: string)
   await page.evaluate(
     ({ tabId, worktreeId }) => {
       window.dispatchEvent(
-        new CustomEvent('nightshift-background-mount-terminal-worktree', {
+        new CustomEvent('kolux-background-mount-terminal-worktree', {
           detail: { worktreeId, tabIds: [tabId] }
         })
       )
@@ -89,12 +89,7 @@ async function backgroundMountTab(page: Page, worktreeId: string, tabId: string)
 function readPersistedSession(userDataDir: string) {
   return JSON.parse(
     readFileSync(
-      path.join(
-        userDataDir,
-        'profiles',
-        DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-        'nightshift-data.json'
-      ),
+      path.join(userDataDir, 'profiles', DEFAULT_LOCAL_KOLUX_PROFILE_ID, 'kolux-data.json'),
       'utf8'
     )
   ).workspaceSession
@@ -384,9 +379,9 @@ for (const daemonSessionGone of [false, true]) {
           })
           const transitions: Transition[] = [snapshot(store.getState())]
           const e2eWindow = window as typeof window & {
-            __nightshiftRevealTransitions?: Transition[]
+            __koluxRevealTransitions?: Transition[]
           }
-          e2eWindow.__nightshiftRevealTransitions = transitions
+          e2eWindow.__koluxRevealTransitions = transitions
           store.subscribe((state) => {
             const next = snapshot(state)
             if (JSON.stringify(next) !== JSON.stringify(transitions.at(-1))) {
@@ -412,13 +407,13 @@ for (const daemonSessionGone of [false, true]) {
         () =>
           (
             window as typeof window & {
-              __nightshiftRevealTransitions?: {
+              __koluxRevealTransitions?: {
                 activeWorktreeId: string | null
                 tabPresent: boolean
                 leafPtyIds: string[]
               }[]
             }
-          ).__nightshiftRevealTransitions ?? []
+          ).__koluxRevealTransitions ?? []
       )
       // Pre-fix this read: leaf binding cleared -> tab removed -> worktree deselected -> tab re-added by graph sync.
       expect(

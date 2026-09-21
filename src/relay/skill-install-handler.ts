@@ -92,7 +92,7 @@ export class SkillInstallHandler {
     } = {}
   ) {
     this.homeDirectory = options.homeDirectory ?? homedir()
-    this.stateDirectory = options.stateDirectory ?? join(this.homeDirectory, '.nightshift')
+    this.stateDirectory = options.stateDirectory ?? join(this.homeDirectory, '.kolux')
     this.uploads = new SkillUploadSessionService(
       join(this.stateDirectory, 'skill-installs', SKILL_UPLOAD_STAGING_ROOT_NAME)
     )

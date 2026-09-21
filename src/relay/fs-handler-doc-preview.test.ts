@@ -30,7 +30,7 @@ describe('FsHandler document previews', () => {
     const readDocPreview = requestHandlers.get('fs.readDocPreview')
     expect(readDocPreview).toBeTypeOf('function')
 
-    const fixture = await mkdtemp(join(tmpdir(), 'nightshift-relay-doc-preview-'))
+    const fixture = await mkdtemp(join(tmpdir(), 'kolux-relay-doc-preview-'))
     fixtureRoots.push(fixture)
     const workspace = join(fixture, 'workspace')
     const docs = join(workspace, 'docs')

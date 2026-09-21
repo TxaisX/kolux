@@ -41,7 +41,7 @@ export function forwardGuestShortcutInput(
   } = ctx
   const keybindings = getKeybindings?.()
   if (action?.type === 'zoom') {
-    // Why: focused guest key events never reach the renderer-owned webview ref that applies Nightshift's page zoom.
+    // Why: focused guest key events never reach the renderer-owned webview ref that applies Kolux's page zoom.
     forwardBrowserPageZoom(event, action.direction)
     return true
   }

@@ -68,8 +68,8 @@ describe('EphemeralVmsPane', () => {
                 {
                   id: 'cloud-sandbox',
                   name: 'Cloud Sandbox',
-                  create: './scripts/nightshift-vm/cloud-sandbox.start.sh',
-                  destroy: './scripts/nightshift-vm/cloud-sandbox.cleanup.sh'
+                  create: './scripts/kolux-vm/cloud-sandbox.start.sh',
+                  destroy: './scripts/kolux-vm/cloud-sandbox.cleanup.sh'
                 }
               ]
             }

@@ -76,9 +76,9 @@ export function useTerminalPaneProjection(controller: TerminalPaneMobileControll
     display: terminalContentVisible ? 'flex' : 'none',
     overflow: 'hidden',
     ...hiddenStartupStyle,
-    ['--nightshift-terminal-divider-color' as string]:
+    ['--kolux-terminal-divider-color' as string]:
       effectiveAppearance?.dividerColor ?? DEFAULT_TERMINAL_DIVIDER_DARK,
-    ['--nightshift-terminal-divider-color-strong' as string]: normalizeColor(
+    ['--kolux-terminal-divider-color-strong' as string]: normalizeColor(
       effectiveAppearance?.dividerColor,
       DEFAULT_TERMINAL_DIVIDER_DARK
     )

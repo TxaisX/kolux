@@ -109,7 +109,7 @@ export async function prepareWorktreePushTargetWithExec(
     const existingRemote = await findRemoteForUrl(execGit, repoPath, target.remoteUrl)
     if (existingRemote) {
       remoteName = existingRemote
-      // Why: if a later PR worktree reuses a Nightshift-created fork remote, it
+      // Why: if a later PR worktree reuses a Kolux-created fork remote, it
       // must inherit ownership so deleting the final user can remove it.
       remoteCreated = isRemoteCreatedByKnownWorktree(existingRemote)
       // Why: a remote created before this fix (or reused for a second branch on the
@@ -132,7 +132,7 @@ export async function prepareWorktreePushTargetWithExec(
         await ensureRemoteTracksBranchNarrowly(execGit, repoPath, remoteName, target.branchName)
         // Why: repo-local provenance that survives a store purge and is removed
         // atomically with the remote itself, unlike the store's `remoteCreated` flag.
-        await execGit(['config', `remote.${remoteName}.nightshift-created`, 'true'], repoPath)
+        await execGit(['config', `remote.${remoteName}.kolux-created`, 'true'], repoPath)
       } catch (error) {
         // Why: a half-configured remote with no provenance marker is unreclaimable --
         // cleanup only runs off that marker, so a failure here must undo the add.

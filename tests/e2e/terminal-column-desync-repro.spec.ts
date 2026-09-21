@@ -29,7 +29,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -111,7 +111,7 @@ async function closeRightSidebarAndFeatureTips(page: Page): Promise<void> {
     if (!store) {
       return
     }
-    store.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store.getState().rightSidebarOpen) {
       store.getState().setRightSidebarOpen(false)
     }
@@ -126,15 +126,13 @@ async function settleTerminal(page: Page): Promise<string> {
 }
 
 test.describe('Terminal column desync repro', () => {
-  test('PTY columns stay in sync with xterm across a visible resize', async ({
-    nightshiftPage
-  }) => {
+  test('PTY columns stay in sync with xterm across a visible resize', async ({ koluxPage }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const ptyId = await settleTerminal(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const ptyId = await settleTerminal(koluxPage)
 
     // Why: the resize chain (ResizeObserver → rAF fit → PTY resize IPC) needs
     // longer than a fixed wait under loaded CI, and the two columns are sampled
@@ -144,7 +142,7 @@ test.describe('Terminal column desync repro', () => {
       await expect
         .poll(
           async () => {
-            const snap = await readColumnSnapshot(nightshiftPage, ptyId)
+            const snap = await readColumnSnapshot(koluxPage, ptyId)
             return snap.ptyCols === snap.xtermCols
               ? 'synced'
               : `pty=${snap.ptyCols} xterm=${snap.xtermCols}`
@@ -159,10 +157,10 @@ test.describe('Terminal column desync repro', () => {
 
     // Shrink the window while the terminal is visible, then widen it. xterm
     // reflows via the ResizeObserver; the PTY must follow.
-    await nightshiftPage.setViewportSize({ width: 760, height: 800 })
+    await koluxPage.setViewportSize({ width: 760, height: 800 })
     await expectColumnsInSync('after shrink')
 
-    await nightshiftPage.setViewportSize({ width: 1280, height: 800 })
+    await koluxPage.setViewportSize({ width: 1280, height: 800 })
     await expectColumnsInSync('after widen')
   })
 
@@ -172,15 +170,15 @@ test.describe('Terminal column desync repro', () => {
   // behavior) instead of the size the PTY actually APPLIED, a dropped resize is
   // invisible and the TUI stays garbled. So pty:getSize must equal the real
   // in-PTY process.stdout.columns, not just xterm.
-  test('pty:getSize reports the size the PTY actually applied', async ({ nightshiftPage }) => {
+  test('pty:getSize reports the size the PTY actually applied', async ({ koluxPage }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const ptyId = await settleTerminal(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const ptyId = await settleTerminal(koluxPage)
 
-    await nightshiftPage.setViewportSize({ width: 900, height: 800 })
+    await koluxPage.setViewportSize({ width: 900, height: 800 })
 
     // Why: poll until pty:getSize converges to the real applied columns instead
     // of sampling once after a fixed wait — the resize can still be settling on
@@ -189,8 +187,8 @@ test.describe('Terminal column desync repro', () => {
     await expect
       .poll(
         async () => {
-          const ptyCols = await readPtyCols(nightshiftPage, ptyId)
-          const reportedCols = await readReportedPtyCols(nightshiftPage, ptyId)
+          const ptyCols = await readPtyCols(koluxPage, ptyId)
+          const reportedCols = await readReportedPtyCols(koluxPage, ptyId)
           return reportedCols === ptyCols ? 'match' : `reported=${reportedCols} pty=${ptyCols}`
         },
         {
@@ -203,42 +201,38 @@ test.describe('Terminal column desync repro', () => {
       .toBe('match')
   })
 
-  test('PTY columns re-sync after the terminal is resized while hidden', async ({
-    nightshiftPage
-  }) => {
+  test('PTY columns re-sync after the terminal is resized while hidden', async ({ koluxPage }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    const homeWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const otherWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
-      (id) => id !== homeWorktreeId
-    )
+    await waitForSessionReady(koluxPage)
+    const homeWorktreeId = await waitForActiveWorktree(koluxPage)
+    const otherWorktreeId = (await getAllWorktreeIds(koluxPage)).find((id) => id !== homeWorktreeId)
     test.skip(!otherWorktreeId, 'hidden-resize repro needs the seeded secondary worktree')
     if (!otherWorktreeId) {
       return
     }
 
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const ptyId = await settleTerminal(nightshiftPage)
-    await nightshiftPage.setViewportSize({ width: 1280, height: 800 })
-    await nightshiftPage.waitForTimeout(400)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const ptyId = await settleTerminal(koluxPage)
+    await koluxPage.setViewportSize({ width: 1280, height: 800 })
+    await koluxPage.waitForTimeout(400)
 
-    const baseline = await readColumnSnapshot(nightshiftPage, ptyId)
+    const baseline = await readColumnSnapshot(koluxPage, ptyId)
     expect(baseline.ptyCols).toBe(baseline.xtermCols)
 
     // Hide the terminal by switching worktrees, resize the window narrow while
     // it is in the background (so isRendererPtyResizeAuthoritative() is false
     // and the off-screen reflow's pty:resize is dropped), then return.
-    await switchToWorktree(nightshiftPage, otherWorktreeId)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await nightshiftPage.setViewportSize({ width: 720, height: 800 })
-    await nightshiftPage.waitForTimeout(500)
-    await switchToWorktree(nightshiftPage, homeWorktreeId)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await nightshiftPage.waitForTimeout(600)
+    await switchToWorktree(koluxPage, otherWorktreeId)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await koluxPage.setViewportSize({ width: 720, height: 800 })
+    await koluxPage.waitForTimeout(500)
+    await switchToWorktree(koluxPage, homeWorktreeId)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await koluxPage.waitForTimeout(600)
 
-    const afterReturn = await readColumnSnapshot(nightshiftPage, ptyId)
+    const afterReturn = await readColumnSnapshot(koluxPage, ptyId)
     expect(
       afterReturn.ptyCols,
       `after hidden resize + return, PTY cols (${afterReturn.ptyCols}) should equal xterm cols ` +
@@ -246,13 +240,11 @@ test.describe('Terminal column desync repro', () => {
     ).toBe(afterReturn.xtermCols)
   })
 
-  test('PTY columns re-sync after repeated background resizes', async ({ nightshiftPage }) => {
+  test('PTY columns re-sync after repeated background resizes', async ({ koluxPage }) => {
     test.setTimeout(180_000)
-    await waitForSessionReady(nightshiftPage)
-    const homeWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const otherWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
-      (id) => id !== homeWorktreeId
-    )
+    await waitForSessionReady(koluxPage)
+    const homeWorktreeId = await waitForActiveWorktree(koluxPage)
+    const otherWorktreeId = (await getAllWorktreeIds(koluxPage)).find((id) => id !== homeWorktreeId)
     test.skip(
       !otherWorktreeId,
       'repeated background-resize repro needs the seeded secondary worktree'
@@ -261,25 +253,25 @@ test.describe('Terminal column desync repro', () => {
       return
     }
 
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const ptyId = await settleTerminal(nightshiftPage)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const ptyId = await settleTerminal(koluxPage)
 
     // Several hide/resize/show cycles at different widths. Terminal timing bugs
     // need repetition: each cycle is a fresh chance for the resume-time
     // correction to miss and leave the PTY pinned at a stale column count.
     const widths = [700, 1320, 640, 1180, 600]
     for (const [index, width] of widths.entries()) {
-      await switchToWorktree(nightshiftPage, otherWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.setViewportSize({ width, height: 800 })
-      await nightshiftPage.waitForTimeout(350)
-      await switchToWorktree(nightshiftPage, homeWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(500)
+      await switchToWorktree(koluxPage, otherWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.setViewportSize({ width, height: 800 })
+      await koluxPage.waitForTimeout(350)
+      await switchToWorktree(koluxPage, homeWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(500)
 
-      const snapshot = await readColumnSnapshot(nightshiftPage, ptyId)
+      const snapshot = await readColumnSnapshot(koluxPage, ptyId)
       expect(
         snapshot.ptyCols,
         `cycle ${index} (width ${width}): PTY cols (${snapshot.ptyCols}) should equal xterm cols ` +
@@ -289,28 +281,28 @@ test.describe('Terminal column desync repro', () => {
   })
 
   test('both panes keep PTY columns synced after a vertical split reparent', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(180_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await nightshiftPage.setViewportSize({ width: 1280, height: 800 })
-    await nightshiftPage.waitForTimeout(300)
-    const firstPtyId = await settleTerminal(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await koluxPage.setViewportSize({ width: 1280, height: 800 })
+    await koluxPage.waitForTimeout(300)
+    const firstPtyId = await settleTerminal(koluxPage)
 
-    const baseline = await readColumnSnapshot(nightshiftPage, firstPtyId)
+    const baseline = await readColumnSnapshot(koluxPage, firstPtyId)
     expect(baseline.ptyCols).toBe(baseline.xtermCols)
 
     // Splitting halves the width of the original pane: xterm reflows to ~half
     // the columns. The PTY must follow, otherwise the existing shell keeps
     // emitting full-width output into a half-width pane.
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
+    await splitActiveTerminalPane(koluxPage, 'vertical')
     await expect
       .poll(
         async () => {
-          const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+          const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
           return snapshot.panes
             .map((pane) => pane.ptyId)
             .filter((ptyId): ptyId is string => Boolean(ptyId))
@@ -318,7 +310,7 @@ test.describe('Terminal column desync repro', () => {
         { timeout: 30_000, message: 'vertical split should produce two PTY-backed panes' }
       )
       .toHaveLength(2)
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
 
     for (const pane of snapshot.panes) {
       const ptyId = pane.ptyId
@@ -326,8 +318,8 @@ test.describe('Terminal column desync repro', () => {
       if (!ptyId) {
         continue
       }
-      const ptyCols = await readPtyCols(nightshiftPage, ptyId)
-      const xtermCols = await readRenderedColsForPty(nightshiftPage, ptyId)
+      const ptyCols = await readPtyCols(koluxPage, ptyId)
+      const xtermCols = await readRenderedColsForPty(koluxPage, ptyId)
       expect(
         ptyCols,
         `after split, pane ${ptyId} PTY cols (${ptyCols}) should equal its xterm cols (${xtermCols})`
@@ -346,7 +338,7 @@ test.describe('Terminal column desync repro', () => {
   // layout persists across reload, so the tab remounts with two panes already
   // present, re-running the first-mount spawn for each.
   test('both panes stay PTY-synced when a tab MOUNTS with a split layout present', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(240_000)
 
@@ -355,37 +347,37 @@ test.describe('Terminal column desync repro', () => {
     const MOUNT_ATTEMPTS = 6
     const desyncs: { attempt: number; ptyId: string; ptyCols: number; xtermCols: number }[] = []
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await closeRightSidebarAndFeatureTips(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await nightshiftPage.setViewportSize({ width: 1440, height: 900 })
-    await nightshiftPage.waitForTimeout(300)
-    await settleTerminal(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await closeRightSidebarAndFeatureTips(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await koluxPage.setViewportSize({ width: 1440, height: 900 })
+    await koluxPage.waitForTimeout(300)
+    await settleTerminal(koluxPage)
 
     // Establish the persisted split layout once; reloads below rebuild it.
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneIdentitySnapshot(koluxPage, 2)
 
     for (let attempt = 0; attempt < MOUNT_ATTEMPTS; attempt += 1) {
       // Re-run the split first-mount path: a wide window, reload so the tab
       // remounts and re-spawns both PTYs at the wide width from the restored
       // split layout, then resize down while the panes are still mounting.
-      await nightshiftPage.setViewportSize({ width: 1440, height: 900 })
-      await nightshiftPage.reload()
-      await nightshiftPage.waitForFunction(() => Boolean(window.__store), null, { timeout: 30_000 })
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await closeRightSidebarAndFeatureTips(nightshiftPage)
-      await ensureTerminalVisible(nightshiftPage)
+      await koluxPage.setViewportSize({ width: 1440, height: 900 })
+      await koluxPage.reload()
+      await koluxPage.waitForFunction(() => Boolean(window.__store), null, { timeout: 30_000 })
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await closeRightSidebarAndFeatureTips(koluxPage)
+      await ensureTerminalVisible(koluxPage)
 
       // Resize narrower while the split panes are mounting / their PTYs spawn.
-      await nightshiftPage.setViewportSize({ width: 1180, height: 800 })
-      await nightshiftPage.waitForTimeout(300)
+      await koluxPage.setViewportSize({ width: 1180, height: 800 })
+      await koluxPage.waitForTimeout(300)
 
-      const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+      const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
       // Let layout equalize and the (current) reconcile window run to completion.
-      await nightshiftPage.waitForTimeout(900)
+      await koluxPage.waitForTimeout(900)
 
       for (const pane of snapshot.panes) {
         const ptyId = pane.ptyId
@@ -393,8 +385,8 @@ test.describe('Terminal column desync repro', () => {
         if (!ptyId) {
           continue
         }
-        const ptyCols = await readPtyCols(nightshiftPage, ptyId)
-        const xtermCols = await readRenderedColsForPty(nightshiftPage, ptyId)
+        const ptyCols = await readPtyCols(koluxPage, ptyId)
+        const xtermCols = await readRenderedColsForPty(koluxPage, ptyId)
         if (ptyCols !== xtermCols) {
           desyncs.push({ attempt, ptyId, ptyCols, xtermCols })
         }
@@ -419,7 +411,7 @@ test.describe('Terminal column desync repro', () => {
   // nothing re-syncs. A long-output program then prints sized for the stale
   // PTY width into the narrower pane → the garbled "1 char per line" render.
   test('PTY columns stay synced when the window is resized during initial mount', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(240_000)
 
@@ -436,25 +428,25 @@ test.describe('Terminal column desync repro', () => {
       if (attempt > 0) {
         // Re-run the first-mount path: a wide window, then reload so the
         // terminal remounts and spawns its PTY at the wide width.
-        await nightshiftPage.setViewportSize({ width: 1440, height: 900 })
-        await nightshiftPage.reload()
-        await nightshiftPage.waitForFunction(() => Boolean(window.__store), null, {
+        await koluxPage.setViewportSize({ width: 1440, height: 900 })
+        await koluxPage.reload()
+        await koluxPage.waitForFunction(() => Boolean(window.__store), null, {
           timeout: 30_000
         })
       }
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await closeRightSidebarAndFeatureTips(nightshiftPage)
-      await ensureTerminalVisible(nightshiftPage)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await closeRightSidebarAndFeatureTips(koluxPage)
+      await ensureTerminalVisible(koluxPage)
 
       // Resize down while the terminal is mounting / the PTY is spawning.
-      await nightshiftPage.setViewportSize({ width: 1280, height: 800 })
-      await nightshiftPage.waitForTimeout(300)
+      await koluxPage.setViewportSize({ width: 1280, height: 800 })
+      await koluxPage.waitForTimeout(300)
 
-      const ptyId = await settleTerminal(nightshiftPage)
-      await nightshiftPage.waitForTimeout(700)
+      const ptyId = await settleTerminal(koluxPage)
+      await koluxPage.waitForTimeout(700)
 
-      const snapshot = await readColumnSnapshot(nightshiftPage, ptyId)
+      const snapshot = await readColumnSnapshot(koluxPage, ptyId)
       if (snapshot.ptyCols !== snapshot.xtermCols) {
         desyncs.push({ attempt, ptyCols: snapshot.ptyCols, xtermCols: snapshot.xtermCols })
       }

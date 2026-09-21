@@ -29,11 +29,11 @@ import {
   parseBuildToolchainProbe,
   type BuildToolchainStatus
 } from '../main/ssh/build-toolchain-diagnosis'
-import { detectNativeHostAbi } from '../main/nightshiftd/native-host-abi'
+import { detectNativeHostAbi } from '../main/koluxd/native-host-abi'
 import {
   buildNodePtyLoadProbeScript,
   readNodePtyProbeOutcome
-} from '../main/nightshiftd/node-pty-precondition'
+} from '../main/koluxd/node-pty-precondition'
 import {
   diagnoseNodePtyUnavailable,
   type NodePtyBindingSurvey,

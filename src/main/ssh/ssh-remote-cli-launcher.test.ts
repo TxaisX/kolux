@@ -8,7 +8,7 @@ import { createRemoteCliInstallPlan } from './ssh-remote-cli-launcher'
 import { getRemoteHostPlatform } from './ssh-remote-platform'
 
 // Why: the compile case is six process creations - powershell.exe -> csc.exe,
-// then the freshly built nightshift.exe -> node.exe, twice - and hosted Windows
+// then the freshly built kolux.exe -> node.exe, twice - and hosted Windows
 // runners periodically slow process creation down. Across 176 native-smoke runs
 // it spanned 1.9s-35.4s (p50 4.3s) while this file's powershell-only test held
 // its median, so the cost is the runner, not the assertions. The shared 30s
@@ -30,14 +30,14 @@ function decodePowerShellCommand(command: string): string {
   return Buffer.from(encoded, 'base64').toString('utf16le')
 }
 
-describe('SSH remote Nightshift CLI launcher', () => {
+describe('SSH remote Kolux CLI launcher', () => {
   function windowsInstallPlan(): ReturnType<typeof createRemoteCliInstallPlan> {
     return createRemoteCliInstallPlan({
-      binDir: 'C:/Users/me user/.nightshift-relay/bin',
-      relayDir: 'C:/Users/me user/.nightshift-remote/relay-v1',
+      binDir: 'C:/Users/me user/.kolux-relay/bin',
+      relayDir: 'C:/Users/me user/.kolux-remote/relay-v1',
       nodePath: 'C:/Program Files/nodejs/node.exe',
-      sockPath: '\\\\.\\pipe\\nightshift-relay-123',
-      credentialFile: 'C:/Users/me user/.nightshift-remote/relay-v1/relay.sock.credential',
+      sockPath: '\\\\.\\pipe\\kolux-relay-123',
+      credentialFile: 'C:/Users/me user/.kolux-remote/relay-v1/relay.sock.credential',
       hostPlatform: getRemoteHostPlatform('win32-x64')
     })
   }
@@ -45,13 +45,11 @@ describe('SSH remote Nightshift CLI launcher', () => {
   it('compiles a native Windows launcher without a cmd.exe argument bridge', () => {
     const plan = windowsInstallPlan()
 
-    expect(plan.launcherPath).toBe('C:/Users/me user/.nightshift-relay/bin/nightshift.exe')
+    expect(plan.launcherPath).toBe('C:/Users/me user/.kolux-relay/bin/kolux.exe')
     expect(plan.files).toHaveLength(1)
-    expect(plan.files[0]?.path).toBe(
-      'C:/Users/me user/.nightshift-relay/bin/nightshift-launcher.cs'
-    )
+    expect(plan.files[0]?.path).toBe('C:/Users/me user/.kolux-relay/bin/kolux-launcher.cs')
     expect(plan.files[0]?.contents).toContain('ProcessStartInfo')
-    expect(plan.files[0]?.contents).toContain('"--nightshift-cli"')
+    expect(plan.files[0]?.contents).toContain('"--kolux-cli"')
     expect(plan.files[0]?.contents).toContain('socketPath + ".credential"')
     expect(plan.files[0]?.contents).toContain("value[index] == '\"'")
     expect(plan.files[0]?.contents).toContain("character == '\\\\'")
@@ -64,23 +62,23 @@ describe('SSH remote Nightshift CLI launcher', () => {
     // Why: legacy csc.exe is invoked from the bin directory with bare, space-free
     // file names so PowerShell 5.1 never mangles a space-bearing absolute path.
     expect(compileScript).toContain(
-      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me user/.nightshift-relay/bin'"
+      "Set-Location -ErrorAction Stop -LiteralPath 'C:/Users/me user/.kolux-relay/bin'"
     )
-    expect(compileScript).toContain('/out:nightshift.exe')
-    expect(compileScript).toContain('C:/Users/me user/.nightshift-relay/bin/nightshift-launcher.cs')
-    expect(compileScript).toContain('C:/Users/me user/.nightshift-relay/bin/nightshift.cmd')
+    expect(compileScript).toContain('/out:kolux.exe')
+    expect(compileScript).toContain('C:/Users/me user/.kolux-relay/bin/kolux-launcher.cs')
+    expect(compileScript).toContain('C:/Users/me user/.kolux-relay/bin/kolux.cmd')
   })
 
-  it('removes the legacy nightshift.cmd only after every compile guard has passed', () => {
+  it('removes the legacy kolux.cmd only after every compile guard has passed', () => {
     const script = decodePowerShellCommand(windowsInstallPlan().postWriteCommands[0] ?? '')
     const legacyShimRemoval =
-      "Remove-Item -LiteralPath 'C:/Users/me user/.nightshift-relay/bin/nightshift.cmd' -Force -ErrorAction SilentlyContinue"
+      "Remove-Item -LiteralPath 'C:/Users/me user/.kolux-relay/bin/kolux.cmd' -Force -ErrorAction SilentlyContinue"
     // Why: a host missing csc.exe or failing the compile must keep its existing
     // CLI, so every fail-closed guard precedes the legacy %* shim removal.
     const guards = [
-      "if (-not $compiler) { Write-Error 'Unable to find the .NET Framework C# compiler required for the Nightshift SSH CLI launcher.'; exit 1 }",
+      "if (-not $compiler) { Write-Error 'Unable to find the .NET Framework C# compiler required for the Kolux SSH CLI launcher.'; exit 1 }",
       'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }',
-      "if (-not (Test-Path -LiteralPath 'C:/Users/me user/.nightshift-relay/bin/nightshift.exe' -PathType Leaf))"
+      "if (-not (Test-Path -LiteralPath 'C:/Users/me user/.kolux-relay/bin/kolux.exe' -PathType Leaf))"
     ]
     expect(script).toContain(legacyShimRemoval)
     for (const guard of guards) {
@@ -90,11 +88,11 @@ describe('SSH remote Nightshift CLI launcher', () => {
   })
 
   itWindows('preserves a multiline argument through the compiled remote launcher', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift remote cli '))
+    const root = mkdtempSync(join(tmpdir(), 'kolux remote cli '))
     try {
       const binDir = join(root, 'bin').replaceAll('\\', '/')
       const relayDir = join(root, 'relay').replaceAll('\\', '/')
-      const sockPath = '\\\\.\\pipe\\nightshift-relay-test'
+      const sockPath = '\\\\.\\pipe\\kolux-relay-test'
       const credentialFile = `${relayDir}/relay.sock.credential`
       const plan = createRemoteCliInstallPlan({
         binDir,
@@ -139,10 +137,10 @@ describe('SSH remote Nightshift CLI launcher', () => {
           encoding: 'utf8',
           env: {
             ...process.env,
-            NIGHTSHIFT_RELAY_NODE_PATH: process.execPath,
-            NIGHTSHIFT_RELAY_DIR: relayDir,
-            NIGHTSHIFT_RELAY_SOCKET_PATH: sockPath,
-            NIGHTSHIFT_RELAY_CREDENTIAL_FILE: credentialFile
+            KOLUX_RELAY_NODE_PATH: process.execPath,
+            KOLUX_RELAY_DIR: relayDir,
+            KOLUX_RELAY_SOCKET_PATH: sockPath,
+            KOLUX_RELAY_CREDENTIAL_FILE: credentialFile
           }
         }
       )
@@ -153,7 +151,7 @@ describe('SSH remote Nightshift CLI launcher', () => {
         sockPath,
         '--credential-file',
         credentialFile,
-        '--nightshift-cli',
+        '--kolux-cli',
         'orchestration',
         'send',
         '--body',
@@ -165,10 +163,10 @@ describe('SSH remote Nightshift CLI launcher', () => {
         encoding: 'utf8',
         env: {
           ...process.env,
-          NIGHTSHIFT_RELAY_NODE_PATH: process.execPath,
-          NIGHTSHIFT_RELAY_DIR: relayDir,
-          NIGHTSHIFT_RELAY_SOCKET_PATH: sockPath,
-          NIGHTSHIFT_RELAY_CREDENTIAL_FILE: ''
+          KOLUX_RELAY_NODE_PATH: process.execPath,
+          KOLUX_RELAY_DIR: relayDir,
+          KOLUX_RELAY_SOCKET_PATH: sockPath,
+          KOLUX_RELAY_CREDENTIAL_FILE: ''
         }
       })
       expect(defaulted.status, defaulted.stderr).toBe(0)
@@ -177,7 +175,7 @@ describe('SSH remote Nightshift CLI launcher', () => {
         sockPath,
         '--credential-file',
         `${sockPath}.credential`,
-        '--nightshift-cli',
+        '--kolux-cli',
         'status'
       ])
     } finally {
@@ -185,19 +183,19 @@ describe('SSH remote Nightshift CLI launcher', () => {
     }
   })
 
-  itWindows('preserves the existing nightshift.cmd when the compiler is missing', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift remote cli '))
+  itWindows('preserves the existing kolux.cmd when the compiler is missing', () => {
+    const root = mkdtempSync(join(tmpdir(), 'kolux remote cli '))
     try {
       const binDir = join(root, 'bin').replaceAll('\\', '/')
       mkdirSync(binDir, { recursive: true })
-      const legacyShimPath = join(binDir, 'nightshift.cmd')
-      writeFileSync(legacyShimPath, '@echo legacy nightshift cli\r\n', 'utf8')
+      const legacyShimPath = join(binDir, 'kolux.cmd')
+      writeFileSync(legacyShimPath, '@echo legacy kolux cli\r\n', 'utf8')
 
       const plan = createRemoteCliInstallPlan({
         binDir,
         relayDir: join(root, 'relay').replaceAll('\\', '/'),
         nodePath: process.execPath,
-        sockPath: '\\\\.\\pipe\\nightshift-relay-test',
+        sockPath: '\\\\.\\pipe\\kolux-relay-test',
         credentialFile: join(root, 'relay', 'relay.sock.credential').replaceAll('\\', '/'),
         hostPlatform: getRemoteHostPlatform('win32-x64')
       })
@@ -223,10 +221,9 @@ describe('SSH remote Nightshift CLI launcher', () => {
       )
 
       expect(compile.status).not.toBe(0)
-      expect(
-        existsSync(legacyShimPath),
-        'existing nightshift.cmd must survive a failed install'
-      ).toBe(true)
+      expect(existsSync(legacyShimPath), 'existing kolux.cmd must survive a failed install').toBe(
+        true
+      )
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
@@ -234,18 +231,18 @@ describe('SSH remote Nightshift CLI launcher', () => {
 
   it('keeps the POSIX launcher as an argv-preserving shell exec', () => {
     const plan = createRemoteCliInstallPlan({
-      binDir: '/home/me/.nightshift-relay/bin',
-      relayDir: '/home/me/.nightshift-remote/relay-v1',
+      binDir: '/home/me/.kolux-relay/bin',
+      relayDir: '/home/me/.kolux-remote/relay-v1',
       nodePath: '/usr/bin/node',
-      sockPath: '/home/me/.nightshift-remote/relay-v1/relay.sock',
+      sockPath: '/home/me/.kolux-remote/relay-v1/relay.sock',
       hostPlatform: getRemoteHostPlatform('linux-x64')
     })
 
-    expect(plan.launcherPath).toBe('/home/me/.nightshift-relay/bin/nightshift')
+    expect(plan.launcherPath).toBe('/home/me/.kolux-relay/bin/kolux')
     expect(plan.files).toEqual([
       expect.objectContaining({
-        path: '/home/me/.nightshift-relay/bin/nightshift',
-        contents: expect.stringContaining('--nightshift-cli "$@"')
+        path: '/home/me/.kolux-relay/bin/kolux',
+        contents: expect.stringContaining('--kolux-cli "$@"')
       })
     ])
   })

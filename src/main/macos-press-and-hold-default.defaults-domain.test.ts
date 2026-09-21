@@ -16,17 +16,17 @@ import {
 } from './macos-press-and-hold-default'
 
 /**
- * Runs against the real `/usr/bin/defaults` on a throwaway Nightshift-owned domain.
+ * Runs against the real `/usr/bin/defaults` on a throwaway Kolux-owned domain.
  *
  * The whole design rests on one claim the mocks cannot make: a domain that has never been written
  * is distinguishable from one explicitly set to `false`. Electron's `systemPreferences` cannot tell
  * them apart, so if `defaults` could not either, "only write when unset" would be unimplementable.
  *
- * Every domain used here is a throwaway UUID under Nightshift's own prefix, deleted along with its plist
- * in `afterEach`; the real `com.txais.nightshift` domain is never read or written.
+ * Every domain used here is a throwaway UUID under Kolux's own prefix, deleted along with its plist
+ * in `afterEach`; the real `com.txais.kolux` domain is never read or written.
  */
 
-// Why a real Nightshift-owned domain shape: the ownership guard rejects anything else, so a fake prefix
+// Why a real Kolux-owned domain shape: the ownership guard rejects anything else, so a fake prefix
 // would exercise a different branch than production.
 const domains: string[] = []
 
@@ -34,7 +34,7 @@ const domains: string[] = []
 const DEFAULTS_MISSING_EXIT_CODE = 1
 
 function throwawayDomain(): string {
-  const domain = `com.txais.nightshift.defaults-domain-test.${randomUUID()}`
+  const domain = `com.txais.kolux.defaults-domain-test.${randomUUID()}`
   domains.push(domain)
   return domain
 }
@@ -142,7 +142,7 @@ describe.skipIf(process.platform !== 'darwin')(
     it.skipIf(process.getuid?.() === 0)('reports a write the binary refused', () => {
       // Why a real refusal: `defaults write` exits non-zero instead of throwing, so a caller that
       // only caught exceptions would record 'applied' for a value that never reached the plist.
-      const readOnly = join(mkdtempSync(join(tmpdir(), 'nightshift-press-hold-ro-')), 'locked')
+      const readOnly = join(mkdtempSync(join(tmpdir(), 'kolux-press-hold-ro-')), 'locked')
       mkdirSync(readOnly)
       chmodSync(readOnly, 0o500)
       try {

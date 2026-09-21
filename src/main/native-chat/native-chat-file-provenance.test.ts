@@ -44,15 +44,15 @@ function message(role: NativeChatMessage['role'], text: string): NativeChatMessa
 describe('nativeChatTranscriptIncludesPath', () => {
   it('accepts a path in recent assistant output from the host-bound session', async () => {
     const readTranscript = vi.fn(async () => ({
-      messages: [message('assistant', 'Open ~/nightshift-plans/result.html to review it.')]
+      messages: [message('assistant', 'Open ~/kolux-plans/result.html to review it.')]
     }))
 
     await expect(
       nativeChatTranscriptIncludesPath({
         tabs: [terminalTab()],
         context: { tabId: 'tab-1', sessionId: 'session-1' },
-        pathText: '~/nightshift-plans/result.html',
-        absolutePath: '/Users/ada/nightshift-plans/result.html',
+        pathText: '~/kolux-plans/result.html',
+        absolutePath: '/Users/ada/kolux-plans/result.html',
         readTranscript
       })
     ).resolves.toBe(true)
@@ -81,15 +81,15 @@ describe('nativeChatTranscriptIncludesPath', () => {
 
   it('accepts a path followed by a sentence-final period', async () => {
     const readTranscript = vi.fn(async () => ({
-      messages: [message('assistant', 'Open /tmp/nightshift-pr14166-external.txt.')]
+      messages: [message('assistant', 'Open /tmp/kolux-pr14166-external.txt.')]
     }))
 
     await expect(
       nativeChatTranscriptIncludesPath({
         tabs: [terminalTab()],
         context: { tabId: 'tab-1', sessionId: 'session-1' },
-        pathText: '/tmp/nightshift-pr14166-external.txt',
-        absolutePath: '/tmp/nightshift-pr14166-external.txt',
+        pathText: '/tmp/kolux-pr14166-external.txt',
+        absolutePath: '/tmp/kolux-pr14166-external.txt',
         readTranscript
       })
     ).resolves.toBe(true)
@@ -97,15 +97,15 @@ describe('nativeChatTranscriptIncludesPath', () => {
 
   it('does not accept a longer filename sharing the requested path prefix', async () => {
     const readTranscript = vi.fn(async () => ({
-      messages: [message('assistant', 'Open /tmp/nightshift-pr14166-external.txt.backup')]
+      messages: [message('assistant', 'Open /tmp/kolux-pr14166-external.txt.backup')]
     }))
 
     await expect(
       nativeChatTranscriptIncludesPath({
         tabs: [terminalTab()],
         context: { tabId: 'tab-1', sessionId: 'session-1' },
-        pathText: '/tmp/nightshift-pr14166-external.txt',
-        absolutePath: '/tmp/nightshift-pr14166-external.txt',
+        pathText: '/tmp/kolux-pr14166-external.txt',
+        absolutePath: '/tmp/kolux-pr14166-external.txt',
         readTranscript
       })
     ).resolves.toBe(false)

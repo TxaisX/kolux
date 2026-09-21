@@ -152,11 +152,11 @@ describe('buildRows workspace lineage nesting', () => {
 
   it('nests stable-update resolved legacy lineage when generalized lineage is absent', () => {
     const parentId =
-      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/nightshift/workspaces/nightshift/assigned-issues'
+      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/kolux/workspaces/kolux/assigned-issues'
     const childId =
-      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/nightshift/workspaces/nightshift/issue-9276-nested-ssh-runtime-routing'
+      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/kolux/workspaces/kolux/issue-9276-nested-ssh-runtime-routing'
     const secondChildId =
-      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/nightshift/workspaces/nightshift/issue-9744-terminal-close-lifecycle'
+      '32a0226d-9f33-42e8-8b7b-24867dea06d4::/Users/jinwoo/kolux/workspaces/kolux/issue-9744-terminal-close-lifecycle'
     const resolvedParent: ResolvedLineageWorktree = {
       ...parent,
       id: parentId,

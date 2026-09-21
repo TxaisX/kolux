@@ -383,7 +383,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('enriches Grok Stop from chat history despite a generic status message', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-session-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-grok-session-'))
     const sessionId = '019e37f4-5135-7b63-a4ab-6d13aa6bf528'
     const cwd = join(tmpDir, 'workspace')
     const sessionDir = join(tmpDir, '.grok', 'sessions', encodeURIComponent(cwd), sessionId)
@@ -421,7 +421,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('uses the hook envelope Grok home instead of the listener service environment', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-envelope-home-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-grok-envelope-home-'))
     const serviceGrokHome = join(tmpDir, 'service-grok')
     const hookGrokHome = join(tmpDir, 'hook-grok')
     const sessionId = '019e37f4-5135-7b63-a4ab-6d13aa6bf529'
@@ -457,7 +457,7 @@ describe('shared agent-hook-listener', () => {
     join(tmpdir(), 'x'.repeat(4096)),
     `${join(tmpdir(), 'grok-home')}\ninvalid`
   ])('ignores invalid hook-envelope Grok home %s', (grokHome) => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-invalid-home-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-grok-invalid-home-'))
     const serviceGrokHome = join(tmpDir, 'service-grok')
     const sessionId = '019e37f4-5135-7b63-a4ab-6d13aa6bf530'
     const cwd = join(tmpDir, 'workspace')
@@ -488,7 +488,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('does not let Grok sessionId escape the chat-history directory', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-session-escape-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-grok-session-escape-'))
     const cwd = join(tmpDir, 'workspace')
     const escapedDir = join(tmpDir, '.grok', 'sessions', 'escaped')
     try {
@@ -530,7 +530,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('enriches a long-cwd Grok result after async discovery completes', async () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-pending-home-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-grok-pending-home-'))
     const hookGrokHome = join(tmpDir, 'hook-grok')
     const sessionId = '019e37f4-5135-7b63-a4ab-6d13aa6bf531'
     const cwd = `/${'long-workspace/'.repeat(30)}`

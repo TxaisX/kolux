@@ -51,9 +51,9 @@ const EXPECTED_NODE_PTY_VERSION = '1.1.0'
 const ORIGINAL_SOURCE_SHA256 = '5e1005d6bdcfbe97b486ee415419fe7adae99035047f07340fbad36419e0bae6'
 const PATCHED_SOURCE_SHA256 = '3e6bc1a688aae187d231687130cfc0a11781c672f5f616d73183d471ee8ee65c'
 
-const STATUS_PREFIX = 'NIGHTSHIFT-NPTY-CLOEXEC:'
+const STATUS_PREFIX = 'KOLUX-NPTY-CLOEXEC:'
 const SKIP_MARKER_FILENAME = '.node-pty-cloexec-skip'
-const BACKUP_DIRNAME = '.nightshift-cloexec-prepatch-release'
+const BACKUP_DIRNAME = '.kolux-cloexec-prepatch-release'
 // Under the caller's 240s SSH command timeout, so the rollback below still runs.
 const REBUILD_TIMEOUT_MS = 200000
 const VERIFY_TIMEOUT_MS = 15000
@@ -79,7 +79,7 @@ pty_nonblock(int fd) {
 }
 
 /**
- * Nightshift: close-on-exec FD
+ * Kolux: close-on-exec FD
  *
  * forkpty()/posix_openpt() have no atomic O_CLOEXEC, so a master left without
  * FD_CLOEXEC is inherited by every later child of this process -- including
@@ -185,7 +185,7 @@ function inspectNodePtyUnixSource(relayDir) {
 }
 
 function writeSourceAtomically(sourcePath, contents) {
-  const temporaryPath = `${sourcePath}.nightshift-patch-${process.pid}`
+  const temporaryPath = `${sourcePath}.kolux-patch-${process.pid}`
   // Why: a terminated install must leave one of the two known source versions on disk.
   try {
     writeFileSync(temporaryPath, contents)

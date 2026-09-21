@@ -4,7 +4,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   countVisibleTerminalPanes,
   focusActiveTerminalInput,
@@ -38,9 +38,9 @@ import {
   type SplitLatencySample
 } from './terminal-split-activation-latency-phases'
 
-const BENCH_ENABLED = process.env.NIGHTSHIFT_TERMINAL_SPLIT_LATENCY_BENCH === '1'
-const BENCH_LABEL = process.env.NIGHTSHIFT_TERMINAL_SPLIT_LATENCY_LABEL?.trim() || 'local'
-const BENCH_OUTPUT_PATH = process.env.NIGHTSHIFT_TERMINAL_SPLIT_LATENCY_OUTPUT?.trim() || null
+const BENCH_ENABLED = process.env.KOLUX_TERMINAL_SPLIT_LATENCY_BENCH === '1'
+const BENCH_LABEL = process.env.KOLUX_TERMINAL_SPLIT_LATENCY_LABEL?.trim() || 'local'
+const BENCH_OUTPUT_PATH = process.env.KOLUX_TERMINAL_SPLIT_LATENCY_OUTPUT?.trim() || null
 const WARMUP_CYCLES = 3
 const MIN_MEASURED_CYCLES = 20
 const MAX_MEASURED_CYCLES = 200
@@ -50,7 +50,7 @@ const CONFIRM_CLICK_TIMEOUT_MS = 2_000
 const BENCH_SETUP_TIMEOUT_MS = 5 * 60 * 1000
 // Why: process-cwd caches each pid for 1500ms; this wait isolates cold lookups, not correctness.
 const PROCESS_CWD_CACHE_EXPIRY_WAIT_MS = 1_650
-const SOURCE_READY_MARKER = 'NIGHTSHIFT_SPLIT_LATENCY_SOURCE_READY'
+const SOURCE_READY_MARKER = 'KOLUX_SPLIT_LATENCY_SOURCE_READY'
 const IS_MAC = process.platform === 'darwin'
 const SPLIT_CHORD = IS_MAC ? 'Meta+d' : 'Control+Shift+d'
 const CLOSE_CHORD = IS_MAC ? 'Meta+w' : 'Control+w'
@@ -64,7 +64,7 @@ const MEASURED_CYCLES = Math.min(
   MAX_MEASURED_CYCLES,
   Math.max(
     MIN_MEASURED_CYCLES,
-    readPositiveInt('NIGHTSHIFT_TERMINAL_SPLIT_LATENCY_CYCLES', MIN_MEASURED_CYCLES)
+    readPositiveInt('KOLUX_TERMINAL_SPLIT_LATENCY_CYCLES', MIN_MEASURED_CYCLES)
   )
 )
 const BENCH_TIMEOUT_MS =
@@ -115,7 +115,7 @@ function readBenchmarkRevisionIdentity(): BenchmarkRevisionIdentity {
 }
 
 function createEchoShellFixture(): { root: string; shellPath: string } {
-  const root = mkdtempSync(path.join(tmpdir(), 'nightshift-split-latency-'))
+  const root = mkdtempSync(path.join(tmpdir(), 'kolux-split-latency-'))
   const shellPath = path.join(root, 'split-echo-shell')
   writeFileSync(
     shellPath,
@@ -440,7 +440,7 @@ async function runSplitCycle(
     iteration: number
   }
 ): Promise<{ sample: SplitLatencySample; closeCompletedAt: number; fatalError: Error | null }> {
-  const marker = `NIGHTSHIFT_SPLIT_ECHO_${args.phase}_${args.iteration}_${randomUUID().replaceAll('-', '')}`
+  const marker = `KOLUX_SPLIT_ECHO_${args.phase}_${args.iteration}_${randomUUID().replaceAll('-', '')}`
   await focusActiveTerminalInput(page)
   // Prevent an ID reused by a later PTY lifetime from matching an earlier exit.
   await resetPtyExitProbe(page)
@@ -575,18 +575,17 @@ async function attachReport(testInfo: TestInfo, report: Record<string, unknown>)
 }
 
 test.describe('Terminal split activation latency benchmark @headful', () => {
-  test.skip(!BENCH_ENABLED, 'One-off benchmark: set NIGHTSHIFT_TERMINAL_SPLIT_LATENCY_BENCH=1')
+  test.skip(!BENCH_ENABLED, 'One-off benchmark: set KOLUX_TERMINAL_SPLIT_LATENCY_BENCH=1')
   test.skip(process.platform === 'win32', 'Deterministic echo-shell fixture is POSIX-only')
   test.setTimeout(BENCH_TIMEOUT_MS)
 
   test('records attributed CWD, spawn, bind, fixture-ready, input, and echo phases', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     const headfulRun =
-      process.env.NIGHTSHIFT_E2E_FORCE_HEADFUL === '1' ||
-      testInfo.project.metadata.nightshiftHeadful === true
+      process.env.KOLUX_E2E_FORCE_HEADFUL === '1' || testInfo.project.metadata.koluxHeadful === true
     const windowState: BrowserWindowState = {
       browserWindowVisible: false,
       windowCount: 0
@@ -612,7 +611,7 @@ test.describe('Terminal split activation latency benchmark @headful', () => {
       await expect
         .poll(
           async () => {
-            documentVisibility = await nightshiftPage.evaluate(() => document.visibilityState)
+            documentVisibility = await koluxPage.evaluate(() => document.visibilityState)
             return documentVisibility
           },
           {
@@ -621,20 +620,20 @@ test.describe('Terminal split activation latency benchmark @headful', () => {
           }
         )
         .toBe('visible')
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await ensureTerminalVisible(nightshiftPage)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await ensureTerminalVisible(koluxPage)
 
       fixture = createEchoShellFixture()
-      const source = await createSourceTab(nightshiftPage, fixture.shellPath)
+      const source = await createSourceTab(koluxPage, fixture.shellPath)
       const { tabId, ptyId: sourcePtyId } = source
-      const sourcePaneId = await readActivePaneId(nightshiftPage, tabId)
-      await installPtyExitProbe(nightshiftPage)
+      const sourcePaneId = await readActivePaneId(koluxPage, tabId)
+      await installPtyExitProbe(koluxPage)
       await installSplitLatencyMainProbe(electronApp)
       let priorCloseCompletedAt = Date.now()
 
       for (let iteration = 0; iteration < WARMUP_CYCLES; iteration += 1) {
-        const result = await runSplitCycle(electronApp, nightshiftPage, {
+        const result = await runSplitCycle(electronApp, koluxPage, {
           tabId,
           sourcePaneId,
           sourcePtyId,
@@ -651,8 +650,8 @@ test.describe('Terminal split activation latency benchmark @headful', () => {
       }
 
       for (let iteration = 0; iteration < MEASURED_CYCLES && abortError === null; iteration += 1) {
-        await waitForColdProcessCwdLookup(nightshiftPage, priorCloseCompletedAt)
-        const result = await runSplitCycle(electronApp, nightshiftPage, {
+        await waitForColdProcessCwdLookup(koluxPage, priorCloseCompletedAt)
+        const result = await runSplitCycle(electronApp, koluxPage, {
           tabId,
           sourcePaneId,
           sourcePtyId,
@@ -667,7 +666,7 @@ test.describe('Terminal split activation latency benchmark @headful', () => {
         }
       }
 
-      documentVisibility = await nightshiftPage
+      documentVisibility = await koluxPage
         .evaluate(() => document.visibilityState)
         .catch(() => 'unavailable' as const)
       const reportResult = buildBenchmarkReport({
@@ -722,7 +721,7 @@ test.describe('Terminal split activation latency benchmark @headful', () => {
       throw error
     } finally {
       await disposeSplitLatencyMainProbe(electronApp).catch(() => undefined)
-      await disposePtyExitProbe(nightshiftPage).catch(() => undefined)
+      await disposePtyExitProbe(koluxPage).catch(() => undefined)
       if (fixture) {
         rmSync(fixture.root, { recursive: true, force: true })
       }

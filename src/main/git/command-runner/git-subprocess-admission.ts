@@ -310,7 +310,7 @@ export class GitAdmissionScheduler {
 let scheduler = new GitAdmissionScheduler()
 
 export function acquireGitAdmission(request: GitAdmissionRequest): Promise<GitAdmissionGrant> {
-  if (process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED === '1') {
+  if (process.env.KOLUX_GIT_ADMISSION_DISABLED === '1') {
     return Promise.resolve({ queueWaitMs: 0, release: () => {} })
   }
   return scheduler.acquire(request)

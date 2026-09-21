@@ -91,7 +91,7 @@ beforeEach(() => {
   terminalPaneProps = null
   markUnverifiedPtyLoss.mockReset()
   capturedResizeCallback = null
-  ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+  ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
   vi.stubGlobal('ResizeObserver', CapturingResizeObserver)
 
   container = document.createElement('div')
@@ -112,7 +112,7 @@ afterEach(() => {
   container?.remove()
   bodyEl?.remove()
   vi.unstubAllGlobals()
-  delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+  delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
 })
 
 describe('TerminalPaneOverlayLayer fallback measure<->fit loop (React #185)', () => {

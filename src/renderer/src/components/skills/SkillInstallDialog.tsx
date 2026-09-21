@@ -88,7 +88,7 @@ export function SkillInstallDialog({
       setError(
         translate(
           'auto.components.skills.install.enterShareLink',
-          'Enter a Nightshift skill share link.'
+          'Enter a Kolux skill share link.'
         )
       )
       return
@@ -213,7 +213,7 @@ export function SkillInstallDialog({
           operation.status === 'reconnect-required'
             ? translate(
                 'auto.components.skills.install.reconnectBeforeInstalling',
-                'Reconnect your Nightshift account before installing.'
+                'Reconnect your Kolux account before installing.'
               )
             : operation.message
         )
@@ -228,7 +228,7 @@ export function SkillInstallDialog({
       setError(
         translate(
           'auto.components.skills.install.requestedVersionVerificationFailed',
-          'Installation failed before Nightshift could verify the requested version.'
+          'Installation failed before Kolux could verify the requested version.'
         )
       )
     } finally {

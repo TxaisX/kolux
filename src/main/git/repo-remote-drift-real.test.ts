@@ -15,14 +15,14 @@ describe('remote drift real Git contract', () => {
   })
 
   it('preserves clean, diverged, and missing-ref results', async () => {
-    const repoPath = mkdtempSync(join(tmpdir(), 'nightshift-remote-drift-'))
+    const repoPath = mkdtempSync(join(tmpdir(), 'kolux-remote-drift-'))
     tempPaths.push(repoPath)
     const git = (...args: string[]): string =>
       execFileSync('git', args, { cwd: repoPath, encoding: 'utf8' })
 
     git('init', '--quiet')
-    git('config', 'user.name', 'Nightshift Test')
-    git('config', 'user.email', 'nightshift@example.test')
+    git('config', 'user.name', 'Kolux Test')
+    git('config', 'user.email', 'kolux@example.test')
     git('config', 'commit.gpgSign', 'false')
     git('config', 'core.hooksPath', '.git/no-hooks')
     writeFileSync(join(repoPath, 'fixture.txt'), 'base\n')

@@ -1,7 +1,7 @@
 /**
  * Keeps the remote relay's Unix socket path inside `sockaddr_un.sun_path`.
  *
- * The default endpoint is `$HOME/.nightshift-remote/relay-<fullVersion>/relay-<id>.sock`,
+ * The default endpoint is `$HOME/.kolux-remote/relay-<fullVersion>/relay-<id>.sock`,
  * whose fixed suffix already costs ~66 bytes. A managed-hosting `$HOME` such as
  * `/var/www/<uuid>` pushes the whole path past the kernel cap and libuv reports only
  * `listen EINVAL`, so the relay never starts (#10726). When that happens the socket
@@ -32,7 +32,7 @@ export function remoteSocketPathFitsLimit(host: RemoteHostPlatform, sockPath: st
 }
 
 /** Fixed-length, per-uid base. `/tmp` is the only POSIX directory whose length is not user-dependent. */
-export const SHORT_RELAY_SOCKET_DIR_PREFIX = '/tmp/.nightshift-relay-'
+export const SHORT_RELAY_SOCKET_DIR_PREFIX = '/tmp/.kolux-relay-'
 
 export function shortRelaySocketDirForUid(uid: string): string {
   return `${SHORT_RELAY_SOCKET_DIR_PREFIX}${uid}`
@@ -40,12 +40,12 @@ export function shortRelaySocketDirForUid(uid: string): string {
 
 /**
  * The version segment the relocated socket lives under, named to match the version
- * directories in `$HOME/.nightshift-remote` so one sweep pattern covers both bases.
+ * directories in `$HOME/.kolux-remote` so one sweep pattern covers both bases.
  *
  * Why it has to exist: `relaySocketNameForInstanceId` hashes the *target*, not the
  * build, so the filename alone is version-independent. Under `$HOME` the enclosing
  * `relay-<fullVersion>` directory supplies that dimension; without it here, the next
- * Nightshift build would bind the exact path the previous build's relay still holds. The
+ * Kolux build would bind the exact path the previous build's relay still holds. The
  * daemon handshake compares build hashes exactly, so that meeting is a version
  * mismatch — and if the incumbent holds live work, `resolveRelayEndpointBeforeRelaunch`
  * raises `RelayEndpointHeldError` and the user cannot connect at all until the old
@@ -65,7 +65,7 @@ export function shortRelaySocketPath(shortVersionDir: string, sockName: string):
   return `${shortVersionDir}/${sockName}`
 }
 
-const SHORT_DIR_MARKER = 'NIGHTSHIFT-RELAY-SHORT-SOCKET-DIR'
+const SHORT_DIR_MARKER = 'KOLUX-RELAY-SHORT-SOCKET-DIR'
 
 /**
  * Create (or adopt) the per-uid short socket directory and its version segment, and

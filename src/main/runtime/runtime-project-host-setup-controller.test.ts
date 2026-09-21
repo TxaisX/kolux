@@ -1,4 +1,4 @@
-// The CLI/runtime RPC used to refuse `--host ssh:*` with "set the project up from the Nightshift desktop
+// The CLI/runtime RPC used to refuse `--host ssh:*` with "set the project up from the Kolux desktop
 // app" — while the desktop IPC handler in the *same process* routed it correctly through
 // addRemoteRepoFromPath. Safe but wrong: the process refusing is the one that owns the connection.
 import { describe, expect, it, vi } from 'vitest'

@@ -29,7 +29,7 @@ describe('decodeDaemonResponseError', () => {
 describe('isDaemonEndpointGoneError', () => {
   it('recognizes a missing Windows named pipe', () => {
     const err = Object.assign(
-      new Error('connect ENOENT \\\\?\\pipe\\nightshift-terminal-host-v30-14cb7f94b511'),
+      new Error('connect ENOENT \\\\?\\pipe\\kolux-terminal-host-v30-14cb7f94b511'),
       { code: 'ENOENT', syscall: 'connect' }
     )
     expect(isDaemonEndpointGoneError(err)).toBe(true)

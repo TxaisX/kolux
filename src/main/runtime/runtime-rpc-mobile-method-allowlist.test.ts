@@ -2,16 +2,16 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { remoteRpcContentBudget } from '../../shared/remote-rpc-content-budget'
 import { DeviceRegistry } from './device-registry'
 import { createMobileRpcSurfaceRuntime } from './runtime-rpc-mobile-method-allowlist-fixtures'
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('limits mobile-scoped WebSocket tokens to the mobile RPC surface', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     const { runtime, mocks, expectedCodexResetScope } = createMobileRpcSurfaceRuntime()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath, enableWebSocket: false })
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath, enableWebSocket: false })
     server['deviceRegistry'] = new DeviceRegistry(userDataPath)
     const mobile = server['deviceRegistry']!.addDevice('phone', 'mobile')
     const replies: Record<string, unknown>[] = []
@@ -57,19 +57,19 @@ describe('NightshiftRuntimeRpcServer', () => {
       id: 'req_project_issue_types',
       method: 'github.project.listIssueTypesBySlug',
       deviceToken: mobile.token,
-      params: { owner: 'TxaisX', repo: 'nightshift' }
+      params: { owner: 'TxaisX', repo: 'kolux' }
     })
     await dispatch({
       id: 'req_project_labels',
       method: 'github.project.listLabelsBySlug',
       deviceToken: mobile.token,
-      params: { owner: 'TxaisX', repo: 'nightshift' }
+      params: { owner: 'TxaisX', repo: 'kolux' }
     })
     await dispatch({
       id: 'req_project_assignees',
       method: 'github.project.listAssignableUsersBySlug',
       deviceToken: mobile.token,
-      params: { owner: 'TxaisX', repo: 'nightshift', seedLogins: ['alex'] }
+      params: { owner: 'TxaisX', repo: 'kolux', seedLogins: ['alex'] }
     })
     await dispatch({
       id: 'req_project_update_issue',
@@ -77,7 +77,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         number: 123,
         updates: { title: 'New title' }
       }
@@ -88,7 +88,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         number: 123,
         issueTypeId: 'type-1'
       }
@@ -120,7 +120,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         number: 456,
         updates: { state: 'closed' }
       }
@@ -131,7 +131,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         number: 123,
         body: 'done'
       }
@@ -142,7 +142,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         commentId: 101,
         body: 'edited'
       }
@@ -153,7 +153,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       deviceToken: mobile.token,
       params: {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         commentId: 101
       }
     })
@@ -665,50 +665,50 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
     expect(mocks.listGitHubIssueTypesBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(mocks.listGitHubLabelsBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(mocks.listGitHubAssignableUsersBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       seedLogins: ['alex']
     })
     expect(mocks.updateGitHubIssueBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 123,
       updates: { title: 'New title' }
     })
     expect(mocks.updateGitHubIssueTypeBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 123,
       issueTypeId: 'type-1'
     })
     expect(mocks.updateGitHubPullRequestBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 456,
       updates: { state: 'closed' }
     })
     expect(mocks.addGitHubIssueCommentBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       number: 123,
       body: 'done'
     })
     expect(mocks.updateGitHubIssueCommentBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       commentId: 101,
       body: 'edited'
     })
     expect(mocks.deleteGitHubIssueCommentBySlug).toHaveBeenCalledWith({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       commentId: 101
     })
     expect(mocks.updateRepoIssue).toHaveBeenCalledWith('id:repo-1', 123, {

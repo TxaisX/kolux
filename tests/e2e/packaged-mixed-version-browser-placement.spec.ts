@@ -10,7 +10,7 @@ import {
   type TestInfo
 } from '@stablyai/playwright-test'
 
-import { expect, forwardElectronProcessLogs, test } from './helpers/nightshift-app'
+import { expect, forwardElectronProcessLogs, test } from './helpers/kolux-app'
 import { getE2ECompletedOnboardingProfile } from './helpers/e2e-completed-onboarding-profile'
 import { cleanupE2EDaemons, closeElectronAppForE2E } from './helpers/electron-process-shutdown'
 import {
@@ -24,7 +24,7 @@ import {
   type RuntimeDesktopPairingOffer
 } from './helpers/paired-electron-client'
 
-const PACKAGED_EXECUTABLE_ENV = 'NIGHTSHIFT_CROSS_VERSION_PACKAGED_EXECUTABLE'
+const PACKAGED_EXECUTABLE_ENV = 'KOLUX_CROSS_VERSION_PACKAGED_EXECUTABLE'
 const CLIENT_HOST_CAPABILITY = 'browser.clientHost.v1'
 const TUNNEL_CAPABILITY = 'network.browserTunnel.v1'
 
@@ -142,11 +142,11 @@ async function launchPackagedPairedClient(args: {
   offer: RuntimeDesktopPairingOffer
   testInfo: TestInfo
 }): Promise<PackagedPairedClient> {
-  const userDataDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-packaged-client-'))
+  const userDataDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-packaged-client-'))
   let app: ElectronApplication | undefined
   try {
     writeFileSync(
-      path.join(userDataDir, 'nightshift-data.json'),
+      path.join(userDataDir, 'kolux-data.json'),
       `${JSON.stringify(getE2ECompletedOnboardingProfile(), null, 2)}\n`
     )
     const { ELECTRON_RUN_AS_NODE: _unused, ...cleanEnv } = process.env
@@ -163,8 +163,8 @@ async function launchPackagedPairedClient(args: {
       env: {
         ...homeIsolation.env,
         NODE_ENV: 'production',
-        NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK: '1',
-        NIGHTSHIFT_E2E_HEADLESS: '1'
+        KOLUX_BYPASS_SINGLE_INSTANCE_LOCK: '1',
+        KOLUX_E2E_HEADLESS: '1'
       }
     })
     forwardElectronProcessLogs(app, args.testInfo)
@@ -388,7 +388,7 @@ const packagedExecutable = process.env[PACKAGED_EXECUTABLE_ENV]
 test.describe('packaged mixed-version browser placement', () => {
   test.skip(
     !packagedExecutable || !existsSync(packagedExecutable),
-    `${PACKAGED_EXECUTABLE_ENV} must point at an older packaged Nightshift executable`
+    `${PACKAGED_EXECUTABLE_ENV} must point at an older packaged Kolux executable`
   )
 
   test('keeps an old packaged client on the current server-hosted path', async ({

@@ -57,10 +57,10 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
     linearIssue,
     handleEditIssue,
     handleEditComment,
-    handleOpenGitHubIssueInNightshift,
+    handleOpenGitHubIssueInKolux,
     handleOpenIssueInBrowser,
-    handleOpenLinearIssueInNightshift,
-    handleOpenReviewInNightshift,
+    handleOpenLinearIssueInKolux,
+    handleOpenReviewInKolux,
     handleOpenReviewInBrowser,
     handleOpenAutomation,
     handleOpenAutomationRun,
@@ -170,9 +170,9 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
             // plug force-open the wider title card and race it closed (#9304), so let this title hover own its state.
             onEditIssue={affiliateListMode ? undefined : handleEditIssue}
             onEditComment={affiliateListMode ? undefined : handleEditComment}
-            onOpenGitHubIssueInNightshift={
+            onOpenGitHubIssueInKolux={
               metaIssue && 'url' in metaIssue && metaIssue.url
-                ? handleOpenGitHubIssueInNightshift
+                ? handleOpenGitHubIssueInKolux
                 : undefined
             }
             onOpenIssueInBrowser={
@@ -180,12 +180,10 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
                 ? handleOpenIssueInBrowser
                 : undefined
             }
-            onOpenLinearIssueInNightshift={
-              linearIssue?.url ? handleOpenLinearIssueInNightshift : undefined
-            }
-            onOpenReviewInNightshift={
+            onOpenLinearIssueInKolux={linearIssue?.url ? handleOpenLinearIssueInKolux : undefined}
+            onOpenReviewInKolux={
               metaReview?.url && metaReview.provider === 'github'
-                ? handleOpenReviewInNightshift
+                ? handleOpenReviewInKolux
                 : undefined
             }
             onOpenReviewInBrowser={metaReview?.url ? handleOpenReviewInBrowser : undefined}
@@ -242,21 +240,17 @@ export function buildWorktreeCardPresentation(card: WorktreeCardController) {
         hoverControl={detailsHoverControl}
         onEditIssue={affiliateListMode ? undefined : handleEditIssue}
         onEditComment={affiliateListMode ? undefined : handleEditComment}
-        onOpenGitHubIssueInNightshift={
+        onOpenGitHubIssueInKolux={
           metaIssue && 'url' in metaIssue && metaIssue.url
-            ? handleOpenGitHubIssueInNightshift
+            ? handleOpenGitHubIssueInKolux
             : undefined
         }
         onOpenIssueInBrowser={
           metaIssue && 'url' in metaIssue && metaIssue.url ? handleOpenIssueInBrowser : undefined
         }
-        onOpenLinearIssueInNightshift={
-          linearIssue?.url ? handleOpenLinearIssueInNightshift : undefined
-        }
-        onOpenReviewInNightshift={
-          metaReview?.url && metaReview.provider === 'github'
-            ? handleOpenReviewInNightshift
-            : undefined
+        onOpenLinearIssueInKolux={linearIssue?.url ? handleOpenLinearIssueInKolux : undefined}
+        onOpenReviewInKolux={
+          metaReview?.url && metaReview.provider === 'github' ? handleOpenReviewInKolux : undefined
         }
         onOpenReviewInBrowser={metaReview?.url ? handleOpenReviewInBrowser : undefined}
         onOpenAutomation={affiliateListMode ? undefined : handleOpenAutomation}

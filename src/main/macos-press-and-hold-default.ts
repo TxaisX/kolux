@@ -4,14 +4,14 @@ import { runProcessSync, type ProcessResult } from '../shared/child-process/run-
 import { writeFileAtomically } from './codex-accounts/fs-utils'
 
 /**
- * Turns off the macOS accent picker for Nightshift's own preferences domain (#14746).
+ * Turns off the macOS accent picker for Kolux's own preferences domain (#14746).
  *
  * macOS routes press-and-hold to the accent popup unless an app opts out via
  * `ApplePressAndHoldEnabled`, so holding `j` in vim inserts one character instead of repeating.
  * The key is unset by default, which is why every terminal-hosting Mac app ships this opt-out.
  *
  * Written once and never again: a user who wants the accent picker back sets
- * `defaults write com.txais.nightshift ApplePressAndHoldEnabled -bool true` (or deletes the key), and
+ * `defaults write com.txais.kolux ApplePressAndHoldEnabled -bool true` (or deletes the key), and
  * the recorded decision below keeps a later launch from overwriting that choice.
  *
  * A fresh write is assumed to land for the *next* launch, not the current one: it goes out through
@@ -42,14 +42,14 @@ const DEFAULTS_TIMEOUT_MS = 5_000
 /** Why: `defaults` exits 1 for "does not exist"; anything else means the probe itself failed. */
 const DEFAULTS_MISSING_STATUS = 1
 
-const NIGHTSHIFT_BUNDLE_ID = 'com.txais.nightshift'
+const KOLUX_BUNDLE_ID = 'com.txais.kolux'
 
 export type PressAndHoldDecision =
   /** Not macOS — nothing is read or written. */
   | 'not-macos'
   /** A previous launch already decided; the domain is never touched again. */
   | 'already-decided'
-  /** The running bundle is not Nightshift's (e.g. a bare `Electron.app`), whose domain we do not own. */
+  /** The running bundle is not Kolux's (e.g. a bare `Electron.app`), whose domain we do not own. */
   | 'foreign-bundle'
   /** `defaults read` could not answer, so we cannot tell an unset key from a user's choice. */
   | 'probe-failed'
@@ -80,10 +80,10 @@ export type PressAndHoldHost = {
   now: () => string
 }
 
-/** Only Nightshift's own bundle: an unpackaged run is `com.github.Electron`, shared with every other
+/** Only Kolux's own bundle: an unpackaged run is `com.github.Electron`, shared with every other
  *  unpackaged Electron app on the machine. */
-export function isNightshiftPreferencesDomain(domain: string): boolean {
-  return domain === NIGHTSHIFT_BUNDLE_ID || domain.startsWith(`${NIGHTSHIFT_BUNDLE_ID}.`)
+export function isKoluxPreferencesDomain(domain: string): boolean {
+  return domain === KOLUX_BUNDLE_ID || domain.startsWith(`${KOLUX_BUNDLE_ID}.`)
 }
 
 /** `<bundle>/Contents/MacOS/<exe>` → `<bundle>/Contents/Info.plist`. */
@@ -169,7 +169,7 @@ function parseRecord(raw: string): PressAndHoldRecord | null {
 }
 
 /**
- * Apply Nightshift's press-and-hold default at most once, leaving any explicit user value alone.
+ * Apply Kolux's press-and-hold default at most once, leaving any explicit user value alone.
  *
  * Returns the decision so startup can log it; the same value is persisted for support triage.
  */
@@ -198,7 +198,7 @@ export function ensureMacPressAndHoldDefault(host: PressAndHoldHost): PressAndHo
   }
 
   const domain = host.resolveBundleIdentifier()
-  if (!domain || !isNightshiftPreferencesDomain(domain)) {
+  if (!domain || !isKoluxPreferencesDomain(domain)) {
     return record('foreign-bundle', domain)
   }
 

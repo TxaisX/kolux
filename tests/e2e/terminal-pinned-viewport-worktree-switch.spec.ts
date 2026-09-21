@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -39,7 +39,7 @@ await writeStdout('PINNED_VIEWPORT_SWITCH_${runId}_DONE\\n')
 async function closeFeatureTips(page: Page): Promise<void> {
   await page.evaluate(() => {
     const store = window.__store
-    store?.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store?.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store?.getState().activeModal === 'feature-tips') {
       store.getState().closeModal()
     }
@@ -120,13 +120,13 @@ async function sampleTerminalViewportDuringReturn(
 
 test.describe('Terminal pinned viewport worktree switch', () => {
   test('does not jump or flash when returning to a viewport pinned just above bottom', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'pinned viewport repro needs the seeded secondary worktree')
@@ -134,34 +134,34 @@ test.describe('Terminal pinned viewport worktree switch', () => {
       return
     }
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-pinned-viewport-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-pinned-viewport-${runId}.mjs`)
     writeFileSync(scriptPath, scrollbackFixtureScript(runId))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 10_000,
           message: 'pinned viewport fixture did not reach terminal scrollback'
         })
         .toContain(`PINNED_VIEWPORT_SWITCH_${runId}_DONE`)
 
-      const pinned = await pinActiveTerminalNearBottom(nightshiftPage)
+      const pinned = await pinActiveTerminalNearBottom(koluxPage)
       expect(pinned.baseY).toBeGreaterThan(20)
-      await nightshiftPage.waitForTimeout(50)
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(250)
+      await koluxPage.waitForTimeout(50)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(250)
 
-      const samplesPromise = sampleTerminalViewportDuringReturn(nightshiftPage, pinned.tabId, 450)
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      const samplesPromise = sampleTerminalViewportDuringReturn(koluxPage, pinned.tabId, 450)
+      await switchToWorktree(koluxPage, firstWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
       const samples = await samplesPromise
       expect(samples.length).toBeGreaterThan(0)
       expect(samples.filter((sample) => sample.viewportY <= 1)).toEqual([])

@@ -10,8 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const callMock = vi.fn()
 const getTerminalHandleMock = vi.hoisted(() => vi.fn())
-const originalTerminalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
-const originalPaneKey = process.env.NIGHTSHIFT_PANE_KEY
+const originalTerminalHandle = process.env.KOLUX_TERMINAL_HANDLE
+const originalPaneKey = process.env.KOLUX_PANE_KEY
 // Why: isolate the handler's flag-to-param mapping; printResult only writes output.
 vi.mock('../format', () => ({ printResult: vi.fn() }))
 vi.mock('../selectors', () => ({ getTerminalHandle: getTerminalHandleMock }))
@@ -49,14 +49,14 @@ function liveIdentity(handle: string): { result: { identity: { handle: string; l
 afterEach(() => {
   getTerminalHandleMock.mockReset()
   if (originalTerminalHandle === undefined) {
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
+    delete process.env.KOLUX_TERMINAL_HANDLE
   } else {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = originalTerminalHandle
+    process.env.KOLUX_TERMINAL_HANDLE = originalTerminalHandle
   }
   if (originalPaneKey === undefined) {
-    delete process.env.NIGHTSHIFT_PANE_KEY
+    delete process.env.KOLUX_PANE_KEY
   } else {
-    process.env.NIGHTSHIFT_PANE_KEY = originalPaneKey
+    process.env.KOLUX_PANE_KEY = originalPaneKey
   }
 })
 
@@ -64,8 +64,8 @@ describe('orchestration dispatch coordinator handle', () => {
   beforeEach(() => {
     callMock.mockReset()
     getTerminalHandleMock.mockReset()
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_PANE_KEY
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_PANE_KEY
   })
 
   const invokeDispatch = (flags: Map<string, string | boolean>) =>
@@ -93,8 +93,8 @@ describe('orchestration dispatch coordinator handle', () => {
     } as never)
 
   it('remints a stale coordinator env handle from the caller pane key', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_coord'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_coord:leaf_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_coord'
+    process.env.KOLUX_PANE_KEY = 'tab_coord:leaf_coord'
     stubStaleHandleRemint('term_live_coord', {
       result: { dispatch: { id: 'ctx_1', task_id: 'task_1', status: 'dispatched' } }
     })
@@ -127,7 +127,7 @@ describe('orchestration dispatch coordinator handle', () => {
   })
 
   it('rejects stale coordinator env handles when the caller pane cannot be proven', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_coord'
     callMock.mockRejectedValueOnce(staleHandleError())
     getTerminalHandleMock.mockResolvedValue('term_wrong_active')
 
@@ -147,8 +147,8 @@ describe('orchestration dispatch coordinator handle', () => {
   })
 
   it('propagates unexpected caller pane remint failures for coordinator commands', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_coord'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_coord:leaf_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_coord'
+    process.env.KOLUX_PANE_KEY = 'tab_coord:leaf_coord'
     stubStaleHandleRemintFailure(
       new RuntimeClientError('runtime_unavailable', 'runtime_unavailable')
     )
@@ -176,8 +176,8 @@ describe('orchestration dispatch coordinator handle', () => {
   })
 
   it('uses a live coordinator handle for dispatch-show preamble previews', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale_coord'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_coord:leaf_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale_coord'
+    process.env.KOLUX_PANE_KEY = 'tab_coord:leaf_coord'
     stubStaleHandleRemint('term_live_coord', {
       result: { dispatch: null, preamble: 'preamble' }
     })
@@ -223,8 +223,8 @@ describe('orchestration task-create caller handle', () => {
   beforeEach(() => {
     callMock.mockReset()
     getTerminalHandleMock.mockReset()
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_PANE_KEY
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_PANE_KEY
   })
 
   const invokeTaskCreate = (flags: Map<string, string | boolean>) =>
@@ -236,7 +236,7 @@ describe('orchestration task-create caller handle', () => {
     } as never)
 
   it('records a live env terminal handle as task creator', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_creator'
     callMock
       .mockResolvedValueOnce(liveIdentity('term_creator'))
       .mockResolvedValueOnce({ result: { task: { id: 'task_1', status: 'ready' } } })
@@ -258,7 +258,7 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('fails closed when a stale task creator handle cannot be reminted', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale'
     callMock.mockRejectedValueOnce(staleHandleError())
     getTerminalHandleMock.mockResolvedValue('term_wrong_active')
 
@@ -274,7 +274,7 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('propagates runtime unavailability while proving the bound coordinator', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_creator'
     callMock.mockRejectedValueOnce(
       new RuntimeClientError('runtime_unavailable', 'runtime_unavailable')
     )
@@ -291,8 +291,8 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('propagates runtime unavailability while reminting the bound coordinator', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_creator:leaf_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale'
+    process.env.KOLUX_PANE_KEY = 'tab_creator:leaf_creator'
     stubStaleHandleRemintFailure(
       new RuntimeClientError('runtime_unavailable', 'runtime_unavailable')
     )
@@ -313,8 +313,8 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('propagates unexpected caller pane remint failures for task creation', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_creator:leaf_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale'
+    process.env.KOLUX_PANE_KEY = 'tab_creator:leaf_creator'
     stubStaleHandleRemintFailure(new RuntimeClientError('permission_denied', 'denied'))
     getTerminalHandleMock.mockResolvedValue('term_wrong_active')
 
@@ -335,7 +335,7 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('propagates unexpected env handle validation failures', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_creator'
     callMock.mockRejectedValueOnce(new RuntimeClientError('permission_denied', 'denied'))
 
     await expect(
@@ -348,8 +348,8 @@ describe('orchestration task-create caller handle', () => {
   })
 
   it('remints a stale task creator env handle from the caller pane key', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_creator:leaf_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale'
+    process.env.KOLUX_PANE_KEY = 'tab_creator:leaf_creator'
     stubStaleHandleRemint('term_live', {
       result: { task: { id: 'task_1', status: 'ready' } }
     })

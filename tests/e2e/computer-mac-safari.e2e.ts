@@ -6,22 +6,22 @@ import type {
 } from '../../src/shared/runtime-types'
 import {
   closeSafariDraftFixture,
-  ensureNightshiftRuntimeLaunched,
+  ensureKoluxRuntimeLaunched,
   ensureSafariDraftFixtureLaunched,
   findRoleIndex,
   parseJsonOutput,
-  runNightshiftCli,
+  runKoluxCli,
   type SafariDraftFixture
 } from './helpers/computer-driver'
 
 const isMac = process.platform === 'darwin'
-const e2eOptIn = process.env.NIGHTSHIFT_COMPUTER_E2E === '1'
+const e2eOptIn = process.env.KOLUX_COMPUTER_E2E === '1'
 
 describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', () => {
   let fixture: SafariDraftFixture
 
   beforeAll(async () => {
-    await ensureNightshiftRuntimeLaunched()
+    await ensureKoluxRuntimeLaunched()
     fixture = await ensureSafariDraftFixtureLaunched()
   })
 
@@ -33,7 +33,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
     const targetArgs = await safariFixtureWindowTargetArgs(fixture.title)
     let state = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -54,7 +54,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
     )
     expect(recipientIndex).toBeGreaterThanOrEqual(0)
 
-    await runNightshiftCli([
+    await runKoluxCli([
       'computer',
       'click',
       '--app',
@@ -70,7 +70,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
     const recipient = `agent-${Date.now()}@example.com`
     const recipientPaste = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'paste-text',
           '--app',
@@ -92,7 +92,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
 
     state = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'press-key',
           '--app',
@@ -112,7 +112,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
     const body = `hello browser draft ${Date.now()}`
     const bodyPaste = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'paste-text',
           '--app',
@@ -134,7 +134,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
 
     state = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -151,7 +151,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
 
     const saved = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'click',
           '--app',
@@ -173,7 +173,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
     const targetArgs = await safariFixtureWindowTargetArgs(fixture.title)
     const before = parseJsonOutput<{ result: ComputerSnapshotResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'get-app-state',
           '--app',
@@ -195,7 +195,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
 
     const middle = parseJsonOutput<{ result: ComputerActionResult }>(
       (
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'click',
           '--app',
@@ -220,8 +220,7 @@ describe.skipIf(!isMac || !e2eOptIn)('computer-use macOS e2e (Safari web app)', 
 
 async function safariFixtureWindowTargetArgs(title: string): Promise<string[]> {
   const windows = parseJsonOutput<{ result: ComputerListWindowsResult }>(
-    (await runNightshiftCli(['computer', 'list-windows', '--app', 'com.apple.Safari', '--json']))
-      .stdout
+    (await runKoluxCli(['computer', 'list-windows', '--app', 'com.apple.Safari', '--json'])).stdout
   ).result.windows
   const target = windows.find((window) => window.title.includes(title))
   expect(target).toBeTruthy()

@@ -24,14 +24,14 @@ function trackedCopy(buf) {
   return Buffer.from(buf)
 }
 
-const FPS = Number.parseInt(process.env.NIGHTSHIFT_MJPEG_BENCH_FPS ?? '30', 10)
-const SECONDS = Number.parseInt(process.env.NIGHTSHIFT_MJPEG_BENCH_SECONDS ?? '30', 10)
-const FRAME_BYTES = Number.parseInt(process.env.NIGHTSHIFT_MJPEG_BENCH_FRAME_BYTES ?? '184320', 10) // ~180 KiB
+const FPS = Number.parseInt(process.env.KOLUX_MJPEG_BENCH_FPS ?? '30', 10)
+const SECONDS = Number.parseInt(process.env.KOLUX_MJPEG_BENCH_SECONDS ?? '30', 10)
+const FRAME_BYTES = Number.parseInt(process.env.KOLUX_MJPEG_BENCH_FRAME_BYTES ?? '184320', 10) // ~180 KiB
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_MJPEG_BENCH_FPS', FPS],
-  ['NIGHTSHIFT_MJPEG_BENCH_SECONDS', SECONDS],
-  ['NIGHTSHIFT_MJPEG_BENCH_FRAME_BYTES', FRAME_BYTES]
+  ['KOLUX_MJPEG_BENCH_FPS', FPS],
+  ['KOLUX_MJPEG_BENCH_SECONDS', SECONDS],
+  ['KOLUX_MJPEG_BENCH_FRAME_BYTES', FRAME_BYTES]
 ]) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)

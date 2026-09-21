@@ -1,11 +1,11 @@
-import type { PersistedTrustedNightshiftHooks } from '../../../../../shared/nightshift-yaml-hook-types'
+import type { PersistedTrustedKoluxHooks } from '../../../../../shared/kolux-yaml-hook-types'
 import type {
   FeatureInteractionId,
   FeatureInteractionState
 } from '../../../../../shared/feature-interactions'
 import type { FeatureTipId } from '../../../../../shared/feature-tips'
 import type { ContextualTourId } from '../../../../../shared/contextual-tours'
-import type { NightshiftHookScriptKind } from '../../../lib/nightshift-hook-trust'
+import type { KoluxHookScriptKind } from '../../../lib/kolux-hook-trust'
 import type { SettingsNavigationTarget } from '../../../lib/settings-navigation-types'
 import type { ExecutionHostId } from '../../../../../shared/execution-host'
 
@@ -52,7 +52,7 @@ export type UISliceContextual = {
     | 'feature-tips'
     | 'launch-agents'
     | 'new-workspace-composer'
-    | 'confirm-nightshift-yaml-hooks'
+    | 'confirm-kolux-yaml-hooks'
     | 'usage'
   modalData: Record<string, unknown>
   openModal: (modal: UISliceContextual['activeModal'], data?: Record<string, unknown>) => void
@@ -91,14 +91,14 @@ export type UISliceContextual = {
   completeContextualTour: (id?: ContextualTourId) => void
   cancelContextualTour: (id?: ContextualTourId) => void
   markContextualToursSeen: (ids: ContextualTourId[]) => void
-  trustedNightshiftHooks: PersistedTrustedNightshiftHooks
-  markNightshiftHookScriptConfirmed: (
+  trustedKoluxHooks: PersistedTrustedKoluxHooks
+  markKoluxHookScriptConfirmed: (
     repoId: string,
-    kind: NightshiftHookScriptKind,
+    kind: KoluxHookScriptKind,
     contentHash: string
   ) => void
-  markNightshiftHookRepoAlwaysTrusted: (repoId: string) => void
-  clearNightshiftHookTrustForRepo: (repoId: string) => void
+  markKoluxHookRepoAlwaysTrusted: (repoId: string) => void
+  clearKoluxHookTrustForRepo: (repoId: string) => void
   setupScriptPromptDismissedRepoIds: readonly string[]
   dismissSetupScriptPrompt: (repoHostIdentity: string) => void
   setupGuideSidebarDismissed: boolean

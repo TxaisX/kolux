@@ -59,8 +59,8 @@ export function activateLocalPtySession(args: {
     ptyAgentSessionIds.add(id)
   }
   ptyShellName.set(id, getSpawnedShellName(plan.shellPath))
-  if (env.NIGHTSHIFT_TERMINAL_HANDLE) {
-    ptyTerminalHandle.set(id, env.NIGHTSHIFT_TERMINAL_HANDLE)
+  if (env.KOLUX_TERMINAL_HANDLE) {
+    ptyTerminalHandle.set(id, env.KOLUX_TERMINAL_HANDLE)
   }
   if (spawn.worktreeId) {
     ptyWorktreeId.set(id, spawn.worktreeId)

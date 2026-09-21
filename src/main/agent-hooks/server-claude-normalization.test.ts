@@ -379,7 +379,7 @@ describe('Claude hook normalization', () => {
     let transcriptPath: string
 
     beforeEach(() => {
-      tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-test-'))
+      tmpDir = mkdtempSync(join(tmpdir(), 'kolux-hook-test-'))
       transcriptPath = join(tmpDir, 'transcript.jsonl')
     })
 

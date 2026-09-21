@@ -6,7 +6,7 @@ import type {
   KeyboardLayoutSnapshot
 } from '../../shared/keyboard-layout-snapshot'
 
-const HELPER_EXECUTABLE = 'nightshift-keyboard-layout'
+const HELPER_EXECUTABLE = 'kolux-keyboard-layout'
 const HELPER_TIMEOUT_MS = 1000
 const MAX_HELPER_OUTPUT_BYTES = 64 * 1024
 

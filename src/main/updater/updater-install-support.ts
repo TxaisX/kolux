@@ -56,12 +56,12 @@ export abstract class UpdaterInstallSupport extends UpdaterCheckState {
         { phase, version: version || null },
         {
           level: 'warn',
-          message: 'Update install deferred while hosting nightshift serve'
+          message: 'Update install deferred while hosting kolux serve'
         }
       )
     }
     this.sendErrorStatus(
-      'This nightshift serve process was not started by an update-capable supervisor. Keep it running and update Nightshift through its service manager.',
+      'This kolux serve process was not started by an update-capable supervisor. Keep it running and update Kolux through its service manager.',
       true
     )
     return true
@@ -86,8 +86,8 @@ export abstract class UpdaterInstallSupport extends UpdaterCheckState {
    */
   protected getPreCommitInstallFailureMessage(): string {
     return process.platform === 'darwin'
-      ? 'Could not restart to install the update. Quit and reopen Nightshift, then try again.'
-      : 'Could not start the update installer. Nightshift remains open.'
+      ? 'Could not restart to install the update. Quit and reopen Kolux, then try again.'
+      : 'Could not start the update installer. Kolux remains open.'
   }
 
   /**

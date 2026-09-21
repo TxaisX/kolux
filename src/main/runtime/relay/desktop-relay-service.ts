@@ -1,5 +1,5 @@
-import type { NightshiftCloudAuthConfig } from '../../nightshift-profiles/profile-cloud-auth-config'
-import type { MobilePairingConnectionContext, NightshiftRuntimeRpcServer } from '../runtime-rpc'
+import type { KoluxCloudAuthConfig } from '../../kolux-profiles/profile-cloud-auth-config'
+import type { MobilePairingConnectionContext, KoluxRuntimeRpcServer } from '../runtime-rpc'
 import type {
   DeviceCredentialInstalled,
   PairingGetEndpointsParams,
@@ -22,10 +22,10 @@ import { RelayDemandLedger } from './relay-demand-ledger'
 import { createRelayRegionPreferenceReader } from './relay-region-preference'
 
 type DesktopRelayServiceOptions = {
-  authConfig: NightshiftCloudAuthConfig
+  authConfig: KoluxCloudAuthConfig
   userDataPath: string
   appVersion: string
-  runtimeRpc: NightshiftRuntimeRpcServer
+  runtimeRpc: KoluxRuntimeRpcServer
   onStatus: (status: RelayBrokerStatus, cellUrl?: string) => void
 }
 
@@ -52,7 +52,7 @@ const RELAY_LIVENESS_INTERVAL_MS = 5 * 60_000
 export class DesktopRelayService {
   private readonly coordinator: RelayAuthCoordinator
   private readonly revokeOutbox: RelayRevokeOutbox
-  private readonly runtimeRpc: NightshiftRuntimeRpcServer
+  private readonly runtimeRpc: KoluxRuntimeRpcServer
   private readonly demandLedger: RelayDemandLedger
   private demandExpiryTimer: ReturnType<typeof setTimeout> | null = null
   private livenessTimer: ReturnType<typeof setInterval> | null = null

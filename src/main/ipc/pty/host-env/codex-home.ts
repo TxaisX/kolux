@@ -38,9 +38,9 @@ export function isCodexStatusHooksEnabled(settings: GlobalSettings | undefined):
 }
 
 // Why: with the real-home flag ON, a host system-default launch resolves to a
-// null managed home. Signal the env builder to strip a nested-Nightshift-inherited
+// null managed home. Signal the env builder to strip a nested-Kolux-inherited
 // override instead of injecting one, so Codex runs on the user's own ~/.codex.
-export function shouldStripInheritedNightshiftCodexHome(args: {
+export function shouldStripInheritedKoluxCodexHome(args: {
   target: CodexAccountSelectionTarget
   selectedCodexHomePath: string | null
   skipCodexHomeEnv: boolean
@@ -51,26 +51,26 @@ export function shouldStripInheritedNightshiftCodexHome(args: {
   )
 }
 
-export const CODEX_HOME_ENV_KEYS = ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'] as const
+export const CODEX_HOME_ENV_KEYS = ['CODEX_HOME', 'KOLUX_CODEX_HOME'] as const
 
 // Why: system-default real-home routing runs Codex on the user's own ~/.codex.
-// Nested Nightshift panes inherit the parent's Nightshift-owned override; strip only that
-// (CODEX_HOME matching Nightshift's private NIGHTSHIFT_CODEX_HOME marker), and always drop
+// Nested Kolux panes inherit the parent's Kolux-owned override; strip only that
+// (CODEX_HOME matching Kolux's private KOLUX_CODEX_HOME marker), and always drop
 // the marker so a shell-ready wrapper cannot restore the managed home. A
-// user-set CODEX_HOME with no Nightshift marker is preserved untouched (see #8606).
-export function stripInheritedNightshiftCodexHomeOverride(baseEnv: Record<string, string>): void {
-  for (const key of getLocalNightshiftCodexHomeEnvKeysToDelete(baseEnv)) {
+// user-set CODEX_HOME with no Kolux marker is preserved untouched (see #8606).
+export function stripInheritedKoluxCodexHomeOverride(baseEnv: Record<string, string>): void {
+  for (const key of getLocalKoluxCodexHomeEnvKeysToDelete(baseEnv)) {
     delete baseEnv[key]
   }
 }
 
 // Why: in-process spawns share main's inherited environment, so equality with
 // the private marker is authoritative here. Persistent daemons compare locally.
-export function getLocalNightshiftCodexHomeEnvKeysToDelete(env: Record<string, string>): string[] {
-  const inheritedNightshiftOverride = env.NIGHTSHIFT_CODEX_HOME ?? process.env.NIGHTSHIFT_CODEX_HOME
+export function getLocalKoluxCodexHomeEnvKeysToDelete(env: Record<string, string>): string[] {
+  const inheritedKoluxOverride = env.KOLUX_CODEX_HOME ?? process.env.KOLUX_CODEX_HOME
   const inheritedCodexHome = env.CODEX_HOME ?? process.env.CODEX_HOME
-  const keysToDelete = ['NIGHTSHIFT_CODEX_HOME']
-  if (inheritedNightshiftOverride && inheritedCodexHome === inheritedNightshiftOverride) {
+  const keysToDelete = ['KOLUX_CODEX_HOME']
+  if (inheritedKoluxOverride && inheritedCodexHome === inheritedKoluxOverride) {
     keysToDelete.push('CODEX_HOME')
   }
   return keysToDelete

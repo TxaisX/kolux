@@ -47,7 +47,7 @@ export function formatCliError(error: unknown, context: CliErrorContext = {}): s
     if (hasOrchestrationRequestId(error.data)) {
       return message
     }
-    return `${message}\nNightshift is not running. Run 'nightshift open' first.`
+    return `${message}\nKolux is not running. Run 'kolux open' first.`
   }
   // Why: error-specific recovery must win over the generic computer fallback.
   // Classified from the whole error, not just `.code`: a hop that flattens the class leaves only the token.
@@ -71,7 +71,7 @@ export function formatCliError(error: unknown, context: CliErrorContext = {}): s
     error instanceof RuntimeRpcFailureError &&
     error.response.error.code === 'runtime_unavailable'
   ) {
-    return `${message}\nNightshift is not running. Run 'nightshift open' first.`
+    return `${message}\nKolux is not running. Run 'kolux open' first.`
   }
   if (error instanceof RuntimeRpcFailureError) {
     return formatMessageWithNextSteps(message, nextStepsFromData(error.response.error.data))

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { exposeDispatchContext, exposeWorker, inspectWorkerTerminal } from './worker-observation'
 import type { DispatchContextRow, WorkerDispatchRow } from '../../../../orchestration/types'
@@ -17,7 +17,7 @@ function createHarness(args: {
     getTerminalProcessIncarnation: vi.fn(() => 'pty-worker:incarnation-1'),
     getTerminalLivenessVerdict: vi.fn(() => null),
     getOrchestrationDispatchAuthority: vi.fn(() => null)
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
   const db = {
     getWorkerDispatch: vi.fn(() => ({ agent_terminal_handle: TERMINAL_HANDLE })),
     getDispatchContextById: vi.fn(() => ({ host_scope: JSON.stringify(args.hostScope) })),

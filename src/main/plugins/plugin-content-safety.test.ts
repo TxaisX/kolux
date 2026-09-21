@@ -17,7 +17,7 @@ import { PluginService } from './plugin-service'
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-content-test-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-content-test-'))
   roots.push(root)
   return root
 }
@@ -31,10 +31,10 @@ function manifest(overrides: ManifestOverrides = {}): PluginManifest {
   return pluginManifestSchema.parse({
     manifestVersion: 1,
     id: 'demo',
-    publisher: 'nightshift-samples',
+    publisher: 'kolux-samples',
     name: 'Demo',
     version: '1.0.0',
-    engines: { nightshift: '>=1.0.0' },
+    engines: { kolux: '>=1.0.0' },
     pluginApi: 1,
     capabilities: [],
     ...manifestOverrides,
@@ -111,7 +111,7 @@ describe('declared plugin artifacts', () => {
         events: []
       }
     })
-    await writeFile(join(root, 'nightshift-plugin.json'), JSON.stringify(pluginManifest))
+    await writeFile(join(root, 'kolux-plugin.json'), JSON.stringify(pluginManifest))
 
     await expect(validateDeclaredPluginArtifacts(root, pluginManifest)).resolves.toMatchObject({
       ok: false

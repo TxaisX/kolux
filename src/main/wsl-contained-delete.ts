@@ -1,7 +1,7 @@
 import { posix } from 'node:path'
 import type { WslPathInfo } from './wsl'
 
-const REJECTION_PREFIX = 'NIGHTSHIFT_WSL_DELETE_REJECT:'
+const REJECTION_PREFIX = 'KOLUX_WSL_DELETE_REJECT:'
 
 export type WslDeleteRejection = 'path-outside-known-roots' | 'unexpected-target-kind'
 
@@ -100,7 +100,7 @@ export function containedDeleteCommand(
     'sh',
     '-c',
     WSL_CONTAINED_DELETE_SCRIPT,
-    'nightshift-wsl-delete',
+    'kolux-wsl-delete',
     recursive ? 'directory' : 'regular file',
     String(rootParts.length),
     ...rootParts,

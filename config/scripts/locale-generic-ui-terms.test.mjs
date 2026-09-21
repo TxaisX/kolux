@@ -122,11 +122,11 @@ describe('locale generic UI terms', () => {
     expect(
       repairTranslatedValue({
         key: 'auto.components.settings.AdvancedNetworkSettingsSection.823e0f15b1',
-        enValue: 'Proxy URL for Nightshift network requests and local terminal subprocesses.',
-        localeValue: '用于 Nightshift 网络请求和本地终端子进程的代理 URL。',
+        enValue: 'Proxy URL for Kolux network requests and local terminal subprocesses.',
+        localeValue: '用于 Kolux 网络请求和本地终端子进程的代理 URL。',
         locale: 'zh'
       })
-    ).toBe('用于 Nightshift 网络请求和本地终端子进程的代理 URL。')
+    ).toBe('用于 Kolux 网络请求和本地终端子进程的代理 URL。')
   })
 
   it('still fills in a translation when the catalog holds English', () => {

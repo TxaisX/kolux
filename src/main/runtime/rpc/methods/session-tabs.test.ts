@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { SESSION_TAB_CLOSE_INTENT_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { SESSION_TAB_METHODS } from './session-tabs'
 import { visibleSnapshot } from './session-tabs-snapshot.test-fixture'
@@ -23,7 +23,7 @@ describe('session tab RPC methods', () => {
         activeTabType: 'terminal',
         tabs: []
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -48,7 +48,7 @@ describe('session tab RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       listMobileSessionTabs: vi.fn().mockResolvedValue(visibleSnapshot()),
       activateMobileSessionTab: vi.fn().mockResolvedValue({ tabs: [] })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const replies: string[] = []
 
@@ -76,7 +76,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       activateMobileSessionTab: vi.fn().mockResolvedValue({ tabs: [] })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -103,7 +103,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       activateMobileSessionTab: vi.fn().mockResolvedValue({ tabs: [] })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -131,7 +131,7 @@ describe('session tab RPC methods', () => {
         snapshotRepublished: true
       }),
       closeMobileSessionTab: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -151,7 +151,7 @@ describe('session tab RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       refuseUnattributedMobileSessionTabClose: vi.fn(),
       closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -175,7 +175,7 @@ describe('session tab RPC methods', () => {
       listMobileSessionTabs: vi.fn().mockResolvedValue(visibleSnapshot()),
       refuseUnattributedMobileSessionTabClose: vi.fn(),
       closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const replies: string[] = []
 
@@ -203,7 +203,7 @@ describe('session tab RPC methods', () => {
       listMobileSessionTabs: vi.fn().mockResolvedValue(visibleSnapshot()),
       refuseUnattributedMobileSessionTabClose: vi.fn(),
       closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const replies: string[] = []
 
@@ -226,7 +226,7 @@ describe('session tab RPC methods', () => {
       listMobileSessionTabs: vi.fn().mockResolvedValue(visibleSnapshot()),
       refuseUnattributedMobileSessionTabClose: vi.fn(),
       closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const replies: string[] = []
 
@@ -255,7 +255,7 @@ describe('session tab RPC methods', () => {
         snapshotRepublished: true
       }),
       closeMobileSessionTab: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const replies: string[] = []
 
@@ -280,7 +280,7 @@ describe('session tab RPC methods', () => {
       const runtime = {
         getRuntimeId: () => 'test-runtime',
         closeMobileSessionTab: vi.fn()
-      } as unknown as NightshiftRuntimeService
+      } as unknown as KoluxRuntimeService
       const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
       const response = await dispatcher.dispatch(
@@ -302,7 +302,7 @@ describe('session tab RPC methods', () => {
       const runtime = {
         getRuntimeId: () => 'test-runtime',
         closeMobileSessionTab: vi.fn().mockResolvedValue({ closed: true })
-      } as unknown as NightshiftRuntimeService
+      } as unknown as KoluxRuntimeService
       const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
       const response = await dispatcher.dispatch(
@@ -330,7 +330,7 @@ describe('session tab RPC methods', () => {
       moveMobileSessionTab: vi.fn().mockResolvedValue({
         moved: true
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -356,7 +356,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       moveMobileSessionTab: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -378,7 +378,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       moveMobileSessionTab: vi.fn().mockResolvedValue({ moved: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -417,7 +417,7 @@ describe('session tab RPC methods', () => {
         publicationEpoch: 'epoch-1',
         snapshotVersion: 1
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -427,7 +427,7 @@ describe('session tab RPC methods', () => {
         command: 'zsh',
         cwd: '/repo/packages/app',
         env: { CODEX_PROFILE: 'captured' },
-        envToDelete: ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'],
+        envToDelete: ['CODEX_HOME', 'KOLUX_CODEX_HOME'],
         launchToken: 'launch-token-123',
         launchConfig: {
           agentArgs: '--model gpt-5',
@@ -446,7 +446,7 @@ describe('session tab RPC methods', () => {
       command: 'zsh',
       cwd: '/repo/packages/app',
       env: { CODEX_PROFILE: 'captured' },
-      envToDelete: ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME'],
+      envToDelete: ['CODEX_HOME', 'KOLUX_CODEX_HOME'],
       startupCommandDelivery: undefined,
       agent: undefined,
       launchToken: 'launch-token-123',
@@ -473,7 +473,7 @@ describe('session tab RPC methods', () => {
         publicationEpoch: 'epoch-1',
         snapshotVersion: 1
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await dispatcher.dispatchStreaming(
@@ -514,7 +514,7 @@ describe('session tab RPC methods', () => {
         publicationEpoch: 'epoch-1',
         snapshotVersion: 1
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -547,7 +547,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       createMobileSessionTerminal: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -581,7 +581,7 @@ describe('session tab RPC methods', () => {
         publicationEpoch: 'epoch-1',
         snapshotVersion: 1
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -610,7 +610,7 @@ describe('session tab RPC methods', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       createMobileSessionTerminal: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -665,7 +665,7 @@ describe('session tab RPC methods', () => {
         }
       ),
       registerSubscriptionCleanup: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
     const messages: string[] = []
 
@@ -716,7 +716,7 @@ describe('session tab RPC methods', () => {
       supportsAuthoritativeSessionTabsInventory: vi.fn(() => false),
       onMobileSessionTabsChanged: vi.fn(() => vi.fn()),
       registerSubscriptionCleanup: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await dispatcher.dispatchStreaming(
@@ -756,7 +756,7 @@ describe('session tab RPC methods', () => {
       }),
       onMobileSessionTabsChanged: vi.fn(() => vi.fn()),
       registerSubscriptionCleanup: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await dispatcher.dispatchStreaming(
@@ -791,7 +791,7 @@ describe('session tab RPC methods', () => {
       }),
       onMobileSessionTabsChanged: vi.fn(() => vi.fn()),
       registerSubscriptionCleanup: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
     await dispatcher.dispatchStreaming(

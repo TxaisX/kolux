@@ -69,7 +69,7 @@ let storePath: string
 const NOW = 1_800_000_000_000
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-store-recovery-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-store-recovery-'))
   storePath = agentSessionStorePath(root)
   operations = 0
 })

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -22,7 +22,7 @@ import {
   stopDockerSshRelayProcesses
 } from './helpers/docker-ssh-relay-faults'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 
 // Why two durations: the live incident held both relay pids for 20 s, which is exactly the client
 // mux liveness timeout, so which side of it the client lands on is a race. 40 s is past it for
@@ -44,8 +44,8 @@ type RelayEndpointSnapshot = {
   logLines: number
 }
 
-async function readSshStatus(nightshiftPage: Page, targetId: string): Promise<string | null> {
-  return nightshiftPage.evaluate(
+async function readSshStatus(koluxPage: Page, targetId: string): Promise<string | null> {
+  return koluxPage.evaluate(
     (targetId) => window.__store?.getState().sshConnectionStates.get(targetId)?.status ?? null,
     targetId
   )
@@ -60,7 +60,7 @@ function snapshotRelayEndpoint(target: DockerSshRelayTarget): RelayEndpointSnaps
   const output = execDockerSshRelayTargetControlCommand(
     target,
     `
-sock=$(find /root/.nightshift-remote -maxdepth 2 -name 'relay-*.sock' -type s | head -n 1)
+sock=$(find /root/.kolux-remote -maxdepth 2 -name 'relay-*.sock' -type s | head -n 1)
 [ -n "$sock" ] || { echo NO_SOCKET; exit 0; }
 daemon=""
 bridges=""
@@ -108,12 +108,12 @@ echo "LOGLINES=$(wc -l < "$(dirname "$sock")/relay.log")"
 function readRelayLog(target: DockerSshRelayTarget): string {
   return execDockerSshRelayTargetControlCommand(
     target,
-    `cat "$(dirname "$(find /root/.nightshift-remote -maxdepth 2 -name 'relay-*.sock' -type s | head -n 1)")/relay.log"`
+    `cat "$(dirname "$(find /root/.kolux-remote -maxdepth 2 -name 'relay-*.sock' -type s | head -n 1)")/relay.log"`
   )
 }
 
 /**
- * The live incident (Nightshift 1.4.198, 2026-09-05): both relay processes SIGSTOPped for 20 s, then
+ * The live incident (Kolux 1.4.198, 2026-09-05): both relay processes SIGSTOPped for 20 s, then
  * continued. The client redeployed while the host was frozen, its fresh daemon lost the bind but
  * had already rewritten the endpoint credential, and the surviving daemon then refused every
  * client forever — "Endpoint credential mismatch" every ~20 s with a PTY and zero clients, until
@@ -126,28 +126,25 @@ function readRelayLog(target: DockerSshRelayTarget): string {
  * has no mismatch line at all, because the wedge is gone rather than healed after the fact.
  */
 test.describe('SSH relay stall does not rotate the endpoint credential', () => {
-  test.skip(
-    !RUN_DOCKER_SSH,
-    'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run the dockerized SSH relay tests'
-  )
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run the dockerized SSH relay tests')
 
   for (const { stallMs, title } of STALL_CASES) {
-    test(title, async ({ nightshiftPage }, testInfo) => {
+    test(title, async ({ koluxPage }, testInfo) => {
       test.slow()
       let target: DockerSshRelayTarget | null = null
       try {
         target = startDockerSshRelayTarget(testInfo)
         enableDockerSshRelayTargetShellTitle(target)
-        await waitForSessionReady(nightshiftPage)
-        await waitForActiveWorktree(nightshiftPage)
-        const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-        await ensureTerminalVisible(nightshiftPage, 45_000)
-        await waitForActiveTerminalManager(nightshiftPage, 60_000)
-        const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+        await waitForSessionReady(koluxPage)
+        await waitForActiveWorktree(koluxPage)
+        const remote = await connectDockerSshRelayTarget(koluxPage, target)
+        await ensureTerminalVisible(koluxPage, 45_000)
+        await waitForActiveTerminalManager(koluxPage, 60_000)
+        const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
 
         const runId = Date.now()
-        await execInTerminal(nightshiftPage, ptyId, `printf 'STALL_BEFORE_%s\\n' ${runId}`)
-        await waitForTerminalOutput(nightshiftPage, `STALL_BEFORE_${runId}`, 30_000)
+        await execInTerminal(koluxPage, ptyId, `printf 'STALL_BEFORE_%s\\n' ${runId}`)
+        await waitForTerminalOutput(koluxPage, `STALL_BEFORE_${runId}`, 30_000)
         const before = snapshotRelayEndpoint(target)
 
         const stopped = stopDockerSshRelayProcesses(target)
@@ -159,8 +156,8 @@ test.describe('SSH relay stall does not rotate the endpoint credential', () => {
         // The oracle below is that it is delivered at most once; whether it is delivered at all
         // depends on which side of the liveness timeout the mux disposes, which this spec does not
         // pin — the brief's exactly-once guarantee lives at the mailbox, not the PTY byte stream.
-        await execInTerminal(nightshiftPage, ptyId, `printf 'STALL_DURING_%s\\n' ${runId}`)
-        await nightshiftPage.waitForTimeout(stallMs)
+        await execInTerminal(koluxPage, ptyId, `printf 'STALL_DURING_%s\\n' ${runId}`)
+        await koluxPage.waitForTimeout(stallMs)
         // More than `stopped` is legitimate: a client that timed out during the freeze may have
         // launched a bridge and a would-be daemon that are now parked behind the frozen listener.
         const continued = continueDockerSshRelayProcesses(target)
@@ -171,19 +168,19 @@ test.describe('SSH relay stall does not rotate the endpoint credential', () => {
         expect(continued).toBeGreaterThanOrEqual(stopped)
 
         await expect
-          .poll(() => readSshStatus(nightshiftPage, remote.targetId), {
+          .poll(() => readSshStatus(koluxPage, remote.targetId), {
             timeout: 120_000,
             message: 'SSH target never returned to connected after the relay was continued'
           })
           .toBe('connected')
-        await waitForActiveTerminalManager(nightshiftPage, 60_000)
+        await waitForActiveTerminalManager(koluxPage, 60_000)
 
         // Same pty: the session was live the whole time, so nothing may have replaced it.
         await expect
-          .poll(() => waitForActivePanePtyId(nightshiftPage, 60_000), { timeout: 60_000 })
+          .poll(() => waitForActivePanePtyId(koluxPage, 60_000), { timeout: 60_000 })
           .toBe(ptyId)
-        await execInTerminal(nightshiftPage, ptyId, `printf 'STALL_AFTER_%s\\n' ${runId}`)
-        await waitForTerminalOutput(nightshiftPage, `STALL_AFTER_${runId}`, 60_000)
+        await execInTerminal(koluxPage, ptyId, `printf 'STALL_AFTER_%s\\n' ${runId}`)
+        await waitForTerminalOutput(koluxPage, `STALL_AFTER_${runId}`, 60_000)
 
         const after = snapshotRelayEndpoint(target)
         // Whether the client went through the redeploy path (new bridge) or the frozen bridge simply
@@ -226,7 +223,7 @@ test.describe('SSH relay stall does not rotate the endpoint credential', () => {
           description: `${acceptsBefore} -> ${acceptsAfter}`
         })
 
-        const content = await getTerminalContent(nightshiftPage, 20_000)
+        const content = await getTerminalContent(koluxPage, 20_000)
         const duringCount = content.split(`STALL_DURING_${runId}`).length - 1
         testInfo.annotations.push({
           type: 'in-stall-input-delivered',

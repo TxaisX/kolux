@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Live freeze repro against a running Nightshift desktop + paired remote runtime.
+ * Live freeze repro against a running Kolux desktop + paired remote runtime.
  *
  * Models bulk-open of remote sessions under multi-worktree load.
  *
  * Usage:
  *   node config/scripts/live-remote-bulk-open-freeze-repro.mjs
- *   NIGHTSHIFT_FREEZE_ENV=paired-remote NIGHTSHIFT_FREEZE_CREATE=12 NIGHTSHIFT_FREEZE_SWITCH_PASSES=5 \
- *     NIGHTSHIFT_FREEZE_PARALLEL=8 node config/scripts/live-remote-bulk-open-freeze-repro.mjs
+ *   KOLUX_FREEZE_ENV=paired-remote KOLUX_FREEZE_CREATE=12 KOLUX_FREEZE_SWITCH_PASSES=5 \
+ *     KOLUX_FREEZE_PARALLEL=8 node config/scripts/live-remote-bulk-open-freeze-repro.mjs
  */
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, copyFileSync } from 'node:fs'
@@ -23,23 +23,23 @@ import {
   shouldCapSwitchTargets,
   worktreeSelector
 } from './live-remote-bulk-open-freeze-metrics.mjs'
-import { createNightshiftRpc } from './live-remote-freeze-rpc.mjs'
+import { createKoluxRpc } from './live-remote-freeze-rpc.mjs'
 
 const root = path.resolve(import.meta.dirname, '../..')
 const reportDir = path.join(root, 'test-results', 'freeze-repro')
-const envName = process.env.NIGHTSHIFT_FREEZE_ENV || 'paired-remote'
-const createCount = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_CREATE', 0))
-const switchPasses = Math.max(1, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_SWITCH_PASSES', 3))
-const parallel = Math.max(1, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_PARALLEL', 1))
+const envName = process.env.KOLUX_FREEZE_ENV || 'paired-remote'
+const createCount = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_CREATE', 0))
+const switchPasses = Math.max(1, readFreezeNumberEnv('KOLUX_FREEZE_SWITCH_PASSES', 3))
+const parallel = Math.max(1, readFreezeNumberEnv('KOLUX_FREEZE_PARALLEL', 1))
 // 0 = no cap (use all live terminals). Only positive env values limit targets.
-const maxSwitchTargets = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_MAX_SWITCH_TARGETS', 0))
-const softMs = readFreezeNumberEnv('NIGHTSHIFT_FREEZE_SOFT_MS', DEFAULT_SOFT_MS)
-const hardMs = readFreezeNumberEnv('NIGHTSHIFT_FREEZE_HARD_MS', DEFAULT_HARD_MS)
-const createWorktreeSpan = Math.max(1, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_CREATE_WT_SPAN', 16))
-const preFloodMs = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_PRE_FLOOD_MS', 3000))
-const scratchDir = process.env.NIGHTSHIFT_FREEZE_SCRATCH || ''
+const maxSwitchTargets = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_MAX_SWITCH_TARGETS', 0))
+const softMs = readFreezeNumberEnv('KOLUX_FREEZE_SOFT_MS', DEFAULT_SOFT_MS)
+const hardMs = readFreezeNumberEnv('KOLUX_FREEZE_HARD_MS', DEFAULT_HARD_MS)
+const createWorktreeSpan = Math.max(1, readFreezeNumberEnv('KOLUX_FREEZE_CREATE_WT_SPAN', 16))
+const preFloodMs = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_PRE_FLOOD_MS', 3000))
+const scratchDir = process.env.KOLUX_FREEZE_SCRATCH || ''
 
-const { nightshiftJsonSync, nightshiftJsonAsync } = createNightshiftRpc({ envName })
+const { koluxJsonSync, koluxJsonAsync } = createKoluxRpc({ envName })
 
 async function mapPool(items, concurrency, worker) {
   const results = Array.from({ length: items.length })
@@ -56,17 +56,17 @@ async function mapPool(items, concurrency, worker) {
   return results
 }
 
-function sampleNightshiftIfPossible() {
+function sampleKoluxIfPossible() {
   if (process.platform !== 'darwin') {
     return null
   }
   try {
-    const status = nightshiftJsonSync(['status'], { local: true }).result
+    const status = koluxJsonSync(['status'], { local: true }).result
     const pid = status?.app?.pid
     if (!pid) {
       return null
     }
-    const out = path.join(reportDir, `nightshift-sample-${Date.now()}.txt`)
+    const out = path.join(reportDir, `kolux-sample-${Date.now()}.txt`)
     const sampled = spawnSync('sample', [String(pid), '5', '-file', out], {
       timeout: 20_000,
       stdio: 'ignore'
@@ -94,14 +94,14 @@ async function main() {
     `[live-freeze] env=${envName} create=${createCount} passes=${switchPasses} parallel=${parallel}`
   )
 
-  const status = nightshiftJsonSync(['status'])
+  const status = koluxJsonSync(['status'])
   notes.push(
     `remote version=${status.result?.runtime?.appVersion} state=${status.result?.runtime?.state}`
   )
-  const local = nightshiftJsonSync(['status'], { local: true })
+  const local = koluxJsonSync(['status'], { local: true })
   notes.push(`local version=${local.result?.runtime?.appVersion} pid=${local.result?.app?.pid}`)
 
-  const worktrees = nightshiftJsonSync(['worktree', 'list']).result
+  const worktrees = koluxJsonSync(['worktree', 'list']).result
   const wtList = worktrees?.worktrees || worktrees?.items || worktrees || []
   if (!Array.isArray(wtList) || wtList.length === 0) {
     throw new Error(`No worktrees on environment ${envName}`)
@@ -125,7 +125,7 @@ async function main() {
       }
       const marker = `LIVE_BULK_${Date.now()}_${i}`
       try {
-        const createdTerm = await nightshiftJsonAsync(
+        const createdTerm = await koluxJsonAsync(
           [
             'terminal',
             'create',
@@ -165,7 +165,7 @@ async function main() {
 
   let live = []
   try {
-    const listed = nightshiftJsonSync(['terminal', 'list'])
+    const listed = koluxJsonSync(['terminal', 'list'])
     const terms = listed.result?.terminals || []
     live = terms
       .filter(
@@ -213,7 +213,7 @@ async function main() {
       const batchResults = await Promise.all(
         batch.map(async (handle) => {
           try {
-            const sw = await nightshiftJsonAsync(['terminal', 'switch', '--terminal', handle], {
+            const sw = await koluxJsonAsync(['terminal', 'switch', '--terminal', handle], {
               timeoutMs: 90_000
             })
             return { handle, ms: sw.elapsedMs, ok: true }
@@ -253,10 +253,10 @@ async function main() {
   const bulkWallMs = performance.now() - switchStarted
   const avgSwitchMs = switchCount ? sumSwitchMs / switchCount : 0
 
-  const statusProbe = nightshiftJsonSync(['status'], { local: true })
+  const statusProbe = koluxJsonSync(['status'], { local: true })
   let memoryProbeMs = null
   try {
-    const mem = nightshiftJsonSync(['diagnostics', 'memory'], { local: true, timeoutMs: 120_000 })
+    const mem = koluxJsonSync(['diagnostics', 'memory'], { local: true, timeoutMs: 120_000 })
     memoryProbeMs = mem.elapsedMs
     notes.push(`memory diagnostic ms=${mem.elapsedMs.toFixed(0)}`)
   } catch (error) {
@@ -274,7 +274,7 @@ async function main() {
 
   let samplePath = null
   if (softFreeze || hardFreeze) {
-    samplePath = sampleNightshiftIfPossible()
+    samplePath = sampleKoluxIfPossible()
     if (samplePath) {
       notes.push(`sample=${samplePath}`)
     } else {

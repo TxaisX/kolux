@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { NIGHTSHIFT_VM_RECIPE_ID_PATTERN, NIGHTSHIFT_VM_RECIPE_ID_RULE } from '../nightshift-yaml'
-import type { NightshiftVmRecipe } from '../nightshift-yaml-hook-types'
+import { KOLUX_VM_RECIPE_ID_PATTERN, KOLUX_VM_RECIPE_ID_RULE } from '../kolux-yaml'
+import type { KoluxVmRecipe } from '../kolux-yaml-hook-types'
 
 const recipeCommandSchema = z
   .string()
@@ -12,10 +12,10 @@ const recipeCommandSchema = z
 const pluginVmRecipeArtifactSchema = z
   .object({
     schemaVersion: z.literal(1),
-    id: z.string().regex(NIGHTSHIFT_VM_RECIPE_ID_PATTERN, NIGHTSHIFT_VM_RECIPE_ID_RULE),
+    id: z.string().regex(KOLUX_VM_RECIPE_ID_PATTERN, KOLUX_VM_RECIPE_ID_RULE),
     name: z.string().trim().min(1).max(128),
     description: z.string().trim().min(1).max(1024).optional(),
-    checkoutMode: z.enum(['nightshift-worktree', 'provisioned-root']).optional(),
+    checkoutMode: z.enum(['kolux-worktree', 'provisioned-root']).optional(),
     create: recipeCommandSchema,
     suspend: recipeCommandSchema.optional(),
     resume: recipeCommandSchema.optional(),
@@ -37,7 +37,7 @@ export type PluginVmRecipeCommand = {
   command: string
 }
 
-export function parsePluginVmRecipeArtifact(raw: string): NightshiftVmRecipe {
+export function parsePluginVmRecipeArtifact(raw: string): KoluxVmRecipe {
   const parsed = pluginVmRecipeArtifactSchema.parse(JSON.parse(raw))
   const destroyDisabled = parsed.destroy === 'none'
   return {
@@ -53,7 +53,7 @@ export function parsePluginVmRecipeArtifact(raw: string): NightshiftVmRecipe {
   }
 }
 
-export function listPluginVmRecipeCommands(recipe: NightshiftVmRecipe): PluginVmRecipeCommand[] {
+export function listPluginVmRecipeCommands(recipe: KoluxVmRecipe): PluginVmRecipeCommand[] {
   return [
     { phase: 'create', command: recipe.create },
     ...(recipe.suspend ? [{ phase: 'suspend' as const, command: recipe.suspend }] : []),

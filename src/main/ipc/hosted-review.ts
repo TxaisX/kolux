@@ -157,9 +157,9 @@ export function registerHostedReviewHandlers(store: Store, stats: StatsCollector
       ...getLocalProjectWorktreeGitOptions(store, repo),
       admissionTier: 'interactive' as const
     }
-    // Why: the dirty preflight must not count Nightshift's own shared symlinks as user work (issue #10451).
+    // Why: the dirty preflight must not count Kolux's own shared symlinks as user work (issue #10451).
     // Remote creation never materializes them, and `repo.path` is a path on the
-    // remote host — reading it locally would resolve an unrelated `nightshift.yaml`.
+    // remote host — reading it locally would resolve an unrelated `kolux.yaml`.
     // Not dead code: SSH ignores these, so this only prevents that read and a poisoned cache entry.
     const sharedLinkPaths = getRepoSshConnectionId(repo) ? [] : getWorktreeSharedLinkPaths(repo)
     const executionOptions =

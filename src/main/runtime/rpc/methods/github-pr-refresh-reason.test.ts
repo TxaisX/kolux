@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { GITHUB_METHODS } from './github'
 
 function makeRequest(method: string, params?: unknown): RpcRequest {
@@ -14,7 +14,7 @@ describe('github.prForBranch refresh reason', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       getRepoPRForBranch: vi.fn().mockResolvedValue({ kind: 'no-pr', fetchedAt: 1 })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: GITHUB_METHODS })
 
     await dispatcher.dispatch(

@@ -19,8 +19,8 @@ let root: Root
 
 const repo: Repo = {
   id: 'remote-repo',
-  displayName: 'Nightshift',
-  path: '/srv/nightshift',
+  displayName: 'Kolux',
+  path: '/srv/kolux',
   badgeColor: '#737373',
   addedAt: 100,
   kind: 'git',
@@ -28,7 +28,7 @@ const repo: Repo = {
 }
 const project: Project = {
   id: 'github:TxaisX/nightshift',
-  displayName: 'Nightshift',
+  displayName: 'Kolux',
   badgeColor: '#737373',
   sourceRepoIds: [repo.id],
   createdAt: 100,
@@ -116,11 +116,11 @@ describe('RepositoryHostSetupsSection workspace window availability', () => {
     expect(currentSetup?.textContent).not.toContain('Ready')
     // The host is reachable — this must not be reported as a lost connection.
     expect(container.textContent).not.toContain('Disconnected')
-    expect(container.textContent).toContain('Open Nightshift on')
+    expect(container.textContent).toContain('Open Kolux on')
   })
 
   it('keeps a graph-ready runtime owner Ready when it reports no desktop window', () => {
-    // Why: headless `nightshift serve` (#6844) owns a ready graph with an openable
+    // Why: headless `kolux serve` (#6844) owns a ready graph with an openable
     // desktop window — the degraded check must not widen into a renderer requirement.
     renderWithOwnerStatus(makeStatus({ graphStatus: 'ready', desktopWindowStatus: 'openable' }))
 

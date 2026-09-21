@@ -34,7 +34,7 @@ const PINNED_CLASSIFICATIONS: readonly PinnedRow[] = [
   ['', null, null, false, false, null, false, null, null],
   ['zsh', null, null, false, false, null, false, null, null],
   ['bash', null, null, false, false, null, false, null, null],
-  ['nwparker@mac: ~/nightshift', null, null, false, false, null, false, null, null],
+  ['nwparker@mac: ~/kolux', null, null, false, false, null, false, null, null],
   ['npm run dev', null, null, false, false, null, false, null, null],
   ['opencode-blinker', null, null, false, false, null, false, null, null],
   [
@@ -232,9 +232,9 @@ const PINNED_CLASSIFICATIONS: readonly PinnedRow[] = [
     'cursor'
   ],
   ['cursor position reset', 'idle', null, false, false, null, false, null, null],
-  ['\u03c0 > session - ~/nightshift', 'idle', 'Pi', false, false, 'Pi', false, 'pi', 'pi'],
+  ['\u03c0 > session - ~/kolux', 'idle', 'Pi', false, false, 'Pi', false, 'pi', 'pi'],
   ['\u03c0 ! blocked-session', 'permission', 'Pi', false, false, 'Pi', false, 'pi', 'pi'],
-  ['\u280b \u03c0 - session - ~/nightshift', 'working', 'Pi', true, false, 'Pi', true, 'pi', 'pi'],
+  ['\u280b \u03c0 - session - ~/kolux', 'working', 'Pi', true, false, 'Pi', true, 'pi', 'pi'],
   ['zsh | \u280b Codex', 'working', 'Codex', true, false, 'Codex', true, 'codex', 'codex'],
   ['tmux | claude - action required', 'permission', null, false, false, null, false, null, null],
   [

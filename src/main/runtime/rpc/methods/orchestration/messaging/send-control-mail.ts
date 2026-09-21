@@ -1,5 +1,5 @@
 import type { MessagePriority, MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { encodeFederatedControlMessage } from '../../../../orchestration/federation-control-message'
 import { ORCHESTRATION_FEDERATION_CONTROL_MAIL_PROTOCOL_VERSION } from '../../../../../../shared/protocol-version'
@@ -14,7 +14,7 @@ type SendReceipt = <T extends object>(receipt: T) => T & { warnings?: SendRecipi
 /** Delivers coordinator control mail to a federated worker when `to` names its exact Dispatch. */
 export function sendFederatedControlMail(args: {
   params: SendParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   from: string
   to: string
@@ -43,7 +43,7 @@ export function sendFederatedControlMail(args: {
   if (federatedTarget.protocol_version < ORCHESTRATION_FEDERATION_CONTROL_MAIL_PROTOCOL_VERSION) {
     throw new OrchestrationError(
       'capability_unsupported',
-      `Federated Dispatch ${dispatchId} does not support coordinator control mail; start a fresh worker after updating its Nightshift server.`
+      `Federated Dispatch ${dispatchId} does not support coordinator control mail; start a fresh worker after updating its Kolux server.`
     )
   }
   if (db.getWorkerDispatch(dispatchId)?.state !== 'ready') {

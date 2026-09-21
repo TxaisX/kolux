@@ -6,7 +6,7 @@
  * long `cmd.exe /c` line whose caret-escaped payload is natural-language agent
  * prompt text is what Microsoft Defender for Endpoint's command-line model
  * scores as obfuscation, and `codex.cmd` sits in the spawn cluster of a real
- * MDE incident against Nightshift. These shims are generated files whose entire body
+ * MDE incident against Kolux. These shims are generated files whose entire body
  * is "find node, run this script", so reading one and spawning
  * `node.exe <script> <args…>` removes cmd.exe — and with it the escaping —
  * from the process tree.
@@ -25,7 +25,7 @@ import { readFileSync, statSync, type Stats } from 'node:fs'
 import { win32 } from 'node:path'
 
 /** Escape hatch if resolution ever picks the wrong target in the field. */
-const DISABLE_FLAG = 'NIGHTSHIFT_DISABLE_CMD_SHIM_RESOLUTION'
+const DISABLE_FLAG = 'KOLUX_DISABLE_CMD_SHIM_RESOLUTION'
 
 /** Real shims are under 2KB; anything larger is not one of these generators. */
 const MAX_SHIM_BYTES = 64 * 1024
@@ -227,7 +227,7 @@ function readParsedShim(program: string): ParsedWindowsCmdShim | null {
   const parsed = parseWindowsCmdShim(contents)
   // Clearing wholesale drops hot entries with cold ones, where an LRU would
   // not. Left as is because the cap is per-process and one entry per distinct
-  // `.cmd` path Nightshift ever spawns; reaching it means a re-read, not a wrong
+  // `.cmd` path Kolux ever spawns; reaching it means a re-read, not a wrong
   // answer.
   if (parseCache.size >= PARSE_CACHE_LIMIT) {
     parseCache.clear()
@@ -292,7 +292,7 @@ function resolveShimNode(directory: string, env: NodeJS.ProcessEnv): string | nu
   }
   const resolved = probeShimNode(directory, pathValue, pathExtValue)
   // Same wholesale eviction as the parse cache, for the same reason: the cap is
-  // per-process and one entry per distinct shim directory Nightshift ever spawns from.
+  // per-process and one entry per distinct shim directory Kolux ever spawns from.
   if (nodeCache.size >= NODE_CACHE_LIMIT) {
     nodeCache.clear()
   }

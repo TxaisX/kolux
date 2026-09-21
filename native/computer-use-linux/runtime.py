@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Nightshift Linux computer-use bridge.
+"""Kolux Linux computer-use bridge.
 
-The Node sidecar owns Nightshift's public API. This process is intentionally a small
+The Node sidecar owns Kolux's public API. This process is intentionally a small
 AT-SPI adapter: read one JSON operation file, execute it in the user's desktop
 session, and print one JSON response.
 """
@@ -704,7 +704,7 @@ def handshake_response():
     has_screenshot = Gdk is not None and GdkPixbuf is not None and not is_wayland
     return {
         "platform": "linux",
-        "provider": "nightshift-computer-use-linux",
+        "provider": "kolux-computer-use-linux",
         "providerVersion": "1.0.0",
         "protocolVersion": 1,
         "supports": {

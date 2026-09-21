@@ -1,6 +1,6 @@
 import type { TaskPageLinearListSelectionModel } from './use-task-page-linear-list-selection'
 import { useMemo, useCallback, useEffect } from 'react'
-import { filterLinearIssuesBySearchQuery } from '@/components/task-page-linear-in-nightshift-issues'
+import { filterLinearIssuesBySearchQuery } from '@/components/task-page-linear-in-kolux-issues'
 import {
   clampLinearIssueListLimit,
   LINEAR_ISSUE_LIST_MAX
@@ -39,12 +39,12 @@ export function useTaskPageLinearListProjectionPrelude(model: TaskPageLinearList
   } = model
   const filteredLinearIssues = useMemo(() => {
     const searchedIssues =
-      linearMode === 'in-nightshift'
+      linearMode === 'in-kolux'
         ? filterLinearIssuesBySearchQuery(displayedLinearIssues, appliedLinearSearch)
         : displayedLinearIssues
-    // Why: 'in-nightshift' is scoped by local workspace links, not by team, and it has no "Fetch more" —
+    // Why: 'in-kolux' is scoped by local workspace links, not by team, and it has no "Fetch more" —
     // a team filter would silently drop a linked ticket with no way to recover it.
-    if (activeLinearIssueContextLabel || linearMode === 'in-nightshift') {
+    if (activeLinearIssueContextLabel || linearMode === 'in-kolux') {
       return searchedIssues
     }
     // Why: team options can arrive after issue rows render; treat an empty selection as "all" until reconciliation sets teams.

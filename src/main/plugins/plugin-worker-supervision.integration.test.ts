@@ -53,7 +53,7 @@ function createStateNotifications(): {
 }
 
 beforeAll(async () => {
-  bundleRoot = await mkdtemp(join(tmpdir(), 'nightshift-plugin-host-bundle-'))
+  bundleRoot = await mkdtemp(join(tmpdir(), 'kolux-plugin-host-bundle-'))
   hostEntryPath = join(bundleRoot, 'plugin-host-entry.cjs')
   await build({
     entryPoints: [join(process.cwd(), 'src', 'main', 'plugins', 'plugin-host-entry.ts')],
@@ -79,13 +79,13 @@ afterAll(async () => {
 })
 
 async function createPluginSpec(
-  source = `export default function activate(nightshift) { nightshift.commands.register('run', async () => ({ ok: true })); }`
+  source = `export default function activate(kolux) { kolux.commands.register('run', async () => ({ ok: true })); }`
 ): Promise<PluginWorkerSpawnSpec> {
-  const rootDir = await mkdtemp(join(tmpdir(), 'nightshift-plugin-supervision-'))
+  const rootDir = await mkdtemp(join(tmpdir(), 'kolux-plugin-supervision-'))
   pluginRoots.push(rootDir)
   await writeFile(join(rootDir, 'main.mjs'), source)
   return {
-    pluginKey: 'nightshift-samples.supervision',
+    pluginKey: 'kolux-samples.supervision',
     rootDir,
     mainEntry: 'main.mjs',
     grantedCapabilities: []
@@ -95,8 +95,8 @@ async function createPluginSpec(
 describe('real plugin worker supervision', () => {
   it('terminates and supervises a live worker that disconnects IPC', async () => {
     const spec = await createPluginSpec(`
-      export default function activate(nightshift) {
-        nightshift.commands.register('disconnect', async () => {
+      export default function activate(kolux) {
+        kolux.commands.register('disconnect', async () => {
           process.disconnect?.()
           setInterval(() => {}, 1_000)
           await new Promise(() => {})

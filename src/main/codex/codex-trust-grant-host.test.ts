@@ -18,8 +18,7 @@ beforeEach(() => {
   // Stand in for the guest shell: rc banner first, then the payload inside the
   // command's own fence. The identity script execs, so no closing fence is written.
   runProcessMock.mockImplementation((spec: { args: string[] }) => {
-    const nonce =
-      /__NIGHTSHIFT_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(String(spec.args.at(-1)))?.[1] ?? ''
+    const nonce = /__KOLUX_WSL_CAPTURE_BEGIN_([^_]+)__/.exec(String(spec.args.at(-1)))?.[1] ?? ''
     return Promise.resolve({
       code: 0,
       signal: null,
@@ -27,7 +26,7 @@ beforeEach(() => {
       stderr: '',
       stdout:
         'To run a command as administrator (user "root"), use "sudo <command>".\n\n' +
-        `__NIGHTSHIFT_WSL_CAPTURE_BEGIN_${nonce}__/home/alice/.local/bin/codex\ncodex-cli 1.2.3\n`
+        `__KOLUX_WSL_CAPTURE_BEGIN_${nonce}__/home/alice/.local/bin/codex\ncodex-cli 1.2.3\n`
     })
   })
   resolveCodexCommandMock.mockReset()

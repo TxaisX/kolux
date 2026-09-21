@@ -50,7 +50,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -209,7 +209,7 @@ describe('registerPtyHandlers', () => {
 
     it('answers unknown for remote-scoped ids without consulting local providers', async () => {
       // Why: a locally routed provider would answer confidently — and wrongly —
-      // for a PTY that lives on a remote Nightshift host.
+      // for a PTY that lives on a remote Kolux host.
       setLocalPtyProvider(new LocalPtyProvider())
       const controller = registerAgentClaimController()
 

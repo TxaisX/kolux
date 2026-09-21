@@ -61,7 +61,7 @@ export const runtimeCall: PreloadStub = vi.fn()
 /** Registers the stubbed window.api fs/runtime surface shared by the runtime file client suites. */
 export function installRuntimeFileClientEnvironment(): void {
   beforeEach(() => {
-    delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+    delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
     clearRuntimeCompatibilityCacheForTests()
     clearLegacyQuickOpenInventoryCacheForTests()
     replaceRuntimeEnvironmentRevisions([])

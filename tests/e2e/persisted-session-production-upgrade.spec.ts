@@ -1,11 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 import { PTY_SESSION_ID_SEPARATOR } from '../../src/shared/pty-session-id-format'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { ensureTerminalVisible, waitForSessionReady } from './helpers/store'
 import {
   discoverActivePtyId,
@@ -46,8 +46,8 @@ function installProductionSessionFixture(
   const profilePath = path.join(
     userDataDir,
     'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
+    DEFAULT_LOCAL_KOLUX_PROFILE_ID,
+    'kolux-data.json'
   )
   const profile = JSON.parse(readFileSync(profilePath, 'utf8')) as Record<string, unknown>
   const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf8')) as FixtureSession

@@ -3,7 +3,7 @@ import { readFileSync, rmSync, statSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import { app } from 'electron'
 
-// Why: headless `nightshift serve` backs browser panes with offscreen BrowserWindows.
+// Why: headless `kolux serve` backs browser panes with offscreen BrowserWindows.
 // On Linux, Electron has no display platform without an X server and segfaults
 // when such a window loads a page (verified: --headless/--ozone-platform=headless
 // also crash; only a virtual display works). So before app.whenReady, ensure a
@@ -65,7 +65,7 @@ function probeDisplayLock(displayNumber: number): DisplayLockProbe {
 }
 
 /**
- * Liveness for a display Nightshift did not create. An X server writes its lock beside the socket and
+ * Liveness for a display Kolux did not create. An X server writes its lock beside the socket and
  * both survive a crash (verified against Xvfb under SIGKILL), so a socket with no lock was never
  * left by a crashed server — it is an endpoint published from elsewhere: a container bind-mounting
  * only /tmp/.X11-unix, WSLg, or a foreign PID namespace. We cannot judge those, and refusing them
@@ -76,8 +76,8 @@ function isForeignDisplayServerAlive(displayNumber: number): boolean {
 }
 
 /**
- * Liveness for Nightshift's own VIRTUAL_DISPLAY_NUMBER. Stricter on purpose: `removeStaleDisplayArtifacts`
- * unlinks the lock before the socket, so a lockless socket here is Nightshift's own half-finished
+ * Liveness for Kolux's own VIRTUAL_DISPLAY_NUMBER. Stricter on purpose: `removeStaleDisplayArtifacts`
+ * unlinks the lock before the socket, so a lockless socket here is Kolux's own half-finished
  * teardown, not a foreign endpoint. Adopting it would resurrect the orphan-socket bug and stop the
  * cleanup below from self-healing.
  */
@@ -102,7 +102,7 @@ function sleepSync(ms: number): void {
 }
 
 // Why not socket presence alone: a stale socket we failed to unlink (a root-owned one left by a
-// crashed system Xvfb, which `User=nightshift` serve cannot remove) still exists after our own Xvfb
+// crashed system Xvfb, which `User=kolux` serve cannot remove) still exists after our own Xvfb
 // refused to bind the display. Treating that as ready sets DISPLAY to a dead server and Chromium
 // dies in Ozone init with SIGSEGV instead of reporting an unusable display.
 function waitForDisplayReady(displayNumber: number, deadline: number): boolean {
@@ -142,9 +142,9 @@ export function hasUsableLinuxDisplay(env: NodeJS.ProcessEnv = process.env): boo
 }
 
 export const MISSING_LINUX_DISPLAY_MESSAGE = [
-  'Nightshift needs a usable display server, but the selected X11 or Wayland endpoint is unavailable.',
+  'Kolux needs a usable display server, but the selected X11 or Wayland endpoint is unavailable.',
   'Check DISPLAY, WAYLAND_DISPLAY, XDG_RUNTIME_DIR, and any --ozone-platform override.',
-  `Use \`nightshift-ide serve\` to run headless. On a bare server, ${XVFB_INSTALL_GUIDANCE}`
+  `Use \`kolux-ide serve\` to run headless. On a bare server, ${XVFB_INSTALL_GUIDANCE}`
 ].join('\n')
 
 // Why: an X server may bind only the abstract namespace (`@/tmp/.X11-unix/X0`), which leaves no
@@ -188,7 +188,7 @@ function hasUsableXDisplay(value: string | undefined): boolean {
   }
   const displayNumber = Number(localDisplay[1])
   if (isUnixSocket(xvfbSocketPath(displayNumber))) {
-    // Why the managed number is never treated as foreign: Nightshift's own teardown unlinks the lock
+    // Why the managed number is never treated as foreign: Kolux's own teardown unlinks the lock
     // before the socket, so a lockless socket on VIRTUAL_DISPLAY_NUMBER is our own half-finished
     // cleanup even when DISPLAY names it explicitly. Trusting it there would accept a dead display.
     return displayNumber === VIRTUAL_DISPLAY_NUMBER
@@ -239,7 +239,7 @@ export function ensureVirtualDisplayForHeadlessServe(options: { isServeMode: boo
     }
     console.warn(
       `[serve] DISPLAY=${configuredDisplay} is not verifiably live; leaving it untouched. ` +
-        'Unset DISPLAY to let Nightshift start its own Xvfb.'
+        'Unset DISPLAY to let Kolux start its own Xvfb.'
     )
     return false
   }

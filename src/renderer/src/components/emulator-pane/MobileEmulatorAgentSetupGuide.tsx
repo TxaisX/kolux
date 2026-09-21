@@ -60,7 +60,7 @@ export function MobileEmulatorAgentSetupGuide({
               </span>
               {translate(
                 'auto.components.emulator.pane.MobileEmulatorAgentSetupGuide.72736b051f',
-                'Set up Nightshift CLI + skill when you want agents to drive this simulator.'
+                'Set up Kolux CLI + skill when you want agents to drive this simulator.'
               )}
             </>
           )}

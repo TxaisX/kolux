@@ -51,7 +51,7 @@ export async function findCursorInteractiveElements(
           } catch {}
         });
 
-        window.__nightshiftCursorInteractive = matchedElements;
+        window.__koluxCursorInteractive = matchedElements;
         return JSON.stringify(found);
       })()`,
       returnByValue: true
@@ -62,7 +62,7 @@ export async function findCursorInteractiveElements(
     for (let i = 0; i < elements.length; i++) {
       try {
         const { result: objResult } = (await sendCommand('Runtime.evaluate', {
-          expression: `window.__nightshiftCursorInteractive[${i}]`
+          expression: `window.__koluxCursorInteractive[${i}]`
         })) as { result: { objectId?: string } }
 
         if (!objResult.objectId) {
@@ -91,7 +91,7 @@ export async function findCursorInteractiveElements(
 
     // Clean up
     await sendCommand('Runtime.evaluate', {
-      expression: 'delete window.__nightshiftCursorInteractive',
+      expression: 'delete window.__koluxCursorInteractive',
       returnByValue: true
     })
   } catch {

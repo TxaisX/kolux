@@ -11,7 +11,7 @@ import {
 import { sanitizeSshTargetGeneration } from '../../../shared/ssh-target-generation'
 
 /**
- * Mirrors a remote Nightshift server's own SSH targets into that environment's
+ * Mirrors a remote Kolux server's own SSH targets into that environment's
  * per-environment SSH bucket (store slice `runtime-environment-ssh`), so a
  * desktop client attached to the server gets live reconnect overlays for the
  * server's SSH-backed workspaces (STA-1468, desktop topology). Never touches

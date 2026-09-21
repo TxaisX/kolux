@@ -23,7 +23,12 @@ function baseInput(): UsageOverviewModelInput {
 function claudeRateLimits(overrides: Partial<ProviderRateLimits> = {}): ProviderRateLimits {
   return {
     provider: 'claude',
-    session: { usedPercent: 42, windowMinutes: 300, resetsAt: NOW + 2 * 60 * 60 * 1000 + 10 * 60 * 1000, resetDescription: null },
+    session: {
+      usedPercent: 42,
+      windowMinutes: 300,
+      resetsAt: NOW + 2 * 60 * 60 * 1000 + 10 * 60 * 1000,
+      resetDescription: null
+    },
     weekly: { usedPercent: 10, windowMinutes: 10080, resetsAt: null, resetDescription: null },
     updatedAt: NOW - 1000,
     error: null,
@@ -37,7 +42,16 @@ describe('buildUsageOverviewModel', () => {
     const model = buildUsageOverviewModel(baseInput())
     const ids = model.providers.map((p) => p.id)
     expect(ids).toEqual(
-      expect.arrayContaining(['claude', 'codex', 'gemini', 'opencode', 'kimi', 'antigravity', 'minimax', 'grok'])
+      expect.arrayContaining([
+        'claude',
+        'codex',
+        'gemini',
+        'opencode',
+        'kimi',
+        'antigravity',
+        'minimax',
+        'grok'
+      ])
     )
     expect(model.providers.find((p) => p.id === 'claude')?.status).toBe('unavailable')
   })
@@ -57,8 +71,19 @@ describe('buildUsageOverviewModel', () => {
 
   it('maps fetching/error/unavailable statuses through', () => {
     const input = baseInput()
-    input.rateLimits.codex = claudeRateLimits({ provider: 'codex', status: 'fetching', session: null, weekly: null })
-    input.rateLimits.gemini = claudeRateLimits({ provider: 'gemini', status: 'error', error: 'boom', session: null, weekly: null })
+    input.rateLimits.codex = claudeRateLimits({
+      provider: 'codex',
+      status: 'fetching',
+      session: null,
+      weekly: null
+    })
+    input.rateLimits.gemini = claudeRateLimits({
+      provider: 'gemini',
+      status: 'error',
+      error: 'boom',
+      session: null,
+      weekly: null
+    })
     const model = buildUsageOverviewModel(input)
     expect(model.providers.find((p) => p.id === 'codex')?.status).toBe('fetching')
     const gemini = model.providers.find((p) => p.id === 'gemini')
@@ -66,7 +91,7 @@ describe('buildUsageOverviewModel', () => {
     expect(gemini?.error).toBe('boom')
   })
 
-  it('folds today\'s tokens and recent sessions in from the usage slice', () => {
+  it("folds today's tokens and recent sessions in from the usage slice", () => {
     const input = baseInput()
     input.rateLimits.claude = claudeRateLimits()
     input.claudeUsage = {
@@ -80,15 +105,27 @@ describe('buildUsageOverviewModel', () => {
       },
       summary: null,
       daily: [
-        { day: '2026-09-14', inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        { day: '2026-09-13', inputTokens: 999, outputTokens: 999, cacheReadTokens: 0, cacheWriteTokens: 0 }
+        {
+          day: '2026-09-14',
+          inputTokens: 100,
+          outputTokens: 50,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0
+        },
+        {
+          day: '2026-09-13',
+          inputTokens: 999,
+          outputTokens: 999,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0
+        }
       ],
       recentSessions: [
         {
           sessionId: 's1',
           lastActiveAt: '2026-09-14T11:00:00.000Z',
           durationMinutes: 5,
-          projectLabel: 'nightshift',
+          projectLabel: 'kolux',
           branch: null,
           model: 'claude',
           turns: 3,
@@ -102,7 +139,9 @@ describe('buildUsageOverviewModel', () => {
     const model = buildUsageOverviewModel(input)
     const claude = model.providers.find((p) => p.id === 'claude')
     expect(claude?.todayTokens).toBe(150)
-    expect(claude?.recentSessions).toEqual([{ label: 'nightshift', tokens: 15, when: '2026-09-14T11:00:00.000Z' }])
+    expect(claude?.recentSessions).toEqual([
+      { label: 'kolux', tokens: 15, when: '2026-09-14T11:00:00.000Z' }
+    ])
   })
 
   it('lists a detected agent with no rate-limit or usage source as unavailable', () => {

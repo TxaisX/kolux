@@ -12,14 +12,14 @@ vi.mock('../runtime-client', async () => {
     readonly isRemote = false
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
   }
   return {
     RuntimeClient,
     RuntimeClientError,
     RuntimeRpcFailureError,
-    serveNightshiftApp: vi.fn(),
-    getDefaultUserDataPath: vi.fn(() => '/tmp/nightshift-user-data')
+    serveKoluxApp: vi.fn(),
+    getDefaultUserDataPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 })
 
@@ -32,8 +32,8 @@ import { main } from '../index'
 import { RuntimeClientError } from '../runtime/types'
 import { okFixture, queueFixtures } from '../test-fixtures'
 
-const originalTerminalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
-const originalPaneKey = process.env.NIGHTSHIFT_PANE_KEY
+const originalTerminalHandle = process.env.KOLUX_TERMINAL_HANDLE
+const originalPaneKey = process.env.KOLUX_PANE_KEY
 
 const restoreEnv = (name: string, value: string | undefined): void => {
   if (value === undefined) {
@@ -52,16 +52,16 @@ describe('orchestration gate commands carry caller identity', () => {
     getTerminalHandleMock.mockReset()
     logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_PANE_KEY
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_PANE_KEY
     process.exitCode = 0
   })
 
   afterEach(() => {
     logSpy.mockRestore()
     errorSpy.mockRestore()
-    restoreEnv('NIGHTSHIFT_TERMINAL_HANDLE', originalTerminalHandle)
-    restoreEnv('NIGHTSHIFT_PANE_KEY', originalPaneKey)
+    restoreEnv('KOLUX_TERMINAL_HANDLE', originalTerminalHandle)
+    restoreEnv('KOLUX_PANE_KEY', originalPaneKey)
     process.exitCode = 0
   })
 
@@ -69,7 +69,7 @@ describe('orchestration gate commands carry caller identity', () => {
     callMock.mock.calls.find((call) => call[0] === method)?.[1] as Record<string, unknown>
 
   it('sends the bound coordinator handle to gateCreate', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_coord'
     queueFixtures(
       callMock,
       okFixture('req_identity', { identity: { handle: 'term_coord', live: true } }),
@@ -88,8 +88,8 @@ describe('orchestration gate commands carry caller identity', () => {
   })
 
   it('remints a stale environment handle before authorizing gateCreate', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_stale'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab_coord:leaf_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_stale'
+    process.env.KOLUX_PANE_KEY = 'tab_coord:leaf_coord'
     callMock.mockImplementation(async (method: string) => {
       if (method === 'terminal.resolveIdentity') {
         return okFixture('req_identity', { identity: { handle: 'term_stale', live: false } })
@@ -143,7 +143,7 @@ describe('orchestration gate commands carry caller identity', () => {
   })
 
   it('scopes gate-list to the caller when no Run is named', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_coord'
     queueFixtures(
       callMock,
       okFixture('req_identity', { identity: { handle: 'term_coord', live: true } }),
@@ -197,7 +197,7 @@ describe('orchestration gate commands carry caller identity', () => {
   })
 
   it('reports idempotent recovery when a mutation connection drops', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_coord'
     callMock
       .mockResolvedValueOnce(
         okFixture('req_identity', { identity: { handle: 'term_coord', live: true } })
@@ -205,11 +205,11 @@ describe('orchestration gate commands carry caller identity', () => {
       .mockRejectedValueOnce(
         new RuntimeClientError(
           'runtime_unavailable',
-          'The Nightshift runtime closed the connection before responding. Restart Nightshift and try again. Orchestration mutation request ID: mutation_1.',
+          'The Kolux runtime closed the connection before responding. Restart Kolux and try again. Orchestration mutation request ID: mutation_1.',
           {
             orchestrationRequestId: 'mutation_1',
             originalCommand: [
-              'nightshift',
+              'kolux',
               'orchestration',
               'gate-create',
               '--task',
@@ -240,7 +240,7 @@ describe('orchestration gate commands carry caller identity', () => {
     expect(output.error.message).toContain('may already have taken effect')
     expect(output.error.message).toContain('Failed stage: dispatch_input')
     expect(output.error.message).toMatch(/Residual resources:.*repo::child.*term_worker/)
-    expect(output.error.message).not.toMatch(/restart Nightshift/i)
+    expect(output.error.message).not.toMatch(/restart Kolux/i)
     expect(output.error.data).toMatchObject({
       orchestrationRequestId: 'mutation_1',
       failedStage: 'dispatch_input',

@@ -79,11 +79,11 @@ describe('CodexRuntimeHomeService', () => {
   })
 
   it('uses the canonical Electron userData for legacy active host migration', async () => {
-    const staleUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-stale-runtime-home-'))
+    const staleUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-stale-runtime-home-'))
     const staleRuntimeHomePath = join(staleUserDataDir, 'codex-runtime-home', 'home')
     try {
       mkdirSync(staleRuntimeHomePath, { recursive: true })
-      process.env.NIGHTSHIFT_USER_DATA_PATH = staleUserDataDir
+      process.env.KOLUX_USER_DATA_PATH = staleUserDataDir
       const legacyLaunchHomePath = join(
         testState.userDataDir,
         'codex-runtime-home',
@@ -103,12 +103,12 @@ describe('CodexRuntimeHomeService', () => {
       writeFileSync(getSystemCodexAuthPath(), '{"account":"system"}\n', 'utf-8')
       const store = createStore(createSettings())
 
-      const { configureNightshiftUserDataPathEnv } = await import('../startup/configure-process')
-      configureNightshiftUserDataPathEnv()
+      const { configureKoluxUserDataPathEnv } = await import('../startup/configure-process')
+      configureKoluxUserDataPathEnv()
       const { CodexRuntimeHomeService } = await import('./runtime-home-service')
       new CodexRuntimeHomeService(store as never)
 
-      expect(process.env.NIGHTSHIFT_USER_DATA_PATH).toBe(testState.userDataDir)
+      expect(process.env.KOLUX_USER_DATA_PATH).toBe(testState.userDataDir)
       expect(normalizeLinkTarget(readlinkSync(legacyActiveHomePath))).toBe(
         normalizeLinkTarget(getRuntimeCodexHomePath())
       )
@@ -208,11 +208,11 @@ describe('CodexRuntimeHomeService', () => {
 
     expect(readFileSync(join(runtimeSessionsDir, 'session.json'), 'utf-8')).toBe('{"turns":[1]}')
     expect(
-      readFileSync(join(runtimeSessionsDir, 'session.nightshift-legacy-account-1.json'), 'utf-8')
+      readFileSync(join(runtimeSessionsDir, 'session.kolux-legacy-account-1.json'), 'utf-8')
     ).toBe('{"turns":[1,2]}')
     expect(
       readFileSync(
-        join(runtimeSessionsDir, 'nested', 'session.nightshift-legacy-account-1.json'),
+        join(runtimeSessionsDir, 'nested', 'session.kolux-legacy-account-1.json'),
         'utf-8'
       )
     ).toBe('{"turns":[2,3]}')

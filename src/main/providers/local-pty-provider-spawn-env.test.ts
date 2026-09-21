@@ -47,7 +47,7 @@ vi.mock('fs', () => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn(() => '/tmp/nightshift-user-data')
+    getPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 }))
 
@@ -168,14 +168,14 @@ describe('LocalPtyProvider', () => {
         rows: 24,
         cwd: 'C:\\repo',
         env: {
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test',
-          NIGHTSHIFT_PATH_ROOT: 'C:\\Users\\nightshift\\AppData\\Local',
-          PATH: '%nightshift_path_root%\\agy\\bin;C:\\Windows'
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test',
+          KOLUX_PATH_ROOT: 'C:\\Users\\kolux\\AppData\\Local',
+          PATH: '%kolux_path_root%\\agy\\bin;C:\\Windows'
         }
       })
 
       expect(spawnMock.mock.calls.at(-1)?.[2].env.PATH).toBe(
-        'C:\\Users\\nightshift\\AppData\\Local\\agy\\bin;C:\\Windows'
+        'C:\\Users\\kolux\\AppData\\Local\\agy\\bin;C:\\Windows'
       )
     })
 
@@ -208,9 +208,9 @@ describe('LocalPtyProvider', () => {
     })
 
     it.each([
-      // fish EXPORTS fish_history, so a Nightshift launched from a fish pane hands every
+      // fish EXPORTS fish_history, so a Kolux launched from a fish pane hands every
       // pane the LAUNCHING worktree's session — even with isolation off (STA-4682).
-      ['an inherited Nightshift session', 'nightshift_abc123', undefined],
+      ['an inherited Kolux session', 'kolux_abc123', undefined],
       ['a user value', 'mine', 'mine']
     ])('history isolation off: %s', async (_kind, inherited, expected) => {
       const previous = process.env.fish_history
@@ -230,10 +230,10 @@ describe('LocalPtyProvider', () => {
     })
 
     it.each([
-      // HISTFILE is exported, so a Nightshift launched from a pane in another worktree
+      // HISTFILE is exported, so a Kolux launched from a pane in another worktree
       // hands every pane that worktree's history file — isolation off included.
       [
-        'an inherited Nightshift path',
+        'an inherited Kolux path',
         '/fake/userData/terminal-history/aabbccddeeff0011/zsh_history',
         undefined
       ],
@@ -255,8 +255,8 @@ describe('LocalPtyProvider', () => {
       expect(spawnMock.mock.calls.at(-1)![2].env.HISTFILE).toBe(expected)
     })
 
-    it('does not inherit NODE_ENV from the Nightshift process env', async () => {
-      // Why: NODE_ENV in Nightshift's process is Nightshift's build mode (electron-vite sets
+    it('does not inherit NODE_ENV from the Kolux process env', async () => {
+      // Why: NODE_ENV in Kolux's process is Kolux's build mode (electron-vite sets
       // `development` in dev runs); leaking it breaks `next build` and Vitest.
       const previous = process.env.NODE_ENV
       process.env.NODE_ENV = 'development'
@@ -327,9 +327,9 @@ describe('LocalPtyProvider', () => {
     it('honors explicit terminal env overrides after deleting requested defaults', async () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
-          env.TERM_PROGRAM = 'Nightshift'
-          env.NIGHTSHIFT_STALE_TEST_ENV = '/tmp/nightshift-stale'
-          env.PATH = `/tmp/nightshift-stale:${env.PATH ?? ''}`
+          env.TERM_PROGRAM = 'Kolux'
+          env.KOLUX_STALE_TEST_ENV = '/tmp/kolux-stale'
+          env.PATH = `/tmp/kolux-stale:${env.PATH ?? ''}`
           return env
         }
       })
@@ -339,18 +339,18 @@ describe('LocalPtyProvider', () => {
         rows: 24,
         env: {
           TERM: 'screen-256color',
-          PATH: '/tmp/nightshift-agent-teams-bin:/usr/bin',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test'
+          PATH: '/tmp/kolux-agent-teams-bin:/usr/bin',
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test'
         },
-        envToDelete: ['TERM_PROGRAM', 'NIGHTSHIFT_STALE_TEST_ENV']
+        envToDelete: ['TERM_PROGRAM', 'KOLUX_STALE_TEST_ENV']
       })
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[2].name).toBe('screen-256color')
       expect(spawnCall[2].env.TERM).toBe('screen-256color')
-      expect(spawnCall[2].env.PATH.split(':')[0]).toBe('/tmp/nightshift-agent-teams-bin')
+      expect(spawnCall[2].env.PATH.split(':')[0]).toBe('/tmp/kolux-agent-teams-bin')
       expect(spawnCall[2].env.TERM_PROGRAM).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_STALE_TEST_ENV).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_STALE_TEST_ENV).toBeUndefined()
     })
 
     it('does not re-promote a legacy attribution path for Agent Teams', async () => {
@@ -358,8 +358,8 @@ describe('LocalPtyProvider', () => {
         cols: 80,
         rows: 24,
         env: {
-          PATH: '/tmp/nightshift-terminal-attribution/posix:/usr/bin',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test'
+          PATH: '/tmp/kolux-terminal-attribution/posix:/usr/bin',
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test'
         }
       })
 
@@ -418,17 +418,15 @@ describe('LocalPtyProvider', () => {
         PATH: process.env.PATH,
         LD_LIBRARY_PATH: process.env.LD_LIBRARY_PATH
       }
-      process.env.APPIMAGE = '/data/apps/nightshift.appimage'
-      process.env.APPDIR = '/tmp/.mount_nightshift123'
-      process.env.ARGV0 = '/data/apps/nightshift.appimage'
+      process.env.APPIMAGE = '/data/apps/kolux.appimage'
+      process.env.APPDIR = '/tmp/.mount_kolux123'
+      process.env.ARGV0 = '/data/apps/kolux.appimage'
       process.env.OWD = '/home/user/project'
-      process.env.APPIMAGE_LIBRARY_PATH = '/tmp/.mount_nightshift123/usr/lib'
-      process.env.PATH = [
-        '/tmp/.mount_nightshift123',
-        '/tmp/.mount_nightshift123/usr/sbin',
-        '/usr/bin'
-      ].join(delimiter)
-      process.env.LD_LIBRARY_PATH = ['/tmp/.mount_nightshift123/usr/lib', '/opt/audio/lib'].join(
+      process.env.APPIMAGE_LIBRARY_PATH = '/tmp/.mount_kolux123/usr/lib'
+      process.env.PATH = ['/tmp/.mount_kolux123', '/tmp/.mount_kolux123/usr/sbin', '/usr/bin'].join(
+        delimiter
+      )
+      process.env.LD_LIBRARY_PATH = ['/tmp/.mount_kolux123/usr/lib', '/opt/audio/lib'].join(
         delimiter
       )
 
@@ -522,8 +520,8 @@ describe('LocalPtyProvider', () => {
     it('uses shell wrapper when MiMo home must survive shell startup', async () => {
       provider.configure({
         buildSpawnEnv: (_id, env) => {
-          env.MIMOCODE_HOME = '/tmp/nightshift-mimocode-overlay'
-          env.NIGHTSHIFT_MIMOCODE_HOME = '/tmp/nightshift-mimocode-overlay'
+          env.MIMOCODE_HOME = '/tmp/kolux-mimocode-overlay'
+          env.KOLUX_MIMOCODE_HOME = '/tmp/kolux-mimocode-overlay'
           return env
         }
       })
@@ -533,7 +531,7 @@ describe('LocalPtyProvider', () => {
       const spawnCall = spawnMock.mock.calls.at(-1)!
       expect(spawnCall[1]).toEqual(['-l'])
       expect(spawnCall[2].env.ZDOTDIR).toMatch(/shell-ready[\\/]zsh/)
-      expect(spawnCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+      expect(spawnCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
     })
 
     it('promotes the agent-teams shim onto the Windows `Path` spelling', async () => {
@@ -542,7 +540,7 @@ describe('LocalPtyProvider', () => {
         buildSpawnEnv: (_id, env) => {
           // Why: host env collapses Windows PATH onto `Path` and prepends its own shim dir.
           delete env.PATH
-          env.Path = `/tmp/nightshift-stale:${env.Path ?? ''}`
+          env.Path = `/tmp/kolux-stale:${env.Path ?? ''}`
           return env
         }
       })
@@ -551,25 +549,25 @@ describe('LocalPtyProvider', () => {
         cols: 80,
         rows: 24,
         env: {
-          Path: '/tmp/nightshift-agent-teams-bin:/usr/bin',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test'
+          Path: '/tmp/kolux-agent-teams-bin:/usr/bin',
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test'
         }
       })
 
       const spawnEnv = spawnMock.mock.calls.at(-1)![2].env
       expect(Object.keys(spawnEnv).filter((key) => /^path$/i.test(key))).toEqual(['Path'])
-      expect(spawnEnv.Path.split(':')[0]).toBe('/tmp/nightshift-agent-teams-bin')
+      expect(spawnEnv.Path.split(':')[0]).toBe('/tmp/kolux-agent-teams-bin')
     })
 
-    it('does not inherit parent Nightshift pane identity when caller omits pane env', async () => {
+    it('does not inherit parent Kolux pane identity when caller omits pane env', async () => {
       const saved = {
-        NIGHTSHIFT_PANE_KEY: process.env.NIGHTSHIFT_PANE_KEY,
-        NIGHTSHIFT_TAB_ID: process.env.NIGHTSHIFT_TAB_ID,
-        NIGHTSHIFT_WORKTREE_ID: process.env.NIGHTSHIFT_WORKTREE_ID
+        KOLUX_PANE_KEY: process.env.KOLUX_PANE_KEY,
+        KOLUX_TAB_ID: process.env.KOLUX_TAB_ID,
+        KOLUX_WORKTREE_ID: process.env.KOLUX_WORKTREE_ID
       }
-      process.env.NIGHTSHIFT_PANE_KEY = 'parent-tab:parent-leaf'
-      process.env.NIGHTSHIFT_TAB_ID = 'parent-tab'
-      process.env.NIGHTSHIFT_WORKTREE_ID = 'parent-worktree'
+      process.env.KOLUX_PANE_KEY = 'parent-tab:parent-leaf'
+      process.env.KOLUX_TAB_ID = 'parent-tab'
+      process.env.KOLUX_WORKTREE_ID = 'parent-worktree'
 
       try {
         await provider.spawn({ cols: 80, rows: 24 })
@@ -584,29 +582,29 @@ describe('LocalPtyProvider', () => {
       }
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
-      expect(spawnCall[2].env.NIGHTSHIFT_PANE_KEY).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_TAB_ID).toBeUndefined()
-      expect(spawnCall[2].env.NIGHTSHIFT_WORKTREE_ID).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_PANE_KEY).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_TAB_ID).toBeUndefined()
+      expect(spawnCall[2].env.KOLUX_WORKTREE_ID).toBeUndefined()
     })
 
-    it('preserves explicit child Nightshift pane identity over parent env', async () => {
+    it('preserves explicit child Kolux pane identity over parent env', async () => {
       const saved = {
-        NIGHTSHIFT_PANE_KEY: process.env.NIGHTSHIFT_PANE_KEY,
-        NIGHTSHIFT_TAB_ID: process.env.NIGHTSHIFT_TAB_ID,
-        NIGHTSHIFT_WORKTREE_ID: process.env.NIGHTSHIFT_WORKTREE_ID
+        KOLUX_PANE_KEY: process.env.KOLUX_PANE_KEY,
+        KOLUX_TAB_ID: process.env.KOLUX_TAB_ID,
+        KOLUX_WORKTREE_ID: process.env.KOLUX_WORKTREE_ID
       }
-      process.env.NIGHTSHIFT_PANE_KEY = 'parent-tab:parent-leaf'
-      process.env.NIGHTSHIFT_TAB_ID = 'parent-tab'
-      process.env.NIGHTSHIFT_WORKTREE_ID = 'parent-worktree'
+      process.env.KOLUX_PANE_KEY = 'parent-tab:parent-leaf'
+      process.env.KOLUX_TAB_ID = 'parent-tab'
+      process.env.KOLUX_WORKTREE_ID = 'parent-worktree'
 
       try {
         await provider.spawn({
           cols: 80,
           rows: 24,
           env: {
-            NIGHTSHIFT_PANE_KEY: 'child-tab:child-leaf',
-            NIGHTSHIFT_TAB_ID: 'child-tab',
-            NIGHTSHIFT_WORKTREE_ID: 'child-worktree'
+            KOLUX_PANE_KEY: 'child-tab:child-leaf',
+            KOLUX_TAB_ID: 'child-tab',
+            KOLUX_WORKTREE_ID: 'child-worktree'
           }
         })
       } finally {
@@ -620,9 +618,9 @@ describe('LocalPtyProvider', () => {
       }
 
       const spawnCall = spawnMock.mock.calls.at(-1)!
-      expect(spawnCall[2].env.NIGHTSHIFT_PANE_KEY).toBe('child-tab:child-leaf')
-      expect(spawnCall[2].env.NIGHTSHIFT_TAB_ID).toBe('child-tab')
-      expect(spawnCall[2].env.NIGHTSHIFT_WORKTREE_ID).toBe('child-worktree')
+      expect(spawnCall[2].env.KOLUX_PANE_KEY).toBe('child-tab:child-leaf')
+      expect(spawnCall[2].env.KOLUX_TAB_ID).toBe('child-tab')
+      expect(spawnCall[2].env.KOLUX_WORKTREE_ID).toBe('child-worktree')
     })
   })
 })

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import { readHookEndpoint } from './helpers/agent-hook-endpoint'
 
@@ -14,7 +14,7 @@ async function postCodexHookEvent(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Nightshift-Agent-Hook-Token': endpoint.token
+      'X-Kolux-Agent-Hook-Token': endpoint.token
     },
     body: JSON.stringify({
       paneKey,
@@ -30,41 +30,41 @@ async function postCodexHookEvent(
 
 test('shows keep-awake mode and Agent activity in the status bar', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
+  await waitForSessionReady(koluxPage)
 
-  const offStatus = nightshiftPage.getByRole('button', {
+  const offStatus = koluxPage.getByRole('button', {
     name: 'Keep computer awake, Off · Inactive'
   })
   await expect(offStatus).toBeVisible()
   await expect(offStatus).toHaveText('Off')
   await offStatus.click()
-  await expect(nightshiftPage.getByRole('menuitemradio', { name: /^On/ })).toBeVisible()
-  await expect(nightshiftPage.getByRole('menuitemradio', { name: /^Agent/ })).toBeVisible()
-  await expect(nightshiftPage.getByRole('menuitemradio', { name: /^Off/ })).toBeVisible()
-  const menuProofPath = process.env.NIGHTSHIFT_CAFFEINATE_MENU_PROOF_PATH
+  await expect(koluxPage.getByRole('menuitemradio', { name: /^On/ })).toBeVisible()
+  await expect(koluxPage.getByRole('menuitemradio', { name: /^Agent/ })).toBeVisible()
+  await expect(koluxPage.getByRole('menuitemradio', { name: /^Off/ })).toBeVisible()
+  const menuProofPath = process.env.KOLUX_CAFFEINATE_MENU_PROOF_PATH
   if (menuProofPath) {
-    await nightshiftPage.screenshot({ path: menuProofPath })
+    await koluxPage.screenshot({ path: menuProofPath })
   }
-  await nightshiftPage.getByRole('menuitemradio', { name: /^Agent/ }).click()
+  await koluxPage.getByRole('menuitemradio', { name: /^Agent/ }).click()
 
-  const agentInactiveStatus = nightshiftPage.getByRole('button', {
+  const agentInactiveStatus = koluxPage.getByRole('button', {
     name: 'Keep computer awake, Agent · Inactive'
   })
   await expect(agentInactiveStatus).toBeVisible()
 
   const paneKey = `e2e-caffeinate-tab:${randomUUID()}`
   await postCodexHookEvent(electronApp, paneKey, 'UserPromptSubmit')
-  const agentActiveStatus = nightshiftPage.getByRole('button', {
+  const agentActiveStatus = koluxPage.getByRole('button', {
     name: 'Keep computer awake, Agent · Active'
   })
   await expect(agentActiveStatus).toBeVisible()
   await expect(agentActiveStatus).toHaveText('Agent')
 
-  const proofPath = process.env.NIGHTSHIFT_CAFFEINATE_PROOF_PATH
+  const proofPath = process.env.KOLUX_CAFFEINATE_PROOF_PATH
   if (proofPath) {
-    await nightshiftPage.screenshot({ path: proofPath })
+    await koluxPage.screenshot({ path: proofPath })
   }
 
   await postCodexHookEvent(electronApp, paneKey, 'Stop')

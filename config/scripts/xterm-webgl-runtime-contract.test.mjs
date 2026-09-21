@@ -12,14 +12,14 @@ const readInstalled = (name, file) =>
 
 describe('vendored xterm WebGL runtime contract', () => {
   it('keeps shared WebGL atlas invalidation per renderer', () => {
-    // Nightshift panes with the same font share one atlas, so a page merge or a clear in one
+    // Kolux panes with the same font share one atlas, so a page merge or a clear in one
     // pane invalidates cached texture coords in all of them. Recovery has to be observed
     // per renderer: a consume-once flag lets whichever pane draws first eat the
     // notification and leaves its siblings drawing from a stale model.
     //
     // Upstream owns this since addon-webgl 0.20.0-beta.299, as a monotonic
     // pageLayoutVersion each renderer latches independently, so it is no longer something
-    // Nightshift patches in. Assert it on the resolved dependency rather than on the patch.
+    // Kolux patches in. Assert it on the resolved dependency rather than on the patch.
     const atlas = readInstalled('@xterm/addon-webgl', 'src/TextureAtlas.ts')
     expect(atlas).toContain('public get pageLayoutVersion(): number')
     expect(atlas).toContain('this._pageLayoutVersion++')
@@ -37,7 +37,7 @@ describe('vendored xterm WebGL runtime contract', () => {
     }
   })
 
-  it('keeps the Nightshift-only WebGL hunks in the generated patch', () => {
+  it('keeps the Kolux-only WebGL hunks in the generated patch', () => {
     const webgl = xtermManifest.packages.find((entry) => entry.name === '@xterm/addon-webgl')
     const patch = readProject(webgl.patch)
 

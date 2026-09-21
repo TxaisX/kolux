@@ -7,14 +7,14 @@ describe('buildGitLabProviderIdentity', () => {
     expect(
       buildGitLabProviderIdentity({
         host: 'gitlab.example.com',
-        path: 'acme/platform/nightshift'
+        path: 'acme/platform/kolux'
       })
     ).toEqual({
       provider: 'gitlab',
-      projectId: 'acme/platform/nightshift',
+      projectId: 'acme/platform/kolux',
       namespace: 'acme/platform',
-      project: 'nightshift',
-      webUrl: 'https://gitlab.example.com/acme/platform/nightshift'
+      project: 'kolux',
+      webUrl: 'https://gitlab.example.com/acme/platform/kolux'
     })
   })
 
@@ -38,12 +38,12 @@ describe('getTaskPageRepoCacheInput', () => {
   it('copies repo identity fields used by the GitHub work-item cache', () => {
     const repo = {
       id: 'repo-1',
-      path: '/tmp/nightshift',
+      path: '/tmp/kolux',
       executionHostId: 'local'
     } as Repo
     const input = getTaskPageRepoCacheInput(repo)
     expect(input.id).toBe('repo-1')
-    expect(input.path).toBe('/tmp/nightshift')
+    expect(input.path).toBe('/tmp/kolux')
     expect(input.executionHostId).toBe('local')
   })
 })

@@ -26,7 +26,7 @@ describe('nested worker depth migration (v30)', () => {
   })
 
   function createV29Database(): string {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-nested-depth-migration-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-nested-depth-migration-'))
     const dbPath = join(tempDir, 'orchestration.db')
     const fresh = new OrchestrationDb(dbPath)
     fresh.close()

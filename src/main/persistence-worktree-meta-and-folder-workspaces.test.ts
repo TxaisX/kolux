@@ -56,7 +56,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -93,9 +93,9 @@ describe('Store', () => {
       provider: 'jira' as const,
       type: 'issue' as const,
       number: 0,
-      title: 'NIGHTSHIFT-123 Link Jira',
-      url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Link Jira',
+      url: 'https://company.atlassian.net/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     }
     const linkedTaskSourceContext = {
       kind: 'task-source' as const,
@@ -106,7 +106,7 @@ describe('Store', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       },
       accountLabel: 'ada@example.com'
     }
@@ -147,9 +147,9 @@ describe('Store', () => {
             provider: 'jira',
             type: 'issue',
             number: 0,
-            title: 'NIGHTSHIFT-123 Link Jira',
-            url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-            jiraIdentifier: 'NIGHTSHIFT-123'
+            title: 'KOLUX-123 Link Jira',
+            url: 'https://company.atlassian.net/browse/KOLUX-123',
+            jiraIdentifier: 'KOLUX-123'
           },
           linkedTaskSourceContext: {
             kind: 'task-source',
@@ -161,7 +161,7 @@ describe('Store', () => {
               provider: 'jira',
               siteId: 'site-1',
               siteUrl: 'https://company.atlassian.net',
-              projectKey: 'NIGHTSHIFT'
+              projectKey: 'KOLUX'
             }
           }
         }
@@ -170,9 +170,7 @@ describe('Store', () => {
 
     const store = await createStore()
 
-    expect(store.getWorktreeMeta('wt-malformed')?.linkedWorkItem?.jiraIdentifier).toBe(
-      'NIGHTSHIFT-123'
-    )
+    expect(store.getWorktreeMeta('wt-malformed')?.linkedWorkItem?.jiraIdentifier).toBe('KOLUX-123')
     expect(store.getWorktreeMeta('wt-malformed')?.linkedTaskSourceContext).toBeNull()
   })
 
@@ -192,9 +190,9 @@ describe('Store', () => {
             provider: 'jira',
             type: 'issue',
             number: 0,
-            title: 'NIGHTSHIFT-123 Link Jira',
-            url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-            jiraIdentifier: 'NIGHTSHIFT-123'
+            title: 'KOLUX-123 Link Jira',
+            url: 'https://company.atlassian.net/browse/KOLUX-123',
+            jiraIdentifier: 'KOLUX-123'
           },
           linkedTaskSourceContext: {
             kind: 'task-source',
@@ -206,7 +204,7 @@ describe('Store', () => {
               provider: 'jira',
               siteId: 'site-1',
               siteUrl: 'https://company.atlassian.net',
-              projectKey: 'NIGHTSHIFT'
+              projectKey: 'KOLUX'
             }
           }
         }
@@ -215,9 +213,7 @@ describe('Store', () => {
 
     const store = await createStore()
 
-    expect(store.getWorktreeMeta('wt-sibling')?.linkedWorkItem?.jiraIdentifier).toBe(
-      'NIGHTSHIFT-123'
-    )
+    expect(store.getWorktreeMeta('wt-sibling')?.linkedWorkItem?.jiraIdentifier).toBe('KOLUX-123')
     expect(store.getWorktreeMeta('wt-sibling')?.linkedTaskSourceContext).toBeNull()
     // Corrupt entries must not survive: gcStaleWorktreeMeta keeps timestamp-less keys, and downstream
     // consumers deref worktreeMeta values unguarded (also keeps a rollback to an older build loadable).
@@ -325,9 +321,9 @@ describe('Store', () => {
       provider: 'jira' as const,
       type: 'issue' as const,
       number: 0,
-      title: 'NIGHTSHIFT-123 Link Jira',
-      url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Link Jira',
+      url: 'https://company.atlassian.net/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     }
     const linkedTaskSourceContext = {
       kind: 'task-source' as const,
@@ -339,7 +335,7 @@ describe('Store', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       },
       accountLabel: 'ada@example.com'
     }

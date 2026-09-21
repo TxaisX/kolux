@@ -130,8 +130,8 @@ function closeUnpreparedPopup(
 }
 
 /**
- * Hosts a guest-opened popup inside a Nightshift-built window whose top strip is a
- * separate, Nightshift-controlled WebContentsView showing the popup's current
+ * Hosts a guest-opened popup inside a Kolux-built window whose top strip is a
+ * separate, Kolux-controlled WebContentsView showing the popup's current
  * origin. A default Electron child window has no address bar, so arbitrary
  * web content could open windows whose destination the user cannot verify.
  */
@@ -158,7 +158,7 @@ export function openPopupWithOriginBar(
     title: initialOrigin.label
   })
 
-  // Why: the origin bar renders only Nightshift's own data: URL and must stay
+  // Why: the origin bar renders only Kolux's own data: URL and must stay
   // isolated from the (arbitrary) popup content below it.
   const originBarView = new WebContentsView({
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }

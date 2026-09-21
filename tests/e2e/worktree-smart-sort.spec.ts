@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
 import type { TerminalPaneLayoutNode } from '../../src/shared/terminal-tab-types'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
@@ -211,20 +211,20 @@ async function getSmartSortScenarioReadiness(
 }
 
 test.describe('Worktree Smart Sort', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   test('renders attention-needed worktrees above finished agents in Smart mode', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const scenario = await seedSmartSortScenario(nightshiftPage)
+    const scenario = await seedSmartSortScenario(koluxPage)
     const { blockedId, doneId } = scenario
 
     await expect
-      .poll(() => getSmartSortScenarioReadiness(nightshiftPage, scenario), {
+      .poll(() => getSmartSortScenarioReadiness(koluxPage, scenario), {
         timeout: 8_000,
         message: 'Smart sort scenario did not seed live PTYs and fresh agent statuses'
       })
@@ -237,13 +237,13 @@ test.describe('Worktree Smart Sort', () => {
       })
 
     await expect
-      .poll(async () => (await getVisibleWorktreeIdsByTop(nightshiftPage)).slice(0, 2), {
+      .poll(async () => (await getVisibleWorktreeIdsByTop(koluxPage)).slice(0, 2), {
         timeout: 12_000,
         message: 'Smart sort did not promote the blocked worktree in the visible sidebar'
       })
       .toEqual([blockedId, doneId])
 
-    await expect(worktreeRow(nightshiftPage, blockedId)).toBeVisible()
-    await expect(worktreeRow(nightshiftPage, doneId)).toBeVisible()
+    await expect(worktreeRow(koluxPage, blockedId)).toBeVisible()
+    await expect(worktreeRow(koluxPage, doneId)).toBeVisible()
   })
 })

@@ -1,6 +1,6 @@
 /**
  * Persisted-state fixtures for the startup benchmark: the git repos, GitHub
- * remotes, restored terminal tabs, and unreachable SSH targets that `nightshift-data.json`
+ * remotes, restored terminal tabs, and unreachable SSH targets that `kolux-data.json`
  * must contain for a run to exercise the corresponding startup path.
  */
 import { spawnSync } from 'node:child_process'
@@ -35,7 +35,7 @@ function buildGithubRepoFixtures(fixtureDir, githubRepos) {
         'remote',
         'add',
         'origin',
-        `https://github.com/nightshift-bench/bench-gh-repo-${i}.git`
+        `https://github.com/kolux-bench/bench-gh-repo-${i}.git`
       ],
       { stdio: 'ignore' }
     )
@@ -68,7 +68,7 @@ function buildUnreachableSshTargets(count) {
       label: `Unreachable Host ${i}`,
       host: `203.0.113.${i + 1}`,
       port: 22,
-      username: 'nightshift',
+      username: 'kolux',
       source: 'manual',
       lastRequiredPassphrase: false
     })
@@ -80,7 +80,7 @@ export function writePersistedStateFixture(
   fixtureDir,
   { stateProfile, sessionTabs, githubRepos, sshUnreachableTargets = 0 }
 ) {
-  const dataPath = join(fixtureDir, 'nightshift-data.json')
+  const dataPath = join(fixtureDir, 'kolux-data.json')
   if (stateProfile === 'none' && githubRepos === 0 && sshUnreachableTargets === 0) {
     try {
       unlinkSync(dataPath)

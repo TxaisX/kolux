@@ -318,7 +318,7 @@ describe('DeleteWorktreeDialog lineage copy', () => {
     const { default: DeleteWorktreeDialog } = await import('./DeleteWorktreeDialog')
     const markup = renderToStaticMarkup(<DeleteWorktreeDialog />)
 
-    expect(markup).toContain('from Nightshift. The project folder on disk will not be deleted.')
+    expect(markup).toContain('from Kolux. The project folder on disk will not be deleted.')
     expect(markup).not.toContain('including uncommitted or untracked files')
   })
 

@@ -30,7 +30,7 @@ import { countLooseRefs } from './loose-ref-count'
 const roots: string[] = []
 
 async function makeRefsTree(counts: Record<string, number>): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-loose-refs-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-loose-refs-'))
   roots.push(root)
   const refs = join(root, 'refs')
   for (const [namespace, count] of Object.entries(counts)) {
@@ -65,7 +65,7 @@ describe('countLooseRefs', () => {
   })
 
   it('reports zero for a repository with no refs directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-loose-refs-missing-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-loose-refs-missing-'))
     roots.push(root)
 
     await expect(countLooseRefs(join(root, 'refs'), 100)).resolves.toEqual({

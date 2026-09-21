@@ -7,8 +7,8 @@ vi.mock('../native-chat/agent-session-wire/structured-agent-session-registry', (
   getStructuredAgentSessionHost: () => hostRef.current
 }))
 
-const { NightshiftRuntimeWithGetPtyRecordForPaneKey } =
-  await import('./nightshift-runtime-get-pty-record-for-pane-key')
+const { KoluxRuntimeWithGetPtyRecordForPaneKey } =
+  await import('./kolux-runtime-get-pty-record-for-pane-key')
 const {
   mintStructuredWorkerHandle,
   mintStructuredWorkerPaneKey,
@@ -49,7 +49,7 @@ function registerWorker(): string {
 }
 
 function runtime() {
-  return Object.assign(Object.create(NightshiftRuntimeWithGetPtyRecordForPaneKey.prototype), {
+  return Object.assign(Object.create(KoluxRuntimeWithGetPtyRecordForPaneKey.prototype), {
     _orchestrationDb: null
   }) as { getStructuredWorkerPaneKeyForSession: (sessionId: string) => string | null }
 }

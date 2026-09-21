@@ -1,8 +1,8 @@
 import { browserSessionRegistry } from './browser-session-registry'
 import type { BrowserSessionRegistryProfileOptions } from './browser-session-registry'
 import { collectOrphanedBrowserRoutePartitionStorage } from './browser-route-partition-storage-runtime'
-import { configureRouteSessionsForNightshiftProfile } from './browser-route-session-runtime'
-import { configurePairedRuntimeBrowserClientHostsForNightshiftProfile } from './paired-runtime-browser-client-host-runtime'
+import { configureRouteSessionsForKoluxProfile } from './browser-route-session-runtime'
+import { configurePairedRuntimeBrowserClientHostsForKoluxProfile } from './paired-runtime-browser-client-host-runtime'
 
 let initialized = false
 
@@ -16,13 +16,13 @@ export function initializeBrowserSessionsForApp(
   }
 
   if (activeProfile) {
-    browserSessionRegistry.configureForNightshiftProfile(activeProfile)
-    configureRouteSessionsForNightshiftProfile({
-      nightshiftProfileId: activeProfile.nightshiftProfileId,
+    browserSessionRegistry.configureForKoluxProfile(activeProfile)
+    configureRouteSessionsForKoluxProfile({
+      koluxProfileId: activeProfile.koluxProfileId,
       profileDirectory: activeProfile.profileDirectory
     })
-    configurePairedRuntimeBrowserClientHostsForNightshiftProfile({
-      nightshiftProfileId: activeProfile.nightshiftProfileId
+    configurePairedRuntimeBrowserClientHostsForKoluxProfile({
+      koluxProfileId: activeProfile.koluxProfileId
     })
     void collectOrphanedBrowserRoutePartitionStorage(activeProfile.listLocalSshTargetIds).catch(
       (error) => {

@@ -5,20 +5,20 @@
  * for delete, as a row the user can delete again).
  *
  * The four conventions in the tree today:
- *   `.<name>.nightshift-skill-delete-<uuid>`      (service)
- *   `.<name>.nightshift-remove-backup-<uuid>`     (skill-remove-transaction)
- *   `.<name>.nightshift-placement-backup-<id>`    (skill-placement-transaction-controller)
- *   `.<name>.nightshift-placement-staging-<id>`   (skill-placement-transaction-controller)
+ *   `.<name>.kolux-skill-delete-<uuid>`      (service)
+ *   `.<name>.kolux-remove-backup-<uuid>`     (skill-remove-transaction)
+ *   `.<name>.kolux-placement-backup-<id>`    (skill-placement-transaction-controller)
+ *   `.<name>.kolux-placement-staging-<id>`   (skill-placement-transaction-controller)
  *
  * Matched by shape rather than by an enumerated list so the native walker and
  * WSL's `find -prune` (which can only express a glob) cannot drift apart.
  */
-export const SKILL_DELETE_STAGING_MARKER = '.nightshift-skill-delete-'
+export const SKILL_DELETE_STAGING_MARKER = '.kolux-skill-delete-'
 
 /** The `find -name` glob the WSL guest script prunes on. */
-export const SKILL_STAGING_GLOB = '.*.nightshift-*'
+export const SKILL_STAGING_GLOB = '.*.kolux-*'
 
-const SKILL_STAGING_NAME = /^\..+\.nightshift-/u
+const SKILL_STAGING_NAME = /^\..+\.kolux-/u
 
 export function isSkillStagingEntryName(name: string): boolean {
   return SKILL_STAGING_NAME.test(name)

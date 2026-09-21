@@ -18,10 +18,10 @@ export function registerCodexAccountsTestHomes(): void {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
-    testState.userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-accounts-'))
-    testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-home-'))
-    testState.previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-    process.env.NIGHTSHIFT_USER_DATA_PATH = testState.userDataDir
+    testState.userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-accounts-'))
+    testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-home-'))
+    testState.previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+    process.env.KOLUX_USER_DATA_PATH = testState.userDataDir
     mkdirSync(join(testState.fakeHomeDir, '.codex'), { recursive: true })
   })
 
@@ -29,9 +29,9 @@ export function registerCodexAccountsTestHomes(): void {
     rmSync(testState.userDataDir, { recursive: true, force: true })
     rmSync(testState.fakeHomeDir, { recursive: true, force: true })
     if (testState.previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = testState.previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = testState.previousUserDataPath
     }
   })
 }
@@ -101,7 +101,7 @@ export function createManagedHome(
 ): string {
   const managedHomePath = join(rootDir, 'codex-accounts', accountId, 'home')
   mkdirSync(managedHomePath, { recursive: true })
-  writeFileSync(join(managedHomePath, '.nightshift-managed-home'), `${accountId}\n`, 'utf-8')
+  writeFileSync(join(managedHomePath, '.kolux-managed-home'), `${accountId}\n`, 'utf-8')
   if (config) {
     writeFileSync(join(managedHomePath, 'config.toml'), config, 'utf-8')
   }

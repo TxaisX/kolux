@@ -42,10 +42,10 @@ import {
   RENDERER_RECOVERY_LOAD_TIMEOUT_MS
 } from './renderer-recovery-reload-watchdog'
 
-const DOCUMENT_URL = 'file:///opt/nightshift/renderer/index.html'
+const DOCUMENT_URL = 'file:///opt/kolux/renderer/index.html'
 // A real macOS install URL: the crash-report redactor's PATH_PATTERNS provably leave this one intact.
 const INSTALL_PATH_LOAD_ERROR =
-  "ERR_FILE_NOT_FOUND (-6) loading 'file:///Users/jane.doe/Applications/Nightshift.app/Contents/Resources/app.asar/out/renderer/index.html'"
+  "ERR_FILE_NOT_FOUND (-6) loading 'file:///Users/jane.doe/Applications/Kolux.app/Contents/Resources/app.asar/out/renderer/index.html'"
 const CRASH = { reason: 'crashed', exitCode: 5 } as Electron.RenderProcessGoneDetails
 
 /**
@@ -310,7 +310,7 @@ describe('renderer recovery reload watchdog', () => {
 
     createMainWindow(null, { onRecoveryReloadOutcome })
     crashRenderer()
-    settleLoad[1]?.reject(new Error("ERR_FILE_NOT_FOUND (-6) loading 'file:///opt/nightshift'"))
+    settleLoad[1]?.reject(new Error("ERR_FILE_NOT_FOUND (-6) loading 'file:///opt/kolux'"))
     await vi.advanceTimersByTimeAsync(0)
 
     expect(onRecoveryReloadOutcome).toHaveBeenCalledWith(

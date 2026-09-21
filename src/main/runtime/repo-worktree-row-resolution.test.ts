@@ -178,8 +178,8 @@ describe('host-qualified scoped worktree resolution', () => {
   })
 
   it.each([
-    ['runtime:windows', String.raw`C:\Users\dev\nightshift worktree`],
-    ['local', '/mnt/c/Users/dev/nightshift worktree']
+    ['runtime:windows', String.raw`C:\Users\dev\kolux worktree`],
+    ['local', '/mnt/c/Users/dev/kolux worktree']
   ] satisfies [ExecutionHostId, string][])(
     'keeps %s path resolution scoped',
     async (hostId, path) => {

@@ -15,7 +15,7 @@ describe('spawn token read-back', () => {
   it('finds the token in a NUL-separated environ block', () => {
     const block = [
       'PATH=/usr/bin',
-      'NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN=tok-123',
+      'KOLUX_AGENT_SESSION_SPAWN_TOKEN=tok-123',
       'HOME=/home/dev'
     ].join('\0')
     expect(spawnTokenFromEnvironBlock(block)).toBe('tok-123')
@@ -23,9 +23,9 @@ describe('spawn token read-back', () => {
 
   it('answers null for an absent or empty token instead of guessing', () => {
     expect(spawnTokenFromEnvironBlock(['PATH=/usr/bin', 'HOME=/home/dev'].join('\0'))).toBeNull()
-    expect(spawnTokenFromEnvironBlock('NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN=')).toBeNull()
+    expect(spawnTokenFromEnvironBlock('KOLUX_AGENT_SESSION_SPAWN_TOKEN=')).toBeNull()
     // A prefix collision is not a match.
-    expect(spawnTokenFromEnvironBlock('NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN_EXTRA=x')).toBeNull()
+    expect(spawnTokenFromEnvironBlock('KOLUX_AGENT_SESSION_SPAWN_TOKEN_EXTRA=x')).toBeNull()
   })
 
   it('answers null on platforms that hide process environments', async () => {

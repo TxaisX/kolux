@@ -9,7 +9,7 @@ describe('crash report submit notices', () => {
   it('builds an allow-listed copy context with the exact sanitized failure reasons', () => {
     expect(
       getCrashReportCopySubmissionFailure({
-        error: 'request failed at C:\\Users\\alice\\Nightshift',
+        error: 'request failed at C:\\Users\\alice\\Kolux',
         diagnosticBundle: {
           status: 'not_uploaded',
           reason: 'attachment timeout token=super-secret-value'
@@ -99,7 +99,7 @@ describe('crash report submit notices', () => {
     const token = `ghp_${'a'.repeat(30)}`
     const notice = getCrashReportSubmitFailureNotice(
       {
-        error: `request failed at C:\\Users\\alice\\Nightshift\\crash-reports.json token=${token}`
+        error: `request failed at C:\\Users\\alice\\Kolux\\crash-reports.json token=${token}`
       },
       false
     )

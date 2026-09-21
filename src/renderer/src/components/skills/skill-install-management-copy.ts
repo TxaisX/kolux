@@ -4,11 +4,11 @@ export function skillInstallManagementCopy() {
   return {
     title: translate(
       'auto.components.skills.SkillInstallManagementDialog.44d118a8f7',
-      'Installed by Nightshift'
+      'Installed by Kolux'
     ),
     description: translate(
       'auto.components.skills.SkillInstallManagementDialog.3677ae58e7',
-      'Skills Nightshift installed from a link. Reinstall, go back to an earlier version, or remove them.'
+      'Skills Kolux installed from a link. Reinstall, go back to an earlier version, or remove them.'
     ),
     localMachine: translate(
       'auto.components.skills.SkillInstallManagementDialog.6cb1fbe039',
@@ -21,7 +21,7 @@ export function skillInstallManagementCopy() {
     ),
     noInstalls: translate(
       'auto.components.skills.SkillInstallManagementDialog.64c71cf7b9',
-      'Nightshift has not installed any skills on this machine yet.'
+      'Kolux has not installed any skills on this machine yet.'
     ),
     bundleResult: (installed: number, updated: number, keptLocal: number) =>
       translate(

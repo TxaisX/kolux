@@ -24,7 +24,7 @@ describe('tombstoned session tree removal retries', () => {
   let basePath: string
 
   beforeEach(() => {
-    basePath = mkdtempSync(join(tmpdir(), 'nightshift-session-tombstone-retry-'))
+    basePath = mkdtempSync(join(tmpdir(), 'kolux-session-tombstone-retry-'))
     removeHostTreeMock.mockReset()
     vi.useFakeTimers()
   })

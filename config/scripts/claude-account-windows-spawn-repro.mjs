@@ -26,38 +26,35 @@ const expectedArgs = [
   'two-trailing\\\\',
   '(parentheses)',
   '100%',
-  '%NIGHTSHIFT_ARG_TRAP%',
+  '%KOLUX_ARG_TRAP%',
   'bang!value',
   '한글-λ'
 ]
-const tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-claude-spawn-'))
+const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-claude-spawn-'))
 const reportedDir = join(tempRoot, 'Profile with spaces 한글')
 const reportedCapturePath = join(reportedDir, 'capture.json')
 const reportedPidPath = join(reportedDir, 'pids.json')
 const reportedShimPath = join(reportedDir, 'claude fixture.cmd')
 const reportedFixturePath = join(reportedDir, 'capture-child.cjs')
-const fixtureDir = join(tempRoot, 'Profile space & ^ (paren) %NIGHTSHIFT_PATH_TRAP% !bang! 한글')
+const fixtureDir = join(tempRoot, 'Profile space & ^ (paren) %KOLUX_PATH_TRAP% !bang! 한글')
 const capturePath = join(fixtureDir, 'capture.json')
 const pidPath = join(fixtureDir, 'pids.json')
 const shimPath = join(fixtureDir, 'claude fixture.cmd')
 const fixturePath = join(fixtureDir, 'capture-child.cjs')
 const fixtureEnv = {
   ...process.env,
-  CLAUDE_CONFIG_DIR: join(
-    fixtureDir,
-    'config space & ^ (paren) %NIGHTSHIFT_ENV_LITERAL% !bang! 한글'
-  ),
-  NIGHTSHIFT_ARG_TRAP: 'EXPANDED_ARG',
-  NIGHTSHIFT_PATH_TRAP: 'EXPANDED_PATH',
-  NIGHTSHIFT_FIXTURE_CAPTURE: capturePath,
-  NIGHTSHIFT_FIXTURE_PIDS: pidPath,
-  NIGHTSHIFT_FIXTURE_NODE: process.execPath
+  CLAUDE_CONFIG_DIR: join(fixtureDir, 'config space & ^ (paren) %KOLUX_ENV_LITERAL% !bang! 한글'),
+  KOLUX_ARG_TRAP: 'EXPANDED_ARG',
+  KOLUX_PATH_TRAP: 'EXPANDED_PATH',
+  KOLUX_FIXTURE_CAPTURE: capturePath,
+  KOLUX_FIXTURE_PIDS: pidPath,
+  KOLUX_FIXTURE_NODE: process.execPath
 }
 const reportedEnv = {
   ...fixtureEnv,
   CLAUDE_CONFIG_DIR: join(reportedDir, 'config with spaces 한글'),
-  NIGHTSHIFT_FIXTURE_CAPTURE: reportedCapturePath,
-  NIGHTSHIFT_FIXTURE_PIDS: reportedPidPath
+  KOLUX_FIXTURE_CAPTURE: reportedCapturePath,
+  KOLUX_FIXTURE_PIDS: reportedPidPath
 }
 
 function quoteForCandidate(value) {
@@ -162,12 +159,12 @@ const fixtureSource =
   `if (process.argv[2] === '--exit-error') { process.stderr.write('fixture error: 한글 & ^ % !\\n'); process.exit(23) }\n` +
   `if (process.argv[2] === '--linger') {\n` +
   `  const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { windowsHide: true })\n` +
-  `  writeFileSync(process.env.NIGHTSHIFT_FIXTURE_PIDS, JSON.stringify({ child: process.pid, grandchild: grandchild.pid }))\n` +
+  `  writeFileSync(process.env.KOLUX_FIXTURE_PIDS, JSON.stringify({ child: process.pid, grandchild: grandchild.pid }))\n` +
   `  setInterval(() => {}, 1000)\n` +
   `} else {\n` +
-  `  writeFileSync(process.env.NIGHTSHIFT_FIXTURE_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), configDir: process.env.CLAUDE_CONFIG_DIR }))\n` +
+  `  writeFileSync(process.env.KOLUX_FIXTURE_CAPTURE, JSON.stringify({ argv: process.argv.slice(2), configDir: process.env.CLAUDE_CONFIG_DIR }))\n` +
   `}\n`
-const shimSource = '@echo off\r\n"%NIGHTSHIFT_FIXTURE_NODE%" "%~dp0capture-child.cjs" %*\r\n'
+const shimSource = '@echo off\r\n"%KOLUX_FIXTURE_NODE%" "%~dp0capture-child.cjs" %*\r\n'
 let lingeringShellPid = null
 try {
   await mkdir(fixtureDir, { recursive: true })
@@ -198,7 +195,7 @@ try {
     ampersand: 'profile&name',
     caret: 'profile^name',
     parentheses: 'profile(name)',
-    percent: 'profile%NIGHTSHIFT_PATH_TRAP%',
+    percent: 'profile%KOLUX_PATH_TRAP%',
     bang: 'profile!name',
     unicode: 'profile-한글-λ'
   })) {
@@ -211,7 +208,7 @@ try {
     const env = {
       ...fixtureEnv,
       CLAUDE_CONFIG_DIR: join(directory, 'config'),
-      NIGHTSHIFT_FIXTURE_CAPTURE: captureFile
+      KOLUX_FIXTURE_CAPTURE: captureFile
     }
     const run = await collect(launch(reportedArgs, command, env))
     let actual = null
@@ -237,13 +234,13 @@ try {
     trailingBackslash: 'trailing\\',
     twoTrailingBackslashes: 'two-trailing\\\\',
     parentheses: '(parentheses)',
-    percent: '%NIGHTSHIFT_ARG_TRAP%',
+    percent: '%KOLUX_ARG_TRAP%',
     bang: 'bang!value',
     unicode: '한글-λ'
   })) {
     const args = ['prefix', value, 'suffix']
     const captureFile = join(reportedDir, `capture-${name}.json`)
-    const env = { ...reportedEnv, NIGHTSHIFT_FIXTURE_CAPTURE: captureFile }
+    const env = { ...reportedEnv, KOLUX_FIXTURE_CAPTURE: captureFile }
     const run = await collect(launch(args, reportedShimPath, env))
     let actual = null
     try {

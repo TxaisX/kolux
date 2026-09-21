@@ -209,7 +209,7 @@ describe('connectPanePty', () => {
       capturedDataCallback.current?.('user@remote $ ')
       expect(transport.sendInput).not.toHaveBeenCalled()
 
-      capturedDataCallback.current?.('\x1b]777;nightshift-shell-ready\x07user@remote $ ')
+      capturedDataCallback.current?.('\x1b]777;kolux-shell-ready\x07user@remote $ ')
       for (const fn of pendingTimeouts.splice(0)) {
         fn()
       }
@@ -222,11 +222,11 @@ describe('connectPanePty', () => {
           commandDelivery: 'provider',
           startupCommandDelivery: 'shell-ready',
           env: expect.objectContaining({
-            NIGHTSHIFT_PANE_KEY: paneKey,
-            NIGHTSHIFT_TAB_ID: 'tab-1',
-            NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-            NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-            NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+            KOLUX_PANE_KEY: paneKey,
+            KOLUX_TAB_ID: 'tab-1',
+            KOLUX_WORKTREE_ID: 'wt-1',
+            KOLUX_WORKSPACE_ID: 'wt-1',
+            KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
           })
         })
       )
@@ -322,8 +322,8 @@ describe('connectPanePty', () => {
         expect.objectContaining({
           command: "codex '--dangerously-bypass-approvals-and-sandbox' 'resume' 'codex-session-1'",
           env: expect.objectContaining({
-            NIGHTSHIFT_PANE_KEY: paneKey,
-            NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+            KOLUX_PANE_KEY: paneKey,
+            KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
           })
         })
       )

@@ -37,7 +37,7 @@ export type SourceControlActionVariableInfo = {
 export const SOURCE_CONTROL_ACTION_VARIABLE_INFO = {
   basePrompt: {
     description:
-      'Nightshift’s built-in prompt for this action, including the context Nightshift knows how to gather safely.',
+      'Kolux’s built-in prompt for this action, including the context Kolux knows how to gather safely.',
     example:
       'Commit messages include staged diff guidance; PR details include branch comparison guidance; fix actions include the failure summary.'
   },
@@ -79,11 +79,11 @@ export const SOURCE_CONTROL_ACTION_VARIABLE_INFO = {
     example: 'diff --git a/src/app.ts b/src/app.ts\n+renderSourceControlActionCommandTemplate()'
   },
   firstPrompt: {
-    description: 'The first user request that created the Nightshift workspace.',
+    description: 'The first user request that created the Kolux workspace.',
     example: 'Fix CI and commit the result'
   },
   assistantMessage: {
-    description: 'The initial agent response, when Nightshift has one available.',
+    description: 'The initial agent response, when Kolux has one available.',
     example: 'I will inspect the failing check, patch the issue, and run tests.'
   },
   linkedIssue: {

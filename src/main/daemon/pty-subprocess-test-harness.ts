@@ -6,15 +6,15 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const NIGHTSHIFT_SHELL_WRAPPER_ENV = [
-  'NIGHTSHIFT_OPENCODE_CONFIG_DIR',
-  'NIGHTSHIFT_MIMOCODE_HOME',
-  'NIGHTSHIFT_PI_CODING_AGENT_DIR',
-  'NIGHTSHIFT_OMP_CODING_AGENT_DIR',
-  'NIGHTSHIFT_OMP_STATUS_EXTENSION',
-  'NIGHTSHIFT_CODEX_HOME',
-  'NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR',
-  'NIGHTSHIFT_REMOTE_CLI_BIN_DIR'
+const KOLUX_SHELL_WRAPPER_ENV = [
+  'KOLUX_OPENCODE_CONFIG_DIR',
+  'KOLUX_MIMOCODE_HOME',
+  'KOLUX_PI_CODING_AGENT_DIR',
+  'KOLUX_OMP_CODING_AGENT_DIR',
+  'KOLUX_OMP_STATUS_EXTENSION',
+  'KOLUX_CODEX_HOME',
+  'KOLUX_AGENT_TEAMS_SHIM_DIR',
+  'KOLUX_REMOTE_CLI_BIN_DIR'
 ] as const
 export const POWERLEVEL10K_WIZARD_DISABLE_ENV = 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD'
 
@@ -32,7 +32,7 @@ export function stubMissingDaemonCwd(): {
   chdirSpy: Mock<(directory: string) => void>
   restoreCwdStubs: () => void
 } {
-  const missingDaemonCwd = join(tmpdir(), 'nightshift-daemon-cwd-that-does-not-exist')
+  const missingDaemonCwd = join(tmpdir(), 'kolux-daemon-cwd-that-does-not-exist')
   const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(missingDaemonCwd)
   const chdirSpy = vi.spyOn(process, 'chdir').mockImplementation(() => {})
   return {
@@ -91,7 +91,7 @@ export type PtySubprocessSpawnMocks = {
 export function useDaemonPtySubprocessEnv(mocks: PtySubprocessSpawnMocks): {
   userDataPath: string
 } {
-  const savedWrapperEnv: Partial<Record<(typeof NIGHTSHIFT_SHELL_WRAPPER_ENV)[number], string>> = {}
+  const savedWrapperEnv: Partial<Record<(typeof KOLUX_SHELL_WRAPPER_ENV)[number], string>> = {}
   const state = { userDataPath: '' }
   let previousUserDataPath: string | undefined
   let previousPowerlevelWizardDisable: string | undefined
@@ -107,12 +107,12 @@ export function useDaemonPtySubprocessEnv(mocks: PtySubprocessSpawnMocks): {
     mocks.resolveUnixShellPathMock.mockReset()
     mocks.resolveUnixShellPathMock.mockImplementation((shellPath: string) => shellPath)
     mocks.isPwshAvailableMock.mockReturnValue(false)
-    previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
+    previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
     previousPowerlevelWizardDisable = process.env[POWERLEVEL10K_WIZARD_DISABLE_ENV]
     state.userDataPath = mkdtempSync(join(tmpdir(), 'daemon-pty-subprocess-test-'))
-    process.env.NIGHTSHIFT_USER_DATA_PATH = state.userDataPath
+    process.env.KOLUX_USER_DATA_PATH = state.userDataPath
     delete process.env[POWERLEVEL10K_WIZARD_DISABLE_ENV]
-    for (const key of NIGHTSHIFT_SHELL_WRAPPER_ENV) {
+    for (const key of KOLUX_SHELL_WRAPPER_ENV) {
       savedWrapperEnv[key] = process.env[key]
       delete process.env[key]
     }
@@ -120,9 +120,9 @@ export function useDaemonPtySubprocessEnv(mocks: PtySubprocessSpawnMocks): {
 
   afterEach(() => {
     if (previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
     }
     if (previousPowerlevelWizardDisable === undefined) {
       delete process.env[POWERLEVEL10K_WIZARD_DISABLE_ENV]
@@ -130,7 +130,7 @@ export function useDaemonPtySubprocessEnv(mocks: PtySubprocessSpawnMocks): {
       process.env[POWERLEVEL10K_WIZARD_DISABLE_ENV] = previousPowerlevelWizardDisable
     }
     rmSync(state.userDataPath, { recursive: true, force: true })
-    for (const key of NIGHTSHIFT_SHELL_WRAPPER_ENV) {
+    for (const key of KOLUX_SHELL_WRAPPER_ENV) {
       if (savedWrapperEnv[key] === undefined) {
         delete process.env[key]
       } else {

@@ -8,7 +8,7 @@ import {
 function target(overrides: Partial<LocalBuildCompatibility> = {}): LocalBuildCompatibility {
   return {
     formatVersion: 1,
-    appId: 'com.txais.nightshift',
+    appId: 'com.txais.kolux',
     buildId: '1.2.3-abc-arm64',
     version: '1.2.3-local.1.abc',
     commit: 'abc',
@@ -26,14 +26,14 @@ describe('local build compatibility', () => {
   it('rejects state and live-terminal protocol incompatibilities', () => {
     expect(
       getLocalBuildCompatibilityError(target({ readableStateSchemaVersions: [2] }), 1, [])
-    ).toContain('cannot read Nightshift workspace state schema')
+    ).toContain('cannot read Kolux workspace state schema')
     expect(getLocalBuildCompatibilityError(target(), 1, [26])).toContain(
       'cannot reconnect terminal daemon protocol 26'
     )
     expect(getLocalBuildCompatibilityError(target(), 1, [27, 28])).toBeNull()
   })
 
-  it('parses only bounded Nightshift compatibility contracts', () => {
+  it('parses only bounded Kolux compatibility contracts', () => {
     expect(parseLocalBuildCompatibility(target())).toEqual(target())
     expect(() => parseLocalBuildCompatibility(target({ appId: 'other.app' }))).toThrow(
       'invalid compatibility metadata'

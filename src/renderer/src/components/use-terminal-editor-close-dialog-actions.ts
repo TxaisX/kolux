@@ -2,8 +2,8 @@ import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '../store'
 import {
-  NIGHTSHIFT_EDITOR_REQUEST_FILE_CLOSE_EVENT,
-  NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT,
+  KOLUX_EDITOR_REQUEST_FILE_CLOSE_EVENT,
+  KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT,
   type EditorRequestFileCloseDetail,
   requestEditorSaveQuiesce
 } from './editor/editor-autosave'
@@ -44,9 +44,7 @@ export function useTerminalEditorCloseDialogActions(
     }
 
     setSaveDialogFileId(null)
-    window.dispatchEvent(
-      new CustomEvent(NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT, { detail: { fileId } })
-    )
+    window.dispatchEvent(new CustomEvent(KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT, { detail: { fileId } }))
     inFlightSaveFileIdRef.current = fileId
     let closed = false
     try {
@@ -138,12 +136,12 @@ export function useTerminalEditorCloseDialogActions(
       queueEditorCloseRequests([fileId])
     }
     window.addEventListener(
-      NIGHTSHIFT_EDITOR_REQUEST_FILE_CLOSE_EVENT,
+      KOLUX_EDITOR_REQUEST_FILE_CLOSE_EVENT,
       onRequestEditorClose as EventListener
     )
     return () =>
       window.removeEventListener(
-        NIGHTSHIFT_EDITOR_REQUEST_FILE_CLOSE_EVENT,
+        KOLUX_EDITOR_REQUEST_FILE_CLOSE_EVENT,
         onRequestEditorClose as EventListener
       )
   }, [queueEditorCloseRequests])

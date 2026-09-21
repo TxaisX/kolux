@@ -91,7 +91,7 @@ describe('client-hosted downloads', () => {
     // Exactly what client-hosted page creation does; the renderer never registers a client page.
     createBrowserClientPageGuestBinding(browserManager).bind({
       registration: {
-        partition: `persist:nightshift-browser-v1-${'a'.repeat(64)}`,
+        partition: `persist:kolux-browser-v1-${'a'.repeat(64)}`,
         browserPageId: BROWSER_PAGE_ID,
         pageHostGeneration: 7,
         rendererWebContentsId,
@@ -148,7 +148,7 @@ describe('client-hosted downloads', () => {
         status: 'completed',
         savePath: null,
         remoteDestination: {
-          workspaceRelativePath: '.nightshift/browser-downloads/report.csv',
+          workspaceRelativePath: '.kolux/browser-downloads/report.csv',
           hostLabel: 'build-box'
         }
       })
@@ -156,7 +156,7 @@ describe('client-hosted downloads', () => {
   })
 
   it('aborts a download canceled while its commit is still streaming', async () => {
-    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'nightshift-client-download-')))
+    const root = await realpath(await mkdtemp(path.join(tmpdir(), 'kolux-client-download-')))
     const stagingRoot = path.join(root, 'downloads')
     const writes: { transferId: string; final: boolean }[] = []
     const aborts: { transferId: string }[] = []
@@ -181,7 +181,7 @@ describe('client-hosted downloads', () => {
         return {
           ok: true,
           result: chunk.final
-            ? { accepted: true, workspaceRelativePath: '.nightshift/browser-downloads/report.csv' }
+            ? { accepted: true, workspaceRelativePath: '.kolux/browser-downloads/report.csv' }
             : { accepted: true },
           _meta: {}
         } as never
@@ -246,7 +246,7 @@ describe('client-hosted downloads', () => {
         browserPageId: BROWSER_PAGE_ID,
         status: 'completed',
         remoteDestination: {
-          workspaceRelativePath: '.nightshift/browser-downloads/report.csv',
+          workspaceRelativePath: '.kolux/browser-downloads/report.csv',
           hostLabel: 'build-box'
         }
       })
@@ -368,7 +368,7 @@ function stubRoute(): { route: BrowserClientDownloadRoute; completed: Promise<vo
     complete: async () => {
       resolveCompleted()
       return {
-        workspaceRelativePath: '.nightshift/browser-downloads/report.csv',
+        workspaceRelativePath: '.kolux/browser-downloads/report.csv',
         hostLabel: 'build-box'
       }
     },

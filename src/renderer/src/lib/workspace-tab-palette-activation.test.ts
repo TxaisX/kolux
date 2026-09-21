@@ -106,7 +106,7 @@ function makeResult(
     title: 'Terminal',
     secondaryText: '',
     secondaryMatches: [],
-    repoName: 'repo/nightshift',
+    repoName: 'repo/kolux',
     worktreeName: 'Palette Worktree',
     branchName: 'main',
     titleRanges: [],

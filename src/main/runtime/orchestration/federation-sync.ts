@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { FederatedLifecycleSettlement } from './federation-lifecycle-settlement'
 import { ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_PROTOCOL_VERSION } from '../../../shared/protocol-version'
 import { OrchestrationError } from './orchestration-error'
@@ -38,7 +38,7 @@ const PulledRelayPage = z
   .passthrough()
 
 export async function syncFederatedDispatch(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   isCurrent: () => boolean = () => true
 ): Promise<{ imported: number; acknowledgedThrough: number }> {
@@ -51,7 +51,7 @@ export async function syncFederatedDispatch(
 }
 
 async function syncFederatedDispatchPages(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   remainingPages: number,
   isCurrent: () => boolean
@@ -72,7 +72,7 @@ async function syncFederatedDispatchPages(
   if (currentServer.peerFingerprint !== federated.peer_fingerprint) {
     throw new OrchestrationError(
       'peer_changed',
-      `Saved environment ${federated.environment_name} now identifies a different Nightshift server.`
+      `Saved environment ${federated.environment_name} now identifies a different Kolux server.`
     )
   }
   const ackLease = acquireFederationAckLease(runtime, dispatchId)

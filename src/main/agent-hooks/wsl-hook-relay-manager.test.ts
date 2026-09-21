@@ -136,10 +136,7 @@ describe.skipIf(process.platform === 'win32')(
         readFileSync(join(home, '.claude', 'settings.json'), 'utf8')
       )
       expect(claudeSettings.hooks).toBeTruthy()
-      const script = readFileSync(
-        join(home, '.nightshift', 'agent-hooks', 'claude-hook.sh'),
-        'utf8'
-      )
+      const script = readFileSync(join(home, '.kolux', 'agent-hooks', 'claude-hook.sh'), 'utf8')
       expect(script).toContain('/hook/claude')
     }, 20_000)
   }
@@ -151,8 +148,8 @@ describe('WslHookRelayManager', () => {
   // the wslfs.home request and never touches the real filesystem.
   const home = '/home/wsl-test-user'
   const codexHome =
-    '\\\\wsl.localhost\\Ubuntu\\home\\wsl-test-user\\.local\\share\\nightshift\\codex-runtime-home\\home'
-  const opencodeOverlayDir = `${home}/.nightshift-relay/opencode-overlays/deadbeefcafe`
+    '\\\\wsl.localhost\\Ubuntu\\home\\wsl-test-user\\.local\\share\\kolux\\codex-runtime-home\\home'
+  const opencodeOverlayDir = `${home}/.kolux-relay/opencode-overlays/deadbeefcafe`
   let harnesses: GuestHarness[]
 
   beforeEach(() => {
@@ -219,10 +216,10 @@ describe('WslHookRelayManager', () => {
       platform: () => 'win32',
       remoteHooksEnabled: () => true,
       hookCoordsEnv: () => ({
-        NIGHTSHIFT_AGENT_HOOK_PORT: '43117',
-        NIGHTSHIFT_AGENT_HOOK_TOKEN: 'tok',
-        NIGHTSHIFT_AGENT_HOOK_ENV: 'production',
-        NIGHTSHIFT_AGENT_HOOK_VERSION: '1'
+        KOLUX_AGENT_HOOK_PORT: '43117',
+        KOLUX_AGENT_HOOK_TOKEN: 'tok',
+        KOLUX_AGENT_HOOK_ENV: 'production',
+        KOLUX_AGENT_HOOK_VERSION: '1'
       }),
       instanceKey: () => 'testinstance',
       resolveBundle: () => ({ jsPath: '/fake/wsl-agent-hook-relay.js', version: '0.1.0+abc' }),
@@ -237,7 +234,7 @@ describe('WslHookRelayManager', () => {
       installCodex: vi.fn(async () => ({
         agent: 'codex' as const,
         state: 'installed' as const,
-        configPath: `${home}/.local/share/nightshift/codex-runtime-home/home/hooks.json`,
+        configPath: `${home}/.local/share/kolux/codex-runtime-home/home/hooks.json`,
         managedHooksPresent: true,
         detail: null
       })),
@@ -263,7 +260,7 @@ describe('WslHookRelayManager', () => {
     })
 
     expect(manager.getGuestEndpointFilePath('Ubuntu')).toBe(
-      `${home}/.nightshift-wsl/agent-hooks/instance-testinstance/endpoint.env`
+      `${home}/.kolux-wsl/agent-hooks/instance-testinstance/endpoint.env`
     )
 
     const guest = harnesses[0].guestDispatcher
@@ -337,7 +334,7 @@ describe('WslHookRelayManager', () => {
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(deps.spawnRelay).toHaveBeenCalledTimes(1)
     expect(manager.getGuestEndpointFilePath(null)).toBe(
-      `${home}/.nightshift-wsl/agent-hooks/instance-testinstance/endpoint.env`
+      `${home}/.kolux-wsl/agent-hooks/instance-testinstance/endpoint.env`
     )
     manager.disposeAll()
   })

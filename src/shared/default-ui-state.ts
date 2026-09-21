@@ -72,7 +72,7 @@ export function getDefaultUIState(): PersistedUIState {
     statusBarUsageMode: DEFAULT_STATUS_BAR_USAGE_MODE,
     dismissedUpdateVersion: null,
     lastUpdateCheckAt: null,
-    trustedNightshiftHooks: {},
+    trustedKoluxHooks: {},
     setupScriptPromptDismissedRepoIds: [],
     acknowledgedAgentsByPaneKey: {},
     activityClearedAtByPaneKey: {},

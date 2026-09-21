@@ -1,6 +1,6 @@
 import { shell } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../shared/constants'
 import {
   normalizeBrowserNavigationUrl,
   normalizeExternalBrowserUrl,
@@ -25,8 +25,8 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
     // OAuth child windows keep native link behavior.
     const clickedLinkFrameNames: BrowserClickedLinkFrameNames | null = routeClickedLinks
       ? {
-          foreground: `__nightshift_clicked_link_foreground_${randomUUID()}`,
-          background: `__nightshift_clicked_link_background_${randomUUID()}`
+          foreground: `__kolux_clicked_link_foreground_${randomUUID()}`,
+          background: `__kolux_clicked_link_background_${randomUUID()}`
         }
       : null
     let clickedLinkRoutingActive = routeClickedLinks
@@ -76,8 +76,8 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
       if (!clickedLinkRoutingActive || frame.isDestroyed()) {
         return
       }
-      const foregroundName = `__nightshift_clicked_link_iframe_foreground_${randomUUID()}`
-      const backgroundName = `__nightshift_clicked_link_iframe_background_${randomUUID()}`
+      const foregroundName = `__kolux_clicked_link_iframe_foreground_${randomUUID()}`
+      const backgroundName = `__kolux_clicked_link_iframe_background_${randomUUID()}`
       iframeFrameNamesByFrame.set(frame, {
         foreground: foregroundName,
         background: backgroundName
@@ -152,18 +152,18 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
         if (
           browserTabId &&
           browserUrl &&
-          this.openLinkInNightshiftTab(browserTabId, browserUrl, clickedLinkActivate)
+          this.openLinkInKoluxTab(browserTabId, browserUrl, clickedLinkActivate)
         ) {
           this.forwardOrQueuePopupEvent(guest.id, {
             origin: safeOrigin(browserUrl),
-            action: 'opened-in-nightshift'
+            action: 'opened-in-kolux'
           })
         }
         // Why: a recognized gesture must never fall through to a native popup if its renderer vanished mid-click.
         return { action: 'deny' }
       }
 
-      // Why: an unnamed, featureless window.open() is Chromium's own new-tab shape, so a Nightshift tab is
+      // Why: an unnamed, featureless window.open() is Chromium's own new-tab shape, so a Kolux tab is
       // the honest presentation; a floating origin-bar window is not. Opener-dependent shapes are
       // excluded by isNewBrowserTabPopupIntent and still get a real child window below.
       if (
@@ -181,7 +181,7 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
           return { action: 'deny' }
         }
         if (
-          this.openLinkInNightshiftTab(
+          this.openLinkInKoluxTab(
             ownerContext.browserTabId,
             externalUrl,
             disposition !== 'background-tab'
@@ -189,7 +189,7 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
         ) {
           this.forwardOrQueuePopupEvent(guest.id, {
             origin: safeOrigin(externalUrl),
-            action: 'opened-in-nightshift'
+            action: 'opened-in-kolux'
           })
         }
         // Why: a recognized new-tab intent must never fall through to a native popup if its renderer vanished mid-open.
@@ -197,13 +197,13 @@ export abstract class BrowserManagerGuestPopupPolicy extends BrowserManagerNavig
       }
 
       // Why: file URLs are fine for in-pane previews, but must not spawn native child windows targeting local paths.
-      const canOpenAsChild = Boolean(externalUrl || browserUrl === NIGHTSHIFT_BROWSER_BLANK_URL)
+      const canOpenAsChild = Boolean(externalUrl || browserUrl === KOLUX_BROWSER_BLANK_URL)
       if (browserTabId && canOpenAsChild) {
         // Why: OAuth may request size/position, but content must not create deceptive or inescapable native chrome.
         return {
           action: 'allow',
           overrideBrowserWindowOptions: SAFE_POPUP_WINDOW_OPTIONS,
-          // Why: default child windows lack an address bar; host in a Nightshift origin-bar window so the destination is verifiable.
+          // Why: default child windows lack an address bar; host in a Kolux origin-bar window so the destination is verifiable.
           createWindow: (options: PopupChildWindowOptions) =>
             this.createPopupChildWindowWithOriginBar(guest, url, options)
         }

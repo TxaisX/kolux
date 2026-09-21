@@ -2,7 +2,7 @@
  * Paired remote server: a revealed remote terminal must stay interactive
  * without a tab flip.
  *
- * Topology: headed Nightshift desktop host (remote server) + a separate paired Nightshift
+ * Topology: headed Kolux desktop host (remote server) + a separate paired Kolux
  * desktop client — the "connect to Windows 2, open an old workspace" shape.
  *
  * Oracle (the reported symptom verbatim): type into the revealed pane and see
@@ -29,7 +29,7 @@ import {
   HOST_TERMINAL_SURFACE_SEPARATOR,
   toWebTerminalSurfaceTabId
 } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -41,7 +41,7 @@ import { waitForTabParked } from './helpers/terminal-hidden-parking'
 const PARK_DELAY_MS = 2_000
 const LIVE_PAINT_BUDGET_MS = 12_000
 const REVEAL_BUDGET_MS = 20_000
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-parked-reveal-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-parked-reveal-'))
 const fixturePath = path.join(scratch, 'parked-reveal-terminal.mjs')
 writeFileSync(
   fixturePath,
@@ -348,19 +348,19 @@ async function seedScenario(
 }
 
 test('paired client keeps revealed remote terminals interactive', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(600_000)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   // Why: the paired client inherits this from the launching process; a reused
   // Playwright worker would otherwise leak the shortened delay into later specs.
-  const previousParkDelay = process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS
-  process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS = String(PARK_DELAY_MS)
+  const previousParkDelay = process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS
+  process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS = String(PARK_DELAY_MS)
   const client = await launchPairedElectronClient(offer, testInfo, 'parked-reveal')
   const createdTerminals: string[] = []
   const results: ScenarioResult[] = []
   try {
-    const worktreeId = await nightshiftPage.evaluate(() => {
+    const worktreeId = await koluxPage.evaluate(() => {
       const id = window.__store?.getState().activeWorktreeId
       if (!id) {
         throw new Error('headed host has no active worktree')
@@ -470,9 +470,9 @@ test('paired client keeps revealed remote terminals interactive', async ({
     }
   } finally {
     if (previousParkDelay === undefined) {
-      delete process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS
+      delete process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS
     } else {
-      process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS = previousParkDelay
+      process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS = previousParkDelay
     }
     for (const terminal of createdTerminals) {
       await callEnvironment(client.page, client.environmentId, 'terminal.closeTab', {

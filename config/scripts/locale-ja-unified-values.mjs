@@ -5,7 +5,7 @@ export const JA_UNIFIED_VALUES = {
   "Can't reach {{value0}}": '{{value0}} に接続できません',
   'Copy Address': 'アドレスをコピー',
   'Open Externally': '外部で開く',
-  'Show Nightshift Mobile Button': 'Nightshift Mobile ボタンを表示',
+  'Show Kolux Mobile Button': 'Kolux Mobile ボタンを表示',
   Paste: '貼り付け',
   'WSL default': 'WSL のデフォルト',
   'Unable to open the workspace attached to this issue.':
@@ -111,7 +111,7 @@ export const JA_UNIFIED_VALUES = {
   'Board settings': 'ボード設定',
   'Project on SSH host': 'SSH ホスト上のプロジェクト',
   'Created by automation': 'オートメーションによって作成',
-  'Open in Nightshift': 'Nightshift で開く',
+  'Open in Kolux': 'Kolux で開く',
   'Failed to copy link': 'リンクのコピーに失敗しました',
   'Delete Worktree': 'ワークツリーを削除',
   rename: '名前変更',
@@ -129,10 +129,10 @@ export const JA_UNIFIED_VALUES = {
   Replace: '置換',
   'Account scope': 'アカウントスコープ',
   'Agent Permissions': 'Agent の権限',
-  'Show the Nightshift Mobile button at the top of the left sidebar.':
-    '左サイドバー上部に Nightshift Mobile ボタンを表示します。',
-  'Enable Nightshift CLI': 'Nightshift CLI を有効化',
-  'Registered the Nightshift CLI in PATH.': 'Nightshift CLI を PATH に登録しました。',
+  'Show the Kolux Mobile button at the top of the left sidebar.':
+    '左サイドバー上部に Kolux Mobile ボタンを表示します。',
+  'Enable Kolux CLI': 'Kolux CLI を有効化',
+  'Registered the Kolux CLI in PATH.': 'Kolux CLI を PATH に登録しました。',
   'Failed to load CLI status.': 'CLI ステータスの読み込みに失敗しました。',
   'Fix PATH': 'PATH を修正',
   installed: 'インストール済み',
@@ -145,12 +145,12 @@ export const JA_UNIFIED_VALUES = {
     '接続された各 Linear ワークスペースには、アクティブなランタイムが保存したキーが 1 つあります。フルアクセスキーはキー所有者がアクセスできるすべてのチームを対象にできます。制限付きキーはいつでも置き換えられます。',
   'Add workspace access': 'ワークスペースへのアクセスを追加',
   'Learn more': '詳しく見る',
-  'Gitea credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Nightshift if environment variables changed.':
-    'Gitea の認証情報は設定されていますが、認証できませんでした。トークン、API ベース URL、リポジトリの権限を確認し、環境変数を変更した場合は Nightshift を再起動してください。',
-  'Azure DevOps credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Nightshift if environment variables changed.':
-    'Azure DevOps の認証情報は設定されていますが、認証できませんでした。トークン、API ベース URL、リポジトリの権限を確認し、環境変数を変更した場合は Nightshift を再起動してください。',
-  'Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Nightshift if environment variables changed.':
-    'Bitbucket の認証情報は設定されていますが、認証できませんでした。トークンとリポジトリの権限を確認し、環境変数を変更した場合は Nightshift を再起動してください。',
+  'Gitea credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Kolux if environment variables changed.':
+    'Gitea の認証情報は設定されていますが、認証できませんでした。トークン、API ベース URL、リポジトリの権限を確認し、環境変数を変更した場合は Kolux を再起動してください。',
+  'Azure DevOps credentials are configured but could not authenticate. Check the token, API base URL, and repository permissions, then restart Kolux if environment variables changed.':
+    'Azure DevOps の認証情報は設定されていますが、認証できませんでした。トークン、API ベース URL、リポジトリの権限を確認し、環境変数を変更した場合は Kolux を再起動してください。',
+  'Bitbucket credentials are configured but could not authenticate. Check the token and repository permissions, then restart Kolux if environment variables changed.':
+    'Bitbucket の認証情報は設定されていますが、認証できませんでした。トークンとリポジトリの権限を確認し、環境変数を変更した場合は Kolux を再起動してください。',
   'The GitLab CLI is installed but not authenticated. Run this command in a terminal:':
     'GitLab CLI はインストールされていますが、認証されていません。ターミナルで次のコマンドを実行してください:',
   'Install GitLab CLI': 'GitLab CLI をインストール',
@@ -241,6 +241,6 @@ export const JA_UNIFIED_VALUES = {
   '{{value0}} workspace{{value1}} connected':
     '{{value0}} ワークスペース{{value1}} が接続されました',
   Plugins: 'プラグイン',
-  'Nightshift will continue to work, but commands such as nightshift status, nightshift terminal, and orchestration are unavailable for this session.\n\n{{guidance}}\n\nCause: {{cause}}':
-    'Nightshift は引き続き使用できますが、このセッションでは nightshift status や nightshift terminal などのコマンドとオーケストレーションを利用できません。\n\n{{guidance}}\n\n原因: {{cause}}'
+  'Kolux will continue to work, but commands such as kolux status, kolux terminal, and orchestration are unavailable for this session.\n\n{{guidance}}\n\nCause: {{cause}}':
+    'Kolux は引き続き使用できますが、このセッションでは kolux status や kolux terminal などのコマンドとオーケストレーションを利用できません。\n\n{{guidance}}\n\n原因: {{cause}}'
 }

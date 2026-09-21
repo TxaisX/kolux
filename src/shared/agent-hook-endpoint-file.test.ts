@@ -12,10 +12,10 @@ describe('agent hook endpoint files', () => {
     expect(
       parseAgentHookEndpointFile(
         [
-          'NIGHTSHIFT_AGENT_HOOK_PORT=12345',
-          'NIGHTSHIFT_AGENT_HOOK_TOKEN=token-123',
-          'NIGHTSHIFT_AGENT_HOOK_ENV=production',
-          'NIGHTSHIFT_AGENT_HOOK_VERSION=1'
+          'KOLUX_AGENT_HOOK_PORT=12345',
+          'KOLUX_AGENT_HOOK_TOKEN=token-123',
+          'KOLUX_AGENT_HOOK_ENV=production',
+          'KOLUX_AGENT_HOOK_VERSION=1'
         ].join('\n')
       )
     ).toEqual({
@@ -30,10 +30,10 @@ describe('agent hook endpoint files', () => {
     expect(
       parseAgentHookEndpointFile(
         [
-          'set NIGHTSHIFT_AGENT_HOOK_PORT=54321',
-          'set NIGHTSHIFT_AGENT_HOOK_TOKEN=token-abc',
-          'set NIGHTSHIFT_AGENT_HOOK_ENV=development',
-          'set NIGHTSHIFT_AGENT_HOOK_VERSION=1'
+          'set KOLUX_AGENT_HOOK_PORT=54321',
+          'set KOLUX_AGENT_HOOK_TOKEN=token-abc',
+          'set KOLUX_AGENT_HOOK_ENV=development',
+          'set KOLUX_AGENT_HOOK_VERSION=1'
         ].join('\r\n')
       )
     ).toEqual({
@@ -48,17 +48,17 @@ describe('agent hook endpoint files', () => {
     expect(
       parseAgentHookEndpointFile(
         [
-          'NIGHTSHIFT_AGENT_HOOK_PORT=12345',
-          'NIGHTSHIFT_AGENT_HOOK_TOKEN=token=with=equals',
-          'NIGHTSHIFT_AGENT_HOOK_ENV=production',
-          'NIGHTSHIFT_AGENT_HOOK_VERSION=1'
+          'KOLUX_AGENT_HOOK_PORT=12345',
+          'KOLUX_AGENT_HOOK_TOKEN=token=with=equals',
+          'KOLUX_AGENT_HOOK_ENV=production',
+          'KOLUX_AGENT_HOOK_VERSION=1'
         ].join('\n')
       ).token
     ).toBe('token=with=equals')
   })
 
   it('throws when required endpoint fields are missing', () => {
-    expect(() => parseAgentHookEndpointFile('NIGHTSHIFT_AGENT_HOOK_PORT=12345')).toThrow(
+    expect(() => parseAgentHookEndpointFile('KOLUX_AGENT_HOOK_PORT=12345')).toThrow(
       'Agent hook endpoint file is missing required fields'
     )
   })

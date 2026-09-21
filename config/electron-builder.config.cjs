@@ -23,34 +23,34 @@ const { signWindowsUninstallerViaSignPath } = require('./scripts/windows-uninsta
 
 // Why: dev-channel builds must carry the *release* identity — same bundle id,
 // Developer ID signature, and notarization ticket — or Squirrel.Mac refuses to
-// swap them over an installed Nightshift and macOS treats each build as a new app.
-const isMacHourly = process.env.NIGHTSHIFT_MAC_HOURLY === '1'
-const isMacDaily = process.env.NIGHTSHIFT_MAC_DAILY === '1'
-const isMacAdhoc = process.env.NIGHTSHIFT_MAC_ADHOC === '1'
+// swap them over an installed Kolux and macOS treats each build as a new app.
+const isMacHourly = process.env.KOLUX_MAC_HOURLY === '1'
+const isMacDaily = process.env.KOLUX_MAC_DAILY === '1'
+const isMacAdhoc = process.env.KOLUX_MAC_ADHOC === '1'
 // Why a second set of variables rather than making the mac ones platform-neutral:
 // the mac ones gate `isMacRelease` below, which turns on hardened runtime,
 // notarization, and root-level `forceCodeSigning`. A Windows dev build that
 // reused them would fail packaging outright for want of a cert it is
 // deliberately not using.
-const isWinHourly = process.env.NIGHTSHIFT_WIN_HOURLY === '1'
-const isWinDaily = process.env.NIGHTSHIFT_WIN_DAILY === '1'
-const isWinAdhoc = process.env.NIGHTSHIFT_WIN_ADHOC === '1'
+const isWinHourly = process.env.KOLUX_WIN_HOURLY === '1'
+const isWinDaily = process.env.KOLUX_WIN_DAILY === '1'
+const isWinAdhoc = process.env.KOLUX_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
 // Why: only a SignPath-signed build may advertise its publisherName; see signtoolOptions below.
-const isWinUnsigned = isWinDevChannel || process.env.NIGHTSHIFT_WIN_SIGNPATH !== '1'
-const isMacRelease = process.env.NIGHTSHIFT_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
-const isLinuxArm64Release = process.env.NIGHTSHIFT_LINUX_ARM64_RELEASE === '1'
+const isWinUnsigned = isWinDevChannel || process.env.KOLUX_WIN_SIGNPATH !== '1'
+const isMacRelease = process.env.KOLUX_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
+const isLinuxArm64Release = process.env.KOLUX_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
-  isMacRelease || isWinDevChannel ? undefined : process.env.NIGHTSHIFT_LOCAL_BUILD_VERSION
+  isMacRelease || isWinDevChannel ? undefined : process.env.KOLUX_LOCAL_BUILD_VERSION
 const isHourlyChannel = isMacHourly || isWinHourly
 const isDailyChannel = isMacDaily || isWinDaily
 const isAdhocChannel = isMacAdhoc || isWinAdhoc
 const devChannelBuildVersion = isHourlyChannel
-  ? process.env.NIGHTSHIFT_HOURLY_BUILD_VERSION
+  ? process.env.KOLUX_HOURLY_BUILD_VERSION
   : isDailyChannel
-    ? process.env.NIGHTSHIFT_DAILY_BUILD_VERSION
+    ? process.env.KOLUX_DAILY_BUILD_VERSION
     : isAdhocChannel
-      ? process.env.NIGHTSHIFT_ADHOC_BUILD_VERSION
+      ? process.env.KOLUX_ADHOC_BUILD_VERSION
       : undefined
 // Why each dev channel gets its own repo rather than tagging into the main one:
 // the releases atom feed exposes only the 10 newest entries, so 24 hourly tags a
@@ -65,7 +65,7 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'nightshift-adhoc'
       : null
-const appId = 'com.txais.nightshift'
+const appId = 'com.txais.kolux'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -121,7 +121,7 @@ const winSpeechNativeResource = {
   to: 'node_modules/sherpa-onnx-win-x64'
 }
 // electron-builder replaces these defaults when `depends` is configured; retain
-// Electron's loader requirements alongside Nightshift's headless-host dependencies.
+// Electron's loader requirements alongside Kolux's headless-host dependencies.
 const debElectronRuntimeDependencies = [
   'libgtk-3-0',
   'libnotify4',
@@ -146,14 +146,14 @@ const rpmElectronRuntimeDependencies = [
 
 // Why mirrored, not imported: this config is CJS loaded by electron-builder outside the TS build.
 // Keep in sync with isMarkdownDocumentName() in src/main/ipc/markdown-documents.ts and with
-// config/nsis/nightshift-installer-hooks.nsh, which registers the same set on Windows.
+// config/nsis/kolux-installer-hooks.nsh, which registers the same set on Windows.
 const MARKDOWN_FILE_EXTENSIONS = ['md', 'markdown', 'mdx']
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Nightshift',
-  protocols: [{ name: 'Nightshift', schemes: ['nightshift'] }],
+  productName: 'Kolux',
+  protocols: [{ name: 'Kolux', schemes: ['kolux'] }],
   toolsets: { appimage: '1.0.3' },
   ...(devChannelBuildVersion
     ? { extraMetadata: { version: devChannelBuildVersion } }
@@ -183,7 +183,7 @@ module.exports = {
     // carries hostile-panel, the adversarial fixture the containment tests point at,
     // which must never reach a user's install.
     '!examples{,/**/*}',
-    // Why: pr-evidence/ is a local e2e screenshot output (NIGHTSHIFT_CAPTURE_EVIDENCE);
+    // Why: pr-evidence/ is a local e2e screenshot output (KOLUX_CAPTURE_EVIDENCE);
     // it is gitignored, but exclude it defensively so a stray local capture at
     // package time never bloats app.asar.
     '!pr-evidence{,/**/*}',
@@ -217,10 +217,10 @@ module.exports = {
     // extraResources entry below; keeping them in app.asar would ship every
     // native variant (and duplicate the selected one).
     '!node_modules/sherpa-onnx*{,/**/*}',
-    // Why: the Windows CLI shim ships via extraResources to resources/bin/nightshift.cmd
-    // (beside the native resources/bin/nightshift.exe). Packing the source tree into
+    // Why: the Windows CLI shim ships via extraResources to resources/bin/kolux.cmd
+    // (beside the native resources/bin/kolux.exe). Packing the source tree into
     // app.asar too lets asarUnpack:['resources/**'] extract a second copy at
-    // app.asar.unpacked/resources/win32/bin/nightshift.cmd with no adjacent nightshift.exe,
+    // app.asar.unpacked/resources/win32/bin/kolux.cmd with no adjacent kolux.exe,
     // which fails to launch the CLI (#7351).
     '!resources/win32{,/**/*}'
   ],
@@ -304,7 +304,7 @@ module.exports = {
         throw new Error(`Unsupported local-build compatibility architecture: ${context.arch}`)
       }
       const version = context.packager.appInfo.version
-      let commit = process.env.NIGHTSHIFT_BUILD_COMMIT || process.env.GITHUB_SHA || 'unknown'
+      let commit = process.env.KOLUX_BUILD_COMMIT || process.env.GITHUB_SHA || 'unknown'
       if (commit === 'unknown') {
         try {
           commit = execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
@@ -381,21 +381,21 @@ module.exports = {
       chmodSync(join(resourcesDir, filename), 0o755)
     }
     if (context.electronPlatformName === 'darwin') {
-      await signMacComputerUseHelper(join(resourcesDir, 'Nightshift Computer Use.app'), context.packager)
+      await signMacComputerUseHelper(join(resourcesDir, 'Kolux Computer Use.app'), context.packager)
       await signMacStandaloneHelper(
-        join(resourcesDir, '..', 'MacOS', 'nightshift-notification-status'),
-        'nightshift-notification-status',
+        join(resourcesDir, '..', 'MacOS', 'kolux-notification-status'),
+        'kolux-notification-status',
         context.packager
       )
       await signMacStandaloneHelper(
-        join(resourcesDir, '..', 'MacOS', 'nightshift-keyboard-layout'),
-        'nightshift-keyboard-layout',
+        join(resourcesDir, '..', 'MacOS', 'kolux-keyboard-layout'),
+        'kolux-keyboard-layout',
         context.packager
       )
     }
   },
   win: {
-    executableName: 'Nightshift',
+    executableName: 'Kolux',
     // Why: Windows installers are signed after electron-builder packaging by
     // SignPath, so the packager cannot infer the updater publisherName.
     //
@@ -423,12 +423,12 @@ module.exports = {
       ...createPackagedRuntimeNodeModuleResources('win32'),
       winSpeechNativeResource,
       {
-        from: 'resources/win32/bin/nightshift.cmd',
-        to: 'bin/nightshift.cmd'
+        from: 'resources/win32/bin/kolux.cmd',
+        to: 'bin/kolux.cmd'
       },
       {
-        from: 'native/windows-cli-launcher/.build/nightshift.exe',
-        to: 'bin/nightshift.exe'
+        from: 'native/windows-cli-launcher/.build/kolux.exe',
+        to: 'bin/kolux.exe'
       },
       {
         from: 'node_modules/agent-browser/bin/agent-browser-win32-x64.exe',
@@ -442,7 +442,7 @@ module.exports = {
     ]
   },
   nsis: {
-    artifactName: 'nightshift-windows-setup.${ext}',
+    artifactName: 'kolux-windows-setup.${ext}',
     shortcutName: '${productName}',
     uninstallDisplayName: '${productName}',
     createDesktopShortcut: 'always',
@@ -451,10 +451,10 @@ module.exports = {
     // update's uninstallOldVersion) and the additive markdown "Open with" registration.
     // Windows markdown association is deliberately NOT done via `fileAssociations`; see the
     // header comment in that file for why that would steal the user's default .md handler.
-    include: resolve(__dirname, 'nsis', 'nightshift-installer-hooks.nsh')
+    include: resolve(__dirname, 'nsis', 'kolux-installer-hooks.nsh')
   },
   mac: {
-    // Why rank Alternate: Nightshift joins Finder's "Open With" list for Markdown without claiming
+    // Why rank Alternate: Kolux joins Finder's "Open With" list for Markdown without claiming
     // LSHandlerRank ownership, so whichever editor the user already prefers stays the default.
     // Why one entry per extension: app-builder-lib globs `*.${ext}`, which an array would break.
     fileAssociations: MARKDOWN_FILE_EXTENSIONS.map((ext) => ({
@@ -469,19 +469,19 @@ module.exports = {
     entitlementsInherit: 'resources/build/entitlements.mac.plist',
     extendInfo: {
       NSAppleEventsUsageDescription:
-        'Nightshift allows terminal-launched developer tools to automate local apps when you request it.',
+        'Kolux allows terminal-launched developer tools to automate local apps when you request it.',
       NSBluetoothAlwaysUsageDescription:
-        'Nightshift allows terminal-launched developer tools to access Bluetooth devices when you request it.',
+        'Kolux allows terminal-launched developer tools to access Bluetooth devices when you request it.',
       NSBluetoothPeripheralUsageDescription:
-        'Nightshift allows terminal-launched developer tools to access Bluetooth devices when you request it.',
+        'Kolux allows terminal-launched developer tools to access Bluetooth devices when you request it.',
       NSCameraUsageDescription: "Application requests access to the device's camera.",
       NSLocationUsageDescription:
-        'Nightshift allows terminal-launched developer tools to access location when you request it.',
+        'Kolux allows terminal-launched developer tools to access location when you request it.',
       NSLocalNetworkUsageDescription:
-        'Nightshift allows terminal-launched developer tools to discover and connect to local development servers when you request it.',
+        'Kolux allows terminal-launched developer tools to discover and connect to local development servers when you request it.',
       NSMicrophoneUsageDescription: "Application requests access to the device's microphone.",
       NSAudioCaptureUsageDescription:
-        'Nightshift allows terminal-launched developer tools to capture desktop audio when you request it.',
+        'Kolux allows terminal-launched developer tools to capture desktop audio when you request it.',
       NSBonjourServices: ['_http._tcp', '_https._tcp'],
       NSDocumentsFolderUsageDescription:
         "Application requests access to the user's Documents folder.",
@@ -506,16 +506,16 @@ module.exports = {
       ...createPackagedRuntimeNodeModuleResources('darwin'),
       macSpeechNativeResource,
       {
-        from: 'resources/darwin/bin/nightshift',
-        to: 'bin/nightshift'
+        from: 'resources/darwin/bin/kolux',
+        to: 'bin/kolux'
       },
       {
         from: 'node_modules/agent-browser/bin/agent-browser-darwin-${arch}',
         to: 'agent-browser-darwin-${arch}'
       },
       {
-        from: 'native/computer-use-macos/.build/release/Nightshift Computer Use.app',
-        to: 'Nightshift Computer Use.app'
+        from: 'native/computer-use-macos/.build/release/Kolux Computer Use.app',
+        to: 'Kolux Computer Use.app'
       },
       featureWallResources
     ],
@@ -524,12 +524,12 @@ module.exports = {
     // is nil) for executables launched out of Contents/Resources (#7929).
     extraFiles: [
       {
-        from: 'native/notification-status-macos/.build/release/nightshift-notification-status',
-        to: 'MacOS/nightshift-notification-status'
+        from: 'native/notification-status-macos/.build/release/kolux-notification-status',
+        to: 'MacOS/kolux-notification-status'
       },
       {
-        from: 'native/keyboard-layout-macos/.build/release/nightshift-keyboard-layout',
-        to: 'MacOS/nightshift-keyboard-layout'
+        from: 'native/keyboard-layout-macos/.build/release/kolux-keyboard-layout',
+        to: 'MacOS/kolux-keyboard-layout'
       }
     ],
     target: [
@@ -547,26 +547,26 @@ module.exports = {
   // silently downgrading to ad-hoc artifacts that look shippable in CI logs.
   forceCodeSigning: isMacRelease,
   dmg: {
-    artifactName: 'nightshift-macos-${arch}.${ext}'
+    artifactName: 'kolux-macos-${arch}.${ext}'
   },
   linux: {
     // Why mimeTypes and not fileAssociations: shared-mime-info already maps *.md/*.markdown to
-    // text/markdown, so reusing that type puts Nightshift in the Open With list without shipping a glob
+    // text/markdown, so reusing that type puts Kolux in the Open With list without shipping a glob
     // override. A desktop entry's MimeType only adds a handler - mimeapps.list still owns the
     // default. .mdx is deliberately absent: Ubuntu 24.04's mime database maps it to
     // application/x-genesis-32x-rom, so claiming it here would need a glob override.
     mimeTypes: ['text/markdown'],
     // Why: Ubuntu desktop ships GNOME Orca as the `orca` package and /usr/bin/orca.
     // The Linux installer should not claim those system package/file names.
-    executableName: 'nightshift-ide',
+    executableName: 'kolux-ide',
     // Why: the icns source lets electron-builder emit standard hicolor PNG
     // sizes; a single 1024px PNG is ignored by some Linux docks/launchers.
     icon: 'resources/build/icon.icns',
     desktop: {
       entry: {
-        // Why: Electron reports WM_CLASS=nightshift for the visible Linux window;
-        // GNOME docks need an exact match to group it with nightshift-ide.desktop.
-        StartupWMClass: 'nightshift'
+        // Why: Electron reports WM_CLASS=kolux for the visible Linux window;
+        // GNOME docks need an exact match to group it with kolux-ide.desktop.
+        StartupWMClass: 'kolux'
       }
     },
     extraResources: [
@@ -574,8 +574,8 @@ module.exports = {
       ...createPackagedRuntimeNodeModuleResources('linux'),
       linuxSpeechNativeResource,
       {
-        from: 'resources/linux/bin/nightshift-ide',
-        to: 'bin/nightshift-ide'
+        from: 'resources/linux/bin/kolux-ide',
+        to: 'bin/kolux-ide'
       },
       {
         from: 'node_modules/agent-browser/bin/agent-browser-linux-${arch}',
@@ -593,12 +593,12 @@ module.exports = {
     category: 'Utility'
   },
   appImage: {
-    artifactName: isLinuxArm64Release ? 'nightshift-linux-arm64.${ext}' : 'nightshift-linux.${ext}'
+    artifactName: isLinuxArm64Release ? 'kolux-linux-arm64.${ext}' : 'kolux-linux.${ext}'
   },
   deb: {
-    packageName: 'nightshift-ide',
-    artifactName: 'nightshift-ide_${version}_${arch}.${ext}',
-    // Why: xvfb lets the bundled `nightshift serve` CLI run browser panes on a headless
+    packageName: 'kolux-ide',
+    artifactName: 'kolux-ide_${version}_${arch}.${ext}',
+    // Why: xvfb lets the bundled `kolux serve` CLI run browser panes on a headless
     // Linux host — Chromium needs a display server even for offscreen rendering,
     // and serve starts Xvfb itself when present (see ensure-virtual-display.ts).
     depends: [
@@ -611,7 +611,7 @@ module.exports = {
       'xclip',
       'xvfb'
     ],
-    // Why: symlink the bundled CLI onto PATH at install time so `nightshift-ide serve`
+    // Why: symlink the bundled CLI onto PATH at install time so `kolux-ide serve`
     // works on a headless host. The in-app CLI registration (CliInstaller) is
     // GUI-triggered and can never run on a server, so without this the CLI is
     // unreachable from the shell on exactly the hosts that need it.
@@ -619,8 +619,8 @@ module.exports = {
     afterRemove: 'resources/linux/packaging/after-remove.sh'
   },
   rpm: {
-    packageName: 'nightshift-ide',
-    artifactName: 'nightshift-ide-${version}.${arch}.${ext}',
+    packageName: 'kolux-ide',
+    artifactName: 'kolux-ide-${version}.${arch}.${ext}',
     // Why: see deb depends. RPM distros ship Xvfb as xorg-x11-server-Xvfb (there
     // is no `xvfb` package), so the name differs from the deb here.
     depends: [
@@ -640,7 +640,7 @@ module.exports = {
   // (node-pty) for each target architecture when producing dual-arch macOS
   // builds (x64 + arm64). With npmRebuild disabled, CI on an arm64 runner
   // packages arm64 binaries into the x64 DMG, causing "posix_spawnp failed"
-  // on Intel Macs. The beforeBuild hook performs Nightshift's targeted rebuild and
+  // on Intel Macs. The beforeBuild hook performs Kolux's targeted rebuild and
   // returns false so electron-builder does not rebuild optional cpu-features.
   npmRebuild: true,
   publish: {
@@ -665,7 +665,7 @@ function chmodUnixCliLaunchers(resourcesDir, electronPlatformName) {
   if (electronPlatformName === 'win32') {
     return
   }
-  for (const launcherName of ['nightshift', 'nightshift-ide']) {
+  for (const launcherName of ['kolux', 'kolux-ide']) {
     const launcherPath = join(resourcesDir, 'bin', launcherName)
     if (!existsSync(launcherPath)) {
       continue
@@ -696,7 +696,7 @@ function chmodMacServeSimHelpers(resourcesDir, electronPlatformName) {
 async function signMacComputerUseHelper(helperAppPath, packager) {
   if (!existsSync(helperAppPath)) {
     if (isMacRelease) {
-      throw new Error(`Missing Nightshift Computer Use helper app at ${helperAppPath}`)
+      throw new Error(`Missing Kolux Computer Use helper app at ${helperAppPath}`)
     }
     return
   }
@@ -705,15 +705,15 @@ async function signMacComputerUseHelper(helperAppPath, packager) {
       ? await packager.codeSigningInfo.value
       : null
   const identity =
-    process.env.NIGHTSHIFT_COMPUTER_MACOS_SIGN_IDENTITY ??
+    process.env.KOLUX_COMPUTER_MACOS_SIGN_IDENTITY ??
     process.env.CSC_NAME ??
     findInstalledMacSigningIdentity(codeSigningInfo?.keychainFile) ??
     (isMacRelease ? null : '-')
   if (!identity) {
-    throw new Error('Missing signing identity for Nightshift Computer Use helper app')
+    throw new Error('Missing signing identity for Kolux Computer Use helper app')
   }
   // Why: TCC grants attach to this nested app's code identity. Sign it before
-  // the outer Nightshift.app is sealed so production builds preserve that identity.
+  // the outer Kolux.app is sealed so production builds preserve that identity.
   execFileSync('codesign', codesignArgs(identity, helperAppPath), { stdio: 'inherit' })
   execFileSync('codesign', ['--verify', '--deep', '--strict', helperAppPath], {
     stdio: 'inherit'

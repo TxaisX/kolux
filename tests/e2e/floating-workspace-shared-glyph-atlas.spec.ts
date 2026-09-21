@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { sendToTerminal, waitForActivePanePtyId } from './helpers/terminal'
 import { compareTerminalScreenshots } from './terminal-screenshot-diff'
@@ -12,7 +12,7 @@ const PANEL_SELECTOR = '[data-floating-terminal-panel]'
 // Why: the floating panel toggles via this window event
 // (src/renderer/src/lib/floating-terminal.ts); dispatching it exercises the
 // same code path as the status bar button and the keyboard shortcut.
-const TOGGLE_EVENT = 'nightshift-toggle-floating-terminal'
+const TOGGLE_EVENT = 'kolux-toggle-floating-terminal'
 
 // Why: a silent foreground command blocks the shell so no prompt framework
 // (e.g. async p10k segments) repaints while screenshots are compared.
@@ -344,29 +344,29 @@ async function captureWorkspaceAfterTrigger(
 
 test.describe('floating workspace shared glyph atlas @headful', () => {
   test('switching floating workspace tabs keeps workspace terminal glyphs intact', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Why: xterm WebGL terminals with identical font configs share one glyph
     // texture atlas. The floating tab switch resumes a hidden renderer, whose
     // atlas reset clears those shared pages; unless every sharing terminal
     // rebuilds its render model too, the visible workspace terminal keeps
     // stale glyph coordinates and paints garbage (the bug this guards).
-    const scenario = await setUpSharedAtlasScenario(nightshiftPage)
+    const scenario = await setUpSharedAtlasScenario(koluxPage)
     test.skip(!scenario, 'WebGL inactive or terminals do not share a glyph atlas')
     const { baseline, floatingTabIds } = scenario!
 
-    await toggleFloatingPanel(nightshiftPage, true)
-    await activateFloatingTab(nightshiftPage, floatingTabIds[1])
+    await toggleFloatingPanel(koluxPage, true)
+    await activateFloatingTab(koluxPage, floatingTabIds[1])
     // Why: the switched-to tab attaching WebGL proves the suspend/resume
     // (and with it the atlas reset trigger) actually ran.
     expect(
-      await waitForWebglOnTab(nightshiftPage, floatingTabIds[1]),
+      await waitForWebglOnTab(koluxPage, floatingTabIds[1]),
       'switched-to floating tab should resume WebGL'
     ).toBe(true)
-    await settleAtlasActivity(nightshiftPage)
-    await toggleFloatingPanel(nightshiftPage, false)
+    await settleAtlasActivity(koluxPage)
+    await toggleFloatingPanel(koluxPage, false)
 
-    const afterSwitch = await captureWorkspaceAfterTrigger(nightshiftPage, scenario!)
+    const afterSwitch = await captureWorkspaceAfterTrigger(koluxPage, scenario!)
     await testInfo.attach('baseline', { body: baseline, contentType: 'image/png' })
     await testInfo.attach('after-tab-switch', { body: afterSwitch, contentType: 'image/png' })
     // Why: byte equality trips on sub-pixel antialiasing noise that leaves every
@@ -384,26 +384,26 @@ test.describe('floating workspace shared glyph atlas @headful', () => {
   })
 
   test('a sibling terminal clearing the shared atlas leaves workspace glyphs intact', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    // Why this trigger and not a panel reveal: Nightshift's reveal paths escalate to a
+    // Why this trigger and not a panel reveal: Kolux's reveal paths escalate to a
     // registry-wide atlas reset, which repaints every pane and would heal the
     // corruption before it could be observed — so a reveal-driven test passes whether
     // or not xterm propagates the invalidation. Clearing straight through the floating
     // manager reproduces the same shared-atlas wipe with none of that recovery in the
     // way, which is what makes this the assertion with teeth: it fails if
     // ITextureAtlas.pageLayoutVersion stops reaching sibling renderers.
-    const scenario = await setUpSharedAtlasScenario(nightshiftPage)
+    const scenario = await setUpSharedAtlasScenario(koluxPage)
     test.skip(!scenario, 'WebGL inactive or terminals do not share a glyph atlas')
     const { baseline, workspacePtyId, floatingTabIds } = scenario!
 
     // The panel stays closed: the workspace terminal must be the only thing repainting.
-    await resetAtlasOnTab(nightshiftPage, floatingTabIds[0])
+    await resetAtlasOnTab(koluxPage, floatingTabIds[0])
 
     // Why refresh and not a full rebuild: xterm skips cells whose content is unchanged,
     // so this is the repaint that reuses vertices baked against the wiped atlas pages.
-    await refreshTerminalOnTab(nightshiftPage, scenario!.workspaceTabId)
-    const afterSiblingClear = await captureStableWorkspaceShot(nightshiftPage, workspacePtyId)
+    await refreshTerminalOnTab(koluxPage, scenario!.workspaceTabId)
+    const afterSiblingClear = await captureStableWorkspaceShot(koluxPage, workspacePtyId)
 
     await testInfo.attach('baseline', { body: baseline, contentType: 'image/png' })
     await testInfo.attach('after-sibling-clear', {
@@ -422,20 +422,20 @@ test.describe('floating workspace shared glyph atlas @headful', () => {
   })
 
   test('reopening the floating workspace keeps workspace terminal glyphs intact', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Why: reopening the panel resumes its terminal, whose atlas reset clears
     // the shared pages just like a tab switch — the other user flow that
     // garbled visible workspace terminals before resets went global.
-    const scenario = await setUpSharedAtlasScenario(nightshiftPage)
+    const scenario = await setUpSharedAtlasScenario(koluxPage)
     test.skip(!scenario, 'WebGL inactive or terminals do not share a glyph atlas')
     const { baseline } = scenario!
 
-    await toggleFloatingPanel(nightshiftPage, true)
-    await settleAtlasActivity(nightshiftPage)
-    await toggleFloatingPanel(nightshiftPage, false)
+    await toggleFloatingPanel(koluxPage, true)
+    await settleAtlasActivity(koluxPage)
+    await toggleFloatingPanel(koluxPage, false)
 
-    const afterReopen = await captureWorkspaceAfterTrigger(nightshiftPage, scenario!)
+    const afterReopen = await captureWorkspaceAfterTrigger(koluxPage, scenario!)
     await testInfo.attach('baseline', { body: baseline, contentType: 'image/png' })
     await testInfo.attach('after-reopen', { body: afterReopen, contentType: 'image/png' })
     const afterReopenDiff = compareTerminalScreenshots(baseline, afterReopen)

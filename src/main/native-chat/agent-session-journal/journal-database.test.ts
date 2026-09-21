@@ -39,7 +39,7 @@ function epochRow(seq: number, epoch = 'epoch-1'): JournalRow {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-db-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-db-'))
   dbPath = journalDatabaseFile(root)
 })
 
@@ -98,7 +98,7 @@ describe('journal database open', () => {
     expect(() => openJournalDatabase(failing)).toThrow()
     await expect(stat(`${failing}-wal`)).rejects.toThrow()
     await expect(rm(root, { recursive: true, force: true })).resolves.toBeUndefined()
-    root = await mkdtemp(join(tmpdir(), 'nightshift-journal-db-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-journal-db-'))
   })
 })
 

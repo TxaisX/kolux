@@ -85,10 +85,10 @@ let previousUserDataPath: string | undefined
 
 beforeEach(() => {
   denials.reset()
-  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-hooksread-home-'))
-  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-hooksread-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-hooksread-home-'))
+  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-hooksread-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   getPathMock.mockImplementation((name: string) => {
     if (name === 'userData') {
@@ -104,9 +104,9 @@ afterEach(() => {
   realFs.rmSync(fakeHomeDir, { recursive: true, force: true })
   realFs.rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })

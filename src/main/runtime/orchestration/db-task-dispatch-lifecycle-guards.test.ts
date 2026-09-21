@@ -684,7 +684,7 @@ describe('Task/Dispatch lifecycle guards', () => {
 })
 
 function createDatabase(): OrchestrationDb {
-  dir = mkdtempSync(join(tmpdir(), 'nightshift-task-dispatch-lifecycle-'))
+  dir = mkdtempSync(join(tmpdir(), 'kolux-task-dispatch-lifecycle-'))
   db = new OrchestrationDb(join(dir, 'orchestration.db'))
   return db
 }

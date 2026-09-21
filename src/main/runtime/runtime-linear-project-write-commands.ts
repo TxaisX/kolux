@@ -60,7 +60,7 @@ export class RuntimeLinearProjectWriteCommands extends RuntimeLinearTeamWriteCom
             name: project.name,
             teams: project.teams
           })),
-          nextSteps: ['Run `nightshift linear project list --query <name> --json` and retry by id.']
+          nextSteps: ['Run `kolux linear project list --query <name> --json` and retry by id.']
         }
       )
     }
@@ -73,7 +73,7 @@ export class RuntimeLinearProjectWriteCommands extends RuntimeLinearTeamWriteCom
         name: project.name,
         teams: project.teams
       })),
-      nextSteps: ['Run `nightshift linear project list --query <name> --json` and retry by id.']
+      nextSteps: ['Run `kolux linear project list --query <name> --json` and retry by id.']
     })
   }
 

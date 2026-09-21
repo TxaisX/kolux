@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { isNightshiftCliAvailableOnPath } from '@/lib/agent-skill-cli-prerequisite'
+import { isKoluxCliAvailableOnPath } from '@/lib/agent-skill-cli-prerequisite'
 import {
   ORCHESTRATION_SETUP_STATE_EVENT,
   hasOrchestrationSetupMarker,
@@ -29,7 +29,7 @@ export function useFloatingTerminalOrchestrationVisibility({
     try {
       const status = await window.api.cli.getInstallStatus()
       if (mountedRef.current) {
-        setShowOrchestrationSetup(!isNightshiftCliAvailableOnPath(status))
+        setShowOrchestrationSetup(!isKoluxCliAvailableOnPath(status))
       }
     } catch {
       if (mountedRef.current) {

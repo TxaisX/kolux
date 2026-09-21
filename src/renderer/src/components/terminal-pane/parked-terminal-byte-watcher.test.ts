@@ -377,7 +377,7 @@ describe('startParkedTerminalByteWatcher', () => {
   it('observes GitHub PR links across chunk boundaries', async () => {
     const { dispose } = await startWatcher()
 
-    emit('PR: https://github.com/nightshift-dev/nightshift/pull/42')
+    emit('PR: https://github.com/kolux-dev/kolux/pull/42')
     expect(mockStoreState.observeTerminalGitHubPullRequestLink).not.toHaveBeenCalled()
 
     emit('1\r\ndone')
@@ -385,9 +385,9 @@ describe('startParkedTerminalByteWatcher', () => {
     expect(mockStoreState.observeTerminalGitHubPullRequestLink).toHaveBeenCalledWith(
       WORKTREE_ID,
       expect.objectContaining({
-        url: 'https://github.com/nightshift-dev/nightshift/pull/421',
+        url: 'https://github.com/kolux-dev/kolux/pull/421',
         number: 421,
-        slug: { owner: 'nightshift-dev', repo: 'nightshift', host: 'github.com' }
+        slug: { owner: 'kolux-dev', repo: 'kolux', host: 'github.com' }
       })
     )
     dispose()
@@ -619,7 +619,7 @@ describe('startParkedTerminalByteWatcher', () => {
       })
     }
 
-    /** Feed chunks the way NightshiftRuntimeService.onPtyData does: OSC 9999 strip,
+    /** Feed chunks the way KoluxRuntimeService.onPtyData does: OSC 9999 strip,
      *  shared title tracker, one fact batch per chunk — the main half of the
      *  migration-safety parity check. */
     async function emitViaMainTrackerFacts(chunks: string[]): Promise<void> {
@@ -875,7 +875,7 @@ describe('startParkedTerminalByteWatcher', () => {
 
       // Why: pr-link facts arrive on the channel; byte-scanning here too
       // would observe every link twice.
-      emit('PR: https://github.com/nightshift-dev/nightshift/pull/42\r\n')
+      emit('PR: https://github.com/kolux-dev/kolux/pull/42\r\n')
       expect(mockStoreState.observeTerminalGitHubPullRequestLink).not.toHaveBeenCalled()
       dispose()
     })
@@ -923,8 +923,8 @@ describe('startParkedTerminalByteWatcher', () => {
       const { dispose } = await startWatcher()
 
       const link = {
-        url: 'https://github.com/nightshift-dev/nightshift/pull/421',
-        slug: { owner: 'nightshift-dev', repo: 'nightshift' },
+        url: 'https://github.com/kolux-dev/kolux/pull/421',
+        slug: { owner: 'kolux-dev', repo: 'kolux' },
         number: 421
       }
       await dispatchFacts([{ kind: 'pr-link', link }])

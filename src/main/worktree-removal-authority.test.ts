@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canCleanupUnregisteredNightshiftWorktreeDirectory,
+  canCleanupUnregisteredKoluxWorktreeDirectory,
   isWorktreePathMissing,
-  stripNightshiftProvenanceMetaUpdates
+  stripKoluxProvenanceMetaUpdates
 } from './worktree-removal-safety'
 import type { WorktreeMeta } from '../shared/worktree/meta-types'
 
@@ -30,26 +30,26 @@ describe('isWorktreePathMissing', () => {
   })
 })
 
-describe('canCleanupUnregisteredNightshiftWorktreeDirectory', () => {
-  it('does not treat nightshiftCreatedAt alone as cleanup authority', () => {
+describe('canCleanupUnregisteredKoluxWorktreeDirectory', () => {
+  it('does not treat koluxCreatedAt alone as cleanup authority', () => {
     expect(
-      canCleanupUnregisteredNightshiftWorktreeDirectory({
-        meta: { nightshiftCreatedAt: Date.now() }
+      canCleanupUnregisteredKoluxWorktreeDirectory({
+        meta: { koluxCreatedAt: Date.now() }
       })
     ).toBe(false)
     expect(
-      canCleanupUnregisteredNightshiftWorktreeDirectory({
+      canCleanupUnregisteredKoluxWorktreeDirectory({
         meta: {
-          nightshiftCreatedAt: Date.now(),
-          nightshiftCreationSource: 'runtime'
+          koluxCreatedAt: Date.now(),
+          koluxCreationSource: 'runtime'
         }
       })
     ).toBe(true)
   })
 
-  it('accepts legacy Nightshift-created metadata before explicit provenance existed', () => {
+  it('accepts legacy Kolux-created metadata before explicit provenance existed', () => {
     expect(
-      canCleanupUnregisteredNightshiftWorktreeDirectory({
+      canCleanupUnregisteredKoluxWorktreeDirectory({
         meta: { createdAt: Date.now() }
       })
     ).toBe(true)
@@ -70,11 +70,11 @@ describe('canCleanupUnregisteredNightshiftWorktreeDirectory', () => {
       sortOrder: 0,
       lastActivityAt: 0,
       workspaceStatus: 'todo',
-      nightshiftCreationWorkspaceLayout: { path: '/nightshift/workspaces', nestWorkspaces: true }
+      koluxCreationWorkspaceLayout: { path: '/kolux/workspaces', nestWorkspaces: true }
     }
 
     expect(
-      canCleanupUnregisteredNightshiftWorktreeDirectory({
+      canCleanupUnregisteredKoluxWorktreeDirectory({
         meta: layoutOnlyMeta
       })
     ).toBe(false)
@@ -82,21 +82,21 @@ describe('canCleanupUnregisteredNightshiftWorktreeDirectory', () => {
 
   it('does not trust paths without provenance or legacy metadata', () => {
     expect(
-      canCleanupUnregisteredNightshiftWorktreeDirectory({
+      canCleanupUnregisteredKoluxWorktreeDirectory({
         meta: undefined
       })
     ).toBe(false)
   })
 })
 
-describe('stripNightshiftProvenanceMetaUpdates', () => {
-  it('removes Nightshift-owned provenance fields from user metadata updates', () => {
+describe('stripKoluxProvenanceMetaUpdates', () => {
+  it('removes Kolux-owned provenance fields from user metadata updates', () => {
     expect(
-      stripNightshiftProvenanceMetaUpdates({
+      stripKoluxProvenanceMetaUpdates({
         comment: 'keep me',
-        nightshiftCreatedAt: 123,
-        nightshiftCreationSource: 'desktop',
-        nightshiftCreationWorkspaceLayout: { path: '/workspace', nestWorkspaces: false },
+        koluxCreatedAt: 123,
+        koluxCreationSource: 'desktop',
+        koluxCreationWorkspaceLayout: { path: '/workspace', nestWorkspaces: false },
         automationProvenance: {
           kind: 'created-by-automation',
           automationId: 'automation-1',

@@ -36,13 +36,13 @@ export async function connectDockerSshRelayTarget(
     page,
     {
       label: `${viaProxyJump ? 'Docker SSH ProxyJump' : 'Docker SSH Relay'} E2E ${Date.now()}`,
-      ...(viaProxyJump ? { configHost: 'nightshift-e2e-destination' } : {}),
+      ...(viaProxyJump ? { configHost: 'kolux-e2e-destination' } : {}),
       host: target.host,
       port: viaProxyJump ? 22 : target.port,
       username: 'root',
       identityFile: target.identityFile,
       identitiesOnly: true,
-      ...(viaProxyJump ? { jumpHost: 'nightshift-e2e-jump' } : {}),
+      ...(viaProxyJump ? { jumpHost: 'kolux-e2e-jump' } : {}),
       relayGracePeriodSeconds: options.relayGracePeriodSeconds ?? 1
     },
     {

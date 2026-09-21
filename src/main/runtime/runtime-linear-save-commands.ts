@@ -73,10 +73,10 @@ export class RuntimeLinearSaveCommands extends RuntimeLinearCommentCommands {
           (cause) =>
             linearError(
               'linear_write_unconfirmed',
-              'Linear may have applied the issue save, but Nightshift could not confirm it.',
+              'Linear may have applied the issue save, but Kolux could not confirm it.',
               {
                 nextSteps: [
-                  `Run \`nightshift linear issue ${target.issue.identifier} --workspace ${target.workspaceId} --json\` before retrying.`
+                  `Run \`kolux linear issue ${target.issue.identifier} --workspace ${target.workspaceId} --json\` before retrying.`
                 ],
                 ...(cause ? { cause } : {})
               }
@@ -122,10 +122,10 @@ export class RuntimeLinearSaveCommands extends RuntimeLinearCommentCommands {
         (cause) =>
           linearError(
             'linear_write_unconfirmed',
-            'Linear may have applied the task update, but Nightshift could not confirm it.',
+            'Linear may have applied the task update, but Kolux could not confirm it.',
             {
               nextSteps: [
-                `Run \`nightshift linear issue ${target.issue.identifier} --workspace ${target.workspaceId} --json\` and check the updated field before retrying.`
+                `Run \`kolux linear issue ${target.issue.identifier} --workspace ${target.workspaceId} --json\` and check the updated field before retrying.`
               ],
               ...(cause ? { cause } : {})
             }

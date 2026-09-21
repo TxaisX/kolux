@@ -1,15 +1,15 @@
 import { isSkillsCliAgentKeyShaped } from './skills-cli-agent-keys'
 
-export const NIGHTSHIFT_SKILLS_REPOSITORY_URL = 'https://github.com/TxaisX/nightshift'
+export const KOLUX_SKILLS_REPOSITORY_URL = 'https://github.com/TxaisX/nightshift'
 
-export const NIGHTSHIFT_CLI_SKILL_NAME = 'nightshift-cli'
+export const KOLUX_CLI_SKILL_NAME = 'kolux-cli'
 export const COMPUTER_USE_SKILL_NAME = 'computer-use'
 export const ORCHESTRATION_SKILL_NAME = 'orchestration'
-export const EPHEMERAL_VMS_SKILL_NAME = 'nightshift-per-workspace-env'
-export const NIGHTSHIFT_LINEAR_SKILL_NAME = 'nightshift-linear'
+export const EPHEMERAL_VMS_SKILL_NAME = 'kolux-per-workspace-env'
+export const KOLUX_LINEAR_SKILL_NAME = 'kolux-linear'
 export const LINEAR_TICKETS_SKILL_NAME = 'linear-tickets'
 export const LINEAR_AGENT_SKILL_NAMES = [
-  NIGHTSHIFT_LINEAR_SKILL_NAME,
+  KOLUX_LINEAR_SKILL_NAME,
   LINEAR_TICKETS_SKILL_NAME
 ] as const
 
@@ -47,7 +47,7 @@ export function buildAgentFeatureSkillInstallArgs(
   return [
     'skills',
     'add',
-    NIGHTSHIFT_SKILLS_REPOSITORY_URL,
+    KOLUX_SKILLS_REPOSITORY_URL,
     ...skillArgs,
     ...(global ? ['--global'] : []),
     // Why: an explicit --agent stops `skills add` calling its own detection, whose
@@ -93,12 +93,12 @@ export function buildAgentFeatureSkillUpdateCommand(
   return `npx ${buildAgentFeatureSkillUpdateArgs(skillNames, options).join(' ')}`
 }
 
-export const NIGHTSHIFT_CLI_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
-  NIGHTSHIFT_CLI_SKILL_NAME
+export const KOLUX_CLI_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
+  KOLUX_CLI_SKILL_NAME
 ])
 
-export const NIGHTSHIFT_CLI_SKILL_UPDATE_COMMAND =
-  buildAgentFeatureSkillUpdateCommand(NIGHTSHIFT_CLI_SKILL_NAME)
+export const KOLUX_CLI_SKILL_UPDATE_COMMAND =
+  buildAgentFeatureSkillUpdateCommand(KOLUX_CLI_SKILL_NAME)
 
 export const COMPUTER_USE_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
   COMPUTER_USE_SKILL_NAME
@@ -121,16 +121,17 @@ export const EPHEMERAL_VMS_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstall
 export const EPHEMERAL_VMS_SKILL_UPDATE_COMMAND =
   buildAgentFeatureSkillUpdateCommand(EPHEMERAL_VMS_SKILL_NAME)
 
-export const NIGHTSHIFT_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND =
-  buildAgentFeatureSkillInstallCommand([NIGHTSHIFT_CLI_SKILL_NAME, ORCHESTRATION_SKILL_NAME])
-
-export const NIGHTSHIFT_LINEAR_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
-  NIGHTSHIFT_LINEAR_SKILL_NAME
+export const KOLUX_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
+  KOLUX_CLI_SKILL_NAME,
+  ORCHESTRATION_SKILL_NAME
 ])
 
-export const NIGHTSHIFT_LINEAR_SKILL_UPDATE_COMMAND = buildAgentFeatureSkillUpdateCommand(
-  NIGHTSHIFT_LINEAR_SKILL_NAME
-)
+export const KOLUX_LINEAR_SKILL_INSTALL_COMMAND = buildAgentFeatureSkillInstallCommand([
+  KOLUX_LINEAR_SKILL_NAME
+])
+
+export const KOLUX_LINEAR_SKILL_UPDATE_COMMAND =
+  buildAgentFeatureSkillUpdateCommand(KOLUX_LINEAR_SKILL_NAME)
 
 export const LINEAR_TICKETS_SKILL_UPDATE_COMMAND =
   buildAgentFeatureSkillUpdateCommand(LINEAR_TICKETS_SKILL_NAME)

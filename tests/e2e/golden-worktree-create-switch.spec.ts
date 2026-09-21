@@ -1,6 +1,6 @@
 import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { getActiveWorktreeId, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { createTerminalTabFromMenu } from './helpers/terminal-tab-menu'
 import {
@@ -28,55 +28,51 @@ async function removeCreatedWorktree(page: Page, worktreeId: string): Promise<vo
 }
 
 test('creates a worktree, keeps its terminal isolated, and switches back @golden', async ({
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(180_000)
-  await waitForSessionReady(nightshiftPage)
-  const originalWorktreeId = await waitForActiveWorktree(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const parentPtyId = await waitForActivePanePtyId(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  const originalWorktreeId = await waitForActiveWorktree(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const parentPtyId = await waitForActivePanePtyId(koluxPage)
   const workspaceName = `golden-switch-${Date.now()}`
   let childWorktreeId: string | null = null
 
   try {
-    await createWorkspace(nightshiftPage, workspaceName)
+    await createWorkspace(koluxPage, workspaceName)
     await expect(
-      nightshiftPage
-        .locator('[role="option"][aria-current="page"]')
-        .filter({ hasText: workspaceName })
+      koluxPage.locator('[role="option"][aria-current="page"]').filter({ hasText: workspaceName })
     ).toBeVisible({ timeout: 30_000 })
-    childWorktreeId = await waitForActiveWorktree(nightshiftPage)
+    childWorktreeId = await waitForActiveWorktree(koluxPage)
     // Why: the cleanup force-removes childWorktreeId, so it must never resolve to the original.
     expect(childWorktreeId).not.toBe(originalWorktreeId)
     await expect(
-      nightshiftPage.locator(`[role="option"][data-worktree-id="${childWorktreeId}"]`)
+      koluxPage.locator(`[role="option"][data-worktree-id="${childWorktreeId}"]`)
     ).toHaveAttribute('aria-current', 'page')
 
-    await createTerminalTabFromMenu(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const childPtyId = await waitForActivePanePtyId(nightshiftPage)
+    await createTerminalTabFromMenu(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const childPtyId = await waitForActivePanePtyId(koluxPage)
     expect(childPtyId).not.toBe(parentPtyId)
-    await waitForPtyShellEcho(nightshiftPage, childPtyId, 15_000)
-    await execInTerminal(nightshiftPage, childPtyId, splitMarkerEchoCommand('worktree', '-b'))
-    await waitForTerminalOutput(nightshiftPage, 'worktree-b')
+    await waitForPtyShellEcho(koluxPage, childPtyId, 15_000)
+    await execInTerminal(koluxPage, childPtyId, splitMarkerEchoCommand('worktree', '-b'))
+    await waitForTerminalOutput(koluxPage, 'worktree-b')
 
-    await nightshiftPage
-      .locator(`[role="option"][data-worktree-id="${originalWorktreeId}"]`)
-      .click()
+    await koluxPage.locator(`[role="option"][data-worktree-id="${originalWorktreeId}"]`).click()
     await expect(
-      nightshiftPage.locator(`[role="option"][data-worktree-id="${originalWorktreeId}"]`)
+      koluxPage.locator(`[role="option"][data-worktree-id="${originalWorktreeId}"]`)
     ).toHaveAttribute('aria-current', 'page', { timeout: 20_000 })
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    expect(await waitForActivePanePtyId(nightshiftPage, 30_000)).toBe(parentPtyId)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    expect(await waitForActivePanePtyId(koluxPage, 30_000)).toBe(parentPtyId)
   } finally {
     if (childWorktreeId) {
-      if ((await getActiveWorktreeId(nightshiftPage).catch(() => null)) !== originalWorktreeId) {
-        await nightshiftPage
+      if ((await getActiveWorktreeId(koluxPage).catch(() => null)) !== originalWorktreeId) {
+        await koluxPage
           .locator(`[role="option"][data-worktree-id="${originalWorktreeId}"]`)
           .click()
           .catch(() => undefined)
       }
-      await removeCreatedWorktree(nightshiftPage, childWorktreeId).catch(() => undefined)
+      await removeCreatedWorktree(koluxPage, childWorktreeId).catch(() => undefined)
     }
   }
 })

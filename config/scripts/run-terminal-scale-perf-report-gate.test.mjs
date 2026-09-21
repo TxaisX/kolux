@@ -10,7 +10,7 @@ import {
 const tempDirs = []
 
 function tempReportPath() {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-terminal-perf-gate-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-terminal-perf-gate-'))
   tempDirs.push(dir)
   return join(dir, 'report.json')
 }
@@ -68,7 +68,7 @@ describe('run-terminal-scale-perf-report-gate', () => {
 
     const status = runTerminalScalePerfReportGate({
       argv: ['--report', reportPath, '--grep', '25 ACK-backpressured real PTYs'],
-      env: { ...process.env, NIGHTSHIFT_TEST_MARKER: '1' },
+      env: { ...process.env, KOLUX_TEST_MARKER: '1' },
       spawnSyncImpl
     })
 
@@ -87,7 +87,7 @@ describe('run-terminal-scale-perf-report-gate', () => {
       '--grep',
       '25 ACK-backpressured real PTYs'
     ])
-    expect(calls[0].options.env.NIGHTSHIFT_TEST_MARKER).toBe('1')
+    expect(calls[0].options.env.KOLUX_TEST_MARKER).toBe('1')
     expect(calls[1].args).toEqual(['config/scripts/summarize-terminal-perf-report.mjs', reportPath])
     expect(calls[2].args).toEqual([
       'config/scripts/check-terminal-perf-report-budgets.mjs',
@@ -106,7 +106,7 @@ describe('run-terminal-scale-perf-report-gate', () => {
     const { calls, spawnSyncImpl } = makeSpawnSync()
 
     const status = runTerminalScalePerfReportGate({
-      env: { ...process.env, NIGHTSHIFT_E2E_TERMINAL_PERF_REPORT_PATH: reportPath },
+      env: { ...process.env, KOLUX_E2E_TERMINAL_PERF_REPORT_PATH: reportPath },
       spawnSyncImpl
     })
 
@@ -121,8 +121,8 @@ describe('run-terminal-scale-perf-report-gate', () => {
     const status = runTerminalScalePerfReportGate({
       env: {
         ...process.env,
-        NIGHTSHIFT_E2E_TERMINAL_PERF_HTML_REPORT_PATH: 'tmp/terminal-report.html',
-        NIGHTSHIFT_E2E_TERMINAL_PERF_REPORT_PATH: reportPath
+        KOLUX_E2E_TERMINAL_PERF_HTML_REPORT_PATH: 'tmp/terminal-report.html',
+        KOLUX_E2E_TERMINAL_PERF_REPORT_PATH: reportPath
       },
       spawnSyncImpl
     })

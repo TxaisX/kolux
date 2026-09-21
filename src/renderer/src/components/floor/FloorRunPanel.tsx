@@ -17,7 +17,7 @@ function countByState(lanes: FloorLane[], state: FloorSegmentKind): number {
 /**
  * Right-column detail for the selected lane's run: identity, prompt, child
  * roster and the two cross-mode jumps. Runs/tasks/dispatch and mailboxes
- * exist in the `nightshift` CLI but have no renderer IPC yet (see
+ * exist in the `kolux` CLI but have no renderer IPC yet (see
  * three-mode-shell.md), so this panel only reads fields the agent-status hook
  * pipeline already delivers (`AgentStatusOrchestrationContext`).
  */

@@ -26,7 +26,7 @@ const CAPTURED_HOST_REFUSALS: Record<AutomationCapturedHostIssue, string> = {
   [AUTOMATION_ORPHAN_ISSUES.targetReplaced]:
     'The automation host was removed and re-registered, so this automation must be re-adopted before it can run.',
   [AUTOMATION_ORPHAN_ISSUES.workspaceHostAmbiguous]:
-    'The automation workspace spans more than one host, so Nightshift cannot tell which one to run it on.'
+    'The automation workspace spans more than one host, so Kolux cannot tell which one to run it on.'
 }
 
 const NO_RUNNABLE_HOST = 'This automation has no host to run on.'
@@ -79,7 +79,7 @@ export function resolveAutomationRunTarget(
     return {
       ok: false,
       error:
-        'Remote-server automation scheduling is not available from this Nightshift client yet. Run this automation on the remote server or update Nightshift when durable remote scheduling is available.'
+        'Remote-server automation scheduling is not available from this Kolux client yet. Run this automation on the remote server or update Kolux when durable remote scheduling is available.'
     }
   }
 

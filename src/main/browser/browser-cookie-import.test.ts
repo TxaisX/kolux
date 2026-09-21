@@ -198,7 +198,7 @@ describe('importCookiesFromFile', () => {
   let cookieWriteMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-cookie-test-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'kolux-cookie-test-'))
     cookiesGetMock = vi.fn().mockResolvedValue([])
     cookiesRemoveMock = vi.fn().mockResolvedValue(undefined)
     cookieWriteMock = writeCookieIdentityMock
@@ -428,7 +428,7 @@ describe('importCookiesFromBrowser Safari', () => {
   let cookieWriteMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-safari-cookie-test-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'kolux-safari-cookie-test-'))
     cookieWriteMock = writeCookieIdentityMock
     cookieWriteMock.mockReset()
     cookieWriteMock.mockResolvedValue(undefined)
@@ -469,7 +469,7 @@ describe('importCookiesFromBrowser Chromium', () => {
   let setUserAgentMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-chromium-cookie-test-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'kolux-chromium-cookie-test-'))
     cookieWriteMock = writeCookieIdentityMock
     cookieWriteMock.mockReset()
     cookieWriteMock.mockResolvedValue(undefined)

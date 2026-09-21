@@ -36,7 +36,7 @@ function git(cwd: string, args: string[]): string {
 }
 
 async function createRepo(): Promise<{ repoPath: string; root: string }> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-prepared-worktree-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-prepared-worktree-'))
   tempRoots.push(root)
   const repoPath = join(root, 'repo')
   execFileSync('git', ['init', '--quiet', repoPath])
@@ -99,7 +99,7 @@ describe('prepared worktree creation with real Git', () => {
       repoPath,
       stalePath,
       'main',
-      'nightshift-create-preparation:v1:999999999:stale'
+      'kolux-create-preparation:v1:999999999:stale'
     )
     let releaseRemoval!: () => void
     const removalGate = new Promise<void>((resolve) => {
@@ -351,7 +351,7 @@ describe('prepared worktree creation with real Git', () => {
     expect(allBeforeSubmit).toHaveLength(2)
     expect(allBeforeSubmit.find(isWorktreeCreatePreparation)).toMatchObject({
       locked: true,
-      lockReason: expect.stringContaining('nightshift-create-preparation:v1:')
+      lockReason: expect.stringContaining('kolux-create-preparation:v1:')
     })
 
     await writeFile(join(repoPath, 'version.txt'), 'two\n')

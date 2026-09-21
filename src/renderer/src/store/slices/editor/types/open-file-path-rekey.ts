@@ -1,4 +1,4 @@
-/** One tab's migration in a Nightshift-owned move; precomputed by the move coordinator. */
+/** One tab's migration in a Kolux-owned move; precomputed by the move coordinator. */
 export type OpenFilePathRekey = {
   oldFileId: string
   newFileId: string

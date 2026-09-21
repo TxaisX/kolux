@@ -41,7 +41,7 @@ export function renderClaudeAccountsSection(model: AccountsPaneSectionModel): Re
         <p className="text-xs text-muted-foreground">
           {translate(
             'auto.components.settings.AccountsPane.72b36ea174',
-            'Optional. Nightshift can use your normal Claude login; add accounts only if you want quick switching without moving chat sessions.'
+            'Optional. Kolux can use your normal Claude login; add accounts only if you want quick switching without moving chat sessions.'
           )}
         </p>
       </div>
@@ -175,7 +175,7 @@ export function renderClaudeAccountsSection(model: AccountsPaneSectionModel): Re
                   )
                 : translate(
                     'auto.components.settings.AccountsPane.3fe7862418',
-                    "No managed Claude accounts for {{value0}}. Nightshift will use that environment's system default Claude login until you add one here.",
+                    "No managed Claude accounts for {{value0}}. Kolux will use that environment's system default Claude login until you add one here.",
                     { value0: accountRuntimeSentenceLabel }
                   )}
             </div>

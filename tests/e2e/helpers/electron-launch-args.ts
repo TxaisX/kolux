@@ -1,6 +1,6 @@
 import { dirname } from 'node:path'
 
-export function getNightshiftElectronLaunchArgs(mainPath: string, headful: boolean): string[] {
+export function getKoluxElectronLaunchArgs(mainPath: string, headful: boolean): string[] {
   // Launch through package.json so app version and resource paths match a packaged app.
   const appPath = dirname(dirname(dirname(mainPath)))
   // Isolated macOS profiles must not invoke the system keychain UI. Without

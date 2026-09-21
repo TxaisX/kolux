@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Capture one-shot macOS launch diagnostics for a published Nightshift release.
+# Capture one-shot macOS launch diagnostics for a published Kolux release.
 #
 # Usage:
-#   NIGHTSHIFT_DIAGNOSTIC_TAG=v1.4.42-rc.1 bash config/scripts/macos-launch-diagnostics.sh
+#   KOLUX_DIAGNOSTIC_TAG=v1.4.42-rc.1 bash config/scripts/macos-launch-diagnostics.sh
 #   bash config/scripts/macos-launch-diagnostics.sh --tag v1.4.42-rc.1
 set -euo pipefail
 
-REPO="${NIGHTSHIFT_DIAGNOSTIC_REPO:-TxaisX/nightshift}"
-TAG="${NIGHTSHIFT_DIAGNOSTIC_TAG:-}"
+REPO="${KOLUX_DIAGNOSTIC_REPO:-TxaisX/nightshift}"
+TAG="${KOLUX_DIAGNOSTIC_TAG:-}"
 KEEP=0
 
 while [[ $# -gt 0 ]]; do
@@ -26,10 +26,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<'EOF'
-Capture one-shot macOS launch diagnostics for a published Nightshift release.
+Capture one-shot macOS launch diagnostics for a published Kolux release.
 
 Usage:
-  NIGHTSHIFT_DIAGNOSTIC_TAG=v1.4.42-rc.1 bash config/scripts/macos-launch-diagnostics.sh
+  KOLUX_DIAGNOSTIC_TAG=v1.4.42-rc.1 bash config/scripts/macos-launch-diagnostics.sh
   bash config/scripts/macos-launch-diagnostics.sh --tag v1.4.42-rc.1
 EOF
       exit 0
@@ -48,14 +48,14 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 if [[ -z "$TAG" ]]; then
-  echo "Set NIGHTSHIFT_DIAGNOSTIC_TAG or pass --tag vX.Y.Z-rc.N." >&2
+  echo "Set KOLUX_DIAGNOSTIC_TAG or pass --tag vX.Y.Z-rc.N." >&2
   exit 2
 fi
 
 ARCH="$(uname -m)"
 case "$ARCH" in
-  arm64) ASSET="nightshift-macos-arm64.dmg" ;;
-  x86_64) ASSET="nightshift-macos-x64.dmg" ;;
+  arm64) ASSET="kolux-macos-arm64.dmg" ;;
+  x86_64) ASSET="kolux-macos-x64.dmg" ;;
   *)
     echo "Unsupported macOS architecture: $ARCH" >&2
     exit 2
@@ -63,21 +63,21 @@ case "$ARCH" in
 esac
 
 TIMESTAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
-WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/nightshift-launch-diagnostics.XXXXXXXX")"
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kolux-launch-diagnostics.XXXXXXXX")"
 OUT_DIR="$WORK_DIR/output"
 MOUNT_DIR="$WORK_DIR/mount"
-APP_DIR="$WORK_DIR/Nightshift.app"
+APP_DIR="$WORK_DIR/Kolux.app"
 DMG_PATH="$WORK_DIR/$ASSET"
 mkdir -p "$OUT_DIR" "$MOUNT_DIR"
 
 if [[ -d "$HOME/Desktop" ]]; then
-  ZIP_PATH="$HOME/Desktop/nightshift-launch-diagnostics-${TAG}-${TIMESTAMP}.zip"
+  ZIP_PATH="$HOME/Desktop/kolux-launch-diagnostics-${TAG}-${TIMESTAMP}.zip"
 else
-  ZIP_PATH="$PWD/nightshift-launch-diagnostics-${TAG}-${TIMESTAMP}.zip"
+  ZIP_PATH="$PWD/kolux-launch-diagnostics-${TAG}-${TIMESTAMP}.zip"
 fi
 
 diag_log() {
-  printf '[nightshift-diagnostics] %s\n' "$*"
+  printf '[kolux-diagnostics] %s\n' "$*"
 }
 
 run_capture() {
@@ -121,23 +121,23 @@ write_environment_report() {
     echo "## shell"
     echo "$SHELL"
     echo
-    echo "## current Nightshift processes before diagnostics"
-    pgrep -fl 'Nightshift|nightshift' || true
+    echo "## current Kolux processes before diagnostics"
+    pgrep -fl 'Kolux|kolux' || true
   } >"$OUT_DIR/environment.txt"
 }
 
-ensure_no_existing_nightshift() {
+ensure_no_existing_kolux() {
   local existing
-  existing="$(pgrep -x Nightshift || true)"
+  existing="$(pgrep -x Kolux || true)"
   if [[ -z "$existing" ]]; then
     return 0
   fi
 
   {
-    echo "A Nightshift process is already running. Close Nightshift and run this script again."
+    echo "A Kolux process is already running. Close Kolux and run this script again."
     echo
     ps -p "$(printf '%s' "$existing" | paste -sd, -)" -o pid=,ppid=,command= || true
-  } | tee "$OUT_DIR/existing-nightshift-process.txt" >&2
+  } | tee "$OUT_DIR/existing-kolux-process.txt" >&2
   exit 2
 }
 
@@ -187,7 +187,7 @@ write_app_report() {
 
 start_log_stream() {
   local file="$1"
-  local predicate='process == "Nightshift" OR eventMessage CONTAINS[c] "Nightshift" OR eventMessage CONTAINS[c] "com.txais.nightshift"'
+  local predicate='process == "Kolux" OR eventMessage CONTAINS[c] "Kolux" OR eventMessage CONTAINS[c] "com.txais.kolux"'
   if command -v log >/dev/null 2>&1; then
     command log stream --style compact --predicate "$predicate" >"$file" 2>&1 &
     echo "$!"
@@ -204,8 +204,8 @@ stop_log_stream() {
   fi
 }
 
-latest_nightshift_pid_for_app() {
-  pgrep -nf "$APP_DIR/Contents/MacOS/Nightshift" || true
+latest_kolux_pid_for_app() {
+  pgrep -nf "$APP_DIR/Contents/MacOS/Kolux" || true
 }
 
 sample_process_once() {
@@ -218,7 +218,7 @@ sample_process_once() {
 
 terminate_app_processes() {
   local pid
-  pid="$(latest_nightshift_pid_for_app)"
+  pid="$(latest_kolux_pid_for_app)"
   if [[ -n "$pid" ]]; then
     kill "$pid" >/dev/null 2>&1 || true
     sleep 1
@@ -237,7 +237,7 @@ wait_for_probe() {
 
   for i in $(seq 1 200); do
     local app_pid
-    app_pid="$(latest_nightshift_pid_for_app)"
+    app_pid="$(latest_kolux_pid_for_app)"
     if [[ "$sampled" -eq 0 && -n "$app_pid" ]]; then
       sampled=1
       echo "sampled_pid=$app_pid" >>"$OUT_DIR/$label.meta"
@@ -284,9 +284,9 @@ run_launchservices_probe() {
       --stdout "$stdout_file" \
       --stderr "$stderr_file" \
       --env ELECTRON_ENABLE_LOGGING=1 \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS=trace \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
+      --env KOLUX_STARTUP_DIAGNOSTICS=trace \
+      --env KOLUX_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
+      --env KOLUX_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
       --env "$extra_env_name=$extra_env_value" \
       "$APP_DIR" &
   else
@@ -294,9 +294,9 @@ run_launchservices_probe() {
       --stdout "$stdout_file" \
       --stderr "$stderr_file" \
       --env ELECTRON_ENABLE_LOGGING=1 \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS=trace \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
-      --env NIGHTSHIFT_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
+      --env KOLUX_STARTUP_DIAGNOSTICS=trace \
+      --env KOLUX_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
+      --env KOLUX_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
       "$APP_DIR" &
   fi
   local runner_pid="$!"
@@ -322,10 +322,10 @@ run_direct_exec_probe() {
   } >"$OUT_DIR/$label.meta"
 
   ELECTRON_ENABLE_LOGGING=1 \
-    NIGHTSHIFT_STARTUP_DIAGNOSTICS=trace \
-    NIGHTSHIFT_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
-    NIGHTSHIFT_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
-    "$APP_DIR/Contents/MacOS/Nightshift" >"$stdout_file" 2>"$stderr_file" &
+    KOLUX_STARTUP_DIAGNOSTICS=trace \
+    KOLUX_STARTUP_DIAGNOSTICS_TRACE_LIMIT=30000 \
+    KOLUX_STARTUP_DIAGNOSTICS_FILE="$bootstrap_file" \
+    "$APP_DIR/Contents/MacOS/Kolux" >"$stdout_file" 2>"$stderr_file" &
   local runner_pid="$!"
   wait_for_probe "$runner_pid" "$label"
   echo "ended_utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >>"$OUT_DIR/$label.meta"
@@ -333,7 +333,7 @@ run_direct_exec_probe() {
 }
 
 write_system_log_snapshot() {
-  local predicate='process == "Nightshift" OR eventMessage CONTAINS[c] "Nightshift" OR eventMessage CONTAINS[c] "com.txais.nightshift"'
+  local predicate='process == "Kolux" OR eventMessage CONTAINS[c] "Kolux" OR eventMessage CONTAINS[c] "com.txais.kolux"'
   if command -v log >/dev/null 2>&1; then
     diag_log "capturing recent unified log snapshot"
     command log show --style syslog --last 10m --predicate "$predicate" >"$OUT_DIR/system-log-last-10m.log" 2>&1 || true
@@ -356,11 +356,11 @@ package_results() {
 }
 
 write_environment_report
-ensure_no_existing_nightshift
+ensure_no_existing_kolux
 download_and_copy_app
 write_app_report
 run_launchservices_probe "launchservices-trace"
-run_launchservices_probe "launchservices-bypass-lock" "NIGHTSHIFT_BYPASS_SINGLE_INSTANCE_LOCK" "1"
+run_launchservices_probe "launchservices-bypass-lock" "KOLUX_BYPASS_SINGLE_INSTANCE_LOCK" "1"
 run_direct_exec_probe
 write_system_log_snapshot
 package_results

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Repo } from '../../shared/repo-types'
 import * as client from '../github/client'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 vi.mock('../github/client', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -32,7 +32,7 @@ function makeRepo(overrides: Partial<Repo> = {}): Repo {
   }
 }
 
-function attachStore(runtime: NightshiftRuntimeService, repos: Repo[]) {
+function attachStore(runtime: KoluxRuntimeService, repos: Repo[]) {
   const updateRepo = vi.fn((repoId: string, updates: Partial<Repo>) => {
     const index = repos.findIndex((repo) => repo.id === repoId)
     repos[index] = { ...repos[index], ...updates }
@@ -47,7 +47,7 @@ afterEach(() => {
 
 describe('startup fork-upstream backfill', () => {
   it('keeps a renamed fork own owner avatar while recording the upstream', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const updateRepo = attachStore(runtime, [makeRepo()])
     getRepoUpstream.mockResolvedValue({ owner: 'upstream-org', repo: 'rocket' })
     getRepoSlug.mockResolvedValue({ owner: 'acme', repo: 'rocket-pro' })
@@ -66,7 +66,7 @@ describe('startup fork-upstream backfill', () => {
   })
 
   it('migrates a same-name fork to the upstream owner avatar', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const updateRepo = attachStore(runtime, [
       makeRepo({
         path: '/workspace/rocket',
@@ -98,7 +98,7 @@ describe('startup fork-upstream backfill', () => {
     // Why: the incumbent guard read `repo.connectionId`, so a row minted with only the unified
     // spelling fell through and had its upstream read off this client's copy of the path. A
     // runtime row's nested target holds its files too, and is equally not ours to read.
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const updateRepo = attachStore(runtime, [
       makeRepo({ id: 'repo-ssh', executionHostId: 'ssh:builder' }),
       makeRepo({ id: 'repo-openclaw', executionHostId: 'ssh:openclaw' }),
@@ -113,7 +113,7 @@ describe('startup fork-upstream backfill', () => {
   })
 
   it('keeps an icon chosen while avatar detection is pending', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const repo = makeRepo()
     const repos = [repo]
     const updateRepo = attachStore(runtime, repos)

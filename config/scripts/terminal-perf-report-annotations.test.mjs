@@ -11,7 +11,7 @@ import {
 const tempDirs = []
 
 function makeReportPath(content) {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-terminal-perf-annotations-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-terminal-perf-annotations-'))
   tempDirs.push(dir)
   const reportPath = join(dir, 'report.json')
   writeFileSync(reportPath, content)

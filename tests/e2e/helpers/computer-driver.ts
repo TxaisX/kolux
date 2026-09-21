@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import {
-  ensureNightshiftRuntimeLaunched,
+  ensureKoluxRuntimeLaunched,
   parseJsonOutput,
-  runNightshiftCli,
-  stopNightshiftRuntime,
+  runKoluxCli,
+  stopKoluxRuntime,
   type CliResult
 } from './computer-cli-driver'
 
@@ -22,16 +22,16 @@ let notepadProcess: ChildProcess | null = null
 let notepadAppSelector: string | null = null
 
 export {
-  ensureNightshiftRuntimeLaunched,
+  ensureKoluxRuntimeLaunched,
   parseJsonOutput,
-  runNightshiftCli,
-  stopNightshiftRuntime,
+  runKoluxCli,
+  stopKoluxRuntime,
   type CliResult
 }
 
 export async function ensureTextEditLaunched(): Promise<void> {
   await killTextEdit()
-  textEditTempDir = await mkdtemp(join(tmpdir(), 'nightshift-computer-e2e-'))
+  textEditTempDir = await mkdtemp(join(tmpdir(), 'kolux-computer-e2e-'))
   const filePath = join(textEditTempDir, 'textedit-target.txt')
   await writeFile(filePath, 'seed', 'utf8')
   await execFileAsync('open', ['-F', '-a', 'TextEdit', '-n', filePath])
@@ -58,8 +58,8 @@ export type SafariDraftFixture = {
 
 export async function ensureSafariDraftFixtureLaunched(): Promise<SafariDraftFixture> {
   await closeSafariDraftFixture()
-  safariDraftTempDir = await mkdtemp(join(tmpdir(), 'nightshift-computer-safari-e2e-'))
-  safariDraftTitle = `Nightshift Computer Use Draft Fixture ${Date.now()}`
+  safariDraftTempDir = await mkdtemp(join(tmpdir(), 'kolux-computer-safari-e2e-'))
+  safariDraftTitle = `Kolux Computer Use Draft Fixture ${Date.now()}`
   const filePath = join(safariDraftTempDir, 'index.html')
   await writeFile(filePath, safariDraftFixtureHtml(safariDraftTitle), 'utf8')
   await execFileAsync('open', ['-F', '-a', 'Safari', filePath])
@@ -77,15 +77,8 @@ export async function closeSafariDraftFixture(): Promise<void> {
           windows: { id?: number | null; index: number; title: string }[]
         }
       }>(
-        (
-          await runNightshiftCli([
-            'computer',
-            'list-windows',
-            '--app',
-            'com.apple.Safari',
-            '--json'
-          ])
-        ).stdout
+        (await runKoluxCli(['computer', 'list-windows', '--app', 'com.apple.Safari', '--json']))
+          .stdout
       )
       const target = envelope.result.windows.find((window) => window.title.includes(title))
       if (target) {
@@ -93,7 +86,7 @@ export async function closeSafariDraftFixture(): Promise<void> {
           target.id !== undefined && target.id !== null
             ? ['--window-id', String(target.id)]
             : ['--window-index', String(target.index)]
-        await runNightshiftCli([
+        await runKoluxCli([
           'computer',
           'hotkey',
           '--app',
@@ -151,7 +144,7 @@ async function waitForComputerWindowTitle(
     try {
       const envelope = parseJsonOutput<{
         result: { windows: { title: string }[] }
-      }>((await runNightshiftCli(['computer', 'list-windows', '--app', app, '--json'])).stdout)
+      }>((await runKoluxCli(['computer', 'list-windows', '--app', app, '--json'])).stdout)
       if (envelope.result.windows.some((window) => window.title.includes(title))) {
         return
       }
@@ -165,7 +158,7 @@ async function waitForComputerWindowTitle(
 
 export async function ensureGeditLaunched(): Promise<void> {
   await killGedit()
-  linuxTempDir = await mkdtemp(join(tmpdir(), 'nightshift-computer-linux-e2e-'))
+  linuxTempDir = await mkdtemp(join(tmpdir(), 'kolux-computer-linux-e2e-'))
   const fileName = 'gedit-target.txt'
   const filePath = join(linuxTempDir, fileName)
   await writeFile(filePath, 'seed', 'utf8')
@@ -191,8 +184,8 @@ export async function killGedit(): Promise<void> {
 
 export async function ensureNotepadLaunched(): Promise<void> {
   await killNotepad()
-  windowsTempDir = await mkdtemp(join(tmpdir(), 'nightshift-computer-windows-e2e-'))
-  const filePath = join(windowsTempDir, `nightshift-notepad-${Date.now()}.txt`)
+  windowsTempDir = await mkdtemp(join(tmpdir(), 'kolux-computer-windows-e2e-'))
+  const filePath = join(windowsTempDir, `kolux-notepad-${Date.now()}.txt`)
   await writeFile(filePath, 'seed', 'utf8')
   await execFileAsync('powershell.exe', [
     '-NoProfile',

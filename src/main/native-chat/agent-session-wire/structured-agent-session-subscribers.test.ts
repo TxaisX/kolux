@@ -26,7 +26,7 @@ let root: string
 const journals = createTrackedJournalOpener()
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-agent-subscribers-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-agent-subscribers-'))
 })
 
 afterEach(async () => {
@@ -288,7 +288,7 @@ describe('AgentSessionSubscribers', () => {
     })
 
     await journal.appendItem(
-      { provider: 'nightshift', clientMessageId: 'after-background-fence' },
+      { provider: 'kolux', clientMessageId: 'after-background-fence' },
       { kind: 'status', text: 'After background state' },
       { fence: 2 }
     )

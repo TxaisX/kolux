@@ -21,7 +21,7 @@ export function encodeClaudeProjectPath(pathValue: string): string {
 }
 
 /** Why the explicit boundary: a bare `startsWith` lets a sibling prefix match, so the encoding of
- *  `…/nightshift` would claim `…/nightshift-secret` and `…/nightshiftdyne` as its own. */
+ *  `…/kolux` would claim `…/kolux-secret` and `…/koluxdyne` as its own. */
 export function isClaudeProjectDirInScope(
   projectDirName: string,
   scopePrefixes: ReadonlySet<string> | readonly string[]

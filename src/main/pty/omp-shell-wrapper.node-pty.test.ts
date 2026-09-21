@@ -27,7 +27,7 @@ type PosixShell = 'bash' | 'zsh'
 const tempDirs: string[] = []
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-omp-node-pty-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-omp-node-pty-'))
   tempDirs.push(dir)
   return dir
 }
@@ -37,7 +37,7 @@ function writeFakeOmp(binDir: string): void {
   writeFileSync(
     ompPath,
     `#!/bin/sh
-agent_dir="\${PI_CODING_AGENT_DIR:-\${NIGHTSHIFT_FAKE_OMP_DEFAULT_DIR:-}}"
+agent_dir="\${PI_CODING_AGENT_DIR:-\${KOLUX_FAKE_OMP_DEFAULT_DIR:-}}"
 if [ "\${1:-}" = "config" ] && [ -n "$agent_dir" ]; then
   mkdir -p "$agent_dir"
   printf 'updated-by-omp-config\\n' > "$agent_dir/config.yml"
@@ -51,8 +51,8 @@ fi
     i=$((i + 1))
     printf 'ARG%s=%s\\n' "$i" "$arg"
   done
-} > "$NIGHTSHIFT_CAPTURE_FILE"
-exit "\${NIGHTSHIFT_TEST_FAKE_OMP_EXIT_CODE:-0}"
+} > "$KOLUX_CAPTURE_FILE"
+exit "\${KOLUX_TEST_FAKE_OMP_EXIT_CODE:-0}"
 `,
     { mode: 0o755 }
   )
@@ -76,7 +76,7 @@ async function runInteractivePosixPty(args: {
     cols: 100,
     rows: 30,
     cwd: args.cwd,
-    env: { ...args.env, NIGHTSHIFT_TEST_RCFILE: rcfile }
+    env: { ...args.env, KOLUX_TEST_RCFILE: rcfile }
   })
 
   let output = ''
@@ -97,7 +97,7 @@ async function runInteractivePosixPty(args: {
   })
 
   try {
-    const input = shell === 'zsh' ? `source "$NIGHTSHIFT_TEST_RCFILE"\n${args.input}` : args.input
+    const input = shell === 'zsh' ? `source "$KOLUX_TEST_RCFILE"\n${args.input}` : args.input
     proc.write(input.replace(/\n/g, '\r'))
     const { exitCode } = await Promise.race([exitPromise, timeoutPromise])
     expect(exitCode).toBe(0)
@@ -130,7 +130,7 @@ describePosix('OMP shell wrapper node-pty reproduction', () => {
     mkdirSync(binDir)
     mkdirSync(piDir)
     mkdirSync(extensionDir, { recursive: true })
-    const statusExtension = join(extensionDir, 'nightshift-agent-status.ts')
+    const statusExtension = join(extensionDir, 'kolux-agent-status.ts')
     writeFileSync(statusExtension, 'export default {}')
     writeFakeOmp(binDir)
 
@@ -139,12 +139,12 @@ describePosix('OMP shell wrapper node-pty reproduction', () => {
       HOME: tempDir,
       PATH: `${binDir}:${process.env.PATH ?? ''}`,
       PI_CODING_AGENT_DIR: '',
-      NIGHTSHIFT_PI_CODING_AGENT_DIR: '',
-      NIGHTSHIFT_OMP_CODING_AGENT_DIR: '',
-      NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtension,
-      NIGHTSHIFT_FAKE_OMP_DEFAULT_DIR: ompDir,
-      NIGHTSHIFT_CAPTURE_FILE: captureFile,
-      NIGHTSHIFT_AFTER_PI_FILE: afterPiFile,
+      KOLUX_PI_CODING_AGENT_DIR: '',
+      KOLUX_OMP_CODING_AGENT_DIR: '',
+      KOLUX_OMP_STATUS_EXTENSION: statusExtension,
+      KOLUX_FAKE_OMP_DEFAULT_DIR: ompDir,
+      KOLUX_CAPTURE_FILE: captureFile,
+      KOLUX_AFTER_PI_FILE: afterPiFile,
       TERM: process.env.TERM || 'xterm-256color'
     })
 
@@ -155,7 +155,7 @@ describePosix('OMP shell wrapper node-pty reproduction', () => {
       rcfileContent: '',
       env: makeEnv(unwrappedCapture, unwrappedAfterPi),
       input: `omp ask
-printf '%s' "$PI_CODING_AGENT_DIR" > "$NIGHTSHIFT_AFTER_PI_FILE"
+printf '%s' "$PI_CODING_AGENT_DIR" > "$KOLUX_AFTER_PI_FILE"
 exit 0
 `
     })
@@ -174,7 +174,7 @@ exit 0
       env: makeEnv(wrappedCapture, wrappedAfterPi),
       input: `type omp
 omp ask
-printf '%s' "$PI_CODING_AGENT_DIR" > "$NIGHTSHIFT_AFTER_PI_FILE"
+printf '%s' "$PI_CODING_AGENT_DIR" > "$KOLUX_AFTER_PI_FILE"
 exit 0
 `
     })
@@ -197,7 +197,7 @@ exit 0
     mkdirSync(binDir)
     mkdirSync(sourceDir, { recursive: true })
     mkdirSync(extensionDir, { recursive: true })
-    const statusExtension = join(extensionDir, 'nightshift-agent-status.ts')
+    const statusExtension = join(extensionDir, 'kolux-agent-status.ts')
     writeFileSync(statusExtension, 'export default {}')
     writeFakeOmp(binDir)
 
@@ -210,12 +210,12 @@ exit 0
         HOME: tempDir,
         PATH: `${binDir}:${process.env.PATH ?? ''}`,
         PI_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_PI_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_OMP_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_OMP_SOURCE_AGENT_DIR: sourceDir,
-        NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtension,
-        NIGHTSHIFT_FAKE_OMP_DEFAULT_DIR: sourceDir,
-        NIGHTSHIFT_CAPTURE_FILE: captureFile,
+        KOLUX_PI_CODING_AGENT_DIR: '',
+        KOLUX_OMP_CODING_AGENT_DIR: '',
+        KOLUX_OMP_SOURCE_AGENT_DIR: sourceDir,
+        KOLUX_OMP_STATUS_EXTENSION: statusExtension,
+        KOLUX_FAKE_OMP_DEFAULT_DIR: sourceDir,
+        KOLUX_CAPTURE_FILE: captureFile,
         TERM: process.env.TERM || 'xterm-256color'
       },
       input: `omp config
@@ -252,7 +252,7 @@ exit 0
     mkdirSync(binDir)
     mkdirSync(sourceDir, { recursive: true })
     mkdirSync(extensionDir, { recursive: true })
-    const statusExtension = join(extensionDir, 'nightshift-agent-status.ts')
+    const statusExtension = join(extensionDir, 'kolux-agent-status.ts')
     writeFileSync(statusExtension, 'export default {}')
     writeFakeOmp(binDir)
 
@@ -265,12 +265,12 @@ exit 0
         HOME: tempDir,
         PATH: `${binDir}:${process.env.PATH ?? ''}`,
         PI_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_PI_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_OMP_CODING_AGENT_DIR: '',
-        NIGHTSHIFT_OMP_SOURCE_AGENT_DIR: sourceDir,
-        NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtension,
-        NIGHTSHIFT_FAKE_OMP_DEFAULT_DIR: sourceDir,
-        NIGHTSHIFT_CAPTURE_FILE: captureFile,
+        KOLUX_PI_CODING_AGENT_DIR: '',
+        KOLUX_OMP_CODING_AGENT_DIR: '',
+        KOLUX_OMP_SOURCE_AGENT_DIR: sourceDir,
+        KOLUX_OMP_STATUS_EXTENSION: statusExtension,
+        KOLUX_FAKE_OMP_DEFAULT_DIR: sourceDir,
+        KOLUX_CAPTURE_FILE: captureFile,
         TERM: process.env.TERM || 'xterm-256color'
       },
       input: `omp ${subcommand}
@@ -295,7 +295,7 @@ exit 0
       mkdirSync(binDir)
       mkdirSync(defaultOmpDir, { recursive: true })
       mkdirSync(extensionDir, { recursive: true })
-      const statusExtension = join(extensionDir, 'nightshift-agent-status.ts')
+      const statusExtension = join(extensionDir, 'kolux-agent-status.ts')
       writeFileSync(statusExtension, 'export default {}')
       writeFakeOmp(binDir)
 
@@ -308,11 +308,11 @@ exit 0
           HOME: tempDir,
           PATH: `${binDir}:${process.env.PATH ?? ''}`,
           PI_CODING_AGENT_DIR: '',
-          NIGHTSHIFT_PI_CODING_AGENT_DIR: '',
-          NIGHTSHIFT_OMP_CODING_AGENT_DIR: '',
-          NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtension,
-          NIGHTSHIFT_FAKE_OMP_DEFAULT_DIR: defaultOmpDir,
-          NIGHTSHIFT_CAPTURE_FILE: captureFile,
+          KOLUX_PI_CODING_AGENT_DIR: '',
+          KOLUX_OMP_CODING_AGENT_DIR: '',
+          KOLUX_OMP_STATUS_EXTENSION: statusExtension,
+          KOLUX_FAKE_OMP_DEFAULT_DIR: defaultOmpDir,
+          KOLUX_CAPTURE_FILE: captureFile,
           TERM: process.env.TERM || 'xterm-256color'
         },
         input: `omp config
@@ -344,7 +344,7 @@ exit 0
     symlinkSync(projectDir, logicalProjectLink)
     const expectedProjectDir = realpathSync(projectDir)
     const expectedWorkspaceDir = realpathSync(workspaceDir)
-    const statusExtension = join(extensionDir, 'nightshift-agent-status.ts')
+    const statusExtension = join(extensionDir, 'kolux-agent-status.ts')
     writeFileSync(statusExtension, 'export default {}')
     writeFakeOmp(binDir)
 
@@ -358,57 +358,57 @@ exit 0
     const scenarioFile = join(tempDir, 'stale-cwd-scenario')
     writeFileSync(
       scenarioFile,
-      `NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_UNSET_PWD_CAPTURE_FILE"
+      `KOLUX_CAPTURE_FILE="$KOLUX_UNSET_PWD_CAPTURE_FILE"
 unset PWD
 omp
-__nightshift_test_unset_status=$?
+__kolux_test_unset_status=$?
 if [[ -z "\${PWD+x}" ]]; then
-  __nightshift_test_pwd_state=unset
+  __kolux_test_pwd_state=unset
 else
-  __nightshift_test_pwd_state=set
+  __kolux_test_pwd_state=set
 fi
-builtin cd -- "$NIGHTSHIFT_LOGICAL_PROJECT_LINK"
-/bin/rm -- "$NIGHTSHIFT_LOGICAL_PROJECT_LINK"
-NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_DELETED_LINK_CAPTURE_FILE"
+builtin cd -- "$KOLUX_LOGICAL_PROJECT_LINK"
+/bin/rm -- "$KOLUX_LOGICAL_PROJECT_LINK"
+KOLUX_CAPTURE_FILE="$KOLUX_DELETED_LINK_CAPTURE_FILE"
 omp
-__nightshift_test_deleted_link_status=$?
-builtin cd -P -- "$NIGHTSHIFT_STALE_PROJECT_DIR"
-NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_STALE_CAPTURE_FILE"
-/bin/rm -rf -- "$NIGHTSHIFT_STALE_PROJECT_DIR"
-/bin/mkdir -p -- "$NIGHTSHIFT_STALE_PROJECT_DIR"
+__kolux_test_deleted_link_status=$?
+builtin cd -P -- "$KOLUX_STALE_PROJECT_DIR"
+KOLUX_CAPTURE_FILE="$KOLUX_STALE_CAPTURE_FILE"
+/bin/rm -rf -- "$KOLUX_STALE_PROJECT_DIR"
+/bin/mkdir -p -- "$KOLUX_STALE_PROJECT_DIR"
 omp
-__nightshift_test_first_status=$?
-NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_SKIP_CAPTURE_FILE"
+__kolux_test_first_status=$?
+KOLUX_CAPTURE_FILE="$KOLUX_SKIP_CAPTURE_FILE"
 omp --version
-__nightshift_test_skip_status=$?
+__kolux_test_skip_status=$?
 if [[ "$PWD" -ef . ]]; then
-  __nightshift_test_parent_state=live
+  __kolux_test_parent_state=live
 else
-  __nightshift_test_parent_state=stale
+  __kolux_test_parent_state=stale
 fi
 unset PWD
-NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_STALE_UNSET_CAPTURE_FILE"
+KOLUX_CAPTURE_FILE="$KOLUX_STALE_UNSET_CAPTURE_FILE"
 omp
-__nightshift_test_stale_unset_status=$?
-unset NIGHTSHIFT_WORKTREE_PATH NIGHTSHIFT_ROOT_PATH
-NIGHTSHIFT_CAPTURE_FILE="$NIGHTSHIFT_NO_LOGICAL_CAPTURE_FILE"
+__kolux_test_stale_unset_status=$?
+unset KOLUX_WORKTREE_PATH KOLUX_ROOT_PATH
+KOLUX_CAPTURE_FILE="$KOLUX_NO_LOGICAL_CAPTURE_FILE"
 omp
-__nightshift_test_no_logical_status=$?
-PWD="$NIGHTSHIFT_STALE_PROJECT_DIR"
-/bin/rm -rf -- "$NIGHTSHIFT_STALE_PROJECT_DIR"
+__kolux_test_no_logical_status=$?
+PWD="$KOLUX_STALE_PROJECT_DIR"
+/bin/rm -rf -- "$KOLUX_STALE_PROJECT_DIR"
 omp
-__nightshift_test_missing_status=$?
+__kolux_test_missing_status=$?
 {
-  echo "UNSET=$__nightshift_test_unset_status"
-  echo "PWD=$__nightshift_test_pwd_state"
-  echo "LINK=$__nightshift_test_deleted_link_status"
-  echo "FIRST=$__nightshift_test_first_status"
-  echo "SKIP=$__nightshift_test_skip_status"
-  echo "PARENT=$__nightshift_test_parent_state"
-  echo "STALE_UNSET=$__nightshift_test_stale_unset_status"
-  echo "NO_LOGICAL=$__nightshift_test_no_logical_status"
-  echo "MISSING=$__nightshift_test_missing_status"
-} > "$NIGHTSHIFT_RESULT_FILE"
+  echo "UNSET=$__kolux_test_unset_status"
+  echo "PWD=$__kolux_test_pwd_state"
+  echo "LINK=$__kolux_test_deleted_link_status"
+  echo "FIRST=$__kolux_test_first_status"
+  echo "SKIP=$__kolux_test_skip_status"
+  echo "PARENT=$__kolux_test_parent_state"
+  echo "STALE_UNSET=$__kolux_test_stale_unset_status"
+  echo "NO_LOGICAL=$__kolux_test_no_logical_status"
+  echo "MISSING=$__kolux_test_missing_status"
+} > "$KOLUX_RESULT_FILE"
 exit 0
 `
     )
@@ -420,25 +420,25 @@ ${getPosixOmpShellWrapper()}`,
       env: {
         INPUTRC: '/dev/null',
         PROMPT_COMMAND: '',
-        NIGHTSHIFT_STALE_PROJECT_DIR: projectDir,
-        NIGHTSHIFT_LOGICAL_PROJECT_LINK: logicalProjectLink,
-        NIGHTSHIFT_UNSET_PWD_CAPTURE_FILE: unsetPwdCaptureFile,
-        NIGHTSHIFT_DELETED_LINK_CAPTURE_FILE: deletedLinkCaptureFile,
-        NIGHTSHIFT_STALE_CAPTURE_FILE: staleCaptureFile,
-        NIGHTSHIFT_SKIP_CAPTURE_FILE: skipCaptureFile,
-        NIGHTSHIFT_STALE_UNSET_CAPTURE_FILE: staleUnsetCaptureFile,
-        NIGHTSHIFT_NO_LOGICAL_CAPTURE_FILE: noLogicalCaptureFile,
-        NIGHTSHIFT_WORKTREE_PATH: workspaceDir,
+        KOLUX_STALE_PROJECT_DIR: projectDir,
+        KOLUX_LOGICAL_PROJECT_LINK: logicalProjectLink,
+        KOLUX_UNSET_PWD_CAPTURE_FILE: unsetPwdCaptureFile,
+        KOLUX_DELETED_LINK_CAPTURE_FILE: deletedLinkCaptureFile,
+        KOLUX_STALE_CAPTURE_FILE: staleCaptureFile,
+        KOLUX_SKIP_CAPTURE_FILE: skipCaptureFile,
+        KOLUX_STALE_UNSET_CAPTURE_FILE: staleUnsetCaptureFile,
+        KOLUX_NO_LOGICAL_CAPTURE_FILE: noLogicalCaptureFile,
+        KOLUX_WORKTREE_PATH: workspaceDir,
         HOME: homeDir,
         PATH: `${binDir}:/usr/bin:/bin:/usr/sbin:/sbin`,
-        NIGHTSHIFT_OMP_STATUS_EXTENSION: statusExtension,
-        NIGHTSHIFT_CAPTURE_FILE: staleCaptureFile,
-        NIGHTSHIFT_RESULT_FILE: resultFile,
-        NIGHTSHIFT_SCENARIO_FILE: scenarioFile,
-        NIGHTSHIFT_TEST_FAKE_OMP_EXIT_CODE: '23',
+        KOLUX_OMP_STATUS_EXTENSION: statusExtension,
+        KOLUX_CAPTURE_FILE: staleCaptureFile,
+        KOLUX_RESULT_FILE: resultFile,
+        KOLUX_SCENARIO_FILE: scenarioFile,
+        KOLUX_TEST_FAKE_OMP_EXIT_CODE: '23',
         TERM: 'xterm-256color'
       },
-      input: 'source "$NIGHTSHIFT_SCENARIO_FILE"\n'
+      input: 'source "$KOLUX_SCENARIO_FILE"\n'
     })
 
     const unsetPwdCapture = readFileSync(unsetPwdCaptureFile, 'utf8')
@@ -463,7 +463,7 @@ ${getPosixOmpShellWrapper()}`,
       'UNSET=23\nPWD=unset\nLINK=23\nFIRST=23\nSKIP=23\nPARENT=stale\nSTALE_UNSET=23\nNO_LOGICAL=1\nMISSING=1\n'
     )
     expect(output).toContain('no terminal working directory is available')
-    expect(output).toContain('Nightshift: OMP cannot access the terminal working directory')
+    expect(output).toContain('Kolux: OMP cannot access the terminal working directory')
   }
 
   itWithBash('rebinds a stale Bash cwd before launching OMP', async () => {

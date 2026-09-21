@@ -136,7 +136,7 @@ describe('OpenCode-family permission request status', () => {
   })
 
   it.each(SOURCES)('falls back to patterns when metadata is unrecognized for %s', (source) => {
-    // Why: `metadata` is typed `Record<string, unknown>` by the SDK, so a tool Nightshift has
+    // Why: `metadata` is typed `Record<string, unknown>` by the SDK, so a tool Kolux has
     // never seen (an MCP server's, say) can key its detail anything — patterns is the one
     // field every permission carries.
     const event = permissionEvent(source, {

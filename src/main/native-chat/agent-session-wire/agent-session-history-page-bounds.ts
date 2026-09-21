@@ -55,7 +55,7 @@ export function oversizedHistoryItem(
     itemId: boundJournalKeyComponent(item.itemId),
     body: {
       kind: 'status',
-      text: `[Nightshift: item truncated — ${byteLength} bytes exceeds the history page budget]`
+      text: `[Kolux: item truncated — ${byteLength} bytes exceeds the history page budget]`
     }
   }
 }

@@ -8,7 +8,7 @@ export function buildCodexStructuredChildEnvironment(
   sessionId: string
 ): Record<string, string> {
   return {
-    // Only a dispatched structured worker gets the orchestration identity and the Nightshift CLI on
+    // Only a dispatched structured worker gets the orchestration identity and the Kolux CLI on
     // PATH; an ordinary chat session's env passes through untouched.
     ...structuredWorkerChildIdentityEnv(sessionId, {
       ...launch.env,

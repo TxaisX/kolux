@@ -88,7 +88,7 @@ export function reviewCopy(provider: HostedReviewProvider): {
       shortLabel: 'PR',
       reviewLabel: 'pull request',
       providerName: 'Azure DevOps',
-      authInstruction: 'Set NIGHTSHIFT_AZURE_DEVOPS_TOKEN'
+      authInstruction: 'Set KOLUX_AZURE_DEVOPS_TOKEN'
     }
   }
   if (provider === 'gitea') {
@@ -96,7 +96,7 @@ export function reviewCopy(provider: HostedReviewProvider): {
       shortLabel: 'PR',
       reviewLabel: 'pull request',
       providerName: 'Gitea',
-      authInstruction: 'Set NIGHTSHIFT_GITEA_TOKEN'
+      authInstruction: 'Set KOLUX_GITEA_TOKEN'
     }
   }
   if (provider === 'bitbucket') {

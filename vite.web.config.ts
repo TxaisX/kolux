@@ -6,11 +6,11 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   root: resolve('src/renderer'),
   // Why: pairing URLs may live under a reverse-proxy path prefix like
-  // /nightshift/web-index.html, so built assets must resolve relative to the page.
+  // /kolux/web-index.html, so built assets must resolve relative to the page.
   base: './',
   plugins: [react(), tailwindcss()],
   define: {
-    NIGHTSHIFT_FEATURE_WALL_ENABLED: 'true'
+    KOLUX_FEATURE_WALL_ENABLED: 'true'
   },
   resolve: {
     alias: {

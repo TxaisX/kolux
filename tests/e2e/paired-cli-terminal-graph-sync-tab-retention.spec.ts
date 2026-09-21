@@ -1,9 +1,9 @@
 /**
- * TOPOLOGY (a): real Nightshift DESKTOP app as the remote server, isolated profile,
+ * TOPOLOGY (a): real Kolux DESKTOP app as the remote server, isolated profile,
  * window ATTACHED, paired to a separate real desktop client.
  *
- * A terminal created by `nightshift terminal create` (RPC `terminal.create` ->
- * NightshiftRuntimeService.createTerminal) must survive the renderer graph syncs that
+ * A terminal created by `kolux terminal create` (RPC `terminal.create` ->
+ * KoluxRuntimeService.createTerminal) must survive the renderer graph syncs that
  * every later CLI dispatch drives. The renderer never owns that pane, so it is
  * absent from every renderer publication; the daemon ptyId form
  * `<worktreeId>@@<shortUuid>` is excluded from id-shape classification; and the
@@ -43,7 +43,7 @@ import {
   toWebTerminalSurfaceTabId,
   WEB_TERMINAL_SURFACE_TAB_PREFIX
 } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -124,11 +124,11 @@ type RetentionFixture = {
 
 /** Everything both journeys need in place BEFORE the dispatch under test. */
 async function prepareRetentionFixture(
-  nightshiftPage: Page,
+  koluxPage: Page,
   client: PairedElectronClient
 ): Promise<RetentionFixture> {
   const call = createPairedRuntimeCall(client.page, client.environmentId)
-  const { worktreeId, unrelatedWorktreeId } = await nightshiftPage.evaluate(() => {
+  const { worktreeId, unrelatedWorktreeId } = await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     const active = state?.activeWorktreeId
     if (!state || !active) {
@@ -157,7 +157,7 @@ async function prepareRetentionFixture(
 
   // PRECONDITION: the RENDERER owns this workspace's publication, so the CLI tab
   // created later inherits the renderer epoch instead of a headless one.
-  const rendererTabId = await createHostRendererTerminalTab(nightshiftPage, worktreeId)
+  const rendererTabId = await createHostRendererTerminalTab(koluxPage, worktreeId)
   const rendererOwned = await readHostInventoryWhenTabAppears(
     call,
     worktreeId,
@@ -178,7 +178,7 @@ async function prepareRetentionFixture(
 }
 
 /**
- * One `nightshift terminal create` in the measured workspace, one renderer graph sync,
+ * One `kolux terminal create` in the measured workspace, one renderer graph sync,
  * both signals plus the negative-safety checks.
  *
  * `precedingHostTerminal` is the ONLY difference between the two tests: the
@@ -187,24 +187,24 @@ async function prepareRetentionFixture(
  * the incident shape, and the one the topology fence used to miss.
  */
 async function runCliTerminalRetentionJourney(
-  nightshiftPage: Page,
+  koluxPage: Page,
   testInfo: TestInfo,
   clientName: string,
   precedingHostTerminal: boolean
 ): Promise<void> {
   const client = await launchPairedElectronClient(
-    await createRuntimeDesktopPairingOffer(nightshiftPage),
+    await createRuntimeDesktopPairingOffer(koluxPage),
     testInfo,
     clientName
   )
   const hostPageErrors: string[] = []
   const clientPageErrors: string[] = []
-  nightshiftPage.on('pageerror', (error) => hostPageErrors.push(String(error)))
+  koluxPage.on('pageerror', (error) => hostPageErrors.push(String(error)))
   client.page.on('pageerror', (error) => clientPageErrors.push(String(error)))
   const createdHandles: string[] = []
   let call: RuntimeRpcCall | null = null
   try {
-    const fixture = await prepareRetentionFixture(nightshiftPage, client)
+    const fixture = await prepareRetentionFixture(koluxPage, client)
     call = fixture.call
     const { unrelatedWorktreeId, worktreeId } = fixture
     const baselineStrip = await readClientTerminalStrip(client.page, worktreeId)
@@ -231,7 +231,7 @@ async function runCliTerminalRetentionJourney(
     const unrelated = preceding ?? (await createUnrelated())
 
     // The graph sync a following CLI dispatch drives.
-    const secondRendererTabId = await createHostRendererTerminalTab(nightshiftPage, worktreeId)
+    const secondRendererTabId = await createHostRendererTerminalTab(koluxPage, worktreeId)
 
     // SIGNAL 1 — the frame carrying the new renderer tab is the same merge that
     // would drop the CLI tab, so judge on that one inventory.
@@ -295,26 +295,21 @@ async function runCliTerminalRetentionJourney(
 }
 
 test('keeps a host-created CLI terminal when an earlier host-created terminal exists', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(600_000)
-  await runCliTerminalRetentionJourney(nightshiftPage, testInfo, 'cli-terminal-graph-sync', true)
+  await runCliTerminalRetentionJourney(koluxPage, testInfo, 'cli-terminal-graph-sync', true)
 })
 
-// The reported incident, and the shape the real CLI takes: `nightshift terminal
+// The reported incident, and the shape the real CLI takes: `kolux terminal
 // create` sends no clientMutationId, so this is a user's FIRST host-created
 // terminal in the repo — the one case that raised no topology fence and whose
 // tab the renderer's pre-create tab list therefore replayed out of persistence.
 // Reverting store.ts/pty.ts alone turns this red with SIGNAL 1: the target is
 // absent from the host inventory.
 test('keeps a host-created CLI terminal that is the first one on the host', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(600_000)
-  await runCliTerminalRetentionJourney(
-    nightshiftPage,
-    testInfo,
-    'cli-terminal-graph-sync-first',
-    false
-  )
+  await runCliTerminalRetentionJourney(koluxPage, testInfo, 'cli-terminal-graph-sync-first', false)
 })

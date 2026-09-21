@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const PANE_COUNT = 100
@@ -20,11 +20,11 @@ type BurstEvidence = {
 
 test('keeps the visible Agent Dashboard interactive during a 100-pane status replay', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  const panes = await nightshiftPage.evaluate(
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  const panes = await koluxPage.evaluate(
     ({ baseTime, paneCount, worktreeId }): BurstPane[] => {
       const store = window.__store
       if (!store) {
@@ -77,14 +77,14 @@ test('keeps the visible Agent Dashboard interactive during a 100-pane status rep
     { baseTime: BASE_TIME, paneCount: PANE_COUNT, worktreeId }
   )
 
-  const dashboardButton = nightshiftPage.getByRole('button', { name: /Agent Dashboard/ })
+  const dashboardButton = koluxPage.getByRole('button', { name: /Agent Dashboard/ })
   await expect(dashboardButton).toBeVisible()
 
   await electronApp.evaluate(
     ({ BrowserWindow }, { baseTime, panes }) => {
       const window = BrowserWindow.getAllWindows().find((candidate) => !candidate.isDestroyed())
       if (!window) {
-        throw new Error('Nightshift BrowserWindow is unavailable')
+        throw new Error('Kolux BrowserWindow is unavailable')
       }
       for (const [index, pane] of panes.entries()) {
         const receivedAt = baseTime + index
@@ -104,9 +104,9 @@ test('keeps the visible Agent Dashboard interactive during a 100-pane status rep
 
   const interactionStartedAt = performance.now()
   await dashboardButton.click()
-  await nightshiftPage.locator('[data-agent-dashboard-sheet]').waitFor({ state: 'visible' })
+  await koluxPage.locator('[data-agent-dashboard-sheet]').waitFor({ state: 'visible' })
   const interactionElapsedMs = performance.now() - interactionStartedAt
-  const statusPublicationsAtVisible = await nightshiftPage.evaluate(() => {
+  const statusPublicationsAtVisible = await koluxPage.evaluate(() => {
     const probe = (
       window as typeof window & { __agentDashboardBurstProbe?: { statusPublications: number } }
     ).__agentDashboardBurstProbe
@@ -119,7 +119,7 @@ test('keeps the visible Agent Dashboard interactive during a 100-pane status rep
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           (paneKeys) => {
             const statuses = window.__store?.getState().agentStatusByPaneKey ?? {}
             return paneKeys.every((paneKey) => statuses[paneKey]?.state === 'done')
@@ -130,7 +130,7 @@ test('keeps the visible Agent Dashboard interactive during a 100-pane status rep
     )
     .toBe(true)
 
-  const evidence = await nightshiftPage.evaluate(
+  const evidence = await koluxPage.evaluate(
     ({ paneKeys, statusPublicationsAtVisible }): BurstEvidence => {
       const state = window.__store?.getState()
       const probe = (

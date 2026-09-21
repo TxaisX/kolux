@@ -233,7 +233,7 @@ export class RelayControlClient {
       return
     }
     // Drop a well-formed control message we do not recognize, matching how every
-    // other Nightshift decoder treats an unknown frame (see the silent-drop convention
+    // other Kolux decoder treats an unknown frame (see the silent-drop convention
     // in docs/reference/remote-wire-compatibility.md). The control channel has no
     // opcode negotiation step, so this reaches either a newer relay's message
     // this build predates, or a reply whose request already timed out and has no

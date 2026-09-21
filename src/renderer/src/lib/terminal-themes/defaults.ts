@@ -3,7 +3,7 @@ import type { TerminalThemeMap } from './types'
 export const DEFAULT_TERMINAL_THEMES: TerminalThemeMap = {
   // Why: the Code work area should sit darker than the chrome (#171717) so edits and the web
   // preview read as the subject; Ghostty's #282c34 was the lightest surface on screen.
-  'Nightshift Dark': {
+  'Kolux Dark': {
     background: '#0d0d0d',
     foreground: '#fafafa',
     cursor: '#fafafa',
@@ -27,7 +27,7 @@ export const DEFAULT_TERMINAL_THEMES: TerminalThemeMap = {
     brightCyan: '#70c0b1',
     brightWhite: '#eaeaea'
   },
-  // Most colors come from Ghostty. Nightshift raises dark selection contrast because Ghostty's
+  // Most colors come from Ghostty. Kolux raises dark selection contrast because Ghostty's
   // original #3e4451 blends into Codex-style gray instruction blocks.
   'Ghostty Default Style Dark': {
     background: '#282c34',

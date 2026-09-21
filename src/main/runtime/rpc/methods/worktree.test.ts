@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { WORKTREE_METHODS } from './worktree'
 import { createAutomationDispatchToken } from '../../../automations/dispatch-tokens'
 
@@ -32,7 +32,7 @@ describe('worktree RPC methods', () => {
       activateManagedWorktree: vi
         .fn()
         .mockResolvedValue({ repoId: 'repo-1', worktreeId: 'wt-1', activated: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -57,7 +57,7 @@ describe('worktree RPC methods', () => {
       activateManagedWorktree: vi
         .fn()
         .mockResolvedValue({ repoId: 'repo-1', worktreeId: 'wt-1', activated: true })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     // The mobile WebSocket path always uses dispatchStreaming, which threads the
@@ -82,7 +82,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       showRepo: vi.fn().mockResolvedValue(repo),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-1' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     await dispatcher.dispatch(
@@ -153,7 +153,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       showRepo: vi.fn().mockResolvedValue(repo),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-cli' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     await dispatcher.dispatch(
@@ -203,7 +203,7 @@ describe('worktree RPC methods', () => {
         }
       ]),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-1' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -292,7 +292,7 @@ describe('worktree RPC methods', () => {
         }
       ]),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-runtime' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -355,7 +355,7 @@ describe('worktree RPC methods', () => {
         }
       ]),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-edited' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -412,7 +412,7 @@ describe('worktree RPC methods', () => {
         .fn()
         .mockRejectedValueOnce(new Error('Branch "automation-workspace" already exists.'))
         .mockResolvedValueOnce({ worktree: { id: 'wt-retry' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
     const automationProvenanceRequest = {
       automationId: 'automation-retry',
@@ -473,7 +473,7 @@ describe('worktree RPC methods', () => {
         }
       ]),
       createManagedWorktree: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -502,7 +502,7 @@ describe('worktree RPC methods', () => {
         worktree: { id: 'wt-1' },
         startupTerminal: { spawned: true, handle: 'term_agent' }
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -512,11 +512,11 @@ describe('worktree RPC methods', () => {
         startupAgent: 'codex',
         startupCommand: "codex 'summarize repo'",
         startupCommandDelivery: 'shell-ready',
-        startupEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+        startupEnv: { KOLUX_AGENT_MODE: 'direct' },
         startupLaunchConfig: {
           agentCommand: 'codex',
           agentArgs: '--model gpt-5',
-          agentEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' }
+          agentEnv: { KOLUX_AGENT_MODE: 'direct' }
         },
         activate: true
       })
@@ -536,11 +536,11 @@ describe('worktree RPC methods', () => {
         startup: {
           command: "codex 'summarize repo'",
           startupCommandDelivery: 'shell-ready',
-          env: { NIGHTSHIFT_AGENT_MODE: 'direct' },
+          env: { KOLUX_AGENT_MODE: 'direct' },
           launchConfig: {
             agentCommand: 'codex',
             agentArgs: '--model gpt-5',
-            agentEnv: { NIGHTSHIFT_AGENT_MODE: 'direct' }
+            agentEnv: { KOLUX_AGENT_MODE: 'direct' }
           }
         }
       })
@@ -553,7 +553,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       showRepo: vi.fn().mockResolvedValue(repo),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-1' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -588,7 +588,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       showRepo: vi.fn().mockResolvedValue(repo),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-1' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     await dispatcher.dispatch(
@@ -618,7 +618,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       prefetchManagedWorktreeCreateBase: vi.fn().mockResolvedValue(undefined)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -641,7 +641,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       showRepo: vi.fn().mockResolvedValue(repo),
       createManagedWorktree: vi.fn().mockResolvedValue({ worktree: { id: 'wt-1' } })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -667,7 +667,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       createManagedWorktree: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -694,7 +694,7 @@ describe('worktree RPC methods', () => {
         branchNameOverride: 'feature/pr-head',
         pushTarget: { remoteName: 'origin', branchName: 'feature/pr-head' }
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -728,7 +728,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       resolveManagedMrBase: vi.fn().mockResolvedValue({ baseBranch: 'origin/mr-head' })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -754,7 +754,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       updateManagedWorktreeMeta: vi.fn().mockResolvedValue({ id: 'wt-1' })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -782,7 +782,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       updateManagedWorktreeMeta: vi.fn().mockResolvedValue({ id: 'wt-1' })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -808,7 +808,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       updateManagedWorktreeMeta: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(
@@ -841,7 +841,7 @@ describe('worktree RPC methods', () => {
       dedupeWorktreeCreate: passthroughDedupe,
       listWorktreeLineage: vi.fn().mockResolvedValue(lineage),
       listWorkspaceLineage: vi.fn().mockResolvedValue({})
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(makeRequest('worktree.lineageList'))
@@ -856,7 +856,7 @@ describe('worktree RPC methods', () => {
       getRuntimeId: () => 'test-runtime',
       dedupeWorktreeCreate: passthroughDedupe,
       persistManagedWorktreeSortOrder: vi.fn().mockReturnValue({ updated: 2 })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: WORKTREE_METHODS })
 
     const response = await dispatcher.dispatch(

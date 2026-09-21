@@ -26,10 +26,10 @@ describe('browser remote download toast', () => {
   it('names the remote path and the execution host without repeating the file name', () => {
     expect(
       formatBrowserRemoteDownloadMessage({
-        workspaceRelativePath: '.nightshift/browser-downloads/report.pdf',
+        workspaceRelativePath: '.kolux/browser-downloads/report.pdf',
         hostLabel: 'build-box'
       })
-    ).toBe('Saved to .nightshift/browser-downloads/report.pdf on build-box')
+    ).toBe('Saved to .kolux/browser-downloads/report.pdf on build-box')
   })
 
   it('stays silent for a download that saved on this device', () => {
@@ -55,7 +55,7 @@ describe('browser remote download toast', () => {
       emitBrowserRemoteDownloadToast(
         finished({
           remoteDestination: {
-            workspaceRelativePath: '.nightshift/browser-downloads/report.pdf',
+            workspaceRelativePath: '.kolux/browser-downloads/report.pdf',
             hostLabel: 'build-box'
           }
         })

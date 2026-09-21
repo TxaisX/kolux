@@ -39,8 +39,8 @@ const QUEUE_OVERLOAD_RAW = new RuntimeRpcCallQueueOverloadError('selector').mess
 
 // The exact user-reported toast text family (timeout + Tailscale funnel hint).
 const TIMEOUT_WITH_TAILSCALE_HINT = withRemoteRuntimeTailscaleHint(
-  'Timed out waiting for the remote Nightshift runtime to respond.',
-  'https://nightshift-server.tail1234.ts.net'
+  'Timed out waiting for the remote Kolux runtime to respond.',
+  'https://kolux-server.tail1234.ts.net'
 )
 
 describe('remote runtime outage: toast flood and stuck reconnect (issue3)', () => {

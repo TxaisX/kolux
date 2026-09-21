@@ -540,7 +540,7 @@ describe('createMainWindow', () => {
     expect(webContents.send).toHaveBeenCalledWith('ui:openQuickOpen')
   })
 
-  it('notifies before Nightshift-first captures a risky terminal-focused shortcut', () => {
+  it('notifies before Kolux-first captures a risky terminal-focused shortcut', () => {
     const windowHandlers: Record<string, (...args: any[]) => void> = {}
     const webContents = {
       on: vi.fn((event, handler) => {
@@ -574,7 +574,7 @@ describe('createMainWindow', () => {
 
     createMainWindow({
       getUI: () => ({}),
-      getSettings: () => ({ terminalShortcutPolicy: 'nightshift-first' })
+      getSettings: () => ({ terminalShortcutPolicy: 'kolux-first' })
     } as never)
 
     const setFocusedListener = vi
@@ -605,7 +605,7 @@ describe('createMainWindow', () => {
     expect(webContents.send).toHaveBeenNthCalledWith(2, 'ui:toggleWorktreePalette')
   })
 
-  it('notifies before Nightshift-first captures a terminal-focused double-tap shortcut', () => {
+  it('notifies before Kolux-first captures a terminal-focused double-tap shortcut', () => {
     const windowHandlers: Record<string, (...args: any[]) => void> = {}
     const webContents = {
       on: vi.fn((event, handler) => {
@@ -640,7 +640,7 @@ describe('createMainWindow', () => {
     createMainWindow(
       {
         getUI: () => ({}),
-        getSettings: () => ({ terminalShortcutPolicy: 'nightshift-first' })
+        getSettings: () => ({ terminalShortcutPolicy: 'kolux-first' })
       } as never,
       {
         getKeybindings: () => ({ 'worktree.quickOpen': ['DoubleTap+Shift'] })

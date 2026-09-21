@@ -39,7 +39,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store SSH remote PTY bindings across host partitions', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

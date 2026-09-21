@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import type {
   RuntimeMobileSessionSnapshotTab,
   RuntimeMobileSessionTabsSnapshot,
   RuntimeMobileSessionTerminalTab
 } from '../../shared/runtime-types'
 
-const WT = 'repo-1::/home/nightshift/worktree'
+const WT = 'repo-1::/home/kolux/worktree'
 const GROUP = `headless-terminals:${WT}`
 
 const terminalTab = (n: number, isActive = false): RuntimeMobileSessionTerminalTab => ({
@@ -36,7 +36,7 @@ const snapshotOf = (
 
 describe('headless tab order stability', () => {
   it('retains order when activating a re-appended surface', () => {
-    const runtime = new NightshiftRuntimeService(null) as unknown as {
+    const runtime = new KoluxRuntimeService(null) as unknown as {
       mobileSessionTabsByWorktree: Map<string, RuntimeMobileSessionTabsSnapshot>
       activateHeadlessMobileSessionTerminalTab: (
         worktreeId: string,
@@ -64,7 +64,7 @@ describe('headless tab order stability', () => {
   })
 
   it('retains stored order when a materialized surface is re-appended', () => {
-    const runtime = new NightshiftRuntimeService(null) as unknown as {
+    const runtime = new KoluxRuntimeService(null) as unknown as {
       mergeMobileSessionTabGroups: (
         worktreeId: string,
         groups: { id: string; activeTabId: string | null; tabOrder: string[] }[],
@@ -83,7 +83,7 @@ describe('headless tab order stability', () => {
   })
 
   it('appends only genuinely new tabs after retained order', () => {
-    const runtime = new NightshiftRuntimeService(null) as unknown as {
+    const runtime = new KoluxRuntimeService(null) as unknown as {
       mergeMobileSessionTabGroups: (
         worktreeId: string,
         groups: { id: string; activeTabId: string | null; tabOrder: string[] }[],
@@ -102,7 +102,7 @@ describe('headless tab order stability', () => {
   })
 
   it('retains order independently in split groups', () => {
-    const runtime = new NightshiftRuntimeService(null) as unknown as {
+    const runtime = new KoluxRuntimeService(null) as unknown as {
       buildHeadlessMobileSessionTabGroups: (
         worktreeId: string,
         tabs: RuntimeMobileSessionSnapshotTab[],

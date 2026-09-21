@@ -181,8 +181,8 @@ describe('GitHub issue source split', () => {
   })
 
   it('uses upstream for issues and origin for PRs in mixed recent results', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockResolvedValueOnce({
         stdout: JSON.stringify([
@@ -203,7 +203,7 @@ describe('GitHub issue source split', () => {
             number: 42,
             title: 'Fork PR',
             state: 'open',
-            html_url: 'https://github.com/fork/nightshift/pull/42',
+            html_url: 'https://github.com/fork/kolux/pull/42',
             labels: [],
             updated_at: '2026-03-31T00:00:00Z',
             user: { login: 'octocat' },
@@ -219,14 +219,14 @@ describe('GitHub issue source split', () => {
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(1, issueSearchArgs('TxaisX/nightshift'), {
       cwd: '/repo-root'
     })
-    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/nightshift'), {
+    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/kolux'), {
       cwd: '/repo-root'
     })
   })
 
   it('omits gh api cache args for no-cache recent work-item requests', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
       stdout: '[]'
     })
@@ -238,37 +238,37 @@ describe('GitHub issue source split', () => {
       issueSearchArgs('TxaisX/nightshift', { noCache: true }),
       { cwd: '/repo-root' }
     )
-    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/nightshift'), {
+    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/kolux'), {
       cwd: '/repo-root'
     })
   })
 
   it('lists SSH repo work items with explicit owner/repo and no local cwd', async () => {
     resolveIssueSourceMock.mockResolvedValueOnce({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
       stdout: '[]'
     })
 
-    await listWorkItems('/home/jinwoo/nightshift', 10, undefined, undefined, 'auto', 'openclaw-2')
+    await listWorkItems('/home/jinwoo/kolux', 10, undefined, undefined, 'auto', 'openclaw-2')
 
     expect(resolveIssueSourceMock).toHaveBeenCalledWith(
-      '/home/jinwoo/nightshift',
+      '/home/jinwoo/kolux',
       'auto',
       'openclaw-2',
       {}
     )
-    expect(getOwnerRepoMock).toHaveBeenCalledWith('/home/jinwoo/nightshift', 'openclaw-2', {})
+    expect(getOwnerRepoMock).toHaveBeenCalledWith('/home/jinwoo/kolux', 'openclaw-2', {})
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(1, issueSearchArgs('TxaisX/nightshift'), {})
-    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/nightshift'), {})
+    expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(2, prListArgs('fork/kolux'), {})
   })
 
   it('uses upstream for issue-only queries and origin for PR-only queries', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' })
 
     await listWorkItems('/repo-root', 10, 'is:issue')
@@ -276,14 +276,14 @@ describe('GitHub issue source split', () => {
     expect(decodedIssueSearchPath(0)).toContain('q=repo:TxaisX/nightshift is:issue')
 
     ghExecFileAsyncMock.mockClear()
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' })
 
     await listWorkItems('/repo-root', 10, 'is:pr')
 
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
-      expect.arrayContaining(['--repo', 'fork/nightshift']),
+      expect.arrayContaining(['--repo', 'fork/kolux']),
       { cwd: '/repo-root' }
     )
   })
@@ -291,8 +291,8 @@ describe('GitHub issue source split', () => {
   it.each(['is:issue', 'is:pr'])(
     'propagates GitHub outages for scoped %s queries',
     async (query) => {
-      getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+      getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
       ghExecFileAsyncMock.mockRejectedValueOnce(new Error('HTTP 503: Service Unavailable'))
 
       await expect(listWorkItems('/repo-root', 10, query)).rejects.toThrow(
@@ -305,8 +305,8 @@ describe('GitHub issue source split', () => {
   )
 
   it('propagates an outage when both sides of a combined query are unavailable', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('HTTP 503: Service Unavailable'))
       .mockRejectedValueOnce(new Error('HTTP 502: Bad Gateway'))
@@ -321,11 +321,11 @@ describe('GitHub issue source split', () => {
 
   it("uses upstream for recent PRs when preference='upstream'", async () => {
     resolveIssueSourceMock.mockResolvedValueOnce({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
       stdout: '[]'
     })
@@ -339,11 +339,11 @@ describe('GitHub issue source split', () => {
 
   it("uses upstream for queried PRs when preference='upstream'", async () => {
     resolveIssueSourceMock.mockResolvedValueOnce({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' })
 
     await listWorkItems('/repo-root', 10, 'is:pr is:open', undefined, 'upstream')
@@ -356,11 +356,11 @@ describe('GitHub issue source split', () => {
 
   it("uses upstream for PR counts when preference='upstream'", async () => {
     resolveIssueSourceMock.mockResolvedValueOnce({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '9\n' })
 
     const count = await countWorkItems('/repo-root', 'is:pr is:open', 'upstream')
@@ -382,10 +382,10 @@ describe('GitHub issue source split', () => {
 
   it("falls back to origin for PRs when preference='upstream' and upstream is missing", async () => {
     resolveIssueSourceMock.mockResolvedValueOnce({
-      source: { owner: 'fork', repo: 'nightshift' },
+      source: { owner: 'fork', repo: 'kolux' },
       fellBack: true
     })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     // beforeEach default: upstream probe resolves null, origin delegates to
     // getOwnerRepoMock.
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' })
@@ -393,21 +393,21 @@ describe('GitHub issue source split', () => {
     const result = await listWorkItems('/repo-root', 10, 'is:pr', undefined, 'upstream')
 
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
-      expect.arrayContaining(['--repo', 'fork/nightshift']),
+      expect.arrayContaining(['--repo', 'fork/kolux']),
       { cwd: '/repo-root' }
     )
     expect(result.sources).toEqual({
-      issues: { owner: 'fork', repo: 'nightshift' },
-      prs: { owner: 'fork', repo: 'nightshift' },
-      originCandidate: { owner: 'fork', repo: 'nightshift' },
+      issues: { owner: 'fork', repo: 'kolux' },
+      prs: { owner: 'fork', repo: 'kolux' },
+      originCandidate: { owner: 'fork', repo: 'kolux' },
       upstreamCandidate: null
     })
     expect(result.issueSourceFellBack).toBe(true)
   })
 
   it('counts default work items across upstream issues and origin PRs', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: '7\n' })
       .mockResolvedValueOnce({ stdout: '5\n' })
@@ -433,7 +433,7 @@ describe('GitHub issue source split', () => {
         'api',
         '--cache',
         '120s',
-        `search/issues?q=${encodeURIComponent('repo:fork/nightshift is:pull-request is:open')}&per_page=1`,
+        `search/issues?q=${encodeURIComponent('repo:fork/kolux is:pull-request is:open')}&per_page=1`,
         '--jq',
         '.total_count'
       ],
@@ -442,13 +442,13 @@ describe('GitHub issue source split', () => {
   })
 
   it('typed PR lookup does not fetch an upstream issue with the same number', async () => {
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({
       stdout: JSON.stringify({
         number: 42,
         title: 'Origin PR',
         state: 'open',
-        html_url: 'https://github.com/fork/nightshift/pull/42',
+        html_url: 'https://github.com/fork/kolux/pull/42',
         labels: [],
         updated_at: '2026-04-02T00:00:00Z',
         user: { login: 'octocat' },
@@ -467,7 +467,7 @@ describe('GitHub issue source split', () => {
         'view',
         '42',
         '--repo',
-        'fork/nightshift',
+        'fork/kolux',
         '--json',
         expect.stringContaining('reviewDecision')
       ],
@@ -477,8 +477,8 @@ describe('GitHub issue source split', () => {
   })
 
   it('probes the upstream repository for a typed fork PR before origin', async () => {
-    const upstream = { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' }
-    const origin = { owner: 'fork', repo: 'nightshift', host: 'github.com' }
+    const upstream = { owner: 'TxaisX', repo: 'kolux', host: 'github.com' }
+    const origin = { owner: 'fork', repo: 'kolux', host: 'github.com' }
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [upstream, origin],
       headRepo: origin
@@ -514,8 +514,8 @@ describe('GitHub issue source split', () => {
   })
 
   it('pins typed PR metadata to explicit origin when upstream has the same number', async () => {
-    const upstream = { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' }
-    const origin = { owner: 'fork', repo: 'nightshift', host: 'github.com' }
+    const upstream = { owner: 'TxaisX', repo: 'kolux', host: 'github.com' }
+    const origin = { owner: 'fork', repo: 'kolux', host: 'github.com' }
     getOwnerRepoMock.mockResolvedValue(origin)
     mockUpstreamCandidate(upstream)
     resolvePRRepositoryCandidatesMock.mockResolvedValue({
@@ -527,7 +527,7 @@ describe('GitHub issue source split', () => {
         number: 42,
         title: 'Origin PR',
         state: 'open',
-        url: 'https://github.com/fork/nightshift/pull/42',
+        url: 'https://github.com/fork/kolux/pull/42',
         labels: [],
         updatedAt: '2026-04-02T00:00:00Z',
         author: { login: 'octocat' },
@@ -541,11 +541,11 @@ describe('GitHub issue source split', () => {
 
     expect(resolvePRRepositoryCandidatesMock).not.toHaveBeenCalled()
     expect(ghExecFileAsyncMock.mock.calls[0]?.[0]).toEqual(
-      expect.arrayContaining(['pr', 'view', '--repo', 'fork/nightshift'])
+      expect.arrayContaining(['pr', 'view', '--repo', 'fork/kolux'])
     )
     expect(
       ghExecFileAsyncMock.mock.calls.some((call) =>
-        (call[0] as string[]).some((arg) => arg.includes('upstream/nightshift'))
+        (call[0] as string[]).some((arg) => arg.includes('upstream/kolux'))
       )
     ).toBe(false)
     expect(item?.prRepo).toEqual(origin)
@@ -553,7 +553,7 @@ describe('GitHub issue source split', () => {
 
   it('does not run a bare PR lookup when explicit origin identity is unresolved', async () => {
     getOwnerRepoMock.mockResolvedValue(null)
-    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+    mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
 
     await expect(getWorkItem('/repo-root', 42, 'pr', null, {}, 'origin')).resolves.toBeNull()
 
@@ -572,10 +572,10 @@ describe('GitHub issue source split', () => {
   it('does not probe a second PR repository after a non-not-found failure', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
-        { owner: 'fork', repo: 'nightshift', host: 'github.com' }
+        { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+        { owner: 'fork', repo: 'kolux', host: 'github.com' }
       ],
-      headRepo: { owner: 'fork', repo: 'nightshift', host: 'github.com' }
+      headRepo: { owner: 'fork', repo: 'kolux', host: 'github.com' }
     })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('HTTP 500: server error'))
@@ -588,24 +588,24 @@ describe('GitHub issue source split', () => {
     expect(ghExecFileAsyncMock).toHaveBeenCalledTimes(2)
     expect(
       ghExecFileAsyncMock.mock.calls.some(([args]) =>
-        (args as string[]).some((arg) => arg.includes('fork/nightshift'))
+        (args as string[]).some((arg) => arg.includes('fork/kolux'))
       )
     ).toBe(false)
   })
 
   it('raw number lookup tries upstream issue before origin PR', async () => {
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     // Why: simulate a real gh 404 (the only error type that should fall through).
     // Non-404 errors re-throw so transient upstream failures don't misroute to an
     // unrelated origin PR with the same number.
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('HTTP 404: Not Found'))
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock.mockResolvedValueOnce({
       stdout: JSON.stringify({
         number: 42,
         title: 'Origin PR',
         state: 'open',
-        html_url: 'https://github.com/fork/nightshift/pull/42',
+        html_url: 'https://github.com/fork/kolux/pull/42',
         labels: [],
         updated_at: '2026-04-02T00:00:00Z',
         user: { login: 'octocat' },
@@ -627,7 +627,7 @@ describe('GitHub issue source split', () => {
         'view',
         '42',
         '--repo',
-        'fork/nightshift',
+        'fork/kolux',
         '--json',
         expect.stringContaining('reviewDecision')
       ],
@@ -641,8 +641,8 @@ describe('GitHub issue source split', () => {
     // must carry a classified error for the failing side so the renderer can
     // swap the empty-state for a retryable banner. `sources` must stay
     // populated so the banner copy can name the repo that failed.
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('HTTP 403: Resource not accessible by integration'))
       .mockResolvedValueOnce({ stdout: '[]' })
@@ -651,8 +651,8 @@ describe('GitHub issue source split', () => {
 
     expect(result.items).toEqual([])
     expect(result.sources).toMatchObject({
-      issues: { owner: 'TxaisX', repo: 'nightshift' },
-      prs: { owner: 'fork', repo: 'nightshift' }
+      issues: { owner: 'TxaisX', repo: 'kolux' },
+      prs: { owner: 'fork', repo: 'kolux' }
     })
     expect(result.errors?.issues?.type).toBe('permission_denied')
   })
@@ -662,8 +662,8 @@ describe('GitHub issue source split', () => {
     // not zero out the succeeding source. The UI renders origin PRs with a
     // banner above the list, not an empty state. Ensures the IPC shape
     // carries both the successful items and the error for the failing side.
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockRejectedValueOnce(new Error('HTTP 403: Resource not accessible by integration'))
       .mockResolvedValueOnce({
@@ -672,7 +672,7 @@ describe('GitHub issue source split', () => {
             number: 42,
             title: 'Fork PR',
             state: 'open',
-            html_url: 'https://github.com/fork/nightshift/pull/42',
+            html_url: 'https://github.com/fork/kolux/pull/42',
             labels: [],
             updated_at: '2026-03-31T00:00:00Z',
             user: { login: 'octocat' },
@@ -692,7 +692,7 @@ describe('GitHub issue source split', () => {
   it('raw number lookup does not fall through on transient upstream errors', async () => {
     // Why: with issue source split, a non-404 upstream failure must not silently
     // route to origin's PR #N — that would return an unrelated item.
-    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     ghExecFileAsyncMock.mockRejectedValueOnce(new Error('HTTP 500: server error'))
 
     const item = await getWorkItem('/repo-root', 42)
@@ -710,10 +710,10 @@ describe('GitHub issue source split', () => {
 
     it("preference='auto' + upstream exists → queries upstream", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'TxaisX', repo: 'nightshift' },
+        source: { owner: 'TxaisX', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
@@ -729,17 +729,17 @@ describe('GitHub issue source split', () => {
 
     it("preference='auto' + no upstream → queries origin", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'solo', repo: 'nightshift' },
+        source: { owner: 'solo', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
 
       await listWorkItems('/repo-root', 10, undefined, undefined, 'auto')
 
-      expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(1, issueSearchArgs('solo/nightshift'), {
+      expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(1, issueSearchArgs('solo/kolux'), {
         cwd: '/repo-root'
       })
     })
@@ -749,11 +749,11 @@ describe('GitHub issue source split', () => {
       // PR list is almost always empty. 'auto' must resolve PRs upstream-first
       // like issues, or the PRs tab renders "No matching GitHub work" on forks.
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'TxaisX', repo: 'nightshift' },
+        source: { owner: 'TxaisX', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
@@ -766,17 +766,17 @@ describe('GitHub issue source split', () => {
         { cwd: '/repo-root' }
       )
       expect(result.sources).toEqual({
-        issues: { owner: 'TxaisX', repo: 'nightshift' },
-        prs: { owner: 'TxaisX', repo: 'nightshift' },
-        originCandidate: { owner: 'fork', repo: 'nightshift' },
-        upstreamCandidate: { owner: 'TxaisX', repo: 'nightshift' }
+        issues: { owner: 'TxaisX', repo: 'kolux' },
+        prs: { owner: 'TxaisX', repo: 'kolux' },
+        originCandidate: { owner: 'fork', repo: 'kolux' },
+        upstreamCandidate: { owner: 'TxaisX', repo: 'kolux' }
       })
     })
 
     it('collapses the default count to one query when auto resolves both sides to upstream', async () => {
-      getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+      getIssueOwnerRepoMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '11\n' })
 
       const count = await countWorkItems('/repo-root')
@@ -798,10 +798,10 @@ describe('GitHub issue source split', () => {
 
     it("preference='upstream' + upstream exists → queries upstream", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'TxaisX', repo: 'nightshift' },
+        source: { owner: 'TxaisX', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
@@ -814,48 +814,48 @@ describe('GitHub issue source split', () => {
 
     it("preference='upstream' + no upstream → falls back to origin with fellBack=true", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'solo', repo: 'nightshift' },
+        source: { owner: 'solo', repo: 'kolux' },
         fellBack: true
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
 
       const result = await listWorkItems('/repo-root', 10, undefined, undefined, 'upstream')
 
-      expect(decodedIssueSearchPath(0)).toContain('q=repo:solo/nightshift is:issue is:open')
+      expect(decodedIssueSearchPath(0)).toContain('q=repo:solo/kolux is:issue is:open')
       expect(result.issueSourceFellBack).toBe(true)
     })
 
     it("preference='origin' + upstream exists → queries origin (not upstream)", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'fork', repo: 'nightshift' },
+        source: { owner: 'fork', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
 
       await listWorkItems('/repo-root', 10, undefined, undefined, 'origin')
 
-      expect(decodedIssueSearchPath(0)).toContain('q=repo:fork/nightshift is:issue is:open')
+      expect(decodedIssueSearchPath(0)).toContain('q=repo:fork/kolux is:issue is:open')
     })
 
     it("preference='origin' + no upstream → queries origin", async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'solo', repo: 'nightshift' },
+        source: { owner: 'solo', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'solo', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
 
       await listWorkItems('/repo-root', 10, undefined, undefined, 'origin')
 
-      expect(decodedIssueSearchPath(0)).toContain('q=repo:solo/nightshift is:issue is:open')
+      expect(decodedIssueSearchPath(0)).toContain('q=repo:solo/kolux is:issue is:open')
     })
 
     it('surfaces upstreamCandidate in sources regardless of effective preference', async () => {
@@ -863,11 +863,11 @@ describe('GitHub issue source split', () => {
       // 'origin'. That requires the envelope to carry the raw upstream even
       // when `sources.issues` has collapsed onto origin.
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'fork', repo: 'nightshift' },
+        source: { owner: 'fork', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
@@ -875,20 +875,20 @@ describe('GitHub issue source split', () => {
       const result = await listWorkItems('/repo-root', 10, undefined, undefined, 'origin')
 
       expect(result.sources).toEqual({
-        issues: { owner: 'fork', repo: 'nightshift' },
-        prs: { owner: 'fork', repo: 'nightshift' },
-        originCandidate: { owner: 'fork', repo: 'nightshift' },
-        upstreamCandidate: { owner: 'TxaisX', repo: 'nightshift' }
+        issues: { owner: 'fork', repo: 'kolux' },
+        prs: { owner: 'fork', repo: 'kolux' },
+        originCandidate: { owner: 'fork', repo: 'kolux' },
+        upstreamCandidate: { owner: 'TxaisX', repo: 'kolux' }
       })
     })
 
     it('keeps raw origin metadata when effective PR source is upstream', async () => {
       resolveIssueSourceMock.mockResolvedValueOnce({
-        source: { owner: 'TxaisX', repo: 'nightshift' },
+        source: { owner: 'TxaisX', repo: 'kolux' },
         fellBack: false
       })
-      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'nightshift' })
-      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'nightshift' })
+      getOwnerRepoMock.mockResolvedValueOnce({ owner: 'fork', repo: 'kolux' })
+      mockUpstreamCandidate({ owner: 'TxaisX', repo: 'kolux' })
       ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: '[]' }).mockResolvedValueOnce({
         stdout: '[]'
       })
@@ -896,10 +896,10 @@ describe('GitHub issue source split', () => {
       const result = await listWorkItems('/repo-root', 10, undefined, undefined, 'upstream')
 
       expect(result.sources).toEqual({
-        issues: { owner: 'TxaisX', repo: 'nightshift' },
-        prs: { owner: 'TxaisX', repo: 'nightshift' },
-        originCandidate: { owner: 'fork', repo: 'nightshift' },
-        upstreamCandidate: { owner: 'TxaisX', repo: 'nightshift' }
+        issues: { owner: 'TxaisX', repo: 'kolux' },
+        prs: { owner: 'TxaisX', repo: 'kolux' },
+        originCandidate: { owner: 'fork', repo: 'kolux' },
+        upstreamCandidate: { owner: 'TxaisX', repo: 'kolux' }
       })
     })
   })

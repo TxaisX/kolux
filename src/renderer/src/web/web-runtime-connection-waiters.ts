@@ -21,7 +21,7 @@ export class WebRuntimeConnectionWaiters {
       return Promise.reject(createWebRuntimeUnauthorizedError())
     }
     if (this.options.isIntentionallyClosed()) {
-      return Promise.reject(new Error('Remote Nightshift runtime connection closed.'))
+      return Promise.reject(new Error('Remote Kolux runtime connection closed.'))
     }
     return new Promise((resolve, reject) => {
       const timeout = window.setTimeout(() => {
@@ -32,7 +32,7 @@ export class WebRuntimeConnectionWaiters {
         reject(
           new Error(
             withRemoteRuntimeTailscaleHint(
-              'Timed out while connecting to the remote Nightshift runtime.',
+              'Timed out while connecting to the remote Kolux runtime.',
               this.options.endpoint
             )
           )
@@ -61,7 +61,7 @@ export class WebRuntimeConnectionWaiters {
     this.rejectAll(
       new Error(
         withRemoteRuntimeTailscaleHint(
-          'Could not connect to the remote Nightshift runtime.',
+          'Could not connect to the remote Kolux runtime.',
           this.options.endpoint
         )
       )

@@ -213,7 +213,7 @@ describe('subscribeRuntimeEnvironmentFromPreload', () => {
         subscriptionId: 'sub-err',
         type: 'error',
         code: 'TIMEOUT',
-        message: 'Timed out waiting for the remote Nightshift runtime to respond.'
+        message: 'Timed out waiting for the remote Kolux runtime to respond.'
       })
     }
     expect(onError).toHaveBeenCalledTimes(50)

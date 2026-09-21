@@ -2,8 +2,8 @@ const { closeSync, fstatSync, openSync, readSync } = require('node:fs')
 const { basename } = require('node:path')
 
 const EXPECTED_ARCHITECTURE_BY_FILENAME = new Map([
-  ['nightshift-linux.AppImage', 'x64'],
-  ['nightshift-linux-arm64.AppImage', 'arm64']
+  ['kolux-linux.AppImage', 'x64'],
+  ['kolux-linux-arm64.AppImage', 'arm64']
 ])
 const APPIMAGE_MAGIC = Buffer.from([0x41, 0x49, 0x02])
 const RUNTIME_SOURCE = Buffer.from('https://github.com/AppImage/type2-runtime')

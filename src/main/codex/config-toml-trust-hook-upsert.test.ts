@@ -122,10 +122,10 @@ describe('upsertHookTrustEntries', () => {
 
   it('collapses duplicate blocks for the same hook key while preserving unrelated hook state', () => {
     const sourcePath =
-      'C:\\Users\\me\\AppData\\Roaming\\nightshift\\codex-runtime-home\\home\\hooks.json'
+      'C:\\Users\\me\\AppData\\Roaming\\kolux\\codex-runtime-home\\home\\hooks.json'
     const key = `${sourcePath}:session_start:0:0`
     const unrelatedSourcePath =
-      'C:\\Users\\me\\AppData\\Roaming\\nightshift\\codex-runtime-home\\home\\hooks.json'
+      'C:\\Users\\me\\AppData\\Roaming\\kolux\\codex-runtime-home\\home\\hooks.json'
     const unrelatedKey = `${unrelatedSourcePath}:stop:0:0`
     const original = [
       `[hooks.state."${escapeTomlString(key)}"]`,
@@ -168,7 +168,7 @@ describe('upsertHookTrustEntries', () => {
 
   it('collapses a literal-string hook table before writing the canonical Codex literal table', () => {
     const sourcePath =
-      'C:\\Users\\me\\AppData\\Roaming\\nightshift\\codex-runtime-home\\home\\hooks.json'
+      'C:\\Users\\me\\AppData\\Roaming\\kolux\\codex-runtime-home\\home\\hooks.json'
     const key = `${sourcePath}:session_start:0:0`
     const original = [
       `[hooks.state.'${key}']`,
@@ -615,9 +615,9 @@ describe('upsertHookTrustEntries', () => {
     expect(written).not.toContain('sha256:OLD')
   })
 
-  it('finds and replaces a legacy forward-slash block when Nightshift upserts with native backslash key', () => {
+  it('finds and replaces a legacy forward-slash block when Kolux upserts with native backslash key', () => {
     // Why: Codex 0.140 exposes Windows keys with either separator depending on cwd, so replace both.
-    const backslashPath = 'C:\\Users\\Rod\\AppData\\Roaming\\nightshift\\hooks.json'
+    const backslashPath = 'C:\\Users\\Rod\\AppData\\Roaming\\kolux\\hooks.json'
     const legacyKey = `${backslashPath.replace(/\\/g, '/')}:session_start:0:0`
     const original = [
       `[hooks.state."${legacyKey}"]`,
@@ -647,7 +647,7 @@ describe('upsertHookTrustEntries', () => {
   it('produces exactly one Windows separator pair after two consecutive upserts', () => {
     // Why: idempotency guard — repeated auto-install must not accumulate duplicate blocks.
     const entry: CodexTrustEntry = {
-      sourcePath: 'C:\\Users\\Rod\\AppData\\Roaming\\nightshift\\hooks.json',
+      sourcePath: 'C:\\Users\\Rod\\AppData\\Roaming\\kolux\\hooks.json',
       eventLabel: 'session_start',
       groupIndex: 0,
       handlerIndex: 0,
@@ -664,7 +664,7 @@ describe('upsertHookTrustEntries', () => {
   it('falls back to TOML basic-string headers when a Windows path contains an apostrophe', () => {
     // Why: TOML literal-string keys can't hold apostrophes, but Windows profile paths can.
     const entry: CodexTrustEntry = {
-      sourcePath: "C:\\Users\\O'Connor\\AppData\\Roaming\\nightshift\\hooks.json",
+      sourcePath: "C:\\Users\\O'Connor\\AppData\\Roaming\\kolux\\hooks.json",
       eventLabel: 'session_start',
       groupIndex: 0,
       handlerIndex: 0,
@@ -675,18 +675,18 @@ describe('upsertHookTrustEntries', () => {
     const written = readFileSync(configPath, 'utf-8')
     expect((written.match(/\[hooks\.state\."/g) ?? []).length).toBe(2)
     expect(written).toContain(
-      `[hooks.state."C:\\\\Users\\\\O'Connor\\\\AppData\\\\Roaming\\\\nightshift\\\\hooks.json:session_start:0:0"]`
+      `[hooks.state."C:\\\\Users\\\\O'Connor\\\\AppData\\\\Roaming\\\\kolux\\\\hooks.json:session_start:0:0"]`
     )
     expect(written).toContain(
-      `[hooks.state."C:/Users/O'Connor/AppData/Roaming/nightshift/hooks.json:session_start:0:0"]`
+      `[hooks.state."C:/Users/O'Connor/AppData/Roaming/kolux/hooks.json:session_start:0:0"]`
     )
     expect(written).not.toContain(`[hooks.state.'C:\\Users\\O'Connor`)
   })
 
-  it('finds a Codex-written block with lowercased username when Nightshift key has mixed-case username', () => {
+  it('finds a Codex-written block with lowercased username when Kolux key has mixed-case username', () => {
     // Why: realpathSync.native casing can differ from what Codex wrote, so case-fold to replace not duplicate.
-    const lowercasePath = 'C:\\Users\\rod\\AppData\\Roaming\\nightshift\\hooks.json'
-    const mixedCasePath = 'C:\\Users\\Rod\\AppData\\Roaming\\nightshift\\hooks.json'
+    const lowercasePath = 'C:\\Users\\rod\\AppData\\Roaming\\kolux\\hooks.json'
+    const mixedCasePath = 'C:\\Users\\Rod\\AppData\\Roaming\\kolux\\hooks.json'
     const literalKey = `${lowercasePath}:session_start:0:0`
     const original = [
       `[hooks.state.'${literalKey}']`,

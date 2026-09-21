@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 const run = promisify(execFile)
 const referenceRoot = resolve(
   import.meta.dirname,
-  '../../skill-guides/nightshift-per-workspace-env/references'
+  '../../skill-guides/kolux-per-workspace-env/references'
 )
 const vercel = await readFile(resolve(referenceRoot, 'provider-vercel.md'), 'utf8')
 const ssh = await readFile(resolve(referenceRoot, 'ssh-host.md'), 'utf8')
@@ -16,7 +16,7 @@ const cleanup = vercel.match(/```bash\n(cleanup_snapshot\(\) \{[\s\S]*?\n\})\n``
 async function runShell(script, env = {}) {
   try {
     const output = await run('bash', ['-c', script], {
-      env: { ...process.env, NIGHTSHIFT_BACKGROUND_LAUNCH: '1', ...env }
+      env: { ...process.env, KOLUX_BACKGROUND_LAUNCH: '1', ...env }
     })
     return { ...output, code: 0 }
   } catch (error) {
@@ -58,7 +58,7 @@ exit 0`)
 
   it('disables Git prompts when the Vercel token is absent', async () => {
     const prefix = vercel.match(
-      /-- bash -lc 'set -euo pipefail; cd "\$NIGHTSHIFT_PROJECT_ROOT"; \\\n([\s\S]*?)    git fetch/u
+      /-- bash -lc 'set -euo pipefail; cd "\$KOLUX_PROJECT_ROOT"; \\\n([\s\S]*?)    git fetch/u
     )?.[1]
     expect(prefix).toBeDefined()
     const result = await runShell(

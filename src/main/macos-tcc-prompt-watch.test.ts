@@ -4,18 +4,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   MacosTccPromptWatch,
   type LogStreamChild,
-  isNightshiftAttributedPrompt,
+  isKoluxAttributedPrompt,
   parseTccPromptEvent
 } from './macos-tcc-prompt-watch'
 
 // Captured verbatim from `log stream --predicate 'subsystem == "com.apple.TCC"'`
 // on macOS 26.5 while a real consent dialog was displayed and denied.
 const REAL_PROMPT_LINE =
-  '2026-07-27 15:35:26.136 Df tccd[79149:c81551c] [com.apple.TCC:access] AUTHREQ_PROMPTING: msgID=80871.81, service=kTCCServiceSystemPolicyDocumentsFolder, subject=Sub:{com.nightshift.tccprobe.shapecapture}Resp:{TCCDProcess: identifier=com.nightshift.tccprobe.shapecapture, pid=74171, auid=501, euid=501, binary_path=/private/tmp/tccprobe/TccProbe.app/Contents/MacOS/TccProbe},'
+  '2026-07-27 15:35:26.136 Df tccd[79149:c81551c] [com.apple.TCC:access] AUTHREQ_PROMPTING: msgID=80871.81, service=kTCCServiceSystemPolicyDocumentsFolder, subject=Sub:{com.kolux.tccprobe.shapecapture}Resp:{TCCDProcess: identifier=com.kolux.tccprobe.shapecapture, pid=74171, auid=501, euid=501, binary_path=/private/tmp/tccprobe/TccProbe.app/Contents/MacOS/TccProbe},'
 
-// Same shape, but the #9756 case: an agent CLI accesses, Nightshift is held responsible.
-const NIGHTSHIFT_APPDATA_LINE =
-  '2026-07-27 15:40:02.001 Df tccd[79149:c81551c] [com.apple.TCC:access] AUTHREQ_PROMPTING: msgID=80871.99, service=kTCCServiceSystemPolicyAppData, subject=Sub:{node-5555494487fbc7467d473fd8b0a397018cbf954b}Resp:{TCCDProcess: identifier=com.txais.nightshift, pid=47548, auid=501, euid=501, binary_path=/opt/homebrew/Cellar/node/26.5.0/bin/node},'
+// Same shape, but the #9756 case: an agent CLI accesses, Kolux is held responsible.
+const KOLUX_APPDATA_LINE =
+  '2026-07-27 15:40:02.001 Df tccd[79149:c81551c] [com.apple.TCC:access] AUTHREQ_PROMPTING: msgID=80871.99, service=kTCCServiceSystemPolicyAppData, subject=Sub:{node-5555494487fbc7467d473fd8b0a397018cbf954b}Resp:{TCCDProcess: identifier=com.txais.kolux, pid=47548, auid=501, euid=501, binary_path=/opt/homebrew/Cellar/node/26.5.0/bin/node},'
 
 // Preflight checks dominate the TCC subsystem and must never count as a dialog.
 const PREFLIGHT_LINE =
@@ -25,16 +25,16 @@ describe('parseTccPromptEvent', () => {
   it('parses a real captured AUTHREQ_PROMPTING line', () => {
     expect(parseTccPromptEvent(REAL_PROMPT_LINE)).toEqual({
       service: 'kTCCServiceSystemPolicyDocumentsFolder',
-      accessingIdentifier: 'com.nightshift.tccprobe.shapecapture',
-      responsibleIdentifier: 'com.nightshift.tccprobe.shapecapture',
+      accessingIdentifier: 'com.kolux.tccprobe.shapecapture',
+      responsibleIdentifier: 'com.kolux.tccprobe.shapecapture',
       binaryPath: '/private/tmp/tccprobe/TccProbe.app/Contents/MacOS/TccProbe'
     })
   })
 
   it('separates the accessing binary from the responsible app', () => {
-    const event = parseTccPromptEvent(NIGHTSHIFT_APPDATA_LINE)
-    // The whole point of #9756: the dialog says Nightshift, but node did the access.
-    expect(event?.responsibleIdentifier).toBe('com.txais.nightshift')
+    const event = parseTccPromptEvent(KOLUX_APPDATA_LINE)
+    // The whole point of #9756: the dialog says Kolux, but node did the access.
+    expect(event?.responsibleIdentifier).toBe('com.txais.kolux')
     expect(event?.accessingIdentifier).toBe('node-5555494487fbc7467d473fd8b0a397018cbf954b')
     expect(event?.binaryPath).toBe('/opt/homebrew/Cellar/node/26.5.0/bin/node')
   })
@@ -48,18 +48,18 @@ describe('parseTccPromptEvent', () => {
   })
 })
 
-describe('isNightshiftAttributedPrompt', () => {
-  it('accepts the app and detached terminal helper across Nightshift build identities', () => {
+describe('isKoluxAttributedPrompt', () => {
+  it('accepts the app and detached terminal helper across Kolux build identities', () => {
     for (const id of [
-      'com.txais.nightshift',
-      'com.txais.nightshift.helper',
-      'com.txais.nightshift.dev',
-      'com.txais.nightshift.dev.helper',
-      'com.txais.nightshift.local',
-      'com.txais.nightshift.local.helper'
+      'com.txais.kolux',
+      'com.txais.kolux.helper',
+      'com.txais.kolux.dev',
+      'com.txais.kolux.dev.helper',
+      'com.txais.kolux.local',
+      'com.txais.kolux.local.helper'
     ]) {
       expect(
-        isNightshiftAttributedPrompt({
+        isKoluxAttributedPrompt({
           service: 'kTCCServiceSystemPolicyAppData',
           accessingIdentifier: 'find',
           responsibleIdentifier: id
@@ -70,7 +70,7 @@ describe('isNightshiftAttributedPrompt', () => {
 
   it('rejects dialogs another app is responsible for', () => {
     expect(
-      isNightshiftAttributedPrompt({
+      isKoluxAttributedPrompt({
         service: 'kTCCServiceSystemPolicyAppData',
         accessingIdentifier: 'find',
         responsibleIdentifier: 'com.apple.Terminal'
@@ -78,12 +78,12 @@ describe('isNightshiftAttributedPrompt', () => {
     ).toBe(false)
   })
 
-  it('rejects unrelated services even when Nightshift is responsible', () => {
+  it('rejects unrelated services even when Kolux is responsible', () => {
     expect(
-      isNightshiftAttributedPrompt({
+      isKoluxAttributedPrompt({
         service: 'kTCCServiceMicrophone',
-        accessingIdentifier: 'nightshift',
-        responsibleIdentifier: 'com.txais.nightshift'
+        accessingIdentifier: 'kolux',
+        responsibleIdentifier: 'com.txais.kolux'
       })
     ).toBe(false)
   })
@@ -135,7 +135,7 @@ describe('MacosTccPromptWatch', () => {
     expect(spawnLogStream).not.toHaveBeenCalled()
   })
 
-  it('reports only Nightshift-attributed dialogs from a live stream', async () => {
+  it('reports only Kolux-attributed dialogs from a live stream', async () => {
     const { child, stdout } = createFakeLogStream()
     const onPrompt = vi.fn()
     const watch = new MacosTccPromptWatch({ onPrompt, spawnLogStream: () => child })
@@ -144,7 +144,7 @@ describe('MacosTccPromptWatch', () => {
     stdout.write('Filtering the log data using "subsystem == ..."\n')
     stdout.write(`${PREFLIGHT_LINE}\n`)
     stdout.write(`${REAL_PROMPT_LINE}\n`) // another app is responsible
-    stdout.write(`${NIGHTSHIFT_APPDATA_LINE}\n`)
+    stdout.write(`${KOLUX_APPDATA_LINE}\n`)
     await new Promise((resolve) => {
       setImmediate(resolve)
     })
@@ -152,7 +152,7 @@ describe('MacosTccPromptWatch', () => {
     expect(onPrompt).toHaveBeenCalledTimes(1)
     expect(onPrompt.mock.calls[0][0]).toMatchObject({
       service: 'kTCCServiceSystemPolicyAppData',
-      responsibleIdentifier: 'com.txais.nightshift'
+      responsibleIdentifier: 'com.txais.kolux'
     })
     watch.stop()
   })

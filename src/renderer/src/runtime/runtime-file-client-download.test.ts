@@ -233,7 +233,7 @@ describe('runtime file client', () => {
         '/remote/repo/archive.zip',
         'archive.zip'
       )
-    ).rejects.toThrow('Remote file download requires a newer Nightshift server')
+    ).rejects.toThrow('Remote file download requires a newer Kolux server')
 
     expect(fsStartDownloadedFile).not.toHaveBeenCalled()
     expect(fsSaveDownloadedFile).not.toHaveBeenCalled()

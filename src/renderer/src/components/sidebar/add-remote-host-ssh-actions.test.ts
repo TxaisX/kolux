@@ -13,7 +13,7 @@ vi.mock('sonner', () => ({
 }))
 
 import {
-  addAllSshConfigHostsToNightshift,
+  addAllSshConfigHostsToKolux,
   loadSshConfigHostsForPicker,
   prefillFormFromSshConfigHost,
   saveNewSshHostFromForm
@@ -57,7 +57,7 @@ describe('individual SSH config host selection', () => {
         port: 22,
         username: '',
         identityFile: '/keys/second',
-        alreadyInNightshift: false
+        alreadyInKolux: false
       },
       ssh
     )
@@ -137,7 +137,7 @@ describe('bulk add of ~/.ssh/config hosts', () => {
       resolveConfigHost: vi.fn()
     }
 
-    const result = await addAllSshConfigHostsToNightshift({
+    const result = await addAllSshConfigHostsToKolux({
       ssh,
       recordSshRepoReadoptions: vi.fn(),
       setSshTargetsMetadata: vi.fn(),
@@ -151,7 +151,7 @@ describe('bulk add of ~/.ssh/config hosts', () => {
 
   it('reports already-synced without clearing tombstones', async () => {
     const importConfig = vi.fn().mockResolvedValue({ targets: [], repoReadoptions: [] })
-    const result = await addAllSshConfigHostsToNightshift({
+    const result = await addAllSshConfigHostsToKolux({
       ssh: {
         importConfig,
         listTargets: vi.fn().mockResolvedValue([]),
@@ -176,7 +176,7 @@ describe('SSH config picker response admission', () => {
       hostname: `host-${index}`,
       port: 22,
       username: '',
-      alreadyInNightshift: index === 0
+      alreadyInKolux: index === 0
     }))
     const result = await loadSshConfigHostsForPicker({
       listConfigHosts: vi.fn().mockResolvedValue(hosts)
@@ -202,10 +202,10 @@ describe('SSH config picker response admission', () => {
           hostname: 'prod',
           port: 22,
           username: '',
-          alreadyInNightshift: false
+          alreadyInKolux: false
         },
         {} as never
       )
-    ).rejects.toThrow('Restart Nightshift')
+    ).rejects.toThrow('Restart Kolux')
   })
 })

@@ -1,6 +1,6 @@
 /** E2E coverage for copying provider identity from the exact terminal pane. */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -12,16 +12,16 @@ import { openTerminalContextMenu } from './helpers/terminal-pane-title-actions'
 
 const SESSION_ID = 'e2e-terminal-pane-session'
 
-test('terminal pane context menu copies its agent session ID', async ({ nightshiftPage }) => {
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
+test('terminal pane context menu copies its agent session ID', async ({ koluxPage }) => {
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
 
-  const tabId = await getActiveTabId(nightshiftPage)
+  const tabId = await getActiveTabId(koluxPage)
   if (!tabId) {
     throw new Error('No active terminal tab')
   }
-  const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+  const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
   const leafId = snapshot.panes[0]?.leafId
   if (!leafId) {
     throw new Error('No active terminal pane')
@@ -30,7 +30,7 @@ test('terminal pane context menu copies its agent session ID', async ({ nightshi
 
   // Keep this independent of an installed provider CLI while exercising the
   // durable pane identity used when transient live status has been cleared.
-  await nightshiftPage.evaluate(
+  await koluxPage.evaluate(
     ({ paneKey, tabId, worktreeId, sessionId }) => {
       const state = window.__store?.getState()
       if (!state) {
@@ -50,7 +50,7 @@ test('terminal pane context menu copies its agent session ID', async ({ nightshi
   await expect
     .poll(
       () =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ paneKey }) =>
             window.__store?.getState().sleepingAgentSessionsByPaneKey[paneKey]?.providerSession.id,
           { paneKey }
@@ -59,9 +59,9 @@ test('terminal pane context menu copies its agent session ID', async ({ nightshi
     )
     .toBe(SESSION_ID)
 
-  await openTerminalContextMenu(nightshiftPage)
+  await openTerminalContextMenu(koluxPage)
 
-  const identityItems = await nightshiftPage.getByRole('menuitem').allInnerTexts()
+  const identityItems = await koluxPage.getByRole('menuitem').allInnerTexts()
   const sessionIdIndex = identityItems.indexOf('Copy Session ID')
   expect(identityItems.slice(sessionIdIndex, sessionIdIndex + 3)).toEqual([
     'Copy Session ID',
@@ -69,12 +69,12 @@ test('terminal pane context menu copies its agent session ID', async ({ nightshi
     'Copy Pane ID'
   ])
 
-  const copyItem = nightshiftPage.getByRole('menuitem', { name: 'Copy Session ID', exact: true })
+  const copyItem = koluxPage.getByRole('menuitem', { name: 'Copy Session ID', exact: true })
   await expect(copyItem).toBeVisible()
   await copyItem.click()
 
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.api.ui.readClipboardText()), {
+    .poll(() => koluxPage.evaluate(() => window.api.ui.readClipboardText()), {
       timeout: 3_000
     })
     .toBe(SESSION_ID)

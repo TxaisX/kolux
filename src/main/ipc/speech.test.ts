@@ -15,7 +15,7 @@ const {
 }))
 
 vi.mock('electron', () => ({
-  app: { getPath: vi.fn(() => '/tmp/nightshift-speech-test') },
+  app: { getPath: vi.fn(() => '/tmp/kolux-speech-test') },
   BrowserWindow: { fromWebContents: fromWebContentsMock },
   ipcMain: { handle: handleMock },
   safeStorage: {

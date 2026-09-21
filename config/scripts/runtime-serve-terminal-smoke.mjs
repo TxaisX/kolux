@@ -4,14 +4,14 @@
  * and asserts the output comes back — then shuts down.
  *
  * Why this exists: "the server started" proves almost nothing. The runtime dispatches
- * terminal creation into NightshiftRuntimeService, and without an installed headless PTY
+ * terminal creation into KoluxRuntimeService, and without an installed headless PTY
  * controller that path falls through to a renderer reply that never arrives and times
  * out after ten seconds. A boot probe, a port bind, and a `host.platform` call all pass
  * against a server whose terminals are dead. Only a PTY round trip catches it.
  *
  * This is also the acceptance gate for a future Node-only backend
  * (docs/design/node-only-runtime-backend.html): the same script should pass against
- * `nightshiftd` unchanged, because it drives nothing but the public pairing + RPC surface.
+ * `koluxd` unchanged, because it drives nothing but the public pairing + RPC surface.
  *
  * Hard assertions (fail the job):
  *   - the server emits its ready payload with a pairing offer,
@@ -31,12 +31,12 @@ import process from 'node:process'
 
 const projectDir = resolve(import.meta.dirname, '../..')
 const serveEntry = join(projectDir, 'out', 'main', 'index.js')
-const NIGHTSHIFTD_ENTRY = join(projectDir, 'out', 'nightshiftd', 'nightshiftd.js')
+const KOLUXD_ENTRY = join(projectDir, 'out', 'koluxd', 'koluxd.js')
 const READY_TIMEOUT_MS = 120_000
 const OUTPUT_TIMEOUT_MS = 30_000
 const SHUTDOWN_TIMEOUT_MS = 15_000
-// Why a random high port: a fixed one collides with a developer's own `nightshift serve`.
-const PORT = 6800 + Math.floor(Number(process.env.NIGHTSHIFT_SMOKE_PORT_OFFSET ?? '0'))
+// Why a random high port: a fixed one collides with a developer's own `kolux serve`.
+const PORT = 6800 + Math.floor(Number(process.env.KOLUX_SMOKE_PORT_OFFSET ?? '0'))
 
 function log(message) {
   process.stdout.write(`[serve-terminal-smoke] ${message}\n`)
@@ -48,18 +48,18 @@ function fail(message) {
 }
 
 /**
- * Prefer the CLI built from this checkout over whatever `nightshift` is on PATH: it is the
- * version under test, and a CI runner has no installed Nightshift app to fall back on.
+ * Prefer the CLI built from this checkout over whatever `kolux` is on PATH: it is the
+ * version under test, and a CI runner has no installed Kolux app to fall back on.
  */
 function resolveCli() {
   const built = join(projectDir, 'out', 'cli', 'index.js')
   return existsSync(built)
     ? { command: process.execPath, prefix: [built] }
-    : { command: 'nightshift', prefix: [] }
+    : { command: 'kolux', prefix: [] }
 }
 
-/** The `nightshift` CLI, driven with an explicit pairing code so it targets this server only. */
-function nightshift(pairingCode, args) {
+/** The `kolux` CLI, driven with an explicit pairing code so it targets this server only. */
+function kolux(pairingCode, args) {
   const cli = resolveCli()
   const result = spawnSync(
     cli.command,
@@ -72,18 +72,16 @@ function nightshift(pairingCode, args) {
     }
   )
   if (result.error) {
-    throw new Error(`nightshift ${args[0]} failed to spawn: ${result.error.message}`)
+    throw new Error(`kolux ${args[0]} failed to spawn: ${result.error.message}`)
   }
   const line = (result.stdout ?? '').trim()
   if (!line.startsWith('{')) {
-    throw new Error(
-      `nightshift ${args.join(' ')} produced no JSON:\n${result.stdout}\n${result.stderr}`
-    )
+    throw new Error(`kolux ${args.join(' ')} produced no JSON:\n${result.stdout}\n${result.stderr}`)
   }
   const parsed = JSON.parse(line)
   if (parsed.ok === false) {
     throw new Error(
-      `nightshift ${args.join(' ')} returned ${parsed.error?.code}: ${parsed.error?.message}`
+      `kolux ${args.join(' ')} returned ${parsed.error?.code}: ${parsed.error?.message}`
     )
   }
   return parsed.result
@@ -112,7 +110,7 @@ function waitForReady(child) {
         }
         try {
           const payload = JSON.parse(line)
-          if (payload.type === 'nightshift_server_ready') {
+          if (payload.type === 'kolux_server_ready') {
             clearTimeout(timer)
             resolvePromise(payload)
             return
@@ -150,7 +148,7 @@ function pairingCodeFrom(payload) {
 async function waitForNonce(pairingCode, terminalHandle, nonce) {
   const deadline = Date.now() + OUTPUT_TIMEOUT_MS
   while (Date.now() < deadline) {
-    const read = nightshift(pairingCode, ['terminal', 'read', '--terminal', terminalHandle])
+    const read = kolux(pairingCode, ['terminal', 'read', '--terminal', terminalHandle])
     const tail = (read?.terminal?.tail ?? []).map((entry) => String(entry)).join('\n')
     if (tail.includes(nonce)) {
       return true
@@ -173,20 +171,18 @@ function resolveLaunch(userDataDir) {
   // and `FOO=bar cmd` is not portable there.
   const flagIndex = process.argv.indexOf('--target')
   const target =
-    flagIndex !== -1
-      ? process.argv[flagIndex + 1]
-      : (process.env.NIGHTSHIFT_SMOKE_TARGET ?? 'electron')
-  if (target === 'nightshiftd') {
+    flagIndex !== -1 ? process.argv[flagIndex + 1] : (process.env.KOLUX_SMOKE_TARGET ?? 'electron')
+  if (target === 'koluxd') {
     return {
-      label: `nightshiftd (${NIGHTSHIFTD_ENTRY})`,
+      label: `koluxd (${KOLUXD_ENTRY})`,
       command: process.execPath,
-      args: [NIGHTSHIFTD_ENTRY, '--port', String(PORT), '--json'],
-      env: { NIGHTSHIFT_USER_DATA: userDataDir }
+      args: [KOLUXD_ENTRY, '--port', String(PORT), '--json'],
+      env: { KOLUX_USER_DATA: userDataDir }
     }
   }
   if (target !== 'electron') {
     throw new Error(
-      `--target (or NIGHTSHIFT_SMOKE_TARGET) must be 'electron' or 'nightshiftd', got '${target}'`
+      `--target (or KOLUX_SMOKE_TARGET) must be 'electron' or 'koluxd', got '${target}'`
     )
   }
   const serveArgs = [
@@ -197,7 +193,7 @@ function resolveLaunch(userDataDir) {
     '--serve-json',
     `--user-data-dir=${userDataDir}`
   ]
-  const override = process.env.NIGHTSHIFT_SMOKE_ELECTRON
+  const override = process.env.KOLUX_SMOKE_ELECTRON
   return {
     label: `electron (${serveEntry})`,
     command: override ?? 'npx',
@@ -208,8 +204,8 @@ function resolveLaunch(userDataDir) {
 
 /** A throwaway git repo with one commit, so `repo add` has something real to register. */
 function seedGitRepo() {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-smoke-repo-'))
-  writeFileSync(join(dir, 'README.md'), '# nightshift smoke\n')
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-smoke-repo-'))
+  writeFileSync(join(dir, 'README.md'), '# kolux smoke\n')
   const git = (...args) => {
     const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' })
     if (result.status !== 0) {
@@ -217,15 +213,15 @@ function seedGitRepo() {
     }
   }
   git('init', '-b', 'main')
-  git('config', 'user.email', 'smoke@nightshift.test')
-  git('config', 'user.name', 'Nightshift Smoke')
+  git('config', 'user.email', 'smoke@kolux.test')
+  git('config', 'user.name', 'Kolux Smoke')
   git('add', '-A')
   git('commit', '-m', 'seed')
   return dir
 }
 
 async function main() {
-  const userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-serve-smoke-'))
+  const userDataDir = mkdtempSync(join(tmpdir(), 'kolux-serve-smoke-'))
   const launch = resolveLaunch(userDataDir)
   log(`booting ${launch.label} on port ${PORT} with userData ${userDataDir}`)
 
@@ -251,13 +247,13 @@ async function main() {
     const repoPath = seedGitRepo()
     seeded = { repoPath }
     log(`seeded repo at ${repoPath}`)
-    const repo = nightshift(pairingCode, ['repo', 'add', '--path', repoPath])?.repo
+    const repo = kolux(pairingCode, ['repo', 'add', '--path', repoPath])?.repo
     if (!repo?.id) {
       throw new Error('repo.add returned no repo id')
     }
 
     const worktreeName = `smoke-${randomBytes(4).toString('hex')}`
-    const created = nightshift(pairingCode, [
+    const created = kolux(pairingCode, [
       'worktree',
       'create',
       '--repo',
@@ -276,13 +272,13 @@ async function main() {
     // Why `show` and not membership in `list`: list is capped, and the Electron target
     // reads a shared dev profile that can already hold more worktrees than the cap. The
     // point is that the server persisted and can resolve THIS worktree.
-    const shown = nightshift(pairingCode, ['worktree', 'show', '--worktree', created.id])?.worktree
+    const shown = kolux(pairingCode, ['worktree', 'show', '--worktree', created.id])?.worktree
     if (shown?.id !== created.id) {
       throw new Error('worktree.create succeeded but worktree.show cannot resolve it')
     }
     log(`server resolves ${shown.id}`)
     if (process.argv.includes('--browser')) {
-      const status = nightshift(pairingCode, ['status'])
+      const status = kolux(pairingCode, ['status'])
       if (!status?.runtime?.capabilities?.includes('browser.headless.v1')) {
         throw new Error(
           `status omitted browser.headless.v1: ${JSON.stringify(status?.runtime?.capabilities)}`
@@ -291,9 +287,9 @@ async function main() {
       const fixturePath = join(userDataDir, 'browser-smoke.html')
       writeFileSync(
         fixturePath,
-        '<!doctype html><title>Nightshiftd Browser Smoke</title><main>browser-ready</main>'
+        '<!doctype html><title>Koluxd Browser Smoke</title><main>browser-ready</main>'
       )
-      const browserPageId = nightshift(pairingCode, [
+      const browserPageId = kolux(pairingCode, [
         'tab',
         'create',
         '--worktree',
@@ -306,11 +302,11 @@ async function main() {
       }
       const targetFlags = ['--worktree', created.id, '--page', browserPageId]
       const targetUrl = pathToFileURL(fixturePath).href
-      const navigation = nightshift(pairingCode, ['goto', ...targetFlags, '--url', targetUrl])
-      if (navigation?.url !== targetUrl || navigation?.title !== 'Nightshiftd Browser Smoke') {
+      const navigation = kolux(pairingCode, ['goto', ...targetFlags, '--url', targetUrl])
+      if (navigation?.url !== targetUrl || navigation?.title !== 'Koluxd Browser Smoke') {
         throw new Error(`browser.goto returned the wrong page: ${JSON.stringify(navigation)}`)
       }
-      const evaluated = nightshift(pairingCode, [
+      const evaluated = kolux(pairingCode, [
         'eval',
         ...targetFlags,
         '--expression',
@@ -319,27 +315,22 @@ async function main() {
       if (evaluated?.result !== 'browser-ready') {
         throw new Error(`browser.eval returned ${JSON.stringify(evaluated)}`)
       }
-      const screenshot = nightshift(pairingCode, ['screenshot', ...targetFlags])
+      const screenshot = kolux(pairingCode, ['screenshot', ...targetFlags])
       if (screenshot?.format !== 'png' || typeof screenshot.data !== 'string' || !screenshot.data) {
         throw new Error('browser.screenshot returned no PNG data')
       }
       log('browser navigate/evaluate/screenshot round trip OK')
     }
 
-    const terminal = nightshift(pairingCode, [
-      'terminal',
-      'create',
-      '--worktree',
-      created.id
-    ])?.terminal
+    const terminal = kolux(pairingCode, ['terminal', 'create', '--worktree', created.id])?.terminal
     if (!terminal?.handle) {
       throw new Error('terminal.create returned no handle')
     }
     log(`created ${terminal.handle}`)
 
     // Why invoke node rather than `echo`: the shell differs per platform, node does not.
-    const nonce = `NIGHTSHIFT_SMOKE_${randomBytes(8).toString('hex')}`
-    nightshift(pairingCode, [
+    const nonce = `KOLUX_SMOKE_${randomBytes(8).toString('hex')}`
+    kolux(pairingCode, [
       'terminal',
       'send',
       '--terminal',

@@ -37,12 +37,12 @@ afterEach(() => {
 describe('quoteForPosixShell', () => {
   it('wraps plain values in single quotes', async () => {
     const { quoteForPosixShell } = await loadCommandModule()
-    expect(quoteForPosixShell('/tmp/nightshift.deb')).toBe("'/tmp/nightshift.deb'")
+    expect(quoteForPosixShell('/tmp/kolux.deb')).toBe("'/tmp/kolux.deb'")
   })
 
   it('quotes spaces', async () => {
     const { quoteForPosixShell } = await loadCommandModule()
-    expect(quoteForPosixShell('/tmp/Nightshift Setup.deb')).toBe("'/tmp/Nightshift Setup.deb'")
+    expect(quoteForPosixShell('/tmp/Kolux Setup.deb')).toBe("'/tmp/Kolux Setup.deb'")
   })
 
   it('neutralizes expansion, command substitution, separators, and double quotes', async () => {
@@ -127,7 +127,7 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/sudo')
     install('/usr/bin/apt')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    for (const packagePath of ['nightshift.deb', './nightshift.deb', '--force-all', '-i']) {
+    for (const packagePath of ['kolux.deb', './kolux.deb', '--force-all', '-i']) {
       expect(buildLinuxPackageInstallCommand('deb', packagePath)).toEqual({
         ok: false,
         reason: 'invalid-package-path'
@@ -138,7 +138,7 @@ describe('buildLinuxPackageInstallCommand', () => {
   it('reports no-sudo when sudo is absent', async () => {
     install('/usr/bin/apt')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')).toEqual({
+    expect(buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')).toEqual({
       ok: false,
       reason: 'no-sudo'
     })
@@ -147,7 +147,7 @@ describe('buildLinuxPackageInstallCommand', () => {
   it('reports no-package-manager when no manager is installed', async () => {
     install('/usr/bin/sudo')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')).toEqual({
+    expect(buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')).toEqual({
       ok: false,
       reason: 'no-package-manager'
     })
@@ -157,7 +157,7 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/sudo')
     install('/usr/bin/dnf')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')).toEqual({
+    expect(buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')).toEqual({
       ok: false,
       reason: 'no-package-manager'
     })
@@ -168,9 +168,9 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/apt')
     install('/usr/bin/dpkg')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')).toEqual({
+    expect(buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')).toEqual({
       ok: true,
-      command: "/usr/bin/sudo /usr/bin/apt install -- '/tmp/nightshift.deb'"
+      command: "/usr/bin/sudo /usr/bin/apt install -- '/tmp/kolux.deb'"
     })
   })
 
@@ -178,9 +178,9 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/sudo')
     install('/usr/bin/dpkg')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')).toEqual({
+    expect(buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')).toEqual({
       ok: true,
-      command: "/usr/bin/sudo /usr/bin/dpkg -i -- '/tmp/nightshift.deb'"
+      command: "/usr/bin/sudo /usr/bin/dpkg -i -- '/tmp/kolux.deb'"
     })
   })
 
@@ -191,10 +191,10 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/yum')
     install('/usr/bin/rpm')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/nightshift.rpm')).toEqual({
+    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/kolux.rpm')).toEqual({
       ok: true,
       command:
-        "/usr/bin/sudo /usr/bin/zypper --no-refresh install --allow-unsigned-rpm -f '/tmp/nightshift.rpm'"
+        "/usr/bin/sudo /usr/bin/zypper --no-refresh install --allow-unsigned-rpm -f '/tmp/kolux.rpm'"
     })
   })
 
@@ -204,9 +204,9 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/yum')
     install('/usr/bin/rpm')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/nightshift.rpm')).toEqual({
+    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/kolux.rpm')).toEqual({
       ok: true,
-      command: "/usr/bin/sudo /usr/bin/dnf install --nogpgcheck '/tmp/nightshift.rpm'"
+      command: "/usr/bin/sudo /usr/bin/dnf install --nogpgcheck '/tmp/kolux.rpm'"
     })
   })
 
@@ -215,9 +215,9 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/yum')
     install('/usr/bin/rpm')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/nightshift.rpm')).toEqual({
+    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/kolux.rpm')).toEqual({
       ok: true,
-      command: "/usr/bin/sudo /usr/bin/yum install --nogpgcheck '/tmp/nightshift.rpm'"
+      command: "/usr/bin/sudo /usr/bin/yum install --nogpgcheck '/tmp/kolux.rpm'"
     })
   })
 
@@ -225,9 +225,9 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/sudo')
     install('/sbin/rpm')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/nightshift.rpm')).toEqual({
+    expect(buildLinuxPackageInstallCommand('rpm', '/tmp/kolux.rpm')).toEqual({
       ok: true,
-      command: "/usr/bin/sudo /sbin/rpm -Uvh '/tmp/nightshift.rpm'"
+      command: "/usr/bin/sudo /sbin/rpm -Uvh '/tmp/kolux.rpm'"
     })
   })
 
@@ -235,7 +235,7 @@ describe('buildLinuxPackageInstallCommand', () => {
     install('/usr/bin/sudo')
     install('/usr/bin/apt')
     const { buildLinuxPackageInstallCommand } = await loadCommandModule()
-    const result = buildLinuxPackageInstallCommand('deb', '/tmp/nightshift.deb')
+    const result = buildLinuxPackageInstallCommand('deb', '/tmp/kolux.deb')
     expect(result.ok).toBe(true)
     expect(result.ok ? result.command : '').not.toMatch(
       /(^|\s)(-y|--yes|--noconfirm|--assumeyes)(\s|$)/

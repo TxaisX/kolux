@@ -18,7 +18,7 @@ function listedWorktree(fields: Partial<GitWorktreeInfo> & { path: string }): Gi
 const tempRoots: string[] = []
 
 async function createTempDir(): Promise<string> {
-  const root = await mkdtemp(path.join(tmpdir(), 'nightshift-relay-prunable-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'kolux-relay-prunable-'))
   tempRoots.push(root)
   return root
 }

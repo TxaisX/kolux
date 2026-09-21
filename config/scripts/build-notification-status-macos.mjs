@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the nightshift-notification-status helper binary.
+// Builds the kolux-notification-status helper binary.
 //
 // The helper reads UNUserNotificationCenter settings for the app it ships
 // inside (see native/notification-status-macos/main.swift). The target
@@ -20,7 +20,7 @@ const defaultOutputPath = path.join(
   'notification-status-macos',
   '.build',
   'release',
-  'nightshift-notification-status'
+  'kolux-notification-status'
 )
 
 if (process.platform !== 'darwin') {
@@ -28,13 +28,13 @@ if (process.platform !== 'darwin') {
 }
 
 const args = process.argv.slice(2)
-const bundleId = readArg('--bundle-id') ?? 'com.txais.nightshift'
+const bundleId = readArg('--bundle-id') ?? 'com.txais.kolux'
 const outputPath = readArg('--output') ?? defaultOutputPath
 // Why: dev launches only need the host architecture; release builds ship a
 // universal binary matching the app's x64 + arm64 targets.
 const singleArch = args.includes('--single-arch')
 
-const workDir = path.join(tmpdir(), `nightshift-notification-status-${process.pid}`)
+const workDir = path.join(tmpdir(), `kolux-notification-status-${process.pid}`)
 mkdirSync(workDir, { recursive: true })
 try {
   const plistPath = path.join(workDir, 'Info.plist')
@@ -43,7 +43,7 @@ try {
     ? [process.arch === 'arm64' ? 'arm64-apple-macosx' : 'x86_64-apple-macosx']
     : ['arm64-apple-macosx', 'x86_64-apple-macosx']
   const builtBinaries = triples.map((triple) => {
-    const output = path.join(workDir, `nightshift-notification-status-${triple}`)
+    const output = path.join(workDir, `kolux-notification-status-${triple}`)
     execFileSync(
       'swiftc',
       [
@@ -90,7 +90,7 @@ function embeddedInfoPlist(identifier) {
   <key>CFBundleIdentifier</key>
   <string>${identifier}</string>
   <key>CFBundleName</key>
-  <string>nightshift-notification-status</string>
+  <string>kolux-notification-status</string>
 </dict>
 </plist>
 `

@@ -12,7 +12,7 @@ afterEach(async () => {
 })
 
 async function tempPluginsDir(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-discovery-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-discovery-'))
   roots.push(root)
   return root
 }
@@ -20,20 +20,20 @@ async function tempPluginsDir(): Promise<string> {
 describe('installed plugin discovery identity', () => {
   it('keeps the install directory identity when a manifest is invalid or mismatched', async () => {
     const pluginsDir = await tempPluginsDir()
-    const installedKey = 'nightshift-samples.expected'
+    const installedKey = 'kolux-samples.expected'
     const hash = 'a'.repeat(64)
     const versionDir = join(pluginsDir, installedKey, hash)
     await mkdir(versionDir, { recursive: true })
     await writeFile(join(pluginsDir, installedKey, 'current'), hash)
     await writeFile(
-      join(versionDir, 'nightshift-plugin.json'),
+      join(versionDir, 'kolux-plugin.json'),
       JSON.stringify({
         manifestVersion: 1,
         id: 'different',
-        publisher: 'nightshift-samples',
+        publisher: 'kolux-samples',
         name: 'Different',
         version: '1.0.0',
-        engines: { nightshift: '>=1.0.0' },
+        engines: { kolux: '>=1.0.0' },
         pluginApi: 1,
         contributes: { panels: [], commands: [], events: [] },
         capabilities: []
@@ -49,7 +49,7 @@ describe('installed plugin discovery identity', () => {
 
   it('keeps a removable qualified identity when the current pointer is missing', async () => {
     const pluginsDir = await tempPluginsDir()
-    const installedKey = 'nightshift-samples.broken'
+    const installedKey = 'kolux-samples.broken'
     await mkdir(join(pluginsDir, installedKey), { recursive: true })
 
     const [plugin] = await discoverPlugins({ pluginsDir, devPluginPaths: [], hostVersion: '1.4.0' })
@@ -60,7 +60,7 @@ describe('installed plugin discovery identity', () => {
 
   it('rejects an oversized current pointer without an unbounded startup read', async () => {
     const pluginsDir = await tempPluginsDir()
-    const installedKey = 'nightshift-samples.broken'
+    const installedKey = 'kolux-samples.broken'
     const pluginDir = join(pluginsDir, installedKey)
     await mkdir(pluginDir, { recursive: true })
     const pointer = join(pluginDir, 'current')
@@ -80,14 +80,14 @@ describe('instructional plugin discovery identity', () => {
     const devRoot = await tempPluginsDir()
     await mkdir(join(devRoot, 'recipes'))
     await writeFile(
-      join(devRoot, 'nightshift-plugin.json'),
+      join(devRoot, 'kolux-plugin.json'),
       JSON.stringify({
         manifestVersion: 1,
         id: 'recipes',
-        publisher: 'nightshift-samples',
+        publisher: 'kolux-samples',
         name: 'Recipes',
         version: '1.0.0',
-        engines: { nightshift: '>=1.0.0' },
+        engines: { kolux: '>=1.0.0' },
         pluginApi: 1,
         contributes: { vmRecipes: [{ path: 'recipes/cloud.json' }] },
         capabilities: []

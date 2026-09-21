@@ -27,8 +27,8 @@ vi.mock('./CliSkillRuntimeSetup', () => ({
 
 vi.mock('@/lib/linear-agent-skill-update-command', () => ({
   getLinearAgentSkillUpdateTarget: () => ({
-    command: 'npx skills update nightshift-linear --global',
-    skillName: 'nightshift-linear'
+    command: 'npx skills update kolux-linear --global',
+    skillName: 'kolux-linear'
   })
 }))
 

@@ -9,14 +9,14 @@ vi.mock('electron', () => ({
 }))
 
 import {
-  configurePairedRuntimeBrowserClientHostsForNightshiftProfile,
+  configurePairedRuntimeBrowserClientHostsForKoluxProfile,
   startPairedRuntimeBrowserClientHost
 } from './paired-runtime-browser-client-host-runtime'
 
 describe('paired runtime browser client host runtime', () => {
   it('returns a rejected promise when pairing resolution fails', async () => {
-    configurePairedRuntimeBrowserClientHostsForNightshiftProfile({
-      nightshiftProfileId: 'profile-a'
+    configurePairedRuntimeBrowserClientHostsForKoluxProfile({
+      koluxProfileId: 'profile-a'
     })
     const environment = {
       id: 'environment-a',

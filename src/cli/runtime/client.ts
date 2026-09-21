@@ -9,7 +9,7 @@ import {
   orchestrationMigrationData
 } from '../../shared/orchestration-rpc-contract'
 import type { PairingOffer } from '../../shared/pairing'
-import { launchNightshiftApp } from './launch'
+import { launchKoluxApp } from './launch'
 import { getDefaultUserDataPath, readMetadata } from './metadata'
 import { getCliStatus, projectRemoteAppStatus } from './status'
 import { sendRequest } from './transport'
@@ -63,10 +63,8 @@ export class RuntimeClient {
   constructor(
     userDataPath = getDefaultUserDataPath(),
     requestTimeoutMs = 60_000,
-    remotePairingCode = process.env.NIGHTSHIFT_PAIRING_CODE ??
-      process.env.NIGHTSHIFT_REMOTE_PAIRING ??
-      null,
-    environmentSelector = process.env.NIGHTSHIFT_ENVIRONMENT ?? null,
+    remotePairingCode = process.env.KOLUX_PAIRING_CODE ?? process.env.KOLUX_REMOTE_PAIRING ?? null,
+    environmentSelector = process.env.KOLUX_ENVIRONMENT ?? null,
     cliExecutable = resolveOrchestrationCliExecutable(),
     originalArgs?: readonly string[]
   ) {
@@ -260,13 +258,13 @@ export class RuntimeClient {
     if (!response.result.capabilities?.includes(ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY)) {
       throw new RuntimeClientError(
         'orchestration_migration_required',
-        'The connected Nightshift runtime does not support the current orchestration contract. No effects were applied.',
+        'The connected Kolux runtime does not support the current orchestration contract. No effects were applied.',
         orchestrationMigrationData('runtime_capability_missing')
       )
     }
   }
 
-  async openNightshift(timeoutMs = 15_000): Promise<RuntimeRpcSuccess<CliStatusResult>> {
+  async openKolux(timeoutMs = 15_000): Promise<RuntimeRpcSuccess<CliStatusResult>> {
     const initial = await this.getCliStatus()
     if (this.remotePairing) {
       return initial
@@ -277,7 +275,7 @@ export class RuntimeClient {
     if (initial.result.app.desktopWindowStatus === 'blocked') {
       throwDesktopActivationBlocked()
     }
-    launchNightshiftApp()
+    launchKoluxApp()
     if (initial.result.app.desktopWindowStatus === 'available') {
       return initial
     }
@@ -296,7 +294,7 @@ export class RuntimeClient {
 
     throw new RuntimeClientError(
       'runtime_open_timeout',
-      'Timed out waiting for a Nightshift desktop window. The runtime may still be running headlessly.'
+      'Timed out waiting for a Kolux desktop window. The runtime may still be running headlessly.'
     )
   }
 }
@@ -304,7 +302,7 @@ export class RuntimeClient {
 function throwDesktopActivationBlocked(): never {
   throw new RuntimeClientError(
     'desktop_activation_blocked',
-    'Nightshift is running headlessly, but it cannot open a desktop window safely because the persistent terminal provider is unavailable. Quit Nightshift normally and start the app again; do not use open -n.'
+    'Kolux is running headlessly, but it cannot open a desktop window safely because the persistent terminal provider is unavailable. Quit Kolux normally and start the app again; do not use open -n.'
   )
 }
 

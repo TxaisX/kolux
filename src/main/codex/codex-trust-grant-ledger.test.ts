@@ -14,16 +14,16 @@ let userDataDir: string
 let previousUserDataPath: string | undefined
 
 beforeEach(() => {
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-trust-ledger-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-trust-ledger-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
 })
 
 afterEach(() => {
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   rmSync(userDataDir, { recursive: true, force: true })
 })
@@ -65,12 +65,10 @@ describe('codex trust grant ledger', () => {
   })
 
   it('treats Windows path-case variants as the same home', () => {
-    const home = 'C:\\Users\\Alice\\AppData\\Roaming\\nightshift\\codex-runtime-home\\home'
+    const home = 'C:\\Users\\Alice\\AppData\\Roaming\\kolux\\codex-runtime-home\\home'
     writeCodexTrustGrantLedgerHome(home, { binary: null, entries: {} })
     expect(
-      readCodexTrustGrantLedgerHome(
-        'c:/users/alice/appdata/roaming/nightshift/codex-runtime-home/home'
-      )
+      readCodexTrustGrantLedgerHome('c:/users/alice/appdata/roaming/kolux/codex-runtime-home/home')
     ).not.toBeNull()
   })
 

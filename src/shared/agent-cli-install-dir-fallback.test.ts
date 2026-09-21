@@ -215,7 +215,7 @@ describe('agent CLI install-dir fallback', () => {
     }
   })
 
-  // Why through this entry point: it is what the `nightshift` CLI's agent detection
+  // Why through this entry point: it is what the `kolux` CLI's agent detection
   // calls, and the "absolute path means installed" contract lives here.
   it.skipIf(process.platform === 'win32')(
     'reports a system-installed CLI as detected, not just resolved',

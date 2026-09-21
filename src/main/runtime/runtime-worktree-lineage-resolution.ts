@@ -55,7 +55,7 @@ export class WorktreeIdRequiresFullPathError extends Error {
 
   constructor() {
     super(
-      'Worktree id selectors must use the full <repo-id>::<path> value. Use the id from `nightshift worktree list --json`, or target by path:<path>, branch:<branch>, or issue:<number>.'
+      'Worktree id selectors must use the full <repo-id>::<path> value. Use the id from `kolux worktree list --json`, or target by path:<path>, branch:<branch>, or issue:<number>.'
     )
   }
 }
@@ -146,8 +146,7 @@ export async function resolveRuntimeWorktreeCreateLineage(
     } catch {
       warnings.push({
         code: 'LINEAGE_PARENT_CONTEXT_MISSING',
-        message:
-          'Worktree created, but Nightshift could not validate the environment parent context.',
+        message: 'Worktree created, but Kolux could not validate the environment parent context.',
         details: { envParentWorkspace: input.envParentWorkspace }
       })
     }
@@ -192,7 +191,7 @@ export async function resolveRuntimeWorktreeCreateLineage(
       warnings.push({
         code: 'LINEAGE_PARENT_CONTEXT_MISSING',
         message:
-          'Worktree created, but Nightshift could not validate the caller terminal as a parent context.',
+          'Worktree created, but Kolux could not validate the caller terminal as a parent context.',
         details: { callerTerminalHandle: input.callerTerminalHandle }
       })
     }
@@ -207,7 +206,7 @@ export async function resolveRuntimeWorktreeCreateLineage(
       warnings.push({
         code: 'LINEAGE_PARENT_CONTEXT_MISSING',
         message:
-          'Worktree created, but Nightshift could not validate the current directory as a parent context.',
+          'Worktree created, but Kolux could not validate the current directory as a parent context.',
         details: { cwdParentWorktree: input.cwdParentWorktree }
       })
     }
@@ -225,8 +224,7 @@ export async function resolveRuntimeWorktreeCreateLineage(
       warnings: [
         {
           code: 'LINEAGE_PARENT_CONTEXT_CONFLICT',
-          message:
-            'Worktree created, but Nightshift could not prove which parent context caused it.',
+          message: 'Worktree created, but Kolux could not prove which parent context caused it.',
           details: {
             terminalParentWorkspaceKey: candidates.find((c) => c.source === 'terminal-context')
               ?.parent.workspaceKey,

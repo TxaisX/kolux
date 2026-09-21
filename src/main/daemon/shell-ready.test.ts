@@ -37,7 +37,7 @@ const itWithZsh = hasZsh ? it : it.skip
 const FISH = resolveFishBinary()
 const itWithFish = FISH.available ? it : it.skip
 
-const SHELL_READY_MARKER_OUTPUT = '\x1b]777;nightshift-shell-ready\x07'
+const SHELL_READY_MARKER_OUTPUT = '\x1b]777;kolux-shell-ready\x07'
 
 /** Minimal xterm.js-shaped answers to the capability queries fish emits at startup
  *  and again around every prompt. */
@@ -71,9 +71,9 @@ async function runInteractiveZshLogin(args: {
       HOME: args.tempHome,
       TERM: 'xterm-256color',
       ZDOTDIR: args.wrapperZdotdir,
-      NIGHTSHIFT_ORIG_ZDOTDIR: args.tempHome,
-      NIGHTSHIFT_ZSHENV_SOURCE_DIR: args.tempHome,
-      NIGHTSHIFT_SHELL_FEATURES: 'ready'
+      KOLUX_ORIG_ZDOTDIR: args.tempHome,
+      KOLUX_ZSHENV_SOURCE_DIR: args.tempHome,
+      KOLUX_SHELL_FEATURES: 'ready'
     }
   })
   let output = ''
@@ -111,7 +111,7 @@ async function runInteractiveZshRc(args: {
       HOME: args.zdotdir,
       TERM: 'xterm-256color',
       ZDOTDIR: args.zdotdir,
-      NIGHTSHIFT_SHELL_FEATURES: 'ready'
+      KOLUX_SHELL_FEATURES: 'ready'
     }
   })
   let output = ''
@@ -139,27 +139,27 @@ describePosix('daemon shell-ready launch config', () => {
   })
 
   let previousUserDataPath: string | undefined
-  let previousNightshiftOrigZdotdir: string | undefined
+  let previousKoluxOrigZdotdir: string | undefined
   let userDataPath: string
 
   beforeEach(() => {
-    previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-    previousNightshiftOrigZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
-    delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+    previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+    previousKoluxOrigZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
+    delete process.env.KOLUX_ORIG_ZDOTDIR
     userDataPath = mkdtempSync(join(tmpdir(), 'daemon-shell-ready-test-'))
-    process.env.NIGHTSHIFT_USER_DATA_PATH = userDataPath
+    process.env.KOLUX_USER_DATA_PATH = userDataPath
   })
 
   afterEach(() => {
     if (previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
     }
-    if (previousNightshiftOrigZdotdir === undefined) {
-      delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+    if (previousKoluxOrigZdotdir === undefined) {
+      delete process.env.KOLUX_ORIG_ZDOTDIR
     } else {
-      process.env.NIGHTSHIFT_ORIG_ZDOTDIR = previousNightshiftOrigZdotdir
+      process.env.KOLUX_ORIG_ZDOTDIR = previousKoluxOrigZdotdir
     }
     rmSync(userDataPath, { recursive: true, force: true })
     vi.restoreAllMocks()
@@ -219,9 +219,9 @@ describePosix('daemon shell-ready launch config', () => {
     expect(init).toContain('--on-event fish_prompt')
     // Why `builtin`: a user-defined printf function would swallow the marker and
     // stall every launch on the ready timeout.
-    expect(init).toContain('builtin printf "\\033]777;nightshift-shell-ready\\007"')
+    expect(init).toContain('builtin printf "\\033]777;kolux-shell-ready\\007"')
     // Why: the marker must fire once; a repeating marker would corrupt later output scans.
-    expect(init).toContain('functions -e __nightshift_shell_ready_marker')
+    expect(init).toContain('functions -e __kolux_shell_ready_marker')
   })
 
   it('keeps markerless fish spawns unwrapped', async () => {
@@ -279,7 +279,7 @@ describePosix('daemon shell-ready launch config', () => {
           if (commandWritten && !erasureProbeWritten && existsSync(sentinel)) {
             erasureProbeWritten = true
             proc.write(
-              `functions -q __nightshift_shell_ready_marker; and touch ${stillRegistered}; or touch ${erased}\n`
+              `functions -q __kolux_shell_ready_marker; and touch ${stillRegistered}; or touch ${erased}\n`
             )
             return
           }
@@ -340,16 +340,16 @@ describePosix('daemon shell-ready launch config', () => {
     15_000
   )
 
-  it('sets no NIGHTSHIFT_ORIG_ZDOTDIR when the inherited ZDOTDIR points at a wrapper dir', async () => {
-    // Why: a Nightshift-PTY parent has ZDOTDIR=.../shell-ready/zsh; propagating it makes the wrapper source itself (recursion loop).
+  it('sets no KOLUX_ORIG_ZDOTDIR when the inherited ZDOTDIR points at a wrapper dir', async () => {
+    // Why: a Kolux-PTY parent has ZDOTDIR=.../shell-ready/zsh; propagating it makes the wrapper source itself (recursion loop).
     const previousZdotdir = process.env.ZDOTDIR
     const previousHome = process.env.HOME
-    process.env.ZDOTDIR = '/some/other/nightshift/shell-ready/zsh'
+    process.env.ZDOTDIR = '/some/other/kolux/shell-ready/zsh'
     process.env.HOME = '/Users/alice'
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBeUndefined()
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBeUndefined()
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -364,18 +364,18 @@ describePosix('daemon shell-ready launch config', () => {
     }
   })
 
-  it('uses inherited NIGHTSHIFT_ORIG_ZDOTDIR when ZDOTDIR is a Nightshift wrapper dir', async () => {
+  it('uses inherited KOLUX_ORIG_ZDOTDIR when ZDOTDIR is a Kolux wrapper dir', async () => {
     const previousZdotdir = process.env.ZDOTDIR
-    const previousOrigZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+    const previousOrigZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
     const previousHome = process.env.HOME
     const userZdotdir = makeUserZdotdir(userDataPath, '.config', 'zsh')
-    process.env.ZDOTDIR = '/some/other/nightshift/shell-ready/zsh'
-    process.env.NIGHTSHIFT_ORIG_ZDOTDIR = userZdotdir
+    process.env.ZDOTDIR = '/some/other/kolux/shell-ready/zsh'
+    process.env.KOLUX_ORIG_ZDOTDIR = userZdotdir
     process.env.HOME = userDataPath
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBe(userZdotdir)
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBe(userZdotdir)
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -383,9 +383,9 @@ describePosix('daemon shell-ready launch config', () => {
         process.env.ZDOTDIR = previousZdotdir
       }
       if (previousOrigZdotdir === undefined) {
-        delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+        delete process.env.KOLUX_ORIG_ZDOTDIR
       } else {
-        process.env.NIGHTSHIFT_ORIG_ZDOTDIR = previousOrigZdotdir
+        process.env.KOLUX_ORIG_ZDOTDIR = previousOrigZdotdir
       }
       if (previousHome === undefined) {
         delete process.env.HOME
@@ -395,17 +395,17 @@ describePosix('daemon shell-ready launch config', () => {
     }
   })
 
-  it('sets no NIGHTSHIFT_ORIG_ZDOTDIR when the inherited one points at a wrapper dir', async () => {
+  it('sets no KOLUX_ORIG_ZDOTDIR when the inherited one points at a wrapper dir', async () => {
     const previousZdotdir = process.env.ZDOTDIR
-    const previousOrigZdotdir = process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+    const previousOrigZdotdir = process.env.KOLUX_ORIG_ZDOTDIR
     const previousHome = process.env.HOME
     delete process.env.ZDOTDIR
-    process.env.NIGHTSHIFT_ORIG_ZDOTDIR = '/some/other/nightshift/shell-ready/zsh'
+    process.env.KOLUX_ORIG_ZDOTDIR = '/some/other/kolux/shell-ready/zsh'
     process.env.HOME = '/Users/alice'
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBeUndefined()
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBeUndefined()
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -413,9 +413,9 @@ describePosix('daemon shell-ready launch config', () => {
         process.env.ZDOTDIR = previousZdotdir
       }
       if (previousOrigZdotdir === undefined) {
-        delete process.env.NIGHTSHIFT_ORIG_ZDOTDIR
+        delete process.env.KOLUX_ORIG_ZDOTDIR
       } else {
-        process.env.NIGHTSHIFT_ORIG_ZDOTDIR = previousOrigZdotdir
+        process.env.KOLUX_ORIG_ZDOTDIR = previousOrigZdotdir
       }
       if (previousHome === undefined) {
         delete process.env.HOME
@@ -431,11 +431,11 @@ describePosix('daemon shell-ready launch config', () => {
     getShellReadyLaunchConfig('/bin/zsh')
 
     const zshenv = readFileSync(join(getShellReadyWrapperRoot(), 'zsh', '.zshenv'), 'utf8')
-    expect(zshenv).toContain('builtin export ZDOTDIR="$NIGHTSHIFT_ORIG_ZDOTDIR"')
-    expect(zshenv).toContain('builtin unset NIGHTSHIFT_ORIG_ZDOTDIR NIGHTSHIFT_ZSHENV_SOURCE_DIR')
-    expect(zshenv).toContain('printf "\\033]777;nightshift-shell-start:%s\\007" "$$"')
+    expect(zshenv).toContain('builtin export ZDOTDIR="$KOLUX_ORIG_ZDOTDIR"')
+    expect(zshenv).toContain('builtin unset KOLUX_ORIG_ZDOTDIR KOLUX_ZSHENV_SOURCE_DIR')
+    expect(zshenv).toContain('printf "\\033]777;kolux-shell-start:%s\\007" "$$"')
     expect(zshenv.indexOf('builtin export ZDOTDIR=')).toBeLessThan(
-      zshenv.indexOf('builtin source -- "$_nightshift_user_zshenv"')
+      zshenv.indexOf('builtin source -- "$_kolux_user_zshenv"')
     )
     // Why nothing else: zsh reads .zprofile, .zshrc and .zlogin through ZDOTDIR,
     // which is the user's own again by the time it looks for them.
@@ -452,13 +452,13 @@ describePosix('daemon shell-ready launch config', () => {
     // Why .zshenv: the widget registration lives in the deferred hook, which the
     // first prompt's precmd sweep calls exactly once.
     const zshenv = readFileSync(join(getShellReadyWrapperRoot(), 'zsh', '.zshenv'), 'utf8')
-    expect(zshenv).toContain('zle -N zle-line-init __nightshift_prompt_mark')
-    expect(zshenv).toContain('__nightshift_prev_line_init_fn="${widgets[zle-line-init]#user:}"')
-    expect(zshenv).toContain('printf "\\033]777;nightshift-shell-ready\\007"')
+    expect(zshenv).toContain('zle -N zle-line-init __kolux_prompt_mark')
+    expect(zshenv).toContain('__kolux_prev_line_init_fn="${widgets[zle-line-init]#user:}"')
+    expect(zshenv).toContain('printf "\\033]777;kolux-shell-ready\\007"')
     // Why: add-zle-hook-widget aborts its chain when an earlier hook exits non-zero, so don't register the marker through it.
     expect(zshenv).not.toContain('add-zle-hook-widget line-init')
     // Why: re-source guard — skip re-capturing when already the bound widget so the prior chain survives a second source.
-    expect(zshenv).toContain('== "user:__nightshift_prompt_mark"')
+    expect(zshenv).toContain('== "user:__kolux_prompt_mark"')
   })
 
   // Why: oh-my-zsh vi-mode's zle-line-init returns non-zero; add-zle-hook-widget then aborts the chain and the marker never fires.
@@ -467,7 +467,7 @@ describePosix('daemon shell-ready launch config', () => {
     async () => {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      const tempHome = mkdtempSync(join(tmpdir(), 'nightshift-zsh-vi-mode-'))
+      const tempHome = mkdtempSync(join(tmpdir(), 'kolux-zsh-vi-mode-'))
       writeFileSync(
         join(tempHome, '.zshrc'),
         [
@@ -497,15 +497,15 @@ describePosix('daemon shell-ready launch config', () => {
     async () => {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      const tempHome = mkdtempSync(join(tmpdir(), 'nightshift-zsh-azhw-'))
-      const userHookOutput = 'NIGHTSHIFT-TEST-USER-HOOK'
+      const tempHome = mkdtempSync(join(tmpdir(), 'kolux-zsh-azhw-'))
+      const userHookOutput = 'KOLUX-TEST-USER-HOOK'
       writeFileSync(
         join(tempHome, '.zshrc'),
         [
-          `__nightshift_test_line_init_hook() { printf "${userHookOutput}" }`,
+          `__kolux_test_line_init_hook() { printf "${userHookOutput}" }`,
           'autoload -Uz add-zle-hook-widget',
-          'zle -N __nightshift_test_line_init_hook',
-          'add-zle-hook-widget line-init __nightshift_test_line_init_hook',
+          'zle -N __kolux_test_line_init_hook',
+          'add-zle-hook-widget line-init __kolux_test_line_init_hook',
           ''
         ].join('\n')
       )
@@ -529,19 +529,19 @@ describePosix('daemon shell-ready launch config', () => {
     15_000
   )
 
-  // Why: a re-source (nested Nightshift, manual) must stay idempotent — keep chaining the user's original zle-line-init.
+  // Why: a re-source (nested Kolux, manual) must stay idempotent — keep chaining the user's original zle-line-init.
   itWithZsh(
     'keeps chaining the prior zle-line-init widget when the marker block is sourced twice',
     async () => {
-      const zdotdir = mkdtempSync(join(tmpdir(), 'nightshift-zsh-resource-'))
-      const userHookOutput = 'NIGHTSHIFT-TEST-PRIOR-WIDGET'
-      const block = getZshShellReadyMarkerRegistrationBlock('\\033]777;nightshift-shell-ready\\007')
+      const zdotdir = mkdtempSync(join(tmpdir(), 'kolux-zsh-resource-'))
+      const userHookOutput = 'KOLUX-TEST-PRIOR-WIDGET'
+      const block = getZshShellReadyMarkerRegistrationBlock('\\033]777;kolux-shell-ready\\007')
       writeFileSync(
         join(zdotdir, '.zshrc'),
         [
           // A user widget that mimics oh-my-zsh vi-mode owning zle-line-init.
-          `__nightshift_test_prior_widget() { printf "${userHookOutput}" }`,
-          'zle -N zle-line-init __nightshift_test_prior_widget',
+          `__kolux_test_prior_widget() { printf "${userHookOutput}" }`,
+          'zle -N zle-line-init __kolux_test_prior_widget',
           block,
           // Second source of the exact same block — must not drop the chain.
           block,
@@ -580,43 +580,43 @@ describePosix('daemon shell-ready launch config', () => {
     const zlogin = zshrc
     const bashRc = readFileSync(join(getShellReadyWrapperRoot(), 'bash', 'rcfile'), 'utf8')
     const restoreLine =
-      '[[ -n "${NIGHTSHIFT_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${NIGHTSHIFT_OPENCODE_CONFIG_DIR}"'
+      '[[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"'
     const mimoRestoreLine =
-      '[[ -n "${NIGHTSHIFT_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${NIGHTSHIFT_MIMOCODE_HOME}"'
+      '[[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"'
     const codexRestoreLine =
-      '[[ -n "${NIGHTSHIFT_CODEX_HOME:-}" ]] && export CODEX_HOME="${NIGHTSHIFT_CODEX_HOME}"'
-    const agentTeamsPathRestoreLine = '[[ -n "${NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0'
-    const ompWrapperLine = 'command omp --extension "${NIGHTSHIFT_OMP_STATUS_EXTENSION}" "$@"'
+      '[[ -n "${KOLUX_CODEX_HOME:-}" ]] && export CODEX_HOME="${KOLUX_CODEX_HOME}"'
+    const agentTeamsPathRestoreLine = '[[ -n "${KOLUX_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0'
+    const ompWrapperLine = 'command omp --extension "${KOLUX_OMP_STATUS_EXTENSION}" "$@"'
     expect(zshrc).toContain(restoreLine)
     expect(zlogin).toContain(restoreLine)
     expect(bashRc).toContain(restoreLine)
     expect(zshrc).toContain(mimoRestoreLine)
     expect(zlogin).toContain(mimoRestoreLine)
     expect(bashRc).toContain(mimoRestoreLine)
-    expect(zshrc).not.toContain('NIGHTSHIFT_PI_CODING_AGENT_DIR')
-    expect(zlogin).not.toContain('NIGHTSHIFT_PI_CODING_AGENT_DIR')
-    expect(bashRc).not.toContain('NIGHTSHIFT_PI_CODING_AGENT_DIR')
+    expect(zshrc).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
+    expect(zlogin).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
+    expect(bashRc).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
     expect(zshrc).toContain(codexRestoreLine)
     expect(zlogin).toContain(codexRestoreLine)
     expect(zshrc).toContain(agentTeamsPathRestoreLine)
     expect(zlogin).toContain(agentTeamsPathRestoreLine)
     expect(bashRc).toContain(agentTeamsPathRestoreLine)
     expect(bashRc).toContain(codexRestoreLine)
-    expect(zshrc).not.toContain('NIGHTSHIFT_OMP_CODING_AGENT_DIR')
-    expect(zlogin).not.toContain('NIGHTSHIFT_OMP_CODING_AGENT_DIR')
-    expect(bashRc).not.toContain('NIGHTSHIFT_OMP_CODING_AGENT_DIR')
+    expect(zshrc).not.toContain('KOLUX_OMP_CODING_AGENT_DIR')
+    expect(zlogin).not.toContain('KOLUX_OMP_CODING_AGENT_DIR')
+    expect(bashRc).not.toContain('KOLUX_OMP_CODING_AGENT_DIR')
     expect(zshrc).toContain(ompWrapperLine)
     expect(zlogin).toContain(ompWrapperLine)
     expect(bashRc).toContain(ompWrapperLine)
     for (const wrapperFile of [zshrc, zlogin, bashRc]) {
       expect(wrapperFile).not.toContain('prime-agent()')
-      expect(wrapperFile).not.toContain('__nightshift_prime_agent')
-      expect(wrapperFile).not.toContain('NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION')
+      expect(wrapperFile).not.toContain('__kolux_prime_agent')
+      expect(wrapperFile).not.toContain('KOLUX_PRIME_AGENT_STATUS_EXTENSION')
       expect(wrapperFile).not.toContain('command prime-agent --extension')
     }
   })
 
-  it('preserves a real inherited ZDOTDIR as NIGHTSHIFT_ORIG_ZDOTDIR', async () => {
+  it('preserves a real inherited ZDOTDIR as KOLUX_ORIG_ZDOTDIR', async () => {
     // Why: only the wrapper self-loop should be rejected; a real user ZDOTDIR must round-trip so their configs load.
     const previousZdotdir = process.env.ZDOTDIR
     const userZdotdir = makeUserZdotdir(userDataPath, '.config', 'zsh')
@@ -624,7 +624,7 @@ describePosix('daemon shell-ready launch config', () => {
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBe(userZdotdir)
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBe(userZdotdir)
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -638,12 +638,12 @@ describePosix('daemon shell-ready launch config', () => {
     // Why: a trailing slash bypasses `endsWith('/shell-ready/zsh')`, reintroducing the recursion loop if unguarded.
     const previousZdotdir = process.env.ZDOTDIR
     const previousHome = process.env.HOME
-    process.env.ZDOTDIR = '/some/other/nightshift/shell-ready/zsh/'
+    process.env.ZDOTDIR = '/some/other/kolux/shell-ready/zsh/'
     process.env.HOME = '/Users/alice'
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBeUndefined()
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBeUndefined()
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -667,7 +667,7 @@ describePosix('daemon shell-ready launch config', () => {
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBeUndefined()
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBeUndefined()
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -690,7 +690,7 @@ describePosix('daemon shell-ready launch config', () => {
     try {
       const { getShellReadyLaunchConfig } = await importFreshShellReady()
       const config = getShellReadyLaunchConfig('/bin/zsh')
-      expect(config.env.NIGHTSHIFT_ORIG_ZDOTDIR).toBe(userZdotdir)
+      expect(config.env.KOLUX_ORIG_ZDOTDIR).toBe(userZdotdir)
     } finally {
       if (previousZdotdir === undefined) {
         delete process.env.ZDOTDIR
@@ -709,11 +709,11 @@ describePosix('daemon shell-ready launch config', () => {
 
     const zshenv = readFileSync(join(getShellReadyWrapperRoot(), 'zsh', '.zshenv'), 'utf8')
 
-    expect(zshenv).toContain('builtin source -- "$_nightshift_user_zshenv"')
+    expect(zshenv).toContain('builtin source -- "$_kolux_user_zshenv"')
     // Every function the hook needs is defined above the source, so a user
     // `emulate sh` cannot leave the rest of this file unparseable.
-    expect(zshenv.indexOf('__nightshift_deferred_init() {')).toBeLessThan(
-      zshenv.indexOf('builtin source -- "$_nightshift_user_zshenv"')
+    expect(zshenv.indexOf('__kolux_deferred_init() {')).toBeLessThan(
+      zshenv.indexOf('builtin source -- "$_kolux_user_zshenv"')
     )
   })
 })

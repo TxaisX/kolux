@@ -2,7 +2,7 @@
  * A scriptable stand-in for an agent CLI, for orchestration push-delivery E2E.
  *
  * Why a purpose-built process and not a bare shell emitting titles: push-on-idle
- * is gated on the status Nightshift infers from live OSC titles and delivers by
+ * is gated on the status Kolux infers from live OSC titles and delivers by
  * writing into the pane's foreground process. A shell echoes rather than
  * records, so it can prove the gate but never the payload. This process owns
  * both sides — the test drives its title through a control file and it appends
@@ -131,7 +131,7 @@ process.once('exit', () => {
 
 /** One isolated agent: its own script copy, ledger, and control file. */
 export function createMailPaneAgent(options: MailPaneAgentOptions = {}): MailPaneAgent {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-mail-agent-'))
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-mail-agent-'))
   agentDirs.push(dir)
   const scriptPath = path.join(dir, 'agent.cjs')
   const ledgerPath = path.join(dir, 'ledger.jsonl')

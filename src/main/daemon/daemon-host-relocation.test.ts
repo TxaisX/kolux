@@ -28,7 +28,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 })
 
 // Mutable host stub. Relocation now reads the AppEnvironment port rather than electron's
-// `app`, so nightshiftd's daemon launch path can resolve without Electron in the graph.
+// `app`, so koluxd's daemon launch path can resolve without Electron in the graph.
 const hostApp = {
   isPackaged: true,
   userDataPath: '',
@@ -75,7 +75,7 @@ function setProcessProp(key: string, value: unknown): void {
 // node-pty under resources, mirroring the packaged layout the copy expects.
 function buildInstallFixture(root: string): void {
   mkdirSync(root, { recursive: true })
-  writeFileSync(join(root, 'Nightshift.exe'), 'exe-bytes')
+  writeFileSync(join(root, 'Kolux.exe'), 'exe-bytes')
   for (const name of ['icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin']) {
     writeFileSync(join(root, name), name)
   }
@@ -120,7 +120,7 @@ beforeEach(() => {
   hostApp.version = '9.9.9'
   installHostApp()
   setProcessProp('platform', 'win32')
-  setProcessProp('execPath', join(installDir, 'Nightshift.exe'))
+  setProcessProp('execPath', join(installDir, 'Kolux.exe'))
   setProcessProp('resourcesPath', join(installDir, 'resources'))
 })
 
@@ -147,7 +147,7 @@ describe('buildDaemonHostManifest', () => {
     const appDir = 'C:\\app'
     const ops = buildDaemonHostManifest({
       appDir,
-      execPath: 'C:\\app\\Nightshift.exe',
+      execPath: 'C:\\app\\Kolux.exe',
       resourcesPath: 'C:\\app\\resources',
       entrySourcePath: 'C:\\app\\resources\\app.asar.unpacked\\out\\main\\daemon-entry.js',
       entryRelPath: 'resources/app.asar.unpacked/out/main/daemon-entry.js'
@@ -155,9 +155,9 @@ describe('buildDaemonHostManifest', () => {
     const byDest = new Map(ops.map((op) => [op.destRel, op]))
     // The host exe keeps the source basename: a verbatim, signature-preserving copy with no
     // image-name mismatch. What escapes the updater's sweep is the path, not the name.
-    expect(byDest.get('Nightshift.exe')?.kind).toBe('file')
-    const exeOp = ops.find((op) => op.sourcePath === 'C:\\app\\Nightshift.exe')
-    expect(exeOp?.destRel).toBe('Nightshift.exe')
+    expect(byDest.get('Kolux.exe')?.kind).toBe('file')
+    const exeOp = ops.find((op) => op.sourcePath === 'C:\\app\\Kolux.exe')
+    expect(exeOp?.destRel).toBe('Kolux.exe')
     // V8/ICU data blobs are read by the Electron bootstrap and kept.
     expect(byDest.has('icudtl.dat')).toBe(true)
     // GPU/graphics DLLs are never loaded by the windowless host, so not copied.
@@ -180,8 +180,8 @@ describe('materializeRelocatedDaemonHost', () => {
   it('copies the tree, writes the marker, and returns mirrored fork paths', async () => {
     const result = await materializeRelocatedDaemonHost()
     expect(result).not.toBeNull()
-    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
-    expect(result?.execPath).toBe(join(dest, 'Nightshift.exe'))
+    const dest = join(localAppDataDir, 'Kolux', 'daemon-host', '9.9.9')
+    expect(result?.execPath).toBe(join(dest, 'Kolux.exe'))
     expect(result?.entryPath).toBe(
       join(dest, 'resources', 'app.asar.unpacked', 'out', 'main', 'daemon-entry.js')
     )
@@ -216,7 +216,7 @@ describe('materializeRelocatedDaemonHost', () => {
 
   it('copies the exe verbatim: same file name and same bytes as the install-dir exe', async () => {
     const result = await materializeRelocatedDaemonHost()
-    const sourceExe = join(installDir, 'Nightshift.exe')
+    const sourceExe = join(installDir, 'Kolux.exe')
     // Byte-for-byte under the same name is what preserves the Authenticode signature and leaves
     // no renamed-image signal for endpoint detection to read as masquerading.
     expect(basename(result!.execPath)).toBe(basename(sourceExe))
@@ -226,24 +226,24 @@ describe('materializeRelocatedDaemonHost', () => {
   it('tracks a differently-named app exe rather than pinning an image name of its own', async () => {
     // A dev-channel or rebranded build ships a different executableName; the host copy must follow
     // it, which is what keeps the copy verbatim instead of reintroducing a name mismatch.
-    renameSync(join(installDir, 'Nightshift.exe'), join(installDir, 'Nightshift Nightly.exe'))
-    setProcessProp('execPath', join(installDir, 'Nightshift Nightly.exe'))
+    renameSync(join(installDir, 'Kolux.exe'), join(installDir, 'Kolux Nightly.exe'))
+    setProcessProp('execPath', join(installDir, 'Kolux Nightly.exe'))
     const result = await materializeRelocatedDaemonHost()
-    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
-    expect(result?.execPath).toBe(join(dest, 'Nightshift Nightly.exe'))
+    const dest = join(localAppDataDir, 'Kolux', 'daemon-host', '9.9.9')
+    expect(result?.execPath).toBe(join(dest, 'Kolux Nightly.exe'))
     expect(existsSync(join(dest, 'orca-terminal-daemon.exe'))).toBe(false)
     // Re-resolution must agree with materialization or the fork would target a missing exe.
-    expect(getRelocatedDaemonHost()?.execPath).toBe(join(dest, 'Nightshift Nightly.exe'))
+    expect(getRelocatedDaemonHost()?.execPath).toBe(join(dest, 'Kolux Nightly.exe'))
   })
 
   it('is idempotent: a valid marker short-circuits without recopying', async () => {
     await materializeRelocatedDaemonHost()
-    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
+    const dest = join(localAppDataDir, 'Kolux', 'daemon-host', '9.9.9')
     // A recopy would rm the dest; a sentinel inside it must survive the 2nd call.
     const sentinel = join(dest, 'sentinel.txt')
     writeFileSync(sentinel, 'keep')
     const result = await materializeRelocatedDaemonHost()
-    expect(result?.execPath).toBe(join(dest, 'Nightshift.exe'))
+    expect(result?.execPath).toBe(join(dest, 'Kolux.exe'))
     expect(existsSync(sentinel)).toBe(true)
   })
 
@@ -254,7 +254,7 @@ describe('materializeRelocatedDaemonHost', () => {
     })
     const result = await materializeRelocatedDaemonHost()
     expect(result).toBeNull()
-    const hostRoot = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const hostRoot = join(localAppDataDir, 'Kolux', 'daemon-host')
     // Neither the published dest nor any leftover staging dir remains.
     const remaining = existsSync(hostRoot) ? readdirSync(hostRoot) : []
     expect(remaining).toEqual([])
@@ -263,11 +263,11 @@ describe('materializeRelocatedDaemonHost', () => {
   it('returns null off win32', async () => {
     setProcessProp('platform', 'darwin')
     expect(await materializeRelocatedDaemonHost()).toBeNull()
-    expect(existsSync(join(localAppDataDir, 'Nightshift', 'daemon-host'))).toBe(false)
+    expect(existsSync(join(localAppDataDir, 'Kolux', 'daemon-host'))).toBe(false)
   })
 
-  it('does nothing for a packaged host with no asar root (nightshiftd on win32)', async () => {
-    // nightshiftd answers isPackaged() true — it is a shipped build — but it is plain Node: no
+  it('does nothing for a packaged host with no asar root (koluxd on win32)', async () => {
+    // koluxd answers isPackaged() true — it is a shipped build — but it is plain Node: no
     // asar, no resourcesPath, and no NSIS updater to escape. Relocation staging a copy of
     // an Electron tree that is not there is the isPackaged-honesty defect, and it would
     // silently produce a null host on a path whose failures are meant to be visible.
@@ -275,7 +275,7 @@ describe('materializeRelocatedDaemonHost', () => {
     installHostApp()
     expect(await materializeRelocatedDaemonHost()).toBeNull()
     expect(getRelocatedDaemonHost()).toBeNull()
-    expect(existsSync(join(localAppDataDir, 'Nightshift', 'daemon-host'))).toBe(false)
+    expect(existsSync(join(localAppDataDir, 'Kolux', 'daemon-host'))).toBe(false)
   })
 
   it('single-flights concurrent calls: two callers in flight together perform one copy', async () => {
@@ -284,13 +284,13 @@ describe('materializeRelocatedDaemonHost', () => {
       materializeRelocatedDaemonHost(),
       materializeRelocatedDaemonHost()
     ])
-    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
-    expect(first?.execPath).toBe(join(dest, 'Nightshift.exe'))
-    expect(second?.execPath).toBe(join(dest, 'Nightshift.exe'))
+    const dest = join(localAppDataDir, 'Kolux', 'daemon-host', '9.9.9')
+    expect(first?.execPath).toBe(join(dest, 'Kolux.exe'))
+    expect(second?.execPath).toBe(join(dest, 'Kolux.exe'))
     // The exe copy op alone proves one copy ran; a second concurrent copy would have raced it and
     // roughly doubled this count (one call per copy op per invocation).
     const exeCopyCalls = cpMock.mock.calls.filter(([source]) =>
-      String(source).endsWith('Nightshift.exe')
+      String(source).endsWith('Kolux.exe')
     )
     expect(exeCopyCalls.length).toBe(1)
     // A later call after both settle sees the marker and short-circuits without copying again.
@@ -302,9 +302,9 @@ describe('materializeRelocatedDaemonHost', () => {
 
 describe('getRelocatedDaemonHost', () => {
   it('returns null when the marker version does not match the current version', () => {
-    const dest = join(localAppDataDir, 'Nightshift', 'daemon-host', '9.9.9')
+    const dest = join(localAppDataDir, 'Kolux', 'daemon-host', '9.9.9')
     mkdirSync(dirname(join(dest, 'x')), { recursive: true })
-    writeFileSync(join(dest, 'Nightshift.exe'), 'exe')
+    writeFileSync(join(dest, 'Kolux.exe'), 'exe')
     mkdirSync(join(dest, 'resources', 'app.asar.unpacked', 'out', 'main'), { recursive: true })
     writeFileSync(
       join(dest, 'resources', 'app.asar.unpacked', 'out', 'main', 'daemon-entry.js'),
@@ -331,7 +331,7 @@ function ageRecordPastQuarantineFloor(recordPath: string): void {
 
 describe('pruneOldDaemonHosts', () => {
   it('removes unpinned non-current version dirs, keeping current and pinned', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     for (const v of ['9.9.9', '1.0.0', '2.0.0']) {
       mkdirSync(join(root, v), { recursive: true })
     }
@@ -345,7 +345,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('keeps a host when its pid liveness query is permission denied', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '8.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -369,7 +369,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('keeps a host when its pid liveness query is unavailable', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '7.0.0'), { recursive: true })
     mkdirSync(join(root, '6.0.0'), { recursive: true })
@@ -397,7 +397,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('prunes nothing and never throws when the evidence is unverifiable', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     for (const v of ['1.0.0', '2.0.0']) {
       mkdirSync(join(root, v), { recursive: true })
     }
@@ -420,7 +420,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('skips pruning when the runtime directory cannot be read', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
 
     const evidence = collectPinnedDaemonVersions(join(userDataDir, 'daemon-never-created'))
@@ -434,7 +434,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('keeps a version live when any of its pid records is live', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '7.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -467,7 +467,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('preserves a host dir for any verdict that is not positively exited', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     // Why: deliberate out-of-contract cast — deletion must require a positive 'exited' match,
     // so a future verdict status the prune does not know preserves the host dir, not deletes it.
@@ -490,7 +490,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('quarantines a record torn inside the pid digits without probing the truncated prefix', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -519,7 +519,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('never lets an immortal-pid prefix turn a torn record into a permanent prune veto', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -553,7 +553,7 @@ describe('pruneOldDaemonHosts', () => {
     // A live daemon's record is created before it is written (writeFileSync 'wx'), so a
     // concurrent launch can read it as empty. Quarantining it would strand the running daemon's
     // record and let the NEXT launch reclaim its host image.
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -580,7 +580,7 @@ describe('pruneOldDaemonHosts', () => {
     // pid 0 with appVersion null. Skipping it as "pins no host dir" would leave the version
     // unpinned and let the prune below reclaim a live daemon's host image. Aged past the
     // quarantine floor so this pins the pid guard rather than the freshness guard.
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -601,7 +601,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('vetoes pruning while a pid salvaged from a corrupt record still answers', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -627,7 +627,7 @@ describe('pruneOldDaemonHosts', () => {
   })
 
   it('quarantines a corrupt record naming no live pid so pruning resumes next launch', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -663,7 +663,7 @@ describe('pruneOldDaemonHosts', () => {
     if (originalPlatform === 'win32') {
       return ctx.skip()
     }
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     const runtimeDir = join(userDataDir, 'daemon')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     mkdirSync(runtimeDir, { recursive: true })
@@ -690,8 +690,8 @@ describe('pruneOldDaemonHosts', () => {
     expect(existsSync(join(root, '1.0.0'))).toBe(true)
   })
 
-  it('reclaims nothing for a packaged host with no asar root (nightshiftd on win32)', () => {
-    const root = join(localAppDataDir, 'Nightshift', 'daemon-host')
+  it('reclaims nothing for a packaged host with no asar root (koluxd on win32)', () => {
+    const root = join(localAppDataDir, 'Kolux', 'daemon-host')
     mkdirSync(join(root, '1.0.0'), { recursive: true })
     hostApp.appPath = join(installDir, 'resources', 'app')
     installHostApp()

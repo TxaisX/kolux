@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { GitAdmissionEvent } from '../git/command-runner/git-admission-state'
 import { GitAdmissionScheduler } from '../git/command-runner/git-subprocess-admission'
 import type * as GitStatusModule from '../git/status'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { GIT_METHODS } from './rpc/methods/git'
 import { RuntimeGitStatusCommands } from './runtime-git-status-commands'
@@ -38,7 +38,7 @@ describe('runtime git status admission', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       getRuntimeGitStatus: commands.getRuntimeGitStatus.bind(commands)
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: GIT_METHODS })
 
     for (const admissionTier of ['background', 'interactive', 'future-tier']) {

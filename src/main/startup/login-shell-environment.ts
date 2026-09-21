@@ -6,8 +6,8 @@ import {
   resolveProfileLoadingShell
 } from './hydrate-shell-path'
 
-const START_MARKER = '__NIGHTSHIFT_LOGIN_SHELL_ENV_START__'
-const END_MARKER = '__NIGHTSHIFT_LOGIN_SHELL_ENV_END__'
+const START_MARKER = '__KOLUX_LOGIN_SHELL_ENV_START__'
+const END_MARKER = '__KOLUX_LOGIN_SHELL_ENV_END__'
 const SPAWN_TIMEOUT_MS = 5000
 
 let cached: Promise<NodeJS.ProcessEnv> | null = null
@@ -127,7 +127,7 @@ export type ResolveLoginShellEnvironmentOptions = {
   spawner?: (shell: string) => Promise<NodeJS.ProcessEnv | null>
 }
 
-/** Resolves the environment seen by commands launched from Nightshift's profile-loading terminal shell. */
+/** Resolves the environment seen by commands launched from Kolux's profile-loading terminal shell. */
 export function resolveLoginShellEnvironment(
   options: ResolveLoginShellEnvironmentOptions = {}
 ): Promise<NodeJS.ProcessEnv> {

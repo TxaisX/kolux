@@ -19,6 +19,11 @@ import {
 import { installWebPreloadApi } from './web-preload-api'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/i18n'
+import { migrateLegacyLocalStoragePrefixes } from '../lib/legacy-local-storage-prefix-migration'
+
+// Why first: readStoredWebRuntimeEnvironment() below reads localStorage before any
+// component mounts, so migrated keys must already exist by module-eval time.
+migrateLegacyLocalStoragePrefixes()
 
 const App = lazy(() => import('../App'))
 
@@ -43,7 +48,7 @@ function WebRoot(): React.JSX.Element {
     if (startupDecision.kind === 'auto-save-runtime-offer') {
       saveStoredWebRuntimeEnvironment(
         createStoredWebRuntimeEnvironment({
-          name: 'Nightshift Server',
+          name: 'Kolux Server',
           offer: startupDecision.offer,
           previousEnvironment: readStoredWebRuntimeEnvironment()
         })
@@ -78,7 +83,7 @@ function WebRootBoundary(): React.JSX.Element {
     <RecoverableRenderErrorBoundary
       boundaryId="web.root"
       surface="web-root"
-      title={translate('app.recoverableError.webTitle', 'Nightshift web hit a renderer error.')}
+      title={translate('app.recoverableError.webTitle', 'Kolux web hit a renderer error.')}
       description={translate(
         'app.recoverableError.webDescription',
         'Retry the web client or reconnect to the paired runtime.'

@@ -6,14 +6,14 @@ import { hardenExistingSecureFile } from '../../../shared/secure-file'
 import { MOBILE_PAIRING_USERDATA_FILES } from '../../runtime/mobile-pairing-files'
 
 // Why capture once (not a module const, not per-call): a const resolves before configureDevUserDataPath() redirects userData (dev/prod collide);
-// per-call resolves after app.setName('Nightshift') flips path case and loses data on case-sensitive FS. index.ts calls initDataPath() at the right moment.
+// per-call resolves after app.setName('Kolux') flips path case and loses data on case-sensitive FS. index.ts calls initDataPath() at the right moment.
 let _dataFile: string | null = null
 let _userDataDir: string | null = null
 
 export function initDataPath(): void {
   const userDataDir = getAppEnvironment().getPath('userData')
   _userDataDir = userDataDir
-  _dataFile = join(userDataDir, 'nightshift-data.json')
+  _dataFile = join(userDataDir, 'kolux-data.json')
 }
 
 export function getDataFile(): string {
@@ -21,15 +21,15 @@ export function getDataFile(): string {
     // Safety fallback — should not be hit in normal startup.
     const userDataDir = getAppEnvironment().getPath('userData')
     _userDataDir = userDataDir
-    _dataFile = join(userDataDir, 'nightshift-data.json')
+    _dataFile = join(userDataDir, 'kolux-data.json')
   }
   return _dataFile
 }
 
-// Why a sidecar: githubCache refreshes every poll and would rewrite the whole multi-MB nightshift-data.json each cycle.
+// Why a sidecar: githubCache refreshes every poll and would rewrite the whole multi-MB kolux-data.json each cycle.
 // Snapshotted best-effort at quit for instant badges next launch; safe to lose.
 export function getGithubCacheFile(dataFile = getDataFile()): string {
-  return join(dirname(dataFile), 'nightshift-github-cache.json')
+  return join(dirname(dataFile), 'kolux-github-cache.json')
 }
 
 export function readGithubCacheSnapshot(dataFile: string): PersistedState['githubCache'] | null {
@@ -53,7 +53,7 @@ export function readGithubCacheSnapshot(dataFile: string): PersistedState['githu
 /**
  * Return the userData directory captured at initDataPath() time, before app.setName() can change how getAppEnvironment().getPath('userData') resolves.
  *
- * Subsystems sharing storage with nightshift-data.json read this instead of resolving late, which on case-sensitive FS can lose paired devices.
+ * Subsystems sharing storage with kolux-data.json read this instead of resolving late, which on case-sensitive FS can lose paired devices.
  */
 export function getCanonicalUserDataPath(): string {
   if (!_userDataDir) {

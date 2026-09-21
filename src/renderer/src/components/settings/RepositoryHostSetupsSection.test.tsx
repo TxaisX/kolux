@@ -31,7 +31,7 @@ function makeRepo(overrides: Partial<Repo> & Pick<Repo, 'id' | 'displayName' | '
 function makeProject({ id, ...overrides }: Partial<Project> & Pick<Project, 'id'>): Project {
   return {
     id,
-    displayName: 'Nightshift',
+    displayName: 'Kolux',
     badgeColor: '#737373',
     sourceRepoIds: ['local-repo', 'remote-repo'],
     createdAt: 100,
@@ -45,7 +45,7 @@ function makeSetup(
     Pick<ProjectHostSetup, 'id' | 'projectId' | 'repoId' | 'hostId' | 'path'>
 ): ProjectHostSetup {
   return {
-    displayName: 'Nightshift',
+    displayName: 'Kolux',
     kind: 'git',
     setupState: 'ready',
     setupMethod: 'legacy-repo',
@@ -121,13 +121,13 @@ describe('RepositoryHostSetupsSection', () => {
   it('shows a viewing-host selector when the project has multiple settings-backed hosts', () => {
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     const remoteRepo = makeRepo({
       id: 'remote-repo',
-      displayName: 'Nightshift',
-      path: '/home/alice/nightshift',
+      displayName: 'Kolux',
+      path: '/home/alice/kolux',
       connectionId: 'openclaw 2'
     })
     useAppStore.setState({
@@ -139,14 +139,14 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'remote-repo',
           projectId: 'github:TxaisX/nightshift',
           repoId: 'remote-repo',
           hostId: toSshExecutionHostId('openclaw 2'),
-          path: '/home/alice/nightshift'
+          path: '/home/alice/kolux'
         })
       ],
       sshTargetLabels: new Map([['openclaw 2', 'openclaw 2']])
@@ -164,13 +164,13 @@ describe('RepositoryHostSetupsSection', () => {
     const setSettingsProjectHostSelection = vi.fn()
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     const remoteRepo = makeRepo({
       id: 'remote-repo',
-      displayName: 'Nightshift',
-      path: '/home/alice/nightshift',
+      displayName: 'Kolux',
+      path: '/home/alice/kolux',
       connectionId: 'openclaw 2'
     })
     useAppStore.setState({
@@ -182,14 +182,14 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'remote-repo',
           projectId: 'github:TxaisX/nightshift',
           repoId: 'remote-repo',
           hostId: toSshExecutionHostId('openclaw 2'),
-          path: '/home/alice/nightshift'
+          path: '/home/alice/kolux'
         })
       ],
       openSettingsPage,
@@ -222,8 +222,8 @@ describe('RepositoryHostSetupsSection', () => {
   it('keeps nested SSH setups distinct and derives readiness from their HUB owner', () => {
     const remoteRepo = makeRepo({
       id: 'remote-repo',
-      displayName: 'Nightshift',
-      path: '/srv/nightshift',
+      displayName: 'Kolux',
+      path: '/srv/kolux',
       executionHostId: 'runtime:hub'
     })
     useAppStore.setState({
@@ -237,7 +237,7 @@ describe('RepositoryHostSetupsSection', () => {
           hostId: 'runtime:hub',
           executionHostId: 'ssh:direct',
           runtimeOwnerEnvironmentId: 'hub',
-          path: '/srv/nightshift'
+          path: '/srv/kolux'
         }),
         makeSetup({
           id: 'jump-setup',
@@ -246,7 +246,7 @@ describe('RepositoryHostSetupsSection', () => {
           hostId: 'runtime:hub',
           executionHostId: 'ssh:jump',
           runtimeOwnerEnvironmentId: 'hub',
-          path: '/srv/nightshift'
+          path: '/srv/kolux'
         })
       ],
       runtimeStatusByEnvironmentId: new Map([
@@ -322,8 +322,8 @@ describe('RepositoryHostSetupsSection', () => {
   it('shows HUB-local setups as disconnected when their owning runtime is unreachable', () => {
     const remoteRepo = makeRepo({
       id: 'remote-repo',
-      displayName: 'Nightshift',
-      path: '/srv/nightshift',
+      displayName: 'Kolux',
+      path: '/srv/kolux',
       executionHostId: 'runtime:hub'
     })
     useAppStore.setState({
@@ -337,7 +337,7 @@ describe('RepositoryHostSetupsSection', () => {
           hostId: 'runtime:hub',
           executionHostId: 'local',
           runtimeOwnerEnvironmentId: 'hub',
-          path: '/srv/nightshift'
+          path: '/srv/kolux'
         })
       ],
       runtimeStatusByEnvironmentId: new Map([['hub', { checkedAt: 1, status: null }]])
@@ -364,8 +364,8 @@ describe('RepositoryHostSetupsSection', () => {
     const openSettingsTarget = vi.fn()
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -376,7 +376,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'gpu-setup',
@@ -421,19 +421,19 @@ describe('RepositoryHostSetupsSection', () => {
         projectId: 'github:TxaisX/nightshift',
         repoId: 'remote-repo',
         hostId: toSshExecutionHostId('openclaw 2'),
-        path: '/home/alice/nightshift'
+        path: '/home/alice/kolux'
       }),
       repo: makeRepo({
         id: 'remote-repo',
-        displayName: 'Nightshift',
-        path: '/home/alice/nightshift',
+        displayName: 'Kolux',
+        path: '/home/alice/kolux',
         connectionId: 'openclaw 2'
       })
     })
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -444,7 +444,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       sshTargetLabels: new Map([['openclaw 2', 'openclaw 2']]),
@@ -463,7 +463,7 @@ describe('RepositoryHostSetupsSection', () => {
       'input[placeholder="/path/to/project/on/host"]'
     )
     expect(pathInput).toBeTruthy()
-    typeIntoInput(pathInput!, '/home/alice/nightshift')
+    typeIntoInput(pathInput!, '/home/alice/kolux')
 
     const importButton = findButton('Import')
     expect(importButton).toBeTruthy()
@@ -475,9 +475,9 @@ describe('RepositoryHostSetupsSection', () => {
     expect(setupProjectExistingFolder).toHaveBeenCalledWith({
       projectId: 'github:TxaisX/nightshift',
       hostId: 'ssh:openclaw%202',
-      path: '/home/alice/nightshift',
+      path: '/home/alice/kolux',
       kind: 'git',
-      displayName: 'Nightshift'
+      displayName: 'Kolux'
     })
     expect(setSettingsProjectHostSelection).toHaveBeenCalledWith(
       'github:TxaisX/nightshift',
@@ -498,19 +498,19 @@ describe('RepositoryHostSetupsSection', () => {
         projectId: 'github:TxaisX/nightshift',
         repoId: 'remote-repo',
         hostId: toSshExecutionHostId('openclaw 2'),
-        path: '/home/alice/nightshift'
+        path: '/home/alice/kolux'
       }),
       repo: makeRepo({
         id: 'remote-repo',
-        displayName: 'Nightshift',
-        path: '/home/alice/nightshift',
+        displayName: 'Kolux',
+        path: '/home/alice/kolux',
         connectionId: 'openclaw 2'
       })
     })
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -521,7 +521,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       sshTargetLabels: new Map([['openclaw 2', 'openclaw 2']]),
@@ -559,7 +559,7 @@ describe('RepositoryHostSetupsSection', () => {
       hostId: 'ssh:openclaw%202',
       url: 'https://github.com/TxaisX/nightshift.git',
       destination: '/home/alice',
-      displayName: 'Nightshift'
+      displayName: 'Kolux'
     })
     expect(setSettingsProjectHostSelection).toHaveBeenCalledWith(
       'github:TxaisX/nightshift',
@@ -572,8 +572,8 @@ describe('RepositoryHostSetupsSection', () => {
   it('blocks path setup until an SSH host connects but keeps placeholders available', () => {
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -584,7 +584,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       sshTargetLabels: new Map([['openclaw 2', 'openclaw 2']])
@@ -623,8 +623,8 @@ describe('RepositoryHostSetupsSection', () => {
     })
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -635,7 +635,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       settings: { activeRuntimeEnvironmentId: 'gpu' } as never,
@@ -680,7 +680,7 @@ describe('RepositoryHostSetupsSection', () => {
     expect(createProjectHostSetup).toHaveBeenCalledWith({
       projectId: 'github:TxaisX/nightshift',
       hostId: 'runtime:gpu',
-      displayName: 'Nightshift',
+      displayName: 'Kolux',
       setupState: 'not-set-up',
       setupMethod: 'provisioned'
     })
@@ -692,8 +692,8 @@ describe('RepositoryHostSetupsSection', () => {
     const setupProjectExistingFolder = vi.fn()
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -704,7 +704,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       settings: { activeRuntimeEnvironmentId: null } as never,
@@ -736,7 +736,7 @@ describe('RepositoryHostSetupsSection', () => {
     renderSection(localRepo)
     clickButton('Add to another host')
 
-    expect(container.textContent).toContain('Update Nightshift on this host to set up projects')
+    expect(container.textContent).toContain('Update Kolux on this host to set up projects')
     const browseButton = findButton('Browse folder')
     const plannedButton = findButton('Add host placeholder')
     expect(browseButton?.disabled).toBe(true)
@@ -766,8 +766,8 @@ describe('RepositoryHostSetupsSection', () => {
     })
     const localRepo = makeRepo({
       id: 'local-repo',
-      displayName: 'Nightshift',
-      path: '/Users/alice/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/alice/kolux'
     })
     useAppStore.setState({
       repos: [localRepo],
@@ -778,7 +778,7 @@ describe('RepositoryHostSetupsSection', () => {
           projectId: 'github:TxaisX/nightshift',
           repoId: 'local-repo',
           hostId: 'local',
-          path: '/Users/alice/nightshift'
+          path: '/Users/alice/kolux'
         })
       ],
       settings: { activeRuntimeEnvironmentId: null } as never,
@@ -822,7 +822,7 @@ describe('RepositoryHostSetupsSection', () => {
     expect(createProjectHostSetup).toHaveBeenCalledWith({
       projectId: 'github:TxaisX/nightshift',
       hostId: 'runtime:gpu',
-      displayName: 'Nightshift',
+      displayName: 'Kolux',
       setupState: 'not-set-up',
       setupMethod: 'provisioned'
     })

@@ -104,12 +104,12 @@ export async function inspectStableCommand(
       return { fileSha256, rawSymlinkTarget, snapshot: afterEvidence, status }
     }
   }
-  throw new Error(`The command at ${commandPath} changed while Nightshift inspected it.`)
+  throw new Error(`The command at ${commandPath} changed while Kolux inspected it.`)
 }
 
 export async function quarantineCommandPath(commandPath: string): Promise<CommandQuarantine> {
   const commandDirectory = dirname(commandPath)
-  const directoryPath = join(commandDirectory, `.nightshift-cli-${process.pid}-${randomUUID()}`)
+  const directoryPath = join(commandDirectory, `.kolux-cli-${process.pid}-${randomUUID()}`)
   const heldPath = join(directoryPath, basename(commandPath))
   await mkdir(commandDirectory, { recursive: true })
   await mkdir(directoryPath, { mode: 0o700 })
@@ -166,10 +166,7 @@ export function buildMacPrivilegedSymlinkTransaction(
   args: MacPrivilegedSymlinkTransaction
 ): string {
   const commandDirectory = dirname(args.commandPath)
-  const transactionDirectory = join(
-    commandDirectory,
-    `.nightshift-cli-${process.pid}-${randomUUID()}`
-  )
+  const transactionDirectory = join(commandDirectory, `.kolux-cli-${process.pid}-${randomUUID()}`)
   const heldPath = join(transactionDirectory, basename(args.commandPath))
   const publishDirectory = join(transactionDirectory, 'publish')
   const publishPath = join(publishDirectory, basename(args.commandPath))

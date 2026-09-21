@@ -9,11 +9,11 @@ import {
 function cliStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
-    commandPath: '/usr/local/bin/nightshift',
+    commandName: 'kolux',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/MacOS/nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/MacOS/kolux',
     installMethod: 'symlink',
     supported: true,
     state: 'installed',

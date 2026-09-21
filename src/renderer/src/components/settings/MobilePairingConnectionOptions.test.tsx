@@ -7,14 +7,14 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MobileRelayStatusDetail } from '../../../../shared/mobile-relay-status'
-import type { NightshiftProfileAuthStatus } from '../../../../shared/nightshift-profiles'
+import type { KoluxProfileAuthStatus } from '../../../../shared/kolux-profiles'
 import { MobilePairingConnectionOptions } from './MobilePairingConnectionOptions'
 
 type MobileRelayStoreState = {
-  nightshiftProfileAuthStatus: NightshiftProfileAuthStatus | null
-  nightshiftProfileConnecting: boolean
-  connectCurrentNightshiftProfile: () => Promise<null>
-  fetchNightshiftProfileAuthStatus: () => Promise<NightshiftProfileAuthStatus | null>
+  koluxProfileAuthStatus: KoluxProfileAuthStatus | null
+  koluxProfileConnecting: boolean
+  connectCurrentKoluxProfile: () => Promise<null>
+  fetchKoluxProfileAuthStatus: () => Promise<KoluxProfileAuthStatus | null>
 }
 
 const mocks = vi.hoisted(() => ({
@@ -67,26 +67,26 @@ describe('MobilePairingConnectionOptions', () => {
       }
     })
     mocks.state = {
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'local',
         persistence: 'none'
       },
-      nightshiftProfileConnecting: false,
-      connectCurrentNightshiftProfile: connect,
-      fetchNightshiftProfileAuthStatus: fetchAuthStatus
+      koluxProfileConnecting: false,
+      connectCurrentKoluxProfile: connect,
+      fetchKoluxProfileAuthStatus: fetchAuthStatus
     }
   })
 
   afterEach(() => cleanup())
 
-  it('shows Sign in directly under Nightshift Relay, above LAN', async () => {
+  it('shows Sign in directly under Kolux Relay, above LAN', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     render(<MobilePairingConnectionOptions value="automatic" onChange={onChange} />)
 
-    const relay = screen.getByRole('radio', { name: /Nightshift Relay/i })
+    const relay = screen.getByRole('radio', { name: /Kolux Relay/i })
     const lan = screen.getByRole('radio', { name: /^LAN\b/i })
     const signInPanel = screen.getByTestId('anywhere-sign-in-panel')
     const signIn = screen.getByRole('button', { name: 'Sign in for Relay' })
@@ -121,7 +121,7 @@ describe('MobilePairingConnectionOptions', () => {
   it('shows Unavailable instead of a dead Sign in on unconfigured builds', () => {
     mocks.state = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: false,
         state: 'unconfigured',
@@ -133,7 +133,7 @@ describe('MobilePairingConnectionOptions', () => {
     // No Relay endpoint to sign into — the Sign in CTA must not appear.
     expect(screen.queryByTestId('anywhere-sign-in-panel')).toBeNull()
     expect(screen.queryByRole('button', { name: /Sign in/i })).toBeNull()
-    const relay = screen.getByRole('radio', { name: /Nightshift Relay/i })
+    const relay = screen.getByRole('radio', { name: /Kolux Relay/i })
     expect(relay).toHaveTextContent('Unavailable')
     expect(relay).toHaveTextContent(/isn’t available in this build/i)
   })
@@ -141,7 +141,7 @@ describe('MobilePairingConnectionOptions', () => {
   it('keeps Relay unavailable and unselectable while LAN is selected', async () => {
     mocks.state = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: false,
         state: 'unconfigured',
@@ -153,7 +153,7 @@ describe('MobilePairingConnectionOptions', () => {
     render(<MobilePairingConnectionOptions value="local-only" onChange={onChange} />)
 
     // Availability follows the build, not the selected path.
-    const relay = screen.getByRole('radio', { name: /Nightshift Relay/i })
+    const relay = screen.getByRole('radio', { name: /Kolux Relay/i })
     expect(relay).toHaveTextContent('Unavailable')
     expect(relay).toHaveTextContent(/isn’t available in this build/i)
     expect(relay).toHaveAttribute('aria-disabled', 'true')
@@ -171,7 +171,7 @@ describe('MobilePairingConnectionOptions', () => {
     const onChange = vi.fn()
     render(<MobilePairingConnectionOptions value="automatic" onChange={onChange} />)
 
-    screen.getByRole('radio', { name: /Nightshift Relay/i }).focus()
+    screen.getByRole('radio', { name: /Kolux Relay/i }).focus()
     await user.keyboard('{ArrowDown}')
     expect(onChange).toHaveBeenCalledWith('local-only')
   })
@@ -200,31 +200,31 @@ describe('MobilePairingConnectionOptions', () => {
       )
     ).toBeVisible()
 
-    await user.click(screen.getByRole('radio', { name: /Nightshift Relay/i }))
+    await user.click(screen.getByRole('radio', { name: /Kolux Relay/i }))
     expect(onChange).toHaveBeenCalledWith('automatic')
   })
 
   it('refreshes auth status when it is missing on mount', () => {
     mocks.state = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: null
+      koluxProfileAuthStatus: null
     }
     render(<MobilePairingConnectionOptions value="automatic" onChange={vi.fn()} />)
     expect(fetchAuthStatus).toHaveBeenCalledOnce()
     expect(screen.getByTestId('anywhere-sign-in-panel')).toBeVisible()
   })
 
-  it('shows relay status when signed in on Nightshift Relay', async () => {
+  it('shows relay status when signed in on Kolux Relay', async () => {
     mocks.state = {
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'connected',
         persistence: 'encrypted'
       },
-      nightshiftProfileConnecting: false,
-      connectCurrentNightshiftProfile: connect,
-      fetchNightshiftProfileAuthStatus: fetchAuthStatus
+      koluxProfileConnecting: false,
+      connectCurrentKoluxProfile: connect,
+      fetchKoluxProfileAuthStatus: fetchAuthStatus
     }
     const onChange = vi.fn()
     const user = userEvent.setup()
@@ -241,7 +241,7 @@ describe('MobilePairingConnectionOptions', () => {
   it('names the assigned relay cell by host once the status carries one', async () => {
     mocks.state = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'connected',
@@ -269,7 +269,7 @@ describe('MobilePairingConnectionOptions', () => {
   it('keeps LAN available while Relay is retrying', async () => {
     mocks.state = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'connected',
@@ -288,7 +288,7 @@ describe('MobilePairingConnectionOptions', () => {
     )
 
     expect(screen.getByText('Retrying')).toBeVisible()
-    const relay = screen.getByRole('radio', { name: /Nightshift Relay/i })
+    const relay = screen.getByRole('radio', { name: /Kolux Relay/i })
     const lan = screen.getByRole('radio', { name: /^LAN\b/i })
     expect(relay).toHaveAttribute('aria-disabled', 'true')
     expect(lan).toHaveAttribute('aria-disabled', 'false')
@@ -301,7 +301,7 @@ describe('MobilePairingConnectionOptions', () => {
     // fetched when it was empty, so a revoked session stayed invisible.
     const connectedState: MobileRelayStoreState = {
       ...mocks.state,
-      nightshiftProfileAuthStatus: {
+      koluxProfileAuthStatus: {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'connected',
@@ -310,13 +310,13 @@ describe('MobilePairingConnectionOptions', () => {
     }
     mocks.state = connectedState
     fetchAuthStatus.mockImplementation(async () => {
-      const revoked: NightshiftProfileAuthStatus = {
+      const revoked: KoluxProfileAuthStatus = {
         activeProfileId: 'profile-1',
         configured: true,
         state: 'reconnect-required',
         persistence: 'encrypted'
       }
-      publishStoreState({ ...connectedState, nightshiftProfileAuthStatus: revoked })
+      publishStoreState({ ...connectedState, koluxProfileAuthStatus: revoked })
       return revoked
     })
 

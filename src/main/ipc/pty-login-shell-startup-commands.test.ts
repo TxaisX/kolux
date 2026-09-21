@@ -42,7 +42,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -64,7 +64,7 @@ describe('registerPtyHandlers', () => {
   posixOnlyIt('wraps macOS spawns in login(1) with SHELL restored by the trampoline', async () => {
     const originalShell = process.env.SHELL
     // Re-enable the TCC login wrapper the suite-level beforeEach disables.
-    delete process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL
+    delete process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL
     process.env.SHELL = '/bin/zsh'
     loginPreflightExecFileMock.mockImplementation(
       (
@@ -73,7 +73,7 @@ describe('registerPtyHandlers', () => {
         _options: unknown,
         callback: (error: Error | null, stdout: string, stderr: string) => void
       ) => {
-        callback(null, 'NIGHTSHIFT_LOGIN_PREFLIGHT_OK', '')
+        callback(null, 'KOLUX_LOGIN_PREFLIGHT_OK', '')
         return { stdin: { end: vi.fn() } }
       }
     )
@@ -91,7 +91,7 @@ describe('registerPtyHandlers', () => {
         '-p',
         '-c',
         'export SHELL="$1"; shift; exec -l -- "$@"',
-        'nightshift-tcc-login',
+        'kolux-tcc-login',
         '/bin/zsh',
         '/bin/zsh',
         '-l'
@@ -100,7 +100,7 @@ describe('registerPtyHandlers', () => {
       expect(options.env.SHELL).toBe('/bin/zsh')
     } finally {
       resetMacosLoginShellPreflightForTests()
-      process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL = '1'
+      process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL = '1'
       if (originalShell === undefined) {
         delete process.env.SHELL
       } else {
@@ -122,10 +122,10 @@ describe('registerPtyHandlers', () => {
       const [shell, args, options] = await spawnAndGetCall({ cwd: '/tmp' })
       expect(shell).toBe('/bin/zsh')
       expect(args).toEqual(['-l'])
-      expect(options.env.OPENCODE_CONFIG_DIR).toBe('/tmp/nightshift-opencode-config')
-      expect(options.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBe('/tmp/nightshift-opencode-config')
+      expect(options.env.OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-config')
+      expect(options.env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-config')
       expect(options.env.ZDOTDIR).toBe(join(getShellReadyWrapperRoot(), 'zsh'))
-      expect(options.env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+      expect(options.env.KOLUX_SHELL_FEATURES).not.toContain('ready')
     } finally {
       Object.defineProperty(process, 'platform', {
         configurable: true,
@@ -148,9 +148,9 @@ describe('registerPtyHandlers', () => {
     })
     process.env.SHELL = '/bin/zsh'
     openCodeBuildPtyEnvMock.mockImplementationOnce(() => ({
-      NIGHTSHIFT_OPENCODE_HOOK_PORT: '4567',
-      NIGHTSHIFT_OPENCODE_HOOK_TOKEN: 'opencode-token',
-      NIGHTSHIFT_OPENCODE_PTY_ID: 'test-pty'
+      KOLUX_OPENCODE_HOOK_PORT: '4567',
+      KOLUX_OPENCODE_HOOK_TOKEN: 'opencode-token',
+      KOLUX_OPENCODE_PTY_ID: 'test-pty'
     }))
 
     try {
@@ -161,12 +161,12 @@ describe('registerPtyHandlers', () => {
       expect(shell).toBe('/bin/zsh')
       expect(args).toEqual(['-l'])
       expect(options.env.OPENCODE_CONFIG_DIR).toBeUndefined()
-      expect(options.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBeUndefined()
+      expect(options.env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
       expect(options.env.PI_CODING_AGENT_DIR).toBe('/tmp/user-pi-agent')
-      expect(options.env.NIGHTSHIFT_PI_CODING_AGENT_DIR).toBeUndefined()
-      expect(options.env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe('/tmp/user-pi-agent')
+      expect(options.env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
+      expect(options.env.KOLUX_PI_SOURCE_AGENT_DIR).toBe('/tmp/user-pi-agent')
       expect(options.env.ZDOTDIR).toBe(join(getShellReadyWrapperRoot(), 'zsh'))
-      expect(options.env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+      expect(options.env.KOLUX_SHELL_FEATURES).not.toContain('ready')
     } finally {
       Object.defineProperty(process, 'platform', {
         configurable: true,
@@ -256,7 +256,7 @@ describe('registerPtyHandlers', () => {
         })
 
         const [, , options] = spawnMock.mock.calls[0]!
-        expect(options.env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+        expect(options.env.KOLUX_SHELL_FEATURES).not.toContain('ready')
         expect(options.env[POSIX_SHELL_STARTUP_COMMAND_ENV]).toBe('codex')
 
         await Promise.resolve()
@@ -289,7 +289,7 @@ describe('registerPtyHandlers', () => {
       })
 
       const [, , options] = spawnMock.mock.calls[0]!
-      expect(options.env.NIGHTSHIFT_SHELL_FEATURES).toContain('ready')
+      expect(options.env.KOLUX_SHELL_FEATURES).toContain('ready')
       expect(options.env[POSIX_SHELL_STARTUP_COMMAND_ENV]).toBe("codex 'linked issue context'")
       expect(mockProc.proc.write).not.toHaveBeenCalled()
 
@@ -298,7 +298,7 @@ describe('registerPtyHandlers', () => {
       await Promise.resolve()
       expect(mockProc.proc.write).not.toHaveBeenCalled()
 
-      mockProc.emitData('\x1b]777;nightshift-shell-ready\x07')
+      mockProc.emitData('\x1b]777;kolux-shell-ready\x07')
       await Promise.resolve()
       vi.advanceTimersByTime(50)
       await Promise.resolve()
@@ -331,7 +331,7 @@ describe('registerPtyHandlers', () => {
         const [, , options] = spawnMock.mock.calls[0]!
         expect(options.env[POSIX_SHELL_STARTUP_COMMAND_ENV]).toBe("codex 'linked issue context'")
 
-        mockProc.emitData('\x1b]777;nightshift-shell-ready\x07\r\nuser@host % ')
+        mockProc.emitData('\x1b]777;kolux-shell-ready\x07\r\nuser@host % ')
         await Promise.resolve()
         vi.advanceTimersByTime(29)
         await Promise.resolve()
@@ -360,13 +360,13 @@ describe('registerPtyHandlers', () => {
       })
 
       const [, , options] = spawnMock.mock.calls[0]!
-      expect(options.env.NIGHTSHIFT_SHELL_FEATURES).toContain('ready')
+      expect(options.env.KOLUX_SHELL_FEATURES).toContain('ready')
       expect(options.env[POSIX_SHELL_STARTUP_COMMAND_ENV]).toBe(
         "codex --prefill 'linked issue context'"
       )
       expect(mockProc.proc.write).not.toHaveBeenCalled()
 
-      mockProc.emitData('\x1b]777;nightshift-shell-ready\x07')
+      mockProc.emitData('\x1b]777;kolux-shell-ready\x07')
       await Promise.resolve()
       vi.runAllTimers()
       await Promise.resolve()

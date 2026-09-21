@@ -16,7 +16,7 @@ import {
 } from './visibility-sources'
 import { isLegacyRepoForExternalWorktreeVisibility } from '../external-worktree-visibility'
 import { shouldShowWorktree } from '../worktree-visibility-resolution'
-import type { GlobalSettings, NightshiftWorkspaceLayout } from '../global-settings-types'
+import type { GlobalSettings, KoluxWorkspaceLayout } from '../global-settings-types'
 import type { Repo } from '../repo-types'
 import type { WorktreeMeta } from './meta-types'
 import type { DetectedWorktree, Worktree, WorktreeOwnership } from './types'
@@ -29,11 +29,11 @@ export {
 } from '../external-worktree-visibility'
 export { shouldShowWorktree } from '../worktree-visibility-resolution'
 
-export function buildKnownNightshiftWorkspaceLayouts(
+export function buildKnownKoluxWorkspaceLayouts(
   settings: Pick<GlobalSettings, 'workspaceDir' | 'nestWorkspaces' | 'workspaceDirHistory'>,
   repo?: Pick<Repo, 'path' | 'connectionId' | 'worktreeBasePath'>
-): NightshiftWorkspaceLayout[] {
-  const layouts: NightshiftWorkspaceLayout[] = []
+): KoluxWorkspaceLayout[] {
+  const layouts: KoluxWorkspaceLayout[] = []
   for (const basePath of resolveConfiguredWorktreeBasePaths(repo)) {
     layouts.push({ path: basePath, nestWorkspaces: settings.nestWorkspaces })
   }
@@ -70,8 +70,8 @@ export function buildKnownNightshiftWorkspaceLayouts(
 }
 
 function appendWorkspaceLayouts(
-  target: NightshiftWorkspaceLayout[],
-  source: readonly NightshiftWorkspaceLayout[]
+  target: KoluxWorkspaceLayout[],
+  source: readonly KoluxWorkspaceLayout[]
 ): void {
   // Why: workspace history is persisted user data and can grow large enough
   // for `push(...source)` to exceed the JavaScript call argument limit.
@@ -90,7 +90,7 @@ function shouldIncludeWorkspaceLayout(
 function buildWslWorkspaceLayouts(
   repoPath: string,
   settings: Pick<GlobalSettings, 'nestWorkspaces' | 'workspaceDirHistory'>
-): NightshiftWorkspaceLayout[] {
+): KoluxWorkspaceLayout[] {
   const parsed = parseWslUncPath(repoPath)
   if (!parsed) {
     return []
@@ -100,7 +100,7 @@ function buildWslWorkspaceLayouts(
   if (!linuxHome) {
     return []
   }
-  const root = `//wsl.localhost/${parsed.distro}${linuxHome}/nightshift/workspaces`
+  const root = `//wsl.localhost/${parsed.distro}${linuxHome}/kolux/workspaces`
   const historicalModes = (settings.workspaceDirHistory ?? []).map(
     (layout) => layout.nestWorkspaces
   )
@@ -113,12 +113,12 @@ export function classifyWorktreeOwnership(args: {
   worktree: Pick<Worktree, 'path' | 'isMainWorktree'>
   meta?: WorktreeMeta
   settings: Pick<GlobalSettings, 'workspaceDir' | 'nestWorkspaces' | 'workspaceDirHistory'>
-  knownNightshiftLayouts: NightshiftWorkspaceLayout[]
+  knownKoluxLayouts: KoluxWorkspaceLayout[]
   agentScratchWorktreePathMatcher?: AgentScratchWorktreePathMatcher
   worktreeVisibilitySourceMatcher?: WorktreeVisibilitySourceMatcher
 }): WorktreeOwnership {
-  if (hasStrongNightshiftMetadata(args.meta)) {
-    return 'nightshift-managed'
+  if (hasStrongKoluxMetadata(args.meta)) {
+    return 'kolux-managed'
   }
 
   // Why: sub-agent scratch worktrees (e.g. .claude/worktrees) are tool
@@ -145,13 +145,13 @@ export function classifyWorktreeOwnership(args: {
     return 'external'
   }
 
-  if (isUnderFlatOrUntrustedNightshiftRoot(args.worktree.path, args.knownNightshiftLayouts)) {
+  if (isUnderFlatOrUntrustedKoluxRoot(args.worktree.path, args.knownKoluxLayouts)) {
     return 'unknown-legacy'
   }
 
-  if (canClassifyAsExternal(args.worktree.path, args.knownNightshiftLayouts)) {
-    // Why: a plain `git worktree add` can target Nightshift's nested workspace
-    // folder. Only metadata proves Nightshift created it.
+  if (canClassifyAsExternal(args.worktree.path, args.knownKoluxLayouts)) {
+    // Why: a plain `git worktree add` can target Kolux's nested workspace
+    // folder. Only metadata proves Kolux created it.
     return 'external'
   }
 
@@ -166,7 +166,7 @@ export function toDetectedWorktree(args: {
     GlobalSettings,
     'workspaceDir' | 'nestWorkspaces' | 'workspaceDirHistory' | 'worktreeVisibilityDefaults'
   >
-  knownNightshiftLayouts: NightshiftWorkspaceLayout[]
+  knownKoluxLayouts: KoluxWorkspaceLayout[]
   isLegacyRepoForVisibility?: boolean
   agentScratchWorktreePathMatcher?: AgentScratchWorktreePathMatcher
   worktreeVisibilitySourceMatcher?: WorktreeVisibilitySourceMatcher
@@ -214,7 +214,7 @@ export function applyMetadataFallbackVisibility(detected: DetectedWorktree): Det
   return {
     ...detected,
     visible: true,
-    ownership: detected.ownership === 'nightshift-managed' ? 'nightshift-managed' : 'unknown-legacy'
+    ownership: detected.ownership === 'kolux-managed' ? 'kolux-managed' : 'unknown-legacy'
   }
 }
 
@@ -224,10 +224,10 @@ export function areRuntimePathsEqual(leftPath: string, rightPath: string): boole
   )
 }
 
-function hasStrongNightshiftMetadata(meta: WorktreeMeta | undefined): boolean {
+function hasStrongKoluxMetadata(meta: WorktreeMeta | undefined): boolean {
   return Boolean(
-    meta?.nightshiftCreatedAt ||
-    meta?.nightshiftCreationWorkspaceLayout ||
+    meta?.koluxCreatedAt ||
+    meta?.koluxCreationWorkspaceLayout ||
     meta?.createdAt ||
     meta?.createdWithAgent ||
     meta?.pushTarget ||
@@ -237,11 +237,11 @@ function hasStrongNightshiftMetadata(meta: WorktreeMeta | undefined): boolean {
   )
 }
 
-function isUnderFlatOrUntrustedNightshiftRoot(
+function isUnderFlatOrUntrustedKoluxRoot(
   worktreePath: string,
-  knownNightshiftLayouts: NightshiftWorkspaceLayout[]
+  knownKoluxLayouts: KoluxWorkspaceLayout[]
 ): boolean {
-  for (const layout of knownNightshiftLayouts) {
+  for (const layout of knownKoluxLayouts) {
     const relative = relativePathInsideRoot(layout.path, worktreePath)
     if (relative === null) {
       continue
@@ -255,12 +255,12 @@ function isUnderFlatOrUntrustedNightshiftRoot(
 
 function canClassifyAsExternal(
   worktreePath: string,
-  knownNightshiftLayouts: NightshiftWorkspaceLayout[]
+  knownKoluxLayouts: KoluxWorkspaceLayout[]
 ): boolean {
-  if (knownNightshiftLayouts.length === 0) {
+  if (knownKoluxLayouts.length === 0) {
     return false
   }
-  for (const layout of knownNightshiftLayouts) {
+  for (const layout of knownKoluxLayouts) {
     const relative = relativePathInsideRoot(layout.path, worktreePath)
     if (relative === null) {
       continue

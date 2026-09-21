@@ -17,11 +17,11 @@ describe('isNativeChatPastedImagePath', () => {
   it('detects clipboard-paste temp files (so the chip shows a friendly label)', () => {
     expect(
       isNativeChatPastedImagePath(
-        '/var/folders/x/nightshift-paste-1782775228480-c9a3c86b-1234-5678-9abc-def012345678.png'
+        '/var/folders/x/kolux-paste-1782775228480-c9a3c86b-1234-5678-9abc-def012345678.png'
       )
     ).toBe(true)
     // Windows-style separators resolve to the same basename.
-    expect(isNativeChatPastedImagePath('C:\\Temp\\nightshift-paste-1-2.png')).toBe(true)
+    expect(isNativeChatPastedImagePath('C:\\Temp\\kolux-paste-1-2.png')).toBe(true)
   })
 
   it('leaves picked/dropped files showing their real name', () => {

@@ -83,7 +83,7 @@ function parseObjectPayload(msg: MessageRow, onInvalidJson: () => void): Record<
 function getPersistedLifecycleRejection(
   payload: Record<string, unknown>
 ): LifecycleRejectionResult | undefined {
-  const rejection = payload._nightshiftLifecycleRejection
+  const rejection = payload._koluxLifecycleRejection
   if (
     !rejection ||
     typeof rejection !== 'object' ||

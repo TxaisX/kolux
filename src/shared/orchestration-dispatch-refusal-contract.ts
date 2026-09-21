@@ -20,8 +20,8 @@ export function taskNotFoundRefusal(
     data: {
       ...detail,
       nextSteps: [
-        'Run nightshift orchestration task-list --json in the bound Run to find the intended Task id.',
-        'If the Task does not exist yet, create it with nightshift orchestration task-create --spec <text> --json.'
+        'Run kolux orchestration task-list --json in the bound Run to find the intended Task id.',
+        'If the Task does not exist yet, create it with kolux orchestration task-create --spec <text> --json.'
       ]
     }
   }
@@ -48,17 +48,17 @@ export function taskNotStartableRefusal(
 function taskNotStartableNextSteps(detail: TaskNotStartableDetail): string[] {
   if (detail.retryOf) {
     return [
-      `--retry-of must name the latest settled Dispatch of a failed or blocked Task; check nightshift orchestration dispatch-show --task ${detail.taskId} --json and nightshift orchestration worker-show --dispatch ${detail.retryOf} --json.`
+      `--retry-of must name the latest settled Dispatch of a failed or blocked Task; check kolux orchestration dispatch-show --task ${detail.taskId} --json and kolux orchestration worker-show --dispatch ${detail.retryOf} --json.`
     ]
   }
   if (detail.unmetDependencies.length > 0) {
     return [
-      `Dependencies ${detail.unmetDependencies.join(', ')} are not completed. Wait for running ones with nightshift orchestration check --wait --json; retry or unblock failed ones before dispatching again.`
+      `Dependencies ${detail.unmetDependencies.join(', ')} are not completed. Wait for running ones with kolux orchestration check --wait --json; retry or unblock failed ones before dispatching again.`
     ]
   }
   if (detail.status === 'dispatched') {
     return [
-      `The Task already has an active Dispatch; inspect it with nightshift orchestration dispatch-show --task ${detail.taskId} --json.`
+      `The Task already has an active Dispatch; inspect it with kolux orchestration dispatch-show --task ${detail.taskId} --json.`
     ]
   }
   return [
@@ -67,7 +67,7 @@ function taskNotStartableNextSteps(detail: TaskNotStartableDetail): string[] {
 }
 
 // Why: the old five-name example read as an allowlist (#15125); derive from the field detection keys on so it cannot drift.
-// Not filtered by `disabledTuiAgents` — that gates Nightshift's launchers, not detection, so a hand-started disabled agent still injects.
+// Not filtered by `disabledTuiAgents` — that gates Kolux's launchers, not detection, so a hand-started disabled agent still injects.
 const RECOGNIZED_AGENT_PROCESS_NAMES = [
   ...new Set(Object.values(TUI_AGENT_CONFIG).map((config) => config.expectedProcess))
 ].sort()
@@ -75,7 +75,7 @@ const RECOGNIZED_AGENT_PROCESS_NAMES = [
 export function buildInjectRejectionMessage(terminal: string): string {
   return (
     `Cannot dispatch --inject to terminal ${terminal}: no recognized agent detected. ` +
-    `Nightshift detects these agent CLIs (${RECOGNIZED_AGENT_PROCESS_NAMES.join(', ')}). ` +
+    `Kolux detects these agent CLIs (${RECOGNIZED_AGENT_PROCESS_NAMES.join(', ')}). ` +
     'Start one in the terminal and let it finish launching, ' +
     'or dispatch without --inject and send the prompt manually.'
   )
@@ -95,7 +95,7 @@ export function injectRejectedRefusal(
       reason,
       nextSteps: [
         'Start a recognized agent CLI in that terminal and wait for it to finish launching, or pick a terminal that already runs one.',
-        'Alternatively dispatch without --inject and deliver the prompt with nightshift terminal send --terminal <handle> --text <prompt> --enter --json.'
+        'Alternatively dispatch without --inject and deliver the prompt with kolux terminal send --terminal <handle> --text <prompt> --enter --json.'
       ]
     }
   }

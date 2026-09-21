@@ -31,7 +31,7 @@ const {
   registerRuntimeEnvironmentHandlersMock,
   registerEphemeralVmHandlersMock,
   registerAiVaultHandlersMock,
-  registerNightshiftProfileHandlersMock,
+  registerKoluxProfileHandlersMock,
   registerCodexAccountHandlersMock,
   registerAgentHookHandlersMock,
   registerAgentTrustHandlersMock,
@@ -98,7 +98,7 @@ const {
   registerRuntimeEnvironmentHandlersMock: vi.fn(),
   registerEphemeralVmHandlersMock: vi.fn(),
   registerAiVaultHandlersMock: vi.fn(),
-  registerNightshiftProfileHandlersMock: vi.fn(),
+  registerKoluxProfileHandlersMock: vi.fn(),
   registerCodexAccountHandlersMock: vi.fn(),
   registerAgentHookHandlersMock: vi.fn(),
   registerAgentTrustHandlersMock: vi.fn(),
@@ -315,8 +315,8 @@ vi.mock('../ai-vault', () => ({
   registerAiVaultHandlers: registerAiVaultHandlersMock
 }))
 
-vi.mock('../nightshift-profiles', () => ({
-  registerNightshiftProfileHandlers: registerNightshiftProfileHandlersMock
+vi.mock('../kolux-profiles', () => ({
+  registerKoluxProfileHandlers: registerKoluxProfileHandlersMock
 }))
 
 vi.mock('../codex-accounts', () => ({
@@ -429,7 +429,7 @@ describe('registerCoreHandlers', () => {
     registerRuntimeEnvironmentHandlersMock.mockReset()
     registerEphemeralVmHandlersMock.mockReset()
     registerAiVaultHandlersMock.mockReset()
-    registerNightshiftProfileHandlersMock.mockReset()
+    registerKoluxProfileHandlersMock.mockReset()
     registerCodexAccountHandlersMock.mockReset()
     registerAgentHookHandlersMock.mockReset()
     registerAgentTrustHandlersMock.mockReset()
@@ -547,7 +547,7 @@ describe('registerCoreHandlers', () => {
     expect(registerWorkspacePortHandlersMock).toHaveBeenCalledWith(store)
     expect(registerLocalhostWorktreeLabelHandlersMock).toHaveBeenCalledWith(store)
     expect(registerTelemetryHandlersMock).toHaveBeenCalledWith(store)
-    expect(registerNightshiftProfileHandlersMock).toHaveBeenCalledWith(store, { onBeforeRelaunch })
+    expect(registerKoluxProfileHandlersMock).toHaveBeenCalledWith(store, { onBeforeRelaunch })
     expect(registerSessionHandlersMock).toHaveBeenCalledWith(store)
     expect(registerUIHandlersMock).toHaveBeenCalledWith(store, {
       isDashboardPopoutRenderer: isDashboardPopoutRendererMock

@@ -55,7 +55,7 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
       this.options.finishError(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an undecryptable frame.',
+          'Remote Kolux runtime returned an undecryptable frame.',
           {
             pairingStage:
               this.state === 'awaiting_authenticated' ? 'host-identity' : this.pairingStage
@@ -78,8 +78,8 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
           readyFrame === 'invalid'
-            ? 'Remote Nightshift runtime returned an invalid E2EE handshake frame.'
-            : 'Remote Nightshift runtime returned an unexpected E2EE handshake frame.',
+            ? 'Remote Kolux runtime returned an invalid E2EE handshake frame.'
+            : 'Remote Kolux runtime returned an unexpected E2EE handshake frame.',
           { pairingStage: 'host-identity' }
         )
       )
@@ -95,7 +95,7 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
       this.options.finishError(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an invalid E2EE auth frame.',
+          'Remote Kolux runtime returned an invalid E2EE auth frame.',
           { pairingStage: 'host-identity' }
         )
       )
@@ -104,13 +104,9 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
     if (authenticated.kind !== 'authenticated') {
       const code = authenticated.unauthorized ? 'unauthorized' : 'invalid_runtime_response'
       this.options.finishError(
-        new RemoteRuntimeClientError(
-          code,
-          'Remote Nightshift runtime rejected the pairing token.',
-          {
-            pairingStage: code === 'unauthorized' ? 'access-grant' : 'host-identity'
-          }
-        )
+        new RemoteRuntimeClientError(code, 'Remote Kolux runtime rejected the pairing token.', {
+          pairingStage: code === 'unauthorized' ? 'access-grant' : 'host-identity'
+        })
       )
       return
     }
@@ -127,7 +123,7 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
     try {
       raw = parseRemoteRuntimeJsonText(plaintext)
     } catch {
-      this.invalidResponse('Remote Nightshift runtime returned an invalid response frame.')
+      this.invalidResponse('Remote Kolux runtime returned an invalid response frame.')
       return
     }
     if (isKeepaliveFrame(raw)) {
@@ -136,11 +132,11 @@ export class RemoteRuntimeRequestResponseRouter<TResult> {
     }
     const parsed = RuntimeRpcEnvelopeSchema.safeParse(raw)
     if (!parsed.success || '_keepalive' in parsed.data) {
-      this.invalidResponse('Remote Nightshift runtime returned an invalid response frame.')
+      this.invalidResponse('Remote Kolux runtime returned an invalid response frame.')
       return
     }
     if (parsed.data.id !== this.awaitingRequestId) {
-      this.invalidResponse('Remote Nightshift runtime returned a mismatched response id.')
+      this.invalidResponse('Remote Kolux runtime returned a mismatched response id.')
       return
     }
     if (this.awaitingStatus && this.options.validateStatus) {

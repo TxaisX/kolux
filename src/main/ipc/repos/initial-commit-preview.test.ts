@@ -24,7 +24,7 @@ describe('computeInitialCommitPreview', () => {
   let root: string
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-initial-commit-preview-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-initial-commit-preview-'))
     gitInit(root)
   })
 
@@ -52,7 +52,12 @@ describe('computeInitialCommitPreview', () => {
     expect(paths).not.toContain('.env')
     expect(paths.some((p) => p.startsWith('node_modules'))).toBe(false)
     expect(paths).toEqual(
-      expect.arrayContaining(['src.js', 'credentials.json', 'notes-with-secret-in-name.txt', 'video.mp4'])
+      expect.arrayContaining([
+        'src.js',
+        'credentials.json',
+        'notes-with-secret-in-name.txt',
+        'video.mp4'
+      ])
     )
 
     const byPath = new Map(result.files.map((f) => [f.path, f]))

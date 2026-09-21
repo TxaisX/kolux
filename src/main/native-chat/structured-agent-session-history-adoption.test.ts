@@ -195,7 +195,7 @@ describe('resolveStructuredAgentSessionAdoption', () => {
       resolveStructuredAgentSessionAdoption({
         agent: 'codex',
         providerSessionId: 'thread-1',
-        candidateAccountHomes: ['/home/dev/.nightshift-codex', '/home/dev/.codex', '/never/probed'],
+        candidateAccountHomes: ['/home/dev/.kolux-codex', '/home/dev/.codex', '/never/probed'],
         resolveTranscript
       })
     ).resolves.toEqual({

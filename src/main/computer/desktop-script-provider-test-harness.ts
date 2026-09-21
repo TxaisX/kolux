@@ -123,7 +123,7 @@ export function sampleBridgeSnapshot(name: string, value: string) {
 export function sampleCapabilities(actions: Partial<Record<string, boolean>> = {}) {
   return {
     platform: 'linux',
-    provider: 'nightshift-computer-use-linux',
+    provider: 'kolux-computer-use-linux',
     providerVersion: '1.0.0',
     protocolVersion: 1,
     supports: {

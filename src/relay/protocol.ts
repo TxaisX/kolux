@@ -25,7 +25,7 @@ export {
 export type { DecodedFrame, FrameDecoderOptions } from './relay-frame-decoder'
 
 export const RELAY_VERSION = '0.1.0'
-export const RELAY_SENTINEL = `NIGHTSHIFT-RELAY v${RELAY_VERSION} READY\n`
+export const RELAY_SENTINEL = `KOLUX-RELAY v${RELAY_VERSION} READY\n`
 
 export const MessageType = {
   Regular: 1,
@@ -38,12 +38,12 @@ export const MessageType = {
 // to refuse mismatched-version --connect bridges that would otherwise drive a
 // stale daemon.
 export type HandshakeMessage =
-  | { type: 'nightshift-relay-handshake'; version: string; endpointCredential?: string }
-  | { type: 'nightshift-relay-handshake-ok'; version: string }
-  | { type: 'nightshift-relay-handshake-mismatch'; expected: string; got: string }
+  | { type: 'kolux-relay-handshake'; version: string; endpointCredential?: string }
+  | { type: 'kolux-relay-handshake-ok'; version: string }
+  | { type: 'kolux-relay-handshake-mismatch'; expected: string; got: string }
   // Why a distinct reply: the bridge exits with its own code so the client can tell a refused
   // credential from a crashed relay. Old bridges reject the unknown type and exit 1 pre-sentinel.
-  | { type: 'nightshift-relay-handshake-credential-mismatch' }
+  | { type: 'kolux-relay-handshake-credential-mismatch' }
 
 export function encodeHandshakeFrame(msg: HandshakeMessage): Buffer {
   const payload = Buffer.from(JSON.stringify(msg), 'utf-8')
@@ -54,10 +54,10 @@ export function parseHandshakeMessage(payload: Buffer): HandshakeMessage {
   const msg = JSON.parse(payload.toString('utf-8')) as HandshakeMessage
   const t = (msg as { type?: string }).type
   if (
-    t !== 'nightshift-relay-handshake' &&
-    t !== 'nightshift-relay-handshake-ok' &&
-    t !== 'nightshift-relay-handshake-mismatch' &&
-    t !== 'nightshift-relay-handshake-credential-mismatch'
+    t !== 'kolux-relay-handshake' &&
+    t !== 'kolux-relay-handshake-ok' &&
+    t !== 'kolux-relay-handshake-mismatch' &&
+    t !== 'kolux-relay-handshake-credential-mismatch'
   ) {
     throw new Error(`Unknown handshake type: ${t}`)
   }
@@ -101,7 +101,7 @@ export const GIT_RESPONSE_CHUNK_SIZE = 128 * 1024
  * follows as git.responseChunk frames on the bulk lane. Old relays never emit
  * this, so a new client falls back to the plain result they return. */
 export type GitResponseStreamMarker = {
-  __nightshiftGitResponseStream: { streamId: number; totalBytes: number; chunkCount: number }
+  __koluxGitResponseStream: { streamId: number; totalBytes: number; chunkCount: number }
 }
 
 export const RelayErrorCode = {

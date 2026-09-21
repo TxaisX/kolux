@@ -195,7 +195,7 @@ export function BrowserPageContextMenu({
             >
               {translate(
                 'auto.components.browser.pane.BrowserPane.b5b87d6cbb',
-                'Open Link In Nightshift Browser'
+                'Open Link In Kolux Browser'
               )}
             </button>
             <button

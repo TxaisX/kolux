@@ -14,24 +14,24 @@ import {
 
 type PathOps = typeof posix
 
-const NIGHTSHIFT_CREATION_SOURCES = new Set<NonNullable<WorktreeMeta['nightshiftCreationSource']>>([
+const KOLUX_CREATION_SOURCES = new Set<NonNullable<WorktreeMeta['koluxCreationSource']>>([
   'desktop',
   'runtime',
   'cli',
   'ssh'
 ])
-const NIGHTSHIFT_OWNED_PROVENANCE_META_KEYS = [
-  'nightshiftCreatedAt',
-  'nightshiftCreationSource',
-  'nightshiftCreationWorkspaceLayout',
+const KOLUX_OWNED_PROVENANCE_META_KEYS = [
+  'koluxCreatedAt',
+  'koluxCreationSource',
+  'koluxCreationWorkspaceLayout',
   'automationProvenance',
   'cliProvenance',
   'creatorProvenance'
 ] as const
-type UnregisteredNightshiftCleanupMeta = Pick<
+type UnregisteredKoluxCleanupMeta = Pick<
   WorktreeMeta,
-  | 'nightshiftCreatedAt'
-  | 'nightshiftCreationSource'
+  | 'koluxCreatedAt'
+  | 'koluxCreationSource'
   | 'createdAt'
   | 'createdWithAgent'
   | 'pushTarget'
@@ -173,24 +173,24 @@ export async function canSafelyRemoveOrphanedWorktreeDirectory(
   })
 }
 
-export function canCleanupUnregisteredNightshiftWorktreeDirectory(args: {
-  meta: UnregisteredNightshiftCleanupMeta | null | undefined
+export function canCleanupUnregisteredKoluxWorktreeDirectory(args: {
+  meta: UnregisteredKoluxCleanupMeta | null | undefined
 }): boolean {
-  if (hasCurrentNightshiftCreationProvenance(args.meta)) {
+  if (hasCurrentKoluxCreationProvenance(args.meta)) {
     return true
   }
 
-  if (hasLegacyNightshiftCreationEvidence(args.meta)) {
+  if (hasLegacyKoluxCreationEvidence(args.meta)) {
     return true
   }
 
   // Why: path shape alone is not authority; users can create plain Git
-  // worktrees inside Nightshift's workspace directory too.
+  // worktrees inside Kolux's workspace directory too.
   return false
 }
 
-export async function canCleanupUnregisteredNightshiftLeftoverDirectory(args: {
-  meta: UnregisteredNightshiftCleanupMeta | null | undefined
+export async function canCleanupUnregisteredKoluxLeftoverDirectory(args: {
+  meta: UnregisteredKoluxCleanupMeta | null | undefined
   worktreePath: string
   runtimeWorktreePath: string
   repo: Pick<Repo, 'path'>
@@ -202,11 +202,8 @@ export async function canCleanupUnregisteredNightshiftLeftoverDirectory(args: {
   // Why: this recovery state has already lost the worktree .git marker, so the
   // existing .git-file orphan proof cannot establish ownership.
   // Why: without a surviving .git file, path shape alone is too weak to prove
-  // ownership for recursive deletion; require persisted Nightshift-created evidence.
-  if (
-    !hasCurrentNightshiftCreationProvenance(args.meta) &&
-    !hasLegacyNightshiftCreationEvidence(args.meta)
-  ) {
+  // ownership for recursive deletion; require persisted Kolux-created evidence.
+  if (!hasCurrentKoluxCreationProvenance(args.meta) && !hasLegacyKoluxCreationEvidence(args.meta)) {
     return false
   }
 
@@ -238,18 +235,18 @@ export async function canCleanupUnregisteredNightshiftLeftoverDirectory(args: {
   return !(await args.isGitRepository(args.runtimeWorktreePath))
 }
 
-function hasCurrentNightshiftCreationProvenance(
-  meta: Pick<WorktreeMeta, 'nightshiftCreatedAt' | 'nightshiftCreationSource'> | null | undefined
+function hasCurrentKoluxCreationProvenance(
+  meta: Pick<WorktreeMeta, 'koluxCreatedAt' | 'koluxCreationSource'> | null | undefined
 ): boolean {
   return (
-    typeof meta?.nightshiftCreatedAt === 'number' &&
-    !!meta.nightshiftCreationSource &&
-    NIGHTSHIFT_CREATION_SOURCES.has(meta.nightshiftCreationSource)
+    typeof meta?.koluxCreatedAt === 'number' &&
+    !!meta.koluxCreationSource &&
+    KOLUX_CREATION_SOURCES.has(meta.koluxCreationSource)
   )
 }
 
-function hasLegacyNightshiftCreationEvidence(
-  meta: UnregisteredNightshiftCleanupMeta | null | undefined
+function hasLegacyKoluxCreationEvidence(
+  meta: UnregisteredKoluxCleanupMeta | null | undefined
 ): boolean {
   return Boolean(
     meta?.createdAt ||
@@ -261,11 +258,11 @@ function hasLegacyNightshiftCreationEvidence(
   )
 }
 
-export function stripNightshiftProvenanceMetaUpdates(
+export function stripKoluxProvenanceMetaUpdates(
   updates: Partial<WorktreeMeta> | null | undefined
 ): Partial<WorktreeMeta> {
   const sanitized = { ...updates }
-  for (const key of NIGHTSHIFT_OWNED_PROVENANCE_META_KEYS) {
+  for (const key of KOLUX_OWNED_PROVENANCE_META_KEYS) {
     delete sanitized[key]
   }
   return sanitized

@@ -16,7 +16,7 @@ import {
 
 const require = createRequire(import.meta.url)
 
-/** A real loadable addon, so the OS holds the same lock a running Nightshift holds. */
+/** A real loadable addon, so the OS holds the same lock a running Kolux holds. */
 function repoAddonPath() {
   try {
     const entry = require.resolve('@vscode/windows-process-tree')
@@ -28,7 +28,7 @@ function repoAddonPath() {
 }
 
 /**
- * Stage a stale addon and keep it loaded, exactly as a running Nightshift does.
+ * Stage a stale addon and keep it loaded, exactly as a running Kolux does.
  *
  * The bytes are the repo's own patched build with the flagged import appended,
  * because the guard keys on that symbol and the patched binary does not carry
@@ -62,7 +62,7 @@ async function stageLoadedStaleAddon(projectDir) {
 }
 
 // Why an end-to-end run: the defect was purely one of placement. The guard threw
-// a real EPERM, and the classifier that turns that into "close running Nightshift"
+// a real EPERM, and the classifier that turns that into "close running Kolux"
 // already existed -- the throw simply happened before the try that reaches it.
 // Only the whole script exercises that.
 describe.runIf(process.platform === 'win32')('rebuild-native-deps stale addon under lock', () => {
@@ -90,7 +90,7 @@ describe.runIf(process.platform === 'win32')('rebuild-native-deps stale addon un
         )
 
         expect(result.stderr).toContain(
-          'Close running Nightshift/Electron/dev processes for this worktree'
+          'Close running Kolux/Electron/dev processes for this worktree'
         )
         // Non-strict postinstall soft-exits on a lock; the next dev/start re-checks.
         expect(result.status, result.stderr).toBe(0)

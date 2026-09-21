@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -11,8 +11,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -23,7 +23,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -44,10 +44,10 @@ import { main } from './index'
 import { okFixture } from './test-fixtures'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -55,7 +55,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('formats group orchestration sends in text mode', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_sender'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_sender'
     callMock.mockResolvedValueOnce({
       id: 'req_send',
       ok: true,
@@ -128,7 +128,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('rejects unknown task-update status with an enum-aware error', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_coord'
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const priorExitCode = process.exitCode
@@ -153,7 +153,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('passes the caller terminal handle through orchestration task-create', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_creator'
     callMock.mockResolvedValueOnce({
       id: 'req_task_create',
       ok: true,
@@ -191,8 +191,8 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('passes dev mode to injected orchestration dispatches', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_sender'
-    process.env.NIGHTSHIFT_USER_DATA_PATH = '/tmp/nightshift-dev'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_sender'
+    process.env.KOLUX_USER_DATA_PATH = '/tmp/kolux-dev'
     callMock.mockResolvedValueOnce({
       id: 'req_dispatch',
       ok: true,
@@ -220,9 +220,9 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('passes dev mode from an explicit dev CLI marker with a custom profile path', async () => {
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_sender'
-    process.env.NIGHTSHIFT_USER_DATA_PATH = '/tmp/federation-acceptance-profile'
-    process.env.NIGHTSHIFT_DEV_CLI_INVOCATION = '1'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_sender'
+    process.env.KOLUX_USER_DATA_PATH = '/tmp/federation-acceptance-profile'
+    process.env.KOLUX_DEV_CLI_INVOCATION = '1'
     callMock.mockResolvedValueOnce({
       id: 'req_dispatch',
       ok: true,

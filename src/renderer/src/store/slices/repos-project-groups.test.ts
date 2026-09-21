@@ -299,9 +299,9 @@ describe('project group store routing', () => {
             provider: 'jira',
             type: 'issue',
             number: 0,
-            title: 'NIGHTSHIFT-123 Link Jira',
-            url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-            jiraIdentifier: 'NIGHTSHIFT-123'
+            title: 'KOLUX-123 Link Jira',
+            url: 'https://company.atlassian.net/browse/KOLUX-123',
+            jiraIdentifier: 'KOLUX-123'
           }
         },
         { runtimeEnvironmentId: 'env-1' }
@@ -859,7 +859,7 @@ describe('project group store routing', () => {
         name: 'Broken folder'
       })
     ).rejects.toThrow(
-      'Folder not found. Nightshift cannot find /srv/app. Remove and re-import the folder.'
+      'Folder not found. Kolux cannot find /srv/app. Remove and re-import the folder.'
     )
   })
 })

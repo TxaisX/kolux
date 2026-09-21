@@ -32,7 +32,7 @@ const roots: string[] = []
 const savedHome = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE }
 
 async function createRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-known-hosts-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-known-hosts-'))
   roots.push(root)
   return root
 }
@@ -350,22 +350,22 @@ describe('resolveKnownHostsLookupHost', () => {
     expect(resolveKnownHostsLookupHost(resolved, '127.0.0.1').host).toBe('bastion')
   })
 
-  // INVERTED from 'uses the resolved hostname, never the Nightshift label'. That test encoded an
+  // INVERTED from 'uses the resolved hostname, never the Kolux label'. That test encoded an
   // assumption verified false against OpenSSH 10.2p1: `ssh -G` echoes its own argument back as
-  // `hostname` when no Host block matches, so for a manual target `resolved.hostname` IS the Nightshift
+  // `hostname` when no Host block matches, so for a manual target `resolved.hostname` IS the Kolux
   // label — the one name the design forbids keying on, and one `ssh` never wrote. Keying on it
   // consults no entries at all, so an impersonated host reads as first contact.
   //
   // The dialed host is correct in both cases: buildConnectConfig has already applied HostName
   // resolution, so a config alias dials the real host too.
   it('uses the dialed host, because a resolved hostname can just echo the label', async () => {
-    const resolved = resolvedConfig({ hostname: 'my-nightshift-label' })
+    const resolved = resolvedConfig({ hostname: 'my-kolux-label' })
 
     expect(resolveKnownHostsLookupHost(resolved, '10.0.0.5').host).toBe('10.0.0.5')
   })
 
   it('still prefers an explicit HostKeyAlias over the dialed host', async () => {
-    const resolved = resolvedConfig({ hostname: 'my-nightshift-label', hostKeyAlias: 'bastion' })
+    const resolved = resolvedConfig({ hostname: 'my-kolux-label', hostKeyAlias: 'bastion' })
 
     expect(resolveKnownHostsLookupHost(resolved, '10.0.0.5').host).toBe('bastion')
   })
@@ -389,7 +389,7 @@ describe('a known_hosts path containing a space', () => {
   let dir: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'nightshift known hosts '))
+    dir = await mkdtemp(join(tmpdir(), 'kolux known hosts '))
   })
 
   afterEach(async () => {
@@ -432,20 +432,20 @@ describe('a known_hosts path containing a space', () => {
     await writeFile(real, '', 'utf-8')
 
     const resolved = await resolveKnownHostsFiles({
-      userKnownHostsFiles: [real, '/tmp/nightshift-does-not-exist-known-hosts'],
+      userKnownHostsFiles: [real, '/tmp/kolux-does-not-exist-known-hosts'],
       globalKnownHostsFiles: []
     } as never)
 
-    expect(resolved).toEqual([real, '/tmp/nightshift-does-not-exist-known-hosts'])
+    expect(resolved).toEqual([real, '/tmp/kolux-does-not-exist-known-hosts'])
   })
 
   it('leaves a single unresolvable path alone rather than inventing one', async () => {
     const resolved = await resolveKnownHostsFiles({
-      userKnownHostsFiles: ['/tmp/nightshift-absent-known-hosts'],
+      userKnownHostsFiles: ['/tmp/kolux-absent-known-hosts'],
       globalKnownHostsFiles: []
     } as never)
 
-    expect(resolved).toEqual(['/tmp/nightshift-absent-known-hosts'])
+    expect(resolved).toEqual(['/tmp/kolux-absent-known-hosts'])
   })
 })
 

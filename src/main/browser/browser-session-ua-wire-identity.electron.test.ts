@@ -111,7 +111,7 @@ run().catch((error) => {
 }
 
 async function runFixture(): Promise<FixtureResult> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-wire-identity-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-wire-identity-'))
   fixtureRoots.push(root)
   const modulePath = join(root, 'browser-session-ua.cjs')
   const resultPath = join(root, 'result.json')

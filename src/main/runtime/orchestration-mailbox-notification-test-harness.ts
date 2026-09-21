@@ -6,7 +6,7 @@ import { expect, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../shared/protocol-version'
 import type { AgentStatusIpcPayload } from '../../shared/agent-status-types'
 import type Database from '../sqlite/sync-database'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
 import { RpcDispatcher } from './rpc/dispatcher'
 import { ORCHESTRATION_METHODS } from './rpc/methods/orchestration'
@@ -60,7 +60,7 @@ export function insertDirectRunMessage(db: OrchestrationDb, runId: string, subje
 }
 
 export type MailboxNotificationHarness = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   write: ReturnType<typeof vi.fn>
 }
 
@@ -91,7 +91,7 @@ export function createRuntime(
     getAgentStatusSnapshot?: () => AgentStatusIpcPayload[]
   } = {}
 ): MailboxNotificationHarness {
-  const runtime = new NightshiftRuntimeService(null, undefined, {
+  const runtime = new KoluxRuntimeService(null, undefined, {
     getAgentStatusSnapshot: options.getAgentStatusSnapshot,
     attestAgentHookCompatibilityAuthority: ({ paneKey }) =>
       paneKey === PANE_KEY || paneKey.startsWith(`${SECOND_TAB_ID}:`)
@@ -144,7 +144,7 @@ export function createRuntime(
 }
 
 export function registerSecondPane(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   leafId = SECOND_LEAF_ID,
   includeFirstPane = true
 ): void {
@@ -199,7 +199,7 @@ export function registerSecondPane(
   })
 }
 
-export async function driveToLiveIdle(runtime: NightshiftRuntimeService): Promise<void> {
+export async function driveToLiveIdle(runtime: KoluxRuntimeService): Promise<void> {
   await runtime.listTerminals()
   const working = runtime.acceptPtyDataBounded(PTY_ID, '\x1b]0;Codex working\x07', 1)
   const done = runtime.acceptPtyDataBounded(PTY_ID, '\x1b]0;Codex done\x07', 2)
@@ -215,7 +215,7 @@ export function isMailboxPointer(payload: unknown): boolean {
 }
 
 export async function checkBoundMailbox(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   options: MailboxCheckOptions = {}
 ): Promise<MailboxCheckResult> {
   const response = await dispatchMailboxCheck(runtime, options)
@@ -227,7 +227,7 @@ export async function checkBoundMailbox(
 }
 
 export async function dispatchMailboxCheck(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   options: MailboxCheckOptions = {}
 ) {
   const terminal = options.terminal ?? TERMINAL_HANDLE

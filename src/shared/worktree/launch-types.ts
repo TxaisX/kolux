@@ -2,7 +2,7 @@ import type { StartupCommandDelivery } from '../codex-startup-delivery'
 import type { AgentKind, LaunchSource, RequestKind } from '../telemetry-events'
 import type { SleepingAgentLaunchConfig } from '../agent-session-resume'
 import type { SetupRunnerShell } from '../setup-runner-command'
-import type { NightshiftDefaultTabTemplate } from '../nightshift-yaml-hook-types'
+import type { KoluxDefaultTabTemplate } from '../kolux-yaml-hook-types'
 import type { TuiAgent } from '../tui-agent'
 
 export type WorktreeSetupLaunch = {
@@ -25,7 +25,7 @@ export type WorktreeStartupLaunch = {
 }
 
 export type WorktreeDefaultTabsLaunch = {
-  tabs: NightshiftDefaultTabTemplate[]
+  tabs: KoluxDefaultTabTemplate[]
   runCommands: boolean
 }
 

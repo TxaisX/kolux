@@ -21,7 +21,7 @@ afterEach(async () => {
 })
 
 async function transcriptPath(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-ai-vault-title-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-ai-vault-title-'))
   temporaryRoots.push(root)
   const path = join(root, 'session.jsonl')
   await writeFile(path, '{}\n')

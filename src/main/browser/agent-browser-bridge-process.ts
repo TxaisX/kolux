@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { platform, arch } from 'node:os'
 import type { WebContents } from 'electron'
 import { BrowserError } from './cdp-bridge'
-import { NIGHTSHIFT_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
+import { KOLUX_TAB_SESSION_PREFIX } from './agent-browser-orphan-sweep'
 import { EMBEDDED_NAVIGATION_TIMEOUT_MS } from './agent-browser-bridge-types'
 
 export function agentBrowserNativeName(): string {
@@ -175,7 +175,7 @@ export function isTabClosedTransportError(message: string): boolean {
 }
 
 export function pageUnavailableMessageForSession(sessionName: string): string {
-  const prefix = NIGHTSHIFT_TAB_SESSION_PREFIX
+  const prefix = KOLUX_TAB_SESSION_PREFIX
   const browserPageId = sessionName.startsWith(prefix) ? sessionName.slice(prefix.length) : null
   return browserPageId
     ? `Browser page ${browserPageId} is no longer available`

@@ -193,7 +193,7 @@ function trackLaunchFailureToast(state: StructuredLaunchState): void {
         {
           description: translate(
             'components.native-chat.structuredSessionFellBackToTerminalDescription',
-            'Nightshift tried to open a {{value0}} terminal instead.',
+            'Kolux tried to open a {{value0}} terminal instead.',
             { value0: agentLabel }
           )
         }
@@ -213,7 +213,7 @@ function trackLaunchFailureToast(state: StructuredLaunchState): void {
       {
         description: translate(
           'components.native-chat.structuredSessionLaunchFailedDescription',
-          'Nightshift could not open a structured {{value0}} chat. See the logs for details.',
+          'Kolux could not open a structured {{value0}} chat. See the logs for details.',
           { value0: agentLabel }
         )
       }

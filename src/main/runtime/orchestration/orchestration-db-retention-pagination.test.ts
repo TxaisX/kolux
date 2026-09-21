@@ -225,7 +225,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
   })
 
   it('migrates a populated upstream v23 database idempotently', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dispatch-index-migration-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-dispatch-index-migration-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     const task = db.createTask({
@@ -293,7 +293,7 @@ describe('OrchestrationDb dispatch assignee index migration', () => {
   })
 
   it('adds the active-handle index to a populated v24 database idempotently', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-active-dispatch-index-migration-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-active-dispatch-index-migration-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     const run = db.createRun({

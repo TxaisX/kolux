@@ -97,9 +97,7 @@ export function getPluginFilesState(pluginDir = getPluginDir()): {
     return {
       present: true,
       managed,
-      detail: managed
-        ? null
-        : 'Hermes nightshift-status plugin exists but is not Nightshift-managed'
+      detail: managed ? null : 'Hermes kolux-status plugin exists but is not Kolux-managed'
     }
   } catch (error) {
     return {

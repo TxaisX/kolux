@@ -6,7 +6,7 @@
  * every tab. The event reaches only the tab that owns the id. Mirrors the terminal-pane
  * TOGGLE_TERMINAL_PANE_EXPAND_EVENT / FOCUS_TERMINAL_PANE_EVENT dispatch.
  */
-export const RENAME_TERMINAL_TAB_EVENT = 'nightshift-rename-terminal-tab'
+export const RENAME_TERMINAL_TAB_EVENT = 'kolux-rename-terminal-tab'
 
 export type RenameTerminalTabDetail = {
   tabId: string

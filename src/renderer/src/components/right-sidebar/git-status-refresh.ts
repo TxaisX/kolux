@@ -155,7 +155,7 @@ export async function refreshGitStatusForWorktree({
     request?.onStatusAccepted?.(status)
     if (pushTarget) {
       // Why: porcelain status reports Git's configured upstream. Source Control
-      // actions for PR-created worktrees must instead reconcile with Nightshift's
+      // actions for PR-created worktrees must instead reconcile with Kolux's
       // explicit publish target.
       const cachedUpstreamStatus = getCachedAutomaticPushTargetUpstreamStatus({
         settings,
@@ -281,7 +281,7 @@ export async function refreshGitStatusForWorktreeStrict({
   })
   if (pushTarget) {
     // Why: porcelain status reports Git's configured upstream. Source Control
-    // actions for PR-created worktrees must instead reconcile with Nightshift's
+    // actions for PR-created worktrees must instead reconcile with Kolux's
     // explicit publish target.
     const upstreamStatus = await getRuntimeGitUpstreamStatus(
       { settings, worktreeId, worktreePath, connectionId },

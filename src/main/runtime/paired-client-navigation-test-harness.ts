@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 import WebSocket from 'ws'
 import { parsePairingCode } from '../../shared/pairing'
 import type { RuntimeMobileSessionTabsResult } from '../../shared/runtime-types'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import { decrypt, deriveSharedKey, encrypt, generateKeyPair } from './rpc/e2ee-crypto'
 
 export const REPO_ID = 'repo-1'
@@ -191,7 +191,7 @@ export function snapshotVersion(response: Record<string, unknown>): number {
   return (response.result as RuntimeMobileSessionTabsResult | undefined)?.snapshotVersion ?? -1
 }
 
-export function seedSessionTabs(runtime: NightshiftRuntimeService): void {
+export function seedSessionTabs(runtime: KoluxRuntimeService): void {
   const tabs = ['host-tab', 'client-a-tab', 'client-a2-tab', 'client-b-tab'].map((id, index) => ({
     type: 'terminal' as const,
     id,

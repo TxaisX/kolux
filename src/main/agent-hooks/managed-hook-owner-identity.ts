@@ -70,7 +70,7 @@ async function readDurableHostToken(): Promise<string | undefined> {
   if ((process.platform !== 'linux' && process.platform !== 'darwin') || uid === undefined) {
     return undefined
   }
-  const directory = join('/var', 'tmp', `nightshift-managed-hooks-${uid}`)
+  const directory = join('/var', 'tmp', `kolux-managed-hooks-${uid}`)
   const tokenPath = join(directory, 'host-id')
   try {
     await mkdir(directory, { recursive: true, mode: 0o700 })

@@ -38,7 +38,7 @@ describe('handshake round-trip over a real Socket pair', () => {
   let uncaughtHandler: (err: Error) => void
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-handshake-test-'))
+    tmpDir = mkdtempSync(join(tmpdir(), 'kolux-handshake-test-'))
     sockPath = relayTestSocketPath(tmpDir)
     exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new ExitCalled(code ?? 0)
@@ -151,7 +151,7 @@ describe('handshake round-trip over a real Socket pair', () => {
     await new Promise<void>((r) => bridgeSock.once('connect', () => r()))
 
     const handshakeFrame = encodeHandshakeFrame({
-      type: 'nightshift-relay-handshake',
+      type: 'kolux-relay-handshake',
       version: '0.1.0+match'
     })
     const trailingPayload = encodeJsonRpcFrame({ jsonrpc: '2.0', method: 'noop', params: {} }, 1, 0)
@@ -178,7 +178,7 @@ describe('handshake round-trip over a real Socket pair', () => {
         }
         serverHandshakeSeen = true
         const ok = encodeHandshakeFrame({
-          type: 'nightshift-relay-handshake-ok',
+          type: 'kolux-relay-handshake-ok',
           version: '0.1.0+match'
         })
         const trailing = encodeJsonRpcFrame(

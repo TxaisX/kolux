@@ -77,7 +77,7 @@ function twinOf(body: AgentJournalRenderItem['body']): string | undefined {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-subagents-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-subagents-'))
   clock = 1_000
 })
 
@@ -126,7 +126,7 @@ describe('staleSubagentRosterRevisions', () => {
     expect(
       staleSubagentRosterRevisions([
         {
-          itemId: 'nightshift:plain',
+          itemId: 'kolux:plain',
           revision: 1,
           body: { kind: 'message', role: 'assistant', blocks: [{ type: 'text', text: 'hi' }] },
           sequence: 2,

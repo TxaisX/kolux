@@ -19,7 +19,7 @@ import {
 import { discoverFiles, walkSessionFiles } from './session-scanner-discovery'
 
 const SLOW_MESSAGE =
-  'WSL transcript files are temporarily unavailable because filesystem access is taking too long. Try again shortly or restart Nightshift if the issue continues.'
+  'WSL transcript files are temporarily unavailable because filesystem access is taking too long. Try again shortly or restart Kolux if the issue continues.'
 
 // Complete: UNC readdir results pass through the child dispatcher's dirent
 // serializer, which reads every kind flag.

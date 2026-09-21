@@ -232,7 +232,7 @@ describe('CodexRuntimeHomeService', () => {
     // A managed home that has lost its auth.json (only the marker remains).
     const brokenHome = join(testState.userDataDir, 'codex-accounts', 'account-1', 'home')
     mkdirSync(brokenHome, { recursive: true })
-    writeFileSync(join(brokenHome, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(brokenHome, '.kolux-managed-home'), 'account-1\n', 'utf-8')
     const settings = createSettings({
       shellStartupEnvProbeSupported: true,
       codexManagedAccounts: [
@@ -310,7 +310,7 @@ describe('CodexRuntimeHomeService', () => {
 
   it('includes WSL account homes in session discovery', async () => {
     const wslHome =
-      '\\\\wsl.localhost\\Ubuntu\\home\\me\\.local\\share\\nightshift\\codex-accounts\\account-1\\home'
+      '\\\\wsl.localhost\\Ubuntu\\home\\me\\.local\\share\\kolux\\codex-accounts\\account-1\\home'
     const store = createStore(
       createSettings({
         codexManagedAccounts: [
@@ -320,7 +320,7 @@ describe('CodexRuntimeHomeService', () => {
             managedHomePath: wslHome,
             managedHomeRuntime: 'wsl',
             wslDistro: 'Ubuntu',
-            wslLinuxHomePath: '/home/me/.local/share/nightshift/codex-accounts/account-1/home',
+            wslLinuxHomePath: '/home/me/.local/share/kolux/codex-accounts/account-1/home',
             providerAccountId: null,
             workspaceLabel: null,
             workspaceAccountId: null,

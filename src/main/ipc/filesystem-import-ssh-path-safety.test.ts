@@ -40,7 +40,7 @@ function createProvider(uploadSession: FileUploadSession): IFilesystemProvider {
 
 describe('SSH import remote path safety', () => {
   const connectionId = 'ssh-windows'
-  const destDir = 'C:/Users/me/project/.nightshift/drops'
+  const destDir = 'C:/Users/me/project/.kolux/drops'
   let provider: IFilesystemProvider
   let uploadSession: FileUploadSession
 
@@ -62,7 +62,7 @@ describe('SSH import remote path safety', () => {
   it.runIf(process.platform !== 'win32')(
     'rejects a POSIX filename containing Windows traversal before remote stat',
     async () => {
-      const sourcePath = '/tmp/..\\..\\.ssh\\nightshift_drop'
+      const sourcePath = '/tmp/..\\..\\.ssh\\kolux_drop'
 
       const { results } = await importExternalPathsSsh([sourcePath], destDir, connectionId)
 
@@ -78,7 +78,7 @@ describe('SSH import remote path safety', () => {
     }
   )
 
-  it.each(['report.txt:nightshift', 'NUL', 'trailing.', 'question?.txt'])(
+  it.each(['report.txt:kolux', 'NUL', 'trailing.', 'question?.txt'])(
     'rejects Windows-special top-level name %j before remote stat',
     async (name) => {
       const { results } = await importExternalPathsSsh([`/tmp/${name}`], destDir, connectionId)
@@ -102,7 +102,7 @@ describe('SSH import remote path safety', () => {
     })
     readdirMock.mockResolvedValue([
       {
-        name: '..\\..\\.ssh\\nightshift_drop',
+        name: '..\\..\\.ssh\\kolux_drop',
         isFile: () => true,
         isDirectory: () => false,
         isSymbolicLink: () => false

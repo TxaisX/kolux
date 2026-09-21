@@ -57,7 +57,7 @@ export class CdpBridgeState {
     if (tabs.length === 0) {
       throw new BrowserError(
         'browser_no_tab',
-        'No browser tab is open. Use the Nightshift UI to open a browser tab first.'
+        'No browser tab is open. Use the Kolux UI to open a browser tab first.'
       )
     }
     if (tabs.length === 1) {
@@ -65,7 +65,7 @@ export class CdpBridgeState {
     } else {
       throw new BrowserError(
         'browser_no_tab',
-        "Multiple browser tabs are open. Run 'nightshift tab list' and 'nightshift tab switch --index <n>' to select one."
+        "Multiple browser tabs are open. Run 'kolux tab list' and 'kolux tab switch --index <n>' to select one."
       )
     }
 
@@ -74,7 +74,7 @@ export class CdpBridgeState {
       this.activeWebContentsId = null
       throw new BrowserError(
         'browser_debugger_detached',
-        "The active browser tab was closed. Run 'nightshift tab list' to find remaining tabs."
+        "The active browser tab was closed. Run 'kolux tab list' to find remaining tabs."
       )
     }
     return guest

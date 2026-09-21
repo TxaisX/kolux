@@ -12,7 +12,7 @@ describe('native CLI PowerShell argv boundary', () => {
   it.skipIf(process.platform !== 'win32')(
     'recovers ConvertTo-Json dependencies after PowerShell 5.1 builds native argv',
     async () => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-native-powershell-argv-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-native-powershell-argv-'))
       const scriptPath = join(root, 'invoke-deps.ps1')
       const targetPath = join(root, 'argv-target.cjs')
 

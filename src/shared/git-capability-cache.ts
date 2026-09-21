@@ -1,7 +1,7 @@
 import { CapabilityProbeCache } from './capability-probe-cache'
 
 // Why: suppress hot-loop failures while still detecting an in-place Git
-// upgrade during a long Nightshift session without requiring a restart.
+// upgrade during a long Kolux session without requiring a restart.
 export const GIT_CAPABILITY_RETRY_INTERVAL_MS = 30 * 60_000
 
 export type GitCapability =

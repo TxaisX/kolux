@@ -8,7 +8,7 @@ import { DISABLED_CHROMIUM_FEATURES } from './disabled-chromium-features'
 import { readHttp1CompatibilityMarker } from './http1-compatibility-marker'
 
 const DEV_PARENT_SHUTDOWN_GRACE_MS = 3000
-const HTTP1_COMPATIBILITY_ENV_VAR = 'NIGHTSHIFT_DISABLE_HTTP2'
+const HTTP1_COMPATIBILITY_ENV_VAR = 'KOLUX_DISABLE_HTTP2'
 const TRUE_ENV_VALUES = new Set(['1', 'true', 'yes', 'on'])
 const FALSE_ENV_VALUES = new Set(['0', 'false', 'no', 'off'])
 let devParentShutdownRequested = false
@@ -33,7 +33,7 @@ function parseBooleanEnvFlag(value: string | undefined): boolean | null {
 }
 
 function readPersistedHttp1CompatibilityMode(userDataPath: string): boolean {
-  const dataFile = join(userDataPath, 'nightshift-data.json')
+  const dataFile = join(userDataPath, 'kolux-data.json')
   if (!existsSync(dataFile)) {
     return false
   }
@@ -57,7 +57,7 @@ export function shouldDisableHttp2ForElectronNetworking(
   }
   const userDataPath = options.userDataPath ?? app.getPath('userData')
   // Why the marker first: this runs before app.whenReady(), and the settings file is the multi-MB
-  // nightshift-data.json the Store parses again moments later. The marker is refreshed whenever settings
+  // kolux-data.json the Store parses again moments later. The marker is refreshed whenever settings
   // change, so the full read only happens on a profile that has never written one.
   return (
     readHttp1CompatibilityMarker(userDataPath) ?? readPersistedHttp1CompatibilityMode(userDataPath)
@@ -194,7 +194,7 @@ export function configureDevUserDataPath(isDev: boolean): void {
     // dedicated userData path per launch prevents persisted repos, worktrees,
     // and session state from leaking between tests through the shared dev
     // profile while still leaving the user's real packaged profile untouched.
-    const e2eHomeDir = process.env.NIGHTSHIFT_E2E_HOME_DIR ?? join(e2eConfig.userDataDir, 'home')
+    const e2eHomeDir = process.env.KOLUX_E2E_HOME_DIR ?? join(e2eConfig.userDataDir, 'home')
     // Why: E2E imports can resolve os.homedir() before Electron is ready. Abort
     // startup if a direct launch skipped the disposable Node-home contract.
     if (!areSameE2EHomePath(homedir(), e2eHomeDir)) {
@@ -211,14 +211,14 @@ export function configureDevUserDataPath(isDev: boolean): void {
   if (!isDev) {
     return
   }
-  const overrideUserDataPath = process.env.NIGHTSHIFT_DEV_USER_DATA_PATH
+  const overrideUserDataPath = process.env.KOLUX_DEV_USER_DATA_PATH
   if (overrideUserDataPath) {
     // Why: automated repros need an isolated profile so the dev's persisted tabs/worktrees don't skew startup and hide window bugs.
     app.setPath('userData', overrideUserDataPath)
     return
   }
-  // Why: without a dev-only path, pnpm dev overwrites the packaged app's runtime pointer under userData and breaks the nightshift CLI.
-  app.setPath('userData', join(app.getPath('appData'), 'nightshift-dev'))
+  // Why: without a dev-only path, pnpm dev overwrites the packaged app's runtime pointer under userData and breaks the kolux CLI.
+  app.setPath('userData', join(app.getPath('appData'), 'kolux-dev'))
 }
 
 function areSameE2EHomePath(left: string, right: string): boolean {
@@ -229,14 +229,14 @@ function areSameE2EHomePath(left: string, right: string): boolean {
     : normalizedLeft === normalizedRight
 }
 
-export function configureNightshiftUserDataPathEnv(): void {
-  // Why: relaunches can inherit a stale NIGHTSHIFT_USER_DATA_PATH; canonicalize before CLI-shared modules build runtime-home paths.
-  process.env.NIGHTSHIFT_USER_DATA_PATH = app.getPath('userData')
+export function configureKoluxUserDataPathEnv(): void {
+  // Why: relaunches can inherit a stale KOLUX_USER_DATA_PATH; canonicalize before CLI-shared modules build runtime-home paths.
+  process.env.KOLUX_USER_DATA_PATH = app.getPath('userData')
 }
 
 export function shouldInstallManagedHooks(isDev: boolean): boolean {
   void isDev
-  // Why: managed hooks now target Nightshift-owned Codex homes, not ~/.codex, so keep install on for all agents until each gets its own seam.
+  // Why: managed hooks now target Kolux-owned Codex homes, not ~/.codex, so keep install on for all agents until each gets its own seam.
   return true
 }
 
@@ -282,7 +282,7 @@ export function installDevParentWatchdog(isDev: boolean): void {
 
     if (parentPidChanged || parentMissing) {
       clearInterval(timer)
-      // Why: the dev runner spawns Electron without IPC, so on macOS Ctrl+C leaves Nightshift open; watch the parent PID to couple shutdown.
+      // Why: the dev runner spawns Electron without IPC, so on macOS Ctrl+C leaves Kolux open; watch the parent PID to couple shutdown.
       requestDevParentShutdown()
     }
   }, 1000)

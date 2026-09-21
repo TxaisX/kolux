@@ -1,14 +1,14 @@
-# Nightshift relay bash overlay wrapper
-_nightshift_shell_features=",${NIGHTSHIFT_SHELL_FEATURES:-},"
-builtin unset NIGHTSHIFT_SHELL_FEATURES
-__nightshift_has_feature() { [[ "$_nightshift_shell_features" == *",$1,"* ]]; }
-__nightshift_has_feature identity && printf "\033]777;nightshift-shell-start:%s\007" "$$"
+# Kolux relay bash overlay wrapper
+_kolux_shell_features=",${KOLUX_SHELL_FEATURES:-},"
+builtin unset KOLUX_SHELL_FEATURES
+__kolux_has_feature() { [[ "$_kolux_shell_features" == *",$1,"* ]]; }
+__kolux_has_feature identity && printf "\033]777;kolux-shell-start:%s\007" "$$"
 # Why a plain variable: the channel is consumed and destroyed in these first
 # lines, so nothing this shell later spawns can see or inherit the selection.
-__nightshift_ready_marker=""
-__nightshift_has_feature ready && __nightshift_ready_marker=1
-unset _nightshift_shell_features
-unset -f __nightshift_has_feature
+__kolux_ready_marker=""
+__kolux_has_feature ready && __kolux_ready_marker=1
+unset _kolux_shell_features
+unset -f __kolux_has_feature
 [[ -f /etc/profile ]] && source /etc/profile
 if [[ -f "$HOME/.bash_profile" ]]; then
   source "$HOME/.bash_profile"
@@ -17,344 +17,344 @@ elif [[ -f "$HOME/.bash_login" ]]; then
 elif [[ -f "$HOME/.profile" ]]; then
   source "$HOME/.profile"
 fi
-# Why: enable bracketed paste so Nightshift can deliver a multiline startup prompt as
+# Why: enable bracketed paste so Kolux can deliver a multiline startup prompt as
 # a single literal paste (ESC[200~…ESC[201~); without it, older readline builds
 # treat each embedded newline as Enter and mangle the prompt into PS2
 # continuation. Modern readline defaults this on; force it for the rest.
 [[ $- == *i* ]] && bind 'set enable-bracketed-paste on' 2>/dev/null
 # Why: remote startup files can re-export user defaults after relay spawn.
-[[ -n "${NIGHTSHIFT_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${NIGHTSHIFT_OPENCODE_CONFIG_DIR}"
-[[ -n "${NIGHTSHIFT_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${NIGHTSHIFT_MIMOCODE_HOME}"
-[[ -n "${NIGHTSHIFT_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"${NIGHTSHIFT_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="${NIGHTSHIFT_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac
-# Why: OMP does not auto-load Nightshift's managed status extension; wrap only
+[[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"
+[[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"
+[[ -n "${KOLUX_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"${KOLUX_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="${KOLUX_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac
+# Why: OMP does not auto-load Kolux's managed status extension; wrap only
 # interactive launch invocations so subcommands such as `omp config` keep
 # their normal argv shape.
-__nightshift_omp_should_skip_extension() {
+__kolux_omp_should_skip_extension() {
   case "${1:-}" in
     help|--help|-h|--version|-v) return 0 ;;
     __complete|acp|agents|auth-broker|auth-gateway|bench|commit|completions|config|dry-balance|gallery|grep|grievances|install|join|models|plugin|read|say|search|setup|shell|ssh|stats|tiny-models|token|ttsr|update|usage|worktree|q|wt) return 0 ;;
   esac
   return 1
 }
-__nightshift_omp_cwd_is_usable() {
-  local __nightshift_physical_cwd
+__kolux_omp_cwd_is_usable() {
+  local __kolux_physical_cwd
   [[ -x . ]] || return 1
   if [[ -n "${PWD:-}" && -d "${PWD:-}" ]]; then
     [[ "${PWD}" -ef . ]]
   else
     # Why compare the path: shell builtins can print a cached path for a deleted cwd.
-    __nightshift_physical_cwd="$(builtin pwd -P 2>/dev/null)" || return 1
-    [[ -d "$__nightshift_physical_cwd" && "$__nightshift_physical_cwd" -ef . ]]
+    __kolux_physical_cwd="$(builtin pwd -P 2>/dev/null)" || return 1
+    [[ -d "$__kolux_physical_cwd" && "$__kolux_physical_cwd" -ef . ]]
   fi
 }
-__nightshift_omp_invoke() {
-  local __nightshift_use_extension="$1"
+__kolux_omp_invoke() {
+  local __kolux_use_extension="$1"
   shift
-  if [[ $__nightshift_use_extension -eq 1 && -n "${NIGHTSHIFT_OMP_STATUS_EXTENSION:-}" && -f "${NIGHTSHIFT_OMP_STATUS_EXTENSION}" ]]; then
+  if [[ $__kolux_use_extension -eq 1 && -n "${KOLUX_OMP_STATUS_EXTENSION:-}" && -f "${KOLUX_OMP_STATUS_EXTENSION}" ]]; then
     if [[ "${1:-}" == "launch" ]]; then
       shift
-      command omp launch --extension "${NIGHTSHIFT_OMP_STATUS_EXTENSION}" "$@"
+      command omp launch --extension "${KOLUX_OMP_STATUS_EXTENSION}" "$@"
     else
-      command omp --extension "${NIGHTSHIFT_OMP_STATUS_EXTENSION}" "$@"
+      command omp --extension "${KOLUX_OMP_STATUS_EXTENSION}" "$@"
     fi
   else
     command omp "$@"
   fi
 }
-__nightshift_omp() {
-  local __nightshift_use_extension=1
-  __nightshift_omp_should_skip_extension "${1:-}" && __nightshift_use_extension=0
-  if ! __nightshift_omp_cwd_is_usable; then
-    local __nightshift_logical_cwd="${PWD:-${NIGHTSHIFT_WORKTREE_PATH:-${NIGHTSHIFT_ROOT_PATH:-}}}"
+__kolux_omp() {
+  local __kolux_use_extension=1
+  __kolux_omp_should_skip_extension "${1:-}" && __kolux_use_extension=0
+  if ! __kolux_omp_cwd_is_usable; then
+    local __kolux_logical_cwd="${PWD:-${KOLUX_WORKTREE_PATH:-${KOLUX_ROOT_PATH:-}}}"
     # Why: a restored shell can retain the deleted directory inode after its path is recreated.
     (
-      if [[ -z "$__nightshift_logical_cwd" ]]; then
-        printf 'Nightshift: OMP cannot start because no terminal working directory is available. Open a new terminal in an existing directory.\n' >&2
+      if [[ -z "$__kolux_logical_cwd" ]]; then
+        printf 'Kolux: OMP cannot start because no terminal working directory is available. Open a new terminal in an existing directory.\n' >&2
         return 1
       fi
-      if ! builtin cd -P -- "$__nightshift_logical_cwd" 2>/dev/null; then
-        printf 'Nightshift: OMP cannot access the terminal working directory "%s". Open a new terminal in an existing directory.\n' "$__nightshift_logical_cwd" >&2
+      if ! builtin cd -P -- "$__kolux_logical_cwd" 2>/dev/null; then
+        printf 'Kolux: OMP cannot access the terminal working directory "%s". Open a new terminal in an existing directory.\n' "$__kolux_logical_cwd" >&2
         return 1
       fi
-      __nightshift_omp_invoke "$__nightshift_use_extension" "$@"
+      __kolux_omp_invoke "$__kolux_use_extension" "$@"
     )
   else
-    __nightshift_omp_invoke "$__nightshift_use_extension" "$@"
+    __kolux_omp_invoke "$__kolux_use_extension" "$@"
   fi
 }
-if [[ -n "${NIGHTSHIFT_OMP_STATUS_EXTENSION:-}" ]]; then
+if [[ -n "${KOLUX_OMP_STATUS_EXTENSION:-}" ]]; then
   # Why the function reserved word: it suppresses alias expansion of the name, which
   # an `alias omp` otherwise rewrites at parse time, aborting the rest of the file.
-  function omp { __nightshift_omp "$@"; }
+  function omp { __kolux_omp "$@"; }
 fi
 
-if [[ -n "${NIGHTSHIFT_HISTFILE:-}" ]]; then
-  HISTFILE="$NIGHTSHIFT_HISTFILE"
-  builtin unset NIGHTSHIFT_HISTFILE
+if [[ -n "${KOLUX_HISTFILE:-}" ]]; then
+  HISTFILE="$KOLUX_HISTFILE"
+  builtin unset KOLUX_HISTFILE
 elif [[ "${HISTFILE:-}" == "$ZDOTDIR/.zsh_history" ]]; then
-  # Why also when Nightshift injected nothing: /etc/zshrc derived this from Nightshift's
+  # Why also when Kolux injected nothing: /etc/zshrc derived this from Kolux's
   # wrapper ZDOTDIR, so history would accumulate INSIDE the wrapper dir and the
   # user's real history would be invisible — the plain #11044 bug, with no
   # per-worktree scoping involved. Matching the exact clobbered value means a
   # HISTFILE the user set deliberately is never touched.
-  HISTFILE="${NIGHTSHIFT_ORIG_ZDOTDIR:-$HOME}/.zsh_history"
+  HISTFILE="${KOLUX_ORIG_ZDOTDIR:-$HOME}/.zsh_history"
 fi
 # Why: SSH bash sessions need the same command lifecycle markers as local
 # bash so agent rows stop showing "working" when the foreground command exits.
-__nightshift_initializing_wrapper=1
-__nightshift_osc133_precmd() {
+__kolux_initializing_wrapper=1
+__kolux_osc133_precmd() {
   local exit_code=$?
-  __nightshift_in_prompt_command=1
-  if [[ -n "${__nightshift_in_command:-}" ]]; then
+  __kolux_in_prompt_command=1
+  if [[ -n "${__kolux_in_command:-}" ]]; then
     printf "\033]133;D;%s\007" "$exit_code"
-    unset __nightshift_in_command
+    unset __kolux_in_command
   fi
   printf "\033]133;A\007"
   return "$exit_code"
 }
-__nightshift_osc133_prompt_done() {
-  unset __nightshift_in_prompt_command; __nightshift_adopt_outer_debug_trap
-  trap '__nightshift_osc133_preexec' DEBUG
+__kolux_osc133_prompt_done() {
+  unset __kolux_in_prompt_command; __kolux_adopt_outer_debug_trap
+  trap '__kolux_osc133_preexec' DEBUG
 }
-__nightshift_osc133_preexec() {
-  if [[ -n "${__nightshift_prompt_status_capture_command:-}" && "$BASH_COMMAND" == "$__nightshift_prompt_status_capture_command" ]]; then
-    unset __nightshift_initial_prompt
-    __nightshift_in_legacy_prompt_wrapper=1
+__kolux_osc133_preexec() {
+  if [[ -n "${__kolux_prompt_status_capture_command:-}" && "$BASH_COMMAND" == "$__kolux_prompt_status_capture_command" ]]; then
+    unset __kolux_initial_prompt
+    __kolux_in_legacy_prompt_wrapper=1
     return 0
   fi
-  if [[ -n "${__nightshift_initializing_wrapper:-}${__nightshift_in_debug_capture:-}${__nightshift_initial_prompt:-}${__nightshift_in_prompt_dispatch:-}${__nightshift_in_legacy_prompt_wrapper:-}${__nightshift_in_prompt_command:-}" ]]; then
-    [[ -z "${__nightshift_initializing_wrapper:-}${__nightshift_in_debug_capture:-}" ]] || return 0
-    if [[ -n "${__nightshift_initial_prompt:-}" && "$BASH_COMMAND" == "__nightshift_osc133_precmd" ]]; then
-      unset __nightshift_initial_prompt; return 0
+  if [[ -n "${__kolux_initializing_wrapper:-}${__kolux_in_debug_capture:-}${__kolux_initial_prompt:-}${__kolux_in_prompt_dispatch:-}${__kolux_in_legacy_prompt_wrapper:-}${__kolux_in_prompt_command:-}" ]]; then
+    [[ -z "${__kolux_initializing_wrapper:-}${__kolux_in_debug_capture:-}" ]] || return 0
+    if [[ -n "${__kolux_initial_prompt:-}" && "$BASH_COMMAND" == "__kolux_osc133_precmd" ]]; then
+      unset __kolux_initial_prompt; return 0
     fi
-    if [[ -n "${__nightshift_in_prompt_dispatch:-}" ]]; then
-      [[ -n "${__nightshift_dispatching_user_prompt_command:-}" ]] || return 0
-      if [[ "${FUNCNAME[1]:-}" == "__nightshift_run_prompt_command_array" ]]; then
+    if [[ -n "${__kolux_in_prompt_dispatch:-}" ]]; then
+      [[ -n "${__kolux_dispatching_user_prompt_command:-}" ]] || return 0
+      if [[ "${FUNCNAME[1]:-}" == "__kolux_run_prompt_command_array" ]]; then
         case "$BASH_COMMAND" in
-          '(( __nightshift_exit_code == 0 ))'|'__nightshift_restore_prompt_status "$__nightshift_exit_code"'|'eval "$__nightshift_prompt_part"'|'eval "$__nightshift_final_prompt_command"'|__nightshift_dispatching_user_prompt_command=*|__nightshift_osc133_precmd|__nightshift_osc133_prompt_done|__nightshift_prompt_mark) return 0 ;;
+          '(( __kolux_exit_code == 0 ))'|'__kolux_restore_prompt_status "$__kolux_exit_code"'|'eval "$__kolux_prompt_part"'|'eval "$__kolux_final_prompt_command"'|__kolux_dispatching_user_prompt_command=*|__kolux_osc133_precmd|__kolux_osc133_prompt_done|__kolux_prompt_mark) return 0 ;;
         esac
       fi
-    elif [[ "${FUNCNAME[1]:-}" == "__nightshift_run_prompt_command_array" || "$BASH_COMMAND" == "__nightshift_run_prompt_command_array" ]]; then
+    elif [[ "${FUNCNAME[1]:-}" == "__kolux_run_prompt_command_array" || "$BASH_COMMAND" == "__kolux_run_prompt_command_array" ]]; then
       return 0
     fi
-    [[ -z "${__nightshift_in_legacy_prompt_wrapper:-}" || -n "${__nightshift_dispatching_user_prompt_command:-}" ]] || return 0
-    if [[ -n "${__nightshift_in_prompt_command:-}" && "$BASH_COMMAND" == "__nightshift_in_debug_capture=1" ]]; then
+    [[ -z "${__kolux_in_legacy_prompt_wrapper:-}" || -n "${__kolux_dispatching_user_prompt_command:-}" ]] || return 0
+    if [[ -n "${__kolux_in_prompt_command:-}" && "$BASH_COMMAND" == "__kolux_in_debug_capture=1" ]]; then
       return 0
     fi
   fi
-  case "${FUNCNAME[1]:-}" in __nightshift_osc133_*|__nightshift_prompt_mark|__nightshift_restore_prompt_status) return 0 ;; esac
-  case "$BASH_COMMAND" in __nightshift_osc133_precmd|__nightshift_osc133_prompt_done|__nightshift_prompt_mark) return 0 ;; esac
-  __nightshift_run_user_debug_trap
-  [[ -z "${__nightshift_in_prompt_command:-}" ]] || return 0
-  [[ -z "${__nightshift_in_command:-}" ]] || return 0
+  case "${FUNCNAME[1]:-}" in __kolux_osc133_*|__kolux_prompt_mark|__kolux_restore_prompt_status) return 0 ;; esac
+  case "$BASH_COMMAND" in __kolux_osc133_precmd|__kolux_osc133_prompt_done|__kolux_prompt_mark) return 0 ;; esac
+  __kolux_run_user_debug_trap
+  [[ -z "${__kolux_in_prompt_command:-}" ]] || return 0
+  [[ -z "${__kolux_in_command:-}" ]] || return 0
   printf "\033]133;C\007"
-  __nightshift_in_command=1
+  __kolux_in_command=1
 }
-__nightshift_normalize_prompt_command_part() {
-  local __nightshift_value="$1" __nightshift_output_name="$2" __nightshift_character __nightshift_chunk
-  local __nightshift_value_length=${#1} __nightshift_suffix_length=0 __nightshift_backslash_length=0
-  local __nightshift_output_length __nightshift_scan_start
-  while (( __nightshift_value_length - __nightshift_suffix_length >= 1024 )); do
-    __nightshift_scan_start=$(( __nightshift_value_length - __nightshift_suffix_length - 1024 ))
-    __nightshift_chunk="${__nightshift_value:__nightshift_scan_start:1024}"
-    case "$__nightshift_chunk" in
+__kolux_normalize_prompt_command_part() {
+  local __kolux_value="$1" __kolux_output_name="$2" __kolux_character __kolux_chunk
+  local __kolux_value_length=${#1} __kolux_suffix_length=0 __kolux_backslash_length=0
+  local __kolux_output_length __kolux_scan_start
+  while (( __kolux_value_length - __kolux_suffix_length >= 1024 )); do
+    __kolux_scan_start=$(( __kolux_value_length - __kolux_suffix_length - 1024 ))
+    __kolux_chunk="${__kolux_value:__kolux_scan_start:1024}"
+    case "$__kolux_chunk" in
       *[!$' \t\n;']*) break ;;
-      *) __nightshift_suffix_length=$(( __nightshift_suffix_length + 1024 )) ;;
+      *) __kolux_suffix_length=$(( __kolux_suffix_length + 1024 )) ;;
     esac
   done
-  while (( __nightshift_suffix_length < __nightshift_value_length )); do
-    __nightshift_character="${__nightshift_value: -__nightshift_suffix_length - 1:1}"
-    case "$__nightshift_character" in
-      ' '|$'\t'|$'\n'|';') __nightshift_suffix_length=$(( __nightshift_suffix_length + 1 )) ;;
+  while (( __kolux_suffix_length < __kolux_value_length )); do
+    __kolux_character="${__kolux_value: -__kolux_suffix_length - 1:1}"
+    case "$__kolux_character" in
+      ' '|$'\t'|$'\n'|';') __kolux_suffix_length=$(( __kolux_suffix_length + 1 )) ;;
       *) break ;;
     esac
   done
-  __nightshift_output_length=$(( ${#__nightshift_value} - __nightshift_suffix_length ))
-  while (( __nightshift_output_length - __nightshift_backslash_length >= 1024 )); do
-    __nightshift_scan_start=$(( __nightshift_output_length - __nightshift_backslash_length - 1024 ))
-    __nightshift_chunk="${__nightshift_value:__nightshift_scan_start:1024}"
-    case "$__nightshift_chunk" in
+  __kolux_output_length=$(( ${#__kolux_value} - __kolux_suffix_length ))
+  while (( __kolux_output_length - __kolux_backslash_length >= 1024 )); do
+    __kolux_scan_start=$(( __kolux_output_length - __kolux_backslash_length - 1024 ))
+    __kolux_chunk="${__kolux_value:__kolux_scan_start:1024}"
+    case "$__kolux_chunk" in
       *[!\\]*) break ;;
-      *) __nightshift_backslash_length=$(( __nightshift_backslash_length + 1024 )) ;;
+      *) __kolux_backslash_length=$(( __kolux_backslash_length + 1024 )) ;;
     esac
   done
-  while (( __nightshift_backslash_length < __nightshift_output_length )); do
-    __nightshift_character="${__nightshift_value:__nightshift_output_length - __nightshift_backslash_length - 1:1}"
-    [[ "$__nightshift_character" == '\' ]] || break
-    __nightshift_backslash_length=$(( __nightshift_backslash_length + 1 ))
+  while (( __kolux_backslash_length < __kolux_output_length )); do
+    __kolux_character="${__kolux_value:__kolux_output_length - __kolux_backslash_length - 1:1}"
+    [[ "$__kolux_character" == '\' ]] || break
+    __kolux_backslash_length=$(( __kolux_backslash_length + 1 ))
   done
   # Preserve the first separator when an odd backslash run escapes it.
-  if (( __nightshift_suffix_length > 0 && __nightshift_backslash_length % 2 == 1 )); then
-    __nightshift_suffix_length=$(( __nightshift_suffix_length - 1 ))
-    __nightshift_backslash_length=0
+  if (( __kolux_suffix_length > 0 && __kolux_backslash_length % 2 == 1 )); then
+    __kolux_suffix_length=$(( __kolux_suffix_length - 1 ))
+    __kolux_backslash_length=0
   fi
-  __nightshift_output_length=$(( ${#__nightshift_value} - __nightshift_suffix_length ))
-  __nightshift_value="${__nightshift_value:0:__nightshift_output_length}"
+  __kolux_output_length=$(( ${#__kolux_value} - __kolux_suffix_length ))
+  __kolux_value="${__kolux_value:0:__kolux_output_length}"
   # Bash 4.4-5.0 scalar prompt evaluation preserves an odd terminal backslash.
-  if (( __nightshift_suffix_length == 0 && ((BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4) || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] == 0)) && __nightshift_backslash_length % 2 == 1 )); then
-    __nightshift_value="$__nightshift_value\\"
+  if (( __kolux_suffix_length == 0 && ((BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4) || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] == 0)) && __kolux_backslash_length % 2 == 1 )); then
+    __kolux_value="$__kolux_value\\"
   fi
-  printf -v "$__nightshift_output_name" '%s' "$__nightshift_value"
+  printf -v "$__kolux_output_name" '%s' "$__kolux_value"
 }
-__nightshift_restore_prompt_status() {
+__kolux_restore_prompt_status() {
   return "$1"
 }
-__nightshift_update_user_debug_trap() {
-  local __nightshift_debug_trap_spec="$1" __nightshift_unchanged_debug_trap_spec="$2"
-  local __nightshift_debug_trap_command
-  [[ "$__nightshift_debug_trap_spec" != "$__nightshift_unchanged_debug_trap_spec" ]] || return 0
-  [[ "$__nightshift_debug_trap_spec" != "trap -- '__nightshift_osc133_preexec' DEBUG" ]] || return 0
-  if [[ -z "$__nightshift_debug_trap_spec" ]]; then
-    __nightshift_user_debug_trap=""
-    unset __nightshift_chained_debug_trap
+__kolux_update_user_debug_trap() {
+  local __kolux_debug_trap_spec="$1" __kolux_unchanged_debug_trap_spec="$2"
+  local __kolux_debug_trap_command
+  [[ "$__kolux_debug_trap_spec" != "$__kolux_unchanged_debug_trap_spec" ]] || return 0
+  [[ "$__kolux_debug_trap_spec" != "trap -- '__kolux_osc133_preexec' DEBUG" ]] || return 0
+  if [[ -z "$__kolux_debug_trap_spec" ]]; then
+    __kolux_user_debug_trap=""
+    unset __kolux_chained_debug_trap
     return 0
   fi
-  __nightshift_debug_trap_command="${__nightshift_debug_trap_spec#trap -- }"
-  __nightshift_debug_trap_command="${__nightshift_debug_trap_command% DEBUG}"
-  eval "__nightshift_user_debug_trap=$__nightshift_debug_trap_command"
-  unset __nightshift_chained_debug_trap
+  __kolux_debug_trap_command="${__kolux_debug_trap_spec#trap -- }"
+  __kolux_debug_trap_command="${__kolux_debug_trap_command% DEBUG}"
+  eval "__kolux_user_debug_trap=$__kolux_debug_trap_command"
+  unset __kolux_chained_debug_trap
 }
-__nightshift_run_user_debug_trap() {
-  if [[ -n "${__nightshift_user_debug_trap:-}" ]]; then
-    eval "$__nightshift_user_debug_trap" || true
+__kolux_run_user_debug_trap() {
+  if [[ -n "${__kolux_user_debug_trap:-}" ]]; then
+    eval "$__kolux_user_debug_trap" || true
   fi
 }
-__nightshift_adopt_outer_debug_trap() {
-  local __nightshift_debug_trap_spec="${__nightshift_outer_debug_trap_spec:-}"
-  unset __nightshift_outer_debug_trap_spec
-  __nightshift_update_user_debug_trap "$__nightshift_debug_trap_spec" "trap -- '__nightshift_osc133_preexec' DEBUG"
+__kolux_adopt_outer_debug_trap() {
+  local __kolux_debug_trap_spec="${__kolux_outer_debug_trap_spec:-}"
+  unset __kolux_outer_debug_trap_spec
+  __kolux_update_user_debug_trap "$__kolux_debug_trap_spec" "trap -- '__kolux_osc133_preexec' DEBUG"
 }
-__nightshift_run_prompt_command_array() {
-  local __nightshift_exit_code="${__nightshift_prompt_status:-$?}" __nightshift_prompt_part __nightshift_prompt_index __nightshift_user_count
-  local __nightshift_suffix_part
-  local __nightshift_final_prompt_command
-  local __nightshift_in_prompt_dispatch=1 __nightshift_dispatching_user_prompt_command=""
-  unset __nightshift_prompt_status
-  __nightshift_adopt_outer_debug_trap
-  trap '__nightshift_osc133_preexec' DEBUG
-  for __nightshift_prompt_part in "${__nightshift_prompt_command_prefix[@]+"${__nightshift_prompt_command_prefix[@]}"}"; do
-    if (( __nightshift_exit_code == 0 )); then
-      eval "$__nightshift_prompt_part"
+__kolux_run_prompt_command_array() {
+  local __kolux_exit_code="${__kolux_prompt_status:-$?}" __kolux_prompt_part __kolux_prompt_index __kolux_user_count
+  local __kolux_suffix_part
+  local __kolux_final_prompt_command
+  local __kolux_in_prompt_dispatch=1 __kolux_dispatching_user_prompt_command=""
+  unset __kolux_prompt_status
+  __kolux_adopt_outer_debug_trap
+  trap '__kolux_osc133_preexec' DEBUG
+  for __kolux_prompt_part in "${__kolux_prompt_command_prefix[@]+"${__kolux_prompt_command_prefix[@]}"}"; do
+    if (( __kolux_exit_code == 0 )); then
+      eval "$__kolux_prompt_part"
     else
-      __nightshift_restore_prompt_status "$__nightshift_exit_code" || eval "$__nightshift_prompt_part"
+      __kolux_restore_prompt_status "$__kolux_exit_code" || eval "$__kolux_prompt_part"
     fi
   done
-  __nightshift_user_count=0
-  for __nightshift_prompt_part in "${__nightshift_prompt_command_array[@]+"${__nightshift_prompt_command_array[@]}"}"; do
-    __nightshift_user_count=$(( __nightshift_user_count + 1 ))
+  __kolux_user_count=0
+  for __kolux_prompt_part in "${__kolux_prompt_command_array[@]+"${__kolux_prompt_command_array[@]}"}"; do
+    __kolux_user_count=$(( __kolux_user_count + 1 ))
   done
-  for (( __nightshift_prompt_index = 0; __nightshift_prompt_index + 1 < __nightshift_user_count; __nightshift_prompt_index++ )); do
-    __nightshift_prompt_part="${__nightshift_prompt_command_array[__nightshift_prompt_index]}"
-    __nightshift_dispatching_user_prompt_command=1
-    if (( __nightshift_exit_code == 0 )); then
-      eval "$__nightshift_prompt_part"
+  for (( __kolux_prompt_index = 0; __kolux_prompt_index + 1 < __kolux_user_count; __kolux_prompt_index++ )); do
+    __kolux_prompt_part="${__kolux_prompt_command_array[__kolux_prompt_index]}"
+    __kolux_dispatching_user_prompt_command=1
+    if (( __kolux_exit_code == 0 )); then
+      eval "$__kolux_prompt_part"
     else
-      __nightshift_restore_prompt_status "$__nightshift_exit_code" || eval "$__nightshift_prompt_part"
+      __kolux_restore_prompt_status "$__kolux_exit_code" || eval "$__kolux_prompt_part"
     fi
-    __nightshift_dispatching_user_prompt_command=""
+    __kolux_dispatching_user_prompt_command=""
   done
-  if (( __nightshift_user_count > 0 )); then
-    __nightshift_prompt_part="${__nightshift_prompt_command_array[__nightshift_user_count - 1]}"
-    # Why: keep the final user hook and Nightshift suffixes in one status-preserving eval.
-    __nightshift_final_prompt_command='eval "$__nightshift_prompt_part"'
-    for __nightshift_suffix_part in "${__nightshift_prompt_command_suffix[@]+"${__nightshift_prompt_command_suffix[@]}"}"; do
-      __nightshift_final_prompt_command+=$'\n'"$__nightshift_suffix_part"
+  if (( __kolux_user_count > 0 )); then
+    __kolux_prompt_part="${__kolux_prompt_command_array[__kolux_user_count - 1]}"
+    # Why: keep the final user hook and Kolux suffixes in one status-preserving eval.
+    __kolux_final_prompt_command='eval "$__kolux_prompt_part"'
+    for __kolux_suffix_part in "${__kolux_prompt_command_suffix[@]+"${__kolux_prompt_command_suffix[@]}"}"; do
+      __kolux_final_prompt_command+=$'\n'"$__kolux_suffix_part"
     done
-    __nightshift_dispatching_user_prompt_command=1
-    if (( __nightshift_exit_code == 0 )); then
-      eval "$__nightshift_final_prompt_command"
+    __kolux_dispatching_user_prompt_command=1
+    if (( __kolux_exit_code == 0 )); then
+      eval "$__kolux_final_prompt_command"
     else
-      __nightshift_restore_prompt_status "$__nightshift_exit_code" || eval "$__nightshift_final_prompt_command"
+      __kolux_restore_prompt_status "$__kolux_exit_code" || eval "$__kolux_final_prompt_command"
     fi
-    __nightshift_dispatching_user_prompt_command=""
+    __kolux_dispatching_user_prompt_command=""
   else
-    for __nightshift_prompt_part in "${__nightshift_prompt_command_suffix[@]+"${__nightshift_prompt_command_suffix[@]}"}"; do
-      if (( __nightshift_exit_code == 0 )); then
-        eval "$__nightshift_prompt_part"
+    for __kolux_prompt_part in "${__kolux_prompt_command_suffix[@]+"${__kolux_prompt_command_suffix[@]}"}"; do
+      if (( __kolux_exit_code == 0 )); then
+        eval "$__kolux_prompt_part"
       else
-        __nightshift_restore_prompt_status "$__nightshift_exit_code" || eval "$__nightshift_prompt_part"
+        __kolux_restore_prompt_status "$__kolux_exit_code" || eval "$__kolux_prompt_part"
       fi
     done
   fi
-  return "$__nightshift_exit_code"
+  return "$__kolux_exit_code"
 }
-__nightshift_finish_legacy_prompt_dispatch() {
-  local __nightshift_suffix_part
-  if [[ -n "${__nightshift_in_prompt_command:-}" ]]; then
-    for __nightshift_suffix_part in "${__nightshift_prompt_command_suffix[@]+"${__nightshift_prompt_command_suffix[@]}"}"; do
-      eval "$__nightshift_suffix_part"
+__kolux_finish_legacy_prompt_dispatch() {
+  local __kolux_suffix_part
+  if [[ -n "${__kolux_in_prompt_command:-}" ]]; then
+    for __kolux_suffix_part in "${__kolux_prompt_command_suffix[@]+"${__kolux_prompt_command_suffix[@]}"}"; do
+      eval "$__kolux_suffix_part"
     done
   fi
-  trap '__nightshift_osc133_preexec' DEBUG
-  unset __nightshift_in_legacy_prompt_wrapper
+  trap '__kolux_osc133_preexec' DEBUG
+  unset __kolux_in_legacy_prompt_wrapper
 }
-__nightshift_normalize_prompt_command() {
-  [[ -z "${__nightshift_prompt_command_normalized:-}" ]] || return 0
-  local __nightshift_prompt_part
-  local -a __nightshift_normalized=()
-  for __nightshift_prompt_part in "${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"}"; do
-    __nightshift_normalize_prompt_command_part "$__nightshift_prompt_part" __nightshift_prompt_part
-    [[ -n "$__nightshift_prompt_part" ]] && __nightshift_normalized+=("$__nightshift_prompt_part")
+__kolux_normalize_prompt_command() {
+  [[ -z "${__kolux_prompt_command_normalized:-}" ]] || return 0
+  local __kolux_prompt_part
+  local -a __kolux_normalized=()
+  for __kolux_prompt_part in "${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"}"; do
+    __kolux_normalize_prompt_command_part "$__kolux_prompt_part" __kolux_prompt_part
+    [[ -n "$__kolux_prompt_part" ]] && __kolux_normalized+=("$__kolux_prompt_part")
   done
-  __nightshift_prompt_command_normalized=1
+  __kolux_prompt_command_normalized=1
   if (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1) )); then
-    PROMPT_COMMAND=("${__nightshift_normalized[@]+"${__nightshift_normalized[@]}"}")
+    PROMPT_COMMAND=("${__kolux_normalized[@]+"${__kolux_normalized[@]}"}")
   else
-    __nightshift_prompt_command_array=("${__nightshift_normalized[@]+"${__nightshift_normalized[@]}"}")
-    __nightshift_prompt_command_prefix=()
-    __nightshift_prompt_command_suffix=()
+    __kolux_prompt_command_array=("${__kolux_normalized[@]+"${__kolux_normalized[@]}"}")
+    __kolux_prompt_command_prefix=()
+    __kolux_prompt_command_suffix=()
     unset PROMPT_COMMAND
     # Why: PID scope distinguishes legacy prompt dispatch from ordinary user command text.
-    __nightshift_prompt_status_variable="__nightshift_prompt_status_$$"
-    __nightshift_prompt_status_capture_command="$__nightshift_prompt_status_variable=\$?"
-    __nightshift_prompt_status_value="\${$__nightshift_prompt_status_variable}"
-    PROMPT_COMMAND="$__nightshift_prompt_status_capture_command; __nightshift_prompt_status=$__nightshift_prompt_status_value"'; __nightshift_prompt_had_functrace=""; if [[ -o functrace ]]; then __nightshift_prompt_had_functrace=1; set +T; fi; __nightshift_outer_debug_trap_spec="$(trap -p DEBUG)"; [[ -z "$__nightshift_prompt_had_functrace" ]] || set -T; unset __nightshift_prompt_had_functrace; __nightshift_run_prompt_command_array; __nightshift_finish_legacy_prompt_dispatch'
+    __kolux_prompt_status_variable="__kolux_prompt_status_$$"
+    __kolux_prompt_status_capture_command="$__kolux_prompt_status_variable=\$?"
+    __kolux_prompt_status_value="\${$__kolux_prompt_status_variable}"
+    PROMPT_COMMAND="$__kolux_prompt_status_capture_command; __kolux_prompt_status=$__kolux_prompt_status_value"'; __kolux_prompt_had_functrace=""; if [[ -o functrace ]]; then __kolux_prompt_had_functrace=1; set +T; fi; __kolux_outer_debug_trap_spec="$(trap -p DEBUG)"; [[ -z "$__kolux_prompt_had_functrace" ]] || set -T; unset __kolux_prompt_had_functrace; __kolux_run_prompt_command_array; __kolux_finish_legacy_prompt_dispatch'
   fi
 }
-__nightshift_prepend_prompt_command() {
+__kolux_prepend_prompt_command() {
   local command="$1"
-  __nightshift_normalize_prompt_command
+  __kolux_normalize_prompt_command
   if (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1) )); then
     PROMPT_COMMAND=("$command" "${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"}")
   else
-    __nightshift_prompt_command_prefix=("$command" "${__nightshift_prompt_command_prefix[@]+"${__nightshift_prompt_command_prefix[@]}"}")
+    __kolux_prompt_command_prefix=("$command" "${__kolux_prompt_command_prefix[@]+"${__kolux_prompt_command_prefix[@]}"}")
   fi
 }
-__nightshift_append_prompt_command() {
+__kolux_append_prompt_command() {
   local command="$1"
-  __nightshift_normalize_prompt_command
+  __kolux_normalize_prompt_command
   if (( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1) )); then
     PROMPT_COMMAND+=("$command")
   else
-    __nightshift_prompt_command_suffix+=("$command")
+    __kolux_prompt_command_suffix+=("$command")
   fi
 }
-__nightshift_prepend_prompt_command "__nightshift_osc133_precmd"
+__kolux_prepend_prompt_command "__kolux_osc133_precmd"
 # Why: SSH startup commands are renderer-delivered; emit the same internal
 # readiness marker as local shells only when that delivery mode asks for it.
-if [[ -n "$__nightshift_ready_marker" ]]; then
-  __nightshift_prompt_mark() {
-    printf "\033]777;nightshift-shell-ready\007"
+if [[ -n "$__kolux_ready_marker" ]]; then
+  __kolux_prompt_mark() {
+    printf "\033]777;kolux-shell-ready\007"
   }
-  __nightshift_append_prompt_command "__nightshift_prompt_mark"
+  __kolux_append_prompt_command "__kolux_prompt_mark"
 fi
-__nightshift_append_prompt_command '__nightshift_in_debug_capture=1; __nightshift_prompt_had_functrace=""; if [[ -o functrace ]]; then __nightshift_prompt_had_functrace=1; set +T; fi; __nightshift_outer_debug_trap_spec="$(trap -p DEBUG)"; [[ -z "$__nightshift_prompt_had_functrace" ]] || set -T; unset __nightshift_prompt_had_functrace __nightshift_in_debug_capture'
-__nightshift_append_prompt_command "__nightshift_osc133_prompt_done"
-__nightshift_had_functrace=""
-[[ -o functrace ]] && __nightshift_had_functrace=1
+__kolux_append_prompt_command '__kolux_in_debug_capture=1; __kolux_prompt_had_functrace=""; if [[ -o functrace ]]; then __kolux_prompt_had_functrace=1; set +T; fi; __kolux_outer_debug_trap_spec="$(trap -p DEBUG)"; [[ -z "$__kolux_prompt_had_functrace" ]] || set -T; unset __kolux_prompt_had_functrace __kolux_in_debug_capture'
+__kolux_append_prompt_command "__kolux_osc133_prompt_done"
+__kolux_had_functrace=""
+[[ -o functrace ]] && __kolux_had_functrace=1
 set +T
-__nightshift_debug_trap_spec="$(trap -p DEBUG)"
-[[ -z "$__nightshift_had_functrace" ]] || set -T
-if [[ -n "$__nightshift_debug_trap_spec" && "$__nightshift_debug_trap_spec" != "trap -- '__nightshift_osc133_preexec' DEBUG" ]]; then
-  __nightshift_debug_trap_command="${__nightshift_debug_trap_spec#trap -- }"
-  __nightshift_debug_trap_command="${__nightshift_debug_trap_command% DEBUG}"
-  eval "__nightshift_user_debug_trap=$__nightshift_debug_trap_command"
+__kolux_debug_trap_spec="$(trap -p DEBUG)"
+[[ -z "$__kolux_had_functrace" ]] || set -T
+if [[ -n "$__kolux_debug_trap_spec" && "$__kolux_debug_trap_spec" != "trap -- '__kolux_osc133_preexec' DEBUG" ]]; then
+  __kolux_debug_trap_command="${__kolux_debug_trap_spec#trap -- }"
+  __kolux_debug_trap_command="${__kolux_debug_trap_command% DEBUG}"
+  eval "__kolux_user_debug_trap=$__kolux_debug_trap_command"
 fi
-unset __nightshift_debug_trap_spec __nightshift_debug_trap_command __nightshift_had_functrace
-unset -f __nightshift_normalize_prompt_command_part __nightshift_normalize_prompt_command __nightshift_prepend_prompt_command __nightshift_append_prompt_command
-unset __nightshift_prompt_command_normalized
+unset __kolux_debug_trap_spec __kolux_debug_trap_command __kolux_had_functrace
+unset -f __kolux_normalize_prompt_command_part __kolux_normalize_prompt_command __kolux_prepend_prompt_command __kolux_append_prompt_command
+unset __kolux_prompt_command_normalized
 # Why: arm DEBUG after wrapper setup so the relay rcfile itself does not emit
 # fake command-start/end markers before the first prompt.
-__nightshift_initial_prompt=1
-trap '__nightshift_osc133_preexec' DEBUG
-unset __nightshift_initializing_wrapper
+__kolux_initial_prompt=1
+trap '__kolux_osc133_preexec' DEBUG
+unset __kolux_initializing_wrapper

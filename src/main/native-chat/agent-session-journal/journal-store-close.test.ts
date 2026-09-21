@@ -67,7 +67,7 @@ async function exists(path: string): Promise<boolean> {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-close-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-close-'))
 })
 
 afterEach(async () => {

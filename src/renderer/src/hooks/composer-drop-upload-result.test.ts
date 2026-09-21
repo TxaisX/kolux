@@ -8,15 +8,15 @@ import {
 describe('composer drop upload result', () => {
   it('separates imported files and folders while counting skipped or failed paths', () => {
     const results: ComposerDropUploadImportResult[] = [
-      { status: 'imported', kind: 'file', destPath: '/repo/.nightshift/drops/file.txt' },
-      { status: 'imported', kind: 'directory', destPath: '/repo/.nightshift/drops/folder' },
+      { status: 'imported', kind: 'file', destPath: '/repo/.kolux/drops/file.txt' },
+      { status: 'imported', kind: 'directory', destPath: '/repo/.kolux/drops/folder' },
       { status: 'skipped' },
       { status: 'failed' }
     ]
 
     expect(collectComposerDropUploadResult(results)).toEqual({
-      filePaths: ['/repo/.nightshift/drops/file.txt'],
-      folderPaths: ['/repo/.nightshift/drops/folder'],
+      filePaths: ['/repo/.kolux/drops/file.txt'],
+      folderPaths: ['/repo/.kolux/drops/folder'],
       skippedOrFailed: 2
     })
   })

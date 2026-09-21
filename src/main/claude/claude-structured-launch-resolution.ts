@@ -47,7 +47,7 @@ export type ClaudeStructuredSdkOptions = Pick<
  * `-p`, `--input-format`, `--output-format` and `--verbose` are implied by
  * `query()`; `--permission-prompt-tool stdio` is emitted because a `canUseTool`
  * callback is supplied. `--replay-user-messages` has no option — the SDK never
- * emits it — and Nightshift's send acknowledgement depends on the replay.
+ * emits it — and Kolux's send acknowledgement depends on the replay.
  */
 export const CLAUDE_STRUCTURED_BASE_OPTIONS: ClaudeStructuredSdkOptions = {
   includePartialMessages: true,
@@ -116,7 +116,7 @@ export function claudeSdkOptionsForLaunchArgs(
 }
 
 export type ClaudeStructuredLaunch = {
-  /** Always Nightshift's resolved user CLI: the SDK's bundled binaries are excluded from the install. */
+  /** Always Kolux's resolved user CLI: the SDK's bundled binaries are excluded from the install. */
   pathToClaudeCodeExecutable: string
   options: ClaudeStructuredSdkOptions
   cwd: string
@@ -164,11 +164,8 @@ export async function assertClaudeAuthSwitchSettled(
   }
 }
 
-export function claudeSessionIdForNightshiftSession(sessionId: string): string {
-  const bytes = createHash('sha256')
-    .update(`nightshift-claude:${sessionId}`)
-    .digest()
-    .subarray(0, 16)
+export function claudeSessionIdForKoluxSession(sessionId: string): string {
+  const bytes = createHash('sha256').update(`kolux-claude:${sessionId}`).digest().subarray(0, 16)
   bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
   bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
   const hex = bytes.toString('hex')
@@ -221,7 +218,7 @@ export function createClaudeStructuredLaunchResolver(
     const providerSessionId =
       head?.handle.provider === 'claude'
         ? head.handle.sessionId
-        : claudeSessionIdForNightshiftSession(identity.sessionId)
+        : claudeSessionIdForKoluxSession(identity.sessionId)
     const durable = claudeSdkOptionsForLaunchArgs(record.launchArgs ?? [])
     const command = (deps.resolveCommand ?? resolveClaudeCommand)()
     const auth = await deps.resolveAuthPolicy()
@@ -241,7 +238,7 @@ export function createClaudeStructuredLaunchResolver(
     // user's own key is their sign-in and must reach the child.
     const env = withCliRuntimeOnPath(
       command,
-      // Only a dispatched structured worker gets the orchestration identity and the Nightshift CLI on
+      // Only a dispatched structured worker gets the orchestration identity and the Kolux CLI on
       // PATH; an ordinary chat session's env passes through untouched.
       structuredWorkerChildIdentityEnv(record.sessionId, {
         ...applyClaudeEnvPatch(

@@ -79,7 +79,7 @@ const WINDOWS_PROCESS_TREE_BUILD_DIR = join(ROOT, '.build', 'windows-process-tre
 // every arch). Per-arch rather than a flag because arm64 needs the MSVC ARM64
 // cross toolset, an optional VS component: where it is absent that relay should
 // fall back to the scan, not fail the release the x64 relay is riding on.
-const REQUIRED_ADDON_ARCHES = (process.env.NIGHTSHIFT_REQUIRE_RELAY_NATIVE_ADDONS ?? '')
+const REQUIRED_ADDON_ARCHES = (process.env.KOLUX_REQUIRE_RELAY_NATIVE_ADDONS ?? '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean)
@@ -106,7 +106,7 @@ function stageWindowsProcessTreeAddon(platform, outDir) {
 
 // Why: lets the packaging contract test build into a temp tree instead of
 // clobbering a developer's out/relay or racing tests that read it.
-const OUT_ROOT = process.env.NIGHTSHIFT_RELAY_OUT_ROOT ?? join(ROOT, 'out', 'relay')
+const OUT_ROOT = process.env.KOLUX_RELAY_OUT_ROOT ?? join(ROOT, 'out', 'relay')
 
 const RELAY_VERSION = '0.1.0'
 

@@ -18,7 +18,7 @@ afterEach(() => {
 })
 
 function createOutputDir(): string {
-  outputDir = mkdtempSync(join(tmpdir(), 'nightshift-plain-node-entry-guard-'))
+  outputDir = mkdtempSync(join(tmpdir(), 'kolux-plain-node-entry-guard-'))
   return outputDir
 }
 

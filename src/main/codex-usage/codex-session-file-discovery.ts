@@ -1,10 +1,7 @@
 import { join } from 'node:path'
 import { existsSync } from 'node:fs'
 import { realpath, readdir, stat } from 'node:fs/promises'
-import {
-  getNightshiftManagedCodexHomePath,
-  getSystemCodexHomePath
-} from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
 import { getCodexAccountHomeSessionDirectories } from '../codex/codex-account-home-discovery'
 import { getLegacyCopiedCodexSessionBridgeScanPreference } from '../codex/codex-session-bridge'
 import { normalizeFsPath } from '../usage/usage-path-comparison'
@@ -58,10 +55,10 @@ function appendDiscoveredFiles(target: string[], source: readonly string[]): voi
 }
 
 export function getCodexSessionsDirectory(): string {
-  // Why: Nightshift-launched Codex processes receive a Nightshift-owned CODEX_HOME, so
+  // Why: Kolux-launched Codex processes receive a Kolux-owned CODEX_HOME, so
   // callers that need the primary runtime path should not consult ambient
   // shell CODEX_HOME.
-  return join(getNightshiftManagedCodexHomePath(), 'sessions')
+  return join(getKoluxManagedCodexHomePath(), 'sessions')
 }
 
 export function getCodexSessionDirectories(): string[] {
@@ -76,7 +73,7 @@ export function getCodexSessionDirectories(): string[] {
 }
 
 function hasLegacyCopiedSessionBridgeMarkers(): boolean {
-  return existsSync(join(getNightshiftManagedCodexHomePath(), '.nightshift-session-copies'))
+  return existsSync(join(getKoluxManagedCodexHomePath(), '.kolux-session-copies'))
 }
 
 export async function listCodexSessionFiles(): Promise<string[]> {

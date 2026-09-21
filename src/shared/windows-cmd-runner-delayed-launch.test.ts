@@ -31,6 +31,6 @@ describe('buildWindowsCmdRunnerDelayedLaunchCommand', () => {
     )
     const script = decodePayload(command)
     expect(script).toContain("$runner = 'C:\\work (x86)\\se&tup.cmd'")
-    expect(script).toContain('/d /s /v:on /c ""!NIGHTSHIFT_SETUP_RUNNER!""')
+    expect(script).toContain('/d /s /v:on /c ""!KOLUX_SETUP_RUNNER!""')
   })
 })

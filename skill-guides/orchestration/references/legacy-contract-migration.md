@@ -40,14 +40,14 @@ receipt explicitly authorizes it.
 A pending ask, reply, final Dispatch settlement, and consuming check have
 durable recovery identities. Heartbeat and escalation remain at-least-once
 across a manual contract-boundary retry. If an ask may already have been
-answered, run the exact non-consuming recovery check printed by Nightshift before
+answered, run the exact non-consuming recovery check printed by Kolux before
 creating any new question. Never guess among identical question threads.
 
 On packaged Windows, a legacy ask uses a two-step commit/resume protocol. The
 initial command commits the question, prints its exact
 `ask --resume <message_id>` command, and exits with launcher status `75`. Run
 that exact resume after the launcher or update boundary. For an attested WSL
-launch, preserve the printed `nightshift-ide` executable and distro route. Older WSL
+launch, preserve the printed `kolux-ide` executable and distro route. Older WSL
 workers without launch proof remain lifecycle read-only even while their
 terminal and filesystem work continue.
 
@@ -56,14 +56,14 @@ terminal and filesystem work continue.
 Read-only inspection does not consume mail:
 
 ```text
-NIGHTSHIFT orchestration run-list --json
-NIGHTSHIFT orchestration run-show --id run_legacy_local --json
-NIGHTSHIFT orchestration run-show --id <adopted_run_id> --json
-NIGHTSHIFT orchestration task-list --run <adopted_run_id> --json
-NIGHTSHIFT orchestration inbox --full --json
-NIGHTSHIFT orchestration check --terminal <legacy_handle> --peek --format --json
-NIGHTSHIFT terminal read --terminal <legacy_handle> --json
-NIGHTSHIFT terminal wait --terminal <legacy_handle> --for tui-idle --timeout-ms 60000 --json
+KOLUX orchestration run-list --json
+KOLUX orchestration run-show --id run_legacy_local --json
+KOLUX orchestration run-show --id <adopted_run_id> --json
+KOLUX orchestration task-list --run <adopted_run_id> --json
+KOLUX orchestration inbox --full --json
+KOLUX orchestration check --terminal <legacy_handle> --peek --format --json
+KOLUX terminal read --terminal <legacy_handle> --json
+KOLUX terminal wait --terminal <legacy_handle> --for tui-idle --timeout-ms 60000 --json
 ```
 
 `run_legacy_local` is an empty audit tombstone after adoption. Find the ordinary
@@ -73,8 +73,8 @@ Only when the original coordinator is unavailable or cannot prove retained
 authority may a new live coordinator take over from its own terminal:
 
 ```text
-NIGHTSHIFT orchestration run-use --id <adopted_run_id> --takeover-legacy --json
-NIGHTSHIFT orchestration check --run <adopted_run_id> --json
+KOLUX orchestration run-use --id <adopted_run_id> --takeover-legacy --json
+KOLUX orchestration check --run <adopted_run_id> --json
 ```
 
 Takeover binds the authenticated invoking terminal; `--from` cannot nominate
@@ -82,6 +82,6 @@ another coordinator. It fences only the old coordinator and moves pending mail
 into current Run delivery. It preserves live workers, Tasks, Dispatches, processes, and files.
 Never take over while the original coordinator is actively coordinating.
 
-Do not launch a replacement editor merely because Nightshift updated or authority is
+Do not launch a replacement editor merely because Kolux updated or authority is
 unclear. Keep the original worker as the only editor until a stable handoff
 point, then use a fresh current Dispatch in a conflict-free placement.

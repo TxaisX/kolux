@@ -103,7 +103,7 @@ export type PaneStyleOptions = {
 
 export type ManagedPane = {
   id: number
-  /** Durable terminal layout leaf UUID. Use this for paneKey/NIGHTSHIFT_PANE_KEY and
+  /** Durable terminal layout leaf UUID. Use this for paneKey/KOLUX_PANE_KEY and
    *  persisted leaf-keyed state; `id` is only the live renderer handle. */
   leafId: TerminalLeafId
   /** Compatibility alias while callers migrate from the older stablePaneId name. */

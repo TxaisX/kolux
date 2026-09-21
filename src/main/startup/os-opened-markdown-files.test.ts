@@ -48,9 +48,9 @@ describe('markdownPathsFromArguments', () => {
 
   it('drops the executable and dev entries because none of them end in a markdown extension', () => {
     const nonDocumentEntries = [
-      '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
-      '/Users/dev/nightshift/out/main/index.js',
-      '/Applications/Nightshift.app/Contents/Resources/app.asar'
+      '/Applications/Kolux.app/Contents/MacOS/Kolux',
+      '/Users/dev/kolux/out/main/index.js',
+      '/Applications/Kolux.app/Contents/Resources/app.asar'
     ]
     // The module documents that the extension check alone excludes these; hold it to that.
     for (const entry of nonDocumentEntries) {
@@ -160,7 +160,7 @@ describe('OsOpenedMarkdownFileState', () => {
     const publish = vi.fn()
 
     expect(
-      state.capture(['/Applications/Nightshift.app/Contents/MacOS/Nightshift', '--serve'], publish)
+      state.capture(['/Applications/Kolux.app/Contents/MacOS/Kolux', '--serve'], publish)
     ).toBe(false)
     expect(publish).not.toHaveBeenCalled()
     expect(state.consume()).toEqual([])
@@ -171,9 +171,9 @@ describe('OsOpenedMarkdownFileState', () => {
     const publish = vi.fn()
     const filePath = hostPath('a.md')
 
-    expect(
-      state.capture(['/Applications/Nightshift.app/Contents/MacOS/Nightshift', filePath], publish)
-    ).toBe(true)
+    expect(state.capture(['/Applications/Kolux.app/Contents/MacOS/Kolux', filePath], publish)).toBe(
+      true
+    )
     expect(publish).toHaveBeenCalledTimes(1)
     expect(state.consume()).toEqual([filePath])
   })
@@ -195,7 +195,7 @@ describe('OsOpenedMarkdownFileState', () => {
 
     state.captureFilePaths([filePath])
     state.captureFilePaths([filePath])
-    state.capture(['nightshift', filePath])
+    state.capture(['kolux', filePath])
 
     expect(state.consume()).toEqual([filePath])
   })
@@ -250,8 +250,8 @@ describe('resolveOpenedMarkdownDocuments', () => {
   beforeEach(async () => {
     vi.mocked(authorizeExternalPath).mockClear()
     vi.mocked(ensureDefaultFloatingWorkspacePath).mockClear()
-    floatingRoot = await mkdtemp(join(tmpdir(), 'nightshift-os-open-root-'))
-    fileRoot = await mkdtemp(join(tmpdir(), 'nightshift-os-open-files-'))
+    floatingRoot = await mkdtemp(join(tmpdir(), 'kolux-os-open-root-'))
+    fileRoot = await mkdtemp(join(tmpdir(), 'kolux-os-open-files-'))
     vi.mocked(ensureDefaultFloatingWorkspacePath).mockResolvedValue(floatingRoot)
   })
 

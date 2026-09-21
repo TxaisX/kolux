@@ -64,7 +64,7 @@ describe('gh exec deadline', () => {
       await vi.waitFor(() => expect(spawnMock).toHaveBeenCalledOnce())
 
       // The child must be its own group leader, or the signal below would go to
-      // whatever group it inherited — Nightshift's own.
+      // whatever group it inherited — Kolux's own.
       expect(spawnMock.mock.calls[0][2].detached).toBe(true)
       expect(processKillMock).not.toHaveBeenCalled()
 

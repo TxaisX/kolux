@@ -285,7 +285,7 @@ describe('initial host-mirror attach against a surface published as pending-hand
                 ok: false,
                 error: {
                   code: 'remote_runtime_unavailable',
-                  message: 'Remote Nightshift runtime connection closed'
+                  message: 'Remote Kolux runtime connection closed'
                 }
               }
             : { ok: true, result: hostSessionSnapshot('pending-handle') }

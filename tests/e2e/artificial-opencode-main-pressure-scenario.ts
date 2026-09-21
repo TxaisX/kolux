@@ -99,7 +99,7 @@ export async function runMainPressureScenario<
   pressureOutputChars,
   testInfo,
   testRepoPath,
-  nightshiftPage
+  koluxPage
 }: {
   annotationSuffix: string
   backgroundPaneCount: number
@@ -111,64 +111,58 @@ export async function runMainPressureScenario<
   pressureOutputChars: number
   testInfo: TestInfo
   testRepoPath: string
-  nightshiftPage: Page
+  koluxPage: Page
 }): Promise<void> {
-  await deps.waitForSessionReady(nightshiftPage)
-  await deps.waitForActiveWorktree(nightshiftPage)
-  const panes = await deps.ensureActiveWorktreePaneLoad(nightshiftPage, backgroundPaneCount + 1)
+  await deps.waitForSessionReady(koluxPage)
+  await deps.waitForActiveWorktree(koluxPage)
+  const panes = await deps.ensureActiveWorktreePaneLoad(koluxPage, backgroundPaneCount + 1)
   const [typingPane, ...loadPanes] = panes
-  await deps.focusPane(nightshiftPage, typingPane.paneKey)
+  await deps.focusPane(koluxPage, typingPane.paneKey)
 
   const runId = randomUUID()
   const scrollRunId = randomUUID()
-  const typingScriptPath = path.join(
-    testRepoPath,
-    `.nightshift-opencode-pressure-typing-${runId}.mjs`
-  )
-  const pressureScriptPath = path.join(
-    testRepoPath,
-    `.nightshift-opencode-pressure-load-${runId}.mjs`
-  )
-  await seedActiveTerminalScrollback(nightshiftPage, typingPane.ptyId, scrollRunId)
+  const typingScriptPath = path.join(testRepoPath, `.kolux-opencode-pressure-typing-${runId}.mjs`)
+  const pressureScriptPath = path.join(testRepoPath, `.kolux-opencode-pressure-load-${runId}.mjs`)
+  await seedActiveTerminalScrollback(koluxPage, typingPane.ptyId, scrollRunId)
   deps.writeInteractivePromptScript(typingScriptPath, runId)
   writePressureOutputScript(pressureScriptPath, runId, 'tui')
-  await deps.resetTerminalPtyOutputDebug(nightshiftPage)
+  await deps.resetTerminalPtyOutputDebug(koluxPage)
   await deps.holdTerminalAckGate(
-    nightshiftPage,
+    koluxPage,
     loadPanes.map((pane) => pane.ptyId)
   )
   try {
     await startPressureCommands({
       loadPanes,
-      nightshiftPage,
+      koluxPage,
       pressureOutputChars,
       pressureScriptPath
     })
-    const pressureBeforeTyping = await deps.waitForMainPtyPressureBacklog(nightshiftPage)
+    const pressureBeforeTyping = await deps.waitForMainPtyPressureBacklog(koluxPage)
     await measureAndAnnotateScroll({
       annotationSuffix,
       deps,
       maxScrollLatencyMs,
       maxTimerDriftMs,
-      nightshiftPage,
+      koluxPage,
       panes,
       testInfo
     })
     const measurement = await deps.measureTypingDuringLoad(
-      nightshiftPage,
+      koluxPage,
       typingScriptPath,
       typingPane.ptyId,
       runId
     )
-    const mainPressure = await deps.readMainPtyPressureDebug(nightshiftPage)
-    const ackGate = await deps.readTerminalAckGateDebug(nightshiftPage)
-    const scheduler = await deps.readTerminalOutputSchedulerDebug(nightshiftPage)
+    const mainPressure = await deps.readMainPtyPressureDebug(koluxPage)
+    const ackGate = await deps.readTerminalAckGateDebug(koluxPage)
+    const scheduler = await deps.readTerminalOutputSchedulerDebug(koluxPage)
     deps.annotateTypingMeasurement(
       testInfo,
       `opencode-main-pressure-active-typing${annotationSuffix}`,
       panes.length,
       measurement,
-      await deps.readTerminalPtyOutputDebug(nightshiftPage),
+      await deps.readTerminalPtyOutputDebug(koluxPage),
       scheduler,
       mainPressure,
       ackGate
@@ -184,12 +178,10 @@ export async function runMainPressureScenario<
       scheduler
     })
   } finally {
-    await deps.releaseTerminalAckGate(nightshiftPage)
-    await sendToTerminal(nightshiftPage, typingPane.ptyId, '\x03').catch(() => undefined)
+    await deps.releaseTerminalAckGate(koluxPage)
+    await sendToTerminal(koluxPage, typingPane.ptyId, '\x03').catch(() => undefined)
     await Promise.all(
-      loadPanes.map((pane) =>
-        sendToTerminal(nightshiftPage, pane.ptyId, '\x03').catch(() => undefined)
-      )
+      loadPanes.map((pane) => sendToTerminal(koluxPage, pane.ptyId, '\x03').catch(() => undefined))
     )
     rmSync(typingScriptPath, { force: true })
     rmSync(pressureScriptPath, { force: true })
@@ -198,19 +190,19 @@ export async function runMainPressureScenario<
 
 async function startPressureCommands({
   loadPanes,
-  nightshiftPage,
+  koluxPage,
   pressureOutputChars,
   pressureScriptPath
 }: {
   loadPanes: MainPressurePane[]
-  nightshiftPage: Page
+  koluxPage: Page
   pressureOutputChars: number
   pressureScriptPath: string
 }): Promise<void> {
   await Promise.all(
     loadPanes.map((pane, paneIndex) =>
       sendToTerminal(
-        nightshiftPage,
+        koluxPage,
         pane.ptyId,
         `node ${JSON.stringify(pressureScriptPath)} ${paneIndex} ${pressureOutputChars}\r`
       )
@@ -229,7 +221,7 @@ async function measureAndAnnotateScroll<
   deps,
   maxScrollLatencyMs,
   maxTimerDriftMs,
-  nightshiftPage,
+  koluxPage,
   panes,
   testInfo
 }: {
@@ -237,13 +229,13 @@ async function measureAndAnnotateScroll<
   deps: MainPressureDeps<TMeasurement, TDebug, TScheduler, TMainPressure, TAckGate>
   maxScrollLatencyMs: number
   maxTimerDriftMs: number
-  nightshiftPage: Page
+  koluxPage: Page
   panes: MainPressurePane[]
   testInfo: TestInfo
 }): Promise<void> {
-  const scrollMeasurement = await measureActiveTerminalWheelScroll(nightshiftPage)
-  const mainPressureAfterScroll = await deps.readMainPtyPressureDebug(nightshiftPage)
-  const ackGateAfterScroll = await deps.readTerminalAckGateDebug(nightshiftPage)
+  const scrollMeasurement = await measureActiveTerminalWheelScroll(koluxPage)
+  const mainPressureAfterScroll = await deps.readMainPtyPressureDebug(koluxPage)
+  const ackGateAfterScroll = await deps.readTerminalAckGateDebug(koluxPage)
   annotateScrollMeasurement(
     testInfo,
     `opencode-main-pressure-active-scroll${annotationSuffix}`,
@@ -257,7 +249,7 @@ async function measureAndAnnotateScroll<
     expect(responsivePath.latencyMs).toBeLessThan(maxScrollLatencyMs)
   }
   expect(scrollMeasurement.maxTimerDriftMs).toBeLessThan(maxTimerDriftMs)
-  await scrollActiveTerminalToBottom(nightshiftPage)
+  await scrollActiveTerminalToBottom(koluxPage)
 }
 
 function expectMainPressureAndTyping<TMeasurement extends MainPressureMeasurement>({

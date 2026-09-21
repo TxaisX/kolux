@@ -25,10 +25,10 @@ describe('promptForGpuFallbackRestart', () => {
       buttons: ['Restart in Safe Graphics Mode', 'Keep Running'],
       defaultId: 0,
       cancelId: 1,
-      title: 'Restart Nightshift in Safe Graphics Mode?',
-      message: "Nightshift's graphics process has crashed repeatedly.",
+      title: 'Restart Kolux in Safe Graphics Mode?',
+      message: "Kolux's graphics process has crashed repeatedly.",
       detail:
-        'Safe graphics mode disables hardware acceleration and WebGL for this Nightshift version. Terminals and 3D content may render more slowly. Keep Running leaves graphics settings unchanged.'
+        'Safe graphics mode disables hardware acceleration and WebGL for this Kolux version. Terminals and 3D content may render more slowly. Keep Running leaves graphics settings unchanged.'
     })
   })
 

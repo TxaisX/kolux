@@ -195,8 +195,8 @@ export type GithubPullRequestApi = {
       sourceContext?: TaskSourceContext | null
     }
   ) => Promise<GitHubCommentResult>
-  checkNightshiftStarred: () => Promise<boolean | null>
-  starNightshift: (source: AppStarSource) => Promise<boolean>
+  checkKoluxStarred: () => Promise<boolean | null>
+  starKolux: (source: AppStarSource) => Promise<boolean>
   /**
    * GitHub API rate-limit snapshot. Does NOT consume quota (the
    * `rate_limit` endpoint is exempt). Cached 30s server-side — pass

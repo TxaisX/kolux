@@ -79,14 +79,14 @@ export function AgentSignInButton({
             <DialogDescription>
               {T(
                 'description',
-                'Open the CLI in a Nightshift pane and follow its sign-in or provider setup instructions. If it offers browser authorization, finish on the provider’s website and return to the pane.'
+                'Open the CLI in a Kolux pane and follow its sign-in or provider setup instructions. If it offers browser authorization, finish on the provider’s website and return to the pane.'
               )}
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-muted-foreground">
             {T(
               'providerSupport',
-              'Each CLI controls its login methods. Some use a subscription in your browser; others require an API key. Nightshift never asks for your provider password.'
+              'Each CLI controls its login methods. Some use a subscription in your browser; others require an API key. Kolux never asks for your provider password.'
             )}
           </p>
           {!canLaunch && (
@@ -127,7 +127,7 @@ export function AgentSignInButton({
                 }
               }}
             >
-              {T('openCli', 'Open CLI in Nightshift')}
+              {T('openCli', 'Open CLI in Kolux')}
             </Button>
           </div>
         </DialogContent>

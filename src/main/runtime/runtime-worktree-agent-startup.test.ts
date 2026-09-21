@@ -51,7 +51,7 @@ const settings = {
   terminalWindowsShell: null
 } as never
 
-/** The launched CLI name is the whole decision: `nightshift` is the relay shim, `nightshift-ide` is local. */
+/** The launched CLI name is the whole decision: `kolux` is the relay shim, `kolux-ide` is local. */
 function launchCliNameFor(repo: Repo): string {
   return buildWorktreeStartupForAgent({
     repo,
@@ -66,24 +66,24 @@ describe('buildWorktreeStartupForAgent host resolution', () => {
   // Why two hosts: one SSH fixture passes even when the launch shape is resolved off another
   // host's row, which is the shape of the `ssh:m4air` -> openclaw leak.
   it('drops the Linux-only rename for both spellings of SSH ownership on two hosts', () => {
-    expect(launchCliNameFor(makeRepo({ connectionId: 'm4air' }))).toBe('nightshift')
-    expect(launchCliNameFor(makeRepo({ executionHostId: 'ssh:openclaw' }))).toBe('nightshift')
+    expect(launchCliNameFor(makeRepo({ connectionId: 'm4air' }))).toBe('kolux')
+    expect(launchCliNameFor(makeRepo({ executionHostId: 'ssh:openclaw' }))).toBe('kolux')
   })
 
   it('keeps the Linux rename for a local row carrying a stale connection', () => {
     expect(launchCliNameFor(makeRepo({ connectionId: 'm4air', executionHostId: 'local' }))).toBe(
-      'nightshift-ide'
+      'kolux-ide'
     )
   })
 
   it('drops the rename for a runtime host reaching a nested SSH target', () => {
     expect(
       launchCliNameFor(makeRepo({ connectionId: 'nested', executionHostId: 'runtime:vm-1' }))
-    ).toBe('nightshift')
+    ).toBe('kolux')
   })
 
   it('keeps the rename for a runtime host with no nested SSH target', () => {
-    expect(launchCliNameFor(makeRepo({ executionHostId: 'runtime:vm-1' }))).toBe('nightshift-ide')
+    expect(launchCliNameFor(makeRepo({ executionHostId: 'runtime:vm-1' }))).toBe('kolux-ide')
   })
 })
 

@@ -11,8 +11,8 @@ function createAdapter(
   request: ReturnType<typeof vi.fn>
 ): DaemonPtyAdapter {
   const adapter = new DaemonPtyAdapter({
-    socketPath: '/tmp/nightshift-steady-state-compat.sock',
-    tokenPath: '/tmp/nightshift-steady-state-compat.token',
+    socketPath: '/tmp/kolux-steady-state-compat.sock',
+    tokenPath: '/tmp/kolux-steady-state-compat.token',
     protocolVersion
   })
   ;(adapter as unknown as ClientInternals).client = { request, disconnect: vi.fn() }

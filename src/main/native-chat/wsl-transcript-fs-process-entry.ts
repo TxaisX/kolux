@@ -1,4 +1,4 @@
-// Forked so a killed WSL UNC syscall cannot retain a libuv thread in Nightshift.
+// Forked so a killed WSL UNC syscall cannot retain a libuv thread in Kolux.
 import type {
   WslTranscriptFsProcessError,
   WslTranscriptFsProcessRequest,

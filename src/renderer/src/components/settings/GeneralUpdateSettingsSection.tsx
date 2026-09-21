@@ -85,7 +85,7 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
         )}
         description={translate(
           'auto.components.settings.GeneralUpdateSettingsSection.ceb579abaf',
-          'Check for app updates and install a newer Nightshift version.'
+          'Check for app updates and install a newer Kolux version.'
         )}
         keywords={['update', 'version', 'release notes', 'download']}
         className="space-y-3"
@@ -171,7 +171,7 @@ export function GeneralUpdateSettingsSection(): React.JSX.Element {
               {updateStatus.externallyManaged
                 ? translate(
                     'auto.components.settings.GeneralUpdateSettingsSection.e3b9d21c07',
-                    'is available. Update Nightshift through your system package manager — Nightshift cannot install this release itself.'
+                    'is available. Update Kolux through your system package manager — Kolux cannot install this release itself.'
                   )
                 : translate(
                     'auto.components.settings.GeneralUpdateSettingsSection.8311da27ba',

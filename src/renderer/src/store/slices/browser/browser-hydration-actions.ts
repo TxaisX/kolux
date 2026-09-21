@@ -2,7 +2,7 @@ import type { BrowserPage, BrowserWorkspace } from '../../../../../shared/browse
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import {
   FLOATING_TERMINAL_WORKTREE_ID,
-  NIGHTSHIFT_BROWSER_BLANK_URL
+  KOLUX_BROWSER_BLANK_URL
 } from '../../../../../shared/constants'
 import { folderWorkspaceKey } from '../../../../../shared/workspace-scope'
 import type { BrowserSlice, BrowserSliceGet, BrowserSliceSet } from './browser-slice-contract'
@@ -108,7 +108,7 @@ export function createBrowserHydrationActions(
                 // Why re-asserted on restore: the same invariant creation enforces. A session written
                 // by an older or hand-edited build could carry a grant URL here, and it would name a
                 // grant that died with the process that minted it.
-                url: page.docLocation ? NIGHTSHIFT_BROWSER_BLANK_URL : normalizeUrl(page.url),
+                url: page.docLocation ? KOLUX_BROWSER_BLANK_URL : normalizeUrl(page.url),
                 loading: false,
                 loadError: page.loadError ?? null
               }

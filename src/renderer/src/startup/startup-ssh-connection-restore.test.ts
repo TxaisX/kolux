@@ -20,7 +20,7 @@ function target(id: string, lastRequiredPassphrase = false): SshTarget {
     label: id,
     host: `${id}.example`,
     port: 22,
-    username: 'nightshift',
+    username: 'kolux',
     lastRequiredPassphrase
   }
 }

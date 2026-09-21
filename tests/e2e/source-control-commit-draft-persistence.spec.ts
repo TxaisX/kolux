@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import { openSourceControlForWorktree } from './helpers/worktree-registration'
 
@@ -49,7 +49,7 @@ function cleanupWorktree(repoPath: string, worktreePath: string, branchName: str
 
 test.describe('Source Control commit draft persistence', () => {
   test('preserves a typed draft when the sidebar tab remounts', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
     let firstWorktree: E2eWorktree | null = null
@@ -58,37 +58,35 @@ test.describe('Source Control commit draft persistence', () => {
     try {
       firstWorktree = createWorktreeWithStagedChange(testRepoPath)
       secondWorktree = createWorktreeWithStagedChange(testRepoPath)
-      await waitForSessionReady(nightshiftPage)
-      await openSourceControlForWorktree(nightshiftPage, testRepoPath, firstWorktree.worktreePath)
+      await waitForSessionReady(koluxPage)
+      await openSourceControlForWorktree(koluxPage, testRepoPath, firstWorktree.worktreePath)
 
-      const textarea = nightshiftPage.getByRole('textbox', { name: 'Commit message' })
+      const textarea = koluxPage.getByRole('textbox', { name: 'Commit message' })
       await expect(textarea).toBeVisible({ timeout: 10_000 })
 
       const draft = 'fix: keep draft after leaving Source Control'
       await textarea.fill(draft)
       await expect(textarea).toHaveValue(draft)
 
-      await nightshiftPage.evaluate(() => {
+      await koluxPage.evaluate(() => {
         const state = window.__store?.getState()
         state?.setRightSidebarTab('explorer')
       })
       await expect
         .poll(
-          async () =>
-            nightshiftPage.evaluate(() => window.__store?.getState().rightSidebarTab ?? null),
+          async () => koluxPage.evaluate(() => window.__store?.getState().rightSidebarTab ?? null),
           { timeout: 5_000 }
         )
         .toBe('explorer')
       await expect(textarea).toBeHidden()
 
-      await nightshiftPage.evaluate(() => {
+      await koluxPage.evaluate(() => {
         const state = window.__store?.getState()
         state?.setRightSidebarTab('source-control')
       })
       await expect
         .poll(
-          async () =>
-            nightshiftPage.evaluate(() => window.__store?.getState().rightSidebarTab ?? null),
+          async () => koluxPage.evaluate(() => window.__store?.getState().rightSidebarTab ?? null),
           { timeout: 5_000 }
         )
         .toBe('source-control')
@@ -96,11 +94,11 @@ test.describe('Source Control commit draft persistence', () => {
       await expect(textarea).toBeVisible({ timeout: 10_000 })
       await expect(textarea).toHaveValue(draft)
 
-      await openSourceControlForWorktree(nightshiftPage, testRepoPath, secondWorktree.worktreePath)
+      await openSourceControlForWorktree(koluxPage, testRepoPath, secondWorktree.worktreePath)
       await expect(textarea).toBeVisible({ timeout: 10_000 })
       await expect(textarea).toHaveValue('')
 
-      await openSourceControlForWorktree(nightshiftPage, testRepoPath, firstWorktree.worktreePath)
+      await openSourceControlForWorktree(koluxPage, testRepoPath, firstWorktree.worktreePath)
       await expect(textarea).toBeVisible({ timeout: 10_000 })
       await expect(textarea).toHaveValue(draft)
     } finally {

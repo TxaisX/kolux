@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OnboardingInlineCommandTerminal } from './OnboardingInlineCommandTerminal'
 import {
-  NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT,
+  KOLUX_TERMINAL_COMMAND_FINISHED_EVENT,
   type TerminalCommandFinishedEventDetail
 } from '@/hooks/terminal-command-finished-event'
 import { PASTE_TERMINAL_TEXT_EVENT, type PasteTerminalTextDetail } from '@/constants/terminal'
@@ -42,12 +42,9 @@ vi.mock('@/lib/focus-terminal-tab-surface', () => ({
 
 function dispatchCommandFinished(worktreeId: string, exitCode: number | null): void {
   window.dispatchEvent(
-    new CustomEvent<TerminalCommandFinishedEventDetail>(
-      NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT,
-      {
-        detail: { worktreeId, exitCode }
-      }
-    )
+    new CustomEvent<TerminalCommandFinishedEventDetail>(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, {
+      detail: { worktreeId, exitCode }
+    })
   )
 }
 

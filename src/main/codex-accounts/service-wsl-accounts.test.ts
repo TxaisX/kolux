@@ -48,11 +48,11 @@ describe('CodexAccountService config sync', () => {
   it('preserves WSL account-home project trust while refreshing canonical settings', async () => {
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-account', 'home')
     const wslCanonicalHomePath = join(testState.userDataDir, 'wsl-home', '.codex')
-    const wslLinuxHomePath = '/home/alice/.local/share/nightshift/codex-accounts/account-1/home'
+    const wslLinuxHomePath = '/home/alice/.local/share/kolux/codex-accounts/account-1/home'
     const wslLinuxCanonicalHomePath = '/home/alice/.codex'
     mkdirSync(wslManagedHomePath, { recursive: true })
     mkdirSync(wslCanonicalHomePath, { recursive: true })
-    writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-1\n', 'utf-8')
     writeFileSync(
       join(wslManagedHomePath, 'config.toml'),
       'approval_policy = "untrusted"\n[projects."/workspace"]\ntrust_level = "trusted"\n',
@@ -125,12 +125,11 @@ describe('CodexAccountService config sync', () => {
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-account', 'home')
     const wslCanonicalHomePath = join(testState.userDataDir, 'wsl-home', '.codex')
     const wslCanonicalConfigPath = join(wslCanonicalHomePath, 'config.toml')
-    const wslLinuxHomePath =
-      '/mnt/c/Users/alice/.local/share/nightshift/codex-accounts/account-1/home'
+    const wslLinuxHomePath = '/mnt/c/Users/alice/.local/share/kolux/codex-accounts/account-1/home'
     const wslLinuxCanonicalHomePath = '/mnt/c/Users/alice/.codex'
     mkdirSync(wslManagedHomePath, { recursive: true })
     mkdirSync(wslCanonicalHomePath, { recursive: true })
-    writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-1\n', 'utf-8')
     writeFileSync(wslCanonicalConfigPath, 'model_instructions_file = "instructions.md"\n', 'utf-8')
 
     vi.doMock('node:child_process', () => ({
@@ -200,7 +199,7 @@ describe('CodexAccountService config sync', () => {
     const wslConfigHomePath = join(testState.userDataDir, 'wsl-config-home')
     const wslConfigPath = join(wslConfigHomePath, 'config.toml')
     const wslLinuxHomePath =
-      '/home/alice/.local/share/nightshift/codex-accounts/account-id-for-test/home'
+      '/home/alice/.local/share/kolux/codex-accounts/account-id-for-test/home'
     mkdirSync(wslConfigHomePath, { recursive: true })
     writeFileSync(
       wslConfigPath,
@@ -223,7 +222,7 @@ describe('CodexAccountService config sync', () => {
         expect(spec.loginPath).toBe('none')
         return wslOk('Debian\n/home/alice\n')
       }
-      if (script.includes('_nightshift_lookup_command=')) {
+      if (script.includes('_kolux_lookup_command=')) {
         // 'preferred': a PATH lookup. Under 'none' an nvm-installed codex is
         // invisible and a working install is reported absent (#9725).
         expect(spec.loginPath).toBe('preferred')
@@ -233,7 +232,7 @@ describe('CodexAccountService config sync', () => {
       expect(spec.loginPath).toBe('none')
       expect(script).toContain('mkdir -p ')
       mkdirSync(wslManagedHomePath, { recursive: true })
-      writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-id-for-test\n')
+      writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-id-for-test\n')
       return wslOk()
     })
     const spawnMock = vi.fn((command: string, args: string[]) => {
@@ -340,7 +339,7 @@ describe('CodexAccountService config sync', () => {
 
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-managed-home')
     const wslLinuxHomePath =
-      '/home/alice/.local/share/nightshift/codex-accounts/account-id-for-test/home'
+      '/home/alice/.local/share/kolux/codex-accounts/account-id-for-test/home'
 
     const execFileSyncMock = vi.fn((_command: string, args: string[]) => {
       const script = decodeEncodedWslBashCommand(String(args.at(-1)))
@@ -354,12 +353,12 @@ describe('CodexAccountService config sync', () => {
       if (script.includes('WSL_DISTRO_NAME')) {
         return wslOk('Debian\n/home/alice\n')
       }
-      if (script.includes('_nightshift_lookup_command=')) {
+      if (script.includes('_kolux_lookup_command=')) {
         expect(script).toBe(buildWslCodexAvailabilityScript())
         return wslFailed(1, 'codex missing')
       }
       mkdirSync(wslManagedHomePath, { recursive: true })
-      writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-id-for-test\n')
+      writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-id-for-test\n')
       return wslOk()
     })
     const spawnMock = vi.fn()
@@ -419,7 +418,7 @@ describe('CodexAccountService config sync', () => {
 
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-managed-home')
     const wslLinuxHomePath =
-      '/home/alice/.local/share/nightshift/codex-accounts/account-id-for-test/home'
+      '/home/alice/.local/share/kolux/codex-accounts/account-id-for-test/home'
 
     const execFileSyncMock = vi.fn((_command: string, args: string[]) => {
       const script = decodeEncodedWslBashCommand(String(args.at(-1)))
@@ -433,12 +432,12 @@ describe('CodexAccountService config sync', () => {
       if (script.includes('WSL_DISTRO_NAME')) {
         return wslOk('Debian\n/home/alice\n')
       }
-      if (script.includes('_nightshift_lookup_command=')) {
+      if (script.includes('_kolux_lookup_command=')) {
         expect(script).toBe(buildWslCodexAvailabilityScript())
         return { ...wslFailed(1, 'codex missing'), environmentResolved: false }
       }
       mkdirSync(wslManagedHomePath, { recursive: true })
-      writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-id-for-test\n')
+      writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-id-for-test\n')
       return wslOk()
     })
     const spawnMock = vi.fn()
@@ -494,9 +493,9 @@ describe('CodexAccountService config sync', () => {
     })
 
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-account', 'home')
-    const wslLinuxHomePath = '/home/alice/.local/share/nightshift/codex-accounts/account-1/home'
+    const wslLinuxHomePath = '/home/alice/.local/share/kolux/codex-accounts/account-1/home'
     mkdirSync(wslManagedHomePath, { recursive: true })
-    writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-1\n', 'utf-8')
     writeFileSync(
       join(wslManagedHomePath, 'auth.json'),
       JSON.stringify({
@@ -640,7 +639,7 @@ describe('CodexAccountService config sync', () => {
     })
 
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-account', 'home')
-    const wslLinuxHomePath = '/home/alice/.local/share/nightshift/codex-accounts/account-1/home'
+    const wslLinuxHomePath = '/home/alice/.local/share/kolux/codex-accounts/account-1/home'
 
     const execFileSyncMock = vi.fn((_command: string, args: string[]) => {
       const script = decodeEncodedWslBashCommand(String(args.at(-1)))
@@ -654,14 +653,14 @@ describe('CodexAccountService config sync', () => {
       if (script.includes('mkdir -p -- "$candidate"')) {
         expect(spec.shell).toBe('bash')
         mkdirSync(wslManagedHomePath, { recursive: true })
-        writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+        writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-1\n', 'utf-8')
       }
       return wslOk()
     })
     const spawnMock = vi.fn((command: string, args: string[]) => {
       expect(command).toBe('wsl.exe')
       expect(args).toEqual(buildWslCodexLoginArgs('Ubuntu', wslLinuxHomePath))
-      expect(readFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'utf-8')).toBe(
+      expect(readFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'utf-8')).toBe(
         'account-1\n'
       )
       const child = new EventEmitter() as EventEmitter & {
@@ -754,9 +753,9 @@ describe('CodexAccountService config sync', () => {
     })
 
     const wslManagedHomePath = join(testState.userDataDir, 'wsl-account', 'home')
-    const wslLinuxHomePath = '/home/alice/.local/share/nightshift/codex-accounts/account-1/home'
+    const wslLinuxHomePath = '/home/alice/.local/share/kolux/codex-accounts/account-1/home'
     mkdirSync(wslManagedHomePath, { recursive: true })
-    writeFileSync(join(wslManagedHomePath, '.nightshift-managed-home'), 'account-1\n', 'utf-8')
+    writeFileSync(join(wslManagedHomePath, '.kolux-managed-home'), 'account-1\n', 'utf-8')
 
     vi.doMock('node:child_process', () => ({
       execFileSync: vi.fn((_command: string, args: string[]) => {
@@ -767,7 +766,7 @@ describe('CodexAccountService config sync', () => {
             'test "$candidate_real" = "$managed_root_real/$expected_marker/home"'
           )
           expect(script).toContain(
-            'test "$(cat "$candidate_real/.nightshift-managed-home")" = "$expected_marker"'
+            'test "$(cat "$candidate_real/.kolux-managed-home")" = "$expected_marker"'
           )
           return `${wslLinuxHomePath}\n`
         }

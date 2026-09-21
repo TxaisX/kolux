@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -13,8 +13,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   removeEnvironmentMock: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -61,7 +61,7 @@ function queueSshTargetLookups(count: number): void {
 describe('runtime-selector flags on locally pinned CLI commands', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -101,9 +101,7 @@ describe('runtime-selector flags on locally pinned CLI commands', () => {
     const printed = JSON.parse(String(logSpy.mock.calls[0]?.[0]))
     expect(printed.ok).toBe(false)
     expect(printed.error.code).toBe('invalid_argument')
-    expect(printed.error.message).toContain(
-      '`--environment` does not retarget `nightshift host list`'
-    )
+    expect(printed.error.message).toContain('`--environment` does not retarget `kolux host list`')
     expect(process.exitCode).toBe(1)
     expect(callMock).not.toHaveBeenCalled()
     expect(runtimeClientConstructorMock).not.toHaveBeenCalledWith(null, 'm4air')
@@ -120,7 +118,7 @@ describe('runtime-selector flags on locally pinned CLI commands', () => {
     expect(printed.ok).toBe(false)
     expect(printed.error.code).toBe('invalid_argument')
     expect(printed.error.message).toContain(
-      '`--environment` does not retarget `nightshift environment list`'
+      '`--environment` does not retarget `kolux environment list`'
     )
     process.exitCode = 0
   })
@@ -129,12 +127,9 @@ describe('runtime-selector flags on locally pinned CLI commands', () => {
     pairRuntimeEnvironment(listEnvironmentsMock, 'env-m4air', 'm4air')
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
+    await main(['host', 'list', '--pairing-code', 'kolux://pair?code=x', '--json'], '/tmp/repo')
     await main(
-      ['host', 'list', '--pairing-code', 'nightshift://pair?code=x', '--json'],
-      '/tmp/repo'
-    )
-    await main(
-      ['environment', 'list', '--pairing-code', 'nightshift://pair?code=x', '--json'],
+      ['environment', 'list', '--pairing-code', 'kolux://pair?code=x', '--json'],
       '/tmp/repo'
     )
 
@@ -147,10 +142,10 @@ describe('runtime-selector flags on locally pinned CLI commands', () => {
     process.exitCode = 0
   })
 
-  it('keeps `host list` local when NIGHTSHIFT_ENVIRONMENT is set ambiently', async () => {
+  it('keeps `host list` local when KOLUX_ENVIRONMENT is set ambiently', async () => {
     // Why: the ambient variable produced the same two-machine listing as the explicit flag, with
     // no flag to reject. Pinning the family is what makes `runtimeId: local` true in both cases.
-    process.env.NIGHTSHIFT_ENVIRONMENT = 'm4air'
+    process.env.KOLUX_ENVIRONMENT = 'm4air'
     pairRuntimeEnvironment(listEnvironmentsMock, 'env-m4air', 'm4air')
     queueSshTargetLookups(1)
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

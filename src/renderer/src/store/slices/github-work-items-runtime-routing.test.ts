@@ -163,7 +163,7 @@ describe('createGitHubSlice.fetchWorkItems source/error envelope', () => {
       hostId: 'runtime:source-runtime' as const,
       projectHostSetupId: 'setup-1',
       repoId: 'source-runtime-repo-id',
-      providerIdentity: { provider: 'github' as const, owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github' as const, owner: 'TxaisX', repo: 'kolux' }
     }
 
     await store.getState().fetchWorkItems('caller-repo-id', '/server/repo', 24, 'is:open', {
@@ -202,25 +202,25 @@ describe('createGitHubSlice.fetchWorkItems source/error envelope', () => {
       hostId: 'local' as const,
       projectHostSetupId: 'setup-1',
       repoId: 'repo-1',
-      providerIdentity: { provider: 'github' as const, owner: 'acme', repo: 'nightshift' }
+      providerIdentity: { provider: 'github' as const, owner: 'acme', repo: 'kolux' }
     }
     const secondSourceContext = {
       ...firstSourceContext,
-      providerIdentity: { provider: 'github' as const, owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github' as const, owner: 'TxaisX', repo: 'kolux' }
     }
     mockApi.gh.listWorkItems
       .mockResolvedValueOnce({
         items: [{ type: 'issue', number: 1, title: 'Acme', url: 'https://example.test/1' }],
         sources: {
-          issues: { owner: 'acme', repo: 'nightshift' },
-          prs: { owner: 'acme', repo: 'nightshift' }
+          issues: { owner: 'acme', repo: 'kolux' },
+          prs: { owner: 'acme', repo: 'kolux' }
         }
       })
       .mockResolvedValueOnce({
         items: [{ type: 'issue', number: 2, title: 'Stably', url: 'https://example.test/2' }],
         sources: {
-          issues: { owner: 'TxaisX', repo: 'nightshift' },
-          prs: { owner: 'TxaisX', repo: 'nightshift' }
+          issues: { owner: 'TxaisX', repo: 'kolux' },
+          prs: { owner: 'TxaisX', repo: 'kolux' }
         }
       })
 

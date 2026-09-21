@@ -584,7 +584,7 @@ describe('cross-version structured agent sessions', () => {
     let createMobileSessionTerminal: ReturnType<typeof vi.fn>
 
     beforeEach(async () => {
-      root = await mkdtemp(join(tmpdir(), 'nightshift-cross-version-ai-vault-'))
+      root = await mkdtemp(join(tmpdir(), 'kolux-cross-version-ai-vault-'))
       store = await AgentSessionRecordStore.open({
         directory: join(root, 'store'),
         hostId: 'local'
@@ -873,7 +873,7 @@ describe('cross-version structured agent sessions', () => {
 
     beforeEach(async () => {
       operations = 0
-      root = await mkdtemp(join(tmpdir(), 'nightshift-cross-version-agent-session-'))
+      root = await mkdtemp(join(tmpdir(), 'kolux-cross-version-agent-session-'))
       runtime = runtimeStub()
       await bootHost('a')
     })

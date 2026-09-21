@@ -1,5 +1,5 @@
 // daemon-relocation-spike — empirically finds the minimal file set that lets a
-// COPIED Nightshift.exe (ELECTRON_RUN_AS_NODE=1), launched from outside the install
+// COPIED Kolux.exe (ELECTRON_RUN_AS_NODE=1), launched from outside the install
 // dir, host the terminal daemon + a real ConPTY session while holding no open
 // handles into the app dir. See README.md.
 //
@@ -38,12 +38,9 @@ function resolveProtocolVersion() {
 
 function makeSocketPath() {
   if (process.platform === 'win32') {
-    return `\\\\?\\pipe\\nightshift-daemon-spike-${randomUUID().slice(0, 12)}`
+    return `\\\\?\\pipe\\kolux-daemon-spike-${randomUUID().slice(0, 12)}`
   }
-  return join(
-    process.env.TMPDIR ?? '/tmp',
-    `nightshift-daemon-spike-${randomUUID().slice(0, 12)}.sock`
-  )
+  return join(process.env.TMPDIR ?? '/tmp', `kolux-daemon-spike-${randomUUID().slice(0, 12)}.sock`)
 }
 
 /** Print a recursive listing of the copied daemon-host tree so the mirrored

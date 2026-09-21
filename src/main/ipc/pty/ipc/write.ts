@@ -1,11 +1,11 @@
 import type { BrowserWindow } from 'electron'
 import { getPtyIpc } from '../../pty-host-bindings'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import { createPtyWriteInput } from './write-input'
 
 export function installPtyWriteIpcHandlers(deps: {
   mainWindow: BrowserWindow
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   clearHiddenRendererResizeOutput: (id: string) => void
 }): void {
   const ipcMain = getPtyIpc()

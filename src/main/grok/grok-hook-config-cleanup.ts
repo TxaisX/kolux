@@ -49,10 +49,10 @@ export function removeManagedGrokHookEntries(
   return { config: nextConfig, removedAny: true }
 }
 
-// Why not "the whole object is empty": nightshift-status.json is Nightshift-owned, so once no hook entries
+// Why not "the whole object is empty": kolux-status.json is Kolux-owned, so once no hook entries
 // remain the file has no reason to exist. Keying off total emptiness leaves a stray non-hook key
 // (a `$schema`, say) behind, and the user-cleared install guard then reads that remnant as a
 // deliberate opt-out and never reinstalls.
-export function isNightshiftOwnedRemnant(config: HooksConfig): boolean {
+export function isKoluxOwnedRemnant(config: HooksConfig): boolean {
   return Object.keys(config.hooks ?? {}).length === 0
 }

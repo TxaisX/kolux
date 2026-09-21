@@ -5,7 +5,10 @@ import { homedir } from 'node:os'
 import { getOpenCodeFamilyPluginSource } from '../opencode/hook-service'
 import { mirrorEntry, safeRemoveTree } from '../pty/overlay-mirror'
 
-const NIGHTSHIFT_MIMOCODE_PLUGIN_FILE = 'nightshift-mimocode-status.js'
+const KOLUX_MIMOCODE_PLUGIN_FILE = 'kolux-mimocode-status.js'
+// Why: pre-rename Kolux wrote this filename; skip mirroring it too, or the overlay would carry
+// both the stale copy and the freshly written one and fire the managed hook twice.
+const PRE_RENAME_MIMOCODE_PLUGIN_FILE = 'nightshift-mimocode-status.js'
 const MIMOCODE_HOOKS_DIR = 'mimocode-hooks'
 const MIMOCODE_SHARED_HOME = 'shared'
 
@@ -33,7 +36,10 @@ function mirrorConfigDir(sourceConfigDir: string, targetConfigDir: string): void
       for (const pluginEntry of readdirSync(join(sourceConfigDir, 'plugins'), {
         withFileTypes: true
       })) {
-        if (pluginEntry.name === NIGHTSHIFT_MIMOCODE_PLUGIN_FILE) {
+        if (
+          pluginEntry.name === KOLUX_MIMOCODE_PLUGIN_FILE ||
+          pluginEntry.name === PRE_RENAME_MIMOCODE_PLUGIN_FILE
+        ) {
           continue
         }
         mirrorEntry(
@@ -71,7 +77,7 @@ export class MimoCodeHookService {
       const pluginsDir = join(home, 'config', 'plugins')
       mkdirSync(pluginsDir, { recursive: true })
       writeFileSync(
-        join(pluginsDir, NIGHTSHIFT_MIMOCODE_PLUGIN_FILE),
+        join(pluginsDir, KOLUX_MIMOCODE_PLUGIN_FILE),
         getOpenCodeFamilyPluginSource('/hook/mimo-code', { emitSessionStart: false })
       )
     } catch {

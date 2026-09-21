@@ -24,7 +24,7 @@ describe('MobilePairingQrSection', () => {
       <MobilePairingQrSection
         qrDataUrl={null}
         qrError
-        pairingUrl="nightshift://pair?code=copy-fallback"
+        pairingUrl="kolux://pair?code=copy-fallback"
         endpoint="wss://host.example/large"
         qrEnlarged={false}
         codeCopied={false}
@@ -36,7 +36,7 @@ describe('MobilePairingQrSection', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('couldn’t be rendered as a QR code')
     await userEvent.click(screen.getByRole('button', { name: 'Copy pairing code' }))
-    expect(writeClipboardText).toHaveBeenCalledWith('nightshift://pair?code=copy-fallback')
+    expect(writeClipboardText).toHaveBeenCalledWith('kolux://pair?code=copy-fallback')
   })
 
   it('moves focus to the copy action when a pairing code becomes ready', () => {
@@ -57,7 +57,7 @@ describe('MobilePairingQrSection', () => {
       <MobilePairingQrSection
         {...props}
         qrDataUrl="data:image/png;base64,qr"
-        pairingUrl="nightshift://pair#ready"
+        pairingUrl="kolux://pair#ready"
       />
     )
 
@@ -91,7 +91,7 @@ describe('MobilePairingQrSection', () => {
         <MobilePairingQrSection
           {...props}
           qrDataUrl="data:image/png;base64,qr"
-          pairingUrl="nightshift://pair#ready"
+          pairingUrl="kolux://pair#ready"
         />
       </>
     )
@@ -105,7 +105,7 @@ describe('MobilePairingQrSection', () => {
         qrDataUrl="data:image/png;base64,qr"
         qrSize={218}
         qrError={false}
-        pairingUrl="nightshift://pair#ready"
+        pairingUrl="kolux://pair#ready"
         endpoint={null}
         qrEnlarged
         codeCopied={false}

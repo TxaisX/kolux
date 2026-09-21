@@ -23,24 +23,24 @@ const cachedTokens = new Map<string, string>()
 // failing reads without re-touching the keychain on every status poll.
 export const credentialErrors = new Map<string, string>()
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
 function getSiteFilePath(): string {
-  return join(getNightshiftDir(), 'jira-sites.json')
+  return join(getKoluxDir(), 'jira-sites.json')
 }
 
 function getTokenDir(): string {
-  return join(getNightshiftDir(), 'jira-tokens')
+  return join(getKoluxDir(), 'jira-tokens')
 }
 
 function getTokenPath(siteId: string): string {
   return join(getTokenDir(), `${Buffer.from(siteId).toString('base64url')}.enc`)
 }
 
-function ensureNightshiftDir(): void {
-  const dir = getNightshiftDir()
+function ensureKoluxDir(): void {
+  const dir = getKoluxDir()
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
@@ -130,7 +130,7 @@ export function getSiteFile(): JiraSiteFile {
 }
 
 export function writeSiteFile(file: JiraSiteFile): void {
-  ensureNightshiftDir()
+  ensureKoluxDir()
   const sites = file.sites.filter((site) => hasStoredToken(site.id))
   const activeSiteId =
     file.activeSiteId && sites.some((site) => site.id === file.activeSiteId)
@@ -192,7 +192,7 @@ export function readToken(siteId: string): string | null {
 }
 
 export function saveToken(siteId: string, apiToken: string): void {
-  ensureNightshiftDir()
+  ensureKoluxDir()
   ensureTokenDir()
   writeEncryptedToken(getTokenPath(siteId), apiToken)
   cachedTokens.set(siteId, apiToken)

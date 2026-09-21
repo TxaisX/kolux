@@ -26,7 +26,7 @@ describeOnWindows('Windows .cmd argument round-trip', () => {
   let shim: string
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-cmd-argv-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-cmd-argv-'))
     shim = join(dir, 'echoargs.cmd')
     // A shim shaped like the npm/agent CLI wrappers that actually break:
     // `@echo off` plus `%*` forwarding into a real program.

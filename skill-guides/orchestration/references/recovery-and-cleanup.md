@@ -16,10 +16,10 @@ decision, stop/abandon request, retention request, or uncertain release.
 ## Inspect before acting
 
 ```text
-NIGHTSHIFT orchestration worker-list --run <run_id> --json
-NIGHTSHIFT orchestration worker-list --run <run_id> --include-remote --json
-NIGHTSHIFT orchestration worker-show --dispatch <dispatch_id> --json
-NIGHTSHIFT orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
+KOLUX orchestration worker-list --run <run_id> --json
+KOLUX orchestration worker-list --run <run_id> --include-remote --json
+KOLUX orchestration worker-show --dispatch <dispatch_id> --json
+KOLUX orchestration worker-read --dispatch <dispatch_id> --limit 50 --json
 ```
 
 `worker-list` is the enumerating command and the authority on agent liveness:
@@ -64,7 +64,7 @@ names an inspecting command is asking for evidence, not for cleanup.
 
 `worker-read --source auto` uses a proven provider transcript when available and
 otherwise returns bounded terminal output with a typed `fallbackReason`.
-Continue with its top-level cursor, which is pinned to that source. If Nightshift
+Continue with its top-level cursor, which is pinned to that source. If Kolux
 reports `source_changed`, restart without the old cursor. A bounded initial
 transcript tail can return an EOF cursor that follows only newly appended records;
 read `contentComplete`, `clipping`, and `warnings` before assuming omitted older
@@ -75,16 +75,16 @@ remote terminal handle.
 
 When a mutation's response was lost and named no Dispatch, do not replay blind.
 Every orchestration mutation accepts `--retry-request <id>`, which reuses one
-operation identity so Nightshift can replay, join, or recover it instead of starting a
+operation identity so Kolux can replay, join, or recover it instead of starting a
 duplicate. Ask what happened first:
 
 ```text
-NIGHTSHIFT orchestration request-show --request <request_id> --json
+KOLUX orchestration request-show --request <request_id> --json
 ```
 
 `completed` means the mutation already took effect; read its recorded receipt
 instead of rerunning. `pending` means the original mutation is still running or
-Nightshift restarted before recording its outcome; replay the original command with
+Kolux restarted before recording its outcome; replay the original command with
 `--retry-request <request_id>`. `absent` means this runtime holds no receipt
 under your caller identity — that is not proof nothing happened, so inspect the
 affected Task, Dispatch, and terminal before deciding whether to retry.
@@ -114,7 +114,7 @@ with `--task`, since `--spec` creates a new one. Placement is never silently
 inherited:
 
 ```text
-NIGHTSHIFT orchestration worker-start --task <task_id> --retry-of <dispatch_id> --worktree <explicit_placement> --agent <agent> --json
+KOLUX orchestration worker-start --task <task_id> --retry-of <dispatch_id> --worktree <explicit_placement> --agent <agent> --json
 ```
 
 After three consecutive failures for one Task, its dispatch context
@@ -124,8 +124,8 @@ new Run or an unrelated Dispatch.
 For `outcome_unknown`, inspect first, then make an explicit choice:
 
 ```text
-NIGHTSHIFT orchestration worker-stop --dispatch <dispatch_id> --json
-NIGHTSHIFT orchestration worker-abandon --dispatch <dispatch_id> --json
+KOLUX orchestration worker-stop --dispatch <dispatch_id> --json
+KOLUX orchestration worker-abandon --dispatch <dispatch_id> --json
 ```
 
 `worker-stop` closes only the exact proven supervised agent terminal. It never
@@ -136,8 +136,8 @@ live; it performs no remote, process, or filesystem action.
 ## Retain and release
 
 ```text
-NIGHTSHIFT orchestration worker-retain --dispatch <dispatch_id> --json
-NIGHTSHIFT orchestration worker-release --dispatch <dispatch_id> --json
+KOLUX orchestration worker-retain --dispatch <dispatch_id> --json
+KOLUX orchestration worker-release --dispatch <dispatch_id> --json
 ```
 
 Retain only when the user explicitly wants the settled terminal kept live.

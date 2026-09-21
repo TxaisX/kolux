@@ -13,7 +13,7 @@ describe('lightweight Run CLI handlers', () => {
   beforeEach(() => {
     callMock.mockReset()
     getTerminalHandleMock.mockReset()
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_coord'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_coord'
   })
 
   it('creates a Run with the resolved coordinator terminal', async () => {

@@ -30,13 +30,13 @@ async function ensureSetupHookCommitted(page: TestPage): Promise<void> {
     return activeWorktree.path
   })
 
-  writeFileSync(path.join(activeWorktreePath, 'nightshift.yaml'), SETUP_HOOK_CONTENT, 'utf-8')
-  execFileSync('git', ['add', 'nightshift.yaml'], { cwd: activeWorktreePath, stdio: 'pipe' })
+  writeFileSync(path.join(activeWorktreePath, 'kolux.yaml'), SETUP_HOOK_CONTENT, 'utf-8')
+  execFileSync('git', ['add', 'kolux.yaml'], { cwd: activeWorktreePath, stdio: 'pipe' })
 
   try {
     execFileSync('git', ['diff', '--cached', '--quiet'], { cwd: activeWorktreePath, stdio: 'pipe' })
   } catch {
-    // Why: worktree creation reads nightshift.yaml from the created worktree, so the
+    // Why: worktree creation reads kolux.yaml from the created worktree, so the
     // temp repo must commit this hook before `git worktree add` copies it.
     execFileSync('git', ['commit', '-m', 'Add e2e setup hook'], {
       cwd: activeWorktreePath,

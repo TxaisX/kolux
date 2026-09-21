@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import type { OpenFile } from '@/store/slices/editor'
 import type { GitStatusEntry } from '../../../../../../shared/git-status-types'
 import {
-  NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+  KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
   type EditorPathMutationTarget
 } from '../../editor-autosave'
 import { buildCombinedGitStatusSignature } from '../resolve-changes/combined-diff-git-status-signature'
@@ -94,12 +94,9 @@ export function useCombinedDiffSectionRevalidation({
         }
       }
     }
-    window.addEventListener(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
+    window.addEventListener(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
     return () =>
-      window.removeEventListener(
-        NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
-        handler as EventListener
-      )
+      window.removeEventListener(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
   }, [
     file.runtimeEnvironmentId,
     file.worktreeId,

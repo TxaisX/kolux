@@ -23,7 +23,7 @@ const EXACT_PATH_CONFIG_KEYS = new Set([
   'sqlite_home'
 ])
 
-// Why: Nightshift mirrors config.toml into a managed CODEX_HOME, but Codex resolves
+// Why: Kolux mirrors config.toml into a managed CODEX_HOME, but Codex resolves
 // path-valued config settings from the file it read. Keep user-owned assets in
 // ~/.codex reachable after the mirror moves the TOML. Best-effort by design:
 // values spelled as inline tables, quoted keys, or triple-quoted strings pass

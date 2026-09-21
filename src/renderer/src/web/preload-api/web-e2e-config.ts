@@ -6,6 +6,6 @@ const webE2EQuery = webE2EExposeStore ? new URLSearchParams(window.location.sear
 
 export const webE2EConfig = createE2EConfig({
   exposeStore: webE2EExposeStore,
-  terminalParkingDelayMs: Number(webE2EQuery?.get('nightshiftE2ETerminalParkingDelayMs')) || null,
-  terminalRetentionLimit: Number(webE2EQuery?.get('nightshiftE2ETerminalRetentionLimit')) || null
+  terminalParkingDelayMs: Number(webE2EQuery?.get('koluxE2ETerminalParkingDelayMs')) || null,
+  terminalRetentionLimit: Number(webE2EQuery?.get('koluxE2ETerminalRetentionLimit')) || null
 })

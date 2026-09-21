@@ -22,7 +22,7 @@ export abstract class DaemonPtySessionInventory extends DaemonPtyProcessInspecti
     const preRequestActiveIds = new Set(this.activeSessionIds)
     try {
       // Why retry: this inventory is what destructive teardown consults, and a
-      // dead host pipe surfaced as `connect ENOENT \\?\\pipe\\nightshift-terminal-host-...`
+      // dead host pipe surfaced as `connect ENOENT \\?\\pipe\\kolux-terminal-host-...`
       // that failed worktree removal until the app was restarted (#10087). Spawn
       // already recovered from exactly this; inventory did not, so the one path
       // that must not get stuck was the only one that could not heal.

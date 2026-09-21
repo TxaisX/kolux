@@ -74,7 +74,7 @@ export async function initializeReadyRuntimeServices(): Promise<void> {
     }
   })
   // Emulator bridge (serve-sim). macOS-only feature (gated in CLI/runtime); always ship like agent-browser.
-  // Why: externally started serve-sim processes must stay independent — only Nightshift-managed/attached helpers belong to a workspace.
+  // Why: externally started serve-sim processes must stay independent — only Kolux-managed/attached helpers belong to a workspace.
   state.emulatorBridge = new EmulatorBridge()
   runtime.setEmulatorBridge(state.emulatorBridge)
   // Why: worktree deletion renames the checkout aside and deletes it in the background, so a quit or
@@ -109,7 +109,7 @@ export async function initializeReadyRuntimeServices(): Promise<void> {
         })
       : Promise.resolve()
   // Why skip rather than remove when the off switch is set: the hook files are user-global but this
-  // decision reads only THIS profile's settings, so removing here deletes the hooks every other Nightshift
+  // decision reads only THIS profile's settings, so removing here deletes the hooks every other Kolux
   // instance depends on (STA-5679). Skipping already keeps removed hooks from reappearing on launch.
   if (shouldReconcileStartupManagedHooks) {
     const managedHookStore = store

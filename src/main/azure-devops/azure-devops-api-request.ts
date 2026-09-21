@@ -66,10 +66,10 @@ export function normalizeAzureDevOpsApiBaseUrl(value: string): string {
 
 export function getAzureDevOpsAuthConfig(): AzureDevOpsAuthConfig {
   return {
-    apiBaseUrl: envValue('NIGHTSHIFT_AZURE_DEVOPS_API_BASE_URL'),
-    pat: envValue('NIGHTSHIFT_AZURE_DEVOPS_TOKEN') ?? envValue('NIGHTSHIFT_AZURE_DEVOPS_PAT'),
-    accessToken: envValue('NIGHTSHIFT_AZURE_DEVOPS_ACCESS_TOKEN'),
-    username: envValue('NIGHTSHIFT_AZURE_DEVOPS_USERNAME')
+    apiBaseUrl: envValue('KOLUX_AZURE_DEVOPS_API_BASE_URL'),
+    pat: envValue('KOLUX_AZURE_DEVOPS_TOKEN') ?? envValue('KOLUX_AZURE_DEVOPS_PAT'),
+    accessToken: envValue('KOLUX_AZURE_DEVOPS_ACCESS_TOKEN'),
+    username: envValue('KOLUX_AZURE_DEVOPS_USERNAME')
   }
 }
 

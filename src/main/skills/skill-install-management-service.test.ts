@@ -14,7 +14,7 @@ describe('skill install management', () => {
   let stateDirectory = ''
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-skill-management-test-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-skill-management-test-'))
     homeDirectory = join(root, 'home')
     stateDirectory = join(root, 'state')
     await Promise.all([mkdir(homeDirectory), mkdir(stateDirectory)])

@@ -146,7 +146,7 @@ function evaluate({
     }
   }
 
-  const markerPath = join(canonicalCandidate, '.nightshift-managed-home')
+  const markerPath = join(canonicalCandidate, '.kolux-managed-home')
   let markerIsRegularFile: boolean
   let markerContents: string
   try {
@@ -158,7 +158,7 @@ function evaluate({
     if (isDefinitiveAbsence(error)) {
       return {
         kind: 'untrusted',
-        reason: 'Managed Codex home is missing Nightshift ownership marker.'
+        reason: 'Managed Codex home is missing Kolux ownership marker.'
       }
     }
     return { kind: 'indeterminate', error }

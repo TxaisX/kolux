@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BROWSER_CLIENT_HOST_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { getBrowserHostLeaseRegistry } from '../../browser-host-lease-registry-instance'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { RpcDispatcher } from '../dispatcher'
 import { BROWSER_CLIENT_HOST_METHODS } from './browser-client-host'
 
@@ -155,7 +155,7 @@ async function commandResult(dispatcher: RpcDispatcher, params: Record<string, u
   return JSON.parse(replies[0]!)
 }
 
-function runtime(cleanups: Map<string, () => void>): NightshiftRuntimeService {
+function runtime(cleanups: Map<string, () => void>): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'runtime-a',
     getStartedAt: () => 1,
@@ -163,5 +163,5 @@ function runtime(cleanups: Map<string, () => void>): NightshiftRuntimeService {
     resolveBrowserExecutionHostKeyForWorkspace: async () => undefined,
     markClientHostedPagesReconciled: () => {},
     registerSubscriptionCleanup: (id: string, cleanup: () => void) => cleanups.set(id, cleanup)
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }

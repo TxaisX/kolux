@@ -21,25 +21,25 @@ function userText(id: string, text: string): NativeChatMessage {
 describe('normalizeImageTranscriptMessages', () => {
   it('merges the paired [Image: source]/[Image #1] turns into one image-ref turn', () => {
     const out = normalizeImageTranscriptMessages([
-      userText('a', '[Image: source: /tmp/nightshift-paste-1-2.png]'),
+      userText('a', '[Image: source: /tmp/kolux-paste-1-2.png]'),
       userText('b', '[Image #1] describe this')
     ])
     expect(out).toHaveLength(1)
     expect(out[0]!.blocks).toEqual([
-      { type: 'image-ref', path: '/tmp/nightshift-paste-1-2.png' },
+      { type: 'image-ref', path: '/tmp/kolux-paste-1-2.png' },
       { type: 'text', text: 'describe this' }
     ])
   })
 
   it('merges a source turn into a prompt with a trailing image marker', () => {
     const out = normalizeImageTranscriptMessages([
-      userText('a', '[Image: source: /tmp/nightshift-paste-1-2.png]'),
+      userText('a', '[Image: source: /tmp/kolux-paste-1-2.png]'),
       userText('b', 'describe this[Image #1]')
     ])
 
     expect(out).toHaveLength(1)
     expect(out[0]!.blocks).toEqual([
-      { type: 'image-ref', path: '/tmp/nightshift-paste-1-2.png' },
+      { type: 'image-ref', path: '/tmp/kolux-paste-1-2.png' },
       { type: 'text', text: 'describe this' }
     ])
   })
@@ -268,8 +268,8 @@ describe('normalizeNativeChatUserText control bytes', () => {
 
   // Remove a bracketed-paste wrapper as one sequence so its printable tail cannot survive.
   it('drops a bracketed-paste wrapper, not just its ESC introducer', () => {
-    expect(normalizeNativeChatUserText('\u001b[200~/tmp/nightshift-paste-1.png\u001b[201~')).toBe(
-      '/tmp/nightshift-paste-1.png'
+    expect(normalizeNativeChatUserText('\u001b[200~/tmp/kolux-paste-1.png\u001b[201~')).toBe(
+      '/tmp/kolux-paste-1.png'
     )
   })
 

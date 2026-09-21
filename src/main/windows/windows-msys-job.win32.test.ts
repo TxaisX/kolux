@@ -22,7 +22,7 @@ describeOnWindows('MSYS terminal job ownership', () => {
   it('retains and terminates a child across Git Bash shell replacement', async () => {
     const shell = resolveGitBashPath()
     expect(shell, 'Git for Windows must be installed on the native test runner').not.toBeNull()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-msys-job-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-msys-job-'))
     const script = join(directory, 'owned-child.js')
     writeFileSync(
       script,

@@ -18,7 +18,7 @@ import {
   type WorkspaceSnapshotPruneTombstone
 } from './workspace-snapshot-prune-index'
 
-const SNAPSHOT_FILE_NAME = 'nightshift-workspace-space-analysis.json'
+const SNAPSHOT_FILE_NAME = 'kolux-workspace-space-analysis.json'
 const SNAPSHOT_VERSION = 2
 
 export type WorkspaceSpaceAnalysisSnapshotPruneTarget = WorkspaceSnapshotPruneTarget

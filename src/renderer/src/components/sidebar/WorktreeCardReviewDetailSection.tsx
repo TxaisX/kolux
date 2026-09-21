@@ -23,7 +23,7 @@ type WorktreeCardReviewDetailSectionProps = {
   review: WorktreeCardPrDisplay | null
   reviewMenuOpen: boolean
   onReviewMenuOpenChange: (open: boolean) => void
-  onOpenReviewInNightshift?: (event: React.MouseEvent) => void
+  onOpenReviewInKolux?: (event: React.MouseEvent) => void
   onCopyReviewLink?: () => void
   onOpenReviewInBrowser?: (url: string) => void
   onUnlinkReview?: () => void
@@ -34,7 +34,7 @@ export function WorktreeCardReviewDetailSection({
   review,
   reviewMenuOpen,
   onReviewMenuOpenChange,
-  onOpenReviewInNightshift,
+  onOpenReviewInKolux,
   onCopyReviewLink,
   onOpenReviewInBrowser,
   onUnlinkReview,
@@ -67,7 +67,7 @@ export function WorktreeCardReviewDetailSection({
   )
   const dismissAndOpenReview = (event: React.MouseEvent): void => {
     closeHover()
-    onOpenReviewInNightshift?.(event)
+    onOpenReviewInKolux?.(event)
   }
 
   return (
@@ -107,8 +107,8 @@ export function WorktreeCardReviewDetailSection({
                     >
                       <Globe className="size-3.5" />
                       {translate(
-                        'auto.components.sidebar.WorktreeCardMeta.openInNightshiftBrowser',
-                        'Open in Nightshift browser'
+                        'auto.components.sidebar.WorktreeCardMeta.openInKoluxBrowser',
+                        'Open in Kolux browser'
                       )}
                     </DropdownMenuItem>
                   )}
@@ -140,11 +140,11 @@ export function WorktreeCardReviewDetailSection({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {review.url && onOpenReviewInNightshift && (
+            {review.url && onOpenReviewInKolux && (
               <MetadataActionIcon
                 label={translate(
                   'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
-                  'Open in Nightshift'
+                  'Open in Kolux'
                 )}
                 onClick={dismissAndOpenReview}
               >

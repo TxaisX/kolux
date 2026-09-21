@@ -356,7 +356,7 @@ describe('legacy compatibility through RpcDispatcher', () => {
       }
     })
     expect((coordinatorCheck as { result: { formatted: string } }).result.formatted).toContain(
-      `nightshift orchestration reply --id ${firstId}`
+      `kolux orchestration reply --id ${firstId}`
     )
   })
 

@@ -209,7 +209,7 @@ describe('SshRelaySession terminal relay error (RelayVersionMismatchError)', () 
 
     await session.establish(mockConn)
     const silent = new RelayEndpointUnresponsiveError({
-      sockPath: '/home/u/.nightshift-remote/relay-x/relay.sock',
+      sockPath: '/home/u/.kolux-remote/relay-x/relay.sock',
       verdict: 'live',
       evidence: 'accepted-connection',
       socketPresent: true,

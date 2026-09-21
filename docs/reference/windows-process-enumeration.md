@@ -1,6 +1,6 @@
 # Reading the Windows process table
 
-Nightshift needs three things from the Windows process table: who a PID's parent is
+Kolux needs three things from the Windows process table: who a PID's parent is
 (descendant walks and teardown identity), what a process is running (agent
 recognition), and how much memory/CPU it uses (Resource Manager).
 
@@ -235,7 +235,7 @@ probe also blocked its caller for the full 3 s deadline first. Gating on the
 outstanding read instead bounds retention at exactly one callback, and gives up
 nothing on recovery — a probe queued behind the latch could never have observed
 recovery anyway, whereas the stuck callback firing is the drain itself. On the
-relay's bare addon, which has no queue of its own, it is also what keeps Nightshift
+relay's bare addon, which has no queue of its own, it is also what keeps Kolux
 from re-entering `CreateToolhelp32Snapshot` while a call is still running.
 
 That last part is not just tidiness. The addon runs each read as a
@@ -327,7 +327,7 @@ Windows arm64 cross-compiles from the x64 runner — verified on real hardware,
 producing `IMAGE_FILE_MACHINE_ARM64` (0xaa64) against x64's 0x8664. It needs the
 optional _MSVC v143 ARM64 build tools_ component; without it node-gyp fails with
 `MSB8020`, which is why the addon build runs before the long packaging step.
-`NIGHTSHIFT_REQUIRE_RELAY_NATIVE_ADDONS` is a per-arch list so a future arch can be
+`KOLUX_REQUIRE_RELAY_NATIVE_ADDONS` is a per-arch list so a future arch can be
 added best-effort before it is promoted to required.
 
 `windows-process-table.ts` binds the bare addon directly rather than the package
@@ -347,7 +347,7 @@ on any other OS keeps using the scan.
 `config/patches/@vscode__windows-process-tree@0.8.0.patch` carries six changes.
 
 1. **Spectre mitigation.** The upstream `binding.gyp` requires Spectre-mitigated
-   libraries, which Nightshift's Windows build agents do not install. `node-pty` is
+   libraries, which Kolux's Windows build agents do not install. `node-pty` is
    patched the same way for the same reason.
 2. **The 1024-process cap.** `GetRawProcessList` stopped after 1024 entries.
    Measured on a real host with 1051 processes, the module returned exactly
@@ -403,7 +403,7 @@ the flag sets above changes that; only removing the read does.
 Windows 8.1 added `NtQueryInformationProcess`'s `ProcessCommandLineInformation`
 class (60), which returns the same string as a `UNICODE_STRING` the kernel
 builds, needing only `PROCESS_QUERY_LIMITED_INFORMATION`. Electron's floor is
-Windows 10, so every OS Nightshift supports has it. The entry point is resolved with
+Windows 10, so every OS Kolux supports has it. The entry point is resolved with
 `GetProcAddress` on `ntdll.dll` — it has no import library — and the size is
 probed with a null-buffer call that answers `STATUS_INFO_LENGTH_MISMATCH`.
 
@@ -496,7 +496,7 @@ Four checks close that, all keyed on the absent `ReadProcessMemory` import:
 What none of this does is narrow _which_ processes are asked. A detailed scan
 still queries every pid, including `lsass.exe`; it now asks with the same right
 Task Manager uses instead of `PROCESS_VM_READ`. Restricting the command-line
-pass to Nightshift's own subtree is the complementary change, and it belongs with the
+pass to Kolux's own subtree is the complementary change, and it belongs with the
 identity/detailed reader split rather than here — a ppid-derived allowlist would
 miss exactly the detached, reparented descendants the trackers exist to find
 (#9045, #10475), so it needs the job-object membership as its source of truth.
@@ -526,7 +526,7 @@ CPU accounting in the memory collector still read a start time through their own
 queries; those callers are not migrated.
 
 Committed private bytes have no equivalent either, and the one memory value the
-addon can produce is unusable for the sizes Nightshift now sees: `process.cc` stores
+addon can produce is unusable for the sizes Kolux now sees: `process.cc` stores
 `pmc.WorkingSetSize` into a `DWORD`, so anything above 4 GB wraps — which is why
 neither flag set asks for it. That is the second reason
 `windows-process-resource-collector.ts` still runs its own
@@ -535,10 +535,10 @@ counters in the same pass. Migrating it to the native table would cost both, and
 it is why this module no longer sets the `Memory` flag at all: the field had no
 reader, and asking for it opened a handle per process on every snapshot.
 
-Start time is a proxy for identity, not identity. For the process trees Nightshift
+Start time is a proxy for identity, not identity. For the process trees Kolux
 itself spawns the durable answer is still an inherited handle: a job object
-names the tree Nightshift created, so no start-time comparison is needed. The
-`creationTimeMs` this snapshot now carries is for the trees Nightshift did **not**
+names the tree Kolux created, so no start-time comparison is needed. The
+`creationTimeMs` this snapshot now carries is for the trees Kolux did **not**
 create the handle for — a recovered agent session, a descendant walked out of
 the table — where a bare PID is all there is to re-identify.
 

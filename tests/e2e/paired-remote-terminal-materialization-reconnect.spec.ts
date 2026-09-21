@@ -9,7 +9,7 @@ import type {
   RuntimeTerminalShow
 } from '../../src/shared/runtime-types'
 import { toWebTerminalSurfaceTabId } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import {
   createRuntimeDesktopPairingOffer,
@@ -18,7 +18,7 @@ import {
 import { getTerminalContent, waitForActivePanePtyId } from './helpers/terminal'
 import { readFreshTerminalInventory } from './helpers/terminal-inventory-observation'
 
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-materialize-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-materialize-'))
 const fixturePath = path.join(scratch, 'materialize-terminal.mjs')
 const processedInputPath = path.join(scratch, 'processed-input.txt')
 
@@ -332,16 +332,14 @@ async function runMaterializationJourney(
 }
 
 test('materializes a stopped terminal on reconnect from a headed paired host', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(120_000)
-  const worktreeId = await nightshiftPage.evaluate(
-    () => window.__store?.getState().activeWorktreeId
-  )
+  const worktreeId = await koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId)
   if (!worktreeId) {
     throw new Error('Headed host has no active seeded workspace')
   }
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedElectronClient(offer, testInfo, 'headed-materialization-client')
   try {
     await showClient(client.app, client.page)

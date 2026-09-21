@@ -34,7 +34,7 @@ export type ChecksPanelReviewState = {
   workflowAction: ChecksPanelWorkflowAction
   recovery: ChecksPanelRecoveryAction[]
   openReviewUrl?: string | null
-  /** Drives "Nightshift will retry at {time}"; only when a future auto-retry exists. */
+  /** Drives "Kolux will retry at {time}"; only when a future auto-retry exists. */
   autoRetryAt?: number
   /** Retry button stays disabled while now < retryDisabledUntil. */
   retryDisabledUntil?: number

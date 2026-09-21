@@ -17,7 +17,7 @@ async function createFixture(): Promise<{
   docs: string
   assets: string
 }> {
-  const fixture = await mkdtemp(join(tmpdir(), 'nightshift-doc-preview-access-'))
+  const fixture = await mkdtemp(join(tmpdir(), 'kolux-doc-preview-access-'))
   fixtureRoots.push(fixture)
   const workspace = join(fixture, 'workspace')
   const docs = join(workspace, 'docs')

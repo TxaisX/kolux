@@ -36,7 +36,7 @@ function runPs(pid: number): string {
 let ownRowCache: { pid: number; row: string } | null = null
 
 /**
- * Nightshift's own row, read once per process. It feeds exactly one guard — the
+ * Kolux's own row, read once per process. It feeds exactly one guard — the
  * "does this process share the PTY" check below — and the only field that guard
  * reads is the controlling tty, which cannot change for a process's lifetime.
  * Re-forking `ps` for it on every SIGWINCH doubled a ~3ms synchronous stall that

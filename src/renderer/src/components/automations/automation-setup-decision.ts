@@ -1,5 +1,5 @@
 import type { AutomationWorkspaceMode } from '../../../../shared/automations-types'
-import type { NightshiftHooks, SetupRunPolicy } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks, SetupRunPolicy } from '../../../../shared/kolux-yaml-hook-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 import type { SetupDecision } from '../../../../shared/worktree/create-types'
@@ -14,7 +14,7 @@ function getAutomationSetupSource(
   repoId: string,
   repos: readonly Repo[],
   projectHostSetups: readonly ProjectHostSetup[],
-  yamlHooks: NightshiftHooks | null | undefined
+  yamlHooks: KoluxHooks | null | undefined
 ): AutomationSetupSource | null {
   const setup = projectHostSetups.find(
     (candidate) => candidate.repoId === repoId && candidate.setupState === 'ready'
@@ -44,14 +44,14 @@ export function getAutomationSetupDefaultDecision(
 }
 
 export function getVisibleAutomationSetupDecision(args: {
-  createTarget: 'nightshift' | 'hermes'
+  createTarget: 'kolux' | 'hermes'
   workspaceMode: AutomationWorkspaceMode
   repoId: string
   repos: readonly Repo[]
   projectHostSetups: readonly ProjectHostSetup[]
-  yamlHooks?: NightshiftHooks | null
+  yamlHooks?: KoluxHooks | null
 }): Extract<SetupDecision, 'run' | 'skip'> | undefined {
-  if (args.createTarget !== 'nightshift' || args.workspaceMode !== 'new_per_run') {
+  if (args.createTarget !== 'kolux' || args.workspaceMode !== 'new_per_run') {
     return undefined
   }
   return getAutomationSetupDefaultDecision(
@@ -60,15 +60,15 @@ export function getVisibleAutomationSetupDecision(args: {
 }
 
 export function resolveAutomationSetupDecisionForSave(args: {
-  createTarget: 'nightshift' | 'hermes'
+  createTarget: 'kolux' | 'hermes'
   workspaceMode: AutomationWorkspaceMode
   repoId: string
   repos: readonly Repo[]
   projectHostSetups: readonly ProjectHostSetup[]
-  yamlHooks?: NightshiftHooks | null
+  yamlHooks?: KoluxHooks | null
   draftSetupDecision: Extract<SetupDecision, 'run' | 'skip'> | undefined
 }): Extract<SetupDecision, 'run' | 'skip'> | undefined {
-  if (args.createTarget !== 'nightshift' || args.workspaceMode !== 'new_per_run') {
+  if (args.createTarget !== 'kolux' || args.workspaceMode !== 'new_per_run') {
     return undefined
   }
 
@@ -78,7 +78,7 @@ export function resolveAutomationSetupDecisionForSave(args: {
   }
 
   if (args.yamlHooks === undefined) {
-    // Why: automations cannot pause later for a nightshift.yaml trust prompt; when
+    // Why: automations cannot pause later for a kolux.yaml trust prompt; when
     // hook inspection is unavailable, fail closed instead of inheriting setup.
     return 'skip'
   }

@@ -4,7 +4,7 @@ import type {
   ExternalAutomationJob,
   ExternalAutomationManager
 } from '../../../../shared/automations-types'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { useContextualTour } from '@/components/contextual-tours/use-contextual-tour'
 import type { AutomationCreateTarget, AutomationDraft } from './AutomationEditorDialog'
 import { AUTOMATION_DEFAULT_TIME } from './automation-draft-model'
@@ -60,7 +60,7 @@ export function useAutomationsPageLocalState(store: AutomationsPageStoreState) {
   const [listFilter, setListFilter] = useState<AutomationListFilter>(EMPTY_AUTOMATION_LIST_FILTER)
   const [listSort, setListSort] = useState<AutomationListSort | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [createTarget, setCreateTarget] = useState<AutomationCreateTarget>('nightshift')
+  const [createTarget, setCreateTarget] = useState<AutomationCreateTarget>('kolux')
   const [editingAutomationId, setEditingAutomationId] = useState<string | null>(null)
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null)
   const [editingDestination, setEditingDestination] = useState<{
@@ -125,10 +125,10 @@ export function useAutomationsPageLocalState(store: AutomationsPageStoreState) {
   const setupDecisionDefaultSignatureRef = useRef<string | null>(null)
   const setupDecisionTouchedRef = useRef(false)
   const automationHookCheckPromisesRef = useRef<
-    Map<string, Promise<{ hooks: NightshiftHooks | null; ok: boolean }>>
+    Map<string, Promise<{ hooks: KoluxHooks | null; ok: boolean }>>
   >(new Map())
   const [automationYamlHooksByRepoKey, setAutomationYamlHooksByRepoKey] = useState<
-    Record<string, NightshiftHooks | null>
+    Record<string, KoluxHooks | null>
   >({})
   const [draft, setDraft] = useState<AutomationDraft>({
     name: '',

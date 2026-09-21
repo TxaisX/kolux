@@ -11,19 +11,19 @@ import type {
 
 export async function startRealPtyPressureCommands({
   loadPanes,
-  nightshiftPage,
+  koluxPage,
   pressureOutputChars,
   pressureScriptPath
 }: {
   loadPanes: RevisitPressurePane[]
-  nightshiftPage: Page
+  koluxPage: Page
   pressureOutputChars: number
   pressureScriptPath: string
 }): Promise<void> {
   await Promise.all(
     loadPanes.map((pane, paneIndex) =>
       sendToTerminal(
-        nightshiftPage,
+        koluxPage,
         pane.ptyId,
         `node ${JSON.stringify(pressureScriptPath)} ${paneIndex} ${pressureOutputChars}\r`
       )

@@ -88,7 +88,7 @@ describe('hydrateEditorSession', () => {
 
   it('restores floating workspace markdown files without a repo worktree', () => {
     const store = createTestStore()
-    const filePath = '/nightshift/userData/floating-workspace/note.md'
+    const filePath = '/kolux/userData/floating-workspace/note.md'
     const fileId = ownedEditorFileId(filePath, FLOATING_TERMINAL_WORKTREE_ID, null)
 
     store.setState({ activeWorktreeId: FLOATING_TERMINAL_WORKTREE_ID })
@@ -112,7 +112,7 @@ describe('hydrateEditorSession', () => {
         ]
       },
       activeFileIdByWorktree: {
-        [FLOATING_TERMINAL_WORKTREE_ID]: '/nightshift/userData/floating-workspace/note.md'
+        [FLOATING_TERMINAL_WORKTREE_ID]: '/kolux/userData/floating-workspace/note.md'
       },
       activeTabTypeByWorktree: { [FLOATING_TERMINAL_WORKTREE_ID]: 'editor' }
     })
@@ -134,7 +134,7 @@ describe('hydrateEditorSession', () => {
 
   it('migrates hydrated front-matter visibility to owner-qualified editor file ids', () => {
     const store = createTestStore()
-    const filePath = '/nightshift/userData/floating-workspace/note.md'
+    const filePath = '/kolux/userData/floating-workspace/note.md'
     const fileId = ownedEditorFileId(filePath, FLOATING_TERMINAL_WORKTREE_ID, null)
 
     store.setState({ activeWorktreeId: FLOATING_TERMINAL_WORKTREE_ID })
@@ -168,7 +168,7 @@ describe('hydrateEditorSession', () => {
 
   it('drops legacy visible=true front-matter entries so upgraded sessions fall back to the visible default', () => {
     const store = createTestStore()
-    const filePath = '/nightshift/userData/floating-workspace/note.md'
+    const filePath = '/kolux/userData/floating-workspace/note.md'
     const fileId = ownedEditorFileId(filePath, FLOATING_TERMINAL_WORKTREE_ID, null)
 
     store.setState({ activeWorktreeId: FLOATING_TERMINAL_WORKTREE_ID })
@@ -512,7 +512,7 @@ describe('hydrateEditorSession', () => {
 
   it('migrates legacy floating unified tab file-path references to the hydrated owner id', () => {
     const store = createTestStore()
-    const filePath = '/nightshift/userData/floating-workspace/README.md'
+    const filePath = '/kolux/userData/floating-workspace/README.md'
     const fileId = ownedEditorFileId(filePath, FLOATING_TERMINAL_WORKTREE_ID, null)
     const groupId = 'floating-group-legacy'
 

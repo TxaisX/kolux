@@ -4,7 +4,7 @@ import path from 'node:path'
 import { build } from 'esbuild'
 import type { TestInfo } from '@playwright/test'
 
-const TEMP_PREFIX = 'nightshift-9749-dg-'
+const TEMP_PREFIX = 'kolux-9749-dg-'
 
 type DiagnosticGeneration = {
   label: string
@@ -42,17 +42,17 @@ function isEqualToOrInside(candidate: string, parent: string): boolean {
   )
 }
 
-function knownNightshiftUserDataDirs(): string[] {
+function knownKoluxUserDataDirs(): string[] {
   if (process.platform === 'darwin') {
     const appSupport = path.join(homedir(), 'Library', 'Application Support')
-    return [path.join(appSupport, 'nightshift'), path.join(appSupport, 'nightshift-dev')]
+    return [path.join(appSupport, 'kolux'), path.join(appSupport, 'kolux-dev')]
   }
   if (process.platform === 'win32') {
     const roaming = process.env.APPDATA ?? path.join(homedir(), 'AppData', 'Roaming')
-    return [path.join(roaming, 'nightshift'), path.join(roaming, 'nightshift-dev')]
+    return [path.join(roaming, 'kolux'), path.join(roaming, 'kolux-dev')]
   }
   const config = process.env.XDG_CONFIG_HOME ?? path.join(homedir(), '.config')
-  return [path.join(config, 'nightshift'), path.join(config, 'nightshift-dev')]
+  return [path.join(config, 'kolux'), path.join(config, 'kolux-dev')]
 }
 
 function assertDisposableRoot(rootDir: string): void {
@@ -63,9 +63,9 @@ function assertDisposableRoot(rootDir: string): void {
   if (!isEqualToOrInside(rootDir, tempRoot)) {
     throw new Error('Daemon-generation fixture escaped the OS temporary directory')
   }
-  for (const userDataDir of knownNightshiftUserDataDirs()) {
+  for (const userDataDir of knownKoluxUserDataDirs()) {
     if (isEqualToOrInside(rootDir, userDataDir)) {
-      throw new Error('Refusing daemon-generation fixture inside real Nightshift user data')
+      throw new Error('Refusing daemon-generation fixture inside real Kolux user data')
     }
   }
 }

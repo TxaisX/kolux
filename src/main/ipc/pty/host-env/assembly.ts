@@ -9,13 +9,13 @@ import { mimoCodeHookService } from '../../../mimo/hook-service'
 import { agentHookServer } from '../../../agent-hooks/server'
 import { wslHookRelayManager } from '../../../agent-hooks/wsl-hook-relay-manager'
 import { piTitlebarExtensionService } from '../../../pi/titlebar-extension-service'
-import { prependNightshiftCliDirToChildPath } from '../../../cli/nightshift-cli-child-path'
+import { prependKoluxCliDirToChildPath } from '../../../cli/kolux-cli-child-path'
 import { stripLegacyTerminalShimEnv } from '../../../pty/legacy-terminal-shim-dir'
 import { mergePersistedWindowsPath } from '../../../pty/windows-environment-path'
 import { resolveCodexShellLaunchPreflightCommand } from '../../../pty/codex-shell-launch-preflight'
 import { buildConfiguredProxyEnv } from '../../../../shared/network-proxy'
 import type { BuildPtyHostEnvOptions } from './types'
-import { stripInheritedNightshiftCodexHomeOverride } from './codex-home'
+import { stripInheritedKoluxCodexHomeOverride } from './codex-home'
 import {
   clearPiAgentShadowEnv,
   exposePiManagedExtensionEnv,
@@ -74,40 +74,40 @@ export function buildPtyHostEnv(
       : resolveScopedPiAgentSourceDir(baseEnv, 'prime-agent')
 
   if (opts.agentStatusHooksEnabled) {
-    // Why: OPENCODE_CONFIG_DIR is a single path, not a colon-list; mirror the user's value into an overlay so their plugins and Nightshift's status plugin coexist. See docs/opencode-config-dir-collision.md.
+    // Why: OPENCODE_CONFIG_DIR is a single path, not a colon-list; mirror the user's value into an overlay so their plugins and Kolux's status plugin coexist. See docs/opencode-config-dir-collision.md.
     Object.assign(baseEnv, openCodeHookService.buildPtyEnv(id, preexistingOpenCodeConfigDir))
     if (baseEnv.OPENCODE_CONFIG_DIR) {
       // Why: ~/.zshrc can re-export the user's default after spawn; shell-ready wrappers restore this PTY-scoped value.
-      baseEnv.NIGHTSHIFT_OPENCODE_CONFIG_DIR = baseEnv.OPENCODE_CONFIG_DIR
+      baseEnv.KOLUX_OPENCODE_CONFIG_DIR = baseEnv.OPENCODE_CONFIG_DIR
       if (preexistingOpenCodeConfigDir) {
-        // Why: nested Nightshift terminals inherit the overlay as OPENCODE_CONFIG_DIR; keep the real source so overlays don't mirror overlays.
-        baseEnv.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR = preexistingOpenCodeConfigDir
+        // Why: nested Kolux terminals inherit the overlay as OPENCODE_CONFIG_DIR; keep the real source so overlays don't mirror overlays.
+        baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = preexistingOpenCodeConfigDir
       } else {
-        delete baseEnv.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
+        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
       }
     }
     if (isMimoLaunchCommand(launchCommandHint)) {
       const preexistingMimocodeHome = resolveMimocodeSourceHome(baseEnv)
       Object.assign(baseEnv, mimoCodeHookService.buildPtyEnv(id, preexistingMimocodeHome))
       if (baseEnv.MIMOCODE_HOME) {
-        baseEnv.NIGHTSHIFT_MIMOCODE_HOME = baseEnv.MIMOCODE_HOME
+        baseEnv.KOLUX_MIMOCODE_HOME = baseEnv.MIMOCODE_HOME
         if (preexistingMimocodeHome) {
-          baseEnv.NIGHTSHIFT_MIMOCODE_SOURCE_HOME = preexistingMimocodeHome
+          baseEnv.KOLUX_MIMOCODE_SOURCE_HOME = preexistingMimocodeHome
         } else {
-          delete baseEnv.NIGHTSHIFT_MIMOCODE_SOURCE_HOME
+          delete baseEnv.KOLUX_MIMOCODE_SOURCE_HOME
         }
       }
     }
   } else {
     restoreOrStripOverlayEnv(baseEnv, {
       primary: 'OPENCODE_CONFIG_DIR',
-      overlay: 'NIGHTSHIFT_OPENCODE_CONFIG_DIR',
-      source: 'NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR'
+      overlay: 'KOLUX_OPENCODE_CONFIG_DIR',
+      source: 'KOLUX_OPENCODE_SOURCE_CONFIG_DIR'
     })
     restoreOrStripOverlayEnv(baseEnv, {
       primary: 'MIMOCODE_HOME',
-      overlay: 'NIGHTSHIFT_MIMOCODE_HOME',
-      source: 'NIGHTSHIFT_MIMOCODE_SOURCE_HOME'
+      overlay: 'KOLUX_MIMOCODE_HOME',
+      source: 'KOLUX_MIMOCODE_SOURCE_HOME'
     })
   }
 
@@ -123,24 +123,24 @@ export function buildPtyHostEnv(
       wslHookRelayManager.ensureForDistro(distro, opts.selectedCodexHomePath)
       const guestEndpoint = wslHookRelayManager.getGuestEndpointFilePath(distro)
       if (guestEndpoint) {
-        baseEnv.NIGHTSHIFT_AGENT_HOOK_ENDPOINT = guestEndpoint
+        baseEnv.KOLUX_AGENT_HOOK_ENDPOINT = guestEndpoint
       }
       // Why: OpenCode loads its status plugin from a guest config overlay, so point OPENCODE_CONFIG_DIR at the guest dir the relay materialized.
       const opencodeOverlayDir = wslHookRelayManager.getOpenCodeOverlayDir(distro)
       if (opencodeOverlayDir) {
         baseEnv.OPENCODE_CONFIG_DIR = opencodeOverlayDir
-        baseEnv.NIGHTSHIFT_OPENCODE_CONFIG_DIR = opencodeOverlayDir
-        delete baseEnv.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
+        baseEnv.KOLUX_OPENCODE_CONFIG_DIR = opencodeOverlayDir
+        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
       } else {
         // Why: relay not connected yet (or older guest bundle) — never cross the Windows overlay path into WSL; drop it so in-guest OpenCode uses its own config (pre-fix behavior, no status but no regression).
         delete baseEnv.OPENCODE_CONFIG_DIR
-        delete baseEnv.NIGHTSHIFT_OPENCODE_CONFIG_DIR
-        delete baseEnv.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
+        delete baseEnv.KOLUX_OPENCODE_CONFIG_DIR
+        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
       }
     }
   }
 
-  // Why: PI_CODING_AGENT_DIR is the user's config/session root; install only Nightshift-owned extension files, don't override it.
+  // Why: PI_CODING_AGENT_DIR is the user's config/session root; install only Kolux-owned extension files, don't override it.
   if (opts.agentStatusHooksEnabled) {
     clearPiAgentShadowEnv(baseEnv, 'pi')
     clearPiAgentShadowEnv(baseEnv, 'omp')
@@ -180,28 +180,28 @@ export function buildPtyHostEnv(
     // Why: nested PTYs must not inherit stale source or overlay state from another agent.
     restoreOrStripOverlayEnv(baseEnv, {
       primary: 'PI_CODING_AGENT_DIR',
-      overlay: 'NIGHTSHIFT_PI_CODING_AGENT_DIR',
-      source: 'NIGHTSHIFT_PI_SOURCE_AGENT_DIR'
+      overlay: 'KOLUX_PI_CODING_AGENT_DIR',
+      source: 'KOLUX_PI_SOURCE_AGENT_DIR'
     })
     restoreOrStripOverlayEnv(baseEnv, {
       primary: 'PI_CODING_AGENT_DIR',
-      overlay: 'NIGHTSHIFT_OMP_CODING_AGENT_DIR',
-      source: 'NIGHTSHIFT_OMP_SOURCE_AGENT_DIR'
+      overlay: 'KOLUX_OMP_CODING_AGENT_DIR',
+      source: 'KOLUX_OMP_SOURCE_AGENT_DIR'
     })
-    delete baseEnv.NIGHTSHIFT_OMP_STATUS_EXTENSION
-    delete baseEnv.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR
-    delete baseEnv.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION
+    delete baseEnv.KOLUX_OMP_STATUS_EXTENSION
+    delete baseEnv.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR
+    delete baseEnv.KOLUX_PRIME_AGENT_STATUS_EXTENSION
   }
 
-  // Why: keep the Codex home override PTY-scoped so dev/prod Nightshifts don't share hooks through ~/.codex.
+  // Why: keep the Codex home override PTY-scoped so dev/prod Koluxs don't share hooks through ~/.codex.
   if (opts.skipCodexHomeEnv) {
     delete baseEnv.CODEX_HOME
-    delete baseEnv.NIGHTSHIFT_CODEX_HOME
-    delete baseEnv.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+    delete baseEnv.KOLUX_CODEX_HOME
+    delete baseEnv.KOLUX_CODEX_LAUNCH_PREFLIGHT
   } else if (opts.selectedCodexHomePath) {
     baseEnv.CODEX_HOME = opts.selectedCodexHomePath
     // Why: user startup files may re-export CODEX_HOME; shell-ready wrappers restore this runtime home before Codex launches.
-    baseEnv.NIGHTSHIFT_CODEX_HOME = opts.selectedCodexHomePath
+    baseEnv.KOLUX_CODEX_HOME = opts.selectedCodexHomePath
     const preflightCommand = resolveCodexShellLaunchPreflightCommand({
       hooksEnabled: opts.codexStatusHooksEnabled ?? opts.agentStatusHooksEnabled,
       isPackaged: opts.isPackaged,
@@ -211,29 +211,29 @@ export function buildPtyHostEnv(
       resourcesPath: opts.resourcesPath
     })
     if (preflightCommand) {
-      baseEnv.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT = preflightCommand
+      baseEnv.KOLUX_CODEX_LAUNCH_PREFLIGHT = preflightCommand
     } else {
-      delete baseEnv.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+      delete baseEnv.KOLUX_CODEX_LAUNCH_PREFLIGHT
     }
-  } else if (opts.stripInheritedNightshiftCodexHome) {
-    stripInheritedNightshiftCodexHomeOverride(baseEnv)
-    delete baseEnv.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+  } else if (opts.stripInheritedKoluxCodexHome) {
+    stripInheritedKoluxCodexHomeOverride(baseEnv)
+    delete baseEnv.KOLUX_CODEX_LAUNCH_PREFLIGHT
   } else {
-    delete baseEnv.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT
+    delete baseEnv.KOLUX_CODEX_LAUNCH_PREFLIGHT
   }
 
-  // Why: WSL shells need the managed userData root for shell-ready wrappers; dev-mode terminals need the same export so `nightshift` targets the live dev instance.
+  // Why: WSL shells need the managed userData root for shell-ready wrappers; dev-mode terminals need the same export so `kolux` targets the live dev instance.
   if (opts.isWsl) {
-    baseEnv.NIGHTSHIFT_USER_DATA_PATH = opts.userDataPath
-    // Why: managed WSL registration uses `nightshift-ide`; exposing that literal scopes agent guidance to WSL without a bare-nightshift shim.
-    baseEnv.NIGHTSHIFT_CLI_COMMAND = opts.isPackaged ? 'nightshift-ide' : 'nightshift-dev'
+    baseEnv.KOLUX_USER_DATA_PATH = opts.userDataPath
+    // Why: managed WSL registration uses `kolux-ide`; exposing that literal scopes agent guidance to WSL without a bare-kolux shim.
+    baseEnv.KOLUX_CLI_COMMAND = opts.isPackaged ? 'kolux-ide' : 'kolux-dev'
   } else {
     if (!opts.isPackaged) {
-      baseEnv.NIGHTSHIFT_USER_DATA_PATH ??= opts.userDataPath
+      baseEnv.KOLUX_USER_DATA_PATH ??= opts.userDataPath
     }
-    delete baseEnv.NIGHTSHIFT_CLI_COMMAND
+    delete baseEnv.KOLUX_CLI_COMMAND
   }
-  prependNightshiftCliDirToChildPath(baseEnv, {
+  prependKoluxCliDirToChildPath(baseEnv, {
     isPackaged: opts.isPackaged,
     userDataPath: opts.userDataPath,
     resourcesPath: opts.resourcesPath
@@ -244,11 +244,7 @@ export function buildPtyHostEnv(
     baseEnv.BROWSER === undefined &&
     process.env.BROWSER === undefined
   ) {
-    const cliCommand = opts.isWsl
-      ? opts.isPackaged
-        ? 'nightshift-ide'
-        : 'nightshift-dev'
-      : 'nightshift'
+    const cliCommand = opts.isWsl ? (opts.isPackaged ? 'kolux-ide' : 'kolux-dev') : 'kolux'
     baseEnv.BROWSER = `${cliCommand} open-url --url %s`
   }
 

@@ -39,14 +39,14 @@ describe('SshGitProvider', () => {
 
   it('pushBranch sends git.push request and forwards publish mode and target', async () => {
     await provider.pushBranch('/home/user/repo', true, {
-      remoteName: 'pr-fork-nightshift',
+      remoteName: 'pr-fork-kolux',
       branchName: 'contributor/fix'
     })
     expect(mux.request).toHaveBeenCalledWith('git.push', {
       worktreePath: '/home/user/repo',
       publish: true,
       pushTarget: {
-        remoteName: 'pr-fork-nightshift',
+        remoteName: 'pr-fork-kolux',
         branchName: 'contributor/fix'
       }
     })
@@ -141,7 +141,7 @@ describe('SshGitProvider', () => {
     }
     mux.request.mockResolvedValue(syncResult)
 
-    const expectedUpstream = { owner: 'TxaisX', repo: 'nightshift' }
+    const expectedUpstream = { owner: 'TxaisX', repo: 'kolux' }
     const result = await provider.syncForkDefaultBranch('/home/user/repo', expectedUpstream)
 
     expect(mux.request).toHaveBeenCalledWith('git.forkSync', {
@@ -171,7 +171,7 @@ describe('SshGitProvider', () => {
 
   it('fetchGitLabMergeRequestHead sends the durable-ref git.fetchGitLabMergeRequestHeadRef request', async () => {
     mux.request.mockResolvedValueOnce({
-      localRef: 'refs/nightshift/merge-requests/origin-abc/42'
+      localRef: 'refs/kolux/merge-requests/origin-abc/42'
     })
 
     const localRef = await provider.fetchGitLabMergeRequestHead('/home/user/repo', 'origin', 42)
@@ -181,7 +181,7 @@ describe('SshGitProvider', () => {
       remote: 'origin',
       mrIid: 42
     })
-    expect(localRef).toBe('refs/nightshift/merge-requests/origin-abc/42')
+    expect(localRef).toBe('refs/kolux/merge-requests/origin-abc/42')
   })
 
   it('fetchGitLabMergeRequestHead maps old relays to the reconnect message', async () => {
@@ -194,7 +194,7 @@ describe('SshGitProvider', () => {
     await expect(
       provider.fetchGitLabMergeRequestHead('/home/user/repo', 'origin', 42)
     ).rejects.toThrow(
-      'This SSH host is running an older Nightshift relay that cannot fetch merge request heads. Reconnect to deploy the latest relay, then try again.'
+      'This SSH host is running an older Kolux relay that cannot fetch merge request heads. Reconnect to deploy the latest relay, then try again.'
     )
   })
 
@@ -208,7 +208,7 @@ describe('SshGitProvider', () => {
   })
 
   it('fetchGitHubPullRequestHead sends git.fetchGitHubPullRequestHead request', async () => {
-    mux.request.mockResolvedValueOnce({ localRef: 'refs/nightshift/pull/origin-abc/42' })
+    mux.request.mockResolvedValueOnce({ localRef: 'refs/kolux/pull/origin-abc/42' })
 
     const localRef = await provider.fetchGitHubPullRequestHead('/home/user/repo', 'origin', 42)
 
@@ -217,7 +217,7 @@ describe('SshGitProvider', () => {
       remote: 'origin',
       prNumber: 42
     })
-    expect(localRef).toBe('refs/nightshift/pull/origin-abc/42')
+    expect(localRef).toBe('refs/kolux/pull/origin-abc/42')
   })
 
   it('fetchGitHubPullRequestHead rejects relays that omit the durable localRef', async () => {
@@ -238,7 +238,7 @@ describe('SshGitProvider', () => {
     await expect(
       provider.fetchGitHubPullRequestHead('/home/user/repo', 'origin', 42)
     ).rejects.toThrow(
-      'This SSH host is running an older Nightshift relay that cannot fetch pull request heads. Reconnect to deploy the latest relay, then try again.'
+      'This SSH host is running an older Kolux relay that cannot fetch pull request heads. Reconnect to deploy the latest relay, then try again.'
     )
   })
 

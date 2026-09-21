@@ -12,7 +12,7 @@ import {
   type NetworkInterface
 } from '../runtime/pairing-network-interfaces'
 import { resolveAdvertisedPairingHostname } from '../runtime/pairing-endpoint'
-import type { NightshiftRuntimeRpcServer } from '../runtime/runtime-rpc'
+import type { KoluxRuntimeRpcServer } from '../runtime/runtime-rpc'
 import type { MobileRelayStatusDetail } from '../../shared/mobile-relay-status'
 import { encodeMobilePairingQr, type MobilePairingQrResult } from '../runtime/mobile-pairing-qr'
 import { getWindowsDefaultRouteInterfaceNames } from '../runtime/windows-default-route-interfaces'
@@ -46,7 +46,7 @@ function toRuntimeAccessGrant(device: DeviceEntry): RuntimeAccessGrant {
 
 // Why: the mobile IPC handlers provide the renderer with QR code pairing data,
 // device management, and WebSocket readiness status. They depend on the
-// NightshiftRuntimeRpcServer because it owns the device registry and TLS state.
+// KoluxRuntimeRpcServer because it owns the device registry and TLS state.
 
 export type MobileHandlerDependencies = {
   firewallEnvironment?: WindowsMobileFirewallEnvironment
@@ -58,7 +58,7 @@ export type MobileHandlerDependencies = {
 }
 
 export function registerMobileHandlers(
-  rpcServer: NightshiftRuntimeRpcServer,
+  rpcServer: KoluxRuntimeRpcServer,
   dependencies: MobileHandlerDependencies = {}
 ): void {
   const firewallEnvironment = dependencies.firewallEnvironment ?? {

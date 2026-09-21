@@ -64,7 +64,7 @@ describe('Electron runtime package contract: release workflows', () => {
     expect(releaseMacWorkflow.on.workflow_dispatch.inputs.release_run_id.required).toBe(true)
     expect(buildMacJob['runs-on']).toBe('blacksmith-6vcpu-macos-15')
     expect(checkoutStep.with.ref).toBe('refs/tags/${{ inputs.tag }}')
-    expect(publishStep.with.command).toContain('NIGHTSHIFT_MAC_RELEASE=1')
+    expect(publishStep.with.command).toContain('KOLUX_MAC_RELEASE=1')
     expect(publishStep.with.command).toContain('electron-builder')
     expect(publishStep.with.command).toContain('--mac --publish always')
     expect(releaseMacWorkflowText).not.toContain('signpath/')
@@ -185,8 +185,8 @@ describe('Electron runtime package contract: release workflows', () => {
       (step) => step.name === 'Copy cask into tap and open PR'
     )
 
-    expect(resolveCaskStep.run).toContain('token="nightshift@rc"')
-    expect(resolveCaskStep.run).toContain('token="nightshift"')
+    expect(resolveCaskStep.run).toContain('token="kolux@rc"')
+    expect(resolveCaskStep.run).toContain('token="kolux"')
     expect(renderStep.env.CASK_PATH).toBe('${{ steps.cask.outputs.path }}')
     expect(copyStep.run).toContain('cp "$CASK_PATH" "tap/$CASK_PATH"')
     expect(copyStep.run).toContain('git add "$CASK_PATH"')
@@ -230,40 +230,32 @@ describe('Electron runtime package contract: release workflows', () => {
     expect(runStep.run).toContain('pnpm run test:e2e:terminal-perf:scale:report')
     expect(runStep.run).toContain('xvfb-run --auto-servernum')
     const manualProfileKnobs = [
+      ['KOLUX_TERMINAL_PERF_FRAME_COUNT', 'frame_count', 'KOLUX_E2E_OPENCODE_FRAME_COUNT'],
       [
-        'NIGHTSHIFT_TERMINAL_PERF_FRAME_COUNT',
-        'frame_count',
-        'NIGHTSHIFT_E2E_OPENCODE_FRAME_COUNT'
-      ],
-      [
-        'NIGHTSHIFT_TERMINAL_PERF_FRAME_INTERVAL_MS',
+        'KOLUX_TERMINAL_PERF_FRAME_INTERVAL_MS',
         'frame_interval_ms',
-        'NIGHTSHIFT_E2E_OPENCODE_FRAME_INTERVAL_MS'
+        'KOLUX_E2E_OPENCODE_FRAME_INTERVAL_MS'
       ],
       [
-        'NIGHTSHIFT_TERMINAL_PERF_PRESSURE_OUTPUT_CHARS',
+        'KOLUX_TERMINAL_PERF_PRESSURE_OUTPUT_CHARS',
         'pressure_output_chars',
-        'NIGHTSHIFT_E2E_OPENCODE_PRESSURE_OUTPUT_CHARS'
+        'KOLUX_E2E_OPENCODE_PRESSURE_OUTPUT_CHARS'
       ],
+      ['KOLUX_TERMINAL_PERF_SCALE_PANES', 'scale_panes', 'KOLUX_E2E_OPENCODE_SCALE_PANES'],
       [
-        'NIGHTSHIFT_TERMINAL_PERF_SCALE_PANES',
-        'scale_panes',
-        'NIGHTSHIFT_E2E_OPENCODE_SCALE_PANES'
-      ],
-      [
-        'NIGHTSHIFT_TERMINAL_PERF_SCALE_CROSS_WORKSPACE_PANES',
+        'KOLUX_TERMINAL_PERF_SCALE_CROSS_WORKSPACE_PANES',
         'scale_cross_workspace_panes',
-        'NIGHTSHIFT_E2E_OPENCODE_SCALE_CROSS_WORKSPACE_PANES'
+        'KOLUX_E2E_OPENCODE_SCALE_CROSS_WORKSPACE_PANES'
       ],
       [
-        'NIGHTSHIFT_TERMINAL_PERF_SCALE_PRESSURE_PANES',
+        'KOLUX_TERMINAL_PERF_SCALE_PRESSURE_PANES',
         'scale_pressure_panes',
-        'NIGHTSHIFT_E2E_OPENCODE_SCALE_PRESSURE_PANES'
+        'KOLUX_E2E_OPENCODE_SCALE_PRESSURE_PANES'
       ],
       [
-        'NIGHTSHIFT_TERMINAL_PERF_SCALE_HIDDEN_PRESSURE_PANES',
+        'KOLUX_TERMINAL_PERF_SCALE_HIDDEN_PRESSURE_PANES',
         'scale_hidden_pressure_panes',
-        'NIGHTSHIFT_E2E_OPENCODE_SCALE_HIDDEN_PRESSURE_PANES'
+        'KOLUX_E2E_OPENCODE_SCALE_HIDDEN_PRESSURE_PANES'
       ]
     ]
     for (const [workflowEnv, inputName, runnerEnv] of manualProfileKnobs) {
@@ -271,7 +263,7 @@ describe('Electron runtime package contract: release workflows', () => {
       expect(runStep.run).toContain(runnerEnv)
     }
     expect(uploadStep.uses).toBe('actions/upload-artifact@v7')
-    expect(uploadStep.with.path).toBe('${{ env.NIGHTSHIFT_E2E_TERMINAL_PERF_REPORT_PATH }}')
+    expect(uploadStep.with.path).toBe('${{ env.KOLUX_E2E_TERMINAL_PERF_REPORT_PATH }}')
   })
 
   it('keeps platform golden regressions in the manual and release workflows', () => {
@@ -405,7 +397,7 @@ describe('Electron runtime package contract: release workflows', () => {
       releaseEvidenceJob.strategy.matrix.include.map(({ platform }) => platform).sort()
     ).toEqual(releaseEvidencePlatforms)
     expect(releaseEvidenceJob.steps.map((step) => step.run ?? '')).toContain(
-      'xvfb-run --auto-servernum env SKIP_BUILD=1 NIGHTSHIFT_E2E_FORWARD_APP_LOGS=1 pnpm run test:e2e:terminal-rendering-release-evidence'
+      'xvfb-run --auto-servernum env SKIP_BUILD=1 KOLUX_E2E_FORWARD_APP_LOGS=1 pnpm run test:e2e:terminal-rendering-release-evidence'
     )
   })
 })

@@ -1,6 +1,6 @@
 import { translate } from '@/i18n/i18n'
 
-/** Compact "how long ago" label for cleanup rows; 0 means Nightshift never recorded it. */
+/** Compact "how long ago" label for cleanup rows; 0 means Kolux never recorded it. */
 export function formatWorkspaceCleanupRelativeTime(timestamp: number, now = Date.now()): string {
   if (!timestamp) {
     return translate('components.workspace.cleanup.relativeTime.never', 'Never')

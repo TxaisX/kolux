@@ -22,7 +22,7 @@ function normalizeStreamUrl(streamUrl: string, streamKey?: string): URL {
   }
   url.searchParams.set('raw', '1')
   if (streamKey) {
-    url.searchParams.set('_nightshift', streamKey)
+    url.searchParams.set('_kolux', streamKey)
   }
   return url
 }

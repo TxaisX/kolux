@@ -48,20 +48,20 @@ let metadataLoadedFromDisk = false
 let cachedSecret: BitbucketStoredSecret | null = null
 let credentialError: string | null = null
 
-function getNightshiftDir(): string {
-  return join(homedir(), '.nightshift')
+function getKoluxDir(): string {
+  return join(homedir(), '.kolux')
 }
 
 function getMetadataPath(): string {
-  return join(getNightshiftDir(), 'bitbucket-credential.json')
+  return join(getKoluxDir(), 'bitbucket-credential.json')
 }
 
 function getSecretPath(): string {
-  return join(getNightshiftDir(), 'bitbucket-credential.enc')
+  return join(getKoluxDir(), 'bitbucket-credential.enc')
 }
 
-function ensureNightshiftDir(): void {
-  const dir = getNightshiftDir()
+function ensureKoluxDir(): void {
+  const dir = getKoluxDir()
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
   }
@@ -157,7 +157,7 @@ export function loadStoredBitbucketSecret(
 }
 
 export function saveBitbucketCredential(input: BitbucketCredentialSaveInput): void {
-  ensureNightshiftDir()
+  ensureKoluxDir()
   const secret: BitbucketStoredSecret = {
     accessToken: input.accessToken,
     apiToken: input.apiToken,

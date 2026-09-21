@@ -61,9 +61,9 @@ export const REAL_PNX_CMD = crlf([
 ])
 
 const VITEST_NODE_PATH = [
-  'C:\\Users\\neil\\nightshift\\nightshift\\node_modules\\.pnpm\\vitest@4.1.11\\node_modules\\vitest\\node_modules',
-  'C:\\Users\\neil\\nightshift\\nightshift\\node_modules\\.pnpm\\vitest@4.1.11\\node_modules',
-  'C:\\Users\\neil\\nightshift\\nightshift\\node_modules\\.pnpm\\node_modules'
+  'C:\\Users\\neil\\kolux\\kolux\\node_modules\\.pnpm\\vitest@4.1.11\\node_modules\\vitest\\node_modules',
+  'C:\\Users\\neil\\kolux\\kolux\\node_modules\\.pnpm\\vitest@4.1.11\\node_modules',
+  'C:\\Users\\neil\\kolux\\kolux\\node_modules\\.pnpm\\node_modules'
 ].join(';')
 
 /** pnpm's `.bin` shim: two interpreter branches plus the NODE_PATH prepend. */

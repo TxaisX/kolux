@@ -9,7 +9,7 @@ export type StartupActions = Pick<
   | 'fetchAllWorktrees'
   | 'fetchWorktrees'
   | 'fetchWorktreeLineage'
-  | 'fetchNightshiftProfiles'
+  | 'fetchKoluxProfiles'
   | 'fetchSettings'
   | 'awaitOwnerWorktreeVisibilityDefaultsHydration'
   | 'fetchKeybindings'
@@ -45,7 +45,7 @@ export function selectStartupActions(state: StartupActions): StartupActions {
     cachedStartupActions.fetchAllWorktrees === state.fetchAllWorktrees &&
     cachedStartupActions.fetchWorktrees === state.fetchWorktrees &&
     cachedStartupActions.fetchWorktreeLineage === state.fetchWorktreeLineage &&
-    cachedStartupActions.fetchNightshiftProfiles === state.fetchNightshiftProfiles &&
+    cachedStartupActions.fetchKoluxProfiles === state.fetchKoluxProfiles &&
     cachedStartupActions.fetchSettings === state.fetchSettings &&
     cachedStartupActions.awaitOwnerWorktreeVisibilityDefaultsHydration ===
       state.awaitOwnerWorktreeVisibilityDefaultsHydration &&
@@ -80,7 +80,7 @@ export function selectStartupActions(state: StartupActions): StartupActions {
     fetchAllWorktrees: state.fetchAllWorktrees,
     fetchWorktrees: state.fetchWorktrees,
     fetchWorktreeLineage: state.fetchWorktreeLineage,
-    fetchNightshiftProfiles: state.fetchNightshiftProfiles,
+    fetchKoluxProfiles: state.fetchKoluxProfiles,
     fetchSettings: state.fetchSettings,
     awaitOwnerWorktreeVisibilityDefaultsHydration:
       state.awaitOwnerWorktreeVisibilityDefaultsHydration,

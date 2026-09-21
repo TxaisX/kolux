@@ -10,7 +10,7 @@ import {
 /**
  * Convergence oracle for the narrowed foreground repaint.
  *
- * Invariant (`terminal-geometry.visible-convergence`): the rows Nightshift asks xterm
+ * Invariant (`terminal-geometry.visible-convergence`): the rows Kolux asks xterm
  * to repaint after a forced foreground refresh must cover every viewport row
  * whose rendered content changed during that write, plus the cursor row on both
  * sides of it. A renderer whose model was converged before the write is then
@@ -304,7 +304,7 @@ describe('foreground repaint convergence', () => {
 
   it('widens the repair to the cursor rows on both sides of the write', () => {
     // Why a double: xterm's own tracker always happens to include the cursor
-    // row, so only a controlled parse span can prove Nightshift adds it itself. The
+    // row, so only a controlled parse span can prove Kolux adds it itself. The
     // WebGL model drops the caret when an update pass excludes the cursor row.
     const requests: SpanRequest[] = []
     let fire: (event: { start: number; end: number } | undefined) => void = () => {}

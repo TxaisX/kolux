@@ -4,7 +4,7 @@ const { listEnvironmentsMock, resolveEnvironmentMock, getDefaultUserDataPathMock
   () => ({
     listEnvironmentsMock: vi.fn(),
     resolveEnvironmentMock: vi.fn(),
-    getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data')
+    getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data')
   })
 )
 
@@ -90,7 +90,7 @@ describe('resolveHostFlagEnvironmentId', () => {
 
     await expect(
       resolveHostFlagEnvironmentId(flags({ host: 'runtime:env-missing' }), NO_SELECTION)
-    ).rejects.toThrow('no paired Nightshift server is named or has id env-missing')
+    ).rejects.toThrow('no paired Kolux server is named or has id env-missing')
   })
 
   // Why: the name is what a person or agent actually knows; requiring the raw uuid made the
@@ -117,7 +117,7 @@ describe('resolveHostFlagEnvironmentId', () => {
     await expect(
       resolveHostFlagEnvironmentId(flags({ host: 'runtime:env-1' }), {
         listSshTargets: listSshTargetsMock,
-        pairingCode: 'nightshift://pair?x',
+        pairingCode: 'kolux://pair?x',
         environmentSelector: null
       })
     ).rejects.toThrow('not both')
@@ -133,10 +133,10 @@ describe('resolveHostFlagEnvironmentId', () => {
         pairingCode: null,
         environmentSelector: { value: 'other', label: '--environment' }
       })
-    ).rejects.toThrow('name different Nightshift servers')
+    ).rejects.toThrow('name different Kolux servers')
   })
 
-  it('names the ambient variable when NIGHTSHIFT_ENVIRONMENT is the conflicting selector', async () => {
+  it('names the ambient variable when KOLUX_ENVIRONMENT is the conflicting selector', async () => {
     listEnvironmentsMock.mockReturnValue([environment('env-1')])
     resolveEnvironmentMock.mockReturnValue(environment('env-2'))
 
@@ -144,9 +144,9 @@ describe('resolveHostFlagEnvironmentId', () => {
       resolveHostFlagEnvironmentId(flags({ host: 'runtime:env-1' }), {
         listSshTargets: listSshTargetsMock,
         pairingCode: null,
-        environmentSelector: { value: 'staging', label: 'NIGHTSHIFT_ENVIRONMENT' }
+        environmentSelector: { value: 'staging', label: 'KOLUX_ENVIRONMENT' }
       })
-    ).rejects.toThrow('NIGHTSHIFT_ENVIRONMENT staging name different Nightshift servers')
+    ).rejects.toThrow('KOLUX_ENVIRONMENT staging name different Kolux servers')
   })
 
   it('hands an agent the known environment ids to retry with', async () => {
@@ -271,6 +271,6 @@ describe('assertEnvironmentSelectorResolvable', () => {
 
     await expect(
       assertEnvironmentSelectorResolvable('nowhere', listSshTargetsMock)
-    ).rejects.toThrow('no paired Nightshift server is named or has id nowhere')
+    ).rejects.toThrow('no paired Kolux server is named or has id nowhere')
   })
 })

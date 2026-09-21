@@ -10,7 +10,7 @@ import { isRemovableSkillPlacement } from './skill-removable-placement'
 const roots: string[] = []
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-copy-drift-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-copy-drift-'))
   roots.push(root)
   const canonicalPath = join(root, 'canonical', 'private-skill')
   const providerRoot = join(root, 'provider')

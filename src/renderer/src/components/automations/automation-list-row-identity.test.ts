@@ -28,7 +28,7 @@ import { REPO_ID } from './automations-page-fixtures'
 import { automationRepoForRow, automationWorktreeForRow } from './automation-list-row-identity'
 
 const repoMap = new Map([
-  [REPO_ID, { id: REPO_ID, displayName: 'nightshift', path: '/src/nightshift' } as Repo]
+  [REPO_ID, { id: REPO_ID, displayName: 'kolux', path: '/src/kolux' } as Repo]
 ])
 
 const DESKTOP_SELF: AutomationHostCatalogEntry = {

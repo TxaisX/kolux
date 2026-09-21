@@ -109,7 +109,7 @@ export async function runHiddenRealPtyPressureScenario<
   pressureStartDelayMs,
   testInfo,
   testRepoPath,
-  nightshiftPage
+  koluxPage
 }: {
   deps: HiddenPressureDeps<TMeasurement, TDebug, TScheduler, TMainPressure, TAckGate>
   annotationSuffix?: string
@@ -119,11 +119,11 @@ export async function runHiddenRealPtyPressureScenario<
   pressureStartDelayMs: number
   testInfo: TestInfo
   testRepoPath: string
-  nightshiftPage: Page
+  koluxPage: Page
 }): Promise<void> {
-  await waitForSessionReady(nightshiftPage)
-  const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-  const allWorktreeIds = await getAllWorktreeIds(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+  const allWorktreeIds = await getAllWorktreeIds(koluxPage)
   const secondWorktreeId = allWorktreeIds.find((id) => id !== firstWorktreeId)
   expect(Boolean(secondWorktreeId), 'OpenCode hidden PTY pressure needs a second worktree').toBe(
     true
@@ -132,52 +132,52 @@ export async function runHiddenRealPtyPressureScenario<
     return
   }
 
-  await switchToWorktree(nightshiftPage, secondWorktreeId)
-  const hiddenPanes = await deps.ensureActiveWorktreePaneLoad(nightshiftPage, hiddenPaneCount)
+  await switchToWorktree(koluxPage, secondWorktreeId)
+  const hiddenPanes = await deps.ensureActiveWorktreePaneLoad(koluxPage, hiddenPaneCount)
 
   const runId = randomUUID()
   const typingScriptPath = path.join(
     testRepoPath,
-    `.nightshift-opencode-hidden-pressure-typing-${runId}.mjs`
+    `.kolux-opencode-hidden-pressure-typing-${runId}.mjs`
   )
   const pressureScriptPath = path.join(
     testRepoPath,
-    `.nightshift-opencode-hidden-pressure-load-${runId}.mjs`
+    `.kolux-opencode-hidden-pressure-load-${runId}.mjs`
   )
   deps.writeInteractivePromptScript(typingScriptPath, runId)
   writePressureOutputScript(pressureScriptPath, runId, pressureOutputMode)
 
-  await deps.resetTerminalPtyOutputDebug(nightshiftPage)
+  await deps.resetTerminalPtyOutputDebug(koluxPage)
   await deps.holdTerminalAckGate(
-    nightshiftPage,
+    koluxPage,
     hiddenPanes.map((pane) => pane.ptyId)
   )
   try {
     await startHiddenPressureCommands({
       hiddenPanes,
-      nightshiftPage,
+      koluxPage,
       pressureOutputChars,
       pressureScriptPath,
       pressureStartDelayMs
     })
-    await switchToTypingWorkspace(nightshiftPage, firstWorktreeId)
-    const typingPtyId = await waitForActivePanePtyId(nightshiftPage)
+    await switchToTypingWorkspace(koluxPage, firstWorktreeId)
+    const typingPtyId = await waitForActivePanePtyId(koluxPage)
 
     // Why: under the Phase-4 hidden-delivery gate the hidden panes' bytes are
     // dropped in main after model ingestion, so renderer-delivery pressure
     // never builds. Wait for the gate to drop at least one pane's worth of
     // output instead of the old 2 MB ACK-backpressure target.
-    await waitForMainHiddenDeliveryDrops(nightshiftPage, deps, pressureOutputChars)
+    await waitForMainHiddenDeliveryDrops(koluxPage, deps, pressureOutputChars)
     const measurement = await deps.measureTypingDuringLoad(
-      nightshiftPage,
+      koluxPage,
       typingScriptPath,
       typingPtyId,
       runId
     )
-    const debug = await deps.readTerminalPtyOutputDebug(nightshiftPage)
-    const scheduler = await deps.readTerminalOutputSchedulerDebug(nightshiftPage)
-    const mainPressure = await deps.readMainPtyPressureDebug(nightshiftPage)
-    const ackGate = await deps.readTerminalAckGateDebug(nightshiftPage)
+    const debug = await deps.readTerminalPtyOutputDebug(koluxPage)
+    const scheduler = await deps.readTerminalOutputSchedulerDebug(koluxPage)
+    const mainPressure = await deps.readMainPtyPressureDebug(koluxPage)
+    const ackGate = await deps.readTerminalAckGateDebug(koluxPage)
     deps.annotateTypingMeasurement(
       testInfo,
       `opencode-hidden-real-pty-pressure-typing${annotationSuffix ?? ''}`,
@@ -213,9 +213,9 @@ export async function runHiddenRealPtyPressureScenario<
     expect(measurement.worstLatencyMs).toBeLessThan(3_000)
     expect(measurement.maxTimerDriftMs).toBeLessThan(MAX_HIDDEN_PRESSURE_TIMER_DRIFT_MS)
 
-    await deps.releaseTerminalAckGate(nightshiftPage)
+    await deps.releaseTerminalAckGate(koluxPage)
     const restoreLatencyMs = await measureHiddenOutputRestoreLatency(
-      nightshiftPage,
+      koluxPage,
       secondWorktreeId,
       runId
     )
@@ -235,7 +235,7 @@ export async function runHiddenRealPtyPressureScenario<
       deps,
       firstWorktreeId,
       hiddenPanes,
-      nightshiftPage,
+      koluxPage,
       pressureScriptPath,
       secondWorktreeId,
       typingScriptPath

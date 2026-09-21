@@ -12,7 +12,7 @@ function makePR(status: PRInfo['checksStatus']): PRInfo {
     number: 12,
     title: 'Test PR',
     state: 'open',
-    url: 'https://github.com/acme/nightshift/pull/12',
+    url: 'https://github.com/acme/kolux/pull/12',
     checksStatus: status,
     updatedAt: '2026-05-20T00:00:00Z',
     mergeable: 'MERGEABLE'
@@ -68,7 +68,7 @@ describe('getActiveChecksStatus', () => {
             number: 7,
             title: 'GitLab MR',
             state: 'open',
-            url: 'https://gitlab.com/acme/nightshift/-/merge_requests/7',
+            url: 'https://gitlab.com/acme/kolux/-/merge_requests/7',
             status: 'success',
             updatedAt: '2026-05-20T00:00:00Z',
             mergeable: 'MERGEABLE'

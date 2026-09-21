@@ -2,7 +2,7 @@ import { session, webContents } from 'electron'
 import { setBrowserClientRouteWebContentsProbe } from './browser-client-download-routing'
 import type { BrowserRoutePartitionBindingStore } from './browser-route-partition-binding-store'
 import {
-  configureBrowserRoutePartitionBindingsForNightshiftProfile,
+  configureBrowserRoutePartitionBindingsForKoluxProfile,
   currentBrowserRoutePartitionBindingStore
 } from './browser-route-partition-binding-runtime'
 import { releaseEvictedBrowserRoutePartitionStorage } from './browser-route-partition-storage-dependencies'
@@ -90,9 +90,9 @@ setBrowserClientRouteWebContentsProbe((webContentsId) => {
   )
 })
 
-export function configureRouteSessionsForNightshiftProfile(options: {
-  nightshiftProfileId: string
+export function configureRouteSessionsForKoluxProfile(options: {
+  koluxProfileId: string
   profileDirectory: string
 }): void {
-  configureBrowserRoutePartitionBindingsForNightshiftProfile(options)
+  configureBrowserRoutePartitionBindingsForKoluxProfile(options)
 }

@@ -1,6 +1,6 @@
 import { getActiveTabNavOrder } from '@/components/tab-bar/group-tab-order'
 import {
-  NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT,
+  KOLUX_EDITOR_FILE_SAVED_EVENT,
   requestEditorFileSave,
   requestEditorSaveQuiesce,
   type EditorFileSavedDetail
@@ -273,7 +273,7 @@ async function waitForPositiveSave(file: OpenFile, content: string): Promise<voi
       timeout = null
     }
     if (onSaved) {
-      window.removeEventListener(NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT, onSaved as EventListener)
+      window.removeEventListener(KOLUX_EDITOR_FILE_SAVED_EVENT, onSaved as EventListener)
       onSaved = null
     }
   }
@@ -290,7 +290,7 @@ async function waitForPositiveSave(file: OpenFile, content: string): Promise<voi
       cleanup()
       resolve()
     }
-    window.addEventListener(NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT, onSaved as EventListener)
+    window.addEventListener(KOLUX_EDITOR_FILE_SAVED_EVENT, onSaved as EventListener)
   })
 
   try {

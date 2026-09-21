@@ -58,7 +58,7 @@ async function load(useBaseline) {
 const before = await load(true)
 const after = await load(false)
 const median = (values) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)]
-const temporaryRoot = await fs.mkdtemp(join(tmpdir(), 'nightshift-skill-depth-benchmark-'))
+const temporaryRoot = await fs.mkdtemp(join(tmpdir(), 'kolux-skill-depth-benchmark-'))
 try {
   for (const links of [0, 8, 100, 1000]) {
     const root = join(temporaryRoot, String(links))

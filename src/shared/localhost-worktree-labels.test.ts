@@ -29,7 +29,7 @@ describe('localhost worktree labels', () => {
       getLocalhostWorktreeHostLabel({
         projectName: 'Snap Studio',
         worktreeName: 'gatsby74/table-summary',
-        worktreePath: '/Users/example/nightshift/workspaces/snapstudio/ui-auth'
+        worktreePath: '/Users/example/kolux/workspaces/snapstudio/ui-auth'
       })
     ).toBe('ui-auth')
   })

@@ -24,7 +24,7 @@ import type { WslCodexAuthRead } from './wsl-codex-auth-batch-reader'
 export abstract class CodexRuntimeHomeState {
   // Which managed account runtime auth.json mirrors; null means it follows system-default ~/.codex instead of a managed account.
   protected lastSyncedAccountId: string | null = null
-  // Last auth.json Nightshift wrote to the runtime home; a later diff signals an out-of-band change (Codex token refresh, or external login to adopt).
+  // Last auth.json Kolux wrote to the runtime home; a later diff signals an out-of-band change (Codex token refresh, or external login to adopt).
   protected lastWrittenAuthJson: string | null = null
   // Why: a managed host account refreshes auth in its own home. Remember that provenance so a later deselect never adopts stale shared bytes.
   protected lastHostAccountUsedSelfContainedHome = false

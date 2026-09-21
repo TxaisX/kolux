@@ -1,7 +1,7 @@
 # Lists the processes holding a file open, via the Windows Restart Manager (no Sysinternals needed).
 # Why: a silent update (installer /S) aborts with exit code 2 when any installed file is locked,
-# and the locker is often not Nightshift at all (a VS Code window held resources\app.asar).
-#   powershell -NoProfile -ExecutionPolicy Bypass -File config\scripts\windows-who-locks.ps1 -Path "$env:LOCALAPPDATA\Programs\nightshift\resources\app.asar"
+# and the locker is often not Kolux at all (a VS Code window held resources\app.asar).
+#   powershell -NoProfile -ExecutionPolicy Bypass -File config\scripts\windows-who-locks.ps1 -Path "$env:LOCALAPPDATA\Programs\kolux\resources\app.asar"
 param([Parameter(Mandatory = $true)][string]$Path)
 $sig = @"
 using System; using System.Runtime.InteropServices; using System.Collections.Generic;

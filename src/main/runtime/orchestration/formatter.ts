@@ -91,7 +91,7 @@ export function formatMessageBanner(
       msg.to_handle.startsWith('run:') || msg.to_handle.startsWith('dispatch:')
         ? ''
         : ` --from ${msg.to_handle}`
-    lines.push(`[Reply: nightshift orchestration reply --id ${msg.id}${explicitFrom} --body "..."]`)
+    lines.push(`[Reply: kolux orchestration reply --id ${msg.id}${explicitFrom} --body "..."]`)
   }
   lines.push(SEPARATOR)
 
@@ -112,7 +112,7 @@ export function formatMessagesForInjection(messages: MessageRow[]): string {
 export function formatMessagePointer(
   count: number,
   mailboxHandle?: string,
-  cliCommand: OrchestrationCliCommand = 'nightshift'
+  cliCommand: OrchestrationCliCommand = 'kolux'
 ): string {
   const noun = count === 1 ? 'message' : 'messages'
   const runFlag = mailboxHandle?.startsWith('run:')

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { writeLinkedIssueEchoGenerator } from './helpers/source-control-ai-generators'
 import { waitForSessionReady } from './helpers/store'
 import { openSourceControlForWorktree } from './helpers/worktree-registration'
@@ -53,16 +53,16 @@ test.describe('Source Control AI commit messages', () => {
       expected: 'empty'
     }
   ]) {
-    test(`${label} the commit-message recipe`, async ({ nightshiftPage, testRepoPath }) => {
+    test(`${label} the commit-message recipe`, async ({ koluxPage, testRepoPath }) => {
       const { branchName, worktreePath } = createWorktreeWithStagedChange(testRepoPath)
       const generatorPath = path.join(os.tmpdir(), `${branchName}-linked-issue-generator.cjs`)
       writeLinkedIssueEchoGenerator(generatorPath, ['  process.stdout.write(`saw-issue:${issue}`)'])
 
       try {
-        await waitForSessionReady(nightshiftPage)
-        await openSourceControlForWorktree(nightshiftPage, testRepoPath, worktreePath)
+        await waitForSessionReady(koluxPage)
+        await openSourceControlForWorktree(koluxPage, testRepoPath, worktreePath)
 
-        await nightshiftPage.evaluate(
+        await koluxPage.evaluate(
           async ({ generatorPath, linkedIssue }) => {
             const store = window.__store
             if (!store) {
@@ -86,7 +86,7 @@ test.describe('Source Control AI commit messages', () => {
                 actions: {
                   commitMessage: {
                     agentId: 'custom' as const,
-                    commandInputTemplate: 'NIGHTSHIFT_E2E_ISSUE={linkedIssue}\n\n{basePrompt}'
+                    commandInputTemplate: 'KOLUX_E2E_ISSUE={linkedIssue}\n\n{basePrompt}'
                   }
                 }
               }
@@ -95,10 +95,10 @@ test.describe('Source Control AI commit messages', () => {
           { generatorPath, linkedIssue }
         )
 
-        const textarea = nightshiftPage.getByRole('textbox', { name: 'Commit message' })
+        const textarea = koluxPage.getByRole('textbox', { name: 'Commit message' })
         await expect(textarea).toBeVisible({ timeout: 10_000 })
 
-        const generate = nightshiftPage.getByRole('button', {
+        const generate = koluxPage.getByRole('button', {
           name: 'Generate commit message with AI'
         })
         await expect(generate).toBeEnabled()
@@ -113,7 +113,7 @@ test.describe('Source Control AI commit messages', () => {
   }
 
   test('generates a commit message from staged changes through the Source Control UI', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
     const { branchName, worktreePath } = createWorktreeWithStagedChange(testRepoPath)
@@ -121,8 +121,8 @@ test.describe('Source Control AI commit messages', () => {
       'node -e "setTimeout(() => process.stdout.write(\'Add generated E2E message\'), 250)"'
 
     try {
-      await waitForSessionReady(nightshiftPage)
-      await openSourceControlForWorktree(nightshiftPage, testRepoPath, worktreePath, {
+      await waitForSessionReady(koluxPage)
+      await openSourceControlForWorktree(koluxPage, testRepoPath, worktreePath, {
         commitMessageAi: {
           enabled: true,
           agentId: 'custom',
@@ -133,11 +133,11 @@ test.describe('Source Control AI commit messages', () => {
         }
       })
 
-      const textarea = nightshiftPage.getByRole('textbox', { name: 'Commit message' })
+      const textarea = koluxPage.getByRole('textbox', { name: 'Commit message' })
       await expect(textarea).toBeVisible({ timeout: 10_000 })
       await expect(textarea).toHaveValue('')
 
-      const generate = nightshiftPage.getByRole('button', {
+      const generate = koluxPage.getByRole('button', {
         name: 'Generate commit message with AI'
       })
       await expect(generate).toBeVisible()
@@ -145,7 +145,7 @@ test.describe('Source Control AI commit messages', () => {
       await generate.click()
 
       await expect(
-        nightshiftPage.getByRole('button', { name: 'Stop generating commit message' })
+        koluxPage.getByRole('button', { name: 'Stop generating commit message' })
       ).toBeVisible()
       await expect(textarea).toHaveValue('Add generated E2E message', { timeout: 10_000 })
     } finally {

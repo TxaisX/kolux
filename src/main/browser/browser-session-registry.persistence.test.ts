@@ -35,7 +35,7 @@ function installModuleMocks(
   const sessionFromPartitionMock = vi.fn((partition: string) => ({
     partition,
     setUserAgent: vi.fn(),
-    getUserAgent: vi.fn(() => 'Mozilla/5.0 Electron/31 Nightshift'),
+    getUserAgent: vi.fn(() => 'Mozilla/5.0 Electron/31 Kolux'),
     webRequest: { onBeforeSendHeaders: vi.fn() },
     setPermissionRequestHandler: vi.fn(),
     setPermissionCheckHandler: vi.fn(),
@@ -180,13 +180,13 @@ describe('BrowserSessionRegistry persistence', () => {
     const written = JSON.parse(fsState.files.get(META_PATH) ?? '{}')
     expect(written.pendingCookieDbPath).toBeNull()
     expect(written.pendingCookieImports).toEqual({})
-    expect(fsState.present.has('/user-data/Partitions/nightshift-browser/Cookies')).toBe(true)
+    expect(fsState.present.has('/user-data/Partitions/kolux-browser/Cookies')).toBe(true)
   })
 
   it('replays pending cookies into an existing Network database', async () => {
     const stagedPath = '/staged/network-import'
-    const networkPath = '/user-data/Partitions/nightshift-browser/Network/Cookies'
-    const legacyPath = '/user-data/Partitions/nightshift-browser/Cookies'
+    const networkPath = '/user-data/Partitions/kolux-browser/Network/Cookies'
+    const legacyPath = '/user-data/Partitions/kolux-browser/Cookies'
     const fsState = createFsState()
     seedMeta(fsState, {
       defaultSource: null,
@@ -208,15 +208,15 @@ describe('BrowserSessionRegistry persistence', () => {
     expect(fsState.present.has(legacyPath)).toBe(false)
   })
 
-  it('persists new browser session profiles under the active Nightshift profile directory', async () => {
+  it('persists new browser session profiles under the active Kolux profile directory', async () => {
     const fsState = createFsState()
     const profileMetaPath = '/user-data/profiles/local-work/browser-session-meta.json'
 
     installModuleMocks(fsState)
     const { browserSessionRegistry } = await import('./browser-session-registry')
 
-    browserSessionRegistry.configureForNightshiftProfile({
-      nightshiftProfileId: 'local-work',
+    browserSessionRegistry.configureForKoluxProfile({
+      koluxProfileId: 'local-work',
       profileDirectory: '/user-data/profiles/local-work'
     })
     const profile = await browserSessionRegistry.createProfile('isolated', 'Work Browser', {
@@ -277,17 +277,17 @@ describe('BrowserSessionRegistry persistence', () => {
     installModuleMocks(fsState)
     const { browserSessionRegistry } = await import('./browser-session-registry')
 
-    browserSessionRegistry.setPendingCookieImport('persist:nightshift-browser', '/staged/default')
+    browserSessionRegistry.setPendingCookieImport('persist:kolux-browser', '/staged/default')
     browserSessionRegistry.setPendingCookieImport(
-      'persist:nightshift-browser-session-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      'persist:kolux-browser-session-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       '/staged/imported'
     )
 
     const written = JSON.parse(fsState.files.get(META_PATH) ?? '{}')
     expect(written.pendingCookieDbPath).toBeNull()
     expect(written.pendingCookieImports).toEqual({
-      'persist:nightshift-browser': { format: 'scoped-v1', path: '/staged/default' },
-      'persist:nightshift-browser-session-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa': {
+      'persist:kolux-browser': { format: 'scoped-v1', path: '/staged/default' },
+      'persist:kolux-browser-session-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa': {
         format: 'scoped-v1',
         path: '/staged/imported'
       }
@@ -295,7 +295,7 @@ describe('BrowserSessionRegistry persistence', () => {
   })
 
   it('clears only the requested partition and unlinks its staged database files', async () => {
-    const otherPartition = 'persist:nightshift-browser-session-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    const otherPartition = 'persist:kolux-browser-session-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     const fsState = createFsState()
     seedMeta(fsState, {
       defaultSource: null,
@@ -303,7 +303,7 @@ describe('BrowserSessionRegistry persistence', () => {
       userAgentByPartition: {},
       pendingCookieDbPath: '/staged/default',
       pendingCookieImports: {
-        'persist:nightshift-browser': '/staged/default',
+        'persist:kolux-browser': '/staged/default',
         [otherPartition]: '/staged/other'
       },
       profiles: []
@@ -322,7 +322,7 @@ describe('BrowserSessionRegistry persistence', () => {
 
     const written = JSON.parse(fsState.files.get(META_PATH) ?? '{}')
     expect(written.pendingCookieImports).toEqual({
-      'persist:nightshift-browser': '/staged/default'
+      'persist:kolux-browser': '/staged/default'
     })
     // Why: the default partition still has a staged replay, so the legacy pointer must survive.
     expect(written.pendingCookieDbPath).toBe('/staged/default')
@@ -333,7 +333,7 @@ describe('BrowserSessionRegistry persistence', () => {
   })
 
   it('drops the legacy pointer when the default partition is the one cleared', async () => {
-    const otherPartition = 'persist:nightshift-browser-session-cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    const otherPartition = 'persist:kolux-browser-session-cccccccc-cccc-4ccc-8ccc-cccccccccccc'
     const fsState = createFsState()
     seedMeta(fsState, {
       defaultSource: null,
@@ -341,7 +341,7 @@ describe('BrowserSessionRegistry persistence', () => {
       userAgentByPartition: {},
       pendingCookieDbPath: '/staged/default',
       pendingCookieImports: {
-        'persist:nightshift-browser': '/staged/default',
+        'persist:kolux-browser': '/staged/default',
         [otherPartition]: '/staged/other'
       },
       profiles: []
@@ -350,7 +350,7 @@ describe('BrowserSessionRegistry persistence', () => {
     installModuleMocks(fsState)
     const { browserSessionRegistry } = await import('./browser-session-registry')
 
-    browserSessionRegistry.clearPendingCookieImport('persist:nightshift-browser')
+    browserSessionRegistry.clearPendingCookieImport('persist:kolux-browser')
 
     const written = JSON.parse(fsState.files.get(META_PATH) ?? '{}')
     expect(written.pendingCookieImports).toEqual({ [otherPartition]: '/staged/other' })
@@ -364,7 +364,7 @@ describe('BrowserSessionRegistry persistence', () => {
       userAgent: null,
       userAgentByPartition: {},
       pendingCookieDbPath: '/staged/default',
-      pendingCookieImports: { 'persist:nightshift-browser': '/staged/default' },
+      pendingCookieImports: { 'persist:kolux-browser': '/staged/default' },
       profiles: []
     })
     fsState.files.set('/staged/default', 'db')
@@ -374,7 +374,7 @@ describe('BrowserSessionRegistry persistence', () => {
     const { browserSessionRegistry } = await import('./browser-session-registry')
     const metaBefore = fsState.files.get(META_PATH)
 
-    browserSessionRegistry.clearPendingCookieImport('persist:nightshift-browser-session-unknown')
+    browserSessionRegistry.clearPendingCookieImport('persist:kolux-browser-session-unknown')
 
     // Why: an absent key must not rewrite meta or touch another partition's staged file.
     expect(fsState.files.get(META_PATH)).toBe(metaBefore)
@@ -385,8 +385,7 @@ describe('BrowserSessionRegistry persistence', () => {
   // (fork imports as a broken Chrome/1.x, Chrome imports as a valid version).
   // Neither may ever be applied again — the engine-derived UA is the only one.
   it('ignores legacy persisted UAs, valid or broken, and keeps the engine UA', async () => {
-    const importedPartition =
-      'persist:nightshift-browser-session-11111111-1111-4111-8111-111111111111'
+    const importedPartition = 'persist:kolux-browser-session-11111111-1111-4111-8111-111111111111'
     const brokenUa =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/1.158.1 Safari/537.36'
     const validUa = 'Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36'
@@ -395,7 +394,7 @@ describe('BrowserSessionRegistry persistence', () => {
       defaultSource: { browserFamily: 'arc', importedAt: 1 },
       userAgent: brokenUa,
       userAgentByPartition: {
-        'persist:nightshift-browser': brokenUa,
+        'persist:kolux-browser': brokenUa,
         [importedPartition]: validUa
       },
       pendingCookieDbPath: null,
@@ -426,8 +425,7 @@ describe('BrowserSessionRegistry persistence', () => {
   })
 
   it('never applies a legacy persisted UA to a native-mode profile', async () => {
-    const importedPartition =
-      'persist:nightshift-browser-session-11111111-1111-4111-8111-111111111111'
+    const importedPartition = 'persist:kolux-browser-session-11111111-1111-4111-8111-111111111111'
     const importedUa = 'Mozilla/5.0 Chrome/120.0.0.0 Safari/537.36'
     const fsState = createFsState()
     seedMeta(fsState, {
@@ -468,8 +466,7 @@ describe('BrowserSessionRegistry persistence', () => {
   })
 
   it('preserves native mode across hydration when no source UA was imported', async () => {
-    const importedPartition =
-      'persist:nightshift-browser-session-12121212-1212-4121-8121-121212121212'
+    const importedPartition = 'persist:kolux-browser-session-12121212-1212-4121-8121-121212121212'
     const fsState = createFsState()
     seedMeta(fsState, {
       defaultSource: null,
@@ -534,9 +531,7 @@ describe('BrowserSessionRegistry persistence', () => {
     browserSessionRegistry.initializeBrowserSessionsFromPersistedState()
 
     const defaultSessions = sessionFromPartitionMock.mock.results
-      .filter(
-        (_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:nightshift-browser'
-      )
+      .filter((_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:kolux-browser')
       .map((r) => r.value)
     expect(defaultSessions.length).toBeGreaterThan(0)
     const defaultSession = defaultSessions[0]
@@ -608,7 +603,7 @@ describe('BrowserSessionRegistry persistence', () => {
       })
     )
 
-    // Opaque frame URLs have no site Nightshift can name accurately.
+    // Opaque frame URLs have no site Kolux can name accurately.
     browserManagerNotifyPermissionDeniedMock.mockClear()
     requestHandler(guestWc, 'geolocation', permissionCallback, {
       requestingUrl: 'about:blank',
@@ -640,7 +635,7 @@ describe('BrowserSessionRegistry persistence', () => {
     expect(checkHandler(null, 'storage-access', '')).toBe(true)
 
     // Why: requestStorageAccessFor() is a different platform decision — Chromium consults Related
-    // Website Sets and has no third-party-cookie auto-grant, and Nightshift has no such data source. This
+    // Website Sets and has no third-party-cookie auto-grant, and Kolux has no such data source. This
     // pins the deliberate denial so a future blanket widening of the allow-set fails loudly.
     requestHandler(guestWc, 'top-level-storage-access', permissionCallback)
     expect(permissionCallback).toHaveBeenLastCalledWith(false)
@@ -740,9 +735,7 @@ describe('BrowserSessionRegistry persistence', () => {
     browserSessionRegistry.initializeBrowserSessionsFromPersistedState()
 
     const defaultSessions = sessionFromPartitionMock.mock.results
-      .filter(
-        (_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:nightshift-browser'
-      )
+      .filter((_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:kolux-browser')
       .map((r) => r.value)
     const policySessions = defaultSessions.filter(
       (s) => s.setPermissionRequestHandler.mock.calls.length > 0
@@ -787,7 +780,7 @@ describe('BrowserSessionRegistry persistence', () => {
     browserSessionRegistry.initializeBrowserSessionsFromPersistedState()
 
     const defaultSession = sessionFromPartitionMock.mock.results.find(
-      (_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:nightshift-browser'
+      (_, idx) => sessionFromPartitionMock.mock.calls[idx]?.[0] === 'persist:kolux-browser'
     )?.value
     const requestHandler = defaultSession.setPermissionRequestHandler.mock.calls[0][0]
     const guestWc = { id: 403, getURL: vi.fn(() => 'https://example.com/camera') }
@@ -805,8 +798,7 @@ describe('BrowserSessionRegistry persistence', () => {
   })
 
   it('keeps failed partition replay pending and removes unrelated missing entries', async () => {
-    const importedPartition =
-      'persist:nightshift-browser-session-22222222-2222-4222-8222-222222222222'
+    const importedPartition = 'persist:kolux-browser-session-22222222-2222-4222-8222-222222222222'
     const fsState = createFsState()
     seedMeta(fsState, {
       defaultSource: null,
@@ -815,7 +807,7 @@ describe('BrowserSessionRegistry persistence', () => {
       pendingCookieDbPath: null,
       pendingCookieImports: {
         [importedPartition]: '/staged/imported',
-        'persist:nightshift-browser': '/staged/missing'
+        'persist:kolux-browser': '/staged/missing'
       },
       profiles: [
         {

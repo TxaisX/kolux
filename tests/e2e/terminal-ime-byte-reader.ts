@@ -17,9 +17,9 @@ export function createTerminalImeByteReader(
   expectedLineCount: number
 ): TerminalImeByteReader {
   const runId = randomUUID().replaceAll('-', '')
-  const readyMarker = `NIGHTSHIFT_IME_READER_READY_${runId}`
-  const resultPrefix = `NIGHTSHIFT_IME_BYTES_${runId}`
-  const scriptPath = path.join(testRepoPath, `.nightshift-ime-byte-reader-${runId}.cjs`)
+  const readyMarker = `KOLUX_IME_READER_READY_${runId}`
+  const resultPrefix = `KOLUX_IME_BYTES_${runId}`
+  const scriptPath = path.join(testRepoPath, `.kolux-ime-byte-reader-${runId}.cjs`)
   const source = `
 const expectedLineCount = ${expectedLineCount}
 const readyMarker = ${JSON.stringify(readyMarker)}

@@ -86,7 +86,7 @@ export function HostRemoveDialog({
   }
 
   // Why: runtime-environment removal needs active-environment switching and
-  // error context owned by the Nightshift servers settings pane, so we deep-link
+  // error context owned by the Kolux servers settings pane, so we deep-link
   // there with the host pre-selected instead of duplicating that flow.
   const handleRemoveRuntime = (environmentId: string): void => {
     const state = useAppStore.getState()
@@ -165,12 +165,12 @@ export function HostRemoveDialog({
     target.kind === 'runtime'
       ? translate(
           'auto.components.sidebar.HostRemoveDialog.4d5e6f7a8b',
-          'This opens the Nightshift servers settings where you can remove this server.'
+          'This opens the Kolux servers settings where you can remove this server.'
         )
       : hasWorkspaces
         ? translate(
             'auto.components.sidebar.HostRemoveDialog.hostHasWorkspacesDefault',
-            'Removes {{value0}} and its credentials from this computer. Its {{value1}} stay in Nightshift — remote files are not touched.',
+            'Removes {{value0}} and its credentials from this computer. Its {{value1}} stay in Kolux — remote files are not touched.',
             { value0: label, value1: workspaceCountLabel }
           )
         : translate(
@@ -179,7 +179,7 @@ export function HostRemoveDialog({
           )
 
   // The destructive opt-in wording depends on whether we delete remote files or
-  // only forget Nightshift's records (offline/ghost host).
+  // only forget Kolux's records (offline/ghost host).
   const deleteOptionLabel = isConnected
     ? translate(
         'auto.components.sidebar.HostRemoveDialog.alsoDeleteRemote',
@@ -188,7 +188,7 @@ export function HostRemoveDialog({
       )
     : translate(
         'auto.components.sidebar.HostRemoveDialog.alsoForgetLocal',
-        'Also remove these {{value0}} from Nightshift',
+        'Also remove these {{value0}} from Kolux',
         { value0: workspaceCountLabel }
       )
 
@@ -254,7 +254,7 @@ export function HostRemoveDialog({
                           )
                         : translate(
                             'auto.components.sidebar.HostRemoveDialog.alsoForgetLocalHint',
-                            'Clears them from Nightshift only. Remote files, worktrees, and branches are left untouched.'
+                            'Clears them from Kolux only. Remote files, worktrees, and branches are left untouched.'
                           )}
                     </span>
                   </span>

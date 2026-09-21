@@ -35,7 +35,7 @@ beforeEach(() => {
 afterEach(() => cleanup())
 
 describe('useAppMenuSelectionActions', () => {
-  it('falls back to native selection when no Nightshift surface claims the action', () => {
+  it('falls back to native selection when no Kolux surface claims the action', () => {
     render(<Harness />)
 
     act(() => listener?.('select-all'))

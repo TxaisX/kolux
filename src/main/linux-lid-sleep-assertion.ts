@@ -71,7 +71,7 @@ export class LinuxLidSleepAssertion {
         'systemd-inhibit',
         [
           '--what=sleep:handle-lid-switch',
-          '--who=Nightshift',
+          '--who=Kolux',
           '--why=Agents are working',
           '--mode=block',
           'sleep',

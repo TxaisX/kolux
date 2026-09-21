@@ -1,5 +1,5 @@
 import type { AppState } from '../../types'
-import type { PersistedTrustedNightshiftHooks } from '../../../../../shared/nightshift-yaml-hook-types'
+import type { PersistedTrustedKoluxHooks } from '../../../../../shared/kolux-yaml-hook-types'
 import type { PersistedUIState } from '../../../../../shared/persisted-ui-state-types'
 import type {
   TaskViewPresetId,
@@ -48,29 +48,29 @@ export function sanitizePersistedRepoIds(value: unknown): string[] {
   return value.filter((repoId): repoId is string => typeof repoId === 'string')
 }
 
-export function sanitizeTrustedNightshiftHooks(trust: unknown): PersistedTrustedNightshiftHooks {
+export function sanitizeTrustedKoluxHooks(trust: unknown): PersistedTrustedKoluxHooks {
   if (!isPlainPersistedRecord(trust)) {
     return {}
   }
-  const next: PersistedTrustedNightshiftHooks = {}
+  const next: PersistedTrustedKoluxHooks = {}
   for (const [repoId, entry] of Object.entries(trust)) {
     if (!isSafePersistedRecordKey(repoId) || !isPlainPersistedRecord(entry)) {
       continue
     }
-    next[repoId] = entry as PersistedTrustedNightshiftHooks[string]
+    next[repoId] = entry as PersistedTrustedKoluxHooks[string]
   }
   return next
 }
 
-export function hydrateTrustedNightshiftHooks(
+export function hydrateTrustedKoluxHooks(
   trust: unknown,
   validRepoIds: Set<string>
-): PersistedTrustedNightshiftHooks {
-  const sanitized = sanitizeTrustedNightshiftHooks(trust)
+): PersistedTrustedKoluxHooks {
+  const sanitized = sanitizeTrustedKoluxHooks(trust)
   if (validRepoIds.size === 0) {
     return sanitized
   }
-  const next: PersistedTrustedNightshiftHooks = {}
+  const next: PersistedTrustedKoluxHooks = {}
   for (const [repoId, entry] of Object.entries(sanitized)) {
     if (validRepoIds.has(repoId)) {
       next[repoId] = entry

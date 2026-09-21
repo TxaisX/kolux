@@ -164,7 +164,7 @@ function adapter(): StructuredAgentSessionAdapter {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-handoff-options-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-handoff-options-'))
   resetHostTestOperationIds()
   activeModel = DEFAULT_MODEL
   activeEffort = null

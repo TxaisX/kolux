@@ -31,7 +31,7 @@ let root: string
 const journals = createTrackedJournalOpener()
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-agent-status-feed-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-agent-status-feed-'))
 })
 
 afterEach(async () => {

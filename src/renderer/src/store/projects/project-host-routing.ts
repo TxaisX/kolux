@@ -90,7 +90,7 @@ async function assertProjectHostSetupRuntimeCapability(target: RuntimeClientTarg
   await assertRuntimeEnvironmentCapability(
     target.environmentId,
     PROJECT_HOST_SETUP_RUNTIME_CAPABILITY,
-    'The selected Nightshift server does not support project host setup yet. Update Nightshift on the server and try again.',
+    'The selected Kolux server does not support project host setup yet. Update Kolux on the server and try again.',
     15_000
   )
 }
@@ -128,7 +128,7 @@ export async function fetchProjectHostSetupCompatibility(
     ])
     return {
       // Why projects too: the same wire response carries them, and a remote host on another
-      // Nightshift version can publish a row whose declared field types do not hold.
+      // Kolux version can publish a row whose declared field types do not hold.
       projects: normalizeProjectRows([...projectResponse.projects]),
       setups: setupResponse.setups.map((setup) => setupWithFetchedOwner(setup, target))
     }
@@ -148,7 +148,7 @@ export async function assertProjectHostSetupMutationRuntimeCapabilities(
   await assertRuntimeEnvironmentCapability(
     target.environmentId,
     WORKSPACE_RUN_CONTEXT_RUNTIME_CAPABILITY,
-    'The selected Nightshift server does not support explicit workspace run hosts yet. Update Nightshift on the server and try again.',
+    'The selected Kolux server does not support explicit workspace run hosts yet. Update Kolux on the server and try again.',
     15_000
   )
 }

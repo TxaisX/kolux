@@ -2,7 +2,7 @@ import { shell, type WebContents } from 'electron'
 import { normalizeExternalBrowserUrl } from '../../shared/browser-url'
 import { isRendererDocumentNavigation } from './renderer-document-navigation'
 
-/** Keep remote documents from inheriting a Nightshift window's privileged preload. */
+/** Keep remote documents from inheriting a Kolux window's privileged preload. */
 export function installPrivilegedWindowNavigationPolicy(contents: WebContents): void {
   contents.setWindowOpenHandler(({ url }) => {
     const externalUrl = normalizeExternalBrowserUrl(url)

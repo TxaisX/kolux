@@ -78,7 +78,7 @@ const reviewFixture = {
   number: 456,
   title: 'Fix stale GH PR',
   state: 'open' as const,
-  url: 'https://github.com/acme/nightshift/pull/456',
+  url: 'https://github.com/acme/kolux/pull/456',
   status: 'success' as const,
   updatedAt: '2026-05-17T00:00:00.000Z',
   mergeable: 'MERGEABLE' as const
@@ -131,7 +131,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
           comment={null}
           onEditIssue={vi.fn()}
           onEditComment={vi.fn()}
-          onOpenReviewInNightshift={vi.fn()}
+          onOpenReviewInKolux={vi.fn()}
           onUnlinkReview={onUnlinkReview}
           onOpenReviewInBrowser={onOpenReviewInBrowser}
         >
@@ -281,7 +281,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
       await Promise.resolve()
     })
 
-    expect(writeClipboardText).toHaveBeenCalledWith('https://github.com/acme/nightshift/pull/456')
+    expect(writeClipboardText).toHaveBeenCalledWith('https://github.com/acme/kolux/pull/456')
     expect(onUnlinkReview).not.toHaveBeenCalled()
     expect(toastMocks.success).toHaveBeenCalledWith('PR link copied')
     expect(container.querySelector('[data-hover-open]')?.getAttribute('data-hover-open')).toBe(
@@ -292,7 +292,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
     ).toBe('false')
   })
 
-  it('opens the review URL in Nightshift browser and leaves existing actions independent', () => {
+  it('opens the review URL in Kolux browser and leaves existing actions independent', () => {
     const onOpenReviewInBrowser = vi.fn()
     const onUnlinkReview = renderHover(vi.fn(), onOpenReviewInBrowser)
 
@@ -302,16 +302,14 @@ describe('WorktreeCardDetailsHover interactions', () => {
     })
 
     const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Nightshift browser')
+      button.textContent?.includes('Open in Kolux browser')
     )
 
     act(() => {
       browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(onOpenReviewInBrowser).toHaveBeenCalledWith(
-      'https://github.com/acme/nightshift/pull/456'
-    )
+    expect(onOpenReviewInBrowser).toHaveBeenCalledWith('https://github.com/acme/kolux/pull/456')
     expect(onUnlinkReview).not.toHaveBeenCalled()
     expect(container.querySelector('[data-hover-open]')?.getAttribute('data-hover-open')).toBe(
       'false'
@@ -326,7 +324,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
       interactionMocks.onReviewMenuOpenChange?.(true)
     })
     const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Nightshift browser')
+      button.textContent?.includes('Open in Kolux browser')
     )
 
     act(() => {
@@ -355,7 +353,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
       await Promise.resolve()
     })
 
-    expect(writeClipboardText).toHaveBeenCalledWith('https://github.com/acme/nightshift/pull/456')
+    expect(writeClipboardText).toHaveBeenCalledWith('https://github.com/acme/kolux/pull/456')
     expect(onUnlinkReview).not.toHaveBeenCalled()
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to copy link')
   })
@@ -371,7 +369,7 @@ describe('WorktreeCardDetailsHover interactions', () => {
             number: 5518,
             title: 'Agent monitor issue',
             state: 'open',
-            url: 'https://github.com/acme/nightshift/issues/5518',
+            url: 'https://github.com/acme/kolux/issues/5518',
             labels: []
           }}
           linearIssue={null}
@@ -389,15 +387,13 @@ describe('WorktreeCardDetailsHover interactions', () => {
       interactionMocks.onReviewMenuOpenChange?.(true)
     })
     const browserButton = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Open in Nightshift browser')
+      button.textContent?.includes('Open in Kolux browser')
     )
 
     act(() => {
       browserButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(onOpenIssueInBrowser).toHaveBeenCalledWith(
-      'https://github.com/acme/nightshift/issues/5518'
-    )
+    expect(onOpenIssueInBrowser).toHaveBeenCalledWith('https://github.com/acme/kolux/issues/5518')
   })
 })

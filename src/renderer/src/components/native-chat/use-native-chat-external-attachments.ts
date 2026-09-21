@@ -21,7 +21,7 @@ export type UseNativeChatExternalAttachmentsArgs = {
 
 /**
  * Attach paths that arrived client-local (composer drop / file picker). SSH
- * worktrees upload into the worktree's `.nightshift/drops` first so the remote agent
+ * worktrees upload into the worktree's `.kolux/drops` first so the remote agent
  * can actually read what gets referenced (STA-1465).
  */
 export function useNativeChatExternalAttachments({

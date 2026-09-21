@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePanePtyId, waitForActiveTerminalManager } from './helpers/terminal'
 import { waitForPtyShellEcho } from './terminal-pty-readiness'
@@ -30,43 +30,40 @@ function chooseStaleGrid(current: Grid): Grid {
 
 test.describe('terminal window-wake stale grid repro', () => {
   test('window focus heals a local PTY whose applied grid drifted from xterm', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
 
-    const baseline = await readGridSnapshot(nightshiftPage, ptyId)
+    const baseline = await readGridSnapshot(koluxPage, ptyId)
     expect(baseline.xterm).not.toBeNull()
     expect(baseline.applied).toEqual(baseline.xterm)
     const staleGrid = chooseStaleGrid(baseline.xterm!)
 
     // Why: model the field state directly—xterm is fitted, but the idle PTY
     // still has an older grid and produces no output that could self-heal it.
-    await nightshiftPage.evaluate(
-      ({ id, grid }) => window.api.pty.resize(id, grid.cols, grid.rows),
-      {
-        id: ptyId,
-        grid: staleGrid
-      }
-    )
+    await koluxPage.evaluate(({ id, grid }) => window.api.pty.resize(id, grid.cols, grid.rows), {
+      id: ptyId,
+      grid: staleGrid
+    })
     await expect
-      .poll(async () => (await readGridSnapshot(nightshiftPage, ptyId)).applied, {
+      .poll(async () => (await readGridSnapshot(koluxPage, ptyId)).applied, {
         timeout: 10_000
       })
       .toEqual(staleGrid)
-    expect((await readGridSnapshot(nightshiftPage, ptyId)).xterm).toEqual(baseline.xterm)
+    expect((await readGridSnapshot(koluxPage, ptyId)).xterm).toEqual(baseline.xterm)
 
-    await nightshiftPage.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await koluxPage.evaluate(() => window.dispatchEvent(new Event('focus')))
 
     await expect
       .poll(
         async () => {
-          const snapshot = await readGridSnapshot(nightshiftPage, ptyId)
+          const snapshot = await readGridSnapshot(koluxPage, ptyId)
           return snapshot.applied && snapshot.xterm ? snapshot : null
         },
         { timeout: 10_000, message: 'Window focus should converge the local PTY to xterm' }

@@ -450,7 +450,7 @@ describe('connectPanePty', () => {
       // Why: missing-glyph workaround is renderer-scoped, not PTY-scoped — SSH moves byte origin but Windows still paints locally.
       mockStoreState = {
         ...mockStoreState,
-        repos: [{ id: 'repo1', connectionId: 'conn-1', displayName: 'nightshift' }]
+        repos: [{ id: 'repo1', connectionId: 'conn-1', displayName: 'kolux' }]
       }
 
       const pane = createPane(1)

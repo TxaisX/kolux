@@ -13,10 +13,10 @@ it('routes SSH browser specs to a lane that enables their opt-ins', () => {
     (step) => step.name === 'Run changed E2E specs'
   )
   for (const [spec, flag] of [
-    ['tests/e2e/local-ssh-browser-routing.spec.ts', 'NIGHTSHIFT_E2E_LOCAL_SSH_BROWSER'],
+    ['tests/e2e/local-ssh-browser-routing.spec.ts', 'KOLUX_E2E_LOCAL_SSH_BROWSER'],
     [
       'tests/e2e/ssh-client-hosted-browser-drop-reconnect.spec.ts',
-      'NIGHTSHIFT_E2E_SSH_CLIENT_HOSTED_BROWSER'
+      'KOLUX_E2E_SSH_CLIENT_HOSTED_BROWSER'
     ]
   ]) {
     expect(runner).toContain(`'${spec}'`)
@@ -39,7 +39,7 @@ it('executes both Docker network routes in a Node job with their opt-in enabled'
   expect(job.if).toContain("inputs.test_files == ''")
   expect(job.if).toContain(spec)
   expect(install.with['native-runtime']).toBe('node')
-  expect(run.env.NIGHTSHIFT_RUN_DOCKER_SSH_BROWSER_E2E).toBe('1')
+  expect(run.env.KOLUX_RUN_DOCKER_SSH_BROWSER_E2E).toBe('1')
   expect(run.run).toContain(`vitest run --config config/vitest.config.ts ${spec}`)
   expect(run['continue-on-error']).toBeUndefined()
   expect(

@@ -56,9 +56,9 @@ describe('skill-sharing release workflow', () => {
     const linuxTest = stepNamed(linux, 'Run skill package, transaction, and compatibility suites')
     const command = packageJson.scripts['test:skill-sharing:release']
 
-    expect(platformTest.env.NIGHTSHIFT_REAL_WINDOWS_SKILL_TEST).toContain("runner.os == 'Windows'")
-    expect(platformTest.env.NIGHTSHIFT_REAL_PROCESS_SKILL_TEST).toBe('1')
-    expect(linuxTest.env.NIGHTSHIFT_REAL_PROCESS_SKILL_TEST).toBe('1')
+    expect(platformTest.env.KOLUX_REAL_WINDOWS_SKILL_TEST).toContain("runner.os == 'Windows'")
+    expect(platformTest.env.KOLUX_REAL_PROCESS_SKILL_TEST).toBe('1')
+    expect(linuxTest.env.KOLUX_REAL_PROCESS_SKILL_TEST).toBe('1')
     expect(platformTest.run).toContain('pnpm test:skill-sharing:release')
     expect(linuxTest.run).toContain('pnpm test:skill-sharing:release')
     expect(command).toContain('src/main/skills')

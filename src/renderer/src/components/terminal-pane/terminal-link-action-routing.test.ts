@@ -114,7 +114,7 @@ describe('terminal link action routing', () => {
     expect(context.request).not.toHaveBeenCalled()
   })
 
-  it('offers system browser first and Nightshift second when system browser is the default', () => {
+  it('offers system browser first and Kolux second when system browser is the default', () => {
     const request = vi.fn()
     const event = plainEvent()
 
@@ -122,7 +122,7 @@ describe('terminal link action routing', () => {
       handleTerminalHttpLink('https://example.com/path', event, {
         worktreeId: 'wt-1',
         linkActionContext: actionContext(request),
-        actionDestinations: { primary: 'system', alternate: 'nightshift' }
+        actionDestinations: { primary: 'system', alternate: 'kolux' }
       })
     ).toBe(true)
     expect(openUrl).not.toHaveBeenCalled()
@@ -137,7 +137,7 @@ describe('terminal link action routing', () => {
     )
     expect(request.mock.calls[0][0].primary.label).toBe('System Browser')
     expect(request.mock.calls[0][0].primary.external).toBe(true)
-    expect(request.mock.calls[0][0].alternate.label).toBe('Nightshift Browser')
+    expect(request.mock.calls[0][0].alternate.label).toBe('Kolux Browser')
     expect(request.mock.calls[0][0].alternate.external).toBe(false)
 
     request.mock.calls[0][0].primary.run()
@@ -149,16 +149,16 @@ describe('terminal link action routing', () => {
     })
   })
 
-  it('offers Nightshift first and system browser second when Nightshift is the default', () => {
+  it('offers Kolux first and system browser second when Kolux is the default', () => {
     const request = vi.fn()
 
     handleTerminalHttpLink('https://example.com/path', plainEvent(), {
       worktreeId: 'wt-1',
       linkActionContext: actionContext(request),
-      actionDestinations: { primary: 'nightshift', alternate: 'system' }
+      actionDestinations: { primary: 'kolux', alternate: 'system' }
     })
 
-    expect(request.mock.calls[0][0].primary.label).toBe('Nightshift Browser')
+    expect(request.mock.calls[0][0].primary.label).toBe('Kolux Browser')
     expect(request.mock.calls[0][0].primary.external).toBe(false)
     expect(request.mock.calls[0][0].alternate.label).toBe('System Browser')
     expect(request.mock.calls[0][0].alternate.external).toBe(true)
@@ -187,14 +187,14 @@ describe('terminal link action routing', () => {
     expect(request.mock.calls[0][0].alternate).toBeUndefined()
   })
 
-  it('routes an explicit Nightshift Browser action to the owning runtime', () => {
+  it('routes an explicit Kolux Browser action to the owning runtime', () => {
     const request = vi.fn()
 
     handleTerminalHttpLink('https://example.com/path', plainEvent(), {
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'runtime', runtimeEnvironmentId: 'env-1' },
       linkActionContext: actionContext(request),
-      actionDestinations: { primary: 'system', alternate: 'nightshift' }
+      actionDestinations: { primary: 'system', alternate: 'kolux' }
     })
 
     request.mock.calls[0][0].primary.run()
@@ -209,7 +209,7 @@ describe('terminal link action routing', () => {
     expect(createBrowserTab).not.toHaveBeenCalled()
   })
 
-  it('routes an explicit Nightshift Browser action through the owning SSH workspace', () => {
+  it('routes an explicit Kolux Browser action through the owning SSH workspace', () => {
     const request = vi.fn()
     const url = 'http://0.0.0.0:8000/'
 
@@ -217,7 +217,7 @@ describe('terminal link action routing', () => {
       worktreeId: 'wt-1',
       sourceOwner: { kind: 'ssh', connectionId: 'ssh-1' },
       linkActionContext: actionContext(request),
-      actionDestinations: { primary: 'system', alternate: 'nightshift' }
+      actionDestinations: { primary: 'system', alternate: 'kolux' }
     })
 
     request.mock.calls[0][0].alternate.run()
@@ -236,7 +236,7 @@ describe('terminal link action routing', () => {
 
     handleTerminalHttpLink('https://example.com/path', event, {
       worktreeId: 'wt-1',
-      actionDestinations: { primary: 'system', alternate: 'nightshift' }
+      actionDestinations: { primary: 'system', alternate: 'kolux' }
     })
 
     expect(createBrowserTab).toHaveBeenCalledWith('wt-1', 'https://example.com/path', {

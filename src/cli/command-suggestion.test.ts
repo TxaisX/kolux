@@ -12,19 +12,19 @@ const specs: CommandSpec[] = [
     ],
     destructive: true,
     summary: 'Remove a worktree',
-    usage: 'nightshift worktree rm',
+    usage: 'kolux worktree rm',
     allowedFlags: []
   },
   {
     path: ['worktree', 'list'],
     summary: 'List worktrees',
-    usage: 'nightshift worktree list',
+    usage: 'kolux worktree list',
     allowedFlags: []
   },
   {
     path: ['terminal', 'send'],
     summary: 'Send input',
-    usage: 'nightshift terminal send',
+    usage: 'kolux terminal send',
     allowedFlags: []
   },
   {
@@ -33,14 +33,14 @@ const specs: CommandSpec[] = [
     path: ['emulator', 'kill'],
     destructive: true,
     summary: 'Kill the emulator',
-    usage: 'nightshift emulator kill',
+    usage: 'kolux emulator kill',
     allowedFlags: []
   },
   {
     path: ['terminal', 'stop'],
     hidden: true,
     summary: 'Deprecated terminal stop',
-    usage: 'nightshift terminal stop',
+    usage: 'kolux terminal stop',
     allowedFlags: []
   }
 ]
@@ -129,7 +129,7 @@ describe('unknownCommandData', () => {
     const data = unknownCommandData(specs, ['worktree', 'remov'])
     expect(data.suggestions).toContain('worktree rm')
     expect(data.nextSteps[0]).toContain('Did you mean')
-    expect(data.nextSteps[0]).toContain('nightshift worktree rm')
+    expect(data.nextSteps[0]).toContain('kolux worktree rm')
   })
 
   it('produces empty nextSteps when nothing is close', () => {

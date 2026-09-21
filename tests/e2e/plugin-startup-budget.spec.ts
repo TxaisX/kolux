@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { expect, test, type TestInfo } from '@stablyai/playwright-test'
 import { fingerprintPluginConsent } from '../../src/shared/plugins/plugin-consent-fingerprint'
 import { pluginManifestSchema } from '../../src/shared/plugins/plugin-manifest'
-import { createRestartSession } from './helpers/nightshift-restart'
+import { createRestartSession } from './helpers/kolux-restart'
 
 const PLUGIN_COUNT = 20
 const SAMPLE_COUNT = 3
@@ -21,7 +21,7 @@ type StartupSample = {
 }
 
 function updateProfile(userDataDir: string, pluginConsents: Record<string, string>): void {
-  const profilePath = join(userDataDir, 'nightshift-data.json')
+  const profilePath = join(userDataDir, 'kolux-data.json')
   const profile = JSON.parse(readFileSync(profilePath, 'utf8')) as {
     settings?: Record<string, unknown>
   }
@@ -48,7 +48,7 @@ function seedPlugins(userDataDir: string, count: number): string[] {
       publisher: 'budget',
       name: `Startup ${index}`,
       version: '1.0.0',
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       main: 'main.mjs',
       contributes: { panels: [], commands: [], events: [] },
@@ -60,7 +60,7 @@ function seedPlugins(userDataDir: string, count: number): string[] {
     const markerPath = join(userDataDir, `plugin-startup-marker-${index}`)
     mkdirSync(versionDir, { recursive: true })
     writeFileSync(join(pluginsDir, pluginKey, 'current'), contentHash)
-    writeFileSync(join(versionDir, 'nightshift-plugin.json'), JSON.stringify(manifest))
+    writeFileSync(join(versionDir, 'kolux-plugin.json'), JSON.stringify(manifest))
     writeFileSync(
       join(versionDir, 'main.mjs'),
       `import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(markerPath)}, 'executed')`
@@ -126,7 +126,7 @@ function median(values: readonly number[]): number {
 // oxlint-disable-next-line no-empty-pattern -- Playwright passes fixtures before testInfo.
 test('keeps real Electron launch stable with 20 approved inert plugins', async ({}, testInfo) => {
   test.setTimeout(240_000)
-  const session = createRestartSession(testInfo, { NIGHTSHIFT_STARTUP_DIAGNOSTICS: '1' })
+  const session = createRestartSession(testInfo, { KOLUX_STARTUP_DIAGNOSTICS: '1' })
   const baseline: StartupSample[] = []
   const populated: StartupSample[] = []
   let markerPaths: string[] = []

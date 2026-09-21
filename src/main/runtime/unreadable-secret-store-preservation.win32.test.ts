@@ -10,7 +10,7 @@ import { removeTreeSync } from '../../shared/windows-transient-lock-removal'
  * What a *successful* harden does to a reader that cannot read.
  *
  * Path hardening writes a protected DACL granting only the SIDs the running process holds. Where
- * the data root came from somewhere else — a relocated `NIGHTSHIFT_USER_DATA_PATH`, a share, a roaming
+ * the data root came from somewhere else — a relocated `KOLUX_USER_DATA_PATH`, a share, a roaming
  * profile, a backup restored under a recreated local account, or a harden whose `/reset` landed
  * and whose `/grant` did not — the file ends up granting a SID this process does not have. It then
  * reads as `EPERM` while its *directory* stays writable, because file hardening is synchronous on
@@ -46,7 +46,7 @@ function canDenyReads(): boolean {
   if (process.platform !== 'win32') {
     return false
   }
-  const probeRoot = mkdtempSync(join(tmpdir(), 'nightshift-deny-probe-'))
+  const probeRoot = mkdtempSync(join(tmpdir(), 'kolux-deny-probe-'))
   const probe = join(probeRoot, 'probe.json')
   try {
     writeFileSync(probe, '{}')
@@ -93,7 +93,7 @@ describeOnWindows('a secure store that exists but cannot be read', () => {
   let root: string
 
   beforeAll(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-unreadable-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-unreadable-'))
   })
 
   afterAll(() => {
@@ -232,7 +232,7 @@ describeOnWindows('a secure store that exists but cannot be read', () => {
 
   /**
    * The one site that *deletes* rather than overwrites: a refresh failure plus an unreadable
-   * session used to fall past the `status === 'found'` guard into `clearNightshiftCloudSession`.
+   * session used to fall past the `status === 'found'` guard into `clearKoluxCloudSession`.
    */
   it('does not delete the account session it could not read', async () => {
     vi.doMock('electron', () => ({
@@ -242,18 +242,18 @@ describeOnWindows('a secure store that exists but cannot be read', () => {
         decryptString: (buffer: Buffer) => buffer.toString()
       }
     }))
-    const { readNightshiftCloudSession, getNightshiftCloudSessionPath } =
-      await import('./../nightshift-profiles/profile-cloud-session-store')
+    const { readKoluxCloudSession, getKoluxCloudSessionPath } =
+      await import('./../kolux-profiles/profile-cloud-session-store')
     const dir = join(root, 'profiles')
     mkdirSync(dir, { recursive: true })
-    const filePath = getNightshiftCloudSessionPath('profile-1', dir)
+    const filePath = getKoluxCloudSessionPath('profile-1', dir)
     mkdirSync(join(filePath, '..'), { recursive: true })
     const original = JSON.stringify({ version: 1, format: 'dev-plaintext-v1', savedAt: 1 })
     writeFileSync(filePath, original)
     makeUnreadable(filePath)
 
     // The status the delete path keys off: `unreadable`, never `decrypt-failed`.
-    expect(readNightshiftCloudSession('profile-1', dir).status).toBe('unreadable')
+    expect(readKoluxCloudSession('profile-1', dir).status).toBe('unreadable')
 
     icacls(filePath, '/reset', '/q')
     expect(readFileSync(filePath, 'utf8')).toBe(original)

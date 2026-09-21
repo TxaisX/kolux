@@ -46,7 +46,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store native-chat tab viewMode persistence', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

@@ -20,13 +20,13 @@ export function buildLocalPtySpawnEnvironment(args: {
     ...mergeGitConfigEnvProtocol(stripInheritedBuildModeEnv(process.env), spawn.env),
     TERM: 'xterm-256color',
     COLORTERM: 'truecolor',
-    TERM_PROGRAM: 'Nightshift',
+    TERM_PROGRAM: 'Kolux',
     // Why: TUIs feature-gate on TERM_PROGRAM_VERSION; the fallback keeps tests and non-Electron runs working.
-    TERM_PROGRAM_VERSION: process.env.NIGHTSHIFT_APP_VERSION ?? '0.0.0-dev',
-    // Why: supports-hyperlinks rejects TERM_PROGRAM=Nightshift, so tools drop OSC 8 links; force it since xterm.js parses them.
+    TERM_PROGRAM_VERSION: process.env.KOLUX_APP_VERSION ?? '0.0.0-dev',
+    // Why: supports-hyperlinks rejects TERM_PROGRAM=Kolux, so tools drop OSC 8 links; force it since xterm.js parses them.
     FORCE_HYPERLINK: '1'
   } as Record<string, string>
-  // Why: Nightshift can be launched from a Nightshift terminal; pane identity belongs to the child PTY, not the parent shell.
+  // Why: Kolux can be launched from a Kolux terminal; pane identity belongs to the child PTY, not the parent shell.
   removeUnspecifiedPaneIdentityEnv(spawnEnv, spawn.env)
   removeAppImageRuntimeEnv(spawnEnv)
   removeInheritedNoColor(spawnEnv)

@@ -616,9 +616,9 @@ describe('useComposerState host-context boundaries', () => {
       provider: 'jira' as const,
       type: 'issue' as const,
       number: 0,
-      title: 'NIGHTSHIFT-123 Link Jira',
-      url: 'https://company.atlassian.net/jira/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Link Jira',
+      url: 'https://company.atlassian.net/jira/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     }
     const context = {
       kind: 'task-source' as const,
@@ -629,7 +629,7 @@ describe('useComposerState host-context boundaries', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net/jira',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       }
     }
 
@@ -641,7 +641,7 @@ describe('useComposerState host-context boundaries', () => {
       })
     ).toBeNull()
     expect(
-      getMatchingLinkedTaskSourceContext({ ...item, jiraIdentifier: 'NIGHTSHIFT-999' }, context)
+      getMatchingLinkedTaskSourceContext({ ...item, jiraIdentifier: 'KOLUX-999' }, context)
     ).toBeNull()
   })
 
@@ -711,7 +711,7 @@ describe('useComposerState host-context boundaries', () => {
       COMPOSER_SOURCE.fullCreation +
       COMPOSER_SOURCE.quickSubmitPreparation +
       COMPOSER_SOURCE.quickCreation
-    expect(submitSources).not.toContain('isNightshiftCliAvailableForLaunch')
+    expect(submitSources).not.toContain('isKoluxCliAvailableForLaunch')
     expect(submitSources).not.toContain('hasGeneratedLinearSourceContext')
     expect(submitSources).not.toContain('shouldDraftGeneratedLinearContext')
     expect(COMPOSER_SOURCE.derived).toMatch(

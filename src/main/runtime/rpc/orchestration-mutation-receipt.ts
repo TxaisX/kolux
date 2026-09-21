@@ -1,22 +1,19 @@
 import { createHash } from 'node:crypto'
 import { isTerminalPromptMutation } from '../../../shared/orchestration-rpc-contract'
 import { parsePaneKey } from '../../../shared/stable-pane-id'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 export const EFFECT_FREE_WORKER_DONE_CHECKPOINT = JSON.stringify({
   pending: { effectFree: 'worker_done' }
 })
 
-const REPLAY_NUDGE_KEY = '__nightshiftReplayNudge'
+const REPLAY_NUDGE_KEY = '__koluxReplayNudge'
 
 export type MutationReplayNudge =
   | { kind: 'messages'; targets: { to: string; type: string }[] }
   | { kind: 'federation'; runId?: string }
 
-export function replayStableCallerParams(
-  runtime: NightshiftRuntimeService,
-  params: unknown
-): unknown {
+export function replayStableCallerParams(runtime: KoluxRuntimeService, params: unknown): unknown {
   if (!params || typeof params !== 'object' || Array.isArray(params)) {
     return params
   }

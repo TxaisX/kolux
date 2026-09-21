@@ -68,15 +68,15 @@ describe('mergeSnapshotAndSessions', () => {
 
   it('includes browser-only workspaces in their repo', () => {
     const worktree = {
-      id: 'nightshift::/Users/me/browser-only',
-      repoId: 'nightshift',
+      id: 'kolux::/Users/me/browser-only',
+      repoId: 'kolux',
       displayName: 'browser-only'
     } as Worktree
     const browser = {
       id: 'browser-1',
       worktreeId: worktree.id,
-      title: 'Nightshift docs',
-      url: 'https://docs.nightshift.invalid',
+      title: 'Kolux docs',
+      url: 'https://docs.kolux.invalid',
       loading: false,
       faviconUrl: null,
       canGoBack: false,
@@ -88,15 +88,15 @@ describe('mergeSnapshotAndSessions', () => {
       null,
       [],
       baseCtx({
-        repoDisplayNameById: new Map([['nightshift', 'NIGHTSHIFT']]),
+        repoDisplayNameById: new Map([['kolux', 'KOLUX']]),
         worktreeById: new Map([[worktree.id, worktree]]),
         browserTabsByWorktree: { [worktree.id]: [browser] }
       })
     )
 
     expect(out[0]).toMatchObject({
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       worktrees: [
         {
           worktreeId: worktree.id,
@@ -110,10 +110,10 @@ describe('mergeSnapshotAndSessions', () => {
 
   it('passes through snapshot worktrees with numeric metrics and hasLocalSamples', () => {
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 1.5,
       memory: 100_000_000,
       history: [1, 2, 3],
@@ -122,8 +122,8 @@ describe('mergeSnapshotAndSessions', () => {
     const out = mergeSnapshotAndSessions(makeSnapshot([wt]), [], baseCtx())
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 1.5,
       memory: 100_000_000,
       hasRemoteChildren: false
@@ -144,10 +144,10 @@ describe('mergeSnapshotAndSessions', () => {
 
   it('dedups: a session present in both snapshot and daemon list renders once with numeric metrics', () => {
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0.1,
       memory: 50_000_000,
       history: [],
@@ -170,10 +170,10 @@ describe('mergeSnapshotAndSessions', () => {
     // Why: only the daemon list reports ownership. A snapshot row describing the same session must
     // not report `false` — that row is the one whose kill skips confirmation (#8459).
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0.1,
       memory: 50_000_000,
       history: [],
@@ -199,14 +199,14 @@ describe('mergeSnapshotAndSessions', () => {
   it('binds a deferred SSH row so its single-row kill cannot skip confirmation', () => {
     // Why: the bulk selector already excluded these, but the rendered row took its own path.
     // An unbound row with no agent skips the dialog entirely — the same #8459 defect, one click over.
-    const sessionId = 'nightshift::/remote/Stingray@@deferred1'
+    const sessionId = 'kolux::/remote/Stingray@@deferred1'
     const out = mergeSnapshotAndSessions(
       null,
-      [{ id: sessionId, cwd: '', title: 'nightshift/Stingray', agentOwnership: 'absent' as const }],
+      [{ id: sessionId, cwd: '', title: 'kolux/Stingray', agentOwnership: 'absent' as const }],
       baseCtx({
-        tabsByWorktree: { 'nightshift::/remote/Stingray': [makeTab('tab-ssh')] },
+        tabsByWorktree: { 'kolux::/remote/Stingray': [makeTab('tab-ssh')] },
         deferredSshSessionIdsByTabId: { 'tab-ssh': sessionId },
-        repoConnectionIdById: new Map([['nightshift', 'ssh-conn-1']])
+        repoConnectionIdById: new Map([['kolux', 'ssh-conn-1']])
       })
     )
 
@@ -217,10 +217,10 @@ describe('mergeSnapshotAndSessions', () => {
 
   it('treats a snapshot row the daemon never listed as unknown ownership, not absent', () => {
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0.1,
       memory: 50_000_000,
       history: [],
@@ -236,25 +236,25 @@ describe('mergeSnapshotAndSessions', () => {
   it('@@ parse: an SSH-style session id resolves to its worktree group', () => {
     const ds: DaemonSession[] = [
       {
-        id: 'nightshift::/remote/Stingray@@abcd1234',
+        id: 'kolux::/remote/Stingray@@abcd1234',
         cwd: '',
-        title: 'nightshift/Stingray',
+        title: 'kolux/Stingray',
         agentOwnership: 'absent' as const
       }
     ]
     const ctx = baseCtx({
-      repoConnectionIdById: new Map([['nightshift', 'ssh-conn-1']])
+      repoConnectionIdById: new Map([['kolux', 'ssh-conn-1']])
     })
     const out = mergeSnapshotAndSessions(null, ds, ctx)
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({
-      repoId: 'nightshift',
+      repoId: 'kolux',
       hasRemoteChildren: true,
       cpu: null,
       memory: null
     })
     expect(out[0].worktrees[0]).toMatchObject({
-      worktreeId: 'nightshift::/remote/Stingray',
+      worktreeId: 'kolux::/remote/Stingray',
       worktreeName: 'Stingray',
       hasLocalSamples: false,
       isRemote: true,
@@ -262,7 +262,7 @@ describe('mergeSnapshotAndSessions', () => {
       memory: null
     })
     expect(out[0].worktrees[0].sessions[0]).toMatchObject({
-      sessionId: 'nightshift::/remote/Stingray@@abcd1234',
+      sessionId: 'kolux::/remote/Stingray@@abcd1234',
       hasLocalSamples: false,
       cpu: null,
       memory: null,
@@ -277,18 +277,18 @@ describe('mergeSnapshotAndSessions', () => {
     // predicate (`!hasLocalSamples`) it was — that was the bug.
     const ds: DaemonSession[] = [
       {
-        id: 'nightshift::/local/Triton@@deadbeef',
+        id: 'kolux::/local/Triton@@deadbeef',
         cwd: '/local/Triton',
-        title: 'nightshift/Triton',
+        title: 'kolux/Triton',
         agentOwnership: 'absent' as const
       }
     ]
     const ctx = baseCtx({
-      repoConnectionIdById: new Map([['nightshift', null]])
+      repoConnectionIdById: new Map([['kolux', null]])
     })
     const out = mergeSnapshotAndSessions(null, ds, ctx)
     expect(out[0]).toMatchObject({
-      repoId: 'nightshift',
+      repoId: 'kolux',
       hasRemoteChildren: false
     })
     expect(out[0].worktrees[0]).toMatchObject({
@@ -301,39 +301,39 @@ describe('mergeSnapshotAndSessions', () => {
     const tabId = 'tab-xyz'
     const ds: DaemonSession[] = [
       {
-        id: 'nightshift::/wrong/path@@feedface',
+        id: 'kolux::/wrong/path@@feedface',
         cwd: '',
-        title: 'nightshift',
+        title: 'kolux',
         agentOwnership: 'absent' as const
       }
     ]
     const ctx = baseCtx({
       tabsByWorktree: {
-        'nightshift::/correct/path': [makeTab(tabId, 'My Tab')]
+        'kolux::/correct/path': [makeTab(tabId, 'My Tab')]
       },
-      ptyIdsByTabId: { [tabId]: ['nightshift::/wrong/path@@feedface'] }
+      ptyIdsByTabId: { [tabId]: ['kolux::/wrong/path@@feedface'] }
     })
     const out = mergeSnapshotAndSessions(null, ds, ctx)
-    expect(out[0].worktrees[0].worktreeId).toBe('nightshift::/correct/path')
+    expect(out[0].worktrees[0].worktreeId).toBe('kolux::/correct/path')
     expect(out[0].worktrees[0].sessions[0].tabId).toBe(tabId)
     expect(out[0].worktrees[0].sessions[0].bound).toBe(true)
   })
 
   it('treats startup deferred reattach tab ptyId wake hints as bound sessions', () => {
     const tabId = 'tab-restored'
-    const sessionId = 'nightshift::/Users/me/Triton@@deferred'
+    const sessionId = 'kolux::/Users/me/Triton@@deferred'
     const ds: DaemonSession[] = [
       {
         id: sessionId,
         cwd: '/Users/me/Triton',
-        title: 'nightshift/Triton',
+        title: 'kolux/Triton',
         agentOwnership: 'absent' as const
       }
     ]
     const restoredTab = { ...makeTab(tabId, 'Restored'), ptyId: sessionId }
     const ctx = baseCtx({
       tabsByWorktree: {
-        'nightshift::/Users/me/Triton': [restoredTab]
+        'kolux::/Users/me/Triton': [restoredTab]
       },
       ptyIdsByTabId: { [tabId]: [] }
     })
@@ -481,17 +481,17 @@ describe('mergeSnapshotAndSessions', () => {
   it('local-bound interaction state: numeric metrics + bound=true + tabId set', () => {
     const tabId = 'tab-1'
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0.1,
       memory: 1_000,
       history: [],
       sessions: [{ sessionId: 'pty-bound', paneKey: null, pid: 1, cpu: 0.1, memory: 1_000 }]
     }
     const ctx = baseCtx({
-      tabsByWorktree: { 'nightshift::/Users/me/Triton': [makeTab(tabId)] },
+      tabsByWorktree: { 'kolux::/Users/me/Triton': [makeTab(tabId)] },
       ptyIdsByTabId: { [tabId]: ['pty-bound'] }
     })
     const out = mergeSnapshotAndSessions(makeSnapshot([wt]), [], ctx)
@@ -505,10 +505,10 @@ describe('mergeSnapshotAndSessions', () => {
 
   it('local-orphan interaction state: numeric metrics + bound=false + tabId null', () => {
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0,
       memory: 0,
       history: [],
@@ -524,9 +524,9 @@ describe('mergeSnapshotAndSessions', () => {
   it('remote-orphan interaction state: null metrics + bound=false', () => {
     const ds: DaemonSession[] = [
       {
-        id: 'nightshift::/remote/Wt@@deadbeef',
+        id: 'kolux::/remote/Wt@@deadbeef',
         cwd: '',
-        title: 'nightshift/Wt',
+        title: 'kolux/Wt',
         agentOwnership: 'absent' as const
       }
     ]
@@ -544,26 +544,26 @@ describe('mergeSnapshotAndSessions', () => {
   it('uses repoDisplayNameById to humanize new project groups when available', () => {
     const ds: DaemonSession[] = [
       {
-        id: 'stably-ai/nightshift::/remote/Wt@@1',
+        id: 'stably-ai/kolux::/remote/Wt@@1',
         cwd: '',
         title: '',
         agentOwnership: 'absent' as const
       }
     ]
     const ctx = baseCtx({
-      repoDisplayNameById: new Map([['stably-ai/nightshift', 'NIGHTSHIFT']])
+      repoDisplayNameById: new Map([['stably-ai/kolux', 'KOLUX']])
     })
     const out = mergeSnapshotAndSessions(null, ds, ctx)
-    expect(out[0].repoName).toBe('NIGHTSHIFT')
+    expect(out[0].repoName).toBe('KOLUX')
   })
 
   it('workspaceSessionReady=false suppresses bound flags so nothing looks bound prematurely', () => {
     const tabId = 'tab-1'
     const wt: WorktreeMemory = {
-      worktreeId: 'nightshift::/Users/me/Triton',
+      worktreeId: 'kolux::/Users/me/Triton',
       worktreeName: 'Triton',
-      repoId: 'nightshift',
-      repoName: 'NIGHTSHIFT',
+      repoId: 'kolux',
+      repoName: 'KOLUX',
       cpu: 0,
       memory: 0,
       history: [],
@@ -571,7 +571,7 @@ describe('mergeSnapshotAndSessions', () => {
     }
     const ctx = baseCtx({
       workspaceSessionReady: false,
-      tabsByWorktree: { 'nightshift::/Users/me/Triton': [makeTab(tabId)] },
+      tabsByWorktree: { 'kolux::/Users/me/Triton': [makeTab(tabId)] },
       ptyIdsByTabId: { [tabId]: ['pty-1'] }
     })
     const out = mergeSnapshotAndSessions(makeSnapshot([wt]), [], ctx)

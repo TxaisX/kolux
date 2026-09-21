@@ -1,7 +1,7 @@
 import type { KeybindingActionId } from '../../../shared/keybindings'
 import { useAppStore } from '../store'
 import {
-  NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT,
+  KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT,
   type EditorRequestCmdSaveDetail
 } from './editor/editor-autosave'
 import { getEditorCmdSaveFileId } from './editor/editor-cmd-save-target'
@@ -37,7 +37,7 @@ export function handleTerminalWorkspaceEditorShortcut({
         event.preventDefault()
         notifyTerminalCapture('editor.save')
         window.dispatchEvent(
-          new CustomEvent<EditorRequestCmdSaveDetail>(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, {
+          new CustomEvent<EditorRequestCmdSaveDetail>(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, {
             detail: { fileId: requestedFileId }
           })
         )

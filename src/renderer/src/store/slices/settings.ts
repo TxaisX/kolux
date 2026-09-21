@@ -193,7 +193,7 @@ export const createSettingsSlice: StateCreator<AppState, [], [], SettingsSlice> 
     if (
       !runtimeEnvironmentCatalogHydrated ||
       !hasCompleteRuntimeStatusCoverage(runtimeEnvironments, runtimeStatusByEnvironmentId) ||
-      // Why: coverage is blind to catalog edits from another client or the nightshift CLI.
+      // Why: coverage is blind to catalog edits from another client or the kolux CLI.
       isRuntimeCatalogListingStale()
     ) {
       void get().hydrateRuntimeEnvironmentStatuses()

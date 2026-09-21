@@ -20,7 +20,7 @@ import { createClaudeStructuredLaunchResolver } from './claude-structured-launch
 
 // Contract pins for @anthropic-ai/claude-agent-sdk, run against the real SDK
 // driving a scripted fake CLI (never the real Claude binary). These tests exist
-// to catch a future SDK version drifting under Nightshift: unknown-frame pass-through,
+// to catch a future SDK version drifting under Kolux: unknown-frame pass-through,
 // spawner env fidelity, argument parity with the pre-SDK argv,
 // permission-callback semantics, and executable-path override.
 
@@ -120,8 +120,8 @@ function scriptScenario(
 function scenarioEnv(scenario: { scenarioPath: string; reportPath: string }) {
   return {
     PATH: process.env.PATH,
-    NIGHTSHIFT_SDK_CONTRACT_SCENARIO_PATH: scenario.scenarioPath,
-    NIGHTSHIFT_SDK_CONTRACT_REPORT_PATH: scenario.reportPath
+    KOLUX_SDK_CONTRACT_SCENARIO_PATH: scenario.scenarioPath,
+    KOLUX_SDK_CONTRACT_REPORT_PATH: scenario.reportPath
   }
 }
 
@@ -275,7 +275,7 @@ describe('Claude Agent SDK contract pins', () => {
       env: {
         ...scenarioEnv(scenario),
         CLAUDE_CONFIG_DIR: '/pinned/claude-config',
-        NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN: 'spawn-token-1',
+        KOLUX_AGENT_SESSION_SPAWN_TOKEN: 'spawn-token-1',
         NODE_OPTIONS: '--max-old-space-size=64'
       },
       spawnClaudeCodeProcess: recordingSpawner(spawns)
@@ -283,9 +283,9 @@ describe('Claude Agent SDK contract pins', () => {
 
     const env = spawns[0]!.env
     // Supplied values arrive verbatim: the config-dir pin and spawn token are
-    // observable at this boundary, so Nightshift's auth scrubbing stays assertable.
+    // observable at this boundary, so Kolux's auth scrubbing stays assertable.
     expect(env.CLAUDE_CONFIG_DIR).toBe('/pinned/claude-config')
-    expect(env.NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN).toBe('spawn-token-1')
+    expect(env.KOLUX_AGENT_SESSION_SPAWN_TOKEN).toBe('spawn-token-1')
     // Ambient process.env is NOT merged in when env is supplied.
     expect(env.ANTHROPIC_API_KEY).toBeUndefined()
     // The SDK's two documented mutations, pinned so a change is noticed.
@@ -295,9 +295,9 @@ describe('Claude Agent SDK contract pins', () => {
 
   it('inherits process.env into the child when env is omitted — the ambient-auth sharp edge', async () => {
     const scenario = scriptScenario([{ awaitUserMessage: true }, { emit: RESULT_FRAME }])
-    vi.stubEnv('NIGHTSHIFT_SDK_CONTRACT_SCENARIO_PATH', scenario.scenarioPath)
-    vi.stubEnv('NIGHTSHIFT_SDK_CONTRACT_REPORT_PATH', scenario.reportPath)
-    vi.stubEnv('NIGHTSHIFT_SDK_CONTRACT_AMBIENT_CANARY', 'inherited-from-process-env')
+    vi.stubEnv('KOLUX_SDK_CONTRACT_SCENARIO_PATH', scenario.scenarioPath)
+    vi.stubEnv('KOLUX_SDK_CONTRACT_REPORT_PATH', scenario.reportPath)
+    vi.stubEnv('KOLUX_SDK_CONTRACT_AMBIENT_CANARY', 'inherited-from-process-env')
     const spawns: SpawnSeen[] = []
     await drainQuery({
       pathToClaudeCodeExecutable: FAKE_CLI,
@@ -306,9 +306,9 @@ describe('Claude Agent SDK contract pins', () => {
     })
 
     // Omitting env reproduces the ambient-auth-leak failure mode: the child
-    // sees everything in process.env. Nightshift must therefore always pass an
+    // sees everything in process.env. Kolux must therefore always pass an
     // explicit, fully-constructed env.
-    expect(spawns[0]!.env.NIGHTSHIFT_SDK_CONTRACT_AMBIENT_CANARY).toBe('inherited-from-process-env')
+    expect(spawns[0]!.env.KOLUX_SDK_CONTRACT_AMBIENT_CANARY).toBe('inherited-from-process-env')
   })
 
   it('emits --replay-user-messages only through extraArgs, never on its own', async () => {

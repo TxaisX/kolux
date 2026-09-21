@@ -49,22 +49,22 @@ export const nativeChatSkillDiscoverySchema = z
 export const telemetryOptedInSchema = z.object({ via: optInViaSchema }).strict()
 export const telemetryOptedOutSchema = z.object({ via: optInViaSchema }).strict()
 
-export const nightshiftCliFeatureTipSourceSchema = z.enum(['app_open', 'manual'])
-export const nightshiftCliFeatureTipShownSchema = z
+export const koluxCliFeatureTipSourceSchema = z.enum(['app_open', 'manual'])
+export const koluxCliFeatureTipShownSchema = z
   .object({
-    source: nightshiftCliFeatureTipSourceSchema,
+    source: koluxCliFeatureTipSourceSchema,
     nth_repo_added: nthRepoAddedSchema
   })
   .strict()
-export const nightshiftCliFeatureTipSetupClickedSchema = z
+export const koluxCliFeatureTipSetupClickedSchema = z
   .object({
-    source: nightshiftCliFeatureTipSourceSchema,
+    source: koluxCliFeatureTipSourceSchema,
     nth_repo_added: nthRepoAddedSchema
   })
   .strict()
-export const nightshiftCliFeatureTipSetupResultSchema = z
+export const koluxCliFeatureTipSetupResultSchema = z
   .object({
-    source: nightshiftCliFeatureTipSourceSchema,
+    source: koluxCliFeatureTipSourceSchema,
     result: z.enum(['installed', 'needs_attention', 'dev_preview', 'failed']),
     nth_repo_added: nthRepoAddedSchema
   })
@@ -72,13 +72,13 @@ export const nightshiftCliFeatureTipSetupResultSchema = z
 
 export const cmdJPaletteFeatureTipShownSchema = z
   .object({
-    source: nightshiftCliFeatureTipSourceSchema,
+    source: koluxCliFeatureTipSourceSchema,
     nth_repo_added: nthRepoAddedSchema
   })
   .strict()
 export const cmdJPaletteFeatureTipAcknowledgedSchema = z
   .object({
-    source: nightshiftCliFeatureTipSourceSchema,
+    source: koluxCliFeatureTipSourceSchema,
     nth_repo_added: nthRepoAddedSchema
   })
   .strict()

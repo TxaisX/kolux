@@ -8,32 +8,32 @@ import {
 } from '../../runtime/runtime-compatibility-test-fixture'
 import { clearRuntimeCompatibilityCacheForTests } from '../../runtime/runtime-rpc-client'
 
-// One project cloned on the local Mac and on a remote Nightshift server under distinct repo ids —
+// One project cloned on the local Mac and on a remote Kolux server under distinct repo ids —
 // the shape the compat merge exists to serve, and the only shape whose sourceRepoIds are
 // assembled from two hosts.
 const SHARED_PROJECT_ID = 'github:TxaisX/nightshift'
 
 const localRepo: Repo = {
   id: 'local-repo',
-  path: '/local/nightshift',
-  displayName: 'nightshift',
+  path: '/local/kolux',
+  displayName: 'kolux',
   badgeColor: '#22c55e',
-  upstream: { owner: 'TxaisX', repo: 'nightshift' },
+  upstream: { owner: 'TxaisX', repo: 'kolux' },
   addedAt: 1_700_000_000_000
 }
 
 const remoteRepo: Repo = {
   id: 'remote-repo',
-  path: '/srv/nightshift',
-  displayName: 'nightshift',
+  path: '/srv/kolux',
+  displayName: 'kolux',
   badgeColor: '#737373',
-  upstream: { owner: 'TxaisX', repo: 'nightshift' },
+  upstream: { owner: 'TxaisX', repo: 'kolux' },
   addedAt: 1_700_000_001_000
 }
 
 const localProject: Project = {
   id: SHARED_PROJECT_ID,
-  displayName: 'nightshift',
+  displayName: 'kolux',
   badgeColor: '#22c55e',
   sourceRepoIds: ['local-repo'],
   createdAt: 1,
@@ -55,7 +55,7 @@ function setup(repoId: string, path: string): ProjectHostSetup {
     hostId: 'local',
     repoId,
     path,
-    displayName: 'nightshift',
+    displayName: 'kolux',
     setupState: 'ready',
     setupMethod: 'imported-existing-folder',
     createdAt: 1,
@@ -83,7 +83,7 @@ function runtimeResult(method: string): unknown {
     return { projects: [clone(remoteProject)] }
   }
   if (method === 'projectHostSetup.list') {
-    return { setups: [clone(setup('remote-repo', '/srv/nightshift'))] }
+    return { setups: [clone(setup('remote-repo', '/srv/kolux'))] }
   }
   return {}
 }
@@ -98,7 +98,7 @@ beforeEach(() => {
 
   reposList.mockImplementation(async () => [clone(localRepo)])
   projectsList.mockImplementation(async () => [clone(localProject)])
-  listHostSetups.mockImplementation(async () => [clone(setup('local-repo', '/local/nightshift'))])
+  listHostSetups.mockImplementation(async () => [clone(setup('local-repo', '/local/kolux'))])
   runtimeEnvironmentsList.mockResolvedValue([{ id: 'env-1', name: 'awin' }])
   runtimeEnvironmentTransportCall.mockImplementation((args: RuntimeEnvironmentCallRequest) => {
     const compatible = createCompatibleRuntimeStatusResponseIfNeeded(args)

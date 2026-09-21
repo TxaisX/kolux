@@ -254,7 +254,7 @@ function SetupScriptPromptCard(): React.JSX.Element | null {
               onOpenSettings: () => openLocalCommandSettings(importedRepoId, importedHostId),
               description: translate(
                 'auto.components.sidebar.SetupScriptPromptCard.a49196d538',
-                'Runs when Nightshift creates a new worktree.'
+                'Runs when Kolux creates a new worktree.'
               )
             })
           }

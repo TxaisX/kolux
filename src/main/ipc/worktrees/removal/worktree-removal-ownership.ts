@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import { getSshPtyProvider, getLocalPtyProvider, clearProviderPtyState } from '../../pty'
 import { killAllProcessesForWorktree } from '../../../runtime/worktree-teardown'
 import type { Store } from '../../../persistence/loading-store/store'
@@ -16,7 +16,7 @@ import { pruneWorkspaceCleanupScanSnapshot } from '../../../workspace-cleanup-sc
 import { pruneWorkspaceSpaceAnalysisSnapshot } from '../../../workspace-space-analysis-snapshot'
 
 export async function stopPtysForDestructiveWorktreeRemoval(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   worktreeId: string,
   options: { connectionId?: string; allowUnverifiedStop?: boolean } = {}
 ): Promise<void> {

@@ -346,7 +346,7 @@ describe('remote runtime pty reattach after the bounded recovery window', () => 
             ok: false,
             error: {
               code: 'remote_runtime_unavailable',
-              message: 'Remote Nightshift runtime connection closed'
+              message: 'Remote Kolux runtime connection closed'
             }
           }
         }

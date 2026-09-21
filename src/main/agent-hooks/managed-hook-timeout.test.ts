@@ -16,7 +16,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -94,13 +94,13 @@ const JSON_INSTALLERS = [
   {
     agent: 'grok',
     timeout: MANAGED_HOOK_TIMEOUT_SECONDS,
-    configPath: `${REMOTE_HOME}/.grok/hooks/nightshift-status.json`,
+    configPath: `${REMOTE_HOME}/.grok/hooks/kolux-status.json`,
     install: (sftp: SFTPWrapper) => new GrokHookService().installRemote(sftp, REMOTE_HOME)
   },
   {
     agent: 'copilot',
     timeout: 5,
-    configPath: `${REMOTE_HOME}/.copilot/hooks/nightshift.json`,
+    configPath: `${REMOTE_HOME}/.copilot/hooks/kolux.json`,
     install: (sftp: SFTPWrapper) => new CopilotHookService().installRemote(sftp, REMOTE_HOME)
   },
   {
@@ -111,11 +111,11 @@ const JSON_INSTALLERS = [
   }
 ] as const
 
-const MANAGED_HOOKS_DIR_NEEDLE = '/.nightshift/agent-hooks/'
+const MANAGED_HOOKS_DIR_NEEDLE = '/.kolux/agent-hooks/'
 // Why: statusLine is not a hook — Claude's schema has no timeout field (type/command/padding/refreshInterval), and a slow statusline can't block agent turns.
 const STATUSLINE_SCRIPT_NEEDLE = '-statusline.'
 
-// Walk the parsed config and assert every Nightshift-managed command carrier (a node
+// Walk the parsed config and assert every Kolux-managed command carrier (a node
 // with a `command`/`bash`/`powershell` string pointing at the managed script
 // dir) has a positive config-level timeout sibling (`timeout` or the
 // provider-specific `timeoutSec`). Returns the count of managed carriers found
@@ -184,11 +184,11 @@ describe('managed agent hook timeouts', () => {
     // One timeout line per managed [[hooks]] event entry.
     const timeoutLines = config.match(new RegExp(`timeout = ${MANAGED_HOOK_TIMEOUT_SECONDS}`, 'g'))
     expect(timeoutLines?.length ?? 0).toBeGreaterThan(0)
-    expect(config).toContain('/home/dev/.nightshift/agent-hooks/kimi-hook.sh')
+    expect(config).toContain('/home/dev/.kolux/agent-hooks/kimi-hook.sh')
   })
 
   it('writes a config-level timeout on local-only Droid hooks', () => {
-    const homeDir = mkdtempSync(join(tmpdir(), 'nightshift-droid-hook-timeout-'))
+    const homeDir = mkdtempSync(join(tmpdir(), 'kolux-droid-hook-timeout-'))
     homedirMock.mockReturnValue(homeDir)
     try {
       const status = new DroidHookService().install()
@@ -225,7 +225,7 @@ describe('managed agent hook timeouts', () => {
     }
     const kimi = createFakeSftp()
     await new KimiHookService().installRemote(kimi.sftp, REMOTE_HOME)
-    const kimiWrapper = kimi.fs.files.get(`${REMOTE_HOME}/.nightshift/agent-hooks/kimi-hook.sh`)!
+    const kimiWrapper = kimi.fs.files.get(`${REMOTE_HOME}/.kolux/agent-hooks/kimi-hook.sh`)!
     expect(kimiWrapper, 'kimi wrapper missing --connect-timeout').toContain('--connect-timeout')
     expect(kimiWrapper, 'kimi wrapper missing --max-time').toContain('--max-time')
     curlWrappersChecked += 1
@@ -260,12 +260,12 @@ describe('managed agent hook timeouts', () => {
         const child = spawn('sh', [scriptPath], {
           env: {
             ...process.env,
-            NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-            NIGHTSHIFT_AGENT_HOOK_PORT: String(port),
-            NIGHTSHIFT_AGENT_HOOK_TOKEN: 'test-token',
-            NIGHTSHIFT_PANE_KEY: 'pane-1',
-            NIGHTSHIFT_TAB_ID: 'tab-1',
-            NIGHTSHIFT_WORKTREE_ID: 'wt-1'
+            KOLUX_AGENT_HOOK_ENDPOINT: '',
+            KOLUX_AGENT_HOOK_PORT: String(port),
+            KOLUX_AGENT_HOOK_TOKEN: 'test-token',
+            KOLUX_PANE_KEY: 'pane-1',
+            KOLUX_TAB_ID: 'tab-1',
+            KOLUX_WORKTREE_ID: 'wt-1'
           },
           stdio: ['pipe', 'ignore', 'ignore']
         })
@@ -296,9 +296,9 @@ describe('managed agent hook timeouts', () => {
         // Reuse a real generated POSIX wrapper rather than re-deriving the script.
         const { sftp, fs } = createFakeSftp()
         await new CodexHookService().installRemote(sftp, REMOTE_HOME)
-        const wrapperBody = fs.files.get(`${REMOTE_HOME}/.nightshift/agent-hooks/codex-hook.sh`)!
+        const wrapperBody = fs.files.get(`${REMOTE_HOME}/.kolux/agent-hooks/codex-hook.sh`)!
 
-        tempDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-timeout-'))
+        tempDir = mkdtempSync(join(tmpdir(), 'kolux-hook-timeout-'))
         const scriptPath = join(tempDir, 'codex-hook.sh')
         writeFileSync(scriptPath, wrapperBody, 'utf8')
         chmodSync(scriptPath, 0o755)

@@ -85,12 +85,12 @@ index e1728feb219c362dfa2ecb602ff99f830d520757..957da98c8b30835cc2d114b4b66b228b
          if (flagsChanged) {
            if (cell.isInverse() !== oldCell.isInverse()) { sgrSeq.push(cell.isInverse() ? 7 : 27); }
 -          if (cell.isBold() !== oldCell.isBold()) { sgrSeq.push(cell.isBold() ? 1 : 22); }
-+          // PATCH(nightshift): bold (1) and dim (2) share the single reset param 22, so
++          // PATCH(kolux): bold (1) and dim (2) share the single reset param 22, so
 +          // they must be diffed as one intensity group with the clearing 22 emitted
 +          // BEFORE any re-set. Upstream's independent per-flag diff could emit
 +          // "1;22" (bold set, then wiped by dim's clear — \x1b[2mA\x1b[22m\x1b[1mB
 +          // loses B's bold on round-trip) or a bare "22" that drops a still-set
-+          // bold/dim, garbling Nightshift's hidden-terminal snapshot restores.
++          // bold/dim, garbling Kolux's hidden-terminal snapshot restores.
 +          const boldChanged = cell.isBold() !== oldCell.isBold();
 +          const dimChanged = cell.isDim() !== oldCell.isDim();
 +          if (boldChanged || dimChanged) {
@@ -107,7 +107,7 @@ index e1728feb219c362dfa2ecb602ff99f830d520757..957da98c8b30835cc2d114b4b66b228b
            if (cell.isInvisible() !== oldCell.isInvisible()) { sgrSeq.push(cell.isInvisible() ? 8 : 28); }
            if (cell.isItalic() !== oldCell.isItalic()) { sgrSeq.push(cell.isItalic() ? 3 : 23); }
 -          if (cell.isDim() !== oldCell.isDim()) { sgrSeq.push(cell.isDim() ? 2 : 22); }
-+          // PATCH(nightshift): dim handled in the intensity group above.
++          // PATCH(kolux): dim handled in the intensity group above.
            if (cell.isStrikethrough() !== oldCell.isStrikethrough()) { sgrSeq.push(cell.isStrikethrough() ? 9 : 29); }
          }
        }
@@ -171,7 +171,7 @@ index e1728feb219c362dfa2ecb602ff99f830d520757..957da98c8b30835cc2d114b4b66b228b
        }
  
 -      this._currentRow += cell.getChars();
-+      // PATCH(nightshift): styling alone leaves restored OSC 8 links looking live but unclickable.
++      // PATCH(kolux): styling alone leaves restored OSC 8 links looking live but unclickable.
 +      this._currentRow += this._setOscLink(getOscLinkId(cell));
 +
 +      if (materializeEmptyCell) {

@@ -48,7 +48,7 @@ describe('agent completion steadyState opt-in', () => {
       shouldPollProcessCadence: () => false
     })
     coordinator.observeTitle('Codex working')
-    coordinator.observeTitle('/tmp/nightshift-e2e-repo')
+    coordinator.observeTitle('/tmp/kolux-e2e-repo')
     await flushAsyncTicks()
     expect(inspectProcess).toHaveBeenCalled()
     for (const call of inspectProcess.mock.calls) {
@@ -72,7 +72,7 @@ describe('agent completion steadyState opt-in', () => {
     })
     coordinator.startProcessTracking()
     coordinator.observeTitle('Codex working')
-    coordinator.observeTitle('/tmp/nightshift-e2e-repo')
+    coordinator.observeTitle('/tmp/kolux-e2e-repo')
     vi.advanceTimersByTime(3_000)
     await flushAsyncTicks()
     expect(inspectProcess).toHaveBeenCalled()

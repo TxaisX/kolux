@@ -54,7 +54,7 @@ function runInspect(root: string, legacyHome: string, markerPath: string): numbe
 
 describe.skipIf(process.platform === 'win32')('legacy WSL auth drain rollback recovery', () => {
   it('reopens a completed drain when rollback recreated the retired home', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-drain-reland-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-drain-reland-'))
     const legacyHome = join(root, 'legacy')
     const targetHome = join(root, 'account')
     const markerPath = join(root, 'drain-marker.json')
@@ -115,7 +115,7 @@ describe.skipIf(process.platform === 'win32')('legacy WSL auth drain rollback re
     expect(readFileSync(laterTargetSessionPath, 'utf8')).toBe(LATER_SESSION)
     expect(existsSync(oldTargetSessionPath)).toBe(false)
 
-    const watermarkPath = `${markerPath}.nightshift-drain-session-watermark`
+    const watermarkPath = `${markerPath}.kolux-drain-session-watermark`
     const linkedWatermarkPath = join(root, 'linked-watermark')
     writeFileSync(linkedWatermarkPath, '1999/01/01\n')
     rmSync(watermarkPath)
@@ -155,7 +155,7 @@ describe.skipIf(process.platform === 'win32')('legacy WSL auth drain rollback re
   })
 
   it('keeps completion authoritative when rollback recreated auth as a symlink', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-drain-reland-symlink-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-drain-reland-symlink-'))
     const legacyHome = join(root, 'legacy')
     const markerPath = join(root, 'drain-marker.json')
     const linkedAuthPath = join(root, 'linked-auth.json')

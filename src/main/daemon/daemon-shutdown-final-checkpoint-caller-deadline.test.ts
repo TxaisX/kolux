@@ -73,7 +73,7 @@ describe('STA-4228 keep-history stop bounds only the caller wait on the final ch
   let releaseStall: (() => void) | undefined
 
   beforeEach(async () => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-final-checkpoint-deadline-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-final-checkpoint-deadline-'))
     subprocesses = []
     releaseStall = undefined
     const log: DaemonFileLog = { log: () => {}, close: () => {} }

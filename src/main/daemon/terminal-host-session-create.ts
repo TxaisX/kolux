@@ -137,7 +137,7 @@ async function spawnAndPublishSession(
     sessionId: opts.sessionId,
     cols: size.cols,
     rows: size.rows,
-    terminalHandle: opts.env?.NIGHTSHIFT_TERMINAL_HANDLE,
+    terminalHandle: opts.env?.KOLUX_TERMINAL_HANDLE,
     launchAgent: opts.launchAgent,
     subprocess,
     ownerBackend: resolvePtyOwnerBackend({
@@ -191,7 +191,7 @@ async function spawnAndPublishSession(
   }
   if (startupCommandWritten && opts.command) {
     const submit = process.platform === 'win32' ? '\r' : '\n'
-    // Why: only Nightshift-wrapped shells advertise the paste-safe startup barrier.
+    // Why: only Kolux-wrapped shells advertise the paste-safe startup barrier.
     session.write(
       buildStartupCommandSubmission(opts.command, {
         submit,

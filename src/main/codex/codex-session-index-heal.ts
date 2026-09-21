@@ -23,11 +23,11 @@ import {
 export type { CodexSessionIndexHealPaths } from './codex-session-index-heal-state'
 
 // Why: Codex's own sqlite metadata backfill is one-shot (backfill_state is
-// stamped `complete` on first app-server startup), so rollouts that Nightshift's
+// stamped `complete` on first app-server startup), so rollouts that Kolux's
 // session backfill hardlinks in later never reach the state DB on their own.
 // `thread/read` is Codex's sanctioned lazy-indexing path: it parses the
 // rollout and upserts the thread row, making backfilled sessions visible to
-// Codex's DB-driven surfaces. Nightshift never writes Codex's sqlite schema itself.
+// Codex's DB-driven surfaces. Kolux never writes Codex's sqlite schema itself.
 
 // Why: one server session per batch bounds child memory and keeps a wedged
 // server from stalling the whole pass; small in-session concurrency keeps the
@@ -269,7 +269,7 @@ function buildNativeHealInvocation(
     command: spawnCmd,
     args: spawnArgs,
     cliPath: command,
-    // Why: pin the real home explicitly — nested Nightshift launches can inherit a
+    // Why: pin the real home explicitly — nested Kolux launches can inherit a
     // managed CODEX_HOME from the daemon environment, which would index the
     // wrong sqlite DB.
     env: { CODEX_HOME: systemCodexHomePath },

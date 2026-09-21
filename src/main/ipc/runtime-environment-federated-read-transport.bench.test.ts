@@ -6,9 +6,7 @@ import { sendRemoteRuntimeRequest } from '../../shared/remote-runtime-client'
 import { RemoteRuntimeSharedControlConnection } from '../../shared/remote-runtime-shared-control-connection'
 import { RuntimeEnvironmentStoreSchema } from '../../shared/runtime-environments'
 
-const runLiveBenchmark = isFederatedReadBenchmarkEnabled(
-  process.env.NIGHTSHIFT_FEDERATED_READ_BENCH
-)
+const runLiveBenchmark = isFederatedReadBenchmarkEnabled(process.env.KOLUX_FEDERATED_READ_BENCH)
 
 it('interpolates even-sized benchmark samples', () => expect(percentile([1, 3], 0.5)).toBe(2))
 
@@ -55,13 +53,13 @@ it('closes the retained connection after successful measurements', async () => {
 
 describe.runIf(runLiveBenchmark)('federated read RPC transport benchmark', () => {
   it('compares one-shot and shared-control latency on one saved runtime', async () => {
-    const userDataPath = process.env.NIGHTSHIFT_RUNTIME_USER_DATA_PATH
-    const environmentName = process.env.NIGHTSHIFT_RUNTIME_ENVIRONMENT
+    const userDataPath = process.env.KOLUX_RUNTIME_USER_DATA_PATH
+    const environmentName = process.env.KOLUX_RUNTIME_ENVIRONMENT
     if (!userDataPath || !environmentName) {
-      throw new Error('Set NIGHTSHIFT_RUNTIME_USER_DATA_PATH and NIGHTSHIFT_RUNTIME_ENVIRONMENT.')
+      throw new Error('Set KOLUX_RUNTIME_USER_DATA_PATH and KOLUX_RUNTIME_ENVIRONMENT.')
     }
     const store = RuntimeEnvironmentStoreSchema.parse(
-      JSON.parse(readFileSync(join(userDataPath, 'nightshift-environments.json'), 'utf8'))
+      JSON.parse(readFileSync(join(userDataPath, 'kolux-environments.json'), 'utf8'))
     )
     const environment = store.environments.find((entry) => entry.name === environmentName)
     if (!environment) {

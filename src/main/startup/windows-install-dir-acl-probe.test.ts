@@ -17,7 +17,7 @@ import {
   RESTRICTED_PACKAGES_ACE
 } from './windows-install-dir-acl.test-fixture'
 
-const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\nightshift'
+const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\kolux'
 const ORPHAN = ORPHAN_PACKAGE_ACE
 const RESTRICTED_GRANT = RESTRICTED_PACKAGES_ACE
 

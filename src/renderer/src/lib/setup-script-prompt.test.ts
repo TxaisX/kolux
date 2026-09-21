@@ -164,7 +164,7 @@ describe('setup script prompt inspection', () => {
     expect(settings.scripts.setup).toBe('pnpm install')
   })
 
-  it('detects when shared nightshift.yaml setup scripts are ignored by local-only settings', () => {
+  it('detects when shared kolux.yaml setup scripts are ignored by local-only settings', () => {
     expect(
       ignoresSharedSetupScripts(
         makeRepo({

@@ -523,8 +523,8 @@ describe('areWorktreePathsEqual', () => {
   it('treats macOS /private/tmp git paths as matching /tmp workspace paths', () => {
     expect(
       areWorktreePathsEqual(
-        '/private/tmp/nightshift-proof/worktrees/repo/feature',
-        '/tmp/nightshift-proof/worktrees/repo/feature',
+        '/private/tmp/kolux-proof/worktrees/repo/feature',
+        '/tmp/kolux-proof/worktrees/repo/feature',
         'darwin'
       )
     ).toBe(true)

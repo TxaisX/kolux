@@ -5,7 +5,7 @@
  * - Browser works and also retains state when switching tabs etc.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import {
@@ -364,53 +364,49 @@ async function writeBrowserInputValue(
 }
 
 test.describe('Browser Tab', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   /**
    * User Prompt:
    * - Browser works and also retains state when switching tabs etc.
    */
-  test('creating a browser tab adds it and activates browser view', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const browserTabsBefore = await getBrowserTabs(nightshiftPage, worktreeId)
+  test('creating a browser tab adds it and activates browser view', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const browserTabsBefore = await getBrowserTabs(koluxPage, worktreeId)
 
-    await createBrowserTab(nightshiftPage, worktreeId)
+    await createBrowserTab(koluxPage, worktreeId)
 
     // Wait for the browser tab to appear in the store
     await expect
-      .poll(async () => (await getBrowserTabs(nightshiftPage, worktreeId)).length, {
+      .poll(async () => (await getBrowserTabs(koluxPage, worktreeId)).length, {
         timeout: 5_000
       })
       .toBe(browserTabsBefore.length + 1)
 
     // The active tab type should switch to 'browser'
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 3_000 })
-      .toBe('browser')
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 3_000 }).toBe('browser')
   })
 
   /**
    * User Prompt:
    * - Browser works and also retains state when switching tabs etc.
    */
-  test('browser tab is created and active in the store', async ({ nightshiftPage }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('browser tab is created and active in the store', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    await createBrowserTab(nightshiftPage, worktreeId)
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 5_000 })
-      .toBe('browser')
+    await createBrowserTab(koluxPage, worktreeId)
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 5_000 }).toBe('browser')
 
     // Verify the browser tab exists in the store
-    const browserTabs = await getBrowserTabs(nightshiftPage, worktreeId)
+    const browserTabs = await getBrowserTabs(koluxPage, worktreeId)
     expect(browserTabs.length).toBeGreaterThan(0)
 
     // The active browser tab should have a URL (even if it's about:blank or the default)
-    const activeBrowserTabId = await nightshiftPage.evaluate(() => {
+    const activeBrowserTabId = await koluxPage.evaluate(() => {
       const store = window.__store
       return store?.getState().activeBrowserTabId ?? null
     })
@@ -421,96 +417,88 @@ test.describe('Browser Tab', () => {
    * User Prompt:
    * - Browser works and also retains state when switching tabs etc.
    */
-  test('browser tab retains state when switching to terminal and back', async ({
-    nightshiftPage
-  }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+  test('browser tab retains state when switching to terminal and back', async ({ koluxPage }) => {
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    await createBrowserTab(nightshiftPage, worktreeId)
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 5_000 })
-      .toBe('browser')
+    await createBrowserTab(koluxPage, worktreeId)
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 5_000 }).toBe('browser')
 
     // Record the browser tab info
-    const browserTabsBefore = await getBrowserTabs(nightshiftPage, worktreeId)
+    const browserTabsBefore = await getBrowserTabs(koluxPage, worktreeId)
     expect(browserTabsBefore.length).toBeGreaterThan(0)
     const browserTabId = browserTabsBefore.at(-1)?.id
     expect(browserTabId).toBeTruthy()
 
     // Switch to the terminal view
-    await switchToTerminalTab(nightshiftPage, worktreeId)
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 3_000 })
-      .toBe('terminal')
+    await switchToTerminalTab(koluxPage, worktreeId)
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 3_000 }).toBe('terminal')
 
     // Switch back to browser tab
-    await switchToBrowserTab(nightshiftPage, worktreeId, browserTabId!)
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 3_000 })
-      .toBe('browser')
+    await switchToBrowserTab(koluxPage, worktreeId, browserTabId!)
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 3_000 }).toBe('browser')
 
     // The browser tab should still exist with the same ID
-    const browserTabsAfter = await getBrowserTabs(nightshiftPage, worktreeId)
+    const browserTabsAfter = await getBrowserTabs(koluxPage, worktreeId)
     const tabStillExists = browserTabsAfter.some((tab) => tab.id === browserTabId)
     expect(tabStillExists).toBe(true)
   })
 
   test('browser webview form state survives switching between browser tabs', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const formServer = await startBrowserFormServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const firstTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServer.url('First search'),
         'First Form'
       )
       expect(firstTab?.id).toBeTruthy()
-      await writeBrowserInputValue(nightshiftPage, firstTab!.id, 'first typed value')
+      await writeBrowserInputValue(koluxPage, firstTab!.id, 'first typed value')
 
       const secondTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServer.url('Second search'),
         'Second Form'
       )
       expect(secondTab?.id).toBeTruthy()
-      await writeBrowserInputValue(nightshiftPage, secondTab!.id, 'second typed value')
+      await writeBrowserInputValue(koluxPage, secondTab!.id, 'second typed value')
 
       // Why: switching browser tabs used to unmount and reparent the inactive
       // Electron webview, which recreated the guest document and erased form DOM.
-      await switchToBrowserTab(nightshiftPage, worktreeId, firstTab!.id)
+      await switchToBrowserTab(koluxPage, worktreeId, firstTab!.id)
       await expect
-        .poll(async () => readBrowserInputValue(nightshiftPage, firstTab!.id), { timeout: 5_000 })
+        .poll(async () => readBrowserInputValue(koluxPage, firstTab!.id), { timeout: 5_000 })
         .toBe('first typed value')
 
-      await switchToBrowserTab(nightshiftPage, worktreeId, secondTab!.id)
+      await switchToBrowserTab(koluxPage, worktreeId, secondTab!.id)
       await expect
-        .poll(async () => readBrowserInputValue(nightshiftPage, secondTab!.id), { timeout: 5_000 })
+        .poll(async () => readBrowserInputValue(koluxPage, secondTab!.id), { timeout: 5_000 })
         .toBe('second typed value')
     } finally {
       await formServer.close()
     }
   })
 
-  test('browser page reload restores the configured 100% zoom', async ({ nightshiftPage }) => {
+  test('browser page reload restores the configured 100% zoom', async ({ koluxPage }) => {
     const formServer = await startBrowserFormServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const browserTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServer.url('Zoom reload'),
         'Zoom Reload'
       )
       expect(browserTab?.id).toBeTruthy()
       await expect
-        .poll(async () => readBrowserInputValue(nightshiftPage, browserTab!.id), { timeout: 5_000 })
+        .poll(async () => readBrowserInputValue(koluxPage, browserTab!.id), { timeout: 5_000 })
         .not.toBeNull()
 
-      const zoomLevels = await nightshiftPage.evaluate(async (browserTabId) => {
+      const zoomLevels = await koluxPage.evaluate(async (browserTabId) => {
         const slot = document.querySelector(`[data-browser-overlay-tab-id="${browserTabId}"]`)
         const webview = slot?.querySelector('webview') as Electron.WebviewTag | null
         if (!webview) {
@@ -539,22 +527,22 @@ test.describe('Browser Tab', () => {
     }
   })
 
-  test('Cmd/Ctrl+0 resets a zoomed browser page to 100%', async ({ nightshiftPage }) => {
+  test('Cmd/Ctrl+0 resets a zoomed browser page to 100%', async ({ koluxPage }) => {
     const formServer = await startBrowserFormServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const browserTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServer.url('Zoom reset'),
         'Zoom Reset'
       )
       expect(browserTab?.id).toBeTruthy()
       await expect
-        .poll(async () => readBrowserInputValue(nightshiftPage, browserTab!.id), { timeout: 5_000 })
+        .poll(async () => readBrowserInputValue(koluxPage, browserTab!.id), { timeout: 5_000 })
         .not.toBeNull()
 
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         async ({ browserTabId, browserPageId, modifier }) => {
           const slot = document.querySelector(`[data-browser-overlay-tab-id="${browserTabId}"]`)
           const webview = slot?.querySelector('webview') as Electron.WebviewTag | null
@@ -562,7 +550,7 @@ test.describe('Browser Tab', () => {
             throw new Error(`Missing webview for browser tab ${browserTabId}`)
           }
           window.dispatchEvent(
-            new CustomEvent('nightshift:browser-page-zoom', {
+            new CustomEvent('kolux:browser-page-zoom', {
               detail: { browserPageId, direction: 'in' }
             })
           )
@@ -577,7 +565,7 @@ test.describe('Browser Tab', () => {
       )
       await expect
         .poll(() =>
-          nightshiftPage.evaluate((browserTabId) => {
+          koluxPage.evaluate((browserTabId) => {
             const slot = document.querySelector(`[data-browser-overlay-tab-id="${browserTabId}"]`)
             return (slot?.querySelector('webview') as Electron.WebviewTag | null)?.getZoomLevel()
           }, browserTab!.id)
@@ -588,21 +576,21 @@ test.describe('Browser Tab', () => {
     }
   })
 
-  test('reloading one browser tab does not adopt another tab zoom', async ({ nightshiftPage }) => {
+  test('reloading one browser tab does not adopt another tab zoom', async ({ koluxPage }) => {
     const [formServerA, formServerB] = await Promise.all([
       startBrowserFormServer(),
       startBrowserFormServer('localhost')
     ])
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const tabA = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServerA.url('Zoom A'),
         'Zoom A'
       )
       const tabB = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         formServerB.url('Zoom B'),
         'Zoom B'
@@ -611,11 +599,11 @@ test.describe('Browser Tab', () => {
       expect(tabB?.id).toBeTruthy()
       for (const tab of [tabA, tabB]) {
         await expect
-          .poll(async () => readBrowserInputValue(nightshiftPage, tab!.id), { timeout: 5_000 })
+          .poll(async () => readBrowserInputValue(koluxPage, tab!.id), { timeout: 5_000 })
           .not.toBeNull()
       }
 
-      const levels = await nightshiftPage.evaluate(
+      const levels = await koluxPage.evaluate(
         async ({ tabAId, tabBId, pageBId }) => {
           const webviewFor = (id: string): Electron.WebviewTag => {
             const slot = document.querySelector(`[data-browser-overlay-tab-id="${id}"]`)
@@ -631,7 +619,7 @@ test.describe('Browser Tab', () => {
           // Zoom only tab B through the real renderer zoom path (also writes the shared setting).
           for (let step = 0; step < 2; step += 1) {
             window.dispatchEvent(
-              new CustomEvent('nightshift:browser-page-zoom', {
+              new CustomEvent('kolux:browser-page-zoom', {
                 detail: { browserPageId: pageBId, direction: 'in' }
               })
             )
@@ -661,13 +649,13 @@ test.describe('Browser Tab', () => {
 
   test('new-tab link gestures follow Chrome foreground and background behavior', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const linkServer = await startBrowserLinkServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const sourceTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         linkServer.sourceUrl,
         'Source page'
@@ -678,75 +666,61 @@ test.describe('Browser Tab', () => {
         ({ BaseWindow }) => BaseWindow.getAllWindows().length
       )
       // A plain main-frame target=_blank click must not navigate the source tab away.
-      const sourceTabLocator = nightshiftPage.locator(`[data-tab-id="${sourceTab!.id}"]`)
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#blank-link')
-      await expectBrowserTabActive(nightshiftPage, 'Blank target destination')
+      const sourceTabLocator = koluxPage.locator(`[data-tab-id="${sourceTab!.id}"]`)
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#blank-link')
+      await expectBrowserTabActive(koluxPage, 'Blank target destination')
       await expect(sourceTabLocator).toContainText('Source page')
-      await switchToBrowserTab(nightshiftPage, worktreeId, sourceTab!.id)
+      await switchToBrowserTab(koluxPage, worktreeId, sourceTab!.id)
 
       // Context-menu links keep the source visible until the new tab is selected.
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#external-link', { button: 'right' })
-      await nightshiftPage
-        .getByRole('menuitem', { name: 'Open Link In Nightshift Browser', exact: true })
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#external-link', { button: 'right' })
+      await koluxPage
+        .getByRole('menuitem', { name: 'Open Link In Kolux Browser', exact: true })
         .click()
-      await expectBrowserTabOpenedInBackground(nightshiftPage, sourceTab!.id, 'Linked destination')
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#frame-link', {
+      await expectBrowserTabOpenedInBackground(koluxPage, sourceTab!.id, 'Linked destination')
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#frame-link', {
         frameSelector: '#link-frame'
       })
-      await expectBrowserTabActive(nightshiftPage, 'Frame destination')
-      await switchToBrowserTab(nightshiftPage, worktreeId, sourceTab!.id)
+      await expectBrowserTabActive(koluxPage, 'Frame destination')
+      await switchToBrowserTab(koluxPage, worktreeId, sourceTab!.id)
 
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#frame-modifier-link', {
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#frame-modifier-link', {
         frameSelector: '#link-frame',
         modifiers: process.platform === 'darwin' ? ['meta'] : ['control']
       })
       await expectBrowserTabOpenedInBackground(
-        nightshiftPage,
+        koluxPage,
         sourceTab!.id,
         'Frame modifier destination'
       )
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#frame-middle-link', {
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#frame-middle-link', {
         button: 'middle',
         frameSelector: '#link-frame'
       })
-      await expectBrowserTabOpenedInBackground(
-        nightshiftPage,
-        sourceTab!.id,
-        'Frame middle destination'
-      )
+      await expectBrowserTabOpenedInBackground(koluxPage, sourceTab!.id, 'Frame middle destination')
 
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#modifier-link', {
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#modifier-link', {
         modifiers: process.platform === 'darwin' ? ['meta'] : ['control']
       })
-      await expectBrowserTabOpenedInBackground(
-        nightshiftPage,
-        sourceTab!.id,
-        'Modifier destination'
-      )
+      await expectBrowserTabOpenedInBackground(koluxPage, sourceTab!.id, 'Modifier destination')
 
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#frame-shift-middle-link', {
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#frame-shift-middle-link', {
         button: 'middle',
         modifiers: ['shift'],
         frameSelector: '#link-frame'
       })
-      await expectBrowserTabActive(nightshiftPage, 'Frame shift middle destination')
-      await switchToBrowserTab(nightshiftPage, worktreeId, sourceTab!.id)
+      await expectBrowserTabActive(koluxPage, 'Frame shift middle destination')
+      await switchToBrowserTab(koluxPage, worktreeId, sourceTab!.id)
 
-      const tabCountBeforeCancelledClick = await nightshiftPage.locator('[data-tab-id]').count()
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#cancelled-link')
+      const tabCountBeforeCancelledClick = await koluxPage.locator('[data-tab-id]').count()
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#cancelled-link')
       await expect(
-        nightshiftPage.locator('[data-tab-id]').filter({ hasText: 'Click handled in page' })
+        koluxPage.locator('[data-tab-id]').filter({ hasText: 'Click handled in page' })
       ).toBeVisible({ timeout: 10_000 })
-      await expect(nightshiftPage.locator('[data-tab-id]')).toHaveCount(
-        tabCountBeforeCancelledClick
-      )
+      await expect(koluxPage.locator('[data-tab-id]')).toHaveCount(tabCountBeforeCancelledClick)
 
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#middle-link', { button: 'middle' })
-      await expectBrowserTabOpenedInBackground(
-        nightshiftPage,
-        sourceTab!.id,
-        'Middle-click destination'
-      )
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#middle-link', { button: 'middle' })
+      await expectBrowserTabOpenedInBackground(koluxPage, sourceTab!.id, 'Middle-click destination')
       await expect
         .poll(() => electronApp.evaluate(({ BaseWindow }) => BaseWindow.getAllWindows().length), {
           timeout: 5_000
@@ -758,19 +732,19 @@ test.describe('Browser Tab', () => {
   })
 
   test('blocked window.close in a link-created tab does not break tab switching', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const closeServer = await startBrowserWindowCloseServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const neighboringTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         'about:blank',
         'Neighboring tab'
       )
       const sourceTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         closeServer.sourceUrl,
         'Close link source'
@@ -778,22 +752,20 @@ test.describe('Browser Tab', () => {
       expect(neighboringTab?.id).toBeTruthy()
       expect(sourceTab?.id).toBeTruthy()
 
-      await clickBrowserLink(nightshiftPage, sourceTab!.id, '#window-close-link')
+      await clickBrowserLink(koluxPage, sourceTab!.id, '#window-close-link')
       let closeTabId: string | null = null
       await expect
         .poll(async () => {
-          const tabs = await getBrowserTabs(nightshiftPage, worktreeId)
+          const tabs = await getBrowserTabs(koluxPage, worktreeId)
           closeTabId = tabs.find((tab) => tab.url === closeServer.url)?.id ?? null
           return closeTabId
         })
         .not.toBeNull()
 
-      await nightshiftPage.locator(`[data-tab-id="${neighboringTab!.id}"]`).click()
+      await koluxPage.locator(`[data-tab-id="${neighboringTab!.id}"]`).click()
+      await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 5_000 }).toBe('browser')
       await expect
-        .poll(async () => getActiveTabType(nightshiftPage), { timeout: 5_000 })
-        .toBe('browser')
-      await expect
-        .poll(() => readBrowserWindowCloseStatus(nightshiftPage, closeTabId!), { timeout: 5_000 })
+        .poll(() => readBrowserWindowCloseStatus(koluxPage, closeTabId!), { timeout: 5_000 })
         .toContain('window.close() was blocked')
     } finally {
       await closeServer.close()
@@ -801,13 +773,13 @@ test.describe('Browser Tab', () => {
   })
 
   test('directly created browser tabs block window.close and remain usable', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const closeServer = await startBrowserWindowCloseServer()
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
       const directTab = await createBrowserTab(
-        nightshiftPage,
+        koluxPage,
         worktreeId,
         closeServer.url,
         'Direct close tab'
@@ -815,13 +787,13 @@ test.describe('Browser Tab', () => {
       expect(directTab?.id).toBeTruthy()
 
       await expect
-        .poll(() => readBrowserWindowCloseStatus(nightshiftPage, directTab!.id), { timeout: 5_000 })
+        .poll(() => readBrowserWindowCloseStatus(koluxPage, directTab!.id), { timeout: 5_000 })
         .toContain('window.close() was blocked')
 
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(async (targetBrowserTabId) => {
+            koluxPage.evaluate(async (targetBrowserTabId) => {
               const slot = document.querySelector(
                 `[data-browser-overlay-tab-id="${targetBrowserTabId}"]`
               )
@@ -850,39 +822,33 @@ test.describe('Browser Tab', () => {
    * User Prompt:
    * - Browser works and also retains state when switching tabs etc.
    */
-  test('browser tab retains state when switching worktrees and back', async ({
-    nightshiftPage
-  }) => {
-    const allWorktreeIds = await getAllWorktreeIds(nightshiftPage)
+  test('browser tab retains state when switching worktrees and back', async ({ koluxPage }) => {
+    const allWorktreeIds = await getAllWorktreeIds(koluxPage)
     if (allWorktreeIds.length < 2) {
       test.skip(true, 'Need at least 2 worktrees to test worktree switching')
     }
 
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
 
-    await createBrowserTab(nightshiftPage, worktreeId)
-    await expect
-      .poll(async () => getActiveTabType(nightshiftPage), { timeout: 5_000 })
-      .toBe('browser')
+    await createBrowserTab(koluxPage, worktreeId)
+    await expect.poll(async () => getActiveTabType(koluxPage), { timeout: 5_000 }).toBe('browser')
 
-    const browserTabsBefore = await getBrowserTabs(nightshiftPage, worktreeId)
+    const browserTabsBefore = await getBrowserTabs(koluxPage, worktreeId)
     expect(browserTabsBefore.length).toBeGreaterThan(0)
 
     // Switch to a different worktree via the store
-    const otherId = await switchToOtherWorktree(nightshiftPage, worktreeId)
+    const otherId = await switchToOtherWorktree(koluxPage, worktreeId)
     expect(otherId).not.toBeNull()
-    await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), { timeout: 5_000 })
-      .toBe(otherId)
+    await expect.poll(async () => getActiveWorktreeId(koluxPage), { timeout: 5_000 }).toBe(otherId)
 
     // Switch back to the original worktree
-    await switchToWorktree(nightshiftPage, worktreeId)
+    await switchToWorktree(koluxPage, worktreeId)
     await expect
-      .poll(async () => getActiveWorktreeId(nightshiftPage), { timeout: 5_000 })
+      .poll(async () => getActiveWorktreeId(koluxPage), { timeout: 5_000 })
       .toBe(worktreeId)
 
     // Browser tabs should still be preserved
-    const browserTabsAfter = await getBrowserTabs(nightshiftPage, worktreeId)
+    const browserTabsAfter = await getBrowserTabs(koluxPage, worktreeId)
     expect(browserTabsAfter.length).toBe(browserTabsBefore.length)
   })
 })

@@ -78,13 +78,13 @@ describe('shouldUploadRemoteEditorFileDrop', () => {
           worktreesByRepo: { 'repo-1': [{ id: 'wt-1', repoId: 'repo-1' }] }
         },
         'wt-1',
-        '/home/nightshift/repo-1',
+        '/home/kolux/repo-1',
         'ssh-1'
       )
     ).toEqual({
       settings: { activeRuntimeEnvironmentId: null },
       worktreeId: 'wt-1',
-      worktreePath: '/home/nightshift/repo-1',
+      worktreePath: '/home/kolux/repo-1',
       connectionId: 'ssh-1'
     })
   })

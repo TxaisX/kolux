@@ -119,7 +119,7 @@ export const FEATURE_WALL_TILES: readonly FeatureWallTile[] = [
     kind: 'media',
     title: 'Remote workspaces',
     caption:
-      'Run agents on a remote machine with the same Nightshift editing, git, and terminal workflow.',
+      'Run agents on a remote machine with the same Kolux editing, git, and terminal workflow.',
     gifPath: 'tile-06.gif',
     posterPath: 'tile-06.poster.jpg',
     recordedAtPath: 'tile-06.recorded-at.json',
@@ -153,13 +153,12 @@ export const FEATURE_WALL_TILES: readonly FeatureWallTile[] = [
   {
     id: 'tile-09',
     kind: 'media',
-    title: 'Nightshift CLI',
-    caption:
-      'Agents can drive Nightshift too: create workspaces, snapshot screens, click, and fill.',
+    title: 'Kolux CLI',
+    caption: 'Agents can drive Kolux too: create workspaces, snapshot screens, click, and fill.',
     gifPath: 'tile-09.gif',
     posterPath: 'tile-09.poster.jpg',
     recordedAtPath: 'tile-09.recorded-at.json',
-    owner: 'nightshift-cli',
+    owner: 'kolux-cli',
     docsUrl: 'https://github.com/TxaisX/nightshift#readme'
   },
   {

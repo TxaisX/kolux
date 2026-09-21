@@ -41,7 +41,7 @@ afterEach(() => {
   }
 })
 
-function makeHome(prefix = 'nightshift-ssh-config-'): string {
+function makeHome(prefix = 'kolux-ssh-config-'): string {
   const home = mkdtempSync(join(tmpdir(), prefix))
   tempDirs.push(home)
   homedirMock.mockReturnValue(home)
@@ -103,12 +103,12 @@ describe('loadUserSshConfig', () => {
 
   it('supports relative includes, ${VAR}, and local % tokens', () => {
     const home = makeHome()
-    process.env.NIGHTSHIFT_SSH_INCLUDE = 'from-env.conf'
+    process.env.KOLUX_SSH_INCLUDE = 'from-env.conf'
     writeFile(
       home,
       '.ssh/config',
       [
-        'Include relative.conf ${NIGHTSHIFT_SSH_INCLUDE}',
+        'Include relative.conf ${KOLUX_SSH_INCLUDE}',
         'Include %d/.ssh/from-home.conf',
         'Include %u/%i.conf',
         'Include %%literal.conf'

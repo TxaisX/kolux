@@ -87,7 +87,7 @@ export function useWorktreeCardLifecycleEffects({
         staleWhileRevalidate: true
       })
     }
-    // Why: PRs created outside Nightshift (e.g. `gh pr create`) emit no renderer event; poll visible cards to discover them.
+    // Why: PRs created outside Kolux (e.g. `gh pr create`) emit no renderer event; poll visible cards to discover them.
     return installWindowVisibilityInterval({
       run: refreshHostedReview,
       jitterOnVisible: true,

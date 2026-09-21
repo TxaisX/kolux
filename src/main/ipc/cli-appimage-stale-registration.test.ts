@@ -64,19 +64,19 @@ const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
 
 function status(
   state: CliInstallState,
-  launcherPath = '/cache/current/resources/bin/nightshift-ide'
+  launcherPath = '/cache/current/resources/bin/kolux-ide'
 ): CliInstallStatus {
   return {
     platform: 'linux',
-    commandName: 'nightshift-ide',
-    commandPath: '/home/me/.local/bin/nightshift-ide',
+    commandName: 'kolux-ide',
+    commandPath: '/home/me/.local/bin/kolux-ide',
     pathDirectory: '/home/me/.local/bin',
     pathConfigured: true,
     launcherPath,
     installMethod: 'symlink',
     supported: true,
     state,
-    currentTarget: state === 'not_installed' ? null : '/cache/old/resources/bin/nightshift-ide',
+    currentTarget: state === 'not_installed' ? null : '/cache/old/resources/bin/kolux-ide',
     unsupportedReason: null,
     detail: null
   }
@@ -105,12 +105,12 @@ beforeEach(() => {
   mocks.resolveAppImageRuntimeIdentity.mockReset().mockImplementation(() =>
     process.platform === 'linux'
       ? {
-          appImagePath: '/opt/Nightshift.AppImage'
+          appImagePath: '/opt/Kolux.AppImage'
         }
       : null
   )
   Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-  vi.stubEnv('APPIMAGE', '/opt/Nightshift.AppImage')
+  vi.stubEnv('APPIMAGE', '/opt/Kolux.AppImage')
 })
 
 afterEach(() => {
@@ -187,10 +187,10 @@ describe('AppImage CLI registration startup repair', () => {
   })
 
   it('repairs a later AppImage generation after an earlier repair succeeds', async () => {
-    const firstStale = status('stale', '/cache/launcher/nightshift-ide')
-    const firstInstalled = status('installed', '/cache/launcher/nightshift-ide')
-    const nextStale = status('stale', '/cache/launcher/nightshift-ide')
-    const nextInstalled = status('installed', '/cache/launcher/nightshift-ide')
+    const firstStale = status('stale', '/cache/launcher/kolux-ide')
+    const firstInstalled = status('installed', '/cache/launcher/kolux-ide')
+    const nextStale = status('stale', '/cache/launcher/kolux-ide')
+    const nextInstalled = status('installed', '/cache/launcher/kolux-ide')
     mocks.getStatus
       .mockResolvedValueOnce(firstStale)
       .mockResolvedValueOnce(firstStale)
@@ -210,9 +210,9 @@ describe('AppImage CLI registration startup repair', () => {
   })
 
   it('waits for the cooldown before repairing a newer AppImage generation', async () => {
-    const firstStale = status('stale', '/cache/launcher/nightshift-ide')
-    const nextStale = status('stale', '/cache/launcher/nightshift-ide')
-    const nextInstalled = status('installed', '/cache/launcher/nightshift-ide')
+    const firstStale = status('stale', '/cache/launcher/kolux-ide')
+    const nextStale = status('stale', '/cache/launcher/kolux-ide')
+    const nextInstalled = status('installed', '/cache/launcher/kolux-ide')
     let now = 1_000
     mocks.getStatus
       .mockResolvedValueOnce(firstStale)
@@ -348,7 +348,7 @@ describe('AppImage CLI registration startup repair', () => {
   it('does not claim a sibling AppImage registration during a status poll', async () => {
     const stale = {
       ...status('stale'),
-      currentTarget: '/cache/current/resources/bin/nightshift-ide'
+      currentTarget: '/cache/current/resources/bin/kolux-ide'
     }
     mocks.getStatus.mockResolvedValue(stale)
     mocks.isAppImageRegistrationOwnedBySibling.mockReturnValue(true)

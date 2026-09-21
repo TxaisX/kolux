@@ -154,7 +154,7 @@ export function installSleepingRecordAccess(session: ConnectPanePtySession): voi
   ): void => {
     if (!effectiveLaunchConfig) {
       if (metadata?.launchAgent) {
-        // Why: daemon launch identity can outlive the process while Nightshift is
+        // Why: daemon launch identity can outlive the process while Kolux is
         // closed. Use it to request confirmation, never as current byte authority.
         useAppStore.getState().setPaneForegroundAgent(session.cacheKey, {
           agent: metadata.launchAgent,

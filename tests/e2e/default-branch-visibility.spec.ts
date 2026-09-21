@@ -5,7 +5,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { worktreeRow } from './worktree-row-locators'
 
@@ -91,22 +91,22 @@ async function seedSidebarVisibilityScenario(page: Page): Promise<SidebarVisibil
 }
 
 test.describe('Default branch visibility', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('keeps the default branch visible when sleeping workspaces are hidden', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const { defaultBranchId, featureId } = await seedSidebarVisibilityScenario(nightshiftPage)
-    const defaultBranchRow = worktreeRow(nightshiftPage, defaultBranchId)
-    const featureRow = worktreeRow(nightshiftPage, featureId)
+    const { defaultBranchId, featureId } = await seedSidebarVisibilityScenario(koluxPage)
+    const defaultBranchRow = worktreeRow(koluxPage, defaultBranchId)
+    const featureRow = worktreeRow(koluxPage, featureId)
 
     // Poll rather than set once: hydration can land after the seed and reset the filters.
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ defaultBranchId, featureId }) => {
             const state = window.__store?.getState()
             state?.setShowSleepingWorkspaces(false)
@@ -143,20 +143,20 @@ test.describe('Default branch visibility', () => {
     await expect(featureRow).toHaveCount(0)
 
     // Opting out of the exemption is the only way back to the pre-#8873 sweep.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.getState().setAlwaysShowDefaultBranchWorkspace(false)
     })
 
     await expect(defaultBranchRow).toHaveCount(0)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.getState().setAlwaysShowDefaultBranchWorkspace(true)
     })
 
     await expect(defaultBranchRow).toBeVisible()
 
     // The explicit hide filter still outranks the exemption.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.getState().setHideDefaultBranchWorkspace(true)
     })
 

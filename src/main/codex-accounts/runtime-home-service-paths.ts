@@ -9,16 +9,13 @@ import {
 } from 'node:fs'
 import { app } from 'electron'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
-import {
-  getNightshiftManagedCodexHomePath,
-  getNightshiftUserDataPath
-} from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath, getKoluxUserDataPath } from '../codex/codex-home-paths'
 import type { CodexMirroredHomeStatus } from './runtime-home-service-types'
 import { CodexRuntimeHomeState } from './runtime-home-service-state'
 
 export abstract class CodexRuntimeHomePaths extends CodexRuntimeHomeState {
   protected getRuntimeHomePath(): string {
-    return getNightshiftManagedCodexHomePath()
+    return getKoluxManagedCodexHomePath()
   }
 
   /**
@@ -47,7 +44,7 @@ export abstract class CodexRuntimeHomePaths extends CodexRuntimeHomeState {
     }
     return {
       kind: 'ready',
-      homePath: join(getNightshiftUserDataPath(), 'codex-runtime-home', 'home')
+      homePath: join(getKoluxUserDataPath(), 'codex-runtime-home', 'home')
     }
   }
 

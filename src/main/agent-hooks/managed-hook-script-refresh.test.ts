@@ -1,5 +1,5 @@
 // Why (#11549 aftermath): a CLI that falls off PATH keeps its user-wide config invoking
-// Nightshift's script while the presence gate skips install() forever. These tests pin the
+// Kolux's script while the presence gate skips install() forever. These tests pin the
 // repair — existing scripts come current, missing ones are never created.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -22,16 +22,16 @@ let isolatedUserDataDir = ''
 let previousUserDataPath: string | undefined
 
 beforeEach(() => {
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'nightshift-hook-refresh-user-data-'))
-  process.env.NIGHTSHIFT_USER_DATA_PATH = isolatedUserDataDir
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  isolatedUserDataDir = mkdtempSync(join(tmpdir(), 'kolux-hook-refresh-user-data-'))
+  process.env.KOLUX_USER_DATA_PATH = isolatedUserDataDir
 })
 
 afterEach(() => {
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   rmSync(isolatedUserDataDir, { recursive: true, force: true })
 })
@@ -42,7 +42,7 @@ const { homedirMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/nightshift-user-data'
+    getPath: () => '/tmp/kolux-user-data'
   }
 }))
 
@@ -76,8 +76,8 @@ async function withPlatform<T>(platform: NodeJS.Platform, run: () => T | Promise
 const STALE_WINDOWS_HOOK = [
   '@echo off',
   'setlocal',
-  'if "%NIGHTSHIFT_AGENT_HOOK_PORT%"=="" goto :nightshift_agent_hook_drain_stdin',
-  ':nightshift_agent_hook_drain_stdin',
+  'if "%KOLUX_AGENT_HOOK_PORT%"=="" goto :kolux_agent_hook_drain_stdin',
+  ':kolux_agent_hook_drain_stdin',
   '"%SystemRoot%\\System32\\more.com" >nul 2>nul',
   'exit /b 0',
   ''
@@ -85,7 +85,7 @@ const STALE_WINDOWS_HOOK = [
 
 describe('refreshManagedScriptIfPresent', () => {
   it('rewrites an existing script and refuses to create a missing one', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-hook-refresh-unit-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-hook-refresh-unit-'))
     try {
       const present = join(dir, 'present.cmd')
       writeFileSync(present, 'stale')
@@ -114,20 +114,20 @@ describe('refreshManagedScriptIfPresent', () => {
 
 describe('managed hook script refresh', () => {
   it('brings a stale leaking script current without touching agent config', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-refresh-'))
+    const home = mkdtempSync(join(tmpdir(), 'kolux-hook-refresh-'))
     homedirMock.mockReturnValue(home)
     try {
       // Why: the bug population has a script (from a past install) but no reachable
-      // CLI — and possibly no config dir Nightshift may create. Seed only the script.
-      const hooksDir = join(home, '.nightshift', 'agent-hooks')
+      // CLI — and possibly no config dir Kolux may create. Seed only the script.
+      const hooksDir = join(home, '.kolux', 'agent-hooks')
       mkdirSync(hooksDir, { recursive: true })
       writeFileSync(join(hooksDir, 'claude-hook.cmd'), STALE_WINDOWS_HOOK)
 
       await withPlatform('win32', () => new ClaudeHookService().refreshManagedScripts())
 
       const refreshed = readFileSync(join(hooksDir, 'claude-hook.cmd'), 'utf8')
-      expect(refreshed).toContain('if "%NIGHTSHIFT_AGENT_HOOK_PORT%"=="" exit /b 0')
-      expect(refreshed).not.toContain('if "%NIGHTSHIFT_AGENT_HOOK_PORT%"=="" goto')
+      expect(refreshed).toContain('if "%KOLUX_AGENT_HOOK_PORT%"=="" exit /b 0')
+      expect(refreshed).not.toContain('if "%KOLUX_AGENT_HOOK_PORT%"=="" goto')
       // Why: refresh must not resurrect config for a CLI the user may have removed.
       expect(existsSync(join(home, '.claude'))).toBe(false)
       // Why: the statusline script was never installed here, so it must not appear.
@@ -139,7 +139,7 @@ describe('managed hook script refresh', () => {
   })
 
   it('covers every shared launcher script with a refresher', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-refresh-coverage-'))
+    const home = mkdtempSync(join(tmpdir(), 'kolux-hook-refresh-coverage-'))
     homedirMock.mockReturnValue(home)
     const previousGrokHome = process.env.GROK_HOME
     const previousKimiHome = process.env.KIMI_CODE_HOME
@@ -151,7 +151,7 @@ describe('managed hook script refresh', () => {
           install()
         }
       })
-      const hooksDir = join(home, '.nightshift', 'agent-hooks')
+      const hooksDir = join(home, '.kolux', 'agent-hooks')
       const files = readdirSync(hooksDir)
       expect(files.length).toBeGreaterThan(0)
       const refresherAgents = MANAGED_AGENT_HOOK_SCRIPT_REFRESHERS.map(([agent]) => agent)
@@ -160,7 +160,7 @@ describe('managed hook script refresh', () => {
       for (const file of files) {
         expect(
           refresherAgents.some((agent) => file.startsWith(`${agent}-`)),
-          `${file} is written to ~/.nightshift/agent-hooks but no refresher owns it`
+          `${file} is written to ~/.kolux/agent-hooks but no refresher owns it`
         ).toBe(true)
       }
       // Why: the reverse direction — a refresher naming an agent that writes nothing is a
@@ -188,7 +188,7 @@ describe('managed hook script refresh', () => {
   })
 
   it('creates nothing anywhere when no managed scripts exist', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'nightshift-hook-refresh-empty-'))
+    const home = mkdtempSync(join(tmpdir(), 'kolux-hook-refresh-empty-'))
     homedirMock.mockReturnValue(home)
     try {
       await withPlatform('win32', async () => {

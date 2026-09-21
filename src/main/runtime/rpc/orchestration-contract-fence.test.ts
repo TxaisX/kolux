@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationDb } from '../orchestration/db'
 import { defineMethod, type RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -18,7 +18,7 @@ describe('orchestration contract fence', () => {
   function createHarness(method = 'orchestration.send') {
     const database = new OrchestrationDb(':memory:')
     databases.push(database)
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(database)
     const effect = vi.fn(() => ({ accepted: true }))
     const dispatcher = new RpcDispatcher({

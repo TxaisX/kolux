@@ -1,7 +1,7 @@
 /**
  * A structured chat session with NO orchestration identity must refuse, not guess.
  *
- * Non-worker structured sessions get no `NIGHTSHIFT_TERMINAL_HANDLE`, so `orchestration check` fell
+ * Non-worker structured sessions get no `KOLUX_TERMINAL_HANDLE`, so `orchestration check` fell
  * through to the active-terminal guess — and `check` is destructive by default, so it consumed
  * another pane's oldest unread batch and marked it read. The rightful worker never saw that mail.
  *
@@ -10,7 +10,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NIGHTSHIFT_STRUCTURED_SESSION_ENV } from '../shared/structured-session-marker'
+import { KOLUX_STRUCTURED_SESSION_ENV } from '../shared/structured-session-marker'
 
 const callMock = vi.hoisted(() => vi.fn())
 const getTerminalHandleMock = vi.hoisted(() => vi.fn())
@@ -20,8 +20,8 @@ vi.mock('./selectors', () => ({ getTerminalHandle: getTerminalHandleMock }))
 
 import { ORCHESTRATION_HANDLERS } from './handlers/orchestration'
 
-const originalMarker = process.env[NIGHTSHIFT_STRUCTURED_SESSION_ENV]
-const originalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
+const originalMarker = process.env[KOLUX_STRUCTURED_SESSION_ENV]
+const originalHandle = process.env.KOLUX_TERMINAL_HANDLE
 
 function invoke(command: string, flags = new Map<string, string | boolean>()) {
   return ORCHESTRATION_HANDLERS[command]!({
@@ -36,8 +36,8 @@ describe('a structured chat session with no orchestration identity', () => {
   beforeEach(() => {
     callMock.mockReset()
     getTerminalHandleMock.mockReset()
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    process.env[NIGHTSHIFT_STRUCTURED_SESSION_ENV] = '1'
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    process.env[KOLUX_STRUCTURED_SESSION_ENV] = '1'
     // Exactly ONE terminal pane in the worktree: the single-candidate case, where
     // `requireUnambiguous` still resolves and would hand this session a sibling's handle.
     getTerminalHandleMock.mockResolvedValue('term_sibling')
@@ -45,14 +45,14 @@ describe('a structured chat session with no orchestration identity', () => {
 
   afterEach(() => {
     if (originalMarker === undefined) {
-      delete process.env[NIGHTSHIFT_STRUCTURED_SESSION_ENV]
+      delete process.env[KOLUX_STRUCTURED_SESSION_ENV]
     } else {
-      process.env[NIGHTSHIFT_STRUCTURED_SESSION_ENV] = originalMarker
+      process.env[KOLUX_STRUCTURED_SESSION_ENV] = originalMarker
     }
     if (originalHandle === undefined) {
-      delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
+      delete process.env.KOLUX_TERMINAL_HANDLE
     } else {
-      process.env.NIGHTSHIFT_TERMINAL_HANDLE = originalHandle
+      process.env.KOLUX_TERMINAL_HANDLE = originalHandle
     }
   })
 
@@ -90,7 +90,7 @@ describe('a structured chat session with no orchestration identity', () => {
   })
 
   it('leaves an ordinary shell alone, which has no marker and may still guess', async () => {
-    delete process.env[NIGHTSHIFT_STRUCTURED_SESSION_ENV]
+    delete process.env[KOLUX_STRUCTURED_SESSION_ENV]
     callMock.mockResolvedValue({ result: { messages: [], count: 0 } })
     await invoke('orchestration check')
     expect(getTerminalHandleMock).toHaveBeenCalled()

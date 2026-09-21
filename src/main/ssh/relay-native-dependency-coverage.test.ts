@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { RELAY_NATIVE_DEPS } from './ssh-relay-deploy'
 
 /**
- * The relay is a bundle deployed to a host that has none of Nightshift's node_modules.
+ * The relay is a bundle deployed to a host that has none of Kolux's node_modules.
  * Every native addon it reaches therefore has to be installed by
  * `installNativeDeps`, or the relay silently loses that capability forever.
  *

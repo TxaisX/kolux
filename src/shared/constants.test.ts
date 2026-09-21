@@ -8,15 +8,13 @@ import {
 } from './constants'
 
 // fork: the env override must not leak into these default-path expectations
-delete process.env.NIGHTSHIFT_WORKSPACES_DIR
+delete process.env.KOLUX_WORKSPACES_DIR
 
 describe('getDefaultSettings', () => {
   it('uses platform-consistent separators for the default workspace directory', () => {
-    expect(getDefaultSettings('/Users/alice').workspaceDir).toBe(
-      '/Users/alice/nightshift/workspaces'
-    )
+    expect(getDefaultSettings('/Users/alice').workspaceDir).toBe('/Users/alice/kolux/workspaces')
     expect(getDefaultSettings('C:\\Users\\alice').workspaceDir).toBe(
-      'C:\\Users\\alice\\nightshift\\workspaces'
+      'C:\\Users\\alice\\kolux\\workspaces'
     )
   })
 

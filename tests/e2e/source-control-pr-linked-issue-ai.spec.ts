@@ -35,10 +35,9 @@ test.describe('Source Control AI pull request linkedIssue', () => {
       expected: 'empty'
     }
   ]) {
-    test(`${label} the pull-request recipe`, async ({ nightshiftPage }) => {
-      await waitForSessionReady(nightshiftPage)
-      const { prWorktreeId, prWorktreePath, primaryBranch } =
-        await seedCreatePrComposer(nightshiftPage)
+    test(`${label} the pull-request recipe`, async ({ koluxPage }) => {
+      await waitForSessionReady(koluxPage)
+      const { prWorktreeId, prWorktreePath, primaryBranch } = await seedCreatePrComposer(koluxPage)
       createBranchCommit(prWorktreePath)
 
       const generatorPath = path.join(
@@ -48,7 +47,7 @@ test.describe('Source Control AI pull request linkedIssue', () => {
       writeLinkedIssuePrEchoGenerator(generatorPath, primaryBranch)
 
       try {
-        await nightshiftPage.evaluate(
+        await koluxPage.evaluate(
           async ({ generatorPath, linkedIssue, worktreeId }) => {
             const store = window.__store
             if (!store) {
@@ -68,7 +67,7 @@ test.describe('Source Control AI pull request linkedIssue', () => {
                 actions: {
                   pullRequest: {
                     agentId: 'custom' as const,
-                    commandInputTemplate: 'NIGHTSHIFT_E2E_ISSUE={linkedIssue}\n\n{basePrompt}'
+                    commandInputTemplate: 'KOLUX_E2E_ISSUE={linkedIssue}\n\n{basePrompt}'
                   }
                 }
               }
@@ -77,12 +76,12 @@ test.describe('Source Control AI pull request linkedIssue', () => {
           { generatorPath, linkedIssue, worktreeId: prWorktreeId }
         )
 
-        await openSourceControl(nightshiftPage, prWorktreeId)
+        await openSourceControl(koluxPage, prWorktreeId)
 
-        const title = nightshiftPage.getByRole('textbox', { name: 'Pull request title' })
+        const title = koluxPage.getByRole('textbox', { name: 'Pull request title' })
         await expect(title).toBeVisible({ timeout: 10_000 })
 
-        const generate = nightshiftPage.getByRole('button', {
+        const generate = koluxPage.getByRole('button', {
           name: 'Generate pull request details with AI'
         })
         await expect(generate).toBeEnabled()

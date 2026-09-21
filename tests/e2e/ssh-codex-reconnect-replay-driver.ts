@@ -1,7 +1,7 @@
 import { installSshReplayReplyProbe, readSshReplayReplies } from './ssh-codex-replay-reply-probe'
 import { execFileSync } from 'node:child_process'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { expect } from './helpers/nightshift-app'
+import { expect } from './helpers/kolux-app'
 import {
   DOCKER_SSH_RELAY_REMOTE_REPO_PATH,
   type DockerSshRelayTarget
@@ -148,12 +148,12 @@ export async function installPtyReplayProbe(
       throw new Error('PTY replay API unavailable')
     }
     const holder = window as unknown as {
-      __nightshiftSshCodexReplayProbe?: {
+      __koluxSshCodexReplayProbe?: {
         payloads: { id: string; length: number; preview: string }[]
         dispose: () => void
       }
     }
-    holder.__nightshiftSshCodexReplayProbe?.dispose()
+    holder.__koluxSshCodexReplayProbe?.dispose()
     const payloads: { id: string; length: number; preview: string }[] = []
     const dispose = api.onReplay(({ id, data }) => {
       if (id !== expectedPtyId) {
@@ -165,7 +165,7 @@ export async function installPtyReplayProbe(
         preview: data.slice(-400)
       })
     })
-    holder.__nightshiftSshCodexReplayProbe = { payloads, dispose }
+    holder.__koluxSshCodexReplayProbe = { payloads, dispose }
   }, ptyId)
 }
 
@@ -199,11 +199,11 @@ export async function readReplayProbeSnapshot(
   return page.evaluate((replies) => {
     const probe = (
       window as unknown as {
-        __nightshiftSshCodexReplayProbe?: {
+        __koluxSshCodexReplayProbe?: {
           payloads: { id: string; length: number; preview: string }[]
         }
       }
-    ).__nightshiftSshCodexReplayProbe
+    ).__koluxSshCodexReplayProbe
     return {
       replayCount: (probe?.payloads.length ?? 0) + replies.length,
       replayPayloads: [...(probe?.payloads ?? []), ...replies].slice(-8)

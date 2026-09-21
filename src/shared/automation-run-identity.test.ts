@@ -45,7 +45,7 @@ describe('automation run identity', () => {
         hostId: 'ssh:builder',
         projectHostSetupId: 'setup-builder',
         repoId: 'remote-repo',
-        path: '/remote/nightshift'
+        path: '/remote/kolux'
       }
     })
 

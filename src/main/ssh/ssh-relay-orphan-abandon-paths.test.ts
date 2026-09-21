@@ -32,8 +32,8 @@ vi.mock('../ipc/ssh-pty-output-intake-registry', () => ({
   installSshPtySourceCancellationPublisher: vi.fn(() => () => {})
 }))
 vi.mock('./ssh-relay-deploy-helpers', () => ({ execCommand: vi.fn().mockResolvedValue('') }))
-vi.mock('./ssh-remote-nightshift-cli', () => ({
-  runRemoteNightshiftCli: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
+vi.mock('./ssh-remote-kolux-cli', () => ({
+  runRemoteKoluxCli: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' })
 }))
 vi.mock('./ssh-channel-multiplexer', () => ({
   SshChannelMultiplexer: class MockSshChannelMultiplexer {
@@ -111,7 +111,7 @@ function detachedLease() {
 
 /**
  * STA-3376: every reattach failure walks away from a remote PTY that may still be running a user's
- * work. Nightshift's rule is that unprovable liveness never authorizes destroying a session, so these
+ * work. Kolux's rule is that unprovable liveness never authorizes destroying a session, so these
  * assert the opposite of a leak test: the shell must survive, and the lease must stay in a state
  * the user-facing terminate action can still reach.
  */

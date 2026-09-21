@@ -13,11 +13,11 @@
  * caller of a public terminal verb something that looks writable and is not.
  */
 
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { isStructuredWorkerHandle } from '../../structured-worker-identity'
 
 export async function resolveDispatchCallerWorktreeId(
-  runtime: Pick<NightshiftRuntimeService, 'showTerminal' | 'getOrchestrationDispatchAuthority'>,
+  runtime: Pick<KoluxRuntimeService, 'showTerminal' | 'getOrchestrationDispatchAuthority'>,
   callerHandle: string
 ): Promise<string> {
   if (isStructuredWorkerHandle(callerHandle)) {

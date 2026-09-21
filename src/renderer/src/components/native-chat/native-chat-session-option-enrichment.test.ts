@@ -81,7 +81,7 @@ describe('native chat session option enrichment', () => {
       resolveNativeChatModelDiscoveryHostKey(
         {} as never,
         null,
-        '\\\\wsl.localhost\\Ubuntu\\home\\nightshift',
+        '\\\\wsl.localhost\\Ubuntu\\home\\kolux',
         null
       )
     ).toBe('wsl:Ubuntu')
@@ -89,7 +89,7 @@ describe('native chat session option enrichment', () => {
       resolveNativeChatModelDiscoveryHostKey(
         {} as never,
         null,
-        '\\\\wsl.localhost\\Debian\\home\\nightshift',
+        '\\\\wsl.localhost\\Debian\\home\\kolux',
         null
       )
     ).toBe('wsl:Debian')
@@ -197,7 +197,7 @@ describe('native chat session option enrichment', () => {
   })
 
   it('publishes no default when an older host omits the flag entirely', async () => {
-    // A remote Nightshift predating `isDefault` sends rows without it; the picker must
+    // A remote Kolux predating `isDefault` sends rows without it; the picker must
     // name no model rather than fall back to a seed row the account may have retired.
     mocks.discoverRuntimeCommitMessageModels.mockResolvedValue({
       success: true,

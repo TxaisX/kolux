@@ -1,8 +1,8 @@
 import { stripCredentialsFromMessage } from './git-remote-error'
-import type { NightshiftVmRecipe } from './nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from './kolux-yaml-hook-types'
 
 export function getProvisionedRootRecipeRepoUrl(
-  checkoutMode: NightshiftVmRecipe['checkoutMode'],
+  checkoutMode: KoluxVmRecipe['checkoutMode'],
   remoteUrl: string | undefined
 ): string | undefined {
   if (checkoutMode !== 'provisioned-root' || !remoteUrl) {

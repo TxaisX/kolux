@@ -34,7 +34,7 @@ export function buildPosixHookSpoolLines(source: string, eventNameVar?: string):
     eventFormat,
     '"paneKey":"%s","tabId":"%s","worktreeId":"%s","env":"%s","version":"%s","launchToken":"%s","source":"%s","receivedAt":%s,"payload":%s}\\n\'',
     eventArg,
-    ' "$(spool_json_escape "${NIGHTSHIFT_PANE_KEY:-}")" "$(spool_json_escape "${NIGHTSHIFT_TAB_ID:-}")" "$(spool_json_escape "${NIGHTSHIFT_WORKTREE_ID:-}")" "$(spool_json_escape "${NIGHTSHIFT_AGENT_HOOK_ENV:-}")" "$(spool_json_escape "${NIGHTSHIFT_AGENT_HOOK_VERSION:-}")" "$(spool_json_escape "${NIGHTSHIFT_AGENT_LAUNCH_TOKEN:-}")" "$(spool_json_escape "',
+    ' "$(spool_json_escape "${KOLUX_PANE_KEY:-}")" "$(spool_json_escape "${KOLUX_TAB_ID:-}")" "$(spool_json_escape "${KOLUX_WORKTREE_ID:-}")" "$(spool_json_escape "${KOLUX_AGENT_HOOK_ENV:-}")" "$(spool_json_escape "${KOLUX_AGENT_HOOK_VERSION:-}")" "$(spool_json_escape "${KOLUX_AGENT_LAUNCH_TOKEN:-}")" "$(spool_json_escape "',
     source,
     '")" "$spool_now" "$payload"; } >> "$spool_file" 2>/dev/null || :'
   )
@@ -43,17 +43,17 @@ export function buildPosixHookSpoolLines(source: string, eventNameVar?: string):
     eventNameVar
       ? `  case "\${${eventNameVar}:-}" in PreToolUse|PostToolUse|PostToolUseFailure) return 0 ;; esac`
       : '  case "$payload" in *\'"PreToolUse"\'*|*\'"PostToolUse"\'*|*\'"PostToolUseFailure"\'*) return 0 ;; esac',
-    '  [ -n "${NIGHTSHIFT_AGENT_HOOK_ENDPOINT:-}" ] || return 0',
-    // Why: an endpoint can linger in a parent shell after leaving Nightshift; without a pane key
+    '  [ -n "${KOLUX_AGENT_HOOK_ENDPOINT:-}" ] || return 0',
+    // Why: an endpoint can linger in a parent shell after leaving Kolux; without a pane key
     // the record is un-attributable and would accumulate as pane-unknown.jsonl.
-    '  [ -n "${NIGHTSHIFT_PANE_KEY:-}" ] || return 0',
-    // Why: a stale env var must not create a spool tree for a Nightshift that is not installed here.
-    '  [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] || return 0',
-    '  spool_base=${NIGHTSHIFT_AGENT_HOOK_ENDPOINT%/*}',
+    '  [ -n "${KOLUX_PANE_KEY:-}" ] || return 0',
+    // Why: a stale env var must not create a spool tree for a Kolux that is not installed here.
+    '  [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ] || return 0',
+    '  spool_base=${KOLUX_AGENT_HOOK_ENDPOINT%/*}',
     '  spool_dir="$spool_base/spool"',
     '  mkdir -p "$spool_dir" 2>/dev/null || return 0',
     '  chmod 700 "$spool_dir" 2>/dev/null || :',
-    "  spool_id=$(printf %s \"${NIGHTSHIFT_PANE_KEY:-unknown}\" | tail -c 36 | tr '/:' '__')",
+    "  spool_id=$(printf %s \"${KOLUX_PANE_KEY:-unknown}\" | tail -c 36 | tr '/:' '__')",
     '  spool_file="$spool_dir/pane-$spool_id.jsonl"',
     '  if [ -f "$spool_file" ] && find "$spool_file" -mtime +7 -print -quit 2>/dev/null | grep -q .; then : > "$spool_file"; fi',
     '  [ -f "$spool_file" ] || : > "$spool_file"',
@@ -68,22 +68,22 @@ export function buildPosixHookSpoolLines(source: string, eventNameVar?: string):
   ]
 }
 
-export const WINDOWS_HOOK_STDIN_DRAIN_LABEL = 'nightshift_agent_hook_drain_stdin'
+export const WINDOWS_HOOK_STDIN_DRAIN_LABEL = 'kolux_agent_hook_drain_stdin'
 // Why: qualify the stdin reader because Windows searches the worktree for
 // executables before PATH and hook payloads must not reach repo-local code.
 export const WINDOWS_HOOK_STDIN_READER = '"%SystemRoot%\\System32\\more.com"'
 export const WINDOWS_HOOK_STDIN_DRAIN_COMMAND = `${WINDOWS_HOOK_STDIN_READER} >nul 2>nul`
 
-// The Nightshift context a hook needs before it may own stdin; see the rule below.
+// The Kolux context a hook needs before it may own stdin; see the rule below.
 const WINDOWS_HOOK_ENVIRONMENT_VARS = [
-  'NIGHTSHIFT_AGENT_HOOK_PORT',
-  'NIGHTSHIFT_AGENT_HOOK_TOKEN',
-  'NIGHTSHIFT_PANE_KEY'
+  'KOLUX_AGENT_HOOK_PORT',
+  'KOLUX_AGENT_HOOK_TOKEN',
+  'KOLUX_PANE_KEY'
 ] as const
 
-// Why (#11549): missing Nightshift context means the hook ran outside a Nightshift pane, where the caller
+// Why (#11549): missing Kolux context means the hook ran outside a Kolux pane, where the caller
 // may abandon stdin rather than close it — a read-to-EOF then blocks forever and strands a
-// visible window per hook event. The Windows rule: a hook must check the Nightshift env before it
+// visible window per hook event. The Windows rule: a hook must check the Kolux env before it
 // owns stdin, and exit without reading when the env is missing — the payload is discarded on
 // that path anyway. This applies to .cmd, the copilot .ps1, and the Git Bash kimi .sh alike,
 // and to the launchers that own stdin themselves when the managed script is missing.

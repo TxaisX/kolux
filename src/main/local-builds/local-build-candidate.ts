@@ -6,7 +6,7 @@ import { basename, dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import {
   LOCAL_BUILD_COMPATIBILITY_FILENAME,
-  NIGHTSHIFT_APP_ID,
+  KOLUX_APP_ID,
   parseLocalBuildCompatibility,
   type LocalBuildCompatibility
 } from '../../shared/local-build-compatibility'
@@ -115,11 +115,7 @@ function extractCompatibility(zipFile: FileHandle): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       '/usr/bin/unzip',
-      [
-        '-p',
-        '/dev/fd/3',
-        `Nightshift.app/Contents/Resources/${LOCAL_BUILD_COMPATIBILITY_FILENAME}`
-      ],
+      ['-p', '/dev/fd/3', `Kolux.app/Contents/Resources/${LOCAL_BUILD_COMPATIBILITY_FILENAME}`],
       { stdio: ['ignore', 'pipe', 'ignore', zipFile.fd] }
     )
     const chunks: Buffer[] = []
@@ -197,7 +193,7 @@ async function validateArtifact(
       throw new Error(`SHA-512 verification failed for ${manifestFile.url}.`)
     }
     const compatibility = await compatibilityReader(file)
-    if (compatibility.appId !== NIGHTSHIFT_APP_ID || compatibility.version !== manifestVersion) {
+    if (compatibility.appId !== KOLUX_APP_ID || compatibility.version !== manifestVersion) {
       throw new Error('The selected ZIP does not match its update manifest.')
     }
     return { compatibility, file, size: fileStats.size }
@@ -255,7 +251,7 @@ export async function loadLocalBuildCandidate(
     .filter((entry) => entry.compatibility.architecture === architecture)
   if (matching.length !== 1) {
     await Promise.all(validated.map((entry) => entry.file.close()))
-    throw new Error(`The manifest must contain exactly one ${architecture} Nightshift ZIP.`)
+    throw new Error(`The manifest must contain exactly one ${architecture} Kolux ZIP.`)
   }
   const target = matching[0]
   await Promise.all(

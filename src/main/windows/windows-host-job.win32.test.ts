@@ -47,7 +47,7 @@ describeOnWindows('host job reaps the tree when the host dies', () => {
   let dir: string
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-host-job-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-host-job-'))
   })
 
   afterAll(() => {

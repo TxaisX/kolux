@@ -10,7 +10,7 @@ import type { Row } from './row-types'
 const repo: Repo = {
   id: 'repo-1',
   path: '/repo',
-  displayName: 'nightshift',
+  displayName: 'kolux',
   badgeColor: '#000',
   addedAt: 1
 }

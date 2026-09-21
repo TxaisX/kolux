@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   HookCommandSourcePolicy,
-  NightshiftHooks,
+  KoluxHooks,
   RepoHookSettings,
   SetupAgentStartupPolicy,
   SetupRunPolicy
-} from '../../../../shared/nightshift-yaml-hook-types'
+} from '../../../../shared/kolux-yaml-hook-types'
 import type { Repo } from '../../../../shared/repo-types'
 import { getRepoExecutionHostId, parseExecutionHostId } from '../../../../shared/execution-host'
 import { resolveHookCommandSourcePolicy } from '../../../../shared/hook-command-source-policy'
@@ -36,7 +36,7 @@ export type { LocalCommandSourcePolicyNotice }
 
 type RepositoryHooksSectionProps = {
   repo: Repo
-  yamlHooks: NightshiftHooks | null
+  yamlHooks: KoluxHooks | null
   hasHooksFile: boolean
   hooksInspectionReady: boolean
   mayNeedUpdate: boolean
@@ -125,7 +125,7 @@ export function RepositoryHooksSection({
         <p className="text-xs text-muted-foreground">
           {translate(
             'auto.components.settings.RepositoryHooksSection.8567127a40',
-            'Scripts that run when worktrees are created or archived. Local scripts are stored on this machine; `nightshift.yaml` scripts are shared with your team.'
+            'Scripts that run when worktrees are created or archived. Local scripts are stored on this machine; `kolux.yaml` scripts are shared with your team.'
           )}
         </p>
       </div>
@@ -145,8 +145,8 @@ export function RepositoryHooksSection({
           'command',
           'local',
           'local settings scripts',
-          'nightshift.yaml',
-          'nightshift.yaml hooks',
+          'kolux.yaml',
+          'kolux.yaml hooks',
           'hook'
         ]}
       >
@@ -198,8 +198,8 @@ export function RepositoryHooksSection({
           'command',
           'local',
           'local settings scripts',
-          'nightshift.yaml',
-          'nightshift.yaml hooks',
+          'kolux.yaml',
+          'kolux.yaml hooks',
           'hook'
         ]}
       >
@@ -239,13 +239,13 @@ export function RepositoryHooksSection({
         title={translate('auto.components.settings.RepositoryHooksSection.c9bc1bfd8f', 'Advanced')}
         description={translate(
           'auto.components.settings.RepositoryHooksSection.610d90fdbd',
-          'Command source and nightshift.yaml details.'
+          'Command source and kolux.yaml details.'
         )}
         forceVisible={forceVisible}
         keywords={[
           'advanced',
           'command source',
-          'nightshift.yaml',
+          'kolux.yaml',
           'shared',
           'local',
           'both',

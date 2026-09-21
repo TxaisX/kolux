@@ -1,11 +1,11 @@
 #!/bin/bash
-# Why: register the bundled `nightshift-ide` CLI on PATH at package-install time.
+# Why: register the bundled `kolux-ide` CLI on PATH at package-install time.
 # The in-app "Install CLI" action (CliInstaller) can never run on a headless
-# server, so without this symlink `nightshift serve` is unreachable from the shell on
+# server, so without this symlink `kolux serve` is unreachable from the shell on
 # the exact hosts that need it most. deb/rpm both run this after unpacking.
 #
 # The shim resolves the real app by walking up from its own location, so a
-# symlink works. We discover the install dir instead of hardcoding /opt/Nightshift
+# symlink works. We discover the install dir instead of hardcoding /opt/Kolux
 # because electron-builder's directory name can vary by productName sanitization.
 set -e
 
@@ -15,7 +15,7 @@ is_owned_link() {
   [ -L "$link" ] || return 1
   local link_target candidate candidate_target
   link_target="$(readlink -f -- "$link" 2>/dev/null || true)"
-  for candidate in /opt/Nightshift/resources/bin/nightshift-ide /opt/nightshift-ide/resources/bin/nightshift-ide /opt/nightshift/resources/bin/nightshift-ide; do
+  for candidate in /opt/Kolux/resources/bin/kolux-ide /opt/kolux-ide/resources/bin/kolux-ide /opt/kolux/resources/bin/kolux-ide; do
     candidate_target="$(readlink -f -- "$candidate" 2>/dev/null || true)"
     if [ -n "$candidate_target" ] && [ "$link_target" = "$candidate_target" ]; then
       return 0
@@ -24,7 +24,7 @@ is_owned_link() {
   return 1
 }
 
-for dir in /opt/Nightshift /opt/nightshift-ide /opt/nightshift; do
+for dir in /opt/Kolux /opt/kolux-ide /opt/kolux; do
   sandbox="$dir/chrome-sandbox"
   if [ -f "$sandbox" ]; then
     # Why: packaged Linux installs must leave Chromium's sandbox helper usable
@@ -32,7 +32,7 @@ for dir in /opt/Nightshift /opt/nightshift-ide /opt/nightshift; do
     chmod 4755 "$sandbox" || true
   fi
 
-  shim="$dir/resources/bin/nightshift-ide"
+  shim="$dir/resources/bin/kolux-ide"
   if [ -x "$shim" ]; then
     # Only manage our own symlink; never clobber an unrelated /usr/bin/orca-ide.
     if { [ ! -e "$link" ] && [ ! -L "$link" ]; } || is_owned_link; then

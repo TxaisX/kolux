@@ -5,7 +5,7 @@ import {
 } from '../../../../shared/structured-agent-session-outbox'
 import { createStructuredAgentSessionOperationId } from '../../../../shared/structured-agent-session-mutation'
 
-const OUTBOX_PREFIX = 'nightshift:desktopStructuredAgentSessionOutbox:v1:'
+const OUTBOX_PREFIX = 'kolux:desktopStructuredAgentSessionOutbox:v1:'
 
 function storageKey(sessionId: string): string {
   return `${OUTBOX_PREFIX}${encodeURIComponent(sessionId)}`

@@ -52,7 +52,7 @@ function renderDetailPane(options: {
           activePaneTab={activePaneTab}
           relativeNow={1000}
           externalActionKey={null}
-          selectedRepoDisplayName="nightshift"
+          selectedRepoDisplayName="kolux"
           selectedRepoDefaultBaseRef="main"
           selectedWorkspaceName="default"
           selectedHostEntry={null}
@@ -175,7 +175,7 @@ describe('AutomationsDetailPane tab keyboard navigation', () => {
             activePaneTab="overview"
             relativeNow={1000}
             externalActionKey={null}
-            selectedRepoDisplayName="nightshift"
+            selectedRepoDisplayName="kolux"
             selectedRepoDefaultBaseRef="main"
             selectedWorkspaceName="default"
             selectedHostEntry={null}

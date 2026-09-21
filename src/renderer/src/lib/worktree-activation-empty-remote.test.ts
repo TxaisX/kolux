@@ -10,10 +10,10 @@ import { ensureWebRuntimeWorktreeTerminalAfterWake } from './web-runtime-worktre
 const initialAppStoreState = useAppStore.getState()
 const WORKTREE_PATH = path.join('workspace', 'feature')
 const REPO_PATH = path.join('workspace', 'repo')
-const NIGHTSHIFT_WORKSPACES_PATH = path.join('workspace', '.nightshift-workspaces')
+const KOLUX_WORKSPACES_PATH = path.join('workspace', '.kolux-workspaces')
 
 afterEach(() => {
-  delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+  delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
   vi.unstubAllGlobals()
   resetWebSessionTabsSnapshotFreshnessForTests()
   resetWebRuntimeWakeTerminalRespawnForTests()
@@ -65,7 +65,7 @@ describe('empty remote worktree activation', () => {
         snapshotVersion: 1
       }
     })
-    ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+    ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
     vi.stubGlobal('window', {
       api: {
         runtimeEnvironments: {
@@ -89,7 +89,7 @@ describe('empty remote worktree activation', () => {
       tabsByWorktree: {},
       ptyIdsByTabId: {},
       settings: {
-        ...getDefaultSettings(NIGHTSHIFT_WORKSPACES_PATH),
+        ...getDefaultSettings(KOLUX_WORKSPACES_PATH),
         activeRuntimeEnvironmentId: 'web-runtime-1'
       },
       reconcileWorktreeTabModel: vi.fn(() => ({

@@ -13,7 +13,7 @@ function readAppDirArg(argv) {
     return explicit.slice('--app-dir='.length)
   }
   if (process.platform === 'darwin') {
-    return 'dist/mac-arm64/Nightshift.app'
+    return 'dist/mac-arm64/Kolux.app'
   }
   if (process.platform === 'win32') {
     return 'dist/win-unpacked'
@@ -23,16 +23,16 @@ function readAppDirArg(argv) {
 
 function getPackagedCliPath(appDir) {
   if (process.platform === 'darwin' || appDir.endsWith('.app')) {
-    return join(appDir, 'Contents', 'Resources', 'bin', 'nightshift')
+    return join(appDir, 'Contents', 'Resources', 'bin', 'kolux')
   }
   if (process.platform === 'win32') {
-    return join(appDir, 'resources', 'bin', 'nightshift.exe')
+    return join(appDir, 'resources', 'bin', 'kolux.exe')
   }
-  return join(appDir, 'resources', 'bin', 'nightshift-ide')
+  return join(appDir, 'resources', 'bin', 'kolux-ide')
 }
 
 const appDir = resolve(readAppDirArg(process.argv.slice(2)))
-const tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-packaged-cli-smoke-'))
+const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-packaged-cli-smoke-'))
 const copiedAppDir = join(tempRoot, basename(appDir))
 
 let smokeFailure = null
@@ -40,7 +40,7 @@ try {
   await cp(appDir, copiedAppDir, { recursive: true, verbatimSymlinks: true })
   const cliPath = getPackagedCliPath(copiedAppDir)
   const env = { ...process.env, NODE_PATH: '' }
-  delete env.NIGHTSHIFT_CLI_CWD
+  delete env.KOLUX_CLI_CWD
   const run = (args) =>
     execFileAsync(cliPath, args, {
       env,
@@ -51,8 +51,8 @@ try {
 
   await run(['--help'])
   const list = JSON.parse((await run(['skills', 'list', '--json'])).stdout)
-  assert(list.topics.some((topic) => topic.name === 'nightshift-cli'))
-  assert.match((await run(['skills', 'get', 'nightshift-cli'])).stdout, /name: nightshift-cli/)
+  assert(list.topics.some((topic) => topic.name === 'kolux-cli'))
+  assert.match((await run(['skills', 'get', 'kolux-cli'])).stdout, /name: kolux-cli/)
   assert.match((await run(['skills', 'get', 'computer-use'])).stdout, /name: computer-use/)
   const install = JSON.parse(
     (
@@ -60,7 +60,7 @@ try {
         'skills',
         'install',
         '--skill',
-        'nightshift-cli',
+        'kolux-cli',
         '--agent',
         'codex',
         '--dry-run',
@@ -69,7 +69,7 @@ try {
     ).stdout
   )
   const update = JSON.parse(
-    (await run(['skills', 'update', '--skill', 'nightshift-cli', '--dry-run', '--json'])).stdout
+    (await run(['skills', 'update', '--skill', 'kolux-cli', '--dry-run', '--json'])).stdout
   )
   assert.equal(install.executed, false)
   assert.equal(update.executed, false)
@@ -78,7 +78,7 @@ try {
   smokeFailure = error
 }
 
-// Why: on Windows the launcher above spawns the copied Nightshift.exe (and its crashpad/utility children)
+// Why: on Windows the launcher above spawns the copied Kolux.exe (and its crashpad/utility children)
 // once per command; those handles can outlive execFile's exit by a few ms, so this cleanup hits
 // EBUSY on our own just-exited process after every assertion already passed. Same retry treatment
 // as removeHostTree(); a lock that never clears still throws — unless the smoke run itself failed,

@@ -4,7 +4,7 @@
  */
 
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import {
   addSshHostFormFields,
@@ -52,30 +52,28 @@ async function seedPairConfig(
 }
 
 test.describe('SSH config host picker', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
   })
 
-  test.afterEach(async ({ nightshiftPage }) => {
-    await closeOpenDialogs(nightshiftPage).catch(() => undefined)
-    await removeSshTargetsByPrefix(nightshiftPage, HOST_PREFIX).catch(() => undefined)
+  test.afterEach(async ({ koluxPage }) => {
+    await closeOpenDialogs(koluxPage).catch(() => undefined)
+    await removeSshTargetsByPrefix(koluxPage, HOST_PREFIX).catch(() => undefined)
   })
 
   // ── P1 ─────────────────────────────────────────────────────────────
-  test('P1: empty config shows empty state; Back returns to blank form', async ({
-    nightshiftPage
-  }) => {
+  test('P1: empty config shows empty state; Back returns to blank form', async ({ koluxPage }) => {
     // Isolated HOME has no ~/.ssh/config by default.
-    const picker = await openSshConfigHostPicker(nightshiftPage)
+    const picker = await openSshConfigHostPicker(koluxPage)
     await expect(picker.getByRole('heading', { name: 'Choose from ~/.ssh/config' })).toBeVisible()
     await expect(picker.getByText('No hosts in ~/.ssh/config')).toBeVisible()
     await expect(
       picker.getByText('Add a Host entry there, or go back and type the details manually.')
     ).toBeVisible()
-    await expect(picker.getByRole('button', { name: 'Add all to Nightshift' })).toBeDisabled()
+    await expect(picker.getByRole('button', { name: 'Add all to Kolux' })).toBeDisabled()
 
     await picker.getByRole('button', { name: 'Back' }).click()
-    const form = nightshiftPage.getByRole('dialog', { name: 'Add SSH host' })
+    const form = koluxPage.getByRole('dialog', { name: 'Add SSH host' })
     await expect(form.getByRole('heading', { name: 'Add SSH host' })).toBeVisible()
     const fields = addSshHostFormFields(form)
     await expect(fields.host).toHaveValue('')
@@ -86,10 +84,10 @@ test.describe('SSH config host picker', () => {
   // ── P2 ─────────────────────────────────────────────────────────────
   test('P2: seeded hosts list with summary lines and Add all enabled', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const hosts = await seedPairConfig(electronApp, HOST_PREFIX)
-    const picker = await openSshConfigHostPicker(nightshiftPage)
+    const picker = await openSshConfigHostPicker(koluxPage)
 
     const hostList = picker.getByRole('list', { name: 'SSH config hosts' })
     await expect(hostList).toBeVisible()
@@ -101,13 +99,13 @@ test.describe('SSH config host picker', () => {
     await expect(
       hostList.getByText(hostEndpointSummary(hosts.bravo), { exact: true })
     ).toBeVisible()
-    await expect(picker.getByRole('button', { name: 'Add all 2 to Nightshift' })).toBeEnabled()
+    await expect(picker.getByRole('button', { name: 'Add all 2 to Kolux' })).toBeEnabled()
   })
 
   // ── P3 + N3 ────────────────────────────────────────────────────────
   test('P3: select host prefills form; Save persists; N3 identity hint', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const prod: SeededSshConfigHost = {
       alias: `${HOST_PREFIX}-prod`,
@@ -117,10 +115,10 @@ test.describe('SSH config host picker', () => {
     }
     await seedIsolatedSshConfig(electronApp, buildSshConfigBody([prod]))
 
-    const picker = await openSshConfigHostPicker(nightshiftPage)
+    const picker = await openSshConfigHostPicker(koluxPage)
     await configHostRow(picker, prod).click()
 
-    const form = nightshiftPage.getByRole('dialog', { name: 'Add SSH host' })
+    const form = koluxPage.getByRole('dialog', { name: 'Add SSH host' })
     await expect(form.getByRole('heading', { name: 'Add SSH host' })).toBeVisible({
       timeout: 10_000
     })
@@ -135,21 +133,21 @@ test.describe('SSH config host picker', () => {
       form.getByText(new RegExp(`Left empty on purpose:.*${escapeRegExp(prod.alias)}`, 'i'))
     ).toBeVisible()
     await expect(
-      nightshiftPage.getByText(new RegExp(`Filled from ${escapeRegExp(prod.alias)}`, 'i'))
+      koluxPage.getByText(new RegExp(`Filled from ${escapeRegExp(prod.alias)}`, 'i'))
     ).toBeVisible({ timeout: 5_000 })
 
     await form.getByRole('button', { name: 'Save' }).click()
     await expect(form).toBeHidden({ timeout: 10_000 })
 
     // The saved settings card is durable; the success toast is not.
-    const sshSection = await openSshHostSettings(nightshiftPage)
+    const sshSection = await openSshHostSettings(koluxPage)
     await expectSshHostListedInSettings(sshSection, prod)
   })
 
   // ── P4 ─────────────────────────────────────────────────────────────
-  test('P4: filter narrows host list', async ({ electronApp, nightshiftPage }) => {
+  test('P4: filter narrows host list', async ({ electronApp, koluxPage }) => {
     const hosts = await seedPairConfig(electronApp, HOST_PREFIX)
-    const picker = await openSshConfigHostPicker(nightshiftPage)
+    const picker = await openSshConfigHostPicker(koluxPage)
 
     await expect(configHostRow(picker, hosts.alpha)).toBeVisible()
     await expect(configHostRow(picker, hosts.bravo)).toBeVisible()
@@ -168,19 +166,19 @@ test.describe('SSH config host picker', () => {
   })
 
   // ── P8 ─────────────────────────────────────────────────────────────
-  test('P8: Back without select leaves form empty', async ({ electronApp, nightshiftPage }) => {
+  test('P8: Back without select leaves form empty', async ({ electronApp, koluxPage }) => {
     const hosts = await seedPairConfig(electronApp, HOST_PREFIX)
-    const picker = await openSshConfigHostPicker(nightshiftPage)
+    const picker = await openSshConfigHostPicker(koluxPage)
     await expect(configHostRow(picker, hosts.alpha)).toBeVisible()
 
     await picker.getByRole('button', { name: 'Back' }).click()
-    const form = nightshiftPage.getByRole('dialog', { name: 'Add SSH host' })
+    const form = koluxPage.getByRole('dialog', { name: 'Add SSH host' })
     await expect(form.getByRole('heading', { name: 'Add SSH host' })).toBeVisible()
     const fields = addSshHostFormFields(form)
     await expect(fields.host).toHaveValue('')
     await expect(fields.username).toHaveValue('')
     await expect(fields.label).toHaveValue('')
-    await expect(nightshiftPage.getByText(/Filled from /i)).toHaveCount(0)
+    await expect(koluxPage.getByText(/Filled from /i)).toHaveCount(0)
   })
 })
 

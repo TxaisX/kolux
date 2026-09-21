@@ -111,7 +111,7 @@ export function LinearAgentSkillGuide({
             <p className="text-xs text-muted-foreground">
               {translate(
                 'auto.components.settings.LinearAgentSkillGuide.setupConnectBody',
-                'Personal API key so Nightshift can list issues and open linked workspaces.'
+                'Personal API key so Kolux can list issues and open linked workspaces.'
               )}
             </p>
           </div>
@@ -146,7 +146,7 @@ export function LinearAgentSkillGuide({
               <p className="text-xs text-muted-foreground">
                 {translate(
                   'auto.components.settings.LinearAgentSkillGuide.setupSkillBody',
-                  'Gives coding agents /nightshift-linear for reading, updates, triage, and attaching pull or merge requests.'
+                  'Gives coding agents /kolux-linear for reading, updates, triage, and attaching pull or merge requests.'
                 )}
               </p>
             </div>

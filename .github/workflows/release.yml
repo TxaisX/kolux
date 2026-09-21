@@ -65,7 +65,7 @@ jobs:
         run: |
           $assets = gh release view "$env:GITHUB_REF_NAME" --json assets --jq '.assets[].name'
           if ($LASTEXITCODE -ne 0) { throw 'Could not verify release assets' }
-          foreach ($required in @('latest.yml', 'nightshift-windows-setup.exe', 'nightshift-windows-setup.exe.blockmap')) {
+          foreach ($required in @('latest.yml', 'kolux-windows-setup.exe', 'kolux-windows-setup.exe.blockmap')) {
             if ($assets -notcontains $required) { throw "Missing release asset: $required" }
           }
           gh release edit "$env:GITHUB_REF_NAME" --draft=false --latest

@@ -185,7 +185,7 @@ export function FileExplorerFilesTreePane({
           connectionId={activeRepo?.connectionId ?? null}
           runtimeDownloadContext={runtimeDownloadContext}
           supportsFolderDownload={supportsFolderDownload}
-          canOpenInNightshiftBrowser={canOpenWorkspaceFileBrowserForPath}
+          canOpenInKoluxBrowser={canOpenWorkspaceFileBrowserForPath}
           onClick={handleRowClick}
           onDoubleClick={handleDoubleClick}
           onViewFile={handleClick}

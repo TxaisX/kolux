@@ -21,7 +21,7 @@ function createMockRuntime(): CoordinatorRuntime & {
   createdTerminalOptions: { title?: string }[]
   probeDriftCalls: string[]
   probeDriftResult: DriftResult
-  cliCommand: 'nightshift' | 'nightshift-ide'
+  cliCommand: 'kolux' | 'kolux-ide'
   setProbeDrift(result: DriftResult): void
   throwProbeDrift: Error | null
 } {
@@ -37,7 +37,7 @@ function createMockRuntime(): CoordinatorRuntime & {
     createdTerminalOptions: [] as { title?: string }[],
     probeDriftCalls: [] as string[],
     probeDriftResult: null as DriftResult,
-    cliCommand: 'nightshift' as 'nightshift' | 'nightshift-ide',
+    cliCommand: 'kolux' as 'kolux' | 'kolux-ide',
     throwProbeDrift: null as Error | null,
     setProbeDrift(result: DriftResult): void {
       mock.probeDriftResult = result
@@ -128,7 +128,7 @@ describe('Coordinator', () => {
   it('dispatches a ready task to an available terminal', async () => {
     db = new OrchestrationDb(':memory:')
     const runtime = createMockRuntime()
-    runtime.cliCommand = 'nightshift-ide'
+    runtime.cliCommand = 'kolux-ide'
     runtime.terminals = [{ handle: 'term_a', worktreeId: 'wt1', connected: true, writable: true }]
 
     const task = db.createTask({
@@ -158,7 +158,7 @@ describe('Coordinator', () => {
     expect(result.status).toBe('completed')
     expect(result.completedTasks).toContain(task.id)
     expect(runtime.sentMessages.length).toBeGreaterThan(0)
-    expect(runtime.sentMessages[0].text).toContain('nightshift-ide orchestration send')
+    expect(runtime.sentMessages[0].text).toContain('kolux-ide orchestration send')
   })
 
   it('records the assignee pane key when the runtime can resolve one', async () => {

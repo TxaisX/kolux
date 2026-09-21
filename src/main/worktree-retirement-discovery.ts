@@ -28,7 +28,7 @@ export function collectRetiredNamesFromLeafNames(leafNames: Iterable<string>): S
 
 /** The workspace leaf is whatever the bucket has beyond its encoded parent. Deriving it from
  *  trailing dash segments instead makes a numerically named workspace retire its parent
- *  directory's name — and `nightshift` is in the pool. The first segment is also offered because an
+ *  directory's name — and `kolux` is in the pool. The first segment is also offered because an
  *  agent run from a subdirectory buckets the whole subpath. */
 export function extractBucketLeafCandidates(
   bucketName: string,

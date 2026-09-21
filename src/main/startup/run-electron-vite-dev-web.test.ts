@@ -98,7 +98,7 @@ function stashWebBuild(): () => void {
 
   // Why: Windows temp can be on a different drive from the workspace, and
   // renameSync cannot move directories across devices.
-  const tempDir = mkdtempSync(join(dirname(outWebPath), '.nightshift-dev-web-stash-'))
+  const tempDir = mkdtempSync(join(dirname(outWebPath), '.kolux-dev-web-stash-'))
   const stashedPath = join(tempDir, 'web')
   renameSync(outWebPath, stashedPath)
   return () => {
@@ -139,7 +139,7 @@ describe('run-electron-vite-dev web client prepare', () => {
 
   it('skips the initial web client build when no bundle exists', async () => {
     const restoreWebBuild = stashWebBuild()
-    const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+    const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
     const pidFile = join(tempDir, 'grandchild.pid')
     const envFile = join(tempDir, 'env.json')
     const viteFile = join(tempDir, 'vite.txt')
@@ -153,13 +153,13 @@ describe('run-electron-vite-dev web client prepare', () => {
         cwd: resolve('.'),
         env: {
           ...process.env,
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_VITE_CLI: fakeVitePath,
-          NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_VITE_FILE: viteFile
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_VITE_CLI: fakeVitePath,
+          KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+          KOLUX_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+          KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile,
+          KOLUX_DEV_WRAPPER_TEST_VITE_FILE: viteFile
         },
         stdio: ['ignore', 'ignore', 'pipe']
       })
@@ -191,7 +191,7 @@ describe('run-electron-vite-dev web client prepare', () => {
 
   it('builds the missing web client bundle when explicitly requested', async () => {
     const restoreWebBuild = stashWebBuild()
-    const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+    const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
     const pidFile = join(tempDir, 'grandchild.pid')
     const envFile = join(tempDir, 'env.json')
     const viteFile = join(tempDir, 'vite.txt')
@@ -204,14 +204,14 @@ describe('run-electron-vite-dev web client prepare', () => {
         cwd: resolve('.'),
         env: {
           ...process.env,
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_VITE_CLI: fakeVitePath,
-          NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
-          NIGHTSHIFT_DEV_WEB_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_VITE_FILE: viteFile
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_VITE_CLI: fakeVitePath,
+          KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+          KOLUX_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
+          KOLUX_DEV_WEB_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+          KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile,
+          KOLUX_DEV_WRAPPER_TEST_VITE_FILE: viteFile
         },
         stdio: 'ignore'
       })

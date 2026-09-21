@@ -103,12 +103,10 @@ describe('createPtySubprocess', () => {
           sessionId: 'test',
           cols: 80,
           rows: 24,
-          cwd: 'C:\\definitely-missing-nightshift-wsl-cwd',
+          cwd: 'C:\\definitely-missing-kolux-wsl-cwd',
           shellOverride: 'wsl.exe'
         })
-      ).rejects.toThrow(
-        /Working directory "C:\\definitely-missing-nightshift-wsl-cwd" does not exist/
-      )
+      ).rejects.toThrow(/Working directory "C:\\definitely-missing-kolux-wsl-cwd" does not exist/)
     } finally {
       if (platform) {
         Object.defineProperty(process, 'platform', platform)
@@ -228,7 +226,7 @@ describe('createPtySubprocess', () => {
         cwd: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo',
         env: {
           CODEX_HOME: 'C:\\Users\\jin\\.codex',
-          NIGHTSHIFT_CODEX_HOME: 'C:\\Users\\jin\\.codex'
+          KOLUX_CODEX_HOME: 'C:\\Users\\jin\\.codex'
         }
       })
     } finally {
@@ -243,7 +241,7 @@ describe('createPtySubprocess', () => {
       expect.objectContaining({
         env: expect.not.objectContaining({
           CODEX_HOME: expect.anything(),
-          NIGHTSHIFT_CODEX_HOME: expect.anything()
+          KOLUX_CODEX_HOME: expect.anything()
         })
       })
     )
@@ -264,9 +262,9 @@ describe('createPtySubprocess', () => {
         cwd: 'C:\\Users\\jin\\repo',
         env: {
           CODEX_HOME:
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home',
-          NIGHTSHIFT_CODEX_HOME:
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home',
+          KOLUX_CODEX_HOME:
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
         }
       })
     } finally {
@@ -281,7 +279,7 @@ describe('createPtySubprocess', () => {
       expect.objectContaining({
         env: expect.not.objectContaining({
           CODEX_HOME: expect.anything(),
-          NIGHTSHIFT_CODEX_HOME: expect.anything()
+          KOLUX_CODEX_HOME: expect.anything()
         })
       })
     )
@@ -304,9 +302,9 @@ describe('createPtySubprocess', () => {
         shellOverride: 'wsl.exe',
         env: {
           CODEX_HOME:
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home',
-          NIGHTSHIFT_CODEX_HOME:
-            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-accounts\\a\\home'
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home',
+          KOLUX_CODEX_HOME:
+            '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-accounts\\a\\home'
         }
       })
     } finally {
@@ -327,8 +325,8 @@ describe('createPtySubprocess', () => {
       ['-d', 'Ubuntu', '--exec', 'sh', '-c', expect.stringContaining(`cd '${expectedLinuxCwd}'`)],
       expect.objectContaining({
         env: expect.objectContaining({
-          CODEX_HOME: '/home/jin/.local/share/nightshift/codex-accounts/a/home',
-          NIGHTSHIFT_CODEX_HOME: '/home/jin/.local/share/nightshift/codex-accounts/a/home',
+          CODEX_HOME: '/home/jin/.local/share/kolux/codex-accounts/a/home',
+          KOLUX_CODEX_HOME: '/home/jin/.local/share/kolux/codex-accounts/a/home',
           WSLENV: expect.stringContaining('CODEX_HOME')
         })
       })
@@ -365,16 +363,16 @@ describe('createPtySubprocess', () => {
     )
   })
 
-  it('marks Nightshift terminal handles for WSL env import in daemon WSL terminals', async () => {
+  it('marks Kolux terminal handles for WSL env import in daemon WSL terminals', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
     const savedCodexHome = process.env.CODEX_HOME
-    const savedNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
+    const savedKoluxCodexHome = process.env.KOLUX_CODEX_HOME
 
     Object.defineProperty(process, 'platform', { value: 'win32' })
     delete process.env.CODEX_HOME
-    delete process.env.NIGHTSHIFT_CODEX_HOME
+    delete process.env.KOLUX_CODEX_HOME
 
     try {
       await createPtySubprocess({
@@ -383,8 +381,8 @@ describe('createPtySubprocess', () => {
         rows: 24,
         cwd: '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo',
         env: {
-          NIGHTSHIFT_TERMINAL_HANDLE: 'term_wsl',
-          NIGHTSHIFT_HERMES_STARTUP_QUERY: 'line one\nline two',
+          KOLUX_TERMINAL_HANDLE: 'term_wsl',
+          KOLUX_HERMES_STARTUP_QUERY: 'line one\nline two',
           WSLENV: 'FOO/u'
         }
       })
@@ -397,24 +395,24 @@ describe('createPtySubprocess', () => {
       } else {
         process.env.CODEX_HOME = savedCodexHome
       }
-      if (savedNightshiftCodexHome === undefined) {
-        delete process.env.NIGHTSHIFT_CODEX_HOME
+      if (savedKoluxCodexHome === undefined) {
+        delete process.env.KOLUX_CODEX_HOME
       } else {
-        process.env.NIGHTSHIFT_CODEX_HOME = savedNightshiftCodexHome
+        process.env.KOLUX_CODEX_HOME = savedKoluxCodexHome
       }
     }
 
     const spawnCall = spawnMock.mock.calls.at(-1)!
     expect(spawnCall[0]).toBe('wsl.exe')
     expect(spawnCall[1]).toEqual(expect.any(Array))
-    expect(spawnCall[2].env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_wsl')
+    expect(spawnCall[2].env.KOLUX_TERMINAL_HANDLE).toBe('term_wsl')
     // Why: the daemon inherits optional agent-hook env in development. This
     // test owns only the terminal handle and Powerlevel10k WSLENV contract.
     expect(spawnCall[2].env.WSLENV?.split(':')).toEqual(
       expect.arrayContaining([
         'FOO/u',
-        'NIGHTSHIFT_TERMINAL_HANDLE/u',
-        'NIGHTSHIFT_HERMES_STARTUP_QUERY',
+        'KOLUX_TERMINAL_HANDLE/u',
+        'KOLUX_HERMES_STARTUP_QUERY',
         POWERLEVEL10K_WIZARD_DISABLE_ENV
       ])
     )

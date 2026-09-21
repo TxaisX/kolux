@@ -39,7 +39,7 @@ afterEach(async () => {
 })
 
 async function seedJournal(count: number) {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-history-read-budget-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-history-read-budget-'))
   const { db } = openJournalDatabase(journalDatabaseFile(root))
   const base = {
     v: AGENT_SESSION_JOURNAL_SCHEMA_VERSION,

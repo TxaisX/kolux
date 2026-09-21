@@ -3,7 +3,7 @@ import {
   isDurableMutation,
   isTerminalPromptMutation
 } from '../../../shared/orchestration-rpc-contract'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { RpcRequest } from './core'
 import {
@@ -47,7 +47,7 @@ type InFlightMutation = {
 export class OrchestrationMutationExecutor {
   private readonly inFlight = new Map<string, InFlightMutation>()
 
-  constructor(private readonly runtime: NightshiftRuntimeService) {}
+  constructor(private readonly runtime: KoluxRuntimeService) {}
 
   async run(
     request: RpcRequest,
@@ -204,7 +204,7 @@ export class OrchestrationMutationExecutor {
             ? {
                 requestId,
                 dispatchId: recovery.dispatchId,
-                recoveryCommand: `nightshift orchestration worker-show --dispatch ${recovery.dispatchId} --json`
+                recoveryCommand: `kolux orchestration worker-show --dispatch ${recovery.dispatchId} --json`
               }
             : { requestId }
         )
@@ -268,10 +268,10 @@ export class OrchestrationMutationExecutor {
   }
 }
 
-const executorsByRuntime = new WeakMap<NightshiftRuntimeService, OrchestrationMutationExecutor>()
+const executorsByRuntime = new WeakMap<KoluxRuntimeService, OrchestrationMutationExecutor>()
 
 export function getOrchestrationMutationExecutor(
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 ): OrchestrationMutationExecutor {
   const existing = executorsByRuntime.get(runtime)
   if (existing) {

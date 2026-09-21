@@ -7,7 +7,7 @@ const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
 vi.mock('node:child_process', () => ({ spawn: spawnMock }))
 
 // Keep the socket runtime client out of the import graph; only the error type
-// and serveNightshiftApp binding are referenced by the module under test.
+// and serveKoluxApp binding are referenced by the module under test.
 vi.mock('../runtime-client', () => ({
   RuntimeClientError: class RuntimeClientError extends Error {
     readonly code: string
@@ -16,7 +16,7 @@ vi.mock('../runtime-client', () => ({
       this.code = code
     }
   },
-  serveNightshiftApp: vi.fn()
+  serveKoluxApp: vi.fn()
 }))
 
 import { CORE_HANDLERS } from './core'
@@ -39,7 +39,7 @@ function mockClaudeChild(): { once: (event: string, cb: (...args: unknown[]) => 
   return child
 }
 
-describe('nightshift claude-teams CLI handler', () => {
+describe('kolux claude-teams CLI handler', () => {
   const isWindows = process.platform === 'win32'
   let previousRunAsNode: string | undefined
   let previousPaneKey: string | undefined
@@ -69,12 +69,12 @@ describe('nightshift claude-teams CLI handler', () => {
       }
     })
     previousRunAsNode = process.env.ELECTRON_RUN_AS_NODE
-    previousPaneKey = process.env.NIGHTSHIFT_PANE_KEY
+    previousPaneKey = process.env.KOLUX_PANE_KEY
     previousExitCode = process.exitCode
-    // The `nightshift` launcher runs Nightshift's Electron binary as Node, so the CLI process
+    // The `kolux` launcher runs Kolux's Electron binary as Node, so the CLI process
     // itself carries ELECTRON_RUN_AS_NODE=1. Reproduce that inherited flag here.
     process.env.ELECTRON_RUN_AS_NODE = '1'
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:leaf-1'
+    process.env.KOLUX_PANE_KEY = 'tab-1:leaf-1'
   })
 
   afterEach(() => {
@@ -84,9 +84,9 @@ describe('nightshift claude-teams CLI handler', () => {
       process.env.ELECTRON_RUN_AS_NODE = previousRunAsNode
     }
     if (previousPaneKey === undefined) {
-      delete process.env.NIGHTSHIFT_PANE_KEY
+      delete process.env.KOLUX_PANE_KEY
     } else {
-      process.env.NIGHTSHIFT_PANE_KEY = previousPaneKey
+      process.env.KOLUX_PANE_KEY = previousPaneKey
     }
     process.exitCode = previousExitCode
   })
@@ -112,20 +112,20 @@ describe('nightshift claude-teams CLI handler', () => {
   it.skipIf(isWindows)(
     'still forwards non-Electron parent env and prepareLaunch env to claude',
     async () => {
-      const previousMarker = process.env.NIGHTSHIFT_TEST_MARKER
-      process.env.NIGHTSHIFT_TEST_MARKER = 'keep-me'
+      const previousMarker = process.env.KOLUX_TEST_MARKER
+      process.env.KOLUX_TEST_MARKER = 'keep-me'
       try {
         await runClaudeTeams()
       } finally {
         if (previousMarker === undefined) {
-          delete process.env.NIGHTSHIFT_TEST_MARKER
+          delete process.env.KOLUX_TEST_MARKER
         } else {
-          process.env.NIGHTSHIFT_TEST_MARKER = previousMarker
+          process.env.KOLUX_TEST_MARKER = previousMarker
         }
       }
 
       const spawnEnv = spawnMock.mock.calls.at(-1)?.[2].env as SpawnEnv
-      expect(spawnEnv.NIGHTSHIFT_TEST_MARKER).toBe('keep-me')
+      expect(spawnEnv.KOLUX_TEST_MARKER).toBe('keep-me')
       expect(spawnEnv.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBe('1')
       expect(spawnEnv.PATH).toBe('/shim:/usr/bin')
     }

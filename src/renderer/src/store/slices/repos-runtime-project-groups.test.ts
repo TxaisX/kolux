@@ -31,44 +31,44 @@ describe('repo slice runtime project groups', () => {
       remoteName: 'origin',
       remoteUrl: 'https://github.com/TxaisX/nightshift.git'
     }
-    const localNightshift: Repo = {
-      id: 'local-nightshift',
-      path: '/Users/alice/stably/nightshift',
-      displayName: 'nightshift',
+    const localKolux: Repo = {
+      id: 'local-kolux',
+      path: '/Users/alice/stably/kolux',
+      displayName: 'kolux',
       badgeColor: '#000',
       addedAt: 1,
       executionHostId: 'local',
       gitRemoteIdentity,
-      projectGroupId: 'group-nightshift'
+      projectGroupId: 'group-kolux'
     }
-    const runtimeNightshift: Repo = {
-      id: 'runtime-nightshift',
-      path: '/vercel/sandbox/nightshift',
-      displayName: 'nightshift',
+    const runtimeKolux: Repo = {
+      id: 'runtime-kolux',
+      path: '/vercel/sandbox/kolux',
+      displayName: 'kolux',
       badgeColor: '#111',
       addedAt: 2,
       gitRemoteIdentity
     }
     runtimeEnvironmentCall.mockResolvedValue({
-      id: 'rpc-runtime-nightshift',
+      id: 'rpc-runtime-kolux',
       ok: true,
-      result: { repos: [runtimeNightshift] },
+      result: { repos: [runtimeKolux] },
       _meta: { runtimeId: 'runtime-remote' }
     })
     const store = createTestStore()
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,
-      repos: [localNightshift]
+      repos: [localKolux]
     })
 
     await store.getState().fetchRepos()
 
     expect(store.getState().repos).toEqual([
-      localNightshift,
+      localKolux,
       {
-        ...runtimeNightshift,
+        ...runtimeKolux,
         executionHostId: 'runtime:env-1',
-        projectGroupId: 'group-nightshift'
+        projectGroupId: 'group-kolux'
       }
     ])
   })

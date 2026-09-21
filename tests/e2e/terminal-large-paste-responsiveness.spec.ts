@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   focusActiveTerminalInput,
@@ -23,7 +23,7 @@ function keyboardPasteChord(): string {
 }
 
 function largePastePayload(runId: string): string {
-  return `NIGHTSHIFT_LARGE_PASTE_${runId}_0123456789abcdef`.repeat(4096)
+  return `KOLUX_LARGE_PASTE_${runId}_0123456789abcdef`.repeat(4096)
 }
 
 function sha256(text: string): string {
@@ -97,37 +97,37 @@ async function stopRendererHeartbeat(page: Page): Promise<void> {
 test.describe('large terminal paste responsiveness', () => {
   test('chunked keyboard paste keeps the renderer responsive while PTY writes are pending', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
     const payload = largePastePayload(runId)
     const expectedBytes = Buffer.byteLength(payload, 'utf8')
     const expectedHash = sha256(payload)
     const doneLine = `LARGE_PASTE_DONE_${runId}:${expectedBytes}:${expectedHash}`
-    const scriptPath = path.join(testRepoPath, `.nightshift-large-paste-${runId}.cjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-large-paste-${runId}.cjs`)
     writeFileSync(scriptPath, pasteReceiverScript(runId, expectedBytes, expectedHash))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `LARGE_PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `LARGE_PASTE_READY_${runId}`, 10_000)
 
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
       await clearTerminalPtyWriteLog(electronApp)
       await setTerminalPtyWriteDelay(electronApp, 35)
-      await installRendererHeartbeat(nightshiftPage)
-      await focusActiveTerminalInput(nightshiftPage)
+      await installRendererHeartbeat(koluxPage)
+      await focusActiveTerminalInput(koluxPage)
 
-      const pasteKey = nightshiftPage.keyboard.press(keyboardPasteChord())
+      const pasteKey = koluxPage.keyboard.press(keyboardPasteChord())
       await expect
         .poll(
           async () =>
@@ -140,13 +140,13 @@ test.describe('large terminal paste responsiveness', () => {
         )
         .toBeGreaterThan(1)
 
-      const heartbeatBefore = await readRendererHeartbeat(nightshiftPage)
-      await nightshiftPage.waitForTimeout(150)
-      const heartbeatAfter = await readRendererHeartbeat(nightshiftPage)
+      const heartbeatBefore = await readRendererHeartbeat(koluxPage)
+      await koluxPage.waitForTimeout(150)
+      const heartbeatAfter = await readRendererHeartbeat(koluxPage)
       expect(heartbeatAfter).toBeGreaterThan(heartbeatBefore)
 
       await pasteKey
-      await waitForTerminalOutput(nightshiftPage, doneLine, 20_000, 12_000)
+      await waitForTerminalOutput(koluxPage, doneLine, 20_000, 12_000)
 
       const writes = (await readTerminalPtyWriteEntries(electronApp)).filter(
         (entry) => entry.id === ptyId
@@ -154,9 +154,9 @@ test.describe('large terminal paste responsiveness', () => {
       expect(writes.length).toBeGreaterThan(1)
     } finally {
       await setTerminalPtyWriteDelay(electronApp, 0).catch(() => undefined)
-      await stopRendererHeartbeat(nightshiftPage).catch(() => undefined)
+      await stopRendererHeartbeat(koluxPage).catch(() => undefined)
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }

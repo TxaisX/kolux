@@ -31,7 +31,7 @@ describe('prepareOrchestrationCheckOutput', () => {
     )
 
     expect(prepared.formatted).toContain(
-      '[Reply: nightshift orchestration reply --id msg_current --body "..."]'
+      '[Reply: kolux orchestration reply --id msg_current --body "..."]'
     )
     expect(prepared.formatted).not.toContain('--from run:run_adopted')
     expect(prepared.formatted).toContain(

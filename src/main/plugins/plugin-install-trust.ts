@@ -12,7 +12,7 @@ export function pluginInstallTrustError(
   if (source.kind === 'bundled') {
     return source.bundleId === pluginKey && isOfficialPluginIdentity(pluginKey)
       ? null
-      : 'bundled plugins must use an official txais.nightshift-* identity'
+      : 'bundled plugins must use an official txais.kolux-* identity'
   }
   if (!isReservedPluginIdentity(pluginKey)) {
     return null

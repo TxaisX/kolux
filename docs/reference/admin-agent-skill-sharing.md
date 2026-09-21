@@ -1,12 +1,12 @@
 # Administer agent skill sharing
 
 This guide describes the first-release access, lifecycle, retention, and recovery contract for
-Nightshift skill sharing. The operator runbook remains the source of truth for incident commands and
+Kolux skill sharing. The operator runbook remains the source of truth for incident commands and
 environment-specific procedures.
 
 ## Access model
 
-- Shared bundles are unlisted bearer resources. Nightshift provides no public browse, search, recipient
+- Shared bundles are unlisted bearer resources. Kolux provides no public browse, search, recipient
   inventory, or package index.
 - Anyone with an active, unexpired link can inspect the package and request a short-lived download
   grant without signing in.
@@ -38,7 +38,7 @@ recorded GCS generation and never overwrites an immutable published key.
 ## User and organization departure
 
 Packages belong to an owner tenant and record the publishing user. In an organization tenant,
-another current member can manage the package after its publisher leaves; Nightshift does not rewrite
+another current member can manage the package after its publisher leaves; Kolux does not rewrite
 the recorded creator. Removing a user does not automatically revoke the organization's links,
 delete packages, or remove installed copies.
 
@@ -91,7 +91,7 @@ an isolated database, identify exact referenced generations, restore only matchi
 objects, verify archive and package identities, then transactionally repoint metadata. Keep grants
 disabled until bearer preview and a generation-bound download pass.
 
-See the Nightshift Cloud `docs/skill-sharing-runbook.md` for deployment controls, reconciliation,
+See the Kolux Cloud `docs/skill-sharing-runbook.md` for deployment controls, reconciliation,
 saturation, signing failures, database outages, and the guarded restore workflow. Security
 invariants and unresolved release gates are recorded in
 [Agent skill sharing threat model](./agent-skill-sharing-threat-model.md).

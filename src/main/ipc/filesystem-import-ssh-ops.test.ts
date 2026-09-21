@@ -277,7 +277,7 @@ describe('fs:importExternalPaths — SSH operations', () => {
       status: 'failed',
       reason: 'EEXIST: destination already exists'
     })
-    // Why: a failed exclusive create does not prove Nightshift owns the destination.
+    // Why: a failed exclusive create does not prove Kolux owns the destination.
     expect(provider.deletePath).not.toHaveBeenCalled()
   })
 

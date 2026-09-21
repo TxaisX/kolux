@@ -60,14 +60,14 @@ describe('native preload linux package recovery methods', () => {
   it('invokes only the instructions channel and returns the main-built command', async () => {
     const api = await loadApi()
     invoke.mockResolvedValueOnce({
-      command: "sudo apt install -- '/cache/nightshift.deb'",
-      packageFileName: 'nightshift.deb'
+      command: "sudo apt install -- '/cache/kolux.deb'",
+      packageFileName: 'kolux.deb'
     })
     invoke.mockClear()
 
     await expect(api.updater.getLinuxPackageInstallInstructions()).resolves.toEqual({
-      command: "sudo apt install -- '/cache/nightshift.deb'",
-      packageFileName: 'nightshift.deb'
+      command: "sudo apt install -- '/cache/kolux.deb'",
+      packageFileName: 'kolux.deb'
     })
 
     // Why: the renderer must never reach a generic shell/path channel for this cache artifact.

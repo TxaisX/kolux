@@ -11,8 +11,8 @@ import { buildWorktreeChecksReviewIndex } from './worktree-checks-review-index'
 
 const repo: Repo = {
   id: 'repo-1',
-  path: '/remote/nightshift',
-  displayName: 'nightshift',
+  path: '/remote/kolux',
+  displayName: 'kolux',
   badgeColor: '#000000',
   addedAt: 0,
   executionHostId: 'ssh:staging'
@@ -21,7 +21,7 @@ const repo: Repo = {
 const worktree: Worktree = {
   id: 'worktree-1',
   repoId: repo.id,
-  path: '/remote/nightshift-worktrees/search',
+  path: '/remote/kolux-worktrees/search',
   head: 'abc123',
   branch: 'refs/heads/feature/search',
   isBare: false,
@@ -44,7 +44,7 @@ function makePR(overrides: Partial<PRInfo> = {}): PRInfo {
     number: 42,
     title: 'Search worktrees by their pull requests',
     state: 'open',
-    url: 'https://github.com/acme/nightshift/pull/42',
+    url: 'https://github.com/acme/kolux/pull/42',
     checksStatus: 'success',
     updatedAt: '2026-07-12T00:00:00Z',
     mergeable: 'MERGEABLE',
@@ -58,7 +58,7 @@ function makeGitLabReview(): HostedReviewInfo {
     number: 17,
     title: 'Search worktrees by merge request',
     state: 'open',
-    url: 'https://gitlab.com/acme/nightshift/-/merge_requests/17',
+    url: 'https://gitlab.com/acme/kolux/-/merge_requests/17',
     status: 'pending',
     updatedAt: '2026-07-12T00:00:00Z',
     mergeable: 'UNKNOWN'
@@ -196,7 +196,7 @@ describe('buildWorktreeChecksReviewIndex', () => {
   })
 
   it('filters matching suppression from a legacy-only local PR cache', () => {
-    const localRepo = { ...repo, path: '/local/nightshift', executionHostId: 'local' as const }
+    const localRepo = { ...repo, path: '/local/kolux', executionHostId: 'local' as const }
     const suppressedWorktree = {
       ...worktree,
       hostId: 'local' as const,
@@ -275,7 +275,7 @@ describe('buildWorktreeChecksReviewIndex', () => {
   })
 
   it('keeps an explicit PR authoritative over stale branch-cache evidence', () => {
-    const localRepo = { ...repo, path: '/local/nightshift', executionHostId: 'local' as const }
+    const localRepo = { ...repo, path: '/local/kolux', executionHostId: 'local' as const }
     const explicitWorktree = { ...worktree, hostId: 'local' as const, linkedPR: 42 }
     const prKey = getGitHubPRCacheKey(
       localRepo.path,
@@ -326,7 +326,7 @@ describe('buildWorktreeChecksReviewIndex', () => {
   it('keeps same-id worktrees isolated across execution hosts', () => {
     const localRepo: Repo = {
       ...repo,
-      path: '/local/nightshift',
+      path: '/local/kolux',
       executionHostId: 'local'
     }
     const localWorktree: Worktree = { ...worktree, hostId: 'local' }
@@ -359,7 +359,7 @@ describe('buildWorktreeChecksReviewIndex', () => {
   it('does not expose a physical SSH review to its runtime-owned worktree', () => {
     const runtimeRepo: Repo = {
       ...repo,
-      path: '/remote/nightshift',
+      path: '/remote/kolux',
       executionHostId: 'runtime:paired-host'
     }
     const runtimeWorktree: Worktree = {
@@ -383,7 +383,7 @@ describe('buildWorktreeChecksReviewIndex', () => {
     ])
     const prCache = {
       [physicalKey]: { data: makePR(), fetchedAt: 1 },
-      '/remote/nightshift::feature/search': {
+      '/remote/kolux::feature/search': {
         data: { ...makePR(), title: 'Physical legacy PR' },
         fetchedAt: 1
       }

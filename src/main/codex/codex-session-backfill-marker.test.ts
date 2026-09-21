@@ -71,7 +71,7 @@ function readMarker(): Record<string, unknown> {
 }
 
 beforeEach(() => {
-  stateDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-marker-'))
+  stateDir = mkdtempSync(join(tmpdir(), 'kolux-codex-marker-'))
   markerPath = join(stateDir, 'backfill-complete.json')
 })
 

@@ -87,7 +87,7 @@ export abstract class UpdaterInstallExecution extends UpdaterPackageRecovery {
             }
           )
           this.sendErrorStatus(
-            'Could not prepare the supervised server restart. Nightshift remains running.',
+            'Could not prepare the supervised server restart. Kolux remains running.',
             true
           )
           this.resetQuitForUpdateState()
@@ -172,7 +172,7 @@ export abstract class UpdaterInstallExecution extends UpdaterPackageRecovery {
         // A synchronous throw carries the same installer text the 'error' event would have.
         message: quitAndInstallNativeInvokedBeforeReset
           ? this.withInstallFailureCause(this.getPreCommitInstallFailureMessage(), error)
-          : 'Could not restart to install the update. Quit and reopen Nightshift, then try again.'
+          : 'Could not restart to install the update. Quit and reopen Kolux, then try again.'
       })
     }
   }

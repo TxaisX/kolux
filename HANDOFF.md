@@ -3,11 +3,28 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-20.
+Last updated: 2026-09-21.
 
-## Current pass: Codex access, account authorization, and automatic updates
+## Current pass: the product is renamed Nightshift → Kolux
 
-- Codex is already a supported detected agent and launches into the active workspace panes. The launcher and agent-picker now expose a target-aware `Refresh agents` action so a newly installed Codex CLI becomes available without restarting Nightshift.
+- Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). **Deliberately kept:** every `TxaisX/nightshift*` GitHub address and the release-feed repo names in `electron-builder.config.cjs` and `dev-app-update.yml`, because the GitHub repo is not renamed yet. Also kept: `LICENSE`.
+- One-time migration so upgraders lose nothing:
+  - `src/main/startup/legacy-nightshift-userdata-migration.ts` moves userData, `~/.nightshift` and marker files. It is hooked into preflight, koluxd and the CLI.
+  - `legacy-persisted-key-migration.ts` covers JSON keys and enums.
+  - `legacy-local-storage-prefix-migration.ts` covers renderer storage.
+  - Repo-side fallbacks read `nightshift.yaml`, `.nightshift/` and `nightshift-plugin.json` when the new names are absent.
+  - Agent installers sweep old-named hook files, so hooks don't run twice.
+- Known consequences:
+  - Kolux installs **beside** an old Nightshift (new appId), so uninstall Nightshift once.
+  - Embedded-browser site logins and macOS Keychain-protected secrets need one re-entry.
+  - **Kolux cannot talk to an old Nightshift remote server, and an old client can't talk to a Kolux server.** The relay handshake frame type changed. Update both ends.
+  - The old `nightshift` CLI launcher is not removed automatically.
+- New app icon: an aperture (six petals around a light point) replaces the moon in every size, the tray, the alt icons, and the in-app logo. The tray glyph is narrower, so check that `tray-dev-badge.ts`'s DEV stamp doesn't overlap it.
+- **Not yet verified.** The full suite had 1,376 failing tests in 396 files; many match known Windows-environment reds (happy-dom `document is not defined`, symlink EPERM, EBUSY). A baseline comparison against 0.9.0 was in progress, and the rename-caused ones are unfixed; for example, tests now expect `repo: 'kolux'` where the protected GitHub owner/repo stays `nightshift`. The app has not been built or launched as Kolux.
+
+## Previous pass: Codex access, account authorization, and automatic updates
+
+- Codex is already a supported detected agent and launches into the active workspace panes. The launcher and agent-picker now expose a target-aware `Refresh agents` action so a newly installed Codex CLI becomes available without restarting Kolux.
 - Managed Codex login now forces file-backed credentials per account (`cli_auth_credentials_store="file"`), uses the provider's browser authorization flow, waits for a usable identity in `auth.json`, and rejects an empty/missing credential instead of saving a broken account. Claude managed login uses the same piped browser-login approach while preserving its existing credential capture.
 - Settings > Agents now provides provider-aware sign-in guidance. Codex and Claude account panels explain that `Add Account` opens browser authorization and only save after successful authorization. The Codex status-bar switcher recommends another account only when its cached usage is fresh, successful, host/runtime-matched, and tied to a different identity.
 - The updater checks every 15 minutes while packaged and online, retries after connectivity returns, keeps available/downloading/downloaded state intact, and the release workflow keeps a GitHub release draft until the installer, manifest, and blockmap are present. The existing sidebar update control remains the bottom-left download/restart entry point.
@@ -16,7 +33,7 @@ Last updated: 2026-09-20.
 
 ## What this is
 
-Nightshift is an original Windows-first desktop app for running several AI coding-agent
+Kolux is an original Windows-first desktop app for running several AI coding-agent
 CLIs in parallel, each in its own git worktree, with terminals, an editor, a browser and
 diff review in one window.
 
@@ -68,7 +85,7 @@ stays on "Check for updates" there. To ship a release:
    It fails fast if the tag and `package.json` disagree.
 
 Releases are **unsigned**. Stable Windows builds only carry the SignPath `publisherName` when
-`NIGHTSHIFT_WIN_SIGNPATH=1`, because an installed app with a publisherName rejects every
+`KOLUX_WIN_SIGNPATH=1`, because an installed app with a publisherName rejects every
 unsigned update. Builds made before 2026-09-14 do carry it, so they need one manual install
 of a newer release; after that, updates are automatic. Mac and Linux are not released.
 
@@ -106,7 +123,7 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   - **The ~30s "Claude takes forever to open" is not an app bug.** Measured on the owner's machine:
     PowerShell starts in 0.3s, the `claude` binary in 0.05s, the daemon-host copy in 1.7s — and
     `claude mcp list` takes **19.9s** against the 20 MCP servers configured globally. The startup
-    cost is the CLI dialling those servers, so it is a config problem, not a Nightshift one. Do
+    cost is the CLI dialling those servers, so it is a config problem, not a Kolux one. Do
     not go looking for it in the spawn path again. `DAEMON_RECOVERY_BUDGET_MS` (32s) is also not
     it: that only engages for a wedged daemon handoff.
 
@@ -221,10 +238,10 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   reach the installed app. Left alone: the renderer's remount loop on a fenced pane.
 - **Darker Code work area (2026-09-15).** Two parts. `--workbench-surface`
   (`main.css`, mapped for Tailwind) paints the tab-group body, splits and empty panes one
-  step below the chrome. The default dark terminal theme is now `Nightshift Dark`
+  step below the chrome. The default dark terminal theme is now `Kolux Dark`
   (`#0d0d0d`, `lib/terminal-themes/defaults.ts`); Ghostty's `#282c34` was the lightest
   surface on screen. Profiles that still hold the old default on disk move once through
-  `terminalThemeDarkDefaultedToNightshift` (`shared/terminal-theme-default-migration.ts`,
+  `terminalThemeDarkDefaultedToKolux` (`shared/terminal-theme-default-migration.ts`,
   applied in `prepare-loaded-profile-settings.ts`); a theme the user picked is never touched,
   and any later change from Settings sets the guard. Also fixed in passing: `--editor-surface`
   was never registered in the `@theme` block, so eleven `bg-editor-surface` call sites
@@ -309,8 +326,8 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
 - **Fixes after the live test (uncommitted as of writing).**
   - *Per-agent model + handoff.* Picking a count creates one row per agent (`LaunchAgentSlots`,
     `resizeLaunchSlots`); each row has its own agent and model. Every prompt is
-    `task + <nightshift-launch-brief>…</nightshift-launch-brief>` (`src/shared/launch-agent-brief.ts`):
-    role brief, stay-in-your-worktree, keep `.nightshift/handoffs/<worktree>.md` of every file
+    `task + <kolux-launch-brief>…</kolux-launch-brief>` (`src/shared/launch-agent-brief.ts`):
+    role brief, stay-in-your-worktree, keep `.kolux/handoffs/<worktree>.md` of every file
     added/updated/removed, and the context7 audit.
   - *Bug 4 fixed.* `first-work-branch-rename.ts` strips the brief before naming; brief-only
     prompts never rename.
@@ -335,7 +352,7 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   - **Live verification, final (2026-09-14, throwaway repo, rows opus/opus/sonnet/sonnet/haiku/haiku):**
     view stayed on `agent-grid` throughout; 6 worktrees, 6 grid tiles; no trust prompt anywhere; six
     `claude.exe` with matching `--model`; every agent wrote `count.txt` and
-    `.nightshift/handoffs/<worktree>.md`, and nothing else changed; branches renamed from the task
+    `.kolux/handoffs/<worktree>.md`, and nothing else changed; branches renamed from the task
     (`count-readme-lines`, `-2`…`-6`). One Haiku/Sonnet-class answer was wrong (5 vs 4): model
     quality, not app.
   - "Make it a git repo" verified live on the merged branch (`95356b57`, 2026-09-14). Opening
@@ -348,7 +365,7 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
   - *Bug 1: root cause found, fix not yet runtime-verified.* **On Windows Claude looks up trust
     only under forward-slash keys.** Its `d1()` runs `path.normalize` and then replaces `\` with
     `/`; `Dqe()` keys the project on the main repo root, and the fallback walk checks the worktree
-    folder, both through `d1()` (Claude Code 2.1.270 bundle). Nightshift wrote `G:\Dev\…`, which is
+    folder, both through `d1()` (Claude Code 2.1.270 bundle). Kolux wrote `G:\Dev\…`, which is
     never read. Proven live: six `hasTrustDialogAccepted: true` backslash entries still prompted,
     and accepting the prompt wrote `G:/…/six-agent-retest`, the forward-slash main repo root. Every
     "green" earlier fix wrote the wrong key. Fix: `toClaudeProjectKey()` in `claude-trust-preset.ts`
@@ -376,7 +393,7 @@ of a newer release; after that, updates are automatic. Mac and Linux are not rel
     (display list capped, scan is not) and a default `.gitignore`. "Publish to remote…" needs
     `confirmed: true`, defaults GitHub to private, rejects URLs with embedded credentials, and
     rolls back `origin` on failure (never deletes a created GitHub repo). Local hosts only.
-  - *Overlap CLI.* `nightshift worktree changes|overlap --json` (read-only; merge-tree prediction
+  - *Overlap CLI.* `kolux worktree changes|overlap --json` (read-only; merge-tree prediction
     on committed tips only). A non-authoritative sibling scan sets `siblingsUnverifiable`; one
     failing sibling degrades alone. Skill guides tell agents to run it before editing.
   - **Verified in a running app (hidden instance, CDP):** Clone-first hero + focus, both badges,
@@ -435,7 +452,7 @@ Inbox answer path. Each has unit coverage; drive them by hand before a release.
 Darker work area and Preview button, verified in the running dev app over CDP on 2026-09-15
 with the dev profile switched to dark and restored: tab-group body `rgb(10,10,10)`
 (`--workbench-surface`), tab strip `rgb(23,23,23)` (`--card`), xterm `rgb(13,13,13)`
-(Nightshift Dark), and the profile's stored theme had moved to `Nightshift Dark` with the
+(Kolux Dark), and the profile's stored theme had moved to `Kolux Dark` with the
 guard set. The Preview button (`tab-group/WorkspacePreviewButton.tsx`) renders disabled
 with no errors. Its enabled state could not be reached on this Windows machine, and the
 cause is upstream: the Windows port scan never learns a listener's working directory
@@ -468,7 +485,7 @@ Runtime traps found while doing this:
 - `pnpm dev` runs `ensure:electron-runtime`, which reinstalls and rebuilds native modules;
   on this machine that fails inside MSBuild's FileTracker (`FTK1011`, a missing `.tlog`
   directory for `@vscode/windows-process-tree`). Launch with
-  `NIGHTSHIFT_BACKGROUND_LAUNCH=1 node config/scripts/run-electron-vite-dev.mjs` instead.
+  `KOLUX_BACKGROUND_LAUNCH=1 node config/scripts/run-electron-vite-dev.mjs` instead.
 - Playwright's `page.screenshot` never returns against the off-screen window because it waits
   for a compositor frame. Use `page.evaluate` for DOM-level checks, and raw
   `Page.captureScreenshot` only when a frame exists.
@@ -524,7 +541,7 @@ pnpm run build:win       # unsigned installer in dist/
   your change and re-run to see whether the failure pre-dates it.
 - **Install from PowerShell, never Git Bash**, which rewrites `/S` into a path and drops the
   installer into its interactive UI:
-  `Start-Process dist\nightshift-windows-setup.exe -ArgumentList '/S','/currentuser' -Wait`.
+  `Start-Process dist\kolux-windows-setup.exe -ArgumentList '/S','/currentuser' -Wait`.
   Close any editor window holding the repo or the install folder first; a lock makes the
   silent update abort. `config/scripts/windows-who-locks.ps1 -Path <file>` names the holder.
 - **To drive the running app:** start it with `--remote-debugging-port=<port>` and connect
@@ -545,7 +562,7 @@ pnpm run build:win       # unsigned installer in dist/
 
 ## Naming
 
-The project is Nightshift. It was briefly called Fleet during the rebrand, and that name is
+The project is Kolux. It was briefly called Fleet during the rebrand, and that name is
 gone from source. Two things to know:
 
 - **`fleet` is also an ordinary word here**, meaning a group of agents, as in
@@ -558,7 +575,7 @@ gone from source. Two things to know:
 
 - Many commands ship with no keyboard shortcut on purpose, so they never claim a chord you
   already use. That policy is pinned by a test. Bind them per user in
-  `~/.nightshift/keybindings.json`; do not change the shipped defaults to suit one person.
+  `~/.kolux/keybindings.json`; do not change the shipped defaults to suit one person.
 - A few strings look like the old brand but are not: a real npm package, the unrelated GNOME
   Orca screen reader at `/usr/bin/orca`, and a legacy process name used only to clean up
   what older installs left behind. Leave all of them.

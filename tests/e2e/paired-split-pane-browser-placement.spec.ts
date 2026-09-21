@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { readHostBrowserPageIds } from './helpers/host-session-tabs'
 import {
   contentTypesOf,

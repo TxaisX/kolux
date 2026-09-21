@@ -9,7 +9,7 @@ import type { EnrichedAgentHookEventPayload } from './server-types'
 
 export abstract class AgentHookServerReaping extends AgentHookServerTabCleanup {
   /** Second reap path for restored Claude subagent rows: drop the ones whose pane
-   *  has no live local agent process behind it any more. A PTY that dies while Nightshift
+   *  has no live local agent process behind it any more. A PTY that dies while Kolux
    *  is down never runs the teardown that clears pane state, so hydrate rebuilds a
    *  roster nothing can ever retire — the inventory reap needs the parent to emit a
    *  complete `background_tasks` list and an idle parent never does. The row then
@@ -75,7 +75,7 @@ export abstract class AgentHookServerReaping extends AgentHookServerTabCleanup {
         // real turn to describe — a parent whose children it just reaped — while these panes' only
         // claim IS the stale non-terminal row. Rewriting a `waiting`/`blocked` row to `done` would
         // invent a completion that never happened, and leaving it non-terminal keeps the bug. This
-        // sweep stands in for the exit Nightshift never observed, so it does what that exit does:
+        // sweep stands in for the exit Kolux never observed, so it does what that exit does:
         // `clearProviderPtyState` -> `clearPaneState`.
         if (this.hasLiveClaimsForPaneKey(paneKey)) {
           this.clearPaneState(paneKey)

@@ -28,7 +28,7 @@ const GATE_ERROR_TITLES = [
   'The SSH server blocks browser traffic',
   'SSH connection unavailable'
 ]
-const CENSUS_KEY = '__nightshiftBrowserPaneMountCensus'
+const CENSUS_KEY = '__koluxBrowserPaneMountCensus'
 
 /** Must run before the first browser tab of interest is created. Idempotent per page. */
 export async function installBrowserPaneMountCensus(page: Page): Promise<void> {

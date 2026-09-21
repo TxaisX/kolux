@@ -19,7 +19,7 @@ import {
 const roots: string[] = []
 
 async function tempRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-marketplace-service-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-marketplace-service-'))
   roots.push(root)
   return root
 }
@@ -137,23 +137,23 @@ describe('PluginMarketplaceService', () => {
       pluginsDataDir: await tempRoot(),
       fetcher: async () =>
         fetched(
-          marketplace('Attack', 'community.nightshift-secrets', 'https://github.com/attacker/x.git')
+          marketplace('Attack', 'community.kolux-secrets', 'https://github.com/attacker/x.git')
         )
     })
 
     await expect(service.addSource(source())).rejects.toThrow(
-      'reserved plugin identity community.nightshift-secrets'
+      'reserved plugin identity community.kolux-secrets'
     )
     await expect(service.listSources()).resolves.toEqual([])
   })
 
   it('derives the Official badge only from the canonical marketplace and source organization', async () => {
     const officialMarketplace: PluginMarketplace = {
-      name: 'Nightshift Plugins',
+      name: 'Kolux Plugins',
       owner: 'TxaisX',
       plugins: [
         {
-          id: 'txais.nightshift-shortcuts',
+          id: 'txais.kolux-shortcuts',
           source: {
             kind: 'git',
             url: 'git@github.com:TxaisX/nightshift-shortcuts.git',
@@ -171,7 +171,7 @@ describe('PluginMarketplaceService', () => {
     await service.addSource(source('https://github.com/TxaisX/nightshift-plugins.git'))
 
     await expect(service.listPlugins()).resolves.toEqual([
-      expect.objectContaining({ pluginKey: 'txais.nightshift-shortcuts', official: true })
+      expect.objectContaining({ pluginKey: 'txais.kolux-shortcuts', official: true })
     ])
   })
 
@@ -215,8 +215,8 @@ describe('PluginMarketplaceService', () => {
   it('seeds the official marketplace once and keeps it configured across restarts', async () => {
     const root = await tempRoot()
     const officialMarketplace = marketplace(
-      'Nightshift Plugins',
-      'txais.nightshift-notes',
+      'Kolux Plugins',
+      'txais.kolux-notes',
       'https://github.com/TxaisX/nightshift-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'
@@ -225,7 +225,7 @@ describe('PluginMarketplaceService', () => {
 
     await expect(first.seedOfficialSource()).resolves.toMatchObject({
       official: true,
-      marketplace: { name: 'Nightshift Plugins' }
+      marketplace: { name: 'Kolux Plugins' }
     })
     await expect(first.seedOfficialSource()).resolves.toMatchObject({ official: true })
     expect(fetcher).toHaveBeenCalledTimes(1)
@@ -258,8 +258,8 @@ describe('PluginMarketplaceService', () => {
       addedAt: 1
     }
     const officialMarketplace = marketplace(
-      'Nightshift Plugins',
-      'txais.nightshift-notes',
+      'Kolux Plugins',
+      'txais.kolux-notes',
       'https://github.com/TxaisX/nightshift-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'
@@ -289,7 +289,7 @@ describe('PluginMarketplaceService', () => {
       expect.objectContaining({ id: registered.id, official: true })
     ])
     await expect(service.seedOfficialSource()).resolves.toMatchObject({
-      marketplace: { name: 'Nightshift Plugins' },
+      marketplace: { name: 'Kolux Plugins' },
       official: true
     })
   })
@@ -303,8 +303,8 @@ describe('PluginMarketplaceService', () => {
       )
     )
     const officialMarketplace = marketplace(
-      'Nightshift Plugins',
-      'txais.nightshift-notes',
+      'Kolux Plugins',
+      'txais.kolux-notes',
       'https://github.com/TxaisX/nightshift-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'

@@ -11,9 +11,9 @@ const platform = valueAfter('--platform')
 const dockerPlatformArgs = platform ? ['--platform', platform] : []
 
 const suffix = `${process.pid}-${Date.now()}`
-const artifactVolume = `nightshift-cli-contract-artifact-${suffix}`
+const artifactVolume = `kolux-cli-contract-artifact-${suffix}`
 const tagArchitecture = platform?.split('/')[1] ?? process.arch
-const tag = `nightshift-cli-launch-contract:ubuntu-24.04-${tagArchitecture}-${suffix}`
+const tag = `kolux-cli-launch-contract:ubuntu-24.04-${tagArchitecture}-${suffix}`
 const base = 'ubuntu@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90'
 const containers = new Set()
 let artifactVolumeCreated = false
@@ -28,7 +28,7 @@ const CASES = [
   {
     name: 'nofuse-userns-bundled-help',
     expectStatus: 0,
-    expectOutput: 'Usage: nightshift <command>',
+    expectOutput: 'Usage: kolux <command>',
     why: 'The bundled launcher must run with no FUSE, no display, and userns restricted (#11609, #12530).'
   },
   {
@@ -48,19 +48,19 @@ const CASES = [
     name: 'nofuse-userns-bundled-skills',
     expectStatus: 0,
     // Why: the rendered help header, not a bare 'skills' — the case name contains that word.
-    expectOutput: 'Usage: nightshift skills',
+    expectOutput: 'Usage: kolux skills',
     why: 'skills is a pure-text command that must never need Chromium (#14229).'
   },
   {
     name: 'nofuse-userns-bundled-worktree',
     expectStatus: 1,
-    expectOutput: "Nightshift is not running. Run 'nightshift open' first.",
+    expectOutput: "Kolux is not running. Run 'kolux open' first.",
     why: 'A runtime-dependent command must report the missing runtime, not abort.'
   },
   {
     name: 'nofuse-nosandbox-direct-binary-skills',
     expectStatus: 0,
-    expectOutput: 'Usage: nightshift skills',
+    expectOutput: 'Usage: kolux skills',
     why: 'A direct binary launch that reaches JavaScript must run the command, not boot a GUI (#14229).'
   },
   {
@@ -81,7 +81,7 @@ const CASES = [
 try {
   if (!appImage) {
     fail(
-      'Usage: run-linux-cli-launch-contract-docker.mjs --appimage /path/to/nightshift-linux.AppImage [--platform linux/amd64|linux/arm64]'
+      'Usage: run-linux-cli-launch-contract-docker.mjs --appimage /path/to/kolux-linux.AppImage [--platform linux/amd64|linux/arm64]'
     )
   }
   if (commandArgs.includes('--platform') && !platform) {
@@ -152,7 +152,7 @@ function runContract() {
 }
 
 function runCase(caseName) {
-  const container = `nightshift-cli-contract-${caseName}-${suffix}`
+  const container = `kolux-cli-contract-${caseName}-${suffix}`
   containers.add(container)
   // FUSE and extra capabilities would invalidate the test conditions.
   return docker(
@@ -198,7 +198,7 @@ function buildImage() {
 // Extract unprivileged so chrome-sandbox is not root-owned setuid.
 function stageArtifacts() {
   console.log('Staging the AppImage payload…')
-  const container = `nightshift-cli-contract-stage-${suffix}`
+  const container = `kolux-cli-contract-stage-${suffix}`
   containers.add(container)
   docker(
     [
@@ -210,19 +210,19 @@ function stageArtifacts() {
       '-v',
       `${artifactVolume}:/artifacts`,
       '-v',
-      `${appImage}:/input/nightshift-linux.AppImage:ro`,
+      `${appImage}:/input/kolux-linux.AppImage:ro`,
       '--entrypoint',
       'bash',
       tag,
       '-lc',
       [
         'set -euo pipefail',
-        'cp /input/nightshift-linux.AppImage /artifacts/nightshift-linux.AppImage',
-        'chmod +x /artifacts/nightshift-linux.AppImage',
-        'chown -R nightshift:nightshift /artifacts',
+        'cp /input/kolux-linux.AppImage /artifacts/kolux-linux.AppImage',
+        'chmod +x /artifacts/kolux-linux.AppImage',
+        'chown -R kolux:kolux /artifacts',
         // Use the AppImage runtime's no-FUSE extraction path.
-        'cd /artifacts && runuser --user nightshift -- ./nightshift-linux.AppImage --appimage-extract >/dev/null',
-        'test -x /artifacts/squashfs-root/resources/bin/nightshift-ide'
+        'cd /artifacts && runuser --user kolux -- ./kolux-linux.AppImage --appimage-extract >/dev/null',
+        'test -x /artifacts/squashfs-root/resources/bin/kolux-ide'
       ].join(' && ')
     ],
     { timeoutMs: STAGING_TIMEOUT_MS }

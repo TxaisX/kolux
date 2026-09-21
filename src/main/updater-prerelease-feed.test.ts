@@ -27,9 +27,9 @@ function buildManifest(tag: string): string {
   return [
     `version: ${version}`,
     'files:',
-    `  - url: Nightshift-${version}-arm64-mac.zip`,
+    `  - url: Kolux-${version}-arm64-mac.zip`,
     '    sha512: test',
-    `path: Nightshift-${version}-arm64-mac.zip`
+    `path: Kolux-${version}-arm64-mac.zip`
   ].join('\n')
 }
 
@@ -160,7 +160,7 @@ describe('fetchNewerReleaseTag', () => {
         `https://github.com/TxaisX/nightshift/releases/download/v1.4.1/${manifestName}`
       ])
       expect(assetUrls).toEqual([
-        'https://github.com/TxaisX/nightshift/releases/download/v1.4.1/Nightshift-1.4.1-arm64-mac.zip'
+        'https://github.com/TxaisX/nightshift/releases/download/v1.4.1/Kolux-1.4.1-arm64-mac.zip'
       ])
       expect(netRequestMock).toHaveBeenCalledTimes(platform === 'win32' ? 1 : 0)
     }

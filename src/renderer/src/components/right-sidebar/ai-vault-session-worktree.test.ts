@@ -21,7 +21,7 @@ const baseSession: AiVaultSession = {
   agent: 'codex',
   sessionId: 'session-1',
   title: 'Find the pane',
-  cwd: '/repo/nightshift/src',
+  cwd: '/repo/kolux/src',
   branch: null,
   model: null,
   filePath: '/home/ada/.codex/session-1.jsonl',
@@ -40,10 +40,10 @@ const baseSession: AiVaultSession = {
 
 function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
   const worktree: Worktree = {
-    id: 'repo-1::/repo/nightshift',
+    id: 'repo-1::/repo/kolux',
     repoId: 'repo-1',
-    displayName: 'nightshift',
-    path: '/repo/nightshift',
+    displayName: 'kolux',
+    path: '/repo/kolux',
     head: 'abc123',
     branch: 'main',
     isBare: false,
@@ -64,8 +64,8 @@ function makeWorktree(overrides: Partial<Worktree> = {}): Worktree {
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
-    path: '/repo/nightshift',
-    displayName: 'nightshift',
+    path: '/repo/kolux',
+    displayName: 'kolux',
     badgeColor: '#737373',
     addedAt: 1,
     connectionId: null,
@@ -86,8 +86,8 @@ describe('resolveAiVaultSessionWorktreeInfo', () => {
       })
     ).toMatchObject({
       status: 'current',
-      label: 'nightshift',
-      path: '/repo/nightshift'
+      label: 'kolux',
+      path: '/repo/kolux'
     })
   })
 
@@ -105,9 +105,9 @@ describe('resolveAiVaultSessionWorktreeInfo', () => {
 
   it('uses prior worktree paths to identify renamed active worktrees', () => {
     const worktree = makeWorktree({
-      id: 'repo-1::/repo/nightshift-renamed',
-      path: '/repo/nightshift-renamed',
-      priorWorktreeIds: ['repo-1::/repo/nightshift']
+      id: 'repo-1::/repo/kolux-renamed',
+      path: '/repo/kolux-renamed',
+      priorWorktreeIds: ['repo-1::/repo/kolux']
     })
 
     expect(
@@ -118,8 +118,8 @@ describe('resolveAiVaultSessionWorktreeInfo', () => {
       })
     ).toMatchObject({
       status: 'active',
-      label: 'nightshift',
-      path: '/repo/nightshift'
+      label: 'kolux',
+      path: '/repo/kolux'
     })
   })
 
@@ -132,48 +132,48 @@ describe('resolveAiVaultSessionWorktreeInfo', () => {
       })
     ).toMatchObject({
       status: 'unavailable',
-      label: 'nightshift/src',
-      path: '/repo/nightshift/src'
+      label: 'kolux/src',
+      path: '/repo/kolux/src'
     })
   })
 
   it('matches WSL UNC worktree paths to Linux transcript cwd values', () => {
     const worktree = makeWorktree({
-      path: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\nightshift'
+      path: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\kolux'
     })
 
     expect(
       resolveAiVaultSessionWorktreeInfo({
-        session: { ...baseSession, cwd: '/home/ada/nightshift/src' },
+        session: { ...baseSession, cwd: '/home/ada/kolux/src' },
         worktrees: [worktree],
         activeWorktreeId: null
       })
     ).toMatchObject({
       status: 'active',
-      label: 'nightshift',
-      path: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\nightshift'
+      label: 'kolux',
+      path: '\\\\wsl.localhost\\Ubuntu\\home\\ada\\kolux'
     })
   })
 
   it('uses the session host when multiple worktrees share the same path', () => {
     const localWorktree = makeWorktree({
-      id: 'repo-local::/srv/nightshift',
+      id: 'repo-local::/srv/kolux',
       repoId: 'repo-local',
       displayName: 'local',
-      path: '/srv/nightshift',
+      path: '/srv/kolux',
       hostId: 'local'
     })
     const sshWorktree = makeWorktree({
-      id: 'repo-ssh::/srv/nightshift',
+      id: 'repo-ssh::/srv/kolux',
       repoId: 'repo-ssh',
       displayName: 'ssh',
-      path: '/srv/nightshift',
+      path: '/srv/kolux',
       hostId: 'ssh:target-1'
     })
 
     expect(
       resolveAiVaultSessionWorktreeInfo({
-        session: { ...baseSession, cwd: '/srv/nightshift/src', executionHostId: 'ssh:target-1' },
+        session: { ...baseSession, cwd: '/srv/kolux/src', executionHostId: 'ssh:target-1' },
         worktrees: [localWorktree, sshWorktree],
         activeWorktreeId: null
       })
@@ -185,15 +185,15 @@ describe('resolveAiVaultSessionWorktreeInfo', () => {
 
   it('uses repo host ownership when a legacy worktree lacks host metadata', () => {
     const worktree = makeWorktree({
-      id: 'repo-ssh::/srv/nightshift',
+      id: 'repo-ssh::/srv/kolux',
       repoId: 'repo-ssh',
       displayName: 'ssh',
-      path: '/srv/nightshift'
+      path: '/srv/kolux'
     })
 
     expect(
       resolveAiVaultSessionWorktreeInfo({
-        session: { ...baseSession, cwd: '/srv/nightshift/src', executionHostId: 'ssh:target-1' },
+        session: { ...baseSession, cwd: '/srv/kolux/src', executionHostId: 'ssh:target-1' },
         repos: [makeRepo({ id: 'repo-ssh', connectionId: 'target-1', executionHostId: null })],
         worktrees: [worktree],
         activeWorktreeId: null
@@ -232,11 +232,11 @@ describe('extractWorktreePathFromSessionTitle', () => {
   it('reads worktree paths embedded in session titles', () => {
     expect(
       extractWorktreePathFromSessionTitle(
-        'Inspect PR #6229 - Worktree: /Users/ada/projects/nightshift/fix-tabs'
+        'Inspect PR #6229 - Worktree: /Users/ada/projects/kolux/fix-tabs'
       )
-    ).toBe('/Users/ada/projects/nightshift/fix-tabs')
-    expect(extractWorktreePathFromSessionTitle('Worktree: /tmp/nightshift-worker')).toBe(
-      '/tmp/nightshift-worker'
+    ).toBe('/Users/ada/projects/kolux/fix-tabs')
+    expect(extractWorktreePathFromSessionTitle('Worktree: /tmp/kolux-worker')).toBe(
+      '/tmp/kolux-worker'
     )
   })
 })
@@ -249,12 +249,12 @@ describe('resolveAiVaultSessionWorktreeDisplay', () => {
           ...baseSession,
           cwd: null,
           branch: null,
-          title: 'Fix tabs - Worktree: /Users/ada/projects/nightshift/fix-tabs'
+          title: 'Fix tabs - Worktree: /Users/ada/projects/kolux/fix-tabs'
         },
         worktrees: [makeWorktree()],
         activeWorktreeId: null
       })?.path
-    ).toBe('/Users/ada/projects/nightshift/fix-tabs')
+    ).toBe('/Users/ada/projects/kolux/fix-tabs')
 
     expect(
       resolveAiVaultSessionWorktreeDisplay({
@@ -268,8 +268,8 @@ describe('resolveAiVaultSessionWorktreeDisplay', () => {
 
 describe('aiVaultWorktreeCompactPath', () => {
   it('keeps the last two path segments for dense detail rows', () => {
-    expect(aiVaultWorktreeCompactPath('/Users/ada/projects/nightshift/improve-agent-session')).toBe(
-      'nightshift/improve-agent-session'
+    expect(aiVaultWorktreeCompactPath('/Users/ada/projects/kolux/improve-agent-session')).toBe(
+      'kolux/improve-agent-session'
     )
   })
 })
@@ -322,8 +322,8 @@ function makeWorktreeInfo(
 ): AiVaultSessionWorktreeInfo {
   return {
     status,
-    label: 'nightshift',
-    path: '/repo/nightshift',
-    ...(status === 'unavailable' ? {} : { worktreeId: 'repo-1::/repo/nightshift' })
+    label: 'kolux',
+    path: '/repo/kolux',
+    ...(status === 'unavailable' ? {} : { worktreeId: 'repo-1::/repo/kolux' })
   }
 }

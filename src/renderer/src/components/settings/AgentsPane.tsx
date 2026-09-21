@@ -103,7 +103,7 @@ export function AgentPermissionsSetting({
         }
         description={translate(
           'auto.components.settings.AgentsPane.agentPermissionsDescription',
-          'Choose whether Nightshift launches agents with fewer permission prompts or with manual checks.'
+          'Choose whether Kolux launches agents with fewer permission prompts or with manual checks.'
         )}
         action={
           <SettingsSegmentedControl<AgentPermissionMode>

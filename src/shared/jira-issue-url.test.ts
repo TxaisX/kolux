@@ -9,11 +9,11 @@ function site(id: string, siteUrl: string): JiraSite {
 function issue(overrides: Partial<JiraIssue> = {}): JiraIssue {
   return {
     id: '100',
-    key: 'NIGHTSHIFT-123',
+    key: 'KOLUX-123',
     siteId: 'cloud',
     title: 'Link Jira',
-    url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-    project: { id: '10', key: 'NIGHTSHIFT', name: 'Nightshift' },
+    url: 'https://company.atlassian.net/browse/KOLUX-123',
+    project: { id: '10', key: 'KOLUX', name: 'Kolux' },
     issueType: { id: '1', name: 'Task' },
     status: { id: '1', name: 'Open', categoryKey: 'new', categoryName: 'To Do' },
     labels: [],
@@ -26,8 +26,8 @@ function issue(overrides: Partial<JiraIssue> = {}): JiraIssue {
 describe('parseJiraIssueUrl', () => {
   it.each([
     [
-      'https://company.atlassian.net/browse/nightshift-123?focusedCommentId=1#comment',
-      { issueKey: 'NIGHTSHIFT-123', origin: 'https://company.atlassian.net', sitePath: '' }
+      'https://company.atlassian.net/browse/kolux-123?focusedCommentId=1#comment',
+      { issueKey: 'KOLUX-123', origin: 'https://company.atlassian.net', sitePath: '' }
     ],
     [
       'http://jira.company.com:8080/jira/browse/TEAM_CORE-42',
@@ -50,16 +50,16 @@ describe('parseJiraIssueUrl', () => {
   })
 
   it.each([
-    'NIGHTSHIFT-123',
-    '/browse/NIGHTSHIFT-123',
-    'ftp://jira.example.com/browse/NIGHTSHIFT-123',
-    'https://user:secret@jira.example.com/browse/NIGHTSHIFT-123',
+    'KOLUX-123',
+    '/browse/KOLUX-123',
+    'ftp://jira.example.com/browse/KOLUX-123',
+    'https://user:secret@jira.example.com/browse/KOLUX-123',
     'https://jira.example.com/browse/123',
     'https://jira.example.com/browse/-123',
-    'https://jira.example.com/browse/NIGHTSHIFT_123',
-    'https://jira.example.com/browse/NIGHTSHIFT-X',
-    'https://jira.example.com/browse/NIGHTSHIFT-123/extra',
-    'https://jira.example.com/browse/NIGHTSHIFT-123/'
+    'https://jira.example.com/browse/KOLUX_123',
+    'https://jira.example.com/browse/KOLUX-X',
+    'https://jira.example.com/browse/KOLUX-123/extra',
+    'https://jira.example.com/browse/KOLUX-123/'
   ])('rejects %s', (value) => {
     expect(parseJiraIssueUrl(value)).toBeNull()
   })
@@ -67,7 +67,7 @@ describe('parseJiraIssueUrl', () => {
 
 describe('Jira site and issue matching', () => {
   it('matches the complete origin and base path while retaining duplicate accounts', () => {
-    const parsed = parseJiraIssueUrl('https://jira.company.com:8443/jira/browse/NIGHTSHIFT-123')!
+    const parsed = parseJiraIssueUrl('https://jira.company.com:8443/jira/browse/KOLUX-123')!
     const matches = getMatchingJiraSites(parsed, [
       site('a', 'https://jira.company.com:8443/jira'),
       site('b', 'https://jira.company.com:8443/jira/'),
@@ -79,18 +79,16 @@ describe('Jira site and issue matching', () => {
   })
 
   it('requires the key, site id, and canonical URL site to agree', () => {
-    const parsed = parseJiraIssueUrl('https://company.atlassian.net/browse/NIGHTSHIFT-123')!
+    const parsed = parseJiraIssueUrl('https://company.atlassian.net/browse/KOLUX-123')!
     const connectedSite = site('cloud', 'https://company.atlassian.net')
     expect(isResolvedJiraIssueMatch(parsed, connectedSite, issue())).toBe(true)
-    expect(isResolvedJiraIssueMatch(parsed, connectedSite, issue({ key: 'NIGHTSHIFT-124' }))).toBe(
-      false
-    )
+    expect(isResolvedJiraIssueMatch(parsed, connectedSite, issue({ key: 'KOLUX-124' }))).toBe(false)
     expect(isResolvedJiraIssueMatch(parsed, connectedSite, issue({ siteId: 'other' }))).toBe(false)
     expect(
       isResolvedJiraIssueMatch(
         parsed,
         connectedSite,
-        issue({ url: 'https://other.atlassian.net/browse/NIGHTSHIFT-123' })
+        issue({ url: 'https://other.atlassian.net/browse/KOLUX-123' })
       )
     ).toBe(false)
   })

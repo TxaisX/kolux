@@ -30,18 +30,18 @@ describe('remote pairing address', () => {
     ['10.0.0.8', 'lan'],
     ['fd7a:115c:a1e0::1', 'lan'],
     ['fe80::1', 'lan'],
-    ['nightshift.example.com', 'public'],
+    ['kolux.example.com', 'public'],
     ['devbox', 'custom']
   ] as const)('classifies %s as %s', (hostname, expected) => {
     expect(classifyRemotePairingHostname(hostname)).toBe(expected)
   })
 
   it('extracts a sanitized display endpoint without credentials', () => {
-    expect(parseHostAccessLink(accessLink('wss://nightshift.example.com/runtime'))).toEqual({
+    expect(parseHostAccessLink(accessLink('wss://kolux.example.com/runtime'))).toEqual({
       ok: true,
       value: {
-        pairing: expect.objectContaining({ endpoint: 'wss://nightshift.example.com/runtime' }),
-        displayEndpoint: 'nightshift.example.com',
+        pairing: expect.objectContaining({ endpoint: 'wss://kolux.example.com/runtime' }),
+        displayEndpoint: 'kolux.example.com',
         endpointKind: 'public'
       }
     })
@@ -57,21 +57,19 @@ describe('remote pairing address', () => {
       ok: false,
       kind: 'invalid-input'
     })
-    expect(parseHostAccessLink(accessLink('https://nightshift.example.com'))).toMatchObject({
+    expect(parseHostAccessLink(accessLink('https://kolux.example.com'))).toMatchObject({
       ok: false,
       kind: 'unsupported-destination'
     })
-    expect(parseHostAccessLink(accessLink('wss://nightshift.example.com/#fragment'))).toMatchObject(
-      {
-        ok: false,
-        kind: 'unsupported-destination'
-      }
-    )
+    expect(parseHostAccessLink(accessLink('wss://kolux.example.com/#fragment'))).toMatchObject({
+      ok: false,
+      kind: 'unsupported-destination'
+    })
     expect(parseHostAccessLink(accessLink('ws://[::ffff:0.0.0.0]:6768'))).toMatchObject({
       ok: false,
       kind: 'non-connectable-destination'
     })
-    expect(parseHostAccessLink(accessLink('wss://nightshift.example.com:0'))).toMatchObject({
+    expect(parseHostAccessLink(accessLink('wss://kolux.example.com:0'))).toMatchObject({
       ok: false,
       kind: 'non-connectable-destination'
     })
@@ -91,7 +89,7 @@ describe('remote pairing address', () => {
   it('rejects mobile-only access grants', () => {
     const link = encodePairingOffer({
       v: PAIRING_OFFER_VERSION,
-      endpoint: 'wss://nightshift.example.com',
+      endpoint: 'wss://kolux.example.com',
       deviceToken: 'token',
       publicKeyB64: 'key',
       scope: 'mobile'

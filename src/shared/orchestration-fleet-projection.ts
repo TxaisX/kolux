@@ -60,11 +60,11 @@ export type FleetLiveness =
         | 'host_unavailable'
         /** The host answered and lacks the fleet-snapshot capability; contact was never lost. */
         | 'capability_unsupported'
-        /** Nightshift's own fleet budget ran out before it asked the host anything. */
+        /** Kolux's own fleet budget ran out before it asked the host anything. */
         | 'home_budget_exhausted'
         /** The host answered and could not tell; contact was never lost. */
         | 'host_indeterminate'
-        /** The saved environment now identifies a different Nightshift server. */
+        /** The saved environment now identifies a different Kolux server. */
         | 'peer_changed'
         /** The Dispatch settled with no worker row, so no process was ever supervised. */
         | 'unsupervised_settled'

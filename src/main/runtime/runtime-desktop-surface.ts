@@ -1,7 +1,7 @@
 import type { BrowserWindow, IpcMainEvent } from 'electron'
 
 /**
- * The desktop facilities `NightshiftRuntimeService` uses, which a Node host does not have.
+ * The desktop facilities `KoluxRuntimeService` uses, which a Node host does not have.
  *
  * Three sites, all optional by nature: a native notification toast, a lookup of the
  * authoritative renderer window, and one ipcMain channel used only by the

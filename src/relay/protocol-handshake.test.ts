@@ -9,9 +9,9 @@ import {
 } from './protocol'
 
 describe('handshake framing', () => {
-  it('round-trips a nightshift-relay-handshake envelope through the existing framing', () => {
+  it('round-trips a kolux-relay-handshake envelope through the existing framing', () => {
     const sent = encodeHandshakeFrame({
-      type: 'nightshift-relay-handshake',
+      type: 'kolux-relay-handshake',
       version: '0.1.0+deadbeef'
     })
     expect(sent[0]).toBe(MessageType.Handshake)
@@ -24,24 +24,24 @@ describe('handshake framing', () => {
     expect(frames).toHaveLength(1)
     expect(frames[0].type).toBe(MessageType.Handshake)
     const msg = parseHandshakeMessage(frames[0].payload)
-    expect(msg).toEqual({ type: 'nightshift-relay-handshake', version: '0.1.0+deadbeef' })
+    expect(msg).toEqual({ type: 'kolux-relay-handshake', version: '0.1.0+deadbeef' })
   })
 
-  it('round-trips a nightshift-relay-handshake-ok reply', () => {
+  it('round-trips a kolux-relay-handshake-ok reply', () => {
     const sent = encodeHandshakeFrame({
-      type: 'nightshift-relay-handshake-ok',
+      type: 'kolux-relay-handshake-ok',
       version: '0.1.0+deadbeef'
     })
     const frames: DecodedFrame[] = []
     const decoder = new FrameDecoder((f) => frames.push(f))
     decoder.feed(sent)
     const msg = parseHandshakeMessage(frames[0].payload)
-    expect(msg).toEqual({ type: 'nightshift-relay-handshake-ok', version: '0.1.0+deadbeef' })
+    expect(msg).toEqual({ type: 'kolux-relay-handshake-ok', version: '0.1.0+deadbeef' })
   })
 
-  it('round-trips a nightshift-relay-handshake-mismatch reply', () => {
+  it('round-trips a kolux-relay-handshake-mismatch reply', () => {
     const sent = encodeHandshakeFrame({
-      type: 'nightshift-relay-handshake-mismatch',
+      type: 'kolux-relay-handshake-mismatch',
       expected: '0.1.0+aaa',
       got: '0.1.0+bbb'
     })
@@ -50,14 +50,14 @@ describe('handshake framing', () => {
     decoder.feed(sent)
     const msg = parseHandshakeMessage(frames[0].payload)
     expect(msg).toEqual({
-      type: 'nightshift-relay-handshake-mismatch',
+      type: 'kolux-relay-handshake-mismatch',
       expected: '0.1.0+aaa',
       got: '0.1.0+bbb'
     })
   })
 
   it('rejects payloads with unknown type', () => {
-    const bogus = Buffer.from(JSON.stringify({ type: 'nightshift-something-else', version: 'x' }))
+    const bogus = Buffer.from(JSON.stringify({ type: 'kolux-something-else', version: 'x' }))
     expect(() => parseHandshakeMessage(bogus)).toThrow(/Unknown handshake type/)
   })
 

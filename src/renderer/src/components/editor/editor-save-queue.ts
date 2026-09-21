@@ -8,7 +8,7 @@ import {
   canAutoSaveOpenFile,
   isAutosaveSuspendedForFile,
   normalizeAutoSaveDelayMs,
-  NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT,
+  KOLUX_EDITOR_FILE_SAVED_EVENT,
   type EditorFileSavedDetail
 } from './editor-autosave'
 import { flushPendingEditorChange } from './editor-pending-flush'
@@ -139,7 +139,7 @@ export function createEditorSaveQueue(store: AppStoreApi): EditorSaveQueue {
         }
 
         window.dispatchEvent(
-          new CustomEvent<EditorFileSavedDetail>(NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT, {
+          new CustomEvent<EditorFileSavedDetail>(KOLUX_EDITOR_FILE_SAVED_EVENT, {
             detail: { fileId: file.id, content: contentToSave }
           })
         )

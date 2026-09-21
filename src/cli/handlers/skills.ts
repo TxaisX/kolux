@@ -116,7 +116,7 @@ function runNpxSkills(args: string[]): Promise<number> {
 
 type SkillMutationVerb = 'install' | 'update'
 
-/** Agents Nightshift can see on this host, as `skills --agent` keys. */
+/** Agents Kolux can see on this host, as `skills --agent` keys. */
 function detectSkillsCliAgentKeys(): string[] {
   const runtime = process.platform
   const probes = getTuiAgentDetectionProbeCommands(KNOWN_TUI_AGENT_DETECTION_COMMANDS, runtime)
@@ -173,7 +173,7 @@ function resolveInstallAgentKeys(flags: Map<string, string | boolean>): string[]
     'invalid_environment',
     'No coding agent detected on this host, so there is no install target. Pass ' +
       '--agent <name>[,<name>...] to choose targets explicitly — --agent universal ' +
-      'writes only the shared .agents/skills directory that Nightshift reads.'
+      'writes only the shared .agents/skills directory that Kolux reads.'
   )
 }
 
@@ -202,8 +202,8 @@ function formatSkillSelectionHelp(verb: SkillMutationVerb, skillNames: string[])
     `Choose one or more skills to ${verb}:`,
     ...skillNames.map((name) => `  ${name}`),
     '',
-    `Usage: nightshift skills ${verb} --skill <name> [--skill <name> ...]`,
-    `   or: nightshift skills ${verb} --all`
+    `Usage: kolux skills ${verb} --skill <name> [--skill <name> ...]`,
+    `   or: kolux skills ${verb} --all`
   ].join('\n')
 }
 
@@ -225,11 +225,11 @@ function createSkillMutationHandler(verb: SkillMutationVerb): CommandHandler {
     // Why: this runs before target resolution because the answer belongs to the
     // other machine — agents detected here would be the wrong host's, and a host
     // that detects none would hide the forwarding problem behind that error.
-    if (process.env.NIGHTSHIFT_CLI_CWD) {
+    if (process.env.KOLUX_CLI_CWD) {
       throw new RuntimeClientError(
         'invalid_environment',
-        `nightshift skills ${verb} writes to the machine that runs it, but this shell forwards ` +
-          `nightshift to the Nightshift host. Run the same nightshift skills ${verb} command on the machine ` +
+        `kolux skills ${verb} writes to the machine that runs it, but this shell forwards ` +
+          `kolux to the Kolux host. Run the same kolux skills ${verb} command on the machine ` +
           "you want it on, where it can detect that host's agents."
       )
     }
@@ -255,7 +255,7 @@ function createSkillMutationHandler(verb: SkillMutationVerb): CommandHandler {
       // that stream is not JSON, so --json can't be honored here.
       throw new RuntimeClientError(
         'invalid_argument',
-        `nightshift skills ${verb} --json only supports --dry-run. Real ${verb}s stream ` +
+        `kolux skills ${verb} --json only supports --dry-run. Real ${verb}s stream ` +
           "npx's own output, which isn't JSON."
       )
     }

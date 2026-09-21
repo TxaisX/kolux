@@ -40,14 +40,14 @@ nodeModule.registerHooks({
 })
 
 const ROOT = path.resolve(import.meta.dirname, '../..')
-const ROUNDS = Number(process.env.NIGHTSHIFT_SESSION_WRITE_BENCH_ROUNDS ?? '9')
-const LEAVES = Number(process.env.NIGHTSHIFT_SESSION_WRITE_BENCH_LEAVES ?? '8')
-const PANE_KEYS = Number(process.env.NIGHTSHIFT_SESSION_WRITE_BENCH_PANE_KEYS ?? '2000')
+const ROUNDS = Number(process.env.KOLUX_SESSION_WRITE_BENCH_ROUNDS ?? '9')
+const LEAVES = Number(process.env.KOLUX_SESSION_WRITE_BENCH_LEAVES ?? '8')
+const PANE_KEYS = Number(process.env.KOLUX_SESSION_WRITE_BENCH_PANE_KEYS ?? '2000')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_SESSION_WRITE_BENCH_ROUNDS', ROUNDS],
-  ['NIGHTSHIFT_SESSION_WRITE_BENCH_LEAVES', LEAVES],
-  ['NIGHTSHIFT_SESSION_WRITE_BENCH_PANE_KEYS', PANE_KEYS]
+  ['KOLUX_SESSION_WRITE_BENCH_ROUNDS', ROUNDS],
+  ['KOLUX_SESSION_WRITE_BENCH_LEAVES', LEAVES],
+  ['KOLUX_SESSION_WRITE_BENCH_PANE_KEYS', PANE_KEYS]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, got ${value}`)

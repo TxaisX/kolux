@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -12,8 +12,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -24,7 +24,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -45,10 +45,10 @@ import { main } from './index'
 import { okFixture, queueFixtures } from './test-fixtures'
 import { pairRuntimeEnvironment, useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -82,12 +82,12 @@ describe('nightshift cli worktree awareness', () => {
         projects: [
           {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             providerIdentity: {
               provider: 'github',
               owner: 'txaisx',
-              repo: 'nightshift'
+              repo: 'kolux'
             },
             sourceRepoIds: ['repo-1'],
             createdAt: 1,
@@ -114,8 +114,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'local',
             repoId: 'repo-local',
-            path: '/tmp/nightshift',
-            displayName: 'Nightshift',
+            path: '/tmp/kolux',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'legacy-repo',
             createdAt: 1,
@@ -126,8 +126,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'runtime:gpu',
             repoId: 'repo-remote',
-            path: '/srv/nightshift',
-            displayName: 'Nightshift',
+            path: '/srv/kolux',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'legacy-repo',
             createdAt: 1,
@@ -160,8 +160,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'local',
             repoId: 'repo-on-box',
-            path: '/srv/nightshift',
-            displayName: 'Nightshift',
+            path: '/srv/kolux',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'legacy-repo',
             createdAt: 1,
@@ -172,8 +172,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'runtime:prod',
             repoId: 'repo-by-client',
-            path: '/srv/nightshift-2',
-            displayName: 'Nightshift',
+            path: '/srv/kolux-2',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'legacy-repo',
             createdAt: 1,
@@ -192,7 +192,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   // Why: --host runtime:<id> routes to a paired server, so an older one is reachable without the
-  // caller meaning to. A raw method_not_found reads as a Nightshift bug rather than a version gap.
+  // caller meaning to. A raw method_not_found reads as a Kolux bug rather than a version gap.
   it('names the version gap when the server predates project host setup', async () => {
     pairRuntimeEnvironment(listEnvironmentsMock, 'old-server')
     const { RuntimeClientError } = await import('./runtime/types.js')
@@ -223,7 +223,7 @@ describe('nightshift cli worktree awareness', () => {
     // The command itself never reached a runtime; only the suggestion lookup did.
     expect(callMock).not.toHaveBeenCalledWith('projectHostSetup.list')
     const printed = [...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')
-    expect(printed).toContain('no paired Nightshift server is named or has id not-a-real-env')
+    expect(printed).toContain('no paired Kolux server is named or has id not-a-real-env')
     // An agent reads the code and the retry candidates, not the prose.
     expect(JSON.parse(printed).error.code).toBe('invalid_argument')
     expect(JSON.parse(printed).error.data.knownEnvironments).toEqual([])
@@ -279,8 +279,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'ssh:ssh-123-abc',
             repoId: 'repo-openclaw',
-            path: '/home/me/nightshift',
-            displayName: 'Nightshift',
+            path: '/home/me/kolux',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'legacy-repo',
             createdAt: 1,
@@ -307,7 +307,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
             createdAt: 1,
@@ -393,7 +393,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: ['repo-1'],
             createdAt: 1,
@@ -404,8 +404,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'local',
             repoId: 'repo-1',
-            path: path.resolve('/tmp/nightshift'),
-            displayName: 'Nightshift',
+            path: path.resolve('/tmp/kolux'),
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'imported-existing-folder',
             createdAt: 1,
@@ -413,8 +413,8 @@ describe('nightshift cli worktree awareness', () => {
           },
           repo: {
             id: 'repo-1',
-            path: path.resolve('/tmp/nightshift'),
-            displayName: 'Nightshift',
+            path: path.resolve('/tmp/kolux'),
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             addedAt: 1
           }
@@ -436,18 +436,18 @@ describe('nightshift cli worktree awareness', () => {
         '--kind',
         'git',
         '--display-name',
-        'Nightshift',
+        'Kolux',
         '--json'
       ],
-      '/tmp/nightshift/worktrees/feature'
+      '/tmp/kolux/worktrees/feature'
     )
 
     expect(callMock).toHaveBeenCalledWith('projectHostSetup.setupExistingFolder', {
       projectId: 'github:TxaisX/nightshift',
       hostId: 'local',
-      path: path.resolve('/tmp/nightshift/worktrees'),
+      path: path.resolve('/tmp/kolux/worktrees'),
       kind: 'git',
-      displayName: 'Nightshift'
+      displayName: 'Kolux'
     })
   })
 
@@ -466,7 +466,7 @@ describe('nightshift cli worktree awareness', () => {
         '--host',
         'runtime:gpu',
         '--path',
-        './nightshift',
+        './kolux',
         '--json'
       ],
       '/tmp/repo'
@@ -482,7 +482,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('rejects SSH project setup relative paths, which name the client filesystem', async () => {
-    // A local CLI reaching an `ssh:*` host is still off-client: resolving `./nightshift` against the
+    // A local CLI reaching an `ssh:*` host is still off-client: resolving `./kolux` against the
     // CLI cwd would register a path that exists on the wrong machine.
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -497,7 +497,7 @@ describe('nightshift cli worktree awareness', () => {
         '--host',
         'ssh:openclaw',
         '--path',
-        './nightshift',
+        './kolux',
         '--json'
       ],
       '/tmp/repo'
@@ -537,7 +537,7 @@ describe('nightshift cli worktree awareness', () => {
       okFixture('req_repo_add', {
         repo: {
           id: 'repo-1',
-          path: '/srv/nightshift/web',
+          path: '/srv/kolux/web',
           displayName: 'web'
         }
       })
@@ -545,20 +545,12 @@ describe('nightshift cli worktree awareness', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
 
     await main(
-      [
-        'repo',
-        'add',
-        '--path',
-        '/srv/nightshift/web',
-        '--pairing-code',
-        'remote-runtime',
-        '--json'
-      ],
+      ['repo', 'add', '--path', '/srv/kolux/web', '--pairing-code', 'remote-runtime', '--json'],
       '/tmp/repo'
     )
 
     expect(callMock).toHaveBeenCalledWith('repo.add', {
-      path: '/srv/nightshift/web'
+      path: '/srv/kolux/web'
     })
   })
 
@@ -599,7 +591,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
             createdAt: 1,
@@ -610,8 +602,8 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'local',
             repoId: 'repo-awin',
-            path: 'C:\\nightshift-probe\\nightshift',
-            displayName: 'Nightshift',
+            path: 'C:\\kolux-probe\\kolux',
+            displayName: 'Kolux',
             setupState: 'ready',
             setupMethod: 'cloned',
             createdAt: 1,
@@ -619,8 +611,8 @@ describe('nightshift cli worktree awareness', () => {
           },
           repo: {
             id: 'repo-awin',
-            path: 'C:\\nightshift-probe\\nightshift',
-            displayName: 'Nightshift',
+            path: 'C:\\kolux-probe\\kolux',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             addedAt: 1
           }
@@ -640,16 +632,16 @@ describe('nightshift cli worktree awareness', () => {
         '--url',
         'https://github.com/TxaisX/nightshift.git',
         '--destination',
-        'C:\\nightshift-probe',
+        'C:\\kolux-probe',
         '--json'
       ],
-      '/Users/nwparker/nightshift/workspaces/nightshift/IME-koko'
+      '/Users/nwparker/kolux/workspaces/kolux/IME-koko'
     )
 
     expect(runtimeClientConstructorMock).toHaveBeenCalledWith(null, 'awin')
     expect(callMock).toHaveBeenCalledWith(
       'projectHostSetup.clone',
-      expect.objectContaining({ destination: 'C:\\nightshift-probe' })
+      expect.objectContaining({ destination: 'C:\\kolux-probe' })
     )
   })
 
@@ -660,7 +652,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
             createdAt: 1,
@@ -671,7 +663,7 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'runtime:gpu',
             repoId: '',
-            path: '/srv/nightshift',
+            path: '/srv/kolux',
             displayName: 'GPU VM',
             setupState: 'ready',
             setupMethod: 'imported-existing-folder',
@@ -692,7 +684,7 @@ describe('nightshift cli worktree awareness', () => {
         '--display-name',
         'GPU VM',
         '--path',
-        '/srv/nightshift',
+        '/srv/kolux',
         '--worktree-base-path',
         '../worktrees',
         '--state',
@@ -708,7 +700,7 @@ describe('nightshift cli worktree awareness', () => {
       setupId: 'setup-gpu',
       updates: {
         displayName: 'GPU VM',
-        path: path.resolve('/tmp/repo', '/srv/nightshift'),
+        path: path.resolve('/tmp/repo', '/srv/kolux'),
         worktreeBasePath: '../worktrees',
         gitUsername: undefined,
         kind: undefined,
@@ -726,7 +718,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
             createdAt: 1,
@@ -791,7 +783,7 @@ describe('nightshift cli worktree awareness', () => {
         result: {
           project: {
             id: 'github:TxaisX/nightshift',
-            displayName: 'Nightshift',
+            displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
             createdAt: 1,
@@ -802,7 +794,7 @@ describe('nightshift cli worktree awareness', () => {
             projectId: 'github:TxaisX/nightshift',
             hostId: 'runtime:gpu',
             repoId: '',
-            path: '/srv/nightshift',
+            path: '/srv/kolux',
             displayName: 'GPU VM',
             setupState: 'ready',
             setupMethod: 'imported-existing-folder',

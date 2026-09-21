@@ -24,7 +24,7 @@ describe('R1 identity migration', () => {
   })
 
   it('survives v30 to v31 to v30-writer to v31 without guessing provenance', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-r1-identity-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-r1-identity-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     const task = db.createTask({ runId: 'run_legacy_local', spec: 'legacy supervised worker' })
@@ -95,7 +95,7 @@ describe('R1 identity migration', () => {
   })
 
   it('drops the v31 identity columns no reader ever consumed', () => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-r1-identity-drop-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-r1-identity-drop-'))
     const dbPath = join(tempDir, 'orchestration.db')
     db = new OrchestrationDb(dbPath)
     db.close()

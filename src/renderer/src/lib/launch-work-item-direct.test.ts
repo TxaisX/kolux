@@ -548,7 +548,7 @@ describe('launchWorkItemDirect', () => {
     mocks.store.repos = [
       {
         id: 'repo-ssh',
-        path: '/home/nightshift/repo',
+        path: '/home/kolux/repo',
         displayName: 'Remote Repo',
         badgeColor: '#000',
         addedAt: 0,
@@ -567,7 +567,7 @@ describe('launchWorkItemDirect', () => {
       launchConfig: { agentArgs: '', agentEnv: {} }
     })
     mocks.store.createWorktree.mockResolvedValue({
-      worktree: { id: 'wt-ssh', path: '/home/nightshift/repo-worktrees/issue-77' }
+      worktree: { id: 'wt-ssh', path: '/home/kolux/repo-worktrees/issue-77' }
     })
 
     await launchWorkItemDirect({
@@ -587,7 +587,7 @@ describe('launchWorkItemDirect', () => {
     expect(mocks.store.ensureRemoteDetectedAgents).toHaveBeenCalledWith('ssh-1')
     expect(mockApi.agentTrust.markTrusted).toHaveBeenCalledWith({
       preset: 'cursor',
-      workspacePath: '/home/nightshift/repo-worktrees/issue-77',
+      workspacePath: '/home/kolux/repo-worktrees/issue-77',
       connectionId: 'ssh-1'
     })
     expect(buildAgentDraftLaunchPlan).toHaveBeenCalledWith({
@@ -689,9 +689,9 @@ describe('launchWorkItemDirect', () => {
     expect(mocks.activateAndRevealWorktree).toHaveBeenCalled()
     const activationOptions = mocks.activateAndRevealWorktree.mock.calls.at(-1)?.[1]
     expect(activationOptions.startup.command).toContain(
-      `command test -n "$fish_pid" && set --erase -g NIGHTSHIFT_PI_PREFILL; command test -z "$fish_pid" && unset NIGHTSHIFT_PI_PREFILL; true`
+      `command test -n "$fish_pid" && set --erase -g KOLUX_PI_PREFILL; command test -z "$fish_pid" && unset KOLUX_PI_PREFILL; true`
     )
-    expect(activationOptions.startup.command).not.toContain('Remove-Item Env:NIGHTSHIFT_PI_PREFILL')
+    expect(activationOptions.startup.command).not.toContain('Remove-Item Env:KOLUX_PI_PREFILL')
   })
 
   it('uses the repo SSH connection when the created worktree is not hydrated yet', async () => {
@@ -732,7 +732,7 @@ describe('launchWorkItemDirect', () => {
     expect(mocks.ensureDetectedAgents).not.toHaveBeenCalled()
     const activationOptions = mocks.activateAndRevealWorktree.mock.calls.at(-1)?.[1]
     expect(activationOptions.startup.command).toContain(
-      `command test -n "$fish_pid" && set --erase -g NIGHTSHIFT_PI_PREFILL; command test -z "$fish_pid" && unset NIGHTSHIFT_PI_PREFILL; true`
+      `command test -n "$fish_pid" && set --erase -g KOLUX_PI_PREFILL; command test -z "$fish_pid" && unset KOLUX_PI_PREFILL; true`
     )
   })
 

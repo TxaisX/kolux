@@ -19,12 +19,12 @@ import { registerRepoFolderPickerHandlers } from './repos/repo-folder-picker-han
 import { registerRepoCloneHandlers } from './repos/repo-clone-lifecycle'
 import { registerRepoGitUsernameHandler } from './repos/repo-git-username-handler'
 import { registerBaseRefQueryHandlers } from './repos/base-ref-query-handlers'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 export function registerRepoHandlers(
   mainWindow: BrowserWindow,
   store: Store,
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 ): void {
   // Remove previously registered handlers so we can re-register on macOS app re-activation (new window).
   ipcMain.removeHandler('repos:list')

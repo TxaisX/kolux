@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { RuntimeTerminalDataMeta } from '../nightshift-runtime'
+import type { RuntimeTerminalDataMeta } from '../kolux-runtime'
 import {
   TerminalStreamOpcode,
   decodeTerminalStreamFrame,

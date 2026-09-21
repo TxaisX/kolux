@@ -8,6 +8,6 @@ export function structuredChatPtyWriteRefusalCopy(
     return null
   }
   return action === 'worker-start'
-    ? 'The target terminal is in Structured Chat. Switch it to Terminal, then retry `nightshift orchestration worker-start`.'
-    : 'The target terminal is in Structured Chat. Switch it to Terminal, then retry `nightshift terminal send`.'
+    ? 'The target terminal is in Structured Chat. Switch it to Terminal, then retry `kolux orchestration worker-start`.'
+    : 'The target terminal is in Structured Chat. Switch it to Terminal, then retry `kolux terminal send`.'
 }

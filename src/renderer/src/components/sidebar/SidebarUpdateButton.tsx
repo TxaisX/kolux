@@ -54,7 +54,7 @@ export function getSidebarUpdateButtonModel(status: UpdateStatus): SidebarUpdate
         ),
         tooltip: translate(
           'auto.components.sidebar.SidebarUpdateButton.9b3c6e1d45',
-          'Download Nightshift v{{value0}}',
+          'Download Kolux v{{value0}}',
           { value0: status.version }
         ),
         action: 'download'
@@ -70,7 +70,7 @@ export function getSidebarUpdateButtonModel(status: UpdateStatus): SidebarUpdate
         ),
         tooltip: translate(
           'auto.components.sidebar.SidebarUpdateButton.d2b7f0a938',
-          'Downloading Nightshift v{{value0}}',
+          'Downloading Kolux v{{value0}}',
           { value0: status.version }
         ),
         action: null
@@ -86,7 +86,7 @@ export function getSidebarUpdateButtonModel(status: UpdateStatus): SidebarUpdate
         ),
         tooltip: translate(
           'auto.components.sidebar.SidebarUpdateButton.a8c5e3f201',
-          'Restart Nightshift to install v{{value0}}',
+          'Restart Kolux to install v{{value0}}',
           { value0: status.version }
         ),
         action: 'install'

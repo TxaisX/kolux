@@ -1,5 +1,5 @@
-export const MOBILE_E2EE_V2_PROTOCOL = 'nightshift-mobile-e2ee'
-export const MOBILE_E2EE_V2_TRANSCRIPT_DOMAIN = 'nightshift-mobile-e2ee/v2/transcript'
+export const MOBILE_E2EE_V2_PROTOCOL = 'kolux-mobile-e2ee'
+export const MOBILE_E2EE_V2_TRANSCRIPT_DOMAIN = 'kolux-mobile-e2ee/v2/transcript'
 
 export type MobileE2EETransport = 'direct' | 'relay'
 export type MobileE2EEPayloadKind = 'text' | 'binary'

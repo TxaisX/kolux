@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { getStoreState, waitForSessionReady } from './helpers/store'
 import type { ElectronApplication } from '@stablyai/playwright-test'
 
@@ -6,10 +6,10 @@ async function openFeatureTourFromMenu(electronApp: ElectronApplication): Promis
   await electronApp.evaluate(({ BrowserWindow, Menu }) => {
     const featureTourItem = Menu.getApplicationMenu()
       ?.items.find((item) => item.label === 'Help')
-      ?.submenu?.items.find((item) => item.label === 'Explore Nightshift')
+      ?.submenu?.items.find((item) => item.label === 'Explore Kolux')
 
     if (!featureTourItem) {
-      throw new Error('Explore Nightshift menu item was not registered')
+      throw new Error('Explore Kolux menu item was not registered')
     }
 
     const window = BrowserWindow.getAllWindows()[0]
@@ -24,40 +24,36 @@ async function openFeatureTourFromMenu(electronApp: ElectronApplication): Promis
 }
 
 test.describe('Feature tour modal', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
   })
 
   test('opens from the Help menu and renders the workflow rail', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     await openFeatureTourFromMenu(electronApp)
 
-    await expect(
-      nightshiftPage.getByRole('dialog', { name: 'Get to know Nightshift' })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('dialog', { name: 'Get to know Kolux' })).toBeVisible({
       timeout: 10_000
     })
-    await expect(
-      nightshiftPage.getByText('Reopen any time from Help > Explore Nightshift.')
-    ).toBeVisible()
+    await expect(koluxPage.getByText('Reopen any time from Help > Explore Kolux.')).toBeVisible()
 
     // Five workflow rows in the rail.
-    const rail = nightshiftPage.getByRole('navigation', { name: 'Workflows' })
+    const rail = koluxPage.getByRole('navigation', { name: 'Workflows' })
     await expect(rail.getByRole('tab')).toHaveCount(5)
     await expect(rail.getByRole('tab', { name: /Workspaces/i })).toHaveAttribute(
       'aria-selected',
       'true'
     )
 
-    await expect(nightshiftPage.locator('[data-ws-id]')).toHaveCount(3)
+    await expect(koluxPage.locator('[data-ws-id]')).toHaveCount(3)
 
     // ArrowDown moves selection through the rail.
     await rail.getByRole('tab', { name: /Workspaces/i }).focus()
-    await nightshiftPage.keyboard.press('ArrowDown')
+    await koluxPage.keyboard.press('ArrowDown')
     await expect(rail.getByRole('tab', { name: /Tasks/i })).toHaveAttribute('aria-selected', 'true')
-    await nightshiftPage.keyboard.press('ArrowDown')
+    await koluxPage.keyboard.press('ArrowDown')
     await expect(rail.getByRole('tab', { name: /Agents/i })).toHaveAttribute(
       'aria-selected',
       'true'
@@ -66,24 +62,20 @@ test.describe('Feature tour modal', () => {
     await rail.getByRole('tab', { name: /Workbench/i }).click()
     await rail.getByRole('button', { name: /Browser/i }).click()
     await expect(
-      nightshiftPage.getByText(
-        "Run your app in Nightshift's browser, send selected UI elements to agents, and let your agents interact with your webpage."
+      koluxPage.getByText(
+        "Run your app in Kolux's browser, send selected UI elements to agents, and let your agents interact with your webpage."
       )
     ).toBeVisible()
-    await expect(nightshiftPage.getByRole('heading', { name: 'Browser Use skill' })).toBeVisible()
+    await expect(koluxPage.getByRole('heading', { name: 'Browser Use skill' })).toBeVisible()
     await expect(
-      nightshiftPage.getByText(
-        "Enables agents to navigate and verify pages in Nightshift's browser."
-      )
+      koluxPage.getByText("Enables agents to navigate and verify pages in Kolux's browser.")
     ).toBeVisible()
-    await expect(nightshiftPage.getByRole('heading', { name: 'CLI skill' })).toHaveCount(0)
-    await expect(
-      nightshiftPage.getByText('With the Nightshift CLI skill', { exact: false })
-    ).toHaveCount(0)
+    await expect(koluxPage.getByRole('heading', { name: 'CLI skill' })).toHaveCount(0)
+    await expect(koluxPage.getByText('With the Kolux CLI skill', { exact: false })).toHaveCount(0)
   })
 
-  test('shows unified task copy without leaving the walkthrough', async ({ nightshiftPage }) => {
-    await nightshiftPage.evaluate(() => {
+  test('shows unified task copy without leaving the walkthrough', async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -117,31 +109,25 @@ test.describe('Feature tour modal', () => {
       store.getState().openModal('feature-wall', { source: 'help_menu' })
     })
 
-    await expect(
-      nightshiftPage.getByRole('dialog', { name: 'Get to know Nightshift' })
-    ).toBeVisible({
+    await expect(koluxPage.getByRole('dialog', { name: 'Get to know Kolux' })).toBeVisible({
       timeout: 10_000
     })
-    await nightshiftPage
+    await koluxPage
       .getByRole('navigation', { name: 'Workflows' })
       .getByRole('tab', { name: /Tasks/i })
       .click()
-    await expect(
-      nightshiftPage.getByText('Start work directly from GitHub or Linear.')
-    ).toBeVisible()
-    await expect(nightshiftPage.getByText('Connect GitHub or Linear once')).toHaveCount(0)
-    await expect(
-      nightshiftPage.getByRole('dialog', { name: 'Get to know Nightshift' })
-    ).toBeVisible()
+    await expect(koluxPage.getByText('Start work directly from GitHub or Linear.')).toBeVisible()
+    await expect(koluxPage.getByText('Connect GitHub or Linear once')).toHaveCount(0)
+    await expect(koluxPage.getByRole('dialog', { name: 'Get to know Kolux' })).toBeVisible()
     await expect
-      .poll(async () => getStoreState<string>(nightshiftPage, 'activeView'))
+      .poll(async () => getStoreState<string>(koluxPage, 'activeView'))
       .not.toBe('settings')
   })
 
   test('continue advances through workflow substeps before the next workflow', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -149,8 +135,8 @@ test.describe('Feature tour modal', () => {
       store.getState().openModal('feature-wall', { source: 'help_menu' })
     })
 
-    const rail = nightshiftPage.getByRole('navigation', { name: 'Workflows' })
-    const continueButton = nightshiftPage.getByRole('button', { name: /^Continue/ })
+    const rail = koluxPage.getByRole('navigation', { name: 'Workflows' })
+    const continueButton = koluxPage.getByRole('button', { name: /^Continue/ })
 
     await continueButton.click()
     await expect(rail.getByRole('tab', { name: /Tasks/i })).toHaveAttribute('aria-selected', 'true')
@@ -193,7 +179,7 @@ test.describe('Feature tour modal', () => {
   })
 
   test('does not pre-check configured workflows until the user visits them', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     await electronApp.evaluate(
@@ -226,16 +212,16 @@ test.describe('Feature tour modal', () => {
         }
       }
     )
-    await nightshiftPage.evaluate(async () => {
+    await koluxPage.evaluate(async () => {
       for (const key of [
-        'nightshift.featureWall.visitedWorkflows.v1',
-        'nightshift.featureWall.visitedAgentSteps.v1',
-        'nightshift.featureWall.visitedWorkbenchSteps.v1',
-        'nightshift.featureWall.visitedReviewSteps.v1',
-        'nightshift.featureWall.completedWorkflows.v1',
-        'nightshift.featureWall.completedAgentSteps.v1',
-        'nightshift.featureWall.completedWorkbenchSteps.v1',
-        'nightshift.featureWall.completedReviewSteps.v1'
+        'kolux.featureWall.visitedWorkflows.v1',
+        'kolux.featureWall.visitedAgentSteps.v1',
+        'kolux.featureWall.visitedWorkbenchSteps.v1',
+        'kolux.featureWall.visitedReviewSteps.v1',
+        'kolux.featureWall.completedWorkflows.v1',
+        'kolux.featureWall.completedAgentSteps.v1',
+        'kolux.featureWall.completedWorkbenchSteps.v1',
+        'kolux.featureWall.completedReviewSteps.v1'
       ]) {
         localStorage.removeItem(key)
       }
@@ -252,7 +238,7 @@ test.describe('Feature tour modal', () => {
       store.getState().openModal('feature-wall', { source: 'help_menu' })
     })
 
-    const rail = nightshiftPage.getByRole('navigation', { name: 'Workflows' })
+    const rail = koluxPage.getByRole('navigation', { name: 'Workflows' })
     const workspacesTab = rail.locator('[data-feature-wall-workflow-id="workspaces"]')
     const tasksTab = rail.locator('[data-feature-wall-workflow-id="tasks"]')
     await expect(workspacesTab.locator('[aria-label="Completed"]')).toHaveCount(1)
@@ -263,15 +249,15 @@ test.describe('Feature tour modal', () => {
   })
 
   test('keeps persisted completed setup-backed substeps checked when reopened', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       localStorage.setItem(
-        'nightshift.featureWall.completedAgentSteps.v1',
+        'kolux.featureWall.completedAgentSteps.v1',
         JSON.stringify(['orchestration'])
       )
       localStorage.setItem(
-        'nightshift.featureWall.completedWorkbenchSteps.v1',
+        'kolux.featureWall.completedWorkbenchSteps.v1',
         JSON.stringify(['browser'])
       )
       const store = window.__store
@@ -281,7 +267,7 @@ test.describe('Feature tour modal', () => {
       store.getState().openModal('feature-wall', { source: 'help_menu' })
     })
 
-    const rail = nightshiftPage.getByRole('navigation', { name: 'Workflows' })
+    const rail = koluxPage.getByRole('navigation', { name: 'Workflows' })
 
     await rail.getByRole('tab', { name: /Agents/i }).click()
     await expect(

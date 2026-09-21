@@ -58,7 +58,7 @@ export type PtySpawnOptions = {
   startupCommandDelivery?: StartupCommandDelivery
   /** Minimal allowlisted launch ownership preserved by daemon reattach. */
   launchAgent?: TuiAgent
-  /** Nightshift worktree identity. When present, the local provider scopes shell
+  /** Kolux worktree identity. When present, the local provider scopes shell
    *  history to this worktree so ArrowUp only surfaces local commands. */
   worktreeId?: string
   /** Stable terminal pane identity. Remote providers use this as PTY metadata

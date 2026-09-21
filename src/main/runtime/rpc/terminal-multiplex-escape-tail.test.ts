@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import type { RuntimeTerminalWait } from '../../../shared/runtime-types'
 import {
@@ -18,11 +18,11 @@ import {
 // SnapshotStart JSON frame, the tail is lost and the next live chunk renders
 // literally ("colors/garbage around what I type").
 
-function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): NightshiftRuntimeService {
+function stubRuntime(overrides: Partial<KoluxRuntimeService> = {}): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 function makeRequest(method: string, params?: unknown): RpcRequest {

@@ -2,7 +2,7 @@ import { getDefaultRepoHookSettings } from '../../../../shared/constants'
 import type {
   RepoHookSettings,
   SetupAgentStartupPolicy
-} from '../../../../shared/nightshift-yaml-hook-types'
+} from '../../../../shared/kolux-yaml-hook-types'
 
 export function getRepoSetupAgentStartupPolicy(repo?: {
   hookSettings?: Pick<RepoHookSettings, 'setupAgentStartupPolicy'>

@@ -43,8 +43,8 @@ export function federatedUnknownReceipt(
     effects: [],
     residualResources: [],
     nextCommands: [
-      `nightshift orchestration worker-show --dispatch ${worker.dispatch_id} --json`,
-      `nightshift orchestration worker-abandon --dispatch ${worker.dispatch_id} --json`
+      `kolux orchestration worker-show --dispatch ${worker.dispatch_id} --json`,
+      `kolux orchestration worker-abandon --dispatch ${worker.dispatch_id} --json`
     ]
   }
 }

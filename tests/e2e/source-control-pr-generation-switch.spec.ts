@@ -151,12 +151,12 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   test.describe.configure({ mode: 'serial' })
 
   test('keeps checks-panel PR generation running after switching worktrees', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     const { primaryWorktreeId, prWorktreeId, prWorktreePath, primaryBranch } =
-      await seedCreatePrComposer(nightshiftPage)
+      await seedCreatePrComposer(koluxPage)
     createBranchCommit(prWorktreePath)
 
     const screenshotDir = path.join(
@@ -171,39 +171,39 @@ test.describe('Source Control AI PR generation worktree switching', () => {
     })
     const generatorScriptPath = path.join(screenshotDir, 'delayed-checks-pr-generator.cjs')
     const callLogPath = path.join(screenshotDir, 'delayed-checks-pr-generator.log')
-    await installDelayedPrGenerator(nightshiftPage, generatorScriptPath, callLogPath, primaryBranch)
+    await installDelayedPrGenerator(koluxPage, generatorScriptPath, callLogPath, primaryBranch)
 
-    await openChecks(nightshiftPage, prWorktreeId)
-    const generate = nightshiftPage.getByRole('button', {
+    await openChecks(koluxPage, prWorktreeId)
+    const generate = koluxPage.getByRole('button', {
       name: 'Generate pull request details with AI'
     })
     await expect(generate).toBeVisible({ timeout: 10_000 })
     await expect(generate).toBeEnabled()
     await generate.click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating pull request details' })
+      koluxPage.getByRole('button', { name: 'Stop generating pull request details' })
     ).toBeVisible()
     await expect.poll(() => readLog(callLogPath)).toContain('start')
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-checks-pr-generation-pending-on-a.png')
     })
 
-    await openChecks(nightshiftPage, primaryWorktreeId)
-    await expect(nightshiftPage.getByText('Generated PR title after switch')).toHaveCount(0)
-    await nightshiftPage.screenshot({
+    await openChecks(koluxPage, primaryWorktreeId)
+    await expect(koluxPage.getByText('Generated PR title after switch')).toHaveCount(0)
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '02-checks-switched-to-b-no-generated-fields.png')
     })
 
     await expect.poll(() => readLog(callLogPath), { timeout: 10_000 }).toContain('finish')
-    await openChecks(nightshiftPage, prWorktreeId)
-    await expect(nightshiftPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
+    await openChecks(koluxPage, prWorktreeId)
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
       'Generated PR title after switch',
       { timeout: 10_000 }
     )
-    await expect(
-      nightshiftPage.getByRole('textbox', { name: 'Pull request description' })
-    ).toHaveValue('Generated PR body after switch')
-    await nightshiftPage.screenshot({
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request description' })).toHaveValue(
+      'Generated PR body after switch'
+    )
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '03-checks-returned-to-a-generated-fields.png')
     })
     await writeEvidence(testInfo, screenshotDir, 'checks-pr-generation-switch-evidence.json', {
@@ -214,12 +214,12 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   })
 
   test('keeps pending PR generation attached to its original worktree', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     const { primaryWorktreeId, prWorktreeId, prWorktreePath, primaryBranch } =
-      await seedCreatePrComposer(nightshiftPage)
+      await seedCreatePrComposer(koluxPage)
     createBranchCommit(prWorktreePath)
 
     const screenshotDir = path.join(
@@ -234,37 +234,37 @@ test.describe('Source Control AI PR generation worktree switching', () => {
     })
     const generatorScriptPath = path.join(screenshotDir, 'delayed-pr-generator.cjs')
     const callLogPath = path.join(screenshotDir, 'delayed-pr-generator.log')
-    await installDelayedPrGenerator(nightshiftPage, generatorScriptPath, callLogPath, primaryBranch)
+    await installDelayedPrGenerator(koluxPage, generatorScriptPath, callLogPath, primaryBranch)
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    const generate = nightshiftPage.getByRole('button', {
+    await openSourceControl(koluxPage, prWorktreeId)
+    const generate = koluxPage.getByRole('button', {
       name: 'Generate pull request details with AI'
     })
     await expect(generate).toBeVisible({ timeout: 10_000 })
     await expect(generate).toBeEnabled()
     await generate.click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating pull request details' })
+      koluxPage.getByRole('button', { name: 'Stop generating pull request details' })
     ).toBeVisible()
     await expect
       .poll(() => {
         return readLog(callLogPath)
       })
       .toContain('start')
-    const pendingEvidence = await nightshiftPage.evaluate(() => {
+    const pendingEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
         rightSidebarTab: state?.rightSidebarTab
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-pr-generation-pending-on-a.png')
     })
 
-    await openSourceControl(nightshiftPage, primaryWorktreeId)
-    await expect(nightshiftPage.getByText('Generated PR title after switch')).toHaveCount(0)
-    const switchedEvidence = await nightshiftPage.evaluate(() => {
+    await openSourceControl(koluxPage, primaryWorktreeId)
+    await expect(koluxPage.getByText('Generated PR title after switch')).toHaveCount(0)
+    const switchedEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -273,24 +273,24 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         )
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '02-switched-to-b-no-generated-fields.png')
     })
 
     await expect
       .poll(() => readFileSync(callLogPath, 'utf8'), { timeout: 10_000 })
       .toContain('finish')
-    await waitForPrGenerationStored(nightshiftPage, prWorktreeId)
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    await waitForPrGenerationHydrated(nightshiftPage, prWorktreeId)
-    await expect(nightshiftPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
+    await waitForPrGenerationStored(koluxPage, prWorktreeId)
+    await openSourceControl(koluxPage, prWorktreeId)
+    await waitForPrGenerationHydrated(koluxPage, prWorktreeId)
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
       'Generated PR title after switch',
       { timeout: 10_000 }
     )
-    await expect(
-      nightshiftPage.getByRole('textbox', { name: 'Pull request description' })
-    ).toHaveValue('Generated PR body after switch')
-    const finalEvidence = await nightshiftPage.evaluate(() => {
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request description' })).toHaveValue(
+      'Generated PR body after switch'
+    )
+    const finalEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -301,7 +301,7 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         )?.value
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '03-returned-to-a-generated-fields.png')
     })
     await writeEvidence(testInfo, screenshotDir, 'pr-generation-evidence.json', {
@@ -315,12 +315,11 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   })
 
   test('hydrates pending PR generation after Source Control remounts', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const { prWorktreeId, prWorktreePath, primaryBranch } =
-      await seedCreatePrComposer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const { prWorktreeId, prWorktreePath, primaryBranch } = await seedCreatePrComposer(koluxPage)
     createBranchCommit(prWorktreePath)
 
     const screenshotDir = path.join(
@@ -335,41 +334,41 @@ test.describe('Source Control AI PR generation worktree switching', () => {
     })
     const generatorScriptPath = path.join(screenshotDir, 'delayed-pr-generator.cjs')
     const callLogPath = path.join(screenshotDir, 'delayed-pr-generator.log')
-    await installDelayedPrGenerator(nightshiftPage, generatorScriptPath, callLogPath, primaryBranch)
+    await installDelayedPrGenerator(koluxPage, generatorScriptPath, callLogPath, primaryBranch)
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    const generate = nightshiftPage.getByRole('button', {
+    await openSourceControl(koluxPage, prWorktreeId)
+    const generate = koluxPage.getByRole('button', {
       name: 'Generate pull request details with AI'
     })
     await expect(generate).toBeVisible({ timeout: 10_000 })
     await expect(generate).toBeEnabled()
     await generate.click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating pull request details' })
+      koluxPage.getByRole('button', { name: 'Stop generating pull request details' })
     ).toBeVisible()
     await expect.poll(() => readLog(callLogPath)).toContain('start')
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.getState().setRightSidebarTab('explorer')
     })
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating pull request details' })
+      koluxPage.getByRole('button', { name: 'Stop generating pull request details' })
     ).toHaveCount(0)
     await expect
       .poll(() => readFileSync(callLogPath, 'utf8'), { timeout: 10_000 })
       .toContain('finish')
-    await waitForPrGenerationStored(nightshiftPage, prWorktreeId)
+    await waitForPrGenerationStored(koluxPage, prWorktreeId)
 
-    await openSourceControl(nightshiftPage, prWorktreeId)
-    await waitForPrGenerationHydrated(nightshiftPage, prWorktreeId)
-    await expect(nightshiftPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
+    await openSourceControl(koluxPage, prWorktreeId)
+    await waitForPrGenerationHydrated(koluxPage, prWorktreeId)
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request title' })).toHaveValue(
       'Generated PR title after switch',
       { timeout: 10_000 }
     )
-    await expect(
-      nightshiftPage.getByRole('textbox', { name: 'Pull request description' })
-    ).toHaveValue('Generated PR body after switch')
-    await nightshiftPage.screenshot({
+    await expect(koluxPage.getByRole('textbox', { name: 'Pull request description' })).toHaveValue(
+      'Generated PR body after switch'
+    )
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-remounted-source-control-hydrated-pr-fields.png')
     })
     await writeEvidence(testInfo, screenshotDir, 'pr-generation-remount-evidence.json', {
@@ -379,12 +378,12 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   })
 
   test('keeps pending commit message generation attached to its original worktree', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     const { primaryWorktreeId, commitWorktreeId, commitWorktreePath } =
-      await seedCommitMessageComposer(nightshiftPage)
+      await seedCommitMessageComposer(koluxPage)
     createStagedCommitMessageChange(commitWorktreePath)
 
     const screenshotDir = path.join(
@@ -399,29 +398,29 @@ test.describe('Source Control AI PR generation worktree switching', () => {
     })
     const generatorScriptPath = path.join(screenshotDir, 'delayed-commit-generator.cjs')
     const callLogPath = path.join(screenshotDir, 'delayed-commit-generator.log')
-    await installDelayedCommitMessageGenerator(nightshiftPage, generatorScriptPath, callLogPath)
+    await installDelayedCommitMessageGenerator(koluxPage, generatorScriptPath, callLogPath)
 
-    await openSourceControl(nightshiftPage, commitWorktreeId)
+    await openSourceControl(koluxPage, commitWorktreeId)
     await expect(
-      nightshiftPage
+      koluxPage
         .getByTestId('source-control-entry')
         .getByText('e2e-commit-message-generation.txt', { exact: true })
     ).toBeVisible({ timeout: 10_000 })
-    const generate = nightshiftPage.getByRole('button', {
+    const generate = koluxPage.getByRole('button', {
       name: 'Generate commit message with AI'
     })
     await expect(generate).toBeVisible({ timeout: 10_000 })
     await expect(generate).toBeEnabled()
     await generate.click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating commit message' })
+      koluxPage.getByRole('button', { name: 'Stop generating commit message' })
     ).toBeVisible()
     await expect
       .poll(() => {
         return readLog(callLogPath)
       })
       .toContain('start')
-    const pendingEvidence = await nightshiftPage.evaluate(() => {
+    const pendingEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -430,16 +429,16 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         )?.value
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-commit-message-generation-pending-on-a.png')
     })
 
-    await openSourceControl(nightshiftPage, primaryWorktreeId)
-    await expect(nightshiftPage.getByText('Generated commit message after switch')).toHaveCount(0)
+    await openSourceControl(koluxPage, primaryWorktreeId)
+    await expect(koluxPage.getByText('Generated commit message after switch')).toHaveCount(0)
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating commit message' })
+      koluxPage.getByRole('button', { name: 'Stop generating commit message' })
     ).toHaveCount(0)
-    const switchedEvidence = await nightshiftPage.evaluate(() => {
+    const switchedEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -448,21 +447,21 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         )
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '02-switched-to-b-no-generated-commit-message.png')
     })
 
     await expect
       .poll(() => readFileSync(callLogPath, 'utf8'), { timeout: 10_000 })
       .toContain('finish')
-    await waitForCommitGenerationStored(nightshiftPage, commitWorktreeId)
-    await openSourceControl(nightshiftPage, commitWorktreeId)
-    await waitForCommitGenerationHydrated(nightshiftPage, commitWorktreeId)
-    await expect(nightshiftPage.getByRole('textbox', { name: 'Commit message' })).toHaveValue(
+    await waitForCommitGenerationStored(koluxPage, commitWorktreeId)
+    await openSourceControl(koluxPage, commitWorktreeId)
+    await waitForCommitGenerationHydrated(koluxPage, commitWorktreeId)
+    await expect(koluxPage.getByRole('textbox', { name: 'Commit message' })).toHaveValue(
       'Generated commit message after switch\n\nGenerated from staged e2e-commit-message-generation.txt after switching worktrees',
       { timeout: 10_000 }
     )
-    const finalEvidence = await nightshiftPage.evaluate(() => {
+    const finalEvidence = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       return {
         activeWorktreeId: state?.activeWorktreeId,
@@ -471,7 +470,7 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         )?.value
       }
     })
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '03-returned-to-a-generated-commit-message.png')
     })
     await writeEvidence(testInfo, screenshotDir, 'commit-message-generation-evidence.json', {
@@ -485,11 +484,11 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   })
 
   test('hydrates pending commit message generation after Source Control remounts', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const { commitWorktreeId, commitWorktreePath } = await seedCommitMessageComposer(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const { commitWorktreeId, commitWorktreePath } = await seedCommitMessageComposer(koluxPage)
     createStagedCommitMessageChange(commitWorktreePath)
 
     const screenshotDir = path.join(
@@ -504,34 +503,34 @@ test.describe('Source Control AI PR generation worktree switching', () => {
     })
     const generatorScriptPath = path.join(screenshotDir, 'delayed-commit-generator.cjs')
     const callLogPath = path.join(screenshotDir, 'delayed-commit-generator.log')
-    await installDelayedCommitMessageGenerator(nightshiftPage, generatorScriptPath, callLogPath)
+    await installDelayedCommitMessageGenerator(koluxPage, generatorScriptPath, callLogPath)
 
-    await openSourceControl(nightshiftPage, commitWorktreeId)
-    const generate = nightshiftPage.getByRole('button', {
+    await openSourceControl(koluxPage, commitWorktreeId)
+    const generate = koluxPage.getByRole('button', {
       name: 'Generate commit message with AI'
     })
     await expect(generate).toBeVisible({ timeout: 10_000 })
     await expect(generate).toBeEnabled()
     await generate.click()
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating commit message' })
+      koluxPage.getByRole('button', { name: 'Stop generating commit message' })
     ).toBeVisible()
     await expect.poll(() => readLog(callLogPath)).toContain('start')
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       window.__store?.getState().setRightSidebarTab('explorer')
     })
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Stop generating commit message' })
+      koluxPage.getByRole('button', { name: 'Stop generating commit message' })
     ).toHaveCount(0)
     await expect
       .poll(() => readFileSync(callLogPath, 'utf8'), { timeout: 10_000 })
       .toContain('finish')
-    await waitForCommitGenerationStored(nightshiftPage, commitWorktreeId)
+    await waitForCommitGenerationStored(koluxPage, commitWorktreeId)
 
-    await openSourceControl(nightshiftPage, commitWorktreeId)
-    await waitForCommitGenerationHydrated(nightshiftPage, commitWorktreeId)
-    await expect(nightshiftPage.getByRole('textbox', { name: 'Commit message' })).toHaveValue(
+    await openSourceControl(koluxPage, commitWorktreeId)
+    await waitForCommitGenerationHydrated(koluxPage, commitWorktreeId)
+    await expect(koluxPage.getByRole('textbox', { name: 'Commit message' })).toHaveValue(
       [
         'Generated commit message after switch',
         '',
@@ -539,7 +538,7 @@ test.describe('Source Control AI PR generation worktree switching', () => {
       ].join('\n'),
       { timeout: 10_000 }
     )
-    await nightshiftPage.screenshot({
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-remounted-source-control-hydrated-message.png')
     })
     await writeEvidence(
@@ -554,11 +553,11 @@ test.describe('Source Control AI PR generation worktree switching', () => {
   })
 
   test('hides the commit AI composer on a clean branch empty state', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    const primaryWorktreeId = await seedCleanBranchEmptyState(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    const primaryWorktreeId = await seedCleanBranchEmptyState(koluxPage)
 
     const screenshotDir = path.join(
       process.cwd(),
@@ -571,15 +570,15 @@ test.describe('Source Control AI PR generation worktree switching', () => {
       contentType: 'text/plain'
     })
 
-    await openSourceControl(nightshiftPage, primaryWorktreeId)
+    await openSourceControl(koluxPage, primaryWorktreeId)
     await expect
       .poll(
         async () => {
           // Why: this full-suite spec shares the physical E2E repo with other
           // workers. Keep DOM assertions inside the reseeded poll instead of
           // racing unrelated real git-status refreshes after the poll settles.
-          await seedCleanBranchEmptyState(nightshiftPage, primaryWorktreeId)
-          return nightshiftPage.evaluate(() => {
+          await seedCleanBranchEmptyState(koluxPage, primaryWorktreeId)
+          return koluxPage.evaluate(() => {
             const emptyStateVisible =
               document.body.textContent?.includes('No changes on this branch') === true
             const commitMessageInput = document.querySelector('[aria-label="Commit message"]')
@@ -603,8 +602,8 @@ test.describe('Source Control AI PR generation worktree switching', () => {
         hasCommitMessageInput: false,
         hasCommitAiButton: false
       })
-    await seedCleanBranchEmptyState(nightshiftPage, primaryWorktreeId)
-    await nightshiftPage.screenshot({
+    await seedCleanBranchEmptyState(koluxPage, primaryWorktreeId)
+    await koluxPage.screenshot({
       path: path.join(screenshotDir, '01-clean-branch-no-commit-ai-composer.png')
     })
   })

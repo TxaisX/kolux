@@ -608,9 +608,9 @@ describe('removeWorktree cascade', () => {
   })
 
   it.each([
-    'Could not connect to the remote Nightshift runtime.',
-    'Remote Nightshift runtime closed the connection.',
-    'Timed out waiting for the remote Nightshift runtime to respond.'
+    'Could not connect to the remote Kolux runtime.',
+    'Remote Kolux runtime closed the connection.',
+    'Timed out waiting for the remote Kolux runtime to respond.'
   ])(
     'does not offer force delete for wrapped remote runtime failure: %s',
     async (runtimeFailure) => {
@@ -659,7 +659,7 @@ describe('removeWorktree cascade', () => {
     }
   )
 
-  it('offers force delete for orphaned Nightshift worktree directories', async () => {
+  it('offers force delete for orphaned Kolux worktree directories', async () => {
     const store = createTestStore()
     const worktreeId = 'repo1::/path/wt1'
 

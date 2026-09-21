@@ -124,7 +124,7 @@ describe('digit-index shortcuts', () => {
         undefined,
         {
           context: 'terminal',
-          terminalShortcutPolicy: 'nightshift-first'
+          terminalShortcutPolicy: 'kolux-first'
         }
       )
     ).toBe(1)

@@ -103,7 +103,7 @@ const BASE_WORKTREE_CARD_PROPERTY_OPTIONS: WorktreeCardPropertyOption[] = [
     id: 'cli',
     properties: ['cli'],
     get label() {
-      return translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.cli', 'Nightshift CLI')
+      return translate('auto.components.sidebar.SidebarWorkspaceOptionsMenu.cli', 'Kolux CLI')
     }
   },
   {

@@ -187,7 +187,7 @@ describe('worker transcript wire bounds', () => {
             type: 'tool-call',
             name: 'exec_command',
             input: {
-              cmd: `nightshift orchestration send --dispatch-capability ${capability}`,
+              cmd: `kolux orchestration send --dispatch-capability ${capability}`,
               [capability]: 'secret key'
             }
           },

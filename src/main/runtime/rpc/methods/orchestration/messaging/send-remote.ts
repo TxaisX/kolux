@@ -1,5 +1,5 @@
 import type { MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { waitForFederatedLifecycleSettlement } from '../../../../orchestration/federation-lifecycle-settlement'
 import { bindCoordinatorMutationPayload } from '../../../../orchestration/dispatch-message-binding'
@@ -18,7 +18,7 @@ type RemoteAttachment = {
 
 export async function sendRemoteMessage(args: {
   params: SendParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   from: string
   senderPaneKey: string

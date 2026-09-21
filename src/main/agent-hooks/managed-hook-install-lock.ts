@@ -49,7 +49,7 @@ async function acquireInstallLock(
   suppliedHostIdentity?: string,
   waitTimeoutMs = LOCK_WAIT_TIMEOUT_MS
 ): Promise<() => Promise<void>> {
-  const lockParent = join(home, '.nightshift')
+  const lockParent = join(home, '.kolux')
   const lockPath = join(lockParent, 'managed-hook-install.lock')
   await mkdir(lockParent, { recursive: true })
   const hostIdentity = suppliedHostIdentity ?? (await readManagedHookHostIdentity())

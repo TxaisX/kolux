@@ -26,7 +26,7 @@ describe('getUpstreamStatus', () => {
   })
 
   it('benchmarks concurrent upstream Git command pressure', async () => {
-    const benchPath = process.env.NIGHTSHIFT_GIT_UPSTREAM_COALESCING_BENCH_JSON
+    const benchPath = process.env.KOLUX_GIT_UPSTREAM_COALESCING_BENCH_JSON
     if (!benchPath) {
       return
     }
@@ -349,7 +349,7 @@ describe('getUpstreamStatus', () => {
         return Promise.reject(new Error('fatal: no upstream configured'))
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.remote')) {
-        return Promise.resolve({ stdout: 'https://github.com/pynickle/nightshift.git\n' })
+        return Promise.resolve({ stdout: 'https://github.com/pynickle/kolux.git\n' })
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.merge')) {
         return Promise.resolve({ stdout: 'refs/heads/imp/chinese-translation\n' })
@@ -360,25 +360,25 @@ describe('getUpstreamStatus', () => {
       if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
         return Promise.resolve({ stdout: 'https://github.com/TxaisX/nightshift.git\n' })
       }
-      if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'pr-pynickle-nightshift') {
-        return Promise.resolve({ stdout: 'https://github.com/pynickle/nightshift.git\n' })
+      if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'pr-pynickle-kolux') {
+        return Promise.resolve({ stdout: 'https://github.com/pynickle/kolux.git\n' })
       }
       if (args[0] === 'remote' && args[1] === '-v') {
         return Promise.resolve({
           stdout: [
             'origin\thttps://github.com/TxaisX/nightshift.git (fetch)',
             'origin\thttps://github.com/TxaisX/nightshift.git (push)',
-            'pr-pynickle-nightshift\thttps://github.com/pynickle/nightshift.git (fetch)',
-            'pr-pynickle-nightshift\thttps://github.com/pynickle/nightshift.git (push)'
+            'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (fetch)',
+            'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (push)'
           ].join('\n')
         })
       }
       if (args[0] === 'remote') {
-        return Promise.resolve({ stdout: 'origin\npr-pynickle-nightshift\n' })
+        return Promise.resolve({ stdout: 'origin\npr-pynickle-kolux\n' })
       }
       if (
         args[0] === 'rev-parse' &&
-        args.includes('refs/remotes/pr-pynickle-nightshift/imp/chinese-translation')
+        args.includes('refs/remotes/pr-pynickle-kolux/imp/chinese-translation')
       ) {
         return Promise.resolve({ stdout: 'fork-head\n' })
       }
@@ -392,7 +392,7 @@ describe('getUpstreamStatus', () => {
 
     expect(result).toEqual({
       hasUpstream: true,
-      upstreamName: 'pr-pynickle-nightshift/imp/chinese-translation',
+      upstreamName: 'pr-pynickle-kolux/imp/chinese-translation',
       ahead: 2,
       behind: 0
     })
@@ -443,13 +443,13 @@ describe('getUpstreamStatus', () => {
         return Promise.reject(new Error('fatal: no upstream configured'))
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.pushRemote')) {
-        return Promise.resolve({ stdout: 'https://github.com/pynickle/nightshift.git\n' })
+        return Promise.resolve({ stdout: 'https://github.com/pynickle/kolux.git\n' })
       }
       if (args[0] === 'config' && args.includes('remote.pushDefault')) {
         return Promise.reject(new Error('missing pushDefault'))
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.remote')) {
-        return Promise.resolve({ stdout: 'https://github.com/pynickle/nightshift.git\n' })
+        return Promise.resolve({ stdout: 'https://github.com/pynickle/kolux.git\n' })
       }
       if (args[0] === 'config' && args.includes('branch.imp/chinese-translation.merge')) {
         return Promise.resolve({ stdout: 'refs/heads/imp/chinese-translation\n' })

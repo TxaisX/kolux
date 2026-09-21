@@ -14,12 +14,12 @@ describe('Codex index-heal contract PR gate', () => {
     // the failure that would leave this job verifying a Codex nobody declared.
     expect(job.env.CODEX_CLI_VERSION).toMatch(/^\d+\.\d+\.\d+$/)
     expect(install.run).toContain('"@openai/codex@$CODEX_CLI_VERSION"')
-    expect(verify.env.NIGHTSHIFT_CODEX_CONTRACT_VERSION).toBe('${{ env.CODEX_CLI_VERSION }}')
+    expect(verify.env.KOLUX_CODEX_CONTRACT_VERSION).toBe('${{ env.CODEX_CLI_VERSION }}')
 
     // The install prefix and the binary the test is pointed at must be the same tree.
     expect(install.run).toContain('--prefix "$RUNNER_TEMP/codex-cli"')
     expect(verify.run).toContain(
-      'NIGHTSHIFT_CODEX_CONTRACT_BINARY="$RUNNER_TEMP/codex-cli/node_modules/.bin/codex"'
+      'KOLUX_CODEX_CONTRACT_BINARY="$RUNNER_TEMP/codex-cli/node_modules/.bin/codex"'
     )
     expect(verify.run).toContain('src/main/codex/codex-index-heal-binary-contract.test.ts')
   })
@@ -29,7 +29,7 @@ describe('Codex index-heal contract PR gate', () => {
 
     // Why asserted: the contract skips itself without a binary, so a failed install
     // would otherwise turn this job into a green no-op that verifies nothing.
-    expect(verify.env.NIGHTSHIFT_CODEX_CONTRACT_REQUIRED).toBe('1')
+    expect(verify.env.KOLUX_CODEX_CONTRACT_REQUIRED).toBe('1')
     expect(job.steps.find((step) => step.name === 'Install pinned Codex CLI').run).toContain(
       'set -euo pipefail'
     )

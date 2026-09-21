@@ -29,7 +29,7 @@ const scope: ArtifactShareScope = {
   cloudUserId: 'user-a',
   cloudProfileId: 'cloud-a',
   cloudOrganizationId: 'org-a',
-  apiOrigin: 'https://share.nightshift.invalid'
+  apiOrigin: 'https://share.kolux.invalid'
 }
 const body = {
   content: '<h1>Original</h1>',
@@ -376,7 +376,7 @@ describe('artifact create intent store', () => {
 })
 
 async function createUserDataPath(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), 'nightshift-artifact-create-intents-'))
+  const path = await mkdtemp(join(tmpdir(), 'kolux-artifact-create-intents-'))
   createdPaths.push(path)
   return path
 }

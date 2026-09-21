@@ -6,7 +6,7 @@ import {
   makeHookTestRepo,
   TEST_GITIGNORE_PATH,
   TEST_ISSUE_COMMAND_PATH,
-  TEST_REPO_NIGHTSHIFT_YAML_PATH,
+  TEST_REPO_KOLUX_YAML_PATH,
   TEST_REPO_PATH
 } from './hooks-test-fixtures'
 
@@ -38,16 +38,16 @@ vi.mock('./git/runner', async () => ({
 }))
 
 describe('readIssueCommand', () => {
-  it('prefers the local override over the shared nightshift.yaml command', async () => {
+  it('prefers the local override over the shared kolux.yaml command', async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) => path === TEST_ISSUE_COMMAND_PATH || path === TEST_REPO_NIGHTSHIFT_YAML_PATH
+      (path) => path === TEST_ISSUE_COMMAND_PATH || path === TEST_REPO_KOLUX_YAML_PATH
     )
     vi.mocked(fs.readFileSync).mockImplementation((path) => {
       if (path === TEST_ISSUE_COMMAND_PATH) {
         return 'local command\n'
       }
-      if (path === TEST_REPO_NIGHTSHIFT_YAML_PATH) {
+      if (path === TEST_REPO_KOLUX_YAML_PATH) {
         return 'issueCommand: |\n  shared command\n'
       }
       return ''
@@ -63,11 +63,11 @@ describe('readIssueCommand', () => {
     })
   })
 
-  it('falls back to the shared nightshift.yaml command when no local override exists', async () => {
+  it('falls back to the shared kolux.yaml command when no local override exists', async () => {
     const fs = await import('node:fs')
-    vi.mocked(fs.existsSync).mockImplementation((path) => path === TEST_REPO_NIGHTSHIFT_YAML_PATH)
+    vi.mocked(fs.existsSync).mockImplementation((path) => path === TEST_REPO_KOLUX_YAML_PATH)
     vi.mocked(fs.readFileSync).mockImplementation((path) => {
-      if (path === TEST_REPO_NIGHTSHIFT_YAML_PATH) {
+      if (path === TEST_REPO_KOLUX_YAML_PATH) {
         return 'issueCommand: |\n  shared command\n'
       }
       return ''
@@ -85,10 +85,10 @@ describe('readIssueCommand', () => {
 })
 
 describe('writeIssueCommand', () => {
-  it('writes only the local override file and keeps .nightshift ignored locally', async () => {
+  it('writes only the local override file and keeps .kolux ignored locally', async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) => path === TEST_GITIGNORE_PATH || path === join(TEST_REPO_PATH, '.nightshift')
+      (path) => path === TEST_GITIGNORE_PATH || path === join(TEST_REPO_PATH, '.kolux')
     )
     vi.mocked(fs.readFileSync).mockImplementation((path) => {
       if (path === TEST_GITIGNORE_PATH) {
@@ -102,7 +102,7 @@ describe('writeIssueCommand', () => {
 
     expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
       TEST_GITIGNORE_PATH,
-      'node_modules/\n.nightshift\n',
+      'node_modules/\n.kolux\n',
       'utf-8'
     )
     expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
@@ -128,7 +128,7 @@ describe('createIssueCommandRunnerScript', () => {
 
   it('writes a POSIX issue-command runner when a shebang declares bash and setup resolves to Git Bash', async () => {
     gitExecFileSyncMock.mockReset()
-    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\nightshift\\issue-command-runner.sh\n')
+    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\kolux\\issue-command-runner.sh\n')
     const fs = await import('node:fs')
     const writeFileSyncMock = vi.mocked(fs.writeFileSync)
     writeFileSyncMock.mockClear()
@@ -146,11 +146,11 @@ describe('createIssueCommandRunnerScript', () => {
       )
 
       expect(gitExecFileSyncMock).toHaveBeenCalledWith(
-        ['rev-parse', '--git-path', 'nightshift/issue-command-runner.sh'],
+        ['rev-parse', '--git-path', 'kolux/issue-command-runner.sh'],
         { cwd: 'C:\\repo-worktree' }
       )
       expect(writeFileSyncMock).toHaveBeenCalledWith(
-        'C:\\repo\\.git\\nightshift\\issue-command-runner.sh',
+        'C:\\repo\\.git\\kolux\\issue-command-runner.sh',
         '#!/usr/bin/env bash\nset -e\ngh issue view 42\n',
         'utf-8'
       )
@@ -162,7 +162,7 @@ describe('createIssueCommandRunnerScript', () => {
 
   it('keeps a plain issue command on the cmd runner under a Git Bash terminal', async () => {
     gitExecFileSyncMock.mockReset()
-    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\nightshift\\issue-command-runner.cmd\n')
+    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\kolux\\issue-command-runner.cmd\n')
     const originalPlatform = process.platform
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
 
@@ -177,7 +177,7 @@ describe('createIssueCommandRunnerScript', () => {
       )
 
       expect(gitExecFileSyncMock).toHaveBeenCalledWith(
-        ['rev-parse', '--git-path', 'nightshift/issue-command-runner.cmd'],
+        ['rev-parse', '--git-path', 'kolux/issue-command-runner.cmd'],
         { cwd: 'C:\\repo-worktree' }
       )
       // Why: the runner file is batch (.cmd) while the pane that launches it is still Git Bash.
@@ -189,7 +189,7 @@ describe('createIssueCommandRunnerScript', () => {
 
   it('keeps the cmd issue-command runner when no setup shell is resolved', async () => {
     gitExecFileSyncMock.mockReset()
-    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\nightshift\\issue-command-runner.cmd\n')
+    gitExecFileSyncMock.mockReturnValue('C:\\repo\\.git\\kolux\\issue-command-runner.cmd\n')
     const originalPlatform = process.platform
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
 
@@ -202,7 +202,7 @@ describe('createIssueCommandRunnerScript', () => {
       )
 
       expect(gitExecFileSyncMock).toHaveBeenCalledWith(
-        ['rev-parse', '--git-path', 'nightshift/issue-command-runner.cmd'],
+        ['rev-parse', '--git-path', 'kolux/issue-command-runner.cmd'],
         { cwd: 'C:\\repo-worktree' }
       )
       expect(result.shell).toEqual({ family: 'cmd' })

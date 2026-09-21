@@ -4,19 +4,18 @@ import { summarizeSkillMarkdown } from './skill-metadata'
 describe('summarizeSkillMarkdown', () => {
   it('reads name and folded description from YAML frontmatter', () => {
     const summary = summarizeSkillMarkdown(`---
-name: nightshift-cli
+name: kolux-cli
 description: >-
-  Use the nightshift CLI to drive a running editor;
+  Use the kolux CLI to drive a running editor;
   keep worktree comments current.
 ---
 
-# Nightshift CLI
+# Kolux CLI
 `)
 
     expect(summary).toEqual({
-      name: 'nightshift-cli',
-      description:
-        'Use the nightshift CLI to drive a running editor; keep worktree comments current.'
+      name: 'kolux-cli',
+      description: 'Use the kolux CLI to drive a running editor; keep worktree comments current.'
     })
   })
 

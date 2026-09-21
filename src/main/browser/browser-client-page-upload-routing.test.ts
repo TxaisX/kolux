@@ -12,11 +12,11 @@ import {
 } from './browser-client-upload-staging'
 import type { BrowserRoutePageGuestIdentity } from './browser-route-page-authority'
 
-const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
+const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
 let stagingRoot = ''
 
 beforeEach(async () => {
-  stagingRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'nightshift-upload-routing-')))
+  stagingRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'kolux-upload-routing-')))
 })
 
 afterEach(async () => {
@@ -87,7 +87,7 @@ function createHarness(
   const releaseRouteSession = vi.fn(() => {})
   const releaseNetworkRoute = vi.fn(async () => {})
   const executor = new BrowserClientPageCommandExecutor({
-    nightshiftProfileId: 'nightshift-profile-a',
+    koluxProfileId: 'kolux-profile-a',
     authorityConnectionIdentity: 'authority-a',
     retainNetworkRoute: async () => ({
       key: 'execution-a',

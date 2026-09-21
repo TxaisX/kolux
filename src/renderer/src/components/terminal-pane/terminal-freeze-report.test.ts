@@ -71,9 +71,9 @@ describe('terminal freeze report', () => {
     installTerminalFreezeReport()
     const installed = (
       globalThis.window as unknown as {
-        __nightshiftTerminalFreezeReport?: () => Promise<unknown>
+        __koluxTerminalFreezeReport?: () => Promise<unknown>
       }
-    ).__nightshiftTerminalFreezeReport
+    ).__koluxTerminalFreezeReport
     expect(installed).toBe(buildTerminalFreezeReport)
   })
 })

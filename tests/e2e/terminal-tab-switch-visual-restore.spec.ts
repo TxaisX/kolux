@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   buildAltScreenFrame,
   describeAltScreenRenderPath,
@@ -367,7 +367,7 @@ async function startHiddenPtyOutputBurst(page: Page, ptyId: string, runId: strin
     '},30);'
   ].join('')
   // Why: delivered via a temp file — `node -e` quoting is not PowerShell-safe (#8521).
-  await runNodeScriptInTerminal(page, ptyId, script, { prefix: 'nightshift-tab-switch-burst' })
+  await runNodeScriptInTerminal(page, ptyId, script, { prefix: 'kolux-tab-switch-burst' })
 }
 
 async function writeStaticTabContent(
@@ -530,68 +530,68 @@ test.describe('Terminal tab switch visual restore', () => {
   test.describe.configure({ mode: 'serial' })
 
   test('keeps full-width geometry after switching away and back', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(nightshiftPage)
-    await forceWebglOnActiveTab(nightshiftPage)
+    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(koluxPage)
+    await forceWebglOnActiveTab(koluxPage)
 
     const runId = `${Date.now()}`
     const marker = `${TAB_SWITCH_MARKER_PREFIX}_${runId}`
-    const firstPtyId = await waitForPanePtyIdOnTab(nightshiftPage, firstTabId)
-    await writeStaticTabContent(nightshiftPage, firstTabId, marker, TAB_A_GLYPH_ROW)
+    const firstPtyId = await waitForPanePtyIdOnTab(koluxPage, firstTabId)
+    await writeStaticTabContent(koluxPage, firstTabId, marker, TAB_A_GLYPH_ROW)
 
-    const baseline = await readTabTerminalGeometry(nightshiftPage, firstTabId, runId)
+    const baseline = await readTabTerminalGeometry(koluxPage, firstTabId, runId)
     expect(baseline.markerPresent).toBe(true)
     expect(baseline.overlayWidth).toBeGreaterThan(300)
     expect(geometryLooksCorrupted(baseline)).toBeNull()
 
     const corruptionReports: string[] = []
-    await resetTerminalOutputSchedulerDebug(nightshiftPage)
-    await startHiddenPtyOutputBurst(nightshiftPage, firstPtyId, runId)
+    await resetTerminalOutputSchedulerDebug(koluxPage)
+    await startHiddenPtyOutputBurst(koluxPage, firstPtyId, runId)
 
     for (let cycle = 0; cycle < 12; cycle += 1) {
-      await activateTerminalTab(nightshiftPage, secondTabId)
-      await injectHiddenStreamingBurst(nightshiftPage, firstTabId, runId)
+      await activateTerminalTab(koluxPage, secondTabId)
+      await injectHiddenStreamingBurst(koluxPage, firstTabId, runId)
       // Why: rapid back-to-back switches mirror the user's leave/return pattern
       // and race the overlay's rAF/50ms refit retries.
-      await activateTerminalTab(nightshiftPage, firstTabId)
+      await activateTerminalTab(koluxPage, firstTabId)
       if (cycle % 3 === 0) {
-        await activateTerminalTab(nightshiftPage, secondTabId)
-        await activateTerminalTab(nightshiftPage, firstTabId)
+        await activateTerminalTab(koluxPage, secondTabId)
+        await activateTerminalTab(koluxPage, firstTabId)
       }
 
       // Sample immediately — bug often shows before the 50ms overlay refit retry.
-      const immediate = await readTabTerminalGeometry(nightshiftPage, firstTabId, runId)
+      const immediate = await readTabTerminalGeometry(koluxPage, firstTabId, runId)
       const immediateIssue = geometryLooksCorrupted(immediate)
       if (immediateIssue) {
         corruptionReports.push(`cycle ${cycle} immediate: ${immediateIssue}`)
         await captureTabScreenshot(
-          nightshiftPage,
+          koluxPage,
           firstTabId,
           testInfo,
           `tab-switch-corrupt-immediate-cycle-${cycle}`
         )
       }
 
-      await nightshiftPage.waitForTimeout(60)
-      const settled = await readTabTerminalGeometry(nightshiftPage, firstTabId, runId)
+      await koluxPage.waitForTimeout(60)
+      const settled = await readTabTerminalGeometry(koluxPage, firstTabId, runId)
       const settledIssue = geometryLooksCorrupted(settled)
       if (settledIssue) {
         corruptionReports.push(`cycle ${cycle} settled: ${settledIssue}`)
         await captureTabScreenshot(
-          nightshiftPage,
+          koluxPage,
           firstTabId,
           testInfo,
           `tab-switch-corrupt-settled-cycle-${cycle}`
         )
       }
     }
-    const schedulerActivity = await waitForHiddenOutputSchedulerActivity(nightshiftPage)
+    const schedulerActivity = await waitForHiddenOutputSchedulerActivity(koluxPage)
     expect(schedulerActivity.scheduledDrainCount).toBeGreaterThan(0)
 
     if (corruptionReports.length > 0) {
@@ -607,22 +607,22 @@ test.describe('Terminal tab switch visual restore', () => {
   })
 
   test('keeps geometry after hidden alt-screen TUI redraws during tab switches', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(nightshiftPage)
-    await forceWebglOnActiveTab(nightshiftPage)
-    await waitForPanePtyIdOnTab(nightshiftPage, firstTabId)
+    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(koluxPage)
+    await forceWebglOnActiveTab(koluxPage)
+    await waitForPanePtyIdOnTab(koluxPage, firstTabId)
 
     const runId = `${Date.now()}`
     const finalMarker = `${TAB_SWITCH_MARKER_PREFIX}_${runId}_ALT_24`
 
     await writeToPaneTerminal(
-      nightshiftPage,
+      koluxPage,
       firstTabId,
       Array.from({ length: 25 }, (_, frame) => buildAltScreenFrame(finalMarker, frame)).join('')
     )
@@ -638,22 +638,18 @@ test.describe('Terminal tab switch visual restore', () => {
       // snapshot so either path leaves a valid screen — numbered one higher so
       // the readback still reports which one painted. Identity is re-read per
       // cycle because a reattach would re-key the override.
-      const { ptyId, cols, rows } = await readPaneIdentityOnTab(nightshiftPage, firstTabId)
-      await setHiddenSnapshotOverride(nightshiftPage, ptyId, {
+      const { ptyId, cols, rows } = await readPaneIdentityOnTab(koluxPage, firstTabId)
+      await setHiddenSnapshotOverride(koluxPage, ptyId, {
         data: buildAltScreenFrame(finalMarker, restoreFrame),
         cols,
         rows
       })
-      await activateTerminalTab(nightshiftPage, secondTabId)
-      await writeToPaneTerminal(nightshiftPage, firstTabId, redraw)
-      await activateTerminalTab(nightshiftPage, firstTabId)
+      await activateTerminalTab(koluxPage, secondTabId)
+      await writeToPaneTerminal(koluxPage, firstTabId, redraw)
+      await activateTerminalTab(koluxPage, firstTabId)
 
-      const geometry = await readTabTerminalGeometry(nightshiftPage, firstTabId, `${runId}_ALT`)
-      const renderedFrame = await readRenderedAltScreenFrame(
-        nightshiftPage,
-        firstTabId,
-        finalMarker
-      )
+      const geometry = await readTabTerminalGeometry(koluxPage, firstTabId, `${runId}_ALT`)
+      const renderedFrame = await readRenderedAltScreenFrame(koluxPage, firstTabId, finalMarker)
       renderPaths.push(
         `cycle ${cycle}: ${describeAltScreenRenderPath(renderedFrame, liveFrame, restoreFrame)}`
       )
@@ -669,7 +665,7 @@ test.describe('Terminal tab switch visual restore', () => {
           `cycle ${cycle}: ${issue ?? 'marker missing after alt-screen redraw'}`
         )
         await captureTabScreenshot(
-          nightshiftPage,
+          koluxPage,
           firstTabId,
           testInfo,
           `alt-screen-corrupt-cycle-${cycle}`
@@ -694,20 +690,20 @@ test.describe('Terminal tab switch visual restore', () => {
     ).toEqual([])
   })
 
-  test('restores skipped hidden agent output on light tab resume', async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  test('restores skipped hidden agent output on light tab resume', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const shellTabId = (await getActiveTabId(nightshiftPage))!
-    const agentTabId = await createCodexMarkedTerminalTab(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPanePtyIdOnTab(nightshiftPage, agentTabId)
-    const paneIdentity = await readPaneIdentityOnTab(nightshiftPage, agentTabId)
+    const shellTabId = (await getActiveTabId(koluxPage))!
+    const agentTabId = await createCodexMarkedTerminalTab(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPanePtyIdOnTab(koluxPage, agentTabId)
+    const paneIdentity = await readPaneIdentityOnTab(koluxPage, agentTabId)
     const paneKey = `${agentTabId}:${paneIdentity.leafId}`
 
-    await activateTerminalTab(nightshiftPage, shellTabId)
+    await activateTerminalTab(koluxPage, shellTabId)
     const runId = `${Date.now()}`
     const marker = `${TAB_SWITCH_MARKER_PREFIX}_SKIPPED_AGENT_${runId}`
     const hiddenFrame = [
@@ -716,52 +712,49 @@ test.describe('Terminal tab switch visual restore', () => {
       'status=streaming while tab-hidden',
       '\x1b[?2026l'
     ].join('\r\n')
-    await resetHiddenOutputDebug(nightshiftPage)
-    await injectPaneData(nightshiftPage, paneKey, hiddenFrame, {
+    await resetHiddenOutputDebug(koluxPage)
+    await injectPaneData(koluxPage, paneKey, hiddenFrame, {
       seq: hiddenFrame.length,
       rawLength: hiddenFrame.length
     })
 
     await expect
-      .poll(
-        async () => (await readHiddenOutputDebug(nightshiftPage))?.hiddenRendererSkipCount ?? 0,
-        {
-          timeout: 5_000,
-          message: 'Codex-marked hidden output did not take the skipped renderer path'
-        }
-      )
+      .poll(async () => (await readHiddenOutputDebug(koluxPage))?.hiddenRendererSkipCount ?? 0, {
+        timeout: 5_000,
+        message: 'Codex-marked hidden output did not take the skipped renderer path'
+      })
       .toBeGreaterThan(0)
-    await setHiddenSnapshotOverride(nightshiftPage, paneIdentity.ptyId, {
+    await setHiddenSnapshotOverride(koluxPage, paneIdentity.ptyId, {
       data: `${marker} restored from main snapshot\r\n`,
       cols: paneIdentity.cols,
       rows: paneIdentity.rows,
       seq: hiddenFrame.length
     })
 
-    await activateTerminalTab(nightshiftPage, agentTabId)
+    await activateTerminalTab(koluxPage, agentTabId)
 
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 8_000), {
+      .poll(() => getTerminalContent(koluxPage, 8_000), {
         timeout: 10_000,
         message: 'light tab resume did not request skipped hidden-output recovery'
       })
       .toContain(marker)
   })
 
-  test('restores skipped hidden Grok output on light tab resume', async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  test('restores skipped hidden Grok output on light tab resume', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const shellTabId = (await getActiveTabId(nightshiftPage))!
-    const grokTabId = await createGrokMarkedTerminalTab(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPanePtyIdOnTab(nightshiftPage, grokTabId)
-    const paneIdentity = await readPaneIdentityOnTab(nightshiftPage, grokTabId)
+    const shellTabId = (await getActiveTabId(koluxPage))!
+    const grokTabId = await createGrokMarkedTerminalTab(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPanePtyIdOnTab(koluxPage, grokTabId)
+    const paneIdentity = await readPaneIdentityOnTab(koluxPage, grokTabId)
     const paneKey = `${grokTabId}:${paneIdentity.leafId}`
 
-    await activateTerminalTab(nightshiftPage, shellTabId)
+    await activateTerminalTab(koluxPage, shellTabId)
     const runId = `${Date.now()}`
     const marker = `${TAB_SWITCH_MARKER_PREFIX}_SKIPPED_GROK_${runId}`
     // Why: synchronized-output mode exercises the hidden renderer skip path
@@ -772,32 +765,29 @@ test.describe('Terminal tab switch visual restore', () => {
       'status=streaming while tab-hidden',
       '\x1b[?2026l'
     ].join('\r\n')
-    await resetHiddenOutputDebug(nightshiftPage)
-    await injectPaneData(nightshiftPage, paneKey, hiddenFrame, {
+    await resetHiddenOutputDebug(koluxPage)
+    await injectPaneData(koluxPage, paneKey, hiddenFrame, {
       seq: hiddenFrame.length,
       rawLength: hiddenFrame.length
     })
 
     await expect
-      .poll(
-        async () => (await readHiddenOutputDebug(nightshiftPage))?.hiddenRendererSkipCount ?? 0,
-        {
-          timeout: 5_000,
-          message: 'Grok-marked hidden output did not take the skipped renderer path'
-        }
-      )
+      .poll(async () => (await readHiddenOutputDebug(koluxPage))?.hiddenRendererSkipCount ?? 0, {
+        timeout: 5_000,
+        message: 'Grok-marked hidden output did not take the skipped renderer path'
+      })
       .toBeGreaterThan(0)
-    await setHiddenSnapshotOverride(nightshiftPage, paneIdentity.ptyId, {
+    await setHiddenSnapshotOverride(koluxPage, paneIdentity.ptyId, {
       data: `${marker} restored from main snapshot\r\n`,
       cols: paneIdentity.cols,
       rows: paneIdentity.rows,
       seq: hiddenFrame.length
     })
 
-    await activateTerminalTab(nightshiftPage, grokTabId)
+    await activateTerminalTab(koluxPage, grokTabId)
 
     await expect
-      .poll(() => getTerminalContent(nightshiftPage, 8_000), {
+      .poll(() => getTerminalContent(koluxPage, 8_000), {
         timeout: 10_000,
         message: 'light tab resume did not request skipped Grok hidden-output recovery'
       })
@@ -805,56 +795,56 @@ test.describe('Terminal tab switch visual restore', () => {
   })
 
   test('@headful keeps returned tab glyphs intact across tab switches', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Why: screenshot equality catches WebGL atlas corruption on the tab being
     // resumed, not just stale cols/rows geometry checks.
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(nightshiftPage)
-    await forceWebglOnActiveTab(nightshiftPage)
-    await activateTerminalTab(nightshiftPage, firstTabId)
-    const firstWebgl = await waitForWebglOnTab(nightshiftPage, firstTabId)
-    await activateTerminalTab(nightshiftPage, secondTabId)
-    await nightshiftPage.evaluate((id) => {
+    const { firstTabId, secondTabId } = await ensureTwoTerminalTabs(koluxPage)
+    await forceWebglOnActiveTab(koluxPage)
+    await activateTerminalTab(koluxPage, firstTabId)
+    const firstWebgl = await waitForWebglOnTab(koluxPage, firstTabId)
+    await activateTerminalTab(koluxPage, secondTabId)
+    await koluxPage.evaluate((id) => {
       window.__paneManagers?.get(id)?.setTerminalGpuAcceleration?.('on')
     }, secondTabId)
-    const secondWebgl = await waitForWebglOnTab(nightshiftPage, secondTabId)
+    const secondWebgl = await waitForWebglOnTab(koluxPage, secondTabId)
     if (!firstWebgl || !secondWebgl) {
       test.skip(true, 'WebGL never attached on both tabs')
       return
     }
 
-    const firstPtyId = await waitForPanePtyIdOnTab(nightshiftPage, firstTabId)
-    const secondPtyId = await waitForPanePtyIdOnTab(nightshiftPage, secondTabId)
-    await sendToTerminal(nightshiftPage, firstPtyId, SILENT_FOREGROUND_COMMAND)
-    await sendToTerminal(nightshiftPage, secondPtyId, SILENT_FOREGROUND_COMMAND)
-    await nightshiftPage.waitForTimeout(1_000)
+    const firstPtyId = await waitForPanePtyIdOnTab(koluxPage, firstTabId)
+    const secondPtyId = await waitForPanePtyIdOnTab(koluxPage, secondTabId)
+    await sendToTerminal(koluxPage, firstPtyId, SILENT_FOREGROUND_COMMAND)
+    await sendToTerminal(koluxPage, secondPtyId, SILENT_FOREGROUND_COMMAND)
+    await koluxPage.waitForTimeout(1_000)
 
     const runId = `${Date.now()}`
     const markerA = `${TAB_SWITCH_MARKER_PREFIX}_A_${runId}`
     const markerB = `${TAB_SWITCH_MARKER_PREFIX}_B_${runId}`
-    await writeStaticTabContent(nightshiftPage, firstTabId, markerA, TAB_A_GLYPH_ROW)
-    await activateTerminalTab(nightshiftPage, secondTabId)
-    await writeStaticTabContent(nightshiftPage, secondTabId, markerB, TAB_B_GLYPH_ROW)
+    await writeStaticTabContent(koluxPage, firstTabId, markerA, TAB_A_GLYPH_ROW)
+    await activateTerminalTab(koluxPage, secondTabId)
+    await writeStaticTabContent(koluxPage, secondTabId, markerB, TAB_B_GLYPH_ROW)
 
-    await activateTerminalTab(nightshiftPage, firstTabId)
-    await resetAtlasOnTab(nightshiftPage, firstTabId)
-    await nightshiftPage.waitForTimeout(800)
-    const baseline = await captureStableTabScreenshot(nightshiftPage, firstTabId)
+    await activateTerminalTab(koluxPage, firstTabId)
+    await resetAtlasOnTab(koluxPage, firstTabId)
+    await koluxPage.waitForTimeout(800)
+    const baseline = await captureStableTabScreenshot(koluxPage, firstTabId)
 
     const screenshotMismatches: string[] = []
     for (let cycle = 0; cycle < 8; cycle += 1) {
-      await activateTerminalTab(nightshiftPage, secondTabId)
+      await activateTerminalTab(koluxPage, secondTabId)
       // Why: do not write into the hidden tab here — new bytes would change the
       // screenshot even when rendering is healthy. This cycle only exercises the
       // suspend/resume + atlas reset path on unchanged content.
-      await activateTerminalTab(nightshiftPage, firstTabId)
-      await nightshiftPage.waitForTimeout(100)
-      const afterReturn = await captureStableTabScreenshot(nightshiftPage, firstTabId)
+      await activateTerminalTab(koluxPage, firstTabId)
+      await koluxPage.waitForTimeout(100)
+      const afterReturn = await captureStableTabScreenshot(koluxPage, firstTabId)
       const diff = compareTerminalScreenshots(baseline, afterReturn)
       if (!diff.matches) {
         screenshotMismatches.push(

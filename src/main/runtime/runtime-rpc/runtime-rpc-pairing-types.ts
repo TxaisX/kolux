@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcAnyMethod } from '../rpc/core'
 import type { DeviceRegistry } from '../device-registry'
 import type { E2EEKeypair } from '../e2ee-keypair'
@@ -17,7 +17,7 @@ import type { RelayDeviceBinding, RelayRevokeOutboxItem } from '../relay/relay-r
 export const DEFAULT_WS_PORT = 6768
 
 // Why: STA-2370 — the WS listener defaults to loopback so a desktop with no paired device is not
-// reachable from the LAN; it widens to all interfaces only on explicit pairing (or `nightshift serve`).
+// reachable from the LAN; it widens to all interfaces only on explicit pairing (or `kolux serve`).
 export const WS_BIND_HOST_LOOPBACK = '127.0.0.1'
 export const WS_BIND_HOST_ALL_INTERFACES = '0.0.0.0'
 
@@ -27,24 +27,24 @@ export function formatWsEndpoint(host: string, port: number): string {
   return `ws://${host.includes(':') ? `[${host}]` : host}:${port}`
 }
 
-export type NightshiftRuntimeRpcServerOptions = {
-  runtime: NightshiftRuntimeService
+export type KoluxRuntimeRpcServerOptions = {
+  runtime: KoluxRuntimeService
   userDataPath: string
   pid?: number
   platform?: NodeJS.Platform
   enableWebSocket?: boolean
   wsPort?: number
-  // Why: true when the caller pinned a port (`nightshift serve --port`) so bind order prefers it over a stale STA-1511 fallback (#8535).
+  // Why: true when the caller pinned a port (`kolux serve --port`) so bind order prefers it over a stale STA-1511 fallback (#8535).
   preferPinnedWsPort?: boolean
   // Why: STA-2370 — bind the WS listener to all interfaces at startup instead of loopback-until-paired.
-  // Only `nightshift serve` (explicit remote opt-in) and E2E set this; the desktop app widens lazily on pairing.
+  // Only `kolux serve` (explicit remote opt-in) and E2E set this; the desktop app widens lazily on pairing.
   exposeNetworkByDefault?: boolean
   /**
    * Pin the WS listener to exactly this address for the process's whole life.
    *
    * Why a pin and not another default: the two paths below both widen on their own —
    * `exposeNetworkByDefault` at startup, and a device that has connected once at every
-   * later startup. An unattended host (nightshiftd) whose operator asked for loopback must
+   * later startup. An unattended host (koluxd) whose operator asked for loopback must
    * still be on loopback after a client pairs and the service restarts, so the answer
    * has to outrank both, and `ensureNetworkExposure()` has to refuse rather than widen.
    */
@@ -99,9 +99,9 @@ export function pairingUnavailable(
 }
 
 export const DEVICE_REGISTRY_UNAVAILABLE_GUIDANCE =
-  'The pairing registry is unavailable. Verify that the Nightshift data directory is writable.'
+  'The pairing registry is unavailable. Verify that the Kolux data directory is writable.'
 export const E2EE_KEY_UNAVAILABLE_GUIDANCE =
-  'The E2EE identity is unavailable. Verify that the Nightshift data directory is writable.'
+  'The E2EE identity is unavailable. Verify that the Kolux data directory is writable.'
 
 export type MobileRelayPairingProvider = {
   createPairingRelay(

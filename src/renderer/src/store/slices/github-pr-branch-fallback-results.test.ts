@@ -79,7 +79,7 @@ describe('createGitHubSlice.fetchPRForBranch', () => {
               number: 12,
               title: 'Visible cached PR',
               state,
-              url: 'https://github.com/acme/nightshift/pull/12',
+              url: 'https://github.com/acme/kolux/pull/12',
               status: 'pending',
               updatedAt: '2026-03-28T00:00:00Z',
               mergeable: 'UNKNOWN'
@@ -139,7 +139,7 @@ describe('createGitHubSlice.fetchPRForBranch', () => {
             number: 12,
             title: 'Visible open PR',
             state: 'open',
-            url: 'https://github.com/acme/nightshift/pull/12',
+            url: 'https://github.com/acme/kolux/pull/12',
             status: 'pending',
             updatedAt: '2026-03-28T00:00:00Z',
             mergeable: 'UNKNOWN'
@@ -389,7 +389,7 @@ describe('createGitHubSlice.fetchPRForBranch', () => {
             number: 44,
             title: 'Hosted review fallback PR',
             state: 'open',
-            url: 'https://github.com/acme/nightshift/pull/44',
+            url: 'https://github.com/acme/kolux/pull/44',
             status: 'pending',
             updatedAt: '2026-03-28T00:00:00Z',
             mergeable: 'UNKNOWN'
@@ -445,7 +445,7 @@ describe('createGitHubSlice.fetchPRForBranch', () => {
             number: 44,
             title: 'Stale hosted-review PR',
             state: 'open',
-            url: 'https://github.com/acme/nightshift/pull/44',
+            url: 'https://github.com/acme/kolux/pull/44',
             status: 'pending',
             updatedAt: '2026-03-28T00:00:00Z',
             mergeable: 'UNKNOWN'

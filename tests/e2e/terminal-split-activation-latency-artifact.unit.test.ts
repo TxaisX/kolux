@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe('writeTerminalSplitLatencyArtifact', () => {
   it('writes the report body to the requested path', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-split-latency-artifact-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-split-latency-artifact-'))
     temporaryDirectories.push(directory)
     const outputPath = join(directory, 'report.json')
     const body = '{"status":"passed"}\n'
@@ -32,7 +32,7 @@ describe('writeTerminalSplitLatencyArtifact', () => {
   })
 
   it('throws when the report path cannot be written', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-split-latency-artifact-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-split-latency-artifact-'))
     temporaryDirectories.push(directory)
     const outputPath = join(directory, 'missing-parent', 'report.json')
 
@@ -46,7 +46,7 @@ describe('sanitizeTerminalSplitLatencyReport', () => {
   it('replaces the machine-local test repo path', () => {
     expect(
       sanitizeTerminalSplitLatencyReport({
-        testRepoPath: '/var/folders/ab/T/nightshift-seeded-repo'
+        testRepoPath: '/var/folders/ab/T/kolux-seeded-repo'
       }).testRepoPath
     ).toBe('<test-repo>')
   })

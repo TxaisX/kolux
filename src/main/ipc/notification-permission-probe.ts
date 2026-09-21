@@ -44,8 +44,8 @@ export function probeNotificationDelivery(): Promise<NotificationDeliveryProbeRe
   permissionDialogTriggeredThisSession = true
 
   const probe = new Notification({
-    title: 'Nightshift notifications are on',
-    body: 'Nightshift will alert you when agents finish or terminals need attention.',
+    title: 'Kolux notifications are on',
+    body: 'Kolux will alert you when agents finish or terminals need attention.',
     silent: true
   })
   activeNotifications.add(probe)

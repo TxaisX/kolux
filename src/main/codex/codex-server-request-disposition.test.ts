@@ -91,7 +91,7 @@ describe('Codex blocking server request dispositions', () => {
     expect(connection.respondWithError).toHaveBeenCalledWith(
       4,
       -32001,
-      'Nightshift could not model item/commandExecution/requestApproval as a durable prompt'
+      'Kolux could not model item/commandExecution/requestApproval as a durable prompt'
     )
   })
 
@@ -126,7 +126,7 @@ describe('Codex blocking server request dispositions', () => {
     expect(connection.respondWithError).toHaveBeenCalledWith(
       5,
       -32000,
-      'Nightshift rejected unrecognized blocking request future/blockingRequest'
+      'Kolux rejected unrecognized blocking request future/blockingRequest'
     )
   })
 })

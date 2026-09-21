@@ -34,7 +34,7 @@ const temporaryDirectories = []
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..')
 
 async function createPackage() {
-  const directory = await mkdtemp(path.join(tmpdir(), 'nightshift-skill-manifest-'))
+  const directory = await mkdtemp(path.join(tmpdir(), 'kolux-skill-manifest-'))
   temporaryDirectories.push(directory)
   return directory
 }
@@ -117,10 +117,10 @@ describe('skill bundle manifest generator', () => {
   it('rejects rewrites of released snapshots and allows floating-tail replacement', () => {
     const snapshot = (releaseRevision, packageDigest) => ({ releaseRevision, packageDigest })
     const artifacts = {
-      releasedSnapshotCounts: { 'nightshift-cli': 2 },
+      releasedSnapshotCounts: { 'kolux-cli': 2 },
       snapshotRegistry: {
         schemaVersion: 1,
-        skills: { 'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'ccc')] }
+        skills: { 'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'ccc')] }
       }
     }
 
@@ -128,7 +128,7 @@ describe('skill bundle manifest generator', () => {
       assertReleasedHistoryPreserved(
         {
           schemaVersion: 1,
-          skills: { 'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb')] }
+          skills: { 'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb')] }
         },
         artifacts
       )
@@ -138,7 +138,7 @@ describe('skill bundle manifest generator', () => {
         {
           schemaVersion: 1,
           skills: {
-            'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'stale')]
+            'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'stale')]
           }
         },
         artifacts
@@ -148,36 +148,33 @@ describe('skill bundle manifest generator', () => {
       assertReleasedHistoryPreserved(
         {
           schemaVersion: 1,
-          skills: { 'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'rewritten')] }
+          skills: { 'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'rewritten')] }
         },
         artifacts
       )
-    ).toThrow('Released snapshot history changed for nightshift-cli at revision 2')
+    ).toThrow('Released snapshot history changed for kolux-cli at revision 2')
     expect(() =>
       assertReleasedHistoryPreserved(
         {
           schemaVersion: 1,
           skills: {
-            'nightshift-cli': [
-              snapshot(1, 'aaa'),
-              { ...snapshot(2, 'bbb'), gitTreeSha: 'rewritten' }
-            ]
+            'kolux-cli': [snapshot(1, 'aaa'), { ...snapshot(2, 'bbb'), gitTreeSha: 'rewritten' }]
           }
         },
         artifacts
       )
-    ).toThrow('Released snapshot history changed for nightshift-cli at revision 2')
+    ).toThrow('Released snapshot history changed for kolux-cli at revision 2')
     expect(() =>
       assertReleasedHistoryPreserved(
         {
           schemaVersion: 1,
           skills: {
-            'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'stale')]
+            'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'stale')]
           }
         },
-        { ...artifacts, releasedSnapshotCounts: { 'nightshift-cli': 1 } }
+        { ...artifacts, releasedSnapshotCounts: { 'kolux-cli': 1 } }
       )
-    ).toThrow('Released snapshot history is incomplete for nightshift-cli')
+    ).toThrow('Released snapshot history is incomplete for kolux-cli')
     expect(() => assertReleasedHistoryPreserved(null, artifacts)).not.toThrow()
   })
 
@@ -214,11 +211,11 @@ describe('skill bundle manifest generator', () => {
   it('tolerates only redundant trailing release-mapping rows', () => {
     const serialized = (value) => `${JSON.stringify(value, null, 2)}\n`
     const rows = [
-      { appVersion: '1.0.0', skills: { 'nightshift-cli': 1 } },
-      { appVersion: '1.1.0', skills: { 'nightshift-cli': 2 } }
+      { appVersion: '1.0.0', skills: { 'kolux-cli': 1 } },
+      { appVersion: '1.1.0', skills: { 'kolux-cli': 2 } }
     ]
     const artifacts = {
-      currentManifest: { skills: [{ name: 'nightshift-cli', releaseRevision: 2 }] },
+      currentManifest: { skills: [{ name: 'kolux-cli', releaseRevision: 2 }] },
       releaseMapping: { schemaVersion: 1, releases: rows }
     }
     const committedPrefix = serialized({ schemaVersion: 1, releases: [rows[0]] })
@@ -233,7 +230,7 @@ describe('skill bundle manifest generator', () => {
     expect(
       isToleratedReleaseMappingPrefix(committedPrefix, {
         ...artifacts,
-        currentManifest: { skills: [{ name: 'nightshift-cli', releaseRevision: 3 }] }
+        currentManifest: { skills: [{ name: 'kolux-cli', releaseRevision: 3 }] }
       })
     ).toBe(false)
     expect(
@@ -241,8 +238,8 @@ describe('skill bundle manifest generator', () => {
         ...artifacts,
         currentManifest: {
           skills: [
-            { name: 'nightshift-cli', releaseRevision: 2 },
-            { name: 'nightshift-linear', releaseRevision: 1 }
+            { name: 'kolux-cli', releaseRevision: 2 },
+            { name: 'kolux-linear', releaseRevision: 1 }
           ]
         }
       })
@@ -252,7 +249,7 @@ describe('skill bundle manifest generator', () => {
       isToleratedReleaseMappingPrefix(
         serialized({
           schemaVersion: 1,
-          releases: [{ appVersion: '0.9.0', skills: { 'nightshift-cli': 1 } }]
+          releases: [{ appVersion: '0.9.0', skills: { 'kolux-cli': 1 } }]
         }),
         artifacts
       )
@@ -267,25 +264,22 @@ describe('skill bundle manifest generator', () => {
       schemaVersion: 1,
       skills: {
         // released revs 1..2 named by the mapping, plus an unreleased tail at 3
-        'nightshift-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'unreleased')],
+        'kolux-cli': [snapshot(1, 'aaa'), snapshot(2, 'bbb'), snapshot(3, 'unreleased')],
         // no mapping row -> fall back to all-but-tail
-        'nightshift-linear': [snapshot(1, 'ccc'), snapshot(2, 'tail')]
+        'kolux-linear': [snapshot(1, 'ccc'), snapshot(2, 'tail')]
       }
     }
     const committedMapping = {
       schemaVersion: 1,
-      releases: [{ appVersion: '1.0.0', skills: { 'nightshift-cli': 2 } }]
+      releases: [{ appVersion: '1.0.0', skills: { 'kolux-cli': 2 } }]
     }
 
     const seeded = releasedHistoryFromCommitted(committedRegistry, committedMapping)
 
     // The unreleased tail is dropped; only mapping-named revisions survive.
-    expect(seeded.registry.skills['nightshift-cli']).toEqual([
-      snapshot(1, 'aaa'),
-      snapshot(2, 'bbb')
-    ])
-    expect(seeded.registry.skills['nightshift-linear']).toEqual([snapshot(1, 'ccc')])
-    expect(seeded.releasedSnapshotCounts).toEqual({ 'nightshift-cli': 2, 'nightshift-linear': 1 })
+    expect(seeded.registry.skills['kolux-cli']).toEqual([snapshot(1, 'aaa'), snapshot(2, 'bbb')])
+    expect(seeded.registry.skills['kolux-linear']).toEqual([snapshot(1, 'ccc')])
+    expect(seeded.releasedSnapshotCounts).toEqual({ 'kolux-cli': 2, 'kolux-linear': 1 })
     // The seed clones the mapping so a later release append cannot alias committed state.
     expect(seeded.mapping).toEqual(committedMapping)
     expect(seeded.mapping).not.toBe(committedMapping)
@@ -302,22 +296,20 @@ describe('skill bundle manifest generator', () => {
     const artifacts = {
       currentManifest: {
         skills: [
-          { name: 'nightshift-cli', releaseRevision: 36 },
-          { name: 'nightshift-linear', releaseRevision: 8 }
+          { name: 'kolux-cli', releaseRevision: 36 },
+          { name: 'kolux-linear', releaseRevision: 8 }
         ]
       },
       releaseMapping: {
         schemaVersion: 1,
-        releases: [
-          { appVersion: '1.4.151', skills: { 'nightshift-cli': 35, 'nightshift-linear': 8 } }
-        ]
+        releases: [{ appVersion: '1.4.151', skills: { 'kolux-cli': 35, 'kolux-linear': 8 } }]
       }
     }
 
     appendReleaseRow(artifacts, 'v1.4.160')
     expect(artifacts.releaseMapping.releases.at(-1)).toEqual({
       appVersion: '1.4.160',
-      skills: { 'nightshift-cli': 36, 'nightshift-linear': 8 }
+      skills: { 'kolux-cli': 36, 'kolux-linear': 8 }
     })
 
     // A second release over identical revisions adds no row.
@@ -327,13 +319,13 @@ describe('skill bundle manifest generator', () => {
 
   it('overwrites the trailing row when a failed cut is re-cut at the same version', () => {
     const artifacts = {
-      currentManifest: { skills: [{ name: 'nightshift-cli', releaseRevision: 37 }] },
+      currentManifest: { skills: [{ name: 'kolux-cli', releaseRevision: 37 }] },
       releaseMapping: {
         schemaVersion: 1,
         releases: [
-          { appVersion: '1.4.151', skills: { 'nightshift-cli': 35 } },
+          { appVersion: '1.4.151', skills: { 'kolux-cli': 35 } },
           // The failed cut already pushed this row to main at revision 36.
-          { appVersion: '1.4.160', skills: { 'nightshift-cli': 36 } }
+          { appVersion: '1.4.160', skills: { 'kolux-cli': 36 } }
         ]
       }
     }
@@ -342,19 +334,19 @@ describe('skill bundle manifest generator', () => {
 
     // One row per version: the tag ships revision 37, so 36 must not linger.
     expect(artifacts.releaseMapping.releases).toEqual([
-      { appVersion: '1.4.151', skills: { 'nightshift-cli': 35 } },
-      { appVersion: '1.4.160', skills: { 'nightshift-cli': 37 } }
+      { appVersion: '1.4.151', skills: { 'kolux-cli': 35 } },
+      { appVersion: '1.4.160', skills: { 'kolux-cli': 37 } }
     ])
   })
 
   it('refuses to rewrite an already-shipped version behind the trailing row', () => {
     const artifacts = {
-      currentManifest: { skills: [{ name: 'nightshift-cli', releaseRevision: 37 }] },
+      currentManifest: { skills: [{ name: 'kolux-cli', releaseRevision: 37 }] },
       releaseMapping: {
         schemaVersion: 1,
         releases: [
-          { appVersion: '1.4.151', skills: { 'nightshift-cli': 35 } },
-          { appVersion: '1.4.160', skills: { 'nightshift-cli': 36 } }
+          { appVersion: '1.4.151', skills: { 'kolux-cli': 35 } },
+          { appVersion: '1.4.160', skills: { 'kolux-cli': 36 } }
         ]
       }
     }
@@ -537,7 +529,7 @@ describe('skill bundle manifest generator', () => {
 
   it('computes the same Git tree identity as Git', async () => {
     const packageRoot = await createPackage()
-    await cp(path.join(REPO_ROOT, 'skills', 'nightshift-cli'), packageRoot, { recursive: true })
+    await cp(path.join(REPO_ROOT, 'skills', 'kolux-cli'), packageRoot, { recursive: true })
     const files = await collectPackageFiles(packageRoot)
     // Compare the same bytes even when the skill has uncommitted edits.
     execFileSync('git', ['init', '--quiet'], { cwd: packageRoot })

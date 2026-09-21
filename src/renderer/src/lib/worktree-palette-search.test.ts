@@ -40,7 +40,7 @@ const repoMap = new Map<string, Repo>([
     'repo-1',
     {
       id: 'repo-1',
-      path: '/repo/nightshift',
+      path: '/repo/kolux',
       displayName: 'TxaisX/nightshift',
       badgeColor: '#22c55e',
       addedAt: 0
@@ -54,7 +54,7 @@ function gitLabReview(overrides: Partial<HostedReviewInfo> = {}): HostedReviewIn
     number: 17,
     title: 'Reuse checks tab review metadata',
     state: 'open',
-    url: 'https://gitlab.com/acme/nightshift/-/merge_requests/17',
+    url: 'https://gitlab.com/acme/kolux/-/merge_requests/17',
     status: 'success',
     updatedAt: '2026-07-12T00:00:00Z',
     mergeable: 'MERGEABLE',
@@ -183,7 +183,7 @@ describe('worktree-palette-search', () => {
       branch: undefined as unknown as string
     })
 
-    expect(() => searchWorktrees([cleared], 'nightshift/jump', repoMap)).not.toThrow()
+    expect(() => searchWorktrees([cleared], 'kolux/jump', repoMap)).not.toThrow()
   })
 
   it('still lists a branch-less row on the empty query, which renders every row', () => {
@@ -224,7 +224,7 @@ describe('worktree-palette-search', () => {
       repoMap,
       {
         prCache: {
-          '/repo/nightshift::feature/palette-refresh': {
+          '/repo/kolux::feature/palette-refresh': {
             data: { number: 426, title: 'Refresh the worktree quick jump palette' }
           }
         }
@@ -289,7 +289,7 @@ describe('worktree-palette-search', () => {
       [staleWorktree, gitLabReview({ title: 'Current merge request' })]
     ])
     const prCache = {
-      '/repo/nightshift::feature/palette-refresh': {
+      '/repo/kolux::feature/palette-refresh': {
         data: { number: 99, title: 'Stale GitHub title' }
       }
     }
@@ -305,7 +305,7 @@ describe('worktree-palette-search', () => {
 
   it('does not search stale GitHub metadata while a linked non-GitHub review is loading', () => {
     const prCache = {
-      '/repo/nightshift::feature/palette-refresh': {
+      '/repo/kolux::feature/palette-refresh': {
         data: { number: 99, title: 'Stale GitHub title' }
       }
     }
@@ -348,7 +348,7 @@ describe('worktree-palette-search', () => {
       provider: 'github',
       number: 42,
       title: 'GitHub pull request',
-      url: 'https://github.com/acme/nightshift/pull/42'
+      url: 'https://github.com/acme/kolux/pull/42'
     })
     const gitLabWorktree = makeWorktree()
 
@@ -392,9 +392,9 @@ describe('worktree-palette-search', () => {
     ]
 
     // All three match on the repo name, order preserved from input.
-    expect(
-      searchWorktrees(worktrees, 'nightshift', repoMap).map((result) => result.worktreeId)
-    ).toEqual(['wt-feature', 'wt-bugfix', 'wt-main'])
+    expect(searchWorktrees(worktrees, 'kolux', repoMap).map((result) => result.worktreeId)).toEqual(
+      ['wt-feature', 'wt-bugfix', 'wt-main']
+    )
   })
 
   it('supports "repo/worktree" composite queries and highlights both segments', () => {
@@ -407,7 +407,7 @@ describe('worktree-palette-search', () => {
       })
     ]
 
-    const results = searchWorktrees(worktrees, 'nightshift/main', repoMap)
+    const results = searchWorktrees(worktrees, 'kolux/main', repoMap)
 
     expect(results).toHaveLength(1)
     expect(results[0].worktreeId).toBe('wt-main')

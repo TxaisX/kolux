@@ -22,7 +22,7 @@ export type RemoteSkillCloudFixture = {
 }
 
 export async function startRemoteSkillCloudFixture(): Promise<RemoteSkillCloudFixture> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-remote-skill-cloud-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-remote-skill-cloud-'))
   const source = join(root, 'source')
   await mkdir(source)
   await writeFile(
@@ -54,7 +54,7 @@ export async function startRemoteSkillCloudFixture(): Promise<RemoteSkillCloudFi
   })
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
-    server.listen(Number(process.env.NIGHTSHIFT_E2E_SKILL_CLOUD_PORT ?? 0), '127.0.0.1', resolve)
+    server.listen(Number(process.env.KOLUX_E2E_SKILL_CLOUD_PORT ?? 0), '127.0.0.1', resolve)
   })
   const address = server.address()
   if (!address || typeof address === 'string') {

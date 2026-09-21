@@ -39,7 +39,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -231,8 +231,8 @@ describe('registerPtyHandlers', () => {
         persistHostSessionBinding?: boolean
       }): Promise<{ id: string }>
     }
-    const savedRemoteHooks = process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
-    process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS = '0'
+    const savedRemoteHooks = process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
+    process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS = '0'
     const remoteSpawn = vi.fn(
       async (_opts: { env?: Record<string, string>; envToDelete?: string[] }) => ({
         id: 'ssh:ssh-runtime-env@@relay-pty'
@@ -298,9 +298,9 @@ describe('registerPtyHandlers', () => {
         rows: 24,
         env: {
           FOO: 'bar',
-          NIGHTSHIFT_PANE_KEY: makePaneKey('tab-remote', leafId),
-          NIGHTSHIFT_TAB_ID: 'tab-remote',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-remote'
+          KOLUX_PANE_KEY: makePaneKey('tab-remote', leafId),
+          KOLUX_TAB_ID: 'tab-remote',
+          KOLUX_WORKTREE_ID: 'wt-remote'
         },
         connectionId: 'ssh-runtime-env',
         worktreeId: 'wt-remote',
@@ -312,11 +312,11 @@ describe('registerPtyHandlers', () => {
       const spawnOptions = remoteSpawn.mock.calls[0]?.[0]
       const env = spawnOptions.env
       expect(env).toMatchObject({ FOO: 'bar' })
-      expect(env?.NIGHTSHIFT_PANE_KEY).toBeUndefined()
-      expect(env?.NIGHTSHIFT_TAB_ID).toBeUndefined()
-      expect(env?.NIGHTSHIFT_WORKTREE_ID).toBeUndefined()
+      expect(env?.KOLUX_PANE_KEY).toBeUndefined()
+      expect(env?.KOLUX_TAB_ID).toBeUndefined()
+      expect(env?.KOLUX_WORKTREE_ID).toBeUndefined()
       expect(spawnOptions.envToDelete ?? []).not.toContain('CODEX_HOME')
-      expect(spawnOptions.envToDelete ?? []).not.toContain('NIGHTSHIFT_CODEX_HOME')
+      expect(spawnOptions.envToDelete ?? []).not.toContain('KOLUX_CODEX_HOME')
       expect(store.upsertSshRemotePtyLease).toHaveBeenCalledWith(
         expect.objectContaining({
           targetId: 'ssh-runtime-env',
@@ -327,9 +327,9 @@ describe('registerPtyHandlers', () => {
       )
     } finally {
       if (savedRemoteHooks === undefined) {
-        delete process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS
+        delete process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS
       } else {
-        process.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS = savedRemoteHooks
+        process.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS = savedRemoteHooks
       }
       unregisterSshPtyProvider('ssh-runtime-env')
     }
@@ -417,7 +417,7 @@ describe('registerPtyHandlers', () => {
         sessionId: 'ssh:ssh-reattach-fail@@relay-pty',
         persistHostSessionBinding: true
       })
-    ).rejects.toThrow(/NIGHTSHIFT_TERMINAL_SESSION_STATE_SAVE_FAILED/)
+    ).rejects.toThrow(/KOLUX_TERMINAL_SESSION_STATE_SAVE_FAILED/)
 
     expect(store.upsertSshRemotePtyLease).not.toHaveBeenCalled()
     expect(store.removeSshRemotePtyLease).not.toHaveBeenCalled()

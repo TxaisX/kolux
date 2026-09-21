@@ -230,7 +230,7 @@ describe('project group deletion store routing', () => {
       failedProjectRemovals: [
         {
           projectId: 'shared',
-          reason: 'Project remained in Nightshift after removeProject completed.'
+          reason: 'Project remained in Kolux after removeProject completed.'
         }
       ]
     })
@@ -302,7 +302,7 @@ describe('project group deletion store routing', () => {
       failedProjectRemovals: [
         {
           projectId: 'nested',
-          reason: 'Project remained in Nightshift after removeProject completed.'
+          reason: 'Project remained in Kolux after removeProject completed.'
         }
       ]
     })

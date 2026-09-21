@@ -3,9 +3,9 @@ import type { CodexAppServerLaunch } from './codex-app-server-connection'
 /** Inline supervisor source kept dependency-free for the spawned Node child. */
 export const POSIX_PROVIDER_SUPERVISOR_SCRIPT = `
 const { spawn } = require('node:child_process')
-const spec = JSON.parse(Buffer.from(process.env.NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC, 'base64').toString())
+const spec = JSON.parse(Buffer.from(process.env.KOLUX_PROVIDER_SUPERVISOR_SPEC, 'base64').toString())
 const childEnv = { ...process.env }
-delete childEnv.NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC
+delete childEnv.KOLUX_PROVIDER_SUPERVISOR_SPEC
 delete childEnv.ELECTRON_RUN_AS_NODE
 const child = spawn(spec.command, spec.args, {
   cwd: spec.cwd,
@@ -72,7 +72,7 @@ const reapProviderExit = async (code, signal) => {
 timer = setInterval(() => {
   // A detached supervisor is reparented when its owner exits. The new parent
   // may be PID 1 or a platform subreaper, so any parent change is proof that
-  // this process group no longer has a live Nightshift owner.
+  // this process group no longer has a live Kolux owner.
   if (process.ppid !== originalParent) {
     terminateOwnedGroup()
   }
@@ -107,7 +107,7 @@ export function supervisedPosixLaunch(
     env: {
       ...childEnv,
       ELECTRON_RUN_AS_NODE: '1',
-      NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC: supervisorSpec
+      KOLUX_PROVIDER_SUPERVISOR_SPEC: supervisorSpec
     }
   }
 }

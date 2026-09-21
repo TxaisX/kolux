@@ -46,10 +46,10 @@ export function setupCodexHookHomes(
   let previousUserDataPath: string | undefined
 
   beforeEach(() => {
-    homes.tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-home-'))
-    homes.userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-user-data-'))
-    previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-    process.env.NIGHTSHIFT_USER_DATA_PATH = homes.userDataDir
+    homes.tmpHome = mkdtempSync(join(tmpdir(), 'kolux-codex-home-'))
+    homes.userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-user-data-'))
+    previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+    process.env.KOLUX_USER_DATA_PATH = homes.userDataDir
     homedirMock.mockReturnValue(homes.tmpHome)
     stubCodexTrustSessionsForTests()
     getPathMock.mockImplementation((name: string) => {
@@ -65,9 +65,9 @@ export function setupCodexHookHomes(
     rmSync(homes.tmpHome, { recursive: true, force: true })
     rmSync(homes.userDataDir, { recursive: true, force: true })
     if (previousUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
     }
     vi.clearAllMocks()
   })

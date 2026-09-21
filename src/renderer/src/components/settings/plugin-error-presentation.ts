@@ -6,22 +6,22 @@ function errorText(cause: unknown): string {
 
 export function pluginInstallErrorMessage(cause: unknown): string {
   const detail = errorText(cause)
-  if (detail.includes('nightshift-plugin.json') && /(missing|unreadable|no )/.test(detail)) {
+  if (detail.includes('kolux-plugin.json') && /(missing|unreadable|no )/.test(detail)) {
     return translate(
       'auto.components.settings.pluginError.installManifestMissing',
-      "No readable nightshift-plugin.json was found. Choose the plugin's root folder."
+      "No readable kolux-plugin.json was found. Choose the plugin's root folder."
     )
   }
   if (detail.includes('invalid manifest')) {
     return translate(
       'auto.components.settings.pluginError.installManifestInvalid',
-      'nightshift-plugin.json is invalid. Ask the plugin author to fix the manifest.'
+      'kolux-plugin.json is invalid. Ask the plugin author to fix the manifest.'
     )
   }
-  if (detail.includes('requires nightshift')) {
+  if (detail.includes('requires kolux')) {
     return translate(
       'auto.components.settings.pluginError.incompatible',
-      'This plugin requires a different Nightshift version.'
+      'This plugin requires a different Kolux version.'
     )
   }
   if (/(symlink|outside|absolute|path traversal|drive prefix)/.test(detail)) {
@@ -33,13 +33,13 @@ export function pluginInstallErrorMessage(cause: unknown): string {
   if (/(exceeds|too many)/.test(detail)) {
     return translate(
       'auto.components.settings.pluginError.installLimit',
-      "The plugin exceeds Nightshift's install size or file-count limits."
+      "The plugin exceeds Kolux's install size or file-count limits."
     )
   }
   if (/(git|repository|fetch|clone|checkout|remote)/.test(detail)) {
     return translate(
       'auto.components.settings.pluginError.installGit',
-      'Nightshift could not fetch the pinned Git revision. Check the URL, #ref, access, and system Git setup.'
+      'Kolux could not fetch the pinned Git revision. Check the URL, #ref, access, and system Git setup.'
     )
   }
   return translate(
@@ -50,16 +50,16 @@ export function pluginInstallErrorMessage(cause: unknown): string {
 
 export function invalidPluginErrorMessage(detailValue: string): string {
   const detail = detailValue.toLowerCase()
-  if (detail.includes('missing nightshift-plugin.json')) {
+  if (detail.includes('missing kolux-plugin.json')) {
     return translate(
       'auto.components.settings.pluginError.invalidManifestMissing',
-      'The plugin root is missing nightshift-plugin.json. Add it, then refresh plugins.'
+      'The plugin root is missing kolux-plugin.json. Add it, then refresh plugins.'
     )
   }
   if (detail.includes('invalid manifest')) {
     return translate(
       'auto.components.settings.pluginError.invalidManifest',
-      'nightshift-plugin.json is invalid. Fix it, then refresh plugins.'
+      'kolux-plugin.json is invalid. Fix it, then refresh plugins.'
     )
   }
   if (detail.includes('artifact')) {
@@ -68,10 +68,10 @@ export function invalidPluginErrorMessage(detailValue: string): string {
       'A declared worker or panel file is missing or unsafe. Fix the plugin files, then refresh.'
     )
   }
-  if (detail.includes('requires nightshift')) {
+  if (detail.includes('requires kolux')) {
     return translate(
       'auto.components.settings.pluginError.incompatible',
-      'This plugin requires a different Nightshift version.'
+      'This plugin requires a different Kolux version.'
     )
   }
   return translate(

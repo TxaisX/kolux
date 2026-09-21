@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
-import type { RuntimeTerminalDataMeta } from '../nightshift-runtime'
+import type { RuntimeTerminalDataMeta } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import { createSubscriptionRegistryDouble } from './subscription-registry-test-double'
 import type { RuntimeTerminalWait } from '../../../shared/runtime-types'

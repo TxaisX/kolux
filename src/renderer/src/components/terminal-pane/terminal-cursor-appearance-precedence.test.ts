@@ -133,7 +133,7 @@ describe('#12729 — DECSCUSR from the program outranks the preference', () => {
     })
     expect(cursorClasses(container)).toContain('xterm-cursor-block')
 
-    // Nightshift sends this reset on replay and on the agent-idle path (RESET_TERMINAL_CURSOR_STYLE).
+    // Kolux sends this reset on replay and on the agent-idle path (RESET_TERMINAL_CURSOR_STYLE).
     await actAndAwaitRender(terminal, () => write(terminal, '\x1b[0 q'))
     expect(decPrivateCursorStyle(terminal)).toBeUndefined()
     // And control lands back on the preference, which moved to underline while DECSCUSR held it.

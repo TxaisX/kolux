@@ -30,7 +30,7 @@ type ReportOptions = {
 type ReportState = { lastReportedGap: string | null }
 
 function stateFile(dataFile: string): string {
-  return join(dirname(dataFile), 'nightshift-secret-protection.json')
+  return join(dirname(dataFile), 'kolux-secret-protection.json')
 }
 
 function readState(path: string): ReportState | null {

@@ -5,19 +5,19 @@ import { BrowserRoutePartitionBindingStore } from './browser-route-partition-bin
 const BINDING_FILE_NAME = 'browser-route-partition-bindings.json'
 const PARTITION_DATA_DIRECTORY_NAME = 'Partitions'
 let bindingFilePathOverride: string | null = null
-let activeNightshiftProfileId: string | null = null
+let activeKoluxProfileId: string | null = null
 
-export function configureBrowserRoutePartitionBindingsForNightshiftProfile(options: {
-  nightshiftProfileId: string
+export function configureBrowserRoutePartitionBindingsForKoluxProfile(options: {
+  koluxProfileId: string
   profileDirectory: string
 }): void {
   bindingFilePathOverride = join(options.profileDirectory, BINDING_FILE_NAME)
-  activeNightshiftProfileId = options.nightshiftProfileId
+  activeKoluxProfileId = options.koluxProfileId
 }
 
-/** Null before the active Nightshift profile is known, when no partition can exist yet. */
-export function activeBrowserRoutePartitionNightshiftProfileId(): string | null {
-  return activeNightshiftProfileId
+/** Null before the active Kolux profile is known, when no partition can exist yet. */
+export function activeBrowserRoutePartitionKoluxProfileId(): string | null {
+  return activeKoluxProfileId
 }
 
 export function routePartitionDataRoot(): string {

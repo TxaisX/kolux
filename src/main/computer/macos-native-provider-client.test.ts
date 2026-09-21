@@ -92,7 +92,7 @@ describe('MacOSNativeProviderClient', () => {
     providers.length = 0
     mkdtempSyncMock.mockImplementation((prefix: string) => `${prefix}${sockets.length}`)
     resolveMacOSComputerUseExecutablePathMock.mockReturnValue(
-      '/Applications/Nightshift Computer Use.app/Contents/MacOS/nightshift-computer-use-macos'
+      '/Applications/Kolux Computer Use.app/Contents/MacOS/kolux-computer-use-macos'
     )
     spawnMock.mockImplementation(() => {
       const provider = new FakeProvider()
@@ -434,7 +434,7 @@ describe('MacOSNativeProviderClient', () => {
     await expect(client.capabilities()).rejects.toThrow('socket did not open')
 
     expect(providerKill).toHaveBeenCalledWith('SIGTERM')
-    expect(rmSyncMock).toHaveBeenCalledWith(expect.stringContaining('nightshift-computer-use-'), {
+    expect(rmSyncMock).toHaveBeenCalledWith(expect.stringContaining('kolux-computer-use-'), {
       recursive: true,
       force: true
     })
@@ -484,7 +484,7 @@ describe('MacOSNativeProviderClient', () => {
 function macOSProviderCapabilities(actions: Partial<Record<string, boolean>> = {}) {
   return {
     platform: 'darwin',
-    provider: 'nightshift-computer-use-macos',
+    provider: 'kolux-computer-use-macos',
     providerVersion: '1.0.0',
     protocolVersion: 1,
     supports: {

@@ -89,7 +89,7 @@ function formatForkSyncResult(result: GitForkSyncResult): { title: string; descr
       blockedDescription ??
       translate(
         'auto.components.settings.RepositoryForkSyncSection.blockedFallback',
-        'Nightshift could not fast-forward this fork safely.'
+        'Kolux could not fast-forward this fork safely.'
       )
   }
 }
@@ -201,7 +201,7 @@ export function RepositoryForkSyncSection({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.RepositoryForkSyncSection.longDescription',
-              'When this fork is behind upstream, Nightshift can safely fast-forward its default branch. Nightshift skips the update if the branch has local-only commits or conflicts.'
+              'When this fork is behind upstream, Kolux can safely fast-forward its default branch. Kolux skips the update if the branch has local-only commits or conflicts.'
             )}
           </p>
           <p className="text-xs text-muted-foreground">

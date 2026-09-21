@@ -27,7 +27,7 @@ let journal: AgentSessionJournal
 const journals = createTrackedJournalOpener()
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-wire-admission-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-wire-admission-'))
   journal = await journals.open({
     identity: {
       sessionId: SESSION,

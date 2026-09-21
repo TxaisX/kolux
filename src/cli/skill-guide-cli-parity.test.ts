@@ -6,7 +6,7 @@ import { specPaths } from './command-spec'
 import { COMMAND_SPECS } from './specs'
 
 // Why: a guide is the version-matched surface for the binary that shipped it, so a command
-// path or flag it names must exist in COMMAND_SPECS. `nightshift emulator camera --webcam` was
+// path or flag it names must exist in COMMAND_SPECS. `kolux emulator camera --webcam` was
 // documented for months without ever existing (#16904 review C1).
 
 // Why __dirname: it works under both Vitest and the CommonJS tsc emit that build:cli type-checks
@@ -29,8 +29,8 @@ function guideFiles(directory: string): string[] {
 
 /**
  * The invocation span is the command text only — never the surrounding prose or table cell.
- * `skill-guides/nightshift-emulator.md` describes serve-sim's own `--detach` in a Notes column beside
- * an `NIGHTSHIFT ...` cell, and that is correct prose a line-scoped check would flag.
+ * `skill-guides/kolux-emulator.md` describes serve-sim's own `--detach` in a Notes column beside
+ * an `KOLUX ...` cell, and that is correct prose a line-scoped check would flag.
  */
 function invocationSpans(contents: string, file: string): Invocation[] {
   const found: Invocation[] = []
@@ -42,7 +42,7 @@ function invocationSpans(contents: string, file: string): Invocation[] {
     }
     const spans = inFence ? [line] : [...line.matchAll(/`([^`]+)`/gu)].map((match) => match[1])
     for (const span of spans) {
-      const starts = [...span.matchAll(/\bNIGHTSHIFT\b/gu)].map((match) => match.index)
+      const starts = [...span.matchAll(/\bKOLUX\b/gu)].map((match) => match.index)
       starts.forEach((start, position) => {
         found.push({
           file,
@@ -120,7 +120,7 @@ function describeFailure(invocation: Invocation, detail: string): string {
 function parityFailures(invocation: Invocation): string[] {
   const masked = maskQuotedValues(invocation.text).replace(/\s#.*$/u, '')
   const tokens: string[] = []
-  for (const token of masked.slice('NIGHTSHIFT'.length).trim().split(/\s+/u)) {
+  for (const token of masked.slice('KOLUX'.length).trim().split(/\s+/u)) {
     if (!/^[a-z][a-z0-9-]*$/u.test(token) || tokens.length === MAX_COMMAND_DEPTH) {
       break
     }
@@ -139,7 +139,7 @@ function parityFailures(invocation: Invocation): string[] {
     }
   }
   if (command === null) {
-    // A prefix reference such as `NIGHTSHIFT emulator ...` or `NIGHTSHIFT linear --help` names no exact
+    // A prefix reference such as `KOLUX emulator ...` or `KOLUX linear --help` names no exact
     // path, but its flags still have to belong to some command under that prefix.
     if (pathPrefixes.has(tokens.join(' '))) {
       command = tokens.join(' ')
@@ -174,15 +174,15 @@ describe('skill guides only name commands and flags the CLI defines', () => {
     expect(new Set(invocations.map((invocation) => invocation.file)).size).toBeGreaterThan(8)
   })
 
-  it('checks extracted NIGHTSHIFT command paths and flags against COMMAND_SPECS', () => {
+  it('checks extracted KOLUX command paths and flags against COMMAND_SPECS', () => {
     expect(invocations.flatMap(parityFailures)).toEqual([])
   })
 
   it('checks flags on a prefix reference against every command under it', () => {
     const at = (text: string) => parityFailures({ file: 'x.md', line: 1, text })
-    expect(at('NIGHTSHIFT emulator ...')).toEqual([])
-    expect(at('NIGHTSHIFT linear --help')).toEqual([])
-    expect(at('NIGHTSHIFT emulator --webcam')).toEqual([
+    expect(at('KOLUX emulator ...')).toEqual([])
+    expect(at('KOLUX linear --help')).toEqual([])
+    expect(at('KOLUX emulator --webcam')).toEqual([
       expect.stringContaining('--webcam is not a flag of "emulator"')
     ])
   })

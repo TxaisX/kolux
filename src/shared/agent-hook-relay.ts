@@ -1,25 +1,25 @@
 // Why: defines the wire shape carried by the JSON-RPC `agent.hook` notification
-// the relay sends to Nightshift. Consumed by `src/relay/agent-hook-server.ts` (which
+// the relay sends to Kolux. Consumed by `src/relay/agent-hook-server.ts` (which
 // produces it after the shared listener parses an HTTP POST) and by
 // `src/main/agent-hooks/server.ts` (which ingests it via `ingestRemote`).
 //
 // Lives in `shared/` because the relay deliberately has no Electron dependency
 // (cf. `src/relay/protocol.ts` header). `agent-hook-types.ts` is reserved for
 // the renderer-bound IPC + installer contract; this module is the wire envelope
-// between Nightshift's main process and the remote relay.
+// between Kolux's main process and the remote relay.
 //
 // Invariants both ends rely on:
-// - The relay normalizes; Nightshift routes. The envelope's `payload` field has
+// - The relay normalizes; Kolux routes. The envelope's `payload` field has
 //   already been through `normalizeHookPayload` (which calls
 //   `parseAgentStatusPayload` → `normalizeAgentStatusObject`) on the relay
-//   side. Nightshift's `ingestRemote` re-runs the canonical payload normalizer at
+//   side. Kolux's `ingestRemote` re-runs the canonical payload normalizer at
 //   the SSH trust boundary before caching or persisting, so relay skew or a
 //   buggy remote process cannot poison main-process state.
-// - The wire `connectionId` is **always `null`**: a `connectionId` is Nightshift's
-//   local handle on an `ssh2` connection, not a wire identity. Nightshift stamps the
+// - The wire `connectionId` is **always `null`**: a `connectionId` is Kolux's
+//   local handle on an `ssh2` connection, not a wire identity. Kolux stamps the
 //   real value on receive from `mux` identity inside `ingestRemote`.
 // - The wire `version` and `env` fields are forwarded from the agent CLI's
-//   POST body so Nightshift's warn-once protocol diagnostics still fire. The relay
+//   POST body so Kolux's warn-once protocol diagnostics still fire. The relay
 //   default env is `remote`, a location marker ignored by dev-vs-prod checks.
 
 import { createHash } from 'node:crypto'
@@ -30,7 +30,7 @@ import type { AgentHookTarget } from './agent-hook-types'
 
 // Why: the local hook server knows the discriminator from URL pathname routing
 // (`/hook/<source>`); the relay equally must tag each forwarded notification
-// with the same value so Nightshift can attribute the event back to the right CLI.
+// with the same value so Kolux can attribute the event back to the right CLI.
 // Promoted from `src/main/agent-hooks/server.ts` so the relay can import it
 // without dragging Electron in (the shared listener module is the only place
 // that consumes it from the relay side).
@@ -67,17 +67,17 @@ export function isAgentHookSource(value: unknown): value is AgentHookSource {
  *  a dev-vs-prod build tag, so main-process env mismatch diagnostics ignore it. */
 export const REMOTE_AGENT_HOOK_ENV = 'remote' as const
 
-/** Wire envelope for a single hook event flowing relay → Nightshift. */
+/** Wire envelope for a single hook event flowing relay → Kolux. */
 export type AgentHookRelayEnvelope = {
   source: AgentHookSource
   paneKey: string
-  /** Ephemeral Nightshift launch identity stamped into the PTY env for this process. */
+  /** Ephemeral Kolux launch identity stamped into the PTY env for this process. */
   launchToken?: string
   tabId?: string
   worktreeId?: string
-  /** Always `null` on the wire — relay does not know Nightshift's local connectionId. */
+  /** Always `null` on the wire — relay does not know Kolux's local connectionId. */
   connectionId: null
-  /** Preserved from the relay-side normalized hook event so Nightshift can
+  /** Preserved from the relay-side normalized hook event so Kolux can
    *  distinguish a true same-prompt retry from a cached-prompt tool ping. */
   hasExplicitPrompt?: boolean
   /** Optional stable per-turn key from the relay-side listener. Used only for
@@ -101,18 +101,18 @@ export type AgentHookRelayEnvelope = {
   providerSession?: AgentProviderSessionMetadata
   /** True when this envelope updates resume identity without changing turn status. */
   providerSessionOnly?: boolean
-  /** True when the relay is replaying its cache after Nightshift reconnects. */
+  /** True when the relay is replaying its cache after Kolux reconnects. */
   isReplay?: boolean
   /** Claude background-work evidence for input-interrupt inference on the receiving host. */
   claudeRunningNonAgentTask?: boolean
   /** Forwarded from the agent CLI POST body. The relay default is `remote`,
    *  which marks transport location rather than dev/prod build env. */
   env?: string
-  /** Forwarded verbatim from the agent CLI POST body. Lets Nightshift's warn-once
+  /** Forwarded verbatim from the agent CLI POST body. Lets Kolux's warn-once
    *  protocol-version diagnostic fire on remote events the same as on local. */
   version?: string
   /** Pre-normalized status payload from the relay's `normalizeHookPayload`.
-   *  Nightshift's `ingestRemote` validates it again at the SSH trust boundary. */
+   *  Kolux's `ingestRemote` validates it again at the SSH trust boundary. */
   payload: ParsedAgentStatusPayload
 }
 
@@ -165,7 +165,7 @@ function hasMatchingTurnIdentity(
 }
 
 /**
- * Re-attaches shed fields from Nightshift's cached payload for this pane, so a transport-level
+ * Re-attaches shed fields from Kolux's cached payload for this pane, so a transport-level
  * truncation cannot read as a cleared field — an absent `subagents` blanks live child rows and
  * unblocks hibernation for a pane whose teammates are still running.
  *
@@ -195,13 +195,13 @@ export function restoreShedStatusFields(
   }
 }
 
-/** JSON-RPC request method Nightshift issues after `--connect` reattach to ask the
+/** JSON-RPC request method Kolux issues after `--connect` reattach to ask the
  *  relay to replay its per-paneKey last-payload cache. Pull, not push: a relay
- *  that pushed on `setWrite` can emit before Nightshift has wired its `agent.hook`
+ *  that pushed on `setWrite` can emit before Kolux has wired its `agent.hook`
  *  handler, and those notifications are dropped silently. */
 export const AGENT_HOOK_REQUEST_REPLAY_METHOD = 'agent_hook.requestReplay' as const
 
-/** JSON-RPC request method Nightshift issues at session-ready to ship the
+/** JSON-RPC request method Kolux issues at session-ready to ship the
  *  OpenCode/Pi plugin source files to the relay so it can materialize the
  *  overlay dirs on the remote. */
 export const AGENT_HOOK_INSTALL_PLUGINS_METHOD = 'agent_hook.installPlugins' as const
@@ -211,19 +211,18 @@ export const AGENT_HOOK_INSTALL_PLUGINS_METHOD = 'agent_hook.installPlugins' as 
 export const AGENT_HOOK_INSTALL_MANAGED_HOOKS_METHOD = 'agent_hook.installManagedHooks' as const
 
 export type AgentHookInstallManagedHooksParams = {
-  /** SHA-256 fingerprint of the server key negotiated by Nightshift's SSH transport. */
+  /** SHA-256 fingerprint of the server key negotiated by Kolux's SSH transport. */
   hostKeyFingerprint?: string
   /** Positively detected and enabled agents allowed to mutate remote config. */
   agents: readonly AgentHookTarget[]
 }
 
-/** Feature-flag env var. Read once at process start by Nightshift and the relay.
+/** Feature-flag env var. Read once at process start by Kolux and the relay.
  *  Remote agent hooks ship as the default SSH behavior; set "0" to opt out. */
-export const NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV =
-  'NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS' as const
+export const KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV = 'KOLUX_FEATURE_REMOTE_AGENT_HOOKS' as const
 
 export function isRemoteAgentHooksEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  const raw = env[NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]
+  const raw = env[KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]
   if (raw === undefined) {
     return true
   }

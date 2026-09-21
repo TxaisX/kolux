@@ -76,7 +76,7 @@ export async function createGitHubPullRequest(
     }
   }
 
-  const tempDir = await mkdtemp(join(tmpdir(), 'nightshift-pr-body-'))
+  const tempDir = await mkdtemp(join(tmpdir(), 'kolux-pr-body-'))
   await acquire()
   const bodyPath = join(tempDir, 'body.md')
   try {

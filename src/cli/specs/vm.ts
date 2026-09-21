@@ -6,18 +6,18 @@ export const VM_COMMAND_SPECS: CommandSpec[] = [
     path: ['vm', 'recipe', 'doctor'],
     summary: 'Validate a per-workspace environment recipe without provisioning by default',
     usage:
-      'nightshift vm recipe doctor <recipe-id> [--repo-path <path>] [--provision|--connect] [--json]',
+      'kolux vm recipe doctor <recipe-id> [--repo-path <path>] [--provision|--connect] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'recipe-id', 'repo-path', 'provision', 'connect'],
     positionalArgs: ['recipe-id'],
     notes: [
-      'Reads environmentRecipes from nightshift.yaml in the repo path, validates the selected recipe, and reports agent-friendly checks.',
+      'Reads environmentRecipes from kolux.yaml in the repo path, validates the selected recipe, and reports agent-friendly checks.',
       'This default mode is non-destructive and does not run the recipe command.',
       'Use --provision or --connect to run the recipe, validate its result, and run cleanup when configured.'
     ],
     examples: [
-      'nightshift vm recipe doctor cloud-sandbox',
-      'nightshift vm recipe doctor cloud-sandbox --repo-path /path/to/repo --json',
-      'nightshift vm recipe doctor cloud-sandbox --provision --json'
+      'kolux vm recipe doctor cloud-sandbox',
+      'kolux vm recipe doctor cloud-sandbox --repo-path /path/to/repo --json',
+      'kolux vm recipe doctor cloud-sandbox --provision --json'
     ]
   }
 ]

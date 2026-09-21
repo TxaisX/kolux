@@ -19,16 +19,16 @@ export function prepareDevCliTerminalWrappers({
   mkdirSync(userDataBinDir, { recursive: true })
 
   if (platform === 'win32') {
-    const wrapperContent = `@echo off\r\nset "NIGHTSHIFT_USER_DATA_PATH=${escapeWindowsBatchValue(userDataPath)}"\r\nset "NIGHTSHIFT_DEV_CLI_INVOCATION=1"\r\nset "NIGHTSHIFT_APP_EXECUTABLE=${escapeWindowsBatchValue(electronExecutable)}"\r\nset "NIGHTSHIFT_APP_EXECUTABLE_NEEDS_APP_ROOT=1"\r\nnode "${escapeWindowsBatchValue(cliPath)}" %*\r\n`
+    const wrapperContent = `@echo off\r\nset "KOLUX_USER_DATA_PATH=${escapeWindowsBatchValue(userDataPath)}"\r\nset "KOLUX_DEV_CLI_INVOCATION=1"\r\nset "KOLUX_APP_EXECUTABLE=${escapeWindowsBatchValue(electronExecutable)}"\r\nset "KOLUX_APP_EXECUTABLE_NEEDS_APP_ROOT=1"\r\nnode "${escapeWindowsBatchValue(cliPath)}" %*\r\n`
     for (const targetDir of [binDir, userDataBinDir]) {
-      for (const commandName of ['nightshift-dev.cmd', 'nightshift.cmd']) {
+      for (const commandName of ['kolux-dev.cmd', 'kolux.cmd']) {
         writeFileSync(path.join(targetDir, commandName), wrapperContent, 'utf8')
       }
     }
   } else {
-    const wrapperContent = `#!/usr/bin/env bash\nexport NIGHTSHIFT_USER_DATA_PATH=${JSON.stringify(userDataPath)}\nexport NIGHTSHIFT_DEV_CLI_INVOCATION=1\nexport NIGHTSHIFT_APP_EXECUTABLE=${JSON.stringify(electronExecutable)}\nexport NIGHTSHIFT_APP_EXECUTABLE_NEEDS_APP_ROOT=1\nexec node ${JSON.stringify(cliPath)} "$@"\n`
+    const wrapperContent = `#!/usr/bin/env bash\nexport KOLUX_USER_DATA_PATH=${JSON.stringify(userDataPath)}\nexport KOLUX_DEV_CLI_INVOCATION=1\nexport KOLUX_APP_EXECUTABLE=${JSON.stringify(electronExecutable)}\nexport KOLUX_APP_EXECUTABLE_NEEDS_APP_ROOT=1\nexec node ${JSON.stringify(cliPath)} "$@"\n`
     for (const targetDir of [binDir, userDataBinDir]) {
-      for (const commandName of ['nightshift-dev', 'nightshift']) {
+      for (const commandName of ['kolux-dev', 'kolux']) {
         const wrapperPath = path.join(targetDir, commandName)
         writeFileSync(wrapperPath, wrapperContent, 'utf8')
         chmodSync(wrapperPath, 0o755)

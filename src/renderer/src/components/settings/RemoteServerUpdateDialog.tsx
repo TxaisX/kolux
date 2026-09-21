@@ -154,13 +154,13 @@ export function RemoteServerUpdateDialog(): React.JSX.Element {
           <DialogTitle>
             {translate(
               'auto.components.settings.RemoteServerUpdateDialog.title',
-              'Update Remote Nightshift Servers'
+              'Update Remote Kolux Servers'
             )}
           </DialogTitle>
           <DialogDescription>
             {translate(
               'auto.components.settings.RemoteServerUpdateDialog.description',
-              'Review paired servers and update supported installs from this Nightshift client.'
+              'Review paired servers and update supported installs from this Kolux client.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -192,7 +192,7 @@ export function RemoteServerUpdateDialog(): React.JSX.Element {
               ) : (
                 translate(
                   'auto.components.settings.RemoteServerUpdateDialog.empty',
-                  'No paired Remote Nightshift Servers.'
+                  'No paired Remote Kolux Servers.'
                 )
               )}
             </div>

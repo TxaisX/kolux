@@ -1,5 +1,5 @@
 export const FLOATING_TERMINAL_PANEL_VIEW_STATE_STORAGE_KEY =
-  'nightshift-floating-terminal-panel-view-state-v1'
+  'kolux-floating-terminal-panel-view-state-v1'
 
 export type FloatingTerminalPanelViewState = {
   open: boolean

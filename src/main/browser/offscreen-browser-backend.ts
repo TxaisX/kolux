@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { BrowserWindow } from 'electron'
-import { NIGHTSHIFT_BROWSER_PARTITION } from '../../shared/constants'
-import { NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES } from '../../shared/browser-guest-web-preferences'
+import { KOLUX_BROWSER_PARTITION } from '../../shared/constants'
+import { KOLUX_BROWSER_GUEST_WEB_PREFERENCES } from '../../shared/browser-guest-web-preferences'
 import { mapSettledWithConcurrency } from '../../shared/map-with-concurrency'
 import type { BrowserBackend, BrowserBackendCreateTab } from './browser-backend'
 import type { BrowserManager } from './browser-manager'
 import type { AgentBrowserBridge } from './agent-browser-bridge'
 import { browserSessionRegistry } from './browser-session-registry'
 
-// Why: headless nightshift serve has no renderer window to host a <webview>, so each
+// Why: headless kolux serve has no renderer window to host a <webview>, so each
 // browser page is backed by a main-process offscreen BrowserWindow. The window
 // is never shown — it exists only so its WebContents can be driven over CDP and
 // streamed via the existing screencast path. Verified on macOS and on headless
@@ -47,7 +47,7 @@ export class OffscreenBrowserBackend implements BrowserBackend {
     const profile = params.profileId
       ? browserSessionRegistry.getProfile(params.profileId)
       : browserSessionRegistry.getDefaultProfile()
-    const partition = profile?.partition ?? NIGHTSHIFT_BROWSER_PARTITION
+    const partition = profile?.partition ?? KOLUX_BROWSER_PARTITION
 
     const win = new BrowserWindow({
       show: false,
@@ -56,7 +56,7 @@ export class OffscreenBrowserBackend implements BrowserBackend {
       webPreferences: {
         // Why: offscreen pages are the SSH/headless browser backend; keep their
         // HTML fullscreen behavior aligned with desktop <webview> guests.
-        ...NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES,
+        ...KOLUX_BROWSER_GUEST_WEB_PREFERENCES,
         partition,
         sandbox: true,
         contextIsolation: true,

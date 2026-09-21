@@ -20,11 +20,11 @@ export function canUseLocalAiVaultSessionPathActions(
 
 /**
  * Whether AI Vault `View Log` / `Open Log` can open this session's log inside
- * Nightshift as a read-only tab: a non-blank, local, single-file (non-synthetic)
+ * Kolux as a read-only tab: a non-blank, local, single-file (non-synthetic)
  * path. Remote/runtime and synthetic identities are withheld until AI Vault has
  * a provider-owned log-resource contract.
  */
-export function canOpenAiVaultSessionLogInNightshift(
+export function canOpenAiVaultSessionLogInKolux(
   session: Pick<AiVaultSession, 'filePath' | 'executionHostId'>
 ): boolean {
   const filePath = session.filePath?.trim()

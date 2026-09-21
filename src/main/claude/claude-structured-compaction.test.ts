@@ -7,7 +7,7 @@ describe('Claude compaction transcript content', () => {
     const tracker = new StructuredSessionCompaction()
     const event = {
       type: 'message' as const,
-      sessionId: 'nightshift-session',
+      sessionId: 'kolux-session',
       message: {
         type: 'user',
         session_id: 'provider',
@@ -16,13 +16,13 @@ describe('Claude compaction transcript content', () => {
       }
     }
     expect(isClaudeCompactionContent(tracker, event)).toBe(false)
-    const completion = tracker.run('nightshift-session', 'provider', async () => ({}))
+    const completion = tracker.run('kolux-session', 'provider', async () => ({}))
     expect(isClaudeCompactionContent(tracker, event)).toBe(true)
     expect(isClaudeCompactionContent(tracker, { ...event, sessionId: 'other' })).toBe(false)
     expect(isClaudeCompactionContent(tracker, { ...event, message: { type: 'result' } })).toBe(
       false
     )
-    tracker.ended('nightshift-session')
+    tracker.ended('kolux-session')
     await completion
     expect(isClaudeCompactionContent(tracker, event)).toBe(false)
   })

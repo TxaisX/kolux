@@ -20,8 +20,8 @@ const HOST_ID = 'runtime:env-1'
 const worktree = (path: string) =>
   makeWorktree({ id: `${REPO_ID}::${path}`, repoId: REPO_ID, path, hostId: HOST_ID })
 
-const live = worktree('/home/nightshift/live')
-const deletedOnHost = worktree('/home/nightshift/deleted')
+const live = worktree('/home/kolux/live')
+const deletedOnHost = worktree('/home/kolux/deleted')
 
 function seedClientWithBothRows(): ReturnType<typeof createTestStore> {
   const store = createTestStore()
@@ -30,7 +30,7 @@ function seedClientWithBothRows(): ReturnType<typeof createTestStore> {
     repos: [
       {
         id: REPO_ID,
-        path: '/home/nightshift/repo',
+        path: '/home/kolux/repo',
         displayName: 'Runtime Repo',
         badgeColor: '#000',
         addedAt: 0,

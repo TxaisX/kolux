@@ -41,7 +41,7 @@ async function fixture(
   }) => Promise<void>,
   options: { detectProviders?: () => Promise<readonly string[]>; recovery?: Promise<unknown> } = {}
 ) {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-relay-skill-test-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-relay-skill-test-'))
   roots.push(root)
   const home = join(root, 'home')
   const state = join(root, 'state')
@@ -193,12 +193,7 @@ describe('SkillInstallHandler', () => {
         hostIdentity: 'ssh-host',
         fileModes: input.archive.manifest.files
       }
-      const extractionPath = join(
-        input.home,
-        '.agents',
-        'skills',
-        '.nightshift-skill-extract-crashed'
-      )
+      const extractionPath = join(input.home, '.agents', 'skills', '.kolux-skill-extract-crashed')
       const journal: SkillInstallJournalV1 = {
         schemaVersion: 1,
         operation: 'install',
@@ -209,13 +204,13 @@ describe('SkillInstallHandler', () => {
           input.home,
           '.agents',
           'skills',
-          `.${input.archive.manifest.name}.nightshift-staging-crashed`
+          `.${input.archive.manifest.name}.kolux-staging-crashed`
         ),
         backupPath: join(
           input.home,
           '.agents',
           'skills',
-          `.${input.archive.manifest.name}.nightshift-backup-crashed`
+          `.${input.archive.manifest.name}.kolux-backup-crashed`
         ),
         backupDigest: null,
         stagingFileModes: input.archive.manifest.files,

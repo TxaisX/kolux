@@ -61,7 +61,7 @@ describe('readHookTrustEntries', () => {
         'trusted_hash = "sha256:USER"',
         '',
         `[hooks.state.'${key}']`,
-        'trusted_hash = "sha256:NIGHTSHIFT"',
+        'trusted_hash = "sha256:KOLUX"',
         ''
       ].join('\n'),
       'utf-8'
@@ -106,13 +106,13 @@ describe('readHookTrustEntries', () => {
     const key = '/x/hooks.json:stop:0:0'
     const content = [
       `\uFEFF[hooks.state."${key}"]`,
-      'trusted_hash = "sha256:NIGHTSHIFT"',
+      'trusted_hash = "sha256:KOLUX"',
       '[other]',
       'value = true',
       ''
     ].join('\n')
 
-    expect(readHookTrustEntriesFromContent(content).get(key)?.trustedHash).toBe('sha256:NIGHTSHIFT')
+    expect(readHookTrustEntriesFromContent(content).get(key)?.trustedHash).toBe('sha256:KOLUX')
     expect(removeHookTrustEntriesFromContent(content, [key])).toBe('[other]\nvalue = true\n')
   })
 
@@ -182,8 +182,8 @@ describe('readHookTrustEntries', () => {
 
   it('supports case-insensitive lookups for Windows hook trust keys read from config', () => {
     // Why: Codex and realpathSync.native can disagree on path casing, but lookups must still match.
-    const rawKey = 'C:\\Users\\rod\\AppData\\Roaming\\nightshift\\hooks.json:session_start:0:0'
-    const lookupKey = 'C:/Users/Rod/AppData/Roaming/nightshift/hooks.json:session_start:0:0'
+    const rawKey = 'C:\\Users\\rod\\AppData\\Roaming\\kolux\\hooks.json:session_start:0:0'
+    const lookupKey = 'C:/Users/Rod/AppData/Roaming/kolux/hooks.json:session_start:0:0'
     const original = [
       `[hooks.state.'${rawKey}']`,
       'enabled = true',

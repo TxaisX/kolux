@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { RpcContext, RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { AUTOMATION_METHODS } from './automations'
 import { AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 
@@ -59,7 +59,7 @@ async function invoke(
     throw parsed?.error
   }
   return await target.handler(parsed.data, {
-    runtime: runtime as unknown as NightshiftRuntimeService,
+    runtime: runtime as unknown as KoluxRuntimeService,
     ...context
   } as RpcContext)
 }
@@ -112,7 +112,7 @@ describe('automation.list from a client that sends literal null params', () => {
       runtime: {
         ...runtime,
         getRuntimeId: () => 'test-runtime'
-      } as unknown as NightshiftRuntimeService,
+      } as unknown as KoluxRuntimeService,
       methods: AUTOMATION_METHODS
     })
     const request: RpcRequest = {

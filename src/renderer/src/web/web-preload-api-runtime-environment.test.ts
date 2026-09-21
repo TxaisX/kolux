@@ -30,7 +30,7 @@ describe('web runtime environment identity', () => {
 
     await expect(
       globals.window.api.runtimeEnvironments.resolve({ selector: 'web-server-a' })
-    ).rejects.toThrow('Unknown Nightshift runtime environment: web-server-a')
+    ).rejects.toThrow('Unknown Kolux runtime environment: web-server-a')
   })
 
   it('keeps pairing state separate from generic Active Server settings writes', async () => {
@@ -49,9 +49,9 @@ describe('web runtime environment identity', () => {
     ])
     expect(settings.activeRuntimeEnvironmentId).toBeNull()
     expect(globals.window.api.settings.getSync()?.activeRuntimeEnvironmentId).toBeNull()
-    expect(
-      JSON.parse(globals.storage.getItem('nightshift.web.settings.v1') ?? '{}')
-    ).not.toHaveProperty('activeRuntimeEnvironmentId')
+    expect(JSON.parse(globals.storage.getItem('kolux.web.settings.v1') ?? '{}')).not.toHaveProperty(
+      'activeRuntimeEnvironmentId'
+    )
     await expect(
       globals.window.api.runtimeEnvironments.remove({ selector: paired.environment.id })
     ).resolves.toMatchObject({ removed: { id: paired.environment.id } })
@@ -70,7 +70,7 @@ describe('web runtime environment identity', () => {
 
     expect(paired.environment.pairedDeviceId).toBe('paired-device-a')
     expect(
-      JSON.parse(globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}')
+      JSON.parse(globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}')
     ).toMatchObject({ pairedDeviceId: 'paired-device-a' })
   })
 
@@ -87,23 +87,19 @@ describe('web runtime environment identity', () => {
       environmentId: 'Windows 2'
     })
     await globals.window.api.settings.set({ terminalFontSize: 15 })
-    expect(JSON.parse(globals.storage.getItem('nightshift.web.settings.v1') ?? '{}')).toMatchObject(
-      {
-        activeRuntimeEnvironmentId: paired.environment.id,
-        terminalFontSize: 15
-      }
-    )
+    expect(JSON.parse(globals.storage.getItem('kolux.web.settings.v1') ?? '{}')).toMatchObject({
+      activeRuntimeEnvironmentId: paired.environment.id,
+      terminalFontSize: 15
+    })
 
     await globals.window.api.settings.setActiveRuntimeEnvironmentPreference({
       environmentId: null
     })
     await globals.window.api.settings.set({ terminalFontSize: 16 })
-    expect(JSON.parse(globals.storage.getItem('nightshift.web.settings.v1') ?? '{}')).toMatchObject(
-      {
-        activeRuntimeEnvironmentId: null,
-        terminalFontSize: 16
-      }
-    )
+    expect(JSON.parse(globals.storage.getItem('kolux.web.settings.v1') ?? '{}')).toMatchObject({
+      activeRuntimeEnvironmentId: null,
+      terminalFontSize: 16
+    })
   })
 
   it('rejects an unknown explicit Active Server choice without corrupting the preference', async () => {
@@ -122,12 +118,10 @@ describe('web runtime environment identity', () => {
       globals.window.api.settings.setActiveRuntimeEnvironmentPreference({
         environmentId: 'unknown-server'
       })
-    ).rejects.toThrow('Unknown Nightshift runtime environment: unknown-server')
-    expect(JSON.parse(globals.storage.getItem('nightshift.web.settings.v1') ?? '{}')).toMatchObject(
-      {
-        activeRuntimeEnvironmentId: paired.environment.id
-      }
-    )
+    ).rejects.toThrow('Unknown Kolux runtime environment: unknown-server')
+    expect(JSON.parse(globals.storage.getItem('kolux.web.settings.v1') ?? '{}')).toMatchObject({
+      activeRuntimeEnvironmentId: paired.environment.id
+    })
   })
 
   it('keeps old selectors only when re-pairing proves the same server key', async () => {
@@ -150,26 +144,26 @@ describe('web runtime environment identity', () => {
     const globals = installBrowserGlobals('Linux')
     writeStoredRuntimeEnvironment(globals.storage, 'web-server-a')
     const stored = JSON.parse(
-      globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}'
+      globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}'
     ) as Record<string, unknown>
     stored.compatibleEnvironmentIds = { old: 'web-server-old' }
-    globals.storage.setItem('nightshift.web.runtimeEnvironment.v1', JSON.stringify(stored))
+    globals.storage.setItem('kolux.web.runtimeEnvironment.v1', JSON.stringify(stored))
     const { installWebPreloadApi } = await import('./web-preload-api')
     installWebPreloadApi()
 
     await expect(
       globals.window.api.runtimeEnvironments.resolve({ selector: 'web-server-old' })
-    ).rejects.toThrow('Unknown Nightshift runtime environment: web-server-old')
+    ).rejects.toThrow('Unknown Kolux runtime environment: web-server-old')
   })
 
   it('ignores malformed persisted paired device identity', async () => {
     const globals = installBrowserGlobals('Linux')
     writeStoredRuntimeEnvironment(globals.storage)
     const stored = JSON.parse(
-      globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}'
+      globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}'
     ) as Record<string, unknown>
     stored.pairedDeviceId = { invalid: true }
-    globals.storage.setItem('nightshift.web.runtimeEnvironment.v1', JSON.stringify(stored))
+    globals.storage.setItem('kolux.web.runtimeEnvironment.v1', JSON.stringify(stored))
     const { installWebPreloadApi } = await import('./web-preload-api')
     installWebPreloadApi()
 
@@ -246,7 +240,7 @@ describe('web runtime environment identity', () => {
     expect(clientCount).toBe(2)
     expect(calls).toEqual(['status.get', 'status.get'])
     expect(
-      JSON.parse(globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}')
+      JSON.parse(globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}')
     ).toMatchObject({ pairedDeviceId: 'paired-device-a' })
   })
 
@@ -367,7 +361,7 @@ describe('web runtime environment identity', () => {
     }))
     const globals = installBrowserGlobals('Linux')
     writeStoredRuntimeEnvironment(globals.storage, 'web-server-a')
-    const previousStored = globals.storage.getItem('nightshift.web.runtimeEnvironment.v1')
+    const previousStored = globals.storage.getItem('kolux.web.runtimeEnvironment.v1')
     const { installWebPreloadApi } = await import('./web-preload-api')
     installWebPreloadApi()
 
@@ -377,7 +371,7 @@ describe('web runtime environment identity', () => {
         pairingCode: encodePairingCode()
       })
     ).resolves.toMatchObject({ ok: false, kind: 'protocol-incompatible' })
-    expect(globals.storage.getItem('nightshift.web.runtimeEnvironment.v1')).toBe(previousStored)
+    expect(globals.storage.getItem('kolux.web.runtimeEnvironment.v1')).toBe(previousStored)
     await expect(globals.window.api.runtimeEnvironments.list()).resolves.toMatchObject([
       { id: 'web-server-a' }
     ])
@@ -422,8 +416,7 @@ describe('web runtime environment identity', () => {
     ).resolves.toMatchObject({
       ok: false,
       kind: 'environment-save-failed',
-      message:
-        'Nightshift verified the host but could not save it. Check browser storage and try again.'
+      message: 'Kolux verified the host but could not save it. Check browser storage and try again.'
     })
     await expect(globals.window.api.runtimeEnvironments.list()).resolves.toMatchObject([
       { id: 'web-server-a' }
@@ -476,7 +469,7 @@ describe('web runtime environment identity', () => {
     })
     expect(call).toHaveBeenCalledOnce()
     expect(
-      JSON.parse(globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}')
+      JSON.parse(globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}')
     ).toMatchObject({ connectionDependency: 'ssh-tunnel' })
   })
 
@@ -568,7 +561,7 @@ describe('web runtime environment identity', () => {
       _meta: { runtimeId: 'runtime-a' }
     })
     expect(
-      JSON.parse(globals.storage.getItem('nightshift.web.runtimeEnvironment.v1') ?? '{}')
+      JSON.parse(globals.storage.getItem('kolux.web.runtimeEnvironment.v1') ?? '{}')
     ).toMatchObject({ runtimeId: 'runtime-a' })
 
     installWebPreloadApi()

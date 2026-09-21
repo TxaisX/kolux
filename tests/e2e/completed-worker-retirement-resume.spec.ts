@@ -1,4 +1,4 @@
-import { test as base, expect } from './helpers/nightshift-app'
+import { test as base, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   waitForActivePaneHookDescriptor,
@@ -15,7 +15,7 @@ import {
   readCompletedWorkerDispatchCapability,
   readCompletedWorkerLedger,
   readPersistedWorkerRecoveryRecord,
-  runBuiltNightshiftCli,
+  runBuiltKoluxCli,
   seedCurrentCodexTranscript,
   terminalIdentity
 } from './helpers/completed-worker-retirement-fixture'
@@ -37,17 +37,17 @@ test.afterAll(() => {
 
 for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
   test(`completed background worker ${closeMode} retires resume authority before first activation`, async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     test.setTimeout(180_000)
     clearCompletedWorkerLedger()
-    await waitForSessionReady(nightshiftPage)
-    const coordinatorWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    await waitForActivePanePtyId(nightshiftPage)
-    await nightshiftPage.evaluate(
+    await waitForSessionReady(koluxPage)
+    const coordinatorWorktreeId = await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    await waitForActivePanePtyId(koluxPage)
+    await koluxPage.evaluate(
       async ({ agentCommand, terminalWindowsShell }) => {
         await window.__store?.getState().updateSettings({
           agentCmdOverrides: { codex: agentCommand },
@@ -65,7 +65,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
     const isolatedHome = await electronApp.evaluate(({ app }) => app.getPath('home'))
     const client = new RuntimeClient(userDataDir, 30_000, null, null)
-    const coordinatorPane = await waitForActivePaneHookDescriptor(nightshiftPage)
+    const coordinatorPane = await waitForActivePaneHookDescriptor(koluxPage)
     const coordinatorResolved = await client.call<{ terminal: { handle: string } }>(
       'terminal.resolvePane',
       { paneKey: coordinatorPane.paneKey }
@@ -84,7 +84,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
       .poll(
         async () => {
           const listed = await client.call<{ worktrees: { id: string }[] }>('worktree.list', {})
-          const rendererWorktreeIds = await nightshiftPage.evaluate(() =>
+          const rendererWorktreeIds = await koluxPage.evaluate(() =>
             Object.values(window.__store?.getState().worktreesByRepo ?? {})
               .flat()
               .map((worktree) => worktree.id)
@@ -108,7 +108,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     }
 
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         (worktreeId) => window.__store?.getState().everActivatedWorktreeIds.has(worktreeId),
         targetWorktreeId
       )
@@ -160,10 +160,10 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     const workerBefore = terminalIdentity(worker)
     const workerPaneKey = `${worker.tabId}:${worker.leafId}`
     expect(worker.worktreeId).toBe(targetWorktreeId)
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ tabId, worktreeId }) => {
         window.dispatchEvent(
-          new CustomEvent('nightshift-background-mount-terminal-worktree', {
+          new CustomEvent('kolux-background-mount-terminal-worktree', {
             detail: { worktreeId, tabIds: [tabId] }
           })
         )
@@ -172,14 +172,14 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     )
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           (tabId) => Boolean(window.__paneManagers?.get(tabId)),
           workerBefore.tabId
         )
       )
       .toBe(true)
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         (worktreeId) => window.__store?.getState().everActivatedWorktreeIds.has(worktreeId),
         targetWorktreeId
       )
@@ -211,7 +211,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
       targetWorktreePath
     )
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({
         agentCommand,
         paneKey,
@@ -277,7 +277,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     }
     await expect
       .poll(() =>
-        nightshiftPage.evaluate((paneKey) => {
+        koluxPage.evaluate((paneKey) => {
           const record = window.__store?.getState().sleepingAgentSessionsByPaneKey[paneKey]
           return record
             ? {
@@ -345,14 +345,14 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
 
     await client.call('terminal.send', {
       terminal: workerHandle,
-      text: 'NIGHTSHIFT_E2E_EXIT_AFTER_DONE',
+      text: 'KOLUX_E2E_EXIT_AFTER_DONE',
       enter: true
     })
     await expect
       .poll(() => readCompletedWorkerLedger().filter((event) => event.event === 'normal-exit'))
       .toHaveLength(1)
     expect(
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         ({ paneKey, tabId, worktreeId }) => {
           const state = window.__store?.getState()
           return {
@@ -364,7 +364,7 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
       )
     ).toEqual({ tabPresent: true, recoveryPresent: true })
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ paneKey, tabId, worktreeId }) => {
         const store = window.__store
         if (!store) {
@@ -372,8 +372,8 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
         }
         type Transition = { tabPresent: boolean; recoveryPresent: boolean }
         const e2eWindow = window as typeof window & {
-          __nightshiftRetiredWorkerTransitions?: Transition[]
-          __nightshiftRetiredWorkerUnsubscribe?: () => void
+          __koluxRetiredWorkerTransitions?: Transition[]
+          __koluxRetiredWorkerUnsubscribe?: () => void
         }
         const transitions: Transition[] = [
           {
@@ -383,8 +383,8 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
             recoveryPresent: Boolean(store.getState().sleepingAgentSessionsByPaneKey[paneKey])
           }
         ]
-        e2eWindow.__nightshiftRetiredWorkerTransitions = transitions
-        e2eWindow.__nightshiftRetiredWorkerUnsubscribe = store.subscribe((state) => {
+        e2eWindow.__koluxRetiredWorkerTransitions = transitions
+        e2eWindow.__koluxRetiredWorkerUnsubscribe = store.subscribe((state) => {
           const next = {
             tabPresent: Boolean(state.tabsByWorktree[worktreeId]?.some((tab) => tab.id === tabId)),
             recoveryPresent: Boolean(state.sleepingAgentSessionsByPaneKey[paneKey])
@@ -403,13 +403,10 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     )
 
     if (closeMode === 'terminal-close-cli') {
-      const closed = runBuiltNightshiftCli(
-        ['terminal', 'close', '--terminal', workerHandle, '--json'],
-        {
-          userDataDir,
-          cwd: process.cwd()
-        }
-      )
+      const closed = runBuiltKoluxCli(['terminal', 'close', '--terminal', workerHandle, '--json'], {
+        userDataDir,
+        cwd: process.cwd()
+      })
       expect(closed).toMatchObject({
         ok: true,
         result: {
@@ -434,10 +431,10 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     }
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(() => {
+        koluxPage.evaluate(() => {
           type Transition = { tabPresent: boolean; recoveryPresent: boolean }
-          return (window as typeof window & { __nightshiftRetiredWorkerTransitions?: Transition[] })
-            .__nightshiftRetiredWorkerTransitions
+          return (window as typeof window & { __koluxRetiredWorkerTransitions?: Transition[] })
+            .__koluxRetiredWorkerTransitions
         })
       )
       .toEqual(
@@ -446,38 +443,38 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
           { tabPresent: false, recoveryPresent: false }
         ])
       )
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const e2eWindow = window as typeof window & {
-        __nightshiftRetiredWorkerUnsubscribe?: () => void
+        __koluxRetiredWorkerUnsubscribe?: () => void
       }
-      e2eWindow.__nightshiftRetiredWorkerUnsubscribe?.()
-      delete e2eWindow.__nightshiftRetiredWorkerUnsubscribe
+      e2eWindow.__koluxRetiredWorkerUnsubscribe?.()
+      delete e2eWindow.__koluxRetiredWorkerUnsubscribe
     })
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           (paneKey) => window.__store?.getState().sleepingAgentSessionsByPaneKey[paneKey] ?? null,
           workerPaneKey
         )
       )
       .toBeNull()
 
-    await nightshiftPage.evaluate(() => window.dispatchEvent(new Event('beforeunload')))
+    await koluxPage.evaluate(() => window.dispatchEvent(new Event('beforeunload')))
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(async (paneKey) => {
+        koluxPage.evaluate(async (paneKey) => {
           const session = await window.api.session.get()
           return session.sleepingAgentSessionsByPaneKey?.[paneKey] ?? null
         }, workerPaneKey)
       )
       .toBeNull()
-    await nightshiftPage.evaluate(() => window.api.session.flush())
+    await koluxPage.evaluate(() => window.api.session.flush())
     expect(readPersistedWorkerRecoveryRecord(userDataDir, workerPaneKey)).toBeNull()
 
-    await nightshiftPage.reload()
-    await waitForSessionReady(nightshiftPage)
+    await koluxPage.reload()
+    await waitForSessionReady(koluxPage)
 
-    const beforeActivation = await nightshiftPage.evaluate((worktreeId) => {
+    const beforeActivation = await koluxPage.evaluate((worktreeId) => {
       const state = window.__store?.getState()
       return {
         everActivated: state?.everActivatedWorktreeIds.has(worktreeId) ?? false,
@@ -487,17 +484,17 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
     }, targetWorktreeId)
     expect(beforeActivation).toEqual({ everActivated: false, tabCount: 0, pendingStartupCount: 0 })
 
-    const targetCard = nightshiftPage
+    const targetCard = koluxPage
       .locator(`[data-worktree-id="${String(targetWorktreeId)}"]`)
       .first()
       .locator('[data-worktree-card-surface]')
     await targetCard.evaluate((element: HTMLElement) => element.click())
     await expect
-      .poll(() => nightshiftPage.evaluate(() => window.__store?.getState().activeWorktreeId))
+      .poll(() => koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId))
       .toBe(targetWorktreeId)
-    await waitForActiveTerminalManager(nightshiftPage)
-    await waitForActivePanePtyId(nightshiftPage)
-    const activatedPane = await waitForActivePaneHookDescriptor(nightshiftPage)
+    await waitForActiveTerminalManager(koluxPage)
+    await waitForActivePanePtyId(koluxPage)
+    const activatedPane = await waitForActivePaneHookDescriptor(koluxPage)
     expect(activatedPane.worktreeId).toBe(targetWorktreeId)
     const activatedResolved = await client.call<{ terminal: { handle: string } }>(
       'terminal.resolvePane',
@@ -523,9 +520,9 @@ for (const closeMode of ['terminal-close-cli', 'worker-release'] as const) {
         (event) => event.args?.includes('resume') && event.args?.includes(PROVIDER_SESSION_ID)
       )
     ).toEqual([])
-    await expect(nightshiftPage.locator('.session-restored-banner')).toHaveCount(0)
+    await expect(koluxPage.locator('.session-restored-banner')).toHaveCount(0)
 
-    const afterActivation = await nightshiftPage.evaluate(
+    const afterActivation = await koluxPage.evaluate(
       ({ originalTabId, worktreeId }) => {
         const state = window.__store?.getState()
         const tabs = state?.tabsByWorktree[worktreeId] ?? []

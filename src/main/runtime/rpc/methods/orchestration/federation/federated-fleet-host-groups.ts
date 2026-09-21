@@ -1,7 +1,7 @@
 import { ORCHESTRATION_FLEET_PAGE_MAX } from '../../../../../../shared/orchestration-fleet-projection'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { FederatedDispatchRow } from '../../../../orchestration/types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 
 type HostGroup = {
   environmentId: string
@@ -10,7 +10,7 @@ type HostGroup = {
 }
 
 export function groupFederatedDispatches(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchIds: readonly string[]
 }): HostGroup[] {

@@ -51,6 +51,6 @@ function describeLinuxBackendGap(): string | null {
     return null
   }
   return backend === 'basic_text'
-    ? 'Secrets are obfuscated with a built-in key, not protected by the OS keyring. Install and unlock gnome-keyring or kwallet, then restart Nightshift, to seal them properly.'
+    ? 'Secrets are obfuscated with a built-in key, not protected by the OS keyring. Install and unlock gnome-keyring or kwallet, then restart Kolux, to seal them properly.'
     : null
 }

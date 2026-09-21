@@ -2,8 +2,8 @@ import type { Dir, Stats } from 'node:fs'
 import { access, lstat, mkdir, opendir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 
-const REMOTE_CLIPBOARD_STAGING_ROOT_NAME = 'nightshift-clipboard-files'
-const REMOTE_CLIPBOARD_LEGACY_PREFIX = 'nightshift-clipboard-file-'
+const REMOTE_CLIPBOARD_STAGING_ROOT_NAME = 'kolux-clipboard-files'
+const REMOTE_CLIPBOARD_LEGACY_PREFIX = 'kolux-clipboard-file-'
 const REMOTE_CLIPBOARD_MIGRATION_MARKER = '.legacy-cleanup-complete'
 const REMOTE_CLIPBOARD_FILE_TTL_MS = 60 * 60 * 1000
 const REMOTE_CLIPBOARD_CLEANUP_CONCURRENCY = 8

@@ -52,8 +52,8 @@ export function formatRemoteRuntimeCloseMessage(code: number, reason: Buffer): s
     suffixParts.push(reasonText)
   }
   return suffixParts.length > 0
-    ? `Remote Nightshift runtime closed the connection (${suffixParts.join(': ')}).`
-    : 'Remote Nightshift runtime closed the connection.'
+    ? `Remote Kolux runtime closed the connection (${suffixParts.join(': ')}).`
+    : 'Remote Kolux runtime closed the connection.'
 }
 
 export function ignoreSettledRemoteRuntimeSocketError(): void {}

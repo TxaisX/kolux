@@ -79,7 +79,7 @@ function makeDetectedWorktree(
 ): DetectedWorktree {
   return {
     ...makeWorktree(overrides),
-    ownership: 'nightshift-managed',
+    ownership: 'kolux-managed',
     selectedCheckout: false,
     visible: true
   }

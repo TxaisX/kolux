@@ -206,7 +206,7 @@ function unsupportedReason(
   return runtimeTarget
     ? translate(
         'auto.components.skills.SkillDelete.hostUpdateRequired',
-        'Update Nightshift on the selected machine to delete skills.'
+        'Update Kolux on the selected machine to delete skills.'
       )
     : translate(
         'auto.components.skills.SkillDelete.hostUnresolved',

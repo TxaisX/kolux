@@ -74,9 +74,9 @@ describe('resolveWslRepoWorktreeBasePath', () => {
   const WSL_REPO = '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\src\\repo'
 
   it('resolves an absolute Linux base path into the repo distro (STA-4772)', () => {
-    expect(
-      resolveWslRepoWorktreeBasePath(WSL_REPO, '/home/jin/project/.nightshift-worktrees')
-    ).toBe('\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\project\\.nightshift-worktrees')
+    expect(resolveWslRepoWorktreeBasePath(WSL_REPO, '/home/jin/project/.kolux-worktrees')).toBe(
+      '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\project\\.kolux-worktrees'
+    )
     expect(resolveWslRepoWorktreeBasePath('\\\\wsl$\\Debian\\srv\\repo', '/srv/trees')).toBe(
       '\\\\wsl.localhost\\Debian\\srv\\trees'
     )
@@ -156,7 +156,7 @@ describe('getWslFilesystemBoundaryDistro', () => {
   it('names the runtime distro for a Windows drive project running WSL git', () => {
     expect(
       getWslFilesystemBoundaryDistro({
-        projectPath: 'C:\\Users\\alice\\nightshift',
+        projectPath: 'C:\\Users\\alice\\kolux',
         wslRuntimeDistro: 'Ubuntu-24.04'
       })
     ).toBe('Ubuntu-24.04')
@@ -166,7 +166,7 @@ describe('getWslFilesystemBoundaryDistro', () => {
     for (const wslRuntimeDistro of [undefined, null, '']) {
       expect(
         getWslFilesystemBoundaryDistro({
-          projectPath: 'C:/Users/alice/nightshift',
+          projectPath: 'C:/Users/alice/kolux',
           wslRuntimeDistro
         })
       ).toBeNull()
@@ -176,7 +176,7 @@ describe('getWslFilesystemBoundaryDistro', () => {
   it('stays silent for a project already inside the distro', () => {
     expect(
       getWslFilesystemBoundaryDistro({
-        projectPath: '\\\\wsl.localhost\\Ubuntu\\home\\alice\\nightshift',
+        projectPath: '\\\\wsl.localhost\\Ubuntu\\home\\alice\\kolux',
         wslRuntimeDistro: 'Ubuntu'
       })
     ).toBeNull()
@@ -187,17 +187,13 @@ describe('getWslFilesystemBoundaryDistro', () => {
   it('names the path distro for the UNC spelling of a drvfs mount', () => {
     expect(
       getWslFilesystemBoundaryDistro({
-        projectPath: '\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\alice\\nightshift'
+        projectPath: '\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\alice\\kolux'
       })
     ).toBe('Ubuntu')
   })
 
   it('stays silent for POSIX, relative, and plain UNC share paths', () => {
-    for (const projectPath of [
-      '/home/alice/nightshift',
-      'nightshift',
-      '\\\\fileserver\\share\\nightshift'
-    ]) {
+    for (const projectPath of ['/home/alice/kolux', 'kolux', '\\\\fileserver\\share\\kolux']) {
       expect(getWslFilesystemBoundaryDistro({ projectPath, wslRuntimeDistro: 'Ubuntu' })).toBeNull()
     }
   })

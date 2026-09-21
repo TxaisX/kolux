@@ -4,9 +4,9 @@
 // every official Node install does, at `<prefix>/include/node`. This drives the real deploy at a
 // Docker sshd whose nodejs.org resolves to 127.0.0.1 (ECONNREFUSED, exactly what the user saw).
 //
-// Run: NIGHTSHIFT_REVIEW_SSH_OFFLINE_HEADERS=1 pnpm test src/main/ssh/ssh-relay-offline-node-headers.docker.test.ts
-// Needs Docker and `pnpm build:relay`. NIGHTSHIFT_REVIEW_SSH_NODE_IMAGE picks the Node image
-// (default node:24.12.0-bookworm, the user's version); NIGHTSHIFT_REVIEW_SSH_TARGET_HOST overrides
+// Run: KOLUX_REVIEW_SSH_OFFLINE_HEADERS=1 pnpm test src/main/ssh/ssh-relay-offline-node-headers.docker.test.ts
+// Needs Docker and `pnpm build:relay`. KOLUX_REVIEW_SSH_NODE_IMAGE picks the Node image
+// (default node:24.12.0-bookworm, the user's version); KOLUX_REVIEW_SSH_TARGET_HOST overrides
 // the address the app connects to (default 127.0.0.1).
 import { execFileSync, spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
@@ -22,9 +22,9 @@ import { SshConnection } from './ssh-connection'
 import { deployAndLaunchRelay } from './ssh-relay-deploy'
 import type { SshTarget } from '../../shared/ssh-types'
 
-const RUN_REVIEW_ORACLE = process.env.NIGHTSHIFT_REVIEW_SSH_OFFLINE_HEADERS === '1'
-const NODE_IMAGE = process.env.NIGHTSHIFT_REVIEW_SSH_NODE_IMAGE ?? 'node:24.12.0-bookworm'
-const TARGET_HOST = process.env.NIGHTSHIFT_REVIEW_SSH_TARGET_HOST ?? '127.0.0.1'
+const RUN_REVIEW_ORACLE = process.env.KOLUX_REVIEW_SSH_OFFLINE_HEADERS === '1'
+const NODE_IMAGE = process.env.KOLUX_REVIEW_SSH_NODE_IMAGE ?? 'node:24.12.0-bookworm'
+const TARGET_HOST = process.env.KOLUX_REVIEW_SSH_TARGET_HOST ?? '127.0.0.1'
 
 type TargetFixture = {
   containerName: string
@@ -47,7 +47,7 @@ function dockerExec(fixture: TargetFixture, command: string): string {
 }
 
 async function startTarget(): Promise<TargetFixture> {
-  const image = `nightshift-review-offline-headers:${NODE_IMAGE.replace(/[^A-Za-z0-9_.-]/g, '-')}`
+  const image = `kolux-review-offline-headers:${NODE_IMAGE.replace(/[^A-Za-z0-9_.-]/g, '-')}`
   run(
     'docker',
     ['build', '-q', '-t', image, '-'],
@@ -58,11 +58,11 @@ async function startTarget(): Promise<TargetFixture> {
       ''
     ].join('\n')
   )
-  const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-offline-headers-ssh-'))
+  const tempDir = mkdtempSync(join(tmpdir(), 'kolux-offline-headers-ssh-'))
   const identityFile = join(tempDir, 'id_ed25519')
   run('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', identityFile, '-q'])
   const publicKey = readFileSync(`${identityFile}.pub`, 'utf8').trim()
-  const containerName = `nightshift-offline-headers-${randomUUID().slice(0, 12)}`
+  const containerName = `kolux-offline-headers-${randomUUID().slice(0, 12)}`
   // Why a refused connection and not a dropped one: a timeout takes node-gyp's retry path and
   // burns the deploy budget; the user's host refused, and that is the path under test.
   run(
@@ -177,14 +177,14 @@ describe.skipIf(!RUN_REVIEW_ORACLE)(
       }
     }, 600_000)
 
-    it('names the missing-local-headers cause, not a Nightshift defect, when the host ships no headers', async () => {
+    it('names the missing-local-headers cause, not a Kolux defect, when the host ships no headers', async () => {
       // Same offline host, headers removed and the relay uninstalled so the deploy compiles again.
       // This is the shape a review found misreported: the exec-failure message quotes the whole
       // command (marker echo included) ahead of the output, and the parser must not read that copy.
       const activeFixture = fixture as TargetFixture
       dockerExec(
         activeFixture,
-        'rm -rf /usr/local/include/node /root/.nightshift-remote /root/.cache/node-gyp'
+        'rm -rf /usr/local/include/node /root/.kolux-remote /root/.cache/node-gyp'
       )
       const connection = createConnection(activeFixture)
       await connection.connect()
@@ -194,7 +194,7 @@ describe.skipIf(!RUN_REVIEW_ORACLE)(
         const message = (error as Error).message
         console.log(`[offline-node-headers] ${NODE_IMAGE} no-headers: ${message.split('\n')[0]}`)
         expect(message).toContain('no local headers matching its own version')
-        expect(message).not.toContain('Nightshift defect')
+        expect(message).not.toContain('Kolux defect')
         expect(message).toContain('ECONNREFUSED')
       } finally {
         await connection.disconnect()

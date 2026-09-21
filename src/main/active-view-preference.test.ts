@@ -9,8 +9,8 @@ describe('ActiveViewPreference', () => {
   let dataFile: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-active-view-'))
-    dataFile = join(dir, 'nightshift-data.json')
+    dir = mkdtempSync(join(tmpdir(), 'kolux-active-view-'))
+    dataFile = join(dir, 'kolux-data.json')
   })
 
   afterEach(() => {

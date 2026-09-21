@@ -16,7 +16,7 @@ function buildTarget(target) {
         stdio: 'inherit',
         env: {
           ...process.env,
-          NIGHTSHIFT_ELECTRON_VITE_TARGET: target
+          KOLUX_ELECTRON_VITE_TARGET: target
         }
       }
     )

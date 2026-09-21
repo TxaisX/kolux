@@ -1,5 +1,5 @@
 import { stripAnsiEscapeSequences } from '../../src/shared/ansi-escape-sequences'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible } from './helpers/store'
 import {
   focusActiveTerminalInput,
@@ -19,18 +19,18 @@ function shellBasename(processName: string): string {
     .replace(/\.exe$/, '')
 }
 
-test('seeded project terminal runs a typed shell command @golden', async ({ nightshiftPage }) => {
-  await ensureTerminalVisible(nightshiftPage, 30_000)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const ptyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-  expect(await getTerminalContent(nightshiftPage)).not.toMatch(CSI_REPLY_RE)
+test('seeded project terminal runs a typed shell command @golden', async ({ koluxPage }) => {
+  await ensureTerminalVisible(koluxPage, 30_000)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const ptyId = await waitForActivePanePtyId(koluxPage, 30_000)
+  expect(await getTerminalContent(koluxPage)).not.toMatch(CSI_REPLY_RE)
 
-  const marker = `nightshift-e2e-alive-${Date.now()}`
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.type(`echo ${marker}`)
-  await nightshiftPage.keyboard.press('Enter')
+  const marker = `kolux-e2e-alive-${Date.now()}`
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.type(`echo ${marker}`)
+  await koluxPage.keyboard.press('Enter')
   await expect
-    .poll(async () => (await getTerminalContent(nightshiftPage)).split(marker).length - 1, {
+    .poll(async () => (await getTerminalContent(koluxPage)).split(marker).length - 1, {
       message: 'marker should appear in both the echoed command and command output'
     })
     .toBeGreaterThanOrEqual(2)
@@ -40,33 +40,33 @@ test('seeded project terminal runs a typed shell command @golden', async ({ nigh
     await expect
       .poll(async () => {
         foregroundProcess =
-          (await nightshiftPage.evaluate((id) => window.api.pty.inspectProcess(id), ptyId))
+          (await koluxPage.evaluate((id) => window.api.pty.inspectProcess(id), ptyId))
             .foregroundProcess ?? ''
         return foregroundProcess
       })
       .not.toBe('')
     const shell = shellBasename(foregroundProcess)
     if (shell === 'cmd') {
-      const pwshAvailable = await nightshiftPage.evaluate(() => window.api.pwsh.isAvailable())
+      const pwshAvailable = await koluxPage.evaluate(() => window.api.pwsh.isAvailable())
       expect(pwshAvailable, 'cmd.exe must not replace an available PowerShell default').toBe(false)
     }
-    const begin = 'NIGHTSHIFT_E2E_PATH_BEGIN'
-    const end = 'NIGHTSHIFT_E2E_PATH_END'
+    const begin = 'KOLUX_E2E_PATH_BEGIN'
+    const end = 'KOLUX_E2E_PATH_END'
     const pathCommand =
       shell === 'pwsh' || shell === 'powershell'
         ? `Write-Output ${begin}; Write-Output $env:LOCALAPPDATA; Write-Output ${end}`
         : shell === 'cmd'
           ? `echo ${begin} & echo %LOCALAPPDATA% & echo ${end}`
           : `printf '${begin}\\n%s\\n${end}\\n' "$LOCALAPPDATA"`
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.type(pathCommand)
-    await nightshiftPage.keyboard.press('Enter')
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.type(pathCommand)
+    await koluxPage.keyboard.press('Enter')
     let expandedPath = ''
     await expect
       .poll(async () => {
         // Why: the echoed command can wrap or be clipped by the buffer tail, so only a
         // line that is exactly the marker — bracketed by both markers — is real output.
-        const lines = stripAnsiEscapeSequences(await getTerminalContent(nightshiftPage, 8_000))
+        const lines = stripAnsiEscapeSequences(await getTerminalContent(koluxPage, 8_000))
           .split(/\r?\n/)
           .map((line) => line.trim())
         const beginLine = lines.lastIndexOf(begin)
@@ -83,6 +83,6 @@ test('seeded project terminal runs a typed shell command @golden', async ({ nigh
     expect(expandedPath).toMatch(/(?:[A-Za-z]:\\|\\\\)/)
   }
 
-  const finalBuffer = await getTerminalContent(nightshiftPage, 8_000)
+  const finalBuffer = await getTerminalContent(koluxPage, 8_000)
   expect(finalBuffer).not.toMatch(CSI_REPLY_RE)
 })

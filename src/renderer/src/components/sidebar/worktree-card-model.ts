@@ -107,9 +107,7 @@ export function formatSparseDirectoryPreview(directories: string[]): string {
 }
 
 export function isWebClient(): boolean {
-  return Boolean(
-    (window as unknown as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
-  )
+  return Boolean((window as unknown as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__)
 }
 
 export function getDirectoryName(folderPath: string): string {

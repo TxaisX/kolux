@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   waitForActivePanePtyId,
@@ -148,47 +148,47 @@ async function settledSidebarAgentRowIdentities(
 }
 
 test('sidebar keeps a Cursor pane visible and an OpenCode pane out of Claude Code hands', async ({
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await useFullAgentActivityRows(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await useFullAgentActivityRows(koluxPage)
 
-  const openCode = await openAgentTab(nightshiftPage, worktreeId, 'opencode')
+  const openCode = await openAgentTab(koluxPage, worktreeId, 'opencode')
   const openCodeScript = await runNodeScriptInTerminal(
-    nightshiftPage,
+    koluxPage,
     openCode.ptyId,
     // ⠋ is the braille spinner frame OpenCode paints ahead of its task text.
     oscTitleHolderScript('\\u280b use Claude Sonnet')
   )
-  await waitForTerminalOutput(nightshiftPage, PANE_HOLD_MARKER, 15_000)
+  await waitForTerminalOutput(koluxPage, PANE_HOLD_MARKER, 15_000)
   // Precondition, not the claim under test: this title is filtered on neither
   // branch, so a failure here means the PTY never emitted it.
   await expect
-    .poll(() => paneTitles(nightshiftPage, openCode.tabId), {
+    .poll(() => paneTitles(koluxPage, openCode.tabId), {
       timeout: 15_000,
       message: 'the OpenCode task title never reached the renderer'
     })
     .toContain(OPENCODE_TASK_OSC_TITLE)
 
-  const cursor = await openAgentTab(nightshiftPage, worktreeId, 'cursor')
+  const cursor = await openAgentTab(koluxPage, worktreeId, 'cursor')
   const cursorScript = await runNodeScriptInTerminal(
-    nightshiftPage,
+    koluxPage,
     cursor.ptyId,
     oscTitleHolderScript(CURSOR_NATIVE_OSC_TITLE)
   )
   // Settle gate: the emitter has run, so the literal has been offered to the title
   // pipeline — kept as Cursor identity on the fix, dropped on main.
-  await waitForTerminalOutput(nightshiftPage, PANE_HOLD_MARKER, 15_000)
+  await waitForTerminalOutput(koluxPage, PANE_HOLD_MARKER, 15_000)
 
   // Only the active worktree's card has agents, so this resolves to one list.
   const agentListSelector = `[data-worktree-sidebar] [aria-label="Agents"]`
-  const agentList = worktreeRow(nightshiftPage, worktreeId).locator('[aria-label="Agents"]')
+  const agentList = worktreeRow(koluxPage, worktreeId).locator('[aria-label="Agents"]')
   await expect(agentList.locator('> div').first()).toBeVisible()
 
   // #10258: the Cursor pane gets a row at all. #8940: the OpenCode pane stays OpenCode.
-  expect(await settledSidebarAgentRowIdentities(nightshiftPage, agentListSelector)).toEqual([
+  expect(await settledSidebarAgentRowIdentities(koluxPage, agentListSelector)).toEqual([
     'Cursor',
     'OpenCode'
   ])

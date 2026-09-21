@@ -3,7 +3,7 @@ import {
   recordSelfInitiatedTreeKill,
   type SelfInitiatedTreeKillScope
 } from './crash-reporting/self-initiated-tree-kill-log'
-import { readNightshiftChromiumProcessPids } from './nightshift-chromium-process-pids'
+import { readKoluxChromiumProcessPids } from './kolux-chromium-process-pids'
 import { setProcessTreeKillGate } from '../shared/child-process/process-tree-kill-gate'
 
 /**
@@ -24,11 +24,11 @@ import { setProcessTreeKillGate } from '../shared/child-process/process-tree-kil
  *
  * Electron main only, by construction. `terminateWindowsProcessTree` also runs
  * in the standalone daemon (the `pty-descendant-sweep` site), where
- * `readNightshiftChromiumProcessPids()` is empty and this always admits. That is not
+ * `readKoluxChromiumProcessPids()` is empty and this always admits. That is not
  * the gap it looks like: the daemon reaches that taskkill only through
  * `classifyWindowsTreeKillTarget`, whose ancestry walk ends at the daemon's own
  * pid, and no Chromium process descends from the daemon. See
- * `nightshift-chromium-process-pids.ts`.
+ * `kolux-chromium-process-pids.ts`.
  */
 export function admitSelfInitiatedTreeKill(target: {
   pid: number
@@ -38,11 +38,11 @@ export function admitSelfInitiatedTreeKill(target: {
   // Why: no PTY root, codex root or git child is ever one of our own Chromium
   // processes, so a pid that is means the caller is about to kill a renderer,
   // the GPU or the browser itself (#10680). Only the pid-addressed scope can
-  // land there: a POSIX group holds only what Nightshift put in it, so that arm is
+  // land there: a POSIX group holds only what Kolux put in it, so that arm is
   // recorded and admitted like every other group kill in main, and a stale
   // `getAppMetrics()` entry cannot orphan a macOS/Linux tree.
   const isOwnChromiumPid =
-    target.scope === 'win-taskkill-tree' && readNightshiftChromiumProcessPids().has(target.pid)
+    target.scope === 'win-taskkill-tree' && readKoluxChromiumProcessPids().has(target.pid)
   try {
     if (isOwnChromiumPid) {
       recordRefusedOwnChromiumTreeKill(target)

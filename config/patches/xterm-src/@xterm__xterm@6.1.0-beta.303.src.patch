@@ -1082,7 +1082,7 @@ index c9ec396ab66cb966d49aa63bed09cdf9cd6c4246..d4d5106d8dd723eceed87310c193ccfe
 +      this._compositionView.style.color = this._themeService?.colors.foreground.css ?? '#FFF';
 +      // Sized and placed to match the preedit, not the whole view, so the candidate window
 +      // anchors to the composing text rather than the end of the rendered tail. The clamp has to
-+      // be applied here and not only in Nightshift's terminal-ime-candidate-anchor.ts, because
++      // be applied here and not only in Kolux's terminal-ime-candidate-anchor.ts, because
 +      // CoreBrowserTerminal calls this from onRender as well as from composition events, and a
 +      // render can land after the last composition event that module can hear.
 +      this._textarea.style.left = anchorLeft + 'px';

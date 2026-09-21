@@ -24,12 +24,12 @@ import { performance } from 'node:perf_hooks'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const ITERATIONS = Number(process.env.NIGHTSHIFT_SSH_WATCH_BENCH_ITERATIONS ?? '200')
-const WARMUP = Number(process.env.NIGHTSHIFT_SSH_WATCH_BENCH_WARMUP ?? '30')
+const ITERATIONS = Number(process.env.KOLUX_SSH_WATCH_BENCH_ITERATIONS ?? '200')
+const WARMUP = Number(process.env.KOLUX_SSH_WATCH_BENCH_WARMUP ?? '30')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_SSH_WATCH_BENCH_ITERATIONS', ITERATIONS],
-  ['NIGHTSHIFT_SSH_WATCH_BENCH_WARMUP', WARMUP]
+  ['KOLUX_SSH_WATCH_BENCH_ITERATIONS', ITERATIONS],
+  ['KOLUX_SSH_WATCH_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
@@ -96,7 +96,7 @@ const REPO_PATHS = execFileSync('git', ['ls-files'], {
 // A remote host running several worktrees: each is its own watch root, and the
 // file explorer plus the worktree-base-directory watcher both register.
 function makeRoots(count) {
-  return Array.from({ length: count }, (_, index) => `/home/dev/worktrees/nightshift-${index}`)
+  return Array.from({ length: count }, (_, index) => `/home/dev/worktrees/kolux-${index}`)
 }
 
 function makeEvents(roots, count) {

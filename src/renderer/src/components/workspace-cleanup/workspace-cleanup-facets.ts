@@ -55,7 +55,7 @@ export type WorkspaceCleanupFacets = {
   /** Background signal: ambient PTY/agent churn bumps this without a human. */
   lastActivityAt: number
   createdAt: number | null
-  /** Honest "user opened it" signal; null when Nightshift never recorded a visit. */
+  /** Honest "user opened it" signal; null when Kolux never recorded a visit. */
   lastVisitedAt: number | null
   sizeBytes: number | null
   workspaceStatus: string | null

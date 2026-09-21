@@ -1,13 +1,13 @@
 /**
  * Freeze repro R2 — direct SSH topology via Docker SSH relay.
  *
- * Requires: NIGHTSHIFT_E2E_SSH_DOCKER=1 and Docker available.
+ * Requires: KOLUX_E2E_SSH_DOCKER=1 and Docker available.
  *
  * Run:
- *   NIGHTSHIFT_E2E_SSH_DOCKER=1 pnpm run test:e2e:ssh-docker-bulk-open-freeze
+ *   KOLUX_E2E_SSH_DOCKER=1 pnpm run test:e2e:ssh-docker-bulk-open-freeze
  */
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   DOCKER_SSH_RELAY_REMOTE_REPO_PATH,
@@ -28,7 +28,7 @@ import {
 import { startRendererLagProbe } from './paired-runtime-retention-metrics'
 import { HARD_FREEZE_LAG_MS, SOFT_FREEZE_LAG_MS } from './helpers/remote-session-bulk-open-oracle'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const REPORT_DIR = path.join(process.cwd(), 'test-results', 'freeze-repro')
 const SESSION_SPLITS = 5
 const FLOOD_READ_CHARS = 80_000
@@ -51,12 +51,12 @@ function continuousFloodCommand(runId: string, index: number): string {
 }
 
 test.describe('R2 Docker SSH bulk-open freeze', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker SSH freeze repro')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker SSH freeze repro')
 
   // Headless Linux disables compositing and schedules idle RAFs ~1s apart; use headed CI.
   // Headed SwiftShader restores ~16ms frames without changing the freeze budgets.
   test('bulk-open many flooding SSH terminals and measure renderer lag @freeze-repro @headful', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
     test.setTimeout(420_000)
@@ -71,35 +71,30 @@ test.describe('R2 Docker SSH bulk-open freeze', () => {
 
       // Why: session restore must settle before the remote worktree is added, or the
       // seeded terminal tab races tab hydration and never binds to the remote PTY.
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      await connectDockerSshRelayTarget(nightshiftPage, target, {
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      await connectDockerSshRelayTarget(koluxPage, target, {
         remotePath: DOCKER_SSH_RELAY_REMOTE_REPO_PATH
       })
 
       const runId = `${Date.now()}`
       // First terminal on the SSH worktree.
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const firstPtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-      await execInTerminal(nightshiftPage, firstPtyId, continuousFloodCommand(runId, 0))
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const firstPtyId = await waitForActivePanePtyId(koluxPage, 60_000)
+      await execInTerminal(koluxPage, firstPtyId, continuousFloodCommand(runId, 0))
       // Why: the one-shot READY line is buried by the 2KB/8ms flood within ~16ms, so it is
       // unobservable through the terminal read window. The repeating BG marker is the only
       // stable readiness signal, and it also proves the pane is actually flooding.
-      await waitForTerminalOutput(
-        nightshiftPage,
-        `BG:SSH_BULK_${runId}_0:`,
-        60_000,
-        FLOOD_READ_CHARS
-      )
+      await waitForTerminalOutput(koluxPage, `BG:SSH_BULK_${runId}_0:`, 60_000, FLOOD_READ_CHARS)
 
       for (let i = 1; i < SESSION_SPLITS; i += 1) {
-        await splitActiveTerminalPane(nightshiftPage, 'vertical')
-        await focusLastTerminalPane(nightshiftPage)
-        const panePtyId = await waitForActivePanePtyId(nightshiftPage, 30_000)
-        await execInTerminal(nightshiftPage, panePtyId, continuousFloodCommand(runId, i))
+        await splitActiveTerminalPane(koluxPage, 'vertical')
+        await focusLastTerminalPane(koluxPage)
+        const panePtyId = await waitForActivePanePtyId(koluxPage, 30_000)
+        await execInTerminal(koluxPage, panePtyId, continuousFloodCommand(runId, i))
         await waitForTerminalOutput(
-          nightshiftPage,
+          koluxPage,
           `BG:SSH_BULK_${runId}_${i}:`,
           60_000,
           FLOOD_READ_CHARS
@@ -107,30 +102,28 @@ test.describe('R2 Docker SSH bulk-open freeze', () => {
       }
 
       // Leave the workspace view so panes go inactive while flooding.
-      await nightshiftPage.evaluate(() => window.__store?.getState().setActiveView('tasks'))
-      await nightshiftPage.waitForTimeout(4_000)
+      await koluxPage.evaluate(() => window.__store?.getState().setActiveView('tasks'))
+      await koluxPage.waitForTimeout(4_000)
 
-      const hiddenProbe = await startRendererLagProbe(nightshiftPage)
-      await nightshiftPage.waitForTimeout(2_000)
+      const hiddenProbe = await startRendererLagProbe(koluxPage)
+      await koluxPage.waitForTimeout(2_000)
       const hiddenFloodMaxLagMs = await hiddenProbe.evaluate((probe) => probe.stop())
       await hiddenProbe.dispose()
 
       // Burst open: return to terminal and cycle panes rapidly.
-      const openProbe = await startRendererLagProbe(nightshiftPage)
-      await nightshiftPage.evaluate(() => window.__store?.getState().setActiveView('terminal'))
+      const openProbe = await startRendererLagProbe(koluxPage)
+      await koluxPage.evaluate(() => window.__store?.getState().setActiveView('terminal'))
       for (let pass = 0; pass < 3; pass += 1) {
         for (let i = 0; i < SESSION_SPLITS; i += 1) {
-          await nightshiftPage.keyboard.press(
-            process.platform === 'darwin' ? 'Meta+]' : 'Control+]'
-          )
-          await nightshiftPage.waitForTimeout(50)
+          await koluxPage.keyboard.press(process.platform === 'darwin' ? 'Meta+]' : 'Control+]')
+          await koluxPage.waitForTimeout(50)
         }
       }
-      await nightshiftPage.waitForTimeout(3_000)
+      await koluxPage.waitForTimeout(3_000)
       const bulkOpenMaxLagMs = await openProbe.evaluate((probe) => probe.stop())
       await openProbe.dispose()
 
-      const interactionProbeMs = await nightshiftPage.evaluate(async () => {
+      const interactionProbeMs = await koluxPage.evaluate(async () => {
         const started = performance.now()
         const state = window.__store?.getState()
         const view = state?.activeView

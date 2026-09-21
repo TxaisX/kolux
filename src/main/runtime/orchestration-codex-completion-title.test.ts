@@ -29,7 +29,7 @@ vi.mock('electron', () => ({
 }))
 
 function completionFixture(delayMs = 0) {
-  const db = createDatabase('nightshift-codex-completion-title-')
+  const db = createDatabase('kolux-codex-completion-title-')
   const hook: AgentStatusIpcPayload = {
     paneKey: PANE_KEY,
     terminalHandle: TERMINAL_HANDLE,

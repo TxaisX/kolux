@@ -16,7 +16,7 @@ it('restores pointer input when a drag ends after attaching a document preview',
   const attached = attachDocPreviewWebview({
     previewId: 'preview-drag',
     container,
-    url: 'nightshift-preview://grant/index.html',
+    url: 'kolux-preview://grant/index.html',
     ariaLabel: 'HTML preview',
     onLoadStarted: vi.fn(),
     onLoadStopped: vi.fn(),

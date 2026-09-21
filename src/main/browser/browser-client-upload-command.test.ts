@@ -12,7 +12,7 @@ import { BrowserClientUploadStaging } from './browser-client-upload-staging'
 let stagingRoot = ''
 
 beforeEach(async () => {
-  stagingRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'nightshift-upload-command-')))
+  stagingRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'kolux-upload-command-')))
 })
 
 afterEach(async () => {

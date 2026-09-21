@@ -5,7 +5,7 @@ import {
   unwrapPowerShellScript
 } from './tui-agent-startup-script.test-fixture'
 
-// Hermes is the only agent whose launch Nightshift rewrites token by token — it owns the startup query,
+// Hermes is the only agent whose launch Kolux rewrites token by token — it owns the startup query,
 // the TUI mode, and where an override's flags may sit relative to the chat subcommand. Its cases
 // outgrew the general startup-plan file.
 
@@ -21,7 +21,7 @@ describe('hermes startup plans', () => {
 
     const script = unwrapPosixShellScript(plan?.launchCommand)
     expect(script).toContain("'--provider' 'anthropic' '--yolo' '--tui'")
-    expect(plan?.env?.NIGHTSHIFT_HERMES_STARTUP_QUERY).toBe('run privately')
+    expect(plan?.env?.KOLUX_HERMES_STARTUP_QUERY).toBe('run privately')
   })
 
   it.each([
@@ -72,7 +72,7 @@ describe('hermes startup plans', () => {
     expect(unwrapPosixShellScript(plan?.launchCommand)).toContain("'--profile' 'chat'")
   })
 
-  it('keeps Nightshift ownership of the Hermes startup query and TUI mode', () => {
+  it('keeps Kolux ownership of the Hermes startup query and TUI mode', () => {
     const plan = buildAgentStartupPlan({
       agent: 'hermes',
       prompt: 'automation prompt',
@@ -86,7 +86,7 @@ describe('hermes startup plans', () => {
     expect(script).not.toContain('override')
     expect(script).not.toContain("'--cli'")
     expect(script.match(/'--tui'/g)).toHaveLength(1)
-    expect(plan?.env?.NIGHTSHIFT_HERMES_STARTUP_QUERY).toBe('automation prompt')
+    expect(plan?.env?.KOLUX_HERMES_STARTUP_QUERY).toBe('automation prompt')
   })
 
   it('preserves wrapper tokens before the Hermes executable', () => {
@@ -186,7 +186,7 @@ describe('hermes startup plans', () => {
       })
 
       expect(plan?.launchCommand).not.toContain(prompt)
-      expect(plan?.env?.NIGHTSHIFT_HERMES_STARTUP_QUERY).toBe(prompt)
+      expect(plan?.env?.KOLUX_HERMES_STARTUP_QUERY).toBe(prompt)
     }
   )
 
@@ -200,7 +200,7 @@ describe('hermes startup plans', () => {
     })
 
     expect(unwrapPowerShellScript(plan?.launchCommand)).toContain(
-      "& 'hermes' 'chat' \"--query=$nightshiftHermesNativeQuery\" '--tui'"
+      "& 'hermes' 'chat' \"--query=$koluxHermesNativeQuery\" '--tui'"
     )
   })
 

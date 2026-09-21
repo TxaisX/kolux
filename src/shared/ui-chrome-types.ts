@@ -38,7 +38,7 @@ export type WorktreeCardProperty =
   | 'jira-issue'
   | 'pr'
   | 'automation'
-  // Badge marking workspaces created through `nightshift worktree create`.
+  // Badge marking workspaces created through `kolux worktree create`.
   | 'cli'
   | 'comment'
   | 'ports'
@@ -72,7 +72,7 @@ export type TaskResumeState = {
   githubItemsPreset?: TaskViewPresetId | null
   githubItemsQuery?: string
   githubProjectHiddenFieldIdsByView?: Record<string, string[]>
-  linearMode?: 'issues' | 'projects' | 'views' | 'in-nightshift'
+  linearMode?: 'issues' | 'projects' | 'views' | 'in-kolux'
   linearPreset?: 'assigned' | 'created' | 'all' | 'completed'
   linearQuery?: string
   linearContext?: {

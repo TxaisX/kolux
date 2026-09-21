@@ -11,9 +11,9 @@
  *  - #17817/#17821/#17831: repeated disconnect/reconnect must not accumulate
  *    relay processes, orphan PTYs, or fds.
  *
- * Requires: NIGHTSHIFT_E2E_SSH_DOCKER=1 and Docker available.
+ * Requires: KOLUX_E2E_SSH_DOCKER=1 and Docker available.
  */
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   execDockerSshRelayTargetCommand,
@@ -35,7 +35,7 @@ import {
   waitForTerminalOutput
 } from './helpers/terminal'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const TERMINAL_COUNT = 6
 const RECONNECT_CYCLES = 5
 
@@ -101,11 +101,11 @@ function sampleRemoteResources(target: DockerSshRelayTarget): RemoteResourceSamp
 }
 
 test.describe('Docker SSH relay resource accumulation', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Uses POSIX /proc and /dev/pts probes.')
 
   test('does not accumulate pts devices, relay fds, or relay processes @resource-accumulation', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
     test.setTimeout(420_000)
@@ -117,27 +117,27 @@ test.describe('Docker SSH relay resource accumulation', () => {
         cleanupDockerSshRelayTarget(captured)
       })
 
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
 
       const runId = String(Date.now())
-      const firstPtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-      await execInTerminal(nightshiftPage, firstPtyId, `echo PANE_READY_${runId}_0`)
-      await waitForTerminalOutput(nightshiftPage, `PANE_READY_${runId}_0`, 60_000)
+      const firstPtyId = await waitForActivePanePtyId(koluxPage, 60_000)
+      await execInTerminal(koluxPage, firstPtyId, `echo PANE_READY_${runId}_0`)
+      await waitForTerminalOutput(koluxPage, `PANE_READY_${runId}_0`, 60_000)
 
       const baseline = sampleRemoteResources(target)
       const samples: RemoteResourceSample[] = []
 
       // Open N more terminals; each must cost a bounded, roughly constant amount.
       for (let index = 1; index < TERMINAL_COUNT; index += 1) {
-        await splitActiveTerminalPane(nightshiftPage, 'vertical')
-        await focusLastTerminalPane(nightshiftPage)
-        const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-        await execInTerminal(nightshiftPage, ptyId, `echo PANE_READY_${runId}_${index}`)
-        await waitForTerminalOutput(nightshiftPage, `PANE_READY_${runId}_${index}`, 60_000)
+        await splitActiveTerminalPane(koluxPage, 'vertical')
+        await focusLastTerminalPane(koluxPage)
+        const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
+        await execInTerminal(koluxPage, ptyId, `echo PANE_READY_${runId}_${index}`)
+        await waitForTerminalOutput(koluxPage, `PANE_READY_${runId}_${index}`, 60_000)
         samples.push(sampleRemoteResources(target))
       }
 
@@ -181,7 +181,7 @@ test.describe('Docker SSH relay resource accumulation', () => {
       // Repeated reconnects must not accumulate anything on the host.
       const reconnectSamples: RemoteResourceSample[] = []
       for (let cycle = 0; cycle < RECONNECT_CYCLES; cycle += 1) {
-        await reconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
+        await reconnectDockerSshRelayTarget(koluxPage, remote.targetId)
         reconnectSamples.push(sampleRemoteResources(target))
       }
       console.log(`[resource-accumulation] reconnects ${JSON.stringify(reconnectSamples)}`)

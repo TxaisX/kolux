@@ -31,7 +31,7 @@ function panelProps(
   return {
     title: 'Linear skill',
     description: null,
-    command: 'npx skills add nightshift-linear --global',
+    command: 'npx skills add kolux-linear --global',
     terminalTitle: 'Linear skill setup',
     terminalAriaLabel: 'Linear skill install terminal',
     terminalWorktreeId: 'settings-linear-skill-terminal',
@@ -40,7 +40,7 @@ function panelProps(
     error: null,
     hideHeader: true,
     showRecheckWhenInstalled: true,
-    freshnessSkillName: 'nightshift-linear',
+    freshnessSkillName: 'kolux-linear',
     onRecheck
   }
 }
@@ -81,7 +81,7 @@ describe('AgentSkillSetupPanel freshness re-check', () => {
     let completeRescan: ((value: SkillFreshnessInventory) => void) | null = null
     const freshnessInventory = vi
       .fn()
-      .mockResolvedValueOnce(inventory(['nightshift-linear']))
+      .mockResolvedValueOnce(inventory(['kolux-linear']))
       .mockImplementationOnce(
         () =>
           new Promise<SkillFreshnessInventory>((resolve) => {
@@ -132,7 +132,7 @@ describe('AgentSkillSetupPanel freshness re-check', () => {
   it('shows a failed verdict when the post-recheck inventory scan fails', async () => {
     const freshnessInventory = vi
       .fn()
-      .mockResolvedValueOnce(inventory(['nightshift-linear']))
+      .mockResolvedValueOnce(inventory(['kolux-linear']))
       .mockRejectedValueOnce(new Error('inventory unavailable'))
     window.api = { skills: { freshnessInventory } } as never
 

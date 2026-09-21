@@ -125,10 +125,7 @@ export function useGlobalKeybindings(args: {
           terminalShortcutPolicy
         })
       const notifyTerminalCapture = (actionId: KeybindingActionId): void => {
-        if (
-          context !== 'terminal' ||
-          (terminalShortcutPolicy ?? 'nightshift-first') !== 'nightshift-first'
-        ) {
+        if (context !== 'terminal' || (terminalShortcutPolicy ?? 'kolux-first') !== 'kolux-first') {
           return
         }
         showTerminalShortcutCaptureNotification({

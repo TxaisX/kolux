@@ -33,8 +33,8 @@ function settingsWithWorkspaceDir(workspaceDir: string): GlobalSettings {
 
 describe('planPreTrustWorktreePaths', () => {
   it('computes the exact path createLocalWorktree would use for the same repo and name', async () => {
-    const repoDir = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-repo-'))
-    const workspaceRoot = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-root-'))
+    const repoDir = mkdtempSync(join(tmpdir(), 'kolux-pretrust-repo-'))
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'kolux-pretrust-root-'))
     try {
       const testRepo = repo({ path: repoDir })
       const settings = settingsWithWorkspaceDir(workspaceRoot)
@@ -59,8 +59,8 @@ describe('planPreTrustWorktreePaths', () => {
   })
 
   it(`plans one distinct path per name for a full ${MAX_PRE_TRUST_WORKTREES}-name wave`, async () => {
-    const repoDir = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-repo-'))
-    const workspaceRoot = mkdtempSync(join(tmpdir(), 'nightshift-pretrust-root-'))
+    const repoDir = mkdtempSync(join(tmpdir(), 'kolux-pretrust-repo-'))
+    const workspaceRoot = mkdtempSync(join(tmpdir(), 'kolux-pretrust-root-'))
     try {
       const testRepo = repo({ path: repoDir })
       const settings = settingsWithWorkspaceDir(workspaceRoot)

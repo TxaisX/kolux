@@ -17,7 +17,7 @@ export function getEphemeralVmRecipeResultWarnings(
   result: EphemeralVmRecipeResult
 ): EphemeralVmRecipeResultWarning[] {
   const connection = getEphemeralVmRecipeResultConnection(result)
-  if (connection.type !== 'nightshift-server') {
+  if (connection.type !== 'kolux-server') {
     return []
   }
   const pairing = parsePairingCode(connection.pairingCode)
@@ -40,7 +40,7 @@ export function redactEphemeralVmRecipeDiagnosticText(text: string): string {
     return text
   }
   return stripCredentialsFromMessage(text)
-    .replace(/nightshift:\/\/pair\?code=[A-Za-z0-9_-]+/g, 'nightshift://pair?code=[redacted]')
+    .replace(/kolux:\/\/pair\?code=[A-Za-z0-9_-]+/g, 'kolux://pair?code=[redacted]')
     .replace(
       /("(?:pairingCode|deviceToken|publicKeyB64|token|secret|password|apiKey|accessToken|identityFile|identityAgent|proxyCommand)"\s*:\s*)"[^"]*"/gi,
       '$1"[redacted]"'
@@ -60,14 +60,14 @@ export function redactEphemeralVmRecipeResultForDiagnostics(
   }
   return {
     ...result,
-    pairingCode: 'nightshift://pair?code=[redacted]',
+    pairingCode: 'kolux://pair?code=[redacted]',
     ...(userData ? { userData } : {})
   }
 }
 
 function redactConnection(connection: EphemeralVmRecipeConnection): EphemeralVmRecipeConnection {
-  if (connection.type === 'nightshift-server') {
-    return { ...connection, pairingCode: 'nightshift://pair?code=[redacted]' }
+  if (connection.type === 'kolux-server') {
+    return { ...connection, pairingCode: 'kolux://pair?code=[redacted]' }
   }
   return {
     ...connection,

@@ -38,7 +38,7 @@ export function MarkupOverlay({
   return (
     <div
       ref={editor.rootRef}
-      data-nightshift-markup-overlay
+      data-kolux-markup-overlay
       className="absolute inset-0 z-20 overflow-hidden"
     >
       <img

@@ -4,7 +4,7 @@ import {
   agentSessionRecordFixture
 } from '../../shared/agent-session-record.test-fixture'
 import { agentSessionPtyWriteGate } from './agent-session-pty-write-gate'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn(() => null) },
@@ -19,7 +19,7 @@ afterEach(() => agentSessionPtyWriteGate.detachRecordLookup())
 
 describe('structured handoff PTY binding', () => {
   it('binds before runtime writes and unbinds on process exit', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const internal = runtime as unknown as {
       resolveTerminalWorkspaceLaunchScope: (selector: string) => Promise<{
         id: string

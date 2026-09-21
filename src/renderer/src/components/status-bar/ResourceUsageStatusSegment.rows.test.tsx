@@ -142,8 +142,8 @@ describe('resource manager row presentation', () => {
           {
             id: 'browser-1',
             worktreeId: 'wt-1',
-            title: 'Nightshift docs',
-            url: 'https://docs.nightshift.invalid',
+            title: 'Kolux docs',
+            url: 'https://docs.kolux.invalid',
             loading: false,
             faviconUrl: null,
             canGoBack: false,
@@ -155,7 +155,7 @@ describe('resource manager row presentation', () => {
       })
     )
 
-    expect(container.textContent).toContain('Nightshift docs')
+    expect(container.textContent).toContain('Kolux docs')
     expect(container.querySelector('.lucide-globe')).not.toBeNull()
     expect(container.querySelector('button[aria-label^="Open browser"]')).toBeNull()
   })

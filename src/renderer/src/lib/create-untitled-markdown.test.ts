@@ -139,10 +139,10 @@ describe('createUntitledMarkdownFile', () => {
       createUntitledMarkdownFile('/repo', 'wt-1', undefined, undefined, {
         now: new Date(2026, 4, 29, 7, 5),
         template: {
-          id: '.nightshift/templates/daily.md',
+          id: '.kolux/templates/daily.md',
           name: 'Daily',
-          filePath: '/repo/.nightshift/templates/daily.md',
-          relativePath: '.nightshift/templates/daily.md',
+          filePath: '/repo/.kolux/templates/daily.md',
+          relativePath: '.kolux/templates/daily.md',
           templateRelativePath: 'daily.md',
           basename: 'daily.md'
         }
@@ -154,7 +154,7 @@ describe('createUntitledMarkdownFile', () => {
     })
 
     expect(readFile).toHaveBeenCalledWith(
-      expect.objectContaining({ filePath: '/repo/.nightshift/templates/daily.md' })
+      expect.objectContaining({ filePath: '/repo/.kolux/templates/daily.md' })
     )
     expect(createFile).toHaveBeenCalledWith(
       expect.objectContaining({ filePath: '/repo/untitled.md' })
@@ -180,7 +180,7 @@ describe('createUntitledMarkdownFile', () => {
     })
     const writeFile = vi.fn().mockResolvedValueOnce(undefined)
     const pathExists = vi.fn(async ({ filePath }: { filePath: string }) =>
-      filePath.endsWith('/.nightshift/templates')
+      filePath.endsWith('/.kolux/templates')
     )
     const unsubscribe = subscribeMarkdownTemplatePicker((request) => {
       const template = request.templates[0]
@@ -217,7 +217,7 @@ describe('createUntitledMarkdownFile', () => {
     }
 
     expect(readDir).toHaveBeenCalledWith(
-      expect.objectContaining({ dirPath: '/repo/.nightshift/templates' })
+      expect.objectContaining({ dirPath: '/repo/.kolux/templates' })
     )
     expect(writeFile).toHaveBeenCalledWith(
       expect.objectContaining({ filePath: '/repo/untitled.md', content: '# Untitled\n' })

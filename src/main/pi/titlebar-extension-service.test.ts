@@ -21,7 +21,7 @@ import { installFakeAppEnvironment } from '../../../config/scripts/vitest-host-p
 
 // The service calls app.getPath('userData') for its overlay root. Point that
 // at a real tmp dir so we can exercise the filesystem behavior end-to-end.
-const userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-pi-test-userdata-'))
+const userDataDir = mkdtempSync(join(tmpdir(), 'kolux-pi-test-userdata-'))
 
 // Why: getDefaultPiAgentDir() inside titlebar-extension-service reads
 // homedir() from 'os'. To exercise the ~/.omp/agent fallback branch we
@@ -66,7 +66,7 @@ describe('PiTitlebarExtensionService', () => {
   let piHome: string
 
   beforeEach(() => {
-    piHome = mkdtempSync(join(tmpdir(), 'nightshift-pi-test-pihome-'))
+    piHome = mkdtempSync(join(tmpdir(), 'kolux-pi-test-pihome-'))
     // Seed a realistic Pi agent dir with skills, extensions, auth, sessions.
     mkdirSync(join(piHome, 'skills', 'my-skill', 'nested'), { recursive: true })
     writeFileSync(join(piHome, 'skills', 'my-skill', 'SKILL.md'), 'critical user skill')
@@ -120,39 +120,39 @@ describe('PiTitlebarExtensionService', () => {
     })
   }
 
-  it('buildPtyEnv installs Nightshift extensions into the user agent dir without redirecting the home', () => {
+  it('buildPtyEnv installs Kolux extensions into the user agent dir without redirecting the home', () => {
     const svc = new PiTitlebarExtensionService()
     const env = svc.buildPtyEnv('pty-1', piHome, 'pi')
 
     expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-    expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe(piHome)
+    expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBe(piHome)
     const extensions = readdirSync(join(piHome, 'extensions')).sort()
     expect(extensions).toEqual([
-      'nightshift-agent-status.ts',
-      'nightshift-prefill.ts',
-      'nightshift-titlebar-spinner.ts',
+      'kolux-agent-status.ts',
+      'kolux-prefill.ts',
+      'kolux-titlebar-spinner.ts',
       'user-ext'
     ])
     const statusExtensionSource = readFileSync(
-      join(piHome, 'extensions', 'nightshift-agent-status.ts'),
+      join(piHome, 'extensions', 'kolux-agent-status.ts'),
       'utf-8'
     )
     const titlebarExtensionSource = readFileSync(
-      join(piHome, 'extensions', 'nightshift-titlebar-spinner.ts'),
+      join(piHome, 'extensions', 'kolux-titlebar-spinner.ts'),
       'utf-8'
     )
     const prefillExtensionSource = readFileSync(
-      join(piHome, 'extensions', 'nightshift-prefill.ts'),
+      join(piHome, 'extensions', 'kolux-prefill.ts'),
       'utf-8'
     )
-    expect(statusExtensionSource).toContain('@nightshift-managed-pi-extension')
+    expect(statusExtensionSource).toContain('@kolux-managed-pi-extension')
     expect(statusExtensionSource).toContain('/hook/pi')
     expect(statusExtensionSource).toContain('process.title')
     expect(statusExtensionSource).toContain("return '/hook/omp'")
-    expect(titlebarExtensionSource).toContain('@nightshift-managed-pi-extension')
-    expect(titlebarExtensionSource).toContain('process.env.NIGHTSHIFT_PANE_KEY')
-    expect(prefillExtensionSource).toContain('@nightshift-managed-pi-extension')
-    expect(prefillExtensionSource).toContain('process.env.NIGHTSHIFT_PANE_KEY')
+    expect(titlebarExtensionSource).toContain('@kolux-managed-pi-extension')
+    expect(titlebarExtensionSource).toContain('process.env.KOLUX_PANE_KEY')
+    expect(prefillExtensionSource).toContain('@kolux-managed-pi-extension')
+    expect(prefillExtensionSource).toContain('process.env.KOLUX_PANE_KEY')
     expectPiHomeIntact()
   })
 
@@ -161,7 +161,7 @@ describe('PiTitlebarExtensionService', () => {
     svc.buildPtyEnv('pty-2', piHome, 'pi')
     svc.clearPty('pty-2')
 
-    expect(existsSync(join(piHome, 'extensions', 'nightshift-agent-status.ts'))).toBe(true)
+    expect(existsSync(join(piHome, 'extensions', 'kolux-agent-status.ts'))).toBe(true)
     expectPiHomeIntact()
   })
 
@@ -169,16 +169,16 @@ describe('PiTitlebarExtensionService', () => {
     const svc = new PiTitlebarExtensionService()
     const env = svc.buildPtyEnv('pty-prime', piHome, 'prime-agent')
 
-    expect(env).toEqual({ NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR: piHome })
+    expect(env).toEqual({ KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR: piHome })
     expect(readdirSync(join(piHome, 'extensions')).sort()).toEqual([
-      'nightshift-agent-status.ts',
+      'kolux-agent-status.ts',
       'user-ext'
     ])
-    const source = readFileSync(join(piHome, 'extensions', 'nightshift-agent-status.ts'), 'utf-8')
+    const source = readFileSync(join(piHome, 'extensions', 'kolux-agent-status.ts'), 'utf-8')
     expect(source).toContain('/hook/prime-agent')
     expect(source).not.toContain("return '/hook/omp'")
-    expect(existsSync(join(piHome, 'extensions', 'nightshift-titlebar-spinner.ts'))).toBe(false)
-    expect(existsSync(join(piHome, 'extensions', 'nightshift-prefill.ts'))).toBe(false)
+    expect(existsSync(join(piHome, 'extensions', 'kolux-titlebar-spinner.ts'))).toBe(false)
+    expect(existsSync(join(piHome, 'extensions', 'kolux-prefill.ts'))).toBe(false)
     expectPiHomeIntact()
   })
 
@@ -189,7 +189,7 @@ describe('PiTitlebarExtensionService', () => {
 
     expect(firstEnv.PI_CODING_AGENT_DIR).toBeUndefined()
     expect(secondEnv.PI_CODING_AGENT_DIR).toBeUndefined()
-    expect(secondEnv.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe(firstEnv.NIGHTSHIFT_PI_SOURCE_AGENT_DIR)
+    expect(secondEnv.KOLUX_PI_SOURCE_AGENT_DIR).toBe(firstEnv.KOLUX_PI_SOURCE_AGENT_DIR)
     expect(readFileSync(join(piHome, 'extensions', 'user-ext', 'ext.ts'), 'utf-8')).toBe(
       'user extension'
     )
@@ -204,10 +204,8 @@ describe('PiTitlebarExtensionService', () => {
     const content = 'agent.db credentials'
 
     expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-    expect(env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR).toBe(piHome)
-    expect(env.NIGHTSHIFT_OMP_STATUS_EXTENSION).toBe(
-      join(piHome, 'extensions', 'nightshift-agent-status.ts')
-    )
+    expect(env.KOLUX_OMP_SOURCE_AGENT_DIR).toBe(piHome)
+    expect(env.KOLUX_OMP_STATUS_EXTENSION).toBe(join(piHome, 'extensions', 'kolux-agent-status.ts'))
     expect(existsSync(sourcePath)).toBe(false)
     expect(existsSync(join(userDataDir, 'omp-agent-overlays'))).toBe(false)
     expect(existsSync(join(piHome, 'history.db'))).toBe(false)
@@ -226,15 +224,15 @@ describe('PiTitlebarExtensionService', () => {
     writeFileSync(join(overlayDir, 'sessions', 'legacy-session.jsonl'), 'legacy transcript')
     writeFileSync(join(overlayDir, 'auth.json'), 'legacy token should not overwrite')
     writeFileSync(join(overlayDir, 'settings.json'), '{"overlayOnly":true}')
-    writeFileSync(join(overlayDir, '.nightshift-pi-overlay-manifest.json'), '{}')
+    writeFileSync(join(overlayDir, '.kolux-pi-overlay-manifest.json'), '{}')
     writeFileSync(
-      join(overlayDir, 'extensions', 'nightshift-agent-status.ts'),
+      join(overlayDir, 'extensions', 'kolux-agent-status.ts'),
       'stale managed extension'
     )
     writeFileSync(join(overlayDir, 'extensions', 'legacy-user-ext.ts'), 'legacy user extension')
     mkdirSync(join(overlayDir, 'extensions', 'legacy-package'), { recursive: true })
     writeFileSync(
-      join(overlayDir, 'extensions', 'legacy-package', 'nightshift-prefill.ts'),
+      join(overlayDir, 'extensions', 'legacy-package', 'kolux-prefill.ts'),
       'user package file'
     )
 
@@ -261,14 +259,14 @@ describe('PiTitlebarExtensionService', () => {
       'legacy user extension'
     )
     expect(
-      readFileSync(join(piHome, 'extensions', 'legacy-package', 'nightshift-prefill.ts'), 'utf-8')
+      readFileSync(join(piHome, 'extensions', 'legacy-package', 'kolux-prefill.ts'), 'utf-8')
     ).toBe('user package file')
-    expect(
-      readFileSync(join(piHome, 'extensions', 'nightshift-agent-status.ts'), 'utf-8')
-    ).toContain('/hook/omp')
-    expect(
-      readFileSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'), 'utf-8')
-    ).toBe('complete\n')
+    expect(readFileSync(join(piHome, 'extensions', 'kolux-agent-status.ts'), 'utf-8')).toContain(
+      '/hook/omp'
+    )
+    expect(readFileSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'), 'utf-8')).toBe(
+      'complete\n'
+    )
   })
 
   it('does not copy stale SQLite sidecars when the target database already exists', () => {
@@ -285,9 +283,9 @@ describe('PiTitlebarExtensionService', () => {
     expect(readFileSync(join(piHome, 'agent.db'), 'utf-8')).toBe('fresh sqlite credentials')
     expect(existsSync(join(piHome, 'agent.db-wal'))).toBe(false)
     expect(existsSync(join(piHome, 'agent.db-shm'))).toBe(false)
-    expect(
-      readFileSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'), 'utf-8')
-    ).toBe('complete\n')
+    expect(readFileSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'), 'utf-8')).toBe(
+      'complete\n'
+    )
   })
 
   it.skipIf(process.platform === 'win32')(
@@ -306,9 +304,7 @@ describe('PiTitlebarExtensionService', () => {
 
         expect(existsSync(join(piHome, 'agent.db'))).toBe(false)
         expect(existsSync(join(piHome, 'agent.db-wal'))).toBe(false)
-        expect(existsSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'))).toBe(
-          false
-        )
+        expect(existsSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'))).toBe(false)
 
         chmodSync(walPath, 0o600)
         svc.buildPtyEnv('pty-omp-sidecar-fail-2', piHome, 'omp')
@@ -316,7 +312,7 @@ describe('PiTitlebarExtensionService', () => {
         expect(readFileSync(join(piHome, 'agent.db'), 'utf-8')).toBe('legacy sqlite credentials')
         expect(readFileSync(join(piHome, 'agent.db-wal'), 'utf-8')).toBe('legacy sqlite wal')
         expect(
-          readFileSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'), 'utf-8')
+          readFileSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'), 'utf-8')
         ).toBe('complete\n')
       } finally {
         chmodSync(walPath, 0o600)
@@ -353,15 +349,15 @@ describe('PiTitlebarExtensionService', () => {
 
       expect(existsSync(join(piHome, 'agent.db'))).toBe(false)
       expect(existsSync(join(piHome, 'agent.db-wal'))).toBe(false)
-      expect(existsSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'))).toBe(false)
+      expect(existsSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'))).toBe(false)
 
       migrateLegacyOmpOverlayState(piHome, overlayDir)
 
       expect(readFileSync(join(piHome, 'agent.db'), 'utf-8')).toBe('legacy sqlite credentials')
       expect(readFileSync(join(piHome, 'agent.db-wal'), 'utf-8')).toBe('legacy sqlite wal')
-      expect(
-        readFileSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'), 'utf-8')
-      ).toBe('complete\n')
+      expect(readFileSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'), 'utf-8')).toBe(
+        'complete\n'
+      )
     } finally {
       vi.doUnmock('node:fs')
       vi.resetModules()
@@ -377,9 +373,9 @@ describe('PiTitlebarExtensionService', () => {
     svc.buildPtyEnv('pty-omp-migrate-once-1', piHome, 'omp')
 
     expect(readFileSync(join(piHome, 'agent.db'), 'utf-8')).toBe('legacy sqlite credentials')
-    expect(
-      readFileSync(join(overlayDir, '.nightshift-omp-overlay-migration-complete'), 'utf-8')
-    ).toBe('complete\n')
+    expect(readFileSync(join(overlayDir, '.kolux-omp-overlay-migration-complete'), 'utf-8')).toBe(
+      'complete\n'
+    )
 
     writeFileSync(join(overlayDir, 'later-overlay-only-file'), 'should not migrate')
     svc.buildPtyEnv('pty-omp-migrate-once-2', piHome, 'omp')
@@ -413,7 +409,7 @@ describe('PiTitlebarExtensionService', () => {
       const overlayDir = legacySourceOverlayPath('omp', piHome)
       mkdirSync(join(overlayDir, 'sessions'), { recursive: true })
       writeFileSync(join(overlayDir, 'sessions', 'legacy-session.jsonl'), 'legacy transcript')
-      const outsideDir = mkdtempSync(join(tmpdir(), 'nightshift-omp-target-junction-'))
+      const outsideDir = mkdtempSync(join(tmpdir(), 'kolux-omp-target-junction-'))
       const sessionsPath = join(piHome, 'sessions')
 
       try {
@@ -437,7 +433,7 @@ describe('PiTitlebarExtensionService', () => {
       mkdirSync(join(overlayDir, 'sessions'), { recursive: true })
       writeFileSync(join(overlayDir, 'agent.db'), 'legacy sqlite credentials')
       writeFileSync(join(overlayDir, 'sessions', 'legacy-session.jsonl'), 'legacy transcript')
-      const outsideDir = mkdtempSync(join(tmpdir(), 'nightshift-omp-dangling-target-'))
+      const outsideDir = mkdtempSync(join(tmpdir(), 'kolux-omp-dangling-target-'))
 
       try {
         const outsideTarget = join(outsideDir, 'agent.db')
@@ -465,12 +461,12 @@ describe('PiTitlebarExtensionService', () => {
     expectPiHomeIntact()
   })
 
-  it('rebuilding updates Nightshift-owned extensions while preserving user files', () => {
+  it('rebuilding updates Kolux-owned extensions while preserving user files', () => {
     const svc = new PiTitlebarExtensionService()
     svc.buildPtyEnv('pty-refresh-1', piHome, 'pi')
     writeFileSync(
-      join(piHome, 'extensions', 'nightshift-agent-status.ts'),
-      '// @nightshift-managed-pi-extension\nstale'
+      join(piHome, 'extensions', 'kolux-agent-status.ts'),
+      '// @kolux-managed-pi-extension\nstale'
     )
 
     rmSync(join(piHome, 'extensions', 'user-ext'), { recursive: true, force: true })
@@ -481,36 +477,32 @@ describe('PiTitlebarExtensionService', () => {
     const secondEnv = svc.buildPtyEnv('pty-refresh-2', piHome, 'pi')
 
     expect(secondEnv.PI_CODING_AGENT_DIR).toBeUndefined()
-    expect(
-      readFileSync(join(piHome, 'extensions', 'nightshift-agent-status.ts'), 'utf-8')
-    ).toContain('/hook/pi')
+    expect(readFileSync(join(piHome, 'extensions', 'kolux-agent-status.ts'), 'utf-8')).toContain(
+      '/hook/pi'
+    )
     expect(readFileSync(join(piHome, 'auth.json'), 'utf-8')).toBe('rotated token')
     expect(readFileSync(join(piHome, 'extensions', 'new-ext', 'ext.ts'), 'utf-8')).toBe(
       'new user extension'
     )
   })
 
-  it("does not overwrite a user's same-named Nightshift extension file", () => {
+  it("does not overwrite a user's same-named Kolux extension file", () => {
     const userStatusExtension = 'user-owned status extension'
-    writeFileSync(
-      join(piHome, 'extensions', 'nightshift-agent-status.ts'),
-      userStatusExtension,
-      'utf-8'
-    )
+    writeFileSync(join(piHome, 'extensions', 'kolux-agent-status.ts'), userStatusExtension, 'utf-8')
 
     const svc = new PiTitlebarExtensionService()
     const env = svc.buildPtyEnv('pty-same-name-extension', piHome, 'pi')
 
     expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-    expect(readFileSync(join(piHome, 'extensions', 'nightshift-agent-status.ts'), 'utf-8')).toBe(
+    expect(readFileSync(join(piHome, 'extensions', 'kolux-agent-status.ts'), 'utf-8')).toBe(
       userStatusExtension
     )
     expectPiHomeIntact()
   })
 
-  it('uses a Nightshift-owned OMP status extension when a same-named user file exists', () => {
+  it('uses a Kolux-owned OMP status extension when a same-named user file exists', () => {
     const userStatusExtension = 'user-owned status extension'
-    const userStatusPath = join(piHome, 'extensions', 'nightshift-agent-status.ts')
+    const userStatusPath = join(piHome, 'extensions', 'kolux-agent-status.ts')
     writeFileSync(userStatusPath, userStatusExtension, 'utf-8')
 
     const svc = new PiTitlebarExtensionService()
@@ -519,18 +511,18 @@ describe('PiTitlebarExtensionService', () => {
     const fallbackStatusPath = join(
       userDataDir,
       'omp-managed-status-extension',
-      'nightshift-agent-status.ts'
+      'kolux-agent-status.ts'
     )
     expect(readFileSync(userStatusPath, 'utf-8')).toBe(userStatusExtension)
-    expect(env.NIGHTSHIFT_OMP_STATUS_EXTENSION).toBe(fallbackStatusPath)
-    expect(readFileSync(fallbackStatusPath, 'utf-8')).toContain('@nightshift-managed-pi-extension')
+    expect(env.KOLUX_OMP_STATUS_EXTENSION).toBe(fallbackStatusPath)
+    expect(readFileSync(fallbackStatusPath, 'utf-8')).toContain('@kolux-managed-pi-extension')
     expect(readFileSync(fallbackStatusPath, 'utf-8')).toContain('/hook/omp')
   })
 
   it.skipIf(process.platform === 'win32')(
     'writes bundled extensions through a symlinked user extensions dir',
     () => {
-      const realExtensionsDir = mkdtempSync(join(tmpdir(), 'nightshift-real-pi-extensions-'))
+      const realExtensionsDir = mkdtempSync(join(tmpdir(), 'kolux-real-pi-extensions-'))
       try {
         writeFileSync(join(realExtensionsDir, 'real-user-ext.ts'), 'real user extension')
         rmSync(join(piHome, 'extensions'), { recursive: true, force: true })
@@ -540,12 +532,12 @@ describe('PiTitlebarExtensionService', () => {
         const env = svc.buildPtyEnv('pty-symlinked-extensions', piHome, 'pi')
 
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(existsSync(join(realExtensionsDir, 'nightshift-agent-status.ts'))).toBe(true)
-        expect(existsSync(join(realExtensionsDir, 'nightshift-prefill.ts'))).toBe(true)
-        expect(existsSync(join(realExtensionsDir, 'nightshift-titlebar-spinner.ts'))).toBe(true)
-        expect(
-          readFileSync(join(realExtensionsDir, 'nightshift-agent-status.ts'), 'utf-8')
-        ).toContain('/hook/pi')
+        expect(existsSync(join(realExtensionsDir, 'kolux-agent-status.ts'))).toBe(true)
+        expect(existsSync(join(realExtensionsDir, 'kolux-prefill.ts'))).toBe(true)
+        expect(existsSync(join(realExtensionsDir, 'kolux-titlebar-spinner.ts'))).toBe(true)
+        expect(readFileSync(join(realExtensionsDir, 'kolux-agent-status.ts'), 'utf-8')).toContain(
+          '/hook/pi'
+        )
       } finally {
         rmSync(realExtensionsDir, { recursive: true, force: true })
       }
@@ -558,7 +550,7 @@ describe('PiTitlebarExtensionService', () => {
   it.skipIf(process.platform === 'win32')(
     'safely handles a pre-existing stale overlay with dangling symlinks',
     () => {
-      // Why: simulate an overlay that was left behind by a prior Nightshift session,
+      // Why: simulate an overlay that was left behind by a prior Kolux session,
       // where the original Pi home it mirrored has since moved. The teardown
       // should unlink the dangling symlinks in place without trying to follow them.
       const legacyOverlayDir = legacyOverlayPath('pi', 'pty-4')
@@ -570,13 +562,13 @@ describe('PiTitlebarExtensionService', () => {
       const env = svc.buildPtyEnv('pty-4', piHome, 'pi')
 
       expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-      expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe(piHome)
+      expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBe(piHome)
       expect(existsSync(legacyOverlayDir)).toBe(false)
       expectPiHomeIntact()
     }
   )
 
-  // Why: per-agent source dir. Nightshift's user picks Pi or OMP per
+  // Why: per-agent source dir. Kolux's user picks Pi or OMP per
   // launch (the agent kind isn't a global install-time choice), so each
   // build's source dir MUST be resolved from the agent kind, not from a
   // disk-presence check that silently shadows the other agent's user
@@ -591,7 +583,7 @@ describe('PiTitlebarExtensionService', () => {
     }
 
     it('launching pi with both ~/.pi/agent and ~/.omp/agent present installs into ~/.pi/agent', () => {
-      const fakeHome = mkdtempSync(join(tmpdir(), 'nightshift-pi-both-'))
+      const fakeHome = mkdtempSync(join(tmpdir(), 'kolux-pi-both-'))
       seedAgentDir(fakeHome, '.pi', 'pi')
       seedAgentDir(fakeHome, '.omp', 'omp')
 
@@ -601,12 +593,12 @@ describe('PiTitlebarExtensionService', () => {
         const env = svc.buildPtyEnv('pty-pi-both', undefined, 'pi')
 
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe(join(fakeHome, '.pi', 'agent'))
+        expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBe(join(fakeHome, '.pi', 'agent'))
         expect(
-          existsSync(join(fakeHome, '.pi', 'agent', 'extensions', 'nightshift-agent-status.ts'))
+          existsSync(join(fakeHome, '.pi', 'agent', 'extensions', 'kolux-agent-status.ts'))
         ).toBe(true)
         expect(
-          existsSync(join(fakeHome, '.omp', 'agent', 'extensions', 'nightshift-agent-status.ts'))
+          existsSync(join(fakeHome, '.omp', 'agent', 'extensions', 'kolux-agent-status.ts'))
         ).toBe(false)
       } finally {
         homedirOverride.current = ''
@@ -615,7 +607,7 @@ describe('PiTitlebarExtensionService', () => {
     })
 
     it('launching omp with both ~/.pi/agent and ~/.omp/agent present installs into ~/.omp/agent', () => {
-      const fakeHome = mkdtempSync(join(tmpdir(), 'nightshift-omp-both-'))
+      const fakeHome = mkdtempSync(join(tmpdir(), 'kolux-omp-both-'))
       seedAgentDir(fakeHome, '.pi', 'pi')
       seedAgentDir(fakeHome, '.omp', 'omp')
 
@@ -625,18 +617,18 @@ describe('PiTitlebarExtensionService', () => {
         const env = svc.buildPtyEnv('pty-omp-both', undefined, 'omp')
 
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR).toBe(join(fakeHome, '.omp', 'agent'))
-        expect(env.NIGHTSHIFT_OMP_STATUS_EXTENSION).toBe(
-          join(fakeHome, '.omp', 'agent', 'extensions', 'nightshift-agent-status.ts')
+        expect(env.KOLUX_OMP_SOURCE_AGENT_DIR).toBe(join(fakeHome, '.omp', 'agent'))
+        expect(env.KOLUX_OMP_STATUS_EXTENSION).toBe(
+          join(fakeHome, '.omp', 'agent', 'extensions', 'kolux-agent-status.ts')
         )
         expect(
           readFileSync(
-            join(fakeHome, '.omp', 'agent', 'extensions', 'nightshift-agent-status.ts'),
+            join(fakeHome, '.omp', 'agent', 'extensions', 'kolux-agent-status.ts'),
             'utf-8'
           )
         ).toContain('/hook/omp')
         expect(
-          existsSync(join(fakeHome, '.pi', 'agent', 'extensions', 'nightshift-agent-status.ts'))
+          existsSync(join(fakeHome, '.pi', 'agent', 'extensions', 'kolux-agent-status.ts'))
         ).toBe(false)
       } finally {
         homedirOverride.current = ''
@@ -646,9 +638,9 @@ describe('PiTitlebarExtensionService', () => {
 
     it('launching omp when only ~/.pi/agent exists does NOT mirror Pi state', () => {
       // Why: missing source dir for the resolved kind must materialize the
-      // overlay from empty (Nightshift extensions only) — never cross-pollinate
+      // overlay from empty (Kolux extensions only) — never cross-pollinate
       // from the other agent's dir.
-      const fakeHome = mkdtempSync(join(tmpdir(), 'nightshift-omp-only-pi-'))
+      const fakeHome = mkdtempSync(join(tmpdir(), 'kolux-omp-only-pi-'))
       seedAgentDir(fakeHome, '.pi', 'pi')
       expect(existsSync(join(fakeHome, '.omp'))).toBe(false)
 
@@ -659,13 +651,13 @@ describe('PiTitlebarExtensionService', () => {
 
         const ompAgentDir = join(fakeHome, '.omp', 'agent')
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR).toBe(ompAgentDir)
+        expect(env.KOLUX_OMP_SOURCE_AGENT_DIR).toBe(ompAgentDir)
         expect(existsSync(join(ompAgentDir, 'auth.json'))).toBe(false)
         const extensions = readdirSync(join(ompAgentDir, 'extensions')).sort()
         expect(extensions).toEqual([
-          'nightshift-agent-status.ts',
-          'nightshift-prefill.ts',
-          'nightshift-titlebar-spinner.ts'
+          'kolux-agent-status.ts',
+          'kolux-prefill.ts',
+          'kolux-titlebar-spinner.ts'
         ])
       } finally {
         homedirOverride.current = ''
@@ -674,7 +666,7 @@ describe('PiTitlebarExtensionService', () => {
     })
 
     it('bare-shell prep does not create missing ~/.pi or ~/.omp homes (#10196)', () => {
-      const fakeHome = mkdtempSync(join(tmpdir(), 'nightshift-no-eager-agent-home-'))
+      const fakeHome = mkdtempSync(join(tmpdir(), 'kolux-no-eager-agent-home-'))
       expect(existsSync(join(fakeHome, '.pi'))).toBe(false)
       expect(existsSync(join(fakeHome, '.omp'))).toBe(false)
 
@@ -691,11 +683,11 @@ describe('PiTitlebarExtensionService', () => {
         expect(piEnv).toEqual({})
         expect(existsSync(join(fakeHome, '.pi'))).toBe(false)
         expect(existsSync(join(fakeHome, '.omp'))).toBe(false)
-        expect(ompEnv.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR).toBeUndefined()
-        expect(ompEnv.NIGHTSHIFT_OMP_STATUS_EXTENSION).toEqual(
+        expect(ompEnv.KOLUX_OMP_SOURCE_AGENT_DIR).toBeUndefined()
+        expect(ompEnv.KOLUX_OMP_STATUS_EXTENSION).toEqual(
           expect.stringContaining('omp-managed-status-extension')
         )
-        expect(existsSync(ompEnv.NIGHTSHIFT_OMP_STATUS_EXTENSION!)).toBe(true)
+        expect(existsSync(ompEnv.KOLUX_OMP_STATUS_EXTENSION!)).toBe(true)
       } finally {
         homedirOverride.current = ''
         rmSync(fakeHome, { recursive: true, force: true })

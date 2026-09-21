@@ -48,7 +48,7 @@ describe('task creation dependency readiness', () => {
   })
 
   it('observes a dependency completion forced between readiness evaluation and insertion', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-task-readiness-race-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-task-readiness-race-'))
     directories.push(directory)
     const path = join(directory, 'orchestration.db')
     const db = createDb(path)
@@ -128,7 +128,7 @@ describe('task creation dependency readiness', () => {
   })
 
   it('preserves readiness and later promotion across reload', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-task-readiness-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-task-readiness-'))
     directories.push(directory)
     const path = join(directory, 'orchestration.db')
     const before = createDb(path)

@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { applyWaitForSetupOutcome, type WorkerSetupReceipt } from '../worker/worker-topology'
 import { isFederationResidualEffect, type FederationEffect } from './federation-effects'
@@ -46,7 +46,7 @@ export function persistFederatedSetupWaitOutcome(
 }
 
 export function monitorFederatedSetup(
-  args: FederationSetupStageArgs & { runtime: NightshiftRuntimeService }
+  args: FederationSetupStageArgs & { runtime: KoluxRuntimeService }
 ): void {
   const setupTerminal = args.effects.find(
     (effect) => effect.kind === 'terminal' && effect.role === 'setup' && effect.id

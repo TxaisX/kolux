@@ -1,8 +1,8 @@
-/** Guest-relative layout of Nightshift's retired WSL CODEX_HOME, retained for migration reads. */
+/** Guest-relative layout of Kolux's retired WSL CODEX_HOME, retained for migration reads. */
 export const WSL_CODEX_RUNTIME_HOME_SEGMENTS = [
   '.local',
   'share',
-  'nightshift',
+  'kolux',
   'codex-runtime-home',
   'home'
 ] as const

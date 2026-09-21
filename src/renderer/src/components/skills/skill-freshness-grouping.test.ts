@@ -31,13 +31,13 @@ function placement(
 
 describe('groupSkillFreshness', () => {
   it('marks an eligible outdated skill as update-available with one location', () => {
-    const groups = groupSkillFreshness([placement('nightshift-cli')], ['nightshift-cli'])
+    const groups = groupSkillFreshness([placement('kolux-cli')], ['kolux-cli'])
     expect(groups).toHaveLength(1)
-    expect(groups[0]).toMatchObject({ name: 'nightshift-cli', status: 'update-available' })
+    expect(groups[0]).toMatchObject({ name: 'kolux-cli', status: 'update-available' })
     expect(groups[0]?.locations).toEqual([
       {
         id: expect.any(String),
-        path: '/home/.agents/skills/nightshift-cli',
+        path: '/home/.agents/skills/kolux-cli',
         chip: null,
         participatesInGlobalFreshness: true
       }
@@ -47,8 +47,8 @@ describe('groupSkillFreshness', () => {
   it('hides skills whose every copy is current', () => {
     const groups = groupSkillFreshness(
       [
-        placement('nightshift-cli', { status: 'current' }),
-        placement('nightshift-cli', { status: 'current', topology: 'provider-alias' })
+        placement('kolux-cli', { status: 'current' }),
+        placement('kolux-cli', { status: 'current', topology: 'provider-alias' })
       ],
       []
     )
@@ -219,8 +219,8 @@ describe('groupSkillFreshness', () => {
   })
 
   it('raises no group when every finding is project-owned', () => {
-    // Nightshift's updater only passes --global, so a project copy has no remedy; a row here
-    // would claim Nightshift considered an update it could never perform.
+    // Kolux's updater only passes --global, so a project copy has no remedy; a row here
+    // would claim Kolux considered an update it could never perform.
     expect(
       groupSkillFreshness(
         [placement('computer-use', { status: 'unrecognized', topology: 'repo-scope' })],

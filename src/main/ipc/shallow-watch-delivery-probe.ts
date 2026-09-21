@@ -16,7 +16,7 @@ let probe: Promise<boolean> | null = null
 export async function measureShallowWatchDelivery(timeoutMs = PROBE_TIMEOUT_MS): Promise<boolean> {
   let directory: string | null = null
   try {
-    directory = await mkdtemp(join(tmpdir(), 'nightshift-shallow-probe-'))
+    directory = await mkdtemp(join(tmpdir(), 'kolux-shallow-probe-'))
     const { promise, resolve } = Promise.withResolvers<boolean>()
     const watcher = watch(directory, { persistent: false }, () => resolve(true))
     watcher.on('error', () => resolve(false))

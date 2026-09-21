@@ -20,7 +20,7 @@ import {
 } from './orchestration/federation-ack-checkpoints'
 import { syncFederatedDispatch } from './orchestration/federation-sync'
 import type { OrchestrationDb } from './orchestration/db'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 
 export class RuntimeOrchestrationFederation {
   private readonly timers = new Map<string, ReturnType<typeof setInterval>>()
@@ -32,7 +32,7 @@ export class RuntimeOrchestrationFederation {
   private relayGeneration = 0
 
   constructor(
-    private readonly runtime: NightshiftRuntimeService,
+    private readonly runtime: KoluxRuntimeService,
     private readonly transport: OrchestrationEnvironmentTransport | null
   ) {}
 

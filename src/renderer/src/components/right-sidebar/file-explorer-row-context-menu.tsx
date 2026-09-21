@@ -67,7 +67,7 @@ type FileExplorerRowContextMenuProps = Pick<
   | 'connectionId'
   | 'runtimeDownloadContext'
   | 'supportsFolderDownload'
-  | 'canOpenInNightshiftBrowser'
+  | 'canOpenInKoluxBrowser'
   | 'canCollapseFolderSubtree'
   | 'targetDir'
   | 'targetDepth'
@@ -92,7 +92,7 @@ export function FileExplorerRowContextMenu({
   connectionId,
   runtimeDownloadContext,
   supportsFolderDownload,
-  canOpenInNightshiftBrowser,
+  canOpenInKoluxBrowser,
   canCollapseFolderSubtree,
   targetDir,
   targetDepth,
@@ -121,7 +121,7 @@ export function FileExplorerRowContextMenu({
     supportsFolderDownload
   )
   const showCopyFileAction = shouldShowCopyFileAction(node, connectionId, selectionSize)
-  const handleOpenInNightshiftBrowser = useCallback(() => {
+  const handleOpenInKoluxBrowser = useCallback(() => {
     if (!activeWorktreeId) {
       return
     }
@@ -216,12 +216,12 @@ export function FileExplorerRowContextMenu({
           {translate('auto.components.right.sidebar.FileExplorerRow.1d8e182c32', 'View File')}
         </ContextMenuItem>
       )}
-      {!node.isDirectory && activeWorktreeId && canOpenInNightshiftBrowser && (
-        <ContextMenuItem onSelect={handleOpenInNightshiftBrowser}>
+      {!node.isDirectory && activeWorktreeId && canOpenInKoluxBrowser && (
+        <ContextMenuItem onSelect={handleOpenInKoluxBrowser}>
           <Globe />
           {translate(
             'auto.components.right.sidebar.FileExplorerRow.dd112c81d2',
-            'Open in Nightshift Browser'
+            'Open in Kolux Browser'
           )}
         </ContextMenuItem>
       )}

@@ -1,4 +1,4 @@
-// One-paste freeze report: `await window.__nightshiftTerminalFreezeReport()` in the
+// One-paste freeze report: `await window.__koluxTerminalFreezeReport()` in the
 // DevTools console of a frozen window returns renderer state, main state (with
 // per-pty delivery table), and both processes' breadcrumb history in a single
 // JSON blob. Assembled over invoke IPC — the direction proven alive in every
@@ -48,13 +48,12 @@ export async function buildTerminalFreezeReport(): Promise<TerminalFreezeReport>
 }
 
 type TerminalFreezeReportWindow = Window & {
-  __nightshiftTerminalFreezeReport?: () => Promise<TerminalFreezeReport>
+  __koluxTerminalFreezeReport?: () => Promise<TerminalFreezeReport>
 }
 
 export function installTerminalFreezeReport(): void {
   if (typeof window === 'undefined') {
     return
   }
-  ;(window as TerminalFreezeReportWindow).__nightshiftTerminalFreezeReport =
-    buildTerminalFreezeReport
+  ;(window as TerminalFreezeReportWindow).__koluxTerminalFreezeReport = buildTerminalFreezeReport
 }

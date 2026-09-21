@@ -1,5 +1,5 @@
 /**
- * Issue #14004: an SSH worktree catalog Nightshift could not read must never surface as an authoritative
+ * Issue #14004: an SSH worktree catalog Kolux could not read must never surface as an authoritative
  * empty catalog. Covers the whole client-side chain — provider response guard, the repo-level
  * listing, and the detected-worktree result whose `authoritative` flag gates renderer terminal
  * teardown (`teardownMissingWorktreeTerminalsBestEffort`).

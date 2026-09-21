@@ -7,7 +7,7 @@ type NotificationPaneVisibilityState = {
   terminalLayoutsByTabId?: Record<string, TerminalLayoutSnapshot>
 }
 
-export function isNightshiftWindowForegroundFocused(): boolean {
+export function isKoluxWindowForegroundFocused(): boolean {
   if (typeof document === 'undefined') {
     return true
   }
@@ -19,7 +19,7 @@ export function isVisibleForegroundPaneKey(
   worktreeId: string,
   paneKey: string
 ): boolean {
-  if (!isNightshiftWindowForegroundFocused() || state.activeWorktreeId !== worktreeId) {
+  if (!isKoluxWindowForegroundFocused() || state.activeWorktreeId !== worktreeId) {
     return false
   }
 

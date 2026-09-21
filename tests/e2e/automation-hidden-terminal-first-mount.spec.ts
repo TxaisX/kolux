@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveWorktreeId,
@@ -58,14 +58,14 @@ async function mainSnapshotContains(
 
 test.describe('Automation hidden terminal first mount', () => {
   test('background-mounted hidden worktree replays startup output on the first visible mount', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'background first-mount repro needs the seeded secondary worktree')
@@ -75,7 +75,7 @@ test.describe('Automation hidden terminal first mount', () => {
 
     const runId = Date.now()
     const marker = `AUTO_FIRST_MOUNT_${runId}`
-    const hiddenTabId = await nightshiftPage.evaluate(
+    const hiddenTabId = await koluxPage.evaluate(
       ({ worktreeId, marker, eventName }) => {
         const store = window.__store
         if (!store) {
@@ -112,23 +112,23 @@ test.describe('Automation hidden terminal first mount', () => {
       }
     )
 
-    const hiddenPtyId = await waitForHiddenTabPtyId(nightshiftPage, hiddenTabId)
+    const hiddenPtyId = await waitForHiddenTabPtyId(koluxPage, hiddenTabId)
     await expect
-      .poll(() => mainSnapshotContains(nightshiftPage, hiddenPtyId, marker), {
+      .poll(() => mainSnapshotContains(koluxPage, hiddenPtyId, marker), {
         timeout: 20_000,
         message: 'Hidden automation terminal did not buffer startup output while off-screen'
       })
       .toBe(true)
 
-    await switchToWorktree(nightshiftPage, secondWorktreeId)
+    await switchToWorktree(koluxPage, secondWorktreeId)
     await expect
-      .poll(() => getActiveWorktreeId(nightshiftPage), {
+      .poll(() => getActiveWorktreeId(koluxPage), {
         timeout: 10_000,
         message: 'Hidden worktree did not become active for first-mount verification'
       })
       .toBe(secondWorktreeId)
 
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       const store = window.__store
       if (!store) {
         throw new Error('Store unavailable')
@@ -138,11 +138,11 @@ test.describe('Automation hidden terminal first mount', () => {
       state.setActiveTabType('terminal')
     }, hiddenTabId)
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 10_000,
         message: 'First visible mount did not replay the hidden automation terminal output'
       })

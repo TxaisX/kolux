@@ -22,8 +22,8 @@ import {
 const AI_VAULT_CACHE_TTL_MS = 60_000
 
 // Why: codex-home + WSL home dirs must be sourced from a serve-mode-reachable
-// seam (the NightshiftRuntimeService deps), NOT the window-only registerCoreHandlers
-// path — `nightshift serve` never runs that path, so sourcing it there would silently
+// seam (the KoluxRuntimeService deps), NOT the window-only registerCoreHandlers
+// path — `kolux serve` never runs that path, so sourcing it there would silently
 // drop managed-Codex sessions from remote/SSH results.
 export type AiVaultSessionSources = {
   getAdditionalCodexHomePaths?: () => readonly string[]

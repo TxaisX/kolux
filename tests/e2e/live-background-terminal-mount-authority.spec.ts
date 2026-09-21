@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rmSync } from 'node:fs'
 import path from 'node:path'
-import { test as base, expect } from './helpers/nightshift-app'
+import { test as base, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import { waitForActivePanePtyId } from './helpers/terminal'
 import {
@@ -52,10 +52,10 @@ const test = base.extend({
   launchEnv: [
     {
       PATH: `${fakeCliDir}${path.delimiter}${process.env.PATH ?? ''}`,
-      NIGHTSHIFT_E2E_CODEX_SPAWN_LEDGER: spawnLedgerPath,
-      NIGHTSHIFT_E2E_SETUP_LEDGER: setupLedgerPath,
-      NIGHTSHIFT_E2E_CANARY_LEDGER: canaryLedgerPath,
-      NIGHTSHIFT_E2E_SIGNAL_LEDGER: signalLedgerPath
+      KOLUX_E2E_CODEX_SPAWN_LEDGER: spawnLedgerPath,
+      KOLUX_E2E_SETUP_LEDGER: setupLedgerPath,
+      KOLUX_E2E_CANARY_LEDGER: canaryLedgerPath,
+      KOLUX_E2E_SIGNAL_LEDGER: signalLedgerPath
     },
     { option: true }
   ]
@@ -72,7 +72,7 @@ test.afterAll(() => rmSync(fakeCliDir, { recursive: true, force: true }))
 
 test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   registerPostElectronShutdownCleanup
 }) => {
   const sourceRepo = createSourceRepo()
@@ -83,7 +83,7 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     }
     rmSync(sourceRepo, { recursive: true, force: true })
   })
-  await waitForSessionReady(nightshiftPage)
+  await waitForSessionReady(koluxPage)
   await installTerminalPtyWriteSpy(electronApp)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
@@ -94,7 +94,7 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
   const repoId = added.result.repo.id
   await expect
     .poll(() =>
-      nightshiftPage.evaluate(
+      koluxPage.evaluate(
         async ({ repoId, command, windowsShell }) => {
           const state = window.__store?.getState()
           await state?.fetchRepos()
@@ -185,19 +185,19 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
   expect(beforeStatus.result.graphStatus).toBe('ready')
   const daemonPid = readDaemonPid(userDataDir)
   const allIdentities = originals.map(terminalIdentity)
-  await assertTargetBindings(nightshiftPage, worktreeId, allIdentities)
-  await seedAgentRecoveryMetadata(nightshiftPage, worktreeId, terminalIdentity(agent!))
+  await assertTargetBindings(koluxPage, worktreeId, allIdentities)
+  await seedAgentRecoveryMetadata(koluxPage, worktreeId, terminalIdentity(agent!))
 
-  await faultProjectionAndActivate(nightshiftPage, worktreeId, [agent!, setup!], agent!.tabId)
-  const mountedAgentPtyId = await waitForActivePanePtyId(nightshiftPage)
-  await enableTerminalAccessibility(nightshiftPage, agent!.tabId)
+  await faultProjectionAndActivate(koluxPage, worktreeId, [agent!, setup!], agent!.tabId)
+  const mountedAgentPtyId = await waitForActivePanePtyId(koluxPage)
+  await enableTerminalAccessibility(koluxPage, agent!.tabId)
   await expect
     .poll(
       async () => ({
         mountedPtyId: mountedAgentPtyId,
         liveInventory: (await readWorktreeTerminals(client, worktreeId)).map(liveTerminalIdentity),
         visibleOriginalReady: (
-          await terminalAccessibility(nightshiftPage, agent!.tabId).innerText()
+          await terminalAccessibility(koluxPage, agent!.tabId).innerText()
         ).includes(`LIVE_AGENT_READY:${agentPid}`),
         processPids: {
           agent: readSpawnLedger().map(({ pid }) => pid),
@@ -215,30 +215,30 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     })
   const agentMarker = `AGENT_KB_${randomUUID().slice(0, 8)}`
   await clearTerminalPtyWriteLog(electronApp)
-  await typeIntoTerminal(nightshiftPage, agent!.tabId, agentMarker)
+  await typeIntoTerminal(koluxPage, agent!.tabId, agentMarker)
   await assertExactPtyReceivedMarker(electronApp, agent!.ptyId, agentMarker)
-  await expect(terminalAccessibility(nightshiftPage, agent!.tabId)).toContainText(
+  await expect(terminalAccessibility(koluxPage, agent!.tabId)).toContainText(
     `AGENT_INPUT:${agentPid}:${agentMarker}`
   )
-  await expect(terminalAccessibility(nightshiftPage, agent!.tabId)).not.toContainText(
+  await expect(terminalAccessibility(koluxPage, agent!.tabId)).not.toContainText(
     'Conversation interrupted'
   )
 
-  await activateTerminal(nightshiftPage, worktreeId, setup!.tabId)
-  const mountedSetupPtyId = await waitForActivePanePtyId(nightshiftPage)
-  await enableTerminalAccessibility(nightshiftPage, setup!.tabId)
+  await activateTerminal(koluxPage, worktreeId, setup!.tabId)
+  const mountedSetupPtyId = await waitForActivePanePtyId(koluxPage)
+  await enableTerminalAccessibility(koluxPage, setup!.tabId)
   expect(mountedSetupPtyId).toBe(setup!.ptyId)
-  await expect(terminalAccessibility(nightshiftPage, setup!.tabId)).toContainText(
+  await expect(terminalAccessibility(koluxPage, setup!.tabId)).toContainText(
     `SETUP_READY:${setupPid}`
   )
   const setupMarker = `SETUP_KB_${randomUUID().slice(0, 8)}`
   await clearTerminalPtyWriteLog(electronApp)
-  await typeIntoTerminal(nightshiftPage, setup!.tabId, setupMarker)
+  await typeIntoTerminal(koluxPage, setup!.tabId, setupMarker)
   await assertExactPtyReceivedMarker(electronApp, setup!.ptyId, setupMarker)
-  await expect(terminalAccessibility(nightshiftPage, setup!.tabId)).toContainText(
+  await expect(terminalAccessibility(koluxPage, setup!.tabId)).toContainText(
     `SETUP_INPUT:${setupPid}:${setupMarker}`
   )
-  await expect(terminalAccessibility(nightshiftPage, setup!.tabId)).not.toContainText(
+  await expect(terminalAccessibility(koluxPage, setup!.tabId)).not.toContainText(
     'Conversation interrupted'
   )
 
@@ -253,7 +253,7 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     .toContain(`CANARY_INPUT:${canaryPid}:${canaryMarker}`)
 
   await assertLiveInventory(client, worktreeId, originals)
-  await assertTargetBindings(nightshiftPage, worktreeId, allIdentities)
+  await assertTargetBindings(koluxPage, worktreeId, allIdentities)
   await assertLaunchLedgersUnchanged()
   await assertNoInterruption(client, [agent!, setup!])
   expect(readJsonLines(signalLedgerPath)).toHaveLength(0)
@@ -265,12 +265,12 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     authoritativeWindowId: beforeStatus.result.authoritativeWindowId
   })
   expect(readDaemonPid(userDataDir)).toBe(daemonPid)
-  const beforeReloadDelivery = await nightshiftPage.evaluate(() =>
+  const beforeReloadDelivery = await koluxPage.evaluate(() =>
     window.api.pty.getRendererDeliveryDebugSnapshot()
   )
 
-  await nightshiftPage.reload()
-  await waitForSessionReady(nightshiftPage)
+  await koluxPage.reload()
+  await waitForSessionReady(koluxPage)
   await expect
     .poll(
       async () => {
@@ -298,14 +298,14 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     rendererDispatcherReadyForcedCount: beforeReloadDelivery.rendererDispatcherReadyForcedCount
   }
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot()))
+    .poll(() => koluxPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot()))
     .toMatchObject(postReloadDelivery)
-  await activateTerminal(nightshiftPage, worktreeId, agent!.tabId)
-  const remountedAgentPtyId = await waitForActivePanePtyId(nightshiftPage)
+  await activateTerminal(koluxPage, worktreeId, agent!.tabId)
+  const remountedAgentPtyId = await waitForActivePanePtyId(koluxPage)
   expect(remountedAgentPtyId).toBe(agent!.ptyId)
-  await enableTerminalAccessibility(nightshiftPage, agent!.tabId)
+  await enableTerminalAccessibility(koluxPage, agent!.tabId)
   await expect
-    .poll(() => nightshiftPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot()))
+    .poll(() => koluxPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot()))
     .toMatchObject(postReloadDelivery)
   const remountAgentLiveMarker = `AGENT_LIVE_${randomUUID()}`
   await client.call('terminal.send', {
@@ -316,14 +316,14 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
   const remountAgentLiveOutput = `AGENT_INPUT:${agentPid}:${remountAgentLiveMarker}`
   await expect.poll(() => terminalOutput(client, agent!.handle)).toContain(remountAgentLiveOutput)
   await expect
-    .poll(() => terminalViewportText(nightshiftPage, agent!.tabId))
+    .poll(() => terminalViewportText(koluxPage, agent!.tabId))
     .toContain(remountAgentLiveOutput)
   expect(
-    await nightshiftPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot())
+    await koluxPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot())
   ).toMatchObject(postReloadDelivery)
   const remountAgentAcceptedMarker = `AGENT_ACCEPTED_${randomUUID()}`
   expect(
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ marker, ptyId }) => window.api.pty.writeAccepted(ptyId, `${marker}\r`),
       { marker: remountAgentAcceptedMarker, ptyId: agent!.ptyId }
     )
@@ -333,21 +333,21 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     .poll(() => terminalOutput(client, agent!.handle))
     .toContain(remountAgentAcceptedOutput)
   await expect
-    .poll(() => terminalViewportText(nightshiftPage, agent!.tabId))
+    .poll(() => terminalViewportText(koluxPage, agent!.tabId))
     .toContain(remountAgentAcceptedOutput)
   const remountAgentMarker = `AGENT_REMOUNT_${randomUUID().slice(0, 8)}`
   await clearTerminalPtyWriteLog(electronApp)
-  await typeIntoTerminal(nightshiftPage, agent!.tabId, remountAgentMarker)
+  await typeIntoTerminal(koluxPage, agent!.tabId, remountAgentMarker)
   await assertExactPtyReceivedMarker(electronApp, agent!.ptyId, remountAgentMarker)
   const remountAgentOutput = `AGENT_INPUT:${agentPid}:${remountAgentMarker}`
   await expect.poll(() => terminalOutput(client, agent!.handle)).toContain(remountAgentOutput)
   await expect
-    .poll(() => terminalViewportText(nightshiftPage, agent!.tabId))
+    .poll(() => terminalViewportText(koluxPage, agent!.tabId))
     .toContain(remountAgentOutput)
-  await activateTerminal(nightshiftPage, worktreeId, setup!.tabId)
-  const remountedSetupPtyId = await waitForActivePanePtyId(nightshiftPage)
+  await activateTerminal(koluxPage, worktreeId, setup!.tabId)
+  const remountedSetupPtyId = await waitForActivePanePtyId(koluxPage)
   expect(remountedSetupPtyId).toBe(setup!.ptyId)
-  await enableTerminalAccessibility(nightshiftPage, setup!.tabId)
+  await enableTerminalAccessibility(koluxPage, setup!.tabId)
   const remountSetupLiveMarker = `SETUP_LIVE_${randomUUID()}`
   await client.call('terminal.send', {
     terminal: setup!.handle,
@@ -357,19 +357,19 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
   const remountSetupLiveOutput = `SETUP_INPUT:${setupPid}:${remountSetupLiveMarker}`
   await expect.poll(() => terminalOutput(client, setup!.handle)).toContain(remountSetupLiveOutput)
   await expect
-    .poll(() => terminalViewportText(nightshiftPage, setup!.tabId))
+    .poll(() => terminalViewportText(koluxPage, setup!.tabId))
     .toContain(remountSetupLiveOutput)
   expect(
-    await nightshiftPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot())
+    await koluxPage.evaluate(() => window.api.pty.getRendererDeliveryDebugSnapshot())
   ).toMatchObject(postReloadDelivery)
   const remountSetupMarker = `SETUP_REMOUNT_${randomUUID().slice(0, 8)}`
   await clearTerminalPtyWriteLog(electronApp)
-  await typeIntoTerminal(nightshiftPage, setup!.tabId, remountSetupMarker)
+  await typeIntoTerminal(koluxPage, setup!.tabId, remountSetupMarker)
   await assertExactPtyReceivedMarker(electronApp, setup!.ptyId, remountSetupMarker)
   const remountSetupOutput = `SETUP_INPUT:${setupPid}:${remountSetupMarker}`
   await expect.poll(() => terminalOutput(client, setup!.handle)).toContain(remountSetupOutput)
   await expect
-    .poll(() => terminalViewportText(nightshiftPage, setup!.tabId))
+    .poll(() => terminalViewportText(koluxPage, setup!.tabId))
     .toContain(remountSetupOutput)
 
   const remountCanaryMarker = `CANARY_REMOUNT_${randomUUID()}`
@@ -382,7 +382,7 @@ test('adopts runtime-owned agent and Setup PTYs on first mount', async ({
     .poll(() => terminalOutput(client, canary!.handle))
     .toContain(`CANARY_INPUT:${canaryPid}:${remountCanaryMarker}`)
   await assertLiveInventory(client, worktreeId, originals)
-  await assertTargetBindings(nightshiftPage, worktreeId, allIdentities)
+  await assertTargetBindings(koluxPage, worktreeId, allIdentities)
   await assertLaunchLedgersUnchanged()
   await assertNoInterruption(client, [agent!, setup!])
   expect(readJsonLines(signalLedgerPath)).toHaveLength(0)

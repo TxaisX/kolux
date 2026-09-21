@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { normalizeRuntimePathForComparison } from '../../shared/cross-platform-path'
 
 // Why: Codex OAuth uses rotating refresh tokens stored in each home's auth.json.
-// Two Nightshift-spawned codex processes refreshing the same home concurrently can
+// Two Kolux-spawned codex processes refreshing the same home concurrently can
 // consume one rotation twice and permanently invalidate the stored credential,
-// so Nightshift's own spawns (quota probes, commit-message runs) serialize per home.
+// so Kolux's own spawns (quota probes, commit-message runs) serialize per home.
 // User terminal panes are intentionally not serialized here.
 
 const lockTails = new Map<string, Promise<unknown>>()
@@ -28,7 +28,7 @@ export function resolveCodexHomeProcessLockKeyForSpawnEnv(
     // Without an explicit home the distro default is unknowable from the host;
     // a sentinel still serializes same-distro default spawns with each other.
     return normalizeRuntimePathForComparison(
-      `//wsl$/${wslDistro}${codexHome ?? '/.nightshift-default-codex-home'}`
+      `//wsl$/${wslDistro}${codexHome ?? '/.kolux-default-codex-home'}`
     )
   }
   // An explicit env is the child's complete environment. If CODEX_HOME was

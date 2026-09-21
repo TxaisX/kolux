@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const {
   callMock,
   runtimeClientConstructorMock,
-  serveNightshiftAppMock,
+  serveKoluxAppMock,
   getDefaultUserDataPathMock,
   addEnvironmentFromPairingCodeMock,
   listEnvironmentsMock,
@@ -11,8 +11,8 @@ const {
 } = vi.hoisted(() => ({
   callMock: vi.fn(),
   runtimeClientConstructorMock: vi.fn(),
-  serveNightshiftAppMock: vi.fn(),
-  getDefaultUserDataPathMock: vi.fn(() => '/tmp/nightshift-user-data'),
+  serveKoluxAppMock: vi.fn(),
+  getDefaultUserDataPathMock: vi.fn(() => '/tmp/kolux-user-data'),
   addEnvironmentFromPairingCodeMock: vi.fn(),
   listEnvironmentsMock: vi.fn(),
   spawnMock: vi.fn()
@@ -23,7 +23,7 @@ vi.mock('./runtime-client', async () => {
   return createRuntimeClientModuleMock({
     callMock,
     runtimeClientConstructorMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock
   })
 })
@@ -43,10 +43,10 @@ vi.mock('child_process', async () => {
 import { main } from './index'
 import { useWorktreeAwarenessEnvironment } from './index-test-harness'
 
-describe('nightshift cli worktree awareness', () => {
+describe('kolux cli worktree awareness', () => {
   useWorktreeAwarenessEnvironment({
     callMock,
-    serveNightshiftAppMock,
+    serveKoluxAppMock,
     getDefaultUserDataPathMock,
     addEnvironmentFromPairingCodeMock,
     listEnvironmentsMock,
@@ -54,15 +54,15 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('starts a foreground headless server through `serve`', async () => {
-    serveNightshiftAppMock.mockResolvedValue(0)
-    process.env.NIGHTSHIFT_ENVIRONMENT = 'stale-env'
+    serveKoluxAppMock.mockResolvedValue(0)
+    process.env.KOLUX_ENVIRONMENT = 'stale-env'
 
     await main(
       ['serve', '--json', '--port', '6768', '--pairing-address', '100.64.1.20', '--no-pairing'],
       '/tmp/repo'
     )
 
-    expect(serveNightshiftAppMock).toHaveBeenCalledWith({
+    expect(serveKoluxAppMock).toHaveBeenCalledWith({
       json: true,
       port: '6768',
       pairingAddress: '100.64.1.20',
@@ -74,14 +74,14 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('starts a foreground headless server with mobile pairing enabled', async () => {
-    serveNightshiftAppMock.mockResolvedValue(0)
+    serveKoluxAppMock.mockResolvedValue(0)
 
     await main(
       ['serve', '--pairing-address', '100.64.1.20', '--mobile-pairing', '--json'],
       '/tmp/repo'
     )
 
-    expect(serveNightshiftAppMock).toHaveBeenCalledWith({
+    expect(serveKoluxAppMock).toHaveBeenCalledWith({
       json: true,
       port: null,
       pairingAddress: '100.64.1.20',
@@ -93,7 +93,7 @@ describe('nightshift cli worktree awareness', () => {
   })
 
   it('starts a recipe JSON headless server for VM recipes', async () => {
-    serveNightshiftAppMock.mockResolvedValue(0)
+    serveKoluxAppMock.mockResolvedValue(0)
 
     await main(
       [
@@ -107,7 +107,7 @@ describe('nightshift cli worktree awareness', () => {
       '/tmp/repo'
     )
 
-    expect(serveNightshiftAppMock).toHaveBeenCalledWith({
+    expect(serveKoluxAppMock).toHaveBeenCalledWith({
       json: false,
       port: null,
       pairingAddress: 'wss://sandbox.example.com',
@@ -125,7 +125,7 @@ describe('nightshift cli worktree awareness', () => {
 
     await main(['serve', '--recipe-json'], '/tmp/repo')
 
-    expect(serveNightshiftAppMock).not.toHaveBeenCalled()
+    expect(serveKoluxAppMock).not.toHaveBeenCalled()
     expect([...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')).toContain(
       'Recipe JSON output requires --project-root.'
     )
@@ -144,7 +144,7 @@ describe('nightshift cli worktree awareness', () => {
       '/tmp/repo'
     )
 
-    expect(serveNightshiftAppMock).not.toHaveBeenCalled()
+    expect(serveKoluxAppMock).not.toHaveBeenCalled()
     expect([...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')).toContain(
       'Recipe JSON output requires runtime pairing; remove --mobile-pairing.'
     )
@@ -160,7 +160,7 @@ describe('nightshift cli worktree awareness', () => {
 
     await main(['serve', '--mobile-pairing', '--no-pairing', '--json'], '/tmp/repo')
 
-    expect(serveNightshiftAppMock).not.toHaveBeenCalled()
+    expect(serveKoluxAppMock).not.toHaveBeenCalled()
     expect([...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')).toContain(
       'Use either --mobile-pairing or --no-pairing, not both.'
     )
@@ -176,7 +176,7 @@ describe('nightshift cli worktree awareness', () => {
 
     await main(['serve', '--port', 'not-a-port', '--json'], '/tmp/repo')
 
-    expect(serveNightshiftAppMock).not.toHaveBeenCalled()
+    expect(serveKoluxAppMock).not.toHaveBeenCalled()
     expect([...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')).toContain(
       'Invalid --port value: not-a-port'
     )
@@ -192,7 +192,7 @@ describe('nightshift cli worktree awareness', () => {
 
     await main(['serve', '--port', '--json'], '/tmp/repo')
 
-    expect(serveNightshiftAppMock).not.toHaveBeenCalled()
+    expect(serveKoluxAppMock).not.toHaveBeenCalled()
     expect([...logSpy.mock.calls, ...errSpy.mock.calls].flat().join('\n')).toContain(
       'Missing value for --port.'
     )

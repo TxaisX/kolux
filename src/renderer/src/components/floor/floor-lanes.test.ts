@@ -28,7 +28,7 @@ function makeEntry(overrides: Partial<AgentStatusEntry> & { paneKey: string }): 
 const WORKTREE_LOCAL: FloorWorktreeInput = {
   id: 'wt-1',
   repoId: 'repo-1',
-  repoName: 'nightshift',
+  repoName: 'kolux',
   name: 'fix-guard',
   branch: 'fix-guard',
   hostId: 'local',
@@ -39,7 +39,7 @@ const WORKTREE_LOCAL: FloorWorktreeInput = {
 const WORKTREE_SSH: FloorWorktreeInput = {
   id: 'wt-2',
   repoId: 'repo-1',
-  repoName: 'nightshift',
+  repoName: 'kolux',
   name: 'remote-task',
   branch: 'remote-task',
   hostId: 'ssh:box',

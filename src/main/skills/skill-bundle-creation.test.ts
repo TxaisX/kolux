@@ -13,7 +13,7 @@ import { writeSkillTarGzip } from './skill-package-tar'
 const temporaryDirectories: string[] = []
 
 async function temporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'nightshift-skill-bundle-test-'))
+  const directory = await mkdtemp(join(tmpdir(), 'kolux-skill-bundle-test-'))
   temporaryDirectories.push(directory)
   return directory
 }
@@ -165,8 +165,8 @@ describe('skill bundle creation and extraction', () => {
       bundleName: 'team-skills'
     })
     const destination = join(root, 'conflicting-staging')
-    const importedManifest = join(destination, 'dev.nightshift.skill-sharing', 'manifest.json')
-    await mkdir(join(destination, 'dev.nightshift.skill-sharing'), { recursive: true })
+    const importedManifest = join(destination, 'dev.kolux.skill-sharing', 'manifest.json')
+    await mkdir(join(destination, 'dev.kolux.skill-sharing'), { recursive: true })
     await writeFile(importedManifest, 'unowned\n')
 
     await expect(
@@ -193,7 +193,7 @@ describe('skill bundle creation and extraction', () => {
         bytes: plugin
       },
       {
-        path: 'dev.nightshift.unexpected/manifest.json',
+        path: 'dev.kolux.unexpected/manifest.json',
         size: unknown.length,
         executable: false,
         bytes: unknown

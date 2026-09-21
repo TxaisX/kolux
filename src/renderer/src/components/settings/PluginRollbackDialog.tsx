@@ -43,7 +43,7 @@ export function PluginRollbackDialog({
           <DialogDescription>
             {translate(
               'auto.components.settings.PluginRollbackDialog.description',
-              'This deactivates {{value0}} and restores its previous immutable version. If that version requests different access or instructional content, Nightshift will require another review.',
+              'This deactivates {{value0}} and restores its previous immutable version. If that version requests different access or instructional content, Kolux will require another review.',
               { value0: plugin?.name ?? '' }
             )}
           </DialogDescription>

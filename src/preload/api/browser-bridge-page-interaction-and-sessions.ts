@@ -70,15 +70,15 @@ export const browserPageInteractionAndSessionsApi = {
     ipcRenderer.on('browser:pane-focus', listener)
     return () => ipcRenderer.removeListener('browser:pane-focus', listener)
   },
-  onOpenLinkInNightshiftTab: (
+  onOpenLinkInKoluxTab: (
     callback: (event: { browserPageId: string; url: string; activate?: boolean }) => void
   ): (() => void) => {
     const listener = (
       _event: Electron.IpcRendererEvent,
       data: { browserPageId: string; url: string; activate?: boolean }
     ) => callback(data)
-    ipcRenderer.on('browser:open-link-in-nightshift-tab', listener)
-    return () => ipcRenderer.removeListener('browser:open-link-in-nightshift-tab', listener)
+    ipcRenderer.on('browser:open-link-in-kolux-tab', listener)
+    return () => ipcRenderer.removeListener('browser:open-link-in-kolux-tab', listener)
   },
   cancelDownload: (args: { downloadId: string }): Promise<boolean> =>
     ipcRenderer.invoke('browser:cancelDownload', args),

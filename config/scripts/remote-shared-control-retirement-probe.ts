@@ -9,17 +9,17 @@ import type { MemorySnapshot } from '../../src/shared/process-stats-types'
 import type { RuntimeStatus } from '../../src/shared/runtime-types'
 
 async function main(): Promise<void> {
-  const environmentName = process.env.NIGHTSHIFT_PROBE_ENVIRONMENT_NAME
+  const environmentName = process.env.KOLUX_PROBE_ENVIRONMENT_NAME
   if (!environmentName) {
-    throw new Error('NIGHTSHIFT_PROBE_ENVIRONMENT_NAME is required')
+    throw new Error('KOLUX_PROBE_ENVIRONMENT_NAME is required')
   }
   const userDataPath = getDefaultUserDataPath()
   const environment = resolveEnvironment(userDataPath, environmentName)
   const pairing = resolveEnvironmentPairingOffer(userDataPath, environment.id)
-  const cycles = readProbeInteger('NIGHTSHIFT_PROBE_CYCLES', 10, 100)
-  const concurrency = readProbeInteger('NIGHTSHIFT_PROBE_CONCURRENCY', 25, 200)
-  const settleMs = readProbeInteger('NIGHTSHIFT_PROBE_SETTLE_MS', 250, 5_000)
-  const cleanupTimeoutMs = readProbeInteger('NIGHTSHIFT_PROBE_CLEANUP_TIMEOUT_MS', 10_000, 30_000)
+  const cycles = readProbeInteger('KOLUX_PROBE_CYCLES', 10, 100)
+  const concurrency = readProbeInteger('KOLUX_PROBE_CONCURRENCY', 25, 200)
+  const settleMs = readProbeInteger('KOLUX_PROBE_SETTLE_MS', 250, 5_000)
+  const cleanupTimeoutMs = readProbeInteger('KOLUX_PROBE_CLEANUP_TIMEOUT_MS', 10_000, 30_000)
   const unknownResponses = new Map<string, number>()
   const originalWarn = console.warn
   console.warn = (message?: unknown, details?: unknown): void => {

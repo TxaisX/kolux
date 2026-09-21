@@ -18,7 +18,7 @@ describe('computer-use skill guidance', () => {
 
     expect(description).toContain('OS/window-level inspection and input')
     expect(description).toContain('external browser window')
-    expect(description).toContain("Not for Nightshift's embedded browser (use `nightshift-cli`)")
+    expect(description).toContain("Not for Kolux's embedded browser (use `kolux-cli`)")
     expect(description).toContain('page-only automation (use Playwright or CDP)')
     expect(description).not.toContain('read Slack')
     expect(description).not.toContain('get app state')
@@ -27,12 +27,12 @@ describe('computer-use skill guidance', () => {
   it('keeps web-app targeting on the computer-use surface', () => {
     const skill = readFileSync(guidePath, 'utf8')
 
-    expect(skill).toContain('Use this skill for desktop UI through `nightshift computer`')
+    expect(skill).toContain('Use this skill for desktop UI through `kolux computer`')
     expect(skill).toContain('external desktop browser window that needs desktop-level control')
-    expect(skill).not.toMatch(/\bnightshift goto\b/iu)
-    expect(skill).not.toMatch(/\bnightshift snapshot\b/iu)
-    expect(skill).not.toMatch(/\bnightshift click\b/iu)
-    expect(skill).not.toMatch(/\bnightshift fill\b/iu)
+    expect(skill).not.toMatch(/\bkolux goto\b/iu)
+    expect(skill).not.toMatch(/\bkolux snapshot\b/iu)
+    expect(skill).not.toMatch(/\bkolux click\b/iu)
+    expect(skill).not.toMatch(/\bkolux fill\b/iu)
   })
 
   it('warns agents to verify browser-hosted form focus before drafting text', () => {
@@ -85,13 +85,13 @@ describe('computer-use install stub', () => {
     const stub = readFileSync(stubPath, 'utf8')
 
     expect(stub).toContain('discovery stub')
-    expect(stub).toContain('NIGHTSHIFT skills get computer-use')
-    // The safe CLI-resolution contract must survive in the stub, never a bare `nightshift`.
-    expect(stub).toContain('NIGHTSHIFT_CLI_COMMAND')
-    expect(stub).toContain('nightshift-dev')
-    expect(stub).toContain('nightshift-ide')
+    expect(stub).toContain('KOLUX skills get computer-use')
+    // The safe CLI-resolution contract must survive in the stub, never a bare `kolux`.
+    expect(stub).toContain('KOLUX_CLI_COMMAND')
+    expect(stub).toContain('kolux-dev')
+    expect(stub).toContain('kolux-ide')
     expect(stub).toContain('GNOME Orca screen reader')
-    expect(stub).not.toMatch(/^nightshift /mu)
+    expect(stub).not.toMatch(/^kolux /mu)
   })
 
   it('drops the changing command reference from the installable file', () => {

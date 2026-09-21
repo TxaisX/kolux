@@ -10,7 +10,7 @@
  * is not.
  */
 import { describe, expect, it } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import type { RuntimeTerminalWait } from '../../shared/runtime-types'
 
 type RuntimeInternals = {
@@ -19,24 +19,24 @@ type RuntimeInternals = {
   terminalWaiters: { get: (handle: string) => ReadonlySet<unknown> | undefined }
 }
 
-function internals(runtime: NightshiftRuntimeService): RuntimeInternals {
+function internals(runtime: KoluxRuntimeService): RuntimeInternals {
   return runtime as unknown as RuntimeInternals
 }
 
 // Register a live, connected PTY that a handle resolves to, so waitForTerminal
 // with condition:'exit' registers a pending waiter instead of resolving early.
-function registerLivePty(runtime: NightshiftRuntimeService, ptyId: string, handle: string): void {
+function registerLivePty(runtime: KoluxRuntimeService, ptyId: string, handle: string): void {
   internals(runtime).recordPtyWorktree(ptyId, 'wt-live', { connected: true })
   internals(runtime).handleByPtyId.set(ptyId, handle)
 }
 
-function waiterCount(runtime: NightshiftRuntimeService, handle: string): number {
+function waiterCount(runtime: KoluxRuntimeService, handle: string): number {
   return internals(runtime).terminalWaiters.get(handle)?.size ?? 0
 }
 
 describe('terminal.subscribe exit-waiter leak regression', () => {
   it('releases a signalled exit-waiter when the signal aborts', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerLivePty(runtime, 'pty-live', 'handle-live')
 
     const controller = new AbortController()
@@ -58,7 +58,7 @@ describe('terminal.subscribe exit-waiter leak regression', () => {
   })
 
   it('leaks an unsignalled exit-waiter across reconnects (documents the bug the fix prevents)', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerLivePty(runtime, 'pty-live', 'handle-live')
 
     // Three subscribes with no signal, as the pre-fix subscribe paths did.
@@ -72,7 +72,7 @@ describe('terminal.subscribe exit-waiter leak regression', () => {
   })
 
   it('does not leak when many signalled subscribes churn (reconnect simulation)', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerLivePty(runtime, 'pty-live', 'handle-live')
 
     for (let i = 0; i < 25; i += 1) {

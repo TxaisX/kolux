@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import type { Store } from '../persistence'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import {
   SkillDiscoveryTargetSchema,
   type SkillDiscoveryResult,
@@ -23,7 +23,7 @@ import {
 import { registerSkillCloudIpcHandlers } from './skill-cloud-ipc-handlers'
 import { handleMainWindowSkillIpc } from './skill-ipc-main-window'
 
-export function registerSkillsHandlers(store: Store, runtime?: NightshiftRuntimeService): void {
+export function registerSkillsHandlers(store: Store, runtime?: KoluxRuntimeService): void {
   const discover = async (target?: SkillDiscoveryTarget): Promise<SkillDiscoveryResult> => {
     const parsedTarget = target ? SkillDiscoveryTargetSchema.parse(target) : undefined
     const resolvedTarget = resolveSkillDiscoveryTarget(parsedTarget)

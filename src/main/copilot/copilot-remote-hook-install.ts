@@ -23,8 +23,8 @@ export async function installCopilotHooksRemote(
   remoteHome: string
 ): Promise<AgentHookInstallStatus> {
   const home = remoteHome.replace(/\/$/, '')
-  const remoteConfigPath = `${home}/.copilot/hooks/nightshift.json`
-  const remoteScriptPath = `${home}/.nightshift/agent-hooks/copilot-hook.sh`
+  const remoteConfigPath = `${home}/.copilot/hooks/kolux.json`
+  const remoteScriptPath = `${home}/.kolux/agent-hooks/copilot-hook.sh`
 
   try {
     const config = await readHooksJsonRemote(sftp, remoteConfigPath)
@@ -34,7 +34,7 @@ export async function installCopilotHooksRemote(
         state: 'error',
         configPath: remoteConfigPath,
         managedHooksPresent: false,
-        detail: 'Could not parse remote Copilot hooks/nightshift.json'
+        detail: 'Could not parse remote Copilot hooks/kolux.json'
       }
     }
 
@@ -60,7 +60,7 @@ export async function installCopilotHooksRemote(
       nextHooks[eventName] = [
         ...cleaned,
         getRemoteManagedHookDefinition(
-          wrapPosixHookCommand(remoteScriptPath, { NIGHTSHIFT_COPILOT_HOOK_EVENT: eventName })
+          wrapPosixHookCommand(remoteScriptPath, { KOLUX_COPILOT_HOOK_EVENT: eventName })
         )
       ]
     }
@@ -68,8 +68,8 @@ export async function installCopilotHooksRemote(
     config.version = 1
     delete config.disableAllHooks
     config.hooks = nextHooks
-    // Why: SSH remotes use POSIX scripts regardless of Nightshift's local OS. Write
-    // the script before hooks/nightshift.json so a partial install cannot point
+    // Why: SSH remotes use POSIX scripts regardless of Kolux's local OS. Write
+    // the script before hooks/kolux.json so a partial install cannot point
     // Copilot at a missing managed command.
     await writeManagedScriptRemote(sftp, remoteScriptPath, getManagedScript('posix'))
     await writeHooksJsonRemote(sftp, remoteConfigPath, config)

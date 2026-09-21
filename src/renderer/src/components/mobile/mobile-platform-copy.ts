@@ -12,7 +12,7 @@ export const ANDROID_INSTALL_GUIDE_URL = 'https://github.com/TxaisX/nightshift#r
 const IOS_CHANNEL_COPY: Record<IosChannel, InstallCopy> = {
   stable: {
     ctaLabel: 'Open App Store',
-    url: 'https://apps.apple.com/app/nightshift-ide/id6766130217'
+    url: 'https://apps.apple.com/app/kolux-ide/id6766130217'
   },
   preview: {
     ctaLabel: 'Open TestFlight',

@@ -79,8 +79,8 @@ export function resolveConsent(settings: GlobalSettings): ConsentState {
     return { effective: 'disabled', reason: 'do_not_track' }
   }
   // Precedence 2: product-specific kill switch.
-  if (isEnvVarTruthy('NIGHTSHIFT_TELEMETRY_DISABLED')) {
-    return { effective: 'disabled', reason: 'nightshift_disabled' }
+  if (isEnvVarTruthy('KOLUX_TELEMETRY_DISABLED')) {
+    return { effective: 'disabled', reason: 'kolux_disabled' }
   }
   // Precedence 3: CI detection. Any presence (not just truthy) counts — many
   // CI systems set `CI=true` but some legacy ones just set it to an empty

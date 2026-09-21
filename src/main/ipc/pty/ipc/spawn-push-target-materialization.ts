@@ -3,7 +3,7 @@ import { triggerTerminalSpawnPushTargetMaterialization } from '../../../runtime/
 import type { PtySpawnIpcArgs, PtySpawnIpcDeps } from './spawn-types'
 
 // Why (#17828): pty:spawn is the desktop GUI's own terminal path (new tab, split, reattach) --
-// raw git commands can run here before any Nightshift-driven sync, so a deferred fork-PR remote must
+// raw git commands can run here before any Kolux-driven sync, so a deferred fork-PR remote must
 // exist first. Mirrors the agent/background-terminal hook in
 // runtime-terminal-spawn-push-target-materialization.ts, which this delegates to; fire-and-forget
 // and a no-op once the remote already exists, so it is safe on every spawn including reattaches.

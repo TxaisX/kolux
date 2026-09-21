@@ -10,7 +10,7 @@ export function getDiagLogPath(): string {
     try {
       _diagLog = join(app.getPath('userData'), 'cookie-import-diag.log')
     } catch {
-      _diagLog = join(tmpdir(), 'nightshift-cookie-import-diag.log')
+      _diagLog = join(tmpdir(), 'kolux-cookie-import-diag.log')
     }
   }
   return _diagLog

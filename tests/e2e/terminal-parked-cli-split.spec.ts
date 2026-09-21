@@ -10,7 +10,7 @@ import type {
   RuntimeTerminalSplit,
   RuntimeTerminalSummary
 } from '../../src/shared/runtime-types'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   readPaneIdentitySnapshot,
   waitForActiveTerminalManager,
@@ -29,7 +29,7 @@ const PARKING_DELAY_MS = 500
 const HISTORICAL_SPLIT_TIMEOUT_MS = 10_000
 
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
+  koluxAppExtraEnv: { KOLUX_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
 })
 
 type CliSplitResponse = {
@@ -120,7 +120,7 @@ async function runParkedSplitCli(
     const result = await execFileAsync(
       process.execPath,
       [
-        path.join(repoRoot, 'config', 'scripts', 'nightshift-dev.mjs'),
+        path.join(repoRoot, 'config', 'scripts', 'kolux-dev.mjs'),
         'terminal',
         'split',
         '--terminal',
@@ -129,7 +129,7 @@ async function runParkedSplitCli(
       ],
       {
         cwd: repoRoot,
-        env: { ...process.env, NIGHTSHIFT_DEV_USER_DATA_PATH: userDataDir },
+        env: { ...process.env, KOLUX_DEV_USER_DATA_PATH: userDataDir },
         timeout: HISTORICAL_SPLIT_TIMEOUT_MS + 5_000
       }
     )
@@ -183,8 +183,8 @@ async function expectPaneKeyboardRoundTrip(
   label: string
 ): Promise<void> {
   const nonce = randomUUID().replaceAll('-', '')
-  const marker = `NIGHTSHIFT_PARKED_SPLIT_${label}_${nonce}`
-  const command = `node -e "console.log('NIGHTSHIFT_PARKED_' + 'SPLIT_${label}_${nonce}')"`
+  const marker = `KOLUX_PARKED_SPLIT_${label}_${nonce}`
+  const command = `node -e "console.log('KOLUX_PARKED_' + 'SPLIT_${label}_${nonce}')"`
   const pane = page.locator(
     `[data-terminal-tab-id=${JSON.stringify(tabId)}][data-terminal-layout-leaf-ids] .pane[data-leaf-id=${JSON.stringify(leafId)}]`
   )
@@ -198,17 +198,17 @@ async function expectPaneKeyboardRoundTrip(
 
 test('CLI splits an exact cold-parked tab without stealing the active tab or focus', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(180_000)
   const pageErrors: string[] = []
-  nightshiftPage.on('pageerror', (error) => pageErrors.push(String(error)))
+  koluxPage.on('pageerror', (error) => pageErrors.push(String(error)))
 
-  await waitForSessionReady(nightshiftPage)
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const initial = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+  await waitForSessionReady(koluxPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const initial = await waitForPaneIdentitySnapshot(koluxPage, 1)
   const targetTabId = initial.tabId
   const sourcePane = initial.panes[0]
   if (!sourcePane?.ptyId) {
@@ -219,17 +219,17 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
   const client = new RuntimeClient(userDataDir, 30_000)
   const sourceTerminal = await resolveTerminal(client, worktreeId, targetTabId, sourcePane.leafId)
 
-  await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, targetTabId, {
+  await parkHiddenTabBehindDecoy(koluxPage, worktreeId, targetTabId, {
     parkDelayMs: PARKING_DELAY_MS
   })
-  const decoyTabId = await getActiveTabId(nightshiftPage)
+  const decoyTabId = await getActiveTabId(koluxPage)
   if (!decoyTabId || decoyTabId === targetTabId) {
     throw new Error('Parking did not leave a distinct decoy tab active')
   }
-  await nightshiftPage
+  await koluxPage
     .locator(`[data-terminal-tab-id=${JSON.stringify(decoyTabId)}] .xterm:visible`)
     .click({ force: true })
-  const contextBefore = await readActiveUiContext(nightshiftPage)
+  const contextBefore = await readActiveUiContext(koluxPage)
   expect(contextBefore).toMatchObject({
     activeTabForWorktree: decoyTabId,
     activeTabId: decoyTabId,
@@ -238,7 +238,7 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
     domActiveTabId: decoyTabId,
     focusedTerminalTabId: decoyTabId
   })
-  const mountedBefore = await nightshiftPage.evaluate(() =>
+  const mountedBefore = await koluxPage.evaluate(() =>
     Array.from(window.__paneManagers?.keys() ?? []).sort()
   )
   expect(mountedBefore).not.toContain(targetTabId)
@@ -248,7 +248,7 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
   await expect
     .poll(
       async () => {
-        mountedDuringSplit = await nightshiftPage.evaluate(() =>
+        mountedDuringSplit = await koluxPage.evaluate(() =>
           Array.from(window.__paneManagers?.keys() ?? []).sort()
         )
         return mountedDuringSplit.includes(targetTabId)
@@ -273,14 +273,14 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
     }
   })
   expect(splitRun.response.result.split.handle).toMatch(/^term_/)
-  expect(await readActiveUiContext(nightshiftPage)).toEqual(contextBefore)
+  expect(await readActiveUiContext(koluxPage)).toEqual(contextBefore)
 
-  await waitForTabParked(nightshiftPage, targetTabId, { parkDelayMs: PARKING_DELAY_MS })
-  expect(await readActiveUiContext(nightshiftPage)).toEqual(contextBefore)
+  await waitForTabParked(koluxPage, targetTabId, { parkDelayMs: PARKING_DELAY_MS })
+  expect(await readActiveUiContext(koluxPage)).toEqual(contextBefore)
 
-  await activateTerminalTab(nightshiftPage, worktreeId, targetTabId)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  const revealed = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+  await activateTerminalTab(koluxPage, worktreeId, targetTabId)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  const revealed = await waitForPaneIdentitySnapshot(koluxPage, 2)
   const restoredSource = revealed.panes.find((pane) => pane.leafId === sourcePane.leafId)
   const createdPane = revealed.panes.find((pane) => pane.leafId !== sourcePane.leafId)
   expect(restoredSource).toMatchObject({ ptyId: sourcePane.ptyId })
@@ -312,7 +312,7 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
     listedAfterReveal.find((terminal) => terminal.handle === splitRun.response.result.split.handle)
   ).toMatchObject({ leafId: createdPane.leafId, ptyId: createdPane.ptyId })
 
-  const targetSurface = nightshiftPage.locator(
+  const targetSurface = koluxPage.locator(
     `[data-terminal-tab-id=${JSON.stringify(targetTabId)}][data-terminal-layout-leaf-ids]`
   )
   await expect(targetSurface).toBeVisible()
@@ -325,17 +325,17 @@ test('CLI splits an exact cold-parked tab without stealing the active tab or foc
     targetSurface.locator(`.pane[data-leaf-id=${JSON.stringify(createdPane.leafId)}]`)
   ).toBeVisible()
 
-  await enablePaneAccessibility(nightshiftPage, targetTabId)
+  await enablePaneAccessibility(koluxPage, targetTabId)
   await expect(targetSurface.locator('.xterm-accessibility-tree')).toHaveCount(2)
-  await expectPaneKeyboardRoundTrip(nightshiftPage, targetTabId, sourcePane.leafId, 'SOURCE')
-  await expectPaneKeyboardRoundTrip(nightshiftPage, targetTabId, createdPane.leafId, 'CREATED')
+  await expectPaneKeyboardRoundTrip(koluxPage, targetTabId, sourcePane.leafId, 'SOURCE')
+  await expectPaneKeyboardRoundTrip(koluxPage, targetTabId, createdPane.leafId, 'CREATED')
 
   await testInfo.attach('parked-cli-split-final.png', {
-    body: await nightshiftPage.screenshot(),
+    body: await koluxPage.screenshot(),
     contentType: 'image/png'
   })
   expect(pageErrors).toEqual([])
-  expect(await readPaneIdentitySnapshot(nightshiftPage)).toMatchObject({
+  expect(await readPaneIdentitySnapshot(koluxPage)).toMatchObject({
     panes: revealed.panes,
     ptyIdsByLeafId: revealed.ptyIdsByLeafId,
     tabId: revealed.tabId

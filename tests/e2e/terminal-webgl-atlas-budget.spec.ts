@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveTerminalManager } from './helpers/terminal'
 
 type AtlasPage = {
@@ -432,14 +432,11 @@ test.describe('terminal WebGL atlas budget', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('@headful keeps shared glyph pages bindable through overflow and recovery @terminal-rendering-golden', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForActiveTerminalManager(nightshiftPage)
-    test.skip(
-      !(await forceActivePaneWebgl(nightshiftPage)),
-      'WebGL unavailable in this environment'
-    )
-    const result = await runAtlasBudgetScenario(nightshiftPage)
+    await waitForActiveTerminalManager(koluxPage)
+    test.skip(!(await forceActivePaneWebgl(koluxPage)), 'WebGL unavailable in this environment')
+    const result = await runAtlasBudgetScenario(koluxPage)
 
     expect(result.realBudget).toBeGreaterThanOrEqual(result.budget)
     expect(result.shared).toBe(true)
@@ -455,14 +452,11 @@ test.describe('terminal WebGL atlas budget', () => {
   })
 
   test('@headful rebuilds cached vertices after attaching a different shared atlas @terminal-rendering-golden', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForActiveTerminalManager(nightshiftPage)
-    test.skip(
-      !(await forceActivePaneWebgl(nightshiftPage)),
-      'WebGL unavailable in this environment'
-    )
-    const result = await runAtlasReplacementScenario(nightshiftPage)
+    await waitForActiveTerminalManager(koluxPage)
+    test.skip(!(await forceActivePaneWebgl(koluxPage)), 'WebGL unavailable in this environment')
+    const result = await runAtlasReplacementScenario(koluxPage)
 
     expect(result.distinctAtlases).toBe(true)
     expect(result.baselineInkPixels).toBeGreaterThan(1000)

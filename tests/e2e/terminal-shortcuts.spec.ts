@@ -14,7 +14,7 @@
  * skipped on the other platform since they'd never fire there at runtime.
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../src/shared/constants'
 import {
@@ -107,7 +107,7 @@ async function dispatchCtrlCToActiveTerminalTextarea(
     }
 
     // Why: Electron headless consumes real Ctrl+C before xterm in automation;
-    // synthetic DOM events still exercise Nightshift's installed xterm boundary.
+    // synthetic DOM events still exercise Kolux's installed xterm boundary.
     const keydown = createEvent('keydown', true)
     textarea.dispatchEvent(keydown)
     const keyup = createEvent('keyup', dispatchOptions.keyupCtrlKey !== false)
@@ -456,60 +456,57 @@ async function closeActivePaneAndSettle(page: Page, expectedCount: number): Prom
 // effects and corrupt assertions.
 test.describe.configure({ mode: 'serial' })
 test.describe('Terminal Shortcuts', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const hasPaneManager = await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const hasPaneManager = await waitForActiveTerminalManager(koluxPage, 30_000)
       .then(() => true)
       .catch(() => false)
     test.skip(
       !hasPaneManager,
       'Electron automation in this environment never mounts the live TerminalPane manager.'
     )
-    await waitForPaneCount(nightshiftPage, 1, 30_000)
+    await waitForPaneCount(koluxPage, 1, 30_000)
   })
 
-  test('Shift+Enter follows the pane Kitty keyboard state', async ({
-    nightshiftPage,
-    electronApp
-  }) => {
+  test('Shift+Enter follows the pane Kitty keyboard state', async ({ koluxPage, electronApp }) => {
     await installMainProcessPtyWriteSpy(electronApp)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
 
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b\r')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b\r')
     if (process.platform === 'win32') {
       return
     }
 
     // Why: exercise the production PTY-output tracker, not xterm's renderer-
     // local flag state, so the test covers the bytes the shortcut policy sees.
-    await execInTerminal(nightshiftPage, ptyId, "printf '\\033[>1u'")
-    await expect.poll(() => getKittyKeyboardFlags(nightshiftPage)).toBe(1)
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b[13;2u')
+    await execInTerminal(koluxPage, ptyId, "printf '\\033[>1u'")
+    await expect.poll(() => getKittyKeyboardFlags(koluxPage)).toBe(1)
+    await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b[13;2u')
 
     // Clear the shell's unconsumed CSI-u line before resetting flags in a settled
     // command; otherwise its line editor can swallow the reset bytes.
-    await sendToTerminal(nightshiftPage, ptyId, '\x15\x03')
-    await execInTerminal(nightshiftPage, ptyId, "printf '\\033[=0u'")
-    await expect.poll(() => getKittyKeyboardFlags(nightshiftPage)).toBe(0)
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b\r')
+    await sendToTerminal(koluxPage, ptyId, '\x15\x03')
+    await execInTerminal(koluxPage, ptyId, "printf '\\033[=0u'")
+    await expect.poll(() => getKittyKeyboardFlags(koluxPage)).toBe(0)
+    await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b\r')
   })
 
   test('Droid gets CSI-u Shift+Enter on Windows without changing Antigravity', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     test.skip(process.platform !== 'win32', 'Windows ConPTY encoding contract')
     await installMainProcessPtyWriteSpy(electronApp)
-    await waitForActivePanePtyId(nightshiftPage)
-    const paneKey = await setActivePaneForegroundAgent(nightshiftPage, 'droid')
+    await waitForActivePanePtyId(koluxPage)
+    const paneKey = await setActivePaneForegroundAgent(koluxPage, 'droid')
     try {
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b[13;2u', 2)
-      await setActivePaneForegroundAgent(nightshiftPage, 'antigravity')
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b\r')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b[13;2u', 2)
+      await setActivePaneForegroundAgent(koluxPage, 'antigravity')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b\r')
     } finally {
-      await nightshiftPage.evaluate(
+      await koluxPage.evaluate(
         (key) => window.__store?.getState().clearPaneForegroundAgent(key),
         paneKey
       )
@@ -517,33 +514,33 @@ test.describe('Terminal Shortcuts', () => {
   })
 
   test('Windows forwards genuine Ctrl+Alt text chords to the PTY', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     test.skip(process.platform !== 'win32', 'Windows xterm AltGr classification regression')
     await installMainProcessPtyWriteSpy(electronApp)
-    await waitForActivePanePtyId(nightshiftPage)
+    await waitForActivePanePtyId(koluxPage)
 
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Alt+u', '\x1b\x15')
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Alt+2', '\x1b2')
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Alt+;', '\x1b;')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Control+Alt+u', '\x1b\x15')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Control+Alt+2', '\x1b2')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Control+Alt+;', '\x1b;')
   })
 
   test('Ctrl+Enter protects local ConPTY shells without breaking trusted TUI chords', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     await installMainProcessPtyWriteSpy(electronApp)
-    await waitForActivePanePtyId(nightshiftPage)
+    await waitForActivePanePtyId(koluxPage)
 
     if (process.platform === 'win32') {
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Enter', '\r')
-      const paneKey = await setActivePaneForegroundAgent(nightshiftPage, 'droid')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Control+Enter', '\r')
+      const paneKey = await setActivePaneForegroundAgent(koluxPage, 'droid')
       try {
         // Droid queries CSI-u without activating live flags; trusted process evidence preserves cue/queue.
-        await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Enter', '\x1b[13;5u')
+        await pressAndExpectWrite(koluxPage, electronApp, 'Control+Enter', '\x1b[13;5u')
       } finally {
-        await nightshiftPage.evaluate(
+        await koluxPage.evaluate(
           (key) => window.__store?.getState().clearPaneForegroundAgent(key),
           paneKey
         )
@@ -552,29 +549,29 @@ test.describe('Terminal Shortcuts', () => {
     }
 
     // Preserve the established query-only Droid/Grok contract outside local ConPTY.
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Enter', '\x1b[13;5u')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Control+Enter', '\x1b[13;5u')
   })
 
   test('plain Ctrl+C sends ETX under kitty keyboard reporting', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     await installMainProcessPtyWriteSpy(electronApp)
-    await waitForActivePanePtyId(nightshiftPage)
-    await enableKittyKeyboardReporting(nightshiftPage, 31)
+    await waitForActivePanePtyId(koluxPage)
+    await enableKittyKeyboardReporting(koluxPage, 31)
     await clearPtyWriteLog(electronApp)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.down('Control')
-    await nightshiftPage.keyboard.up('Control')
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.down('Control')
+    await koluxPage.keyboard.up('Control')
     expect((await getPtyWrites(electronApp)).join('')).toBe('')
     await clearPtyWriteLog(electronApp)
 
-    expect(
-      await dispatchCtrlCToActiveTerminalTextarea(nightshiftPage, { keyupCtrlKey: false })
-    ).toEqual({
-      keydownDefaultPrevented: false,
-      keyupDefaultPrevented: false
-    })
+    expect(await dispatchCtrlCToActiveTerminalTextarea(koluxPage, { keyupCtrlKey: false })).toEqual(
+      {
+        keydownDefaultPrevented: false,
+        keyupDefaultPrevented: false
+      }
+    )
 
     await expect
       .poll(async () => (await getPtyWrites(electronApp)).some((write) => write.includes('\x03')), {
@@ -587,15 +584,15 @@ test.describe('Terminal Shortcuts', () => {
     expect(writes).not.toContain('\x1b[99')
 
     await expect
-      .poll(async () => await getKittyKeyboardFlags(nightshiftPage), {
+      .poll(async () => await getKittyKeyboardFlags(koluxPage), {
         timeout: 5_000,
         message: 'Ctrl+C did not clear stale Kitty keyboard flags'
       })
       .toBe(0)
 
     await clearPtyWriteLog(electronApp)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.type('x')
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.type('x')
     await expect
       .poll(async () => (await getPtyWrites(electronApp)).some((write) => write === 'x'), {
         timeout: 5_000,
@@ -604,13 +601,13 @@ test.describe('Terminal Shortcuts', () => {
       .toBe(true)
     const postInterruptWrites = (await getPtyWrites(electronApp)).join('')
     expect(postInterruptWrites).not.toContain('\x1b[')
-    await nightshiftPage.keyboard.press('Backspace')
+    await koluxPage.keyboard.press('Backspace')
   })
 
   test('@headful Codex-like background output stays visible without disabling WebGL in auto mode', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const hasPane = await nightshiftPage.evaluate(() => {
+    const hasPane = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       const worktreeId = state?.activeWorktreeId
       const tabId =
@@ -625,7 +622,7 @@ test.describe('Terminal Shortcuts', () => {
       return Boolean(pane)
     })
     test.skip(!hasPane, 'No active terminal pane for renderer validation')
-    const webglActive = await nightshiftPage
+    const webglActive = await koluxPage
       .waitForFunction(
         () => {
           const state = window.__store?.getState()
@@ -647,19 +644,15 @@ test.describe('Terminal Shortcuts', () => {
       .catch(() => false)
     test.skip(!webglActive, 'WebGL was not active in this headful environment')
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const marker = `CODEX_BG_${Date.now()}`
-    await execInTerminal(
-      nightshiftPage,
-      ptyId,
-      `printf '\\033[48;2;52;52;52m  ${marker}  \\033[0m\\n'`
-    )
-    await waitForTerminalOutput(nightshiftPage, marker)
+    await execInTerminal(koluxPage, ptyId, `printf '\\033[48;2;52;52;52m  ${marker}  \\033[0m\\n'`)
+    await waitForTerminalOutput(koluxPage, marker)
 
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate((expectedMarker) => {
+          koluxPage.evaluate((expectedMarker) => {
             const state = window.__store?.getState()
             const worktreeId = state?.activeWorktreeId
             const tabId =
@@ -693,127 +686,127 @@ test.describe('Terminal Shortcuts', () => {
       })
   })
 
-  test('floating terminal owns tab switch shortcuts while focused', async ({ nightshiftPage }) => {
-    const scenario = await seedFloatingTerminalTabSwitchScenario(nightshiftPage)
-    await nightshiftPage.evaluate(async () => {
+  test('floating terminal owns tab switch shortcuts while focused', async ({ koluxPage }) => {
+    const scenario = await seedFloatingTerminalTabSwitchScenario(koluxPage)
+    await koluxPage.evaluate(async () => {
       const state = window.__store?.getState()
       if (state?.settings?.floatingTerminalEnabled !== true) {
         await state?.updateSettings({ floatingTerminalEnabled: true })
       }
       if (!document.querySelector('[data-floating-terminal-panel][aria-hidden="false"]')) {
-        window.dispatchEvent(new CustomEvent('nightshift-toggle-floating-terminal'))
+        window.dispatchEvent(new CustomEvent('kolux-toggle-floating-terminal'))
       }
     })
     await expect(
-      nightshiftPage.locator('[data-floating-terminal-panel][aria-hidden="false"]')
+      koluxPage.locator('[data-floating-terminal-panel][aria-hidden="false"]')
     ).toBeVisible()
-    await focusFloatingTerminal(nightshiftPage)
+    await focusFloatingTerminal(koluxPage)
 
-    await nightshiftPage.keyboard.press(`${mod}+Shift+BracketRight`)
+    await koluxPage.keyboard.press(`${mod}+Shift+BracketRight`)
     await expect
-      .poll(() => getActiveFloatingTerminalTabId(nightshiftPage), {
+      .poll(() => getActiveFloatingTerminalTabId(koluxPage), {
         timeout: 5_000,
         message: 'floating terminal did not switch to the next tab'
       })
       .toBe(scenario.floatingSecondTabId)
     await expect
-      .poll(() => getActiveBackgroundTerminalTabId(nightshiftPage), {
+      .poll(() => getActiveBackgroundTerminalTabId(koluxPage), {
         timeout: 1_000,
         message: 'background terminal tab changed while floating terminal was focused'
       })
       .toBe(scenario.backgroundFirstTabId)
 
-    await focusFloatingTerminal(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+Shift+BracketLeft`)
+    await focusFloatingTerminal(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+Shift+BracketLeft`)
     await expect
-      .poll(() => getActiveFloatingTerminalTabId(nightshiftPage), {
+      .poll(() => getActiveFloatingTerminalTabId(koluxPage), {
         timeout: 5_000,
         message: 'floating terminal did not switch back to the previous tab'
       })
       .toBe(scenario.floatingFirstTabId)
-    await expect(getActiveBackgroundTerminalTabId(nightshiftPage)).resolves.toBe(
+    await expect(getActiveBackgroundTerminalTabId(koluxPage)).resolves.toBe(
       scenario.backgroundFirstTabId
     )
   })
 
   test('all terminal chords reach the PTY or fire their action', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     await installMainProcessPtyWriteSpy(electronApp)
 
     // Seed the buffer so Cmd+K has something to clear.
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const marker = `SHORTCUT_TEST_${Date.now()}`
-    await execInTerminal(nightshiftPage, ptyId, `echo ${marker}`)
-    await waitForTerminalOutput(nightshiftPage, marker)
+    await execInTerminal(koluxPage, ptyId, `echo ${marker}`)
+    await waitForTerminalOutput(koluxPage, marker)
 
     // --- send-input chords (platform-agnostic) ---
 
     // Alt+←/→ → readline backward-word / forward-word (\eb / \ef).
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Alt+ArrowLeft', '\x1bb')
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Alt+ArrowRight', '\x1bf')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Alt+ArrowLeft', '\x1bb')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Alt+ArrowRight', '\x1bf')
 
     // Ctrl+←/→ on non-mac → readline backward-word / forward-word (\eb / \ef).
     // macOS reserves Ctrl+Arrow; Windows ConPTY leaves it to PSReadLine.
     if (!isMac && process.platform !== 'win32') {
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+ArrowLeft', '\x1bb')
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+ArrowRight', '\x1bf')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Control+ArrowLeft', '\x1bb')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Control+ArrowRight', '\x1bf')
     }
 
     // Alt+Backspace → Esc+DEL (readline backward-kill-word).
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Alt+Backspace', '\x1b\x7f')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Alt+Backspace', '\x1b\x7f')
 
     // Ctrl+Backspace → \x17 (unix-word-rubout).
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Control+Backspace', '\x17')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Control+Backspace', '\x17')
 
     // The shell has not enabled KKP, so Shift+Enter must not leak CSI-u text.
-    await pressAndExpectWrite(nightshiftPage, electronApp, 'Shift+Enter', '\x1b\r')
+    await pressAndExpectWrite(koluxPage, electronApp, 'Shift+Enter', '\x1b\r')
 
     // --- send-input chords (macOS-only) ---
 
     if (isMac) {
       // Cmd+←/→ → Ctrl+A / Ctrl+E (beginning/end of line).
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Meta+ArrowLeft', '\x01')
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Meta+ArrowRight', '\x05')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Meta+ArrowLeft', '\x01')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Meta+ArrowRight', '\x05')
 
       // Cmd+Backspace → Ctrl+U (kill line). Cmd+Delete → Ctrl+K (kill to EOL).
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Meta+Backspace', '\x15')
-      await pressAndExpectWrite(nightshiftPage, electronApp, 'Meta+Delete', '\x0b')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Meta+Backspace', '\x15')
+      await pressAndExpectWrite(koluxPage, electronApp, 'Meta+Delete', '\x0b')
     }
 
     // --- action chords (no PTY byte; assert via visible effect) ---
 
     // Cmd/Ctrl+K clears the pane.
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+k`)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+k`)
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 5_000,
         message: 'Cmd+K did not clear the terminal buffer'
       })
       .toBe(false)
 
     // Split vertically (chord varies by platform — see splitVerticalChord).
-    const panesBeforeSplit = await countVisibleTerminalPanes(nightshiftPage)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(splitVerticalChord)
-    await waitForPaneCount(nightshiftPage, panesBeforeSplit + 1)
+    const panesBeforeSplit = await countVisibleTerminalPanes(koluxPage)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(splitVerticalChord)
+    await waitForPaneCount(koluxPage, panesBeforeSplit + 1)
     // Why: ensure the new split pane's PTY is actually bound before we later
     // close it, so the close cycle can't race an in-progress split.
-    await waitForActivePanePtyId(nightshiftPage)
+    await waitForActivePanePtyId(koluxPage)
 
     // Cmd/Ctrl+] and Cmd/Ctrl+[ cycle focus (no pane-count change).
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+BracketRight`)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+BracketLeft`)
-    expect(await countVisibleTerminalPanes(nightshiftPage)).toBe(panesBeforeSplit + 1)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+BracketRight`)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+BracketLeft`)
+    expect(await countVisibleTerminalPanes(koluxPage)).toBe(panesBeforeSplit + 1)
 
     // Cmd/Ctrl+Shift+Enter toggles expand on the active pane. Requires >1 pane,
     // so it runs while the vertical split from above is still open.
     const readExpanded = async (): Promise<boolean> =>
-      nightshiftPage.evaluate(() => {
+      koluxPage.evaluate(() => {
         const state = window.__store?.getState()
         const tabId = state?.activeTabId
         if (!state || !tabId) {
@@ -822,61 +815,61 @@ test.describe('Terminal Shortcuts', () => {
         return state.expandedPaneByTabId[tabId] === true
       })
     expect(await readExpanded()).toBe(false)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+Shift+Enter`)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+Shift+Enter`)
     await expect
       .poll(readExpanded, { timeout: 3_000, message: 'Cmd+Shift+Enter did not expand pane' })
       .toBe(true)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+Shift+Enter`)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+Shift+Enter`)
     await expect
       .poll(readExpanded, { timeout: 3_000, message: 'Cmd+Shift+Enter did not collapse pane' })
       .toBe(false)
 
     // Cmd/Ctrl+W closes the active split pane (not the whole tab: >1 pane).
-    await closeActivePaneAndSettle(nightshiftPage, panesBeforeSplit)
+    await closeActivePaneAndSettle(koluxPage, panesBeforeSplit)
 
     // Split horizontally (chord varies by platform — see splitHorizontalChord).
-    const panesBeforeHSplit = await countVisibleTerminalPanes(nightshiftPage)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(splitHorizontalChord)
-    await waitForPaneCount(nightshiftPage, panesBeforeHSplit + 1)
-    await waitForActivePanePtyId(nightshiftPage)
-    await closeActivePaneAndSettle(nightshiftPage, panesBeforeHSplit)
+    const panesBeforeHSplit = await countVisibleTerminalPanes(koluxPage)
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(splitHorizontalChord)
+    await waitForPaneCount(koluxPage, panesBeforeHSplit + 1)
+    await waitForActivePanePtyId(koluxPage)
+    await closeActivePaneAndSettle(koluxPage, panesBeforeHSplit)
 
     // Cmd/Ctrl+F toggles the search overlay.
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${mod}+f`)
-    const searchInput = nightshiftPage.locator('[data-terminal-search-root] input').first()
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${mod}+f`)
+    const searchInput = koluxPage.locator('[data-terminal-search-root] input').first()
     // Why: Escape is handled by TerminalSearch's React onKeyDown, which only
     // fires when focus is inside the overlay. The overlay auto-focuses its
     // input via a useEffect, but Playwright can press Escape before that
     // effect runs and the keystroke goes to the xterm textarea instead.
     // Wait for the input to actually be focused before pressing Escape.
     await expect(searchInput).toBeFocused({ timeout: 3_000 })
-    await nightshiftPage.keyboard.press('Escape')
-    await expect(nightshiftPage.locator('[data-terminal-search-root]').first()).toBeHidden({
+    await koluxPage.keyboard.press('Escape')
+    await expect(koluxPage.locator('[data-terminal-search-root]').first()).toBeHidden({
       timeout: 3_000
     })
   })
 
   test('Cmd+Up/Down scrolls terminal viewport without writing to the PTY on macOS', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     test.skip(!isMac, 'Cmd+Up/Down terminal scroll navigation is macOS-only')
 
     await installMainProcessPtyWriteSpy(electronApp)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const marker = `CMD_ARROW_SCROLL_${Date.now()}`
-    await execInTerminal(nightshiftPage, ptyId, `for i in {1..120}; do echo ${marker}_$i; done`)
-    await waitForTerminalOutput(nightshiftPage, `${marker}_120`)
+    await execInTerminal(koluxPage, ptyId, `for i in {1..120}; do echo ${marker}_$i; done`)
+    await waitForTerminalOutput(koluxPage, `${marker}_120`)
 
     await expect
       .poll(
         async () => {
-          const viewport = await getActiveTerminalViewport(nightshiftPage)
+          const viewport = await getActiveTerminalViewport(koluxPage)
           return viewport.baseY > 0 && viewport.viewportY === viewport.baseY
         },
         {
@@ -887,22 +880,22 @@ test.describe('Terminal Shortcuts', () => {
       .toBe(true)
 
     await clearPtyWriteLog(electronApp)
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press('Meta+ArrowUp')
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press('Meta+ArrowUp')
     await expect
-      .poll(async () => getActiveTerminalViewport(nightshiftPage), {
+      .poll(async () => getActiveTerminalViewport(koluxPage), {
         timeout: 5_000,
         message: 'Cmd+Up did not scroll the terminal viewport to the top'
       })
       .toMatchObject({ viewportY: 0 })
     expect(await getPtyWrites(electronApp)).toEqual([])
 
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press('Meta+ArrowDown')
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press('Meta+ArrowDown')
     await expect
       .poll(
         async () => {
-          const viewport = await getActiveTerminalViewport(nightshiftPage)
+          const viewport = await getActiveTerminalViewport(koluxPage)
           return viewport.viewportY === viewport.baseY
         },
         {
@@ -915,18 +908,18 @@ test.describe('Terminal Shortcuts', () => {
   })
 
   test('Shift with Russian layout text reaches the PTY as Cyrillic under kitty keyboard reporting', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }) => {
     await installMainProcessPtyWriteSpy(electronApp)
     // Why: CI can mount the xterm surface before the pane transport has a
     // live PTY. Probe first so xterm onData cannot race a disconnected
     // sendInput path, then clear the probe writes before the layout assertion.
-    await waitForActivePanePtyId(nightshiftPage)
-    await enableKittyKeyboardReporting(nightshiftPage, 31)
+    await waitForActivePanePtyId(koluxPage)
+    await enableKittyKeyboardReporting(koluxPage, 31)
     await clearPtyWriteLog(electronApp)
 
-    const dispatch = await pressShiftedRussianLayoutKey(nightshiftPage)
+    const dispatch = await pressShiftedRussianLayoutKey(koluxPage)
 
     expect(dispatch).toEqual({
       keydownDefaultPrevented: false,

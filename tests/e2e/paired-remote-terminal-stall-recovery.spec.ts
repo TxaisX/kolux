@@ -6,7 +6,7 @@ import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { PNG } from 'pngjs'
 import type { RuntimeTerminalRead } from '../../src/shared/runtime-types'
 import { toWebTerminalSurfaceTabId } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedWebClient
@@ -15,7 +15,7 @@ import { getTerminalContent, waitForActivePanePtyId } from './helpers/terminal'
 
 const MIN_EXHAUSTED_ACK_BYTES = 400 * 1024
 const PUBLICATION_DEADLINE_MS = 10_000
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-stalled-stream-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-stalled-stream-'))
 const fixturePath = path.join(scratch, 'stalled-stream-terminal.mjs')
 writeFileSync(
   fixturePath,
@@ -243,11 +243,11 @@ async function findHostPaneWithMarker(
 
 test('restarts one ACK-starved paired terminal stream without replacing its PTY @headful', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(150_000)
   const liveMarker = `PAIRED_STALL_RECOVERED_${Date.now()}`
-  const worktree = await nightshiftPage.evaluate(() => {
+  const worktree = await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     const id = state?.activeWorktreeId
     const active = state?.allWorktrees().find((candidate) => candidate.id === id)
@@ -257,10 +257,10 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
     return { id: active.id }
   })
   const noClientResources = await getAppResourceProxies(electronApp)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedWebClient(electronApp, offer, {
     disableRemoteTerminalStallRecovery:
-      process.env.NIGHTSHIFT_E2E_DISABLE_REMOTE_TERMINAL_STALL_RECOVERY === '1'
+      process.env.KOLUX_E2E_DISABLE_REMOTE_TERMINAL_STALL_RECOVERY === '1'
   })
   let observer: Awaited<ReturnType<typeof launchPairedWebClient>> | null = null
   let terminal: string | null = null
@@ -279,7 +279,7 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
         { timeout: 30_000 }
       )
       .toBe(true)
-    const observerOffer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const observerOffer = await createRuntimeDesktopPairingOffer(koluxPage)
     observer = await launchPairedWebClient(electronApp, observerOffer)
     await showHeadedClient(electronApp, client.page)
     await showHeadedClient(electronApp, observer.page)
@@ -298,7 +298,7 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
       )
       .toBe(true)
     const connectedIdleResources = await getAppResourceProxies(electronApp)
-    await minimizeHeadedHost(electronApp, nightshiftPage)
+    await minimizeHeadedHost(electronApp, koluxPage)
     const createStartedAt = performance.now()
     const created = await callRuntime<{
       tab: { id: string; parentTabId: string; terminal: string | null }
@@ -345,7 +345,7 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             ({ tabId, worktreeId }) =>
               (window.__store?.getState().tabsByWorktree[worktreeId] ?? []).some(
                 (tab) => tab.id === tabId
@@ -499,26 +499,26 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
       'authoritative inventory dropped the terminal during ACK recovery'
     ).toBe(true)
 
-    await restoreHeadedHost(electronApp, nightshiftPage)
-    await nightshiftPage.evaluate(
+    await restoreHeadedHost(electronApp, koluxPage)
+    await koluxPage.evaluate(
       (worktreeId) => window.__store?.getState().setActiveWorktree(worktreeId),
       worktree.id
     )
-    const hostTab = nightshiftPage.locator(
+    const hostTab = koluxPage.locator(
       `[data-testid="sortable-tab"][data-tab-id="${created.tab.parentTabId}"]`
     )
     await expect(hostTab).toBeVisible({ timeout: 30_000 })
     await hostTab.click()
-    const hostPane = await findHostPaneWithMarker(nightshiftPage, `LIVE:${liveMarker}`)
+    const hostPane = await findHostPaneWithMarker(koluxPage, `LIVE:${liveMarker}`)
     expect(hostPane.tabId).toBe(created.tab.parentTabId)
-    await nightshiftPage.evaluate(({ paneId, tabId }) => {
+    await koluxPage.evaluate(({ paneId, tabId }) => {
       const manager = window.__paneManagers?.get(tabId)
       manager?.setActivePane?.(paneId, { focus: true })
     }, hostPane)
     await expect
-      .poll(() => getTerminalContent(nightshiftPage), { timeout: 30_000 })
+      .poll(() => getTerminalContent(koluxPage), { timeout: 30_000 })
       .toContain(`LIVE:${liveMarker}`)
-    const restoredTerminalScreenshot = await nightshiftPage
+    const restoredTerminalScreenshot = await koluxPage
       .locator(
         `[data-terminal-tab-id="${hostPane.tabId}"] .pane[data-pane-id="${hostPane.paneId}"] .xterm-screen`
       )
@@ -542,7 +542,7 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
       'authoritative inventory dropped the terminal while restoring the host'
     ).toBe(true)
 
-    await minimizeHeadedHost(electronApp, nightshiftPage)
+    await minimizeHeadedHost(electronApp, koluxPage)
     await showHeadedClient(electronApp, observer.page)
 
     const authoritativeInventory = await callRuntime<{
@@ -575,7 +575,7 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
       .poll(
         () =>
           Promise.all([
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               ({ tabId, worktreeId }) =>
                 (window.__store?.getState().tabsByWorktree[worktreeId] ?? []).some(
                   (candidate) => candidate.id === tabId
@@ -602,8 +602,8 @@ test('restarts one ACK-starved paired terminal stream without replacing its PTY 
       .toEqual([false, false, false])
     terminal = null
 
-    await restoreHeadedHost(electronApp, nightshiftPage)
-    const restoredHostScreenshot = await nightshiftPage.screenshot({ fullPage: true })
+    await restoreHeadedHost(electronApp, koluxPage)
+    const restoredHostScreenshot = await koluxPage.screenshot({ fullPage: true })
     expect(
       countForegroundPixels(restoredHostScreenshot),
       'host compositor remained blank after the background close toggle'

@@ -76,7 +76,7 @@ describe('openMobileEmulatorTab', () => {
   })
 
   it('rejects web-client invocation before creating a tab or attaching', async () => {
-    vi.stubGlobal('__NIGHTSHIFT_WEB_CLIENT__', true)
+    vi.stubGlobal('__KOLUX_WEB_CLIENT__', true)
     mockStoreState.settings = {
       mobileEmulatorEnabled: true,
       activeRuntimeEnvironmentId: 'runtime-1'

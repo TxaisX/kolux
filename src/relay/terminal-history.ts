@@ -11,15 +11,15 @@ import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { toLinuxPath } from '../shared/wsl-paths'
 import { hashWorktreeId } from '../main/terminal-history-id'
-import { dropInheritedNightshiftHistFile } from '../main/worktree-history-file-path'
+import { dropInheritedKoluxHistFile } from '../main/worktree-history-file-path'
 import {
   deleteFishHistoryFile,
-  dropInheritedNightshiftFishHistory,
+  dropInheritedKoluxFishHistory,
   relayFishHistorySessionName,
   resolveFishHistoryDir
 } from '../main/fish-history-session'
 
-const HISTORY_ROOT = join(homedir(), '.nightshift-remote', 'terminal-history')
+const HISTORY_ROOT = join(homedir(), '.kolux-remote', 'terminal-history')
 
 function historyFilename(shell: string): string | null {
   const name = basename(shell).toLowerCase()
@@ -38,14 +38,14 @@ export function injectRelayHistoryEnv(
   shell: string,
   options: { wsl?: boolean } = {}
 ): string | null {
-  // Why first: same reason as the desktop path — an inherited NIGHTSHIFT_HISTFILE
+  // Why first: same reason as the desktop path — an inherited KOLUX_HISTFILE
   // would otherwise survive every early return below and let the remote wrapper
   // re-export another worktree's history path.
-  delete env.NIGHTSHIFT_HISTFILE
-  // Why: HISTFILE stays exported, so a relay (or a client) launched from a Nightshift
+  delete env.KOLUX_HISTFILE
+  // Why: HISTFILE stays exported, so a relay (or a client) launched from a Kolux
   // pane carries the launching worktree's path into this one; honouring it below
   // would scope every pane to that worktree's history file.
-  dropInheritedNightshiftHistFile(env)
+  dropInheritedKoluxHistFile(env)
   if (env.HISTFILE) {
     return null
   }
@@ -98,7 +98,7 @@ export function injectRelayHistoryEnv(
     // the first prompt. The wrapper restores it from here (#11044) — the same
     // contract the desktop PTY path uses. Under WSL it holds the guest-visible
     // path and stays out of WSLENV, matching the desktop; no wrapper reads it there.
-    env.NIGHTSHIFT_HISTFILE = env.HISTFILE
+    env.KOLUX_HISTFILE = env.HISTFILE
     return HISTORY_ROOT
   } catch {
     return null
@@ -135,10 +135,10 @@ export function deleteRelayHistory(worktreeId: string): void {
  *  No metadata file is needed: the name is a pure function of the worktree id. */
 export function injectRelayFishHistoryEnv(env: Record<string, string>, worktreeId: string): void {
   // Own precondition, not the caller's: the check below may only honour a genuine
-  // user value, and fish EXPORTS `fish_history` so a Nightshift-minted name arrives from
+  // user value, and fish EXPORTS `fish_history` so a Kolux-minted name arrives from
   // the relay's own env or the client's. `PtyHandler.buildSpawnEnv` already scrubs
   // every spawn path, so this is belt-and-braces for any other caller.
-  dropInheritedNightshiftFishHistory(env)
+  dropInheritedKoluxFishHistory(env)
   if (env.fish_history) {
     return
   }

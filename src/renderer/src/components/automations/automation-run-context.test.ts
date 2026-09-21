@@ -24,8 +24,8 @@ function setup(overrides: Partial<ProjectHostSetup> = {}): ProjectHostSetup {
     projectId: 'github:TxaisX/nightshift',
     hostId: 'ssh:builder',
     repoId: 'repo-builder',
-    path: '/remote/nightshift',
-    displayName: 'nightshift',
+    path: '/remote/kolux',
+    displayName: 'kolux',
     setupState: 'ready',
     setupMethod: 'cloned',
     createdAt: 1,
@@ -40,15 +40,15 @@ describe('buildAutomationRunContextForRepo', () => {
       buildAutomationRunContextForRepo({
         repoId: 'repo-builder',
         repos: [
-          repo('repo-local', '/local/nightshift'),
-          repo('repo-builder', '/remote/nightshift', 'ssh:builder')
+          repo('repo-local', '/local/kolux'),
+          repo('repo-builder', '/remote/kolux', 'ssh:builder')
         ],
         projectHostSetups: [
           setup({
             id: 'setup-local',
             hostId: 'local',
             repoId: 'repo-local',
-            path: '/local/nightshift'
+            path: '/local/kolux'
           }),
           setup()
         ]
@@ -59,7 +59,7 @@ describe('buildAutomationRunContextForRepo', () => {
       hostId: 'ssh:builder',
       projectHostSetupId: 'setup-builder',
       repoId: 'repo-builder',
-      path: '/remote/nightshift'
+      path: '/remote/kolux'
     })
   })
 
@@ -85,7 +85,7 @@ describe('buildAutomationRunContextForRepo', () => {
     expect(
       buildAutomationRunContextForRepo({
         repoId: 'same-id',
-        repos: [repo('same-id', '/local/nightshift'), remoteRepo('same-id', '/remote/nightshift')],
+        repos: [repo('same-id', '/local/kolux'), remoteRepo('same-id', '/remote/kolux')],
         projectHostSetups: []
       })
     ).toBeNull()

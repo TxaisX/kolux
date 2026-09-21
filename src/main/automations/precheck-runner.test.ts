@@ -26,7 +26,7 @@ describe('runAutomationPrecheck', () => {
   let cwd = ''
 
   beforeEach(() => {
-    cwd = mkdtempSync(join(tmpdir(), 'nightshift-precheck-test-'))
+    cwd = mkdtempSync(join(tmpdir(), 'kolux-precheck-test-'))
     sshManagerState.manager = null
   })
 

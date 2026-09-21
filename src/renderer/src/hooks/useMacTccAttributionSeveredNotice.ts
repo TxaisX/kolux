@@ -66,13 +66,13 @@ export function useMacTccAttributionSeveredNotice(): void {
         toast.warning(
           translate(
             'auto.hooks.useMacTccAttributionSeveredNotice.title',
-            'macOS permissions may not reach Nightshift terminals'
+            'macOS permissions may not reach Kolux terminals'
           ),
           {
             id: SEVERED_TCC_NOTICE_ID,
             description: translate(
               'auto.hooks.useMacTccAttributionSeveredNotice.description',
-              'Running Nightshift terminals are hosted by a daemon started by a previous Nightshift installation. macOS may not apply Nightshift’s Accessibility, Automation, or protected-file permissions to them. Restart the daemon from Manage Sessions to restore access. This will close all running Nightshift terminals.'
+              'Running Kolux terminals are hosted by a daemon started by a previous Kolux installation. macOS may not apply Kolux’s Accessibility, Automation, or protected-file permissions to them. Restart the daemon from Manage Sessions to restore access. This will close all running Kolux terminals.'
             ),
             duration: Infinity,
             action: {

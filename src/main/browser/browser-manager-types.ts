@@ -58,7 +58,7 @@ export function releaseAutomationVisibilityToken(
   renderer
     .executeJavaScript(
       `(function() {
-        var bridge = window.__nightshiftBrowserAutomationVisibility;
+        var bridge = window.__koluxBrowserAutomationVisibility;
         if (!bridge || typeof bridge.release !== 'function') return false;
         return bridge.release(${JSON.stringify(token)});
       })()`

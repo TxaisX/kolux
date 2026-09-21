@@ -28,7 +28,7 @@ export type IssueSourceIndicatorProps = {
 }
 
 // Why: never leak the local remote name ("upstream" / "origin"); it would imply
-// Nightshift maintains a stable mapping between UI labels and git config.
+// Kolux maintains a stable mapping between UI labels and git config.
 const LABEL_PREFIX_LIST = 'Issues from '
 const LABEL_PREFIX_ITEM = 'Issue from '
 

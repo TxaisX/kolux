@@ -127,7 +127,7 @@ export function MobilePairingSetupSection({
         <p className="text-xs text-muted-foreground">
           {translate(
             'auto.components.settings.MobilePairingSetupSection.overview',
-            'Generate a QR code, then scan it in Nightshift Mobile under Pair Desktop.'
+            'Generate a QR code, then scan it in Kolux Mobile under Pair Desktop.'
           )}
         </p>
       </div>

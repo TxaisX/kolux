@@ -7,7 +7,7 @@ vi.mock('../runtime-client', () => {
     readonly isRemote: boolean
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
 
     constructor(
       _userDataPath?: string,
@@ -47,7 +47,7 @@ vi.mock('../runtime-client', () => {
 import { main } from '../index'
 import { buildWorktree, okFixture, queueFixtures, worktreeListFixture } from '../test-fixtures'
 
-describe('nightshift file CLI handlers', () => {
+describe('kolux file CLI handlers', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     callMock.mockReset()

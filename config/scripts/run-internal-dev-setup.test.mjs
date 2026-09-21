@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { runInternalDevSetup } from './run-internal-dev-setup.mjs'
 
 describe('runInternalDevSetup', () => {
-  it('does nothing when NIGHTSHIFT_INTERNAL_DEV_SETUP is unset', () => {
+  it('does nothing when KOLUX_INTERNAL_DEV_SETUP is unset', () => {
     const spawn = vi.fn()
 
     expect(runInternalDevSetup({ env: {}, exists: vi.fn(), spawn })).toBe(0)
@@ -14,7 +14,7 @@ describe('runInternalDevSetup', () => {
 
     expect(
       runInternalDevSetup({
-        env: { NIGHTSHIFT_INTERNAL_DEV_SETUP: '/tmp/missing' },
+        env: { KOLUX_INTERNAL_DEV_SETUP: '/tmp/missing' },
         exists: () => false,
         spawn
       })
@@ -27,7 +27,7 @@ describe('runInternalDevSetup', () => {
 
     expect(
       runInternalDevSetup({
-        env: { NIGHTSHIFT_INTERNAL_DEV_SETUP: '/tmp/setup' },
+        env: { KOLUX_INTERNAL_DEV_SETUP: '/tmp/setup' },
         platform: 'linux',
         exists: () => true,
         access: () => {
@@ -45,8 +45,8 @@ describe('runInternalDevSetup', () => {
     expect(
       runInternalDevSetup({
         env: {
-          NIGHTSHIFT_INTERNAL_DEV_SETUP: '/tmp/setup',
-          NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktree'
+          KOLUX_INTERNAL_DEV_SETUP: '/tmp/setup',
+          KOLUX_WORKTREE_PATH: '/tmp/worktree'
         },
         platform: 'linux',
         exists: () => true,
@@ -65,8 +65,8 @@ describe('runInternalDevSetup', () => {
     expect(
       runInternalDevSetup({
         env: {
-          NIGHTSHIFT_INTERNAL_DEV_SETUP: 'C:\\tools\\setup.cmd',
-          NIGHTSHIFT_WORKTREE_PATH: 'C:\\repo\\worktree'
+          KOLUX_INTERNAL_DEV_SETUP: 'C:\\tools\\setup.cmd',
+          KOLUX_WORKTREE_PATH: 'C:\\repo\\worktree'
         },
         platform: 'win32',
         exists: () => true,

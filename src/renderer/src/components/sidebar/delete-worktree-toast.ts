@@ -60,16 +60,16 @@ export function getDeleteWorktreeToastCopy(
           { value0: worktreeName }
         ),
         // Why: Force Delete proceeds either way, so the copy must say which case this is.
-        // Telling a user "could not confirm" about terminals Nightshift watched stay alive asks
+        // Telling a user "could not confirm" about terminals Kolux watched stay alive asks
         // them to waive a doubt that does not exist, and any running agent's work dies with it.
         description: isProvenLivePtyRemovalError(error)
           ? translate(
               'auto.components.sidebar.delete.worktree.toast.unstoppedPtyLive',
-              'This workspace still has running terminals, so Nightshift stopped before deleting any files. Force Delete will kill them and discard any uncommitted work they hold.'
+              'This workspace still has running terminals, so Kolux stopped before deleting any files. Force Delete will kill them and discard any uncommitted work they hold.'
             )
           : translate(
               'auto.components.sidebar.delete.worktree.toast.unstoppedPty',
-              'Nightshift could not confirm every terminal in this workspace has exited, so it stopped before deleting any files. Use Force Delete to remove it anyway.'
+              'Kolux could not confirm every terminal in this workspace has exited, so it stopped before deleting any files. Use Force Delete to remove it anyway.'
             ),
         isDestructive: false
       }
@@ -81,12 +81,12 @@ export function getDeleteWorktreeToastCopy(
           'Failed to delete workspace {{value0}}',
           { value0: worktreeName }
         ),
-        // Why this is not the "could not confirm" wording: Nightshift watched these sessions stay
+        // Why this is not the "could not confirm" wording: Kolux watched these sessions stay
         // attached, so there is no doubt to waive — Force Delete ends a conversation that is
         // running right now, and any work it holds goes with it.
         description: translate(
           'auto.components.sidebar.delete.worktree.toast.runningAgentSession',
-          'This workspace still has running agent sessions, so Nightshift stopped before deleting any files. Force Delete will close them and discard any work they hold.'
+          'This workspace still has running agent sessions, so Kolux stopped before deleting any files. Force Delete will close them and discard any work they hold.'
         ),
         isDestructive: false
       }
@@ -100,7 +100,7 @@ export function getDeleteWorktreeToastCopy(
         ),
         description: translate(
           'auto.components.sidebar.delete.worktree.toast.905fc8efac',
-          'Git already removed this workspace. Use Force Delete to clear it from Nightshift.'
+          'Git already removed this workspace. Use Force Delete to clear it from Kolux.'
         ),
         isDestructive: false
       }
@@ -117,7 +117,7 @@ export function getDeleteWorktreeToastCopy(
       ),
       // Why: git commonly refuses the first delete when the worktree still has
       // modified or untracked files. Showing raw stderr in a destructive toast
-      // made a normal cleanup step look like a Nightshift bug, so this common case
+      // made a normal cleanup step look like a Kolux bug, so this common case
       // gets a concise explanation plus the force-delete path instead.
       isDestructive: false
     }

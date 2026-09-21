@@ -53,8 +53,7 @@ export function useTerminalPaneReconciliation(controller: TerminalPaneCloseContr
     }
     if (
       !isHostAuthoritativeLayout({
-        isWebClient: !!(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean })
-          .__NIGHTSHIFT_WEB_CLIENT__,
+        isWebClient: !!(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__,
         ptyIdsByLeafId: restoredLayout.ptyIdsByLeafId
       })
     ) {

@@ -17,7 +17,7 @@ function makeActions(): StartupActions {
     fetchAllWorktrees: vi.fn(),
     fetchWorktrees: vi.fn(),
     fetchWorktreeLineage: vi.fn(),
-    fetchNightshiftProfiles: vi.fn(),
+    fetchKoluxProfiles: vi.fn(),
     fetchSettings: vi.fn(),
     awaitOwnerWorktreeVisibilityDefaultsHydration: vi.fn(),
     fetchKeybindings: vi.fn(),

@@ -12,14 +12,14 @@ afterEach(async () => {
 
 describe('PluginAuditLog retention', () => {
   it('rotates bounded segments while preserving recent entries across the boundary', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-plugin-audit-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-plugin-audit-'))
     roots.push(root)
     const audit = new PluginAuditLog(root, { maxBytes: 240 })
 
     for (let index = 0; index < 8; index += 1) {
       await audit.record({
         ts: index,
-        actor: 'plugin:nightshift-samples.demo',
+        actor: 'plugin:kolux-samples.demo',
         method: 'storage.set',
         summary: `key=${index}`,
         outcome: 'ok'

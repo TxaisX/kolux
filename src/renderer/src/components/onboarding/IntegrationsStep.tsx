@@ -228,7 +228,7 @@ const CAPABILITIES = [
   },
   {
     key: 'components.onboarding.integrations.capabilities.browseIssues',
-    fallback: 'Browse GitHub issues and pull requests in the Tasks view without leaving Nightshift'
+    fallback: 'Browse GitHub issues and pull requests in the Tasks view without leaving Kolux'
   },
   {
     key: 'components.onboarding.integrations.capabilities.reviewStatus',
@@ -236,7 +236,7 @@ const CAPABILITIES = [
   },
   {
     key: 'components.onboarding.integrations.capabilities.managePullRequests',
-    fallback: 'Read, comment on, and merge pull requests without leaving Nightshift'
+    fallback: 'Read, comment on, and merge pull requests without leaving Kolux'
   }
 ] as const
 

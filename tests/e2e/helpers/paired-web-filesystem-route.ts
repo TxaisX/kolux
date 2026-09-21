@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 import {
   execDockerSshRelayTargetCommand,
   type DockerSshRelayTarget
@@ -67,7 +67,7 @@ async function assertPairedWebFilesystemMutations(
     }
     return { hostId: match.hostId ?? 'local', path: match.path }
   }, worktreeId)
-  const directory = `nightshift-web-mutation-${Date.now().toString(36)}`
+  const directory = `kolux-web-mutation-${Date.now().toString(36)}`
   const join = worktree.hostId.startsWith('ssh:') ? path.posix.join : path.join
   const directoryPath = join(worktree.path, directory)
   const sourcePath = join(directoryPath, 'source.txt')

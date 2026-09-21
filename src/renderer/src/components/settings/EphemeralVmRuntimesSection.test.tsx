@@ -48,7 +48,7 @@ function makeRuntime(overrides: Partial<EphemeralVmRuntimeRecord> = {}): Ephemer
     updatedAt: 1_000,
     recipeResult: {
       schemaVersion: 1,
-      pairingCode: 'nightshift://pair?code=test',
+      pairingCode: 'kolux://pair?code=test',
       projectRoot: '/workspace/repo'
     },
     ...overrides

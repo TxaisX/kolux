@@ -56,7 +56,7 @@ async function createPackagedNodeModulesFixture(resourcesDir) {
 
 describe('packaged runtime type-declaration and source-map pruning', () => {
   it('removes @linear/sdk source maps while preserving runtime files and non-JS maps', async () => {
-    const resourcesDir = await mkdtemp(join(tmpdir(), 'nightshift-source-map-prune-'))
+    const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-source-map-prune-'))
     try {
       const { packageDir, distDir, webhooksDir } =
         await createPackagedNodeModulesFixture(resourcesDir)
@@ -87,7 +87,7 @@ describe('packaged runtime type-declaration and source-map pruning', () => {
   })
 
   it('removes source maps from every packaged dependency, not just @linear/sdk', async () => {
-    const resourcesDir = await mkdtemp(join(tmpdir(), 'nightshift-source-map-prune-all-'))
+    const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-source-map-prune-all-'))
     try {
       const { jsYamlDir, nodePtyDir } = await createPackagedNodeModulesFixture(resourcesDir)
 
@@ -101,7 +101,7 @@ describe('packaged runtime type-declaration and source-map pruning', () => {
   })
 
   it('removes type declarations and declaration maps in the same walk', async () => {
-    const resourcesDir = await mkdtemp(join(tmpdir(), 'nightshift-source-map-prune-dts-'))
+    const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-source-map-prune-dts-'))
     try {
       const { updaterDir } = await createPackagedNodeModulesFixture(resourcesDir)
 
@@ -114,7 +114,7 @@ describe('packaged runtime type-declaration and source-map pruning', () => {
   })
 
   it('runs the artifact prune through aggregate runtime cleanup', async () => {
-    const resourcesDir = await mkdtemp(join(tmpdir(), 'nightshift-source-map-aggregate-prune-'))
+    const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-source-map-aggregate-prune-'))
     try {
       const { distDir, updaterDir, packageDir } =
         await createPackagedNodeModulesFixture(resourcesDir)

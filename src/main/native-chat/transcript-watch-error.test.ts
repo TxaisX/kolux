@@ -54,7 +54,7 @@ afterEach(async () => {
 
 describe('native chat transcript watcher errors', () => {
   it('handles a watcher error and rebinds after the directory is readable', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-native-chat-watch-error-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-watch-error-'))
     roots.push(root)
     const filePath = join(root, 'transcript.jsonl')
     await writeFile(filePath, '')
@@ -75,7 +75,7 @@ describe('native chat transcript watcher errors', () => {
   })
 
   it('keeps retrying after the old recovery window and tails a recreated directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-native-chat-watch-gap-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-watch-gap-'))
     roots.push(root)
     const filePath = join(root, 'transcript.jsonl')
     await writeFile(filePath, '')
@@ -114,7 +114,7 @@ describe('native chat transcript watcher errors', () => {
   })
 
   it('surfaces an error snapshot when the initial drain throws', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-native-chat-initial-error-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-initial-error-'))
     roots.push(root)
     const filePath = join(root, 'transcript.jsonl')
     await writeFile(filePath, '')
@@ -143,7 +143,7 @@ describe('native chat transcript watcher errors', () => {
   })
 
   it('still wins with a real initial snapshot once the transcript becomes readable', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-native-chat-initial-recover-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-initial-recover-'))
     roots.push(root)
     const filePath = join(root, 'transcript.jsonl')
     await writeFile(filePath, '')

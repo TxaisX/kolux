@@ -43,7 +43,7 @@ async function handshake(sockPath: string, credential: string): Promise<'ok' | '
     const decoder = new FrameDecoder(
       (frame) => {
         const msg = parseHandshakeMessage(frame.payload)
-        resolve(msg.type === 'nightshift-relay-handshake-ok' ? 'ok' : 'closed')
+        resolve(msg.type === 'kolux-relay-handshake-ok' ? 'ok' : 'closed')
         sock.destroy()
       },
       () => resolve('closed')
@@ -52,7 +52,7 @@ async function handshake(sockPath: string, credential: string): Promise<'ok' | '
     sock.once('close', () => resolve('closed'))
     sock.write(
       encodeHandshakeFrame({
-        type: 'nightshift-relay-handshake',
+        type: 'kolux-relay-handshake',
         version: RELAY_VERSION,
         endpointCredential: credential
       })

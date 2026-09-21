@@ -477,7 +477,7 @@ describe('createPtySubprocess', () => {
         sessionId: 'test',
         cols: 80,
         rows: 24,
-        cwd: 'C:\\repo\\nightshift',
+        cwd: 'C:\\repo\\kolux',
         command: 'codex'
       })
 
@@ -521,10 +521,10 @@ describe('createPtySubprocess', () => {
 
     try {
       const handle = await createPtySubprocess({
-        sessionId: 'repo::C:\\repo\\nightshift@@deadbeef',
+        sessionId: 'repo::C:\\repo\\kolux@@deadbeef',
         cols: 80,
         rows: 24,
-        cwd: 'C:\\repo\\nightshift',
+        cwd: 'C:\\repo\\kolux',
         command: 'codex'
       })
 
@@ -533,7 +533,7 @@ describe('createPtySubprocess', () => {
         proc.pid,
         'powershell.exe',
         expect.objectContaining({
-          contextPaths: expect.arrayContaining(['C:\\repo\\nightshift'])
+          contextPaths: expect.arrayContaining(['C:\\repo\\kolux'])
         })
       )
 

@@ -13,32 +13,30 @@ const {
   signWindowsUninstallerViaSignPath
 } = require('./windows-uninstaller-signing.cjs')
 
-const makeDir = () => mkdtempSync(join(tmpdir(), 'nightshift-uninstaller-signing-'))
+const makeDir = () => mkdtempSync(join(tmpdir(), 'kolux-uninstaller-signing-'))
 
 describe('isNsisUninstallerArtifact', () => {
   // The name app-builder-lib's NsisTarget.computeScriptAndSignUninstaller gives
   // the intermediate uninstaller; the hook keys off nothing else.
   it('matches only electron-builder intermediate uninstallers', () => {
-    expect(isNsisUninstallerArtifact('C:\\dist\\nightshift-windows-setup.__uninstaller.exe')).toBe(
-      true
-    )
-    expect(isNsisUninstallerArtifact('/dist/nightshift-windows-setup.__uninstaller.exe')).toBe(true)
-    expect(isNsisUninstallerArtifact('C:\\dist\\win-unpacked\\Nightshift.exe')).toBe(false)
-    expect(isNsisUninstallerArtifact('C:\\dist\\nightshift-windows-setup.exe')).toBe(false)
+    expect(isNsisUninstallerArtifact('C:\\dist\\kolux-windows-setup.__uninstaller.exe')).toBe(true)
+    expect(isNsisUninstallerArtifact('/dist/kolux-windows-setup.__uninstaller.exe')).toBe(true)
+    expect(isNsisUninstallerArtifact('C:\\dist\\win-unpacked\\Kolux.exe')).toBe(false)
+    expect(isNsisUninstallerArtifact('C:\\dist\\kolux-windows-setup.exe')).toBe(false)
     expect(isNsisUninstallerArtifact(undefined)).toBe(false)
   })
 })
 
 describe('relayNsisUninstaller', () => {
   const writeUninstaller = (dir, contents) => {
-    const filePath = join(dir, 'nightshift-windows-setup.__uninstaller.exe')
+    const filePath = join(dir, 'kolux-windows-setup.__uninstaller.exe')
     writeFileSync(filePath, contents)
     return filePath
   }
 
   it('ignores every file that is not the uninstaller', () => {
     const dir = makeDir()
-    const filePath = join(dir, 'Nightshift.exe')
+    const filePath = join(dir, 'Kolux.exe')
     writeFileSync(filePath, 'app')
     expect(relayNsisUninstaller({ filePath, exportPath: join(dir, 'out', 'x.exe') })).toBe(
       'not-uninstaller'
@@ -48,7 +46,7 @@ describe('relayNsisUninstaller', () => {
   it('exports the unsigned uninstaller, creating the destination directory', () => {
     const dir = makeDir()
     const filePath = writeUninstaller(dir, 'unsigned-uninstaller')
-    const exportPath = join(dir, 'uninstaller-signing', 'unsigned', 'nightshift-uninstaller.exe')
+    const exportPath = join(dir, 'uninstaller-signing', 'unsigned', 'kolux-uninstaller.exe')
 
     expect(relayNsisUninstaller({ filePath, exportPath })).toBe('exported')
     expect(readFileSync(exportPath, 'utf8')).toBe('unsigned-uninstaller')
@@ -57,7 +55,7 @@ describe('relayNsisUninstaller', () => {
   it('overwrites the freshly built uninstaller with the signed bytes', () => {
     const dir = makeDir()
     const filePath = writeUninstaller(dir, 'rebuild-unsigned')
-    const signedPath = join(dir, 'signed', 'nightshift-uninstaller.exe')
+    const signedPath = join(dir, 'signed', 'kolux-uninstaller.exe')
     mkdirSync(join(dir, 'signed'))
     writeFileSync(signedPath, 'signpath-signed')
 
@@ -70,7 +68,7 @@ describe('relayNsisUninstaller', () => {
   it('records the digest of the bytes it handed makensis', () => {
     const dir = makeDir()
     const filePath = writeUninstaller(dir, 'rebuild-unsigned')
-    const signedPath = join(dir, 'signed', 'nightshift-uninstaller.exe')
+    const signedPath = join(dir, 'signed', 'kolux-uninstaller.exe')
     mkdirSync(join(dir, 'signed'))
     writeFileSync(signedPath, 'signpath-signed')
 
@@ -83,7 +81,7 @@ describe('relayNsisUninstaller', () => {
   it('leaves no receipt when the signed uninstaller never came back', () => {
     const dir = makeDir()
     const filePath = writeUninstaller(dir, 'unsigned-uninstaller')
-    const signedPath = join(dir, 'absent', 'nightshift-uninstaller.exe')
+    const signedPath = join(dir, 'absent', 'kolux-uninstaller.exe')
 
     relayNsisUninstaller({ filePath, signedPath })
 
@@ -95,7 +93,7 @@ describe('relayNsisUninstaller', () => {
   it('prefers importing over exporting when both are configured', () => {
     const dir = makeDir()
     const filePath = writeUninstaller(dir, 'rebuild-unsigned')
-    const signedPath = join(dir, 'signed', 'nightshift-uninstaller.exe')
+    const signedPath = join(dir, 'signed', 'kolux-uninstaller.exe')
     mkdirSync(join(dir, 'signed'))
     writeFileSync(signedPath, 'signpath-signed')
 
@@ -114,7 +112,7 @@ describe('relayNsisUninstaller', () => {
     expect(
       relayNsisUninstaller({
         filePath,
-        signedPath: join(dir, 'absent', 'nightshift-uninstaller.exe')
+        signedPath: join(dir, 'absent', 'kolux-uninstaller.exe')
       })
     ).toBe('signed-missing')
     expect(readFileSync(filePath, 'utf8')).toBe('unsigned-uninstaller')
@@ -150,10 +148,7 @@ describe('relayNsisUninstaller', () => {
 // continue-on-error. If it throws, the release job dies before a single
 // SignPath request is made. Nothing else in the chain guards that.
 describe('signWindowsUninstallerViaSignPath', () => {
-  const RELAY_VARS = [
-    'NIGHTSHIFT_WIN_UNINSTALLER_EXPORT_PATH',
-    'NIGHTSHIFT_WIN_UNINSTALLER_SIGNED_PATH'
-  ]
+  const RELAY_VARS = ['KOLUX_WIN_UNINSTALLER_EXPORT_PATH', 'KOLUX_WIN_UNINSTALLER_SIGNED_PATH']
 
   const withEnv = (env, run) => {
     const saved = Object.fromEntries(RELAY_VARS.map((key) => [key, process.env[key]]))
@@ -175,7 +170,7 @@ describe('signWindowsUninstallerViaSignPath', () => {
   }
 
   const writeBuiltUninstaller = (dir) => {
-    const filePath = join(dir, 'nightshift-windows-setup.__uninstaller.exe')
+    const filePath = join(dir, 'kolux-windows-setup.__uninstaller.exe')
     writeFileSync(filePath, 'built-by-makensis')
     return filePath
   }
@@ -183,9 +178,9 @@ describe('signWindowsUninstallerViaSignPath', () => {
   it.each([
     ['a missing configuration', undefined],
     ['a configuration with no path', {}],
-    ['a non-uninstaller path', { path: 'C:\\dist\\win-unpacked\\Nightshift.exe' }]
+    ['a non-uninstaller path', { path: 'C:\\dist\\win-unpacked\\Kolux.exe' }]
   ])('never throws on %s', (_label, configuration) => {
-    withEnv({ NIGHTSHIFT_WIN_UNINSTALLER_EXPORT_PATH: join(makeDir(), 'out', 'x.exe') }, () => {
+    withEnv({ KOLUX_WIN_UNINSTALLER_EXPORT_PATH: join(makeDir(), 'out', 'x.exe') }, () => {
       expect(() => signWindowsUninstallerViaSignPath(configuration)).not.toThrow()
     })
   })
@@ -195,19 +190,19 @@ describe('signWindowsUninstallerViaSignPath', () => {
   it('is idempotent across the sha1 and sha256 invocations on both legs', () => {
     const dir = makeDir()
     const filePath = writeBuiltUninstaller(dir)
-    const exportPath = join(dir, 'relay', 'unsigned', 'nightshift-uninstaller.exe')
+    const exportPath = join(dir, 'relay', 'unsigned', 'kolux-uninstaller.exe')
 
-    withEnv({ NIGHTSHIFT_WIN_UNINSTALLER_EXPORT_PATH: exportPath }, () => {
+    withEnv({ KOLUX_WIN_UNINSTALLER_EXPORT_PATH: exportPath }, () => {
       signWindowsUninstallerViaSignPath({ path: filePath })
       signWindowsUninstallerViaSignPath({ path: filePath })
     })
     expect(readFileSync(exportPath, 'utf8')).toBe('built-by-makensis')
 
-    const signedPath = join(dir, 'relay', 'signed', 'nightshift-uninstaller.exe')
+    const signedPath = join(dir, 'relay', 'signed', 'kolux-uninstaller.exe')
     mkdirSync(join(dir, 'relay', 'signed'), { recursive: true })
     writeFileSync(signedPath, 'signpath-signed')
 
-    withEnv({ NIGHTSHIFT_WIN_UNINSTALLER_SIGNED_PATH: signedPath }, () => {
+    withEnv({ KOLUX_WIN_UNINSTALLER_SIGNED_PATH: signedPath }, () => {
       signWindowsUninstallerViaSignPath({ path: filePath })
       signWindowsUninstallerViaSignPath({ path: filePath })
     })
@@ -225,7 +220,7 @@ describe('signWindowsUninstallerViaSignPath', () => {
     const blocker = join(dir, 'blocker')
     writeFileSync(blocker, 'not a directory')
 
-    withEnv({ NIGHTSHIFT_WIN_UNINSTALLER_EXPORT_PATH: join(blocker, 'sub', 'x.exe') }, () => {
+    withEnv({ KOLUX_WIN_UNINSTALLER_EXPORT_PATH: join(blocker, 'sub', 'x.exe') }, () => {
       expect(() => signWindowsUninstallerViaSignPath({ path: filePath })).not.toThrow()
     })
     expect(readFileSync(filePath, 'utf8')).toBe('built-by-makensis')

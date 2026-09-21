@@ -18,7 +18,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady, waitForActiveWorktree } from './helpers/store'
 
 async function addFolderRepo(page: Page, folderPath: string): Promise<string> {
@@ -60,22 +60,22 @@ test.describe('Worktree Recent Sort', () => {
   const createdFolderFixtures: string[] = []
 
   function createFolderFixture(): string {
-    const dir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-folder-'))
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-folder-'))
     createdFolderFixtures.push(dir)
     mkdirSync(path.join(dir, 'src'), { recursive: true })
     writeFileSync(path.join(dir, 'README.md'), '# folder fixture\n')
     return dir
   }
 
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test.afterEach(() => {
     // Why: mkdtempSync fixtures leak unless we clean them up explicitly —
-    // matches the mkdtempSync/rmSync pairing used in helpers/nightshift-app.ts
-    // and helpers/nightshift-restart.ts.
+    // matches the mkdtempSync/rmSync pairing used in helpers/kolux-app.ts
+    // and helpers/kolux-restart.ts.
     while (createdFolderFixtures.length) {
       const dir = createdFolderFixtures.pop()
       if (dir) {
@@ -85,12 +85,12 @@ test.describe('Worktree Recent Sort', () => {
   })
 
   test('stamps lastActivityAt on a newly-added folder repo so it sorts to the top of Recent', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const folderPath = createFolderFixture()
 
-    const repoId = await addFolderRepo(nightshiftPage, folderPath)
-    const lastActivityAt = await readFolderWorktreeLastActivity(nightshiftPage, repoId)
+    const repoId = await addFolderRepo(koluxPage, folderPath)
+    const lastActivityAt = await readFolderWorktreeLastActivity(koluxPage, repoId)
 
     // Why: the exact failure mode before the fix was `lastActivityAt === 0`
     // (the fallback in mergeWorktree when meta is undefined). Asserting
@@ -100,22 +100,20 @@ test.describe('Worktree Recent Sort', () => {
     expect(lastActivityAt).toBeGreaterThan(0)
   })
 
-  test('leaves lastActivityAt stable across repeated list refreshes', async ({
-    nightshiftPage
-  }) => {
+  test('leaves lastActivityAt stable across repeated list refreshes', async ({ koluxPage }) => {
     // Why: the stamp fires only on *first* discovery. Re-fetching must not
     // overwrite it, or every sidebar refresh would reshuffle Recent order.
     const folderPath = createFolderFixture()
-    const repoId = await addFolderRepo(nightshiftPage, folderPath)
+    const repoId = await addFolderRepo(koluxPage, folderPath)
 
-    const first = await readFolderWorktreeLastActivity(nightshiftPage, repoId)
+    const first = await readFolderWorktreeLastActivity(koluxPage, repoId)
 
-    await nightshiftPage.evaluate(async (id) => {
+    await koluxPage.evaluate(async (id) => {
       await window.__store?.getState().fetchWorktrees(id)
       await window.__store?.getState().fetchWorktrees(id)
     }, repoId)
 
-    const second = await readFolderWorktreeLastActivity(nightshiftPage, repoId)
+    const second = await readFolderWorktreeLastActivity(koluxPage, repoId)
     expect(second).toBe(first)
   })
 })

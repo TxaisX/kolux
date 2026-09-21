@@ -1,15 +1,15 @@
 import type { IpcRenderer } from 'electron'
-import { NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT } from '../shared/renderer-shutdown-events'
+import { KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT } from '../shared/renderer-shutdown-events'
 import {
   prepareRendererForAppRestart,
   type UpdaterQuitAbortRelay
 } from '../shared/renderer-restart-preparation'
 import type { UpdateStatus } from '../shared/update-status-types'
 import {
-  NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
-  NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
+  KOLUX_APP_RESTART_ABORTED_EVENT,
+  KOLUX_APP_RESTART_STARTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
 } from '../shared/updater-renderer-events'
 
 export function registerRendererRestartIpcRelays(
@@ -25,8 +25,8 @@ export function registerRendererRestartIpcRelays(
     relay.abort()
   })
   ipcRenderer.on('window:unload-prevented', () => {
-    eventTarget.dispatchEvent(new Event(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT))
-    eventTarget.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT))
+    eventTarget.dispatchEvent(new Event(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT))
+    eventTarget.dispatchEvent(new Event(KOLUX_APP_RESTART_ABORTED_EVENT))
   })
 }
 
@@ -37,8 +37,8 @@ export async function prepareAndInvokeUpdaterInstall(
   awaitCheckpoint: () => Promise<void>
 ): Promise<void> {
   await prepareRendererForAppRestart(eventTarget, {
-    startedEventName: NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
-    abortedEventName: NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+    startedEventName: KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
+    abortedEventName: KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
     awaitCheckpoint
   })
   relay.markPrepared()
@@ -56,14 +56,14 @@ export async function prepareAndInvokeAppRestart(
   awaitCheckpoint: () => Promise<void>
 ): Promise<void> {
   await prepareRendererForAppRestart(eventTarget, {
-    startedEventName: NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-    abortedEventName: NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
+    startedEventName: KOLUX_APP_RESTART_STARTED_EVENT,
+    abortedEventName: KOLUX_APP_RESTART_ABORTED_EVENT,
     awaitCheckpoint
   })
   try {
     await invoke()
   } catch (error) {
-    eventTarget.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT))
+    eventTarget.dispatchEvent(new Event(KOLUX_APP_RESTART_ABORTED_EVENT))
     throw error
   }
 }

@@ -23,7 +23,8 @@ export function parseWebPairingInput(input: string): WebPairingOffer | null {
   }
 
   try {
-    if (trimmed.toLowerCase().startsWith('nightshift://')) {
+    const lower = trimmed.toLowerCase()
+    if (lower.startsWith('kolux://') || lower.startsWith('nightshift://')) {
       const code = extractPairingCodeFromUrl(trimmed)
       return code ? decodePairingPayload(code) : null
     }
@@ -46,7 +47,7 @@ export function readPairingInputFromLocation(location: Location): string | null 
   if (!hash) {
     return null
   }
-  if (hash.startsWith('nightshift://pair')) {
+  if (hash.startsWith('kolux://pair') || hash.startsWith('nightshift://pair')) {
     return hash
   }
   const hashParams = new URLSearchParams(hash)
@@ -125,9 +126,13 @@ function extractPairingCodeFromUrl(url: string): string | null {
   } catch {
     return null
   }
-  // Why: prefix checks accepted routes like `nightshift://pairing?...`; only the
-  // pairing deep-link host may carry runtime auth material.
-  if (parsed.protocol !== 'nightshift:' || parsed.hostname !== 'pair') {
+  // Why: prefix checks accepted routes like `kolux://pairing?...`; only the
+  // pairing deep-link host may carry runtime auth material. Also accept the
+  // pre-rename `nightshift://` scheme so an old pairing link/QR still works.
+  if (
+    (parsed.protocol !== 'kolux:' && parsed.protocol !== 'nightshift:') ||
+    parsed.hostname !== 'pair'
+  ) {
     return null
   }
   if (parsed.pathname !== '' && parsed.pathname !== '/') {

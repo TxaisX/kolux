@@ -48,7 +48,7 @@ vi.mock('./startup/startup-diagnostics', async (importOriginal) => {
 
 describe('loading Store extraction seams', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-loading-store-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-loading-store-'))
   })
 
   afterEach(() => {
@@ -59,7 +59,7 @@ describe('loading Store extraction seams', () => {
 
   it('does not serialize the workspace session when startup diagnostics are disabled', () => {
     const sentinel = 'startup-diagnostics-workspace-session-sentinel-disabled'
-    vi.stubEnv('NIGHTSHIFT_STARTUP_DIAGNOSTICS', '')
+    vi.stubEnv('KOLUX_STARTUP_DIAGNOSTICS', '')
     const state = getDefaultPersistedState(testState.dir)
     state.workspaceSession = { ...state.workspaceSession, activeTabId: sentinel }
     writeDataFile(state)
@@ -85,7 +85,7 @@ describe('loading Store extraction seams', () => {
 
   it('reports the unchanged workspace-session byte count when startup diagnostics are enabled', () => {
     const sentinel = 'startup-diagnostics-workspace-session-sentinel-enabled'
-    vi.stubEnv('NIGHTSHIFT_STARTUP_DIAGNOSTICS', '1')
+    vi.stubEnv('KOLUX_STARTUP_DIAGNOSTICS', '1')
     const state = getDefaultPersistedState(testState.dir)
     state.workspaceSession = { ...state.workspaceSession, activeTabId: sentinel }
     writeDataFile(state)
@@ -118,7 +118,7 @@ describe('loading Store extraction seams', () => {
 
   it('timestamps persistence-load-done before resolving its details closure', () => {
     const sentinel = 'startup-diagnostics-workspace-session-sentinel-ordering'
-    vi.stubEnv('NIGHTSHIFT_STARTUP_DIAGNOSTICS', '1')
+    vi.stubEnv('KOLUX_STARTUP_DIAGNOSTICS', '1')
     const state = getDefaultPersistedState(testState.dir)
     state.workspaceSession = { ...state.workspaceSession, activeTabId: sentinel }
     writeDataFile(state)
@@ -215,7 +215,7 @@ describe('loading Store extraction seams', () => {
     const { Store } = await import('./persistence/loading-store/store')
     const { setMigrationUnsupportedPty } =
       await import('./agent-hooks/migration-unsupported-pty-state')
-    const secondDataFile = join(testState.dir, 'second-profile', 'nightshift-data.json')
+    const secondDataFile = join(testState.dir, 'second-profile', 'kolux-data.json')
     const second = new Store({ dataFile: secondDataFile })
 
     setMigrationUnsupportedPty({
@@ -301,7 +301,7 @@ describe('loading Store extraction seams', () => {
       }
     }
     const overridden = new StoreWithRepoCountOverride({
-      dataFile: join(testState.dir, 'override-profile', 'nightshift-data.json')
+      dataFile: join(testState.dir, 'override-profile', 'kolux-data.json')
     })
     expect(overridden.getRepoCount()).toBe(47)
     expectTypeOf<PersistenceStore>().not.toHaveProperty('scheduleSave')

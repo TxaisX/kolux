@@ -14,8 +14,8 @@ import {
 import { BrowserRouteWebContentsRegistry } from './browser-route-webcontents-registry'
 
 const GESTURE_CLICK_AT = 1_700_000_000_000
-const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
-const otherPartition = `persist:nightshift-browser-v1-${'b'.repeat(64)}`
+const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
+const otherPartition = `persist:kolux-browser-v1-${'b'.repeat(64)}`
 const page = {
   partition,
   browserPageId: 'page-a',

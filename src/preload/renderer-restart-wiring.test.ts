@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT } from '../shared/renderer-shutdown-events'
+import { KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT } from '../shared/renderer-shutdown-events'
 import {
-  NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
+  KOLUX_APP_RESTART_ABORTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
 } from '../shared/updater-renderer-events'
 import {
   prepareAndInvokeUpdaterInstall,
@@ -23,8 +23,8 @@ describe('renderer restart wiring', () => {
         return ipcRenderer
       })
     } as unknown as Parameters<typeof registerRendererRestartIpcRelays>[0]
-    eventTarget.addEventListener(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT, unloadPrevented)
-    eventTarget.addEventListener(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT, restartAborted)
+    eventTarget.addEventListener(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT, unloadPrevented)
+    eventTarget.addEventListener(KOLUX_APP_RESTART_ABORTED_EVENT, restartAborted)
 
     registerRendererRestartIpcRelays(ipcRenderer, eventTarget, { handleStatus, abort })
     listeners.get('updater:status')?.({}, { state: 'error', message: 'install failed' })
@@ -42,7 +42,7 @@ describe('renderer restart wiring', () => {
   it('marks preparation before invoking main and aborts on IPC failure', async () => {
     const eventTarget = new EventTarget()
     const calls: string[] = []
-    eventTarget.addEventListener(NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT, () => {
+    eventTarget.addEventListener(KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT, () => {
       calls.push('prepared')
     })
     const relay = {

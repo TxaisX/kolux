@@ -84,15 +84,15 @@ vi.mock('./runtime-client', async () => {
     RuntimeClient,
     RuntimeClientError,
     RuntimeRpcFailureError,
-    serveNightshiftApp: vi.fn(),
-    getDefaultUserDataPath: vi.fn(() => '/tmp/nightshift-user-data')
+    serveKoluxApp: vi.fn(),
+    getDefaultUserDataPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 })
 
 import { dispatch } from './dispatch'
 import { main } from './index'
 
-describe('nightshift skills CLI', () => {
+describe('kolux skills CLI', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     runtimeClientConstructorMock.mockClear()
@@ -213,7 +213,7 @@ describe('nightshift skills CLI', () => {
     await main(['--help'], '/tmp/repo')
 
     expect(String(logSpy.mock.calls[0]?.[0])).toContain(
-      'Usage: nightshift skills get <topic> [--full | --reference <name>] [--json]'
+      'Usage: kolux skills get <topic> [--full | --reference <name>] [--json]'
     )
     expect(String(logSpy.mock.calls[1]?.[0])).toContain(
       'Commands:\n  installed          List installed skill selectors'
@@ -222,10 +222,10 @@ describe('nightshift skills CLI', () => {
       'get                Print a version-matched skill guide'
     )
     expect(String(logSpy.mock.calls[1]?.[0])).toContain(
-      'install            Install bundled Nightshift skills'
+      'install            Install bundled Kolux skills'
     )
     expect(String(logSpy.mock.calls[1]?.[0])).toContain(
-      'update             Update already-installed Nightshift skills'
+      'update             Update already-installed Kolux skills'
     )
     expect(String(logSpy.mock.calls[2]?.[0])).toContain('Skills:\n  skills installed')
     expect(String(logSpy.mock.calls[2]?.[0])).toContain('skills update')
@@ -256,8 +256,8 @@ describe('nightshift skills CLI', () => {
         '  gamma',
         '  zeta',
         '',
-        'Usage: nightshift skills install --skill <name> [--skill <name> ...]',
-        '   or: nightshift skills install --all',
+        'Usage: kolux skills install --skill <name> [--skill <name> ...]',
+        '   or: kolux skills install --all',
         ''
       ].join('\n')
     )
@@ -321,7 +321,7 @@ describe('nightshift skills CLI', () => {
           error: {
             code: 'invalid_argument',
             message:
-              "nightshift skills install --json only supports --dry-run. Real installs stream npx's " +
+              "kolux skills install --json only supports --dry-run. Real installs stream npx's " +
               "own output, which isn't JSON."
           },
           _meta: { runtimeId: null }
@@ -573,8 +573,8 @@ describe('nightshift skills CLI', () => {
         '  gamma',
         '  zeta',
         '',
-        'Usage: nightshift skills update --skill <name> [--skill <name> ...]',
-        '   or: nightshift skills update --all',
+        'Usage: kolux skills update --skill <name> [--skill <name> ...]',
+        '   or: kolux skills update --all',
         ''
       ].join('\n')
     )
@@ -631,13 +631,13 @@ describe('nightshift skills CLI', () => {
     )
   })
 
-  it('refuses a real run when the shell forwards nightshift to the Nightshift host', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLI_CWD', '/home/alice/wt')
+  it('refuses a real run when the shell forwards kolux to the Kolux host', async () => {
+    vi.stubEnv('KOLUX_CLI_CWD', '/home/alice/wt')
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await main(['skills', 'install', '--skill', 'alpha'], '/tmp/repo')
 
-    // Why: the SSH relay and WSL bridge run argv on the Nightshift host, so a real
+    // Why: the SSH relay and WSL bridge run argv on the Kolux host, so a real
     // install there would silently skip the machine the user is sitting on.
     expect(spawnMock).not.toHaveBeenCalled()
     expect(process.exitCode).toBe(1)
@@ -645,7 +645,7 @@ describe('nightshift skills CLI', () => {
   })
 
   it('refuses --dry-run through the host-forwarding shim too', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLI_CWD', '/home/alice/wt')
+    vi.stubEnv('KOLUX_CLI_CWD', '/home/alice/wt')
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await main(['skills', 'install', '--skill', 'alpha', '--dry-run'], '/tmp/repo')
@@ -660,7 +660,7 @@ describe('nightshift skills CLI', () => {
   it('puts the resolved npx directory on the child PATH', async () => {
     // Why a real directory with a real sibling node: pairing only fires when the
     // node it would add actually exists, so a fictional path proves nothing.
-    const npxBin = mkdtempSync(join(tmpdir(), 'nightshift-npx-'))
+    const npxBin = mkdtempSync(join(tmpdir(), 'kolux-npx-'))
     for (const name of ['node', 'npx']) {
       writeFileSync(join(npxBin, name), '')
       chmodSync(join(npxBin, name), 0o755)
@@ -688,7 +688,7 @@ describe('nightshift skills CLI', () => {
   it('leaves PATH untouched when no node ships beside the resolved npx', async () => {
     // Why: prepending a directory that has no node buys nothing and would shadow
     // the caller's own ordering for every other binary the child resolves.
-    const npxBin = mkdtempSync(join(tmpdir(), 'nightshift-npx-bare-'))
+    const npxBin = mkdtempSync(join(tmpdir(), 'kolux-npx-bare-'))
     writeFileSync(join(npxBin, 'npx'), '')
     chmodSync(join(npxBin, 'npx'), 0o755)
     const child = createFakeChild()
@@ -758,7 +758,7 @@ describe('nightshift skills CLI', () => {
     expect(spawnMock.mock.calls[0]?.[2]?.env?.PATH).toBe(`/usr/bin${delimiter}/bin`)
   })
 
-  it('refuses to install when Nightshift detects no agent, instead of targeting them all', async () => {
+  it('refuses to install when Kolux detects no agent, instead of targeting them all', async () => {
     detectCommandsMock.mockReturnValue(new Set<string>())
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -792,14 +792,14 @@ describe('nightshift skills CLI', () => {
     expect(detectCommandsMock).not.toHaveBeenCalled()
   })
 
-  it('maps detected agents onto the skills CLI namespace, not Nightshift ids', async () => {
+  it('maps detected agents onto the skills CLI namespace, not Kolux ids', async () => {
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     detectCommandsMock.mockReturnValue(new Set<string>(['claude', 'cursor-agent', 'rovo']))
 
     await main(['skills', 'install', '--skill', 'alpha', '--dry-run'], '/tmp/repo')
 
     // Why: `skills add` exits 1 on an unknown --agent, and the ids differ —
-    // Nightshift's `claude` is `claude-code` and its `rovo` is `rovodev`.
+    // Kolux's `claude` is `claude-code` and its `rovo` is `rovodev`.
     expect(stdoutText(stdoutSpy)).toContain(
       '--agent claude-code --agent cursor --agent rovodev --agent universal'
     )
@@ -855,7 +855,7 @@ describe('nightshift skills CLI', () => {
   })
 
   it('reports forwarding, not missing agents, when a forwarded host detects none', async () => {
-    vi.stubEnv('NIGHTSHIFT_CLI_CWD', '/home/alice/wt')
+    vi.stubEnv('KOLUX_CLI_CWD', '/home/alice/wt')
     detectCommandsMock.mockReturnValue(new Set<string>())
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -976,7 +976,7 @@ describe('nightshift skills CLI', () => {
           error: {
             code: 'invalid_argument',
             message:
-              "nightshift skills update --json only supports --dry-run. Real updates stream npx's " +
+              "kolux skills update --json only supports --dry-run. Real updates stream npx's " +
               "own output, which isn't JSON."
           },
           _meta: { runtimeId: null }

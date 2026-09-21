@@ -2,9 +2,9 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -17,7 +17,7 @@ import { DaemonClient } from '../../src/main/daemon/client'
 import { getDaemonSocketPath, getDaemonTokenPath } from '../../src/main/daemon/daemon-spawner'
 import Database from '../../src/main/sqlite/sync-database'
 import { LEGACY_CONTRACT_VERSION } from '../../src/main/runtime/orchestration/db'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 import type { RuntimeTerminalListResult, RuntimeTerminalRead } from '../../src/shared/runtime-types'
 import {
   buildFakeAgentCommandOverride,
@@ -26,7 +26,7 @@ import {
 import { FAKE_AGENT_PASTE_END_SCANNER_SOURCE } from './helpers/fake-agent-paste-end-scanner'
 
 const PROVIDER_SESSION_ID = 'e2e-missing-legacy-worker'
-const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-missing-legacy-worker-'))
+const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-missing-legacy-worker-'))
 const spawnLedgerPath = path.join(fakeCliDir, 'spawn.jsonl')
 const interruptionLedgerPath = path.join(fakeCliDir, 'interruption.jsonl')
 const fakeCodexCommand = buildFakeAgentCommandOverride(
@@ -45,7 +45,7 @@ if (process.argv.slice(2).includes('app-server')) {
   process.stderr.write("error: unrecognized subcommand 'app-server'\\n")
   process.exit(2)
 }
-appendLedger('NIGHTSHIFT_E2E_SPAWN_LEDGER', { event: 'spawn' })
+appendLedger('KOLUX_E2E_SPAWN_LEDGER', { event: 'spawn' })
 process.stdout.write('\\u001b]0;Codex Ready\\u0007OpenAI Codex\\nmodel: e2e\\ndirectory: e2e\\n')
 let acknowledged = false
 ${FAKE_AGENT_PASTE_END_SCANNER_SOURCE}
@@ -57,7 +57,7 @@ process.stdin.on('data', (chunk) => {
     process.stdout.write('\\x1b[?25h')
   }
   if (input.includes('\\x03')) {
-    appendLedger('NIGHTSHIFT_E2E_INTERRUPTION_LEDGER', { event: 'stdin-ctrl-c' })
+    appendLedger('KOLUX_E2E_INTERRUPTION_LEDGER', { event: 'stdin-ctrl-c' })
   }
   if (!acknowledged) {
     fakeAgentMaybeAck(pasteEndScan, input, (mode) => {
@@ -71,7 +71,7 @@ process.stdin.on('data', (chunk) => {
 process.stdin.setRawMode?.(true)
 for (const signal of ['SIGINT', 'SIGHUP', 'SIGTERM']) {
   process.on(signal, () => {
-    appendLedger('NIGHTSHIFT_E2E_INTERRUPTION_LEDGER', { event: 'signal', signal })
+    appendLedger('KOLUX_E2E_INTERRUPTION_LEDGER', { event: 'signal', signal })
     process.exit(0)
   })
 }
@@ -145,12 +145,7 @@ async function detachedDaemonSessionExists(userDataDir: string, ptyId: string): 
 }
 
 function persistedDataPath(userDataDir: string): string {
-  return path.join(
-    userDataDir,
-    'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
-  )
+  return path.join(userDataDir, 'profiles', DEFAULT_LOCAL_KOLUX_PROFILE_ID, 'kolux-data.json')
 }
 
 function hasPersistedResumeRecord(userDataDir: string, paneKey: string): boolean {
@@ -213,8 +208,8 @@ test('a missing legacy worker cannot spawn a replacement during restart recovery
 
   const session = createRestartSession(testInfo, {
     PATH: `${fakeCliDir}${path.delimiter}${process.env.PATH ?? ''}`,
-    NIGHTSHIFT_E2E_SPAWN_LEDGER: spawnLedgerPath,
-    NIGHTSHIFT_E2E_INTERRUPTION_LEDGER: interruptionLedgerPath
+    KOLUX_E2E_SPAWN_LEDGER: spawnLedgerPath,
+    KOLUX_E2E_INTERRUPTION_LEDGER: interruptionLedgerPath
   })
   let firstApp: ElectronApplication | null = null
   let secondApp: ElectronApplication | null = null

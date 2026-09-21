@@ -13,7 +13,7 @@ import { buildPosixRunnerScript, buildWindowsRunnerScript } from './setup-runner
 import type { HookRuntimeTarget } from './hook-runtime-target'
 import type { Repo } from '../shared/repo-types'
 import type { WorktreeSetupLaunch } from '../shared/worktree/launch-types'
-import type { SetupAgentStartupPolicy } from '../shared/nightshift-yaml-hook-types'
+import type { SetupAgentStartupPolicy } from '../shared/kolux-yaml-hook-types'
 import type { ProjectExecutionRuntimeResolution } from '../shared/project-execution-runtime'
 import type { SetupRunnerShell } from '../shared/setup-runner-command'
 
@@ -92,7 +92,7 @@ function createWorktreeRunnerScript(args: {
   const nativeWindowsWorktree = process.platform === 'win32' && !wslWorktree
   // Why: the terminal-shell preference says nothing about the language a project's script is
   // written in, and every pre-existing Windows script was authored against the cmd runner. Only a
-  // `#!` line opts a script into bash, so the same nightshift.yaml runs identically for every Windows
+  // `#!` line opts a script into bash, so the same kolux.yaml runs identically for every Windows
   // user of the repo instead of following whichever terminal each of them happens to prefer.
   const runnerShell: SetupRunnerShell = nativeWindowsWorktree
     ? setupShell?.family === 'posix' && scriptDeclaresPosixShell(script)
@@ -110,7 +110,7 @@ function createWorktreeRunnerScript(args: {
       : undefined
   // Why: linked worktrees use a `.git` file, so resolve the real per-worktree gitdir via git rev-parse --git-path.
   const runnerExtension = runnerShell.family === 'cmd' ? 'cmd' : 'sh'
-  const gitRelPath = `nightshift/${runnerBaseName}.${runnerExtension}`
+  const gitRelPath = `kolux/${runnerBaseName}.${runnerExtension}`
   let runnerScriptPath = getGitPath(worktreePath, gitRelPath, runtimeTarget)
 
   // Why: git runs inside WSL and returns a Linux path; convert to a UNC path so the Windows fs calls can reach it.
@@ -140,7 +140,7 @@ function createWorktreeRunnerScript(args: {
     }
   } else if (nativeWindowsWorktree && runnerShell.family === 'posix') {
     // Why: a Git Bash runner already receives its own path as /c/..., and the shell exports HOME
-    // and PWD the same way, so leaving NIGHTSHIFT_* in C:\ form would make them the lone exception.
+    // and PWD the same way, so leaving KOLUX_* in C:\ form would make them the lone exception.
     // Only path-valued keys convert; the workspace name and policy values are not paths.
     for (const key of SETUP_RUNNER_PATH_ENV_KEYS) {
       const value = envVars[key]
@@ -193,7 +193,7 @@ export function resolveSetupRunnerShell(
     }
   }
 
-  // Why: existing Windows setup scripts were authored for Nightshift's cmd runner;
+  // Why: existing Windows setup scripts were authored for Kolux's cmd runner;
   // PowerShell, wsl.exe-as-terminal, and Windows-host projects can invoke it
   // without changing syntax, so they intentionally stay on the cmd runner.
   return { family: 'cmd' }

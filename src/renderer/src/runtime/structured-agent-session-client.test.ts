@@ -37,7 +37,7 @@ describe('callStructuredAgentSession rewind capability', () => {
     mocks.supportsCapability.mockResolvedValue(false)
 
     await expect(callStructuredAgentSession(target, 'agentSession.rewind', params)).rejects.toThrow(
-      'Rewinding requires a newer Nightshift server'
+      'Rewinding requires a newer Kolux server'
     )
     expect(mocks.supportsCapability).toHaveBeenCalledExactlyOnceWith(
       'env-1',

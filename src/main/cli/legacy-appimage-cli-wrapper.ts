@@ -5,7 +5,7 @@ const APPIMAGE_CLI_SCRIPT = [
   'try{',
   'const path=require("path");',
   'const appDir=process.env.APPDIR;',
-  'if(!appDir){console.error("Nightshift AppImage runtime did not set APPDIR.");process.exit(1);}',
+  'if(!appDir){console.error("Kolux AppImage runtime did not set APPDIR.");process.exit(1);}',
   'const cli=path.join(appDir,"resources","app.asar.unpacked","out","cli","index.js");',
   'await Promise.resolve(require(cli).main(process.argv.slice(1)));',
   '}catch(error){',
@@ -27,12 +27,12 @@ export function buildLegacyAppImageCliWrapper(appImagePath: string): string {
 set -euo pipefail
 APPIMAGE=${quoteShell(appImagePath)}
 if [ ! -f "$APPIMAGE" ]; then
-  echo "Nightshift AppImage not found at $APPIMAGE" >&2
-  echo "If you moved the AppImage, re-run CLI registration from Nightshift Settings." >&2
+  echo "Kolux AppImage not found at $APPIMAGE" >&2
+  echo "If you moved the AppImage, re-run CLI registration from Kolux Settings." >&2
   exit 1
 fi
-export NIGHTSHIFT_NODE_OPTIONS="\${NODE_OPTIONS-}"
-export NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE="\${NODE_REPL_EXTERNAL_MODULE-}"
+export KOLUX_NODE_OPTIONS="\${NODE_OPTIONS-}"
+export KOLUX_NODE_REPL_EXTERNAL_MODULE="\${NODE_REPL_EXTERNAL_MODULE-}"
 unset NODE_OPTIONS
 unset NODE_REPL_EXTERNAL_MODULE
 # Why: AppImage mount paths change on each launch; $APPDIR is the runtime mount.

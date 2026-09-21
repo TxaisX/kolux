@@ -40,13 +40,13 @@ describe('automation-list-search', () => {
     expect(resolveAutomationListSearchQuery(oversized)).toEqual({ status: 'too_large' })
     expect(
       automationListSearchFieldsMatch(
-        { name: 'Auto PR', project: 'nightshift', prompt: 'nudge' },
+        { name: 'Auto PR', project: 'kolux', prompt: 'nudge' },
         oversized
       )
     ).toBe(false)
 
     const items = [
-      { id: '1', name: 'Auto PR', project: 'nightshift', prompt: 'nudge' },
+      { id: '1', name: 'Auto PR', project: 'kolux', prompt: 'nudge' },
       { id: '2', name: 'Nightly', project: 'mobile', prompt: 'ship' }
     ]
     // Why: oversized paste must leave the list unfiltered, not blank it.
@@ -112,9 +112,9 @@ describe('automation-list-search', () => {
     expect(buildAutomationProjectSearchText({ displayName: '  ', path: null })).toBe(
       AUTOMATION_LIST_SEARCH_UNKNOWN_PROJECT
     )
-    expect(
-      buildAutomationProjectSearchText({ displayName: 'nightshift', path: '/tmp/nightshift' })
-    ).toBe('nightshift /tmp/nightshift')
+    expect(buildAutomationProjectSearchText({ displayName: 'kolux', path: '/tmp/kolux' })).toBe(
+      'kolux /tmp/kolux'
+    )
     const index = buildAutomationListSearchIndex({
       name: 'Orphan',
       project: buildAutomationProjectSearchText({}),
@@ -131,7 +131,7 @@ describe('automation-list-search', () => {
   it('matches workspace, agent, and host alongside name, project, and prompt', () => {
     const fields = {
       name: 'Auto PR assignment',
-      project: 'nightshift / main',
+      project: 'kolux / main',
       workspace: 'feature/login-retry',
       agent: 'Claude Code',
       host: 'build-box',
@@ -139,7 +139,7 @@ describe('automation-list-search', () => {
     }
     for (const query of [
       'assignment',
-      'NIGHTSHIFT',
+      'KOLUX',
       'login-retry',
       'claude',
       'build-box',
@@ -170,7 +170,7 @@ describe('automation-list-search', () => {
   it('leaves absent workspace/agent/host axes empty rather than matching everything', () => {
     const index = buildAutomationListSearchIndex({
       name: 'Job',
-      project: 'nightshift',
+      project: 'kolux',
       prompt: 'hi'
     })
     expect(index.workspace).toBe('')
@@ -206,20 +206,20 @@ describe('automation-list-search', () => {
   it('matches name, project, or prompt', () => {
     const fields = {
       name: 'Auto PR assignment',
-      project: 'nightshift / main',
+      project: 'kolux / main',
       prompt: 'Assign reviewers for open PRs'
     }
     expect(automationListSearchFieldsMatch(fields, 'assignment')).toBe(true)
-    expect(automationListSearchFieldsMatch(fields, 'NIGHTSHIFT')).toBe(true)
+    expect(automationListSearchFieldsMatch(fields, 'KOLUX')).toBe(true)
     expect(automationListSearchFieldsMatch(fields, 'reviewers')).toBe(true)
     expect(automationListSearchFieldsMatch(fields, 'missing')).toBe(false)
   })
 
   it('filters by active query without re-resolving bounds', () => {
     const items = [
-      { id: '1', name: 'Auto Issue assignment', project: 'nightshift', prompt: 'triage issues' },
+      { id: '1', name: 'Auto Issue assignment', project: 'kolux', prompt: 'triage issues' },
       { id: '2', name: 'Nightly deploy', project: 'mobile', prompt: 'ship apk' },
-      { id: '3', name: 'PR nudge', project: 'nightshift', prompt: 'remind reviewers' }
+      { id: '3', name: 'PR nudge', project: 'kolux', prompt: 'remind reviewers' }
     ]
     const indexes = items.map((item) =>
       buildAutomationListSearchIndex({
@@ -232,7 +232,7 @@ describe('automation-list-search', () => {
       filterByActiveAutomationListSearchQuery(items, indexes, 'apk').map((item) => item.id)
     ).toEqual(['2'])
     expect(
-      filterByAutomationListSearchIndex(items, indexes, 'nightshift').map((item) => item.id)
+      filterByAutomationListSearchIndex(items, indexes, 'kolux').map((item) => item.id)
     ).toEqual(['1', '3'])
     expect(filterByAutomationListSearchIndex(items, indexes, '   ')).toBe(items)
     expect(

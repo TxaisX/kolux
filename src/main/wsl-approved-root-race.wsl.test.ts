@@ -5,9 +5,8 @@ import { containedDeleteCommand } from './wsl-contained-delete'
 import { parseWslPath } from './wsl'
 
 const execFileAsync = promisify(execFile)
-const DISTRO = process.env.NIGHTSHIFT_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
-const runRealWsl =
-  process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WSL_DELETE_TEST === '1'
+const DISTRO = process.env.KOLUX_WSL_TEST_DISTRO ?? 'Ubuntu-24.04'
+const runRealWsl = process.platform === 'win32' && process.env.KOLUX_REAL_WSL_DELETE_TEST === '1'
 
 function unc(linuxPath: string): string {
   return `\\\\wsl.localhost\\${DISTRO}${linuxPath.replaceAll('/', '\\')}`
@@ -16,7 +15,7 @@ function unc(linuxPath: string): string {
 async function wsl(command: string, ...args: string[]): Promise<string> {
   const result = await execFileAsync(
     'wsl.exe',
-    ['-d', DISTRO, '--exec', 'sh', '-c', command, 'nightshift-wsl-test', ...args],
+    ['-d', DISTRO, '--exec', 'sh', '-c', command, 'kolux-wsl-test', ...args],
     { encoding: 'utf-8', timeout: 30000 }
   )
   return result.stdout.trim()
@@ -26,13 +25,13 @@ describe.skipIf(!runRealWsl)('WSL approved-root traversal race', () => {
   let fixtureRoot: string
 
   beforeAll(async () => {
-    fixtureRoot = await wsl("mktemp -d -p /tmp 'nightshift-wsl-root-race.XXXXXX'")
+    fixtureRoot = await wsl("mktemp -d -p /tmp 'kolux-wsl-root-race.XXXXXX'")
     const statHook = String.raw`#!/bin/sh
 for argument do last=$argument; done
-if [ "$PWD" = "$NIGHTSHIFT_RACE_PARENT" ] && [ "$(/usr/bin/basename "$last")" = vault ]; then
+if [ "$PWD" = "$KOLUX_RACE_PARENT" ] && [ "$(/usr/bin/basename "$last")" = vault ]; then
   inspected=$(/usr/bin/stat "$@") || exit $?
-  /usr/bin/mv -- "$NIGHTSHIFT_RACE_PARENT/vault" "$NIGHTSHIFT_RACE_PARENT/vault-original" || exit $?
-  /usr/bin/ln -s -- "$NIGHTSHIFT_RACE_OUTSIDE" "$NIGHTSHIFT_RACE_PARENT/vault" || exit $?
+  /usr/bin/mv -- "$KOLUX_RACE_PARENT/vault" "$KOLUX_RACE_PARENT/vault-original" || exit $?
+  /usr/bin/ln -s -- "$KOLUX_RACE_OUTSIDE" "$KOLUX_RACE_PARENT/vault" || exit $?
   printf '%s\n' "$inspected"
   exit 0
 fi
@@ -53,7 +52,7 @@ exec /usr/bin/stat "$@"
   })
 
   afterAll(async () => {
-    if (/^\/tmp\/nightshift-wsl-root-race\.[A-Za-z0-9]+$/u.test(fixtureRoot)) {
+    if (/^\/tmp\/kolux-wsl-root-race\.[A-Za-z0-9]+$/u.test(fixtureRoot)) {
       await wsl('chmod -f 700 "$1/execute-only" 2>/dev/null; rm -rf -- "$1"', fixtureRoot)
     }
   })
@@ -75,14 +74,14 @@ exec /usr/bin/stat "$@"
           '--exec',
           'env',
           `PATH=${fixtureRoot}/hook-bin:/usr/bin:/bin`,
-          `NIGHTSHIFT_RACE_PARENT=${fixtureRoot}/race`,
-          `NIGHTSHIFT_RACE_OUTSIDE=${fixtureRoot}/outside/root-target`,
+          `KOLUX_RACE_PARENT=${fixtureRoot}/race`,
+          `KOLUX_RACE_OUTSIDE=${fixtureRoot}/outside/root-target`,
           ...(command ?? [])
         ],
         { encoding: 'utf-8', timeout: 30000 }
       )
     ).rejects.toMatchObject({
-      stderr: expect.stringContaining('NIGHTSHIFT_WSL_DELETE_REJECT:race')
+      stderr: expect.stringContaining('KOLUX_WSL_DELETE_REJECT:race')
     })
 
     await expect(

@@ -6,8 +6,8 @@ import {
 } from '../../../shared/native-file-drop'
 import { measureClipboardTextByteLength } from '../../../shared/clipboard-text'
 
-export const WORKSPACE_FILE_PATH_MIME = 'text/x-nightshift-file-path'
-export const WORKSPACE_FILE_PATHS_MIME = 'text/x-nightshift-file-paths'
+export const WORKSPACE_FILE_PATH_MIME = 'text/x-kolux-file-path'
+export const WORKSPACE_FILE_PATHS_MIME = 'text/x-kolux-file-paths'
 
 export type WorkspaceFileDragRejectionReason = 'paths-too-large' | 'too-many-paths'
 

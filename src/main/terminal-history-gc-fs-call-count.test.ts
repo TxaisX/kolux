@@ -128,12 +128,12 @@ function statsInsideEntries(): string[] {
 }
 
 beforeEach(() => {
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-history-gc-calls-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-history-gc-calls-'))
   historyRoot = join(userDataDir, 'terminal-history')
   mkdirSync(historyRoot, { recursive: true })
   installFakeAppEnvironment({ getPath: () => userDataDir })
   // Why: the fish sweep resolves a real user data dir otherwise, and would delete the
-  // developer's own nightshift fish history files while this suite runs.
+  // developer's own kolux fish history files while this suite runs.
   originalXdgDataHome = process.env.XDG_DATA_HOME
   process.env.XDG_DATA_HOME = userDataDir
   fsCalls.readdir.length = 0

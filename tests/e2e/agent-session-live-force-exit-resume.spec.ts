@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ChildProcess } from 'node:child_process'
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 import {
   execInTerminal,
@@ -14,9 +14,9 @@ import {
   waitForTerminalOutput
 } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { PROTOCOL_VERSION } from '../../src/main/daemon/types'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 
 const PROVIDER_SESSION_ID = 'e2e-live-force-exit-session'
 
@@ -43,12 +43,7 @@ type PersistedData = {
 
 function dataFilePath(userDataDir: string): string {
   // Fresh sessions migrate the seeded legacy file, then persist only here.
-  return path.join(
-    userDataDir,
-    'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
-  )
+  return path.join(userDataDir, 'profiles', DEFAULT_LOCAL_KOLUX_PROFILE_ID, 'kolux-data.json')
 }
 
 function readPersistedData(userDataDir: string): PersistedData {
@@ -137,7 +132,7 @@ function stripPersistedPtyOwnership(userDataDir: string): void {
   session.activeWorktreeIdsOnShutdown = []
   for (const record of Object.values(session.sleepingAgentSessionsByPaneKey ?? {})) {
     if (record.providerSession?.id === PROVIDER_SESSION_ID) {
-      // Why: the e2e proof should verify Nightshift launches the resumed command,
+      // Why: the e2e proof should verify Kolux launches the resumed command,
       // not depend on a developer machine having a real Codex CLI installed.
       record.launchConfig = { agentCommand: 'echo', agentArgs: '', agentEnv: {} }
     }

@@ -10,7 +10,7 @@ import { projectFleetNextAction } from '../../../../../../shared/orchestration-f
 import { getOrchestrationPeerCapabilityCache } from '../../../../orchestration/orchestration-peer-capability-cache'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { resolvePinnedFederatedServer } from '../worker/worker-observation'
 
 const FLEET_HOST_CONCURRENCY = 4
@@ -31,7 +31,7 @@ export type FederatedFleetHostError = {
 }
 
 export async function readFederatedFleetSnapshots(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchIds: readonly string[]
 }): Promise<{

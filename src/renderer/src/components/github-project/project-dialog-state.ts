@@ -10,7 +10,7 @@ type SlugProjectDialogState = {
   }
 }
 
-type RepoNotInNightshiftDialogState = {
+type RepoNotInKoluxDialogState = {
   owner: string
   repo: string
   host?: string
@@ -48,20 +48,20 @@ export function resolveRepoBackedProjectDialogState<T extends RepoBackedProjectD
 
 export function resolveMissingRepoProjectDialogState<
   TSlugDialog extends SlugProjectDialogState,
-  TRepoNotInNightshift extends RepoNotInNightshiftDialogState
+  TRepoNotInKolux extends RepoNotInKoluxDialogState
 >(args: {
   slugIndexReady: boolean
   slugDialog: TSlugDialog | null
-  repoNotInNightshift: TRepoNotInNightshift | null
+  repoNotInKolux: TRepoNotInKolux | null
   lookupSlug: LookupSlug
   selectedRepoIds: ReadonlySet<string>
 }): {
   slugDialog: TSlugDialog | null
-  repoNotInNightshift: TRepoNotInNightshift | null
+  repoNotInKolux: TRepoNotInKolux | null
 } {
-  const { lookupSlug, repoNotInNightshift, selectedRepoIds, slugDialog, slugIndexReady } = args
+  const { lookupSlug, repoNotInKolux, selectedRepoIds, slugDialog, slugIndexReady } = args
   if (!slugIndexReady) {
-    return { slugDialog: null, repoNotInNightshift: null }
+    return { slugDialog: null, repoNotInKolux: null }
   }
   return {
     slugDialog:
@@ -75,16 +75,16 @@ export function resolveMissingRepoProjectDialogState<
       })
         ? null
         : slugDialog,
-    repoNotInNightshift:
-      repoNotInNightshift &&
+    repoNotInKolux:
+      repoNotInKolux &&
       shouldCloseFallbackDialog({
         lookupSlug,
         selectedRepoIds,
-        owner: repoNotInNightshift.owner,
-        repo: repoNotInNightshift.repo,
-        host: repoNotInNightshift.host
+        owner: repoNotInKolux.owner,
+        repo: repoNotInKolux.repo,
+        host: repoNotInKolux.host
       })
         ? null
-        : repoNotInNightshift
+        : repoNotInKolux
   }
 }

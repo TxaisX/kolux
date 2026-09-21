@@ -38,7 +38,7 @@ export function useTabBarQuickCommandsShortcut({
 }: UseTabBarQuickCommandsShortcutParams): void {
   const keybindings = useAppStore((s) => s.keybindings)
   const terminalShortcutPolicy = useAppStore(
-    (s) => s.settings?.terminalShortcutPolicy ?? 'nightshift-first'
+    (s) => s.settings?.terminalShortcutPolicy ?? 'kolux-first'
   )
   const activeView = useAppStore((s) => s.activeView)
 

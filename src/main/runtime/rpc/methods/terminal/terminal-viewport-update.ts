@@ -1,8 +1,8 @@
-import type { NightshiftRuntimeService } from '../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../kolux-runtime'
 import type { TerminalViewportClient } from './terminal-stream-types'
 
 export async function updateViewportForClient(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   ptyId: string,
   subscriptionKey: string,
   client: TerminalViewportClient,

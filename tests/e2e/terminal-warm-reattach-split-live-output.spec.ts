@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 import {
   execInTerminal,
@@ -11,7 +11,7 @@ import {
   waitForPaneIdentitySnapshot
 } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { PTY_SESSION_ID_SEPARATOR } from '../../src/shared/pty-session-id-format'
 
 type PaneProbe = {
@@ -45,7 +45,7 @@ function writeStreamingTui(scriptPath: string): void {
       '  writeFileSync(heartbeatPath, String(frame))',
       '  const body = [',
       "    '╭────────────────────────────────────────────────────╮',",
-      "    `│ Nightshift warm reattach frame ${String(frame).padStart(6, '0')} 🟢 │`,",
+      "    `│ Kolux warm reattach frame ${String(frame).padStart(6, '0')} 🟢 │`,",
       "    '├────────────────────────────────────────────────────┤',",
       '    `│ REATTACH_FRAME_${frame} live daemon output             │`,',
       "    '╰────────────────────────────────────────────────────╯'",

@@ -5,85 +5,85 @@ export const SKILL_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['skills', 'installed'],
     summary: 'List installed skill selectors',
-    usage: 'nightshift skills installed [--json]',
+    usage: 'kolux skills installed [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
     notes: [
       'Lists discovery IDs and names without reading skill contents into the CLI.',
       'Package metadata is validated when the selected skills are shared.',
-      'Use an exact ID or an unambiguous name with `nightshift skills share --skill <selector>`.'
+      'Use an exact ID or an unambiguous name with `kolux skills share --skill <selector>`.'
     ]
   },
   {
     path: ['skills', 'share'],
     summary: 'Publish explicitly selected installed skills behind one unlisted link',
     usage:
-      'nightshift skills share --skill <selector> [--skill <selector> ...] --bundle-name <name> ' +
+      'kolux skills share --skill <selector> [--skill <selector> ...] --bundle-name <name> ' +
       '[--release-notes <text>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'skill', 'bundle-name', 'release-notes'],
     notes: [
       'Requires the default-off permission in Settings → Share Skills.',
-      'The bundle name may be human-readable; Nightshift converts it to a portable lowercase package name.',
-      'Selectors are exact discovery IDs or unambiguous names from `nightshift skills installed`.',
+      'The bundle name may be human-readable; Kolux converts it to a portable lowercase package name.',
+      'Selectors are exact discovery IDs or unambiguous names from `kolux skills installed`.',
       'Only discovered skill directories can be selected; arbitrary paths and --all are not supported.',
       'The resulting link is unlisted. Anyone with it can inspect and install the bundle.'
     ],
     examples: [
-      'nightshift skills share --skill frontend --bundle-name "Frontend Skills"',
-      'nightshift skills share --skill frontend --skill testing --bundle-name "Team Toolkit" --json'
+      'kolux skills share --skill frontend --bundle-name "Frontend Skills"',
+      'kolux skills share --skill frontend --skill testing --bundle-name "Team Toolkit" --json'
     ]
   },
   {
     path: ['skills', 'list'],
-    summary: 'List version-matched skill guides bundled with this Nightshift CLI',
-    usage: 'nightshift skills list [--json]',
+    summary: 'List version-matched skill guides bundled with this Kolux CLI',
+    usage: 'kolux skills list [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
     notes: [
-      'Reads bundled guide metadata locally without contacting the Nightshift runtime.',
+      'Reads bundled guide metadata locally without contacting the Kolux runtime.',
       'With --json, prints a topics array of canonical names and one-line descriptions.',
-      'Use `nightshift skills get <name>` for the compact guide, `--full` for its full reference package, or `nightshift skills install` to install skills.'
+      'Use `kolux skills get <name>` for the compact guide, `--full` for its full reference package, or `kolux skills install` to install skills.'
     ]
   },
   {
     path: ['skills', 'get'],
     aliases: [['skills', 'show']],
     summary: 'Print a version-matched skill guide as Markdown',
-    usage: 'nightshift skills get <topic> [--full | --reference <name>] [--json]',
+    usage: 'kolux skills get <topic> [--full | --reference <name>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'topic', 'full', 'reference', 'references'],
     positionalArgs: ['topic'],
     notes: [
-      'Reads bundled guide content locally without contacting the Nightshift runtime.',
+      'Reads bundled guide content locally without contacting the Kolux runtime.',
       'Prints the compact guide by default. Use --full to print the full guide with bundled references when provided.',
       'Use --reference <name> to print one bundled reference alone, which is what an action gate in the compact guide needs; --references lists the available names.',
       'A reference name may be given bare (recovery-and-cleanup) or as the guide spells it (references/recovery-and-cleanup.md).',
       'Use --json for a deterministic object containing canonical topic metadata and content.'
     ],
     examples: [
-      'nightshift skills get nightshift-cli',
-      'nightshift skills get orchestration --full',
-      'nightshift skills get orchestration --references',
-      'nightshift skills get orchestration --reference recovery-and-cleanup'
+      'kolux skills get kolux-cli',
+      'kolux skills get orchestration --full',
+      'kolux skills get orchestration --references',
+      'kolux skills get orchestration --reference recovery-and-cleanup'
     ]
   },
   {
     path: ['skills', 'install'],
-    summary: 'Install bundled Nightshift skills via the community skills CLI',
+    summary: 'Install bundled Kolux skills via the community skills CLI',
     usage:
-      'nightshift skills install [--skill <name>]... [--all] [--agent <name>[,<name>]] ' +
+      'kolux skills install [--skill <name>]... [--all] [--agent <name>[,<name>]] ' +
       '[--local] [--dry-run] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'skill', 'all', 'agent', 'local', 'dry-run'],
     notes: [
-      'Reads the bundled skill registry locally without contacting the Nightshift runtime.',
+      'Reads the bundled skill registry locally without contacting the Kolux runtime.',
       'Resolves to the same `npx skills add <repo> --skill <name> ...` command used by ' +
-        'Nightshift Settings, plus the non-interactive flags an unattended host needs ' +
+        'Kolux Settings, plus the non-interactive flags an unattended host needs ' +
         '(`npx --yes` and `-y`), then runs it and forwards its output and exit code.',
       'Installs globally (all projects, adds --global) by default. Use --local to install ' +
         'into the current project instead.',
-      'Targets the coding agents Nightshift detects on this host, plus the shared ' +
+      'Targets the coding agents Kolux detects on this host, plus the shared ' +
         '.agents/skills directory. Without an explicit target the skills CLI installs ' +
         'into every agent it knows about, which litters a host with config ' +
         'directories for agents it does not have.',
       'Use --agent <name>[,<name>...] to choose targets yourself, or --agent universal ' +
-        'for the shared directory alone. Required when Nightshift detects no agent.',
+        'for the shared directory alone. Required when Kolux detects no agent.',
       'Use --dry-run to print the resolved command without running it.',
       'With --json, the skill listing and --dry-run emit JSON; a real install streams ' +
         "npx's own non-JSON output live and rejects --json.",
@@ -91,26 +91,26 @@ export const SKILL_COMMAND_SPECS: CommandSpec[] = [
       'Intended for headless hosts (SSH, containers, CI) with no desktop Settings UI to copy the install command from.'
     ],
     examples: [
-      'nightshift skills install',
-      'nightshift skills install --skill nightshift-cli --skill orchestration',
-      'nightshift skills install --skill nightshift-cli --local',
-      'nightshift skills install --skill nightshift-cli --agent claude-code,codex',
-      'nightshift skills install --all --dry-run'
+      'kolux skills install',
+      'kolux skills install --skill kolux-cli --skill orchestration',
+      'kolux skills install --skill kolux-cli --local',
+      'kolux skills install --skill kolux-cli --agent claude-code,codex',
+      'kolux skills install --all --dry-run'
     ]
   },
   {
     path: ['skills', 'update'],
-    summary: 'Update already-installed Nightshift skills via the community skills CLI',
-    usage: 'nightshift skills update [--skill <name>]... [--all] [--local] [--dry-run] [--json]',
+    summary: 'Update already-installed Kolux skills via the community skills CLI',
+    usage: 'kolux skills update [--skill <name>]... [--all] [--local] [--dry-run] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'skill', 'all', 'local', 'dry-run'],
     notes: [
-      'Reads the bundled skill registry locally without contacting the Nightshift runtime.',
-      'Resolves to the same `npx skills update <names...>` command used by Nightshift Settings, ' +
+      'Reads the bundled skill registry locally without contacting the Kolux runtime.',
+      'Resolves to the same `npx skills update <names...>` command used by Kolux Settings, ' +
         'plus the non-interactive flags an unattended host needs (`npx --yes` and `-y`), ' +
         'then runs it and forwards its output and exit code.',
       'Updates the global install (all projects, adds --global) by default. Use --local to ' +
         'update the current project instead.',
-      'Only refreshes skills that are already installed; use `nightshift skills install` first.',
+      'Only refreshes skills that are already installed; use `kolux skills install` first.',
       'Use --dry-run to print the resolved command without running it.',
       'With --json, the skill listing and --dry-run emit JSON; a real update streams ' +
         "npx's own non-JSON output live and rejects --json.",
@@ -118,10 +118,10 @@ export const SKILL_COMMAND_SPECS: CommandSpec[] = [
       'Intended for headless hosts (SSH, containers, CI) with no desktop Settings UI to copy the update command from.'
     ],
     examples: [
-      'nightshift skills update',
-      'nightshift skills update --skill nightshift-cli --skill orchestration',
-      'nightshift skills update --skill nightshift-cli --local',
-      'nightshift skills update --all --dry-run'
+      'kolux skills update',
+      'kolux skills update --skill kolux-cli --skill orchestration',
+      'kolux skills update --skill kolux-cli --local',
+      'kolux skills update --all --dry-run'
     ]
   }
 ]

@@ -78,8 +78,8 @@ describe('landing preflight issues', () => {
       hasGitHubBackedProject([
         repo({
           id: 'github-repo',
-          path: '/Users/alice/nightshift',
-          displayName: 'nightshift',
+          path: '/Users/alice/kolux',
+          displayName: 'kolux',
           repoIcon: {
             type: 'image',
             src: 'https://github.com/txais.png?size=64',
@@ -96,9 +96,9 @@ describe('landing preflight issues', () => {
       hasGitHubBackedProject([
         repo({
           id: 'github-repo',
-          path: '/Users/alice/nightshift',
-          displayName: 'nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          path: '/Users/alice/kolux',
+          displayName: 'kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ])
     ).toBe(true)

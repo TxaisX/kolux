@@ -78,7 +78,7 @@ export function useOwnedSkillShares(): OwnedSkillShares {
       setError(
         translate(
           'auto.components.settings.shareSkills.revokeFailed',
-          'Nightshift could not revoke this link.'
+          'Kolux could not revoke this link.'
         )
       )
     } finally {

@@ -292,7 +292,7 @@ export function requestGitStreamable(
           succeed(result)
           return
         }
-        const marker = result.__nightshiftGitResponseStream
+        const marker = result.__koluxGitResponseStream
         totalBytes = marker.totalBytes
         chunkCount = marker.chunkCount
         streamIdRef.current = marker.streamId

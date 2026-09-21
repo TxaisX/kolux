@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import type { RuntimeTerminalWait } from '../../../shared/runtime-types'
 import { createSubscriptionRegistryDouble } from './subscription-registry-test-double'
@@ -15,9 +15,7 @@ import {
 export const SET_OUTPUT_PAUSED_OPCODE = 16 as TerminalStreamOpcode
 export const WRITE_UNAVAILABLE_OPCODE = 17 as TerminalStreamOpcode
 
-export function stubRuntime(
-  overrides: Partial<NightshiftRuntimeService> = {}
-): NightshiftRuntimeService {
+export function stubRuntime(overrides: Partial<KoluxRuntimeService> = {}): KoluxRuntimeService {
   const serializeAuthoritativeTerminalBuffer =
     overrides.serializeAuthoritativeTerminalBuffer ??
     ((ptyId: string, opts?: { scrollbackRows?: number }) =>
@@ -43,7 +41,7 @@ export function stubRuntime(
     serializeAuthoritativeTerminalBuffer,
     getPtyOutputSequence: vi.fn().mockReturnValue(0),
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 export function makeRequest(method: string, params?: unknown): RpcRequest {
@@ -51,7 +49,7 @@ export function makeRequest(method: string, params?: unknown): RpcRequest {
 }
 
 export function startDesktopMultiplexSubscribe(
-  overrides: Partial<NightshiftRuntimeService> = {},
+  overrides: Partial<KoluxRuntimeService> = {},
   trace?: string[],
   sendBinaryOverride?: (bytes: Uint8Array<ArrayBufferLike>) => boolean | void
 ) {

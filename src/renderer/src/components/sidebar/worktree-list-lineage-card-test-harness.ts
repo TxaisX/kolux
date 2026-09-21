@@ -69,7 +69,7 @@ export function createReactVirtualModuleMock(): Record<string, unknown> {
 
 export function createVirtualizedScrollAnchorModuleMock(): Record<string, unknown> {
   return {
-    VIRTUALIZED_SCROLL_ANCHOR_RECORD_EVENT: 'nightshift:test-record-scroll-anchor',
+    VIRTUALIZED_SCROLL_ANCHOR_RECORD_EVENT: 'kolux:test-record-scroll-anchor',
     useVirtualizedScrollAnchor: vi.fn()
   }
 }
@@ -214,8 +214,8 @@ export function createWorktreeContextMenuModuleMock(): Record<string, unknown> {
   return {
     default: ({ children }: { children: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
-    CLOSE_ALL_CONTEXT_MENUS_EVENT: 'nightshift:test-close-context-menus',
-    WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-nightshift-context-menu-scope'
+    CLOSE_ALL_CONTEXT_MENUS_EVENT: 'kolux:test-close-context-menus',
+    WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-kolux-context-menu-scope'
   }
 }
 

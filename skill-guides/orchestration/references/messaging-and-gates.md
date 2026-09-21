@@ -10,7 +10,7 @@ accepted steering.
 ## Coordinator delivery loop
 
 `check` names its caller with `--terminal <handle>` and is the only verb that
-rejects `--from`. Omit `--terminal` inside a Nightshift terminal, where Nightshift resolves
+rejects `--from`. Omit `--terminal` inside a Kolux terminal, where Kolux resolves
 the caller; pass it explicitly from anywhere else, including a dispatched
 worker reading coordinator follow-ups.
 
@@ -31,7 +31,7 @@ expected Dispatch settles. Heartbeat or visible activity means alive, not done.
 Use a stable Dispatch address for attempt-specific coordinator guidance:
 
 ```text
-NIGHTSHIFT orchestration send --to dispatch:<dispatch_id> --subject "Follow-up" --body "<guidance>" --json
+KOLUX orchestration send --to dispatch:<dispatch_id> --subject "Follow-up" --body "<guidance>" --json
 ```
 
 Do not substitute a remote terminal handle. Omit `--from` for ordinary
@@ -52,9 +52,9 @@ worker resumes by message ID. The coordinator answers that message with `reply`.
 Use a gate only for a coordinator-owned Task-DAG decision:
 
 ```text
-NIGHTSHIFT orchestration gate-create --task <task_id> --question "<decision>" --options <json_array> --json
-NIGHTSHIFT orchestration gate-resolve --id <gate_id> --resolution "<choice>" --json
-NIGHTSHIFT orchestration gate-list --task <task_id> --json
+KOLUX orchestration gate-create --task <task_id> --question "<decision>" --options <json_array> --json
+KOLUX orchestration gate-resolve --id <gate_id> --resolution "<choice>" --json
+KOLUX orchestration gate-list --task <task_id> --json
 ```
 
 Pass `json_array` using the quoting rules of the active shell; do not copy POSIX

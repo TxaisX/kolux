@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AddressInfo } from 'node:net'
 import type { ElectronApplication, FrameLocator, Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   readPanelNavigationObserver,
   startPanelNavigationObserver,
@@ -84,7 +84,7 @@ async function startPermissiveProbeServer(): Promise<ProbeServer> {
 }
 
 async function materializeHostilePlugin(origin: string): Promise<string> {
-  const tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-hostile-panel-e2e-'))
+  const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-hostile-panel-e2e-'))
   const pluginRoot = join(tempRoot, 'hostile-panel')
   await cp(join(process.cwd(), 'examples', 'plugins', 'hostile-panel'), pluginRoot, {
     recursive: true
@@ -196,34 +196,34 @@ async function inspectElectronFrameProcesses(
 
 test('contains hostile panel network and navigation probes', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   testInfo.annotations.push({ type: 'maturity', description: 'experimental' })
   const server = await startPermissiveProbeServer()
   const pluginRoot = await materializeHostilePlugin(server.origin)
   const tempRoot = join(pluginRoot, '..')
-  const appUrl = nightshiftPage.url()
+  const appUrl = koluxPage.url()
   const browserEvents: string[] = []
   const panelDocuments: PanelDocumentSnapshot[] = []
   const replacedNavigations: { destinations: string[]; probe: string }[] = []
   let navigationObservation: PanelNavigationObservation | null = null
   let navigationProbeStarted = false
-  nightshiftPage.on('console', (message) => {
+  koluxPage.on('console', (message) => {
     browserEvents.push(`console:${message.type()}:${message.text()}`)
   })
-  nightshiftPage.on('pageerror', (error) => {
+  koluxPage.on('pageerror', (error) => {
     browserEvents.push(`pageerror:${error.message}`)
   })
-  nightshiftPage.on('framenavigated', (frame) => {
+  koluxPage.on('framenavigated', (frame) => {
     browserEvents.push(`framenavigated:${frame.url()}`)
   })
   try {
-    const panel = await installApprovedPanel(nightshiftPage, pluginRoot)
-    await openPanel(nightshiftPage, panel)
+    const panel = await installApprovedPanel(koluxPage, pluginRoot)
+    await openPanel(koluxPage, panel)
 
-    const iframe = nightshiftPage.locator(`iframe[title="${panel.title}"]`)
+    const iframe = koluxPage.locator(`iframe[title="${panel.title}"]`)
     await expect(iframe).toHaveAttribute('sandbox', 'allow-scripts')
-    const frame = nightshiftPage.frameLocator(`iframe[title="${panel.title}"]`)
+    const frame = koluxPage.frameLocator(`iframe[title="${panel.title}"]`)
     await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
       'content',
       /connect-src 'none'.*img-src data:/
@@ -258,7 +258,7 @@ test('contains hostile panel network and navigation probes', async ({
             if (
               event.source !== window.parent ||
               !data ||
-              data.type !== 'nightshift-panel-action-result' ||
+              data.type !== 'kolux-panel-action-result' ||
               data.requestId !== requestId
             ) {
               return
@@ -270,7 +270,7 @@ test('contains hostile panel network and navigation probes', async ({
           window.addEventListener('message', onMessage)
           window.parent.postMessage(
             {
-              type: 'nightshift-panel-action',
+              type: 'kolux-panel-action',
               requestId,
               action: 'invalid.hostileAction',
               params: {}
@@ -282,7 +282,7 @@ test('contains hostile panel network and navigation probes', async ({
     expect(bridgeErrorCode).toBe('invalid_request')
 
     expect(server.requests).toEqual([])
-    expect(nightshiftPage.url()).toBe(appUrl)
+    expect(koluxPage.url()).toBe(appUrl)
     await expect(iframe).toBeVisible()
 
     await startPanelNavigationObserver(electronApp, appUrl)
@@ -355,7 +355,7 @@ test('contains hostile panel network and navigation probes', async ({
         )
       }
       expect(server.requests).toEqual([])
-      expect(nightshiftPage.url()).toBe(appUrl)
+      expect(koluxPage.url()).toBe(appUrl)
     }
     const guardDestination = `${server.origin}/frame-guard-navigation`
     await iframe.evaluate((element, destination) => {
@@ -383,7 +383,7 @@ test('contains hostile panel network and navigation probes', async ({
       'source:meta-refresh-navigation'
     )
     expect(server.requests).toEqual([])
-    expect(nightshiftPage.url()).toBe(appUrl)
+    expect(koluxPage.url()).toBe(appUrl)
 
     navigationObservation = await readPanelNavigationObserver(electronApp)
     const attemptedProbeNavigations = navigationObservation.willFrameNavigations.filter(({ url }) =>
@@ -432,17 +432,17 @@ test('contains hostile panel network and navigation probes', async ({
 
 test('detects and suspends a busy-looping panel in an isolated renderer', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   testInfo.annotations.push({ type: 'maturity', description: 'experimental' })
   const server = await startPermissiveProbeServer()
   const pluginRoot = await materializeHostilePlugin(server.origin)
   const tempRoot = join(pluginRoot, '..')
-  const appUrl = nightshiftPage.url()
+  const appUrl = koluxPage.url()
   let frameProcesses: ElectronFrameProcess[] = []
   try {
-    const panel = await installApprovedPanel(nightshiftPage, pluginRoot)
-    await openPanel(nightshiftPage, panel)
+    const panel = await installApprovedPanel(koluxPage, pluginRoot)
+    await openPanel(koluxPage, panel)
 
     await expect
       .poll(
@@ -461,19 +461,19 @@ test('detects and suspends a busy-looping panel in an isolated renderer', async 
     expect(panelFrame?.processId).not.toBe(mainFrame?.processId)
     expect(panelFrame?.osProcessId).not.toBe(mainFrame?.osProcessId)
 
-    const iframe = nightshiftPage.locator(`iframe[title="${panel.title}"]`)
+    const iframe = koluxPage.locator(`iframe[title="${panel.title}"]`)
     await iframe.evaluate((element) => {
       const panelWindow = (element as HTMLIFrameElement).contentWindow
-      panelWindow?.postMessage({ type: 'nightshift-hostile-busy-probe' }, '*')
+      panelWindow?.postMessage({ type: 'kolux-hostile-busy-probe' }, '*')
     })
 
     await expect(
-      nightshiftPage.getByText('This plugin panel stopped responding and was suspended.')
+      koluxPage.getByText('This plugin panel stopped responding and was suspended.')
     ).toBeVisible({ timeout: 20_000 })
     await expect(
-      nightshiftPage.getByRole('button', { name: new RegExp(`${panel.title}.*Error`) })
+      koluxPage.getByRole('button', { name: new RegExp(`${panel.title}.*Error`) })
     ).toBeVisible()
-    expect(nightshiftPage.url()).toBe(appUrl)
+    expect(koluxPage.url()).toBe(appUrl)
     expect(server.requests).toEqual([])
   } finally {
     await testInfo.attach('hostile-panel-frame-processes', {

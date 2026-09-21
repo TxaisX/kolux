@@ -38,13 +38,10 @@ describe('headless PTY registry hydration ordering', () => {
     expect(readiness).toBeGreaterThan(rpc)
   })
 
-  it('hydrates nightshiftd after Store and daemon readiness but before RPC and publication', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'src/main/nightshiftd/nightshiftd-entry.ts'),
-      'utf8'
-    )
+  it('hydrates koluxd after Store and daemon readiness but before RPC and publication', () => {
+    const source = readFileSync(join(process.cwd(), 'src/main/koluxd/koluxd-entry.ts'), 'utf8')
     const store = source.indexOf('const store = new Store(')
-    const daemon = source.indexOf('await startNightshiftdDaemon()', store)
+    const daemon = source.indexOf('await startKoluxdDaemon()', store)
     const handlersAndHydration = source.indexOf('await registerHeadlessPtyRuntime(', daemon)
     const rpc = source.indexOf('await rpc.start()', handlersAndHydration)
     const readiness = source.indexOf('await new ServeReadinessPublisher().publish(', rpc)

@@ -184,7 +184,7 @@ const CODEX_LINES = [
 ]
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-import-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-import-'))
   clock = 1_000
 })
 

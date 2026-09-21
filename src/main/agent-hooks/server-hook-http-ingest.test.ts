@@ -33,11 +33,11 @@ async function postClaudeHook(
   payload: Record<string, unknown>
 ): Promise<Response> {
   const env = server.buildPtyEnv()
-  return fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`, {
+  return fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+      'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
     },
     body: JSON.stringify(buildBody(payload))
   })
@@ -49,21 +49,18 @@ describe('AgentHookServer listener replay', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN,
-            'X-Nightshift-Agent-Hook-Meta-Encoding': 'base64',
-            'X-Nightshift-Agent-Hook-Meta': Buffer.from(
-              [PANE, 'tab-1', '', 'wt-1', 'production', ''].join('\x1f')
-            ).toString('base64')
-          },
-          body: JSON.stringify({ hook_event_name: 'UserPromptSubmit', prompt: 'raw JSON' })
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN,
+          'X-Kolux-Agent-Hook-Meta-Encoding': 'base64',
+          'X-Kolux-Agent-Hook-Meta': Buffer.from(
+            [PANE, 'tab-1', '', 'wt-1', 'production', ''].join('\x1f')
+          ).toString('base64')
+        },
+        body: JSON.stringify({ hook_event_name: 'UserPromptSubmit', prompt: 'raw JSON' })
+      })
 
       expect(response.status).toBe(204)
       expect(server.getStatusSnapshot()).toEqual([
@@ -170,12 +167,12 @@ describe('AgentHookServer listener replay', () => {
         payload: Record<string, unknown>
       ): Promise<void> => {
         const response = await fetch(
-          `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/${source}`,
+          `http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/${source}`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+              'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
             },
             body: JSON.stringify(buildBody(payload))
           }
@@ -223,17 +220,14 @@ describe('AgentHookServer listener replay', () => {
     try {
       const env = server.buildPtyEnv()
       const postClaudeHook = async (payload: Record<string, unknown>): Promise<void> => {
-        const response = await fetch(
-          `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-            },
-            body: JSON.stringify(buildBody(payload))
-          }
-        )
+        const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+          },
+          body: JSON.stringify(buildBody(payload))
+        })
         expect(response.status).toBe(204)
       }
 
@@ -268,25 +262,22 @@ describe('AgentHookServer listener replay', () => {
     try {
       server.registerPaneKeyAlias('tab-1:0', PANE)
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody(
-              {
-                hook_event_name: 'UserPromptSubmit',
-                prompt: 'legacy pane'
-              },
-              { paneKey: 'tab-1:0' }
-            )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody(
+            {
+              hook_event_name: 'UserPromptSubmit',
+              prompt: 'legacy pane'
+            },
+            { paneKey: 'tab-1:0' }
           )
-        }
-      )
+        )
+      })
       expect(response.status).toBe(204)
 
       const listener = vi.fn()
@@ -314,25 +305,22 @@ describe('AgentHookServer listener replay', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody(
-              {
-                hook_event_name: 'UserPromptSubmit',
-                prompt: 'missing pane'
-              },
-              { paneKey: '' }
-            )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody(
+            {
+              hook_event_name: 'UserPromptSubmit',
+              prompt: 'missing pane'
+            },
+            { paneKey: '' }
           )
-        }
-      )
+        )
+      })
       const listener = vi.fn()
       server.setListener(listener)
 
@@ -467,24 +455,21 @@ describe('AgentHookServer listener replay', () => {
         tabId: 'tab-1',
         worktreeId: 'repo::/tmp/worktree with "quotes"',
         env: 'production',
-        version: env.NIGHTSHIFT_AGENT_HOOK_VERSION ?? '',
+        version: env.KOLUX_AGENT_HOOK_VERSION ?? '',
         payload: JSON.stringify({
           hook_event_name: 'UserPromptSubmit',
           prompt: 'form encoded'
         })
       })
 
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/claude`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: params
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: params
+      })
       expect(response.status).toBe(204)
 
       const listener = vi.fn()
@@ -523,20 +508,17 @@ describe('AgentHookServer listener replay', () => {
           tabId: 'tab-1',
           worktreeId: 'wt-1',
           env: 'production',
-          version: env.NIGHTSHIFT_AGENT_HOOK_VERSION ?? '',
+          version: env.KOLUX_AGENT_HOOK_VERSION ?? '',
           payload: JSON.stringify(payload)
         })
-        const response = await fetch(
-          `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/codex`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-            },
-            body: params
-          }
-        )
+        const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/codex`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+          },
+          body: params
+        })
         expect(response.status).toBe(204)
       }
 
@@ -622,22 +604,19 @@ describe('AgentHookServer listener replay', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/hermes`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify(
-            buildBody({
-              hook_event_name: 'pre_llm_call',
-              user_message: 'verify Hermes route'
-            })
-          )
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/hermes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify(
+          buildBody({
+            hook_event_name: 'pre_llm_call',
+            user_message: 'verify Hermes route'
+          })
+        )
+      })
       expect(response.status).toBe(204)
 
       const listener = vi.fn()
@@ -669,11 +648,11 @@ describe('AgentHookServer listener replay', () => {
       const listener = vi.fn()
       server.setListener(listener)
 
-      const response = await fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/amp`, {
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/amp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
         },
         body: JSON.stringify(
           buildBody({

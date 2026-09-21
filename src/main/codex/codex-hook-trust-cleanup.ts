@@ -20,7 +20,7 @@ import {
   getSystemCodexConfigTomlPath,
   wrapReadablePosixHookCommand
 } from './codex-hook-definition'
-import { getNightshiftManagedCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath } from './codex-home-paths'
 import {
   removeCodexManagedHookTrustEntries,
   removeStaleWslCodexManagedHookTrustEntries
@@ -123,7 +123,7 @@ export function removeRuntimeManagedHookTrustEntries(configPath: string): void {
   try {
     removeCodexManagedHookTrustEntries({
       tomlPath: getCodexConfigTomlPath(),
-      runtimeHomePath: getNightshiftManagedCodexHomePath(),
+      runtimeHomePath: getKoluxManagedCodexHomePath(),
       sourcePath: configPath,
       command: getManagedCommand(getManagedScriptPath()),
       managedEventLabels: CODEX_MANAGED_EVENT_LABELS,
@@ -166,7 +166,7 @@ export function removeStaleWslRuntimeManagedHookTrustEntries(
     managedEventLabels: CODEX_MANAGED_EVENT_LABELS,
     timeoutSec: MANAGED_HOOK_TIMEOUT_SECONDS,
     buildManagedCommand: (linuxRuntimeHome) =>
-      wrapReadablePosixHookCommand(`${linuxRuntimeHome}/.nightshift/agent-hooks/codex-hook.sh`),
+      wrapReadablePosixHookCommand(`${linuxRuntimeHome}/.kolux/agent-hooks/codex-hook.sh`),
     priorLedgerHomes
   })
 }

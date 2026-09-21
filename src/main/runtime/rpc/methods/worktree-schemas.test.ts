@@ -47,9 +47,9 @@ describe('worktree RPC schemas', () => {
       provider: 'jira',
       type: 'issue',
       number: 0,
-      title: ' NIGHTSHIFT-123 Link Jira ',
-      url: ' https://company.atlassian.net/browse/NIGHTSHIFT-123 ',
-      jiraIdentifier: ' NIGHTSHIFT-123 '
+      title: ' KOLUX-123 Link Jira ',
+      url: ' https://company.atlassian.net/browse/KOLUX-123 ',
+      jiraIdentifier: ' KOLUX-123 '
     }
     const linkedTaskSourceContext = {
       kind: 'task-source',
@@ -60,7 +60,7 @@ describe('worktree RPC schemas', () => {
         provider: 'jira',
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       }
     }
     const parsed = WorktreeCreate.parse({
@@ -72,8 +72,8 @@ describe('worktree RPC schemas', () => {
 
     expect(parsed.linkedWorkItem).toMatchObject({
       provider: 'jira',
-      title: 'NIGHTSHIFT-123 Link Jira',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Link Jira',
+      jiraIdentifier: 'KOLUX-123'
     })
     expect(parsed.linkedTaskSourceContext).toMatchObject({
       provider: 'jira',

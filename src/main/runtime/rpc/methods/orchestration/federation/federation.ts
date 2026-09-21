@@ -251,7 +251,7 @@ export const ORCHESTRATION_FEDERATION_ATTACH_METHODS: RpcMethod[] = [
             taskId: params.taskId,
             dispatchId: params.dispatchId,
             taskSpec: params.taskSpec,
-            coordinatorHandle: 'Run home (relayed by Nightshift)',
+            coordinatorHandle: 'Run home (relayed by Kolux)',
             workerHandle: terminalHandle,
             dispatchCapability: capability,
             devMode: params.devMode,

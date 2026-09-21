@@ -22,8 +22,8 @@ describe('project host setup projection', () => {
   it('keeps timestamps stable when addedAt is 0 across different now values', () => {
     const target = repo({
       id: 'repo-1',
-      path: '/Users/alice/nightshift',
-      displayName: 'nightshift',
+      path: '/Users/alice/kolux',
+      displayName: 'kolux',
       addedAt: 0
     })
     const first = projectHostSetupProjectionFromRepos([target], 1_000)
@@ -42,18 +42,18 @@ describe('project host setup projection', () => {
   // project's timestamps. The accumulator carries 0 when the *first* sibling is the unknown one.
   const timestampedSibling = repo({
     id: 'local-repo',
-    path: '/Users/alice/nightshift',
-    displayName: 'Nightshift',
+    path: '/Users/alice/kolux',
+    displayName: 'Kolux',
     addedAt: 100,
-    upstream: { owner: 'Txais', repo: 'Nightshift' }
+    upstream: { owner: 'Txais', repo: 'Kolux' }
   })
   const unknownSibling = repo({
     id: 'remote-repo',
-    path: '/home/alice/nightshift',
-    displayName: 'nightshift',
+    path: '/home/alice/kolux',
+    displayName: 'kolux',
     addedAt: 0,
     connectionId: 'gpu-vm',
-    upstream: { owner: 'TxaisX', repo: 'nightshift' }
+    upstream: { owner: 'TxaisX', repo: 'kolux' }
   })
 
   it('does not wipe a persisted createdAt when a sibling repo has addedAt 0', () => {
@@ -90,14 +90,14 @@ describe('project host setup projection', () => {
 
   it('projects a legacy local repo into one project and one ready local setup', () => {
     const projection = projectHostSetupProjectionFromRepos(
-      [repo({ id: 'repo-1', path: '/Users/alice/nightshift', displayName: 'nightshift' })],
+      [repo({ id: 'repo-1', path: '/Users/alice/kolux', displayName: 'kolux' })],
       500
     )
 
     expect(projection.projects).toEqual([
       {
         id: 'repo:repo-1',
-        displayName: 'nightshift',
+        displayName: 'kolux',
         badgeColor: '#737373',
         kind: 'git',
         sourceRepoIds: ['repo-1'],
@@ -111,8 +111,8 @@ describe('project host setup projection', () => {
         projectId: 'repo:repo-1',
         hostId: 'local',
         repoId: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/Users/alice/kolux',
+        displayName: 'kolux',
         kind: 'git',
         setupState: 'ready',
         setupMethod: 'legacy-repo',
@@ -126,8 +126,8 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'remote-repo',
-        path: '/home/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/home/alice/kolux',
+        displayName: 'kolux',
         connectionId: 'openclaw 2',
         worktreeBasePath: '../worktrees',
         gitUsername: 'alice'
@@ -147,8 +147,8 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/Users/alice/kolux',
+        displayName: 'kolux',
         projectHostSetupMethod: 'cloned'
       })
     ])
@@ -160,16 +160,16 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'local-repo',
-        path: '/Users/alice/nightshift',
-        displayName: 'Nightshift',
-        upstream: { owner: 'Txais', repo: 'Nightshift' }
+        path: '/Users/alice/kolux',
+        displayName: 'Kolux',
+        upstream: { owner: 'Txais', repo: 'Kolux' }
       }),
       repo({
         id: 'remote-repo',
-        path: '/home/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/home/alice/kolux',
+        displayName: 'kolux',
         connectionId: 'gpu-vm',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       })
     ])
 
@@ -177,7 +177,7 @@ describe('project host setup projection', () => {
     expect(projection.projects[0]).toMatchObject({
       id: 'github:TxaisX/nightshift',
       sourceRepoIds: ['local-repo', 'remote-repo'],
-      providerIdentity: { provider: 'github', owner: 'Txais', repo: 'Nightshift' }
+      providerIdentity: { provider: 'github', owner: 'Txais', repo: 'Kolux' }
     })
     expect(
       getProjectHostSetupsForProject(projection.setups, 'github:TxaisX/nightshift')
@@ -254,8 +254,8 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'local-repo',
-        path: '/Users/alice/nightshift',
-        displayName: 'Nightshift',
+        path: '/Users/alice/kolux',
+        displayName: 'Kolux',
         repoIcon: {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
@@ -265,14 +265,14 @@ describe('project host setup projection', () => {
       }),
       repo({
         id: 'remote-repo',
-        path: '/home/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/home/alice/kolux',
+        displayName: 'kolux',
         connectionId: 'gpu-vm',
         repoIcon: {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
           source: 'github',
-          label: 'Txais/Nightshift'
+          label: 'Txais/Kolux'
         }
       })
     ])
@@ -281,7 +281,7 @@ describe('project host setup projection', () => {
     expect(projection.projects[0]).toMatchObject({
       id: 'github:TxaisX/nightshift',
       sourceRepoIds: ['local-repo', 'remote-repo'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
     })
     expect(
       getProjectHostSetupsForProject(projection.setups, 'github:TxaisX/nightshift')
@@ -292,8 +292,8 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'canonical-local-repo',
-        path: '/Users/alice/stably/nightshift',
-        displayName: 'nightshift',
+        path: '/Users/alice/stably/kolux',
+        displayName: 'kolux',
         gitRemoteIdentity: {
           canonicalKey: 'github.com/TxaisX/nightshift',
           remoteName: 'origin',
@@ -302,7 +302,7 @@ describe('project host setup projection', () => {
       }),
       repo({
         id: 'old-branch-checkout',
-        path: '/Users/alice/nightshift/workspaces/nightshift/re-enable-webgl-for-remote-runtime-terminals',
+        path: '/Users/alice/kolux/workspaces/kolux/re-enable-webgl-for-remote-runtime-terminals',
         displayName: 're-enable-webgl-for-remote-runtime-terminals',
         repoIcon: {
           type: 'image',
@@ -316,9 +316,9 @@ describe('project host setup projection', () => {
     expect(projection.projects).toHaveLength(1)
     expect(projection.projects[0]).toMatchObject({
       id: 'github:TxaisX/nightshift',
-      displayName: 'nightshift',
+      displayName: 'kolux',
       sourceRepoIds: ['canonical-local-repo', 'old-branch-checkout'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
     })
   })
 
@@ -511,8 +511,8 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([
       repo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/Users/alice/kolux',
+        displayName: 'kolux',
         upstream: { owner: 'TxaisX', repo: 42 } as never
       })
     ])
@@ -524,10 +524,10 @@ describe('project host setup projection', () => {
   it('derives workspace ownership metadata from the repo setup', () => {
     const targetRepo = repo({
       id: 'remote-repo',
-      path: '/home/alice/nightshift',
-      displayName: 'nightshift',
+      path: '/home/alice/kolux',
+      displayName: 'kolux',
       connectionId: 'openclaw 2',
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
     const projection = projectHostSetupProjectionFromRepos([targetRepo])
 
@@ -545,7 +545,7 @@ describe('isGitHubBackedRepo', () => {
       id: 'r',
       path: '/r',
       displayName: 'r',
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
     expect(isGitHubBackedRepo(target)).toBe(true)
   })
@@ -589,10 +589,10 @@ describe('getProjectIdForProviderIdentity', () => {
       getProjectIdForProviderIdentity({
         provider: 'github',
         owner: 'Acme',
-        repo: 'Nightshift',
+        repo: 'Kolux',
         host: 'GITHUB.ACME.TEST:8443'
       })
-    ).toBe('github:github.acme.test:8443/acme/nightshift')
+    ).toBe('github:github.acme.test:8443/acme/kolux')
   })
 })
 
@@ -614,16 +614,16 @@ describe('isProjectRemoteIdentityPending', () => {
         repo({
           ...base,
           gitRemoteIdentity: {
-            canonicalKey: 'gitlab.example.com/team/nightshift',
+            canonicalKey: 'gitlab.example.com/team/kolux',
             remoteName: 'origin',
-            remoteUrl: 'git@gitlab.example.com:team/nightshift.git'
+            remoteUrl: 'git@gitlab.example.com:team/kolux.git'
           }
         })
       )
     ).toBe(false)
     expect(
       isProjectRemoteIdentityPending(
-        repo({ ...base, upstream: { owner: 'TxaisX', repo: 'nightshift' } })
+        repo({ ...base, upstream: { owner: 'TxaisX', repo: 'kolux' } })
       )
     ).toBe(false)
   })
@@ -669,14 +669,14 @@ describe('getProjectHostSetupWorktreeMeta host selection', () => {
   it("picks the setup for the repo's own execution host when a repoId spans two hosts", () => {
     const sshRepo = repo({
       id: 'repo-shared',
-      path: '/remote/nightshift',
-      displayName: 'nightshift',
+      path: '/remote/kolux',
+      displayName: 'kolux',
       connectionId: 'build-box'
     })
     // Local first in the array: a repoId-only match would stamp the wrong host durably.
     const setups = [
       ...projectHostSetupProjectionFromRepos([
-        repo({ id: 'repo-shared', path: '/local/nightshift', displayName: 'nightshift' })
+        repo({ id: 'repo-shared', path: '/local/kolux', displayName: 'kolux' })
       ]).setups,
       ...projectHostSetupProjectionFromRepos([sshRepo]).setups
     ]

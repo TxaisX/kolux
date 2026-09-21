@@ -137,7 +137,7 @@ export function PluginMarketplaceSourceDialog({
           <DialogDescription>
             {translate(
               'auto.components.settings.PluginMarketplaceSourceDialog.description',
-              'Marketplaces are pinned Git repositories. Nightshift uses your existing system Git credentials for private repositories.'
+              'Marketplaces are pinned Git repositories. Kolux uses your existing system Git credentials for private repositories.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -152,7 +152,7 @@ export function PluginMarketplaceSourceDialog({
             <p className="text-xs text-muted-foreground">
               {translate(
                 'auto.components.settings.PluginMarketplaceSourceDialog.urlDescription',
-                'Use an HTTPS or SSH repository URL containing nightshift-marketplace.json.'
+                'Use an HTTPS or SSH repository URL containing kolux-marketplace.json.'
               )}
             </p>
           </div>

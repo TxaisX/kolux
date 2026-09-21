@@ -95,7 +95,7 @@ describe('generateCommitMessageFromContext', () => {
       {
         agentId: 'custom',
         model: '',
-        customAgentCommand: 'nightshift-test-agent-nope'
+        customAgentCommand: 'kolux-test-agent-nope'
       },
       {
         kind: 'local',
@@ -112,7 +112,7 @@ describe('generateCommitMessageFromContext', () => {
       message: 'Add README note'
     })
     expect(spawnMock).toHaveBeenCalledWith(
-      'nightshift-test-agent-nope',
+      'kolux-test-agent-nope',
       [],
       expect.objectContaining({
         env: expect.objectContaining({ CODEX_HOME: '/managed/codex-home' })
@@ -122,7 +122,7 @@ describe('generateCommitMessageFromContext', () => {
 
   it('routes WSL local commit generation through the selected distro login shell', async () => {
     await withPlatform('win32', async () => {
-      process.env.NIGHTSHIFT_HOST_ONLY_SECRET = 'do-not-leak'
+      process.env.KOLUX_HOST_ONLY_SECRET = 'do-not-leak'
       const listeners = new Map<string, (value: unknown) => void>()
       const child = {
         pid: 123,
@@ -165,7 +165,7 @@ describe('generateCommitMessageFromContext', () => {
         ['-d', 'Ubuntu 24.04', '--exec', 'sh', '-lc', expect.any(String)],
         expect.objectContaining({
           // Why a concrete directory (#16463): `undefined` makes CreateProcessW inherit
-          // Nightshift's own cwd, a deletable WSL UNC path when it was launched from a
+          // Kolux's own cwd, a deletable WSL UNC path when it was launched from a
           // worktree. The Linux directory still rides inside the command (/mnt/c/repo,
           // asserted below), so the Windows-side cwd never decides where the agent runs.
           cwd: expect.any(String),
@@ -174,10 +174,10 @@ describe('generateCommitMessageFromContext', () => {
         })
       )
       const spawnEnv = spawnMock.mock.calls[0]?.[2]?.env as NodeJS.ProcessEnv
-      expect(spawnEnv.NIGHTSHIFT_HOST_ONLY_SECRET).toBeUndefined()
+      expect(spawnEnv.KOLUX_HOST_ONLY_SECRET).toBeUndefined()
       const shellCommand = spawnMock.mock.calls[0]?.[1]?.[5] as string
       expect(shellCommand).toContain('getent passwd')
-      expect(shellCommand).toContain('exec "$_nightshift_wsl_shell" -ilc')
+      expect(shellCommand).toContain('exec "$_kolux_wsl_shell" -ilc')
       expect(shellCommand).toContain('/mnt/c/repo')
       expect(shellCommand).toContain("'agent'")
       expect(shellCommand).toContain('--mode')
@@ -265,7 +265,7 @@ describe('generateCommitMessageFromContext', () => {
       expect(result).toEqual({
         success: false,
         error:
-          'C:/tools/agent.cmd cannot be run as a Windows batch command with the prompt in argv. Remove {prompt} so Nightshift sends the prompt on stdin.'
+          'C:/tools/agent.cmd cannot be run as a Windows batch command with the prompt in argv. Remove {prompt} so Kolux sends the prompt on stdin.'
       })
       expect(spawnMock).not.toHaveBeenCalled()
     })

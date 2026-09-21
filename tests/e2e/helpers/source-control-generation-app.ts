@@ -1,4 +1,4 @@
-import { test as base, expect } from './nightshift-app'
+import { test as base, expect } from './kolux-app'
 import { createSeededTestRepo } from './seeded-test-repo'
 import { cleanupTestRepository } from '../global-teardown'
 

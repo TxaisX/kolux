@@ -1,19 +1,19 @@
 /**
- * The single `.zshenv` Nightshift writes for every transport: local PTY, daemon/SSH,
+ * The single `.zshenv` Kolux writes for every transport: local PTY, daemon/SSH,
  * and relay.
  *
- * Nightshift needs to run code AFTER the user's own zsh startup files. The old shape
- * bought that by keeping ZDOTDIR pointed at Nightshift's wrapper dir for the whole of
+ * Kolux needs to run code AFTER the user's own zsh startup files. The old shape
+ * bought that by keeping ZDOTDIR pointed at Kolux's wrapper dir for the whole of
  * startup and sourcing each user file by hand — four generated files, and a
  * fake ZDOTDIR live while `/etc/zshrc` ran. That one decision was the root of a
  * whole bug family: `/etc/zshrc` assigns `HISTFILE=${ZDOTDIR:-$HOME}/.zsh_history`
- * unconditionally, so history landed inside Nightshift's own dir (#11044); zsh's
+ * unconditionally, so history landed inside Kolux's own dir (#11044); zsh's
  * `sourcehome()` ignores ZDOTDIR once the shell enters sh/ksh emulation, so a
  * user file ending in `emulate sh` hid every later wrapper file; and one wrapper
  * dir shared by two installed builds could mix files from both.
  *
  * This shape gives ZDOTDIR back before anything else can observe it, then defers
- * Nightshift's work to a `precmd` hook that runs at the first prompt — after
+ * Kolux's work to a `precmd` hook that runs at the first prompt — after
  * `.zprofile`, `/etc/zshrc`, `.zshrc` and `.zlogin`, all of which zsh now reads
  * from the user's own directory exactly as in an unwrapped shell. #11044 becomes
  * unreachable rather than repaired, and the emulation and mixed-build classes
@@ -38,18 +38,18 @@ import {
 
 /** Runtime values the hook re-exports after the user's own startup files ran. */
 export type ZshWrapperRestoreSpec = {
-  /** Nightshift's agent-teams shim dir back onto PATH. */
+  /** Kolux's agent-teams shim dir back onto PATH. */
   agentTeamsPath: boolean
   /** Remote CLI bin dir onto PATH — relay hosts only. */
   remoteCliBinDir: boolean
-  /** Nightshift's runtime CODEX_HOME. */
+  /** Kolux's runtime CODEX_HOME. */
   codexHome: boolean
-  /** The `codex()` wrapper that runs Nightshift's launch preflight. */
+  /** The `codex()` wrapper that runs Kolux's launch preflight. */
   codexLaunchPreflight: boolean
 }
 
 export type ZshStartupHookSpec = {
-  /** First line of the generated file, e.g. `# Nightshift zsh shell-ready wrapper`. */
+  /** First line of the generated file, e.g. `# Kolux zsh shell-ready wrapper`. */
   headerLabel: string
   readyMarkerEscaped: string
   /** OSC 133 command-lifecycle hooks (behind the `markers` feature). */
@@ -61,38 +61,38 @@ export type ZshStartupHookSpec = {
   restores: ZshWrapperRestoreSpec
 }
 
-const AGENT_TEAMS_PATH_RESTORE_BLOCK = `__nightshift_restore_agent_teams_path() {
-  [[ -n "\${NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0
+const AGENT_TEAMS_PATH_RESTORE_BLOCK = `__kolux_restore_agent_teams_path() {
+  [[ -n "\${KOLUX_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0
   case "$PATH" in
-    "\${NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR}"|"\${NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR}:"*) return 0 ;;
+    "\${KOLUX_AGENT_TEAMS_SHIM_DIR}"|"\${KOLUX_AGENT_TEAMS_SHIM_DIR}:"*) return 0 ;;
   esac
-  export PATH="\${NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR}:$PATH"
+  export PATH="\${KOLUX_AGENT_TEAMS_SHIM_DIR}:$PATH"
 }
-__nightshift_restore_agent_teams_path`
+__kolux_restore_agent_teams_path`
 
-const OPENCODE_CONFIG_DIR_RESTORE = `[[ -n "\${NIGHTSHIFT_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="\${NIGHTSHIFT_OPENCODE_CONFIG_DIR}"`
-const MIMOCODE_HOME_RESTORE = `[[ -n "\${NIGHTSHIFT_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="\${NIGHTSHIFT_MIMOCODE_HOME}"`
-const REMOTE_CLI_BIN_DIR_RESTORE = `[[ -n "\${NIGHTSHIFT_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"\${NIGHTSHIFT_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="\${NIGHTSHIFT_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac`
-const CODEX_HOME_RESTORE = `# Why: Codex must keep using Nightshift's runtime CODEX_HOME after rc files.
-[[ -n "\${NIGHTSHIFT_CODEX_HOME:-}" ]] && export CODEX_HOME="\${NIGHTSHIFT_CODEX_HOME}"`
+const OPENCODE_CONFIG_DIR_RESTORE = `[[ -n "\${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="\${KOLUX_OPENCODE_CONFIG_DIR}"`
+const MIMOCODE_HOME_RESTORE = `[[ -n "\${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="\${KOLUX_MIMOCODE_HOME}"`
+const REMOTE_CLI_BIN_DIR_RESTORE = `[[ -n "\${KOLUX_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"\${KOLUX_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="\${KOLUX_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac`
+const CODEX_HOME_RESTORE = `# Why: Codex must keep using Kolux's runtime CODEX_HOME after rc files.
+[[ -n "\${KOLUX_CODEX_HOME:-}" ]] && export CODEX_HOME="\${KOLUX_CODEX_HOME}"`
 
 /**
  * The OSC 133 hooks, defined at top level so their bodies are parsed before the
  * user's `.zshenv` can change the parsing mode.
  */
-const ZSH_OSC133_FUNCTION_BLOCK = `__nightshift_osc133_precmd() {
+const ZSH_OSC133_FUNCTION_BLOCK = `__kolux_osc133_precmd() {
   local exit_code=$?
-  if [[ -n "\${__nightshift_in_command:-}" ]]; then
+  if [[ -n "\${__kolux_in_command:-}" ]]; then
     builtin printf "\\033]133;D;%s\\007" "$exit_code"
-    builtin unset __nightshift_in_command
+    builtin unset __kolux_in_command
   fi
   builtin printf "\\033]133;A\\007"
 }
-__nightshift_osc133_preexec() {
+__kolux_osc133_preexec() {
   builtin printf "\\033]133;C\\007"
   # Why typeset -g: a plain assignment here creates a global inside a function,
   # which prints a warning above every command under warn_create_global.
-  builtin typeset -g __nightshift_in_command=1
+  builtin typeset -g __kolux_in_command=1
 }`
 
 function joinBlocks(blocks: (string | null)[]): string {
@@ -106,13 +106,13 @@ function indentBlock(block: string, indent: string): string {
     .join('\n')
 }
 
-/** One hook feature: `if __nightshift_has_feature <name>; then ... fi`. */
+/** One hook feature: `if __kolux_has_feature <name>; then ... fi`. */
 function featureGuard(name: string, body: (string | null)[]): string | null {
   const blocks = body.filter((block): block is string => block !== null)
   if (blocks.length === 0) {
     return null
   }
-  return `  if __nightshift_has_feature ${name}; then\n${indentBlock(joinBlocks(blocks).replace(/\n$/, ''), '    ')}\n  fi`
+  return `  if __kolux_has_feature ${name}; then\n${indentBlock(joinBlocks(blocks).replace(/\n$/, ''), '    ')}\n  fi`
 }
 
 /** The env/PATH restores that must outlast the user's own startup files. */
@@ -130,7 +130,7 @@ function getOverlayRestoreBlocks(spec: ZshStartupHookSpec): (string | null)[] {
 }
 
 /**
- * Everything Nightshift owns that must run after the user's config, in one function
+ * Everything Kolux owns that must run after the user's config, in one function
  * invoked from the first prompt's precmd sweep and then retired.
  */
 function buildDeferredInit(spec: ZshStartupHookSpec): string {
@@ -138,43 +138,43 @@ function buildDeferredInit(spec: ZshStartupHookSpec): string {
   // permanent precmd, so swapping this hook for it keeps the array position the
   // user's own hooks were registered around. With no permanent hook to leave
   // behind, removing is what keeps a history-only pane observably identical to
-  // the unwrapped pane it was — no stray Nightshift name in `precmd_functions`.
+  // the unwrapped pane it was — no stray Kolux name in `precmd_functions`.
   // Verified on zsh 5.9 that self-removal mid-sweep skips no later hook, from
   // the head, the middle and the tail of the array.
   const permanentPrecmd = spec.osc133CommandMarkers
-    ? `  if __nightshift_has_feature markers; then
-    precmd_functions=(\${precmd_functions:/__nightshift_deferred_init/__nightshift_osc133_precmd})
-    preexec_functions=(__nightshift_osc133_preexec \${preexec_functions[@]})
+    ? `  if __kolux_has_feature markers; then
+    precmd_functions=(\${precmd_functions:/__kolux_deferred_init/__kolux_osc133_precmd})
+    preexec_functions=(__kolux_osc133_preexec \${preexec_functions[@]})
   else
-    precmd_functions=(\${precmd_functions:#__nightshift_deferred_init})
+    precmd_functions=(\${precmd_functions:#__kolux_deferred_init})
   fi`
-    : `  precmd_functions=(\${precmd_functions:#__nightshift_deferred_init})`
+    : `  precmd_functions=(\${precmd_functions:#__kolux_deferred_init})`
   const lineInitRegistration = spec.startupCommandDelivery
-    ? `  if __nightshift_has_feature ready || __nightshift_has_feature startup; then
-    __nightshift_emit_ready_marker=""
-    __nightshift_has_feature ready && __nightshift_emit_ready_marker=1
+    ? `  if __kolux_has_feature ready || __kolux_has_feature startup; then
+    __kolux_emit_ready_marker=""
+    __kolux_has_feature ready && __kolux_emit_ready_marker=1
 ${indentBlock(getZshShellReadyMarkerRegistrationBlock(spec.readyMarkerEscaped, true), '    ')}
   fi`
     : featureGuard('ready', [
         indentBlock(getZshShellReadyMarkerRegistrationBlock(spec.readyMarkerEscaped), '')
       ])
 
-  return `__nightshift_deferred_init() {
+  return `__kolux_deferred_init() {
   # Why first: this body runs after the user's own config, so it would otherwise
   # inherit whatever options that config left set. Under NO_UNSET an unset
   # precmd_functions is fatal, and KSH_ARRAYS makes the 1-based feature lookup
   # drop whichever feature is listed first.
   builtin emulate -L zsh
-  (( $+_nightshift_deferred_init_done )) && return 0
-  builtin typeset -g _nightshift_deferred_init_done=1
+  (( $+_kolux_deferred_init_done )) && return 0
+  builtin typeset -g _kolux_deferred_init_done=1
   builtin typeset -g precmd_functions
 ${permanentPrecmd}
 ${joinBlocks([
   featureGuard('overlay', getOverlayRestoreBlocks(spec)),
   // Why no /etc/zshrc repair branch: ZDOTDIR was handed back before that file
   // ran, so the value it derives is the user's own path. #11044 is unreachable.
-  `  if [[ -n "\${_nightshift_histfile:-}" ]]; then
-    HISTFILE="$_nightshift_histfile"
+  `  if [[ -n "\${_kolux_histfile:-}" ]]; then
+    HISTFILE="$_kolux_histfile"
   fi`,
   lineInitRegistration
 ])}
@@ -182,10 +182,10 @@ ${
   spec.osc133CommandMarkers
     ? `  # Why called here: we were appended during this prompt's own precmd sweep, so
   # the permanent hook has not run yet and the first prompt would lose its mark.
-  __nightshift_has_feature markers && __nightshift_osc133_precmd\n`
+  __kolux_has_feature markers && __kolux_osc133_precmd\n`
     : ''
-}  builtin unset _nightshift_shell_features _nightshift_histfile
-  builtin unfunction __nightshift_deferred_init __nightshift_has_feature
+}  builtin unset _kolux_shell_features _kolux_histfile
+  builtin unfunction __kolux_deferred_init __kolux_has_feature
 }`
 }
 

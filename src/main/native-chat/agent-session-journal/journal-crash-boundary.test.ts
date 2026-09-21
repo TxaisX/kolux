@@ -86,7 +86,7 @@ function window(
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-crash-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-crash-'))
   clock = 1_000
 })
 

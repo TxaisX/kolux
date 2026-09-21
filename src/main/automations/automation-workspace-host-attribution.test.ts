@@ -102,7 +102,7 @@ async function createStore(
 ) {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({
       ...getDefaultPersistedState(testState.dir),
       repos,
@@ -169,7 +169,7 @@ describe('folder-workspace host attribution', () => {
 })
 
 const AMBIGUOUS_REFUSAL =
-  'The automation workspace spans more than one host, so Nightshift cannot tell which one to run it on.'
+  'The automation workspace spans more than one host, so Kolux cannot tell which one to run it on.'
 
 /**
  * Built through the store rather than seeded: load-time projection replaces any

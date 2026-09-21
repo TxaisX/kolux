@@ -10,7 +10,7 @@ import {
   writeManagedScript
 } from '../agent-hooks/installer-utils'
 import { refreshManagedScriptIfPresent } from '../agent-hooks/managed-hook-script-refresh'
-import { isNightshiftOwnedRemnant, removeManagedGrokHookEntries } from './grok-hook-config-cleanup'
+import { isKoluxOwnedRemnant, removeManagedGrokHookEntries } from './grok-hook-config-cleanup'
 import { buildInstalledGrokConfig, GROK_EVENTS, GROK_TOOL_EVENT_MATCHER } from './grok-hook-config'
 import { installRemoteGrokHook } from './grok-hook-remote-install'
 import {
@@ -45,9 +45,39 @@ export function getGrokToolEventMatcherForTests(): string {
 function getConfigPath(): string {
   // Why: Grok loads trusted global hook files from $GROK_HOME/hooks/*.json
   // (or ~/.grok when unset). Honor GROK_HOME so install/status match the same
-  // home Grok and transcript lookup use; keep Nightshift entries in a dedicated file
+  // home Grok and transcript lookup use; keep Kolux entries in a dedicated file
   // so user-authored hook files stay untouched.
+  return join(resolveGrokHomeDir(), 'hooks', 'kolux-status.json')
+}
+
+// Why: pre-rename Kolux wrote hooks/nightshift-status.json; Grok loads every hooks/*.json, so a
+// stale copy would keep firing the managed hook a second time after the app renamed itself.
+function getLegacyConfigPath(): string {
   return join(resolveGrokHomeDir(), 'hooks', 'nightshift-status.json')
+}
+
+function sweepLegacyGrokConfig(): void {
+  try {
+    const legacyPath = getLegacyConfigPath()
+    const config = readHooksJson(legacyPath)
+    if (!config) {
+      return
+    }
+    const { config: cleaned, removedAny } = removeManagedGrokHookEntries(
+      config,
+      getGrokManagedScriptFileName()
+    )
+    if (!removedAny) {
+      return
+    }
+    if (isKoluxOwnedRemnant(cleaned)) {
+      rmSync(legacyPath, { force: true })
+    } else {
+      writeHooksJson(legacyPath, cleaned)
+    }
+  } catch (error) {
+    console.warn('[grok-hook-service] failed to sweep legacy hook config', error)
+  }
 }
 
 /** Test seam: the command registered for `scriptPath` on the current platform. */
@@ -159,7 +189,7 @@ export class GrokHookService {
     // setting back on is an equally explicit choice, and the later one. Without this the toggle
     // silently does nothing forever and the only way back is deleting a file in a hidden directory.
     // A symlinked empty config is also respected unless its content and file identity match the
-    // marker written by Nightshift's own prior cleanup.
+    // marker written by Kolux's own prior cleanup.
     const configIsSymlink = isSymbolicLinkSync(configPath)
     const reinstallsOwnSymlinkCleanup =
       configIsSymlink &&
@@ -193,6 +223,7 @@ export class GrokHookService {
       if (configIsSymlink) {
         clearGrokSymlinkCleanupMarker(configPath)
       }
+      sweepLegacyGrokConfig()
       return this.getStatus()
     } catch (error) {
       if (ownsWindowsHook) {
@@ -216,6 +247,7 @@ export class GrokHookService {
   }
 
   remove(): AgentHookInstallStatus {
+    sweepLegacyGrokConfig()
     const configPath = getConfigPath()
     if (process.platform === 'win32') {
       unregisterGrokHookOwnerSync()
@@ -239,7 +271,7 @@ export class GrokHookService {
     // Why the symlink check: unlinking would delete the user's link, not our file. A config they
     // symlinked into a dotfiles repo is theirs -- strip our entries and write through it instead.
     // writeHooksJson already resolves the link, so the file they version-control stays connected.
-    if (isNightshiftOwnedRemnant(cleanup.config) && !isSymbolicLinkSync(configPath)) {
+    if (isKoluxOwnedRemnant(cleanup.config) && !isSymbolicLinkSync(configPath)) {
       rmSync(configPath, { force: true })
     } else {
       writeHooksJson(configPath, cleanup.config)
@@ -282,7 +314,7 @@ export class GrokHookService {
       return notInstalledStatus(configPath)
     }
     const configIsSymlink = await isGrokHookConfigSymlink(configPath)
-    const unlinkable = isNightshiftOwnedRemnant(cleanup.config) && !configIsSymlink
+    const unlinkable = isKoluxOwnedRemnant(cleanup.config) && !configIsSymlink
     const serialized = `${JSON.stringify(cleanup.config, null, 2)}\n`
     const updated = unlinkable
       ? await removeGrokHookConfigIfUnchanged(configPath, snapshot.raw, mutationOptions)

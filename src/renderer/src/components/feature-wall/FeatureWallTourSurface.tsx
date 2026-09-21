@@ -15,7 +15,7 @@ import type { FeatureWallTourDepthSummary } from '../../../../shared/feature-wal
 import { track } from '@/lib/telemetry'
 import { useAppStore } from '@/store'
 import {
-  NIGHTSHIFT_CLI_SKILL_NAME,
+  KOLUX_CLI_SKILL_NAME,
   ORCHESTRATION_SKILL_NAME
 } from '@/lib/agent-feature-install-commands'
 import {
@@ -57,7 +57,7 @@ export function FeatureWallTourSurface({
   className,
   panelClassName,
   doneLabel = 'Done',
-  footerText = 'Reopen any time from Help > Explore Nightshift.',
+  footerText = 'Reopen any time from Help > Explore Kolux.',
   enableKeyboardShortcut = true,
   compactRail = false,
   detachedFooter = false,
@@ -117,7 +117,7 @@ export function FeatureWallTourSurface({
     discoveryTarget: activeSkillRuntime.discoveryTarget,
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
   })
-  const browserUseSkill = useInstalledAgentSkill(NIGHTSHIFT_CLI_SKILL_NAME, {
+  const browserUseSkill = useInstalledAgentSkill(KOLUX_CLI_SKILL_NAME, {
     enabled: isOpen,
     discoveryTarget: activeSkillRuntime.discoveryTarget,
     sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS

@@ -99,7 +99,7 @@ export const LINEAR_ISSUE_NODE_FIELDS = `
 `
 
 export const SEARCH_ISSUES_QUERY = `
-  query NightshiftLinearIssueSearch($term: String!, $first: Int) {
+  query KoluxLinearIssueSearch($term: String!, $first: Int) {
     searchIssues(term: $term, first: $first) {
       nodes {
         ${LINEAR_ISSUE_NODE_FIELDS}
@@ -109,7 +109,7 @@ export const SEARCH_ISSUES_QUERY = `
 `
 
 export const ALL_ISSUES_QUERY = `
-  query NightshiftLinearIssues(
+  query KoluxLinearIssues(
     $first: Int,
     $after: String,
     $filter: IssueFilter,
@@ -128,7 +128,7 @@ export const ALL_ISSUES_QUERY = `
 `
 
 export const VIEWER_ASSIGNED_ISSUES_QUERY = `
-  query NightshiftLinearViewerAssignedIssues(
+  query KoluxLinearViewerAssignedIssues(
     $first: Int,
     $after: String,
     $filter: IssueFilter,
@@ -149,7 +149,7 @@ export const VIEWER_ASSIGNED_ISSUES_QUERY = `
 `
 
 export const VIEWER_CREATED_ISSUES_QUERY = `
-  query NightshiftLinearViewerCreatedIssues(
+  query KoluxLinearViewerCreatedIssues(
     $first: Int,
     $after: String,
     $filter: IssueFilter,
@@ -188,7 +188,7 @@ export const AGENT_ISSUE_WRITE_FIELDS = `
 `
 
 export const ISSUE_BY_UUID_QUERY = `
-  query NightshiftLinearIssueByUuid($id: String!) {
+  query KoluxLinearIssueByUuid($id: String!) {
     issue(id: $id) {
       ${AGENT_ISSUE_WRITE_FIELDS}
     }
@@ -196,7 +196,7 @@ export const ISSUE_BY_UUID_QUERY = `
 `
 
 export const COMMENT_BY_UUID_QUERY = `
-  query NightshiftLinearCommentByUuid($id: String!) {
+  query KoluxLinearCommentByUuid($id: String!) {
     comment(id: $id) {
       id
       url
@@ -208,7 +208,7 @@ export const COMMENT_BY_UUID_QUERY = `
 `
 
 export const ATTACHMENT_BY_UUID_QUERY = `
-  query NightshiftLinearAttachmentByUuid($id: String!) {
+  query KoluxLinearAttachmentByUuid($id: String!) {
     attachment(id: $id) {
       id
       title
@@ -224,7 +224,7 @@ export const ATTACHMENT_BY_UUID_QUERY = `
 // fetches, all sequential while holding a shared Linear concurrency slot).
 // first: 50 matches the SDK default page size the previous code relied on.
 export const ISSUE_COMMENTS_QUERY = `
-  query NightshiftLinearIssueComments($id: String!) {
+  query KoluxLinearIssueComments($id: String!) {
     issue(id: $id) {
       comments(first: 50) {
         nodes {

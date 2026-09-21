@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import process from 'node:process'
-import { NightshiftRuntimeService } from '../../../src/main/runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../../../src/main/runtime/kolux-runtime'
 import { RpcDispatcher } from '../../../src/main/runtime/rpc/dispatcher'
 import { SESSION_TAB_METHODS } from '../../../src/main/runtime/rpc/methods/session-tabs'
 import { SESSION_TAB_CLOSE_INTENT_RUNTIME_CAPABILITY } from '../../../src/shared/protocol-version'
@@ -149,7 +149,7 @@ async function main(): Promise<void> {
       }
     }
 
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const calls: Record<string, unknown>[] = []
     const sessionByTabId = new Map(config.sessions.map((session) => [session.tabId, session]))
     runtime.setPtyController({
@@ -267,7 +267,7 @@ async function main(): Promise<void> {
         )
         await waitFor(`${session.sessionId} post-close reply`, () =>
           (outputBySessionId.get(session.sessionId) ?? '').includes(
-            `NIGHTSHIFT_GENERATION_CANARY_ACK legacy-close-v${session.protocolVersion}-live ${nonce}`
+            `KOLUX_GENERATION_CANARY_ACK legacy-close-v${session.protocolVersion}-live ${nonce}`
           )
         )
         postClosePing[session.sessionId] = true

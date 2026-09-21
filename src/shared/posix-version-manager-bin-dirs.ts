@@ -56,10 +56,10 @@ const POSIX_VERSION_MANAGER_BIN_DIRS = [
  */
 export function buildPosixFallbackPathPrelude(): string {
   return [
-    `for _nightshift_dir in ${POSIX_VERSION_MANAGER_BIN_DIRS}; do`,
-    '  if [ -d "$_nightshift_dir" ]; then PATH="$PATH:$_nightshift_dir"; fi',
+    `for _kolux_dir in ${POSIX_VERSION_MANAGER_BIN_DIRS}; do`,
+    '  if [ -d "$_kolux_dir" ]; then PATH="$PATH:$_kolux_dir"; fi',
     'done',
     'export PATH',
-    'unset _nightshift_dir'
+    'unset _kolux_dir'
   ].join('\n')
 }

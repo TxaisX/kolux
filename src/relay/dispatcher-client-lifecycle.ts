@@ -245,7 +245,7 @@ export abstract class RelayDispatcherClientLifecycle extends RelayDispatcherClie
         continue
       }
       // Why keepaliveObserved gates this: not every client speaks the keepalive protocol. The
-      // remote `nightshift` CLI sends one `nightshift.cli` request and waits for a result budgeted in minutes
+      // remote `kolux` CLI sends one `kolux.cli` request and waits for a result budgeted in minutes
       // (src/relay/remote-cli-timeout.ts), so judging it on inbound silence would kill
       // `terminal wait`, `--wait` and `orchestration ask` after 20s.
       if (!client.keepaliveObserved || now - client.lastReceivedAt <= TIMEOUT_MS) {

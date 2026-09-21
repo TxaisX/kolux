@@ -16,9 +16,9 @@ import type { PtyRuntimeControllerDeps } from './controller-deps'
  *
  * What it does NOT catch, so do not lean on it: a runtime-backed transport registered under an
  * SSH connection id still reports as `ssh:` and passes, which is fine — the predicate only
- * discounts the `runtime:` spelling. The consolidation moving the SSH path onto nightshiftd is expected
+ * discounts the `runtime:` spelling. The consolidation moving the SSH path onto koluxd is expected
  * to look exactly like that. The other route into `queriedHostIds` is separately fenced to
- * `kind === 'ssh'` in `nightshift-runtime-refresh-pty-worktree-records-with-controller-inventory.ts`.
+ * `kind === 'ssh'` in `kolux-runtime-refresh-pty-worktree-records-with-controller-inventory.ts`.
  */
 describe('the hosts a PTY inventory can report having queried', () => {
   afterEach(() => {

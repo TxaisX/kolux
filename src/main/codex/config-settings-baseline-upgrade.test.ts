@@ -20,10 +20,10 @@ let userDataDir: string
 let previousUserDataPath: string | undefined
 
 beforeEach(() => {
-  tmpHome = mkdtempSync(join(tmpdir(), 'nightshift-codex-settings-upgrade-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-settings-upgrade-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  tmpHome = mkdtempSync(join(tmpdir(), 'kolux-codex-settings-upgrade-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-settings-upgrade-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(tmpHome)
   if (homedir() !== tmpHome) {
     throw new Error('node:os homedir mock is not active; refusing to touch the real ~/.codex')
@@ -34,9 +34,9 @@ afterEach(() => {
   rmSync(tmpHome, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
@@ -54,7 +54,7 @@ function runtimeConfigPath(): string {
 }
 
 function baselinePath(): string {
-  return join(runtimeHomePath(), '.nightshift-config-settings-baseline.json')
+  return join(runtimeHomePath(), '.kolux-config-settings-baseline.json')
 }
 
 function prepareLegacyState(systemConfig: string, runtimeConfig: string): void {

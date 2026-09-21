@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  NIGHTSHIFT_APP_RESTART_ABORTED_EVENT,
-  NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
-  NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
+  KOLUX_APP_RESTART_ABORTED_EVENT,
+  KOLUX_APP_RESTART_STARTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+  KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT
 } from '../../../shared/updater-renderer-events'
 import {
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
-  NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+  KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT
 } from '../../../shared/renderer-shutdown-events'
 import { prepareRendererForAppRestart } from '../../../shared/renderer-restart-preparation'
 import {
@@ -60,11 +60,11 @@ function createLifecycleHarness(
   const cleanupRestartTracking = registerUpdaterBeforeUnloadBypass()
   window.addEventListener('beforeunload', checkpoint)
   window.addEventListener(
-    NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+    KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
     guard.abortAfterCheckpointFailure
   )
   window.addEventListener(abortedEventName, guard.abandonAttempt)
-  window.addEventListener(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT, guard.abandonAttempt)
+  window.addEventListener(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT, guard.abandonAttempt)
   return {
     stageBeforeUnloadSync,
     prepare: () =>
@@ -77,11 +77,11 @@ function createLifecycleHarness(
       cleanupRestartTracking()
       window.removeEventListener('beforeunload', checkpoint)
       window.removeEventListener(
-        NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+        KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
         guard.abortAfterCheckpointFailure
       )
       window.removeEventListener(abortedEventName, guard.abandonAttempt)
-      window.removeEventListener(NIGHTSHIFT_RENDERER_UNLOAD_PREVENTED_EVENT, guard.abandonAttempt)
+      window.removeEventListener(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT, guard.abandonAttempt)
     }
   }
 }
@@ -97,13 +97,13 @@ describe('shutdown checkpoint restart lifecycle', () => {
   it.each([
     {
       lifecycle: 'app restart',
-      startedEventName: NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-      abortedEventName: NIGHTSHIFT_APP_RESTART_ABORTED_EVENT
+      startedEventName: KOLUX_APP_RESTART_STARTED_EVENT,
+      abortedEventName: KOLUX_APP_RESTART_ABORTED_EVENT
     },
     {
       lifecycle: 'updater install',
-      startedEventName: NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
-      abortedEventName: NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
+      startedEventName: KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
+      abortedEventName: KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT
     }
   ])(
     'preserves retry-then-degrade across a checkpoint-caused $lifecycle abort',
@@ -127,14 +127,14 @@ describe('shutdown checkpoint restart lifecycle', () => {
   it('abandons retry state when a later restart attempt is independently canceled', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const harness = createLifecycleHarness(
-      NIGHTSHIFT_APP_RESTART_STARTED_EVENT,
-      NIGHTSHIFT_APP_RESTART_ABORTED_EVENT
+      KOLUX_APP_RESTART_STARTED_EVENT,
+      KOLUX_APP_RESTART_ABORTED_EVENT
     )
     cleanupFns.push(harness.cleanup)
 
     await expect(harness.prepare()).rejects.toThrow('deterministic full-stage failure')
-    window.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_STARTED_EVENT))
-    window.dispatchEvent(new Event(NIGHTSHIFT_APP_RESTART_ABORTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_APP_RESTART_STARTED_EVENT))
+    window.dispatchEvent(new Event(KOLUX_APP_RESTART_ABORTED_EVENT))
     await expect(harness.prepare()).rejects.toThrow('deterministic full-stage failure')
 
     expect(harness.stageBeforeUnloadSync).toHaveBeenCalledTimes(2)
@@ -146,8 +146,8 @@ describe('shutdown checkpoint restart lifecycle', () => {
     const snapshotFailure = "Cannot read properties of null (reading 'toLowerCase')"
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const harness = createLifecycleHarness(
-      NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
-      NIGHTSHIFT_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
+      KOLUX_UPDATER_QUIT_AND_INSTALL_STARTED_EVENT,
+      KOLUX_UPDATER_QUIT_AND_INSTALL_ABORTED_EVENT,
       {
         buildSessionSnapshots: () => {
           throw new Error(snapshotFailure)

@@ -63,13 +63,13 @@ describe('registerGitHubHandlers', () => {
         repoPath: '/workspace/repo',
         prNumber: 42,
         method: 'squash',
-        prRepo: { owner: 'acme', repo: 'nightshift' }
+        prRepo: { owner: 'acme', repo: 'kolux' }
       }
     )
 
     expect(mergePRMock).toHaveBeenCalledWith('/workspace/repo', 42, 'squash', 'openclaw-2', {
       owner: 'acme',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
   })
 
@@ -86,7 +86,7 @@ describe('registerGitHubHandlers', () => {
         prNumber: 42,
         enabled: true,
         method: 'squash',
-        prRepo: { owner: 'acme', repo: 'nightshift' }
+        prRepo: { owner: 'acme', repo: 'kolux' }
       }
     )
 
@@ -98,7 +98,7 @@ describe('registerGitHubHandlers', () => {
       'openclaw-2',
       {
         owner: 'acme',
-        repo: 'nightshift'
+        repo: 'kolux'
       }
     )
   })

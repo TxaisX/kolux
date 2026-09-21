@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { RuntimeClient } from '../../src/cli/runtime-client'
 import type { RuntimeStatus } from '../../src/shared/runtime-types'
 import { waitForSessionReady } from './helpers/store'
@@ -15,9 +15,9 @@ declare global {
 
 test('blocked navigation preserves the renderer document and graph authority', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
+  await waitForSessionReady(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
   const before = (await client.call<RuntimeStatus>('status.get')).result
@@ -31,7 +31,7 @@ test('blocked navigation preserves the renderer document and graph authority', a
     contents.on('did-finish-load', () => probe.finishedLoading++)
     contents.on('did-stop-loading', () => probe.stoppedLoading++)
   })
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     ;(window as unknown as { __blockedNavigationCanary: string }).__blockedNavigationCanary =
       'alive'
     const anchor = document.createElement('a')
@@ -44,7 +44,7 @@ test('blocked navigation preserves the renderer document and graph authority', a
     .poll(() => electronApp.evaluate(() => globalThis.__blockedNavigationProbe))
     .toMatchObject({ startedLoading: 1, finishedLoading: 0, stoppedLoading: 1 })
   expect(
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       () => (window as unknown as { __blockedNavigationCanary?: string }).__blockedNavigationCanary
     )
   ).toBe('alive')
@@ -66,13 +66,13 @@ test('blocked navigation preserves the renderer document and graph authority', a
 
 test('cancelled renderer reload restores the surviving graph authority', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
+  await waitForSessionReady(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
   const before = (await client.call<RuntimeStatus>('status.get')).result
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     ;(window as unknown as { __cancelledReloadCanary: string }).__cancelledReloadCanary = 'alive'
   })
 
@@ -99,7 +99,7 @@ test('cancelled renderer reload restores the surviving graph authority', async (
       authoritativeWindowId: before.authoritativeWindowId
     })
   expect(
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       () => (window as unknown as { __cancelledReloadCanary?: string }).__cancelledReloadCanary
     )
   ).toBe('alive')
@@ -107,13 +107,13 @@ test('cancelled renderer reload restores the surviving graph authority', async (
 
 test('beforeunload cancellation never retires the surviving graph authority', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
-  await waitForSessionReady(nightshiftPage)
+  await waitForSessionReady(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
   const before = (await client.call<RuntimeStatus>('status.get')).result
-  await nightshiftPage.evaluate(() => {
+  await koluxPage.evaluate(() => {
     ;(window as unknown as { __preventedUnloadCanary: string }).__preventedUnloadCanary = 'alive'
     window.addEventListener(
       'beforeunload',
@@ -125,7 +125,7 @@ test('beforeunload cancellation never retires the surviving graph authority', as
     )
   })
   // Electron prevents the unload before Playwright can dismiss the transient dialog.
-  nightshiftPage.once('dialog', (dialog) => void dialog.dismiss().catch(() => undefined))
+  koluxPage.once('dialog', (dialog) => void dialog.dismiss().catch(() => undefined))
 
   const navigationEvents = await electronApp.evaluate(async ({ BrowserWindow }) => {
     const contents = BrowserWindow.getAllWindows()[0]!.webContents
@@ -154,7 +154,7 @@ test('beforeunload cancellation never retires the surviving graph authority', as
     authoritativeWindowId: before.authoritativeWindowId
   })
   expect(
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       () => (window as unknown as { __preventedUnloadCanary?: string }).__preventedUnloadCanary
     )
   ).toBe('alive')

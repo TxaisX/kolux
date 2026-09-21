@@ -21,8 +21,8 @@ function runtimeHost(
   return {
     id: 'runtime:env-1',
     kind: 'runtime',
-    label: 'Remote Nightshift',
-    detail: 'Nightshift server',
+    label: 'Remote Kolux',
+    detail: 'Kolux server',
     health: 'available',
     ...overrides
   } as ExecutionHostRegistryEntry
@@ -92,7 +92,7 @@ describe('buildSetupHostOptions', () => {
       })[0]
     ).toMatchObject({
       isAvailable: true,
-      detail: 'Nightshift server'
+      detail: 'Kolux server'
     })
   })
 
@@ -108,7 +108,7 @@ describe('buildSetupHostOptions', () => {
       })[0]
     ).toMatchObject({
       isAvailable: false,
-      detail: 'Update Nightshift on this host to set up projects'
+      detail: 'Update Kolux on this host to set up projects'
     })
   })
 })

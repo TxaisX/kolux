@@ -10,18 +10,15 @@ describe('IssueSourceIndicator suppression', () => {
 
     // Same slug → null (no information to convey)
     expect(sameGitHubOwnerRepo({ owner: 'o', repo: 'r' }, { owner: 'o', repo: 'r' })).toBe(true)
-    // Case-insensitive equality — the parent design doc calls out that `Txais/Nightshift`
+    // Case-insensitive equality — the parent design doc calls out that `Txais/Kolux`
     // and `TxaisX/nightshift` resolve to the same repo and must suppress.
     expect(
-      sameGitHubOwnerRepo(
-        { owner: 'Txais', repo: 'Nightshift' },
-        { owner: 'TxaisX', repo: 'nightshift' }
-      )
+      sameGitHubOwnerRepo({ owner: 'Txais', repo: 'Kolux' }, { owner: 'TxaisX', repo: 'kolux' })
     ).toBe(true)
     expect(
       sameGitHubOwnerRepo(
-        { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
-        { owner: 'TxaisX', repo: 'nightshift', host: 'ghe.example.test' }
+        { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+        { owner: 'TxaisX', repo: 'kolux', host: 'ghe.example.test' }
       )
     ).toBe(false)
     expect(sameGitHubOwnerRepo({ owner: 'a', repo: 'r' }, { owner: 'b', repo: 'r' })).toBe(false)

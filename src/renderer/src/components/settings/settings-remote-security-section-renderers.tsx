@@ -11,17 +11,17 @@ export function renderServersSettingsSection(context: SettingsRenderContext): Re
   return (
     <SettingsSection
       id="servers"
-      title={translate('auto.components.settings.Settings.bd0181eeca', 'Remote Nightshift Servers')}
+      title={translate('auto.components.settings.Settings.bd0181eeca', 'Remote Kolux Servers')}
       badge="Beta"
       description={
         model.isWebClient
           ? translate(
               'auto.components.settings.Settings.7686cb5c36',
-              'Connect this browser to a saved Nightshift server.'
+              'Connect this browser to a saved Kolux server.'
             )
           : translate(
               'auto.components.settings.Settings.b5ee17826b',
-              'Pair remote Nightshift runtimes for persistent sessions, richer remote state, and web or mobile handoff.'
+              'Pair remote Kolux runtimes for persistent sessions, richer remote state, and web or mobile handoff.'
             )
       }
       searchEntries={navigation.getSectionSearchEntries('servers')}

@@ -20,12 +20,12 @@ import {
 import type { SshConnection } from './ssh-connection'
 import { getRemoteHostPlatform } from './ssh-remote-platform'
 
-const SOCK = '/home/u/.nightshift-remote/relay-0.1.0+aaaa/relay-deadbeef.sock'
+const SOCK = '/home/u/.kolux-remote/relay-0.1.0+aaaa/relay-deadbeef.sock'
 const POSIX_HOST = getRemoteHostPlatform('linux-x64')
 const WINDOWS_HOST = getRemoteHostPlatform('win32-x64')
 
 function probeOutput(lines: string[]): string {
-  return ['NIGHTSHIFT-INCUMBENT-BEGIN', ...lines, 'NIGHTSHIFT-INCUMBENT-END'].join('\n')
+  return ['KOLUX-INCUMBENT-BEGIN', ...lines, 'KOLUX-INCUMBENT-END'].join('\n')
 }
 
 describe('parseRelayEndpointIncumbentProbe', () => {

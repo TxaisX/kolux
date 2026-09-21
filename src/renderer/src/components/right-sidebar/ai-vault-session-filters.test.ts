@@ -69,7 +69,7 @@ describe('filterAiVaultSessions', () => {
       {
         ...baseSession,
         id: 'claude:old-path',
-        cwd: '/Users/ada/workspaces/nightshift/bream/src'
+        cwd: '/Users/ada/workspaces/kolux/bream/src'
       },
       {
         ...baseSession,
@@ -85,8 +85,8 @@ describe('filterAiVaultSessions', () => {
         scope: 'workspace',
         sort: 'updated',
         activeWorktreePaths: [
-          '/Users/ada/workspaces/nightshift/fix-agent-history',
-          '/Users/ada/workspaces/nightshift/bream'
+          '/Users/ada/workspaces/kolux/fix-agent-history',
+          '/Users/ada/workspaces/kolux/bream'
         ],
         hideEmptySessions: true
       }).map((session) => session.id)
@@ -317,10 +317,7 @@ describe('filterAiVaultSessions', () => {
     const projectSession = { ...baseSession, id: 'claude:project', cwd: '/repo/project' }
     const otherSession = { ...baseSession, id: 'claude:other', cwd: '/repo/other' }
     const sessionProjectById = new Map([
-      [
-        projectSession.id,
-        { kind: 'repo' as const, key: 'project:nightshift', label: 'Nightshift' }
-      ],
+      [projectSession.id, { kind: 'repo' as const, key: 'project:kolux', label: 'Kolux' }],
       [otherSession.id, { kind: 'repo' as const, key: 'project:other', label: 'Other' }]
     ])
 
@@ -331,7 +328,7 @@ describe('filterAiVaultSessions', () => {
         scope: 'project',
         sort: 'updated',
         activeWorktreePaths: [],
-        activeProjectKey: 'project:nightshift',
+        activeProjectKey: 'project:kolux',
         sessionProjectById,
         hideEmptySessions: true
       }).map((session) => session.id)
@@ -354,12 +351,9 @@ describe('filterAiVaultSessions', () => {
 
   it('matches repo: queries against resolved project labels before folder fallback', () => {
     const sessionProjectById = new Map([
-      [
-        baseSession.id,
-        { kind: 'repo' as const, key: 'project:nightshift', label: 'Canonical Nightshift' }
-      ]
+      [baseSession.id, { kind: 'repo' as const, key: 'project:kolux', label: 'Canonical Kolux' }]
     ])
-    const projectLabelByKey = new Map([['project:nightshift', 'Canonical Nightshift']])
+    const projectLabelByKey = new Map([['project:kolux', 'Canonical Kolux']])
 
     expect(
       filterAiVaultSessions([baseSession], {
@@ -380,28 +374,28 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
   it('includes current and same-repo prior filesystem paths', () => {
     expect(
       deriveAiVaultWorkspaceScopePaths({
-        id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+        id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
         repoId: 'repo1',
-        path: '/Users/ada/workspaces/nightshift/fix-agent-history',
-        priorWorktreeIds: ['repo1::/Users/ada/workspaces/nightshift/bream']
+        path: '/Users/ada/workspaces/kolux/fix-agent-history',
+        priorWorktreeIds: ['repo1::/Users/ada/workspaces/kolux/bream']
       })
     ).toEqual([
-      '/Users/ada/workspaces/nightshift/fix-agent-history',
-      '/Users/ada/workspaces/nightshift/bream'
+      '/Users/ada/workspaces/kolux/fix-agent-history',
+      '/Users/ada/workspaces/kolux/bream'
     ])
   })
 
   it('strips folder-workspace instance suffixes from prior ids', () => {
     expect(
       deriveAiVaultWorkspaceScopePaths({
-        id: 'repo1::/Users/ada/folders/nightshift',
+        id: 'repo1::/Users/ada/folders/kolux',
         repoId: 'repo1',
-        path: '/Users/ada/folders/nightshift',
+        path: '/Users/ada/folders/kolux',
         priorWorktreeIds: [
-          'repo1::/Users/ada/folders/old-nightshift::workspace:123e4567-e89b-12d3-a456-426614174000'
+          'repo1::/Users/ada/folders/old-kolux::workspace:123e4567-e89b-12d3-a456-426614174000'
         ]
       })
-    ).toEqual(['/Users/ada/folders/nightshift', '/Users/ada/folders/old-nightshift'])
+    ).toEqual(['/Users/ada/folders/kolux', '/Users/ada/folders/old-kolux'])
   })
 
   it('ignores malformed, different-repo, relative, empty, and duplicate aliases', () => {
@@ -426,30 +420,30 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
     expect(
       deriveAiVaultWorkspaceScopePaths(
         {
-          id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+          id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
           repoId: 'repo1',
-          path: '/Users/ada/workspaces/nightshift/fix-agent-history',
+          path: '/Users/ada/workspaces/kolux/fix-agent-history',
           priorWorktreeIds: [
-            'repo1::/Users/ada/workspaces/nightshift/bream',
-            'repo1::/Users/ada/workspaces/nightshift/unclaimed-old-path'
+            'repo1::/Users/ada/workspaces/kolux/bream',
+            'repo1::/Users/ada/workspaces/kolux/unclaimed-old-path'
           ]
         },
         [
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+            id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/fix-agent-history'
+            path: '/Users/ada/workspaces/kolux/fix-agent-history'
           },
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/bream',
+            id: 'repo1::/Users/ada/workspaces/kolux/bream',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/bream'
+            path: '/Users/ada/workspaces/kolux/bream'
           }
         ]
       )
     ).toEqual([
-      '/Users/ada/workspaces/nightshift/fix-agent-history',
-      '/Users/ada/workspaces/nightshift/unclaimed-old-path'
+      '/Users/ada/workspaces/kolux/fix-agent-history',
+      '/Users/ada/workspaces/kolux/unclaimed-old-path'
     ])
   })
 
@@ -457,30 +451,30 @@ describe('deriveAiVaultWorkspaceScopePaths', () => {
     expect(
       deriveAiVaultWorkspaceScopePaths(
         {
-          id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+          id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
           repoId: 'repo1',
-          path: '/Users/ada/workspaces/nightshift/fix-agent-history',
+          path: '/Users/ada/workspaces/kolux/fix-agent-history',
           priorWorktreeIds: [
-            'repo1::/Users/ada/workspaces/nightshift/bream',
-            'repo1::/Users/ada/workspaces/nightshift/unclaimed-old-path'
+            'repo1::/Users/ada/workspaces/kolux/bream',
+            'repo1::/Users/ada/workspaces/kolux/unclaimed-old-path'
           ]
         },
         [
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+            id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/fix-agent-history'
+            path: '/Users/ada/workspaces/kolux/fix-agent-history'
           },
           {
-            id: 'repo2::/Users/ada/workspaces/nightshift/bream',
+            id: 'repo2::/Users/ada/workspaces/kolux/bream',
             repoId: 'repo2',
-            path: '/Users/ada/workspaces/nightshift/bream'
+            path: '/Users/ada/workspaces/kolux/bream'
           }
         ]
       )
     ).toEqual([
-      '/Users/ada/workspaces/nightshift/fix-agent-history',
-      '/Users/ada/workspaces/nightshift/unclaimed-old-path'
+      '/Users/ada/workspaces/kolux/fix-agent-history',
+      '/Users/ada/workspaces/kolux/unclaimed-old-path'
     ])
   })
 })
@@ -490,21 +484,21 @@ describe('deriveAiVaultScopeSessionPaths', () => {
     expect(
       deriveAiVaultScopeSessionPaths(
         {
-          id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+          id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
           repoId: 'repo1',
-          path: '/Users/ada/workspaces/nightshift/fix-agent-history',
+          path: '/Users/ada/workspaces/kolux/fix-agent-history',
           priorWorktreeIds: []
         },
         [
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/fix-agent-history',
+            id: 'repo1::/Users/ada/workspaces/kolux/fix-agent-history',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/fix-agent-history'
+            path: '/Users/ada/workspaces/kolux/fix-agent-history'
           },
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/sibling',
+            id: 'repo1::/Users/ada/workspaces/kolux/sibling',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/sibling'
+            path: '/Users/ada/workspaces/kolux/sibling'
           },
           {
             id: 'repo2::/Users/ada/workspaces/other/elsewhere',
@@ -514,8 +508,8 @@ describe('deriveAiVaultScopeSessionPaths', () => {
         ]
       )
     ).toEqual([
-      '/Users/ada/workspaces/nightshift/fix-agent-history',
-      '/Users/ada/workspaces/nightshift/sibling'
+      '/Users/ada/workspaces/kolux/fix-agent-history',
+      '/Users/ada/workspaces/kolux/sibling'
     ])
   })
 
@@ -527,30 +521,30 @@ describe('deriveAiVaultScopeSessionPaths', () => {
     expect(
       deriveAiVaultScopeSessionPaths(
         {
-          id: 'repo1::/Users/ada/workspaces/nightshift/app',
+          id: 'repo1::/Users/ada/workspaces/kolux/app',
           repoId: 'repo1',
-          path: '/Users/ada/workspaces/nightshift/app',
+          path: '/Users/ada/workspaces/kolux/app',
           priorWorktreeIds: []
         },
         [
           {
-            id: 'repo1::/Users/ada/workspaces/nightshift/app',
+            id: 'repo1::/Users/ada/workspaces/kolux/app',
             repoId: 'repo1',
-            path: '/Users/ada/workspaces/nightshift/app'
+            path: '/Users/ada/workspaces/kolux/app'
           },
           {
-            id: 'repo2::/Users/ada/workspaces/nightshift/docs',
+            id: 'repo2::/Users/ada/workspaces/kolux/docs',
             repoId: 'repo2',
-            path: '/Users/ada/workspaces/nightshift/docs'
+            path: '/Users/ada/workspaces/kolux/docs'
           }
         ],
         {
-          activeProjectKey: 'project:nightshift',
+          activeProjectKey: 'project:kolux',
           projectHostSetupProjection: {
             projects: [
               {
-                id: 'nightshift',
-                displayName: 'Nightshift',
+                id: 'kolux',
+                displayName: 'Kolux',
                 badgeColor: '#2563eb',
                 sourceRepoIds: ['repo1', 'repo2'],
                 createdAt: 1,
@@ -560,11 +554,11 @@ describe('deriveAiVaultScopeSessionPaths', () => {
             setups: [
               {
                 id: 'setup-1',
-                projectId: 'nightshift',
+                projectId: 'kolux',
                 hostId: 'local',
                 repoId: 'repo1',
                 displayName: 'App',
-                path: '/Users/ada/workspaces/nightshift/app',
+                path: '/Users/ada/workspaces/kolux/app',
                 setupState: 'ready',
                 setupMethod: 'imported-existing-folder',
                 createdAt: 1,
@@ -572,11 +566,11 @@ describe('deriveAiVaultScopeSessionPaths', () => {
               },
               {
                 id: 'setup-2',
-                projectId: 'nightshift',
+                projectId: 'kolux',
                 hostId: 'local',
                 repoId: 'repo2',
                 displayName: 'Docs',
-                path: '/Users/ada/workspaces/nightshift/docs',
+                path: '/Users/ada/workspaces/kolux/docs',
                 setupState: 'ready',
                 setupMethod: 'imported-existing-folder',
                 createdAt: 1,
@@ -586,32 +580,32 @@ describe('deriveAiVaultScopeSessionPaths', () => {
           }
         }
       )
-    ).toEqual(['/Users/ada/workspaces/nightshift/app', '/Users/ada/workspaces/nightshift/docs'])
+    ).toEqual(['/Users/ada/workspaces/kolux/app', '/Users/ada/workspaces/kolux/docs'])
   })
 
   it('keeps live worktree paths when another setup shares the repo id', () => {
     expect(
       deriveAiVaultScopeSessionPaths(
         {
-          id: 'repo1::/Users/ada/workspaces/nightshift/app',
+          id: 'repo1::/Users/ada/workspaces/kolux/app',
           repoId: 'repo1',
-          path: '/Users/ada/workspaces/nightshift/app',
+          path: '/Users/ada/workspaces/kolux/app',
           priorWorktreeIds: []
         },
         [
           {
-            id: 'repo2::/Users/ada/workspaces/nightshift/docs-worktree',
+            id: 'repo2::/Users/ada/workspaces/kolux/docs-worktree',
             repoId: 'repo2',
-            path: '/Users/ada/workspaces/nightshift/docs-worktree'
+            path: '/Users/ada/workspaces/kolux/docs-worktree'
           }
         ],
         {
-          activeProjectKey: 'project:nightshift',
+          activeProjectKey: 'project:kolux',
           projectHostSetupProjection: {
             projects: [
               {
-                id: 'nightshift',
-                displayName: 'Nightshift',
+                id: 'kolux',
+                displayName: 'Kolux',
                 badgeColor: '#2563eb',
                 sourceRepoIds: ['repo1', 'repo2'],
                 createdAt: 1,
@@ -621,11 +615,11 @@ describe('deriveAiVaultScopeSessionPaths', () => {
             setups: [
               {
                 id: 'setup-1',
-                projectId: 'nightshift',
+                projectId: 'kolux',
                 hostId: 'local',
                 repoId: 'repo2',
                 displayName: 'Docs',
-                path: '/Users/ada/workspaces/nightshift/docs',
+                path: '/Users/ada/workspaces/kolux/docs',
                 setupState: 'ready',
                 setupMethod: 'imported-existing-folder',
                 createdAt: 1,
@@ -648,9 +642,9 @@ describe('deriveAiVaultScopeSessionPaths', () => {
         }
       )
     ).toEqual([
-      '/Users/ada/workspaces/nightshift/app',
-      '/Users/ada/workspaces/nightshift/docs-worktree',
-      '/Users/ada/workspaces/nightshift/docs'
+      '/Users/ada/workspaces/kolux/app',
+      '/Users/ada/workspaces/kolux/docs-worktree',
+      '/Users/ada/workspaces/kolux/docs'
     ])
   })
 })
@@ -689,17 +683,17 @@ describe('groupAiVaultSessions', () => {
     const sessionProjectById = new Map(
       sessions.map((session) => [
         session.id,
-        { kind: 'repo' as const, key: 'project:nightshift', label: 'Nightshift' }
+        { kind: 'repo' as const, key: 'project:kolux', label: 'Kolux' }
       ])
     )
-    const projectLabelByKey = new Map([['project:nightshift', 'Canonical Nightshift']])
+    const projectLabelByKey = new Map([['project:kolux', 'Canonical Kolux']])
 
     expect(
       groupAiVaultSessions(sessions, 'project', {
         sessionProjectById,
         projectLabelByKey
       })
-    ).toEqual([{ key: 'project:nightshift', label: 'Canonical Nightshift', sessions }])
+    ).toEqual([{ key: 'project:kolux', label: 'Canonical Kolux', sessions }])
   })
 
   it('falls back to folder grouping when project metadata is unavailable', () => {
@@ -711,9 +705,9 @@ describe('groupAiVaultSessions', () => {
 
 describe('parseVaultQuery', () => {
   it('keeps quoted terms together', () => {
-    expect(parseVaultQuery('"resume picker" repo:nightshift path:src')).toEqual({
+    expect(parseVaultQuery('"resume picker" repo:kolux path:src')).toEqual({
       terms: ['resume picker'],
-      repoTerms: ['nightshift'],
+      repoTerms: ['kolux'],
       pathTerms: ['src']
     })
   })

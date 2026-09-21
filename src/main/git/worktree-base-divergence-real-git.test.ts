@@ -25,7 +25,7 @@ function git(cwd: string, args: string[]): string {
 }
 
 async function createRepo(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-base-divergence-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-base-divergence-'))
   tempRoots.push(root)
   const repoPath = join(root, 'repo')
   execFileSync('git', ['init', '--quiet', repoPath])

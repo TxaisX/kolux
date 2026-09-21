@@ -5,7 +5,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 // Why: afterEach deletes every target carrying this prefix, so two workers loading
@@ -97,24 +97,24 @@ async function listTargetIdsByLabelPrefix(page: Page, prefix: string): Promise<s
 }
 
 test.describe('SSH host add/edit modal', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
   })
 
-  test.afterEach(async ({ nightshiftPage }) => {
-    const ids = await listTargetIdsByLabelPrefix(nightshiftPage, HOST_PREFIX)
+  test.afterEach(async ({ koluxPage }) => {
+    const ids = await listTargetIdsByLabelPrefix(koluxPage, HOST_PREFIX)
     if (ids.length > 0) {
-      await removeSshTargets(nightshiftPage, ids)
+      await removeSshTargets(koluxPage, ids)
     }
   })
 
   test('opens add/edit form in a viewport-stable dialog over a long host list', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const seeded = await seedSshTargets(nightshiftPage, 10)
-    await openSshHostSettings(nightshiftPage)
+    const seeded = await seedSshTargets(koluxPage, 10)
+    await openSshHostSettings(koluxPage)
 
-    const sshSection = nightshiftPage.locator('[data-settings-section="ssh"]')
+    const sshSection = koluxPage.locator('[data-settings-section="ssh"]')
     // Why: seed first, then open settings so SshPane's listTargets load includes them.
     for (const label of seeded.labels.slice(0, 3)) {
       await expect(sshSection.getByText(label, { exact: true })).toBeVisible()
@@ -123,7 +123,7 @@ test.describe('SSH host add/edit modal', () => {
     // ── Add flow ────────────────────────────────────────────────────
     await sshSection.getByRole('button', { name: 'Add Target' }).click()
 
-    const addDialog = nightshiftPage.getByRole('dialog', { name: 'Add SSH host' })
+    const addDialog = koluxPage.getByRole('dialog', { name: 'Add SSH host' })
     await expect(addDialog).toBeVisible()
     await expect(addDialog.getByRole('heading', { name: 'Add SSH host' })).toBeInViewport()
     await expect(
@@ -161,7 +161,7 @@ test.describe('SSH host add/edit modal', () => {
     )
     await createdCard.getByRole('button', { name: 'Edit target' }).click()
 
-    const editDialog = nightshiftPage.getByRole('dialog', { name: 'Edit SSH host' })
+    const editDialog = koluxPage.getByRole('dialog', { name: 'Edit SSH host' })
     await expect(editDialog).toBeVisible()
     await expect(editDialog.getByRole('heading', { name: 'Edit SSH host' })).toBeInViewport()
     await expect(
@@ -189,7 +189,7 @@ test.describe('SSH host add/edit modal', () => {
 
     // Dirty outside-click must not discard the draft.
     await editDialog.locator('#ssh-target-label').fill(`${createdLabel}-dirty`)
-    await nightshiftPage.locator('[data-slot="dialog-overlay"]').click({ position: { x: 8, y: 8 } })
+    await koluxPage.locator('[data-slot="dialog-overlay"]').click({ position: { x: 8, y: 8 } })
     await expect(editDialog).toBeVisible()
     await expect(editDialog.locator('#ssh-target-label')).toHaveValue(`${createdLabel}-dirty`)
 
@@ -198,7 +198,7 @@ test.describe('SSH host add/edit modal', () => {
     await expect(editDialog).toBeHidden()
 
     await createdCard.getByRole('button', { name: 'Edit target' }).click()
-    const reopened = nightshiftPage.getByRole('dialog', { name: 'Edit SSH host' })
+    const reopened = koluxPage.getByRole('dialog', { name: 'Edit SSH host' })
     await expect(reopened).toBeVisible()
     await expect(reopened.locator('#ssh-target-label')).toHaveValue(createdLabel)
     await expect(reopened.getByRole('button', { name: 'Advanced' })).toHaveAttribute(
@@ -208,8 +208,8 @@ test.describe('SSH host add/edit modal', () => {
     await reopened.getByRole('button', { name: 'Cancel' }).click()
   })
 
-  test('add-ssh-host settings intent opens the same modal dialog', async ({ nightshiftPage }) => {
-    await nightshiftPage.evaluate(() => {
+  test('add-ssh-host settings intent opens the same modal dialog', async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       if (!state) {
         throw new Error('store unavailable')
@@ -217,12 +217,12 @@ test.describe('SSH host add/edit modal', () => {
       state.openSettingsTarget({ pane: 'ssh', repoId: null, intent: 'add-ssh-host' })
       state.openSettingsPage()
     })
-    await expect(nightshiftPage.getByPlaceholder('Search settings')).toBeVisible({
+    await expect(koluxPage.getByPlaceholder('Search settings')).toBeVisible({
       timeout: 10_000
     })
-    await dismissTransientAnnouncement(nightshiftPage)
+    await dismissTransientAnnouncement(koluxPage)
 
-    const dialog = nightshiftPage.getByRole('dialog', { name: 'Add SSH host' })
+    const dialog = koluxPage.getByRole('dialog', { name: 'Add SSH host' })
     await expect(dialog).toBeVisible({ timeout: 10_000 })
     await expect(dialog.getByRole('heading', { name: 'Add SSH host' })).toBeInViewport()
     await expect(dialog.locator('#ssh-target-host')).toBeFocused()

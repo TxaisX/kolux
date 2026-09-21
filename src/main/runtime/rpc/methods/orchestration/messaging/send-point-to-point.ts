@@ -1,5 +1,5 @@
 import type { MessagePriority, MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { reconcileLifecycleMessage } from '../../../../orchestration/lifecycle-reconciliation'
 import { bindCoordinatorMutationPayload } from '../../../../orchestration/dispatch-message-binding'
 import { isDispatchMutationMessageType, parseMessageTaskId } from '../schemas'
@@ -15,7 +15,7 @@ type SendReceipt = <T extends object>(receipt: T) => T & { warnings?: SendRecipi
 
 export function sendPointToPointMessage(args: {
   params: SendParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   from: string
   to: string

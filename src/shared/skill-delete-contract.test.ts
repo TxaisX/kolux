@@ -102,7 +102,7 @@ describe('plan and result schemas', () => {
           name: 'demo',
           status: 'partial',
           removedPaths: [],
-          stagedPaths: ['/root/.demo.nightshift-skill-delete-1']
+          stagedPaths: ['/root/.demo.kolux-skill-delete-1']
         }
       ]
     })

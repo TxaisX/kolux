@@ -19,7 +19,7 @@ describe('WSL process-group termination', () => {
 
     expect(args.slice(0, 2)).toEqual(['sh', '-c'])
     expect(args.slice(-2)).toEqual(['git', 'fetch'])
-    expect(args.join(' ')).toContain('__NIGHTSHIFT_WSL_PROCESS_GROUP_')
+    expect(args.join(' ')).toContain('__KOLUX_WSL_PROCESS_GROUP_')
     expect(args[2]).toContain('setsid --wait sh -c')
   })
 
@@ -34,7 +34,7 @@ describe('WSL process-group termination', () => {
   it('forces and verifies the reported guest process group', async () => {
     const termination = createWslProcessGroupTermination('Ubuntu')
     const wrapped = termination.wrapGuestArgs(['git', 'fetch']).join(' ')
-    const marker = wrapped.match(/(__NIGHTSHIFT_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
+    const marker = wrapped.match(/(__KOLUX_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
     termination.observeStderr?.(Buffer.from(`${marker}43`))
     // The marker line is still truncated; committing 43 would target a stranger.
     await expect(termination.signal({} as ChildProcess)).resolves.toBe(false)
@@ -50,7 +50,7 @@ describe('WSL process-group termination', () => {
   it('kills the group through the WSL runner, never a raw wsl.exe spawn', async () => {
     const termination = createWslProcessGroupTermination('Ubuntu')
     const wrapped = termination.wrapGuestArgs(['git', 'fetch']).join(' ')
-    const marker = wrapped.match(/(__NIGHTSHIFT_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
+    const marker = wrapped.match(/(__KOLUX_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
     termination.observeStderr?.(Buffer.from(`${marker}4321\n`))
 
     await termination.signal({} as ChildProcess)
@@ -77,7 +77,7 @@ describe('WSL process-group termination', () => {
     runWslProcessMock.mockResolvedValue({ code: null, timedOut: true })
     const termination = createWslProcessGroupTermination('Ubuntu')
     const wrapped = termination.wrapGuestArgs(['git', 'fetch']).join(' ')
-    const marker = wrapped.match(/(__NIGHTSHIFT_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
+    const marker = wrapped.match(/(__KOLUX_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
     termination.observeStderr?.(Buffer.from(`${marker}4321\n`))
 
     await expect(termination.force({} as ChildProcess)).resolves.toBe(false)
@@ -86,7 +86,7 @@ describe('WSL process-group termination', () => {
   it('retains the guest identity from a large coalesced stderr chunk', async () => {
     const termination = createWslProcessGroupTermination('Ubuntu')
     const wrapped = termination.wrapGuestArgs(['git', 'fetch']).join(' ')
-    const marker = wrapped.match(/(__NIGHTSHIFT_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
+    const marker = wrapped.match(/(__KOLUX_WSL_PROCESS_GROUP_[0-9a-f-]+__=)/)?.[1]
     termination.observeStderr?.(Buffer.from(`${marker}4321\n${'x'.repeat(1_024)}`))
 
     await expect(termination.signal({} as ChildProcess)).resolves.toBe(true)

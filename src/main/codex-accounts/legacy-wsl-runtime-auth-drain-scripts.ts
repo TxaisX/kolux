@@ -15,13 +15,13 @@ export * from './legacy-wsl-runtime-auth-drain-exit-codes'
 export { FINALIZE_ABSENT_AUTH_SCRIPT } from './legacy-wsl-runtime-auth-finalize-script'
 export const INSPECT_LEGACY_AUTH_SCRIPT = `
 set -eu
-source_recovery_auth="$3.nightshift-drain-source"
-source_quarantine_auth="$3.nightshift-drain-live-source"
-destination_recovery_auth="$3.nightshift-drain-destination"
-destination_recovery_path="$3.nightshift-drain-destination-path"
-session_link_manifest="$3.nightshift-drain-session-links"
-session_commit_marker="$3.nightshift-drain-session-commit"
-session_stage_root="$3.nightshift-drain-session-stage"
+source_recovery_auth="$3.kolux-drain-source"
+source_quarantine_auth="$3.kolux-drain-live-source"
+destination_recovery_auth="$3.kolux-drain-destination"
+destination_recovery_path="$3.kolux-drain-destination-path"
+session_link_manifest="$3.kolux-drain-session-links"
+session_commit_marker="$3.kolux-drain-session-commit"
+session_stage_root="$3.kolux-drain-session-stage"
 ${ROLLBACK_SESSION_LINKS_FUNCTION}
 ${RESOLVE_LEGACY_HOME_SCRIPT}
 source_auth="$legacy_home/auth.json"
@@ -85,14 +85,14 @@ fi
 
 export const APPLY_LEGACY_AUTH_SCRIPT = `
 set -eu
-source_recovery_auth="$3.nightshift-drain-source"
-source_quarantine_auth="$3.nightshift-drain-live-source"
-destination_recovery_auth="$3.nightshift-drain-destination"
-destination_recovery_path="$3.nightshift-drain-destination-path"
-session_link_manifest="$3.nightshift-drain-session-links"
-session_commit_marker="$3.nightshift-drain-session-commit"
-session_stage_root="$3.nightshift-drain-session-stage"
-session_scan_watermark="$3.nightshift-drain-session-watermark"
+source_recovery_auth="$3.kolux-drain-source"
+source_quarantine_auth="$3.kolux-drain-live-source"
+destination_recovery_auth="$3.kolux-drain-destination"
+destination_recovery_path="$3.kolux-drain-destination-path"
+session_link_manifest="$3.kolux-drain-session-links"
+session_commit_marker="$3.kolux-drain-session-commit"
+session_stage_root="$3.kolux-drain-session-stage"
+session_scan_watermark="$3.kolux-drain-session-watermark"
 ${ROLLBACK_SESSION_LINKS_FUNCTION}
 if [ -e "$3" ] || [ -L "$3" ]; then
   [ -f "$3" ] && [ ! -L "$3" ] || exit 46
@@ -125,15 +125,15 @@ if [ -e "$destination_recovery_auth" ] || [ -L "$destination_recovery_auth" ] ||
   ${DISCARD_DESTINATION_RECOVERY_COMMAND} || exit 46
 fi
 umask 077
-temporary_auth="$target_auth.nightshift-drain-$$"
-temporary_credentials="$target_home/.credentials.json.nightshift-drain-$$"
-temporary_previous_auth="$target_auth.nightshift-drain-previous-$$"
-temporary_destination_auth="$target_auth.nightshift-drain-destination-$$"
-temporary_source_auth="$source_auth.nightshift-drain-source-$$"
-temporary_destination_snapshot="$target_auth.nightshift-drain-snapshot-$$"
-temporary_destination_path="$3.nightshift-drain-destination-path-$$"
-temporary_source_snapshot="$3.nightshift-drain-source-$$"
-temporary_marker="$3.nightshift-drain-$$"
+temporary_auth="$target_auth.kolux-drain-$$"
+temporary_credentials="$target_home/.credentials.json.kolux-drain-$$"
+temporary_previous_auth="$target_auth.kolux-drain-previous-$$"
+temporary_destination_auth="$target_auth.kolux-drain-destination-$$"
+temporary_source_auth="$source_auth.kolux-drain-source-$$"
+temporary_destination_snapshot="$target_auth.kolux-drain-snapshot-$$"
+temporary_destination_path="$3.kolux-drain-destination-path-$$"
+temporary_source_snapshot="$3.kolux-drain-source-$$"
+temporary_marker="$3.kolux-drain-$$"
 temporary_session_scan_watermark="$session_scan_watermark.$$"
 drain_marker="$3"
 expected_source_hash="$5"

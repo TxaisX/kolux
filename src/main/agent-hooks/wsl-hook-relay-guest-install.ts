@@ -72,7 +72,7 @@ export async function maybeRerunWslRelayGuestInstall(
     return
   }
   try {
-    // Why: the pass also re-ships the plugin source, so a mid-session Nightshift upgrade refreshes it.
+    // Why: the pass also re-ships the plugin source, so a mid-session Kolux upgrade refreshes it.
     await runWslRelayGuestInstall(deps, state, mux, guestHome)
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)

@@ -43,7 +43,7 @@ function setDownloadPlatform(platform: NodeJS.Platform): void {
 beforeEach(() => {
   toastErrorMock.mockReset()
   toastSuccessMock.mockReset()
-  delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+  delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
 })
 
 describe('FileExplorerRow collapse folder action', () => {
@@ -106,15 +106,14 @@ describe('FileExplorerRow collapse folder action', () => {
     expect(shouldShowRemoteDownloadAction(fileNode, 'ssh-1', null, false)).toBe(true)
     expect(shouldShowRemoteDownloadAction(directoryNode, null, runtimeContext)).toBe(false)
 
-    ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+    ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
 
     expect(shouldShowRemoteDownloadAction(fileNode, 'ssh-1')).toBe(false)
     expect(shouldShowRemoteDownloadAction(fileNode, null, runtimeContext)).toBe(false)
   })
 
   it('shows OS file copy for single local rows and SSH file rows on desktop', () => {
-    const previous = (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean })
-      .__NIGHTSHIFT_WEB_CLIENT__
+    const previous = (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
     try {
       expect(shouldShowCopyFileAction(fileNode, null, 1)).toBe(true)
       expect(shouldShowCopyFileAction(directoryNode, null, 1)).toBe(true)
@@ -122,11 +121,11 @@ describe('FileExplorerRow collapse folder action', () => {
       expect(shouldShowCopyFileAction(fileNode, 'ssh-1', 1)).toBe(true)
       expect(shouldShowCopyFileAction(directoryNode, 'ssh-1', 1)).toBe(false)
 
-      ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+      ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
 
       expect(shouldShowCopyFileAction(fileNode, null, 1)).toBe(false)
     } finally {
-      ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = previous
+      ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = previous
     }
   })
 
@@ -176,7 +175,7 @@ describe('FileExplorerRow collapse folder action', () => {
     await copyFileToOsClipboard(fileNode, 'ssh-1')
 
     expect(toastErrorMock).toHaveBeenCalledWith(
-      "Could not copy the file because Nightshift's temporary storage is unavailable"
+      "Could not copy the file because Kolux's temporary storage is unavailable"
     )
   })
 

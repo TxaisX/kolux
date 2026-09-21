@@ -1,6 +1,6 @@
 /**
  * Unit tests for repos:initGit — turning an existing local, non-git folder into a
- * git repo (nightshift's "Make it a git repo" flow off the non-git-folder dialog).
+ * git repo (kolux's "Make it a git repo" flow off the non-git-folder dialog).
  *
  * Pins the invariants that matter here:
  *   - Boundary validation (path required/absolute, exists, is a directory, not
@@ -198,7 +198,9 @@ describe('repos:initGit', () => {
   })
 
   it('propagates an error from the local registration path', async () => {
-    addLocalRepoFromPathMock.mockResolvedValueOnce({ error: 'Not a valid git repository: /tmp/proj' })
+    addLocalRepoFromPathMock.mockResolvedValueOnce({
+      error: 'Not a valid git repository: /tmp/proj'
+    })
 
     const result = await callInitGit({ path: '/tmp/proj' })
 

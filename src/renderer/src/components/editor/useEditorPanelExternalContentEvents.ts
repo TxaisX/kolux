@@ -3,8 +3,8 @@ import type { useAppStore } from '@/store'
 import type { OpenFile } from '@/store/slices/editor'
 import {
   getOpenFilesForExternalFileChange,
-  NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
-  NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT,
+  KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+  KOLUX_EDITOR_FILE_SAVED_EVENT,
   type EditorFileSavedDetail,
   type EditorPathMutationTarget
 } from './editor-autosave'
@@ -111,12 +111,9 @@ export function useEditorPanelExternalContentEvents({
         invalidateDiffContent(invalidatedDiffFileIds)
       }
     }
-    window.addEventListener(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
+    window.addEventListener(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
     return () =>
-      window.removeEventListener(
-        NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
-        handler as EventListener
-      )
+      window.removeEventListener(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, handler as EventListener)
   }, [
     activeContentFileIdRef,
     editorViewModeRef,
@@ -156,9 +153,8 @@ export function useEditorPanelExternalContentEvents({
         return { ...prev, [file.id]: { ...existing, modifiedContent: detail.content } }
       })
     }
-    window.addEventListener(NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT, handler as EventListener)
-    return () =>
-      window.removeEventListener(NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT, handler as EventListener)
+    window.addEventListener(KOLUX_EDITOR_FILE_SAVED_EVENT, handler as EventListener)
+    return () => window.removeEventListener(KOLUX_EDITOR_FILE_SAVED_EVENT, handler as EventListener)
   }, [openFilesRef, setDiffContents, setFileContents])
 }
 

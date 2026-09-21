@@ -35,7 +35,7 @@ export type FileExplorerRowProps = {
   connectionId?: string | null
   runtimeDownloadContext?: RuntimeFileOperationArgs | null
   supportsFolderDownload?: boolean
-  canOpenInNightshiftBrowser: boolean
+  canOpenInKoluxBrowser: boolean
   canCollapseFolderSubtree: boolean
   targetDir: string
   targetDepth: number
@@ -76,7 +76,7 @@ export function FileExplorerRow({
   connectionId,
   runtimeDownloadContext,
   supportsFolderDownload = false,
-  canOpenInNightshiftBrowser,
+  canOpenInKoluxBrowser,
   canCollapseFolderSubtree,
   targetDir,
   targetDepth,
@@ -256,7 +256,7 @@ export function FileExplorerRow({
         connectionId={connectionId}
         runtimeDownloadContext={runtimeDownloadContext}
         supportsFolderDownload={supportsFolderDownload}
-        canOpenInNightshiftBrowser={canOpenInNightshiftBrowser}
+        canOpenInKoluxBrowser={canOpenInKoluxBrowser}
         canCollapseFolderSubtree={canCollapseFolderSubtree}
         targetDir={targetDir}
         targetDepth={targetDepth}

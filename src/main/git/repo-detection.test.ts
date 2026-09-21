@@ -26,7 +26,7 @@ describe('isGitRepo', () => {
   let tmpDir: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'nightshift-repo-detect-'))
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'kolux-repo-detect-'))
   })
 
   afterEach(() => {
@@ -146,9 +146,9 @@ describe('isGitRepo', () => {
     git(realRepo, ['init', '--quiet'])
     git(realRepo, [
       '-c',
-      'user.name=Nightshift Test',
+      'user.name=Kolux Test',
       '-c',
-      'user.email=nightshift@example.com',
+      'user.email=kolux@example.com',
       'commit',
       '--allow-empty',
       '--message',
@@ -195,7 +195,7 @@ describe('isGitRepo', () => {
   it('rejects a .git file that points at a missing gitdir when git cannot be run', () => {
     const fakeRepo = path.join(tmpDir, 'missing-gitdir')
     mkdirSync(fakeRepo)
-    writeFileSync(path.join(fakeRepo, '.git'), 'gitdir: /missing/nightshift/gitdir')
+    writeFileSync(path.join(fakeRepo, '.git'), 'gitdir: /missing/kolux/gitdir')
 
     withGitUnavailable(() => {
       expect(isGitRepo(fakeRepo)).toBe(false)
@@ -338,7 +338,7 @@ describe('getLinkedWorktreeMainRepoRoot', () => {
   let tmpDir: string
 
   beforeEach(() => {
-    tmpDir = mkdtempSync(path.join(tmpdir(), 'nightshift-linked-worktree-'))
+    tmpDir = mkdtempSync(path.join(tmpdir(), 'kolux-linked-worktree-'))
   })
 
   afterEach(() => {
@@ -348,8 +348,8 @@ describe('getLinkedWorktreeMainRepoRoot', () => {
   function initRepoWithCommit(repoRoot: string): void {
     mkdirSync(repoRoot, { recursive: true })
     git(repoRoot, ['init', '--quiet'])
-    git(repoRoot, ['config', 'user.email', 'test@nightshift.test'])
-    git(repoRoot, ['config', 'user.name', 'Nightshift Test'])
+    git(repoRoot, ['config', 'user.email', 'test@kolux.test'])
+    git(repoRoot, ['config', 'user.name', 'Kolux Test'])
     writeFileSync(path.join(repoRoot, 'README.md'), 'seed\n')
     git(repoRoot, ['add', 'README.md'])
     git(repoRoot, ['commit', '--quiet', '-m', 'seed'])

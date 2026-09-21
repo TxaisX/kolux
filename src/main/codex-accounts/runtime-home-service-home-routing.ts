@@ -30,7 +30,7 @@ export abstract class CodexRuntimeHomeRouting extends CodexRuntimeHomeManagedHom
   getHostCodexHomePathsForSessionDiscovery(): string[] {
     const homes = [this.getRuntimeHomePath()]
     if (this.isHostSystemDefaultRealHome() || this.getSelfContainedManagedHostAccount()) {
-      // Why: nested Nightshift processes can retain an ambient managed CODEX_HOME.
+      // Why: nested Kolux processes can retain an ambient managed CODEX_HOME.
       // Per-account lanes no longer bridge real-home history into the shared
       // mirror, so include the real root for both directly-routed host lanes.
       homes.push(getSystemCodexHomePath())
@@ -281,7 +281,7 @@ export abstract class CodexRuntimeHomeRouting extends CodexRuntimeHomeManagedHom
     }
     if (this.isHostSystemDefaultRealHome()) {
       // Why: null lets the fetcher fall back to the main process's inherited
-      // CODEX_HOME before ~/.codex. Nested Nightshift launches can inherit the
+      // CODEX_HOME before ~/.codex. Nested Kolux launches can inherit the
       // managed home, restarting the background OAuth conflict (#5370), so
       // pin this non-interactive lane to the native home explicitly.
       if (hasRecordedLegacySharedCodexPane()) {

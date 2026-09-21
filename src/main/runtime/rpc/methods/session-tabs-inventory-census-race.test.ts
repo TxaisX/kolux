@@ -2,11 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { SESSION_TABS_AUTHORITATIVE_INVENTORY_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import type { RuntimeMobileSessionTabsSnapshot } from '../../../../shared/runtime-session-contracts'
 import type { RuntimeMobileSessionTabsResult } from '../../../../shared/runtime-types'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import { subscribeSessionTabsInventory } from './session-tabs-inventory'
 
-const runningBaselineOracle =
-  process.env.NIGHTSHIFT_TEST_BASELINE_SESSION_TABS_CENSUS_ORACLE === '1'
+const runningBaselineOracle = process.env.KOLUX_TEST_BASELINE_SESSION_TABS_CENSUS_ORACLE === '1'
 
 type Inventory = {
   snapshots: RuntimeMobileSessionTabsResult[]
@@ -116,7 +115,7 @@ function deferredPtyInventory(): {
 }
 
 function createRuntimeHarness(initialSnapshots: RuntimeMobileSessionTabsSnapshot[] = []) {
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.syncWindowGraph(0, { tabs: [], leaves: [], mobileSessionTabs: initialSnapshots })
   const census = deferredPtyInventory()
   const internals = runtime as unknown as RuntimeInventoryInternals
@@ -172,7 +171,7 @@ function createHarness() {
       cleanup.mockImplementation(nextCleanup)
     ),
     cleanupSubscription: vi.fn()
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 
   return {
     census,
@@ -401,7 +400,7 @@ describe.skipIf(runningBaselineOracle)('real runtime session tabs census boundar
   })
 
   it('preserves caller-only follow intent when a later shared snapshot is buffered', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.syncWindowGraph(0, { tabs: [], leaves: [], mobileSessionTabs: [] })
     const census = deferredInventory()
     vi.spyOn(runtime, 'listAllMobileSessionTabsInventoryWithChangeSequence').mockImplementation(
@@ -466,7 +465,7 @@ describe.skipIf(runningBaselineOracle)('real runtime session tabs census boundar
   })
 
   it('subsumes pre-boundary follow intent into the census selection', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.syncWindowGraph(0, { tabs: [], leaves: [], mobileSessionTabs: [] })
     const census = deferredInventory()
     vi.spyOn(runtime, 'listAllMobileSessionTabsInventoryWithChangeSequence').mockImplementation(
@@ -495,7 +494,7 @@ describe.skipIf(runningBaselineOracle)('real runtime session tabs census boundar
   })
 
   it('uses one change sequence across subscribers without duplicate fanout', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const created = runtimeSnapshot('wt-census-race', 1)
     const first: number[] = []
     const second: number[] = []
@@ -516,7 +515,7 @@ describe.skipIf(runningBaselineOracle)('real runtime session tabs census boundar
   })
 
   it('aborts the census and removes the real runtime listener on disconnect', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.syncWindowGraph(0, { tabs: [], leaves: [], mobileSessionTabs: [] })
     const census = deferredPtyInventory()
     const internals = runtime as unknown as RuntimeInventoryInternals
@@ -790,7 +789,7 @@ describe('session tabs inventory census boundary', () => {
       ),
       registerSubscriptionCleanup: vi.fn(),
       cleanupSubscription: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const pending = subscribeSessionTabsInventory(
       {
         runtime,
@@ -843,7 +842,7 @@ describe('session tabs inventory census boundary', () => {
         cleanup = vi.fn(nextCleanup)
       }),
       cleanupSubscription: vi.fn(() => cleanup())
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const pending = subscribeSessionTabsInventory(
       {
         runtime,

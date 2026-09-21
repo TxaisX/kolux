@@ -13,7 +13,7 @@ import {
 } from './plugin-command-keybindings'
 
 const command: ActivePluginCommand = {
-  pluginKey: 'nightshift-samples.tasks',
+  pluginKey: 'kolux-samples.tasks',
   pluginName: 'Tasks',
   id: 'open',
   title: 'Open Tasks',
@@ -24,7 +24,7 @@ const command: ActivePluginCommand = {
 
 describe('plugin command keybindings', () => {
   it('builds a stable dynamic action definition', () => {
-    expect(pluginCommandKeybindingActionId(command)).toBe('plugin:nightshift-samples.tasks/open')
+    expect(pluginCommandKeybindingActionId(command)).toBe('plugin:kolux-samples.tasks/open')
     expect(pluginCommandKeybindingDefinition(command)).toMatchObject({
       title: 'Open Tasks — Tasks',
       group: 'Plugins',

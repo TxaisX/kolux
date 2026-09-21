@@ -160,7 +160,7 @@ export function AutomationsPageSurface({
         createTarget={createTarget}
         createDestination={destination.createDestination.control}
         editDestination={
-          destinationForm.isNightshiftForm ? destinationForm.editDestinationControl : undefined
+          destinationForm.isKoluxForm ? destinationForm.editDestinationControl : undefined
         }
         notice={editorNotice}
         onNoticeRecover={(action) => {
@@ -187,7 +187,7 @@ export function AutomationsPageSurface({
         onProjectChange={editorActions.handleProjectChange}
         getRepoHostLabel={presentation.getAutomationRepoHostLabel}
         allowAddProject={
-          !destinationForm.isNightshiftForm ||
+          !destinationForm.isKoluxForm ||
           (editingAutomationId !== null
             ? destinationForm.editHostResolution.status === 'ready'
               ? getAutomationAuthorityTarget(destinationForm.editHostResolution.authority).kind ===

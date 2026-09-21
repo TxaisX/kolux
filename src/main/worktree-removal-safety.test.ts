@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { homedir } from 'node:os'
 import type { GitWorktreeInfo } from '../shared/worktree/types'
 import {
-  canCleanupUnregisteredNightshiftLeftoverDirectory,
+  canCleanupUnregisteredKoluxLeftoverDirectory,
   canSafelyRemoveOrphanedWorktreeDirectory,
   getRegisteredDeletableWorktree
 } from './worktree-removal-safety'
@@ -316,13 +316,13 @@ describe('canSafelyRemoveOrphanedWorktreeDirectory', () => {
   })
 })
 
-describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
+describe('canCleanupUnregisteredKoluxLeftoverDirectory', () => {
   const repo = { path: '/repos/main' }
-  const ownedMeta = { nightshiftCreatedAt: 1, nightshiftCreationSource: 'runtime' as const }
+  const ownedMeta = { koluxCreatedAt: 1, koluxCreationSource: 'runtime' as const }
   const baseArgs = {
     meta: ownedMeta,
-    worktreePath: '/workspaces/nightshift-owned',
-    runtimeWorktreePath: '/workspaces/nightshift-owned',
+    worktreePath: '/workspaces/kolux-owned',
+    runtimeWorktreePath: '/workspaces/kolux-owned',
     repo,
     runtimeRepoPath: repo.path,
     registeredWorktrees: [makeGitWorktree(repo.path, true)]
@@ -332,17 +332,17 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
-        statPath: makeStatPath(['/workspaces/nightshift-owned']),
+        statPath: makeStatPath(['/workspaces/kolux-owned']),
         isGitRepository
       })
     ).resolves.toBe(false)
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
         statPath: async (path) => {
-          if (path === '/workspaces/nightshift-owned') {
+          if (path === '/workspaces/kolux-owned') {
             return { type: 'symlink' }
           }
           throw missingPath(path)
@@ -358,12 +358,9 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
-        statPath: makeStatPath(
-          ['/workspaces/nightshift-owned/.git'],
-          ['/workspaces/nightshift-owned']
-        ),
+        statPath: makeStatPath(['/workspaces/kolux-owned/.git'], ['/workspaces/kolux-owned']),
         isGitRepository
       })
     ).resolves.toBe(false)
@@ -371,14 +368,14 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     expect(isGitRepository).not.toHaveBeenCalled()
   })
 
-  it('rejects no-marker cleanup when only the Nightshift path shape matches', async () => {
+  it('rejects no-marker cleanup when only the Kolux path shape matches', async () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
         meta: undefined,
-        statPath: makeStatPath([], ['/workspaces/nightshift-owned']),
+        statPath: makeStatPath([], ['/workspaces/kolux-owned']),
         isGitRepository
       })
     ).resolves.toBe(false)
@@ -394,7 +391,7 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
         worktreePath: homePath,
         runtimeWorktreePath: runtimeHomePath,
@@ -413,7 +410,7 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
         worktreePath: '/home/dev',
         runtimeWorktreePath: '/home/dev',
@@ -432,35 +429,35 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(true)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
-        statPath: makeStatPath([], ['/workspaces/nightshift-owned']),
+        statPath: makeStatPath([], ['/workspaces/kolux-owned']),
         isGitRepository
       })
     ).resolves.toBe(false)
 
-    expect(isGitRepository).toHaveBeenCalledWith('/workspaces/nightshift-owned')
+    expect(isGitRepository).toHaveBeenCalledWith('/workspaces/kolux-owned')
   })
 
   it('rejects unregistered leftover directories that contain a registered child worktree', async () => {
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
         registeredWorktrees: [
           makeGitWorktree(repo.path, true),
-          makeGitWorktree('/workspaces/nightshift-owned/child')
+          makeGitWorktree('/workspaces/kolux-owned/child')
         ],
-        statPath: makeStatPath([], ['/workspaces/nightshift-owned']),
+        statPath: makeStatPath([], ['/workspaces/kolux-owned']),
         isGitRepository: vi.fn().mockResolvedValue(false)
       })
     ).rejects.toThrow(
-      'Refusing to delete worktree because it contains another registered worktree: /workspaces/nightshift-owned/child'
+      'Refusing to delete worktree because it contains another registered worktree: /workspaces/kolux-owned/child'
     )
   })
 
   it('uses runtime paths for filesystem proof and original paths for nested worktree checks', async () => {
     const statPath = vi.fn(async (path: string) => {
-      if (path === '/mnt/c/workspaces/nightshift-owned') {
+      if (path === '/mnt/c/workspaces/kolux-owned') {
         return { type: 'directory' }
       }
       throw missingPath(path)
@@ -468,44 +465,44 @@ describe('canCleanupUnregisteredNightshiftLeftoverDirectory', () => {
     const isGitRepository = vi.fn().mockResolvedValue(false)
 
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
-        worktreePath: 'C:\\workspaces\\nightshift-owned',
-        runtimeWorktreePath: '/mnt/c/workspaces/nightshift-owned',
+        worktreePath: 'C:\\workspaces\\kolux-owned',
+        runtimeWorktreePath: '/mnt/c/workspaces/kolux-owned',
         repo: { path: 'C:\\repos\\main' },
         runtimeRepoPath: '/mnt/c/repos/main',
         registeredWorktrees: [
           makeGitWorktree('C:\\repos\\main', true),
-          makeGitWorktree('C:\\workspaces\\nightshift-owned-sibling')
+          makeGitWorktree('C:\\workspaces\\kolux-owned-sibling')
         ],
         statPath,
         isGitRepository
       })
     ).resolves.toBe(true)
 
-    expect(statPath).toHaveBeenCalledWith('/mnt/c/workspaces/nightshift-owned')
-    expect(statPath).toHaveBeenCalledWith('/mnt/c/workspaces/nightshift-owned/.git')
-    expect(statPath).not.toHaveBeenCalledWith('C:\\workspaces\\nightshift-owned')
-    expect(isGitRepository).toHaveBeenCalledWith('/mnt/c/workspaces/nightshift-owned')
+    expect(statPath).toHaveBeenCalledWith('/mnt/c/workspaces/kolux-owned')
+    expect(statPath).toHaveBeenCalledWith('/mnt/c/workspaces/kolux-owned/.git')
+    expect(statPath).not.toHaveBeenCalledWith('C:\\workspaces\\kolux-owned')
+    expect(isGitRepository).toHaveBeenCalledWith('/mnt/c/workspaces/kolux-owned')
   })
 
   it('rejects translated-runtime cleanup when original path contains a registered child', async () => {
     await expect(
-      canCleanupUnregisteredNightshiftLeftoverDirectory({
+      canCleanupUnregisteredKoluxLeftoverDirectory({
         ...baseArgs,
-        worktreePath: 'C:\\workspaces\\nightshift-owned',
-        runtimeWorktreePath: '/mnt/c/workspaces/nightshift-owned',
+        worktreePath: 'C:\\workspaces\\kolux-owned',
+        runtimeWorktreePath: '/mnt/c/workspaces/kolux-owned',
         repo: { path: 'C:\\repos\\main' },
         runtimeRepoPath: '/mnt/c/repos/main',
         registeredWorktrees: [
           makeGitWorktree('C:\\repos\\main', true),
-          makeGitWorktree('C:\\workspaces\\nightshift-owned\\child')
+          makeGitWorktree('C:\\workspaces\\kolux-owned\\child')
         ],
-        statPath: makeStatPath([], ['/mnt/c/workspaces/nightshift-owned']),
+        statPath: makeStatPath([], ['/mnt/c/workspaces/kolux-owned']),
         isGitRepository: vi.fn().mockResolvedValue(false)
       })
     ).rejects.toThrow(
-      'Refusing to delete worktree because it contains another registered worktree: C:\\workspaces\\nightshift-owned\\child'
+      'Refusing to delete worktree because it contains another registered worktree: C:\\workspaces\\kolux-owned\\child'
     )
   })
 })

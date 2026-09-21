@@ -202,9 +202,9 @@ describe('Pi-compatible title detection', () => {
     ['\u280b π - tmp', 'omp', '\u280b OMP - tmp'],
     ['\u280b OMP', 'pi', '\u280b Pi'],
     [
-      'lucky-echidna | \u283c π - Diagnose Nightshift terminal title flicker - test',
+      'lucky-echidna | \u283c π - Diagnose Kolux terminal title flicker - test',
       'omp',
-      'lucky-echidna | \u283c OMP - Diagnose Nightshift terminal title flicker - test'
+      'lucky-echidna | \u283c OMP - Diagnose Kolux terminal title flicker - test'
     ],
     ['lucky-echidna | Pi ready', 'omp', 'OMP ready'],
     ['Codex | Pi ready', 'omp', 'OMP ready'],
@@ -269,10 +269,10 @@ describe('Pi-compatible title detection', () => {
 })
 
 describe('Cursor agent title identity', () => {
-  // Why: the accepted vocabulary is the set of labels Nightshift actually synthesizes for Cursor.
+  // Why: the accepted vocabulary is the set of labels Kolux actually synthesizes for Cursor.
   // Pin it to that profile so renaming a label there cannot silently drop @cursor to zero
   // recipients (and desync the auto-Enter suppression that shares this predicate).
-  it('accepts every label Nightshift synthesizes for Cursor', () => {
+  it('accepts every label Kolux synthesizes for Cursor', () => {
     const profile = SYNTHETIC_AGENT_TITLE_PROFILES.cursor
 
     for (const label of [
@@ -292,7 +292,7 @@ describe('Cursor agent title identity', () => {
     '⣿ Cursor Agent',
     'Cursor ready',
     'Cursor - action required'
-  ])('accepts the native or Nightshift-synthesized Cursor title %j', (title) => {
+  ])('accepts the native or Kolux-synthesized Cursor title %j', (title) => {
     expect(isCursorAgentTitle(title)).toBe(true)
   })
 
@@ -303,7 +303,7 @@ describe('Cursor agent title identity', () => {
     '✳ Fix the text cursor blink',
     '. fix cursor position',
     '* cursor rendering done',
-    'Terminal Cursor and Nightshift slows down',
+    'Terminal Cursor and Kolux slows down',
     'cursor-agent',
     'cursor.exe',
     '~/cursor-rules',

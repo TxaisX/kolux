@@ -4,8 +4,8 @@ import { toClaudeProjectKey } from './claude-trust-preset'
 describe('toClaudeProjectKey', () => {
   it('writes Windows keys with forward slashes, the only form Claude looks up', () => {
     expect(
-      toClaudeProjectKey('G:\\Dev\\nightshift-workspaces\\six-agent-retest\\cornetfish', 'win32')
-    ).toBe('G:/Dev/nightshift-workspaces/six-agent-retest/cornetfish')
+      toClaudeProjectKey('G:\\Dev\\kolux-workspaces\\six-agent-retest\\cornetfish', 'win32')
+    ).toBe('G:/Dev/kolux-workspaces/six-agent-retest/cornetfish')
   })
 
   it('keeps drive-letter casing as the filesystem reported it', () => {

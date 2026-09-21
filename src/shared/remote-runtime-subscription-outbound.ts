@@ -97,7 +97,7 @@ export class RemoteRuntimeSubscriptionOutbound {
     this.options.fail(
       new RemoteRuntimeClientError(
         'remote_runtime_unavailable',
-        'Remote Nightshift runtime outbound memory admission failed; reconnecting.'
+        'Remote Kolux runtime outbound memory admission failed; reconnecting.'
       )
     )
     return false
@@ -133,7 +133,7 @@ export class RemoteRuntimeSubscriptionOutbound {
           this.options.fail(
             new RemoteRuntimeClientError(
               'remote_runtime_unavailable',
-              'Remote Nightshift runtime send buffer overflow; reconnecting.'
+              'Remote Kolux runtime send buffer overflow; reconnecting.'
             )
           ),
         ...this.options.binaryQueue,

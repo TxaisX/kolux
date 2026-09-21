@@ -1,7 +1,7 @@
 import type { EmulatorStreamInfo } from '@/components/emulator-pane/emulator-pane-types'
 
-export const EMULATOR_MANUAL_LAUNCH_STARTED_EVENT = 'nightshift:emulator-launch-started'
-export const EMULATOR_MANUAL_LAUNCH_FAILED_EVENT = 'nightshift:emulator-launch-failed'
+export const EMULATOR_MANUAL_LAUNCH_STARTED_EVENT = 'kolux:emulator-launch-started'
+export const EMULATOR_MANUAL_LAUNCH_FAILED_EVENT = 'kolux:emulator-launch-failed'
 
 const manualLaunchesByWorktree = new Set<string>()
 type PrelaunchedSimulatorSession = {

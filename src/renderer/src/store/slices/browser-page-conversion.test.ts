@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type * as AgentStatusModule from '@/lib/agent-status'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../shared/constants'
 import { browserPageSchema } from '../../../../shared/workspace-session-browser-schema'
 import { createTestStore, makeWorktree } from './store-test-helpers'
 
@@ -31,7 +31,7 @@ const OTHER_DOC_LOCATION = {
   worktreeId: WORKTREE_ID,
   filePath: '/home/alice/wt1/report/details.html'
 }
-const LIVE_GRANT_URL = `nightshift-preview://${'a'.repeat(32)}/report/index.html`
+const LIVE_GRANT_URL = `kolux-preview://${'a'.repeat(32)}/report/index.html`
 
 function createStoreWithWorktree(): ReturnType<typeof createTestStore> {
   const store = createTestStore()
@@ -140,13 +140,13 @@ describe('convertBrowserPage web→doc', () => {
     expect(converted?.id).not.toBe(pageId)
     const page = store.getState().browserPagesByWorkspace[tab.id]?.[0]
     expect(page?.docLocation).toEqual(DOC_LOCATION)
-    expect(page?.url).toBe(NIGHTSHIFT_BROWSER_BLANK_URL)
+    expect(page?.url).toBe(KOLUX_BROWSER_BLANK_URL)
     // Client-local by construction: the grant is minted on this desktop.
     expect(page?.browserRuntimeEnvironmentId).toBeNull()
     expect(page?.convertedFrom).toEqual({ kind: 'url', url: 'https://example.com/' })
     const workspace = store.getState().browserTabsByWorktree[WORKTREE_ID]?.[0]
     expect(workspace?.docLocation).toEqual(DOC_LOCATION)
-    expect(workspace?.url).toBe(NIGHTSHIFT_BROWSER_BLANK_URL)
+    expect(workspace?.url).toBe(KOLUX_BROWSER_BLANK_URL)
     // A URL page owns no grant; nothing to release on this direction.
     expect(mocks.releaseDocPreviewGrant).not.toHaveBeenCalled()
   })
@@ -163,7 +163,7 @@ describe('convertBrowserPage web→doc', () => {
 
     const page = store.getState().browserPagesByWorkspace[tab.id]?.[0]
     const written = JSON.stringify([page, store.getState().browserTabsByWorktree[WORKTREE_ID]])
-    expect(written).not.toContain('nightshift-preview://')
+    expect(written).not.toContain('kolux-preview://')
   })
 })
 

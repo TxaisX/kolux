@@ -8,13 +8,13 @@ import {
 } from './tui-agent-startup-shell'
 
 const QUERY_ENV_LIMIT = 24_000
-const QUERY_PLACEHOLDER = '__NIGHTSHIFT_HERMES_STARTUP_QUERY__'
+const QUERY_PLACEHOLDER = '__KOLUX_HERMES_STARTUP_QUERY__'
 const QUERY_ARG_PLACEHOLDER = `--query=${QUERY_PLACEHOLDER}`
-const POSIX_QUERY_VARIABLE = '__nightshift_hermes_startup_query'
-const POWERSHELL_QUERY_VARIABLE = 'nightshiftHermesStartupQuery'
-const POWERSHELL_NATIVE_QUERY_VARIABLE = 'nightshiftHermesNativeQuery'
+const POSIX_QUERY_VARIABLE = '__kolux_hermes_startup_query'
+const POWERSHELL_QUERY_VARIABLE = 'koluxHermesStartupQuery'
+const POWERSHELL_NATIVE_QUERY_VARIABLE = 'koluxHermesNativeQuery'
 
-export const NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV = 'NIGHTSHIFT_HERMES_STARTUP_QUERY'
+export const KOLUX_HERMES_STARTUP_QUERY_ENV = 'KOLUX_HERMES_STARTUP_QUERY'
 
 function encodePosixEvalScript(command: string): string {
   return Array.from(
@@ -65,7 +65,7 @@ function findChatSubcommand(args: readonly string[]): number {
   return -1
 }
 
-function stripNightshiftOwnedHermesArgs(args: readonly string[]): string[] {
+function stripKoluxOwnedHermesArgs(args: readonly string[]): string[] {
   const normalized: string[] = []
   for (let index = 0; index < args.length; index += 1) {
     const token = args[index]
@@ -133,8 +133,8 @@ function normalizeHermesArgv(
     ...commandPrefix,
     'chat',
     QUERY_ARG_PLACEHOLDER,
-    ...stripNightshiftOwnedHermesArgs(baseArgsWithoutChat),
-    ...stripNightshiftOwnedHermesArgs(configuredArgsWithoutChat),
+    ...stripKoluxOwnedHermesArgs(baseArgsWithoutChat),
+    ...stripKoluxOwnedHermesArgs(configuredArgsWithoutChat),
     '--tui'
   ]
 }
@@ -148,7 +148,7 @@ function buildQueryCommand(argv: string[], shell: AgentStartupShell): string {
     // Why: startup prompts must not remain exported to Hermes tools; the
     // long-lived parent shell retains the transport env for compatibility.
     // PowerShell 5 needs Windows-native quote escaping before building child argv.
-    const script = `$${POWERSHELL_QUERY_VARIABLE} = $env:${NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV}; $${POWERSHELL_NATIVE_QUERY_VARIABLE} = $${POWERSHELL_QUERY_VARIABLE} -replace '(\\\\*)"', '$1$1\\"'; Remove-Item Env:${NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV} -ErrorAction SilentlyContinue; ${invocation}`
+    const script = `$${POWERSHELL_QUERY_VARIABLE} = $env:${KOLUX_HERMES_STARTUP_QUERY_ENV}; $${POWERSHELL_NATIVE_QUERY_VARIABLE} = $${POWERSHELL_QUERY_VARIABLE} -replace '(\\\\*)"', '$1$1\\"'; Remove-Item Env:${KOLUX_HERMES_STARTUP_QUERY_ENV} -ErrorAction SilentlyContinue; ${invocation}`
     return `powershell.exe -NoProfile -EncodedCommand ${encodePowerShellCommand(script)}`
   }
   const invocation = buildShellCommandFromArgv(argv, 'posix').replace(
@@ -158,7 +158,7 @@ function buildQueryCommand(argv: string[], shell: AgentStartupShell): string {
   const encodedInvocation = encodePosixEvalScript(invocation)
   // Why: a fixed single-quote-safe wrapper parses in POSIX shells and pwsh;
   // the dynamic argv is decoded only after entering the known `sh` grammar.
-  const script = `${POSIX_QUERY_VARIABLE}="\${${NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV}}"; unset ${NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV}; eval "$(printf %b "${encodedInvocation}")"`
+  const script = `${POSIX_QUERY_VARIABLE}="\${${KOLUX_HERMES_STARTUP_QUERY_ENV}}"; unset ${KOLUX_HERMES_STARTUP_QUERY_ENV}; eval "$(printf %b "${encodedInvocation}")"`
   // Why `shell` and not 'posix': the body runs under `sh`, but the quoting around
   // it is parsed by the shell that types the line. Today's payload survives sh
   // quoting in fish only because its escapes happen to be `\0NNN` and never `\\`
@@ -187,7 +187,7 @@ export function planHermesStartupQuery(args: {
   const command = buildQueryCommand(argv, args.shell)
   const env = {
     ...args.agentEnv,
-    [NIGHTSHIFT_HERMES_STARTUP_QUERY_ENV]: args.prompt
+    [KOLUX_HERMES_STARTUP_QUERY_ENV]: args.prompt
   }
   const envSize = Object.entries(env).reduce((total, [key, value]) => {
     if (args.platform === 'win32') {

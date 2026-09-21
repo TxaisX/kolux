@@ -15,7 +15,7 @@ describe('runWithGitFetchHeadLock', () => {
         'fetch',
         '--no-write-fetch-head',
         'origin',
-        '+refs/heads/main:refs/nightshift/rebase/one',
+        '+refs/heads/main:refs/kolux/rebase/one',
         '+refs/heads/main:refs/remotes/origin/main'
       ],
       expected: true

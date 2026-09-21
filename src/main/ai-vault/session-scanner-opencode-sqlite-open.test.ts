@@ -38,7 +38,7 @@ const SCHEMA = `
 `
 
 function tempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-open-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-opencode-open-'))
   tempDirs.push(dir)
   return dir
 }

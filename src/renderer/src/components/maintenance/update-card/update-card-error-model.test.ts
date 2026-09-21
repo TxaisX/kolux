@@ -36,8 +36,7 @@ describe('update card error model precedence', () => {
   it('routes publisher mismatch ahead of the generic retry model', () => {
     const model = build({
       state: 'error',
-      message:
-        'New version 1.4.200 is not signed by the application owner: publisherNames: Nightshift'
+      message: 'New version 1.4.200 is not signed by the application owner: publisherNames: Kolux'
     })
     expect(model?.variant).toBe('security')
     expect(model?.primaryAction).toBeUndefined()

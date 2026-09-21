@@ -4,13 +4,13 @@
  * page, the host's rendered tab strip grows a row for it, and closing that row from the host
  * tears the page down on the client.
  *
- * Uses the headed-host topology deliberately: under `nightshift serve` there is no window to push to,
+ * Uses the headed-host topology deliberately: under `kolux serve` there is no window to push to,
  * so a headless host proves nothing about this feature.
  */
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -134,18 +134,18 @@ async function readOwnedPageUrls(app: ElectronApplication, url: string): Promise
 
 test('shows a client-hosted page in the host tab strip and closes it from there', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(300_000)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
 
   const fixture = await startPageFixture()
   let client: PairedElectronClient | null = null
   try {
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     client = await launchPairedElectronClient(offer, testInfo, 'STA-4150 host strip')
 
     const clientWorktreeId = await findWorktreeIdByPath(client.page, testRepoPath)
@@ -171,7 +171,7 @@ test('shows a client-hosted page in the host tab strip and closes it from there'
     expect(await readOwnedPageUrls(client.app, fixture.url)).toHaveLength(1)
     expect(await readOwnedPageUrls(electronApp, fixture.url)).toHaveLength(0)
 
-    const hostRow = nightshiftPage.locator(
+    const hostRow = koluxPage.locator(
       `.terminal-tab-strip [data-client-hosted-browser-row-id="${hostPageId}"]`
     )
     await expect(hostRow).toBeVisible({ timeout: 60_000 })

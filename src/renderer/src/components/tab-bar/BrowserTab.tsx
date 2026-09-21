@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../shared/constants'
 import { redactKagiSessionToken } from '../../../../shared/browser-url'
 import type { BrowserTab as BrowserTabState } from '../../../../shared/browser-workspace-types'
 import { CLOSE_ALL_CONTEXT_MENUS_EVENT } from './SortableTab'
@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils'
 import { BrowserFavicon } from '@/components/browser-favicon'
 
 export function formatBrowserTabUrlLabel(url: string): string {
-  if (url === NIGHTSHIFT_BROWSER_BLANK_URL || url === 'about:blank') {
+  if (url === KOLUX_BROWSER_BLANK_URL || url === 'about:blank') {
     return 'New Tab'
   }
   try {
@@ -56,7 +56,7 @@ export function getBrowserTabLabel(tab: BrowserTabState): string {
   if (
     !tab.title ||
     tab.title === tab.url ||
-    tab.title === NIGHTSHIFT_BROWSER_BLANK_URL ||
+    tab.title === KOLUX_BROWSER_BLANK_URL ||
     tab.title === 'about:blank'
   ) {
     return formatBrowserTabUrlLabel(tab.url)
@@ -65,7 +65,7 @@ export function getBrowserTabLabel(tab: BrowserTabState): string {
 }
 
 function isBlankBrowserTab(tab: BrowserTabState): boolean {
-  return tab.url === NIGHTSHIFT_BROWSER_BLANK_URL || tab.url === 'about:blank'
+  return tab.url === KOLUX_BROWSER_BLANK_URL || tab.url === 'about:blank'
 }
 
 export default function BrowserTab({

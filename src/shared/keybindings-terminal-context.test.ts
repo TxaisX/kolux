@@ -1,4 +1,4 @@
-// Terminal focus context and the nightshift-first / terminal-first policy gate.
+// Terminal focus context and the kolux-first / terminal-first policy gate.
 import { describe, expect, it } from 'vitest'
 import {
   getEffectiveKeybindingsForAction,
@@ -7,7 +7,7 @@ import {
 } from './keybindings'
 
 describe('keybindings', () => {
-  it('keeps Nightshift-first terminal context backward compatible', () => {
+  it('keeps Kolux-first terminal context backward compatible', () => {
     const ctrlP = {
       key: 'p',
       code: 'KeyP',
@@ -21,7 +21,7 @@ describe('keybindings', () => {
     expect(
       keybindingMatchesAction('worktree.quickOpen', ctrlP, 'linux', undefined, {
         context: 'terminal',
-        terminalShortcutPolicy: 'nightshift-first'
+        terminalShortcutPolicy: 'kolux-first'
       })
     ).toBe(true)
     expect(

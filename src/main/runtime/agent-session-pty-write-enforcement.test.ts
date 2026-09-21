@@ -1,6 +1,6 @@
 import { settledWriteStub } from '../providers/settled-pty-write-stub'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { agentSessionPtyWriteGate } from './agent-session-pty-write-gate'
 import { getDefaultWorkspaceSession } from '../../shared/constants'
 import {
@@ -51,7 +51,7 @@ function publish(lease: AgentSessionLease): void {
 }
 
 async function makeRuntime(options: { onWrite?: (ptyId: string, data: string) => void } = {}) {
-  const runtime = new NightshiftRuntimeService(makeStore() as never)
+  const runtime = new KoluxRuntimeService(makeStore() as never)
   const write = vi.fn((ptyId: string, data: string) => {
     options.onWrite?.(ptyId, data)
     // A real agent starts working when it receives the submit, and the prompt path now waits for

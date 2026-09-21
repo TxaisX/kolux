@@ -18,7 +18,7 @@
  *
  * Two properties are pinned here:
  *
- * - `깨` opens on `ㄲ`, a Shift-typed double consonant. Nightshift's own Shift rule
+ * - `깨` opens on `ㄲ`, a Shift-typed double consonant. Kolux's own Shift rule
  *   (`xterm-bypass-policy.ts`) already hides those keydowns from xterm, so a fix
  *   living inside xterm's CompositionHelper never sees them and every syllable
  *   starting with one — 깨 꿈 딸 빵 쓰다 짜다 — stays broken. Sitting upstream of

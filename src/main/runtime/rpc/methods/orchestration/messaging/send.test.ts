@@ -4,7 +4,7 @@ import { ORCHESTRATION_METHODS } from '../../orchestration'
 import { RpcDispatcher } from '../../../dispatcher'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { RuntimeTerminalSummary } from '../../../../../../shared/runtime-types'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../../../../shared/protocol-version'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
@@ -19,7 +19,7 @@ describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
   const { coordinatorPaneKey, findMethod } = h
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let activeRunId: string | undefined
 

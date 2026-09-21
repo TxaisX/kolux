@@ -42,7 +42,7 @@ export class CdpPageNavigationCommands {
     if (unsupportedParam) {
       this.responder.sendError(
         clientId,
-        `Page.reload parameter "${unsupportedParam}" is not supported for Nightshift tab reloads`,
+        `Page.reload parameter "${unsupportedParam}" is not supported for Kolux tab reloads`,
         client
       )
       return

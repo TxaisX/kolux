@@ -72,7 +72,7 @@ export class ClaudeRuntimeAuthSnapshotRestore extends ClaudeRuntimeAuthSnapshotC
     if (this.hasLastWrittenOauthAccount) {
       return this.lastWrittenOauthAccount
     }
-    // Why: managed metadata hints identity but isn't proof Nightshift wrote .claude.json; use only after a credential surface proves ownership.
+    // Why: managed metadata hints identity but isn't proof Kolux wrote .claude.json; use only after a credential surface proves ownership.
     if (hasCredentialSurfaceOwnership && ownedOauthAccount !== undefined) {
       return ownedOauthAccount
     }

@@ -33,7 +33,10 @@ function gitInit(repoPath: string): void {
 
 function commitCount(repoPath: string): number {
   return Number.parseInt(
-    execFileSync('git', ['rev-list', '--count', 'HEAD'], { cwd: repoPath, encoding: 'utf-8' }).trim(),
+    execFileSync('git', ['rev-list', '--count', 'HEAD'], {
+      cwd: repoPath,
+      encoding: 'utf-8'
+    }).trim(),
     10
   )
 }
@@ -69,7 +72,7 @@ describe('repos:commitInitialFiles', () => {
       handlers.set(channel, handler as (event: unknown, args: unknown) => unknown)
     })
 
-    root = await mkdtemp(join(tmpdir(), 'nightshift-commit-initial-files-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-commit-initial-files-'))
     gitInit(root)
     repo = {
       id: 'repo-1',

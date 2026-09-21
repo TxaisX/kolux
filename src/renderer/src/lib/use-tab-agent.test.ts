@@ -404,7 +404,7 @@ describe('resolveTabAgentFromSignals', () => {
       resolveTabAgentFromSignals({
         hasObservedAgentSignal: false,
         isRemote: false,
-        title: '. Compare Opencode Vs Nightshift',
+        title: '. Compare Opencode Vs Kolux',
         hookAgent: null,
         launchAgent: 'opencode'
       })

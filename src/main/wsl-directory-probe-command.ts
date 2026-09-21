@@ -3,8 +3,8 @@ import type { WslUncPathInfo } from '../shared/wsl-paths'
 // Why markers rather than an exit code: wsl.exe uses numeric exits for both guest results
 // and host failures, so only a marker on stdout distinguishes "directory missing" from
 // "wsl.exe could not answer".
-const WSL_DIRECTORY_EXISTS_MARKER = '__NIGHTSHIFT_DIRECTORY_EXISTS__'
-const WSL_DIRECTORY_MISSING_MARKER = '__NIGHTSHIFT_DIRECTORY_MISSING__'
+const WSL_DIRECTORY_EXISTS_MARKER = '__KOLUX_DIRECTORY_EXISTS__'
+const WSL_DIRECTORY_MISSING_MARKER = '__KOLUX_DIRECTORY_MISSING__'
 
 /** Argv after the wsl.exe binary for the guest directory-existence probe. */
 export function getWslDirectoryProbeArgs(info: WslUncPathInfo): string[] {

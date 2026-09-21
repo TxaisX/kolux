@@ -69,7 +69,7 @@ describe('paired client background safety', () => {
   }
 
   it('rejects an explicit reveal before touching native windows', async () => {
-    vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', '1')
+    vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', '1')
     const { client, getAllWindows, showInactive } = makeClient()
     await expect(revealPairedClientWindow(client)).rejects.toThrow('Window reveal is forbidden')
     expect(getAllWindows).not.toHaveBeenCalled()
@@ -77,8 +77,8 @@ describe('paired client background safety', () => {
   })
 
   it.each(['0', '1'])('rejects focus in background mode with foreground=%s', async (foreground) => {
-    vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', '1')
-    vi.stubEnv('NIGHTSHIFT_E2E_FOREGROUND', foreground)
+    vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', '1')
+    vi.stubEnv('KOLUX_E2E_FOREGROUND', foreground)
     const { client, focus, getAllWindows } = makeClient()
     await expect(focusPairedClientWindow(client)).rejects.toThrow('Native focus is forbidden')
     expect(getAllWindows).not.toHaveBeenCalled()

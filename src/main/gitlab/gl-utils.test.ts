@@ -52,12 +52,12 @@ describe('gitlab project ref resolution', () => {
 
   it('keeps getProjectRef origin-based', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:fork/nightshift.git\n'
+      stdout: 'git@gitlab.com:fork/kolux.git\n'
     })
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(['remote', 'get-url', 'origin'], {
       cwd: '/repo',
@@ -83,22 +83,22 @@ describe('gitlab project ref resolution', () => {
   it('falls back to origin when upstream is missing or non-GitLab', async () => {
     gitExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
 
     await expect(getIssueProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
   })
 
   it('does not mix origin and upstream cache entries for the same repo path', async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
       .mockResolvedValueOnce({ stdout: 'git@gitlab.com:TxaisX/nightshift.git\n' })
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
     await expect(getIssueProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
@@ -108,23 +108,23 @@ describe('gitlab project ref resolution', () => {
 
   it('keeps local host and local WSL project-ref cache entries separate for the same path', async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:host/nightshift.git\n' })
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:wsl/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:host/kolux.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:wsl/kolux.git\n' })
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'host/nightshift'
+      path: 'host/kolux'
     })
     await expect(getProjectRef('/repo', undefined, null, { wslDistro: 'Ubuntu' })).resolves.toEqual(
       {
         host: 'gitlab.com',
-        path: 'wsl/nightshift'
+        path: 'wsl/kolux'
       }
     )
     await expect(getProjectRef('/repo', undefined, null, { wslDistro: 'Ubuntu' })).resolves.toEqual(
       {
         host: 'gitlab.com',
-        path: 'wsl/nightshift'
+        path: 'wsl/kolux'
       }
     )
 
@@ -167,14 +167,14 @@ describe('gitlab project ref resolution', () => {
 
   it('resolves project refs through the SSH git provider for connected repos', async () => {
     sshExecMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:remote/nightshift.git\n',
+      stdout: 'git@gitlab.com:remote/kolux.git\n',
       stderr: ''
     })
     registerSshGitProvider('conn-1', { exec: sshExecMock } as never)
 
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'remote/nightshift'
+      path: 'remote/kolux'
     })
 
     expect(sshExecMock).toHaveBeenCalledWith(['remote', 'get-url', 'origin'], '/repo', {
@@ -200,39 +200,39 @@ describe('gitlab project ref resolution', () => {
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toBeNull()
 
     sshExecMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:remote/nightshift.git\n',
+      stdout: 'git@gitlab.com:remote/kolux.git\n',
       stderr: ''
     })
     registerSshGitProvider('conn-1', { exec: sshExecMock } as never)
 
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'remote/nightshift'
+      path: 'remote/kolux'
     })
   })
 
   it('does not cache transient SSH exec failures as permanent null project refs', async () => {
     sshExecMock
       .mockRejectedValueOnce(new Error('ssh tunnel not ready'))
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:remote/nightshift.git\n', stderr: '' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:remote/kolux.git\n', stderr: '' })
     registerSshGitProvider('conn-1', { exec: sshExecMock } as never)
 
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toBeNull()
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'remote/nightshift'
+      path: 'remote/kolux'
     })
   })
 
   it('does not cache a local probe killed on its deadline as a definitive miss', async () => {
     gitExecFileAsyncMock
       .mockRejectedValueOnce(new Error('git timed out.'))
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
 
     await expect(getProjectRef('/repo')).resolves.toBeNull()
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledTimes(2)
   })
@@ -248,12 +248,12 @@ describe('gitlab project ref resolution', () => {
 
     // Nothing watches `.git/config`, and SSH/WSL repos have no file to watch, so
     // a remote configured after the miss is only visible once the negative ages out.
-    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.com:fork/nightshift.git\n' })
+    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
     vi.setSystemTime(1_000_000 + NEGATIVE_ENTRY_TTL_MS + 1)
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledTimes(2)
   })
@@ -261,35 +261,35 @@ describe('gitlab project ref resolution', () => {
   it('keeps a resolved project ref past the negative interval', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_000_000)
-    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.com:fork/nightshift.git\n' })
+    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
     vi.setSystemTime(1_000_000 + NEGATIVE_ENTRY_TTL_MS * 10)
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'fork/nightshift'
+      path: 'fork/kolux'
     })
 
     expect(gitExecFileAsyncMock).toHaveBeenCalledTimes(1)
   })
 
   it('re-resolves a self-hosted remote once glab auth knows its host', async () => {
-    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.internal:team/nightshift.git\n' })
+    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@gitlab.internal:team/kolux.git\n' })
     glabExecFileAsyncMock.mockRejectedValue(new Error('not authenticated'))
 
     await expect(getProjectRefForRemote('/repo', 'origin', ['gitlab.com'])).resolves.toBeNull()
     await expect(
       getProjectRefForRemote('/repo', 'origin', ['gitlab.com', 'gitlab.internal'])
-    ).resolves.toEqual({ host: 'gitlab.internal', path: 'team/nightshift' })
+    ).resolves.toEqual({ host: 'gitlab.internal', path: 'team/kolux' })
   })
 
   it('asks glab about an unauthenticated host once per interval, not once per repo', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_000_000)
-    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@github.com:team/nightshift.git\n' })
+    gitExecFileAsyncMock.mockResolvedValue({ stdout: 'git@github.com:team/kolux.git\n' })
     glabExecFileAsyncMock.mockRejectedValue(new Error('not authenticated'))
 
     // Expiring project-ref negatives must not turn the hosted-review poll into a
@@ -308,13 +308,13 @@ describe('gitlab project ref resolution', () => {
 
   it('does not serve a project ref resolved on a retired SSH connection', async () => {
     sshExecMock
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:before/nightshift.git\n', stderr: '' })
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:after/nightshift.git\n', stderr: '' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:before/kolux.git\n', stderr: '' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:after/kolux.git\n', stderr: '' })
     registerSshGitProvider('conn-1', { exec: sshExecMock } as never)
 
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'before/nightshift'
+      path: 'before/kolux'
     })
 
     // A reconnect can swap the execution host under the same connection id.
@@ -323,7 +323,7 @@ describe('gitlab project ref resolution', () => {
 
     await expect(getProjectRefForRemote('/repo', 'origin', undefined, 'conn-1')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'after/nightshift'
+      path: 'after/kolux'
     })
     expect(sshExecMock).toHaveBeenCalledTimes(2)
   })
@@ -374,10 +374,10 @@ describe('resolveIssueSource', () => {
   it("'auto' + no upstream → origin, fellBack=false", async () => {
     gitExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:solo/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:solo/kolux.git\n' })
 
     await expect(resolveIssueSource('/repo', 'auto')).resolves.toEqual({
-      source: { host: 'gitlab.com', path: 'solo/nightshift' },
+      source: { host: 'gitlab.com', path: 'solo/kolux' },
       fellBack: false
     })
   })
@@ -385,21 +385,21 @@ describe('resolveIssueSource', () => {
   it("'upstream' + no upstream remote → origin, fellBack=true", async () => {
     gitExecFileAsyncMock
       .mockRejectedValueOnce(new Error('fatal: No such remote'))
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:solo/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:solo/kolux.git\n' })
 
     await expect(resolveIssueSource('/repo', 'upstream')).resolves.toEqual({
-      source: { host: 'gitlab.com', path: 'solo/nightshift' },
+      source: { host: 'gitlab.com', path: 'solo/kolux' },
       fellBack: true
     })
   })
 
   it("'origin' + upstream exists → origin (ignores upstream), fellBack=false", async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:fork/nightshift.git\n'
+      stdout: 'git@gitlab.com:fork/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', 'origin')).resolves.toEqual({
-      source: { host: 'gitlab.com', path: 'fork/nightshift' },
+      source: { host: 'gitlab.com', path: 'fork/kolux' },
       fellBack: false
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledTimes(1)

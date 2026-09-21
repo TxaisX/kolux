@@ -4,11 +4,11 @@ import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { pluginManifestSchema } from './plugin-manifest'
 
-describe('hello Nightshift plugin fixture', () => {
+describe('hello Kolux plugin fixture', () => {
   it('uses an ESM entry that remains loadable outside a type-module package', async () => {
-    const root = join(process.cwd(), 'examples', 'plugins', 'hello-nightshift')
+    const root = join(process.cwd(), 'examples', 'plugins', 'hello-kolux')
     const manifest = pluginManifestSchema.parse(
-      JSON.parse(await readFile(join(root, 'nightshift-plugin.json'), 'utf8'))
+      JSON.parse(await readFile(join(root, 'kolux-plugin.json'), 'utf8'))
     )
 
     expect(manifest.main).toBe('main.mjs')

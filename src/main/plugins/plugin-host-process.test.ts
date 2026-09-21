@@ -18,7 +18,7 @@ class FakeChild extends EventEmitter {
 function start(child: FakeChild, options: { eventTimeoutMs?: number } = {}) {
   processMocks.fork.mockReturnValue(child)
   return startPluginWorker({
-    pluginId: 'nightshift-samples.demo',
+    pluginId: 'kolux-samples.demo',
     rootDir: '/plugin',
     mainEntry: 'worker.js',
     entryPath: '/host.js',
@@ -38,7 +38,7 @@ afterEach(() => {
 })
 
 describe('startPluginWorker', () => {
-  it('does not inherit Nightshift execArgv', async () => {
+  it('does not inherit Kolux execArgv', async () => {
     const child = new FakeChild()
     const pending = start(child)
     child.emit('message', { type: 'ready', commands: [] })

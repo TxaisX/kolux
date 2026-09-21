@@ -15,8 +15,8 @@ import {
   RUNTIME_PROTOCOL_VERSION
 } from '../../../shared/protocol-version'
 import {
-  NIGHTSHIFT_RUNTIME_RPC_BROWSER_UI_SOURCE,
-  NIGHTSHIFT_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY
+  KOLUX_RUNTIME_RPC_BROWSER_UI_SOURCE,
+  KOLUX_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY
 } from '../../../shared/runtime-rpc-feature-interaction-source'
 
 const runtimeCall = vi.fn()
@@ -87,8 +87,7 @@ describe('runtime RPC client routing', () => {
       method: 'browser.viewport',
       params: {
         page: 'page-1',
-        [NIGHTSHIFT_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]:
-          NIGHTSHIFT_RUNTIME_RPC_BROWSER_UI_SOURCE
+        [KOLUX_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]: KOLUX_RUNTIME_RPC_BROWSER_UI_SOURCE
       }
     })
     expect(runtimeEnvironmentCall).not.toHaveBeenCalled()
@@ -786,8 +785,7 @@ describe('runtime RPC client routing', () => {
       method: 'browser.viewport',
       params: {
         page: 'page-1',
-        [NIGHTSHIFT_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]:
-          NIGHTSHIFT_RUNTIME_RPC_BROWSER_UI_SOURCE
+        [KOLUX_RUNTIME_RPC_FEATURE_INTERACTION_SOURCE_KEY]: KOLUX_RUNTIME_RPC_BROWSER_UI_SOURCE
       },
       timeoutMs: undefined
     })

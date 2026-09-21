@@ -53,20 +53,20 @@ describe('renderer i18n lazy locale loading', () => {
   })
 
   it('loads an isolated catalog contributed by an enabled plugin', async () => {
-    const id = 'plugin:nightshift-samples.portuguese/pt-BR' as const
+    const id = 'plugin:kolux-samples.portuguese/pt-BR' as const
     setRendererPluginLanguagePacks([
       {
         id,
         resourceLanguage: pluginLanguageResourceId(id),
-        pluginKey: 'nightshift-samples.portuguese',
+        pluginKey: 'kolux-samples.portuguese',
         locale: 'pt-BR',
-        catalog: { menu: { file: 'Arquivo Nightshift' } }
+        catalog: { menu: { file: 'Arquivo Kolux' } }
       }
     ])
 
     await setRendererUiLanguage(id)
     expect(i18n.language).toBe(pluginLanguageResourceId(id))
-    expect(i18n.t('menu.file', { defaultValue: 'File' })).toBe('Arquivo Nightshift')
+    expect(i18n.t('menu.file', { defaultValue: 'File' })).toBe('Arquivo Kolux')
 
     setRendererPluginLanguagePacks([])
     await setRendererUiLanguage(id)

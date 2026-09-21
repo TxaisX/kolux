@@ -30,7 +30,7 @@ async function writeSkill(directory: string, name: string): Promise<void> {
 async function buildFixture(
   paneCount: number
 ): Promise<{ home: string; panes: string[]; noWorkspace: string }> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-concurrency-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-skill-concurrency-'))
   const home = join(root, 'home')
   await writeSkill(join(home, '.agents', 'skills', 'shared'), 'shared')
   await writeSkill(join(home, '.claude', 'skills', 'review'), 'review')

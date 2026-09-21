@@ -82,7 +82,7 @@ const NATIVE_MODULES = [
 ]
 const onlyModules = NATIVE_MODULES.filter((m) => !ignoreModules.includes(m))
 const forceRebuild =
-  process.env.NIGHTSHIFT_FORCE_NATIVE_REBUILD === '1' ||
+  process.env.KOLUX_FORCE_NATIVE_REBUILD === '1' ||
   cliOptions.force ||
   rebuildPlatform !== osPlatform() ||
   rebuildArch !== process.arch
@@ -148,9 +148,9 @@ if (!ignoreModules.includes('cpu-features')) {
 
 try {
   // Why inside the try: the patch guard deletes a stale addon binary, and that
-  // delete fails EPERM when the addon is loaded -- exactly the running-Nightshift case
+  // delete fails EPERM when the addon is loaded -- exactly the running-Kolux case
   // the catch below is written for. Outside, it aborted `pnpm install` with a
-  // raw stack instead of the "close running Nightshift/Electron processes" message.
+  // raw stack instead of the "close running Kolux/Electron processes" message.
   if (
     rebuildPlatform === 'win32' &&
     modulesToRebuild.includes('@vscode/windows-process-tree') &&
@@ -182,10 +182,10 @@ try {
   if (isWindowsNativeLockError(err)) {
     console.error(
       '[rebuild] A Windows process appears to be using a native .node file. ' +
-        'Close running Nightshift/Electron/dev processes for this worktree, then rerun `pnpm install` ' +
+        'Close running Kolux/Electron/dev processes for this worktree, then rerun `pnpm install` ' +
         'or `pnpm run rebuild:electron`.'
     )
-    if (isPostinstall() && process.env.NIGHTSHIFT_STRICT_NATIVE_REBUILD !== '1') {
+    if (isPostinstall() && process.env.KOLUX_STRICT_NATIVE_REBUILD !== '1') {
       console.error(
         '[rebuild] Continuing postinstall because the failure is a Windows file lock. ' +
           'The next dev/start command will re-check native modules.'
@@ -346,7 +346,7 @@ function runElectronPackageBinaryInstall() {
 }
 
 function continuePostinstallWithoutElectron() {
-  if (!isPostinstall() || process.env.NIGHTSHIFT_STRICT_ELECTRON_INSTALL === '1') {
+  if (!isPostinstall() || process.env.KOLUX_STRICT_ELECTRON_INSTALL === '1') {
     return false
   }
   console.error(
@@ -470,7 +470,7 @@ function getPatchedNodePtyRebuildReason() {
     return null
   }
 
-  // Why: Nightshift patches node-pty's native Unix spawn path and Windows job-object
+  // Why: Kolux patches node-pty's native Unix spawn path and Windows job-object
   // exports; upstream prebuilds can load while missing those patches.
   const nodePtyDir = resolve(projectDir, 'node_modules', 'node-pty')
   const artifactPaths =
@@ -562,7 +562,7 @@ function loadNativeModule(moduleName) {
       throw new Error(
         'node-pty resolved to ' +
           native.dir +
-          '; expected build/Release so Nightshift\\'s node-pty patch is active'
+          '; expected build/Release so Kolux\\'s node-pty patch is active'
       )
     }
     return

@@ -1,6 +1,6 @@
 import { getPtyIpc } from '../../pty-host-bindings'
 import type { Store } from '../../../persistence'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { IPtyProvider } from '../../../providers/types'
 import { parseAppSshPtyId } from '../../../providers/ssh-pty-id'
 import { SSH_PROVIDER_UNREGISTERED_REASON } from '../../../../shared/pty-liveness-verdict'
@@ -11,7 +11,7 @@ import { recordUndeliveredSshPtyKill } from '../runtime/undelivered-ssh-kill'
 
 export type PtyKillIpcDeps = {
   store?: Store
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   getLocalPtyProviderStartupPromise: (connectionId?: string | null) => Promise<void> | undefined
   shutdownProviderAndDetectExit: (
     provider: IPtyProvider,

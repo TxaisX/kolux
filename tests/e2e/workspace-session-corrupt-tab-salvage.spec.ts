@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
-import { test, expect } from './helpers/nightshift-app'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
+import { test, expect } from './helpers/kolux-app'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { ensureTerminalVisible, getActiveWorktreeId, waitForSessionReady } from './helpers/store'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 
@@ -19,12 +19,7 @@ type PersistedData = {
 }
 
 function persistedDataPath(userDataDir: string): string {
-  return path.join(
-    userDataDir,
-    'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
-  )
+  return path.join(userDataDir, 'profiles', DEFAULT_LOCAL_KOLUX_PROFILE_ID, 'kolux-data.json')
 }
 
 function injectTruncatedTab(userDataDir: string, worktreeId: string, startupCwd: string): void {

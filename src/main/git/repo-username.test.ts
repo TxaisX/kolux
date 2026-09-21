@@ -48,7 +48,7 @@ describe('isBranchSafeHostedLogin', () => {
     }
   )
 
-  // Length is Nightshift's defensive bound, not a check-ref-format rule: a login is one
+  // Length is Kolux's defensive bound, not a check-ref-format rule: a login is one
   // branch component, so a loose ref stores it as a single 255-byte-max filename.
   it('accepts long provider-agnostic logins up to the loose-ref filename cap', () => {
     expect(isBranchSafeHostedLogin('a'.repeat(255))).toBe(true)

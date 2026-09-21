@@ -25,9 +25,9 @@ function sendJson(res: ServerResponse, body: unknown): void {
 
 describe('Bitbucket hosted review integration', () => {
   beforeEach(() => {
-    process.env = { ...OLD_ENV, NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN: 'local-token' }
-    delete process.env.NIGHTSHIFT_BITBUCKET_EMAIL
-    delete process.env.NIGHTSHIFT_BITBUCKET_API_TOKEN
+    process.env = { ...OLD_ENV, KOLUX_BITBUCKET_ACCESS_TOKEN: 'local-token' }
+    delete process.env.KOLUX_BITBUCKET_EMAIL
+    delete process.env.KOLUX_BITBUCKET_API_TOKEN
     _resetBitbucketRepoRefCache()
     __resetHostedReviewBranchCacheForTests()
   })
@@ -80,14 +80,14 @@ describe('Bitbucket hosted review integration', () => {
     })
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
 
-    const repoPath = await mkdtemp(join(tmpdir(), 'nightshift-bitbucket-review-'))
+    const repoPath = await mkdtemp(join(tmpdir(), 'kolux-bitbucket-review-'))
     try {
       const address = server.address()
       if (!address || typeof address === 'string') {
         throw new Error('expected TCP server address')
       }
 
-      process.env.NIGHTSHIFT_BITBUCKET_API_BASE_URL = `http://127.0.0.1:${address.port}/2.0`
+      process.env.KOLUX_BITBUCKET_API_BASE_URL = `http://127.0.0.1:${address.port}/2.0`
       await execFileAsync('git', ['init'], { cwd: repoPath })
       await execFileAsync('git', ['remote', 'add', 'origin', 'git@bitbucket.org:team/repo.git'], {
         cwd: repoPath
@@ -166,14 +166,14 @@ describe('Bitbucket hosted review integration', () => {
     })
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
 
-    const repoPath = await mkdtemp(join(tmpdir(), 'nightshift-bitbucket-review-recovery-'))
+    const repoPath = await mkdtemp(join(tmpdir(), 'kolux-bitbucket-review-recovery-'))
     try {
       const address = server.address()
       if (!address || typeof address === 'string') {
         throw new Error('expected TCP server address')
       }
 
-      process.env.NIGHTSHIFT_BITBUCKET_API_BASE_URL = `http://127.0.0.1:${address.port}/2.0`
+      process.env.KOLUX_BITBUCKET_API_BASE_URL = `http://127.0.0.1:${address.port}/2.0`
       await execFileAsync('git', ['init'], { cwd: repoPath })
       await execFileAsync('git', ['remote', 'add', 'origin', 'git@bitbucket.org:team/repo.git'], {
         cwd: repoPath

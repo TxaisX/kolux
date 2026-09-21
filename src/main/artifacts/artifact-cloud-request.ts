@@ -1,5 +1,5 @@
 import type { ArtifactWriteRequest } from '../../shared/artifacts'
-import { NightshiftCloudRequestError } from '../nightshift-profiles/profile-cloud-client'
+import { KoluxCloudRequestError } from '../kolux-profiles/profile-cloud-client'
 
 export type ArtifactWriteBody = {
   content: string
@@ -27,7 +27,7 @@ export async function artifactRequest<T>(
     method: options.method ?? 'GET',
     headers: {
       authorization: `Bearer ${token}`,
-      ...(options.editToken ? { 'x-nightshift-edit-token': options.editToken } : {}),
+      ...(options.editToken ? { 'x-kolux-edit-token': options.editToken } : {}),
       ...(options.idempotencyKey ? { 'idempotency-key': options.idempotencyKey } : {}),
       ...(options.body ? { 'content-type': 'application/json' } : {})
     },
@@ -37,7 +37,7 @@ export async function artifactRequest<T>(
   })
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { code?: string } | null
-    throw new NightshiftCloudRequestError(response.status, body?.code)
+    throw new KoluxCloudRequestError(response.status, body?.code)
   }
   if (response.status === 204) {
     return undefined as T

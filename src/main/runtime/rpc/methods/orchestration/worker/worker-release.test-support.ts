@@ -2,7 +2,7 @@ import { expect, vi } from 'vitest'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 import type { RpcContext } from '../../../core'
 import { OrchestrationDb } from '../../../../orchestration/db'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 
 export function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void
@@ -26,7 +26,7 @@ export type OrchestrationWorkerReleaseHarness = {
   coordinatorPaneKey: string
   workerPaneKey: string
   readonly db: OrchestrationDb
-  readonly runtime: NightshiftRuntimeService
+  readonly runtime: KoluxRuntimeService
   readonly activeRunId: string
   readonly inspectProcessLiveness: ReturnType<typeof vi.fn>
 }
@@ -34,7 +34,7 @@ export type OrchestrationWorkerReleaseHarness = {
 export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerReleaseHarness {
   let db: OrchestrationDb
   let dbOpen = false
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let activeRunId: string
   let inspectProcessLiveness: ReturnType<typeof vi.fn>
@@ -45,7 +45,7 @@ export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerRe
   function setup(): void {
     db = new OrchestrationDb(':memory:')
     dbOpen = true
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     inspectProcessLiveness = vi.fn().mockResolvedValue('live')
     ;(
@@ -92,7 +92,7 @@ export function createOrchestrationWorkerReleaseHarness(): OrchestrationWorkerRe
       status: 'running',
       exitCode: null
     })
-    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
       handle: 'term_worker',
       accepted: true,

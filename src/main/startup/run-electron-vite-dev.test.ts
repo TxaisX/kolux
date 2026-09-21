@@ -97,7 +97,7 @@ async function stopWrapperAndTrackedPids(wrapper: ChildProcess, pids: number[]):
 function devWrapperTestEnv(extra: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env = { ...process.env }
   for (const key of Object.keys(env)) {
-    if (key.startsWith('NIGHTSHIFT_DEV_')) {
+    if (key.startsWith('KOLUX_DEV_')) {
       delete env[key]
     }
   }
@@ -186,7 +186,7 @@ describe('run-electron-vite-dev', () => {
   it.skipIf(process.platform === 'win32')(
     'kills the descendant process tree on SIGINT',
     async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+      const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
       const pidFile = join(tempDir, 'grandchild.pid')
       const wrapperPath = resolve('config/scripts/run-electron-vite-dev.mjs')
       const fakeCliPath = resolve('src/main/startup/__fixtures__/fake-electron-vite-dev-cli.mjs')
@@ -194,11 +194,11 @@ describe('run-electron-vite-dev', () => {
       const wrapper = spawn(process.execPath, [wrapperPath], {
         cwd: resolve('.'),
         env: devWrapperTestEnv({
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+          KOLUX_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
+          KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile
         }),
         stdio: 'ignore'
       })
@@ -230,7 +230,7 @@ describe('run-electron-vite-dev', () => {
   )
 
   it('forwards dev instance identity to electron-vite', async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+    const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
     const pidFile = join(tempDir, 'grandchild.pid')
     const envFile = join(tempDir, 'env.json')
     const wrapperPath = resolve('config/scripts/run-electron-vite-dev.mjs')
@@ -239,14 +239,14 @@ describe('run-electron-vite-dev', () => {
     const wrapper = spawn(process.execPath, [wrapperPath, '--remote-debugging-port=9444'], {
       cwd: resolve('.'),
       env: devWrapperTestEnv({
-        NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-        NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-        NIGHTSHIFT_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
-        NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-        NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-        NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile,
-        NIGHTSHIFT_DEV_BRANCH: 'feature/billing-shell',
-        NIGHTSHIFT_DEV_WORKTREE_NAME: 'payment-ui'
+        KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+        KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+        KOLUX_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
+        KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+        KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+        KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile,
+        KOLUX_DEV_BRANCH: 'feature/billing-shell',
+        KOLUX_DEV_WORKTREE_NAME: 'payment-ui'
       }),
       stdio: 'ignore'
     })
@@ -281,7 +281,7 @@ describe('run-electron-vite-dev', () => {
     expect(envSnapshot.worktreeName).toBe('payment-ui')
     expect(envSnapshot.repoRoot).toBe(resolve('.'))
     expect(envSnapshot.badgeLabel).toBeNull()
-    expect(envSnapshot.dockTitle).toBe('Nightshift: feature/billing-shell')
+    expect(envSnapshot.dockTitle).toBe('Kolux: feature/billing-shell')
     expect(envSnapshot.stableName).toBeNull()
     expect(envSnapshot.electronExecPath).toBeNull()
 
@@ -289,9 +289,9 @@ describe('run-electron-vite-dev', () => {
   })
 
   it.skipIf(process.platform === 'win32')(
-    'prepares userData nightshift and nightshift-dev wrappers for dev terminals',
+    'prepares userData kolux and kolux-dev wrappers for dev terminals',
     async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+      const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
       const userDataPath = join(tempDir, 'userData')
       const pidFile = join(tempDir, 'grandchild.pid')
       const envFile = join(tempDir, 'env.json')
@@ -301,12 +301,12 @@ describe('run-electron-vite-dev', () => {
       const wrapper = spawn(process.execPath, [wrapperPath], {
         cwd: resolve('.'),
         env: devWrapperTestEnv({
-          NIGHTSHIFT_DEV_USER_DATA_PATH: userDataPath,
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile
+          KOLUX_DEV_USER_DATA_PATH: userDataPath,
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_SKIP_DEV_ELECTRON_APP_PREPARE: '1',
+          KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+          KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile
         }),
         stdio: 'ignore'
       })
@@ -323,13 +323,10 @@ describe('run-electron-vite-dev', () => {
       })
 
       const trackedPids = trackPidFile(pidFile)
-      const devWrapper = readFileSync(join(userDataPath, 'cli', 'bin', 'nightshift-dev'), 'utf8')
-      const publicAliasWrapper = readFileSync(
-        join(userDataPath, 'cli', 'bin', 'nightshift'),
-        'utf8'
-      )
+      const devWrapper = readFileSync(join(userDataPath, 'cli', 'bin', 'kolux-dev'), 'utf8')
+      const publicAliasWrapper = readFileSync(join(userDataPath, 'cli', 'bin', 'kolux'), 'utf8')
       expect(publicAliasWrapper).toBe(devWrapper)
-      expect(publicAliasWrapper).toContain('NIGHTSHIFT_USER_DATA_PATH')
+      expect(publicAliasWrapper).toContain('KOLUX_USER_DATA_PATH')
       expect(publicAliasWrapper).toContain('out/cli/index.js')
 
       await stopWrapperAndTrackedPids(wrapper, trackedPids)
@@ -337,7 +334,7 @@ describe('run-electron-vite-dev', () => {
   )
 
   it('consumes the stable-name flag before forwarding args to electron-vite', async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+    const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
     const pidFile = join(tempDir, 'grandchild.pid')
     const envFile = join(tempDir, 'env.json')
     const wrapperPath = resolve('config/scripts/run-electron-vite-dev.mjs')
@@ -349,13 +346,13 @@ describe('run-electron-vite-dev', () => {
       {
         cwd: resolve('.'),
         env: devWrapperTestEnv({
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile,
-          NIGHTSHIFT_DEV_BRANCH: 'feature/stable-name',
-          NIGHTSHIFT_DEV_WORKTREE_NAME: 'stable-ui'
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+          KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+          KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile,
+          KOLUX_DEV_BRANCH: 'feature/stable-name',
+          KOLUX_DEV_WORKTREE_NAME: 'stable-ui'
         }),
         stdio: 'ignore'
       }
@@ -390,15 +387,15 @@ describe('run-electron-vite-dev', () => {
   it.skipIf(process.platform !== 'darwin')(
     'rebuilds the copied Electron app when Chromium resources are missing',
     async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+      const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
       const wrapperPath = resolve('config/scripts/run-electron-vite-dev.mjs')
       const fakeCliPath = resolve('src/main/startup/__fixtures__/fake-electron-vite-dev-cli.mjs')
       const baseEnv = devWrapperTestEnv({
-        NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-        NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-        NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-        NIGHTSHIFT_DEV_BRANCH: 'feature/rebuild-electron-app',
-        NIGHTSHIFT_DEV_WORKTREE_NAME: 'electron-app-rebuild'
+        KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+        KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+        KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+        KOLUX_DEV_BRANCH: 'feature/rebuild-electron-app',
+        KOLUX_DEV_WORKTREE_NAME: 'electron-app-rebuild'
       })
 
       async function runWrapper(runId: string): Promise<{ electronExecPath: string }> {
@@ -408,8 +405,8 @@ describe('run-electron-vite-dev', () => {
           [wrapperPath, '--remote-debugging-port=9448'],
           {
             ...baseEnv,
-            NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-            NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile
+            KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+            KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile
           }
         )
 
@@ -462,7 +459,7 @@ describe('run-electron-vite-dev', () => {
   it.skipIf(process.platform !== 'darwin')(
     'preserves relative Electron framework symlinks in the copied mac dev app',
     async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'nightshift-dev-wrapper-'))
+      const tempDir = mkdtempSync(join(tmpdir(), 'kolux-dev-wrapper-'))
       const pidFile = join(tempDir, 'grandchild.pid')
       const envFile = join(tempDir, 'env.json')
       const wrapperPath = resolve('config/scripts/run-electron-vite-dev.mjs')
@@ -471,13 +468,13 @@ describe('run-electron-vite-dev', () => {
       const { wrapper, readOutput } = spawnDevWrapper(
         [wrapperPath, '--remote-debugging-port=9448'],
         devWrapperTestEnv({
-          NIGHTSHIFT_ELECTRON_VITE_CLI: fakeCliPath,
-          NIGHTSHIFT_SKIP_DEV_CLI_PREPARE: '1',
-          NIGHTSHIFT_SKIP_DEV_WEB_PREPARE: '1',
-          NIGHTSHIFT_DEV_WRAPPER_TEST_PID_FILE: pidFile,
-          NIGHTSHIFT_DEV_WRAPPER_TEST_ENV_FILE: envFile,
-          NIGHTSHIFT_DEV_BRANCH: 'feature/framework-symlinks',
-          NIGHTSHIFT_DEV_WORKTREE_NAME: 'symlink-ui'
+          KOLUX_ELECTRON_VITE_CLI: fakeCliPath,
+          KOLUX_SKIP_DEV_CLI_PREPARE: '1',
+          KOLUX_SKIP_DEV_WEB_PREPARE: '1',
+          KOLUX_DEV_WRAPPER_TEST_PID_FILE: pidFile,
+          KOLUX_DEV_WRAPPER_TEST_ENV_FILE: envFile,
+          KOLUX_DEV_BRANCH: 'feature/framework-symlinks',
+          KOLUX_DEV_WORKTREE_NAME: 'symlink-ui'
         })
       )
 

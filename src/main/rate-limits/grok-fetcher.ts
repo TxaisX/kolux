@@ -291,7 +291,7 @@ async function fetchMonthlyUsageFallback(
   return { kind: 'window', window: mapMonthlyUsage(config), config }
 }
 
-// Why: Nightshift never runs grok login; it only reads the session file the CLI updates.
+// Why: Kolux never runs grok login; it only reads the session file the CLI updates.
 export async function fetchGrokRateLimits(
   options: { signal?: AbortSignal; authReadResult?: GrokAuthReadResult } = {}
 ): Promise<ProviderRateLimits> {
@@ -309,7 +309,7 @@ export async function fetchGrokRateLimits(
     // on its next run, so don't tell users to re-run `grok login` (#8497).
     return result(
       'error',
-      'Grok sign-in expired — run grok on the computer running Nightshift; sign in if prompted. No chat message is needed.',
+      'Grok sign-in expired — run grok on the computer running Kolux; sign in if prompted. No chat message is needed.',
       { failureKind: 'delegated-refresh-required', source: 'oauth' }
     )
   }

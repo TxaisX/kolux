@@ -248,8 +248,8 @@ describe('store selectors', () => {
     const repos = [
       makeRepo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift'
+        path: '/Users/alice/kolux',
+        displayName: 'kolux'
       })
     ]
     const state = { repos }
@@ -410,8 +410,8 @@ describe('store selectors', () => {
     const repos = [
       makeRepo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift'
+        path: '/Users/alice/kolux',
+        displayName: 'kolux'
       })
     ]
     const projects = [
@@ -430,8 +430,8 @@ describe('store selectors', () => {
         projectId: 'project-1',
         hostId: 'local' as const,
         repoId: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift',
+        path: '/Users/alice/kolux',
+        displayName: 'kolux',
         setupState: 'ready' as const,
         setupMethod: 'legacy-repo' as const,
         createdAt: 1,
@@ -448,33 +448,33 @@ describe('store selectors', () => {
   it('groups hydrated VM project setups under the repo-derived project identity', () => {
     const repos = [
       makeRepo({
-        id: 'local-nightshift',
-        path: '/Users/alice/stably/nightshift',
-        displayName: 'nightshift',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        id: 'local-kolux',
+        path: '/Users/alice/stably/kolux',
+        displayName: 'kolux',
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       makeRepo({
-        id: 'vm-nightshift',
-        path: '/vercel/sandbox/nightshift',
-        displayName: 'nightshift',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' },
+        id: 'vm-kolux',
+        path: '/vercel/sandbox/kolux',
+        displayName: 'kolux',
+        upstream: { owner: 'TxaisX', repo: 'kolux' },
         executionHostId: toRuntimeExecutionHostId('vm-env')
       })
     ]
     const projects = [
       {
         id: 'github:TxaisX/nightshift',
-        displayName: 'nightshift',
+        displayName: 'kolux',
         badgeColor: '#737373',
-        sourceRepoIds: ['local-nightshift'],
+        sourceRepoIds: ['local-kolux'],
         createdAt: 1,
         updatedAt: 1
       },
       {
-        id: 'repo:vm-nightshift',
-        displayName: 'vercel/sandbox/nightshift',
+        id: 'repo:vm-kolux',
+        displayName: 'vercel/sandbox/kolux',
         badgeColor: '#737373',
-        sourceRepoIds: ['vm-nightshift'],
+        sourceRepoIds: ['vm-kolux'],
         createdAt: 1,
         updatedAt: 1
       }
@@ -484,9 +484,9 @@ describe('store selectors', () => {
         id: 'local-setup',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'local' as const,
-        repoId: 'local-nightshift',
-        path: '/Users/alice/stably/nightshift',
-        displayName: 'nightshift',
+        repoId: 'local-kolux',
+        path: '/Users/alice/stably/kolux',
+        displayName: 'kolux',
         setupState: 'ready' as const,
         setupMethod: 'legacy-repo' as const,
         createdAt: 1,
@@ -494,11 +494,11 @@ describe('store selectors', () => {
       },
       {
         id: 'vm-setup',
-        projectId: 'repo:vm-nightshift',
+        projectId: 'repo:vm-kolux',
         hostId: toRuntimeExecutionHostId('vm-env'),
-        repoId: 'vm-nightshift',
-        path: '/vercel/sandbox/nightshift',
-        displayName: 'nightshift',
+        repoId: 'vm-kolux',
+        path: '/vercel/sandbox/kolux',
+        displayName: 'kolux',
         setupState: 'ready' as const,
         setupMethod: 'provisioned' as const,
         createdAt: 1,
@@ -525,9 +525,9 @@ describe('store selectors', () => {
     const repos = [
       makeRepo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        path: '/Users/alice/kolux',
+        displayName: 'kolux',
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       })
     ]
 
@@ -549,7 +549,7 @@ describe('store selectors', () => {
         projectId: 'github:TxaisX/nightshift',
         repoId: 'repo-1',
         hostId: 'local',
-        path: '/Users/alice/nightshift'
+        path: '/Users/alice/kolux'
       })
     ])
   })
@@ -558,8 +558,8 @@ describe('store selectors', () => {
     const repos = [
       makeRepo({
         id: 'repo-1',
-        path: '/Users/alice/nightshift',
-        displayName: 'nightshift'
+        path: '/Users/alice/kolux',
+        displayName: 'kolux'
       })
     ]
     const projects = [

@@ -3,7 +3,7 @@ import type { ExecutionHostId, ParsedExecutionHost } from '../../../../shared/ex
 import type { Repo } from '../../../../shared/repo-types'
 import type { SshConnectionState, SshConnectionStatus } from '../../../../shared/ssh-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
-import type { NightshiftVmRecipe } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../../../../shared/kolux-yaml-hook-types'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { AgentStartupShell } from '../../../../shared/tui-agent-startup-shell'
 import type { NewWorkspaceProjectOption } from '@/lib/new-workspace-project-options'
@@ -47,7 +47,7 @@ export type ComposerRuntimeTargetModel = {
   selectedRecipeRepoId: string | null
   selectedRecipeRepoConnectionId: string | null
   ephemeralVmsEnabled: boolean
-  ephemeralVmRecipes: NightshiftVmRecipe[]
+  ephemeralVmRecipes: KoluxVmRecipe[]
   selectedEphemeralVmRecipeId: string | null
   setSelectedEphemeralVmRecipeId: (recipeId: string | null) => void
   ephemeralVmRecipeError: string | null

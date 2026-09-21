@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 
 // Only the prefix is contract: the checkpoint error appends the swallowed persist
 // cause (STA-5505), whose wording belongs to whatever threw.
@@ -11,17 +11,17 @@ const CHECKPOINT_ERROR_PREFIX = 'Renderer shutdown checkpoint was not completed:
 const CORRUPT_HISTORY_ENTRY = { url: null, title: 'corrupt persisted history', lastVisitedAt: 0 }
 
 test('recovers update install from a corrupt clean session but preserves dirty drafts', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }) => {
   const fallbackLogs: string[] = []
-  nightshiftPage.on('console', (message) => {
+  koluxPage.on('console', (message) => {
     if (message.text().includes('Full renderer session snapshot failed; using durable session')) {
       fallbackLogs.push(message.text())
     }
   })
 
-  const dirtyResult = await nightshiftPage.evaluate(
+  const dirtyResult = await koluxPage.evaluate(
     async ({ filePath, worktreeId, corruptEntry }) => {
       const store = window.__store
       if (!store) {
@@ -53,9 +53,7 @@ test('recovers update install from a corrupt clean session but preserves dirty d
     },
     {
       filePath: path.join(testRepoPath, 'checkpoint-draft.txt'),
-      worktreeId: await nightshiftPage.evaluate(
-        () => window.__store?.getState().activeWorktreeId ?? ''
-      ),
+      worktreeId: await koluxPage.evaluate(() => window.__store?.getState().activeWorktreeId ?? ''),
       corruptEntry: CORRUPT_HISTORY_ENTRY
     }
   )
@@ -65,7 +63,7 @@ test('recovers update install from a corrupt clean session but preserves dirty d
   // survives V8 rewording of "Cannot read properties of null".
   expect(dirtyResult).toContain('toLowerCase')
 
-  const cleanResult = await nightshiftPage.evaluate(async (corruptEntry) => {
+  const cleanResult = await koluxPage.evaluate(async (corruptEntry) => {
     const store = window.__store
     if (!store) {
       throw new Error('window.__store is not available')

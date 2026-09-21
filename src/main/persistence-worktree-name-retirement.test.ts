@@ -56,7 +56,7 @@ async function reloadStore() {
 async function createStore(persisted: Record<string, unknown> = {}) {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({ ...getDefaultPersistedState(testState.dir), ...persisted }),
     'utf-8'
   )
@@ -64,7 +64,7 @@ async function createStore(persisted: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
-  testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-worktree-name-retirement-'))
+  testState.dir = mkdtempSync(join(tmpdir(), 'kolux-worktree-name-retirement-'))
 })
 
 afterEach(() => {
@@ -264,7 +264,7 @@ describe('worktree name retirement registry', () => {
     // What the shipped code wrote: a namespace whose host half is the target row id.
     const store = await createStore({
       retiredWorktreeNamesByNamespace: {
-        'ssh:ssh-old:posix:/remote/repos/a-nightshift-retirement-probe': {
+        'ssh:ssh-old:posix:/remote/repos/a-kolux-retirement-probe': {
           exhaustedTiers: 0,
           names: ['nautilus']
         }
@@ -580,7 +580,7 @@ describe('worktree name retirement registry', () => {
   it('drops names a persisted watermark already covers', async () => {
     const store = await createStore({
       retiredWorktreeNamesByRepo: {
-        [REPO]: { exhaustedTiers: 2, names: ['nautilus', 'nightshift-2'] }
+        [REPO]: { exhaustedTiers: 2, names: ['nautilus', 'kolux-2'] }
       }
     })
 

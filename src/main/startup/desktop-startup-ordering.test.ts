@@ -86,7 +86,7 @@ describe('startup ordering', () => {
     )
     const readyIndex = entrySource.indexOf('void app.whenReady().then(async () => {')
     const initReadyIndex = entrySource.indexOf('initializeMainProcessReady({')
-    const profileIndex = foundationSource.indexOf('const profile = ensureActiveNightshiftProfile()')
+    const profileIndex = foundationSource.indexOf('const profile = ensureActiveKoluxProfile()')
     const initIndex = foundationSource.indexOf(
       'initializeBrowserClientHostId(profile.profileDirectory)'
     )
@@ -485,7 +485,7 @@ describe('startup ordering', () => {
 
   it('installs the serve supervisor disconnect quit after the app environment and data path', () => {
     // Why (#16761): the call resolves the handoff path through getCanonicalUserDataPath(). At module
-    // scope that accessor throws by design, so every `nightshift serve` process on macOS died at startup
+    // scope that accessor throws by design, so every `kolux serve` process on macOS died at startup
     // before it could listen. serve-update-handoff.test.ts mocks the resolver, so only ordering
     // catches this; serve-update-handoff.app-environment.test.ts pins the throw it depends on.
     const source = readFileSync(

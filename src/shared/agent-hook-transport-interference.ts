@@ -23,7 +23,7 @@ export function isHookRequestTruncatedError(error: unknown): error is HookReques
 }
 
 /**
- * Truncation is only interference when Nightshift did not cause it. `Content-Length` must be present and
+ * Truncation is only interference when Kolux did not cause it. `Content-Length` must be present and
  * unmet: a chunked body or a completed one proves nothing, and reporting those would make the
  * signal useless.
  */

@@ -8,7 +8,7 @@ import {
   isAgentSessionPtyWriteRefusedError
 } from '../../shared/agent-session-pty-write-admission'
 
-/** Structural subset of NightshiftRuntimeService exposed to plugin facade bindings. */
+/** Structural subset of KoluxRuntimeService exposed to plugin facade bindings. */
 export type PluginRuntimeDelegate = {
   resolveActiveWorktreeContext(): Promise<{
     worktreeId: string

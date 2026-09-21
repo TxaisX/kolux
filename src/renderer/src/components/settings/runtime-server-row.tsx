@@ -133,13 +133,13 @@ export function RuntimeServerRow({
             <span className="text-[11px] text-muted-foreground">
               {remoteUpdate.currentVersion
                 ? translate(
-                    'auto.components.settings.RuntimeEnvironmentsPane.nightshiftVersion',
-                    'Nightshift v{{value0}}',
+                    'auto.components.settings.RuntimeEnvironmentsPane.koluxVersion',
+                    'Kolux v{{value0}}',
                     { value0: remoteUpdate.currentVersion }
                   )
                 : translate(
                     'auto.components.settings.RuntimeEnvironmentsPane.versionUnavailable',
-                    'Nightshift version unavailable'
+                    'Kolux version unavailable'
                   )}
             </span>
             <RemoteServerUpdateStatus entry={remoteUpdate} compact />

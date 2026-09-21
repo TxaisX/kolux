@@ -52,7 +52,7 @@ describe('analyzeWorkspaceSpace local du timeout', () => {
   let tempDir: string | null = null
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), 'nightshift-space-du-timeout-'))
+    tempDir = await mkdtemp(join(tmpdir(), 'kolux-space-du-timeout-'))
     execFileMock.mockReset()
     listRepoWorktreesMock.mockReset()
   })
@@ -73,7 +73,7 @@ describe('analyzeWorkspaceSpace local du timeout', () => {
     const repo: Repo = {
       id: 'repo-1',
       path: repoPath,
-      displayName: 'nightshift',
+      displayName: 'kolux',
       badgeColor: '#000',
       addedAt: 0
     }

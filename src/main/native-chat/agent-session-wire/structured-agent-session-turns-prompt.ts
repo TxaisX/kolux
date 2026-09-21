@@ -115,7 +115,7 @@ export async function performPrompt(
     })
   } catch (error) {
     await ctx.journal.appendItem(
-      { provider: 'nightshift', clientMessageId: `${input.itemId}#delivery` },
+      { provider: 'kolux', clientMessageId: `${input.itemId}#delivery` },
       {
         kind: 'status',
         text: `Your answer was recorded but the agent did not confirm it: ${

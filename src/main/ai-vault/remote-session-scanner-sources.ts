@@ -198,7 +198,7 @@ function remoteCodexSources(
       remoteHome,
       '.local',
       'share',
-      'nightshift',
+      'kolux',
       'codex-runtime-home',
       'home'
     )

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcRequest } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { CLIENT_UI_METHODS } from './client-ui'
@@ -17,7 +17,7 @@ describe('native-chat settings RPC', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       updateClientNativeChatSessionOptions
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: CLIENT_UI_METHODS })
     const mutation = {
       type: 'apply-picks' as const,
@@ -39,7 +39,7 @@ describe('native-chat settings RPC', () => {
     const runtime = {
       getRuntimeId: () => 'test-runtime',
       updateClientNativeChatSessionOptions
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: CLIENT_UI_METHODS })
 
     for (const mutation of [

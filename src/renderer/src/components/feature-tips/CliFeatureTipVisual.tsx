@@ -8,10 +8,10 @@ import { usePrefersReducedMotion } from '@/components/feature-wall/feature-wall-
 import { translate } from '@/i18n/i18n'
 
 const CLI_AGENT_COMMANDS = [
-  'nightshift worktree create --name auth-pr-1',
-  'nightshift worktree create --name auth-pr-2',
-  'nightshift orchestration dispatch --task pr1 --to w1',
-  'nightshift orchestration dispatch --task pr2 --to w2'
+  'kolux worktree create --name auth-pr-1',
+  'kolux worktree create --name auth-pr-2',
+  'kolux orchestration dispatch --task pr1 --to w1',
+  'kolux orchestration dispatch --task pr2 --to w2'
 ]
 
 export function CliFeatureTipVisual(): JSX.Element {

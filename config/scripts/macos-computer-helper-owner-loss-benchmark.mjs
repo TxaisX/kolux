@@ -23,10 +23,10 @@ import {
 } from './macos-computer-helper-owner-loss-processes.mjs'
 import { cleanupOwnerLossTrial } from './macos-computer-helper-owner-loss-trial-cleanup.mjs'
 
-const INTERNAL_ENV = 'NIGHTSHIFT_COMPUTER_HELPER_OWNER_BENCH_INTERNAL'
-const EXPECTATION_ENV = 'NIGHTSHIFT_COMPUTER_HELPER_OWNER_BENCH_EXPECTATION'
-const HELPER_RECORD_PATH_ENV = 'NIGHTSHIFT_COMPUTER_HELPER_OWNER_BENCH_HELPER_RECORD_PATH'
-const RESULT_PATH_ENV = 'NIGHTSHIFT_COMPUTER_HELPER_OWNER_BENCH_RESULT_PATH'
+const INTERNAL_ENV = 'KOLUX_COMPUTER_HELPER_OWNER_BENCH_INTERNAL'
+const EXPECTATION_ENV = 'KOLUX_COMPUTER_HELPER_OWNER_BENCH_EXPECTATION'
+const HELPER_RECORD_PATH_ENV = 'KOLUX_COMPUTER_HELPER_OWNER_BENCH_HELPER_RECORD_PATH'
+const RESULT_PATH_ENV = 'KOLUX_COMPUTER_HELPER_OWNER_BENCH_RESULT_PATH'
 const ACTIVE_REQUEST_COUNT = 100_000
 const DEFAULT_TRIALS = 3
 const OWNER_HOLD_MS = 31_000
@@ -52,9 +52,9 @@ const helperAppPath = path.join(
   'computer-use-macos',
   '.build',
   'release',
-  'Nightshift Computer Use.app'
+  'Kolux Computer Use.app'
 )
-const helperPath = path.join(helperAppPath, 'Contents', 'MacOS', 'nightshift-computer-use-macos')
+const helperPath = path.join(helperAppPath, 'Contents', 'MacOS', 'kolux-computer-use-macos')
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -99,8 +99,8 @@ function startSidecar() {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      NIGHTSHIFT_COMPUTER_SIDECAR: '1',
-      NIGHTSHIFT_COMPUTER_MACOS_HELPER_APP_PATH: helperAppPath
+      KOLUX_COMPUTER_SIDECAR: '1',
+      KOLUX_COMPUTER_MACOS_HELPER_APP_PATH: helperAppPath
     }
   })
   child.on('error', (error) => errors.push(error.stack ?? error.message))
@@ -452,15 +452,15 @@ function runTrial(executable, expectation) {
   let stdoutDescriptor
   let trialOutput = ''
   try {
-    launcherDir = mkdtempSync(path.join(tmpdir(), 'nightshift-helper-owner-bench-launcher-'))
-    trialTempDir = mkdtempSync(path.join(path.sep, 'tmp', 'nightshift-owner-bench-'))
+    launcherDir = mkdtempSync(path.join(tmpdir(), 'kolux-helper-owner-bench-launcher-'))
+    trialTempDir = mkdtempSync(path.join(path.sep, 'tmp', 'kolux-owner-bench-'))
     helperRecordPath = path.join(launcherDir, 'helper.json')
     resultPath = path.join(launcherDir, 'result.json')
     stderrPath = path.join(launcherDir, 'stderr.log')
     stdoutPath = path.join(launcherDir, 'stdout.log')
     writeFileSync(
       path.join(launcherDir, 'package.json'),
-      JSON.stringify({ name: 'nightshift-helper-owner-benchmark', main: 'main.cjs' })
+      JSON.stringify({ name: 'kolux-helper-owner-benchmark', main: 'main.cjs' })
     )
     writeFileSync(
       path.join(launcherDir, 'main.cjs'),

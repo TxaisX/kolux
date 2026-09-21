@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   browserWindowMock: {
     getAllWindows: vi.fn<() => TestWindow[]>(() => [])
   },
-  checkNightshiftStarredMock: vi.fn(),
-  starNightshiftMock: vi.fn(),
+  checkKoluxStarredMock: vi.fn(),
+  starKoluxMock: vi.fn(),
   trackMock: vi.fn(),
   getCohortAtEmitMock: vi.fn(() => ({ nth_repo_added: 3 })),
   ipcMainHandleMock: vi.fn()
@@ -31,8 +31,8 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../github/client', () => ({
-  checkNightshiftStarred: mocks.checkNightshiftStarredMock,
-  starNightshift: mocks.starNightshiftMock
+  checkKoluxStarred: mocks.checkKoluxStarredMock,
+  starKolux: mocks.starKoluxMock
 }))
 
 vi.mock('../telemetry/client', () => ({
@@ -43,7 +43,7 @@ vi.mock('../telemetry/cohort-classifier', () => ({
   getCohortAtEmit: mocks.getCohortAtEmitMock
 }))
 
-const { browserWindowMock, getCohortAtEmitMock, starNightshiftMock, trackMock } = mocks
+const { browserWindowMock, getCohortAtEmitMock, starKoluxMock, trackMock } = mocks
 const getIpcHandler = createIpcHandlerLookup(mocks.ipcMainHandleMock)
 
 describe('StarNagService', () => {
@@ -58,14 +58,14 @@ describe('StarNagService', () => {
     consoleInfoMock.mockRestore()
   })
 
-  it('emits direct-star attempted and succeeded outcomes plus app_starred_nightshift', async () => {
+  it('emits direct-star attempted and succeeded outcomes plus app_starred_kolux', async () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    const ok = await getIpcHandler('star-nag:starNightshift')()
+    const ok = await getIpcHandler('star-nag:starKolux')()
 
     expect(ok).toBe(true)
     expect(ui.starNagCompleted).toBe(true)
@@ -77,7 +77,7 @@ describe('StarNagService', () => {
       'star_nag_outcome',
       expect.objectContaining({ outcome: 'direct_star_succeeded', mode: 'gh' })
     )
-    expect(trackMock).toHaveBeenCalledWith('app_starred_nightshift', {
+    expect(trackMock).toHaveBeenCalledWith('app_starred_kolux', {
       source: 'star_nag',
       nth_repo_added: 3
     })
@@ -90,15 +90,15 @@ describe('StarNagService', () => {
 
     service.registerIpcHandlers()
     await getIpcHandler('star-nag:onboardingCompleted')()
-    await getIpcHandler('star-nag:starNightshift')()
+    await getIpcHandler('star-nag:starKolux')()
 
-    expect(trackMock).toHaveBeenCalledWith('app_starred_nightshift', {
+    expect(trackMock).toHaveBeenCalledWith('app_starred_kolux', {
       source: 'onboarding_completed',
       nth_repo_added: 3
     })
   })
 
-  it('uses fresh cohort context for canonical app_starred_nightshift success telemetry', async () => {
+  it('uses fresh cohort context for canonical app_starred_kolux success telemetry', async () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     getCohortAtEmitMock
@@ -108,7 +108,7 @@ describe('StarNagService', () => {
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    await getIpcHandler('star-nag:starNightshift')()
+    await getIpcHandler('star-nag:starKolux')()
 
     expect(trackMock).toHaveBeenCalledWith(
       'star_nag_outcome',
@@ -118,7 +118,7 @@ describe('StarNagService', () => {
       'star_nag_outcome',
       expect.objectContaining({ outcome: 'direct_star_succeeded', nth_repo_added: 2 })
     )
-    expect(trackMock).toHaveBeenCalledWith('app_starred_nightshift', {
+    expect(trackMock).toHaveBeenCalledWith('app_starred_kolux', {
       source: 'star_nag',
       nth_repo_added: 4
     })
@@ -128,12 +128,12 @@ describe('StarNagService', () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const deferredStar = createDeferred<boolean>()
-    starNightshiftMock.mockReturnValue(deferredStar.promise)
+    starKoluxMock.mockReturnValue(deferredStar.promise)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    const starPromise = getIpcHandler('star-nag:starNightshift')()
+    const starPromise = getIpcHandler('star-nag:starKolux')()
     getIpcHandler('star-nag:dismiss')()
 
     deferredStar.resolve(true)
@@ -143,7 +143,7 @@ describe('StarNagService', () => {
       'star_nag_outcome',
       expect.objectContaining({ outcome: 'direct_star_succeeded', mode: 'gh' })
     )
-    expect(trackMock).toHaveBeenCalledWith('app_starred_nightshift', {
+    expect(trackMock).toHaveBeenCalledWith('app_starred_kolux', {
       source: 'star_nag',
       nth_repo_added: 3
     })
@@ -154,12 +154,12 @@ describe('StarNagService', () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const deferredStar = createDeferred<boolean>()
-    starNightshiftMock.mockReturnValue(deferredStar.promise)
+    starKoluxMock.mockReturnValue(deferredStar.promise)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    const starPromise = getIpcHandler('star-nag:starNightshift')()
+    const starPromise = getIpcHandler('star-nag:starKolux')()
     getIpcHandler('star-nag:dismiss')()
 
     deferredStar.resolve(false)
@@ -177,17 +177,17 @@ describe('StarNagService', () => {
   it('clears the in-flight direct-star guard after thrown attempts so the user can retry', async () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
-    starNightshiftMock.mockRejectedValueOnce(new Error('gh failed')).mockResolvedValueOnce(true)
+    starKoluxMock.mockRejectedValueOnce(new Error('gh failed')).mockResolvedValueOnce(true)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    const starFromNag = getIpcHandler('star-nag:starNightshift')
+    const starFromNag = getIpcHandler('star-nag:starKolux')
 
     await expect(starFromNag()).rejects.toThrow('gh failed')
     await expect(starFromNag()).resolves.toBe(true)
 
-    expect(starNightshiftMock).toHaveBeenCalledTimes(2)
+    expect(starKoluxMock).toHaveBeenCalledTimes(2)
     expect(ui.starNagCompleted).toBe(true)
   })
 
@@ -195,12 +195,12 @@ describe('StarNagService', () => {
     const window = createWindow()
     browserWindowMock.getAllWindows.mockReturnValue([window])
     const deferredStar = createDeferred<boolean>()
-    starNightshiftMock.mockReturnValue(deferredStar.promise)
+    starKoluxMock.mockReturnValue(deferredStar.promise)
     const { service, ui } = createHarness()
 
     service.registerIpcHandlers()
     getIpcHandler('star-nag:forceShow')()
-    const starFromNag = getIpcHandler('star-nag:starNightshift')
+    const starFromNag = getIpcHandler('star-nag:starKolux')
     const first = starFromNag()
     const second = starFromNag()
 

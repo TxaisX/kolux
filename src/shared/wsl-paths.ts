@@ -42,7 +42,7 @@ export function isWslUncPath(path: string): boolean {
  * Why: WSL hook/setup environments may need both the worktree UNC path
  * (\\wsl.localhost\...) and regular Windows install paths (C:\Users\...)
  * translated before passing them to bash. Leaving drive paths untouched
- * breaks scripts that read NIGHTSHIFT_ROOT_PATH or similar env vars inside WSL.
+ * breaks scripts that read KOLUX_ROOT_PATH or similar env vars inside WSL.
  */
 export function toLinuxPath(windowsPath: string): string {
   // Why the platform guard: on a POSIX host a literal `//wsl$/x` path is an
@@ -79,7 +79,7 @@ export function toWindowsWslUncPath(linuxPath: string, distro: string): string {
  * absolute Linux path like /home/user/trees is the natural spelling of a
  * location inside that distro. Windows path code reads it as drive-relative,
  * so the WSL workspace-mirroring heuristic silently replaced it with
- * ~/nightshift/workspaces (STA-4772). The repo path pins the distro, making the
+ * ~/kolux/workspaces (STA-4772). The repo path pins the distro, making the
  * value unambiguous — translate it to its UNC form. Non-WSL repos and
  * non-POSIX values (UNC, drive, relative) pass through untouched, so native
  * Windows, macOS/Linux, and SSH base paths keep their meaning.

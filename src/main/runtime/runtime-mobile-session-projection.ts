@@ -61,7 +61,7 @@ export function projectRuntimeMobileSessionTabs(
         ...tab,
         title: liveTab.title || tab.title,
         url: liveTab.url || tab.url,
-        // Why: bridge "active" means active BrowserView/webContents, not active Nightshift tab; preserve the renderer's session focus.
+        // Why: bridge "active" means active BrowserView/webContents, not active Kolux tab; preserve the renderer's session focus.
         isActive: tab.isActive
       })
       continue

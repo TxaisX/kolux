@@ -104,25 +104,25 @@ const UNREGISTERED_ON_MAIN = [
  * list cannot become a place to park a file someone did not want to register.
  */
 const MANUAL_OPT_IN = [
-  // `runIf(platform === 'win32' && Boolean(distro))`, distro from NIGHTSHIFT_TEST_WSL_DISTRO.
+  // `runIf(platform === 'win32' && Boolean(distro))`, distro from KOLUX_TEST_WSL_DISTRO.
   'src/main/git/runner-wsl-linked-gitdir-windows.test.ts',
-  // `runRealWsl = … && NIGHTSHIFT_REAL_WSL_BANNER_TEST === '1'`; needs a real distro.
+  // `runRealWsl = … && KOLUX_REAL_WSL_BANNER_TEST === '1'`; needs a real distro.
   'src/main/local-worktree-filesystem-wsl-banner.wsl.test.ts',
-  // `RUN_REAL_WINDOWS = platform === 'win32' && NIGHTSHIFT_REAL_WINDOWS_SKILL_TEST === '1'`.
+  // `RUN_REAL_WINDOWS = platform === 'win32' && KOLUX_REAL_WINDOWS_SKILL_TEST === '1'`.
   'src/main/skills/skill-windows-rename-contention.integration.test.ts',
   // Same flag; installs into a real Windows workspace.
   'src/main/skills/skill-windows-workspace.integration.test.ts',
-  // `RUN_REAL_WSL = … && NIGHTSHIFT_REAL_WSL_SKILL_TEST === '1'`; real distro filesystem.
+  // `RUN_REAL_WSL = … && KOLUX_REAL_WSL_SKILL_TEST === '1'`; real distro filesystem.
   'src/main/skills/skill-wsl-delete.integration.test.ts',
   // Same flag; real WSL install transactions.
   'src/main/skills/skill-wsl-install-transaction.integration.test.ts',
   // Same flag; real WSL POSIX semantics.
   'src/main/skills/skill-wsl-posix-semantics.integration.test.ts',
-  // `runRealWsl = … && NIGHTSHIFT_REAL_WSL_DELETE_TEST === '1'`; real distro traversal race.
+  // `runRealWsl = … && KOLUX_REAL_WSL_DELETE_TEST === '1'`; real distro traversal race.
   'src/main/wsl-approved-root-race.wsl.test.ts',
   // Same flag; real UNC delete against a distro.
   'src/main/wsl-unc-delete.wsl.test.ts',
-  // `enabled = platform === 'win32' && NIGHTSHIFT_REAL_WSL_RUNNER_TEST === '1'`; mutates a real distro's ~/.profile.
+  // `enabled = platform === 'win32' && KOLUX_REAL_WSL_RUNNER_TEST === '1'`; mutates a real distro's ~/.profile.
   'src/main/wsl/wsl-runner.wsl.test.ts'
 ]
 
@@ -239,7 +239,7 @@ export function isWindows32GatedTestFile(path, source) {
  * and it would have parked in MANUAL_OPT_IN unnoticed. Only the cap number
  * stood in the way, and a number is not an argument.
  *
- * One hop is enough for every real case: `distro = process.env.NIGHTSHIFT_TEST_WSL_DISTRO`
+ * One hop is enough for every real case: `distro = process.env.KOLUX_TEST_WSL_DISTRO`
  * then `runIf(platform === 'win32' && Boolean(distro))`. Deeper chains fail
  * closed -- the file reads as registrable, which is the safe direction.
  */
@@ -486,13 +486,13 @@ describe('manual opt-in classification', () => {
     // One hop through a const: the real shape of the ten listed suites.
     expect(
       requiresEnvOptIn(
-        "const distro = process.env.NIGHTSHIFT_TEST_WSL_DISTRO\ndescribe.runIf(process.platform === 'win32' && Boolean(distro))('x', () => {})"
+        "const distro = process.env.KOLUX_TEST_WSL_DISTRO\ndescribe.runIf(process.platform === 'win32' && Boolean(distro))('x', () => {})"
       )
     ).toBe(true)
     // Read inline in the conjunct: the other real shape.
     expect(
       requiresEnvOptIn(
-        "const RUN = process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_X === '1'"
+        "const RUN = process.platform === 'win32' && process.env.KOLUX_REAL_X === '1'"
       )
     ).toBe(true)
   })
@@ -510,7 +510,7 @@ describe('manual opt-in classification', () => {
     // and this reads as manual, which is the parking hole reopened.
     expect(
       requiresEnvOptIn(
-        "describe.runIf(process.platform === 'win32')(`x ${process.env.NIGHTSHIFT_TAG}`, () => {})"
+        "describe.runIf(process.platform === 'win32')(`x ${process.env.KOLUX_TAG}`, () => {})"
       )
     ).toBe(false)
   })

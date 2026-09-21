@@ -5,9 +5,7 @@ describe('scanForShellReadyMarker', () => {
   it('strips the marker and preserves surrounding output', () => {
     const state = createShellReadyMarkerScanState()
 
-    expect(
-      scanForShellReadyMarker(state, 'before \x1b]777;nightshift-shell-ready\x07 after')
-    ).toEqual({
+    expect(scanForShellReadyMarker(state, 'before \x1b]777;kolux-shell-ready\x07 after')).toEqual({
       output: 'before  after',
       matched: true
     })
@@ -16,7 +14,7 @@ describe('scanForShellReadyMarker', () => {
   it('matches markers split across chunks', () => {
     const state = createShellReadyMarkerScanState()
 
-    expect(scanForShellReadyMarker(state, 'before \x1b]777;nightshift')).toEqual({
+    expect(scanForShellReadyMarker(state, 'before \x1b]777;kolux')).toEqual({
       output: 'before ',
       matched: false
     })
@@ -29,8 +27,8 @@ describe('scanForShellReadyMarker', () => {
   it('flushes marker-like output when the full marker is not BEL-terminated', () => {
     const state = createShellReadyMarkerScanState()
 
-    expect(scanForShellReadyMarker(state, 'before \x1b]777;nightshift-shell-readyx')).toEqual({
-      output: 'before \x1b]777;nightshift-shell-readyx',
+    expect(scanForShellReadyMarker(state, 'before \x1b]777;kolux-shell-readyx')).toEqual({
+      output: 'before \x1b]777;kolux-shell-readyx',
       matched: false
     })
     expect(scanForShellReadyMarker(state, ' after')).toEqual({

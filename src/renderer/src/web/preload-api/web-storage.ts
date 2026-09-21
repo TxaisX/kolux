@@ -1,14 +1,14 @@
-export const SETTINGS_STORAGE_KEY = 'nightshift.web.settings.v1'
+export const SETTINGS_STORAGE_KEY = 'kolux.web.settings.v1'
 
-export const UI_STORAGE_KEY = 'nightshift.web.ui.v1'
+export const UI_STORAGE_KEY = 'kolux.web.ui.v1'
 
-export const SESSION_STORAGE_KEY = 'nightshift.web.workspaceSession.v1'
+export const SESSION_STORAGE_KEY = 'kolux.web.workspaceSession.v1'
 
-export const ONBOARDING_STORAGE_KEY = 'nightshift.web.onboarding.v1'
+export const ONBOARDING_STORAGE_KEY = 'kolux.web.onboarding.v1'
 
-export const GITHUB_CACHE_STORAGE_KEY = 'nightshift.web.githubCache.v1'
+export const GITHUB_CACHE_STORAGE_KEY = 'kolux.web.githubCache.v1'
 
-export const KEYBINDINGS_STORAGE_KEY = 'nightshift.web.keybindings.v1'
+export const KEYBINDINGS_STORAGE_KEY = 'kolux.web.keybindings.v1'
 
 export function getBrowserPlatform(): NodeJS.Platform {
   if (navigator.userAgent.includes('Windows')) {

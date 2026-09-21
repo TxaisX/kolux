@@ -111,9 +111,9 @@ describe('workspace cleanup scanned host confirmation removal', () => {
   })
 
   it('deletes only host B after its real scanned candidate crosses the confirmation path', async () => {
-    const scanRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nightshift-cleanup-scan-'))
-    const hostARoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nightshift-cleanup-host-a-'))
-    const hostBRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nightshift-cleanup-host-b-'))
+    const scanRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kolux-cleanup-scan-'))
+    const hostARoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kolux-cleanup-host-a-'))
+    const hostBRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kolux-cleanup-host-b-'))
     temporaryRoots.push(scanRoot, hostARoot, hostBRoot)
     const sharedPath = path.join(scanRoot, 'shared-workspace')
     const gitPath = path.join(sharedPath, '.git')

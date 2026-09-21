@@ -1,4 +1,4 @@
-import type { NightshiftVmRecipe } from '../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../shared/kolux-yaml-hook-types'
 import {
   listEphemeralVmRuntimes,
   updateEphemeralVmRuntimeStatus
@@ -26,7 +26,7 @@ export { stopEphemeralVmRuntimeCleanup } from './ephemeral-vm-runtime-cleanup-co
 export type ProvisionEphemeralVmRuntimeArgs = {
   userDataPath: string
   repoPath: string
-  recipe: NightshiftVmRecipe
+  recipe: KoluxVmRecipe
   repoId?: string
   projectId?: string
   workspaceId?: string
@@ -35,7 +35,7 @@ export type ProvisionEphemeralVmRuntimeArgs = {
   branch?: string
   ref?: string
   expectedRefHead?: string
-  nightshiftVersion?: string
+  koluxVersion?: string
   now?: number
   signal?: AbortSignal
   onStdout?: (chunk: string) => void
@@ -56,7 +56,7 @@ export type ProvisionEphemeralVmRuntimeResult =
 export type CleanupEphemeralVmRuntimeArgs = {
   userDataPath: string
   repoPath: string
-  recipe: NightshiftVmRecipe
+  recipe: KoluxVmRecipe
   runtimeId: string
   now?: number
   signal?: AbortSignal
@@ -115,7 +115,7 @@ export async function provisionEphemeralVmRuntime(
       branch: args.branch,
       ref: args.ref,
       expectedRefHead: args.expectedRefHead,
-      nightshiftVersion: args.nightshiftVersion,
+      koluxVersion: args.koluxVersion,
       ...(compatibility ? { instanceId: compatibility.instanceId } : {})
     },
     signal: args.signal,

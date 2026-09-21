@@ -8,7 +8,7 @@ import {
   rmSync
 } from 'node:fs'
 import { dirname, isAbsolute, join, relative, sep } from 'node:path'
-import { getNightshiftManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
 import {
   listCodexSessionJsonlFiles,
   listCodexSessionJsonlFilesIncrementally
@@ -51,7 +51,7 @@ export function syncSystemCodexSessionsIntoManagedHome(sourceCodexHomePath?: str
     return
   }
 
-  const managedSessionsRoot = join(getNightshiftManagedCodexHomePath(), 'sessions')
+  const managedSessionsRoot = join(getKoluxManagedCodexHomePath(), 'sessions')
   for (const systemSessionFilePath of listCodexSessionJsonlFiles(systemSessionsRoot)) {
     bridgeSystemCodexSessionFile(systemSessionsRoot, managedSessionsRoot, systemSessionFilePath)
   }
@@ -99,7 +99,7 @@ export async function syncSystemCodexSessionsIntoManagedHomeIncrementally(
     return { scannedFiles: 0, linkedFiles: 0 }
   }
 
-  const managedSessionsRoot = join(getNightshiftManagedCodexHomePath(), 'sessions')
+  const managedSessionsRoot = join(getKoluxManagedCodexHomePath(), 'sessions')
   const summary: CodexSessionBridgeSummary = { scannedFiles: 0, linkedFiles: 0 }
   for await (const systemSessionFilePath of listCodexSessionJsonlFilesIncrementally(
     systemSessionsRoot,
@@ -183,7 +183,7 @@ function replaceSymlinkSessionBridgeWithHardlink(
       return false
     }
 
-    replacementPath = `${targetPath}.nightshift-link-${process.pid}-${Date.now()}`
+    replacementPath = `${targetPath}.kolux-link-${process.pid}-${Date.now()}`
     if (!tryHardlinkCodexSessionFile(sourcePath, replacementPath)) {
       return false
     }
@@ -227,7 +227,7 @@ function migrateLegacyCopiedSessionBridge(
     if (!fileStatsMatchMarker(targetStat, marker, 'target')) {
       return
     }
-    replacementPath = `${targetPath}.nightshift-link-${process.pid}-${Date.now()}`
+    replacementPath = `${targetPath}.kolux-link-${process.pid}-${Date.now()}`
     if (!linkCodexSessionFile(sourcePath, replacementPath)) {
       return
     }
@@ -255,7 +255,7 @@ function migrateLegacyCopiedSessionBridge(
 export function getLegacyCopiedCodexSessionBridgeScanPreference(
   sessionFilePath: string
 ): LegacyCopiedCodexSessionBridgeScanPreference | null {
-  const managedSessionsRoot = join(getNightshiftManagedCodexHomePath(), 'sessions')
+  const managedSessionsRoot = join(getKoluxManagedCodexHomePath(), 'sessions')
   const relativePath = relative(managedSessionsRoot, sessionFilePath)
   if (
     relativePath === '' ||
@@ -292,11 +292,7 @@ export function getLegacyCopiedCodexSessionBridgeScanPreference(
  * Returns the marker path for a legacy copied session bridge.
  */
 function getLegacySessionCopyMarkerPath(relativePath: string): string {
-  return join(
-    getNightshiftManagedCodexHomePath(),
-    '.nightshift-session-copies',
-    `${relativePath}.json`
-  )
+  return join(getKoluxManagedCodexHomePath(), '.kolux-session-copies', `${relativePath}.json`)
 }
 
 /**

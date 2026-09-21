@@ -14,7 +14,7 @@ export type OpenHttpLinkOptions = {
   allowRemoteInApp?: boolean
   /** Unconditional: always use the system browser regardless of settings. */
   forceSystemBrowser?: boolean
-  /** Unconditional for local sources: open inside Nightshift regardless of settings. */
+  /** Unconditional for local sources: open inside Kolux regardless of settings. */
   forceInApp?: boolean
   /** The Shift escape-hatch modifier was held; resolveModifierRouting decides what it means. */
   modifierHeld?: boolean
@@ -103,14 +103,14 @@ export function resolveModifierRouting(
   modifierHeld: boolean,
   openLinksInApp: boolean,
   modifierInverts: boolean
-): { wantsNightshift: boolean; wantsSystemBrowser: boolean } {
+): { wantsKolux: boolean; wantsSystemBrowser: boolean } {
   if (!modifierHeld) {
-    return { wantsNightshift: false, wantsSystemBrowser: false }
+    return { wantsKolux: false, wantsSystemBrowser: false }
   }
   if (!modifierInverts) {
-    return { wantsNightshift: false, wantsSystemBrowser: true }
+    return { wantsKolux: false, wantsSystemBrowser: true }
   }
-  return { wantsNightshift: !openLinksInApp, wantsSystemBrowser: openLinksInApp }
+  return { wantsKolux: !openLinksInApp, wantsSystemBrowser: openLinksInApp }
 }
 
 export function openHttpLink(url: string, opts: OpenHttpLinkOptions = {}): void {
@@ -134,14 +134,14 @@ export function openHttpLink(url: string, opts: OpenHttpLinkOptions = {}): void 
     openLinksInApp,
     state?.settings?.openLinksInAppModifierInverts === true
   )
-  const wantsNightshift =
+  const wantsKolux =
     !forceSystemBrowser &&
     !modifier.wantsSystemBrowser &&
     Boolean(worktreeId) &&
-    (forceInApp || openLinksInApp || modifier.wantsNightshift)
+    (forceInApp || openLinksInApp || modifier.wantsKolux)
 
   if (
-    wantsNightshift &&
+    wantsKolux &&
     allowRemoteInApp &&
     worktreeId &&
     (sourceOwner?.kind === 'runtime' || sourceOwner?.kind === 'ssh')
@@ -165,7 +165,7 @@ export function openHttpLink(url: string, opts: OpenHttpLinkOptions = {}): void 
     return
   }
 
-  if (wantsNightshift && sourceIsLocal && worktreeId && state) {
+  if (wantsKolux && sourceIsLocal && worktreeId && state) {
     // Why: http clicks from inside a worktree should not push a worktree-switch
     // history entry — the user isn't changing worktrees, they're opening a tab
     // in the one they're already in. activateAndRevealWorktree is reserved for

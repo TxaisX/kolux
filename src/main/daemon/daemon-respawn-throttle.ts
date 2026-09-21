@@ -4,7 +4,7 @@
  * The respawn path is driven by `ensureConnected()`: every reconnect attempt against a dead
  * socket forks a replacement. A daemon that dies during startup — a broken node-pty, an
  * unwritable runtime dir, a wrong libc — therefore forks forever, as fast as the caller
- * retries. On the desktop that burns CPU; under nightshiftd, where a supervisor is watching a
+ * retries. On the desktop that burns CPU; under koluxd, where a supervisor is watching a
  * process that never reports failure, it is the "restart-spin while the deploy reports
  * success" shape the ops contract has to rule out.
  *

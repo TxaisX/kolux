@@ -10,7 +10,7 @@ import { CapabilityProbeCache } from '../../shared/capability-probe-cache'
 export type WindowsRemoteWriteCapability = 'sftp-subsystem' | 'pwsh'
 
 // Why re-probe at all: an admin can enable the subsystem, or install PowerShell 7, without the
-// user restarting Nightshift. Long enough that a hardened host costs one failed probe per half hour.
+// user restarting Kolux. Long enough that a hardened host costs one failed probe per half hour.
 export const WINDOWS_WRITE_CAPABILITY_RETRY_INTERVAL_MS = 30 * 60_000
 
 const capabilitiesByExecutionHost = new Map<
@@ -19,9 +19,9 @@ const capabilitiesByExecutionHost = new Map<
 >()
 
 /**
- * Keyed by the endpoint that executes, not by target id: two Nightshift targets pointing at one host
+ * Keyed by the endpoint that executes, not by target id: two Kolux targets pointing at one host
  * describe the same sshd, and a target re-created under a new id has not changed what that host
- * supports. A config alias is its own key because ssh_config, not Nightshift, resolves where it lands.
+ * supports. A config alias is its own key because ssh_config, not Kolux, resolves where it lands.
  */
 export function getWindowsRemoteWriteExecutionHostKey(target: SshTarget): string {
   if (target.configHost) {

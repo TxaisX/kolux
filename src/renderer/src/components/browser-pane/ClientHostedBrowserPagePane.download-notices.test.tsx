@@ -130,13 +130,13 @@ describe('ClientHostedBrowserPagePane download notices', () => {
 
     emitFinished({
       remoteDestination: {
-        workspaceRelativePath: '.nightshift/browser-downloads/report.pdf',
+        workspaceRelativePath: '.kolux/browser-downloads/report.pdf',
         hostLabel: 'build-box'
       }
     })
 
     expect(toastMocks.success).toHaveBeenCalledWith(
-      'Saved to .nightshift/browser-downloads/report.pdf on build-box',
+      'Saved to .kolux/browser-downloads/report.pdf on build-box',
       { id: 'browser-download:download-1' }
     )
   })

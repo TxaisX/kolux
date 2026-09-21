@@ -1,12 +1,10 @@
 import type { Automation, AutomationRun } from '../../shared/automations-types'
 import { buildAutomationWorkspaceProvenance } from '../../shared/automation-workspace-provenance'
 import type { Repo } from '../../shared/repo-types'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 type HeadlessAutomationRunForWorkspace = Pick<AutomationRun, 'id' | 'title' | 'scheduledFor'>
-type RuntimeCreateManagedWorktreeArgs = Parameters<
-  NightshiftRuntimeService['createManagedWorktree']
->[0]
+type RuntimeCreateManagedWorktreeArgs = Parameters<KoluxRuntimeService['createManagedWorktree']>[0]
 
 export function buildHeadlessAutomationWorkspaceName(
   runTitle: string,

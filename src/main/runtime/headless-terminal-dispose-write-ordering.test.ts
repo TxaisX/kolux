@@ -10,7 +10,7 @@
  * Swapping either ordering loses output with no error anywhere.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { HeadlessEmulator } from '../daemon/headless-emulator'
 
 const store = {
@@ -38,8 +38,8 @@ const store = {
 
 const PTY_ID = 'pty-dispose-ordering'
 
-function createRuntime(): NightshiftRuntimeService {
-  const runtime = new NightshiftRuntimeService(store)
+function createRuntime(): KoluxRuntimeService {
+  const runtime = new KoluxRuntimeService(store)
   runtime.setPtyController({
     write: () => true,
     kill: () => true,

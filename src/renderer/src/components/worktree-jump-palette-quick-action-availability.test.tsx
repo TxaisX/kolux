@@ -69,7 +69,7 @@ function renderQuickActions(initialStatuses: Map<string, unknown>) {
 
 describe('worktree jump palette quick action availability', () => {
   beforeEach(() => {
-    ;(globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ = true
+    ;(globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ = true
     mocks.state = {
       activeView: 'terminal',
       activeWorktreeId: WORKTREE_ID,
@@ -82,7 +82,7 @@ describe('worktree jump palette quick action availability', () => {
     }
   })
   afterEach(() => {
-    delete (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
+    delete (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__
   })
 
   it('drops the paired-web browser action when the runtime loses screencast capability', () => {

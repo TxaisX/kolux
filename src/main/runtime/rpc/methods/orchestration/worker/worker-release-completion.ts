@@ -9,7 +9,7 @@ import {
   captureWorkerOutputArchive,
   summarizeWorkerOutputArchive
 } from '../../../../orchestration/worker-output-archive'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { describeUnconfirmedAgentStop } from '../../../../../../shared/pty-liveness-verdict'
 import { inspectWorkerTerminal } from './worker-observation'
 import { orchestrationTimestampToMs } from './worker-output'
@@ -36,7 +36,7 @@ export type WorkerReleaseReceipt = {
 }
 
 type WorkerTerminalReleaseArgs = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   dispatchId: string
   resource: WorkerTerminalResourceRow
@@ -49,7 +49,7 @@ type ActiveWorkerTerminalRelease = {
 }
 
 const activeReleaseByRuntime = new WeakMap<
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   Map<string, ActiveWorkerTerminalRelease>
 >()
 
@@ -308,7 +308,7 @@ async function completeWorkerTerminalReleaseOnce(
 }
 
 export function releaseUnknownRecovery(dispatchId: string): string {
-  return `Inspect with: nightshift orchestration worker-show --dispatch ${dispatchId} --json — then retry worker-release with a fresh request ID (omit --retry-request to let the CLI generate one). Reusing the prior request ID only replays this release_unknown receipt. Never substitute a broad terminal close.`
+  return `Inspect with: kolux orchestration worker-show --dispatch ${dispatchId} --json — then retry worker-release with a fresh request ID (omit --retry-request to let the CLI generate one). Reusing the prior request ID only replays this release_unknown receipt. Never substitute a broad terminal close.`
 }
 
 function retainedReason(resource: WorkerTerminalResourceRow): WorkerTerminalRetainedReason {

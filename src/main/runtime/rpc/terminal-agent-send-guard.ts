@@ -1,10 +1,10 @@
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 const AGENT_STATUS_RECHECK_INTERVAL_MS = 150
 const AGENT_STATUS_RECHECK_TIMEOUT_MS = 1_050
 
 type AssertTerminalAgentSendableOptions = {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   handle: string
   assertWritable: () => void
 }

@@ -36,7 +36,7 @@ const binPath = path.join(scratch, 'bin')
 const spawnMarkerPath = path.join(scratch, 'agent-spawns.txt')
 const inputMarkerPath = path.join(scratch, 'agent-input.txt')
 const exitTriggerPath = path.join(scratch, 'exit-agent')
-const agentSessionToken = '--nightshift-repro-agent-session'
+const agentSessionToken = '--kolux-repro-agent-session'
 const childProcesses = new Set()
 let server = null
 let activePairingCode = null
@@ -53,9 +53,9 @@ try {
       '-C',
       projectPath,
       '-c',
-      'user.name=Nightshift Repro',
+      'user.name=Kolux Repro',
       '-c',
-      'user.email=nightshift-repro@example.invalid',
+      'user.email=kolux-repro@example.invalid',
       'commit',
       '--allow-empty',
       '-m',
@@ -65,7 +65,7 @@ try {
   )
   const fixtureAgentPath = installFixtureAgent(binPath)
   writeFileSync(
-    path.join(profilePath, 'nightshift-data.json'),
+    path.join(profilePath, 'kolux-data.json'),
     JSON.stringify({
       settings: { agentCmdOverrides: { codex: quoteFixtureAgentCommand(fixtureAgentPath) } }
     })
@@ -363,12 +363,12 @@ async function startServer(port) {
   const env = {
     ...process.env,
     [pathKey]: `${binPath}${pathDelimiter}${process.env[pathKey] ?? ''}`,
-    NIGHTSHIFT_DEV_USER_DATA_PATH: profilePath,
-    NIGHTSHIFT_USER_DATA_PATH: profilePath,
-    NIGHTSHIFT_REPRO_SPAWN_MARKER: spawnMarkerPath,
-    NIGHTSHIFT_REPRO_EXIT_TRIGGER: exitTriggerPath,
-    NIGHTSHIFT_REPRO_INPUT_MARKER: inputMarkerPath,
-    NIGHTSHIFT_REPRO_AGENT_SESSION_TOKEN: agentSessionToken,
+    KOLUX_DEV_USER_DATA_PATH: profilePath,
+    KOLUX_USER_DATA_PATH: profilePath,
+    KOLUX_REPRO_SPAWN_MARKER: spawnMarkerPath,
+    KOLUX_REPRO_EXIT_TRIGGER: exitTriggerPath,
+    KOLUX_REPRO_INPUT_MARKER: inputMarkerPath,
+    KOLUX_REPRO_AGENT_SESSION_TOKEN: agentSessionToken,
     ...(process.platform === 'linux' ? { ELECTRON_DISABLE_SANDBOX: '1' } : {})
   }
   server = spawn(
@@ -397,7 +397,7 @@ async function startServer(port) {
     lines.on('line', (line) => {
       try {
         const parsed = JSON.parse(line)
-        if (parsed.type === 'nightshift_server_ready' && parsed.pairing?.url) {
+        if (parsed.type === 'kolux_server_ready' && parsed.pairing?.url) {
           clearTimeout(timeout)
           resolve(parsed)
         }

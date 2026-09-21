@@ -10,7 +10,7 @@ import {
   RemoteClipboardStagingRootUnsafeError
 } from './clipboard-remote-file-staging'
 
-const FIXTURE_PREFIX = 'nightshift-clipboard-staging-test-'
+const FIXTURE_PREFIX = 'kolux-clipboard-staging-test-'
 const NOW_MS = 1_760_000_000_000
 const fixtures: string[] = []
 

@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createSkillPackageArchive } from './skill-package-creation'
 
-const RUN_REAL_PROCESS = process.env.NIGHTSHIFT_REAL_PROCESS_SKILL_TEST === '1'
+const RUN_REAL_PROCESS = process.env.KOLUX_REAL_PROCESS_SKILL_TEST === '1'
 const require = createRequire(import.meta.url)
 const vitestBin = join(dirname(require.resolve('vitest/package.json')), 'vitest.mjs')
 const childTest = resolve('src/main/skills/skill-process-contention-child.test.ts')
@@ -63,14 +63,14 @@ function startChild(input: {
       cwd: process.cwd(),
       env: {
         ...process.env,
-        NIGHTSHIFT_REAL_PROCESS_SKILL_TEST: '0',
-        NIGHTSHIFT_SKILL_CONTENTION_CHILD: '1',
-        NIGHTSHIFT_SKILL_CONTENTION_ROOT: input.root,
-        NIGHTSHIFT_SKILL_CONTENTION_ARCHIVE: input.archivePath,
-        NIGHTSHIFT_SKILL_CONTENTION_ROLE: input.role,
-        NIGHTSHIFT_SKILL_CONTENTION_READY: input.readyPath,
-        NIGHTSHIFT_SKILL_CONTENTION_RELEASE: input.releasePath,
-        NIGHTSHIFT_SKILL_CONTENTION_RESULT: input.resultPath
+        KOLUX_REAL_PROCESS_SKILL_TEST: '0',
+        KOLUX_SKILL_CONTENTION_CHILD: '1',
+        KOLUX_SKILL_CONTENTION_ROOT: input.root,
+        KOLUX_SKILL_CONTENTION_ARCHIVE: input.archivePath,
+        KOLUX_SKILL_CONTENTION_ROLE: input.role,
+        KOLUX_SKILL_CONTENTION_READY: input.readyPath,
+        KOLUX_SKILL_CONTENTION_RELEASE: input.releasePath,
+        KOLUX_SKILL_CONTENTION_RESULT: input.resultPath
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true
@@ -116,7 +116,7 @@ afterEach(async () => {
 
 describe.runIf(RUN_REAL_PROCESS)('skill multi-process contention', () => {
   it('fails busy without residue, then converges after the owner releases', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-process-contention-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-skill-process-contention-'))
     roots.push(root)
     const source = join(root, 'source')
     await mkdir(source)
@@ -180,7 +180,7 @@ describe.runIf(RUN_REAL_PROCESS)('skill multi-process contention', () => {
     })
     expect(await readdir(join(root, 'state', 'receipts'))).toHaveLength(1)
     expect(
-      (await readdir(join(root, 'skills'))).filter((name) => name.includes('.nightshift-'))
+      (await readdir(join(root, 'skills'))).filter((name) => name.includes('.kolux-'))
     ).toEqual([])
   }, 30_000)
 })

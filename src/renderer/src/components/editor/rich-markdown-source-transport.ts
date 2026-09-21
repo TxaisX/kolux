@@ -8,15 +8,15 @@ export type RichMarkdownSourceKind =
   | 'document-link'
   | 'html-superscript-link'
 
-const TRANSPORT_PREFIX = '[[NIGHTSHIFT_RICH_MD:'
+const TRANSPORT_PREFIX = '[[KOLUX_RICH_MD:'
 const TRANSPORT_SUFFIX = ']]'
 const KEY_PATTERN = /^[a-f0-9]{32}$/
 const TRANSPORT_BODY_PATTERN =
-  /^NIGHTSHIFT_RICH_MD:[a-f0-9]{32}:(?:literal|inline-html|block-html|document-link|html-superscript-link):/
+  /^KOLUX_RICH_MD:[a-f0-9]{32}:(?:literal|inline-html|block-html|document-link|html-superscript-link):/
 const LEGACY_PREFIXES = [
-  'NIGHTSHIFT_RAW_HTML_INLINE:',
-  'NIGHTSHIFT_RAW_HTML_BLOCK:',
-  'NIGHTSHIFT_DOC_LINK:'
+  'KOLUX_RAW_HTML_INLINE:',
+  'KOLUX_RAW_HTML_BLOCK:',
+  'KOLUX_DOC_LINK:'
 ] as const
 
 export type RichMarkdownSourceTransport = {

@@ -43,7 +43,7 @@ export function AutomationsSettingsPane({
           <p className="text-xs leading-relaxed text-muted-foreground">
             {translate(
               'auto.components.settings.automations.howItWorksDescription',
-              'Schedule agent work once, then let Nightshift create each run and keep its results together.'
+              'Schedule agent work once, then let Kolux create each run and keep its results together.'
             )}
           </p>
         </div>
@@ -76,7 +76,7 @@ export function AutomationsSettingsPane({
               <p className="text-sm font-medium">
                 {translate(
                   'auto.components.settings.automations.runStepTitle',
-                  'Nightshift starts each run'
+                  'Kolux starts each run'
                 )}
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">

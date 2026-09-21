@@ -23,7 +23,7 @@ describe('WSL Claude plugin skill discovery', () => {
 
   it('reads enabled plugin metadata and scans the selected install inside the distro', async () => {
     const homeDir = '/home/alice'
-    const cwd = '/work/nightshift'
+    const cwd = '/work/kolux'
     // Why: a Windows host's own Hermes location says nothing about the distro's,
     // so neither variable may reach the posix scan script.
     vi.stubEnv('HERMES_HOME', 'C:\\Users\\alice\\hermes')

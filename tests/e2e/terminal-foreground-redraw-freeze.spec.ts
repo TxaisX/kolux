@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
 import { waitForTerminalPtyDataInjector } from './helpers/terminal-pty-injection'
@@ -340,28 +340,28 @@ function annotateMeasurement(
 
 test.describe('Terminal foreground redraw freeze repro', () => {
   test('@headful Codex-style line rewrites request a visible row refresh', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
-    await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
-    const webglAttached = await forceActivePaneWebglRenderer(nightshiftPage)
+    const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
+    await waitForTerminalPtyDataInjector(koluxPage, paneKey)
+    const webglAttached = await forceActivePaneWebglRenderer(koluxPage)
     // Why: Linux headless CI intentionally disables GPU. Declare that
     // environment unsupported instead of weakening the WebGL-only oracle.
     test.skip(!webglAttached, 'WebGL is unavailable for the refresh-policy probe')
     if (!webglAttached) {
       return
     }
-    await installActivePaneRefreshProbe(nightshiftPage)
+    await installActivePaneRefreshProbe(koluxPage)
     try {
-      const refreshBaseline = await readRefreshProbe(nightshiftPage)
-      await resetSchedulerDebug(nightshiftPage)
-      const measurement = await measureRendererDuringRewriteBurst(nightshiftPage, paneKey)
-      const scheduler = await readSchedulerDebug(nightshiftPage)
+      const refreshBaseline = await readRefreshProbe(koluxPage)
+      await resetSchedulerDebug(koluxPage)
+      const measurement = await measureRendererDuringRewriteBurst(koluxPage, paneKey)
+      const scheduler = await readSchedulerDebug(koluxPage)
 
       expect(measurement.injectedFrames).toBe(REWRITE_REDRAW_FRAME_COUNT)
       expect(measurement.maxTimerDriftMs).toBeLessThan(MAX_RENDERER_TIMER_DRIFT_MS)
@@ -369,7 +369,7 @@ test.describe('Terminal foreground redraw freeze repro', () => {
       await expect
         .poll(
           async () => {
-            const refresh = await readRefreshProbe(nightshiftPage)
+            const refresh = await readRefreshProbe(koluxPage)
             const delta = subtractRefreshProbe(refresh, refreshBaseline)
             return Object.values(delta).reduce((total, count) => total + count, 0)
           },
@@ -379,7 +379,7 @@ test.describe('Terminal foreground redraw freeze repro', () => {
           }
         )
         .toBeGreaterThan(0)
-      const refresh = await readRefreshProbe(nightshiftPage)
+      const refresh = await readRefreshProbe(koluxPage)
       const refreshDelta = subtractRefreshProbe(refresh, refreshBaseline)
       testInfo.annotations.push({
         type: 'terminal-refresh-probe',
@@ -394,23 +394,23 @@ test.describe('Terminal foreground redraw freeze repro', () => {
       // fallback from turning the zero-sync assertion into a vacuous pass.
       expect(refreshDelta.debouncedWebgl).toBeGreaterThan(0)
     } finally {
-      await disposeActivePaneRefreshProbe(nightshiftPage)
+      await disposeActivePaneRefreshProbe(koluxPage)
     }
   })
 
   test('active OpenTUI-style redraw bursts do not monopolize the renderer', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
-    await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
-    await resetSchedulerDebug(nightshiftPage)
-    const measurement = await measureRendererDuringBurst(nightshiftPage, paneKey)
-    const scheduler = await readSchedulerDebug(nightshiftPage)
+    const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
+    await waitForTerminalPtyDataInjector(koluxPage, paneKey)
+    await resetSchedulerDebug(koluxPage)
+    const measurement = await measureRendererDuringBurst(koluxPage, paneKey)
+    const scheduler = await readSchedulerDebug(koluxPage)
     annotateMeasurement(testInfo, measurement, scheduler)
 
     expect(measurement.injectedFrames).toBe(REDRAW_FRAME_COUNT)
@@ -421,7 +421,7 @@ test.describe('Terminal foreground redraw freeze repro', () => {
   })
 
   test('captured OpenCode/OpenTUI redraw bytes do not monopolize foreground writes', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     const frames = loadCapturedOpenCodeSmallRedrawFrames()
     test.skip(
@@ -429,16 +429,16 @@ test.describe('Terminal foreground redraw freeze repro', () => {
       `OpenCode PTY capture missing; run "git clone https://github.com/anomalyco/opencode.git .tmp/opencode" then "node tests/e2e/capture-opencode-tui-repro.mjs" to generate ${OPENCODE_CAPTURE_PATH}`
     )
 
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
-    await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
-    await resetSchedulerDebug(nightshiftPage)
-    const measurement = await measureRendererDuringFrames(nightshiftPage, paneKey, frames)
-    const scheduler = await readSchedulerDebug(nightshiftPage)
+    const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
+    await waitForTerminalPtyDataInjector(koluxPage, paneKey)
+    await resetSchedulerDebug(koluxPage)
+    const measurement = await measureRendererDuringFrames(koluxPage, paneKey, frames)
+    const scheduler = await readSchedulerDebug(koluxPage)
     annotateMeasurement(testInfo, measurement, scheduler)
 
     expect(measurement.injectedFrames).toBe(frames.length)

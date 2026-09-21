@@ -28,10 +28,10 @@ export function resolveHostedReviewAuthInstruction(provider: HostedReviewProvide
     return 'Run glab auth login'
   }
   if (provider === 'azure-devops') {
-    return 'Set NIGHTSHIFT_AZURE_DEVOPS_TOKEN'
+    return 'Set KOLUX_AZURE_DEVOPS_TOKEN'
   }
   if (provider === 'gitea') {
-    return 'Set NIGHTSHIFT_GITEA_TOKEN'
+    return 'Set KOLUX_GITEA_TOKEN'
   }
   if (provider === 'bitbucket') {
     return 'Connect Bitbucket in Settings > Integrations'
@@ -43,7 +43,7 @@ export function resolveUnavailableCreateReviewLookupNoticeMessage(
   provider: HostedReviewProvider
 ): string {
   const copy = localizedHostedReviewCopy(resolveSupportedHostedReviewCopyProvider(provider))
-  return `Create ${copy.shortLabel} failed: Nightshift could not confirm whether this branch already has a ${copy.reviewLabel}. Retry once the ${copy.providerName} lookup succeeds.`
+  return `Create ${copy.shortLabel} failed: Kolux could not confirm whether this branch already has a ${copy.reviewLabel}. Retry once the ${copy.providerName} lookup succeeds.`
 }
 
 export function resolveBlockedCreateReviewNoticeMessage(

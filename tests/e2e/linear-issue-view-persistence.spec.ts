@@ -10,14 +10,14 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { test, expect } from './helpers/kolux-app'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { getStoreState, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 
 // Mirrors src/renderer/src/components/linear-issue-view-storage.ts; hardcoded so a
 // silent key rename shows up here as a failing round-trip.
-const LINEAR_ISSUE_VIEW_STORAGE_KEY = 'nightshift.linear.issue-view.v1'
+const LINEAR_ISSUE_VIEW_STORAGE_KEY = 'kolux.linear.issue-view.v1'
 
 const WORKSPACE_A = {
   id: 'linear-workspace-a',
@@ -394,22 +394,22 @@ function seededRepoPathOrSkip(): string {
 test.describe('Linear issue view persistence', () => {
   test('preserves view mode, grouping, ordering, and filters across a tasks remount', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     await installLinearPersistenceBackend(electronApp)
-    await openLinearTasks(nightshiftPage)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_A.title)
+    await openLinearTasks(koluxPage)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_A.title)
 
-    await setLinearViewPreferences(nightshiftPage, {
+    await setLinearViewPreferences(koluxPage, {
       viewMode: 'Board',
       groupBy: 'Status',
       orderBy: 'Updated'
     })
-    await applyStatusFilter(nightshiftPage, STATE_A.name)
+    await applyStatusFilter(koluxPage, STATE_A.name)
 
-    await waitForLinearIssueViewPersisted(nightshiftPage, (view) => {
+    await waitForLinearIssueViewPersisted(koluxPage, (view) => {
       if (
         !view ||
         view.viewMode !== 'board' ||
@@ -423,75 +423,71 @@ test.describe('Linear issue view persistence', () => {
     })
 
     // User-visible before remount.
-    await expectRestoredLinearView(nightshiftPage)
-    const statusChip = nightshiftPage
-      .getByRole('button', { name: 'Remove Status filter' })
-      .locator('..')
+    await expectRestoredLinearView(koluxPage)
+    const statusChip = koluxPage.getByRole('button', { name: 'Remove Status filter' }).locator('..')
     await expect(statusChip).toContainText(STATE_A.name)
 
-    await closeTasksPage(nightshiftPage)
-    await openLinearTasks(nightshiftPage)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_A.title)
+    await closeTasksPage(koluxPage)
+    await openLinearTasks(koluxPage)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_A.title)
 
-    await expectRestoredLinearView(nightshiftPage)
+    await expectRestoredLinearView(koluxPage)
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Status filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Status filter' }).locator('..')
     ).toContainText(STATE_A.name)
     // Board surface, not the flat list column header.
-    await expect(nightshiftPage.getByText(STATE_A.name, { exact: true }).first()).toBeVisible()
+    await expect(koluxPage.getByText(STATE_A.name, { exact: true }).first()).toBeVisible()
   })
 
   test('keeps attribute filters scoped per Linear workspace', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
     await installLinearPersistenceBackend(electronApp, { multiWorkspace: true })
-    await openLinearTasks(nightshiftPage)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_A.title)
+    await openLinearTasks(koluxPage)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_A.title)
 
-    await applyPriorityFilter(nightshiftPage, 'High')
+    await applyPriorityFilter(koluxPage, 'High')
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
     ).toContainText('High')
 
-    await waitForLinearIssueViewPersisted(nightshiftPage, (view) => {
+    await waitForLinearIssueViewPersisted(koluxPage, (view) => {
       const filter = view?.filtersByWorkspaceId?.[WORKSPACE_A.id]
       return Boolean(filter?.priorities?.includes(2))
     })
 
-    await switchLinearWorkspace(nightshiftPage, WORKSPACE_B.organizationName)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_B.title)
+    await switchLinearWorkspace(koluxPage, WORKSPACE_B.organizationName)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_B.title)
     // Workspace B starts unfiltered — Alpha's High must not leak.
-    await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' })
-    ).toHaveCount(0)
+    await expect(koluxPage.getByRole('button', { name: 'Remove Priority filter' })).toHaveCount(0)
 
-    await applyPriorityFilter(nightshiftPage, 'Low')
+    await applyPriorityFilter(koluxPage, 'Low')
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
     ).toContainText('Low')
 
-    await waitForLinearIssueViewPersisted(nightshiftPage, (view) => {
+    await waitForLinearIssueViewPersisted(koluxPage, (view) => {
       const a = view?.filtersByWorkspaceId?.[WORKSPACE_A.id]
       const b = view?.filtersByWorkspaceId?.[WORKSPACE_B.id]
       return Boolean(a?.priorities?.includes(2) && b?.priorities?.includes(4))
     })
 
-    await switchLinearWorkspace(nightshiftPage, WORKSPACE_A.organizationName)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_A.title)
+    await switchLinearWorkspace(koluxPage, WORKSPACE_A.organizationName)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_A.title)
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
     ).toContainText('High')
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
     ).not.toContainText('Low')
 
-    await switchLinearWorkspace(nightshiftPage, WORKSPACE_B.organizationName)
-    await waitForLinearIssuesChrome(nightshiftPage, ISSUE_B.title)
+    await switchLinearWorkspace(koluxPage, WORKSPACE_B.organizationName)
+    await waitForLinearIssuesChrome(koluxPage, ISSUE_B.title)
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
+      koluxPage.getByRole('button', { name: 'Remove Priority filter' }).locator('..')
     ).toContainText('Low')
   })
 })

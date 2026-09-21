@@ -47,7 +47,7 @@ describe('ripgrep process availability', () => {
   })
 
   it('does not signal a real failed-spawn handle', async () => {
-    const child = spawn('nightshift-definitely-missing-rg-admission-test', [])
+    const child = spawn('kolux-definitely-missing-rg-admission-test', [])
     const error = new Promise<void>((resolve) => child.once('error', () => resolve()))
     const close = new Promise<void>((resolve) => child.once('close', () => resolve()))
 
@@ -58,7 +58,7 @@ describe('ripgrep process availability', () => {
   it('distinguishes a usable root from a missing spawn cwd', async () => {
     await expect(isRipgrepSpawnCwdUsable(process.cwd())).resolves.toBe(true)
     await expect(
-      isRipgrepSpawnCwdUsable(join(process.cwd(), 'nightshift-definitely-missing-rg-cwd'))
+      isRipgrepSpawnCwdUsable(join(process.cwd(), 'kolux-definitely-missing-rg-cwd'))
     ).resolves.toBe(false)
   })
 

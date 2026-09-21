@@ -92,7 +92,7 @@ export function WorktreeVisibilitySourceAddForm({
         {inputError ??
           translate(
             'auto.components.sidebar.WorktreeVisibilitySourceList.rootHelp',
-            'Nightshift will recognize worktrees beneath this folder.'
+            'Kolux will recognize worktrees beneath this folder.'
           )}
       </p>
     </form>

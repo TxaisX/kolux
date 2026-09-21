@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeService } from './kolux-runtime'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { parsePairingCode } from '../../shared/pairing'
 import { DEVICE_REGISTRY_FILENAME, E2EE_KEYPAIR_FILENAME } from './mobile-pairing-files'
 
@@ -23,11 +23,11 @@ vi.mock('../git/worktree', () => {
   }
 })
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('creates a pairing offer for the active WebSocket transport', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -53,9 +53,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('reports why pairing is unavailable before the WebSocket listener is ready', () => {
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
-      userDataPath: mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-')),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
+      userDataPath: mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-')),
       enableWebSocket: true,
       wsPort: 0
     })
@@ -68,10 +68,10 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('reports an E2EE identity initialization failure after the local transport starts', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     mkdirSync(join(userDataPath, E2EE_KEYPAIR_FILENAME))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -92,9 +92,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('reports a registry persistence failure without retaining a ghost credential', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -117,9 +117,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('rejects wildcard advertised addresses before minting a device credential', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -142,9 +142,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('includes a web client URL when the web bundle is served by the runtime', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -172,9 +172,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('preserves proxy path prefixes in web client URLs', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -186,14 +186,12 @@ describe('NightshiftRuntimeRpcServer', () => {
 
     try {
       const offer = server.createPairingOffer({
-        address: 'wss://runtime.example.com/nightshift',
+        address: 'wss://runtime.example.com/kolux',
         name: 'Proxy test'
       })
       expect(offer.available).toBe(true)
       if (offer.available) {
-        expect(offer.webClientUrl).toContain(
-          'https://runtime.example.com/nightshift/web-index.html'
-        )
+        expect(offer.webClientUrl).toContain('https://runtime.example.com/kolux/web-index.html')
       }
     } finally {
       await server.stop()
@@ -201,9 +199,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('formats pairing-address overrides for IPv6 and host-port tunnel endpoints', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -231,12 +229,12 @@ describe('NightshiftRuntimeRpcServer', () => {
       }
 
       const fullUrl = server.createPairingOffer({
-        address: 'wss://runtime.example.com/nightshift',
+        address: 'wss://runtime.example.com/kolux',
         name: 'Full URL test'
       })
       expect(fullUrl.available).toBe(true)
       if (fullUrl.available) {
-        expect(fullUrl.endpoint).toBe('wss://runtime.example.com/nightshift')
+        expect(fullUrl.endpoint).toBe('wss://runtime.example.com/kolux')
       }
     } finally {
       await server.stop()
@@ -244,9 +242,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('creates mobile-scoped pairing offers for headless mobile pairing', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,

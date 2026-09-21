@@ -1,5 +1,5 @@
 /**
- * Invariant: the documented hello-nightshift plugin stays inert before visible
+ * Invariant: the documented hello-kolux plugin stays inert before visible
  * consent, then its panel, worker command, and event subscription all work.
  */
 
@@ -7,7 +7,7 @@ import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 
 async function openPluginSettings(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -32,11 +32,11 @@ async function openDemoPanel(page: Page): Promise<void> {
       state.toggleRightSidebar()
     }
   })
-  const panelButton = page.getByRole('button', { name: 'Hello Nightshift', exact: true })
+  const panelButton = page.getByRole('button', { name: 'Hello Kolux', exact: true })
   await expect(panelButton).toBeVisible({ timeout: 15_000 })
   await panelButton.click()
-  const frame = page.frameLocator('iframe[title="Hello Nightshift"]')
-  await expect(frame.getByRole('heading', { name: 'Hello Nightshift 👋' })).toBeVisible()
+  const frame = page.frameLocator('iframe[title="Hello Kolux"]')
+  await expect(frame.getByRole('heading', { name: 'Hello Kolux 👋' })).toBeVisible()
   await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
     'content',
     /default-src 'none'/
@@ -68,18 +68,16 @@ async function createWorktree(page: Page, name: string): Promise<string> {
   }, name)
 }
 
-test('runs hello-nightshift panel, command, and event behind visible consent', async ({
-  nightshiftPage
-}) => {
-  const tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-hello-plugin-e2e-'))
-  const pluginRoot = join(tempRoot, 'hello-nightshift')
+test('runs hello-kolux panel, command, and event behind visible consent', async ({ koluxPage }) => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-hello-plugin-e2e-'))
+  const pluginRoot = join(tempRoot, 'hello-kolux')
   let createdWorktreeId: string | null = null
-  await cp(join(process.cwd(), 'examples', 'plugins', 'hello-nightshift'), pluginRoot, {
+  await cp(join(process.cwd(), 'examples', 'plugins', 'hello-kolux'), pluginRoot, {
     recursive: true
   })
 
   try {
-    const installed = await nightshiftPage.evaluate(async (sourcePath) => {
+    const installed = await koluxPage.evaluate(async (sourcePath) => {
       const settings = await window.api.settings.set({ pluginSystemEnabled: true })
       window.__store?.setState({ settings })
       const result = await window.api.plugins.install({ kind: 'local-path', path: sourcePath })
@@ -108,12 +106,12 @@ test('runs hello-nightshift panel, command, and event behind visible consent', a
     expect(installed.status).toBe('pending')
     expect(installed.blocked).toBe(true)
 
-    await openPluginSettings(nightshiftPage)
-    await nightshiftPage.getByRole('tab', { name: /^Installed/ }).click()
-    const row = nightshiftPage.locator(`[data-plugin-key="${installed.pluginKey}"]`)
+    await openPluginSettings(koluxPage)
+    await koluxPage.getByRole('tab', { name: /^Installed/ }).click()
+    const row = koluxPage.locator(`[data-plugin-key="${installed.pluginKey}"]`)
     await expect(row).toContainText('Needs review')
     await row.getByRole('button', { name: 'Review & enable' }).click()
-    const consent = nightshiftPage.getByRole('dialog', { name: 'Review permissions' })
+    const consent = koluxPage.getByRole('dialog', { name: 'Review permissions' })
     await expect(consent).toBeVisible()
     await expect(consent).toContainText('Local folder')
     await expect(consent).toContainText('full access to your files, network, and other processes')
@@ -122,7 +120,7 @@ test('runs hello-nightshift panel, command, and event behind visible consent', a
     await expect(consent).toBeHidden()
     await expect(row).toContainText('Enabled')
 
-    const commandResults = await nightshiftPage.evaluate(async (pluginKey) => {
+    const commandResults = await koluxPage.evaluate(async (pluginKey) => {
       const first = await window.api.plugins.invokeCommand({
         pluginKey,
         commandId: 'hello-ping',
@@ -138,31 +136,28 @@ test('runs hello-nightshift panel, command, and event behind visible consent', a
     expect(commandResults.first).toEqual({ pong: true, count: 1, args: { source: 'e2e' } })
     expect(commandResults.second).toEqual({ pong: true, count: 2, args: { source: 'e2e' } })
 
-    await nightshiftPage.evaluate(async (sourcePath) => {
+    await koluxPage.evaluate(async (sourcePath) => {
       const settings = await window.api.settings.set({ devPluginPaths: [sourcePath] })
       window.__store?.setState({ settings })
       await window.api.plugins.refresh()
     }, pluginRoot)
 
-    await openDemoPanel(nightshiftPage)
+    await openDemoPanel(koluxPage)
 
     const panelPath = join(pluginRoot, 'panel.html')
     const panelHtml = await readFile(panelPath, 'utf8')
-    await writeFile(
-      panelPath,
-      panelHtml.replace('Hello Nightshift 👋', 'Hello Nightshift reloaded')
-    )
+    await writeFile(panelPath, panelHtml.replace('Hello Kolux 👋', 'Hello Kolux reloaded'))
     await expect(
-      nightshiftPage.frameLocator('iframe[title="Hello Nightshift"]').getByRole('heading', {
-        name: 'Hello Nightshift reloaded'
+      koluxPage.frameLocator('iframe[title="Hello Kolux"]').getByRole('heading', {
+        name: 'Hello Kolux reloaded'
       })
     ).toBeVisible({ timeout: 15_000 })
 
-    createdWorktreeId = await createWorktree(nightshiftPage, `plugin-event-${Date.now()}`)
+    createdWorktreeId = await createWorktree(koluxPage, `plugin-event-${Date.now()}`)
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             async ({ pluginKey, worktreeId }) =>
               (await window.api.plugins.getLogs({ pluginKey })).some(
                 (entry) =>
@@ -175,7 +170,7 @@ test('runs hello-nightshift panel, command, and event behind visible consent', a
       .toBe(true)
   } finally {
     if (createdWorktreeId) {
-      await nightshiftPage
+      await koluxPage
         .evaluate(async (worktreeId) => {
           await window.__store?.getState().removeWorktree(worktreeId, true)
         }, createdWorktreeId)

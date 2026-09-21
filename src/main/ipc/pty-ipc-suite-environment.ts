@@ -143,7 +143,7 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
     chmodSyncMock.mockReset()
     linuxCliShimMock.mockReset()
     linuxCliShimMock.mockImplementation((options: { userDataPath: string }) =>
-      join(options.userDataPath, 'linux-nightshift-cli-shim')
+      join(options.userDataPath, 'linux-kolux-cli-shim')
     )
     getPathMock.mockReset()
     loginPreflightExecFileMock.mockReset()
@@ -203,29 +203,27 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
         }
       }
     })
-    getPathMock.mockReturnValue('/tmp/nightshift-user-data')
-    // Why: wrapper roots resolve from NIGHTSHIFT_USER_DATA_PATH; mirror the mocked userData so ZDOTDIR/wrapper assertions match.
-    process.env.NIGHTSHIFT_USER_DATA_PATH = '/tmp/nightshift-user-data'
+    getPathMock.mockReturnValue('/tmp/kolux-user-data')
+    // Why: wrapper roots resolve from KOLUX_USER_DATA_PATH; mirror the mocked userData so ZDOTDIR/wrapper assertions match.
+    process.env.KOLUX_USER_DATA_PATH = '/tmp/kolux-user-data'
     existsSyncMock.mockReturnValue(true)
     // size: the shell wrapper writer verifies each generated file is non-empty.
     statSyncMock.mockReturnValue({ isDirectory: () => true, mode: 0o755, size: 1 })
     readFileSyncMock.mockReturnValue('')
     openCodeBuildPtyEnvMock.mockImplementation((_ptyId: string, existingConfigDir?: string) => ({
-      NIGHTSHIFT_OPENCODE_HOOK_PORT: '4567',
-      NIGHTSHIFT_OPENCODE_HOOK_TOKEN: 'opencode-token',
-      NIGHTSHIFT_OPENCODE_PTY_ID: 'test-pty',
+      KOLUX_OPENCODE_HOOK_PORT: '4567',
+      KOLUX_OPENCODE_HOOK_TOKEN: 'opencode-token',
+      KOLUX_OPENCODE_PTY_ID: 'test-pty',
       OPENCODE_CONFIG_DIR: existingConfigDir
-        ? '/tmp/nightshift-opencode-overlay'
-        : '/tmp/nightshift-opencode-config'
+        ? '/tmp/kolux-opencode-overlay'
+        : '/tmp/kolux-opencode-config'
     }))
     mimoCodeBuildPtyEnvMock.mockImplementation((_ptyId: string, existingHome?: string) => ({
-      MIMOCODE_HOME: existingHome
-        ? '/tmp/nightshift-mimocode-overlay'
-        : '/tmp/nightshift-mimocode-shared'
+      MIMOCODE_HOME: existingHome ? '/tmp/kolux-mimocode-overlay' : '/tmp/kolux-mimocode-shared'
     }))
     buildAgentHookEnvMock.mockReturnValue({
-      NIGHTSHIFT_AGENT_HOOK_PORT: '5678',
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: 'agent-token'
+      KOLUX_AGENT_HOOK_PORT: '5678',
+      KOLUX_AGENT_HOOK_TOKEN: 'agent-token'
     })
     piBuildPtyEnvMock.mockImplementation(
       (
@@ -239,13 +237,13 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
           // Why: bare shells no longer create ~/.omp; only a userData status path is set (#10196).
           if (!existingAgentDir && !materializeDefaultHome) {
             return {
-              NIGHTSHIFT_OMP_STATUS_EXTENSION:
-                '/tmp/nightshift-user-data/omp-managed-status-extension/nightshift-agent-status.ts'
+              KOLUX_OMP_STATUS_EXTENSION:
+                '/tmp/kolux-user-data/omp-managed-status-extension/kolux-agent-status.ts'
             }
           }
           return {
-            NIGHTSHIFT_OMP_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-omp-agent',
-            NIGHTSHIFT_OMP_STATUS_EXTENSION: `${existingAgentDir ?? '/tmp/default-omp-agent'}/extensions/nightshift-agent-status.ts`
+            KOLUX_OMP_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-omp-agent',
+            KOLUX_OMP_STATUS_EXTENSION: `${existingAgentDir ?? '/tmp/default-omp-agent'}/extensions/kolux-agent-status.ts`
           }
         }
         if (kind === 'prime-agent') {
@@ -253,14 +251,14 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
             return {}
           }
           return {
-            NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-prime-agent'
+            KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-prime-agent'
           }
         }
         if (!existingAgentDir && !materializeDefaultHome) {
           return {}
         }
         return {
-          NIGHTSHIFT_PI_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-pi-agent'
+          KOLUX_PI_SOURCE_AGENT_DIR: existingAgentDir ?? '/tmp/default-pi-agent'
         }
       }
     )

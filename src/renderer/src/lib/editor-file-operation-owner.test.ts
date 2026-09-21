@@ -54,11 +54,11 @@ describe('editor file operation owner', () => {
           runtimeEnvironmentId: null,
           operationProvenance: provenance
         },
-        '/tmp/nightshift/floating-workspace'
+        '/tmp/kolux/floating-workspace'
       )
     ).toMatchObject({
       worktreeId: FLOATING_TERMINAL_WORKTREE_ID,
-      worktreePath: '/tmp/nightshift/floating-workspace',
+      worktreePath: '/tmp/kolux/floating-workspace',
       expectedExecutionHostId: 'local'
     })
   })

@@ -82,7 +82,7 @@ async function validateCurrentBranchCanCreateReview(
       return {
         ok: false,
         code: 'validation',
-        error: `Create ${copy.shortLabel} failed: Nightshift could not confirm whether this branch already has a ${copy.reviewLabel}. Retry once the ${copy.providerName} lookup succeeds.`
+        error: `Create ${copy.shortLabel} failed: Kolux could not confirm whether this branch already has a ${copy.reviewLabel}. Retry once the ${copy.providerName} lookup succeeds.`
       }
     }
     // Why: renderer eligibility can be stale by submit time; main process is the last gate before an out-of-date create.
@@ -134,7 +134,7 @@ export async function getHostedReviewCreationEligibility(
       linkedGiteaPR: args.linkedGiteaPR ?? null,
       executionHostId: args.executionHostId,
       // Why: eligibility is only ever asked for the worktree the user is acting
-      // on, so it earns the fast tier. Without it a review opened outside Nightshift
+      // on, so it earns the fast tier. Without it a review opened outside Kolux
       // in the last no-review interval would leave Create enabled (#11532).
       active: true,
       ...hostedReviewExecutionContext(args)
@@ -280,7 +280,7 @@ export async function createHostedReview(
       : await provider.createReview(repoPath, input, executionHostId)
   if (result.ok) {
     // Why (#11532): the branch cache holds a "no review" answer for far longer
-    // than a poll interval, so Nightshift's own creation must retire it at once.
+    // than a poll interval, so Kolux's own creation must retire it at once.
     invalidateHostedReviewBranchCache(repoPath, executionHostId)
   }
   return result

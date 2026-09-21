@@ -72,16 +72,16 @@ function envInt(name, fallback) {
   return value
 }
 
-const KEYSTROKES = envInt('NIGHTSHIFT_QUADRATIC_BENCH_KEYSTROKES', 12)
-const WORKTREES = envInt('NIGHTSHIFT_QUADRATIC_BENCH_WORKTREES', 300)
-const TABS = envInt('NIGHTSHIFT_QUADRATIC_BENCH_TABS', 60)
-const OPEN_FILES = envInt('NIGHTSHIFT_QUADRATIC_BENCH_OPEN_FILES', 120)
-const CHANGED_FILES = envInt('NIGHTSHIFT_QUADRATIC_BENCH_CHANGED_FILES', 5000)
-const SIDEBAR_ROWS = envInt('NIGHTSHIFT_QUADRATIC_BENCH_SIDEBAR_ROWS', 600)
-const SIDEBAR_REPOS = envInt('NIGHTSHIFT_QUADRATIC_BENCH_SIDEBAR_REPOS', 80)
+const KEYSTROKES = envInt('KOLUX_QUADRATIC_BENCH_KEYSTROKES', 12)
+const WORKTREES = envInt('KOLUX_QUADRATIC_BENCH_WORKTREES', 300)
+const TABS = envInt('KOLUX_QUADRATIC_BENCH_TABS', 60)
+const OPEN_FILES = envInt('KOLUX_QUADRATIC_BENCH_OPEN_FILES', 120)
+const CHANGED_FILES = envInt('KOLUX_QUADRATIC_BENCH_CHANGED_FILES', 5000)
+const SIDEBAR_ROWS = envInt('KOLUX_QUADRATIC_BENCH_SIDEBAR_ROWS', 600)
+const SIDEBAR_REPOS = envInt('KOLUX_QUADRATIC_BENCH_SIDEBAR_REPOS', 80)
 if (SIDEBAR_REPOS > SIDEBAR_ROWS) {
   throw new Error(
-    'NIGHTSHIFT_QUADRATIC_BENCH_SIDEBAR_REPOS must not exceed NIGHTSHIFT_QUADRATIC_BENCH_SIDEBAR_ROWS'
+    'KOLUX_QUADRATIC_BENCH_SIDEBAR_REPOS must not exceed KOLUX_QUADRATIC_BENCH_SIDEBAR_ROWS'
   )
 }
 
@@ -120,7 +120,7 @@ const { buildWorkspaceBoardPaletteDocuments, matchWorkspaceBoardWorktrees } = aw
 )
 
 const repoMap = new Map([
-  ['repo-1', { id: 'repo-1', name: 'nightshift', path: '/tmp/nightshift', branch: 'main' }]
+  ['repo-1', { id: 'repo-1', name: 'kolux', path: '/tmp/kolux', branch: 'main' }]
 ])
 const boardWorktrees = Array.from({ length: WORKTREES }, (_, index) => ({
   id: `repo-1::/tmp/worktree-${index}`,

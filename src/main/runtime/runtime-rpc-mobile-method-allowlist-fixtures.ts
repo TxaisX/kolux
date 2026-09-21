@@ -1,6 +1,6 @@
 import { vi } from 'vitest'
 import type { Mock } from 'vitest'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 
 // Loose on purpose: the allowlist suite asserts call arguments, never RPC signatures.
 export type MobileRpcMock = Mock<(...args: unknown[]) => unknown>
@@ -175,7 +175,7 @@ export function createMobileRpcSurfaceRuntime() {
     updateClientSettings: vi.fn(() => ({ defaultTaskSource: 'linear' }))
   }
   return {
-    runtime: runtime as unknown as NightshiftRuntimeService,
+    runtime: runtime as unknown as KoluxRuntimeService,
     mocks: runtime,
     expectedCodexResetScope
   }

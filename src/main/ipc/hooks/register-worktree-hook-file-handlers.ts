@@ -4,8 +4,10 @@ import { isFolderRepo } from '../../../shared/repo-kind'
 import { joinWorktreeRelativePath } from '../../runtime/runtime-relative-paths'
 import { getSshFilesystemProvider } from '../../providers/ssh-filesystem-dispatch'
 import { isENOENT } from '../filesystem-path-containment'
-import { parseNightshiftYaml } from '../../hooks'
+import { parseKoluxYaml } from '../../hooks'
 import { readIssueCommand, writeIssueCommand } from '../../issue-command-file'
+import { readRepoKoluxDirFile } from '../../runtime/repo-kolux-dir-fallback'
+import { readRepoConfigYaml } from '../../runtime/repo-config-yaml-fallback'
 import { resolveRepoForExecutionHost } from '../worktrees/repo-host-ownership'
 import type { WorktreeIpcContext } from '../worktrees/worktree-ipc-context'
 
@@ -27,7 +29,7 @@ export function registerWorktreeHookFileHandlers(context: WorktreeIpcContext): v
         }
       }
       if (repo.connectionId) {
-        const issueCommandPath = joinWorktreeRelativePath(repo.path, '.nightshift/issue-command')
+        const issueCommandPath = joinWorktreeRelativePath(repo.path, '.kolux/issue-command')
         const fsProvider = getSshFilesystemProvider(repo.connectionId)
         if (!fsProvider) {
           return {
@@ -41,23 +43,14 @@ export function registerWorktreeHookFileHandlers(context: WorktreeIpcContext): v
         }
 
         let status: 'ok' | 'error' = 'ok'
-        let localContent: string | null = null
+        const localContent = await readRepoKoluxDirFile(fsProvider, repo.path, 'issue-command')
         let sharedContent: string | null = null
         try {
-          const result = await fsProvider.readFile(issueCommandPath)
-          localContent = result.isBinary ? null : result.content.trim() || null
-        } catch (error) {
-          if (!isENOENT(error)) {
-            status = 'error'
-          }
-        }
-        try {
-          const result = await fsProvider.readFile(
-            joinWorktreeRelativePath(repo.path, 'nightshift.yaml')
-          )
-          sharedContent = result.isBinary
-            ? null
-            : parseNightshiftYaml(result.content)?.issueCommand?.trim() || null
+          const result = await readRepoConfigYaml(fsProvider, repo.path)
+          sharedContent =
+            result == null || result.isBinary
+              ? null
+              : parseKoluxYaml(result.content)?.issueCommand?.trim() || null
         } catch (error) {
           if (!isENOENT(error)) {
             status = 'error'
@@ -89,7 +82,7 @@ export function registerWorktreeHookFileHandlers(context: WorktreeIpcContext): v
         return
       }
       if (repo.connectionId) {
-        const issueCommandPath = joinWorktreeRelativePath(repo.path, '.nightshift/issue-command')
+        const issueCommandPath = joinWorktreeRelativePath(repo.path, '.kolux/issue-command')
         const fsProvider = getSshFilesystemProvider(repo.connectionId)
         if (!fsProvider) {
           throw new Error(
@@ -105,19 +98,19 @@ export function registerWorktreeHookFileHandlers(context: WorktreeIpcContext): v
           })
           return
         }
-        await fsProvider.createDir(joinWorktreeRelativePath(repo.path, '.nightshift'))
+        await fsProvider.createDir(joinWorktreeRelativePath(repo.path, '.kolux'))
         const gitignorePath = joinWorktreeRelativePath(repo.path, '.gitignore')
         try {
           const result = await fsProvider.readFile(gitignorePath)
-          if (!result.isBinary && !/^\.nightshift\/?$/m.test(result.content)) {
+          if (!result.isBinary && !/^\.kolux\/?$/m.test(result.content)) {
             const separator = result.content.endsWith('\n') ? '' : '\n'
-            await fsProvider.writeFile(gitignorePath, `${result.content}${separator}.nightshift\n`)
+            await fsProvider.writeFile(gitignorePath, `${result.content}${separator}.kolux\n`)
           }
         } catch (error) {
           if (!isENOENT(error)) {
             throw error
           }
-          await fsProvider.writeFile(gitignorePath, '.nightshift\n')
+          await fsProvider.writeFile(gitignorePath, '.kolux\n')
         }
         await fsProvider.writeFile(issueCommandPath, `${trimmed}\n`)
         return

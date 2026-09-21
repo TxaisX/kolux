@@ -1,4 +1,4 @@
-// Opt in: NIGHTSHIFT_WORKTREE_PREPARATION_CANCEL_BENCH=1 pnpm exec vitest run --config config/vitest.config.ts src/main/git/worktree-preparation-cancel-latency.bench.test.ts
+// Opt in: KOLUX_WORKTREE_PREPARATION_CANCEL_BENCH=1 pnpm exec vitest run --config config/vitest.config.ts src/main/git/worktree-preparation-cancel-latency.bench.test.ts
 //
 // Measures the create-side cost of an obsolete preparation: the wall time of a fresh checkout
 // (the next Create's critical path) while an evicted preparation's checkout is either left running
@@ -19,14 +19,12 @@ import {
   prepareWorktreeCreateCheckout
 } from './worktree-create-preparation'
 
-const describeBench = process.env.NIGHTSHIFT_WORKTREE_PREPARATION_CANCEL_BENCH
-  ? describe
-  : describe.skip
-const FILE_COUNT = Number(process.env.NIGHTSHIFT_WORKTREE_PREPARATION_CANCEL_BENCH_FILES ?? 6000)
+const describeBench = process.env.KOLUX_WORKTREE_PREPARATION_CANCEL_BENCH ? describe : describe.skip
+const FILE_COUNT = Number(process.env.KOLUX_WORKTREE_PREPARATION_CANCEL_BENCH_FILES ?? 6000)
 const FILE_BYTES = 48 * 1024
-const TRIALS = Number(process.env.NIGHTSHIFT_WORKTREE_PREPARATION_CANCEL_BENCH_TRIALS ?? 5)
+const TRIALS = Number(process.env.KOLUX_WORKTREE_PREPARATION_CANCEL_BENCH_TRIALS ?? 5)
 const OBSOLETE_COUNTS = [1, 3]
-const RESULT_PATH = process.env.NIGHTSHIFT_WORKTREE_PREPARATION_CANCEL_BENCH_RESULT
+const RESULT_PATH = process.env.KOLUX_WORKTREE_PREPARATION_CANCEL_BENCH_RESULT
 
 type Variant = 'running' | 'aborted'
 type Sample = { variant: Variant; obsolete: number; freshCheckoutMs: number }
@@ -87,7 +85,7 @@ function median(values: number[]): number {
 
 describeBench('obsolete preparation cancellation latency', () => {
   beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-preparation-cancel-bench-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-preparation-cancel-bench-'))
     repoPath = join(root, 'repo')
     preparationRoot = join(root, WORKTREE_CREATE_PREPARATION_DIRECTORY)
     await mkdir(preparationRoot, { recursive: true })

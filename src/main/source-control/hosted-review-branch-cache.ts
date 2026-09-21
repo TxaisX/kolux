@@ -37,7 +37,7 @@ import {
  * Process-wide cache for branch review lookups (#11532).
  *
  * `hostedReview:forBranch` is polled by every desktop window, the mobile client
- * and `nightshift serve` alike, and each one used to reach the provider directly. The
+ * and `kolux serve` alike, and each one used to reach the provider directly. The
  * host's API quota is per user, so the only place that can pace them together is
  * here — the single funnel they all pass through.
  *
@@ -201,7 +201,7 @@ function trackInflight(key: string, record: InflightRecord): void {
 }
 
 /**
- * Drops every cached answer for a repo. Called when Nightshift itself opens a review,
+ * Drops every cached answer for a repo. Called when Kolux itself opens a review,
  * so the new one is visible immediately instead of after the no-review interval.
  */
 export function invalidateHostedReviewBranchCache(

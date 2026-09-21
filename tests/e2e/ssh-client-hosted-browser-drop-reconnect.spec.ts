@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   startDockerSshRelayTarget,
@@ -39,7 +39,7 @@ const COOKIE_PAIR = `${SSH_REMOTE_ONLY_COOKIE_NAME}=${SSH_REMOTE_ONLY_COOKIE_VAL
 const LOGIN_URL = `${SSH_REMOTE_ONLY_ORIGIN}/login`
 const ECHO_BEFORE_URL = `${SSH_REMOTE_ONLY_ORIGIN}/echo/before`
 const ECHO_AFTER_URL = `${SSH_REMOTE_ONLY_ORIGIN}/echo/after`
-const ROUTE_PARTITION_RE = /^persist:nightshift-browser-v1-[a-f0-9]{64}$/
+const ROUTE_PARTITION_RE = /^persist:kolux-browser-v1-[a-f0-9]{64}$/
 
 type HubSshState = {
   status: string | null
@@ -50,8 +50,8 @@ type HubSshState = {
 type RenderedClientPage = { marker: string; partition: string }
 
 test.skip(
-  process.env.NIGHTSHIFT_E2E_SSH_CLIENT_HOSTED_BROWSER !== '1',
-  'Run with NIGHTSHIFT_E2E_SSH_CLIENT_HOSTED_BROWSER=1 (requires Docker)'
+  process.env.KOLUX_E2E_SSH_CLIENT_HOSTED_BROWSER !== '1',
+  'Run with KOLUX_E2E_SSH_CLIENT_HOSTED_BROWSER=1 (requires Docker)'
 )
 
 async function readHubSshState(page: Page, targetId: string): Promise<HubSshState> {
@@ -248,7 +248,7 @@ async function openClientHostedSshPage(
 }
 
 test('recovers client-hosted SSH-routed browser pages across a real SSH drop', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(900_000)
   let target: DockerSshRelayTarget | null = null
@@ -256,9 +256,9 @@ test('recovers client-hosted SSH-routed browser pages across a real SSH drop', a
   try {
     target = startDockerSshRelayTarget(testInfo)
     startSshRemoteOnlyBrowserFixture(target)
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+    const remote = await connectDockerSshRelayTarget(koluxPage, target)
 
-    const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const offer = await createRuntimeDesktopPairingOffer(koluxPage)
     client = await launchPairedElectronClient(
       offer,
       testInfo,
@@ -300,7 +300,7 @@ test('recovers client-hosted SSH-routed browser pages across a real SSH drop', a
       })
       .toEqual(expect.arrayContaining([LOGIN_URL, ECHO_BEFORE_URL]))
 
-    const beforeDrop = await readHubSshState(nightshiftPage, remote.targetId)
+    const beforeDrop = await readHubSshState(koluxPage, remote.targetId)
     expect(beforeDrop.status).toBe('connected')
     expect(beforeDrop.connectionGeneration).not.toBeNull()
 
@@ -309,7 +309,7 @@ test('recovers client-hosted SSH-routed browser pages across a real SSH drop', a
       killSshRelayTargetTransport(target),
       'the container had no established SSH session to kill'
     ).toBeGreaterThan(0)
-    const afterDrop = await reconnectHubSshTarget(nightshiftPage, remote.targetId)
+    const afterDrop = await reconnectHubSshTarget(koluxPage, remote.targetId)
     expect(
       afterDrop.connectionGeneration,
       'a reconnect must mint a new SSH connection generation'

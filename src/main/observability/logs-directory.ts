@@ -1,5 +1,5 @@
 // Single source of truth for the app's logs directory and the files inside it.
-// macOS convention is `~/Library/Application Support/Nightshift/logs/`; Windows and
+// macOS convention is `~/Library/Application Support/Kolux/logs/`; Windows and
 // Linux resolve the same intent via the host's `userData` dir. Falls back to a
 // homedir-derived path when no AppEnvironment is installed (unit tests).
 
@@ -8,7 +8,7 @@ import { homedir, platform } from 'node:os'
 import { join } from 'node:path'
 
 // Why the port and not electron's `app`: the daemon launch path reads this for --log-file,
-// and that path has to resolve under plain Node (nightshiftd) as well as the desktop.
+// and that path has to resolve under plain Node (koluxd) as well as the desktop.
 // Why 'userData' + 'logs' rather than getPath('logs'): electron's 'logs' is ~/Library/Logs
 // on macOS, which is NOT where this app has ever written. Changing it would strand
 // existing log bundles.
@@ -18,12 +18,12 @@ function getUserDataDir(): string {
   }
   const home = homedir()
   if (platform() === 'darwin') {
-    return join(home, 'Library', 'Application Support', 'Nightshift')
+    return join(home, 'Library', 'Application Support', 'Kolux')
   }
   if (platform() === 'win32') {
-    return join(process.env.APPDATA ?? home, 'Nightshift')
+    return join(process.env.APPDATA ?? home, 'Kolux')
   }
-  return join(home, '.config', 'Nightshift')
+  return join(home, '.config', 'Kolux')
 }
 
 export function getLogsDirectory(): string {

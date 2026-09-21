@@ -1,6 +1,6 @@
 #!/bin/bash
 # Why: remove the PATH symlink that after-install.sh created, but only if it
-# still points into a Nightshift install dir — never delete an unrelated
+# still points into a Kolux install dir — never delete an unrelated
 # /usr/bin/orca-ide a user or other package may own.
 set -e
 
@@ -15,7 +15,7 @@ link="/usr/bin/orca-ide"
 if [ -L "$link" ]; then
   target="$(readlink "$link" || true)"
   case "$target" in
-    /opt/Nightshift/*|/opt/nightshift-ide/*|/opt/nightshift/*)
+    /opt/Kolux/*|/opt/kolux-ide/*|/opt/kolux/*)
       rm -f "$link"
       ;;
   esac

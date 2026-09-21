@@ -4,13 +4,13 @@ import type { GlobalSettings } from './global-settings-types'
 
 export const ARTIFACT_SHARING_DISABLED_CODE = 'artifact_sharing_disabled'
 
-// Why device-wide wording: the gate has no caller identity, so `nightshift artifacts share` typed by a
+// Why device-wide wording: the gate has no caller identity, so `kolux artifacts share` typed by a
 // human is denied exactly like an agent's. Copy that blames agents alone would misdescribe it.
 export const ARTIFACT_SHARING_DISABLED_MESSAGE =
-  'Publishing artifacts is off for this device. Nothing running here — agents or the nightshift CLI — can mint public artifact links until you allow it.'
+  'Publishing artifacts is off for this device. Nothing running here — agents or the kolux CLI — can mint public artifact links until you allow it.'
 
 export const ARTIFACT_SHARING_DISABLED_NEXT_STEPS: readonly string[] = [
-  'Open Settings → Artifacts in the Nightshift desktop app on this device.',
+  'Open Settings → Artifacts in the Kolux desktop app on this device.',
   'Turn on "Allow publishing public artifact links".',
   'Run the share command again.'
 ]

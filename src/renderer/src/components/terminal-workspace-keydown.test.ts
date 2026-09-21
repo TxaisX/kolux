@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FLOATING_TERMINAL_WORKTREE_ID } from '../../../shared/constants'
 import {
-  NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT,
+  KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT,
   type EditorRequestCmdSaveDetail
 } from './editor/editor-autosave'
 import { handleTerminalWorkspaceKeyDown } from './terminal-workspace-keydown'
@@ -50,7 +50,7 @@ const controller = {
   handleNewTab: vi.fn(),
   keybindings: undefined,
   mobileEmulatorEnabled: false,
-  terminalShortcutPolicy: 'nightshift-first'
+  terminalShortcutPolicy: 'kolux-first'
 } as unknown as TerminalActivationController
 
 function pressCmdS(): (EditorRequestCmdSaveDetail | undefined)[] {
@@ -58,7 +58,7 @@ function pressCmdS(): (EditorRequestCmdSaveDetail | undefined)[] {
   const listener = (event: Event): void => {
     details.push((event as CustomEvent<EditorRequestCmdSaveDetail>).detail ?? undefined)
   }
-  window.addEventListener(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, listener)
+  window.addEventListener(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, listener)
   const target = document.createElement('div')
   document.body.appendChild(target)
   const event = new KeyboardEvent('keydown', { key: 's', metaKey: true, cancelable: true })
@@ -66,7 +66,7 @@ function pressCmdS(): (EditorRequestCmdSaveDetail | undefined)[] {
   try {
     handleTerminalWorkspaceKeyDown(event, controller, 'darwin')
   } finally {
-    window.removeEventListener(NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT, listener)
+    window.removeEventListener(KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT, listener)
     target.remove()
   }
   return details

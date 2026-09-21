@@ -3,7 +3,7 @@ import {
   agentPromptSentSchema,
   agentStartedSchema,
   appOpenedSchema,
-  appStarredNightshiftSchema,
+  appStarredKoluxSchema,
   featureInteractionUsageBucketReachedSchema,
   repoAddedSchema,
   starNagOutcomeEventSchema,
@@ -51,9 +51,9 @@ import {
   nativeChatSendClassifiedSchema,
   nativeChatSkillDiscoverySchema,
   nativeChatToggledSchema,
-  nightshiftCliFeatureTipSetupClickedSchema,
-  nightshiftCliFeatureTipSetupResultSchema,
-  nightshiftCliFeatureTipShownSchema,
+  koluxCliFeatureTipSetupClickedSchema,
+  koluxCliFeatureTipSetupResultSchema,
+  koluxCliFeatureTipShownSchema,
   telemetryOptedInSchema,
   telemetryOptedOutSchema
 } from './telemetry-native-feature-event-schemas'
@@ -98,7 +98,7 @@ import {
 // Versioning: breaking changes (rename/re-mean/remove a key) need a new event name; in-place edits blend pre/post rows unmixably. Additive-optional fields are safe.
 export const eventSchemas = {
   app_opened: appOpenedSchema,
-  app_starred_nightshift: appStarredNightshiftSchema,
+  app_starred_kolux: appStarredKoluxSchema,
   star_nag_outcome: starNagOutcomeEventSchema,
   feature_interaction_usage_bucket_reached: featureInteractionUsageBucketReachedSchema,
 
@@ -144,9 +144,9 @@ export const eventSchemas = {
   telemetry_opted_in: telemetryOptedInSchema,
   telemetry_opted_out: telemetryOptedOutSchema,
 
-  nightshift_cli_feature_tip_shown: nightshiftCliFeatureTipShownSchema,
-  nightshift_cli_feature_tip_setup_clicked: nightshiftCliFeatureTipSetupClickedSchema,
-  nightshift_cli_feature_tip_setup_result: nightshiftCliFeatureTipSetupResultSchema,
+  kolux_cli_feature_tip_shown: koluxCliFeatureTipShownSchema,
+  kolux_cli_feature_tip_setup_clicked: koluxCliFeatureTipSetupClickedSchema,
+  kolux_cli_feature_tip_setup_result: koluxCliFeatureTipSetupResultSchema,
   cmd_j_palette_feature_tip_shown: cmdJPaletteFeatureTipShownSchema,
   cmd_j_palette_feature_tip_acknowledged: cmdJPaletteFeatureTipAcknowledgedSchema,
 

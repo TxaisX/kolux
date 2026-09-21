@@ -1,6 +1,6 @@
 import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 /**
- * E2E tests for the "Create Workspace" flow in Nightshift.
+ * E2E tests for the "Create Workspace" flow in Kolux.
  *
  * Why: the old 'create-worktree' modal was replaced by the composer modal
  * (`activeModal === 'new-workspace-composer'`) in #710. A prior version of
@@ -21,7 +21,7 @@ import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
  */
 
 import type { ConsoleMessage } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   waitForSessionReady,
   waitForActiveWorktree,
@@ -31,22 +31,20 @@ import {
 } from './helpers/store'
 
 test.describe('Create Workspace', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('creates a worktree through the composer UI and activates it', async ({
-    nightshiftPage
-  }) => {
-    const worktreeIdBefore = await getActiveWorktreeId(nightshiftPage)
+  test('creates a worktree through the composer UI and activates it', async ({ koluxPage }) => {
+    const worktreeIdBefore = await getActiveWorktreeId(koluxPage)
 
     // Capture render errors for the #1186 guard. React logs "Objects are not
     // valid as a React child" via console.error before throwing the
     // minified-production error #31; capture both paths so the test fails
     // loudly whether the build is dev or prod.
     const pageErrors: Error[] = []
-    nightshiftPage.on('pageerror', (err) => {
+    koluxPage.on('pageerror', (err) => {
       pageErrors.push(err)
     })
     const consoleErrors: string[] = []
@@ -55,16 +53,16 @@ test.describe('Create Workspace', () => {
         consoleErrors.push(msg.text())
       }
     }
-    nightshiftPage.on('console', onConsole)
+    koluxPage.on('console', onConsole)
 
     const workspaceName = `e2e-create-${Date.now()}`
 
     try {
       // 1. Open the composer through the visible affordance so the lazy modal
       // mount path stays covered along with the composer body.
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       await expect(dialog).toBeVisible()
 
       // Wait for the composer to settle. The card fires several async effects
@@ -78,14 +76,14 @@ test.describe('Create Workspace', () => {
       // inside the open modal's React tree — the console/pageerror sweep
       // below is what catches #1186-class regressions now that the
       // StartFromField trigger no longer exists (#1191).
-      await nightshiftPage.evaluate(async () => {
+      await koluxPage.evaluate(async () => {
         const repoId = Object.values(window.__store!.getState().worktreesByRepo).flat()[0]?.repoId
         if (!repoId) {
           return
         }
         await window.api.repos.getBaseRefDefault({ repoId })
       })
-      await nightshiftPage.waitForTimeout(100)
+      await koluxPage.waitForTimeout(100)
 
       // 3. Type the workspace name into the unified smart-name input.
       // The composer's default mode is 'smart'; its placeholder advertises
@@ -110,7 +108,7 @@ test.describe('Create Workspace', () => {
 
       // 6. The new worktree must actually exist on disk and in the store.
       await expect
-        .poll(async () => worktreeExists(nightshiftPage, workspaceName), {
+        .poll(async () => worktreeExists(koluxPage, workspaceName), {
           timeout: 10_000,
           message: `Worktree "${workspaceName}" did not appear in the store`
         })
@@ -121,7 +119,7 @@ test.describe('Create Workspace', () => {
       await expect
         .poll(
           async () => {
-            const id = await getActiveWorktreeId(nightshiftPage)
+            const id = await getActiveWorktreeId(koluxPage)
             return id !== null && id !== worktreeIdBefore
           },
           { timeout: 10_000, message: 'New worktree did not become the active worktree' }
@@ -131,7 +129,7 @@ test.describe('Create Workspace', () => {
       // 8. A terminal tab must auto-create for the new worktree. This is
       // the downstream signal that `activateAndRevealWorktree` actually
       // fired, not just that the store row exists.
-      await ensureTerminalVisible(nightshiftPage)
+      await ensureTerminalVisible(koluxPage)
 
       // Final render-error sweep. Any render crash during the flow (whether
       // it tore down the modal or bubbled past it) shows up here.
@@ -143,9 +141,9 @@ test.describe('Create Workspace', () => {
       )
       expect(reactChildErrors, `React render error: ${reactChildErrors.join(', ')}`).toEqual([])
     } finally {
-      nightshiftPage.off('console', onConsole)
+      koluxPage.off('console', onConsole)
       // Best-effort close if the test failed mid-flow and left the modal open.
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           window.__store?.getState().closeModal()
         })
@@ -155,13 +153,13 @@ test.describe('Create Workspace', () => {
     }
   })
 
-  test('creates an emoji-named worktree with a safe git branch', async ({ nightshiftPage }) => {
+  test('creates an emoji-named worktree with a safe git branch', async ({ koluxPage }) => {
     const workspaceName = '🚀🧪✨'
 
     try {
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       await expect(dialog).toBeVisible()
       await expect(dialog.locator('[data-workspace-name-input="true"]')).toBeVisible()
 
@@ -173,19 +171,17 @@ test.describe('Create Workspace', () => {
       await createButton.click()
 
       await expect(dialog).toBeHidden({ timeout: 15_000 })
-      await expect(
-        nightshiftPage.getByRole('option', { name: new RegExp(workspaceName) })
-      ).toBeVisible({
+      await expect(koluxPage.getByRole('option', { name: new RegExp(workspaceName) })).toBeVisible({
         timeout: 10_000
       })
 
-      const branch = await nightshiftPage.evaluate((displayName) => {
+      const branch = await koluxPage.evaluate((displayName) => {
         const worktrees = Object.values(window.__store!.getState().worktreesByRepo).flat()
         return worktrees.find((worktree) => worktree.displayName === displayName)?.branch ?? null
       }, workspaceName)
       expect(branch).toBe('refs/heads/rocket-test-tube-sparkles')
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           window.__store?.getState().closeModal()
         })
@@ -195,36 +191,34 @@ test.describe('Create Workspace', () => {
     }
   })
 
-  test('enters the Korean flag with the flag_kr shortcode suggestion', async ({
-    nightshiftPage
-  }) => {
+  test('enters the Korean flag with the flag_kr shortcode suggestion', async ({ koluxPage }) => {
     try {
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       const nameInput = dialog.getByPlaceholder(/Type a name/i)
       await expect(nameInput).toBeVisible()
 
       await nameInput.pressSequentially('Launch :flag_kr', { delay: 100 })
-      const emojiSuggestions = nightshiftPage.locator('[data-workspace-emoji-suggestions="true"]')
-      const sourceSuggestions = nightshiftPage.locator('[data-workspace-source-suggestions="true"]')
+      const emojiSuggestions = koluxPage.locator('[data-workspace-emoji-suggestions="true"]')
+      const sourceSuggestions = koluxPage.locator('[data-workspace-source-suggestions="true"]')
       await expect(emojiSuggestions).toBeVisible()
       await expect(emojiSuggestions.getByRole('option', { name: ':flag_kr:' })).toBeVisible()
       await expect(emojiSuggestions).toHaveAttribute('data-side', 'top')
       await expect(sourceSuggestions).toBeVisible()
       await expect(sourceSuggestions).toHaveAttribute('data-side', 'bottom')
       // Keep both independently positioned suggestion surfaces visible in proof recordings.
-      await nightshiftPage.waitForTimeout(750)
+      await koluxPage.waitForTimeout(750)
 
       await nameInput.pressSequentially(':')
       await expect(nameInput).toHaveValue('Launch 🇰🇷')
-      await expect(nightshiftPage.getByRole('option', { name: /:flag_kr:/i })).toHaveCount(0)
+      await expect(koluxPage.getByRole('option', { name: /:flag_kr:/i })).toHaveCount(0)
       await nameInput.pressSequentially(' experiment')
       await expect(nameInput).toHaveValue('Launch 🇰🇷 experiment')
       // Keep the asserted result visible in retained proof recordings.
-      await nightshiftPage.waitForTimeout(750)
+      await koluxPage.waitForTimeout(750)
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           window.__store?.getState().closeModal()
         })
@@ -234,10 +228,8 @@ test.describe('Create Workspace', () => {
     }
   })
 
-  test('shows a failed workspace entry when worktree creation fails', async ({
-    nightshiftPage
-  }) => {
-    await nightshiftPage.evaluate(() => {
+  test('shows a failed workspace entry when worktree creation fails', async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -260,9 +252,9 @@ test.describe('Create Workspace', () => {
     try {
       const workspaceName = `e2e-create-failure-${Date.now()}`
 
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       await expect(dialog).toBeVisible()
       await expect(dialog.locator('[data-workspace-name-input="true"]')).toBeVisible()
 
@@ -275,15 +267,15 @@ test.describe('Create Workspace', () => {
       await createButton.click()
 
       await expect(dialog).toBeHidden()
-      const failedWorkspace = nightshiftPage.getByRole('button', {
+      const failedWorkspace = koluxPage.getByRole('button', {
         name: new RegExp(`${workspaceName} No base branch found`)
       })
       await expect(failedWorkspace).toBeVisible()
-      await expect(nightshiftPage.getByText('Couldn’t create worktree')).toBeVisible()
+      await expect(koluxPage.getByText('Couldn’t create worktree')).toBeVisible()
       await expect(failedWorkspace).toContainText('No base branch found')
-      await expect(nightshiftPage.getByRole('button', { name: 'Retry' })).toBeVisible()
+      await expect(koluxPage.getByRole('button', { name: 'Retry' })).toBeVisible()
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           ;(
             window as unknown as {
@@ -300,16 +292,16 @@ test.describe('Create Workspace', () => {
 
   test('reuses a resolved pasted GitHub URL when quick create submits', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const title = `E2E smart URL resolution ${Date.now()}`
     const url = 'https://github.com/TxaisX/nightshift/pull/2049'
     const linkedWorkspacePattern = new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
     try {
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       await expect(dialog).toBeVisible()
       await expect(dialog.locator('[data-workspace-name-input="true"]')).toBeVisible()
 
@@ -381,13 +373,11 @@ test.describe('Create Workspace', () => {
       await createButton.click()
 
       await expect(dialog).toBeHidden({ timeout: 15_000 })
-      await expect(
-        nightshiftPage.getByRole('option', { name: linkedWorkspacePattern })
-      ).toBeVisible({
+      await expect(koluxPage.getByRole('option', { name: linkedWorkspacePattern })).toBeVisible({
         timeout: 10_000
       })
-      await expect(nightshiftPage.getByRole('option', { name: url })).toHaveCount(0)
-      await expect(nightshiftPage.getByText('Linked PR #2049')).toBeVisible()
+      await expect(koluxPage.getByRole('option', { name: url })).toHaveCount(0)
+      await expect(koluxPage.getByText('Linked PR #2049')).toBeVisible()
       // Why: quick create reuses the single GitHub lookup from typing (no
       // redundant re-fetch), and since #5733 ("Create PR worktrees from the PR
       // head") it resolves the PR start point exactly once at submit time — so
@@ -407,7 +397,7 @@ test.describe('Create Workspace', () => {
         )
         .toEqual({ githubLookupCount: 1, resolvePrBaseCount: 1 })
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           window.__store?.getState().closeModal()
         })
@@ -419,16 +409,16 @@ test.describe('Create Workspace', () => {
 
   test('names the workspace after the PR title when the pasted URL suggestion is selected', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const title = `E2E selected URL resolution ${Date.now()}`
     const url = 'https://github.com/TxaisX/nightshift/pull/2050'
     const linkedWorkspacePattern = new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
     try {
-      await openSidebarWorkspaceComposer(nightshiftPage)
+      await openSidebarWorkspaceComposer(koluxPage)
 
-      const dialog = nightshiftPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
+      const dialog = koluxPage.getByRole('dialog', { name: /Create (Workspace|Worktree)/i })
       await expect(dialog).toBeVisible()
       await expect(dialog.locator('[data-workspace-name-input="true"]')).toBeVisible()
 
@@ -467,24 +457,22 @@ test.describe('Create Workspace', () => {
       // suggestion row (instead of submitting the raw URL) must not leave the
       // pasted URL behind as the workspace name. The suggestion popover is
       // portaled outside the dialog element, so locate it page-wide.
-      const suggestion = nightshiftPage.getByRole('option', { name: linkedWorkspacePattern })
+      const suggestion = koluxPage.getByRole('option', { name: linkedWorkspacePattern })
       await expect(suggestion).toBeVisible()
-      await nightshiftPage.keyboard.press('Enter')
+      await koluxPage.keyboard.press('Enter')
 
       const createButton = dialog.getByRole('button', { name: /Create (Workspace|Worktree)/i })
       await expect(createButton).toBeEnabled()
       await createButton.click()
 
       await expect(dialog).toBeHidden({ timeout: 15_000 })
-      await expect(
-        nightshiftPage.getByRole('option', { name: linkedWorkspacePattern })
-      ).toBeVisible({
+      await expect(koluxPage.getByRole('option', { name: linkedWorkspacePattern })).toBeVisible({
         timeout: 10_000
       })
-      await expect(nightshiftPage.getByRole('option', { name: /https-github/i })).toHaveCount(0)
-      await expect(nightshiftPage.getByText('Linked PR #2050')).toBeVisible()
+      await expect(koluxPage.getByRole('option', { name: /https-github/i })).toHaveCount(0)
+      await expect(koluxPage.getByText('Linked PR #2050')).toBeVisible()
     } finally {
-      await nightshiftPage
+      await koluxPage
         .evaluate(() => {
           window.__store?.getState().closeModal()
         })

@@ -37,7 +37,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -307,9 +307,9 @@ describe('registerPtyHandlers', () => {
           const spawnOptions = daemonSpawn.mock.calls.at(-1)?.[0] as DaemonSpawnCall
           expect(spawnOptions.terminalWindowsWslDistro).toBe('Ubuntu')
           expect(spawnOptions.env).toMatchObject({
-            NIGHTSHIFT_ORCHESTRATION_COMPATIBILITY_HOST_KIND: 'wsl',
-            NIGHTSHIFT_ORCHESTRATION_COMPATIBILITY_HOST_ID: 'compat-host',
-            NIGHTSHIFT_ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION: 'Ubuntu'
+            KOLUX_ORCHESTRATION_COMPATIBILITY_HOST_KIND: 'wsl',
+            KOLUX_ORCHESTRATION_COMPATIBILITY_HOST_ID: 'compat-host',
+            KOLUX_ORCHESTRATION_COMPATIBILITY_HOST_INCARNATION: 'Ubuntu'
           })
           expect(runtime.preparePtyExecutionContext).toHaveBeenCalledWith(
             expect.any(String),
@@ -467,9 +467,9 @@ describe('registerPtyHandlers', () => {
             worktreeId: 'wt-runtime',
             command: 'claude',
             env: {
-              PATH: `/tmp/nightshift-agent-teams-bin${delimiter}/usr/bin`,
-              NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test',
-              TERM_PROGRAM: 'Nightshift'
+              PATH: `/tmp/kolux-agent-teams-bin${delimiter}/usr/bin`,
+              KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test',
+              TERM_PROGRAM: 'Kolux'
             },
             envToDelete: ['TERM_PROGRAM']
           })
@@ -479,7 +479,7 @@ describe('registerPtyHandlers', () => {
 
         const spawnOptions = daemonSpawn.mock.calls.at(-1)?.[0] as DaemonSpawnCall
         const spawnedPath = spawnOptions.env.PATH.split(delimiter)
-        expect(spawnedPath[0]).toBe('/tmp/nightshift-agent-teams-bin')
+        expect(spawnedPath[0]).toBe('/tmp/kolux-agent-teams-bin')
         expect(spawnedPath.some((entry) => entry.includes(join('cli', 'bin')))).toBe(true)
         expect(spawnOptions.env.TERM_PROGRAM).toBeUndefined()
         expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['TERM_PROGRAM']))
@@ -491,11 +491,11 @@ describe('registerPtyHandlers', () => {
         mockedApp.isPackaged = false
         try {
           const env = await daemonSpawnAndGetEnv({}, undefined, undefined, {
-            NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '/tmp/stale-endpoint.env'
+            KOLUX_AGENT_HOOK_ENDPOINT: '/tmp/stale-endpoint.env'
           })
-          expect(env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT).toBeUndefined()
-          expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('5678')
-          expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBe('agent-token')
+          expect(env.KOLUX_AGENT_HOOK_ENDPOINT).toBeUndefined()
+          expect(env.KOLUX_AGENT_HOOK_PORT).toBe('5678')
+          expect(env.KOLUX_AGENT_HOOK_TOKEN).toBe('agent-token')
         } finally {
           mockedApp.isPackaged = prev
         }
@@ -511,9 +511,9 @@ describe('registerPtyHandlers', () => {
         try {
           spawnOptions = await daemonSpawnAndGetOptions(
             {
-              PATH: `/tmp/nightshift-agent-teams-bin${delimiter}/usr/bin`,
-              NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test',
-              TERM_PROGRAM: 'Nightshift'
+              PATH: `/tmp/kolux-agent-teams-bin${delimiter}/usr/bin`,
+              KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test',
+              TERM_PROGRAM: 'Kolux'
             },
             undefined,
             undefined,
@@ -528,12 +528,12 @@ describe('registerPtyHandlers', () => {
         }
 
         const spawnedPath = spawnOptions.env.PATH.split(delimiter)
-        expect(spawnedPath[0]).toBe('/tmp/nightshift-agent-teams-bin')
+        expect(spawnedPath[0]).toBe('/tmp/kolux-agent-teams-bin')
         expect(spawnedPath.some((entry) => entry.includes(join('cli', 'bin')))).toBe(true)
         expect(spawnOptions.env.TERM_PROGRAM).toBeUndefined()
         expect(spawnOptions.envToDelete).toEqual(expect.arrayContaining(['TERM_PROGRAM']))
       })
-      it('injects dev-mode NIGHTSHIFT_USER_DATA_PATH + dev CLI PATH on the daemon path', async () => {
+      it('injects dev-mode KOLUX_USER_DATA_PATH + dev CLI PATH on the daemon path', async () => {
         // Why: the mocked `app` is a plain object, so we can flip isPackaged for the test's scope.
         const { app } = await import('electron')
         const mockedApp = app as unknown as { isPackaged: boolean }
@@ -541,8 +541,8 @@ describe('registerPtyHandlers', () => {
         mockedApp.isPackaged = false
         try {
           const env = await daemonSpawnAndGetEnv({ PATH: '/usr/bin' })
-          expect(env.NIGHTSHIFT_USER_DATA_PATH).toBe('/tmp/nightshift-user-data')
-          expect(env.PATH).toContain(join('/tmp/nightshift-user-data', 'cli', 'bin'))
+          expect(env.KOLUX_USER_DATA_PATH).toBe('/tmp/kolux-user-data')
+          expect(env.PATH).toContain(join('/tmp/kolux-user-data', 'cli', 'bin'))
         } finally {
           mockedApp.isPackaged = prev
         }
@@ -556,9 +556,9 @@ describe('registerPtyHandlers', () => {
           const env = await daemonSpawnAndGetEnv({}, undefined, undefined, {
             PATH: '/system/bin'
           })
-          expect(env.NIGHTSHIFT_USER_DATA_PATH).toBe('/tmp/nightshift-user-data')
+          expect(env.KOLUX_USER_DATA_PATH).toBe('/tmp/kolux-user-data')
           expect(env.PATH).toContain(
-            `${join('/tmp/nightshift-user-data', 'cli', 'bin')}${delimiter}/system/bin`
+            `${join('/tmp/kolux-user-data', 'cli', 'bin')}${delimiter}/system/bin`
           )
         } finally {
           mockedApp.isPackaged = prev
@@ -573,9 +573,9 @@ describe('registerPtyHandlers', () => {
         mockedApp.isPackaged = false
         try {
           const env = await daemonSpawnAndGetEnv({}, undefined, undefined, {
-            PATH: `/tmp/nightshift-user-data/nightshift-terminal-attribution/posix${delimiter}/system/bin`
+            PATH: `/tmp/kolux-user-data/kolux-terminal-attribution/posix${delimiter}/system/bin`
           })
-          expect(env.PATH).not.toContain('nightshift-terminal-attribution')
+          expect(env.PATH).not.toContain('kolux-terminal-attribution')
           expect(env.PATH).toContain('/system/bin')
         } finally {
           mockedApp.isPackaged = prev

@@ -35,8 +35,8 @@ vi.mock('./runtime-client', async () => {
     RuntimeClient,
     RuntimeClientError,
     RuntimeRpcFailureError,
-    serveNightshiftApp: vi.fn(),
-    getDefaultUserDataPath: vi.fn(() => '/tmp/nightshift-user-data')
+    serveKoluxApp: vi.fn(),
+    getDefaultUserDataPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 })
 
@@ -46,7 +46,7 @@ function stdoutText(spy: ReturnType<typeof vi.spyOn>): string {
   return spy.mock.calls.map((call) => String(call[0])).join('')
 }
 
-describe('nightshift skills get --reference', () => {
+describe('kolux skills get --reference', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     process.exitCode = undefined

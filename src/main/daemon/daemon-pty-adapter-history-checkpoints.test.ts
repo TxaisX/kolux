@@ -747,13 +747,13 @@ describe('DaemonPtyAdapter (IPtyProvider)', () => {
       })
       const checkpointSpy = vi.spyOn(historyAdapter.getHistoryManager()!, 'checkpoint')
 
-      lastSubprocess._simulateData('\x1b]777;nightshift-shell-ready')
+      lastSubprocess._simulateData('\x1b]777;kolux-shell-ready')
       await historyAdapter.shutdown(id, { immediate: true, keepHistory: true })
 
       expect(checkpointSpy).toHaveBeenCalledWith(
         id,
         expect.objectContaining({
-          pendingEscapeTailAnsi: expect.stringContaining('\x1b]777;nightshift-shell-ready')
+          pendingEscapeTailAnsi: expect.stringContaining('\x1b]777;kolux-shell-ready')
         }),
         { pendingOutputSeq: expect.any(Number) }
       )

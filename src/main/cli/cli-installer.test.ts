@@ -38,7 +38,7 @@ import { buildLegacyAppImageCliWrapper } from './legacy-appimage-cli-wrapper'
 async function fakeAppImageExtractRunner(_appImagePath: string, cwd: string): Promise<void> {
   const launcherDir = join(cwd, 'squashfs-root', 'resources', 'bin')
   await mkdir(launcherDir, { recursive: true })
-  await writeFile(join(launcherDir, 'nightshift-ide'), '#!/usr/bin/env bash\n', {
+  await writeFile(join(launcherDir, 'kolux-ide'), '#!/usr/bin/env bash\n', {
     encoding: 'utf8',
     mode: 0o755
   })
@@ -59,12 +59,12 @@ describe('CliInstaller', () => {
     'creates a dev launcher and installs a macOS symlink in the requested path',
     async () => {
       const fixture = await makeFixture()
-      const installPath = join(fixture.root, 'bin', 'nightshift')
+      const installPath = join(fixture.root, 'bin', 'kolux')
       const installer = new CliInstaller({
         platform: 'darwin',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+        execPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
         appPath: fixture.appPath,
         commandPathOverride: installPath,
         processPathEnv: join(fixture.root, 'bin')
@@ -72,7 +72,7 @@ describe('CliInstaller', () => {
 
       const initial = await installer.getStatus()
       expect(initial.state).toBe('not_installed')
-      expect(initial.launcherPath).toContain(join('userData', 'cli', 'bin', 'nightshift'))
+      expect(initial.launcherPath).toContain(join('userData', 'cli', 'bin', 'kolux'))
 
       const installed = await installer.install()
       expect(installed.state).toBe('installed')
@@ -80,10 +80,8 @@ describe('CliInstaller', () => {
 
       const launcherContent = await readFile(installed.launcherPath as string, 'utf8')
       expect(launcherContent).toContain('ELECTRON_RUN_AS_NODE=1 exec "$ELECTRON" "$CLI" "$@"')
-      expect(launcherContent).toContain(
-        `export NIGHTSHIFT_USER_DATA_PATH='${fixture.userDataPath}'`
-      )
-      expect(launcherContent).toContain('export NIGHTSHIFT_APP_EXECUTABLE="$ELECTRON"')
+      expect(launcherContent).toContain(`export KOLUX_USER_DATA_PATH='${fixture.userDataPath}'`)
+      expect(launcherContent).toContain('export KOLUX_APP_EXECUTABLE="$ELECTRON"')
       expect(launcherContent).toContain(join(fixture.appPath, 'out', 'cli', 'index.js'))
 
       const removed = await installer.remove()
@@ -96,12 +94,12 @@ describe('CliInstaller', () => {
     'creates a linux symlink under the requested path and warns when PATH is missing',
     async () => {
       const fixture = await makeFixture()
-      const installPath = join(fixture.root, '.local', 'bin', 'nightshift-ide')
+      const installPath = join(fixture.root, '.local', 'bin', 'kolux-ide')
       const installer = new CliInstaller({
         platform: 'linux',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: '/opt/Nightshift/nightshift-ide',
+        execPath: '/opt/Kolux/kolux-ide',
         appPath: fixture.appPath,
         commandPathOverride: installPath,
         processPathEnv: '/usr/bin'
@@ -109,15 +107,13 @@ describe('CliInstaller', () => {
 
       const installed = await installer.install()
       expect(installed.state).toBe('installed')
-      expect(installed.commandName).toBe('nightshift-ide')
+      expect(installed.commandName).toBe('kolux-ide')
       expect(installed.pathConfigured).toBe(false)
       expect(installed.detail).toContain('.local')
 
       const launcherContent = await readFile(installed.launcherPath as string, 'utf8')
       expect(launcherContent).toContain('ELECTRON_RUN_AS_NODE=1 exec "$ELECTRON" "$CLI" "$@"')
-      expect(launcherContent).toContain(
-        `export NIGHTSHIFT_USER_DATA_PATH='${fixture.userDataPath}'`
-      )
+      expect(launcherContent).toContain(`export KOLUX_USER_DATA_PATH='${fixture.userDataPath}'`)
 
       const removed = await installer.remove()
       expect(removed.state).toBe('not_installed')
@@ -125,9 +121,9 @@ describe('CliInstaller', () => {
   )
 
   // Why: dev installs are useful for validation, but they must not replace the
-  // packaged `nightshift` / `nightshift-ide` commands developers rely on day to day.
+  // packaged `kolux` / `kolux-ide` commands developers rely on day to day.
   it.skipIf(process.platform === 'win32')(
-    'uses a separate nightshift-dev command for default development installs',
+    'uses a separate kolux-dev command for default development installs',
     async () => {
       const fixture = await makeFixture()
       const homePath = join(fixture.root, 'home')
@@ -136,7 +132,7 @@ describe('CliInstaller', () => {
         platform: 'linux',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: '/opt/Nightshift/nightshift-ide',
+        execPath: '/opt/Kolux/kolux-ide',
         appPath: fixture.appPath,
         homePath,
         processPathEnv: commandDir
@@ -144,14 +140,12 @@ describe('CliInstaller', () => {
 
       const installed = await installer.install()
       expect(installed.state).toBe('installed')
-      expect(installed.commandName).toBe('nightshift-dev')
-      expect(installed.commandPath).toBe(join(commandDir, 'nightshift-dev'))
-      expect(installed.launcherPath).toBe(
-        join(fixture.userDataPath, 'cli', 'bin', 'nightshift-dev')
-      )
+      expect(installed.commandName).toBe('kolux-dev')
+      expect(installed.commandPath).toBe(join(commandDir, 'kolux-dev'))
+      expect(installed.launcherPath).toBe(join(fixture.userDataPath, 'cli', 'bin', 'kolux-dev'))
       await expect(readlink(installed.commandPath as string)).resolves.toBe(installed.launcherPath)
       await expect(
-        readFile(join(fixture.userDataPath, 'cli', 'bin', 'nightshift'), 'utf8')
+        readFile(join(fixture.userDataPath, 'cli', 'bin', 'kolux'), 'utf8')
       ).resolves.toBe(await readFile(installed.launcherPath as string, 'utf8'))
     }
   )
@@ -165,8 +159,8 @@ describe('CliInstaller', () => {
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, '.local', 'bin')
-      const installPath = join(commandDir, 'nightshift-ide')
-      const appImagePath = join(fixture.root, 'Nightshift.AppImage')
+      const installPath = join(commandDir, 'kolux-ide')
+      const appImagePath = join(fixture.root, 'Kolux.AppImage')
       const cacheRootPath = join(fixture.root, 'cache')
       await writeFile(appImagePath, '#!/usr/bin/env bash\n', {
         encoding: 'utf8',
@@ -191,14 +185,14 @@ describe('CliInstaller', () => {
       const installed = await installer.install()
       expect(installed).toMatchObject({
         state: 'installed',
-        commandName: 'nightshift-ide',
+        commandName: 'kolux-ide',
         installMethod: 'symlink',
         pathConfigured: true
       })
       // The command target remains stable while its cache endpoint advances generations.
       expect(relative(cacheRootPath, installed.launcherPath as string).split(sep)).toEqual([
         'launcher',
-        'nightshift-ide'
+        'kolux-ide'
       ])
       expect(installed.currentTarget).toBe(installed.launcherPath)
       await expect(readlink(installPath)).resolves.toBe(installed.launcherPath)
@@ -223,8 +217,8 @@ describe('CliInstaller', () => {
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, '.local', 'bin')
-      const installPath = join(commandDir, 'nightshift-ide')
-      const appImagePath = join(fixture.root, 'Nightshift.AppImage')
+      const installPath = join(commandDir, 'kolux-ide')
+      const appImagePath = join(fixture.root, 'Kolux.AppImage')
       const cacheRootPath = join(fixture.root, 'cache')
       await writeFile(appImagePath, '#!/usr/bin/env bash\n', {
         encoding: 'utf8',
@@ -269,8 +263,8 @@ describe('CliInstaller', () => {
     async () => {
       const fixture = await makeFixture()
       const commandDir = join(fixture.root, '.local', 'bin')
-      const installPath = join(commandDir, 'nightshift-ide')
-      const appImagePath = join(fixture.root, "Nightshift's AppImage.AppImage")
+      const installPath = join(commandDir, 'kolux-ide')
+      const appImagePath = join(fixture.root, "Kolux's AppImage.AppImage")
       const cacheRootPath = join(fixture.root, 'cache')
       await mkdir(commandDir, { recursive: true })
       await writeFile(appImagePath, '#!/usr/bin/env bash\n', { encoding: 'utf8', mode: 0o755 })
@@ -308,17 +302,17 @@ describe('CliInstaller', () => {
   )
 
   // Why: Linux renamed the public command to avoid shadowing GNOME Orca, so
-  // upgrading must clean up only the old symlink owned by prior Nightshift installs.
+  // upgrading must clean up only the old symlink owned by prior Kolux installs.
   it.skipIf(process.platform === 'win32')(
-    'removes the old managed linux nightshift symlink when installing nightshift-ide',
+    'removes the old managed linux kolux symlink when installing kolux-ide',
     async () => {
       const fixture = await makeFixture()
       const homePath = join(fixture.root, 'home')
       const commandDir = join(homePath, '.local', 'bin')
       const resourcesPath = join(fixture.root, 'resources')
-      const launcherPath = join(resourcesPath, 'bin', 'nightshift-ide')
-      const oldLauncherPath = join(resourcesPath, 'bin', 'nightshift')
-      const legacyCommandPath = join(commandDir, 'nightshift')
+      const launcherPath = join(resourcesPath, 'bin', 'kolux-ide')
+      const oldLauncherPath = join(resourcesPath, 'bin', 'kolux')
+      const legacyCommandPath = join(commandDir, 'kolux')
       await mkdir(commandDir, { recursive: true })
       await mkdir(join(resourcesPath, 'bin'), { recursive: true })
       await writeFile(launcherPath, '#!/usr/bin/env bash\n', 'utf8')
@@ -336,19 +330,19 @@ describe('CliInstaller', () => {
       })
 
       const installed = await installer.install()
-      expect(installed.commandPath).toBe(join(commandDir, 'nightshift-ide'))
+      expect(installed.commandPath).toBe(join(commandDir, 'kolux-ide'))
       await expect(lstat(legacyCommandPath)).rejects.toMatchObject({ code: 'ENOENT' })
     }
   )
 
   it.skipIf(process.platform === 'win32')(
-    'removes a legacy linux nightshift symlink when registering from an AppImage',
+    'removes a legacy linux kolux symlink when registering from an AppImage',
     async () => {
       const fixture = await makeFixture()
       const homePath = join(fixture.root, 'home')
       const commandDir = join(homePath, '.local', 'bin')
-      const legacyCommandPath = join(commandDir, 'nightshift')
-      const appImagePath = join(fixture.root, 'Nightshift.AppImage')
+      const legacyCommandPath = join(commandDir, 'kolux')
+      const appImagePath = join(fixture.root, 'Kolux.AppImage')
       const cacheRootPath = join(fixture.root, 'cache')
       await mkdir(commandDir, { recursive: true })
       await writeFile(appImagePath, '#!/usr/bin/env bash\n', {
@@ -356,10 +350,7 @@ describe('CliInstaller', () => {
         mode: 0o755
       })
       const extractedRoot = resolveAppImageExtractedRoot({ appImagePath, cacheRootPath })!
-      await symlink(
-        join(dirname(extractedRoot.payloadLauncherPath), 'nightshift'),
-        legacyCommandPath
-      )
+      await symlink(join(dirname(extractedRoot.payloadLauncherPath), 'kolux'), legacyCommandPath)
 
       const installer = new CliInstaller({
         platform: 'linux',
@@ -374,7 +365,7 @@ describe('CliInstaller', () => {
       })
 
       const installed = await installer.install()
-      expect(installed.commandPath).toBe(join(commandDir, 'nightshift-ide'))
+      expect(installed.commandPath).toBe(join(commandDir, 'kolux-ide'))
       await expect(lstat(legacyCommandPath)).rejects.toMatchObject({ code: 'ENOENT' })
     }
   )
@@ -385,8 +376,8 @@ describe('CliInstaller', () => {
       const fixture = await makeFixture()
       const homePath = join(fixture.root, 'home')
       const commandDir = join(homePath, '.local', 'bin')
-      const legacyCommandPath = join(commandDir, 'nightshift')
-      const appImagePath = join(fixture.root, 'Nightshift.AppImage')
+      const legacyCommandPath = join(commandDir, 'kolux')
+      const appImagePath = join(fixture.root, 'Kolux.AppImage')
       const foreignAppImagePath = join(fixture.root, 'Other.AppImage')
       const cacheRootPath = join(fixture.root, 'cache')
       await mkdir(commandDir, { recursive: true })
@@ -439,13 +430,13 @@ describe('CliInstaller', () => {
       await mkdir(protectedDir)
       await chmod(protectedDir, 0o500)
 
-      const installPath = join(protectedDir, 'bin', 'nightshift')
+      const installPath = join(protectedDir, 'bin', 'kolux')
       const privilegedCommands: string[] = []
       const installer = new CliInstaller({
         platform: 'darwin',
         isPackaged: false,
         userDataPath: fixture.userDataPath,
-        execPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift',
+        execPath: '/Applications/Kolux.app/Contents/MacOS/Kolux',
         appPath: fixture.appPath,
         commandPathOverride: installPath,
         privilegedRunner: async (command: string) => {

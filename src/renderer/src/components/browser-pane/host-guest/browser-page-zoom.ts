@@ -14,7 +14,7 @@ export {
   type BrowserPageZoomDirection
 } from '../../../../../shared/browser-page-zoom'
 
-export const NIGHTSHIFT_BROWSER_PAGE_ZOOM_EVENT = 'nightshift:browser-page-zoom'
+export const KOLUX_BROWSER_PAGE_ZOOM_EVENT = 'kolux:browser-page-zoom'
 
 export type BrowserPageZoomEventDetail = {
   browserPageId: string
@@ -113,6 +113,6 @@ export function addBrowserPageZoomEventListener(
   const listener = (event: Event): void => {
     callback((event as CustomEvent<BrowserPageZoomEventDetail>).detail)
   }
-  window.addEventListener(NIGHTSHIFT_BROWSER_PAGE_ZOOM_EVENT, listener)
-  return () => window.removeEventListener(NIGHTSHIFT_BROWSER_PAGE_ZOOM_EVENT, listener)
+  window.addEventListener(KOLUX_BROWSER_PAGE_ZOOM_EVENT, listener)
+  return () => window.removeEventListener(KOLUX_BROWSER_PAGE_ZOOM_EVENT, listener)
 }

@@ -14,11 +14,11 @@ describe('packaged skills CLI PR gates', () => {
 
     expect(job['runs-on']).toBe('windows-2022')
     expect(buildStep.run).toBe('pnpm run build:release:parallel')
-    expect(buildStep.env.NIGHTSHIFT_REUSE_WINDOWS_CLI_LAUNCHER).toBe('1')
+    expect(buildStep.env.KOLUX_REUSE_WINDOWS_CLI_LAUNCHER).toBe('1')
     expect(prepareStep.run).toBe('node config/scripts/ensure-native-runtime.mjs --runtime=electron')
     expect(packageStep.run).toContain('electron-builder')
     expect(packageStep.run).toContain('--dir')
-    expect(packageStep.env.NIGHTSHIFT_REUSE_PREPARED_NATIVE_RUNTIME).toBe('1')
+    expect(packageStep.env.KOLUX_REUSE_PREPARED_NATIVE_RUNTIME).toBe('1')
     expect(smokeStep.run).toBe(
       'node config/scripts/smoke-packaged-cli.mjs --app-dir=dist/win-unpacked'
     )

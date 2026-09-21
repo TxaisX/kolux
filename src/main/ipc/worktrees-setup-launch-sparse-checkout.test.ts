@@ -128,10 +128,10 @@ describe('registerWorktreeHandlers', () => {
         branch: 'improve-dashboard'
       }),
       setup: {
-        runnerScriptPath: '/workspace/repo/.git/nightshift/setup-runner.sh',
+        runnerScriptPath: '/workspace/repo/.git/kolux/setup-runner.sh',
         envVars: {
-          NIGHTSHIFT_ROOT_PATH: '/workspace/repo',
-          NIGHTSHIFT_WORKTREE_PATH: '/workspace/improve-dashboard'
+          KOLUX_ROOT_PATH: '/workspace/repo',
+          KOLUX_WORKTREE_PATH: '/workspace/improve-dashboard'
         }
       }
     })
@@ -144,8 +144,8 @@ describe('registerWorktreeHandlers', () => {
     )
   })
 
-  it('launches setup even when primary and worktree nightshift.yaml scripts diverge', async () => {
-    // Why: benign nightshift.yaml divergence must not disable setup (regression from #1280 content-equality gate); repo trust already gates execution.
+  it('launches setup even when primary and worktree kolux.yaml scripts diverge', async () => {
+    // Why: benign kolux.yaml divergence must not disable setup (regression from #1280 content-equality gate); repo trust already gates execution.
     listWorktreesMock.mockResolvedValue(createdWorktreeList)
     getEffectiveHooksMock.mockImplementation((_repo, worktreePath?: string) => ({
       scripts: {
@@ -176,7 +176,7 @@ describe('registerWorktreeHandlers', () => {
     expect(result).toEqual(
       expect.objectContaining({
         setup: expect.objectContaining({
-          runnerScriptPath: '/workspace/repo/.git/nightshift/setup-runner.sh'
+          runnerScriptPath: '/workspace/repo/.git/kolux/setup-runner.sh'
         })
       })
     )

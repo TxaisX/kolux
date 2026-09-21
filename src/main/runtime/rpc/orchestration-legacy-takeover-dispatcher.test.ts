@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OrchestrationCompatibilityEvidence } from '../../../shared/orchestration-compatibility-evidence'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -22,7 +22,7 @@ const CURRENT_COORDINATOR_PANE = 'tab_current:55555555-5555-4555-8555-5555555555
 
 type Harness = {
   db: OrchestrationDb
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   dispatcher: RpcDispatcher
   adoptedRunId: string
   taskId: string
@@ -42,7 +42,7 @@ afterEach(() => {
 })
 
 function createHarness(): Harness {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-legacy-takeover-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-legacy-takeover-'))
   tempDirs.push(dir)
   const dbPath = join(dir, 'orchestration.db')
   const before = new OrchestrationDb(dbPath)
@@ -69,7 +69,7 @@ function createHarness(): Harness {
   const db = new OrchestrationDb(dbPath)
   databases.push(db)
   const adoptedRunId = db.getLegacyAdoption()?.adopted_run_id as string
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.setOrchestrationDb(db)
   vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
     handle === COORDINATOR_HANDLE
@@ -592,7 +592,7 @@ describe('injected dispatch from a legacy-adopted coordinator', () => {
         : null
     )
     vi.spyOn(harness.runtime, 'isTerminalRunningAgent').mockResolvedValue(true)
-    vi.spyOn(harness.runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(harness.runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     const sendPrompt = vi
       .spyOn(harness.runtime, 'sendTerminalAgentPrompt')
       .mockResolvedValue({ handle: COORDINATOR_ALIAS_HANDLE, accepted: true, bytesWritten: 1 })

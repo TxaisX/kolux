@@ -30,7 +30,7 @@ export type LegacyCheckParams = {
   timeoutMs?: number
   compatibilityAck?: string
   compatibilityQuestionAck?: string
-  compatibilityCliCommand?: 'nightshift' | 'nightshift-ide' | 'nightshift-dev'
+  compatibilityCliCommand?: 'kolux' | 'kolux-ide' | 'kolux-dev'
 }
 
 export type LegacyAskParams = {
@@ -41,8 +41,8 @@ export type LegacyAskParams = {
   resume?: string
   options?: string
   timeoutMs?: number
-  compatibilityCliCommand?: 'nightshift' | 'nightshift-ide' | 'nightshift-dev'
-  compatibilityWindowsCommand?: 'nightshift' | 'nightshift-ide'
+  compatibilityCliCommand?: 'kolux' | 'kolux-ide' | 'kolux-dev'
+  compatibilityWindowsCommand?: 'kolux' | 'kolux-ide'
 }
 
 export type LegacyReplyParams = {
@@ -162,7 +162,7 @@ export function parseLegacyOptions(raw: string | undefined): string[] {
 export function supportedLegacyHints(
   message: MessageRow,
   principal: LegacyCompatibilityPrincipalRow,
-  cliCommand: 'nightshift' | 'nightshift-ide' | 'nightshift-dev'
+  cliCommand: 'kolux' | 'kolux-ide' | 'kolux-dev'
 ): string[] {
   if (
     principal.role !== 'coordinator' ||

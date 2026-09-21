@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const callMock = vi.hoisted(() => vi.fn())
 const getTerminalHandleMock = vi.hoisted(() => vi.fn())
-const originalTerminalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
+const originalTerminalHandle = process.env.KOLUX_TERMINAL_HANDLE
 
 // Why: isolate flag-to-RPC mapping; printResult only writes output.
 vi.mock('../format', () => ({ printResult: vi.fn() }))
@@ -14,14 +14,14 @@ describe('orchestration task-create CLI mapping', () => {
   beforeEach(() => {
     callMock.mockReset()
     getTerminalHandleMock.mockReset()
-    process.env.NIGHTSHIFT_TERMINAL_HANDLE = 'term_creator'
+    process.env.KOLUX_TERMINAL_HANDLE = 'term_creator'
   })
 
   afterEach(() => {
     if (originalTerminalHandle === undefined) {
-      delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
+      delete process.env.KOLUX_TERMINAL_HANDLE
     } else {
-      process.env.NIGHTSHIFT_TERMINAL_HANDLE = originalTerminalHandle
+      process.env.KOLUX_TERMINAL_HANDLE = originalTerminalHandle
     }
   })
 

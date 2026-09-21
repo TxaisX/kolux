@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
  * node-pty hands the master fd to libuv, which closes it on EIO/EOF, but upstream
  * never invalidated `_fd`, and none of the three fd-addressed surfaces consulted
  * anything: `resize()`, the `process` getter, and `CustomWriteStream`, which holds
- * its own plain-number copy of the fd taken at spawn. Nightshift's patch retires all
+ * its own plain-number copy of the fd taken at spawn. Kolux's patch retires all
  * three in the same block that gives up the handle
  * (config/patches/node-pty@1.1.0.patch).
  *

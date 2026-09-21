@@ -35,16 +35,16 @@ export { encodePowerShellCommand } from '../shared/powershell-command-encoding'
  * `/K` to stdin because node-pty's argv escaping mangled their quotes; PowerShell
  * never needed that workaround, because `-EncodedCommand` is quoting-proof.
  */
-const POWERSHELL_OSC133_BOOTSTRAP = `# Nightshift OSC 133 shell integration for PowerShell.
+const POWERSHELL_OSC133_BOOTSTRAP = `# Kolux OSC 133 shell integration for PowerShell.
 # Profiles have already loaded normally by the time -EncodedCommand runs.
 # Restore managed ownership before the shell-integration compatibility guard.
-if ($env:NIGHTSHIFT_OPENCODE_CONFIG_DIR) { $env:OPENCODE_CONFIG_DIR = $env:NIGHTSHIFT_OPENCODE_CONFIG_DIR }
-if ($env:NIGHTSHIFT_MIMOCODE_HOME) { $env:MIMOCODE_HOME = $env:NIGHTSHIFT_MIMOCODE_HOME }
-if ($env:NIGHTSHIFT_CODEX_HOME) { $env:CODEX_HOME = $env:NIGHTSHIFT_CODEX_HOME }
+if ($env:KOLUX_OPENCODE_CONFIG_DIR) { $env:OPENCODE_CONFIG_DIR = $env:KOLUX_OPENCODE_CONFIG_DIR }
+if ($env:KOLUX_MIMOCODE_HOME) { $env:MIMOCODE_HOME = $env:KOLUX_MIMOCODE_HOME }
+if ($env:KOLUX_CODEX_HOME) { $env:CODEX_HOME = $env:KOLUX_CODEX_HOME }
 
 if ($ExecutionContext.SessionState.LanguageMode -eq "FullLanguage" -and
-    ((-not (Test-Path variable:global:__NightshiftOsc133State)) -or
-     $null -eq $Global:__NightshiftOsc133State.OriginalPrompt)) {
+    ((-not (Test-Path variable:global:__KoluxOsc133State)) -or
+     $null -eq $Global:__KoluxOsc133State.OriginalPrompt)) {
     # Wrap the user's final prompt/readline state; do not source profiles here.
 
     # Preserve Windows CJK output by keeping ConPTY on UTF-8 without bypassing
@@ -58,7 +58,7 @@ if ($ExecutionContext.SessionState.LanguageMode -eq "FullLanguage" -and
 ${getPowerShellOmpShellWrapper()}
 ${getPowerShellCodexShellLaunchPreflight()}
 
-    $Global:__NightshiftOsc133State = @{
+    $Global:__KoluxOsc133State = @{
         OriginalPrompt = $function:prompt
         OriginalReadLine = $function:PSConsoleHostReadLine
         HasSeenPrompt = $false
@@ -75,24 +75,24 @@ ${getPowerShellCodexShellLaunchPreflight()}
 
         # Emit D from prompt, not readline state. Some profile setups bypass
         # PSConsoleHostReadLine; the consumer only needs completion.
-        if ($Global:__NightshiftOsc133State.HasSeenPrompt) {
-            $result += "$($Global:__NightshiftOsc133State.Esc)]133;D;$fakeExitCode$($Global:__NightshiftOsc133State.Bel)"
+        if ($Global:__KoluxOsc133State.HasSeenPrompt) {
+            $result += "$($Global:__KoluxOsc133State.Esc)]133;D;$fakeExitCode$($Global:__KoluxOsc133State.Bel)"
         }
-        $Global:__NightshiftOsc133State.HasSeenPrompt = $true
+        $Global:__KoluxOsc133State.HasSeenPrompt = $true
 
-        $result += "$($Global:__NightshiftOsc133State.Esc)]133;A$($Global:__NightshiftOsc133State.Bel)"
+        $result += "$($Global:__KoluxOsc133State.Esc)]133;A$($Global:__KoluxOsc133State.Bel)"
         # Preserve the previous success/failure value for prompts that inspect it.
         if ($fakeExitCode -ne 0) { Write-Error "failure" -ea ignore }
-        $result += $Global:__NightshiftOsc133State.OriginalPrompt.Invoke()
-        $result += "$($Global:__NightshiftOsc133State.Esc)]133;B$($Global:__NightshiftOsc133State.Bel)"
+        $result += $Global:__KoluxOsc133State.OriginalPrompt.Invoke()
+        $result += "$($Global:__KoluxOsc133State.Esc)]133;B$($Global:__KoluxOsc133State.Bel)"
         $result
     }
 
-    if ($Global:__NightshiftOsc133State.HasPSReadLine -and
-        $null -ne $Global:__NightshiftOsc133State.OriginalReadLine) {
+    if ($Global:__KoluxOsc133State.HasPSReadLine -and
+        $null -ne $Global:__KoluxOsc133State.OriginalReadLine) {
         function Global:PSConsoleHostReadLine {
-            $commandLine = $Global:__NightshiftOsc133State.OriginalReadLine.Invoke()
-            [Console]::Write("$($Global:__NightshiftOsc133State.Esc)]133;C$($Global:__NightshiftOsc133State.Bel)")
+            $commandLine = $Global:__KoluxOsc133State.OriginalReadLine.Invoke()
+            [Console]::Write("$($Global:__KoluxOsc133State.Esc)]133;C$($Global:__KoluxOsc133State.Bel)")
             return $commandLine
         }
     }

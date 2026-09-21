@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
-import { createRestartSession } from './helpers/nightshift-restart'
+import { expect, test } from './helpers/kolux-app'
+import { createRestartSession } from './helpers/kolux-restart'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -11,7 +11,7 @@ import {
 } from './helpers/paired-electron-client'
 import { addPairedRuntimeEnvironment } from './helpers/nested-runtime-ssh-client-route'
 
-const missingGitPath = mkdtempSync(path.join(os.tmpdir(), 'nightshift-preflight-path-'))
+const missingGitPath = mkdtempSync(path.join(os.tmpdir(), 'kolux-preflight-path-'))
 
 test.use({ seedTestRepo: false })
 test.describe.configure({ mode: 'serial' })
@@ -180,10 +180,10 @@ async function runRuntimePreflightJourney(
 
 test('routes landing preflight across runtime switch and reconnect', async ({
   electronApp,
-  nightshiftPage
-}, testInfo) => runRuntimePreflightJourney(electronApp, nightshiftPage, testInfo, false))
+  koluxPage
+}, testInfo) => runRuntimePreflightJourney(electronApp, koluxPage, testInfo, false))
 
 test('routes landing preflight across runtime switch and reconnect @headful', async ({
   electronApp,
-  nightshiftPage
-}, testInfo) => runRuntimePreflightJourney(electronApp, nightshiftPage, testInfo, true))
+  koluxPage
+}, testInfo) => runRuntimePreflightJourney(electronApp, koluxPage, testInfo, true))

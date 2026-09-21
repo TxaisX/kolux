@@ -90,9 +90,9 @@ function getControlSocketDirectoryCandidates(uid: number): string[] {
   const candidates: string[] = []
   const xdgRuntimeDir = process.env.XDG_RUNTIME_DIR
   if (xdgRuntimeDir && isAbsolute(xdgRuntimeDir)) {
-    candidates.push(pathJoin(xdgRuntimeDir, 'nightshift-ssh'))
+    candidates.push(pathJoin(xdgRuntimeDir, 'kolux-ssh'))
   }
-  candidates.push(pathJoin(tmpdir(), `nightshift-ssh-${uid}`))
+  candidates.push(pathJoin(tmpdir(), `kolux-ssh-${uid}`))
   return candidates
 }
 

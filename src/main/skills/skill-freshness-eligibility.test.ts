@@ -5,7 +5,7 @@ import {
 } from '../../shared/skill-freshness'
 import { eligibleSkillUpdateNames } from './skill-freshness-eligibility'
 
-const globallyUpdatableNames = new Set(['computer-use', 'nightshift-cli', 'orchestration'])
+const globallyUpdatableNames = new Set(['computer-use', 'kolux-cli', 'orchestration'])
 
 function eligible(installations: SkillFreshnessInstallation[]): string[] {
   return eligibleSkillUpdateNames(installations, globallyUpdatableNames)
@@ -42,15 +42,15 @@ describe('skill freshness name-scoped update eligibility', () => {
   it('offers a name when at least one supported placement is outdated and all are official', () => {
     expect(
       eligible([
-        placement('nightshift-cli'),
-        placement('nightshift-cli', {
-          id: 'nightshift-cli-claude',
+        placement('kolux-cli'),
+        placement('kolux-cli', {
+          id: 'kolux-cli-claude',
           rootId: 'home-claude',
           topology: 'provider-alias',
           status: 'current'
         })
       ])
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it.each([
@@ -69,10 +69,10 @@ describe('skill freshness name-scoped update eligibility', () => {
       // stake. The canonical copy converges and the outlier is reported separately.
       expect(
         eligible([
-          placement('nightshift-cli'),
-          placement('nightshift-cli', { id: `outlier-${status}-${topology}`, status, topology })
+          placement('kolux-cli'),
+          placement('kolux-cli', { id: `outlier-${status}-${topology}`, status, topology })
         ])
-      ).toEqual(['nightshift-cli'])
+      ).toEqual(['kolux-cli'])
     }
   )
 
@@ -83,9 +83,9 @@ describe('skill freshness name-scoped update eligibility', () => {
       // real data-loss case the rail exists to avoid.
       expect(
         eligible([
-          placement('nightshift-cli', { id: 'blocked-canonical', status }),
-          placement('nightshift-cli', {
-            id: 'nightshift-cli-claude',
+          placement('kolux-cli', { id: 'blocked-canonical', status }),
+          placement('kolux-cli', {
+            id: 'kolux-cli-claude',
             rootId: 'home-claude',
             topology: 'provider-alias',
             status: 'outdated'
@@ -100,17 +100,17 @@ describe('skill freshness name-scoped update eligibility', () => {
     // and the duplicate row is flagged as maybe-not-reached rather than blocking.
     expect(
       eligible([
-        placement('nightshift-cli'),
-        placement('nightshift-cli', {
-          id: 'nightshift-cli-gemini',
+        placement('kolux-cli'),
+        placement('kolux-cli', {
+          id: 'kolux-cli-gemini',
           rootId: 'home-gemini',
-          unresolvedPath: '/home/.gemini/skills/nightshift-cli',
-          resolvedPath: '/home/.gemini/skills/nightshift-cli',
+          unresolvedPath: '/home/.gemini/skills/kolux-cli',
+          resolvedPath: '/home/.gemini/skills/kolux-cli',
           topology: 'independent-copy',
           status: 'current'
         })
       ])
-    ).toEqual(['nightshift-cli'])
+    ).toEqual(['kolux-cli'])
   })
 
   it('does not promise an update when only an unreachable duplicate is outdated', () => {
@@ -138,10 +138,10 @@ describe('skill freshness name-scoped update eligibility', () => {
     // reliable target, so a duplicate-only skill stays unoffered.
     expect(
       eligible([
-        placement('nightshift-cli', {
+        placement('kolux-cli', {
           rootId: 'home-gemini',
-          unresolvedPath: '/home/.gemini/skills/nightshift-cli',
-          resolvedPath: '/home/.gemini/skills/nightshift-cli',
+          unresolvedPath: '/home/.gemini/skills/kolux-cli',
+          resolvedPath: '/home/.gemini/skills/kolux-cli',
           topology: 'independent-copy',
           status: 'outdated'
         })
@@ -166,14 +166,14 @@ describe('skill freshness name-scoped update eligibility', () => {
   })
 
   it('does not offer an official canonical copy missing from the updater lock (#10791)', () => {
-    expect(eligibleSkillUpdateNames([placement('nightshift-cli')], new Set())).toEqual([])
+    expect(eligibleSkillUpdateNames([placement('kolux-cli')], new Set())).toEqual([])
   })
 
   it('builds only an explicit, deterministic global command', () => {
-    expect(
-      buildTargetedSkillUpdateCommand(['orchestration', 'nightshift-cli', 'nightshift-cli'])
-    ).toBe('npx skills update nightshift-cli orchestration --global')
+    expect(buildTargetedSkillUpdateCommand(['orchestration', 'kolux-cli', 'kolux-cli'])).toBe(
+      'npx skills update kolux-cli orchestration --global'
+    )
     expect(buildTargetedSkillUpdateCommand([])).toBeNull()
-    expect(buildTargetedSkillUpdateCommand(['nightshift-cli;echo unsafe'])).toBeNull()
+    expect(buildTargetedSkillUpdateCommand(['kolux-cli;echo unsafe'])).toBeNull()
   })
 })

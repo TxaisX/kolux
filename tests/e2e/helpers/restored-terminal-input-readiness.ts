@@ -18,7 +18,7 @@ export async function waitForRestoredTerminalInputReady(
   let pendingAttempts: readonly ReadinessAttempt[] = []
 
   while (Date.now() < deadline) {
-    const marker = `NIGHTSHIFT_RESTORED_INPUT_READY_${randomUUID().replaceAll('-', '')}`
+    const marker = `KOLUX_RESTORED_INPUT_READY_${randomUUID().replaceAll('-', '')}`
     const [input] = buildFreshShellProbeInputSequence(`echo ${marker}\r`)
     if (!input) {
       return false
@@ -32,10 +32,10 @@ export async function waitForRestoredTerminalInputReady(
               continue
             }
             const container = pane.container as HTMLElement & {
-              __nightshiftE2eTerminalInputReadinessInstanceId?: string
+              __koluxE2eTerminalInputReadinessInstanceId?: string
             }
-            container.__nightshiftE2eTerminalInputReadinessInstanceId ??= crypto.randomUUID()
-            const paneInstanceId = container.__nightshiftE2eTerminalInputReadinessInstanceId
+            container.__koluxE2eTerminalInputReadinessInstanceId ??= crypto.randomUUID()
+            const paneInstanceId = container.__koluxE2eTerminalInputReadinessInstanceId
             const output = pane.serializeAddon?.serialize?.() ?? ''
             if (
               pendingAttempts.some(

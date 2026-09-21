@@ -47,10 +47,10 @@ function getRuntimeConfigPath(): string {
 }
 
 beforeEach(() => {
-  fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-config-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-config-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-config-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-config-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   getPathMock.mockImplementation((name: string) => {
     if (name === 'userData') {
@@ -65,9 +65,9 @@ afterEach(() => {
   rmSync(fakeHomeDir, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
@@ -380,7 +380,7 @@ describe('syncSystemConfigIntoManagedCodexHome', () => {
 
   it('deduplicates a CRLF system project header against an LF runtime header', () => {
     mkdirSync(join(userDataDir, 'codex-runtime-home', 'home'), { recursive: true })
-    const projectHeader = '[projects."C:/Users/jinwo/nightshift/workspaces/nightshift/repo"]'
+    const projectHeader = '[projects."C:/Users/jinwo/kolux/workspaces/kolux/repo"]'
     writeFileSync(
       getRuntimeConfigPath(),
       [projectHeader, 'trust_level = "trusted"', ''].join('\n'),
@@ -401,7 +401,7 @@ describe('syncSystemConfigIntoManagedCodexHome', () => {
 
   it('self-heals duplicate project tables in a CRLF runtime config', () => {
     mkdirSync(join(userDataDir, 'codex-runtime-home', 'home'), { recursive: true })
-    const projectHeader = '[projects."C:/Users/jinwo/nightshift/workspaces/nightshift/repo"]'
+    const projectHeader = '[projects."C:/Users/jinwo/kolux/workspaces/kolux/repo"]'
     writeFileSync(
       getRuntimeConfigPath(),
       [
@@ -753,7 +753,7 @@ describe('syncSystemConfigIntoManagedCodexHome', () => {
 describe('syncSystemConfigIntoLegacySharedCodexHome', () => {
   it('recovers an interrupted runtime config when the system source is missing', () => {
     const runtimeConfigPath = getRuntimeConfigPath()
-    const heldConfigPath = `${runtimeConfigPath}.nightshift-guarded`
+    const heldConfigPath = `${runtimeConfigPath}.kolux-guarded`
     mkdirSync(join(userDataDir, 'codex-runtime-home', 'home'), { recursive: true })
     writeFileSync(heldConfigPath, 'model = "retained"\n', 'utf-8')
 

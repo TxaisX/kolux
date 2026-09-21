@@ -45,7 +45,7 @@ export function handleTerminalWebLinkClick(
       linkActionContext: deps.linkActionContext,
       actionDestinations: deps.actionDestinations
     })
-    // Why: WebLinksAddon only knows the physical row; Nightshift's logical hit-test
+    // Why: WebLinksAddon only knows the physical row; Kolux's logical hit-test
     // preserves the complete URL rendered across hard-wrapped TUI rows.
     event.preventDefault()
   } else {

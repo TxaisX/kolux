@@ -11,7 +11,7 @@ const { detectShallowWatchDeliveryMock, statMock, subscribeMock, watchMock, writ
   }))
 
 vi.mock('node:fs', () => ({
-  mkdtempSync: vi.fn(() => '/tmp/nightshift-watcher-canary-test'),
+  mkdtempSync: vi.fn(() => '/tmp/kolux-watcher-canary-test'),
   rmSync: vi.fn(),
   watch: watchMock,
   writeFileSync: writeFileSyncMock

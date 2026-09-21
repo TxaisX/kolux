@@ -5,7 +5,7 @@ import {
   decodeTerminalStreamFrame,
   decodeTerminalStreamText
 } from '../../../shared/terminal-stream-protocol'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 import { TERMINAL_METHODS } from './methods/terminal'
@@ -65,7 +65,7 @@ describe('terminal subscribe mount replay', () => {
       registerOwnedSubscriptionCleanup: vi.fn(registry.registerOwnedSubscriptionCleanup),
       cleanupSubscription: vi.fn(registry.cleanupSubscription),
       waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {}))
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
 
     const dispatchPromise = dispatcher.dispatchStreaming(request, vi.fn(), {
@@ -142,7 +142,7 @@ describe('terminal subscribe mount replay', () => {
       registerOwnedSubscriptionCleanup: vi.fn(registry.registerOwnedSubscriptionCleanup),
       cleanupSubscription: vi.fn(registry.cleanupSubscription),
       waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {}))
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
 
     const dispatchPromise = dispatcher.dispatchStreaming(request, vi.fn(), {
@@ -235,7 +235,7 @@ describe('terminal subscribe mount replay', () => {
       registerOwnedSubscriptionCleanup: vi.fn(registry.registerOwnedSubscriptionCleanup),
       cleanupSubscription: vi.fn(registry.cleanupSubscription),
       waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {}))
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
 
     const dispatchPromise = dispatcher.dispatchStreaming(request, vi.fn(), {
@@ -335,7 +335,7 @@ describe('terminal subscribe mount replay', () => {
       registerOwnedSubscriptionCleanup: vi.fn(registry.registerOwnedSubscriptionCleanup),
       cleanupSubscription: vi.fn(registry.cleanupSubscription),
       waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {}))
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
 
     const dispatchPromise = dispatcher.dispatchStreaming(request, vi.fn(), {
@@ -405,7 +405,7 @@ describe('terminal subscribe mount replay', () => {
       registerOwnedSubscriptionCleanup: vi.fn(registry.registerOwnedSubscriptionCleanup),
       cleanupSubscription: vi.fn(registry.cleanupSubscription),
       waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {}))
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
 
     const dispatchPromise = dispatcher.dispatchStreaming(request, vi.fn(), {

@@ -36,8 +36,8 @@ function buildStatus(configPath: string, config: HermesConfig): AgentHookInstall
   const details = [
     pluginFiles.detail,
     enablement.detail,
-    !enablement.enabled ? 'nightshift-status is not enabled in Hermes config.yaml' : null,
-    enablement.disabled ? 'nightshift-status is disabled in Hermes config.yaml' : null
+    !enablement.enabled ? 'kolux-status is not enabled in Hermes config.yaml' : null,
+    enablement.disabled ? 'kolux-status is disabled in Hermes config.yaml' : null
   ].filter((detail): detail is string => Boolean(detail))
 
   let state: AgentHookInstallState

@@ -10,7 +10,7 @@ import {
 
 const originalHome = process.env.HOME
 const originalZdotdir = process.env.ZDOTDIR
-const SHELL_ONLY_VARIABLE = 'NIGHTSHIFT_TEST_LOGIN_SHELL_ONLY'
+const SHELL_ONLY_VARIABLE = 'KOLUX_TEST_LOGIN_SHELL_ONLY'
 const originalShellOnlyValue = process.env[SHELL_ONLY_VARIABLE]
 let testHome: string | null = null
 
@@ -66,7 +66,7 @@ describe('resolveLoginShellEnvironment', () => {
     'captures a profile export missing from the parent process',
     async () => {
       const shell = realShell!
-      testHome = await mkdtemp(join(tmpdir(), 'nightshift-login-shell-env-'))
+      testHome = await mkdtemp(join(tmpdir(), 'kolux-login-shell-env-'))
       await writeFile(
         join(testHome, shell.profileFile),
         `export ${SHELL_ONLY_VARIABLE}=shell-only\n`

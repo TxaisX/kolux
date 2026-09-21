@@ -6,8 +6,8 @@ import { getGeneralPaneSearchEntries } from '@/components/settings/general-searc
 import { getIntegrationsPaneSearchEntries } from '@/components/settings/integrations-search'
 import { getLinearAgentSkillPaneSearchEntries } from '@/components/settings/linear-agent-skill-search'
 import { getMobileSettingsPaneSearchEntries } from '@/components/settings/mobile-settings-search'
-import { getNightshiftAccountSettingsSearchEntries } from '@/components/settings/nightshift-account-settings-search'
-import { NightshiftLogoSettingsIcon } from '@/components/settings/nightshift-logo-settings-icon'
+import { getKoluxAccountSettingsSearchEntries } from '@/components/settings/kolux-account-settings-search'
+import { KoluxLogoSettingsIcon } from '@/components/settings/kolux-logo-settings-icon'
 import { getOrchestrationPaneSearchEntries } from '@/components/settings/orchestration-search'
 import { getVoicePaneSearchEntries } from '@/components/settings/voice-pane-search'
 import { translate } from '@/i18n/i18n'
@@ -66,7 +66,7 @@ export function buildCapabilitySettingsSections({
       title: translate('auto.hooks.useSettingsNavigationMetadata.58a868e8e4', 'Orchestration'),
       description: translate(
         'auto.hooks.useSettingsNavigationMetadata.cd50cec5d7',
-        'Coordinate multiple coding agents through Nightshift.'
+        'Coordinate multiple coding agents through Kolux.'
       ),
       icon: Network,
       searchEntries: getOrchestrationPaneSearchEntries({
@@ -83,7 +83,7 @@ export function buildCapabilitySettingsSections({
             title: translate('auto.hooks.useSettingsNavigationMetadata.linearTitle', 'Linear'),
             description: translate(
               'auto.hooks.useSettingsNavigationMetadata.linearDescription',
-              'How Linear works in Nightshift, setup checklist, agent skill, and example prompts.'
+              'How Linear works in Kolux, setup checklist, agent skill, and example prompts.'
             ),
             icon: LinearIcon,
             searchEntries: getLinearAgentSkillPaneSearchEntries(),
@@ -129,17 +129,14 @@ export function buildSetupSettingsSections({
     ...(showDesktopOnlySettings
       ? [
           {
-            id: 'nightshift-account',
-            title: translate(
-              'auto.components.settings.nightshiftAccount.title',
-              'Nightshift Account'
-            ),
+            id: 'kolux-account',
+            title: translate('auto.components.settings.koluxAccount.title', 'Kolux Account'),
             description: translate(
-              'auto.components.settings.nightshiftAccount.description',
-              'Share work instantly and reach your desktop from Nightshift Mobile wherever you are.'
+              'auto.components.settings.koluxAccount.description',
+              'Share work instantly and reach your desktop from Kolux Mobile wherever you are.'
             ),
             icon: CircleUserRound,
-            searchEntries: getNightshiftAccountSettingsSearchEntries(),
+            searchEntries: getKoluxAccountSettingsSearchEntries(),
             group: 'setup'
           }
         ]
@@ -152,9 +149,9 @@ export function buildSetupSettingsSections({
       ),
       description: translate(
         'auto.hooks.useSettingsNavigationMetadata.5f32ac08f3',
-        'Finish the onboarding checklist for core Nightshift workflows.'
+        'Finish the onboarding checklist for core Kolux workflows.'
       ),
-      icon: NightshiftLogoSettingsIcon,
+      icon: KoluxLogoSettingsIcon,
       searchEntries: [
         {
           title: translate(
@@ -169,7 +166,7 @@ export function buildSetupSettingsSections({
             translate('auto.hooks.useSettingsNavigationMetadata.ea0b1bc7b8', 'setup guide'),
             translate(
               'auto.hooks.useSettingsNavigationMetadata.0505d0df29',
-              'get started with Nightshift'
+              'get started with Kolux'
             ),
             translate('auto.hooks.useSettingsNavigationMetadata.724c440e72', 'getting started')
           ]

@@ -5,7 +5,7 @@ export type ZoomLevelChangedEventDetail = {
   percent: number
 }
 
-export const ZOOM_LEVEL_CHANGED_EVENT = 'nightshift:zoom-level-changed'
+export const ZOOM_LEVEL_CHANGED_EVENT = 'kolux:zoom-level-changed'
 
 export function dispatchZoomLevelChanged(type: ZoomTargetType, percent: number): void {
   window.dispatchEvent(

@@ -60,27 +60,24 @@ describe('AgentHookServer Codex subagent transcript polling', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(
-        `http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/codex`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-          },
-          body: JSON.stringify({
-            paneKey: PANE_KEY,
-            tabId: 'tab-1',
-            worktreeId: 'wt-1',
-            payload: {
-              hook_event_name: 'PostToolUse',
-              session_id: 'root-session',
-              transcript_path: parentPath,
-              tool_name: 'collaborationspawn_agent'
-            }
-          })
-        }
-      )
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/codex`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+        },
+        body: JSON.stringify({
+          paneKey: PANE_KEY,
+          tabId: 'tab-1',
+          worktreeId: 'wt-1',
+          payload: {
+            hook_event_name: 'PostToolUse',
+            session_id: 'root-session',
+            transcript_path: parentPath,
+            tool_name: 'collaborationspawn_agent'
+          }
+        })
+      })
 
       expect(response.status).toBe(204)
       expect(server.getStatusSnapshot()[0]?.subagents).toEqual([
@@ -114,11 +111,11 @@ describe('AgentHookServer Codex subagent transcript polling', () => {
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      await fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/codex`, {
+      await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/codex`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+          'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
         },
         body: JSON.stringify({
           paneKey: PANE_KEY,
@@ -156,7 +153,7 @@ describe('AgentHookServer Codex subagent transcript polling', () => {
     }
   })
 
-  // Why: a nested non-codex CLI inherits the pane's NIGHTSHIFT_PANE_KEY, so its hook must not tear down the codex poll.
+  // Why: a nested non-codex CLI inherits the pane's KOLUX_PANE_KEY, so its hook must not tear down the codex poll.
   it('keeps polling when a nested non-codex hook lands on the same pane', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'agent-hook-codex-subagent-'))
     dirs.push(dir)
@@ -169,11 +166,11 @@ describe('AgentHookServer Codex subagent transcript polling', () => {
     try {
       const env = server.buildPtyEnv()
       const post = (path: string, payload: unknown): Promise<Response> =>
-        fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}${path}`, {
+        fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}${path}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
           },
           body: JSON.stringify({ paneKey: PANE_KEY, tabId: 'tab-1', worktreeId: 'wt-1', payload })
         })

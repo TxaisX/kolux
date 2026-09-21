@@ -10,12 +10,8 @@ import {
 vi.mock('electron', () => ({ app: { getLocale: () => 'en-US' } }))
 
 const POISON: InstallDirAclPoisonDiagnosis = {
-  detail:
-    "Windows permissions on Nightshift's install folder are blocking its own sandboxed processes.",
-  commands: [
-    'icacls "C:\\Nightshift" /grant "*S-1-15-2-2:(OI)(CI)(RX)"',
-    'icacls "C:\\Nightshift" /grant b'
-  ]
+  detail: "Windows permissions on Kolux's install folder are blocking its own sandboxed processes.",
+  commands: ['icacls "C:\\Kolux" /grant "*S-1-15-2-2:(OI)(CI)(RX)"', 'icacls "C:\\Kolux" /grant b']
 }
 
 function harness(overrides: Partial<RendererRecoveryPromptDeps> & { responses?: number[] } = {}): {
@@ -62,7 +58,7 @@ describe('presentRendererRecoveryPrompt', () => {
   it('interpolates the recovery count', async () => {
     const { run, shown } = harness({ recentRecoveryCount: 7 })
     await run()
-    expect(shown[0].detail).toContain('Nightshift tried to recover 7 times in a row')
+    expect(shown[0].detail).toContain('Kolux tried to recover 7 times in a row')
     expect(shown[0].detail).not.toContain('{{')
   })
 

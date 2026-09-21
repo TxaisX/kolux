@@ -133,14 +133,14 @@ export class RuntimeRpcLifecycle extends RuntimeRpcWebSocketDispatch {
       },
       onReclaim: (previous) => {
         console.warn(
-          `[runtime] Reclaimed nightshift-runtime.json from a dead runtime (pid ${previous?.pid ?? 'none'}); republished pid ${this.pid}.`
+          `[runtime] Reclaimed kolux-runtime.json from a dead runtime (pid ${previous?.pid ?? 'none'}); republished pid ${this.pid}.`
         )
       }
     })
   }
 
   // Why: STA-2370 — a desktop with no previously-connected device stays on loopback until the user
-  // explicitly pairs; `nightshift serve`/E2E (exposeNetworkByDefault) and a reconnecting paired device bind wide.
+  // explicitly pairs; `kolux serve`/E2E (exposeNetworkByDefault) and a reconnecting paired device bind wide.
   // A grant minted for "This computer only" is excluded: its client is a browser on this machine, so
   // counting it would republish the runtime on every interface one restart after the user declined that.
   protected resolveInitialWebSocketBindHost(): string {

@@ -18,17 +18,19 @@ describe('web pairing input', () => {
   }
 
   it('parses query-form pairing URLs', () => {
-    expect(parseWebPairingInput(`nightshift://pair?code=${encodeOffer()}`)).toEqual(offer)
+    expect(parseWebPairingInput(`kolux://pair?code=${encodeOffer()}`)).toEqual(offer)
   })
 
   it('still parses legacy hash-form pairing URLs', () => {
-    expect(parseWebPairingInput(`nightshift://pair#${encodeOffer()}`)).toEqual(offer)
+    expect(parseWebPairingInput(`kolux://pair#${encodeOffer()}`)).toEqual(offer)
+  })
+
+  it('accepts the pre-rename nightshift:// scheme', () => {
+    expect(parseWebPairingInput(`nightshift://pair?code=${encodeOffer()}`)).toEqual(offer)
   })
 
   it('preserves optional device scope metadata', () => {
-    expect(
-      parseWebPairingInput(`nightshift://pair?code=${encodeOffer({ scope: 'mobile' })}`)
-    ).toEqual({
+    expect(parseWebPairingInput(`kolux://pair?code=${encodeOffer({ scope: 'mobile' })}`)).toEqual({
       ...offer,
       scope: 'mobile'
     })
@@ -37,7 +39,7 @@ describe('web pairing input', () => {
   it('preserves optional paired device identity', () => {
     expect(
       parseWebPairingInput(
-        `nightshift://pair?code=${encodeOffer({ pairedDeviceId: 'paired-device-a' })}`
+        `kolux://pair?code=${encodeOffer({ pairedDeviceId: 'paired-device-a' })}`
       )
     ).toEqual({
       ...offer,
@@ -46,26 +48,26 @@ describe('web pairing input', () => {
   })
 
   it.each([
-    ['wss://proxy.example:443/nightshift/runtime', 'wss://proxy.example:443/nightshift/runtime'],
-    ['https://proxy.example/nightshift/runtime', 'wss://proxy.example/nightshift/runtime'],
-    ['http://proxy.example:8080/nightshift/runtime', 'ws://proxy.example:8080/nightshift/runtime']
+    ['wss://proxy.example:443/kolux/runtime', 'wss://proxy.example:443/kolux/runtime'],
+    ['https://proxy.example/kolux/runtime', 'wss://proxy.example/kolux/runtime'],
+    ['http://proxy.example:8080/kolux/runtime', 'ws://proxy.example:8080/kolux/runtime']
   ])('preserves reverse-proxy endpoint routing for %s', (endpoint, expected) => {
     expect(parseWebPairingInput(encodeOffer({ endpoint }))).toMatchObject({ endpoint: expected })
   })
 
   it('treats invalid device scope metadata as unknown', () => {
-    expect(
-      parseWebPairingInput(`nightshift://pair?code=${encodeOffer({ scope: 'admin' })}`)
-    ).toEqual(offer)
+    expect(parseWebPairingInput(`kolux://pair?code=${encodeOffer({ scope: 'admin' })}`)).toEqual(
+      offer
+    )
   })
 
-  it('rejects nightshift URLs outside the exact pairing route', () => {
-    expect(parseWebPairingInput(`nightshift://pairing?code=${encodeOffer()}`)).toBeNull()
-    expect(parseWebPairingInput(`nightshift://pair-extra?code=${encodeOffer()}`)).toBeNull()
+  it('rejects kolux URLs outside the exact pairing route', () => {
+    expect(parseWebPairingInput(`kolux://pairing?code=${encodeOffer()}`)).toBeNull()
+    expect(parseWebPairingInput(`kolux://pair-extra?code=${encodeOffer()}`)).toBeNull()
   })
 
   it('auto-saves scoped runtime offers during web startup', () => {
-    const input = `nightshift://pair?code=${encodeOffer({ scope: 'runtime' })}`
+    const input = `kolux://pair?code=${encodeOffer({ scope: 'runtime' })}`
     expect(
       decideWebPairingStartup({ initialPairingInput: input, hasStoredEnvironment: false })
     ).toEqual({
@@ -75,8 +77,8 @@ describe('web pairing input', () => {
   })
 
   it('shows the connect screen for mobile-scope and legacy unknown-scope offers', () => {
-    const mobileInput = `nightshift://pair?code=${encodeOffer({ scope: 'mobile' })}`
-    const legacyInput = `nightshift://pair?code=${encodeOffer()}`
+    const mobileInput = `kolux://pair?code=${encodeOffer({ scope: 'mobile' })}`
+    const legacyInput = `kolux://pair?code=${encodeOffer()}`
 
     expect(
       decideWebPairingStartup({ initialPairingInput: mobileInput, hasStoredEnvironment: true })

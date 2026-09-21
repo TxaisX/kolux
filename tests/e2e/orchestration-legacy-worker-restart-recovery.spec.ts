@@ -2,9 +2,9 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import os from 'node:os'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -21,7 +21,7 @@ import {
   LEGACY_CONTRACT_VERSION,
   LEGACY_RUN_ID
 } from '../../src/main/runtime/orchestration/db'
-import { DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID } from '../../src/shared/nightshift-profiles'
+import { DEFAULT_LOCAL_KOLUX_PROFILE_ID } from '../../src/shared/kolux-profiles'
 import type { RuntimeTerminalListResult, RuntimeTerminalRead } from '../../src/shared/runtime-types'
 import { listAllOrchestrationRuns } from './orchestration-run-pages'
 import {
@@ -31,7 +31,7 @@ import {
 import { FAKE_AGENT_PASTE_END_SCANNER_SOURCE } from './helpers/fake-agent-paste-end-scanner'
 
 const PROVIDER_SESSION_ID = 'e2e-legacy-orchestration-worker'
-const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-legacy-worker-'))
+const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-legacy-worker-'))
 const spawnLedgerPath = path.join(fakeCliDir, 'spawn.jsonl')
 const interruptionLedgerPath = path.join(fakeCliDir, 'interruption.jsonl')
 const authorityLedgerPath = path.join(fakeCliDir, 'authority.jsonl')
@@ -50,23 +50,23 @@ function appendLedger(envName, event) {
   } catch {}
 }
 async function emitAuthorityHook(hookEventName) {
-  const port = process.env.NIGHTSHIFT_AGENT_HOOK_PORT
-  const token = process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN
-  const launchToken = process.env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
-  if (!port || !token || !launchToken || !process.env.NIGHTSHIFT_PANE_KEY) return
+  const port = process.env.KOLUX_AGENT_HOOK_PORT
+  const token = process.env.KOLUX_AGENT_HOOK_TOKEN
+  const launchToken = process.env.KOLUX_AGENT_LAUNCH_TOKEN
+  if (!port || !token || !launchToken || !process.env.KOLUX_PANE_KEY) return
   try {
     const response = await fetch('http://127.0.0.1:' + port + '/hook/codex', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Nightshift-Agent-Hook-Token': token
+        'X-Kolux-Agent-Hook-Token': token
       },
       body: JSON.stringify({
-        paneKey: process.env.NIGHTSHIFT_PANE_KEY,
-        tabId: process.env.NIGHTSHIFT_TAB_ID,
-        worktreeId: process.env.NIGHTSHIFT_WORKTREE_ID,
-        env: process.env.NIGHTSHIFT_AGENT_HOOK_ENV,
-        version: process.env.NIGHTSHIFT_AGENT_HOOK_VERSION,
+        paneKey: process.env.KOLUX_PANE_KEY,
+        tabId: process.env.KOLUX_TAB_ID,
+        worktreeId: process.env.KOLUX_WORKTREE_ID,
+        env: process.env.KOLUX_AGENT_HOOK_ENV,
+        version: process.env.KOLUX_AGENT_HOOK_VERSION,
         launchToken,
         payload: {
           hook_event_name: hookEventName,
@@ -74,13 +74,13 @@ async function emitAuthorityHook(hookEventName) {
         }
       })
     })
-    appendLedger('NIGHTSHIFT_E2E_AUTHORITY_LEDGER', {
+    appendLedger('KOLUX_E2E_AUTHORITY_LEDGER', {
       event: 'authority-hook',
       hookEventName,
       status: response.status
     })
   } catch (error) {
-    appendLedger('NIGHTSHIFT_E2E_AUTHORITY_LEDGER', {
+    appendLedger('KOLUX_E2E_AUTHORITY_LEDGER', {
       event: 'authority-hook-error',
       error: error instanceof Error ? error.message : String(error)
     })
@@ -90,7 +90,7 @@ if (process.argv.slice(2).includes('app-server')) {
   process.stderr.write("error: unrecognized subcommand 'app-server'\\n")
   process.exit(2)
 }
-appendLedger('NIGHTSHIFT_E2E_SPAWN_LEDGER', { event: 'spawn', argv: process.argv.slice(2) })
+appendLedger('KOLUX_E2E_SPAWN_LEDGER', { event: 'spawn', argv: process.argv.slice(2) })
 process.stdout.write('\\u001b]0;Codex Ready\\u0007OpenAI Codex\\nmodel: e2e\\ndirectory: e2e\\n')
 const sessionStartHook = emitAuthorityHook('SessionStart')
 let acknowledged = false
@@ -104,7 +104,7 @@ process.stdin.on('data', (chunk) => {
     process.stdout.write('\\x1b[?25h')
   }
   if (input.includes('\\x03')) {
-    appendLedger('NIGHTSHIFT_E2E_INTERRUPTION_LEDGER', { event: 'stdin-ctrl-c' })
+    appendLedger('KOLUX_E2E_INTERRUPTION_LEDGER', { event: 'stdin-ctrl-c' })
   }
   if (!acknowledged) {
     fakeAgentMaybeAck(pasteEndScan, input, (mode) => {
@@ -115,11 +115,11 @@ process.stdin.on('data', (chunk) => {
       setTimeout(() => process.stdout.write('\\u001b]0;Codex Ready\\u0007'), 10)
     })
   }
-  const legacyCompletion = input.match(/NIGHTSHIFT_E2E_RUN_LEGACY_DONE:([A-Za-z0-9+/=]+)/)
+  const legacyCompletion = input.match(/KOLUX_E2E_RUN_LEGACY_DONE:([A-Za-z0-9+/=]+)/)
   if (!lifecycleSent && legacyCompletion) {
     lifecycleSent = true
     const identity = JSON.parse(Buffer.from(legacyCompletion[1], 'base64').toString('utf8'))
-    const cliEntry = process.env.NIGHTSHIFT_E2E_CLI_ENTRY
+    const cliEntry = process.env.KOLUX_E2E_CLI_ENTRY
     const args = [
       'orchestration',
       'send',
@@ -144,8 +144,8 @@ process.stdin.on('data', (chunk) => {
           env: process.env,
           encoding: 'utf8'
         })
-      : { status: 127, stdout: '', stderr: 'NIGHTSHIFT_E2E_CLI_ENTRY missing' }
-    appendLedger('NIGHTSHIFT_E2E_LIFECYCLE_LEDGER', {
+      : { status: 127, stdout: '', stderr: 'KOLUX_E2E_CLI_ENTRY missing' }
+    appendLedger('KOLUX_E2E_LIFECYCLE_LEDGER', {
       event: 'legacy-command',
       argv: args,
       status: result.status,
@@ -158,7 +158,7 @@ process.stdin.on('data', (chunk) => {
 process.stdin.setRawMode?.(true)
 for (const signal of ['SIGINT', 'SIGHUP', 'SIGTERM']) {
   process.on(signal, () => {
-    appendLedger('NIGHTSHIFT_E2E_INTERRUPTION_LEDGER', { event: 'signal', signal })
+    appendLedger('KOLUX_E2E_INTERRUPTION_LEDGER', { event: 'signal', signal })
     process.exit(0)
   })
 }
@@ -232,12 +232,7 @@ function isProcessAlive(pid: number): boolean {
 }
 
 function persistedDataPath(userDataDir: string): string {
-  return path.join(
-    userDataDir,
-    'profiles',
-    DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-    'nightshift-data.json'
-  )
+  return path.join(userDataDir, 'profiles', DEFAULT_LOCAL_KOLUX_PROFILE_ID, 'kolux-data.json')
 }
 
 function readPersistedData(userDataDir: string): PersistedData {
@@ -430,11 +425,11 @@ for (const contractVersion of [LEGACY_CONTRACT_VERSION, CURRENT_CONTRACT_VERSION
 
     const session = createRestartSession(testInfo, {
       PATH: `${fakeCliDir}${path.delimiter}${process.env.PATH ?? ''}`,
-      NIGHTSHIFT_E2E_SPAWN_LEDGER: spawnLedgerPath,
-      NIGHTSHIFT_E2E_INTERRUPTION_LEDGER: interruptionLedgerPath,
-      NIGHTSHIFT_E2E_AUTHORITY_LEDGER: authorityLedgerPath,
-      NIGHTSHIFT_E2E_LIFECYCLE_LEDGER: lifecycleLedgerPath,
-      NIGHTSHIFT_E2E_CLI_ENTRY: path.join(process.cwd(), 'out', 'cli', 'index.js')
+      KOLUX_E2E_SPAWN_LEDGER: spawnLedgerPath,
+      KOLUX_E2E_INTERRUPTION_LEDGER: interruptionLedgerPath,
+      KOLUX_E2E_AUTHORITY_LEDGER: authorityLedgerPath,
+      KOLUX_E2E_LIFECYCLE_LEDGER: lifecycleLedgerPath,
+      KOLUX_E2E_CLI_ENTRY: path.join(process.cwd(), 'out', 'cli', 'index.js')
     })
     let firstApp: ElectronApplication | null = null
     let secondApp: ElectronApplication | null = null
@@ -748,7 +743,7 @@ for (const contractVersion of [LEGACY_CONTRACT_VERSION, CURRENT_CONTRACT_VERSION
         ).toString('base64')
         await secondClient.call('terminal.send', {
           terminal: recovered!.handle,
-          text: `NIGHTSHIFT_E2E_RUN_LEGACY_DONE:${legacyCompletion}`,
+          text: `KOLUX_E2E_RUN_LEGACY_DONE:${legacyCompletion}`,
           enter: true
         })
         await expect

@@ -41,7 +41,7 @@ import { createPullRequestGenerationSlice } from './slices/pull-request-generati
 import { createCommitMessageGenerationSlice } from './slices/commit-message-generation'
 import { createPinnedTabCloseConfirmSlice } from './slices/pinned-tab-close-confirm'
 import { createRecentlyClosedTabsSlice } from './slices/recently-closed-tabs'
-import { createNightshiftProfilesSlice } from './slices/nightshift-profiles'
+import { createKoluxProfilesSlice } from './slices/kolux-profiles'
 import { createNewIssueDraftSlice } from './slices/new-issue-draft'
 import { createTaskCreationDraftsSlice } from './slices/task-creation-drafts'
 import { createRemoteServerUpdatesSlice } from './slices/remote-server-updates'
@@ -114,7 +114,7 @@ export const useAppStore = create<AppState>()(
         ...createCommitMessageGenerationSlice(...a),
         ...createPinnedTabCloseConfirmSlice(...a),
         ...createRecentlyClosedTabsSlice(...a),
-        ...createNightshiftProfilesSlice(...a),
+        ...createKoluxProfilesSlice(...a),
         ...createNewIssueDraftSlice(...a),
         ...createTaskCreationDraftsSlice(...a),
         ...createRemoteServerUpdatesSlice(...a),

@@ -67,9 +67,9 @@ vi.mock('./WorktreeCardAgents', () => ({
 
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
-  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'nightshift:test-close-context-menus',
+  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'kolux:test-close-context-menus',
   WORKTREE_NATIVE_CONTEXT_MENU_ATTR: 'data-worktree-native-context-menu',
-  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-nightshift-context-menu-scope'
+  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-kolux-context-menu-scope'
 }))
 
 vi.mock('./use-worktree-activity-status', () => ({
@@ -80,7 +80,7 @@ function makeRepo(): Repo {
   return {
     id: 'repo-1',
     path: '/repo',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#999999',
     addedAt: 1
   }

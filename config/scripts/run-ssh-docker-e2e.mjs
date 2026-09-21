@@ -5,10 +5,10 @@ const extraArgs = rawExtraArgs[0] === '--' ? rawExtraArgs.slice(1) : rawExtraArg
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 const env = {
   ...process.env,
-  NIGHTSHIFT_E2E_SSH_DOCKER: '1',
-  NIGHTSHIFT_E2E_LOCAL_SSH_BROWSER: '1',
-  NIGHTSHIFT_E2E_SSH_CLIENT_HOSTED_BROWSER: '1',
-  NIGHTSHIFT_E2E_WEB_CLIENT: '1'
+  KOLUX_E2E_SSH_DOCKER: '1',
+  KOLUX_E2E_LOCAL_SSH_BROWSER: '1',
+  KOLUX_E2E_SSH_CLIENT_HOSTED_BROWSER: '1',
+  KOLUX_E2E_WEB_CLIENT: '1'
 }
 
 // Why: Node's CVE-2024-27980 hardening rejects .cmd spawns without shell on Windows.
@@ -24,7 +24,7 @@ if (runtime.status !== 0) {
   process.exit(runtime.status ?? 1)
 }
 
-// Why one explicit list: these specs self-skip without NIGHTSHIFT_E2E_SSH_DOCKER and no sharded lane
+// Why one explicit list: these specs self-skip without KOLUX_E2E_SSH_DOCKER and no sharded lane
 // sets it, so a spec in no runner runs nowhere. The gate contract proves every flag-reading
 // spec is claimed here, by the watcher-isolation or parking runner, or by a listed exclusion.
 //
@@ -48,7 +48,7 @@ if (runtime.status !== 0) {
 //     has the exact wiring to flip it, and the gate contract asserts the current state.
 //   - Two specs are gated on env vars no workflow sets, so they run nowhere
 //     and are not Docker-gated, which puts them outside this file's contract:
-//       nested-runtime-ssh-lifecycle, nested-runtime-ssh-routing (NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH)
+//       nested-runtime-ssh-lifecycle, nested-runtime-ssh-routing (KOLUX_E2E_NESTED_RUNTIME_SSH)
 //     The nested-runtime runner remains unused by CI.
 const result = spawnSync(
   pnpm,

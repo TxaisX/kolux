@@ -12,7 +12,7 @@ afterEach(async () => {
 
 describe('cleanupReleasedSkillInstallLock', () => {
   it('keeps a released lock recoverable when directory removal races', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-skill-lock-release-test-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-skill-lock-release-test-'))
     roots.push(root)
     const releasePath = join(root, 'released')
     const token = '11111111-1111-4111-8111-111111111111'

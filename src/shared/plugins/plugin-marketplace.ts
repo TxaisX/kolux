@@ -2,12 +2,12 @@ import { z } from 'zod'
 import { isAllowedPluginGitUrl } from './plugin-install-lockfile'
 import { isQualifiedPluginKey } from './plugin-manifest'
 
-export const PLUGIN_MARKETPLACE_FILENAME = 'nightshift-marketplace.json'
+export const PLUGIN_MARKETPLACE_FILENAME = 'kolux-marketplace.json'
 export const PLUGIN_MARKETPLACE_ENTRY_LIMIT = 2_048
 export const PLUGIN_MARKETPLACE_CATEGORY_LIMIT = 16
 
 export const OFFICIAL_PLUGIN_PUBLISHER = 'txais'
-export const OFFICIAL_PLUGIN_ID_PREFIX = 'nightshift-'
+export const OFFICIAL_PLUGIN_ID_PREFIX = 'kolux-'
 export const OFFICIAL_MARKETPLACE_OWNER = 'txaisx'
 export const OFFICIAL_MARKETPLACE_REPOSITORY = 'nightshift-plugins'
 

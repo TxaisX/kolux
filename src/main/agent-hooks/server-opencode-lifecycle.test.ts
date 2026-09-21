@@ -31,11 +31,11 @@ describe('AgentHookServer OpenCode lifecycle', () => {
     return {
       server,
       post: (payload, launchToken, paneKey = PANE, source = 'opencode') =>
-        fetch(`http://127.0.0.1:${env.NIGHTSHIFT_AGENT_HOOK_PORT}/hook/${source}`, {
+        fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/${source}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Nightshift-Agent-Hook-Token': env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
           },
           body: JSON.stringify({
             paneKey,

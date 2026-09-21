@@ -12,7 +12,7 @@ function settings(enabledPlugins: Record<string, boolean>): string {
 
 describe('Claude plugin skill sources', () => {
   const pluginId = 'compound-engineering@compound-engineering-plugin'
-  const projectPath = join('/workspace', 'nightshift')
+  const projectPath = join('/workspace', 'kolux')
   const cwd = join(projectPath, 'worktree')
 
   it('selects the applicable project install over a stale user version', () => {

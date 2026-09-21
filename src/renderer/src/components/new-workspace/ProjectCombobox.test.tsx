@@ -36,7 +36,7 @@ const projects: NewWorkspaceProjectOption[] = [
     kind: 'project',
     id: 'github:TxaisX/nightshift',
     projectId: 'github:TxaisX/nightshift',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#111111',
     detail: 'TxaisX/nightshift'
   },
@@ -112,12 +112,16 @@ describe('ProjectCombobox', () => {
   it('renders a logical project label without host-specific SSH chrome', () => {
     act(() => {
       root.render(
-        <ProjectCombobox options={projects} value="github:TxaisX/nightshift" onValueChange={vi.fn()} />
+        <ProjectCombobox
+          options={projects}
+          value="github:TxaisX/nightshift"
+          onValueChange={vi.fn()}
+        />
       )
     })
 
     const shell = container.querySelector('[data-project-combobox-root="true"]')
-    expect(shell?.textContent).toContain('nightshift')
+    expect(shell?.textContent).toContain('kolux')
     expect(shell?.textContent).not.toContain('SSH')
   })
 
@@ -340,7 +344,11 @@ describe('ProjectCombobox', () => {
   it('restores the committed project on Escape instead of stranding a stale query', () => {
     act(() => {
       root.render(
-        <ProjectCombobox options={projects} value="github:TxaisX/nightshift" onValueChange={vi.fn()} />
+        <ProjectCombobox
+          options={projects}
+          value="github:TxaisX/nightshift"
+          onValueChange={vi.fn()}
+        />
       )
     })
     openList()
@@ -361,13 +369,17 @@ describe('ProjectCombobox', () => {
 
     expect(field().value).toBe('')
     const shell = container.querySelector('[data-project-combobox-root="true"]')
-    expect(shell?.textContent).toContain('nightshift')
+    expect(shell?.textContent).toContain('kolux')
   })
 
   it('drops an uncommitted query when the list closes, so junk text never persists', () => {
     act(() => {
       root.render(
-        <ProjectCombobox options={projects} value="github:TxaisX/nightshift" onValueChange={vi.fn()} />
+        <ProjectCombobox
+          options={projects}
+          value="github:TxaisX/nightshift"
+          onValueChange={vi.fn()}
+        />
       )
     })
     openList()
@@ -383,7 +395,7 @@ describe('ProjectCombobox', () => {
 
     expect(field().value).toBe('')
     const shell = container.querySelector('[data-project-combobox-root="true"]')
-    expect(shell?.textContent).toContain('nightshift')
+    expect(shell?.textContent).toContain('kolux')
   })
 
   it('marks the field invalid so a failed create press can turn it red', () => {

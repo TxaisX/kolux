@@ -24,7 +24,7 @@ import logo from '../../../../resources/logo.svg'
 import { translate } from '@/i18n/i18n'
 import { hasGitHubBackedProject, type PreflightIssue } from './landing-preflight-issues'
 import { useLandingPreflightRuntime } from './landing-preflight-runtime'
-import { useLandingNightshiftStarState, type LandingStarState } from './landing-github-star-state'
+import { useLandingKoluxStarState, type LandingStarState } from './landing-github-star-state'
 
 type ShortcutItem = {
   id: string
@@ -33,7 +33,7 @@ type ShortcutItem = {
 }
 
 // Do not deep-link to /stargazers: GitHub 404s that page for users without repo write access.
-const NIGHTSHIFT_GITHUB_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_GITHUB_URL = 'https://github.com/TxaisX/nightshift'
 
 type StarButtonProps = {
   hasRepos: boolean
@@ -69,14 +69,14 @@ function GitHubStarButton({
       return
     }
     if (state === 'web-fallback') {
-      await window.api.shell.openUrl(NIGHTSHIFT_GITHUB_URL)
+      await window.api.shell.openUrl(KOLUX_GITHUB_URL)
       return
     }
     if (state !== 'not-starred') {
       return
     }
     setState('starred') // optimistic
-    const ok = await window.api.gh.starNightshift('landing')
+    const ok = await window.api.gh.starKolux('landing')
     if (!ok) {
       if (mountedRef.current) {
         setState('web-fallback')
@@ -250,7 +250,7 @@ export default function Landing(): React.JSX.Element {
 
   // Why: the runtime-aware slice probes the active remote host instead of the renderer host.
   const { preflightIssues } = useLandingPreflightRuntime()
-  const [starState, setStarState] = useLandingNightshiftStarState()
+  const [starState, setStarState] = useLandingKoluxStarState()
 
   const createWorktreeShortcut = useShortcutKeyDetails('workspace.create')
   const previousWorktreeShortcut = useShortcutKeyDetails('worktree.navigateUp')
@@ -277,12 +277,12 @@ export default function Landing(): React.JSX.Element {
           >
             <img
               src={logo}
-              alt={translate('auto.components.Landing.520304a067', 'Nightshift logo')}
+              alt={translate('auto.components.Landing.520304a067', 'Kolux logo')}
               className="size-12"
             />
           </div>
           <h1 className="text-4xl font-bold text-foreground tracking-tight">
-            {translate('auto.components.Landing.6ca6ff404e', 'NIGHTSHIFT')}
+            {translate('auto.components.Landing.6ca6ff404e', 'KOLUX')}
           </h1>
 
           {preflightIssues.length > 0 && <PreflightBanner issues={preflightIssues} repos={repos} />}

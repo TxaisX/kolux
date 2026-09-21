@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   splitActiveTerminalPane,
   waitForActiveTerminalManager,
@@ -213,36 +213,36 @@ async function createTerminalInNewSplitGroup(page: Page): Promise<SplitGroupTerm
 }
 
 test.describe('Activity Agent Pane Isolation', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await enableActivityAgentsView(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    const hasPaneManager = await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await enableActivityAgentsView(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    const hasPaneManager = await waitForActiveTerminalManager(koluxPage, 30_000)
       .then(() => true)
       .catch(() => false)
     test.skip(
       !hasPaneManager,
       'Electron automation in this environment never mounts the live TerminalPane manager, so Activity pane isolation would only fail on harness setup.'
     )
-    await waitForPaneCount(nightshiftPage, 1, 30_000)
+    await waitForPaneCount(koluxPage, 1, 30_000)
   })
 
   test('selecting agent rows focuses the matching split pane by stable leaf id', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
-    const [first, second] = await seedActivityThreadsForSplitPanes(nightshiftPage, snapshot)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
+    const [first, second] = await seedActivityThreadsForSplitPanes(koluxPage, snapshot)
 
-    await agentsSidebarButton(nightshiftPage).click()
-    await expect(nightshiftPage.getByText(first.prompt)).toBeVisible()
-    await expect(nightshiftPage.getByText(second.prompt)).toBeVisible()
+    await agentsSidebarButton(koluxPage).click()
+    await expect(koluxPage.getByText(first.prompt)).toBeVisible()
+    await expect(koluxPage.getByText(second.prompt)).toBeVisible()
 
-    await nightshiftPage.getByRole('button').filter({ hasText: first.prompt }).first().click()
+    await koluxPage.getByRole('button').filter({ hasText: first.prompt }).first().click()
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Agents sidebar row did not focus the first selected split pane'
       })
@@ -252,11 +252,11 @@ test.describe('Activity Agent Pane Isolation', () => {
       })
 
     await expect(
-      nightshiftPage.getByRole('button', { name: 'Turn off activity view', exact: true })
+      koluxPage.getByRole('button', { name: 'Turn off activity view', exact: true })
     ).toHaveAttribute('aria-pressed', 'true')
-    await nightshiftPage.getByRole('button').filter({ hasText: second.prompt }).first().click()
+    await koluxPage.getByRole('button').filter({ hasText: second.prompt }).first().click()
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Agents sidebar row did not focus the second selected split pane'
       })
@@ -267,18 +267,18 @@ test.describe('Activity Agent Pane Isolation', () => {
   })
 
   test('workspace card agent rows focus the matching terminal split pane', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
-    const [first, second] = await seedActivityThreadsForSplitPanes(nightshiftPage, snapshot)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
+    const [first, second] = await seedActivityThreadsForSplitPanes(koluxPage, snapshot)
 
-    await enableInlineAgentCards(nightshiftPage)
+    await enableInlineAgentCards(koluxPage)
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, first.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, first.prompt)
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not focus the first split pane'
       })
@@ -287,9 +287,9 @@ test.describe('Activity Agent Pane Isolation', () => {
         activeLeafId: first.leafId
       })
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, second.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, second.prompt)
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not focus the second split pane'
       })
@@ -300,30 +300,30 @@ test.describe('Activity Agent Pane Isolation', () => {
   })
 
   test('workspace card agent rows reveal terminal logs from a non-terminal surface', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
-    const [first] = await seedActivityThreadsForSplitPanes(nightshiftPage, snapshot)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
+    const [first] = await seedActivityThreadsForSplitPanes(koluxPage, snapshot)
 
-    await enableInlineAgentCards(nightshiftPage)
-    await expect(terminalPaneForLeaf(nightshiftPage, first.leafId)).toBeVisible()
+    await enableInlineAgentCards(koluxPage)
+    await expect(terminalPaneForLeaf(koluxPage, first.leafId)).toBeVisible()
     // Why: this reproduces the user-visible failure mode: the agent row is
     // visible in the sidebar while the main workspace surface is not Terminal.
-    await expect(await clickFileInExplorer(nightshiftPage, ['README.md'])).toBe('README.md')
+    await expect(await clickFileInExplorer(koluxPage, ['README.md'])).toBe('README.md')
     await expect
-      .poll(() => readActivePaneSelection(nightshiftPage))
+      .poll(() => readActivePaneSelection(koluxPage))
       .toMatchObject({
         activeTabType: 'editor',
         activeTabId: snapshot.tabId
       })
-    await expect(terminalPaneForLeaf(nightshiftPage, first.leafId)).toBeHidden()
+    await expect(terminalPaneForLeaf(koluxPage, first.leafId)).toBeHidden()
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, first.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, first.prompt)
 
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not reveal the terminal log surface'
       })
@@ -332,24 +332,21 @@ test.describe('Activity Agent Pane Isolation', () => {
         activeTabId: snapshot.tabId,
         activeLeafId: first.leafId
       })
-    await expect(terminalPaneForLeaf(nightshiftPage, first.leafId)).toBeVisible()
+    await expect(terminalPaneForLeaf(koluxPage, first.leafId)).toBeVisible()
   })
 
   test('workspace card agent rows focus the matching split-group terminal pane', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    const firstGroupSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
-    const [first, second] = await seedActivityThreadsForSplitPanes(
-      nightshiftPage,
-      firstGroupSnapshot
-    )
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    const firstGroupSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
+    const [first, second] = await seedActivityThreadsForSplitPanes(koluxPage, firstGroupSnapshot)
 
-    const splitGroup = await createTerminalInNewSplitGroup(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPaneCount(nightshiftPage, 1, 30_000)
-    const secondGroupSnapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+    const splitGroup = await createTerminalInNewSplitGroup(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPaneCount(koluxPage, 1, 30_000)
+    const secondGroupSnapshot = await waitForPaneIdentitySnapshot(koluxPage, 1)
     const secondGroupPane = secondGroupSnapshot.panes[0]
     if (!secondGroupPane) {
       throw new Error('Split-group terminal did not mount a pane')
@@ -361,7 +358,7 @@ test.describe('Activity Agent Pane Isolation', () => {
       prompt: `ACTIVITY_UUID_SPLIT_GROUP_${now}`
     }
     await seedActivityThread(
-      nightshiftPage,
+      koluxPage,
       splitGroupThread,
       'Codex split group pane',
       'blocked',
@@ -369,11 +366,11 @@ test.describe('Activity Agent Pane Isolation', () => {
       now
     )
 
-    await enableInlineAgentCards(nightshiftPage)
+    await enableInlineAgentCards(koluxPage)
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, splitGroupThread.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, splitGroupThread.prompt)
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not focus the split-group terminal pane'
       })
@@ -383,9 +380,9 @@ test.describe('Activity Agent Pane Isolation', () => {
         activeLeafId: splitGroupThread.leafId
       })
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, first.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, first.prompt)
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not return to the first split group'
       })
@@ -395,9 +392,9 @@ test.describe('Activity Agent Pane Isolation', () => {
         activeLeafId: first.leafId
       })
 
-    await clickWorkspaceCardAgentRow(nightshiftPage, second.prompt)
+    await clickWorkspaceCardAgentRow(koluxPage, second.prompt)
     await expect
-      .poll(async () => readActivePaneSelection(nightshiftPage), {
+      .poll(async () => readActivePaneSelection(koluxPage), {
         timeout: 10_000,
         message: 'Workspace-card row did not focus the sibling pane after group switch'
       })

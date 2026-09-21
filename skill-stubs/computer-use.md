@@ -1,13 +1,13 @@
 # Computer Use
 
-This discovery stub loads the version-matched guide from the Nightshift executable used for this session.
+This discovery stub loads the version-matched guide from the Kolux executable used for this session.
 
 <!-- shared: resolver -->
 
-## Load the version-matched guide before running Nightshift commands
+## Load the version-matched guide before running Kolux commands
 
 ```text
-NIGHTSHIFT skills get computer-use
+KOLUX skills get computer-use
 ```
 
 <!-- shared: no-guessing -->

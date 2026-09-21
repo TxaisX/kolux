@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { defineMethod, type RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
 
@@ -17,13 +17,11 @@ function request(params: unknown): RpcRequest {
   return { id: 'request-a', authToken: 'token-a', method: 'browser.click', params }
 }
 
-function runtime(
-  routeClientHostedBrowserRpc?: NightshiftRuntimeService['routeClientHostedBrowserRpc']
-) {
+function runtime(routeClientHostedBrowserRpc?: KoluxRuntimeService['routeClientHostedBrowserRpc']) {
   return {
     getRuntimeId: () => 'runtime-a',
     routeClientHostedBrowserRpc
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 describe('RpcDispatcher client-hosted browser automation', () => {

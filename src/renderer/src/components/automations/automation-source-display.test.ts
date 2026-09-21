@@ -16,7 +16,7 @@ describe('automation source display', () => {
       providerIdentity: {
         provider: 'github',
         owner: 'TxaisX',
-        repo: 'nightshift'
+        repo: 'kolux'
       }
     }
 
@@ -61,7 +61,7 @@ describe('automation source display', () => {
       providerIdentity: {
         provider: 'github',
         owner: 'TxaisX',
-        repo: 'nightshift'
+        repo: 'kolux'
       }
     }
 

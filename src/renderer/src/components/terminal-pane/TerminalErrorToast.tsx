@@ -29,7 +29,7 @@ const TERMINAL_HOST_GONE_SOURCE = '(^|[^a-z0-9_])terminal_host_gone(?=$|[^a-z0-9
 const TERMINAL_HOST_GONE_PATTERN = new RegExp(TERMINAL_HOST_GONE_SOURCE)
 const TERMINAL_HOST_GONE_REPLACE_PATTERN = new RegExp(TERMINAL_HOST_GONE_SOURCE, 'g')
 const LEGACY_TERMINAL_HOST_GONE_PATTERN =
-  /(^|[^a-z])connect (?:ENOENT|ECONNREFUSED) [^\r\n]*nightshift-terminal-host-v[^\r\n]*/i
+  /(^|[^a-z])connect (?:ENOENT|ECONNREFUSED) [^\r\n]*kolux-terminal-host-v[^\r\n]*/i
 // A reattach the host answered "no such session" for: the SSH provider's expiry token, the relay's
 // raw not-found string when nothing mapped it, or a daemon generation old enough to still refuse a
 // pane respawning onto an id it is tearing down (#18046). None proves the shell died — the copy
@@ -101,7 +101,7 @@ export function isPaneOwnerUnverifiedError(error: string): boolean {
 function humanizeUnreattachableSession(error: string): string {
   const explanation = translate(
     'auto.components.terminal.pane.TerminalErrorToast.sessionUnavailable',
-    "Nightshift couldn't reattach to this pane's terminal session on the host. Open a new terminal to continue."
+    "Kolux couldn't reattach to this pane's terminal session on the host. Open a new terminal to continue."
   )
   // Why a replacer: a translation containing `$&` or `$1` would otherwise be read as a substitution.
   return UNREATTACHABLE_SESSION_REPLACE_PATTERNS.reduce(
@@ -117,11 +117,11 @@ export function humanizeTerminalError(error: string): string {
     const explanation = isPaneOwnerUnverifiedError(humanized)
       ? translate(
           'auto.components.terminal.pane.TerminalErrorToast.42b283ecfc',
-          "Nightshift couldn't safely reconnect this terminal because the host couldn't verify its saved session. Nightshift left the saved session unchanged. Click Retry to try reconnecting now. If it still cannot reconnect, open a new terminal."
+          "Kolux couldn't safely reconnect this terminal because the host couldn't verify its saved session. Kolux left the saved session unchanged. Click Retry to try reconnecting now. If it still cannot reconnect, open a new terminal."
         )
       : translate(
           'auto.components.terminal.pane.TerminalErrorToast.ownerUnknown',
-          "Nightshift couldn't verify this terminal's owner."
+          "Kolux couldn't verify this terminal's owner."
         )
     humanized = humanized.replaceAll(PANE_OWNER_UNVERIFIED_MARKER, () => explanation)
   }

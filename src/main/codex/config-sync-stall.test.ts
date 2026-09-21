@@ -22,7 +22,7 @@ function runtimeConfigPath(): string {
 }
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'nightshift-codex-sync-stall-'))
+  root = mkdtempSync(join(tmpdir(), 'kolux-codex-sync-stall-'))
   homes = { runtimeHomePath: join(root, 'runtime'), systemHomePath: join(root, 'system') }
   mkdirSync(homes.runtimeHomePath, { recursive: true })
   mkdirSync(homes.systemHomePath, { recursive: true })

@@ -1,8 +1,5 @@
 import type { RefObject } from 'react'
-import type {
-  NightshiftHooks,
-  SetupAgentStartupPolicy
-} from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks, SetupAgentStartupPolicy } from '../../../../shared/kolux-yaml-hook-types'
 import type { HookCheckResult } from '@/runtime/runtime-hooks-client'
 
 export type ComposerProviderSyncModel = {
@@ -13,5 +10,5 @@ export type ComposerProviderSyncModel = {
   handleComposerNodeChange: (node: HTMLDivElement | null) => void
   hookCheckRef: RefObject<{ key: string; promise: Promise<HookCheckResult> } | null>
   loadHookCheckForRepo: (targetRepoId: string) => Promise<HookCheckResult>
-  commitHookCheckIfCurrent: (targetContextKey: string, hooks: NightshiftHooks | null) => boolean
+  commitHookCheckIfCurrent: (targetContextKey: string, hooks: KoluxHooks | null) => boolean
 }

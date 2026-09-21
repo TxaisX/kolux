@@ -23,7 +23,7 @@ afterEach(() => {
 })
 
 function tempConfigPath(): string {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-codex-rollback-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-codex-rollback-'))
   roots.push(root)
   return join(root, 'config.toml')
 }

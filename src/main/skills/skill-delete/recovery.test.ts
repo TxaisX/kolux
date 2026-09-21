@@ -23,7 +23,7 @@ afterEach(async () => {
 })
 
 async function fixture(): Promise<{ home: string; stateDirectory: string; root: string }> {
-  const home = await mkdtemp(join(tmpdir(), 'nightshift-skill-delete-recovery-'))
+  const home = await mkdtemp(join(tmpdir(), 'kolux-skill-delete-recovery-'))
   roots.push(home)
   const root = join(home, '.agents', 'skills')
   await mkdir(root, { recursive: true })

@@ -13,33 +13,33 @@ function status(state: 'installed' | 'not_installed' | 'error'): AgentHookInstal
 }
 
 describe('retained Codex hook state', () => {
-  it('repairs Nightshift hooks before a retained shell can launch Codex', async () => {
+  it('repairs Kolux hooks before a retained shell can launch Codex', async () => {
     const install = vi.fn(() => status('installed'))
     const refreshRuntimeUserHooks = vi.fn(() => status('not_installed'))
 
     await reconcileRetainedCodexHookHomes({
       hookService: { install, refreshRuntimeUserHooks },
       hooksEnabled: true,
-      runtimeHomePaths: ['/nightshift/shared-home', '/nightshift/account-home']
+      runtimeHomePaths: ['/kolux/shared-home', '/kolux/account-home']
     })
 
     expect(install).toHaveBeenCalledTimes(2)
-    expect(install).toHaveBeenNthCalledWith(1, '/nightshift/shared-home')
-    expect(install).toHaveBeenNthCalledWith(2, '/nightshift/account-home')
+    expect(install).toHaveBeenNthCalledWith(1, '/kolux/shared-home')
+    expect(install).toHaveBeenNthCalledWith(2, '/kolux/account-home')
     expect(refreshRuntimeUserHooks).not.toHaveBeenCalled()
   })
 
-  it('removes only Nightshift hooks from retained homes when hooks are disabled', async () => {
+  it('removes only Kolux hooks from retained homes when hooks are disabled', async () => {
     const install = vi.fn(() => status('installed'))
     const refreshRuntimeUserHooks = vi.fn(() => status('not_installed'))
 
     await reconcileRetainedCodexHookHomes({
       hookService: { install, refreshRuntimeUserHooks },
       hooksEnabled: false,
-      runtimeHomePaths: ['/nightshift/shared-home']
+      runtimeHomePaths: ['/kolux/shared-home']
     })
 
-    expect(refreshRuntimeUserHooks).toHaveBeenCalledWith('/nightshift/shared-home')
+    expect(refreshRuntimeUserHooks).toHaveBeenCalledWith('/kolux/shared-home')
     expect(install).not.toHaveBeenCalled()
   })
 })

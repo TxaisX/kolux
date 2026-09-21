@@ -21,7 +21,7 @@ describe('WSL browser network relay launch', () => {
     const script = buildWslBrowserNetworkGuestLaunchScript('0.1.0+abc123')
 
     execFileSync('sh', ['-n'], { input: script })
-    expect(script).toContain('.nightshift-wsl/browser-network/0.1.0+abc123')
+    expect(script).toContain('.kolux-wsl/browser-network/0.1.0+abc123')
     expect(script).toContain('Number(process.versions.node.split(".")[0])>=18')
     expect(script).toContain('wsl-browser-network-relay.js')
     expect(() => buildWslBrowserNetworkGuestLaunchScript("bad'version")).toThrow(
@@ -30,7 +30,7 @@ describe('WSL browser network relay launch', () => {
   })
 
   it('installs exact bundle bytes and writes the version marker last', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-wsl-browser-network-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-wsl-browser-network-'))
     roots.push(root)
     const bundle = Buffer.from([0, 1, 2, 3, 255])
     const version = '0.1.0+bundle'
@@ -38,7 +38,7 @@ describe('WSL browser network relay launch', () => {
 
     execFileSync('sh', ['-s'], { input: script, env: { ...process.env, HOME: root } })
 
-    const installDir = join(root, '.nightshift-wsl', 'browser-network', version)
+    const installDir = join(root, '.kolux-wsl', 'browser-network', version)
     expect(readFileSync(join(installDir, 'wsl-browser-network-relay.js'))).toEqual(bundle)
     expect(readFileSync(join(installDir, '.browser-network-version'), 'utf8')).toBe(version)
     expect(readFileSync(join(installDir, 'launch.sh'), 'utf8')).toContain(version)

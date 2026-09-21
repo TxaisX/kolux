@@ -48,8 +48,8 @@ export function buildAgentStartupPlan(args: {
   agentEnv?: Record<string, string> | null
   sessionOptions?: Record<string, SessionOptionValue>
   sessionOptionsOverrideAgentArgs?: boolean
-  /** Why: SSH remotes deploy the CLI shim as plain `nightshift`, so the Linux-only
-   * `nightshift-ide` rename must be skipped for remote launches. */
+  /** Why: SSH remotes deploy the CLI shim as plain `kolux`, so the Linux-only
+   * `kolux-ide` rename must be skipped for remote launches. */
   isRemote?: boolean
 }): AgentStartupPlan | null {
   const { agent, prompt, cmdOverrides, platform, allowEmptyPromptLaunch = false } = args
@@ -135,7 +135,7 @@ export function buildAgentStartupPlan(args: {
     }
     return {
       agent,
-      // Why: Hermes owns readiness and submission for `chat --query`; Nightshift
+      // Why: Hermes owns readiness and submission for `chat --query`; Kolux
       // only bounds and quotes the native invocation before starting the TUI.
       launchCommand: queryPlan.command,
       expectedProcess: config.expectedProcess,
@@ -200,7 +200,7 @@ export function buildAgentDraftLaunchPlan(args: {
   agentArgs?: string | null
   agentEnv?: Record<string, string> | null
   sessionOptions?: Record<string, SessionOptionValue>
-  /** Why: see buildAgentStartupPlan — remote launches use the plain `nightshift` shim. */
+  /** Why: see buildAgentStartupPlan — remote launches use the plain `kolux` shim. */
   isRemote?: boolean
 }): AgentDraftLaunchPlan | null {
   const { agent, draft, cmdOverrides, platform } = args

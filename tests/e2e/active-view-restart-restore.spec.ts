@@ -16,9 +16,9 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import type { ElectronApplication } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { getStoreState, waitForSessionReady } from './helpers/store'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { TEST_REPO_PATH_FILE } from './global-setup'
 
 function seededRepoPathOrSkip(): string {

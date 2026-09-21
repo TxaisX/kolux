@@ -20,8 +20,8 @@ import { RuntimeClientError } from '../runtime-client'
 import { getBrowserCommandTarget } from '../selectors'
 
 // Why: selector/text/url waits can legitimately take longer than a normal RPC
-// round-trip, even when Nightshift is healthy. Give browser.wait an explicit timeout
-// budget so slow waits do not get mislabeled as "Nightshift is not running" by the
+// round-trip, even when Kolux is healthy. Give browser.wait an explicit timeout
+// budget so slow waits do not get mislabeled as "Kolux is not running" by the
 // generic client timeout path.
 const DEFAULT_BROWSER_WAIT_RPC_TIMEOUT_MS = 60_000
 

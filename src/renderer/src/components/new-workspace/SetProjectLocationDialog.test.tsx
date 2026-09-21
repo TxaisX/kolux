@@ -26,7 +26,7 @@ vi.mock('@/components/sidebar/RemoteFileBrowser', () => ({
     onCancel: () => void
   }) => (
     <div data-testid="remote-file-browser" data-target={targetId ?? ''}>
-      <button type="button" onClick={() => onSelect('/remote/nightshift')}>
+      <button type="button" onClick={() => onSelect('/remote/kolux')}>
         Select remote folder
       </button>
       <button type="button" onClick={onCancel}>
@@ -41,7 +41,7 @@ import { SetProjectLocationDialog } from './SetProjectLocationDialog'
 const option: NeedsSetupProjectHostOption = {
   kind: 'needs-setup',
   id: 'needs-setup:ssh:openclaw',
-  projectId: 'project-nightshift',
+  projectId: 'project-kolux',
   hostId: 'ssh:openclaw',
   label: 'openclaw',
   detail: 'Project location not set',
@@ -57,7 +57,7 @@ function renderDialog(
   render(
     <SetProjectLocationDialog
       option={option}
-      projectName="nightshift"
+      projectName="kolux"
       projectKind="git"
       defaultCloneUrl="git@github.com:TxaisX/nightshift.git"
       onClose={vi.fn()}
@@ -91,7 +91,7 @@ describe('SetProjectLocationDialog', () => {
 
     expect(screen.getByTestId('set-project-location-dialog')).toBeTruthy()
     expect(screen.getByText('Set project location')).toBeTruthy()
-    expect(screen.getByText('Choose where nightshift lives on openclaw.')).toBeTruthy()
+    expect(screen.getByText('Choose where kolux lives on openclaw.')).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Browse folder/ }))
     await user.click(screen.getByRole('button', { name: 'Browse host filesystem' }))
@@ -99,11 +99,11 @@ describe('SetProjectLocationDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Set location' }))
 
     expect(storeMocks.setupProjectExistingFolder).toHaveBeenCalledWith({
-      projectId: 'project-nightshift',
+      projectId: 'project-kolux',
       hostId: 'ssh:openclaw',
-      path: '/remote/nightshift',
+      path: '/remote/kolux',
       kind: 'git',
-      displayName: 'nightshift'
+      displayName: 'kolux'
     })
     expect(onReady).toHaveBeenCalledWith('setup-openclaw')
     expect(onClose).not.toHaveBeenCalled()
@@ -119,11 +119,11 @@ describe('SetProjectLocationDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Clone' }))
 
     expect(storeMocks.setupProjectClone).toHaveBeenCalledWith({
-      projectId: 'project-nightshift',
+      projectId: 'project-kolux',
       hostId: 'ssh:openclaw',
       url: 'git@github.com:TxaisX/nightshift.git',
-      destination: '/remote/nightshift',
-      displayName: 'nightshift'
+      destination: '/remote/kolux',
+      displayName: 'kolux'
     })
     expect(onReady).toHaveBeenCalledWith('setup-openclaw-clone')
   })
@@ -137,7 +137,7 @@ describe('SetProjectLocationDialog', () => {
     render(
       <SetProjectLocationDialog
         option={null}
-        projectName="nightshift"
+        projectName="kolux"
         projectKind="git"
         defaultCloneUrl=""
         onClose={vi.fn()}
@@ -179,7 +179,7 @@ describe('SetProjectLocationDialog', () => {
     const { rerender } = render(
       <SetProjectLocationDialog
         option={option}
-        projectName="nightshift"
+        projectName="kolux"
         projectKind="git"
         defaultCloneUrl="https://github.com/TxaisX/nightshift.git"
         onClose={onClose}
@@ -189,14 +189,14 @@ describe('SetProjectLocationDialog', () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /Clone from URL/ }))
-    await user.type(screen.getByPlaceholderText('/destination/on/host'), '/remote/nightshift')
+    await user.type(screen.getByPlaceholderText('/destination/on/host'), '/remote/kolux')
     await user.click(screen.getByRole('button', { name: 'Clone' }))
 
     // The user backs out and points the composer somewhere else.
     rerender(
       <SetProjectLocationDialog
         option={null}
-        projectName="nightshift"
+        projectName="kolux"
         projectKind="git"
         defaultCloneUrl="https://github.com/TxaisX/nightshift.git"
         onClose={onClose}
@@ -216,7 +216,7 @@ describe('SetProjectLocationDialog', () => {
       <StrictMode>
         <SetProjectLocationDialog
           option={option}
-          projectName="nightshift"
+          projectName="kolux"
           projectKind="git"
           defaultCloneUrl="git@github.com:TxaisX/nightshift.git"
           onClose={vi.fn()}
@@ -227,7 +227,7 @@ describe('SetProjectLocationDialog', () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: /Browse folder/ }))
-    await user.type(screen.getByPlaceholderText('/path/to/project/on/host'), '/remote/nightshift')
+    await user.type(screen.getByPlaceholderText('/path/to/project/on/host'), '/remote/kolux')
     await user.click(screen.getByRole('button', { name: 'Set location' }))
 
     expect(onReady).toHaveBeenCalledWith('setup-openclaw')

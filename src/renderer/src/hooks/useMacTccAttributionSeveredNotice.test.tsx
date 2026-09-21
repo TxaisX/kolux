@@ -111,7 +111,7 @@ describe('useMacTccAttributionSeveredNotice', () => {
     const options = call?.[1] as
       | { description?: string; action?: { onClick?: () => void } }
       | undefined
-    expect(title).toMatch(/macOS permissions may not reach Nightshift terminals/i)
+    expect(title).toMatch(/macOS permissions may not reach Kolux terminals/i)
     expect(String(options?.description ?? '')).toMatch(/Manage Sessions/i)
     options?.action?.onClick?.()
     expect(setSettingsSearchQuery).toHaveBeenCalledWith('')

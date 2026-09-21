@@ -127,26 +127,26 @@ describe('resolveRelayPushTarget', () => {
   })
 
   it('normalizes a URL-valued branch remote to a matching named remote', async () => {
-    const forkUrl = 'https://github.com/contributor/nightshift.git'
+    const forkUrl = 'https://github.com/contributor/kolux.git'
     const git = gitForConfig({
       pushRemote: new Error('missing pushRemote'),
       pushDefault: new Error('missing pushDefault'),
       branchRemote: forkUrl,
-      remotes: ['origin', 'pr-contributor-nightshift'],
+      remotes: ['origin', 'pr-contributor-kolux'],
       remoteUrls: {
         origin: 'https://github.com/TxaisX/nightshift.git',
-        'pr-contributor-nightshift': forkUrl
+        'pr-contributor-kolux': forkUrl
       }
     })
 
     await expect(resolveRelayPushTarget(git, '/repo', undefined)).resolves.toEqual({
-      remote: 'pr-contributor-nightshift',
+      remote: 'pr-contributor-kolux',
       refspec: 'HEAD:feature/fix'
     })
   })
 
   it('keeps a URL-valued pushRemote when no named remote matches it', async () => {
-    const forkUrl = 'git@github.com:contributor/nightshift.git'
+    const forkUrl = 'git@github.com:contributor/kolux.git'
     const git = gitForConfig({
       pushRemote: forkUrl,
       branchRemote: forkUrl,

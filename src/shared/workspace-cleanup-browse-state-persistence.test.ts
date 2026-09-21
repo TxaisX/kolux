@@ -5,7 +5,7 @@ import {
   WORKSPACE_CLEANUP_BROWSE_STATE_VERSION
 } from './workspace-cleanup-browse-state'
 
-/** nightshift-data.json is JSON, so anything that cannot survive this is not persistable. */
+/** kolux-data.json is JSON, so anything that cannot survive this is not persistable. */
 function throughDisk<T>(value: T): unknown {
   return JSON.parse(JSON.stringify(value))
 }

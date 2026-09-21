@@ -61,7 +61,7 @@ async function writeRemnant(name: string): Promise<string> {
 }
 
 beforeEach(async () => {
-  journalRoot = await mkdtemp(join(tmpdir(), 'nightshift-read-restore-'))
+  journalRoot = await mkdtemp(join(tmpdir(), 'kolux-read-restore-'))
 })
 
 afterEach(async () => {

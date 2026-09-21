@@ -27,7 +27,7 @@ export const FEATURE_WALL_WORKFLOWS: readonly FeatureWallWorkflow[] = [
     id: 'workspaces',
     title: 'Workspaces',
     meta: 'Isolated work · Context kept together',
-    lede: 'Nightshift splits each task into an isolated workspace so agents can run in parallel.',
+    lede: 'Kolux splits each task into an isolated workspace so agents can run in parallel.',
     primaryTileId: 'tile-01',
     relatedTileIds: ['tile-10'],
     docsUrl: 'https://github.com/TxaisX/nightshift#readme'
@@ -44,8 +44,8 @@ export const FEATURE_WALL_WORKFLOWS: readonly FeatureWallWorkflow[] = [
   {
     id: 'agents-orchestration',
     title: 'Agents',
-    meta: 'Agents · Usage · Nightshift CLI',
-    lede: 'Run several agents at once, track their progress, and let automation drive Nightshift when it helps.',
+    meta: 'Agents · Usage · Kolux CLI',
+    lede: 'Run several agents at once, track their progress, and let automation drive Kolux when it helps.',
     primaryTileId: 'tile-04',
     relatedTileIds: ['tile-11', 'tile-09'],
     docsUrl: 'https://github.com/TxaisX/nightshift#readme'
@@ -54,7 +54,7 @@ export const FEATURE_WALL_WORKFLOWS: readonly FeatureWallWorkflow[] = [
     id: 'workbench',
     title: 'Workbench',
     meta: 'Terminal · Editor · Browser · Files',
-    lede: 'Bring your terminal setup into Nightshift, then split panes to keep servers, tests, logs, and agents running side by side.',
+    lede: 'Bring your terminal setup into Kolux, then split panes to keep servers, tests, logs, and agents running side by side.',
     primaryTileId: 'tile-02',
     relatedTileIds: ['tile-07', 'tile-05', 'tile-12'],
     docsUrl: 'https://github.com/TxaisX/nightshift#readme'

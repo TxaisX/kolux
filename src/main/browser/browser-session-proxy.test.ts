@@ -38,14 +38,14 @@ const PROFILES = [
   {
     id: 'default',
     scope: 'default' as const,
-    partition: 'persist:nightshift-browser',
+    partition: 'persist:kolux-browser',
     label: 'Default',
     source: null
   },
   {
     id: 'iso',
     scope: 'isolated' as const,
-    partition: 'persist:nightshift-browser-session-iso',
+    partition: 'persist:kolux-browser-session-iso',
     label: 'Isolated',
     source: null
   }
@@ -69,8 +69,8 @@ describe('browser session proxy', () => {
       httpProxyBypassRules: ''
     })
 
-    expect(fromPartitionMock).toHaveBeenCalledWith('persist:nightshift-browser')
-    expect(fromPartitionMock).toHaveBeenCalledWith('persist:nightshift-browser-session-iso')
+    expect(fromPartitionMock).toHaveBeenCalledWith('persist:kolux-browser')
+    expect(fromPartitionMock).toHaveBeenCalledWith('persist:kolux-browser-session-iso')
     for (const partition of PROFILES.map((p) => p.partition)) {
       expect(sessionsByPartition.get(partition)?.setProxy).toHaveBeenCalledWith({
         mode: 'fixed_servers',
@@ -85,7 +85,7 @@ describe('browser session proxy', () => {
       httpProxyBypassRules: 'localhost, *.internal'
     })
 
-    expect(sessionsByPartition.get('persist:nightshift-browser')?.setProxy).toHaveBeenCalledWith({
+    expect(sessionsByPartition.get('persist:kolux-browser')?.setProxy).toHaveBeenCalledWith({
       mode: 'fixed_servers',
       proxyRules: 'socks5://127.0.0.1:1080',
       proxyBypassRules: 'localhost;*.internal'
@@ -97,7 +97,7 @@ describe('browser session proxy', () => {
       httpProxyUrl: 'http://browser-user:browser-pass@proxy.example:8080',
       httpProxyBypassRules: ''
     })
-    const sess = sessionsByPartition.get('persist:nightshift-browser')
+    const sess = sessionsByPartition.get('persist:kolux-browser')
     expect(sess?.setProxy).toHaveBeenCalledWith({
       mode: 'fixed_servers',
       proxyRules: 'http://proxy.example:8080'
@@ -134,24 +134,24 @@ describe('browser session proxy', () => {
         httpProxyUrl: 'socks5://127.0.0.1:1080',
         httpProxyBypassRules: ''
       })
-    ).rejects.toThrow('persist:nightshift-browser')
+    ).rejects.toThrow('persist:kolux-browser')
 
     expect(
-      sessionsByPartition.get('persist:nightshift-browser-session-iso')?.setProxy
+      sessionsByPartition.get('persist:kolux-browser-session-iso')?.setProxy
     ).toHaveBeenCalledWith({ mode: 'fixed_servers', proxyRules: 'socks5://127.0.0.1:1080' })
     expect(warn).toHaveBeenCalledWith(
       '[proxy] Failed to apply proxy to browser partition',
-      'persist:nightshift-browser'
+      'persist:kolux-browser'
     )
   })
 
   it('starts every partition write without waiting for earlier partitions', async () => {
     let finishFirstWrite: (() => void) | undefined
-    const firstSession = fromPartition('persist:nightshift-browser')
+    const firstSession = fromPartition('persist:kolux-browser')
     firstSession.setProxy.mockImplementation(
       () => new Promise<void>((resolve) => (finishFirstWrite = resolve))
     )
-    sessionsByPartition.set('persist:nightshift-browser', firstSession)
+    sessionsByPartition.set('persist:kolux-browser', firstSession)
 
     const sweep = applyBrowserSessionProxies(PROFILES, {
       httpProxyUrl: 'socks5://127.0.0.1:1080',
@@ -160,7 +160,7 @@ describe('browser session proxy', () => {
 
     await vi.waitFor(() =>
       expect(
-        sessionsByPartition.get('persist:nightshift-browser-session-iso')?.setProxy
+        sessionsByPartition.get('persist:kolux-browser-session-iso')?.setProxy
       ).toHaveBeenCalledOnce()
     )
     finishFirstWrite?.()
@@ -171,7 +171,7 @@ describe('browser session proxy', () => {
     let proxyUrl = 'http://old.example:8080'
     let finishFirstWrite: (() => void) | undefined
     setBrowserNetworkProxySettingsResolver(() => ({ httpProxyUrl: proxyUrl }))
-    const sess = fromPartition('persist:nightshift-browser-session-pending')
+    const sess = fromPartition('persist:kolux-browser-session-pending')
     sess.setProxy.mockImplementationOnce(
       () => new Promise<void>((resolve) => (finishFirstWrite = resolve))
     )
@@ -193,7 +193,7 @@ describe('browser session proxy', () => {
     let proxyUrl = 'http://old.example:8080'
     let finishFirstWrite: (() => void) | undefined
     setBrowserNetworkProxySettingsResolver(() => ({ httpProxyUrl: proxyUrl }))
-    const sess = fromPartition('persist:nightshift-browser-session-restored')
+    const sess = fromPartition('persist:kolux-browser-session-restored')
     sess.setProxy.mockImplementationOnce(
       () => new Promise<void>((resolve) => (finishFirstWrite = resolve))
     )
@@ -218,7 +218,7 @@ describe('browser session proxy', () => {
       httpProxyUrl: 'socks5://127.0.0.1:1080',
       httpProxyBypassRules: ''
     }))
-    const sess = fromPartitionMock('persist:nightshift-browser')
+    const sess = fromPartitionMock('persist:kolux-browser')
 
     await applyProxyToBrowserSession(sess as never)
 
@@ -229,7 +229,7 @@ describe('browser session proxy', () => {
   })
 
   it('makes no proxy write when no resolver is registered', async () => {
-    const sess = fromPartitionMock('persist:nightshift-browser')
+    const sess = fromPartitionMock('persist:kolux-browser')
 
     await applyProxyToBrowserSession(sess as never)
 

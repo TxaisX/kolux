@@ -10,7 +10,7 @@ const openDatabases: SyncDatabase.Database[] = []
 const lockHolders: Worker[] = []
 
 async function createDatabase(): Promise<SyncDatabase.Database> {
-  const directory = await mkdtemp(join(tmpdir(), 'nightshift-sync-database-'))
+  const directory = await mkdtemp(join(tmpdir(), 'kolux-sync-database-'))
   temporaryDirectories.push(directory)
   const db = new SyncDatabase(join(directory, 'test.db'))
   openDatabases.push(db)
@@ -92,7 +92,7 @@ describe('SyncDatabase statement cache', () => {
   })
 
   it('keeps a cached statement correct when another connection changes the schema', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-sync-database-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-sync-database-'))
     temporaryDirectories.push(directory)
     const path = join(directory, 'shared.db')
     const writer = new SyncDatabase(path)
@@ -156,7 +156,7 @@ describe('SyncDatabase statement cache', () => {
   })
 
   it('rejects a missing file when fileMustExist is set', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-sync-database-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-sync-database-'))
     temporaryDirectories.push(directory)
 
     expect(() => new SyncDatabase(join(directory, 'absent.db'), { fileMustExist: true })).toThrow(
@@ -188,7 +188,7 @@ describe('SyncDatabase read-only opens under contention', () => {
   `
 
   async function contendedDatabase(holdMs: number): Promise<{ path: string }> {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-sync-database-busy-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-sync-database-busy-'))
     temporaryDirectories.push(directory)
     const path = join(directory, 'contended.db')
     const worker = new Worker(WRITER_SOURCE, { eval: true, workerData: { path, holdMs } })

@@ -91,7 +91,7 @@ export function isRootCodeQualityPath(file) {
 function resolveBase(root, requestedBase) {
   for (const candidate of [
     requestedBase,
-    process.env.NIGHTSHIFT_CODE_QUALITY_BASE,
+    process.env.KOLUX_CODE_QUALITY_BASE,
     'origin/main',
     'main'
   ]) {

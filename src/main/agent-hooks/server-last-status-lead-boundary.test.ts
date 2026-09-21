@@ -28,7 +28,7 @@ describe('Persisted Claude lead boundaries', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-lead-boundary-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-lead-boundary-'))
   })
 
   afterEach(() => {

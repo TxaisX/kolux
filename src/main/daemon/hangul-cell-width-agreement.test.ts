@@ -1,9 +1,9 @@
 /**
- * #15192, activation-order hypothesis: "the Nightshift unicode provider is not reached
+ * #15192, activation-order hypothesis: "the Kolux unicode provider is not reached
  * in production, so Hangul lays out at the wrong width."
  *
  * These pin the measurements that close it. Every precomposed Hangul syllable is
- * two cells under xterm's Unicode 6 tables, its Unicode 11 tables, and Nightshift's
+ * two cells under xterm's Unicode 6 tables, its Unicode 11 tables, and Kolux's
  * provider alike, so no activation order — provider, v11 fallback, or the
  * untouched v6 default — can change how a syllable is budgeted. Whatever moves
  * Korean text off its cells is not the unicode version.
@@ -15,10 +15,10 @@
 import { describe, expect, it } from 'vitest'
 import { Terminal } from '@xterm/headless'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
-import { activateNightshiftTerminalUnicodeProvider } from '../../shared/terminal-unicode-provider'
+import { activateKoluxTerminalUnicodeProvider } from '../../shared/terminal-unicode-provider'
 import { isWideGlyph } from './__fixtures__/terminal-wide-cell-grid'
 
-const NIGHTSHIFT_UNICODE_VERSION = 'nightshift-11-zwj'
+const KOLUX_UNICODE_VERSION = 'kolux-11-zwj'
 const HANGUL_SYLLABLES_FIRST = 0xac00
 const HANGUL_SYLLABLES_LAST = 0xd7a3
 
@@ -59,7 +59,7 @@ function openWithUnicode11AddonLoaded(): {
 } {
   const terminal = new Terminal({ cols: 40, rows: 10, allowProposedApi: true })
   terminal.loadAddon(new Unicode11Addon())
-  activateNightshiftTerminalUnicodeProvider(terminal as never)
+  activateKoluxTerminalUnicodeProvider(terminal as never)
   const unicode = (
     terminal as unknown as {
       _core: { unicodeService: UnicodeServiceInternals }
@@ -96,17 +96,17 @@ function summarize(entries: { codepoint: number; detail: string }[]): string[] {
 }
 
 describe('Hangul cell width agreement (#15192)', () => {
-  it('reaches the Nightshift provider, not the v11 fallback, on a live terminal', () => {
+  it('reaches the Kolux provider, not the v11 fallback, on a live terminal', () => {
     const { terminal, unicode } = openWithUnicode11AddonLoaded()
-    expect(unicode.versions).toContain(NIGHTSHIFT_UNICODE_VERSION)
-    expect(unicode.activeVersion).toBe(NIGHTSHIFT_UNICODE_VERSION)
+    expect(unicode.versions).toContain(KOLUX_UNICODE_VERSION)
+    expect(unicode.activeVersion).toBe(KOLUX_UNICODE_VERSION)
     terminal.dispose()
   })
 
-  it('budgets every precomposed syllable at two cells under v6, v11 and Nightshift', () => {
+  it('budgets every precomposed syllable at two cells under v6, v11 and Kolux', () => {
     const { terminal, unicode } = openWithUnicode11AddonLoaded()
     const disagreeing: { codepoint: number; detail: string }[] = []
-    for (const version of ['6', '11', NIGHTSHIFT_UNICODE_VERSION]) {
+    for (const version of ['6', '11', KOLUX_UNICODE_VERSION]) {
       unicode.activeVersion = version
       for (let cp = HANGUL_SYLLABLES_FIRST; cp <= HANGUL_SYLLABLES_LAST; cp += 1) {
         const wcwidth = unicode.wcwidth(cp)

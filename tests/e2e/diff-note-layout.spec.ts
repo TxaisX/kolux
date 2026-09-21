@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const NOTE_LINE = 6
@@ -9,7 +9,7 @@ const NOTE_BODY =
   'This saved note is intentionally one long paragraph so it wraps across several visual lines in narrow and wide diff layouts without adding newline characters to the initial zone estimate.'
 
 async function assertCardClearsFollowingLine(page: Page): Promise<void> {
-  const card = page.locator('.nightshift-diff-comment-card').first()
+  const card = page.locator('.kolux-diff-comment-card').first()
   const followingLine = page
     .locator('.modified-in-monaco-diff-editor .view-lines .view-line')
     .filter({ hasText: FOLLOWING_LINE })
@@ -42,17 +42,17 @@ async function attachDiffScreenshot(page: Page, testInfo: TestInfo, name: string
 }
 
 test.describe('Diff note layout', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   test('saved notes reserve their rendered height in both diff layouts', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await nightshiftPage.setViewportSize({ width: 1200, height: 800 })
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
-    const relativePath = await nightshiftPage.evaluate(async (wId) => {
+    await koluxPage.setViewportSize({ width: 1200, height: 800 })
+    const worktreeId = await waitForActiveWorktree(koluxPage)
+    const relativePath = await koluxPage.evaluate(async (wId) => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available')
@@ -79,7 +79,7 @@ test.describe('Diff note layout', () => {
       return relative
     }, worktreeId)
 
-    const added = await nightshiftPage.evaluate(
+    const added = await koluxPage.evaluate(
       ({ wId, filePath, lineNumber, body }) =>
         window.__store?.getState().addDiffComment({
           worktreeId: wId,
@@ -93,7 +93,7 @@ test.describe('Diff note layout', () => {
     )
     expect(added, 'addDiffComment returned null').not.toBeNull()
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ wId, filePath }) => {
         const state = window.__store?.getState()
         const worktree = Object.values(state?.worktreesByRepo ?? {})
@@ -114,15 +114,15 @@ test.describe('Diff note layout', () => {
       { wId: worktreeId, filePath: relativePath }
     )
 
-    await expect(nightshiftPage.locator('button:has(svg.lucide-rows-2)')).toBeVisible()
-    await assertCardClearsFollowingLine(nightshiftPage)
-    await attachDiffScreenshot(nightshiftPage, testInfo, 'side-by-side-diff-note-layout')
+    await expect(koluxPage.locator('button:has(svg.lucide-rows-2)')).toBeVisible()
+    await assertCardClearsFollowingLine(koluxPage)
+    await attachDiffScreenshot(koluxPage, testInfo, 'side-by-side-diff-note-layout')
 
-    await nightshiftPage.evaluate(() =>
+    await koluxPage.evaluate(() =>
       window.__store?.getState().updateSettings({ diffDefaultView: 'inline' })
     )
-    await expect(nightshiftPage.locator('button:has(svg.lucide-columns-2)')).toBeVisible()
-    await assertCardClearsFollowingLine(nightshiftPage)
-    await attachDiffScreenshot(nightshiftPage, testInfo, 'inline-diff-note-layout')
+    await expect(koluxPage.locator('button:has(svg.lucide-columns-2)')).toBeVisible()
+    await assertCardClearsFollowingLine(koluxPage)
+    await attachDiffScreenshot(koluxPage, testInfo, 'inline-diff-note-layout')
   })
 })

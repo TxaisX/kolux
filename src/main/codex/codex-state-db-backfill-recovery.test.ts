@@ -33,7 +33,7 @@ function createFakeChild(): EventEmitter & {
 }
 
 async function createTemporaryRoot(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-codex-backfill-recovery-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-codex-backfill-recovery-'))
   temporaryRoots.push(root)
   return root
 }
@@ -482,10 +482,10 @@ describe('Codex state DB backfill recovery', () => {
 describe.skipIf(process.platform === 'win32')('Codex backfill supervisor owner lock', () => {
   it('recovers a dead owner whose PID was reused with a different start identity', async () => {
     const userData = await createTemporaryRoot()
-    vi.stubEnv('NIGHTSHIFT_USER_DATA_PATH', userData)
+    vi.stubEnv('KOLUX_USER_DATA_PATH', userData)
     const home = join(userData, 'managed-home')
     const lockRoot = resolveCodexBackfillSupervisorLockRoot(home)
-    const lockParent = join(lockRoot, '.nightshift')
+    const lockParent = join(lockRoot, '.kolux')
     const token = '00000000-0000-4000-8000-000000000000'
     const ownerPath = join(lockParent, `managed-hook-install.owner-${token}.json`)
     const lockPath = join(lockParent, 'managed-hook-install.lock')
@@ -506,9 +506,9 @@ describe.skipIf(process.platform === 'win32')('Codex backfill supervisor owner l
     ).resolves.toBe('recovered')
   })
 
-  it('does not interfere with a live supervisor from another Nightshift instance', async () => {
+  it('does not interfere with a live supervisor from another Kolux instance', async () => {
     const userData = await createTemporaryRoot()
-    vi.stubEnv('NIGHTSHIFT_USER_DATA_PATH', userData)
+    vi.stubEnv('KOLUX_USER_DATA_PATH', userData)
     const home = join(userData, 'managed-home')
     let releaseFirst!: () => void
     const first = withCodexBackfillSupervisorLock(
@@ -522,7 +522,7 @@ describe.skipIf(process.platform === 'win32')('Codex backfill supervisor owner l
           readFile(
             join(
               resolveCodexBackfillSupervisorLockRoot(home),
-              '.nightshift',
+              '.kolux',
               'managed-hook-install.lock'
             ),
             'utf8'

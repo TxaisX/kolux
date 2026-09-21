@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   inventoryRemoteInstallDirs,
-  NIGHTSHIFTD_INSTALL_MODEL,
+  KOLUXD_INSTALL_MODEL,
   RELAY_INSTALL_MODEL,
   remoteInstallDirName,
   remoteInstallDirOwner,
@@ -12,16 +12,12 @@ import {
 } from './remote-install-model'
 
 const RELAY_DIRS = ['relay-0.1.0+abcdef123456', 'relay-v0.1.0', 'relay-1.2.3']
-const NIGHTSHIFTD_DIRS = [
-  'nightshiftd-0.1.0+abcdef123456',
-  'nightshiftd-v0.1.0',
-  'nightshiftd-1.2.3'
-]
+const KOLUXD_DIRS = ['koluxd-0.1.0+abcdef123456', 'koluxd-v0.1.0', 'koluxd-1.2.3']
 
 describe('remote install namespace', () => {
   it('names each model its own version dir', () => {
     expect(remoteInstallDirName(RELAY_INSTALL_MODEL, '0.1.0+aa')).toBe('relay-0.1.0+aa')
-    expect(remoteInstallDirName(NIGHTSHIFTD_INSTALL_MODEL, '0.1.0+aa')).toBe('nightshiftd-0.1.0+aa')
+    expect(remoteInstallDirName(KOLUXD_INSTALL_MODEL, '0.1.0+aa')).toBe('koluxd-0.1.0+aa')
   })
 
   it('keeps the relay listing pattern byte-identical to the one it shipped with', () => {
@@ -39,46 +35,42 @@ describe('remote install namespace', () => {
 })
 
 describe('GC ownership — each model collects only its own namespace', () => {
-  it.each(NIGHTSHIFTD_DIRS)('the relay never permits GC of %s', (dirName) => {
-    expect(remoteInstallDirOwner(dirName)).toBe('nightshiftd')
+  it.each(KOLUXD_DIRS)('the relay never permits GC of %s', (dirName) => {
+    expect(remoteInstallDirOwner(dirName)).toBe('koluxd')
     expect(remoteInstallGcPermits(RELAY_INSTALL_MODEL, dirName)).toBe(false)
   })
 
-  it.each(RELAY_DIRS)('nightshiftd never permits GC of %s', (dirName) => {
+  it.each(RELAY_DIRS)('koluxd never permits GC of %s', (dirName) => {
     expect(remoteInstallDirOwner(dirName)).toBe('relay')
-    expect(remoteInstallGcPermits(NIGHTSHIFTD_INSTALL_MODEL, dirName)).toBe(false)
+    expect(remoteInstallGcPermits(KOLUXD_INSTALL_MODEL, dirName)).toBe(false)
   })
 
   it('permits each model its own dirs and its own tombstones', () => {
     expect(remoteInstallGcPermits(RELAY_INSTALL_MODEL, 'relay-0.1.0+aa')).toBe(true)
-    expect(remoteInstallGcPermits(NIGHTSHIFTD_INSTALL_MODEL, 'nightshiftd-0.1.0+aa')).toBe(true)
-    expect(
-      remoteInstallGcPermits(NIGHTSHIFTD_INSTALL_MODEL, 'nightshiftd-0.1.0+aa.gc-tombstone.12.34')
-    ).toBe(true)
+    expect(remoteInstallGcPermits(KOLUXD_INSTALL_MODEL, 'koluxd-0.1.0+aa')).toBe(true)
+    expect(remoteInstallGcPermits(KOLUXD_INSTALL_MODEL, 'koluxd-0.1.0+aa.gc-tombstone.12.34')).toBe(
+      true
+    )
   })
 
   it('claims nothing it did not create', () => {
     for (const name of [
-      '.nightshift-remote',
-      'nightshiftd',
+      '.kolux-remote',
+      'koluxd',
       'relayish-0.1.0',
-      'nightshiftd-notaversion',
+      'koluxd-notaversion',
       'node'
     ]) {
       expect(remoteInstallDirOwner(name)).toBeNull()
       expect(remoteInstallGcPermits(RELAY_INSTALL_MODEL, name)).toBe(false)
-      expect(remoteInstallGcPermits(NIGHTSHIFTD_INSTALL_MODEL, name)).toBe(false)
+      expect(remoteInstallGcPermits(KOLUXD_INSTALL_MODEL, name)).toBe(false)
     }
   })
 
   it('groups a mixed listing without losing anything to the wrong owner', () => {
-    const inventory = inventoryRemoteInstallDirs([
-      ...RELAY_DIRS,
-      ...NIGHTSHIFTD_DIRS,
-      'something-else'
-    ])
+    const inventory = inventoryRemoteInstallDirs([...RELAY_DIRS, ...KOLUXD_DIRS, 'something-else'])
     expect(inventory.relay).toEqual(RELAY_DIRS)
-    expect(inventory.nightshiftd).toEqual(NIGHTSHIFTD_DIRS)
+    expect(inventory.koluxd).toEqual(KOLUXD_DIRS)
     expect(inventory.unknown).toEqual(['something-else'])
   })
 })

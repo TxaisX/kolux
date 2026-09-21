@@ -3,20 +3,16 @@ import { getCloneDestinationAutoFill, getDefaultCloneParent } from './clone-defa
 
 describe('getDefaultCloneParent', () => {
   it('strips a POSIX workspaces suffix', () => {
-    expect(getDefaultCloneParent('/Users/mvanhorn/nightshift/workspaces')).toBe(
-      '/Users/mvanhorn/nightshift'
-    )
+    expect(getDefaultCloneParent('/Users/mvanhorn/kolux/workspaces')).toBe('/Users/mvanhorn/kolux')
   })
 
   it('strips a POSIX workspaces suffix with a trailing slash', () => {
-    expect(getDefaultCloneParent('/Users/mvanhorn/nightshift/workspaces/')).toBe(
-      '/Users/mvanhorn/nightshift'
-    )
+    expect(getDefaultCloneParent('/Users/mvanhorn/kolux/workspaces/')).toBe('/Users/mvanhorn/kolux')
   })
 
   it('strips a Windows workspaces suffix', () => {
-    expect(getDefaultCloneParent('C:\\Users\\mvanhorn\\nightshift\\workspaces')).toBe(
-      'C:\\Users\\mvanhorn\\nightshift'
+    expect(getDefaultCloneParent('C:\\Users\\mvanhorn\\kolux\\workspaces')).toBe(
+      'C:\\Users\\mvanhorn\\kolux'
     )
   })
 
@@ -41,12 +37,12 @@ describe('getDefaultCloneParent', () => {
   })
 
   it('strips repeated trailing separators before matching the suffix', () => {
-    expect(getDefaultCloneParent('D:\\nightshift\\workspaces\\\\')).toBe('D:\\nightshift')
+    expect(getDefaultCloneParent('D:\\kolux\\workspaces\\\\')).toBe('D:\\kolux')
   })
 
   it('does not strip a similar-looking final segment', () => {
-    expect(getDefaultCloneParent('/Users/mvanhorn/nightshift/project-workspaces')).toBe(
-      '/Users/mvanhorn/nightshift/project-workspaces'
+    expect(getDefaultCloneParent('/Users/mvanhorn/kolux/project-workspaces')).toBe(
+      '/Users/mvanhorn/kolux/project-workspaces'
     )
   })
 })
@@ -58,10 +54,10 @@ describe('getCloneDestinationAutoFill', () => {
         step: 'clone',
         cloneDestination: '',
         activeRuntimeEnvironmentId: null,
-        workspaceDir: '/Users/mvanhorn/nightshift/workspaces',
+        workspaceDir: '/Users/mvanhorn/kolux/workspaces',
         cloneStepAutoFilled: false
       })
-    ).toEqual({ destination: '/Users/mvanhorn/nightshift' })
+    ).toEqual({ destination: '/Users/mvanhorn/kolux' })
   })
 
   it('waits for a workspace directory before filling', () => {
@@ -82,7 +78,7 @@ describe('getCloneDestinationAutoFill', () => {
         step: 'clone',
         cloneDestination: '/tmp/project',
         activeRuntimeEnvironmentId: null,
-        workspaceDir: '/Users/mvanhorn/nightshift/workspaces',
+        workspaceDir: '/Users/mvanhorn/kolux/workspaces',
         cloneStepAutoFilled: false
       })
     ).toBeNull()
@@ -91,7 +87,7 @@ describe('getCloneDestinationAutoFill', () => {
         step: 'clone',
         cloneDestination: '',
         activeRuntimeEnvironmentId: null,
-        workspaceDir: '/Users/mvanhorn/nightshift/workspaces',
+        workspaceDir: '/Users/mvanhorn/kolux/workspaces',
         cloneStepAutoFilled: true
       })
     ).toBeNull()
@@ -103,7 +99,7 @@ describe('getCloneDestinationAutoFill', () => {
         step: 'clone',
         cloneDestination: '',
         activeRuntimeEnvironmentId: 'env-local-linux',
-        workspaceDir: '/Users/mvanhorn/nightshift/workspaces',
+        workspaceDir: '/Users/mvanhorn/kolux/workspaces',
         cloneStepAutoFilled: false
       })
     ).toBeNull()
@@ -116,7 +112,7 @@ describe('getCloneDestinationAutoFill', () => {
         cloneDestination: '',
         activeRuntimeEnvironmentId: null,
         sshTargetId: 'openclaw-2',
-        workspaceDir: '/Users/mvanhorn/nightshift/workspaces',
+        workspaceDir: '/Users/mvanhorn/kolux/workspaces',
         cloneStepAutoFilled: false
       })
     ).toBeNull()

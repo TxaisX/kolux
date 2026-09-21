@@ -8,7 +8,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -178,39 +178,39 @@ async function mainSnapshotContains(page: Page, ptyId: string, text: string): Pr
 
 test.describe('Terminal output scheduler', () => {
   test('background tab output bursts use the shared drain while the active tab renders', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const firstTabId = await getActiveTabId(nightshiftPage)
+    const firstTabId = await getActiveTabId(koluxPage)
     if (!firstTabId) {
       throw new Error('Expected an initial terminal tab')
     }
 
     const tabIds = [firstTabId]
     const ptyIdsByTabId: Record<string, string> = {
-      [firstTabId]: await waitForTabPtyId(nightshiftPage, firstTabId)
+      [firstTabId]: await waitForTabPtyId(koluxPage, firstTabId)
     }
 
     while (tabIds.length < TAB_COUNT) {
-      const tabId = await createTerminalTab(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      const tabId = await createTerminalTab(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
       tabIds.push(tabId)
-      ptyIdsByTabId[tabId] = await waitForTabPtyId(nightshiftPage, tabId)
+      ptyIdsByTabId[tabId] = await waitForTabPtyId(koluxPage, tabId)
     }
 
-    await tabLocator(nightshiftPage, firstTabId).click()
+    await tabLocator(koluxPage, firstTabId).click()
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'First terminal tab did not become active before the burst repro'
       })
       .toBe(firstTabId)
 
-    await resetSchedulerDebug(nightshiftPage)
+    await resetSchedulerDebug(koluxPage)
 
     const runId = Date.now()
     const foregroundMarker = `FG_SCHED_${runId}`
@@ -224,10 +224,10 @@ test.describe('Terminal output scheduler', () => {
     }))
 
     await sendPtyCommands(
-      nightshiftPage,
+      koluxPage,
       backgroundCommands.map(({ ptyId, command }) => ({ ptyId, command }))
     )
-    await sendPtyCommands(nightshiftPage, [
+    await sendPtyCommands(koluxPage, [
       {
         ptyId: ptyIdsByTabId[firstTabId],
         command: nodeConsoleCommand(`'${foregroundMarker}'`)
@@ -235,7 +235,7 @@ test.describe('Terminal output scheduler', () => {
     ])
 
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(foregroundMarker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(foregroundMarker), {
         timeout: 5_000,
         message: 'Active terminal did not render foreground output during background bursts'
       })
@@ -244,13 +244,13 @@ test.describe('Terminal output scheduler', () => {
     await expect
       .poll(
         async () => {
-          const debug = await getSchedulerDebug(nightshiftPage)
+          const debug = await getSchedulerDebug(koluxPage)
           if (debug.backgroundEnqueueCount >= backgroundCommands.length) {
             return true
           }
           const snapshots = await Promise.all(
             backgroundCommands.map(({ ptyId, marker }) =>
-              mainSnapshotContains(nightshiftPage, ptyId, marker)
+              mainSnapshotContains(koluxPage, ptyId, marker)
             )
           )
           return snapshots.every(Boolean)
@@ -265,7 +265,7 @@ test.describe('Terminal output scheduler', () => {
     await expect
       .poll(
         async () => {
-          const debug = await getSchedulerDebug(nightshiftPage)
+          const debug = await getSchedulerDebug(koluxPage)
           return debug.backgroundEnqueueCount > 0
             ? debug.backgroundWriteCount >= backgroundCommands.length
             : true
@@ -277,7 +277,7 @@ test.describe('Terminal output scheduler', () => {
       )
       .toBe(true)
 
-    const debug = await getSchedulerDebug(nightshiftPage)
+    const debug = await getSchedulerDebug(koluxPage)
     expect(debug.foregroundWriteCount).toBeGreaterThan(0)
     expect(debug.drainHighPriority).toHaveLength(debug.drainWrites.length)
     for (const [index, writes] of debug.drainWrites.entries()) {
@@ -286,38 +286,35 @@ test.describe('Terminal output scheduler', () => {
 
     const firstBackground = backgroundCommands[0]
     const firstBackgroundTabId = tabIds[1]
-    await tabLocator(nightshiftPage, firstBackgroundTabId).click()
+    await tabLocator(koluxPage, firstBackgroundTabId).click()
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'Background terminal tab did not become active for content verification'
       })
       .toBe(firstBackgroundTabId)
     await expect
-      .poll(
-        async () => (await getTerminalContent(nightshiftPage)).includes(firstBackground.marker),
-        {
-          timeout: 5_000,
-          message: 'Background terminal output was not preserved after scheduler drain'
-        }
-      )
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(firstBackground.marker), {
+        timeout: 5_000,
+        message: 'Background terminal output was not preserved after scheduler drain'
+      })
       .toBe(true)
   })
 
   test('visible bulk output uses the high-priority drain instead of synchronous xterm writes', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const activeTabId = await createTerminalTab(nightshiftPage)
+    const activeTabId = await createTerminalTab(koluxPage)
     if (!activeTabId) {
       throw new Error('Expected a fresh terminal tab')
     }
-    const ptyId = await waitForTabPtyId(nightshiftPage, activeTabId)
-    await resetSchedulerDebug(nightshiftPage)
+    const ptyId = await waitForTabPtyId(koluxPage, activeTabId)
+    await resetSchedulerDebug(koluxPage)
 
     const runId = Date.now()
     const marker = `VISIBLE_THROUGHPUT_${runId}`
@@ -325,16 +322,16 @@ test.describe('Terminal output scheduler', () => {
       `const marker='VISIBLE' + '_THROUGHPUT_' + '${runId}'; process.stdout.write('VISIBLE_FILL_${runId}\\n' + 'x'.repeat(700000) + '\\n' + marker + '\\n')`
     )
 
-    await sendPtyCommands(nightshiftPage, [{ ptyId, command: floodCommand }])
+    await sendPtyCommands(koluxPage, [{ ptyId, command: floodCommand }])
 
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage, 12_000)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage, 12_000)).includes(marker), {
         timeout: 30_000,
         message: 'Active terminal did not render the visible throughput marker'
       })
       .toBe(true)
 
-    const debug = await getSchedulerDebug(nightshiftPage)
+    const debug = await getSchedulerDebug(koluxPage)
     await testInfo.attach('terminal-visible-throughput-proof', {
       body: JSON.stringify(debug, null, 2),
       contentType: 'application/json'
@@ -348,24 +345,24 @@ test.describe('Terminal output scheduler', () => {
   })
 
   test('hidden overflow restores from main-owned terminal state when the tab becomes visible', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const foregroundTabId = await getActiveTabId(nightshiftPage)
+    const foregroundTabId = await getActiveTabId(koluxPage)
     if (!foregroundTabId) {
       throw new Error('Expected an initial terminal tab')
     }
-    const hiddenTabId = await createTerminalTab(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const hiddenPtyId = await waitForTabPtyId(nightshiftPage, hiddenTabId)
+    const hiddenTabId = await createTerminalTab(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const hiddenPtyId = await waitForTabPtyId(koluxPage, hiddenTabId)
 
-    await tabLocator(nightshiftPage, foregroundTabId).click()
+    await tabLocator(koluxPage, foregroundTabId).click()
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'Foreground terminal tab did not become active before hidden flood'
       })
@@ -376,32 +373,32 @@ test.describe('Terminal output scheduler', () => {
       `for (let i = 0; i < 55000; i++) console.log('RECOVER_FILL_' + i + '_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'); console.log('${marker}')`
     )
 
-    await sendPtyCommands(nightshiftPage, [{ ptyId: hiddenPtyId, command: floodCommand }])
+    await sendPtyCommands(koluxPage, [{ ptyId: hiddenPtyId, command: floodCommand }])
 
     await expect
-      .poll(async () => mainSnapshotContains(nightshiftPage, hiddenPtyId, marker), {
+      .poll(async () => mainSnapshotContains(koluxPage, hiddenPtyId, marker), {
         timeout: 30_000,
         message: 'Main-owned terminal snapshot did not capture the hidden flood marker'
       })
       .toBe(true)
 
-    await tabLocator(nightshiftPage, hiddenTabId).click()
+    await tabLocator(koluxPage, hiddenTabId).click()
     await expect
-      .poll(() => getDomActiveTabId(nightshiftPage), {
+      .poll(() => getDomActiveTabId(koluxPage), {
         timeout: 5_000,
         message: 'Hidden terminal tab did not become visible for recovery verification'
       })
       .toBe(hiddenTabId)
 
     await expect
-      .poll(async () => (await getTerminalContent(nightshiftPage)).includes(marker), {
+      .poll(async () => (await getTerminalContent(koluxPage)).includes(marker), {
         timeout: 10_000,
         message: 'Hidden terminal did not restore the marker from main-owned state'
       })
       .toBe(true)
 
-    expect(await getTerminalContent(nightshiftPage)).not.toContain(
-      'Nightshift skipped hidden terminal output'
+    expect(await getTerminalContent(koluxPage)).not.toContain(
+      'Kolux skipped hidden terminal output'
     )
   })
 })

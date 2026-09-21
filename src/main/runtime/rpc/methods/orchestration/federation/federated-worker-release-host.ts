@@ -8,7 +8,7 @@ import {
   captureWorkerOutputArchive,
   summarizeWorkerOutputArchive
 } from '../../../../orchestration/worker-output-archive'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { readArchivedWorkerOutput } from '../worker/worker-archive-read'
 import {
   archiveSummary,
@@ -23,7 +23,7 @@ import {
 } from '../worker/worker-release-close-error'
 
 export async function readRemoteAttachmentArchive(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   attachment: RemoteDispatchAttachmentRow
   source?: 'auto' | 'transcript' | 'terminal'
   cursor?: string | number
@@ -53,7 +53,7 @@ export async function readRemoteAttachmentArchive(args: {
 }
 
 export async function releaseRemoteAttachment(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   attachment: RemoteDispatchAttachmentRow
   observation: Awaited<ReturnType<typeof inspectRemoteAttachment>>
   mode?: 'interactive' | 'recovery'
@@ -267,7 +267,7 @@ export async function releaseRemoteAttachment(args: {
 }
 
 function remoteAttachmentLeaseIsCurrent(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   attachment: RemoteDispatchAttachmentRow,
   observation: Awaited<ReturnType<typeof inspectRemoteAttachment>>,
   resource: WorkerTerminalResourceRow

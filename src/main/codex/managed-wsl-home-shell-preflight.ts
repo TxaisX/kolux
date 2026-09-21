@@ -11,7 +11,7 @@ import {
 
 type WslShellPreflightEnvironment = {
   CODEX_HOME?: string
-  NIGHTSHIFT_CODEX_HOME?: string
+  KOLUX_CODEX_HOME?: string
   WSL_DISTRO_NAME?: string
 }
 
@@ -26,11 +26,11 @@ export function resolveManagedWslCodexShellPreflightTarget(
   env: WslShellPreflightEnvironment
 ): ManagedWslCodexShellPreflightTarget | null {
   const codexHome = env.CODEX_HOME?.trim()
-  const nightshiftCodexHome = env.NIGHTSHIFT_CODEX_HOME?.trim()
+  const koluxCodexHome = env.KOLUX_CODEX_HOME?.trim()
   const wslDistro = env.WSL_DISTRO_NAME?.trim()
   if (
     !codexHome ||
-    codexHome !== nightshiftCodexHome ||
+    codexHome !== koluxCodexHome ||
     !wslDistro ||
     /[\\/\r\n]/.test(wslDistro) ||
     !isAbsolutePosixPathWithoutDotSegments(codexHome)

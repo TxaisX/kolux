@@ -7,7 +7,7 @@
  * - closing panes works
  */
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   closeActiveTerminalPane,
   countVisibleTerminalPanes,
@@ -25,8 +25,8 @@ test.describe.configure({ mode: 'serial' })
 test.describe('Terminal Panes', () => {
   registerTerminalPaneMountReadiness()
 
-  test('Always-on pane header split button hover stays transparent', async ({ nightshiftPage }) => {
-    const splitButton = nightshiftPage.getByRole('button', { name: 'Split Terminal Right' })
+  test('Always-on pane header split button hover stays transparent', async ({ koluxPage }) => {
+    const splitButton = koluxPage.getByRole('button', { name: 'Split Terminal Right' })
     await expect(splitButton).toBeVisible()
     await splitButton.hover()
 
@@ -46,15 +46,15 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - resizing terminal panes works
    */
-  test('shows a pane divider after splitting', async ({ nightshiftPage }) => {
+  test('shows a pane divider after splitting', async ({ koluxPage }) => {
     // Why: headless Playwright cannot exercise the real pointer-capture resize
     // path reliably, so the default suite only verifies the precondition for
     // resizing: splitting creates a visible divider for the active layout.
-    const panesBefore = await countVisibleTerminalPanes(nightshiftPage)
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, panesBefore + 1)
+    const panesBefore = await countVisibleTerminalPanes(koluxPage)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, panesBefore + 1)
 
-    await expect(nightshiftPage.locator('.pane-divider.is-vertical').first()).toBeVisible({
+    await expect(koluxPage.locator('.pane-divider.is-vertical').first()).toBeVisible({
       timeout: 3_000
     })
   })
@@ -69,16 +69,16 @@ test.describe('Terminal Panes', () => {
    * mouse API only produces when the Electron window is visible. In headless
    * mode setPointerCapture silently fails, pointermove never fires on the
    * divider, and the resize has no effect. Run with:
-   *   NIGHTSHIFT_E2E_HEADFUL=1 pnpm run test:e2e
+   *   KOLUX_E2E_HEADFUL=1 pnpm run test:e2e
    */
-  test('@headful can resize terminal panes by real mouse drag', async ({ nightshiftPage }) => {
+  test('@headful can resize terminal panes by real mouse drag', async ({ koluxPage }) => {
     // Split the terminal to create a resizable divider
-    const panesBefore = await countVisibleTerminalPanes(nightshiftPage)
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, panesBefore + 1)
+    const panesBefore = await countVisibleTerminalPanes(koluxPage)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, panesBefore + 1)
 
     // Get the pane widths before resize
-    const paneWidthsBefore = await nightshiftPage.evaluate(() => {
+    const paneWidthsBefore = await koluxPage.evaluate(() => {
       const xterms = document.querySelectorAll('.xterm')
       return Array.from(xterms)
         .filter((x) => (x as HTMLElement).offsetParent !== null)
@@ -87,7 +87,7 @@ test.describe('Terminal Panes', () => {
     expect(paneWidthsBefore.length).toBeGreaterThanOrEqual(2)
 
     // Find the vertical pane divider and drag it
-    const divider = nightshiftPage.locator('.pane-divider.is-vertical').first()
+    const divider = koluxPage.locator('.pane-divider.is-vertical').first()
     await expect(divider).toBeVisible({ timeout: 3_000 })
     const box = await divider.boundingBox()
     expect(box).not.toBeNull()
@@ -95,16 +95,16 @@ test.describe('Terminal Panes', () => {
     // Drag the divider 150px to the right to resize panes
     const startX = box!.x + box!.width / 2
     const startY = box!.y + box!.height / 2
-    await nightshiftPage.mouse.move(startX, startY)
-    await nightshiftPage.mouse.down()
-    await nightshiftPage.mouse.move(startX + 150, startY, { steps: 20 })
-    await nightshiftPage.mouse.up()
+    await koluxPage.mouse.move(startX, startY)
+    await koluxPage.mouse.down()
+    await koluxPage.mouse.move(startX + 150, startY, { steps: 20 })
+    await koluxPage.mouse.up()
 
     // Verify pane widths changed
     await expect
       .poll(
         async () => {
-          const widthsAfter = await nightshiftPage.evaluate(() => {
+          const widthsAfter = await koluxPage.evaluate(() => {
             const xterms = document.querySelectorAll('.xterm')
             return Array.from(xterms)
               .filter((x) => (x as HTMLElement).offsetParent !== null)
@@ -122,17 +122,17 @@ test.describe('Terminal Panes', () => {
   })
 
   test('@headful resizing split panes forwards only the settled PTY size', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const ptyIds = snapshot.panes
       .map((pane) => pane.ptyId)
       .filter((ptyId): ptyId is string => Boolean(ptyId))
 
     for (const ptyId of ptyIds) {
       await sendToTerminal(
-        nightshiftPage,
+        koluxPage,
         ptyId,
         "export PS1='ISSUE2910_PROMPT$ '; export PROMPT=\"$PS1\"; trap 'printf \"\\nISSUE2910_WINCH\\n\"' WINCH; clear; printf 'ISSUE2910_READY\\n'\r"
       )
@@ -141,28 +141,28 @@ test.describe('Terminal Panes', () => {
     await expect
       .poll(
         async () =>
-          (await readVisiblePaneContents(nightshiftPage)).every((content) =>
+          (await readVisiblePaneContents(koluxPage)).every((content) =>
             content.includes('ISSUE2910_READY')
           ),
         { timeout: 10_000, message: 'Split panes did not receive resize-regression prompt setup' }
       )
       .toBe(true)
 
-    const divider = nightshiftPage.locator('.pane-divider.is-vertical').first()
+    const divider = koluxPage.locator('.pane-divider.is-vertical').first()
     await expect(divider).toBeVisible({ timeout: 3_000 })
     const box = await divider.boundingBox()
     expect(box).not.toBeNull()
 
     const startX = box!.x + box!.width / 2
     const startY = box!.y + box!.height / 2
-    await nightshiftPage.mouse.move(startX, startY)
-    await nightshiftPage.mouse.down()
-    await nightshiftPage.mouse.move(startX - 350, startY, { steps: 40 })
-    await nightshiftPage.mouse.move(startX + 250, startY, { steps: 40 })
-    await nightshiftPage.mouse.up()
-    await nightshiftPage.waitForTimeout(500)
+    await koluxPage.mouse.move(startX, startY)
+    await koluxPage.mouse.down()
+    await koluxPage.mouse.move(startX - 350, startY, { steps: 40 })
+    await koluxPage.mouse.move(startX + 250, startY, { steps: 40 })
+    await koluxPage.mouse.up()
+    await koluxPage.waitForTimeout(500)
 
-    const paneContents = await readVisiblePaneContents(nightshiftPage)
+    const paneContents = await readVisiblePaneContents(koluxPage)
     for (const content of paneContents) {
       const promptRedraws = content.match(/ISSUE2910_PROMPT/g)?.length ?? 0
       const winchNotifications = content.match(/ISSUE2910_WINCH/g)?.length ?? 0
@@ -175,23 +175,21 @@ test.describe('Terminal Panes', () => {
    * User Prompt:
    * - closing panes works
    */
-  test('closing a split pane removes it and remaining pane fills space', async ({
-    nightshiftPage
-  }) => {
-    const panesBefore = await countVisibleTerminalPanes(nightshiftPage)
+  test('closing a split pane removes it and remaining pane fills space', async ({ koluxPage }) => {
+    const panesBefore = await countVisibleTerminalPanes(koluxPage)
 
     // Split the terminal
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, panesBefore + 1)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, panesBefore + 1)
 
-    const panesAfterSplit = await countVisibleTerminalPanes(nightshiftPage)
+    const panesAfterSplit = await countVisibleTerminalPanes(koluxPage)
     expect(panesAfterSplit).toBeGreaterThanOrEqual(2)
 
-    await closeActiveTerminalPane(nightshiftPage)
-    await waitForPaneCount(nightshiftPage, panesAfterSplit - 1)
+    await closeActiveTerminalPane(koluxPage)
+    await waitForPaneCount(koluxPage, panesAfterSplit - 1)
 
     // The remaining pane should fill the available space
-    const paneWidth = await nightshiftPage.evaluate(() => {
+    const paneWidth = await koluxPage.evaluate(() => {
       const xterms = document.querySelectorAll('.xterm')
       const visible = Array.from(xterms).find(
         (x) => (x as HTMLElement).offsetParent !== null

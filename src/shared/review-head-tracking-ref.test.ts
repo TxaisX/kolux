@@ -29,13 +29,11 @@ describe('reviewHeadRemoteRefComponent', () => {
     )
   })
 
-  it('builds provider refs under the nightshift namespace', () => {
+  it('builds provider refs under the kolux namespace', () => {
     const component = reviewHeadRemoteRefComponent('origin', 'git@github.com:org/repo.git')
-    expect(githubPullRequestHeadLocalRef(component, 42)).toBe(
-      `refs/nightshift/pull/${component}/42`
-    )
+    expect(githubPullRequestHeadLocalRef(component, 42)).toBe(`refs/kolux/pull/${component}/42`)
     expect(gitlabMergeRequestHeadLocalRef(component, 77)).toBe(
-      `refs/nightshift/merge-requests/${component}/77`
+      `refs/kolux/merge-requests/${component}/77`
     )
   })
 })

@@ -6,10 +6,10 @@
  * answering. That is the wedge shape #17817 and #17838 are about: a link that
  * looks perfectly healthy to TCP and can only be judged by an application probe.
  *
- * Requires: NIGHTSHIFT_E2E_SSH_DOCKER=1 and Docker available.
+ * Requires: KOLUX_E2E_SSH_DOCKER=1 and Docker available.
  */
 import { execFileSync } from 'node:child_process'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   startDockerSshRelayTarget,
@@ -24,7 +24,7 @@ import {
   waitForTerminalOutput
 } from './helpers/terminal'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 /** Generous: the point is that a verdict arrives at all, not its exact latency. */
 const LOST_VERDICT_BUDGET_MS = 90_000
 
@@ -43,11 +43,11 @@ async function readSshStatus(
 }
 
 test.describe('Docker SSH half-open link', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Uses docker pause against a Linux container.')
 
   test('declares a frozen host lost instead of wedging, and recovers @half-open', async ({
-    nightshiftPage,
+    koluxPage,
     registerPostElectronShutdownCleanup
   }, testInfo) => {
     test.setTimeout(420_000)
@@ -60,17 +60,17 @@ test.describe('Docker SSH half-open link', () => {
         cleanupDockerSshRelayTarget(captured)
       })
 
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      const ptyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      const ptyId = await waitForActivePanePtyId(koluxPage, 60_000)
 
       const runId = String(Date.now())
-      await execInTerminal(nightshiftPage, ptyId, `printf 'LIVE_%s\\n' ${runId}`)
-      await waitForTerminalOutput(nightshiftPage, `LIVE_${runId}`, 60_000)
-      expect(await readSshStatus(nightshiftPage, remote.targetId)).toBe('connected')
+      await execInTerminal(koluxPage, ptyId, `printf 'LIVE_%s\\n' ${runId}`)
+      await waitForTerminalOutput(koluxPage, `LIVE_${runId}`, 60_000)
+      expect(await readSshStatus(koluxPage, remote.targetId)).toBe('connected')
 
       // Freeze the host: TCP keeps ACKing, the application stops answering.
       docker(['pause', target.containerName])
@@ -81,7 +81,7 @@ test.describe('Docker SSH half-open link', () => {
       await expect
         .poll(
           async () => {
-            verdict = await readSshStatus(nightshiftPage, remote.targetId)
+            verdict = await readSshStatus(koluxPage, remote.targetId)
             return verdict
           },
           { timeout: LOST_VERDICT_BUDGET_MS, message: 'frozen host remained connected' }
@@ -104,11 +104,11 @@ test.describe('Docker SSH half-open link', () => {
 
       // The link must be usable again once the host thaws.
       await expect
-        .poll(() => readSshStatus(nightshiftPage, remote.targetId), { timeout: 120_000 })
+        .poll(() => readSshStatus(koluxPage, remote.targetId), { timeout: 120_000 })
         .toBe('connected')
-      const recoveredPtyId = await waitForActivePanePtyId(nightshiftPage, 60_000)
-      await execInTerminal(nightshiftPage, recoveredPtyId, `printf 'RECOVERED_%s\\n' ${runId}`)
-      await waitForTerminalOutput(nightshiftPage, `RECOVERED_${runId}`, 90_000)
+      const recoveredPtyId = await waitForActivePanePtyId(koluxPage, 60_000)
+      await execInTerminal(koluxPage, recoveredPtyId, `printf 'RECOVERED_%s\\n' ${runId}`)
+      await waitForTerminalOutput(koluxPage, `RECOVERED_${runId}`, 90_000)
     } finally {
       if (target && paused) {
         try {

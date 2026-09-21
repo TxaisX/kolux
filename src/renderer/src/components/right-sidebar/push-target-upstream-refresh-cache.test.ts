@@ -16,7 +16,7 @@ import type { GitPushTarget } from '../../../../shared/worktree/types'
 const pushTarget: GitPushTarget = {
   remoteName: 'fork',
   branchName: 'feature/pr-head',
-  remoteUrl: 'https://github.com/contributor/nightshift.git'
+  remoteUrl: 'https://github.com/contributor/kolux.git'
 }
 
 const unchangedStatus: GitStatusResult = {

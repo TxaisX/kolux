@@ -12,7 +12,7 @@ import type { WorkspaceSessionState } from '../../../shared/workspace-session-st
 vi.mock('electron', () => ({
   app: {
     getPath: () => tmpdir(),
-    getName: () => 'nightshift-test',
+    getName: () => 'kolux-test',
     getVersion: () => '0.0.0-test',
     isPackaged: false,
     on: () => {},
@@ -52,8 +52,8 @@ afterEach(() => {
 })
 
 function createStore(): InstanceType<typeof Store> {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'nightshift-store-prune-gate-')))
-  const store = new Store({ dataFile: join(dir, 'nightshift-data.json') })
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'kolux-store-prune-gate-')))
+  const store = new Store({ dataFile: join(dir, 'kolux-data.json') })
   stores.push(store)
   return store
 }

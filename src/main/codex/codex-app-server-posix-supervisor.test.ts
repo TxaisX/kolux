@@ -22,7 +22,7 @@ describe('structured provider supervision', () => {
     expect(spec.args).toEqual(['-e', POSIX_PROVIDER_SUPERVISOR_SCRIPT])
     expect(spec.env.PATH).toBe('/bin')
     expect(
-      JSON.parse(Buffer.from(spec.env.NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC!, 'base64').toString())
+      JSON.parse(Buffer.from(spec.env.KOLUX_PROVIDER_SUPERVISOR_SPEC!, 'base64').toString())
     ).toEqual(
       expect.objectContaining({
         command: '/opt/codex',
@@ -31,10 +31,10 @@ describe('structured provider supervision', () => {
       })
     )
     expect(
-      JSON.parse(Buffer.from(spec.env.NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC!, 'base64').toString())
+      JSON.parse(Buffer.from(spec.env.KOLUX_PROVIDER_SUPERVISOR_SPEC!, 'base64').toString())
     ).not.toHaveProperty('env')
     expect(POSIX_PROVIDER_SUPERVISOR_SCRIPT).toContain(
-      'delete childEnv.NIGHTSHIFT_PROVIDER_SUPERVISOR_SPEC'
+      'delete childEnv.KOLUX_PROVIDER_SUPERVISOR_SPEC'
     )
     expect(POSIX_PROVIDER_SUPERVISOR_SCRIPT).toContain('delete childEnv.ELECTRON_RUN_AS_NODE')
     expect(spec.env.ELECTRON_RUN_AS_NODE).toBe('1')

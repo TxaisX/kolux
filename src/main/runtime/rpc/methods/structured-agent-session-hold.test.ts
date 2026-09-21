@@ -20,7 +20,7 @@ import {
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
 import { STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { AgentSessionRecordStore } from '../../agent-session-record-store'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcResponse } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-agent-session'
@@ -37,7 +37,7 @@ const CLIENT = {
 let root: string
 let store: AgentSessionRecordStore
 let host: StructuredAgentSessionHost
-let runtime: NightshiftRuntimeService
+let runtime: KoluxRuntimeService
 let dispatcher: RpcDispatcher
 let closeSession: Mock<NonNullable<StructuredAgentSessionAdapter['closeSession']>>
 let requests = 0
@@ -55,7 +55,7 @@ async function call(method: string, params: unknown): Promise<RpcResponse> {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-hold-wire-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-hold-wire-'))
   resetHostTestOperationIds()
   requests = 0
   structuredNativeChatEnabled = true
@@ -87,12 +87,12 @@ beforeEach(async () => {
     now: () => NOW
   })
   setStructuredAgentSessionHost(host)
-  runtime = new NightshiftRuntimeService()
+  runtime = new KoluxRuntimeService()
   // The structured surface is settings-gated for every caller, in-process included.
   vi.spyOn(runtime, 'getClientSettings').mockImplementation(
     () =>
       ({ experimentalStructuredNativeChat: structuredNativeChatEnabled }) as ReturnType<
-        NightshiftRuntimeService['getClientSettings']
+        KoluxRuntimeService['getClientSettings']
       >
   )
   dispatcher = new RpcDispatcher({ runtime, methods: STRUCTURED_AGENT_SESSION_METHODS })

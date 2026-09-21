@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PNG } from 'pngjs'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -32,10 +32,10 @@ import { waitForTabParked } from './helpers/terminal-hidden-parking'
 //  3. still following (frame number advances on screen) after convergence,
 //  4. xterm grid == fit proposal == PTY-applied size (no stale 80x24 PTY).
 
-const PARKING_DELAY_MS = Number(process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS) || 500
+const PARKING_DELAY_MS = Number(process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS) || 500
 
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
+  koluxAppExtraEnv: { KOLUX_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
 })
 
 const FIXTURE_PATH = path.join(__dirname, 'fixtures', 'codex-inline-live-block-fixture.cjs')
@@ -534,53 +534,53 @@ async function streamWhileParked(setup: StreamingTabSetup, minFrames: number): P
 
 test.describe('Inline TUI reveal convergence', () => {
   test('hidden-but-mounted tab reveal converges while the inline TUI streams', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(120_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo)
+    const setup = await startStreamingInlineTui(koluxPage, testInfo)
     try {
       // Tab B hides tab A. Reveal quickly — inside the cold-park delay — so
       // the reveal exercises the hidden-delivery-gate restore, not parking.
-      const tabBId = await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
+      const tabBId = await createActiveTerminalTab(koluxPage, setup.worktreeId)
       expect(tabBId).not.toBe(setup.tabId)
-      await nightshiftPage.waitForTimeout(Math.max(50, Math.min(PARKING_DELAY_MS / 2, 200)))
+      await koluxPage.waitForTimeout(Math.max(50, Math.min(PARKING_DELAY_MS / 2, 200)))
       expect(
-        await isTerminalPaneMounted(nightshiftPage, setup.tabId),
+        await isTerminalPaneMounted(koluxPage, setup.tabId),
         'hidden-mounted scenario cold-parked before reveal'
       ).toBe(true)
 
-      await activateTerminalTab(nightshiftPage, setup.tabId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await assertRevealConvergence(nightshiftPage, testInfo, setup, 'hidden-mounted-reveal')
+      await activateTerminalTab(koluxPage, setup.tabId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await assertRevealConvergence(koluxPage, testInfo, setup, 'hidden-mounted-reveal')
     } finally {
       await setup.stop()
     }
   })
 
   test('worktree switch reveal converges after a hidden-time window resize', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }, testInfo) => {
     test.setTimeout(120_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo, {
+    const setup = await startStreamingInlineTui(koluxPage, testInfo, {
       historyLinesPerSecond: 20
     })
     try {
       // Surface hide: switch to ANOTHER WORKTREE (the field action), which
       // suspends rendering and takes the heavy resume path on return.
-      const otherWorktreeId = await switchToOtherWorktree(nightshiftPage, setup.worktreeId)
+      const otherWorktreeId = await switchToOtherWorktree(koluxPage, setup.worktreeId)
       test.skip(!otherWorktreeId, 'test session has a single worktree; cannot surface-hide')
 
       // Change the window size while the pane is display:none (0x0 container,
       // no fit runs). This is what Cmd+L's sidebar toggle does to every hidden
       // workspace: at reveal the pane grid differs from the daemon snapshot's.
       await resizeAppWindow(electronApp, -180, -120)
-      await nightshiftPage.waitForTimeout(2_500)
+      await koluxPage.waitForTimeout(2_500)
 
-      await switchToWorktree(nightshiftPage, setup.worktreeId)
-      await activateTerminalTab(nightshiftPage, setup.tabId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await assertRevealConvergence(nightshiftPage, testInfo, setup, 'worktree-resize-reveal')
+      await switchToWorktree(koluxPage, setup.worktreeId)
+      await activateTerminalTab(koluxPage, setup.tabId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await assertRevealConvergence(koluxPage, testInfo, setup, 'worktree-resize-reveal')
     } finally {
       await resizeAppWindow(electronApp, 180, 120).catch(() => {})
       await setup.stop()
@@ -588,28 +588,28 @@ test.describe('Inline TUI reveal convergence', () => {
   })
 
   test('parked tab reveal converges across repeated cycles while the inline TUI streams heavily', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(480_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo, {
+    const setup = await startStreamingInlineTui(koluxPage, testInfo, {
       historyLinesPerSecond: 30,
       seedLines: 8_000
     })
     try {
       // Tab B hides tab A; the decoy then hides tab B so B (most recently
       // hidden) takes the #8262 last-active exemption and tab A cold-parks.
-      const tabBId = await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
-      const decoyTabId = await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
+      const tabBId = await createActiveTerminalTab(koluxPage, setup.worktreeId)
+      const decoyTabId = await createActiveTerminalTab(koluxPage, setup.worktreeId)
 
       // The field failure is periodic, not every reveal — cycle the park →
       // stream → reveal boundary and require convergence every time.
       const CYCLES = 6
       for (let cycle = 0; cycle < CYCLES; cycle += 1) {
         if (cycle > 0) {
-          await activateTerminalTab(nightshiftPage, tabBId)
-          await activateTerminalTab(nightshiftPage, decoyTabId)
+          await activateTerminalTab(koluxPage, tabBId)
+          await activateTerminalTab(koluxPage, decoyTabId)
         }
-        await waitForTabParked(nightshiftPage, setup.tabId, { parkDelayMs: PARKING_DELAY_MS })
+        await waitForTabParked(koluxPage, setup.tabId, { parkDelayMs: PARKING_DELAY_MS })
 
         // Accumulate a field-sized backlog against the parked (unmounted)
         // view so the reveal replay races the live stream, like a real Codex.
@@ -618,19 +618,14 @@ test.describe('Inline TUI reveal convergence', () => {
         // Reveal under CPU throttle: a long replay parse + throttled frames is
         // the loaded-machine window where the corrective fit and follow-anchor
         // lose their races in the field.
-        await withCpuThrottle(nightshiftPage, 6, async () => {
-          await activateTerminalTab(nightshiftPage, setup.tabId)
-          await waitForActiveTerminalManager(nightshiftPage, 30_000)
-          await nightshiftPage.waitForTimeout(3_000)
+        await withCpuThrottle(koluxPage, 6, async () => {
+          await activateTerminalTab(koluxPage, setup.tabId)
+          await waitForActiveTerminalManager(koluxPage, 30_000)
+          await koluxPage.waitForTimeout(3_000)
         })
-        const revealed = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+        const revealed = await waitForPaneIdentitySnapshot(koluxPage, 1)
         expect(revealed.panes[0]?.ptyId).toBe(setup.ptyId)
-        await assertRevealConvergence(
-          nightshiftPage,
-          testInfo,
-          setup,
-          `parked-heavy-reveal-c${cycle}`
-        )
+        await assertRevealConvergence(koluxPage, testInfo, setup, `parked-heavy-reveal-c${cycle}`)
       }
     } finally {
       await setup.stop()
@@ -638,83 +633,83 @@ test.describe('Inline TUI reveal convergence', () => {
   })
 
   test('rapid tab hide/reveal flapping never wedges delivery for the streaming inline TUI', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(150_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo, {
+    const setup = await startStreamingInlineTui(koluxPage, testInfo, {
       historyLinesPerSecond: 10
     })
     try {
-      const tabBId = await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
+      const tabBId = await createActiveTerminalTab(koluxPage, setup.worktreeId)
       // Rapid flapping drives the hidden-delivery gate claim/release IPC and
       // the hidden-output restore against each other at varied phases — the
       // desync class behind "bytes dropped on a visible pane" field freezes.
       for (let flap = 0; flap < 12; flap += 1) {
-        await activateTerminalTab(nightshiftPage, tabBId)
-        await nightshiftPage.waitForTimeout(50 + (flap % 3) * 120)
-        await activateTerminalTab(nightshiftPage, setup.tabId)
-        await nightshiftPage.waitForTimeout(50 + ((flap * 7) % 5) * 90)
+        await activateTerminalTab(koluxPage, tabBId)
+        await koluxPage.waitForTimeout(50 + (flap % 3) * 120)
+        await activateTerminalTab(koluxPage, setup.tabId)
+        await koluxPage.waitForTimeout(50 + ((flap * 7) % 5) * 90)
       }
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await assertRevealConvergence(nightshiftPage, testInfo, setup, 'tab-flapping-reveal')
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await assertRevealConvergence(koluxPage, testInfo, setup, 'tab-flapping-reveal')
     } finally {
       await setup.stop()
     }
   })
 
   test('rapid worktree switch flapping never wedges delivery for the streaming inline TUI', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(150_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo, {
+    const setup = await startStreamingInlineTui(koluxPage, testInfo, {
       historyLinesPerSecond: 10,
       seedLines: 4_000
     })
     try {
-      const otherWorktreeId = await switchToOtherWorktree(nightshiftPage, setup.worktreeId)
+      const otherWorktreeId = await switchToOtherWorktree(koluxPage, setup.worktreeId)
       test.skip(!otherWorktreeId, 'test session has a single worktree; cannot surface-flap')
       // Surface-level flapping (the field action): suspend/resume rendering +
       // heavy resume path race the gate resync and reveal repaint each cycle,
       // under CPU throttle to widen the race windows like a loaded machine.
-      await withCpuThrottle(nightshiftPage, 6, async () => {
+      await withCpuThrottle(koluxPage, 6, async () => {
         for (let flap = 0; flap < 10; flap += 1) {
-          await switchToWorktree(nightshiftPage, otherWorktreeId!)
-          await nightshiftPage.waitForTimeout(60 + (flap % 4) * 110)
-          await switchToWorktree(nightshiftPage, setup.worktreeId)
-          await nightshiftPage.waitForTimeout(60 + ((flap * 5) % 4) * 130)
+          await switchToWorktree(koluxPage, otherWorktreeId!)
+          await koluxPage.waitForTimeout(60 + (flap % 4) * 110)
+          await switchToWorktree(koluxPage, setup.worktreeId)
+          await koluxPage.waitForTimeout(60 + ((flap * 5) % 4) * 130)
         }
       })
-      await activateTerminalTab(nightshiftPage, setup.tabId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await assertRevealConvergence(nightshiftPage, testInfo, setup, 'worktree-flapping-reveal')
+      await activateTerminalTab(koluxPage, setup.tabId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await assertRevealConvergence(koluxPage, testInfo, setup, 'worktree-flapping-reveal')
     } finally {
       await setup.stop()
     }
   })
 
   test('parked tab reveal converges after a parked-time window resize', async ({
-    nightshiftPage,
+    koluxPage,
     electronApp
   }, testInfo) => {
     test.setTimeout(180_000)
-    const setup = await startStreamingInlineTui(nightshiftPage, testInfo, {
+    const setup = await startStreamingInlineTui(koluxPage, testInfo, {
       historyLinesPerSecond: 20
     })
     try {
-      await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
-      await createActiveTerminalTab(nightshiftPage, setup.worktreeId)
-      await waitForTabParked(nightshiftPage, setup.tabId, { parkDelayMs: PARKING_DELAY_MS })
+      await createActiveTerminalTab(koluxPage, setup.worktreeId)
+      await createActiveTerminalTab(koluxPage, setup.worktreeId)
+      await waitForTabParked(koluxPage, setup.tabId, { parkDelayMs: PARKING_DELAY_MS })
 
       // Resize while parked: the remount measures a grid that matches neither
       // the pre-park xterm nor the daemon snapshot — maximum dimension churn.
       await resizeAppWindow(electronApp, -180, -120)
       await streamWhileParked(setup, 100)
 
-      await activateTerminalTab(nightshiftPage, setup.tabId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      const revealed = await waitForPaneIdentitySnapshot(nightshiftPage, 1)
+      await activateTerminalTab(koluxPage, setup.tabId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      const revealed = await waitForPaneIdentitySnapshot(koluxPage, 1)
       expect(revealed.panes[0]?.ptyId).toBe(setup.ptyId)
-      await assertRevealConvergence(nightshiftPage, testInfo, setup, 'parked-resize-reveal')
+      await assertRevealConvergence(koluxPage, testInfo, setup, 'parked-resize-reveal')
     } finally {
       await resizeAppWindow(electronApp, 180, 120).catch(() => {})
       await setup.stop()

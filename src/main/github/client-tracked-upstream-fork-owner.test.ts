@@ -46,12 +46,12 @@ describe('getPRForBranch', () => {
   it('uses the tracked upstream remote owner for fork branch lookup', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
-        { owner: 'origin-owner', repo: 'nightshift' }
+        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'origin-owner', repo: 'kolux' }
       ],
-      headRepo: { owner: 'origin-owner', repo: 'nightshift' }
+      headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
-    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'nightshift' })
+    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
@@ -105,20 +105,20 @@ describe('getPRForBranch', () => {
     expect(pr).toMatchObject({
       number: 78,
       title: 'Hydrated fork upstream branch PR',
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
-      headRepo: { owner: 'fork-owner', repo: 'nightshift' }
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })
 
   it('uses the tracked upstream remote owner when the fork branch name matches locally', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
-        { owner: 'origin-owner', repo: 'nightshift' }
+        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'origin-owner', repo: 'kolux' }
       ],
-      headRepo: { owner: 'origin-owner', repo: 'nightshift' }
+      headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
-    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'brennanb2025', repo: 'nightshift' })
+    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'brennanb2025', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
@@ -174,8 +174,8 @@ describe('getPRForBranch', () => {
     )
     expect(pr).toMatchObject({
       number: 6433,
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
-      headRepo: { owner: 'brennanb2025', repo: 'nightshift' }
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      headRepo: { owner: 'brennanb2025', repo: 'kolux' }
     })
   })
 
@@ -259,12 +259,12 @@ describe('getPRForBranch', () => {
     getSshGitProviderMock.mockReturnValue(sshGitProvider)
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
-        { owner: 'origin-owner', repo: 'nightshift' }
+        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'origin-owner', repo: 'kolux' }
       ],
-      headRepo: { owner: 'origin-owner', repo: 'nightshift' }
+      headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
-    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'nightshift' })
+    getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'kolux' })
     ghExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
       .mockResolvedValueOnce({ stdout: JSON.stringify([]) })
@@ -298,8 +298,8 @@ describe('getPRForBranch', () => {
     expect(pr).toMatchObject({
       number: 79,
       title: 'SSH same-name fork PR',
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
-      headRepo: { owner: 'fork-owner', repo: 'nightshift' }
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })
 

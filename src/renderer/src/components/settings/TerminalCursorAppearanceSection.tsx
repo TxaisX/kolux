@@ -36,7 +36,7 @@ export function TerminalCursorAppearanceSection({
           )}
           description={translate(
             'auto.components.settings.TerminalAppearanceSection.d455f2ef4f',
-            'Default cursor appearance for Nightshift terminal panes.'
+            'Default cursor appearance for Kolux terminal panes.'
           )}
           keywords={['terminal', 'cursor', 'bar', 'block', 'underline']}
         >

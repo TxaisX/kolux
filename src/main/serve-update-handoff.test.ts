@@ -24,7 +24,7 @@ describe('serve update handoff', () => {
     vi.resetModules()
     appMock.getVersion.mockReturnValue('1.0.51')
     appMock.quit.mockReset()
-    root = mkdtempSync(join(tmpdir(), 'nightshift-serve-handoff-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-serve-handoff-'))
     getCanonicalUserDataPathMock.mockReturnValue(root)
     process.env[SERVE_UPDATE_HANDOFF_PATH_ENV] = getServeUpdateHandoffPath(root)
   })

@@ -21,7 +21,7 @@ import { quoteShell } from './cli-install-path-format'
 const LAUNCHER_DIRECTORY_NAME = 'launcher'
 const LIVE_ENDPOINT_NAME = 'live'
 const INSTALLED_ENDPOINT_NAME = 'installed'
-const LAUNCHER_MARKER = '# nightshift-appimage-stable-launcher'
+const LAUNCHER_MARKER = '# kolux-appimage-stable-launcher'
 const LAUNCHER_WAIT_SECONDS = 5
 const LAUNCHER_MAX_BYTES = 16 * 1024
 
@@ -129,7 +129,7 @@ function replaceOwnedLauncher(
 ): boolean {
   const displacedPath = join(
     dirname(launcherPath),
-    `.nightshift-preserved-launcher-${process.pid}-${randomUUID()}`
+    `.kolux-preserved-launcher-${process.pid}-${randomUUID()}`
   )
   try {
     renameSync(launcherPath, displacedPath)
@@ -235,7 +235,7 @@ while (( SECONDS <= deadline )); do
   fi
   sleep 0.1
 done
-printf 'Nightshift CLI is not ready; reopen Nightshift or register the CLI again.\\n' >&2
+printf 'Kolux CLI is not ready; reopen Kolux or register the CLI again.\\n' >&2
 exit 1
 `
 }

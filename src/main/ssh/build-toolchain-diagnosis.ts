@@ -3,7 +3,7 @@
  *
  * Why this is separate from `ssh-relay-build-toolchain.ts`: everything here is pure —
  * it builds a shell command, parses its output, and formats messages. The relay reaches
- * it over SSH; `nightshiftd` reaches it over a local shell. Keeping it transport-free is what
+ * it over SSH; `koluxd` reaches it over a local shell. Keeping it transport-free is what
  * lets the Node-only bundle reuse it without pulling `ssh2` in behind it.
  */
 // Why: node-pty@1.1.0 ships no Linux prebuild, so the remote `npm install` falls
@@ -153,7 +153,7 @@ export function formatMissingToolchainError(
 ): string {
   const lines = [
     `The remote host is missing the C/C++ build tools (${missingToolNames(status).join(', ')}) ` +
-      `needed to compile Nightshift's relay native modules (node-pty, @parcel/watcher). node-pty has no ` +
+      `needed to compile Kolux's relay native modules (node-pty, @parcel/watcher). node-pty has no ` +
       `prebuilt binary for Linux, so they must be compiled on the remote host.`,
     '',
     'Install the build tools on the remote host, then reconnect:',
@@ -170,7 +170,7 @@ const NODE_HEADERS_TARBALL_RE = /node-v[0-9.]+-headers\.tar\.gz/i
  * Whether a native-deps failure is node-gyp failing to download Node headers from nodejs.org.
  *
  * Why it needs naming: the raw output is forty lines of `gyp http` and stack frames around one
- * `ECONNREFUSED`, and it reads as a broken host or a broken Nightshift. Which of two things it is
+ * `ECONNREFUSED`, and it reads as a broken host or a broken Kolux. Which of two things it is
  * depends on what the local-headers export found first, so the formatter takes that answer.
  */
 export function isNodeHeadersDownloadFailure(message: string): boolean {
@@ -197,7 +197,7 @@ const NODE_HEADERS_CONTEXT =
  *
  * Why the exported-dir case is its own message: the export is the fix, so node-gyp downloading
  * anyway means its `nodedir` env keys were not honoured (a future npm dropping the passthrough,
- * a wrapper scrubbing the env). That is a Nightshift defect, not a host problem, and must not be
+ * a wrapper scrubbing the env). That is a Kolux defect, not a host problem, and must not be
  * reported as one -- it names the dir so the report is checkable.
  */
 export function formatNodeHeadersDownloadError(
@@ -208,7 +208,7 @@ export function formatNodeHeadersDownloadError(
     ? [
         `The remote host could not download the Node.js headers needed to compile node-pty, even ` +
           `though its Node install ships matching headers at ${localHeadersDir}/include/node and ` +
-          `Nightshift pointed node-gyp at them. node-gyp ignored that setting; this is a Nightshift defect, ` +
+          `Kolux pointed node-gyp at them. node-gyp ignored that setting; this is a Kolux defect, ` +
           `please report it with the log below.`,
         '',
         'Workaround on the remote host until then: allow outbound HTTPS to nodejs.org, or point ' +

@@ -34,10 +34,10 @@ export function isNativeChatImageAttachmentPath(path: string): boolean {
   return isImageDropPath(path)
 }
 
-/** True when a path is a clipboard-paste temp file (`nightshift-paste-<ts>-<uuid>.png`).
+/** True when a path is a clipboard-paste temp file (`kolux-paste-<ts>-<uuid>.png`).
  *  Those names are noise in the UI, so the composer shows a friendly label
  *  instead of the basename. */
 export function isNativeChatPastedImagePath(path: string): boolean {
   const base = path.split(/[\\/]/).findLast(Boolean) ?? path
-  return /^nightshift-paste-.+\.png$/i.test(base)
+  return /^kolux-paste-.+\.png$/i.test(base)
 }

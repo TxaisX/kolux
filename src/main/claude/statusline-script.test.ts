@@ -22,7 +22,7 @@ describe('getManagedStatusLineScript (posix)', () => {
     const script = getManagedStatusLineScript('local')
     expect(script).toBe(getManagedStatusLineScript('posix'))
     const guardIndex = script.indexOf('*\'"rate_limits"\'*')
-    const endpointIndex = script.indexOf('NIGHTSHIFT_AGENT_HOOK_ENDPOINT')
+    const endpointIndex = script.indexOf('KOLUX_AGENT_HOOK_ENDPOINT')
     const curlIndex = script.indexOf('curl -sS')
     expect(guardIndex).toBeGreaterThan(-1)
     expect(guardIndex).toBeLessThan(endpointIndex)
@@ -46,13 +46,13 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     const captureIndex = script.indexOf('more.com')
     // Why: the \"-escaped needle makes findstr match the quoted JSON key, not any path containing rate_limits.
     const guardIndex = script.indexOf('findstr.exe" /c:\\"rate_limits\\"')
-    const endpointIndex = script.indexOf('call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%"')
+    const endpointIndex = script.indexOf('call "%KOLUX_AGENT_HOOK_ENDPOINT%"')
     const curlIndex = script.indexOf('curl.exe')
     expect(captureIndex).toBeGreaterThan(-1)
     expect(guardIndex).toBeGreaterThan(captureIndex)
     expect(guardIndex).toBeLessThan(endpointIndex)
     expect(endpointIndex).toBeLessThan(curlIndex)
-    expect(script).toContain('if errorlevel 1 goto :nightshift_statusline_cleanup')
+    expect(script).toContain('if errorlevel 1 goto :kolux_statusline_cleanup')
   })
 
   it('posts the buffered payload file and deletes it afterwards', () => {
@@ -60,17 +60,15 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     const script = getManagedStatusLineScript('local')
     // Why: the stable leaf UUID stays filename-safe even when a host-supplied tab id does not,
     // while the delimiter replacement keeps a surviving legacy numeric key valid on Windows.
-    expect(script).toContain('set "NIGHTSHIFT_STATUSLINE_PANE_ID=%NIGHTSHIFT_PANE_KEY:~-36%"')
+    expect(script).toContain('set "KOLUX_STATUSLINE_PANE_ID=%KOLUX_PANE_KEY:~-36%"')
+    expect(script).toContain('set "KOLUX_STATUSLINE_PANE_ID=%KOLUX_STATUSLINE_PANE_ID::=_%"')
     expect(script).toContain(
-      'set "NIGHTSHIFT_STATUSLINE_PANE_ID=%NIGHTSHIFT_STATUSLINE_PANE_ID::=_%"'
+      'set "KOLUX_STATUSLINE_PAYLOAD_FILE=%TEMP%\\kolux-claude-statusline-%KOLUX_STATUSLINE_PANE_ID%.tmp"'
     )
-    expect(script).toContain(
-      'set "NIGHTSHIFT_STATUSLINE_PAYLOAD_FILE=%TEMP%\\nightshift-claude-statusline-%NIGHTSHIFT_STATUSLINE_PANE_ID%.tmp"'
-    )
-    expect(script).toContain('--data-urlencode "payload@%NIGHTSHIFT_STATUSLINE_PAYLOAD_FILE%"')
+    expect(script).toContain('--data-urlencode "payload@%KOLUX_STATUSLINE_PAYLOAD_FILE%"')
     expect(script).not.toContain('payload@-')
     const curlIndex = script.indexOf('curl.exe')
-    const delIndex = script.indexOf('del "%NIGHTSHIFT_STATUSLINE_PAYLOAD_FILE%"')
+    const delIndex = script.indexOf('del "%KOLUX_STATUSLINE_PAYLOAD_FILE%"')
     expect(delIndex).toBeGreaterThan(curlIndex)
   })
 
@@ -79,11 +77,11 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     const script = getManagedStatusLineScript('local')
     // Why: the posted field comes from an always-defined variable so an unset
     // CLAUDE_CONFIG_DIR yields "configDir=" (matching POSIX + the null snapshot).
-    expect(script).toContain('set "NIGHTSHIFT_STATUSLINE_CONFIG_DIR_FIELD=configDir="')
+    expect(script).toContain('set "KOLUX_STATUSLINE_CONFIG_DIR_FIELD=configDir="')
     expect(script).toContain(
-      'if defined CLAUDE_CONFIG_DIR set "NIGHTSHIFT_STATUSLINE_CONFIG_DIR_FIELD=configDir=%CLAUDE_CONFIG_DIR%"'
+      'if defined CLAUDE_CONFIG_DIR set "KOLUX_STATUSLINE_CONFIG_DIR_FIELD=configDir=%CLAUDE_CONFIG_DIR%"'
     )
-    expect(script).toContain('--data-urlencode "%NIGHTSHIFT_STATUSLINE_CONFIG_DIR_FIELD%"')
+    expect(script).toContain('--data-urlencode "%KOLUX_STATUSLINE_CONFIG_DIR_FIELD%"')
     expect(script).not.toContain('"configDir=%CLAUDE_CONFIG_DIR%"')
   })
 
@@ -91,12 +89,12 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     stubPlatform('win32')
     const script = getManagedStatusLineScript('local')
     const paneGuardIndex = script.indexOf(
-      'if "%NIGHTSHIFT_PANE_KEY%"=="" goto :nightshift_agent_hook_drain_stdin'
+      'if "%KOLUX_PANE_KEY%"=="" goto :kolux_agent_hook_drain_stdin'
     )
     const captureIndex = script.indexOf('more.com')
     expect(paneGuardIndex).toBeGreaterThan(-1)
     expect(paneGuardIndex).toBeLessThan(captureIndex)
-    expect(script).toContain(':nightshift_agent_hook_drain_stdin')
+    expect(script).toContain(':kolux_agent_hook_drain_stdin')
   })
 
   it('throttles with an all-builtin seconds-of-day stamp that fails open to posting', () => {
@@ -104,16 +102,16 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     const script = getManagedStatusLineScript('local')
     const captureIndex = script.indexOf('more.com')
     const stampIndex = script.indexOf(
-      'set "NIGHTSHIFT_STATUSLINE_STAMP_FILE=%TEMP%\\nightshift-claude-statusline-last-%NIGHTSHIFT_STATUSLINE_PANE_ID%.tmp"'
+      'set "KOLUX_STATUSLINE_STAMP_FILE=%TEMP%\\kolux-claude-statusline-last-%KOLUX_STATUSLINE_PANE_ID%.tmp"'
     )
     const throttleIndex = script.indexOf(
-      `if %NIGHTSHIFT_STATUSLINE_ELAPSED% GEQ 0 if %NIGHTSHIFT_STATUSLINE_ELAPSED% LSS ${CLAUDE_STATUSLINE_MIN_POST_INTERVAL_SECONDS} goto :nightshift_statusline_cleanup`
+      `if %KOLUX_STATUSLINE_ELAPSED% GEQ 0 if %KOLUX_STATUSLINE_ELAPSED% LSS ${CLAUDE_STATUSLINE_MIN_POST_INTERVAL_SECONDS} goto :kolux_statusline_cleanup`
     )
     const findstrIndex = script.indexOf('findstr.exe')
     const stampWriteIndex = script.indexOf(
-      'if defined NIGHTSHIFT_STATUSLINE_NOW (>"%NIGHTSHIFT_STATUSLINE_STAMP_FILE%" echo %NIGHTSHIFT_STATUSLINE_NOW%)'
+      'if defined KOLUX_STATUSLINE_NOW (>"%KOLUX_STATUSLINE_STAMP_FILE%" echo %KOLUX_STATUSLINE_NOW%)'
     )
-    const tokenGuardIndex = script.indexOf('if "%NIGHTSHIFT_AGENT_HOOK_TOKEN%"=="" goto')
+    const tokenGuardIndex = script.indexOf('if "%KOLUX_AGENT_HOOK_TOKEN%"=="" goto')
     const curlIndex = script.indexOf('curl.exe')
     // Why: the check precedes findstr so throttled ticks skip that spawn too, but the stamp
     // only advances after every post guard passes — skipped ticks must not defer the next post.
@@ -123,18 +121,16 @@ describe('getManagedStatusLineScript (win32 local)', () => {
     expect(stampWriteIndex).toBeGreaterThan(tokenGuardIndex)
     expect(stampWriteIndex).toBeLessThan(curlIndex)
     // Fail-open shape: undefined elapsed (unparseable time/stamp) proceeds to the probe.
+    expect(script).toContain('if not defined KOLUX_STATUSLINE_ELAPSED goto :kolux_statusline_probe')
     expect(script).toContain(
-      'if not defined NIGHTSHIFT_STATUSLINE_ELAPSED goto :nightshift_statusline_probe'
+      'for /f "delims=0123456789" %%d in ("%KOLUX_STATUSLINE_LAST%") do set "KOLUX_STATUSLINE_LAST="'
     )
     expect(script).toContain(
-      'for /f "delims=0123456789" %%d in ("%NIGHTSHIFT_STATUSLINE_LAST%") do set "NIGHTSHIFT_STATUSLINE_LAST="'
-    )
-    expect(script).toContain(
-      'if defined NIGHTSHIFT_STATUSLINE_NOW if defined NIGHTSHIFT_STATUSLINE_LAST set /a "NIGHTSHIFT_STATUSLINE_ELAPSED=NIGHTSHIFT_STATUSLINE_NOW-NIGHTSHIFT_STATUSLINE_LAST" 2>nul'
+      'if defined KOLUX_STATUSLINE_NOW if defined KOLUX_STATUSLINE_LAST set /a "KOLUX_STATUSLINE_ELAPSED=KOLUX_STATUSLINE_NOW-KOLUX_STATUSLINE_LAST" 2>nul'
     )
     // cmd parses leading-zero numbers as octal; 1%%x %% 100 defuses 08/09.
     expect(script).toContain('(1%%a %% 100)*3600+(1%%b %% 100)*60+(1%%c %% 100)')
-    expect(script).toContain('set "NIGHTSHIFT_STATUSLINE_TIME=%TIME: =0%"')
+    expect(script).toContain('set "KOLUX_STATUSLINE_TIME=%TIME: =0%"')
   })
 })
 
@@ -142,11 +138,9 @@ describe('statusline curl throttle (posix)', () => {
   it('checks the per-pane stamp after the env guards and before curl', () => {
     stubPlatform('darwin')
     const script = getManagedStatusLineScript('local')
-    const envGuardIndex = script.indexOf('-z "$NIGHTSHIFT_AGENT_HOOK_PORT"')
+    const envGuardIndex = script.indexOf('-z "$KOLUX_AGENT_HOOK_PORT"')
     const durationIndex = script.indexOf('"total_duration_ms"')
-    const stampIndex = script.indexOf(
-      'nightshift-claude-statusline-last-${nightshift_statusline_pane_id}'
-    )
+    const stampIndex = script.indexOf('kolux-claude-statusline-last-${kolux_statusline_pane_id}')
     const intervalIndex = script.indexOf(`-lt ${CLAUDE_STATUSLINE_MIN_POST_INTERVAL_SECONDS}`)
     const curlIndex = script.indexOf('curl -sS')
     expect(envGuardIndex).toBeLessThan(stampIndex)
@@ -157,10 +151,10 @@ describe('statusline curl throttle (posix)', () => {
     // Why: the allow-list (not a mere digits check) matters — leading-zero values like 008 are
     // invalid octal inside $(( )) and abort the whole script under dash, wedging the stamp.
     expect(script).toContain(
-      'case "$nightshift_statusline_now" in 0|[1-9]|[1-9][0-9]*) ;; *) nightshift_statusline_now='
+      'case "$kolux_statusline_now" in 0|[1-9]|[1-9][0-9]*) ;; *) kolux_statusline_now='
     )
     expect(script).toContain(
-      'case "$nightshift_statusline_last" in 0|[1-9]|[1-9][0-9]*) ;; *) nightshift_statusline_last='
+      'case "$kolux_statusline_last" in 0|[1-9]|[1-9][0-9]*) ;; *) kolux_statusline_last='
     )
   })
 })
@@ -191,7 +185,7 @@ describe.skipIf(process.platform === 'win32')('statusline curl throttle (posix b
     dateLog: string
     catLog: string
   } {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-statusline-throttle-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-statusline-throttle-'))
     dirs.push(dir)
     const curlLog = join(dir, 'curl.log')
     const payloadLog = join(dir, 'payload.log')
@@ -228,9 +222,9 @@ describe.skipIf(process.platform === 'win32')('statusline curl throttle (posix b
         env: {
           PATH: `${join(dir, 'stub-bin')}:${process.env.PATH ?? ''}`,
           TMPDIR: dir,
-          NIGHTSHIFT_AGENT_HOOK_PORT: '65535',
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'test-token',
-          NIGHTSHIFT_PANE_KEY: paneKey
+          KOLUX_AGENT_HOOK_PORT: '65535',
+          KOLUX_AGENT_HOOK_TOKEN: 'test-token',
+          KOLUX_PANE_KEY: paneKey
         },
         stdio: ['pipe', 'ignore', 'pipe']
       })
@@ -260,7 +254,7 @@ describe.skipIf(process.platform === 'win32')('statusline curl throttle (posix b
   }
 
   function stampPathFor(dir: string, leafId = LEAF_ID): string {
-    return join(dir, `nightshift-claude-statusline-last-${leafId}`)
+    return join(dir, `kolux-claude-statusline-last-${leafId}`)
   }
 
   it('spawns one curl and no capture or clock subprocesses across 30 rapid ticks', async () => {

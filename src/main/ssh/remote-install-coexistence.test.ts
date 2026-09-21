@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import { selectRemoteInstallModel } from './remote-install-coexistence'
 
-const BOTH_INSTALLED = ['relay-0.1.0+aa01', 'nightshiftd-0.2.0+bb01', 'nightshiftd-0.1.0+aa01']
+const BOTH_INSTALLED = ['relay-0.1.0+aa01', 'koluxd-0.2.0+bb01', 'koluxd-0.1.0+aa01']
 
 describe('what a client does when it finds both models installed', () => {
   it('uses the registered model and leaves the other install alone', () => {
     const selection = selectRemoteInstallModel({
-      registration: 'nightshiftd-peer',
+      registration: 'koluxd-peer',
       installedDirNames: BOTH_INSTALLED
     })
-    expect(selection).toMatchObject({ outcome: 'use', model: 'nightshiftd' })
+    expect(selection).toMatchObject({ outcome: 'use', model: 'koluxd' })
     expect(selection.outcome === 'use' && selection.coexisting).toEqual(['relay-0.1.0+aa01'])
     expect(selection.outcome === 'use' && selection.note).toContain(
       'garbage-collects only its own namespace'
@@ -24,19 +24,19 @@ describe('what a client does when it finds both models installed', () => {
     })
     expect(selection).toMatchObject({ outcome: 'use', model: 'relay' })
     expect(selection.outcome === 'use' && selection.coexisting).toEqual([
-      'nightshiftd-0.2.0+bb01',
-      'nightshiftd-0.1.0+aa01'
+      'koluxd-0.2.0+bb01',
+      'koluxd-0.1.0+aa01'
     ])
   })
 
   it('picks the registered model even when only the other one is installed', () => {
-    // On-disk presence is diagnostic, never a vote: a nightshiftd-registered host with only relay
-    // dirs is a first nightshiftd deploy, not a reason to fall back to the relay.
+    // On-disk presence is diagnostic, never a vote: a koluxd-registered host with only relay
+    // dirs is a first koluxd deploy, not a reason to fall back to the relay.
     const selection = selectRemoteInstallModel({
-      registration: 'nightshiftd-peer',
+      registration: 'koluxd-peer',
       installedDirNames: ['relay-0.1.0+aa01']
     })
-    expect(selection).toMatchObject({ outcome: 'use', model: 'nightshiftd' })
+    expect(selection).toMatchObject({ outcome: 'use', model: 'koluxd' })
   })
 
   it('refuses a machine registered under both models', () => {
@@ -68,9 +68,9 @@ describe('what a client does when it finds both models installed', () => {
 
   it('says nothing when there is nothing coexisting', () => {
     const selection = selectRemoteInstallModel({
-      registration: 'nightshiftd-peer',
-      installedDirNames: ['nightshiftd-0.2.0+bb01']
+      registration: 'koluxd-peer',
+      installedDirNames: ['koluxd-0.2.0+bb01']
     })
-    expect(selection).toMatchObject({ outcome: 'use', model: 'nightshiftd', note: null })
+    expect(selection).toMatchObject({ outcome: 'use', model: 'koluxd', note: null })
   })
 })

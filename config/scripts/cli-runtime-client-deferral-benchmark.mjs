@@ -27,12 +27,12 @@ import { fileURLToPath } from 'node:url'
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url))
 
-const ROUNDS = Number(process.env.NIGHTSHIFT_CLI_DEFER_BENCH_ROUNDS ?? '30')
-const WARMUP = Number(process.env.NIGHTSHIFT_CLI_DEFER_BENCH_WARMUP ?? '3')
+const ROUNDS = Number(process.env.KOLUX_CLI_DEFER_BENCH_ROUNDS ?? '30')
+const WARMUP = Number(process.env.KOLUX_CLI_DEFER_BENCH_WARMUP ?? '3')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_CLI_DEFER_BENCH_ROUNDS', ROUNDS],
-  ['NIGHTSHIFT_CLI_DEFER_BENCH_WARMUP', WARMUP]
+  ['KOLUX_CLI_DEFER_BENCH_ROUNDS', ROUNDS],
+  ['KOLUX_CLI_DEFER_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
@@ -40,7 +40,7 @@ for (const [name, value] of [
 }
 if (ROUNDS % 2 !== 0) {
   // Why: arms alternate which one leads; an odd count biases one arm.
-  throw new Error(`NIGHTSHIFT_CLI_DEFER_BENCH_ROUNDS must be even, received ${ROUNDS}`)
+  throw new Error(`KOLUX_CLI_DEFER_BENCH_ROUNDS must be even, received ${ROUNDS}`)
 }
 
 const TOUCHED = [
@@ -195,17 +195,17 @@ try {
 
   // Each case is (label, argv, env). The runtime-dependent ones point at an
   // empty user-data dir so both arms get the same deterministic answer.
-  const isolated = { NIGHTSHIFT_USER_DATA_PATH: userDataPath }
+  const isolated = { KOLUX_USER_DATA_PATH: userDataPath }
   /** @type {Array<[string, string[], Record<string, string>]>} */
   const cases = [
-    ['nightshift --help', ['--help'], {}],
-    ['nightshift help worktree', ['help', 'worktree'], {}],
-    ['nightshift (no args)', [], {}],
+    ['kolux --help', ['--help'], {}],
+    ['kolux help worktree', ['help', 'worktree'], {}],
+    ['kolux (no args)', [], {}],
     ['unknown command', ['no-such-command'], {}],
     ['unknown flag', ['worktree', 'list', '--nope'], {}],
-    ['nightshift agent-context --json', ['agent-context', '--json'], {}],
-    ['nightshift status --json', ['status', '--json'], isolated],
-    ['nightshift worktree list --json', ['worktree', 'list', '--json'], isolated]
+    ['kolux agent-context --json', ['agent-context', '--json'], {}],
+    ['kolux status --json', ['status', '--json'], isolated],
+    ['kolux worktree list --json', ['worktree', 'list', '--json'], isolated]
   ]
 
   // Why: a semantically broken arm that prints nothing would look fastest.

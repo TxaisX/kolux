@@ -93,7 +93,7 @@ describe('text control paste ownership', () => {
     const text = 'x'.repeat(TEXT_CONTROL_PASTE_DIRECT_MAX_BYTES + 4_096)
 
     expect(classifyTextControlPastePayloadOwnership(text)).toMatchObject({
-      action: 'claim-nightshift',
+      action: 'claim-kolux',
       exceededLimit: true
     })
     expect(codePointAt.mock.calls.length).toBeLessThanOrEqual(

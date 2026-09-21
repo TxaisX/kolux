@@ -137,16 +137,16 @@ export const ZH_VALUE_OVERRIDES = {
     '编辑器打开时运行一次托管评审详情生成。',
   'Show local Markdown review notes controls in rich editor mode.':
     '在富文本编辑器模式下显示本地 Markdown 评审笔记控件。',
-  'Nightshift IDE': 'Nightshift IDE',
-  'Nightshift first': 'Nightshift 优先',
-  'Nightshift Mobile': 'Nightshift Mobile',
-  'Nightshift logo': 'Nightshift 标志',
-  'Enjoying Nightshift?': '喜欢 Nightshift 吗？',
-  'Get to know Nightshift': '了解 Nightshift',
-  'Expand Nightshift': '展开 Nightshift',
-  'Support Nightshift': '支持 Nightshift',
-  'Restarting Nightshift…': '正在重启 Nightshift…',
-  'Show Nightshift Mobile Button': '显示 Nightshift Mobile 按钮',
+  'Kolux IDE': 'Kolux IDE',
+  'Kolux first': 'Kolux 优先',
+  'Kolux Mobile': 'Kolux Mobile',
+  'Kolux logo': 'Kolux 标志',
+  'Enjoying Kolux?': '喜欢 Kolux 吗？',
+  'Get to know Kolux': '了解 Kolux',
+  'Expand Kolux': '展开 Kolux',
+  'Support Kolux': '支持 Kolux',
+  'Restarting Kolux…': '正在重启 Kolux…',
+  'Show Kolux Mobile Button': '显示 Kolux Mobile 按钮',
   'Codex Accounts': 'Codex 账户',
   'Codex Account': 'Codex 账户',
   'Active Codex Account': '活跃 Codex 账户',
@@ -184,8 +184,8 @@ export const ZH_VALUE_OVERRIDES = {
   'Leave empty to use system proxy settings and inherited proxy environment variables.':
     '留空以使用系统代理设置和继承的代理环境变量。',
   'Proxy Command': '代理命令',
-  "Give agents direct access to Nightshift's browser so they can test pages, capture screenshots, and act on what they see.":
-    '让代理直接访问 Nightshift 的浏览器，以便测试页面、捕获屏幕截图并根据所见内容执行操作。',
+  "Give agents direct access to Kolux's browser so they can test pages, capture screenshots, and act on what they see.":
+    '让代理直接访问 Kolux 的浏览器，以便测试页面、捕获屏幕截图并根据所见内容执行操作。',
   'X finishes, send it the review task.”': 'X 完成后，把评审任务发给它。”',
   'Branch naming, base refs, and Git AI Author.': '分支命名、基础引用和 Git AI Author。',
   'You have unsaved Git AI Author changes. Leaving will discard them.':
@@ -219,7 +219,7 @@ export const ZH_VALUE_OVERRIDES = {
     '显示提示词缓存到期倒计时的计时器（Claude 代理）。',
   'Claude caches your conversation to reduce costs. When idle too long the cache expires and the next message resends full context at higher cost. This shows a countdown so you know when to resume.':
     'Claude 会缓存对话以降低成本。空闲过久后缓存会过期，下一条消息将以更高成本重新发送完整上下文。此倒计时可帮助您了解何时继续。',
-  'from Nightshift. It is still on your disk.': '来自 Nightshift。它仍保留在您的磁盘上。',
+  'from Kolux. It is still on your disk.': '来自 Kolux。它仍保留在您的磁盘上。',
   'Pull request reopened': '拉取请求已重新打开',
   'Reopen PR': '重新打开 PR',
   'Reopened MR !{{value0}}': '已重新打开 MR !{{value0}}',

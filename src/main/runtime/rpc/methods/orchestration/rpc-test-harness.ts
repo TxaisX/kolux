@@ -2,13 +2,13 @@ import { vi } from 'vitest'
 import { ORCHESTRATION_METHODS } from '../orchestration'
 import type { RpcContext } from '../../core'
 import { OrchestrationDb } from '../../../orchestration/db'
-import { NightshiftRuntimeService } from '../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../kolux-runtime'
 
 export const COORDINATOR_PANE_KEY = 'tab_coord:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 
 export type OrchestrationRpcState = {
   db: OrchestrationDb
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   ctx: RpcContext
   activeRunId: string | undefined
 }
@@ -17,7 +17,7 @@ export type OrchestrationRpcState = {
 export function createOrchestrationRpcHarness() {
   let db: OrchestrationDb
   let dbOpen = false
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let activeRunId: string | undefined
 
   const coordinatorPaneKey = COORDINATOR_PANE_KEY
@@ -25,7 +25,7 @@ export function createOrchestrationRpcHarness() {
   function setup(withBoundRun = true): OrchestrationRpcState {
     db = new OrchestrationDb(':memory:')
     dbOpen = true
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
       handle === 'term_coord' ? coordinatorPaneKey : null

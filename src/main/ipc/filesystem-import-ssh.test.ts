@@ -260,16 +260,16 @@ describe('fs:importExternalPaths — SSH routing & connection', () => {
 
     await invoke({
       sourcePaths: ['/tmp/dropped/file.txt'],
-      destDir: '/home/user/project/.nightshift/drops',
+      destDir: '/home/user/project/.kolux/drops',
       connectionId: connId,
       ensureDir: true
     })
 
-    expect(provider.createDir).toHaveBeenCalledWith('/home/user/project/.nightshift')
+    expect(provider.createDir).toHaveBeenCalledWith('/home/user/project/.kolux')
     expect(provider.writeFile).toHaveBeenCalledWith(
-      '/home/user/project/.nightshift/.gitignore',
+      '/home/user/project/.kolux/.gitignore',
       '*\n!.gitignore\n'
     )
-    expect(provider.createDir).toHaveBeenCalledWith('/home/user/project/.nightshift/drops')
+    expect(provider.createDir).toHaveBeenCalledWith('/home/user/project/.kolux/drops')
   })
 })

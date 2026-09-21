@@ -50,7 +50,7 @@ const scaleArgs = values['scale-factor']
   : []
 const app = await electron.launch({
   args: [...scaleArgs, main],
-  env: { ...env, NIGHTSHIFT_BACKGROUND_LAUNCH: '1' }
+  env: { ...env, KOLUX_BACKGROUND_LAUNCH: '1' }
 })
 const report = { samples: [] }
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))

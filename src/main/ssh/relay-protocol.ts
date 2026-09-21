@@ -26,9 +26,9 @@ export {
 export type { DecodedFrame, FrameDecoderOptions } from '../../shared/relay-frame-decoder'
 
 export const RELAY_VERSION = '0.1.0'
-export const RELAY_SENTINEL = `NIGHTSHIFT-RELAY v${RELAY_VERSION} READY\n`
+export const RELAY_SENTINEL = `KOLUX-RELAY v${RELAY_VERSION} READY\n`
 export const RELAY_SENTINEL_TIMEOUT_MS = 10_000
-export const RELAY_REMOTE_DIR = '.nightshift-remote'
+export const RELAY_REMOTE_DIR = '.kolux-remote'
 
 /** Message type byte. */
 export const MessageType = {
@@ -69,15 +69,14 @@ export const STREAM_CHUNK_SIZE = 256 * 1024
  * as git.responseChunk frames. Absent from old relays, so a new client falls
  * back to the plain result they return. */
 export type GitResponseStreamMarker = {
-  __nightshiftGitResponseStream: { streamId: number; totalBytes: number; chunkCount: number }
+  __koluxGitResponseStream: { streamId: number; totalBytes: number; chunkCount: number }
 }
 
 export function isGitResponseStreamMarker(value: unknown): value is GitResponseStreamMarker {
-  if (typeof value !== 'object' || value === null || !('__nightshiftGitResponseStream' in value)) {
+  if (typeof value !== 'object' || value === null || !('__koluxGitResponseStream' in value)) {
     return false
   }
-  const marker = (value as { __nightshiftGitResponseStream?: unknown })
-    .__nightshiftGitResponseStream
+  const marker = (value as { __koluxGitResponseStream?: unknown }).__koluxGitResponseStream
   if (typeof marker !== 'object' || marker === null) {
     return false
   }

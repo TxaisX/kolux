@@ -213,7 +213,7 @@ export function AppWorkspaceShell(props: {
                       title={translate('auto.App.b7a714db1e', 'This page hit an error.')}
                       description={translate(
                         'auto.App.03a14f6b5b',
-                        'Retry the page or navigate to another Nightshift surface.'
+                        'Retry the page or navigate to another Kolux surface.'
                       )}
                     >
                       <ActivePage layout={layout} />

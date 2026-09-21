@@ -46,7 +46,7 @@ describe('buildRows with pinned worktrees', () => {
     )
 
     expect(rows).toMatchObject([
-      { type: 'header', key: 'project:github:TxaisX/nightshift', label: 'Nightshift', count: 2 },
+      { type: 'header', key: 'project:github:TxaisX/nightshift', label: 'Kolux', count: 2 },
       { type: 'item', worktree: { id: worktree.id }, hostContextLabel: LOCAL_HOST_LABEL },
       { type: 'item', worktree: { id: remoteWorktree.id }, hostContextLabel: 'gpu-vm' }
     ])
@@ -99,10 +99,10 @@ describe('buildRows with pinned worktrees', () => {
     }
 
     expect(buildHeaders([], [])).toMatchObject([
-      { key: 'project:github:TxaisX/nightshift', label: 'Nightshift' }
+      { key: 'project:github:TxaisX/nightshift', label: 'Kolux' }
     ])
     expect(buildHeaders([otherWorktree], [otherRepo])).toMatchObject([
-      { key: 'project:github:TxaisX/nightshift', label: 'Nightshift' },
+      { key: 'project:github:TxaisX/nightshift', label: 'Kolux' },
       { key: 'repo:repo-other', label: 'design-assets' }
     ])
   })
@@ -377,14 +377,14 @@ describe('buildRows with pinned worktrees', () => {
     const repoB: Repo = {
       ...repo,
       id: 'repo-2',
-      path: '/tmp/nightshift-2',
-      displayName: 'nightshift-2'
+      path: '/tmp/kolux-2',
+      displayName: 'kolux-2'
     }
     const worktreeB: Worktree = {
       ...worktree,
       id: 'wt-2',
       repoId: repoB.id,
-      path: '/tmp/nightshift-2-feature',
+      path: '/tmp/kolux-2-feature',
       displayName: 'feature-b'
     }
     const localSetupB: ProjectHostSetup = {
@@ -430,11 +430,11 @@ describe('buildRows with pinned worktrees', () => {
       expect.arrayContaining([
         expect.objectContaining({
           key: 'project:github:TxaisX/nightshift::setup:repo-1',
-          label: 'nightshift'
+          label: 'kolux'
         }),
         expect.objectContaining({
           key: 'project:github:TxaisX/nightshift::setup:repo-2',
-          label: 'nightshift-2'
+          label: 'kolux-2'
         })
       ])
     )
@@ -444,14 +444,14 @@ describe('buildRows with pinned worktrees', () => {
     const localRepoB: Repo = {
       ...repo,
       id: 'repo-local-b',
-      path: '/tmp/nightshift-b',
-      displayName: 'nightshift-b'
+      path: '/tmp/kolux-b',
+      displayName: 'kolux-b'
     }
     const localWorktreeB: Worktree = {
       ...worktree,
       id: 'wt-local-b',
       repoId: localRepoB.id,
-      path: '/tmp/nightshift-b-feature',
+      path: '/tmp/kolux-b-feature',
       displayName: 'feature-b'
     }
     const localSetupB: ProjectHostSetup = {
@@ -506,7 +506,7 @@ describe('buildRows with pinned worktrees', () => {
     const runtimeRepo: Repo = {
       ...remoteRepo,
       id: 'repo-runtime',
-      path: '/home/alice/nightshift-runtime',
+      path: '/home/alice/kolux-runtime',
       connectionId: undefined,
       executionHostId: runtimeHostId
     }
@@ -514,7 +514,7 @@ describe('buildRows with pinned worktrees', () => {
       ...remoteWorktree,
       id: 'wt-runtime',
       repoId: runtimeRepo.id,
-      path: '/home/alice/nightshift-runtime-feature'
+      path: '/home/alice/kolux-runtime-feature'
     }
     const runtimeSetup: ProjectHostSetup = {
       ...projectHostSetups[1]!,
@@ -569,7 +569,7 @@ describe('buildRows with pinned worktrees', () => {
     const windowsRepo: Repo = {
       ...repo,
       id: 'repo-windows',
-      path: 'C:\\Users\\neil\\nightshift\\nightshift',
+      path: 'C:\\Users\\neil\\kolux\\kolux',
       executionHostId: windowsHostId
     }
     const folderRepoA: Repo = {
@@ -638,14 +638,14 @@ describe('buildRows with pinned worktrees', () => {
     const runtimeRepoB: Repo = {
       ...repo,
       id: 'repo-runtime-b',
-      path: '/tmp/nightshift-runtime-b',
-      displayName: 'nightshift-runtime-b'
+      path: '/tmp/kolux-runtime-b',
+      displayName: 'kolux-runtime-b'
     }
     const runtimeWorktreeB: Worktree = {
       ...worktree,
       id: 'wt-runtime-b',
       repoId: runtimeRepoB.id,
-      path: '/tmp/nightshift-runtime-b-feature',
+      path: '/tmp/kolux-runtime-b-feature',
       displayName: 'feature-runtime-b'
     }
     // Why: a `provisioned` (recipe-created ephemeral) copy shares the project's
@@ -693,7 +693,7 @@ describe('buildRows with pinned worktrees', () => {
     expect(headers).toHaveLength(1)
     expect(headers[0]).toMatchObject({
       key: 'project:github:TxaisX/nightshift',
-      label: 'Nightshift',
+      label: 'Kolux',
       count: 2
     })
   })
@@ -706,14 +706,14 @@ describe('buildRows with pinned worktrees', () => {
     const localRepoB: Repo = {
       ...repo,
       id: 'repo-local-b',
-      path: '/tmp/nightshift-b',
-      displayName: 'nightshift-b'
+      path: '/tmp/kolux-b',
+      displayName: 'kolux-b'
     }
     const localWorktreeB: Worktree = {
       ...worktree,
       id: 'wt-local-b',
       repoId: localRepoB.id,
-      path: '/tmp/nightshift-b-feature',
+      path: '/tmp/kolux-b-feature',
       displayName: 'feature-b'
     }
     const localSetupB: ProjectHostSetup = {
@@ -726,14 +726,14 @@ describe('buildRows with pinned worktrees', () => {
     const runtimeRepoB: Repo = {
       ...repo,
       id: 'repo-runtime-b',
-      path: '/tmp/nightshift-runtime-b',
-      displayName: 'nightshift-runtime-b'
+      path: '/tmp/kolux-runtime-b',
+      displayName: 'kolux-runtime-b'
     }
     const runtimeWorktreeB: Worktree = {
       ...worktree,
       id: 'wt-runtime-b',
       repoId: runtimeRepoB.id,
-      path: '/tmp/nightshift-runtime-b-feature',
+      path: '/tmp/kolux-runtime-b-feature',
       displayName: 'feature-runtime-b'
     }
     const runtimeSetupB: ProjectHostSetup = {
@@ -789,7 +789,7 @@ describe('buildRows with pinned worktrees', () => {
       headers.some((row) => row.key === 'project:github:TxaisX/nightshift::setup:repo-runtime-b')
     ).toBe(false)
     expect(headers.find((row) => row.key === 'project:github:TxaisX/nightshift')).toMatchObject({
-      label: 'Nightshift',
+      label: 'Kolux',
       count: 1
     })
   })

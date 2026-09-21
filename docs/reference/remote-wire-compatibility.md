@@ -1,6 +1,6 @@
 # Remote wire compatibility
 
-Nightshift's remote-server feature pairs a desktop client to a remote Nightshift runtime, and
+Kolux's remote-server feature pairs a desktop client to a remote Kolux runtime, and
 users update the two independently. **Mixed versions are the normal state**, not an
 edge case. This page is the contract for changing anything a paired client and host
 exchange: the runtime RPC envelope, the terminal binary stream, and the content

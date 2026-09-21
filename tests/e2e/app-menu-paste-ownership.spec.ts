@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -81,44 +81,44 @@ function tabLocatorByTitle(page: Page, title: string): ReturnType<Page['locator'
 }
 
 test.describe('app menu paste ownership', () => {
-  test.beforeEach(async ({ electronApp, nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+  test.beforeEach(async ({ electronApp, koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
   })
 
   test('Edit > Paste sends clipboard text to the focused terminal exactly once', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-app-menu-paste-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-app-menu-paste-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `APP_MENU_PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `APP_MENU_PASTE_READY_${runId}`, 10_000)
 
-      const payload = `NIGHTSHIFT_E2E_APP_MENU_TERMINAL_${runId}`
+      const payload = `KOLUX_E2E_APP_MENU_TERMINAL_${runId}`
       const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
       await clearTerminalPtyWriteLog(electronApp)
-      await focusActiveTerminalInput(nightshiftPage)
+      await focusActiveTerminalInput(koluxPage)
 
       await dispatchAppMenuPasteFromMain(electronApp)
-      await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+      await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
       const writes = (await readTerminalPtyWrites(electronApp)).join('')
       expect(countOccurrences(writes, payload)).toBe(1)
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -126,21 +126,21 @@ test.describe('app menu paste ownership', () => {
 
   test('Edit > Paste into a rename textbox does not also write to the active terminal', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
-    const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-    const originalTitle = await getActiveTabTitle(nightshiftPage, worktreeId)
-    await tabLocatorByTitle(nightshiftPage, originalTitle).dblclick()
+    const worktreeId = (await getActiveWorktreeId(koluxPage))!
+    const originalTitle = await getActiveTabTitle(koluxPage, worktreeId)
+    await tabLocatorByTitle(koluxPage, originalTitle).dblclick()
 
-    const renameInput = nightshiftPage.getByRole('textbox', {
+    const renameInput = koluxPage.getByRole('textbox', {
       name: `Rename tab ${originalTitle}`,
       exact: true
     })
     await expect(renameInput).toBeVisible()
     await renameInput.fill('')
 
-    const payload = `NIGHTSHIFT_E2E_APP_MENU_TEXTBOX_${randomUUID()}`
-    await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+    const payload = `KOLUX_E2E_APP_MENU_TEXTBOX_${randomUUID()}`
+    await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
     await clearTerminalPtyWriteLog(electronApp)
     await expect(renameInput).toBeFocused()
 
@@ -151,6 +151,6 @@ test.describe('app menu paste ownership', () => {
     expect((await readTerminalPtyWrites(electronApp)).join('')).not.toContain(payload)
 
     await renameInput.press('Escape')
-    await expect(tabLocatorByTitle(nightshiftPage, originalTitle)).toBeVisible()
+    await expect(tabLocatorByTitle(koluxPage, originalTitle)).toBeVisible()
   })
 })

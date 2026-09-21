@@ -4,7 +4,7 @@ import {
   type AgentStatusState
 } from '../../../shared/agent-status-types'
 
-/** Row states: the hook-reported statuses plus the two Nightshift derives when an entry goes stale. */
+/** Row states: the hook-reported statuses plus the two Kolux derives when an entry goes stale. */
 export type AgentRowState = AgentStatusState | 'idle' | 'unverifiable'
 
 type DecayInput = Pick<AgentStatusEntry, 'state' | 'restoredUnconfirmed'>
@@ -13,7 +13,7 @@ type DecayInput = Pick<AgentStatusEntry, 'state' | 'restoredUnconfirmed'>
  * Where a stale non-`done` entry decays to.
  *
  * Silence is not evidence (docs/reference/ssh-execution-boundary.md), so the destination
- * splits on the liveness Nightshift actually holds: a pane whose PTY is still in the live-PTY map
+ * splits on the liveness Kolux actually holds: a pane whose PTY is still in the live-PTY map
  * only lost its reporting stream (`unverifiable`), while a pane with no PTY has nothing
  * running behind it (`idle`). Neither ever claims the agent finished.
  *
@@ -44,9 +44,9 @@ export function formatCompactDuration(deltaMs: number): string {
 }
 
 /**
- * The observer's report for an `unverifiable` row. Deliberately says what Nightshift last heard
+ * The observer's report for an `unverifiable` row. Deliberately says what Kolux last heard
  * rather than what the agent is doing: the elapsed time is what lets a user apply knowledge
- * Nightshift does not have (a 40-minute build, a long download).
+ * Kolux does not have (a 40-minute build, a long download).
  */
 export function agentNoUpdateLabel(
   entry: Pick<AgentStatusEntry, 'updatedAt' | 'evidenceObservedAt'>,

@@ -1,5 +1,5 @@
 /**
- * Real-zsh proof that a wrapper dir holding files from two Nightshift builds still
+ * Real-zsh proof that a wrapper dir holding files from two Kolux builds still
  * loads the user's own zsh config.
  *
  * A shared dir used to mean a shell could read one build's `.zshenv` and
@@ -8,9 +8,9 @@
  * daemon trees by naming each one after a hash of its contents, so two builds
  * never write the same directory.
  *
- * The relay is the one writer left on a fixed path — `~/.nightshift-relay/shell-ready`
+ * The relay is the one writer left on a fixed path — `~/.kolux-relay/shell-ready`
  * — so this is where the scenario is still reachable, and it is now much smaller:
- * Nightshift writes one file, and that file hands ZDOTDIR back before anything else
+ * Kolux writes one file, and that file hands ZDOTDIR back before anything else
  * runs. Both halves are pinned here:
  *
  * 1. Files an older build left beside the hook are inert — zsh reads .zprofile,
@@ -32,18 +32,18 @@ const itWithZsh = hasZsh ? it : it.skip
 
 /** The three files an older build wrote alongside its own `.zshenv`. */
 const OLDER_BUILD_FILES = {
-  '.zprofile': 'export NIGHTSHIFT_TEST_STALE_ZPROFILE=1\n',
-  '.zshrc': 'export NIGHTSHIFT_TEST_STALE_ZSHRC=1\n',
-  '.zlogin': 'export NIGHTSHIFT_TEST_STALE_ZLOGIN=1\n'
+  '.zprofile': 'export KOLUX_TEST_STALE_ZPROFILE=1\n',
+  '.zshrc': 'export KOLUX_TEST_STALE_ZSHRC=1\n',
+  '.zlogin': 'export KOLUX_TEST_STALE_ZLOGIN=1\n'
 }
 
 describe.skipIf(process.platform === 'win32')('zsh wrapper dir written by mixed builds', () => {
   itWithZsh('ignores an older build’s files and loads the user’s config instead', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-wrapper-mismatch-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-wrapper-mismatch-'))
     const home = makeZshHome({
-      '.zshenv': 'export NIGHTSHIFT_TEST_USER_ZSHENV=1\n',
-      '.zprofile': 'export NIGHTSHIFT_TEST_USER_ZPROFILE=1\n',
-      '.zshrc': 'export NIGHTSHIFT_TEST_USER_ZSHRC=1\n'
+      '.zshenv': 'export KOLUX_TEST_USER_ZSHENV=1\n',
+      '.zprofile': 'export KOLUX_TEST_USER_ZPROFILE=1\n',
+      '.zshrc': 'export KOLUX_TEST_USER_ZSHRC=1\n'
     })
     try {
       expect(ensureOverlayRestoreWrappers(root)).toBe(true)
@@ -57,26 +57,26 @@ describe.skipIf(process.platform === 'win32')('zsh wrapper dir written by mixed 
           PATH: '/usr/bin:/bin',
           HOME: home,
           ZDOTDIR: zshDir,
-          NIGHTSHIFT_ORIG_ZDOTDIR: home,
-          NIGHTSHIFT_SHELL_FEATURES: 'history',
-          NIGHTSHIFT_HISTFILE: join(home, 'scoped_history')
+          KOLUX_ORIG_ZDOTDIR: home,
+          KOLUX_SHELL_FEATURES: 'history',
+          KOLUX_HISTFILE: join(home, 'scoped_history')
         },
         report: [
-          'NIGHTSHIFT_TEST_USER_ZPROFILE',
-          'NIGHTSHIFT_TEST_USER_ZSHRC',
-          'NIGHTSHIFT_TEST_STALE_ZPROFILE',
-          'NIGHTSHIFT_TEST_STALE_ZSHRC',
-          'NIGHTSHIFT_TEST_STALE_ZLOGIN',
+          'KOLUX_TEST_USER_ZPROFILE',
+          'KOLUX_TEST_USER_ZSHRC',
+          'KOLUX_TEST_STALE_ZPROFILE',
+          'KOLUX_TEST_STALE_ZSHRC',
+          'KOLUX_TEST_STALE_ZLOGIN',
           'HISTFILE'
         ]
       })
 
       // The user's own files loaded; the older build's leftovers did not.
-      expect(values.NIGHTSHIFT_TEST_USER_ZPROFILE).toBe('1')
-      expect(values.NIGHTSHIFT_TEST_USER_ZSHRC).toBe('1')
-      expect(values.NIGHTSHIFT_TEST_STALE_ZPROFILE).toBe('UNSET')
-      expect(values.NIGHTSHIFT_TEST_STALE_ZSHRC).toBe('UNSET')
-      expect(values.NIGHTSHIFT_TEST_STALE_ZLOGIN).toBe('UNSET')
+      expect(values.KOLUX_TEST_USER_ZPROFILE).toBe('1')
+      expect(values.KOLUX_TEST_USER_ZSHRC).toBe('1')
+      expect(values.KOLUX_TEST_STALE_ZPROFILE).toBe('UNSET')
+      expect(values.KOLUX_TEST_STALE_ZSHRC).toBe('UNSET')
+      expect(values.KOLUX_TEST_STALE_ZLOGIN).toBe('UNSET')
       expect(values.HISTFILE).toBe(join(home, 'scoped_history'))
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -85,7 +85,7 @@ describe.skipIf(process.platform === 'win32')('zsh wrapper dir written by mixed 
   })
 
   it('leaves an older build’s files in place so that build can still use them', () => {
-    const root = mkdtempSync(join(tmpdir(), 'nightshift-wrapper-mismatch-keep-'))
+    const root = mkdtempSync(join(tmpdir(), 'kolux-wrapper-mismatch-keep-'))
     try {
       expect(ensureOverlayRestoreWrappers(root)).toBe(true)
       const zshDir = join(root, 'zsh')

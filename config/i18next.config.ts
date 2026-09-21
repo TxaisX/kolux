@@ -1,7 +1,7 @@
 import { defineConfig } from 'i18next-cli'
 
 const output =
-  process.env.NIGHTSHIFT_I18N_EXTRACTION_OUTPUT ?? 'tmp/localization-extraction/{{language}}.json'
+  process.env.KOLUX_I18N_EXTRACTION_OUTPUT ?? 'tmp/localization-extraction/{{language}}.json'
 
 export default defineConfig({
   locales: ['en'],

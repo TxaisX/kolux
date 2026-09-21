@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import { ensureBrowserPageWebview } from './browser-page-webview'
 import { webviewRegistry } from './webview-registry'
 
@@ -43,7 +43,7 @@ describe('browser page surface ownership', () => {
     expect(guest.getAttribute('webpreferences')).toContain('disableHtmlFullscreenWindowResize=true')
   })
 
-  it.each(['about:blank', NIGHTSHIFT_BROWSER_BLANK_URL])(
+  it.each(['about:blank', KOLUX_BROWSER_BLANK_URL])(
     'keeps %s unavailable through first navigation, then reveals the committed page',
     (url) => {
       const guest = createGuest()
@@ -78,7 +78,7 @@ describe('browser page surface ownership', () => {
     expect(replacement).not.toBe(guest)
     expect(replacement.style.background).toBe('var(--background)')
     expect(replacement.getAttribute('webpreferences')).toContain('transparent=false')
-    commit(replacement, NIGHTSHIFT_BROWSER_BLANK_URL)
+    commit(replacement, KOLUX_BROWSER_BLANK_URL)
     expect(replacement.style.visibility).toBe('hidden')
   })
 

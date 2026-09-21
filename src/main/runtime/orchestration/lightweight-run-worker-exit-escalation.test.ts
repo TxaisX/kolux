@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { LEGACY_RUN_ID, OrchestrationDb } from './db'
 import { DISPATCH_CIRCUIT_BREAK_FAILURES } from './db/dispatch-context/dispatch-circuit-breaker'
 import { makePaneKey } from '../../../shared/stable-pane-id'
@@ -45,11 +45,11 @@ function makeStore() {
 }
 
 function makeRuntimeWithTwoPanes(): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   workerHandle: string
   coordinatorHandle: string
 } {
-  const runtime = new NightshiftRuntimeService(makeStore() as never)
+  const runtime = new KoluxRuntimeService(makeStore() as never)
   runtime.setPtyController({
     spawn: vi.fn(async () => ({ id: 'never' })),
     write: vi.fn(() => true),

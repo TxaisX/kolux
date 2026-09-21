@@ -116,9 +116,7 @@ describe('BrowserAddressBar autocomplete preview', () => {
       )
     })
 
-    const input = container.querySelector<HTMLInputElement>(
-      'input[data-nightshift-browser-address-bar]'
-    )
+    const input = container.querySelector<HTMLInputElement>('input[data-kolux-browser-address-bar]')
     expect(input).not.toBeNull()
 
     await act(async () => {
@@ -154,9 +152,7 @@ describe('BrowserAddressBar autocomplete preview', () => {
       )
     })
 
-    const input = container.querySelector<HTMLInputElement>(
-      'input[data-nightshift-browser-address-bar]'
-    )
+    const input = container.querySelector<HTMLInputElement>('input[data-kolux-browser-address-bar]')
     expect(input).not.toBeNull()
 
     await act(async () => {
@@ -191,9 +187,7 @@ describe('BrowserAddressBar autocomplete preview', () => {
       )
     })
 
-    const input = container.querySelector<HTMLInputElement>(
-      'input[data-nightshift-browser-address-bar]'
-    )
+    const input = container.querySelector<HTMLInputElement>('input[data-kolux-browser-address-bar]')
     expect(input).not.toBeNull()
 
     await act(async () => {
@@ -230,9 +224,7 @@ describe('BrowserAddressBar autocomplete preview', () => {
       )
     })
 
-    const input = container.querySelector<HTMLInputElement>(
-      'input[data-nightshift-browser-address-bar]'
-    )
+    const input = container.querySelector<HTMLInputElement>('input[data-kolux-browser-address-bar]')
     expect(input).not.toBeNull()
 
     await act(async () => {

@@ -5,10 +5,10 @@ import {
   type FleetEvidenceBinding
 } from '../../shared/orchestration-fleet-agent-status-evidence'
 import { isValidTerminalTabId } from '../../shared/terminal-tab-id'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 
 export type AgentStatusRuntimeEnrichment = Pick<
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   | 'getAgentStatusTerminalHandleForPaneKey'
   | 'getAgentStatusOrchestrationContextForPaneKey'
   | 'getTerminalProcessIncarnation'

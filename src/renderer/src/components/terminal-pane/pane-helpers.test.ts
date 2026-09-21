@@ -22,28 +22,28 @@ describe('shellEscapePath', () => {
   })
 
   it('keeps safe Windows paths unquoted', () => {
-    expect(shellEscapePath('C:\\Users\\nightshift\\file.txt', 'windows')).toBe(
-      'C:\\Users\\nightshift\\file.txt'
+    expect(shellEscapePath('C:\\Users\\kolux\\file.txt', 'windows')).toBe(
+      'C:\\Users\\kolux\\file.txt'
     )
   })
 
   it('double-quotes Windows paths with spaces', () => {
-    expect(shellEscapePath('C:\\Users\\nightshift\\my file.txt', 'windows')).toBe(
-      '"C:\\Users\\nightshift\\my file.txt"'
+    expect(shellEscapePath('C:\\Users\\kolux\\my file.txt', 'windows')).toBe(
+      '"C:\\Users\\kolux\\my file.txt"'
     )
   })
 
   it('double-quotes Windows paths with cmd separators', () => {
-    expect(shellEscapePath('C:\\Users\\nightshift\\a&b.txt', 'windows')).toBe(
-      '"C:\\Users\\nightshift\\a&b.txt"'
+    expect(shellEscapePath('C:\\Users\\kolux\\a&b.txt', 'windows')).toBe(
+      '"C:\\Users\\kolux\\a&b.txt"'
     )
   })
 
   it('uses POSIX escaping for SSH drops regardless of client OS', () => {
     // A Windows client dropping into a Linux SSH worktree must produce POSIX
     // quoting, not Windows double-quotes (see docs/terminal-drop-ssh.md).
-    expect(shellEscapePath("/home/u/wt/.nightshift/drops/my file's $draft.txt", 'posix')).toBe(
-      "'/home/u/wt/.nightshift/drops/my file'\\''s $draft.txt'"
+    expect(shellEscapePath("/home/u/wt/.kolux/drops/my file's $draft.txt", 'posix')).toBe(
+      "'/home/u/wt/.kolux/drops/my file'\\''s $draft.txt'"
     )
   })
 })

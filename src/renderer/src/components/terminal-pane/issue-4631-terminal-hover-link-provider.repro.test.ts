@@ -37,7 +37,7 @@ async function writeTerminal(terminal: Terminal, data: string): Promise<void> {
 }
 
 function configuredRowCount(): number {
-  const raw = process.env.NIGHTSHIFT_4631_WRAP_ROWS
+  const raw = process.env.KOLUX_4631_WRAP_ROWS
   if (!raw) {
     return 50_000
   }
@@ -46,7 +46,7 @@ function configuredRowCount(): number {
 }
 
 function logStage(stage: string, details: Record<string, unknown>): void {
-  if (process.env.NIGHTSHIFT_LOG_4631_REPRO !== '1') {
+  if (process.env.KOLUX_LOG_4631_REPRO !== '1') {
     return
   }
   process.stderr.write(`${JSON.stringify({ issue: 4631, stage, ...details })}\n`)

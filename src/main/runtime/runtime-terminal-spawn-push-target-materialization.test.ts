@@ -28,7 +28,7 @@ vi.mock('../project-runtime-git-options', () => ({
 import { triggerTerminalSpawnPushTargetMaterialization } from './runtime-terminal-spawn-push-target-materialization'
 
 const WORKTREE_PATH = '/repo/worktree'
-const FORK_URL = 'git@github.com:contributor/nightshift.git'
+const FORK_URL = 'git@github.com:contributor/kolux.git'
 const REPO_ID = 'repo-1'
 const STORE = {} as Store
 const LOCAL_REPO = { id: REPO_ID, path: '/repo', connectionId: null } as unknown as Repo
@@ -36,7 +36,7 @@ const SSH_REPO = { id: REPO_ID, path: '/repo', connectionId: 'conn-1' } as unkno
 
 function forkTarget(overrides: Partial<GitPushTarget> = {}): GitPushTarget {
   return {
-    remoteName: 'pr-contributor-nightshift',
+    remoteName: 'pr-contributor-kolux',
     branchName: 'contributor/fix',
     remoteUrl: FORK_URL,
     ...overrides

@@ -376,7 +376,7 @@ describe('AiVaultHandler', () => {
 })
 
 async function makeTemporaryHome(): Promise<string> {
-  const path = await mkdtemp(join(tmpdir(), 'nightshift-relay-ai-vault-'))
+  const path = await mkdtemp(join(tmpdir(), 'kolux-relay-ai-vault-'))
   temporaryHomes.push(path)
   return path
 }

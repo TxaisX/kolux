@@ -91,7 +91,7 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   // Why sticky: the dialog animates itself closed off `open`, so unmounting on close cuts that short.
   const [feedbackDialogMounted, setFeedbackDialogMounted] = useState(false)
-  const [isRestartingNightshift, setIsRestartingNightshift] = useState(false)
+  const [isRestartingKolux, setIsRestartingKolux] = useState(false)
   const lastShowOnboardingAtRef = React.useRef(0)
   const updateCheckModifiersRef = React.useRef(NO_UPDATE_CHECK_MODIFIERS)
   const mountedRef = useMountedRef()
@@ -124,24 +124,21 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
     void showOnboardingFromRenderer()
   }
 
-  const handleRestartNightshift = (): void => {
-    if (isRestartingNightshift) {
+  const handleRestartKolux = (): void => {
+    if (isRestartingKolux) {
       return
     }
-    setIsRestartingNightshift(true)
+    setIsRestartingKolux(true)
     toast.info(
-      translate(
-        'auto.components.sidebar.SidebarSettingsHelpMenu.5161eef55d',
-        'Restarting Nightshift…'
-      )
+      translate('auto.components.sidebar.SidebarSettingsHelpMenu.5161eef55d', 'Restarting Kolux…')
     )
     void window.api.app.restart().catch((error) => {
       if (mountedRef.current) {
-        setIsRestartingNightshift(false)
+        setIsRestartingKolux(false)
         toast.error(
           translate(
             'auto.components.sidebar.SidebarSettingsHelpMenu.4e8f5710d3',
-            "Couldn't restart Nightshift."
+            "Couldn't restart Kolux."
           ),
           {
             description: error instanceof Error ? error.message : undefined
@@ -319,11 +316,11 @@ export function SidebarSettingsHelpMenu(): React.JSX.Element {
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={handleRestartNightshift} disabled={isRestartingNightshift}>
+            <DropdownMenuItem onSelect={handleRestartKolux} disabled={isRestartingKolux}>
               <RotateCw className="size-3.5" />
               {translate(
                 'auto.components.sidebar.SidebarSettingsHelpMenu.ad3d3ed7f1',
-                'Restart Nightshift'
+                'Restart Kolux'
               )}
             </DropdownMenuItem>
           </DropdownMenuContent>

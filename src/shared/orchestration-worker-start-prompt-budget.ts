@@ -19,7 +19,7 @@ export const ORCHESTRATION_WORKER_START_PROMPT_MAX_BYTES = Math.min(
   getMaxTerminalPasteBytesForIngestMs('win32', WORKER_START_PROMPT_INGEST_BUDGET_MS)
 )
 
-/** Task body limit; the remaining prompt budget is reserved for Nightshift's fixed dispatch preamble. */
+/** Task body limit; the remaining prompt budget is reserved for Kolux's fixed dispatch preamble. */
 export const ORCHESTRATION_WORKER_START_TASK_SPEC_MAX_BYTES =
   ORCHESTRATION_WORKER_START_PROMPT_MAX_BYTES - WORKER_START_PREAMBLE_RESERVED_BYTES
 

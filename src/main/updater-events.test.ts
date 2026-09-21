@@ -36,7 +36,7 @@ vi.mock('./linux-update-package-type', () => ({
 vi.mock('./updater-changelog', () => ({ fetchChangelog: vi.fn().mockResolvedValue(null) }))
 vi.mock('./updater-lifecycle-diagnostics', () => ({ recordUpdaterLifecycle: vi.fn() }))
 
-const DEB_PATH = '/home/tester/.cache/nightshift-updater/pending/nightshift-ide_1.0.61_amd64.deb'
+const DEB_PATH = '/home/tester/.cache/kolux-updater/pending/kolux-ide_1.0.61_amd64.deb'
 // A real 64-byte SHA-512; capture rejects a digest that cannot decode to one.
 const DEB_SHA512 =
   'LHlL7dKoqg98gS2nfQv878dK+UoktbAkm4M20/hoJ2Qr0Kqsa3MSL4VmWy/Lll/MYjQFkpvOxduQ/vswentozA=='
@@ -110,7 +110,7 @@ function downloadedEvent(overrides?: Record<string, unknown>): Record<string, un
   return {
     version: '1.0.61',
     downloadedFile: DEB_PATH,
-    files: [{ url: 'nightshift-ide_1.0.61_amd64.deb', sha512: DEB_SHA512 }],
+    files: [{ url: 'kolux-ide_1.0.61_amd64.deb', sha512: DEB_SHA512 }],
     ...overrides
   }
 }
@@ -165,19 +165,19 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
       getLinuxPackageTypeMock.mockReturnValue(packageType)
       getLinuxRootPackageTypeMock.mockReturnValue(packageType)
       const { emit, context } = await register()
-      const fileName = packageType === 'deb' ? 'nightshift.deb' : 'nightshift.rpm'
+      const fileName = packageType === 'deb' ? 'kolux.deb' : 'kolux.rpm'
 
       emit(
         'update-downloaded',
         downloadedEvent({
-          downloadedFile: `/home/tester/.cache/nightshift-updater/pending/${fileName}`,
+          downloadedFile: `/home/tester/.cache/kolux-updater/pending/${fileName}`,
           files: [{ url: fileName, sha512: DEB_SHA512 }]
         })
       )
 
       expect(context.sendStatus).toHaveBeenLastCalledWith({
         state: 'error',
-        message: 'Quit Nightshift before running the system package install command.',
+        message: 'Quit Kolux before running the system package install command.',
         recovery: {
           kind: 'linux-package-install',
           packageType,
@@ -189,8 +189,8 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
   )
 
   it.each([
-    ['missing', [{ url: 'nightshift-ide_1.0.61_amd64.deb' }]],
-    ['malformed', [{ url: 'nightshift-ide_1.0.61_amd64.deb', sha512: 'not-a-digest' }]]
+    ['missing', [{ url: 'kolux-ide_1.0.61_amd64.deb' }]],
+    ['malformed', [{ url: 'kolux-ide_1.0.61_amd64.deb', sha512: 'not-a-digest' }]]
   ])('does not offer recovery when the package digest is %s', async (_kind, files) => {
     const { emit, context, getArtifact } = await register()
 
@@ -199,7 +199,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
     const status = {
       state: 'error',
       message:
-        'The downloaded package metadata could not be verified. Quit Nightshift before downloading and installing the update from the official release page.',
+        'The downloaded package metadata could not be verified. Quit Kolux before downloading and installing the update from the official release page.',
       version: '1.0.61',
       retryable: false
     }
@@ -240,7 +240,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
     expect(context.sendStatus).toHaveBeenLastCalledWith({
       state: 'error',
       message:
-        'Nightshift could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.',
+        'Kolux could not verify the installed Linux package format, so it will not install this update automatically. Download the update from the official release page and install it manually.',
       version: '1.0.61',
       retryable: false
     })
@@ -273,7 +273,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
     expect(getArtifact()).toEqual(expect.objectContaining({ version: '1.0.61' }))
     expect(context.sendStatus).toHaveBeenLastCalledWith({
       state: 'error',
-      message: 'Quit Nightshift before running the system package install command.',
+      message: 'Quit Kolux before running the system package install command.',
       recovery: {
         kind: 'linux-package-install',
         packageType: 'deb',
@@ -296,7 +296,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
     expect(getArtifact()).toEqual(expect.objectContaining({ version: '1.0.61' }))
     expect(context.sendStatus).toHaveBeenLastCalledWith({
       state: 'error',
-      message: 'Quit Nightshift before running the system package install command.',
+      message: 'Quit Kolux before running the system package install command.',
       recovery: {
         kind: 'linux-package-install',
         packageType: 'deb',
@@ -373,7 +373,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
     expect(getArtifact()).toEqual(expect.objectContaining({ version: '1.0.61' }))
     expect(context.sendStatus).toHaveBeenLastCalledWith({
       state: 'error',
-      message: 'Quit Nightshift before running the system package install command.',
+      message: 'Quit Kolux before running the system package install command.',
       recovery: {
         kind: 'linux-package-install',
         packageType: 'deb',
@@ -431,7 +431,7 @@ describe('registerAutoUpdaterHandlers linux package artifact tracking', () => {
       await vi.waitFor(() =>
         expect(context.sendStatus).toHaveBeenLastCalledWith({
           state: 'error',
-          message: 'Quit Nightshift before running the system package install command.',
+          message: 'Quit Kolux before running the system package install command.',
           recovery: {
             kind: 'linux-package-install',
             packageType: 'deb',

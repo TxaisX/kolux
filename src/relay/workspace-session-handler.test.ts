@@ -37,7 +37,7 @@ describe('WorkspaceSessionHandler', () => {
   let written: Buffer[]
 
   beforeEach(() => {
-    baseDir = mkdtempSync(join(tmpdir(), 'nightshift-workspace-session-'))
+    baseDir = mkdtempSync(join(tmpdir(), 'kolux-workspace-session-'))
     written = []
     dispatcher = new RelayDispatcher((data) => {
       written.push(Buffer.from(data))

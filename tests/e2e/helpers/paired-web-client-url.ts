@@ -11,17 +11,17 @@ export function createPairedWebClientUrl(
 ): string {
   const clientUrl = new URL(offerUrl)
   if (options.disableRemoteTerminalStallRecovery) {
-    clientUrl.searchParams.set('nightshiftE2EDisableRemoteTerminalStallRecovery', '1')
+    clientUrl.searchParams.set('koluxE2EDisableRemoteTerminalStallRecovery', '1')
   }
   if (options.terminalParkingDelayMs !== undefined) {
     clientUrl.searchParams.set(
-      'nightshiftE2ETerminalParkingDelayMs',
+      'koluxE2ETerminalParkingDelayMs',
       `${options.terminalParkingDelayMs}`
     )
   }
   if (options.terminalRetentionLimit !== undefined) {
     clientUrl.searchParams.set(
-      'nightshiftE2ETerminalRetentionLimit',
+      'koluxE2ETerminalRetentionLimit',
       `${options.terminalRetentionLimit}`
     )
   }

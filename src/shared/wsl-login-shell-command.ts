@@ -22,17 +22,17 @@ export function buildWslExecArgs(
 export function buildWslLoginShellCommand(command: string): string {
   const quotedCommand = quotePosixShell(command)
   return [
-    '_nightshift_wsl_shell=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)',
-    'if [ -z "$_nightshift_wsl_shell" ] || [ ! -x "$_nightshift_wsl_shell" ]; then',
-    '  _nightshift_wsl_shell="${SHELL:-/bin/bash}"',
+    '_kolux_wsl_shell=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)',
+    'if [ -z "$_kolux_wsl_shell" ] || [ ! -x "$_kolux_wsl_shell" ]; then',
+    '  _kolux_wsl_shell="${SHELL:-/bin/bash}"',
     'fi',
-    'if [ -z "$_nightshift_wsl_shell" ] || [ ! -x "$_nightshift_wsl_shell" ]; then',
-    '  _nightshift_wsl_shell=/bin/sh',
+    'if [ -z "$_kolux_wsl_shell" ] || [ ! -x "$_kolux_wsl_shell" ]; then',
+    '  _kolux_wsl_shell=/bin/sh',
     'fi',
-    '_nightshift_wsl_shell_name=$(basename "$_nightshift_wsl_shell" | tr "[:upper:]" "[:lower:]")',
-    'case "$_nightshift_wsl_shell_name" in',
-    `  sh|dash) exec "$_nightshift_wsl_shell" -lc ${quotedCommand} ;;`,
-    `  bash|zsh|ksh|mksh|ash) exec "$_nightshift_wsl_shell" -ilc ${quotedCommand} ;;`,
+    '_kolux_wsl_shell_name=$(basename "$_kolux_wsl_shell" | tr "[:upper:]" "[:lower:]")',
+    'case "$_kolux_wsl_shell_name" in',
+    `  sh|dash) exec "$_kolux_wsl_shell" -lc ${quotedCommand} ;;`,
+    `  bash|zsh|ksh|mksh|ash) exec "$_kolux_wsl_shell" -ilc ${quotedCommand} ;;`,
     `  *) exec /bin/sh -lc ${quotedCommand} ;;`,
     'esac'
   ].join('\n')
@@ -72,8 +72,8 @@ export function buildWslCapturedLoginShellCommand(
   command: string,
   nonce: string = nextWslCaptureNonce()
 ): WslCapturedLoginShellCommand {
-  const begin = `__NIGHTSHIFT_WSL_CAPTURE_BEGIN_${nonce}__`
-  const end = `__NIGHTSHIFT_WSL_CAPTURE_END_${nonce}__`
+  const begin = `__KOLUX_WSL_CAPTURE_BEGIN_${nonce}__`
+  const end = `__KOLUX_WSL_CAPTURE_END_${nonce}__`
   return {
     beginMarker: begin,
     endMarker: end,
@@ -81,9 +81,9 @@ export function buildWslCapturedLoginShellCommand(
       [
         `printf %s ${quotePosixShell(begin)}`,
         command,
-        '_nightshift_capture_status=$?',
+        '_kolux_capture_status=$?',
         `printf %s ${quotePosixShell(end)}`,
-        'exit $_nightshift_capture_status'
+        'exit $_kolux_capture_status'
       ].join('\n')
     ),
     readStdout: (stdout) => {
@@ -106,36 +106,36 @@ export function buildWslCapturedLoginShellCommand(
 
 export function buildWslInteractiveLoginShellCommand(): string {
   return [
-    '_nightshift_wsl_shell=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)',
-    'if [ -z "$_nightshift_wsl_shell" ] || [ ! -x "$_nightshift_wsl_shell" ]; then',
-    '  _nightshift_wsl_shell="${SHELL:-/bin/bash}"',
+    '_kolux_wsl_shell=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)',
+    'if [ -z "$_kolux_wsl_shell" ] || [ ! -x "$_kolux_wsl_shell" ]; then',
+    '  _kolux_wsl_shell="${SHELL:-/bin/bash}"',
     'fi',
-    'if [ -z "$_nightshift_wsl_shell" ] || [ ! -x "$_nightshift_wsl_shell" ]; then',
-    '  _nightshift_wsl_shell=/bin/sh',
+    'if [ -z "$_kolux_wsl_shell" ] || [ ! -x "$_kolux_wsl_shell" ]; then',
+    '  _kolux_wsl_shell=/bin/sh',
     'fi',
-    '_nightshift_shell_ready_root=""',
+    '_kolux_shell_ready_root=""',
     // Why the explicit root first: the wrapper tree is content-addressed, so its
     // path carries a hash the guest cannot derive. The host publishes the
-    // resolved root and WSLENV /p-translates it. The NIGHTSHIFT_USER_DATA_PATH branch
+    // resolved root and WSLENV /p-translates it. The KOLUX_USER_DATA_PATH branch
     // stays as the fallback for an older host that exports only that.
-    'if [ -n "${NIGHTSHIFT_SHELL_READY_ROOT:-}" ]; then',
-    '  _nightshift_shell_ready_root="${NIGHTSHIFT_SHELL_READY_ROOT%/}"',
-    'elif [ -n "${NIGHTSHIFT_USER_DATA_PATH:-}" ]; then',
-    '  _nightshift_shell_ready_root="${NIGHTSHIFT_USER_DATA_PATH%/}/shell-ready"',
+    'if [ -n "${KOLUX_SHELL_READY_ROOT:-}" ]; then',
+    '  _kolux_shell_ready_root="${KOLUX_SHELL_READY_ROOT%/}"',
+    'elif [ -n "${KOLUX_USER_DATA_PATH:-}" ]; then',
+    '  _kolux_shell_ready_root="${KOLUX_USER_DATA_PATH%/}/shell-ready"',
     'fi',
-    '_nightshift_wsl_shell_name=$(basename "$_nightshift_wsl_shell" | tr "[:upper:]" "[:lower:]")',
-    'case "$_nightshift_wsl_shell_name" in',
+    '_kolux_wsl_shell_name=$(basename "$_kolux_wsl_shell" | tr "[:upper:]" "[:lower:]")',
+    'case "$_kolux_wsl_shell_name" in',
     '  bash)',
-    '    if [ -n "${_nightshift_shell_ready_root:-}" ] && [ -f "${_nightshift_shell_ready_root}/bash/rcfile" ]; then',
-    '      exec "$_nightshift_wsl_shell" --rcfile "${_nightshift_shell_ready_root}/bash/rcfile"',
+    '    if [ -n "${_kolux_shell_ready_root:-}" ] && [ -f "${_kolux_shell_ready_root}/bash/rcfile" ]; then',
+    '      exec "$_kolux_wsl_shell" --rcfile "${_kolux_shell_ready_root}/bash/rcfile"',
     '    fi',
     '    ;;',
     '  zsh)',
-    '    if [ -n "${_nightshift_shell_ready_root:-}" ] && [ -d "${_nightshift_shell_ready_root}/zsh" ]; then',
-    '      export ZDOTDIR="${_nightshift_shell_ready_root}/zsh"',
+    '    if [ -n "${_kolux_shell_ready_root:-}" ] && [ -d "${_kolux_shell_ready_root}/zsh" ]; then',
+    '      export ZDOTDIR="${_kolux_shell_ready_root}/zsh"',
     '    fi',
     '    ;;',
     'esac',
-    'exec "$_nightshift_wsl_shell" -l'
+    'exec "$_kolux_wsl_shell" -l'
   ].join('\n')
 }

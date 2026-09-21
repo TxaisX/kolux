@@ -111,10 +111,10 @@ const runtimeConfigPath = (): string => join(runtimeHome(), 'config.toml')
 
 beforeEach(() => {
   denials.reset()
-  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-sta4737-home-'))
-  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-sta4737-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-sta4737-home-'))
+  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-sta4737-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   getPathMock.mockImplementation((name: string) => {
     if (name === 'userData') {
@@ -131,9 +131,9 @@ afterEach(() => {
   realFs.rmSync(fakeHomeDir, { recursive: true, force: true })
   realFs.rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })
@@ -218,7 +218,7 @@ describe('STA-4737 the config mirror must not overwrite a runtime config it coul
 describe('STA-4737 promotion must not rebuild a system config it could not read', () => {
   function seedPromotableRuntimeChange(): void {
     realFs.writeFileSync(systemConfigPath(), 'model = "old-model"\n', 'utf-8')
-    // The baseline records what Nightshift last mirrored; the later edit then reads as
+    // The baseline records what Kolux last mirrored; the later edit then reads as
     // an in-Codex change that must be promoted back to ~/.codex.
     realFs.writeFileSync(runtimeConfigPath(), 'model = "old-model"\n', 'utf-8')
     snapshotCodexRuntimeSettingsBaseline(runtimeHome())
@@ -239,7 +239,7 @@ describe('STA-4737 promotion must not rebuild a system config it could not read'
     ).toBeNull()
 
     // Before the fix, the unreadable config counted as absent and was replaced
-    // by a reconstruction built from Nightshift's runtime copy.
+    // by a reconstruction built from Kolux's runtime copy.
     expect(realFs.readFileSync(systemConfigPath(), 'utf-8')).toBe(before)
   })
 
@@ -260,14 +260,14 @@ describe('STA-4737 promotion must not rebuild a system config it could not read'
 
 describe('STA-4737 the resource sync must not delete a mirror whose source it could not read', () => {
   const AGENTS_ENTRY = 'AGENTS.md'
-  const MIRRORED = '# instructions Nightshift copied for the distro\n'
+  const MIRRORED = '# instructions Kolux copied for the distro\n'
 
   function seedOwnedMirrorCopy(): { sourcePath: string; targetPath: string } {
     const sourcePath = join(systemHome(), AGENTS_ENTRY)
     const targetPath = join(runtimeHome(), AGENTS_ENTRY)
     realFs.writeFileSync(sourcePath, MIRRORED, 'utf-8')
     realFs.writeFileSync(targetPath, MIRRORED, 'utf-8')
-    // Nightshift owns this copy, which is what entitles the sync to remove it.
+    // Kolux owns this copy, which is what entitles the sync to remove it.
     markCopiedResource(runtimeHome(), AGENTS_ENTRY, sourcePath)
     return { sourcePath, targetPath }
   }
@@ -323,7 +323,7 @@ describe('STA-4737 the resource sync must not delete a mirror whose source it co
       managedHomePath: runtimeHome()
     })
 
-    // Why: removing Nightshift's own copy of a resource the user deleted is the
+    // Why: removing Kolux's own copy of a resource the user deleted is the
     // point of this path. Refusing here would strand stale instructions.
     expect(realFs.existsSync(targetPath)).toBe(false)
   })

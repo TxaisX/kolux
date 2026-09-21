@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveTabId,
@@ -36,10 +36,10 @@ import { parkHiddenTabBehindDecoy } from './helpers/terminal-hidden-parking'
 // the hidden-but-mounted scenario needs the shell exit to land well inside the
 // hot-retain window — 500ms let slow shell teardown race past parking and turn
 // that scenario into the exits-while-parked one.
-const PARKING_DELAY_MS = Number(process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS) || 2_000
+const PARKING_DELAY_MS = Number(process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS) || 2_000
 
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
+  koluxAppExtraEnv: { KOLUX_E2E_TERMINAL_PARKING_DELAY_MS: String(PARKING_DELAY_MS) }
 })
 
 type ParkingDebugWindow = Window & {
@@ -250,15 +250,15 @@ async function setUpSplitTab(page: Page): Promise<SplitTabSetup> {
 }
 
 test.describe('terminal pane close vs hidden/park lifecycle keeps layout consistent', () => {
-  test('control: close while visible', async ({ nightshiftPage }) => {
-    const { tabId } = await setUpSplitTab(nightshiftPage)
-    await closeLastPaneOnTab(nightshiftPage, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'close-visible')
+  test('control: close while visible', async ({ koluxPage }) => {
+    const { tabId } = await setUpSplitTab(koluxPage)
+    await closeLastPaneOnTab(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'close-visible')
   })
 
-  test('close and hide the tab in the same tick', async ({ nightshiftPage }) => {
-    const { worktreeId, tabId } = await setUpSplitTab(nightshiftPage)
-    await nightshiftPage.evaluate(
+  test('close and hide the tab in the same tick', async ({ koluxPage }) => {
+    const { worktreeId, tabId } = await setUpSplitTab(koluxPage)
+    await koluxPage.evaluate(
       ({ tabId, worktreeId }) => {
         const store = window.__store
         const manager = window.__paneManagers?.get(tabId)
@@ -278,89 +278,81 @@ test.describe('terminal pane close vs hidden/park lifecycle keeps layout consist
       },
       { tabId, worktreeId }
     )
-    await nightshiftPage.waitForTimeout(PARKING_DELAY_MS * 3)
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'close-then-hide-same-tick')
+    await koluxPage.waitForTimeout(PARKING_DELAY_MS * 3)
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'close-then-hide-same-tick')
   })
 
-  test('close while hidden but still mounted (hot-retain window)', async ({ nightshiftPage }) => {
-    const { worktreeId, tabId } = await setUpSplitTab(nightshiftPage)
-    await createActiveTerminalTab(nightshiftPage, worktreeId)
-    await closeLastPaneOnTab(nightshiftPage, tabId)
-    await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, tabId, {
+  test('close while hidden but still mounted (hot-retain window)', async ({ koluxPage }) => {
+    const { worktreeId, tabId } = await setUpSplitTab(koluxPage)
+    await createActiveTerminalTab(koluxPage, worktreeId)
+    await closeLastPaneOnTab(koluxPage, tabId)
+    await parkHiddenTabBehindDecoy(koluxPage, worktreeId, tabId, {
       parkDelayMs: PARKING_DELAY_MS
     })
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'close-while-hidden-mounted')
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'close-while-hidden-mounted')
   })
 
-  test('close immediately after reveal remount, before panes settle', async ({
-    nightshiftPage
-  }) => {
-    const { worktreeId, tabId } = await setUpSplitTab(nightshiftPage)
-    await createActiveTerminalTab(nightshiftPage, worktreeId)
-    await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, tabId, {
+  test('close immediately after reveal remount, before panes settle', async ({ koluxPage }) => {
+    const { worktreeId, tabId } = await setUpSplitTab(koluxPage)
+    await createActiveTerminalTab(koluxPage, worktreeId)
+    await parkHiddenTabBehindDecoy(koluxPage, worktreeId, tabId, {
       parkDelayMs: PARKING_DELAY_MS
     })
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
     // Close as soon as the manager exists — panes may still be attaching.
-    await nightshiftPage.evaluate((tabId) => {
+    await koluxPage.evaluate((tabId) => {
       const manager = window.__paneManagers?.get(tabId)
       const target = manager?.getPanes().at(-1)
       if (manager && target) {
         manager.closePane(target.id)
       }
     }, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'close-mid-reveal')
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'close-mid-reveal')
   })
 
-  test('clean visible close survives a later park/reveal cycle', async ({ nightshiftPage }) => {
-    const { worktreeId, tabId } = await setUpSplitTab(nightshiftPage)
-    await closeLastPaneOnTab(nightshiftPage, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'pre-park close')
-    await createActiveTerminalTab(nightshiftPage, worktreeId)
-    await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, tabId, {
+  test('clean visible close survives a later park/reveal cycle', async ({ koluxPage }) => {
+    const { worktreeId, tabId } = await setUpSplitTab(koluxPage)
+    await closeLastPaneOnTab(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'pre-park close')
+    await createActiveTerminalTab(koluxPage, worktreeId)
+    await parkHiddenTabBehindDecoy(koluxPage, worktreeId, tabId, {
       parkDelayMs: PARKING_DELAY_MS
     })
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'post-park-reveal')
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'post-park-reveal')
   })
 
-  test('split pane shell exits while hidden but still mounted', async ({ nightshiftPage }) => {
-    const { worktreeId, tabId, splitPtyId } = await setUpSplitTab(nightshiftPage)
-    await createActiveTerminalTab(nightshiftPage, worktreeId)
+  test('split pane shell exits while hidden but still mounted', async ({ koluxPage }) => {
+    const { worktreeId, tabId, splitPtyId } = await setUpSplitTab(koluxPage)
+    await createActiveTerminalTab(koluxPage, worktreeId)
     // The setup-script analog: the split's shell ends on its own while the
     // tab is hidden-but-mounted.
-    await sendToTerminal(nightshiftPage, splitPtyId, 'exit\r')
-    await nightshiftPage.waitForTimeout(PARKING_DELAY_MS / 2)
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
-    await expectLayoutConsistent(
-      nightshiftPage,
-      tabId,
-      1,
-      'shell-exit-while-hidden-mounted',
-      splitPtyId
-    )
+    await sendToTerminal(koluxPage, splitPtyId, 'exit\r')
+    await koluxPage.waitForTimeout(PARKING_DELAY_MS / 2)
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'shell-exit-while-hidden-mounted', splitPtyId)
   })
 
-  test('split pane shell exits while the tab is parked', async ({ nightshiftPage }) => {
-    const { worktreeId, tabId, splitPtyId } = await setUpSplitTab(nightshiftPage)
-    await createActiveTerminalTab(nightshiftPage, worktreeId)
-    await parkHiddenTabBehindDecoy(nightshiftPage, worktreeId, tabId, {
+  test('split pane shell exits while the tab is parked', async ({ koluxPage }) => {
+    const { worktreeId, tabId, splitPtyId } = await setUpSplitTab(koluxPage)
+    await createActiveTerminalTab(koluxPage, worktreeId)
+    await parkHiddenTabBehindDecoy(koluxPage, worktreeId, tabId, {
       parkDelayMs: PARKING_DELAY_MS
     })
-    await sendToTerminal(nightshiftPage, splitPtyId, 'exit\r')
-    await nightshiftPage.waitForTimeout(PARKING_DELAY_MS)
-    await activateTerminalTab(nightshiftPage, tabId)
-    await waitForTabRemounted(nightshiftPage, tabId)
+    await sendToTerminal(koluxPage, splitPtyId, 'exit\r')
+    await koluxPage.waitForTimeout(PARKING_DELAY_MS)
+    await activateTerminalTab(koluxPage, tabId)
+    await waitForTabRemounted(koluxPage, tabId)
     // Why: the parked exit is deliberately deferred (no PaneManager to promote
     // siblings) — the reveal remount owns the per-leaf teardown. This asserts
     // that ownership actually resolves instead of leaving a ghost pane.
-    await expectLayoutConsistent(nightshiftPage, tabId, 1, 'shell-exit-while-parked', splitPtyId)
+    await expectLayoutConsistent(koluxPage, tabId, 1, 'shell-exit-while-parked', splitPtyId)
   })
 })

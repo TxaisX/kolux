@@ -14,7 +14,7 @@ function withWindows<T>(fn: () => T): T {
 }
 
 function encodedValue(value: string): string {
-  return `Read-NightshiftValue '${Buffer.from(value).toString('base64')}'`
+  return `Read-KoluxValue '${Buffer.from(value).toString('base64')}'`
 }
 
 /** Positional-independent so the argv shape can change without silently reading the wrong slot. */
@@ -26,7 +26,7 @@ function decodedScript(args: string[]): string {
 function pidFilePathFromSpawnArgs(args: string[]): string {
   const script = decodedScript(args)
   const encodedPath = script.match(
-    /WriteAllText\(\(Read-NightshiftValue '([^']+)'\), \[string\]\$PID\)/
+    /WriteAllText\(\(Read-KoluxValue '([^']+)'\), \[string\]\$PID\)/
   )?.[1]
   if (!encodedPath) {
     throw new Error('PID relay path is missing')

@@ -11,12 +11,12 @@ const mocks = vi.hoisted(() => ({
   environments: [{ id: 'env-1' }]
 }))
 
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp/nightshift-test-user-data' } }))
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp/kolux-test-user-data' } }))
 vi.mock('../../shared/runtime-environment-store', () => ({
   listEnvironments: () => mocks.environments
 }))
 vi.mock('./browser-route-partition-binding-runtime', () => ({
-  activeBrowserRoutePartitionNightshiftProfileId: () => 'local-default'
+  activeBrowserRoutePartitionKoluxProfileId: () => 'local-default'
 }))
 vi.mock('./browser-route-partition-storage-dependencies', () => ({
   browserRoutePartitionStorageDependencies: (isPartitionLive: (p: string) => boolean) => ({
@@ -29,7 +29,7 @@ vi.mock('./browser-route-partition-storage-dependencies', () => ({
         return partitions.length
       }
     },
-    partitionDataRoot: '/tmp/nightshift-test-partitions',
+    partitionDataRoot: '/tmp/kolux-test-partitions',
     isPartitionLive,
     clearPartitionStorage: async (partition: string) => {
       mocks.cleared.push(partition)
@@ -46,30 +46,30 @@ import {
   collectOrphanedBrowserRoutePartitionStorage
 } from './browser-route-partition-storage-runtime'
 
-const ENV_PARTITION = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
-const LIVE_TARGET_PARTITION = `persist:nightshift-browser-v1-${'b'.repeat(64)}`
-const REMOVED_TARGET_PARTITION = `persist:nightshift-browser-v1-${'c'.repeat(64)}`
+const ENV_PARTITION = `persist:kolux-browser-v1-${'a'.repeat(64)}`
+const LIVE_TARGET_PARTITION = `persist:kolux-browser-v1-${'b'.repeat(64)}`
+const REMOVED_TARGET_PARTITION = `persist:kolux-browser-v1-${'c'.repeat(64)}`
 
 function seedBindings(): void {
   mocks.bindings.clear()
   mocks.bindings.set(ENV_PARTITION, {
     fingerprint: '1'.repeat(64),
     storageScope: deriveBrowserRoutePartitionStorageScope({
-      nightshiftProfileId: 'local-default',
+      koluxProfileId: 'local-default',
       environmentId: 'env-1'
     })
   })
   mocks.bindings.set(LIVE_TARGET_PARTITION, {
     fingerprint: '2'.repeat(64),
     storageScope: deriveLocalSshBrowserRoutePartitionStorageScope({
-      nightshiftProfileId: 'local-default',
+      koluxProfileId: 'local-default',
       targetId: 'target-live'
     })
   })
   mocks.bindings.set(REMOVED_TARGET_PARTITION, {
     fingerprint: '3'.repeat(64),
     storageScope: deriveLocalSshBrowserRoutePartitionStorageScope({
-      nightshiftProfileId: 'local-default',
+      koluxProfileId: 'local-default',
       targetId: 'target-removed'
     })
   })

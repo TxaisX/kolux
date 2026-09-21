@@ -28,7 +28,7 @@ describe('plugin panel serve RPC identity', () => {
 
     expect(
       schema.safeParse({
-        pluginId: 'nightshift-samples.other',
+        pluginId: 'kolux-samples.other',
         unexpected: 'x'.repeat(100_000)
       }).success
     ).toBe(true)
@@ -49,13 +49,13 @@ describe('plugin panel serve RPC identity', () => {
 
     await expect(
       method('plugins.readPanelEntry').handler(
-        { pluginKey: 'nightshift-samples.demo', panelId: 'dashboard' },
+        { pluginKey: 'kolux-samples.demo', panelId: 'dashboard' },
         rpcContext
       )
     ).resolves.toEqual({ html: '<p>panel</p>', sessionToken: SESSION_TOKEN })
     expect(service.panels.open).toHaveBeenCalledWith(
       'runtime:connection-one',
-      'nightshift-samples.demo',
+      'kolux-samples.demo',
       'dashboard'
     )
 

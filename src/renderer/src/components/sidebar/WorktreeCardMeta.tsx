@@ -72,10 +72,10 @@ export function WorktreeCardDetailsHover({
   onWorkspaceTitleEditingChange,
   onEditIssue,
   onEditComment,
-  onOpenGitHubIssueInNightshift,
+  onOpenGitHubIssueInKolux,
   onOpenIssueInBrowser,
-  onOpenLinearIssueInNightshift,
-  onOpenReviewInNightshift,
+  onOpenLinearIssueInKolux,
+  onOpenReviewInKolux,
   onOpenReviewInBrowser,
   onUnlinkReview,
   onOpenAutomation,
@@ -219,10 +219,8 @@ export function WorktreeCardDetailsHover({
             onIssueMenuOpenChange={handleIssueMenuOpenChange}
             onCopyIssueLink={issue?.url ? handleCopyIssueLink : undefined}
             onEditIssue={onEditIssue}
-            onOpenGitHubIssueInNightshift={
-              onOpenGitHubIssueInNightshift
-                ? dismissAndRun(onOpenGitHubIssueInNightshift)
-                : undefined
+            onOpenGitHubIssueInKolux={
+              onOpenGitHubIssueInKolux ? dismissAndRun(onOpenGitHubIssueInKolux) : undefined
             }
             onOpenIssueInBrowser={
               onOpenIssueInBrowser && issue?.url
@@ -245,13 +243,13 @@ export function WorktreeCardDetailsHover({
                 )}
                 actions={
                   <>
-                    {linearIssue.url && onOpenLinearIssueInNightshift && (
+                    {linearIssue.url && onOpenLinearIssueInKolux && (
                       <MetadataActionIcon
                         label={translate(
                           'auto.components.sidebar.WorktreeCardMeta.2c67730e07',
-                          'Open in Nightshift'
+                          'Open in Kolux'
                         )}
-                        onClick={dismissAndRun(onOpenLinearIssueInNightshift)}
+                        onClick={dismissAndRun(onOpenLinearIssueInKolux)}
                       >
                         <MonitorUp className="size-3" />
                       </MetadataActionIcon>
@@ -324,7 +322,7 @@ export function WorktreeCardDetailsHover({
             review={review}
             reviewMenuOpen={reviewMenuOpen}
             onReviewMenuOpenChange={handleReviewMenuOpenChange}
-            onOpenReviewInNightshift={onOpenReviewInNightshift}
+            onOpenReviewInKolux={onOpenReviewInKolux}
             onOpenReviewInBrowser={
               onOpenReviewInBrowser && review?.url ? onOpenReviewInBrowser : undefined
             }

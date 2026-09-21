@@ -121,7 +121,7 @@ export function getAllowedRoots(store: Store): string[] {
             computeWorkspaceRoot(
               repo.path,
               // Why enriched here too: placement has to agree with the create
-              // flow, or renderer file access is denied for a worktree Nightshift
+              // flow, or renderer file access is denied for a worktree Kolux
               // just put on the WSL side.
               getWorktreePathSettings(
                 repo,

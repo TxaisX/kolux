@@ -72,7 +72,7 @@ async function createStore() {
 }
 
 function dataFile(): string {
-  return join(testState.dir, 'nightshift-data.json')
+  return join(testState.dir, 'kolux-data.json')
 }
 
 const PROXY_URL = 'http://127.0.0.1:8080'
@@ -80,7 +80,7 @@ const BYPASS_RULES = '<local>'
 
 describe('httpProxyUrl secret recovery (STA-3442)', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     cipherState.encryptionAvailable = true
     cipherState.availabilityThrows = false
     cipherState.decryptAlwaysThrows = false

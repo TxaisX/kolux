@@ -39,7 +39,7 @@ describe('settings navigation metadata', () => {
       'orchestration',
       'computer-use',
       'voice',
-      'nightshift-account',
+      'kolux-account',
       'setup-guide',
       'general',
       'integrations',
@@ -121,18 +121,18 @@ describe('settings navigation metadata', () => {
     expect(workflowIds.slice(0, 3)).toEqual(['automations', 'artifacts', 'share-skills'])
   })
 
-  it('places the Nightshift account in Set Up on desktop only', () => {
+  it('places the Kolux account in Set Up on desktop only', () => {
     const desktopSections = buildSettingsNavigationMetadata({
       isMac: false,
       isWindows: false,
       isWebClient: false,
       repos: [repo]
     })
-    const account = desktopSections.find((section) => section.id === 'nightshift-account')
+    const account = desktopSections.find((section) => section.id === 'kolux-account')
 
     expect(account?.group).toBe('setup')
-    expect(account?.searchEntries[0]?.title).toBe('Nightshift account')
-    expect(ids({ isWebClient: true })).not.toContain('nightshift-account')
+    expect(account?.searchEntries[0]?.title).toBe('Kolux account')
+    expect(ids({ isWebClient: true })).not.toContain('kolux-account')
   })
 
   it('puts web-safe AI capability panes at the top while hiding desktop-only panes', () => {

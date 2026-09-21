@@ -32,10 +32,10 @@ function markedText(): string {
 describe('MatchedText', () => {
   it('underlines the matched run', () => {
     act(() => {
-      root.render(<MatchedText text="nightshift" hits={[0, 1, 2, 3]} />)
+      root.render(<MatchedText text="kolux" hits={[0, 1, 2, 3]} />)
     })
 
-    expect(markedText()).toBe('nightshift')
+    expect(markedText()).toBe('kolux')
   })
 
   // Hits are UTF-16 offsets; rendering splits by code point. An astral glyph is
@@ -46,26 +46,26 @@ describe('MatchedText', () => {
       kind: 'project',
       id: 'p1',
       projectId: 'p1',
-      displayName: '🚀 nightshift',
+      displayName: '🚀 kolux',
       badgeColor: '#111111',
-      detail: '~/dev/nightshift'
+      detail: '~/dev/kolux'
     }
-    const [match] = rankProjectOptions([option], 'nightshift', [])
+    const [match] = rankProjectOptions([option], 'kolux', [])
     expect(match).toBeDefined()
 
     act(() => {
       root.render(<MatchedText text={option.displayName} hits={match!.nameHits} />)
     })
 
-    expect(markedText()).toBe('nightshift')
+    expect(markedText()).toBe('kolux')
   })
 
   it('leaves text unmarked when there are no hits', () => {
     act(() => {
-      root.render(<MatchedText text="🚀 nightshift" hits={[]} />)
+      root.render(<MatchedText text="🚀 kolux" hits={[]} />)
     })
 
     expect(container.querySelectorAll('mark')).toHaveLength(0)
-    expect(container.textContent).toBe('🚀 nightshift')
+    expect(container.textContent).toBe('🚀 kolux')
   })
 })

@@ -88,7 +88,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -215,7 +215,7 @@ describe('Store', () => {
 
   it('stores terminal scrollback snapshots beside explicit profile data files', async () => {
     const profileDataDirectory = join(testState.dir, 'profiles', 'local-default')
-    const profileDataFile = join(profileDataDirectory, 'nightshift-data.json')
+    const profileDataFile = join(profileDataDirectory, 'kolux-data.json')
     mkdirSync(profileDataDirectory, { recursive: true })
 
     // Why: the legacy snapshot dir hangs off userData, which resolves through
@@ -242,7 +242,7 @@ describe('Store', () => {
 
   it('reads legacy terminal scrollback snapshots for explicit profile data files', async () => {
     const profileDataDirectory = join(testState.dir, 'profiles', 'local-default')
-    const profileDataFile = join(profileDataDirectory, 'nightshift-data.json')
+    const profileDataFile = join(profileDataDirectory, 'kolux-data.json')
     const ref = 'v1-11111111111111111111111111111111'
     const legacySnapshotDir = join(testState.dir, 'terminal-scrollback')
     mkdirSync(profileDataDirectory, { recursive: true })

@@ -387,7 +387,7 @@ describe('spawn', () => {
 
   it('preserves explicit TERM and forwards final env deletions to the relay', async () => {
     mux.request.mockResolvedValue({ id: 'pty-env-precedence' })
-    const envToDelete = ['TERM_PROGRAM', 'NIGHTSHIFT_STALE_TEST_ENV']
+    const envToDelete = ['TERM_PROGRAM', 'KOLUX_STALE_TEST_ENV']
 
     await provider.spawn({
       cols: 120,
@@ -395,7 +395,7 @@ describe('spawn', () => {
       env: {
         TERM: 'screen-256color',
         TERM_PROGRAM: 'stale-terminal',
-        NIGHTSHIFT_STALE_TEST_ENV: '/tmp/stale-env'
+        KOLUX_STALE_TEST_ENV: '/tmp/stale-env'
       },
       envToDelete
     })
@@ -412,7 +412,7 @@ describe('spawn', () => {
     })
     const spawnCall = mux.request.mock.calls.find((call) => call[0] === 'pty.spawn')
     expect(spawnCall?.[1]?.env).not.toHaveProperty('TERM_PROGRAM')
-    expect(spawnCall?.[1]?.env).not.toHaveProperty('NIGHTSHIFT_STALE_TEST_ENV')
+    expect(spawnCall?.[1]?.env).not.toHaveProperty('KOLUX_STALE_TEST_ENV')
   })
 
   it('forwards provider command delivery to the relay', async () => {
@@ -437,19 +437,19 @@ describe('spawn', () => {
     })
   })
 
-  it('injects the relay-backed Nightshift CLI bridge into remote PTY env', async () => {
+  it('injects the relay-backed Kolux CLI bridge into remote PTY env', async () => {
     mux.request.mockResolvedValue({ id: 'pty-bridge' })
     provider = new SshPtyProvider('conn-1', mux as never, {
-      binDir: '/home/user/.nightshift-relay/bin',
-      relayDir: '/home/user/.nightshift-relay/relay-v1',
+      binDir: '/home/user/.kolux-relay/bin',
+      relayDir: '/home/user/.kolux-relay/relay-v1',
       nodePath: '/usr/bin/node',
-      sockPath: '/home/user/.nightshift-relay/relay.sock'
+      sockPath: '/home/user/.kolux-relay/relay.sock'
     })
 
     await provider.spawn({
       cols: 120,
       rows: 40,
-      env: { PATH: '/usr/bin', NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh' }
+      env: { PATH: '/usr/bin', KOLUX_TERMINAL_HANDLE: 'term_ssh' }
     })
 
     expectRequest(mux.request, 'pty.spawn', {
@@ -457,13 +457,13 @@ describe('spawn', () => {
       rows: 40,
       cwd: undefined,
       env: {
-        PATH: '/home/user/.nightshift-relay/bin:/usr/bin',
-        NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh',
+        PATH: '/home/user/.kolux-relay/bin:/usr/bin',
+        KOLUX_TERMINAL_HANDLE: 'term_ssh',
         [POWERLEVEL10K_WIZARD_DISABLE_ENV]: 'true',
-        NIGHTSHIFT_REMOTE_CLI_BIN_DIR: '/home/user/.nightshift-relay/bin',
-        NIGHTSHIFT_RELAY_DIR: '/home/user/.nightshift-relay/relay-v1',
-        NIGHTSHIFT_RELAY_NODE_PATH: '/usr/bin/node',
-        NIGHTSHIFT_RELAY_SOCKET_PATH: '/home/user/.nightshift-relay/relay.sock'
+        KOLUX_REMOTE_CLI_BIN_DIR: '/home/user/.kolux-relay/bin',
+        KOLUX_RELAY_DIR: '/home/user/.kolux-relay/relay-v1',
+        KOLUX_RELAY_NODE_PATH: '/usr/bin/node',
+        KOLUX_RELAY_SOCKET_PATH: '/home/user/.kolux-relay/relay.sock'
       }
     })
   })
@@ -471,16 +471,16 @@ describe('spawn', () => {
   it('does not clobber the remote relay PATH when caller env has no PATH', async () => {
     mux.request.mockResolvedValue({ id: 'pty-bridge' })
     provider = new SshPtyProvider('conn-1', mux as never, {
-      binDir: '/home/user/.nightshift-relay/bin',
-      relayDir: '/home/user/.nightshift-relay/relay-v1',
+      binDir: '/home/user/.kolux-relay/bin',
+      relayDir: '/home/user/.kolux-relay/relay-v1',
       nodePath: '/usr/bin/node',
-      sockPath: '/home/user/.nightshift-relay/relay.sock'
+      sockPath: '/home/user/.kolux-relay/relay.sock'
     })
 
     await provider.spawn({
       cols: 120,
       rows: 40,
-      env: { NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh' }
+      env: { KOLUX_TERMINAL_HANDLE: 'term_ssh' }
     })
 
     expectRequest(mux.request, 'pty.spawn', {
@@ -488,12 +488,12 @@ describe('spawn', () => {
       rows: 40,
       cwd: undefined,
       env: {
-        NIGHTSHIFT_TERMINAL_HANDLE: 'term_ssh',
+        KOLUX_TERMINAL_HANDLE: 'term_ssh',
         [POWERLEVEL10K_WIZARD_DISABLE_ENV]: 'true',
-        NIGHTSHIFT_REMOTE_CLI_BIN_DIR: '/home/user/.nightshift-relay/bin',
-        NIGHTSHIFT_RELAY_DIR: '/home/user/.nightshift-relay/relay-v1',
-        NIGHTSHIFT_RELAY_NODE_PATH: '/usr/bin/node',
-        NIGHTSHIFT_RELAY_SOCKET_PATH: '/home/user/.nightshift-relay/relay.sock'
+        KOLUX_REMOTE_CLI_BIN_DIR: '/home/user/.kolux-relay/bin',
+        KOLUX_RELAY_DIR: '/home/user/.kolux-relay/relay-v1',
+        KOLUX_RELAY_NODE_PATH: '/usr/bin/node',
+        KOLUX_RELAY_SOCKET_PATH: '/home/user/.kolux-relay/relay.sock'
       }
     })
   })
@@ -501,10 +501,10 @@ describe('spawn', () => {
   it('uses Windows PATH delimiters for native Windows SSH bridge env', async () => {
     mux.request.mockResolvedValue({ id: 'pty-bridge' })
     provider = new SshPtyProvider('conn-1', mux as never, {
-      binDir: 'C:/Users/me/.nightshift-relay/bin',
-      relayDir: 'C:/Users/me/.nightshift-remote/relay-v1',
+      binDir: 'C:/Users/me/.kolux-relay/bin',
+      relayDir: 'C:/Users/me/.kolux-remote/relay-v1',
       nodePath: 'C:/Program Files/nodejs/node.exe',
-      sockPath: '\\\\.\\pipe\\nightshift-relay-123',
+      sockPath: '\\\\.\\pipe\\kolux-relay-123',
       pathDelimiter: ';'
     })
 
@@ -519,12 +519,12 @@ describe('spawn', () => {
       rows: 40,
       cwd: undefined,
       env: {
-        Path: 'C:/Users/me/.nightshift-relay/bin;C:/Windows/System32;C:/Tools',
+        Path: 'C:/Users/me/.kolux-relay/bin;C:/Windows/System32;C:/Tools',
         [POWERLEVEL10K_WIZARD_DISABLE_ENV]: 'true',
-        NIGHTSHIFT_REMOTE_CLI_BIN_DIR: 'C:/Users/me/.nightshift-relay/bin',
-        NIGHTSHIFT_RELAY_DIR: 'C:/Users/me/.nightshift-remote/relay-v1',
-        NIGHTSHIFT_RELAY_NODE_PATH: 'C:/Program Files/nodejs/node.exe',
-        NIGHTSHIFT_RELAY_SOCKET_PATH: '\\\\.\\pipe\\nightshift-relay-123'
+        KOLUX_REMOTE_CLI_BIN_DIR: 'C:/Users/me/.kolux-relay/bin',
+        KOLUX_RELAY_DIR: 'C:/Users/me/.kolux-remote/relay-v1',
+        KOLUX_RELAY_NODE_PATH: 'C:/Program Files/nodejs/node.exe',
+        KOLUX_RELAY_SOCKET_PATH: '\\\\.\\pipe\\kolux-relay-123'
       }
     })
   })

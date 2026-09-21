@@ -34,7 +34,7 @@ describe('remote runtime client error classification', () => {
     expect(
       isRecoverableRemoteRuntimeConnectionError({
         code: 'unauthorized',
-        message: 'Remote Nightshift runtime closed the connection.'
+        message: 'Remote Kolux runtime closed the connection.'
       })
     ).toBe(false)
   })
@@ -49,10 +49,10 @@ describe('remote runtime client error classification', () => {
   })
 
   it.each([
-    'Could not connect to the remote Nightshift runtime.',
-    'Remote Nightshift runtime closed the connection.',
-    'Remote Nightshift runtime connection closed.',
-    'Remote Nightshift runtime is not connected.',
+    'Could not connect to the remote Kolux runtime.',
+    'Remote Kolux runtime closed the connection.',
+    'Remote Kolux runtime connection closed.',
+    'Remote Kolux runtime is not connected.',
     "Error invoking remote method 'runtimeEnvironments:call': RuntimeRpcCallQueueOverloadError: Remote runtime call queue is full; retry after current calls finish.",
     'Remote runtime subscription closed before it started.'
   ])('normalizes unstructured connection failure: %s', (message) => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, type Mock } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import { SESSION_TAB_METHODS } from './session-tabs'
 import { visibleSnapshot } from './session-tabs-snapshot.test-fixture'
@@ -10,13 +10,13 @@ function makeRequest(method: string, params?: unknown): RpcRequest {
   return { id: 'req-1', authToken: 'tok', method, params }
 }
 
-function makeRuntime(experimentalStructuredNativeChat: boolean): NightshiftRuntimeService {
+function makeRuntime(experimentalStructuredNativeChat: boolean): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     getClientSettings: vi.fn(() => ({ experimentalStructuredNativeChat })),
     restoreStructuredAgentSessionTabs: vi.fn(),
     listMobileSessionTabs: vi.fn().mockResolvedValue(visibleSnapshot())
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 describe('structured session tab restoration follows one rule for every caller', () => {

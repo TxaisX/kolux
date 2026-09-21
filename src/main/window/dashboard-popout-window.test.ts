@@ -173,9 +173,9 @@ const RENDERER_URL = 'http://localhost:5173'
 
 // These cases exercise foreground behavior against Electron mocks.
 beforeEach(() => {
-  vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADLESS', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADFUL', undefined)
+  vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADLESS', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADFUL', undefined)
 })
 afterEach(() => vi.unstubAllEnvs())
 
@@ -199,7 +199,7 @@ describe('createOrFocusDashboardPopout', () => {
 
     expect(instances).toHaveLength(1)
     const opts = instances[0].options
-    expect(opts.title).toBe('Nightshift Agent Dashboard')
+    expect(opts.title).toBe('Kolux Agent Dashboard')
     expect(opts.minWidth).toBe(480)
     expect(opts.minHeight).toBe(360)
     // Native frame: neither a custom titleBarStyle nor frame:false is set.
@@ -207,7 +207,7 @@ describe('createOrFocusDashboardPopout', () => {
     expect(opts.frame).toBeUndefined()
     expect(opts.backgroundColor).toBe('#0a0a0a') // dark theme mock
     expect(opts.webPreferences?.sandbox).toBe(true)
-    expect(opts.webPreferences?.partition).toBe('nightshift-dashboard-popout')
+    expect(opts.webPreferences?.partition).toBe('kolux-dashboard-popout')
     expect(opts.webPreferences?.webviewTag).toBe(false)
     expect(opts.webPreferences?.preload).toMatch(/preload[\\/]index\.js$/)
     // Why unstamped: no guest of ours can run here, so this renderer hosts no client-placed page

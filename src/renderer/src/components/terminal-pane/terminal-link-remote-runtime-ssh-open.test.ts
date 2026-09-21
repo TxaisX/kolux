@@ -120,7 +120,7 @@ describe('handleOscLink', () => {
     )
   })
 
-  it('opens SSH file links through Nightshift without local authorization', async () => {
+  it('opens SSH file links through Kolux without local authorization', async () => {
     setPlatform('Macintosh')
     vi.mocked(getConnectionId).mockReturnValue('ssh-1')
 

@@ -9,7 +9,7 @@ import {
   getFolderWorkspacePathStatusForPath
 } from '../../project-groups/folder-workspace-path-status'
 import { getSshFilesystemProvider } from '../../providers/ssh-filesystem-dispatch'
-import type { NightshiftRuntimeService } from '../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../runtime/kolux-runtime'
 import { notifyReposChanged } from './repos-changed-notification'
 import {
   FolderWorkspaceCreateArgs,
@@ -22,7 +22,7 @@ import {
 export function registerFolderWorkspaceHandlers(
   mainWindow: BrowserWindow,
   store: Store,
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 ): void {
   ipcMain.handle('folderWorkspaces:list', (): FolderWorkspace[] => store.getFolderWorkspaces())
 

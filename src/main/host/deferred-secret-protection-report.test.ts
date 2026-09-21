@@ -51,8 +51,8 @@ describe('scheduleSecretProtectionGapReport', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     appListeners.clear()
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-deferred-secret-report-'))
-    dataFile = join(dir, 'nightshift-data.json')
+    dir = mkdtempSync(join(tmpdir(), 'kolux-deferred-secret-report-'))
+    dataFile = join(dir, 'kolux-data.json')
     probes = 0
     logged = []
     setSecretStore({

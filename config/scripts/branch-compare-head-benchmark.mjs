@@ -20,13 +20,13 @@ import { fileURLToPath } from 'node:url'
 import { readBranchCompareHead } from '../../src/shared/git-branch-compare-head.ts'
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const ITERATIONS = Number(process.env.NIGHTSHIFT_BRANCH_COMPARE_BENCH_ITERATIONS ?? '8')
-const WARMUP = Number(process.env.NIGHTSHIFT_BRANCH_COMPARE_BENCH_WARMUP ?? '2')
+const ITERATIONS = Number(process.env.KOLUX_BRANCH_COMPARE_BENCH_ITERATIONS ?? '8')
+const WARMUP = Number(process.env.KOLUX_BRANCH_COMPARE_BENCH_WARMUP ?? '2')
 const ROUNDS = 6
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_BRANCH_COMPARE_BENCH_ITERATIONS', ITERATIONS],
-  ['NIGHTSHIFT_BRANCH_COMPARE_BENCH_WARMUP', WARMUP]
+  ['KOLUX_BRANCH_COMPARE_BENCH_ITERATIONS', ITERATIONS],
+  ['KOLUX_BRANCH_COMPARE_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
@@ -160,7 +160,7 @@ console.log(
   `${pad('base ref', 30)} ${pad('serial', 11)} ${pad('concurrent', 11)} ${pad('speedup', 9)}`
 )
 
-// A short remote label is the common case (Nightshift's base picker emits `origin/main`); the
+// A short remote label is the common case (Kolux's base picker emits `origin/main`); the
 // already-qualified ref skips the probe entirely, so only the concurrency half applies.
 const upstream = await git(['rev-parse', '--abbrev-ref', 'HEAD@{upstream}']).catch(() => null)
 const baseRefs = ['origin/main', 'refs/remotes/origin/main', 'main']

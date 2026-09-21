@@ -77,9 +77,9 @@ describe('compactRetiredNames', () => {
     expect(
       compactRetiredNames({
         exhaustedTiers: 2,
-        names: ['nautilus', 'nightshift-2', 'nightshift-3']
+        names: ['nautilus', 'kolux-2', 'kolux-3']
       })
-    ).toEqual({ exhaustedTiers: 2, names: ['nightshift-3'] })
+    ).toEqual({ exhaustedTiers: 2, names: ['kolux-3'] })
   })
 
   it.each([
@@ -110,7 +110,7 @@ describe('createRetiredNameLookup', () => {
   it('still answers for explicit names above the watermark', () => {
     const lookup = createRetiredNameLookup({ exhaustedTiers: 1, names: ['nautilus-3'] })
     expect(lookup('NAUTILUS-3')).toBe(true)
-    expect(lookup('nightshift-3')).toBe(false)
+    expect(lookup('kolux-3')).toBe(false)
   })
 })
 
@@ -141,7 +141,7 @@ describe('mergeRetiredNameRegistries', () => {
     expect(
       mergeRetiredNameRegistries(
         { exhaustedTiers: 2, names: ['nautilus-3'] },
-        { exhaustedTiers: 0, names: ['nautilus', 'nightshift-2', 'seahorse-4'] }
+        { exhaustedTiers: 0, names: ['nautilus', 'kolux-2', 'seahorse-4'] }
       )
     ).toEqual({ exhaustedTiers: 2, names: ['nautilus-3', 'seahorse-4'] })
   })

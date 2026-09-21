@@ -19,7 +19,7 @@ import type {
 export type AgentSessionIdentityMatchField = 'process-start-time' | 'spawn-token'
 
 export type AgentSessionOwnerProbe =
-  /** Nightshift watched this exact process exit. */
+  /** Kolux watched this exact process exit. */
   | { outcome: 'exit-observed' }
   /** The recorded pid is not present on the host. */
   | { outcome: 'pid-absent' }
@@ -162,7 +162,7 @@ export function evaluateAgentSessionAcquisition(args: {
   }
   if (lease.ownerProcess !== null) {
     if (!isProvenDeadProbe(probe)) {
-      // Why: a lapsed deadline means Nightshift stopped hearing from the owner, not that the child
+      // Why: a lapsed deadline means Kolux stopped hearing from the owner, not that the child
       // stopped editing files and spending tokens.
       return {
         decision: 'refused',
@@ -259,7 +259,7 @@ export function adjudicateAgentSessionRestart(args: {
 }
 
 /**
- * A process carrying a Nightshift spawn token with no matching lease is an orphan: stop it, never
+ * A process carrying a Kolux spawn token with no matching lease is an orphan: stop it, never
  * adopt it. Neither age nor CPU is evidence — only a token match justifies acting on a process.
  */
 export function classifyObservedAgentSessionSpawnToken(args: {

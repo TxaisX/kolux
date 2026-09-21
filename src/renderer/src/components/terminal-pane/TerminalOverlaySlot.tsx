@@ -13,9 +13,9 @@ import { shouldDeferParkedPtyExitTabClose } from './terminal-parked-tab-watchers
 
 const HAS_CSS_ANCHOR_POSITIONING =
   typeof CSS !== 'undefined' &&
-  CSS.supports('position-anchor', '--nightshift-terminal-overlay-probe') &&
-  CSS.supports('top', 'anchor(--nightshift-terminal-overlay-probe top)') &&
-  CSS.supports('width', 'anchor-size(--nightshift-terminal-overlay-probe width)')
+  CSS.supports('position-anchor', '--kolux-terminal-overlay-probe') &&
+  CSS.supports('top', 'anchor(--kolux-terminal-overlay-probe top)') &&
+  CSS.supports('width', 'anchor-size(--kolux-terminal-overlay-probe width)')
 const MIN_OVERLAY_FIT_WIDTH_PX = 48
 const MIN_OVERLAY_FIT_HEIGHT_PX = 24
 const FALLBACK_RECT_MIN_CHANGE_PX = 1
@@ -23,7 +23,7 @@ const FALLBACK_RECT_MIN_CHANGE_PX = 1
 function shouldUseCssAnchorPositioning(): boolean {
   return (
     HAS_CSS_ANCHOR_POSITIONING &&
-    (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ !== true
+    (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ !== true
   )
 }
 

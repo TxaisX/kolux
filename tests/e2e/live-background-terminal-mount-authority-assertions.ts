@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect } from './helpers/nightshift-app'
+import { expect } from './helpers/kolux-app'
 import { ensureTerminalVisible } from './helpers/store'
 import { waitForActiveTerminalManager } from './helpers/terminal'
 import { readTerminalPtyWriteEntries } from './helpers/terminal-pty-write-spy'

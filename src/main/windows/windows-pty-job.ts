@@ -5,7 +5,7 @@ import { recordSelfInitiatedTreeKill } from '../crash-reporting/self-initiated-t
 /**
  * Job-object ownership for a ConPTY's process tree.
  *
- * Before this, Nightshift answered "is this tree mine, and how do I kill it?" by
+ * Before this, Kolux answered "is this tree mine, and how do I kill it?" by
  * scraping the process table, walking parent pids back to itself, and then
  * running `taskkill /T /F` only if the walk said yes. Every step of that is a
  * guess:

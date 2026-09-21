@@ -83,7 +83,7 @@ describe('shouldSuppressDevEducation', () => {
     expect(
       shouldSuppressDevEducation({
         isDev: true,
-        env: { NIGHTSHIFT_E2E_USER_DATA_DIR: '/tmp/nightshift-e2e' }
+        env: { KOLUX_E2E_USER_DATA_DIR: '/tmp/kolux-e2e' }
       })
     ).toBe(false)
   })
@@ -133,11 +133,7 @@ describe('suppressDevEducationForStore', () => {
       outcome: 'dismissed',
       lastCompletedStep: 1
     })
-    expect(state.ui.featureTipsSeenIds).toEqual([
-      'voice-dictation',
-      'nightshift-cli',
-      'cmd-j-palette'
-    ])
+    expect(state.ui.featureTipsSeenIds).toEqual(['voice-dictation', 'kolux-cli', 'cmd-j-palette'])
     expect(state.ui.contextualToursSeenIds).toEqual([
       'tasks',
       ...CONTEXTUAL_TOUR_IDS.filter((id) => id !== 'tasks')

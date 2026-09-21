@@ -3,12 +3,12 @@ import {
   ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_PROTOCOL_VERSION,
   ORCHESTRATION_FEDERATION_LIFECYCLE_SETTLEMENT_RUNTIME_CAPABILITY
 } from '../../../shared/protocol-version'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { FederatedDispatchRow } from './types'
 import { getOrchestrationPeerCapabilityCache } from './orchestration-peer-capability-cache'
 
 export async function resolveFederatedLifecycleSettlementCapability(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   federated: FederatedDispatchRow,
   pairingRevision: number | undefined
 ) {

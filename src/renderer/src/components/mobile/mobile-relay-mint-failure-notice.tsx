@@ -26,7 +26,7 @@ export function MobileRelayMintFailureNotice({
   const providerMissing = failure.stage === 'provider_missing'
   // Why: a revoked cloud session fails every mint; "retry or use LAN" hides the one action that works.
   const reconnectRequired = useAppStore(
-    (state) => state.nightshiftProfileAuthStatus?.state === 'reconnect-required'
+    (state) => state.koluxProfileAuthStatus?.state === 'reconnect-required'
   )
   const [showBusyFeedback, setShowBusyFeedback] = useState(false)
   useEffect(() => {
@@ -41,17 +41,17 @@ export function MobileRelayMintFailureNotice({
   const title = visibleBusy
     ? translate(
         'auto.components.mobile.MobileRelayMintFailureNotice.retryingTitle',
-        'Retrying Nightshift Relay…'
+        'Retrying Kolux Relay…'
       )
     : providerMissing
       ? translate(
           'auto.components.mobile.MobileRelayMintFailureNotice.unavailableTitle',
-          'Nightshift Relay isn’t available on this desktop.'
+          'Kolux Relay isn’t available on this desktop.'
         )
       : reconnectRequired
         ? translate(
             'auto.components.mobile.MobileRelayMintFailureNotice.reconnectTitle',
-            'Your Nightshift account session expired.'
+            'Your Kolux account session expired.'
           )
         : translate(
             'auto.components.mobile.MobileRelayMintFailureNotice.title',
@@ -70,7 +70,7 @@ export function MobileRelayMintFailureNotice({
       : reconnectRequired
         ? translate(
             'auto.components.mobile.MobileRelayMintFailureNotice.reconnectBody',
-            'Sign in again to use Nightshift Relay, or use LAN to pair over Tailscale or the same Wi‑Fi.'
+            'Sign in again to use Kolux Relay, or use LAN to pair over Tailscale or the same Wi‑Fi.'
           )
         : translate(
             'auto.components.mobile.MobileRelayMintFailureNotice.body',

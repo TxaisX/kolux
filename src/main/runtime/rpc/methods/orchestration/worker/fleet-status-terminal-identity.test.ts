@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import { NightshiftRuntimeWithGetOrchestrationDispatchAuthority } from '../../../../nightshift-runtime-get-orchestration-dispatch-authority'
+import { KoluxRuntimeWithGetOrchestrationDispatchAuthority } from '../../../../kolux-runtime-get-orchestration-dispatch-authority'
 import { toAgentStatusIpcPayload } from '../../../../../agent-hooks/server/server-status-identity'
 import type { EnrichedAgentHookEventPayload } from '../../../../../agent-hooks/server/server-types'
 import type { AgentStatusOrchestrationContext } from '../../../../../../shared/agent-status-types'
@@ -35,7 +35,7 @@ function createRuntime(args: {
   incarnationForHandle?: string | null
   /** The pane the hook row was published for, when a remint moved the agent off `PANE_KEY`. */
   rowPaneKey?: string
-}): NightshiftRuntimeService {
+}): KoluxRuntimeService {
   const rowPaneKey = args.rowPaneKey ?? PANE_KEY
   const host = {
     getAgentStatusSnapshotFn: () => [hookRowAsPublished(rowPaneKey)],
@@ -51,10 +51,10 @@ function createRuntime(args: {
   return {
     // Drive the shipping accessor, not a copy of it: the identity loss was in this method.
     getOrchestrationFleetAgentStatusSnapshot: () =>
-      NightshiftRuntimeWithGetOrchestrationDispatchAuthority.prototype.getOrchestrationFleetAgentStatusSnapshot.call(
+      KoluxRuntimeWithGetOrchestrationDispatchAuthority.prototype.getOrchestrationFleetAgentStatusSnapshot.call(
         host as never
       )
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 function createDb(): OrchestrationDb {

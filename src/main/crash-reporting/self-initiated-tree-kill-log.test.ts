@@ -83,8 +83,8 @@ afterEach(() => {
 })
 
 describe('self-initiated tree kill breadcrumb', () => {
-  it('separates a Nightshift-issued tree kill from an external kill of the same shape', async () => {
-    // Arm A — Nightshift issues the kill through its own taskkill choke point.
+  it('separates a Kolux-issued tree kill from an external kill of the same shape', async () => {
+    // Arm A — Kolux issues the kill through its own taskkill choke point.
     await terminateWindowsProcessTree(4242, {
       execFileImpl: ((_program, _args, _options, done) => {
         ;(done as () => void)()
@@ -97,7 +97,7 @@ describe('self-initiated tree kill breadcrumb', () => {
     resetSelfInitiatedTreeKillLogForTest()
     clearCrashBreadcrumbsForTest()
 
-    // Arm B — identical crash, nobody inside Nightshift issued a kill.
+    // Arm B — identical crash, nobody inside Kolux issued a kill.
     const externallyKilled = await recordKilledRenderer()
 
     expect(selfKilled.selfInitiatedKills).toMatch(

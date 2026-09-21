@@ -40,7 +40,7 @@ import {
   createSetupRunnerScriptMock,
   getEffectiveHooksFromConfigMock,
   getDefaultTabsLaunchMock,
-  parseNightshiftYamlMock,
+  parseKoluxYamlMock,
   shouldRunSetupForCreateMock,
   buildPosixRunnerScriptMock,
   buildWindowsRunnerScriptMock,
@@ -118,7 +118,7 @@ export function setupWorktreeHandlers(): WorktreeRuntimeStub {
     getEffectiveHooksMock,
     getEffectiveHooksFromConfigMock,
     getDefaultTabsLaunchMock,
-    parseNightshiftYamlMock,
+    parseKoluxYamlMock,
     createIssueCommandRunnerScriptMock,
     createSetupRunnerScriptMock,
     buildPosixRunnerScriptMock,
@@ -252,7 +252,7 @@ export function setupWorktreeHandlers(): WorktreeRuntimeStub {
   getEffectiveHooksMock.mockReturnValue(null)
   getEffectiveHooksFromConfigMock.mockImplementation(() => getEffectiveHooksMock())
   getDefaultTabsLaunchMock.mockReturnValue(undefined)
-  parseNightshiftYamlMock.mockReturnValue(null)
+  parseKoluxYamlMock.mockReturnValue(null)
   shouldRunSetupForCreateMock.mockReturnValue(false)
   buildPosixRunnerScriptMock.mockImplementation(
     (script: string) => `#!/usr/bin/env bash\nset -e\n${script.replace(/\r\n/g, '\n')}\n`
@@ -261,25 +261,25 @@ export function setupWorktreeHandlers(): WorktreeRuntimeStub {
   resolveSetupRunnerShellMock.mockReturnValue(undefined)
   getSetupRunnerEnvVarsMock.mockImplementation(
     (repoArg: { path: string }, worktreePath: string) => ({
-      NIGHTSHIFT_ROOT_PATH: repoArg.path,
-      NIGHTSHIFT_WORKTREE_PATH: worktreePath,
-      NIGHTSHIFT_WORKSPACE_NAME: worktreePath.split('/').at(-1) ?? '',
+      KOLUX_ROOT_PATH: repoArg.path,
+      KOLUX_WORKTREE_PATH: worktreePath,
+      KOLUX_WORKSPACE_NAME: worktreePath.split('/').at(-1) ?? '',
       CONDUCTOR_ROOT_PATH: repoArg.path,
       GHOSTX_ROOT_PATH: repoArg.path
     })
   )
   createSetupRunnerScriptMock.mockReturnValue({
-    runnerScriptPath: '/workspace/repo/.git/nightshift/setup-runner.sh',
+    runnerScriptPath: '/workspace/repo/.git/kolux/setup-runner.sh',
     envVars: {
-      NIGHTSHIFT_ROOT_PATH: '/workspace/repo',
-      NIGHTSHIFT_WORKTREE_PATH: '/workspace/improve-dashboard'
+      KOLUX_ROOT_PATH: '/workspace/repo',
+      KOLUX_WORKTREE_PATH: '/workspace/improve-dashboard'
     }
   })
   createIssueCommandRunnerScriptMock.mockReturnValue({
-    runnerScriptPath: '/workspace/repo/.git/nightshift/issue-command-runner.sh',
+    runnerScriptPath: '/workspace/repo/.git/kolux/issue-command-runner.sh',
     envVars: {
-      NIGHTSHIFT_ROOT_PATH: '/workspace/repo',
-      NIGHTSHIFT_WORKTREE_PATH: '/workspace/improve-dashboard'
+      KOLUX_ROOT_PATH: '/workspace/repo',
+      KOLUX_WORKTREE_PATH: '/workspace/improve-dashboard'
     }
   })
   computeWorktreePathMock.mockImplementation(

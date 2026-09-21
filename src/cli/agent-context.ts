@@ -55,6 +55,6 @@ export function formatAgentContextSummary(schema: AgentContextSchema): string {
   // point the reader at --json rather than dumping every command.
   return [
     `${schema.commandCount} commands (schema v${schema.schemaVersion}).`,
-    'Run `nightshift agent-context --json` for the full machine-readable command schema.'
+    'Run `kolux agent-context --json` for the full machine-readable command schema.'
   ].join('\n')
 }

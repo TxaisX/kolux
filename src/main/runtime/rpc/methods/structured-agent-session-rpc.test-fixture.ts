@@ -11,7 +11,7 @@ import {
   StructuredAgentSessionStatusFeed,
   type StructuredAgentSessionStatusSubscriber
 } from '../../../native-chat/agent-session-wire/structured-agent-session-status-feed'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { STRUCTURED_AGENT_SESSION_RUNTIME_CAPABILITY } from '../../../../shared/protocol-version'
 import type { RpcRequest, RpcResponse } from '../core'
 import { RpcDispatcher } from '../dispatcher'
@@ -222,7 +222,7 @@ export function dispatcher(runtimeOverrides: Record<string, unknown> = {}): RpcD
     ...runtimeOverrides
   }
   return new RpcDispatcher({
-    runtime: runtime as unknown as NightshiftRuntimeService,
+    runtime: runtime as unknown as KoluxRuntimeService,
     methods: STRUCTURED_AGENT_SESSION_METHODS
   })
 }

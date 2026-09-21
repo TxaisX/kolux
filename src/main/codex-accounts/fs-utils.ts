@@ -105,7 +105,7 @@ function restoreMovedFileWithoutOverwrite(sourcePath: string, targetPath: string
 }
 
 function getGuardedOperationHeldPath(targetPath: string): string {
-  return `${targetPath}.nightshift-guarded`
+  return `${targetPath}.kolux-guarded`
 }
 
 function recoverInterruptedGuardedOperation(heldPath: string, targetPath: string): void {

@@ -283,7 +283,7 @@ describe('startup managed hook reconciliation (STA-5679)', () => {
 
   it('skips instead of removing when this profile has the off switch set', () => {
     // Why this matters: the hook files are user-global. Startup removal here deleted the hooks that
-    // every other Nightshift instance depends on, and Cursor then reads as idle with no status at all.
+    // every other Kolux instance depends on, and Cursor then reads as idle with no status at all.
     expect(resolveStartupManagedHookAction({ agentStatusHooksEnabled: false })).toBe('skip')
   })
 

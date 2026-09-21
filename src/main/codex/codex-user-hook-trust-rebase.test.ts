@@ -21,7 +21,7 @@ let hooksPath: string
 let configPath: string
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'nightshift-user-hook-rebase-'))
+  root = mkdtempSync(join(tmpdir(), 'kolux-user-hook-rebase-'))
   hooksPath = join(root, 'hooks.json')
   configPath = join(root, 'config.toml')
 })
@@ -40,9 +40,9 @@ function command(command: string): HookCommandConfig {
 describe('real-home user hook trust rebasing', () => {
   it('writes directly without reading config or spawning Codex when user positions stay stable', async () => {
     const user = command('user-hook')
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const before = { Stop: [{ hooks: [user] }] }
-    const after = { Stop: [{ hooks: [user] }, { hooks: [nightshift] }] }
+    const after = { Stop: [{ hooks: [user] }, { hooks: [kolux] }] }
     let wroteHooks = false
     _internals.setSessionRunner(() => {
       throw new Error('stable positions must not open an app-server session')
@@ -68,17 +68,12 @@ describe('real-home user hook trust rebasing', () => {
   })
 
   it('finds multiple shifted user hooks, including a handler from a mixed group', async () => {
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const first = command('first-user')
     const second = command('second-user')
     const mixed = command('mixed-user')
     const before: Record<string, HookDefinition[]> = {
-      Stop: [
-        { hooks: [nightshift] },
-        { hooks: [first] },
-        { hooks: [second] },
-        { hooks: [nightshift, mixed] }
-      ]
+      Stop: [{ hooks: [kolux] }, { hooks: [first] }, { hooks: [second] }, { hooks: [kolux, mixed] }]
     }
     const after: Record<string, HookDefinition[]> = {
       Stop: [{ hooks: [first] }, { hooks: [second] }, { hooks: [mixed] }]
@@ -104,10 +99,10 @@ describe('real-home user hook trust rebasing', () => {
   })
 
   it('carries only previously trusted states into the repair request', async () => {
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const trusted = command('trusted-user')
     const untrusted = command('untrusted-user')
-    const before = { Stop: [{ hooks: [nightshift] }, { hooks: [trusted] }, { hooks: [untrusted] }] }
+    const before = { Stop: [{ hooks: [kolux] }, { hooks: [trusted] }, { hooks: [untrusted] }] }
     const after = { Stop: [{ hooks: [trusted] }, { hooks: [untrusted] }] }
     writeFileSync(hooksPath, `${JSON.stringify({ hooks: before }, null, 2)}\n`)
     writeFileSync(configPath, '# original config\n')
@@ -153,9 +148,9 @@ describe('real-home user hook trust rebasing', () => {
   })
 
   it('marks the host unsupported and skips further codex sessions', async () => {
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const user = command('user-hook')
-    const before = { Stop: [{ hooks: [nightshift] }, { hooks: [user] }] }
+    const before = { Stop: [{ hooks: [kolux] }, { hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }] }
     writeFileSync(configPath, '# config\n')
     let sessions = 0
@@ -186,9 +181,9 @@ describe('real-home user hook trust rebasing', () => {
   })
 
   it('cools down after a transient session failure instead of retrying every launch prep', async () => {
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const user = command('user-hook')
-    const before = { Stop: [{ hooks: [nightshift] }, { hooks: [user] }] }
+    const before = { Stop: [{ hooks: [kolux] }, { hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }] }
     writeFileSync(configPath, '# config\n')
     let sessions = 0
@@ -220,12 +215,12 @@ describe('real-home user hook trust rebasing', () => {
   })
 
   it('restores both files byte-exactly when post-mutation repair fails', async () => {
-    const nightshift = command('nightshift-hook')
+    const kolux = command('kolux-hook')
     const user = command('user-hook')
-    const before = { Stop: [{ hooks: [nightshift] }, { hooks: [user] }] }
+    const before = { Stop: [{ hooks: [kolux] }, { hooks: [user] }] }
     const after = { Stop: [{ hooks: [user] }] }
     const originalHooks =
-      '{ "hooks": { "Stop": [{"hooks":[{"type":"command","command":"nightshift-hook"}]},{"hooks":[{"type":"command","command":"user-hook"}]}] } }\r\n'
+      '{ "hooks": { "Stop": [{"hooks":[{"type":"command","command":"kolux-hook"}]},{"hooks":[{"type":"command","command":"user-hook"}]}] } }\r\n'
     const originalConfig = '# user formatting\r\nmodel = "x"\r\n'
     writeFileSync(hooksPath, originalHooks)
     writeFileSync(configPath, originalConfig)

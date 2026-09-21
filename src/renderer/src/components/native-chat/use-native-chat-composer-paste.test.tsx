@@ -215,7 +215,7 @@ describe('useNativeChatComposerPaste', () => {
   })
 
   it('saves on the SSH host and settles the chip on the returned remote path', async () => {
-    mocks.saveClipboardImageAsTempFile.mockResolvedValue('/remote/tmp/nightshift-paste-1.png')
+    mocks.saveClipboardImageAsTempFile.mockResolvedValue('/remote/tmp/kolux-paste-1.png')
     const store = createChipStore()
     const attachResolvedPaths = vi.fn()
     const probe = await renderProbe({
@@ -230,7 +230,7 @@ describe('useNativeChatComposerPaste', () => {
     expect(store.chips).toEqual([
       {
         id: 'chip-1',
-        path: '/remote/tmp/nightshift-paste-1.png',
+        path: '/remote/tmp/kolux-paste-1.png',
         previewUrl: 'blob:clipboard-image',
         pending: false
       }
@@ -259,9 +259,9 @@ describe('useNativeChatComposerPaste', () => {
       { id: 'chip-1', path: '', previewUrl: 'blob:clipboard-image', pending: true }
     ])
     await act(async () => {
-      resolveSave('/tmp/nightshift-paste-1.png')
+      resolveSave('/tmp/kolux-paste-1.png')
     })
-    expect(store.chips[0]).toMatchObject({ path: '/tmp/nightshift-paste-1.png', pending: false })
+    expect(store.chips[0]).toMatchObject({ path: '/tmp/kolux-paste-1.png', pending: false })
   })
 
   it('does not settle a local path after the attachment owner changes', async () => {
@@ -287,7 +287,7 @@ describe('useNativeChatComposerPaste', () => {
 
     owner = sshOwner
     await act(async () => {
-      resolveSave('/tmp/nightshift-paste-owner-changed.png')
+      resolveSave('/tmp/kolux-paste-owner-changed.png')
     })
 
     expect(store.chips).toHaveLength(0)
@@ -318,14 +318,14 @@ describe('useNativeChatComposerPaste', () => {
       { id: 'chip-1', path: '', previewUrl: 'data:image/png;base64,AAA', pending: true }
     ])
     await act(async () => {
-      resolveSave('/tmp/nightshift-paste-2.png')
+      resolveSave('/tmp/kolux-paste-2.png')
     })
-    expect(store.chips[0]).toMatchObject({ path: '/tmp/nightshift-paste-2.png', pending: false })
+    expect(store.chips[0]).toMatchObject({ path: '/tmp/kolux-paste-2.png', pending: false })
   })
 
   it('attaches directly when no clipboard preview was available', async () => {
     mocks.readClipboardImageThumbnail.mockResolvedValue(null)
-    mocks.saveClipboardImageAsTempFile.mockResolvedValue('C:\\Temp\\nightshift-paste-3.png')
+    mocks.saveClipboardImageAsTempFile.mockResolvedValue('C:\\Temp\\kolux-paste-3.png')
     const store = createChipStore()
     const attachResolvedPaths = vi.fn()
     const probe = await renderProbe({
@@ -337,7 +337,7 @@ describe('useNativeChatComposerPaste', () => {
       probe.latest().pasteFromClipboard()
     })
     expect(store.chips).toHaveLength(0)
-    expect(attachResolvedPaths).toHaveBeenCalledWith(['C:\\Temp\\nightshift-paste-3.png'], null)
+    expect(attachResolvedPaths).toHaveBeenCalledWith(['C:\\Temp\\kolux-paste-3.png'], null)
   })
 
   it('stops pasteFromClipboard on a failed save instead of falling through to text', async () => {

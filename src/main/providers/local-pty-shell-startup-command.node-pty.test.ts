@@ -37,7 +37,7 @@ describe('local POSIX shell startup-command delivery', () => {
   it.each(SHELLS)(
     '%s runs the command once, forwards stdin, and keeps the shell',
     async (shell) => {
-      testHome = mkdtempSync(join(tmpdir(), `nightshift-${shell}-startup-command-`))
+      testHome = mkdtempSync(join(tmpdir(), `kolux-${shell}-startup-command-`))
       setTestUserDataPath(testHome)
       const launch = getShellLaunchConfig(
         shell,
@@ -74,8 +74,8 @@ describe('local POSIX shell startup-command delivery', () => {
             ...process.env,
             ...launch.env,
             HOME: testHome,
-            NIGHTSHIFT_ORIG_ZDOTDIR: testHome,
-            NIGHTSHIFT_ZSHENV_SOURCE_DIR: testHome,
+            KOLUX_ORIG_ZDOTDIR: testHome,
+            KOLUX_ZSHENV_SOURCE_DIR: testHome,
             TERM: 'xterm-256color'
           }
         })

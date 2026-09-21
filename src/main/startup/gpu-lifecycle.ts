@@ -92,7 +92,7 @@ export async function presentGpuFallbackRecoveredLaunchPrompt(
   state.activeGpuFallbackMarker = null
   const userDataPath = app.getPath('userData')
   // The marker was read before whenReady; the pre-window ACL gate can have retired it since.
-  // Asking then would let a "keep it" answer pin software rendering on a machine Nightshift just fixed.
+  // Asking then would let a "keep it" answer pin software rendering on a machine Kolux just fixed.
   if (!readActiveGpuFallbackMarker(userDataPath, gpuFallbackEnvironment())) {
     return
   }
@@ -136,7 +136,7 @@ export async function presentGpuFallbackRecoveredLaunchPrompt(
  * Why withholding ends with the repair budget: withholding only buys the ACL repair the
  * chance to land first. Once its attempts are spent no repair is coming on this launch or
  * any later one, so holding safe graphics back forever would deny the only recovery left —
- * on a genuinely poisoned tree Nightshift has already told the user the admin commands, and the
+ * on a genuinely poisoned tree Kolux has already told the user the admin commands, and the
  * probe's flag-blind ACE match also over-matches healthy installs whose driver really is
  * the fault. It is a bounded delay, not a permanent suppression.
  */

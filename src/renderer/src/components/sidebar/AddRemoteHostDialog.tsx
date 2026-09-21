@@ -14,7 +14,7 @@ import { AddRemoteHostSshConfigPicker } from './AddRemoteHostSshConfigPicker'
 import { AddRemoteHostSshFormPanel } from './AddRemoteHostSshFormPanel'
 import { AddRemoteHostServerFormPanel } from './AddRemoteHostServerFormPanel'
 import {
-  addAllSshConfigHostsToNightshift,
+  addAllSshConfigHostsToKolux,
   loadSshConfigHostsForPicker,
   prefillFormFromSshConfigHost,
   saveNewSshHostFromForm
@@ -213,10 +213,10 @@ export function AddRemoteHostDialog({
     )
   }
 
-  const addAllConfigHostsToNightshift = async () => {
+  const addAllConfigHostsToKolux = async () => {
     setIsBulkImporting(true)
     try {
-      const result = await addAllSshConfigHostsToNightshift({
+      const result = await addAllSshConfigHostsToKolux({
         ssh: window.api.ssh,
         recordSshRepoReadoptions,
         setSshTargetsMetadata,
@@ -339,7 +339,7 @@ export function AddRemoteHostDialog({
               onQueryChange={(query) => void loadSshConfigHosts(query)}
               onRetry={() => void loadSshConfigHosts(configSearchQuery.current, { refresh: true })}
               onBack={leaveSshConfigPicker}
-              onAddAllToNightshift={() => void addAllConfigHostsToNightshift()}
+              onAddAllToKolux={() => void addAllConfigHostsToKolux()}
             />
           </div>
         ) : renderMode === 'ssh' ? (

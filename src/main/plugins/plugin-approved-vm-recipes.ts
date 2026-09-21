@@ -1,9 +1,9 @@
-import type { NightshiftVmRecipe } from '../../shared/nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from '../../shared/kolux-yaml-hook-types'
 import type { PluginService } from './plugin-service'
 
 export async function getApprovedPluginVmRecipes(
   pluginService?: PluginService
-): Promise<NightshiftVmRecipe[]> {
+): Promise<KoluxVmRecipe[]> {
   if (!pluginService) {
     return []
   }

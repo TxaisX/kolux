@@ -26,13 +26,13 @@ describe('isAgentScratchWorktreePath', () => {
 
   it('matches scratch worktrees created from a linked checkout', () => {
     const matchesAgentScratch = createAgentScratchWorktreePathMatcher(
-      [repoPath, '/Users/dev/nightshift/workspaces/app/feature-x'],
+      [repoPath, '/Users/dev/kolux/workspaces/app/feature-x'],
       []
     )
 
     expect(
       matchesAgentScratch(
-        '/Users/dev/nightshift/workspaces/app/feature-x/.claude/worktrees/agent-a04ccaaa'
+        '/Users/dev/kolux/workspaces/app/feature-x/.claude/worktrees/agent-a04ccaaa'
       )
     ).toBe(true)
     expect(matchesAgentScratch('/Users/dev/other/feature-x/.claude/worktrees/agent-a04ccaaa')).toBe(
@@ -114,9 +114,9 @@ describe('isAgentScratchWorktreePath', () => {
         []
       )
     ).toBe(false)
-    expect(
-      isAgentScratchWorktreePath('/Users/dev/app', '/nightshift/workspaces/app/feature', [])
-    ).toBe(false)
+    expect(isAgentScratchWorktreePath('/Users/dev/app', '/kolux/workspaces/app/feature', [])).toBe(
+      false
+    )
   })
 })
 

@@ -6,7 +6,7 @@ and hand it `/d /v:off /s /c "<caret-escaped argv>"`. For an agent CLI that
 means a long `cmd.exe /c` line whose caret-escaped payload is natural-language
 prompt text — which Microsoft Defender for Endpoint's command-line model scores
 as obfuscation. `codex.cmd` appeared in the spawn cluster of an MDE incident
-against Nightshift for exactly this reason.
+against Kolux for exactly this reason.
 
 `src/shared/child-process/windows-cmd-shim-resolution.ts` sidesteps it. npm's
 `cmd-shim` and pnpm's `@zkochan/cmd-shim` generate files whose entire body is
@@ -20,10 +20,10 @@ Only `runProcess` / `spawnProcess` callers. Two things people expect it to
 cover, and it does not:
 
 - **The interactive terminal.** `src/main/daemon/pty-subprocess/native-pty-spawn.ts`
-  calls `pty.spawn` directly, so typing `codex` in a Nightshift terminal is
+  calls `pty.spawn` directly, so typing `codex` in a Kolux terminal is
   completely unaffected.
-- **Nightshift's own hook wrappers** (`codex-hook.cmd` and friends). These are batch
-  files Nightshift writes, matching none of the generator shapes, so they keep the
+- **Kolux's own hook wrappers** (`codex-hook.cmd` and friends). These are batch
+  files Kolux writes, matching none of the generator shapes, so they keep the
   cmd.exe path. They are addressable — we generate them — but not by this
   module.
 
@@ -52,10 +52,10 @@ or a `\\?\` device path, and the last is already refused as absolute.
 
 ## Kill switch
 
-Set **`NIGHTSHIFT_DISABLE_CMD_SHIM_RESOLUTION`** to any non-empty value in the
+Set **`KOLUX_DISABLE_CMD_SHIM_RESOLUTION`** to any non-empty value in the
 environment a child is spawned with, and every `.cmd` goes back through
 `cmd.exe /c` unchanged. It is read from the spawn's own environment, so
-exporting it before launching Nightshift disables resolution process-wide.
+exporting it before launching Kolux disables resolution process-wide.
 
 Use it to confirm a suspected mis-resolution: run the failing operation with and
 without it. Identical behaviour means resolution is not the cause. If it is,

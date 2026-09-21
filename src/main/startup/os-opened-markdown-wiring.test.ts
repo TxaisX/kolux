@@ -20,7 +20,7 @@ describe('os-opened markdown wiring', () => {
 
     expect(captureIndex).toBeGreaterThanOrEqual(0)
     expect(serveGuardIndex).toBeGreaterThanOrEqual(0)
-    // A duplicate `nightshift serve` returns early; capturing after that would drop the user's files.
+    // A duplicate `kolux serve` returns early; capturing after that would drop the user's files.
     expect(captureIndex).toBeLessThan(serveGuardIndex)
   })
 

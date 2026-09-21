@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import {
   acquireFederationAckLease,
   clearFederationAckCheckpoints,
@@ -10,7 +10,7 @@ import {
 
 describe('federation acknowledgment checkpoints', () => {
   it('matches checkpoints only to their exact remote identity and never moves backward', () => {
-    const runtime = {} as NightshiftRuntimeService
+    const runtime = {} as KoluxRuntimeService
     const identity: FederationAckIdentity = {
       environmentId: 'environment_windows',
       peerFingerprint: 'windows_peer_fingerprint',
@@ -42,7 +42,7 @@ describe('federation acknowledgment checkpoints', () => {
   })
 
   it('fences delayed writes after runtime reset', () => {
-    const runtime = {} as NightshiftRuntimeService
+    const runtime = {} as KoluxRuntimeService
     const identity: FederationAckIdentity = {
       environmentId: 'environment_windows',
       peerFingerprint: 'windows_peer_fingerprint',

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   focusActiveTerminalInput,
@@ -55,20 +55,20 @@ function countOccurrences(value: string, needle: string): number {
 test.describe('split terminal pane paste ownership', () => {
   test('keyboard paste writes only to the active split pane PTY', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    await focusLastTerminalPane(nightshiftPage)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    await focusLastTerminalPane(koluxPage)
 
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const activePane = snapshot.panes.find((pane) => pane.leafId === snapshot.activeLeafId)
     const inactivePane = snapshot.panes.find((pane) => pane.leafId !== snapshot.activeLeafId)
     if (!activePane?.ptyId || !inactivePane?.ptyId) {
@@ -76,23 +76,23 @@ test.describe('split terminal pane paste ownership', () => {
     }
 
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-split-paste-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-split-paste-${runId}.mjs`)
     writeFileSync(scriptPath, pasteEchoScript(runId))
     let scriptStarted = false
 
     try {
-      await sendToTerminal(nightshiftPage, activePane.ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, activePane.ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       scriptStarted = true
-      await waitForTerminalOutput(nightshiftPage, `SPLIT_PASTE_READY_${runId}`, 10_000)
+      await waitForTerminalOutput(koluxPage, `SPLIT_PASTE_READY_${runId}`, 10_000)
 
-      const payload = `NIGHTSHIFT_E2E_SPLIT_PASTE_${runId}`
+      const payload = `KOLUX_E2E_SPLIT_PASTE_${runId}`
       const encodedPayload = Buffer.from(payload, 'utf8').toString('base64')
-      await nightshiftPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
+      await koluxPage.evaluate((text) => window.api.ui.writeClipboardText(text), payload)
       await clearTerminalPtyWriteLog(electronApp)
-      await focusActiveTerminalInput(nightshiftPage)
+      await focusActiveTerminalInput(koluxPage)
 
-      await nightshiftPage.keyboard.press(keyboardPasteChord())
-      await waitForTerminalOutput(nightshiftPage, encodedPayload, 10_000, 12_000)
+      await koluxPage.keyboard.press(keyboardPasteChord())
+      await waitForTerminalOutput(koluxPage, encodedPayload, 10_000, 12_000)
 
       const writes = await readTerminalPtyWriteEntries(electronApp)
       const activeWrites = writes
@@ -107,7 +107,7 @@ test.describe('split terminal pane paste ownership', () => {
       expect(inactiveWrites).not.toContain(payload)
     } finally {
       if (scriptStarted) {
-        await sendToTerminal(nightshiftPage, activePane.ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, activePane.ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }
@@ -115,20 +115,20 @@ test.describe('split terminal pane paste ownership', () => {
 
   test('internal file drop writes only to the pane under the drop target', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
     await installTerminalPtyWriteSpy(electronApp)
 
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    await focusLastTerminalPane(nightshiftPage)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    await focusLastTerminalPane(koluxPage)
 
-    const snapshot = await waitForPaneIdentitySnapshot(nightshiftPage, 2)
+    const snapshot = await waitForPaneIdentitySnapshot(koluxPage, 2)
     const activePane = snapshot.panes.find((pane) => pane.leafId === snapshot.activeLeafId)
     const dropPane = snapshot.panes.find((pane) => pane.leafId !== snapshot.activeLeafId)
     if (!activePane?.ptyId || !dropPane?.ptyId) {
@@ -140,7 +140,7 @@ test.describe('split terminal pane paste ownership', () => {
     const dropMarker = path.basename(dropPath)
 
     await clearTerminalPtyWriteLog(electronApp)
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ leafId, pathValue }) => {
         const state = window.__store?.getState()
         const tabId =
@@ -155,7 +155,7 @@ test.describe('split terminal pane paste ownership', () => {
           throw new Error('Drop target pane not found')
         }
         const dataTransfer = new DataTransfer()
-        dataTransfer.setData('text/x-nightshift-file-path', pathValue)
+        dataTransfer.setData('text/x-kolux-file-path', pathValue)
         const target = pane.container.querySelector('.xterm-screen, textarea') ?? pane.container
         for (const eventType of ['dragenter', 'dragover', 'drop']) {
           target.dispatchEvent(

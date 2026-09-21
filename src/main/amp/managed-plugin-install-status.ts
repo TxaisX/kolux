@@ -78,7 +78,7 @@ export function statusFromState(
         state: 'partial',
         configPath: pluginPath,
         managedHooksPresent: false,
-        detail: 'Amp Nightshift status plugin exists but is not Nightshift-managed'
+        detail: 'Amp Kolux status plugin exists but is not Kolux-managed'
       }
     case 'error':
       return {

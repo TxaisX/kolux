@@ -22,7 +22,7 @@ export function createRemoteSessionBulkOpenFixture(): {
   command: (marker: string) => string
   dispose: () => void
 } {
-  const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-remote-bulk-open-'))
+  const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-remote-bulk-open-'))
   const fixturePath = path.join(scratch, 'remote-bulk-open-flood.mjs')
   writeFileSync(
     fixturePath,

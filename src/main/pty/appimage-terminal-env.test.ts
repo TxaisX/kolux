@@ -15,15 +15,13 @@ describe('removeAppImageRuntimeEnv', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
 
     const env = {
-      APPIMAGE: '/data/apps/nightshift.appimage',
-      APPDIR: '/tmp/.mount_nightshift123',
-      ARGV0: '/data/apps/nightshift.appimage',
+      APPIMAGE: '/data/apps/kolux.appimage',
+      APPDIR: '/tmp/.mount_kolux123',
+      ARGV0: '/data/apps/kolux.appimage',
       OWD: '/home/user',
-      APPIMAGE_LIBRARY_PATH: '/tmp/.mount_nightshift123/usr/lib',
-      PATH: ['/tmp/.mount_nightshift123', '/tmp/.mount_nightshift123/usr/sbin', '/usr/bin'].join(
-        delimiter
-      ),
-      LD_LIBRARY_PATH: ['/tmp/.mount_nightshift123/usr/lib', '/opt/audio/lib'].join(delimiter),
+      APPIMAGE_LIBRARY_PATH: '/tmp/.mount_kolux123/usr/lib',
+      PATH: ['/tmp/.mount_kolux123', '/tmp/.mount_kolux123/usr/sbin', '/usr/bin'].join(delimiter),
+      LD_LIBRARY_PATH: ['/tmp/.mount_kolux123/usr/lib', '/opt/audio/lib'].join(delimiter),
       HOME: '/home/user'
     }
 
@@ -54,7 +52,7 @@ describe('removeAppImageRuntimeEnv', () => {
   it('removes AppImage ARGV0 even without a mounted APPDIR', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
     const env = {
-      ARGV0: '/data/apps/nightshift.appimage',
+      ARGV0: '/data/apps/kolux.appimage',
       PATH: ['/usr/local/bin', '/usr/bin'].join(delimiter)
     }
 
@@ -68,19 +66,19 @@ describe('removeAppImageRuntimeEnv', () => {
   it('leaves AppImage-looking env untouched outside Linux', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
     const env = {
-      APPIMAGE: '/data/apps/nightshift.appimage',
-      APPDIR: '/tmp/.mount_nightshift123',
-      ARGV0: '/data/apps/nightshift.appimage',
-      PATH: ['/tmp/.mount_nightshift123/usr/bin', '/usr/bin'].join(delimiter)
+      APPIMAGE: '/data/apps/kolux.appimage',
+      APPDIR: '/tmp/.mount_kolux123',
+      ARGV0: '/data/apps/kolux.appimage',
+      PATH: ['/tmp/.mount_kolux123/usr/bin', '/usr/bin'].join(delimiter)
     }
 
     removeAppImageRuntimeEnv(env)
 
     expect(env).toEqual({
-      APPIMAGE: '/data/apps/nightshift.appimage',
-      APPDIR: '/tmp/.mount_nightshift123',
-      ARGV0: '/data/apps/nightshift.appimage',
-      PATH: ['/tmp/.mount_nightshift123/usr/bin', '/usr/bin'].join(delimiter)
+      APPIMAGE: '/data/apps/kolux.appimage',
+      APPDIR: '/tmp/.mount_kolux123',
+      ARGV0: '/data/apps/kolux.appimage',
+      PATH: ['/tmp/.mount_kolux123/usr/bin', '/usr/bin'].join(delimiter)
     })
   })
 })

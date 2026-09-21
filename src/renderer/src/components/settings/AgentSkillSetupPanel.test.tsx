@@ -8,8 +8,8 @@ import { AgentSkillSetupPanel } from './AgentSkillSetupPanel'
 import { TooltipProvider } from '../ui/tooltip'
 
 const INSTALL_COMMAND =
-  'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --global'
-const UPDATE_COMMAND = 'npx skills update nightshift-cli --global'
+  'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global'
+const UPDATE_COMMAND = 'npx skills update kolux-cli --global'
 
 const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn(),
@@ -83,7 +83,7 @@ function panelProps(
 ): ComponentProps<typeof AgentSkillSetupPanel> {
   return {
     title: 'CLI skill',
-    description: 'Enables agents to use Nightshift workflows.',
+    description: 'Enables agents to use Kolux workflows.',
     command: INSTALL_COMMAND,
     terminalTitle: 'CLI skill setup',
     terminalAriaLabel: 'CLI skill install terminal',
@@ -209,11 +209,11 @@ describe('AgentSkillSetupPanel', () => {
       installed: true,
       hideHeader: true,
       description: null,
-      freshnessSkillName: 'nightshift-linear'
+      freshnessSkillName: 'kolux-linear'
     })
 
     expect(html).toContain('data-testid="skill-freshness"')
-    expect(html).toContain('nightshift-linear')
+    expect(html).toContain('kolux-linear')
     expect(html).not.toContain('CLI skill')
   })
 
@@ -236,7 +236,7 @@ describe('AgentSkillSetupPanel', () => {
     const html = renderPanel({
       installed: true,
       installLabel: 'Install CLI & Skill',
-      preInstallNotice: 'Install the Nightshift CLI before running agent skill setup.'
+      preInstallNotice: 'Install the Kolux CLI before running agent skill setup.'
     })
 
     expect(html).toContain('Installed')
@@ -249,7 +249,7 @@ describe('AgentSkillSetupPanel', () => {
       installed: true,
       installedCommand: UPDATE_COMMAND,
       installLabel: 'Install CLI & Skill',
-      preInstallNotice: 'Install the Nightshift CLI before running agent skill setup.',
+      preInstallNotice: 'Install the Kolux CLI before running agent skill setup.',
       getPrerequisiteStatus: vi.fn(
         async () =>
           ({
@@ -326,7 +326,7 @@ describe('AgentSkillSetupPanel', () => {
       finishRecheck = resolve
     })
     const onRecheck = vi.fn(() => recheck)
-    await renderInteractivePanel({ freshnessSkillName: 'nightshift-cli', onRecheck })
+    await renderInteractivePanel({ freshnessSkillName: 'kolux-cli', onRecheck })
     await clickButton('Install')
 
     await act(async () => {
@@ -614,13 +614,13 @@ describe('AgentSkillSetupPanel', () => {
   })
 
   it('keeps the command failure authoritative over presence discovery', async () => {
-    await renderInteractivePanel({ freshnessSkillName: 'nightshift-cli' })
+    await renderInteractivePanel({ freshnessSkillName: 'kolux-cli' })
     await clickButton('Install')
 
     await act(async () => {
       mocks.terminalProps.at(-1)?.onCommandFinished?.(1)
     })
-    await rerenderInteractivePanel({ installed: true, freshnessSkillName: 'nightshift-cli' })
+    await rerenderInteractivePanel({ installed: true, freshnessSkillName: 'kolux-cli' })
 
     expect(container?.textContent).toContain('Setup failed')
     expect(container?.textContent).toContain('exited with code 1')
@@ -658,7 +658,7 @@ describe('AgentSkillSetupPanel', () => {
     const onRecheck = vi.fn(() => {
       calls.push('recheck')
     })
-    await renderInteractivePanel({ freshnessSkillName: 'nightshift-cli', onRecheck })
+    await renderInteractivePanel({ freshnessSkillName: 'kolux-cli', onRecheck })
     await clickButton('Install')
     calls.length = 0
 
@@ -671,7 +671,7 @@ describe('AgentSkillSetupPanel', () => {
 
   it('rechecks once when command completion is followed by terminal exit', async () => {
     const onRecheck = vi.fn()
-    await renderInteractivePanel({ freshnessSkillName: 'nightshift-cli', onRecheck })
+    await renderInteractivePanel({ freshnessSkillName: 'kolux-cli', onRecheck })
     await clickButton('Install')
 
     await act(async () => {

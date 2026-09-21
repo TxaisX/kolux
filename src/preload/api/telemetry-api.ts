@@ -13,8 +13,8 @@ export type DiagnosticsStatusPayload = {
   readonly traceFamilySize: number
   readonly disabledReason?:
     | 'do_not_track'
-    | 'nightshift_telemetry_disabled'
-    | 'nightshift_diagnostics_disabled'
+    | 'kolux_telemetry_disabled'
+    | 'kolux_diagnostics_disabled'
     | 'ci'
 }
 export type DiagnosticsBundlePayload = {

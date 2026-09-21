@@ -41,7 +41,7 @@ function expectIdenticalToPrevious(
 }
 
 function sentinel(): string {
-  return `nightshift-secret-slot-${randomUUID()}`
+  return `kolux-secret-slot-${randomUUID()}`
 }
 
 describe('applySecretSentinelSubstitutions', () => {
@@ -62,7 +62,7 @@ describe('applySecretSentinelSubstitutions', () => {
       settings: { opencodeSessionCookie: subs[0].sentinel, httpProxyUrl: subs[1].sentinel },
       ui: { browserKagiSessionLink: subs[2].sentinel },
       // Adjacent content that must not shift: a near-miss prefix, and JSON escapes either side.
-      noise: ['nightshift-secret-slot-', 'a\\b"c\n\t', subs[0].sentinel.slice(0, -1)]
+      noise: ['kolux-secret-slot-', 'a\\b"c\n\t', subs[0].sentinel.slice(0, -1)]
     }
     expectIdenticalToPrevious(JSON.stringify(state), subs)
   })

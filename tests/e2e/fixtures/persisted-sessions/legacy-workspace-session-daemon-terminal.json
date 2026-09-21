@@ -1,6 +1,6 @@
 {
   "_fixtureProvenance": {
-    "description": "Legacy Nightshift workspace session with one daemon-backed terminal tab, used to verify upgrade and relaunch recovery.",
+    "description": "Legacy Kolux workspace session with one daemon-backed terminal tab, used to verify upgrade and relaunch recovery.",
     "sourceVersion": "legacy production workspaceSession shape",
     "minimizedAt": "2026-07-01",
     "notes": [

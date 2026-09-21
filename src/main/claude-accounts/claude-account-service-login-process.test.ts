@@ -13,7 +13,7 @@ import {
   setPlatform
 } from './claude-account-service-test-harness'
 
-const CLAUDE_SERVICE_TEST_ROOT = join(tmpdir(), 'nightshift-claude-service-login-test')
+const CLAUDE_SERVICE_TEST_ROOT = join(tmpdir(), 'kolux-claude-service-login-test')
 
 vi.mock('electron', () => ({
   app: {
@@ -203,7 +203,7 @@ describe('ClaudeAccountService credential capture', () => {
         ['auth', 'status', '--json'],
         {
           windowsPath: 'C:\\tmp\\claude-auth',
-          linuxPath: '/home/user/.config/nightshift auth',
+          linuxPath: '/home/user/.config/kolux auth',
           wslDistro: 'Ubuntu Test'
         },
         1000
@@ -218,7 +218,7 @@ describe('ClaudeAccountService credential capture', () => {
           '--exec',
           'bash',
           '-lc',
-          "export CLAUDE_CONFIG_DIR='/home/user/.config/nightshift auth'; export CLAUDE_SECURESTORAGE_CONFIG_DIR='/home/user/.config/nightshift auth'; exec claude 'auth' 'status' '--json'"
+          "export CLAUDE_CONFIG_DIR='/home/user/.config/kolux auth'; export CLAUDE_SECURESTORAGE_CONFIG_DIR='/home/user/.config/kolux auth'; exec claude 'auth' 'status' '--json'"
         ],
         expect.objectContaining({ shell: false, windowsVerbatimArguments: false })
       )

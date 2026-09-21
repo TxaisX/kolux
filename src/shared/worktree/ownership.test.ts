@@ -7,7 +7,7 @@ import { createAgentScratchWorktreePathMatcher } from '../agent-scratch-worktree
 import { migrateExternalWorktreeVisibilityDefaults } from '../external-worktree-visibility'
 import {
   applyMetadataFallbackVisibility,
-  buildKnownNightshiftWorkspaceLayouts,
+  buildKnownKoluxWorkspaceLayouts,
   classifyWorktreeOwnership,
   effectiveExternalWorktreeVisibility,
   isLegacyRepoForExternalWorktreeVisibility,
@@ -77,7 +77,7 @@ function makeMeta(overrides: Partial<WorktreeMeta> = {}): WorktreeMeta {
 
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
-    workspaceDir: '/nightshift/workspaces',
+    workspaceDir: '/kolux/workspaces',
     nestWorkspaces: true,
     workspaceDirHistory: [],
     refreshLocalBaseRefOnWorktreeCreate: false,
@@ -99,7 +99,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
 }
 
 describe('worktree ownership classification', () => {
-  it('treats explicit Nightshift metadata as managed even outside the workspace root', () => {
+  it('treats explicit Kolux metadata as managed even outside the workspace root', () => {
     const repo = makeRepo()
     const settings = makeSettings()
     expect(
@@ -107,82 +107,82 @@ describe('worktree ownership classification', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: '/tmp/outside' }),
-        meta: makeMeta({ nightshiftCreatedAt: 1 }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        meta: makeMeta({ koluxCreatedAt: 1 }),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
-    ).toBe('nightshift-managed')
+    ).toBe('kolux-managed')
   })
 
-  it('treats nested Nightshift workspace paths without metadata as external', () => {
+  it('treats nested Kolux workspace paths without metadata as external', () => {
     const repo = makeRepo()
     const settings = makeSettings()
-    const layouts = buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    const layouts = buildKnownKoluxWorkspaceLayouts(settings, repo)
     expect(
       classifyWorktreeOwnership({
         repo,
         settings,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/app/feature' }),
-        knownNightshiftLayouts: layouts
+        worktree: makeWorktree({ path: '/kolux/workspaces/app/feature' }),
+        knownKoluxLayouts: layouts
       })
     ).toBe('external')
     expect(
       classifyWorktreeOwnership({
         repo,
         settings,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/other/feature' }),
-        knownNightshiftLayouts: layouts
+        worktree: makeWorktree({ path: '/kolux/workspaces/other/feature' }),
+        knownKoluxLayouts: layouts
       })
     ).toBe('external')
   })
 
-  it('treats explicit Nightshift creation layout metadata as managed', () => {
+  it('treats explicit Kolux creation layout metadata as managed', () => {
     const repo = makeRepo()
     const settings = makeSettings()
     expect(
       classifyWorktreeOwnership({
         repo,
         settings,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/app/feature' }),
+        worktree: makeWorktree({ path: '/kolux/workspaces/app/feature' }),
         meta: makeMeta({
-          nightshiftCreationWorkspaceLayout: {
-            path: '/nightshift/workspaces',
+          koluxCreationWorkspaceLayout: {
+            path: '/kolux/workspaces',
             nestWorkspaces: true
           }
         }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
-    ).toBe('nightshift-managed')
+    ).toBe('kolux-managed')
   })
 
-  it('does not treat metadata-free nested workspace paths as Nightshift-managed for new repos', () => {
+  it('does not treat metadata-free nested workspace paths as Kolux-managed for new repos', () => {
     const repo = makeRepo({ externalWorktreeVisibility: 'hide' })
     const settings = makeSettings()
     const detected = toDetectedWorktree({
       repo,
       settings,
       worktree: makeWorktree({
-        path: '/nightshift/workspaces/app/manual-git-worktree',
+        path: '/kolux/workspaces/app/manual-git-worktree',
         isMainWorktree: false
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(detected.ownership).toBe('external')
     expect(detected.visible).toBe(false)
   })
 
-  it('does not treat generic discovery metadata on nested workspace paths as Nightshift-managed', () => {
+  it('does not treat generic discovery metadata on nested workspace paths as Kolux-managed', () => {
     const repo = makeRepo({ externalWorktreeVisibility: 'hide' })
     const settings = makeSettings()
     const detected = toDetectedWorktree({
       repo,
       settings,
       worktree: makeWorktree({
-        path: '/nightshift/workspaces/app/manual-git-worktree',
+        path: '/kolux/workspaces/app/manual-git-worktree',
         isMainWorktree: false
       }),
       meta: makeMeta({ displayName: 'manual-git-worktree' }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(detected.ownership).toBe('external')
@@ -196,10 +196,10 @@ describe('worktree ownership classification', () => {
       repo,
       settings,
       worktree: makeWorktree({
-        path: '/nightshift/workspaces/app/manual-git-worktree',
+        path: '/kolux/workspaces/app/manual-git-worktree',
         isMainWorktree: false
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(detected.ownership).toBe('external')
@@ -216,10 +216,10 @@ describe('worktree ownership classification', () => {
       repo,
       settings,
       worktree: makeWorktree({
-        path: '/nightshift/workspaces/app/manual-git-worktree',
+        path: '/kolux/workspaces/app/manual-git-worktree',
         isMainWorktree: false
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(detected.ownership).toBe('external')
@@ -233,8 +233,8 @@ describe('worktree ownership classification', () => {
       classifyWorktreeOwnership({
         repo,
         settings,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/feature' }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        worktree: makeWorktree({ path: '/kolux/workspaces/feature' }),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('unknown-legacy')
   })
@@ -243,14 +243,14 @@ describe('worktree ownership classification', () => {
     const repo = makeRepo()
     const settings = makeSettings({
       nestWorkspaces: true,
-      workspaceDirHistory: [{ path: '/nightshift/workspaces', nestWorkspaces: false }]
+      workspaceDirHistory: [{ path: '/kolux/workspaces', nestWorkspaces: false }]
     })
     expect(
       classifyWorktreeOwnership({
         repo,
         settings,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/feature' }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        worktree: makeWorktree({ path: '/kolux/workspaces/feature' }),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('unknown-legacy')
   })
@@ -266,7 +266,7 @@ describe('worktree ownership classification', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: '/old/workspaces/app/feature' }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -285,7 +285,7 @@ describe('worktree ownership classification', () => {
       workspaceDirHistory
     })
 
-    const layouts = buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    const layouts = buildKnownKoluxWorkspaceLayouts(settings, repo)
 
     expect(layouts).toHaveLength(LARGE_WORKSPACE_HISTORY_COUNT + 1)
     expect(layouts[0]).toEqual({ path: '/new/workspaces', nestWorkspaces: true })
@@ -298,17 +298,17 @@ describe('worktree ownership classification', () => {
 
   it('handles Windows drive casing and separators', () => {
     const repo = makeRepo({ path: 'C:\\repos\\App' })
-    const settings = makeSettings({ workspaceDir: 'C:\\Nightshift\\Workspaces' })
+    const settings = makeSettings({ workspaceDir: 'C:\\Kolux\\Workspaces' })
     expect(
       classifyWorktreeOwnership({
         repo,
         settings,
         worktree: makeWorktree({
-          id: 'repo-1::C:\\NIGHTSHIFT\\WORKSPACES\\App\\Feature',
-          path: 'C:\\NIGHTSHIFT\\WORKSPACES\\App\\Feature',
+          id: 'repo-1::C:\\KOLUX\\WORKSPACES\\App\\Feature',
+          path: 'C:\\KOLUX\\WORKSPACES\\App\\Feature',
           isMainWorktree: false
         }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -323,7 +323,7 @@ describe('worktree ownership classification', () => {
         path: '/repos/app-linked',
         isMainWorktree: false
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
     const gitMain = toDetectedWorktree({
       repo,
@@ -332,7 +332,7 @@ describe('worktree ownership classification', () => {
         path: '/repos/app-main',
         isMainWorktree: true
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(selected.visible).toBe(true)
@@ -472,7 +472,7 @@ describe('external worktree visibility policy', () => {
     expect(
       shouldShowWorktree({
         repo,
-        worktree: makeWorktree({ path: '/nightshift/workspaces/feature' }),
+        worktree: makeWorktree({ path: '/kolux/workspaces/feature' }),
         ownership: 'unknown-legacy',
         isLegacyRepoForVisibility: true,
         isSelectedCheckout: false
@@ -492,7 +492,7 @@ describe('agent scratch worktrees', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('agent-scratch')
   })
@@ -500,7 +500,7 @@ describe('agent scratch worktrees', () => {
   it('classifies scratch worktrees created inside another linked checkout', () => {
     const repo = makeRepo()
     const settings = makeSettings()
-    const linkedCheckoutPath = '/nightshift/workspaces/app/feature-x'
+    const linkedCheckoutPath = '/kolux/workspaces/app/feature-x'
     expect(
       classifyWorktreeOwnership({
         repo,
@@ -509,7 +509,7 @@ describe('agent scratch worktrees', () => {
           path: `${linkedCheckoutPath}/.claude/worktrees/agent-a04ccaaa`,
           isMainWorktree: false
         }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo),
         agentScratchWorktreePathMatcher: createAgentScratchWorktreePathMatcher(
           [repo.path, linkedCheckoutPath],
           []
@@ -518,7 +518,7 @@ describe('agent scratch worktrees', () => {
     ).toBe('agent-scratch')
   })
 
-  it('keeps strong Nightshift metadata authoritative over the scratch path match', () => {
+  it('keeps strong Kolux metadata authoritative over the scratch path match', () => {
     const repo = makeRepo()
     const settings = makeSettings()
     expect(
@@ -526,10 +526,10 @@ describe('agent scratch worktrees', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-        meta: makeMeta({ nightshiftCreatedAt: 1 }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        meta: makeMeta({ koluxCreatedAt: 1 }),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
-    ).toBe('nightshift-managed')
+    ).toBe('kolux-managed')
   })
 
   it('keeps agent scratch hidden by default for new and legacy repos', () => {
@@ -542,7 +542,7 @@ describe('agent scratch worktrees', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
       expect(detected.ownership).toBe('agent-scratch')
       expect(detected.visible).toBe(false)
@@ -561,7 +561,7 @@ describe('agent scratch worktrees', () => {
         repo,
         settings,
         worktree: makeWorktree({ path, isMainWorktree: false }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
 
       expect(detected).toMatchObject({ ownership: 'agent-scratch', visible: true })
@@ -582,7 +582,7 @@ describe('agent scratch worktrees', () => {
         repo,
         settings,
         worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       }).visible
     ).toBe(false)
     expect(
@@ -593,7 +593,7 @@ describe('agent scratch worktrees', () => {
           path: '/repos/app/.gsd-workspaces/phase-1',
           isMainWorktree: false
         }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       }).visible
     ).toBe(true)
   })
@@ -610,7 +610,7 @@ describe('agent scratch worktrees', () => {
       repo,
       settings,
       worktree: makeWorktree({ path: customPath, isMainWorktree: false }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(detected.visibilitySource).toEqual({ kind: 'custom', id: 'team' })
@@ -647,18 +647,18 @@ describe('agent scratch worktrees', () => {
   it('keeps agent scratch hidden in the metadata fallback while revealing the rest', () => {
     const repo = makeRepo()
     const settings = makeSettings()
-    const layouts = buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    const layouts = buildKnownKoluxWorkspaceLayouts(settings, repo)
     const scratch = toDetectedWorktree({
       repo,
       settings,
       worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-      knownNightshiftLayouts: layouts
+      knownKoluxLayouts: layouts
     })
     const external = toDetectedWorktree({
       repo,
       settings,
       worktree: makeWorktree({ path: '/scratch/manual', isMainWorktree: false }),
-      knownNightshiftLayouts: layouts
+      knownKoluxLayouts: layouts
     })
 
     expect(applyMetadataFallbackVisibility(scratch)).toMatchObject({
@@ -681,7 +681,7 @@ describe('agent scratch worktrees', () => {
       repo,
       settings,
       worktree: makeWorktree({ path: scratchPath, isMainWorktree: false }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(scratch).toMatchObject({ ownership: 'agent-scratch', visible: true })
@@ -700,7 +700,7 @@ describe('agent scratch worktrees', () => {
           path: '/repos/.claude/worktrees/app/manual/feature-x',
           isMainWorktree: false
         }),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).not.toBe('agent-scratch')
   })

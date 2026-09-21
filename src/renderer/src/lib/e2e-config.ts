@@ -9,13 +9,11 @@ const rendererE2EQuery =
     : null
 export const e2eDisableRemoteTerminalStallRecovery =
   rendererE2EExposeStore &&
-  rendererE2EQuery?.get('nightshiftE2EDisableRemoteTerminalStallRecovery') === '1'
+  rendererE2EQuery?.get('koluxE2EDisableRemoteTerminalStallRecovery') === '1'
 const rendererFallbackE2EConfig = createE2EConfig({
   exposeStore: rendererE2EExposeStore,
-  terminalParkingDelayMs:
-    Number(rendererE2EQuery?.get('nightshiftE2ETerminalParkingDelayMs')) || null,
-  terminalRetentionLimit:
-    Number(rendererE2EQuery?.get('nightshiftE2ETerminalRetentionLimit')) || null
+  terminalParkingDelayMs: Number(rendererE2EQuery?.get('koluxE2ETerminalParkingDelayMs')) || null,
+  terminalRetentionLimit: Number(rendererE2EQuery?.get('koluxE2ETerminalRetentionLimit')) || null
 })
 
 // Why: preload owns the Electron startup contract, so renderer code should

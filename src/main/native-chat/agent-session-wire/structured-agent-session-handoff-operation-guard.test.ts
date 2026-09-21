@@ -34,7 +34,7 @@ afterEach(async () => {
 })
 
 async function createGuard() {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-handoff-operation-guard-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-handoff-operation-guard-'))
   const store = await AgentSessionRecordStore.open({ directory: root, hostId: 'local' })
   return { guard: new StructuredAgentSessionHandoffOperationGuard(store), store }
 }
@@ -175,7 +175,7 @@ describe('queued handoff fence revalidation', () => {
 
 describe('scheduled handoff revalidation', () => {
   it('refuses a native turn accepted ahead of the scheduled handoff', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-handoff-revalidation-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-handoff-revalidation-'))
     const journal = await openAgentSessionJournal({
       identity: {
         sessionId: SESSION,
@@ -188,7 +188,7 @@ describe('scheduled handoff revalidation', () => {
     })
     const journalSequence = journal.cursor().sequence
     await journal.appendItem(
-      { provider: 'nightshift', clientMessageId: 'turn-running' },
+      { provider: 'kolux', clientMessageId: 'turn-running' },
       { kind: 'status', text: 'running', turnLifecycle: { turnId: 'turn-1', state: 'running' } },
       { fence: 7 }
     )

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import { OrchestrationDb } from '../orchestration/db'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationError } from '../orchestration/orchestration-error'
 import type { RpcRequest } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -64,7 +64,7 @@ describe('orchestration commit-notify recovery', () => {
 
   async function throwAfterCommitAndReplay(
     dispatcher: RpcDispatcher,
-    runtime: NightshiftRuntimeService,
+    runtime: KoluxRuntimeService,
     first: RpcRequest,
     retryRpcId: string
   ) {
@@ -247,7 +247,7 @@ describe('orchestration commit-notify recovery', () => {
   })
 
   it('resumes an effect-free worker_done checkpoint after a runtime restart', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-worker-done-restart-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-worker-done-restart-'))
     paths.push(dir)
     const dbPath = join(dir, 'orchestration.db')
     const db = new OrchestrationDb(dbPath)
@@ -256,7 +256,7 @@ describe('orchestration commit-notify recovery', () => {
       coordinatorHandle: 'term_coord',
       coordinatorPaneKey: harness.coordinatorPaneKey
     })
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     const workerPaneKey = 'tab_worker:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
@@ -307,7 +307,7 @@ describe('orchestration commit-notify recovery', () => {
     db.close()
 
     const restartedDb = new OrchestrationDb(dbPath)
-    const restartedRuntime = new NightshiftRuntimeService()
+    const restartedRuntime = new KoluxRuntimeService()
     restartedRuntime.setOrchestrationDb(restartedDb)
     vi.spyOn(restartedRuntime, 'getTerminalPaneKey').mockImplementation((handle) =>
       handle === 'term_worker'

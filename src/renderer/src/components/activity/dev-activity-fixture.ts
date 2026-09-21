@@ -5,7 +5,7 @@ import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 
 const FIXTURE_REPO_ID = 'dev-fixture-repo'
-const FIXTURE_WORKTREE_ID = `${FIXTURE_REPO_ID}::/dev/nightshift-sample`
+const FIXTURE_WORKTREE_ID = `${FIXTURE_REPO_ID}::/dev/kolux-sample`
 const FIXTURE_LEAF_IDS = [
   '11111111-1111-4111-8111-111111111111',
   '22222222-2222-4222-8222-222222222222',
@@ -15,8 +15,8 @@ const FIXTURE_LEAF_IDS = [
 function fixtureRepo(): Repo {
   return {
     id: FIXTURE_REPO_ID,
-    path: '/dev/nightshift-sample',
-    displayName: 'Nightshift Sample App',
+    path: '/dev/kolux-sample',
+    displayName: 'Kolux Sample App',
     badgeColor: '#8b5cf6',
     addedAt: Date.now(),
     kind: 'git',
@@ -28,7 +28,7 @@ function fixtureWorktree(): Worktree {
   return {
     id: FIXTURE_WORKTREE_ID,
     repoId: FIXTURE_REPO_ID,
-    path: '/dev/nightshift-sample',
+    path: '/dev/kolux-sample',
     head: 'dev-fixture-head',
     branch: 'feature/activity-dashboard',
     isBare: false,

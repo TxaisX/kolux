@@ -14,7 +14,7 @@ function plugin(pluginKey: string): PluginHostListEntry {
     consentFingerprint: 'sha256-test',
     name: pluginKey,
     version: '1.0.0',
-    publisher: 'nightshift-samples',
+    publisher: 'kolux-samples',
     status: 'idle',
     needsReconsent: false,
     isDev: false,
@@ -38,7 +38,7 @@ afterEach(() => {
 describe('plugin panel list loading', () => {
   it('collects commands only from enabled plugin states', () => {
     const enabled = {
-      ...plugin('nightshift-samples.enabled'),
+      ...plugin('kolux-samples.enabled'),
       commands: [
         {
           id: 'tasks',
@@ -51,7 +51,7 @@ describe('plugin panel list loading', () => {
     }
     const pending = {
       ...enabled,
-      pluginKey: 'nightshift-samples.pending',
+      pluginKey: 'kolux-samples.pending',
       status: 'pending' as const
     }
 
@@ -73,31 +73,31 @@ describe('plugin panel list loading', () => {
 
   it('bounds watchdog errors to installed panels and clears them on recovery', () => {
     const installed = {
-      ...plugin('nightshift-samples.current'),
+      ...plugin('kolux-samples.current'),
       panels: [
         {
           id: 'dashboard',
           title: 'Dashboard',
-          tabKey: 'plugin:nightshift-samples.current/dashboard' as const
+          tabKey: 'plugin:kolux-samples.current/dashboard' as const
         }
       ]
     }
     usePluginPanelsStore.getState().setPlugins([installed])
     usePluginPanelsStore
       .getState()
-      .setPanelHealth('plugin:nightshift-samples.current/dashboard', 'error')
+      .setPanelHealth('plugin:kolux-samples.current/dashboard', 'error')
     expect(usePluginPanelsStore.getState().panelErrors).toEqual({
-      'plugin:nightshift-samples.current/dashboard': true
+      'plugin:kolux-samples.current/dashboard': true
     })
 
     usePluginPanelsStore
       .getState()
-      .setPanelHealth('plugin:nightshift-samples.current/dashboard', 'healthy')
+      .setPanelHealth('plugin:kolux-samples.current/dashboard', 'healthy')
     expect(usePluginPanelsStore.getState().panelErrors).toEqual({})
 
     usePluginPanelsStore
       .getState()
-      .setPanelHealth('plugin:nightshift-samples.current/dashboard', 'error')
+      .setPanelHealth('plugin:kolux-samples.current/dashboard', 'error')
     usePluginPanelsStore.getState().setPlugins([])
     expect(usePluginPanelsStore.getState().panelErrors).toEqual({})
   })
@@ -113,19 +113,19 @@ describe('plugin panel list loading', () => {
 
     const first = usePluginPanelsStore.getState().fetchPlugins()
     const second = usePluginPanelsStore.getState().fetchPlugins()
-    resolveSecond([plugin('nightshift-samples.current')])
+    resolveSecond([plugin('kolux-samples.current')])
     await second
-    resolveFirst([plugin('nightshift-samples.stale')])
+    resolveFirst([plugin('kolux-samples.stale')])
     await first
 
     expect(usePluginPanelsStore.getState().plugins.map((entry) => entry.pluginKey)).toEqual([
-      'nightshift-samples.current'
+      'kolux-samples.current'
     ])
   })
 
   it('clears stale executable panels when the current list refresh fails', async () => {
     usePluginPanelsStore.setState({
-      plugins: [plugin('nightshift-samples.stale')],
+      plugins: [plugin('kolux-samples.stale')],
       fetchStatus: 'ready'
     })
     vi.stubGlobal('window', {
@@ -145,7 +145,7 @@ describe('plugin panel list loading', () => {
     const list = vi
       .fn()
       .mockRejectedValueOnce(new Error('transport starting'))
-      .mockResolvedValueOnce([plugin('nightshift-samples.recovered')])
+      .mockResolvedValueOnce([plugin('kolux-samples.recovered')])
     vi.stubGlobal('window', { api: { plugins: { list } } })
 
     await usePluginPanelsStore.getState().fetchPlugins()
@@ -156,7 +156,7 @@ describe('plugin panel list loading', () => {
     expect(list).toHaveBeenCalledTimes(2)
     expect(usePluginPanelsStore.getState()).toMatchObject({
       fetchStatus: 'ready',
-      plugins: [expect.objectContaining({ pluginKey: 'nightshift-samples.recovered' })]
+      plugins: [expect.objectContaining({ pluginKey: 'kolux-samples.recovered' })]
     })
   })
 })

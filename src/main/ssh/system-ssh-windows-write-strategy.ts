@@ -261,7 +261,7 @@ export function explainWindowsPowerShellStdinFailure(error: unknown): unknown {
     return error
   }
   return new Error(
-    `${message}\nWindows PowerShell 5.1 can lose a redirected stdin permanently when a read finds it momentarily empty, so this write cannot be made reliable from the client. Enable the sftp subsystem on the host (sshd_config: "Subsystem sftp sftp-server.exe"), or install PowerShell 7, and Nightshift will use it automatically.`,
+    `${message}\nWindows PowerShell 5.1 can lose a redirected stdin permanently when a read finds it momentarily empty, so this write cannot be made reliable from the client. Enable the sftp subsystem on the host (sshd_config: "Subsystem sftp sftp-server.exe"), or install PowerShell 7, and Kolux will use it automatically.`,
     { cause: error instanceof Error ? error : undefined }
   )
 }

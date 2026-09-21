@@ -45,7 +45,7 @@ export function primeClaudeFetcherMocks(mocks: ClaudeFetcherHoistedMocks): void 
   vi.mocked(writeActiveClaudeKeychainCredentials).mockResolvedValue()
   vi.mocked(deleteActiveClaudeKeychainCredentialsStrict).mockResolvedValue()
   vi.mocked(writeManagedClaudeKeychainCredentials).mockResolvedValue()
-  mocks.appGetPathMock.mockReturnValue('/tmp/nightshift-claude-fetcher-test')
+  mocks.appGetPathMock.mockReturnValue('/tmp/kolux-claude-fetcher-test')
   mocks.resolveProxyMock.mockResolvedValue('DIRECT')
   mocks.netFetchMock.mockResolvedValue(
     new Response(

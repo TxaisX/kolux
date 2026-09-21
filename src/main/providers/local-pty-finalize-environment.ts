@@ -1,7 +1,7 @@
 import { win32 as pathWin32 } from 'node:path'
 import { shouldUseShellReadyStartupDelivery } from '../../shared/codex-startup-delivery'
 import { expandWindowsPathEnvironmentVariables } from '../../shared/windows-environment-expansion'
-import { dropInheritedNightshiftFishHistory } from '../fish-history-session'
+import { dropInheritedKoluxFishHistory } from '../fish-history-session'
 import { dropIncoherentCondaActivationEnv } from '../pty/conda-activation-env'
 import { stripLegacyTerminalShimEnv } from '../pty/legacy-terminal-shim-dir'
 import {
@@ -21,7 +21,7 @@ import {
   type HistoryInjectionResult
 } from '../terminal-history'
 import { addWslEnvKeys } from '../wsl-env'
-import { dropInheritedNightshiftHistFile } from '../worktree-history-file-path'
+import { dropInheritedKoluxHistFile } from '../worktree-history-file-path'
 import { promoteAgentTeamsShimPath } from './local-pty-launch-helpers'
 import type { LocalPtyLaunchPlan } from './local-pty-launch-plan'
 import type { LocalPtyProviderOptions } from './local-pty-provider-types'
@@ -78,14 +78,14 @@ export function finalizeLocalPtySpawnEnvironment(args: {
     logHistoryInjection(worktreeId, historyResult)
   } else {
     // Why: injectHistoryEnv is what normally clears it, so when history is off
-    // an inherited NIGHTSHIFT_HISTFILE would still reach the wrapper. Credit: #11146.
-    delete env.NIGHTSHIFT_HISTFILE
+    // an inherited KOLUX_HISTFILE would still reach the wrapper. Credit: #11146.
+    delete env.KOLUX_HISTFILE
     // Same for an exported `fish_history` from the fish pane that launched this
-    // Nightshift: history off means fish's own default, not another worktree's file.
-    dropInheritedNightshiftFishHistory(env)
+    // Kolux: history off means fish's own default, not another worktree's file.
+    dropInheritedKoluxFishHistory(env)
     // And for an exported HISTFILE: history off means the shell's own default,
-    // not the history file of the worktree this Nightshift was launched from.
-    dropInheritedNightshiftHistFile(env)
+    // not the history file of the worktree this Kolux was launched from.
+    dropInheritedKoluxHistFile(env)
   }
 
   if (!plan.wslInfo && process.platform !== 'win32') {
@@ -100,9 +100,9 @@ export function finalizeLocalPtySpawnEnvironment(args: {
         command: codexStartupCommand,
         startupCommandDelivery: spawn.startupCommandDelivery
       })
-    // Why delete: NIGHTSHIFT_SHELL_FEATURES is Nightshift-owned, and only the launch
+    // Why delete: KOLUX_SHELL_FEATURES is Kolux-owned, and only the launch
     // config below may name features for this shell.
-    delete env.NIGHTSHIFT_SHELL_FEATURES
+    delete env.KOLUX_SHELL_FEATURES
     delete env[POSIX_SHELL_STARTUP_COMMAND_ENV]
     plan.getFallbackShellReadyConfig = (shell) => {
       const wrapperStartupCommand =

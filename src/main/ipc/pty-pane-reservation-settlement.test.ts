@@ -41,7 +41,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -167,9 +167,9 @@ describe('registerPtyHandlers', () => {
         tabId,
         leafId,
         env: {
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: tabId,
-          NIGHTSHIFT_WORKTREE_ID: worktreeId
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: tabId,
+          KOLUX_WORKTREE_ID: worktreeId
         }
       })
 
@@ -266,9 +266,9 @@ describe('registerPtyHandlers', () => {
         tabId,
         leafId,
         env: {
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: tabId,
-          NIGHTSHIFT_WORKTREE_ID: worktreeId
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: tabId,
+          KOLUX_WORKTREE_ID: worktreeId
         }
       })
     ).rejects.toThrow('terminal_pane_owner_conflict')
@@ -311,9 +311,9 @@ describe('registerPtyHandlers', () => {
         tabId: 'tab-host-scope',
         leafId,
         env: {
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-host-scope',
-          NIGHTSHIFT_WORKTREE_ID: worktreeId
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-host-scope',
+          KOLUX_WORKTREE_ID: worktreeId
         }
       })
 
@@ -425,7 +425,7 @@ describe('registerPtyHandlers', () => {
       worktreeId: 'wt-1',
       tabId: 'tab-runtime-reservation',
       leafId,
-      env: { NIGHTSHIFT_PANE_KEY: paneKey },
+      env: { KOLUX_PANE_KEY: paneKey },
       persistHostSessionBinding: true
     }
 

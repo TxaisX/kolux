@@ -39,7 +39,7 @@ describe('federated read RPC transport routing', () => {
   let environmentId: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-federated-read-routing-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-federated-read-routing-'))
     environmentId = addEnvironmentFromPairingCode(userDataPath, {
       name: 'worker',
       pairingCode: encodePairingOffer({

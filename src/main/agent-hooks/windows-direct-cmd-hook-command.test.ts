@@ -12,12 +12,12 @@ import { WINDOWS_CMD_SAFE_PATH } from './installer-utils'
 import { wrapWindowsDirectCmdHookCommand } from './windows-direct-cmd-hook-command'
 import { findGitBash } from './windows-git-bash-path.test-fixture'
 
-const SAFE_PATH = 'C:\\Users\\alice\\.nightshift\\agent-hooks\\claude-hook.cmd'
+const SAFE_PATH = 'C:\\Users\\alice\\.kolux\\agent-hooks\\claude-hook.cmd'
 
 describe('wrapWindowsDirectCmdHookCommand', () => {
   it('emits the script path with forward slashes and a neutral-JSON fallback', () => {
     expect(wrapWindowsDirectCmdHookCommand(SAFE_PATH)).toBe(
-      'C:/Users/alice/.nightshift/agent-hooks/claude-hook.cmd || echo {}'
+      'C:/Users/alice/.kolux/agent-hooks/claude-hook.cmd || echo {}'
     )
   })
 
@@ -37,16 +37,16 @@ describe('wrapWindowsDirectCmdHookCommand', () => {
 
   it('declines any path the shells cannot carry bare', () => {
     for (const path of [
-      'C:\\Users\\Bob Smith\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      'C:\\Users\\%name%\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      'C:\\Users\\a^b\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      'C:\\Users\\a&b\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      'C:\\Users\\a(b)\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      'C:\\Users\\rené\\.nightshift\\agent-hooks\\claude-hook.cmd',
-      '/home/alice/.nightshift/agent-hooks/claude-hook.sh',
+      'C:\\Users\\Bob Smith\\.kolux\\agent-hooks\\claude-hook.cmd',
+      'C:\\Users\\%name%\\.kolux\\agent-hooks\\claude-hook.cmd',
+      'C:\\Users\\a^b\\.kolux\\agent-hooks\\claude-hook.cmd',
+      'C:\\Users\\a&b\\.kolux\\agent-hooks\\claude-hook.cmd',
+      'C:\\Users\\a(b)\\.kolux\\agent-hooks\\claude-hook.cmd',
+      'C:\\Users\\rené\\.kolux\\agent-hooks\\claude-hook.cmd',
+      '/home/alice/.kolux/agent-hooks/claude-hook.sh',
       // Why: WINDOWS_CMD_SAFE_PATH admits a UNC profile, but `//server/share/...` is not a
       // command cmd.exe reliably starts — keep those on the encoded launcher.
-      '\\\\server\\share\\alice\\.nightshift\\agent-hooks\\claude-hook.cmd'
+      '\\\\server\\share\\alice\\.kolux\\agent-hooks\\claude-hook.cmd'
     ]) {
       expect(wrapWindowsDirectCmdHookCommand(path), path).toBeNull()
     }
@@ -89,13 +89,11 @@ describe.skipIf(process.platform !== 'win32')('direct hook command, run by both 
 
   // Why: a runner whose TEMP sits under a profile with a space is the encoded-launcher case,
   // so these legs skip rather than assert a contract that shape never claimed.
-  const tempIsCmdSafe = WINDOWS_CMD_SAFE_PATH.test(
-    join(tmpdir(), 'nightshift-direct-hook-x', 'x.cmd')
-  )
+  const tempIsCmdSafe = WINDOWS_CMD_SAFE_PATH.test(join(tmpdir(), 'kolux-direct-hook-x', 'x.cmd'))
   const canRunLive = Boolean(gitBash) && tempIsCmdSafe
 
   function withTempDir(run: (dir: string, scriptPath: string, command: string) => void): void {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-direct-hook-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-direct-hook-'))
     try {
       const scriptPath = join(dir, 'claude-hook.cmd')
       const command = wrapWindowsDirectCmdHookCommand(scriptPath)

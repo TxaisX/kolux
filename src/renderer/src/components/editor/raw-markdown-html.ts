@@ -268,7 +268,7 @@ function createRawSourceNode({
 
     // Why: converting embedded HTML tags into placeholder tokens before the
     // markdown parser runs keeps marked's built-in paragraph tokenization intact
-    // while still letting Nightshift round-trip the raw markup verbatim.
+    // while still letting Kolux round-trip the raw markup verbatim.
     markdownTokenName: name,
     markdownTokenizer: {
       name,

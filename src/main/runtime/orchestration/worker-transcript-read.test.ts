@@ -26,7 +26,7 @@ describe('worker transcript reads', () => {
   let transcriptPath: string
 
   beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'nightshift-worker-transcript-'))
+    directory = await mkdtemp(join(tmpdir(), 'kolux-worker-transcript-'))
     transcriptPath = join(directory, 'rollout-session.jsonl')
   })
 

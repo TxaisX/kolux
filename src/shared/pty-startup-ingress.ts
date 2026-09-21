@@ -134,7 +134,7 @@ export class PtyStartupIngress {
           this.queryOpen = false
           // Why the echo hold deliberately survives this, unlike `snapshot`: the
           // handoff ends query *authority*, but a reply already on the wire is still
-          // Nightshift's to swallow. Releasing here would show the first half of an echo
+          // Kolux's to swallow. Releasing here would show the first half of an echo
           // split across the boundary and orphan the second.
           this.releaseQueryPending()
         }

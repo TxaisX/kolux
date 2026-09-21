@@ -49,7 +49,7 @@ const pushTarget = {
   remoteName: 'origin',
   branchName: 'main'
 } satisfies GitPushTarget
-const expectedUpstream = { owner: 'TxaisX', repo: 'nightshift' }
+const expectedUpstream = { owner: 'TxaisX', repo: 'kolux' }
 
 describe('RuntimeGitSyncCommands admission', () => {
   beforeEach(() => {

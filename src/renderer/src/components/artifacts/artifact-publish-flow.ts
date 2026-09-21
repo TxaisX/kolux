@@ -78,7 +78,7 @@ export async function publishArtifactFromSurface(
       toast.error(
         translate(
           'auto.components.artifacts.artifact-publish-flow.bba20daa6d',
-          'Sign in to Nightshift and try again.'
+          'Sign in to Kolux and try again.'
         )
       )
       return null
@@ -100,14 +100,14 @@ export async function publishArtifactFromSurface(
 
 async function ensureArtifactAccountConnected(): Promise<boolean> {
   const state = useAppStore.getState()
-  if (state.nightshiftProfileAuthStatus?.state === 'connected') {
+  if (state.koluxProfileAuthStatus?.state === 'connected') {
     return true
   }
-  return (await state.connectCurrentNightshiftProfile())?.status === 'connected'
+  return (await state.connectCurrentKoluxProfile())?.status === 'connected'
 }
 
 async function reconnectArtifactAccount(): Promise<boolean> {
-  return (await useAppStore.getState().connectCurrentNightshiftProfile())?.status === 'connected'
+  return (await useAppStore.getState().connectCurrentKoluxProfile())?.status === 'connected'
 }
 
 function showArtifactPublishedToast(result: ArtifactPublishResult): void {
@@ -133,7 +133,7 @@ function artifactPreparationErrorDescription(code: ArtifactPublishPreparationErr
     case 'unreadable':
       return translate(
         'auto.components.artifacts.artifact-publish-flow.e2ed5acd8c',
-        "Nightshift couldn't read this file. Open it from a workspace and try again."
+        "Kolux couldn't read this file. Open it from a workspace and try again."
       )
     case 'unsupported':
       return translate(

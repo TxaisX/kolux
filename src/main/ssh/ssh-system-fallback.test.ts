@@ -76,15 +76,15 @@ function createResolvedConfig(
   }
 }
 
-function expectNoNightshiftControlMasterArgs(args: string[]): void {
+function expectNoKoluxControlMasterArgs(args: string[]): void {
   expect(args).not.toContain('ControlMaster=auto')
   expect(args.some((arg) => arg.startsWith('ControlPath='))).toBe(false)
   expect(args).not.toContain('ControlPersist=300')
 }
 
-function expectNightshiftControlMasterArgs(args: string[]): void {
+function expectKoluxControlMasterArgs(args: string[]): void {
   if (process.platform === 'win32') {
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
     return
   }
   expect(args).toContain('ControlMaster=auto')
@@ -323,10 +323,10 @@ describe('spawnSystemSsh', () => {
 
   it('passes an explicit main-owned OpenSSH config as one argument', () => {
     const args = buildSshArgs(createTarget({ configHost: 'isolated-host', source: 'ssh-config' }), {
-      configFile: '/tmp/nightshift isolated/ssh_config'
+      configFile: '/tmp/kolux isolated/ssh_config'
     })
 
-    expect(args.slice(0, 2)).toEqual(['-F', '/tmp/nightshift isolated/ssh_config'])
+    expect(args.slice(0, 2)).toEqual(['-F', '/tmp/kolux isolated/ssh_config'])
     expect(args).toContain('isolated-host')
   })
 
@@ -337,12 +337,12 @@ describe('spawnSystemSsh', () => {
         configHost: '127.0.0.1',
         host: '127.0.0.1',
         port: 2222,
-        identityFile: '/tmp/nightshift-docker-key',
+        identityFile: '/tmp/kolux-docker-key',
         identitiesOnly: true
       })
     )
 
-    expect(args).toEqual(expect.arrayContaining(['-p', '2222', '-i', '/tmp/nightshift-docker-key']))
+    expect(args).toEqual(expect.arrayContaining(['-p', '2222', '-i', '/tmp/kolux-docker-key']))
     expect(args).toContain('IdentitiesOnly=yes')
     expect(args).toContain('deploy@127.0.0.1')
   })
@@ -394,7 +394,7 @@ describe('spawnSystemSsh', () => {
     expect(args).toContain('krb-host')
   })
 
-  it('does not inject Nightshift ControlMaster flags when ssh config already owns muxing', () => {
+  it('does not inject Kolux ControlMaster flags when ssh config already owns muxing', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }), {
       resolvedConfig: createResolvedConfig({
         controlMaster: 'auto',
@@ -403,12 +403,12 @@ describe('spawnSystemSsh', () => {
       })
     })
 
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
     expect(args).toContain('workbox')
   })
 
-  it('injects Nightshift ControlMaster flags when ssh config only sets ControlPersist', () => {
+  it('injects Kolux ControlMaster flags when ssh config only sets ControlPersist', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }), {
       resolvedConfig: createResolvedConfig({
         controlMaster: 'no',
@@ -416,11 +416,11 @@ describe('spawnSystemSsh', () => {
       })
     })
 
-    expectNightshiftControlMasterArgs(args)
+    expectKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
   })
 
-  it('injects Nightshift ControlMaster flags when ssh config only sets ControlPath', () => {
+  it('injects Kolux ControlMaster flags when ssh config only sets ControlPath', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }), {
       resolvedConfig: createResolvedConfig({
         controlMaster: 'no',
@@ -428,43 +428,43 @@ describe('spawnSystemSsh', () => {
       })
     })
 
-    expectNightshiftControlMasterArgs(args)
+    expectKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
   })
 
-  it('injects Nightshift ControlMaster flags when ssh config omits ControlPath', () => {
+  it('injects Kolux ControlMaster flags when ssh config omits ControlPath', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }), {
       resolvedConfig: createResolvedConfig({
         controlMaster: 'auto'
       })
     })
 
-    expectNightshiftControlMasterArgs(args)
+    expectKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
   })
 
-  it('does not inject Nightshift ControlMaster flags for unresolved ssh-config targets', () => {
+  it('does not inject Kolux ControlMaster flags for unresolved ssh-config targets', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }))
 
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
     expect(args).toContain('workbox')
   })
 
-  it('does not inject Nightshift ControlMaster flags for unresolved legacy config aliases', () => {
+  it('does not inject Kolux ControlMaster flags for unresolved legacy config aliases', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', host: 'resolved.example.com' }))
 
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
     expect(args).toContain('workbox')
   })
 
-  it('can inject Nightshift ControlMaster flags for ssh-config targets with resolved config', () => {
+  it('can inject Kolux ControlMaster flags for ssh-config targets with resolved config', () => {
     const args = buildSshArgs(createTarget({ configHost: 'workbox', source: 'ssh-config' }), {
       resolvedConfig: createResolvedConfig()
     })
 
-    expectNightshiftControlMasterArgs(args)
+    expectKoluxControlMasterArgs(args)
     expect(args).not.toContain('-S')
   })
 
@@ -474,13 +474,13 @@ describe('spawnSystemSsh', () => {
 
     expect(standaloneControlIdx).toBeGreaterThan(-1)
     expect(args[standaloneControlIdx + 1]).toBe('none')
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
   })
 
-  it('adds keepalive options to Nightshift-owned ControlMaster connections', () => {
+  it('adds keepalive options to Kolux-owned ControlMaster connections', () => {
     const args = buildSshArgs(createTarget(), { resolvedConfig: createResolvedConfig() })
 
-    expectNightshiftControlMasterArgs(args)
+    expectKoluxControlMasterArgs(args)
     if (process.platform !== 'win32') {
       expect(args).toContain('ServerAliveInterval=15')
       expect(args).toContain('ServerAliveCountMax=3')
@@ -526,7 +526,7 @@ describe('spawnSystemSsh', () => {
     expect(args[exitOnForwardFailureIdx - 1]).toBe('-o')
     expect(exitOnForwardFailureIdx).toBeLessThan(terminatorIdx)
     expect(standaloneControlIdx).toBe(-1)
-    expectNoNightshiftControlMasterArgs(args)
+    expectNoKoluxControlMasterArgs(args)
     expect(args).toContain('127.0.0.1:5173:127.0.0.1:3000')
     expect(args[terminatorIdx + 1]).toBe('fdpass-host')
     expect(spawnMock).toHaveBeenCalledWith(
@@ -634,7 +634,7 @@ describe('spawnSystemSsh', () => {
     const received: Buffer[] = []
     proc.stdin.on('data', (chunk: Buffer) => received.push(chunk))
     spawnMock.mockReturnValue(proc)
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-system-ssh-upload-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-system-ssh-upload-'))
     const source = join(dir, 'payload.bin')
     writeFileSync(source, Buffer.from('payload'))
 
@@ -674,7 +674,7 @@ describe('spawnSystemSsh', () => {
   it('downloads files from POSIX system SSH targets', async () => {
     const proc = createEventedProcess()
     spawnMock.mockReturnValue(proc)
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-system-ssh-download-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-system-ssh-download-'))
     const dest = join(dir, 'payload.bin')
 
     try {
@@ -720,7 +720,7 @@ describe('spawnSystemSsh', () => {
 
     const promise = writeFileViaSystemSsh(
       createTarget(),
-      'C:/Users/me/.nightshift-remote/relay/.version',
+      'C:/Users/me/.kolux-remote/relay/.version',
       '0.1.0',
       { hostPlatform }
     )
@@ -730,7 +730,7 @@ describe('spawnSystemSsh', () => {
     // finds it momentarily empty, so the bytes must not travel that way at all.
     const batch = String(spawned[0]!.stdin.end.mock.calls[0]?.[0] ?? '')
     expect(batch).toContain('put ')
-    expect(batch).toContain('/C:/Users/me/.nightshift-remote/relay/.version.nightshift-partial-')
+    expect(batch).toContain('/C:/Users/me/.kolux-remote/relay/.version.kolux-partial-')
     const sftpArgs = spawnMock.mock.calls[0][1] as string[]
     expect(sftpArgs).toContain('-b')
     // The rename that publishes it reads the staged file, never a pipe.
@@ -765,7 +765,7 @@ describe('spawnSystemSsh', () => {
     const proc = createEventedProcess()
     spawnMock.mockReturnValue(proc)
     const hostPlatform = getRemoteHostPlatform('win32-x64')
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-system-ssh-download-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-system-ssh-download-'))
     const dest = join(dir, 'payload.bin')
 
     try {
@@ -795,7 +795,7 @@ describe('spawnSystemSsh', () => {
 
     const promise = writeFileViaSystemSsh(
       createTarget(),
-      'C:/Users/me/.nightshift-remote/relay/.version',
+      'C:/Users/me/.kolux-remote/relay/.version',
       '0.1.0',
       { hostPlatform, disableControlMaster: true }
     )
@@ -812,7 +812,7 @@ describe('spawnSystemSsh', () => {
   })
 
   it('uploads a Windows directory as a mkdir batch plus per-file writes, never one blob', async () => {
-    const localDir = mkdtempSync(join(tmpdir(), 'nightshift-system-ssh-upload-'))
+    const localDir = mkdtempSync(join(tmpdir(), 'kolux-system-ssh-upload-'))
     writeFileSync(join(localDir, 'relay.js'), 'console.log("relay")')
     const spawned: EventedProcess[] = []
     spawnMock.mockImplementation(() => {
@@ -826,7 +826,7 @@ describe('spawnSystemSsh', () => {
       await uploadDirectoryViaSystemSsh(
         createTarget(),
         localDir,
-        'C:/Users/me/.nightshift-remote/relay',
+        'C:/Users/me/.kolux-remote/relay',
         { hostPlatform: getRemoteHostPlatform('win32-x64') }
       )
     } finally {
@@ -836,10 +836,10 @@ describe('spawnSystemSsh', () => {
     // #16432: directories first, then the file — but both over sftp now, so the only PowerShell
     // left is the rename that publishes the staged file, which reads a file rather than a pipe.
     const mkdirBatch = String(spawned[0]!.stdin.end.mock.calls[0]?.[0] ?? '')
-    expect(mkdirBatch).toBe('-mkdir "/C:/Users/me/.nightshift-remote/relay"\n')
+    expect(mkdirBatch).toBe('-mkdir "/C:/Users/me/.kolux-remote/relay"\n')
     const putBatch = String(spawned[1]!.stdin.end.mock.calls[0]?.[0] ?? '')
     expect(putBatch).toContain('put ')
-    expect(putBatch).toContain('/C:/Users/me/.nightshift-remote/relay/relay.js.nightshift-partial-')
+    expect(putBatch).toContain('/C:/Users/me/.kolux-remote/relay/relay.js.kolux-partial-')
     const commands = spawnMock.mock.calls.map((call) => (call[1] as string[]).at(-1) ?? '')
     expect(commands.every((command) => !command.includes('/bin/sh'))).toBe(true)
     expect(commands.join('\n')).not.toContain('tar -xzf')
@@ -850,7 +850,7 @@ describe('spawnSystemSsh', () => {
   })
 
   it('forces standalone SSH for Windows upload packages when requested', async () => {
-    const localDir = mkdtempSync(join(tmpdir(), 'nightshift-system-ssh-upload-'))
+    const localDir = mkdtempSync(join(tmpdir(), 'kolux-system-ssh-upload-'))
     writeFileSync(join(localDir, 'relay.js'), 'console.log("relay")')
     spawnMock.mockImplementation(() => {
       const proc = createEventedProcess()
@@ -862,7 +862,7 @@ describe('spawnSystemSsh', () => {
       await uploadDirectoryViaSystemSsh(
         createTarget(),
         localDir,
-        'C:/Users/me/.nightshift-remote/relay',
+        'C:/Users/me/.kolux-remote/relay',
         { hostPlatform: getRemoteHostPlatform('win32-x64'), disableControlMaster: true }
       )
     } finally {

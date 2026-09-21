@@ -32,8 +32,8 @@ vi.mock('./runtime/environments', async (importOriginal) => {
 
 // Why: this suite runs the REAL `main()`, and `agent hooks off` below reaches the production
 // handler, which calls removeManagedAgentHooks() against the developer's OWN ~/.claude and
-// ~/.cursor — a green test run silently deleted every Nightshift-managed hook on the machine, so agent
-// status stopped reporting until the next Nightshift restart (STA-5679). The byte-for-byte equivalence
+// ~/.cursor — a green test run silently deleted every Kolux-managed hook on the machine, so agent
+// status stopped reporting until the next Kolux restart (STA-5679). The byte-for-byte equivalence
 // twin already refuses these tokens for exactly this reason
 // (config/scripts/cli-runtime-client-deferral-equivalence.mjs); this is the same guard for vitest.
 // Stubbed, not dropped: the row is the only case that reads ctx.client, so it carries the
@@ -48,7 +48,7 @@ vi.mock('./runtime-client', () => {
   class RuntimeClient {
     call = callMock
     getCliStatus = getCliStatusMock
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
 
     constructor(...args: unknown[]) {
       constructorArgsMock(...args)
@@ -67,9 +67,7 @@ describe('RuntimeClient module-graph deferral', () => {
   let errorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    testUserDataPathRef.current = mkdtempSync(
-      join(tmpdir(), 'nightshift-runtime-deferral-userdata-')
-    )
+    testUserDataPathRef.current = mkdtempSync(join(tmpdir(), 'kolux-runtime-deferral-userdata-'))
     applyAgentStatusHooksEnabledMock.mockClear()
     constructorArgsMock.mockClear()
     callMock.mockReset()
@@ -134,7 +132,7 @@ describe('RuntimeClient module-graph deferral', () => {
   // suppressed group and touch ctx.client, and they rewrite the real ~/.claude
   // hook config — so the byte-for-byte equivalence script cannot invoke them.
   // Assert the constructor arguments directly instead: `null` (not `undefined`)
-  // is what stops the NIGHTSHIFT_* env fallback re-activating for local-only groups.
+  // is what stops the KOLUX_* env fallback re-activating for local-only groups.
   //
   // `constructs` is declared per case and asserted BEFORE the args, because
   // only `agent hooks off` reads ctx.client. Looping over `mock.calls` alone
@@ -153,8 +151,8 @@ describe('RuntimeClient module-graph deferral', () => {
   it.each(SUPPRESSED_GROUPS)(
     'constructs exactly %s expected clients, with null remote selection',
     async (_name, argv, constructs) => {
-      vi.stubEnv('NIGHTSHIFT_PAIRING_CODE', 'pairing-code')
-      vi.stubEnv('NIGHTSHIFT_ENVIRONMENT', 'some-environment')
+      vi.stubEnv('KOLUX_PAIRING_CODE', 'pairing-code')
+      vi.stubEnv('KOLUX_ENVIRONMENT', 'some-environment')
       getCliStatusMock.mockResolvedValue({ result: { runtime: { reachable: false } } })
 
       await main(argv, '/tmp/repo')
@@ -189,8 +187,8 @@ describe('RuntimeClient module-graph deferral', () => {
   it.each(SUPPRESSED_GROUPS.map(([name, argv]) => [name, argv] as const))(
     'forwards null remote selection to the client %s would build',
     async (_name, argv) => {
-      vi.stubEnv('NIGHTSHIFT_PAIRING_CODE', 'pairing-code')
-      vi.stubEnv('NIGHTSHIFT_ENVIRONMENT', 'some-environment')
+      vi.stubEnv('KOLUX_PAIRING_CODE', 'pairing-code')
+      vi.stubEnv('KOLUX_ENVIRONMENT', 'some-environment')
       const dispatchSpy = vi.spyOn(dispatchModule, 'dispatch').mockResolvedValue(undefined)
       try {
         await main(argv, '/tmp/repo')
@@ -212,7 +210,7 @@ describe('RuntimeClient module-graph deferral', () => {
   // (not `null`) for a non-suppressed group, or the assertion above would pass
   // for a build that suppressed EVERY command's env fallback.
   it('forwards undefined remote selection for a non-suppressed group', async () => {
-    vi.stubEnv('NIGHTSHIFT_PAIRING_CODE', 'pairing-code')
+    vi.stubEnv('KOLUX_PAIRING_CODE', 'pairing-code')
     const dispatchSpy = vi.spyOn(dispatchModule, 'dispatch').mockResolvedValue(undefined)
     try {
       await main(['worktree', 'list'], '/tmp/repo')

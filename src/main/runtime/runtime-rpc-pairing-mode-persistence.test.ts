@@ -2,8 +2,8 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeService } from './kolux-runtime'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { parsePairingCode } from '../../shared/pairing'
 import {
   waitForWsClose,
@@ -28,11 +28,11 @@ vi.mock('../git/worktree', () => {
   }
 })
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('persists local-only pairing and never mints or later binds Relay', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -74,9 +74,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('normalizes untrusted pairing modes to automatic at the runtime boundary', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -123,9 +123,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('revokes and rotates a pending Relay code when switching it to local-only', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -179,9 +179,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('rotates a pending local-only code when switching it back to Anywhere', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -236,9 +236,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('reuses the pending token when the requested mode is unchanged', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -289,9 +289,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('records cloud cleanup before rotating or deleting the local mobile credential', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
@@ -347,9 +347,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('binds pairing RPC providers to the immutable authenticated socket context', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const server = new NightshiftRuntimeRpcServer({
-      runtime: new NightshiftRuntimeService(),
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const server = new KoluxRuntimeRpcServer({
+      runtime: new KoluxRuntimeService(),
       userDataPath,
       enableWebSocket: true,
       wsPort: 0

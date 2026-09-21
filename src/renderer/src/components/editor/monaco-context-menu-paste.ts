@@ -9,13 +9,13 @@ import {
 } from './monaco-large-text-paste'
 
 // Why: Monaco's built-in context-menu Paste action (editor.action.clipboardPasteAction)
-// reads the clipboard with navigator.clipboard.readText(). Nightshift runs the renderer with
+// reads the clipboard with navigator.clipboard.readText(). Kolux runs the renderer with
 // `sandbox: true`, where that read is blocked/empty — so right-click Paste silently does
 // nothing even though Cmd+V (a real OS paste ClipboardEvent) and right-click Copy
-// (execCommand('copy') from a user gesture) both work. We route the read through Nightshift's
+// (execCommand('copy') from a user gesture) both work. We route the read through Kolux's
 // trusted clipboard IPC bridge instead, matching how the terminal already reads it.
-export const NIGHTSHIFT_CONTEXT_MENU_PASTE_PRIORITY = 10001
-export const NIGHTSHIFT_CONTEXT_MENU_PASTE_NAME = 'nightshift-ipc-paste'
+export const KOLUX_CONTEXT_MENU_PASTE_PRIORITY = 10001
+export const KOLUX_CONTEXT_MENU_PASTE_NAME = 'kolux-ipc-paste'
 
 // Why: this path may either dispatch a native paste (needs getOption/trigger)
 // or hand off to the chunked inserter (needs the MonacoPasteEditor surface), so
@@ -31,7 +31,7 @@ type ClipboardPasteMetadata = {
   mode?: string | null
 } | null
 
-export type NightshiftContextMenuPasteDeps = {
+export type KoluxContextMenuPasteDeps = {
   getFocusedEditor: () => PasteCapableEditor | null
   readClipboardText: (options?: ReadClipboardTextOptions) => Promise<string>
   getClipboardMetadata: (text: string) => ClipboardPasteMetadata
@@ -41,7 +41,7 @@ export type NightshiftContextMenuPasteDeps = {
   onReadError?: (error: unknown) => void
 }
 
-export type NightshiftContextMenuPasteOutcome =
+export type KoluxContextMenuPasteOutcome =
   | { status: 'pasted'; mode: 'native' | 'chunked' }
   | { status: 'noop'; reason: 'empty' | 'read-failed' | 'too-large' | 'target-lost' }
 
@@ -69,12 +69,12 @@ function resolvePasteMetadata(
  * Replacement implementation for Monaco's clipboard paste command. Returns
  * `false` when it declines to handle the paste so Monaco's default
  * implementation runs unchanged (read-only editor, no focus, no clipboard
- * bridge); otherwise performs the paste through Nightshift's IPC clipboard read and
+ * bridge); otherwise performs the paste through Kolux's IPC clipboard read and
  * returns a Promise (truthy) so Monaco's blocked default never runs.
  */
-export function runNightshiftContextMenuPaste(
-  deps: NightshiftContextMenuPasteDeps
-): false | Promise<NightshiftContextMenuPasteOutcome> {
+export function runKoluxContextMenuPaste(
+  deps: KoluxContextMenuPasteDeps
+): false | Promise<KoluxContextMenuPasteOutcome> {
   const editorInstance = deps.getFocusedEditor()
   // Why: only claim the paste when an editor truly has text focus and a model —
   // otherwise fall through so Monaco's default (and any other surface) behaves
@@ -89,13 +89,13 @@ export function runNightshiftContextMenuPaste(
     return false
   }
 
-  return performNightshiftContextMenuPaste(editorInstance, deps)
+  return performKoluxContextMenuPaste(editorInstance, deps)
 }
 
-async function performNightshiftContextMenuPaste(
+async function performKoluxContextMenuPaste(
   editorInstance: PasteCapableEditor,
-  deps: NightshiftContextMenuPasteDeps
-): Promise<NightshiftContextMenuPasteOutcome> {
+  deps: KoluxContextMenuPasteDeps
+): Promise<KoluxContextMenuPasteOutcome> {
   let text: string
   try {
     text = await deps.readClipboardText({ maxBytes: MONACO_PASTE_MAX_BYTES })

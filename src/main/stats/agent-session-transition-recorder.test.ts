@@ -21,7 +21,7 @@ const T = 1_700_000_000_000
 const PANE = 'tab-1:pane-1'
 
 beforeEach(() => {
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-stats-recorder-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-stats-recorder-'))
   vi.useFakeTimers({ now: T })
 })
 

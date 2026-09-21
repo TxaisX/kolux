@@ -4,7 +4,7 @@ import type {
   ArtifactListItem,
   ArtifactListPage
 } from '../../../../shared/artifacts'
-import type { NightshiftProfileAuthStatus } from '../../../../shared/nightshift-profiles'
+import type { KoluxProfileAuthStatus } from '../../../../shared/kolux-profiles'
 import { translate } from '@/i18n/i18n'
 import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
 import { useAppStore } from '@/store'
@@ -12,9 +12,7 @@ import { useAppStore } from '@/store'
 const LOCAL_RUNTIME = { kind: 'local' } as const
 const EMPTY_ARTIFACTS: readonly ArtifactListItem[] = []
 
-export function artifactAccountIdentity(
-  authStatus: NightshiftProfileAuthStatus | null
-): string | null {
+export function artifactAccountIdentity(authStatus: KoluxProfileAuthStatus | null): string | null {
   return authStatus?.state === 'connected'
     ? `${authStatus.activeProfileId}:${authStatus.cloud?.userId ?? ''}:${authStatus.cloud?.cloudProfileId ?? ''}:${authStatus.cloud?.activeOrgId ?? ''}`
     : null
@@ -35,12 +33,12 @@ function artifactRequestIsCurrent(
 ): boolean {
   return (
     sequence === currentSequence &&
-    artifactAccountIdentity(useAppStore.getState().nightshiftProfileAuthStatus) === identity
+    artifactAccountIdentity(useAppStore.getState().koluxProfileAuthStatus) === identity
   )
 }
 
 export function useArtifactPagination(
-  authStatus: NightshiftProfileAuthStatus | null,
+  authStatus: KoluxProfileAuthStatus | null,
   refreshAuth: () => Promise<unknown>
 ): {
   accountIdentity: string | null
@@ -98,7 +96,7 @@ export function useArtifactPagination(
         setError(
           translate(
             'auto.components.artifacts.ArtifactsPage.signInAgain',
-            'Sign in to Nightshift again to load artifacts.'
+            'Sign in to Kolux again to load artifacts.'
           )
         )
       }
@@ -150,7 +148,7 @@ export function useArtifactPagination(
         setError(
           translate(
             'auto.components.artifacts.ArtifactsPage.signInAgain',
-            'Sign in to Nightshift again to load artifacts.'
+            'Sign in to Kolux again to load artifacts.'
           )
         )
         return

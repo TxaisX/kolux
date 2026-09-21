@@ -17,16 +17,16 @@ export type AiVaultDeleteSessionResult =
   | { outcome: 'rejected'; agent: AiVaultAgent; reason: AiVaultSessionDeleteRejectionCode }
   | { outcome: 'failed'; agent: AiVaultAgent; error: string }
 
-// Agents whose sessions Nightshift can remove completely: everything the session
+// Agents whose sessions Kolux can remove completely: everything the session
 // wrote is derivable from the one path the scanner surfaced, and none of it is
 // shared with another session.
 //
 // The rest are excluded, recorded here because the UI deliberately won't say
-// why (a provider's storage layout is Nightshift's problem, not the reader's):
+// why (a provider's storage layout is Kolux's problem, not the reader's):
 // - antigravity, kimi: a separate registry (history.jsonl / session_index.jsonl)
 //   would keep a dangling entry. Antigravity's carries no conversation id, so
 //   which line to drop can't be determined at all.
-// - codex: session_index.jsonl plus hardlink aliases between the Nightshift-managed
+// - codex: session_index.jsonl plus hardlink aliases between the Kolux-managed
 //   home and ~/.codex, so a one-sided delete reappears on the next scan.
 // - opencode 1.17.x: a SQLite row, not a file.
 export const AI_VAULT_DELETABLE_AGENTS = [

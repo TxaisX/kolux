@@ -5,7 +5,7 @@ import type { Worktree } from './types'
 import { resolveConfiguredWorktreeBasePaths } from './configured-worktree-base-path'
 import { createWorktreeVisibilitySourceMatcher } from './visibility-sources'
 import {
-  buildKnownNightshiftWorkspaceLayouts,
+  buildKnownKoluxWorkspaceLayouts,
   classifyWorktreeOwnership,
   toDetectedWorktree,
   EXTERNAL_WORKTREE_VISIBILITY_ROLLOUT_AT
@@ -51,7 +51,7 @@ function makeWorktree(path: string): Worktree {
 
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
-    workspaceDir: '/nightshift/workspaces',
+    workspaceDir: '/kolux/workspaces',
     nestWorkspaces: true,
     workspaceDirHistory: [],
     ...overrides
@@ -63,7 +63,7 @@ function detect(repo: Repo, path: string, settings = makeSettings()) {
     repo,
     settings,
     worktree: makeWorktree(path),
-    knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
   })
 }
 
@@ -80,7 +80,7 @@ describe('a configured worktree base that collides with a built-in visibility so
         repo,
         settings,
         worktree: makeWorktree(configuredBaseWorktree),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -126,7 +126,7 @@ describe('a configured worktree base that collides with a built-in visibility so
       externalWorktreeVisibility: 'hide',
       worktreeVisibilitySourcePreferences: { builtIn: { claude: 'show' } }
     })
-    const linkedCheckout = '/nightshift/workspaces/OrbisCXM/feature-x'
+    const linkedCheckout = '/kolux/workspaces/OrbisCXM/feature-x'
     const settings = makeSettings()
 
     expect(
@@ -134,7 +134,7 @@ describe('a configured worktree base that collides with a built-in visibility so
         repo,
         settings,
         worktree: makeWorktree(`${linkedCheckout}/.claude/worktrees/agent-a04ccaaa`),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo),
         worktreeVisibilitySourceMatcher: createWorktreeVisibilitySourceMatcher(
           [repo.path, linkedCheckout],
           [],
@@ -230,7 +230,7 @@ describe('agent scratch stays hidden for repos that did not configure that base 
 
   it('hides scratch nested under a linked checkout even with a configured base', () => {
     const repo = makeRepo({ worktreeBasePath: '.claude/worktrees' })
-    const linkedCheckout = '/nightshift/workspaces/OrbisCXM/feature-x'
+    const linkedCheckout = '/kolux/workspaces/OrbisCXM/feature-x'
     const settings = makeSettings()
 
     expect(
@@ -238,7 +238,7 @@ describe('agent scratch stays hidden for repos that did not configure that base 
         repo,
         settings,
         worktree: makeWorktree(`${linkedCheckout}/.claude/worktrees/agent-a04ccaaa`),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo),
         worktreeVisibilitySourceMatcher: createWorktreeVisibilitySourceMatcher(
           [repo.path, linkedCheckout],
           [],
@@ -268,7 +268,7 @@ describe('agent scratch stays hidden for repos that did not configure that base 
         repo,
         settings,
         worktree: makeWorktree(`${nestedCheckout}/.claude/worktrees/agent-a04ccaaa`),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo),
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo),
         worktreeVisibilitySourceMatcher: createWorktreeVisibilitySourceMatcher(
           [repo.path, nestedCheckout],
           [],

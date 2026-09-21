@@ -16,7 +16,7 @@ export function decodeHtmlAttributeCharacterReferences(
   // quote and parser-constrained value, so this is not an injection sink.
   const template = document.createElement('template')
   const delimiter = quote ?? ''
-  template.innerHTML = `<span data-nightshift-value=${delimiter}${value}${delimiter}></span>`
+  template.innerHTML = `<span data-kolux-value=${delimiter}${value}${delimiter}></span>`
   const element = template.content.firstElementChild
-  return element?.getAttribute('data-nightshift-value') ?? ''
+  return element?.getAttribute('data-kolux-value') ?? ''
 }

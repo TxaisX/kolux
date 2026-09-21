@@ -16,7 +16,7 @@ export function desktopScriptPlatform(): DesktopScriptPlatform | null {
 export function resolveDesktopScriptProviderPath(
   platform = desktopScriptPlatform()
 ): string | null {
-  const override = process.env.NIGHTSHIFT_COMPUTER_DESKTOP_SCRIPT_PROVIDER_PATH
+  const override = process.env.KOLUX_COMPUTER_DESKTOP_SCRIPT_PROVIDER_PATH
   if (override && existsSync(override)) {
     return override
   }

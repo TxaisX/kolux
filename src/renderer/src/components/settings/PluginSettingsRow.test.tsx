@@ -20,9 +20,9 @@ vi.mock('../ui/dropdown-menu', () => ({
 }))
 
 const plugin: PluginHostListEntry = {
-  pluginKey: 'txais.nightshift-skills',
+  pluginKey: 'txais.kolux-skills',
   consentFingerprint: 'sha256-consent',
-  name: 'Nightshift Skills',
+  name: 'Kolux Skills',
   version: '1.0.0',
   publisher: 'TxaisX',
   status: 'disabled',
@@ -37,11 +37,11 @@ const plugin: PluginHostListEntry = {
   restarts: 0,
   blockedByKillList: {
     reason: 'A vulnerable release was revoked',
-    advisoryUrl: 'https://nightshift.invalid/advisories/nightshift-skills'
+    advisoryUrl: 'https://kolux.invalid/advisories/kolux-skills'
   },
   source: {
     kind: 'bundled',
-    reference: 'bundled:txais.nightshift-skills',
+    reference: 'bundled:txais.kolux-skills',
     resolvedCommit: null,
     contentHash: 'sha256-content'
   }
@@ -78,8 +78,7 @@ describe('PluginSettingsRow', () => {
     expect(container.textContent).toContain('View advisory')
     expect(container.textContent).not.toContain('Remove')
     expect(
-      container.querySelector<HTMLButtonElement>('[aria-label="Enable Nightshift Skills"]')
-        ?.disabled
+      container.querySelector<HTMLButtonElement>('[aria-label="Enable Kolux Skills"]')?.disabled
     ).toBe(true)
     act(() => root.unmount())
   })

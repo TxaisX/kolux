@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GlobalSettings } from '../global-settings-types'
 import type { Repo } from '../repo-types'
 import type { Worktree } from './types'
-import { buildKnownNightshiftWorkspaceLayouts, classifyWorktreeOwnership } from './ownership'
+import { buildKnownKoluxWorkspaceLayouts, classifyWorktreeOwnership } from './ownership'
 
 function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
@@ -40,7 +40,7 @@ describe('repo-specific worktree ownership layouts', () => {
         repo,
         settings,
         worktree,
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -53,7 +53,7 @@ describe('repo-specific worktree ownership layouts', () => {
         repo,
         settings,
         worktree: makeWorktree('/projects/a/repo/.claude/worktrees/repo/feature'),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('agent-scratch')
   })
@@ -63,11 +63,11 @@ describe('repo-specific worktree ownership layouts', () => {
     const repoA = makeRepo({ path: '/projects/a/repo', worktreeBasePath: '../worktrees' })
     const repoB = makeRepo({ path: '/projects/b/repo', worktreeBasePath: '../worktrees' })
 
-    expect(buildKnownNightshiftWorkspaceLayouts(settings, repoA)[0]).toEqual({
+    expect(buildKnownKoluxWorkspaceLayouts(settings, repoA)[0]).toEqual({
       path: '/projects/a/worktrees',
       nestWorkspaces: true
     })
-    expect(buildKnownNightshiftWorkspaceLayouts(settings, repoB)[0]).toEqual({
+    expect(buildKnownKoluxWorkspaceLayouts(settings, repoB)[0]).toEqual({
       path: '/projects/b/worktrees',
       nestWorkspaces: true
     })
@@ -76,7 +76,7 @@ describe('repo-specific worktree ownership layouts', () => {
         repo: repoA,
         settings,
         worktree: makeWorktree('/projects/a/worktrees/repo/feature'),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repoA)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repoA)
       })
     ).toBe('external')
     expect(
@@ -84,7 +84,7 @@ describe('repo-specific worktree ownership layouts', () => {
         repo: repoB,
         settings,
         worktree: makeWorktree('/projects/a/worktrees/repo/feature'),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repoB)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repoB)
       })
     ).toBe('external')
   })
@@ -101,7 +101,7 @@ describe('repo-specific worktree ownership layouts', () => {
         repo,
         settings,
         worktree: makeWorktree('C:\\projects\\App\\worktrees\\repo\\Feature'),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -109,13 +109,13 @@ describe('repo-specific worktree ownership layouts', () => {
   it('resolves an absolute Linux base path of a WSL repo into its distro layout (STA-4772)', () => {
     const repo = makeRepo({
       path: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\src\\repo',
-      worktreeBasePath: '/home/jin/src/.nightshift-worktrees'
+      worktreeBasePath: '/home/jin/src/.kolux-worktrees'
     })
     const settings = makeSettings({ workspaceDir: 'C:\\global' })
-    const layouts = buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    const layouts = buildKnownKoluxWorkspaceLayouts(settings, repo)
 
     expect(layouts[0]).toEqual({
-      path: '//wsl.localhost/Ubuntu-24.04/home/jin/src/.nightshift-worktrees',
+      path: '//wsl.localhost/Ubuntu-24.04/home/jin/src/.kolux-worktrees',
       nestWorkspaces: true
     })
     expect(
@@ -123,9 +123,9 @@ describe('repo-specific worktree ownership layouts', () => {
         repo,
         settings,
         worktree: makeWorktree(
-          '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\src\\.nightshift-worktrees\\repo\\feature'
+          '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\src\\.kolux-worktrees\\repo\\feature'
         ),
-        knownNightshiftLayouts: layouts
+        knownKoluxLayouts: layouts
       })
     ).toBe('external')
   })
@@ -133,13 +133,13 @@ describe('repo-specific worktree ownership layouts', () => {
   it('classifies worktrees under a dotted Linux base exactly where creation collapses it', () => {
     const repo = makeRepo({
       path: '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\src\\repo',
-      worktreeBasePath: '/home/jin/src/../.nightshift-worktrees'
+      worktreeBasePath: '/home/jin/src/../.kolux-worktrees'
     })
     const settings = makeSettings({ workspaceDir: 'C:\\global' })
-    const layouts = buildKnownNightshiftWorkspaceLayouts(settings, repo)
+    const layouts = buildKnownKoluxWorkspaceLayouts(settings, repo)
 
     expect(layouts[0]).toEqual({
-      path: '//wsl.localhost/Ubuntu-24.04/home/jin/.nightshift-worktrees',
+      path: '//wsl.localhost/Ubuntu-24.04/home/jin/.kolux-worktrees',
       nestWorkspaces: true
     })
     expect(
@@ -147,9 +147,9 @@ describe('repo-specific worktree ownership layouts', () => {
         repo,
         settings,
         worktree: makeWorktree(
-          '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.nightshift-worktrees\\repo\\feature'
+          '\\\\wsl.localhost\\Ubuntu-24.04\\home\\jin\\.kolux-worktrees\\repo\\feature'
         ),
-        knownNightshiftLayouts: layouts
+        knownKoluxLayouts: layouts
       })
     ).toBe('external')
   })
@@ -168,7 +168,7 @@ describe('repo-specific worktree ownership layouts', () => {
         worktree: makeWorktree(
           '\\\\wsl.localhost\\Ubuntu-24.04\\home\\Dev\\Repo\\.claude\\worktrees\\feature'
         ),
-        knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+        knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
       })
     ).toBe('external')
   })
@@ -178,12 +178,12 @@ describe('repo-specific worktree ownership layouts', () => {
     const relativeSettings = makeSettings({ workspaceDir: '../worktrees' })
     const absoluteSettings = makeSettings({ workspaceDir: '/local/worktrees' })
 
-    expect(buildKnownNightshiftWorkspaceLayouts(relativeSettings, repo)[0]).toEqual({
+    expect(buildKnownKoluxWorkspaceLayouts(relativeSettings, repo)[0]).toEqual({
       path: '/remote/worktrees',
       nestWorkspaces: true
     })
     expect(
-      buildKnownNightshiftWorkspaceLayouts(absoluteSettings, repo).some(
+      buildKnownKoluxWorkspaceLayouts(absoluteSettings, repo).some(
         (layout) => layout.path === '/local/worktrees'
       )
     ).toBe(false)

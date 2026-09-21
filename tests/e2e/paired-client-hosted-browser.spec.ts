@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import {
   createRuntimeDesktopPairingOffer,
@@ -316,14 +316,14 @@ async function runClientHostedBrowserJourney(args: {
 
 test('hosts a paired browser on the viewing desktop and keeps the kill switch new-page-only', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(300_000)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   await runClientHostedBrowserJourney({
     hostApp: electronApp,
     offer,

@@ -114,7 +114,7 @@ describe('getWorkItemDetails PR file viewed state', () => {
       updatedAt: '2026-04-01T00:00:00Z',
       author: null
     })
-    getOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     getPRCommentsMock.mockResolvedValue([])
     getPRChecksMock.mockResolvedValue([])
     ghExecFileAsyncMock.mockImplementation((args: string[]) => {
@@ -194,7 +194,7 @@ describe('getWorkItemDetails PR file viewed state', () => {
       '/repo-root',
       42,
       'head-sha',
-      { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
+      { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
       undefined,
       undefined
     )
@@ -229,7 +229,7 @@ describe('getWorkItemDetails PR file viewed state', () => {
       updatedAt: '2026-04-01T00:00:00Z',
       author: null
     })
-    getOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getOwnerRepoMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     getPRCommentsMock.mockResolvedValue([])
     getPRChecksMock.mockRejectedValue(
       Object.assign(new Error('Command failed: gh pr checks 42'), {

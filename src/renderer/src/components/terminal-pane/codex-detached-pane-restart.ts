@@ -148,16 +148,16 @@ function buildPaneIdentityEnv(
       ? state.folderWorkspaces.find((workspace) => workspace.id === parsed.folderWorkspaceId)
       : null
   return {
-    NIGHTSHIFT_WORKSPACE_ID: worktreeId,
+    KOLUX_WORKSPACE_ID: worktreeId,
     ...(folderWorkspace
       ? {
-          NIGHTSHIFT_PROJECT_GROUP_ID: folderWorkspace.projectGroupId,
-          NIGHTSHIFT_WORKSPACE_ROOT: folderWorkspace.folderPath
+          KOLUX_PROJECT_GROUP_ID: folderWorkspace.projectGroupId,
+          KOLUX_WORKSPACE_ROOT: folderWorkspace.folderPath
         }
       : {}),
-    NIGHTSHIFT_PANE_KEY: makePaneKey(tabId, leafId),
-    NIGHTSHIFT_TAB_ID: tabId,
-    NIGHTSHIFT_WORKTREE_ID: worktreeId
+    KOLUX_PANE_KEY: makePaneKey(tabId, leafId),
+    KOLUX_TAB_ID: tabId,
+    KOLUX_WORKTREE_ID: worktreeId
   }
 }
 

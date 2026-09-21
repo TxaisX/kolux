@@ -28,14 +28,14 @@ import {
   registerGitHubStackedPullRequest
 } from './stacked-pr-creation'
 
-const repository = { owner: 'acme', repo: 'nightshift', host: 'github.com' }
-const parentReview = { number: 41, url: 'https://github.com/acme/nightshift/pull/41' }
-const currentReview = { number: 42, url: 'https://github.com/acme/nightshift/pull/42' }
+const repository = { owner: 'acme', repo: 'kolux', host: 'github.com' }
+const parentReview = { number: 41, url: 'https://github.com/acme/kolux/pull/41' }
+const currentReview = { number: 42, url: 'https://github.com/acme/kolux/pull/42' }
 
 function pullRequest(number: number, head: string, base: string) {
   return {
     number,
-    html_url: `https://github.com/acme/nightshift/pull/${number}`,
+    html_url: `https://github.com/acme/kolux/pull/${number}`,
     head: { ref: head },
     base: { ref: base }
   }
@@ -83,11 +83,11 @@ describe('prepareGitHubStackedPullRequest', () => {
     })
     expect(ghExecFileAsyncMock.mock.calls[0][0]).toEqual([
       'api',
-      'repos/acme/nightshift/pulls?head=acme%3Astack%2Fparent&state=open&per_page=2'
+      'repos/acme/kolux/pulls?head=acme%3Astack%2Fparent&state=open&per_page=2'
     ])
     expect(ghExecFileAsyncMock.mock.calls[1][0]).toEqual([
       'api',
-      'repos/acme/nightshift/pulls?head=acme%3Astack%2Fchild&base=stack%2Fparent&state=open&per_page=2'
+      'repos/acme/kolux/pulls?head=acme%3Astack%2Fchild&base=stack%2Fparent&state=open&per_page=2'
     ])
   })
 
@@ -162,7 +162,7 @@ describe('prepareGitHubStackedPullRequest', () => {
   it('does not offer stacks on GitHub Enterprise Server', async () => {
     repositoryMock.mockResolvedValue({
       owner: 'acme',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'github.acme.test'
     })
 
@@ -202,7 +202,7 @@ describe('registerGitHubStackedPullRequest', () => {
       'api',
       '-X',
       'POST',
-      'repos/acme/nightshift/stacks',
+      'repos/acme/kolux/stacks',
       '-F',
       'pull_requests[]=41',
       '-F',
@@ -229,7 +229,7 @@ describe('registerGitHubStackedPullRequest', () => {
       'api',
       '-X',
       'POST',
-      'repos/acme/nightshift/stacks/50/add',
+      'repos/acme/kolux/stacks/50/add',
       '-F',
       'pull_requests[]=42'
     ])

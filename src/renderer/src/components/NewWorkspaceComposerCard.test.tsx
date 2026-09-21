@@ -149,8 +149,8 @@ const localReadyHostOption: ProjectHostSetupOption = {
   hostId: 'local',
   repoId: 'repo-a',
   label: 'Local Mac',
-  detail: 'Nightshift',
-  path: '/Users/alice/nightshift'
+  detail: 'Kolux',
+  path: '/Users/alice/kolux'
 }
 
 const devboxNeedsSetupHostOption: ProjectHostSetupOption = {
@@ -198,8 +198,8 @@ const vmRecipeHostOptions: ProjectHostSetupOption[] = [
     hostId: 'ssh:builder',
     repoId: 'repo-a',
     label: 'Builder',
-    detail: 'Nightshift',
-    path: '/workspace/nightshift'
+    detail: 'Kolux',
+    path: '/workspace/kolux'
   }
 ]
 
@@ -790,10 +790,10 @@ describe('NewWorkspaceComposerCard folder task source mode', () => {
     })
 
     expect(findRunTargetItem('Add SSH host')).toBeTruthy()
-    expect(findRunTargetItem('Add Remote Nightshift Server')).toBeTruthy()
+    expect(findRunTargetItem('Add Remote Kolux Server')).toBeTruthy()
   })
 
-  it('opens the remote Nightshift server add dialog over the composer without leaving for Settings', () => {
+  it('opens the remote Kolux server add dialog over the composer without leaving for Settings', () => {
     current = renderCard({
       projectHostSetupOptions: [localReadyHostOption, devboxNeedsSetupHostOption],
       selectedProjectHostSetupId: 'setup-local'
@@ -801,7 +801,7 @@ describe('NewWorkspaceComposerCard folder task source mode', () => {
 
     openRunTargetPicker(current.container)
     act(() => findRunTargetItem('Add host')?.click())
-    act(() => findRunTargetItem('Add Remote Nightshift Server')?.click())
+    act(() => findRunTargetItem('Add Remote Kolux Server')?.click())
 
     const dialog = document.body.querySelector('[data-testid="add-remote-host-dialog"]')
     expect(dialog?.getAttribute('data-mode')).toBe('server')
@@ -821,8 +821,8 @@ describe('NewWorkspaceComposerCard folder task source mode', () => {
         {
           id: 'vercel',
           name: 'Vercel Sandbox',
-          create: './scripts/nightshift-vm/vercel.start.sh',
-          destroy: './scripts/nightshift-vm/vercel.cleanup.sh',
+          create: './scripts/kolux-vm/vercel.start.sh',
+          destroy: './scripts/kolux-vm/vercel.cleanup.sh',
           destroyDisabled: false
         }
       ] as never,
@@ -862,7 +862,7 @@ describe('NewWorkspaceComposerCard folder task source mode', () => {
         {
           id: 'vercel',
           name: 'Vercel Sandbox',
-          create: './scripts/nightshift-vm/vercel.start.sh',
+          create: './scripts/kolux-vm/vercel.start.sh',
           destroyDisabled: true
         }
       ] as never,

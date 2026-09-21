@@ -26,18 +26,16 @@ export function isAbsolutePosixPathWithoutDotSegments(value: string): boolean {
   )
 }
 
-function isNightshiftManagedWslCodexHome(linuxHomePath: string): boolean {
+function isKoluxManagedWslCodexHome(linuxHomePath: string): boolean {
   const segments = linuxHomePath.split('/').filter(Boolean)
-  const nightshiftIndex = segments.findIndex(
+  const koluxIndex = segments.findIndex(
     (segment, index) =>
-      segment === 'nightshift' &&
-      segments[index - 1] === 'share' &&
-      segments[index - 2] === '.local'
+      segment === 'kolux' && segments[index - 1] === 'share' && segments[index - 2] === '.local'
   )
-  if (nightshiftIndex === -1) {
+  if (koluxIndex === -1) {
     return false
   }
-  const tail = segments.slice(nightshiftIndex + 1)
+  const tail = segments.slice(koluxIndex + 1)
   return (
     (tail.length === 2 && tail[0] === 'codex-runtime-home' && tail[1] === 'home') ||
     (tail.length === 3 && tail[0] === 'codex-accounts' && Boolean(tail[1]) && tail[2] === 'home')
@@ -61,7 +59,7 @@ export function recordManagedWslCodexHome(distro: string, runtimeHomePath: strin
     /[\\/\r\n]/.test(normalizedDistro) ||
     !linuxHomePath ||
     !isAbsolutePosixPathWithoutDotSegments(linuxHomePath) ||
-    !isNightshiftManagedWslCodexHome(linuxHomePath)
+    !isKoluxManagedWslCodexHome(linuxHomePath)
   ) {
     return
   }
@@ -89,7 +87,7 @@ export function resolveManagedWslCodexHome(distro: string, linuxHomePath: string
     !distro.trim() ||
     /[\\/\r\n]/.test(distro) ||
     !isAbsolutePosixPathWithoutDotSegments(linuxHomePath) ||
-    !isNightshiftManagedWslCodexHome(linuxHomePath)
+    !isKoluxManagedWslCodexHome(linuxHomePath)
   ) {
     return null
   }
@@ -113,5 +111,5 @@ export function wslRuntimeHomePathsEqual(left: string | undefined, right: string
 
 export const _internals = {
   clearRecordedManagedWslCodexHomes: () => managedHomesByDistro.clear(),
-  isNightshiftManagedWslCodexHome
+  isKoluxManagedWslCodexHome
 }

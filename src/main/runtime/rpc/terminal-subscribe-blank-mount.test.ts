@@ -2,12 +2,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import { createSubscriptionRegistryDouble } from './subscription-registry-test-double'
 import type { RuntimeTerminalWait } from '../../../shared/runtime-types'
 
-function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): NightshiftRuntimeService {
+function stubRuntime(overrides: Partial<KoluxRuntimeService> = {}): KoluxRuntimeService {
   return {
     getRuntimeId: () => 'test-runtime',
     subscribeToPtyExit: vi.fn(() => vi.fn()),
@@ -21,7 +21,7 @@ function stubRuntime(overrides: Partial<NightshiftRuntimeService> = {}): Nightsh
     serializeRendererTerminalBuffer: async () => null,
     hasHeadlessTerminalState: () => true,
     ...overrides
-  } as NightshiftRuntimeService
+  } as KoluxRuntimeService
 }
 
 const makeRequest = (method: string, params?: unknown): RpcRequest => ({

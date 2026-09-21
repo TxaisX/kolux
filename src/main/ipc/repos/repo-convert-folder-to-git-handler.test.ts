@@ -46,7 +46,7 @@ describe('repos:convertFolderToGit', () => {
       handlers.set(channel, handler as (event: unknown, args: unknown) => unknown)
     })
 
-    root = await mkdtemp(join(tmpdir(), 'nightshift-convert-folder-to-git-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-convert-folder-to-git-'))
     repo = {
       id: 'repo-1',
       path: root,

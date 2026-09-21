@@ -194,7 +194,7 @@ export function useRemoteRepo(
       })
 
       if (alreadyPresent) {
-        useAppStore.getState().clearNightshiftHookTrustForRepo(repo.id)
+        useAppStore.getState().clearKoluxHookTrustForRepo(repo.id)
       }
 
       if (!mountedRef.current || gen !== remoteGenRef.current) {

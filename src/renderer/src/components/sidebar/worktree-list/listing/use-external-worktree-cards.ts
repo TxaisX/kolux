@@ -18,7 +18,7 @@ import {
 } from '../../new-external-worktrees-inbox-actions'
 import { buildNewExternalWorktreesInboxCandidates } from '../../new-external-worktrees-inbox-candidates'
 
-// The two sidebar notice rows for worktrees Nightshift detected but does not yet show, plus the
+// The two sidebar notice rows for worktrees Kolux detected but does not yet show, plus the
 // pending/error state their inline actions surface.
 export function useSidebarExternalWorktreeCards(args: {
   repos: readonly Repo[]

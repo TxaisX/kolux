@@ -1,9 +1,9 @@
 // Throwaway interactive preview (untracked): a REAL routed SSH-workspace page
 // (docker sshd) with the egress indicator chip visible, held open for review.
-// Run: NIGHTSHIFT_SSH_INDICATOR_PREVIEW=1 NIGHTSHIFT_E2E_SSH_DOCKER=1 pnpm exec playwright test \
+// Run: KOLUX_SSH_INDICATOR_PREVIEW=1 KOLUX_E2E_SSH_DOCKER=1 pnpm exec playwright test \
 //   --config tests/playwright.config.ts --project electron-headless --workers=1 \
 //   tests/e2e/ssh-egress-indicator-preview.spec.ts
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   cleanupDockerSshRelayTarget,
@@ -17,21 +17,21 @@ import {
 } from './helpers/ssh-remote-only-browser-fixture'
 
 test.skip(
-  process.env.NIGHTSHIFT_SSH_INDICATOR_PREVIEW !== '1',
-  'Preview only; run with NIGHTSHIFT_SSH_INDICATOR_PREVIEW=1 (requires Docker)'
+  process.env.KOLUX_SSH_INDICATOR_PREVIEW !== '1',
+  'Preview only; run with KOLUX_SSH_INDICATOR_PREVIEW=1 (requires Docker)'
 )
 
 const HOLD_MINUTES = 20
 
 test('shows the egress indicator on a live routed SSH page and holds', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout((HOLD_MINUTES + 15) * 60_000)
   let target: DockerSshRelayTarget | null = null
   try {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
 
     await electronApp.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows()[0]
@@ -43,9 +43,9 @@ test('shows the egress indicator on a live routed SSH page and holds', async ({
 
     target = startDockerSshRelayTarget(testInfo)
     startSshRemoteOnlyBrowserFixture(target)
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+    const remote = await connectDockerSshRelayTarget(koluxPage, target)
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ worktreeId, url }) => {
         const state = window.__store?.getState()
         if (!state) {
@@ -57,7 +57,7 @@ test('shows the egress indicator on a live routed SSH page and holds', async ({
       { worktreeId: remote.worktreeId, url: `${SSH_REMOTE_ONLY_ORIGIN}/login` }
     )
 
-    const chip = nightshiftPage.getByTestId('ssh-egress-indicator')
+    const chip = koluxPage.getByTestId('ssh-egress-indicator')
     await expect(chip).toBeVisible({ timeout: 60_000 })
     await expect(chip).toHaveAttribute('data-egress', 'ssh')
 

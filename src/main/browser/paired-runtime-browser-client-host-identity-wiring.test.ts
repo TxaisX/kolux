@@ -83,8 +83,8 @@ async function launch(profileDirectory: string): Promise<void> {
 /** Reports the identity a client host of the current launch attaches under. */
 async function hostingIdentity(): Promise<string> {
   const runtime = await import('./paired-runtime-browser-client-host-runtime')
-  runtime.configurePairedRuntimeBrowserClientHostsForNightshiftProfile({
-    nightshiftProfileId: 'profile-a'
+  runtime.configurePairedRuntimeBrowserClientHostsForKoluxProfile({
+    koluxProfileId: 'profile-a'
   })
   await runtime.startPairedRuntimeBrowserClientHost({
     environment: pairedEnvironment('environment-a'),
@@ -113,7 +113,7 @@ afterEach(() => {
 
 describe('client host hosting identity wiring', () => {
   it('attaches under the same identity after the desktop relaunches', async () => {
-    const profileDirectory = mkdtempSync(join(tmpdir(), 'nightshift-host-wiring-'))
+    const profileDirectory = mkdtempSync(join(tmpdir(), 'kolux-host-wiring-'))
 
     // Why: a per-process id made the server treat every relaunch as a new host and drop its tabs.
     expect(await hostingIdentityForLaunch(profileDirectory)).toBe(
@@ -121,16 +121,14 @@ describe('client host hosting identity wiring', () => {
     )
   })
 
-  it('attaches under a different identity for a different Nightshift profile', async () => {
+  it('attaches under a different identity for a different Kolux profile', async () => {
     expect(
-      await hostingIdentityForLaunch(mkdtempSync(join(tmpdir(), 'nightshift-host-wiring-')))
-    ).not.toBe(
-      await hostingIdentityForLaunch(mkdtempSync(join(tmpdir(), 'nightshift-host-wiring-')))
-    )
+      await hostingIdentityForLaunch(mkdtempSync(join(tmpdir(), 'kolux-host-wiring-')))
+    ).not.toBe(await hostingIdentityForLaunch(mkdtempSync(join(tmpdir(), 'kolux-host-wiring-'))))
   })
 
   it('attaches under the identity already stamped into the first window', async () => {
-    await launch(mkdtempSync(join(tmpdir(), 'nightshift-host-wiring-')))
+    await launch(mkdtempSync(join(tmpdir(), 'kolux-host-wiring-')))
 
     // Why the stamp is read first: window creation puts the id in the renderer's argv long before
     // any environment pairs, and a renderer holding a different id than the lease stops

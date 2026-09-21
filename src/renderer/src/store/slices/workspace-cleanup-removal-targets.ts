@@ -84,7 +84,7 @@ function ambiguousHostFailure(
       displayName,
       message: translate(
         'auto.store.slices.workspace.cleanup.hostUnresolved',
-        'Nightshift cannot tell which host owns this workspace. Refresh projects and review it again.'
+        'Kolux cannot tell which host owns this workspace. Refresh projects and review it again.'
       )
     }
   }

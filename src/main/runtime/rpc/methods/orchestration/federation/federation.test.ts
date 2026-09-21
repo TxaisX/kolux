@@ -4,7 +4,7 @@ import {
   ORCHESTRATION_CONTRACT_VERSION,
   ORCHESTRATION_FEDERATION_CONTROL_MAIL_RUNTIME_CAPABILITY
 } from '../../../../../../shared/protocol-version'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import type { OrchestrationEnvironmentTransport } from '../../../../orchestration/environment-transport'
 import { RpcDispatcher } from '../../../dispatcher'
@@ -17,8 +17,8 @@ describe('orchestration federation', () => {
   const databases: OrchestrationDb[] = []
   let homeDb: OrchestrationDb
   let workerDb: OrchestrationDb
-  let homeRuntime: NightshiftRuntimeService
-  let workerRuntime: NightshiftRuntimeService
+  let homeRuntime: KoluxRuntimeService
+  let workerRuntime: KoluxRuntimeService
   let homeDispatcher: RpcDispatcher
   let workerDispatcher: RpcDispatcher
   let workerCapabilities: string[]
@@ -29,7 +29,7 @@ describe('orchestration federation', () => {
     homeDb = new OrchestrationDb(':memory:')
     workerDb = new OrchestrationDb(':memory:')
     databases.push(homeDb, workerDb)
-    workerRuntime = new NightshiftRuntimeService()
+    workerRuntime = new KoluxRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
     workerDispatcher = new RpcDispatcher({
       runtime: workerRuntime,
@@ -70,7 +70,7 @@ describe('orchestration federation', () => {
         return response
       }
     }
-    homeRuntime = new NightshiftRuntimeService(null, undefined, {
+    homeRuntime = new KoluxRuntimeService(null, undefined, {
       orchestrationEnvironmentTransport: transport
     })
     homeRuntime.setOrchestrationDb(homeDb)
@@ -101,7 +101,7 @@ describe('orchestration federation', () => {
   }
 
   function restartWorkerRuntime(): void {
-    workerRuntime = new NightshiftRuntimeService()
+    workerRuntime = new KoluxRuntimeService()
     workerRuntime.setOrchestrationDb(workerDb)
     configureFederationWorkerRuntime(workerRuntime)
     workerDispatcher = new RpcDispatcher({

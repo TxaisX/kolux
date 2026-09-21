@@ -54,7 +54,7 @@ function replace(input: {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-replace-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-replace-'))
   clock = 1_000
   database = openJournalDatabase(journalDatabaseFile(root))
 })

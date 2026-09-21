@@ -21,7 +21,7 @@ export function WorkspaceCleanupForgetLocallyButton({
 }): React.JSX.Element {
   const label = translate(
     'auto.components.sidebar.ForgetSshWorkspaceDialog.forget',
-    'Remove from Nightshift'
+    'Remove from Kolux'
   )
   return (
     <Tooltip>

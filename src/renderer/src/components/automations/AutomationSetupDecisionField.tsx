@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import { getVisibleAutomationSetupDecision } from './automation-setup-decision'
 import type { AutomationCreateTarget, AutomationDraft } from './AutomationEditorDialog'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 
@@ -14,7 +14,7 @@ type AutomationSetupDecisionFieldProps = {
   draft: AutomationDraft
   repos: readonly Repo[]
   projectHostSetups: readonly ProjectHostSetup[]
-  yamlHooks?: NightshiftHooks | null
+  yamlHooks?: KoluxHooks | null
   onDraftChange: (updater: (current: AutomationDraft) => AutomationDraft) => void
   onSetupDecisionTouched: () => void
 }

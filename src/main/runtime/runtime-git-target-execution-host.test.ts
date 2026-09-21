@@ -22,7 +22,7 @@ vi.mock('../git/status', async () => ({
 
 import { ExecutionHostNotDispatchableError } from '../providers/execution-host-provider-dispatch'
 import { registerSshGitProvider, unregisterSshGitProvider } from '../providers/ssh-git-dispatch'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const REMOTE_PATH = '/srv/app-feature'
 const WORKTREE_ID = 'repo-shared::/srv/app-feature'
@@ -39,7 +39,7 @@ function makeRuntime(repos: readonly Record<string, unknown>[], hostId?: string)
     getRepos: () => repos,
     getRepo: (id: string) => repos.find((repo) => repo.id === id)
   }
-  const runtime = new NightshiftRuntimeService(store as never)
+  const runtime = new KoluxRuntimeService(store as never)
   vi.spyOn(runtime as unknown as RuntimeInternals, 'resolveWorktreeSelector').mockResolvedValue({
     id: WORKTREE_ID,
     repoId: 'repo-shared',

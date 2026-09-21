@@ -343,7 +343,7 @@ export function RepositoryHostSetupsSection({
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {translate(
                       'auto.components.settings.RepositoryPane.hostWorkspaceWindowClosedHelp',
-                      'The server is reachable but its Nightshift window is closed. Open Nightshift on {{value0}} to use this setup.',
+                      'The server is reachable but its Kolux window is closed. Open Kolux on {{value0}} to use this setup.',
                       { value0: runtimeOwnerHostLabel }
                     )}
                   </p>

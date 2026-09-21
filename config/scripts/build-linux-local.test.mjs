@@ -42,7 +42,7 @@ describe('local Linux build target', () => {
     const execFile = vi.fn()
     runLocalLinuxBuild({
       arch: 'arm64',
-      environment: { PATH: '/bin', NIGHTSHIFT_LINUX_ARM64_RELEASE: undefined },
+      environment: { PATH: '/bin', KOLUX_LINUX_ARM64_RELEASE: undefined },
       execFile,
       platform: 'linux',
       cwd: '/workspace'
@@ -52,7 +52,7 @@ describe('local Linux build target', () => {
       buildLinuxElectronBuilderArgs('arm64'),
       expect.objectContaining({
         cwd: '/workspace',
-        env: expect.objectContaining({ NIGHTSHIFT_LINUX_ARM64_RELEASE: '1' }),
+        env: expect.objectContaining({ KOLUX_LINUX_ARM64_RELEASE: '1' }),
         stdio: 'inherit'
       })
     )
@@ -63,7 +63,7 @@ describe('local Linux build target', () => {
 
     runLocalLinuxBuild({
       arch: 'x64',
-      environment: { PATH: '/bin', NIGHTSHIFT_LINUX_ARM64_RELEASE: '1' },
+      environment: { PATH: '/bin', KOLUX_LINUX_ARM64_RELEASE: '1' },
       execFile,
       platform: 'linux',
       cwd: '/workspace'
@@ -72,7 +72,7 @@ describe('local Linux build target', () => {
       'pnpm',
       buildLinuxElectronBuilderArgs('x64'),
       expect.objectContaining({
-        env: expect.not.objectContaining({ NIGHTSHIFT_LINUX_ARM64_RELEASE: expect.anything() })
+        env: expect.not.objectContaining({ KOLUX_LINUX_ARM64_RELEASE: expect.anything() })
       })
     )
   })

@@ -179,7 +179,7 @@ describe('fresh spawn leaves a local pane unbound', () => {
       ...mockStoreState,
       tabsByWorktree: { 'wt-1': [{ id: 'tab-1', ptyId: null, generation: 7 }] },
       ptyIdsByTabId: { 'tab-1': [] },
-      repos: [{ id: 'repo1', connectionId: 'target-a', displayName: 'nightshift' }],
+      repos: [{ id: 'repo1', connectionId: 'target-a', displayName: 'kolux' }],
       sshConnectionStates: new Map([
         [
           'target-a',

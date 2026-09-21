@@ -25,7 +25,10 @@ import {
   resolveCurrentWorktreeSelector
 } from '../selectors'
 import { printLineageSummary } from './worktree-lineage-summary'
-import { assertWorkspaceTargetFlagsCompatible, hasWorkspaceProjectTarget } from '../worktree-project-target'
+import {
+  assertWorkspaceTargetFlagsCompatible,
+  hasWorkspaceProjectTarget
+} from '../worktree-project-target'
 import {
   assertCreateParentFlagsCompatible,
   resolveCreateParentSelector
@@ -117,9 +120,9 @@ export const WORKTREE_HANDLERS: Record<string, CommandHandler> = {
     assertCreateParentFlagsCompatible(flags)
     assertWorkspaceTargetFlagsCompatible(flags)
     const callerTerminalHandle =
-      typeof process.env.NIGHTSHIFT_TERMINAL_HANDLE === 'string' &&
-      process.env.NIGHTSHIFT_TERMINAL_HANDLE.length > 0
-        ? process.env.NIGHTSHIFT_TERMINAL_HANDLE
+      typeof process.env.KOLUX_TERMINAL_HANDLE === 'string' &&
+      process.env.KOLUX_TERMINAL_HANDLE.length > 0
+        ? process.env.KOLUX_TERMINAL_HANDLE
         : undefined
     const explicitParent = await resolveCreateParentSelector(flags, cwd, client)
     const explicitParentWorktree = explicitParent.parentWorktree
@@ -138,8 +141,8 @@ export const WORKTREE_HANDLERS: Record<string, CommandHandler> = {
       needsCwdRepoInference
     ) {
       try {
-        // Why: agent shells can lose NIGHTSHIFT_TERMINAL_HANDLE while still running
-        // inside a Nightshift worktree. Cwd keeps CLI-created children nestable and
+        // Why: agent shells can lose KOLUX_TERMINAL_HANDLE while still running
+        // inside a Kolux worktree. Cwd keeps CLI-created children nestable and
         // lets create infer the repo for the common current-workspace case.
         cwdParentWorktree = await resolveCurrentWorktreeSelector(cwd, client)
       } catch {
@@ -210,7 +213,7 @@ export const WORKTREE_HANDLERS: Record<string, CommandHandler> = {
     if (!hostId) {
       throw new RuntimeClientError(
         'worktree_host_unresolved',
-        'Nightshift cannot tell which host owns this workspace. Refresh projects and try again.'
+        'Kolux cannot tell which host owns this workspace. Refresh projects and try again.'
       )
     }
     const result = await client.call<RuntimeWorktreeRemoveResult>('worktree.rm', {

@@ -57,7 +57,7 @@ function provenanceBadge(props: PluginConsentProvenanceProps): React.JSX.Element
       <Badge variant="outline">
         {translate(
           'auto.components.settings.PluginConsentProvenance.bundled',
-          'Bundled with Nightshift'
+          'Bundled with Kolux'
         )}
       </Badge>
     )

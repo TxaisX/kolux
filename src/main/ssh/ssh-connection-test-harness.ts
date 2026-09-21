@@ -23,7 +23,7 @@ export type { MockSshClient, Ssh2ModuleMock } from './__tests__/ssh-connection-t
 export type SystemSshBinaryModuleMock = { findSystemSsh: typeof findSystemSshMock }
 
 export type SystemFallbackModuleMock = {
-  getNightshiftControlSocketPath: typeof getNightshiftControlSocketPathMock
+  getKoluxControlSocketPath: typeof getKoluxControlSocketPathMock
   spawnSystemSsh: typeof spawnSystemSshMock
   spawnSystemSshCommand: typeof spawnSystemSshCommandMock
   downloadFileViaSystemSsh: typeof downloadFileViaSystemSshMock
@@ -40,7 +40,7 @@ export type ControlSocketModuleMock = {
 export type SshConfigParserModuleMock = { resolveWithSshG: typeof resolveWithSshGMock }
 
 export const findSystemSshMock = vi.fn<() => string | null>()
-export const getNightshiftControlSocketPathMock =
+export const getKoluxControlSocketPathMock =
   vi.fn<(target: SshTarget, options?: SystemSshBuildArgsOptions) => string | null>()
 export const removeControlSocketPathMock = vi.fn<(socketPath: string) => void>()
 export const spawnSystemSshMock =
@@ -85,7 +85,7 @@ export function createSystemSshBinaryModule(): SystemSshBinaryModuleMock {
 
 export function createSystemFallbackModule(): SystemFallbackModuleMock {
   return {
-    getNightshiftControlSocketPath: getNightshiftControlSocketPathMock,
+    getKoluxControlSocketPath: getKoluxControlSocketPathMock,
     spawnSystemSsh: spawnSystemSshMock,
     spawnSystemSshCommand: spawnSystemSshCommandMock,
     downloadFileViaSystemSsh: downloadFileViaSystemSshMock,
@@ -106,8 +106,8 @@ export function createSshConfigParserModule(): SshConfigParserModuleMock {
 
 export function resetSshConnectionMocks(): void {
   resetSsh2ClientState()
-  getNightshiftControlSocketPathMock.mockReset()
-  getNightshiftControlSocketPathMock.mockReturnValue(null)
+  getKoluxControlSocketPathMock.mockReset()
+  getKoluxControlSocketPathMock.mockReturnValue(null)
   removeControlSocketPathMock.mockReset()
   spawnSystemSshMock.mockReset()
   spawnSystemSshMock.mockImplementation(() => createSystemSshProcess())

@@ -4,7 +4,7 @@
  * the main-side replay guard, and the ingestion-time capture race.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { HeadlessEmulator } from '../daemon/headless-emulator'
 import {
   _resetHiddenRendererPtyDeliveryGateForTest,
@@ -56,7 +56,7 @@ const store = {
 type RendererBufferStub = { data: string; cols: number; rows: number }
 
 function createResponderRuntime(opts: { rendererBuffer?: RendererBufferStub } = {}) {
-  const runtime = new NightshiftRuntimeService(store)
+  const runtime = new KoluxRuntimeService(store)
   const replies: { ptyId: string; data: string }[] = []
   runtime.setPtyController({
     write: (ptyId, data) => {
@@ -79,7 +79,7 @@ function createResponderRuntime(opts: { rendererBuffer?: RendererBufferStub } = 
 
 /** Awaits the per-PTY emulator writeChain so queued chunk links (and the
  *  replies they forward) have settled. */
-async function settle(runtime: NightshiftRuntimeService, ptyId: string): Promise<void> {
+async function settle(runtime: KoluxRuntimeService, ptyId: string): Promise<void> {
   await runtime.serializeMainTerminalBuffer(ptyId)
 }
 

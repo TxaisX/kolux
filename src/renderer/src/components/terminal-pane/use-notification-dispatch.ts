@@ -23,7 +23,7 @@ import {
   isCurrentLivePaneKey
 } from './terminal-notification-state'
 import {
-  isNightshiftWindowForegroundFocused,
+  isKoluxWindowForegroundFocused,
   isVisibleForegroundPaneKey
 } from './terminal-notification-pane-visibility'
 
@@ -157,9 +157,9 @@ export function dispatchTerminalNotification(
     // only the exact active pane counts as already viewed.
     const shouldMarkUnread = event.paneKey
       ? !isVisibleForegroundPaneKey(state, worktreeId, event.paneKey)
-      : state.activeWorktreeId !== worktreeId || !isNightshiftWindowForegroundFocused()
+      : state.activeWorktreeId !== worktreeId || !isKoluxWindowForegroundFocused()
     if (shouldMarkUnread) {
-      // Why: activeWorktreeId is only in-app selection. If Nightshift is backgrounded,
+      // Why: activeWorktreeId is only in-app selection. If Kolux is backgrounded,
       // a selected chat finishing still needs unread/Dock attention.
       state.markWorktreeUnread(worktreeId)
       if (event.paneKey) {

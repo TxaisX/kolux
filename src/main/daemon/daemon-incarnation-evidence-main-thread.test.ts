@@ -25,7 +25,7 @@ const { execFileMock, execFileSyncMock, readFileMock } = vi.hoisted(() => ({
   readFileMock: vi.fn(async (path: string) =>
     path === '/proc/stat'
       ? 'btime 1699000000\n'
-      : `42 (nightshift-daemon) S${' 0'.repeat(18)} 1234 0 0\n`
+      : `42 (kolux-daemon) S${' 0'.repeat(18)} 1234 0 0\n`
   )
 }))
 
@@ -79,7 +79,7 @@ describe('daemon audit evidence main-thread cost', () => {
         {
           platform: 'linux',
           signalProcess: () => 'occupied',
-          readLinuxStat: async () => ({ status: 'present', value: '42 (nightshift-daemon) S 1' }),
+          readLinuxStat: async () => ({ status: 'present', value: '42 (kolux-daemon) S 1' }),
           readCommandLine: async () => daemonCommandLine
         }
       )

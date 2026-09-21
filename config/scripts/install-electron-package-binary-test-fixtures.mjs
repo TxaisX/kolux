@@ -13,7 +13,7 @@ export const sharedEntryName = '41.5.0-linux-x64'
 export const sharedEntryNameFor = (version) => `${version}-linux-x64`
 
 export function mkTempProject() {
-  const projectDir = mkdtempSync(join(tmpdir(), 'nightshift-install-electron-'))
+  const projectDir = mkdtempSync(join(tmpdir(), 'kolux-install-electron-'))
   copyScriptWithLocalModules(sourceScriptPath, join(projectDir, 'config', 'scripts'))
   return projectDir
 }
@@ -25,10 +25,10 @@ export function runInstallScript(projectDir, extraEnv = {}) {
     env: {
       ...process.env,
       ELECTRON_CACHE: undefined,
-      NIGHTSHIFT_ELECTRON_PACKAGE_CACHE_ROOT: undefined,
+      KOLUX_ELECTRON_PACKAGE_CACHE_ROOT: undefined,
       npm_config_platform: 'linux',
       npm_config_arch: 'x64',
-      NIGHTSHIFT_ELECTRON_PACKAGE_EXTRACTOR: join(projectDir, 'fake-extractor.cjs'),
+      KOLUX_ELECTRON_PACKAGE_EXTRACTOR: join(projectDir, 'fake-extractor.cjs'),
       ...extraEnv
     }
   })
@@ -163,8 +163,8 @@ syncBuiltinESMExports()
 
 export function initGitRepo(projectDir) {
   runGit(projectDir, ['init', '--quiet', '--initial-branch=main'])
-  runGit(projectDir, ['config', 'user.email', 'nightshift-test@example.com'])
-  runGit(projectDir, ['config', 'user.name', 'Nightshift Test'])
+  runGit(projectDir, ['config', 'user.email', 'kolux-test@example.com'])
+  runGit(projectDir, ['config', 'user.name', 'Kolux Test'])
   runGit(projectDir, ['commit', '--quiet', '--allow-empty', '-m', 'init'])
 }
 
@@ -179,12 +179,12 @@ function runGit(projectDir, args) {
 }
 
 export function sharedCacheRoot(repoDir) {
-  return join(repoDir, '.git', 'nightshift-cache', 'electron')
+  return join(repoDir, '.git', 'kolux-cache', 'electron')
 }
 
 export function readSharedDistMarker(projectDir) {
   try {
-    return readFileSync(join(projectDir, 'node_modules/electron/.nightshift-shared-dist'), 'utf8')
+    return readFileSync(join(projectDir, 'node_modules/electron/.kolux-shared-dist'), 'utf8')
   } catch {
     return null
   }

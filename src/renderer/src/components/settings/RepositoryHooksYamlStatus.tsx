@@ -1,5 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { Button } from '../ui/button'
 import { translate } from '@/i18n/i18n'
 import { renderYamlScriptPreview } from './repository-hook-settings-draft'
@@ -34,7 +34,7 @@ function getYamlStateCopy(yamlState: string): { heading: string; description: st
       return {
         heading: translate(
           'auto.components.settings.RepositoryHooksSection.56f9a4a1d0',
-          'Using `nightshift.yaml`'
+          'Using `kolux.yaml`'
         ),
         description: translate(
           'auto.components.settings.RepositoryHooksSection.ca424ff135',
@@ -45,33 +45,33 @@ function getYamlStateCopy(yamlState: string): { heading: string; description: st
       return {
         heading: translate(
           'auto.components.settings.RepositoryHooksSection.623e0c9f31',
-          '`nightshift.yaml` could not be parsed'
+          '`kolux.yaml` could not be parsed'
         ),
         description: translate(
           'auto.components.settings.RepositoryHooksSection.aba825233f',
-          'The file contains configuration keys that this version of Nightshift does not recognize. You may need to update Nightshift, or check the file for typos.'
+          'The file contains configuration keys that this version of Kolux does not recognize. You may need to update Kolux, or check the file for typos.'
         )
       }
     case 'invalid':
       return {
         heading: translate(
           'auto.components.settings.RepositoryHooksSection.623e0c9f31',
-          '`nightshift.yaml` could not be parsed'
+          '`kolux.yaml` could not be parsed'
         ),
         description: translate(
           'auto.components.settings.RepositoryHooksSection.0cc712b823',
-          'The core configuration file exists in the repo root, but Nightshift could not parse the supported hook definitions yet.'
+          'The core configuration file exists in the repo root, but Kolux could not parse the supported hook definitions yet.'
         )
       }
     default:
       return {
         heading: translate(
           'auto.components.settings.RepositoryHooksSection.5a67e4793d',
-          'No `nightshift.yaml` detected'
+          'No `kolux.yaml` detected'
         ),
         description: translate(
           'auto.components.settings.RepositoryHooksSection.b20c5df6ca',
-          'Add an `nightshift.yaml` file to enable shared setup, archive, or issue-automation defaults for this repo. Example template:'
+          'Add an `kolux.yaml` file to enable shared setup, archive, or issue-automation defaults for this repo. Example template:'
         )
       }
   }
@@ -106,10 +106,7 @@ function ExampleTemplateCard({
       <p className="text-[10px] tracking-[0.18em] text-muted-foreground">
         {translate('auto.components.settings.RepositoryHooksSection.175daba180', 'Example')}{' '}
         <code className="rounded bg-muted px-1 py-0.5">
-          {translate(
-            'auto.components.settings.RepositoryHooksSection.39da2ae12f',
-            'nightshift.yaml'
-          )}
+          {translate('auto.components.settings.RepositoryHooksSection.39da2ae12f', 'kolux.yaml')}
         </code>{' '}
         {translate('auto.components.settings.RepositoryHooksSection.95a0411b3e', 'template')}
       </p>
@@ -140,7 +137,7 @@ export function RepositoryHooksYamlStatus({
   onCopyTemplate
 }: {
   yamlState: string
-  yamlHooks: NightshiftHooks | null
+  yamlHooks: KoluxHooks | null
   copiedTemplate: boolean
   onCopyTemplate: () => void
 }): React.JSX.Element {
@@ -166,7 +163,7 @@ export function RepositoryHooksYamlStatus({
               <p>
                 {translate(
                   'auto.components.settings.RepositoryHooksSection.af49e2a19e',
-                  'The file is present, but Nightshift could not find valid `scripts` or `issueCommand` definitions.'
+                  'The file is present, but Kolux could not find valid `scripts` or `issueCommand` definitions.'
                 )}
               </p>
               <ol className="space-y-1.5 pl-4 text-[11.5px]">

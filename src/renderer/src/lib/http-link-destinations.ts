@@ -4,7 +4,7 @@ import { openHttpLink, type HttpLinkSourceOwner } from '@/lib/http-link-routing'
 // Catalog keys keep their original terminal namespace: they are opaque ids with
 // shipped translations, and the popover is now shared with native chat.
 
-export type HttpLinkDestination = 'nightshift' | 'system'
+export type HttpLinkDestination = 'kolux' | 'system'
 
 export type HttpLinkActionDestinations = {
   primary: HttpLinkDestination
@@ -17,7 +17,7 @@ export type HttpLinkAction = {
   run: () => void | Promise<void>
 }
 
-export function canSourceOwnerOpenInNightshift(
+export function canSourceOwnerOpenInKolux(
   sourceOwner: HttpLinkSourceOwner,
   canOpenOwnedBrowser: boolean
 ): boolean {
@@ -28,25 +28,25 @@ export function canSourceOwnerOpenInNightshift(
 }
 
 /** Which destinations a clicked link offers, primary first; a remote source that
- *  cannot reach Nightshift's managed browser offers only the system browser. */
+ *  cannot reach Kolux's managed browser offers only the system browser. */
 export function httpLinkActionDestinationsFor(
   settings: { openLinksInApp?: boolean } | null | undefined,
   sourceOwner: HttpLinkSourceOwner,
   canOpenOwnedBrowser: boolean
 ): HttpLinkActionDestinations {
-  if (!canSourceOwnerOpenInNightshift(sourceOwner, canOpenOwnedBrowser)) {
+  if (!canSourceOwnerOpenInKolux(sourceOwner, canOpenOwnedBrowser)) {
     return { primary: 'system' }
   }
   return settings?.openLinksInApp === true
-    ? { primary: 'nightshift', alternate: 'system' }
-    : { primary: 'system', alternate: 'nightshift' }
+    ? { primary: 'kolux', alternate: 'system' }
+    : { primary: 'system', alternate: 'kolux' }
 }
 
 export function httpLinkDestinationLabel(destination: HttpLinkDestination): string {
-  return destination === 'nightshift'
+  return destination === 'kolux'
     ? translate(
-        'auto.components.terminal.pane.TerminalLinkActionPopover.nightshiftBrowser',
-        'Nightshift Browser'
+        'auto.components.terminal.pane.TerminalLinkActionPopover.koluxBrowser',
+        'Kolux Browser'
       )
     : translate(
         'auto.components.terminal.pane.TerminalLinkActionPopover.systemBrowser',
@@ -100,7 +100,7 @@ export function openRoutedHttpLink(url: string, deps: RoutedHttpLinkOptions): vo
     openHttpLink(url, {
       allowRemoteInApp: true,
       worktreeId: deps.worktreeId,
-      forceInApp: deps.forceDestination === 'nightshift',
+      forceInApp: deps.forceDestination === 'kolux',
       forceSystemBrowser: deps.forceDestination === 'system',
       sourceOwner
     })
@@ -130,11 +130,11 @@ export function openRoutedHttpLink(url: string, deps: RoutedHttpLinkOptions): vo
   // Suppress the browser's default link handling first, then route after the
   // persisted choice is available.
   void Promise.resolve(preferenceDecision)
-    .then((openInNightshift) => {
+    .then((openInKolux) => {
       openHttpLink(url, {
         allowRemoteInApp: true,
         worktreeId: deps.worktreeId,
-        forceSystemBrowser: !openInNightshift,
+        forceSystemBrowser: !openInKolux,
         sourceOwner
       })
     })

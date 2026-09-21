@@ -25,7 +25,7 @@ import {
 } from './keybinding-file-parser'
 
 export function getUserKeybindingsPath(homePath: string): string {
-  return join(homePath, '.nightshift', 'keybindings.json')
+  return join(homePath, '.kolux', 'keybindings.json')
 }
 
 export function readKeybindingFile(

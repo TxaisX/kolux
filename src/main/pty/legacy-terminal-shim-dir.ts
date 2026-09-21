@@ -10,23 +10,23 @@ import {
   renderLegacyTerminalWindowsPowerShellTombstone
 } from './legacy-terminal-windows-tombstone'
 
-const LEGACY_TERMINAL_ATTRIBUTION_ENABLE_ENV_KEY = 'NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION'
-const LEGACY_TERMINAL_ATTRIBUTION_BYPASS_ENV_KEY = 'NIGHTSHIFT_ATTRIBUTION_BYPASS'
+const LEGACY_TERMINAL_ATTRIBUTION_ENABLE_ENV_KEY = 'KOLUX_ENABLE_GIT_ATTRIBUTION'
+const LEGACY_TERMINAL_ATTRIBUTION_BYPASS_ENV_KEY = 'KOLUX_ATTRIBUTION_BYPASS'
 
-const LEGACY_SHIM_ROOT_DIR = 'nightshift-terminal-attribution'
+const LEGACY_SHIM_ROOT_DIR = 'kolux-terminal-attribution'
 // Why: must differ from the retired shim's own '7'. A rolled-back build compares this marker and
 // skips rewriting its wrappers when it matches, which would leave our tombstones in place while
 // its attribution toggle claimed to be on.
 const LEGACY_SHIM_VERSION = '7-neutralized'
 const NEUTRALIZATION_RETRY_DELAYS_MS = [1_000, 5_000, 15_000, 30_000]
 export const LEGACY_TERMINAL_SHIM_ENV_KEYS = [
-  'NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION',
-  'NIGHTSHIFT_GIT_COMMIT_TRAILER',
-  'NIGHTSHIFT_GH_PR_FOOTER',
-  'NIGHTSHIFT_GH_ISSUE_FOOTER',
-  'NIGHTSHIFT_ATTRIBUTION_SHIM_DIR',
-  'NIGHTSHIFT_REAL_GIT',
-  'NIGHTSHIFT_REAL_GH',
+  'KOLUX_ENABLE_GIT_ATTRIBUTION',
+  'KOLUX_GIT_COMMIT_TRAILER',
+  'KOLUX_GH_PR_FOOTER',
+  'KOLUX_GH_ISSUE_FOOTER',
+  'KOLUX_ATTRIBUTION_SHIM_DIR',
+  'KOLUX_REAL_GIT',
+  'KOLUX_REAL_GH',
   LEGACY_TERMINAL_ATTRIBUTION_BYPASS_ENV_KEY
 ] as const
 export const LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS = [
@@ -126,7 +126,7 @@ function writeNeutralWrappers(rootDir: string): void {
 }
 
 function writeFileAtomically(filePath: string, contents: string, mode: number): void {
-  const temporaryPath = `${filePath}.nightshift-neutralizing-${process.pid}`
+  const temporaryPath = `${filePath}.kolux-neutralizing-${process.pid}`
   try {
     rmSync(temporaryPath, { force: true, recursive: true })
     writeFileSync(temporaryPath, contents, { encoding: 'utf8', flag: 'wx', mode })
@@ -166,8 +166,8 @@ function pathEntrySpellings(dir: string, windows: boolean): string[] {
 // pass-through tombstone, and the tombstone excludes its own directory by -ef, so the lookup still
 // reaches the real git.
 export function isLegacyTerminalShimPathEntry(entry: string): boolean {
-  // Why `windows` unconditionally here: this classifier only ever matches Nightshift's own
-  // `nightshift-terminal-attribution/{posix,win32}` layout, and a Windows PATH can reach it through the
+  // Why `windows` unconditionally here: this classifier only ever matches Kolux's own
+  // `kolux-terminal-attribution/{posix,win32}` layout, and a Windows PATH can reach it through the
   // remote env, so both slash styles must be understood regardless of the local platform.
   const normalized = stripTrailingSeparators(entry.replaceAll('\\', '/'), true).toLowerCase()
   return (
@@ -205,10 +205,10 @@ export function stripLegacyTerminalShimEnv(
   const legacyKeySet = new Set(
     LEGACY_TERMINAL_SHIM_ENV_KEYS.map((key) => (windows ? key.toLowerCase() : key))
   )
-  const shimDirKey = 'NIGHTSHIFT_ATTRIBUTION_SHIM_DIR'.toLowerCase()
+  const shimDirKey = 'KOLUX_ATTRIBUTION_SHIM_DIR'.toLowerCase()
   const explicitShimDirs = Object.entries(env)
     .filter(([key]) =>
-      windows ? key.toLowerCase() === shimDirKey : key === 'NIGHTSHIFT_ATTRIBUTION_SHIM_DIR'
+      windows ? key.toLowerCase() === shimDirKey : key === 'KOLUX_ATTRIBUTION_SHIM_DIR'
     )
     .map(([, value]) => value)
     .filter(Boolean)

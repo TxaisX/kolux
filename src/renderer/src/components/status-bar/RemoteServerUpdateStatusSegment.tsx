@@ -35,7 +35,7 @@ export function RemoteServerUpdateStatusSegment({
         ),
         tooltip: translate(
           'auto.components.status.bar.RemoteServerUpdateStatusSegment.updatingTooltip',
-          'Remote Nightshift Server updates are in progress'
+          'Remote Kolux Server updates are in progress'
         )
       }
     : failed > 0
@@ -54,7 +54,7 @@ export function RemoteServerUpdateStatusSegment({
                 ),
           tooltip: translate(
             'auto.components.status.bar.RemoteServerUpdateStatusSegment.failedTooltip',
-            'Open Remote Nightshift Server updates to review and retry'
+            'Open Remote Kolux Server updates to review and retry'
           )
         }
       : {
@@ -72,7 +72,7 @@ export function RemoteServerUpdateStatusSegment({
                 ),
           tooltip: translate(
             'auto.components.status.bar.RemoteServerUpdateStatusSegment.updatedTooltip',
-            'Remote Nightshift Server updates completed'
+            'Remote Kolux Server updates completed'
           )
         }
 

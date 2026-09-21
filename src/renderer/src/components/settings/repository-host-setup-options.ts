@@ -79,7 +79,7 @@ function getHostSetupAvailability(host: ExecutionHostRegistryEntry): {
       isAvailable: false,
       detail: translate(
         'auto.components.settings.RepositoryPane.hostSetupBlockedVersion',
-        'Nightshift server version is incompatible'
+        'Kolux server version is incompatible'
       )
     }
   }
@@ -102,7 +102,7 @@ function getHostSetupAvailability(host: ExecutionHostRegistryEntry): {
         isAvailable: false,
         detail: translate(
           'auto.components.settings.RepositoryPane.hostSetupMissingCapability',
-          'Update Nightshift on this host to set up projects'
+          'Update Kolux on this host to set up projects'
         )
       }
     }

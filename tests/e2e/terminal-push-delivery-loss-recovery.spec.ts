@@ -18,7 +18,7 @@
  * a deliberate prod constant) — so recovery lands at ~11-13s and the polls
  * below allow 30s.
  */
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady, waitForActiveWorktree, ensureTerminalVisible } from './helpers/store'
 import {
   waitForActiveTerminalManager,
@@ -45,31 +45,31 @@ type DeliveryWatchdogWindow = Window & {
 }
 
 test.describe('terminal push-delivery loss recovery', () => {
-  test.afterEach(async ({ nightshiftPage }) => {
-    await nightshiftPage.evaluate(() => {
+  test.afterEach(async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       ;(window as DeliveryWatchdogWindow).__terminalDeliveryWatchdog?.blackhole(false)
     })
   })
 
   test('watchdog repaints wedged terminals from the main buffer without push delivery or reload', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     test.setTimeout(120_000)
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
 
     // Live baseline: push delivery works. The $((…)) arithmetic keeps the
     // asserted string out of the typed command's local echo.
-    await execInTerminal(nightshiftPage, ptyId, 'echo live-before-$((41+1))')
+    await execInTerminal(koluxPage, ptyId, 'echo live-before-$((41+1))')
     await expect
-      .poll(async () => getTerminalContent(nightshiftPage), { timeout: 15_000 })
+      .poll(async () => getTerminalContent(koluxPage), { timeout: 15_000 })
       .toContain('live-before-42')
 
     // Engage the field wedge and speed the watchdog up for CI.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const watchdog = (window as DeliveryWatchdogWindow).__terminalDeliveryWatchdog
       if (!watchdog) {
         throw new Error('delivery watchdog e2e hook missing — exposeStore build?')
@@ -78,11 +78,11 @@ test.describe('terminal push-delivery loss recovery', () => {
       watchdog.blackhole(true)
     })
 
-    await execInTerminal(nightshiftPage, ptyId, 'echo wedged-$((100+23))')
+    await execInTerminal(koluxPage, ptyId, 'echo wedged-$((100+23))')
 
     // The wedge repro itself: output is swallowed, pane stays stale.
-    await nightshiftPage.waitForTimeout(1_500)
-    expect(await getTerminalContent(nightshiftPage)).not.toContain('wedged-123')
+    await koluxPage.waitForTimeout(1_500)
+    expect(await getTerminalContent(koluxPage)).not.toContain('wedged-123')
 
     // Recovery proof: the watchdog confirms the wedge over invoke and heals
     // (write-off + snapshot-restore request) without push or reload. We assert
@@ -93,7 +93,7 @@ test.describe('terminal push-delivery loss recovery', () => {
     await expect
       .poll(
         async () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             () =>
               (window as DeliveryWatchdogWindow).__terminalDeliveryWatchdog?.snapshot()
                 ?.healCount ?? 0
@@ -103,12 +103,12 @@ test.describe('terminal push-delivery loss recovery', () => {
       .toBeGreaterThan(0)
 
     // Channel restored: live output flows again with no reload in between.
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       ;(window as DeliveryWatchdogWindow).__terminalDeliveryWatchdog?.blackhole(false)
     })
-    await execInTerminal(nightshiftPage, ptyId, 'echo live-after-$((200+56))')
+    await execInTerminal(koluxPage, ptyId, 'echo live-after-$((200+56))')
     await expect
-      .poll(async () => getTerminalContent(nightshiftPage), { timeout: 15_000 })
+      .poll(async () => getTerminalContent(koluxPage), { timeout: 15_000 })
       .toContain('live-after-256')
   })
 })

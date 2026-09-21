@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { WorkerTerminalResourceRow } from '../../../../orchestration/worker-terminal-ownership'
 import { completeWorkerTerminalRelease } from './worker-release-completion'
@@ -43,7 +43,7 @@ describe('orchestration worker release liveness verdict', () => {
       })),
       closeTerminal: vi.fn(async () => close),
       notifyMessageArrived: vi.fn()
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     const markWorkerTerminalReleaseUnknown = vi.fn((_resourceId: string, releaseError: string) => ({
       ...resource,
       release_state: 'unknown',
@@ -110,7 +110,7 @@ describe('orchestration worker release liveness verdict', () => {
           throw new Error(error)
         }),
         notifyMessageArrived: vi.fn()
-      } as unknown as NightshiftRuntimeService
+      } as unknown as KoluxRuntimeService
       const db = {
         getWorkerDispatch: vi.fn(() => ({
           agent_terminal_handle: 'term_worker',

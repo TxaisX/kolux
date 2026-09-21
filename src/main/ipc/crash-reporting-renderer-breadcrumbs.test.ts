@@ -55,7 +55,7 @@ vi.mock('../observability', () => ({
 }))
 
 vi.mock('../observability/diagnostic-upload-endpoint', () => ({
-  resolveDiagnosticNightshiftChannel: vi.fn()
+  resolveDiagnosticKoluxChannel: vi.fn()
 }))
 
 vi.mock('../observability/tracer', () => ({

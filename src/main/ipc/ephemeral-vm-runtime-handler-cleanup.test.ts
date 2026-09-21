@@ -52,7 +52,7 @@ afterEach(() => {
 })
 
 it('removes the hidden SSH target when provider cleanup cannot start', async () => {
-  const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-vm-runtime-handler-'))
+  const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-vm-runtime-handler-'))
   tempDirs.push(userDataPath)
   getPathMock.mockReturnValue(userDataPath)
   upsertEphemeralVmRuntime(userDataPath, {
@@ -70,7 +70,7 @@ it('removes the hidden SSH target when provider cleanup cannot start', async () 
       connection: {
         type: 'ssh',
         projectRoot: '/workspace/repo',
-        target: { label: 'VM', host: 'host', port: 22, username: 'nightshift' }
+        target: { label: 'VM', host: 'host', port: 22, username: 'kolux' }
       }
     }
   })
@@ -90,8 +90,8 @@ it('removes the hidden SSH target when provider cleanup cannot start', async () 
 })
 
 it('stops in-flight cleanup and retains the runtime for retry', async () => {
-  const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-vm-runtime-handler-'))
-  const repoPath = mkdtempSync(join(tmpdir(), 'nightshift-vm-runtime-repo-'))
+  const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-vm-runtime-handler-'))
+  const repoPath = mkdtempSync(join(tmpdir(), 'kolux-vm-runtime-repo-'))
   tempDirs.push(userDataPath, repoPath)
   getPathMock.mockReturnValue(userDataPath)
   const destroyPath = join(repoPath, 'destroy.js')
@@ -119,7 +119,7 @@ it('stops in-flight cleanup and retains the runtime for retry', async () => {
       connection: {
         type: 'ssh',
         projectRoot: '/workspace/repo',
-        target: { label: 'VM', host: 'host', port: 22, username: 'nightshift' }
+        target: { label: 'VM', host: 'host', port: 22, username: 'kolux' }
       }
     }
   })

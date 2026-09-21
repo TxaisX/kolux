@@ -3,14 +3,14 @@ import type { ProjectHostSetup } from '../../../shared/project-types'
 import type { Repo } from '../../../shared/repo-types'
 import { mergeProjectHostSetupCompatibilityState } from './project-host-compatibility'
 
-const PROJECT_ID = 'github:acme/nightshift'
+const PROJECT_ID = 'github:acme/kolux'
 
 function repo(overrides: Partial<Repo> & Pick<Repo, 'id'>): Repo {
   return {
     path: `/src/${overrides.id}`,
-    displayName: 'nightshift',
+    displayName: 'kolux',
     addedAt: 1,
-    upstream: { owner: 'acme', repo: 'nightshift' },
+    upstream: { owner: 'acme', repo: 'kolux' },
     ...overrides
   } as Repo
 }
@@ -22,7 +22,7 @@ function pendingSetup(overrides: Partial<ProjectHostSetup> = {}): ProjectHostSet
     hostId: 'ssh:devbox',
     repoId: '',
     path: '',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     setupState: 'not-set-up',
     setupMethod: 'pending',
     createdAt: 1,

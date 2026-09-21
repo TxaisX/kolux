@@ -41,7 +41,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -88,8 +88,8 @@ describe('registerPtyHandlers', () => {
           cwd: '/tmp',
           env: expect.objectContaining({
             SHELL: '/bin/zsh',
-            NIGHTSHIFT_OPENCODE_CONFIG_DIR: '/tmp/nightshift-opencode-config',
-            NIGHTSHIFT_SHELL_FEATURES: 'overlay,history,markers',
+            KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-config',
+            KOLUX_SHELL_FEATURES: 'overlay,history,markers',
             ZDOTDIR: join(getShellReadyWrapperRoot(), 'zsh')
           })
         })

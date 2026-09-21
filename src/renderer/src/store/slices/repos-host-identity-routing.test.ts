@@ -488,7 +488,7 @@ describe('repo slice host identity routing', () => {
     // runtime for SSH owners, so removal stays on the host-scoped local path.
     const sshDuplicate: Repo = {
       id: 'same-repo',
-      path: '/home/nightshift/project',
+      path: '/home/kolux/project',
       displayName: 'SSH',
       badgeColor: '#222',
       addedAt: 3,
@@ -496,7 +496,7 @@ describe('repo slice host identity routing', () => {
       executionHostId: 'ssh:ssh-1'
     }
     const sshWorktree = makeWorktree({
-      id: 'same-repo::/home/nightshift/wt',
+      id: 'same-repo::/home/kolux/wt',
       repoId: 'same-repo',
       hostId: 'ssh:ssh-1'
     })

@@ -22,7 +22,7 @@ describe('web preload API composition', () => {
       'starNag',
       'platform',
       'workspacePorts',
-      'nightshiftProfiles',
+      'koluxProfiles',
       'e2e',
       'settings',
       'agentAwake',
@@ -92,7 +92,7 @@ describe('web preload API composition', () => {
     vi.stubEnv('VITE_EXPOSE_STORE', 'true')
     const globals = installBrowserGlobals('Linux')
     Object.assign(globals.window.location, {
-      search: '?nightshiftE2ETerminalParkingDelayMs=23&nightshiftE2ETerminalRetentionLimit=7'
+      search: '?koluxE2ETerminalParkingDelayMs=23&koluxE2ETerminalRetentionLimit=7'
     })
     const readStored = globals.storage.getItem.bind(globals.storage)
     vi.spyOn(globals.storage, 'getItem').mockImplementation((key) => {

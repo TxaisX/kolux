@@ -11,7 +11,7 @@ export {
 } from './runtime-environment-ssh-selectors'
 
 /**
- * SSH state of one remote Nightshift server's own SSH targets, mirrored on this
+ * SSH state of one remote Kolux server's own SSH targets, mirrored on this
  * client. Kept strictly separate from the local `SshSlice` maps so a remote
  * machine's targets can never pollute local SSH settings, pickers, or the
  * execution-host registry — and vice versa (STA-1468, desktop topology).

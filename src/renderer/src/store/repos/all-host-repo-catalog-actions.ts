@@ -22,7 +22,7 @@ import {
 import {
   fetchRepoCatalogForTarget,
   filterSetupsForPrunedRepoRows,
-  filterTrustedNightshiftHooksToValidRepos,
+  filterTrustedKoluxHooksToValidRepos,
   mergeFetchedRepoCatalog,
   projectCompatibilityForReconciledRepos,
   reconcileReadoptedSshWorktreeState,
@@ -113,8 +113,8 @@ export function createAllHostRepoCatalogActions(
               s.setupScriptPromptDismissedRepoIds,
               validRepoHostIdentities
             ),
-            trustedNightshiftHooks: filterTrustedNightshiftHooksToValidRepos(
-              s.trustedNightshiftHooks,
+            trustedKoluxHooks: filterTrustedKoluxHooksToValidRepos(
+              s.trustedKoluxHooks,
               validRepoIds
             )
           }

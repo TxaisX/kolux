@@ -104,7 +104,7 @@ describe('worktree remote runtime mutations', () => {
       })
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,
-      trustedNightshiftHooks: { repo1: { all: { approvedAt: 1 } } },
+      trustedKoluxHooks: { repo1: { all: { approvedAt: 1 } } },
       worktreesByRepo: { repo1: [wt] }
     } as Partial<AppState>)
 
@@ -467,7 +467,7 @@ describe('worktree remote runtime mutations', () => {
     })
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,
-      trustedNightshiftHooks: { 'repo-shared': { all: { approvedAt: 1 } } },
+      trustedKoluxHooks: { 'repo-shared': { all: { approvedAt: 1 } } },
       worktreesByRepo: { 'repo-shared': [original] }
     } as Partial<AppState>)
 
@@ -573,16 +573,16 @@ describe('worktree remote runtime mutations', () => {
   it('removes SSH-owned worktrees through local IPC even when a runtime is focused', async () => {
     const store = createTestStore()
     const wt = makeWorktree({
-      id: 'repo-ssh::/home/nightshift/wt1',
+      id: 'repo-ssh::/home/kolux/wt1',
       repoId: 'repo-ssh',
-      path: '/home/nightshift/wt1'
+      path: '/home/kolux/wt1'
     })
     store.setState({
       settings: { activeRuntimeEnvironmentId: 'env-1' } as never,
       repos: [
         {
           id: 'repo-ssh',
-          path: '/home/nightshift/repo',
+          path: '/home/kolux/repo',
           displayName: 'SSH Repo',
           badgeColor: '#000',
           addedAt: 0,

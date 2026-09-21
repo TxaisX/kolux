@@ -29,7 +29,7 @@ import {
   buildWindowsHookStdinDrainEpilogue
 } from '../agent-hooks/hook-stdin-contract'
 
-// Why: Gemini has no permission-prompt hook (approvals are inline UI), so Nightshift can't show a waiting state — upstream limitation.
+// Why: Gemini has no permission-prompt hook (approvals are inline UI), so Kolux can't show a waiting state — upstream limitation.
 // Why: Gemini's pre-tool event is BeforeTool, not Claude/Codex's PreToolUse; sweep stale PreToolUse entries below.
 const GEMINI_EVENTS = ['BeforeAgent', 'AfterAgent', 'AfterTool', 'BeforeTool'] as const
 
@@ -59,7 +59,7 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
       // Why: emit `{}` first so Gemini never stalls parsing stdout, even if the guards below exit early.
       'echo {}',
       // Why: source the endpoint file so a surviving PTY reaches the current server. See claude/hook-service.ts.
-      'if defined NIGHTSHIFT_AGENT_HOOK_ENDPOINT if exist "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" call "%NIGHTSHIFT_AGENT_HOOK_ENDPOINT%" 2>nul',
+      'if defined KOLUX_AGENT_HOOK_ENDPOINT if exist "%KOLUX_AGENT_HOOK_ENDPOINT%" call "%KOLUX_AGENT_HOOK_ENDPOINT%" 2>nul',
       ...buildWindowsHookEnvironmentGuardLines(),
       buildWindowsAgentHookPostCommand('gemini'),
       'exit /b 0',
@@ -74,26 +74,26 @@ function getManagedScript(target: 'local' | 'posix' = 'local'): string {
     'printf "{}\\n"',
     ...buildPosixHookPayloadCapture(),
     ...buildPosixHookSpoolLines('gemini'),
-    // Why: source refreshes endpoint coords so a PTY surviving a Nightshift restart keeps reporting. See claude/hook-service.ts.
-    'if [ -n "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ] && [ -r "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" ]; then',
-    '  . "$NIGHTSHIFT_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
+    // Why: source refreshes endpoint coords so a PTY surviving a Kolux restart keeps reporting. See claude/hook-service.ts.
+    'if [ -n "$KOLUX_AGENT_HOOK_ENDPOINT" ] && [ -r "$KOLUX_AGENT_HOOK_ENDPOINT" ]; then',
+    '  . "$KOLUX_AGENT_HOOK_ENDPOINT" 2>/dev/null || :',
     'fi',
-    'if [ -z "$NIGHTSHIFT_AGENT_HOOK_PORT" ] || [ -z "$NIGHTSHIFT_AGENT_HOOK_TOKEN" ] || [ -z "$NIGHTSHIFT_PANE_KEY" ]; then',
+    'if [ -z "$KOLUX_AGENT_HOOK_PORT" ] || [ -z "$KOLUX_AGENT_HOOK_TOKEN" ] || [ -z "$KOLUX_PANE_KEY" ]; then',
     '  spool_hook_event',
     '  exit 0',
     'fi',
     // Why: worktreeId embeds a path, so post form fields, not hand-built JSON that breaks on quotes/newlines.
     // Why: pipe payload via curl stdin (`payload@-`) so large tool output stays off the command line (EDR false positives).
-    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${NIGHTSHIFT_AGENT_HOOK_PORT}/hook/gemini" \\',
+    'printf \'%s\' "$payload" | curl -sS -X POST "http://127.0.0.1:${KOLUX_AGENT_HOOK_PORT}/hook/gemini" \\',
     '  --connect-timeout 0.5 --max-time 1.5 \\',
     '  -H "Content-Type: application/x-www-form-urlencoded" \\',
-    '  -H "X-Nightshift-Agent-Hook-Token: ${NIGHTSHIFT_AGENT_HOOK_TOKEN}" \\',
-    '  --data-urlencode "paneKey=${NIGHTSHIFT_PANE_KEY}" \\',
-    '  --data-urlencode "tabId=${NIGHTSHIFT_TAB_ID}" \\',
-    '  --data-urlencode "launchToken=${NIGHTSHIFT_AGENT_LAUNCH_TOKEN}" \\',
-    '  --data-urlencode "worktreeId=${NIGHTSHIFT_WORKTREE_ID}" \\',
-    '  --data-urlencode "env=${NIGHTSHIFT_AGENT_HOOK_ENV}" \\',
-    '  --data-urlencode "version=${NIGHTSHIFT_AGENT_HOOK_VERSION}" \\',
+    '  -H "X-Kolux-Agent-Hook-Token: ${KOLUX_AGENT_HOOK_TOKEN}" \\',
+    '  --data-urlencode "paneKey=${KOLUX_PANE_KEY}" \\',
+    '  --data-urlencode "tabId=${KOLUX_TAB_ID}" \\',
+    '  --data-urlencode "launchToken=${KOLUX_AGENT_LAUNCH_TOKEN}" \\',
+    '  --data-urlencode "worktreeId=${KOLUX_WORKTREE_ID}" \\',
+    '  --data-urlencode "env=${KOLUX_AGENT_HOOK_ENV}" \\',
+    '  --data-urlencode "version=${KOLUX_AGENT_HOOK_VERSION}" \\',
     '  --data-urlencode "payload@-" >/dev/null 2>&1 || spool_hook_event',
     'exit 0',
     ''
@@ -206,7 +206,7 @@ export class GeminiHookService {
   // POSIX-only remote install mirroring ClaudeHookService.installRemote; the managed script/JSON shape must match local install() or remote panes report a different status.
   async installRemote(sftp: SFTPWrapper, remoteHome: string): Promise<AgentHookInstallStatus> {
     const remoteConfigPath = `${remoteHome.replace(/\/$/, '')}/.gemini/settings.json`
-    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.nightshift/agent-hooks/gemini-hook.sh`
+    const remoteScriptPath = `${remoteHome.replace(/\/$/, '')}/.kolux/agent-hooks/gemini-hook.sh`
     try {
       const config = await readHooksJsonRemote(sftp, remoteConfigPath)
       if (!config) {
@@ -252,7 +252,7 @@ export class GeminiHookService {
       config.hooks = nextHooks
 
       // Why: write the script before settings.json so an interrupted install never points at a missing script.
-      // Why: SSH remotes always use POSIX `.sh` paths even when Nightshift runs on Windows.
+      // Why: SSH remotes always use POSIX `.sh` paths even when Kolux runs on Windows.
       await writeManagedScriptRemote(sftp, remoteScriptPath, getManagedScript('posix'))
       await writeHooksJsonRemote(sftp, remoteConfigPath, config)
 

@@ -7,10 +7,10 @@ import {
 
 describe('serve-mode-argv', () => {
   it('detects --serve and bare serve subcommand', () => {
-    expect(argvRequestsServeMode(['nightshift', '--serve'])).toBe(true)
+    expect(argvRequestsServeMode(['kolux', '--serve'])).toBe(true)
     expect(argvRequestsServeMode(['/AppRun', 'serve'])).toBe(true)
     expect(argvRequestsServeMode(['/AppRun', '--no-sandbox', 'serve', '--port', '8080'])).toBe(true)
-    expect(argvRequestsServeMode(['nightshift'])).toBe(false)
+    expect(argvRequestsServeMode(['kolux'])).toBe(false)
   })
 
   it('does not treat serve as a subcommand when it is an option value', () => {
@@ -76,15 +76,15 @@ describe('serve-mode-argv', () => {
     // Why: a false positive here is the expensive direction — the window never opens and a runtime
     // server binds instead. These are the argv shapes the desktop actually receives.
     for (const argv of [
-      ['/Applications/Nightshift.app/Contents/MacOS/Nightshift', '-psn_0_123456'],
-      ['C:\\Program Files\\Nightshift\\Nightshift.exe', '--squirrel-firstrun'],
-      ['C:\\Program Files\\Nightshift\\Nightshift.exe', 'nightshift://worktree/serve'],
-      ['/opt/nightshift/nightshift-ide', '/home/u/serve'],
+      ['/Applications/Kolux.app/Contents/MacOS/Kolux', '-psn_0_123456'],
+      ['C:\\Program Files\\Kolux\\Kolux.exe', '--squirrel-firstrun'],
+      ['C:\\Program Files\\Kolux\\Kolux.exe', 'kolux://worktree/serve'],
+      ['/opt/kolux/kolux-ide', '/home/u/serve'],
       // `--pairing-code` takes the next token, so its value is never the subcommand.
-      ['/opt/nightshift/nightshift-ide', '--pairing-code', 'serve'],
-      ['/opt/nightshift/nightshift-ide', '--environment=serve'],
-      ['/opt/nightshift/nightshift-ide', '--', 'serve'],
-      ['/opt/nightshift/nightshift-ide', 'Serve']
+      ['/opt/kolux/kolux-ide', '--pairing-code', 'serve'],
+      ['/opt/kolux/kolux-ide', '--environment=serve'],
+      ['/opt/kolux/kolux-ide', '--', 'serve'],
+      ['/opt/kolux/kolux-ide', 'Serve']
     ]) {
       expect(argvRequestsServeMode(argv), argv.join(' ')).toBe(false)
       expect(normalizeServeModeArgv(argv)).toEqual(argv)
@@ -123,14 +123,14 @@ describe('serve-mode-argv', () => {
   it('keeps Electron-injected Chromium switches while normalizing direct serve', () => {
     expect(
       normalizeServeModeArgv([
-        '/opt/nightshift/nightshift-ide',
+        '/opt/kolux/kolux-ide',
         '--disable-features=FedCm,DirectSockets',
         'serve',
         '--port',
         '6768'
       ])
     ).toEqual([
-      '/opt/nightshift/nightshift-ide',
+      '/opt/kolux/kolux-ide',
       '--disable-features=FedCm,DirectSockets',
       '--serve',
       '--serve-port',
@@ -139,10 +139,10 @@ describe('serve-mode-argv', () => {
   })
 
   it('leaves already-normalized argv unchanged', () => {
-    // Why every value flag: the CLI's own `nightshift serve` spawns the app with exactly this shape
-    // (serveNightshiftApp), and the rewrite now runs over it too — a bad mapping would drop the port here.
+    // Why every value flag: the CLI's own `kolux serve` spawns the app with exactly this shape
+    // (serveKoluxApp), and the rewrite now runs over it too — a bad mapping would drop the port here.
     const argv = [
-      'nightshift',
+      'kolux',
       '--serve',
       '--serve-json',
       '--serve-port',
@@ -174,13 +174,17 @@ describe('serve-mode-argv', () => {
 
   it('translates serve flags in the mixed `--serve --port` form', () => {
     // Why: leaving these untranslated silently kept pairing enabled despite --no-pairing.
-    expect(
-      normalizeServeModeArgv(['nightshift', '--serve', '--port', '9090', '--no-pairing'])
-    ).toEqual(['nightshift', '--serve', '--serve-port', '9090', '--serve-no-pairing'])
+    expect(normalizeServeModeArgv(['kolux', '--serve', '--port', '9090', '--no-pairing'])).toEqual([
+      'kolux',
+      '--serve',
+      '--serve-port',
+      '9090',
+      '--serve-no-pairing'
+    ])
   })
 
   it('leaves a non-serve launch untouched', () => {
-    const argv = ['nightshift', '--no-sandbox', '/home/u/project']
+    const argv = ['kolux', '--no-sandbox', '/home/u/project']
     expect(argvRequestsServeMode(argv)).toBe(false)
     expect(normalizeServeModeArgv(argv)).toEqual(argv)
   })

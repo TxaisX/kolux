@@ -55,7 +55,7 @@ const LIVE = 'repo-gone::/workspace/live'
 
 describe('worktree removal across host session partitions', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
 
   afterEach(() => {

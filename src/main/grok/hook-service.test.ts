@@ -37,7 +37,7 @@ const WINDOWS_POWERSHELL_LAUNCHER =
 
 // Why (#14828): Windows registers the bare script path when it is cmd-safe and only falls back
 // to the encoded launcher for a profile path that is not (#6078). windows-hook-launcher-chain
-// .test.ts pins which branch applies; these cases only care that Nightshift's hook is present.
+// .test.ts pins which branch applies; these cases only care that Kolux's hook is present.
 function registersManagedGrokScript(command: string): boolean {
   return command.includes(GROK_SCRIPT_FILE_NAME) || WINDOWS_POWERSHELL_LAUNCHER.test(command)
 }
@@ -51,14 +51,14 @@ type WindowsGrokHookRun = {
 
 function createWindowsGrokHookEnvironment(grokHome?: string): NodeJS.ProcessEnv {
   const env = { ...process.env } as NodeJS.ProcessEnv
-  delete env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+  delete env.KOLUX_AGENT_HOOK_ENDPOINT
   if (grokHome === undefined) {
     delete env.GROK_HOME
   } else {
     env.GROK_HOME = grokHome
   }
-  env.NIGHTSHIFT_AGENT_HOOK_TOKEN = 'test-token'
-  env.NIGHTSHIFT_PANE_KEY = 'pane-test'
+  env.KOLUX_AGENT_HOOK_TOKEN = 'test-token'
+  env.KOLUX_PANE_KEY = 'pane-test'
   return env
 }
 
@@ -90,7 +90,7 @@ async function runWindowsGrokHook(
   if (!address || typeof address === 'string') {
     throw new Error('Could not resolve Windows Grok hook test listener port')
   }
-  env.NIGHTSHIFT_AGENT_HOOK_PORT = String(address.port)
+  env.KOLUX_AGENT_HOOK_PORT = String(address.port)
   try {
     const result = await new Promise<Omit<WindowsGrokHookRun, 'request'>>((resolve, reject) => {
       const child = spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/c', scriptPath], {
@@ -119,7 +119,7 @@ describe('GrokHookService', () => {
   let homeDir: string
 
   beforeEach(() => {
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-grok-home-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-grok-home-'))
     homedirMock.mockReturnValue(homeDir)
   })
 
@@ -129,18 +129,18 @@ describe('GrokHookService', () => {
   })
 
   // Why: #9358 / #9941 — empty GROK_HOME + parse-time %VAR:~n,m% / `"\"` broke
-  // every SessionStart/UserPromptSubmit on Windows outside Nightshift terminals.
+  // every SessionStart/UserPromptSubmit on Windows outside Kolux terminals.
   it('guards Windows GROK_HOME substring checks when empty (#9358)', () => {
     const script = buildWindowsGrokHookScript()
-    expect(script).toContain('set "NIGHTSHIFT_GROK_HOME="')
-    expect(script).toContain('if not defined GROK_HOME goto :nightshift_grok_home_ready')
+    expect(script).toContain('set "KOLUX_GROK_HOME="')
+    expect(script).toContain('if not defined GROK_HOME goto :kolux_grok_home_ready')
     expect(script).toContain('%GROK_HOME:~4096,1%')
-    expect(script).toContain('set "NIGHTSHIFT_GROK_HOME=%GROK_HOME:"=%"')
-    expect(script).toContain('%NIGHTSHIFT_GROK_HOME:~4096,1%')
-    expect(script).toContain(':nightshift_grok_home_ready')
-    expect(script).toContain('if not defined NIGHTSHIFT_GROK_HOME goto :nightshift_grok_home_ready')
-    expect(script).toContain('if "%NIGHTSHIFT_GROK_HOME:~-1%"=="\\"')
-    expect(script).toContain('if not "%GROK_HOME:~4096,1%"=="" goto :nightshift_grok_home_ready')
+    expect(script).toContain('set "KOLUX_GROK_HOME=%GROK_HOME:"=%"')
+    expect(script).toContain('%KOLUX_GROK_HOME:~4096,1%')
+    expect(script).toContain(':kolux_grok_home_ready')
+    expect(script).toContain('if not defined KOLUX_GROK_HOME goto :kolux_grok_home_ready')
+    expect(script).toContain('if "%KOLUX_GROK_HOME:~-1%"=="\\"')
+    expect(script).toContain('if not "%GROK_HOME:~4096,1%"=="" goto :kolux_grok_home_ready')
     // Why: parenthesized `if defined (...)` still parse-expands the body early.
     expect(script).not.toMatch(/if defined GROK_HOME \(/)
   })
@@ -234,11 +234,11 @@ describe('GrokHookService', () => {
     const status = new GrokHookService().install()
 
     expect(status.state).toBe('installed')
-    expect(status.configPath).toBe(join(homeDir, '.grok', 'hooks', 'nightshift-status.json'))
+    expect(status.configPath).toBe(join(homeDir, '.grok', 'hooks', 'kolux-status.json'))
     expect(status.managedHooksPresent).toBe(true)
 
     const config = JSON.parse(
-      readFileSync(join(homeDir, '.grok', 'hooks', 'nightshift-status.json'), 'utf8')
+      readFileSync(join(homeDir, '.grok', 'hooks', 'kolux-status.json'), 'utf8')
     ) as {
       hooks: Record<string, { matcher?: string; hooks: { command: string }[] }[]>
     }
@@ -256,7 +256,7 @@ describe('GrokHookService', () => {
       ].sort()
     )
     // Why: PreToolUse drives in-flight tool state and ask_user_question waits. The pane guard below
-    // keeps it inert outside Nightshift; PostToolUse cannot replace a state that has already ended.
+    // keeps it inert outside Kolux; PostToolUse cannot replace a state that has already ended.
     expect(config.hooks.PreToolUse[0].matcher).toBe('.*')
     expect(registersManagedGrokScript(config.hooks.PreToolUse[0].hooks[0].command)).toBe(true)
     // Why: Grok matchers are real regexes; bare `*` does not match-all.
@@ -276,14 +276,14 @@ describe('GrokHookService', () => {
     expect(registersManagedGrokScript(config.hooks.PostToolUse[0].hooks[0].command)).toBe(true)
     if (process.platform !== 'win32') {
       const command = config.hooks.PostToolUse[0].hooks[0].command
-      expect(command).toContain(join(homeDir, '.nightshift'))
-      // Why: with no Nightshift pane in the environment the guard short-circuits, so a standalone Grok
+      expect(command).toContain(join(homeDir, '.kolux'))
+      // Why: with no Kolux pane in the environment the guard short-circuits, so a standalone Grok
       // session never spawns a shell for the managed script at all.
-      expect(command).toMatch(/^if \[ -n "\$NIGHTSHIFT_PANE_KEY" \] && /)
+      expect(command).toMatch(/^if \[ -n "\$KOLUX_PANE_KEY" \] && /)
     }
 
     const script = readFileSync(
-      join(homeDir, '.nightshift', 'agent-hooks', GROK_SCRIPT_FILE_NAME),
+      join(homeDir, '.kolux', 'agent-hooks', GROK_SCRIPT_FILE_NAME),
       'utf8'
     )
     expect(script).toContain('/hook/grok')
@@ -291,8 +291,8 @@ describe('GrokHookService', () => {
       expect(script).toContain('%SystemRoot%\\System32\\curl.exe')
       // Why: windows-grok-hook-script.test.ts pins the GROK_HOME guard shape itself,
       // and does so on every platform rather than only on Windows runners.
-      expect(script).toContain('set "NIGHTSHIFT_GROK_HOME=%GROK_HOME:"=%"')
-      expect(script).toContain('--data-urlencode "grokHome=%NIGHTSHIFT_GROK_HOME%"')
+      expect(script).toContain('set "KOLUX_GROK_HOME=%GROK_HOME:"=%"')
+      expect(script).toContain('--data-urlencode "grokHome=%KOLUX_GROK_HOME%"')
     } else {
       // Why: payload is piped to curl via stdin (`payload@-`) so it never lands
       // on the curl command line (EDR oversized-command-line false positive).
@@ -312,14 +312,14 @@ describe('GrokHookService', () => {
   it.skipIf(process.platform !== 'win32')(
     'wraps the managed hook command to survive spaces in the profile path (#6078)',
     () => {
-      const spaceHome = join(tmpdir(), 'nightshift grok home with spaces')
+      const spaceHome = join(tmpdir(), 'kolux grok home with spaces')
       mkdirSync(spaceHome, { recursive: true })
       homedirMock.mockReturnValue(spaceHome)
       try {
         expect(new GrokHookService().install().state).toBe('installed')
 
         const config = JSON.parse(
-          readFileSync(join(spaceHome, '.grok', 'hooks', 'nightshift-status.json'), 'utf8')
+          readFileSync(join(spaceHome, '.grok', 'hooks', 'kolux-status.json'), 'utf8')
         ) as { hooks: Record<string, { hooks: { command: string }[] }[]> }
 
         for (const eventName of ['SessionStart', 'UserPromptSubmit', 'Stop']) {
@@ -333,19 +333,19 @@ describe('GrokHookService', () => {
   )
 
   it('installs hooks under GROK_HOME when set', () => {
-    const grokHome = mkdtempSync(join(tmpdir(), 'nightshift-grok-home-env-'))
+    const grokHome = mkdtempSync(join(tmpdir(), 'kolux-grok-home-env-'))
     const previous = process.env.GROK_HOME
     process.env.GROK_HOME = grokHome
     try {
       const status = new GrokHookService().install()
       expect(status.state).toBe('installed')
-      expect(status.configPath).toBe(join(grokHome, 'hooks', 'nightshift-status.json'))
-      expect(readFileSync(join(grokHome, 'hooks', 'nightshift-status.json'), 'utf8')).toContain(
+      expect(status.configPath).toBe(join(grokHome, 'hooks', 'kolux-status.json'))
+      expect(readFileSync(join(grokHome, 'hooks', 'kolux-status.json'), 'utf8')).toContain(
         'SessionStart'
       )
       // Why: must not also write into the mocked ~/.grok when GROK_HOME wins.
       expect(() =>
-        readFileSync(join(homeDir, '.grok', 'hooks', 'nightshift-status.json'), 'utf8')
+        readFileSync(join(homeDir, '.grok', 'hooks', 'kolux-status.json'), 'utf8')
       ).toThrow()
     } finally {
       if (previous === undefined) {
@@ -359,7 +359,7 @@ describe('GrokHookService', () => {
 
   it('does not restore a user-cleared global hook config on the next launch', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
     const userClearedConfig = '{  "hooks" : {}  }\n'
 
     expect(service.install().state).toBe('installed')
@@ -372,7 +372,7 @@ describe('GrokHookService', () => {
 
   it('preserves a user-cleared config during session cleanup', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
     const userClearedConfig = '{  "hooks" : {}  }\n'
 
     expect(service.install().state).toBe('installed')
@@ -384,7 +384,7 @@ describe('GrokHookService', () => {
 
   it('removes the empty managed config when hooks are disabled', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
 
     service.install()
     expect(service.remove().state).toBe('not_installed')
@@ -396,7 +396,7 @@ describe('GrokHookService', () => {
   // deliberate opt-out and never reinstalled again.
   it('removes the managed config even when a non-hook key remains', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
 
     expect(service.install().state).toBe('installed')
     const withSchema = JSON.parse(readFileSync(configPath, 'utf8')) as Record<string, unknown>
@@ -409,12 +409,12 @@ describe('GrokHookService', () => {
     expect(service.install().state).toBe('installed')
   })
 
-  // Why: the reported workaround for #15518 was emptying this file by hand, so Nightshift must not
+  // Why: the reported workaround for #15518 was emptying this file by hand, so Kolux must not
   // rewrite it on startup. But then turning the setting back on has to work, or the toggle
   // silently lies and the only way back is deleting a file in a hidden directory.
   it('leaves a user-cleared config alone on a startup install', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
     const userCleared = '{  "hooks" : {}  }\n'
 
     expect(service.install().state).toBe('installed')
@@ -427,7 +427,7 @@ describe('GrokHookService', () => {
 
   it('restores a user-cleared config when the user turns hooks back on', () => {
     const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
     const userCleared = '{  "hooks" : {}  }\n'
 
     expect(service.install().state).toBe('installed')
@@ -442,79 +442,95 @@ describe('GrokHookService', () => {
   // Why: hook-config-write-path.ts exists because users symlink these configs into dotfiles repos.
   // Unlinking or renaming onto the link path destroys that link and silently detaches the file they
   // version-control. Their file is theirs -- strip our entries and write through it.
-  it('writes through a symlinked config instead of destroying the link', async () => {
-    const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
-    const realConfig = join(homeDir, 'dotfiles', 'nightshift-status.json')
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  it.skipIf(process.platform === 'win32')(
+    'writes through a symlinked config instead of destroying the link',
+    async () => {
+      const service = new GrokHookService()
+      const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
+      const realConfig = join(homeDir, 'dotfiles', 'kolux-status.json')
 
-    expect(service.install().state).toBe('installed')
-    mkdirSync(dirname(realConfig), { recursive: true })
-    renameSync(configPath, realConfig)
-    symlinkSync(realConfig, configPath)
+      expect(service.install().state).toBe('installed')
+      mkdirSync(dirname(realConfig), { recursive: true })
+      renameSync(configPath, realConfig)
+      symlinkSync(realConfig, configPath)
 
-    await service.removeAsync()
+      await service.removeAsync()
 
-    expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
-    expect(existsSync(realConfig)).toBe(true)
-    expect(service.getStatus().managedHooksPresent).toBe(false)
-  })
+      expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
+      expect(existsSync(realConfig)).toBe(true)
+      expect(service.getStatus().managedHooksPresent).toBe(false)
+    }
+  )
 
-  it('respects an empty user-managed symlink as an opt-out', () => {
-    const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
-    const realConfig = join(homeDir, 'dotfiles', 'nightshift-status.json')
-    const userCleared = '{"hooks":{}}\n'
-    mkdirSync(dirname(configPath), { recursive: true })
-    mkdirSync(dirname(realConfig), { recursive: true })
-    writeFileSync(realConfig, userCleared)
-    symlinkSync(realConfig, configPath)
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  it.skipIf(process.platform === 'win32')(
+    'respects an empty user-managed symlink as an opt-out',
+    () => {
+      const service = new GrokHookService()
+      const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
+      const realConfig = join(homeDir, 'dotfiles', 'kolux-status.json')
+      const userCleared = '{"hooks":{}}\n'
+      mkdirSync(dirname(configPath), { recursive: true })
+      mkdirSync(dirname(realConfig), { recursive: true })
+      writeFileSync(realConfig, userCleared)
+      symlinkSync(realConfig, configPath)
 
-    expect(service.install().state).toBe('not_installed')
-    expect(readFileSync(realConfig, 'utf8')).toBe(userCleared)
-    expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
-  })
+      expect(service.install().state).toBe('not_installed')
+      expect(readFileSync(realConfig, 'utf8')).toBe(userCleared)
+      expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
+    }
+  )
 
-  it('writes through a symlinked config on the sync remove path too', () => {
-    const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
-    const realConfig = join(homeDir, 'dotfiles', 'nightshift-status.json')
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  it.skipIf(process.platform === 'win32')(
+    'writes through a symlinked config on the sync remove path too',
+    () => {
+      const service = new GrokHookService()
+      const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
+      const realConfig = join(homeDir, 'dotfiles', 'kolux-status.json')
 
-    expect(service.install().state).toBe('installed')
-    mkdirSync(dirname(realConfig), { recursive: true })
-    renameSync(configPath, realConfig)
-    symlinkSync(realConfig, configPath)
+      expect(service.install().state).toBe('installed')
+      mkdirSync(dirname(realConfig), { recursive: true })
+      renameSync(configPath, realConfig)
+      symlinkSync(realConfig, configPath)
 
-    expect(service.remove().state).toBe('not_installed')
+      expect(service.remove().state).toBe('not_installed')
 
-    expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
-    expect(existsSync(realConfig)).toBe(true)
-    expect(service.getStatus().managedHooksPresent).toBe(false)
-  })
+      expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
+      expect(existsSync(realConfig)).toBe(true)
+      expect(service.getStatus().managedHooksPresent).toBe(false)
+    }
+  )
 
   // Why: a symlinked config is written THROUGH on removal rather than unlinked, so after a quit it
   // is an empty file WE emptied -- byte-identical to one a user cleared. Letting the user-cleared
   // heuristic see it meant a symlinked config was silently never reinstalled after the first quit.
-  it('reinstalls into a symlinked config on the launch after a quit', async () => {
-    const service = new GrokHookService()
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
-    const realConfig = join(homeDir, 'dotfiles', 'nightshift-status.json')
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  it.skipIf(process.platform === 'win32')(
+    'reinstalls into a symlinked config on the launch after a quit',
+    async () => {
+      const service = new GrokHookService()
+      const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
+      const realConfig = join(homeDir, 'dotfiles', 'kolux-status.json')
 
-    expect(service.install().state).toBe('installed')
-    mkdirSync(dirname(realConfig), { recursive: true })
-    renameSync(configPath, realConfig)
-    symlinkSync(realConfig, configPath)
-    await service.removeAsync()
-    expect(service.getStatus().managedHooksPresent).toBe(false)
+      expect(service.install().state).toBe('installed')
+      mkdirSync(dirname(realConfig), { recursive: true })
+      renameSync(configPath, realConfig)
+      symlinkSync(realConfig, configPath)
+      await service.removeAsync()
+      expect(service.getStatus().managedHooksPresent).toBe(false)
 
-    expect(new GrokHookService().install().state).toBe('installed')
+      expect(new GrokHookService().install().state).toBe('installed')
 
-    expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
-    expect(existsSync(realConfig)).toBe(true)
-    expect(service.getStatus().managedHooksPresent).toBe(true)
-  })
+      expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
+      expect(existsSync(realConfig)).toBe(true)
+      expect(service.getStatus().managedHooksPresent).toBe(true)
+    }
+  )
 
-  it('preserves user-authored hook entries in the Nightshift Grok config file', () => {
-    const configPath = join(homeDir, '.grok', 'hooks', 'nightshift-status.json')
+  it('preserves user-authored hook entries in the Kolux Grok config file', () => {
+    const configPath = join(homeDir, '.grok', 'hooks', 'kolux-status.json')
     mkdirSync(dirname(configPath), { recursive: true })
     writeFileSync(
       configPath,

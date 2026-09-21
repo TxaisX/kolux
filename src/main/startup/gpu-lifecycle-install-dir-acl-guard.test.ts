@@ -22,7 +22,7 @@ vi.mock('electron', () => ({
     isReady: () => true,
     exit: vi.fn(),
     on: vi.fn(),
-    name: 'Nightshift'
+    name: 'Kolux'
   },
   dialog: { showMessageBox }
 }))
@@ -59,7 +59,7 @@ import {
   WINDOWS_INSTALL_DIR_ACL_REPAIR_SCHEME_VERSION
 } from './windows-install-dir-package-acl-repair'
 
-const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\nightshift'
+const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\kolux'
 
 function recoveryOptions(userDataPath?: string): {
   platform: 'win32'
@@ -72,7 +72,7 @@ function recoveryOptions(userDataPath?: string): {
     platform: 'win32',
     installDir: INSTALL_DIR,
     appVersion: '1.4.184',
-    userDataPath: userDataPath ?? mkdtempSync(join(tmpdir(), 'nightshift-acl-gpu-guard-')),
+    userDataPath: userDataPath ?? mkdtempSync(join(tmpdir(), 'kolux-acl-gpu-guard-')),
     recordBreadcrumb: () => undefined
   }
 }
@@ -134,7 +134,7 @@ async function reportProbePoisonedWithSettledRepair(
 
 /**
  * The pre-window gate meeting a spent repair budget: the tree is still marked poisoned and
- * Nightshift has no repair left to try. icacls must never be reached, so the runner throws.
+ * Kolux has no repair left to try. icacls must never be reached, so the runner throws.
  */
 async function gateFindsRepairBudgetSpent(): Promise<void> {
   const options = recoveryOptions()
@@ -192,7 +192,7 @@ describe('handleGpuChildCrash vs the install-dir ACL verdict', () => {
   })
 
   beforeEach(() => {
-    userData.path = mkdtempSync(join(tmpdir(), 'nightshift-acl-gpu-userdata-'))
+    userData.path = mkdtempSync(join(tmpdir(), 'kolux-acl-gpu-userdata-'))
     resetWindowsInstallDirAclRepairForTest()
     resetWindowsInstallDirAclRecoveryForTest()
     showMessageBox.mockClear()
@@ -385,7 +385,7 @@ describe('handleGpuChildCrash vs the install-dir ACL verdict', () => {
 })
 
 // The safe-graphics marker is read before whenReady, and the pre-window ACL gate runs after
-// that read. Asking "keep safe graphics?" on a machine Nightshift has just repaired invites a
+// that read. Asking "keep safe graphics?" on a machine Kolux has just repaired invites a
 // `userConfirmed: true` marker that pins software rendering on healthy hardware.
 describe('presentGpuFallbackRecoveredLaunchPrompt vs a marker retired since it was read', () => {
   const realPlatform = process.platform
@@ -402,7 +402,7 @@ describe('presentGpuFallbackRecoveredLaunchPrompt vs a marker retired since it w
   })
 
   beforeEach(() => {
-    userData.path = mkdtempSync(join(tmpdir(), 'nightshift-acl-gpu-recovered-'))
+    userData.path = mkdtempSync(join(tmpdir(), 'kolux-acl-gpu-recovered-'))
     resetWindowsInstallDirAclRepairForTest()
     resetWindowsInstallDirAclRecoveryForTest()
     showMessageBox.mockClear()

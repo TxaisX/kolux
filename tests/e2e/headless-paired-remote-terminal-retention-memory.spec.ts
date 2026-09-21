@@ -1,10 +1,10 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import { launchPairedWebClient, type PairedWebClient } from './helpers/paired-electron-client'
 import { runPairedTerminalColdActivationOracle } from './helpers/paired-terminal-cold-activation-oracle'
 import { runPairedTerminalParkingOracle } from './helpers/paired-terminal-parking-oracle'
 
-test('ordinary-parks paired terminals against an isolated headless Nightshift host', async ({
+test('ordinary-parks paired terminals against an isolated headless Kolux host', async ({
   testRepoPath
 }) => {
   test.setTimeout(240_000)

@@ -1,8 +1,8 @@
-/** All AI coding agents Nightshift knows how to launch. Used for the agent picker in the new-workspace
+/** All AI coding agents Kolux knows how to launch. Used for the agent picker in the new-workspace
  *  flow and for the default-agent setting. Extend this union as new agents are added. */
 export type TuiAgent =
   | 'claude' // Claude Code
-  | 'claude-agent-teams' // Claude Code Agent Teams via Nightshift native panes
+  | 'claude-agent-teams' // Claude Code Agent Teams via Kolux native panes
   | 'openclaude' // OpenClaude
   | 'codex' // OpenAI Codex
   | 'autohand' // Autohand Code CLI

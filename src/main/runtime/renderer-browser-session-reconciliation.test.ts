@@ -3,8 +3,8 @@ import type {
   RuntimeMobileSessionBrowserTab,
   RuntimeMobileSessionTabsSnapshot
 } from '../../shared/runtime-types'
-import { NightshiftRuntimeWithCloseStructuredAgentSessionTab } from './nightshift-runtime-close-structured-agent-session-tab'
-import { NightshiftRuntimeWithReconcileHeadlessMobileSessionBrowserTabs } from './nightshift-runtime-reconcile-headless-mobile-session-browser-tabs'
+import { KoluxRuntimeWithCloseStructuredAgentSessionTab } from './kolux-runtime-close-structured-agent-session-tab'
+import { KoluxRuntimeWithReconcileHeadlessMobileSessionBrowserTabs } from './kolux-runtime-reconcile-headless-mobile-session-browser-tabs'
 
 const rendererPage: RuntimeMobileSessionBrowserTab = {
   type: 'browser',
@@ -52,7 +52,7 @@ function reconcile(
 ): RuntimeMobileSessionTabsSnapshot | undefined {
   const storeMobileSessionSnapshot = vi.fn()
   const runtime =
-    NightshiftRuntimeWithReconcileHeadlessMobileSessionBrowserTabs.prototype as unknown as {
+    KoluxRuntimeWithReconcileHeadlessMobileSessionBrowserTabs.prototype as unknown as {
       reconcileHeadlessMobileSessionBrowserTabs(
         worktreeId: string,
         existing: RuntimeMobileSessionTabsSnapshot
@@ -128,7 +128,7 @@ it('does not republish when a client row merely sits before a renderer row', () 
 
 it('keeps the renderer publication epoch when selecting a client-hosted browser tab', () => {
   const storeMobileSessionSnapshot = vi.fn()
-  const runtime = NightshiftRuntimeWithCloseStructuredAgentSessionTab.prototype as unknown as {
+  const runtime = KoluxRuntimeWithCloseStructuredAgentSessionTab.prototype as unknown as {
     markHeadlessBrowserSessionTabActive(
       worktreeId: string,
       browserPageId: string,

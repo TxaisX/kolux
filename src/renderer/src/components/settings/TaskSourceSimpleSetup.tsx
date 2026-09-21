@@ -31,11 +31,11 @@ export function CodeHostSetupSteps(
   const connectionDescription = props.unavailable
     ? translate(
         'auto.components.settings.TasksPane.connectionCheckUnavailable',
-        "Nightshift couldn't check this connection. Try again, or open Integrations for setup details."
+        "Kolux couldn't check this connection. Try again, or open Integrations for setup details."
       )
     : translate(
         'auto.components.settings.TasksPane.connectCodeHostDescription',
-        'Install and authenticate the CLI under Integrations so Nightshift can load issues.'
+        'Install and authenticate the CLI under Integrations so Kolux can load issues.'
       )
 
   return (

@@ -2,9 +2,9 @@ import { getDefaultRepoHookSettings } from '../shared/constants'
 import { resolveHookCommandSourcePolicy } from '../shared/hook-command-source-policy'
 import type {
   HookCommandSourcePolicy,
-  NightshiftHooks,
+  KoluxHooks,
   SetupRunPolicy
-} from '../shared/nightshift-yaml-hook-types'
+} from '../shared/kolux-yaml-hook-types'
 import type { Repo } from '../shared/repo-types'
 import type { SetupDecision } from '../shared/worktree/create-types'
 import type { WorktreeDefaultTabsLaunch } from '../shared/worktree/launch-types'
@@ -30,8 +30,8 @@ function getEffectiveHookScript(
 
 export function getEffectiveHooksFromConfig(
   repo: Repo,
-  yamlHooks: NightshiftHooks | null
-): NightshiftHooks | null {
+  yamlHooks: KoluxHooks | null
+): KoluxHooks | null {
   const localSetup = repo.hookSettings?.scripts.setup
   const localArchive = repo.hookSettings?.scripts.archive
   const rawPolicy = repo.hookSettings?.commandSourcePolicy
@@ -48,7 +48,7 @@ export function getEffectiveHooksFromConfig(
     return null
   }
 
-  // Why: committed `nightshift.yaml` and local Settings can coexist; the source policy decides which is authoritative.
+  // Why: committed `kolux.yaml` and local Settings can coexist; the source policy decides which is authoritative.
   return {
     scripts: {
       ...(setup ? { setup } : {}),
@@ -77,7 +77,7 @@ export function shouldRunSetupForCreate(repo: Repo, decision: SetupDecision = 'i
   return policy === 'run-by-default'
 }
 
-export function getDefaultTabCommandTrustContent(hooks: NightshiftHooks | null): string {
+export function getDefaultTabCommandTrustContent(hooks: KoluxHooks | null): string {
   const commands = (hooks?.defaultTabs ?? [])
     .map((tab, index) => {
       const command = tab.command?.trim()
@@ -92,7 +92,7 @@ export function getDefaultTabCommandTrustContent(hooks: NightshiftHooks | null):
 }
 
 export function getDefaultTabsLaunch(
-  hooks: NightshiftHooks | null,
+  hooks: KoluxHooks | null,
   repo: Repo,
   decision: SetupDecision = 'inherit'
 ): WorktreeDefaultTabsLaunch | undefined {
@@ -107,7 +107,7 @@ export function getDefaultTabsLaunch(
       hasLocalScript: Boolean(repo.hookSettings?.scripts.setup?.trim())
     }
   )
-  // Why: local-only repos may use shared tab titles/colors but must not run the committed nightshift.yaml commands.
+  // Why: local-only repos may use shared tab titles/colors but must not run the committed kolux.yaml commands.
   const canRunSharedCommands = sharedCommandPolicy !== 'local-only'
   const runCommands =
     hasCommands && canRunSharedCommands ? shouldRunSetupForCreate(repo, decision) : false

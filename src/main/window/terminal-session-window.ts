@@ -23,7 +23,7 @@ const DEFAULT_WIDTH = 900
 const DEFAULT_HEIGHT = 600
 const CASCADE_STEP = 32
 const CASCADE_MARGIN = 48
-const TERMINAL_WINDOW_PARTITION = 'nightshift-terminal-window'
+const TERMINAL_WINDOW_PARTITION = 'kolux-terminal-window'
 const BOUNDS_SAVE_DEBOUNCE_MS = 500
 
 export type OpenTerminalSessionWindowArgs = {
@@ -97,7 +97,7 @@ function createTerminalWindow(
         : {}),
     minWidth: TERMINAL_WINDOW_MIN_WIDTH,
     minHeight: TERMINAL_WINDOW_MIN_HEIGHT,
-    title: 'Nightshift Terminal',
+    title: 'Kolux Terminal',
     show: false,
     autoHideMenuBar: true,
     webPreferences: {

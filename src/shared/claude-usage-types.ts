@@ -1,4 +1,4 @@
-export type ClaudeUsageScope = 'nightshift' | 'all'
+export type ClaudeUsageScope = 'kolux' | 'all'
 export type ClaudeUsageRange = '7d' | '30d' | '90d' | 'all'
 export type ClaudeUsageBreakdownKind = 'model' | 'project'
 

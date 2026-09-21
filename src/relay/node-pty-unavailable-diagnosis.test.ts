@@ -22,7 +22,7 @@ const UBUNTU_2004: NodePtyUnavailableHost = {
   nodeVersion: 'v20.11.0'
 }
 
-const MODULE_DIR = '/opt/nightshift/relay/node_modules/node-pty'
+const MODULE_DIR = '/opt/kolux/relay/node_modules/node-pty'
 const SEARCHED = ['build/Release', 'build/Debug', 'prebuilds/linux-x64']
 
 const INSTALLED: NodePtyBindingSurvey = {
@@ -67,7 +67,7 @@ describe('diagnoseNodePtyUnavailable', () => {
   it('names the glibc the host actually has next to the one the binary needs', () => {
     const verdict = diagnose({
       loaderError:
-        "/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /opt/nightshift/node_modules/node-pty/build/Release/pty.node)"
+        "/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by /opt/kolux/node_modules/node-pty/build/Release/pty.node)"
     })
     expect(verdict).toMatchObject({ status: 'blocked', reason: 'libc_floor' })
     const text = formatNodePtyUnavailableMessage(verdict)

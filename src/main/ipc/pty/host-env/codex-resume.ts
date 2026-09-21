@@ -117,7 +117,7 @@ export async function reconcileSharedRuntimeResumeHome(
   return resumeHome.codexHomePath
 }
 
-/** Why: buildPtyHostEnv prefers NIGHTSHIFT_SEQUENCED_STARTUP_COMMAND over the launch command
+/** Why: buildPtyHostEnv prefers KOLUX_SEQUENCED_STARTUP_COMMAND over the launch command
  *  and the sequenced wrapper `eval`s it, so a dropped resume argv has to go there too. */
 export function stripSequencedStartupResumeArgv<T extends Record<string, string> | undefined>(
   env: T,

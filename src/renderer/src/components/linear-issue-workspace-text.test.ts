@@ -27,7 +27,7 @@ describe('buildLinearIssueBranchName', () => {
     )
   })
 
-  it('falls back to Nightshift’s generated workspace slug', () => {
+  it('falls back to Kolux’s generated workspace slug', () => {
     expect(buildLinearIssueBranchName(makeIssue())).toBe('eng-123-fix-launch-context-handoff')
     expect(buildLinearIssueBranchName(makeIssue('   '))).toBe('eng-123-fix-launch-context-handoff')
   })

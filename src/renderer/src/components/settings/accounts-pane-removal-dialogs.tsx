@@ -43,7 +43,7 @@ export function renderAccountsRemovalDialogs(
             <DialogDescription>
               {translate(
                 'auto.components.settings.AccountsPane.380a7736cc',
-                'Removing this account permanently deletes its managed Codex home, including all Codex session history and MCP logins stored inside. This cannot be undone. If the account is currently active, Nightshift falls back to the system default Codex login.'
+                'Removing this account permanently deletes its managed Codex home, including all Codex session history and MCP logins stored inside. This cannot be undone. If the account is currently active, Kolux falls back to the system default Codex login.'
               )}
             </DialogDescription>
           </DialogHeader>
@@ -86,7 +86,7 @@ export function renderAccountsRemovalDialogs(
             <DialogDescription>
               {translate(
                 'auto.components.settings.AccountsPane.854ebbcc45',
-                'Nightshift will delete the managed Claude auth for this saved account. If it is currently active, Nightshift falls back to the system default Claude login.'
+                'Kolux will delete the managed Claude auth for this saved account. If it is currently active, Kolux falls back to the system default Claude login.'
               )}
             </DialogDescription>
           </DialogHeader>

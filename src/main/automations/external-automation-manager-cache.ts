@@ -1,9 +1,9 @@
 /**
  * Per-`{owner, provider}` manager and error state.
  *
- * Deliberately holds no reference to Nightshift automation storage: a provider that is
+ * Deliberately holds no reference to Kolux automation storage: a provider that is
  * missing, wedged, or returning garbage is a fact about that manager only, and
- * must never be able to mark the host's Nightshift store unavailable.
+ * must never be able to mark the host's Kolux store unavailable.
  */
 
 import type { ExternalAutomationManager } from '../../shared/automations-types'

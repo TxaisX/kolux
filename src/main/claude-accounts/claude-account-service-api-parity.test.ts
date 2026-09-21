@@ -3,7 +3,7 @@ import type { ClaudeRateLimitAccountsState } from '../../shared/managed-account-
 import { ClaudeAccountService } from './service'
 import type { ClaudeAccountAddTarget, ClaudeAccountImportOptions } from './service'
 
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp/nightshift-claude-api-parity' } }))
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp/kolux-claude-api-parity' } }))
 
 type PublicClaudeAccountService = {
   listAccounts(): ClaudeRateLimitAccountsState

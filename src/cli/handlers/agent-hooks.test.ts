@@ -66,14 +66,12 @@ vi.mock('../../main/codex/managed-home-shell-preflight', () => ({
 import { main } from '../index'
 
 function readDataFile(userDataPath: string): PersistedState {
-  return JSON.parse(
-    readFileSync(join(userDataPath, 'nightshift-data.json'), 'utf-8')
-  ) as PersistedState
+  return JSON.parse(readFileSync(join(userDataPath, 'kolux-data.json'), 'utf-8')) as PersistedState
 }
 
 function writeDataFile(userDataPath: string, state: PersistedState): void {
   mkdirSync(userDataPath, { recursive: true })
-  writeFileSync(join(userDataPath, 'nightshift-data.json'), JSON.stringify(state, null, 2), 'utf-8')
+  writeFileSync(join(userDataPath, 'kolux-data.json'), JSON.stringify(state, null, 2), 'utf-8')
 }
 
 async function runAgentHooksOff(userDataPath: string): Promise<void> {
@@ -85,7 +83,7 @@ describe('agent hooks CLI handler', () => {
   let userDataPath: string
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-agent-hooks-cli-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-agent-hooks-cli-'))
     applyAgentStatusHooksEnabledMock.mockReturnValue([])
     callMock.mockReset()
     getCliStatusMock.mockClear()
@@ -146,9 +144,9 @@ describe('agent hooks CLI handler', () => {
   })
 
   it('forwards WSL pane routing to the runtime exactly once without using the host installer', async () => {
-    const home = '/home/jin/.local/share/nightshift/codex-runtime-home/home'
+    const home = '/home/jin/.local/share/kolux/codex-runtime-home/home'
     vi.stubEnv('CODEX_HOME', home)
-    vi.stubEnv('NIGHTSHIFT_CODEX_HOME', home)
+    vi.stubEnv('KOLUX_CODEX_HOME', home)
     vi.stubEnv('WSL_DISTRO_NAME', 'Ubuntu-24.04')
     callMock.mockResolvedValue({ result: { state: 'installed' } })
 
@@ -156,15 +154,15 @@ describe('agent hooks CLI handler', () => {
 
     expect(callMock).toHaveBeenCalledExactlyOnceWith(
       'agentHooks.prepareCodexForWslPane',
-      { codexHome: home, nightshiftCodexHome: home, wslDistro: 'Ubuntu-24.04' },
+      { codexHome: home, koluxCodexHome: home, wslDistro: 'Ubuntu-24.04' },
       { timeoutMs: 50_000 }
     )
     expect(prepareManagedCodexHomeBeforeShellLaunchMock).not.toHaveBeenCalled()
   })
 
   it('fails open when WSL runtime preparation is unavailable', async () => {
-    vi.stubEnv('CODEX_HOME', '/home/jin/.local/share/nightshift/codex-runtime-home/home')
-    vi.stubEnv('NIGHTSHIFT_CODEX_HOME', '/home/jin/.local/share/nightshift/codex-runtime-home/home')
+    vi.stubEnv('CODEX_HOME', '/home/jin/.local/share/kolux/codex-runtime-home/home')
+    vi.stubEnv('KOLUX_CODEX_HOME', '/home/jin/.local/share/kolux/codex-runtime-home/home')
     vi.stubEnv('WSL_DISTRO_NAME', 'Ubuntu')
     callMock.mockRejectedValue(new Error('method_not_found'))
 
@@ -195,7 +193,7 @@ describe('agent hooks CLI handler', () => {
     profile.settings.agentStatusHooksEnabled = false
     writeDataFile(join(userDataPath, 'profiles', profileId), profile)
     writeFileSync(
-      join(userDataPath, 'nightshift-profile-index.json'),
+      join(userDataPath, 'kolux-profile-index.json'),
       JSON.stringify({
         activeProfileId: profileId,
         profiles: [{ id: profileId }]

@@ -2,7 +2,7 @@ import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import * as sshFilesystemDispatch from '../../../../../providers/ssh-filesystem-dispatch'
 import { readExactWorkerOutput } from './worker-output'
 
@@ -17,13 +17,13 @@ describe('exact orchestration worker output', () => {
   let directory: string
   let transcriptA: string
   let transcriptB: string
-  let providerSession: ReturnType<NightshiftRuntimeService['getExactWorkerProviderSession']>
-  let runtime: NightshiftRuntimeService
+  let providerSession: ReturnType<KoluxRuntimeService['getExactWorkerProviderSession']>
+  let runtime: KoluxRuntimeService
   const readTerminal = vi.fn()
   let sshProviderLookup: { mockRestore: () => void }
 
   beforeEach(async () => {
-    directory = await mkdtemp(join(tmpdir(), 'nightshift-worker-output-'))
+    directory = await mkdtemp(join(tmpdir(), 'kolux-worker-output-'))
     transcriptA = join(directory, 'session-a.jsonl')
     transcriptB = join(directory, 'session-b.jsonl')
     await writeFile(transcriptA, `${codexMessage('a', 'worker A only')}\n`)
@@ -53,7 +53,7 @@ describe('exact orchestration worker output', () => {
       getTerminalProcessIncarnation: vi.fn(() => 'pty:incarnation-1'),
       getTerminalPaneKey: vi.fn(() => 'tab:worker'),
       readTerminal
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
   })
 
   afterEach(async () => {

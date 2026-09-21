@@ -16,7 +16,7 @@ describe('pairing offer', () => {
 
   it('encode then decode round-trips correctly', () => {
     const url = encodePairingOffer(offer)
-    expect(url).toMatch(/^nightshift:\/\/pair\?code=/)
+    expect(url).toMatch(/^kolux:\/\/pair\?code=/)
 
     const decoded = decodePairingOffer(url)
     expect(decoded).toEqual(offer)
@@ -43,7 +43,7 @@ describe('pairing offer', () => {
   it('round-trips a TLS reverse-proxy endpoint with an explicit port and path', () => {
     const proxiedOffer = {
       ...offer,
-      endpoint: 'wss://proxy.example:443/nightshift/runtime'
+      endpoint: 'wss://proxy.example:443/kolux/runtime'
     }
 
     expect(decodePairingOffer(encodePairingOffer(proxiedOffer))).toEqual(proxiedOffer)
@@ -59,43 +59,41 @@ describe('pairing offer', () => {
     expect(() => decodePairingOffer('https://example.com#abc')).toThrow('Invalid pairing URL')
   })
 
-  it('rejects nightshift URLs outside the exact pairing route', () => {
+  it('rejects kolux URLs outside the exact pairing route', () => {
     const url = encodePairingOffer(offer)
     const code = new URLSearchParams(url.slice(url.indexOf('?') + 1)).get('code')!
 
-    expect(parsePairingCode(`nightshift://pairing?code=${code}`)).toBeNull()
-    expect(parsePairingCode(`nightshift://pair-extra?code=${code}`)).toBeNull()
-    expect(() => decodePairingOffer(`nightshift://pairing?code=${code}`)).toThrow(
-      'Invalid pairing URL'
-    )
+    expect(parsePairingCode(`kolux://pairing?code=${code}`)).toBeNull()
+    expect(parsePairingCode(`kolux://pair-extra?code=${code}`)).toBeNull()
+    expect(() => decodePairingOffer(`kolux://pairing?code=${code}`)).toThrow('Invalid pairing URL')
   })
 
   it('rejects URLs without a pairing code', () => {
-    expect(() => decodePairingOffer('nightshift://pair')).toThrow('Invalid pairing URL')
+    expect(() => decodePairingOffer('kolux://pair')).toThrow('Invalid pairing URL')
   })
 
   it('decodes legacy hash URLs', () => {
     const url = encodePairingOffer(offer)
     const code = new URLSearchParams(url.slice(url.indexOf('?') + 1)).get('code')!
-    expect(decodePairingOffer(`nightshift://pair#${code}`)).toEqual(offer)
+    expect(decodePairingOffer(`kolux://pair#${code}`)).toEqual(offer)
   })
 
   it('rejects payloads with missing fields', () => {
     const partial = { v: 2, endpoint: 'ws://host:1234' }
     const base64 = Buffer.from(JSON.stringify(partial)).toString('base64')
-    expect(() => decodePairingOffer(`nightshift://pair#${base64}`)).toThrow()
+    expect(() => decodePairingOffer(`kolux://pair#${base64}`)).toThrow()
   })
 
   it('rejects payloads with wrong version', () => {
     const wrong = { ...offer, v: 1 }
     const base64 = Buffer.from(JSON.stringify(wrong)).toString('base64')
-    expect(() => decodePairingOffer(`nightshift://pair#${base64}`)).toThrow()
+    expect(() => decodePairingOffer(`kolux://pair#${base64}`)).toThrow()
   })
 
   it('rejects payloads with missing publicKeyB64', () => {
     const wrong = { v: 2, endpoint: 'ws://host:1234', deviceToken: 'tok' }
     const base64 = Buffer.from(JSON.stringify(wrong)).toString('base64')
-    expect(() => decodePairingOffer(`nightshift://pair#${base64}`)).toThrow()
+    expect(() => decodePairingOffer(`kolux://pair#${base64}`)).toThrow()
   })
 })
 
@@ -107,7 +105,7 @@ describe('parsePairingCode', () => {
     publicKeyB64: 'pubkey-xyz'
   }
 
-  it('parses a full nightshift://pair# URL', () => {
+  it('parses a full kolux://pair# URL', () => {
     const url = encodePairingOffer(offer)
     expect(parsePairingCode(url)).toEqual(offer)
   })
@@ -136,5 +134,15 @@ describe('parsePairingCode', () => {
   it('returns null for valid base64 of unrelated JSON', () => {
     const bogus = Buffer.from(JSON.stringify({ hello: 'world' })).toString('base64')
     expect(parsePairingCode(bogus)).toBeNull()
+  })
+
+  it('accepts the pre-rename nightshift:// scheme', () => {
+    const url = encodePairingOffer(offer).replace(/^kolux:\/\//, 'nightshift://')
+    expect(parsePairingCode(url)).toEqual(offer)
+  })
+
+  it('accepts nightshift:// with mixed case', () => {
+    const url = encodePairingOffer(offer).replace(/^kolux:\/\//, 'NightShift://')
+    expect(parsePairingCode(url)).toEqual(offer)
   })
 })

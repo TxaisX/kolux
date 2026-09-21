@@ -57,8 +57,8 @@ export function buildRemoteTargetRequest(
 export function buildRemoteContext(env: Record<string, string>): Record<string, unknown> {
   return {
     remote: true,
-    ...(env.NIGHTSHIFT_WORKTREE_ID ? { worktreeId: env.NIGHTSHIFT_WORKTREE_ID } : {}),
-    ...(env.NIGHTSHIFT_TERMINAL_HANDLE ? { terminalHandle: env.NIGHTSHIFT_TERMINAL_HANDLE } : {})
+    ...(env.KOLUX_WORKTREE_ID ? { worktreeId: env.KOLUX_WORKTREE_ID } : {}),
+    ...(env.KOLUX_TERMINAL_HANDLE ? { terminalHandle: env.KOLUX_TERMINAL_HANDLE } : {})
   }
 }
 

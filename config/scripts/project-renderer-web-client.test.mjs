@@ -14,7 +14,7 @@ function writeFixtureFile(root, relativePath, contents) {
 }
 
 function createRendererFixture() {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-web-projection-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-web-projection-'))
   temporaryRoots.push(root)
   const manifest = {
     'web-index.html': {

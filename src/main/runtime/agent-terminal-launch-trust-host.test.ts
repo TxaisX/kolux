@@ -11,7 +11,7 @@ vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => '/tmp'), isPackaged: false }
 }))
 
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const REMOTE_PATH = '/srv/app-feature'
 
@@ -33,7 +33,7 @@ function makeRuntime(repos: readonly Record<string, unknown>[], hostId?: string)
     getRepos: () => repos,
     getRepo: (id: string) => repos.find((repo) => repo.id === id)
   }
-  const runtime = new NightshiftRuntimeService(store as never)
+  const runtime = new KoluxRuntimeService(store as never)
   const internals = runtime as unknown as RuntimeInternals
   vi.spyOn(internals, 'resolveWorktreeSelector').mockResolvedValue({
     id: 'repo-shared::/srv/app-feature',

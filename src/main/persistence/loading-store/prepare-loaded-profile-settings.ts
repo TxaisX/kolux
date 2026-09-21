@@ -47,7 +47,7 @@ export type PreparedLoadedProfileSettings = {
   >
   migratedTerminalThemeDark: Pick<
     GlobalSettings,
-    'terminalThemeDark' | 'terminalThemeDarkDefaultedToNightshift'
+    'terminalThemeDark' | 'terminalThemeDarkDefaultedToKolux'
   >
   migratedWindowsRuntimeDefault: GlobalSettings['localWindowsRuntimeDefault']
   migratedLocalAccountRuntime: GlobalSettings['localAccountRuntime']
@@ -141,7 +141,7 @@ export function prepareLoadedProfileSettings(
   const migratedAgentYoloDefaults = migrateAgentYoloDefaults(parsed.settings)
   const { changed: terminalThemeDarkChanged, ...migratedTerminalThemeDark } =
     migrateTerminalThemeDarkDefault(parsed.settings)
-  if (terminalThemeDarkChanged || parsed.settings?.terminalThemeDarkDefaultedToNightshift !== true) {
+  if (terminalThemeDarkChanged || parsed.settings?.terminalThemeDarkDefaultedToKolux !== true) {
     markNeedsSave()
   }
   if (

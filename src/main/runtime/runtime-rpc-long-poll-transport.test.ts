@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createConnection } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
 import { readRuntimeMetadata } from './runtime-metadata'
-import { classifyRuntimeLongPoll, NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { classifyRuntimeLongPoll, KoluxRuntimeRpcServer } from './runtime-rpc'
 import {
   sendRequest,
   openFramedSession,
@@ -32,7 +32,7 @@ vi.mock('../git/worktree', () => {
   }
 })
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('classifies worker-start as a keepalive-backed long poll', () => {
     expect(
       classifyRuntimeLongPoll({
@@ -64,9 +64,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('rejects oversized RPC frames instead of buffering them indefinitely', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService()
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService()
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
 
     await server.start()
 
@@ -105,9 +105,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   // that a unit-level test would miss.
   describe('long-poll transport (§3.1)', () => {
     it('emits keepalives while orchestration.workerStart blocks', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
-      const server = new NightshiftRuntimeRpcServer({
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 30
@@ -144,15 +144,15 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('emits keepalive frames while a check --wait handler blocks', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
       // Why: 50ms keepalive lets us collect ≥3 frames within a 300ms wait
       // window without slowing the suite.
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 50
@@ -187,8 +187,8 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('emits keepalive frames while orchestration.ask blocks for a reply', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
@@ -204,7 +204,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       })
       const task = db.createTask({ spec: 'Wait for an answer', runId: run.id })
       createRootDispatch(db, task.id, 'term_asker', askerPaneKey)
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 50
@@ -245,9 +245,9 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('emits keepalive frames while terminal.wait blocks and returns its structured timeout', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
-      const server = new NightshiftRuntimeRpcServer({
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 30
@@ -316,9 +316,9 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('emits keepalive frames while agent-prompt verification blocks', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
-      const server = new NightshiftRuntimeRpcServer({
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 30
@@ -355,9 +355,9 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('releases terminal.wait long-poll slot when the client closes mid-wait', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
-      const server = new NightshiftRuntimeRpcServer({
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -430,13 +430,13 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('releases long-poll slot when client closes mid-wait', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -492,13 +492,13 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('destroys active Unix socket connections when the runtime stops', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -534,13 +534,13 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('responds runtime_busy once the long-poll cap is saturated', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -593,15 +593,15 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('reserves long-poll headroom for terminal.wait when orchestration.ask floods', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
       seedSupervisedAskWorkers(db, ['term_w0', 'term_w1', 'term_w2', 'term_w3'])
       // Why: cap 4 → ask sub-cap 2, so 4 concurrent asks can only take half the budget.
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -707,13 +707,13 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('keeps the full cap available to terminal.wait and check --wait', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       const db = new OrchestrationDb(':memory:')
       runtime.setOrchestrationDb(db)
       // A consuming check now requires a live pane; these transport tests only need it to block.
       vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => `tab_${handle}:leaf`)
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 1000,
@@ -758,13 +758,13 @@ describe('NightshiftRuntimeRpcServer', () => {
     })
 
     it('does not emit keepalive frames for short RPCs', async () => {
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
       // Why: a 10ms interval means any frame in the first ~100ms of a short
       // RPC would show up; `status.get` returns in <10ms so no keepalive
       // should ever fire. Locks in the "keepalive is long-poll-only" invariant
       // so a future refactor can't silently re-broaden the timer.
-      const server = new NightshiftRuntimeRpcServer({
+      const server = new KoluxRuntimeRpcServer({
         runtime,
         userDataPath,
         keepaliveIntervalMs: 10
@@ -797,9 +797,9 @@ describe('NightshiftRuntimeRpcServer', () => {
       // Without the `.catch` on handleMessage's promise, a throw would leave
       // the client hanging until the 30s idle timer and leak the dispatch's
       // AbortController in the transport's in-flight set.
-      const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-      const runtime = new NightshiftRuntimeService()
-      const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+      const runtime = new KoluxRuntimeService()
+      const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
       await server.start()
 
       // Force the dispatcher to throw a non-envelope error.

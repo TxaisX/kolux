@@ -168,12 +168,12 @@ export function AddHostSubmenuRow({
             <RunTargetRow
               icon={<Cloud className="size-3.5 shrink-0 text-muted-foreground" />}
               label={translate(
-                'auto.components.NewWorkspaceComposerCard.addRemoteNightshiftServer',
-                'Add Remote Nightshift Server'
+                'auto.components.NewWorkspaceComposerCard.addRemoteKoluxServer',
+                'Add Remote Kolux Server'
               )}
               detail={translate(
-                'auto.components.NewWorkspaceComposerCard.addRemoteNightshiftServerHint',
-                'Pair another Nightshift runtime'
+                'auto.components.NewWorkspaceComposerCard.addRemoteKoluxServerHint',
+                'Pair another Kolux runtime'
               )}
               armed={hoveredKey === 'remote'}
               current={false}

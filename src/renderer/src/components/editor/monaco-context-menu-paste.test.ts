@@ -2,8 +2,8 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  runNightshiftContextMenuPaste,
-  type NightshiftContextMenuPasteDeps
+  runKoluxContextMenuPaste,
+  type KoluxContextMenuPasteDeps
 } from './monaco-context-menu-paste'
 
 const READ_ONLY_OPTION = 104
@@ -65,8 +65,8 @@ function makeEditor(state: FakeEditorState = {}) {
 }
 
 function makeDeps(
-  overrides: Partial<NightshiftContextMenuPasteDeps> & { editor?: ReturnType<typeof makeEditor> }
-): NightshiftContextMenuPasteDeps {
+  overrides: Partial<KoluxContextMenuPasteDeps> & { editor?: ReturnType<typeof makeEditor> }
+): KoluxContextMenuPasteDeps {
   const editorHandle = overrides.editor ?? makeEditor()
   return {
     getFocusedEditor: () => editorHandle.editor as never,
@@ -83,29 +83,29 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('runNightshiftContextMenuPaste', () => {
+describe('runKoluxContextMenuPaste', () => {
   it('falls through (returns false) when no editor is focused', () => {
     const deps = makeDeps({ getFocusedEditor: () => null })
-    expect(runNightshiftContextMenuPaste(deps)).toBe(false)
+    expect(runKoluxContextMenuPaste(deps)).toBe(false)
   })
 
   it('falls through when the focused editor has no model', () => {
     const handle = makeEditor({ hasModel: false })
     const deps = makeDeps({ editor: handle })
-    expect(runNightshiftContextMenuPaste(deps)).toBe(false)
+    expect(runKoluxContextMenuPaste(deps)).toBe(false)
   })
 
   it('falls through when the editor lacks text focus', () => {
     const handle = makeEditor({ hasTextFocus: false })
     const deps = makeDeps({ editor: handle })
-    expect(runNightshiftContextMenuPaste(deps)).toBe(false)
+    expect(runKoluxContextMenuPaste(deps)).toBe(false)
   })
 
   it('falls through for read-only editors without reading the clipboard', () => {
     const handle = makeEditor({ readOnly: true })
     const readClipboardText = vi.fn(async () => 'x')
     const deps = makeDeps({ editor: handle, readClipboardText })
-    expect(runNightshiftContextMenuPaste(deps)).toBe(false)
+    expect(runKoluxContextMenuPaste(deps)).toBe(false)
     expect(readClipboardText).not.toHaveBeenCalled()
   })
 
@@ -114,7 +114,7 @@ describe('runNightshiftContextMenuPaste', () => {
     const readClipboardText = vi.fn(async () => 'hello world')
     const deps = makeDeps({ editor: handle, readClipboardText })
 
-    const outcome = runNightshiftContextMenuPaste(deps)
+    const outcome = runKoluxContextMenuPaste(deps)
     expect(outcome).not.toBe(false)
     await expect(outcome).resolves.toEqual({ status: 'pasted', mode: 'native' })
     expect(readClipboardText).toHaveBeenCalledWith({ maxBytes: 16 * 1024 * 1024 })
@@ -138,7 +138,7 @@ describe('runNightshiftContextMenuPaste', () => {
       })
     })
 
-    await runNightshiftContextMenuPaste(deps)
+    await runKoluxContextMenuPaste(deps)
     expect(handle.trigger).toHaveBeenCalledWith('keyboard', 'paste', {
       text: 'line text',
       pasteOnNewLine: true,
@@ -155,7 +155,7 @@ describe('runNightshiftContextMenuPaste', () => {
       getClipboardMetadata: () => ({ isFromEmptySelection: true })
     })
 
-    await runNightshiftContextMenuPaste(deps)
+    await runKoluxContextMenuPaste(deps)
     expect(handle.trigger).toHaveBeenCalledWith(
       'keyboard',
       'paste',
@@ -166,7 +166,7 @@ describe('runNightshiftContextMenuPaste', () => {
   it('does nothing on an empty clipboard', async () => {
     const handle = makeEditor()
     const deps = makeDeps({ editor: handle, readClipboardText: vi.fn(async () => '') })
-    await expect(runNightshiftContextMenuPaste(deps)).resolves.toEqual({
+    await expect(runKoluxContextMenuPaste(deps)).resolves.toEqual({
       status: 'noop',
       reason: 'empty'
     })
@@ -184,7 +184,7 @@ describe('runNightshiftContextMenuPaste', () => {
       onReadError
     })
 
-    await expect(runNightshiftContextMenuPaste(deps)).resolves.toEqual({
+    await expect(runKoluxContextMenuPaste(deps)).resolves.toEqual({
       status: 'noop',
       reason: 'read-failed'
     })
@@ -202,7 +202,7 @@ describe('runNightshiftContextMenuPaste', () => {
       })
     })
 
-    await expect(runNightshiftContextMenuPaste(deps)).resolves.toEqual({
+    await expect(runKoluxContextMenuPaste(deps)).resolves.toEqual({
       status: 'noop',
       reason: 'target-lost'
     })
@@ -215,7 +215,7 @@ describe('runNightshiftContextMenuPaste', () => {
     const bigText = 'x'.repeat(128 * 1024)
     const deps = makeDeps({ editor: handle, readClipboardText: vi.fn(async () => bigText) })
 
-    const outcome = await runNightshiftContextMenuPaste(deps)
+    const outcome = await runKoluxContextMenuPaste(deps)
     expect(outcome).toEqual({ status: 'pasted', mode: 'chunked' })
     expect(handle.trigger).not.toHaveBeenCalled()
     expect(handle.editor.executeEdits).toHaveBeenCalled()

@@ -39,7 +39,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -352,7 +352,7 @@ describe('registerPtyHandlers', () => {
     const getSettings = vi.fn().mockReturnValue({ activeCodexManagedAccountId: 'account-a' })
     registerPtyHandlers(mainWindow as never, undefined, undefined, getSettings as never)
 
-    const nativeCodexEnv = { CODEX_HOME: '', NIGHTSHIFT_CODEX_HOME: '' }
+    const nativeCodexEnv = { CODEX_HOME: '', KOLUX_CODEX_HOME: '' }
     await handlers.get('pty:spawn')!(null, { cols: 80, rows: 24, env: nativeCodexEnv })
     await handlers.get('pty:spawn')!(null, {
       cols: 80,
@@ -424,7 +424,7 @@ describe('registerPtyHandlers', () => {
         rows: 24,
         env: {
           CODEX_HOME: '',
-          NIGHTSHIFT_CODEX_HOME: '',
+          KOLUX_CODEX_HOME: '',
           HOME: '/pane-home',
           SHELL: '/bin/zsh'
         }

@@ -10,7 +10,7 @@ import {
 /**
  * Why Delete is unavailable for this session, as the tooltip text to show — or
  * null when it is offered. Each message says which sessions are affected, never
- * why: a provider's storage layout is Nightshift's problem, not the reader's.
+ * why: a provider's storage layout is Kolux's problem, not the reader's.
  *
  * NOT the security boundary — main re-validates the path on disk regardless.
  * The two sides agree on deletable-or-not but deliberately not on the order they
@@ -30,13 +30,13 @@ export function aiVaultSessionDeleteBlockedReason(
   if (isSyntheticAiVaultSessionPath(session.filePath)) {
     return translate(
       'auto.components.right.sidebar.AiVaultSessionRow.deleteReasonSyntheticPath',
-      "This session can't be deleted from Nightshift."
+      "This session can't be deleted from Kolux."
     )
   }
   if (!isAiVaultDeletableAgent(session.agent)) {
     return translate(
       'auto.components.right.sidebar.AiVaultSessionRow.deleteReasonUnsupportedAgent',
-      "{{value0}} sessions can't be deleted from Nightshift.",
+      "{{value0}} sessions can't be deleted from Kolux.",
       { value0: agentLabel(session.agent) }
     )
   }

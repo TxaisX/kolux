@@ -7,7 +7,7 @@ import type { Repo } from '../../shared/repo-types'
 import { mapWithConcurrency } from '../../shared/map-with-concurrency'
 
 // Why: a fresh worktree has no node_modules/.cache, and copying them is slow and
-// duplicates disk; `nightshift.yaml` names the ones every worktree should share instead.
+// duplicates disk; `kolux.yaml` names the ones every worktree should share instead.
 
 const CONFIGURED_SHARED_DIRECTORIES_CACHE_TTL_MS = 30_000
 // Why: resolving a worktree may list many generated directories; overlap
@@ -48,8 +48,8 @@ export function clearConfiguredWorktreeSharedDirectoriesCacheForTests(): void {
   configuredSharedDirectoriesByRepoPath.clear()
 }
 
-/** Every path Nightshift may have symlinked into a worktree: the per-user Worktree
- *  Shared Paths setting plus the repo's `nightshift.yaml` shared directories.
+/** Every path Kolux may have symlinked into a worktree: the per-user Worktree
+ *  Shared Paths setting plus the repo's `kolux.yaml` shared directories.
  *
  *  Callers pair this with `findExistingWorktreeSymlinkPaths`, which keeps only
  *  the entries that really are symlinks — so a configured name that the user
@@ -60,7 +60,7 @@ export function getWorktreeSharedLinkPaths(repo: Pick<Repo, 'path' | 'symlinkPat
   )
 }
 
-/** Resolve `worktree.sharedDirectories` from the repo-root `nightshift.yaml` to
+/** Resolve `worktree.sharedDirectories` from the repo-root `kolux.yaml` to
  *  concrete repo-relative directories to symlink into a new worktree.
  *
  *  Only directories that exist in the primary checkout **and** are gitignored are

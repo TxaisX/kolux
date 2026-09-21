@@ -229,7 +229,7 @@ describe('registerGitHubHandlers', () => {
         updatedAt: 0
       }
     ]
-    const prRepo = { owner: 'acme', repo: 'nightshift', host: 'github.acme-corp.com' }
+    const prRepo = { owner: 'acme', repo: 'kolux', host: 'github.acme-corp.com' }
     const localGitOptions = { wslDistro: 'Ubuntu' }
     getWorkItemMock.mockResolvedValue(null)
     getWorkItemByOwnerRepoMock.mockResolvedValue(null)
@@ -257,7 +257,7 @@ describe('registerGitHubHandlers', () => {
     await handlers['gh:workItemByOwnerRepo'](null, {
       repoPath: '/workspace/repo',
       owner: 'acme',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: prRepo.host,
       number: 42,
       type: 'pr'

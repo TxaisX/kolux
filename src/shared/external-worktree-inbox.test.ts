@@ -8,12 +8,12 @@ import {
   getHiddenImportableExternalWorktrees,
   getNewExternalWorktreeInboxWorktrees,
   getVisibleExternalWorktrees,
-  getVisibleNonNightshiftWorktrees,
+  getVisibleNonKoluxWorktrees,
   mergeExternalWorktreeInboxPaths,
   shouldOfferNewExternalWorktreeInbox
 } from './external-worktree-inbox'
 import {
-  buildKnownNightshiftWorkspaceLayouts,
+  buildKnownKoluxWorkspaceLayouts,
   EXTERNAL_WORKTREE_VISIBILITY_ROLLOUT_AT,
   toDetectedWorktree
 } from './worktree/ownership'
@@ -21,7 +21,7 @@ import {
 const repo: Repo = {
   id: 'repo-1',
   path: '/repo',
-  displayName: 'nightshift',
+  displayName: 'kolux',
   badgeColor: '#000000',
   addedAt: Date.UTC(2026, 4, 24),
   externalWorktreeVisibility: 'hide',
@@ -65,7 +65,7 @@ function detectedResult(worktrees: DetectedWorktree[]): DetectedWorktreeListResu
 
 function makeSettings(): GlobalSettings {
   return {
-    workspaceDir: '/nightshift/workspaces',
+    workspaceDir: '/kolux/workspaces',
     nestWorkspaces: true,
     workspaceDirHistory: [],
     refreshLocalBaseRefOnWorktreeCreate: false,
@@ -148,7 +148,7 @@ describe('external worktree inbox', () => {
       hidden,
       baselined,
       detectedWorktree({ id: 'visible', visible: true }),
-      detectedWorktree({ id: 'nightshift-managed', ownership: 'nightshift-managed' })
+      detectedWorktree({ id: 'kolux-managed', ownership: 'kolux-managed' })
     ])
 
     expect(getHiddenExternalWorktrees(detected)).toEqual([hidden, baselined])
@@ -169,7 +169,7 @@ describe('external worktree inbox', () => {
     })
 
     expect(getVisibleExternalWorktrees(detectedResult([visible, scratch]))).toEqual([visible])
-    expect(getVisibleNonNightshiftWorktrees(detectedResult([visible, scratch]))).toEqual([
+    expect(getVisibleNonKoluxWorktrees(detectedResult([visible, scratch]))).toEqual([
       visible,
       scratch
     ])
@@ -188,7 +188,7 @@ describe('external worktree inbox', () => {
       hiddenScratch,
       hiddenExternal,
       detectedWorktree({ id: 'visible-scratch', ownership: 'agent-scratch', visible: true }),
-      detectedWorktree({ id: 'nightshift-managed', ownership: 'nightshift-managed' }),
+      detectedWorktree({ id: 'kolux-managed', ownership: 'kolux-managed' }),
       detectedWorktree({ id: 'checked-out', selectedCheckout: true })
     ])
 
@@ -206,18 +206,18 @@ describe('external worktree inbox', () => {
     expect(getHiddenImportableExternalWorktrees(undefined)).toEqual([])
   })
 
-  it('offers metadata-free nested Nightshift workspace worktrees through the inbox', () => {
+  it('offers metadata-free nested Kolux workspace worktrees through the inbox', () => {
     const settings = makeSettings()
     const manual = toDetectedWorktree({
       repo,
       settings,
       worktree: makeGitWorktree({
-        path: '/nightshift/workspaces/nightshift/manual-from-git',
+        path: '/kolux/workspaces/kolux/manual-from-git',
         displayName: 'manual-from-git',
         branch: 'refs/heads/manual-from-git',
         isMainWorktree: false
       }),
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo)
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo)
     })
 
     expect(manual.ownership).toBe('external')

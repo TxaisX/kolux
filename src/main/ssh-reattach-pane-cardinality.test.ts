@@ -140,7 +140,7 @@ function tabIds(store: ReturnType<typeof createStore>): string[] {
 
 describe('STA-3077: an SSH reattach binds panes without grafting them back', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })
@@ -300,7 +300,7 @@ describe('STA-3077: an SSH reattach binds panes without grafting them back', () 
 
 describe('STA-3077: one pane keeps at most one live remote lease', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })
@@ -441,7 +441,7 @@ describe('STA-3077: one pane keeps at most one live remote lease', () => {
 
 describe('STA-3077: `expired` separates a superseded sibling from an orphan', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
   })
   afterEach(() => {
     rmSync(testState.dir, { recursive: true, force: true })

@@ -27,7 +27,7 @@ describe('OpenCode usage discovery on Windows', () => {
 
   beforeEach(() => {
     originalEnvironment = Object.fromEntries(environmentKeys.map((key) => [key, process.env[key]]))
-    homeDirectory = mkdtempSync(join(tmpdir(), 'nightshift-opencode-windows-home-'))
+    homeDirectory = mkdtempSync(join(tmpdir(), 'kolux-opencode-windows-home-'))
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     process.env.HOME = homeDirectory
     process.env.USERPROFILE = homeDirectory

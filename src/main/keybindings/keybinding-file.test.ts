@@ -16,7 +16,7 @@ describe('keybinding-file', () => {
   let filePath: string
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-keybindings-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-keybindings-'))
     filePath = join(dir, 'keybindings.json')
   })
 
@@ -24,9 +24,9 @@ describe('keybinding-file', () => {
     rmSync(dir, { recursive: true, force: true })
   })
 
-  it('resolves the user-facing keybindings path under ~/.nightshift', () => {
+  it('resolves the user-facing keybindings path under ~/.kolux', () => {
     expect(getUserKeybindingsPath('/home/test')).toBe(
-      join('/home/test', '.nightshift', 'keybindings.json')
+      join('/home/test', '.kolux', 'keybindings.json')
     )
   })
 
@@ -97,7 +97,7 @@ describe('keybinding-file', () => {
       filePath,
       JSON.stringify({
         keybindings: {
-          'plugin:nightshift-samples.tasks/open': 'Mod+Shift+T',
+          'plugin:kolux-samples.tasks/open': 'Mod+Shift+T',
           'plugin:tasks/open': 'Mod+Alt+T'
         }
       }),
@@ -106,15 +106,15 @@ describe('keybinding-file', () => {
 
     const snapshot = readKeybindingFile(filePath, 'linux')
     expect(snapshot.overrides).toEqual({
-      'plugin:nightshift-samples.tasks/open': ['Mod+Shift+T']
+      'plugin:kolux-samples.tasks/open': ['Mod+Shift+T']
     })
     expect(snapshot.diagnostics).toMatchObject([
       { severity: 'warning', actionId: 'plugin:tasks/open' }
     ])
 
-    writeKeybindingOverride(filePath, 'linux', 'plugin:nightshift-samples.tasks/open', [])
+    writeKeybindingOverride(filePath, 'linux', 'plugin:kolux-samples.tasks/open', [])
     expect(readKeybindingFile(filePath, 'linux').overrides).toEqual({
-      'plugin:nightshift-samples.tasks/open': []
+      'plugin:kolux-samples.tasks/open': []
     })
   })
 

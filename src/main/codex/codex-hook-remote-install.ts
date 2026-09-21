@@ -37,8 +37,8 @@ export async function installCodexHooksRemote(
   // into stale trust keys. Plain SSH keeps its guest-home script contract.
   const redirectedCodexHome = options?.codexHomeDir?.replace(/\/$/, '')
   const remoteScriptPath = redirectedCodexHome
-    ? `${redirectedCodexHome}/.nightshift/agent-hooks/codex-hook.sh`
-    : `${remoteHome.replace(/\/$/, '')}/.nightshift/agent-hooks/codex-hook.sh`
+    ? `${redirectedCodexHome}/.kolux/agent-hooks/codex-hook.sh`
+    : `${remoteHome.replace(/\/$/, '')}/.kolux/agent-hooks/codex-hook.sh`
   try {
     const config = await readHooksJsonRemote(sftp, remoteConfigPath)
     if (!config) {
@@ -92,9 +92,9 @@ export async function installCodexHooksRemote(
 
     config.hooks = nextHooks
     // Why: write script/settings before trust TOML; a partial trust write leaves Codex asking approval instead of running a missing script.
-    // Why: SSH remotes use POSIX `.sh` paths even when Nightshift runs on Windows; never derive remote script syntax from local OS.
+    // Why: SSH remotes use POSIX `.sh` paths even when Kolux runs on Windows; never derive remote script syntax from local OS.
     await writeManagedScriptRemote(sftp, remoteScriptPath, getManagedScript('posix'))
-    // Why: SSH edits the user's remote ~/.codex/hooks.json directly, so preserve non-Nightshift top-level metadata while replacing the hooks tree.
+    // Why: SSH edits the user's remote ~/.codex/hooks.json directly, so preserve non-Kolux top-level metadata while replacing the hooks tree.
     await writeHooksJsonRemote(sftp, remoteConfigPath, { ...config, hooks: nextHooks })
     try {
       const existingTomlRaw = await readTextFileRemote(sftp, remoteTomlPath)

@@ -38,7 +38,7 @@ describe('defaultSelectedSkillProviders', () => {
     expect([...selected]).toEqual(['codex', 'claude'])
   })
 
-  // Why: a runtime Nightshift cannot probe from here must not read as "no agents
+  // Why: a runtime Kolux cannot probe from here must not read as "no agents
   // installed" — that would quietly install nothing.
   it('falls back to every agent when detection is unavailable', () => {
     const selected = defaultSelectedSkillProviders(null)

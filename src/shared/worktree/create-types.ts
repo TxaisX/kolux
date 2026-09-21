@@ -90,8 +90,8 @@ export type SparsePreset = {
 export type CreateWorktreeArgs = {
   repoId: string
   name: string
-  /** True only when `name` came from Nightshift's creature-name generator rather than the user. Gates
-   *  name retirement: a generated name is never reissued, but `Nightshift`, `Runner` and `Molly` are all
+  /** True only when `name` came from Kolux's creature-name generator rather than the user. Gates
+   *  name retirement: a generated name is never reissued, but `Kolux`, `Runner` and `Molly` are all
    *  in that pool, so a name the user typed must stay reusable. Defaults to false, which keeps
    *  CLI and automation callers on the pre-retirement behavior. */
   nameWasGenerated?: boolean

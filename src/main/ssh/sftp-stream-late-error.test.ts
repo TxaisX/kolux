@@ -19,7 +19,7 @@ let tempDir = ''
 let localFile = ''
 
 beforeEach(async () => {
-  tempDir = await mkdtemp(join(tmpdir(), 'nightshift-sftp-late-'))
+  tempDir = await mkdtemp(join(tmpdir(), 'kolux-sftp-late-'))
   localFile = join(tempDir, 'relay.js')
   await writeFile(localFile, 'console.log(1)\n')
 })
@@ -43,11 +43,7 @@ describe('late SFTP stream errors', () => {
     const stream = new PassThrough()
     stream.resume()
 
-    await uploadFile(
-      sftpDoubleReturning(stream),
-      localFile,
-      '/home/user/.nightshift-remote/relay.js'
-    )
+    await uploadFile(sftpDoubleReturning(stream), localFile, '/home/user/.kolux-remote/relay.js')
 
     expect(() => stream.emit('error', sftpNoSuchFileError())).not.toThrow()
   })
@@ -56,11 +52,7 @@ describe('late SFTP stream errors', () => {
     const stream = new PassThrough()
     stream.resume()
 
-    await writeStringViaSftp(
-      sftpDoubleReturning(stream),
-      '/home/user/.nightshift-remote/.version',
-      'v1'
-    )
+    await writeStringViaSftp(sftpDoubleReturning(stream), '/home/user/.kolux-remote/.version', 'v1')
 
     expect(() => stream.emit('error', sftpNoSuchFileError())).not.toThrow()
   })
@@ -88,8 +80,8 @@ describe('late SFTP stream errors', () => {
     }) as unknown as SFTPWrapper
 
     await writeStringsViaSftp({ sftp: () => Promise.resolve(sftp) }, [
-      { path: '/home/user/.local/bin/nightshift', contents: '#!/bin/sh\n' },
-      { path: '/home/user/.local/bin/nightshift.mjs', contents: 'export {}\n' }
+      { path: '/home/user/.local/bin/kolux', contents: '#!/bin/sh\n' },
+      { path: '/home/user/.local/bin/kolux.mjs', contents: 'export {}\n' }
     ])
 
     expect(() => sftp.emit('error', sftpNoSuchFileError())).not.toThrow()
@@ -109,7 +101,7 @@ describe('late SFTP stream errors', () => {
     // mid-transfer failure would be swallowed into a hang.
     await expect(
       writeStringsViaSftp({ sftp: () => Promise.resolve(sftp) }, [
-        { path: '/home/user/.local/bin/nightshift', contents: '#!/bin/sh\n' }
+        { path: '/home/user/.local/bin/kolux', contents: '#!/bin/sh\n' }
       ])
     ).rejects.toThrow('file does not exist')
   })
@@ -142,7 +134,7 @@ describe('sandboxed SFTP subsystem diagnosis', () => {
     const failure: unknown = await writeRelayFile(
       conn,
       getRemoteHostPlatform('linux-x64'),
-      '/home/user/.nightshift-remote/relay-1/.version',
+      '/home/user/.kolux-remote/relay-1/.version',
       'v1'
     ).then(
       () => null,
@@ -162,7 +154,7 @@ describe('sandboxed SFTP subsystem diagnosis', () => {
       writeRelayFile(
         conn,
         getRemoteHostPlatform('linux-x64'),
-        '/home/user/.nightshift-remote/relay-1/.version',
+        '/home/user/.kolux-remote/relay-1/.version',
         'v1'
       )
     ).rejects.toThrow(/SFTP subsystem sees a different filesystem/)

@@ -6,7 +6,7 @@ import type {
   BrowserRoutePageGuestIdentity
 } from './browser-route-page-authority'
 
-const partition = `persist:nightshift-browser-v1-${'a'.repeat(64)}`
+const partition = `persist:kolux-browser-v1-${'a'.repeat(64)}`
 
 function command(
   type: BrowserClientHostCommandEvent['command']['type'],
@@ -113,7 +113,7 @@ function createHarness() {
     )
   }
   const dependencies = {
-    nightshiftProfileId: 'nightshift-profile-a',
+    koluxProfileId: 'kolux-profile-a',
     authorityConnectionIdentity: 'authority-record-a',
     legacyAuthorityConnectionIdentity: 'legacy-authority-record-a',
     storageScope: 'a'.repeat(64),

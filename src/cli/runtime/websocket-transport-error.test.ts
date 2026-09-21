@@ -34,7 +34,7 @@ describe('CLI WebSocket transport error identity', () => {
         data: {
           orchestrationRequestId: 'request_1',
           dispatchId: 'dispatch_1',
-          originalCommand: ['nightshift', 'orchestration', 'worker-start', '--task', 'task_1']
+          originalCommand: ['kolux', 'orchestration', 'worker-start', '--task', 'task_1']
         }
       })
     )
@@ -48,7 +48,7 @@ describe('CLI WebSocket transport error identity', () => {
         data: {
           orchestrationRequestId: 'request_1',
           dispatchId: 'dispatch_1',
-          originalCommand: ['nightshift', 'orchestration', 'worker-start', '--task', 'task_1']
+          originalCommand: ['kolux', 'orchestration', 'worker-start', '--task', 'task_1']
         }
       })
       expect(orchestrationMutationRecoveryError(error)).toMatchObject({
@@ -56,7 +56,7 @@ describe('CLI WebSocket transport error identity', () => {
           recovery: {
             dispatchId: 'dispatch_1',
             queryCommand: [
-              'nightshift',
+              'kolux',
               'orchestration',
               'worker-show',
               '--dispatch',
@@ -64,7 +64,7 @@ describe('CLI WebSocket transport error identity', () => {
               '--json'
             ],
             retryCommand: [
-              'nightshift',
+              'kolux',
               'orchestration',
               'worker-start',
               '--task',

@@ -103,7 +103,7 @@ describe('legacy coordinator fence jurisdiction', () => {
       error: {
         code: 'consumer_fenced',
         data: {
-          recoveryCommand: `nightshift orchestration run-use --id ${harness.adoptedRunId} --takeover-legacy`
+          recoveryCommand: `kolux orchestration run-use --id ${harness.adoptedRunId} --takeover-legacy`
         }
       }
     })

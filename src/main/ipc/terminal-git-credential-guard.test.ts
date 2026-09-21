@@ -72,12 +72,12 @@ describe('applyTerminalGitCredentialPromptGuard', () => {
     }
   })
 
-  it('does not treat a generic Nightshift CLI command as an agent', () => {
+  it('does not treat a generic Kolux CLI command as an agent', () => {
     const env: Record<string, string> = { PATH: '/usr/bin' }
 
     expect(
       applyTerminalGitCredentialPromptGuard(env, {
-        launchCommand: 'nightshift status',
+        launchCommand: 'kolux status',
         platform: 'linux'
       })
     ).toBe(false)

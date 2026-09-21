@@ -90,8 +90,8 @@ export class WebRuntimeConnectionTransport {
   close(options: { notifySubscriptions?: boolean } = {}): void {
     this.intentionallyClosed = true
     this.clearTimers()
-    this.requestRegistry.rejectAll('Remote Nightshift runtime connection closed.')
-    this.connectionWaiters.rejectAll(new Error('Remote Nightshift runtime connection closed.'))
+    this.requestRegistry.rejectAll('Remote Kolux runtime connection closed.')
+    this.connectionWaiters.rejectAll(new Error('Remote Kolux runtime connection closed.'))
     this.subscriptionRegistry.close(options.notifySubscriptions ?? true)
     if (this.ws) {
       this.ws.close()
@@ -134,7 +134,7 @@ export class WebRuntimeConnectionTransport {
     this.clearConnectTimer()
     this.clearHandshakeTimer()
     this.heartbeat.clear()
-    this.requestRegistry.rejectAll('Remote Nightshift runtime connection interrupted.')
+    this.requestRegistry.rejectAll('Remote Kolux runtime connection interrupted.')
     this.subscriptionRegistry.handleInterrupted()
     if (this.intentionallyClosed || this.state === 'auth-failed') {
       this.setState(this.state === 'auth-failed' ? 'auth-failed' : 'disconnected')

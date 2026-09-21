@@ -20,16 +20,12 @@ it('gives the localhost SSH journey its same-filesystem server and agent prerequ
   expect(setup.run).toContain('PasswordAuthentication no')
   expect(setup.run).toContain('UsePAM yes')
   expect(setup.run).toContain('mkdir -p "$HOME/.pi/agent"')
-  for (const key of [
-    'NIGHTSHIFT_E2E_SSH_PORT',
-    'NIGHTSHIFT_E2E_SSH_USER',
-    'NIGHTSHIFT_E2E_SSH_IDENTITY_FILE'
-  ]) {
+  for (const key of ['KOLUX_E2E_SSH_PORT', 'KOLUX_E2E_SSH_USER', 'KOLUX_E2E_SSH_IDENTITY_FILE']) {
     expect(setup.run).toContain(key)
   }
   const run = job.steps.find((step) => step.name === 'Run localhost SSH terminal and hook journey')
-  expect(run.env.NIGHTSHIFT_E2E_SSH_LOCALHOST).toBe('1')
-  expect(run.env.NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS).toBe('1')
+  expect(run.env.KOLUX_E2E_SSH_LOCALHOST).toBe('1')
+  expect(run.env.KOLUX_FEATURE_REMOTE_AGENT_HOOKS).toBe('1')
   expect(run.run).toContain(spec)
   expect(run.run).toContain('--project=electron-headless')
   expect(run.run).not.toContain('--retries')

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
 import type { SkillInstallDestination } from '../../src/shared/skill-install-contract'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient,
@@ -37,20 +37,20 @@ test.afterAll(async () => {
 
 test('installs on a headed desktop runtime without a local fallback', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(240_000)
   const fixture = requireCloudFixture()
   const requestStart = fixture.requests.length
-  const folderRoot = mkdtempSync(join(tmpdir(), 'nightshift-paired-skill-folder-'))
+  const folderRoot = mkdtempSync(join(tmpdir(), 'kolux-paired-skill-folder-'))
   let client: PairedElectronClient | null = null
   try {
     const hostHome = await electronApp.evaluate(({ app }) => app.getPath('home'))
-    const worktreeId = await activeWorktreeId(nightshiftPage)
-    const folderWorkspaceId = await createHostFolderWorkspace(nightshiftPage, folderRoot)
+    const worktreeId = await activeWorktreeId(koluxPage)
+    const folderWorkspaceId = await createHostFolderWorkspace(koluxPage, folderRoot)
     client = await launchPairedElectronClient(
-      await createRuntimeDesktopPairingOffer(nightshiftPage),
+      await createRuntimeDesktopPairingOffer(koluxPage),
       testInfo,
       'Skill installation client',
       { extraEnv: cloudClientEnvironment() }
@@ -120,17 +120,17 @@ test('installs on a headless serve runtime through the same contract', async ({
 function cloudClientEnvironment(): Record<string, string> {
   const { origin } = requireCloudFixture()
   return {
-    NIGHTSHIFT_ARTIFACTS_API_URL: origin,
-    NIGHTSHIFT_CLOUD_API_URL: origin,
-    NIGHTSHIFT_CLOUD_CLIENT_ID: 'skills-e2e-client',
-    NIGHTSHIFT_CLOUD_DEV_AUTH: '1',
-    NIGHTSHIFT_CLOUD_ALLOW_PLAINTEXT_SESSION: '1',
-    NIGHTSHIFT_SKILL_PACKAGE_DOWNLOAD_ORIGINS: origin
+    KOLUX_ARTIFACTS_API_URL: origin,
+    KOLUX_CLOUD_API_URL: origin,
+    KOLUX_CLOUD_CLIENT_ID: 'skills-e2e-client',
+    KOLUX_CLOUD_DEV_AUTH: '1',
+    KOLUX_CLOUD_ALLOW_PLAINTEXT_SESSION: '1',
+    KOLUX_SKILL_PACKAGE_DOWNLOAD_ORIGINS: origin
   }
 }
 
 async function connectCloud(page: Page): Promise<void> {
-  const auth = await page.evaluate(() => window.api.nightshiftProfiles.connectCurrent())
+  const auth = await page.evaluate(() => window.api.koluxProfiles.connectCurrent())
   expect(auth.status).toBe('connected')
 }
 

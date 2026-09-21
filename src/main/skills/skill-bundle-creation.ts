@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import {
   AGENT_PLUGIN_MANIFEST_PATH,
   AGENT_PLUGIN_SCHEMA_V1,
-  NIGHTSHIFT_SKILL_BUNDLE_MANIFEST_PATH,
+  KOLUX_SKILL_BUNDLE_MANIFEST_PATH,
   computeSkillBundleDigest,
   parseAgentPluginManifest,
   parseSkillBundleManifest,
@@ -166,7 +166,7 @@ async function createSkillBundleArchiveUnobserved(
     foldedNames.add(foldedName)
   }
   await dependencies.afterSourcesObserved?.()
-  const workDirectory = await mkdtemp(join(tmpdir(), 'nightshift-skill-bundle-'))
+  const workDirectory = await mkdtemp(join(tmpdir(), 'kolux-skill-bundle-'))
   const skillsRoot = join(workDirectory, 'skills')
   const verificationDirectory = join(workDirectory, 'verification')
   const temporaryArchive = `${input.archivePath}.${process.pid}.${randomUUID()}.tmp`
@@ -209,7 +209,7 @@ async function createSkillBundleArchiveUnobserved(
         bytes: pluginBytes
       },
       {
-        path: NIGHTSHIFT_SKILL_BUNDLE_MANIFEST_PATH,
+        path: KOLUX_SKILL_BUNDLE_MANIFEST_PATH,
         size: manifestBytes.length,
         executable: false,
         bytes: manifestBytes

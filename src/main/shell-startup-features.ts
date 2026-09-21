@@ -1,17 +1,17 @@
 /**
- * The single env variable Nightshift uses to tell a launched shell which startup
+ * The single env variable Kolux uses to tell a launched shell which startup
  * features its wrapper should turn on, plus the pure selection that fills it.
  *
  * Why a positive allowlist the wrapper destroys before anything else runs:
- * every earlier switch was a negative, exported one (`NIGHTSHIFT_SHELL_READY_MARKER=0`,
- * `NIGHTSHIFT_SHELL_COMMAND_MARKERS=0`). Those live in the pane's PTY env, so every
+ * every earlier switch was a negative, exported one (`KOLUX_SHELL_READY_MARKER=0`,
+ * `KOLUX_SHELL_COMMAND_MARKERS=0`). Those live in the pane's PTY env, so every
  * child inherits them — a pane launched with a feature suppressed suppressed it
- * for a Nightshift started from that pane too. With an allowlist, an inherited or
+ * for a Kolux started from that pane too. With an allowlist, an inherited or
  * stale value can only ever mean *fewer* features, never more, and the wrapper
  * unsets it before the user's own config (or anything it spawns) can see it.
  */
 
-export const SHELL_STARTUP_FEATURE_ENV = 'NIGHTSHIFT_SHELL_FEATURES'
+export const SHELL_STARTUP_FEATURE_ENV = 'KOLUX_SHELL_FEATURES'
 
 export const SHELL_STARTUP_FEATURES = [
   'overlay',
@@ -24,14 +24,14 @@ export const SHELL_STARTUP_FEATURES = [
 
 export type ShellStartupFeature = (typeof SHELL_STARTUP_FEATURES)[number]
 
-/** Spawn-env keys that mean this pane carries a Nightshift overlay the wrapper must re-apply. */
+/** Spawn-env keys that mean this pane carries a Kolux overlay the wrapper must re-apply. */
 const OVERLAY_ENV_KEYS = [
-  'NIGHTSHIFT_OPENCODE_CONFIG_DIR',
-  'NIGHTSHIFT_MIMOCODE_HOME',
-  'NIGHTSHIFT_OMP_STATUS_EXTENSION',
-  'NIGHTSHIFT_CODEX_HOME',
-  'NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR',
-  'NIGHTSHIFT_REMOTE_CLI_BIN_DIR'
+  'KOLUX_OPENCODE_CONFIG_DIR',
+  'KOLUX_MIMOCODE_HOME',
+  'KOLUX_OMP_STATUS_EXTENSION',
+  'KOLUX_CODEX_HOME',
+  'KOLUX_AGENT_TEAMS_SHIM_DIR',
+  'KOLUX_REMOTE_CLI_BIN_DIR'
 ] as const
 
 export type ShellStartupFeatureInput = {
@@ -39,11 +39,11 @@ export type ShellStartupFeatureInput = {
   shellPath: string
   /** The env this spawn will hand the shell — never `process.env`. */
   env: Record<string, string | undefined>
-  /** True when Nightshift will deliver a startup command into this pane. */
+  /** True when Kolux will deliver a startup command into this pane. */
   hasStartupCommand: boolean
   /** True when that delivery waits for the wrapper's OSC 777 readiness marker. */
   waitsForShellReady: boolean
-  /** True when Nightshift needs the shell to announce its PID at startup. */
+  /** True when Kolux needs the shell to announce its PID at startup. */
   emitsStartupIdentity: boolean
 }
 
@@ -53,23 +53,22 @@ function shellName(shellPath: string): string {
 
 /**
  * Pure function of spawn env + launch intent. Nothing here reads
- * `NIGHTSHIFT_SHELL_FEATURES`, so a value inherited from a parent shell cannot
- * enable or disable anything for the shell Nightshift is about to launch.
+ * `KOLUX_SHELL_FEATURES`, so a value inherited from a parent shell cannot
+ * enable or disable anything for the shell Kolux is about to launch.
  */
 export function selectShellStartupFeatures(input: ShellStartupFeatureInput): ShellStartupFeature[] {
   const overlay = OVERLAY_ENV_KEYS.some((key) => Boolean(input.env[key]))
-  // Exactly the panes Nightshift wrapped before history widened wrapping.
+  // Exactly the panes Kolux wrapped before history widened wrapping.
   const wrappedBefore = overlay || input.hasStartupCommand
   const ready = input.waitsForShellReady
   // Why zsh only: the unguarded HISTFILE assignment lives in the *system zshrc*.
   // bash has no equivalent, and wrapping bash for history alone would swap its
-  // login startup-file chain for Nightshift's approximation of one.
-  // Why also when Nightshift injected nothing: any wrapped pane has Nightshift's ZDOTDIR in
+  // login startup-file chain for Kolux's approximation of one.
+  // Why also when Kolux injected nothing: any wrapped pane has Kolux's ZDOTDIR in
   // place while the system zshrc runs, so the clobbered value it derives lands
-  // inside Nightshift's wrapper dir and has to be repaired the same way.
+  // inside Kolux's wrapper dir and has to be repaired the same way.
   const history =
-    shellName(input.shellPath) === 'zsh' &&
-    (Boolean(input.env.NIGHTSHIFT_HISTFILE) || wrappedBefore)
+    shellName(input.shellPath) === 'zsh' && (Boolean(input.env.KOLUX_HISTFILE) || wrappedBefore)
 
   const features: ShellStartupFeature[] = []
   if (overlay) {

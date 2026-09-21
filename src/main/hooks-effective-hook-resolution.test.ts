@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { getDefaultTabsLaunch } from './effective-hook-config'
 import {
   makeHookTestRepo,
-  TEST_REPO_NIGHTSHIFT_YAML_PATH,
-  TEST_WORKTREE_NIGHTSHIFT_YAML_PATH,
+  TEST_REPO_KOLUX_YAML_PATH,
+  TEST_WORKTREE_KOLUX_YAML_PATH,
   TEST_WORKTREE_PATH
 } from './hooks-test-fixtures'
 
@@ -26,7 +26,7 @@ describe('getEffectiveHooks', () => {
     scripts?: { setup: string; archive: string }
   }) => makeHookTestRepo(hookSettings)
 
-  it('uses hooks from nightshift.yaml when present', async () => {
+  it('uses hooks from kolux.yaml when present', async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockReturnValue(true)
     vi.mocked(fs.readFileSync).mockReturnValue('scripts:\n  setup: |\n    echo "yaml setup"\n')
@@ -43,17 +43,16 @@ describe('getEffectiveHooks', () => {
     })
   })
 
-  it("loads setup hooks from the target worktree's nightshift.yaml when a worktree path is provided", async () => {
+  it("loads setup hooks from the target worktree's kolux.yaml when a worktree path is provided", async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockImplementation(
-      (path) =>
-        path === TEST_REPO_NIGHTSHIFT_YAML_PATH || path === TEST_WORKTREE_NIGHTSHIFT_YAML_PATH
+      (path) => path === TEST_REPO_KOLUX_YAML_PATH || path === TEST_WORKTREE_KOLUX_YAML_PATH
     )
     vi.mocked(fs.readFileSync).mockImplementation((path) => {
-      if (path === TEST_REPO_NIGHTSHIFT_YAML_PATH) {
+      if (path === TEST_REPO_KOLUX_YAML_PATH) {
         return 'scripts:\n  setup: |\n    echo old-version\n'
       }
-      if (path === TEST_WORKTREE_NIGHTSHIFT_YAML_PATH) {
+      if (path === TEST_WORKTREE_KOLUX_YAML_PATH) {
         return 'scripts:\n  setup: |\n    echo new-version\n'
       }
       return ''
@@ -163,7 +162,7 @@ describe('getEffectiveHooks', () => {
     })
   })
 
-  it('uses local settings by default even when nightshift.yaml defines only one command', async () => {
+  it('uses local settings by default even when kolux.yaml defines only one command', async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockReturnValue(true)
     vi.mocked(fs.readFileSync).mockReturnValue('scripts:\n  archive: |\n    echo "yaml archive"\n')
@@ -225,7 +224,7 @@ describe('getEffectiveHooks', () => {
     })
   })
 
-  it('treats legacy shared-first policy as nightshift.yaml only', async () => {
+  it('treats legacy shared-first policy as kolux.yaml only', async () => {
     const fs = await import('node:fs')
     vi.mocked(fs.existsSync).mockReturnValue(true)
     vi.mocked(fs.readFileSync).mockReturnValue('scripts:\n  archive: |\n    echo "yaml archive"\n')

@@ -20,7 +20,7 @@ export function remoteArtifactCliForwardingFrameBytes(
     {
       jsonrpc: '2.0',
       id: FORWARDED_REQUEST_SIZE_ID,
-      method: 'nightshift.cli',
+      method: 'kolux.cli',
       params
     },
     0,
@@ -33,7 +33,7 @@ export function assertRemoteArtifactCliForwardingFits(
 ): void {
   if (remoteArtifactCliForwardingFrameBytes(params) > DISPATCHER_CONTROL_QUEUE_MAX_BYTES) {
     throw new Error(
-      'Artifact is too large for the Nightshift SSH transport. Use the browser upload page instead.'
+      'Artifact is too large for the Kolux SSH transport. Use the browser upload page instead.'
     )
   }
 }

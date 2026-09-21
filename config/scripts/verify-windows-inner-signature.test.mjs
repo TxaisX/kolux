@@ -27,8 +27,8 @@ const validSignature = {
 }
 
 function withTempFile(callback) {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-inner-signature-'))
-  const filePath = join(dir, 'Nightshift.exe')
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-inner-signature-'))
+  const filePath = join(dir, 'Kolux.exe')
   writeFileSync(filePath, 'placeholder executable')
 
   try {
@@ -39,25 +39,25 @@ function withTempFile(callback) {
 }
 
 describe('verify-windows-inner-signature', () => {
-  const originalExpectedSigners = process.env.NIGHTSHIFT_WINDOWS_EXPECTED_SIGNERS
-  const originalExpectedThumbprints = process.env.NIGHTSHIFT_WINDOWS_EXPECTED_THUMBPRINTS
+  const originalExpectedSigners = process.env.KOLUX_WINDOWS_EXPECTED_SIGNERS
+  const originalExpectedThumbprints = process.env.KOLUX_WINDOWS_EXPECTED_THUMBPRINTS
 
   beforeEach(() => {
-    delete process.env.NIGHTSHIFT_WINDOWS_EXPECTED_SIGNERS
-    delete process.env.NIGHTSHIFT_WINDOWS_EXPECTED_THUMBPRINTS
+    delete process.env.KOLUX_WINDOWS_EXPECTED_SIGNERS
+    delete process.env.KOLUX_WINDOWS_EXPECTED_THUMBPRINTS
   })
 
   afterEach(() => {
     if (originalExpectedSigners === undefined) {
-      delete process.env.NIGHTSHIFT_WINDOWS_EXPECTED_SIGNERS
+      delete process.env.KOLUX_WINDOWS_EXPECTED_SIGNERS
     } else {
-      process.env.NIGHTSHIFT_WINDOWS_EXPECTED_SIGNERS = originalExpectedSigners
+      process.env.KOLUX_WINDOWS_EXPECTED_SIGNERS = originalExpectedSigners
     }
 
     if (originalExpectedThumbprints === undefined) {
-      delete process.env.NIGHTSHIFT_WINDOWS_EXPECTED_THUMBPRINTS
+      delete process.env.KOLUX_WINDOWS_EXPECTED_THUMBPRINTS
     } else {
-      process.env.NIGHTSHIFT_WINDOWS_EXPECTED_THUMBPRINTS = originalExpectedThumbprints
+      process.env.KOLUX_WINDOWS_EXPECTED_THUMBPRINTS = originalExpectedThumbprints
     }
   })
 
@@ -93,7 +93,7 @@ describe('verify-windows-inner-signature', () => {
 
   it('rejects missing, nonexistent, and directory executable paths before PowerShell', () => {
     expect(() => validateExecutablePath('')).toThrow(/Usage:/)
-    expect(() => validateExecutablePath(join(tmpdir(), 'missing-Nightshift.exe'))).toThrow(
+    expect(() => validateExecutablePath(join(tmpdir(), 'missing-Kolux.exe'))).toThrow(
       /does not exist/
     )
 
@@ -167,30 +167,30 @@ describe('verify-windows-inner-signature', () => {
       return { status: 0, stdout: JSON.stringify(validSignature), stderr: '' }
     }
 
-    expect(getPowerShellSignatureJson('C:\\Path With Spaces\\Nightshift.exe', spawnSyncImpl)).toBe(
+    expect(getPowerShellSignatureJson('C:\\Path With Spaces\\Kolux.exe', spawnSyncImpl)).toBe(
       JSON.stringify(validSignature)
     )
     expect(calls[0].command).toBe('pwsh')
     expect(calls[0].args).toContain('-Command')
-    expect(calls[0].args.at(-1)).not.toBe('C:\\Path With Spaces\\Nightshift.exe')
+    expect(calls[0].args.at(-1)).not.toBe('C:\\Path With Spaces\\Kolux.exe')
     expect(calls[0].options).toEqual(
       expect.objectContaining({
         encoding: 'utf8',
         env: expect.objectContaining({
-          NIGHTSHIFT_WINDOWS_INNER_EXECUTABLE: 'C:\\Path With Spaces\\Nightshift.exe'
+          KOLUX_WINDOWS_INNER_EXECUTABLE: 'C:\\Path With Spaces\\Kolux.exe'
         })
       })
     )
 
     expect(() =>
-      getPowerShellSignatureJson('Nightshift.exe', () => ({
+      getPowerShellSignatureJson('Kolux.exe', () => ({
         status: 0,
         stdout: '{}',
         stderr: 'warning'
       }))
     ).toThrow(/stderr/)
     expect(() =>
-      getPowerShellSignatureJson('Nightshift.exe', () => ({ status: 7, stdout: '', stderr: '' }))
+      getPowerShellSignatureJson('Kolux.exe', () => ({ status: 7, stdout: '', stderr: '' }))
     ).toThrow(/exit code 7/)
   })
 

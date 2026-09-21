@@ -137,14 +137,14 @@ export class RelayRuntimeServices {
   }
 
   private registerRemoteCliRoutes(): void {
-    this.dispatcher.onRequest('nightshift.cli', async (params, context) =>
-      this.dispatcher.requestAnyClient('nightshift.cli', params, {
+    this.dispatcher.onRequest('kolux.cli', async (params, context) =>
+      this.dispatcher.requestAnyClient('kolux.cli', params, {
         excludeClientId: context.clientId,
         timeoutMs: remoteCliRequestTimeoutMs(params)
       })
     )
-    this.dispatcher.onRequest('nightshift.cli.postOutput', async (params, context) =>
-      this.dispatcher.requestAnyClient('nightshift.cli.postOutput', params, {
+    this.dispatcher.onRequest('kolux.cli.postOutput', async (params, context) =>
+      this.dispatcher.requestAnyClient('kolux.cli.postOutput', params, {
         excludeClientId: context.clientId,
         timeoutMs: remoteCliRequestTimeoutMs(params)
       })

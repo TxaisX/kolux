@@ -75,18 +75,18 @@ describe('resolveRightSidebarEffectiveTab', () => {
   it('keeps a plugin tab active while its panel is still contributed', () => {
     expect(
       resolveRightSidebarEffectiveTab({
-        normalizedActiveTab: 'plugin:nightshift-samples.my-plugin/dashboard',
-        visibleItems: [...gitVisibleItems, { id: 'plugin:nightshift-samples.my-plugin/dashboard' }],
+        normalizedActiveTab: 'plugin:kolux-samples.my-plugin/dashboard',
+        visibleItems: [...gitVisibleItems, { id: 'plugin:kolux-samples.my-plugin/dashboard' }],
         activeFolderWorkspaceKey: null,
         rememberedFolderTab: null
       })
-    ).toBe('plugin:nightshift-samples.my-plugin/dashboard')
+    ).toBe('plugin:kolux-samples.my-plugin/dashboard')
   })
 
   it('falls back to the first visible item when a plugin tab was uninstalled', () => {
     expect(
       resolveRightSidebarEffectiveTab({
-        normalizedActiveTab: 'plugin:nightshift-samples.my-plugin/dashboard',
+        normalizedActiveTab: 'plugin:kolux-samples.my-plugin/dashboard',
         visibleItems: gitVisibleItems,
         activeFolderWorkspaceKey: null,
         rememberedFolderTab: null

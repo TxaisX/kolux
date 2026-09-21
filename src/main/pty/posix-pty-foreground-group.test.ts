@@ -29,7 +29,7 @@ describe('getPosixPtyForegroundGroup', () => {
   })
 
   it('refuses when this process shares the PTY', () => {
-    // Why: a dev daemon can inherit its launch TTY; group-signalling would hit Nightshift.
+    // Why: a dev daemon can inherit its launch TTY; group-signalling would hit Kolux.
     const shared = ['84644 84985 ttys318', '4242 84985 ttys318'].join('\n')
     expect(getPosixPtyForegroundGroup(shared, 84644, '/dev/ttys318', 4242)).toBeNull()
   })
@@ -177,7 +177,7 @@ describe('process table lookup', () => {
   })
 
   it('forks ps once per pane after the first SIGWINCH of the process', () => {
-    // Why: `runPs(currentPid)` reads Nightshift's own controlling tty, which cannot change
+    // Why: `runPs(currentPid)` reads Kolux's own controlling tty, which cannot change
     // for the process lifetime and feeds only the "do we share this PTY" guard. The
     // renderer fires SIGWINCH twice per revealed pane, so re-forking it made a 4-pane
     // tab switch eight synchronous ~3ms `ps` calls on the main event loop.
@@ -214,7 +214,7 @@ describe('process table lookup', () => {
       const pidArgs = execFileSyncMock.mock.calls.map((call) =>
         Number((call[1] as string[])[(call[1] as string[]).indexOf('-p') + 1])
       )
-      // 8 root-pid reads (one per signal) + exactly ONE read of Nightshift's own row.
+      // 8 root-pid reads (one per signal) + exactly ONE read of Kolux's own row.
       expect(pidArgs.filter((pid) => pid === 4242)).toHaveLength(1)
       expect(pidArgs).toHaveLength(9)
       expect(kill).toHaveBeenCalledTimes(8)

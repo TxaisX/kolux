@@ -84,7 +84,7 @@ export const TERMINAL_FILE_GRANT_TTL_MS = 10 * 60 * 1000
 export const OPEN_NOFOLLOW = typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
 
 export const RUNTIME_FILE_MUTATION_UPDATE_REQUIRED =
-  'Remote file changes require a newer Nightshift client. Update the paired client and try again.'
+  'Remote file changes require a newer Kolux client. Update the paired client and try again.'
 
 export function assertRuntimeFileMutationExpectation(
   // The resolved host, not a repo row's connection: recomputing it from `connectionId` here spelled

@@ -50,7 +50,7 @@ export async function addWorktreeOp(
 
   // Why: --no-track + push.autoSetupRemote=true mirrors the local
   // addWorktree path (src/main/git/worktree.ts). Keeping the SSH path in
-  // sync prevents a transport-only divergence where "Nightshift creates a
+  // sync prevents a transport-only divergence where "Kolux creates a
   // worktree" produces a different `git status` / `git push` UX based on
   // whether the repo is local or SSH-mounted. See full design rationale
   // (state machine, common-dir scope, old-git fallback) in the comments

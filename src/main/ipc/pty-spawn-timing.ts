@@ -4,7 +4,7 @@
 // lets benchmarks attribute the cost without a tracing dependency. Each phase
 // must name what it actually spans — `host_env` once covered the whole Codex
 // preamble and pinned 2s of hook-install cost on the env builder that ran last.
-// Enabled via NIGHTSHIFT_PTY_SPAWN_TIMING=1.
+// Enabled via KOLUX_PTY_SPAWN_TIMING=1.
 
 export type PtySpawnTiming = {
   mark(phase: string): void
@@ -17,7 +17,7 @@ const noopTiming: PtySpawnTiming = {
 }
 
 export function createPtySpawnTiming(): PtySpawnTiming {
-  const flag = process.env.NIGHTSHIFT_PTY_SPAWN_TIMING
+  const flag = process.env.KOLUX_PTY_SPAWN_TIMING
   if (!flag || flag === '0' || flag.toLowerCase() === 'false') {
     return noopTiming
   }

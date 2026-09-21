@@ -17,7 +17,7 @@ and every profile that has run the app once has. Three stores gate sidebar chrom
 | `collapsedGroups` | which project/group headers are collapsed | persisted UI state |
 
 So: to make chrome disappear for the current user, either delete the render site, or flip the
-stored value (`window.api.settings.set({...})` over CDP — see the `nightshift-run` skill). A
+stored value (`window.api.settings.set({...})` over CDP — see the `kolux-run` skill). A
 default flip alone only changes fresh profiles. The renderer store does not pick up an external
 `settings.set` live; the row changes on next renderer load.
 

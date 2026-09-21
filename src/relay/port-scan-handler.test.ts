@@ -152,7 +152,7 @@ describe('PortScanHandler Linux walk bounds', () => {
     // Why: this scan repeats for the life of the session, and its unit cost was O(all host
     // processes x all fds) regardless of how few sockets it was resolving. On a busy remote the
     // process count only climbs, so the scan got permanently more expensive -- the shape behind
-    // "SSH degrades the longer Nightshift stays open". One listener means one readlink, not 100,000.
+    // "SSH degrades the longer Kolux stays open". One listener means one readlink, not 100,000.
     mockLinuxProcScan({ pidCount: 1_000, fdCount: 100 })
 
     await capturePortDetectHandler()({}, requestContext())

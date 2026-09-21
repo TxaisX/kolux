@@ -1,4 +1,4 @@
-import { RuntimeBrowserCommands } from '../runtime/nightshift-runtime-browser'
+import { RuntimeBrowserCommands } from '../runtime/kolux-runtime-browser'
 import type { RuntimeBrowserCommandsFactory } from '../runtime/runtime-browser-commands-factory'
 
 /** The desktop factory. Importing this file is what pulls in the Chromium browser cluster. */

@@ -209,7 +209,7 @@ function unexpectedExitFallbackMutations(
   }
   mutations.push({
     kind: 'item',
-    identity: { provider: 'nightshift', clientMessageId: stableSettlementId },
+    identity: { provider: 'kolux', clientMessageId: stableSettlementId },
     body: { kind: 'status', text: boundJournalStatusText(`Provider exited: ${event.reason}`) }
   })
   mutations.push(...tombstones)

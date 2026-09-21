@@ -1,8 +1,7 @@
-export const TERMINAL_SESSION_STATE_SAVE_FAILED_CODE =
-  'NIGHTSHIFT_TERMINAL_SESSION_STATE_SAVE_FAILED'
+export const TERMINAL_SESSION_STATE_SAVE_FAILED_CODE = 'KOLUX_TERMINAL_SESSION_STATE_SAVE_FAILED'
 
 export const TERMINAL_SESSION_STATE_SAVE_FAILED_MESSAGE =
-  'Nightshift could not save this terminal session because local storage is unavailable.'
+  'Kolux could not save this terminal session because local storage is unavailable.'
 
 export function createTerminalSessionStateSaveFailureMessage(): string {
   return `${TERMINAL_SESSION_STATE_SAVE_FAILED_CODE}: ${TERMINAL_SESSION_STATE_SAVE_FAILED_MESSAGE}`

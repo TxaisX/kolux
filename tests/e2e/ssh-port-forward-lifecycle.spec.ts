@@ -1,6 +1,6 @@
 import { createServer } from 'node:net'
 
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   cleanupDockerSshRelayTarget,
@@ -39,19 +39,19 @@ import {
   trustDockerSshHost
 } from './helpers/ssh-port-forward-transport-evidence'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
-const FORCE_SYSTEM_SSH = process.env.NIGHTSHIFT_SSH_FORCE_SYSTEM_TRANSPORT === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
+const FORCE_SYSTEM_SSH = process.env.KOLUX_SSH_FORCE_SYSTEM_TRANSPORT === '1'
 const REMOTE_PORT = 7860
 const REFRESH_BARRIER_PORT = 7861
 const SCAN_REFRESH_PORT = 7862
 
 test.describe('Docker SSH port-forward lifecycle', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Docker SSH lifecycle uses POSIX process inspection.')
 
   test('keeps a user-forwarded listener live across scan refresh @headful', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
@@ -59,27 +59,27 @@ test.describe('Docker SSH port-forward lifecycle', () => {
     const unrelatedLocalPortReservation = await reserveLocalPort()
     const localPort = localPortReservation.port
     const unrelatedLocalPort = unrelatedLocalPortReservation.port
-    const marker = `NIGHTSHIFT_FORWARD_${Date.now()}`
+    const marker = `KOLUX_FORWARD_${Date.now()}`
     const unrelatedMarker = `${marker}_UNRELATED`
     try {
       target = startDockerSshRelayTarget(testInfo)
       const systemSshInvocationLogPath = await trustDockerSshHost(electronApp, target)
       await installLifecycleWarningCapture(electronApp)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
       const remotePid = startRemoteHttpListener(target, REMOTE_PORT, marker)
       const unrelatedRemotePid = startRemoteHttpListener(
         target,
         REFRESH_BARRIER_PORT,
         unrelatedMarker
       )
-      await openPortsPanel(nightshiftPage)
+      await openPortsPanel(koluxPage)
 
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               ({ targetId, port }) =>
                 window.api.ssh
                   .listDetectedPorts({ targetId })
@@ -89,11 +89,11 @@ test.describe('Docker SSH port-forward lifecycle', () => {
           { timeout: 45_000, message: 'remote HTTP listener was not detected' }
         )
         .toBe(remotePid)
-      await expect(nightshiftPage.getByText(`:${REMOTE_PORT}`, { exact: true })).toBeVisible()
+      await expect(koluxPage.getByText(`:${REMOTE_PORT}`, { exact: true })).toBeVisible()
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               ({ targetId, port }) =>
                 window.api.ssh
                   .listDetectedPorts({ targetId })
@@ -103,21 +103,19 @@ test.describe('Docker SSH port-forward lifecycle', () => {
           { timeout: 45_000, message: 'scan-refresh barrier listener was not detected' }
         )
         .toBe(true)
-      await expect(
-        nightshiftPage.getByText(`:${REFRESH_BARRIER_PORT}`, { exact: true })
-      ).toBeVisible()
+      await expect(koluxPage.getByText(`:${REFRESH_BARRIER_PORT}`, { exact: true })).toBeVisible()
 
       await installSshPortForwardSnapshotBarrier(electronApp, remote.targetId)
-      await nightshiftPage.evaluate(() => window.dispatchEvent(new Event('beforeunload')))
-      await nightshiftPage.reload()
-      await waitForSessionReady(nightshiftPage, 60_000)
+      await koluxPage.evaluate(() => window.dispatchEvent(new Event('beforeunload')))
+      await koluxPage.reload()
+      await waitForSessionReady(koluxPage, 60_000)
       await expect
-        .poll(() => waitForActiveWorktree(nightshiftPage), { timeout: 60_000 })
+        .poll(() => waitForActiveWorktree(koluxPage), { timeout: 60_000 })
         .toBe(remote.worktreeId)
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               (targetId) => window.__store?.getState().sshConnectionStates.get(targetId)?.status,
               remote.targetId
             ),
@@ -131,16 +129,16 @@ test.describe('Docker SSH port-forward lifecycle', () => {
         })
         .toEqual({ captured: true, released: false })
 
-      await installRendererForwardCapture(nightshiftPage)
-      await openPortsPanel(nightshiftPage)
+      await installRendererForwardCapture(koluxPage)
+      await openPortsPanel(koluxPage)
       await localPortReservation.release()
-      await forwardPortFromPanel(nightshiftPage, localPort, REMOTE_PORT)
-      await expect(nightshiftPage.getByText('Forwarded', { exact: true })).toBeVisible()
+      await forwardPortFromPanel(koluxPage, localPort, REMOTE_PORT)
+      await expect(koluxPage.getByText('Forwarded', { exact: true })).toBeVisible()
       await expect(
-        nightshiftPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
+        koluxPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
       ).toBeVisible()
       await expect.poll(() => requestForward(localPort)).toContain(marker)
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT }
       ])
       if (FORCE_SYSTEM_SSH) {
@@ -152,17 +150,15 @@ test.describe('Docker SSH port-forward lifecycle', () => {
       }
 
       await releaseSshPortForwardSnapshotBarrier(electronApp)
-      const postHydrationRoundTripForwards = await nightshiftPage.evaluate(
+      const postHydrationRoundTripForwards = await koluxPage.evaluate(
         (targetId) => window.api.ssh.listPortForwards({ targetId }),
         remote.targetId
       )
       expect(postHydrationRoundTripForwards).toContainEqual(
         expect.objectContaining({ localPort, remotePort: REMOTE_PORT })
       )
-      await expect(
-        nightshiftPage.getByText(`:${REFRESH_BARRIER_PORT}`, { exact: true })
-      ).toBeVisible()
-      const staleSnapshotEvidence = await readPortForwardEvidence(nightshiftPage, remote.targetId)
+      await expect(koluxPage.getByText(`:${REFRESH_BARRIER_PORT}`, { exact: true })).toBeVisible()
+      const staleSnapshotEvidence = await readPortForwardEvidence(koluxPage, remote.targetId)
       const staleSnapshotIdentity = readRemoteListenerIdentity(target, REMOTE_PORT)
       const staleSnapshotWarnings = await readLifecycleWarnings(electronApp)
       expect(staleSnapshotEvidence.managerForwards).toContainEqual(
@@ -181,9 +177,9 @@ test.describe('Docker SSH port-forward lifecycle', () => {
         []
       )
       await expect(
-        nightshiftPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
+        koluxPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
       ).toBeVisible()
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT }
       ])
       await restoreSshPortForwardSnapshotHandler(electronApp)
@@ -192,7 +188,7 @@ test.describe('Docker SSH port-forward lifecycle', () => {
       await expect
         .poll(
           () =>
-            nightshiftPage.evaluate(
+            koluxPage.evaluate(
               ({ targetId, port }) =>
                 window.api.ssh
                   .listDetectedPorts({ targetId })
@@ -202,38 +198,38 @@ test.describe('Docker SSH port-forward lifecycle', () => {
           { timeout: 45_000, message: 'scan-refresh listener was not detected in main' }
         )
         .toBe(true)
-      await expect(nightshiftPage.getByText(`:${SCAN_REFRESH_PORT}`, { exact: true })).toBeVisible()
+      await expect(koluxPage.getByText(`:${SCAN_REFRESH_PORT}`, { exact: true })).toBeVisible()
 
       await unrelatedLocalPortReservation.release()
-      const unrelatedForward = await addPortForward(nightshiftPage, {
+      const unrelatedForward = await addPortForward(koluxPage, {
         targetId: remote.targetId,
         localPort: unrelatedLocalPort,
         remotePort: REFRESH_BARRIER_PORT,
         label: 'unrelated-listener'
       })
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT },
         { localPort: unrelatedLocalPort, remotePort: REFRESH_BARRIER_PORT }
       ])
       await expect.poll(() => requestForward(unrelatedLocalPort)).toContain(unrelatedMarker)
 
-      await forceDockerSshRelayChannelReconnect(nightshiftPage, target, remote.targetId)
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await forceDockerSshRelayChannelReconnect(koluxPage, target, remote.targetId)
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT },
         { localPort: unrelatedLocalPort, remotePort: REFRESH_BARRIER_PORT }
       ])
       await expect.poll(() => requestForward(localPort)).toContain(marker)
       await expect.poll(() => requestForward(unrelatedLocalPort)).toContain(unrelatedMarker)
 
-      const authorityBeforeTransportReconnect = await nightshiftPage.evaluate(
+      const authorityBeforeTransportReconnect = await koluxPage.evaluate(
         (targetId) => window.__store?.getState().sshConnectionStates.get(targetId),
         remote.targetId
       )
-      await reconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
+      await reconnectDockerSshRelayTarget(koluxPage, remote.targetId)
       await expect
         .poll(
           async () => {
-            const state = await nightshiftPage.evaluate(
+            const state = await koluxPage.evaluate(
               (targetId) => window.__store?.getState().sshConnectionStates.get(targetId),
               remote.targetId
             )
@@ -247,17 +243,17 @@ test.describe('Docker SSH port-forward lifecycle', () => {
           { timeout: 30_000, message: 'renderer did not observe the reconnected SSH authority' }
         )
         .toBe(true)
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT },
         { localPort: unrelatedLocalPort, remotePort: REFRESH_BARRIER_PORT }
       ])
       await expect.poll(() => requestForward(localPort)).toContain(marker)
       await expect.poll(() => requestForward(unrelatedLocalPort)).toContain(unrelatedMarker)
       await expect(
-        nightshiftPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
+        koluxPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
       ).toBeVisible()
       await expect(
-        nightshiftPage.getByText(`:${unrelatedLocalPort} → :${REFRESH_BARRIER_PORT}`, {
+        koluxPage.getByText(`:${unrelatedLocalPort} → :${REFRESH_BARRIER_PORT}`, {
           exact: true
         })
       ).toBeVisible()
@@ -272,7 +268,7 @@ test.describe('Docker SSH port-forward lifecycle', () => {
         throw new Error('Unable to reserve a collision port')
       }
       try {
-        const collisionResult = await nightshiftPage.evaluate(
+        const collisionResult = await koluxPage.evaluate(
           async ({ targetId, localPort, remotePort }) => {
             try {
               await window.api.ssh.addPortForward({
@@ -300,29 +296,29 @@ test.describe('Docker SSH port-forward lifecycle', () => {
           collisionServer.close((error) => (error ? reject(error) : resolve()))
         )
       }
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort, remotePort: REMOTE_PORT },
         { localPort: unrelatedLocalPort, remotePort: REFRESH_BARRIER_PORT }
       ])
 
-      const primaryRow = nightshiftPage
+      const primaryRow = koluxPage
         .getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
         .locator('../../..')
       await primaryRow.getByTitle('Remove').click()
       await expect(
-        nightshiftPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
+        koluxPage.getByText(`:${localPort} → :${REMOTE_PORT}`, { exact: true })
       ).not.toBeVisible()
-      await expectForwardEvidence(nightshiftPage, remote.targetId, [
+      await expectForwardEvidence(koluxPage, remote.targetId, [
         { localPort: unrelatedLocalPort, remotePort: REFRESH_BARRIER_PORT }
       ])
       await expect(requestForward(localPort)).rejects.toThrow()
       await expect.poll(() => requestForward(unrelatedLocalPort)).toContain(unrelatedMarker)
 
-      const evidence = await readPortForwardEvidence(nightshiftPage, remote.targetId)
+      const evidence = await readPortForwardEvidence(koluxPage, remote.targetId)
       const identity = readRemoteListenerIdentity(target, REMOTE_PORT)
       const unrelatedIdentity = readRemoteListenerIdentity(target, REFRESH_BARRIER_PORT)
       const warnings = await readLifecycleWarnings(electronApp)
-      const relayReconnectStates = await readSshStateCapture(nightshiftPage)
+      const relayReconnectStates = await readSshStateCapture(koluxPage)
       testInfo.annotations.push({
         type: 'ssh-port-forward-evidence',
         description: JSON.stringify({

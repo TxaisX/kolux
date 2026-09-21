@@ -41,7 +41,7 @@ describe('createChromiumCookieSnapshot', () => {
   let writer: DatabaseSync | null
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-chromium-snapshot-test-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-chromium-snapshot-test-'))
     writer = null
     beforeCopyMock.mockReset()
   })

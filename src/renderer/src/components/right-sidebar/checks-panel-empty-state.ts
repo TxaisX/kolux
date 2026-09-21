@@ -91,7 +91,7 @@ export function getChecksPanelReviewState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.active.body',
-        'Nightshift is checking {{provider}} for a {{reviewLabel}} on this branch.',
+        'Kolux is checking {{provider}} for a {{reviewLabel}} on this branch.',
         { reviewLabel, provider: providerName }
       ),
       composerMode: 'hidden',
@@ -117,7 +117,7 @@ export function getChecksPanelReviewState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.positive.body',
-        'Nightshift has saved {{reviewLabel}} information for this branch but could not confirm its current status.',
+        'Kolux has saved {{reviewLabel}} information for this branch but could not confirm its current status.',
         { reviewLabel }
       ),
       composerMode: 'hidden',
@@ -189,7 +189,7 @@ export function getChecksPanelReviewState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.active.body',
-        'Nightshift is checking {{provider}} for a {{reviewLabel}} on this branch.',
+        'Kolux is checking {{provider}} for a {{reviewLabel}} on this branch.',
         { reviewLabel, provider: providerName }
       ),
       composerMode: mode,
@@ -208,7 +208,7 @@ export function getChecksPanelReviewState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.git_loading.body',
-        'Nightshift is checking this branch before showing create or publish actions.'
+        'Kolux is checking this branch before showing create or publish actions.'
       ),
       composerMode: 'hidden',
       workflowAction: null,
@@ -224,7 +224,7 @@ export function getChecksPanelReviewState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.git_error.body',
-        "Nightshift could not confirm this branch's upstream from this environment. Retry before publishing or creating a {{reviewLabel}}.",
+        "Kolux could not confirm this branch's upstream from this environment. Retry before publishing or creating a {{reviewLabel}}.",
         { reviewLabel }
       ),
       composerMode: 'hidden',
@@ -253,7 +253,7 @@ export function getChecksPanelReviewState(
     ),
     description: translate(
       'auto.components.right.sidebar.checks.panel.review.unknown.body',
-      'Nightshift has not confirmed the {{reviewLabel}} status for this branch. Retry to check again.',
+      'Kolux has not confirmed the {{reviewLabel}} status for this branch. Retry to check again.',
       { reviewLabel }
     ),
     composerMode: 'hidden',

@@ -21,14 +21,11 @@ import { computeRemoteRelayDir } from './ssh-relay-versioned-install'
 const LINUX = getRemoteHostPlatform('linux-x64')
 const WINDOWS = getRemoteHostPlatform('win32-x64')
 const VERSION = '0.1.0+abc123'
-const SHELL_RELAY_DIR = `/var/services/homes/alice/.nightshift-remote/relay-${VERSION}`
+const SHELL_RELAY_DIR = `/var/services/homes/alice/.kolux-remote/relay-${VERSION}`
 
 describe('relayRemoteDirSegments', () => {
   it('builds the two segments every relay path shares', () => {
-    expect(relayRemoteDirSegments(VERSION, 'posix')).toEqual([
-      '.nightshift-remote',
-      `relay-${VERSION}`
-    ])
+    expect(relayRemoteDirSegments(VERSION, 'posix')).toEqual(['.kolux-remote', `relay-${VERSION}`])
   })
 
   it('produces a home-relative dir that matches the shell dir suffix', () => {
@@ -67,7 +64,7 @@ describe('computeRemoteRelayDir agreement', () => {
 
   it('applies Windows segment rules on the windows flavor', () => {
     expect(computeRemoteRelayDir('C:\\Users\\u', VERSION, 'windows')).toBe(
-      `C:/Users/u/.nightshift-remote/relay-${VERSION}`
+      `C:/Users/u/.kolux-remote/relay-${VERSION}`
     )
     expect(() => computeRemoteRelayDir('C:\\Users\\u', '0.1.0 ', 'windows')).toThrow(
       'Unsafe remote path segment'
@@ -82,7 +79,7 @@ describe('createRelayInstallNamespace', () => {
 
     expect(first.markerFileName).toMatch(/^\.sftp-namespace-[0-9a-f]{32}$/)
     expect(first.markerFileName).not.toBe(second.markerFileName)
-    expect(first.homeRelativeRelayDir).toBe(`.nightshift-remote/relay-${VERSION}`)
+    expect(first.homeRelativeRelayDir).toBe(`.kolux-remote/relay-${VERSION}`)
   })
 })
 
@@ -92,10 +89,10 @@ describe('relaySftpNamespaceMapping', () => {
   it('maps the bundle directory itself when no file name is given', () => {
     const mapping = relaySftpNamespaceMapping(namespace, LINUX, SHELL_RELAY_DIR)
 
-    expect(mapping.homeRelativePath).toBe(`.nightshift-remote/relay-${VERSION}`)
-    expect(mapping.homeRelativeNamespaceRoot).toBe(`.nightshift-remote/relay-${VERSION}`)
+    expect(mapping.homeRelativePath).toBe(`.kolux-remote/relay-${VERSION}`)
+    expect(mapping.homeRelativeNamespaceRoot).toBe(`.kolux-remote/relay-${VERSION}`)
     expect(mapping.homeRelativeProbePath).toBe(
-      `.nightshift-remote/relay-${VERSION}/.install-lock/${namespace.markerFileName}`
+      `.kolux-remote/relay-${VERSION}/.install-lock/${namespace.markerFileName}`
     )
     expect(mapping.shellProbePath).toBe(
       `${SHELL_RELAY_DIR}/.install-lock/${namespace.markerFileName}`
@@ -105,7 +102,7 @@ describe('relaySftpNamespaceMapping', () => {
   it('maps a file inside the bundle directory', () => {
     const mapping = relaySftpNamespaceMapping(namespace, LINUX, SHELL_RELAY_DIR, 'package.json')
 
-    expect(mapping.homeRelativePath).toBe(`.nightshift-remote/relay-${VERSION}/package.json`)
+    expect(mapping.homeRelativePath).toBe(`.kolux-remote/relay-${VERSION}/package.json`)
   })
 
   it('shares one marker across every write of an install', () => {
@@ -127,7 +124,7 @@ describe('relaySftpNamespaceMapping', () => {
 })
 
 describe('relay upload stage namespace', () => {
-  const stageSuffix = `.nightshift-remote/relay-${VERSION}.upload-123e4567-e89b-12d3-a456-426614174000`
+  const stageSuffix = `.kolux-remote/relay-${VERSION}.upload-123e4567-e89b-12d3-a456-426614174000`
   const shellStageDir = `/var/services/homes/alice/${stageSuffix}`
   const namespace = createRelayUploadStageNamespace(stageSuffix)
 

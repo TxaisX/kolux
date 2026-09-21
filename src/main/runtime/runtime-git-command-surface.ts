@@ -1,4 +1,4 @@
-import type { RuntimeGitCommands } from './nightshift-runtime-git'
+import type { RuntimeGitCommands } from './kolux-runtime-git'
 
 type RuntimeGitCommandName =
   | 'getRuntimeGitStatus'

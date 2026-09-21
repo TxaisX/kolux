@@ -184,7 +184,7 @@ function renderPane(isActive = true): ReturnType<typeof render> {
 }
 
 function addressBar(): HTMLInputElement {
-  return document.querySelector('[data-nightshift-browser-address-bar]') as HTMLInputElement
+  return document.querySelector('[data-kolux-browser-address-bar]') as HTMLInputElement
 }
 
 describe('RemoteBrowserPagePane address bar parity', () => {

@@ -83,7 +83,7 @@ describe('Codex personal and organization workspace identity', () => {
       const identity = readCodexAuthIdentity(selectedAuth)!
       const account: CodexManagedAccount = {
         ...identity,
-        id: 'nightshift-account',
+        id: 'kolux-account',
         email,
         managedHomePath: 'managed-home',
         createdAt: 1,

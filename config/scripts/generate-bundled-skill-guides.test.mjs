@@ -34,8 +34,8 @@ const GUIDE_REFERENCES = {
     'recovery-and-cleanup.md',
     'worker-contract.md'
   ],
-  'nightshift-cli': ['automations.md', 'browser.md', 'publishing.md'],
-  'nightshift-per-workspace-env': [
+  'kolux-cli': ['automations.md', 'browser.md', 'publishing.md'],
+  'kolux-per-workspace-env': [
     'docker-ssh.md',
     'failure-modes.md',
     'provider-vercel.md',
@@ -50,16 +50,16 @@ const GUIDE_REFERENCE_PATHS = Object.entries(GUIDE_REFERENCES).flatMap(([guide, 
 async function readPerWorkspaceEnvCorpus() {
   const guideRoot = path.join(projectDir, 'skill-guides')
   const files = [
-    path.join(guideRoot, 'nightshift-per-workspace-env.md'),
-    ...GUIDE_REFERENCES['nightshift-per-workspace-env'].map((reference) =>
-      path.join(guideRoot, 'nightshift-per-workspace-env', 'references', reference)
+    path.join(guideRoot, 'kolux-per-workspace-env.md'),
+    ...GUIDE_REFERENCES['kolux-per-workspace-env'].map((reference) =>
+      path.join(guideRoot, 'kolux-per-workspace-env', 'references', reference)
     )
   ]
   return (await Promise.all(files.map((file) => readFile(file, 'utf8')))).join('\n')
 }
 
 async function createFixture() {
-  const root = await mkdtemp(path.join(tmpdir(), 'nightshift-bundled-skill-guides-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'kolux-bundled-skill-guides-'))
   temporaryDirectories.push(root)
   await Promise.all([
     cp(path.join(projectDir, 'skill-guides'), path.join(root, 'skill-guides'), {
@@ -105,56 +105,54 @@ describe('bundled skill guide generator', () => {
       path.join(
         projectDir,
         'skill-guides',
-        'nightshift-per-workspace-env',
+        'kolux-per-workspace-env',
         'references',
         'provider-vercel.md'
       ),
       'utf8'
     )
 
-    expect(corpus).toContain('NIGHTSHIFT_RECIPE_ID')
-    expect(corpus).not.toContain('NIGHTSHIFT_VM_RECIPE_ID')
+    expect(corpus).toContain('KOLUX_RECIPE_ID')
+    expect(corpus).not.toContain('KOLUX_VM_RECIPE_ID')
     expect(vercelReference).toContain('recipe_id="${recipe_id//./-}"')
     expect(vercelReference).toContain('max_recipe_id_length=$((128 - ${#instance_id} - 6))')
     expect(vercelReference).toContain(
-      'name="nightshift-${recipe_id:0:max_recipe_id_length}-${instance_id}"'
+      'name="kolux-${recipe_id:0:max_recipe_id_length}-${instance_id}"'
     )
   })
 
   it.skipIf(process.platform === 'win32')(
-    'resolves snapshot cleanup through Nightshift user-data precedence',
+    'resolves snapshot cleanup through Kolux user-data precedence',
     async () => {
       const source = await readFile(
-        path.join(projectDir, 'skill-guides', 'nightshift-per-workspace-env.md'),
+        path.join(projectDir, 'skill-guides', 'kolux-per-workspace-env.md'),
         'utf8'
       )
       const assignment =
-        'nightshift_user_data_path="${NIGHTSHIFT_USER_DATA_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/nightshift}"'
+        'kolux_user_data_path="${KOLUX_USER_DATA_PATH:-${XDG_CONFIG_HOME:-$HOME/.config}/kolux}"'
       expect(source).toContain(assignment)
       const renderPath = async (env) =>
         (
           await execFileAsync(
             'bash',
-            ['-u', '-c', `${assignment}; printf '%s' "$nightshift_user_data_path"`],
+            ['-u', '-c', `${assignment}; printf '%s' "$kolux_user_data_path"`],
             {
               env
             }
           )
         ).stdout
 
-      await expect(renderPath({ HOME: '/home/nightshift' })).resolves.toBe(
-        '/home/nightshift/.config/nightshift'
-      )
+      await expect(renderPath({ HOME: '/home/kolux' })).resolves.toBe('/home/kolux/.config/kolux')
       await expect(
-        renderPath({ HOME: '/home/nightshift', XDG_CONFIG_HOME: '/srv/config' })
-      ).resolves.toBe('/srv/config/nightshift')
+        renderPath({ HOME: '/home/kolux', XDG_CONFIG_HOME: '/srv/config' })
+      ).resolves.toBe('/srv/config/kolux')
       await expect(
         renderPath({
-          HOME: '/home/nightshift',
+          HOME: '/home/kolux',
           XDG_CONFIG_HOME: '/srv/config',
-          NIGHTSHIFT_USER_DATA_PATH: '/var/lib/nightshift-custom'
+          KOLUX_USER_DATA_PATH: '/var/lib/kolux-custom'
         })
-      ).resolves.toBe('/var/lib/nightshift-custom')
+      ).resolves.toBe('/var/lib/kolux-custom')
     }
   )
 
@@ -165,14 +163,14 @@ describe('bundled skill guide generator', () => {
         path.join(
           projectDir,
           'skill-guides',
-          'nightshift-per-workspace-env',
+          'kolux-per-workspace-env',
           'references',
           'provider-vercel.md'
         ),
         'utf8'
       )
-      const startMarker = 'recipe_id="${NIGHTSHIFT_RECIPE_ID:-vercel-sandbox}"'
-      const endMarker = 'name="nightshift-${recipe_id:0:max_recipe_id_length}-${instance_id}"'
+      const startMarker = 'recipe_id="${KOLUX_RECIPE_ID:-vercel-sandbox}"'
+      const endMarker = 'name="kolux-${recipe_id:0:max_recipe_id_length}-${instance_id}"'
       const start = source.indexOf(startMarker)
       const endStart = source.indexOf(endMarker, start)
       expect(start).toBeGreaterThanOrEqual(0)
@@ -183,13 +181,13 @@ describe('bundled skill guide generator', () => {
           await execFileAsync('bash', ['-u', '-c', script], {
             env: {
               ...process.env,
-              NIGHTSHIFT_RECIPE_ID: recipeId,
-              NIGHTSHIFT_VM_INSTANCE_ID: instanceId
+              KOLUX_RECIPE_ID: recipeId,
+              KOLUX_VM_INSTANCE_ID: instanceId
             }
           })
         ).stdout
 
-      const instanceId = 'nightshift-123e4567-e89b-12d3-a456-426614174000'
+      const instanceId = 'kolux-123e4567-e89b-12d3-a456-426614174000'
       const dotted = await renderName('provider.cloud_sandbox', instanceId)
       const maximum = await renderName(`a${'.'.repeat(63)}`, instanceId)
       const longInstanceId = 'i'.repeat(100)
@@ -198,7 +196,7 @@ describe('bundled skill guide generator', () => {
         longInstanceId
       )
 
-      expect(dotted).toBe(`nightshift-provider-cloud_sandbox-${instanceId}`)
+      expect(dotted).toBe(`kolux-provider-cloud_sandbox-${instanceId}`)
       expect(maximum).toMatch(/^[a-zA-Z0-9_-]{1,128}$/u)
       expect(capped).toHaveLength(128)
       expect(capped.endsWith(`-${longInstanceId}`)).toBe(true)
@@ -263,19 +261,14 @@ describe('bundled skill guide generator', () => {
   })
 
   it('keeps CLI guide examples safe across shells and Linux command names', async () => {
-    for (const name of [
-      'nightshift-cli',
-      'computer-use',
-      'nightshift-emulator',
-      'nightshift-emulator-android'
-    ]) {
+    for (const name of ['kolux-cli', 'computer-use', 'kolux-emulator', 'kolux-emulator-android']) {
       const source = await readFile(path.join(projectDir, 'skill-guides', `${name}.md`), 'utf8')
 
-      expect(source).toMatch(/^NIGHTSHIFT .+--json$/mu)
+      expect(source).toMatch(/^KOLUX .+--json$/mu)
       // Why: bare command lines can launch GNOME Orca, while shell variables make
       // the same guide unusable from PowerShell and cmd.exe.
-      expect(source).not.toMatch(/^nightshift /mu)
-      expect(source).not.toMatch(/\$NIGHTSHIFT(?:_|\b)/u)
+      expect(source).not.toMatch(/^kolux /mu)
+      expect(source).not.toMatch(/\$KOLUX(?:_|\b)/u)
     }
   })
 
@@ -396,7 +389,7 @@ describe('bundled skill guide generator', () => {
 
     expect([...blocks.keys()]).toEqual(['resolver', 'no-guessing'])
     // Why: the guide copies of this warning had each dropped one half. #7904 is the incident
-    // where bare `nightshift` started the screen reader talking on a user's Ubuntu box.
+    // where bare `kolux` started the screen reader talking on a user's Ubuntu box.
     expect(blocks.get('resolver').text).toContain('(`/usr/bin/orca`)')
     expect(blocks.get('resolver').text).toContain("starts speech on the user's machine")
     for (const name of STUB_TOPICS) {
@@ -404,21 +397,21 @@ describe('bundled skill guide generator', () => {
       for (const [id, block] of blocks) {
         expect(projection.split(block.text), `${name}/${id}`).toHaveLength(2)
       }
-      // The `NIGHTSHIFT` placeholder rule is stated once, in the fragment, never restated.
+      // The `KOLUX` placeholder rule is stated once, in the fragment, never restated.
       expect(projection.split('is a placeholder for the executable'), name).toHaveLength(2)
     }
   })
 
   // G2, second half: the ladder is pre-resolution guidance and belongs only to the stub —
   // every path that delivers a guide body has already resolved an executable. Guides keep
-  // the `NIGHTSHIFT` placeholder rule. Red until the guide bodies drop their ladders; retiring
-  // those also retires the NIGHTSHIFT_CLI_COMMAND/nightshift-dev/nightshift-ide assertions in
+  // the `KOLUX` placeholder rule. Red until the guide bodies drop their ladders; retiring
+  // those also retires the KOLUX_CLI_COMMAND/kolux-dev/kolux-ide assertions in
   // 'keeps CLI guide examples safe across shells and Linux command names' above, which
   // pin the opposite contract.
   it('keeps the CLI resolver ladder out of every guide body', async () => {
     for (const name of CANONICAL_GUIDE_NAMES) {
       const source = await readFile(path.join(projectDir, 'skill-guides', `${name}.md`), 'utf8')
-      expect(source, name).not.toContain('NIGHTSHIFT_CLI_COMMAND')
+      expect(source, name).not.toContain('KOLUX_CLI_COMMAND')
     }
   })
 
@@ -440,7 +433,7 @@ describe('bundled skill guide generator', () => {
 
   it('rejects non-Markdown and empty bundled references', async () => {
     const root = await createFixture()
-    const referenceRoot = path.join(root, 'skill-guides', 'nightshift-cli', 'references')
+    const referenceRoot = path.join(root, 'skill-guides', 'kolux-cli', 'references')
 
     await writeFile(path.join(referenceRoot, 'notes.txt'), 'not a reference\n')
     await expect(buildArtifacts(root)).rejects.toThrow('Guide references must be Markdown files')
@@ -475,8 +468,8 @@ describe('guide reference routing', () => {
 
   it('routes every shipped reference from its own guide, in both directions', async () => {
     const owners = await guidesWithReferences()
-    // A vacuous loop would pass forever; nightshift-cli is a guide that owns references today.
-    expect(owners.map((owner) => owner.name)).toContain('nightshift-cli')
+    // A vacuous loop would pass forever; kolux-cli is a guide that owns references today.
+    expect(owners.map((owner) => owner.name)).toContain('kolux-cli')
 
     const mismatches = []
     for (const owner of owners) {

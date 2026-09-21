@@ -32,9 +32,9 @@ import { registerNotificationHandlers } from './notifications'
 
 // These cases exercise foreground behavior against Electron mocks.
 beforeEach(() => {
-  vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADLESS', undefined)
-  vi.stubEnv('NIGHTSHIFT_E2E_HEADFUL', undefined)
+  vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADLESS', undefined)
+  vi.stubEnv('KOLUX_E2E_HEADFUL', undefined)
 })
 afterEach(() => vi.unstubAllEnvs())
 

@@ -122,10 +122,10 @@ function readMarker(): Record<string, unknown> {
 
 beforeEach(() => {
   resetCodexSessionBackfillFsMocks()
-  fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-backfill-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-backfill-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-backfill-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-backfill-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
 })
 
@@ -133,9 +133,9 @@ afterEach(() => {
   rmSync(fakeHomeDir, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })

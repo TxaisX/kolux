@@ -44,8 +44,8 @@ export default function ProjectViewWrapper({ selectedRepoIds }: Props): React.JS
         onClose={() => rowActions.setSlugDialog(null)}
       />
       <ProjectMissingRepoDialog
-        missingRepo={rowActions.missingDialogs.repoNotInNightshift}
-        onClose={() => rowActions.setRepoNotInNightshift(null)}
+        missingRepo={rowActions.missingDialogs.repoNotInKolux}
+        onClose={() => rowActions.setRepoNotInKolux(null)}
         onAddRepo={addRepo}
       />
     </div>

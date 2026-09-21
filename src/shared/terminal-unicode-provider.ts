@@ -9,7 +9,7 @@ type XtermTerminalWithUnicodeCore = {
   }
 }
 
-const NIGHTSHIFT_UNICODE_VERSION = 'nightshift-11-zwj'
+const KOLUX_UNICODE_VERSION = 'kolux-11-zwj'
 const UNICODE11_VERSION = '11'
 const ZERO_WIDTH_JOINER = 0x200d
 
@@ -25,8 +25,8 @@ function createProperties(charKind: number, width: 0 | 1 | 2, shouldJoin: boolea
   return ((charKind & 0xffffff) << 3) | ((width & 3) << 1) | (shouldJoin ? 1 : 0)
 }
 
-class NightshiftUnicodeProvider implements IUnicodeVersionProvider {
-  public readonly version = NIGHTSHIFT_UNICODE_VERSION
+class KoluxUnicodeProvider implements IUnicodeVersionProvider {
+  public readonly version = KOLUX_UNICODE_VERSION
 
   public constructor(private readonly baseProvider: IUnicodeVersionProvider) {}
 
@@ -52,11 +52,9 @@ class NightshiftUnicodeProvider implements IUnicodeVersionProvider {
   }
 }
 
-export function activateNightshiftTerminalUnicodeProvider(
-  terminal: XtermTerminalWithUnicodeCore
-): void {
+export function activateKoluxTerminalUnicodeProvider(terminal: XtermTerminalWithUnicodeCore): void {
   const { unicode } = terminal
-  if (unicode.activeVersion === NIGHTSHIFT_UNICODE_VERSION) {
+  if (unicode.activeVersion === KOLUX_UNICODE_VERSION) {
     return
   }
 
@@ -66,8 +64,8 @@ export function activateNightshiftTerminalUnicodeProvider(
     return
   }
 
-  if (!unicode.versions.includes(NIGHTSHIFT_UNICODE_VERSION)) {
-    unicode.register(new NightshiftUnicodeProvider(baseProvider))
+  if (!unicode.versions.includes(KOLUX_UNICODE_VERSION)) {
+    unicode.register(new KoluxUnicodeProvider(baseProvider))
   }
-  unicode.activeVersion = NIGHTSHIFT_UNICODE_VERSION
+  unicode.activeVersion = KOLUX_UNICODE_VERSION
 }

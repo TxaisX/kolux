@@ -86,7 +86,7 @@ export function useAutomationsPageDestinationState({
       : null
   }, [activeWorktreeId, repoMap, worktreeMap])
   const createDestination = useAutomationCreateDestination({
-    open: createOpen && editingAutomationId === null && createTarget === 'nightshift',
+    open: createOpen && editingAutomationId === null && createTarget === 'kolux',
     catalog: hostCatalog.catalog,
     entries: hostCatalog.entries,
     filterStableKey: hostCatalog.resolution.entry?.stableKey ?? null,

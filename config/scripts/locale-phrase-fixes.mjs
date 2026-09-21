@@ -135,7 +135,7 @@ export const LOCALE_PHRASE_FIXES = {
     { pattern: /会议/g, replacement: '会话', whenEnIncludes: 'session' },
     { pattern: /港口/g, replacement: '端口', whenEnIncludes: 'ort' },
     { pattern: /公关/g, replacement: 'PR', whenEnIncludes: 'PR' },
-    { pattern: /虎鲸:\/\//g, replacement: 'nightshift://', whenEnIncludes: 'nightshift://' },
+    { pattern: /虎鲸:\/\//g, replacement: 'kolux://', whenEnIncludes: 'kolux://' },
     { pattern: /代理商/g, replacement: '代理', whenEnIncludes: 'agent' },
     { pattern: /智能体/g, replacement: '代理', whenEnIncludes: 'agent' },
     { pattern: /分支机构/g, replacement: '分支', whenEnIncludes: 'ranch' },
@@ -170,14 +170,14 @@ export const LOCALE_PHRASE_FIXES = {
     },
     { pattern: /寻找捷径/g, replacement: '搜索快捷键', whenEnIncludes: 'Find shortcuts' },
     {
-      pattern: /连接到Nightshift/g,
-      replacement: '连接到 Nightshift',
-      whenEnIncludes: 'Connect to Nightshift'
+      pattern: /连接到Kolux/g,
+      replacement: '连接到 Kolux',
+      whenEnIncludes: 'Connect to Kolux'
     },
     {
-      pattern: /开始使用Nightshift/g,
-      replacement: '开始使用 Nightshift',
-      whenEnIncludes: 'get started with Nightshift'
+      pattern: /开始使用Kolux/g,
+      replacement: '开始使用 Kolux',
+      whenEnIncludes: 'get started with Kolux'
     },
     { pattern: /本机桌面/g, replacement: '原生桌面', whenEnIncludes: 'Native desktop' },
     { pattern: /当前的/g, replacement: '当前', whenEnIncludes: 'Current' },

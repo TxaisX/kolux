@@ -16,7 +16,7 @@ import { RuntimeSkillInstallCommands } from './runtime-skill-install-commands'
 function createHost(): RuntimeSkillCommandHost {
   return {
     getRuntimeId: () => 'runtime-1',
-    getUserDataPath: () => '/tmp/nightshift-runtime-skill-test',
+    getUserDataPath: () => '/tmp/kolux-runtime-skill-test',
     isPackaged: () => true,
     getSettings: () => ({}),
     listRepos: () => [],

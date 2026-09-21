@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { RpcContext } from '../../../core'
 import { createOrchestrationRpcHarness } from '../rpc-test-harness'
 import type { OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { buildInjectRejectionMessage } from '../../../../../../shared/orchestration-dispatch-refusal-contract'
 import { createRootDispatch } from '../../../../orchestration/db/root-dispatch-test-fixture'
 
@@ -10,7 +10,7 @@ describe('orchestration RPC methods', () => {
   const h = createOrchestrationRpcHarness()
   const { coordinatorPaneKey, findMethod } = h
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
 
   function setup(withBoundRun = true): void {
@@ -347,7 +347,7 @@ describe('orchestration RPC methods', () => {
 
       expect(send).toHaveBeenCalledWith(
         'term_a',
-        expect.stringContaining('nightshift-dev orchestration send'),
+        expect.stringContaining('kolux-dev orchestration send'),
         expect.objectContaining({
           acceptQueued: true,
           observationTimeoutMs: 0,
@@ -359,7 +359,7 @@ describe('orchestration RPC methods', () => {
     it('uses the target pane CLI command for the returned preamble', async () => {
       setup()
       const task = db.createTask({ spec: 'work' })
-      vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift-ide')
+      vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux-ide')
 
       const result = (await call('orchestration.dispatch', {
         task: task.id,
@@ -368,8 +368,8 @@ describe('orchestration RPC methods', () => {
       })) as { preamble: string }
 
       expect(runtime.getTerminalOrchestrationCliCommand).toHaveBeenCalledWith('term_wsl')
-      expect(result.preamble).toContain('nightshift-ide orchestration send')
-      expect(result.preamble).not.toMatch(/(^|\s)nightshift orchestration/m)
+      expect(result.preamble).toContain('kolux-ide orchestration send')
+      expect(result.preamble).not.toMatch(/(^|\s)kolux orchestration/m)
     })
 
     it('injects preamble through the agent prompt path instead of raw terminal send', async () => {

@@ -118,36 +118,36 @@ describe('WorkspaceDirectorySetting', () => {
 
     typePath('o')
     typePath('or')
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
 
     expect(updateSettings).not.toHaveBeenCalled()
 
     blurInput()
 
     expect(updateSettings).toHaveBeenCalledTimes(1)
-    expect(updateSettings).toHaveBeenCalledWith({ workspaceDir: 'nightshift-workspaces' })
+    expect(updateSettings).toHaveBeenCalledWith({ workspaceDir: 'kolux-workspaces' })
   })
 
   it('commits Enter once even though Enter also blurs the input', () => {
     const updateSettings = vi.fn()
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
     pressInputKey('Enter')
     blurInput()
 
     expect(updateSettings).toHaveBeenCalledTimes(1)
-    expect(updateSettings).toHaveBeenCalledWith({ workspaceDir: 'nightshift-workspaces' })
+    expect(updateSettings).toHaveBeenCalledWith({ workspaceDir: 'kolux-workspaces' })
   })
 
   it('does not commit Enter while IME composition is active', () => {
     const updateSettings = vi.fn()
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
     pressInputKey('Enter', { isComposing: true })
 
-    expect(getInput().value).toBe('nightshift-workspaces')
+    expect(getInput().value).toBe('kolux-workspaces')
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
@@ -155,7 +155,7 @@ describe('WorkspaceDirectorySetting', () => {
     const updateSettings = vi.fn()
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
     pressInputKey('Escape')
     blurInput()
 
@@ -167,10 +167,10 @@ describe('WorkspaceDirectorySetting', () => {
     const updateSettings = vi.fn()
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
     pressInputKey('Escape', { isComposing: true })
 
-    expect(getInput().value).toBe('nightshift-workspaces')
+    expect(getInput().value).toBe('kolux-workspaces')
     expect(updateSettings).not.toHaveBeenCalled()
   })
 
@@ -179,7 +179,7 @@ describe('WorkspaceDirectorySetting', () => {
     pickFolderMock.mockResolvedValue('/Users/alice/workspaces')
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-w')
+    typePath('kolux-w')
     await clickBrowseAfterInputBlur()
 
     expect(updateSettings).toHaveBeenCalledTimes(1)
@@ -191,7 +191,7 @@ describe('WorkspaceDirectorySetting', () => {
     pickFolderMock.mockResolvedValue(null)
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-w')
+    typePath('kolux-w')
     await clickBrowseAfterInputBlur()
 
     expect(getInput().value).toBe(getDefaultSettings('/tmp').workspaceDir)
@@ -202,12 +202,12 @@ describe('WorkspaceDirectorySetting', () => {
     const updateSettings = vi.fn()
     renderWorkspaceDirectorySetting({ updateSettings })
 
-    typePath('nightshift-workspaces')
+    typePath('kolux-workspaces')
     blurInput()
     blurInput()
 
     expect(updateSettings).toHaveBeenCalledTimes(2)
-    expect(updateSettings).toHaveBeenNthCalledWith(1, { workspaceDir: 'nightshift-workspaces' })
-    expect(updateSettings).toHaveBeenNthCalledWith(2, { workspaceDir: 'nightshift-workspaces' })
+    expect(updateSettings).toHaveBeenNthCalledWith(1, { workspaceDir: 'kolux-workspaces' })
+    expect(updateSettings).toHaveBeenNthCalledWith(2, { workspaceDir: 'kolux-workspaces' })
   })
 })

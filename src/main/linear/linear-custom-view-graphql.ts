@@ -1,7 +1,7 @@
-import { NIGHTSHIFT_ISSUE_FIELDS, NIGHTSHIFT_PROJECT_FIELDS } from './linear-project-graphql'
+import { KOLUX_ISSUE_FIELDS, KOLUX_PROJECT_FIELDS } from './linear-project-graphql'
 
 export const CUSTOM_VIEWS_QUERY = `
-  query NightshiftLinearCustomViews(
+  query KoluxLinearCustomViews(
     $first: Int,
     $filter: CustomViewFilter,
     $orderBy: PaginationOrderBy
@@ -42,7 +42,7 @@ export const CUSTOM_VIEWS_QUERY = `
 `
 
 export const CUSTOM_VIEW_QUERY = `
-  query NightshiftLinearCustomView($id: String!) {
+  query KoluxLinearCustomView($id: String!) {
     customView(id: $id) {
       id
       name
@@ -74,7 +74,7 @@ export const CUSTOM_VIEW_QUERY = `
 `
 
 export const CUSTOM_VIEW_ISSUES_QUERY = `
-  query NightshiftLinearCustomViewIssues(
+  query KoluxLinearCustomViewIssues(
     $id: String!,
     $first: Int,
     $after: String,
@@ -85,7 +85,7 @@ export const CUSTOM_VIEW_ISSUES_QUERY = `
       modelName
       issues(first: $first, after: $after, orderBy: $orderBy) {
         nodes {
-          ${NIGHTSHIFT_ISSUE_FIELDS}
+          ${KOLUX_ISSUE_FIELDS}
         }
         pageInfo {
           hasNextPage
@@ -97,13 +97,13 @@ export const CUSTOM_VIEW_ISSUES_QUERY = `
 `
 
 export const CUSTOM_VIEW_PROJECTS_QUERY = `
-  query NightshiftLinearCustomViewProjects($id: String!, $first: Int, $orderBy: PaginationOrderBy) {
+  query KoluxLinearCustomViewProjects($id: String!, $first: Int, $orderBy: PaginationOrderBy) {
     customView(id: $id) {
       id
       modelName
       projects(first: $first, orderBy: $orderBy) {
         nodes {
-          ${NIGHTSHIFT_PROJECT_FIELDS}
+          ${KOLUX_PROJECT_FIELDS}
         }
         pageInfo {
           hasNextPage

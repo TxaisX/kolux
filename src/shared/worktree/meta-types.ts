@@ -1,6 +1,6 @@
 import type { ExecutionHostId } from '../execution-host'
 import type { TaskSourceContext } from '../task-source-context'
-import type { EphemeralVmCheckoutMode } from '../nightshift-yaml-hook-types'
+import type { EphemeralVmCheckoutMode } from '../kolux-yaml-hook-types'
 import type {
   AutomationWorkspaceProvenance,
   CliWorkspaceProvenance,
@@ -10,7 +10,7 @@ import type {
   WorkspaceStatus
 } from './types'
 import type { TuiAgent } from '../tui-agent'
-import type { NightshiftWorkspaceLayout } from '../global-settings-types'
+import type { KoluxWorkspaceLayout } from '../global-settings-types'
 import type { DiffComment, MobileDiffReviewState } from '../diff-comment-types'
 
 // ─── Worktree metadata (persisted user-authored fields only) ─────────
@@ -57,9 +57,9 @@ export type WorktreeMeta = {
   /** User-authored sidebar ordering. Higher values render earlier in Manual sort. */
   manualOrder?: number
   lastActivityAt: number
-  /** See {@link Worktree.createdAt}. Persisted to nightshift-data.json. */
+  /** See {@link Worktree.createdAt}. Persisted to kolux-data.json. */
   createdAt?: number
-  /** See {@link Worktree.createdWithAgent}. Persisted to nightshift-data.json. */
+  /** See {@link Worktree.createdWithAgent}. Persisted to kolux-data.json. */
   createdWithAgent?: TuiAgent
   /** See {@link Worktree.pendingFirstAgentMessageRename}. */
   pendingFirstAgentMessageRename?: boolean
@@ -70,15 +70,15 @@ export type WorktreeMeta = {
   sparsePresetId?: string
   /** Intended create base for stale-base probes. Persisted metadata, not UI drift state. */
   baseRef?: string
-  /** True when Nightshift checked out a pre-existing local branch that delete must not prune. */
+  /** True when Kolux checked out a pre-existing local branch that delete must not prune. */
   preserveBranchOnDelete?: boolean
   /** See {@link Worktree.pushTarget}. Persisted so refreshed worktree lists keep the target. */
   pushTarget?: GitPushTarget
-  /** Explicit marker stamped when Nightshift creates the worktree. */
-  nightshiftCreatedAt?: number
-  nightshiftCreationSource?: 'desktop' | 'runtime' | 'cli' | 'ssh'
-  /** Workspace layout active when Nightshift created the worktree. */
-  nightshiftCreationWorkspaceLayout?: NightshiftWorkspaceLayout
+  /** Explicit marker stamped when Kolux creates the worktree. */
+  koluxCreatedAt?: number
+  koluxCreationSource?: 'desktop' | 'runtime' | 'cli' | 'ssh'
+  /** Workspace layout active when Kolux created the worktree. */
+  koluxCreationWorkspaceLayout?: KoluxWorkspaceLayout
   /** User-assigned workspace board status for manual sidebar organization. */
   workspaceStatus?: WorkspaceStatus
   diffComments?: DiffComment[]
@@ -90,6 +90,6 @@ export type WorktreeMeta = {
   mobileDiffReview?: MobileDiffReviewState
   /** System-owned provenance for workspaces created by automation new-per-run dispatches. */
   automationProvenance?: AutomationWorkspaceProvenance
-  /** System-owned provenance for workspaces created via `nightshift worktree create`. */
+  /** System-owned provenance for workspaces created via `kolux worktree create`. */
   cliProvenance?: CliWorkspaceProvenance
 }

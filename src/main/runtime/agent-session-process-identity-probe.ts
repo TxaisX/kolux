@@ -225,7 +225,7 @@ export async function probeAgentSessionProcessIdentities(args: {
 }
 
 /**
- * Probe one recorded owner. `observedExit` short-circuits everything: Nightshift watching that exact
+ * Probe one recorded owner. `observedExit` short-circuits everything: Kolux watching that exact
  * process exit is the strongest evidence available.
  */
 export async function probeAgentSessionProcessIdentity(args: {

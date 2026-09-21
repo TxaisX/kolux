@@ -97,7 +97,7 @@ describe('registerRuntimeEnvironmentHandlers', () => {
   }
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-env-ipc-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-env-ipc-'))
     activeRuntimeEnvironmentId = null
     store = {
       getSettings: () => ({ activeRuntimeEnvironmentId }),
@@ -501,7 +501,7 @@ describe('registerRuntimeEnvironmentHandlers', () => {
     // on the environment record (ephemeral-vm.ts), so the public list reads it
     // straight from the record rather than cross-referencing the VM runtime store.
     const added = environmentStore.addEnvironmentFromPairingCode(userDataPath, {
-      name: 'nightshift VM abc12345',
+      name: 'kolux VM abc12345',
       pairingCode: pairingCode(),
       source: 'ephemeral-vm'
     })
@@ -511,7 +511,7 @@ describe('registerRuntimeEnvironmentHandlers', () => {
     )
 
     expect(await list(null, undefined)).toMatchObject([
-      { id: added.id, name: 'nightshift VM abc12345', source: 'ephemeral-vm' }
+      { id: added.id, name: 'kolux VM abc12345', source: 'ephemeral-vm' }
     ])
   })
 })

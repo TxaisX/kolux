@@ -4,9 +4,9 @@ import type { Repo } from '../../shared/repo-types'
 import {
   getEffectiveHooks,
   hasHooksFile,
-  hasUnrecognizedNightshiftYamlKeys,
+  hasUnrecognizedKoluxYamlKeys,
   loadHooks,
-  parseNightshiftYaml
+  parseKoluxYaml
 } from '../hooks'
 import {
   getDefaultTabCommandTrustContent,
@@ -17,6 +17,7 @@ import { getSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
 import { isFolderRepo } from '../../shared/repo-kind'
 import { inspectSetupScriptImportCandidates } from '../../shared/setup-script-imports'
 import { joinWorktreeRelativePath } from './runtime-relative-paths'
+import { readRepoConfigYaml } from './repo-config-yaml-fallback'
 
 type RuntimeRepositoryHooksCommandsDeps = {
   resolveRepo: (selector: string) => Promise<Repo>
@@ -38,15 +39,13 @@ export class RuntimeRepositoryHooksCommands {
         }
       }
       try {
-        const result = await fsProvider.readFile(
-          joinWorktreeRelativePath(repo.path, 'nightshift.yaml')
-        )
-        const hooks = result.isBinary ? null : parseNightshiftYaml(result.content)
+        const result = await readRepoConfigYaml(fsProvider, repo.path)
+        const hooks = result == null || result.isBinary ? null : parseKoluxYaml(result.content)
         return {
           hasHooksFile: Boolean(hooks),
           hooks,
           setupRunPolicy: getEffectiveSetupRunPolicy(repo),
-          source: hooks ? ('nightshift.yaml' as const) : null,
+          source: hooks ? ('kolux.yaml' as const) : null,
           setupTrust: setupTrust(repo, getDefaultTabCommandTrustContent(hooks))
         }
       } catch {
@@ -65,7 +64,7 @@ export class RuntimeRepositoryHooksCommands {
       hasHooksFile: hasFile,
       hooks,
       setupRunPolicy: getEffectiveSetupRunPolicy(repo),
-      source: hasFile ? ('nightshift.yaml' as const) : hooks ? ('legacy' as const) : null,
+      source: hasFile ? ('kolux.yaml' as const) : hooks ? ('legacy' as const) : null,
       setupTrust: setupTrust(repo, getDefaultTabCommandTrustContent(sharedHooks))
     }
   }
@@ -81,16 +80,14 @@ export class RuntimeRepositoryHooksCommands {
         return { status: 'error' as const, hasHooks: false, hooks: null, mayNeedUpdate: false }
       }
       try {
-        const result = await fsProvider.readFile(
-          joinWorktreeRelativePath(repo.path, 'nightshift.yaml')
-        )
-        if (result.isBinary) {
+        const result = await readRepoConfigYaml(fsProvider, repo.path)
+        if (result == null || result.isBinary) {
           return { status: 'ok' as const, hasHooks: false, hooks: null, mayNeedUpdate: false }
         }
         return {
           status: 'ok' as const,
           hasHooks: true,
-          hooks: parseNightshiftYaml(result.content),
+          hooks: parseKoluxYaml(result.content),
           mayNeedUpdate: false
         }
       } catch (error) {
@@ -108,7 +105,7 @@ export class RuntimeRepositoryHooksCommands {
       status: 'ok' as const,
       hasHooks: has,
       hooks,
-      mayNeedUpdate: has && !hooks && hasUnrecognizedNightshiftYamlKeys(repo.path)
+      mayNeedUpdate: has && !hooks && hasUnrecognizedKoluxYamlKeys(repo.path)
     }
   }
 

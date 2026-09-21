@@ -36,7 +36,7 @@ describe('packaged node-pty launcher-surviving grandchild', () => {
     })
 
     expect(result).toMatchObject({ code: 0, timedOut: false })
-    expect(result.stdout).toBe('NIGHTSHIFT_ONE_SHOT_EVIDENCE=flushed\n')
+    expect(result.stdout).toBe('KOLUX_ONE_SHOT_EVIDENCE=flushed\n')
     expect(result.stderr).toBe('')
   })
 
@@ -48,7 +48,7 @@ describe('packaged node-pty launcher-surviving grandchild', () => {
 
     expect(launch.program).toMatch(/wscript\.exe$/i)
     expect(launch.args).toEqual([
-      expect.stringMatching(/real-nightshift-detached-launcher\.vbs$/),
+      expect.stringMatching(/real-kolux-detached-launcher\.vbs$/),
       process.execPath,
       probePath,
       '--grandchild-member',
@@ -60,7 +60,7 @@ describe('packaged node-pty launcher-surviving grandchild', () => {
   })
 
   it('closes one-shot fixture observations before server teardown', async () => {
-    const fixtureDir = await mkdtemp(join(tmpdir(), 'nightshift-pty-capability-'))
+    const fixtureDir = await mkdtemp(join(tmpdir(), 'kolux-pty-capability-'))
     const channel = join(fixtureDir, 'fixture.sock')
     const fixtureToken = 'fixture-token'
     const fixtures = createFixtureServer(channel, fixtureToken)

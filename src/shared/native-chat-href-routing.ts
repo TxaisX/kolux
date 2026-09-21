@@ -8,7 +8,7 @@ export type NativeChatHrefRoute =
 
 const WEB_SCHEME_PATTERN = /^(?:https?|mailto):/i
 const SCHEME_PATTERN = /^[A-Za-z][A-Za-z0-9+.-]*:/
-export const NATIVE_CHAT_FILE_HREF_PREFIX = '#nightshift-native-chat-file='
+export const NATIVE_CHAT_FILE_HREF_PREFIX = '#kolux-native-chat-file='
 const MAX_NATIVE_CHAT_FILE_HREF_DECODES = 4
 
 export function createNativeChatFileHref(pathText: string): string {

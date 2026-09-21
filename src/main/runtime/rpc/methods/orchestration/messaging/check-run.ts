@@ -1,5 +1,5 @@
 import type { MessageRow, MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { RpcContext } from '../../../core'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { formatMessageBanner } from '../../../../orchestration/formatter'
@@ -14,7 +14,7 @@ type CheckParamsInput = z.infer<typeof CheckParams>
 
 export async function checkRunMailbox(args: {
   params: CheckParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   handle: string
   paneKey: string | undefined

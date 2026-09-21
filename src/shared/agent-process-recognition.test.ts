@@ -159,7 +159,7 @@ describe('agent process recognition', () => {
       agent: 'trae',
       processName: 'traecli'
     })
-    // Why: past `--` nothing is a flag, so this is the interactive pane Nightshift itself launches.
+    // Why: past `--` nothing is a flag, so this is the interactive pane Kolux itself launches.
     expect(recognizeAgentProcessFromCommandLine('traecli -- "--print the release notes"')).toEqual({
       agent: 'trae',
       processName: 'traecli'
@@ -283,7 +283,7 @@ describe('agent process recognition', () => {
       agent: 'prime-agent',
       processName: 'prime-agent'
     })
-    // Why: past `--` nothing is a flag, so this is the interactive pane Nightshift itself launches.
+    // Why: past `--` nothing is a flag, so this is the interactive pane Kolux itself launches.
     expect(
       recognizeAgentProcessFromCommandLine('prime-agent -- "--print the release notes"')
     ).toEqual({ agent: 'prime-agent', processName: 'prime-agent' })
@@ -293,7 +293,7 @@ describe('agent process recognition', () => {
     for (const mode of ['json', 'rpc', 'acp', 'daemon']) {
       expect(recognizeAgentProcessFromCommandLine(`prime-agent --mode ${mode}`)).toBeNull()
     }
-    // Why: `text` is the interactive TUI mode Nightshift hosts.
+    // Why: `text` is the interactive TUI mode Kolux hosts.
     expect(recognizeAgentProcessFromCommandLine('prime-agent --mode text')).toEqual({
       agent: 'prime-agent',
       processName: 'prime-agent'
@@ -310,20 +310,18 @@ describe('agent process recognition', () => {
     })
   })
 
-  it('recognizes only the agent subcommand of the generic Nightshift CLI', () => {
-    expect(recognizeAgentProcessFromCommandLine('nightshift claude-teams')).toEqual({
+  it('recognizes only the agent subcommand of the generic Kolux CLI', () => {
+    expect(recognizeAgentProcessFromCommandLine('kolux claude-teams')).toEqual({
       agent: 'claude-agent-teams',
-      processName: 'nightshift'
+      processName: 'kolux'
     })
-    expect(recognizeAgentProcessFromCommandLine('nightshift status')).toBeNull()
-    expect(recognizeAgentProcessFromCommandLine('nightshift-dev terminal list')).toBeNull()
-    expect(
-      recognizeAgentProcessFromCommandLine('node /usr/local/bin/nightshift claude-teams')
-    ).toEqual({
+    expect(recognizeAgentProcessFromCommandLine('kolux status')).toBeNull()
+    expect(recognizeAgentProcessFromCommandLine('kolux-dev terminal list')).toBeNull()
+    expect(recognizeAgentProcessFromCommandLine('node /usr/local/bin/kolux claude-teams')).toEqual({
       agent: 'claude-agent-teams',
-      processName: 'nightshift'
+      processName: 'kolux'
     })
-    expect(recognizeAgentProcessFromCommandLine('node /usr/local/bin/nightshift status')).toBeNull()
+    expect(recognizeAgentProcessFromCommandLine('node /usr/local/bin/kolux status')).toBeNull()
   })
 
   it('recognizes the versioned Cursor Node wrapper without accepting generic agent processes', () => {
@@ -347,7 +345,7 @@ describe('agent process recognition', () => {
   it('does not classify prompt text as a wrapped agent command', () => {
     expect(
       recognizeAgentProcessFromCommandLine(
-        'node /tmp/not-an-agent.js "compare opencode vs nightshift in Gemini CLI"'
+        'node /tmp/not-an-agent.js "compare opencode vs kolux in Gemini CLI"'
       )
     ).toBeNull()
     expect(recognizeAgentProcessFromCommandLine(String.raw`node C:\tmp\not-an-agent.js`)).toBeNull()

@@ -32,7 +32,7 @@ RUN for attempt in 1 2 3 4 5; do \
     util-linux \
   && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash nightshift
+RUN useradd --create-home --shell /bin/bash kolux
 
 COPY run-cli-case.sh /usr/local/bin/run-cli-case
 

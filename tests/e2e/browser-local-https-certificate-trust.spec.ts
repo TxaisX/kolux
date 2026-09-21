@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@stablyai/playwright-test'
 
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getActiveWorktreeId,
@@ -125,22 +125,22 @@ async function reloadBrowserGuest(page: Page, browserTabId: string): Promise<voi
 }
 
 test.describe('local HTTPS certificate trust', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   test('approves one exact local certificate endpoint without trusting sibling tabs or ports', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const firstServer = await startLocalHttpsServer()
     const secondPortServer = await startLocalHttpsServer()
     const siblingProbeServer = await startLocalHttpProbeServer(firstServer)
     try {
-      const worktreeId = (await getActiveWorktreeId(nightshiftPage))!
-      const firstTab = await createBrowserTab(nightshiftPage, worktreeId, firstServer.schemeLessUrl)
-      const firstSlot = browserSlot(nightshiftPage, firstTab.id)
+      const worktreeId = (await getActiveWorktreeId(koluxPage))!
+      const firstTab = await createBrowserTab(koluxPage, worktreeId, firstServer.schemeLessUrl)
+      const firstSlot = browserSlot(koluxPage, firstTab.id)
 
       await expect(firstSlot.getByRole('button', { name: 'Try HTTPS' })).toBeVisible()
       await firstSlot.getByRole('button', { name: 'Try HTTPS' }).click()
@@ -155,16 +155,16 @@ test.describe('local HTTPS certificate trust', () => {
       await expect(firstSlot.getByText(/make sure the server is running/i)).toHaveCount(0)
       await firstSlot.getByRole('button', { name: 'Proceed Anyway (Unsafe)' }).click()
       await expect
-        .poll(() => readBrowserHeading(nightshiftPage, firstTab.id), { timeout: 10_000 })
+        .poll(() => readBrowserHeading(koluxPage, firstTab.id), { timeout: 10_000 })
         .toBe('Local HTTPS request 1')
       await expect
-        .poll(() => readBrowserState(nightshiftPage, firstTab.id, '__localTlsState'))
+        .poll(() => readBrowserState(koluxPage, firstTab.id, '__localTlsState'))
         .toEqual({ asset: true, webSocket: true })
       expect(firstServer.assetRequestCount()).toBe(1)
       expect(firstServer.webSocketConnectionCount()).toBe(1)
 
-      const secondTab = await createBrowserTab(nightshiftPage, worktreeId, firstServer.secureUrl)
-      const secondSlot = browserSlot(nightshiftPage, secondTab.id)
+      const secondTab = await createBrowserTab(koluxPage, worktreeId, firstServer.secureUrl)
+      const secondSlot = browserSlot(koluxPage, secondTab.id)
       await expect(
         secondSlot.getByRole('heading', { name: "Connection isn't secure" })
       ).toBeVisible()
@@ -174,23 +174,23 @@ test.describe('local HTTPS certificate trust', () => {
         secondSlot.getByRole('button', { name: 'Proceed Anyway (Unsafe)' })
       ).toBeVisible()
 
-      const probeTab = await createBrowserTab(nightshiftPage, worktreeId, siblingProbeServer.url)
+      const probeTab = await createBrowserTab(koluxPage, worktreeId, siblingProbeServer.url)
       await expect
-        .poll(() => readBrowserState(nightshiftPage, probeTab.id, '__siblingTlsProbe'))
+        .poll(() => readBrowserState(koluxPage, probeTab.id, '__siblingTlsProbe'))
         .toEqual({ asset: 'blocked', webSocket: 'blocked' })
       expect(firstServer.assetRequestCount()).toBe(1)
       expect(firstServer.webSocketConnectionCount()).toBe(1)
 
-      await switchToBrowserTab(nightshiftPage, worktreeId, firstTab.id)
-      await reloadBrowserGuest(nightshiftPage, firstTab.id)
+      await switchToBrowserTab(koluxPage, worktreeId, firstTab.id)
+      await reloadBrowserGuest(koluxPage, firstTab.id)
       await expect.poll(firstServer.documentRequestCount, { timeout: 10_000 }).toBe(2)
       await expect
-        .poll(() => readBrowserHeading(nightshiftPage, firstTab.id), { timeout: 10_000 })
+        .poll(() => readBrowserHeading(koluxPage, firstTab.id), { timeout: 10_000 })
         .toBe('Local HTTPS request 2')
       await expect.poll(firstServer.assetRequestCount).toBe(2)
       await expect.poll(firstServer.webSocketConnectionCount).toBe(2)
 
-      const firstAddressBar = firstSlot.locator('[data-nightshift-browser-address-bar="true"]')
+      const firstAddressBar = firstSlot.locator('[data-kolux-browser-address-bar="true"]')
       await firstAddressBar.fill(secondPortServer.secureUrl)
       await firstAddressBar.press('Enter')
       await expect(

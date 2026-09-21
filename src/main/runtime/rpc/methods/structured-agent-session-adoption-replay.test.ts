@@ -8,7 +8,7 @@ import { AgentSessionRecordStore } from '../../agent-session-record-store'
 import type { StructuredAgentSessionAdapter } from '../../../native-chat/agent-session-wire/structured-agent-session-adapter'
 import { StructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-host'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RpcRequest, RpcResponse } from '../core'
 import { RpcDispatcher } from '../dispatcher'
 import { STRUCTURED_AGENT_SESSION_METHODS } from './structured-agent-session'
@@ -92,7 +92,7 @@ async function call(dispatcher: RpcDispatcher, params: unknown, client = CLIENT)
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-adoption-rpc-replay-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-adoption-rpc-replay-'))
 })
 
 afterEach(async () => {
@@ -131,7 +131,7 @@ describe('committed adopting create RPC replay', () => {
 
     let selectedHome = originalHome
     const selectAccountHome = vi.fn(() => selectedHome)
-    const runtime = new NightshiftRuntimeService(
+    const runtime = new KoluxRuntimeService(
       {
         getSettings: () => ({
           experimentalStructuredNativeChat: true,
@@ -145,7 +145,7 @@ describe('committed adopting create RPC replay', () => {
     // probes durable-identity replay, which only runs once the gate admits the call.
     vi.spyOn(runtime, 'getClientSettings').mockReturnValue({
       experimentalStructuredNativeChat: true
-    } as ReturnType<NightshiftRuntimeService['getClientSettings']>)
+    } as ReturnType<KoluxRuntimeService['getClientSettings']>)
     vi.spyOn(runtime, 'getStructuredAgentSessionCreateSupport').mockResolvedValue({
       supported: true
     })

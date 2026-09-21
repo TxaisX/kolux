@@ -102,9 +102,9 @@ export function createMainWindow(
     ...(savedBounds ? { x: savedBounds.x, y: savedBounds.y } : {}),
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
-    title: opts?.title ?? 'Nightshift',
+    title: opts?.title ?? 'Kolux',
     show: false,
-    // Why: macOS swallows the app-activating click by default, so clicking back into Nightshift needed a second click (Windows/Linux already deliver it).
+    // Why: macOS swallows the app-activating click by default, so clicking back into Kolux needed a second click (Windows/Linux already deliver it).
     acceptFirstMouse: true,
     // Why: auto-hide the Windows/Linux menu bar to save a row (Alt reveals it); macOS uses the system menu bar anyway.
     autoHideMenuBar: true,

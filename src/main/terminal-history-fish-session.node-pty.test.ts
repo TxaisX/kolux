@@ -23,9 +23,9 @@ import { fishHistorySessionName, resolveFishHistoryDir } from './fish-history-se
 const FISH = resolveFishBinary(4)
 const itWithFish = FISH.available ? it : it.skip
 
-const PROMPT_MARK = 'NIGHTSHIFTHIST> '
+const PROMPT_MARK = 'KOLUXHIST> '
 const WORKTREE_HASH = 'deadbeefdeadbeef'
-const MARKER = 'echo nightshift-worktree-scoped-history'
+const MARKER = 'echo kolux-worktree-scoped-history'
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -40,7 +40,7 @@ async function waitUntil(predicate: () => boolean, timeoutMs: number): Promise<b
   return false
 }
 
-describe('fish keeps per-worktree history under the session Nightshift names', () => {
+describe('fish keeps per-worktree history under the session Kolux names', () => {
   let home: string | null = null
 
   // Always runs, so the CI lane cannot report green with the regression below skipped.
@@ -60,7 +60,7 @@ describe('fish keeps per-worktree history under the session Nightshift names', (
     async () => {
       const nodePty = await import('node-pty')
 
-      home = mkdtempSync(path.join(tmpdir(), 'nightshift-fish-history-'))
+      home = mkdtempSync(path.join(tmpdir(), 'kolux-fish-history-'))
       const dataHome = path.join(home, 'data')
       mkdirSync(path.join(home, 'fish'), { recursive: true })
       writeFileSync(
@@ -115,9 +115,9 @@ describe('fish keeps per-worktree history under the session Nightshift names', (
 
       expect(await waitUntil(() => rendered.includes(PROMPT_MARK), 15_000)).toBe(true)
       term.write(`${MARKER}\r`)
-      expect(
-        await waitUntil(() => rendered.includes('nightshift-worktree-scoped-history'), 5_000)
-      ).toBe(true)
+      expect(await waitUntil(() => rendered.includes('kolux-worktree-scoped-history'), 5_000)).toBe(
+        true
+      )
       // fish flushes history on exit, so the read must wait for the process to go.
       term.write('exit\r')
       expect(await waitUntil(() => exited, 10_000)).toBe(true)

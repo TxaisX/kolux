@@ -229,7 +229,7 @@ describe('shouldRecordProcessGoneCrash', () => {
       shouldRecordProcessGoneCrash({
         source: 'child',
         processType: 'Utility',
-        serviceName: 'com.nightshift.unexpected',
+        serviceName: 'com.kolux.unexpected',
         reason: 'crashed',
         exitCode: 5,
         expectedTeardown: 'none'
@@ -362,7 +362,7 @@ describe('shouldRecordProcessGoneCrash', () => {
       shouldRecordProcessGoneCrash({
         source: 'child',
         processType: 'Utility',
-        serviceName: 'com.nightshift.unexpected',
+        serviceName: 'com.kolux.unexpected',
         reason: 'killed',
         exitCode: 9,
         expectedTeardown: 'renderer-reload'

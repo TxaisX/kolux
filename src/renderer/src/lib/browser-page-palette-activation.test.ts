@@ -5,7 +5,7 @@ import type { BrowserPage, BrowserWorkspace } from '../../../shared/browser-work
 import type { FolderWorkspace } from '../../../shared/folder-workspace-types'
 import type { Tab, TabGroup } from '../../../shared/tab-types'
 import type { Worktree } from '../../../shared/worktree/types'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../shared/constants'
 import { folderWorkspaceKey } from '../../../shared/workspace-scope'
 import { useAppStore } from '@/store'
 import type { AppState } from '@/store/types'
@@ -259,7 +259,7 @@ describe('activateBrowserPagePaletteResult', () => {
   it('derives the focus target from the page url captured before worktree activation', () => {
     seedStore({
       browserPagesByWorkspace: {
-        'ws-1': [makePage({ url: NIGHTSHIFT_BROWSER_BLANK_URL })]
+        'ws-1': [makePage({ url: KOLUX_BROWSER_BLANK_URL })]
       }
     })
     // Why: the real activation drops the page, so a post-activation lookup would

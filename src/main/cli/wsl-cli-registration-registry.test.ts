@@ -12,7 +12,7 @@ describe('WSL CLI registration registry', () => {
   let userDataPath: string
 
   beforeEach(async () => {
-    userDataPath = await mkdtemp(join(tmpdir(), 'nightshift-wsl-cli-registry-'))
+    userDataPath = await mkdtemp(join(tmpdir(), 'kolux-wsl-cli-registry-'))
   })
 
   afterEach(async () => {
@@ -47,7 +47,7 @@ describe('WSL CLI registration registry', () => {
 
   it('skips a registered distro already reconciled by this build against this launcher', async () => {
     const reconciled = {
-      target: 'C:\\Nightshift\\resources\\bin\\nightshift.exe',
+      target: 'C:\\Kolux\\resources\\bin\\kolux.exe',
       appVersion: '1.4.138'
     }
     await recordWslCliRegistrationObservations(userDataPath, [
@@ -63,7 +63,7 @@ describe('WSL CLI registration registry', () => {
     // A launcher move or app update re-probes the registered distro.
     await expect(
       getWslCliRegistrationCandidates(userDataPath, ['Ubuntu'], {
-        currentTarget: 'D:\\Elsewhere\\nightshift.exe',
+        currentTarget: 'D:\\Elsewhere\\kolux.exe',
         appVersion: reconciled.appVersion
       })
     ).resolves.toEqual(['Ubuntu'])

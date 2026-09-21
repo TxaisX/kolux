@@ -31,7 +31,7 @@ vi.mock('./runtime-worktree-agent-startup', async (importOriginal) => ({
   markRemoteWorktreeTrusted: trustMocks.remote
 }))
 
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const TARGET_ID = 'remote-1'
 const REMOTE_PATH = '/srv/app'
@@ -44,14 +44,14 @@ type RuntimeInternals = {
 }
 
 function makeRuntime(repo: Record<string, unknown>): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   createRemote: ReturnType<typeof vi.fn>
 } {
   const store = {
     getSettings: () => ({ disabledTuiAgents: [], workspaceDir: '/tmp/workspaces' }),
     getProjectHostSetups: () => []
   }
-  const runtime = new NightshiftRuntimeService(store as never)
+  const runtime = new KoluxRuntimeService(store as never)
   const internals = runtime as unknown as RuntimeInternals
   vi.spyOn(internals, 'resolveRepoSelector').mockResolvedValue(repo)
   vi.spyOn(internals, 'resolveLineageForWorktreeCreate').mockResolvedValue(null)

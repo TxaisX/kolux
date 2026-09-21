@@ -132,8 +132,8 @@ describe('holdFor', () => {
 // per-client seam. A `project` call that bypasses it publishes an unheld -- or another client's --
 // answer, which is invisible to any behavioral test that does not happen to cover that call site.
 describe('session-tabs projection census', () => {
-  it('routes every client projection in nightshift-runtime through the per-client seam', () => {
-    const source = readNightshiftRuntimeSourceFamily()
+  it('routes every client projection in kolux-runtime through the per-client seam', () => {
+    const source = readKoluxRuntimeSourceFamily()
     const direct = source.match(/this\.clientSessionTabSelections\.project\(/g) ?? []
 
     // Exactly two: inside `projectMobileSessionTabsForClient` itself, and the removed-worktree
@@ -143,17 +143,17 @@ describe('session-tabs projection census', () => {
   })
 
   it('keeps the unreconciled flag out of every other runtime publication site', () => {
-    const source = readNightshiftRuntimeSourceFamily()
+    const source = readKoluxRuntimeSourceFamily()
 
     expect(source).not.toContain('clientHostedPagesUnreconciled')
   })
 })
 
-function readNightshiftRuntimeSourceFamily(): string {
+function readKoluxRuntimeSourceFamily(): string {
   return readdirSync(import.meta.dirname)
     .filter(
       (name) =>
-        (name === 'nightshift-runtime.ts' || name.startsWith('nightshift-runtime-')) &&
+        (name === 'kolux-runtime.ts' || name.startsWith('kolux-runtime-')) &&
         name.endsWith('.ts') &&
         !name.includes('.test.') &&
         !name.endsWith('-fixtures.ts') &&

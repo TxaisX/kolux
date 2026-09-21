@@ -1,6 +1,6 @@
 import type { FeatureInteractionId } from '../../../shared/feature-interactions'
 import { isBrowserPaneUiRuntimeRpcParams } from '../../../shared/runtime-rpc-feature-interaction-source'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 
 export function getRuntimeFeatureInteractionId(
   method: string,
@@ -39,7 +39,7 @@ export function getRuntimeFeatureInteractionId(
 }
 
 export function recordRuntimeFeatureInteraction(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   method: string,
   result: unknown,
   alreadyRecorded?: Set<FeatureInteractionId>,

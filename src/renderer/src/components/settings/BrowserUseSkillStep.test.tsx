@@ -16,8 +16,8 @@ vi.mock('./AgentSkillSetupPanel', () => ({
 describe('BrowserUseSkillStep', () => {
   it('forwards a single-skill installed command even when setup installs a bundle', () => {
     const bundleInstallCommand =
-      'npx skills add https://github.com/TxaisX/nightshift --skill nightshift-cli --skill orchestration --global'
-    const updateCommand = 'npx skills update nightshift-cli --global'
+      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --skill orchestration --global'
+    const updateCommand = 'npx skills update kolux-cli --global'
 
     renderToStaticMarkup(
       <BrowserUseSkillStep

@@ -11,7 +11,7 @@ import {
   releaseBrowserRoutePartitionStorage,
   type BrowserRoutePartitionStorageDependencies
 } from './browser-route-partition-storage-lifecycle'
-import { activeBrowserRoutePartitionNightshiftProfileId } from './browser-route-partition-binding-runtime'
+import { activeBrowserRoutePartitionKoluxProfileId } from './browser-route-partition-binding-runtime'
 import { browserRoutePartitionStorageDependencies } from './browser-route-partition-storage-dependencies'
 
 export type BrowserRoutePartitionStorageClear = {
@@ -31,15 +31,15 @@ export type BrowserRoutePartitionStorageClear = {
 export async function collectOrphanedBrowserRoutePartitionStorage(
   listLocalSshTargetIds?: () => string[]
 ): Promise<string[]> {
-  const nightshiftProfileId = activeBrowserRoutePartitionNightshiftProfileId()
-  if (!nightshiftProfileId) {
+  const koluxProfileId = activeBrowserRoutePartitionKoluxProfileId()
+  if (!koluxProfileId) {
     return []
   }
   const dependencies = storageDependencies()
   const liveStorageScopes = new Set(
     listEnvironments(app.getPath('userData')).map((environment) =>
       deriveBrowserRoutePartitionStorageScope({
-        nightshiftProfileId,
+        koluxProfileId,
         environmentId: environment.id
       })
     )
@@ -49,7 +49,7 @@ export async function collectOrphanedBrowserRoutePartitionStorage(
   }
   for (const targetId of listLocalSshTargetIds()) {
     liveStorageScopes.add(
-      deriveLocalSshBrowserRoutePartitionStorageScope({ nightshiftProfileId, targetId })
+      deriveLocalSshBrowserRoutePartitionStorageScope({ koluxProfileId, targetId })
     )
   }
   const orphans = findOrphanedBrowserRoutePartitions(dependencies, liveStorageScopes)
@@ -70,14 +70,14 @@ export async function collectOrphanedBrowserRoutePartitionStorage(
 export async function clearBrowserRoutePartitionStorageForEnvironment(
   environmentId: string
 ): Promise<BrowserRoutePartitionStorageClear> {
-  const nightshiftProfileId = activeBrowserRoutePartitionNightshiftProfileId()
-  if (!nightshiftProfileId) {
+  const koluxProfileId = activeBrowserRoutePartitionKoluxProfileId()
+  if (!koluxProfileId) {
     return { clearedPartitions: [], livePartitions: [] }
   }
   const dependencies = storageDependencies()
   const partitions = findBrowserRoutePartitionsForStorageScope(
     dependencies,
-    deriveBrowserRoutePartitionStorageScope({ nightshiftProfileId, environmentId })
+    deriveBrowserRoutePartitionStorageScope({ koluxProfileId, environmentId })
   )
   if (partitions.length === 0) {
     return { clearedPartitions: [], livePartitions: [] }
@@ -91,14 +91,14 @@ export async function clearBrowserRoutePartitionStorageForEnvironment(
 export async function clearBrowserRoutePartitionStorageForLocalSshTarget(
   targetId: string
 ): Promise<BrowserRoutePartitionStorageClear> {
-  const nightshiftProfileId = activeBrowserRoutePartitionNightshiftProfileId()
-  if (!nightshiftProfileId) {
+  const koluxProfileId = activeBrowserRoutePartitionKoluxProfileId()
+  if (!koluxProfileId) {
     return { clearedPartitions: [], livePartitions: [] }
   }
   const dependencies = storageDependencies()
   const partitions = findBrowserRoutePartitionsForStorageScope(
     dependencies,
-    deriveLocalSshBrowserRoutePartitionStorageScope({ nightshiftProfileId, targetId })
+    deriveLocalSshBrowserRoutePartitionStorageScope({ koluxProfileId, targetId })
   )
   if (partitions.length === 0) {
     return { clearedPartitions: [], livePartitions: [] }

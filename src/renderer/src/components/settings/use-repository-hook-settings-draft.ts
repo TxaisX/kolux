@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { RepoHookSettings } from '../../../../shared/nightshift-yaml-hook-types'
+import type { RepoHookSettings } from '../../../../shared/kolux-yaml-hook-types'
 import type { Repo } from '../../../../shared/repo-types'
 import {
   areHookSettingsDraftsEqual,

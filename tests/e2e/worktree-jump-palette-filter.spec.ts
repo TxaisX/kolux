@@ -2,7 +2,7 @@ import type { Locator, Page } from '@stablyai/playwright-test'
 import type { ExecutionHostId } from '../../src/shared/execution-host'
 import { getPaletteWorktreeIdentity } from '../../src/renderer/src/lib/palette-repo-resolution'
 import { encodePaletteIdentity } from '../../src/renderer/src/lib/palette-match/palette-ranking'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const LOCAL_PROJECT = 'E2E Palette Local Project'
@@ -161,12 +161,12 @@ async function openComposerFromTypedName(page: Page): Promise<Locator> {
 }
 
 test.describe('Worktree jump-palette filters', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
-  test.afterEach(async ({ nightshiftPage }) => {
-    await nightshiftPage.evaluate(() => {
+  test.afterEach(async ({ koluxPage }) => {
+    await koluxPage.evaluate(() => {
       const store = window.__store?.getState()
       store?.setFilterRepoIds([])
       store?.closeModal()
@@ -174,105 +174,99 @@ test.describe('Worktree jump-palette filters', () => {
   })
 
   test('filters results, intersects fields, and reseeds from the sidebar on reopen', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const fixture = await seedPaletteFilterFixture(nightshiftPage)
-    await openPalette(nightshiftPage)
-    await searchFixtureWorkspaces(nightshiftPage, fixture)
+    const fixture = await seedPaletteFilterFixture(koluxPage)
+    await openPalette(koluxPage)
+    await searchFixtureWorkspaces(koluxPage, fixture)
 
     // P1: keyboard focus reaches the control; its rendered selection narrows rows.
-    await selectRemoteHost(nightshiftPage, true)
-    await expect(filterTrigger(nightshiftPage)).toContainText('1')
-    await expect(palette(nightshiftPage).getByLabel(`Remove filter ${REMOTE_HOST}`)).toBeVisible()
+    await selectRemoteHost(koluxPage, true)
+    await expect(filterTrigger(koluxPage)).toContainText('1')
+    await expect(palette(koluxPage).getByLabel(`Remove filter ${REMOTE_HOST}`)).toBeVisible()
     await expect(
-      worktreeRow(nightshiftPage, fixture.remoteWorktreeId, fixture.remoteHostId)
+      worktreeRow(koluxPage, fixture.remoteWorktreeId, fixture.remoteHostId)
     ).toBeVisible()
-    await expect(worktreeRow(nightshiftPage, fixture.localWorktreeId)).toHaveCount(0)
+    await expect(worktreeRow(koluxPage, fixture.localWorktreeId)).toHaveCount(0)
 
     // P2: host and repository fields intersect, with the filter-specific empty state.
-    await palette(nightshiftPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('')
-    await filterTrigger(nightshiftPage).click()
-    await palette(nightshiftPage).getByText('Projects', { exact: true }).click()
-    const projects = palette(nightshiftPage).getByRole('listbox', { name: 'Projects' })
+    await palette(koluxPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('')
+    await filterTrigger(koluxPage).click()
+    await palette(koluxPage).getByText('Projects', { exact: true }).click()
+    const projects = palette(koluxPage).getByRole('listbox', { name: 'Projects' })
     const localProject = projects.getByRole('option', { name: LOCAL_PROJECT })
     await expect(localProject).toBeVisible()
     await localProject.click()
-    await filterTrigger(nightshiftPage).click()
+    await filterTrigger(koluxPage).click()
+    await expect(palette(koluxPage).getByText('No results match the active filter')).toBeVisible()
     await expect(
-      palette(nightshiftPage).getByText('No results match the active filter')
-    ).toBeVisible()
-    await expect(
-      palette(nightshiftPage).getByText(
+      palette(koluxPage).getByText(
         'Clear the filter above, or widen it to more hosts and projects.'
       )
     ).toBeVisible()
 
     // P3: clear restores both rows; reopening replaces ephemeral state with the sidebar scope.
-    await filterTrigger(nightshiftPage).click()
-    await palette(nightshiftPage).getByRole('button', { name: 'Clear all' }).last().click()
-    await filterTrigger(nightshiftPage).click()
-    await expect(filterTrigger(nightshiftPage)).not.toContainText('1')
-    await searchFixtureWorkspaces(nightshiftPage, fixture)
+    await filterTrigger(koluxPage).click()
+    await palette(koluxPage).getByRole('button', { name: 'Clear all' }).last().click()
+    await filterTrigger(koluxPage).click()
+    await expect(filterTrigger(koluxPage)).not.toContainText('1')
+    await searchFixtureWorkspaces(koluxPage, fixture)
 
-    await selectRemoteHost(nightshiftPage)
-    await nightshiftPage.evaluate((repoId) => {
+    await selectRemoteHost(koluxPage)
+    await koluxPage.evaluate((repoId) => {
       const store = window.__store?.getState()
       store?.closeModal()
       store?.setFilterRepoIds([repoId])
     }, fixture.localRepoId)
-    await expect(palette(nightshiftPage)).toBeHidden()
-    await openPalette(nightshiftPage)
-    await palette(nightshiftPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('E2E Palette')
-    await expect(filterTrigger(nightshiftPage)).toContainText('1')
-    await expect(worktreeRow(nightshiftPage, fixture.localWorktreeId)).toBeVisible()
+    await expect(palette(koluxPage)).toBeHidden()
+    await openPalette(koluxPage)
+    await palette(koluxPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('E2E Palette')
+    await expect(filterTrigger(koluxPage)).toContainText('1')
+    await expect(worktreeRow(koluxPage, fixture.localWorktreeId)).toBeVisible()
     await expect(
-      worktreeRow(nightshiftPage, fixture.remoteWorktreeId, fixture.remoteHostId)
+      worktreeRow(koluxPage, fixture.remoteWorktreeId, fixture.remoteHostId)
     ).toHaveCount(0)
   })
 
-  test('opens with the sidebar repository scope without widening it', async ({
-    nightshiftPage
-  }) => {
-    const fixture = await seedPaletteFilterFixture(nightshiftPage)
-    await nightshiftPage.evaluate((repoId) => {
+  test('opens with the sidebar repository scope without widening it', async ({ koluxPage }) => {
+    const fixture = await seedPaletteFilterFixture(koluxPage)
+    await koluxPage.evaluate((repoId) => {
       window.__store?.getState().setFilterRepoIds([repoId])
     }, fixture.localRepoId)
 
-    await openPalette(nightshiftPage)
-    await palette(nightshiftPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('E2E Palette')
+    await openPalette(koluxPage)
+    await palette(koluxPage).getByPlaceholder(SEARCH_PLACEHOLDER).fill('E2E Palette')
 
-    await expect(filterTrigger(nightshiftPage)).toContainText('1')
-    await expect(palette(nightshiftPage).getByLabel(`Remove filter ${LOCAL_PROJECT}`)).toBeVisible()
-    await expect(worktreeRow(nightshiftPage, fixture.localWorktreeId)).toBeVisible()
+    await expect(filterTrigger(koluxPage)).toContainText('1')
+    await expect(palette(koluxPage).getByLabel(`Remove filter ${LOCAL_PROJECT}`)).toBeVisible()
+    await expect(worktreeRow(koluxPage, fixture.localWorktreeId)).toBeVisible()
     await expect(
-      worktreeRow(nightshiftPage, fixture.remoteWorktreeId, fixture.remoteHostId)
+      worktreeRow(koluxPage, fixture.remoteWorktreeId, fixture.remoteHostId)
     ).toHaveCount(0)
   })
 
-  test('pressing Enter creates a worktree from a typed name', async ({ nightshiftPage }) => {
-    const createDialog = await openComposerFromTypedName(nightshiftPage)
+  test('pressing Enter creates a worktree from a typed name', async ({ koluxPage }) => {
+    const createDialog = await openComposerFromTypedName(koluxPage)
 
-    await nightshiftPage.keyboard.press('Escape')
+    await koluxPage.keyboard.press('Escape')
 
     await expect(createDialog).toBeHidden()
   })
 
-  test('Escape closes the composer opened over the Automations page', async ({
-    nightshiftPage
-  }) => {
+  test('Escape closes the composer opened over the Automations page', async ({ koluxPage }) => {
     // Why this view: Cmd+J has no view guard, and a page mounted under the palette
     // keeps its own capture-phase Escape listener registered. Window capture runs
     // before Radix's document capture, so a preventDefault there vetoes dismissal.
-    await nightshiftPage.evaluate(() => window.__store?.getState().openAutomationsPage())
-    const automationsHeading = nightshiftPage.getByRole('heading', {
+    await koluxPage.evaluate(() => window.__store?.getState().openAutomationsPage())
+    const automationsHeading = koluxPage.getByRole('heading', {
       name: 'Automations',
       level: 1
     })
     await expect(automationsHeading).toBeVisible()
 
-    const createDialog = await openComposerFromTypedName(nightshiftPage)
+    const createDialog = await openComposerFromTypedName(koluxPage)
 
-    await nightshiftPage.keyboard.press('Escape')
+    await koluxPage.keyboard.press('Escape')
 
     await expect(createDialog).toBeHidden()
     // The page declined the press rather than consuming it, so it is still open.

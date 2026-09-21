@@ -302,7 +302,7 @@ describe('registerWorktreeHandlers', () => {
       worktreeId: 'repo-ssh::/remote/feature-wt'
     })
 
-    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/nightshift.yaml')
+    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/kolux.yaml')
     expect(provider.execNonInteractive).toHaveBeenCalledWith(
       '/bin/bash',
       ['-lc', 'echo archived'],
@@ -310,8 +310,8 @@ describe('registerWorktreeHandlers', () => {
       120_000,
       undefined,
       expect.objectContaining({
-        NIGHTSHIFT_ROOT_PATH: '/remote/repo',
-        NIGHTSHIFT_WORKTREE_PATH: '/remote/feature-wt'
+        KOLUX_ROOT_PATH: '/remote/repo',
+        KOLUX_WORKTREE_PATH: '/remote/feature-wt'
       })
     )
     expect(provider.removeWorktree).toHaveBeenCalledWith('/remote/feature-wt', undefined)
@@ -616,7 +616,7 @@ describe('registerWorktreeHandlers', () => {
       worktreeId: 'repo-ssh::C:\\remote\\feature-wt'
     })
 
-    expect(fsProvider.readFile).toHaveBeenCalledWith('C:\\remote\\repo\\nightshift.yaml')
+    expect(fsProvider.readFile).toHaveBeenCalledWith('C:\\remote\\repo\\kolux.yaml')
     expect(provider.execNonInteractive).toHaveBeenCalledWith(
       'cmd.exe',
       ['/d', '/s', '/c', 'echo archived'],
@@ -624,8 +624,8 @@ describe('registerWorktreeHandlers', () => {
       120_000,
       undefined,
       expect.objectContaining({
-        NIGHTSHIFT_ROOT_PATH: 'C:\\remote\\repo',
-        NIGHTSHIFT_WORKTREE_PATH: 'C:\\remote\\feature-wt'
+        KOLUX_ROOT_PATH: 'C:\\remote\\repo',
+        KOLUX_WORKTREE_PATH: 'C:\\remote\\feature-wt'
       })
     )
   })

@@ -140,7 +140,7 @@ beforeEach(() => {
   instances.length = 0
   isMock.dev = false
   resetTerminalSessionWindowRegistryForTests()
-  vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', undefined)
+  vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', undefined)
   vi.stubEnv('ELECTRON_RENDERER_URL', '')
 })
 
@@ -159,7 +159,7 @@ describe('openOrFocusTerminalSessionWindow', () => {
     const opts = instances[0].options
     expect(opts.webPreferences?.sandbox).toBe(true)
     expect(opts.webPreferences?.webviewTag).toBe(false)
-    expect(opts.webPreferences?.partition).toBe('nightshift-terminal-window')
+    expect(opts.webPreferences?.partition).toBe('kolux-terminal-window')
     expect(opts.webPreferences?.preload).toMatch(/preload[\\/]index\.js$/)
     expect(installNavigationPolicyMock).toHaveBeenCalledWith(instances[0].webContents)
   })

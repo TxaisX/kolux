@@ -208,7 +208,7 @@ describe('headless serve update install handoff', () => {
           status.state === 'error' &&
           'message' in status &&
           typeof status.message === 'string' &&
-          status.message.includes('nightshift serve')
+          status.message.includes('kolux serve')
       ),
       deferralDiagnostics: recordUpdaterLifecycleMock.mock.calls.filter(
         ([event]) => event === 'headless_serve_install_deferred'
@@ -412,7 +412,7 @@ describe('headless serve update install handoff', () => {
         'updater:status',
         expect.objectContaining({
           state: 'error',
-          message: expect.stringContaining('nightshift serve')
+          message: expect.stringContaining('kolux serve')
         })
       )
     }
@@ -477,7 +477,7 @@ describe('headless serve update install handoff', () => {
         'updater:status',
         expect.objectContaining({
           state: 'error',
-          message: expect.stringContaining('nightshift serve')
+          message: expect.stringContaining('kolux serve')
         })
       )
     }

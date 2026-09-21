@@ -42,14 +42,10 @@ describe('recordRetirementNamespaceRegistry', () => {
     }
 
     // The oldest key retires a second name, then a brand new namespace forces one eviction.
-    recordRetirementNamespaceRegistry(
-      namespaces,
-      'local:posix:/w/0',
-      registry('nautilus', 'nightshift')
-    )
+    recordRetirementNamespaceRegistry(namespaces, 'local:posix:/w/0', registry('nautilus', 'kolux'))
     recordRetirementNamespaceRegistry(namespaces, 'local:posix:/w/new', registry('seahorse'))
 
-    expect(namespaces['local:posix:/w/0']).toEqual(registry('nautilus', 'nightshift'))
+    expect(namespaces['local:posix:/w/0']).toEqual(registry('nautilus', 'kolux'))
     expect(namespaces['local:posix:/w/1']).toBeUndefined()
   })
 

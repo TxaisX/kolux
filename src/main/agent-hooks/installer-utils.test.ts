@@ -41,7 +41,7 @@ let tmpDir: string
 let configPath: string
 
 beforeEach(() => {
-  tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-installer-utils-test-'))
+  tmpDir = mkdtempSync(join(tmpdir(), 'kolux-installer-utils-test-'))
   configPath = join(tmpDir, 'settings.json')
 })
 
@@ -235,17 +235,15 @@ describe('createManagedCommandMatcher', () => {
 
   it('matches commands containing the agent-hooks/<scriptFileName> path', () => {
     expect(
-      match(
-        '/bin/sh "/Users/alice/Library/Application Support/Nightshift/agent-hooks/claude-hook.sh"'
-      )
+      match('/bin/sh "/Users/alice/Library/Application Support/Kolux/agent-hooks/claude-hook.sh"')
     ).toBe(true)
     expect(match('/bin/sh "/some/other/location/agent-hooks/claude-hook.sh"')).toBe(true)
   })
 
   it('normalizes Windows backslashes so cmd-style paths still match', () => {
-    expect(
-      match('C:\\Users\\alice\\AppData\\Roaming\\Nightshift\\agent-hooks\\claude-hook.sh')
-    ).toBe(true)
+    expect(match('C:\\Users\\alice\\AppData\\Roaming\\Kolux\\agent-hooks\\claude-hook.sh')).toBe(
+      true
+    )
   })
 
   it('returns false for unrelated commands', () => {
@@ -266,15 +264,13 @@ describe('createManagedCommandMatcher', () => {
     // still recognize them or reinstalling would retain a stale duplicate.
     expect(
       match(
-        'if [ -x "/Users/alice/Library/Application Support/Nightshift/agent-hooks/claude-hook.sh" ]; then /bin/sh "/Users/alice/Library/Application Support/Nightshift/agent-hooks/claude-hook.sh"; fi'
+        'if [ -x "/Users/alice/Library/Application Support/Kolux/agent-hooks/claude-hook.sh" ]; then /bin/sh "/Users/alice/Library/Application Support/Kolux/agent-hooks/claude-hook.sh"; fi'
       )
     ).toBe(true)
   })
 
   it('matches encoded Windows launcher commands by decoding their script path', () => {
-    const command = wrapWindowsHookCommand(
-      'C:\\Users\\alice\\.nightshift\\agent-hooks\\claude-hook.cmd'
-    )
+    const command = wrapWindowsHookCommand('C:\\Users\\alice\\.kolux\\agent-hooks\\claude-hook.cmd')
     expect(match(command)).toBe(true)
   })
 
@@ -283,7 +279,7 @@ describe('createManagedCommandMatcher', () => {
     // still recognize them, or an upgrade would leave the stale entry beside the new one.
     expect(
       match(
-        'if [ -z "$HOME" ]; then :; else if [ -f "$HOME/.nightshift/agent-hooks/claude-hook.sh" ]; then /bin/sh "$HOME/.nightshift/agent-hooks/claude-hook.sh"; fi; fi'
+        'if [ -z "$HOME" ]; then :; else if [ -f "$HOME/.kolux/agent-hooks/claude-hook.sh" ]; then /bin/sh "$HOME/.kolux/agent-hooks/claude-hook.sh"; fi; fi'
       )
     ).toBe(true)
   })
@@ -292,28 +288,20 @@ describe('createManagedCommandMatcher', () => {
     const matchPosix = createManagedCommandMatcher('copilot-hook.sh')
     const matchPowerShell = createManagedCommandMatcher('copilot-hook.ps1')
 
-    expect(matchPosix("& 'C:\\Users\\alice\\.nightshift\\agent-hooks\\copilot-hook.ps1'")).toBe(
-      true
-    )
+    expect(matchPosix("& 'C:\\Users\\alice\\.kolux\\agent-hooks\\copilot-hook.ps1'")).toBe(true)
     expect(
-      matchPosix(
-        wrapWindowsHookCommand('C:\\Users\\alice\\.nightshift\\agent-hooks\\copilot-hook.ps1')
-      )
+      matchPosix(wrapWindowsHookCommand('C:\\Users\\alice\\.kolux\\agent-hooks\\copilot-hook.ps1'))
     ).toBe(true)
-    expect(matchPowerShell("/bin/sh '/home/alice/.nightshift/agent-hooks/copilot-hook.sh'")).toBe(
-      true
-    )
+    expect(matchPowerShell("/bin/sh '/home/alice/.kolux/agent-hooks/copilot-hook.sh'")).toBe(true)
   })
 
-  it('matches the legacy per-userData script path AND the new shared ~/.nightshift path', () => {
+  it('matches the legacy per-userData script path AND the new shared ~/.kolux path', () => {
     // Why: install() must sweep old per-userData commands when migrating to
-    // the shared ~/.nightshift script path, or stale launchers keep failing.
+    // the shared ~/.kolux script path, or stale launchers keep failing.
     expect(
-      match(
-        "/bin/sh '/Users/alice/Library/Application Support/nightshift/agent-hooks/claude-hook.sh'"
-      )
+      match("/bin/sh '/Users/alice/Library/Application Support/kolux/agent-hooks/claude-hook.sh'")
     ).toBe(true)
-    expect(match("/bin/sh '/Users/alice/.nightshift/agent-hooks/claude-hook.sh'")).toBe(true)
+    expect(match("/bin/sh '/Users/alice/.kolux/agent-hooks/claude-hook.sh'")).toBe(true)
   })
 })
 
@@ -325,12 +313,12 @@ describe('removeManagedCommands', () => {
       [
         {
           type: 'command',
-          bash: '/bin/sh "/Users/alice/Nightshift/agent-hooks/copilot-hook.sh"',
+          bash: '/bin/sh "/Users/alice/Kolux/agent-hooks/copilot-hook.sh"',
           timeoutSec: 5
         },
         {
           type: 'command',
-          powershell: "& 'C:\\Users\\alice\\Nightshift\\agent-hooks\\copilot-hook.sh'",
+          powershell: "& 'C:\\Users\\alice\\Kolux\\agent-hooks\\copilot-hook.sh'",
           timeoutSec: 5
         },
         {
@@ -377,7 +365,7 @@ describe('removeManagedCommands', () => {
                 'C:\\Windows\\System32\\cmd.exe',
                 '/d',
                 '/c',
-                'C:\\Users\\alice\\.nightshift\\agent-hooks\\copilot-hook.cmd'
+                'C:\\Users\\alice\\.kolux\\agent-hooks\\copilot-hook.cmd'
               ]
             },
             { type: 'command', command: 'echo keep me' }
@@ -418,7 +406,7 @@ describe('hookDefinitionHasManagedCommand', () => {
 
     expect(
       hookDefinitionHasManagedCommand(
-        { bash: '/bin/sh "/Users/alice/Nightshift/agent-hooks/copilot-hook.sh"' },
+        { bash: '/bin/sh "/Users/alice/Kolux/agent-hooks/copilot-hook.sh"' },
         match
       )
     ).toBe(true)
@@ -442,7 +430,7 @@ describe('hookDefinitionHasManagedCommand', () => {
             {
               type: 'command',
               command: 'C:\\Windows\\System32\\conhost.exe',
-              args: ['--headless', 'C:\\Users\\alice\\.nightshift\\agent-hooks\\copilot-hook.cmd']
+              args: ['--headless', 'C:\\Users\\alice\\.kolux\\agent-hooks\\copilot-hook.cmd']
             }
           ]
         },
@@ -468,13 +456,13 @@ describe('hookDefinitionHasManagedCommand', () => {
 })
 
 describe('getSharedManagedScriptPath', () => {
-  it("returns ~/.nightshift/agent-hooks/<scriptFileName> rooted at the user's home", () => {
+  it("returns ~/.kolux/agent-hooks/<scriptFileName> rooted at the user's home", () => {
     expect(getSharedManagedScriptPath('claude-hook.sh')).toBe(
-      join(homedir(), '.nightshift', 'agent-hooks', 'claude-hook.sh')
+      join(homedir(), '.kolux', 'agent-hooks', 'claude-hook.sh')
     )
   })
 
-  it('does not depend on Electron app.getPath, so two Nightshift instances resolve to the same path', () => {
+  it('does not depend on Electron app.getPath, so two Kolux instances resolve to the same path', () => {
     // Why: using userData here would reintroduce dev/prod settings thrash.
     const a = getSharedManagedScriptPath('claude-hook.sh')
     const b = getSharedManagedScriptPath('claude-hook.sh')
@@ -510,10 +498,8 @@ describe('wrapPosixHookCommand', () => {
     // Why: Electron's userData on macOS lives under "Application Support" with
     // a space. The guard must keep the path quoted so each file test and
     // `/bin/sh` see one argument.
-    const cmd = wrapPosixHookCommand(
-      '/Users/a/Library/Application Support/Nightshift/agent-hooks/x.sh'
-    )
-    expect(cmd).toContain("'/Users/a/Library/Application Support/Nightshift/agent-hooks/x.sh'")
+    const cmd = wrapPosixHookCommand('/Users/a/Library/Application Support/Kolux/agent-hooks/x.sh')
+    expect(cmd).toContain("'/Users/a/Library/Application Support/Kolux/agent-hooks/x.sh'")
   })
 
   it('escapes embedded single quotes so the wrapped command stays well-formed', () => {
@@ -528,10 +514,10 @@ describe('wrapPosixHookCommand', () => {
 
   it('can scope environment variables to the guarded script invocation', () => {
     const cmd = wrapPosixHookCommand('/does/not/exist.sh', {
-      NIGHTSHIFT_COPILOT_HOOK_EVENT: 'UserPromptSubmit'
+      KOLUX_COPILOT_HOOK_EVENT: 'UserPromptSubmit'
     })
     expect(cmd).toBe(
-      `if [ -f '/does/not/exist.sh' ] && [ -r '/does/not/exist.sh' ] && [ -x '/does/not/exist.sh' ]; then NIGHTSHIFT_COPILOT_HOOK_EVENT='UserPromptSubmit' /bin/sh '/does/not/exist.sh'; else ${POSIX_HOOK_STDIN_DRAIN_COMMAND}; fi`
+      `if [ -f '/does/not/exist.sh' ] && [ -r '/does/not/exist.sh' ] && [ -x '/does/not/exist.sh' ]; then KOLUX_COPILOT_HOOK_EVENT='UserPromptSubmit' /bin/sh '/does/not/exist.sh'; else ${POSIX_HOOK_STDIN_DRAIN_COMMAND}; fi`
     )
   })
 
@@ -643,29 +629,25 @@ function expectedDecodedWindowsHookCommand(scriptPath: string): string {
 
 describe('wrapWindowsHookCommand', () => {
   it('invokes the .cmd through an encoded PowerShell command', () => {
-    const command = wrapWindowsHookCommand(
-      'C:\\Users\\alice\\.nightshift\\agent-hooks\\codex-hook.cmd'
-    )
+    const command = wrapWindowsHookCommand('C:\\Users\\alice\\.kolux\\agent-hooks\\codex-hook.cmd')
     expect(command).toMatch(qualifiedWindowsPowerShellCommand)
     expect(command).not.toMatch(/^powershell\b/i)
     expect(decodeWindowsHookCommand(command)).toBe(
-      expectedDecodedWindowsHookCommand(
-        'C:\\Users\\alice\\.nightshift\\agent-hooks\\codex-hook.cmd'
-      )
+      expectedDecodedWindowsHookCommand('C:\\Users\\alice\\.kolux\\agent-hooks\\codex-hook.cmd')
     )
   })
 
   it('scopes environment variables inside the encoded launcher', () => {
     const command = wrapWindowsHookCommand('C:\\hooks\\copilot-hook.ps1', {
-      NIGHTSHIFT_COPILOT_HOOK_EVENT: 'UserPromptSubmit'
+      KOLUX_COPILOT_HOOK_EVENT: 'UserPromptSubmit'
     })
     expect(decodeWindowsHookCommand(command)).toContain(
-      "$env:NIGHTSHIFT_COPILOT_HOOK_EVENT = 'UserPromptSubmit'; if (Test-Path"
+      "$env:KOLUX_COPILOT_HOOK_EVENT = 'UserPromptSubmit'; if (Test-Path"
     )
   })
 
   // Why the ordering matters: a gate event reads silence as deny (#2426), and outside an
-  // Nightshift pane the guard exits before the read — so an answer placed after the drain never
+  // Kolux pane the guard exits before the read — so an answer placed after the drain never
   // reaches the agent at all when the caller abandons the pipe (#11549).
   it('answers before it guards, and guards before it owns stdin', () => {
     const decoded = decodeWindowsHookCommand(
@@ -688,35 +670,35 @@ describe('wrapWindowsHookCommand', () => {
   // the whole path inside the encoded command so shells do not split it.
   it('preserves spaces in the script path (user profile with space case)', () => {
     const cmd = wrapWindowsHookCommand(
-      'C:\\Users\\Jorge Silva\\.nightshift\\agent-hooks\\codex-hook.cmd'
+      'C:\\Users\\Jorge Silva\\.kolux\\agent-hooks\\codex-hook.cmd'
     )
     expect(cmd).toMatch(qualifiedWindowsPowerShellCommand)
     expect(decodeWindowsHookCommand(cmd)).toBe(
       expectedDecodedWindowsHookCommand(
-        'C:\\Users\\Jorge Silva\\.nightshift\\agent-hooks\\codex-hook.cmd'
+        'C:\\Users\\Jorge Silva\\.kolux\\agent-hooks\\codex-hook.cmd'
       )
     )
   })
 
   it('keeps cmd.exe percent expansion and caret escapes out of the command line', () => {
-    const cmd = wrapWindowsHookCommand('C:\\Users\\%NIGHTSHIFT_TEST%\\a^b\\codex-hook.cmd')
-    expect(cmd).not.toContain('%NIGHTSHIFT_TEST%')
+    const cmd = wrapWindowsHookCommand('C:\\Users\\%KOLUX_TEST%\\a^b\\codex-hook.cmd')
+    expect(cmd).not.toContain('%KOLUX_TEST%')
     expect(cmd).not.toContain('^')
     expect(decodeWindowsHookCommand(cmd)).toBe(
-      expectedDecodedWindowsHookCommand('C:\\Users\\%NIGHTSHIFT_TEST%\\a^b\\codex-hook.cmd')
+      expectedDecodedWindowsHookCommand('C:\\Users\\%KOLUX_TEST%\\a^b\\codex-hook.cmd')
     )
   })
 
   it.skipIf(process.platform !== 'win32')(
     'executes a script path containing a cmd.exe caret literally',
     () => {
-      const scriptDir = join(tmpDir, 'home with ^ caret', '.nightshift', 'agent-hooks')
+      const scriptDir = join(tmpDir, 'home with ^ caret', '.kolux', 'agent-hooks')
       mkdirSync(scriptDir, { recursive: true })
       const scriptPath = join(scriptDir, 'codex-hook.cmd')
       writeFileSync(scriptPath, '@echo off\r\nexit /b 7\r\n', 'utf-8')
 
       const result = spawnSync('cmd.exe', ['/d', '/c', wrapWindowsHookCommand(scriptPath)], {
-        env: { ...process.env, NIGHTSHIFT_WRAP_TEST: 'expanded' }
+        env: { ...process.env, KOLUX_WRAP_TEST: 'expanded' }
       })
 
       expect(result.status).toBe(7)
@@ -730,7 +712,7 @@ describe('wrapWindowsCmdHookCommand', () => {
     // not via cmd.exe, so the launcher must be a single spawnable token — a bare
     // .cmd path. A cmd-builtin `if …` launcher has argv[0] = `if`, which is
     // unspawnable and fails every hook with exit 1 (#8430 regression).
-    const scriptPath = 'C:\\Users\\alice\\.nightshift\\agent-hooks\\codex-hook.cmd'
+    const scriptPath = 'C:\\Users\\alice\\.kolux\\agent-hooks\\codex-hook.cmd'
     const command = wrapWindowsCmdHookCommand(scriptPath)
     expect(command).toBe(scriptPath)
     expect(command).not.toMatch(/^if\b/)
@@ -755,7 +737,7 @@ describe('wrapWindowsCmdHookCommand', () => {
   )
 
   it('falls back to the encoded launcher when cmd.exe would split or expand the path', () => {
-    const scriptPath = 'C:\\Users\\Jane Doe\\%NIGHTSHIFT_TEST%\\codex-hook.cmd'
+    const scriptPath = 'C:\\Users\\Jane Doe\\%KOLUX_TEST%\\codex-hook.cmd'
     const command = wrapWindowsCmdHookCommand(scriptPath)
     expect(command).toMatch(qualifiedWindowsPowerShellCommand)
     expect(decodeWindowsHookCommand(command)).toBe(expectedDecodedWindowsHookCommand(scriptPath))
@@ -769,8 +751,8 @@ describe('wrapRuntimeHomeHookCommand', () => {
     expect(command).toContain('case "${OSTYPE-}" in msys*|cygwin*|win32*)')
     expect(command).toContain('case "${HOME-}" in *\\&*|*\\^*|*\\(*|*\\)*|*\\;*|*,*|*=*|*%*|*\\!*)')
     expect(command).not.toContain('uname')
-    expect(command).toContain('"${HOME-}/.nightshift/agent-hooks/claude-hook.cmd"')
-    expect(command).toContain('/bin/sh "${HOME-}/.nightshift/agent-hooks/claude-hook.sh"')
+    expect(command).toContain('"${HOME-}/.kolux/agent-hooks/claude-hook.cmd"')
+    expect(command).toContain('/bin/sh "${HOME-}/.kolux/agent-hooks/claude-hook.sh"')
     expect(command).not.toMatch(/[A-Z]:[\\/]|\/Users\/|\/home\//)
   })
 
@@ -810,8 +792,8 @@ describe('wrapRuntimeHomeHookCommand', () => {
   it('executes the destination HOME script for the current runtime', () => {
     const sourceHome = join(tmpDir, 'source profile')
     const destinationHome = join(tmpDir, "destination $HOME ' & profile")
-    const sourceScriptDir = join(sourceHome, '.nightshift', 'agent-hooks')
-    const destinationScriptDir = join(destinationHome, '.nightshift', 'agent-hooks')
+    const sourceScriptDir = join(sourceHome, '.kolux', 'agent-hooks')
+    const destinationScriptDir = join(destinationHome, '.kolux', 'agent-hooks')
     mkdirSync(sourceScriptDir, { recursive: true })
     mkdirSync(destinationScriptDir, { recursive: true })
     const windowsExitCode = process.platform === 'win32' ? 7 : 9
@@ -848,7 +830,7 @@ describe('wrapRuntimeHomeHookCommand', () => {
 
   it.skipIf(process.platform !== 'win32')('keeps common Windows profiles on the fast path', () => {
     const destinationHome = join(tmpDir, 'destination 国際 profile')
-    const scriptDir = join(destinationHome, '.nightshift', 'agent-hooks')
+    const scriptDir = join(destinationHome, '.kolux', 'agent-hooks')
     mkdirSync(scriptDir, { recursive: true })
     writeFileSync(join(scriptDir, 'claude-hook.cmd'), '@echo off\r\nexit /b 7\r\n', 'utf-8')
     const gitBash = join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe')
@@ -881,10 +863,7 @@ describe('wrapRuntimeHomeHookCommand', () => {
         : '/bin/sh'
     const result = spawnSync(
       shell,
-      [
-        '-c',
-        wrapRuntimeHomeHookCommand('missing-nightshift-hook', { neutralJsonWhenMissing: true })
-      ],
+      ['-c', wrapRuntimeHomeHookCommand('missing-kolux-hook', { neutralJsonWhenMissing: true })],
       {
         env: { ...process.env, HOME: tmpDir.replaceAll('\\', '/') },
         input: Buffer.alloc(1_000_000, 'x')
@@ -904,8 +883,8 @@ describe('buildWindowsAgentHookPostCommand', () => {
     expect(command).toContain('"%SystemRoot%\\System32\\curl.exe" -sS -X POST')
     expect(command).toContain('--connect-timeout 0.5 --max-time 1.5')
     expect(command).toContain('-H "Content-Type: application/x-www-form-urlencoded"')
-    expect(command).toContain('-H "X-Nightshift-Agent-Hook-Token: %NIGHTSHIFT_AGENT_HOOK_TOKEN%"')
-    expect(command).toContain('--data-urlencode "paneKey=%NIGHTSHIFT_PANE_KEY%"')
+    expect(command).toContain('-H "X-Kolux-Agent-Hook-Token: %KOLUX_AGENT_HOOK_TOKEN%"')
+    expect(command).toContain('--data-urlencode "paneKey=%KOLUX_PANE_KEY%"')
     expect(command).toContain('--data-urlencode "payload@-"')
     expect(command).toContain('/hook/codex')
     expect(command).not.toContain('powershell')
@@ -924,16 +903,16 @@ describe('buildPosixAgentHookPostCommand', () => {
   it('uses raw JSON only when the listener advertises support', () => {
     const command = buildPosixAgentHookPostCommand('claude').join('\n')
 
-    expect(command).toContain('NIGHTSHIFT_AGENT_HOOK_TRANSPORT:-}')
+    expect(command).toContain('KOLUX_AGENT_HOOK_TRANSPORT:-}')
     expect(command).toContain('raw-json-v1')
     expect(command).toContain('command -v base64')
     expect(command).toContain('command -v tr')
     expect(command).toContain('Content-Type: application/json')
-    expect(command).toContain('X-Nightshift-Agent-Hook-Meta-Encoding: base64')
-    expect(command).toContain('X-Nightshift-Agent-Hook-Meta: ${nightshift_hook_metadata}')
+    expect(command).toContain('X-Kolux-Agent-Hook-Meta-Encoding: base64')
+    expect(command).toContain('X-Kolux-Agent-Hook-Meta: ${kolux_hook_metadata}')
     expect(command).toContain("printf '%s\\037%s\\037%s\\037%s\\037%s\\037%s'")
-    expect(command).toContain('$NIGHTSHIFT_PANE_KEY')
-    expect(command).toContain('$NIGHTSHIFT_WORKTREE_ID')
+    expect(command).toContain('$KOLUX_PANE_KEY')
+    expect(command).toContain('$KOLUX_WORKTREE_ID')
     expect(command).toContain('--data-binary @-')
     expect(command).toContain('Content-Type: application/x-www-form-urlencoded')
     expect(command).toContain('--data-urlencode "payload@-"')
@@ -948,11 +927,11 @@ describe('buildWindowsAgentHookCurlPostCommand', () => {
     // is the regression this replaces.
     expect(command).not.toMatch(/powershell/i)
     expect(command).toContain('%SystemRoot%\\System32\\curl.exe')
-    expect(command).toContain('http://127.0.0.1:%NIGHTSHIFT_AGENT_HOOK_PORT%/hook/codex')
+    expect(command).toContain('http://127.0.0.1:%KOLUX_AGENT_HOOK_PORT%/hook/codex')
     expect(command).toContain('-H "Content-Type: application/x-www-form-urlencoded"')
-    expect(command).toContain('-H "X-Nightshift-Agent-Hook-Token: %NIGHTSHIFT_AGENT_HOOK_TOKEN%"')
-    expect(command).toContain('--data-urlencode "paneKey=%NIGHTSHIFT_PANE_KEY%"')
-    expect(command).toContain('--data-urlencode "worktreeId=%NIGHTSHIFT_WORKTREE_ID%"')
+    expect(command).toContain('-H "X-Kolux-Agent-Hook-Token: %KOLUX_AGENT_HOOK_TOKEN%"')
+    expect(command).toContain('--data-urlencode "paneKey=%KOLUX_PANE_KEY%"')
+    expect(command).toContain('--data-urlencode "worktreeId=%KOLUX_WORKTREE_ID%"')
     // Why: `payload@-` makes curl read raw bytes from stdin and urlencode them,
     // so UTF-8 prompts survive without a code-page conversion.
     expect(command).toContain('--data-urlencode "payload@-"')

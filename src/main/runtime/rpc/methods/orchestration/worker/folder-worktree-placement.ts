@@ -1,9 +1,9 @@
 import { isFolderRepo } from '../../../../../../shared/repo-kind'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 
 export async function assertOrchestrationWorktreeCreationSupported(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   repoSelector: string
   existingPlacement: string
 }): Promise<void> {

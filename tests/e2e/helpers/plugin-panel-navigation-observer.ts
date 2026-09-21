@@ -49,9 +49,9 @@ export async function startPanelNavigationObserver(
       observation.didFrameNavigations.push({ isMainFrame, url })
     }
     const probeGlobal = globalThis as typeof globalThis & {
-      __nightshiftPanelNavigationProbe?: MainPanelNavigationProbe
+      __koluxPanelNavigationProbe?: MainPanelNavigationProbe
     }
-    probeGlobal.__nightshiftPanelNavigationProbe?.dispose()
+    probeGlobal.__koluxPanelNavigationProbe?.dispose()
     const originalOpenExternal = shell.openExternal
     const recordOpenExternal = async (url: string): Promise<void> => {
       observation.externalUrls.push(url)
@@ -60,7 +60,7 @@ export async function startPanelNavigationObserver(
     contents.on('did-frame-navigate', onDidFrameNavigate)
     shell.openExternal = recordOpenExternal
 
-    probeGlobal.__nightshiftPanelNavigationProbe = {
+    probeGlobal.__koluxPanelNavigationProbe = {
       observation,
       dispose: () => {
         contents.off('will-frame-navigate', onWillFrameNavigate)
@@ -79,9 +79,9 @@ export async function readPanelNavigationObserver(
   return electronApp.evaluate(() => {
     const probe = (
       globalThis as typeof globalThis & {
-        __nightshiftPanelNavigationProbe?: MainPanelNavigationProbe
+        __koluxPanelNavigationProbe?: MainPanelNavigationProbe
       }
-    ).__nightshiftPanelNavigationProbe
+    ).__koluxPanelNavigationProbe
     if (!probe) {
       throw new Error('panel navigation observer is not active')
     }
@@ -94,15 +94,15 @@ export async function stopPanelNavigationObserver(
 ): Promise<PanelNavigationObservation> {
   return electronApp.evaluate(() => {
     const probeGlobal = globalThis as typeof globalThis & {
-      __nightshiftPanelNavigationProbe?: MainPanelNavigationProbe
+      __koluxPanelNavigationProbe?: MainPanelNavigationProbe
     }
-    const probe = probeGlobal.__nightshiftPanelNavigationProbe
+    const probe = probeGlobal.__koluxPanelNavigationProbe
     if (!probe) {
       throw new Error('panel navigation observer is not active')
     }
     const observation = structuredClone(probe.observation)
     probe.dispose()
-    delete probeGlobal.__nightshiftPanelNavigationProbe
+    delete probeGlobal.__koluxPanelNavigationProbe
     return observation
   })
 }

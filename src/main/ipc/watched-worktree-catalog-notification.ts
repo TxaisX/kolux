@@ -1,9 +1,9 @@
 import type { BrowserWindow } from 'electron'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { notifyWorktreesChanged } from './worktree-remote'
 
 type WorktreeCatalogRemoteClientNotifier = Pick<
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   'notifyWorktreeCatalogChangedForRemoteClients'
 >
 

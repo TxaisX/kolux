@@ -10,8 +10,8 @@ import { deleteRemoteWorktreeHistory } from '../../../remote-worktree-history-cl
 import { preservedBranchCleanupScopeKey } from '../../../../shared/preserved-branch-cleanup'
 import {
   assertWorktreeDoesNotContainRegisteredWorktree,
-  canCleanupUnregisteredNightshiftLeftoverDirectory,
-  canCleanupUnregisteredNightshiftWorktreeDirectory,
+  canCleanupUnregisteredKoluxLeftoverDirectory,
+  canCleanupUnregisteredKoluxWorktreeDirectory,
   canSafelyRemoveOrphanedWorktreeDirectory,
   isDangerousWorktreeRemovalPath,
   ORPHANED_WORKTREE_DIRECTORY_MESSAGE,
@@ -55,7 +55,7 @@ export async function removeUnregisteredWorktree(
   const fsProvider = repo.connectionId ? getSshFilesystemProvider(repo.connectionId) : null
   let canCleanOrphanedDirectory = false
   if (
-    canCleanupUnregisteredNightshiftWorktreeDirectory({
+    canCleanupUnregisteredKoluxWorktreeDirectory({
       meta: removedMeta
     })
   ) {
@@ -155,7 +155,7 @@ export async function removeUnregisteredWorktree(
     const access = getLocalWorktreePathAccess(localWorktreeGitOptions)
     const runtimeWorktreePath = toLocalWorktreeRuntimePath(worktreePath, localWorktreeGitOptions)
     if (
-      await canCleanupUnregisteredNightshiftLeftoverDirectory({
+      await canCleanupUnregisteredKoluxLeftoverDirectory({
         meta: removedMeta,
         worktreePath,
         runtimeWorktreePath,
@@ -207,10 +207,10 @@ export async function removeUnregisteredWorktree(
   }
   if (await isAlreadyRemovedWorktreePath(repo, worktreePath, localWorktreeGitOptions)) {
     if (!args.force && !removedMeta) {
-      // Why: without persisted metadata, require the renderer recovery path before deleting Nightshift-only state for an unregistered path.
+      // Why: without persisted metadata, require the renderer recovery path before deleting Kolux-only state for an unregistered path.
       throw new Error(UNREGISTERED_MISSING_WORKTREE_MESSAGE)
     }
-    // Why: a manually deleted worktree is already gone; persisted metadata proves it was a Nightshift-known row, so no force is needed.
+    // Why: a manually deleted worktree is already gone; persisted metadata proves it was a Kolux-known row, so no force is needed.
     if (repo.connectionId) {
       // Why history first: the worktree is already gone from git and
       // disk by here, so a rejecting push-target cleanup must not be

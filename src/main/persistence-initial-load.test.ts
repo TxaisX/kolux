@@ -63,7 +63,7 @@ vi.mock('./telemetry/cohort-classifier', () => ({
 
 describe('Store', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-test-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-test-'))
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 2 })
@@ -204,7 +204,7 @@ describe('Store', () => {
 
   it('loads state from an explicit profile data file path', async () => {
     const profileDataDirectory = join(testState.dir, 'profiles', 'local-default')
-    const profileDataFile = join(profileDataDirectory, 'nightshift-data.json')
+    const profileDataFile = join(profileDataDirectory, 'kolux-data.json')
     mkdirSync(profileDataDirectory, { recursive: true })
     writeDataFile({
       schemaVersion: 1,
@@ -233,16 +233,16 @@ describe('Store', () => {
       repos: [
         makeRepo({
           id: 'local-repo',
-          path: '/Users/alice/nightshift',
-          displayName: 'Nightshift',
-          upstream: { owner: 'Txais', repo: 'Nightshift' }
+          path: '/Users/alice/kolux',
+          displayName: 'Kolux',
+          upstream: { owner: 'Txais', repo: 'Kolux' }
         }),
         makeRepo({
           id: 'remote-repo',
-          path: '/home/alice/nightshift',
-          displayName: 'nightshift',
+          path: '/home/alice/kolux',
+          displayName: 'kolux',
           connectionId: 'gpu-vm',
-          upstream: { owner: 'txaisx', repo: 'nightshift' }
+          upstream: { owner: 'txaisx', repo: 'kolux' }
         })
       ]
     })
@@ -260,13 +260,13 @@ describe('Store', () => {
         id: 'local-repo',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'local',
-        path: '/Users/alice/nightshift'
+        path: '/Users/alice/kolux'
       }),
       expect.objectContaining({
         id: 'remote-repo',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'ssh:gpu-vm',
-        path: '/home/alice/nightshift'
+        path: '/home/alice/kolux'
       })
     ])
 

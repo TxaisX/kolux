@@ -44,7 +44,7 @@ function persistedTabIds(session: WorkspaceSessionState, worktreeId: string): st
 
 describe('host-admitted terminal membership survives a stale renderer replay', () => {
   beforeEach(() => {
-    testState.dir = mkdtempSync(join(tmpdir(), 'nightshift-host-membership-'))
+    testState.dir = mkdtempSync(join(tmpdir(), 'kolux-host-membership-'))
   })
 
   afterEach(() => {
@@ -55,7 +55,7 @@ describe('host-admitted terminal membership survives a stale renderer replay', (
     const store = await createStore()
     store.setWorkspaceSession(rendererSession())
 
-    // `nightshift terminal create`: the host mints a tab the renderer has never seen.
+    // `kolux terminal create`: the host mints a tab the renderer has never seen.
     expect(
       store.persistPtyBinding({
         worktreeId: WORKTREE,

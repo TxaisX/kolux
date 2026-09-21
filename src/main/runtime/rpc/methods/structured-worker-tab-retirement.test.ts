@@ -9,7 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import type { OrchestrationDb } from '../../orchestration/db'
 import type { WorkerTerminalResourceRow } from '../../orchestration/worker-terminal-ownership'
 import {
@@ -76,10 +76,10 @@ type RuntimeInternals = {
 }
 
 async function runtimeShowingStructuredTab(): Promise<{
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   emit: ReturnType<typeof vi.fn>
 }> {
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   const internal = runtime as unknown as RuntimeInternals
   internal.ensureStructuredAgentSessionHost = async () => undefined
   internal.notifyMessageArrived = vi.fn()
@@ -98,7 +98,7 @@ async function runtimeShowingStructuredTab(): Promise<{
   return { runtime, emit }
 }
 
-async function structuredTabIds(runtime: NightshiftRuntimeService): Promise<string[]> {
+async function structuredTabIds(runtime: KoluxRuntimeService): Promise<string[]> {
   const snapshot = await runtime.listMobileSessionTabs(`id:${WORKTREE}`)
   return snapshot.tabs.map((tab) => tab.id)
 }
@@ -165,7 +165,7 @@ describe('structured worker stop retires the chat tab', () => {
       retireStructuredAgentSessionTabFromSnapshot: vi.fn(() => {
         throw new Error('snapshot is wedged')
       })
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
 
     await expect(stopStructuredWorker(identity, 'd1', runtime)).resolves.toEqual({
       stopped: true,
@@ -282,7 +282,7 @@ describe('structured worker release retires the chat tab', () => {
           notifyMessageArrived: vi.fn(),
           forgetStructuredSessionMail: vi.fn(),
           retireStructuredAgentSessionTabFromSnapshot: vi.fn()
-        } as unknown as NightshiftRuntimeService,
+        } as unknown as KoluxRuntimeService,
         db,
         dispatchId: 'd2',
         resource
@@ -296,7 +296,7 @@ describe('structured worker release retires the chat tab', () => {
 describe('structured worker discard retires the chat tab', () => {
   it('prunes the tab a half-started worker published', async () => {
     const { close } = installHost()
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const internal = runtime as unknown as RuntimeInternals
     internal.ensureStructuredAgentSessionHost = async () => undefined
     let createdSessionId = ''

@@ -1,12 +1,12 @@
 import { app, session } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { NIGHTSHIFT_BROWSER_PARTITION } from '../../shared/constants'
+import { KOLUX_BROWSER_PARTITION } from '../../shared/constants'
 import {
-  DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-  getNightshiftProfileBrowserDefaultPartition,
-  getNightshiftProfileBrowserSessionPartition
-} from '../../shared/nightshift-profiles'
+  DEFAULT_LOCAL_KOLUX_PROFILE_ID,
+  getKoluxProfileBrowserDefaultPartition,
+  getKoluxProfileBrowserSessionPartition
+} from '../../shared/kolux-profiles'
 import type {
   BrowserSessionProfile,
   BrowserSessionProfileCreateOptions,
@@ -40,7 +40,7 @@ import { retireFailedBrowserSessionProfile } from './browser-session-profile-ret
 import { cancelBrowserWebAuthnAccountRequestsForSession } from './browser-webauthn-account-picker'
 
 export type BrowserSessionRegistryProfileOptions = {
-  nightshiftProfileId: string
+  koluxProfileId: string
   profileDirectory: string
 }
 
@@ -48,18 +48,18 @@ export type BrowserSessionRegistryProfileOptions = {
 
 class BrowserSessionRegistry {
   private readonly profiles = new Map<string, BrowserSessionProfile>()
-  private activeNightshiftProfileId = DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID
+  private activeKoluxProfileId = DEFAULT_LOCAL_KOLUX_PROFILE_ID
   private metadataPathOverride: string | null = null
-  private defaultPartition = NIGHTSHIFT_BROWSER_PARTITION
+  private defaultPartition = KOLUX_BROWSER_PARTITION
 
   constructor() {
     this.resetDefaultProfile()
   }
 
-  configureForNightshiftProfile(options: BrowserSessionRegistryProfileOptions): void {
-    this.activeNightshiftProfileId = options.nightshiftProfileId
+  configureForKoluxProfile(options: BrowserSessionRegistryProfileOptions): void {
+    this.activeKoluxProfileId = options.koluxProfileId
     this.metadataPathOverride = join(options.profileDirectory, BROWSER_SESSION_META_FILE_NAME)
-    this.defaultPartition = getNightshiftProfileBrowserDefaultPartition(options.nightshiftProfileId)
+    this.defaultPartition = getKoluxProfileBrowserDefaultPartition(options.koluxProfileId)
     this.profiles.clear()
     this.resetDefaultProfile()
   }
@@ -132,7 +132,7 @@ class BrowserSessionRegistry {
     applyPendingBrowserCookieImports({
       resolveMetadataPath: () => this.metadataPath,
       defaultPartition: this.defaultPartition,
-      activeNightshiftProfileId: this.activeNightshiftProfileId
+      activeKoluxProfileId: this.activeKoluxProfileId
     })
   }
 
@@ -182,7 +182,7 @@ class BrowserSessionRegistry {
 
   resolveKnownPartition(profileId: string | null | undefined): string | null {
     if (!profileId) {
-      // Why: use the active Nightshift profile's default partition, not the legacy constant, or profiles resolve local-default's cookie jar.
+      // Why: use the active Kolux profile's default partition, not the legacy constant, or profiles resolve local-default's cookie jar.
       return this.defaultPartition
     }
     return this.profiles.get(profileId)?.partition ?? null
@@ -222,10 +222,7 @@ class BrowserSessionRegistry {
     }
     const id = randomUUID()
     // Why: deterministic partition-from-id lets main rebuild the allowlist on restart without a separate partition→profile map.
-    const partition = getNightshiftProfileBrowserSessionPartition(
-      this.activeNightshiftProfileId,
-      id
-    )
+    const partition = getKoluxProfileBrowserSessionPartition(this.activeKoluxProfileId, id)
     const profile: BrowserSessionProfile = {
       id,
       scope,
@@ -328,7 +325,7 @@ class BrowserSessionRegistry {
 
   hydrateFromPersisted(profiles: BrowserSessionProfile[]): void {
     for (const profile of profiles) {
-      if (!isValidPersistedBrowserSessionProfile(profile, this.activeNightshiftProfileId)) {
+      if (!isValidPersistedBrowserSessionProfile(profile, this.activeKoluxProfileId)) {
         continue
       }
       this.profiles.set(profile.id, profile)

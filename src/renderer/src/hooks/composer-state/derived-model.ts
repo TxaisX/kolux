@@ -1,5 +1,5 @@
 import type { GitHubWorkItem } from '../../../../shared/github/work-item-types'
-import type { NightshiftHooks, SetupRunPolicy } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks, SetupRunPolicy } from '../../../../shared/kolux-yaml-hook-types'
 import type { SparsePreset } from '../../../../shared/worktree/create-types'
 import type { RetiredNameRegistry } from '../../../../shared/worktree/retired-name-registry'
 import type { GitHubLinkQuery } from '@/lib/github-links'
@@ -13,7 +13,7 @@ export type ComposerDerivedModel = {
   sparseError: string | null
   parsedLinkedIssueNumber: number | null
   effectiveLinkedPR: number | null
-  currentYamlHooks: NightshiftHooks | null
+  currentYamlHooks: KoluxHooks | null
   setupConfig: SetupConfig | null
   setupPolicy: SetupRunPolicy
   linkedWorkItemProvider: 'github' | 'gitlab' | 'linear' | 'jira' | null

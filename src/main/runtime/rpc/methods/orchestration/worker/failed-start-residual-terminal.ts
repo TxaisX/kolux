@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { FailedStartTerminalAdoption } from '../../../../orchestration/db/worker-terminal/failed-start-terminal-adoption'
 import type { WorkerEffect } from './worker-topology'
 
@@ -23,7 +23,7 @@ function orchestrationCreatedAgentTerminal(
  * an unprovable identity must never authorize a later close.
  */
 export function resolveResidualAgentTerminal(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   effects: readonly WorkerEffect[]
   terminalHandle: string | undefined
   worktreeId: string | null

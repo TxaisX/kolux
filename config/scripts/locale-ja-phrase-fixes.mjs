@@ -3,8 +3,8 @@
 
 const JA_SENTENCE_CHAR = '[぀-ヿ一-龯、。・「」（）]'
 
-// Two-word commands (`git commit`, `nightshift terminal`) must keep their second word in Latin.
-const COMMAND_HEAD = '(?<!\\b(?:git|gh|glab|nightshift|npm|pnpm|npx|yarn|docker|kubectl) )'
+// Two-word commands (`git commit`, `kolux terminal`) must keep their second word in Latin.
+const COMMAND_HEAD = '(?<!\\b(?:git|gh|glab|kolux|npm|pnpm|npx|yarn|docker|kubectl) )'
 
 // #12113 stopped new damage; ~700 values still read "terminal を閉じる" and are healed here.
 // Anchored on adjacent Japanese, so `--agent`, agents.md and "Agent SDK" keep their spelling.
@@ -52,7 +52,7 @@ export const JA_PHRASE_FIXES = [
   { pattern: /会議/g, replacement: 'セッション', whenEnIncludes: 'session' },
   { pattern: /広報/g, replacement: 'PR', whenEnIncludes: 'PR' },
   { pattern: /端末/g, replacement: 'ターミナル', whenEnIncludes: 'erminal' },
-  { pattern: /シャチ:\/\//g, replacement: 'nightshift://', whenEnIncludes: 'nightshift://' },
+  { pattern: /シャチ:\/\//g, replacement: 'kolux://', whenEnIncludes: 'kolux://' },
   { pattern: /線形/g, replacement: 'Linear', whenEnIncludes: 'Linear' },
   { pattern: /グラフQL/g, replacement: 'GraphQL', whenEnIncludes: 'GraphQL' },
   { pattern: /不和/g, replacement: 'Discord', whenEnIncludes: 'Discord' },
@@ -60,7 +60,7 @@ export const JA_PHRASE_FIXES = [
   { pattern: /殺害/g, replacement: '終了中', whenEnIncludes: 'Killing' },
   { pattern: /殺す/g, replacement: '強制終了', whenEnIncludes: 'Kill' },
   { pattern: /皆殺し/g, replacement: 'すべて終了', whenEnIncludes: 'kill all' },
-  { pattern: /崩壊させる/g, replacement: '折りたたむ', whenEnIncludes: 'Collapse Nightshift' },
+  { pattern: /崩壊させる/g, replacement: '折りたたむ', whenEnIncludes: 'Collapse Kolux' },
   { pattern: /崩壊/g, replacement: '折りたたむ', whenEnIncludes: 'Collapse' },
   { pattern: /一般的な/g, replacement: '一般', whenEnIncludes: 'General' },
   { pattern: /高度な/g, replacement: '詳細設定', whenEnIncludes: 'Advanced' },
@@ -98,7 +98,7 @@ export const JA_PHRASE_FIXES = [
     replacement: 'マージされています',
     whenEnIncludes: 'already merged'
   },
-  { pattern: /再起動します/g, replacement: '再起動', whenEnIncludes: 'Restart Nightshift' },
+  { pattern: /再起動します/g, replacement: '再起動', whenEnIncludes: 'Restart Kolux' },
   { pattern: /オウムガイ/g, replacement: 'Nautilus', whenEnIncludes: 'Nautilus' },
   {
     pattern: /Kim サブスクリプション/g,
@@ -278,7 +278,7 @@ export const JA_PHRASE_FIXES = [
     whenEnIncludes: 'More PR actions'
   },
   { pattern: /アクション/g, replacement: '操作', whenEnIncludes: 'action' },
-  // Nightshift's host covers SSH hosts and this computer; skipped where the English also says server.
+  // Kolux's host covers SSH hosts and this computer; skipped where the English also says server.
   {
     pattern: /(ランタイム)?サーバー/g,
     replacement: 'ホスト',

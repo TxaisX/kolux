@@ -203,7 +203,7 @@ export function createProjectGroupMutationActions(
         if (stillExists) {
           failedProjectRemovals.push({
             projectId,
-            reason: 'Project remained in Nightshift after removeProject completed.'
+            reason: 'Project remained in Kolux after removeProject completed.'
           })
         } else {
           removedProjectIds.push(projectId)

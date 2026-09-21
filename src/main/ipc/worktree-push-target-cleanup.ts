@@ -187,16 +187,16 @@ function isBranchConfigSeparator(code: number): boolean {
 
 // Why: on-demand materialization (push/pull/fetch/fast-forward, #17828) never
 // updates the store's `pushTarget.remoteCreated` flag, so ownership must also be
-// readable from the repo-local `remote.<name>.nightshift-created` config Nightshift writes
+// readable from the repo-local `remote.<name>.kolux-created` config Kolux writes
 // when it creates the remote (see `worktree-push-target-setup.ts`).
-async function remoteHasNightshiftProvenance(
+async function remoteHasKoluxProvenance(
   execGit: GitRemoteExec,
   repoPath: string,
   remoteName: string
 ): Promise<boolean> {
   try {
     const { stdout } = await execGit(
-      ['config', '--get', `remote.${remoteName}.nightshift-created`],
+      ['config', '--get', `remote.${remoteName}.kolux-created`],
       repoPath
     )
     return stdout.trim() === 'true'
@@ -219,7 +219,7 @@ export async function cleanupUnusedWorktreePushTargetRemoteWithExec(
   }
   if (
     !target.remoteCreated &&
-    !(await remoteHasNightshiftProvenance(execGit, repoPath, target.remoteName))
+    !(await remoteHasKoluxProvenance(execGit, repoPath, target.remoteName))
   ) {
     return
   }

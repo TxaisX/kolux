@@ -65,7 +65,7 @@ describe('host port bootstrap wiring', () => {
     // Why (#16761): the accessor throws until installed, and `getCanonicalUserDataPath()` memoizes
     // whatever it first resolves. Any gap between deciding where userData lives and installing the
     // port is a window where an early path resolve either kills the process — which is what took
-    // down every macOS `nightshift serve` — or caches the pre-override directory for the whole session.
+    // down every macOS `kolux serve` — or caches the pre-override directory for the whole session.
     // Keeping the four statements adjacent is what makes that window zero rather than merely small.
     const decide = source.indexOf('configureDevUserDataPath(isDev)')
     const install = source.indexOf('setAppEnvironment(new ElectronAppEnvironment())')
@@ -83,7 +83,7 @@ describe('host port bootstrap wiring', () => {
 
     expect(statements).toEqual([
       'configureDevUserDataPath(isDev)',
-      'configureNightshiftUserDataPathEnv()',
+      'configureKoluxUserDataPathEnv()',
       'setAppEnvironment(new ElectronAppEnvironment())'
     ])
   })

@@ -21,7 +21,7 @@ export function getDaemonShellReadyWrapperPaths(root: string): readonly string[]
 }
 
 // Why only .zshenv: the hook hands ZDOTDIR back on its first lines, so zsh reads
-// .zprofile, .zshrc and .zlogin from the user's own directory. Nothing Nightshift
+// .zprofile, .zshrc and .zlogin from the user's own directory. Nothing Kolux
 // writes is read after this file.
 export function buildDaemonShellReadyWrapperFiles(root: string): readonly ShellWrapperFile[] {
   const [zshEnvPath, zshMarkerPath, bashRcfilePath] = getDaemonShellReadyWrapperPaths(root)

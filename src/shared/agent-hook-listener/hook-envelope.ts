@@ -47,7 +47,7 @@ function readPackedHookMetadata(
   headers: IncomingHttpHeaders,
   encoding: 'base64' | undefined
 ): HookMetadata | null {
-  const encoded = readHookHeader(headers, 'x-nightshift-agent-hook-meta')
+  const encoded = readHookHeader(headers, 'x-kolux-agent-hook-meta')
   if (encoded === undefined || encoding !== 'base64') {
     return null
   }
@@ -67,17 +67,16 @@ function readPackedHookMetadata(
 /** Rebuilds the canonical envelope for POSIX hooks that carry raw JSON bodies. */
 export function mergeAgentHookRequestHeaders(body: unknown, headers: IncomingHttpHeaders): unknown {
   const metadataEncoding =
-    readHookHeader(headers, 'x-nightshift-agent-hook-meta-encoding')?.trim().toLowerCase() ===
-    'base64'
+    readHookHeader(headers, 'x-kolux-agent-hook-meta-encoding')?.trim().toLowerCase() === 'base64'
       ? 'base64'
       : undefined
   const metadata = readPackedHookMetadata(headers, metadataEncoding) ?? {
-    paneKey: readHookMetadataHeader(headers, 'x-nightshift-pane-key', metadataEncoding) ?? '',
-    tabId: readHookMetadataHeader(headers, 'x-nightshift-tab-id', metadataEncoding),
-    launchToken: readHookMetadataHeader(headers, 'x-nightshift-launch-token', metadataEncoding),
-    worktreeId: readHookMetadataHeader(headers, 'x-nightshift-worktree-id', metadataEncoding),
-    env: readHookMetadataHeader(headers, 'x-nightshift-agent-hook-env', metadataEncoding),
-    version: readHookMetadataHeader(headers, 'x-nightshift-agent-hook-version', metadataEncoding)
+    paneKey: readHookMetadataHeader(headers, 'x-kolux-pane-key', metadataEncoding) ?? '',
+    tabId: readHookMetadataHeader(headers, 'x-kolux-tab-id', metadataEncoding),
+    launchToken: readHookMetadataHeader(headers, 'x-kolux-launch-token', metadataEncoding),
+    worktreeId: readHookMetadataHeader(headers, 'x-kolux-worktree-id', metadataEncoding),
+    env: readHookMetadataHeader(headers, 'x-kolux-agent-hook-env', metadataEncoding),
+    version: readHookMetadataHeader(headers, 'x-kolux-agent-hook-version', metadataEncoding)
   }
   if (!metadata.paneKey) {
     return body

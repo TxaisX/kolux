@@ -19,7 +19,7 @@ describe('worktree selector recovery', () => {
       worktreeSelector: 'id:github:TxaisX/nightshift'
     })
 
-    expect(output).toContain('No Nightshift workspace matched the worktree selector')
+    expect(output).toContain('No Kolux workspace matched the worktree selector')
     expect(output).toContain('id:github:TxaisX/nightshift')
     expect(output).toContain('Did you mean: id:github:TxaisX/nightshift::<absolute-path>')
     expect(output).toContain('Valid selector forms:')
@@ -99,13 +99,13 @@ describe('CLI error recovery', () => {
   it('prints did-you-mean next steps for an unknown-command error carrying data', () => {
     const error = new RuntimeClientError('invalid_argument', 'Unknown command: worktree remov', {
       suggestions: ['worktree rm'],
-      nextSteps: ['Did you mean: nightshift worktree rm']
+      nextSteps: ['Did you mean: kolux worktree rm']
     })
 
     const output = formatCliError(error)
 
     expect(output).toContain('Unknown command: worktree remov')
-    expect(output).toContain('Next step: Did you mean: nightshift worktree rm')
+    expect(output).toContain('Next step: Did you mean: kolux worktree rm')
   })
 
   it('prefers structured recovery over generic computer hints in text output', () => {
@@ -160,6 +160,6 @@ describe('CLI error recovery', () => {
     const output = formatCliError(error)
 
     expect(output).toContain('--retry-request mutation_1')
-    expect(output).not.toContain('nightshift open')
+    expect(output).not.toContain('kolux open')
   })
 })

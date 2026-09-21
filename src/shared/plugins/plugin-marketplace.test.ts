@@ -125,9 +125,9 @@ describe('pluginMarketplaceSchema', () => {
 
 describe('marketplace provenance contracts', () => {
   it.each([
-    ['txais.nightshift-skills', true, true],
+    ['txais.kolux-skills', true, true],
     ['txais.skills', true, false],
-    ['community.nightshift-skills', true, false],
+    ['community.kolux-skills', true, false],
     ['community.skills', false, false],
     ['invalid', false, false]
   ])('classifies %s', (pluginKey, reserved, official) => {
@@ -144,17 +144,17 @@ describe('marketplace provenance contracts', () => {
   })
 
   it('does not trust lookalike organizations or hosts', () => {
-    expect(
-      isOfficialOrganizationGitSource('https://github.com/txais-fakes/nightshift-skills')
-    ).toBe(false)
-    expect(isOfficialOrganizationGitSource('https://gitlab.com/TxaisX/nightshift-skills')).toBe(false)
+    expect(isOfficialOrganizationGitSource('https://github.com/txais-fakes/kolux-skills')).toBe(
+      false
+    )
+    expect(isOfficialOrganizationGitSource('https://gitlab.com/TxaisX/nightshift-skills')).toBe(
+      false
+    )
   })
 
   it('recognizes only the canonical official marketplace repository', () => {
     expect(
-      isOfficialMarketplaceGitSource(
-        `git@github.com:TxaisX/${OFFICIAL_MARKETPLACE_REPOSITORY}.git`
-      )
+      isOfficialMarketplaceGitSource(`git@github.com:TxaisX/${OFFICIAL_MARKETPLACE_REPOSITORY}.git`)
     ).toBe(true)
     expect(isOfficialMarketplaceGitSource('git@github.com:TxaisX/plugins.git')).toBe(false)
   })

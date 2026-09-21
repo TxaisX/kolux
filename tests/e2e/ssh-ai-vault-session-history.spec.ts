@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   DOCKER_SSH_RELAY_REMOTE_REPO_PATH,
@@ -10,14 +10,14 @@ import { connectDockerRemote } from './ssh-codex-reconnect-replay-driver'
 import { dockerExec, dockerWriteFile } from './ssh-codex-repro-remote-fixtures'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 
 test.describe('SSH Agent Session History', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Docker SSH tests use POSIX ssh tooling.')
 
   test('shows remote session history only for the SSH host and resumes Codex on that worktree', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo: TestInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
@@ -40,12 +40,12 @@ test.describe('SSH Agent Session History', () => {
         claudeTitle
       })
 
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerRemote(nightshiftPage, target)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerRemote(koluxPage, target)
       const sshScope = `ssh:${encodeURIComponent(remote.targetId)}`
 
-      const scan = await nightshiftPage.evaluate(
+      const scan = await koluxPage.evaluate(
         async ({ sshScope, defaultTitle, runtimeTitle, claudeTitle }) => {
           const local = await window.api.aiVault.listSessions({
             executionHostScope: 'local',
@@ -85,39 +85,39 @@ test.describe('SSH Agent Session History', () => {
       expect(new Set(scan.remoteHostIds)).toEqual(new Set([sshScope]))
       expect(scan.remoteCommands.join('\n')).toContain("CODEX_HOME='/root/.codex'")
       expect(scan.remoteCommands.join('\n')).toContain(
-        "CODEX_HOME='/root/.local/share/nightshift/codex-runtime-home/home'"
+        "CODEX_HOME='/root/.local/share/kolux/codex-runtime-home/home'"
       )
 
-      const defaultSessionTitle = nightshiftPage.getByText(defaultTitle, { exact: true })
-      const runtimeSessionTitle = nightshiftPage.getByText(runtimeTitle, { exact: true })
+      const defaultSessionTitle = koluxPage.getByText(defaultTitle, { exact: true })
+      const runtimeSessionTitle = koluxPage.getByText(runtimeTitle, { exact: true })
 
-      await openAiVaultSidebar(nightshiftPage)
+      await openAiVaultSidebar(koluxPage)
       await expect(defaultSessionTitle.first()).toBeVisible({ timeout: 30_000 })
 
-      const hostButton = nightshiftPage.getByRole('button', { name: /Session History host:/ })
+      const hostButton = koluxPage.getByRole('button', { name: /Session History host:/ })
       await hostButton.click()
-      await nightshiftPage.getByRole('menuitemradio', { name: /Local/ }).click()
+      await koluxPage.getByRole('menuitemradio', { name: /Local/ }).click()
       await expect(defaultSessionTitle).toHaveCount(0, { timeout: 30_000 })
 
       await hostButton.click()
-      await nightshiftPage.getByRole('menuitemradio', { name: 'All hosts' }).click()
+      await koluxPage.getByRole('menuitemradio', { name: 'All hosts' }).click()
       await expect(runtimeSessionTitle.first()).toBeVisible({ timeout: 30_000 })
 
       await hostButton.click()
-      await nightshiftPage
+      await koluxPage
         .getByRole('menuitemradio')
         .filter({ hasNotText: /Local|All hosts/ })
         .click()
       await expect(defaultSessionTitle.first()).toBeVisible({ timeout: 30_000 })
 
-      await installStartupQueueProbe(nightshiftPage)
+      await installStartupQueueProbe(koluxPage)
       await defaultSessionTitle.first().click()
-      await nightshiftPage.getByText('Resume in Worktree', { exact: true }).click()
+      await koluxPage.getByText('Resume in Worktree', { exact: true }).click()
 
       await expect
-        .poll(() => readLastQueuedStartupCommand(nightshiftPage), { timeout: 30_000 })
+        .poll(() => readLastQueuedStartupCommand(koluxPage), { timeout: 30_000 })
         .toContain(`CODEX_HOME='/root/.codex' codex resume '${defaultSessionId}'`)
-      const queuedWorktreeId = await readLastQueuedStartupWorktreeId(nightshiftPage)
+      const queuedWorktreeId = await readLastQueuedStartupWorktreeId(koluxPage)
       expect(queuedWorktreeId).toBe(remote.worktreeId)
     } finally {
       cleanupDockerSshRelayTarget(target)
@@ -140,8 +140,8 @@ function seedRemoteAiVaultHistory(
     target,
     [
       'mkdir -p /root/.codex/sessions/2026/07/04',
-      'mkdir -p /root/.local/share/nightshift/codex-runtime-home/home/sessions/2026/07/04',
-      'mkdir -p /root/.claude/projects/nightshift'
+      'mkdir -p /root/.local/share/kolux/codex-runtime-home/home/sessions/2026/07/04',
+      'mkdir -p /root/.claude/projects/kolux'
     ].join(' && ')
   )
   dockerWriteFile(
@@ -163,7 +163,7 @@ function seedRemoteAiVaultHistory(
   )
   dockerWriteFile(
     target,
-    `/root/.local/share/nightshift/codex-runtime-home/home/sessions/2026/07/04/${args.runtimeSessionId}.jsonl`,
+    `/root/.local/share/kolux/codex-runtime-home/home/sessions/2026/07/04/${args.runtimeSessionId}.jsonl`,
     codexTranscript({
       sessionId: args.runtimeSessionId,
       title: args.runtimeTitle,
@@ -174,7 +174,7 @@ function seedRemoteAiVaultHistory(
   )
   dockerWriteFile(
     target,
-    `/root/.claude/projects/nightshift/${args.claudeSessionId}.jsonl`,
+    `/root/.claude/projects/kolux/${args.claudeSessionId}.jsonl`,
     claudeTranscript({
       sessionId: args.claudeSessionId,
       title: args.claudeTitle,

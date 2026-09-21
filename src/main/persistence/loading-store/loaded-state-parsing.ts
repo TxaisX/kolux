@@ -22,6 +22,7 @@ import {
   isLegacySshPtyOwnerLease
 } from '../leasing-ssh-ptys/secret-validation'
 import { readGithubCacheSnapshot } from './user-data-path'
+import { migrateLegacyPersistedKeysAndValues } from './legacy-persisted-key-migration'
 import {
   gcStaleWorktreeMeta,
   normalizeWorktreeLinkedItemMetadata
@@ -79,7 +80,7 @@ export class LoadedStateParsingOperations {
   ) {}
 
   load(allowBackupRecovery = true): PersistedState {
-    // Capture "has run Nightshift before?" for telemetry cohort; the telemetry field is new, so field inference misclassifies old users as fresh.
+    // Capture "has run Kolux before?" for telemetry cohort; the telemetry field is new, so field inference misclassifies old users as fresh.
     const dataFile = this.runtime.dataFile
     const fileExistedOnLoad = existsSync(dataFile)
     logPersistenceStartupMilestone('persistence-load-start', {
@@ -98,6 +99,13 @@ export class LoadedStateParsingOperations {
         logPersistenceStartupMilestone('persistence-json-parse-start')
         const parsed = JSON.parse(raw) as PersistedState
         logPersistenceStartupMilestone('persistence-json-parse-done')
+
+        // Why here, before anything below reads a field by its current name: a pre-rename
+        // build wrote these keys/values under their old spelling. Narrow and idempotent —
+        // see legacy-persisted-key-migration.ts.
+        if (migrateLegacyPersistedKeysAndValues(parsed)) {
+          this.runtime.loadNeedsSave = true
+        }
 
         // Why: secrets are stored encrypted via safeStorage; decrypt at the load boundary so the app sees plaintext.
         if (parsed.settings?.opencodeSessionCookie) {

@@ -9,7 +9,7 @@ import { googleAuthUserAgent, isGoogleAuthUrl } from './browser-google-auth-ua'
 import { BrowserManagerDownloadLifecycle } from './browser-manager-download-lifecycle'
 
 export abstract class BrowserManagerViewport extends BrowserManagerDownloadLifecycle {
-  // Why: guests are isolated from Nightshift's preload bridge, so main owns the devtools escape hatch after a tab→guest lookup.
+  // Why: guests are isolated from Kolux's preload bridge, so main owns the devtools escape hatch after a tab→guest lookup.
   async openDevTools(browserTabId: string): Promise<boolean> {
     const webContentsId = this.webContentsIdByTabId.get(browserTabId)
     if (!webContentsId) {

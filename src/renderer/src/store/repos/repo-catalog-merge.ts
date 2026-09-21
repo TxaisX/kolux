@@ -127,11 +127,11 @@ export function projectCompatibilityForReconciledRepos(
   return mergeProjectHostSetupCompatibility(projectCompatibilityFromRepos(repos), fetched)
 }
 
-export function filterTrustedNightshiftHooksToValidRepos(
-  trust: AppState['trustedNightshiftHooks'],
+export function filterTrustedKoluxHooksToValidRepos(
+  trust: AppState['trustedKoluxHooks'],
   validRepoIds: Set<string>
-): AppState['trustedNightshiftHooks'] {
-  const next: AppState['trustedNightshiftHooks'] = {}
+): AppState['trustedKoluxHooks'] {
+  const next: AppState['trustedKoluxHooks'] = {}
   for (const [repoId, entry] of Object.entries(trust)) {
     if (validRepoIds.has(repoId)) {
       next[repoId] = entry

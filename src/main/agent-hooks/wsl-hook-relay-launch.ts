@@ -14,7 +14,7 @@ import {
   type waitForWslRelaySentinel,
   type WslRelayStartupFailure
 } from './wsl-hook-relay-sentinel'
-import { addNightshiftWslInteropEnv } from '../pty/wsl-nightshift-env'
+import { addKoluxWslInteropEnv } from '../pty/wsl-kolux-env'
 import { runWslProcess } from '../wsl/wsl-runner'
 import { resolveWslInteropSpawnCwd } from '../wsl-interop-spawn-directory'
 import { listRunningWslDistrosAsync } from '../wsl'
@@ -36,8 +36,8 @@ export function resolveWslHookRelayBundle(): WslHookRelayBundle | null {
   // Mirrors getLocalRelayCandidates in ssh-relay-deploy: env override for
   // tests/dev, then packaged extraResources, then dev out/ paths.
   const candidates: string[] = []
-  if (process.env.NIGHTSHIFT_RELAY_PATH) {
-    candidates.push(join(process.env.NIGHTSHIFT_RELAY_PATH, 'wsl'))
+  if (process.env.KOLUX_RELAY_PATH) {
+    candidates.push(join(process.env.KOLUX_RELAY_PATH, 'wsl'))
   }
   if (process.resourcesPath) {
     candidates.push(join(process.resourcesPath, 'relay', 'wsl'))
@@ -65,7 +65,7 @@ export function resolveWslHookRelayBundle(): WslHookRelayBundle | null {
   return null
 }
 
-// Why: the install dir is namespaced by bundle version so concurrent Nightshift
+// Why: the install dir is namespaced by bundle version so concurrent Kolux
 // instances with different bundles (dev + prod) never reinstall over each
 // other; each instance launches exactly the version it shipped.
 function guestRelayDirExpr(version: string): string {
@@ -109,13 +109,13 @@ export function buildGuestInstallScript(bundleJs: Buffer, version: string): stri
     'umask 077',
     `d="${guestRelayDirExpr(version)}"`,
     'mkdir -p "$d"',
-    `base64 -d > "$d/bundle.$$.tmp" << 'NIGHTSHIFT_EOF_BUNDLE'`,
+    `base64 -d > "$d/bundle.$$.tmp" << 'KOLUX_EOF_BUNDLE'`,
     b64.trimEnd(),
-    'NIGHTSHIFT_EOF_BUNDLE',
+    'KOLUX_EOF_BUNDLE',
     `mv "$d/bundle.$$.tmp" "$d/${WSL_HOOK_RELAY_BUNDLE_NAME}"`,
-    `cat > "$d/launch.$$.tmp" << 'NIGHTSHIFT_EOF_LAUNCH'`,
+    `cat > "$d/launch.$$.tmp" << 'KOLUX_EOF_LAUNCH'`,
     buildGuestLaunchScript(version).trimEnd(),
-    'NIGHTSHIFT_EOF_LAUNCH',
+    'KOLUX_EOF_LAUNCH',
     'mv "$d/launch.$$.tmp" "$d/launch.sh"',
     'chmod 700 "$d/launch.sh"',
     // Version marker last: a partial install stays "stale" and reinstalls.
@@ -282,16 +282,16 @@ export function buildWslRelaySpawnEnv(
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     WSL_UTF8: '1',
-    NIGHTSHIFT_AGENT_HOOK_PORT: coords.NIGHTSHIFT_AGENT_HOOK_PORT,
-    NIGHTSHIFT_AGENT_HOOK_TOKEN: coords.NIGHTSHIFT_AGENT_HOOK_TOKEN,
-    NIGHTSHIFT_AGENT_HOOK_ENV: coords.NIGHTSHIFT_AGENT_HOOK_ENV,
-    NIGHTSHIFT_AGENT_HOOK_VERSION: coords.NIGHTSHIFT_AGENT_HOOK_VERSION,
+    KOLUX_AGENT_HOOK_PORT: coords.KOLUX_AGENT_HOOK_PORT,
+    KOLUX_AGENT_HOOK_TOKEN: coords.KOLUX_AGENT_HOOK_TOKEN,
+    KOLUX_AGENT_HOOK_ENV: coords.KOLUX_AGENT_HOOK_ENV,
+    KOLUX_AGENT_HOOK_VERSION: coords.KOLUX_AGENT_HOOK_VERSION,
     [WSL_HOOK_RELAY_VERSION_ENV]: bundleVersion,
     [WSL_HOOK_RELAY_INSTANCE_ENV]: instanceKey
   }
   // Why: the relay derives its own guest endpoint path; a /p-translated
   // Windows endpoint here would only add WSLENV noise.
-  delete env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
-  addNightshiftWslInteropEnv(env as Record<string, string>)
+  delete env.KOLUX_AGENT_HOOK_ENDPOINT
+  addKoluxWslInteropEnv(env as Record<string, string>)
   return env
 }

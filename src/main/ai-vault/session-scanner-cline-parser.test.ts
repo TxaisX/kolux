@@ -14,7 +14,7 @@ afterEach(async () => {
 
 describe('Cline AI Vault sessions', () => {
   it('indexes one manifest-backed session without surfacing its messages file as a phantom', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-ai-vault-cline-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-ai-vault-cline-'))
     tempRoots.push(root)
     const roots = isolatedScanRoots(root)
     const sessionId = '1786466194549_xrzrl'
@@ -95,7 +95,7 @@ describe('Cline AI Vault sessions', () => {
   })
 
   it('only indexes manifests directly beneath a session directory', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-ai-vault-cline-nested-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-ai-vault-cline-nested-'))
     tempRoots.push(root)
     const roots = isolatedScanRoots(root)
     const sessionId = 'direct-session'

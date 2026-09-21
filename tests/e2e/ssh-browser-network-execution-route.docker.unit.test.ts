@@ -16,7 +16,7 @@ import {
 } from './helpers/docker-ssh-relay-target'
 import { resolveSshBrowserNetworkExecutionRoute } from '../../src/main/browser/ssh-browser-network-execution-route'
 
-const runDocker = process.env.NIGHTSHIFT_RUN_DOCKER_SSH_BROWSER_E2E === '1'
+const runDocker = process.env.KOLUX_RUN_DOCKER_SSH_BROWSER_E2E === '1'
 const executionHost = {
   kind: 'ssh' as const,
   targetId: 'target-a',

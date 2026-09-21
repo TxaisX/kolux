@@ -20,16 +20,16 @@ import type { TuiAgent } from './tui-agent'
 const RECORDED_HISTORY_DIR = 'terminal-history'
 const QUARANTINE_DIR = '.recovery-quarantine'
 
-function nightshiftAppSupportCandidates(): string[] {
+function koluxAppSupportCandidates(): string[] {
   if (process.platform === 'darwin') {
-    return [join(homedir(), 'Library', 'Application Support', 'Nightshift')]
+    return [join(homedir(), 'Library', 'Application Support', 'Kolux')]
   }
   if (process.platform === 'win32') {
-    return [join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'Nightshift')]
+    return [join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'Kolux')]
   }
   return [
-    join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'Nightshift'),
-    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'Nightshift')
+    join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'Kolux'),
+    join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'Kolux')
   ]
 }
 
@@ -37,7 +37,7 @@ function nightshiftAppSupportCandidates(): string[] {
  *  quarantine subtree excluded BY NAME so a future recursive rewrite cannot silently turn
  *  quarantined recovery data into product regressions. */
 function loadRecordedTitleCorpus(): { checkpointCount: number; titles: string[] } | null {
-  const root = nightshiftAppSupportCandidates()
+  const root = koluxAppSupportCandidates()
     .map((candidate) => join(candidate, RECORDED_HISTORY_DIR))
     .find((candidate) => existsSync(candidate))
   if (!root) {

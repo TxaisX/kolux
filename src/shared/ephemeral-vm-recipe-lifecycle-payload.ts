@@ -1,7 +1,7 @@
 import type { EphemeralVmRecipeResult } from './ephemeral-vm-recipes'
 import type { EphemeralVmRecipeContext } from './ephemeral-vm-recipe-runner'
 import { quoteShellToken } from './ephemeral-vm-recipe-process'
-import type { NightshiftVmRecipe } from './nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from './kolux-yaml-hook-types'
 
 export type EphemeralVmRecipeLifecycleMode = 'suspend' | 'resume' | 'destroy'
 
@@ -17,7 +17,7 @@ export type EphemeralVmRecipeCleanupPayload = {
 }
 
 export function buildEphemeralVmRecipeCleanupPayload(args: {
-  recipe: Pick<NightshiftVmRecipe, 'id'>
+  recipe: Pick<KoluxVmRecipe, 'id'>
   context: EphemeralVmRecipeContext
   recipeResult: EphemeralVmRecipeResult
 }): EphemeralVmRecipeCleanupPayload {
@@ -26,7 +26,7 @@ export function buildEphemeralVmRecipeCleanupPayload(args: {
 
 export function buildEphemeralVmRecipeLifecyclePayload(args: {
   mode: EphemeralVmRecipeLifecycleMode
-  recipe: Pick<NightshiftVmRecipe, 'id'>
+  recipe: Pick<KoluxVmRecipe, 'id'>
   context: EphemeralVmRecipeContext
   recipeResult: EphemeralVmRecipeResult
 }): EphemeralVmRecipeCleanupPayload {

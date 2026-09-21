@@ -29,7 +29,7 @@ function seedQueuedRestart(
   useAppStore.setState({
     settings: { activeRuntimeEnvironmentId: null } as never,
     worktreesByRepo: {
-      repo1: [{ id: 'wt1', path: '/Users/dev/code/nightshift' }]
+      repo1: [{ id: 'wt1', path: '/Users/dev/code/kolux' }]
     } as never,
     tabsByWorktree: {
       wt1: [
@@ -106,7 +106,7 @@ describe('codex detached pane restart executor', () => {
       expect.objectContaining({
         cols: 80,
         rows: 24,
-        cwd: '/Users/dev/code/nightshift',
+        cwd: '/Users/dev/code/kolux',
         command: 'codex',
         startupCommandDelivery: 'shell-ready',
         launchAgent: 'codex',
@@ -119,10 +119,10 @@ describe('codex detached pane restart executor', () => {
     expect(window.api.pty.getSize).not.toHaveBeenCalled()
     expect(vi.mocked(window.api.pty.spawn).mock.calls[0]?.[0]?.env).toEqual(
       expect.objectContaining({
-        NIGHTSHIFT_PANE_KEY: `tab-1:${LEAF_ID}`,
-        NIGHTSHIFT_TAB_ID: 'tab-1',
-        NIGHTSHIFT_WORKTREE_ID: 'wt1',
-        NIGHTSHIFT_WORKSPACE_ID: 'wt1'
+        KOLUX_PANE_KEY: `tab-1:${LEAF_ID}`,
+        KOLUX_TAB_ID: 'tab-1',
+        KOLUX_WORKTREE_ID: 'wt1',
+        KOLUX_WORKSPACE_ID: 'wt1'
       })
     )
     expect(window.api.pty.kill).toHaveBeenCalledExactlyOnceWith(OLD_PTY)

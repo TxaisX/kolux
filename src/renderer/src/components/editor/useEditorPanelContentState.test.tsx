@@ -53,7 +53,7 @@ vi.mock('@/store', () => ({
 
 import { useEditorPanelContentState } from './useEditorPanelContentState'
 import { getDiskBaselineSignature } from './diff-content-signature'
-import { NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT } from './editor-autosave'
+import { KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT } from './editor-autosave'
 
 type Deferred<T> = {
   promise: Promise<T>
@@ -74,7 +74,7 @@ function createDeferred<T>(): Deferred<T> {
 function dispatchExternalFileChange(file: OpenFile, worktreePath: string): void {
   act(() => {
     window.dispatchEvent(
-      new CustomEvent(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
+      new CustomEvent(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
         detail: {
           worktreeId: file.worktreeId,
           worktreePath,

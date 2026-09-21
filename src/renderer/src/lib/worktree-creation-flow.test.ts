@@ -453,9 +453,9 @@ describe('staged background worktree creation', () => {
       provider: 'jira' as const,
       type: 'issue' as const,
       number: 0,
-      title: 'NIGHTSHIFT-123 Durable Jira link',
-      url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      title: 'KOLUX-123 Durable Jira link',
+      url: 'https://company.atlassian.net/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     }
     const linkedTaskSourceContext = {
       kind: 'task-source' as const,
@@ -467,7 +467,7 @@ describe('staged background worktree creation', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       },
       accountLabel: 'dev@company.test'
     }

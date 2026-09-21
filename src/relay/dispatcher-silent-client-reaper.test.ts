@@ -101,7 +101,7 @@ describe('RelayDispatcher silent-client reaper', () => {
   })
 
   it('never reaps a client that does not send keepalives at all', () => {
-    // The remote `nightshift` CLI opens the socket, sends one `nightshift.cli` request and then waits for a
+    // The remote `kolux` CLI opens the socket, sends one `kolux.cli` request and then waits for a
     // result budgeted in minutes (remote-cli-timeout.ts: 5min default, 10min for wait, 11min for
     // orchestration ask). It has no keepalive timer, so judging it on inbound silence would abort
     // `terminal wait`, `--wait` and `orchestration ask` after 20s.
@@ -111,7 +111,7 @@ describe('RelayDispatcher silent-client reaper', () => {
     const clientId = dispatcher.attachClient(() => true)
     dispatcher.feedClient(
       clientId,
-      encodeJsonRpcFrame({ jsonrpc: '2.0', id: 1, method: 'nightshift.cli', params: {} }, 1, 0)
+      encodeJsonRpcFrame({ jsonrpc: '2.0', id: 1, method: 'kolux.cli', params: {} }, 1, 0)
     )
 
     vi.advanceTimersByTime(TIMEOUT_MS * 20)

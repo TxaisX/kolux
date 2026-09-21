@@ -15,7 +15,7 @@ function parseParams(methodName: string, params: unknown): { hostId: string } {
 const CREATING_METHODS = [
   {
     name: 'projectHostSetup.setupExistingFolder',
-    base: { projectId: 'github:TxaisX/nightshift', path: '/srv/nightshift' }
+    base: { projectId: 'github:TxaisX/nightshift', path: '/srv/kolux' }
   },
   {
     name: 'projectHostSetup.clone',

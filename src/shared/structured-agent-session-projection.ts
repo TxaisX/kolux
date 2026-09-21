@@ -23,7 +23,7 @@ function boundedText(payload: { head: string; truncated: boolean; byteLength: nu
  *  so nothing that merely looks like one inside the body can match. */
 const BOUNDED_TEXT_MARKERS = [
   /\n… \(\d+ bytes\)$/,
-  /\n\[Nightshift: output truncated — \d+ bytes total, digest [0-9a-f]+\]$/
+  /\n\[Kolux: output truncated — \d+ bytes total, digest [0-9a-f]+\]$/
 ]
 
 /** Recovers the clipped body from a bounded payload's text, and says whether a

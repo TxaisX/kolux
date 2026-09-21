@@ -41,7 +41,7 @@ describe('legacy terminal shim neutralization', () => {
   const tempRoots: string[] = []
 
   const makeUserDataDir = (): string => {
-    const userData = mkdtempSync(join(tmpdir(), 'nightshift-legacy-shim-'))
+    const userData = mkdtempSync(join(tmpdir(), 'kolux-legacy-shim-'))
     tempRoots.push(userData)
     return userData
   }
@@ -59,7 +59,7 @@ describe('legacy terminal shim neutralization', () => {
 
   it('atomically replaces the legacy command paths with executable tombstones', () => {
     const userData = makeUserDataDir()
-    const legacyRoot = join(userData, 'nightshift-terminal-attribution')
+    const legacyRoot = join(userData, 'kolux-terminal-attribution')
     const posixDir = join(legacyRoot, 'posix')
     const win32Dir = join(legacyRoot, 'win32')
     mkdirSync(posixDir, { recursive: true })
@@ -76,7 +76,7 @@ describe('legacy terminal shim neutralization', () => {
       join(win32Dir, 'gh.cmd')
     ]) {
       expect(existsSync(path)).toBe(true)
-      expect(readFileSync(path, 'utf8')).not.toContain('Co-authored-by: Nightshift')
+      expect(readFileSync(path, 'utf8')).not.toContain('Co-authored-by: Kolux')
       if (process.platform !== 'win32') {
         expect(statSync(path).mode & 0o111).not.toBe(0)
       }
@@ -120,7 +120,7 @@ describe('legacy terminal shim neutralization', () => {
     expect(resolvePosixTombstoneInterpreter(`:relbin:${absDir}`, [])).toBe(join(absDir, 'bash'))
     // Why: a relative entry resolves against the *running process* cwd, so the fixture must live
     // there — pointing at a tmpdir would make this pass whether or not the guard exists.
-    const cwdRelName = `.nightshift-interp-${process.pid}`
+    const cwdRelName = `.kolux-interp-${process.pid}`
     const cwdRelDir = join(process.cwd(), cwdRelName)
     mkdirSync(cwdRelDir, { recursive: true })
     try {
@@ -135,21 +135,21 @@ describe('legacy terminal shim neutralization', () => {
     // Why: with CDPATH set, cd searches it for a relative operand and echoes where it landed,
     // which the command substitution captures — wrapper_dir went wrong and git died at 127.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const realBin = join(userData, 'real-bin')
     const cdpathDir = join(userData, 'cdpath')
     mkdirSync(posixDir, { recursive: true })
     mkdirSync(realBin, { recursive: true })
     // Why: cd only relocates when CDPATH holds a directory matching the *whole* relative operand,
-    // so the fixture must mirror `nightshift-terminal-attribution/posix`, not just its first segment.
-    mkdirSync(join(cdpathDir, 'nightshift-terminal-attribution', 'posix'), { recursive: true })
+    // so the fixture must mirror `kolux-terminal-attribution/posix`, not just its first segment.
+    mkdirSync(join(cdpathDir, 'kolux-terminal-attribution', 'posix'), { recursive: true })
     writeFileSync(join(posixDir, 'git'), 'legacy attribution wrapper')
 
     neutralizeLegacyTerminalShimDir(userData)
 
     writeFileSync(join(realBin, 'git'), "#!/bin/bash\nprintf 'REAL\\n'\n", { mode: 0o755 })
 
-    const run = spawnSync('/bin/bash', ['nightshift-terminal-attribution/posix/git', '--version'], {
+    const run = spawnSync('/bin/bash', ['kolux-terminal-attribution/posix/git', '--version'], {
       cwd: userData,
       env: { CDPATH: cdpathDir, PATH: `${posixDir}:${realBin}:/usr/bin:/bin` },
       encoding: 'utf8',
@@ -164,7 +164,7 @@ describe('legacy terminal shim neutralization', () => {
     // Why: this guard is what turns a bad wrapper_dir into a clean 127 rather than an unbounded
     // self-exec. Deleting it left the whole suite green, so pin it directly.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     mkdirSync(posixDir, { recursive: true })
     writeFileSync(join(posixDir, 'git'), 'legacy attribution wrapper')
 
@@ -199,11 +199,11 @@ describe('legacy terminal shim neutralization', () => {
   })
 
   itOnPosix('rejects a distinct legacy shim directory named by the environment', () => {
-    // Why: NIGHTSHIFT_ATTRIBUTION_SHIM_DIR can name a *different* directory than the wrapper's own (an
+    // Why: KOLUX_ATTRIBUTION_SHIM_DIR can name a *different* directory than the wrapper's own (an
     // older install's dir inherited by a pre-upgrade pane). Nothing exercised that reject, so
     // neutering it left the suite green.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const legacyDir = join(userData, 'legacy-shim')
     const realBin = join(userData, 'real-bin')
     for (const dir of [posixDir, legacyDir, realBin]) {
@@ -219,7 +219,7 @@ describe('legacy terminal shim neutralization', () => {
     const run = spawnSync(join(posixDir, 'git'), ['--version'], {
       env: {
         ...process.env,
-        NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: legacyDir,
+        KOLUX_ATTRIBUTION_SHIM_DIR: legacyDir,
         PATH: `${legacyDir}:${realBin}:/usr/bin:/bin`
       },
       encoding: 'utf8',
@@ -235,7 +235,7 @@ describe('legacy terminal shim neutralization', () => {
     // spelled `<legacy>/../<legacy>` or reached through a symlink named the same directory but
     // survived the filter, and the still-live attribution wrapper won the lookup.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const legacyDir = join(userData, 'legacy-shim')
     const realBin = join(userData, 'real-bin')
     for (const dir of [posixDir, legacyDir, realBin]) {
@@ -254,7 +254,7 @@ describe('legacy terminal shim neutralization', () => {
       const run = spawnSync(join(posixDir, 'git'), ['--version'], {
         env: {
           ...process.env,
-          NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: legacyDir,
+          KOLUX_ATTRIBUTION_SHIM_DIR: legacyDir,
           PATH: `${spelling}:${realBin}:/usr/bin:/bin`
         },
         encoding: 'utf8',
@@ -311,7 +311,7 @@ describe('legacy terminal shim neutralization', () => {
       const shimDir = await import('./legacy-terminal-shim-dir')
       shimDir.__resetLegacyTerminalShimNeutralizationForTests()
       const userData = makeUserDataDir()
-      const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+      const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
       mkdirSync(posixDir, { recursive: true })
       writeFileSync(join(posixDir, 'git'), '#!/bin/bash\nlegacy attribution wrapper\n', {
         mode: 0o755
@@ -324,7 +324,7 @@ describe('legacy terminal shim neutralization', () => {
 
       const git = readFileSync(join(posixDir, 'git'), 'utf8')
       expect(git.split('\n')[0]).toBe('#!/bin/bash')
-      expect(git).toContain('Nightshift compatibility wrapper could not locate')
+      expect(git).toContain('Kolux compatibility wrapper could not locate')
       expect(existsSync(join(posixDir, 'gh'))).toBe(false)
     } finally {
       vi.doUnmock('./legacy-terminal-posix-tombstone')
@@ -339,14 +339,10 @@ describe('legacy terminal shim neutralization', () => {
     // Resolving for real is not available here either: this env is also built for remote and WSL
     // panes whose paths do not exist on the local filesystem.
     expect(
-      isLegacyTerminalShimPathEntry('/tmp/old/nightshift-terminal-attribution/posix/../posix')
+      isLegacyTerminalShimPathEntry('/tmp/old/kolux-terminal-attribution/posix/../posix')
     ).toBe(false)
-    expect(isLegacyTerminalShimPathEntry('/tmp/old/nightshift-terminal-attribution/posix')).toBe(
-      true
-    )
-    expect(isLegacyTerminalShimPathEntry('/tmp/old/nightshift-terminal-attribution/win32//')).toBe(
-      true
-    )
+    expect(isLegacyTerminalShimPathEntry('/tmp/old/kolux-terminal-attribution/posix')).toBe(true)
+    expect(isLegacyTerminalShimPathEntry('/tmp/old/kolux-terminal-attribution/win32//')).toBe(true)
     expect(isLegacyTerminalShimPathEntry('/usr/local/bin')).toBe(false)
   })
 
@@ -355,14 +351,14 @@ describe('legacy terminal shim neutralization', () => {
     // survived the literal removal and kept the captured directory on PATH.
     const posixEnv = {
       PATH: '/custom/elsewhere///:/usr/bin',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: '/custom/elsewhere'
+      KOLUX_ATTRIBUTION_SHIM_DIR: '/custom/elsewhere'
     }
     stripLegacyTerminalShimEnv(posixEnv, 'linux')
     expect(posixEnv.PATH).toBe('/usr/bin')
 
     const windowsEnv = {
       Path: 'C:\\Custom\\Else\\\\;C:\\Windows',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: 'C:\\Custom\\Else'
+      KOLUX_ATTRIBUTION_SHIM_DIR: 'C:\\Custom\\Else'
     }
     stripLegacyTerminalShimEnv(windowsEnv, 'win32')
     expect(windowsEnv.Path).toBe('C:\\Windows')
@@ -372,10 +368,10 @@ describe('legacy terminal shim neutralization', () => {
     'ignores a relative legacy shim directory instead of resolving it against the cwd',
     () => {
       // Why: bash resolves a relative -ef operand against the wrapper's current directory, so a
-      // relative NIGHTSHIFT_ATTRIBUTION_SHIM_DIR let the cwd decide which PATH entry counted as the legacy
+      // relative KOLUX_ATTRIBUTION_SHIM_DIR let the cwd decide which PATH entry counted as the legacy
       // directory. Reproduced as SAFE vs LATER purely by changing the cwd.
       const userData = makeUserDataDir()
-      const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+      const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
       const safeBin = join(userData, 'safe-bin')
       const laterBin = join(userData, 'later-bin')
       for (const dir of [posixDir, safeBin, laterBin]) {
@@ -388,12 +384,12 @@ describe('legacy terminal shim neutralization', () => {
       writeFileSync(join(safeBin, 'git'), "#!/bin/bash\nprintf 'SAFE\\n'\n", { mode: 0o755 })
       writeFileSync(join(laterBin, 'git'), "#!/bin/bash\nprintf 'LATER\\n'\n", { mode: 0o755 })
 
-      const outputs = [userData, join(userData, 'nightshift-terminal-attribution')].map((cwd) => {
+      const outputs = [userData, join(userData, 'kolux-terminal-attribution')].map((cwd) => {
         const run = spawnSync(join(posixDir, 'git'), ['--version'], {
           cwd,
           env: {
             ...process.env,
-            NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: 'safe-bin',
+            KOLUX_ATTRIBUTION_SHIM_DIR: 'safe-bin',
             PATH: `${safeBin}:${laterBin}:/usr/bin:/bin`
           },
           encoding: 'utf8',
@@ -413,13 +409,13 @@ describe('legacy terminal shim neutralization', () => {
     // `/tmp/captured\` and `/tmp/captured` compare equal and deleted a real directory from PATH.
     const env = {
       PATH: '/tmp/captured\\',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: '/tmp/captured'
+      KOLUX_ATTRIBUTION_SHIM_DIR: '/tmp/captured'
     }
     stripLegacyTerminalShimEnv(env, 'linux')
     expect(env.PATH).toBe('/tmp/captured\\')
 
     // Why the Windows half: there a backslash really is a separator, so it must still be stripped.
-    const windowsEnv = { Path: 'C:\\captured\\', NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: 'C:\\captured' }
+    const windowsEnv = { Path: 'C:\\captured\\', KOLUX_ATTRIBUTION_SHIM_DIR: 'C:\\captured' }
     stripLegacyTerminalShimEnv(windowsEnv, 'win32')
     expect(windowsEnv.Path).toBeUndefined()
   })
@@ -428,7 +424,7 @@ describe('legacy terminal shim neutralization', () => {
     // Why: with the shim dir as the only entry the cleaned PATH is empty; without the
     // path_entry_kept guard the lookup runs against that empty PATH and finds a cwd-local git.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const hostile = join(userData, 'hostile')
     mkdirSync(posixDir, { recursive: true })
     mkdirSync(hostile, { recursive: true })
@@ -453,7 +449,7 @@ describe('legacy terminal shim neutralization', () => {
     // Why: exec must carry the filtered PATH or the legacy shim dir and `.` reach the real git,
     // and anything it spawns (hooks, credential helpers) resolves against them again.
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const realBin = join(userData, 'real-bin')
     mkdirSync(posixDir, { recursive: true })
     mkdirSync(realBin, { recursive: true })
@@ -472,7 +468,7 @@ describe('legacy terminal shim neutralization', () => {
     })
 
     expect(run.stdout).toContain('PATH=')
-    expect(run.stdout).not.toContain('nightshift-terminal-attribution')
+    expect(run.stdout).not.toContain('kolux-terminal-attribution')
     expect(run.stdout.split('PATH=')[1]?.split(':')).not.toContain('.')
   })
 
@@ -480,7 +476,7 @@ describe('legacy terminal shim neutralization', () => {
     // Why: the shebang is resolved before any of the script's own PATH hygiene runs, so with
     // `env` an empty or relative PATH element lets an untrusted checkout supply bash itself.
     const userData = makeUserDataDir()
-    const shimDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const shimDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const realBin = join(userData, 'real-bin')
     const hostile = join(userData, 'hostile')
     for (const dir of [shimDir, realBin, hostile]) {
@@ -514,7 +510,7 @@ describe('legacy terminal shim neutralization', () => {
   itOnPosix('does not let an empty PATH element resolve the command from the cwd', async () => {
     // Why (STA-4169): an empty PATH element means the current directory on POSIX.
     const userData = makeUserDataDir()
-    const shimDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const shimDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const realBin = join(userData, 'real-bin')
     mkdirSync(shimDir, { recursive: true })
     mkdirSync(realBin, { recursive: true })
@@ -578,28 +574,26 @@ describe('legacy terminal shim neutralization', () => {
 
   it('removes every Windows PATH occurrence of both captured wrapper directories', () => {
     const userData = makeUserDataDir()
-    const win32Dir = join(userData, 'nightshift-terminal-attribution', 'win32')
+    const win32Dir = join(userData, 'kolux-terminal-attribution', 'win32')
     mkdirSync(win32Dir, { recursive: true })
 
     neutralizeLegacyTerminalShimDir(userData)
 
     const cmd = readFileSync(join(win32Dir, 'git.cmd'), 'utf8')
-    const cmdCapture = 'set "nightshift_legacy_wrapper_dir=%NIGHTSHIFT_ATTRIBUTION_SHIM_DIR%"'
-    expectOrdered(cmd, cmdCapture, 'set "NIGHTSHIFT_ATTRIBUTION_SHIM_DIR="')
+    const cmdCapture = 'set "kolux_legacy_wrapper_dir=%KOLUX_ATTRIBUTION_SHIM_DIR%"'
+    expectOrdered(cmd, cmdCapture, 'set "KOLUX_ATTRIBUTION_SHIM_DIR="')
     expect(cmd).toContain('for %%P in ("%PATH:;=" "%") do (')
-    expect(cmd).toContain('if /I "%nightshift_path_entry_dir%"=="%nightshift_wrapper_dir%" exit /b')
-    expect(cmd).toContain(
-      'if defined nightshift_legacy_wrapper_dir call :nightshift_reject_legacy_dir'
-    )
+    expect(cmd).toContain('if /I "%kolux_path_entry_dir%"=="%kolux_wrapper_dir%" exit /b')
+    expect(cmd).toContain('if defined kolux_legacy_wrapper_dir call :kolux_reject_legacy_dir')
     // Why: `call :label && ...` is not valid cmd; the flag variable is what makes it work.
-    expect(cmd).toContain('if defined nightshift_skip_entry exit /b')
-    expect(cmd).not.toContain('call :nightshift_reject_legacy_dir &&')
-    expect(cmd).toContain('if "%nightshift_path_entry_dir:~-1%."=="%nightshift_sep%."')
+    expect(cmd).toContain('if defined kolux_skip_entry exit /b')
+    expect(cmd).not.toContain('call :kolux_reject_legacy_dir &&')
+    expect(cmd).toContain('if "%kolux_path_entry_dir:~-1%."=="%kolux_sep%."')
 
     const powershell = readFileSync(join(win32Dir, 'git-wrapper.ps1'), 'utf8')
     expectOrdered(
       powershell,
-      '$legacyWrapperDir = $env:NIGHTSHIFT_ATTRIBUTION_SHIM_DIR',
+      '$legacyWrapperDir = $env:KOLUX_ATTRIBUTION_SHIM_DIR',
       'Remove-Item "Env:$_"'
     )
     expect(powershell).toContain('$wrapperDirs = @($wrapperDir, $legacyWrapperDir)')
@@ -613,13 +607,13 @@ describe('legacy terminal shim neutralization', () => {
     const userData = makeUserDataDir()
 
     expect(() => neutralizeLegacyTerminalShimDir(userData)).not.toThrow()
-    expect(existsSync(join(userData, 'nightshift-terminal-attribution'))).toBe(false)
+    expect(existsSync(join(userData, 'kolux-terminal-attribution'))).toBe(false)
   })
 
   itOnPosixNonRoot('retries a startup failure in-process and latches after success', async () => {
     vi.useFakeTimers()
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const gitWrapper = join(posixDir, 'git')
     mkdirSync(posixDir, { recursive: true })
     writeFileSync(gitWrapper, 'legacy attribution wrapper')
@@ -647,7 +641,7 @@ describe('legacy terminal shim neutralization', () => {
     vi.useFakeTimers()
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const userData = makeUserDataDir()
-    const posixDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const posixDir = join(userData, 'kolux-terminal-attribution', 'posix')
     mkdirSync(posixDir, { recursive: true })
     writeFileSync(join(posixDir, 'git'), 'legacy attribution wrapper')
     // Why: keep every attempt failing so the ladder runs to exhaustion.
@@ -687,7 +681,7 @@ describe('legacy terminal shim neutralization', () => {
 
   itOnPosix('keeps a real Bash command hash working with trailing PATH separators', async () => {
     const userData = makeUserDataDir()
-    const shimDir = join(userData, 'nightshift-terminal-attribution', 'posix')
+    const shimDir = join(userData, 'kolux-terminal-attribution', 'posix')
     const shimGit = join(shimDir, 'git')
     const realBin = join(userData, 'real-bin')
     const realGit = join(realBin, 'git')
@@ -704,9 +698,9 @@ describe('legacy terminal shim neutralization', () => {
       env: {
         ...process.env,
         PATH: `${shimDir}//::${realBin}:${process.env.PATH ?? ''}`,
-        NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION: '1',
-        NIGHTSHIFT_GIT_COMMIT_TRAILER: 'Co-authored-by: Nightshift <help@stably.ai>',
-        NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: ''
+        KOLUX_ENABLE_GIT_ATTRIBUTION: '1',
+        KOLUX_GIT_COMMIT_TRAILER: 'Co-authored-by: Kolux <help@stably.ai>',
+        KOLUX_ATTRIBUTION_SHIM_DIR: ''
       },
       stdio: ['pipe', 'pipe', 'pipe']
     })
@@ -720,8 +714,8 @@ describe('legacy terminal shim neutralization', () => {
     child.stderr.on('data', (chunk: string) => {
       stderr += chunk
     })
-    const ready = waitForOutput(child.stdout, '__NIGHTSHIFT_HASH_READY__\n')
-    child.stdin.write(`hash -p ${quoteBash(shimGit)} git\nprintf '__NIGHTSHIFT_HASH_READY__\\n'\n`)
+    const ready = waitForOutput(child.stdout, '__KOLUX_HASH_READY__\n')
+    child.stdin.write(`hash -p ${quoteBash(shimGit)} git\nprintf '__KOLUX_HASH_READY__\\n'\n`)
 
     try {
       await ready
@@ -739,20 +733,20 @@ describe('legacy terminal shim neutralization', () => {
       child.kill('SIGKILL')
     }
     expect(stdout).toContain('arg=<commit>\narg=<-m>\narg=<subject with spaces>\nstdin payload\n')
-    expect(stdout).not.toContain('Co-authored-by: Nightshift')
+    expect(stdout).not.toContain('Co-authored-by: Kolux')
     expect(stderr).toBe('fixture stderr\n')
   })
 
   it('drops inherited shim env and its PATH entry without touching real entries', () => {
     const env: Record<string, string> = {
-      PATH: `/home/u/.nightshift/nightshift-terminal-attribution/posix:/usr/local/bin:/usr/bin`,
-      NIGHTSHIFT_ENABLE_GIT_ATTRIBUTION: '1',
-      NIGHTSHIFT_GIT_COMMIT_TRAILER: 'Co-authored-by: Nightshift <help@stably.ai>',
-      NIGHTSHIFT_GH_PR_FOOTER: 'footer',
-      NIGHTSHIFT_GH_ISSUE_FOOTER: 'footer',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: '/home/u/.nightshift/nightshift-terminal-attribution/posix',
-      NIGHTSHIFT_REAL_GIT: '/usr/bin/git',
-      NIGHTSHIFT_REAL_GH: '/usr/bin/gh',
+      PATH: `/home/u/.kolux/kolux-terminal-attribution/posix:/usr/local/bin:/usr/bin`,
+      KOLUX_ENABLE_GIT_ATTRIBUTION: '1',
+      KOLUX_GIT_COMMIT_TRAILER: 'Co-authored-by: Kolux <help@stably.ai>',
+      KOLUX_GH_PR_FOOTER: 'footer',
+      KOLUX_GH_ISSUE_FOOTER: 'footer',
+      KOLUX_ATTRIBUTION_SHIM_DIR: '/home/u/.kolux/kolux-terminal-attribution/posix',
+      KOLUX_REAL_GIT: '/usr/bin/git',
+      KOLUX_REAL_GH: '/usr/bin/gh',
       HOME: '/home/u'
     }
 
@@ -766,7 +760,7 @@ describe('legacy terminal shim neutralization', () => {
     // them literally left the shim directory on PATH and the wrapper reachable.
     const posix: Record<string, string> = {
       PATH: '/custom/elsewhere/:/usr/bin',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: '/custom/elsewhere'
+      KOLUX_ATTRIBUTION_SHIM_DIR: '/custom/elsewhere'
     }
     stripLegacyTerminalShimEnv(posix, 'linux')
     expect(posix.PATH).toBe('/usr/bin')
@@ -774,17 +768,17 @@ describe('legacy terminal shim neutralization', () => {
     // And the reverse spelling, plus Windows slash style.
     const win: Record<string, string> = {
       Path: 'C:\\Custom\\Else;C:\\Windows',
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: 'C:\\Custom\\Else\\'
+      KOLUX_ATTRIBUTION_SHIM_DIR: 'C:\\Custom\\Else\\'
     }
     stripLegacyTerminalShimEnv(win, 'win32')
     expect(win.Path).toBe('C:\\Windows')
   })
 
   it('uses the captured POSIX shim directory literally when it contains a colon', () => {
-    const shimDir = '/tmp/nightshift:user/nightshift-terminal-attribution/posix'
+    const shimDir = '/tmp/kolux:user/kolux-terminal-attribution/posix'
     const env: Record<string, string> = {
       PATH: `/usr/local/bin:${shimDir}:/usr/bin`,
-      NIGHTSHIFT_ATTRIBUTION_SHIM_DIR: shimDir
+      KOLUX_ATTRIBUTION_SHIM_DIR: shimDir
     }
 
     stripLegacyTerminalShimEnv(env, 'linux')
@@ -793,12 +787,12 @@ describe('legacy terminal shim neutralization', () => {
   })
 
   it('treats legacy Windows environment keys case-insensitively', () => {
-    const shimDir = 'C:\\Users\\nightshift;user\\nightshift-terminal-attribution\\win32'
+    const shimDir = 'C:\\Users\\kolux;user\\kolux-terminal-attribution\\win32'
     const env: Record<string, string> = {
       Path: `${shimDir};C:\\Windows\\System32`,
-      nightshift_attribution_shim_dir: shimDir,
-      Nightshift_Enable_Git_Attribution: '1',
-      nightshift_real_git: 'C:\\Git\\git.exe'
+      kolux_attribution_shim_dir: shimDir,
+      Kolux_Enable_Git_Attribution: '1',
+      kolux_real_git: 'C:\\Git\\git.exe'
     }
 
     stripLegacyTerminalShimEnv(env, 'win32')
@@ -808,8 +802,8 @@ describe('legacy terminal shim neutralization', () => {
 
   it('strips legacy entries from every Windows PATH spelling', () => {
     const env: Record<string, string> = {
-      PATH: 'C:\\Nightshift\\nightshift-terminal-attribution\\win32',
-      Path: 'C:\\Nightshift\\nightshift-terminal-attribution\\win32;C:\\Windows\\System32'
+      PATH: 'C:\\Kolux\\kolux-terminal-attribution\\win32',
+      Path: 'C:\\Kolux\\kolux-terminal-attribution\\win32;C:\\Windows\\System32'
     }
 
     stripLegacyTerminalShimEnv(env, 'win32')
@@ -820,7 +814,7 @@ describe('legacy terminal shim neutralization', () => {
 
   it('matches a re-cased Windows shim path', () => {
     const env: Record<string, string> = {
-      Path: 'C:\\Nightshift\\Nightshift-Terminal-Attribution\\Win32;C:\\Windows\\System32'
+      Path: 'C:\\Kolux\\Kolux-Terminal-Attribution\\Win32;C:\\Windows\\System32'
     }
 
     stripLegacyTerminalShimEnv(env, 'win32')
@@ -840,23 +834,23 @@ describe('legacy terminal shim neutralization', () => {
   })
 
   it('strips legacy shim entries that carry a trailing separator', () => {
-    // Why: without normalizing the trailing separator the entry does not match, so Nightshift's own
+    // Why: without normalizing the trailing separator the entry does not match, so Kolux's own
     // scrub leaves the legacy shim directory on the spawned PATH and the wrapper stays reachable.
     const posix: Record<string, string> = {
-      PATH: '/home/u/.nightshift/nightshift-terminal-attribution/posix/:/usr/bin'
+      PATH: '/home/u/.kolux/kolux-terminal-attribution/posix/:/usr/bin'
     }
     stripLegacyTerminalShimEnv(posix, 'linux')
     expect(posix.PATH).toBe('/usr/bin')
 
     // Why: more than one trailing separator is still the same directory.
     const many: Record<string, string> = {
-      PATH: '/home/u/.nightshift/nightshift-terminal-attribution/posix///:/usr/bin'
+      PATH: '/home/u/.kolux/kolux-terminal-attribution/posix///:/usr/bin'
     }
     stripLegacyTerminalShimEnv(many, 'linux')
     expect(many.PATH).toBe('/usr/bin')
 
     const win: Record<string, string> = {
-      Path: 'C:\\Users\\u\\nightshift-terminal-attribution\\win32\\;C:\\Windows'
+      Path: 'C:\\Users\\u\\kolux-terminal-attribution\\win32\\;C:\\Windows'
     }
     stripLegacyTerminalShimEnv(win, 'win32')
     expect(win.Path).toBe('C:\\Windows')
@@ -864,13 +858,13 @@ describe('legacy terminal shim neutralization', () => {
 
   it('keeps neighbouring directories that merely share the name prefix', () => {
     const env: Record<string, string> = {
-      PATH: '/opt/nightshift-terminal-attribution:/opt/nightshift-terminal-attribution/custom-tools:/home/u/nightshift-terminal-attribution-notes/bin:/usr/bin'
+      PATH: '/opt/kolux-terminal-attribution:/opt/kolux-terminal-attribution/custom-tools:/home/u/kolux-terminal-attribution-notes/bin:/usr/bin'
     }
 
     stripLegacyTerminalShimEnv(env, 'linux')
 
     expect(env.PATH).toBe(
-      '/opt/nightshift-terminal-attribution:/opt/nightshift-terminal-attribution/custom-tools:/home/u/nightshift-terminal-attribution-notes/bin:/usr/bin'
+      '/opt/kolux-terminal-attribution:/opt/kolux-terminal-attribution/custom-tools:/home/u/kolux-terminal-attribution-notes/bin:/usr/bin'
     )
   })
 

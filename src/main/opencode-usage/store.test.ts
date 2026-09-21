@@ -9,7 +9,7 @@ import type {
 } from './types'
 
 const { getPathMock } = vi.hoisted(() => ({
-  getPathMock: vi.fn(() => '/tmp/nightshift-test-userdata')
+  getPathMock: vi.fn(() => '/tmp/kolux-test-userdata')
 }))
 
 vi.mock('electron', () => ({
@@ -160,7 +160,7 @@ describe('OpenCodeUsageStore', () => {
   let tempUserData: string
 
   beforeEach(() => {
-    tempUserData = mkdtempSync(join(tmpdir(), 'nightshift-opencode-usage-store-'))
+    tempUserData = mkdtempSync(join(tmpdir(), 'kolux-opencode-usage-store-'))
     getPathMock.mockReturnValue(tempUserData)
     initOpenCodeUsagePath()
     vi.mocked(scanOpenCodeUsageDatabases).mockReset()
@@ -186,15 +186,12 @@ describe('OpenCodeUsageStore', () => {
 
     await store.refresh(true)
 
-    const persistedJson = readFileSync(
-      join(tempUserData, 'nightshift-opencode-usage.json'),
-      'utf-8'
-    )
+    const persistedJson = readFileSync(join(tempUserData, 'kolux-opencode-usage.json'), 'utf-8')
     expect(scanOpenCodeUsageDatabases).toHaveBeenCalledWith([], [])
     expect(persistedJson).toContain('\n')
   })
 
-  it('reports no data for Nightshift scope when only non-Nightshift OpenCode usage exists', async () => {
+  it('reports no data for Kolux scope when only non-Kolux OpenCode usage exists', async () => {
     const store = createStoreWithState({
       sessions: [
         makeSession({
@@ -213,7 +210,7 @@ describe('OpenCodeUsageStore', () => {
       ]
     })
 
-    const summary = await store.getSummary('nightshift', '30d')
+    const summary = await store.getSummary('kolux', '30d')
 
     expect(summary.hasAnyOpenCodeData).toBe(false)
     expect(summary.sessions).toBe(0)
@@ -259,9 +256,9 @@ describe('OpenCodeUsageStore', () => {
       ]
     })
 
-    const summary = await store.getSummary('nightshift', '30d')
-    const daily = await store.getDaily('nightshift', '30d')
-    const breakdown = await store.getBreakdown('nightshift', '30d', 'model')
+    const summary = await store.getSummary('kolux', '30d')
+    const daily = await store.getDaily('kolux', '30d')
+    const breakdown = await store.getBreakdown('kolux', '30d', 'model')
 
     expect(summary).toMatchObject({
       sessions: 2,
@@ -298,7 +295,7 @@ describe('OpenCodeUsageStore', () => {
       dailyAggregates: [makeDaily()]
     })
 
-    const sessions = await store.getRecentSessions('nightshift', '30d', 5)
+    const sessions = await store.getRecentSessions('kolux', '30d', 5)
 
     expect(sessions).toEqual([
       {

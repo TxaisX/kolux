@@ -59,7 +59,7 @@ describe('isTransientReviewHeadFetchError', () => {
       'fatal: could not read Username for https://github.com',
       'remote: Repository not found.',
       'fatal: unable to access repo: The requested URL returned error: 403',
-      'This SSH host is running an older Nightshift relay that cannot fetch pull request heads. Reconnect to deploy the latest relay, then try again.',
+      'This SSH host is running an older Kolux relay that cannot fetch pull request heads. Reconnect to deploy the latest relay, then try again.',
       'Remote "origin" is not configured.',
       'fatal: invalid refspec'
     ]

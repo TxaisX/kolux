@@ -11,7 +11,7 @@ import type {
 import type { RuntimeMobileSessionTabMove } from '../../shared/runtime-types'
 import type { TerminalTabCreateReply } from '../../shared/terminal-reveal-identity'
 import { runWorktreeChangeInvalidators } from '../ipc/worktree-change-invalidators'
-import type { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { requestMobileMarkdownFromRenderer } from './mobile-markdown-request-relay'
 import { registerRendererDocumentNavigation } from './renderer-document-navigation'
 import { createRuntimeRendererNotificationSender } from './runtime-renderer-notification-sender'
@@ -23,7 +23,7 @@ let activeRuntimeNotifierToken: number | null = null
 
 export function registerRuntimeWindowLifecycle(
   mainWindow: BrowserWindow,
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
 ): void {
   const notifierToken = ++runtimeNotifierTokenCounter
   activeRuntimeNotifierToken = notifierToken

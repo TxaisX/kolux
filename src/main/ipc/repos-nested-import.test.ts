@@ -416,7 +416,7 @@ describe('projectGroups IPC validation', () => {
   })
 
   it('imports selected local linked worktrees as one project rooted at the main worktree', async () => {
-    const tempRoot = await mkdtemp(join(tmpdir(), 'nightshift-nested-linked-worktrees-'))
+    const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-nested-linked-worktrees-'))
     try {
       const parentPath = join(tempRoot, 'paseo-worktrees', 'demo-project')
       const mainPath = join(tempRoot, 'source', 'demo-project')

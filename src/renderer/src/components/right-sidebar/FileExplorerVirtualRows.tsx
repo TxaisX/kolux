@@ -30,7 +30,7 @@ type FileExplorerVirtualRowsProps = {
   connectionId?: string | null
   runtimeDownloadContext?: RuntimeFileOperationArgs | null
   supportsFolderDownload?: boolean
-  canOpenInNightshiftBrowser?: (filePath: string) => boolean
+  canOpenInKoluxBrowser?: (filePath: string) => boolean
   onClick: (node: TreeNode, event: React.MouseEvent<HTMLButtonElement>) => void
   onDoubleClick: (node: TreeNode) => void
   onViewFile: (node: TreeNode) => void
@@ -77,7 +77,7 @@ export function FileExplorerVirtualRows(props: FileExplorerVirtualRowsProps): Re
     connectionId,
     runtimeDownloadContext,
     supportsFolderDownload = false,
-    canOpenInNightshiftBrowser = () => false,
+    canOpenInKoluxBrowser = () => false,
     onClick,
     onDoubleClick,
     onViewFile,
@@ -183,7 +183,7 @@ export function FileExplorerVirtualRows(props: FileExplorerVirtualRowsProps): Re
               connectionId={connectionId}
               runtimeDownloadContext={runtimeDownloadContext}
               supportsFolderDownload={supportsFolderDownload}
-              canOpenInNightshiftBrowser={canOpenInNightshiftBrowser(n.path)}
+              canOpenInKoluxBrowser={canOpenInKoluxBrowser(n.path)}
               canCollapseFolderSubtree={canCollapseFolderSubtree}
               targetDir={n.isDirectory ? n.path : dirname(n.path)}
               targetDepth={n.isDirectory ? n.depth + 1 : n.depth}

@@ -29,7 +29,7 @@ export const remoteRepo: Repo = {
 
 export const sshRepo: Repo = {
   id: 'ssh-repo',
-  path: '/home/nightshift/project',
+  path: '/home/kolux/project',
   displayName: 'SSH',
   badgeColor: '#222',
   addedAt: 3,
@@ -54,7 +54,7 @@ export const projectGroupsMoveProject: Mock = vi.fn()
 export const ptyKill: Mock = vi.fn()
 export const runtimeEnvironmentCall: Mock = vi.fn()
 export const runtimeEnvironmentTransportCall: Mock = vi.fn()
-export const nightshiftProfileFindProjectProfiles: Mock = vi.fn()
+export const koluxProfileFindProjectProfiles: Mock = vi.fn()
 export const uiSet: Mock = vi.fn()
 export const ephemeralVmListRuntimes: Mock = vi.fn()
 export const ephemeralVmCleanup: Mock = vi.fn()
@@ -83,7 +83,7 @@ export function installReposRuntimeRoutingHarness(): void {
     projectsUpdate.mockReset()
     projectGroupsMoveProject.mockReset()
     ptyKill.mockReset()
-    nightshiftProfileFindProjectProfiles.mockReset()
+    koluxProfileFindProjectProfiles.mockReset()
     runtimeEnvironmentCall.mockReset()
     runtimeEnvironmentTransportCall.mockReset()
     uiSet.mockReset()
@@ -116,8 +116,8 @@ export function installReposRuntimeRoutingHarness(): void {
         projectGroups: {
           moveProject: projectGroupsMoveProject
         },
-        nightshiftProfiles: {
-          findProjectProfiles: nightshiftProfileFindProjectProfiles
+        koluxProfiles: {
+          findProjectProfiles: koluxProfileFindProjectProfiles
         },
         pty: { kill: ptyKill },
         runtimeEnvironments: { call: runtimeEnvironmentTransportCall },

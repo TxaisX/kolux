@@ -93,7 +93,7 @@ export function formatHostList(result: { hosts: HostListEntry[] }): string {
   const kindLabel: Record<HostListEntry['kind'], string> = {
     local: 'local',
     ssh: 'ssh target',
-    environment: 'nightshift server'
+    environment: 'kolux server'
   }
   return result.hosts
     .map(

@@ -12,9 +12,9 @@ vi.mock('fs', () => ({
 
 vi.mock('./relay-protocol', () => ({
   RELAY_VERSION: '0.1.0',
-  RELAY_REMOTE_DIR: '.nightshift-remote',
+  RELAY_REMOTE_DIR: '.kolux-remote',
   parseUnameToRelayPlatform: vi.fn().mockReturnValue('linux-x64'),
-  RELAY_SENTINEL: 'NIGHTSHIFT-RELAY v0.1.0 READY\n',
+  RELAY_SENTINEL: 'KOLUX-RELAY v0.1.0 READY\n',
   RELAY_SENTINEL_TIMEOUT_MS: 10_000
 }))
 
@@ -42,7 +42,7 @@ vi.mock('./ssh-relay-install-marker', async (importOriginal) => ({
 
 vi.mock('./ssh-relay-versioned-install', () => ({
   readLocalFullVersion: vi.fn().mockReturnValue('0.1.0+testhash'),
-  computeRemoteRelayDir: (home: string, v: string) => `${home}/.nightshift-remote/relay-${v}`,
+  computeRemoteRelayDir: (home: string, v: string) => `${home}/.kolux-remote/relay-${v}`,
   isRelayAlreadyInstalled: vi.fn().mockResolvedValue(false),
   finalizeInstall: vi.fn().mockResolvedValue(undefined),
   abandonInstall: vi.fn().mockResolvedValue(undefined),
@@ -131,7 +131,7 @@ describe('installNativeDeps staged uploads', () => {
     const written = sftpCapture.contents[pkgPath as string]
     expect(written).toBeTruthy()
     const parsed = JSON.parse(written) as Record<string, unknown>
-    expect(parsed.name).toBe('nightshift-relay')
+    expect(parsed.name).toBe('kolux-relay')
     expect(parsed.version).toBe('1.0.0')
     expect(parsed.private).toBe(true)
     expect(parsed.type).toBe('commonjs')
@@ -173,9 +173,7 @@ describe('installNativeDeps staged uploads', () => {
       expect(command!.indexOf('npm_config_nodedir')).toBeLessThan(command!.indexOf(compileStep))
       expect(command).toContain('node_version.h')
       // The marker lands in the captured output, so a failure after it can say what was exported.
-      expect(command).toContain(
-        'echo "NIGHTSHIFT-NODE-HEADERS:${NIGHTSHIFT_NODE_HEADERS_DIR:-none}"'
-      )
+      expect(command).toContain('echo "KOLUX-NODE-HEADERS:${KOLUX_NODE_HEADERS_DIR:-none}"')
     }
   })
 
@@ -192,13 +190,13 @@ describe('installNativeDeps staged uploads', () => {
   it('names the fix when node-gyp cannot download headers and the host ships none (STA-6674)', async () => {
     const conn = makeMockConnection(sftpCapture)
     feed(makeStagedFirstInstallExecPrefix())
-    rejectNpmInstallLikeExecCommand(`NIGHTSHIFT-NODE-HEADERS:none\n${HEADERS_REFUSED}`)
+    rejectNpmInstallLikeExecCommand(`KOLUX-NODE-HEADERS:none\n${HEADERS_REFUSED}`)
     feed(['']) // clean stage root
 
     const error = await deployAndLaunchRelay(conn).catch((e: Error) => e)
     expect((error as Error).message).toContain('could not download the Node.js headers')
     expect((error as Error).message).toContain('no local headers matching its own version')
-    expect((error as Error).message).not.toContain('Nightshift defect')
+    expect((error as Error).message).not.toContain('Kolux defect')
     expect((error as Error).message).toContain('ECONNREFUSED')
     // A full toolchain: the toolchain probe must not run, and this is not a "build tools" error.
     expect((error as Error).message).not.toContain('build tools')
@@ -206,16 +204,16 @@ describe('installNativeDeps staged uploads', () => {
     expect(commands.some((command) => command.includes('command -v "$t"'))).toBe(false)
   })
 
-  it('reports a Nightshift defect when headers were exported but node-gyp downloaded anyway', async () => {
+  it('reports a Kolux defect when headers were exported but node-gyp downloaded anyway', async () => {
     // The marker says the export happened; a download after it means node-gyp never read the env.
     const conn = makeMockConnection(sftpCapture)
     feed(makeStagedFirstInstallExecPrefix())
-    rejectNpmInstallLikeExecCommand(`NIGHTSHIFT-NODE-HEADERS:/usr/local\n${HEADERS_REFUSED}`)
+    rejectNpmInstallLikeExecCommand(`KOLUX-NODE-HEADERS:/usr/local\n${HEADERS_REFUSED}`)
     feed(['']) // clean stage root
 
     const error = await deployAndLaunchRelay(conn).catch((e: Error) => e)
     expect((error as Error).message).toContain('/usr/local/include/node')
-    expect((error as Error).message).toContain('Nightshift defect')
+    expect((error as Error).message).toContain('Kolux defect')
     expect((error as Error).message).not.toContain('no local headers matching its own version')
   })
 
@@ -268,11 +266,11 @@ describe('installNativeDeps staged uploads', () => {
   it('retains the lock after an unconfirmed promotion termination', async () => {
     const conn = makeMockConnection(sftpCapture)
     vi.mocked(execCommand)
-      .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+      .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
       .mockResolvedValueOnce('/home/u')
       .mockResolvedValueOnce('')
       .mockResolvedValueOnce(
-        '__NIGHTSHIFT_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0'
+        '__KOLUX_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0'
       )
       .mockResolvedValueOnce('')
       .mockResolvedValueOnce('')

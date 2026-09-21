@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
 import { focusActiveTerminalInput } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
@@ -106,7 +106,7 @@ async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
 
 function browserAddressBar(page: Page, browserTabId: string) {
   return page.locator(
-    `[data-browser-overlay-tab-id="${browserTabId}"] [data-nightshift-browser-address-bar="true"]`
+    `[data-browser-overlay-tab-id="${browserTabId}"] [data-kolux-browser-address-bar="true"]`
   )
 }
 
@@ -114,7 +114,7 @@ async function focusBrowserAddressBar(page: Page, browserTabId: string): Promise
   const browserOverlay = page.locator(`[data-browser-overlay-tab-id="${browserTabId}"]`)
   const addressBar = browserAddressBar(page, browserTabId)
   const addressBarForm = browserOverlay.locator(
-    'form:has(> [data-nightshift-browser-address-bar="true"])'
+    'form:has(> [data-kolux-browser-address-bar="true"])'
   )
   await expect(addressBarForm).toBeVisible()
   await addressBar.focus()
@@ -239,72 +239,68 @@ async function focusBrowserGroup(page: Page, groupId: string): Promise<void> {
 }
 
 test.describe('browser split shortcuts', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   test('routes repeated Find shortcuts to the focused terminal or browser split', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const fixture = await createTerminalBrowserSplit(nightshiftPage)
+    const fixture = await createTerminalBrowserSplit(koluxPage)
 
-    await nightshiftPage.evaluate(({ terminalGroupId }) => {
+    await koluxPage.evaluate(({ terminalGroupId }) => {
       const state = window.__store?.getState()
       const worktreeId = state?.activeWorktreeId
       if (state && worktreeId) {
         state.focusGroup(worktreeId, terminalGroupId)
       }
     }, fixture)
-    await focusActiveTerminalInput(nightshiftPage)
-    await waitForFocusedGroup(nightshiftPage, fixture.terminalGroupId)
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(terminalFindInput(nightshiftPage)).toBeFocused()
-    await expect(browserFindInput(nightshiftPage)).toBeHidden()
-    await nightshiftPage.keyboard.press('Escape')
+    await focusActiveTerminalInput(koluxPage)
+    await waitForFocusedGroup(koluxPage, fixture.terminalGroupId)
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(terminalFindInput(koluxPage)).toBeFocused()
+    await expect(browserFindInput(koluxPage)).toBeHidden()
+    await koluxPage.keyboard.press('Escape')
 
-    await focusBrowserGroup(nightshiftPage, fixture.browserGroupId)
-    await focusBrowserAddressBar(nightshiftPage, fixture.browserTabId)
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(browserFindInput(nightshiftPage)).toBeFocused()
-    await expect(terminalFindInput(nightshiftPage)).toBeHidden()
-    await browserFindCloseButton(nightshiftPage).click()
-    await expect(browserFindInput(nightshiftPage)).toBeHidden()
+    await focusBrowserGroup(koluxPage, fixture.browserGroupId)
+    await focusBrowserAddressBar(koluxPage, fixture.browserTabId)
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(browserFindInput(koluxPage)).toBeFocused()
+    await expect(terminalFindInput(koluxPage)).toBeHidden()
+    await browserFindCloseButton(koluxPage).click()
+    await expect(browserFindInput(koluxPage)).toBeHidden()
 
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(browserFindInput(nightshiftPage)).toBeFocused()
-    await browserFindCloseButton(nightshiftPage).click()
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(browserFindInput(koluxPage)).toBeFocused()
+    await browserFindCloseButton(koluxPage).click()
 
-    await nightshiftPage.evaluate(({ browserTabId }) => {
+    await koluxPage.evaluate(({ browserTabId }) => {
       window.__store?.getState().closeBrowserTab(browserTabId)
     }, fixture)
     await expect(
-      nightshiftPage.locator(`[data-browser-overlay-tab-id="${fixture.browserTabId}"]`)
+      koluxPage.locator(`[data-browser-overlay-tab-id="${fixture.browserTabId}"]`)
     ).toHaveCount(0)
 
-    await focusActiveTerminalInput(nightshiftPage)
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(terminalFindInput(nightshiftPage)).toBeFocused()
-    await expect(browserFindInput(nightshiftPage)).toBeHidden()
+    await focusActiveTerminalInput(koluxPage)
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(terminalFindInput(koluxPage)).toBeFocused()
+    await expect(browserFindInput(koluxPage)).toBeHidden()
   })
 
   test('opens Find only in the browser split whose guest owns the shortcut', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const fixture = await createBrowserSplit(nightshiftPage)
+    const fixture = await createBrowserSplit(koluxPage)
 
-    await pressFindInBrowserGuest(
-      nightshiftPage,
-      fixture.firstBrowserTabId,
-      fixture.firstBrowserPageId
-    )
+    await pressFindInBrowserGuest(koluxPage, fixture.firstBrowserTabId, fixture.firstBrowserPageId)
 
-    await expect(browserSplitFindInput(nightshiftPage, fixture.firstBrowserTabId)).toBeVisible()
-    await expect(browserSplitFindInput(nightshiftPage, fixture.secondBrowserTabId)).toBeHidden()
+    await expect(browserSplitFindInput(koluxPage, fixture.firstBrowserTabId)).toBeVisible()
+    await expect(browserSplitFindInput(koluxPage, fixture.secondBrowserTabId)).toBeHidden()
     await expect
       .poll(() =>
-        nightshiftPage.evaluate(
+        koluxPage.evaluate(
           ({ browserPageId, browserTabId }) =>
             window.__store
               ?.getState()
@@ -320,14 +316,14 @@ test.describe('browser split shortcuts', () => {
   })
 
   test('keeps browser Find available when split focus state is temporarily missing', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    const fixture = await createTerminalBrowserSplit(nightshiftPage)
-    await focusBrowserGroup(nightshiftPage, fixture.browserGroupId)
-    const addressBar = browserAddressBar(nightshiftPage, fixture.browserTabId)
-    await focusBrowserAddressBar(nightshiftPage, fixture.browserTabId)
+    const fixture = await createTerminalBrowserSplit(koluxPage)
+    await focusBrowserGroup(koluxPage, fixture.browserGroupId)
+    const addressBar = browserAddressBar(koluxPage, fixture.browserTabId)
+    await focusBrowserAddressBar(koluxPage, fixture.browserTabId)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       const worktreeId = store?.getState().activeWorktreeId
       if (!store || !worktreeId) {
@@ -341,20 +337,18 @@ test.describe('browser split shortcuts', () => {
     })
     await expect(addressBar).toBeFocused()
 
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(browserFindInput(nightshiftPage)).toBeFocused()
-    await expect(terminalFindInput(nightshiftPage)).toBeHidden()
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(browserFindInput(koluxPage)).toBeFocused()
+    await expect(terminalFindInput(koluxPage)).toBeHidden()
   })
 
-  test('keeps browser Find available when the focused split ID is stale', async ({
-    nightshiftPage
-  }) => {
-    const fixture = await createTerminalBrowserSplit(nightshiftPage)
-    await focusBrowserGroup(nightshiftPage, fixture.browserGroupId)
-    const addressBar = browserAddressBar(nightshiftPage, fixture.browserTabId)
-    await focusBrowserAddressBar(nightshiftPage, fixture.browserTabId)
+  test('keeps browser Find available when the focused split ID is stale', async ({ koluxPage }) => {
+    const fixture = await createTerminalBrowserSplit(koluxPage)
+    await focusBrowserGroup(koluxPage, fixture.browserGroupId)
+    const addressBar = browserAddressBar(koluxPage, fixture.browserTabId)
+    await focusBrowserAddressBar(koluxPage, fixture.browserTabId)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const store = window.__store
       const worktreeId = store?.getState().activeWorktreeId
       if (!store || !worktreeId) {
@@ -369,8 +363,8 @@ test.describe('browser split shortcuts', () => {
     })
     await expect(addressBar).toBeFocused()
 
-    await nightshiftPage.keyboard.press(`${modifier}+f`)
-    await expect(browserFindInput(nightshiftPage)).toBeFocused()
-    await expect(terminalFindInput(nightshiftPage)).toBeHidden()
+    await koluxPage.keyboard.press(`${modifier}+f`)
+    await expect(browserFindInput(koluxPage)).toBeFocused()
+    await expect(terminalFindInput(koluxPage)).toBeHidden()
   })
 })

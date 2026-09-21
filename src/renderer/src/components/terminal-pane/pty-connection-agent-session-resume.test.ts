@@ -164,10 +164,10 @@ describe('connectPanePty', () => {
       agentArgs: '--model gpt-5 --reasoning-effort high',
       agentEnv: {
         CODEX_PROFILE: 'captured',
-        NIGHTSHIFT_PANE_KEY: 'wrong-pane',
-        NIGHTSHIFT_TAB_ID: 'wrong-tab',
-        NIGHTSHIFT_WORKTREE_ID: 'wrong-worktree',
-        NIGHTSHIFT_WORKSPACE_ID: 'wrong-workspace'
+        KOLUX_PANE_KEY: 'wrong-pane',
+        KOLUX_TAB_ID: 'wrong-tab',
+        KOLUX_WORKTREE_ID: 'wrong-worktree',
+        KOLUX_WORKSPACE_ID: 'wrong-workspace'
       }
     }
     mockStoreState = {
@@ -213,7 +213,7 @@ describe('connectPanePty', () => {
       ([args]) => args.sessionId === 'lost-pty'
     )?.[0]
     const launchToken = (reattachArgs?.env as Record<string, string> | undefined)
-      ?.NIGHTSHIFT_AGENT_LAUNCH_TOKEN
+      ?.KOLUX_AGENT_LAUNCH_TOKEN
 
     expect(transport.sendInput).not.toHaveBeenCalled()
     expect(launchToken).toMatch(new RegExp(`^${UUID_RE}$`))
@@ -223,11 +223,11 @@ describe('connectPanePty', () => {
         command: "codex '--model' 'gpt-5' '--reasoning-effort' 'high' 'resume' 'codex-session-1'",
         env: expect.objectContaining({
           CODEX_PROFILE: 'captured',
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-1',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-          NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: launchToken
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-1',
+          KOLUX_WORKTREE_ID: 'wt-1',
+          KOLUX_WORKSPACE_ID: 'wt-1',
+          KOLUX_AGENT_LAUNCH_TOKEN: launchToken
         })
       })
     )
@@ -392,7 +392,7 @@ describe('connectPanePty', () => {
         sessionId: 'lost-pty',
         command: "codex '--model' 'gpt-5-mini' 'resume' 'codex-session-1'",
         env: expect.objectContaining({
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+          KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
         })
       })
     )

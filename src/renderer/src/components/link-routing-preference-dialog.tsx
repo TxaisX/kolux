@@ -24,14 +24,14 @@ type LinkRoutingPreferenceDialogOptions = {
 type LinkRoutingPreferenceDialogRequest = {
   id: number
   options: LinkRoutingPreferenceDialogOptions
-  resolve: (openInNightshift: boolean) => void
+  resolve: (openInKolux: boolean) => void
 }
 
 type LinkRoutingPreferenceDialogContextValue = (
   options?: LinkRoutingPreferenceDialogOptions
 ) => Promise<boolean>
 
-const PREVIEW_STORAGE_KEY = 'nightshift.previewLinkRoutingPreferenceDialog'
+const PREVIEW_STORAGE_KEY = 'kolux.previewLinkRoutingPreferenceDialog'
 const PREVIEW_DEFAULT_STORAGE_KEY = `${PREVIEW_STORAGE_KEY}.default`
 const LinkRoutingPreferenceDialogContext =
   createContext<LinkRoutingPreferenceDialogContextValue | null>(null)
@@ -99,18 +99,18 @@ export function LinkRoutingPreferenceDialogProvider({
     window.sessionStorage.removeItem(PREVIEW_STORAGE_KEY)
     window.sessionStorage.removeItem(PREVIEW_DEFAULT_STORAGE_KEY)
     void requestPreference({
-      openLinksInAppDefault: previewDefault === 'nightshift',
+      openLinksInAppDefault: previewDefault === 'kolux',
       preview: true,
       url: 'https://github.com/TxaisX/nightshift/pull/1234'
     })
   }, [requestPreference])
 
-  const settleActiveRequest = useCallback((openInNightshift: boolean) => {
+  const settleActiveRequest = useCallback((openInKolux: boolean) => {
     const request = activeRequestRef.current
     if (!request) {
       return
     }
-    request.resolve(openInNightshift)
+    request.resolve(openInKolux)
     setQueue((currentQueue) => {
       if (currentQueue[0]?.id === request.id) {
         return currentQueue.slice(1)
@@ -151,11 +151,11 @@ export function LinkRoutingPreferenceDialogProvider({
                   {openLinksInAppDefault
                     ? translate(
                         'auto.components.link.routing.preference.dialog.keep.title',
-                        "Keep terminal links in Nightshift's browser?"
+                        "Keep terminal links in Kolux's browser?"
                       )
                     : translate(
                         'auto.components.link.routing.preference.dialog.title',
-                        "Open terminal links in Nightshift's browser?"
+                        "Open terminal links in Kolux's browser?"
                       )}
                 </DialogTitle>
                 <DialogDescription className="text-sm leading-relaxed">
@@ -166,7 +166,7 @@ export function LinkRoutingPreferenceDialogProvider({
                       )
                     : translate(
                         'auto.components.link.routing.preference.dialog.description',
-                        "Use Nightshift's browser for terminal links, or keep your system browser."
+                        "Use Kolux's browser for terminal links, or keep your system browser."
                       )}
                 </DialogDescription>
               </div>
@@ -190,8 +190,8 @@ export function LinkRoutingPreferenceDialogProvider({
               <div className="space-y-1">
                 <p>
                   {translate(
-                    'auto.components.link.routing.preference.dialog.nightshift.note',
-                    'Nightshift can use imported cookies for logged-in sites.'
+                    'auto.components.link.routing.preference.dialog.kolux.note',
+                    'Kolux can use imported cookies for logged-in sites.'
                   )}
                 </p>
                 <p>
@@ -204,7 +204,7 @@ export function LinkRoutingPreferenceDialogProvider({
                   <span>
                     {translate(
                       'auto.components.link.routing.preference.dialog.shortcut.note.prefix',
-                      'When links open in Nightshift,'
+                      'When links open in Kolux,'
                     )}
                   </span>
                   <ShortcutKeyCombo
@@ -234,12 +234,12 @@ export function LinkRoutingPreferenceDialogProvider({
             <Button autoFocus onClick={() => settleActiveRequest(true)}>
               {openLinksInAppDefault
                 ? translate(
-                    'auto.components.link.routing.preference.dialog.keep.nightshift.button',
-                    'Keep Nightshift'
+                    'auto.components.link.routing.preference.dialog.keep.kolux.button',
+                    'Keep Kolux'
                   )
                 : translate(
-                    'auto.components.link.routing.preference.dialog.nightshift.button',
-                    'Open in Nightshift'
+                    'auto.components.link.routing.preference.dialog.kolux.button',
+                    'Open in Kolux'
                   )}
             </Button>
           </DialogFooter>

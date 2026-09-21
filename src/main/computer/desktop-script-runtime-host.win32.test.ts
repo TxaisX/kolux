@@ -49,7 +49,7 @@ describeOnWindows('runtime.ps1 serve mode', () => {
 
     await expect(runtime.request({ tool: 'handshake' })).resolves.toMatchObject({
       ok: true,
-      capabilities: { protocolVersion: 1, provider: 'nightshift-computer-use-windows' }
+      capabilities: { protocolVersion: 1, provider: 'kolux-computer-use-windows' }
     })
 
     const apps = await runtime.request({ tool: 'list_apps' })

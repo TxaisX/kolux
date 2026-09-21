@@ -26,7 +26,7 @@ export function prepareEphemeralVmCompatibilityPersistence(
   }
   listEphemeralVmRuntimes(args.userDataPath)
   const compatibility = {
-    instanceId: `nightshift-${randomUUID()}`,
+    instanceId: `kolux-${randomUUID()}`,
     createdAt: args.now ?? Date.now()
   }
   assertEphemeralVmRuntimeCheckoutModeCanPersist(args.userDataPath, {

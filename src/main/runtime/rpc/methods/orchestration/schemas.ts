@@ -41,7 +41,7 @@ export async function routeAllMailboxPages(
 
 const SEND_MESSAGE_TYPE_ERROR = [
   `Invalid --type. Expected one of: ${MESSAGE_TYPES.join(', ')}.`,
-  'To answer a worker question, use the same Nightshift CLI executable with orchestration reply --id <msg_id> --body <text>.'
+  'To answer a worker question, use the same Kolux CLI executable with orchestration reply --id <msg_id> --body <text>.'
 ].join(' ')
 
 export type DispatchMutationMessageType =
@@ -146,7 +146,7 @@ export const CheckParams = z
     ack: OptionalString,
     compatibilityAck: OptionalString,
     compatibilityQuestionAck: OptionalString,
-    compatibilityCliCommand: z.enum(['nightshift', 'nightshift-ide', 'nightshift-dev']).optional(),
+    compatibilityCliCommand: z.enum(['kolux', 'kolux-ide', 'kolux-dev']).optional(),
     run: OptionalString,
     wait: OptionalBoolean,
     timeoutMs: OptionalFiniteNumber
@@ -246,8 +246,8 @@ export const AskParams = z
     timeoutMs: OptionalFiniteNumber,
     from: OptionalString,
     run: OptionalString,
-    compatibilityCliCommand: z.enum(['nightshift', 'nightshift-ide', 'nightshift-dev']).optional(),
-    compatibilityWindowsCommand: z.enum(['nightshift', 'nightshift-ide']).optional()
+    compatibilityCliCommand: z.enum(['kolux', 'kolux-ide', 'kolux-dev']).optional(),
+    compatibilityWindowsCommand: z.enum(['kolux', 'kolux-ide']).optional()
   })
   .superRefine((params, ctx) => {
     if ((params.question ? 1 : 0) + (params.resume ? 1 : 0) !== 1) {

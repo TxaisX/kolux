@@ -10,14 +10,14 @@ import {
 } from '../../shared/runtime-navigation'
 import type { RuntimeMobileSessionTabsResult } from '../../shared/runtime-types'
 import type { WorkspaceSessionState } from '../../shared/workspace-session-state-types'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { setRuntimeBrowserCommandsFactory } from './runtime-browser-commands-factory'
 
 const { browserSessionRegistryMock } = vi.hoisted(() => ({
   browserSessionRegistryMock: {
-    getDefaultProfile: () => ({ id: 'default', partition: 'persist:nightshift-browser' }),
-    getProfile: () => ({ id: 'default', partition: 'persist:nightshift-browser' }),
-    resolveKnownPartition: () => 'persist:nightshift-browser'
+    getDefaultProfile: () => ({ id: 'default', partition: 'persist:kolux-browser' }),
+    getProfile: () => ({ id: 'default', partition: 'persist:kolux-browser' }),
+    resolveKnownPartition: () => 'persist:kolux-browser'
   }
 }))
 
@@ -91,7 +91,7 @@ function makeSession(): WorkspaceSessionState {
 /** A runtime whose headless snapshot already carries one browser page, plus two paired devices. */
 function createPairedRuntime() {
   let session = makeSession()
-  const runtime = new NightshiftRuntimeService({
+  const runtime = new KoluxRuntimeService({
     ...storeBase,
     getWorkspaceSession: () => session,
     setWorkspaceSession: (next: WorkspaceSessionState) => {
@@ -152,7 +152,7 @@ function createPairedRuntime() {
  * the bystander device privately sits on page-alt, so neither can pass by having nothing selected,
  * and the bystander's assertion cannot pass by merely following the shared value.
  */
-async function seedSelections(runtime: NightshiftRuntimeService): Promise<void> {
+async function seedSelections(runtime: KoluxRuntimeService): Promise<void> {
   await runtime.browserTabCreate({ worktree: `id:${WT}`, page: 'page-old', activate: true })
   await runtime.browserTabCreate({ worktree: `id:${WT}`, page: 'page-alt', activate: false })
   await runtime.activateMobileSessionTab(`id:${WT}`, 'page-alt', undefined, {
@@ -175,7 +175,7 @@ const CREATE_NAVIGATION_OUTCOMES = {
 } satisfies Record<RuntimeNavigationTarget, { shared: string; caller: string; bystander: string }>
 
 function createBrowserTab(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: { navigation?: RuntimeNavigationTarget } = {}
 ): Promise<{ browserPageId: string }> {
   return runtime.browserTabCreate(
@@ -194,7 +194,7 @@ describe('browser.tabCreate caller navigation', () => {
   beforeAll(async () => {
     // Why: constructing the browser commands is what pulls the Chromium cluster in, so production
     // installs this at the Electron entry and a Node host leaves the RPCs rejecting.
-    const { RuntimeBrowserCommands } = await import('./nightshift-runtime-browser')
+    const { RuntimeBrowserCommands } = await import('./kolux-runtime-browser')
     setRuntimeBrowserCommandsFactory((host) => new RuntimeBrowserCommands(host))
     return () => setRuntimeBrowserCommandsFactory(null)
   })

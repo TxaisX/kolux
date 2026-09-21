@@ -33,7 +33,7 @@
  * remap path with the substitution set to that character itself, which is the config's second line.
  */
 import type { CDPSession } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { closeTerminalImePaneArena, openTerminalImePaneArena } from './terminal-ime-pane-arena'
 import { readTerminalImeBoundaryTrace } from './terminal-ime-boundary-probe'
 import {
@@ -108,21 +108,21 @@ test.describe('Terminal macOS system key remap', () => {
       const forbidden = committed === BACKQUOTE ? layout.character : BACKQUOTE
 
       test(`sends ${committed} for the ${layout.label} backquote key when ${arm.name}`, async ({
-        nightshiftPage,
+        koluxPage,
         testRepoPath
       }, testInfo) => {
-        await applyImePlatformPolicy(nightshiftPage, 'mac')
-        await expectImePlatformPolicy(nightshiftPage, 'mac')
-        const arena = await openTerminalImePaneArena(nightshiftPage)
+        await applyImePlatformPolicy(koluxPage, 'mac')
+        await expectImePlatformPolicy(koluxPage, 'mac')
+        const arena = await openTerminalImePaneArena(koluxPage)
         const reader = createTerminalImeByteReader(testRepoPath, 1)
         let completed = false
         try {
-          await startTerminalImeByteReader(nightshiftPage, arena.ptyId, reader)
+          await startTerminalImeByteReader(koluxPage, arena.ptyId, reader)
           await arm.dispatch(arena.session, layoutKey, committed)
-          await nightshiftPage.waitForTimeout(60)
+          await koluxPage.waitForTimeout(60)
           await dispatchPlainEnter(arena.session)
 
-          const trace = await readTerminalImeBoundaryTrace(nightshiftPage)
+          const trace = await readTerminalImeBoundaryTrace(koluxPage)
 
           // A remap is not an IME. Nothing here may open a composition session, and a spec that
           // accidentally replayed one would be testing a path the suite already covers.
@@ -145,7 +145,7 @@ test.describe('Terminal macOS system key remap', () => {
           )
           expect(sent).toBe(`${committed}\r`)
 
-          const received = await waitForTerminalImeBytes(nightshiftPage, reader)
+          const received = await waitForTerminalImeBytes(koluxPage, reader)
           expect(received).toEqual([Buffer.from(`${committed}\n`).toString('hex')])
           completed = true
         } finally {

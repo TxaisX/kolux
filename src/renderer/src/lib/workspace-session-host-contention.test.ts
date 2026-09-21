@@ -23,7 +23,7 @@ import {
   type HostPersistenceState
 } from './workspace-session-host-persistence'
 
-const SHARED_ID = 'repo-shared::/work/nightshift'
+const SHARED_ID = 'repo-shared::/work/kolux'
 const SSH_HOST: ExecutionHostId = 'ssh:build-box'
 
 function tab(id: string, worktreeId = SHARED_ID): TerminalTab {

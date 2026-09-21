@@ -12,7 +12,11 @@ import type { GlobalSettings } from '../shared/global-settings-types'
 import type { Repo } from '../shared/repo-types'
 import { parseWslPath } from './wsl'
 
-export const WORKTREE_TRASH_DIR_NAME = '.nightshift-worktree-trash'
+export const WORKTREE_TRASH_DIR_NAME = '.kolux-worktree-trash'
+// Why kept as a read fallback, not renamed: trash roots live inside user repos/workspace
+// roots, not a directory this app owns, so a crash from before the Nightshift->Kolux rename
+// can still leave one behind. New trashing always uses the current name above.
+const LEGACY_WORKTREE_TRASH_DIR_NAME = '.nightshift-worktree-trash'
 
 // `<epoch-ms>-<nonce>`: the nonce keeps concurrent removals of same-named worktrees from colliding.
 const TRASH_ENTRY_PATTERN = /^wt-\d+-[0-9a-f]{8}$/
@@ -137,10 +141,16 @@ async function collectExistingTrashRoots(workspaceRoots: readonly string[]): Pro
   const trashRoots = new Set<string>()
   for (const workspaceRoot of new Set(workspaceRoots)) {
     trashRoots.add(join(workspaceRoot, WORKTREE_TRASH_DIR_NAME))
+    trashRoots.add(join(workspaceRoot, LEGACY_WORKTREE_TRASH_DIR_NAME))
     let containers: string[] = []
     try {
       containers = (await readdir(workspaceRoot, { withFileTypes: true }))
-        .filter((entry) => entry.isDirectory() && entry.name !== WORKTREE_TRASH_DIR_NAME)
+        .filter(
+          (entry) =>
+            entry.isDirectory() &&
+            entry.name !== WORKTREE_TRASH_DIR_NAME &&
+            entry.name !== LEGACY_WORKTREE_TRASH_DIR_NAME
+        )
         .slice(0, TRASH_SWEEP_MAX_CONTAINERS)
         .map((entry) => entry.name)
     } catch {
@@ -148,12 +158,13 @@ async function collectExistingTrashRoots(workspaceRoots: readonly string[]): Pro
     }
     for (const container of containers) {
       trashRoots.add(join(workspaceRoot, container, WORKTREE_TRASH_DIR_NAME))
+      trashRoots.add(join(workspaceRoot, container, LEGACY_WORKTREE_TRASH_DIR_NAME))
     }
   }
   return [...trashRoots]
 }
 
-/** Workspace roots of local git repos — the only places Nightshift creates worktree trash. */
+/** Workspace roots of local git repos — the only places Kolux creates worktree trash. */
 export function collectWorktreeTrashSweepRoots(
   repos: readonly Repo[],
   settings: Pick<GlobalSettings, 'workspaceDir' | 'nestWorkspaces'>

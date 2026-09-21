@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   execInTerminal,
@@ -26,7 +26,7 @@ type RevealFrame = {
 async function closeFeatureTips(page: Page): Promise<void> {
   await page.evaluate(() => {
     const store = window.__store
-    store?.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store?.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store?.getState().activeModal === 'feature-tips') {
       store.getState().closeModal()
     }
@@ -192,22 +192,22 @@ async function sampleRevealFrames(page: Page, targetTabId: string): Promise<Reve
 
 test.describe('terminal streaming refocus viewport', () => {
   test('keeps follow-output at the bottom through a queued-write refocus wobble', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    const { paneKey } = await waitForActivePaneHookDescriptor(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    const { paneKey } = await waitForActivePaneHookDescriptor(koluxPage)
     const tabId = paneKey.slice(0, paneKey.indexOf(':'))
-    await waitForTerminalPtyDataInjector(nightshiftPage, paneKey)
-    await execInTerminal(nightshiftPage, ptyId, nodeTerminalCommand([STREAMING_FIXTURE_PATH]))
-    await waitForPhaseOneAtBottom(nightshiftPage, tabId)
+    await waitForTerminalPtyDataInjector(koluxPage, paneKey)
+    await execInTerminal(koluxPage, ptyId, nodeTerminalCommand([STREAMING_FIXTURE_PATH]))
+    await waitForPhaseOneAtBottom(koluxPage, tabId)
 
-    const framesPromise = sampleRevealFrames(nightshiftPage, tabId)
-    await injectQueuedWriteAndRefocus(nightshiftPage, tabId, paneKey)
+    const framesPromise = sampleRevealFrames(koluxPage, tabId)
+    await injectQueuedWriteAndRefocus(koluxPage, tabId, paneKey)
     const frames = await framesPromise
 
     expect(frames.filter((frame) => !frame.targetPresented)).toEqual([])
@@ -224,11 +224,9 @@ test.describe('terminal streaming refocus viewport', () => {
       frames.filter((frame) => (frame.maxThumbTop ?? 0) > 1 && (frame.thumbTop ?? 0) <= 1)
     ).toEqual([])
     await expect
-      .poll(() => getTerminalContent(nightshiftPage), { timeout: 15_000 })
+      .poll(() => getTerminalContent(koluxPage), { timeout: 15_000 })
       .toContain('REFOCUS_STREAM_DONE')
-    const visibleScrollbar = nightshiftPage
-      .locator('.xterm-scrollbar.xterm-vertical:visible')
-      .first()
+    const visibleScrollbar = koluxPage.locator('.xterm-scrollbar.xterm-vertical:visible').first()
     await expect(visibleScrollbar).toBeVisible()
     expect(
       await visibleScrollbar.evaluate((scrollbar) => {

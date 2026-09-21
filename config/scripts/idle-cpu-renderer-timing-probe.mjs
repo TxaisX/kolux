@@ -100,7 +100,7 @@ export async function startRendererTimingProbe(page) {
       return result
     }
     scheduleTimer()
-    window.__nightshiftIdleCpuTimingProbe = {
+    window.__koluxIdleCpuTimingProbe = {
       snapshot: () => snapshot(true),
       stop: () => {
         if (timerId !== null) {
@@ -115,11 +115,11 @@ export async function startRendererTimingProbe(page) {
 }
 
 export async function snapshotRendererTimingProbe(page) {
-  return page.evaluate(() => window.__nightshiftIdleCpuTimingProbe?.snapshot() ?? null)
+  return page.evaluate(() => window.__koluxIdleCpuTimingProbe?.snapshot() ?? null)
 }
 
 export async function stopRendererTimingProbe(page) {
-  return page.evaluate(() => window.__nightshiftIdleCpuTimingProbe?.stop() ?? null)
+  return page.evaluate(() => window.__koluxIdleCpuTimingProbe?.stop() ?? null)
 }
 
 export async function runZustandPublications(page, count, intervalMs) {

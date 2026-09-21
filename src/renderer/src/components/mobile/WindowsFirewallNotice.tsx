@@ -96,7 +96,7 @@ export function WindowsFirewallNotice({
           toast.success(
             translate(
               'auto.components.mobile.WindowsFirewallNotice.repair-success',
-              'Windows Firewall now allows Nightshift Mobile on private networks'
+              'Windows Firewall now allows Kolux Mobile on private networks'
             )
           )
           return
@@ -151,7 +151,7 @@ export function WindowsFirewallNotice({
                 : blockingRuleDetected
                   ? translate(
                       'auto.components.mobile.WindowsFirewallNotice.blocked-title',
-                      'Windows may be blocking Nightshift Mobile'
+                      'Windows may be blocking Kolux Mobile'
                     )
                   : translate(
                       'auto.components.mobile.WindowsFirewallNotice.missing-title',
@@ -162,17 +162,17 @@ export function WindowsFirewallNotice({
               {networkIsPublic
                 ? translate(
                     'auto.components.mobile.WindowsFirewallNotice.public-description',
-                    'Change this trusted Wi-Fi network to Private before allowing Nightshift Mobile connections.'
+                    'Change this trusted Wi-Fi network to Private before allowing Kolux Mobile connections.'
                   )
                 : blockingRuleDetected
                   ? translate(
                       'auto.components.mobile.WindowsFirewallNotice.blocked-description',
-                      'An existing inbound Block rule can override the pairing exception. Repair removes conflicting TCP rules for this Nightshift app, then allows port {{port}} on Private networks.',
+                      'An existing inbound Block rule can override the pairing exception. Repair removes conflicting TCP rules for this Kolux app, then allows port {{port}} on Private networks.',
                       { port: firewallStatus.port }
                     )
                   : translate(
                       'auto.components.mobile.WindowsFirewallNotice.missing-description',
-                      'Windows may block the pairing server. Add a rule for this Nightshift app and TCP port {{port}} on Private networks.',
+                      'Windows may block the pairing server. Add a rule for this Kolux app and TCP port {{port}} on Private networks.',
                       { port: firewallStatus.port }
                     )}
             </p>
@@ -180,7 +180,7 @@ export function WindowsFirewallNotice({
               <p className="text-xs text-muted-foreground">
                 {translate(
                   'auto.components.mobile.WindowsFirewallNotice.relay-note',
-                  'Pairing still works over Nightshift Relay — allowing this only adds the faster local connection.'
+                  'Pairing still works over Kolux Relay — allowing this only adds the faster local connection.'
                 )}
               </p>
             ) : null}

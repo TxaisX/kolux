@@ -79,9 +79,9 @@ async function probeGuestEnvironment(
   // Resolve `env` rather than assume /usr/bin/env: a distro that moved it would
   // otherwise fail every later call.
   const script = [
-    '_nightshift_env=$(command -v env 2>/dev/null || true)',
-    'case "$_nightshift_env" in /*) [ -x "$_nightshift_env" ] || exit 127 ;; *) exit 127 ;; esac',
-    `printf '%s\\0%s\\0%s' "$PATH" "$HOME" "$_nightshift_env"`
+    '_kolux_env=$(command -v env 2>/dev/null || true)',
+    'case "$_kolux_env" in /*) [ -x "$_kolux_env" ] || exit 127 ;; *) exit 127 ;; esac',
+    `printf '%s\\0%s\\0%s' "$PATH" "$HOME" "$_kolux_env"`
   ].join('\n')
   const captured = buildWslCapturedLoginShellCommand(script)
   const result = await runProcess({

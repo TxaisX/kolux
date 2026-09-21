@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Database from '../../../../../sqlite/sync-database'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
@@ -11,12 +11,12 @@ const SUPERVISED = 'term_supervised'
 
 describe('manual Dispatch release', () => {
   let db: OrchestrationDb
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let runId: string
 
   beforeEach(() => {
     db = new OrchestrationDb(':memory:')
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) => paneKey(handle))
     vi.spyOn(runtime, 'getTerminalProcessIncarnation').mockImplementation(

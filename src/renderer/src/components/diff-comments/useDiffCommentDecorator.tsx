@@ -233,7 +233,7 @@ export function useDiffCommentDecorator({
           continue
         }
         const dom = document.createElement('div')
-        dom.className = 'nightshift-diff-comment-inline'
+        dom.className = 'kolux-diff-comment-inline'
         // Swallow mousedown on the zone so the editor doesn't steal focus / start a selection drag; Delete still fires (click is on the button).
         const disposeMouseDownStopper = installDiffCommentZoneMouseDownStopper(dom)
 

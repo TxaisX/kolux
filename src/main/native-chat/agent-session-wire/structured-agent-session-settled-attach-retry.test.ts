@@ -87,7 +87,7 @@ function envelope(method: string, fields: Record<string, unknown>): AgentSession
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-settled-attach-retry-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-settled-attach-retry-'))
   publishFault.failOnPublish = 0
   publishFault.publishCount = 0
   resetHostTestOperationIds()

@@ -44,7 +44,7 @@ export function isAgentStatusHooksEnabled(
 export type StartupManagedHookAction = 'install' | 'skip'
 
 // Why never 'remove': this reads THIS instance's settings, but the managed hook files are
-// user-global (~/.claude/settings.json, ~/.cursor/hooks.json). A second Nightshift profile with the off
+// user-global (~/.claude/settings.json, ~/.cursor/hooks.json). A second Kolux profile with the off
 // switch set would delete the hooks every other instance depends on, and Cursor — the one agent
 // with no title-derived status fallback — then goes silently idle (STA-5679). Honoring the off
 // switch only requires skipping the install; explicit removal stays on the Settings toggle.
@@ -129,8 +129,8 @@ async function runInstaller(
 }
 
 // Why (#11549 aftermath): a CLI that falls off PATH keeps its user-wide config invoking
-// Nightshift's script, but the presence gate below then skips install() forever, freezing the
-// script at whatever Nightshift generated last. Existing scripts are Nightshift-owned, so bring them
+// Kolux's script, but the presence gate below then skips install() forever, freezing the
+// script at whatever Kolux generated last. Existing scripts are Kolux-owned, so bring them
 // current before any gating; creating new ones remains install()'s presence-gated job.
 async function refreshExistingManagedScripts(options: InstallOptions): Promise<void> {
   const allowed = options.agents ? new Set(options.agents) : null

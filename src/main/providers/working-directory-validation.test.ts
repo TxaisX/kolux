@@ -25,7 +25,7 @@ beforeEach(async () => {
   wslUncDirectoryExistsAsyncMock.mockReset()
   wslUncDirectoryExistsAsyncMock.mockResolvedValue(null)
   _resetWorkingDirectoryValidationStateForTest()
-  tempDir = await mkdtemp(path.join(os.tmpdir(), 'nightshift-cwd-validate-'))
+  tempDir = await mkdtemp(path.join(os.tmpdir(), 'kolux-cwd-validate-'))
 })
 
 afterEach(async () => {

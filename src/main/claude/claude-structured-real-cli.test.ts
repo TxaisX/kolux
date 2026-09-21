@@ -24,7 +24,7 @@ const realClaudeAvailable =
   }).status === 0
 const authStatusLaunch = getSpawnArgsForWindows(command, ['auth', 'status', '--json'])
 /** The CLI's own account report — the only source of truth for where it writes that
- *  is not derived from Nightshift's own path expressions. */
+ *  is not derived from Kolux's own path expressions. */
 const realClaudeAuthStatus = (() => {
   if (!realClaudeAvailable) {
     return null
@@ -101,10 +101,10 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
       const providerSessionId = randomUUID()
       const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR?.trim() || join(homedir(), '.claude')
       const events: ClaudeStructuredSessionEvent[] = []
-      const cwd = await mkdtemp(join(tmpdir(), 'nightshift-command-init-'))
+      const cwd = await mkdtemp(join(tmpdir(), 'kolux-command-init-'))
       await mkdir(join(cwd, '.claude', 'commands'), { recursive: true })
       await writeFile(
-        join(cwd, '.claude', 'commands', 'nightshift-init-catalog-proof.md'),
+        join(cwd, '.claude', 'commands', 'kolux-init-catalog-proof.md'),
         '---\ndescription: Initialization catalog proof\n---\nReply with OK.\n'
       )
       const adapter = realAdapter(providerSessionId, claudeConfigDir, events, cwd)
@@ -128,7 +128,7 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
         })
         expect(observedSubtypes).toContain('hook_started')
         expect(adapter.readCommands('real-cli-handshake')).toContainEqual({
-          name: 'nightshift-init-catalog-proof',
+          name: 'kolux-init-catalog-proof',
           kind: 'command',
           kindUnspecified: true
         })
@@ -185,7 +185,7 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
   // Mobile native chat never reads the structured journal — it reads the CLI's own
   // transcript through native-chat/session-file-resolver.ts. So this resolves the way
   // transcript-read-cache.ts:104 does, with NO root override, and checks the answer
-  // against the root the CLI itself reports. Deriving the expected root from Nightshift's own
+  // against the root the CLI itself reports. Deriving the expected root from Kolux's own
   // `CLAUDE_CONFIG_DIR || ~/.claude` expression — the same one the code under test uses —
   // would move both sides together and stay green in exactly the environment that
   // blacks mobile out.
@@ -233,7 +233,7 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
   // adoption evidence, and it arrives on the init frame that opens each turn. This
   // asserts that frame carries the resolved model against the live binary; it goes
   // red the day the CLI stops reporting it, which is the day the confirmation
-  // silently degrades to echoing back whatever Nightshift sent.
+  // silently degrades to echoing back whatever Kolux sent.
   it.skipIf(!realClaudeAuthenticated)(
     'reports the model it adopted on the init frame that opens each turn',
     async () => {
@@ -281,7 +281,7 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
 
         expect(frames).not.toHaveLength(0)
         // Both halves: the field exists, and it names the model the picker asked
-        // for in the catalog's resolved shape rather than the id Nightshift sent.
+        // for in the catalog's resolved shape rather than the id Kolux sent.
         expect(frames[0]?.model).toEqual(expect.any(String))
         expect(frames[0]?.model).toBe('claude-haiku-4-5-20251001')
         await expect(
@@ -295,7 +295,7 @@ describe.skipIf(!realClaudeAvailable)('Claude structured real CLI handshake', ()
   )
 
   it('turns a real silent unauthenticated startup into sign-in guidance', async () => {
-    const claudeConfigDir = await mkdtemp(join(tmpdir(), 'nightshift-claude-no-auth-'))
+    const claudeConfigDir = await mkdtemp(join(tmpdir(), 'kolux-claude-no-auth-'))
     const providerSessionId = randomUUID()
     const adapter = realAdapter(providerSessionId, claudeConfigDir)
 

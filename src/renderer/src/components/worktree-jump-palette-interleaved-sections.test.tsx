@@ -424,7 +424,7 @@ describe('WorktreeJumpPalette interleaved primary sections', () => {
   })
 
   it('puts the tab title on the left and the worktree name in the badge rail', async () => {
-    const longTitle = 'macOS Nightshift App Permission Update Delivery'
+    const longTitle = 'macOS Kolux App Permission Update Delivery'
     await renderPalette({
       worktreesByRepo: {
         'repo-1': [makeWorktree('wt-tabs', 'user-support')]

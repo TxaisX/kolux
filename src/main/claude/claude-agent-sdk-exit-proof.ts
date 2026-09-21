@@ -351,8 +351,8 @@ export function createClaudeChildTreeReaper(
 }
 
 /**
- * Nightshift's own shutdown ladder on the child it spawned, kept because the SDK's
- * close path returns no proof and Nightshift never releases a lease on an assumed exit.
+ * Kolux's own shutdown ladder on the child it spawned, kept because the SDK's
+ * close path returns no proof and Kolux never releases a lease on an assumed exit.
  *
  * Resolves true only after the child actually emitted exit and its snapshotted
  * descendants were observed gone; false is unproven. A root that left on its

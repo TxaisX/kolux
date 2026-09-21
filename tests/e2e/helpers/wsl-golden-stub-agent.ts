@@ -5,9 +5,9 @@ import { buildWslExecArgs } from '../../../src/shared/wsl-login-shell-command'
 /** A WSL-only path makes the stub marker proof that the pane ran in the distro. */
 const WSL_STUB_PATH = '/usr/local/bin/golden-stub-agent'
 const WSL_STUB_AGENT_LINK = '/usr/local/bin/codex'
-const WSL_STUB_BACKUP_PATH = '/usr/local/bin/golden-stub-agent.nightshift-e2e-backup'
+const WSL_STUB_BACKUP_PATH = '/usr/local/bin/golden-stub-agent.kolux-e2e-backup'
 /** mkdir is atomic in the distro, so the lock dir serializes overlapping invocations. */
-const WSL_STUB_LOCK_PATH = '/usr/local/bin/golden-stub-agent.nightshift-e2e-lock'
+const WSL_STUB_LOCK_PATH = '/usr/local/bin/golden-stub-agent.kolux-e2e-lock'
 const WSL_STUB_LINK_MARKER = `${WSL_STUB_LOCK_PATH}/created-codex-link`
 const WSL_STUB_STAGED_MARKER = `${WSL_STUB_LOCK_PATH}/staged-stub`
 const WSL_STUB_LOCK_STALE_MINUTES = 10
@@ -136,7 +136,7 @@ export async function useWslRuntimeForActiveProject(page: Page, distro: string):
   await page.evaluate(async (wslDistro) => {
     const store = window.__store
     if (!store) {
-      throw new Error('Nightshift store is unavailable')
+      throw new Error('Kolux store is unavailable')
     }
     const state = store.getState()
     const worktreeId = state.activeWorktreeId

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { getDefaultSettings } from '../../../../shared/constants'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import { SettingsUpdate } from './client-settings-schemas'
 
-function runtimeWithSharing(artifactSharingEnabled: unknown): NightshiftRuntimeService {
-  return new NightshiftRuntimeService({
+function runtimeWithSharing(artifactSharingEnabled: unknown): KoluxRuntimeService {
+  return new KoluxRuntimeService({
     getSettings: () => ({ ...getDefaultSettings('/tmp'), artifactSharingEnabled })
   } as never)
 }

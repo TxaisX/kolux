@@ -227,13 +227,13 @@ describe('release channel', () => {
   it('finds the directly runnable installer for a platform', () => {
     const assets = [
       'latest.yml',
-      'nightshift-windows-setup.exe',
-      'nightshift-macos-arm64.dmg',
-      'nightshift-linux.AppImage'
+      'kolux-windows-setup.exe',
+      'kolux-macos-arm64.dmg',
+      'kolux-linux.AppImage'
     ]
-    expect(findInstallerAssetName('win32', assets)).toBe('nightshift-windows-setup.exe')
-    expect(findInstallerAssetName('darwin', assets)).toBe('nightshift-macos-arm64.dmg')
-    expect(findInstallerAssetName('linux', assets)).toBe('nightshift-linux.AppImage')
+    expect(findInstallerAssetName('win32', assets)).toBe('kolux-windows-setup.exe')
+    expect(findInstallerAssetName('darwin', assets)).toBe('kolux-macos-arm64.dmg')
+    expect(findInstallerAssetName('linux', assets)).toBe('kolux-linux.AppImage')
     expect(findInstallerAssetName('win32', ['latest.yml'])).toBeNull()
     expect(findInstallerAssetName('freebsd', assets)).toBeNull()
   })

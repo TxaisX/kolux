@@ -133,7 +133,7 @@ describe('PluginConsentDialog', () => {
     )
 
     expect(document.body.textContent).toContain(
-      "These permissions limit how the plugin uses Nightshift's API. This plugin has no background worker."
+      "These permissions limit how the plugin uses Kolux's API. This plugin has no background worker."
     )
     expect(document.body.textContent).not.toContain('full access to your files')
   })
@@ -153,7 +153,7 @@ describe('PluginConsentDialog', () => {
     expect(document.body.textContent).toContain('Review plugin')
     expect(document.body.textContent).toContain('Declarative')
     expect(document.body.textContent).toContain(
-      "This plugin contributes validated content only. It does not run a background worker or receive access to Nightshift's API."
+      "This plugin contributes validated content only. It does not run a background worker or receive access to Kolux's API."
     )
     expect(document.body.textContent).not.toContain('These permissions limit')
   })

@@ -37,7 +37,7 @@ describe('normalizeWorkspaceDocHistoryEntries', () => {
 
   it('drops malformed rows and fences a url-as-title back to the file name', () => {
     const entries = normalizeWorkspaceDocHistoryEntries([
-      entry({ title: `nightshift-preview://${'a'.repeat(32)}/a.html` }),
+      entry({ title: `kolux-preview://${'a'.repeat(32)}/a.html` }),
       {
         docLocation: { kind: 'workspace-doc', worktreeId: '', filePath: '' },
         title: 'x',

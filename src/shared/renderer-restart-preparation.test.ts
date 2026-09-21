@@ -2,8 +2,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { UpdateStatus } from './update-status-types'
 import {
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
-  NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,
+  KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT,
   publishShutdownCheckpointFailureReason
 } from './renderer-shutdown-events'
 import {
@@ -18,13 +18,11 @@ describe('prepareRendererForAppRestart', () => {
     const aborted = vi.fn()
     const independentlyAborted = vi.fn()
     const checkpoint = vi.fn((event: Event) => {
-      event.currentTarget?.dispatchEvent(
-        new Event(NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT)
-      )
+      event.currentTarget?.dispatchEvent(new Event(KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT))
       event.preventDefault()
     })
     eventTarget.addEventListener('restart-started', started)
-    eventTarget.addEventListener(NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT, aborted)
+    eventTarget.addEventListener(KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT, aborted)
     eventTarget.addEventListener('restart-aborted', independentlyAborted)
     eventTarget.addEventListener('beforeunload', checkpoint)
 
@@ -47,9 +45,7 @@ describe('prepareRendererForAppRestart', () => {
     eventTarget.addEventListener('beforeunload', (event) => {
       // Mirrors the checkpoint guard: publish the cause, then fail the checkpoint.
       publishShutdownCheckpointFailureReason('sendSync payload rejected')
-      event.currentTarget?.dispatchEvent(
-        new Event(NIGHTSHIFT_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT)
-      )
+      event.currentTarget?.dispatchEvent(new Event(KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_FAILED_EVENT))
       event.preventDefault()
     })
 

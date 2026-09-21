@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { getCliLaunchArgs } from './cli-launch-redirect'
 import { argvRequestsServeMode, normalizeServeModeArgv } from './serve-mode-argv'
 
-const CLI_ENTRY_PATH = '/opt/nightshift/resources/app.asar.unpacked/out/cli/index.js'
+const CLI_ENTRY_PATH = '/opt/kolux/resources/app.asar.unpacked/out/cli/index.js'
 const REDIRECT_OPTIONS = {
   platform: 'linux' as const,
   isPackaged: true,
@@ -17,7 +17,7 @@ function rewriteAsIndexDoes(argv: string[]): string[] {
 
 describe('serve argv rewrite vs CLI launch redirect ordering', () => {
   const launchArgv = [
-    '/opt/nightshift/nightshift-ide',
+    '/opt/kolux/kolux-ide',
     '--disable-features=Vulkan',
     'serve',
     '--port',
@@ -38,13 +38,13 @@ describe('serve argv rewrite vs CLI launch redirect ordering', () => {
   })
 
   it('leaves non-serve CLI commands redirectable either way', () => {
-    const argv = ['/opt/nightshift/nightshift-ide', 'status']
+    const argv = ['/opt/kolux/kolux-ide', 'status']
     expect(rewriteAsIndexDoes(argv)).toEqual(argv)
     expect(getCliLaunchArgs(argv, CLI_ENTRY_PATH, REDIRECT_OPTIONS)).toEqual(['status'])
   })
 
   it('redirects serve help instead of binding a server', () => {
-    const argv = ['/opt/nightshift/nightshift-ide', 'serve', '--help']
+    const argv = ['/opt/kolux/kolux-ide', 'serve', '--help']
     expect(rewriteAsIndexDoes(argv)).toEqual(argv)
     expect(getCliLaunchArgs(argv, CLI_ENTRY_PATH, REDIRECT_OPTIONS)).toEqual(['serve', '--help'])
   })

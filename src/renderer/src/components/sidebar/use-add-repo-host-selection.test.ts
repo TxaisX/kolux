@@ -288,14 +288,14 @@ describe('useAddRepoHostSelection', () => {
     mocks.stateValues = ['runtime:env-vm', false]
     mocks.hostOptions.push({
       id: 'runtime:env-vm',
-      label: 'nightshift VM abc12345',
+      label: 'kolux VM abc12345',
       detail: 'Runtime',
       kind: 'runtime',
       health: 'available',
       presence: 'project'
     })
     mocks.storeState.runtimeEnvironments = [
-      { id: 'env-vm', name: 'nightshift VM abc12345', source: 'ephemeral-vm' }
+      { id: 'env-vm', name: 'kolux VM abc12345', source: 'ephemeral-vm' }
     ]
     const setStep = vi.fn()
     const { useAddRepoHostSelection } = await import('./use-add-repo-host-selection')

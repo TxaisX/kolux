@@ -39,9 +39,9 @@ function matchesRemoteCommand(commandPath: string[], ...command: string[]): bool
   )
 }
 
-const LINEAR_HELP = `nightshift linear
+const LINEAR_HELP = `kolux linear
 
-Usage: nightshift linear <command> [options]
+Usage: kolux linear <command> [options]
 
 Commands:
   save-issue         Create or update a Linear issue
@@ -72,11 +72,11 @@ Commands:
   attach             Attach a link to a Linear issue
   create             Create a Linear issue
 
-Run \`nightshift linear <command> --help\` for command-specific usage.`
+Run \`kolux linear <command> --help\` for command-specific usage.`
 
-const LINEAR_ISSUE_HELP = `nightshift linear issue
+const LINEAR_ISSUE_HELP = `kolux linear issue
 
-Usage: nightshift linear issue [<id>] [--current] [--comments] [--children] [--depth <n>] [--attachments] [--relations] [--activity] [--full] [--workspace <id>] [--json]
+Usage: kolux linear issue [<id>] [--current] [--comments] [--children] [--depth <n>] [--attachments] [--relations] [--activity] [--full] [--workspace <id>] [--json]
 
 Read Linear issue context for agents
 
@@ -85,7 +85,7 @@ Options:
   --json                 Emit machine-readable JSON
   --pairing-code
   --environment
-  --current              Use the current Nightshift worktree linked Linear issue
+  --current              Use the current Kolux worktree linked Linear issue
   --comments             Include threaded Linear comments
   --children             Include recursive child issues
   --depth <n>            Child issue depth for --children/--full
@@ -97,19 +97,19 @@ Options:
   --id <id>             Linear issue key, id, or URL
 
 Examples:
-  $ nightshift linear issue ENG-123
-  $ nightshift linear issue --current --comments
-  $ nightshift linear issue https://linear.app/acme/issue/ENG-123 --full --json`
+  $ kolux linear issue ENG-123
+  $ kolux linear issue --current --comments
+  $ kolux linear issue https://linear.app/acme/issue/ENG-123 --full --json`
 
-const LINEAR_MCP_ISSUE_LIST_HELP = `nightshift linear list-issues
+const LINEAR_MCP_ISSUE_LIST_HELP = `kolux linear list-issues
 
-Usage: nightshift linear list-issues [--team <team>] [--cycle <cycle>] [--label <label>] [--limit <n>] [--query <text>] [--state <state>] [--cursor <cursor>] [--order-by createdAt|updatedAt] [--project <project>] [--release <release>] [--assignee <user|me|null>] [--delegate <user|me|null>] [--parent-id <issue|null>] [--priority <0-4>] [--created-at <datetime|duration>] [--updated-at <datetime|duration>] [--include-archived] [--workspace <id>|all] [--json]
+Usage: kolux linear list-issues [--team <team>] [--cycle <cycle>] [--label <label>] [--limit <n>] [--query <text>] [--state <state>] [--cursor <cursor>] [--order-by createdAt|updatedAt] [--project <project>] [--release <release>] [--assignee <user|me|null>] [--delegate <user|me|null>] [--parent-id <issue|null>] [--priority <0-4>] [--created-at <datetime|duration>] [--updated-at <datetime|duration>] [--include-archived] [--workspace <id>|all] [--json]
 
 List Linear issues with MCP-compatible filters and cursor pagination`
 
-const LINEAR_SEARCH_HELP = `nightshift linear search
+const LINEAR_SEARCH_HELP = `kolux linear search
 
-Usage: nightshift linear search <query> [--limit <n>] [--workspace <id>|all] [--json]
+Usage: kolux linear search <query> [--limit <n>] [--workspace <id>|all] [--json]
 
 Search connected Linear workspaces
 
@@ -123,41 +123,41 @@ Options:
   --query <text>        Text to search across Linear issues
 
 Examples:
-  $ nightshift linear search "auth bug"
-  $ nightshift linear search ENG --workspace all --json`
+  $ kolux linear search "auth bug"
+  $ kolux linear search ENG --workspace all --json`
 
-const LINEAR_TEAM_LIST_HELP = `nightshift linear team list
+const LINEAR_TEAM_LIST_HELP = `kolux linear team list
 
-Usage: nightshift linear team list [--workspace <id>|all] [--json]
+Usage: kolux linear team list [--workspace <id>|all] [--json]
 
 List connected Linear teams`
 
-const LINEAR_TEAM_MEMBERS_HELP = `nightshift linear team members
+const LINEAR_TEAM_MEMBERS_HELP = `kolux linear team members
 
-Usage: nightshift linear team members --team <key|id> [--workspace <id>] [--json]
+Usage: kolux linear team members --team <key|id> [--workspace <id>] [--json]
 
 List Linear team members`
 
-const LINEAR_TEAM_STATES_HELP = `nightshift linear team states
+const LINEAR_TEAM_STATES_HELP = `kolux linear team states
 
-Usage: nightshift linear team states --team <key|id> [--workspace <id>] [--json]
+Usage: kolux linear team states --team <key|id> [--workspace <id>] [--json]
 
 List Linear team workflow states`
 
-const LINEAR_TEAM_LABELS_HELP = `nightshift linear team labels
+const LINEAR_TEAM_LABELS_HELP = `kolux linear team labels
 
-Usage: nightshift linear team labels --team <key|id> [--workspace <id>] [--json]
+Usage: kolux linear team labels --team <key|id> [--workspace <id>] [--json]
 
 List Linear team labels`
 
-const LINEAR_PROJECT_LIST_HELP = `nightshift linear project list
+const LINEAR_PROJECT_LIST_HELP = `kolux linear project list
 
-Usage: nightshift linear project list [--query <text>] [--limit <n>] [--workspace <id>|all] [--json]
+Usage: kolux linear project list [--query <text>] [--limit <n>] [--workspace <id>|all] [--json]
 
 List connected Linear projects`
 
-const LINEAR_LIST_HELP = `nightshift linear list
+const LINEAR_LIST_HELP = `kolux linear list
 
-Usage: nightshift linear list [--filter assigned|created|all|completed|open] [--team <key|id>] [--limit <n>] [--workspace <id>|all] [--json]
+Usage: kolux linear list [--filter assigned|created|all|completed|open] [--team <key|id>] [--limit <n>] [--workspace <id>|all] [--json]
 
 List Linear issues`

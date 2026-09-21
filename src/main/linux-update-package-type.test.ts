@@ -62,7 +62,7 @@ beforeEach(async () => {
   delete process.env.APPIMAGE
   delete process.env.APPDIR
   setPlatform('linux')
-  resourcesDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'nightshift-package-type-'))
+  resourcesDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'kolux-package-type-'))
   setResourcesPath(resourcesDir)
 })
 
@@ -137,36 +137,36 @@ describe('getLinuxRootPackageType', () => {
   })
 
   it('uses a legacy AppImage identity when its executable and resources are inside APPDIR', async () => {
-    process.env.APPIMAGE = '/opt/nightshift/nightshift.AppImage'
-    process.env.APPDIR = '/tmp/.mount_nightshift'
-    setExecPath('/tmp/.mount_nightshift/nightshift')
-    setResourcesPath('/tmp/.mount_nightshift/resources')
+    process.env.APPIMAGE = '/opt/kolux/kolux.AppImage'
+    process.env.APPDIR = '/tmp/.mount_kolux'
+    setExecPath('/tmp/.mount_kolux/kolux')
+    setResourcesPath('/tmp/.mount_kolux/resources')
     const module = await loadPackageType()
     expect(module.getLinuxPackageType()).toBe('non-root')
     expect(module.getLinuxRootPackageType()).toBeNull()
   })
 
   it.each([
-    ['relative APPIMAGE', 'relative/nightshift.AppImage', '/tmp/.mount_nightshift'],
-    ['relative APPDIR', '/opt/nightshift/nightshift.AppImage', 'relative/.mount_nightshift']
+    ['relative APPIMAGE', 'relative/kolux.AppImage', '/tmp/.mount_kolux'],
+    ['relative APPDIR', '/opt/kolux/kolux.AppImage', 'relative/.mount_kolux']
   ])('rejects a legacy identity with %s', async (_label, appImagePath, appDirPath) => {
     process.env.APPIMAGE = appImagePath
     process.env.APPDIR = appDirPath
-    setExecPath('/tmp/.mount_nightshift/nightshift')
-    setResourcesPath('/tmp/.mount_nightshift/resources')
+    setExecPath('/tmp/.mount_kolux/kolux')
+    setResourcesPath('/tmp/.mount_kolux/resources')
     const module = await loadPackageType()
     expect(module.getLinuxPackageType()).toBe('unusable')
     expect(module.getLinuxRootPackageType()).toBeNull()
   })
 
   it.each([
-    ['executable', '/tmp/.mount_nightshift-shadow/nightshift', '/tmp/.mount_nightshift/resources'],
-    ['resources', '/tmp/.mount_nightshift/nightshift', '/tmp/.mount_nightshift-shadow/resources']
+    ['executable', '/tmp/.mount_kolux-shadow/kolux', '/tmp/.mount_kolux/resources'],
+    ['resources', '/tmp/.mount_kolux/kolux', '/tmp/.mount_kolux-shadow/resources']
   ])(
     'rejects a prefix-collision outside APPDIR for %s',
     async (_label, execPath, resourcesPath) => {
-      process.env.APPIMAGE = '/opt/nightshift/nightshift.AppImage'
-      process.env.APPDIR = '/tmp/.mount_nightshift'
+      process.env.APPIMAGE = '/opt/kolux/kolux.AppImage'
+      process.env.APPDIR = '/tmp/.mount_kolux'
       setExecPath(execPath)
       setResourcesPath(resourcesPath)
       const module = await loadPackageType()
@@ -178,10 +178,10 @@ describe('getLinuxRootPackageType', () => {
   it('rejects NULs in every legacy AppImage identity path', async () => {
     const { isLegacyAppImageRuntimeIdentity } = await loadPackageType()
     const identity = {
-      appImagePath: '/opt/nightshift/nightshift.AppImage',
-      appDirPath: '/tmp/.mount_nightshift',
-      execPath: '/tmp/.mount_nightshift/nightshift',
-      resourcesPath: '/tmp/.mount_nightshift/resources'
+      appImagePath: '/opt/kolux/kolux.AppImage',
+      appDirPath: '/tmp/.mount_kolux',
+      execPath: '/tmp/.mount_kolux/kolux',
+      resourcesPath: '/tmp/.mount_kolux/resources'
     }
 
     for (const field of Object.keys(identity) as (keyof typeof identity)[]) {
@@ -194,10 +194,10 @@ describe('getLinuxRootPackageType', () => {
   it('requires every legacy AppImage identity path to be absolute', async () => {
     const { isLegacyAppImageRuntimeIdentity } = await loadPackageType()
     const identity = {
-      appImagePath: '/opt/nightshift/nightshift.AppImage',
-      appDirPath: '/tmp/.mount_nightshift',
-      execPath: '/tmp/.mount_nightshift/nightshift',
-      resourcesPath: '/tmp/.mount_nightshift/resources'
+      appImagePath: '/opt/kolux/kolux.AppImage',
+      appDirPath: '/tmp/.mount_kolux',
+      execPath: '/tmp/.mount_kolux/kolux',
+      resourcesPath: '/tmp/.mount_kolux/resources'
     }
 
     for (const field of Object.keys(identity) as (keyof typeof identity)[]) {
@@ -207,8 +207,8 @@ describe('getLinuxRootPackageType', () => {
 
   it('prefers a package marker over an invalid legacy AppImage identity', async () => {
     await writeMarker('deb')
-    process.env.APPIMAGE = 'relative/nightshift.AppImage'
-    process.env.APPDIR = 'relative/.mount_nightshift'
+    process.env.APPIMAGE = 'relative/kolux.AppImage'
+    process.env.APPDIR = 'relative/.mount_kolux'
     const module = await loadPackageType()
     expect(module.getLinuxPackageType()).toBe('deb')
     expect(module.getLinuxRootPackageType()).toBe('deb')

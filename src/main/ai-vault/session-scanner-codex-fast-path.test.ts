@@ -29,7 +29,7 @@ function paddedPayload(payloadType: string, extra: Record<string, unknown> = {})
 let tempRoots: string[] = []
 
 async function writeTranscript(lines: string[], name: string): Promise<FileWithMtime> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-codex-fast-path-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-codex-fast-path-'))
   tempRoots.push(root)
   const path = join(root, 'sessions', '2026', '08', '20', name)
   await mkdir(dirname(path), { recursive: true })

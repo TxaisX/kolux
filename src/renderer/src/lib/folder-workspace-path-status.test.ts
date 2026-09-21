@@ -50,10 +50,10 @@ describe('getFolderWorkspacePathStatusTitle', () => {
 describe('getFolderWorkspacePathStatusDescription', () => {
   it('keeps the declared reasons on their own copy', () => {
     expect(getFolderWorkspacePathStatusDescription(wireStatus('missing'))).toBe(
-      'Nightshift cannot find /srv/scans. Remove and re-import this folder workspace.'
+      'Kolux cannot find /srv/scans. Remove and re-import this folder workspace.'
     )
     expect(getFolderWorkspacePathStatusDescription(wireStatus(undefined))).toBe(
-      'Nightshift cannot verify this folder right now. Check the runtime or SSH connection and try again.'
+      'Kolux cannot verify this folder right now. Check the runtime or SSH connection and try again.'
     )
   })
 
@@ -71,7 +71,7 @@ describe('getFolderWorkspacePathStatusDescription', () => {
     expect(typeof description).toBe('string')
     expect(description).not.toBe('')
     expect(description).not.toBe(
-      'Nightshift cannot find /srv/scans. Remove and re-import this folder workspace.'
+      'Kolux cannot find /srv/scans. Remove and re-import this folder workspace.'
     )
   })
 })

@@ -7,25 +7,21 @@ export async function makeFixture(): Promise<{
   userDataPath: string
   appPath: string
 }> {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-cli-installer-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-cli-installer-'))
   const userDataPath = join(root, 'userData')
   const appPath = join(root, 'app')
   const cliEntryPath = join(appPath, 'out', 'cli', 'index.js')
   await mkdir(join(appPath, 'out', 'cli'), { recursive: true })
-  await writeFile(cliEntryPath, 'console.log("nightshift")\n', 'utf8')
+  await writeFile(cliEntryPath, 'console.log("kolux")\n', 'utf8')
   return { root, userDataPath, appPath }
 }
 
 export async function createPackagedMacLauncher(root: string): Promise<string> {
   const resourcesPath = join(root, 'resources')
   await mkdir(join(resourcesPath, 'bin'), { recursive: true })
-  await writeFile(
-    join(resourcesPath, 'bin', 'nightshift'),
-    '#!/usr/bin/env bash\necho nightshift\n',
-    {
-      encoding: 'utf8',
-      mode: 0o755
-    }
-  )
+  await writeFile(join(resourcesPath, 'bin', 'kolux'), '#!/usr/bin/env bash\necho kolux\n', {
+    encoding: 'utf8',
+    mode: 0o755
+  })
   return resourcesPath
 }

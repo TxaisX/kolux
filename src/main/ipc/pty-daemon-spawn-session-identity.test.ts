@@ -45,7 +45,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -221,11 +221,11 @@ describe('registerPtyHandlers', () => {
           { materializeDefaultHome: false }
         )
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe('/ambient/pi/agent')
+        expect(env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
+        expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBe('/ambient/pi/agent')
       })
       it('does not mutate the caller-provided args.env on the daemon path', async () => {
-        // Why: the handler clones baseEnv so IPC-provided env stays pristine; a regression would leak Nightshift host env back into the renderer's reused copy.
+        // Why: the handler clones baseEnv so IPC-provided env stays pristine; a regression would leak Kolux host env back into the renderer's reused copy.
         const daemonSpawn = setupDaemonAdapter()
         const argsEnv: Record<string, string> = { FOO: 'bar' }
         handlers.clear()
@@ -238,7 +238,7 @@ describe('registerPtyHandlers', () => {
         expect(argsEnv).toEqual({ FOO: 'bar' })
         // Sanity: the spawn did receive the injected env, so the test isn't passing vacuously.
         const spawnEnv = daemonSpawn.mock.calls.at(-1)![0].env
-        expect(spawnEnv.NIGHTSHIFT_AGENT_HOOK_PORT).toBe('5678')
+        expect(spawnEnv.KOLUX_AGENT_HOOK_PORT).toBe('5678')
         expect(spawnEnv).not.toBe(argsEnv)
       })
       it('rejects a caller-supplied sessionId that escapes userData via ..', async () => {
@@ -387,7 +387,7 @@ describe('registerPtyHandlers', () => {
         await handlers.get('pty:spawn')!(null, {
           cols: 80,
           rows: 24,
-          env: { FOO: 'bar', NIGHTSHIFT_PANE_KEY: makePaneKey('tab-1', leafId) },
+          env: { FOO: 'bar', KOLUX_PANE_KEY: makePaneKey('tab-1', leafId) },
           connectionId: 'ssh-1',
           worktreeId: 'wt-1',
           tabId: 'tab-1',
@@ -396,17 +396,17 @@ describe('registerPtyHandlers', () => {
         const spawnOptions = sshSpawn.mock.calls.at(-1)![0]
         const env = spawnOptions.env
         // Why: host-local vars must be absent over SSH (they point at the local host/disk) — shipping them is useless or a credential leak.
-        expect(env.NIGHTSHIFT_AGENT_HOOK_PORT).toBeUndefined()
-        expect(env.NIGHTSHIFT_AGENT_HOOK_TOKEN).toBeUndefined()
+        expect(env.KOLUX_AGENT_HOOK_PORT).toBeUndefined()
+        expect(env.KOLUX_AGENT_HOOK_TOKEN).toBeUndefined()
         expect(env.OPENCODE_CONFIG_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_OPENCODE_CONFIG_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
+        expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
+        expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
         expect(env.MIMOCODE_HOME).toBeUndefined()
-        expect(env.NIGHTSHIFT_MIMOCODE_HOME).toBeUndefined()
-        expect(env.NIGHTSHIFT_MIMOCODE_SOURCE_HOME).toBeUndefined()
+        expect(env.KOLUX_MIMOCODE_HOME).toBeUndefined()
+        expect(env.KOLUX_MIMOCODE_SOURCE_HOME).toBeUndefined()
         expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_PI_CODING_AGENT_DIR).toBeUndefined()
-        expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBeUndefined()
+        expect(env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
+        expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBeUndefined()
         expect(env.CODEX_HOME).toBeUndefined()
         expect(env.HTTP_PROXY).toBeUndefined()
         expect(env.HTTPS_PROXY).toBeUndefined()
@@ -415,7 +415,7 @@ describe('registerPtyHandlers', () => {
         // Why: real-home routing is host-only. A null local-home resolver on
         // SSH must not become a request to alter the remote Codex environment.
         expect(spawnOptions.envToDelete ?? []).not.toContain('CODEX_HOME')
-        expect(spawnOptions.envToDelete ?? []).not.toContain('NIGHTSHIFT_CODEX_HOME')
+        expect(spawnOptions.envToDelete ?? []).not.toContain('KOLUX_CODEX_HOME')
         expect(spawnOptions.paneKey).toBe(makePaneKey('tab-1', leafId))
         expect(spawnOptions.tabId).toBe('tab-1')
         expect(openCodeBuildPtyEnvMock).not.toHaveBeenCalled()
@@ -445,7 +445,7 @@ describe('registerPtyHandlers', () => {
         await handlers.get('pty:spawn')!(null, {
           cols: 80,
           rows: 24,
-          env: { NIGHTSHIFT_PANE_KEY: 'tab-1:pane:1' },
+          env: { KOLUX_PANE_KEY: 'tab-1:pane:1' },
           connectionId: 'ssh-1',
           worktreeId: 'wt-1',
           tabId: 'tab-1',
@@ -453,7 +453,7 @@ describe('registerPtyHandlers', () => {
         })
         expect(store.upsertSshRemotePtyLease).toHaveBeenCalledTimes(1)
         const legacySpawnOptions = sshSpawn.mock.calls.at(-1)?.[0]
-        expect(legacySpawnOptions?.env.NIGHTSHIFT_PANE_KEY).toBeUndefined()
+        expect(legacySpawnOptions?.env.KOLUX_PANE_KEY).toBeUndefined()
         expect(legacySpawnOptions?.paneKey).toBeUndefined()
         expect(legacySpawnOptions?.tabId).toBe('tab-1')
         expect(store.upsertSshRemotePtyLease.mock.calls[0]?.[0]).not.toHaveProperty('leafId')

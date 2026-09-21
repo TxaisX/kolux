@@ -7,7 +7,7 @@ import type { ProjectExecutionRuntimeResolution } from '../../../../shared/proje
 import type { StartupCommandDelivery } from '../../../../shared/codex-startup-delivery'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
 import type { TerminalStartupCwdMissingDirFallback } from '../../../../shared/terminal-startup-cwd'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import type { Store } from '../../../persistence'
 import type { PtySpawnResult } from '../../../providers/types'
 import type { CodexAccountSelectionTarget } from '../../../codex-accounts/runtime-selection'
@@ -77,7 +77,7 @@ export type AdoptStablePaneResult = {
 }
 
 export type PtySpawnIpcDeps = {
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   store?: Store
   getSettings?: () => GlobalSettings
   getSelectedCodexHomePath?: GetSelectedCodexHomePath

@@ -4,7 +4,7 @@ import {
   normalizeBrowserNavigationUrl,
   redactKagiSessionToken
 } from '../../../../../shared/browser-url'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 import {
   applyBrowserPageViewportLayout,
   syncBrowserPageChromeInset
@@ -98,11 +98,11 @@ export function useBrowserPageWebviewUrlSync({
       webview.src !== normalizedUrl &&
       declaredSrc !== normalizedUrl
     ) {
-      // Why: browserTab.url changes are Nightshift-driven navigations; gate did-start-loading so only real navigations show loading UI.
-      trackNextLoadingEventRef.current = normalizedUrl !== NIGHTSHIFT_BROWSER_BLANK_URL
+      // Why: browserTab.url changes are Kolux-driven navigations; gate did-start-loading so only real navigations show loading UI.
+      trackNextLoadingEventRef.current = normalizedUrl !== KOLUX_BROWSER_BLANK_URL
       lastKnownWebviewUrlRef.current = normalizedUrl
       webview.src = normalizedUrl
-      if (normalizedUrl !== NIGHTSHIFT_BROWSER_BLANK_URL) {
+      if (normalizedUrl !== KOLUX_BROWSER_BLANK_URL) {
         keepAddressBarFocusRef.current = false
         if (document.activeElement === addressBarInputRef.current) {
           focusWebviewNow()

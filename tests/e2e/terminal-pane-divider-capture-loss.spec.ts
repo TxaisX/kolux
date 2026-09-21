@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   splitActiveTerminalPane,
   waitForActiveTerminalManager,
@@ -96,22 +96,22 @@ function gridsMatch(geometry: DividerGeometry): boolean {
 }
 
 test('@headful keeps resizing after the divider loses pointer capture', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   // Keep the 260px drag above the fit floor regardless of the CI display resolution.
-  await nightshiftPage.setViewportSize({ width: 1600, height: 1000 })
-  await addTestRepo(nightshiftPage, testRepoPath)
-  await ensureTerminalVisible(nightshiftPage, 30_000)
-  await waitForActiveTerminalManager(nightshiftPage, 30_000)
-  await splitActiveTerminalPane(nightshiftPage, 'vertical')
-  await waitForPaneCount(nightshiftPage, 2, 30_000)
+  await koluxPage.setViewportSize({ width: 1600, height: 1000 })
+  await addTestRepo(koluxPage, testRepoPath)
+  await ensureTerminalVisible(koluxPage, 30_000)
+  await waitForActiveTerminalManager(koluxPage, 30_000)
+  await splitActiveTerminalPane(koluxPage, 'vertical')
+  await waitForPaneCount(koluxPage, 2, 30_000)
 
   await expect
-    .poll(async () => (await readDividerGeometry(nightshiftPage)).second.width)
+    .poll(async () => (await readDividerGeometry(koluxPage)).second.width)
     .toBeGreaterThan(400)
 
-  const divider = nightshiftPage.locator('.pane-divider.is-vertical').first()
+  const divider = koluxPage.locator('.pane-divider.is-vertical').first()
   await expect(divider).toBeVisible()
   const box = await divider.boundingBox()
   if (!box) {
@@ -127,15 +127,15 @@ test('@headful keeps resizing after the divider loses pointer capture', async ({
     })
   })
 
-  const before = await readDividerGeometry(nightshiftPage)
+  const before = await readDividerGeometry(koluxPage)
   const startX = box.x + box.width / 2
   const startY = box.y + box.height / 2
-  await nightshiftPage.mouse.move(startX, startY)
-  await nightshiftPage.mouse.down()
-  await nightshiftPage.mouse.move(startX + 140, startY, { steps: 10 })
+  await koluxPage.mouse.move(startX, startY)
+  await koluxPage.mouse.down()
+  await koluxPage.mouse.move(startX + 140, startY, { steps: 10 })
   await expect
     .poll(async () =>
-      Math.abs((await readDividerGeometry(nightshiftPage)).first.width - before.first.width)
+      Math.abs((await readDividerGeometry(koluxPage)).first.width - before.first.width)
     )
     .toBeGreaterThan(80)
 
@@ -149,13 +149,13 @@ test('@headful keeps resizing after the divider loses pointer capture', async ({
     element.releasePointerCapture(pointerId)
   })
   // Pending capture changes are dispatched with the next pointer event.
-  await nightshiftPage.mouse.move(startX + 260, startY, { steps: 10 })
+  await koluxPage.mouse.move(startX + 260, startY, { steps: 10 })
   await expect
     .poll(() => divider.evaluate((element) => Number(element.dataset.captureLossCount ?? '0')))
     .toBe(1)
-  await nightshiftPage.mouse.up()
-  await expect.poll(async () => gridsMatch(await readDividerGeometry(nightshiftPage))).toBe(true)
-  const after = await readDividerGeometry(nightshiftPage)
+  await koluxPage.mouse.up()
+  await expect.poll(async () => gridsMatch(await readDividerGeometry(koluxPage))).toBe(true)
+  const after = await readDividerGeometry(koluxPage)
   await testInfo.attach('divider-capture-loss-geometry', {
     body: Buffer.from(JSON.stringify({ before, after }, null, 2)),
     contentType: 'application/json'

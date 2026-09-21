@@ -1,5 +1,5 @@
 import type { MessagePriority, MessageType, OrchestrationDb } from '../../../../orchestration/db'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import { resolveGroupAddress } from '../../../../orchestration/groups'
 import { resolveBareOrchestrationRecipient } from './recipient-routing'
@@ -16,7 +16,7 @@ type SendReceipt = <T extends object>(receipt: T) => T & { warnings?: SendRecipi
 
 export async function sendGroupMessage(args: {
   params: SendParamsInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   from: string
   groupAddress: string

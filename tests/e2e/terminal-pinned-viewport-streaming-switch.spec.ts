@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -51,7 +51,7 @@ for (let tick = 0; tick < 800; tick += 1) {
 async function closeFeatureTips(page: Page): Promise<void> {
   await page.evaluate(() => {
     const store = window.__store
-    store?.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store?.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store?.getState().activeModal === 'feature-tips') {
       store.getState().closeModal()
     }
@@ -142,13 +142,13 @@ async function readSettledViewport(
 
 test.describe('Terminal pinned viewport with streaming agent across worktree switch', () => {
   test('returning to a pinned pane with an active stream does not land at the top', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'streaming pinned repro needs the seeded secondary worktree')
@@ -156,38 +156,38 @@ test.describe('Terminal pinned viewport with streaming agent across worktree swi
       return
     }
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-streaming-switch-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-streaming-switch-${runId}.mjs`)
     writeFileSync(scriptPath, streamingAgentFixtureScript(runId))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 15_000,
           message: 'streaming fixture did not reach terminal scrollback'
         })
         .toContain(`STREAMING_SWITCH_${runId}_PRESTREAM_DONE`)
 
-      const pinned = await pinActiveTerminalNearBottom(nightshiftPage)
+      const pinned = await pinActiveTerminalNearBottom(koluxPage)
       expect(pinned.baseY).toBeGreaterThan(100)
-      await nightshiftPage.waitForTimeout(150)
+      await koluxPage.waitForTimeout(150)
 
       // Stream continues while hidden; hidden byte drops mark the pane for a
       // snapshot restore on return.
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(3_000)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(3_000)
 
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      await switchToWorktree(koluxPage, firstWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
 
-      const settled = await readSettledViewport(nightshiftPage, pinned.tabId)
+      const settled = await readSettledViewport(koluxPage, pinned.tabId)
       const bottomDistance = settled.baseY - settled.viewportY
       // The user pinned six rows above the bottom. A faithful restore keeps
       // them near the pin; the bug clamps to the very top of the scrollback.

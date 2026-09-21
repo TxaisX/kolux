@@ -3,28 +3,28 @@ import { AutomationsSettingsPane } from './AutomationsSettingsPane'
 import { GeneralPane } from './GeneralPane'
 import { IntegrationsPane } from './IntegrationsPane'
 import { MobileSettingsPane } from './MobileSettingsPane'
-import { NightshiftAccountSettingsPane } from './NightshiftAccountSettingsPane'
+import { KoluxAccountSettingsPane } from './KoluxAccountSettingsPane'
 import { SettingsSetupGuidePane } from './SettingsSetupGuidePane'
 import { ShareSkillsSettingsPane } from './ShareSkillsSettingsPane'
 import { SettingsSection } from './SettingsSection'
 import { translate } from '@/i18n/i18n'
 import type { SettingsRenderContext } from './settings-render-context'
 
-export function renderNightshiftAccountSettingsSection(
+export function renderKoluxAccountSettingsSection(
   context: SettingsRenderContext
 ): React.JSX.Element | null {
   const { model, navigation, view } = context
   return model.showDesktopOnlySettings ? (
     <SettingsSection
-      id="nightshift-account"
-      title={translate('auto.components.settings.nightshiftAccount.title', 'Nightshift Account')}
+      id="kolux-account"
+      title={translate('auto.components.settings.koluxAccount.title', 'Kolux Account')}
       description={translate(
-        'auto.components.settings.nightshiftAccount.description',
-        'Share work instantly and reach your desktop from Nightshift Mobile wherever you are.'
+        'auto.components.settings.koluxAccount.description',
+        'Share work instantly and reach your desktop from Kolux Mobile wherever you are.'
       )}
-      searchEntries={navigation.getSectionSearchEntries('nightshift-account')}
+      searchEntries={navigation.getSectionSearchEntries('kolux-account')}
     >
-      {view.isSectionMounted('nightshift-account') ? <NightshiftAccountSettingsPane /> : null}
+      {view.isSectionMounted('kolux-account') ? <KoluxAccountSettingsPane /> : null}
     </SettingsSection>
   ) : null
 }
@@ -37,7 +37,7 @@ export function renderSetupGuideSettingsSection(context: SettingsRenderContext):
       title={translate('auto.components.settings.Settings.6d119427ef', 'Onboarding checklist')}
       description={translate(
         'auto.components.settings.Settings.6855b0f77d',
-        'Finish the core workflows that make Nightshift useful for parallel agent work.'
+        'Finish the core workflows that make Kolux useful for parallel agent work.'
       )}
       searchEntries={navigation.getSectionSearchEntries('setup-guide')}
       bodyClassName="overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none"

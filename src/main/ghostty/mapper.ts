@@ -34,7 +34,7 @@ const normalizeHex = (v: string): string => (v.startsWith('#') ? v : `#${v}`)
 
 type FieldParser = (value: string, rawValue: string | string[]) => FieldResult
 
-export function mapGhosttyToNightshift(
+export function mapGhosttyToKolux(
   parsed: Record<string, string | string[]>,
   isMacOS = process.platform === 'darwin'
 ): {
@@ -251,7 +251,7 @@ export function mapGhosttyToNightshift(
     },
 
     'focus-follows-mouse': (v) => {
-      // Why: Ghostty's focus-follows-mouse is semantically identical to Nightshift's
+      // Why: Ghostty's focus-follows-mouse is semantically identical to Kolux's
       // terminalFocusFollowsMouse — both control pointer-hover focus transfer.
       if (v !== 'true' && v !== 'false') {
         return null
@@ -303,7 +303,7 @@ export function mapGhosttyToNightshift(
       continue
     }
 
-    // Why: Nightshift's windowBackgroundBlur is a boolean; the numeric radius is lost.
+    // Why: Kolux's windowBackgroundBlur is a boolean; the numeric radius is lost.
     // Only note the drop when blur is actually being turned on — a `0` cleanly
     // maps to `false` and there is no radius to lose.
     if (

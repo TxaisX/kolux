@@ -44,7 +44,7 @@ export function claudeQueryAsyncCanceller(
 export type ClaudeControlOptions = { timeoutMs?: number }
 
 /**
- * Run one native Query control method under Nightshift's deadline and error classification.
+ * Run one native Query control method under Kolux's deadline and error classification.
  *
  * The SDK owns correlation but applies no deadline, so the timeout stays here — and its
  * message is load-bearing: the init proof matches on `claude initialize request timed out`.
@@ -79,7 +79,7 @@ export function runClaudeControl<T>(
   })
 }
 
-/** The native control surface Nightshift drives, one method per Query control request. */
+/** The native control surface Kolux drives, one method per Query control request. */
 export type ClaudeControlSurface = {
   interrupt: (
     options?: ClaudeControlOptions & { cancelQueued?: boolean }

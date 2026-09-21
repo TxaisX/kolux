@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   execInTerminal,
   getTerminalContent,
@@ -11,7 +11,7 @@ import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } fro
 
 type CodexHomeProbe = {
   codexHome: string | null
-  nightshiftCodexHome: string | null
+  koluxCodexHome: string | null
 }
 
 function readCodexHomeProbe(pageContent: string, marker: string): CodexHomeProbe | null {
@@ -23,26 +23,26 @@ function readCodexHomeProbe(pageContent: string, marker: string): CodexHomeProbe
 }
 
 test.describe('Terminal Codex runtime home', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
   })
 
   test('terminal process receives the selected account Codex home', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }) => {
     const userData = await electronApp.evaluate(({ app }) => app.getPath('userData'))
     const accountId = 'e2e-terminal-home'
     const managedHomePath = path.join(userData, 'codex-accounts', accountId, 'home')
     mkdirSync(managedHomePath, { recursive: true })
-    writeFileSync(path.join(managedHomePath, '.nightshift-managed-home'), `${accountId}\n`)
+    writeFileSync(path.join(managedHomePath, '.kolux-managed-home'), `${accountId}\n`)
     writeFileSync(
       path.join(managedHomePath, 'auth.json'),
       JSON.stringify({ OPENAI_API_KEY: 'e2e-placeholder' })
     )
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       async ({ accountId, managedHomePath }) => {
         const state = window.__store!.getState()
         await state.updateSettings({
@@ -65,25 +65,25 @@ test.describe('Terminal Codex runtime home', () => {
       },
       { accountId, managedHomePath }
     )
-    await waitForActiveTerminalManager(nightshiftPage)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    const marker = `__NIGHTSHIFT_CODEX_HOME_E2E_${Date.now()}__`
+    await waitForActiveTerminalManager(koluxPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    const marker = `__KOLUX_CODEX_HOME_E2E_${Date.now()}__`
     const command = [
       'node -e',
-      `"console.log('${marker}:' + JSON.stringify({codexHome: process.env.CODEX_HOME || null, nightshiftCodexHome: process.env.NIGHTSHIFT_CODEX_HOME || null}))"`
+      `"console.log('${marker}:' + JSON.stringify({codexHome: process.env.CODEX_HOME || null, koluxCodexHome: process.env.KOLUX_CODEX_HOME || null}))"`
     ].join(' ')
 
-    await execInTerminal(nightshiftPage, ptyId, command)
+    await execInTerminal(koluxPage, ptyId, command)
 
     let probe: CodexHomeProbe | null = null
     await expect
       .poll(
         async () => {
-          probe = readCodexHomeProbe(await getTerminalContent(nightshiftPage), marker)
+          probe = readCodexHomeProbe(await getTerminalContent(koluxPage), marker)
           return probe
         },
         { timeout: 15_000, message: 'Terminal did not expose the selected Codex account home' }
       )
-      .toEqual({ codexHome: managedHomePath, nightshiftCodexHome: managedHomePath })
+      .toEqual({ codexHome: managedHomePath, koluxCodexHome: managedHomePath })
   })
 })

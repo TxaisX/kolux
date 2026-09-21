@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import {
   getStructuredAgentSessionHost,
   setStructuredAgentSessionHost
@@ -29,7 +29,7 @@ type InstallEffects = {
 
 /** Stands in for `install()` by performing the three effects it performs, so a probe that
  *  reinstalls the host is caught by what the install *does*, not by a call count alone. */
-function stubStructuredHostInstall(runtime: NightshiftRuntimeService): {
+function stubStructuredHostInstall(runtime: KoluxRuntimeService): {
   effects: InstallEffects
   ensure: ReturnType<typeof vi.fn>
 } {
@@ -67,8 +67,8 @@ type SupportResult = {
   reason?: 'agent' | 'remote' | 'wsl'
 }
 
-function createRuntime(location: TestLocation): NightshiftRuntimeService {
-  const runtime = new NightshiftRuntimeService({ getSettings: () => ({}) } as never)
+function createRuntime(location: TestLocation): KoluxRuntimeService {
+  const runtime = new KoluxRuntimeService({ getSettings: () => ({}) } as never)
   const internal = runtime as unknown as {
     resolveStructuredAgentSessionLocation: () => Promise<unknown>
   }

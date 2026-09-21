@@ -1,8 +1,8 @@
 export function computerProviderUnavailableMessage(platform: NodeJS.Platform): string {
   if (platform === 'darwin') {
     return [
-      'computer-use has no native provider for darwin because Nightshift Computer Use.app was not found or this macOS version is unsupported.',
-      'For local development, run pnpm build:computer-macos and restart Nightshift from this worktree.'
+      'computer-use has no native provider for darwin because Kolux Computer Use.app was not found or this macOS version is unsupported.',
+      'For local development, run pnpm build:computer-macos and restart Kolux from this worktree.'
     ].join(' ')
   }
   if (platform === 'linux' || platform === 'win32') {

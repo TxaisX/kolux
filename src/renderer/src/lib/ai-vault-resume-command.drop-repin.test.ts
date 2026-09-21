@@ -6,8 +6,8 @@ vi.mock('@/lib/new-workspace', () => ({
   CLIENT_PLATFORM: 'darwin'
 }))
 
-const RECORDED_HOME = '/tmp/nightshift/codex-accounts/aaaa/home'
-const SELECTED_HOME = '/tmp/nightshift/codex-accounts/bbbb/home'
+const RECORDED_HOME = '/tmp/kolux/codex-accounts/aaaa/home'
+const SELECTED_HOME = '/tmp/kolux/codex-accounts/bbbb/home'
 
 type DropRepinState = Pick<
   AppState,

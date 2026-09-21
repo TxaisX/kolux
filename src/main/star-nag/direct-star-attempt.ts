@@ -1,4 +1,4 @@
-import { starNightshift } from '../github/client'
+import { starKolux } from '../github/client'
 import { track } from '../telemetry/client'
 import { getCohortAtEmit } from '../telemetry/cohort-classifier'
 import { type StarNagPromptSession, trackStarNagSessionOutcome } from './prompt-session-telemetry'
@@ -6,16 +6,16 @@ import { getStarNagAppStarSource } from './app-star-source'
 
 export async function runStarNagDirectStarAttempt(session: StarNagPromptSession): Promise<boolean> {
   trackStarNagSessionOutcome(session, 'star_clicked', { mode: 'gh' })
-  const starred = await starNightshift()
+  const starred = await starKolux()
   if (!starred) {
     trackStarNagSessionOutcome(session, 'direct_star_failed', { mode: 'gh' })
     session.mode = 'web'
     return false
   }
   trackStarNagSessionOutcome(session, 'direct_star_succeeded', { mode: 'gh' })
-  // Why: app_starred_nightshift remains the canonical cross-surface success event;
+  // Why: app_starred_kolux remains the canonical cross-surface success event;
   // star_nag_outcome is only the nag-funnel companion.
-  track('app_starred_nightshift', {
+  track('app_starred_kolux', {
     source: getStarNagAppStarSource(session.source),
     ...getCohortAtEmit()
   })

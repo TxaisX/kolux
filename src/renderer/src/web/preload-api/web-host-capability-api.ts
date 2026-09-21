@@ -129,7 +129,7 @@ export function createComputerUsePermissionsApi(): NonNullable<
         helperAppPath: null,
         openedSettings: false,
         launchedHelper: false,
-        nextStep: 'Computer-use permissions are managed on the Nightshift server.'
+        nextStep: 'Computer-use permissions are managed on the Kolux server.'
       })),
     reset: () =>
       Promise.resolve({

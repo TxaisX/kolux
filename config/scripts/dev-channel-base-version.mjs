@@ -59,7 +59,7 @@ export function resolveDevChannelBaseVersion(packageVersion, publishedVersions =
 }
 
 /** Tag list the workflow reads out of the main repo, newline separated. */
-export function readPublishedVersionsFromEnv(value = process.env.NIGHTSHIFT_PUBLISHED_VERSIONS) {
+export function readPublishedVersionsFromEnv(value = process.env.KOLUX_PUBLISHED_VERSIONS) {
   return String(value ?? '')
     .split(/\s+/)
     .filter(Boolean)

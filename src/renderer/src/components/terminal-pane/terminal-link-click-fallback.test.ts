@@ -277,15 +277,15 @@ describe('createFilePathLinkProvider range bounds', () => {
   it('retries a wrapped file click even when xterm already marked the link active', async () => {
     setPlatform('Macintosh')
     const rows = [
-      makeBufferLine('/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/'),
+      makeBufferLine('/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/'),
       makeBufferLine('packages/expo-two-way-audio/android/src/main/java/expo/modules/'),
       makeBufferLine('twowayaudio/ExpoTwoWayAudioLifeCycleListener.kt')
     ]
     const { terminal, element } = makeFallbackTerminal(rows)
     const disposable = installFilePathLinkClickFallback(1, terminal, {
-      startupCwd: '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5',
+      startupCwd: '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5',
       worktreeId: 'wt-1',
-      worktreePath: '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5',
+      worktreePath: '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5',
       runtimeEnvironmentId: null,
       managerRef: { current: null },
       linkProviderDisposablesRef: { current: new Map<number, IDisposable>() },
@@ -308,7 +308,7 @@ describe('createFilePathLinkProvider range bounds', () => {
     await flushAsyncWork()
 
     expect(openFilePathMock).toHaveBeenCalledWith(
-      '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/packages/expo-two-way-audio/android/src/main/java/expo/modules/twowayaudio/ExpoTwoWayAudioLifeCycleListener.kt'
+      '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/packages/expo-two-way-audio/android/src/main/java/expo/modules/twowayaudio/ExpoTwoWayAudioLifeCycleListener.kt'
     )
     expect(preventDefault).toHaveBeenCalled()
     expect(stopPropagation).toHaveBeenCalled()
@@ -543,9 +543,9 @@ describe('createFilePathLinkProvider range bounds', () => {
     ]
 
     const opened = openFilePathLinkAtBufferPosition(makeBuffer(rows), { x: 4, y: 12 }, 15, {
-      startupCwd: '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5',
+      startupCwd: '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5',
       worktreeId: 'wt-1',
-      worktreePath: '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5',
+      worktreePath: '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5',
       runtimeEnvironmentId: null,
       openWithSystemDefault: true
     })
@@ -553,7 +553,7 @@ describe('createFilePathLinkProvider range bounds', () => {
 
     expect(opened).toBe(true)
     expect(openFilePathMock).toHaveBeenCalledWith(
-      '/private/tmp/nightshift-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/packages/expo-two-way-audio/android/src/main/java/expo/modules/twowayaudio/ExpoTwoWayAudioLifeCycleListener.kt'
+      '/private/tmp/kolux-setup-e2e.hOW01f/workspaces/test-wt-5/mobile/packages/expo-two-way-audio/android/src/main/java/expo/modules/twowayaudio/ExpoTwoWayAudioLifeCycleListener.kt'
     )
   })
 

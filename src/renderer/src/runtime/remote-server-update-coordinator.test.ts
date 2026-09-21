@@ -46,7 +46,7 @@ function status(version: string, runtimeId = 'runtime-old', automatic = true): R
 
 // The main process's own copy once quitAndInstall fails; it must survive to the client verbatim.
 const INSTALL_FAILURE =
-  "Could not start the update installer. Nightshift remains open. (Command failed: pkexec dpkg -i '/home/u/.cache/nightshift-updater/pending/nightshift-ide_1.5.0_amd64.deb' pkexec must be setuid root)"
+  "Could not start the update installer. Kolux remains open. (Command failed: pkexec dpkg -i '/home/u/.cache/kolux-updater/pending/kolux-ide_1.5.0_amd64.deb' pkexec must be setuid root)"
 
 const availableSnapshot: RemoteServerUpdaterSnapshot = {
   appVersion: '1.4.0',
@@ -180,7 +180,7 @@ describe('remote server update execution', () => {
     )
     expect(result).toMatchObject({
       phase: 'failed',
-      error: 'The server updater did not offer the requested Nightshift version.'
+      error: 'The server updater did not offer the requested Kolux version.'
     })
   })
 

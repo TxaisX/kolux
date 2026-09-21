@@ -150,7 +150,7 @@ describe('ordered SSH private-key authentication', () => {
 
     expect(manual.privateKey).toEqual(Buffer.from('/keys/manual'))
     expect(unresolvedImport.privateKey).toEqual(Buffer.from('/keys/stale-imported'))
-    // Single-key targets are still ordered by Nightshift's handler so an MFA host reaches
+    // Single-key targets are still ordered by Kolux's handler so an MFA host reaches
     // keyboard-interactive once per stage rather than once per connection.
     expect(nextAuth(manual, true)).toMatchObject({ type: 'none' })
     expect(nextAuth(manual, false)).toMatchObject({

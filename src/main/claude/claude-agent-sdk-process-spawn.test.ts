@@ -41,7 +41,7 @@ function sdkOptions(overrides: Partial<SdkSpawnOptions> = {}): SdkSpawnOptions {
 }
 
 describe('claude agent SDK process spawn', () => {
-  it('routes the SDK spawn through Nightshift and retains the pid the lease adjudicates on', () => {
+  it('routes the SDK spawn through Kolux and retains the pid the lease adjudicates on', () => {
     const process = fakeSpawn()
     const spawn = createClaudeCodeProcessSpawn(process.spawnImpl)
 
@@ -61,12 +61,12 @@ describe('claude agent SDK process spawn', () => {
     })
   })
 
-  it('keeps the child out of the SDK abort path so exit proof stays Nightshift-owned', () => {
+  it('keeps the child out of the SDK abort path so exit proof stays Kolux-owned', () => {
     const process = fakeSpawn()
     const controller = new AbortController()
     createClaudeCodeProcessSpawn(process.spawnImpl).spawn(sdkOptions({ signal: controller.signal }))
 
-    // Node's spawn({signal}) kills the child on abort; Nightshift's ladder must be the
+    // Node's spawn({signal}) kills the child on abort; Kolux's ladder must be the
     // only thing that can end this process, or close() would report an assumed exit.
     expect(process.specs[0]).not.toHaveProperty('signal')
   })
@@ -84,7 +84,7 @@ describe('claude agent SDK process spawn', () => {
     expect(spawn.stderrTail.length).toBe(8192)
   })
 
-  it('hands a Windows .cmd shim to Nightshift\u2019s argument encoder', () => {
+  it('hands a Windows .cmd shim to Kolux\u2019s argument encoder', () => {
     const process = fakeSpawn()
     createClaudeCodeProcessSpawn(process.spawnImpl).spawn(
       sdkOptions({
@@ -93,7 +93,7 @@ describe('claude agent SDK process spawn', () => {
       })
     )
 
-    // The spec the spawner builds is what Nightshift's Windows branch encodes; the SDK's
+    // The spec the spawner builds is what Kolux's Windows branch encodes; the SDK's
     // own spawn would hand `.cmd` straight to Node and mangle the argument.
     const resolved = resolveSpawn(process.specs[0] as ProcessSpec, 'win32')
     expect(resolved.file.toLowerCase()).toContain('cmd.exe')

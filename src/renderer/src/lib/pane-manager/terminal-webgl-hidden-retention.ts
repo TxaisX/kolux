@@ -1,7 +1,7 @@
 import type { ManagedPaneInternal } from './pane-manager-types'
 import { disposeWebgl } from './pane-webgl-renderer'
 
-// Nightshift raises Blink's active-context ceiling to 128, but retained contexts
+// Kolux raises Blink's active-context ceiling to 128, but retained contexts
 // still consume GPU memory. Six keeps recent switch-backs on WebGL without
 // letting hidden worktrees grow that cost with the mounted-pane population.
 const MAX_RETAINED_HIDDEN_WEBGL_CONTEXTS = 6

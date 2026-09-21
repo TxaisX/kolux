@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { OrchestrationDb } from './orchestration/db'
 
 const TAB = 'worker-tab'
@@ -9,7 +9,7 @@ const WORKSPACE = '/folder-workspace'
 const LOCAL_HOST = JSON.stringify({ kind: 'local', hostId: 'local' })
 const SSH_HOST = JSON.stringify({ kind: 'ssh', targetId: 'remote-host' })
 let db: OrchestrationDb
-let runtime: NightshiftRuntimeService
+let runtime: KoluxRuntimeService
 
 afterEach(() => {
   db?.close()
@@ -17,7 +17,7 @@ afterEach(() => {
 
 function seedWorker(hostScope: string, settled = true) {
   db = new OrchestrationDb(':memory:')
-  runtime = new NightshiftRuntimeService(null)
+  runtime = new KoluxRuntimeService(null)
   runtime.setOrchestrationDb(db)
   const started = db.createStartingWorkerDispatch({
     creator: { kind: 'system' },

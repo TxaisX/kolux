@@ -41,7 +41,7 @@ function invokeHandlerWithStatus(
 }
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'nightshift-config-sync-ipc-'))
+  root = mkdtempSync(join(tmpdir(), 'kolux-config-sync-ipc-'))
   homedirMock.mockReturnValue(root)
   mkdirSync(join(root, '.codex'), { recursive: true })
 })

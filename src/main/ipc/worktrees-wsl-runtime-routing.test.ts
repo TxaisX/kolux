@@ -265,9 +265,9 @@ describe('registerWorktreeHandlers', () => {
       repoId: 'repo-1',
       name: 'wsl-fork',
       pushTarget: {
-        remoteName: 'pr-contributor-nightshift',
+        remoteName: 'pr-contributor-kolux',
         branchName: 'contributor/wsl-fork',
-        remoteUrl: 'git@github.com:contributor/nightshift.git'
+        remoteUrl: 'git@github.com:contributor/kolux.git'
       }
     })
 
@@ -279,9 +279,9 @@ describe('registerWorktreeHandlers', () => {
       expect.any(String),
       expect.objectContaining({
         pushTarget: {
-          remoteName: 'pr-contributor-nightshift',
+          remoteName: 'pr-contributor-kolux',
           branchName: 'contributor/wsl-fork',
-          remoteUrl: 'git@github.com:contributor/nightshift.git'
+          remoteUrl: 'git@github.com:contributor/kolux.git'
         }
       })
     )
@@ -294,9 +294,9 @@ describe('registerWorktreeHandlers', () => {
   it('routes fork push target materialization through the selected WSL project runtime', async () => {
     gitExecFileAsyncMock.mockResolvedValue({ stdout: '', stderr: '' })
     const target = {
-      remoteName: 'pr-contributor-nightshift',
+      remoteName: 'pr-contributor-kolux',
       branchName: 'contributor/wsl-fork',
-      remoteUrl: 'git@github.com:contributor/nightshift.git'
+      remoteUrl: 'git@github.com:contributor/kolux.git'
     }
 
     const result = await materializeWorktreePushTargetRemote(
@@ -323,30 +323,30 @@ describe('registerWorktreeHandlers', () => {
         '-t',
         'contributor/wsl-fork',
         '--no-tags',
-        'pr-contributor-nightshift',
-        'git@github.com:contributor/nightshift.git'
+        'pr-contributor-kolux',
+        'git@github.com:contributor/kolux.git'
       ],
       wslRoutingOptions
     )
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
-      ['config', '--get-all', 'remote.pr-contributor-nightshift.fetch'],
+      ['config', '--get-all', 'remote.pr-contributor-kolux.fetch'],
       wslRoutingOptions
     )
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
       [
         'config',
         '--add',
-        'remote.pr-contributor-nightshift.fetch',
-        '+refs/heads/contributor/wsl-fork*:refs/remotes/pr-contributor-nightshift/contributor/wsl-fork*'
+        'remote.pr-contributor-kolux.fetch',
+        '+refs/heads/contributor/wsl-fork*:refs/remotes/pr-contributor-kolux/contributor/wsl-fork*'
       ],
       wslRoutingOptions
     )
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
-      ['config', 'remote.pr-contributor-nightshift.tagOpt', '--no-tags'],
+      ['config', 'remote.pr-contributor-kolux.tagOpt', '--no-tags'],
       wslRoutingOptions
     )
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
-      ['config', 'remote.pr-contributor-nightshift.nightshift-created', 'true'],
+      ['config', 'remote.pr-contributor-kolux.kolux-created', 'true'],
       wslRoutingOptions
     )
     // Why: the mint's fetch is the one call in this sequence that talks to the network --
@@ -356,8 +356,8 @@ describe('registerWorktreeHandlers', () => {
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(
       [
         'fetch',
-        'pr-contributor-nightshift',
-        '+refs/heads/contributor/wsl-fork*:refs/remotes/pr-contributor-nightshift/contributor/wsl-fork*'
+        'pr-contributor-kolux',
+        '+refs/heads/contributor/wsl-fork*:refs/remotes/pr-contributor-kolux/contributor/wsl-fork*'
       ],
       { ...wslRoutingOptions, timeout: expect.any(Number) }
     )

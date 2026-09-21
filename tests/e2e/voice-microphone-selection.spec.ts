@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 type FakeMicrophoneDevice = {
@@ -52,8 +52,8 @@ async function installFakeMicrophoneDevices(
       value: mediaDevices
     })
     ;(
-      window as Window & { __nightshiftE2EFakeMicrophone?: FakeMicrophoneState }
-    ).__nightshiftE2EFakeMicrophone = state
+      window as Window & { __koluxE2EFakeMicrophone?: FakeMicrophoneState }
+    ).__koluxE2EFakeMicrophone = state
   }, devices)
 }
 
@@ -104,61 +104,57 @@ async function readMicrophoneSettings(
 }
 
 test.describe('Voice microphone selection', () => {
-  test('lists devices, persists a selected microphone, and restores it', async ({
-    nightshiftPage
-  }) => {
-    await waitForSessionReady(nightshiftPage)
-    await installFakeMicrophoneDevices(nightshiftPage, [
+  test('lists devices, persists a selected microphone, and restores it', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await installFakeMicrophoneDevices(koluxPage, [
       { deviceId: 'built-in', label: 'Built-in Microphone' },
       { deviceId: 'usb-mic', label: 'USB Microphone' }
     ])
-    await nightshiftPage.reload({ waitUntil: 'domcontentloaded' })
-    await waitForSessionReady(nightshiftPage)
-    await prepareVoiceSettings(nightshiftPage, null, null)
+    await koluxPage.reload({ waitUntil: 'domcontentloaded' })
+    await waitForSessionReady(koluxPage)
+    await prepareVoiceSettings(koluxPage, null, null)
 
-    const microphone = nightshiftPage.getByRole('combobox', { name: 'Microphone' })
+    const microphone = koluxPage.getByRole('combobox', { name: 'Microphone' })
     await expect(microphone).toHaveText('System default')
     // Settings can still be animating; keyboard activation does not depend on its position.
     await microphone.press('Space')
-    await expect(nightshiftPage.getByRole('option', { name: 'USB Microphone' })).toBeVisible()
+    await expect(koluxPage.getByRole('option', { name: 'USB Microphone' })).toBeVisible()
     // Keyboard selection bypasses the transient pointer stability gate in CI.
-    await nightshiftPage.getByRole('option', { name: 'USB Microphone' }).press('Enter')
+    await koluxPage.getByRole('option', { name: 'USB Microphone' }).press('Enter')
 
     await expect
-      .poll(() => readMicrophoneSettings(nightshiftPage), {
+      .poll(() => readMicrophoneSettings(koluxPage), {
         message: 'selected microphone did not persist'
       })
       .toEqual({ deviceId: 'usb-mic', label: 'USB Microphone' })
 
-    await nightshiftPage.reload({ waitUntil: 'domcontentloaded' })
-    await waitForSessionReady(nightshiftPage)
-    await prepareVoiceSettings(nightshiftPage, 'usb-mic', 'USB Microphone')
-    await expect(nightshiftPage.getByRole('combobox', { name: 'Microphone' })).toHaveText(
+    await koluxPage.reload({ waitUntil: 'domcontentloaded' })
+    await waitForSessionReady(koluxPage)
+    await prepareVoiceSettings(koluxPage, 'usb-mic', 'USB Microphone')
+    await expect(koluxPage.getByRole('combobox', { name: 'Microphone' })).toHaveText(
       'USB Microphone'
     )
   })
 
   test('marks an unplugged device unavailable and follows a relabeled device', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    await installFakeMicrophoneDevices(nightshiftPage, [
+    await waitForSessionReady(koluxPage)
+    await installFakeMicrophoneDevices(koluxPage, [
       { deviceId: 'built-in', label: 'Built-in Microphone' }
     ])
-    await nightshiftPage.reload({ waitUntil: 'domcontentloaded' })
-    await waitForSessionReady(nightshiftPage)
-    await prepareVoiceSettings(nightshiftPage, 'stale-airpods-id', 'AirPods')
+    await koluxPage.reload({ waitUntil: 'domcontentloaded' })
+    await waitForSessionReady(koluxPage)
+    await prepareVoiceSettings(koluxPage, 'stale-airpods-id', 'AirPods')
 
-    const microphone = nightshiftPage.getByRole('combobox', { name: 'Microphone' })
+    const microphone = koluxPage.getByRole('combobox', { name: 'Microphone' })
     await microphone.press('Space')
-    await expect(
-      nightshiftPage.getByRole('option', { name: 'AirPods (unavailable)' })
-    ).toBeVisible()
-    await nightshiftPage.keyboard.press('Escape')
+    await expect(koluxPage.getByRole('option', { name: 'AirPods (unavailable)' })).toBeVisible()
+    await koluxPage.keyboard.press('Escape')
 
-    await nightshiftPage.evaluate(() => {
-      const state = (window as Window & { __nightshiftE2EFakeMicrophone?: FakeMicrophoneState })
-        .__nightshiftE2EFakeMicrophone
+    await koluxPage.evaluate(() => {
+      const state = (window as Window & { __koluxE2EFakeMicrophone?: FakeMicrophoneState })
+        .__koluxE2EFakeMicrophone
       if (!state) {
         throw new Error('Fake microphone state is not available')
       }
@@ -172,20 +168,18 @@ test.describe('Voice microphone selection', () => {
     // Why: devicechange can leave Radix's listbox open and aria-hide the
     // trigger, so getByRole('combobox') finds nothing. The live option is
     // the stable handle; open the named trigger only if the list is closed.
-    const airpodsOption = nightshiftPage.getByRole('option', { name: 'AirPods', exact: true })
+    const airpodsOption = koluxPage.getByRole('option', { name: 'AirPods', exact: true })
     await expect(async () => {
       if (!(await airpodsOption.isVisible().catch(() => false))) {
-        const trigger = nightshiftPage.getByRole('combobox', { name: 'Microphone' })
+        const trigger = koluxPage.getByRole('combobox', { name: 'Microphone' })
         await expect(trigger).toHaveText('AirPods', { timeout: 1_000 })
         await trigger.press('Space')
       }
       await expect(airpodsOption).toBeVisible({ timeout: 1_000 })
     }).toPass({ timeout: 10_000 })
-    await expect(nightshiftPage.getByRole('option', { name: 'AirPods (unavailable)' })).toHaveCount(
-      0
-    )
-    await nightshiftPage.keyboard.press('Escape')
-    await expect(readMicrophoneSettings(nightshiftPage)).resolves.toEqual({
+    await expect(koluxPage.getByRole('option', { name: 'AirPods (unavailable)' })).toHaveCount(0)
+    await koluxPage.keyboard.press('Escape')
+    await expect(readMicrophoneSettings(koluxPage)).resolves.toEqual({
       deviceId: 'stale-airpods-id',
       label: 'AirPods'
     })

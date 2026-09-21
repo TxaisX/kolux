@@ -57,7 +57,7 @@ export abstract class AgentHookServerLifecycle extends AgentHookServerRuntimeEnv
         return
       }
       // Why: authenticate before spending work reading an untrusted body.
-      if (req.headers['x-nightshift-agent-hook-token'] !== this.token) {
+      if (req.headers['x-kolux-agent-hook-token'] !== this.token) {
         res.writeHead(403)
         res.end()
         return
@@ -190,7 +190,7 @@ export abstract class AgentHookServerLifecycle extends AgentHookServerRuntimeEnv
     this.retiredPaneFencesByKey.clear()
     this.connectionTimestampWatermarkById.clear()
     this.legacyPaneKeyAliases.clear()
-    // Why: don't unlink the endpoint file — a stale file matches fail-open and avoids a TOCTOU race with a concurrent Nightshift.
+    // Why: don't unlink the endpoint file — a stale file matches fail-open and avoids a TOCTOU race with a concurrent Kolux.
     clearAllListenerCaches(this.state)
     this.notifyStatusChangeListeners()
   }

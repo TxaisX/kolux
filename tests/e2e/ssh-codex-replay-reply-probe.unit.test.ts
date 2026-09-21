@@ -2,7 +2,7 @@ import type { ElectronApplication } from '@stablyai/playwright-test'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { installSshReplayReplyProbe, readSshReplayReplies } from './ssh-codex-replay-reply-probe'
 
-beforeEach(() => vi.stubGlobal('__nightshiftSshCodexReplayReplies', undefined))
+beforeEach(() => vi.stubGlobal('__koluxSshCodexReplayReplies', undefined))
 afterEach(() => vi.unstubAllGlobals())
 
 function harness(result: unknown) {

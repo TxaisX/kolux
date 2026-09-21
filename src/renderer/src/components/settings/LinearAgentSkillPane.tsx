@@ -5,7 +5,7 @@ import { LinearApiKeyDialog } from '@/components/linear-api-key-dialog'
 import { LinearIcon } from '@/components/icons/LinearIcon'
 import { Button } from '@/components/ui/button'
 import { useAppStore } from '@/store'
-import { NIGHTSHIFT_LINEAR_SKILL_NAME } from '@/lib/agent-feature-install-commands'
+import { KOLUX_LINEAR_SKILL_NAME } from '@/lib/agent-feature-install-commands'
 import { getLinearUsageExamples } from '@/lib/linear-usage-examples'
 import type { SkillUsageExample } from '@/lib/skill-usage-example'
 import { useLinearProviderConnected } from '@/hooks/useLinearProviderConnected'
@@ -101,7 +101,7 @@ export function LinearAgentSkillPane(): React.JSX.Element {
       title={translate('auto.components.settings.LinearAgentSkillPane.title', 'Linear')}
       description={translate(
         'auto.components.settings.LinearAgentSkillPane.description',
-        'How Linear works in Nightshift: browse issues, start linked workspaces, and let agents update tickets with /nightshift-linear.'
+        'How Linear works in Kolux: browse issues, start linked workspaces, and let agents update tickets with /kolux-linear.'
       )}
       keywords={getLinearAgentSkillPaneSearchEntries()[0].keywords}
       className="space-y-6 py-2"
@@ -132,7 +132,7 @@ export function LinearAgentSkillPane(): React.JSX.Element {
         )}
         examples={getLinearUsageExamples()}
         resolveIcon={resolveLinearExampleIcon}
-        slashCommand={`/${NIGHTSHIFT_LINEAR_SKILL_NAME}`}
+        slashCommand={`/${KOLUX_LINEAR_SKILL_NAME}`}
       />
 
       <LinearAgentSkillNotes />

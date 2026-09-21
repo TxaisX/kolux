@@ -8,7 +8,7 @@
 
 /* Shared tooltip geometry for every terminal link provider. */
 :root {
-  --nightshift-terminal-link-tooltip-height: 25px;
+  --kolux-terminal-link-tooltip-height: 25px;
 }
 
 /* Ensure pane manager root fills its absolutely-positioned container */
@@ -67,7 +67,7 @@
   caret-color: transparent;
 }
 
-.xterm.nightshift-ime-composer-placeholder .xterm-composition-remainder {
+.xterm.kolux-ime-composer-placeholder .xterm-composition-remainder {
   visibility: hidden;
 }
 
@@ -83,7 +83,7 @@
   content: '';
   position: absolute;
   border-radius: 1px;
-  background: var(--nightshift-terminal-divider-color, transparent);
+  background: var(--kolux-terminal-divider-color, transparent);
   transition: background 100ms ease;
 }
 
@@ -110,8 +110,8 @@
 .pane-divider.is-horizontal:hover::after,
 .pane-divider.is-horizontal.is-dragging::after {
   background: var(
-    --nightshift-terminal-divider-color-strong,
-    var(--nightshift-terminal-divider-color, transparent)
+    --kolux-terminal-divider-color-strong,
+    var(--kolux-terminal-divider-color, transparent)
   );
 }
 
@@ -243,24 +243,24 @@
 /* ── Pane title bar ──────────────────────────────────── */
 
 :root {
-  --nightshift-pane-title-height: 24px;
-  --nightshift-pane-title-fg: var(--terminal-pane-title-on-dark-fg);
-  --nightshift-pane-title-input-fg: var(--terminal-pane-title-on-dark-input-fg);
-  --nightshift-pane-title-placeholder: var(--terminal-pane-title-on-dark-placeholder);
-  --nightshift-pane-title-button-fg: var(--terminal-pane-title-on-dark-button-fg);
-  --nightshift-pane-title-button-hover-fg: var(--terminal-pane-title-on-dark-button-hover-fg);
-  --nightshift-pane-title-input-bg: var(--terminal-pane-title-on-dark-input-bg);
-  --nightshift-pane-title-separator: var(--terminal-pane-title-on-dark-separator);
+  --kolux-pane-title-height: 24px;
+  --kolux-pane-title-fg: var(--terminal-pane-title-on-dark-fg);
+  --kolux-pane-title-input-fg: var(--terminal-pane-title-on-dark-input-fg);
+  --kolux-pane-title-placeholder: var(--terminal-pane-title-on-dark-placeholder);
+  --kolux-pane-title-button-fg: var(--terminal-pane-title-on-dark-button-fg);
+  --kolux-pane-title-button-hover-fg: var(--terminal-pane-title-on-dark-button-hover-fg);
+  --kolux-pane-title-input-bg: var(--terminal-pane-title-on-dark-input-bg);
+  --kolux-pane-title-separator: var(--terminal-pane-title-on-dark-separator);
 }
 
 [data-pane-title-surface='light'] {
-  --nightshift-pane-title-fg: var(--terminal-pane-title-on-light-fg);
-  --nightshift-pane-title-input-fg: var(--terminal-pane-title-on-light-input-fg);
-  --nightshift-pane-title-placeholder: var(--terminal-pane-title-on-light-placeholder);
-  --nightshift-pane-title-button-fg: var(--terminal-pane-title-on-light-button-fg);
-  --nightshift-pane-title-button-hover-fg: var(--terminal-pane-title-on-light-button-hover-fg);
-  --nightshift-pane-title-input-bg: var(--terminal-pane-title-on-light-input-bg);
-  --nightshift-pane-title-separator: var(--terminal-pane-title-on-light-separator);
+  --kolux-pane-title-fg: var(--terminal-pane-title-on-light-fg);
+  --kolux-pane-title-input-fg: var(--terminal-pane-title-on-light-input-fg);
+  --kolux-pane-title-placeholder: var(--terminal-pane-title-on-light-placeholder);
+  --kolux-pane-title-button-fg: var(--terminal-pane-title-on-light-button-fg);
+  --kolux-pane-title-button-hover-fg: var(--terminal-pane-title-on-light-button-hover-fg);
+  --kolux-pane-title-input-bg: var(--terminal-pane-title-on-light-input-bg);
+  --kolux-pane-title-separator: var(--terminal-pane-title-on-light-separator);
 }
 
 /* Floating title overlay. The header owns the top strip of the pane; the rest
@@ -292,7 +292,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: var(--nightshift-pane-title-height);
+  height: var(--kolux-pane-title-height);
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -300,9 +300,9 @@
   padding: 0 8px;
   font-size: 13px;
   font-family: var(--font-mono);
-  color: var(--nightshift-pane-title-fg, rgb(255 255 255 / 0.52));
-  background: var(--nightshift-pane-title-bg, #000);
-  border-bottom: 1px solid var(--nightshift-pane-title-separator, rgb(255 255 255 / 0.06));
+  color: var(--kolux-pane-title-fg, rgb(255 255 255 / 0.52));
+  background: var(--kolux-pane-title-bg, #000);
+  border-bottom: 1px solid var(--kolux-pane-title-separator, rgb(255 255 255 / 0.06));
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   pointer-events: auto;
   user-select: none;
@@ -313,14 +313,14 @@
   top: 0;
   left: 50%;
   width: 32px;
-  height: var(--nightshift-pane-title-height);
+  height: var(--kolux-pane-title-height);
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: grab;
   opacity: 0;
-  background: color-mix(in srgb, var(--nightshift-pane-title-fg) 36%, transparent);
+  background: color-mix(in srgb, var(--kolux-pane-title-fg) 36%, transparent);
   transform: translateX(-50%);
   transition: opacity 150ms ease;
 }
@@ -330,7 +330,7 @@
   font-size: 10px;
   line-height: 1;
   letter-spacing: 0;
-  color: var(--nightshift-pane-title-button-hover-fg);
+  color: var(--kolux-pane-title-button-hover-fg);
 }
 
 .pane-title-drag-handle:hover {
@@ -346,18 +346,18 @@
   top: 0;
   left: 8px;
   z-index: 5;
-  height: var(--nightshift-pane-title-height);
+  height: var(--kolux-pane-title-height);
   /* Why: block + line-height (not flex) so the single line can ellipsize —
      an overflowing banner would wrap onto the terminal grid. */
   display: block;
-  line-height: var(--nightshift-pane-title-height);
+  line-height: var(--kolux-pane-title-height);
   max-width: calc(100% - 16px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--nightshift-pane-title-fg);
+  color: var(--kolux-pane-title-fg);
   background: transparent;
   user-select: none;
   pointer-events: none;
@@ -371,7 +371,7 @@
 /* Shared muted-ghost-button treatment; also used by
    StructuredAgentSessionTerminalReturnButton outside the pane header. */
 .pane-title-split-trigger {
-  color: var(--nightshift-pane-title-button-fg, rgb(255 255 255 / 0.3));
+  color: var(--kolux-pane-title-button-fg, rgb(255 255 255 / 0.3));
   opacity: 0;
   transition: opacity 120ms ease;
 }
@@ -386,7 +386,7 @@
 .pane-title-split-trigger[data-state='delayed-open'],
 .pane-title-split-trigger[data-state='instant-open'] {
   background: transparent;
-  color: var(--nightshift-pane-title-button-hover-fg, rgb(255 255 255 / 0.8));
+  color: var(--kolux-pane-title-button-hover-fg, rgb(255 255 255 / 0.8));
 }
 
 /* Inline edit input — matches the title text styling exactly to prevent
@@ -401,23 +401,23 @@
   flex: 1;
   min-width: 0;
   width: 100%;
-  height: var(--nightshift-pane-title-height);
+  height: var(--kolux-pane-title-height);
   box-sizing: border-box;
   padding: 0 8px;
   margin: 0;
   border: 1px solid transparent;
   border-radius: 0;
-  background: var(--nightshift-pane-title-input-bg, rgb(255 255 255 / 0.04));
+  background: var(--kolux-pane-title-input-bg, rgb(255 255 255 / 0.04));
   outline: none;
   font-size: 13px;
   line-height: 20px;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  color: var(--nightshift-pane-title-input-fg, rgb(255 255 255 / 0.7));
-  caret-color: var(--nightshift-pane-title-input-fg, rgb(255 255 255 / 0.7));
+  color: var(--kolux-pane-title-input-fg, rgb(255 255 255 / 0.7));
+  caret-color: var(--kolux-pane-title-input-fg, rgb(255 255 255 / 0.7));
 }
 
 .pane-title-input::placeholder {
-  color: var(--nightshift-pane-title-placeholder, rgb(255 255 255 / 0.38));
+  color: var(--kolux-pane-title-placeholder, rgb(255 255 255 / 0.38));
 }
 
 .pane-title-input:focus-visible {
@@ -441,8 +441,8 @@
    title bar occupies the top title-height pixels. Height is reduced by the
    same amount to prevent overflow/clipping. */
 .pane[data-has-title] .xterm-container {
-  margin-top: var(--nightshift-pane-title-height);
-  height: calc(100% - var(--nightshift-pane-title-height)); /* match margin-top */
+  margin-top: var(--kolux-pane-title-height);
+  height: calc(100% - var(--kolux-pane-title-height)); /* match margin-top */
 }
 
 /* Ghostty-style URL hover: glued to the pane's true bottom-left corner. */
@@ -459,7 +459,7 @@
   border-bottom: none;
   border-left: none;
   padding: 4px 8px;
-  height: var(--nightshift-terminal-link-tooltip-height);
+  height: var(--kolux-terminal-link-tooltip-height);
   line-height: 15px;
   max-width: 80%;
   overflow: hidden;

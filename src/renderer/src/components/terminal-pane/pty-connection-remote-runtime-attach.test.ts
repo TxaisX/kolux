@@ -377,11 +377,11 @@ describe('connectPanePty', () => {
         },
         launchToken: expect.stringMatching(new RegExp(`^${UUID_RE}$`)),
         env: expect.objectContaining({
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-1',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-          NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-1',
+          KOLUX_WORKTREE_ID: 'wt-1',
+          KOLUX_WORKSPACE_ID: 'wt-1',
+          KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
         })
       })
     )
@@ -568,7 +568,7 @@ describe('connectPanePty', () => {
     const transport = createMockTransport()
     transportFactoryQueue.push(transport)
     const setupWorktreeId =
-      'ephemeral-setup-terminal:settings-mobile-emulator-nightshift-cli-skill-terminal'
+      'ephemeral-setup-terminal:settings-mobile-emulator-kolux-cli-skill-terminal'
     mockStoreState = {
       ...mockStoreState,
       tabsByWorktree: { [setupWorktreeId]: [{ id: 'tab-1', ptyId: null }] },
@@ -594,7 +594,7 @@ describe('connectPanePty', () => {
     const transport = createMockTransport()
     transportFactoryQueue.push(transport)
     const setupWorktreeId =
-      'ephemeral-setup-terminal:settings-mobile-emulator-nightshift-cli-skill-terminal'
+      'ephemeral-setup-terminal:settings-mobile-emulator-kolux-cli-skill-terminal'
     mockStoreState = {
       ...mockStoreState,
       tabsByWorktree: { [setupWorktreeId]: [{ id: 'tab-1', ptyId: null }] },
@@ -655,16 +655,14 @@ describe('connectPanePty', () => {
       // Why: the worktree row exists (so the owner is not "ambiguous") but its repo has
       // not landed yet — exactly the window that used to fail open to local.
       worktreesByRepo: {
-        repo1: [
-          { id: 'wt-remote', repoId: 'repo1', path: '/tmp/nightshift-docker-relay-perf-repo' }
-        ]
+        repo1: [{ id: 'wt-remote', repoId: 'repo1', path: '/tmp/kolux-docker-relay-perf-repo' }]
       },
       repos: []
     } as StoreState
 
     const deps = createDeps({
       worktreeId: 'wt-remote',
-      cwd: '/tmp/nightshift-docker-relay-perf-repo'
+      cwd: '/tmp/kolux-docker-relay-perf-repo'
     })
     connectPanePty(createPane(1) as never, createManager(1) as never, deps as never)
 

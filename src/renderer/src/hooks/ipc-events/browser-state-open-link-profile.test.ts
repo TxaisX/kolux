@@ -34,7 +34,7 @@ function captureOpenLinkHandler(): (event: {
     | null = null
   const browserApi = new Proxy(
     {
-      onOpenLinkInNightshiftTab: (
+      onOpenLinkInKoluxTab: (
         callback: (event: { browserPageId: string; url: string; activate?: boolean }) => void
       ) => {
         handler = callback
@@ -56,12 +56,12 @@ function captureOpenLinkHandler(): (event: {
 
   registerBrowserStateIpcBridge([], () => false)
   if (!handler) {
-    throw new Error('Expected the bridge to subscribe to browser:open-link-in-nightshift-tab')
+    throw new Error('Expected the bridge to subscribe to browser:open-link-in-kolux-tab')
   }
   return handler
 }
 
-describe('link-opened Nightshift tabs', () => {
+describe('link-opened Kolux tabs', () => {
   beforeEach(() => {
     createBrowserTabMock.mockReset()
   })
@@ -76,7 +76,7 @@ describe('link-opened Nightshift tabs', () => {
           {
             id: 'workspace-1',
             sessionProfileId: 'profile-client-a',
-            sessionPartition: 'persist:nightshift-browser-session-client-a'
+            sessionPartition: 'persist:kolux-browser-session-client-a'
           }
         ]
       },
@@ -90,7 +90,7 @@ describe('link-opened Nightshift tabs', () => {
       'https://docs.example.com/guide',
       expect.objectContaining({
         sessionProfileId: 'profile-client-a',
-        sessionPartition: 'persist:nightshift-browser-session-client-a'
+        sessionPartition: 'persist:kolux-browser-session-client-a'
       })
     )
   })

@@ -43,14 +43,14 @@ async function loadModules() {
 beforeEach(() => {
   process.env = { ...OLD_ENV }
   for (const key of [
-    'NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN',
-    'NIGHTSHIFT_BITBUCKET_EMAIL',
-    'NIGHTSHIFT_BITBUCKET_API_TOKEN',
-    'NIGHTSHIFT_BITBUCKET_API_BASE_URL'
+    'KOLUX_BITBUCKET_ACCESS_TOKEN',
+    'KOLUX_BITBUCKET_EMAIL',
+    'KOLUX_BITBUCKET_API_TOKEN',
+    'KOLUX_BITBUCKET_API_BASE_URL'
   ]) {
     delete process.env[key]
   }
-  tempHome = mkdtempSync(join(tmpdir(), 'nightshift-bb-nodecrypt-'))
+  tempHome = mkdtempSync(join(tmpdir(), 'kolux-bb-nodecrypt-'))
   decryptSpy.mockClear()
 })
 

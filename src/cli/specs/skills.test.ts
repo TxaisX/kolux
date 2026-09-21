@@ -23,12 +23,10 @@ describe('skill command specs', () => {
   it('documents the per-reference selector beside --full', () => {
     const help = formatCommandHelp(spec('skills get'))
 
-    expect(help).toContain(
-      'Usage: nightshift skills get <topic> [--full | --reference <name>] [--json]'
-    )
+    expect(help).toContain('Usage: kolux skills get <topic> [--full | --reference <name>] [--json]')
     expect(help).toContain('--reference <name>     Print one bundled reference by name')
     expect(help).toContain('--references           List the bundled reference names for a topic')
-    expect(help).toContain('nightshift skills get orchestration --reference recovery-and-cleanup')
+    expect(help).toContain('kolux skills get orchestration --reference recovery-and-cleanup')
     expect(effectiveAllowedFlags(spec('skills get'))).toEqual(
       expect.arrayContaining(['reference', 'references'])
     )

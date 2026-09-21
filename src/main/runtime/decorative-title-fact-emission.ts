@@ -1,5 +1,5 @@
 /**
- * Why: an agent spinner re-emits a semantically identical OSC title ~12.5x/sec (Nightshift's own
+ * Why: an agent spinner re-emits a semantically identical OSC title ~12.5x/sec (Kolux's own
  * synthetic frame timer, Pi/OMP, Claude Code, Grok), and main ships every frame to the renderer
  * as its own `pty:sideEffect` message. Both renderer store writes already discard those frames
  * via `isDecorativeAgentTitleFrameChange`, so the message is pure cross-process cost.

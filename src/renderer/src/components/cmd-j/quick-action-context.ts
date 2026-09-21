@@ -168,7 +168,7 @@ export function buildCmdJQuickActionContext(args: {
   const isLoading =
     args.state.repos.length > 0 && Object.keys(args.state.worktreesByRepo).length === 0
   const runtimeMode =
-    (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ &&
+    (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ &&
     args.state.settings?.activeRuntimeEnvironmentId?.trim()
       ? 'paired-web'
       : 'local-desktop'

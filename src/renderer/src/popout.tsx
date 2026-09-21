@@ -107,10 +107,7 @@ function PopoutRoot(): React.JSX.Element {
     <RecoverableRenderErrorBoundary
       boundaryId="dashboard-popout.root"
       surface="dashboard-popout"
-      title={translate(
-        'dashboardPopout.recoverableError.title',
-        'Nightshift dashboard hit an error.'
-      )}
+      title={translate('dashboardPopout.recoverableError.title', 'Kolux dashboard hit an error.')}
       description={translate(
         'dashboardPopout.recoverableError.description',
         'The dashboard could not finish rendering. Retry to remount it, or reopen it.'

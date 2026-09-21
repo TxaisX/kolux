@@ -21,7 +21,7 @@ export type NativeChatLinkActions = {
   closeLinkActions: (dismissed?: LinkActionRequest) => void
 }
 
-/** Transcript links: file targets open in Nightshift, http(s) targets offer the same
+/** Transcript links: file targets open in Kolux, http(s) targets offer the same
  *  destination popover the terminal shows. */
 export function useNativeChatLinkActions(
   context: NativeChatFileLinkContext | null,

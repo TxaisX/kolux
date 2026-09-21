@@ -1,7 +1,4 @@
-import {
-  getNightshiftManagedCodexHomePath,
-  getSystemCodexHomePath
-} from '../codex/codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from '../codex/codex-home-paths'
 import { syncSystemConfigIntoLegacySharedCodexHome } from '../codex/codex-config-mirror'
 
 type LegacySharedCodexConfigPaths = {
@@ -14,7 +11,7 @@ export function syncLegacySharedCodexConfigForRetainedPanes(
 ): void {
   try {
     const resolvedPaths = paths ?? {
-      sharedRuntimeHome: getNightshiftManagedCodexHomePath(),
+      sharedRuntimeHome: getKoluxManagedCodexHomePath(),
       systemCodexHome: getSystemCodexHomePath()
     }
     syncSystemConfigIntoLegacySharedCodexHome({

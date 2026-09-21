@@ -9,13 +9,13 @@ import {
 } from '../../../../shared/constants'
 import { clampNumber } from '@/lib/terminal-theme'
 
-export const NIGHTSHIFT_EDITOR_QUIESCE_FILE_SAVES_EVENT = 'nightshift:editor-quiesce-file-saves'
-export const NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT = 'nightshift:editor-external-file-change'
-export const NIGHTSHIFT_EDITOR_SAVE_FILE_EVENT = 'nightshift:editor-save-file'
-export const NIGHTSHIFT_EDITOR_SAVE_AND_CLOSE_EVENT = 'nightshift:save-and-close'
-export const NIGHTSHIFT_EDITOR_FILE_SAVED_EVENT = 'nightshift:editor-file-saved'
-export const NIGHTSHIFT_EDITOR_REQUEST_CMD_SAVE_EVENT = 'nightshift:editor-request-cmd-save'
-export const NIGHTSHIFT_EDITOR_REQUEST_FILE_CLOSE_EVENT = 'nightshift:editor-request-file-close'
+export const KOLUX_EDITOR_QUIESCE_FILE_SAVES_EVENT = 'kolux:editor-quiesce-file-saves'
+export const KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT = 'kolux:editor-external-file-change'
+export const KOLUX_EDITOR_SAVE_FILE_EVENT = 'kolux:editor-save-file'
+export const KOLUX_EDITOR_SAVE_AND_CLOSE_EVENT = 'kolux:save-and-close'
+export const KOLUX_EDITOR_FILE_SAVED_EVENT = 'kolux:editor-file-saved'
+export const KOLUX_EDITOR_REQUEST_CMD_SAVE_EVENT = 'kolux:editor-request-cmd-save'
+export const KOLUX_EDITOR_REQUEST_FILE_CLOSE_EVENT = 'kolux:editor-request-file-close'
 
 export type EditorPathMutationTarget = {
   worktreeId: string
@@ -168,7 +168,7 @@ export async function requestEditorSaveQuiesce(target: EditorSaveQuiesceTarget):
   await new Promise<void>((resolve) => {
     let claimed = false
     window.dispatchEvent(
-      new CustomEvent<EditorSaveQuiesceDetail>(NIGHTSHIFT_EDITOR_QUIESCE_FILE_SAVES_EVENT, {
+      new CustomEvent<EditorSaveQuiesceDetail>(KOLUX_EDITOR_QUIESCE_FILE_SAVES_EVENT, {
         detail: {
           ...target,
           claim: () => {
@@ -191,7 +191,7 @@ export async function requestEditorFileSave(target: EditorSaveFileTarget): Promi
   await new Promise<void>((resolve, reject) => {
     let claimed = false
     window.dispatchEvent(
-      new CustomEvent<EditorSaveFileDetail>(NIGHTSHIFT_EDITOR_SAVE_FILE_EVENT, {
+      new CustomEvent<EditorSaveFileDetail>(KOLUX_EDITOR_SAVE_FILE_EVENT, {
         detail: {
           ...target,
           claim: () => {
@@ -214,7 +214,7 @@ export async function requestEditorFileSave(target: EditorSaveFileTarget): Promi
 
 export function requestEditorFileClose(fileId: string): void {
   window.dispatchEvent(
-    new CustomEvent<EditorRequestFileCloseDetail>(NIGHTSHIFT_EDITOR_REQUEST_FILE_CLOSE_EVENT, {
+    new CustomEvent<EditorRequestFileCloseDetail>(KOLUX_EDITOR_REQUEST_FILE_CLOSE_EVENT, {
       detail: { fileId }
     })
   )
@@ -225,7 +225,7 @@ export function requestEditorFileClose(fileId: string): void {
 // content destroys its unsaved draft (the data-loss half of issue #7265).
 export function notifyEditorExternalFileChange(target: EditorPathMutationTarget): void {
   window.dispatchEvent(
-    new CustomEvent<EditorPathMutationTarget>(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
+    new CustomEvent<EditorPathMutationTarget>(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, {
       detail: target
     })
   )

@@ -207,7 +207,7 @@ export function useSettingsPageEffects(
       setQuickCommandAddIntentSignal((signal) => signal + 1)
     } else if (settingsNavigationTarget.intent === 'add-ssh-host') {
       setSshHostAddIntentSignal((signal) => signal + 1)
-    } else if (settingsNavigationTarget.intent === 'add-remote-nightshift-server') {
+    } else if (settingsNavigationTarget.intent === 'add-remote-kolux-server') {
       setRemoteServerAddIntentSignal((signal) => signal + 1)
     }
     setMountedSectionIds((previous) => {

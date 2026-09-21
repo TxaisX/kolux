@@ -54,11 +54,9 @@ function parseArgs(argv) {
   return result
 }
 
-function withoutNightshiftEnvironment(extra = {}) {
+function withoutKoluxEnvironment(extra = {}) {
   return {
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(([key]) => !key.startsWith('NIGHTSHIFT_'))
-    ),
+    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('KOLUX_'))),
     ...extra
   }
 }
@@ -126,7 +124,7 @@ function assertProtocolStdout(fileName, stdout) {
 }
 
 function readGeneratedScripts(home, minMtime) {
-  const hooksDir = join(home, '.nightshift', 'agent-hooks')
+  const hooksDir = join(home, '.kolux', 'agent-hooks')
   return MANAGED_SCRIPTS.map(([fileName, source]) => {
     const path = join(hooksDir, fileName)
     const stats = statSync(path)
@@ -195,7 +193,7 @@ function nextRequest(server) {
 }
 
 async function verifyNoOpWrites(scripts, home, payload) {
-  const commandCodeBin = mkdtempSync(join(tmpdir(), 'nightshift-hook-command-code-bin-'))
+  const commandCodeBin = mkdtempSync(join(tmpdir(), 'kolux-hook-command-code-bin-'))
   symlinkSync('/bin/cat', join(commandCodeBin, 'cat'))
   try {
     for (const script of scripts) {
@@ -206,10 +204,10 @@ async function verifyNoOpWrites(scripts, home, payload) {
       const result = await runShell(
         ['/bin/sh ', JSON.stringify(script.path)].join(''),
         payload,
-        withoutNightshiftEnvironment({
+        withoutKoluxEnvironment({
           HOME: home,
           PATH: path,
-          NIGHTSHIFT_AGENT_HOOK_ENDPOINT: ''
+          KOLUX_AGENT_HOOK_ENDPOINT: ''
         })
       )
       assertSuccessfulWrite(result, [script.fileName, ' no-op'].join(''))
@@ -240,13 +238,13 @@ async function verifyClaudeDevinSkip(scripts, home, payload) {
     const result = await runShell(
       ['/bin/sh ', JSON.stringify(claude.path)].join(''),
       payload,
-      withoutNightshiftEnvironment({
+      withoutKoluxEnvironment({
         DEVIN_PROJECT_DIR: join(home, 'devin-project'),
         HOME: home,
-        NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-        NIGHTSHIFT_AGENT_HOOK_PORT: String(address.port),
-        NIGHTSHIFT_AGENT_HOOK_TOKEN: 'electron-verification-token',
-        NIGHTSHIFT_PANE_KEY: 'electron-verification-pane'
+        KOLUX_AGENT_HOOK_ENDPOINT: '',
+        KOLUX_AGENT_HOOK_PORT: String(address.port),
+        KOLUX_AGENT_HOOK_TOKEN: 'electron-verification-token',
+        KOLUX_PANE_KEY: 'electron-verification-pane'
       })
     )
     assertSuccessfulWrite(result, 'Claude Devin-import skip')
@@ -274,18 +272,18 @@ async function verifyForwarding(scripts, home, payload) {
       const result = await runShell(
         ['/bin/sh ', JSON.stringify(script.path)].join(''),
         payload,
-        withoutNightshiftEnvironment({
+        withoutKoluxEnvironment({
           HOME: home,
-          NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-          NIGHTSHIFT_AGENT_HOOK_PORT: String(address.port),
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'electron-verification-token',
-          NIGHTSHIFT_PANE_KEY: 'electron-verification-pane',
-          NIGHTSHIFT_TAB_ID: 'electron-verification-tab',
-          NIGHTSHIFT_WORKTREE_ID: 'electron-verification-worktree',
-          NIGHTSHIFT_AGENT_HOOK_ENV: 'test',
-          NIGHTSHIFT_AGENT_HOOK_VERSION: '1',
-          NIGHTSHIFT_ANTIGRAVITY_EVENT: 'PostInvocation',
-          NIGHTSHIFT_COPILOT_HOOK_EVENT: 'PostToolUse'
+          KOLUX_AGENT_HOOK_ENDPOINT: '',
+          KOLUX_AGENT_HOOK_PORT: String(address.port),
+          KOLUX_AGENT_HOOK_TOKEN: 'electron-verification-token',
+          KOLUX_PANE_KEY: 'electron-verification-pane',
+          KOLUX_TAB_ID: 'electron-verification-tab',
+          KOLUX_WORKTREE_ID: 'electron-verification-worktree',
+          KOLUX_AGENT_HOOK_ENV: 'test',
+          KOLUX_AGENT_HOOK_VERSION: '1',
+          KOLUX_ANTIGRAVITY_EVENT: 'PostInvocation',
+          KOLUX_COPILOT_HOOK_EVENT: 'PostToolUse'
         })
       )
       assertSuccessfulWrite(result, [script.fileName, ' forwarding'].join(''))
@@ -299,7 +297,7 @@ async function verifyForwarding(scripts, home, payload) {
           )
         )
       }
-      if (request.headers['x-nightshift-agent-hook-token'] !== 'electron-verification-token') {
+      if (request.headers['x-kolux-agent-hook-token'] !== 'electron-verification-token') {
         throw new Error([script.fileName, ' lost the hook token header'].join(''))
       }
       if (form.get('payload') !== payload) {
@@ -322,29 +320,29 @@ async function verifyInstalledLauncher(home, payload) {
   )
   if (
     !command ||
-    !command.includes('"${HOME-}/.nightshift/agent-hooks/claude-hook.sh"') ||
+    !command.includes('"${HOME-}/.kolux/agent-hooks/claude-hook.sh"') ||
     !command.includes('] && [ -r ') ||
     !command.includes('else { command -p cat')
   ) {
     throw new Error('Electron did not install the guarded Claude launcher')
   }
-  const scratch = mkdtempSync(join(tmpdir(), 'nightshift-hook-launcher-'))
+  const scratch = mkdtempSync(join(tmpdir(), 'kolux-hook-launcher-'))
   try {
     const missingResult = await runShell(
       command,
       payload,
-      withoutNightshiftEnvironment({ HOME: scratch })
+      withoutKoluxEnvironment({ HOME: scratch })
     )
     assertSuccessfulWrite(missingResult, 'installed missing-script launcher')
 
-    const failingPath = join(scratch, '.nightshift', 'agent-hooks', 'claude-hook.sh')
-    mkdirSync(join(scratch, '.nightshift', 'agent-hooks'), { recursive: true })
+    const failingPath = join(scratch, '.kolux', 'agent-hooks', 'claude-hook.sh')
+    mkdirSync(join(scratch, '.kolux', 'agent-hooks'), { recursive: true })
     writeFileSync(failingPath, '#!/bin/sh\ncat >/dev/null\nexit 7\n', 'utf8')
     chmodSync(failingPath, 0o755)
     const failingResult = await runShell(
       command,
       payload,
-      withoutNightshiftEnvironment({ HOME: scratch })
+      withoutKoluxEnvironment({ HOME: scratch })
     )
     if (failingResult.exitCode !== 7 || failingResult.stdinErrors.length > 0) {
       throw new Error('Installed launcher did not preserve a running script failure')

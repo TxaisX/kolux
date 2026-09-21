@@ -4,30 +4,30 @@ import { getDevInstanceIdentity, shouldApplyPreReadyAppName } from './dev-instan
 describe('dev-instance-identity', () => {
   it('keeps packaged identity stable', () => {
     expect(getDevInstanceIdentity(false, {})).toMatchObject({
-      name: 'Nightshift',
-      appName: 'Nightshift',
+      name: 'Kolux',
+      appName: 'Kolux',
       isDev: false,
       devLabel: null,
       dockBadgeLabel: null,
-      appUserModelId: 'com.txais.nightshift'
+      appUserModelId: 'com.txais.kolux'
     })
   })
 
   it('pins a stable dev appName across branches so the safeStorage key does not churn', () => {
-    const a = getDevInstanceIdentity(true, { NIGHTSHIFT_DEV_BRANCH: 'feature/a' })
-    const b = getDevInstanceIdentity(true, { NIGHTSHIFT_DEV_BRANCH: 'feature/b' })
+    const a = getDevInstanceIdentity(true, { KOLUX_DEV_BRANCH: 'feature/a' })
+    const b = getDevInstanceIdentity(true, { KOLUX_DEV_BRANCH: 'feature/b' })
 
     // Per-branch label differs (window title / app menu)...
     expect(a.name).not.toBe(b.name)
     // ...but the Keychain-driving appName is identical and distinct from prod.
-    expect(a.appName).toBe('Nightshift Dev')
-    expect(b.appName).toBe('Nightshift Dev')
-    expect(a.appName).not.toBe('Nightshift')
+    expect(a.appName).toBe('Kolux Dev')
+    expect(b.appName).toBe('Kolux Dev')
+    expect(a.appName).not.toBe('Kolux')
   })
 
   it('never renames a packaged build before ready', () => {
     // Packaged builds must keep deriving the safeStorage key from their own CFBundleName;
-    // a pre-ready rename would repoint forks ("Nightshift ALab Edition") at Nightshift's key.
+    // a pre-ready rename would repoint forks ("Kolux ALab Edition") at Kolux's key.
     expect(shouldApplyPreReadyAppName(getDevInstanceIdentity(false, {}))).toBe(false)
     expect(shouldApplyPreReadyAppName({ isDev: false })).toBe(false)
   })
@@ -38,9 +38,9 @@ describe('dev-instance-identity', () => {
 
   it('derives a readable dev label from worktree and branch env', () => {
     const identity = getDevInstanceIdentity(true, {
-      NIGHTSHIFT_DEV_REPO_ROOT: '/repo/worktrees/dev-indicator',
-      NIGHTSHIFT_DEV_WORKTREE_NAME: 'dev-indicator',
-      NIGHTSHIFT_DEV_BRANCH: 'nwparker/dev-indicator'
+      KOLUX_DEV_REPO_ROOT: '/repo/worktrees/dev-indicator',
+      KOLUX_DEV_WORKTREE_NAME: 'dev-indicator',
+      KOLUX_DEV_BRANCH: 'nwparker/dev-indicator'
     })
 
     expect(identity).toMatchObject({
@@ -50,32 +50,32 @@ describe('dev-instance-identity', () => {
       devWorktreeName: 'dev-indicator',
       devRepoRoot: '/repo/worktrees/dev-indicator'
     })
-    expect(identity.name).toBe('Nightshift: nwparker/dev-indicator')
+    expect(identity.name).toBe('Kolux: nwparker/dev-indicator')
     expect(identity.dockBadgeLabel).toBeNull()
-    expect(identity.appUserModelId).toMatch(/^com\.txais\.nightshift\.dev\.[a-f0-9]{10}$/)
+    expect(identity.appUserModelId).toMatch(/^com\.txais\.kolux\.dev\.[a-f0-9]{10}$/)
   })
 
   it('includes the branch when it differs from the worktree basename', () => {
     const identity = getDevInstanceIdentity(true, {
-      NIGHTSHIFT_DEV_REPO_ROOT: '/repo/worktrees/payment-ui',
-      NIGHTSHIFT_DEV_WORKTREE_NAME: 'payment-ui',
-      NIGHTSHIFT_DEV_BRANCH: 'feature/billing-shell'
+      KOLUX_DEV_REPO_ROOT: '/repo/worktrees/payment-ui',
+      KOLUX_DEV_WORKTREE_NAME: 'payment-ui',
+      KOLUX_DEV_BRANCH: 'feature/billing-shell'
     })
 
     expect(identity.devLabel).toBe('payment-ui @ feature/billing-shell')
-    expect(identity.name).toBe('Nightshift: feature/billing-shell')
+    expect(identity.name).toBe('Kolux: feature/billing-shell')
     expect(identity.dockBadgeLabel).toBeNull()
   })
 
   it('allows an explicit label override', () => {
     const identity = getDevInstanceIdentity(true, {
-      NIGHTSHIFT_DEV_INSTANCE_LABEL: 'manual label',
-      NIGHTSHIFT_DEV_WORKTREE_NAME: 'dev-indicator',
-      NIGHTSHIFT_DEV_BRANCH: 'feature/other'
+      KOLUX_DEV_INSTANCE_LABEL: 'manual label',
+      KOLUX_DEV_WORKTREE_NAME: 'dev-indicator',
+      KOLUX_DEV_BRANCH: 'feature/other'
     })
 
     expect(identity.devLabel).toBe('manual label')
-    expect(identity.name).toBe('Nightshift: feature/other')
+    expect(identity.name).toBe('Kolux: feature/other')
     expect(identity.dockBadgeLabel).toBeNull()
   })
 })

@@ -31,7 +31,7 @@ function createAbortError(): Error {
 const tempRoots: string[] = []
 
 async function createWorktreeDir(files: Record<string, string> = {}): Promise<string> {
-  const root = await mkdtemp(path.join(tmpdir(), 'nightshift-branch-line-total-'))
+  const root = await mkdtemp(path.join(tmpdir(), 'kolux-branch-line-total-'))
   tempRoots.push(root)
   for (const [relativePath, contents] of Object.entries(files)) {
     await writeFile(path.join(root, relativePath), contents)

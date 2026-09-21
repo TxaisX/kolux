@@ -63,7 +63,7 @@ describe('wsl login shell command helpers', () => {
 
     expect(command).toContain('getent passwd')
     expect(command).toContain('bash|zsh|ksh|mksh|ash)')
-    expect(command).toContain('exec "$_nightshift_wsl_shell" -ilc')
+    expect(command).toContain('exec "$_kolux_wsl_shell" -ilc')
     expect(command).toContain('exec /bin/sh -lc')
     expect(command).toContain("printf '\\''hello'\\''")
   })
@@ -71,7 +71,7 @@ describe('wsl login shell command helpers', () => {
   it.skipIf(process.platform === 'win32')(
     'resolves env-node launchers from the current login-shell PATH on every run',
     () => {
-      const root = mkdtempSync(join(tmpdir(), 'nightshift-wsl-login-codex-'))
+      const root = mkdtempSync(join(tmpdir(), 'kolux-wsl-login-codex-'))
       const tools = join(root, 'tools')
       const loginBin = join(root, 'login')
       const v1Bin = join(root, 'nvm-v1')
@@ -83,11 +83,11 @@ describe('wsl login shell command helpers', () => {
       const loginShell = join(loginBin, 'bash')
       writeFileSync(
         join(tools, 'getent'),
-        `#!/bin/sh\nprintf '%s\\n' "user:x:1000:1000::/home/user:$NIGHTSHIFT_TEST_LOGIN_SHELL"\n`
+        `#!/bin/sh\nprintf '%s\\n' "user:x:1000:1000::/home/user:$KOLUX_TEST_LOGIN_SHELL"\n`
       )
       writeFileSync(
         loginShell,
-        '#!/bin/sh\nexport PATH="$NIGHTSHIFT_TEST_CODEX_BIN:/usr/bin:/bin"\nexec /bin/sh -c "$2"\n'
+        '#!/bin/sh\nexport PATH="$KOLUX_TEST_CODEX_BIN:/usr/bin:/bin"\nexec /bin/sh -c "$2"\n'
       )
       for (const [bin, label] of [
         [v1Bin, 'v1'],
@@ -108,8 +108,8 @@ describe('wsl login shell command helpers', () => {
           env: {
             ...process.env,
             PATH: `${tools}:/usr/bin:/bin`,
-            NIGHTSHIFT_TEST_LOGIN_SHELL: loginShell,
-            NIGHTSHIFT_TEST_CODEX_BIN: codexBin
+            KOLUX_TEST_LOGIN_SHELL: loginShell,
+            KOLUX_TEST_CODEX_BIN: codexBin
           }
         })
 
@@ -124,9 +124,9 @@ describe('wsl login shell command helpers', () => {
   )
 
   it('keeps command-scoped environment variables in the quoted payload', () => {
-    const command = buildWslLoginShellCommand('HISTFILE=/tmp/nightshift-history printf "$HISTFILE"')
+    const command = buildWslLoginShellCommand('HISTFILE=/tmp/kolux-history printf "$HISTFILE"')
 
-    expect(command).toContain('\'HISTFILE=/tmp/nightshift-history printf "$HISTFILE"\'')
+    expect(command).toContain('\'HISTFILE=/tmp/kolux-history printf "$HISTFILE"\'')
     expectValidShSyntax(command)
   }, 30_000)
 
@@ -157,7 +157,7 @@ describe('wsl login shell command helpers', () => {
     // rc/motd to stdout (stock Ubuntu ships a sudo hint), so a raw login-shell
     // read cannot be compared byte-for-byte on a real distro.
     const captured = buildWslCapturedLoginShellCommand(
-      'nightshift_value=ok; printf "<%s>" "$nightshift_value"'
+      'kolux_value=ok; printf "<%s>" "$kolux_value"'
     )
 
     expect(
@@ -207,7 +207,7 @@ describe('wsl login shell command helpers', () => {
       expect(
         captured.readStdout(
           'To run a command as administrator (user "root"), use "sudo <command>".\n\n' +
-            '__NIGHTSHIFT_WSL_CAPTURE_BEGIN_nonce1__directory__NIGHTSHIFT_WSL_CAPTURE_END_nonce1__'
+            '__KOLUX_WSL_CAPTURE_BEGIN_nonce1__directory__KOLUX_WSL_CAPTURE_END_nonce1__'
         )
       ).toBe('directory')
     })
@@ -239,8 +239,8 @@ describe('wsl login shell command helpers', () => {
     it('emits the status plumbing the payload needs', () => {
       const captured = buildWslCapturedLoginShellCommand('exit 2', 'nonce1')
 
-      expect(captured.command).toContain('_nightshift_capture_status=$?')
-      expect(captured.command).toContain('exit $_nightshift_capture_status')
+      expect(captured.command).toContain('_kolux_capture_status=$?')
+      expect(captured.command).toContain('exit $_kolux_capture_status')
     })
 
     it('keeps payload bytes that themselves contain a fence', () => {
@@ -248,11 +248,11 @@ describe('wsl login shell command helpers', () => {
       // otherwise be truncated at the quote.
       const captured = buildWslCapturedLoginShellCommand('cat -- /f', 'nonce2')
       const payload =
-        'see __NIGHTSHIFT_WSL_CAPTURE_BEGIN_nonce1__ and __NIGHTSHIFT_WSL_CAPTURE_END_nonce1__\n'
+        'see __KOLUX_WSL_CAPTURE_BEGIN_nonce1__ and __KOLUX_WSL_CAPTURE_END_nonce1__\n'
 
       expect(
         captured.readStdout(
-          `banner\n__NIGHTSHIFT_WSL_CAPTURE_BEGIN_nonce2__${payload}__NIGHTSHIFT_WSL_CAPTURE_END_nonce2__`
+          `banner\n__KOLUX_WSL_CAPTURE_BEGIN_nonce2__${payload}__KOLUX_WSL_CAPTURE_END_nonce2__`
         )
       ).toBe(payload)
     })
@@ -266,7 +266,7 @@ describe('wsl login shell command helpers', () => {
     it('returns the tail when a payload exits before the closing fence', () => {
       const captured = buildWslCapturedLoginShellCommand('printf partial; exit 2', 'nonce1')
 
-      expect(captured.readStdout('banner\n__NIGHTSHIFT_WSL_CAPTURE_BEGIN_nonce1__partial')).toBe(
+      expect(captured.readStdout('banner\n__KOLUX_WSL_CAPTURE_BEGIN_nonce1__partial')).toBe(
         'partial'
       )
     })
@@ -298,17 +298,15 @@ describe('wsl login shell command helpers', () => {
     const command = buildWslInteractiveLoginShellCommand()
 
     expect(command).toContain('getent passwd')
-    expect(command).toContain(
-      'if [ -z "$_nightshift_wsl_shell" ] || [ ! -x "$_nightshift_wsl_shell" ]; then'
-    )
-    expect(command).toContain('_nightshift_shell_ready_root=""')
-    expect(command).toContain('if [ -n "${NIGHTSHIFT_USER_DATA_PATH:-}" ]; then')
-    expect(command).toContain('_nightshift_wsl_shell_name=$(basename "$_nightshift_wsl_shell"')
+    expect(command).toContain('if [ -z "$_kolux_wsl_shell" ] || [ ! -x "$_kolux_wsl_shell" ]; then')
+    expect(command).toContain('_kolux_shell_ready_root=""')
+    expect(command).toContain('if [ -n "${KOLUX_USER_DATA_PATH:-}" ]; then')
+    expect(command).toContain('_kolux_wsl_shell_name=$(basename "$_kolux_wsl_shell"')
     expect(command).toContain('bash)')
-    expect(command).toContain('--rcfile "${_nightshift_shell_ready_root}/bash/rcfile"')
+    expect(command).toContain('--rcfile "${_kolux_shell_ready_root}/bash/rcfile"')
     expect(command).toContain('zsh)')
-    expect(command).toContain('export ZDOTDIR="${_nightshift_shell_ready_root}/zsh"')
-    expect(command).toContain('exec "$_nightshift_wsl_shell" -l')
+    expect(command).toContain('export ZDOTDIR="${_kolux_shell_ready_root}/zsh"')
+    expect(command).toContain('exec "$_kolux_wsl_shell" -l')
     expectValidShSyntax(command)
   })
 })
@@ -316,28 +314,28 @@ describe('wsl login shell command helpers', () => {
 describe('in-guest wrapper root resolution', () => {
   // Why this test exists: the wrapper tree is content-addressed, so its path
   // carries a hash the guest cannot derive. A previous revision of this script
-  // rebuilt the root as `${NIGHTSHIFT_USER_DATA_PATH}/shell-ready`, which stopped
+  // rebuilt the root as `${KOLUX_USER_DATA_PATH}/shell-ready`, which stopped
   // matching -- every WSL pane then fell through to an unwrapped `exec $shell -l`
   // and silently lost the ready marker, OSC 133, and the launch preflight.
   it('prefers the host-published root over the legacy user-data guess', () => {
     const script = buildWslInteractiveLoginShellCommand()
-    expect(script).toContain('if [ -n "${NIGHTSHIFT_SHELL_READY_ROOT:-}" ]; then')
-    expect(script).toContain('_nightshift_shell_ready_root="${NIGHTSHIFT_SHELL_READY_ROOT%/}"')
+    expect(script).toContain('if [ -n "${KOLUX_SHELL_READY_ROOT:-}" ]; then')
+    expect(script).toContain('_kolux_shell_ready_root="${KOLUX_SHELL_READY_ROOT%/}"')
     // The legacy branch must remain reachable only as a fallback, so an older
-    // host that exports just NIGHTSHIFT_USER_DATA_PATH still wraps its shells.
-    expect(script).toContain('elif [ -n "${NIGHTSHIFT_USER_DATA_PATH:-}" ]; then')
+    // host that exports just KOLUX_USER_DATA_PATH still wraps its shells.
+    expect(script).toContain('elif [ -n "${KOLUX_USER_DATA_PATH:-}" ]; then')
   })
 
   it('resolves the published root ahead of the legacy path under a real shell', () => {
     const script = buildWslInteractiveLoginShellCommand()
     // Run only the root-resolution prologue, then report what it picked.
-    const prologue = script.split('_nightshift_wsl_shell_name=')[0] as string
+    const prologue = script.split('_kolux_wsl_shell_name=')[0] as string
     const probe = [
-      'NIGHTSHIFT_SHELL_READY_ROOT=/mnt/c/ud/shell-wrappers/deadbeefdeadbeef/shell-ready',
-      'NIGHTSHIFT_USER_DATA_PATH=/mnt/c/ud',
-      'export NIGHTSHIFT_SHELL_READY_ROOT NIGHTSHIFT_USER_DATA_PATH',
+      'KOLUX_SHELL_READY_ROOT=/mnt/c/ud/shell-wrappers/deadbeefdeadbeef/shell-ready',
+      'KOLUX_USER_DATA_PATH=/mnt/c/ud',
+      'export KOLUX_SHELL_READY_ROOT KOLUX_USER_DATA_PATH',
       prologue,
-      'printf "%s" "$_nightshift_shell_ready_root"'
+      'printf "%s" "$_kolux_shell_ready_root"'
     ].join('\n')
     const result = spawnSync('sh', ['-c', probe], { encoding: 'utf8' })
     expect(result.status).toBe(0)

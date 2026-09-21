@@ -158,7 +158,7 @@ export function resolveCommand(
       // Why: the `cd` inside bash -c handles the Linux directory. This names an
       // explicit Windows directory anyway, because `undefined` makes
       // CreateProcessW inherit the parent's — which is a deletable WSL UNC path
-      // when Nightshift was launched from a worktree (#16463).
+      // when Kolux was launched from a worktree (#16463).
       cwd: resolveWslInteropSpawnCwd(),
       wsl,
       wslMode: 'non-login-shell'

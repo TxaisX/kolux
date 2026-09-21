@@ -29,7 +29,7 @@ export type ClaudeStructuredSessionEvent =
       type: 'message'
       sessionId: string
       message: Record<string, unknown>
-      /** Present only when this replay acknowledged Nightshift's in-flight dispatch. */
+      /** Present only when this replay acknowledged Kolux's in-flight dispatch. */
       startsTurn?: true
     }
   | { type: 'provider-frame'; sessionId: string; kind: string; payload: unknown }

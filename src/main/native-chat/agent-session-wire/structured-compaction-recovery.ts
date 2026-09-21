@@ -19,7 +19,7 @@ export async function recoverInterruptedCompaction(
   }
   const error = 'Previous compaction completion could not be confirmed after session recovery.'
   await journal.appendItem(
-    { provider: 'nightshift', clientMessageId: `compact:${command.operationId}` },
+    { provider: 'kolux', clientMessageId: `compact:${command.operationId}` },
     { kind: 'status', text: error },
     { fence }
   )

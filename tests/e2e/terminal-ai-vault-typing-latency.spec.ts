@@ -2,7 +2,7 @@ import type { Page, TestInfo } from '@stablyai/playwright-test'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   focusActiveTerminalInput,
   sendToTerminal,
@@ -27,7 +27,7 @@ import {
   type RendererJank
 } from './ai-vault-typing-bench-renderer-probe'
 
-const BENCH_ENABLED = process.env.NIGHTSHIFT_AI_VAULT_TYPING_BENCH === '1'
+const BENCH_ENABLED = process.env.KOLUX_AI_VAULT_TYPING_BENCH === '1'
 const RESULTS_DIR = path.resolve(__dirname, '..', 'tools', 'benchmarks', 'results')
 
 function readPositiveInt(name: string, fallback: number): number {
@@ -35,12 +35,12 @@ function readPositiveInt(name: string, fallback: number): number {
   return Number.isInteger(value) && value > 0 ? value : fallback
 }
 
-const ITERATIONS = readPositiveInt('NIGHTSHIFT_AI_VAULT_BENCH_ITERATIONS', 3)
-const SESSION_COUNT = readPositiveInt('NIGHTSHIFT_AI_VAULT_BENCH_SESSIONS', 300)
-const PAYLOAD_KIB = readPositiveInt('NIGHTSHIFT_AI_VAULT_BENCH_PAYLOAD_KIB', 128)
-const KEY_COUNT = readPositiveInt('NIGHTSHIFT_AI_VAULT_BENCH_KEYS', 100)
-const KEY_CADENCE_MS = readPositiveInt('NIGHTSHIFT_AI_VAULT_BENCH_CADENCE_MS', 30)
-const BENCH_LABEL = process.env.NIGHTSHIFT_AI_VAULT_BENCH_LABEL ?? 'dev'
+const ITERATIONS = readPositiveInt('KOLUX_AI_VAULT_BENCH_ITERATIONS', 3)
+const SESSION_COUNT = readPositiveInt('KOLUX_AI_VAULT_BENCH_SESSIONS', 300)
+const PAYLOAD_KIB = readPositiveInt('KOLUX_AI_VAULT_BENCH_PAYLOAD_KIB', 128)
+const KEY_COUNT = readPositiveInt('KOLUX_AI_VAULT_BENCH_KEYS', 100)
+const KEY_CADENCE_MS = readPositiveInt('KOLUX_AI_VAULT_BENCH_CADENCE_MS', 30)
+const BENCH_LABEL = process.env.KOLUX_AI_VAULT_BENCH_LABEL ?? 'dev'
 const TYPING_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 type ArmResult = {
@@ -182,18 +182,18 @@ test.describe('Terminal typing during AI Vault refresh bench', () => {
 
   test('alternates control typing and forced Vault refresh typing', async ({
     electronApp,
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
     test.skip(!BENCH_ENABLED, 'Bench-only: run via pnpm bench:ai-vault-typing')
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await openAiVaultSidebar(nightshiftPage)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await openAiVaultSidebar(koluxPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const homePath = await electronApp.evaluate(({ app }) => app.getPath('home'))
-    const scriptPath = path.join(testRepoPath, `.nightshift-vault-typing-${randomUUID()}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-vault-typing-${randomUUID()}.mjs`)
     const arms: ArmResult[] = []
     let seededBytes = 0
 
@@ -211,11 +211,11 @@ test.describe('Terminal typing during AI Vault refresh bench', () => {
           iteration % 2 === 0 ? ['control', 'vault-refresh'] : ['vault-refresh', 'control']
         for (const [order, scenario] of scenarios.entries()) {
           arms.push(
-            await runArm({ page: nightshiftPage, ptyId, scriptPath, iteration, scenario, order })
+            await runArm({ page: koluxPage, ptyId, scriptPath, iteration, scenario, order })
           )
           if (scenario === 'vault-refresh') {
             await expect(
-              nightshiftPage.getByText(batch.newestTitle, { exact: true }).first()
+              koluxPage.getByText(batch.newestTitle, { exact: true }).first()
             ).toBeVisible({
               timeout: 30_000
             })
@@ -225,7 +225,7 @@ test.describe('Terminal typing during AI Vault refresh bench', () => {
       writeReport(testInfo, arms, seededBytes)
       expect(arms.every((arm) => arm.missingEchoCount === 0)).toBe(true)
     } finally {
-      await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+      await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       rmSync(scriptPath, { force: true })
     }
   })

@@ -61,7 +61,34 @@ describe('parseEphemeralVmRecipeResult', () => {
     }
   })
 
-  it('parses a nightshift-server connection result', () => {
+  it('parses a kolux-server connection result', () => {
+    const pairingCode = makePairingCode()
+
+    expect(
+      parseEphemeralVmRecipeResult(
+        JSON.stringify({
+          schemaVersion: 1,
+          connection: {
+            type: 'kolux-server',
+            pairingCode,
+            projectRoot: '/workspace/repo'
+          }
+        })
+      )
+    ).toEqual({
+      ok: true,
+      result: {
+        schemaVersion: 1,
+        connection: {
+          type: 'kolux-server',
+          pairingCode,
+          projectRoot: '/workspace/repo'
+        }
+      }
+    })
+  })
+
+  it('normalizes the pre-rename nightshift-server connection type', () => {
     const pairingCode = makePairingCode()
 
     expect(
@@ -80,7 +107,7 @@ describe('parseEphemeralVmRecipeResult', () => {
       result: {
         schemaVersion: 1,
         connection: {
-          type: 'nightshift-server',
+          type: 'kolux-server',
           pairingCode,
           projectRoot: '/workspace/repo'
         }
@@ -221,7 +248,7 @@ describe('parseEphemeralVmRecipeResult', () => {
       )
     ).toEqual({
       ok: false,
-      error: 'Recipe result pairingCode is not a valid Nightshift pairing code.'
+      error: 'Recipe result pairingCode is not a valid Kolux pairing code.'
     })
   })
 
@@ -303,7 +330,7 @@ describe('parseEphemeralVmRecipeResult', () => {
       })
     ).toEqual({
       schemaVersion: 1,
-      pairingCode: 'nightshift://pair?code=[redacted]',
+      pairingCode: 'kolux://pair?code=[redacted]',
       projectRoot: '/workspace/repo',
       userData: {
         providerResourceId: 'sandbox-123',

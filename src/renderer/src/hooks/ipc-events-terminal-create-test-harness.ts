@@ -39,7 +39,7 @@ export async function setupTerminalCreateSurfacing(
   const createFloatingWorkspaceTerminalTab = vi.fn()
   const createWebRuntimeSessionTerminal = vi.fn().mockResolvedValue({
     status: 'failed',
-    message: 'The workspace is not connected to a remote Nightshift host.'
+    message: 'The workspace is not connected to a remote Kolux host.'
   })
   const focusRuntimeTerminalSurface = vi.fn(() => false)
   const focusTerminalTabSurface = vi.fn()

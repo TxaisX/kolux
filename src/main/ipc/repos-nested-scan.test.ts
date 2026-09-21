@@ -238,7 +238,7 @@ describe('projectGroups IPC validation', () => {
 
   it('returns partial local scan results after cancellation', async () => {
     vi.mocked(isGitRepo).mockReturnValue(false)
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-nested-local-cancel-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-nested-local-cancel-'))
     try {
       await mkdir(join(root, 'api', '.git'), { recursive: true })
       await mkdir(join(root, 'web', '.git'), { recursive: true })

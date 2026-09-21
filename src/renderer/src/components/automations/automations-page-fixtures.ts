@@ -155,8 +155,8 @@ export function makeScopedExternalManager(
 function makeRepo(): Repo {
   return {
     id: REPO_ID,
-    displayName: 'nightshift',
-    path: '/repos/nightshift',
+    displayName: 'kolux',
+    path: '/repos/kolux',
     badgeColor: '#000000',
     addedAt: 1,
     worktreeBaseRef: 'main'
@@ -170,8 +170,8 @@ function makeProjectHostSetup(): ProjectHostSetup {
     projectId: 'project-1',
     hostId: 'local',
     repoId: REPO_ID,
-    path: '/repos/nightshift',
-    displayName: 'nightshift',
+    path: '/repos/kolux',
+    displayName: 'kolux',
     setupState: 'ready',
     setupMethod: 'legacy-repo',
     createdAt: 1,
@@ -184,7 +184,7 @@ function makeWorktree(): Worktree {
     id: WORKSPACE_ID,
     repoId: REPO_ID,
     displayName: 'main',
-    path: '/repos/nightshift',
+    path: '/repos/kolux',
     branch: 'main'
   } as Worktree
 }

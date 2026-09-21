@@ -43,13 +43,13 @@ describe('BrowserClientPageCommandExecutor', () => {
     )
     expect(dependencies.routeSessions.preparePage).toHaveBeenCalledWith({
       identity: {
-        nightshiftProfileId: 'nightshift-profile-a',
+        koluxProfileId: 'kolux-profile-a',
         browserProfileId: 'profile-a',
         authorityConnectionIdentity: 'authority-record-a',
         executionHostIdentity: 'execution-host-record-a'
       },
       legacyIdentity: {
-        nightshiftProfileId: 'nightshift-profile-a',
+        koluxProfileId: 'kolux-profile-a',
         browserProfileId: 'profile-a',
         authorityConnectionIdentity: 'legacy-authority-record-a',
         executionHostIdentity: 'legacy-execution-host-record-a'

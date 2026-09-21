@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedWebClient
@@ -16,7 +16,7 @@ type ClientMirror = {
   tabGroups: { id: string; tabOrder: string[] }[]
 }
 
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-headed-agent-focus-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-headed-agent-focus-'))
 const spawnMarkerPath = path.join(scratch, 'agent-spawns.txt')
 const inputMarkerPath = path.join(scratch, 'agent-input.txt')
 const exitTriggerPath = path.join(scratch, 'exit-agent')
@@ -35,9 +35,9 @@ const writableShellScript = path.join(
 
 test.use({
   launchEnv: {
-    NIGHTSHIFT_REPRO_EXIT_TRIGGER: exitTriggerPath,
-    NIGHTSHIFT_REPRO_INPUT_MARKER: inputMarkerPath,
-    NIGHTSHIFT_REPRO_SPAWN_MARKER: spawnMarkerPath
+    KOLUX_REPRO_EXIT_TRIGGER: exitTriggerPath,
+    KOLUX_REPRO_INPUT_MARKER: inputMarkerPath,
+    KOLUX_REPRO_SPAWN_MARKER: spawnMarkerPath
   }
 })
 
@@ -246,22 +246,22 @@ async function launchAgent(
 
 test('headed paired host keeps structured agent focus viewer-local @headful', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(180_000)
   const override = fixtureCommand(fixtureScript)
-  await nightshiftPage.evaluate(async (agentCommand) => {
+  await koluxPage.evaluate(async (agentCommand) => {
     const settings = await window.api.settings.set({
       agentCmdOverrides: { codex: agentCommand }
     })
     window.__store?.setState({ settings })
   }, override)
 
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedWebClient(electronApp, offer)
   let cleanupWorktreeId: string | null = null
   try {
-    const worktreeId = await nightshiftPage.evaluate(() => {
+    const worktreeId = await koluxPage.evaluate(() => {
       const state = window.__store?.getState()
       if (!state?.activeWorktreeId) {
         throw new Error('Headed host did not select its seeded worktree')
@@ -368,7 +368,7 @@ test('headed paired host keeps structured agent focus viewer-local @headful', as
       .not.toBeNull()
     const legacy = await launchAgent(client.page, {
       ...session,
-      hostPage: nightshiftPage,
+      hostPage: koluxPage,
       kind: 'fresh',
       activate: false,
       afterTabId: toWebTerminalSurfaceTabId(`${predecessorHostTabId}::${predecessorHostLeafId}`)
@@ -404,26 +404,26 @@ test('headed paired host keeps structured agent focus viewer-local @headful', as
     expectImmediatelyAfter(authoritativeTabOrder, legacy.terminal.tabId, successorHostTabId)
     const freshFocused = await launchAgent(client.page, {
       ...session,
-      hostPage: nightshiftPage,
+      hostPage: koluxPage,
       kind: 'fresh',
       activate: true
     })
     const freshBackground = await launchAgent(client.page, {
       ...session,
-      hostPage: nightshiftPage,
+      hostPage: koluxPage,
       kind: 'fresh',
       activate: false
     })
     const resumeFocused = await launchAgent(client.page, {
       ...session,
-      hostPage: nightshiftPage,
+      hostPage: koluxPage,
       kind: 'resume',
       activate: true,
       providerSessionId: 'headed-focus-resume'
     })
     const resumeBackground = await launchAgent(client.page, {
       ...session,
-      hostPage: nightshiftPage,
+      hostPage: koluxPage,
       kind: 'resume',
       activate: false,
       providerSessionId: 'headed-background-resume'
@@ -442,7 +442,7 @@ test('headed paired host keeps structured agent focus viewer-local @headful', as
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(async () =>
+          koluxPage.evaluate(async () =>
             (await window.api.pty.listSessions()).map((session) => session.id)
           ),
         { timeout: 15_000 }
@@ -515,7 +515,7 @@ test('headed paired host keeps structured agent focus viewer-local @headful', as
     await expect
       .poll(
         () =>
-          nightshiftPage.evaluate(
+          koluxPage.evaluate(
             async (ptyIds) =>
               (await window.api.pty.listSessions())
                 .map((session) => session.id)

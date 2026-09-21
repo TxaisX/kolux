@@ -1,6 +1,6 @@
-// Launches the copied Nightshift.exe as the daemon host (ELECTRON_RUN_AS_NODE=1) and
+// Launches the copied Kolux.exe as the daemon host (ELECTRON_RUN_AS_NODE=1) and
 // waits for its {type:'ready'} IPC signal. Mirrors the real fork() options in
-// src/main/daemon/daemon-init.ts (detached, ipc channel, NIGHTSHIFT_USER_DATA_PATH).
+// src/main/daemon/daemon-init.ts (detached, ipc channel, KOLUX_USER_DATA_PATH).
 
 import { spawn } from 'node:child_process'
 import { createWriteStream } from 'node:fs'
@@ -29,13 +29,13 @@ export function launchDaemonHost(options) {
   const env = {
     ...process.env,
     ELECTRON_RUN_AS_NODE: '1',
-    NIGHTSHIFT_USER_DATA_PATH: workDir
+    KOLUX_USER_DATA_PATH: workDir
   }
   // The current branch's node-pty patch resolves natives relative to its own
   // dir, so this env var is inert there; set it anyway so the spike still works
-  // if run against a build that carries the NIGHTSHIFT_NODE_PTY_NATIVE_DIR patch.
+  // if run against a build that carries the KOLUX_NODE_PTY_NATIVE_DIR patch.
   if (nodePtyNativeDir) {
-    env.NIGHTSHIFT_NODE_PTY_NATIVE_DIR = nodePtyNativeDir
+    env.KOLUX_NODE_PTY_NATIVE_DIR = nodePtyNativeDir
   }
 
   // Why: --log-file makes the daemon write its session lifecycle events

@@ -61,7 +61,7 @@ export class PluginMarketplaceInstaller {
     pluginKey: string
   ): Promise<PluginMarketplaceInstallPreview> {
     const listing = await this.requireListing(marketplaceSourceId, pluginKey)
-    const stagingDirectory = await mkdtemp(join(tmpdir(), 'nightshift-plugin-marketplace-preview-'))
+    const stagingDirectory = await mkdtemp(join(tmpdir(), 'kolux-plugin-marketplace-preview-'))
     try {
       const resolvedCommit = await checkoutPluginGitSource({
         url: listing.source.url,
@@ -102,7 +102,7 @@ export class PluginMarketplaceInstaller {
     const blockedReason =
       listing.blockedByKillList?.reason ?? this.blockedPluginReason(preview.pluginKey)
     if (blockedReason) {
-      return { ok: false, error: `plugin is blocked by Nightshift's safety list: ${blockedReason}` }
+      return { ok: false, error: `plugin is blocked by Kolux's safety list: ${blockedReason}` }
     }
     if (listing.marketplaceCommit !== preview.marketplaceCommit) {
       return { ok: false, error: 'marketplace changed after preview; review the plugin again' }

@@ -581,16 +581,16 @@ describe('hydrateLocalPtyRegistryAtBoot', () => {
 
   it('matches Windows worktree path spelling while preserving the daemon worktree id', async () => {
     const { hydrate, listRegisteredPtys } = await loadFresh()
-    const worktreeId = 'repo-a::C:/Users/Neil/Nightshift'
+    const worktreeId = 'repo-a::C:/Users/Neil/Kolux'
     const ptyId = `${worktreeId}@@cafebabe`
     getDaemonProviderMock.mockReturnValue(
       makeProvider([
-        { sessionId: ptyId, pid: 4242, cwd: 'C:/Users/Neil/Nightshift' } as unknown as SessionInfo
+        { sessionId: ptyId, pid: 4242, cwd: 'C:/Users/Neil/Kolux' } as unknown as SessionInfo
       ])
     )
     listLocalRepoWorktreesStrictMock.mockResolvedValue([
       {
-        path: 'c:\\users\\neil\\nightshift',
+        path: 'c:\\users\\neil\\kolux',
         head: '',
         branch: '',
         isBare: false,
@@ -598,29 +598,29 @@ describe('hydrateLocalPtyRegistryAtBoot', () => {
       }
     ])
 
-    await hydrate(makeStore([{ id: 'repo-a', path: 'C:\\Users\\Neil\\Nightshift' }]))
+    await hydrate(makeStore([{ id: 'repo-a', path: 'C:\\Users\\Neil\\Kolux' }]))
 
     expect(listRegisteredPtys()).toEqual([expect.objectContaining({ ptyId, worktreeId })])
   })
 
   it('fails closed when live worktrees collide on one normalized key', async () => {
     const { hydrate, listRegisteredPtys } = await loadFresh()
-    const ptyId = 'repo-a::C:/Users/Neil/Nightshift@@cafebabe'
+    const ptyId = 'repo-a::C:/Users/Neil/Kolux@@cafebabe'
     getDaemonProviderMock.mockReturnValue(
       makeProvider([
-        { sessionId: ptyId, pid: 4242, cwd: 'C:/Users/Neil/Nightshift' } as unknown as SessionInfo
+        { sessionId: ptyId, pid: 4242, cwd: 'C:/Users/Neil/Kolux' } as unknown as SessionInfo
       ])
     )
     listLocalRepoWorktreesStrictMock.mockResolvedValue([
       {
-        path: 'C:/Users/Neil/Nightshift',
+        path: 'C:/Users/Neil/Kolux',
         head: '',
         branch: '',
         isBare: false,
         isMainWorktree: true
       },
       {
-        path: 'c:\\users\\neil\\nightshift',
+        path: 'c:\\users\\neil\\kolux',
         head: '',
         branch: '',
         isBare: false,
@@ -628,27 +628,27 @@ describe('hydrateLocalPtyRegistryAtBoot', () => {
       }
     ])
 
-    await hydrate(makeStore([{ id: 'repo-a', path: 'C:/Users/Neil/Nightshift' }]))
+    await hydrate(makeStore([{ id: 'repo-a', path: 'C:/Users/Neil/Kolux' }]))
 
     expect(listRegisteredPtys()).toHaveLength(0)
   })
 
   it('matches local WSL UNC aliases without treating WSL as a remote host', async () => {
     const { hydrate, listRegisteredPtys } = await loadFresh()
-    const worktreeId = 'repo-a::\\\\wsl$\\Ubuntu\\home\\neil\\nightshift'
+    const worktreeId = 'repo-a::\\\\wsl$\\Ubuntu\\home\\neil\\kolux'
     const ptyId = `${worktreeId}@@cafebabe`
     getDaemonProviderMock.mockReturnValue(
       makeProvider([
         {
           sessionId: ptyId,
           pid: 4242,
-          cwd: '\\\\wsl$\\Ubuntu\\home\\neil\\nightshift'
+          cwd: '\\\\wsl$\\Ubuntu\\home\\neil\\kolux'
         } as unknown as SessionInfo
       ])
     )
     listLocalRepoWorktreesStrictMock.mockResolvedValue([
       {
-        path: '\\\\wsl.localhost\\ubuntu\\home\\neil\\nightshift',
+        path: '\\\\wsl.localhost\\ubuntu\\home\\neil\\kolux',
         head: '',
         branch: '',
         isBare: false,
@@ -656,7 +656,7 @@ describe('hydrateLocalPtyRegistryAtBoot', () => {
       }
     ])
 
-    await hydrate(makeStore([{ id: 'repo-a', path: '\\\\wsl$\\Ubuntu\\home\\neil\\nightshift' }]))
+    await hydrate(makeStore([{ id: 'repo-a', path: '\\\\wsl$\\Ubuntu\\home\\neil\\kolux' }]))
 
     expect(listRegisteredPtys()).toEqual([expect.objectContaining({ ptyId, worktreeId })])
   })

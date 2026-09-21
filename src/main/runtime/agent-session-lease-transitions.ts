@@ -114,7 +114,7 @@ export function commitAgentSessionProcessIdentity(
     throw new Error('agent_session_ownership_unknown')
   }
   if (record.lease.reservedSpawnToken !== args.process.spawnToken) {
-    // Why: a child that cannot echo the reserved token is not the process Nightshift started.
+    // Why: a child that cannot echo the reserved token is not the process Kolux started.
     throw new Error('agent_session_ownership_unknown')
   }
   return withLease(record, {

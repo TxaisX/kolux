@@ -36,7 +36,7 @@ describe('short relay socket dir guard, against a real shell', () => {
   }
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-relay-dir-guard-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-relay-dir-guard-'))
   })
 
   afterEach(async () => {

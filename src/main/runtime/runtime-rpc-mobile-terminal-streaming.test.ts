@@ -3,9 +3,9 @@ import { rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { readRuntimeMetadata } from './runtime-metadata'
-import { NightshiftRuntimeRpcServer } from './runtime-rpc'
+import { KoluxRuntimeRpcServer } from './runtime-rpc'
 import { parsePairingCode } from '../../shared/pairing'
 import { subscribeRemoteRuntimeRequest } from '../../shared/remote-runtime-client'
 import {
@@ -40,10 +40,10 @@ vi.mock('../git/worktree', () => {
   }
 })
 
-describe('NightshiftRuntimeRpcServer', () => {
+describe('KoluxRuntimeRpcServer', () => {
   it('mirrors laptop-created remote runtime terminals into phone session tabs over RPC', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     const spawn = vi.fn().mockResolvedValue({ id: 'laptop-created-pty' })
     runtime.setPtyController({
       spawn,
@@ -51,7 +51,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       kill: () => true,
       getForegroundProcess: async () => null
     })
-    const server = new NightshiftRuntimeRpcServer({ runtime, userDataPath })
+    const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
 
     await server.start()
 
@@ -152,9 +152,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('streams laptop-created runtime terminals to a paired phone WebSocket client', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     const writes: string[] = []
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     const spawn = vi.fn().mockResolvedValue({ id: 'paired-laptop-pty' })
     runtime.setPtyController({
       spawn,
@@ -165,7 +165,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       kill: () => true,
       getForegroundProcess: async () => null
     })
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
@@ -295,8 +295,8 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('authorizes a mobile artifact tap after first-connect backfill even once the raw window scrolls', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     runtime.setPtyController({
       spawn: vi.fn().mockResolvedValue({ id: 'pty-1' }),
       write: () => true,
@@ -304,14 +304,14 @@ describe('NightshiftRuntimeRpcServer', () => {
       getCwd: async () => '/tmp/worktree-a',
       getForegroundProcess: async () => null
     })
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,
       wsPort: 0
     })
     // Real artifact under the temp root so the grant path stats it.
-    const artifactPath = join(tmpdir(), `nightshift-artifact-${process.pid}-${Date.now()}.json`)
+    const artifactPath = join(tmpdir(), `kolux-artifact-${process.pid}-${Date.now()}.json`)
     await writeFile(artifactPath, '{"ok":true}')
 
     runtime.attachWindow(1)
@@ -399,7 +399,7 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('completes remote E2EE authentication against a runtime proxy without activateRecentPtyPathCandidateTracking', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     // Why: a remote-host runtime proxy only implements RPC-forwarded methods;
     // activation is a local-host concern, so the proxy legitimately lacks
     // activateRecentPtyPathCandidateTracking and onReady must not throw.
@@ -410,12 +410,12 @@ describe('NightshiftRuntimeRpcServer', () => {
       cleanupSubscriptionsForConnection: () => {},
       cancelMobileDictationForConnection: () => {},
       onClientDisconnected: () => {}
-    } as unknown as NightshiftRuntimeService
+    } as unknown as KoluxRuntimeService
     expect(
       (runtimeProxy as { activateRecentPtyPathCandidateTracking?: unknown })
         .activateRecentPtyPathCandidateTracking
     ).toBeUndefined()
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime: runtimeProxy,
       userDataPath,
       enableWebSocket: true,
@@ -451,9 +451,9 @@ describe('NightshiftRuntimeRpcServer', () => {
   })
 
   it('keeps active runtime multiplex streams responsive while a background stream is ACK-limited over WebSocket', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-rpc-'))
+    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-rpc-'))
     const writes: { terminal: string; text: string }[] = []
-    const runtime = new NightshiftRuntimeService(makeStore() as never)
+    const runtime = new KoluxRuntimeService(makeStore() as never)
     const spawn = vi
       .fn()
       .mockResolvedValueOnce({ id: 'multiplex-background-pty' })
@@ -467,7 +467,7 @@ describe('NightshiftRuntimeRpcServer', () => {
       kill: () => true,
       getForegroundProcess: async () => null
     })
-    const server = new NightshiftRuntimeRpcServer({
+    const server = new KoluxRuntimeRpcServer({
       runtime,
       userDataPath,
       enableWebSocket: true,

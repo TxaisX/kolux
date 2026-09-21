@@ -2,7 +2,7 @@ import type { Page } from '@stablyai/playwright-test'
 import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   focusActiveTerminalInput,
   getTerminalContent,
@@ -61,32 +61,32 @@ function median(values: number[]): number {
 
 test.describe('Terminal typing latency', () => {
   test('interactive prompt echoes typed keys without visible lag', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
     const runId = randomUUID()
-    const scriptPath = path.join(testRepoPath, `.nightshift-typing-benchmark-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-typing-benchmark-${runId}.mjs`)
     writeFileSync(scriptPath, interactivePromptScript(runId))
     let commandSent = false
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
+      await sendToTerminal(koluxPage, ptyId, `node ${JSON.stringify(scriptPath)}\r`)
       commandSent = true
-      await waitForTerminalOutput(nightshiftPage, `TYPING_READY_${runId}`, 10_000)
-      await focusActiveTerminalInput(nightshiftPage)
+      await waitForTerminalOutput(koluxPage, `TYPING_READY_${runId}`, 10_000)
+      await focusActiveTerminalInput(koluxPage)
 
       const latencies: number[] = []
       for (const [index, char] of [...KEY_LATENCY_SAMPLES].entries()) {
         const seq = index + 1
         const marker = `TYPING_KEY_${runId}_${seq}`
         const start = performance.now()
-        await nightshiftPage.keyboard.type(char)
-        await waitForMarkerLatency(nightshiftPage, marker, MAX_WORST_KEY_LATENCY_MS)
+        await koluxPage.keyboard.type(char)
+        await waitForMarkerLatency(koluxPage, marker, MAX_WORST_KEY_LATENCY_MS)
         latencies.push(performance.now() - start)
       }
 
@@ -103,7 +103,7 @@ test.describe('Terminal typing latency', () => {
       expect(worstLatency).toBeLessThan(MAX_WORST_KEY_LATENCY_MS)
     } finally {
       if (commandSent) {
-        await sendToTerminal(nightshiftPage, ptyId, '\x03').catch(() => undefined)
+        await sendToTerminal(koluxPage, ptyId, '\x03').catch(() => undefined)
       }
       rmSync(scriptPath, { force: true })
     }

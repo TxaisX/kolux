@@ -5,7 +5,7 @@ import { resolvePnpmCliInvocation } from './pnpm-cli-invocation.mjs'
 
 const requestedBase =
   process.argv.slice(2).find((argument) => argument !== '--') ??
-  process.env.NIGHTSHIFT_CODE_QUALITY_BASE ??
+  process.env.KOLUX_CODE_QUALITY_BASE ??
   'origin/main'
 const base = resolvePullRequestDiffBase(process.cwd(), requestedBase)
 // Why validate rather than trust: `base` arrives from argv or the environment and

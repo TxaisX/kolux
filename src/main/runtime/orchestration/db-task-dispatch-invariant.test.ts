@@ -490,7 +490,7 @@ describe('Task/Dispatch invariant transactions', () => {
 
 function createDatabase(path?: string): DatabaseHarness {
   const dir = path ? harnesses.find((harness) => harness.path === path)?.dir : undefined
-  const ownedDir = dir ?? mkdtempSync(join(tmpdir(), 'nightshift-task-dispatch-db-'))
+  const ownedDir = dir ?? mkdtempSync(join(tmpdir(), 'kolux-task-dispatch-db-'))
   const dbPath = path ?? join(ownedDir, 'orchestration.db')
   const harness = { db: new OrchestrationDb(dbPath), dir: ownedDir, path: dbPath }
   harnesses.push(harness)

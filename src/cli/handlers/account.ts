@@ -85,7 +85,7 @@ function addAgentNodePaths(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 /**
  * Runs the real agent login attached to the user's terminal so the OAuth
  * URL/device-code prompt is visible and the code can be pasted back — the desktop
- * GUI flow drives this via a browser Nightshift can't reach on a headless host.
+ * GUI flow drives this via a browser Kolux can't reach on a headless host.
  */
 async function runAgentLoginInTerminal(
   command: string,
@@ -195,7 +195,7 @@ async function cleanupClaudeLoginArtifacts(
 
 /** Logs into a Claude account in a temp config dir, then registers it with the local runtime. */
 async function addClaudeAccount({ client, json }: HandlerContext): Promise<void> {
-  const configDir = mkdtempSync(join(tmpdir(), 'nightshift-account-add-claude-'))
+  const configDir = mkdtempSync(join(tmpdir(), 'kolux-account-add-claude-'))
   const session: InteractiveLoginSession = {
     child: null,
     registering: false,
@@ -240,7 +240,7 @@ async function addClaudeAccount({ client, json }: HandlerContext): Promise<void>
 
 /** Logs into a Codex account in a temp CODEX_HOME, then registers it with the local runtime. */
 async function addCodexAccount({ client, json }: HandlerContext): Promise<void> {
-  const codexHome = mkdtempSync(join(tmpdir(), 'nightshift-account-add-codex-'))
+  const codexHome = mkdtempSync(join(tmpdir(), 'kolux-account-add-codex-'))
   const session: InteractiveLoginSession = {
     child: null,
     registering: false,
@@ -289,12 +289,12 @@ async function assertAccountImportSupported({ client }: HandlerContext): Promise
   if (!status.result.capabilities?.includes(ACCOUNT_IMPORT_RUNTIME_CAPABILITY)) {
     throw new RuntimeClientError(
       'incompatible_runtime',
-      'The running Nightshift runtime is too old to add accounts from the CLI. Update or restart Nightshift and try again.'
+      'The running Kolux runtime is too old to add accounts from the CLI. Update or restart Kolux and try again.'
     )
   }
 }
 
-/** CLI handlers for `nightshift account add [--agent claude|codex]` and `nightshift account list`. */
+/** CLI handlers for `kolux account add [--agent claude|codex]` and `kolux account list`. */
 export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
   'account add': async (ctx) => {
     const agentFlag = ctx.flags.get('agent')
@@ -313,14 +313,14 @@ export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
         `Unsupported --agent "${agent}". Use "claude" or "codex".`
       )
     }
-    rejectAccountRemoteSelectionFlags(ctx, 'nightshift account add')
+    rejectAccountRemoteSelectionFlags(ctx, 'kolux account add')
     // Why: fail on runtime version skew before burning a full OAuth round trip.
     await assertAccountImportSupported(ctx)
     await ctx.client.call('accounts.list', { refreshUsage: false })
     await (agent === 'claude' ? addClaudeAccount(ctx) : addCodexAccount(ctx))
   },
   'account list': async (ctx) => {
-    rejectAccountRemoteSelectionFlags(ctx, 'nightshift account list')
+    rejectAccountRemoteSelectionFlags(ctx, 'kolux account list')
     const { client, json } = ctx
     // Why: this command renders no usage numbers, so skip the forced provider
     // refresh — it is one serial network round-trip per managed account.

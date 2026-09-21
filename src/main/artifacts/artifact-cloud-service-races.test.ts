@@ -37,7 +37,7 @@ function createResponse(slug: string): Response {
         byteSize: 12,
         deletedAt: null
       },
-      shareUrl: `https://share.nightshift.invalid/a/${slug}`,
+      shareUrl: `https://share.kolux.invalid/a/${slug}`,
       editToken: `edit-${slug}`
     }),
     { status: 200, headers: { 'content-type': 'application/json' } }
@@ -45,7 +45,7 @@ function createResponse(slug: string): Response {
 }
 
 async function setup(): Promise<ArtifactCloudService> {
-  const path = await mkdtemp(join(tmpdir(), 'nightshift-artifact-races-'))
+  const path = await mkdtemp(join(tmpdir(), 'kolux-artifact-races-'))
   createdPaths.push(path)
   return new ArtifactCloudService(path, () => true)
 }

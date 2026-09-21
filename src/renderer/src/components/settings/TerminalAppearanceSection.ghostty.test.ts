@@ -509,7 +509,7 @@ describe('TerminalAppearanceSection ghostty import wiring', () => {
 
   it('hides the theme import affordance on paired web clients', () => {
     vi.stubGlobal('window', {
-      __NIGHTSHIFT_WEB_CLIENT__: true,
+      __KOLUX_WEB_CLIENT__: true,
       location: { pathname: '/web-index.html' }
     })
 

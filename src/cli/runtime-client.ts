@@ -6,7 +6,7 @@ export {
   RuntimeClient,
   RuntimeClientError,
   RuntimeRpcFailureError,
-  serveNightshiftApp,
+  serveKoluxApp,
   getDefaultUserDataPath,
   type RuntimeRpcFailure,
   type RuntimeRpcResponse,

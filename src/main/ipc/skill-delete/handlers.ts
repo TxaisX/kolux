@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import type { Store } from '../../persistence'
-import type { NightshiftRuntimeService } from '../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../runtime/kolux-runtime'
 import {
   SkillDeleteRequestSchema,
   type SkillDeletePlan,
@@ -21,10 +21,7 @@ import { handleMainWindowSkillIpc } from '../skill-ipc-main-window'
  * main-process remote branch here, unlike install and remove, because a
  * main-side capability check on one transport never runs on the other.
  */
-export function registerSkillDeleteIpcHandlers(
-  store: Store,
-  runtime?: NightshiftRuntimeService
-): void {
+export function registerSkillDeleteIpcHandlers(store: Store, runtime?: KoluxRuntimeService): void {
   const dependencies: SkillDeleteRequestDependencies = {
     repos: () => store.getRepos(),
     ...(runtime

@@ -1,11 +1,11 @@
 import type { FeatureInteractionId } from '../../../shared/feature-interactions'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import type { RpcEnvelopeMeta, RpcRequest } from './core'
 import { successResponse } from './errors'
 import { recordRuntimeFeatureInteraction } from './runtime-feature-interaction'
 
 export function createDispatcherStreamingFeatureEmitter(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   request: RpcRequest,
   meta: RpcEnvelopeMeta,
   reply: (response: string) => void

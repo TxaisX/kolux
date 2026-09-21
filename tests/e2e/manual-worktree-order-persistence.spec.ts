@@ -1,6 +1,6 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import type { Page } from '@stablyai/playwright-test'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { waitForSessionReady } from './helpers/store'
 
 async function visibleWorktreeIds(page: Page): Promise<string[]> {

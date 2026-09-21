@@ -16,7 +16,7 @@ import { isDefinitiveAgentSessionCreateRefusal } from '../../../../shared/agent-
 import type { AgentJournalMessageItem } from '../../../../shared/agent-session-journal-types'
 import type { StructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-host'
 import { getStructuredAgentSessionHost } from '../../../native-chat/agent-session-wire/structured-agent-session-registry'
-import type { NightshiftRuntimeService } from '../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../kolux-runtime'
 import { OrchestrationError } from '../../orchestration/orchestration-error'
 import {
   mintAgentSessionOperationId,
@@ -58,7 +58,7 @@ export function structuredWorkerHoldId(dispatchId: string): string {
  */
 export function releaseStructuredWorkerSession(
   dispatchId: string,
-  runtime?: Pick<NightshiftRuntimeService, 'forgetStructuredSessionMail'>
+  runtime?: Pick<KoluxRuntimeService, 'forgetStructuredSessionMail'>
 ): void {
   const binding = bindingsByDispatchId.get(dispatchId)
   if (!binding) {
@@ -76,7 +76,7 @@ export function releaseStructuredWorkerSession(
 }
 
 export async function createStructuredWorkerSession(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   worktreeId: string
   agent: 'claude' | 'codex'
   dispatchId: string
@@ -86,7 +86,7 @@ export async function createStructuredWorkerSession(args: {
   const sessionId = randomUUID()
   // Registered BEFORE the session is created, because `attach` is what spawns the provider child
   // and the child's environment is read from this registry at spawn time. Registering afterwards
-  // ships a worker with no NIGHTSHIFT_TERMINAL_HANDLE, whose bare `nightshift orchestration check` then
+  // ships a worker with no KOLUX_TERMINAL_HANDLE, whose bare `kolux orchestration check` then
   // resolves to whatever single leaf sits in the worktree — by default the COORDINATOR's pane.
   //
   // The scope is provisionally local; the record's own location is asserted local below, and a
@@ -189,7 +189,7 @@ function structuredCreateMayHaveCommitted(
  */
 export async function discardStructuredWorkerSession(
   sessionId: string,
-  runtime: Pick<NightshiftRuntimeService, 'retireStructuredAgentSessionTabFromSnapshot'>
+  runtime: Pick<KoluxRuntimeService, 'retireStructuredAgentSessionTabFromSnapshot'>
 ): Promise<void> {
   const host = getStructuredAgentSessionHost()
   if (!host) {

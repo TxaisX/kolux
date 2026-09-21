@@ -5,7 +5,7 @@ import { requiredString } from '../../../schemas'
 import { describeUnconfirmedAgentStop } from '../../../../../../shared/pty-liveness-verdict'
 import { ORCHESTRATION_WORKER_STOP_VERDICT_RUNTIME_CAPABILITY } from '../../../../../../shared/protocol-version'
 import type { RuntimeStatus } from '../../../../../../shared/runtime-types'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { inspectWorkerTerminal, resolvePinnedFederatedServer } from './worker-observation'
 import {
   resolveStructuredWorkerForDispatch,
@@ -243,13 +243,13 @@ export const ORCHESTRATION_WORKER_STOP_METHODS: RpcMethod[] = [
   })
 ]
 
-const activeStopByRuntime = new WeakMap<NightshiftRuntimeService, Map<string, Promise<unknown>>>()
+const activeStopByRuntime = new WeakMap<KoluxRuntimeService, Map<string, Promise<unknown>>>()
 
 /** Two callers stopping one Dispatch: coalesced so only one of them closes the terminal. Both are
  *  in this runtime and so carry one epoch, which `beginWorkerStop` refuses a second time anyway;
  *  the epoch it does accept belongs to a row a dead runtime stranded, and no caller here holds one. */
 function dedupeWorkerStop(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   dispatchId: string,
   stop: () => Promise<unknown>
 ): Promise<unknown> {

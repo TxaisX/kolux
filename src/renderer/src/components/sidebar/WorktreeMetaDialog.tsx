@@ -136,7 +136,7 @@ const WorktreeMetaDialog = React.memo(function WorktreeMetaDialog() {
     setReviewInput(currentReview)
     setCommentInput(currentComment)
     // Why: the baseline is frozen with the seed instead of tracking the store.
-    // A background `nightshift worktree set --linear-issue` while the dialog is open
+    // A background `kolux worktree set --linear-issue` while the dialog is open
     // would otherwise move it, making the untouched field read as dirty — and
     // the next comment-only save would write the stale seed back over the new link.
     setSnapshot({

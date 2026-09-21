@@ -13,7 +13,7 @@ vi.mock('@/components/ui/tooltip', () => ({
 import { MobilePageToolbar } from './MobilePageToolbar'
 
 describe('MobilePageToolbar', () => {
-  it('labels the sidebar toggle explicitly when Nightshift Mobile is visible in the sidebar', () => {
+  it('labels the sidebar toggle explicitly when Kolux Mobile is visible in the sidebar', () => {
     const html = renderToStaticMarkup(
       <MobilePageToolbar showMobileButton onClose={vi.fn()} onToggleMobileSidebarButton={vi.fn()} />
     )
@@ -21,10 +21,10 @@ describe('MobilePageToolbar', () => {
     expect(html).toContain('Hide from sidebar')
     expect(html).toContain('mp-page-toolbar-primary')
     expect(html).toContain('Configure in Settings')
-    expect(html).not.toContain('Remove Nightshift Mobile')
+    expect(html).not.toContain('Remove Kolux Mobile')
   })
 
-  it('labels the restore action explicitly when Nightshift Mobile is hidden from the sidebar', () => {
+  it('labels the restore action explicitly when Kolux Mobile is hidden from the sidebar', () => {
     const html = renderToStaticMarkup(
       <MobilePageToolbar
         showMobileButton={false}

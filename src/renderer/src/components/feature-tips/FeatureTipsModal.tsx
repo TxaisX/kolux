@@ -23,10 +23,10 @@ import { FeatureTipActions } from './FeatureTipActions'
 import { installCliFromFeatureTip } from './feature-tip-cli-install-action'
 import { getFeatureTipForModal } from './feature-tip-modal-state'
 import {
-  getNightshiftCliFeatureTipTelemetrySource,
+  getKoluxCliFeatureTipTelemetrySource,
   trackCmdJPaletteFeatureTipAcknowledged,
-  trackNightshiftCliFeatureTipSetupClicked,
-  trackNightshiftCliFeatureTipSetupResult
+  trackKoluxCliFeatureTipSetupClicked,
+  trackKoluxCliFeatureTipSetupResult
 } from './feature-tip-telemetry'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
@@ -132,7 +132,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
         // Why: passive education tip — acknowledging just dismisses; the rebind
         // path lives in Settings and is reachable from the palette itself.
         trackCmdJPaletteFeatureTipAcknowledged(
-          getNightshiftCliFeatureTipTelemetrySource(modalData.source)
+          getKoluxCliFeatureTipTelemetrySource(modalData.source)
         )
         closeModal()
         break
@@ -159,13 +159,13 @@ export default function FeatureTipsModal(): JSX.Element | null {
           mountedRef.current &&
           activeModalRef.current === 'feature-tips' &&
           setupRequestIdRef.current === setupRequestId
-        const telemetrySource = getNightshiftCliFeatureTipTelemetrySource(modalData.source)
-        trackNightshiftCliFeatureTipSetupClicked(telemetrySource)
+        const telemetrySource = getKoluxCliFeatureTipTelemetrySource(modalData.source)
+        trackKoluxCliFeatureTipSetupClicked(telemetrySource)
         setPrimaryBusy(true)
         try {
           const result = await installCliFromFeatureTip(() => window.api.cli.install())
           if (result.kind === 'installed') {
-            trackNightshiftCliFeatureTipSetupResult(telemetrySource, 'installed')
+            trackKoluxCliFeatureTipSetupResult(telemetrySource, 'installed')
             if (!canApplySetupResult()) {
               return
             }
@@ -173,21 +173,21 @@ export default function FeatureTipsModal(): JSX.Element | null {
             toast.success(
               translate(
                 'auto.components.feature.tips.FeatureTipsModal.ce13a742d0',
-                'Registered `nightshift` in PATH.'
+                'Registered `kolux` in PATH.'
               )
             )
             setSkillTerminalOpen(true)
             return
           }
 
-          trackNightshiftCliFeatureTipSetupResult(telemetrySource, 'needs_attention')
+          trackKoluxCliFeatureTipSetupResult(telemetrySource, 'needs_attention')
           if (!canApplySetupResult()) {
             return
           }
           toast.warning(
             translate(
               'auto.components.feature.tips.FeatureTipsModal.1da82af45b',
-              'Nightshift CLI needs attention'
+              'Kolux CLI needs attention'
             ),
             {
               description:
@@ -201,13 +201,12 @@ export default function FeatureTipsModal(): JSX.Element | null {
           closeModal()
           openCliSettings()
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : 'Failed to install Nightshift CLI.'
+          const message = error instanceof Error ? error.message : 'Failed to install Kolux CLI.'
           if (
             import.meta.env.DEV &&
             message.includes('Development mode uses a generated launcher for validation only')
           ) {
-            trackNightshiftCliFeatureTipSetupResult(telemetrySource, 'dev_preview')
+            trackKoluxCliFeatureTipSetupResult(telemetrySource, 'dev_preview')
             if (!canApplySetupResult()) {
               return
             }
@@ -222,7 +221,7 @@ export default function FeatureTipsModal(): JSX.Element | null {
             return
           }
 
-          trackNightshiftCliFeatureTipSetupResult(telemetrySource, 'failed')
+          trackKoluxCliFeatureTipSetupResult(telemetrySource, 'failed')
           if (canApplySetupResult()) {
             toast.error(message)
           }

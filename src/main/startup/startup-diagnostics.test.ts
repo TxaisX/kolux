@@ -28,11 +28,11 @@ describe('logStartupDiagnostic', () => {
   it('formats event details as a synchronous startup diagnostic line', () => {
     const write = vi.fn()
 
-    logStartupDiagnostic('before-lock', { packaged: true, userData: '/tmp/nightshift' }, write)
+    logStartupDiagnostic('before-lock', { packaged: true, userData: '/tmp/kolux' }, write)
 
     expect(write).toHaveBeenCalledWith(
       2,
-      '[startup] before-lock packaged=true userData="/tmp/nightshift"\n'
+      '[startup] before-lock packaged=true userData="/tmp/kolux"\n'
     )
   })
 })

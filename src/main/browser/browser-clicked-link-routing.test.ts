@@ -9,11 +9,11 @@ import {
   installBrowserClickedLinkRouting
 } from './browser-clicked-link-routing'
 
-const FOREGROUND_FRAME_NAME = '__nightshift_clicked_link_foreground_test'
-const BACKGROUND_FRAME_NAME = '__nightshift_clicked_link_background_test'
+const FOREGROUND_FRAME_NAME = '__kolux_clicked_link_foreground_test'
+const BACKGROUND_FRAME_NAME = '__kolux_clicked_link_background_test'
 
 type RoutingGlobal = typeof globalThis & {
-  __nightshiftBrowserClickedLinkRouting?: {
+  __koluxBrowserClickedLinkRouting?: {
     listener: (event: MouseEvent) => void
   }
 }
@@ -22,12 +22,12 @@ let cleanupIframeRouting: (() => void) | null = null
 
 function resetRouting(): void {
   const routingGlobal = globalThis as RoutingGlobal
-  const state = routingGlobal.__nightshiftBrowserClickedLinkRouting
+  const state = routingGlobal.__koluxBrowserClickedLinkRouting
   if (state) {
     window.removeEventListener('click', state.listener)
     window.removeEventListener('auxclick', state.listener)
   }
-  delete routingGlobal.__nightshiftBrowserClickedLinkRouting
+  delete routingGlobal.__koluxBrowserClickedLinkRouting
   cleanupIframeRouting?.()
   cleanupIframeRouting = null
 }
@@ -65,7 +65,7 @@ describe('browser clicked-link routing', () => {
     vi.restoreAllMocks()
   })
 
-  it('routes plain target=_blank links into a new Nightshift tab', () => {
+  it('routes plain target=_blank links into a new Kolux tab', () => {
     const link = document.createElement('a')
     link.href = 'https://docs.example.com/guide'
     link.target = '_blank'
@@ -204,14 +204,14 @@ describe('browser clicked-link routing', () => {
     link.href = 'https://example.com/reference'
     document.body.append(link)
     installBrowserClickedLinkRouting(
-      '__nightshift_clicked_link_old_fg',
-      '__nightshift_clicked_link_old_bg',
+      '__kolux_clicked_link_old_fg',
+      '__kolux_clicked_link_old_bg',
       true,
       true
     )
     installBrowserClickedLinkRouting(
-      '__nightshift_clicked_link_new_fg',
-      '__nightshift_clicked_link_new_bg',
+      '__kolux_clicked_link_new_fg',
+      '__kolux_clicked_link_new_bg',
       false,
       true
     )
@@ -219,7 +219,7 @@ describe('browser clicked-link routing', () => {
     expect(addEventListener.mock.calls.filter(([event]) => event === 'click')).toHaveLength(1)
     expect(clickLink(link, { ctrlKey: true }).open).toHaveBeenCalledWith(
       'https://example.com/reference',
-      '__nightshift_clicked_link_new_bg'
+      '__kolux_clicked_link_new_bg'
     )
   })
 
@@ -235,7 +235,7 @@ describe('browser clicked-link routing', () => {
     expect(script).not.toContain('BrowserClickedLinkRoutingState')
   })
 
-  it('routes plain iframe target=_blank links into a new Nightshift tab', () => {
+  it('routes plain iframe target=_blank links into a new Kolux tab', () => {
     const link = document.createElement('a')
     link.href = 'https://example.com/from-frame'
     link.target = '_blank'

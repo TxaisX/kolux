@@ -11,14 +11,14 @@ function project(id: string, displayName: string, detail: string): NewWorkspaceP
   return { kind: 'project', id, projectId: id, displayName, badgeColor: '#111', detail }
 }
 
-const nightshift = project('nightshift', 'nightshift', 'TxaisX/nightshift')
-const relay = project('relay', 'nightshift-relay', 'TxaisX/nightshift-relay')
+const kolux = project('kolux', 'kolux', 'TxaisX/nightshift')
+const relay = project('relay', 'kolux-relay', 'TxaisX/nightshift-relay')
 const gateway = project('gateway', 'api-gateway', 'acme/api-gateway')
 
 describe('rankProjectOptions', () => {
   it('ranks a name-prefix match above a mid-name match', () => {
-    const ranked = rankProjectOptions([relay, nightshift], 'nightshift', [])
-    expect(ranked[0]?.option.id).toBe('nightshift')
+    const ranked = rankProjectOptions([relay, kolux], 'kolux', [])
+    expect(ranked[0]?.option.id).toBe('kolux')
   })
 
   it('matches the detail line when the name does not match', () => {
@@ -36,12 +36,12 @@ describe('rankProjectOptions', () => {
   })
 
   it('orders an unfiltered list by recency', () => {
-    const ranked = rankProjectOptions([nightshift, relay, gateway], '', ['gateway', 'relay'])
-    expect(ranked.map((r) => r.option.id)).toEqual(['gateway', 'relay', 'nightshift'])
+    const ranked = rankProjectOptions([kolux, relay, gateway], '', ['gateway', 'relay'])
+    expect(ranked.map((r) => r.option.id)).toEqual(['gateway', 'relay', 'kolux'])
   })
 
   it('returns nothing for an oversized query rather than scanning it', () => {
-    expect(rankProjectOptions([nightshift], 'x'.repeat(4096), [])).toEqual([])
+    expect(rankProjectOptions([kolux], 'x'.repeat(4096), [])).toEqual([])
   })
 })
 
@@ -63,7 +63,7 @@ describe('sectionProjectOptions', () => {
   })
 
   it('keeps a short list unsectioned', () => {
-    const matches = rankProjectOptions([nightshift, relay], '', ['relay'])
+    const matches = rankProjectOptions([kolux, relay], '', ['relay'])
     expect(sectionProjectOptions(matches, '', ['relay'])).toHaveLength(1)
   })
 })
@@ -72,7 +72,7 @@ describe('getAmbiguousProjectOptionIds', () => {
   it('flags only ids whose display name repeats', () => {
     const a = project('a', 'scratch', '~/code/scratch')
     const b = project('b', 'scratch', '~/src/scratch')
-    const ids = getAmbiguousProjectOptionIds([a, b, nightshift])
+    const ids = getAmbiguousProjectOptionIds([a, b, kolux])
     expect(ids).toEqual(new Set(['a', 'b']))
   })
 })

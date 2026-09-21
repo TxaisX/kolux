@@ -25,20 +25,15 @@ beforeEach(() => {
 
 describe('joinRemotePath', () => {
   it('joins POSIX remote paths', () => {
-    expect(
-      joinRemotePath(getRemoteHostPlatform('linux-x64'), '/home/me', '.nightshift-remote')
-    ).toBe('/home/me/.nightshift-remote')
+    expect(joinRemotePath(getRemoteHostPlatform('linux-x64'), '/home/me', '.kolux-remote')).toBe(
+      '/home/me/.kolux-remote'
+    )
   })
 
   it('normalizes and joins Windows remote paths with forward slashes for SFTP and Node', () => {
     expect(
-      joinRemotePath(
-        getRemoteHostPlatform('win32-x64'),
-        'C:\\Users\\me',
-        '.nightshift-remote',
-        'relay'
-      )
-    ).toBe('C:/Users/me/.nightshift-remote/relay')
+      joinRemotePath(getRemoteHostPlatform('win32-x64'), 'C:\\Users\\me', '.kolux-remote', 'relay')
+    ).toBe('C:/Users/me/.kolux-remote/relay')
   })
 })
 
@@ -65,8 +60,8 @@ describe('assertSafeRemotePathSegment', () => {
   })
 
   it.each([
-    '..\\..\\.ssh\\nightshift_drop',
-    'report.txt:nightshift',
+    '..\\..\\.ssh\\kolux_drop',
+    'report.txt:kolux',
     'question?.txt',
     'trailing.',
     'trailing ',
@@ -85,7 +80,7 @@ describe('assertSafeRemotePathSegment', () => {
 
 describe('detectRemoteHostPlatform', () => {
   it('uses uname when the remote is POSIX', async () => {
-    vi.mocked(execCommand).mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Darwin arm64')
+    vi.mocked(execCommand).mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Darwin arm64')
 
     await expect(detectRemoteHostPlatform(conn)).resolves.toMatchObject({
       relayPlatform: 'darwin-arm64',
@@ -96,7 +91,7 @@ describe('detectRemoteHostPlatform', () => {
   it('falls back to PowerShell when uname is unavailable on Windows', async () => {
     vi.mocked(execCommand)
       .mockRejectedValueOnce(new Error('uname not recognized'))
-      .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Windows AMD64')
+      .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Windows AMD64')
 
     await expect(detectRemoteHostPlatform(conn)).resolves.toMatchObject({
       relayPlatform: 'win32-x64',
@@ -109,6 +104,6 @@ describe('detectRemoteHostPlatform', () => {
     expect(script).toContain('$arch = $env:PROCESSOR_ARCHITECTURE')
     expect(script).toContain('try { $runtimeArch =')
     expect(script).toContain('catch {}')
-    expect(script).toContain('Write-Output ("`n__NIGHTSHIFT_REMOTE_PLATFORM__ Windows " + $arch)')
+    expect(script).toContain('Write-Output ("`n__KOLUX_REMOTE_PLATFORM__ Windows " + $arch)')
   })
 })

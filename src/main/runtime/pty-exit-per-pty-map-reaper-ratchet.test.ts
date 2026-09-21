@@ -16,10 +16,10 @@
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const repoRoot = resolve(__dirname, '../../..')
-const REAPER_MODULE = 'src/main/runtime/nightshift-runtime-on-pty-exit.ts'
+const REAPER_MODULE = 'src/main/runtime/kolux-runtime-on-pty-exit.ts'
 
 /** `fooByPtyId`, plus the older `ById` spellings that are still keyed by pty id. */
 const PTY_KEYED_FIELD = /(?:ByPtyId|Pty[A-Za-z]*ById)$/i
@@ -28,19 +28,19 @@ const PTY_KEYED_FIELD = /(?:ByPtyId|Pty[A-Za-z]*ById)$/i
 const CLEARED_BY_REAPER_HELPER: Record<string, { helper: string; module: string }> = {
   waitBlockedCheckStateByPtyId: {
     helper: 'clearWaitBlockedCheckState',
-    module: 'src/main/runtime/nightshift-runtime-schedule-wait-blocked-check.ts'
+    module: 'src/main/runtime/kolux-runtime-schedule-wait-blocked-check.ts'
   },
   ptyTitleTrackersByPtyId: {
     helper: 'disposePtyTitleTracker',
-    module: 'src/main/runtime/nightshift-runtime-apply-tracked-pty-title.ts'
+    module: 'src/main/runtime/kolux-runtime-apply-tracked-pty-title.ts'
   },
   agentPromptLifecycleByPtyId: {
     helper: 'advancePtyLifecycleGeneration',
-    module: 'src/main/runtime/nightshift-runtime-record-agent-prompt-lifecycle-state.ts'
+    module: 'src/main/runtime/kolux-runtime-record-agent-prompt-lifecycle-state.ts'
   },
   agentPromptPermissionSequenceByPtyId: {
     helper: 'advancePtyLifecycleGeneration',
-    module: 'src/main/runtime/nightshift-runtime-record-agent-prompt-lifecycle-state.ts'
+    module: 'src/main/runtime/kolux-runtime-record-agent-prompt-lifecycle-state.ts'
   }
 }
 
@@ -71,7 +71,7 @@ const INTENTIONALLY_RETAINED: Record<string, string> = {
 }
 
 function ptyKeyedFieldNames(): string[] {
-  const runtime = new NightshiftRuntimeService() as unknown as Record<string, unknown>
+  const runtime = new KoluxRuntimeService() as unknown as Record<string, unknown>
   return Object.keys(runtime).filter((key) => {
     const value = runtime[key]
     return PTY_KEYED_FIELD.test(key) && (value instanceof Map || value instanceof Set)
@@ -144,7 +144,7 @@ describe('per-PTY lifecycle generation retention (leak regression)', () => {
   type Internals = { ptyLifecycleGenerationById: Map<string, number> }
 
   it('retains no lifecycle generation after a spawn/exit cycle', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const internals = runtime as unknown as Internals
     for (let index = 0; index < 50; index += 1) {
       const ptyId = `pty-${index}`
@@ -155,7 +155,7 @@ describe('per-PTY lifecycle generation retention (leak regression)', () => {
   })
 
   it('never hands a respawn a generation a pre-exit capture could still match', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const internals = runtime as unknown as Internals & {
       getPtyLifecycleGeneration: (ptyId: string) => number
     }

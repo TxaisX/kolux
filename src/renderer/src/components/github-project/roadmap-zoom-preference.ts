@@ -2,7 +2,7 @@
 // keep it out of the debounced settings write and off the remote wire.
 import type { RoadmapZoom } from '../../../../shared/github/project-roadmap-timeline'
 
-const STORAGE_KEY = 'nightshift.githubProject.roadmapZoom'
+const STORAGE_KEY = 'kolux.githubProject.roadmapZoom'
 const DEFAULT_ZOOM: RoadmapZoom = 'month'
 
 function isRoadmapZoom(value: string | null): value is RoadmapZoom {

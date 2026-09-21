@@ -1,6 +1,6 @@
 /**
  * Whether a Windows host has an sftp subsystem is a fact about that host, so the cache is keyed by
- * the endpoint that executes rather than by Nightshift's target id — otherwise a hardened host is
+ * the endpoint that executes rather than by Kolux's target id — otherwise a hardened host is
  * re-probed once per file, and two targets pointing at one machine learn the same fact twice.
  */
 import { afterEach, describe, expect, it } from 'vitest'

@@ -14,19 +14,19 @@ afterEach(async () => {
 })
 
 async function createPlugin(): Promise<ValidDiscoveredPlugin> {
-  const rootDir = await mkdtemp(join(tmpdir(), 'nightshift-plugin-panel-controller-'))
+  const rootDir = await mkdtemp(join(tmpdir(), 'kolux-plugin-panel-controller-'))
   roots.push(rootDir)
   await writeFile(join(rootDir, 'panel.html'), '<h1>Panel</h1>')
   return {
-    pluginKey: 'nightshift-samples.demo',
+    pluginKey: 'kolux-samples.demo',
     rootDir,
     manifest: pluginManifestSchema.parse({
       manifestVersion: 1,
       id: 'demo',
-      publisher: 'nightshift-samples',
+      publisher: 'kolux-samples',
       name: 'Demo',
       version: '1.0.0',
-      engines: { nightshift: '>=1.0.0' },
+      engines: { kolux: '>=1.0.0' },
       pluginApi: 1,
       contributes: {
         panels: [{ id: 'dashboard', title: 'Dashboard', entry: 'panel.html' }],
@@ -57,7 +57,7 @@ describe('PluginPanelController identity binding', () => {
     await expect(
       controller.execute('runtime:one', {
         sessionToken: entry!.sessionToken,
-        pluginId: 'nightshift-samples.other',
+        pluginId: 'kolux-samples.other',
         action: 'notifications.show',
         params: { title: 'Hello' }
       })

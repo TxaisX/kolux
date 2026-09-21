@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 // STA-4735: the hook-trust provenance file is the only record of which
-// config.toml trust entries Nightshift wrote versus which the user approved inside
+// config.toml trust entries Kolux wrote versus which the user approved inside
 // Codex. An unreadable one was rebuilt from the current config on the same
-// pass, stamping the user's approval as Nightshift-written — after which promotion
+// pass, stamping the user's approval as Kolux-written — after which promotion
 // skips it forever.
 
 const denials = vi.hoisted(() => {
@@ -75,18 +75,18 @@ vi.mock('node:os', async () => {
 const realFs = await vi.importActual<typeof NodeFs>('node:fs')
 const { snapshotCodexRuntimeHookTrustProvenance } = await import('./hook-trust-promotion')
 
-const PROVENANCE_ENTRY = 'nightshift-hooks:stop:0:0'
+const PROVENANCE_ENTRY = 'kolux-hooks:stop:0:0'
 let fakeHomeDir: string
 let userDataDir: string
 let runtimeHomePath: string
 
-const provenancePath = (): string => join(runtimeHomePath, '.nightshift-hook-trust-provenance.json')
+const provenancePath = (): string => join(runtimeHomePath, '.kolux-hook-trust-provenance.json')
 
 function seedRecordedProvenance(): string {
   const contents = `${JSON.stringify(
     {
       version: 1,
-      entries: { [PROVENANCE_ENTRY]: { trustedHash: 'sha256:nightshift', enabled: true } }
+      entries: { [PROVENANCE_ENTRY]: { trustedHash: 'sha256:kolux', enabled: true } }
     },
     null,
     2
@@ -97,8 +97,8 @@ function seedRecordedProvenance(): string {
 
 beforeEach(() => {
   denials.reset()
-  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-sta4735-home-'))
-  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'nightshift-sta4735-data-'))
+  fakeHomeDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-sta4735-home-'))
+  userDataDir = realFs.mkdtempSync(join(tmpdir(), 'kolux-sta4735-data-'))
   runtimeHomePath = join(userDataDir, 'codex-runtime-home', 'home')
   homedirMock.mockReturnValue(fakeHomeDir)
   getPathMock.mockImplementation((name: string) => {
@@ -127,8 +127,8 @@ describe('STA-4735 snapshotCodexRuntimeHookTrustProvenance', () => {
     snapshotCodexRuntimeHookTrustProvenance(runtimeHomePath)
 
     // Before the fix this rewrote the file from the current config.toml, which
-    // holds no record of what Nightshift wrote — so a user approval made since the
-    // last pass was permanently reclassified as Nightshift's own write.
+    // holds no record of what Kolux wrote — so a user approval made since the
+    // last pass was permanently reclassified as Kolux's own write.
     expect(realFs.readFileSync(provenancePath(), 'utf-8')).toBe(recorded)
   })
 

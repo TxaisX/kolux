@@ -1,4 +1,4 @@
-export const NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT = 'nightshift:terminal-command-finished'
+export const KOLUX_TERMINAL_COMMAND_FINISHED_EVENT = 'kolux:terminal-command-finished'
 
 export type TerminalCommandFinishedEventDetail = {
   worktreeId: string
@@ -18,11 +18,8 @@ export function dispatchTerminalCommandFinishedEvent(
   }
 
   window.dispatchEvent(
-    new CustomEvent<TerminalCommandFinishedEventDetail>(
-      NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT,
-      {
-        detail: { worktreeId, exitCode }
-      }
-    )
+    new CustomEvent<TerminalCommandFinishedEventDetail>(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, {
+      detail: { worktreeId, exitCode }
+    })
   )
 }

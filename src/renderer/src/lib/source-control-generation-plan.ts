@@ -89,7 +89,7 @@ export function planSourceControlTextGeneration(
     commandLabel: [planned.plan.binary, ...planned.plan.args].join(' '),
     delivery,
     caveat:
-      'This checks Nightshift’s planner only. It does not invoke the CLI, prove PATH or binary availability, or reproduce main-process Windows .cmd resolution.'
+      'This checks Kolux’s planner only. It does not invoke the CLI, prove PATH or binary availability, or reproduce main-process Windows .cmd resolution.'
   }
 }
 

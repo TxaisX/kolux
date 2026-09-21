@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from './dispatcher'
 import type { RpcRequest } from './core'
-import type { NightshiftRuntimeService } from '../nightshift-runtime'
+import type { KoluxRuntimeService } from '../kolux-runtime'
 import { TERMINAL_METHODS } from './methods/terminal'
 import type { RuntimeTerminalWait } from '../../../shared/runtime-types'
 import {
@@ -82,7 +82,7 @@ async function requestSnapshotReply(options: {
     cleanupSubscription: vi.fn((id: string) => cleanups.get(id)?.()),
     waitForTerminal: vi.fn(() => new Promise<RuntimeTerminalWait>(() => {})),
     updateDesktopViewport: vi.fn().mockResolvedValue(true)
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 
   const dispatcher = new RpcDispatcher({ runtime, methods: TERMINAL_METHODS })
   const dispatchPromise = dispatcher.dispatchStreaming(

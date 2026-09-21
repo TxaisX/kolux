@@ -27,14 +27,14 @@ async function loadModule() {
 beforeEach(() => {
   process.env = { ...OLD_ENV }
   for (const key of [
-    'NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN',
-    'NIGHTSHIFT_BITBUCKET_EMAIL',
-    'NIGHTSHIFT_BITBUCKET_API_TOKEN',
-    'NIGHTSHIFT_BITBUCKET_API_BASE_URL'
+    'KOLUX_BITBUCKET_ACCESS_TOKEN',
+    'KOLUX_BITBUCKET_EMAIL',
+    'KOLUX_BITBUCKET_API_TOKEN',
+    'KOLUX_BITBUCKET_API_BASE_URL'
   ]) {
     delete process.env[key]
   }
-  tempHome = mkdtempSync(join(tmpdir(), 'nightshift-bitbucket-conn-'))
+  tempHome = mkdtempSync(join(tmpdir(), 'kolux-bitbucket-conn-'))
 })
 
 afterEach(() => {
@@ -143,7 +143,7 @@ describe('Bitbucket credential connection', () => {
       apiToken: 'tok'
     })
 
-    process.env.NIGHTSHIFT_BITBUCKET_ACCESS_TOKEN = 'env-token'
+    process.env.KOLUX_BITBUCKET_ACCESS_TOKEN = 'env-token'
     expect(conn.getBitbucketConnectionStatus()).toMatchObject({
       configured: true,
       source: 'environment',
@@ -165,7 +165,7 @@ describe('Bitbucket credential connection', () => {
 
     // Only the base URL is in the env, so `hasAuth(env)` is false — precedence
     // is per-setting, not all-or-nothing.
-    process.env.NIGHTSHIFT_BITBUCKET_API_BASE_URL = 'https://env.example.com/2.0'
+    process.env.KOLUX_BITBUCKET_API_BASE_URL = 'https://env.example.com/2.0'
     const { resolveBitbucketAuthConfig } = await import('./resolve-auth')
     expect(resolveBitbucketAuthConfig().baseUrl).toBe('https://env.example.com/2.0')
   })

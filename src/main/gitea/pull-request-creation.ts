@@ -27,16 +27,16 @@ function normalizeApiBaseUrl(value: string): string {
 }
 
 function configuredApiBaseUrl(repo: GiteaRepoRef): string {
-  const configured = envValue('NIGHTSHIFT_GITEA_API_BASE_URL')
+  const configured = envValue('KOLUX_GITEA_API_BASE_URL')
   return configured ? normalizeApiBaseUrl(configured) : repo.apiBaseUrl
 }
 
 export function isGiteaReviewCreationAuthenticated(): boolean {
-  return envValue('NIGHTSHIFT_GITEA_TOKEN') !== null
+  return envValue('KOLUX_GITEA_TOKEN') !== null
 }
 
 function authHeaders(): Record<string, string> {
-  const token = envValue('NIGHTSHIFT_GITEA_TOKEN')
+  const token = envValue('KOLUX_GITEA_TOKEN')
   return token ? { Authorization: `token ${token}` } : {}
 }
 
@@ -70,7 +70,7 @@ function classifyCreateError(error: unknown): CreateHostedReviewResult {
       ok: false,
       code: 'auth_required',
       error:
-        'Create PR failed: Gitea is not authenticated. Next step: set NIGHTSHIFT_GITEA_TOKEN in this environment.'
+        'Create PR failed: Gitea is not authenticated. Next step: set KOLUX_GITEA_TOKEN in this environment.'
     }
   }
   if (status === 409 || lower.includes('already exists') || lower.includes('already open')) {

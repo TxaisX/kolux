@@ -41,7 +41,7 @@ function shortcutState(overrides: Partial<AppShortcutState> = {}): AppShortcutSt
     openFloatingWorkspaceMaximized: vi.fn(),
     pluginCommands: [],
     setFloatingTerminalOpen: vi.fn(),
-    terminalShortcutPolicy: 'nightshift-first',
+    terminalShortcutPolicy: 'kolux-first',
     workspaceChromeActive: true,
     ...overrides
   }

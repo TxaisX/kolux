@@ -8,9 +8,7 @@ export function isWebClientLocation(): boolean {
   // turns into a failed launch rather than a visible error.
   const pathname = (window as { location?: { pathname?: unknown } }).location?.pathname
   return (
-    Boolean(
-      (window as unknown as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__
-    ) ||
+    Boolean((window as unknown as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__) ||
     (typeof pathname === 'string' && pathname.endsWith('/web-index.html'))
   )
 }

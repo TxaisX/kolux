@@ -62,7 +62,7 @@ it('keeps the old pairing when selecting local fails', async () => {
 })
 
 it('replaces the active pairing without touching native windows in background mode', async () => {
-  vi.stubEnv('NIGHTSHIFT_BACKGROUND_LAUNCH', '1')
+  vi.stubEnv('KOLUX_BACKGROUND_LAUNCH', '1')
   vi.stubEnv('GITHUB_ACTIONS', 'true')
   vi.stubEnv('DISPLAY', ':99')
   const { client, remove, reload, nativeEvaluate } = fixture(true)

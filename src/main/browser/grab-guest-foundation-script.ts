@@ -2,16 +2,16 @@ export const GRAB_GUEST_FOUNDATION_SCRIPT = `(function() {
   'use strict';
 
   // Why: always tear down any pre-existing state before arming. A malicious
-  // guest page could predefine window.__nightshiftGrab with a fake extractPayload
+  // guest page could predefine window.__koluxGrab with a fake extractPayload
   // function. By tearing down unconditionally we ensure our freshly installed
   // extraction logic is the only code that runs.
-  if (window.__nightshiftGrab) {
+  if (window.__koluxGrab) {
     try {
-      if (typeof window.__nightshiftGrab.cleanup === 'function') {
-        window.__nightshiftGrab.cleanup();
+      if (typeof window.__koluxGrab.cleanup === 'function') {
+        window.__koluxGrab.cleanup();
       }
     } catch(e) {}
-    delete window.__nightshiftGrab;
+    delete window.__koluxGrab;
   }
 
   // --- Budget constants (mirrored from shared types) ---

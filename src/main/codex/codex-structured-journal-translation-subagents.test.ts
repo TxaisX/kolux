@@ -64,7 +64,7 @@ function deliverActivity(
 }
 
 function rosterAgents(rows: Row[]): { id: string; state: string; tokens?: number }[] {
-  const body = rows.findLast((row) => row.key.startsWith('nightshift:codex-subagents'))?.body
+  const body = rows.findLast((row) => row.key.startsWith('kolux:codex-subagents'))?.body
   if (!body || body.kind !== 'message') {
     return []
   }
@@ -88,7 +88,7 @@ describe('codex journal translation — subagents', () => {
       row.body.kind === 'status' && row.body.providerFrame ? [row.body.providerFrame.kind] : []
     )
     expect(providerFrameKinds).toEqual([])
-    expect(rows.filter((row) => row.key.startsWith('nightshift:codex-subagents'))).toHaveLength(1)
+    expect(rows.filter((row) => row.key.startsWith('kolux:codex-subagents'))).toHaveLength(1)
   })
 
   // The roster claims the item, but claiming it must not take the turn tail with

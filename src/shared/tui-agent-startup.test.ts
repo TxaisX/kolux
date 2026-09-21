@@ -166,7 +166,7 @@ describe('tui agent startup plans', () => {
     expect(plan?.launchCommand).not.toContain(prompt)
     expect(plan?.followupPrompt).toBeNull()
     expect(plan?.launchConfig.agentCommand).toBe('hermes --tui')
-    expect(plan?.env?.NIGHTSHIFT_HERMES_STARTUP_QUERY).toBe(prompt)
+    expect(plan?.env?.KOLUX_HERMES_STARTUP_QUERY).toBe(prompt)
     const script =
       testCase.shell === 'posix'
         ? unwrapPosixShellScript(plan?.launchCommand)
@@ -174,16 +174,16 @@ describe('tui agent startup plans', () => {
     expect(script).toContain("'hermes' 'chat'")
     expect(script).toContain('--query=')
     expect(testCase.shell === 'posix' ? plan?.launchCommand : script).toContain(
-      'NIGHTSHIFT_HERMES_STARTUP_QUERY'
+      'KOLUX_HERMES_STARTUP_QUERY'
     )
     expect(script).toContain("'--yolo' '--tui'")
     expect(script).toContain(
       testCase.shell === 'posix'
-        ? '--query=${__nightshift_hermes_startup_query}'
-        : 'Remove-Item Env:NIGHTSHIFT_HERMES_STARTUP_QUERY'
+        ? '--query=${__kolux_hermes_startup_query}'
+        : 'Remove-Item Env:KOLUX_HERMES_STARTUP_QUERY'
     )
     if (testCase.shell === 'posix') {
-      expect(plan?.launchCommand).toContain('unset NIGHTSHIFT_HERMES_STARTUP_QUERY')
+      expect(plan?.launchCommand).toContain('unset KOLUX_HERMES_STARTUP_QUERY')
     }
   })
 
@@ -204,7 +204,7 @@ describe('tui agent startup plans', () => {
     expect(tokens.ok && tokens.tokens.at(-1)).toMatch(/\\0[0-7]{3}/)
   })
 
-  it('does not launch Codex with the Nightshift profile when agent status hooks are enabled', () => {
+  it('does not launch Codex with the Kolux profile when agent status hooks are enabled', () => {
     const plan = buildAgentStartupPlan({
       agent: 'codex',
       prompt: 'fix it',
@@ -234,7 +234,7 @@ describe('tui agent startup plans', () => {
     })
   })
 
-  it('launches Claude without Nightshift settings injection', () => {
+  it('launches Claude without Kolux settings injection', () => {
     const plan = buildAgentStartupPlan({
       agent: 'claude',
       prompt: 'fix it',
@@ -246,7 +246,7 @@ describe('tui agent startup plans', () => {
     expect(plan?.launchCommand).not.toContain('--settings')
   })
 
-  it('uses the Linux Nightshift CLI command for Claude Agent Teams launches', () => {
+  it('uses the Linux Kolux CLI command for Claude Agent Teams launches', () => {
     const plan = buildAgentStartupPlan({
       agent: 'claude-agent-teams',
       prompt: '',
@@ -255,13 +255,13 @@ describe('tui agent startup plans', () => {
       allowEmptyPromptLaunch: true
     })
 
-    expect(plan?.launchCommand).toBe('nightshift-ide claude-teams')
+    expect(plan?.launchCommand).toBe('kolux-ide claude-teams')
   })
 
-  it('uses the plain nightshift shim for Claude Agent Teams on Linux SSH remotes', () => {
-    // Why: the SSH relay deploys the CLI shim as `nightshift` (not the local-only
-    // `nightshift-ide` GNOME-screen-reader workaround), so a remote launch must not
-    // emit `nightshift-ide claude-teams` — that name is not on the remote PATH and
+  it('uses the plain kolux shim for Claude Agent Teams on Linux SSH remotes', () => {
+    // Why: the SSH relay deploys the CLI shim as `kolux` (not the local-only
+    // `kolux-ide` GNOME-screen-reader workaround), so a remote launch must not
+    // emit `kolux-ide claude-teams` — that name is not on the remote PATH and
     // `claude-teams` is rejected by the relay's CLI switch (issue #6500).
     const plan = buildAgentStartupPlan({
       agent: 'claude-agent-teams',
@@ -272,11 +272,11 @@ describe('tui agent startup plans', () => {
       allowEmptyPromptLaunch: true
     })
 
-    expect(plan?.launchCommand).toBe('nightshift claude-teams')
+    expect(plan?.launchCommand).toBe('kolux claude-teams')
   })
 
-  it('keeps the Windows nightshift.cmd shim for Claude Agent Teams on SSH remotes', () => {
-    // Why: the Windows remote shim is also `nightshift.cmd`, matching the local
+  it('keeps the Windows kolux.cmd shim for Claude Agent Teams on SSH remotes', () => {
+    // Why: the Windows remote shim is also `kolux.cmd`, matching the local
     // win32 override, so remoteness must not alter the Windows command.
     const plan = buildAgentStartupPlan({
       agent: 'claude-agent-teams',
@@ -287,11 +287,11 @@ describe('tui agent startup plans', () => {
       allowEmptyPromptLaunch: true
     })
 
-    expect(plan?.launchCommand).toBe('nightshift.cmd claude-teams')
+    expect(plan?.launchCommand).toBe('kolux.cmd claude-teams')
   })
 
-  it('keeps the Linux nightshift-ide wrapper for local (non-remote) Claude Agent Teams', () => {
-    // Why: the `nightshift-ide` rename is still required for a local Linux desktop
+  it('keeps the Linux kolux-ide wrapper for local (non-remote) Claude Agent Teams', () => {
+    // Why: the `kolux-ide` rename is still required for a local Linux desktop
     // install (avoids shadowing the GNOME Orca screen reader), so an explicit
     // isRemote:false must preserve it.
     const plan = buildAgentStartupPlan({
@@ -303,7 +303,7 @@ describe('tui agent startup plans', () => {
       allowEmptyPromptLaunch: true
     })
 
-    expect(plan?.launchCommand).toBe('nightshift-ide claude-teams')
+    expect(plan?.launchCommand).toBe('kolux-ide claude-teams')
   })
 
   it('launches OpenClaude as a distinct argv agent', () => {
@@ -631,7 +631,7 @@ describe('tui agent startup plans', () => {
         cmdOverrides: {},
         platform: 'win32'
       })?.launchCommand
-    ).toBe('pi; Remove-Item Env:NIGHTSHIFT_PI_PREFILL -ErrorAction SilentlyContinue')
+    ).toBe('pi; Remove-Item Env:KOLUX_PI_PREFILL -ErrorAction SilentlyContinue')
 
     expect(
       buildAgentDraftLaunchPlan({
@@ -641,12 +641,12 @@ describe('tui agent startup plans', () => {
         platform: 'win32',
         shell: 'cmd'
       })?.launchCommand
-    ).toBe('pi & set "NIGHTSHIFT_PI_PREFILL="')
+    ).toBe('pi & set "KOLUX_PI_PREFILL="')
   })
 
-  it('returns an OMP draft plan with NIGHTSHIFT_OMP_PREFILL (OMP-scoped, not Pi-shared)', () => {
+  it('returns an OMP draft plan with KOLUX_OMP_PREFILL (OMP-scoped, not Pi-shared)', () => {
     // Why: OMP owns its own managed prefill extension and env var.
-    // nightshift-prefill.ts reads NIGHTSHIFT_OMP_PREFILL for OMP launches — see
+    // kolux-prefill.ts reads KOLUX_OMP_PREFILL for OMP launches — see
     // src/main/pi/titlebar-extension-service.ts — so a draft plan for OMP
     // MUST emit that name. A regression here would either silently drop the
     // draft (Pi var ignored by OMP) or honor a stale Pi-PTY draft.
@@ -658,10 +658,10 @@ describe('tui agent startup plans', () => {
     })
 
     expect(plan).not.toBeNull()
-    expect(plan?.env).toEqual({ NIGHTSHIFT_OMP_PREFILL: 'fix the omp regression' })
+    expect(plan?.env).toEqual({ KOLUX_OMP_PREFILL: 'fix the omp regression' })
     expect(plan?.expectedProcess).toBe('omp')
     expect(plan?.launchCommand).toBe(
-      `omp; command test -n "$fish_pid" && set --erase -g NIGHTSHIFT_OMP_PREFILL; command test -z "$fish_pid" && unset NIGHTSHIFT_OMP_PREFILL; true`
+      `omp; command test -n "$fish_pid" && set --erase -g KOLUX_OMP_PREFILL; command test -z "$fish_pid" && unset KOLUX_OMP_PREFILL; true`
     )
   })
 
@@ -713,18 +713,18 @@ describe('tui agent startup plans', () => {
       agent: 'pi',
       draft: 'prefill text',
       cmdOverrides: {},
-      agentEnv: { NIGHTSHIFT_AGENT_MODE: 'managed' },
+      agentEnv: { KOLUX_AGENT_MODE: 'managed' },
       platform: 'linux'
     })
 
     expect(plan?.env).toEqual({
-      NIGHTSHIFT_AGENT_MODE: 'managed',
-      NIGHTSHIFT_PI_PREFILL: 'prefill text'
+      KOLUX_AGENT_MODE: 'managed',
+      KOLUX_PI_PREFILL: 'prefill text'
     })
     expect(plan?.launchConfig).toEqual({
       agentCommand: 'pi',
       agentArgs: '',
-      agentEnv: { NIGHTSHIFT_AGENT_MODE: 'managed' }
+      agentEnv: { KOLUX_AGENT_MODE: 'managed' }
     })
   })
 

@@ -15,13 +15,13 @@ import { getExecutionHostLabel } from '../../../../shared/execution-host'
 import type { Repo } from '../../../../shared/repo-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 
-const SHARED_WORKTREE_ID = 'repo-shared::/work/nightshift-feature'
+const SHARED_WORKTREE_ID = 'repo-shared::/work/kolux-feature'
 
-const localRepo: Repo = { ...repo, id: 'repo-shared', path: '/work/nightshift' }
+const localRepo: Repo = { ...repo, id: 'repo-shared', path: '/work/kolux' }
 const sshRepo: Repo = {
   ...repo,
   id: 'repo-shared',
-  path: '/work/nightshift',
+  path: '/work/kolux',
   connectionId: 'build-box',
   executionHostId: 'ssh:build-box'
 }
@@ -30,9 +30,9 @@ const localWorktree: Worktree = {
   ...worktree,
   id: SHARED_WORKTREE_ID,
   repoId: 'repo-shared',
-  path: '/work/nightshift-feature',
+  path: '/work/kolux-feature',
   hostId: 'local',
-  displayName: 'nightshift-feature'
+  displayName: 'kolux-feature'
 }
 const sshWorktree: Worktree = { ...localWorktree, hostId: 'ssh:build-box' }
 

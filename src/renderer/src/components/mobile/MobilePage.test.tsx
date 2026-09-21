@@ -10,7 +10,7 @@ import type { MobileRelayMintFailure } from '../../../../shared/mobile-relay-min
 
 type StoreState = {
   closeMobilePage: () => void
-  nightshiftProfileAuthStatus: { state: 'connected' | 'local' }
+  koluxProfileAuthStatus: { state: 'connected' | 'local' }
   settings: {
     showMobileButton: boolean
     mobilePairingConnectionMode?: MobilePairingConnectionMode
@@ -18,7 +18,7 @@ type StoreState = {
     mobilePairingCustomAddresses?: string[]
   }
   updateSettings: () => Promise<void>
-  fetchNightshiftProfileAuthStatus: () => Promise<unknown>
+  fetchKoluxProfileAuthStatus: () => Promise<unknown>
 }
 
 const mocks = vi.hoisted(() => ({
@@ -90,7 +90,7 @@ vi.mock('./MobilePageContent', () => ({
         Continue
       </button>
       <button type="button" onClick={() => props.handleConnectionModeChange('automatic')}>
-        Nightshift Relay
+        Kolux Relay
       </button>
       <button type="button" onClick={() => props.handleConnectionModeChange('local-only')}>
         LAN
@@ -140,15 +140,15 @@ describe('MobilePage pairing connection mode', () => {
       available: true,
       qrDataUrl: 'data:image/png;base64,qr',
       qrSize: 218,
-      pairingUrl: 'nightshift://pair#automatic'
+      pairingUrl: 'kolux://pair#automatic'
     })
     listNetworkInterfaces.mockReset().mockResolvedValue({ interfaces: [] })
     mocks.storeState = {
       closeMobilePage: vi.fn(),
-      nightshiftProfileAuthStatus: { state: 'connected' },
+      koluxProfileAuthStatus: { state: 'connected' },
       settings: { showMobileButton: true },
       updateSettings: vi.fn().mockResolvedValue(undefined),
-      fetchNightshiftProfileAuthStatus: vi.fn().mockResolvedValue(null)
+      fetchKoluxProfileAuthStatus: vi.fn().mockResolvedValue(null)
     }
     Object.defineProperty(window, 'api', {
       configurable: true,
@@ -180,7 +180,9 @@ describe('MobilePage pairing connection mode', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open Android install guide' }))
 
-    expect(window.api.shell.openUrl).toHaveBeenCalledWith('https://github.com/TxaisX/nightshift/android-apk')
+    expect(window.api.shell.openUrl).toHaveBeenCalledWith(
+      'https://github.com/TxaisX/nightshift/android-apk'
+    )
   })
 
   it('defaults signed-in pairing to Anywhere and remints when same-network is selected', async () => {
@@ -219,7 +221,7 @@ describe('MobilePage pairing connection mode', () => {
     resolveRotatedLocalQr?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,local-qr',
-      pairingUrl: 'nightshift://pair#local'
+      pairingUrl: 'kolux://pair#local'
     })
     await waitFor(() => expect(screen.getByTestId('pairing-qr')).toHaveTextContent('local-qr'))
   })
@@ -254,7 +256,7 @@ describe('MobilePage pairing connection mode', () => {
   })
 
   it('does not auto-mint any QR when signed out with Anywhere selected', async () => {
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'local' }
     await openPairingStep()
 
     // Aligned with Settings: signed-out Anywhere cannot serve Relay, so we mint
@@ -267,7 +269,7 @@ describe('MobilePage pairing connection mode', () => {
   })
 
   it('mints a local-only QR when switching to LAN while signed out', async () => {
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'local' }
     const user = userEvent.setup()
     await openPairingStep()
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -281,7 +283,7 @@ describe('MobilePage pairing connection mode', () => {
   })
 
   it('does not remint when switching from Local to Anywhere while signed out', async () => {
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'local' }
     const user = userEvent.setup()
     await openPairingStep()
 
@@ -289,9 +291,9 @@ describe('MobilePage pairing connection mode', () => {
     await waitFor(() => expect(screen.getByTestId('pairing-qr')).toHaveTextContent('base64,qr'))
     getPairingQR.mockClear()
 
-    // Switching back to Nightshift Relay must clear the local QR, not remint a
+    // Switching back to Kolux Relay must clear the local QR, not remint a
     // local-only code under the Relay label.
-    await user.click(screen.getByRole('button', { name: 'Nightshift Relay' }))
+    await user.click(screen.getByRole('button', { name: 'Kolux Relay' }))
     await waitFor(() => expect(screen.getByTestId('mode')).toHaveTextContent('automatic'))
     await waitFor(() => expect(screen.getByTestId('pairing-qr')).toHaveTextContent('none'))
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -300,7 +302,7 @@ describe('MobilePage pairing connection mode', () => {
   })
 
   it('does not mint on address change while signed out with Anywhere selected', async () => {
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'local' }
     const user = userEvent.setup()
     await openPairingStep()
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -313,7 +315,7 @@ describe('MobilePage pairing connection mode', () => {
   })
 
   it('mints a Relay QR when signing in with Anywhere selected', async () => {
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'local' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'local' }
     const user = userEvent.setup()
     const { rerender } = render(<MobilePage />)
     await waitFor(() => expect(screen.getByTestId('stage')).toHaveTextContent('intro'))
@@ -335,7 +337,7 @@ describe('MobilePage pairing connection mode', () => {
     )
 
     // Signing in unlocks Relay, so Step 2 mints an honest Relay QR.
-    mocks.storeState.nightshiftProfileAuthStatus = { state: 'connected' }
+    mocks.storeState.koluxProfileAuthStatus = { state: 'connected' }
     rerender(<MobilePage />)
     await waitFor(() => expect(getPairingQR).toHaveBeenCalledWith({ connectionMode: 'automatic' }))
     // Between the auth flip and the mint resolving, no code may be shown — the
@@ -346,7 +348,7 @@ describe('MobilePage pairing connection mode', () => {
     resolveRelayQr?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,qr',
-      pairingUrl: 'nightshift://pair#automatic'
+      pairingUrl: 'kolux://pair#automatic'
     })
     await waitFor(() => expect(screen.getByTestId('pairing-qr')).toHaveTextContent('base64,qr'))
     expect(screen.getByTestId('mode')).toHaveTextContent('automatic')
@@ -369,7 +371,7 @@ describe('MobilePage pairing connection mode', () => {
       available: true,
       qrDataUrl: null,
       qrError: 'encoding_failed',
-      pairingUrl: 'nightshift://pair?code=copy-fallback',
+      pairingUrl: 'kolux://pair?code=copy-fallback',
       endpoint: 'wss://host.example/large',
       connectionMode: 'automatic'
     })
@@ -400,7 +402,7 @@ describe('MobilePage pairing connection mode', () => {
     getPairingQR.mockResolvedValueOnce({
       available: true,
       qrDataUrl: 'data:image/png;base64,retried',
-      pairingUrl: 'nightshift://pair#retried',
+      pairingUrl: 'kolux://pair#retried',
       endpoint: 'ws://host',
       connectionMode: 'automatic'
     })
@@ -442,7 +444,7 @@ describe('MobilePage pairing connection mode', () => {
     getPairingQR.mockResolvedValueOnce({
       available: true,
       qrDataUrl: 'data:image/png;base64,local',
-      pairingUrl: 'nightshift://pair#local',
+      pairingUrl: 'kolux://pair#local',
       endpoint: 'ws://host',
       connectionMode: 'local-only'
     })
@@ -456,7 +458,7 @@ describe('MobilePage pairing connection mode', () => {
     resolveRetry?.({
       available: true,
       qrDataUrl: 'data:image/png;base64,stale-relay',
-      pairingUrl: 'nightshift://pair#stale-relay',
+      pairingUrl: 'kolux://pair#stale-relay',
       endpoint: 'ws://relay',
       connectionMode: 'automatic'
     })
@@ -472,7 +474,7 @@ describe('MobilePage pairing connection mode', () => {
       available: true,
       qrDataUrl: null,
       qrError: 'encoding_failed',
-      pairingUrl: 'nightshift://pair?code=copy-fallback',
+      pairingUrl: 'kolux://pair?code=copy-fallback',
       endpoint: 'wss://custom.example/large',
       connectionMode: 'automatic'
     })

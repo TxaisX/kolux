@@ -7,14 +7,14 @@ import { startLocalBuildFeed } from './local-build-feed-server'
 
 describe('startLocalBuildFeed', () => {
   it('serves only tokenized manifest and validated artifact routes', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-local-feed-'))
-    const artifactPath = join(directory, 'nightshift-macos-arm64.zip')
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-local-feed-'))
+    const artifactPath = join(directory, 'kolux-macos-arm64.zip')
     await writeFile(artifactPath, 'zip')
     const artifactFile = await open(artifactPath, 'r')
     const candidate = {
       version: '1.2.3-local.1',
       manifestContent: 'version: 1.2.3-local.1\n',
-      artifacts: new Map([['nightshift-macos-arm64.zip', { file: artifactFile, size: 3 }]]),
+      artifacts: new Map([['kolux-macos-arm64.zip', { file: artifactFile, size: 3 }]]),
       close: () => artifactFile.close()
     } as LocalBuildCandidate
     const feed = await startLocalBuildFeed(candidate)
@@ -23,7 +23,7 @@ describe('startLocalBuildFeed', () => {
         fetch(`${feed.url}latest-mac.yml`).then((response) => response.text())
       ).resolves.toContain('1.2.3-local.1')
       await expect(
-        fetch(`${feed.url}nightshift-macos-arm64.zip`).then((response) => response.text())
+        fetch(`${feed.url}kolux-macos-arm64.zip`).then((response) => response.text())
       ).resolves.toBe('zip')
       const baseUrl = new URL(feed.url)
       await expect(

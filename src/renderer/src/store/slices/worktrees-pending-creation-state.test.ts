@@ -91,7 +91,7 @@ describe('pending worktree creation state', () => {
           hostId: 'local',
           projectHostSetupId: 'setup-local',
           repoId: 'repo-local',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
         },
         workspaceRunContext: {
           kind: 'workspace-run',
@@ -99,7 +99,7 @@ describe('pending worktree creation state', () => {
           hostId: 'ssh:ssh-1',
           projectHostSetupId: 'setup-ssh',
           repoId: 'repo-ssh',
-          path: '/home/nightshift/nightshift'
+          path: '/home/kolux/kolux'
         },
         name: 'feature',
         setupDecision: 'inherit',

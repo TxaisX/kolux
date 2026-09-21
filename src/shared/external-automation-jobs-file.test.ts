@@ -15,7 +15,7 @@ afterEach(async () => {
 })
 
 async function tempFile(name: string): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'nightshift-automation-jobs-'))
+  const dir = await mkdtemp(join(tmpdir(), 'kolux-automation-jobs-'))
   tempDirs.push(dir)
   return join(dir, name)
 }

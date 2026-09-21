@@ -10,12 +10,12 @@ export const ORCHESTRATION_REQUEST_SHOW_HANDLER: Record<string, CommandHandler> 
     const result = await client
       .call<OrchestrationMutationRequestShowResult>('orchestration.requestShow', { request })
       .catch((error: unknown) => {
-        // Why: a Nightshift server older than request-show answers method_not_found, which reads
+        // Why: a Kolux server older than request-show answers method_not_found, which reads
         // as a bug rather than a version gap on the very path a lost response sends you down.
         if (error instanceof RuntimeClientError && error.code === 'method_not_found') {
           throw new RuntimeClientError(
             'incompatible_runtime',
-            'This Nightshift server cannot look up orchestration mutation requests yet. Update Nightshift on the server, or inspect the Dispatch directly with orchestration worker-show.'
+            'This Kolux server cannot look up orchestration mutation requests yet. Update Kolux on the server, or inspect the Dispatch directly with orchestration worker-show.'
           )
         }
         throw error

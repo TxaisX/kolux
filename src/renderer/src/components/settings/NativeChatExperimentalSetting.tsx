@@ -132,7 +132,7 @@ export function NativeChatExperimentalSetting({
                 <p className="text-xs text-muted-foreground">
                   {translate(
                     'auto.components.settings.ExperimentalPane.nativeChat.structuredScope',
-                    'Local sessions only for now. WSL and remote execution hosts (including SSH) continue to use terminal chat, and Windows falls back to it unless Nightshift can read process start times.'
+                    'Local sessions only for now. WSL and remote execution hosts (including SSH) continue to use terminal chat, and Windows falls back to it unless Kolux can read process start times.'
                   )}
                 </p>
               </div>

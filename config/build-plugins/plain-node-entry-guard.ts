@@ -230,7 +230,7 @@ export function createPlainNodeEntryGuardPlugin(
   let daemonOutputDir: string | undefined
 
   return {
-    name: 'nightshift-plain-node-entry-guard',
+    name: 'kolux-plain-node-entry-guard',
     buildStart(options: NormalizedInputOptions) {
       assertEntryNamesAreRollupInputs(options.input)
     },

@@ -254,7 +254,7 @@ function renderBlock(node: unknown, options?: AdfToMarkdownOptions): MarkdownBlo
     }
   }
   if (type === 'bulletList') {
-    // Why: Nightshift renders Jira bodies as Markdown, so ADF list containers need
+    // Why: Kolux renders Jira bodies as Markdown, so ADF list containers need
     // concrete list markers instead of newline-only flattened text.
     return { kind: 'list', text: renderList(record, false, options) }
   }

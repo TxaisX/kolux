@@ -79,7 +79,7 @@ export function buildWslCodexLoginArgs(distro: string, linuxHomePath: string): s
 
 function buildCodexPathLookup(): string {
   // Same skip as agent detection: otherwise detection can report the guest
-  // codex while this resolves the Windows one ahead of it on PATH, and Nightshift
+  // codex while this resolves the Windows one ahead of it on PATH, and Kolux
   // launches a different binary than the one it said was installed.
   return buildPosixCommandPathLookupScript(
     { kind: 'literal', value: 'codex' },

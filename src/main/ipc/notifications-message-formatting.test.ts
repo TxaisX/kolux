@@ -54,13 +54,13 @@ describe('registerNotificationHandlers', () => {
     expect(
       await handler(
         {},
-        { source: 'agent-task-complete', repoLabel: 'nightshift', worktreeLabel: 'feat/notis' }
+        { source: 'agent-task-complete', repoLabel: 'kolux', worktreeLabel: 'feat/notis' }
       )
     ).toEqual({ delivered: true })
     expect(notificationCtorMock).toHaveBeenCalledWith(
       expectedNativeNotificationOptions({
         title: 'Task complete in feat/notis',
-        body: 'nightshift'
+        body: 'kolux'
       })
     )
     expect(notificationShowMock).toHaveBeenCalledTimes(1)
@@ -86,7 +86,7 @@ describe('registerNotificationHandlers', () => {
           source: 'agent-task-complete',
           worktreeId: 'repo::wt1',
           worktreeLabel: 'feat/notis',
-          repoLabel: 'nightshift',
+          repoLabel: 'kolux',
           terminalTitle: '* Claude done',
           agentType: 'codex',
           agentState: 'done',
@@ -124,7 +124,7 @@ describe('registerNotificationHandlers', () => {
           source: 'agent-task-complete',
           worktreeId: 'repo::wt1',
           worktreeLabel: 'feat/notis',
-          repoLabel: 'nightshift',
+          repoLabel: 'kolux',
           hasMultipleActiveRepos: true,
           agentType: 'codex',
           agentState: 'done',
@@ -135,7 +135,7 @@ describe('registerNotificationHandlers', () => {
 
     expect(notificationCtorMock).toHaveBeenCalledWith(
       expectedNativeNotificationOptions({
-        title: 'nightshift / feat/notis - Codex finished',
+        title: 'kolux / feat/notis - Codex finished',
         body: 'Updated the notification body.'
       })
     )

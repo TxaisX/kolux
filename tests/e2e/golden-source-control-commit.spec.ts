@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   cleanupGoldenWorktree,
   createGoldenWorktree,
@@ -15,7 +15,7 @@ import {
 import { waitForSessionReady } from './helpers/store'
 
 test('@golden stages and commits a file through Source Control', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath,
   registerPostElectronShutdownCleanup
 }) => {
@@ -24,10 +24,10 @@ test('@golden stages and commits a file through Source Control', async ({
   seedGoldenSourceEdit(fixture.worktreePath)
   const hookMarkerPath = installPassingNodePreCommitHook(fixture)
 
-  await waitForSessionReady(nightshiftPage)
-  await openGoldenSourceControl(nightshiftPage, testRepoPath, fixture)
+  await waitForSessionReady(koluxPage)
+  await openGoldenSourceControl(koluxPage, testRepoPath, fixture)
 
-  const unstagedRow = nightshiftPage
+  const unstagedRow = koluxPage
     .locator('[data-testid="source-control-entry"][data-source-control-area="unstaged"]')
     .filter({ hasText: path.basename(GOLDEN_CHANGED_PATH) })
   await expect(unstagedRow).toBeVisible()
@@ -36,14 +36,12 @@ test('@golden stages and commits a file through Source Control', async ({
   await stageButton.press('Enter')
   await expect(unstagedRow).toHaveCount(0, { timeout: 10_000 })
 
-  const stagedRow = nightshiftPage
+  const stagedRow = koluxPage
     .locator('[data-testid="source-control-entry"][data-source-control-area="staged"]')
     .filter({ hasText: path.basename(GOLDEN_CHANGED_PATH) })
   await expect(stagedRow).toBeVisible({ timeout: 10_000 })
-  await nightshiftPage
-    .getByRole('textbox', { name: 'Commit message' })
-    .fill('test: golden daily loop')
-  await nightshiftPage.getByRole('button', { name: 'Commit', exact: true }).click()
+  await koluxPage.getByRole('textbox', { name: 'Commit message' }).fill('test: golden daily loop')
+  await koluxPage.getByRole('button', { name: 'Commit', exact: true }).click()
 
   await expect(stagedRow).toHaveCount(0, { timeout: 20_000 })
   await expect
@@ -64,8 +62,6 @@ test('@golden stages and commits a file through Source Control', async ({
   ).toBe(`${GOLDEN_GIT_AUTHOR_NAME}\n${GOLDEN_GIT_AUTHOR_EMAIL}\ntest: golden daily loop`)
   await expect.poll(() => existsSync(hookMarkerPath), { timeout: 20_000 }).toBe(true)
   await expect(
-    nightshiftPage
-      .locator('[data-sonner-toast]')
-      .filter({ hasText: /node|command not found|cmd\.exe/i })
+    koluxPage.locator('[data-sonner-toast]').filter({ hasText: /node|command not found|cmd\.exe/i })
   ).toHaveCount(0)
 })

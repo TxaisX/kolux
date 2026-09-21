@@ -40,7 +40,7 @@ export class CodexJournalCompactions {
     }
     const admission = appendCodexLifecycleItem(
       this.sink,
-      { provider: 'nightshift', clientMessageId: `codex-compaction:${key}` },
+      { provider: 'kolux', clientMessageId: `codex-compaction:${key}` },
       { kind: 'status', text: 'Context compacted', presentation: 'compaction' }
     )
     if (!admission.accepted) {

@@ -81,7 +81,7 @@ export function registerBrowserStateIpcBridge(
     })
   )
   unsubs.push(
-    window.api.browser.onOpenLinkInNightshiftTab(({ browserPageId, url, activate }) => {
+    window.api.browser.onOpenLinkInKoluxTab(({ browserPageId, url, activate }) => {
       const store = useAppStore.getState()
       const sourcePage = Object.values(store.browserPagesByWorkspace)
         .flat()

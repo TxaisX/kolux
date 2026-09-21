@@ -329,7 +329,7 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
               </TooltipContent>
             </Tooltip>
           ) : null}
-          {/* Why: primary checkout rows remove the project from Nightshift instead of
+          {/* Why: primary checkout rows remove the project from Kolux instead of
              invoking git worktree deletion. Radix forwards unknown props to the
              DOM element, so `title` works directly without a wrapper span —
              this preserves Radix's flat roving-tabindex keyboard navigation. */}
@@ -363,7 +363,7 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
                   : removesProject
                     ? translate(
                         'auto.components.sidebar.WorktreeContextMenu.f5ac91531d',
-                        'Remove Project from Nightshift'
+                        'Remove Project from Kolux'
                       )
                     : lineageDescendantCount > 0
                       ? translate(

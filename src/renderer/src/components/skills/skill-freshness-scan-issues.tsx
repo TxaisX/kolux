@@ -6,43 +6,43 @@ function issueDescription(issue: SkillFreshnessScanIssue): string {
     case 'depth-limit':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanDepthLimit',
-        'Nightshift reached its plugin scan depth limit before checking this folder.'
+        'Kolux reached its plugin scan depth limit before checking this folder.'
       )
     case 'entry-limit':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanEntryLimit',
-        'Nightshift reached its plugin scan entry limit before checking the rest of this cache.'
+        'Kolux reached its plugin scan entry limit before checking the rest of this cache.'
       )
     case 'candidate-limit':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanCandidateLimit',
-        'Nightshift found more same-named skill folders than it can safely inspect.'
+        'Kolux found more same-named skill folders than it can safely inspect.'
       )
     case 'manifest-limit':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanManifestLimit',
-        'Nightshift skipped this plugin manifest because it exceeded a safe limit.'
+        'Kolux skipped this plugin manifest because it exceeded a safe limit.'
       )
     case 'outside-root':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanOutsideRoot',
-        'Nightshift skipped this plugin path because it points outside the plugin cache.'
+        'Kolux skipped this plugin path because it points outside the plugin cache.'
       )
     case 'io-error':
       return issue.errorCode
         ? translate(
             'auto.components.skills.SkillFreshnessUpdateDialog.scanIoErrorWithCode',
-            'Nightshift could not read this plugin path ({{value0}}).',
+            'Kolux could not read this plugin path ({{value0}}).',
             { value0: issue.errorCode }
           )
         : translate(
             'auto.components.skills.SkillFreshnessUpdateDialog.scanIoError',
-            'Nightshift could not read this plugin path.'
+            'Kolux could not read this plugin path.'
           )
     case 'issue-limit':
       return translate(
         'auto.components.skills.SkillFreshnessUpdateDialog.scanIssueLimit',
-        'Nightshift found too many skipped plugin folders to list individually.'
+        'Kolux found too many skipped plugin folders to list individually.'
       )
   }
 }

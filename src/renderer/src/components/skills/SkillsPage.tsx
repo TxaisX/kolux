@@ -156,7 +156,7 @@ export default function SkillsPage(): React.JSX.Element {
     if (!pendingSkillShareId) {
       return
     }
-    setInstallLink(`https://app.nightshift.invalid/skills/share/${pendingSkillShareId}`)
+    setInstallLink(`https://app.kolux.invalid/skills/share/${pendingSkillShareId}`)
     setInstallOpen(true)
     clearPendingSkillShare()
   }, [clearPendingSkillShare, pendingSkillShareId])

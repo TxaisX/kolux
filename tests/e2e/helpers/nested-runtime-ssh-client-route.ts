@@ -1,4 +1,4 @@
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 import type {
   createRuntimeDesktopPairingOffer,
   PairedElectronClient
@@ -31,7 +31,7 @@ export async function assertNestedTerminalDestination(
   expectedSentinel: string
 ): Promise<void> {
   await focusActiveTerminalInput(client.page)
-  await client.page.keyboard.insertText('cat .nightshift-e2e-destination-id')
+  await client.page.keyboard.insertText('cat .kolux-e2e-destination-id')
   await client.page.keyboard.press('Enter')
   await expect
     .poll(() => getTerminalContent(client.page), { timeout: 15_000 })

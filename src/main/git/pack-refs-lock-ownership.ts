@@ -16,7 +16,7 @@ const PID_REUSE_HORIZON_MS = 24 * 60 * 60_000
 const REF_LOCK_SCAN_CEILING = 4096
 
 /**
- * Makes a `packed-refs.lock` Nightshift left behind attributable, and only that one.
+ * Makes a `packed-refs.lock` Kolux left behind attributable, and only that one.
  *
  * Git registers signal handlers that clean the lock up, but SIGKILL and power
  * loss bypass them, and Git never removes a stale `packed-refs.lock` on its own
@@ -38,7 +38,7 @@ export class PackRefsLockOwnership {
   constructor(gitCommonDir: string) {
     const path = isWindowsAbsolutePathLike(gitCommonDir) ? win32 : posix
     this.lockPath = path.join(gitCommonDir, 'packed-refs.lock')
-    this.markerPath = path.join(gitCommonDir, 'packed-refs.nightshift-owner')
+    this.markerPath = path.join(gitCommonDir, 'packed-refs.kolux-owner')
   }
 
   /** Refused when the lock belongs to something we cannot prove is our own wreckage. */

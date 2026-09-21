@@ -58,7 +58,7 @@ async function settle(): Promise<void> {
   }
 }
 
-describe('remote Nightshift server reconnect', () => {
+describe('remote Kolux server reconnect', () => {
   let unsubs: (() => void)[] = []
   let stopBridge: (() => void) | null = null
   let subscriptionResponders: {

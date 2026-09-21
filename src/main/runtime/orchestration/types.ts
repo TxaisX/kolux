@@ -291,7 +291,7 @@ export type DispatchContextRow = {
   status: DispatchStatus
   failure_count: number
   last_failure: string | null
-  /** Why the dispatch ended, when Nightshift could establish it — `operator_close`,
+  /** Why the dispatch ended, when Kolux could establish it — `operator_close`,
    *  `signaled`, `exited`, `unknown`. Null on rows written before STA-4603. */
   termination_reason: TerminalExitCause['kind'] | null
   /** Nesting depth; a root coordinator's worker is 1. Never 0 on a persisted row. */

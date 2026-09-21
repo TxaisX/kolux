@@ -176,7 +176,7 @@ function startRepair(
         clearInstallDirAclPoisonMarker(options.userDataPath)
         // The GPU child deaths were never a driver fault, so safe graphics — and the
         // --in-process-gpu launch that hides the next crash's evidence — must not outlive the repair.
-        // Never a user-confirmed marker: "keep safe graphics" is a choice, not Nightshift's latch.
+        // Never a user-confirmed marker: "keep safe graphics" is a choice, not Kolux's latch.
         const gpuMarker = readGpuFallbackMarker(options.userDataPath)
         if (gpuMarker?.userConfirmed === false) {
           // Kept: a probe reading that later disproves this claim restores the marker,
@@ -311,7 +311,7 @@ export async function repairKnownPoisonedInstallDirBeforeWindow(
 }
 
 const CAUSE =
-  "Windows permissions on Nightshift's install folder are blocking its own sandboxed processes from reading the files it shipped with."
+  "Windows permissions on Kolux's install folder are blocking its own sandboxed processes from reading the files it shipped with."
 
 // Why the exact commands: the window is blank, so the dialog is the only place a user can be told what to run.
 export function describeInstallDirAclPoison(): InstallDirAclPoisonDiagnosis | null {
@@ -321,16 +321,16 @@ export function describeInstallDirAclPoison(): InstallDirAclPoisonDiagnosis | nu
   const commands = buildInstallDirAclRepairCommands(poison.installDir)
   if (poison.stage === 'repaired') {
     return {
-      detail: `${CAUSE}\n\nNightshift repaired the permissions. Reload to use them.`,
+      detail: `${CAUSE}\n\nKolux repaired the permissions. Reload to use them.`,
       commands
     }
   }
   const status =
     poison.stage === 'pending'
-      ? 'Nightshift is repairing the permissions now.'
-      : 'Nightshift could not repair them, which usually means the folder needs an administrator.'
+      ? 'Kolux is repairing the permissions now.'
+      : 'Kolux could not repair them, which usually means the folder needs an administrator.'
   return {
-    detail: `${CAUSE} ${status}\n\nRun these in an Administrator Command Prompt, then relaunch Nightshift:\n\n${commands.join('\n')}`,
+    detail: `${CAUSE} ${status}\n\nRun these in an Administrator Command Prompt, then relaunch Kolux:\n\n${commands.join('\n')}`,
     commands
   }
 }

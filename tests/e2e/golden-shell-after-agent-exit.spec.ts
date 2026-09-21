@@ -1,4 +1,4 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   configureGoldenStubAgent,
   getGoldenStubAgentLaunchEnv,
@@ -26,43 +26,39 @@ function buildSplitMarkerEcho(prefix: string, suffix: string): { command: string
   return { command, marker: `${prefix}${suffix}` }
 }
 
-test('opens a clean live shell after an agent exits', async ({ nightshiftPage }) => {
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await configureGoldenStubAgent(nightshiftPage)
-  await launchGoldenStubAgentFromNewTab(nightshiftPage)
+test('opens a clean live shell after an agent exits', async ({ koluxPage }) => {
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await configureGoldenStubAgent(koluxPage)
+  await launchGoldenStubAgentFromNewTab(koluxPage)
 
-  await nightshiftPage.keyboard.type('exit')
-  await nightshiftPage.keyboard.press('Enter')
-  await waitForTerminalOutput(nightshiftPage, GOLDEN_STUB_EXIT_MARKER, 15_000)
+  await koluxPage.keyboard.type('exit')
+  await koluxPage.keyboard.press('Enter')
+  await waitForTerminalOutput(koluxPage, GOLDEN_STUB_EXIT_MARKER, 15_000)
 
-  const tabsBeforeShell = await nightshiftPage.locator('[data-testid="sortable-tab"]').count()
-  await nightshiftPage.getByRole('button', { name: 'New tab' }).click({ force: true })
-  await nightshiftPage
+  const tabsBeforeShell = await koluxPage.locator('[data-testid="sortable-tab"]').count()
+  await koluxPage.getByRole('button', { name: 'New tab' }).click({ force: true })
+  await koluxPage
     .getByRole('menuitem', { name: /New Terminal/i })
     .first()
     .click({ force: true })
-  await expect(nightshiftPage.locator('[data-testid="sortable-tab"]')).toHaveCount(
-    tabsBeforeShell + 1
-  )
-  const shellPtyId = await waitForActivePanePtyId(nightshiftPage)
+  await expect(koluxPage.locator('[data-testid="sortable-tab"]')).toHaveCount(tabsBeforeShell + 1)
+  const shellPtyId = await waitForActivePanePtyId(koluxPage)
   // Why: a bound ptyId only means the pane exists; the renderer transport can
   // still drop keystrokes until it connects, which would strand the markers.
-  expect(await waitForRestoredTerminalInputReady(nightshiftPage, shellPtyId)).toBe(true)
+  expect(await waitForRestoredTerminalInputReady(koluxPage, shellPtyId)).toBe(true)
 
   const afterAgent = buildSplitMarkerEcho('after-', 'agent')
-  await focusActiveTerminalInput(nightshiftPage)
-  await nightshiftPage.keyboard.type(afterAgent.command)
-  await nightshiftPage.keyboard.press('Enter')
-  await waitForTerminalOutput(nightshiftPage, afterAgent.marker, 15_000)
+  await focusActiveTerminalInput(koluxPage)
+  await koluxPage.keyboard.type(afterAgent.command)
+  await koluxPage.keyboard.press('Enter')
+  await waitForTerminalOutput(koluxPage, afterAgent.marker, 15_000)
 
   const afterShiftEnter = buildSplitMarkerEcho('after-shift-', 'enter')
-  await nightshiftPage.keyboard.press('Shift+Enter')
-  await nightshiftPage.keyboard.type(afterShiftEnter.command)
-  await nightshiftPage.keyboard.press('Enter')
-  await waitForTerminalOutput(nightshiftPage, afterShiftEnter.marker, 15_000)
-  await expect(nightshiftPage.locator('[data-testid="sortable-tab"]')).toHaveCount(
-    tabsBeforeShell + 1
-  )
+  await koluxPage.keyboard.press('Shift+Enter')
+  await koluxPage.keyboard.type(afterShiftEnter.command)
+  await koluxPage.keyboard.press('Enter')
+  await waitForTerminalOutput(koluxPage, afterShiftEnter.marker, 15_000)
+  await expect(koluxPage.locator('[data-testid="sortable-tab"]')).toHaveCount(tabsBeforeShell + 1)
 })

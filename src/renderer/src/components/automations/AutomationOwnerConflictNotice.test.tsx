@@ -34,7 +34,7 @@ describe('AutomationOwnerConflictNotice', () => {
   it('renders warning notice message and icon', () => {
     const notice = ownerConflictNotice({
       code: 'automation_owner_changed',
-      message: 'Editing automations on this host requires a newer Nightshift server.',
+      message: 'Editing automations on this host requires a newer Kolux server.',
       recovery: 'update-server'
     })
 
@@ -45,7 +45,7 @@ describe('AutomationOwnerConflictNotice', () => {
     const alert = container.querySelector('[role="alert"][data-testid="automation-owner-conflict"]')
     expect(alert).not.toBeNull()
     expect(alert?.textContent).toContain(
-      'Editing automations on this host requires a newer Nightshift server.'
+      'Editing automations on this host requires a newer Kolux server.'
     )
     expect(alert?.querySelector('svg')).not.toBeNull()
   })

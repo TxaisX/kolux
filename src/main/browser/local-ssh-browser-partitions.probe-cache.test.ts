@@ -25,7 +25,7 @@ vi.mock('./browser-route-guest-guard', () => ({ closeRouteGuest: vi.fn() }))
 vi.mock('./browser-route-partition-binding-runtime', () => {
   const fingerprints = new Map<string, string>()
   return {
-    activeBrowserRoutePartitionNightshiftProfileId: () => 'nightshift-profile-1',
+    activeBrowserRoutePartitionKoluxProfileId: () => 'kolux-profile-1',
     currentBrowserRoutePartitionBindingStore: () => ({
       get: (partition: string) => fingerprints.get(partition) ?? null,
       set: (partition: string, fingerprint: string) => {
@@ -75,7 +75,7 @@ describe('prepareLocalSshBrowserPartition probe caching', () => {
       browserProfileId: 'default',
       skipProbe: true
     })
-    expect(skipped.partition).toMatch(/^persist:nightshift-browser-v1-/)
+    expect(skipped.partition).toMatch(/^persist:kolux-browser-v1-/)
     expect(mocks.probe).not.toHaveBeenCalled()
 
     // The user pressed "Check again": the next prepare must actually probe and

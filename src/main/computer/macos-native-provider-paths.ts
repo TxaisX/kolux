@@ -2,15 +2,15 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 export function resolveMacOSComputerUseAppPath(): string | null {
-  const override = process.env.NIGHTSHIFT_COMPUTER_MACOS_HELPER_APP_PATH
+  const override = process.env.KOLUX_COMPUTER_MACOS_HELPER_APP_PATH
   if (override && existsSync(override)) {
     return override
   }
 
-  const packaged = [join(process.resourcesPath ?? '', 'Nightshift Computer Use.app')]
+  const packaged = [join(process.resourcesPath ?? '', 'Kolux Computer Use.app')]
   const dev = [
-    join(process.cwd(), 'native/computer-use-macos/.build/release/Nightshift Computer Use.app'),
-    resolve(__dirname, '../../native/computer-use-macos/.build/release/Nightshift Computer Use.app')
+    join(process.cwd(), 'native/computer-use-macos/.build/release/Kolux Computer Use.app'),
+    resolve(__dirname, '../../native/computer-use-macos/.build/release/Kolux Computer Use.app')
   ]
   const candidates = process.resourcesPath ? [...packaged, ...dev] : dev
 
@@ -22,6 +22,6 @@ export function resolveMacOSComputerUseExecutablePath(): string | null {
   if (!appPath) {
     return null
   }
-  const executablePath = join(appPath, 'Contents', 'MacOS', 'nightshift-computer-use-macos')
+  const executablePath = join(appPath, 'Contents', 'MacOS', 'kolux-computer-use-macos')
   return existsSync(executablePath) ? executablePath : null
 }

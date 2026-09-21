@@ -78,7 +78,7 @@ describe('PluginInstallDialog', () => {
     })
 
     expect(document.body.textContent).toContain(
-      'nightshift-plugin.json is invalid. Ask the plugin author to fix the manifest.'
+      'kolux-plugin.json is invalid. Ask the plugin author to fix the manifest.'
     )
     act(() => root.unmount())
   })

@@ -12,16 +12,19 @@ import { cp } from 'node:fs/promises'
 import { dirname, join, win32 as winPath } from 'node:path'
 import { getAppEnvironment } from '../../shared/app-environment'
 import type { ProcessLivenessVerdict } from './daemon-incarnation-evidence-types'
-import { parseDaemonPidFile } from './daemon-pid-file-parse'
-import { quarantineCorruptDaemonPidRecord } from './daemon-pid-record-quarantine'
-import { inspectProcessLiveness, mergeProcessLivenessVerdict } from './daemon-process-inspection'
 import { daemonNativeAddonCopyOps } from './daemon-host-native-addons'
+import type { PinnedDaemonVersionsEvidence } from './daemon-pinned-versions'
+
+export {
+  collectPinnedDaemonVersions,
+  type PinnedDaemonVersionsEvidence
+} from './daemon-pinned-versions'
 
 /**
  * Relocate the terminal daemon's process image out of the app install dir into LOCAL userData so it
  * survives Windows auto-updates: the NSIS installer deletes the old install and force-kills every process
  * imaged under it, which would otherwise kill the daemon and its live terminals. The relocated exe is a
- * run-as-node Nightshift.exe copy (not node.exe) so there's no console flash and asar still resolves. Fail-open:
+ * run-as-node Kolux.exe copy (not node.exe) so there's no console flash and asar still resolves. Fail-open:
  * any failure returns null and the caller forks the install-dir host (pre-relocation behavior).
  *
  * What escapes the updater is the PATH, not the file name: electron-builder's kill sweep selects
@@ -39,8 +42,8 @@ export type RelocatedDaemonHost = {
 const HOST_SUBDIR = 'daemon-host'
 const MARKER_NAME = '.materialized.json'
 
-// LOCAL appData (not roaming) so OneDrive/roaming never syncs this ~260MB runtime. Shared with NSIS uninstall (config/nsis/nightshift-installer-hooks.nsh) — keep in sync.
-const LOCAL_HOST_ROOT_NAME = 'Nightshift'
+// LOCAL appData (not roaming) so OneDrive/roaming never syncs this ~260MB runtime. Shared with NSIS uninstall (config/nsis/kolux-installer-hooks.nsh) — keep in sync.
+const LOCAL_HOST_ROOT_NAME = 'Kolux'
 
 /**
  * The host exe keeps the app exe's own file name, so the relocated image is a byte-for-byte,
@@ -51,7 +54,7 @@ const LOCAL_HOST_ROOT_NAME = 'Nightshift'
  */
 const daemonHostExeName = (execPath: string): string => winPath.basename(execPath)
 
-// V8 snapshots + ICU data the Electron bootstrap reads even under ELECTRON_RUN_AS_NODE; siblings of Nightshift.exe.
+// V8 snapshots + ICU data the Electron bootstrap reads even under ELECTRON_RUN_AS_NODE; siblings of Kolux.exe.
 const RUNTIME_DATA_FILES = ['icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin']
 
 type CopyOp = {
@@ -102,7 +105,7 @@ function resolveEntrySourcePath(resourcesPath: string): string {
  * Whether this process is a packaged ELECTRON app on win32 — the only shape relocation
  * addresses, because what it escapes is the NSIS updater's kill zone.
  *
- * Why asar and not isPackaged alone: nightshiftd answers isPackaged() true (it is a shipped build,
+ * Why asar and not isPackaged alone: koluxd answers isPackaged() true (it is a shipped build,
  * not a dev checkout) while having no asar, no resourcesPath and no NSIS installer. Asking
  * whether the app root is an asar archive is the same honesty fix the watcher path uses, and
  * it keeps a Node host from staging a copy of an Electron tree it does not have.
@@ -314,64 +317,6 @@ export function materializeRelocatedDaemonHost(): Promise<RelocatedDaemonHost | 
     () => (inFlightMaterialization = null)
   )
   return inFlightMaterialization
-}
-
-export type PinnedDaemonVersionsEvidence =
-  | { status: 'complete'; versionLiveness: ReadonlyMap<string, ProcessLivenessVerdict> }
-  | { status: 'unverifiable'; reason: string }
-
-/**
- * App versions still pinned by a live daemon (from daemon-v<N>.pid files under `runtimeDir`), whose
- * host dir must not be reclaimed while alive. On win32 start-time can't verify, so a matching pid pins conservatively.
- */
-export function collectPinnedDaemonVersions(runtimeDir: string): PinnedDaemonVersionsEvidence {
-  const versionLiveness = new Map<string, ProcessLivenessVerdict>()
-  let entries
-  try {
-    entries = readdirSync(runtimeDir, { withFileTypes: true })
-  } catch {
-    return { status: 'unverifiable', reason: 'the daemon runtime directory could not be read' }
-  }
-  for (const entry of entries) {
-    if (!entry.isFile() || !/^daemon-v\d+\.pid$/.test(entry.name)) {
-      continue
-    }
-    let contents
-    try {
-      contents = readFileSync(join(runtimeDir, entry.name), 'utf8')
-    } catch {
-      // Read failures (AV lock, vanished file) are transient; the veto re-evaluates next launch.
-      return {
-        status: 'unverifiable',
-        reason: `the daemon pid file could not be read: ${entry.name}`
-      }
-    }
-    const parsed = parseDaemonPidFile(contents)
-    // Why not just `!parsed`: the parser's legacy bare-integer fallback coerces an empty or
-    // whitespace-only record to pid 0 (Number('') === 0), which is the exact shape a concurrent
-    // read sees while a live daemon publishes its record — writeFileSync 'wx' creates the file
-    // before writing it. Such a record would otherwise pass as a valid pre-relocation daemon,
-    // skip on appVersion === null, and leave its version unpinned, so the prune below would
-    // reclaim a running daemon's host image. A pid that is not a positive integer names no
-    // process — process.kill(0, 0) probes the caller's own process group, never a daemon — so
-    // it is not liveness evidence and must veto rather than be skipped.
-    if (!parsed || !Number.isInteger(parsed.pid) || parsed.pid <= 0) {
-      return {
-        status: 'unverifiable',
-        reason: quarantineCorruptDaemonPidRecord(runtimeDir, entry.name, contents)
-      }
-    }
-    // appVersion null => pre-relocation daemon forked from the install dir; pins no host dir here.
-    if (parsed.appVersion === null) {
-      continue
-    }
-    const verdict = inspectProcessLiveness(parsed.pid)
-    versionLiveness.set(
-      parsed.appVersion,
-      mergeProcessLivenessVerdict(versionLiveness.get(parsed.appVersion), verdict)
-    )
-  }
-  return { status: 'complete', versionLiveness }
 }
 
 // Why: deletion is the destructive direction and this is a statement position the compiler does

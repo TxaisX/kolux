@@ -1,5 +1,5 @@
 /**
- * When in a shell's startup Nightshift's OSC 777 ready marker is published.
+ * When in a shell's startup Kolux's OSC 777 ready marker is published.
  *
  * Why this is a decision of its own: it is what separates "waiting for the marker
  * is free" from "waiting for the marker costs the user real startup latency", and

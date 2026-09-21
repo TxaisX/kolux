@@ -23,7 +23,7 @@ const chromeSource = {
 
 describe('clientRouteCookieImportSources', () => {
   beforeEach(() => {
-    mocks.userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-client-route-sources-'))
+    mocks.userDataDir = mkdtempSync(join(tmpdir(), 'kolux-client-route-sources-'))
     resetClientRouteCookieImportSourcesForTests()
   })
   afterEach(() => {

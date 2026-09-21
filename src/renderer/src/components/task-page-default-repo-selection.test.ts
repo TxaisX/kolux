@@ -22,7 +22,7 @@ function repo(overrides: Partial<Repo> & Pick<Repo, 'id'>): Repo {
 describe('getTaskEligibleRepos', () => {
   it('keeps only Git repos with a resolvable remote identity', () => {
     const eligible = getTaskEligibleRepos([
-      repo({ id: 'github-upstream', upstream: { owner: 'TxaisX', repo: 'nightshift' } }),
+      repo({ id: 'github-upstream', upstream: { owner: 'TxaisX', repo: 'kolux' } }),
       repo({
         id: 'github-icon',
         repoIcon: {
@@ -35,9 +35,9 @@ describe('getTaskEligibleRepos', () => {
       repo({
         id: 'gitlab-remote',
         gitRemoteIdentity: {
-          canonicalKey: 'gitlab.example.com/team/nightshift',
+          canonicalKey: 'gitlab.example.com/team/kolux',
           remoteName: 'origin',
-          remoteUrl: 'git@gitlab.example.com:team/nightshift.git'
+          remoteUrl: 'git@gitlab.example.com:team/kolux.git'
         }
       }),
       repo({ id: 'settled-no-remote', gitRemoteIdentity: null }),
@@ -92,7 +92,7 @@ describe('getTaskEligibleRepos', () => {
         id: 'gitlab-ssh-partial',
         connectionId: 'builder',
         gitRemoteIdentity: {
-          canonicalKey: 'gitlab.example.com/team/nightshift',
+          canonicalKey: 'gitlab.example.com/team/kolux',
           remoteName: 'origin',
           remoteUrl: ''
         }
@@ -101,9 +101,9 @@ describe('getTaskEligibleRepos', () => {
         id: 'gitlab-ssh-complete',
         connectionId: 'builder',
         gitRemoteIdentity: {
-          canonicalKey: 'gitlab.example.com/team/nightshift',
+          canonicalKey: 'gitlab.example.com/team/kolux',
           remoteName: 'origin',
-          remoteUrl: 'git@gitlab.example.com:team/nightshift.git'
+          remoteUrl: 'git@gitlab.example.com:team/kolux.git'
         }
       })
     ])
@@ -116,13 +116,13 @@ describe('getDefaultTaskRepoSelection', () => {
   it('selects one source per logical GitHub project', () => {
     const selection = getDefaultTaskRepoSelection([
       repo({
-        id: 'local-nightshift',
-        upstream: { owner: 'Txais', repo: 'Nightshift' }
+        id: 'local-kolux',
+        upstream: { owner: 'Txais', repo: 'Kolux' }
       }),
       repo({
-        id: 'ssh-nightshift',
+        id: 'ssh-kolux',
         connectionId: 'builder',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       repo({
         id: 'other',
@@ -130,41 +130,41 @@ describe('getDefaultTaskRepoSelection', () => {
       })
     ])
 
-    expect([...selection].sort()).toEqual(['local-nightshift', 'other'])
+    expect([...selection].sort()).toEqual(['local-kolux', 'other'])
   })
 
   it('keeps GitHub grouping intact while a pending-identity repo joins as its own project', () => {
     const selection = getDefaultTaskRepoSelection(
       getTaskEligibleRepos([
-        repo({ id: 'local-nightshift', upstream: { owner: 'Txais', repo: 'Nightshift' } }),
+        repo({ id: 'local-kolux', upstream: { owner: 'Txais', repo: 'Kolux' } }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({ id: 'ssh-gitlab-pending', connectionId: 'builder' })
       ])
     )
 
-    expect([...selection].sort()).toEqual(['local-nightshift', 'ssh-gitlab-pending'])
+    expect([...selection].sort()).toEqual(['local-kolux', 'ssh-gitlab-pending'])
   })
 
   it('prefers local checkout over a remote checkout for the same project', () => {
     const selection = getDefaultTaskRepoSelection([
       repo({
-        id: 'ssh-nightshift',
+        id: 'ssh-kolux',
         addedAt: 1,
         connectionId: 'builder',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       repo({
-        id: 'local-nightshift',
+        id: 'local-kolux',
         addedAt: 2,
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       })
     ])
 
-    expect([...selection]).toEqual(['local-nightshift'])
+    expect([...selection]).toEqual(['local-kolux'])
   })
 
   it('keeps same-named folders separate when provider identity is missing', () => {
@@ -209,13 +209,13 @@ describe('getTaskProjectPickerRepos', () => {
   it('shows one picker row per logical GitHub project', () => {
     const pickerRepos = getTaskProjectPickerRepos([
       repo({
-        id: 'local-nightshift',
-        upstream: { owner: 'Txais', repo: 'Nightshift' }
+        id: 'local-kolux',
+        upstream: { owner: 'Txais', repo: 'Kolux' }
       }),
       repo({
-        id: 'ssh-nightshift',
+        id: 'ssh-kolux',
         connectionId: 'builder',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       repo({
         id: 'other',
@@ -223,26 +223,26 @@ describe('getTaskProjectPickerRepos', () => {
       })
     ])
 
-    expect(pickerRepos.map((candidate) => candidate.id)).toEqual(['local-nightshift', 'other'])
+    expect(pickerRepos.map((candidate) => candidate.id)).toEqual(['local-kolux', 'other'])
   })
 
   it('uses an explicitly selected remote source as the visible project row', () => {
     const pickerRepos = getTaskProjectPickerRepos(
       [
         repo({
-          id: 'local-nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          id: 'local-kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ],
-      new Set(['ssh-nightshift'])
+      new Set(['ssh-kolux'])
     )
 
-    expect(pickerRepos.map((candidate) => candidate.id)).toEqual(['ssh-nightshift'])
+    expect(pickerRepos.map((candidate) => candidate.id)).toEqual(['ssh-kolux'])
   })
 
   it('collapses legacy local and SSH rows that share a GitHub repo icon identity', () => {
@@ -278,13 +278,13 @@ describe('getTaskProjectPickerGroups', () => {
   it('keeps all host sources under one logical project row', () => {
     const groups = getTaskProjectPickerGroups([
       repo({
-        id: 'local-nightshift',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        id: 'local-kolux',
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       repo({
-        id: 'ssh-nightshift',
+        id: 'ssh-kolux',
         connectionId: 'builder',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       repo({
         id: 'docs',
@@ -295,12 +295,9 @@ describe('getTaskProjectPickerGroups', () => {
     expect(groups).toHaveLength(2)
     expect(groups[0]).toMatchObject({
       projectKey: 'github:TxaisX/nightshift',
-      repo: { id: 'local-nightshift' }
+      repo: { id: 'local-kolux' }
     })
-    expect(groups[0]?.sources.map((source) => source.id)).toEqual([
-      'local-nightshift',
-      'ssh-nightshift'
-    ])
+    expect(groups[0]?.sources.map((source) => source.id)).toEqual(['local-kolux', 'ssh-kolux'])
     expect(groups[1]).toMatchObject({
       projectKey: 'github:txais/docs',
       repo: { id: 'docs' }
@@ -311,23 +308,20 @@ describe('getTaskProjectPickerGroups', () => {
     const groups = getTaskProjectPickerGroups(
       [
         repo({
-          id: 'local-nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          id: 'local-kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ],
-      new Set(['ssh-nightshift'])
+      new Set(['ssh-kolux'])
     )
 
-    expect(groups[0]?.repo.id).toBe('ssh-nightshift')
-    expect(groups[0]?.sources.map((source) => source.id)).toEqual([
-      'local-nightshift',
-      'ssh-nightshift'
-    ])
+    expect(groups[0]?.repo.id).toBe('ssh-kolux')
+    expect(groups[0]?.sources.map((source) => source.id)).toEqual(['local-kolux', 'ssh-kolux'])
   })
 })
 
@@ -336,60 +330,60 @@ describe('normalizeTaskRepoSelection', () => {
     const selection = normalizeTaskRepoSelection(
       [
         repo({
-          id: 'local-nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          id: 'local-kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ],
-      new Set(['local-nightshift', 'ssh-nightshift'])
+      new Set(['local-kolux', 'ssh-kolux'])
     )
 
-    expect([...selection]).toEqual(['local-nightshift'])
+    expect([...selection]).toEqual(['local-kolux'])
   })
 
   it('preserves a single explicit remote source selection', () => {
     const selection = normalizeTaskRepoSelection(
       [
         repo({
-          id: 'local-nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          id: 'local-kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ],
-      new Set(['ssh-nightshift'])
+      new Set(['ssh-kolux'])
     )
 
-    expect([...selection]).toEqual(['ssh-nightshift'])
+    expect([...selection]).toEqual(['ssh-kolux'])
   })
 
   it('normalizes raw all-host selection to one source per logical project', () => {
     const selection = normalizeTaskRepoSelection(
       [
         repo({
-          id: 'local-nightshift',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          id: 'local-kolux',
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
-          id: 'ssh-nightshift',
+          id: 'ssh-kolux',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         }),
         repo({
           id: 'docs',
           upstream: { owner: 'TxaisX', repo: 'docs' }
         })
       ],
-      new Set(['local-nightshift', 'ssh-nightshift', 'docs'])
+      new Set(['local-kolux', 'ssh-kolux', 'docs'])
     )
 
-    expect([...selection].sort()).toEqual(['docs', 'local-nightshift'])
+    expect([...selection].sort()).toEqual(['docs', 'local-kolux'])
   })
 })

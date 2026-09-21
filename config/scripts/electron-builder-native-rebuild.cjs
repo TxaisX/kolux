@@ -32,7 +32,7 @@ function buildNativeRebuildArgs(
   const platform = readPlatformName(context?.platform)
   const arch = readArchName(context?.arch)
   const canReusePreparedRuntime =
-    environment.NIGHTSHIFT_REUSE_PREPARED_NATIVE_RUNTIME === '1' &&
+    environment.KOLUX_REUSE_PREPARED_NATIVE_RUNTIME === '1' &&
     platform === hostPlatform &&
     arch === hostArch
 

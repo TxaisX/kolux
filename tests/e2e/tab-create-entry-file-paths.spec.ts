@@ -1,29 +1,29 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 const relativeFilePath =
-  'packages/nightshift/src/renderer/src/components/navigation/worktree/secondary-nav/SecondaryNav.tsx'
+  'packages/kolux/src/renderer/src/components/navigation/worktree/secondary-nav/SecondaryNav.tsx'
 
 test('new-tab file results prioritize the filename and reveal the full path on hover', async ({
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }) => {
   const filePath = path.join(testRepoPath, ...relativeFilePath.split('/'))
   mkdirSync(path.dirname(filePath), { recursive: true })
   writeFileSync(filePath, 'export const SecondaryNav = true\n')
 
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
 
-  const newTab = nightshiftPage.getByRole('button', { name: 'New tab' })
+  const newTab = koluxPage.getByRole('button', { name: 'New tab' })
   // Why: aria-controls is only set after results exist, so it cannot be the
   // open-state locator. aria-autocomplete is always on this input and is not
   // translated copy.
-  const input = nightshiftPage.locator('input[role="combobox"][aria-autocomplete="list"]')
-  const row = nightshiftPage.locator('[role="option"]').filter({ hasText: 'Open file' }).first()
+  const input = koluxPage.locator('input[role="combobox"][aria-autocomplete="list"]')
+  const row = koluxPage.locator('[role="option"]').filter({ hasText: 'Open file' }).first()
   // Keyboard activation avoids the animated tab bar's pointer stability gate.
   // Re-open and re-type until the file scan has produced an Open file row —
   // the scan starts when the menu opens and can outlast a single fill.
@@ -38,10 +38,10 @@ test('new-tab file results prioritize the filename and reveal the full path on h
     await expect(row).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 20_000 })
   await expect(row).toContainText('SecondaryNav.tsx')
-  await expect(row).toContainText('packages/nightshift/src/renderer/src/components/navigation/')
+  await expect(row).toContainText('packages/kolux/src/renderer/src/components/navigation/')
   const rowText = await row.textContent()
   expect(rowText?.indexOf('SecondaryNav.tsx')).toBeLessThan(
-    rowText?.indexOf('packages/nightshift/src/renderer/src/components/navigation/') ?? -1
+    rowText?.indexOf('packages/kolux/src/renderer/src/components/navigation/') ?? -1
   )
 
   // The filename must survive intact; only the directory may be clipped, and the
@@ -59,18 +59,18 @@ test('new-tab file results prioritize the filename and reveal the full path on h
   // opens on a pointermove it actually receives. A single hover can land before
   // the remount and leave the cursor sitting still over a row that never saw it.
   await row.hover({ position: { x: 20, y: 12 } })
-  await nightshiftPage.waitForTimeout(250)
+  await koluxPage.waitForTimeout(250)
   await row.hover({ position: { x: 40, y: 12 } })
 
   // Exact cursor placement is arithmetic, unit-tested via cursorTooltipOffsets.
   // Asserting it here measured the app mid-reflow and was flaky; what E2E is
   // uniquely good for is that the tooltip really opens with the whole path.
   await expect(
-    nightshiftPage.locator('[data-slot="tooltip-content"]').filter({ hasText: relativeFilePath })
+    koluxPage.locator('[data-slot="tooltip-content"]').filter({ hasText: relativeFilePath })
   ).toBeVisible()
 
-  const proofPath = process.env.NIGHTSHIFT_STA3424_PROOF_PATH
+  const proofPath = process.env.KOLUX_STA3424_PROOF_PATH
   if (proofPath) {
-    await nightshiftPage.screenshot({ path: proofPath })
+    await koluxPage.screenshot({ path: proofPath })
   }
 })

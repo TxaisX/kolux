@@ -69,7 +69,7 @@ describe('CodexRuntimeHomeService', () => {
         wslHome,
         '.local',
         'share',
-        'nightshift',
+        'kolux',
         'codex-runtime-home',
         'home'
       )
@@ -119,7 +119,7 @@ describe('CodexRuntimeHomeService', () => {
         wslHome,
         '.local',
         'share',
-        'nightshift',
+        'kolux',
         'codex-runtime-home',
         'home'
       )
@@ -127,7 +127,7 @@ describe('CodexRuntimeHomeService', () => {
       expect(service.prepareForCodexLaunch({ runtime: 'wsl', wslDistro: 'Ubuntu' })).toBe(
         join(wslHome, '.codex')
       )
-      const baselinePath = join(wslRuntimeHomePath, '.nightshift-config-settings-baseline.json')
+      const baselinePath = join(wslRuntimeHomePath, '.kolux-config-settings-baseline.json')
       expect(existsSync(baselinePath)).toBe(false)
 
       writeFileSync(wslSystemConfigPath, 'model = "outside-edit"\n', 'utf-8')
@@ -208,7 +208,7 @@ describe('CodexRuntimeHomeService', () => {
           candidate.includes('codex-accounts/debian-account/home')
             ? {
                 distro: 'Debian',
-                linuxPath: '/home/alice/.local/share/nightshift/codex-accounts/debian-account/home'
+                linuxPath: '/home/alice/.local/share/kolux/codex-accounts/debian-account/home'
               }
             : null
       }
@@ -227,7 +227,7 @@ describe('CodexRuntimeHomeService', () => {
             managedHomePath,
             managedHomeRuntime: 'wsl',
             wslDistro: 'Debian',
-            wslLinuxHomePath: '/home/alice/.local/share/nightshift/codex-accounts/debian/home',
+            wslLinuxHomePath: '/home/alice/.local/share/kolux/codex-accounts/debian/home',
             providerAccountId: null,
             workspaceLabel: null,
             workspaceAccountId: null,
@@ -275,15 +275,7 @@ describe('CodexRuntimeHomeService', () => {
       getDefaultWslDistro: () => 'Ubuntu',
       getWslHome: () => wslHome
     }))
-    const managedHomePath = join(
-      wslHome,
-      '.local',
-      'share',
-      'nightshift',
-      'codex-accounts',
-      'a',
-      'home'
-    )
+    const managedHomePath = join(wslHome, '.local', 'share', 'kolux', 'codex-accounts', 'a', 'home')
     const retiredBridgeRuns = vi.fn()
     vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
       ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
@@ -434,14 +426,7 @@ describe('CodexRuntimeHomeService', () => {
         ...(await importOriginal<typeof CodexConfigMirror>()),
         syncSystemConfigIntoManagedCodexHome: vi.fn()
       }))
-      const retiredHome = join(
-        guestHome,
-        '.local',
-        'share',
-        'nightshift',
-        'codex-runtime-home',
-        'home'
-      )
+      const retiredHome = join(guestHome, '.local', 'share', 'kolux', 'codex-runtime-home', 'home')
       const relativeSessionPath = join('sessions', '2026', '08', '26', 'retired.jsonl')
       const retiredSessionPath = join(retiredHome, relativeSessionPath)
       mkdirSync(join(retiredSessionPath, '..'), { recursive: true })

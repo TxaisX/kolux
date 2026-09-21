@@ -62,7 +62,7 @@ describe('KeybindingService tab-switch cohort seeding', () => {
   let home: string
 
   beforeEach(() => {
-    home = mkdtempSync(join(tmpdir(), 'nightshift-kb-service-'))
+    home = mkdtempSync(join(tmpdir(), 'kolux-kb-service-'))
   })
 
   afterEach(() => {
@@ -207,7 +207,7 @@ describe('KeybindingService tab-switch cohort seeding', () => {
   })
 
   it('leaves the cohort pending when the seed write fails (retries next launch)', () => {
-    // homePath is a regular file, so creating `<home>/.nightshift/` throws. The service
+    // homePath is a regular file, so creating `<home>/.kolux/` throws. The service
     // must swallow the error and NOT mark the one-shot done.
     const fileHome = join(home, 'not-a-dir')
     writeFileSync(fileHome, 'x', 'utf8')

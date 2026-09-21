@@ -4,7 +4,7 @@ import { observeAgentStateFile } from './codex-path-observation'
 import { resolvePromotionWriteTarget } from './config-settings-promotion-write-target'
 import { writeFileAtomically } from '../codex-accounts/fs-utils'
 import { parseWslUncPath } from '../../shared/wsl-paths'
-import { getNightshiftManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath, getSystemCodexHomePath } from './codex-home-paths'
 import {
   createTomlLineScanState,
   getTomlTableHeader,
@@ -156,11 +156,11 @@ function readPromotedSettingValues(configPath: string): Map<string, TopLevelSett
 
 /**
  * Records the promotable settings the runtime config.toml holds after a mirror, so the next
- * promotion can tell "value Nightshift mirrored" from "value Codex wrote for the user".
+ * promotion can tell "value Kolux mirrored" from "value Codex wrote for the user".
  * Call after a successful mirror only — advancing past an unpromoted change strands it forever.
  */
 export function snapshotCodexRuntimeSettingsBaseline(
-  runtimeHomePath = getNightshiftManagedCodexHomePath(),
+  runtimeHomePath = getKoluxManagedCodexHomePath(),
   conflicts: ReadonlyMap<string, CodexSettingsConflict> = new Map()
 ): void {
   try {
@@ -195,7 +195,7 @@ export type CodexSettingsPromotionPlan = {
 
 function getHostPromotionHomes(): CodexSettingsPromotionHomes {
   return {
-    runtimeHomePath: getNightshiftManagedCodexHomePath(),
+    runtimeHomePath: getKoluxManagedCodexHomePath(),
     systemHomePath: getSystemCodexHomePath()
   }
 }
@@ -271,7 +271,7 @@ function promoteCodexRuntimeSettingsToSystemUnsafe(
   mkdirSync(dirname(writeTarget.path), { recursive: true, mode: 0o700 })
   // Why: this is the user's real ~/.codex/config.toml, and an indeterminate
   // existence probe sent it down the reconstruct branch below, which replaces
-  // the canonical config with settings derived from Nightshift's runtime copy. One
+  // the canonical config with settings derived from Kolux's runtime copy. One
   // read replaces the old existsSync + read pair and its TOCTOU gap.
   // The indeterminate arm is a backstop rather than the live guard: an
   // unreadable system config already refused in readPromotedSettingValues,

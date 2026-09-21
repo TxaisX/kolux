@@ -1,5 +1,5 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 
 // Why: post-fix trailing overhang is ~0px; 16px is subpixel headroom that still
@@ -70,14 +70,14 @@ async function attachTriggerScreenshot(
 }
 
 test.describe('Pet status segment layout', () => {
-  test('does not reserve empty space after its label', async ({ nightshiftPage }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await enableExperimentalPet(nightshiftPage)
+  test('does not reserve empty space after its label', async ({ koluxPage }, testInfo) => {
+    await waitForSessionReady(koluxPage)
+    await enableExperimentalPet(koluxPage)
 
     for (const { name, size } of VIEWPORTS) {
-      await nightshiftPage.setViewportSize(size)
-      await assertPetTriggerFitsLabel(nightshiftPage)
-      await attachTriggerScreenshot(nightshiftPage, testInfo, name)
+      await koluxPage.setViewportSize(size)
+      await assertPetTriggerFitsLabel(koluxPage)
+      await attachTriggerScreenshot(koluxPage, testInfo, name)
     }
   })
 })

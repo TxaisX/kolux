@@ -120,7 +120,7 @@ export function getInitialAutoManagedWorkspaceName({
   initialName: string
   initialLinkedWorkItem?: LinkedWorkItemSummary | null
 }): string {
-  // Why: a prefilled name counts as user input unless it exactly matches the linked-item seed Nightshift generated.
+  // Why: a prefilled name counts as user input unless it exactly matches the linked-item seed Kolux generated.
   const candidateName = draftName ?? initialName
   const seedName = getLinkedWorkItemSeedName(draftLinkedWorkItem ?? initialLinkedWorkItem)
   return candidateName && seedName && candidateName === seedName ? candidateName : ''

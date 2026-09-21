@@ -89,7 +89,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     }
     setIsRefreshing(true)
     try {
-      // Why: re-run PATH detection so a freshly-installed/removed CLI's bar appears/hides without restarting Nightshift.
+      // Why: re-run PATH detection so a freshly-installed/removed CLI's bar appears/hides without restarting Kolux.
       await Promise.all([refreshRateLimits(), refreshDetectedAgents()])
     } finally {
       if (mountedRef.current) {

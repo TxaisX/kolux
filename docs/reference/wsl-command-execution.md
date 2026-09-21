@@ -2,7 +2,7 @@
 
 Two properties of `wsl.exe` decide how every guest invocation has to be written. Both are silent
 when you get them wrong: the command still runs and still exits 0, it just returns the wrong bytes.
-Those are sections 1 and 2. A closing section answers the question that running Nightshift's writes
+Those are sections 1 and 2. A closing section answers the question that running Kolux's writes
 inside a distro raises next: what happens to the distro's disk image.
 
 ## 1. Always `--exec`, never `--`
@@ -32,7 +32,7 @@ The `--` inside `sh -s -- <path>` is a _shell_ argument separator and is unrelat
 
 ## 2. Machine-read output must be fenced
 
-Nightshift runs guest commands through the distro user's **interactive** login shell (`-ilc` for
+Kolux runs guest commands through the distro user's **interactive** login shell (`-ilc` for
 bash/zsh) because that is the only shell that reads `~/.bashrc`, where `nvm`, `mise` and `asdf`
 install their PATH entries. Dropping `-i` would break tool detection for those users.
 
@@ -75,7 +75,7 @@ Resolve the PATH/HOME once through a fenced probe, cache it per distro, then use
 
 ## Disk: the distro VHDX only grows
 
-Everything above puts Nightshift's writes inside the distro, which raises a separate question. WSL2 keeps
+Everything above puts Kolux's writes inside the distro, which raises a separate question. WSL2 keeps
 the entire guest filesystem in a single dynamically-expanding `ext4.vhdx`. Deleting files inside
 the distro does free the blocks — for ext4 to reuse — but the host-visible `.vhdx` does not shrink
 on its own.
@@ -152,7 +152,7 @@ already sparse (convert back with `--set-sparse false` first), and sparse mode's
 not measured. Microsoft's [disk-space guide](https://learn.microsoft.com/windows/wsl/disk-space)
 carries the current locate/expand/compact procedure and the `--manage` version floor;
 [`.wslconfig`](https://learn.microsoft.com/windows/wsl/wsl-config) carries `sparseVhd`. Enabling
-sparse mode and compacting are both per-machine decisions; Nightshift does not make either.
+sparse mode and compacting are both per-machine decisions; Kolux does not make either.
 
 On the measured machine the vhdx was **not** sparse: `fsutil sparse queryflag` reported "NOT set as
 sparse", and no `%UserProfile%\.wslconfig` existed to opt in. Microsoft documents `sparseVhd` as
@@ -160,7 +160,7 @@ defaulting to `false`, so that is the expected state rather than a local quirk �
 per-vhdx, set when the disk is created or by an explicit conversion, so check your own distro
 rather than assuming either way.
 
-### What this means for Nightshift
+### What this means for Kolux
 
 A vhdx that grows as speculative worktree preparation and mirrored worktrees write into the distro
 is expected. Its size is monotonically non-decreasing and roughly tracks peak concurrent usage —

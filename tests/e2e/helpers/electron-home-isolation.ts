@@ -8,11 +8,11 @@ const RESTRICTED_ENV_KEYS = new Set([
   'HOMEDRIVE',
   'HOMEPATH',
   'CODEX_HOME',
-  'NIGHTSHIFT_CODEX_HOME',
-  'NIGHTSHIFT_E2E_USER_DATA_DIR',
-  'NIGHTSHIFT_E2E_HOME_DIR',
+  'KOLUX_CODEX_HOME',
+  'KOLUX_E2E_USER_DATA_DIR',
+  'KOLUX_E2E_HOME_DIR',
   'ZDOTDIR',
-  'NIGHTSHIFT_ORIG_ZDOTDIR',
+  'KOLUX_ORIG_ZDOTDIR',
   'BASH_ENV',
   'ENV'
 ])
@@ -66,13 +66,13 @@ export function createElectronHomeIsolation({
   realHome = os.homedir()
 }: ElectronHomeIsolationOptions): ElectronHomeIsolation {
   assertOverlayDoesNotReplaceIsolation(launchEnv, 'launchEnv')
-  assertOverlayDoesNotReplaceIsolation(extraEnv, 'nightshiftAppExtraEnv')
+  assertOverlayDoesNotReplaceIsolation(extraEnv, 'koluxAppExtraEnv')
 
   const requestedIsolatedHome = path.join(userDataDir, 'home')
   mkdirSync(requestedIsolatedHome, { recursive: true, mode: 0o700 })
   // Why: tmpdir-rooted paths are aliases (macOS /var symlink, Windows 8.3
   // short names). Git canonicalizes worktree paths, so a non-canonical HOME
-  // makes freshly created worktrees invisible to Nightshift's listing comparisons.
+  // makes freshly created worktrees invisible to Kolux's listing comparisons.
   const isolatedHome = realpathSync.native(requestedIsolatedHome)
   // Why: a bad fixture path must fail before Electron can resolve a real Codex
   // home; userData isolation alone does not change app.getPath('home').
@@ -89,8 +89,8 @@ export function createElectronHomeIsolation({
       ...extraEnv,
       HOME: isolatedHome,
       USERPROFILE: isolatedHome,
-      NIGHTSHIFT_E2E_USER_DATA_DIR: userDataDir,
-      NIGHTSHIFT_E2E_HOME_DIR: isolatedHome
+      KOLUX_E2E_USER_DATA_DIR: userDataDir,
+      KOLUX_E2E_HOME_DIR: isolatedHome
     }
   }
 }

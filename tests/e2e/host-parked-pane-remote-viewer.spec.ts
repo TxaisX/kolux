@@ -2,7 +2,7 @@
  * STA-2854 live validation: a HOST pane that cold-parks while a paired client
  * is actively viewing it must keep serving that client.
  *
- * Topology: headed Nightshift desktop host (remote server) + a separate paired Nightshift
+ * Topology: headed Kolux desktop host (remote server) + a separate paired Kolux
  * desktop client. The reported shape is the inverse of every existing paired
  * parking spec: those park on the CLIENT, this parks on the HOST while the
  * client watches. The host user never touches the tab again after parking it.
@@ -39,7 +39,7 @@ import {
   HOST_TERMINAL_SURFACE_SEPARATOR,
   toWebTerminalSurfaceTabId
 } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedElectronClient
@@ -49,7 +49,7 @@ import { waitForTabParked } from './helpers/terminal-hidden-parking'
 
 const PARK_DELAY_MS = 30_000
 const PAINT_BUDGET_MS = 20_000
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-host-park-viewer-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-host-park-viewer-'))
 const fixturePath = path.join(scratch, 'host-park-viewer-terminal.mjs')
 writeFileSync(
   fixturePath,
@@ -80,7 +80,7 @@ test.afterAll(() => {
 
 // Why: the HOST must park quickly too, so its launch env carries the override.
 test.use({
-  nightshiftAppExtraEnv: { NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS: String(PARK_DELAY_MS) }
+  koluxAppExtraEnv: { KOLUX_E2E_TERMINAL_PARKING_DELAY_MS: String(PARK_DELAY_MS) }
 })
 
 function shellQuote(value: string): string {
@@ -149,17 +149,17 @@ async function waitForPaneMarker(
 }
 
 test('a cold-parked host pane keeps serving its paired remote viewer', async ({
-  nightshiftPage
+  koluxPage
 }, testInfo) => {
   test.setTimeout(600_000)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
-  const previousParkDelay = process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS
-  process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS = String(PARK_DELAY_MS)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
+  const previousParkDelay = process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS
+  process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS = String(PARK_DELAY_MS)
   const client = await launchPairedElectronClient(offer, testInfo, 'host-park-viewer')
   const createdTerminals: string[] = []
   const sinkPath = path.join(scratch, `sink-${randomUUID()}.log`)
   try {
-    const worktreeId = await nightshiftPage.evaluate(() => {
+    const worktreeId = await koluxPage.evaluate(() => {
       const id = window.__store?.getState().activeWorktreeId
       if (!id) {
         throw new Error('headed host has no active worktree')
@@ -202,7 +202,7 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
     const webTabId = toWebTerminalSurfaceTabId(hostTabId)
 
     // 1. Host mounts the pane (the ordinary "someone looked at it" state).
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ worktreeId, tabId }) => {
         const state = window.__store?.getState()
         state?.setActiveView('terminal')
@@ -213,13 +213,10 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
       { worktreeId, tabId: hostTabId }
     )
     await expect
-      .poll(
-        () => nightshiftPage.evaluate((id) => window.__paneManagers?.has(id) ?? false, hostTabId),
-        {
-          timeout: 60_000,
-          message: 'host never mounted its own terminal pane'
-        }
-      )
+      .poll(() => koluxPage.evaluate((id) => window.__paneManagers?.has(id) ?? false, hostTabId), {
+        timeout: 60_000,
+        message: 'host never mounted its own terminal pane'
+      })
       .toBe(true)
 
     // 2. Client subscribes and is actively viewing it.
@@ -278,7 +275,7 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
     // most-recently-hidden exemption. Sampled before and after the park lands
     // so decoy churn cannot be mistaken for the park itself.
     for (let i = 0; i < 2; i += 1) {
-      await nightshiftPage.evaluate((id) => {
+      await koluxPage.evaluate((id) => {
         const state = window.__store?.getState()
         const tab = state?.createTab(id, undefined, undefined, { activate: true })
         if (tab) {
@@ -298,7 +295,7 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
         }
       }, webTabId)
     console.log(`[sta2854] decoys-created client=${JSON.stringify(await readClientState())}`)
-    await waitForTabParked(nightshiftPage, hostTabId, { parkDelayMs: PARK_DELAY_MS })
+    await waitForTabParked(koluxPage, hostTabId, { parkDelayMs: PARK_DELAY_MS })
     console.log(`[sta2854] post-park client=${JSON.stringify(await readClientState())}`)
 
     // Direct probe: is the host-minted terminal handle still resolvable once
@@ -332,7 +329,7 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
     let inputReached = false
     let clientEchoed = false
     while (Date.now() < timelineDeadline) {
-      const hostMounted = await nightshiftPage.evaluate(
+      const hostMounted = await koluxPage.evaluate(
         (id) => window.__paneManagers?.has(id) ?? false,
         hostTabId
       )
@@ -375,9 +372,9 @@ test('a cold-parked host pane keeps serving its paired remote viewer', async ({
     // H+ samples), not a precondition of the invariant.
   } finally {
     if (previousParkDelay === undefined) {
-      delete process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS
+      delete process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS
     } else {
-      process.env.NIGHTSHIFT_E2E_TERMINAL_PARKING_DELAY_MS = previousParkDelay
+      process.env.KOLUX_E2E_TERMINAL_PARKING_DELAY_MS = previousParkDelay
     }
     for (const terminal of createdTerminals) {
       await callEnvironment(client.page, client.environmentId, 'terminal.closeTab', {

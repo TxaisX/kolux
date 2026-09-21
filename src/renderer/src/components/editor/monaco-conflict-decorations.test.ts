@@ -105,17 +105,17 @@ describe('buildGitConflictDecorations', () => {
     expect(decorations).toHaveLength(5)
     expect(decorations[0]).toMatchObject({
       range: { startLineNumber: 2, endLineNumber: 2 },
-      options: { className: 'nightshift-conflict-section-line nightshift-conflict-current-line' }
+      options: { className: 'kolux-conflict-section-line kolux-conflict-current-line' }
     })
     expect(decorations[1]).toMatchObject({
       range: { startLineNumber: 4, endLineNumber: 4 },
-      options: { className: 'nightshift-conflict-section-line nightshift-conflict-incoming-line' }
+      options: { className: 'kolux-conflict-section-line kolux-conflict-incoming-line' }
     })
     expect(decorations[2]).toMatchObject({
       range: { startLineNumber: 1, endLineNumber: 1 },
       options: {
-        className: 'nightshift-conflict-marker-line',
-        linesDecorationsClassName: 'nightshift-conflict-line-decoration',
+        className: 'kolux-conflict-marker-line',
+        linesDecorationsClassName: 'kolux-conflict-line-decoration',
         after: { content: ' Current change' }
       }
     })

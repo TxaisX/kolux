@@ -96,12 +96,12 @@ vi.mock('./linux-package-update-recovery', () => ({
 const ARTIFACT = {
   packageType: 'deb' as const,
   version: '1.0.61',
-  path: '/home/tester/.cache/nightshift-updater/pending/nightshift-ide_1.0.61_amd64.deb',
+  path: '/home/tester/.cache/kolux-updater/pending/kolux-ide_1.0.61_amd64.deb',
   sha512: 'LHlL7dKoqg98gS2nfQv878dK+UoktbAkm4M20/hoJ2Qr0Kqsa3MSL4VmWy/Lll/MYjQFkpvOxduQ/vswentozA=='
 }
 const MANUAL_INSTALL_STATUS = {
   state: 'error',
-  message: 'Quit Nightshift before running the system package install command.',
+  message: 'Quit Kolux before running the system package install command.',
   recovery: {
     kind: 'linux-package-install',
     packageType: 'deb',

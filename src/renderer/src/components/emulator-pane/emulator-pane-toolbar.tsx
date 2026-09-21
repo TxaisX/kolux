@@ -37,7 +37,7 @@ export function EmulatorPaneToolbar({
   onHome,
   onRotate
 }: EmulatorPaneToolbarProps) {
-  // Why: the toolbar chip describes Nightshift's preview/control stream, not the
+  // Why: the toolbar chip describes Kolux's preview/control stream, not the
   // lower-level CoreSimulator boot state.
   const statusLabel = isLive ? 'Connected' : loading ? 'Working…' : 'Not connected'
   const subtleStatus = isLive || loading

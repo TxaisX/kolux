@@ -11,7 +11,7 @@ describe('getRepoBackedTaskEmptyState', () => {
     ).toEqual({
       title: 'No project sources selected',
       description:
-        'Select at least one project source so Nightshift knows which host/account to fetch tasks from.'
+        'Select at least one project source so Kolux knows which host/account to fetch tasks from.'
     })
   })
 

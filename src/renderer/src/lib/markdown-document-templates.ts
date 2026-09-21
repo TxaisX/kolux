@@ -8,7 +8,9 @@ import {
 } from '@/runtime/runtime-file-client'
 import { basename, joinPath, normalizeRelativePath } from './path'
 
-const MARKDOWN_TEMPLATE_ROOT = '.nightshift/templates'
+const MARKDOWN_TEMPLATE_ROOT = '.kolux/templates'
+// Why: repos written before the Nightshift->Kolux rename keep templates under .nightshift/; read as fallback.
+const LEGACY_MARKDOWN_TEMPLATE_ROOT = '.nightshift/templates'
 const MARKDOWN_TEMPLATE_MAX_DEPTH = 8
 const MARKDOWN_TEMPLATE_MAX_COUNT = 100
 
@@ -136,12 +138,18 @@ export async function listMarkdownDocumentTemplates(
   worktreePath: string
 ): Promise<MarkdownDocumentTemplate[]> {
   const templates: MarkdownDocumentTemplate[] = []
-  const rootPath = joinPath(worktreePath, MARKDOWN_TEMPLATE_ROOT)
+  let templateRoot = MARKDOWN_TEMPLATE_ROOT
+  let rootPath = joinPath(worktreePath, templateRoot)
 
   // Why: missing template directories are the normal case. Probe quietly first
   // so Electron does not log an IPC handler error for an optional feature.
   if (!(await runtimePathExists(context, rootPath))) {
-    return []
+    const legacyRootPath = joinPath(worktreePath, LEGACY_MARKDOWN_TEMPLATE_ROOT)
+    if (!(await runtimePathExists(context, legacyRootPath))) {
+      return []
+    }
+    templateRoot = LEGACY_MARKDOWN_TEMPLATE_ROOT
+    rootPath = legacyRootPath
   }
 
   async function visitDirectory(
@@ -185,9 +193,7 @@ export async function listMarkdownDocumentTemplates(
       }
 
       const templateRelativePath = entryRelativePath
-      const rootRelativePath = normalizeRelativePath(
-        `${MARKDOWN_TEMPLATE_ROOT}/${templateRelativePath}`
-      )
+      const rootRelativePath = normalizeRelativePath(`${templateRoot}/${templateRelativePath}`)
       templates.push({
         id: rootRelativePath,
         name: titleFromName(entry.name),

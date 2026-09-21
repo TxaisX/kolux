@@ -17,9 +17,7 @@ const defaultFiles = [
 const cliArguments = process.argv.slice(2)
 const powerShellFlag = cliArguments.indexOf('--powershell')
 const configuredPowerShell =
-  powerShellFlag !== -1
-    ? cliArguments[powerShellFlag + 1]
-    : process.env.NIGHTSHIFT_POWERSHELL_EXECUTABLE
+  powerShellFlag !== -1 ? cliArguments[powerShellFlag + 1] : process.env.KOLUX_POWERSHELL_EXECUTABLE
 if (powerShellFlag !== -1 && !configuredPowerShell) {
   console.error('--powershell requires an executable path')
   process.exit(2)
@@ -70,7 +68,7 @@ const result = spawnSync(
     cwd: process.cwd(),
     env: {
       ...process.env,
-      NIGHTSHIFT_POWERSHELL_EXECUTABLE: powerShellExecutable
+      KOLUX_POWERSHELL_EXECUTABLE: powerShellExecutable
     },
     stdio: 'inherit'
   }

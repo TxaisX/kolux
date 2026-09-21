@@ -8,7 +8,7 @@ const scriptPath = 'config/scripts/summarize-terminal-perf-report.mjs'
 const tempDirs = []
 
 function writeReport() {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-terminal-perf-summary-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-terminal-perf-summary-'))
   tempDirs.push(dir)
   const reportPath = join(dir, 'report.json')
   writeFileSync(

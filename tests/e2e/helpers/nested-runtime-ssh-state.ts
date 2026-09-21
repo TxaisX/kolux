@@ -1,4 +1,4 @@
-import { expect } from './nightshift-app'
+import { expect } from './kolux-app'
 import type { PairedElectronClient } from './paired-electron-client'
 
 export async function assertRuntimeSshStatus(

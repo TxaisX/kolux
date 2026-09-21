@@ -1,4 +1,4 @@
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import {
   discardStructuredWorkerSession,
   releaseStructuredWorkerSession
@@ -16,7 +16,7 @@ import type { FailedStartTerminalAdoption } from '../../../../orchestration/db/w
  * construction, so neither can replace the real error.
  */
 export async function tearDownFailedWorkerStart(args: {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   structuredSession: Awaited<ReturnType<typeof createStructuredWorkerSessionForWorktree>> | null
   dispatchId: string
   effects: unknown[]

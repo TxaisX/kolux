@@ -3,13 +3,13 @@ import { afterEach, beforeEach, vi, type Mock } from 'vitest'
 export type RuntimeClientModuleMocks = {
   callMock: Mock
   runtimeClientConstructorMock: Mock
-  serveNightshiftAppMock: Mock
+  serveKoluxAppMock: Mock
   getDefaultUserDataPathMock: Mock
 }
 
 export type WorktreeAwarenessMocks = {
   callMock: Mock
-  serveNightshiftAppMock: Mock
+  serveKoluxAppMock: Mock
   getDefaultUserDataPathMock: Mock
   addEnvironmentFromPairingCodeMock: Mock
   listEnvironmentsMock: Mock
@@ -27,7 +27,7 @@ export async function createRuntimeClientModuleMock(mocks: RuntimeClientModuleMo
     readonly isRemote: boolean
     call = mocks.callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
 
     constructor(
       _userDataPath?: string,
@@ -38,10 +38,10 @@ export async function createRuntimeClientModuleMock(mocks: RuntimeClientModuleMo
       mocks.runtimeClientConstructorMock(remotePairingCode, environmentSelector)
       const effectivePairingCode =
         remotePairingCode === undefined
-          ? (process.env.NIGHTSHIFT_PAIRING_CODE ?? process.env.NIGHTSHIFT_REMOTE_PAIRING)
+          ? (process.env.KOLUX_PAIRING_CODE ?? process.env.KOLUX_REMOTE_PAIRING)
           : remotePairingCode
       const effectiveEnvironment =
-        environmentSelector === undefined ? process.env.NIGHTSHIFT_ENVIRONMENT : environmentSelector
+        environmentSelector === undefined ? process.env.KOLUX_ENVIRONMENT : environmentSelector
       if (effectivePairingCode && effectiveEnvironment) {
         throw new RuntimeClientError(
           'invalid_argument',
@@ -56,7 +56,7 @@ export async function createRuntimeClientModuleMock(mocks: RuntimeClientModuleMo
     RuntimeClient,
     RuntimeClientError,
     RuntimeRpcFailureError,
-    serveNightshiftApp: mocks.serveNightshiftAppMock,
+    serveKoluxApp: mocks.serveKoluxAppMock,
     getDefaultUserDataPath: mocks.getDefaultUserDataPathMock
   }
 }
@@ -110,26 +110,26 @@ export function pairRuntimeEnvironment(listEnvironmentsMock: Mock, id: string, n
 
 /** Installs the env-var save/restore + mock-reset hooks shared by the CLI worktree-awareness suites. */
 export function useWorktreeAwarenessEnvironment(mocks: WorktreeAwarenessMocks): void {
-  const originalTerminalHandle = process.env.NIGHTSHIFT_TERMINAL_HANDLE
-  const originalUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  const originalDevCliInvocation = process.env.NIGHTSHIFT_DEV_CLI_INVOCATION
-  const originalPairingCode = process.env.NIGHTSHIFT_PAIRING_CODE
-  const originalRemotePairing = process.env.NIGHTSHIFT_REMOTE_PAIRING
-  const originalEnvironment = process.env.NIGHTSHIFT_ENVIRONMENT
-  const originalWorkspaceId = process.env.NIGHTSHIFT_WORKSPACE_ID
-  const originalWorktreeId = process.env.NIGHTSHIFT_WORKTREE_ID
+  const originalTerminalHandle = process.env.KOLUX_TERMINAL_HANDLE
+  const originalUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  const originalDevCliInvocation = process.env.KOLUX_DEV_CLI_INVOCATION
+  const originalPairingCode = process.env.KOLUX_PAIRING_CODE
+  const originalRemotePairing = process.env.KOLUX_REMOTE_PAIRING
+  const originalEnvironment = process.env.KOLUX_ENVIRONMENT
+  const originalWorkspaceId = process.env.KOLUX_WORKSPACE_ID
+  const originalWorktreeId = process.env.KOLUX_WORKTREE_ID
 
   beforeEach(() => {
     mocks.callMock.mockReset()
-    delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
-    delete process.env.NIGHTSHIFT_DEV_CLI_INVOCATION
-    delete process.env.NIGHTSHIFT_WORKSPACE_ID
-    delete process.env.NIGHTSHIFT_WORKTREE_ID
+    delete process.env.KOLUX_TERMINAL_HANDLE
+    delete process.env.KOLUX_USER_DATA_PATH
+    delete process.env.KOLUX_DEV_CLI_INVOCATION
+    delete process.env.KOLUX_WORKSPACE_ID
+    delete process.env.KOLUX_WORKTREE_ID
     // Isolate the pane key so claude-teams tests that set it don't leak a
     // senderPaneKey into later orchestration.send assertions.
-    delete process.env.NIGHTSHIFT_PANE_KEY
-    mocks.serveNightshiftAppMock.mockReset()
+    delete process.env.KOLUX_PANE_KEY
+    mocks.serveKoluxAppMock.mockReset()
     mocks.getDefaultUserDataPathMock.mockClear()
     mocks.addEnvironmentFromPairingCodeMock.mockReset()
     mocks.listEnvironmentsMock.mockReset()
@@ -159,44 +159,44 @@ export function useWorktreeAwarenessEnvironment(mocks: WorktreeAwarenessMocks): 
   afterEach(() => {
     vi.restoreAllMocks()
     if (originalTerminalHandle === undefined) {
-      delete process.env.NIGHTSHIFT_TERMINAL_HANDLE
+      delete process.env.KOLUX_TERMINAL_HANDLE
     } else {
-      process.env.NIGHTSHIFT_TERMINAL_HANDLE = originalTerminalHandle
+      process.env.KOLUX_TERMINAL_HANDLE = originalTerminalHandle
     }
     if (originalUserDataPath === undefined) {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     } else {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = originalUserDataPath
+      process.env.KOLUX_USER_DATA_PATH = originalUserDataPath
     }
     if (originalDevCliInvocation === undefined) {
-      delete process.env.NIGHTSHIFT_DEV_CLI_INVOCATION
+      delete process.env.KOLUX_DEV_CLI_INVOCATION
     } else {
-      process.env.NIGHTSHIFT_DEV_CLI_INVOCATION = originalDevCliInvocation
+      process.env.KOLUX_DEV_CLI_INVOCATION = originalDevCliInvocation
     }
     if (originalPairingCode === undefined) {
-      delete process.env.NIGHTSHIFT_PAIRING_CODE
+      delete process.env.KOLUX_PAIRING_CODE
     } else {
-      process.env.NIGHTSHIFT_PAIRING_CODE = originalPairingCode
+      process.env.KOLUX_PAIRING_CODE = originalPairingCode
     }
     if (originalRemotePairing === undefined) {
-      delete process.env.NIGHTSHIFT_REMOTE_PAIRING
+      delete process.env.KOLUX_REMOTE_PAIRING
     } else {
-      process.env.NIGHTSHIFT_REMOTE_PAIRING = originalRemotePairing
+      process.env.KOLUX_REMOTE_PAIRING = originalRemotePairing
     }
     if (originalEnvironment === undefined) {
-      delete process.env.NIGHTSHIFT_ENVIRONMENT
+      delete process.env.KOLUX_ENVIRONMENT
     } else {
-      process.env.NIGHTSHIFT_ENVIRONMENT = originalEnvironment
+      process.env.KOLUX_ENVIRONMENT = originalEnvironment
     }
     if (originalWorkspaceId === undefined) {
-      delete process.env.NIGHTSHIFT_WORKSPACE_ID
+      delete process.env.KOLUX_WORKSPACE_ID
     } else {
-      process.env.NIGHTSHIFT_WORKSPACE_ID = originalWorkspaceId
+      process.env.KOLUX_WORKSPACE_ID = originalWorkspaceId
     }
     if (originalWorktreeId === undefined) {
-      delete process.env.NIGHTSHIFT_WORKTREE_ID
+      delete process.env.KOLUX_WORKTREE_ID
     } else {
-      process.env.NIGHTSHIFT_WORKTREE_ID = originalWorktreeId
+      process.env.KOLUX_WORKTREE_ID = originalWorktreeId
     }
   })
 }

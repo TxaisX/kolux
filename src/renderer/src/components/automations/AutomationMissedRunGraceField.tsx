@@ -49,7 +49,7 @@ export function AutomationMissedRunGraceField({
             <TooltipContent side="top" sideOffset={6} className="max-w-72">
               {translate(
                 'auto.components.automations.AutomationMissedRunGraceField.3d70c185c8',
-                'If Nightshift or the execution host was unavailable at the scheduled time, Nightshift runs one missed occurrence when it becomes available within this window. Older missed runs are skipped.'
+                'If Kolux or the execution host was unavailable at the scheduled time, Kolux runs one missed occurrence when it becomes available within this window. Older missed runs are skipped.'
               )}
             </TooltipContent>
           </Tooltip>

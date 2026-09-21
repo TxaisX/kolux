@@ -136,7 +136,7 @@ function reservePosixStageCommand(poolDir: string, owner: string): string {
     'fi;',
     'fi;',
     'done;',
-    `printf '%s\\n' 'Nightshift relay upload staging quota is full; reconnect after 40 minutes or inspect .nightshift-remote/${RELAY_UPLOAD_STAGE_POOL_NAME}' >&2;`,
+    `printf '%s\\n' 'Kolux relay upload staging quota is full; reconnect after 40 minutes or inspect .kolux-remote/${RELAY_UPLOAD_STAGE_POOL_NAME}' >&2;`,
     'exit 75'
   ].join(' ')
 }

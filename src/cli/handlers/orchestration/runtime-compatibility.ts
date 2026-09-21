@@ -1,34 +1,24 @@
 import { RuntimeClientError } from '../../runtime-client'
 
-export function resolveCompatibilityCliCommand():
-  | 'nightshift'
-  | 'nightshift-ide'
-  | 'nightshift-dev' {
-  const configured = process.env.NIGHTSHIFT_CLI_COMMAND
-  if (
-    configured === 'nightshift' ||
-    configured === 'nightshift-ide' ||
-    configured === 'nightshift-dev'
-  ) {
+export function resolveCompatibilityCliCommand(): 'kolux' | 'kolux-ide' | 'kolux-dev' {
+  const configured = process.env.KOLUX_CLI_COMMAND
+  if (configured === 'kolux' || configured === 'kolux-ide' || configured === 'kolux-dev') {
     return configured
   }
-  return process.platform === 'linux' ? 'nightshift-ide' : 'nightshift'
+  return process.platform === 'linux' ? 'kolux-ide' : 'kolux'
 }
 
-export function resolvePackagedWindowsCompatibilityCommand():
-  | 'nightshift'
-  | 'nightshift-ide'
-  | undefined {
-  if (process.env.NIGHTSHIFT_WINDOWS_PACKAGED_CLI_LAUNCHER !== '1') {
+export function resolvePackagedWindowsCompatibilityCommand(): 'kolux' | 'kolux-ide' | undefined {
+  if (process.env.KOLUX_WINDOWS_PACKAGED_CLI_LAUNCHER !== '1') {
     return undefined
   }
-  const command = process.env.NIGHTSHIFT_CLI_COMMAND
-  if (command === 'nightshift' || command === 'nightshift-ide') {
+  const command = process.env.KOLUX_CLI_COMMAND
+  if (command === 'kolux' || command === 'kolux-ide') {
     return command
   }
   throw new RuntimeClientError(
     'invalid_argument',
-    'The packaged Nightshift launcher did not provide a valid resume command. No question was created.'
+    'The packaged Kolux launcher did not provide a valid resume command. No question was created.'
   )
 }
 
@@ -46,7 +36,7 @@ export async function flushOrchestrationStdout(): Promise<void> {
 
 export function isDevCliInvocation(): boolean {
   return (
-    process.env.NIGHTSHIFT_DEV_CLI_INVOCATION === '1' ||
-    (process.env.NIGHTSHIFT_USER_DATA_PATH?.includes('nightshift-dev') ?? false)
+    process.env.KOLUX_DEV_CLI_INVOCATION === '1' ||
+    (process.env.KOLUX_USER_DATA_PATH?.includes('kolux-dev') ?? false)
   )
 }

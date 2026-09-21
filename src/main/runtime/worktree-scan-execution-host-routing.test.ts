@@ -36,7 +36,7 @@ vi.mock('./repo-worktree-admin-fingerprint', () => ({
   readRepoWorktreeAdminFingerprint: vi.fn(async () => null)
 }))
 
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 const TARGET_ID = 'remote-1'
 const REPO_ID = 'repo-remote'
@@ -118,10 +118,10 @@ type RuntimeInternals = {
 }
 
 function makeRuntime(repoOverrides: Record<string, unknown>): {
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   list: () => Promise<{ id: string; path: string; hostId?: string }[]>
 } {
-  const runtime = new NightshiftRuntimeService(makeStore(repoOverrides) as never)
+  const runtime = new KoluxRuntimeService(makeStore(repoOverrides) as never)
   return {
     runtime,
     list: () => (runtime as unknown as RuntimeInternals).listResolvedWorktrees()

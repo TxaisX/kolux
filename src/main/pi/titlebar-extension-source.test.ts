@@ -22,10 +22,10 @@ type Harness = {
   callHook: (name: string, event?: unknown) => Promise<void>
 }
 
-const CWD = '/repo/nightshift-app'
+const CWD = '/repo/kolux-app'
 const SESSION = 'omp-session'
-const IDLE_TITLE = `π - ${SESSION} - nightshift-app`
-const PROMPT_TITLE = `π ! ${SESSION} - nightshift-app`
+const IDLE_TITLE = `π - ${SESSION} - kolux-app`
+const PROMPT_TITLE = `π ! ${SESSION} - kolux-app`
 
 function createHarness(
   options: {
@@ -61,8 +61,8 @@ function createHarness(
     module,
     exports: module.exports,
     process: {
-      env: { NIGHTSHIFT_PANE_KEY: options.paneKey ?? 'pane-1', ...options.env },
-      pid: options.env?.NIGHTSHIFT_PI_TITLE_MARKER_OWNED === undefined ? 111 : 222,
+      env: { KOLUX_PANE_KEY: options.paneKey ?? 'pane-1', ...options.env },
+      pid: options.env?.KOLUX_PI_TITLE_MARKER_OWNED === undefined ? 111 : 222,
       title: options.processTitle ?? 'pi',
       argv: ['node', 'pi'],
       cwd: options.cwdImpl ?? (() => CWD)
@@ -118,7 +118,7 @@ describe('getPiTitlebarExtensionSource', () => {
     vi.useRealTimers()
   })
 
-  it('registers nothing outside a Nightshift pane', () => {
+  it('registers nothing outside a Kolux pane', () => {
     expect(createHarness({ paneKey: '' }).handlers).toEqual({})
   })
 
@@ -499,7 +499,7 @@ describe('getPiTitlebarExtensionSource', () => {
 
     // Why: pi repaints on session_info_changed/rebindCurrentSession with no event we see,
     // so a marker that is merely "not overwritten by us" would be silently lost.
-    harness.titles.push('π - other - nightshift-app')
+    harness.titles.push('π - other - kolux-app')
     await vi.advanceTimersByTimeAsync(80)
     expect(harness.lastTitle()).toBe(PROMPT_TITLE)
   })
@@ -512,7 +512,7 @@ describe('getPiTitlebarExtensionSource', () => {
 
     // Why: no turn is running, so renderFrame never fires — only the slow re-assert can
     // undo a title pi writes from session_info_changed or its update-check restore.
-    harness.titles.push('\u03c0 - other - nightshift-app')
+    harness.titles.push('\u03c0 - other - kolux-app')
     await vi.advanceTimersByTimeAsync(1000)
     expect(harness.lastTitle()).toBe(PROMPT_TITLE)
 
@@ -571,9 +571,9 @@ describe('getPiTitlebarExtensionSource', () => {
   })
 
   it('leaves the needs-input marker to the process that owns the pane', async () => {
-    // Why: child agents inherit NIGHTSHIFT_PANE_KEY, and a second process asserting the marker
+    // Why: child agents inherit KOLUX_PANE_KEY, and a second process asserting the marker
     // would report needs-input for a pane it does not speak for.
-    const harness = createHarness({ env: { NIGHTSHIFT_PI_TITLE_MARKER_OWNED: '111' } })
+    const harness = createHarness({ env: { KOLUX_PI_TITLE_MARKER_OWNED: '111' } })
 
     await harness.callHook('agent_start')
     await harness.callHook('ui_prompt_start')

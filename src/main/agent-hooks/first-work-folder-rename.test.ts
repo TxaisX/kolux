@@ -6,7 +6,7 @@ import {
   type FirstWorkFolderRenameDeps
 } from './first-work-folder-rename'
 
-const REPO = { id: 'repo1', path: '/repos/nightshift', connectionId: null } as unknown as Repo
+const REPO = { id: 'repo1', path: '/repos/kolux', connectionId: null } as unknown as Repo
 const SETTINGS = { nestWorkspaces: false, workspaceDir: '/ws' } as unknown as GlobalSettings
 const OLD_ID = 'repo1::/ws/cunner'
 const FOLDER_WORKSPACE_ID = 'repo1::/ws/cunner::workspace:12345678-1234-1234-1234-123456789abc'
@@ -37,7 +37,7 @@ describe('renameWorktreeFolderOnFirstWork', () => {
     const result = await renameWorktreeFolderOnFirstWork(OLD_ID, 'worktree-creation-spinner', deps)
     expect(result).toBe(true)
     expect(deps.moveWorktree).toHaveBeenCalledWith(
-      '/repos/nightshift',
+      '/repos/kolux',
       '/ws/cunner',
       '/ws/worktree-creation-spinner'
     )

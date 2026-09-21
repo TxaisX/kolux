@@ -2,7 +2,7 @@ import type { Page, TestInfo } from '@stablyai/playwright-test'
 
 /**
  * Renderer-side counterpart of `forwardElectronProcessLogs`, sharing its
- * `NIGHTSHIFT_E2E_FORWARD_APP_LOGS` gate.
+ * `KOLUX_E2E_FORWARD_APP_LOGS` gate.
  *
  * Why: a contained render crash only ever reaches the renderer console
  * (`RecoverableRenderErrorBoundary` logs the error plus its component stack
@@ -10,7 +10,7 @@ import type { Page, TestInfo } from '@stablyai/playwright-test'
  * the dialog and the stack that would localize the first bad render is lost.
  */
 export function forwardRendererConsole(page: Page, testInfo: TestInfo): void {
-  if (process.env.NIGHTSHIFT_E2E_FORWARD_APP_LOGS !== '1') {
+  if (process.env.KOLUX_E2E_FORWARD_APP_LOGS !== '1') {
     return
   }
 

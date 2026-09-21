@@ -34,13 +34,13 @@ type InteractiveQueueSnapshot = {
 }
 
 const tempRoots: string[] = []
-const originalAdmissionDisabled = process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+const originalAdmissionDisabled = process.env.KOLUX_GIT_ADMISSION_DISABLED
 
 afterEach(async () => {
   if (originalAdmissionDisabled === undefined) {
-    delete process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+    delete process.env.KOLUX_GIT_ADMISSION_DISABLED
   } else {
-    process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED = originalAdmissionDisabled
+    process.env.KOLUX_GIT_ADMISSION_DISABLED = originalAdmissionDisabled
   }
   _resetGitAdmissionForTests()
   await Promise.all(tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
@@ -66,10 +66,10 @@ async function createStubGit(root: string): Promise<string> {
     stubPath,
     `#!/bin/sh
 set -eu
-live="$NIGHTSHIFT_STUB_STATE_DIR/$NIGHTSHIFT_STUB_ID.live"
+live="$KOLUX_STUB_STATE_DIR/$KOLUX_STUB_ID.live"
 : > "$live"
 trap 'rm -f "$live"' EXIT HUP INT TERM
-sleep "$(awk "BEGIN { print $NIGHTSHIFT_STUB_SLEEP_MS / 1000 }")"
+sleep "$(awk "BEGIN { print $KOLUX_STUB_SLEEP_MS / 1000 }")"
 printf 'stub:%s\\n' "$*"
 `
   )
@@ -79,9 +79,9 @@ printf 'stub:%s\\n' "$*"
 
 function setAdmissionMode(mode: StormMeasurement['mode']): void {
   if (mode === 'disabled') {
-    process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED = '1'
+    process.env.KOLUX_GIT_ADMISSION_DISABLED = '1'
   } else {
-    delete process.env.NIGHTSHIFT_GIT_ADMISSION_DISABLED
+    delete process.env.KOLUX_GIT_ADMISSION_DISABLED
   }
 }
 
@@ -95,7 +95,7 @@ async function measureStorm(mode: StormMeasurement['mode']): Promise<StormMeasur
       onAdmissionEvent: (event) => admissionEvents.push(event)
     })
   )
-  const root = await mkdtemp(path.join(tmpdir(), `nightshift-git-storm-${mode}-`))
+  const root = await mkdtemp(path.join(tmpdir(), `kolux-git-storm-${mode}-`))
   tempRoots.push(root)
   const stateDir = path.join(root, 'state')
   await mkdir(stateDir)
@@ -128,9 +128,9 @@ async function measureStorm(mode: StormMeasurement['mode']): Promise<StormMeasur
       cwd: repoDirs[index % repoDirs.length],
       env: {
         ...baseEnv,
-        NIGHTSHIFT_STUB_ID: `background-${index}`,
-        NIGHTSHIFT_STUB_SLEEP_MS: index % 10 === 0 ? '5000' : '200',
-        NIGHTSHIFT_STUB_STATE_DIR: stateDir
+        KOLUX_STUB_ID: `background-${index}`,
+        KOLUX_STUB_SLEEP_MS: index % 10 === 0 ? '5000' : '200',
+        KOLUX_STUB_STATE_DIR: stateDir
       },
       admissionTier: 'background'
     })
@@ -157,9 +157,9 @@ async function measureStorm(mode: StormMeasurement['mode']): Promise<StormMeasur
                   cwd: repoDirs[index % repoDirs.length],
                   env: {
                     ...baseEnv,
-                    NIGHTSHIFT_STUB_ID: `interactive-${index}`,
-                    NIGHTSHIFT_STUB_SLEEP_MS: String(Math.max(10, concurrentAtInjection * 12)),
-                    NIGHTSHIFT_STUB_STATE_DIR: stateDir
+                    KOLUX_STUB_ID: `interactive-${index}`,
+                    KOLUX_STUB_SLEEP_MS: String(Math.max(10, concurrentAtInjection * 12)),
+                    KOLUX_STUB_STATE_DIR: stateDir
                   },
                   admissionTier: 'interactive'
                 })

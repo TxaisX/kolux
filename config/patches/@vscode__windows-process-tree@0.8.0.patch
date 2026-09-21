@@ -238,7 +238,7 @@ index ea822b120e8038a4803e34647042f08f4aaf5ca1..25907c0bf542bed6c72b1b462b19bcf3
 +// memory reads across every pid on a timer -- is the credential-dumping
 +// primitive this reader exists to not perform, so it is absent from the binary
 +// rather than one anomalous NTSTATUS away. Electron's floor is Windows 10, so
-+// every OS Nightshift supports has this class; if a hooked ntdll refuses it anyway,
++// every OS Kolux supports has this class; if a hooked ntdll refuses it anyway,
 +// the command line comes back empty, which callers already handle, instead of
 +// silently reinstating the primitive on exactly the instrumented machines this
 +// reader was written for.

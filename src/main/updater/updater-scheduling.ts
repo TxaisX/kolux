@@ -31,7 +31,7 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
       clearTimeout(this.autoUpdateCheckTimer)
     }
     this.autoUpdateCheckTimer = setTimeout(() => {
-      // Why: Nightshift runs for days, so keep the next background check scheduled in the main process rather than tying it to relaunches or renderer lifetime.
+      // Why: Kolux runs for days, so keep the next background check scheduled in the main process rather than tying it to relaunches or renderer lifetime.
       if (!this.runBackgroundUpdateCheck(undefined, isRetry)) {
         // Why: a deferred check reaches no outcome handler, so re-arm here or one deferral ends automatic checks for the process lifetime.
         this.scheduleAutomaticUpdateCheck(AUTO_UPDATE_CHECK_INTERVAL_MS)

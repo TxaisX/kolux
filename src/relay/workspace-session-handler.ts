@@ -58,7 +58,7 @@ export class WorkspaceSessionHandler {
 
   constructor(
     private dispatcher: RelayDispatcher,
-    private baseDir = join(homedir(), '.nightshift', 'sessions')
+    private baseDir = join(homedir(), '.kolux', 'sessions')
   ) {
     this.dispatcher.onRequest('workspace.get', (params) => this.get(params))
     this.dispatcher.onRequest('workspace.patch', (params) => this.patch(params))

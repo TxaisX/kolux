@@ -60,7 +60,7 @@ describe('skippedReason', () => {
   it('keeps the reinstall remedy when a project copy sits beside the blocked global copy', () => {
     // The reported shape: a bare out-of-date global copy the updater's record cannot
     // converge, plus the user's own project copy. Letting the project copy explain the
-    // skip swapped the one runnable command for advice about a copy Nightshift never judged.
+    // skip swapped the one runnable command for advice about a copy Kolux never judged.
     const reason = skippedReason([row(null), projectRow()], 'orchestration')
     expect(reason).toContain('reports the skill as already up to date')
     expect(reason).toContain('skills add')
@@ -69,7 +69,7 @@ describe('skippedReason', () => {
 
   it('does not let a project copy outrank the placement that blocked the update', () => {
     // Why by row and not by chip: the scan-limit sentinel is also project-scoped and
-    // carries 'inaccessible', which would otherwise claim a read failure Nightshift never hit.
+    // carries 'inaccessible', which would otherwise claim a read failure Kolux never hit.
     expect(skippedReason([row('duplicate'), projectRow()], 'orchestration')).toContain(
       'separate copy'
     )
@@ -80,7 +80,7 @@ describe('skippedReason', () => {
 
   it('explains a project copy when that is the only location there is', () => {
     // Why the fallback exists: the sentence stays total. With nothing else to point at,
-    // "Nightshift only updates your global skills" is the honest reason.
+    // "Kolux only updates your global skills" is the honest reason.
     expect(skippedReason([projectRow()], 'orchestration')).toContain(
       'This is a project skill, not a global one'
     )

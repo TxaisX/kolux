@@ -137,23 +137,23 @@ describe('useNativeChatComposerAttachments', () => {
     const first = await renderProbe('pty-1')
 
     await act(async () => {
-      first.latest().attachResolvedPaths(['/tmp/nightshift-native-chat-attach-test.png'])
+      first.latest().attachResolvedPaths(['/tmp/kolux-native-chat-attach-test.png'])
     })
 
     // Images are NOT sent to the TUI on attach — they ride along on submit, so
     // the chip and the TUI input never diverge and removing a chip is clean.
     expect(first.latest().imageAttachments).toMatchObject([
-      { path: '/tmp/nightshift-native-chat-attach-test.png' }
+      { path: '/tmp/kolux-native-chat-attach-test.png' }
     ])
     expect(readNativeChatAttachmentCache('pty-1')).toMatchObject([
-      { path: '/tmp/nightshift-native-chat-attach-test.png' }
+      { path: '/tmp/kolux-native-chat-attach-test.png' }
     ])
 
     act(() => first.root.unmount())
     const second = await renderProbe('pty-1')
 
     expect(second.latest().imageAttachments).toMatchObject([
-      { path: '/tmp/nightshift-native-chat-attach-test.png' }
+      { path: '/tmp/kolux-native-chat-attach-test.png' }
     ])
     act(() => second.root.unmount())
   })
@@ -172,7 +172,7 @@ describe('useNativeChatComposerAttachments', () => {
   it('removes an attached image chip cleanly', async () => {
     const probe = await renderProbe('pty-1')
     await act(async () => {
-      probe.latest().attachResolvedPaths(['/tmp/nightshift-native-chat-remove-test.png'])
+      probe.latest().attachResolvedPaths(['/tmp/kolux-native-chat-remove-test.png'])
     })
     const id = probe.latest().imageAttachments[0]?.id
     expect(id).toBeDefined()

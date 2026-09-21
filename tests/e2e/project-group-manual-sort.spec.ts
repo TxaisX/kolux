@@ -3,7 +3,7 @@ import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdtemp } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady } from './helpers/store'
 import type { Page } from '@stablyai/playwright-test'
 
@@ -51,7 +51,7 @@ function initializeGitRepo(repoPath: string): void {
 async function createProjectHeaderSortFixture(): Promise<string[]> {
   // Why: match the app's canonical repo.path on macOS, where os.tmpdir()
   // can resolve through /var -> /private/var.
-  const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'nightshift-e2e-project-sort-')))
+  const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), 'kolux-e2e-project-sort-')))
   tempRoots.push(root)
   const repoPaths = PROJECT_NAMES.map((name) => path.join(root, name))
   for (const repoPath of repoPaths) {
@@ -273,27 +273,27 @@ test.afterEach(() => {
 
 test.describe('Project Group manual sorting', () => {
   test('dragging a project header body reorders the visible project headers', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
     const repoPaths = await createProjectHeaderSortFixture()
-    const projects = await seedProjectHeaderSortScenario(nightshiftPage, repoPaths)
+    const projects = await seedProjectHeaderSortScenario(koluxPage, repoPaths)
 
     await expect
-      .poll(() => getProjectHeaderOrder(nightshiftPage, projects), {
+      .poll(() => getProjectHeaderOrder(koluxPage, projects), {
         timeout: 12_000,
         message: 'Project headers did not render in manual order'
       })
       .toEqual([projects.alphaId, projects.bravoId, projects.charlieId])
 
     await dragProjectBefore({
-      page: nightshiftPage,
+      page: koluxPage,
       draggedProjectId: projects.charlieId,
       targetProjectId: projects.bravoId
     })
 
     await expect
-      .poll(() => getProjectHeaderOrder(nightshiftPage, projects), {
+      .poll(() => getProjectHeaderOrder(koluxPage, projects), {
         timeout: 12_000,
         message: 'Dragged project header body did not persist the requested visible order'
       })
@@ -301,14 +301,14 @@ test.describe('Project Group manual sorting', () => {
   })
 
   test('dropping a project over another project body snaps to that section boundary', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
+    await waitForSessionReady(koluxPage)
     const repoPaths = await createProjectHeaderSortFixture()
-    const projects = await seedProjectHeaderSortScenario(nightshiftPage, repoPaths)
+    const projects = await seedProjectHeaderSortScenario(koluxPage, repoPaths)
 
     await expect
-      .poll(() => getProjectHeaderOrder(nightshiftPage, projects), {
+      .poll(() => getProjectHeaderOrder(koluxPage, projects), {
         timeout: 12_000,
         message: 'Project headers did not render in manual order'
       })
@@ -319,13 +319,13 @@ test.describe('Project Group manual sorting', () => {
     // charlie's top) map to the slot after bravo, so alpha lands between bravo
     // and charlie deterministically regardless of the exact section height.
     await dragProjectIntoProjectBody({
-      page: nightshiftPage,
+      page: koluxPage,
       draggedProjectId: projects.alphaId,
       targetProjectId: projects.bravoId
     })
 
     await expect
-      .poll(() => getProjectHeaderOrder(nightshiftPage, projects), {
+      .poll(() => getProjectHeaderOrder(koluxPage, projects), {
         timeout: 12_000,
         message: 'Dropping into a project body should snap to the nearest boundary slot'
       })
@@ -333,26 +333,26 @@ test.describe('Project Group manual sorting', () => {
   })
 
   test('dragging a duplicate-ranked Project Group header reorders the visible headers', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await waitForSessionReady(nightshiftPage)
-    const groups = await seedDuplicateTabOrderProjectGroups(nightshiftPage)
+    await waitForSessionReady(koluxPage)
+    const groups = await seedDuplicateTabOrderProjectGroups(koluxPage)
 
     await expect
-      .poll(() => getProjectGroupHeaderOrder(nightshiftPage, groups), {
+      .poll(() => getProjectGroupHeaderOrder(koluxPage, groups), {
         timeout: 12_000,
         message: 'Project Group headers did not render in duplicate-rank name order'
       })
       .toEqual([groups.alphaId, groups.bravoId, groups.charlieId, groups.deltaId])
 
     await dragProjectGroupBefore({
-      page: nightshiftPage,
+      page: koluxPage,
       draggedGroupId: groups.deltaId,
       targetGroupId: groups.charlieId
     })
 
     await expect
-      .poll(() => getProjectGroupHeaderOrder(nightshiftPage, groups), {
+      .poll(() => getProjectGroupHeaderOrder(koluxPage, groups), {
         timeout: 12_000,
         message: 'Dragged Project Group header did not persist the requested visible order'
       })

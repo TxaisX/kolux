@@ -77,7 +77,7 @@ function hasDetectedHiddenLinkedExternalWorktrees(
       !worktree.isMainWorktree &&
       !worktree.selectedCheckout &&
       !worktree.visible &&
-      worktree.ownership !== 'nightshift-managed' &&
+      worktree.ownership !== 'kolux-managed' &&
       // Why: a repo whose only externals are agent scratch must not get
       // flipped to repo-wide 'show' by the add handoff (#9388).
       worktree.ownership !== 'agent-scratch'

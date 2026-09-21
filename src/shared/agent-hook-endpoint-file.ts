@@ -26,17 +26,17 @@ export function parseAgentHookEndpointFile(contents: string): AgentHookEndpoint 
       })
   )
   if (
-    !values.NIGHTSHIFT_AGENT_HOOK_PORT ||
-    !values.NIGHTSHIFT_AGENT_HOOK_TOKEN ||
-    !values.NIGHTSHIFT_AGENT_HOOK_ENV ||
-    !values.NIGHTSHIFT_AGENT_HOOK_VERSION
+    !values.KOLUX_AGENT_HOOK_PORT ||
+    !values.KOLUX_AGENT_HOOK_TOKEN ||
+    !values.KOLUX_AGENT_HOOK_ENV ||
+    !values.KOLUX_AGENT_HOOK_VERSION
   ) {
     throw new Error('Agent hook endpoint file is missing required fields')
   }
   return {
-    port: values.NIGHTSHIFT_AGENT_HOOK_PORT,
-    token: values.NIGHTSHIFT_AGENT_HOOK_TOKEN,
-    env: values.NIGHTSHIFT_AGENT_HOOK_ENV,
-    version: values.NIGHTSHIFT_AGENT_HOOK_VERSION
+    port: values.KOLUX_AGENT_HOOK_PORT,
+    token: values.KOLUX_AGENT_HOOK_TOKEN,
+    env: values.KOLUX_AGENT_HOOK_ENV,
+    version: values.KOLUX_AGENT_HOOK_VERSION
   }
 }

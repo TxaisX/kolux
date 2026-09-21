@@ -1,10 +1,10 @@
-# Nightshift UI Style Guide
+# Kolux UI Style Guide
 
-This is the **UI/visual design** doc for Nightshift — color tokens, typography, component selection, and UX rules. It is _not_ an architecture doc; for system-level design see code and inline comments. Token values live in `src/renderer/src/assets/main.css` (canonical); this file documents the _roles and rules_ for using them.
+This is the **UI/visual design** doc for Kolux — color tokens, typography, component selection, and UX rules. It is _not_ an architecture doc; for system-level design see code and inline comments. Token values live in `src/renderer/src/assets/main.css` (canonical); this file documents the _roles and rules_ for using them.
 
 ## Overview
 
-Nightshift is an Electron desktop app for orchestrating coding agents across git worktrees. The visual identity is **monochrome and quiet** — neutral grays carry the chrome, color is reserved for state (selection ring, destructive, git decorations). The product spends most of its time hosting other people's tools (Monaco, xterm, Markdown previews), so Nightshift's own UI should recede and frame.
+Kolux is an Electron desktop app for orchestrating coding agents across git worktrees. The visual identity is **monochrome and quiet** — neutral grays carry the chrome, color is reserved for state (selection ring, destructive, git decorations). The product spends most of its time hosting other people's tools (Monaco, xterm, Markdown previews), so Kolux's own UI should recede and frame.
 
 When in doubt:
 
@@ -99,7 +99,7 @@ This keeps light/dark parity automatic.
 
 ## Elevation & shadows
 
-Nightshift uses shadows sparingly. Three levels in practice:
+Kolux uses shadows sparingly. Three levels in practice:
 
 1. **Inset hairline** — `border` + `border` token. The default. Almost everything sits at this level.
 2. **Subtle lift** — `shadow-xs` + a single-token border. Outline buttons, embedded cards.
@@ -238,7 +238,7 @@ These are the rules a contributor will most often get wrong if they're working i
 
 ### Screen UX review rubric
 
-Use this rubric when reviewing any Nightshift IDE screen, screenshot, or prototype. A good review should name the highest-impact friction first, then give concrete changes the implementer can make.
+Use this rubric when reviewing any Kolux IDE screen, screenshot, or prototype. A good review should name the highest-impact friction first, then give concrete changes the implementer can make.
 
 #### Review output format
 
@@ -298,12 +298,12 @@ When there's no sibling, match the surrounding chrome — button sizes, icon wei
 
 ## Cross-platform
 
-Nightshift runs on macOS, Linux, and Windows. Every UI change must hold up on all three, in both light and dark mode.
+Kolux runs on macOS, Linux, and Windows. Every UI change must hold up on all three, in both light and dark mode.
 
 - **Modifier keys:** Never hardcode `e.metaKey`. Use `navigator.userAgent.includes('Mac')` to choose `metaKey` on Mac and `ctrlKey` on Linux/Windows. Electron menu accelerators should use `CmdOrCtrl`.
 - **Shortcut labels:** Display `⌘` / `⇧` on Mac; display `Ctrl+` / `Shift+` on other platforms. The label must reflect the actual binding for that platform.
 - **Window chrome:** macOS shows traffic lights; the titlebar reserves an 80px gutter (`titlebar-traffic-light-pad`) so they don't overlap content. Don't put hit targets in that band on Mac.
-- **SSH:** Many users run Nightshift on a remote machine. Loading states, focus management, and animations must hold up under 50–200 ms of extra latency. Test under simulated latency (or actual SSH) — local-only verification isn't enough. See _UX rules → 1_.
+- **SSH:** Many users run Kolux on a remote machine. Loading states, focus management, and animations must hold up under 50–200 ms of extra latency. Test under simulated latency (or actual SSH) — local-only verification isn't enough. See _UX rules → 1_.
 
 ## When this guide is silent
 

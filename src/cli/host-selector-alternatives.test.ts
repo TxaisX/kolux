@@ -54,7 +54,7 @@ describe('crossKindNextSteps', () => {
     const steps = crossKindNextSteps('awin', alternatives, 'ssh')
 
     expect(steps.join('\n')).toContain('--environment awin')
-    expect(steps.join('\n')).toContain('is a paired Nightshift server')
+    expect(steps.join('\n')).toContain('is a paired Kolux server')
   })
 
   it('says nothing when the name exists on neither axis', () => {
@@ -98,7 +98,7 @@ describe('resolveSshHostTargetId', () => {
       resolveSshHostTargetId(clientReturning([]), 'openclaw', ENVIRONMENTS)
     ).rejects.toMatchObject({
       data: {
-        nextSteps: expect.arrayContaining(['This Nightshift host has no SSH targets registered.'])
+        nextSteps: expect.arrayContaining(['This Kolux host has no SSH targets registered.'])
       }
     })
   })

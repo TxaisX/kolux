@@ -1,5 +1,5 @@
 /**
- * Best-effort stop for provider children that carry a Nightshift spawn token no lease claims.
+ * Best-effort stop for provider children that carry a Kolux spawn token no lease claims.
  *
  * A child spawned under a reservation whose record was lost — the primary store file went with it,
  * or the crash beat the durable write — is unreachable but still connected to the provider session.

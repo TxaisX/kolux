@@ -57,7 +57,7 @@ describe('RuntimeHostAccessForm', () => {
         onSubmit={vi.fn()}
       />
     )
-    expect(markup).toContain('Enter a Nightshift access link or bare pairing code.')
+    expect(markup).toContain('Enter a Kolux access link or bare pairing code.')
     expect(markup).toContain('aria-invalid="true"')
   })
 

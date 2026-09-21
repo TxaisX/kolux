@@ -110,7 +110,7 @@ function qualifiedWorktreeResult(
       authoritative: true,
       source: 'git',
       worktrees: [
-        { ...worktree, ownership: 'nightshift-managed', selectedCheckout: false, visible: true }
+        { ...worktree, ownership: 'kolux-managed', selectedCheckout: false, visible: true }
       ]
     }
   }
@@ -271,7 +271,7 @@ describe('SSH repo host reconciliation', () => {
           worktrees: [
             {
               ...staleWorktree,
-              ownership: 'nightshift-managed',
+              ownership: 'kolux-managed',
               selectedCheckout: false,
               visible: true
             }
@@ -303,7 +303,7 @@ describe('SSH repo host reconciliation', () => {
     expect(store.getState().detectedWorktreesByRepo[repoId].worktrees).toEqual([
       {
         ...directSshWorktree('ssh-new', 'stale'),
-        ownership: 'nightshift-managed',
+        ownership: 'kolux-managed',
         selectedCheckout: false,
         visible: true
       }

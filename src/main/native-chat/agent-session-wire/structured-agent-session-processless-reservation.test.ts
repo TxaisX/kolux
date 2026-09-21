@@ -65,7 +65,7 @@ function attachParams(
 
 describe('processless structured session reservation', () => {
   it('refuses an adapter that declares no create support before reserving a lease', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-unsupported-attach-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-unsupported-attach-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -106,7 +106,7 @@ describe('processless structured session reservation', () => {
   })
 
   it('refuses a replay when adapter support drifts after durable reservation', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-replay-support-drift-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-replay-support-drift-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -155,7 +155,7 @@ describe('processless structured session reservation', () => {
   })
 
   it('releases a new reservation when support drifts before acquisition', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-support-drift-reservation-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-support-drift-reservation-'))
     const store = await AgentSessionRecordStore.open({
       directory: join(root, 'store'),
       hostId: 'local'
@@ -210,7 +210,7 @@ describe('processless structured session reservation', () => {
   })
 
   it('settles a pre-spawn failure and its processless evidence in one durable transaction', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-processless-reservation-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-processless-reservation-'))
     const storeDir = join(root, 'store')
     const store = await AgentSessionRecordStore.open({ directory: storeDir, hostId: 'local' })
     const adapter = {
@@ -269,7 +269,7 @@ describe('processless structured session reservation', () => {
   })
 
   it('does not rerun a settled pre-spawn failure and admits a fresh operation', async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-processless-retry-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-processless-retry-'))
     const storeDir = join(root, 'store')
     const store = await AgentSessionRecordStore.open({ directory: storeDir, hostId: 'local' })
     const adapter = {

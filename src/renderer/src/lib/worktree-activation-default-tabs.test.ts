@@ -93,8 +93,8 @@ describe('ensureWorktreeHasInitialTerminal', () => {
       'wt-1',
       undefined,
       {
-        runnerScriptPath: '/tmp/repo/.git/nightshift/setup-runner.sh',
-        envVars: { NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
+        runnerScriptPath: '/tmp/repo/.git/kolux/setup-runner.sh',
+        envVars: { KOLUX_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
       },
       undefined,
       {
@@ -120,8 +120,8 @@ describe('ensureWorktreeHasInitialTerminal', () => {
     })
     expect(store.queueTabStartupCommand).toHaveBeenCalledWith('tab-1', { command: 'pnpm dev' })
     expect(store.queueTabStartupCommand).toHaveBeenCalledWith('tab-2', {
-      command: 'bash /tmp/repo/.git/nightshift/setup-runner.sh',
-      env: { NIGHTSHIFT_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
+      command: 'bash /tmp/repo/.git/kolux/setup-runner.sh',
+      env: { KOLUX_WORKTREE_PATH: '/tmp/worktrees/wt-1' }
     })
   })
 
@@ -167,7 +167,7 @@ describe('ensureWorktreeHasInitialTerminal', () => {
     })
 
     ensureWorktreeHasInitialTerminal(store, 'wt-1', undefined, {
-      runnerScriptPath: '/tmp/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/tmp/repo/.git/kolux/setup-runner.sh',
       envVars: {}
     })
 

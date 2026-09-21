@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../src/main/runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../../src/main/runtime/kolux-runtime'
 import type {
   RuntimeMobileSessionTabsResult,
   RuntimeMobileSessionTabsSnapshot
@@ -21,13 +21,13 @@ type RuntimeInternals = {
 type Harness = {
   internals: RuntimeInternals
   publications: RuntimeMobileSessionTabsResult[]
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   tab: TerminalTab
   unsubscribe: () => void
 }
 
 function createHarness(): Harness {
-  const runtime = new NightshiftRuntimeService()
+  const runtime = new KoluxRuntimeService()
   runtime.registerPty(PTY_ID, WORKTREE_ID)
   const tab: TerminalTab = {
     type: 'terminal',

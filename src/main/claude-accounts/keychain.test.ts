@@ -17,7 +17,7 @@ const execFileMock = vi.mocked(execFile)
 const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
 const originalUser = process.env.USER
 const originalUsername = process.env.USERNAME
-const TEST_USER = 'nightshift-test-user'
+const TEST_USER = 'kolux-test-user'
 const SSO_USER = 'sso.user@example.com'
 
 function setPlatform(platform: NodeJS.Platform): void {
@@ -68,7 +68,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('reads config-scoped Claude Code 2.1 credentials before legacy credentials', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementationOnce((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, '{"claudeAiOauth":{"accessToken":"scoped"}}\n', '')
@@ -91,7 +91,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('falls back to the legacy unsuffixed Claude Code credentials service', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const notFound = Object.assign(new Error('not found'), { code: 44 })
     execFileMock
       .mockImplementationOnce((_file, _args, _options, callback) => {
@@ -116,7 +116,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('writes active credentials to the config-scoped Claude Code service', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementationOnce((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, '', '')
@@ -138,7 +138,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('writes runtime credentials to scoped and legacy services for old Claude Code compatibility', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementation((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, '', '')
@@ -172,7 +172,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('strictly reads only the requested active credentials service', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementationOnce((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, 'scoped\n', '')
@@ -194,7 +194,7 @@ describe('Claude Keychain credentials', () => {
 
   it('rejects when a keychain read never reports completion', async () => {
     vi.useFakeTimers()
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const killMock = vi.fn()
     execFileMock.mockImplementationOnce(() => ({ kill: killMock }) as never)
 
@@ -223,7 +223,7 @@ describe('Claude Keychain credentials', () => {
   })
 
   it('deletes both scoped and legacy active credentials for config-dir cleanup', async () => {
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementation((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, '', '')
@@ -260,7 +260,7 @@ describe('Claude Keychain credentials', () => {
 
   it('cleans both Claude Code and raw $USER Keychain accounts after a failed SSO login', async () => {
     process.env.USER = SSO_USER
-    const configDir = '/tmp/nightshift-claude-login-test'
+    const configDir = '/tmp/kolux-claude-login-test'
     const scopedService = serviceForConfigDir(configDir)
     execFileMock.mockImplementation((_file, _args, _options, callback) => {
       invokeExecFileCallback(callback, null, '', '')

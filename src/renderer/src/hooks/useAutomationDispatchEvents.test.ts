@@ -27,7 +27,7 @@ const mockStoreSubscribe = vi.fn((listener: () => void) => {
 
 const setupLaunch = {
   runnerScriptPath: '/tmp/setup.sh',
-  envVars: { NIGHTSHIFT_WORKTREE_PATH: '/repo/worktree' }
+  envVars: { KOLUX_WORKTREE_PATH: '/repo/worktree' }
 }
 
 const createdWorktree = {

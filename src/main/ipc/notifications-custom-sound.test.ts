@@ -34,7 +34,7 @@ describe('registerNotificationHandlers', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-28T16:00:00Z'))
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-notification-test-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-notification-test-'))
     resetNotificationDispatchMocks()
   })
 
@@ -61,8 +61,8 @@ describe('registerNotificationHandlers', () => {
       const handler = getDispatchHandler()
       expect(await handler({}, { source: 'test' })).toEqual({ delivered: true })
       expect(notificationCtorMock).toHaveBeenCalledWith({
-        title: 'Nightshift notifications are on',
-        body: 'This is a test notification from Nightshift.',
+        title: 'Kolux notifications are on',
+        body: 'This is a test notification from Kolux.',
         sound: 'default'
       })
     } finally {
@@ -89,8 +89,8 @@ describe('registerNotificationHandlers', () => {
       const handler = getDispatchHandler()
       expect(await handler({}, { source: 'test' })).toEqual({ delivered: true })
       expect(notificationCtorMock).toHaveBeenCalledWith({
-        title: 'Nightshift notifications are on',
-        body: 'This is a test notification from Nightshift.',
+        title: 'Kolux notifications are on',
+        body: 'This is a test notification from Kolux.',
         silent: true
       })
     } finally {
@@ -114,8 +114,8 @@ describe('registerNotificationHandlers', () => {
     const handler = getDispatchHandler()
     expect(await handler({}, { source: 'test' })).toEqual({ delivered: true })
     expect(notificationCtorMock).toHaveBeenCalledWith({
-      title: 'Nightshift notifications are on',
-      body: 'This is a test notification from Nightshift.',
+      title: 'Kolux notifications are on',
+      body: 'This is a test notification from Kolux.',
       silent: true
     })
   })

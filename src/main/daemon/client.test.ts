@@ -164,9 +164,9 @@ describe('DaemonClient', () => {
         pid: 123,
         startedAtMs: 456,
         launchNonce: 'launch-a',
-        entryPath: '/Applications/Nightshift.app/Contents/Resources/daemon-entry.js',
+        entryPath: '/Applications/Kolux.app/Contents/Resources/daemon-entry.js',
         appVersion: '1.2.3',
-        spawnerExecPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift'
+        spawnerExecPath: '/Applications/Kolux.app/Contents/MacOS/Kolux'
       }
       await startMockDaemon({ helloIdentity: () => identity })
 
@@ -508,7 +508,7 @@ describe('DaemonClient', () => {
       await client.ensureConnected()
 
       await expect(client.request('listSessions', undefined)).rejects.toThrow(
-        "Daemon's node-pty install is gone (worktree deleted?). Restart Nightshift. node-pty: posix_spawn failed: ENOENT"
+        "Daemon's node-pty install is gone (worktree deleted?). Restart Kolux. node-pty: posix_spawn failed: ENOENT"
       )
     })
   })

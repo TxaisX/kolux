@@ -1,7 +1,7 @@
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 
-// Why (#10333): a windowless `nightshift serve` host answered every focus-requested
+// Why (#10333): a windowless `kolux serve` host answered every focus-requested
 // create with "No renderer window available", so `terminal create --focus` had
 // no workaround. Drive the real RPC a remote CLI sends, against a real serve
 // process, so the degrade is proven on the topology that broke.
@@ -29,13 +29,13 @@ test('creates a focus-requested terminal against a headless serve host', async (
       )
       .not.toBe('')
 
-    // Exactly what `nightshift --environment <remote> terminal create --worktree <wt>
+    // Exactly what `kolux --environment <remote> terminal create --worktree <wt>
     // --command "echo test" --focus --json` puts on the wire.
     const created = await host.client.call<{
       terminal: { handle: string; worktreeId: string; ptyId?: string }
     }>('terminal.create', {
       worktree: `id:${worktreeId}`,
-      command: 'echo nightshift-10333-focus',
+      command: 'echo kolux-10333-focus',
       focus: true,
       presentation: 'focused'
     })

@@ -45,7 +45,7 @@ export abstract class AgentHookServerState {
   protected server: ReturnType<typeof createServer> | null = null
   protected port = 0
   protected token = ''
-  // Why: identifies this Nightshift instance so the server can detect dev vs. prod cross-talk; set at start() from packaged-build knowledge.
+  // Why: identifies this Kolux instance so the server can detect dev vs. prod cross-talk; set at start() from packaged-build knowledge.
   protected env = 'production'
   protected onAgentStatus: ServerAgentStatusListener = null
   protected onClaudeStatusLine: ServerStatusLineListener = null

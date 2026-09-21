@@ -21,6 +21,31 @@ import {
   statusFromState
 } from './managed-plugin-install-status'
 
+// Why: Amp loads every plugin file in the dir; a pre-rename kolux-agent-status.ts named
+// nightshift-agent-status.ts would otherwise keep firing the managed hook a second time.
+const PRE_RENAME_AMP_PLUGIN_FILE = 'nightshift-agent-status.ts'
+const PRE_RENAME_AMP_PLUGIN_MARKER =
+  'Managed by Nightshift. Do not edit; changes may be overwritten.'
+
+function getLegacyPluginPath(): string {
+  return join(dirname(getPluginPath()), PRE_RENAME_AMP_PLUGIN_FILE)
+}
+
+function sweepLegacyAmpPlugin(): void {
+  const legacyPath = getLegacyPluginPath()
+  if (!existsSync(legacyPath)) {
+    return
+  }
+  try {
+    const content = readFileSync(legacyPath, 'utf-8')
+    if (content.includes(PRE_RENAME_AMP_PLUGIN_MARKER)) {
+      unlinkSync(legacyPath)
+    }
+  } catch {
+    // best effort
+  }
+}
+
 function writeTextFileAtomic(filePath: string, content: string): void {
   const dir = dirname(filePath)
   mkdirSync(dir, { recursive: true })
@@ -62,6 +87,7 @@ export class AmpHookService {
       return statusFromState(pluginPath, state)
     }
     writeTextFileAtomic(pluginPath, getAmpPluginSource())
+    sweepLegacyAmpPlugin()
     return this.getStatus()
   }
 
@@ -92,6 +118,7 @@ export class AmpHookService {
   }
 
   remove(): AgentHookInstallStatus {
+    sweepLegacyAmpPlugin()
     const pluginPath = getPluginPath()
     const state = readLocalPluginState(pluginPath)
     if (state.kind === 'managed') {

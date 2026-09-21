@@ -8,14 +8,14 @@ import { applyPluginConsent, applyPluginEnablement } from './plugin-enablement'
 import type { ValidDiscoveredPlugin } from './plugin-discovery'
 import type { PluginService } from './plugin-service'
 
-const pluginKey = 'nightshift-samples.demo'
+const pluginKey = 'kolux-samples.demo'
 const manifest = pluginManifestSchema.parse({
   manifestVersion: 1,
   id: 'demo',
-  publisher: 'nightshift-samples',
+  publisher: 'kolux-samples',
   name: 'Demo',
   version: '1.0.0',
-  engines: { nightshift: '>=1.0.0' },
+  engines: { kolux: '>=1.0.0' },
   pluginApi: 1,
   contributes: {},
   capabilities: []
@@ -122,7 +122,7 @@ describe('applyPluginEnablement', () => {
       applyPluginEnablement({
         store: harness.store,
         pluginService,
-        pluginKey: 'nightshift-samples.unknown',
+        pluginKey: 'kolux-samples.unknown',
         enabled: false
       })
     ).rejects.toThrow('unknown plugin')

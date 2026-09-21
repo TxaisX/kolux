@@ -25,7 +25,7 @@ function filterUntrackedPorcelainStatus(stdout: string | undefined): string | un
 
 export class SshGitWorktreeProvider extends SshGitReviewHeadProvider {
   private loggedWorktreeIsCleanFallback = false
-  private loggedMarkRemoteNightshiftCreatedFallback = false
+  private loggedMarkRemoteKoluxCreatedFallback = false
   // Why: reconnect replaces this provider, so an upgraded relay is naturally re-probed.
   private readonly worktreeIsCleanCapabilityCache = new CapabilityProbeCache<
     typeof WORKTREE_IS_CLEAN_CAPABILITY
@@ -155,17 +155,17 @@ export class SshGitWorktreeProvider extends SshGitReviewHeadProvider {
   // Why: git.exec blocks config writes outright, so the deferred fork-remote provenance
   // marker (#17828) needs its own RPC. Non-essential to push/pull, so an older relay
   // that hasn't shipped it yet degrades to no marker rather than failing materialization.
-  async markRemoteNightshiftCreated(repoPath: string, remoteName: string): Promise<void> {
+  async markRemoteKoluxCreated(repoPath: string, remoteName: string): Promise<void> {
     try {
-      await this.mux.request('git.markRemoteNightshiftCreated', { repoPath, remoteName })
+      await this.mux.request('git.markRemoteKoluxCreated', { repoPath, remoteName })
     } catch (error) {
       if (!isJsonRpcMethodNotFoundError(error)) {
         throw error
       }
-      if (!this.loggedMarkRemoteNightshiftCreatedFallback) {
-        this.loggedMarkRemoteNightshiftCreatedFallback = true
+      if (!this.loggedMarkRemoteKoluxCreatedFallback) {
+        this.loggedMarkRemoteKoluxCreatedFallback = true
         console.warn(
-          "[ssh-git] Relay does not implement git.markRemoteNightshiftCreated; this remote will lack a git-config provenance marker permanently (reconnecting does not retroactively add it -- only a newer relay deployment does, for remotes added after that). The store's remoteCreated flag remains the fallback ownership signal for cleanup."
+          "[ssh-git] Relay does not implement git.markRemoteKoluxCreated; this remote will lack a git-config provenance marker permanently (reconnecting does not retroactively add it -- only a newer relay deployment does, for remotes added after that). The store's remoteCreated flag remains the fallback ownership signal for cleanup."
         )
       }
     }
@@ -187,7 +187,7 @@ export class SshGitWorktreeProvider extends SshGitReviewHeadProvider {
     } catch (error) {
       if (isJsonRpcMethodNotFoundError(error)) {
         throw new Error(
-          'This SSH host is running an older Nightshift relay that cannot delete preserved branches. Reconnect to deploy the latest relay, then try again.'
+          'This SSH host is running an older Kolux relay that cannot delete preserved branches. Reconnect to deploy the latest relay, then try again.'
         )
       }
       throw error

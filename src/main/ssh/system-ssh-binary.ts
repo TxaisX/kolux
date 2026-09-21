@@ -41,8 +41,8 @@ function findSshOnPath(platform: NodeJS.Platform): string | null {
  * Find the system ssh binary path. Returns null if not found.
  */
 export function findSystemSsh(): string | null {
-  if (process.env.NIGHTSHIFT_SYSTEM_SSH_PATH) {
-    return process.env.NIGHTSHIFT_SYSTEM_SSH_PATH
+  if (process.env.KOLUX_SYSTEM_SSH_PATH) {
+    return process.env.KOLUX_SYSTEM_SSH_PATH
   }
   for (const candidate of systemSshPaths(process.platform)) {
     if (existsSync(candidate)) {

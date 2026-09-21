@@ -152,7 +152,7 @@ export async function removeLocalSharedSkill(
           sourcePath: placement.path,
           backupPath: join(
             dirname(placement.path),
-            `.${basename(placement.path)}.nightshift-remove-backup-${randomUUID()}`
+            `.${basename(placement.path)}.kolux-remove-backup-${randomUUID()}`
           ),
           placement,
           ...(placement.topology === 'provider-alias'
@@ -184,7 +184,7 @@ export async function removeLocalSharedSkill(
         sourcePath: input.canonicalPath,
         backupPath: join(
           dirname(input.canonicalPath),
-          `.${basename(input.canonicalPath)}.nightshift-remove-backup-${randomUUID()}`
+          `.${basename(input.canonicalPath)}.kolux-remove-backup-${randomUUID()}`
         ),
         placement: {
           provider: 'agent-skills',

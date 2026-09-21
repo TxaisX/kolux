@@ -1,19 +1,19 @@
 import { ipcMain } from 'electron'
 import { appStarSourceSchema } from '../../shared/gh-star-source'
 import { diagnoseGhAuth } from '../github/auth-diagnose'
-import { checkNightshiftStarred, getAuthenticatedViewer, starNightshift } from '../github/client'
+import { checkKoluxStarred, getAuthenticatedViewer, starKolux } from '../github/client'
 import { getRateLimit } from '../github/rate-limit'
 import { getCohortAtEmit } from '../telemetry/cohort-classifier'
 import { track } from '../telemetry/client'
 
 export function registerGitHubAccountHandlers(): void {
   ipcMain.handle('gh:viewer', () => getAuthenticatedViewer())
-  ipcMain.handle('gh:checkNightshiftStarred', () => checkNightshiftStarred())
-  ipcMain.handle('gh:starNightshift', async (_event, source: unknown) => {
+  ipcMain.handle('gh:checkKoluxStarred', () => checkKoluxStarred())
+  ipcMain.handle('gh:starKolux', async (_event, source: unknown) => {
     const sourceParse = appStarSourceSchema.safeParse(source)
-    const starred = await starNightshift()
+    const starred = await starKolux()
     if (starred && sourceParse.success) {
-      track('app_starred_nightshift', {
+      track('app_starred_kolux', {
         source: sourceParse.data,
         ...getCohortAtEmit()
       })

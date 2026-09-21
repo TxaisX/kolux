@@ -32,7 +32,7 @@ export const getPrivacyPaneSearchEntries = createLocalizedCatalog(() => [
     ),
     description: translate(
       'auto.components.settings.privacy.search.b707cc3981',
-      'Help improve Nightshift by sending anonymous feature-usage events.'
+      'Help improve Kolux by sending anonymous feature-usage events.'
     ),
     keywords: [
       ...translateSearchKeyword('auto.components.settings.privacy.search.77d3180def', 'telemetry'),
@@ -77,7 +77,7 @@ export const getPrivacyPaneSearchEntries = createLocalizedCatalog(() => [
       ),
       ...translateSearchKeyword(
         'auto.components.settings.privacy.search.69637f4dc4',
-        'nightshift_telemetry_disabled'
+        'kolux_telemetry_disabled'
       ),
       ...translateSearchKeyword('auto.components.settings.privacy.search.5854a5c752', 'ci'),
       ...translateSearchKeyword(

@@ -43,8 +43,8 @@ export async function importExternalPathsSsh(
   const provider = requireSshFilesystemProvider(connectionId)
 
   if (options?.ensureDir) {
-    // Why: terminal-drop staging needs `${worktree}/.nightshift/drops` to exist
-    // before the first upload. .nightshift/ is reserved as Nightshift-owned remote state;
+    // Why: terminal-drop staging needs `${worktree}/.kolux/drops` to exist
+    // before the first upload. .kolux/ is reserved as Kolux-owned remote state;
     // see docs/terminal-drop-ssh.md.
     await ensureDropStagingDir(provider, destDir, options.assertCurrent)
   }

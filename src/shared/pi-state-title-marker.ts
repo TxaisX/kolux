@@ -8,7 +8,7 @@ import type { AgentStatus } from './agent-title-core'
  * 17.2.12 replaced its animated braille frames with these static markers on WSL/ConPTY,
  * where the console host cannot repaint fast enough to animate (#13890, #8014). Every
  * consumer — status detection, the display-title normalizer, and the stale-title clear —
- * reads this one table, so teaching Nightshift a later protocol is a row, not a reparse.
+ * reads this one table, so teaching Kolux a later protocol is a row, not a reparse.
  */
 const PI_STATE_MARKER_STATUS = {
   ':': 'working',

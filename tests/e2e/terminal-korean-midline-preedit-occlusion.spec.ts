@@ -18,7 +18,7 @@
  * defect is in what the overlay draws over the buffer, not in anything reaching the pty.
  */
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { closeTerminalImePaneArena, openTerminalImePaneArena } from './terminal-ime-pane-arena'
 import { setImeComposition } from './terminal-ime-cdp-composition'
 import {
@@ -69,14 +69,14 @@ function rendersEverythingItCovers(sample: MidlinePreeditOcclusionSample): boole
 
 test.describe('Terminal mid-line Korean preedit occlusion', () => {
   test('masks a semantically owned Codex placeholder during its first Korean preedit', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     let completed = false
     try {
       const placeholder = 'Ask Codex to do anything'
       await writeToActiveTerminal(
-        nightshiftPage,
+        koluxPage,
         [
           '\x1b[2J\x1b[H\x1b[1m›\x1b[22m \x1b7',
           `\x1b[2m${placeholder}\x1b[22m`,
@@ -85,7 +85,7 @@ test.describe('Terminal mid-line Korean preedit occlusion', () => {
       )
       await setImeComposition(arena.session, '아')
 
-      const sample = await sampleOpenComposition(nightshiftPage, '아')
+      const sample = await sampleOpenComposition(koluxPage, '아')
       expect(sample.cursorColumn, 'the cursor is not after the Codex prompt').toBe(2)
       expect(sample.rowTailFromCursor, 'the Codex placeholder is not under the cursor').toBe(
         placeholder
@@ -109,17 +109,17 @@ test.describe('Terminal mid-line Korean preedit occlusion', () => {
   })
 
   test('renders the row tail it covers, so the character after the cursor stays readable', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     let completed = false
     try {
       // The issue's repro: 안녕하세요, then CUB 6. Each Hangul syllable is two cells, so the
       // cursor lands on 하.
-      await writeToActiveTerminal(nightshiftPage, '\x1b[2J\x1b[H안녕하세요\x1b[6D')
+      await writeToActiveTerminal(koluxPage, '\x1b[2J\x1b[H안녕하세요\x1b[6D')
       await setImeComposition(arena.session, '가')
 
-      const sample = await sampleOpenComposition(nightshiftPage)
+      const sample = await sampleOpenComposition(koluxPage)
       expect(sample.cursorColumn, 'the cursor is not sitting on 하').toBe(4)
       expect(sample.rowTailFromCursor, 'the row under the overlay is not the repro').toBe('하세요')
       expect(sample.coveredColumns, 'the overlay covers no grid columns to assert about').not.toBe(
@@ -149,17 +149,17 @@ test.describe('Terminal mid-line Korean preedit occlusion', () => {
   })
 
   test('leaves the end-of-row composition untouched, with nothing covered to render', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     // Passes before and after the fix by design: the guard is against over-correcting into
     // rendering a tail where the row has none.
-    const arena = await openTerminalImePaneArena(nightshiftPage)
+    const arena = await openTerminalImePaneArena(koluxPage)
     let completed = false
     try {
-      await writeToActiveTerminal(nightshiftPage, '\x1b[2J\x1b[H안녕하세요')
+      await writeToActiveTerminal(koluxPage, '\x1b[2J\x1b[H안녕하세요')
       await setImeComposition(arena.session, '가')
 
-      const sample = await sampleOpenComposition(nightshiftPage)
+      const sample = await sampleOpenComposition(koluxPage)
       expect(sample.rowTailFromCursor, 'text still sits after the cursor').toBe('')
       expect(
         describeOcclusion(sample),

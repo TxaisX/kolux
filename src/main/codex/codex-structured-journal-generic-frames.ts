@@ -91,14 +91,14 @@ export class CodexJournalGenericFrames {
     const admission = this.deps.sink.tryAppendItem
       ? this.deps.sink.tryAppendItem(
           {
-            provider: 'nightshift',
+            provider: 'kolux',
             clientMessageId: `provider-frame:codex:${this.fallbackSequence}`
           },
           translated.body
         )
       : (this.deps.sink.appendItem(
           {
-            provider: 'nightshift',
+            provider: 'kolux',
             clientMessageId: `provider-frame:codex:${this.fallbackSequence}`
           },
           translated.body
@@ -136,7 +136,7 @@ export class CodexJournalGenericFrames {
       const admission = this.deps.sink.tryAppendItem
         ? this.deps.sink.tryAppendItem(
             {
-              provider: 'nightshift',
+              provider: 'kolux',
               clientMessageId: `provider-frame-suppressed:codex:${bucket}`
             },
             {
@@ -147,7 +147,7 @@ export class CodexJournalGenericFrames {
           )
         : (this.deps.sink.appendItem(
             {
-              provider: 'nightshift',
+              provider: 'kolux',
               clientMessageId: `provider-frame-suppressed:codex:${bucket}`
             },
             { kind: 'status', text },

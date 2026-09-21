@@ -140,7 +140,7 @@ const attachParams = {
 } as unknown as Parameters<typeof attachStructuredAgentSession>[2]
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-close-retry-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-close-retry-'))
   // The registry is process-wide; drain it so one case cannot see another's.
   await agentSessionJournalCloseRetries.retryAll()
 })

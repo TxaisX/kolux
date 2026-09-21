@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 import { getDefaultWorkspaceSession } from '../../shared/constants'
 import type { WorkspaceSessionState } from '../../shared/workspace-session-state-types'
 import { folderWorkspaceKey } from '../../shared/workspace-scope'
@@ -83,8 +83,8 @@ function makeRuntimeFolderWorkspace() {
 
 type GraphLeaf = { worktreeId: string; leafId: string; ptyId: string }
 
-function makeRuntime(leaves: GraphLeaf[], store = makeStore()): NightshiftRuntimeService {
-  const runtime = new NightshiftRuntimeService(store as never)
+function makeRuntime(leaves: GraphLeaf[], store = makeStore()): KoluxRuntimeService {
+  const runtime = new KoluxRuntimeService(store as never)
   runtime.setPtyController({
     spawn: vi.fn(async () => ({ id: 'never' })),
     write: () => true,

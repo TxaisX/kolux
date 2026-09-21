@@ -14,7 +14,7 @@ import type {
 } from '../../../../shared/ui-chrome-types'
 import type { OpenFile } from '@/store/slices/editor'
 import {
-  NIGHTSHIFT_WORKTREE_FILE_CHANGE_EVENT,
+  KOLUX_WORKTREE_FILE_CHANGE_EVENT,
   type WorktreeFileChangeEventDetail
 } from '@/hooks/worktree-file-change-event'
 
@@ -129,16 +129,13 @@ export function useGitStatusFileWatchRefresh({
         scheduleRefresh()
       }
     }
-    window.addEventListener(NIGHTSHIFT_WORKTREE_FILE_CHANGE_EVENT, handleFsChanged as EventListener)
+    window.addEventListener(KOLUX_WORKTREE_FILE_CHANGE_EVENT, handleFsChanged as EventListener)
 
     return () => {
       if (refreshTimer) {
         clearTimeout(refreshTimer)
       }
-      window.removeEventListener(
-        NIGHTSHIFT_WORKTREE_FILE_CHANGE_EVENT,
-        handleFsChanged as EventListener
-      )
+      window.removeEventListener(KOLUX_WORKTREE_FILE_CHANGE_EVENT, handleFsChanged as EventListener)
     }
   }, [activeRuntimeEnvironmentId, shouldSubscribe, worktreePath])
 }

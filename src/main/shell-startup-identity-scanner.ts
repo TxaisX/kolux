@@ -1,4 +1,4 @@
-export const SHELL_STARTUP_IDENTITY_PREFIX = '\x1b]777;nightshift-shell-start:'
+export const SHELL_STARTUP_IDENTITY_PREFIX = '\x1b]777;kolux-shell-start:'
 const POSSIBLE_PID_SUFFIX = /^\d{0,20}$/
 
 export type ShellStartupIdentityScanState = {

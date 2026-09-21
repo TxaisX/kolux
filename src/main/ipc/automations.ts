@@ -39,11 +39,11 @@ function requireCapturedOwner<T extends { owner?: AutomationOwnerRef | null }>(
 }
 
 /**
- * Holds the probe pool's priority lease for the duration of Nightshift's own automation
+ * Holds the probe pool's priority lease for the duration of Kolux's own automation
  * work. Without this, a queued external probe competes with the list and mutation
  * traffic the user is actually waiting on.
  */
-function underNightshiftPriority<T>(scheduler: ExternalAutomationProbeScheduler, run: () => T): T {
+function underKoluxPriority<T>(scheduler: ExternalAutomationProbeScheduler, run: () => T): T {
   const release = scheduler.beginPriorityWork()
   let pending = false
   try {
@@ -72,9 +72,9 @@ export function registerAutomationHandlers(store: Store, service: AutomationServ
     scheduler: probeScheduler,
     cache: managerCache
   })
-  // Why: Nightshift automation CRUD now arrives over the local runtime RPC surface,
+  // Why: Kolux automation CRUD now arrives over the local runtime RPC surface,
   // so the runtime methods take the lease through this hook instead of an arm here.
-  service.externalProbePriority = (run) => underNightshiftPriority(probeScheduler, run)
+  service.externalProbePriority = (run) => underKoluxPriority(probeScheduler, run)
   // Scoped external-manager surface: one captured desktop owner in, one host's
   // managers out. The target and manager ID are derived inside the guard.
   ipcMain.handle(

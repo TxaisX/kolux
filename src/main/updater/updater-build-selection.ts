@@ -96,7 +96,7 @@ export abstract class UpdaterBuildSelection extends UpdaterMenuChecks {
     ) {
       this.sendStatus({
         state: 'error',
-        message: `${RELEASE_CHANNEL_LABELS[channel]} builds are unsigned, and this signed build only installs updates signed by Nightshift's publisher. Download the installer from the release page and run it once — updates work normally from there, including back to Stable.`,
+        message: `${RELEASE_CHANNEL_LABELS[channel]} builds are unsigned, and this signed build only installs updates signed by Kolux's publisher. Download the installer from the release page and run it once — updates work normally from there, including back to Stable.`,
         userInitiated: true
       })
       return

@@ -2,7 +2,7 @@ import { createBrowserUuid } from '@/lib/browser-uuid'
 import { translate } from '@/i18n/i18n'
 import {
   FLOATING_TERMINAL_WORKTREE_ID,
-  NIGHTSHIFT_BROWSER_BLANK_URL
+  KOLUX_BROWSER_BLANK_URL
 } from '../../../../../shared/constants'
 import type { BrowserSlice, BrowserSliceGet, BrowserSliceSet } from './browser-slice-contract'
 import {
@@ -104,7 +104,7 @@ export function createBrowserTabActions(
           // the blank url is exactly what marks a New Tab as wanting the address bar it does not have.
           !page.docLocation &&
           (options?.focusAddressBar ??
-            (page.url === 'about:blank' || page.url === NIGHTSHIFT_BROWSER_BLANK_URL))
+            (page.url === 'about:blank' || page.url === KOLUX_BROWSER_BLANK_URL))
 
         return {
           browserTabsByWorktree: {

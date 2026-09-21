@@ -1,4 +1,4 @@
-// Why: every recursive host delete Nightshift performs (worktrees, terminal history, quarantined recovery
+// Why: every recursive host delete Kolux performs (worktrees, terminal history, quarantined recovery
 // generations) hits the same two hazards, so one helper exists so no call site forgets either.
 // Windows stickiness — AV/indexers/late handle releases surface transient EBUSY/ENOTEMPTY/EPERM on a
 // tree Node just emptied — and Electron's asar shim, which strands any tree holding a `*.asar`
@@ -25,7 +25,7 @@ export function toHostFilesystemPath(targetPath: string): string {
 }
 
 export function toHostRemovalPath(targetPath: string): string {
-  // Why: Git for Windows can fail long recursive deletes even after Nightshift has
+  // Why: Git for Windows can fail long recursive deletes even after Kolux has
   // proven the worktree target; Node's host deletion should use Win32 long paths.
   return toHostFilesystemPath(targetPath)
 }

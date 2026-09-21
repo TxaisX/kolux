@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { getSettingsForRepoRuntimeOwner } from '@/lib/repo-runtime-owner'
 import { checkRuntimeHooks } from '@/runtime/runtime-hooks-client'
 import type { AutomationDraft } from './AutomationEditorDialog'
@@ -107,7 +107,7 @@ export function useAutomationsPageSetupState({
     [repos, settings]
   )
   const loadAutomationYamlHooksForRepo = useCallback(
-    async (repoId: string, hostId?: ExecutionHostId): Promise<NightshiftHooks | null> => {
+    async (repoId: string, hostId?: ExecutionHostId): Promise<KoluxHooks | null> => {
       const key = getAutomationHooksCacheKey(repoId, hostId)
       if (Object.hasOwn(automationYamlHooksByRepoKey, key)) {
         return automationYamlHooksByRepoKey[key] ?? null
@@ -119,8 +119,7 @@ export function useAutomationsPageSetupState({
       const settingsForRepo = getSettingsForRepoRuntimeOwner({ repos, settings }, repoId)
       const promise = checkRuntimeHooks(settingsForRepo, repoId, hostId)
         .then((result) => ({
-          hooks:
-            result.status === 'error' ? null : ((result.hooks as NightshiftHooks | null) ?? null),
+          hooks: result.status === 'error' ? null : ((result.hooks as KoluxHooks | null) ?? null),
           ok: result.status !== 'error'
         }))
         .catch(() => ({ hooks: null, ok: false }))

@@ -9,11 +9,11 @@
  * Scenarios:
  *   idle-backlog-open            — idle with flood, then human-paced sequential open
  *   idle-backlog-reconnect-open  — same + wake-like metadata refresh storm, then open
- *   restart-proxy                — idle, then nightshift open + status/list storm + open
+ *   restart-proxy                — idle, then kolux open + status/list storm + open
  *                                  (does NOT kill the desktop; proxies restore work)
  *
  * Usage:
- *   NIGHTSHIFT_FREEZE_ENV=paired-remote NIGHTSHIFT_FREEZE_SCENARIO=idle-backlog-open \
+ *   KOLUX_FREEZE_ENV=paired-remote KOLUX_FREEZE_SCENARIO=idle-backlog-open \
  *     node config/scripts/live-remote-realistic-freeze-repro.mjs
  *
  *   pnpm run repro:live-remote-realistic-freeze
@@ -21,7 +21,7 @@
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createNightshiftRpc } from './live-remote-freeze-rpc.mjs'
+import { createKoluxRpc } from './live-remote-freeze-rpc.mjs'
 import { startStatusWatchdog } from './live-remote-status-watchdog.mjs'
 import { BoundedLiveFreezeHistory } from './live-freeze-bounded-history.mjs'
 import {
@@ -41,44 +41,44 @@ import {
 
 const root = path.resolve(import.meta.dirname, '../..')
 const reportDir = path.join(root, 'test-results', 'freeze-repro')
-const envName = process.env.NIGHTSHIFT_FREEZE_ENV || 'paired-remote'
-const scenario = process.env.NIGHTSHIFT_FREEZE_SCENARIO || 'idle-backlog-open'
-const createCount = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_CREATE', 0))
-const openCount = Math.max(2, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_OPEN_COUNT', 20))
-const idleMs = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_IDLE_MS', 45_000))
-const paceMs = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_PACE_MS', 250))
-const paceJitterMs = Math.max(0, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_PACE_JITTER_MS', 150))
-const createWorktreeSpan = Math.max(1, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_CREATE_WT_SPAN', 12))
-const softMs = readFreezeNumberEnv('NIGHTSHIFT_FREEZE_SOFT_MS', DEFAULT_SOFT_MS)
-const hardMs = readFreezeNumberEnv('NIGHTSHIFT_FREEZE_HARD_MS', DEFAULT_HARD_MS)
+const envName = process.env.KOLUX_FREEZE_ENV || 'paired-remote'
+const scenario = process.env.KOLUX_FREEZE_SCENARIO || 'idle-backlog-open'
+const createCount = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_CREATE', 0))
+const openCount = Math.max(2, readFreezeNumberEnv('KOLUX_FREEZE_OPEN_COUNT', 20))
+const idleMs = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_IDLE_MS', 45_000))
+const paceMs = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_PACE_MS', 250))
+const paceJitterMs = Math.max(0, readFreezeNumberEnv('KOLUX_FREEZE_PACE_JITTER_MS', 150))
+const createWorktreeSpan = Math.max(1, readFreezeNumberEnv('KOLUX_FREEZE_CREATE_WT_SPAN', 12))
+const softMs = readFreezeNumberEnv('KOLUX_FREEZE_SOFT_MS', DEFAULT_SOFT_MS)
+const hardMs = readFreezeNumberEnv('KOLUX_FREEZE_HARD_MS', DEFAULT_HARD_MS)
 /** Concurrent opens during lockup-storm (wake refresh overlaps fan-out). */
-const stormParallel = Math.max(1, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_STORM_PARALLEL', 16))
+const stormParallel = Math.max(1, readFreezeNumberEnv('KOLUX_FREEZE_STORM_PARALLEL', 16))
 /** Kill a switch if it exceeds this — counts toward permanent lockup. */
-const opTimeoutMs = Math.max(10_000, readFreezeNumberEnv('NIGHTSHIFT_FREEZE_OP_TIMEOUT_MS', 60_000))
+const opTimeoutMs = Math.max(10_000, readFreezeNumberEnv('KOLUX_FREEZE_OP_TIMEOUT_MS', 60_000))
 const permanentTimeoutMs = Math.max(
   15_000,
-  readFreezeNumberEnv('NIGHTSHIFT_FREEZE_PERMANENT_MS', 60_000)
+  readFreezeNumberEnv('KOLUX_FREEZE_PERMANENT_MS', 60_000)
 )
 const foreverWindowMs = Math.max(
   10_000,
-  readFreezeNumberEnv('NIGHTSHIFT_FREEZE_FOREVER_WINDOW_MS', DEFAULT_FOREVER_WINDOW_MS)
+  readFreezeNumberEnv('KOLUX_FREEZE_FOREVER_WINDOW_MS', DEFAULT_FOREVER_WINDOW_MS)
 )
 const statusSlowMs = Math.max(
   5_000,
-  readFreezeNumberEnv('NIGHTSHIFT_FREEZE_STATUS_SLOW_MS', DEFAULT_STATUS_SLOW_MS)
+  readFreezeNumberEnv('KOLUX_FREEZE_STATUS_SLOW_MS', DEFAULT_STATUS_SLOW_MS)
 )
 const watchdogIntervalMs = Math.max(
   500,
-  readFreezeNumberEnv('NIGHTSHIFT_FREEZE_WATCHDOG_INTERVAL_MS', 1500)
+  readFreezeNumberEnv('KOLUX_FREEZE_WATCHDOG_INTERVAL_MS', 1500)
 )
-const scratchDir = process.env.NIGHTSHIFT_FREEZE_SCRATCH || ''
+const scratchDir = process.env.KOLUX_FREEZE_SCRATCH || ''
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const rpc = createNightshiftRpc({ envName })
-const { nightshiftJsonSync, nightshiftJsonAsync, runReconnectRefreshStorm, runRestartProxy } = rpc
+const rpc = createKoluxRpc({ envName })
+const { koluxJsonSync, koluxJsonAsync, runReconnectRefreshStorm, runRestartProxy } = rpc
 
 async function mapPool(items, concurrency, worker) {
   const results = Array.from({ length: items.length })
@@ -102,17 +102,17 @@ function floodCommand(marker) {
   return `node -e ${JSON.stringify(script)} ${JSON.stringify(marker)}`
 }
 
-function sampleNightshiftIfPossible() {
+function sampleKoluxIfPossible() {
   if (process.platform !== 'darwin') {
     return null
   }
   try {
-    const status = nightshiftJsonSync(['status'], { local: true }).result
+    const status = koluxJsonSync(['status'], { local: true }).result
     const pid = status?.app?.pid
     if (!pid) {
       return null
     }
-    const out = path.join(reportDir, `nightshift-sample-realistic-${Date.now()}.txt`)
+    const out = path.join(reportDir, `kolux-sample-realistic-${Date.now()}.txt`)
     const sampled = spawnSync('sample', [String(pid), '5', '-file', out], {
       timeout: 20_000,
       stdio: 'ignore'
@@ -124,7 +124,7 @@ function sampleNightshiftIfPossible() {
 }
 
 function listLiveTerminalHandles() {
-  const listed = nightshiftJsonSync(['terminal', 'list'])
+  const listed = koluxJsonSync(['terminal', 'list'])
   const terms = listed.result?.terminals || []
   return terms
     .filter((t) => typeof t.handle === 'string' && t.handle.startsWith('term_'))
@@ -139,7 +139,7 @@ function listLiveTerminalHandles() {
 async function main() {
   if (!REALISTIC_SCENARIOS.includes(scenario)) {
     throw new Error(
-      `Unknown NIGHTSHIFT_FREEZE_SCENARIO=${scenario}. Expected one of: ${REALISTIC_SCENARIOS.join(', ')}`
+      `Unknown KOLUX_FREEZE_SCENARIO=${scenario}. Expected one of: ${REALISTIC_SCENARIOS.join(', ')}`
     )
   }
 
@@ -152,14 +152,14 @@ async function main() {
     `[realistic-freeze] scenario=${scenario} env=${envName} create=${createCount} idleMs=${idleMs} openCount=${openCount} paceMs=${paceMs}`
   )
 
-  const local = nightshiftJsonSync(['status'], { local: true })
-  const remote = nightshiftJsonSync(['status'])
+  const local = koluxJsonSync(['status'], { local: true })
+  const remote = koluxJsonSync(['status'])
   notes.push(
     `local version=${local.result?.runtime?.appVersion} pid=${local.result?.app?.pid}`,
     `remote version=${remote.result?.runtime?.appVersion} state=${remote.result?.runtime?.state}`
   )
 
-  const worktrees = nightshiftJsonSync(['worktree', 'list']).result
+  const worktrees = koluxJsonSync(['worktree', 'list']).result
   const wtList = worktrees?.worktrees || worktrees?.items || worktrees || []
   if (!Array.isArray(wtList) || wtList.length === 0) {
     throw new Error(`No worktrees on environment ${envName}`)
@@ -182,7 +182,7 @@ async function main() {
         }
         const marker = `REALISTIC_${Date.now()}_${i}`
         try {
-          const createdTerm = await nightshiftJsonAsync(
+          const createdTerm = await koluxJsonAsync(
             [
               'terminal',
               'create',
@@ -237,7 +237,7 @@ async function main() {
   // --- Phase: park — leave one session focused, rest accumulate flood while "away" ---
   try {
     const parkHandle = openList[0]
-    const parked = await nightshiftJsonAsync(['terminal', 'switch', '--terminal', parkHandle], {
+    const parked = await koluxJsonAsync(['terminal', 'switch', '--terminal', parkHandle], {
       timeoutMs: 60_000
     })
     notes.push(`park switch ms=${parked.elapsedMs.toFixed(0)} handle=${parkHandle}`)
@@ -268,9 +268,7 @@ async function main() {
       maxJobMs: storm.maxJobMs
     })
   } else if (scenario === 'restart-proxy') {
-    console.log(
-      '[realistic-freeze] restart proxy: nightshift open + refresh storm (no process kill)'
-    )
+    console.log('[realistic-freeze] restart proxy: kolux open + refresh storm (no process kill)')
     const restart = await runRestartProxy(notes)
     reconnectRefreshMs = Math.max(restart.wallMs, restart.storm.wallMs, restart.storm.maxJobMs)
     phases.push({
@@ -309,7 +307,7 @@ async function main() {
         batch.map(async (handle, batchIndex) => {
           const index = offset + batchIndex
           try {
-            const sw = await nightshiftJsonAsync(['terminal', 'switch', '--terminal', handle], {
+            const sw = await koluxJsonAsync(['terminal', 'switch', '--terminal', handle], {
               timeoutMs: opTimeoutMs
             })
             return { handle, index, ms: sw.elapsedMs, ok: true, timedOut: false }
@@ -399,7 +397,7 @@ async function main() {
     for (let i = 0; i < openList.length; i += 1) {
       const handle = openList[i]
       try {
-        const sw = await nightshiftJsonAsync(['terminal', 'switch', '--terminal', handle], {
+        const sw = await koluxJsonAsync(['terminal', 'switch', '--terminal', handle], {
           timeoutMs: opTimeoutMs
         })
         openOk += 1
@@ -473,7 +471,7 @@ async function main() {
   let statusHangMs = 0
   const statusStarted = performance.now()
   try {
-    const statusProbe = await nightshiftJsonAsync(['status'], {
+    const statusProbe = await koluxJsonAsync(['status'], {
       local: true,
       timeoutMs: permanentTimeoutMs
     })
@@ -488,7 +486,7 @@ async function main() {
 
   let memoryProbeMs = null
   try {
-    const mem = await nightshiftJsonAsync(['diagnostics', 'memory'], {
+    const mem = await koluxJsonAsync(['diagnostics', 'memory'], {
       local: true,
       timeoutMs: permanentTimeoutMs
     })
@@ -535,7 +533,7 @@ async function main() {
 
   let samplePath = null
   if (signals.softFreeze || signals.hardFreeze || fullApp.foreverUiLockupObserved) {
-    samplePath = sampleNightshiftIfPossible()
+    samplePath = sampleKoluxIfPossible()
     if (samplePath) {
       notes.push(`sample=${samplePath}`)
     } else {

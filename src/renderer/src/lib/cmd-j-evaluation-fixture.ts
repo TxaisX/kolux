@@ -8,9 +8,9 @@ import type { Worktree } from '../../../shared/worktree/types'
  */
 export const CMD_J_FIXTURE_REPOS: Repo[] = [
   {
-    id: 'repo-nightshift',
-    path: '/repos/nightshift',
-    displayName: 'acme/nightshift',
+    id: 'repo-kolux',
+    path: '/repos/kolux',
+    displayName: 'acme/kolux',
     badgeColor: '#22c55e',
     addedAt: 0
   },
@@ -59,14 +59,14 @@ const AUTOMATION_BASE = {
   kind: 'created-by-automation',
   automationId: 'auto-1',
   executionTargetType: 'local',
-  executionTargetId: 'repo-nightshift',
+  executionTargetId: 'repo-kolux',
   projectId: 'project-1'
 } as const
 
 export const CMD_J_FIXTURE_WORKTREES: Worktree[] = [
   worktree({
     id: 'wt-scan-daily',
-    repoId: 'repo-nightshift',
+    repoId: 'repo-kolux',
     displayName: 'scan daily 1.4.182 · 2026-08-13 · 93334dc',
     branch: 'refs/heads/automation/scan-daily-182',
     automationProvenance: {
@@ -79,7 +79,7 @@ export const CMD_J_FIXTURE_WORKTREES: Worktree[] = [
   }),
   worktree({
     id: 'wt-scan-daily-older',
-    repoId: 'repo-nightshift',
+    repoId: 'repo-kolux',
     displayName: 'scan daily 1.4.181 · 2026-08-12 · 1122334',
     branch: 'refs/heads/automation/scan-daily-181',
     automationProvenance: {
@@ -106,8 +106,8 @@ export const CMD_J_FIXTURE_WORKTREES: Worktree[] = [
     }
   }),
   worktree({
-    id: 'wt-main-nightshift',
-    repoId: 'repo-nightshift',
+    id: 'wt-main-kolux',
+    repoId: 'repo-kolux',
     displayName: 'main',
     branch: 'refs/heads/main',
     isMainWorktree: true
@@ -140,7 +140,7 @@ export const CMD_J_FIXTURE_WORKTREES: Worktree[] = [
   }),
   worktree({
     id: 'wt-linear',
-    repoId: 'repo-nightshift',
+    repoId: 'repo-kolux',
     displayName: 'Palette ranking',
     branch: 'refs/heads/feature/palette-ranking',
     linkedLinearIssue: 'ORC-912',
@@ -157,7 +157,7 @@ export const CMD_J_FIXTURE_WORKTREES: Worktree[] = [
 
 export const CMD_J_FIXTURE_PORTS: ReadonlyMap<string, { port: number; processName?: string }[]> =
   new Map([
-    ['wt-main-nightshift', [{ port: 3000, processName: 'node' }]],
+    ['wt-main-kolux', [{ port: 3000, processName: 'node' }]],
     ['wt-docs', [{ port: 4123, processName: 'vite' }]]
   ])
 
@@ -177,9 +177,9 @@ export const CMD_J_FIXTURE_CASES: readonly CmdJFixtureCase[] = [
   { query: 'nightly review run-184', expected: ['wt-scan-daily'] },
   { query: 'sta-4052 reconnect', expected: ['wt-reconnect'] },
   { query: 'reconnect infra', expected: ['wt-reconnect'] },
-  { query: 'main 3000', expected: ['wt-main-nightshift'] },
-  { query: 'acme/nightshift main', expected: ['wt-main-nightshift'] },
-  { query: 'nightshift/main', expected: ['wt-main-nightshift'] },
+  { query: 'main 3000', expected: ['wt-main-kolux'] },
+  { query: 'acme/kolux main', expected: ['wt-main-kolux'] },
+  { query: 'kolux/main', expected: ['wt-main-kolux'] },
   { query: 'docs terminal', expected: ['wt-docs'] },
   { query: '#4123', expected: ['wt-docs'] },
   { query: '123', expected: [] },

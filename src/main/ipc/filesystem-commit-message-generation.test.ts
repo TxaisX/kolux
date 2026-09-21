@@ -176,7 +176,7 @@ describe('registerFilesystemHandlers', () => {
     )
   })
 
-  it('prepares the Nightshift-managed Codex home for the default system selection', async () => {
+  it('prepares the Kolux-managed Codex home for the default system selection', async () => {
     const context = {
       branch: 'feature/ai',
       stagedSummary: 'M\tREADME.md',
@@ -191,7 +191,7 @@ describe('registerFilesystemHandlers', () => {
     })
 
     registerFilesystemHandlers(store as never, {
-      prepareForCodexLaunch: () => '/nightshift-managed/codex-home'
+      prepareForCodexLaunch: () => '/kolux-managed/codex-home'
     })
 
     await handlers.get('git:generateCommitMessage')!(null, {
@@ -204,7 +204,7 @@ describe('registerFilesystemHandlers', () => {
       expect.objectContaining({
         kind: 'local',
         cwd: WORKTREE_FEATURE_PATH,
-        env: expect.objectContaining({ CODEX_HOME: '/nightshift-managed/codex-home' })
+        env: expect.objectContaining({ CODEX_HOME: '/kolux-managed/codex-home' })
       })
     )
   })

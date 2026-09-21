@@ -75,9 +75,9 @@ function benchmark(options) {
   const repo = git(options.repo, ['rev-parse', '--show-toplevel'])
   const base = git(repo, ['rev-parse', '--verify', `${options.base}^{commit}`])
   const retargetBase = git(repo, ['rev-parse', '--verify', `${base}~20^{commit}`])
-  const scratchRoot = mkdtempSync(path.join(path.dirname(repo), '.nightshift-create-bench-'))
+  const scratchRoot = mkdtempSync(path.join(path.dirname(repo), '.kolux-create-bench-'))
   const samples = { baseline: [], prepare: [], submit: [], retarget: [], cancel: [] }
-  const prefix = `nightshift-create-bench-${process.pid}-${Date.now()}`
+  const prefix = `kolux-create-bench-${process.pid}-${Date.now()}`
 
   try {
     for (let index = 0; index < options.iterations; index += 1) {
@@ -101,7 +101,7 @@ function benchmark(options) {
             'worktree',
             'lock',
             '--reason',
-            `nightshift-create-preparation:v1:${process.pid}:${index}`,
+            `kolux-create-preparation:v1:${process.pid}:${index}`,
             preparedPath
           ])
         })
@@ -120,13 +120,7 @@ function benchmark(options) {
       const retargetPath = path.join(scratchRoot, `retarget-${index}`)
       git(repo, ['worktree', 'add', '--detach', '--no-checkout', retargetPath, base])
       git(retargetPath, ['reset', '--hard', base])
-      git(repo, [
-        'worktree',
-        'lock',
-        '--reason',
-        'nightshift-create-preparation:v1:bench',
-        retargetPath
-      ])
+      git(repo, ['worktree', 'lock', '--reason', 'kolux-create-preparation:v1:bench', retargetPath])
       samples.retarget.push(time(() => git(retargetPath, ['reset', '--hard', retargetBase])))
       removeWorktree(repo, retargetPath, undefined, true)
 
@@ -137,7 +131,7 @@ function benchmark(options) {
         'worktree',
         'lock',
         '--reason',
-        'nightshift-create-preparation:v1:bench',
+        'kolux-create-preparation:v1:bench',
         cancelledPath
       ])
       samples.cancel.push(time(() => removeWorktree(repo, cancelledPath, undefined, true)))

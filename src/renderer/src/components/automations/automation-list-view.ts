@@ -196,7 +196,7 @@ export function filterAutomationListRows(
   )
 }
 
-/** External jobs have no Nightshift agent, so any agent filter excludes them — matching the old view. */
+/** External jobs have no Kolux agent, so any agent filter excludes them — matching the old view. */
 export function filterExternalAutomationListEntries(
   entries: readonly ExternalAutomationListEntry[],
   filter: AutomationListFilter

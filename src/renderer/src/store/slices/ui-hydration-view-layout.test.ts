@@ -248,7 +248,7 @@ describe('createUISlice hydratePersistedUI', () => {
     store.getState().hydratePersistedUI(
       makePersistedUI({
         filterRepoIds: ['remote-repo', 12 as never, 'stale-repo'],
-        trustedNightshiftHooks: {
+        trustedKoluxHooks: {
           'remote-repo': { all: { approvedAt: 1 } },
           'bad-shape': 'yes' as never
         },
@@ -257,7 +257,7 @@ describe('createUISlice hydratePersistedUI', () => {
     )
 
     expect(store.getState().filterRepoIds).toEqual(['remote-repo', 'stale-repo'])
-    expect(store.getState().trustedNightshiftHooks).toEqual({
+    expect(store.getState().trustedKoluxHooks).toEqual({
       'remote-repo': { all: { approvedAt: 1 } }
     })
     expect(store.getState().setupScriptPromptDismissedRepoIds).toEqual([remoteDismissalKey])
@@ -280,7 +280,7 @@ describe('createUISlice hydratePersistedUI', () => {
     store.getState().hydratePersistedUI(
       makePersistedUI({
         filterRepoIds: ['local-repo', 'stale-repo'],
-        trustedNightshiftHooks: {
+        trustedKoluxHooks: {
           'local-repo': { all: { approvedAt: 1 } },
           'stale-repo': { all: { approvedAt: 2 } }
         },
@@ -289,7 +289,7 @@ describe('createUISlice hydratePersistedUI', () => {
     )
 
     expect(store.getState().filterRepoIds).toEqual(['local-repo'])
-    expect(store.getState().trustedNightshiftHooks).toEqual({
+    expect(store.getState().trustedKoluxHooks).toEqual({
       'local-repo': { all: { approvedAt: 1 } }
     })
     expect(store.getState().setupScriptPromptDismissedRepoIds).toEqual([localDismissalKey])

@@ -59,8 +59,8 @@ function createServerHarness() {
   const subprocesses: MockSubprocess[] = []
   const unique = randomUUID()
   const server = new DaemonServer({
-    socketPath: join(tmpdir(), `nightshift-droppability-${unique}.sock`),
-    tokenPath: join(tmpdir(), `nightshift-droppability-${unique}.token`),
+    socketPath: join(tmpdir(), `kolux-droppability-${unique}.sock`),
+    tokenPath: join(tmpdir(), `kolux-droppability-${unique}.token`),
     spawnSubprocess: () => {
       const subprocess = createMockSubprocess()
       subprocesses.push(subprocess)

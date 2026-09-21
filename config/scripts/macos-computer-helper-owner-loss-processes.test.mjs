@@ -104,7 +104,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('removes a launcher directory after partial trial setup', () => {
-    const launcherDir = mkdtempSync(path.join(tmpdir(), 'nightshift-owner-partial-setup-test-'))
+    const launcherDir = mkdtempSync(path.join(tmpdir(), 'kolux-owner-partial-setup-test-'))
     temporaryDirectories.add(launcherDir)
 
     const cleanup = cleanupOwnerLossTrial({
@@ -119,12 +119,10 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('kills a timed-out trial group only after validating its environment', async () => {
-    const temporaryDirectory = mkdtempSync(
-      path.join(tmpdir(), 'nightshift-owner-benchmark-group-test-')
-    )
+    const temporaryDirectory = mkdtempSync(path.join(tmpdir(), 'kolux-owner-benchmark-group-test-'))
     temporaryDirectories.add(temporaryDirectory)
     const childPidPath = path.join(temporaryDirectory, 'child.pid')
-    const environmentName = `NIGHTSHIFT_OWNER_GROUP_${process.pid}`
+    const environmentName = `KOLUX_OWNER_GROUP_${process.pid}`
     const environmentValue = `${Date.now()}`
     const fixture = `
       const { spawn } = require('node:child_process')
@@ -170,7 +168,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('resumes the group after post-stop revalidation fails', () => {
-    const marker = 'NIGHTSHIFT_OWNER_GROUP=trial'
+    const marker = 'KOLUX_OWNER_GROUP=trial'
     const members = [
       { pid: 41, pgid: 41, command: `/launcher ${marker}` },
       { pid: 42, pgid: 41, command: `/child ${marker}` }
@@ -206,7 +204,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('compensates a possible stop after group anchor replacement', () => {
-    const marker = 'NIGHTSHIFT_OWNER_GROUP=trial'
+    const marker = 'KOLUX_OWNER_GROUP=trial'
     const anchor = { pid: 41, pgid: 41, command: `/launcher ${marker}` }
     const replacement = { pid: 41, pgid: 99, command: '/unrelated' }
     const signals = []
@@ -236,7 +234,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('resumes a previously frozen group when final inspection fails', () => {
-    const marker = 'NIGHTSHIFT_OWNER_GROUP=trial'
+    const marker = 'KOLUX_OWNER_GROUP=trial'
     const members = [{ pid: 41, pgid: 41, command: `/launcher ${marker}` }]
     const signals = []
     let scanCount = 0
@@ -266,7 +264,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('resumes a previously frozen group when final anchor stop fails', () => {
-    const marker = 'NIGHTSHIFT_OWNER_GROUP=trial'
+    const marker = 'KOLUX_OWNER_GROUP=trial'
     const members = [
       { pid: 41, pgid: 41, command: `/launcher ${marker}` },
       { pid: 42, pgid: 41, command: `/child ${marker}` }
@@ -292,7 +290,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('resumes a previously frozen group after final anchor replacement', () => {
-    const marker = 'NIGHTSHIFT_OWNER_GROUP=trial'
+    const marker = 'KOLUX_OWNER_GROUP=trial'
     const anchor = { pid: 41, pgid: 41, command: `/launcher ${marker}` }
     const child = { pid: 42, pgid: 41, command: `/child ${marker}` }
     const replacement = { pid: 41, pgid: 99, command: '/unrelated' }
@@ -321,11 +319,11 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
 
   it('kills a recorded helper in a separate process group', async () => {
     const temporaryDirectory = mkdtempSync(
-      path.join(tmpdir(), 'nightshift-owner-benchmark-cleanup-test-')
+      path.join(tmpdir(), 'kolux-owner-benchmark-cleanup-test-')
     )
     temporaryDirectories.add(temporaryDirectory)
     const recordPath = path.join(temporaryDirectory, 'helper.json')
-    const marker = `nightshift-owner-cleanup-${process.pid}-${Date.now()}`
+    const marker = `kolux-owner-cleanup-${process.pid}-${Date.now()}`
     const helper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1_000)', marker], {
       detached: true,
       stdio: 'ignore'
@@ -352,7 +350,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('kills every unrecorded helper using its unique trial command', async () => {
-    const marker = `nightshift-owner-unrecorded-${process.pid}-${Date.now()}`
+    const marker = `kolux-owner-unrecorded-${process.pid}-${Date.now()}`
     const helpers = Array.from({ length: 2 }, () =>
       spawn(process.execPath, ['-e', 'setInterval(() => {}, 1_000)', marker], {
         detached: true,
@@ -376,7 +374,7 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
   })
 
   it('continues exact-match cleanup after an earlier match fails', () => {
-    const marker = `nightshift-owner-multiple-${process.pid}-${Date.now()}`
+    const marker = `kolux-owner-multiple-${process.pid}-${Date.now()}`
     const matches = [
       { pid: 41, pgid: 41, command: `/helper ${marker}` },
       { pid: 42, pgid: 42, command: `/helper ${marker}` }
@@ -509,11 +507,11 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
 
   it('runs unique-command cleanup after an invalid process record', async () => {
     const temporaryDirectory = mkdtempSync(
-      path.join(tmpdir(), 'nightshift-owner-benchmark-fallback-test-')
+      path.join(tmpdir(), 'kolux-owner-benchmark-fallback-test-')
     )
     temporaryDirectories.add(temporaryDirectory)
     const recordPath = path.join(temporaryDirectory, 'helper.json')
-    const marker = `nightshift-owner-invalid-record-${process.pid}-${Date.now()}`
+    const marker = `kolux-owner-invalid-record-${process.pid}-${Date.now()}`
     const helper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1_000)', marker], {
       detached: true,
       stdio: 'ignore'
@@ -537,11 +535,11 @@ describeMacOS('macOS helper owner-loss benchmark process cleanup', () => {
 
   it('rejects a record that is not a detached process-group identity', () => {
     const temporaryDirectory = mkdtempSync(
-      path.join(tmpdir(), 'nightshift-owner-benchmark-identity-test-')
+      path.join(tmpdir(), 'kolux-owner-benchmark-identity-test-')
     )
     temporaryDirectories.add(temporaryDirectory)
     const recordPath = path.join(temporaryDirectory, 'helper.json')
-    const marker = `nightshift-owner-invalid-identity-${process.pid}-${Date.now()}`
+    const marker = `kolux-owner-invalid-identity-${process.pid}-${Date.now()}`
     const helper = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1_000)', marker], {
       stdio: 'ignore'
     })

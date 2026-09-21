@@ -3,7 +3,7 @@ import { registerAppHandlers } from '../app'
 import { registerCliHandlers } from '../cli'
 import { registerPreflightHandlers } from '../preflight'
 import type { Store } from '../../persistence'
-import type { NightshiftRuntimeService } from '../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../runtime/kolux-runtime'
 import type { StatsCollector } from '../../stats/collector'
 import { registerFilesystemHandlers } from '../filesystem'
 import type { CommitMessageAgentEnvironmentResolvers } from '../../text-generation/commit-message-agent-environment'
@@ -56,7 +56,7 @@ import { registerEmulatorFrameStreamHandlers } from '../emulator-frame-stream'
 import { registerEmulatorVideoStreamHandlers } from '../emulator-video-stream'
 import { registerSpeechHandlers } from '../speech'
 import { registerTerminalRenderDesyncEvidenceHandler } from '../terminal-render-desync-evidence'
-import { registerNightshiftProfileHandlers } from '../nightshift-profiles'
+import { registerKoluxProfileHandlers } from '../kolux-profiles'
 import { registerCodexAccountHandlers } from '../codex-accounts'
 import { registerAgentHookHandlers } from '../agent-hooks'
 import { registerCodexConfigSyncHandlers } from '../codex-config-sync'
@@ -98,8 +98,8 @@ let registered = false
 
 type CoreHandlerLifecycleOptions = {
   onBeforeRelaunch?: () => void | Promise<void>
-  onNightshiftProfileAuthMutation?: () => void
-  onBeforeNightshiftProfileSignOut?: () => void
+  onKoluxProfileAuthMutation?: () => void
+  onBeforeKoluxProfileSignOut?: () => void
   getAdditionalAiVaultCodexHomePaths?: () => readonly string[]
   prepareAiVaultSessionResume?: (
     args: AiVaultPrepareSessionResumeArgs
@@ -108,7 +108,7 @@ type CoreHandlerLifecycleOptions = {
 
 export function registerCoreHandlers(
   store: Store,
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   stats: StatsCollector,
   claudeUsage: ClaudeUsageStore,
   codexUsage: CodexUsageStore,
@@ -193,10 +193,10 @@ export function registerCoreHandlers(
     registerPluginHandlers(store, pluginService, runtime, marketplaceServices)
   }
   registerTelemetryHandlers(store)
-  registerNightshiftProfileHandlers(store, {
+  registerKoluxProfileHandlers(store, {
     onBeforeRelaunch: lifecycleOptions.onBeforeRelaunch,
-    onAuthMutation: lifecycleOptions.onNightshiftProfileAuthMutation,
-    onBeforeSignOut: lifecycleOptions.onBeforeNightshiftProfileSignOut
+    onAuthMutation: lifecycleOptions.onKoluxProfileAuthMutation,
+    onBeforeSignOut: lifecycleOptions.onBeforeKoluxProfileSignOut
   })
   registerBrowserHandlers()
   registerShellHandlers(store)

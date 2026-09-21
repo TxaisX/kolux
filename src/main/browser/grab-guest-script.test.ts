@@ -46,8 +46,8 @@ describe('buildGuestOverlayScript', () => {
   it('arm script contains shadow DOM setup', () => {
     const script = buildGuestOverlayScript('arm')
     expect(script).toContain('attachShadow')
-    expect(script).toContain('__nightshift-grab-host')
-    expect(script).toContain('__nightshiftGrab')
+    expect(script).toContain('__kolux-grab-host')
+    expect(script).toContain('__koluxGrab')
   })
 
   it('arm script contains budget constants matching shared types', () => {
@@ -107,13 +107,13 @@ describe('buildGuestOverlayScript', () => {
   it('teardown script cleans up the overlay', () => {
     const script = buildGuestOverlayScript('teardown')
     expect(script).toContain('cleanup')
-    expect(script).toContain('__nightshiftGrab')
+    expect(script).toContain('__koluxGrab')
   })
 
   it('teardown script cancels pending awaitClick', () => {
     const script = buildGuestOverlayScript('teardown')
     expect(script).toContain('cancelAwait')
-    expect(buildGuestOverlayScript('awaitClick')).toContain('__nightshiftCancelled')
+    expect(buildGuestOverlayScript('awaitClick')).toContain('__koluxCancelled')
   })
 
   it('arm script uses full-viewport overlay as click catcher', () => {
@@ -256,7 +256,7 @@ describe('awaitClick under a Zone.js-patched global Promise', () => {
     extractPayload?: () => unknown
     getCurrentElement?: () => unknown
   }): {
-    window: { __nightshiftGrab: Record<string, unknown> }
+    window: { __koluxGrab: Record<string, unknown> }
     click: () => void
     contextmenu: () => void
     cancel: () => void
@@ -279,13 +279,13 @@ describe('awaitClick under a Zone.js-patched global Promise', () => {
       freezeHighlight(): void {},
       cleanup(): void {}
     }
-    const window = { __nightshiftGrab: grab }
+    const window = { __koluxGrab: grab }
     return {
       window,
       click: () => handlers.click?.(noopEvent),
       contextmenu: () => handlers.contextmenu?.(noopEvent),
-      // cancelAwait is installed on __nightshiftGrab by the script itself at runtime.
-      cancel: () => (window.__nightshiftGrab.cancelAwait as (() => void) | undefined)?.()
+      // cancelAwait is installed on __koluxGrab by the script itself at runtime.
+      cancel: () => (window.__koluxGrab.cancelAwait as (() => void) | undefined)?.()
     }
   }
 
@@ -326,7 +326,7 @@ describe('awaitClick under a Zone.js-patched global Promise', () => {
     harness.contextmenu()
     const received = (await crossExecuteJavaScriptBoundary(completion)) as Record<string, unknown>
 
-    expect(received).toHaveProperty('__nightshiftContextMenu', true)
+    expect(received).toHaveProperty('__koluxContextMenu', true)
     expect(received.payload).toHaveProperty('page')
     expect(clampGrabPayload(received.payload)).not.toBeNull()
   })
@@ -338,7 +338,7 @@ describe('awaitClick under a Zone.js-patched global Promise', () => {
     harness.cancel()
     const received = await crossExecuteJavaScriptBoundary(completion)
 
-    expect(received).toEqual({ __nightshiftCancelled: true })
+    expect(received).toEqual({ __koluxCancelled: true })
   })
 
   it('rejects across the boundary when selection fails despite ZoneAwarePromise', async () => {

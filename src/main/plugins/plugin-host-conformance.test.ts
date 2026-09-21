@@ -19,8 +19,8 @@ import {
 } from './plugin-host-call-adapter'
 import type { PluginHostServices } from './plugin-host-methods'
 
-const PLUGIN_KEY = 'nightshift-samples.demo'
-const WORKTREE_ID = 'repo-id::/Users/private/nightshift'
+const PLUGIN_KEY = 'kolux-samples.demo'
+const WORKTREE_ID = 'repo-id::/Users/private/kolux'
 const TERMINAL_ID = 'terminal:local:one'
 
 type HostCallAdapter = (request: unknown, viaPanel: boolean) => Promise<PluginPanelActionOutcome>
@@ -30,12 +30,12 @@ function createServices(): PluginHostServices {
     resolveActiveWorktreeContext: vi.fn().mockResolvedValue({
       worktreeId: WORKTREE_ID,
       branch: 'main',
-      displayName: 'Nightshift',
-      path: '/Users/private/nightshift'
+      displayName: 'Kolux',
+      path: '/Users/private/kolux'
     }),
     listWorktreeTerminals: vi
       .fn()
-      .mockResolvedValue([{ id: TERMINAL_ID, title: '/home/private/nightshift' }]),
+      .mockResolvedValue([{ id: TERMINAL_ID, title: '/home/private/kolux' }]),
     sendTerminalText: vi.fn().mockResolvedValue({ accepted: true }),
     dispatchPluginNotification: vi.fn().mockResolvedValue({ delivered: true }),
     storage: {
@@ -151,7 +151,7 @@ describe('plugin host main/relay conformance', () => {
         ok: true,
         value: {
           branch: 'main',
-          displayName: 'Nightshift',
+          displayName: 'Kolux',
           terminals: [{ id: TERMINAL_ID }]
         }
       })

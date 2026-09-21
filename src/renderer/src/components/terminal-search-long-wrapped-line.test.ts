@@ -12,7 +12,7 @@ import {
 import { safeFind } from './terminal-search-safe-find'
 
 /**
- * Regression for crash report 012eb5be (Nightshift 1.4.194, win32): searching a pane
+ * Regression for crash report 012eb5be (Kolux 1.4.194, win32): searching a pane
  * that held one un-newlined line — base64, a minified bundle, a single huge log
  * record — threw `RangeError: Maximum call stack size exceeded` out of
  * TerminalSearch's effect and tripped the `terminal.workbench` error boundary.
@@ -28,7 +28,7 @@ import { safeFind } from './terminal-search-safe-find'
  * The rewind is reached on every re-entry into the middle of a wrapped line —
  * `_highlightAllMatches` restarting at the row after a match, and `findNext`
  * resuming from the current selection — so this drives the real Terminal +
- * SearchAddon through Nightshift's own `safeFind`, which deliberately rethrows
+ * SearchAddon through Kolux's own `safeFind`, which deliberately rethrows
  * anything that is not the decoration error.
  */
 

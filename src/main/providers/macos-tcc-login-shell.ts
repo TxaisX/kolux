@@ -18,7 +18,7 @@ const LOGIN_PREFLIGHT_TIMEOUT_MS = 500
 // Why: the death-watch probe runs off the spawn path, so it can afford a bound
 // that outlasts a PAM stack answering slowly rather than misreading it as a hang.
 const LOGIN_SESSION_WATCH_PROBE_TIMEOUT_MS = 4_000
-const LOGIN_PREFLIGHT_MARKER = 'NIGHTSHIFT_LOGIN_PREFLIGHT_OK'
+const LOGIN_PREFLIGHT_MARKER = 'KOLUX_LOGIN_PREFLIGHT_OK'
 const LOGIN_PREFLIGHT_MAX_BUFFER_BYTES = 1024
 const LOGIN_PREFLIGHT_RETRY_BASE_MS = 5_000
 const LOGIN_PREFLIGHT_RETRY_MAX_MS = 5 * 60_000
@@ -31,7 +31,7 @@ const LOGIN_PREFLIGHT_REJECTED_REVALIDATE_MS = 30 * 60_000
  * user's environment misbehaves under login(1); terminals fall back to today's
  * direct-spawn behavior.
  */
-const DISABLE_ENV_VAR = 'NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL'
+const DISABLE_ENV_VAR = 'KOLUX_DISABLE_MACOS_LOGIN_SHELL'
 
 /**
  * Result of one PAM probe. `conclusive` marks a real PAM verdict (accept or
@@ -296,9 +296,9 @@ export async function probeMacosLoginSessionAlive(
 
 /**
  * Wrap a macOS shell spawn in `/usr/bin/login -flpq <user> …` so terminal children
- * get their own TCC identity instead of collapsing into Nightshift's bundle id — signed
+ * get their own TCC identity instead of collapsing into Kolux's bundle id — signed
  * CLIs like `op` otherwise re-prompt every launch because tccd attributes the grant
- * to Nightshift and never persists it (#6996, #8985).
+ * to Kolux and never persists it (#6996, #8985).
  *
  * A clean bash trampoline restores SHELL after login(1) overwrites it, then replaces
  * itself with the configured shell. Values stay positional so custom paths and
@@ -352,7 +352,7 @@ export function wrapShellSpawnForMacosTccAttribution(
   }
 
   const shellEnvValue = env?.SHELL || file
-  // Why: Bash ignores --rcfile when argv[0] marks it as a login shell; Nightshift's
+  // Why: Bash ignores --rcfile when argv[0] marks it as a login shell; Kolux's
   // rcfile already reproduces login startup and must remain the active wrapper.
   const trampoline =
     basename(file).toLowerCase() === 'bash' && args.includes('--rcfile')
@@ -371,7 +371,7 @@ export function wrapShellSpawnForMacosTccAttribution(
       '-p',
       '-c',
       trampoline,
-      'nightshift-tcc-login',
+      'kolux-tcc-login',
       shellEnvValue,
       file,
       ...args

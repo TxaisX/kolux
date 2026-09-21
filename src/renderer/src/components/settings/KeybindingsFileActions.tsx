@@ -67,7 +67,7 @@ export function KeybindingsFileActions(): React.JSX.Element {
     return snapshot?.path ?? keybindingSnapshot?.path ?? null
   }
 
-  const editKeybindingsInNightshift = async (): Promise<void> => {
+  const editKeybindingsInKolux = async (): Promise<void> => {
     try {
       const filePath = await prepareKeybindingsPath()
       if (!filePath) {
@@ -114,7 +114,7 @@ export function KeybindingsFileActions(): React.JSX.Element {
           ? error.message
           : translate(
               'auto.components.settings.KeybindingsFileActions.dd532a01ce',
-              'Failed to open keybindings in Nightshift.'
+              'Failed to open keybindings in Kolux.'
             )
       )
     }
@@ -158,12 +158,12 @@ export function KeybindingsFileActions(): React.JSX.Element {
         variant="ghost"
         size="xs"
         className="rounded-none border-0 shadow-none"
-        onClick={() => void editKeybindingsInNightshift()}
+        onClick={() => void editKeybindingsInKolux()}
       >
         <FileText className="size-3" />
         {translate(
           'auto.components.settings.KeybindingsFileActions.1c2be2b2c6',
-          'Edit File in Nightshift'
+          'Edit File in Kolux'
         )}
       </Button>
       <DropdownMenu>

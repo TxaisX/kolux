@@ -23,8 +23,8 @@ export function resolveWatcherProcessEntryPath(
   const adjacentBuildEntry = join(basePath, 'parcel-watcher-process-entry.js')
   // Why: electron-vite's unpackaged appPath is already out/main. Appending
   // out/main again silently disables crash isolation in dev and E2E builds.
-  // Why asar and not isPackaged: nightshiftd is a packaged non-Electron host whose app root
-  // holds nightshiftd.js and this child side by side. Only the asar layout nests it under
+  // Why asar and not isPackaged: koluxd is a packaged non-Electron host whose app root
+  // holds koluxd.js and this child side by side. Only the asar layout nests it under
   // out/main, and only there is the adjacent probe guaranteed to miss.
   if (!usesAsarArchive && pathExists(adjacentBuildEntry)) {
     return adjacentBuildEntry

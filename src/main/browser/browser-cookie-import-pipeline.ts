@@ -115,7 +115,7 @@ export async function importValidatedCookies(
     return {
       ok: false,
       reason:
-        'This Nightshift client cannot report cookies skipped for an unreadable site partition. Update Nightshift on this device and try again.'
+        'This Kolux client cannot report cookies skipped for an unreadable site partition. Update Kolux on this device and try again.'
     }
   }
   // Why: a family-suppressed sibling is a partition skip too, so partitionSkippedCookies is a

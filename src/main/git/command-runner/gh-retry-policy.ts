@@ -56,7 +56,7 @@ export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 export function defaultGhExecTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
-  const raw = env.NIGHTSHIFT_GH_EXEC_TIMEOUT_MS
+  const raw = env.KOLUX_GH_EXEC_TIMEOUT_MS
   if (!raw) {
     return DEFAULT_GH_EXEC_TIMEOUT_MS
   }

@@ -152,7 +152,7 @@ describe('fetchKimiRateLimits', () => {
     const result = await fetchKimiRateLimits()
     expect(result.status).toBe('error')
     expect(result.error).toMatch(/expired/i)
-    expect(result.error).toMatch(/run kimi on the computer running Nightshift/i)
+    expect(result.error).toMatch(/run kimi on the computer running Kolux/i)
     expect(result.usageMetadata).toEqual({
       failureKind: 'delegated-refresh-required',
       source: 'oauth'

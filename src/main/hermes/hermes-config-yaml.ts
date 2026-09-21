@@ -2,6 +2,10 @@ import { parse, stringify } from 'yaml'
 
 import { HERMES_PLUGIN_NAME } from './hermes-managed-plugin-source'
 
+// Why: pre-rename Kolux enabled this plugin name; Hermes loads every enabled plugin dir by name,
+// so a stale entry would keep firing the managed hook a second time under its old directory.
+const PRE_RENAME_HERMES_PLUGIN_NAME = 'nightshift-status'
+
 export type HermesConfig = Record<string, unknown>
 
 export type ConfigParseResult = { ok: true; config: HermesConfig } | { ok: false; detail: string }
@@ -50,10 +54,14 @@ export function enablePlugin(config: HermesConfig): HermesConfig {
   const plugins = isRecord(next.plugins) ? { ...next.plugins } : {}
   const enabled = asStringArray(plugins.enabled) ?? []
   const disabled = asStringArray(plugins.disabled)
-  plugins.enabled = Array.from(new Set([...enabled, HERMES_PLUGIN_NAME])).sort()
+  plugins.enabled = Array.from(
+    new Set(
+      [...enabled, HERMES_PLUGIN_NAME].filter((name) => name !== PRE_RENAME_HERMES_PLUGIN_NAME)
+    )
+  ).sort()
   if (disabled === null) {
     // Why: Hermes treats a malformed disabled list as empty. Normalize it here
-    // so Nightshift's install status matches what the real Hermes loader will do.
+    // so Kolux's install status matches what the real Hermes loader will do.
     plugins.disabled = []
   } else if (disabled.includes(HERMES_PLUGIN_NAME)) {
     const filtered = disabled.filter((name) => name !== HERMES_PLUGIN_NAME)

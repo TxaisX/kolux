@@ -166,30 +166,30 @@ describe('validateGitExecArgs', () => {
       expectAllowed([
         'remote',
         'add',
-        'pr-contributor-nightshift',
-        'https://github.com/contributor/nightshift.git'
+        'pr-contributor-kolux',
+        'https://github.com/contributor/kolux.git'
       ])
       expectAllowed([
         'remote',
         'add',
-        'pr-contributor-nightshift',
-        'git@github.com:contributor/nightshift.git'
+        'pr-contributor-kolux',
+        'git@github.com:contributor/kolux.git'
       ])
-      expectAllowed(['remote', 'remove', 'pr-contributor-nightshift'])
+      expectAllowed(['remote', 'remove', 'pr-contributor-kolux'])
     })
 
     it.each([
       // Extra or missing operands are not a shape main ever sends.
       [['remote', 'add', 'fork']],
-      [['remote', 'add', 'fork', 'https://github.com/contributor/nightshift.git', '--tags']],
+      [['remote', 'add', 'fork', 'https://github.com/contributor/kolux.git', '--tags']],
       [['remote', 'remove']],
       [['remote', 'remove', 'fork', 'extra']],
       // Names and URLs must pass the same rules the pushTarget RPCs enforce.
-      [['remote', 'add', '--mirror=push', 'https://github.com/contributor/nightshift.git']],
-      [['remote', 'add', '../escape', 'https://github.com/contributor/nightshift.git']],
+      [['remote', 'add', '--mirror=push', 'https://github.com/contributor/kolux.git']],
+      [['remote', 'add', '../escape', 'https://github.com/contributor/kolux.git']],
       [['remote', 'remove', '-f']],
       [['remote', 'add', 'fork', 'ext::sh -c payload']],
-      [['remote', 'add', 'fork', 'https://evil.test/contributor/nightshift.git']],
+      [['remote', 'add', 'fork', 'https://evil.test/contributor/kolux.git']],
       [['remote', 'add', 'fork', '/etc/passwd']]
     ])('rejects unsafe remote write args %j', (args) => {
       expectBlocked(args, 'Destructive git remote operations')
@@ -236,18 +236,18 @@ describe('validateGitExecArgs', () => {
 
   describe('git clone', () => {
     it('allows only the project setup clone shape', () => {
-      expectAllowed(['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift'])
-      expectAllowed(['clone', '--progress', '--', 'git@github.com:TxaisX/nightshift.git', 'nightshift'])
+      expectAllowed(['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux'])
+      expectAllowed(['clone', '--progress', '--', 'git@github.com:TxaisX/nightshift.git', 'kolux'])
     })
 
     it.each([
       [['clone', 'https://github.com/TxaisX/nightshift.git']],
-      [['clone', 'https://github.com/TxaisX/nightshift.git', 'nightshift']],
-      [['clone', '--depth=1', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift']],
+      [['clone', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
+      [['clone', '--depth=1', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
       [['clone', '--', 'https://github.com/TxaisX/nightshift.git', '.']],
       [['clone', '--', 'https://github.com/TxaisX/nightshift.git', '..']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested/nightshift']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested\\nightshift']]
+      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested/kolux']],
+      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested\\kolux']]
     ])('rejects unsafe clone args %j', (args) => {
       expectBlocked(args, 'git clone')
     })

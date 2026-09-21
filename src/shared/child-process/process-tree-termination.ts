@@ -22,7 +22,7 @@ const MAX_PS_OUTPUT_BYTES = 8 * 1024 * 1024
  * not "killed". The root is still killed through its handle, which cannot reach
  * the recycled pid the refusal was about, so a refusal is never a leak. Main's
  * gate only ever refuses the `win-taskkill-tree` scope — a POSIX group holds
- * only what Nightshift put in it — so the POSIX refusal arm is the seam's contract,
+ * only what Kolux put in it — so the POSIX refusal arm is the seam's contract,
  * not something any installed gate exercises today.
  */
 export function signalProcessTree(child: ChildProcess, signal?: NodeJS.Signals): Promise<boolean> {
@@ -33,7 +33,7 @@ export function signalProcessTree(child: ChildProcess, signal?: NodeJS.Signals):
   if (process.platform === 'win32') {
     // Why the exit check: once the child is reaped its pid is Windows' to
     // reissue, and `taskkill /t /f` walks whatever tree owns it *now* — a
-    // recycled pid can be one of Nightshift's own Chromium processes (#10680). The
+    // recycled pid can be one of Kolux's own Chromium processes (#10680). The
     // POSIX branch below cannot hit this: killing a reaped group is ESRCH.
     //
     // Why `false`: this is exactly what a taskkill against a reaped pid already

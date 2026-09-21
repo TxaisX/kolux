@@ -1,5 +1,5 @@
 /**
- * AppEnvironment abstracts the host-process facilities Nightshift's core reads from
+ * AppEnvironment abstracts the host-process facilities Kolux's core reads from
  * Electron's `app`: data paths, version, packaged flag, and shutdown. The
  * desktop installs an Electron-backed implementation; a plain-Node host (the
  * headless runtime server) installs a Node one, so core modules never import
@@ -51,7 +51,7 @@ export type AppProcessMetric = {
  * reset would silently read back as uninstalled. Anchoring to the realm keeps one
  * instance per process however often the module registry is rebuilt.
  */
-const SLOT = Symbol.for('nightshift.host.appEnvironment')
+const SLOT = Symbol.for('kolux.host.appEnvironment')
 
 type Slot = { [SLOT]?: AppEnvironment | null }
 

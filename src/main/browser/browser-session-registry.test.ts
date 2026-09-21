@@ -37,12 +37,12 @@ import { setupGoogleAuthUserAgentOverride } from './browser-session-ua'
 import { setBrowserNetworkProxySettingsResolver } from './browser-session-proxy'
 import { handleElectronProxyLogin } from '../network/electron-proxy-credentials'
 import { applyProxySettingsToSession } from '../network/proxy-settings'
-import { NIGHTSHIFT_BROWSER_PARTITION } from '../../shared/constants'
+import { KOLUX_BROWSER_PARTITION } from '../../shared/constants'
 import {
-  DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
-  getNightshiftProfileBrowserDefaultPartition,
-  getNightshiftProfileBrowserSessionPartition
-} from '../../shared/nightshift-profiles'
+  DEFAULT_LOCAL_KOLUX_PROFILE_ID,
+  getKoluxProfileBrowserDefaultPartition,
+  getKoluxProfileBrowserSessionPartition
+} from '../../shared/kolux-profiles'
 
 describe('BrowserSessionRegistry', () => {
   beforeEach(() => {
@@ -73,11 +73,11 @@ describe('BrowserSessionRegistry', () => {
     const defaultProfile = browserSessionRegistry.getDefaultProfile()
     expect(defaultProfile.id).toBe('default')
     expect(defaultProfile.scope).toBe('default')
-    expect(defaultProfile.partition).toBe(NIGHTSHIFT_BROWSER_PARTITION)
+    expect(defaultProfile.partition).toBe(KOLUX_BROWSER_PARTITION)
   })
 
   it('allows the default partition', () => {
-    expect(browserSessionRegistry.isAllowedPartition(NIGHTSHIFT_BROWSER_PARTITION)).toBe(true)
+    expect(browserSessionRegistry.isAllowedPartition(KOLUX_BROWSER_PARTITION)).toBe(true)
   })
 
   it('rejects unknown partitions', () => {
@@ -88,8 +88,8 @@ describe('BrowserSessionRegistry', () => {
     const profile = await browserSessionRegistry.createProfile('isolated', 'Test Isolated')
     expect(profile).not.toBeNull()
     expect(profile!.scope).toBe('isolated')
-    expect(profile!.partition).toMatch(/^persist:nightshift-browser-session-/)
-    expect(profile!.partition).not.toBe(NIGHTSHIFT_BROWSER_PARTITION)
+    expect(profile!.partition).toMatch(/^persist:kolux-browser-session-/)
+    expect(profile!.partition).not.toBe(KOLUX_BROWSER_PARTITION)
     expect(profile!.label).toBe('Test Isolated')
     expect(profile!.source).toBeNull()
   })
@@ -212,7 +212,7 @@ describe('BrowserSessionRegistry', () => {
     const profile = await browserSessionRegistry.createProfile('imported', 'My Import')
     expect(profile).not.toBeNull()
     expect(profile!.scope).toBe('imported')
-    expect(profile!.partition).toMatch(/^persist:nightshift-browser-session-/)
+    expect(profile!.partition).toMatch(/^persist:kolux-browser-session-/)
   })
 
   it('resolves partition for a known profile', async () => {
@@ -222,27 +222,21 @@ describe('BrowserSessionRegistry', () => {
   })
 
   it('resolves default partition for null/undefined profileId', () => {
-    expect(browserSessionRegistry.resolvePartition(null)).toBe(NIGHTSHIFT_BROWSER_PARTITION)
-    expect(browserSessionRegistry.resolvePartition(undefined)).toBe(NIGHTSHIFT_BROWSER_PARTITION)
+    expect(browserSessionRegistry.resolvePartition(null)).toBe(KOLUX_BROWSER_PARTITION)
+    expect(browserSessionRegistry.resolvePartition(undefined)).toBe(KOLUX_BROWSER_PARTITION)
   })
 
   it('resolves default partition for unknown profileId', () => {
-    expect(browserSessionRegistry.resolvePartition('nonexistent')).toBe(
-      NIGHTSHIFT_BROWSER_PARTITION
-    )
+    expect(browserSessionRegistry.resolvePartition('nonexistent')).toBe(KOLUX_BROWSER_PARTITION)
   })
 
   it('strictly resolves known profile partitions without downgrading unknown profiles', async () => {
     const profile = await browserSessionRegistry.createProfile('isolated', 'Strict Resolve')
     expect(profile).not.toBeNull()
 
-    expect(browserSessionRegistry.resolveKnownPartition(null)).toBe(NIGHTSHIFT_BROWSER_PARTITION)
-    expect(browserSessionRegistry.resolveKnownPartition(undefined)).toBe(
-      NIGHTSHIFT_BROWSER_PARTITION
-    )
-    expect(browserSessionRegistry.resolveKnownPartition('default')).toBe(
-      NIGHTSHIFT_BROWSER_PARTITION
-    )
+    expect(browserSessionRegistry.resolveKnownPartition(null)).toBe(KOLUX_BROWSER_PARTITION)
+    expect(browserSessionRegistry.resolveKnownPartition(undefined)).toBe(KOLUX_BROWSER_PARTITION)
+    expect(browserSessionRegistry.resolveKnownPartition('default')).toBe(KOLUX_BROWSER_PARTITION)
     expect(browserSessionRegistry.resolveKnownPartition(profile!.id)).toBe(profile!.partition)
     expect(browserSessionRegistry.resolveKnownPartition('missing-profile')).toBeNull()
   })
@@ -332,7 +326,7 @@ describe('BrowserSessionRegistry', () => {
     const fakeProfile = {
       id: '00000000-0000-0000-0000-000000000001',
       scope: 'imported' as const,
-      partition: 'persist:nightshift-browser-session-00000000-0000-0000-0000-000000000001',
+      partition: 'persist:kolux-browser-session-00000000-0000-0000-0000-000000000001',
       label: 'Hydrated',
       source: { browserFamily: 'manual' as const, importedAt: 1000 }
     }
@@ -343,8 +337,7 @@ describe('BrowserSessionRegistry', () => {
 
   it('rejects a persisted profile whose partition belongs to a different profile id', () => {
     const profileId = '00000000-0000-4000-8000-000000000021'
-    const claimedPartition =
-      'persist:nightshift-browser-session-00000000-0000-4000-8000-000000000022'
+    const claimedPartition = 'persist:kolux-browser-session-00000000-0000-4000-8000-000000000022'
 
     browserSessionRegistry.hydrateFromPersisted([
       {
@@ -372,7 +365,7 @@ describe('BrowserSessionRegistry', () => {
 
   it('applies and clears existing browser-profile policy on an opaque route partition', async () => {
     const partition =
-      'persist:nightshift-browser-v1-1111111111111111222222222222222233333333333333334444444444444444'
+      'persist:kolux-browser-v1-1111111111111111222222222222222233333333333333334444444444444444'
     setBrowserNetworkProxySettingsResolver(() => ({
       httpProxyUrl: 'http://app-proxy.example:8080',
       httpProxyBypassRules: ''
@@ -395,7 +388,7 @@ describe('BrowserSessionRegistry', () => {
 
   it('rejects route partitions for missing browser profiles', () => {
     const partition =
-      'persist:nightshift-browser-v1-aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddd'
+      'persist:kolux-browser-v1-aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddd'
 
     expect(() =>
       browserSessionRegistry.setupRoutePartitionPolicies(partition, 'missing-profile')
@@ -437,7 +430,7 @@ describe('BrowserSessionRegistry', () => {
     // Why: verify the parallel fix to the default partition — isolated/imported
     // profiles must also defer media permission checks to macOS instead of
     // denying outright, otherwise pages inside them still hit NotAllowedError
-    // after the user grants Camera/Microphone to Nightshift.
+    // after the user grants Camera/Microphone to Kolux.
     await browserSessionRegistry.createProfile('isolated', 'Media Test')
     const mockSession = sessionFromPartitionMock.mock.results[0]?.value
     const requestHandler = mockSession.setPermissionRequestHandler.mock.calls[0][0]
@@ -512,33 +505,33 @@ describe('BrowserSessionRegistry', () => {
     expect(webAuthnCallback).toHaveBeenCalledWith('credential-1')
   })
 
-  it('uses profile-owned partitions for non-default Nightshift profiles', async () => {
-    const nightshiftProfileId = 'local-work'
-    browserSessionRegistry.configureForNightshiftProfile({
-      nightshiftProfileId,
+  it('uses profile-owned partitions for non-default Kolux profiles', async () => {
+    const koluxProfileId = 'local-work'
+    browserSessionRegistry.configureForKoluxProfile({
+      koluxProfileId,
       profileDirectory: '/profiles/local-work'
     })
 
     expect(browserSessionRegistry.getDefaultProfile().partition).toBe(
-      getNightshiftProfileBrowserDefaultPartition(nightshiftProfileId)
+      getKoluxProfileBrowserDefaultPartition(koluxProfileId)
     )
-    expect(browserSessionRegistry.isAllowedPartition(NIGHTSHIFT_BROWSER_PARTITION)).toBe(false)
+    expect(browserSessionRegistry.isAllowedPartition(KOLUX_BROWSER_PARTITION)).toBe(false)
 
     const profile = await browserSessionRegistry.createProfile('isolated', 'Work Browser')
     expect(profile).not.toBeNull()
     expect(profile!.partition).toBe(
-      getNightshiftProfileBrowserSessionPartition(nightshiftProfileId, profile!.id)
+      getKoluxProfileBrowserSessionPartition(koluxProfileId, profile!.id)
     )
 
-    browserSessionRegistry.configureForNightshiftProfile({
-      nightshiftProfileId: DEFAULT_LOCAL_NIGHTSHIFT_PROFILE_ID,
+    browserSessionRegistry.configureForKoluxProfile({
+      koluxProfileId: DEFAULT_LOCAL_KOLUX_PROFILE_ID,
       profileDirectory: '/profiles/local-default'
     })
   })
 
   describe('setupGoogleAuthUserAgentOverride', () => {
     const STOCK_UA =
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) nightshift/1.0.0 Chrome/147.0.6890.3 Electron/43.0.0 Safari/537.36'
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) kolux/1.0.0 Chrome/147.0.6890.3 Electron/43.0.0 Safari/537.36'
 
     function install(): (details: unknown, callback: ReturnType<typeof vi.fn>) => void {
       const onBeforeSendHeaders = vi.fn()

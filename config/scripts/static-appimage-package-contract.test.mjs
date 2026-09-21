@@ -15,8 +15,8 @@ const FIXTURE_BYTES = 384
 
 describe('static AppImage package contract', () => {
   it.each([
-    ['nightshift-linux.AppImage', 0x3e, 1],
-    ['nightshift-linux-arm64.AppImage', 0xb7, 'arm64']
+    ['kolux-linux.AppImage', 0x3e, 1],
+    ['kolux-linux-arm64.AppImage', 0xb7, 'arm64']
   ])('accepts a dependency-free type-2 %s runtime', async (filename, machine, targetArch) => {
     await withFixture(filename, createRuntime({ machine }), (path) => {
       expect(() => verifyStaticAppImagePackage(path, targetArch)).not.toThrow()
@@ -24,12 +24,12 @@ describe('static AppImage package contract', () => {
   })
 
   it.each([
-    ['generic filename for an arm64 runtime and target', 'nightshift-linux.AppImage', 0xb7, 3],
-    ['arm64 filename for an x64 runtime and target', 'nightshift-linux-arm64.AppImage', 0x3e, 1],
-    ['generic x64 runtime for an arm64 target', 'nightshift-linux.AppImage', 0x3e, 3],
-    ['generic arm64 runtime for an x64 target', 'nightshift-linux.AppImage', 0xb7, 1],
-    ['arm64 artifact filename for an x64 target', 'nightshift-linux-arm64.AppImage', 0xb7, 1],
-    ['x64 runtime under an arm64 artifact filename', 'nightshift-linux-arm64.AppImage', 0x3e, 3]
+    ['generic filename for an arm64 runtime and target', 'kolux-linux.AppImage', 0xb7, 3],
+    ['arm64 filename for an x64 runtime and target', 'kolux-linux-arm64.AppImage', 0x3e, 1],
+    ['generic x64 runtime for an arm64 target', 'kolux-linux.AppImage', 0x3e, 3],
+    ['generic arm64 runtime for an x64 target', 'kolux-linux.AppImage', 0xb7, 1],
+    ['arm64 artifact filename for an x64 target', 'kolux-linux-arm64.AppImage', 0xb7, 1],
+    ['x64 runtime under an arm64 artifact filename', 'kolux-linux-arm64.AppImage', 0x3e, 3]
   ])('rejects %s', async (_label, filename, machine, targetArch) => {
     await withFixture(filename, createRuntime({ machine }), (path) => {
       expect(() => verifyStaticAppImagePackage(path, targetArch)).toThrow(/architecture|target/)
@@ -39,7 +39,7 @@ describe('static AppImage package contract', () => {
   it.each([undefined, 0, 'ia32'])(
     'rejects unsupported target architecture %s',
     async (targetArch) => {
-      await withFixture('nightshift-linux.AppImage', createRuntime(), (path) => {
+      await withFixture('kolux-linux.AppImage', createRuntime(), (path) => {
         expect(() => verifyStaticAppImagePackage(path, targetArch)).toThrow(/target architecture/)
       })
     }
@@ -48,25 +48,21 @@ describe('static AppImage package contract', () => {
   it('accepts PT_DYNAMIC relocation metadata without dependencies', async () => {
     const runtime = createRuntime()
     runtime.writeBigInt64LE(7n, DYNAMIC_OFFSET)
-    await withFixture('nightshift-linux.AppImage', runtime, (path) => {
+    await withFixture('kolux-linux.AppImage', runtime, (path) => {
       expect(() => verifyStaticAppImagePackage(path, 1)).not.toThrow()
     })
   })
 
   it('does not scan the appended AppImage payload as outer ELF data', async () => {
     const payload = Buffer.concat([RUNTIME_SOURCE, Buffer.alloc(16, 1)])
-    await withFixture(
-      'nightshift-linux.AppImage',
-      Buffer.concat([createRuntime(), payload]),
-      (path) => {
-        expect(() => verifyStaticAppImagePackage(path, 1)).not.toThrow()
-      }
-    )
+    await withFixture('kolux-linux.AppImage', Buffer.concat([createRuntime(), payload]), (path) => {
+      expect(() => verifyStaticAppImagePackage(path, 1)).not.toThrow()
+    })
 
     const unidentifiedRuntime = createRuntime()
     unidentifiedRuntime.fill(0, 192, 192 + RUNTIME_SOURCE.length)
     await withFixture(
-      'nightshift-linux.AppImage',
+      'kolux-linux.AppImage',
       Buffer.concat([unidentifiedRuntime, payload]),
       (path) => {
         expect(() => verifyStaticAppImagePackage(path, 1)).toThrow(/does not identify/)
@@ -75,7 +71,7 @@ describe('static AppImage package contract', () => {
   })
 
   it('rejects artifact names outside the release contract before reading them', () => {
-    expect(() => verifyStaticAppImagePackage('/missing/nightshift-preview.AppImage')).toThrow(
+    expect(() => verifyStaticAppImagePackage('/missing/kolux-preview.AppImage')).toThrow(
       'unsupported artifact name'
     )
   })
@@ -84,7 +80,7 @@ describe('static AppImage package contract', () => {
     'rejects a readable but non-executable AppImage',
     async () => {
       await withFixture(
-        'nightshift-linux.AppImage',
+        'kolux-linux.AppImage',
         createRuntime(),
         (path) => {
           expect(() => verifyStaticAppImagePackage(path, 1)).toThrow(/not executable/)
@@ -160,7 +156,7 @@ describe('static AppImage package contract', () => {
   ])('rejects %s', async (_label, mutate, expected) => {
     const runtime = createRuntime()
     mutate(runtime)
-    await withFixture('nightshift-linux.AppImage', runtime, (path) => {
+    await withFixture('kolux-linux.AppImage', runtime, (path) => {
       expect(() => verifyStaticAppImagePackage(path, 1)).toThrow(expected)
     })
   })
@@ -217,7 +213,7 @@ function writeProgramHeader(
 }
 
 async function withFixture(filename, contents, check, { mode = 0o755 } = {}) {
-  const root = await mkdtemp(join(tmpdir(), 'nightshift-static-appimage-contract-'))
+  const root = await mkdtemp(join(tmpdir(), 'kolux-static-appimage-contract-'))
   try {
     const path = join(root, filename)
     await writeFile(path, contents)

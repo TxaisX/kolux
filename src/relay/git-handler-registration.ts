@@ -65,9 +65,7 @@ export function registerGitHandlers(
   dispatcher.onRequest('git.refreshLocalBaseRefForWorktreeCreate', (p) =>
     handlers.worktree.refreshLocalBaseRefForWorktreeCreate(p)
   )
-  dispatcher.onRequest('git.markRemoteNightshiftCreated', (p) =>
-    handlers.exec.markRemoteNightshiftCreated(p)
-  )
+  dispatcher.onRequest('git.markRemoteKoluxCreated', (p) => handlers.exec.markRemoteKoluxCreated(p))
   dispatcher.onRequest('git.renameCurrentBranch', (p) => handlers.exec.renameCurrentBranch(p))
   dispatcher.onRequest('git.forceDeletePreservedBranch', (p) =>
     handlers.exec.forceDeletePreservedBranch(p)

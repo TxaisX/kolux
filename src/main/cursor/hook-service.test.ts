@@ -78,10 +78,10 @@ function runRegisteredCursorHook(
     timeout: HOOK_RUN_TIMEOUT_MS,
     env: {
       ...process.env,
-      NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-      NIGHTSHIFT_AGENT_HOOK_PORT: '',
-      NIGHTSHIFT_AGENT_HOOK_TOKEN: '',
-      NIGHTSHIFT_PANE_KEY: '',
+      KOLUX_AGENT_HOOK_ENDPOINT: '',
+      KOLUX_AGENT_HOOK_PORT: '',
+      KOLUX_AGENT_HOOK_TOKEN: '',
+      KOLUX_PANE_KEY: '',
       ...extraEnv
     }
   })
@@ -93,7 +93,7 @@ describe('CursorHookService', () => {
   let homeDir: string
 
   beforeEach(() => {
-    homeDir = mkdtempSync(join(tmpdir(), 'nightshift-cursor-home-'))
+    homeDir = mkdtempSync(join(tmpdir(), 'kolux-cursor-home-'))
     homedirMock.mockReturnValue(homeDir)
   })
 
@@ -121,13 +121,13 @@ describe('CursorHookService', () => {
         process.platform === 'win32' ? WINDOWS_POWERSHELL_LAUNCHER : /cursor-hook/
       )
       if (process.platform !== 'win32') {
-        expect(definition?.command).toContain(join(homeDir, '.nightshift'))
+        expect(definition?.command).toContain(join(homeDir, '.kolux'))
       }
       expect(definition?.hooks).toBeUndefined()
     }
 
     const script = readFileSync(
-      join(homeDir, '.nightshift', 'agent-hooks', CURSOR_SCRIPT_FILE_NAME),
+      join(homeDir, '.kolux', 'agent-hooks', CURSOR_SCRIPT_FILE_NAME),
       'utf8'
     )
     expect(script).toContain('/hook/cursor')
@@ -150,7 +150,7 @@ describe('CursorHookService', () => {
   it.skipIf(process.platform !== 'win32')(
     'wraps the managed hook command to survive spaces in the profile path (#6078)',
     () => {
-      const spaceHome = join(tmpdir(), 'nightshift cursor home with spaces')
+      const spaceHome = join(tmpdir(), 'kolux cursor home with spaces')
       mkdirSync(spaceHome, { recursive: true })
       homedirMock.mockReturnValue(spaceHome)
       try {
@@ -181,10 +181,10 @@ describe('CursorHookService', () => {
           hooks: {
             beforeSubmitPrompt: [
               { command: '/usr/local/bin/user-hook' },
-              { command: '/old/path/.nightshift/agent-hooks/cursor-hook.sh' }
+              { command: '/old/path/.kolux/agent-hooks/cursor-hook.sh' }
             ],
             retiredEvent: [
-              { command: '/old/path/.nightshift/agent-hooks/cursor-hook.sh' },
+              { command: '/old/path/.kolux/agent-hooks/cursor-hook.sh' },
               { command: '/usr/local/bin/retired-user-hook' }
             ]
           }
@@ -245,7 +245,7 @@ describe('CursorHookService', () => {
     () => {
       expect(new CursorHookService().install().state).toBe('installed')
       const config = readInstalledCursorHooks(homeDir)
-      unlinkSync(join(homeDir, '.nightshift', 'agent-hooks', CURSOR_SCRIPT_FILE_NAME))
+      unlinkSync(join(homeDir, '.kolux', 'agent-hooks', CURSOR_SCRIPT_FILE_NAME))
 
       for (const eventName of CURSOR_EVENTS) {
         const command = requireRegisteredCommand(config, eventName)
@@ -272,9 +272,9 @@ describe('CursorHookService', () => {
           command,
           JSON.stringify({ hook_event_name: eventName, tool_name: 'Write' }),
           {
-            NIGHTSHIFT_AGENT_HOOK_PORT: '59999',
-            NIGHTSHIFT_AGENT_HOOK_TOKEN: 'token',
-            NIGHTSHIFT_PANE_KEY: 'tab:leaf'
+            KOLUX_AGENT_HOOK_PORT: '59999',
+            KOLUX_AGENT_HOOK_TOKEN: 'token',
+            KOLUX_PANE_KEY: 'tab:leaf'
           }
         )
         expect(result.status, `${eventName} dead-listener exit`).toBe(0)
@@ -305,10 +305,10 @@ describe('CursorHookService', () => {
             timeout: HOOK_RUN_TIMEOUT_MS,
             env: {
               ...process.env,
-              NIGHTSHIFT_AGENT_HOOK_ENDPOINT: '',
-              NIGHTSHIFT_AGENT_HOOK_PORT: '',
-              NIGHTSHIFT_AGENT_HOOK_TOKEN: '',
-              NIGHTSHIFT_PANE_KEY: '',
+              KOLUX_AGENT_HOOK_ENDPOINT: '',
+              KOLUX_AGENT_HOOK_PORT: '',
+              KOLUX_AGENT_HOOK_TOKEN: '',
+              KOLUX_PANE_KEY: '',
               USERPROFILE: homeDir
             }
           })

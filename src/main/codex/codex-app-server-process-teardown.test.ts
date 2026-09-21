@@ -134,7 +134,7 @@ describe('terminateCodexAppServerProcessTree', () => {
   /**
    * `selfInitiatedTreeKillCount` decides whether a `render-process-gone` was
    * ours. A group that had already exited was killed by nobody, so crediting it
-   * puts a suspect in the five-second window that Nightshift never issued. Exercised
+   * puts a suspect in the five-second window that Kolux never issued. Exercised
    * through the real `process.kill(-pgid)` because the swallow being tested
    * lives in the production default, not in an injectable seam.
    */

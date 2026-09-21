@@ -6,11 +6,11 @@ import { useAppStore } from '../store'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
-const NIGHTSHIFT_REPO_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_REPO_URL = 'https://github.com/TxaisX/nightshift'
 type StarNagMode = 'gh' | 'web'
 
 /**
- * Persistent "star Nightshift on GitHub" notification card.
+ * Persistent "star Kolux on GitHub" notification card.
  *
  * Rendered at the bottom-right of the app (alongside UpdateCard). It is
  * intentionally non-auto-dismissing: the user must either click Star, defer,
@@ -97,7 +97,7 @@ export function StarNagCard(): React.JSX.Element | null {
     }
     const openGithubFallback = async (): Promise<boolean> => {
       try {
-        await window.api.shell.openUrl(NIGHTSHIFT_REPO_URL)
+        await window.api.shell.openUrl(KOLUX_REPO_URL)
         await window.api.starNag.openWeb()
         if (mountedRef.current) {
           setVisible(false)
@@ -123,7 +123,7 @@ export function StarNagCard(): React.JSX.Element | null {
     setBusy(true)
     let ok = false
     try {
-      ok = await window.api.starNag.starNightshift()
+      ok = await window.api.starNag.starKolux()
     } catch {
       ok = false
     }
@@ -162,7 +162,7 @@ export function StarNagCard(): React.JSX.Element | null {
             <div className="flex items-center gap-2">
               <Star className="size-4 fill-amber-400/60 text-amber-400/80" />
               <h3 id="star-nag-heading" className="text-sm font-semibold">
-                {translate('auto.components.StarNagCard.5f6df21046', 'Enjoying Nightshift?')}
+                {translate('auto.components.StarNagCard.5f6df21046', 'Enjoying Kolux?')}
               </h3>
             </div>
             <Button
@@ -180,7 +180,7 @@ export function StarNagCard(): React.JSX.Element | null {
           <p className="text-sm text-muted-foreground">
             {translate(
               'auto.components.StarNagCard.30c36231c1',
-              'Nightshift is open source. If it helped today, a GitHub star helps other developers find it.'
+              'Kolux is open source. If it helped today, a GitHub star helps other developers find it.'
             )}
           </p>
 

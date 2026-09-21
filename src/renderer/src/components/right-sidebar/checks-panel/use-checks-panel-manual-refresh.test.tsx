@@ -33,7 +33,7 @@ describe('useChecksPanelManualRefresh ordering', () => {
       state: 'open',
       title: 'Current review',
       headSha: 'head-2',
-      prRepo: { owner: 'nightshift', repo: 'app', host: 'github.com' }
+      prRepo: { owner: 'kolux', repo: 'app', host: 'github.com' }
     } as NonNullable<RefreshInput['pr']>
     const setChecksLoading: RefreshInput['setChecksLoading'] = vi.fn((loading) => {
       refresh.calls.push(`checks-loading:${String(loading)}`)

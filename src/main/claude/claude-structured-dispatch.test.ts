@@ -550,7 +550,7 @@ describe('Claude structured dispatch image limits', () => {
   })
 
   it('rejects local images whose aggregate size exceeds twenty MiB', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-claude-images-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-claude-images-'))
     try {
       const paths = await Promise.all(
         Array.from({ length: 5 }, async (_, index) => {
@@ -575,7 +575,7 @@ describe('Claude structured dispatch image limits', () => {
   })
 
   it('rejects a local image by actual bytes read beyond the per-image cap', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-claude-image-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-claude-image-'))
     try {
       const path = join(directory, 'oversized.png')
       await writeFile(path, Buffer.alloc(5 * 1024 * 1024 + 1))
@@ -595,7 +595,7 @@ describe('Claude structured dispatch image limits', () => {
   })
 
   it('allocates local image reads from the file size, not the maximum cap', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-claude-image-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-claude-image-'))
     const allocUnsafe = vi.spyOn(Buffer, 'allocUnsafe')
     try {
       const path = join(directory, 'small.png')
@@ -628,7 +628,7 @@ describe('Claude structured dispatch image limits', () => {
   })
 
   it('bounds retained waiter identity bytes when image dispatches time out', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'nightshift-claude-image-'))
+    const directory = await mkdtemp(join(tmpdir(), 'kolux-claude-image-'))
     try {
       const path = join(directory, 'large.png')
       await writeFile(path, Buffer.alloc(64 * 1024))

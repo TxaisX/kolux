@@ -126,7 +126,7 @@ describeOnWindows('restrictWindowsPathSync against a real filesystem', () => {
 
   beforeAll(() => {
     resetSecureFileWindowsUserSidForTests()
-    root = mkdtempSync(join(tmpdir(), 'nightshift-acl-win32-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-acl-win32-'))
     // %TEMP% grants [user, SYSTEM, Administrators] (OI)(CI)(F) by default, and those
     // propagate into every fixture below. Strip them here so a planted DACL is exactly what
     // the test planted: on a host where the running user is also one of the three principals
@@ -275,7 +275,7 @@ describeOnWindows('restrictWindowsPathSync against a real filesystem', () => {
     expect(after.every((entry) => entry.endsWith(':(OI)(CI)(F)'))).toBe(true)
 
     // The point of the (IO) case: before the repair the directory object grants nobody anything,
-    // so Nightshift cannot write into the directory it just cached as hardened.
+    // so Kolux cannot write into the directory it just cached as hardened.
     const child = join(dir, 'child.json')
     expect(() => writeFileSync(child, '{}')).not.toThrow()
     expect(readAclEntries(child).every((entry) => entry.includes('(I)'))).toBe(true)
@@ -364,7 +364,7 @@ describeOnWindows('restrictWindowsPathSync against a real filesystem', () => {
    * `void promise.then(onSettled)` attaches no rejection handler, so a throw from `onSettled` —
    * which runs *after* the promise resolved, outside every try/catch inside the apply — rejects a
    * promise nobody holds. Node's default turns that into a dead Electron main process, which
-   * presents as a Nightshift crash rather than as the hardening problem it is.
+   * presents as a Kolux crash rather than as the hardening problem it is.
    */
   it('reports rather than crashes when the settlement callback throws', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

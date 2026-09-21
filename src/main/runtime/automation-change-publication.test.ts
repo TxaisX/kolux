@@ -93,7 +93,7 @@ const AUTOMATIONS = [
 async function makeRuntime() {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({
       ...getDefaultPersistedState(testState.dir),
       repos: REPOS,
@@ -107,8 +107,8 @@ async function makeRuntime() {
   const { Store, initDataPath } = await import('../persistence')
   initDataPath()
   const store = new Store()
-  const { NightshiftRuntimeService } = await import('./nightshift-runtime')
-  const runtime = new NightshiftRuntimeService(store as never)
+  const { KoluxRuntimeService } = await import('./kolux-runtime')
+  const runtime = new KoluxRuntimeService(store as never)
   const published: AutomationsChangedPayload[] = []
   vi.spyOn(runtime, 'notifyAutomationsChanged').mockImplementation(
     (payload: AutomationsChangedPayload = {}) => {
@@ -120,7 +120,7 @@ async function makeRuntime() {
 
 beforeEach(() => {
   testState.dir = mkdtempSync(join(tmpdir(), 'automation-publish-'))
-  // Why: the store resolves nightshift-data.json through the app environment, so the
+  // Why: the store resolves kolux-data.json through the app environment, so the
   // suite's fixture directory must be what `userData` answers with.
   installFakeAppEnvironment({
     getPath: (name) => (name === 'userData' ? testState.dir : tmpdir())

@@ -72,8 +72,8 @@ vi.mock('./WorktreeCardAgents', () => ({
 
 vi.mock('./WorktreeContextMenu', () => ({
   default: ({ children }: { children: ReactNode }) => <>{children}</>,
-  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'nightshift:test-close-context-menus',
-  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-nightshift-context-menu-scope',
+  CLOSE_ALL_CONTEXT_MENUS_EVENT: 'kolux:test-close-context-menus',
+  WORKTREE_CONTEXT_MENU_SCOPE_ATTR: 'data-kolux-context-menu-scope',
   WORKTREE_NATIVE_CONTEXT_MENU_ATTR: 'data-worktree-native-context-menu'
 }))
 
@@ -89,7 +89,7 @@ function makeRepo(): Repo {
   return {
     id: 'repo-1',
     path: '/repo',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#999999',
     addedAt: 1
   }
@@ -158,8 +158,8 @@ describe('WorktreeCard quick actions', () => {
       <WorktreeCard worktree={makeWorktree()} repo={makeRepo()} isActive={false} />
     )
 
-    expect(markup).not.toContain('aria-label="Project nightshift"')
-    expect(markup).toContain('>nightshift</span>')
+    expect(markup).not.toContain('aria-label="Project kolux"')
+    expect(markup).toContain('>kolux</span>')
     expect(markup).toContain('data-worktree-card-meta-row=""')
   })
 
@@ -324,14 +324,14 @@ describe('WorktreeCard quick actions', () => {
 
     const markup = renderToStaticMarkup(
       <WorktreeCard
-        worktree={makeWorktree({ displayName: 'nightshift', branch: '' })}
+        worktree={makeWorktree({ displayName: 'kolux', branch: '' })}
         repo={makeRepo()}
         isActive={false}
         hideRepoBadge
       />
     )
 
-    expect(markup).toContain('nightshift')
+    expect(markup).toContain('kolux')
     expect(markup).toContain('data-worktree-card-meta-row=""')
     expect(markup).toContain('Detached HEAD @ abc123')
     expect(markup).toContain('Detached HEAD at abc123. You are viewing a commit, not a branch.')

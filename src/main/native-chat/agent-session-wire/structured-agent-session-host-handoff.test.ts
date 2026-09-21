@@ -54,7 +54,7 @@ describe('native handoff acquisition', () => {
   let store: AgentSessionRecordStore
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-native-handoff-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-native-handoff-'))
     store = await AgentSessionRecordStore.open({ directory: join(root, 'store'), hostId: 'local' })
   })
 
@@ -117,7 +117,7 @@ describe('native handoff acquisition', () => {
       publish: () => undefined
     })
     eventSink.sink.appendItem(
-      { provider: 'nightshift', clientMessageId: 'queued-before-handoff' },
+      { provider: 'kolux', clientMessageId: 'queued-before-handoff' },
       { kind: 'status', text: 'queued before handoff' }
     )
     await appendEntered.promise
@@ -404,7 +404,7 @@ describe('handoff status published for a session the host no longer holds', () =
   let store: AgentSessionRecordStore
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-handoff-publish-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-handoff-publish-'))
     store = await AgentSessionRecordStore.open({ directory: join(root, 'store'), hostId: 'local' })
   })
 

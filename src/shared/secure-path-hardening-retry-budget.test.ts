@@ -10,8 +10,8 @@ import {
   type SecurePathHardeningReport
 } from './secure-path-hardening-report'
 
-const PATH = 'C:\\Users\\me\\.nightshift\\secret.json'
-const OTHER = 'C:\\Users\\me\\.nightshift\\other.json'
+const PATH = 'C:\\Users\\me\\.kolux\\secret.json'
+const OTHER = 'C:\\Users\\me\\.kolux\\other.json'
 const MINUTE = 60_000
 
 describe('secure path hardening retry budget', () => {

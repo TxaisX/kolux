@@ -56,7 +56,7 @@ describe('ExternalAutomationProbeScheduler', () => {
     expect(second).toBe('manager')
   })
 
-  it('parks queued probes while Nightshift automation work holds priority', async () => {
+  it('parks queued probes while Kolux automation work holds priority', async () => {
     const scheduler = new ExternalAutomationProbeScheduler({ concurrency: 4 })
     const run = vi.fn(() => Promise.resolve('manager'))
 

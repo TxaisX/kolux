@@ -7,8 +7,8 @@ import type {
 } from '../../shared/windows-mobile-firewall'
 import { hasSufficientWindowsFirewallRemoteScope } from './windows-firewall-remote-scope'
 
-const FIREWALL_RULE_NAME = 'Nightshift.MobilePairing'
-const FIREWALL_RULE_DISPLAY_NAME = 'Nightshift Mobile Pairing'
+const FIREWALL_RULE_NAME = 'Kolux.MobilePairing'
+const FIREWALL_RULE_DISPLAY_NAME = 'Kolux Mobile Pairing'
 const POWERSHELL_TIMEOUT_MS = 10_000
 const ELEVATION_TIMEOUT_MS = 5 * 60_000
 
@@ -226,7 +226,7 @@ foreach ($rule in $blockingRules) {
   }
 }
 Get-NetFirewallRule -Name ${quotePowerShell(FIREWALL_RULE_NAME)} -ErrorAction SilentlyContinue | Remove-NetFirewallRule
-New-NetFirewallRule -Name ${quotePowerShell(FIREWALL_RULE_NAME)} -DisplayName ${quotePowerShell(FIREWALL_RULE_DISPLAY_NAME)} -Description 'Allows Nightshift Mobile to connect to this Nightshift desktop on private networks.' -Direction Inbound -Action Allow -Enabled True -Profile Private -Protocol TCP -LocalPort ${port} -Program ${quotePowerShell(executablePath)} -EdgeTraversalPolicy Block | Out-Null`
+New-NetFirewallRule -Name ${quotePowerShell(FIREWALL_RULE_NAME)} -DisplayName ${quotePowerShell(FIREWALL_RULE_DISPLAY_NAME)} -Description 'Allows Kolux Mobile to connect to this Kolux desktop on private networks.' -Direction Inbound -Action Allow -Enabled True -Profile Private -Protocol TCP -LocalPort ${port} -Program ${quotePowerShell(executablePath)} -EdgeTraversalPolicy Block | Out-Null`
 }
 
 // Why the elevated child keeps `-EncodedCommand` while the local runner does not: `Start-Process

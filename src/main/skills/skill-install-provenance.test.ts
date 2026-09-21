@@ -8,7 +8,7 @@ describe('managed skill install receipts', () => {
   let root = ''
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-skill-receipts-test-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-skill-receipts-test-'))
   })
 
   afterEach(async () => {

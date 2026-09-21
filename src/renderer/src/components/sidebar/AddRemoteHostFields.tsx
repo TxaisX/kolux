@@ -122,7 +122,7 @@ export function SshHostFields({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.sidebar.AddRemoteHostDialog.identityFileFromConfigHint',
-              'Left empty on purpose: Nightshift uses every key ~/.ssh/config resolves for {{value0}}. Type a path to use just that key.',
+              'Left empty on purpose: Kolux uses every key ~/.ssh/config resolves for {{value0}}. Type a path to use just that key.',
               { value0: configIdentityAlias }
             )}
           </p>
@@ -178,10 +178,7 @@ export function RemoteServerFields({
     >
       <div className="space-y-1.5">
         <Label htmlFor="add-server-name">
-          {translate(
-            'auto.components.sidebar.AddRemoteHostDialog.serverName',
-            'Name in Nightshift'
-          )}
+          {translate('auto.components.sidebar.AddRemoteHostDialog.serverName', 'Name in Kolux')}
         </Label>
         <Input
           id="add-server-name"
@@ -208,14 +205,14 @@ export function RemoteServerFields({
           onChange={(event) => onPairingCodeChange(event.target.value)}
           placeholder={translate(
             'auto.components.sidebar.AddRemoteHostDialog.pairingCodePlaceholder',
-            'nightshift://pair?code=...'
+            'kolux://pair?code=...'
           )}
           className="font-mono"
         />
         <p id="add-server-pairing-code-help" className="text-xs text-muted-foreground">
           {translate(
             'auto.components.sidebar.AddRemoteHostDialog.pairingHelpSuffix',
-            'Create this under Settings → Remote Nightshift Servers → Share this host on the other computer.'
+            'Create this under Settings → Remote Kolux Servers → Share this host on the other computer.'
           )}
         </p>
         {inputError ? (

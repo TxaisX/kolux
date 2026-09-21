@@ -9,7 +9,7 @@ import { RelayDispatcher } from '../../relay/dispatcher'
 import {
   AGENT_HOOK_NOTIFICATION_METHOD,
   AGENT_HOOK_REQUEST_REPLAY_METHOD,
-  NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV,
+  KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV,
   REMOTE_AGENT_HOOK_ENV
 } from '../../shared/agent-hook-relay'
 import { agentHookServer, _internals as agentHookInternals } from '../agent-hooks/server'
@@ -118,7 +118,7 @@ function createFakeRelay(): FakeRelay {
     }
   }))
   dispatcher.onRequest('session.resolveHome', async (params) => ({
-    resolvedPath: params.path === '~' ? '/home/nightshift' : params.path
+    resolvedPath: params.path === '~' ? '/home/kolux' : params.path
   }))
   dispatcher.onRequest('git.listWorktrees', async () => [])
   dispatcher.onRequest('ports.detect', async () => ({ ports: [], platform: 'linux' }))
@@ -127,7 +127,7 @@ function createFakeRelay(): FakeRelay {
     return { id: `remote-pty-${ptySpawnRequests.length}` }
   })
   dispatcher.onRequest(AGENT_HOOK_REQUEST_REPLAY_METHOD, async () => {
-    // Why: relay replay must arrive after Nightshift wires its listener and before
+    // Why: relay replay must arrive after Kolux wires its listener and before
     // the request resolves, matching the real relay ordering contract.
     for (const envelope of replayEnvelopes) {
       dispatcher.notify(
@@ -229,8 +229,8 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
     trackMock.mockReset()
     getCohortAtEmitMock.mockReset()
     getCohortAtEmitMock.mockReturnValue({ nth_repo_added: 4 })
-    previousRemoteHooksFlag = process.env[NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]
-    process.env[NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV] = '1'
+    previousRemoteHooksFlag = process.env[KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]
+    process.env[KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV] = '1'
     warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     agentHookServer.setListener(null)
     agentHookInternals.resetCachesForTests()
@@ -246,9 +246,9 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
     agentHookInternals.resetCachesForTests()
     warnSpy.mockRestore()
     if (previousRemoteHooksFlag === undefined) {
-      delete process.env[NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV]
+      delete process.env[KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV]
     } else {
-      process.env[NIGHTSHIFT_FEATURE_REMOTE_AGENT_HOOKS_ENV] = previousRemoteHooksFlag
+      process.env[KOLUX_FEATURE_REMOTE_AGENT_HOOKS_ENV] = previousRemoteHooksFlag
     }
   })
 
@@ -270,22 +270,22 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
     const spawn = await provider!.spawn({
       cols: 120,
       rows: 40,
-      cwd: '/home/nightshift/project',
+      cwd: '/home/kolux/project',
       env: {
-        NIGHTSHIFT_PANE_KEY: `tab-ssh:${SSH_LEAF_ID}`,
-        NIGHTSHIFT_TAB_ID: 'tab-ssh',
-        NIGHTSHIFT_WORKTREE_ID: 'wt-ssh'
+        KOLUX_PANE_KEY: `tab-ssh:${SSH_LEAF_ID}`,
+        KOLUX_TAB_ID: 'tab-ssh',
+        KOLUX_WORKTREE_ID: 'wt-ssh'
       }
     })
 
     expect(spawn.id).toBe(toAppSshPtyId('conn-fake', 'remote-pty-1'))
     expect(relay.ptySpawnRequests).toHaveLength(1)
     expect(relay.ptySpawnRequests[0]).toMatchObject({
-      cwd: '/home/nightshift/project',
+      cwd: '/home/kolux/project',
       env: {
-        NIGHTSHIFT_PANE_KEY: `tab-ssh:${SSH_LEAF_ID}`,
-        NIGHTSHIFT_TAB_ID: 'tab-ssh',
-        NIGHTSHIFT_WORKTREE_ID: 'wt-ssh'
+        KOLUX_PANE_KEY: `tab-ssh:${SSH_LEAF_ID}`,
+        KOLUX_TAB_ID: 'tab-ssh',
+        KOLUX_WORKTREE_ID: 'wt-ssh'
       }
     })
 
@@ -489,7 +489,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
     })
   })
 
-  it('drops malformed remote hook notifications at Nightshift main before caching', async () => {
+  it('drops malformed remote hook notifications at Kolux main before caching', async () => {
     relay = createFakeRelay()
     vi.mocked(deployAndLaunchRelay).mockResolvedValue({
       transport: relay.transport,

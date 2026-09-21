@@ -7,7 +7,7 @@ import {
   buildSkillCommandForRuntime,
   buildSkillSetupTerminalCommand
 } from '@/components/settings/CliSkillRuntimeSetup'
-import { NIGHTSHIFT_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND } from '@/lib/agent-feature-install-commands'
+import { KOLUX_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND } from '@/lib/agent-feature-install-commands'
 import { useActiveProjectSkillRuntime } from '@/hooks/useActiveProjectSkillRuntime'
 import { translate } from '@/i18n/i18n'
 
@@ -18,7 +18,7 @@ export function CliSkillSetupTerminal(): React.JSX.Element {
   // gate, and repair-required only happens on Windows, so it still needs the
   // npx preflight.
   const skillCommand = buildSkillCommandForRuntime(
-    NIGHTSHIFT_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND,
+    KOLUX_CLI_ORCHESTRATION_SKILL_INSTALL_COMMAND,
     activeSkillRuntime.installDisabledReason ? undefined : activeSkillRuntime.agentRuntime
   )
   const terminalRuntime = activeSkillRuntime.installDisabledReason
@@ -85,11 +85,11 @@ export function CliSkillSetupTerminal(): React.JSX.Element {
         )}
         ariaLabel={translate(
           'auto.components.feature.tips.CliSkillSetupTerminal.43b60ec5c3',
-          'Nightshift CLI and orchestration skill install terminal'
+          'Kolux CLI and orchestration skill install terminal'
         )}
         description={translate(
           'auto.components.feature.tips.CliSkillSetupTerminal.1953e90447',
-          'Press Enter to install the Nightshift CLI orchestration skill for your agents.'
+          'Press Enter to install the Kolux CLI orchestration skill for your agents.'
         )}
         terminalHeightPx={280}
         terminalTopMarginPx={8}

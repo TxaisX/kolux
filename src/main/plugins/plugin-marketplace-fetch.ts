@@ -1,4 +1,4 @@
-import { createReadStream } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,6 +7,9 @@ import {
   pluginMarketplaceSchema,
   type PluginMarketplace
 } from '../../shared/plugins/plugin-marketplace'
+
+// Why: marketplace indexes published before the Nightshift->Kolux rename still ship this filename.
+const LEGACY_PLUGIN_MARKETPLACE_FILENAME = 'nightshift-marketplace.json'
 import { checkoutPluginGitSource } from './plugin-git-repository'
 import type { PluginMarketplaceRegisteredSource } from './plugin-marketplace-store'
 
@@ -18,11 +21,11 @@ export type PluginMarketplaceFetchResult = {
 }
 
 /** Fetches a marketplace through system Git so private repositories use the
- * same SSH agent and credential helpers as every other Nightshift Git operation. */
+ * same SSH agent and credential helpers as every other Kolux Git operation. */
 export async function fetchPluginMarketplace(
   source: PluginMarketplaceRegisteredSource
 ): Promise<PluginMarketplaceFetchResult> {
-  const stagingDirectory = await mkdtemp(join(tmpdir(), 'nightshift-plugin-marketplace-'))
+  const stagingDirectory = await mkdtemp(join(tmpdir(), 'kolux-plugin-marketplace-'))
   try {
     const marketplaceCommit = await checkoutPluginGitSource({
       url: source.source.url,
@@ -40,7 +43,10 @@ export async function fetchPluginMarketplace(
 export async function readPluginMarketplaceIndex(
   rootDirectory: string
 ): Promise<PluginMarketplace> {
-  const path = join(rootDirectory, PLUGIN_MARKETPLACE_FILENAME)
+  const preferredPath = join(rootDirectory, PLUGIN_MARKETPLACE_FILENAME)
+  const path = existsSync(preferredPath)
+    ? preferredPath
+    : join(rootDirectory, LEGACY_PLUGIN_MARKETPLACE_FILENAME)
   const chunks: Buffer[] = []
   let totalBytes = 0
   for await (const chunk of createReadStream(path)) {

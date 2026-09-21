@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePaneHookDescriptor, waitForActiveTerminalManager } from './helpers/terminal'
 import type { GlobalSettings } from '../../src/shared/global-settings-types'
@@ -94,21 +94,21 @@ function claudeTranscriptLines(args: {
 
 test.describe('Native chat first-flush transcript race (#8401)', () => {
   test('stays in loading (never errors) until a not-yet-flushed transcript appears, then hydrates live', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
-    const descriptor = await waitForActivePaneHookDescriptor(nightshiftPage)
+    const descriptor = await waitForActivePaneHookDescriptor(koluxPage)
     const [tabId] = descriptor.paneKey.split(':')
     const sessionId = `e2e-first-flush-${randomUUID()}`
 
     // Why: a real Claude Code session flushes its first JSONL line up to
     // minutes after launch (#8401) — this directory intentionally has no file
     // yet when the pane resolves its providerSession.
-    const scratchDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-native-chat-'))
+    const scratchDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-native-chat-'))
     const transcriptPath = path.join(scratchDir, `${sessionId}.jsonl`)
 
     const screenshotDir = path.join(
@@ -123,42 +123,42 @@ test.describe('Native chat first-flush transcript race (#8401)', () => {
     })
 
     try {
-      await enableNativeChatSetting(nightshiftPage)
-      await seedClaudeProviderSession(nightshiftPage, {
+      await enableNativeChatSetting(koluxPage)
+      await seedClaudeProviderSession(koluxPage, {
         paneKey: descriptor.paneKey,
         worktreeId: descriptor.worktreeId,
         sessionId,
         transcriptPath
       })
-      await toggleTerminalTabToChatView(nightshiftPage, {
+      await toggleTerminalTabToChatView(koluxPage, {
         tabId,
         worktreeId: descriptor.worktreeId
       })
 
-      await expect(nightshiftPage.locator('[data-native-chat-root="true"]')).toBeVisible({
+      await expect(koluxPage.locator('[data-native-chat-root="true"]')).toBeVisible({
         timeout: 15_000
       })
-      await expect(nightshiftPage.getByText(LOADING_TITLE)).toBeVisible({ timeout: 10_000 })
-      await expect(nightshiftPage.getByText(ERROR_TITLE)).toHaveCount(0)
-      await nightshiftPage.screenshot({
+      await expect(koluxPage.getByText(LOADING_TITLE)).toBeVisible({ timeout: 10_000 })
+      await expect(koluxPage.getByText(ERROR_TITLE)).toHaveCount(0)
+      await koluxPage.screenshot({
         path: path.join(screenshotDir, '01-loading-no-error.png')
       })
 
       // Why: a short real delay proves the first readSession attempt already
       // hit the not-yet-flushed file (returning notFound) and the renderer's
       // backoff retry — not a lucky first read — is what picks it up below.
-      await nightshiftPage.waitForTimeout(1_500)
-      await expect(nightshiftPage.getByText(ERROR_TITLE)).toHaveCount(0)
+      await koluxPage.waitForTimeout(1_500)
+      await expect(koluxPage.getByText(ERROR_TITLE)).toHaveCount(0)
 
       const userText = 'Explain the native chat first-flush race fix for #8401'
       const assistantText =
         'The main process now retries a not-yet-flushed transcript instead of caching a permanent miss.'
       writeFileSync(transcriptPath, claudeTranscriptLines({ sessionId, userText, assistantText }))
 
-      await expect(nightshiftPage.getByText(userText)).toBeVisible({ timeout: 30_000 })
-      await expect(nightshiftPage.getByText(assistantText)).toBeVisible({ timeout: 30_000 })
-      await expect(nightshiftPage.getByText(ERROR_TITLE)).toHaveCount(0)
-      await nightshiftPage.screenshot({
+      await expect(koluxPage.getByText(userText)).toBeVisible({ timeout: 30_000 })
+      await expect(koluxPage.getByText(assistantText)).toBeVisible({ timeout: 30_000 })
+      await expect(koluxPage.getByText(ERROR_TITLE)).toHaveCount(0)
+      await koluxPage.screenshot({
         path: path.join(screenshotDir, '02-hydrated.png')
       })
     } finally {

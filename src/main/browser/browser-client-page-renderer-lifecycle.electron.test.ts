@@ -43,7 +43,7 @@ async function buildFixtureBundle(options: {
         entry: options.entry,
         formats: [options.format],
         fileName: () => options.fileName,
-        name: 'NightshiftBrowserClientPageFixture'
+        name: 'KoluxBrowserClientPageFixture'
       },
       outDir: options.root,
       target: options.target,
@@ -219,7 +219,7 @@ run().catch((error) => {
 }
 
 async function runFixture(): Promise<FixtureResult> {
-  const root = mkdtempSync(join(tmpdir(), 'nightshift-client-page-renderer-'))
+  const root = mkdtempSync(join(tmpdir(), 'kolux-client-page-renderer-'))
   fixtureRoots.push(root)
   const preloadSource = join(root, 'preload-entry.ts')
   const rendererSource = join(root, 'renderer-entry.ts')

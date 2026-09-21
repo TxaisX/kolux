@@ -6,7 +6,7 @@ vi.mock('../runtime-client', async () => {
   class RuntimeClient {
     call = callMock
     getCliStatus = vi.fn()
-    openNightshift = vi.fn()
+    openKolux = vi.fn()
   }
 
   // Why: re-export the REAL error classes; format.ts narrows with `instanceof`
@@ -19,7 +19,7 @@ vi.mock('../runtime-client', async () => {
 import { main } from '../index'
 import { buildWorktree, okFixture, queueFixtures, worktreeListFixture } from '../test-fixtures'
 
-describe('nightshift computer observation CLI handlers', () => {
+describe('kolux computer observation CLI handlers', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     callMock.mockReset()
@@ -50,7 +50,7 @@ describe('nightshift computer observation CLI handlers', () => {
 
     const output = vi.mocked(console.log).mock.calls[0][0]
     expect(output).toContain(
-      'nightshift computer permissions [--id <accessibility|screenshots>] [--json]'
+      'kolux computer permissions [--id <accessibility|screenshots>] [--json]'
     )
     expect(output).toContain('--id <id>')
     expect(output).toContain('Identifier for a target item or permission')
@@ -104,7 +104,7 @@ describe('nightshift computer observation CLI handlers', () => {
       callMock,
       okFixture('req_capabilities', {
         platform: 'darwin',
-        provider: 'nightshift-computer-use-macos',
+        provider: 'kolux-computer-use-macos',
         providerVersion: '1.0.0',
         protocolVersion: 1,
         supports: {
@@ -121,7 +121,7 @@ describe('nightshift computer observation CLI handlers', () => {
 
     expect(callMock).toHaveBeenCalledTimes(1)
     expect(callMock).toHaveBeenCalledWith('computer.capabilities', {})
-    expect(vi.mocked(console.log).mock.calls[0][0]).toContain('nightshift-computer-use-macos')
+    expect(vi.mocked(console.log).mock.calls[0][0]).toContain('kolux-computer-use-macos')
   })
 
   it('opens computer permission setup without resolving a worktree', async () => {
@@ -129,7 +129,7 @@ describe('nightshift computer observation CLI handlers', () => {
       callMock,
       okFixture('req_permissions', {
         platform: 'darwin',
-        helperAppPath: '/Applications/Nightshift Computer Use.app',
+        helperAppPath: '/Applications/Kolux Computer Use.app',
         openedSettings: false,
         launchedHelper: true
       })
@@ -140,8 +140,8 @@ describe('nightshift computer observation CLI handlers', () => {
     expect(callMock).toHaveBeenCalledTimes(1)
     expect(callMock).toHaveBeenCalledWith('computer.permissions', {})
     const output = vi.mocked(console.log).mock.calls[0][0]
-    expect(output).toContain('Opened Nightshift Computer Use permission setup')
-    expect(output).toContain('/Applications/Nightshift Computer Use.app')
+    expect(output).toContain('Opened Kolux Computer Use permission setup')
+    expect(output).toContain('/Applications/Kolux Computer Use.app')
   })
 
   it('passes targeted computer permission setup id', async () => {
@@ -149,7 +149,7 @@ describe('nightshift computer observation CLI handlers', () => {
       callMock,
       okFixture('req_permissions', {
         platform: 'darwin',
-        helperAppPath: '/Applications/Nightshift Computer Use.app',
+        helperAppPath: '/Applications/Kolux Computer Use.app',
         openedSettings: true,
         launchedHelper: true
       })

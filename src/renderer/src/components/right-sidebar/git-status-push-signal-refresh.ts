@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { isWindowVisible } from '@/lib/window-visibility-interval'
 import {
-  NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT,
+  KOLUX_TERMINAL_COMMAND_FINISHED_EVENT,
   type TerminalCommandFinishedEventDetail
 } from '@/hooks/terminal-command-finished-event'
 
@@ -67,9 +67,9 @@ export function useGitStatusPushSignalRefresh({
       }
       fetchStatusRef.current()
     }
-    window.addEventListener(NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
+    window.addEventListener(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
     return () => {
-      window.removeEventListener(NIGHTSHIFT_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
+      window.removeEventListener(KOLUX_TERMINAL_COMMAND_FINISHED_EVENT, handleCommandFinished)
     }
   }, [enabled, activeWorktreeId])
 }

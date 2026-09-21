@@ -92,7 +92,7 @@ const AUTOMATIONS: Automation[] = [
 async function createStore() {
   mkdirSync(testState.dir, { recursive: true })
   writeFileSync(
-    join(testState.dir, 'nightshift-data.json'),
+    join(testState.dir, 'kolux-data.json'),
     JSON.stringify({
       ...getDefaultPersistedState(testState.dir),
       repos: REPOS,

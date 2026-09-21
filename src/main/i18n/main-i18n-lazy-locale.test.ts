@@ -72,19 +72,19 @@ describe('main-i18n lazy locale loading', () => {
   })
 
   it('loads a contributed catalog for native menus and dialogs', async () => {
-    const id = 'plugin:nightshift-samples.portuguese/pt-BR' as const
+    const id = 'plugin:kolux-samples.portuguese/pt-BR' as const
     setMainPluginLanguagePacks([
       {
         id,
         resourceLanguage: pluginLanguageResourceId(id),
-        pluginKey: 'nightshift-samples.portuguese',
+        pluginKey: 'kolux-samples.portuguese',
         locale: 'pt-BR',
-        catalog: { menu: { file: 'Arquivo Nightshift' } }
+        catalog: { menu: { file: 'Arquivo Kolux' } }
       }
     ])
 
     await setMainUiLanguage(id)
-    expect(translateMain('menu.file', 'File')).toBe('Arquivo Nightshift')
+    expect(translateMain('menu.file', 'File')).toBe('Arquivo Kolux')
 
     setMainPluginLanguagePacks([])
     expect(await setMainUiLanguage(id)).toBe('en')

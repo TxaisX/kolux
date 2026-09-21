@@ -104,10 +104,10 @@ export function AutomationEditorDialogHeader({
             size="sm"
             className={segmentedGroupClassName}
           >
-            <ToggleGroupItem value="nightshift" className={segmentedItemClassName}>
+            <ToggleGroupItem value="kolux" className={segmentedItemClassName}>
               {translate(
                 'auto.components.automations.AutomationEditorDialogHeader.6f309eef8d',
-                'Nightshift'
+                'Kolux'
               )}
             </ToggleGroupItem>
             <ToggleGroupItem value="hermes" className={segmentedItemClassName}>

@@ -108,10 +108,10 @@ describe('registerWorktreeHandlers', () => {
       undefined
     )
     expect(result).toMatchObject({
-      runnerScriptPath: '/workspace/repo/.git/nightshift/issue-command-runner.sh',
+      runnerScriptPath: '/workspace/repo/.git/kolux/issue-command-runner.sh',
       envVars: {
-        NIGHTSHIFT_ROOT_PATH: '/workspace/repo',
-        NIGHTSHIFT_WORKTREE_PATH: '/workspace/improve-dashboard'
+        KOLUX_ROOT_PATH: '/workspace/repo',
+        KOLUX_WORKTREE_PATH: '/workspace/improve-dashboard'
       }
     })
   })
@@ -128,7 +128,7 @@ describe('registerWorktreeHandlers', () => {
     }
     const fsProvider = {
       readFile: vi.fn(async (filePath: string) => {
-        if (filePath.endsWith('/.nightshift/issue-command')) {
+        if (filePath.endsWith('/.kolux/issue-command')) {
           return { content: 'local command\n', isBinary: false }
         }
         throw new Error('shared read failed')
@@ -172,7 +172,7 @@ describe('registerWorktreeHandlers', () => {
     await expect(
       handlers['hooks:writeIssueCommand'](null, {
         repoId: 'repo-ssh',
-        content: 'nightshift issue command'
+        content: 'kolux issue command'
       })
     ).rejects.toThrow('ssh read failed')
 
@@ -195,7 +195,7 @@ describe('registerWorktreeHandlers', () => {
     }
     const fsProvider = {
       readFile: vi.fn(async (filePath: string) => {
-        if (filePath.endsWith('/.nightshift/issue-command')) {
+        if (filePath.endsWith('/.kolux/issue-command')) {
           return { content: 'remote command\n', isBinary: false }
         }
         throw Object.assign(new Error('missing'), { code: 'ENOENT' })
@@ -215,7 +215,7 @@ describe('registerWorktreeHandlers', () => {
       effectiveContent: 'remote command',
       source: 'local'
     })
-    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/.nightshift/issue-command')
+    expect(fsProvider.readFile).toHaveBeenCalledWith('/remote/repo/.kolux/issue-command')
   })
 
   it('creates remote .gitignore only when it is missing while writing SSH issue commands', async () => {
@@ -240,18 +240,14 @@ describe('registerWorktreeHandlers', () => {
 
     await handlers['hooks:writeIssueCommand'](null, {
       repoId: 'repo-ssh',
-      content: 'nightshift issue command'
+      content: 'kolux issue command'
     })
 
-    expect(fsProvider.writeFile).toHaveBeenNthCalledWith(
-      1,
-      '/remote/repo/.gitignore',
-      '.nightshift\n'
-    )
+    expect(fsProvider.writeFile).toHaveBeenNthCalledWith(1, '/remote/repo/.gitignore', '.kolux\n')
     expect(fsProvider.writeFile).toHaveBeenNthCalledWith(
       2,
-      '/remote/repo/.nightshift/issue-command',
-      'nightshift issue command\n'
+      '/remote/repo/.kolux/issue-command',
+      'kolux issue command\n'
     )
   })
 
@@ -271,7 +267,7 @@ describe('registerWorktreeHandlers', () => {
     await expect(
       handlers['hooks:writeIssueCommand'](null, {
         repoId: 'repo-ssh',
-        content: 'nightshift issue command'
+        content: 'kolux issue command'
       })
     ).rejects.toThrow('Remote filesystem unavailable')
   })

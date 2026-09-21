@@ -16,9 +16,9 @@ const REPO_ID = 'repo-1'
 const WORKTREE_PATH = '/repo/worktree'
 const WORKTREE_ID = `${REPO_ID}::${WORKTREE_PATH}`
 const FORK_TARGET: GitPushTarget = {
-  remoteName: 'pr-contributor-nightshift',
+  remoteName: 'pr-contributor-kolux',
   branchName: 'contributor/fix',
-  remoteUrl: 'git@github.com:contributor/nightshift.git'
+  remoteUrl: 'git@github.com:contributor/kolux.git'
 }
 const REPO = { id: REPO_ID, path: '/repo', connectionId: null } as unknown as Repo
 

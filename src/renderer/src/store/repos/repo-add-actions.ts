@@ -34,10 +34,7 @@ let pendingAddRepoDialogResolve: ((repo: Repo | null) => void) | null = null
 export function createRepoAddActions(
   set: Parameters<StateCreator<AppState>>[0],
   get: Parameters<StateCreator<AppState>>[1]
-): Pick<
-  RepoSlice,
-  'addRepoPath' | 'addRepo' | 'addNonGitFolder' | 'resolveAddRepoDialogRequest'
-> {
+): Pick<RepoSlice, 'addRepoPath' | 'addRepo' | 'addNonGitFolder' | 'resolveAddRepoDialogRequest'> {
   return {
     addRepoPath: async (path, kind = 'git', options) => {
       try {
@@ -106,7 +103,7 @@ export function createRepoAddActions(
         const repoIdentity = getRepoHostIdentity(repo)
         const alreadyAdded = get().repos.some((r) => getRepoHostIdentity(r) === repoIdentity)
         if (alreadyAdded) {
-          get().clearNightshiftHookTrustForRepo(repo.id)
+          get().clearKoluxHookTrustForRepo(repo.id)
         }
         set((s) => {
           if (s.repos.some((r) => getRepoHostIdentity(r) === repoIdentity)) {
@@ -138,7 +135,7 @@ export function createRepoAddActions(
             }
           )
           // Why: the cross-profile advisory applies to SSH-added projects too; the presence lookup already keys on connection/host.
-          await warnIfProjectKnownInAnotherProfile(repo, get().activeNightshiftProfileId)
+          await warnIfProjectKnownInAnotherProfile(repo, get().activeKoluxProfileId)
           // Why after the set(): the project row carrying the runtime override only exists once the repo is in state.
           warnIfProjectCrossesWslFilesystemBoundary(repo, get().projects, get().settings)
           // Why: a project opened for the first time has no sessions yet, so ask how many agents to open before anything else.

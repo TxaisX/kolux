@@ -7,7 +7,7 @@ import { readSpoolFile } from './agent-hook-spool'
 let dir: string
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), 'nightshift-spool-read-'))
+  dir = mkdtempSync(join(tmpdir(), 'kolux-spool-read-'))
 })
 
 afterEach(() => {

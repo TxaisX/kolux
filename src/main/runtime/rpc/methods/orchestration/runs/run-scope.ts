@@ -3,9 +3,9 @@ import { orchestrationSkillRecoveryData } from '../../../../../../shared/orchest
 import { OrchestrationError } from '../../../../orchestration/orchestration-error'
 import type { RunRow } from '../../../../orchestration/types'
 import type {
-  NightshiftRuntimeService,
+  KoluxRuntimeService,
   OrchestrationCompatibilityCallerAuthority
-} from '../../../../nightshift-runtime'
+} from '../../../../kolux-runtime'
 
 export type RunScopeParams = {
   runId?: string
@@ -19,7 +19,7 @@ export type RunScopeParams = {
 
 // Why: declared handles select mutable Run bindings, so attested callers may only name themselves.
 export function assertCallerHandleMatchesEvidence(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   callerTerminalHandle: string,
   callerEvidence?: OrchestrationCompatibilityEvidence
 ): void {
@@ -52,15 +52,15 @@ export type OrchestrationCallerParams = {
 
 /** Resolve the caller's runtime pane and, by default, attest its declared handle. */
 export function resolveOrchestrationCaller(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: OrchestrationCallerParams & { requireStablePane: true }
 ): string
 export function resolveOrchestrationCaller(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: OrchestrationCallerParams
 ): string | null
 export function resolveOrchestrationCaller(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   params: OrchestrationCallerParams
 ): string | null {
   if (!params.evidenceAssertedByCaller) {
@@ -73,14 +73,14 @@ export function resolveOrchestrationCaller(
   if (!paneKey && params.requireStablePane) {
     throw new OrchestrationError(
       'stable_pane_required',
-      'The coordinator terminal has no stable pane identity. Run this command inside a live Nightshift terminal.'
+      'The coordinator terminal has no stable pane identity. Run this command inside a live Kolux terminal.'
     )
   }
   return paneKey ?? null
 }
 
 // Why: task and gate mutations must share one Run-binding rule.
-export function resolveRunScope(runtime: NightshiftRuntimeService, params: RunScopeParams): RunRow {
+export function resolveRunScope(runtime: KoluxRuntimeService, params: RunScopeParams): RunRow {
   const db = runtime.getOrchestrationDb()
   const explicit = params.runId ? db.getRun(params.runId) : undefined
   if (params.runId && (!explicit || explicit.legacy === 1)) {

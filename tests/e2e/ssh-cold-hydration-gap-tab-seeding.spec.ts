@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePanePtyId, waitForActiveTerminalManager } from './helpers/terminal'
 import { createRemoteTerminalTab } from './helpers/docker-ssh-relay-terminal-tabs'
@@ -12,12 +12,12 @@ import {
   type DockerSshRelayTarget
 } from './helpers/docker-ssh-relay-target'
 import { connectDockerSshRelayTarget } from './helpers/docker-ssh-relay-connection'
-import { createRestartSession } from './helpers/nightshift-restart'
+import { createRestartSession } from './helpers/kolux-restart'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 const BASELINE_TAB_COUNT = 3
 /** Where the relay persists a target's workspace snapshot inside the fixture container. */
-const REMOTE_SNAPSHOT_DIR = '/root/.nightshift/sessions'
+const REMOTE_SNAPSHOT_DIR = '/root/.kolux/sessions'
 
 test.use({ seedTestRepo: false })
 
@@ -180,7 +180,7 @@ async function flushSessionBeforeQuit(page: Page, targetId: string): Promise<voi
 }
 
 test.describe('SSH cold hydration gap tab seeding', () => {
-  test.skip(!RUN_DOCKER_SSH, 'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run Docker-backed SSH tests.')
   test.skip(process.platform === 'win32', 'Docker SSH restore uses POSIX SSH tooling.')
 
   // Why this shape: worktree activation seeds an initial terminal from a predicate that knows

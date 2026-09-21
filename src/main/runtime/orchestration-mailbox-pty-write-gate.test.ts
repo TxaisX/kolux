@@ -51,7 +51,7 @@ describe('orchestration mailbox PTY write gate', () => {
 
   it('withholds pointer and Enter bytes from a bound lease the write gate refuses', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-pty-write-gate-refused-')
+    const db = createDatabase('kolux-mailbox-pty-write-gate-refused-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Refused structured session')
     insertDirectRunMessage(db, run.id, 'Do not write into native chat')
@@ -76,7 +76,7 @@ describe('orchestration mailbox PTY write gate', () => {
 
   it('keeps an explicitly unbound legacy terminal on the pointer write path', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-pty-write-gate-unbound-')
+    const db = createDatabase('kolux-mailbox-pty-write-gate-unbound-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Legacy terminal mailbox')
     insertDirectRunMessage(db, run.id, 'Legacy pointer')
@@ -96,7 +96,7 @@ describe('orchestration mailbox PTY write gate', () => {
 
   it('keeps mailbox pointer delivery working for an admitted bound TUI lease', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-pty-write-gate-admitted-')
+    const db = createDatabase('kolux-mailbox-pty-write-gate-admitted-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Admitted structured session')
     insertDirectRunMessage(db, run.id, 'Admitted pointer')

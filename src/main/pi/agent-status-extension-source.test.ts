@@ -13,13 +13,13 @@ describe('getPiAgentStatusExtensionSource', () => {
     })
     const worker = createHarness({
       kind: 'prime-agent',
-      env: { NIGHTSHIFT_PI_STATUS_OWNED: String(SELF_PID - 1) }
+      env: { KOLUX_PI_STATUS_OWNED: String(SELF_PID - 1) }
     })
 
     expect(frontend.handlers).toEqual({})
-    expect(frontend.processEnv.NIGHTSHIFT_PI_STATUS_OWNED).toBeUndefined()
+    expect(frontend.processEnv.KOLUX_PI_STATUS_OWNED).toBeUndefined()
     expect(worker.handlers.agent_start).toBeTypeOf('function')
-    expect(worker.processEnv.NIGHTSHIFT_PRIME_AGENT_STATUS_OWNED).toBe(String(SELF_PID))
+    expect(worker.processEnv.KOLUX_PRIME_AGENT_STATUS_OWNED).toBe(String(SELF_PID))
   })
 
   it('posts persisted Prime session metadata to the Prime route', async () => {
@@ -282,9 +282,7 @@ describe('getPiAgentStatusExtensionSource', () => {
       expect(child.handlers).toEqual({})
       expect(grandchild.handlers).toEqual({})
       const ownerKey =
-        kind === 'prime-agent'
-          ? 'NIGHTSHIFT_PRIME_AGENT_STATUS_OWNED'
-          : 'NIGHTSHIFT_PI_STATUS_OWNED'
+        kind === 'prime-agent' ? 'KOLUX_PRIME_AGENT_STATUS_OWNED' : 'KOLUX_PI_STATUS_OWNED'
       expect(child.processEnv[ownerKey]).toBe(String(SELF_PID))
       expect(grandchild.processEnv[ownerKey]).toBe(String(SELF_PID))
       expect(child.fetchMock).not.toHaveBeenCalled()
@@ -301,7 +299,7 @@ describe('getPiAgentStatusExtensionSource', () => {
     expect(harness.fetchMock).toHaveBeenCalledTimes(1)
     const body = JSON.parse(String(harness.fetchMock.mock.calls[0]?.[1]?.body))
     expect(body.payload).toEqual({ hook_event_name: 'agent_end' })
-    expect(harness.processEnv.NIGHTSHIFT_PI_STATUS_OWNED).toBe(String(SELF_PID))
+    expect(harness.processEnv.KOLUX_PI_STATUS_OWNED).toBe(String(SELF_PID))
   })
 
   it('keeps reporting after the lead re-runs the extension factory on reload', async () => {
@@ -309,7 +307,7 @@ describe('getPiAgentStatusExtensionSource', () => {
     // instead of mistaking its own marker for a nested child.
     const harness = createHarness({ kind: 'pi', pid: SELF_PID })
 
-    expect(harness.processEnv.NIGHTSHIFT_PI_STATUS_OWNED).toBe(String(SELF_PID))
+    expect(harness.processEnv.KOLUX_PI_STATUS_OWNED).toBe(String(SELF_PID))
 
     harness.reload()
     await harness.callHook('agent_end')
@@ -364,7 +362,7 @@ describe('getPiAgentStatusExtensionSource', () => {
       '-H',
       'Content-Type: application/json',
       '-H',
-      'X-Nightshift-Agent-Hook-Token: token-1',
+      'X-Kolux-Agent-Hook-Token: token-1',
       '--data-binary',
       '@-',
       'http://127.0.0.1:4321/hook/omp'
@@ -389,15 +387,15 @@ describe('getPiAgentStatusExtensionSource', () => {
   })
 
   it('uses current Windows coordinates when a same-token guest endpoint is stale', async () => {
-    const endpointPath = '/home/u/.nightshift-wsl/agent-hooks/instance-test/endpoint.env'
+    const endpointPath = '/home/u/.kolux-wsl/agent-hooks/instance-test/endpoint.env'
     const harness = createHarness({
       kind: 'prime-agent',
-      env: { WSL_DISTRO_NAME: 'Ubuntu', NIGHTSHIFT_AGENT_HOOK_ENDPOINT: endpointPath },
+      env: { WSL_DISTRO_NAME: 'Ubuntu', KOLUX_AGENT_HOOK_ENDPOINT: endpointPath },
       existsSync: (path) => path === '/mnt/c/Windows/System32/curl.exe',
       statSync: () => ({ mtimeMs: 1, size: 80, ino: 1 }),
       readFileSync: (path) => {
         if (path === endpointPath) {
-          return 'NIGHTSHIFT_AGENT_HOOK_PORT=9999\nNIGHTSHIFT_AGENT_HOOK_TOKEN=token-1\n'
+          return 'KOLUX_AGENT_HOOK_PORT=9999\nKOLUX_AGENT_HOOK_TOKEN=token-1\n'
         }
         throw Object.assign(new Error(`ENOENT: ${path}`), { code: 'ENOENT' })
       },
@@ -475,7 +473,7 @@ describe('getPiAgentStatusExtensionSource', () => {
     await Promise.resolve()
 
     // Why: Pi awaits extension handlers, so loopback status delivery cannot
-    // remain on the agent's critical path when Nightshift is stalled or restarting.
+    // remain on the agent's critical path when Kolux is stalled or restarting.
     expect(harness.fetchMock).toHaveBeenCalledTimes(1)
     await vi.waitFor(() => expect(handlerReturned).toBe(true))
 

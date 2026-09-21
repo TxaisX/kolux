@@ -38,20 +38,20 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       pushTarget: {
         remoteName: 'origin',
         branchName: 'feature/pr-link',
-        remoteUrl: 'https://github.com/acme/nightshift.git'
+        remoteUrl: 'https://github.com/acme/kolux.git'
       }
     })
     store.setState({
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -61,15 +61,15 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
 
     expect(store.getState().worktreesByRepo.repo1[0]?.linkedPR).toBeNull()
     expect(mockApi.worktrees.resolvePrBase).not.toHaveBeenCalled()
     expect(mockApi.worktrees.updateMeta).not.toHaveBeenCalled()
-    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/nightshift', 'feature/pr-link', {
+    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/kolux', 'feature/pr-link', {
       force: true,
       repoId: 'repo1',
       worktreeId: wt.id,
@@ -95,7 +95,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       linkedPR: null,
       suppressedGitHubPR: 42
@@ -104,8 +104,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -115,8 +115,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
 
@@ -130,7 +130,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       linkedPR: null,
       suppressedGitHubPR: 42,
@@ -143,8 +143,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -154,8 +154,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/43',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/43',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 43
     })
     for (let i = 0; i < 6; i++) {
@@ -181,7 +181,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       linkedPR: null,
       pushTarget: {
@@ -193,8 +193,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -204,8 +204,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
     store.setState({
@@ -228,7 +228,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       pushTarget: {
         remoteName: 'origin',
@@ -239,8 +239,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -250,13 +250,13 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
 
     expect(store.getState().worktreesByRepo.repo1[0]?.linkedPR).toBeNull()
-    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/nightshift', 'feature/pr-link', {
+    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/kolux', 'feature/pr-link', {
       force: true,
       repoId: 'repo1',
       worktreeId: wt.id,
@@ -288,7 +288,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       pushTarget: {
         remoteName: 'origin',
@@ -299,8 +299,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -310,8 +310,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
     expect(mockApi.worktrees.updateMeta).not.toHaveBeenCalled()
@@ -348,15 +348,15 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link'
     })
     store.setState({
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -366,8 +366,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/42',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/42',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 42
     })
 
@@ -402,20 +402,20 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link',
       pushTarget: {
         remoteName: 'origin',
         branchName: 'feature/pr-link',
-        remoteUrl: 'https://github.com/acme/nightshift.git'
+        remoteUrl: 'https://github.com/acme/kolux.git'
       }
     })
     store.setState({
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -425,8 +425,8 @@ describe('worktree remote runtime mutations', () => {
     } as unknown as Partial<AppState>)
 
     store.getState().observeTerminalGitHubPullRequestLink(wt.id, {
-      url: 'https://github.com/acme/nightshift/pull/1',
-      slug: { owner: 'acme', repo: 'nightshift' },
+      url: 'https://github.com/acme/kolux/pull/1',
+      slug: { owner: 'acme', repo: 'kolux' },
       number: 1
     })
 
@@ -447,7 +447,7 @@ describe('worktree remote runtime mutations', () => {
     const wt = makeWorktree({
       id: 'repo1::/path/wt1',
       repoId: 'repo1',
-      path: '/worktrees/nightshift',
+      path: '/worktrees/kolux',
       branch: 'refs/heads/feature/pr-link'
     })
     mockApi.worktrees.resolvePrBase.mockResolvedValueOnce({ baseBranch: 'main' })
@@ -455,8 +455,8 @@ describe('worktree remote runtime mutations', () => {
       repos: [
         {
           id: 'repo1',
-          path: '/repos/nightshift',
-          displayName: 'nightshift',
+          path: '/repos/kolux',
+          displayName: 'kolux',
           badgeColor: '#000',
           addedAt: 0
         }
@@ -472,7 +472,7 @@ describe('worktree remote runtime mutations', () => {
     })
 
     expect(store.getState().worktreesByRepo.repo1[0]?.linkedPR).toBeNull()
-    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/nightshift', 'feature/pr-link', {
+    expect(fetchPRForBranch).toHaveBeenCalledWith('/repos/kolux', 'feature/pr-link', {
       force: true,
       repoId: 'repo1',
       worktreeId: wt.id,

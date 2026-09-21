@@ -267,8 +267,8 @@ describe('triggerStartupNotificationRegistration', () => {
 
     expect(store.updateUI).toHaveBeenCalledWith({ notificationPermissionRequested: true })
     expect(notificationCtorMock).toHaveBeenCalledWith({
-      title: 'Nightshift is ready to notify you',
-      body: 'Allow notifications so Nightshift can alert you when agents finish or terminals need attention.'
+      title: 'Kolux is ready to notify you',
+      body: 'Allow notifications so Kolux can alert you when agents finish or terminals need attention.'
     })
     expect(notificationShowMock).toHaveBeenCalledTimes(1)
   })

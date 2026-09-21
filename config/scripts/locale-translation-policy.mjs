@@ -62,7 +62,7 @@ export const NEVER_TRANSLATE_VALUES = new Set([
   'OpenClaw',
   'OpenCode',
   'OpenCode Go',
-  'Nightshift',
+  'Kolux',
   'Pi',
   'PostHog',
   'Qwen Code',
@@ -157,7 +157,7 @@ export const NEVER_TRANSLATE_VALUES = new Set([
   '/home/user',
   '/home/user/project',
   '/path/to/destination',
-  '.nightshift/issue-command',
+  '.kolux/issue-command',
   'PLAN.md',
   'feat/mobile-page',
   'sk-...',
@@ -209,11 +209,11 @@ export const NEVER_TRANSLATE_VALUES = new Set([
   '/signup',
   'npm run dev',
   'nbformat',
-  'nightshift.yaml',
+  'kolux.yaml',
   'upstream',
   'LIN-329',
   'GH #1799',
-  'nightshift · zsh'
+  'kolux · zsh'
 ])
 
 export const NATIVE_PICKER_LABELS = {
@@ -264,7 +264,7 @@ export function shouldPreserveEnglishValue(enValue, key = '') {
   if (!enValue?.trim()) {
     return true
   }
-  if (/^https?:\/\//.test(enValue) || enValue.startsWith('nightshift://')) {
+  if (/^https?:\/\//.test(enValue) || enValue.startsWith('kolux://')) {
     return true
   }
   if (isEnglishOnlyKey(key)) {
@@ -360,7 +360,7 @@ function applyCjkLatinTermSpacing(localeValue, locale) {
     )
   if (locale === 'ko') {
     // Korean particles attach to the noun (no space) only when the particle is a complete token at a
-    // boundary — re-glue "Nightshift 에"/"PR 을"/"에서는" but keep "Jira 이슈"/"Nightshift 로고"/"agent 에뮬레이터".
+    // boundary — re-glue "Kolux 에"/"PR 을"/"에서는" but keep "Jira 이슈"/"Kolux 로고"/"agent 에뮬레이터".
     result = result.replace(
       new RegExp(
         `(${CJK_LATIN_SPACED_TERM_PATTERN}) ((?:에서|에게|에는|에선|으로|로서|로써|부터|까지|보다|처럼|은|는|이|가|을|를|와|과|의|에|로|도|만)+)(?=$|[\\s.,!?…·:;)\\]}"'」』])`,
@@ -437,19 +437,19 @@ export function repairTranslatedValue({ key, enValue, localeValue, locale }) {
     result = applyCjkLatinTermSpacing(result, locale)
   }
 
-  if (enValue.includes('nightshift://')) {
-    result = result.replace(/虎鲸:\/\//g, 'nightshift://')
+  if (enValue.includes('kolux://')) {
+    result = result.replace(/虎鲸:\/\//g, 'kolux://')
   }
 
-  if (enValue === 'Nightshift' || enValue.startsWith('Nightshift ')) {
+  if (enValue === 'Kolux' || enValue.startsWith('Kolux ')) {
     result = result
-      .replaceAll('虎鲸', 'Nightshift')
-      .replaceAll('逆戟鲸', 'Nightshift')
-      .replaceAll('シャチ', 'Nightshift')
+      .replaceAll('虎鲸', 'Kolux')
+      .replaceAll('逆戟鲸', 'Kolux')
+      .replaceAll('シャチ', 'Kolux')
   }
 
-  if (enValue.includes('nightshift://')) {
-    result = result.replace(/シャチ:\/\//g, 'nightshift://')
+  if (enValue.includes('kolux://')) {
+    result = result.replace(/シャチ:\/\//g, 'kolux://')
   }
 
   return result
@@ -512,22 +512,22 @@ export function repairCatalog(enCatalog, localeCatalog, locale) {
 
   if (localeCatalog.menu) {
     if (locale === 'zh') {
-      if (localeCatalog.menu.exploreNightshift !== '探索 Nightshift') {
-        localeCatalog.menu.exploreNightshift = '探索 Nightshift'
+      if (localeCatalog.menu.exploreKolux !== '探索 Kolux') {
+        localeCatalog.menu.exploreKolux = '探索 Kolux'
         repaired += 1
       }
-      if (localeCatalog.menu.gettingStarted !== 'Nightshift 入门') {
-        localeCatalog.menu.gettingStarted = 'Nightshift 入门'
+      if (localeCatalog.menu.gettingStarted !== 'Kolux 入门') {
+        localeCatalog.menu.gettingStarted = 'Kolux 入门'
         repaired += 1
       }
     }
     if (locale === 'ko') {
-      if (localeCatalog.menu.exploreNightshift !== 'Nightshift 둘러보기') {
-        localeCatalog.menu.exploreNightshift = 'Nightshift 둘러보기'
+      if (localeCatalog.menu.exploreKolux !== 'Kolux 둘러보기') {
+        localeCatalog.menu.exploreKolux = 'Kolux 둘러보기'
         repaired += 1
       }
-      if (localeCatalog.menu.gettingStarted !== 'Nightshift 시작하기') {
-        localeCatalog.menu.gettingStarted = 'Nightshift 시작하기'
+      if (localeCatalog.menu.gettingStarted !== 'Kolux 시작하기') {
+        localeCatalog.menu.gettingStarted = 'Kolux 시작하기'
         repaired += 1
       }
     }

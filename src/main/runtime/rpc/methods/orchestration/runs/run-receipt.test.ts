@@ -6,7 +6,7 @@ import type { RunRow } from '../../../../orchestration/types'
 const RUN_ROW: RunRow = {
   id: 'run_1',
   objective: 'Coordinate reviews',
-  home_database: '/tmp/nightshift/orchestration.db',
+  home_database: '/tmp/kolux/orchestration.db',
   coordinator_handle: 'term_coord',
   coordinator_pane_key: 'tab_coord:11111111-1111-4111-8111-111111111111',
   consumer_generation: 3,

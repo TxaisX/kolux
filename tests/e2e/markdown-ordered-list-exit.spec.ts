@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
   assertLoadedThirdEmptyOrderedListItem,
@@ -60,14 +60,14 @@ const rows: MatrixRow[] = [
 ]
 
 test.describe('Markdown ordered-list exit regression', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
   for (const row of rows) {
-    test(row.name, async ({ nightshiftPage }, testInfo) => {
-      const context = await getActiveWorktreeContext(nightshiftPage)
+    test(row.name, async ({ koluxPage }, testInfo) => {
+      const context = await getActiveWorktreeContext(koluxPage)
       let filePath: string | null = null
 
       try {
@@ -77,13 +77,13 @@ test.describe('Markdown ordered-list exit regression', () => {
           testInfo.workerIndex,
           row.initialMarkdown
         )
-        const activeFile = await openMarkdownFixture(nightshiftPage, context, filePath)
+        const activeFile = await openMarkdownFixture(koluxPage, context, filePath)
         const draftKey = activeFile.filePath
 
-        await row.run(nightshiftPage, row.sentinel)
+        await row.run(koluxPage, row.sentinel)
 
-        await expectSentinelParagraphOutsideOrderedList(nightshiftPage, row.sentinel)
-        await expectSerializedDraftOutsideOrderedList(nightshiftPage, draftKey, row.sentinel)
+        await expectSentinelParagraphOutsideOrderedList(koluxPage, row.sentinel)
+        await expectSerializedDraftOutsideOrderedList(koluxPage, draftKey, row.sentinel)
       } finally {
         await cleanupMarkdownFixture(filePath)
       }

@@ -61,7 +61,7 @@ type SortableTabProps = {
   canSplitTerminal?: boolean
 }
 
-export const CLOSE_ALL_CONTEXT_MENUS_EVENT = 'nightshift-close-all-context-menus'
+export const CLOSE_ALL_CONTEXT_MENUS_EVENT = 'kolux-close-all-context-menus'
 
 export default function SortableTab({
   tab,

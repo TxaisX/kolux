@@ -14,9 +14,9 @@ vi.mock('fs', () => ({
 
 vi.mock('./relay-protocol', () => ({
   RELAY_VERSION: '0.1.0',
-  RELAY_REMOTE_DIR: '.nightshift-remote',
+  RELAY_REMOTE_DIR: '.kolux-remote',
   parseUnameToRelayPlatform: vi.fn().mockReturnValue('linux-x64'),
-  RELAY_SENTINEL: 'NIGHTSHIFT-RELAY v0.1.0 READY\n',
+  RELAY_SENTINEL: 'KOLUX-RELAY v0.1.0 READY\n',
   RELAY_SENTINEL_TIMEOUT_MS: 10_000
 }))
 
@@ -44,7 +44,7 @@ vi.mock('./ssh-relay-install-marker', async (importOriginal) => ({
 
 vi.mock('./ssh-relay-versioned-install', () => ({
   readLocalFullVersion: vi.fn().mockReturnValue('0.1.0+testhash'),
-  computeRemoteRelayDir: (home: string, v: string) => `${home}/.nightshift-remote/relay-${v}`,
+  computeRemoteRelayDir: (home: string, v: string) => `${home}/.kolux-remote/relay-${v}`,
   isRelayAlreadyInstalled: vi.fn().mockResolvedValue(false),
   finalizeInstall: vi.fn().mockResolvedValue(undefined),
   abandonInstall: vi.fn().mockResolvedValue(undefined),
@@ -286,7 +286,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
       makeExecResponses({
         npmInstall: {
           reject:
-            'Command "export PATH=/usr/bin:$PATH && cd /home/u/.nightshift-remote/relay && npm install node-pty@1.1.0 2>&1" failed (exit 1): npm ERR! network ETIMEDOUT'
+            'Command "export PATH=/usr/bin:$PATH && cd /home/u/.kolux-remote/relay && npm install node-pty@1.1.0 2>&1" failed (exit 1): npm ERR! network ETIMEDOUT'
         },
         probe: 'ok',
         toolchainProbe: 'PKG apt-get'
@@ -401,7 +401,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     const conn = makeMockConnection(sftpCapture)
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       { reject: 'Command "node -e ..." timed out after 30s' } // health probe never answered
     ])
@@ -514,7 +514,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
       makeExecResponses({
         npmInstall: 'ok',
         probe: 'ok',
-        probeStdoutOverride: 'Welcome to Acme Corp\nLast login: ...\nNIGHTSHIFT-NPTY-PROBE-OK\n'
+        probeStdoutOverride: 'Welcome to Acme Corp\nLast login: ...\nKOLUX-NPTY-PROBE-OK\n'
       })
     )
 
@@ -549,11 +549,11 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(resolveRemoteNodePath).mockResolvedValueOnce('C:/Program Files/nodejs/node.exe')
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Windows AMD64',
+      '__KOLUX_REMOTE_PLATFORM__ Windows AMD64',
       'C:\\Users\\u',
       '', // bounded stale-stage recovery
-      '__NIGHTSHIFT_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0',
-      '__NIGHTSHIFT_UPLOAD_STAGE_PROMOTION__.sftp-namespace-00000000000000000000000000000000:PROMOTED',
+      '__KOLUX_UPLOAD_STAGE_SLOT__.sftp-namespace-00000000000000000000000000000000:slot-0',
+      '__KOLUX_UPLOAD_STAGE_PROMOTION__.sftp-namespace-00000000000000000000000000000000:PROMOTED',
       '', // npm install native deps
       'MISSING\n', // native process exit normalized by PowerShell command
       '', // npm rebuild native deps
@@ -645,16 +645,16 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
-      'NIGHTSHIFT-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // first probe before lock
-      'NIGHTSHIFT-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // re-probe after lock
+      'KOLUX-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // first probe before lock
+      'KOLUX-NATIVE-DEPS-MISSING:@parcel/watcher\nMISSING', // re-probe after lock
       '', // SFTP-namespace install-owner marker (repair)
       '', // npm install native deps
       '', // chmod prebuilds
-      'NIGHTSHIFT-NPTY-PROBE-OK\n',
+      'KOLUX-NPTY-PROBE-OK\n',
       '', // rm probe stderr
-      'NIGHTSHIFT-NPTY-CLOEXEC:patched\n', // pty-master cloexec patch on the loadable node-pty
+      'KOLUX-NPTY-CLOEXEC:patched\n', // pty-master cloexec patch on the loadable node-pty
       'DEAD',
       'READY'
     ])
@@ -700,7 +700,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       BOTH_NATIVE_DEPS_MISSING_PROBE, // health probe: require() names both deps
       BOTH_NATIVE_DEPS_MISSING_PROBE, // re-probe after lock
@@ -724,7 +724,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     const conn = makeMockConnection(sftpCapture)
     vi.mocked(execCommand)
-      .mockResolvedValueOnce('__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64')
+      .mockResolvedValueOnce('__KOLUX_REMOTE_PLATFORM__ Linux x86_64')
       .mockResolvedValueOnce('/home/u')
       .mockResolvedValueOnce(BOTH_NATIVE_DEPS_MISSING_PROBE)
       .mockResolvedValueOnce(BOTH_NATIVE_DEPS_MISSING_PROBE)
@@ -866,7 +866,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(tryAcquireRelayRepairLock).mockResolvedValueOnce(lockResult)
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
       BOTH_NATIVE_DEPS_MISSING_PROBE,
       'DEAD',
@@ -888,9 +888,9 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
-      'NIGHTSHIFT-NATIVE-DEPS-OK',
+      'KOLUX-NATIVE-DEPS-OK',
       '', // launch namespace marker
       'DEAD',
       'READY'
@@ -901,7 +901,7 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     const healthProbe = vi
       .mocked(execCommand)
       .mock.calls.map(([, c]) => c)
-      .find((c) => c.includes('NIGHTSHIFT-NATIVE-DEPS-OK'))
+      .find((c) => c.includes('KOLUX-NATIVE-DEPS-OK'))
     expect(healthProbe).toContain('require("node-pty")')
     expect(healthProbe).toContain('loadNativeModule')
     expect(healthProbe).toContain('require("@parcel/watcher")')
@@ -912,9 +912,9 @@ describe('installNativeDeps (via deployAndLaunchRelay)', () => {
     vi.mocked(isRelayAlreadyInstalled).mockResolvedValue(true)
     const conn = makeMockConnection(sftpCapture)
     feed([
-      '__NIGHTSHIFT_REMOTE_PLATFORM__ Linux x86_64',
+      '__KOLUX_REMOTE_PLATFORM__ Linux x86_64',
       '/home/u',
-      'NIGHTSHIFT-NATIVE-DEPS-OK',
+      'KOLUX-NATIVE-DEPS-OK',
       '', // launch namespace marker
       'DEAD',
       'READY'

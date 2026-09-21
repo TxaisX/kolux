@@ -81,7 +81,7 @@ describe('registerRuntimeEnvironmentHandlers', () => {
   }
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(tmpdir(), 'nightshift-runtime-env-ipc-'))
+    userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-env-ipc-'))
     activeRuntimeEnvironmentId = null
     store = {
       getSettings: () => ({ activeRuntimeEnvironmentId }),

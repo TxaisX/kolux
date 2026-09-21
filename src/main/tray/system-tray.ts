@@ -1,6 +1,6 @@
 import { Menu, Tray, nativeImage, nativeTheme, type NativeImage } from 'electron'
-import menuBarIconPath from '../../../resources/tray/nightshift-menu-barTemplate.png?asset&asarUnpack'
-import menuBarIconRetinaPath from '../../../resources/tray/nightshift-menu-barTemplate@2x.png?asset&asarUnpack'
+import menuBarIconPath from '../../../resources/tray/kolux-menu-barTemplate.png?asset&asarUnpack'
+import menuBarIconRetinaPath from '../../../resources/tray/kolux-menu-barTemplate@2x.png?asset&asarUnpack'
 import { deferAppKitSceneMutation } from '../appkit-scene-mutation'
 import { createAppIconImage } from '../app-icon'
 import { translateMain } from '../i18n/main-i18n'
@@ -20,7 +20,7 @@ export type SystemTrayOptions = {
   onOpenSettings: () => void
   /** Run the existing user-initiated update check. */
   onCheckForUpdates: () => void
-  /** Quit Nightshift for real (caller must set the quitting latch before quitting). */
+  /** Quit Kolux for real (caller must set the quitting latch before quitting). */
   onQuit: () => void
 }
 
@@ -47,9 +47,9 @@ let nativeThemeUpdatedListener: (() => void) | null = null
 // tooltip carries the worktree/branch label so hovering tells them apart.
 function baseTooltip(): string {
   if (!devIndicator) {
-    return 'Nightshift'
+    return 'Kolux'
   }
-  return devIndicator.label ? `Nightshift DEV (${devIndicator.label})` : 'Nightshift DEV'
+  return devIndicator.label ? `Kolux DEV (${devIndicator.label})` : 'Kolux DEV'
 }
 
 // Why: on Windows the notification area expects a 16px icon; the app icon PNG
@@ -88,7 +88,7 @@ function applyTrayImage(): void {
         tray.setToolTip(
           devIndicator
             ? `${baseTooltip()} - ${translateMain('tray.activityWaitingSuffix', 'activity waiting')}`
-            : translateMain('tray.activityWaiting', 'Nightshift - activity waiting')
+            : translateMain('tray.activityWaiting', 'Kolux - activity waiting')
         )
         return
       } catch (error) {
@@ -261,7 +261,7 @@ export function createSystemTray(opts: SystemTrayOptions): Tray | null {
         ] as Electron.MenuItemConstructorOptions[])
       : []),
     {
-      label: translateMain('tray.openNightshift', 'Open Nightshift'),
+      label: translateMain('tray.openKolux', 'Open Kolux'),
       click: safeMenuAction(() => opts.onOpen())
     },
     { type: 'separator' },

@@ -2,7 +2,7 @@ import { openSidebarWorkspaceComposer } from './helpers/sidebar-project-dialog'
 import { mkdirSync, writeFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import type { ElectronApplication, Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { removeWorktreeViaStore } from './helpers/dead-terminal'
 import {
   ensureTerminalVisible,
@@ -18,13 +18,12 @@ import {
 } from './helpers/terminal'
 import { compareTerminalScreenshots } from './terminal-screenshot-diff'
 
-const RUN_REPRO = process.env.NIGHTSHIFT_E2E_CODEX_SKILL_PREVIEW_REPRO === '1'
-const EXPECT_NO_ARTIFACTS =
-  process.env.NIGHTSHIFT_E2E_EXPECT_NO_CODEX_SKILL_PREVIEW_ARTIFACTS === '1'
+const RUN_REPRO = process.env.KOLUX_E2E_CODEX_SKILL_PREVIEW_REPRO === '1'
+const EXPECT_NO_ARTIFACTS = process.env.KOLUX_E2E_EXPECT_NO_CODEX_SKILL_PREVIEW_ARTIFACTS === '1'
 const FULLSCREEN_MIN_SIZE = { width: 1200, height: 760 }
 const MIN_REPRO_DIFF_RATIO = 0.006
 const MAX_CLEAN_DIFF_RATIO = 0.0015
-const NIGHTSHIFT_REPO_PATH = realpathSync(process.cwd())
+const KOLUX_REPO_PATH = realpathSync(process.cwd())
 const ARTIFACT_DIR = path.join(process.cwd(), '.tmp', 'codex-skill-preview-real-flow')
 
 const CODEX_READY_RE = /Ask Codex|OpenAI Codex/i
@@ -32,8 +31,8 @@ const CODEX_TRUST_PROMPT_RE =
   /Do you trust|trust this folder|Trust this|Working with untrusted contents/i
 const CODEX_UPDATE_PROMPT_RE = /update available|install update|Skip for now|Skip until next/i
 const CODEX_SKILL_PREVIEW_RE =
-  /Press enter to insert|esc to close|electron|nightshift-cli|nightshift-emulator/i
-const SETUP_PANE_ACTIVITY_RE = /install-nightshift-skills|pnpm|Progress:|Packages:|Lockfile/i
+  /Press enter to insert|esc to close|electron|kolux-cli|kolux-emulator/i
+const SETUP_PANE_ACTIVITY_RE = /install-kolux-skills|pnpm|Progress:|Packages:|Lockfile/i
 const CLEAN_SKILL_ROW_RE = /^  [A-Za-z][A-Za-z0-9 .-]{1,32}\s+\[Skill\]\s/
 const CODEX_READY_SETTLE_MS = 3_500
 const SETUP_CHANGES_AFTER_PREVIEW = 3
@@ -108,7 +107,7 @@ async function setStableFullscreenWindow(
   await page.waitForTimeout(1_200)
 }
 
-async function addRealNightshiftRepo(page: Page, repoPath: string): Promise<string> {
+async function addRealKoluxRepo(page: Page, repoPath: string): Promise<string> {
   return page.evaluate(async (repoPath) => {
     await window.api.repos.add({ path: repoPath }).catch((error: unknown) => {
       if (!/already|exists|duplicate/i.test(String(error))) {
@@ -124,7 +123,7 @@ async function addRealNightshiftRepo(page: Page, repoPath: string): Promise<stri
     await state.fetchRepos()
     const repo = store.getState().repos.find((candidate) => candidate.path === repoPath)
     if (!repo) {
-      throw new Error(`Real Nightshift repo did not load: ${repoPath}`)
+      throw new Error(`Real Kolux repo did not load: ${repoPath}`)
     }
 
     await store.getState().updateRepo(repo.id, {
@@ -142,7 +141,7 @@ async function addRealNightshiftRepo(page: Page, repoPath: string): Promise<stri
       (candidate) => candidate.path === repoPath
     )
     if (!worktree) {
-      throw new Error(`Real Nightshift worktree did not load: ${repoPath}`)
+      throw new Error(`Real Kolux worktree did not load: ${repoPath}`)
     }
 
     nextState.updateSettings({
@@ -201,7 +200,7 @@ async function createWorkspaceThroughComposer(page: Page, workspaceName: string)
         }, workspaceName),
       {
         timeout: 60_000,
-        message: `Workspace ${workspaceName} did not appear in the real Nightshift repo`
+        message: `Workspace ${workspaceName} did not appear in the real Kolux repo`
       }
     )
     .not.toBeNull()
@@ -222,7 +221,7 @@ async function createWorkspaceThroughComposer(page: Page, workspaceName: string)
   await expect
     .poll(() => getActiveWorktreeId(page), {
       timeout: 30_000,
-      message: 'Created real Nightshift workspace did not become active'
+      message: 'Created real Kolux workspace did not become active'
     })
     .toBe(createdId)
   expect(createdId).not.toBe(previousWorktreeId)
@@ -568,83 +567,83 @@ test.describe('Codex skill preview terminal artifact repro @headful', () => {
 
   const createdWorktreeIds: string[] = []
 
-  test.skip(!RUN_REPRO, 'Set NIGHTSHIFT_E2E_CODEX_SKILL_PREVIEW_REPRO=1 to run this repro.')
+  test.skip(!RUN_REPRO, 'Set KOLUX_E2E_CODEX_SKILL_PREVIEW_REPRO=1 to run this repro.')
 
-  test.afterEach(async ({ nightshiftPage }) => {
+  test.afterEach(async ({ koluxPage }) => {
     for (const id of createdWorktreeIds) {
-      await removeWorktreeViaStore(nightshiftPage, id)
+      await removeWorktreeViaStore(koluxPage, id)
     }
     createdWorktreeIds.length = 0
   })
 
-  test('captures the real Nightshift repo setup-split Codex skill preview overpaint before any click', async ({
+  test('captures the real Kolux repo setup-split Codex skill preview overpaint before any click', async ({
     electronApp,
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.setTimeout(240_000)
     test.skip(process.platform === 'win32', 'Codex skill preview repro uses POSIX shell commands')
 
-    await setStableFullscreenWindow(electronApp, nightshiftPage)
-    await waitForSessionReady(nightshiftPage)
-    await addRealNightshiftRepo(nightshiftPage, NIGHTSHIFT_REPO_PATH)
-    await waitForActiveWorktree(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
+    await setStableFullscreenWindow(electronApp, koluxPage)
+    await waitForSessionReady(koluxPage)
+    await addRealKoluxRepo(koluxPage, KOLUX_REPO_PATH)
+    await waitForActiveWorktree(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
 
     const workspaceName = `codex-skill-preview-${Date.now()}`
-    const worktreeId = await createWorkspaceThroughComposer(nightshiftPage, workspaceName)
+    const worktreeId = await createWorkspaceThroughComposer(koluxPage, workspaceName)
     createdWorktreeIds.push(worktreeId)
 
-    await ensureTerminalVisible(nightshiftPage, 30_000)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await waitForPaneCount(nightshiftPage, 2, 60_000)
-    await waitForPaneIdentitySnapshot(nightshiftPage, 2)
-    const webglActive = await forceTerminalWebgl(nightshiftPage)
+    await ensureTerminalVisible(koluxPage, 30_000)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await waitForPaneCount(koluxPage, 2, 60_000)
+    await waitForPaneIdentitySnapshot(koluxPage, 2)
+    const webglActive = await forceTerminalWebgl(koluxPage)
     test.skip(!webglActive, 'Codex skill preview artifact repro needs WebGL rendering')
 
-    const leftPane = await focusLeftTerminalPane(nightshiftPage)
-    const rightPane = await getRightTerminalPane(nightshiftPage)
+    const leftPane = await focusLeftTerminalPane(koluxPage)
+    const rightPane = await getRightTerminalPane(koluxPage)
     expect(leftPane.hasWebgl).toBe(true)
     expect(rightPane.hasWebgl).toBe(true)
     expect(leftPane.proposed).toEqual({ cols: leftPane.cols, rows: leftPane.rows })
     expect(leftPane.appliedPtySize).toEqual({ cols: leftPane.cols, rows: leftPane.rows })
     expect(leftPane.isUserScrolling).toBe(false)
     await waitForPaneContent(
-      nightshiftPage,
+      koluxPage,
       rightPane.tabId,
       rightPane.ptyId,
       SETUP_PANE_ACTIVITY_RE,
       60_000
     )
-    await dismissCodexPromptsIfPresent(nightshiftPage, leftPane)
-    await waitForPaneContent(nightshiftPage, leftPane.tabId, leftPane.ptyId, CODEX_READY_RE, 60_000)
+    await dismissCodexPromptsIfPresent(koluxPage, leftPane)
+    await waitForPaneContent(koluxPage, leftPane.tabId, leftPane.ptyId, CODEX_READY_RE, 60_000)
     await waitForPaneContent(
-      nightshiftPage,
+      koluxPage,
       leftPane.tabId,
       leftPane.ptyId,
       /usage limit reset|YOLO mode|permissions/i,
       15_000
     )
-    await nightshiftPage.waitForTimeout(CODEX_READY_SETTLE_MS)
-    await waitForPaneVisibleContentChanges(nightshiftPage, rightPane, 1, 8_000)
+    await koluxPage.waitForTimeout(CODEX_READY_SETTLE_MS)
+    await waitForPaneVisibleContentChanges(koluxPage, rightPane, 1, 8_000)
 
-    await focusLeftTerminalPane(nightshiftPage)
-    await nightshiftPage.keyboard.type('test $e', { delay: 70 })
+    await focusLeftTerminalPane(koluxPage)
+    await koluxPage.keyboard.type('test $e', { delay: 70 })
     await waitForPaneContent(
-      nightshiftPage,
+      koluxPage,
       leftPane.tabId,
       leftPane.ptyId,
       CODEX_SKILL_PREVIEW_RE,
       30_000
     )
     const setupChangesAfterPreview = await waitForPaneVisibleContentChanges(
-      nightshiftPage,
+      koluxPage,
       rightPane,
       SETUP_CHANGES_AFTER_PREVIEW,
       12_000
     )
 
-    const evidence = await captureClickEvidence(nightshiftPage, leftPane, testInfo)
+    const evidence = await captureClickEvidence(koluxPage, leftPane, testInfo)
     const overpaintedSkillRows = getOverpaintedSkillRows(evidence.beforeContent)
     const detectedArtifact =
       overpaintedSkillRows.length >= 2 || evidence.diffRatio >= MIN_REPRO_DIFF_RATIO
@@ -657,7 +656,7 @@ test.describe('Codex skill preview terminal artifact repro @headful', () => {
         leftPane: evidence.leftPane,
         setupChangesAfterPreview,
         overpaintedSkillRows,
-        repoPath: NIGHTSHIFT_REPO_PATH
+        repoPath: KOLUX_REPO_PATH
       })
     })
 

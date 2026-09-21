@@ -28,16 +28,16 @@ function cloneProcessEnv(): Record<string, string> {
 }
 
 // Why: with system-default real-home routing, the headless Codex commit run
-// must use the user's own ~/.codex. If Nightshift itself was launched from a nested
-// Nightshift terminal it can inherit a Nightshift-owned CODEX_HOME override; strip only
-// that (CODEX_HOME matching the private NIGHTSHIFT_CODEX_HOME marker), preserving a
+// must use the user's own ~/.codex. If Kolux itself was launched from a nested
+// Kolux terminal it can inherit a Kolux-owned CODEX_HOME override; strip only
+// that (CODEX_HOME matching the private KOLUX_CODEX_HOME marker), preserving a
 // user-set CODEX_HOME.
-function cloneProcessEnvWithoutNightshiftCodexHomeOverride(): Record<string, string> {
+function cloneProcessEnvWithoutKoluxCodexHomeOverride(): Record<string, string> {
   const env = cloneProcessEnv()
-  if (env.NIGHTSHIFT_CODEX_HOME && env.CODEX_HOME === env.NIGHTSHIFT_CODEX_HOME) {
+  if (env.KOLUX_CODEX_HOME && env.CODEX_HOME === env.KOLUX_CODEX_HOME) {
     delete env.CODEX_HOME
   }
-  delete env.NIGHTSHIFT_CODEX_HOME
+  delete env.KOLUX_CODEX_HOME
   return env
 }
 
@@ -61,17 +61,17 @@ function prepareShellConfigDirEnv(agentId: string): { ok: true; env?: NodeJS.Pro
   if (!configVar) {
     return null
   }
-  // Why: each kind owns a distinct NIGHTSHIFT_*_SOURCE_* shadow so a headless commit
+  // Why: each kind owns a distinct KOLUX_*_SOURCE_* shadow so a headless commit
   // run from inside a legacy OMP overlay restores the OMP source dir, never
   // the Pi one (and vice versa). PI_CODING_AGENT_DIR is the binary-facing var
   // both kinds consume — see src/main/pi/titlebar-extension-service.ts.
   const sourceVar =
     agentId === 'opencode'
-      ? 'NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR'
+      ? 'KOLUX_OPENCODE_SOURCE_CONFIG_DIR'
       : agentId === 'pi'
-        ? 'NIGHTSHIFT_PI_SOURCE_AGENT_DIR'
+        ? 'KOLUX_PI_SOURCE_AGENT_DIR'
         : agentId === 'omp'
-          ? 'NIGHTSHIFT_OMP_SOURCE_AGENT_DIR'
+          ? 'KOLUX_OMP_SOURCE_AGENT_DIR'
           : undefined
 
   const value = readInheritedOrShellEnvVar(configVar, sourceVar)
@@ -79,9 +79,9 @@ function prepareShellConfigDirEnv(agentId: string): { ok: true; env?: NodeJS.Pro
     return { ok: true }
   }
 
-  // Why: GUI-launched Nightshift may not inherit shell startup exports, but these
-  // vars point the headless CLI at the user's auth/config root. Nested Nightshift
-  // launches inherit PTY overlays, so prefer NIGHTSHIFT_*_SOURCE_* when present.
+  // Why: GUI-launched Kolux may not inherit shell startup exports, but these
+  // vars point the headless CLI at the user's auth/config root. Nested Kolux
+  // launches inherit PTY overlays, so prefer KOLUX_*_SOURCE_* when present.
   return { ok: true, env: { ...cloneProcessEnv(), [configVar]: value } }
 }
 
@@ -106,16 +106,16 @@ export async function prepareLocalCommitMessageAgentEnv(
       const wslCodexHome = codexHomePath ? parseWslUncPath(codexHomePath) : null
       if (target?.runtime === 'wsl') {
         const codexHomeForTarget = wslCodexHome?.linuxPath ?? null
-        // Why: the fallback must still strip Nightshift-owned overrides, or a
+        // Why: the fallback must still strip Kolux-owned overrides, or a
         // system-default WSL run inherits the managed CODEX_HOME.
         return {
           ok: true,
           env: codexHomeForTarget
             ? {
-                ...cloneProcessEnvWithoutNightshiftCodexHomeOverride(),
+                ...cloneProcessEnvWithoutKoluxCodexHomeOverride(),
                 CODEX_HOME: codexHomeForTarget
               }
-            : cloneProcessEnvWithoutNightshiftCodexHomeOverride()
+            : cloneProcessEnvWithoutKoluxCodexHomeOverride()
         }
       }
       if (codexHomePath && wslCodexHome) {
@@ -127,7 +127,7 @@ export async function prepareLocalCommitMessageAgentEnv(
         ok: true,
         env: codexHomePath
           ? { ...cloneProcessEnv(), CODEX_HOME: codexHomePath }
-          : cloneProcessEnvWithoutNightshiftCodexHomeOverride()
+          : cloneProcessEnvWithoutKoluxCodexHomeOverride()
       }
     }
 

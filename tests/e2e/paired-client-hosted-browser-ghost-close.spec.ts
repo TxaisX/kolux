@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import { readHostBrowserPageIds } from './helpers/host-session-tabs'
 import { cleanupE2EDaemons, closeElectronAppForE2E } from './helpers/electron-process-shutdown'
@@ -35,30 +35,30 @@ const RECONNECT_GRACE_OVERSHOOT_MS = 20_000
  * nothing on the host answers for.
  */
 function forgetPersistedClientHostedPages(userDataDir: string): number {
-  return listNightshiftDataFiles(userDataDir).reduce(
+  return listKoluxDataFiles(userDataDir).reduce(
     (total, dataFile) => total + forgetPersistedClientHostedPagesIn(dataFile),
     0
   )
 }
 
 /**
- * Every nightshift-data.json under a user-data dir.
+ * Every kolux-data.json under a user-data dir.
  *
- * The live one is `profiles/<id>/nightshift-data.json`; the root file is only the harness's onboarding
+ * The live one is `profiles/<id>/kolux-data.json`; the root file is only the harness's onboarding
  * seed, which the first boot migrates from. Reading the seed alone made the strip a no-op that
  * looked exactly like a runtime that had persisted nothing.
  */
-function listNightshiftDataFiles(userDataDir: string): string[] {
+function listKoluxDataFiles(userDataDir: string): string[] {
   const profilesDir = path.join(userDataDir, 'profiles')
   let profileFiles: string[] = []
   try {
     profileFiles = readdirSync(profilesDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => path.join(profilesDir, entry.name, 'nightshift-data.json'))
+      .map((entry) => path.join(profilesDir, entry.name, 'kolux-data.json'))
   } catch {
     // No profile directory yet; only the harness seed exists.
   }
-  return [path.join(userDataDir, 'nightshift-data.json'), ...profileFiles].filter((file) => {
+  return [path.join(userDataDir, 'kolux-data.json'), ...profileFiles].filter((file) => {
     try {
       readFileSync(file, 'utf8')
       return true
@@ -103,7 +103,7 @@ function forgetPersistedClientHostedPagesIn(dataFile: string): number {
  * What this pins is the CLIENT-side fallback: the X exits through session.tabs.close, which throws
  * tab_not_found before browserTabClose is ever reached, so the runtime's own ghost retirement never
  * runs here. Do not simplify the client fallback on the strength of this spec -- the server-side
- * retirement is covered by nightshift-runtime-browser-ghost-session-row-close.test.ts, and neither
+ * retirement is covered by kolux-runtime-browser-ghost-session-row-close.test.ts, and neither
  * covers the other.
  */
 test('closes a restored client-hosted row whose runtime has no record of it', async ({

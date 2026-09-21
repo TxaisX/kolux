@@ -225,7 +225,7 @@ function closeSharedRuntimeFileWatch(key: string, shared: SharedRuntimeFileWatch
 }
 
 function isWebRuntimeFileWatchSharedSocket(): boolean {
-  return Boolean((globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__)
+  return Boolean((globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__)
 }
 
 function unwatchSharedRuntimeFileWatch(shared: SharedRuntimeFileWatch): void {

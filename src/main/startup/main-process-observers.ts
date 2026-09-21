@@ -119,7 +119,7 @@ export function initializeMainProcessObservers(): void {
   // composition root — independent of product telemetry — and must
   // initialize before any IPC handler / runtime span is created so the
   // tracer's active sink is populated at the moment the first span fires.
-  // Honors DO_NOT_TRACK / NIGHTSHIFT_TELEMETRY_DISABLED / NIGHTSHIFT_DIAGNOSTICS_DISABLED
+  // Honors DO_NOT_TRACK / KOLUX_TELEMETRY_DISABLED / KOLUX_DIAGNOSTICS_DISABLED
   // / CI internally; those gates do not need to be re-checked here.
   initObservability()
   recordDurableCrashBreadcrumb('main_process_lifecycle_started', {

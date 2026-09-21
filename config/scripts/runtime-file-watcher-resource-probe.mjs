@@ -31,12 +31,12 @@ async function main() {
   let pool
   let result
   try {
-    bundleDir = await mkdtemp(join(tmpdir(), 'nightshift-runtime-watcher-resource-'))
+    bundleDir = await mkdtemp(join(tmpdir(), 'kolux-runtime-watcher-resource-'))
     const { RuntimeWatcherProcessPool, WatcherProcessFailure, reserveWatcherChild } =
       await loadProbe(bundleDir)
     const roots = []
     for (let index = 0; index < 5; index++) {
-      const createdRoot = await mkdtemp(join(tmpdir(), `nightshift-watcher-resource-${index}-`))
+      const createdRoot = await mkdtemp(join(tmpdir(), `kolux-watcher-resource-${index}-`))
       createdRoots.push(createdRoot)
       roots.push(await realpath(createdRoot))
     }

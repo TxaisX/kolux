@@ -7,7 +7,7 @@ function makeRepo(overrides: Partial<Repo> = {}): Repo {
   return {
     id: 'repo-1',
     path: '/repo',
-    displayName: 'nightshift',
+    displayName: 'kolux',
     badgeColor: '#999999',
     addedAt: 1,
     ...overrides
@@ -19,13 +19,13 @@ describe('repo header create state', () => {
     expect(
       getRepoHeaderCreateState({
         repo: makeRepo(),
-        label: 'nightshift',
+        label: 'kolux',
         sshStatus: null
       })
     ).toEqual({
       disabled: false,
-      tooltip: 'Create new worktree for nightshift',
-      ariaLabel: 'Create new worktree for nightshift',
+      tooltip: 'Create new worktree for kolux',
+      ariaLabel: 'Create new worktree for kolux',
       requiresSshReconnect: false
     })
   })

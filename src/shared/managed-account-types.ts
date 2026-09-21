@@ -27,7 +27,7 @@ export type CodexManagedAccountSummary = {
 }
 
 /** Live, read-only identity of the user's real ~/.codex used by the
- *  system-default (activeAccountId:null) Codex account. Nightshift reads this to
+ *  system-default (activeAccountId:null) Codex account. Kolux reads this to
  *  display and attribute the system default; it never writes ~/.codex. */
 export type CodexSystemDefaultIdentity = {
   /** True when ~/.codex/auth.json exists (signed in via a token file). */

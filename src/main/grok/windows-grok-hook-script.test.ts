@@ -62,12 +62,12 @@ describe('buildWindowsGrokHookScript', () => {
   it('re-checks the envelope after appending the trailing-backslash sentinel', () => {
     const lines = buildWindowsGrokHookScript().split('\r\n')
     const appended = lines.indexOf(
-      'if "%NIGHTSHIFT_GROK_HOME:~-1%"=="\\" set "NIGHTSHIFT_GROK_HOME=%NIGHTSHIFT_GROK_HOME%."'
+      'if "%KOLUX_GROK_HOME:~-1%"=="\\" set "KOLUX_GROK_HOME=%KOLUX_GROK_HOME%."'
     )
 
     expect(appended).toBeGreaterThan(-1)
     expect(lines[appended + 1]).toBe(
-      'if not "%NIGHTSHIFT_GROK_HOME:~4096,1%"=="" set "NIGHTSHIFT_GROK_HOME="'
+      'if not "%KOLUX_GROK_HOME:~4096,1%"=="" set "KOLUX_GROK_HOME="'
     )
   })
 })
@@ -83,7 +83,7 @@ describe.skipIf(process.platform !== 'win32')('buildWindowsGrokHookScript (win32
   })
 
   function writeScript(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-grok-hook-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-grok-hook-'))
     dirs.push(dir)
     const scriptPath = join(dir, 'grok-hook.cmd')
     writeFileSync(scriptPath, buildWindowsGrokHookScript())
@@ -127,14 +127,12 @@ describe.skipIf(process.platform !== 'win32')('buildWindowsGrokHookScript (win32
         const address = server.address()
         const env: NodeJS.ProcessEnv = {
           ...process.env,
-          NIGHTSHIFT_AGENT_HOOK_PORT: String(
-            typeof address === 'object' && address ? address.port : 0
-          ),
-          NIGHTSHIFT_AGENT_HOOK_TOKEN: 'test-token',
-          NIGHTSHIFT_PANE_KEY: PANE_KEY,
-          NIGHTSHIFT_WORKTREE_ID: WORKTREE_ID
+          KOLUX_AGENT_HOOK_PORT: String(typeof address === 'object' && address ? address.port : 0),
+          KOLUX_AGENT_HOOK_TOKEN: 'test-token',
+          KOLUX_PANE_KEY: PANE_KEY,
+          KOLUX_WORKTREE_ID: WORKTREE_ID
         }
-        delete env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
+        delete env.KOLUX_AGENT_HOOK_ENDPOINT
         delete env.GROK_HOME
         if (grokHome !== undefined) {
           env.GROK_HOME = grokHome

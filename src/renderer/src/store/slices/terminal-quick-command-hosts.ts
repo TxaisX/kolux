@@ -44,7 +44,7 @@ function readCommands(result: unknown): TerminalQuickCommand[] {
   const raw = (result as { terminalQuickCommands?: unknown } | null)?.terminalQuickCommands
   const commands = parseNormalizedTerminalQuickCommands(raw)
   if (!commands) {
-    throw new Error('Remote Nightshift returned invalid quick commands.')
+    throw new Error('Remote Kolux returned invalid quick commands.')
   }
   return commands
 }

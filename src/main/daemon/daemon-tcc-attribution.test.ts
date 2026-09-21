@@ -41,10 +41,10 @@ describe('parseDaemonPidFile spawnerExecPath', () => {
       serializeDaemonPidFile({
         pid: 123,
         startedAtMs: 1,
-        spawnerExecPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift'
+        spawnerExecPath: '/Applications/Kolux.app/Contents/MacOS/Kolux'
       })
     )
-    expect(parsed?.spawnerExecPath).toBe('/Applications/Nightshift.app/Contents/MacOS/Nightshift')
+    expect(parsed?.spawnerExecPath).toBe('/Applications/Kolux.app/Contents/MacOS/Kolux')
   })
 
   it('reads legacy records without a spawner exec path as null', () => {
@@ -97,7 +97,7 @@ describe('macOS daemon TCC attribution health', () => {
       return
     }
     await withDaemonLikeProcess(async (writePidFile) => {
-      writePidFile({ spawnerExecPath: join(dir, 'deleted-bundle', 'Nightshift') })
+      writePidFile({ spawnerExecPath: join(dir, 'deleted-bundle', 'Kolux') })
       expect(await getMacDaemonTccAttributionHealth(dir, socketPath, tokenPath)).toBe('severed')
     })
   })
@@ -107,7 +107,7 @@ describe('macOS daemon TCC attribution health', () => {
       return
     }
     await withDaemonLikeProcess(async (writePidFile) => {
-      const spawnerPath = join(dir, 'Nightshift')
+      const spawnerPath = join(dir, 'Kolux')
       writeFileSync(spawnerPath, '', 'utf8')
       writePidFile({ spawnerExecPath: spawnerPath, appVersion: '1.2.3' })
       expect(await getMacDaemonTccAttributionHealth(dir, socketPath, tokenPath)).toBe('intact')
@@ -119,7 +119,7 @@ describe('macOS daemon TCC attribution health', () => {
       return
     }
     await withDaemonLikeProcess(async (writePidFile) => {
-      const spawnerPath = join(dir, 'Nightshift')
+      const spawnerPath = join(dir, 'Kolux')
       writeFileSync(spawnerPath, '', 'utf8')
       writePidFile({ spawnerExecPath: spawnerPath, appVersion: '1.2.2' })
       expect(await getMacDaemonTccAttributionHealth(dir, socketPath, tokenPath)).toBe('intact')

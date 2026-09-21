@@ -6,10 +6,10 @@ import { expandWindowsEnvironmentVariables } from '../../shared/windows-environm
 import { resolveSafePtyDefaultCwd } from './pty-default-cwd'
 
 const PANE_IDENTITY_ENV_KEYS = [
-  'NIGHTSHIFT_PANE_KEY',
-  'NIGHTSHIFT_TAB_ID',
-  'NIGHTSHIFT_WORKTREE_ID',
-  'NIGHTSHIFT_AGENT_LAUNCH_TOKEN'
+  'KOLUX_PANE_KEY',
+  'KOLUX_TAB_ID',
+  'KOLUX_WORKTREE_ID',
+  'KOLUX_AGENT_LAUNCH_TOKEN'
 ] as const
 
 export function getDefaultCwd(): string {
@@ -31,7 +31,7 @@ export function promoteAgentTeamsShimPath(
   env: Record<string, string>,
   requestedPath: string | undefined
 ): void {
-  if (!env.NIGHTSHIFT_AGENT_TEAMS_TEAM_ID || !requestedPath) {
+  if (!env.KOLUX_AGENT_TEAMS_TEAM_ID || !requestedPath) {
     return
   }
   const normalizedRequestedPath =

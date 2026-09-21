@@ -24,27 +24,24 @@ const AUTOMATION_STATE_FLAGS = [
 export const AUTOMATION_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['automations', 'list'],
-    summary: 'List scheduled Nightshift automations',
-    usage: 'nightshift automations list [--json]',
+    summary: 'List scheduled Kolux automations',
+    usage: 'kolux automations list [--json]',
     allowedFlags: [...GLOBAL_FLAGS],
-    examples: ['nightshift automations list', 'nightshift automations list --json']
+    examples: ['kolux automations list', 'kolux automations list --json']
   },
   {
     path: ['automations', 'show'],
-    summary: 'Show one Nightshift automation',
-    usage: 'nightshift automations show <id> [--json]',
+    summary: 'Show one Kolux automation',
+    usage: 'kolux automations show <id> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id'],
     positionalArgs: ['id'],
-    examples: [
-      'nightshift automations show 2f9e...',
-      'nightshift automations show --id 2f9e... --json'
-    ]
+    examples: ['kolux automations show 2f9e...', 'kolux automations show --id 2f9e... --json']
   },
   {
     path: ['automations', 'create'],
-    summary: 'Create a scheduled Nightshift automation',
+    summary: 'Create a scheduled Kolux automation',
     usage:
-      'nightshift automations create --name <name> --trigger <preset|cron|rrule> --prompt <text> --provider <agent> [--precheck <command>] [--repo <selector>|--workspace <selector>|--project <id> [--host <id>]|--project-host-setup <id>] [--json]',
+      'kolux automations create --name <name> --trigger <preset|cron|rrule> --prompt <text> --provider <agent> [--precheck <command>] [--repo <selector>|--workspace <selector>|--project <id> [--host <id>]|--project-host-setup <id>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'name',
@@ -57,25 +54,24 @@ export const AUTOMATION_COMMAND_SPECS: CommandSpec[] = [
     ],
     notes: [
       'Trigger accepts hourly, daily, weekdays, weekly, a 5-field cron expression, or an RRULE string.',
-      'When --repo is omitted, the CLI uses the enclosing Nightshift worktree when one can be resolved from cwd.',
+      'When --repo is omitted, the CLI uses the enclosing Kolux worktree when one can be resolved from cwd.',
       'Use --project with --host, or --project-host-setup, to run on a specific project host setup.',
-      '--host runtime:<environment-id> targets that paired Nightshift server; use the id from `nightshift environment list`, not the environment name.',
+      '--host runtime:<environment-id> targets that paired Kolux server; use the id from `kolux environment list`, not the environment name.',
       'Use --source-context with a JSON TaskSourceContext when task/provider data should come from a specific host/account; pass null on edit to clear it.',
       'Use --workspace to run in an existing worktree; otherwise the automation creates a new worktree per run.',
       'Use --precheck to run a bounded command before scheduled runs; exit code 0 continues, anything else records a skipped run.',
       'Use --reuse-session only with existing-workspace automations to submit later runs to the previous live automation session when it is still available. Use --fresh-session to disable reuse.'
     ],
     examples: [
-      'nightshift automations create --name "Daily review" --trigger daily --prompt "Review open changes" --provider codex',
-      'nightshift automations create --name "Weekday triage" --trigger "0 9 * * 1-5" --prompt "Triage issues" --provider claude --repo my-repo',
-      'nightshift automations create --name "PR review" --trigger hourly --precheck "gh pr list --json number -q .[0].number" --prompt "Review requested PRs" --provider codex'
+      'kolux automations create --name "Daily review" --trigger daily --prompt "Review open changes" --provider codex',
+      'kolux automations create --name "Weekday triage" --trigger "0 9 * * 1-5" --prompt "Triage issues" --provider claude --repo my-repo',
+      'kolux automations create --name "PR review" --trigger hourly --precheck "gh pr list --json number -q .[0].number" --prompt "Review requested PRs" --provider codex'
     ]
   },
   {
     path: ['automations', 'edit'],
-    summary: 'Edit a Nightshift automation',
-    usage:
-      'nightshift automations edit <id> [--name <name>] [--trigger <preset|cron|rrule>] [--json]',
+    summary: 'Edit a Kolux automation',
+    usage: 'kolux automations edit <id> [--name <name>] [--trigger <preset|cron|rrule>] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'id',
@@ -89,38 +85,32 @@ export const AUTOMATION_COMMAND_SPECS: CommandSpec[] = [
     ],
     positionalArgs: ['id'],
     examples: [
-      'nightshift automations edit 2f9e... --disabled',
-      'nightshift automations edit --id 2f9e... --trigger "30 * * * *" --json'
+      'kolux automations edit 2f9e... --disabled',
+      'kolux automations edit --id 2f9e... --trigger "30 * * * *" --json'
     ]
   },
   {
     path: ['automations', 'remove'],
     destructive: true,
-    summary: 'Remove a Nightshift automation and its run history',
-    usage: 'nightshift automations remove <id> [--json]',
+    summary: 'Remove a Kolux automation and its run history',
+    usage: 'kolux automations remove <id> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id'],
     positionalArgs: ['id'],
-    examples: [
-      'nightshift automations remove 2f9e...',
-      'nightshift automations remove --id 2f9e... --json'
-    ]
+    examples: ['kolux automations remove 2f9e...', 'kolux automations remove --id 2f9e... --json']
   },
   {
     path: ['automations', 'run'],
-    summary: 'Run a Nightshift automation now',
-    usage: 'nightshift automations run <id> [--json]',
+    summary: 'Run a Kolux automation now',
+    usage: 'kolux automations run <id> [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id'],
     positionalArgs: ['id'],
-    examples: [
-      'nightshift automations run 2f9e...',
-      'nightshift automations run --id 2f9e... --json'
-    ]
+    examples: ['kolux automations run 2f9e...', 'kolux automations run --id 2f9e... --json']
   },
   {
     path: ['automations', 'runs'],
     summary: 'List automation run history',
-    usage: 'nightshift automations runs [--id <automation-id>] [--json]',
+    usage: 'kolux automations runs [--id <automation-id>] [--json]',
     allowedFlags: [...GLOBAL_FLAGS, 'id'],
-    examples: ['nightshift automations runs', 'nightshift automations runs --id 2f9e... --json']
+    examples: ['kolux automations runs', 'kolux automations runs --id 2f9e... --json']
   }
 ]

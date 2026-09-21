@@ -9,10 +9,10 @@ export {
 } from './client/lookup/tracked-upstream-cache'
 export { addPRReviewComment, addPRReviewCommentReply } from './client/create/add-pr-review-comment'
 export {
-  __resetNightshiftStarCheckForTests,
-  checkNightshiftStarred,
-  starNightshift
-} from './client/fetch/nightshift-star'
+  __resetKoluxStarCheckForTests,
+  checkKoluxStarred,
+  starKolux
+} from './client/fetch/kolux-star'
 export { countWorkItems } from './client/list/count-work-items'
 export { createGitHubPullRequest } from './client/create/create-github-pull-request'
 export { getAuthenticatedViewer } from './client/fetch/authenticated-viewer'

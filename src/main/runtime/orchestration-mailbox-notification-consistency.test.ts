@@ -51,7 +51,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('never points direct Run A mail after the pane is rebound to Run B', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-consistency-')
+    const db = createDatabase('kolux-mailbox-consistency-')
     const first = createRuntime(db)
     const runA = createBoundRun(db, 'Run A')
     const staleDirectMessage = insertDirectRunMessage(db, runA.id, 'Run A completion')
@@ -77,7 +77,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not point unbound direct mail that a later Run binding would hide', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-unbound-bind-race-')
+    const db = createDatabase('kolux-mailbox-unbound-bind-race-')
     const harness = createRuntime(db)
     const runA = createBoundRun(db, 'Unbound Run A')
     const message = insertDirectRunMessage(db, runA.id, 'Run A before later binding')
@@ -106,7 +106,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('reconciles the persisted production mismatch after runtime restart', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-upgrade-restart-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-upgrade-restart-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const oldDb = new OrchestrationDb(dbPath)
@@ -150,7 +150,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('pages a large persisted mismatch and coalesces each mailbox wake', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-paged-reconciliation-')
+    const db = createDatabase('kolux-mailbox-paged-reconciliation-')
     const harness = createRuntime(db)
     const runA = createBoundRun(db, 'Backlog Run A')
     const messages = Array.from({ length: 151 }, (_, index) =>
@@ -187,7 +187,7 @@ describe('orchestration notification mailbox consistency', () => {
   })
 
   it('uses composite indexes for direct ownership reconciliation', () => {
-    const db = createDatabase('nightshift-mailbox-routing-indexes-')
+    const db = createDatabase('kolux-mailbox-routing-indexes-')
     const sqlite = sqliteFor(db)
     const plan = (sql: string, ...params: string[]): string =>
       (sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as { detail: string }[])
@@ -238,7 +238,7 @@ describe('orchestration notification mailbox consistency', () => {
   })
 
   it('finds owned mail without scanning an older unowned direct backlog', () => {
-    const db = createDatabase('nightshift-mailbox-owned-routing-plan-')
+    const db = createDatabase('kolux-mailbox-owned-routing-plan-')
     const detachedHandle = 'term_backlogged_detached'
     const ownedRun = db.createRun({
       objective: 'Owned after backlog',
@@ -287,7 +287,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not submit or replay a pointer after ownership changes during Enter delay', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-restart-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-restart-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const firstDb = new OrchestrationDb(dbPath)
@@ -320,7 +320,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not replay Enter for an ambiguous staged pointer after restart', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-staged-restart-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-staged-restart-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const firstDb = new OrchestrationDb(dbPath)
@@ -359,7 +359,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('never resumes a staged Enter after the restored agent starts working', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-working-restart-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-working-restart-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const firstDb = new OrchestrationDb(dbPath)
@@ -387,7 +387,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('fences the pointed mailbox instead of checking a rebound empty Run', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-post-submit-rebind-')
+    const db = createDatabase('kolux-mailbox-post-submit-rebind-')
     const harness = createRuntime(db)
     const runA = createBoundRun(db, 'Run A')
     insertDirectRunMessage(db, runA.id, 'Run A completion')
@@ -433,7 +433,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('releases a staged pointer when its Run moves to another live pane', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-live-rebind-')
+    const db = createDatabase('kolux-mailbox-live-rebind-')
     const harness = createRuntime(db)
     const runA = createBoundRun(db, 'Run A')
     const message = insertDirectRunMessage(db, runA.id, 'Run A completion')
@@ -473,7 +473,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('serializes equivalent panes while newer mail arrives during Enter delay', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-equivalent-pane-flight-')
+    const db = createDatabase('kolux-mailbox-equivalent-pane-flight-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Equivalent pane Run')
     const first = insertDirectRunMessage(db, run.id, 'First status')
@@ -519,7 +519,7 @@ describe('orchestration notification mailbox consistency', () => {
     'submits a staged pointer after %s becomes working without duplicating it',
     async (_provider, workingTitle, idleTitle) => {
       vi.useFakeTimers()
-      const db = createDatabase('nightshift-mailbox-working-before-enter-')
+      const db = createDatabase('kolux-mailbox-working-before-enter-')
       const harness = createRuntime(db)
       const run = createBoundRun(db, 'Working-before-Enter Run')
       const message = insertDirectRunMessage(db, run.id, 'Actionable status')
@@ -545,7 +545,7 @@ describe('orchestration notification mailbox consistency', () => {
     'does not submit a staged pointer after %s enters a permission state',
     async (_provider, permissionTitle) => {
       vi.useFakeTimers()
-      const db = createDatabase('nightshift-mailbox-permission-before-enter-')
+      const db = createDatabase('kolux-mailbox-permission-before-enter-')
       const harness = createRuntime(db)
       const run = createBoundRun(db, 'Permission-before-Enter Run')
       const message = insertDirectRunMessage(db, run.id, 'Actionable status')
@@ -562,7 +562,7 @@ describe('orchestration notification mailbox consistency', () => {
   )
   it('submits a staged pointer once when a live PTY is cold-parked before Enter', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-cold-park-submit-')
+    const db = createDatabase('kolux-mailbox-cold-park-submit-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Cold-park Run')
     const message = insertDirectRunMessage(db, run.id, 'Submit while parked')
@@ -581,7 +581,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('keeps a staged Enter deferred when a parked watcher republishes the leaf beside a decoy', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-cold-park-published-leaf-')
+    const db = createDatabase('kolux-mailbox-cold-park-published-leaf-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Cold-park published leaf Run')
     insertDirectRunMessage(db, run.id, 'Keep Enter deferred')
@@ -661,7 +661,7 @@ describe('orchestration notification mailbox consistency', () => {
     'handles a cold-parked pointer after the agent becomes %s',
     async (state, title, idleTitle) => {
       vi.useFakeTimers()
-      const db = createDatabase('nightshift-mailbox-cold-park-transition-')
+      const db = createDatabase('kolux-mailbox-cold-park-transition-')
       const harness = createRuntime(db)
       const run = createBoundRun(db, 'Cold-park transition Run')
       const message = insertDirectRunMessage(db, run.id, 'Do not submit while unavailable')
@@ -691,7 +691,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('releases staged pointer state when an explicit check owns the batch', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-explicit-check-')
+    const db = createDatabase('kolux-mailbox-explicit-check-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Explicit-check Run')
     insertDirectRunMessage(db, run.id, 'Checked before Enter')
@@ -711,7 +711,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('routes same-Run direct mail through the bound check and acknowledgment path', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-current-run-')
+    const db = createDatabase('kolux-mailbox-current-run-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Current Run')
     const messages = Array.from({ length: 51 }, (_, index) =>
@@ -771,7 +771,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not replay a successfully submitted actionable pointer after restart', async () => {
     vi.useFakeTimers()
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-mailbox-actionable-restart-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-mailbox-actionable-restart-'))
     temporaryDirectories.push(directory)
     const dbPath = join(directory, 'orchestration.db')
     const firstDb = new OrchestrationDb(dbPath)
@@ -803,7 +803,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not replay a visible pointer when the provider rejects Enter', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-provider-refusal-')
+    const db = createDatabase('kolux-mailbox-provider-refusal-')
     const first = createRuntime(db)
     const recordWrite = first.write as unknown as (id: string, payload: string) => unknown
     const write = vi.fn((ptyId: string, data: string) => {
@@ -834,7 +834,7 @@ describe('orchestration notification mailbox consistency', () => {
 
   it('does not point newer Run mail behind an outstanding Delivery', async () => {
     vi.useFakeTimers()
-    const db = createDatabase('nightshift-mailbox-outstanding-')
+    const db = createDatabase('kolux-mailbox-outstanding-')
     const harness = createRuntime(db)
     const run = createBoundRun(db, 'Outstanding Delivery Run')
     const firstMessage = db.insertMessage({

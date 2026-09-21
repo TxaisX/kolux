@@ -7,9 +7,9 @@ import { getDockerSshRelayImage } from './docker-ssh-relay-image'
 
 import type { TestInfo } from '@stablyai/playwright-test'
 
-export const DOCKER_SSH_RELAY_REMOTE_REPO_PATH = '/tmp/nightshift-docker-relay-perf-repo'
-export const DOCKER_SSH_PROXY_JUMP_REMOTE_REPO_PATH = '/tmp/nightshift-docker-proxy-jump-repo'
-export const DOCKER_SSH_SECOND_HUB_REMOTE_REPO_PATH = '/tmp/nightshift-docker-second-hub-repo'
+export const DOCKER_SSH_RELAY_REMOTE_REPO_PATH = '/tmp/kolux-docker-relay-perf-repo'
+export const DOCKER_SSH_PROXY_JUMP_REMOTE_REPO_PATH = '/tmp/kolux-docker-proxy-jump-repo'
+export const DOCKER_SSH_SECOND_HUB_REMOTE_REPO_PATH = '/tmp/kolux-docker-second-hub-repo'
 
 export type DockerSshRelayTarget = {
   containerName: string
@@ -117,10 +117,10 @@ function seedRemoteRepo(target: DockerSshRelayTarget, repoPath: string): void {
       `cd ${shellQuote(repoPath)}`,
       'git init',
       'git config user.email e2e@test.local',
-      'git config user.name "Nightshift Docker SSH E2E"',
-      `printf '%s\\n' ${shellQuote(sentinel)} > .nightshift-e2e-destination-id`,
+      'git config user.name "Kolux Docker SSH E2E"',
+      `printf '%s\\n' ${shellQuote(sentinel)} > .kolux-e2e-destination-id`,
       `printf '%s\\n' ${shellQuote(`remote relay ${sentinel}`)} > README.md`,
-      'git add README.md .nightshift-e2e-destination-id',
+      'git add README.md .kolux-e2e-destination-id',
       'git commit -m initial'
     ].join(' && ')
   )
@@ -128,7 +128,7 @@ function seedRemoteRepo(target: DockerSshRelayTarget, repoPath: string): void {
 
 /**
  * The fixture image ships Debian's `/etc/bash.bashrc` with the xterm title block commented out and
- * an all-comments `/root/.bashrc`, so its shell never emits OSC 0. Nightshift derives a tab title from
+ * an all-comments `/root/.bashrc`, so its shell never emits OSC 0. Kolux derives a tab title from
  * that sequence, so without this every SSH tab keeps its `Terminal N` placeholder no matter how
  * healthy the shell is. Opt in from specs that assert on titles; a real user's shell sets one.
  */
@@ -222,18 +222,18 @@ export function copyFileIntoDockerSshRelayTarget(
 }
 
 export function startDockerSshRelayTarget(testInfo: TestInfo): DockerSshRelayTarget {
-  const host = process.env.NIGHTSHIFT_E2E_SSH_TARGET_HOST?.trim() || '127.0.0.1'
+  const host = process.env.KOLUX_E2E_SSH_TARGET_HOST?.trim() || '127.0.0.1'
   if (host === 'localhost' || host === '::1' || host.startsWith('127.')) {
-    if (process.env.NIGHTSHIFT_E2E_SSH_TARGET_HOST) {
-      throw new Error(`NIGHTSHIFT_E2E_SSH_TARGET_HOST must be non-loopback: ${host}`)
+    if (process.env.KOLUX_E2E_SSH_TARGET_HOST) {
+      throw new Error(`KOLUX_E2E_SSH_TARGET_HOST must be non-loopback: ${host}`)
     }
   }
   const bindHost = host === '127.0.0.1' ? host : '0.0.0.0'
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-ssh-docker-'))
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-ssh-docker-'))
   const identityFile = path.join(tempDir, 'id_ed25519')
   run('ssh-keygen', ['-t', 'ed25519', '-N', '', '-f', identityFile, '-q'])
   const publicKey = readFileSync(`${identityFile}.pub`, 'utf8').trim()
-  const containerName = `nightshift-ssh-e2e-${testInfo.workerIndex}-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const containerName = `kolux-ssh-e2e-${testInfo.workerIndex}-${Date.now()}-${randomUUID().slice(0, 8)}`
   let target: DockerSshRelayTarget | null = null
 
   try {
@@ -256,7 +256,7 @@ export function startDockerSshRelayTarget(testInfo: TestInfo): DockerSshRelayTar
           'printf "%s\\n" "$AUTHORIZED_KEY" > /root/.ssh/authorized_keys',
           'chmod 600 /root/.ssh/authorized_keys',
           'git config --global user.email e2e@test.local',
-          'git config --global user.name "Nightshift Docker SSH E2E"',
+          'git config --global user.name "Kolux Docker SSH E2E"',
           'exec /usr/sbin/sshd -D -e'
         ].join(' && ')
       ],

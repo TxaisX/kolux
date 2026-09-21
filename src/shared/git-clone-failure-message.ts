@@ -3,7 +3,7 @@ import { stripCredentialsFromMessage } from './git-remote-error'
 // Why: clones run under nonInteractiveGitEnv (GIT_TERMINAL_PROMPT=0, empty SSH_ASKPASS,
 // `ssh -o BatchMode=yes`) so a background clone cannot hang on a prompt nobody sees. The cost is
 // that git's own SSH errors read identically to an ordinary permission problem, and on a remote
-// or paired-runtime clone the user is looking at their own working local `git clone` while Nightshift
+// or paired-runtime clone the user is looking at their own working local `git clone` while Kolux
 // fails — with nothing in the message saying the clone ran somewhere else, without their agent.
 const CLONE_HOST_NOTE =
   'The clone runs non-interactively (BatchMode=yes) on the machine that will hold the repository, using the SSH keys and agent on that machine rather than the ones on this computer.'

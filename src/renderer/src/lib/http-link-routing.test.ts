@@ -67,7 +67,7 @@ afterEach(() => {
 })
 
 describe('openHttpLink', () => {
-  it('routes into Nightshift when openLinksInApp is on and a worktree is known', () => {
+  it('routes into Kolux when openLinksInApp is on and a worktree is known', () => {
     storeState.settings = { openLinksInApp: true }
 
     openHttpLink('https://example.com/', { worktreeId: 'wt-1' })
@@ -88,7 +88,7 @@ describe('openHttpLink', () => {
     expect(createBrowserTabMock).not.toHaveBeenCalled()
   })
 
-  it('routes floating workspace links into Nightshift without changing the active repo worktree', () => {
+  it('routes floating workspace links into Kolux without changing the active repo worktree', () => {
     storeState.settings = { openLinksInApp: true }
 
     openHttpLink('https://example.com/', { worktreeId: FLOATING_TERMINAL_WORKTREE_ID })
@@ -111,7 +111,7 @@ describe('openHttpLink', () => {
     expect(createBrowserTabMock).not.toHaveBeenCalled()
   })
 
-  it('forceInApp opens a local link in Nightshift when the setting is off', () => {
+  it('forceInApp opens a local link in Kolux when the setting is off', () => {
     storeState.settings = { openLinksInApp: false }
 
     openHttpLink('https://example.com/', {
@@ -126,7 +126,7 @@ describe('openHttpLink', () => {
     expect(openUrlMock).not.toHaveBeenCalled()
   })
 
-  it('does not force a remote link into the Nightshift browser', () => {
+  it('does not force a remote link into the Kolux browser', () => {
     storeState.settings = { openLinksInApp: false }
 
     openHttpLink('https://example.com/', {
@@ -298,7 +298,7 @@ describe('openHttpLink', () => {
       }
     }
     registerLocalhostLabelMock.mockResolvedValue({
-      url: 'http://wt-local.nightshift.localhost:60016/'
+      url: 'http://wt-local.kolux.localhost:60016/'
     })
 
     openHttpLink('http://localhost:5180/', {
@@ -387,7 +387,7 @@ describe('openHttpLink', () => {
       }
     }
     registerLocalhostLabelMock.mockResolvedValue({
-      url: 'http://analytics.nightshift.localhost:60016/episodes'
+      url: 'http://analytics.kolux.localhost:60016/episodes'
     })
 
     openHttpLink('http://localhost:5180/episodes', { worktreeId: 'wt-analytics' })
@@ -402,7 +402,7 @@ describe('openHttpLink', () => {
         worktreeId: 'wt-analytics'
       })
     )
-    expect(openUrlMock).toHaveBeenCalledWith('http://analytics.nightshift.localhost:60016/episodes')
+    expect(openUrlMock).toHaveBeenCalledWith('http://analytics.kolux.localhost:60016/episodes')
   })
 
   it('resolves display URLs for labeled localhost links without opening them', async () => {
@@ -449,11 +449,11 @@ describe('openHttpLink', () => {
       }
     }
     registerLocalhostLabelMock.mockResolvedValue({
-      url: 'http://snapstudio-main.nightshift.localhost:60016/'
+      url: 'http://snapstudio-main.kolux.localhost:60016/'
     })
 
     await expect(resolveLocalhostHttpLinkDisplayUrl('http://localhost:5180/')).resolves.toBe(
-      'http://snapstudio-main.nightshift.localhost:60016/'
+      'http://snapstudio-main.kolux.localhost:60016/'
     )
     expect(openUrlMock).not.toHaveBeenCalled()
     expect(createBrowserTabMock).not.toHaveBeenCalled()
@@ -567,17 +567,17 @@ describe('openHttpLink', () => {
       }
     }
     registerLocalhostLabelMock.mockResolvedValue({
-      url: 'http://snapstudio-main.nightshift.localhost:60016/'
+      url: 'http://snapstudio-main.kolux.localhost:60016/'
     })
 
     await expect(
       resolveLocalhostHttpLinkDisplayUrl('http://localhost:5180/', { kind: 'local' })
-    ).resolves.toBe('http://snapstudio-main.nightshift.localhost:60016/')
+    ).resolves.toBe('http://snapstudio-main.kolux.localhost:60016/')
   })
 })
 
 describe('openHttpLink modifier routing', () => {
-  it('forces the system browser when inverting is off and links open in Nightshift', () => {
+  it('forces the system browser when inverting is off and links open in Kolux', () => {
     storeState.settings = { openLinksInApp: true, openLinksInAppModifierInverts: false }
 
     openHttpLink('https://example.com/', { worktreeId: 'wt-1', modifierHeld: true })
@@ -597,7 +597,7 @@ describe('openHttpLink modifier routing', () => {
     expect(createBrowserTabMock).not.toHaveBeenCalled()
   })
 
-  it('opens in Nightshift when inverting is on and links open externally', () => {
+  it('opens in Kolux when inverting is on and links open externally', () => {
     storeState.settings = { openLinksInApp: false, openLinksInAppModifierInverts: true }
 
     openHttpLink('https://example.com/', { worktreeId: 'wt-1', modifierHeld: true })
@@ -609,7 +609,7 @@ describe('openHttpLink modifier routing', () => {
     expect(openUrlMock).not.toHaveBeenCalled()
   })
 
-  it('opens in the system browser when inverting is on and links open in Nightshift', () => {
+  it('opens in the system browser when inverting is on and links open in Kolux', () => {
     storeState.settings = { openLinksInApp: true, openLinksInAppModifierInverts: true }
 
     openHttpLink('https://example.com/', { worktreeId: 'wt-1', modifierHeld: true })
@@ -627,8 +627,8 @@ describe('openHttpLink modifier routing', () => {
     expect(createBrowserTabMock).not.toHaveBeenCalled()
   })
 
-  // Why: remote-owned links must never land in a Nightshift tab that cannot reach them.
-  it('never routes a remote source into Nightshift even when inverting', () => {
+  // Why: remote-owned links must never land in a Kolux tab that cannot reach them.
+  it('never routes a remote source into Kolux even when inverting', () => {
     storeState.settings = { openLinksInApp: false, openLinksInAppModifierInverts: true }
 
     openHttpLink('https://example.com/', {

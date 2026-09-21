@@ -1,20 +1,20 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForSessionReady, waitForActiveWorktree } from './helpers/store'
 
 test.describe('Diff note edit', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('editing a saved inline note updates the open diff card', async ({ nightshiftPage }) => {
-    const worktreeId = await waitForActiveWorktree(nightshiftPage)
+  test('editing a saved inline note updates the open diff card', async ({ koluxPage }) => {
+    const worktreeId = await waitForActiveWorktree(koluxPage)
     const seededBody = 'edit-me note'
     const editedBody = 'edited note from the inline card'
 
     // Why: create a real modified-file diff so Monaco mounts the saved-note
     // view zone on the same local surface that wires updateDiffComment.
-    const { relativePath } = await nightshiftPage.evaluate(async (wId) => {
+    const { relativePath } = await koluxPage.evaluate(async (wId) => {
       const store = window.__store
       if (!store) {
         throw new Error('window.__store is not available - is the app in dev mode?')
@@ -36,7 +36,7 @@ test.describe('Diff note edit', () => {
       return { relativePath: rel }
     }, worktreeId)
 
-    const addResult = await nightshiftPage.evaluate(
+    const addResult = await koluxPage.evaluate(
       async ({ wId, rel, body }) => {
         const store = window.__store
         if (!store) {
@@ -56,7 +56,7 @@ test.describe('Diff note edit', () => {
     expect(addResult, 'addDiffComment returned null').not.toBeNull()
     const commentId = addResult!.id
 
-    await nightshiftPage.evaluate(
+    await koluxPage.evaluate(
       ({ wId, rel }) => {
         const store = window.__store
         if (!store) {
@@ -75,18 +75,18 @@ test.describe('Diff note edit', () => {
       { wId: worktreeId, rel: relativePath }
     )
 
-    const card = nightshiftPage.locator('.nightshift-diff-comment-card').first()
+    const card = koluxPage.locator('.kolux-diff-comment-card').first()
     await expect(card, 'seeded inline note did not render').toBeVisible({ timeout: 15_000 })
-    await expect(card.locator('.nightshift-diff-comment-body')).toHaveText(seededBody)
+    await expect(card.locator('.kolux-diff-comment-body')).toHaveText(seededBody)
 
     await card.getByTitle('Edit note').click()
 
-    const textarea = card.locator('.nightshift-diff-comment-popover-textarea')
+    const textarea = card.locator('.kolux-diff-comment-popover-textarea')
     await expect(textarea).toBeVisible()
     await expect(textarea).toHaveValue(seededBody)
 
     const saveButton = card
-      .locator('.nightshift-diff-comment-popover-footer button')
+      .locator('.kolux-diff-comment-popover-footer button')
       .filter({ hasText: 'Save' })
     await expect(saveButton, 'Save should be disabled before the body changes').toBeDisabled()
 
@@ -101,7 +101,7 @@ test.describe('Diff note edit', () => {
     await expect
       .poll(
         async () =>
-          nightshiftPage.evaluate((id: string) => {
+          koluxPage.evaluate((id: string) => {
             const store = window.__store
             if (!store) {
               return null
@@ -119,15 +119,15 @@ test.describe('Diff note edit', () => {
       )
       .toBe(editedBody)
 
-    const updatedCard = nightshiftPage
-      .locator('.nightshift-diff-comment-card')
+    const updatedCard = koluxPage
+      .locator('.kolux-diff-comment-card')
       .filter({
-        has: nightshiftPage.locator('.nightshift-diff-comment-body', { hasText: editedBody })
+        has: koluxPage.locator('.kolux-diff-comment-body', { hasText: editedBody })
       })
       .first()
     await expect(updatedCard, 'inline card did not update in the open diff').toBeVisible()
-    await expect(updatedCard.locator('.nightshift-diff-comment-body')).toHaveText(editedBody)
-    await expect(updatedCard.locator('.nightshift-diff-comment-body')).not.toHaveText(seededBody)
+    await expect(updatedCard.locator('.kolux-diff-comment-body')).toHaveText(editedBody)
+    await expect(updatedCard.locator('.kolux-diff-comment-body')).not.toHaveText(seededBody)
     await expect(updatedCard.getByTitle('Edit note')).toBeVisible()
   })
 })

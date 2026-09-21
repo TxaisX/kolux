@@ -17,7 +17,7 @@ import { getRepoExecutionHostId, LOCAL_EXECUTION_HOST_ID } from '../shared/execu
 
 /**
  * The slice of the store runtime resolution actually reads. Structural rather
- * than the full `Store` so narrowed stores -- the Nightshift runtime's `RuntimeStore`,
+ * than the full `Store` so narrowed stores -- the Kolux runtime's `RuntimeStore`,
  * worktree root preparation -- resolve the same runtime the create path does
  * instead of silently falling back to host placement.
  *

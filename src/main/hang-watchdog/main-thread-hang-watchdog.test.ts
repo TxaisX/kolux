@@ -9,7 +9,7 @@ const { workerState, appMock } = vi.hoisted(() => ({
   },
   appMock: {
     isPackaged: true,
-    getAppPath: vi.fn(() => '/apps/nightshift/app.asar'),
+    getAppPath: vi.fn(() => '/apps/kolux/app.asar'),
     on: vi.fn()
   }
 }))
@@ -59,16 +59,16 @@ describe('installMainThreadHangWatchdog', () => {
     workerState.error = null
     appMock.on.mockReset()
     appMock.isPackaged = true
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_FORCE
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_TIMEOUT_MS
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_CHECK_INTERVAL_MS
+    delete process.env.KOLUX_HANG_WATCHDOG_FORCE
+    delete process.env.KOLUX_HANG_WATCHDOG_TIMEOUT_MS
+    delete process.env.KOLUX_HANG_WATCHDOG_CHECK_INTERVAL_MS
   })
 
   afterEach(() => {
     vi.useRealTimers()
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_FORCE
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_TIMEOUT_MS
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_CHECK_INTERVAL_MS
+    delete process.env.KOLUX_HANG_WATCHDOG_FORCE
+    delete process.env.KOLUX_HANG_WATCHDOG_TIMEOUT_MS
+    delete process.env.KOLUX_HANG_WATCHDOG_CHECK_INTERVAL_MS
   })
 
   it('is a no-op off macOS', () => {
@@ -86,13 +86,13 @@ describe('installMainThreadHangWatchdog', () => {
     expect(
       withPlatform('darwin', () => installMainThreadHangWatchdog({ userDataPath: '/ud' }))
     ).toBeNull()
-    process.env.NIGHTSHIFT_HANG_WATCHDOG_FORCE = '1'
+    process.env.KOLUX_HANG_WATCHDOG_FORCE = '1'
     const worker = fakeWorker()
     workerState.instance = worker
     expect(
       withPlatform('darwin', () => installMainThreadHangWatchdog({ userDataPath: '/ud' }))
     ).not.toBeNull()
-    delete process.env.NIGHTSHIFT_HANG_WATCHDOG_FORCE
+    delete process.env.KOLUX_HANG_WATCHDOG_FORCE
   })
 
   it('starts a worker with pid, marker, and timing config', () => {
@@ -113,9 +113,9 @@ describe('installMainThreadHangWatchdog', () => {
       }
     }
     expect(workerPath).toBe(
-      join('/apps/nightshift/app.asar', 'out', 'main', 'main-thread-hang-watchdog-entry.js')
+      join('/apps/kolux/app.asar', 'out', 'main', 'main-thread-hang-watchdog-entry.js')
     )
-    expect(options.name).toBe('nightshift-main-thread-hang-watchdog')
+    expect(options.name).toBe('kolux-main-thread-hang-watchdog')
     expect(options.workerData).toMatchObject({
       parentPid: process.pid,
       markerPath: join('/ud', 'main-thread-hang.json'),
@@ -150,8 +150,8 @@ describe('installMainThreadHangWatchdog', () => {
   })
 
   it('passes test timing overrides to the worker', () => {
-    process.env.NIGHTSHIFT_HANG_WATCHDOG_TIMEOUT_MS = '900'
-    process.env.NIGHTSHIFT_HANG_WATCHDOG_CHECK_INTERVAL_MS = '100'
+    process.env.KOLUX_HANG_WATCHDOG_TIMEOUT_MS = '900'
+    process.env.KOLUX_HANG_WATCHDOG_CHECK_INTERVAL_MS = '100'
     workerState.instance = fakeWorker()
     withPlatform('darwin', () => installMainThreadHangWatchdog({ userDataPath: '/ud' }))
     const options = workerState.calls[0][1] as {

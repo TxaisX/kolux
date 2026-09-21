@@ -24,11 +24,11 @@ export function buildWindowsCmdRunnerDelayedLaunchCommand(runnerScriptPath: stri
     '$processInfo = [System.Diagnostics.ProcessStartInfo]::new()',
     '$processInfo.FileName = $env:ComSpec',
     "if (-not $processInfo.FileName) { $processInfo.FileName = 'cmd.exe' }",
-    // Why: /s strips exactly the outer quote pair, leaving "!NIGHTSHIFT_SETUP_RUNNER!" for /v:on to substitute verbatim.
-    '$processInfo.Arguments = \'/d /s /v:on /c ""!NIGHTSHIFT_SETUP_RUNNER!""\'',
+    // Why: /s strips exactly the outer quote pair, leaving "!KOLUX_SETUP_RUNNER!" for /v:on to substitute verbatim.
+    '$processInfo.Arguments = \'/d /s /v:on /c ""!KOLUX_SETUP_RUNNER!""\'',
     // Why: no redirection means stdio is inherited, so setup output still reaches the ConPTY.
     '$processInfo.UseShellExecute = $false',
-    '$processInfo.EnvironmentVariables["NIGHTSHIFT_SETUP_RUNNER"] = $runner',
+    '$processInfo.EnvironmentVariables["KOLUX_SETUP_RUNNER"] = $runner',
     '$process = [System.Diagnostics.Process]::Start($processInfo)',
     '$process.WaitForExit()',
     'exit $process.ExitCode'

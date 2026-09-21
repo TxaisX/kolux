@@ -44,7 +44,7 @@ export function setupCodexUsageStoreEnv(getPathMock: Mock): { tempUserData: stri
   const env = { tempUserData: '' }
 
   beforeEach(() => {
-    env.tempUserData = mkdtempSync(join(tmpdir(), 'nightshift-codex-usage-store-'))
+    env.tempUserData = mkdtempSync(join(tmpdir(), 'kolux-codex-usage-store-'))
     getPathMock.mockReturnValue(env.tempUserData)
     initCodexUsagePath()
     vi.mocked(scanCodexUsageFiles).mockReset()

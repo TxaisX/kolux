@@ -35,7 +35,7 @@ import {
 } from './wsl-transcript-fs-gate'
 
 const SLOW_MESSAGE =
-  'WSL transcript files are temporarily unavailable because filesystem access is taking too long. Try again shortly or restart Nightshift if the issue continues.'
+  'WSL transcript files are temporarily unavailable because filesystem access is taking too long. Try again shortly or restart Kolux if the issue continues.'
 
 type Snapshot = [NativeChatMessage[], boolean, number, string | undefined]
 

@@ -5,11 +5,11 @@ import { isWorkspaceKey, worktreeWorkspaceKey } from '../../shared/workspace-sco
 import { resolveProjectCreateRepoSelector } from '../worktree-project-target'
 
 export function getEnvParentWorkspace(): string | undefined {
-  const workspaceId = process.env.NIGHTSHIFT_WORKSPACE_ID
+  const workspaceId = process.env.KOLUX_WORKSPACE_ID
   if (typeof workspaceId === 'string' && isWorkspaceKey(workspaceId)) {
     return workspaceId
   }
-  const worktreeId = process.env.NIGHTSHIFT_WORKTREE_ID
+  const worktreeId = process.env.KOLUX_WORKTREE_ID
   if (typeof worktreeId === 'string' && worktreeId.length > 0) {
     return isWorkspaceKey(worktreeId) ? worktreeId : worktreeWorkspaceKey(worktreeId)
   }
@@ -95,6 +95,6 @@ export async function getCreateRepoSelector(
   }
   throw new RuntimeClientError(
     'invalid_argument',
-    'Missing repo selector. Pass --repo or run from inside a Nightshift-managed worktree.'
+    'Missing repo selector. Pass --repo or run from inside a Kolux-managed worktree.'
   )
 }

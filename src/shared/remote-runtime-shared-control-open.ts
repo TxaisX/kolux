@@ -84,7 +84,7 @@ export function openSharedControlSocket(
       }
       liveness.onDead(
         remoteRuntimeUnavailableError(
-          'Remote Nightshift runtime stopped responding; resetting the control connection.'
+          'Remote Kolux runtime stopped responding; resetting the control connection.'
         )
       )
     },

@@ -10,7 +10,7 @@ import {
 } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test as base, expect } from './helpers/nightshift-app'
+import { test as base, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePaneHookDescriptor, waitForActivePanePtyId } from './helpers/terminal'
 import { RuntimeClient } from '../../src/cli/runtime-client'
@@ -104,9 +104,7 @@ const PROVIDERS: readonly {
   }
 ]
 
-const fakeCliDir = mkdtempSync(
-  path.join(os.tmpdir(), 'nightshift-e2e-worker-transcript-providers-')
-)
+const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-worker-transcript-providers-'))
 const capabilityLedgerPath = path.join(fakeCliDir, 'capabilities.jsonl')
 const fakeGrokHome = path.join(fakeCliDir, 'grok-home')
 const fakeOmpHome = path.join(fakeCliDir, 'omp-home')
@@ -124,19 +122,19 @@ async function sendProviderHook() {
   hookSent = true
   const config = JSON.parse(readFileSync(configPath, 'utf8'))
   const payload = ${providerHookPayload(agent)}
-  await fetch('http://127.0.0.1:' + process.env.NIGHTSHIFT_AGENT_HOOK_PORT + '${hookPath}', {
+  await fetch('http://127.0.0.1:' + process.env.KOLUX_AGENT_HOOK_PORT + '${hookPath}', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Nightshift-Agent-Hook-Token': process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN
+      'X-Kolux-Agent-Hook-Token': process.env.KOLUX_AGENT_HOOK_TOKEN
     },
     body: JSON.stringify({
-      paneKey: process.env.NIGHTSHIFT_PANE_KEY,
-      tabId: process.env.NIGHTSHIFT_TAB_ID,
-      worktreeId: process.env.NIGHTSHIFT_WORKTREE_ID,
-      launchToken: process.env.NIGHTSHIFT_AGENT_LAUNCH_TOKEN,
-      env: process.env.NIGHTSHIFT_AGENT_HOOK_ENV,
-      version: process.env.NIGHTSHIFT_AGENT_HOOK_VERSION,
+      paneKey: process.env.KOLUX_PANE_KEY,
+      tabId: process.env.KOLUX_TAB_ID,
+      worktreeId: process.env.KOLUX_WORKTREE_ID,
+      launchToken: process.env.KOLUX_AGENT_LAUNCH_TOKEN,
+      env: process.env.KOLUX_AGENT_HOOK_ENV,
+      version: process.env.KOLUX_AGENT_HOOK_VERSION,
       payload
     })
   })
@@ -213,13 +211,13 @@ async function listWorker(client: RuntimeClient, handle: string): Promise<Runtim
 }
 
 test('worker-read uses provider transcripts across supported orchestration agents', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
   test.setTimeout(240_000)
   rmSync(capabilityLedgerPath, { force: true })
-  await waitForSessionReady(nightshiftPage)
-  await nightshiftPage.evaluate(
+  await waitForSessionReady(koluxPage)
+  await koluxPage.evaluate(
     async ({ commands, terminalWindowsShell }) => {
       await window.__store?.getState().updateSettings({
         agentCmdOverrides: commands,
@@ -230,10 +228,10 @@ test('worker-read uses provider transcripts across supported orchestration agent
     },
     { commands: agentCommands, terminalWindowsShell: FAKE_AGENT_WINDOWS_SHELL }
   )
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActivePanePtyId(nightshiftPage)
-  const coordinatorPane = await waitForActivePaneHookDescriptor(nightshiftPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActivePanePtyId(koluxPage)
+  const coordinatorPane = await waitForActivePaneHookDescriptor(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
   const coordinator = await client.call<{ terminal: { handle: string } }>('terminal.resolvePane', {
@@ -273,7 +271,7 @@ test('worker-read uses provider transcripts across supported orchestration agent
       callerTerminalHandle: coordinatorHandle
     })
     const transcriptDir = mkdtempSync(
-      path.join(os.tmpdir(), `nightshift-e2e-${provider.agent}-transcript-`)
+      path.join(os.tmpdir(), `kolux-e2e-${provider.agent}-transcript-`)
     )
     const sessionId = `e2e-${provider.agent}-session`
     const transcriptPath =

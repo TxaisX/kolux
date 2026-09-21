@@ -120,7 +120,7 @@ describe('getRetiredNameRegistryForRepo', () => {
 
 describe('ensureRetiredWorktreeNamesBackfilled', () => {
   it('awaits the historical workspace scan before returning names to a client', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-retirement-backfill-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-retirement-backfill-'))
     const workspaceRoot = join(root, 'workspaces')
     await mkdir(join(workspaceRoot, FIRST), { recursive: true })
     const merged: { repoId: string; names: string[] }[] = []
@@ -170,7 +170,7 @@ describe('ensureRetiredWorktreeNamesBackfilled', () => {
     // Why: a `connectionId` check calls this repo local, so the scan reads THIS machine's
     // directories and files them under the runtime's namespace — retiring names never used there
     // while missing the ones that were. The host id is the only reliable local test.
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-retirement-runtime-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-retirement-runtime-'))
     const workspaceRoot = join(root, 'workspaces')
     await mkdir(join(workspaceRoot, FIRST), { recursive: true })
     const merged: string[] = []
@@ -199,7 +199,7 @@ describe('ensureRetiredWorktreeNamesBackfilled', () => {
   })
 
   it('still backfills a plain local repo, so the skip is scoped to non-local hosts', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-retirement-local-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-retirement-local-'))
     const workspaceRoot = join(root, 'workspaces')
     await mkdir(join(workspaceRoot, FIRST), { recursive: true })
     const merged: string[] = []

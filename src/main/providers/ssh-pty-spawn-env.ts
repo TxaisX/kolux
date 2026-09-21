@@ -18,12 +18,12 @@ export function buildSshPtySpawnEnv(args: {
           ? `${args.remoteCliBridgeEnv.binDir}${pathDelimiter}${pathValue}`
           : args.remoteCliBridgeEnv.binDir
     }
-    merged.NIGHTSHIFT_REMOTE_CLI_BIN_DIR = args.remoteCliBridgeEnv.binDir
-    merged.NIGHTSHIFT_RELAY_DIR = args.remoteCliBridgeEnv.relayDir
-    merged.NIGHTSHIFT_RELAY_NODE_PATH = args.remoteCliBridgeEnv.nodePath
-    merged.NIGHTSHIFT_RELAY_SOCKET_PATH = args.remoteCliBridgeEnv.sockPath
+    merged.KOLUX_REMOTE_CLI_BIN_DIR = args.remoteCliBridgeEnv.binDir
+    merged.KOLUX_RELAY_DIR = args.remoteCliBridgeEnv.relayDir
+    merged.KOLUX_RELAY_NODE_PATH = args.remoteCliBridgeEnv.nodePath
+    merged.KOLUX_RELAY_SOCKET_PATH = args.remoteCliBridgeEnv.sockPath
     if (args.remoteCliBridgeEnv.credentialFile) {
-      merged.NIGHTSHIFT_RELAY_CREDENTIAL_FILE = args.remoteCliBridgeEnv.credentialFile
+      merged.KOLUX_RELAY_CREDENTIAL_FILE = args.remoteCliBridgeEnv.credentialFile
     }
   }
   // Why: match local/daemon precedence—managed defaults cannot restore explicitly removed values.

@@ -41,7 +41,7 @@ const stalePidRecord: ParsedDaemonPid = {
   linuxStartTicks: null,
   bootId: null,
   spawnerExecPath:
-    '/Users/alice/Library/Caches/com.txais.nightshift.ShipIt/u/Nightshift.app/Contents/MacOS/Nightshift'
+    '/Users/alice/Library/Caches/com.txais.kolux.ShipIt/u/Kolux.app/Contents/MacOS/Kolux'
 }
 const origin = { app_version_match: 'different', spawner_path_class: 'updater-cache' } as const
 const PID_PATH = '/fake/daemon.pid'
@@ -128,7 +128,7 @@ describe('trackDaemonPtyCwdDeniedIfDiverged', () => {
       JSON.stringify({
         ...stalePidRecord,
         appVersion: '1.4.191',
-        spawnerExecPath: '/Applications/Nightshift.app/Contents/MacOS/Nightshift'
+        spawnerExecPath: '/Applications/Kolux.app/Contents/MacOS/Kolux'
       })
     )
     trackDaemonPtyCwdDeniedIfDiverged('/Users/alice/Documents/repo', false, PID_PATH)

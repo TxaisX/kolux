@@ -1,5 +1,5 @@
 import type { DispatchCreator } from '../../../../orchestration/db/dispatch-depth'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 
 /**
  * Identify a CLI caller for nesting-depth purposes.
@@ -9,7 +9,7 @@ import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
  * incarnation, and a caller cannot be trusted to report its own.
  */
 export function resolveDispatchCreator(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   callerHandle: string | undefined
 ): DispatchCreator {
   if (!callerHandle) {

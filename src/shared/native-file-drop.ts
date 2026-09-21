@@ -1,6 +1,6 @@
 import { measureClipboardTextByteLength } from './clipboard-text'
 
-export const NIGHTSHIFT_INTERNAL_FILE_DRAG_TYPE = 'text/x-nightshift-file-path'
+export const KOLUX_INTERNAL_FILE_DRAG_TYPE = 'text/x-kolux-file-path'
 
 export const NATIVE_FILE_DROP_MAX_PATHS = 256
 export const NATIVE_FILE_DROP_MAX_PATH_BYTES = 256 * 1024
@@ -94,7 +94,7 @@ export function hasNativeFileDragTypes(
   types: Iterable<string> | ArrayLike<string> | null | undefined
 ): boolean {
   const values = getDataTransferTypes(types)
-  return values.includes('Files') && !values.includes(NIGHTSHIFT_INTERNAL_FILE_DRAG_TYPE)
+  return values.includes('Files') && !values.includes(KOLUX_INTERNAL_FILE_DRAG_TYPE)
 }
 
 export function resolveNativeFileDropPath(

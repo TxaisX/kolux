@@ -77,7 +77,7 @@ export function RuntimeHostAccessForm({
           <li>
             {translate(
               'auto.components.settings.RuntimeHostAccessForm.stepOpenShare',
-              'Open Settings → Remote Nightshift Servers → Share this host.'
+              'Open Settings → Remote Kolux Servers → Share this host.'
             )}
           </li>
           <li>
@@ -89,7 +89,7 @@ export function RuntimeHostAccessForm({
           <li>
             {translate(
               'auto.components.settings.RuntimeHostAccessForm.stepCopyLink',
-              'Generate the link, then copy the “Pair another Nightshift client” link.'
+              'Generate the link, then copy the “Pair another Kolux client” link.'
             )}
           </li>
         </ol>
@@ -98,7 +98,7 @@ export function RuntimeHostAccessForm({
       <div className="grid gap-3 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)]">
         <div className="space-y-2">
           <Label htmlFor="runtime-server-name">
-            {translate('auto.components.settings.RuntimeHostAccessForm.name', 'Name in Nightshift')}
+            {translate('auto.components.settings.RuntimeHostAccessForm.name', 'Name in Kolux')}
           </Label>
           <Input
             id="runtime-server-name"
@@ -114,7 +114,7 @@ export function RuntimeHostAccessForm({
           <p className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.RuntimeHostAccessForm.nameHelp',
-              'This only changes how the computer appears in Nightshift.'
+              'This only changes how the computer appears in Kolux.'
             )}
           </p>
         </div>
@@ -134,14 +134,14 @@ export function RuntimeHostAccessForm({
             }}
             placeholder={translate(
               'auto.components.settings.RuntimeHostAccessForm.accessLinkPlaceholder',
-              'nightshift://pair?code=...'
+              'kolux://pair?code=...'
             )}
             className="min-w-0 font-mono"
           />
           <p id="runtime-server-access-link-help" className="text-xs text-muted-foreground">
             {translate(
               'auto.components.settings.RuntimeHostAccessForm.accessLinkHelp',
-              'Nightshift shows the destination before connecting. Credentials stay hidden.'
+              'Kolux shows the destination before connecting. Credentials stay hidden.'
             )}
           </p>
           {inputError ? (
@@ -247,7 +247,7 @@ export function RuntimeHostAccessForm({
             {failure.kind === 'host-identity-mismatch'
               ? translate(
                   'auto.components.settings.RuntimeHostAccessForm.identityMismatch',
-                  'The reached Nightshift host does not match this access link'
+                  'The reached Kolux host does not match this access link'
                 )
               : failure.kind === 'access-link-invalid'
                 ? translate(
@@ -257,7 +257,7 @@ export function RuntimeHostAccessForm({
                 : failure.kind === 'protocol-incompatible'
                   ? translate(
                       'auto.components.settings.RuntimeHostAccessForm.incompatible',
-                      'Nightshift versions are not compatible'
+                      'Kolux versions are not compatible'
                     )
                   : failure.kind === 'connection-interrupted'
                     ? translate(
@@ -316,7 +316,7 @@ export function RuntimeHostAccessForm({
           <p className="mt-2 text-muted-foreground">
             {translate(
               'auto.components.settings.RuntimeHostAccessForm.headlessHelp',
-              'Using headless nightshift serve? Run nightshift serve --pairing-address <reachable-host> on the other computer.'
+              'Using headless kolux serve? Run kolux serve --pairing-address <reachable-host> on the other computer.'
             )}
           </p>
         )}

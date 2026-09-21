@@ -1,5 +1,5 @@
 import type { PairingOfferUnavailableReason } from '../runtime/runtime-rpc'
-import type { NightshiftdHealth } from '../nightshiftd/nightshiftd-health'
+import type { KoluxdHealth } from '../koluxd/koluxd-health'
 
 export type ServePairingUnavailableReason = PairingOfferUnavailableReason | 'disabled_by_operator'
 
@@ -32,7 +32,7 @@ export type ServeReadiness = {
    * treat its absence as "not reported", never as healthy. Additive, so an older client
    * parsing this payload is unaffected.
    */
-  health?: NightshiftdHealth
+  health?: KoluxdHealth
 }
 
 export type ServeReadinessOutput =
@@ -79,7 +79,7 @@ export function renderServeReadiness(
   }
   if (output.mode === 'json') {
     return JSON.stringify({
-      type: 'nightshift_server_ready',
+      type: 'kolux_server_ready',
       schemaVersion: 1,
       runtimeId: readiness.runtimeId,
       endpoint: readiness.boundEndpoint,
@@ -95,7 +95,7 @@ export function renderServeReadiness(
 
 function renderHumanReadiness(readiness: ServeReadiness): string {
   const lines = [
-    'Nightshift server ready',
+    'Kolux server ready',
     `Bound endpoint: ${readiness.boundEndpoint ?? 'websocket unavailable'}`,
     `Advertised endpoint: ${readiness.advertisedEndpoint ?? 'unavailable'}`
   ]
@@ -108,7 +108,7 @@ function renderHumanReadiness(readiness: ServeReadiness): string {
     lines.push(
       `Terminal daemon: ${daemon.state} — PTY self-test ${daemon.selfTest.ok ? 'passed' : 'FAILED'}` +
         ` (${daemon.selfTest.coverage}: ${daemon.selfTest.verdict})` +
-        `; terminals survive a nightshiftd restart: ${daemon.ownsFreshSessions ? 'yes' : 'NO'}`
+        `; terminals survive a koluxd restart: ${daemon.ownsFreshSessions ? 'yes' : 'NO'}`
     )
   }
   if (readiness.pairing.available) {

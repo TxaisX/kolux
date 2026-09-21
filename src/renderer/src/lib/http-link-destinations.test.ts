@@ -10,12 +10,12 @@ describe('httpLinkActionDestinationsFor', () => {
     'offers both destinations for a %s owner and follows the preference',
     (_label, owner, canOpen) => {
       expect(httpLinkActionDestinationsFor({ openLinksInApp: true }, owner, canOpen)).toEqual({
-        primary: 'nightshift',
+        primary: 'kolux',
         alternate: 'system'
       })
       expect(httpLinkActionDestinationsFor({ openLinksInApp: false }, owner, canOpen)).toEqual({
         primary: 'system',
-        alternate: 'nightshift'
+        alternate: 'kolux'
       })
     }
   )
@@ -35,20 +35,20 @@ describe('buildHttpLinkActions', () => {
   it('labels each offered destination and routes the run to it', () => {
     const opened: (string | undefined)[] = []
     const actions = buildHttpLinkActions(
-      { primary: 'nightshift', alternate: 'system' },
+      { primary: 'kolux', alternate: 'system' },
       (destination) => {
         opened.push(destination)
       }
     )
 
-    expect(actions.primary.label).toBe('Nightshift Browser')
+    expect(actions.primary.label).toBe('Kolux Browser')
     expect(actions.primary.external).toBe(false)
     expect(actions.alternate?.label).toBe('System Browser')
     expect(actions.alternate?.external).toBe(true)
 
     void actions.primary.run()
     void actions.alternate?.run()
-    expect(opened).toEqual(['nightshift', 'system'])
+    expect(opened).toEqual(['kolux', 'system'])
   })
 
   it('omits the alternate row when only one destination is offered', () => {

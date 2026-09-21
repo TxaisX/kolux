@@ -19,7 +19,7 @@ describe('gpu-fallback-marker', () => {
   }
 
   beforeEach(() => {
-    userDataPath = mkdtempSync(join(os.tmpdir(), 'nightshift-gpu-fallback-test-'))
+    userDataPath = mkdtempSync(join(os.tmpdir(), 'kolux-gpu-fallback-test-'))
   })
 
   afterEach(() => {

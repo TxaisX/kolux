@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Page, TestInfo } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import {
   ensureTerminalVisible,
   getAllWorktreeIds,
@@ -270,7 +270,7 @@ async function readTerminalBoxTableWrapDiagnostics(page: Page): Promise<{
 async function closeFeatureTips(page: Page): Promise<void> {
   await page.evaluate(() => {
     const store = window.__store
-    store?.getState().markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+    store?.getState().markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     if (store?.getState().activeModal === 'feature-tips') {
       store.getState().closeModal()
     }
@@ -340,17 +340,17 @@ async function readTerminalRenderDiagnostics(page: Page): Promise<TerminalRender
 
 test.describe('Terminal long table scroll restore repro', () => {
   test('reproduces long markdown table artifacts after workspace switch and scroll', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await nightshiftPage.evaluate(() => {
+    await waitForSessionReady(koluxPage)
+    await koluxPage.evaluate(() => {
       window.__store
         ?.getState()
-        .markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+        .markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     })
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'long table restore repro needs the seeded secondary worktree')
@@ -358,40 +358,40 @@ test.describe('Terminal long table scroll restore repro', () => {
       return
     }
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
     const runId = randomUUID()
     const marker = `LONG_TABLE_SCROLL_RESTORE_${runId}`
-    const scriptPath = path.join(testRepoPath, `.nightshift-long-table-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-long-table-${runId}.mjs`)
     writeFileSync(scriptPath, longMarkdownTableScript(runId))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
-      await nightshiftPage.waitForTimeout(80)
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(1_500)
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await koluxPage.waitForTimeout(80)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(1_500)
+      await switchToWorktree(koluxPage, firstWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 10_000,
           message: 'long table marker did not survive workspace switch'
         })
         .toContain(marker)
 
-      await scrollActiveTerminalLikeUser(nightshiftPage)
-      await closeFeatureTips(nightshiftPage)
-      const diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+      await scrollActiveTerminalLikeUser(koluxPage)
+      await closeFeatureTips(koluxPage)
+      const diagnostics = await readTerminalRenderDiagnostics(koluxPage)
       const restoredPane = diagnostics.allPaneStates.find((paneState) => paneState.hasMarker)
       expect(restoredPane).toBeDefined()
       expect(diagnostics.cursorHidden).toBe(false)
-      await nightshiftPage.waitForTimeout(100)
+      await koluxPage.waitForTimeout(100)
       const screenshotPath = testInfo.outputPath('long-table-after-switch-scroll.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('long-table-after-switch-scroll.png', {
         path: screenshotPath,
         contentType: 'image/png'
@@ -402,17 +402,17 @@ test.describe('Terminal long table scroll restore repro', () => {
   })
 
   test('keeps narrow wrapped signer markdown table coherent after restore and scroll', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await nightshiftPage.evaluate(() => {
+    await waitForSessionReady(koluxPage)
+    await koluxPage.evaluate(() => {
       window.__store
         ?.getState()
-        .markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+        .markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     })
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'narrow signer table repro needs the seeded secondary worktree')
@@ -420,48 +420,48 @@ test.describe('Terminal long table scroll restore repro', () => {
       return
     }
 
-    await setRenderedTableViewport(nightshiftPage)
-    await forceDarkTerminalRendererPath(nightshiftPage)
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyShellEcho(nightshiftPage, ptyId, 15_000)
+    await setRenderedTableViewport(koluxPage)
+    await forceDarkTerminalRendererPath(koluxPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyShellEcho(koluxPage, ptyId, 15_000)
     const runId = randomUUID()
     const marker = `NARROW_SIGNER_TABLE_RESTORE_${runId}`
-    const scriptPath = path.join(testRepoPath, `.nightshift-narrow-signer-table-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-narrow-signer-table-${runId}.mjs`)
     writeFileSync(scriptPath, narrowSignerMarkdownTableScript(runId))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
-      await nightshiftPage.waitForTimeout(80)
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(1_000)
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await koluxPage.waitForTimeout(80)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(1_000)
+      await switchToWorktree(koluxPage, firstWorktreeId)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 10_000,
           message: 'narrow signer table marker did not survive workspace switch'
         })
         .toContain(marker)
 
-      await scrollActiveTerminalLikeUser(nightshiftPage)
-      await closeFeatureTips(nightshiftPage)
-      const diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
+      await scrollActiveTerminalLikeUser(koluxPage)
+      await closeFeatureTips(koluxPage)
+      const diagnostics = await readTerminalRenderDiagnostics(koluxPage)
       // Why: renderer cell metrics can land one column wider in headless runs;
       // the content and screenshot assertions below cover the actual regression.
       expect(diagnostics.cols).toBeLessThanOrEqual(112)
       expect(diagnostics.cursorHidden).toBe(false)
 
-      const content = await getTerminalContent(nightshiftPage, 30_000)
+      const content = await getTerminalContent(koluxPage, 30_000)
       expect(content).toContain('Signer')
       expect(content).toContain('did:key:z6Mkuw5kQqz1QvZ9f3d2aB7f19f0cAC7B4F3c9E725')
       expect(content).toContain(marker)
 
       const screenshotPath = testInfo.outputPath('narrow-signer-table-after-switch-scroll.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('narrow-signer-table-after-switch-scroll.png', {
         path: screenshotPath,
         contentType: 'image/png'
@@ -474,18 +474,18 @@ test.describe('Terminal long table scroll restore repro', () => {
   // Why: keeps the user-shaped markdown path covered in the broader e2e suite;
   // the faster raw-table spec is the release-blocking golden for this bug.
   test('keeps real emoji markdown table right edge clean after restore and scroll', async ({
-    nightshiftPage,
+    koluxPage,
     testRepoPath
   }, testInfo: TestInfo) => {
-    await waitForSessionReady(nightshiftPage)
-    await closeFeatureTips(nightshiftPage)
-    await nightshiftPage.evaluate(() => {
+    await waitForSessionReady(koluxPage)
+    await closeFeatureTips(koluxPage)
+    await koluxPage.evaluate(() => {
       window.__store
         ?.getState()
-        .markFeatureTipsSeen(['nightshift-cli', 'cmd-j-palette', 'voice-dictation'])
+        .markFeatureTipsSeen(['kolux-cli', 'cmd-j-palette', 'voice-dictation'])
     })
-    const firstWorktreeId = await waitForActiveWorktree(nightshiftPage)
-    const secondWorktreeId = (await getAllWorktreeIds(nightshiftPage)).find(
+    const firstWorktreeId = await waitForActiveWorktree(koluxPage)
+    const secondWorktreeId = (await getAllWorktreeIds(koluxPage)).find(
       (id) => id !== firstWorktreeId
     )
     test.skip(!secondWorktreeId, 'real emoji table repro needs the seeded secondary worktree')
@@ -493,40 +493,40 @@ test.describe('Terminal long table scroll restore repro', () => {
       return
     }
 
-    await ensureTerminalVisible(nightshiftPage)
-    await waitForActiveTerminalManager(nightshiftPage, 30_000)
-    await setNarrowTerminalViewport(nightshiftPage)
+    await ensureTerminalVisible(koluxPage)
+    await waitForActiveTerminalManager(koluxPage, 30_000)
+    await setNarrowTerminalViewport(koluxPage)
     const renderedTableTerminalCols = await waitForRenderedTerminalColumnsAtMost(
-      nightshiftPage,
+      koluxPage,
       NARROW_TERMINAL_MAX_COLS
     )
-    const ptyId = await waitForActivePanePtyId(nightshiftPage)
-    await waitForPtyColumnsAtMost(nightshiftPage, ptyId, renderedTableTerminalCols)
+    const ptyId = await waitForActivePanePtyId(koluxPage)
+    await waitForPtyColumnsAtMost(koluxPage, ptyId, renderedTableTerminalCols)
     const runId = randomUUID()
     const marker = `EMOJI_FIXTURE_TABLE_RESTORE_${runId}`
-    const scriptPath = path.join(testRepoPath, `.nightshift-emoji-fixture-table-${runId}.mjs`)
+    const scriptPath = path.join(testRepoPath, `.kolux-emoji-fixture-table-${runId}.mjs`)
     writeFileSync(scriptPath, emojiFixtureMarkdownTableScript(EMOJI_TABLE_FIXTURE, runId))
 
     try {
-      await sendToTerminal(nightshiftPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
-      await nightshiftPage.waitForTimeout(80)
-      await switchToWorktree(nightshiftPage, secondWorktreeId)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await nightshiftPage.waitForTimeout(1_000)
-      await switchToWorktree(nightshiftPage, firstWorktreeId)
+      await sendToTerminal(koluxPage, ptyId, `${nodeTerminalCommand([scriptPath])}\r`)
+      await koluxPage.waitForTimeout(80)
+      await switchToWorktree(koluxPage, secondWorktreeId)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await koluxPage.waitForTimeout(1_000)
+      await switchToWorktree(koluxPage, firstWorktreeId)
       // Why: worktree activation can restore the right sidebar. This repro is
       // intentionally narrow, but it must stay wide enough for its generated table.
-      await ensureTerminalVisible(nightshiftPage)
-      await waitForActiveTerminalManager(nightshiftPage, 30_000)
-      await setNarrowTerminalViewport(nightshiftPage)
-      await waitForRenderedTerminalColumnsAtMost(nightshiftPage, NARROW_TERMINAL_MAX_COLS)
+      await ensureTerminalVisible(koluxPage)
+      await waitForActiveTerminalManager(koluxPage, 30_000)
+      await setNarrowTerminalViewport(koluxPage)
+      await waitForRenderedTerminalColumnsAtMost(koluxPage, NARROW_TERMINAL_MAX_COLS)
       await expect
-        .poll(() => getTerminalContent(nightshiftPage, 30_000), {
+        .poll(() => getTerminalContent(koluxPage, 30_000), {
           timeout: 10_000,
           message: 'real emoji table marker did not survive workspace switch'
         })
         .toContain(marker)
-      const generatedWidthContent = await getTerminalContent(nightshiftPage, 30_000)
+      const generatedWidthContent = await getTerminalContent(koluxPage, 30_000)
       const generatedWidthMatch = generatedWidthContent.match(
         new RegExp(`${emojiFixtureTableWidthMarker(runId)}(\\d+)`)
       )
@@ -538,17 +538,17 @@ test.describe('Terminal long table scroll restore repro', () => {
       // across terminal lines. A lower cell fragment still exercises the
       // restored markdown-table viewport without depending on early output.
       const retainedEmojiCell = 'Peac'
-      await scrollActiveTerminalToText(nightshiftPage, retainedEmojiCell)
-      await closeFeatureTips(nightshiftPage)
+      await scrollActiveTerminalToText(koluxPage, retainedEmojiCell)
+      await closeFeatureTips(koluxPage)
       await expect
-        .poll(() => readActiveTerminalVisibleText(nightshiftPage), {
+        .poll(() => readActiveTerminalVisibleText(koluxPage), {
           timeout: 5_000,
           message: `${retainedEmojiCell} row fragment should be visible before screenshot`
         })
         .toContain(retainedEmojiCell)
-      const diagnostics = await readTerminalRenderDiagnostics(nightshiftPage)
-      const overpaint = await readTerminalRightEdgeOverpaint(nightshiftPage)
-      const wrapDiagnostics = await readTerminalBoxTableWrapDiagnostics(nightshiftPage)
+      const diagnostics = await readTerminalRenderDiagnostics(koluxPage)
+      const overpaint = await readTerminalRightEdgeOverpaint(koluxPage)
+      const wrapDiagnostics = await readTerminalBoxTableWrapDiagnostics(koluxPage)
       expect(diagnostics.cols).toBeLessThanOrEqual(NARROW_TERMINAL_MAX_COLS)
       expect(wrapDiagnostics.cols).toBeGreaterThanOrEqual(generatedTableWidth)
       expect(diagnostics.cursorHidden).toBe(false)
@@ -562,7 +562,7 @@ test.describe('Terminal long table scroll restore repro', () => {
       })
 
       const screenshotPath = testInfo.outputPath('real-emoji-table-after-switch-scroll.png')
-      await nightshiftPage.screenshot({ path: screenshotPath, fullPage: true })
+      await koluxPage.screenshot({ path: screenshotPath, fullPage: true })
       await testInfo.attach('real-emoji-table-after-switch-scroll.png', {
         path: screenshotPath,
         contentType: 'image/png'

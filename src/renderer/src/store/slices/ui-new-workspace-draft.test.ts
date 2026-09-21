@@ -113,14 +113,14 @@ describe('createUISlice new workspace draft', () => {
         provider: 'jira' as const,
         siteId: 'site-1',
         siteUrl: 'https://company.atlassian.net',
-        projectKey: 'NIGHTSHIFT'
+        projectKey: 'KOLUX'
       },
       accountLabel: 'ada@example.com'
     }
 
     store.getState().setNewWorkspaceDraft({
       repoId: 'repo-1',
-      name: 'nightshift-123-link-jira',
+      name: 'kolux-123-link-jira',
       prompt: '',
       note: '',
       attachments: [],
@@ -128,9 +128,9 @@ describe('createUISlice new workspace draft', () => {
         provider: 'jira',
         type: 'issue',
         number: 0,
-        title: 'NIGHTSHIFT-123 Link Jira',
-        url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-        jiraIdentifier: 'NIGHTSHIFT-123'
+        title: 'KOLUX-123 Link Jira',
+        url: 'https://company.atlassian.net/browse/KOLUX-123',
+        jiraIdentifier: 'KOLUX-123'
       },
       linkedTaskSourceContext,
       agent: 'claude',
@@ -143,7 +143,7 @@ describe('createUISlice new workspace draft', () => {
     expect(store.getState().newWorkspaceDraft).toMatchObject({
       linkedWorkItem: {
         provider: 'jira',
-        jiraIdentifier: 'NIGHTSHIFT-123'
+        jiraIdentifier: 'KOLUX-123'
       },
       linkedTaskSourceContext
     })

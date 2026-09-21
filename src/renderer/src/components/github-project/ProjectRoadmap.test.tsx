@@ -71,7 +71,7 @@ function table(fields: GitHubProjectField[], rows: GitHubProjectRow[]): GitHubPr
       owner: 'TxaisX',
       ownerType: 'organization',
       number: 3,
-      title: 'Nightshift',
+      title: 'Kolux',
       url: 'https://github.com/orgs/txais/projects/3'
     },
     selectedView: {
@@ -149,7 +149,7 @@ describe('ProjectRoadmap', () => {
       expect(scroller.scrollLeft).toBe(123)
       fireEvent.click(screen.getByRole('button', { name: 'Year' }))
       expect(scroller.scrollLeft).not.toBe(123)
-      expect(window.localStorage.getItem('nightshift.githubProject.roadmapZoom')).toBe('year')
+      expect(window.localStorage.getItem('kolux.githubProject.roadmapZoom')).toBe('year')
     }
   )
 
@@ -255,7 +255,7 @@ describe('ProjectRoadmap', () => {
     expect(screen.getByText('list')).toBeTruthy()
     expect(
       screen.getByText(
-        'This roadmap view has no date or iteration field to place items on, so Nightshift is listing them instead.'
+        'This roadmap view has no date or iteration field to place items on, so Kolux is listing them instead.'
       )
     ).toBeTruthy()
   })

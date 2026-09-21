@@ -1,4 +1,4 @@
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { waitForActivePanePtyId, waitForActiveTerminalManager } from './helpers/terminal'
 import {
@@ -12,7 +12,7 @@ import {
 } from './helpers/docker-ssh-relay-connection'
 import { openTerminalTabInActiveGroup } from './helpers/terminal-tab-open'
 
-const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
+const RUN_DOCKER_SSH = process.env.KOLUX_E2E_SSH_DOCKER === '1'
 
 /**
  * An SSH reconnect destroys the terminal state behind a tab whose creation has not yet reached the
@@ -57,38 +57,35 @@ const RUN_DOCKER_SSH = process.env.NIGHTSHIFT_E2E_SSH_DOCKER === '1'
  * run here as evidence the bug is gone.
  */
 test.describe('SSH reconnect tab destruction', () => {
-  test.skip(
-    !RUN_DOCKER_SSH,
-    'Set NIGHTSHIFT_E2E_SSH_DOCKER=1 to run the dockerized SSH relay tests'
-  )
+  test.skip(!RUN_DOCKER_SSH, 'Set KOLUX_E2E_SSH_DOCKER=1 to run the dockerized SSH relay tests')
 
   test('keeps a tab created right after a reconnect alive across the next one', async ({
-    nightshiftPage
+    koluxPage
   }, testInfo) => {
     test.slow()
     let target: DockerSshRelayTarget | null = null
     try {
       target = startDockerSshRelayTarget(testInfo)
-      await waitForSessionReady(nightshiftPage)
-      await waitForActiveWorktree(nightshiftPage)
-      const remote = await connectDockerSshRelayTarget(nightshiftPage, target)
-      await ensureTerminalVisible(nightshiftPage, 45_000)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
+      await waitForSessionReady(koluxPage)
+      await waitForActiveWorktree(koluxPage)
+      const remote = await connectDockerSshRelayTarget(koluxPage, target)
+      await ensureTerminalVisible(koluxPage, 45_000)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
       // Awaited, not captured: the pane must be bound before the first reconnect, but the id itself
       // is not what this spec asserts on — tab survival is.
-      await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await waitForActivePanePtyId(koluxPage, 60_000)
 
-      await reconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
-      await waitForActivePanePtyId(nightshiftPage, 60_000)
+      await reconnectDockerSshRelayTarget(koluxPage, remote.targetId)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
+      await waitForActivePanePtyId(koluxPage, 60_000)
 
       // Immediately after the apply, i.e. inside the 1s suppression window, so the tab's creation
       // is dropped from the session write rather than deferred. This is the ordinary thing a user
       // does; the timing is not contrived.
-      await openTerminalTabInActiveGroup(nightshiftPage)
+      await openTerminalTabInActiveGroup(koluxPage)
       // Only that the tab exists in the store — no waiting for its manager or PTY. Every wait here
       // is time the debounced upload can use to land, which is what made this spec miss the bug.
-      const tabIdsBefore = await nightshiftPage.evaluate(() => {
+      const tabIdsBefore = await koluxPage.evaluate(() => {
         const state = window.__store?.getState()
         const worktreeId = state?.activeWorktreeId
         return worktreeId ? (state?.tabsByWorktree?.[worktreeId] ?? []).map((tab) => tab.id) : []
@@ -99,12 +96,12 @@ test.describe('SSH reconnect tab destruction', () => {
       // while the tab's creation is still unuploaded, so idling here — as waiting for a TUI to draw
       // did — lets the debounced write land and the bug evaporate. That is exactly why an earlier
       // version of this spec passed with the bug still present, and why it was worthless as a guard.
-      await reconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
-      await waitForActiveTerminalManager(nightshiftPage, 60_000)
+      await reconnectDockerSshRelayTarget(koluxPage, remote.targetId)
+      await waitForActiveTerminalManager(koluxPage, 60_000)
 
       // Checked BEFORE any paint assertion: survival and repaint are different failures, and this
       // order names which one broke instead of collapsing both into "no output".
-      const tabState = await nightshiftPage.evaluate(() => {
+      const tabState = await koluxPage.evaluate(() => {
         const state = window.__store?.getState()
         const worktreeId = state?.activeWorktreeId
         return {

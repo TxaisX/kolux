@@ -1,5 +1,5 @@
 import type { Page } from '@stablyai/playwright-test'
-import { expect, test as base } from './helpers/nightshift-app'
+import { expect, test as base } from './helpers/kolux-app'
 import {
   cleanupDockerSshRelayTarget,
   dockerSshRelayRepoSentinel,
@@ -46,8 +46,7 @@ import {
 import { worktreeRow, worktreeRowSurface } from './worktree-row-locators'
 
 const isDockerNestedRuntimeRun =
-  process.env.NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH === '1' &&
-  process.env.NIGHTSHIFT_E2E_WEB_CLIENT === '1'
+  process.env.KOLUX_E2E_NESTED_RUNTIME_SSH === '1' && process.env.KOLUX_E2E_WEB_CLIENT === '1'
 
 const test = base.extend<{ proxyJumpFixture: NestedRuntimeProxyJumpFixture | null }>({
   // oxlint-disable-next-line no-empty-pattern -- Playwright fixture callbacks require object destructuring here.
@@ -63,16 +62,16 @@ const test = base.extend<{ proxyJumpFixture: NestedRuntimeProxyJumpFixture | nul
       fixture.dispose()
     }
   },
-  nightshiftAppExtraEnv: async ({ proxyJumpFixture }, provideFixture) => {
+  koluxAppExtraEnv: async ({ proxyJumpFixture }, provideFixture) => {
     await provideFixture(
-      proxyJumpFixture ? { NIGHTSHIFT_SYSTEM_SSH_PATH: proxyJumpFixture.wrapperPath } : {}
+      proxyJumpFixture ? { KOLUX_SYSTEM_SSH_PATH: proxyJumpFixture.wrapperPath } : {}
     )
   }
 })
 
 test.skip(
   !isDockerNestedRuntimeRun,
-  'Run with NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH=1 and NIGHTSHIFT_E2E_WEB_CLIENT=1'
+  'Run with KOLUX_E2E_NESTED_RUNTIME_SSH=1 and KOLUX_E2E_WEB_CLIENT=1'
 )
 test.skip(process.platform === 'win32', 'ProxyJump fixture requires POSIX OpenSSH tooling')
 
@@ -83,7 +82,7 @@ async function installProxyJumpFixture(
 ): Promise<void> {
   fixture.writeConfig(
     [
-      'Host nightshift-e2e-jump',
+      'Host kolux-e2e-jump',
       '  HostName 127.0.0.1',
       `  Port ${jump.port}`,
       '  User root',
@@ -92,13 +91,13 @@ async function installProxyJumpFixture(
       '  StrictHostKeyChecking no',
       '  UserKnownHostsFile /dev/null',
       '',
-      'Host nightshift-e2e-destination',
+      'Host kolux-e2e-destination',
       `  HostName ${destination.containerIp}`,
       '  Port 22',
       '  User root',
       `  IdentityFile ${destination.identityFile}`,
       '  IdentitiesOnly yes',
-      '  ProxyJump nightshift-e2e-jump',
+      '  ProxyJump kolux-e2e-jump',
       '  StrictHostKeyChecking no',
       '  UserKnownHostsFile /dev/null',
       ''
@@ -502,7 +501,7 @@ async function activatePairedTerminalTab(
 test.describe.configure({ mode: 'serial' })
 
 test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp,
   proxyJumpFixture
 }, testInfo) => {
@@ -520,16 +519,12 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
     sshTarget = startDockerSshRelayTarget(testInfo)
     proxyJumpHost = startDockerSshRelayTarget(testInfo)
     proxyJumpDestination = startDockerSshRelayTarget(testInfo)
-    const remote = await connectDockerSshRelayTarget(nightshiftPage, sshTarget)
+    const remote = await connectDockerSshRelayTarget(koluxPage, sshTarget)
     await installProxyJumpFixture(proxyJumpFixture, proxyJumpDestination, proxyJumpHost)
-    const proxyJumpRemote = await connectDockerSshRelayTarget(
-      nightshiftPage,
-      proxyJumpDestination,
-      {
-        viaProxyJump: true
-      }
-    )
-    const localRepoId = await nightshiftPage.evaluate(() => {
+    const proxyJumpRemote = await connectDockerSshRelayTarget(koluxPage, proxyJumpDestination, {
+      viaProxyJump: true
+    })
+    const localRepoId = await koluxPage.evaluate(() => {
       const repo = window.__store?.getState().repos.find((candidate) => !candidate.connectionId)
       if (!repo) {
         throw new Error('HUB local repo is unavailable')
@@ -538,22 +533,22 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
     })
 
     const hubLocalWorktreeId = await assertHubTerminal(
-      nightshiftPage,
+      koluxPage,
       localRepoId,
       `HUB_DESKTOP_LOCAL_${Date.now()}`
     )
     const hubSshWorktreeId = await assertHubTerminal(
-      nightshiftPage,
+      koluxPage,
       remote.repoId,
       `HUB_DESKTOP_SSH_${Date.now()}`
     )
     const hubProxyJumpWorktreeId = await assertHubTerminal(
-      nightshiftPage,
+      koluxPage,
       proxyJumpRemote.repoId,
       `HUB_DESKTOP_PROXY_JUMP_${Date.now()}`
     )
 
-    const webOffer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const webOffer = await createRuntimeDesktopPairingOffer(koluxPage)
     webClient = await launchPairedWebClient(electronApp, webOffer)
     await assertWebTerminal(webClient.page, hubLocalWorktreeId, `HUB_WEB_LOCAL_${Date.now()}`)
     await assertPairedWebLocalFilesystemMutations(webClient.page, hubLocalWorktreeId)
@@ -570,7 +565,7 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
       proxyJumpDestination
     )
 
-    const offerA = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const offerA = await createRuntimeDesktopPairingOffer(koluxPage)
     clientA = await launchPairedElectronClient(offerA, testInfo, 'Nested SSH HUB A')
 
     const localRoute = await assertInteractiveTerminal(
@@ -645,7 +640,7 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
       }
     })
 
-    const offerB = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const offerB = await createRuntimeDesktopPairingOffer(koluxPage)
     clientB = await launchPairedElectronClient(offerB, testInfo, 'Nested SSH HUB B')
     const secondLocalRoute = await assertInteractiveTerminal(
       clientB,
@@ -705,9 +700,9 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
     expect(reloadedSshRoute.localSshTargetIds).toEqual([])
     expect(reloadedSshRoute.runtimeOwnerEnvironmentId).toBe(clientA.environmentId)
 
-    await disconnectDockerSshRelayTarget(nightshiftPage, remote.targetId)
+    await disconnectDockerSshRelayTarget(koluxPage, remote.targetId)
     await assertRuntimeSshStatus(clientA, remote.targetId, 'disconnected')
-    await reconnectDisconnectedDockerSshRelayTarget(nightshiftPage, remote.targetId)
+    await reconnectDisconnectedDockerSshRelayTarget(koluxPage, remote.targetId)
     await assertRuntimeSshStatus(clientA, remote.targetId, 'connected')
     const reconnectedSshRoute = await assertInteractiveTerminal(
       clientA,
@@ -718,7 +713,7 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
     expect(reconnectedSshRoute.localSshTargetIds).toEqual([])
 
     await restartProxyJumpDetachedRelay(
-      nightshiftPage,
+      koluxPage,
       { label: 'direct', target: sshTarget, targetId: remote.targetId },
       {
         label: 'ProxyJump',
@@ -765,7 +760,7 @@ test('routes HUB desktop, web, and two paired desktops through HUB-owned SSH', a
     await assertRuntimeTerminalClose(clientA, convergedRelayRouteOnA.ptyId)
     await assertPairedPtyAbsent(clientB, restartedRelayRouteOnB.ptyId)
 
-    const rePairOffer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+    const rePairOffer = await createRuntimeDesktopPairingOffer(koluxPage)
     await rePairPairedElectronClient(clientA, rePairOffer, 'Nested SSH HUB A re-paired')
     await assertRuntimeSshStatus(clientA, remote.targetId, 'connected')
     const rePairedSshRoute = await assertInteractiveTerminal(

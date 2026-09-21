@@ -42,7 +42,7 @@ describe('journal row writer', () => {
   let readOnly = false
 
   beforeEach(async () => {
-    root = await mkdtemp(join(tmpdir(), 'nightshift-journal-row-writer-'))
+    root = await mkdtemp(join(tmpdir(), 'kolux-journal-row-writer-'))
     database = openJournalDatabase(journalDatabaseFile(root))
     upsertJournalSessionRow(database.db, SESSION_ID, EPOCH, 1)
     readOnly = false

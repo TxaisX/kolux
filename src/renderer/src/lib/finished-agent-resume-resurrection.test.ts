@@ -141,7 +141,7 @@ describe('a finished local agent', () => {
     seedLiveLocalCodexPane()
     reportTurnFinished()
 
-    // `nightshift terminal stop` / app death: the PTY and pane go, the record stays.
+    // `kolux terminal stop` / app death: the PTY and pane go, the record stays.
     useAppStore.setState({
       tabsByWorktree: { [WORKTREE_ID]: [] },
       ptyIdsByTabId: {},

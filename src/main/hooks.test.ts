@@ -206,7 +206,7 @@ describe('runHook', () => {
       const { runHook } = await import('./hooks')
       const result = await runHook('setup', '\\\\wsl.localhost\\Ubuntu\\home\\jin\\feature', {
         ...makeRepo(),
-        path: 'C:\\Users\\jinwo\\git\\nightshift'
+        path: 'C:\\Users\\jinwo\\git\\kolux'
       })
 
       expect(result).toEqual({ success: true, output: '' })
@@ -219,10 +219,10 @@ describe('runHook', () => {
           // #7652 regression: the unattended WSL hook branch must carry the
           // credential guard into the guest env.
           env: expect.objectContaining({
-            NIGHTSHIFT_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift',
-            NIGHTSHIFT_WORKTREE_PATH: '/home/jin/feature',
-            CONDUCTOR_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift',
-            GHOSTX_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift',
+            KOLUX_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux',
+            KOLUX_WORKTREE_PATH: '/home/jin/feature',
+            CONDUCTOR_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux',
+            GHOSTX_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux',
             GIT_TERMINAL_PROMPT: '0',
             GCM_INTERACTIVE: 'never'
           })
@@ -262,10 +262,10 @@ describe('runHook', () => {
       const { runHook } = await import('./hooks')
       const result = await runHook(
         'setup',
-        'C:\\Users\\jinwo\\git\\nightshift-feature',
+        'C:\\Users\\jinwo\\git\\kolux-feature',
         {
           ...makeRepo(),
-          path: 'C:\\Users\\jinwo\\git\\nightshift'
+          path: 'C:\\Users\\jinwo\\git\\kolux'
         },
         undefined,
         { wslDistro: 'Ubuntu' }
@@ -277,12 +277,12 @@ describe('runHook', () => {
           distro: 'Ubuntu',
           loginPath: 'preferred',
           script: 'echo hello',
-          cwd: '/mnt/c/Users/jinwo/git/nightshift-feature',
+          cwd: '/mnt/c/Users/jinwo/git/kolux-feature',
           env: expect.objectContaining({
-            NIGHTSHIFT_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift',
-            NIGHTSHIFT_WORKTREE_PATH: '/mnt/c/Users/jinwo/git/nightshift-feature',
-            CONDUCTOR_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift',
-            GHOSTX_ROOT_PATH: '/mnt/c/Users/jinwo/git/nightshift'
+            KOLUX_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux',
+            KOLUX_WORKTREE_PATH: '/mnt/c/Users/jinwo/git/kolux-feature',
+            CONDUCTOR_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux',
+            GHOSTX_ROOT_PATH: '/mnt/c/Users/jinwo/git/kolux'
           })
         })
       )
@@ -297,9 +297,7 @@ describe('runHook', () => {
 
   it('writes Windows-path setup runners through WSL git when the project runtime targets WSL', async () => {
     gitExecFileSyncMock.mockReset()
-    gitExecFileSyncMock.mockReturnValue(
-      '/mnt/c/Users/jinwo/git/nightshift/.git/nightshift/setup-runner.sh\n'
-    )
+    gitExecFileSyncMock.mockReturnValue('/mnt/c/Users/jinwo/git/kolux/.git/kolux/setup-runner.sh\n')
 
     const fs = await import('node:fs')
     const mkdirSyncMock = vi.mocked(fs.mkdirSync)
@@ -317,17 +315,17 @@ describe('runHook', () => {
       const result = createSetupRunnerScript(
         {
           ...makeRepo(),
-          path: 'C:\\Users\\jinwo\\git\\nightshift'
+          path: 'C:\\Users\\jinwo\\git\\kolux'
         },
-        'C:\\Users\\jinwo\\git\\nightshift-feature',
+        'C:\\Users\\jinwo\\git\\kolux-feature',
         'echo hello',
         { wslDistro: 'Ubuntu' }
       )
 
       expect(gitExecFileSyncMock).toHaveBeenCalledWith(
-        ['rev-parse', '--git-path', 'nightshift/setup-runner.sh'],
+        ['rev-parse', '--git-path', 'kolux/setup-runner.sh'],
         {
-          cwd: 'C:\\Users\\jinwo\\git\\nightshift-feature',
+          cwd: 'C:\\Users\\jinwo\\git\\kolux-feature',
           wslDistro: 'Ubuntu'
         }
       )
@@ -375,7 +373,7 @@ describe('runHook', () => {
       const { runHook } = await import('./hooks')
       const result = await runHook('setup', '\\\\wsl.localhost\\Ubuntu\\home\\jin\\feature', {
         ...makeRepo(),
-        path: 'C:\\Users\\jinwo\\git\\nightshift'
+        path: 'C:\\Users\\jinwo\\git\\kolux'
       })
 
       expect(result).toMatchObject({

@@ -34,11 +34,11 @@ describe('decodeGrokTranscriptLine', () => {
   })
 
   it.each([
-    'C:\\Users\\me\\AppData\\Local\\Temp\\nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
-    '/tmp/nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
-    'C:\\nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
-    '/nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
-    '\\\\server\\temp\\nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png'
+    'C:\\Users\\me\\AppData\\Local\\Temp\\kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
+    '/tmp/kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
+    'C:\\kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
+    '/kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png',
+    '\\\\server\\temp\\kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png'
   ])('restores a pasted image and prompt from Grok transcript text for %s', (imagePath) => {
     const line = JSON.stringify({
       type: 'user',
@@ -60,7 +60,7 @@ describe('decodeGrokTranscriptLine', () => {
   })
 
   it('restores an attachment-only pasted image from Grok transcript text', () => {
-    const imagePath = '/tmp/nightshift-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png'
+    const imagePath = '/tmp/kolux-paste-1783675302563-2207c073-535f-4b83-a181-61127c8bbd68.png'
     const line = JSON.stringify({
       type: 'user',
       content: [{ type: 'text', text: `<user_query>${imagePath}</user_query>` }]
@@ -73,7 +73,7 @@ describe('decodeGrokTranscriptLine', () => {
   })
 
   it('preserves ordinary prompts that mention pasted-image filenames', () => {
-    const text = 'Explain what a nightshift-paste-123-example.png file is'
+    const text = 'Explain what a kolux-paste-123-example.png file is'
     const line = JSON.stringify({
       type: 'user',
       content: [{ type: 'text', text: `<user_query>${text}</user_query>` }]

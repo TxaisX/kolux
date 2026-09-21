@@ -163,7 +163,7 @@ export async function importExternalPathsToRuntime(
     } catch (error) {
       if (createdDirectoryImportRoot) {
         // Why: match local directory imports by removing the no-clobber root
-        // Nightshift created when a nested runtime upload fails halfway through.
+        // Kolux created when a nested runtime upload fails halfway through.
         assertImportSessionCurrent()
         await callRuntimeFileMutation(
           target,

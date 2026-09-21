@@ -3,7 +3,7 @@
 // hard parse failure on already-shipped phones. The close reason is a wire slot
 // old peers never read, which makes it the only additive channel here.
 export const RELAY_HOST_CLOSE_REASON = {
-  // The desktop lost its Nightshift Cloud session (cleared, or refused with 401).
+  // The desktop lost its Kolux Cloud session (cleared, or refused with 401).
   SIGNED_OUT: 'signed-out'
 } as const
 

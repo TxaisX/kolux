@@ -32,15 +32,15 @@ function hashDockerFixtureDirectory(fixtureDir: string): string {
 function fixtureImage(root: string): string {
   const fixtureDir = path.join(root, 'tests', 'e2e', 'fixtures', 'docker-ssh-relay')
   const digest = hashDockerFixtureDirectory(fixtureDir)
-  return `nightshift-e2e-ssh-relay:${digest}`
+  return `kolux-e2e-ssh-relay:${digest}`
 }
 
 export function getDockerSshRelayImage(): string {
-  return process.env.NIGHTSHIFT_E2E_SSH_DOCKER_IMAGE ?? fixtureImage(process.cwd())
+  return process.env.KOLUX_E2E_SSH_DOCKER_IMAGE ?? fixtureImage(process.cwd())
 }
 
 export function prepareDockerSshRelayImage(root: string): void {
-  if (process.env.NIGHTSHIFT_E2E_SSH_DOCKER_IMAGE) {
+  if (process.env.KOLUX_E2E_SSH_DOCKER_IMAGE) {
     return
   }
   const fixtureDir = path.join(root, 'tests', 'e2e', 'fixtures', 'docker-ssh-relay')
@@ -53,7 +53,7 @@ export function prepareDockerSshRelayImage(root: string): void {
 }
 
 export function ensureDockerSshRelayImage(root: string): void {
-  if (process.env.NIGHTSHIFT_E2E_SSH_DOCKER_IMAGE) {
+  if (process.env.KOLUX_E2E_SSH_DOCKER_IMAGE) {
     return
   }
   const image = fixtureImage(root)

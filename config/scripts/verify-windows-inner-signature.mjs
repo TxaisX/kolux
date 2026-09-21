@@ -7,7 +7,7 @@ export const DEFAULT_EXPECTED_SIGNER =
 
 const POWERSHELL_SIGNATURE_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
-$signature = Get-AuthenticodeSignature -FilePath $env:NIGHTSHIFT_WINDOWS_INNER_EXECUTABLE
+$signature = Get-AuthenticodeSignature -FilePath $env:KOLUX_WINDOWS_INNER_EXECUTABLE
 $certificate = $signature.SignerCertificate
 [pscustomobject]@{
   status = $signature.Status.ToString()
@@ -40,7 +40,7 @@ export function normalizeThumbprint(thumbprint) {
   return thumbprint.replace(/[^0-9a-f]/giu, '').toUpperCase()
 }
 
-export function parseExpectedSigners(value = process.env.NIGHTSHIFT_WINDOWS_EXPECTED_SIGNERS) {
+export function parseExpectedSigners(value = process.env.KOLUX_WINDOWS_EXPECTED_SIGNERS) {
   const source = typeof value === 'string' && value.trim() !== '' ? value : DEFAULT_EXPECTED_SIGNER
 
   return source
@@ -49,9 +49,7 @@ export function parseExpectedSigners(value = process.env.NIGHTSHIFT_WINDOWS_EXPE
     .filter(Boolean)
 }
 
-export function parseExpectedThumbprints(
-  value = process.env.NIGHTSHIFT_WINDOWS_EXPECTED_THUMBPRINTS
-) {
+export function parseExpectedThumbprints(value = process.env.KOLUX_WINDOWS_EXPECTED_THUMBPRINTS) {
   if (typeof value !== 'string' || value.trim() === '') {
     return []
   }
@@ -119,9 +117,7 @@ export function formatSignatureSummary(signature) {
 
 export function validateExecutablePath(executablePath) {
   if (typeof executablePath !== 'string' || executablePath.trim() === '') {
-    throw new Error(
-      'Usage: node config/scripts/verify-windows-inner-signature.mjs <Nightshift.exe>'
-    )
+    throw new Error('Usage: node config/scripts/verify-windows-inner-signature.mjs <Kolux.exe>')
   }
 
   if (!existsSync(executablePath)) {
@@ -150,7 +146,7 @@ export function getPowerShellSignatureJson(executablePath, spawnSyncImpl = spawn
       encoding: 'utf8',
       env: {
         ...process.env,
-        NIGHTSHIFT_WINDOWS_INNER_EXECUTABLE: executablePath
+        KOLUX_WINDOWS_INNER_EXECUTABLE: executablePath
       }
     }
   )

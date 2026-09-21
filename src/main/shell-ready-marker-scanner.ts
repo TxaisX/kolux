@@ -1,4 +1,4 @@
-export const SHELL_READY_MARKER_PREFIX = '\x1b]777;nightshift-shell-ready'
+export const SHELL_READY_MARKER_PREFIX = '\x1b]777;kolux-shell-ready'
 
 export type ShellReadyScanState = {
   matchPos: number

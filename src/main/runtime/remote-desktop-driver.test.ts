@@ -13,7 +13,7 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import type * as GitUsernameModule from '../git/git-username'
-import { NightshiftRuntimeService } from './nightshift-runtime'
+import { KoluxRuntimeService } from './kolux-runtime'
 
 vi.mock('../git/worktree', () => ({
   listWorktrees: vi.fn().mockResolvedValue([]),
@@ -74,7 +74,7 @@ const store = {
 }
 
 function createRuntime(mobileAutoRestoreFitMs: number | null = 5_000) {
-  const runtime = new NightshiftRuntimeService({
+  const runtime = new KoluxRuntimeService({
     ...store,
     getSettings: () => ({ ...store.getSettings(), mobileAutoRestoreFitMs })
   })

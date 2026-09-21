@@ -15,8 +15,8 @@
 //   DO_NOT_TRACK=1            → disable bundle button. KEEP local file.
 //                                Local file writes never leave the machine,
 //                                so they are not "tracking" in the DNT sense.
-//   NIGHTSHIFT_TELEMETRY_DISABLED=1 → identical to DO_NOT_TRACK for this lane.
-//   NIGHTSHIFT_DIAGNOSTICS_DISABLED=1 → ALSO disable local file writes. The escape
+//   KOLUX_TELEMETRY_DISABLED=1 → identical to DO_NOT_TRACK for this lane.
+//   KOLUX_DIAGNOSTICS_DISABLED=1 → ALSO disable local file writes. The escape
 //                                hatch for users on devices where even local
 //                                debug logs are policy-forbidden.
 //   CI detection              → disable everything in this lane.
@@ -70,8 +70,8 @@ export type ObservabilityConsent = {
   /** Reason any of the lanes are disabled, for debug surfaces. */
   readonly disabledReason?:
     | 'do_not_track'
-    | 'nightshift_telemetry_disabled'
-    | 'nightshift_diagnostics_disabled'
+    | 'kolux_telemetry_disabled'
+    | 'kolux_diagnostics_disabled'
     | 'ci'
 }
 
@@ -94,8 +94,8 @@ export function resolveObservabilityConsent(): ObservabilityConsent {
   // CI and DNT/disabled have different effects on which sub-lanes are gated.
   // Keep the ordering aligned with §Consent boundaries above.
   const dnt = envOn('DO_NOT_TRACK')
-  const nightshiftDisabled = envOn('NIGHTSHIFT_TELEMETRY_DISABLED')
-  const diagnosticsDisabled = envOn('NIGHTSHIFT_DIAGNOSTICS_DISABLED')
+  const koluxDisabled = envOn('KOLUX_TELEMETRY_DISABLED')
+  const diagnosticsDisabled = envOn('KOLUX_DIAGNOSTICS_DISABLED')
   const ci = inCI()
 
   if (ci) {
@@ -109,16 +109,16 @@ export function resolveObservabilityConsent(): ObservabilityConsent {
     return {
       localFileEnabled: false,
       bundleEnabled: false,
-      disabledReason: 'nightshift_diagnostics_disabled'
+      disabledReason: 'kolux_diagnostics_disabled'
     }
   }
-  if (dnt || nightshiftDisabled) {
+  if (dnt || koluxDisabled) {
     // Local file remains active — DNT is a *network* signal, and the local
     // file never leaves the machine.
     return {
       localFileEnabled: true,
       bundleEnabled: false,
-      disabledReason: dnt ? 'do_not_track' : 'nightshift_telemetry_disabled'
+      disabledReason: dnt ? 'do_not_track' : 'kolux_telemetry_disabled'
     }
   }
 
@@ -149,7 +149,7 @@ export function initObservability(): ObservabilityConsent {
   const c = resolveObservabilityConsent()
   consent = c
   if (!c.localFileEnabled) {
-    // Disabled at the CI / NIGHTSHIFT_DIAGNOSTICS_DISABLED level — leave the
+    // Disabled at the CI / KOLUX_DIAGNOSTICS_DISABLED level — leave the
     // tracer's active sink unset, so all spans are no-ops.
     return c
   }
@@ -219,14 +219,14 @@ export function getDiagnosticsStatus(): DiagnosticsStatus {
 }
 
 /** Collect a bundle from the live trace folder. The `appVersion` /
- *  `platform` / `arch` / `osRelease` / `nightshiftChannel` inputs come from main
+ *  `platform` / `arch` / `osRelease` / `koluxChannel` inputs come from main
  *  and are baked into the bundle header. NEVER pass `install_id` here —
  *  the bundle's identity is the per-bundle submission ID, not the
  *  PostHog-lane install_id (Issue 8 in the security review). */
 export function collectDiagnosticBundle(
   meta: Pick<
     CollectBundleOptions,
-    'appVersion' | 'platform' | 'arch' | 'osRelease' | 'nightshiftChannel' | 'lookbackMinutes'
+    'appVersion' | 'platform' | 'arch' | 'osRelease' | 'koluxChannel' | 'lookbackMinutes'
   >
 ): CollectedBundle {
   // Flush the active sink first so the very latest spans are present in the

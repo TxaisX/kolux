@@ -24,9 +24,9 @@ describe.runIf(process.platform === 'win32')('Windows preflight Path refresh rep
   })
 
   it('finds a newly installed executable immediately after a forced refresh', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'nightshift-path-refresh-'))
+    const directory = mkdtempSync(join(tmpdir(), 'kolux-path-refresh-'))
     fixtureDirs.push(directory)
-    const command = 'nightshift-path-refresh-fixture.exe'
+    const command = 'kolux-path-refresh-fixture.exe'
     copyFileSync(
       join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'where.exe'),
       join(directory, command)

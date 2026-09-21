@@ -67,7 +67,7 @@ describe('hook-driven tab title writes', () => {
     expect(resolved.tabTitle).toBe('Codex - action required')
   })
 
-  // Why: Nightshift writes "Codex - action required" itself on a blocked/waiting hook, into `tab.title`
+  // Why: Kolux writes "Codex - action required" itself on a blocked/waiting hook, into `tab.title`
   // only. When `done` arrived, the no-op guard compared the resolved title against the PANE slot —
   // which still read "Codex ready" — so the write was skipped and the tab kept asserting a question
   // the agent had already finished asking, for as long as the pane stayed unmounted.

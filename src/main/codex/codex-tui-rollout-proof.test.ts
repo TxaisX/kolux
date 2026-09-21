@@ -67,7 +67,7 @@ describe('Codex TUI rollout proof', () => {
   })
 
   it('skips a rollout file that vanishes mid-scan instead of aborting the proof', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-rollout-proof-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-rollout-proof-'))
     try {
       const day = join(root, 'sessions', '2026', '08', '11')
       await mkdir(day, { recursive: true })

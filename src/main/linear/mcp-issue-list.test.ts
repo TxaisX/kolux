@@ -83,7 +83,7 @@ describe('MCP-compatible Linear issue listing', () => {
     })
 
     expect(rawRequest).toHaveBeenCalledWith(
-      expect.stringContaining('query NightshiftLinearListIssues'),
+      expect.stringContaining('query KoluxLinearListIssues'),
       expect.objectContaining({
         first: 100,
         after: 'current-page',
@@ -115,7 +115,7 @@ describe('MCP-compatible Linear issue listing', () => {
     })
     // Stops at the requested cap instead of walking on.
     expect(rawRequest).toHaveBeenCalledTimes(1)
-    expect(result.meta.nextCursor).toMatch(/^nightshift\.linear\.v1\./)
+    expect(result.meta.nextCursor).toMatch(/^kolux\.linear\.v1\./)
     expect(result.issues[0]).toMatchObject({
       identifier: 'ENG-1',
       workspace: { id: 'workspace-1', name: 'Acme' }

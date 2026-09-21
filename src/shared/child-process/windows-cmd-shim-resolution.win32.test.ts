@@ -21,7 +21,7 @@ describeOnWindows('resolved .cmd shim spawn', () => {
   let shim: string
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'nightshift-shim-spawn-'))
+    dir = mkdtempSync(join(tmpdir(), 'kolux-shim-spawn-'))
     shim = join(dir, 'echoargs.cmd')
     writeFileSync(shim, npmProgNodeShim('echoargs.js'))
     writeFileSync(

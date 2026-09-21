@@ -45,7 +45,7 @@ const checks = [
       '-c',
       [
         'import importlib.util',
-        'spec=importlib.util.spec_from_file_location("nightshift_linux","native/computer-use-linux/runtime.py")',
+        'spec=importlib.util.spec_from_file_location("kolux_linux","native/computer-use-linux/runtime.py")',
         'module=importlib.util.module_from_spec(spec)',
         'spec.loader.exec_module(module)',
         'print("import-ok")'
@@ -148,7 +148,7 @@ function verifyMacOSHelperApp() {
     'computer-use-macos',
     '.build',
     'release',
-    'Nightshift Computer Use.app'
+    'Kolux Computer Use.app'
   )
   if (!existsSync(appPath)) {
     console.error(
@@ -160,7 +160,7 @@ function verifyMacOSHelperApp() {
 }
 
 function verifyWindowsProviderHandshake() {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-computer-use-verify-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-computer-use-verify-'))
   const operationPath = join(dir, 'operation.json')
   try {
     writeFileSync(operationPath, JSON.stringify({ tool: 'handshake' }), { mode: 0o600 })
@@ -199,7 +199,7 @@ function verifyWindowsProviderHandshake() {
 function verifyNativeArgumentGuardrails() {
   const linux = readFileSync(join(repoRoot, 'native/computer-use-linux/runtime.py'), 'utf8')
   const macos = readFileSync(
-    join(repoRoot, 'native/computer-use-macos/Sources/NightshiftComputerUseMacOS/main.swift'),
+    join(repoRoot, 'native/computer-use-macos/Sources/KoluxComputerUseMacOS/main.swift'),
     'utf8'
   )
   const windows = readFileSync(join(repoRoot, 'native/computer-use-windows/runtime.ps1'), 'utf8')
@@ -381,22 +381,18 @@ function verifyNativeArgumentGuardrails() {
     failures.push('Windows keyboard focus checks must verify focus after --restore-window')
   }
   if (
-    !windows.includes('function Test-NightshiftSensitiveElement') ||
+    !windows.includes('function Test-KoluxSensitiveElement') ||
     !windows.includes('"verification code"') ||
-    !windows.includes('if (Test-NightshiftSensitiveElement $Element) { return "[redacted]" }')
+    !windows.includes('if (Test-KoluxSensitiveElement $Element) { return "[redacted]" }')
   ) {
     failures.push(
       'Windows secure fields must redact labeled verification-code/password-style values'
     )
   }
   if (
-    !windows.includes('function Get-NightshiftRequiredString($Value, [string]$Name)') ||
-    !windows.includes(
-      'Send-NightshiftText $handle (Get-NightshiftRequiredString $Operation.text "text")'
-    ) ||
-    !windows.includes(
-      'Send-NightshiftKey $handle (Get-NightshiftRequiredString $Operation.key "key")'
-    )
+    !windows.includes('function Get-KoluxRequiredString($Value, [string]$Name)') ||
+    !windows.includes('Send-KoluxText $handle (Get-KoluxRequiredString $Operation.text "text")') ||
+    !windows.includes('Send-KoluxKey $handle (Get-KoluxRequiredString $Operation.key "key")')
   ) {
     failures.push(
       'Windows text/key actions must reject missing payloads instead of sending empty input'
@@ -408,23 +404,21 @@ function verifyNativeArgumentGuardrails() {
     )
   }
   if (
-    !windows.includes(
-      'Render-NightshiftTree $root $windowFrame (Test-NightshiftBrowserProcess $process)'
-    ) ||
+    !windows.includes('Render-KoluxTree $root $windowFrame (Test-KoluxBrowserProcess $process)') ||
     !windows.includes('inactive browser tabs omitted')
   ) {
     failures.push('Windows browser snapshots must compact large inactive browser tab strips')
   }
   if (
     !windows.includes('[bool]$record.isSelected') ||
-    !windows.includes('(Format-NightshiftSnapshotText $record.value) -eq "1"')
+    !windows.includes('(Format-KoluxSnapshotText $record.value) -eq "1"')
   ) {
     failures.push('Windows browser tab compaction must preserve selected-tab fallbacks')
   }
   if (!windows.includes('restoreWindow was requested but the target window is still not focused')) {
     failures.push('Windows keyboard focus failures after restore must explain the recovery state')
   }
-  const windowFrameFunction = powerShellFunctionBody(windows, 'Get-NightshiftWindowFrame')
+  const windowFrameFunction = powerShellFunctionBody(windows, 'Get-KoluxWindowFrame')
   if (!windowFrameFunction?.includes('$null')) {
     failures.push('Windows window-frame fallback must return null when bounds are unavailable')
   }
@@ -433,7 +427,7 @@ function verifyNativeArgumentGuardrails() {
   }
   const renderedElementIndexFunction = powerShellFunctionBody(
     windows,
-    'Get-NightshiftRenderedElementIndex'
+    'Get-KoluxRenderedElementIndex'
   )
   if (!renderedElementIndexFunction?.includes('$null')) {
     failures.push('Windows rendered element index parsing must return null for non-index lines')
@@ -443,12 +437,12 @@ function verifyNativeArgumentGuardrails() {
       'Windows rendered element index parsing must not return screenshot failure objects'
     )
   }
-  if (windows.includes('New-NightshiftScreenshotPayload $bestBytes $bestWidth $bestHeight')) {
+  if (windows.includes('New-KoluxScreenshotPayload $bestBytes $bestWidth $bestHeight')) {
     failures.push('Windows screenshot payloads must not return oversized best-effort PNGs')
   }
   const boundedScreenshotFunction = powerShellFunctionBody(
     windows,
-    'Get-NightshiftBoundedScreenshotPayload'
+    'Get-KoluxBoundedScreenshotPayload'
   )
   if (!boundedScreenshotFunction?.includes('error = [pscustomobject]')) {
     failures.push('Windows screenshot cap failures must return a structured error object')
@@ -469,17 +463,15 @@ function verifyNativeArgumentGuardrails() {
   }
   if (
     windows.includes(
-      'Send-NightshiftMouseClick $handle $point.x $point.y $Operation.mouse_button ([int]$Operation.click_count)'
+      'Send-KoluxMouseClick $handle $point.x $point.y $Operation.mouse_button ([int]$Operation.click_count)'
     )
   ) {
-    failures.push('Windows click_count must be validated before Send-NightshiftMouseClick')
+    failures.push('Windows click_count must be validated before Send-KoluxMouseClick')
   }
   if (
-    !windows.includes(
-      '$clickCount = Get-NightshiftPositiveInteger $Operation.click_count "click_count"'
-    )
+    !windows.includes('$clickCount = Get-KoluxPositiveInteger $Operation.click_count "click_count"')
   ) {
-    failures.push('Windows click_count default must be handled by Get-NightshiftPositiveInteger')
+    failures.push('Windows click_count default must be handled by Get-KoluxPositiveInteger')
   }
   if (
     !windows.includes('@("pageup", "page_up")') ||

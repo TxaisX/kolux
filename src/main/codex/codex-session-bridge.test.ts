@@ -139,7 +139,7 @@ function writeLegacyCopyMarker(relativePath: string, sourcePath: string, targetP
   const targetStat = lstatSync(targetPath)
   const markerPath = join(
     getRuntimeCodexHomePath(),
-    '.nightshift-session-copies',
+    '.kolux-session-copies',
     `${relativePath}.json`
   )
   mkdirSync(dirname(markerPath), { recursive: true })
@@ -164,10 +164,10 @@ beforeEach(() => {
   fsMockState.failLink = false
   fsMockState.failSymlink = false
   fsMockState.fakeSymlinks.clear()
-  fakeHomeDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-session-home-'))
-  userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-codex-session-user-data-'))
-  previousUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
-  process.env.NIGHTSHIFT_USER_DATA_PATH = userDataDir
+  fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-session-home-'))
+  userDataDir = mkdtempSync(join(tmpdir(), 'kolux-codex-session-user-data-'))
+  previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
+  process.env.KOLUX_USER_DATA_PATH = userDataDir
   homedirMock.mockReturnValue(fakeHomeDir)
   mkdirSync(getSystemCodexHomePath(), { recursive: true })
 })
@@ -176,9 +176,9 @@ afterEach(() => {
   rmSync(fakeHomeDir, { recursive: true, force: true })
   rmSync(userDataDir, { recursive: true, force: true })
   if (previousUserDataPath === undefined) {
-    delete process.env.NIGHTSHIFT_USER_DATA_PATH
+    delete process.env.KOLUX_USER_DATA_PATH
   } else {
-    process.env.NIGHTSHIFT_USER_DATA_PATH = previousUserDataPath
+    process.env.KOLUX_USER_DATA_PATH = previousUserDataPath
   }
   vi.clearAllMocks()
 })

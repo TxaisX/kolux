@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { resolveResidualAgentTerminal } from './failed-start-residual-terminal'
 import { failWorkerStartWithReceipt } from './worker-start-receipt'
@@ -17,7 +17,7 @@ const createdAgentTerminal: WorkerEffect = {
   surface: 'visible'
 }
 
-function createRuntime(overrides: Partial<Record<string, unknown>> = {}): NightshiftRuntimeService {
+function createRuntime(overrides: Partial<Record<string, unknown>> = {}): KoluxRuntimeService {
   return {
     getOrchestrationDispatchAuthority: () => ({
       paneKey: PANE_KEY,
@@ -27,7 +27,7 @@ function createRuntime(overrides: Partial<Record<string, unknown>> = {}): Nights
     getTerminalPaneKey: () => PANE_KEY,
     getTerminalProcessIncarnation: () => INCARNATION,
     ...overrides
-  } as unknown as NightshiftRuntimeService
+  } as unknown as KoluxRuntimeService
 }
 
 describe('residual agent terminal left by a failed start', () => {

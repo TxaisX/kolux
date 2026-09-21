@@ -29,7 +29,7 @@ function pointerDeps(db: OrchestrationDb, writePty: () => WriteSettlement) {
     getLiveLeafForHandle: () => LEAF,
     getMessageWaiters: () => undefined,
     getTabTitle: () => null,
-    getCliCommand: () => 'nightshift' as const,
+    getCliCommand: () => 'kolux' as const,
     getTerminalHandleForLeafKey: () => 'term-1',
     resolveSubmitTarget: () => ({
       leaf: LEAF,

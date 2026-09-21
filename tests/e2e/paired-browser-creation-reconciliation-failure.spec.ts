@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from '@stablyai/playwright-test'
 import { RuntimeClient } from '../../src/cli/runtime/client'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import { readHostBrowserPageIds, readHostTabs } from './helpers/host-session-tabs'
 import {
   launchHeadlessPairedRuntimeHost,
@@ -304,14 +304,14 @@ async function runCapabilityFailureJourney(args: {
 
 test('rolls back a headed-host browser when client reconciliation times out @headful', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(300_000)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   await runReconciliationFailureJourney({
     // Why 30s: browser.tabList on a headed host with no live browser tab first activates the
@@ -327,14 +327,14 @@ test('rolls back a headed-host browser when client reconciliation times out @hea
 
 test('cleans up a headed-host browser when capability rejects before create @headful', async ({
   electronApp,
-  nightshiftPage,
+  koluxPage,
   testRepoPath
 }, testInfo) => {
   test.setTimeout(300_000)
-  await waitForSessionReady(nightshiftPage)
-  await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  await waitForSessionReady(koluxPage)
+  await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   await runCapabilityFailureJourney({
     // Why 30s: browser.tabList on a headed host with no live browser tab first activates the

@@ -3,16 +3,16 @@ import { performance } from 'node:perf_hooks'
 import process from 'node:process'
 import { createStore } from 'zustand/vanilla'
 
-const SUBSCRIBERS = Number.parseInt(process.env.NIGHTSHIFT_ZUSTAND_BENCH_SUBSCRIBERS ?? '2500', 10)
-const WRITES = Number.parseInt(process.env.NIGHTSHIFT_ZUSTAND_BENCH_WRITES ?? '2000', 10)
+const SUBSCRIBERS = Number.parseInt(process.env.KOLUX_ZUSTAND_BENCH_SUBSCRIBERS ?? '2500', 10)
+const WRITES = Number.parseInt(process.env.KOLUX_ZUSTAND_BENCH_WRITES ?? '2000', 10)
 const MAX_MILLISECONDS_PER_WRITE = Number.parseFloat(
-  process.env.NIGHTSHIFT_ZUSTAND_BENCH_MAX_MS_PER_WRITE ?? '5'
+  process.env.KOLUX_ZUSTAND_BENCH_MAX_MS_PER_WRITE ?? '5'
 )
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_ZUSTAND_BENCH_SUBSCRIBERS', SUBSCRIBERS],
-  ['NIGHTSHIFT_ZUSTAND_BENCH_WRITES', WRITES],
-  ['NIGHTSHIFT_ZUSTAND_BENCH_MAX_MS_PER_WRITE', MAX_MILLISECONDS_PER_WRITE]
+  ['KOLUX_ZUSTAND_BENCH_SUBSCRIBERS', SUBSCRIBERS],
+  ['KOLUX_ZUSTAND_BENCH_WRITES', WRITES],
+  ['KOLUX_ZUSTAND_BENCH_MAX_MS_PER_WRITE', MAX_MILLISECONDS_PER_WRITE]
 ]) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${name} must be positive, received ${value}`)

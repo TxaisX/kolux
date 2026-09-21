@@ -27,11 +27,11 @@ describe('ProjectViewWrapper GitHub source context boundary', () => {
         number: 42,
         title: 'Enterprise pull request',
         body: null,
-        url: 'https://ghe.example.com/acme/nightshift/pull/42',
+        url: 'https://ghe.example.com/acme/kolux/pull/42',
         state: 'OPEN',
         stateReason: null,
         isDraft: false,
-        repository: 'acme/nightshift',
+        repository: 'acme/kolux',
         assignees: [],
         labels: [{ name: 'bug', color: 'd73a4a' }],
         parentIssue: null,
@@ -45,7 +45,7 @@ describe('ProjectViewWrapper GitHub source context boundary', () => {
     expect(buildProjectWorkItem(row, 'repo-1', 'ghe.example.com')).toMatchObject({
       repoId: 'repo-1',
       type: 'pr',
-      prRepo: { owner: 'acme', repo: 'nightshift', host: 'ghe.example.com' }
+      prRepo: { owner: 'acme', repo: 'kolux', host: 'ghe.example.com' }
     })
     expect(buildProjectWorkItem(row, 'repo-1')?.prRepo?.host).toBe('github.com')
   })

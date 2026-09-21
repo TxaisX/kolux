@@ -44,7 +44,7 @@ export function resolveWorkspaceSelector(
 export function unknownWorkspace(workspaceId: string): ReturnType<typeof linearError> {
   return linearError('linear_invalid_workspace', `Unknown Linear workspace ${workspaceId}.`, {
     nextSteps: [
-      'Run `nightshift linear search <query> --workspace all --json` to inspect workspace ids.'
+      'Run `kolux linear search <query> --workspace all --json` to inspect workspace ids.'
     ]
   })
 }

@@ -136,7 +136,7 @@ function useFullDiskAccessStatus(): FullDiskAccessStatusState & { refresh: () =>
     if (!isMac) {
       return
     }
-    // Why: users grant Full Disk Access outside Nightshift, so focus is the first
+    // Why: users grant Full Disk Access outside Kolux, so focus is the first
     // cheap signal that System Settings may have changed the permission state.
     window.addEventListener('focus', refreshIfLive)
     return () => {

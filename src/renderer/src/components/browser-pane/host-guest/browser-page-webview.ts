@@ -1,5 +1,5 @@
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
-import { NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE } from '../../../../../shared/browser-guest-web-preferences'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE } from '../../../../../shared/browser-guest-web-preferences'
 import {
   destroyPersistentWebview,
   registerPersistentWebview,
@@ -60,10 +60,10 @@ export function ensureBrowserPageWebview({
   webview.setAttribute('allowpopups', '')
   // Why: Electron spreads the webpreferences keys verbatim, so the shared
   // camelCase attribute must stay intact for fullscreen containment to work.
-  // Keep Chromium's normal page canvas opaque while the host underneath follows Nightshift's theme.
+  // Keep Chromium's normal page canvas opaque while the host underneath follows Kolux's theme.
   webview.setAttribute(
     'webpreferences',
-    `${NIGHTSHIFT_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE},transparent=false`
+    `${KOLUX_BROWSER_GUEST_WEB_PREFERENCES_ATTRIBUTE},transparent=false`
   )
   webview.style.display = 'flex'
   webview.style.flex = '1'
@@ -77,9 +77,7 @@ export function ensureBrowserPageWebview({
   guest.addEventListener('load-commit', (event) => {
     if (event.isMainFrame) {
       guest.style.visibility =
-        event.url === 'about:blank' || event.url === NIGHTSHIFT_BROWSER_BLANK_URL
-          ? 'hidden'
-          : 'visible'
+        event.url === 'about:blank' || event.url === KOLUX_BROWSER_BLANK_URL ? 'hidden' : 'visible'
     }
   })
   guest.addEventListener('render-process-gone', () => {

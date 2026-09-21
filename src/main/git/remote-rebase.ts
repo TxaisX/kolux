@@ -56,7 +56,7 @@ async function gitPullRebaseFromBaseUnlocked(
         }
       }
       // Why: concurrent fetches can replace FETCH_HEAD and remote-tracking refs between fetch and rebase.
-      rebaseRef = `refs/nightshift/rebase/${randomUUID()}`
+      rebaseRef = `refs/kolux/rebase/${randomUUID()}`
       const fetchArgs = [
         source.remoteName,
         `+refs/heads/${source.branchName}:${rebaseRef}`,

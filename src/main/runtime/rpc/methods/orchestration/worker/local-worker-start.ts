@@ -1,5 +1,5 @@
 import type { TuiAgent } from '../../../../../../shared/tui-agent'
-import type { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { OrchestrationDb } from '../../../../orchestration/db'
 import type { RunRow, TaskRow } from '../../../../orchestration/types'
 import { resolveDispatchCreator } from '../runs/dispatch-creator'
@@ -40,7 +40,7 @@ type WorkerStartMutation = {
 
 export async function startLocalWorker(args: {
   params: WorkerStartInput
-  runtime: NightshiftRuntimeService
+  runtime: KoluxRuntimeService
   db: OrchestrationDb
   run: RunRow
   coordinatorPane: string | null

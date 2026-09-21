@@ -11,11 +11,11 @@ const mocks = vi.hoisted(() => ({
   fetchAuthStatus: vi.fn(),
   openArtifactsPage: vi.fn(),
   state: {
-    nightshiftProfileAuthStatus: {
+    koluxProfileAuthStatus: {
       configured: true,
       state: 'connected'
     } as Record<string, unknown> | null,
-    nightshiftProfileConnecting: false,
+    koluxProfileConnecting: false,
     isWebClient: false
   }
 }))
@@ -32,8 +32,8 @@ vi.mock('@/store', () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
       ...mocks.state,
-      connectCurrentNightshiftProfile: mocks.connect,
-      fetchNightshiftProfileAuthStatus: mocks.fetchAuthStatus,
+      connectCurrentKoluxProfile: mocks.connect,
+      fetchKoluxProfileAuthStatus: mocks.fetchAuthStatus,
       openArtifactsPage: mocks.openArtifactsPage
     })
 }))
@@ -45,8 +45,8 @@ describe('ArtifactsSettingsPane', () => {
     mocks.connect.mockReset()
     mocks.fetchAuthStatus.mockReset()
     mocks.openArtifactsPage.mockReset()
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'connected' }
-    mocks.state.nightshiftProfileConnecting = false
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'connected' }
+    mocks.state.koluxProfileConnecting = false
     mocks.state.isWebClient = false
   })
 
@@ -71,36 +71,36 @@ describe('ArtifactsSettingsPane', () => {
     expect(
       screen.getByText('After publishing, copy the link and send it to your team.')
     ).toBeInTheDocument()
-    expect(screen.getByText('Manage it in Nightshift')).toBeInTheDocument()
+    expect(screen.getByText('Manage it in Kolux')).toBeInTheDocument()
     expect(
       screen.getByText('Preview, copy, and manage links shared through your account.')
     ).toBeInTheDocument()
     expect(
       screen.queryByText('Uploads require sign-in; public links do not.')
     ).not.toBeInTheDocument()
-    expect(screen.queryByText('Nightshift account')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Sign in to Nightshift' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Kolux account')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign in to Kolux' })).not.toBeInTheDocument()
   })
 
   it('offers sign in for a local profile', async () => {
     const user = userEvent.setup()
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'local' }
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'local' }
     render(<ArtifactsSettingsPane settings={getDefaultSettings('/tmp')} updateSettings={vi.fn()} />)
 
     expect(screen.getByText('Sign in to share artifacts')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Sign in to Nightshift' }))
+    await user.click(screen.getByRole('button', { name: 'Sign in to Kolux' }))
     expect(mocks.connect).toHaveBeenCalledOnce()
   })
 
   it('shows reconnect and connecting states', () => {
-    mocks.state.nightshiftProfileAuthStatus = { configured: true, state: 'reconnect-required' }
+    mocks.state.koluxProfileAuthStatus = { configured: true, state: 'reconnect-required' }
     const { rerender } = render(
       <ArtifactsSettingsPane settings={getDefaultSettings('/tmp')} updateSettings={vi.fn()} />
     )
 
     expect(screen.getByRole('button', { name: 'Sign in again' })).toBeEnabled()
 
-    mocks.state.nightshiftProfileConnecting = true
+    mocks.state.koluxProfileConnecting = true
     rerender(
       <ArtifactsSettingsPane settings={getDefaultSettings('/tmp')} updateSettings={vi.fn()} />
     )
@@ -108,11 +108,11 @@ describe('ArtifactsSettingsPane', () => {
   })
 
   it('loads missing account status and disables sign in until configured', () => {
-    mocks.state.nightshiftProfileAuthStatus = null
+    mocks.state.koluxProfileAuthStatus = null
     render(<ArtifactsSettingsPane settings={getDefaultSettings('/tmp')} updateSettings={vi.fn()} />)
 
     expect(mocks.fetchAuthStatus).toHaveBeenCalledOnce()
-    expect(screen.getByRole('button', { name: 'Sign in to Nightshift' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Sign in to Kolux' })).toBeDisabled()
   })
 
   it('controls only sidebar visibility and always allows opening Artifacts', async () => {
@@ -130,7 +130,7 @@ describe('ArtifactsSettingsPane', () => {
     await user.click(toggle)
     expect(updateSettings).toHaveBeenCalledWith({ showArtifactsButton: true })
 
-    expect(screen.queryByText(/nightshift artifacts share/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/kolux artifacts share/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Copy command' })).not.toBeInTheDocument()
 
     const openButton = screen.getByRole('button', { name: /Open Artifacts/ })
@@ -221,7 +221,7 @@ describe('ArtifactsSettingsPane', () => {
     render(<ArtifactsSettingsPane settings={getDefaultSettings('/tmp')} updateSettings={vi.fn()} />)
 
     expect(
-      screen.getByText(/Open Settings → Artifacts in the Nightshift desktop app on the host device/)
+      screen.getByText(/Open Settings → Artifacts in the Kolux desktop app on the host device/)
     ).toBeInTheDocument()
   })
 })

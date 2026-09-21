@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  canOpenAiVaultSessionLogInNightshift,
+  canOpenAiVaultSessionLogInKolux,
   canUseLocalAiVaultSessionPathActions,
   isSyntheticAiVaultSessionPath
 } from './ai-vault-session-path-actions'
@@ -28,10 +28,10 @@ describe('isSyntheticAiVaultSessionPath', () => {
   })
 })
 
-describe('canOpenAiVaultSessionLogInNightshift', () => {
+describe('canOpenAiVaultSessionLogInKolux', () => {
   it('allows a local, single-file, non-synthetic path', () => {
     expect(
-      canOpenAiVaultSessionLogInNightshift({
+      canOpenAiVaultSessionLogInKolux({
         filePath: '/home/user/.claude/sessions/log.jsonl',
         executionHostId: 'local'
       })
@@ -39,17 +39,17 @@ describe('canOpenAiVaultSessionLogInNightshift', () => {
   })
 
   it('withholds blank, remote, and synthetic identities', () => {
+    expect(canOpenAiVaultSessionLogInKolux({ filePath: '   ', executionHostId: 'local' })).toBe(
+      false
+    )
     expect(
-      canOpenAiVaultSessionLogInNightshift({ filePath: '   ', executionHostId: 'local' })
-    ).toBe(false)
-    expect(
-      canOpenAiVaultSessionLogInNightshift({
+      canOpenAiVaultSessionLogInKolux({
         filePath: '/remote/.claude/log.jsonl',
         executionHostId: 'ssh:dev-box'
       })
     ).toBe(false)
     expect(
-      canOpenAiVaultSessionLogInNightshift({
+      canOpenAiVaultSessionLogInKolux({
         filePath: '/home/user/.opencode/db.sqlite#sess_1',
         executionHostId: 'local'
       })

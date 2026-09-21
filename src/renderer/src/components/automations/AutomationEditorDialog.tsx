@@ -7,7 +7,7 @@ import type {
   AutomationWorkspaceMode
 } from '../../../../shared/automations-types'
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
@@ -54,7 +54,7 @@ export type AutomationDraft = {
   scheduleWarning: string | null
 }
 
-export type AutomationCreateTarget = 'nightshift' | 'hermes'
+export type AutomationCreateTarget = 'kolux' | 'hermes'
 
 type AutomationEditorDialogProps = {
   open: boolean
@@ -65,15 +65,15 @@ type AutomationEditorDialogProps = {
   createTarget: AutomationCreateTarget
   repos: readonly Repo[]
   projectHostSetups: readonly ProjectHostSetup[]
-  automationYamlHooksByRepoKey: Record<string, NightshiftHooks | null>
+  automationYamlHooksByRepoKey: Record<string, KoluxHooks | null>
   getAutomationHooksCacheKey: (repoId: string) => string
   repoMap: Map<string, Repo>
   worktrees: Worktree[]
   settings: GlobalSettings | null
   draft: AutomationDraft
-  /** Present only while creating a Nightshift automation. */
+  /** Present only while creating a Kolux automation. */
   createDestination?: AutomationCreateDestinationControl
-  /** Present only while editing a Nightshift automation; selecting another host moves the record. */
+  /** Present only while editing a Kolux automation; selecting another host moves the record. */
   editDestination?: AutomationCreateDestinationControl
   /** Why a save was refused. Belongs here rather than on the page: this dialog covers it. */
   notice?: AutomationActionNotice | null

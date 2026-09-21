@@ -1,7 +1,7 @@
 import type { VirtualizedScrollAnchor } from '@/hooks/useVirtualizedScrollAnchor'
 import type { DiffSection } from '../../diff-section-types'
 import {
-  NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
+  KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT,
   type EditorPathMutationTarget
 } from '../../editor-autosave'
 
@@ -35,7 +35,7 @@ function invalidateCombinedDiffCachesForRelativePath(relativePath: string): void
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener(NIGHTSHIFT_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, (event) => {
+  window.addEventListener(KOLUX_EDITOR_EXTERNAL_FILE_CHANGE_EVENT, (event) => {
     const detail = (event as CustomEvent<EditorPathMutationTarget>).detail
     if (detail?.relativePath) {
       // Why: inactive combined-diff tabs are unmounted, so only a module-level cache bust stops a remount replaying stale bodies.

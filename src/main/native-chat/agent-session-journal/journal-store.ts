@@ -246,7 +246,7 @@ export class AgentSessionJournal {
   }
 
   /** On restart every `pending` submission becomes `unknown` before the session
-   *  accepts a writer. Nightshift never re-sends on the user's behalf. */
+   *  accepts a writer. Kolux never re-sends on the user's behalf. */
   async markPendingSubmissionsUnknown(fence: number): Promise<string[]> {
     return markJournalPendingSubmissionsUnknown(this, fence)
   }

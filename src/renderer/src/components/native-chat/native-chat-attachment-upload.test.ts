@@ -174,12 +174,12 @@ describe('uploadNativeChatAttachmentPaths', () => {
 
   it('uploads through the terminal drop resolver and returns remote paths', async () => {
     mocks.resolveDroppedPathsForAgent.mockResolvedValue({
-      resolvedPaths: ['/remote/worktree/.nightshift/drops/a.txt'],
+      resolvedPaths: ['/remote/worktree/.kolux/drops/a.txt'],
       skipped: [],
       failed: []
     })
     await expect(uploadNativeChatAttachmentPaths(['/local/a.txt'], owner)).resolves.toEqual([
-      '/remote/worktree/.nightshift/drops/a.txt'
+      '/remote/worktree/.kolux/drops/a.txt'
     ])
     expect(mocks.resolveDroppedPathsForAgent).toHaveBeenCalledWith({
       paths: ['/local/a.txt'],

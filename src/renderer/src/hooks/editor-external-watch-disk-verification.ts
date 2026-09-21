@@ -106,7 +106,7 @@ export function scheduleEditorChangedOnDiskMark(
   }
   const absolutePath = joinPath(notification.worktreePath, notification.relativePath)
   const recentSelfWrite = getRecentSelfWrite(absolutePath, target.runtimeEnvironmentId)
-  // Why: the fs event may be the echo of Nightshift's own save — verify disk really differs from our last write before showing a "changed on disk" banner.
+  // Why: the fs event may be the echo of Kolux's own save — verify disk really differs from our last write before showing a "changed on disk" banner.
   if (!recentSelfWrite || recentSelfWrite.content === null) {
     markTabsChangedOnDisk(fileIds, target.connectionId)
     return
@@ -254,7 +254,7 @@ export function scheduleSelfWriteAwareEditorExternalReload(
     return
   }
   const runtimeEnvironmentId = file.runtimeEnvironmentId ?? target.runtimeEnvironmentId
-  // Why: a self-write stamp only proves recent change; compare disk content so it suppresses only Nightshift's echo, not a newer agent write in the same TTL.
+  // Why: a self-write stamp only proves recent change; compare disk content so it suppresses only Kolux's echo, not a newer agent write in the same TTL.
   void readFileForEchoVerification({
     runtimeEnvironmentId,
     filePath: file.filePath,

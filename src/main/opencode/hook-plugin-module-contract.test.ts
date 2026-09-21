@@ -31,17 +31,17 @@ describe('OpenCode status plugin module contract', () => {
   }
   type PluginModule = {
     default?: { id?: unknown; server?: (ctx: unknown) => Promise<PluginHooks> }
-    NightshiftOpenCodeStatusPlugin?: (ctx: unknown) => Promise<PluginHooks>
+    KoluxOpenCodeStatusPlugin?: (ctx: unknown) => Promise<PluginHooks>
   }
 
   // Why: the plugin resolves hook coords from the endpoint file first and only then from
-  // env. Pin every input here so the run does not depend on the developer's Nightshift session
-  // (an inherited NIGHTSHIFT_AGENT_HOOK_ENDPOINT would otherwise redirect the post to a live app).
+  // env. Pin every input here so the run does not depend on the developer's Kolux session
+  // (an inherited KOLUX_AGENT_HOOK_ENDPOINT would otherwise redirect the post to a live app).
   const ENV_KEYS = [
-    'NIGHTSHIFT_PANE_KEY',
-    'NIGHTSHIFT_AGENT_HOOK_ENDPOINT',
-    'NIGHTSHIFT_AGENT_HOOK_PORT',
-    'NIGHTSHIFT_AGENT_HOOK_TOKEN'
+    'KOLUX_PANE_KEY',
+    'KOLUX_AGENT_HOOK_ENDPOINT',
+    'KOLUX_AGENT_HOOK_PORT',
+    'KOLUX_AGENT_HOOK_TOKEN'
   ] as const
 
   let tempDir: string
@@ -49,15 +49,15 @@ describe('OpenCode status plugin module contract', () => {
   let savedEnv: Record<string, string | undefined>
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-plugin-contract-'))
+    tempDir = mkdtempSync(join(tmpdir(), 'kolux-opencode-plugin-contract-'))
     savedFetch = globalThis.fetch
     savedEnv = {}
     for (const key of ENV_KEYS) {
       savedEnv[key] = process.env[key]
     }
-    delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
-    process.env.NIGHTSHIFT_AGENT_HOOK_PORT = '59999'
-    process.env.NIGHTSHIFT_AGENT_HOOK_TOKEN = 'test-token'
+    delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
+    process.env.KOLUX_AGENT_HOOK_PORT = '59999'
+    process.env.KOLUX_AGENT_HOOK_TOKEN = 'test-token'
   })
 
   afterEach(() => {
@@ -76,7 +76,7 @@ describe('OpenCode status plugin module contract', () => {
     // Why: a unique basename per load defeats the ESM module cache between cases.
     const pluginPath = join(
       tempDir,
-      `nightshift-opencode-status-${Math.random().toString(36).slice(2)}.mjs`
+      `kolux-opencode-status-${Math.random().toString(36).slice(2)}.mjs`
     )
     writeFileSync(pluginPath, _internals.getOpenCodePluginSource())
     return (await import(pathToFileURL(pluginPath).href)) as PluginModule
@@ -87,7 +87,7 @@ describe('OpenCode status plugin module contract', () => {
 
     expect(module.default).toBeTypeOf('object')
     expect(typeof module.default?.id).toBe('string')
-    expect(module.default?.id).toBe('nightshift-opencode-status')
+    expect(module.default?.id).toBe('kolux-opencode-status')
     expect(module.default?.server).toBeTypeOf('function')
   })
 
@@ -103,21 +103,21 @@ describe('OpenCode status plugin module contract', () => {
   it('keeps the named factory export so the factory-based loader still resolves', async () => {
     const module = await loadPluginModule()
 
-    expect(module.NightshiftOpenCodeStatusPlugin).toBeTypeOf('function')
+    expect(module.KoluxOpenCodeStatusPlugin).toBeTypeOf('function')
   })
 
   it('returns an event handler from the default export server(), like the named factory', async () => {
     const module = await loadPluginModule()
 
     const fromDefault = await module.default?.server?.({})
-    const fromNamed = await module.NightshiftOpenCodeStatusPlugin?.({})
+    const fromNamed = await module.KoluxOpenCodeStatusPlugin?.({})
 
     expect(fromDefault?.event).toBeTypeOf('function')
     expect(fromNamed?.event).toBeTypeOf('function')
   })
 
   it('reports a session lifecycle event through the hook endpoint when driven via the default export', async () => {
-    process.env.NIGHTSHIFT_PANE_KEY = 'tab-1:leaf-1'
+    process.env.KOLUX_PANE_KEY = 'tab-1:leaf-1'
     const posts: { url: string; body: unknown }[] = []
     globalThis.fetch = vi.fn(async (input: unknown, init?: { body?: unknown }) => {
       posts.push({ url: String(input), body: JSON.parse(String(init?.body ?? '{}')) })

@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 function createTempDb(): { db: Database.Database; path: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-opencode-bounds-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-opencode-bounds-'))
   tempDirs.push(dir)
   const path = join(dir, 'opencode.db')
   return { db: new Database(path), path }

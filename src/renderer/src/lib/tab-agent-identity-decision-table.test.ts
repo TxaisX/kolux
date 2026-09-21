@@ -130,7 +130,7 @@ describe('renderer ladder decision table', () => {
       flippedByAddingProof: proofFree.flipped
     }
     writeFileSync(
-      join(tmpdir(), 'nightshift-pane-agent-identity-decision-table-real.json'),
+      join(tmpdir(), 'kolux-pane-agent-identity-decision-table-real.json'),
       `${JSON.stringify(result, null, 2)}\n`
     )
     // Re-derived against resolveTabAgentFromSignals (not a hand-written model). These differ from

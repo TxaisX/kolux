@@ -62,8 +62,8 @@ function scriptScenario(
     cwd: dir,
     env: {
       PATH: process.env.PATH ?? '',
-      NIGHTSHIFT_SDK_CONTRACT_SCENARIO_PATH: scenarioPath,
-      NIGHTSHIFT_SDK_CONTRACT_REPORT_PATH: reportPath
+      KOLUX_SDK_CONTRACT_SCENARIO_PATH: scenarioPath,
+      KOLUX_SDK_CONTRACT_REPORT_PATH: reportPath
     },
     readReport: () => JSON.parse(readFileSync(reportPath, 'utf8')) as ScriptedCliReport
   }
@@ -81,7 +81,7 @@ function launchFor(
   }
 }
 
-/** The derived child environment, captured where Nightshift actually hands it to the OS. */
+/** The derived child environment, captured where Kolux actually hands it to the OS. */
 const spawned: ProcessSpec[] = []
 /** The retained child, so a test can end it the way a crashing CLI would. */
 const spawnedChildren: SpawnedProcess[] = []
@@ -162,13 +162,13 @@ describe('Claude stream-json connection', () => {
     vi.stubEnv('NODE_OPTIONS', '--require=/tmp/inject.js')
     // An inherited value wins over the SDK's default, so clear it to pin the default.
     vi.stubEnv('CLAUDE_CODE_ENTRYPOINT', undefined)
-    vi.stubEnv('NIGHTSHIFT_CONNECTION_MARKER', 'inherited')
+    vi.stubEnv('KOLUX_CONNECTION_MARKER', 'inherited')
     const scenario = scriptScenario([HOLD_OPEN])
     const connection = await open(
       launchFor(scenario, {
         CLAUDE_CONFIG_DIR: '/accounts/managed/home',
         ANTHROPIC_AUTH_TOKEN: 'configured-token',
-        NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN: 'spawn-9',
+        KOLUX_AGENT_SESSION_SPAWN_TOKEN: 'spawn-9',
         CLAUDE_CODE_CHILD_SESSION: 'configured-child-session',
         CLAUDE_CODE_SESSION_ID: 'configured-session',
         CLAUDE_CODE_BRIDGE_SESSION_ID: 'configured-bridge-session'
@@ -182,8 +182,8 @@ describe('Claude stream-json connection', () => {
     // The managed home is pinned verbatim: the CLI keys credential lookup on the literal string.
     expect(env.CLAUDE_CONFIG_DIR).toBe('/accounts/managed/home')
     expect(env.ANTHROPIC_AUTH_TOKEN).toBe('configured-token')
-    expect(env.NIGHTSHIFT_AGENT_SESSION_SPAWN_TOKEN).toBe('spawn-9')
-    expect(env.NIGHTSHIFT_CONNECTION_MARKER).toBe('inherited')
+    expect(env.KOLUX_AGENT_SESSION_SPAWN_TOKEN).toBe('spawn-9')
+    expect(env.KOLUX_CONNECTION_MARKER).toBe('inherited')
     expect(env.ANTHROPIC_API_KEY).toBeUndefined()
     expect(env.CLAUDE_CODE_CHILD_SESSION).toBeUndefined()
     expect(env.CLAUDE_CODE_SESSION_ID).toBeUndefined()
@@ -195,7 +195,7 @@ describe('Claude stream-json connection', () => {
     const report = await until(() => readReportSafely(scenario), 'the scripted CLI report')
     expect(report.argv[0]).toBe(FAKE_CLI)
     // The .mjs fixture makes the SDK run it under node; a real CLI path is the program
-    // itself. Either way the resolved path is what Nightshift's spawner is asked to execute.
+    // itself. Either way the resolved path is what Kolux's spawner is asked to execute.
     expect([spawned.at(-1)?.program, ...(spawned.at(-1)?.args ?? [])]).toContain(FAKE_CLI)
     expect(report.argv).toContain('--replay-user-messages')
     expect(report.argv).toContain(`--session-id=${SESSION_ID}`)
@@ -436,7 +436,7 @@ describe('Claude stream-json connection', () => {
     expect(written.response.response).toMatchObject({ behavior: 'deny', message: 'No' })
   })
 
-  it('drives Nightshift control methods onto the SDK and times out with the init proof message', async () => {
+  it('drives Kolux control methods onto the SDK and times out with the init proof message', async () => {
     const scenario = scriptScenario([HOLD_OPEN], {
       initialize: { models: [{ value: 'sonnet' }], account: { tokenSource: 'oauth' } },
       get_settings: { env: { ANTHROPIC_BASE_URL: 'https://settings.example.test' } }
@@ -558,7 +558,7 @@ describe('Claude stream-json connection', () => {
     const scenario = scriptScenario([HOLD_OPEN])
     const connection = await open({
       ...launchFor(scenario),
-      env: { ...launchFor(scenario).env, NIGHTSHIFT_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS: '1' }
+      env: { ...launchFor(scenario).env, KOLUX_SDK_CONTRACT_IGNORE_CONTROL_REQUESTS: '1' }
     })
 
     await expect(connection.initializationResult({ timeoutMs: 200 })).rejects.toThrow(
@@ -598,7 +598,7 @@ describe('Claude stream-json connection', () => {
       const connection = await open(
         {
           ...launchFor(scenario),
-          env: { ...launchFor(scenario).env, NIGHTSHIFT_SDK_CONTRACT_DESCENDANT: '1' }
+          env: { ...launchFor(scenario).env, KOLUX_SDK_CONTRACT_DESCENDANT: '1' }
         },
         { onExit: (error) => (exit = error) }
       )
@@ -677,7 +677,7 @@ describe('Claude stream-json connection', () => {
     const scenario = scriptScenario([HOLD_OPEN])
     const connection = await open({
       ...launchFor(scenario),
-      env: { ...launchFor(scenario).env, NIGHTSHIFT_SDK_CONTRACT_IGNORE_SIGTERM: '1' }
+      env: { ...launchFor(scenario).env, KOLUX_SDK_CONTRACT_IGNORE_SIGTERM: '1' }
     })
 
     // Keep the lstart capture boundary outside the child's displayed start second.

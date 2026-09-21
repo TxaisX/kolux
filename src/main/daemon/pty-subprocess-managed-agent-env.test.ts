@@ -101,7 +101,7 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          NIGHTSHIFT_OPENCODE_CONFIG_DIR: '/tmp/nightshift-opencode-config'
+          KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-config'
         }
       })
     } finally {
@@ -113,7 +113,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('uses shell wrapper when OpenCode config must survive shell startup', async () => {
@@ -129,8 +129,8 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          OPENCODE_CONFIG_DIR: '/tmp/nightshift-opencode-overlay',
-          NIGHTSHIFT_OPENCODE_CONFIG_DIR: '/tmp/nightshift-opencode-overlay'
+          OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay',
+          KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay'
         }
       })
     } finally {
@@ -142,7 +142,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('uses shell wrapper when MiMo home must survive shell startup', async () => {
@@ -158,8 +158,8 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          MIMOCODE_HOME: '/tmp/nightshift-mimocode-overlay',
-          NIGHTSHIFT_MIMOCODE_HOME: '/tmp/nightshift-mimocode-overlay'
+          MIMOCODE_HOME: '/tmp/kolux-mimocode-overlay',
+          KOLUX_MIMOCODE_HOME: '/tmp/kolux-mimocode-overlay'
         }
       })
     } finally {
@@ -171,7 +171,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('uses shell wrapper when typed OMP commands need the status extension', async () => {
@@ -187,7 +187,7 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          NIGHTSHIFT_OMP_STATUS_EXTENSION: '/tmp/.omp/agent/extensions/nightshift-agent-status.ts'
+          KOLUX_OMP_STATUS_EXTENSION: '/tmp/.omp/agent/extensions/kolux-agent-status.ts'
         }
       })
     } finally {
@@ -199,7 +199,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('uses shell wrapper when Codex home must survive shell startup', async () => {
@@ -215,8 +215,8 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          CODEX_HOME: '/tmp/nightshift-codex-home',
-          NIGHTSHIFT_CODEX_HOME: '/tmp/nightshift-codex-home'
+          CODEX_HOME: '/tmp/kolux-codex-home',
+          KOLUX_CODEX_HOME: '/tmp/kolux-codex-home'
         }
       })
     } finally {
@@ -228,7 +228,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('uses shell wrapper when Agent Teams shim path must survive shell startup', async () => {
@@ -244,9 +244,9 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          PATH: '/tmp/nightshift-agent-teams-bin:/usr/bin',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-test',
-          NIGHTSHIFT_AGENT_TEAMS_SHIM_DIR: '/tmp/nightshift-agent-teams-bin'
+          PATH: '/tmp/kolux-agent-teams-bin:/usr/bin',
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-test',
+          KOLUX_AGENT_TEAMS_SHIM_DIR: '/tmp/kolux-agent-teams-bin'
         }
       })
     } finally {
@@ -258,7 +258,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).not.toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
   })
 
   it('enables readiness and shell identity for plain Codex startup', async () => {
@@ -285,8 +285,8 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).toContain('ready')
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).toContain('identity')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).toContain('identity')
   })
 
   it('uses shell-ready wrapper for delivery-hinted Codex startup commands', async () => {
@@ -314,7 +314,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).toContain('ready')
   })
 
   it('uses shell-ready wrapper for Codex native prefill flags', async () => {
@@ -341,7 +341,7 @@ describe('createPtySubprocess', () => {
     const lastCall = spawnMock.mock.calls.at(-1)!
     expect(lastCall[1]).toEqual(['-l'])
     expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.NIGHTSHIFT_SHELL_FEATURES).toContain('ready')
+    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).toContain('ready')
   })
 
   it('deletes requested env keys after merging daemon process env', async () => {
@@ -374,9 +374,9 @@ describe('createPtySubprocess', () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const previousCodexHome = process.env.CODEX_HOME
-    const previousNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
+    const previousKoluxCodexHome = process.env.KOLUX_CODEX_HOME
     process.env.CODEX_HOME = '/daemon/managed/codex-home'
-    process.env.NIGHTSHIFT_CODEX_HOME = '/daemon/managed/codex-home'
+    process.env.KOLUX_CODEX_HOME = '/daemon/managed/codex-home'
 
     try {
       await createPtySubprocess({
@@ -384,7 +384,7 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: { SHELL: '/bin/bash' },
-        envToDelete: ['NIGHTSHIFT_CODEX_HOME']
+        envToDelete: ['KOLUX_CODEX_HOME']
       })
     } finally {
       if (previousCodexHome === undefined) {
@@ -392,28 +392,28 @@ describe('createPtySubprocess', () => {
       } else {
         process.env.CODEX_HOME = previousCodexHome
       }
-      if (previousNightshiftCodexHome === undefined) {
-        delete process.env.NIGHTSHIFT_CODEX_HOME
+      if (previousKoluxCodexHome === undefined) {
+        delete process.env.KOLUX_CODEX_HOME
       } else {
-        process.env.NIGHTSHIFT_CODEX_HOME = previousNightshiftCodexHome
+        process.env.KOLUX_CODEX_HOME = previousKoluxCodexHome
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)![2].env
     expect(env.CODEX_HOME).toBeUndefined()
-    expect(env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+    expect(env.KOLUX_CODEX_HOME).toBeUndefined()
   })
 
-  it('strips an inherited per-account self-contained CODEX_HOME overlay in a nested Nightshift (#5370)', async () => {
+  it('strips an inherited per-account self-contained CODEX_HOME overlay in a nested Kolux (#5370)', async () => {
     const proc = mockPtyProcess()
     spawnMock.mockReturnValue(proc)
     const previousCodexHome = process.env.CODEX_HOME
-    const previousNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
-    // A per-account home is injected as CODEX_HOME === NIGHTSHIFT_CODEX_HOME, so the
-    // nested-Nightshift strip must clear it exactly as it does the shared mirror.
+    const previousKoluxCodexHome = process.env.KOLUX_CODEX_HOME
+    // A per-account home is injected as CODEX_HOME === KOLUX_CODEX_HOME, so the
+    // nested-Kolux strip must clear it exactly as it does the shared mirror.
     const perAccountHome = '/daemon/managed/codex-accounts/019f0000-aaaa/home'
     process.env.CODEX_HOME = perAccountHome
-    process.env.NIGHTSHIFT_CODEX_HOME = perAccountHome
+    process.env.KOLUX_CODEX_HOME = perAccountHome
 
     try {
       await createPtySubprocess({
@@ -421,7 +421,7 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: { SHELL: '/bin/bash' },
-        envToDelete: ['NIGHTSHIFT_CODEX_HOME']
+        envToDelete: ['KOLUX_CODEX_HOME']
       })
     } finally {
       if (previousCodexHome === undefined) {
@@ -429,16 +429,16 @@ describe('createPtySubprocess', () => {
       } else {
         process.env.CODEX_HOME = previousCodexHome
       }
-      if (previousNightshiftCodexHome === undefined) {
-        delete process.env.NIGHTSHIFT_CODEX_HOME
+      if (previousKoluxCodexHome === undefined) {
+        delete process.env.KOLUX_CODEX_HOME
       } else {
-        process.env.NIGHTSHIFT_CODEX_HOME = previousNightshiftCodexHome
+        process.env.KOLUX_CODEX_HOME = previousKoluxCodexHome
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)![2].env
     expect(env.CODEX_HOME).toBeUndefined()
-    expect(env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+    expect(env.KOLUX_CODEX_HOME).toBeUndefined()
   })
 
   it('preserves a daemon-owned custom Codex home while deleting a stale private marker', async () => {
@@ -446,10 +446,10 @@ describe('createPtySubprocess', () => {
     spawnMock.mockReturnValue(proc)
     const platform = Object.getOwnPropertyDescriptor(process, 'platform')
     const previousCodexHome = process.env.CODEX_HOME
-    const previousNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
+    const previousKoluxCodexHome = process.env.KOLUX_CODEX_HOME
     Object.defineProperty(process, 'platform', { value: 'linux' })
     process.env.CODEX_HOME = '/daemon/user/codex-home'
-    process.env.NIGHTSHIFT_CODEX_HOME = '/daemon/stale/managed-home'
+    process.env.KOLUX_CODEX_HOME = '/daemon/stale/managed-home'
 
     try {
       await createPtySubprocess({
@@ -457,7 +457,7 @@ describe('createPtySubprocess', () => {
         cols: 80,
         rows: 24,
         env: { SHELL: '/bin/bash' },
-        envToDelete: ['NIGHTSHIFT_CODEX_HOME']
+        envToDelete: ['KOLUX_CODEX_HOME']
       })
     } finally {
       if (platform) {
@@ -468,15 +468,15 @@ describe('createPtySubprocess', () => {
       } else {
         process.env.CODEX_HOME = previousCodexHome
       }
-      if (previousNightshiftCodexHome === undefined) {
-        delete process.env.NIGHTSHIFT_CODEX_HOME
+      if (previousKoluxCodexHome === undefined) {
+        delete process.env.KOLUX_CODEX_HOME
       } else {
-        process.env.NIGHTSHIFT_CODEX_HOME = previousNightshiftCodexHome
+        process.env.KOLUX_CODEX_HOME = previousKoluxCodexHome
       }
     }
 
     const env = spawnMock.mock.calls.at(-1)![2].env
     expect(env.CODEX_HOME).toBe('/daemon/user/codex-home')
-    expect(env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+    expect(env.KOLUX_CODEX_HOME).toBeUndefined()
   })
 })

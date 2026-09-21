@@ -1,4 +1,4 @@
-import { test } from './helpers/nightshift-app'
+import { test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedWebClient
@@ -7,10 +7,10 @@ import { runPairedTerminalParkingOracle } from './helpers/paired-terminal-parkin
 
 test('ordinary-parks paired terminals and restores authoritative host scrollback @headful', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(240_000)
-  const seed = await nightshiftPage.evaluate(() => {
+  const seed = await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     const worktrees = state?.allWorktrees() ?? []
     const active = worktrees.find((worktree) => worktree.id === state?.activeWorktreeId)
@@ -19,7 +19,7 @@ test('ordinary-parks paired terminals and restores authoritative host scrollback
     }
     return { activeWorktreeId: active.id, repoId: active.repoId }
   })
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedWebClient(electronApp, offer, {
     terminalParkingDelayMs: 100
   })
@@ -30,7 +30,7 @@ test('ordinary-parks paired terminals and restores authoritative host scrollback
         fallbackWorktreeId: seed.activeWorktreeId,
         repoId: seed.repoId
       },
-      { hostPage: nightshiftPage }
+      { hostPage: koluxPage }
     )
   } finally {
     await client.dispose()

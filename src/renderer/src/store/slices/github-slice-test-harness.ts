@@ -216,6 +216,6 @@ export function githubSourceContext(
     hostId,
     projectHostSetupId: 'setup-1',
     repoId,
-    providerIdentity: { provider: 'github', owner: 'txais', repo: 'nightshift' }
+    providerIdentity: { provider: 'github', owner: 'txais', repo: 'kolux' }
   }
 }

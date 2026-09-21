@@ -46,21 +46,21 @@ const { AdvertisedUrlWatcher, extractUrlCandidates, stripTerminalControls } = aw
 )
 
 const BUFFER_LIMIT = 4096
-const ITERATIONS = Number(process.env.NIGHTSHIFT_ADVERTISED_URL_BENCH_ITERATIONS ?? '10000')
-const ROUNDS = Number(process.env.NIGHTSHIFT_ADVERTISED_URL_BENCH_ROUNDS ?? '12')
-const WARMUP = Number(process.env.NIGHTSHIFT_ADVERTISED_URL_BENCH_WARMUP ?? '1000')
+const ITERATIONS = Number(process.env.KOLUX_ADVERTISED_URL_BENCH_ITERATIONS ?? '10000')
+const ROUNDS = Number(process.env.KOLUX_ADVERTISED_URL_BENCH_ROUNDS ?? '12')
+const WARMUP = Number(process.env.KOLUX_ADVERTISED_URL_BENCH_WARMUP ?? '1000')
 
 for (const [name, value] of [
-  ['NIGHTSHIFT_ADVERTISED_URL_BENCH_ITERATIONS', ITERATIONS],
-  ['NIGHTSHIFT_ADVERTISED_URL_BENCH_ROUNDS', ROUNDS],
-  ['NIGHTSHIFT_ADVERTISED_URL_BENCH_WARMUP', WARMUP]
+  ['KOLUX_ADVERTISED_URL_BENCH_ITERATIONS', ITERATIONS],
+  ['KOLUX_ADVERTISED_URL_BENCH_ROUNDS', ROUNDS],
+  ['KOLUX_ADVERTISED_URL_BENCH_WARMUP', WARMUP]
 ]) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new Error(`${name} must be a positive integer, received ${value}`)
   }
 }
 if (ROUNDS % 2 !== 0) {
-  throw new Error('NIGHTSHIFT_ADVERTISED_URL_BENCH_ROUNDS must be even')
+  throw new Error('KOLUX_ADVERTISED_URL_BENCH_ROUNDS must be even')
 }
 
 class BeforePtyBuffer {

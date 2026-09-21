@@ -5,7 +5,7 @@ import { readVerifiedDaemonPid } from './daemon-pid-identity'
 import { PROTOCOL_VERSION } from './types'
 
 // 'severed': macOS can no longer resolve the daemon's TCC responsible process, so
-// Accessibility/Automation grants on Nightshift silently stop covering its terminals (STA-3491).
+// Accessibility/Automation grants on Kolux silently stop covering its terminals (STA-3491).
 // 'unknown' fails open: legacy pid files and probe failures must not trigger replacement.
 export type MacDaemonTccAttributionHealth = 'intact' | 'severed' | 'unknown'
 

@@ -1,51 +1,51 @@
 // Chinese phrase fixes from high-visibility UI audit round 5.
 export const ZH_PHRASE_FIXES_ROUND5 = [
   {
-    pattern: /Nightshift集成开发环境/g,
-    replacement: 'Nightshift IDE',
-    whenEnIncludes: 'Nightshift IDE'
+    pattern: /Kolux集成开发环境/g,
+    replacement: 'Kolux IDE',
+    whenEnIncludes: 'Kolux IDE'
   },
   {
-    pattern: /Nightshift第一/g,
-    replacement: 'Nightshift 优先',
-    whenEnIncludes: 'Nightshift first'
+    pattern: /Kolux第一/g,
+    replacement: 'Kolux 优先',
+    whenEnIncludes: 'Kolux first'
   },
   {
-    pattern: /Nightshift移动/g,
-    replacement: 'Nightshift Mobile',
-    whenEnIncludes: 'Nightshift Mobile'
+    pattern: /Kolux移动/g,
+    replacement: 'Kolux Mobile',
+    whenEnIncludes: 'Kolux Mobile'
   },
-  { pattern: /Nightshift标志/g, replacement: 'Nightshift 标志', whenEnIncludes: 'Nightshift logo' },
+  { pattern: /Kolux标志/g, replacement: 'Kolux 标志', whenEnIncludes: 'Kolux logo' },
   {
-    pattern: /喜欢Nightshift/g,
-    replacement: '喜欢 Nightshift',
-    whenEnIncludes: 'Enjoying Nightshift'
-  },
-  {
-    pattern: /认识Nightshift/g,
-    replacement: '了解 Nightshift',
-    whenEnIncludes: 'Get to know Nightshift'
+    pattern: /喜欢Kolux/g,
+    replacement: '喜欢 Kolux',
+    whenEnIncludes: 'Enjoying Kolux'
   },
   {
-    pattern: /支持Nightshift/g,
-    replacement: '支持 Nightshift',
-    whenEnIncludes: 'Support Nightshift'
+    pattern: /认识Kolux/g,
+    replacement: '了解 Kolux',
+    whenEnIncludes: 'Get to know Kolux'
   },
   {
-    pattern: /展开Nightshift/g,
-    replacement: '展开 Nightshift',
-    whenEnIncludes: 'Expand Nightshift'
-  },
-  { pattern: /来自Nightshift/g, replacement: '来自 Nightshift', whenEnIncludes: 'from Nightshift' },
-  {
-    pattern: /正在重新启动Nightshift/g,
-    replacement: '正在重启 Nightshift',
-    whenEnIncludes: 'Restarting Nightshift'
+    pattern: /支持Kolux/g,
+    replacement: '支持 Kolux',
+    whenEnIncludes: 'Support Kolux'
   },
   {
-    pattern: /Nightshift([\u4e00-\u9fff])/g,
-    replacement: 'Nightshift $1',
-    whenEnIncludes: 'Nightshift'
+    pattern: /展开Kolux/g,
+    replacement: '展开 Kolux',
+    whenEnIncludes: 'Expand Kolux'
+  },
+  { pattern: /来自Kolux/g, replacement: '来自 Kolux', whenEnIncludes: 'from Kolux' },
+  {
+    pattern: /正在重新启动Kolux/g,
+    replacement: '正在重启 Kolux',
+    whenEnIncludes: 'Restarting Kolux'
+  },
+  {
+    pattern: /Kolux([\u4e00-\u9fff])/g,
+    replacement: 'Kolux $1',
+    whenEnIncludes: 'Kolux'
   },
   { pattern: /Linear([\u4e00-\u9fff])/g, replacement: 'Linear $1', whenEnIncludes: 'Linear' },
   { pattern: /Codex([\u4e00-\u9fff])/g, replacement: 'Codex $1', whenEnIncludes: 'Codex' },
@@ -81,8 +81,8 @@ export const ZH_PHRASE_FIXES_ROUND5 = [
     whenEnIncludes: 'actionable issues'
   },
   {
-    pattern: /显示 Nightshift 移动按钮/g,
-    replacement: '显示 Nightshift Mobile 按钮',
-    whenEnIncludes: 'Show Nightshift Mobile Button'
+    pattern: /显示 Kolux 移动按钮/g,
+    replacement: '显示 Kolux Mobile 按钮',
+    whenEnIncludes: 'Show Kolux Mobile Button'
   }
 ]

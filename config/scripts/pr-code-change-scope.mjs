@@ -23,7 +23,7 @@ export const PR_CHECK_JOBS = [
   'xterm_patch_sync',
   'shell_contracts',
   'test',
-  'nightshiftd_browser',
+  'koluxd_browser',
   'cross-version-wire',
   'managed_hook_node18',
   'package',
@@ -97,11 +97,11 @@ const SHELL_PREFIXES = [
   'config/scripts/node-pty-job-ownership'
 ]
 
-const NIGHTSHIFTD_BROWSER_PREFIXES = [
-  'src/main/nightshiftd/external-chromium-',
-  'src/main/nightshiftd/nightshiftd-browser-provider',
-  'src/main/nightshiftd/nightshiftd-agent-browser-binary',
-  'src/main/nightshiftd/electron-serve-browser-process'
+const KOLUXD_BROWSER_PREFIXES = [
+  'src/main/koluxd/external-chromium-',
+  'src/main/koluxd/koluxd-browser-provider',
+  'src/main/koluxd/koluxd-agent-browser-binary',
+  'src/main/koluxd/electron-serve-browser-process'
 ]
 
 const CROSS_VERSION_WIRE_PREFIXES = [
@@ -237,7 +237,7 @@ const WINDOWS_PACKAGE_TESTS = [
   'src/main/cli/wsl-cli-powershell-boundary.test.ts',
   'src/main/computer/desktop-script-runtime-host.win32.test.ts',
   'src/main/cursor/hook-service.test.ts',
-  'src/main/nightshift-profiles/profile-index-store.test.ts',
+  'src/main/kolux-profiles/profile-index-store.test.ts',
   'src/main/startup/windows-install-dir-acl-repair.win32.test.ts',
   'src/main/runtime/repo-worktree-admin-fingerprint.test.ts',
   'src/main/runtime/worktree-scan-admin-fingerprint-gate.test.ts',
@@ -314,8 +314,8 @@ function jobDetector(job) {
       return (files) => files.some((file) => matchesPrefix(file, XTERM_PREFIXES))
     case 'shell_contracts':
       return (files) => files.some((file) => matchesPrefix(file, SHELL_PREFIXES))
-    case 'nightshiftd_browser':
-      return (files) => files.some((file) => matchesPrefix(file, NIGHTSHIFTD_BROWSER_PREFIXES))
+    case 'koluxd_browser':
+      return (files) => files.some((file) => matchesPrefix(file, KOLUXD_BROWSER_PREFIXES))
     case 'cross-version-wire':
       return (files) => files.some((file) => matchesPrefix(file, CROSS_VERSION_WIRE_PREFIXES))
     case 'managed_hook_node18':

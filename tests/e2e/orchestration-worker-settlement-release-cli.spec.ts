@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test as base, expect } from './helpers/nightshift-app'
+import { test as base, expect } from './helpers/kolux-app'
 import { waitForActivePaneHookDescriptor, waitForActivePanePtyId } from './helpers/terminal'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import { RuntimeClient } from '../../src/cli/runtime-client'
@@ -14,7 +14,7 @@ import {
 } from './helpers/fake-agent-command-override'
 import { FAKE_AGENT_PASTE_END_SCANNER_SOURCE } from './helpers/fake-agent-paste-end-scanner'
 
-const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-settlement-release-'))
+const fakeCliDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-settlement-release-'))
 const cliLedgerPath = path.join(fakeCliDir, 'cli.jsonl')
 const cliEntry = path.join(process.cwd(), 'out', 'cli', 'index.js')
 const fakeCodexCommand = buildFakeAgentCommandOverride(
@@ -47,12 +47,12 @@ process.stdin.on('data', (chunk) => {
       setTimeout(() => process.stdout.write('\\u001b]0;Codex Ready\\u0007'), 10)
     })
   }
-  const encoded = input.match(/NIGHTSHIFT_E2E_WORKER_DONE:([A-Za-z0-9+/=]+)/)?.[1]
+  const encoded = input.match(/KOLUX_E2E_WORKER_DONE:([A-Za-z0-9+/=]+)/)?.[1]
   if (!encoded || !capability) return
   const request = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'))
   const args = [
     'orchestration', 'send',
-    '--from', request.mismatch ? 'term_foreign' : process.env.NIGHTSHIFT_TERMINAL_HANDLE,
+    '--from', request.mismatch ? 'term_foreign' : process.env.KOLUX_TERMINAL_HANDLE,
     '--dispatch-capability', capability,
     '--to', request.coordinator,
     '--type', 'worker_done',
@@ -63,12 +63,12 @@ process.stdin.on('data', (chunk) => {
     '--outcome', 'succeeded',
     '--json'
   ]
-  const result = spawnSync(process.execPath, [process.env.NIGHTSHIFT_E2E_CLI_ENTRY, ...args], {
+  const result = spawnSync(process.execPath, [process.env.KOLUX_E2E_CLI_ENTRY, ...args], {
     env: process.env,
     encoding: 'utf8'
   })
   appendFileSync(
-    process.env.NIGHTSHIFT_E2E_CLI_LEDGER,
+    process.env.KOLUX_E2E_CLI_LEDGER,
     JSON.stringify({ mismatch: request.mismatch, args, status: result.status, stdout: result.stdout, stderr: result.stderr }) + '\\n'
   )
 })
@@ -93,8 +93,8 @@ const test = base.extend({
   launchEnv: [
     {
       PATH: `${fakeCliDir}${path.delimiter}${process.env.PATH ?? ''}`,
-      NIGHTSHIFT_E2E_CLI_ENTRY: cliEntry,
-      NIGHTSHIFT_E2E_CLI_LEDGER: cliLedgerPath
+      KOLUX_E2E_CLI_ENTRY: cliEntry,
+      KOLUX_E2E_CLI_LEDGER: cliLedgerPath
     },
     { option: true }
   ]
@@ -121,8 +121,8 @@ function invokeCompiledCli(userDataDir: string, args: string[]) {
   return spawnSync(process.execPath, [cliEntry, ...args], {
     env: {
       ...process.env,
-      NIGHTSHIFT_USER_DATA_PATH: userDataDir,
-      NIGHTSHIFT_DEV_CLI_INVOCATION: '1'
+      KOLUX_USER_DATA_PATH: userDataDir,
+      KOLUX_DEV_CLI_INVOCATION: '1'
     },
     encoding: 'utf8'
   })
@@ -142,13 +142,13 @@ test.afterAll(() => {
 })
 
 test('compiled CLI rejects false completion then reconciles the dead retained worker', async ({
-  nightshiftPage,
+  koluxPage,
   electronApp
 }) => {
   test.setTimeout(180_000)
   rmSync(cliLedgerPath, { force: true })
-  await waitForSessionReady(nightshiftPage)
-  await nightshiftPage.evaluate(
+  await waitForSessionReady(koluxPage)
+  await koluxPage.evaluate(
     async ({ agentCommand, terminalWindowsShell }) => {
       await window.__store?.getState().updateSettings({
         agentCmdOverrides: { codex: agentCommand },
@@ -157,10 +157,10 @@ test('compiled CLI rejects false completion then reconciles the dead retained wo
     },
     { agentCommand: fakeCodexCommand, terminalWindowsShell: FAKE_AGENT_WINDOWS_SHELL }
   )
-  const worktreeId = await waitForActiveWorktree(nightshiftPage)
-  await ensureTerminalVisible(nightshiftPage)
-  await waitForActivePanePtyId(nightshiftPage)
-  const coordinatorPane = await waitForActivePaneHookDescriptor(nightshiftPage)
+  const worktreeId = await waitForActiveWorktree(koluxPage)
+  await ensureTerminalVisible(koluxPage)
+  await waitForActivePanePtyId(koluxPage)
+  const coordinatorPane = await waitForActivePaneHookDescriptor(koluxPage)
   const userDataDir = await electronApp.evaluate(({ app }) => app.getPath('userData'))
   const client = new RuntimeClient(userDataDir, 30_000, null, null)
   const coordinator = await client.call<{ terminal: { handle: string } }>('terminal.resolvePane', {
@@ -231,7 +231,7 @@ test('compiled CLI rejects false completion then reconciles the dead retained wo
   }
   await client.call('terminal.send', {
     terminal: workerHandle,
-    text: `NIGHTSHIFT_E2E_WORKER_DONE:${encodeWorkerDone({ ...baseMarker, mismatch: true })}`,
+    text: `KOLUX_E2E_WORKER_DONE:${encodeWorkerDone({ ...baseMarker, mismatch: true })}`,
     enter: true
   })
   await expect.poll(() => readCliLedger()).toHaveLength(1)
@@ -249,7 +249,7 @@ test('compiled CLI rejects false completion then reconciles the dead retained wo
 
   await client.call('terminal.send', {
     terminal: workerHandle,
-    text: `NIGHTSHIFT_E2E_WORKER_DONE:${encodeWorkerDone({ ...baseMarker, mismatch: false })}`,
+    text: `KOLUX_E2E_WORKER_DONE:${encodeWorkerDone({ ...baseMarker, mismatch: false })}`,
     enter: true
   })
   await expect.poll(() => readCliLedger()).toHaveLength(2)

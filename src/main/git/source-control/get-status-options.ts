@@ -13,10 +13,10 @@ export type GetStatusOptions = GitRuntimeOptions & {
    */
   limit?: number
   bypassEffectiveUpstreamNegativeCache?: boolean
-  /** Paths Nightshift may have symlinked into this worktree (per-user shared paths
-   *  plus `nightshift.yaml` shared directories). Untracked entries that are one of
+  /** Paths Kolux may have symlinked into this worktree (per-user shared paths
+   *  plus `kolux.yaml` shared directories). Untracked entries that are one of
    *  these *and* really symlinks are dropped: Git cannot ignore them when the
-   *  repo's rule is directory-only (`node_modules/`), but they are Nightshift's own
+   *  repo's rule is directory-only (`node_modules/`), but they are Kolux's own
    *  artifacts, not user work. */
   sharedLinkPaths?: readonly string[]
 }

@@ -41,12 +41,11 @@ describe('locale-translation-policy ko round 5', () => {
     expect(
       repairTranslatedValue({
         key: 'auto.components.settings.general.search.244e3fb4c8',
-        enValue: 'Install the Nightshift skill so agents know to use the Nightshift CLI.',
-        localeValue:
-          '에이전트가 Nightshift CLI 사용 방법을 알 수 있도록 Nightshift 기술을 설치합니다.',
+        enValue: 'Install the Kolux skill so agents know to use the Kolux CLI.',
+        localeValue: '에이전트가 Kolux CLI 사용 방법을 알 수 있도록 Kolux 기술을 설치합니다.',
         locale: 'ko'
       })
-    ).toBe('에이전트가 Nightshift CLI를 사용하도록 Nightshift 스킬을 설치하세요.')
+    ).toBe('에이전트가 Kolux CLI를 사용하도록 Kolux 스킬을 설치하세요.')
     expect(
       repairTranslatedValue({
         key: 'auto.components.editor.MarkdownPreview.322afab6ff',

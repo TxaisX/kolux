@@ -8,7 +8,7 @@
  * composition exactly like a real OS IME session.
  */
 import type { CDPSession, Locator, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { getStoreState, waitForSessionReady } from './helpers/store'
 import type { Repo } from '../../src/shared/repo-types'
 
@@ -122,16 +122,16 @@ async function typeHangulGanadaSlowly(
 }
 
 test.describe('Repository Display Name IME composition', () => {
-  test('keeps Hangul syllables composed while typing slowly', async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
+  test('keeps Hangul syllables composed while typing slowly', async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
 
-    const repos = await getStoreState<Repo[]>(nightshiftPage, 'repos')
+    const repos = await getStoreState<Repo[]>(koluxPage, 'repos')
     expect(repos.length).toBeGreaterThan(0)
     const repo = repos[0]
 
-    await openRepoSettings(nightshiftPage, repo.id)
+    await openRepoSettings(koluxPage, repo.id)
 
-    const repoSection = nightshiftPage.locator(`[data-settings-section="repo-${repo.id}"]`)
+    const repoSection = koluxPage.locator(`[data-settings-section="repo-${repo.id}"]`)
     const displayNameInput = repoSection.getByLabel('Display Name')
     await expect(displayNameInput).toHaveValue(repo.displayName)
 
@@ -140,8 +140,8 @@ test.describe('Repository Display Name IME composition', () => {
     await displayNameInput.fill('')
     await expect(displayNameInput).toHaveValue('')
 
-    const session = await nightshiftPage.context().newCDPSession(nightshiftPage)
-    await typeHangulGanadaSlowly(session, nightshiftPage, displayNameInput)
+    const session = await koluxPage.context().newCDPSession(koluxPage)
+    await typeHangulGanadaSlowly(session, koluxPage, displayNameInput)
 
     // Why: with the store-bound controlled input, the async updateRepo echo
     // reset the field mid-composition, aborting the IME session per keystroke
@@ -152,7 +152,7 @@ test.describe('Repository Display Name IME composition', () => {
     await expect
       .poll(
         async () => {
-          const current = await getStoreState<Repo[]>(nightshiftPage, 'repos')
+          const current = await getStoreState<Repo[]>(koluxPage, 'repos')
           return current.find((entry) => entry.id === repo.id)?.displayName
         },
         { timeout: 5_000, message: 'display name did not persist to the store' }

@@ -153,7 +153,7 @@ describe('classifyGitCommand', () => {
     [['rev-parse', 'HEAD'], 'read'],
     [['show', ':file'], 'read'],
     [['status', '--porcelain=v2'], 'read'],
-    [['update-ref', '-d', 'refs/nightshift/tmp'], 'other'],
+    [['update-ref', '-d', 'refs/kolux/tmp'], 'other'],
     [['worktree', 'list', '--porcelain'], 'read'],
     [['worktree', 'prune'], 'other']
   ] as const)('covers the production form %j as %s', (args, expected) => {

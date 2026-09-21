@@ -1,5 +1,5 @@
 export { RuntimeClient } from './client'
-export { serveNightshiftApp } from './launch'
+export { serveKoluxApp } from './launch'
 export { getDefaultUserDataPath } from './metadata'
 export {
   RuntimeClientError,

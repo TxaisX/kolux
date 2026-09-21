@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto'
 
 const MAX_IDENTITY_LENGTH = 512
 const PARTITION_IDENTITY_VERSION = 1
-const BROWSER_ROUTE_PARTITION_RE = /^persist:nightshift-browser-v1-[a-f0-9]{64}$/
+const BROWSER_ROUTE_PARTITION_RE = /^persist:kolux-browser-v1-[a-f0-9]{64}$/
 
 export type BrowserRoutePartitionIdentity = Readonly<{
-  nightshiftProfileId: string
+  koluxProfileId: string
   browserProfileId: string
   authorityConnectionIdentity: string
   executionHostIdentity: string
@@ -20,7 +20,7 @@ export function deriveBrowserRoutePartition(
   identity: BrowserRoutePartitionIdentity
 ): DerivedBrowserRoutePartition {
   const components = [
-    ['nightshift-profile', identity.nightshiftProfileId],
+    ['kolux-profile', identity.koluxProfileId],
     ['browser-profile', identity.browserProfileId],
     ['authority-connection', identity.authorityConnectionIdentity],
     ['execution-host', identity.executionHostIdentity]
@@ -36,13 +36,13 @@ export function deriveBrowserRoutePartition(
   }
 
   return {
-    partition: `persist:nightshift-browser-v${PARTITION_IDENTITY_VERSION}-${digest([
-      'nightshift-browser-route-partition',
+    partition: `persist:kolux-browser-v${PARTITION_IDENTITY_VERSION}-${digest([
+      'kolux-browser-route-partition',
       PARTITION_IDENTITY_VERSION,
       ...components
     ])}`,
     bindingFingerprint: digest([
-      'nightshift-browser-route-partition-binding',
+      'kolux-browser-route-partition-binding',
       PARTITION_IDENTITY_VERSION,
       ...components
     ])
@@ -55,13 +55,13 @@ export function deriveBrowserRoutePartition(
  * lifecycle events can find partitions the client cannot currently re-derive.
  */
 export function deriveBrowserRoutePartitionStorageScope(scope: {
-  nightshiftProfileId: string
+  koluxProfileId: string
   environmentId: string
 }): string {
   return digest([
-    'nightshift-browser-route-partition-scope',
+    'kolux-browser-route-partition-scope',
     PARTITION_IDENTITY_VERSION,
-    ['nightshift-profile', scope.nightshiftProfileId],
+    ['kolux-profile', scope.koluxProfileId],
     ['environment', scope.environmentId]
   ])
 }
@@ -72,13 +72,13 @@ export function deriveBrowserRoutePartitionStorageScope(scope: {
  * two owner kinds can never collide; removing the SSH target clears it.
  */
 export function deriveLocalSshBrowserRoutePartitionStorageScope(scope: {
-  nightshiftProfileId: string
+  koluxProfileId: string
   targetId: string
 }): string {
   return digest([
-    'nightshift-browser-route-partition-scope',
+    'kolux-browser-route-partition-scope',
     PARTITION_IDENTITY_VERSION,
-    ['nightshift-profile', scope.nightshiftProfileId],
+    ['kolux-profile', scope.koluxProfileId],
     ['local-ssh-target', scope.targetId]
   ])
 }

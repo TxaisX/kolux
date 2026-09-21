@@ -10,9 +10,8 @@ import { createSkillPackageArchive } from './skill-package-creation'
 import { createWslSkillInstallFilesystem } from './skill-wsl-install-filesystem'
 
 const execFileAsync = promisify(execFile)
-const DISTRO = process.env.NIGHTSHIFT_REAL_WSL_SKILL_DISTRO ?? 'Ubuntu-24.04'
-const RUN_REAL_WSL =
-  process.platform === 'win32' && process.env.NIGHTSHIFT_REAL_WSL_SKILL_TEST === '1'
+const DISTRO = process.env.KOLUX_REAL_WSL_SKILL_DISTRO ?? 'Ubuntu-24.04'
+const RUN_REAL_WSL = process.platform === 'win32' && process.env.KOLUX_REAL_WSL_SKILL_TEST === '1'
 
 async function runWsl(...args: string[]): Promise<string> {
   const { stdout } = await execFileAsync('wsl.exe', ['-d', DISTRO, '--exec', ...args], {
@@ -54,9 +53,9 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
   let workspaceDirectory = ''
 
   beforeAll(async () => {
-    localRoot = await mkdtemp(join(tmpdir(), 'nightshift-wsl-skill-integration-'))
-    guestRoot = await runWsl('mktemp', '-d', '/tmp/nightshift-skill-integration.XXXXXX')
-    if (!guestRoot.startsWith('/tmp/nightshift-skill-integration.')) {
+    localRoot = await mkdtemp(join(tmpdir(), 'kolux-wsl-skill-integration-'))
+    guestRoot = await runWsl('mktemp', '-d', '/tmp/kolux-skill-integration.XXXXXX')
+    if (!guestRoot.startsWith('/tmp/kolux-skill-integration.')) {
       throw new Error('unexpected-wsl-integration-root')
     }
     await runWsl('mkdir', '-p', `${guestRoot}/home`, `${guestRoot}/workspace`)
@@ -66,7 +65,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
 
   afterAll(async () => {
     await rm(localRoot, { recursive: true, force: true })
-    if (guestRoot.startsWith('/tmp/nightshift-skill-integration.')) {
+    if (guestRoot.startsWith('/tmp/kolux-skill-integration.')) {
       await runWsl('rm', '-rf', '--', guestRoot)
     }
   })
@@ -97,7 +96,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
       scope,
       homeDirectory,
       ...(scope === 'workspace' ? { workspaceDirectory } : {}),
-      nightshiftStateDirectory: join(localRoot, `state-${scope}`),
+      koluxStateDirectory: join(localRoot, `state-${scope}`),
       detectedProviders: ['codex', 'claude'],
       destinationIdentity: `${scope}:real-wsl`,
       hostIdentity: 'windows-2',
@@ -139,7 +138,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
       skillName: 'real-wsl-skill',
       scope: 'global' as const,
       homeDirectory,
-      nightshiftStateDirectory: join(localRoot, 'state-global'),
+      koluxStateDirectory: join(localRoot, 'state-global'),
       detectedProviders: ['codex', 'claude'],
       filesystem
     }
@@ -181,7 +180,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
           scope: 'workspace',
           homeDirectory,
           workspaceDirectory,
-          nightshiftStateDirectory: join(localRoot, 'state-workspace'),
+          koluxStateDirectory: join(localRoot, 'state-workspace'),
           detectedProviders: ['codex', 'claude'],
           filesystem
         })
@@ -201,7 +200,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
     const input = {
       ...installInput(archive, 'workspace', filesystem),
       workspaceDirectory: windowsWorkspace,
-      nightshiftStateDirectory: join(localRoot, 'state-drvfs')
+      koluxStateDirectory: join(localRoot, 'state-drvfs')
     }
 
     expect((await installSharedSkill(input)).status).toBe('installed')
@@ -219,7 +218,7 @@ describe.runIf(RUN_REAL_WSL)('real WSL skill install transactions', () => {
           scope: 'workspace',
           homeDirectory,
           workspaceDirectory: windowsWorkspace,
-          nightshiftStateDirectory: join(localRoot, 'state-drvfs'),
+          koluxStateDirectory: join(localRoot, 'state-drvfs'),
           detectedProviders: ['codex', 'claude'],
           filesystem
         })

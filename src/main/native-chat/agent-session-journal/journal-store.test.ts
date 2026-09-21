@@ -60,7 +60,7 @@ async function open(overrides: Partial<Parameters<typeof openAgentSessionJournal
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-journal-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-journal-'))
   clock = 1_000
 })
 
@@ -278,7 +278,7 @@ describe('lifecycle batches', () => {
         { kind: 'item', identity: item(1), body: body('tool settled') },
         {
           kind: 'item',
-          identity: { provider: 'nightshift', clientMessageId: 'exit-status' },
+          identity: { provider: 'kolux', clientMessageId: 'exit-status' },
           body: { kind: 'status', text: 'Provider exited' }
         },
         { kind: 'tombstone', identity: turn }

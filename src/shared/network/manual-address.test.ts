@@ -235,14 +235,12 @@ describe('parseManualNetworkAddress', () => {
     })
 
     it('accepts reverse-proxy paths and query strings', () => {
-      expect(parseManualNetworkAddress('wss://example.com/nightshift?route=runtime').ok).toBe(true)
+      expect(parseManualNetworkAddress('wss://example.com/kolux?route=runtime').ok).toBe(true)
     })
 
     it('accepts HTTP URLs that the main process normalizes to WebSocket URLs', () => {
-      expect(parseManualNetworkAddress('http://example.com/nightshift').ok).toBe(true)
-      expect(parseManualNetworkAddress('https://example.com/nightshift?route=runtime').ok).toBe(
-        true
-      )
+      expect(parseManualNetworkAddress('http://example.com/kolux').ok).toBe(true)
+      expect(parseManualNetworkAddress('https://example.com/kolux?route=runtime').ok).toBe(true)
     })
 
     it('rejects URLs the pairing endpoint cannot advertise', () => {

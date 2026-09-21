@@ -99,7 +99,7 @@ function setup(
     configurable: true,
     value: {
       skills,
-      nightshiftProfiles: {
+      koluxProfiles: {
         authStatus: vi.fn().mockReturnValue(authStatus),
         orgMembersList: vi.fn().mockResolvedValue({
           status: 'ok',

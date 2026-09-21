@@ -34,7 +34,7 @@ describe('getAutomationProjectGroups', () => {
         repo({
           id: 'ssh',
           displayName: 'claude-swap',
-          path: '/home/nightshift/claude-swap',
+          path: '/home/kolux/claude-swap',
           connectionId: 'docker',
           repoIcon: { type: 'image', source: 'github', label: 'realiti4/claude-swap', src: '' }
         }),
@@ -58,11 +58,11 @@ describe('getAutomationProjectGroups', () => {
   it('finds and preserves the selected concrete source', () => {
     const groups = getAutomationProjectGroups(
       [
-        repo({ id: 'local', upstream: { owner: 'TxaisX', repo: 'nightshift' } }),
+        repo({ id: 'local', upstream: { owner: 'TxaisX', repo: 'kolux' } }),
         repo({
           id: 'ssh',
           connectionId: 'builder',
-          upstream: { owner: 'TxaisX', repo: 'nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'kolux' }
         })
       ],
       'ssh'

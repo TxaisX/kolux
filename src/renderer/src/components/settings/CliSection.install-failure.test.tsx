@@ -46,17 +46,17 @@ vi.mock('./CliRegistrationDialog', () => ({
 function notInstalledStatus(overrides: Partial<CliInstallStatus> = {}): CliInstallStatus {
   return {
     platform: 'darwin',
-    commandName: 'nightshift',
-    commandPath: '/usr/local/bin/nightshift',
+    commandName: 'kolux',
+    commandPath: '/usr/local/bin/kolux',
     pathDirectory: '/usr/local/bin',
     pathConfigured: true,
-    launcherPath: '/Applications/Nightshift.app/Contents/Resources/bin/nightshift',
+    launcherPath: '/Applications/Kolux.app/Contents/Resources/bin/kolux',
     installMethod: 'symlink',
     supported: true,
     state: 'not_installed',
     currentTarget: null,
     unsupportedReason: null,
-    detail: 'Register /usr/local/bin/nightshift to use Nightshift from the terminal.',
+    detail: 'Register /usr/local/bin/kolux to use Kolux from the terminal.',
     ...overrides
   }
 }
@@ -92,15 +92,15 @@ describe('CliSection install failure surfacing', () => {
   it('shows the thrown conflict reason and its remedy instead of a success toast', async () => {
     await renderCliSectionAndInstall(async () => {
       throw new Error(
-        "Error invoking remote method 'cli:install': Error: Refusing to replace non-Nightshift " +
-          'command at /usr/local/bin/nightshift. Remove it and register again if it is no longer needed.'
+        "Error invoking remote method 'cli:install': Error: Refusing to replace non-Kolux " +
+          'command at /usr/local/bin/kolux. Remove it and register again if it is no longer needed.'
       )
     })
 
     const alert = screen.getByRole('alert')
-    expect(alert.textContent).toContain('Failed to register `nightshift` in PATH.')
+    expect(alert.textContent).toContain('Failed to register `kolux` in PATH.')
     expect(alert.textContent).toContain(
-      'Refusing to replace non-Nightshift command at /usr/local/bin/nightshift.'
+      'Refusing to replace non-Kolux command at /usr/local/bin/kolux.'
     )
     expect(alert.textContent).toContain('Remove it and register again if it is no longer needed.')
     // The Electron transport wrapper must not leak into the panel.
@@ -113,16 +113,14 @@ describe('CliSection install failure surfacing', () => {
     await renderCliSectionAndInstall(async () =>
       notInstalledStatus({
         state: 'conflict',
-        detail: '/usr/local/bin/nightshift exists but is not a Nightshift symlink.'
+        detail: '/usr/local/bin/kolux exists but is not a Kolux symlink.'
       })
     )
 
     const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('/usr/local/bin/kolux exists but is not a Kolux symlink.')
     expect(alert.textContent).toContain(
-      '/usr/local/bin/nightshift exists but is not a Nightshift symlink.'
-    )
-    expect(alert.textContent).toContain(
-      'Remove /usr/local/bin/nightshift and register again if it is no longer needed.'
+      'Remove /usr/local/bin/kolux and register again if it is no longer needed.'
     )
     expect(toasts.success).not.toHaveBeenCalled()
   })
@@ -133,12 +131,12 @@ describe('CliSection install failure surfacing', () => {
         state: 'unsupported',
         supported: false,
         unsupportedReason: 'launcher_missing',
-        detail: 'The bundled CLI launcher is missing from this Nightshift build.'
+        detail: 'The bundled CLI launcher is missing from this Kolux build.'
       })
     )
 
     expect(screen.getByRole('alert').textContent).toContain(
-      'The bundled CLI launcher is missing from this Nightshift build.'
+      'The bundled CLI launcher is missing from this Kolux build.'
     )
     expect(toasts.success).not.toHaveBeenCalled()
     expect(toasts.error).toHaveBeenCalledTimes(1)

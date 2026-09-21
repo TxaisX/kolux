@@ -201,11 +201,11 @@ export async function installLocalExtractedSkillPackage(
     const transactionId = randomUUID()
     const stagingPath = join(
       input.destinationRoot,
-      `.${extracted.manifest.name}.nightshift-staging-${transactionId}`
+      `.${extracted.manifest.name}.kolux-staging-${transactionId}`
     )
     const backupPath = join(
       input.destinationRoot,
-      `.${extracted.manifest.name}.nightshift-backup-${transactionId}`
+      `.${extracted.manifest.name}.kolux-backup-${transactionId}`
     )
     const destinationExists = await skillInstallPathExists(canonicalPath)
     const backupDigest = 'digest' in state ? (state.digest ?? null) : null

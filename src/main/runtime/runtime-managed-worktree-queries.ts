@@ -9,7 +9,7 @@ import type { WorktreeMeta } from '../../shared/worktree/meta-types'
 import { isFolderRepo } from '../../shared/repo-kind'
 import {
   applyMetadataFallbackVisibility,
-  buildKnownNightshiftWorkspaceLayouts,
+  buildKnownKoluxWorkspaceLayouts,
   isLegacyRepoForExternalWorktreeVisibility,
   toDetectedWorktree
 } from '../../shared/worktree/ownership'
@@ -283,7 +283,7 @@ export class RuntimeManagedWorktreeQueries {
           ? store?.getWorktreeMeta(worktree.id)
           : (providedMeta ?? undefined),
       settings: { ...settings, worktreeVisibilityDefaults: visibilityDefaults },
-      knownNightshiftLayouts: buildKnownNightshiftWorkspaceLayouts(settings, repo),
+      knownKoluxLayouts: buildKnownKoluxWorkspaceLayouts(settings, repo),
       isLegacyRepoForVisibility: isLegacyRepoForExternalWorktreeVisibility(repo),
       worktreeVisibilitySourceMatcher: matcher
     })

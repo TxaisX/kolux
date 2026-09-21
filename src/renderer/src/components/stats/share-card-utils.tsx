@@ -127,7 +127,7 @@ export function getLegendItems(provider: 'claude' | 'codex') {
   ]
 }
 
-export function NightshiftLogo(): React.JSX.Element {
+export function KoluxLogo(): React.JSX.Element {
   return (
     <svg
       width={26}

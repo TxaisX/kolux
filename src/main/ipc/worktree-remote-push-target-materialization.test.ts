@@ -12,8 +12,8 @@ import {
 } from './worktree-remote'
 
 const REPO_PATH = '/repo-root'
-const FORK_URL = 'git@github.com:contributor/nightshift.git'
-const FORK_REMOTE = 'pr-contributor-nightshift'
+const FORK_URL = 'git@github.com:contributor/kolux.git'
+const FORK_REMOTE = 'pr-contributor-kolux'
 
 function forkTarget(overrides: Partial<GitPushTarget> = {}): GitPushTarget {
   return {
@@ -109,7 +109,7 @@ describe('materializeWorktreePushTargetRemote', () => {
       FORK_REMOTE,
       FORK_URL
     ])
-    expect(calls).toContainEqual(['config', `remote.${FORK_REMOTE}.nightshift-created`, 'true'])
+    expect(calls).toContainEqual(['config', `remote.${FORK_REMOTE}.kolux-created`, 'true'])
     expect(calls).toContainEqual([
       'fetch',
       FORK_REMOTE,
@@ -436,11 +436,11 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
       return { stdout: '', stderr: '' }
     })
     const fetchRemoteTrackingRef = vi.fn(async () => {})
-    const markRemoteNightshiftCreated = vi.fn(async () => {})
+    const markRemoteKoluxCreated = vi.fn(async () => {})
     const target = forkTarget()
 
     const result = await materializeWorktreePushTargetRemoteSsh(
-      { exec, fetchRemoteTrackingRef, markRemoteNightshiftCreated } as unknown as SshGitProvider,
+      { exec, fetchRemoteTrackingRef, markRemoteKoluxCreated } as unknown as SshGitProvider,
       REPO_PATH,
       target
     )
@@ -450,7 +450,7 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
     expect(calls).toContainEqual(['check-ref-format', '--branch', target.branchName])
     expect(calls).toContainEqual(['remote', 'add', FORK_REMOTE, FORK_URL])
     // Provenance is a narrow RPC, not exec: the relay's generic git.exec blocks config writes.
-    expect(markRemoteNightshiftCreated).toHaveBeenCalledWith(REPO_PATH, FORK_REMOTE)
+    expect(markRemoteKoluxCreated).toHaveBeenCalledWith(REPO_PATH, FORK_REMOTE)
     expect(fetchRemoteTrackingRef).toHaveBeenCalledWith(
       REPO_PATH,
       FORK_REMOTE,
@@ -467,7 +467,7 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
       return { stdout: '', stderr: '' }
     })
     const fetchRemoteTrackingRef = vi.fn(async () => {})
-    const markRemoteNightshiftCreated = vi.fn(async () => {})
+    const markRemoteKoluxCreated = vi.fn(async () => {})
     const target = forkTarget()
     const setWorktreeMeta = vi.fn()
     const store: WorktreePushTargetStore = {
@@ -476,7 +476,7 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
     } as unknown as WorktreePushTargetStore
 
     const result = await materializeWorktreePushTargetRemoteSsh(
-      { exec, fetchRemoteTrackingRef, markRemoteNightshiftCreated } as unknown as SshGitProvider,
+      { exec, fetchRemoteTrackingRef, markRemoteKoluxCreated } as unknown as SshGitProvider,
       REPO_PATH,
       target,
       store,
@@ -526,12 +526,12 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
     const fetchRemoteTrackingRef = vi.fn(async () => {
       throw new Error('network unreachable')
     })
-    const markRemoteNightshiftCreated = vi.fn(async () => {})
+    const markRemoteKoluxCreated = vi.fn(async () => {})
     const target = forkTarget()
 
     await expect(
       materializeWorktreePushTargetRemoteSsh(
-        { exec, fetchRemoteTrackingRef, markRemoteNightshiftCreated } as unknown as SshGitProvider,
+        { exec, fetchRemoteTrackingRef, markRemoteKoluxCreated } as unknown as SshGitProvider,
         REPO_PATH,
         target
       )
@@ -545,7 +545,7 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
   // misses under the *requested* remote name so this reaches prepareWorktreePushTargetSsh's
   // own by-URL reuse scan, which finds the sibling's differently-named remote.
   it('keeps a reused fork remote a sibling worktree owns when the SSH head fetch fails', async () => {
-    const SIBLING_REMOTE = 'pr-contributor-nightshift-existing'
+    const SIBLING_REMOTE = 'pr-contributor-kolux-existing'
     const exec = vi.fn(async (args: string[]) => {
       if (args[0] === 'remote' && args[1] === 'get-url') {
         if (args[2] === SIBLING_REMOTE) {

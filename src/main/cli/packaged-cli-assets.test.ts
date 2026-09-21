@@ -17,23 +17,23 @@ const builderConfig = require('../../../config/electron-builder.config.cjs') as 
   linux?: { extraResources?: { from?: string; to?: string }[] }
   win?: { extraResources?: { from?: string; to?: string }[] }
 }
-const linuxLauncherAsset = new URL('../../../resources/linux/bin/nightshift-ide', import.meta.url)
-const darwinLauncherAsset = new URL('../../../resources/darwin/bin/nightshift', import.meta.url)
+const linuxLauncherAsset = new URL('../../../resources/linux/bin/kolux-ide', import.meta.url)
+const darwinLauncherAsset = new URL('../../../resources/darwin/bin/kolux', import.meta.url)
 const unixLauncherFixtures = [
   {
     name: 'Linux',
     asset: linuxLauncherAsset,
-    appDir: ['Nightshift'],
-    launcher: ['resources', 'bin', 'nightshift-ide'],
-    executable: ['nightshift-ide'],
+    appDir: ['Kolux'],
+    launcher: ['resources', 'bin', 'kolux-ide'],
+    executable: ['kolux-ide'],
     cli: ['resources', 'app.asar.unpacked', 'out', 'cli', 'index.js']
   },
   {
     name: 'macOS',
     asset: darwinLauncherAsset,
-    appDir: ['Nightshift.app'],
-    launcher: ['Contents', 'Resources', 'bin', 'nightshift'],
-    executable: ['Contents', 'MacOS', 'Nightshift'],
+    appDir: ['Kolux.app'],
+    launcher: ['Contents', 'Resources', 'bin', 'kolux'],
+    executable: ['Contents', 'MacOS', 'Kolux'],
     cli: ['Contents', 'Resources', 'app.asar.unpacked', 'out', 'cli', 'index.js']
   }
 ] as const
@@ -87,7 +87,7 @@ describe('packaged CLI assets', () => {
   })
 
   it('retries an incomplete listener-state write', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-listener-state-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-listener-state-'))
     const statePath = join(root, 'listener-state.json')
     const expectedState = { pid: 1234, port: 5678 }
     await writeFile(statePath, '{"pid":', 'utf8')
@@ -111,7 +111,7 @@ describe('packaged CLI assets', () => {
     { state: { pid: 1234, port: '5678' }, reason: 'non-numeric port' },
     { state: { pid: 1234, port: 65_536 }, reason: 'out-of-range port' }
   ])('rejects $reason in listener state', async ({ state }) => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-listener-state-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-listener-state-'))
     const statePath = join(root, 'listener-state.json')
     try {
       await writeFile(statePath, JSON.stringify(state), 'utf8')
@@ -127,7 +127,7 @@ describe('packaged CLI assets', () => {
     'delivers Unix termination signals to the $name executable and releases its listener',
     async (launcherFixture) => {
       for (const signal of unixTerminationSignals) {
-        const root = await mkdtemp(join(tmpdir(), 'nightshift-unix-cli-signal-'))
+        const root = await mkdtemp(join(tmpdir(), 'kolux-unix-cli-signal-'))
         const appDir = join(root, ...launcherFixture.appDir)
         const launcherPath = join(appDir, ...launcherFixture.launcher)
         const electronPath = join(appDir, ...launcherFixture.executable)
@@ -151,7 +151,7 @@ const shutdown = () => server.close(() => process.exit(0))
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 server.listen(0, '127.0.0.1', () => {
-  fs.writeFileSync(process.env.NIGHTSHIFT_TEST_LISTENER_STATE, JSON.stringify({
+  fs.writeFileSync(process.env.KOLUX_TEST_LISTENER_STATE, JSON.stringify({
     pid: process.pid,
     port: server.address().port
   }))
@@ -161,7 +161,7 @@ server.listen(0, '127.0.0.1', () => {
           )
 
           launcher = spawn(launcherPath, [], {
-            env: { ...process.env, NIGHTSHIFT_TEST_LISTENER_STATE: statePath },
+            env: { ...process.env, KOLUX_TEST_LISTENER_STATE: statePath },
             stdio: 'ignore'
           })
           const state = await waitForListenerState(statePath)
@@ -194,14 +194,14 @@ server.listen(0, '127.0.0.1', () => {
   itRunsUnixShell(
     'runs the Linux launcher from its packaged path and installed symlink',
     async () => {
-      const root = await mkdtemp(join(tmpdir(), 'nightshift-linux-cli-'))
+      const root = await mkdtemp(join(tmpdir(), 'kolux-linux-cli-'))
       try {
-        const appDir = join(root, 'Nightshift')
+        const appDir = join(root, 'Kolux')
         const resourcesDir = join(appDir, 'resources')
         const launcherDir = join(resourcesDir, 'bin')
         const cliDir = join(resourcesDir, 'app.asar.unpacked', 'out', 'cli')
-        const launcherPath = join(launcherDir, 'nightshift-ide')
-        const electronPath = join(appDir, 'nightshift-ide')
+        const launcherPath = join(launcherDir, 'kolux-ide')
+        const electronPath = join(appDir, 'kolux-ide')
         const cliPath = join(cliDir, 'index.js')
 
         await mkdir(launcherDir, { recursive: true })
@@ -227,9 +227,9 @@ printf 'arg=%s\\n' "$@"
 
         const homeDir = join(root, 'home')
         const commandDir = join(homeDir, '.local', 'bin')
-        const commandPath = join(commandDir, 'nightshift-ide')
+        const commandPath = join(commandDir, 'kolux-ide')
         await mkdir(commandDir, { recursive: true })
-        await mkdir(join(homeDir, 'nightshift'), { recursive: true })
+        await mkdir(join(homeDir, 'kolux'), { recursive: true })
         await symlink(launcherPath, commandPath)
 
         const symlinked = await execFileAsync(commandPath, ['--help'], {
@@ -249,13 +249,13 @@ printf 'arg=%s\\n' "$@"
   // launcher, so its env sanitation and argv passthrough are the contract the
   // AppImage, deb, and extracted-tree commands all depend on.
   itRunsUnixShell('sanitizes node env and forwards argv verbatim', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-linux-cli-env-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-linux-cli-env-'))
     try {
-      const appDir = join(root, 'Nightshift')
+      const appDir = join(root, 'Kolux')
       const resourcesDir = join(appDir, 'resources')
       const launcherDir = join(resourcesDir, 'bin')
       const cliDir = join(resourcesDir, 'app.asar.unpacked', 'out', 'cli')
-      const launcherPath = join(launcherDir, 'nightshift-ide')
+      const launcherPath = join(launcherDir, 'kolux-ide')
       const cliPath = join(cliDir, 'index.js')
 
       await mkdir(launcherDir, { recursive: true })
@@ -263,15 +263,15 @@ printf 'arg=%s\\n' "$@"
       await copyFile(linuxLauncherAsset, launcherPath)
       await writeFile(cliPath, '', 'utf8')
       await writeFile(
-        join(appDir, 'nightshift-ide'),
+        join(appDir, 'kolux-ide'),
         `#!/usr/bin/env bash
 node -e 'console.log(JSON.stringify({
   argv: process.argv.slice(1),
   runAsNode: process.env.ELECTRON_RUN_AS_NODE,
   nodeOptions: process.env.NODE_OPTIONS ?? null,
-  nightshiftNodeOptions: process.env.NIGHTSHIFT_NODE_OPTIONS ?? null,
+  koluxNodeOptions: process.env.KOLUX_NODE_OPTIONS ?? null,
   nodeReplExternalModule: process.env.NODE_REPL_EXTERNAL_MODULE ?? null,
-  nightshiftNodeReplExternalModule: process.env.NIGHTSHIFT_NODE_REPL_EXTERNAL_MODULE ?? null
+  koluxNodeReplExternalModule: process.env.KOLUX_NODE_REPL_EXTERNAL_MODULE ?? null
 }))' -- "$@"
 `,
         { encoding: 'utf8', mode: 0o755 }
@@ -288,9 +288,9 @@ node -e 'console.log(JSON.stringify({
         argv: string[]
         runAsNode: string
         nodeOptions: string | null
-        nightshiftNodeOptions: string | null
+        koluxNodeOptions: string | null
         nodeReplExternalModule: string | null
-        nightshiftNodeReplExternalModule: string | null
+        koluxNodeReplExternalModule: string | null
       }
 
       expect(payload.argv).toEqual([cliPath, '--help', 'two words'])
@@ -298,24 +298,24 @@ node -e 'console.log(JSON.stringify({
       // Why: Electron's node bootstrap must not inherit these, but the CLI
       // still needs to see what the user set.
       expect(payload.nodeOptions).toBeNull()
-      expect(payload.nightshiftNodeOptions).toBe('--trace-warnings')
+      expect(payload.koluxNodeOptions).toBe('--trace-warnings')
       expect(payload.nodeReplExternalModule).toBeNull()
-      expect(payload.nightshiftNodeReplExternalModule).toBe('external-loader')
+      expect(payload.koluxNodeReplExternalModule).toBe('external-loader')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
   })
 
   itRunsUnixShell('keeps Linux serve on the CLI entrypoint in node mode', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-linux-cli-serve-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-linux-cli-serve-'))
     try {
-      const appDir = join(root, 'Nightshift')
+      const appDir = join(root, 'Kolux')
       const resourcesDir = join(appDir, 'resources')
       const launcherDir = join(resourcesDir, 'bin')
       const cliDir = join(resourcesDir, 'app.asar.unpacked', 'out', 'cli')
-      const launcherPath = join(launcherDir, 'nightshift-ide')
+      const launcherPath = join(launcherDir, 'kolux-ide')
       const appRunPath = join(appDir, 'AppRun')
-      const electronPath = join(appDir, 'nightshift-ide')
+      const electronPath = join(appDir, 'kolux-ide')
       const cliPath = join(cliDir, 'index.js')
       const statePath = join(root, 'launch-state.json')
 
@@ -335,7 +335,7 @@ exit 97
       await writeFile(
         electronPath,
         `#!/usr/bin/env node
-require('node:fs').writeFileSync(process.env.NIGHTSHIFT_TEST_LAUNCH_STATE, JSON.stringify({
+require('node:fs').writeFileSync(process.env.KOLUX_TEST_LAUNCH_STATE, JSON.stringify({
   argv: process.argv.slice(2),
   runAsNode: process.env.ELECTRON_RUN_AS_NODE ?? null
 }))
@@ -344,7 +344,7 @@ require('node:fs').writeFileSync(process.env.NIGHTSHIFT_TEST_LAUNCH_STATE, JSON.
       )
 
       await execFileAsync(launcherPath, ['serve', '--recipe-json', '--project-root', '/tmp/repo'], {
-        env: { ...process.env, NIGHTSHIFT_TEST_LAUNCH_STATE: statePath }
+        env: { ...process.env, KOLUX_TEST_LAUNCH_STATE: statePath }
       })
       const payload = JSON.parse(await readFile(statePath, 'utf8')) as {
         argv: string[]

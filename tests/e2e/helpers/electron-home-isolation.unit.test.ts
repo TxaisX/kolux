@@ -17,7 +17,7 @@ afterEach(() => {
 })
 
 function createUserDataDir(): string {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'nightshift-home-isolation-test-'))
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), 'kolux-home-isolation-test-'))
   tempDirs.push(tempDir)
   return tempDir
 }
@@ -30,7 +30,7 @@ describe('createElectronHomeIsolation', () => {
         HOME: '/real/home',
         USERPROFILE: '/real/home',
         CODEX_HOME: '/real/codex',
-        NIGHTSHIFT_CODEX_HOME: '/real/nightshift-codex',
+        KOLUX_CODEX_HOME: '/real/kolux-codex',
         ZDOTDIR: '/real/zdotdir',
         PATH: '/bin'
       },
@@ -50,10 +50,10 @@ describe('createElectronHomeIsolation', () => {
       EXTRA_TEST_FLAG: '1',
       HOME: canonicalHome,
       USERPROFILE: canonicalHome,
-      NIGHTSHIFT_E2E_USER_DATA_DIR: userDataDir
+      KOLUX_E2E_USER_DATA_DIR: userDataDir
     })
     expect(isolation.env.CODEX_HOME).toBeUndefined()
-    expect(isolation.env.NIGHTSHIFT_CODEX_HOME).toBeUndefined()
+    expect(isolation.env.KOLUX_CODEX_HOME).toBeUndefined()
     expect(isolation.env.ZDOTDIR).toBeUndefined()
     // Codex always routes to the resolved home, so the post-launch guard must
     // accept the boundary this env produces.
@@ -77,11 +77,11 @@ describe('createElectronHomeIsolation', () => {
       createElectronHomeIsolation({
         inheritedEnv: {},
         launchEnv: {},
-        extraEnv: { NIGHTSHIFT_E2E_USER_DATA_DIR: '/unsafe' },
+        extraEnv: { KOLUX_E2E_USER_DATA_DIR: '/unsafe' },
         userDataDir: createUserDataDir(),
         realHome: '/real/home'
       })
-    ).toThrow(/nightshiftAppExtraEnv\.NIGHTSHIFT_E2E_USER_DATA_DIR/)
+    ).toThrow(/koluxAppExtraEnv\.KOLUX_E2E_USER_DATA_DIR/)
   })
 
   it('compares Windows home paths case-insensitively', () => {

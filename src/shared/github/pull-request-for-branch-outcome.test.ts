@@ -7,7 +7,7 @@ const PR = {
   number: 42,
   title: 'Feature',
   state: 'merged',
-  url: 'https://github.com/acme/nightshift/pull/42',
+  url: 'https://github.com/acme/kolux/pull/42',
   checksStatus: 'success',
   updatedAt: '2026-08-04T22:46:08Z',
   mergeable: 'UNKNOWN'

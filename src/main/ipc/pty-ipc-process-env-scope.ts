@@ -2,24 +2,22 @@
 // this scope captures the real values once and puts them back afterwards.
 export function createPtyIpcProcessEnvScope() {
   const savedOpenCodeConfigDir = process.env.OPENCODE_CONFIG_DIR
-  const savedNightshiftOpenCodeConfigDir = process.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR
-  const savedNightshiftOpenCodeSourceConfigDir = process.env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
+  const savedKoluxOpenCodeConfigDir = process.env.KOLUX_OPENCODE_CONFIG_DIR
+  const savedKoluxOpenCodeSourceConfigDir = process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
   const savedPiAgentDir = process.env.PI_CODING_AGENT_DIR
-  const savedNightshiftPiAgentDir = process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
-  const savedNightshiftPiSourceAgentDir = process.env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR
-  const savedNightshiftCodexHome = process.env.NIGHTSHIFT_CODEX_HOME
-  const savedNightshiftOmpAgentDir = process.env.NIGHTSHIFT_OMP_CODING_AGENT_DIR
-  const savedNightshiftOmpSourceAgentDir = process.env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR
-  const savedNightshiftOmpStatusExtension = process.env.NIGHTSHIFT_OMP_STATUS_EXTENSION
+  const savedKoluxPiAgentDir = process.env.KOLUX_PI_CODING_AGENT_DIR
+  const savedKoluxPiSourceAgentDir = process.env.KOLUX_PI_SOURCE_AGENT_DIR
+  const savedKoluxCodexHome = process.env.KOLUX_CODEX_HOME
+  const savedKoluxOmpAgentDir = process.env.KOLUX_OMP_CODING_AGENT_DIR
+  const savedKoluxOmpSourceAgentDir = process.env.KOLUX_OMP_SOURCE_AGENT_DIR
+  const savedKoluxOmpStatusExtension = process.env.KOLUX_OMP_STATUS_EXTENSION
   const savedPrimeAgentDir = process.env.PRIME_AGENT_CODING_AGENT_DIR
-  const savedNightshiftPrimeAgentSourceDir = process.env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR
-  const savedNightshiftPrimeAgentStatusExtension =
-    process.env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION
-  const savedNightshiftClaudeAgentStatusSettings =
-    process.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS
+  const savedKoluxPrimeAgentSourceDir = process.env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR
+  const savedKoluxPrimeAgentStatusExtension = process.env.KOLUX_PRIME_AGENT_STATUS_EXTENSION
+  const savedKoluxClaudeAgentStatusSettings = process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS
   const savedProcessPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
-  const savedDisableMacosLoginShell = process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL
-  const savedNightshiftUserDataPath = process.env.NIGHTSHIFT_USER_DATA_PATH
+  const savedDisableMacosLoginShell = process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL
+  const savedKoluxUserDataPath = process.env.KOLUX_USER_DATA_PATH
 
   function applyTestEnvDefaults() {
     // Why: most PTY spawn tests assert POSIX shell behavior; Windows cases opt into win32 explicitly below.
@@ -28,22 +26,22 @@ export function createPtyIpcProcessEnvScope() {
       value: 'darwin'
     })
     // Why: forced darwin makes the TCC login(1) wrapper rewrite every asserted argv; its own test below re-enables it.
-    process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL = '1'
+    process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL = '1'
     delete process.env.OPENCODE_CONFIG_DIR
-    delete process.env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
-    delete process.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR
-    delete process.env.NIGHTSHIFT_AGENT_HOOK_ENDPOINT
-    delete process.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS
+    delete process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
+    delete process.env.KOLUX_OPENCODE_CONFIG_DIR
+    delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
+    delete process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS
     delete process.env.PI_CODING_AGENT_DIR
-    delete process.env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR
-    delete process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
-    delete process.env.NIGHTSHIFT_CODEX_HOME
-    delete process.env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR
-    delete process.env.NIGHTSHIFT_OMP_CODING_AGENT_DIR
-    delete process.env.NIGHTSHIFT_OMP_STATUS_EXTENSION
+    delete process.env.KOLUX_PI_SOURCE_AGENT_DIR
+    delete process.env.KOLUX_PI_CODING_AGENT_DIR
+    delete process.env.KOLUX_CODEX_HOME
+    delete process.env.KOLUX_OMP_SOURCE_AGENT_DIR
+    delete process.env.KOLUX_OMP_CODING_AGENT_DIR
+    delete process.env.KOLUX_OMP_STATUS_EXTENSION
     delete process.env.PRIME_AGENT_CODING_AGENT_DIR
-    delete process.env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR
-    delete process.env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION
+    delete process.env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR
+    delete process.env.KOLUX_PRIME_AGENT_STATUS_EXTENSION
   }
 
   function restoreProcessEnv() {
@@ -51,84 +49,84 @@ export function createPtyIpcProcessEnvScope() {
       Object.defineProperty(process, 'platform', savedProcessPlatform)
     }
     if (savedDisableMacosLoginShell !== undefined) {
-      process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL = savedDisableMacosLoginShell
+      process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL = savedDisableMacosLoginShell
     } else {
-      delete process.env.NIGHTSHIFT_DISABLE_MACOS_LOGIN_SHELL
+      delete process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL
     }
-    if (savedNightshiftUserDataPath !== undefined) {
-      process.env.NIGHTSHIFT_USER_DATA_PATH = savedNightshiftUserDataPath
+    if (savedKoluxUserDataPath !== undefined) {
+      process.env.KOLUX_USER_DATA_PATH = savedKoluxUserDataPath
     } else {
-      delete process.env.NIGHTSHIFT_USER_DATA_PATH
+      delete process.env.KOLUX_USER_DATA_PATH
     }
     if (savedOpenCodeConfigDir !== undefined) {
       process.env.OPENCODE_CONFIG_DIR = savedOpenCodeConfigDir
     } else {
       delete process.env.OPENCODE_CONFIG_DIR
     }
-    if (savedNightshiftOpenCodeConfigDir !== undefined) {
-      process.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR = savedNightshiftOpenCodeConfigDir
+    if (savedKoluxOpenCodeConfigDir !== undefined) {
+      process.env.KOLUX_OPENCODE_CONFIG_DIR = savedKoluxOpenCodeConfigDir
     } else {
-      delete process.env.NIGHTSHIFT_OPENCODE_CONFIG_DIR
+      delete process.env.KOLUX_OPENCODE_CONFIG_DIR
     }
-    if (savedNightshiftOpenCodeSourceConfigDir !== undefined) {
-      process.env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR = savedNightshiftOpenCodeSourceConfigDir
+    if (savedKoluxOpenCodeSourceConfigDir !== undefined) {
+      process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = savedKoluxOpenCodeSourceConfigDir
     } else {
-      delete process.env.NIGHTSHIFT_OPENCODE_SOURCE_CONFIG_DIR
+      delete process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
     }
     if (savedPiAgentDir !== undefined) {
       process.env.PI_CODING_AGENT_DIR = savedPiAgentDir
     } else {
       delete process.env.PI_CODING_AGENT_DIR
     }
-    if (savedNightshiftPiAgentDir !== undefined) {
-      process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR = savedNightshiftPiAgentDir
+    if (savedKoluxPiAgentDir !== undefined) {
+      process.env.KOLUX_PI_CODING_AGENT_DIR = savedKoluxPiAgentDir
     } else {
-      delete process.env.NIGHTSHIFT_PI_CODING_AGENT_DIR
+      delete process.env.KOLUX_PI_CODING_AGENT_DIR
     }
-    if (savedNightshiftPiSourceAgentDir === undefined) {
-      delete process.env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR
+    if (savedKoluxPiSourceAgentDir === undefined) {
+      delete process.env.KOLUX_PI_SOURCE_AGENT_DIR
     } else {
-      process.env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR = savedNightshiftPiSourceAgentDir
+      process.env.KOLUX_PI_SOURCE_AGENT_DIR = savedKoluxPiSourceAgentDir
     }
-    if (savedNightshiftCodexHome === undefined) {
-      delete process.env.NIGHTSHIFT_CODEX_HOME
+    if (savedKoluxCodexHome === undefined) {
+      delete process.env.KOLUX_CODEX_HOME
     } else {
-      process.env.NIGHTSHIFT_CODEX_HOME = savedNightshiftCodexHome
+      process.env.KOLUX_CODEX_HOME = savedKoluxCodexHome
     }
-    if (savedNightshiftOmpAgentDir !== undefined) {
-      process.env.NIGHTSHIFT_OMP_CODING_AGENT_DIR = savedNightshiftOmpAgentDir
+    if (savedKoluxOmpAgentDir !== undefined) {
+      process.env.KOLUX_OMP_CODING_AGENT_DIR = savedKoluxOmpAgentDir
     } else {
-      delete process.env.NIGHTSHIFT_OMP_CODING_AGENT_DIR
+      delete process.env.KOLUX_OMP_CODING_AGENT_DIR
     }
-    if (savedNightshiftOmpSourceAgentDir !== undefined) {
-      process.env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR = savedNightshiftOmpSourceAgentDir
+    if (savedKoluxOmpSourceAgentDir !== undefined) {
+      process.env.KOLUX_OMP_SOURCE_AGENT_DIR = savedKoluxOmpSourceAgentDir
     } else {
-      delete process.env.NIGHTSHIFT_OMP_SOURCE_AGENT_DIR
+      delete process.env.KOLUX_OMP_SOURCE_AGENT_DIR
     }
-    if (savedNightshiftOmpStatusExtension !== undefined) {
-      process.env.NIGHTSHIFT_OMP_STATUS_EXTENSION = savedNightshiftOmpStatusExtension
+    if (savedKoluxOmpStatusExtension !== undefined) {
+      process.env.KOLUX_OMP_STATUS_EXTENSION = savedKoluxOmpStatusExtension
     } else {
-      delete process.env.NIGHTSHIFT_OMP_STATUS_EXTENSION
+      delete process.env.KOLUX_OMP_STATUS_EXTENSION
     }
     if (savedPrimeAgentDir !== undefined) {
       process.env.PRIME_AGENT_CODING_AGENT_DIR = savedPrimeAgentDir
     } else {
       delete process.env.PRIME_AGENT_CODING_AGENT_DIR
     }
-    if (savedNightshiftPrimeAgentSourceDir !== undefined) {
-      process.env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR = savedNightshiftPrimeAgentSourceDir
+    if (savedKoluxPrimeAgentSourceDir !== undefined) {
+      process.env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR = savedKoluxPrimeAgentSourceDir
     } else {
-      delete process.env.NIGHTSHIFT_PRIME_AGENT_SOURCE_AGENT_DIR
+      delete process.env.KOLUX_PRIME_AGENT_SOURCE_AGENT_DIR
     }
-    if (savedNightshiftPrimeAgentStatusExtension !== undefined) {
-      process.env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION = savedNightshiftPrimeAgentStatusExtension
+    if (savedKoluxPrimeAgentStatusExtension !== undefined) {
+      process.env.KOLUX_PRIME_AGENT_STATUS_EXTENSION = savedKoluxPrimeAgentStatusExtension
     } else {
-      delete process.env.NIGHTSHIFT_PRIME_AGENT_STATUS_EXTENSION
+      delete process.env.KOLUX_PRIME_AGENT_STATUS_EXTENSION
     }
-    if (savedNightshiftClaudeAgentStatusSettings === undefined) {
-      delete process.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS
+    if (savedKoluxClaudeAgentStatusSettings === undefined) {
+      delete process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS
     } else {
-      process.env.NIGHTSHIFT_CLAUDE_AGENT_STATUS_SETTINGS = savedNightshiftClaudeAgentStatusSettings
+      process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS = savedKoluxClaudeAgentStatusSettings
     }
   }
 

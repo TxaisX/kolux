@@ -37,8 +37,8 @@ export function buildDirectWorkItemAgentStartupPlan(args: {
     | undefined
   launchPlatform: NodeJS.Platform
   nativeChatTranscriptIsLocalReadable?: boolean
-  /** Why: SSH remotes deploy the CLI shim as plain `nightshift`, so the Linux-only
-   * `nightshift-ide` rename must not be applied for remote launches. */
+  /** Why: SSH remotes deploy the CLI shim as plain `kolux`, so the Linux-only
+   * `kolux-ide` rename must not be applied for remote launches. */
   isRemote?: boolean
 }): {
   startupPlan: AgentStartupPlan | null

@@ -48,8 +48,8 @@ const NATIVE: NativeRow[] = [
   {
     pid: 100,
     ppid: 4,
-    name: 'nightshift.exe',
-    commandLine: '"C:/a b/nightshift.exe" --x',
+    name: 'kolux.exe',
+    commandLine: '"C:/a b/kolux.exe" --x',
     creationTimeMs: 1_700_000_000_000
   }
 ]
@@ -168,8 +168,8 @@ describe('windows process table', () => {
       {
         pid: 100,
         ppid: 4,
-        name: 'nightshift.exe',
-        command: '"C:/a b/nightshift.exe" --x',
+        name: 'kolux.exe',
+        command: '"C:/a b/kolux.exe" --x',
         creationTimeMs: 1_700_000_000_000
       }
     ])
@@ -191,7 +191,7 @@ describe('windows process table', () => {
     const rows = await readWindowsProcessIdentityTableFresh()
     expect(rows).toEqual([
       { pid: process.pid, ppid: 0, name: 'vitest.exe' },
-      { pid: 100, ppid: 4, name: 'nightshift.exe', creationTimeMs: 1_700_000_000_000 }
+      { pid: 100, ppid: 4, name: 'kolux.exe', creationTimeMs: 1_700_000_000_000 }
     ])
     expect(rows.every((row) => !('command' in row))).toBe(true)
   })
@@ -219,7 +219,7 @@ describe('windows process table', () => {
     detailed: Promise<WindowsProcessRow[]>
   ): Promise<void> {
     const [identityRows, detailedRows] = await Promise.all([identity, detailed])
-    expect(detailedRows.some((row) => row.command === '"C:/a b/nightshift.exe" --x')).toBe(true)
+    expect(detailedRows.some((row) => row.command === '"C:/a b/kolux.exe" --x')).toBe(true)
     expect(identityRows.every((row) => !('command' in row))).toBe(true)
     // Both sets carry what their own flags asked for. Not redundant with the
     // flags check below: that one catches a read served the OTHER set's rows,
@@ -710,8 +710,8 @@ describe('resolving the native reader', () => {
       {
         pid: 100,
         ppid: 4,
-        name: 'nightshift.exe',
-        command: '"C:/a b/nightshift.exe" --x',
+        name: 'kolux.exe',
+        command: '"C:/a b/kolux.exe" --x',
         creationTimeMs: 1_700_000_000_000
       }
     ])
@@ -807,7 +807,7 @@ describe('resolving the native reader', () => {
     bytes: string,
     addon: unknown
   ): ((specifier: string) => unknown) & { resolve: (specifier: string) => string } {
-    const dir = mkdtempSync(join(tmpdir(), 'nightshift-relay-addon-'))
+    const dir = mkdtempSync(join(tmpdir(), 'kolux-relay-addon-'))
     const addonPath = join(dir, 'windows-process-tree.node')
     writeFileSync(addonPath, bytes)
     stagedAddonDirs.push(dir)

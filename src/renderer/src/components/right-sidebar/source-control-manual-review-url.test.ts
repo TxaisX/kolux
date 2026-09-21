@@ -102,10 +102,12 @@ describe('buildSourceControlManualReviewUrl', () => {
         pushTarget: {
           remoteName: 'fork',
           branchName: 'feature/fork-head',
-          remoteUrl: 'git@github.com:contributor/nightshift.git'
+          remoteUrl: 'git@github.com:contributor/kolux.git'
         }
       })
-    ).toBe('https://github.com/TxaisX/nightshift/compare/main...contributor:feature/fork-head?expand=1')
+    ).toBe(
+      'https://github.com/TxaisX/nightshift/compare/main...contributor:feature/fork-head?expand=1'
+    )
   })
 
   it('keeps slashes literal in a GitHub compare URL for a slash-containing branch name', () => {
@@ -128,12 +130,12 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/release/next',
         branchName: 'feature/gitlab',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@gitlab.company.test:group/sub/nightshift.git',
+        repoRemoteUrl: 'git@gitlab.company.test:group/sub/kolux.git',
         provider: 'gitlab',
         upstreamName: 'origin/feature/gitlab'
       })
     ).toBe(
-      'https://gitlab.company.test/group/sub/nightshift/-/merge_requests/new?merge_request%5Bsource_branch%5D=feature%2Fgitlab&merge_request%5Btarget_branch%5D=release%2Fnext'
+      'https://gitlab.company.test/group/sub/kolux/-/merge_requests/new?merge_request%5Bsource_branch%5D=feature%2Fgitlab&merge_request%5Btarget_branch%5D=release%2Fnext'
     )
   })
 
@@ -143,17 +145,17 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/upstream/main',
         branchName: 'feature/fork-head',
         repoRemoteName: 'upstream',
-        repoRemoteUrl: 'git@gitlab.company.test:group/sub/nightshift.git',
+        repoRemoteUrl: 'git@gitlab.company.test:group/sub/kolux.git',
         provider: 'gitlab',
         pushTarget: {
           remoteName: 'fork',
           branchName: 'feature/fork-head',
-          remoteUrl: 'git@gitlab.company.test:contributor/nightshift.git'
+          remoteUrl: 'git@gitlab.company.test:contributor/kolux.git'
         }
       })
-      // On the fork project — not group/sub/nightshift, where source_branch would 404.
+      // On the fork project — not group/sub/kolux, where source_branch would 404.
     ).toBe(
-      'https://gitlab.company.test/contributor/nightshift/-/merge_requests/new?merge_request%5Bsource_branch%5D=feature%2Ffork-head&merge_request%5Btarget_branch%5D=main'
+      'https://gitlab.company.test/contributor/kolux/-/merge_requests/new?merge_request%5Bsource_branch%5D=feature%2Ffork-head&merge_request%5Btarget_branch%5D=main'
     )
   })
 
@@ -191,11 +193,11 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'feature/gitea',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'ssh://git@gitea.company.test/team/nightshift.git',
+        repoRemoteUrl: 'ssh://git@gitea.company.test/team/kolux.git',
         provider: 'gitea',
         upstreamName: 'origin/feature/gitea'
       })
-    ).toBe('https://gitea.company.test/team/nightshift/compare/main...feature/gitea')
+    ).toBe('https://gitea.company.test/team/kolux/compare/main...feature/gitea')
   })
 
   it('suppresses the link when the branch tracks a fork remote with no resolvable push URL', () => {
@@ -207,7 +209,7 @@ describe('buildSourceControlManualReviewUrl', () => {
         branchName: 'quick-commands',
         repoRemoteName: 'origin',
         repoRemoteUrl: 'https://github.com/TxaisX/nightshift.git',
-        upstreamName: 'pr-devajmeireles-nightshift/quick-commands'
+        upstreamName: 'pr-devajmeireles-kolux/quick-commands'
       })
     ).toBeNull()
   })
@@ -224,21 +226,23 @@ describe('buildSourceControlManualReviewUrl', () => {
     ).toBe('https://github.com/TxaisX/nightshift/compare/main...feature/pushed-name?expand=1')
   })
 
-  it('still qualifies the fork head when Nightshift resolved the fork push URL', () => {
+  it('still qualifies the fork head when Kolux resolved the fork push URL', () => {
     expect(
       buildSourceControlManualReviewUrl({
         baseRef: 'refs/remotes/origin/main',
         branchName: 'quick-commands',
         repoRemoteName: 'origin',
         repoRemoteUrl: 'https://github.com/TxaisX/nightshift.git',
-        upstreamName: 'pr-devajmeireles-nightshift/quick-commands',
+        upstreamName: 'pr-devajmeireles-kolux/quick-commands',
         pushTarget: {
-          remoteName: 'pr-devajmeireles-nightshift',
+          remoteName: 'pr-devajmeireles-kolux',
           branchName: 'quick-commands',
-          remoteUrl: 'git@github.com:devajmeireles/nightshift.git'
+          remoteUrl: 'git@github.com:devajmeireles/kolux.git'
         }
       })
-    ).toBe('https://github.com/TxaisX/nightshift/compare/main...devajmeireles:quick-commands?expand=1')
+    ).toBe(
+      'https://github.com/TxaisX/nightshift/compare/main...devajmeireles:quick-commands?expand=1'
+    )
   })
 
   it('does not guess a provider for unknown hosts without a provider hint', () => {
@@ -247,7 +251,7 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'feature/unknown',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@git.company.test:team/nightshift.git',
+        repoRemoteUrl: 'git@git.company.test:team/kolux.git',
         upstreamName: 'origin/feature/unknown'
       })
     ).toBeNull()

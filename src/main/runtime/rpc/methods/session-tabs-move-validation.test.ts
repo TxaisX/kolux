@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { NightshiftRuntimeService } from '../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../kolux-runtime'
 import type { RuntimeMobileSessionTabsSnapshot } from '../../../../shared/runtime-types'
 
 function setMobileSessionSnapshot(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   snapshot: RuntimeMobileSessionTabsSnapshot
 ): void {
   ;(
@@ -14,7 +14,7 @@ function setMobileSessionSnapshot(
 }
 
 function getMobileSessionSnapshot(
-  runtime: NightshiftRuntimeService,
+  runtime: KoluxRuntimeService,
   worktree: string
 ): RuntimeMobileSessionTabsSnapshot | undefined {
   return (
@@ -62,7 +62,7 @@ function browserTab({
 
 describe('session tab move validation', () => {
   it('preserves a structured tab across renderer-authored snapshot sync', () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const structured = {
       type: 'agent-session' as const,
       id: 'agent-session:session-a',
@@ -110,7 +110,7 @@ describe('session tab move validation', () => {
   })
 
   it('publishes a structured tab into the active group instead of the first group', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     setMobileSessionSnapshot(runtime, {
       worktree: 'wt-1',
       publicationEpoch: 'epoch-1',
@@ -154,7 +154,7 @@ describe('session tab move validation', () => {
   })
 
   it('preserves a capability-hidden structured tab during an old-client reorder', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const moveSessionTab = vi.fn()
     runtime.setNotifier({ moveSessionTab } as never)
     setMobileSessionSnapshot(runtime, {
@@ -210,7 +210,7 @@ describe('session tab move validation', () => {
   })
 
   it('validates reorder moves against sanitized visible tab groups', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const moveSessionTab = vi.fn()
     runtime.setNotifier({ moveSessionTab } as never)
     runtime.setAgentBrowserBridge({
@@ -273,7 +273,7 @@ describe('session tab move validation', () => {
   })
 
   it('rejects moves into groups hidden from the sanitized session model', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const moveSessionTab = vi.fn()
     runtime.setNotifier({ moveSessionTab } as never)
     runtime.setAgentBrowserBridge({
@@ -313,7 +313,7 @@ describe('session tab move validation', () => {
   })
 
   it('rejects reorder moves when the moved tab is absent from the target order', async () => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     const moveSessionTab = vi.fn()
     runtime.setNotifier({ moveSessionTab } as never)
     runtime.setAgentBrowserBridge({

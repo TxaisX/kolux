@@ -33,7 +33,7 @@ describe('Claude TUI exit', () => {
   })
 
   it('reads the authoritative last-prompt leaf from a transcript tail', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-claude-tui-exit-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-claude-tui-exit-'))
     roots.push(root)
     const transcriptPath = join(root, 'session.jsonl')
     await writeFile(
@@ -52,7 +52,7 @@ describe('Claude TUI exit', () => {
   })
 
   it('falls back to the last persisted message when last-prompt metadata is absent', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-claude-tui-exit-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-claude-tui-exit-'))
     roots.push(root)
     const transcriptPath = join(root, 'session.jsonl')
     await writeFile(
@@ -72,7 +72,7 @@ describe('Claude TUI exit', () => {
   })
 
   it('ignores sidechain messages when selecting a fallback transcript leaf', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-claude-tui-sidechain-leaf-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-claude-tui-sidechain-leaf-'))
     const transcriptPath = join(root, 'session.jsonl')
     await writeFile(
       transcriptPath,

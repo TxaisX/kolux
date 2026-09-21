@@ -14,7 +14,7 @@ afterEach(() => {
 
 function command(handler: ActivePluginCommand['handler']): ActivePluginCommand {
   return {
-    pluginKey: 'nightshift-samples.tasks',
+    pluginKey: 'kolux-samples.tasks',
     pluginName: 'Tasks',
     id: 'open',
     title: 'Open Tasks',
@@ -47,7 +47,7 @@ describe('plugin command execution', () => {
     await executePluginCommand(command({ type: 'worker' }), 'plugin-keybinding')
 
     expect(invokeCommand).toHaveBeenCalledWith({
-      pluginKey: 'nightshift-samples.tasks',
+      pluginKey: 'kolux-samples.tasks',
       commandId: 'open'
     })
   })

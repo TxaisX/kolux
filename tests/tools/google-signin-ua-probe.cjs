@@ -30,7 +30,7 @@ const exitAfterMs = Number(
   process.argv.find((arg) => arg.startsWith('--exit-after-ms='))?.slice('--exit-after-ms='.length)
 )
 
-const profileRoot = mkdtempSync(join(tmpdir(), `nightshift-google-signin-${mode}-`))
+const profileRoot = mkdtempSync(join(tmpdir(), `kolux-google-signin-${mode}-`))
 const partition = `persist:google-signin-${mode}`
 app.setPath('userData', profileRoot)
 

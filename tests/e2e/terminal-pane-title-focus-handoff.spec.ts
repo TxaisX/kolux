@@ -4,7 +4,7 @@
  */
 
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { splitActiveTerminalPane, waitForPaneCount } from './helpers/terminal'
 import { openTerminalContextMenu } from './helpers/terminal-pane-title-actions'
 import { registerTerminalPaneMountReadiness } from './helpers/terminal-pane-mount-readiness'
@@ -37,18 +37,16 @@ test.describe.configure({ mode: 'serial' })
 test.describe('Terminal Panes', () => {
   registerTerminalPaneMountReadiness()
 
-  test('Set Title input stays open when clicked in a split terminal', async ({
-    nightshiftPage
-  }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
-    await splitActiveTerminalPane(nightshiftPage, 'horizontal')
-    await waitForPaneCount(nightshiftPage, 3)
+  test('Set Title input stays open when clicked in a split terminal', async ({ koluxPage }) => {
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'horizontal')
+    await waitForPaneCount(koluxPage, 3)
 
-    await openTerminalContextMenu(nightshiftPage)
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
 
@@ -78,11 +76,9 @@ test.describe('Terminal Panes', () => {
     await expect(titleInput).toBeFocused()
   })
 
-  test('Set Title survives an early blur during first focus handoff', async ({
-    nightshiftPage
-  }) => {
-    await openTerminalContextMenu(nightshiftPage)
-    await nightshiftPage.evaluate(() => {
+  test('Set Title survives an early blur during first focus handoff', async ({ koluxPage }) => {
+    await openTerminalContextMenu(koluxPage)
+    await koluxPage.evaluate(() => {
       const blurOnFirstTitleFocus = (event: FocusEvent): void => {
         const target = event.target
         if (
@@ -96,61 +92,59 @@ test.describe('Terminal Panes', () => {
       }
       document.addEventListener('focusin', blurOnFirstTitleFocus, true)
     })
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
-    await nightshiftPage.waitForTimeout(250)
+    await koluxPage.waitForTimeout(250)
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
   })
 
-  test('Set Title survives delayed terminal focus handoffs', async ({ nightshiftPage }) => {
-    await openTerminalContextMenu(nightshiftPage)
-    await installDelayedTerminalFocusSteals(nightshiftPage, [50, 150, 300])
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+  test('Set Title survives delayed terminal focus handoffs', async ({ koluxPage }) => {
+    await openTerminalContextMenu(koluxPage)
+    await installDelayedTerminalFocusSteals(koluxPage, [50, 150, 300])
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
-    await nightshiftPage.waitForTimeout(600)
+    await koluxPage.waitForTimeout(600)
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
   })
 
   test('Set Title survives delayed terminal focus handoffs in a split pane', async ({
-    nightshiftPage
+    koluxPage
   }) => {
-    await splitActiveTerminalPane(nightshiftPage, 'vertical')
-    await waitForPaneCount(nightshiftPage, 2)
+    await splitActiveTerminalPane(koluxPage, 'vertical')
+    await waitForPaneCount(koluxPage, 2)
 
-    await openTerminalContextMenu(nightshiftPage)
-    await installDelayedTerminalFocusSteals(nightshiftPage, [50, 150, 300])
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await installDelayedTerminalFocusSteals(koluxPage, [50, 150, 300])
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
-    await nightshiftPage.waitForTimeout(600)
+    await koluxPage.waitForTimeout(600)
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
   })
 
-  test('Set Title preserves draft text across terminal focus steals', async ({
-    nightshiftPage
-  }) => {
+  test('Set Title preserves draft text across terminal focus steals', async ({ koluxPage }) => {
     const draftTitle = `Draft title ${Date.now()}`
 
-    await openTerminalContextMenu(nightshiftPage)
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
     await titleInput.fill(draftTitle)
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const textarea = document.querySelector<HTMLTextAreaElement>('.xterm-helper-textarea')
       textarea?.focus()
     })
@@ -160,15 +154,13 @@ test.describe('Terminal Panes', () => {
     await expect(titleInput).toHaveValue(draftTitle)
   })
 
-  test('Set Title does not submit when synthetic focus restore fails', async ({
-    nightshiftPage
-  }) => {
+  test('Set Title does not submit when synthetic focus restore fails', async ({ koluxPage }) => {
     const draftTitle = `Blocked focus title ${Date.now()}`
 
-    await openTerminalContextMenu(nightshiftPage)
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
     await titleInput.fill(draftTitle)
@@ -176,36 +168,36 @@ test.describe('Terminal Panes', () => {
       input.focus = () => {}
     })
 
-    await nightshiftPage.evaluate(() => {
+    await koluxPage.evaluate(() => {
       const textarea = document.querySelector<HTMLTextAreaElement>('.xterm-helper-textarea')
       textarea?.focus()
     })
 
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toHaveValue(draftTitle)
-    await expect(nightshiftPage.locator('.pane-title-text', { hasText: draftTitle })).toHaveCount(0)
+    await expect(koluxPage.locator('.pane-title-text', { hasText: draftTitle })).toHaveCount(0)
   })
 
   test('Set Title still commits by blur after synthetic terminal focus steals', async ({
-    nightshiftPage
+    koluxPage
   }) => {
     const title = `Post steal blur title ${Date.now()}`
 
-    await openTerminalContextMenu(nightshiftPage)
-    await installDelayedTerminalFocusSteals(nightshiftPage, [50, 150])
-    await nightshiftPage.getByText('Set Title…', { exact: true }).click()
+    await openTerminalContextMenu(koluxPage)
+    await installDelayedTerminalFocusSteals(koluxPage, [50, 150])
+    await koluxPage.getByText('Set Title…', { exact: true }).click()
 
-    const titleInput = nightshiftPage.locator('.pane-title-input').first()
+    const titleInput = koluxPage.locator('.pane-title-input').first()
     await expect(titleInput).toBeVisible()
     await expect(titleInput).toBeFocused()
-    await nightshiftPage.waitForTimeout(300)
+    await koluxPage.waitForTimeout(300)
     await titleInput.fill(title)
-    await nightshiftPage
+    await koluxPage
       .locator('.xterm:visible')
       .first()
       .click({ position: { x: 40, y: 60 } })
 
     await expect(titleInput).toHaveCount(0)
-    await expect(nightshiftPage.locator('.pane-title-text', { hasText: title })).toHaveCount(1)
+    await expect(koluxPage.locator('.pane-title-text', { hasText: title })).toHaveCount(1)
   })
 })

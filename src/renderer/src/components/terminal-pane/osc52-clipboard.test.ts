@@ -157,7 +157,7 @@ describe('handleOsc52ClipboardRequest', () => {
     ])
   })
 
-  it('does not surface blocked queries because Nightshift must not answer them', () => {
+  it('does not surface blocked queries because Kolux must not answer them', () => {
     const onBlockedWrite = vi.fn()
 
     handleOsc52ClipboardRequest('c;?', {

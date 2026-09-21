@@ -4,11 +4,11 @@ function pathSeparatorFor(pathValue: string): '/' | '\\' {
   return pathValue.includes('\\') ? '\\' : '/'
 }
 
-/** True only for `{home}/nightshift/projects` on the usual OS home layouts. A configured
- *  directory that merely ends in `nightshift/projects` (e.g. `/data/nightshift/projects`) must
+/** True only for `{home}/kolux/projects` on the usual OS home layouts. A configured
+ *  directory that merely ends in `kolux/projects` (e.g. `/data/kolux/projects`) must
  *  stay verbatim — the `~` shorthand would otherwise lie. */
 function isHomeProjectsFallback(pathValue: string): boolean {
-  return /^(?:\/(?:Users|home)\/[^/]+|[A-Za-z]:[\\/]Users[\\/][^\\/]+)[\\/]nightshift[\\/]projects$/.test(
+  return /^(?:\/(?:Users|home)\/[^/]+|[A-Za-z]:[\\/]Users[\\/][^\\/]+)[\\/]kolux[\\/]projects$/.test(
     pathValue
   )
 }
@@ -42,7 +42,7 @@ export function getDefaultCreateProjectParent(homeDir: string): string {
   if (!trimmedHomeDir) {
     return ''
   }
-  return joinCreateProjectPath(joinCreateProjectPath(trimmedHomeDir, 'nightshift'), 'projects')
+  return joinCreateProjectPath(joinCreateProjectPath(trimmedHomeDir, 'kolux'), 'projects')
 }
 
 export function getCreateProjectDefaultParentAutoFill({
@@ -97,7 +97,7 @@ export function formatCreateProjectParentSummary({
     !isRemoteHost &&
     isHomeProjectsFallback(trimmedParent)
   ) {
-    return '~/nightshift/projects'
+    return '~/kolux/projects'
   }
   return trimmedParent
 }

@@ -1,5 +1,5 @@
 import type { IPtyProvider } from '../providers/types'
-import type { NightshiftRuntimeService } from './nightshift-runtime'
+import type { KoluxRuntimeService } from './kolux-runtime'
 import {
   isUnstoppedPtyRemovalError,
   RUNNING_AGENT_SESSION_REMOVAL_PREFIX,
@@ -27,7 +27,7 @@ import {
 } from './unstopped-pty-verification'
 
 export type WorktreeTeardownDeps = {
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   /** Authoritative id for callers whose selector no longer resolves (orphaned workspace). */
   resolvedWorktreeId?: string
   /** SSH connection owning `resolvedWorktreeId`; prevents same-id cross-host graph matches. */
@@ -255,7 +255,7 @@ export async function killAllProcessesForWorktree(
     } else {
       const summary = describeUnstoppedPtys(worktreeId, failedPtyIds, verdict)
       // Only a proof-requiring removal may refuse. A folder-workspace removal shares its root, so no
-      // checkout disappears under the child — the harm is a session left pointing at a workspace Nightshift
+      // checkout disappears under the child — the harm is a session left pointing at a workspace Kolux
       // has forgotten — and one of those paths is a never-throw forget, which a refusal would wedge.
       if (deps.requirePhysicalStop && !deps.allowUnverifiedStop) {
         throw new Error(`${summary}. ${WORKTREE_TEARDOWN_FORCE_HINT}`)
@@ -305,7 +305,7 @@ async function sweepStructuredSessions(
     return 0
   }
   // Only a proof-requiring removal may refuse. A folder-workspace removal shares its root, so no
-  // checkout disappears under the child — the harm is a session left pointing at a workspace Nightshift
+  // checkout disappears under the child — the harm is a session left pointing at a workspace Kolux
   // has forgotten — and one of those paths is a never-throw forget, which a refusal would wedge.
   if (deps.requirePhysicalStop && !deps.allowUnverifiedStop) {
     // The prefix is what the desktop classifier matches on; without it the toast shows raw CLI

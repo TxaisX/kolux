@@ -3,13 +3,13 @@
 set -uo pipefail
 
 case_name=${1:?launch case is required}
-extracted_root=${NIGHTSHIFT_TEST_EXTRACTED_ROOT:-/artifacts/squashfs-root}
-launcher="$extracted_root/resources/bin/nightshift-ide"
-command_timeout_seconds=${NIGHTSHIFT_TEST_COMMAND_TIMEOUT_SECONDS:-60}
+extracted_root=${KOLUX_TEST_EXTRACTED_ROOT:-/artifacts/squashfs-root}
+launcher="$extracted_root/resources/bin/kolux-ide"
+command_timeout_seconds=${KOLUX_TEST_COMMAND_TIMEOUT_SECONDS:-60}
 
 if ((EUID == 0)); then
   # Reproduce extracted AppImage sandbox ownership as an unprivileged user.
-  exec runuser --user nightshift --preserve-environment -- "$0" "$@"
+  exec runuser --user kolux --preserve-environment -- "$0" "$@"
 fi
 
 # Guard the restricted-userns precondition instead of accepting a false pass.
@@ -39,13 +39,13 @@ case "$case_name" in
   nofuse-userns-bundled-worktree) command=("$launcher" worktree list) ;;
   # Direct binaries must hand off before Ozone initializes.
   nofuse-nosandbox-direct-binary-skills)
-    command=("$extracted_root/nightshift-ide" --no-sandbox skills --help)
+    command=("$extracted_root/kolux-ide" --no-sandbox skills --help)
     ;;
   nofuse-nosandbox-direct-binary-gui)
-    command=("$extracted_root/nightshift-ide" --no-sandbox)
+    command=("$extracted_root/kolux-ide" --no-sandbox)
     ;;
   stale-display-nosandbox-direct-binary-gui)
-    command=("$extracted_root/nightshift-ide" --no-sandbox)
+    command=("$extracted_root/kolux-ide" --no-sandbox)
     ;;
   *)
     echo "UNKNOWN_CASE $case_name"

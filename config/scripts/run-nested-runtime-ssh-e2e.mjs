@@ -18,9 +18,9 @@ const result = spawnSync(
     cwd: process.cwd(),
     env: {
       ...process.env,
-      NIGHTSHIFT_E2E_NESTED_RUNTIME_SSH: '1',
-      NIGHTSHIFT_E2E_SSH_DOCKER: '1',
-      NIGHTSHIFT_E2E_WEB_CLIENT: '1'
+      KOLUX_E2E_NESTED_RUNTIME_SSH: '1',
+      KOLUX_E2E_SSH_DOCKER: '1',
+      KOLUX_E2E_WEB_CLIENT: '1'
     },
     stdio: 'inherit'
   }

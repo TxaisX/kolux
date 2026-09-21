@@ -103,8 +103,8 @@ async function startHost() {
   compositionOptions.length = 0
   recordedUrlParams.length = 0
   const runtime = await import('./paired-runtime-browser-client-host-runtime')
-  runtime.configurePairedRuntimeBrowserClientHostsForNightshiftProfile({
-    nightshiftProfileId: 'profile-a'
+  runtime.configurePairedRuntimeBrowserClientHostsForKoluxProfile({
+    koluxProfileId: 'profile-a'
   })
   await runtime.startPairedRuntimeBrowserClientHost({
     environment: pairedEnvironment(),
@@ -129,7 +129,7 @@ describe('published-url observation wiring', () => {
   it('routes a page-metadata publish into the executor that owns the page', async () => {
     const { options, publishBrowserClientPageMetadata } = await startHost()
     options.createExecutor(
-      { nightshiftProfileId: 'profile-a' },
+      { koluxProfileId: 'profile-a' },
       { retainNetworkRoute: () => Promise.resolve({}), onPageUnavailable: () => {} }
     )
 
@@ -150,7 +150,7 @@ describe('published-url observation wiring', () => {
   it('does not observe publishes aimed at another environment', async () => {
     const { options, publishBrowserClientPageMetadata } = await startHost()
     options.createExecutor(
-      { nightshiftProfileId: 'profile-a' },
+      { koluxProfileId: 'profile-a' },
       { retainNetworkRoute: () => Promise.resolve({}), onPageUnavailable: () => {} }
     )
 

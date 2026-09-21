@@ -338,9 +338,9 @@ describe('daemon-init: runRestartDaemon (7-step sequence)', () => {
       pid: 101,
       startedAtMs: 1_000_000,
       launchNonce: 'socket-owner',
-      entryPath: '/Applications/Nightshift 2.app/Contents/out/main/daemon-entry.js',
+      entryPath: '/Applications/Kolux 2.app/Contents/out/main/daemon-entry.js',
       appVersion: '9.9.9',
-      spawnerExecPath: '/Applications/Nightshift 2.app/Contents/MacOS/Nightshift'
+      spawnerExecPath: '/Applications/Kolux 2.app/Contents/MacOS/Kolux'
     }
     daemonClientMock.mockImplementationOnce(function MockAdoptionClient() {
       return {
@@ -373,9 +373,9 @@ describe('daemon-init: runRestartDaemon (7-step sequence)', () => {
         pid: 101,
         startedAtMs: 1_000_000,
         launchNonce: 'socket-owner',
-        entryPath: '/Applications/Nightshift 2.app/Contents/out/main/daemon-entry.js',
+        entryPath: '/Applications/Kolux 2.app/Contents/out/main/daemon-entry.js',
         appVersion: '9.9.9',
-        spawnerExecPath: '/Applications/Nightshift 2.app/Contents/MacOS/Nightshift'
+        spawnerExecPath: '/Applications/Kolux 2.app/Contents/MacOS/Kolux'
       })
       handle.releaseAdoptionLease?.()
     } finally {

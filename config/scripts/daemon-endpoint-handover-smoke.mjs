@@ -63,7 +63,7 @@ function bootDaemon(tag, dir, socketPath) {
     ],
     {
       stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
-      env: { ...process.env, NIGHTSHIFT_USER_DATA_PATH: dir }
+      env: { ...process.env, KOLUX_USER_DATA_PATH: dir }
     }
   )
   let stderr = ''
@@ -174,7 +174,7 @@ async function main() {
     throw new Error(`missing ${entryPath} — run \`pnpm build\` first`)
   }
 
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-endpoint-handover-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-endpoint-handover-'))
   const socketPath = join(dir, 'daemon.sock')
   const protocolVersion = readProtocolVersion()
   const daemons = []

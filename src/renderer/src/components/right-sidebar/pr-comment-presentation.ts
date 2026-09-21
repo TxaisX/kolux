@@ -6,7 +6,7 @@ export type PRCommentPresentationVariant = 'flat' | 'cards' | 'focus'
 
 export const DEFAULT_PR_COMMENT_PRESENTATION_VARIANT: PRCommentPresentationVariant = 'cards'
 
-const STORAGE_KEY = 'nightshift:pr-comment-presentation'
+const STORAGE_KEY = 'kolux:pr-comment-presentation'
 
 export type PRCommentPresentationClasses = {
   variant: PRCommentPresentationVariant
@@ -137,7 +137,7 @@ function isVariant(value: string | null): value is PRCommentPresentationVariant 
 }
 
 /** Resolve the active variant. In dev, override with
- *  localStorage.setItem('nightshift:pr-comment-presentation', 'cards' | 'flat' | 'focus'). */
+ *  localStorage.setItem('kolux:pr-comment-presentation', 'cards' | 'flat' | 'focus'). */
 export function resolvePRCommentPresentationVariant(): PRCommentPresentationVariant {
   if (typeof window === 'undefined') {
     return DEFAULT_PR_COMMENT_PRESENTATION_VARIANT

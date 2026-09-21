@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OrchestrationDb } from '../../../../orchestration/db'
 import { reconcileRequestedWorkerTerminalReleases } from '../../../../orchestration/worker-terminal-release-reconciliation'
-import { NightshiftRuntimeService } from '../../../../nightshift-runtime'
+import { KoluxRuntimeService } from '../../../../kolux-runtime'
 import type { RpcContext } from '../../../core'
 import { ORCHESTRATION_METHODS } from '../../orchestration'
 
@@ -16,7 +16,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 describe('orchestration worker release recovery', () => {
   let db: OrchestrationDb
   let dbOpen = false
-  let runtime: NightshiftRuntimeService
+  let runtime: KoluxRuntimeService
   let ctx: RpcContext
   let activeRunId: string
 
@@ -26,7 +26,7 @@ describe('orchestration worker release recovery', () => {
   function setup(): void {
     db = new OrchestrationDb(':memory:')
     dbOpen = true
-    runtime = new NightshiftRuntimeService()
+    runtime = new KoluxRuntimeService()
     runtime.setOrchestrationDb(db)
     vi.spyOn(runtime, 'getTerminalPaneKey').mockImplementation((handle) =>
       handle === 'term_coord' ? coordinatorPaneKey : handle === 'term_worker' ? workerPaneKey : null
@@ -63,7 +63,7 @@ describe('orchestration worker release recovery', () => {
       status: 'running',
       exitCode: null
     })
-    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('nightshift')
+    vi.spyOn(runtime, 'getTerminalOrchestrationCliCommand').mockReturnValue('kolux')
     vi.spyOn(runtime, 'sendTerminalAgentPrompt').mockResolvedValue({
       handle: 'term_worker',
       accepted: true,
@@ -322,7 +322,7 @@ describe('orchestration worker release recovery', () => {
     const { dispatchId } = await startSettledWorker()
     const resourceId = db.getWorkerTerminalResourceByOwner(dispatchId)?.id
     expect(resourceId).toBeDefined()
-    const pendingClose = deferred<Awaited<ReturnType<NightshiftRuntimeService['closeTerminal']>>>()
+    const pendingClose = deferred<Awaited<ReturnType<KoluxRuntimeService['closeTerminal']>>>()
     vi.mocked(runtime.closeTerminal).mockReturnValue(pendingClose.promise)
 
     const interactive = call('orchestration.workerRelease', { dispatch: dispatchId })

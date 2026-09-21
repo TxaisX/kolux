@@ -17,7 +17,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import type { LinkedWorkItemSummary } from '../../src/renderer/src/lib/new-workspace'
 import type { TaskSourceContext } from '../../src/shared/task-source-context'
@@ -113,23 +113,23 @@ test.describe('New workspace composer linked item across project switches', () =
   let tempRoot: string
   let secondRepoPath: string
 
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
-    tempRoot = mkdtempSync(path.join(os.tmpdir(), 'nightshift-e2e-linked-item-'))
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
+    tempRoot = mkdtempSync(path.join(os.tmpdir(), 'kolux-e2e-linked-item-'))
     secondRepoPath = path.join(tempRoot, SECOND_PROJECT_NAME)
     createGitRepo(secondRepoPath)
-    await addSecondProject(nightshiftPage, secondRepoPath)
+    await addSecondProject(koluxPage, secondRepoPath)
   })
 
   test.afterEach(() => {
     rmSync(tempRoot, { recursive: true, force: true })
   })
 
-  test('keeps a Jira issue linked when the project changes', async ({ nightshiftPage }) => {
-    const jiraSourceContext = await getJiraSourceContext(nightshiftPage)
+  test('keeps a Jira issue linked when the project changes', async ({ koluxPage }) => {
+    const jiraSourceContext = await getJiraSourceContext(koluxPage)
     await openComposerWithLinkedWorkItem(
-      nightshiftPage,
+      koluxPage,
       {
         type: 'issue',
         provider: 'jira',
@@ -142,19 +142,19 @@ test.describe('New workspace composer linked item across project switches', () =
       jiraSourceContext
     )
 
-    const composer = nightshiftPage.getByRole('dialog')
+    const composer = koluxPage.getByRole('dialog')
     await expect(composer).toBeVisible()
     const sourcePill = composer.locator('[data-workspace-source-pill="true"]')
     await expect(sourcePill).toContainText('RDG-344 Migrate homepage from NuxtJS to NextJS')
 
-    await switchComposerProject(nightshiftPage, SECOND_PROJECT_NAME)
+    await switchComposerProject(koluxPage, SECOND_PROJECT_NAME)
 
     await expect(sourcePill).toContainText('RDG-344 Migrate homepage from NuxtJS to NextJS')
   })
 
-  test('clears a repo-scoped GitHub issue when the project changes', async ({ nightshiftPage }) => {
+  test('clears a repo-scoped GitHub issue when the project changes', async ({ koluxPage }) => {
     await openComposerWithLinkedWorkItem(
-      nightshiftPage,
+      koluxPage,
       {
         type: 'issue',
         provider: 'github',
@@ -165,12 +165,12 @@ test.describe('New workspace composer linked item across project switches', () =
       'fix-crash-on-launch'
     )
 
-    const composer = nightshiftPage.getByRole('dialog')
+    const composer = koluxPage.getByRole('dialog')
     await expect(composer).toBeVisible()
     const sourcePill = composer.locator('[data-workspace-source-pill="true"]')
     await expect(sourcePill).toContainText('#41 Fix crash on launch')
 
-    await switchComposerProject(nightshiftPage, SECOND_PROJECT_NAME)
+    await switchComposerProject(koluxPage, SECOND_PROJECT_NAME)
 
     await expect(sourcePill).toHaveCount(0)
   })

@@ -45,7 +45,7 @@ vi.mock('fs', () => ({
 
 vi.mock('electron', () => ({
   app: {
-    getPath: vi.fn(() => '/tmp/nightshift-user-data')
+    getPath: vi.fn(() => '/tmp/kolux-user-data')
   }
 }))
 

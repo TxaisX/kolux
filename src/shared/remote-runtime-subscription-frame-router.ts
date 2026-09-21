@@ -45,7 +45,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
       this.options.fail(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an undecryptable frame.'
+          'Remote Kolux runtime returned an undecryptable frame.'
         )
       )
       return
@@ -64,8 +64,8 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
           readyFrame === 'invalid'
-            ? 'Remote Nightshift runtime returned an invalid E2EE handshake frame.'
-            : 'Remote Nightshift runtime returned an unexpected E2EE handshake frame.'
+            ? 'Remote Kolux runtime returned an invalid E2EE handshake frame.'
+            : 'Remote Kolux runtime returned an unexpected E2EE handshake frame.'
         )
       )
       return
@@ -80,7 +80,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
       this.options.fail(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an invalid E2EE auth frame.'
+          'Remote Kolux runtime returned an invalid E2EE auth frame.'
         )
       )
       return
@@ -88,7 +88,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
     if (authenticated.kind !== 'authenticated') {
       const code = authenticated.unauthorized ? 'unauthorized' : 'invalid_runtime_response'
       this.options.fail(
-        new RemoteRuntimeClientError(code, 'Remote Nightshift runtime rejected the pairing token.')
+        new RemoteRuntimeClientError(code, 'Remote Kolux runtime rejected the pairing token.')
       )
       return
     }
@@ -105,7 +105,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
       this.options.fail(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an invalid response frame.'
+          'Remote Kolux runtime returned an invalid response frame.'
         )
       )
       return
@@ -125,7 +125,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
     this.options.fail(
       new RemoteRuntimeClientError(
         'invalid_runtime_response',
-        'Remote Nightshift runtime returned a mismatched response id.'
+        'Remote Kolux runtime returned a mismatched response id.'
       )
     )
   }
@@ -135,7 +135,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
       this.options.fail(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned binary data before authentication.'
+          'Remote Kolux runtime returned binary data before authentication.'
         )
       )
       return
@@ -145,7 +145,7 @@ export class RemoteRuntimeSubscriptionFrameRouter<TResult> {
       this.options.fail(
         new RemoteRuntimeClientError(
           'invalid_runtime_response',
-          'Remote Nightshift runtime returned an undecryptable binary frame.'
+          'Remote Kolux runtime returned an undecryptable binary frame.'
         )
       )
       return

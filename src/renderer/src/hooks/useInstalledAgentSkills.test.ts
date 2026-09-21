@@ -61,7 +61,7 @@ function deferred<T>(): {
 
 describe('hasInstalledAgentSkill', () => {
   it('matches installed skills by summarized name', () => {
-    expect(hasInstalledAgentSkill([skill({ name: 'nightshift-cli' })], 'nightshift-cli')).toBe(true)
+    expect(hasInstalledAgentSkill([skill({ name: 'kolux-cli' })], 'kolux-cli')).toBe(true)
   })
 
   it('matches installed skills by directory name when frontmatter has a display name', () => {
@@ -69,21 +69,18 @@ describe('hasInstalledAgentSkill', () => {
       hasInstalledAgentSkill(
         [
           skill({
-            name: 'Nightshift CLI',
-            directoryPath: 'C:\\Users\\test\\.agents\\skills\\nightshift-cli'
+            name: 'Kolux CLI',
+            directoryPath: 'C:\\Users\\test\\.agents\\skills\\kolux-cli'
           })
         ],
-        'nightshift-cli'
+        'kolux-cli'
       )
     ).toBe(true)
   })
 
   it('ignores non-installed discovery entries', () => {
     expect(
-      hasInstalledAgentSkill(
-        [skill({ name: 'nightshift-cli', installed: false })],
-        'nightshift-cli'
-      )
+      hasInstalledAgentSkill([skill({ name: 'kolux-cli', installed: false })], 'kolux-cli')
     ).toBe(false)
   })
 
@@ -92,24 +89,24 @@ describe('hasInstalledAgentSkill', () => {
       hasInstalledAgentSkill(
         [
           skill({
-            name: 'nightshift-cli',
+            name: 'kolux-cli',
             sourceKind: 'repo',
             sourceLabel: 'Repo test .agents',
             rootPath: '/repo/.agents/skills',
-            directoryPath: '/repo/.agents/skills/nightshift-cli',
-            skillFilePath: '/repo/.agents/skills/nightshift-cli/SKILL.md'
+            directoryPath: '/repo/.agents/skills/kolux-cli',
+            skillFilePath: '/repo/.agents/skills/kolux-cli/SKILL.md'
           }),
           skill({
             id: 'skill-2',
-            name: 'nightshift-cli',
+            name: 'kolux-cli',
             sourceKind: 'plugin',
             sourceLabel: 'Codex plugin cache',
             rootPath: '/Users/test/.codex/plugins/cache',
-            directoryPath: '/Users/test/.codex/plugins/cache/vendor/nightshift-cli',
-            skillFilePath: '/Users/test/.codex/plugins/cache/vendor/nightshift-cli/SKILL.md'
+            directoryPath: '/Users/test/.codex/plugins/cache/vendor/kolux-cli',
+            skillFilePath: '/Users/test/.codex/plugins/cache/vendor/kolux-cli/SKILL.md'
           })
         ],
-        'nightshift-cli',
+        'kolux-cli',
         { sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS }
       )
     ).toBe(false)
@@ -117,7 +114,7 @@ describe('hasInstalledAgentSkill', () => {
 
   it('counts home skills when matching global installs', () => {
     expect(
-      hasInstalledAgentSkill([skill({ name: 'nightshift-cli' })], 'nightshift-cli', {
+      hasInstalledAgentSkill([skill({ name: 'kolux-cli' })], 'kolux-cli', {
         sourceKinds: GLOBAL_AGENT_SKILL_SOURCE_KINDS
       })
     ).toBe(true)
@@ -127,7 +124,7 @@ describe('hasInstalledAgentSkill', () => {
     expect(
       hasInstalledAgentSkillNamed(
         [skill({ name: 'linear-tickets' })],
-        ['nightshift-linear', 'linear-tickets']
+        ['kolux-linear', 'linear-tickets']
       )
     ).toBe(true)
   })
@@ -141,7 +138,7 @@ describe('hasInstalledAgentSkill', () => {
             directoryPath: '/Users/test/.agents/skills/linear-tickets'
           })
         ],
-        ['nightshift-linear', 'linear-tickets']
+        ['kolux-linear', 'linear-tickets']
       )
     ).toBe(true)
   })
@@ -152,18 +149,16 @@ describe('hasInstalledAgentSkill', () => {
         [
           skill({
             name: 'Linear Tickets',
-            directoryPath: 'C:\\Users\\test\\.agents\\skills\\nightshift-linear'
+            directoryPath: 'C:\\Users\\test\\.agents\\skills\\kolux-linear'
           })
         ],
-        ['nightshift-linear', 'linear-tickets']
+        ['kolux-linear', 'linear-tickets']
       )
     ).toBe(true)
   })
 
   it('keeps aliases opt-in for unrelated single-name checks', () => {
-    expect(hasInstalledAgentSkill([skill({ name: 'linear-tickets' })], 'nightshift-linear')).toBe(
-      false
-    )
+    expect(hasInstalledAgentSkill([skill({ name: 'linear-tickets' })], 'kolux-linear')).toBe(false)
   })
 })
 
@@ -266,7 +261,7 @@ describe('discoverInstalledAgentSkills', () => {
 
     expect(discover).toHaveBeenCalledTimes(2)
 
-    const freshResult = discoveryResult([skill({ name: 'nightshift-cli' })])
+    const freshResult = discoveryResult([skill({ name: 'kolux-cli' })])
     secondScan.resolve(freshResult)
     await expect(forcedRefresh).resolves.toBe(freshResult)
   })
@@ -274,7 +269,7 @@ describe('discoverInstalledAgentSkills', () => {
   it('lets completed-scan broadcasts reuse the cached result', async () => {
     const discover = vi
       .fn<() => Promise<SkillDiscoveryResult>>()
-      .mockResolvedValue(discoveryResult([skill({ name: 'nightshift-linear' })]))
+      .mockResolvedValue(discoveryResult([skill({ name: 'kolux-linear' })]))
     vi.stubGlobal('window', {
       api: { skills: { discover } },
       dispatchEvent: vi.fn(),
@@ -290,7 +285,7 @@ describe('discoverInstalledAgentSkills', () => {
     expect(discover).toHaveBeenCalledTimes(1)
     for (const pending of fromSubscribers) {
       await expect(pending).resolves.toMatchObject({
-        skills: [expect.objectContaining({ name: 'nightshift-linear' })]
+        skills: [expect.objectContaining({ name: 'kolux-linear' })]
       })
     }
     expect(discover).toHaveBeenCalledTimes(1)

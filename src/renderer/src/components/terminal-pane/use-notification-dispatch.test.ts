@@ -138,7 +138,7 @@ describe('dispatchTerminalNotification', () => {
           }
         ]
       },
-      repos: [{ id: 'repo1', displayName: 'nightshift', connectionId: null }],
+      repos: [{ id: 'repo1', displayName: 'kolux', connectionId: null }],
       settings: { experimentalTerminalAttention: true, notifications: { customSoundPath: null } },
       markWorktreeUnread: vi.fn(),
       markTerminalTabUnread: vi.fn(),
@@ -175,7 +175,7 @@ describe('dispatchTerminalNotification', () => {
         }),
         worktreeId: 'wt-primary',
         paneKey,
-        repoLabel: 'nightshift',
+        repoLabel: 'kolux',
         worktreeLabel: 'master',
         terminalTitle: 'codex',
         isActiveWorktree: false,
@@ -431,7 +431,7 @@ describe('dispatchTerminalNotification', () => {
     expect(mockState.markTerminalPaneUnread).toHaveBeenCalledWith(siblingPaneKey)
   })
 
-  it('marks the selected worktree unread when Nightshift is backgrounded', () => {
+  it('marks the selected worktree unread when Kolux is backgrounded', () => {
     mockState.settings.experimentalTerminalAttention = false
     mockState.activeWorktreeId = 'wt-primary'
     stubDocumentFocus({ visibilityState: 'hidden', focused: false })
@@ -762,7 +762,7 @@ describe('dispatchTerminalNotification', () => {
 
     dispatchTerminalNotification('wt-primary', {
       source: 'agent-task-complete',
-      terminalTitle: '/workspace/nightshift',
+      terminalTitle: '/workspace/kolux',
       paneKey
     })
 

@@ -15,7 +15,7 @@ import {
   type WindowsInstallDirAclRepairResult
 } from './windows-install-dir-package-acl-repair'
 
-const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\nightshift'
+const INSTALL_DIR = 'C:\\Users\\neil\\AppData\\Local\\Programs\\kolux'
 const APP_VERSION = '1.4.184'
 
 /** icacls' real success summary; the /T pass prints one per tree. */
@@ -45,7 +45,7 @@ function fakeRunner(reply: (spec: ProcessSpec) => Partial<ProcessResult> = () =>
 }
 
 function userDataDir(): string {
-  return mkdtempSync(join(tmpdir(), 'nightshift-acl-repair-'))
+  return mkdtempSync(join(tmpdir(), 'kolux-acl-repair-'))
 }
 
 function repair(
@@ -156,7 +156,7 @@ describe('repairWindowsInstallDirPackageAcl', () => {
       (
         await repair({
           userDataPath,
-          installDir: 'D:\\Program Files\\Nightshift',
+          installDir: 'D:\\Program Files\\Kolux',
           run: moved.run
         })
       ).result

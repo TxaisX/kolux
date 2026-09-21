@@ -3,9 +3,9 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import type { ElectronApplication, Page } from '@stablyai/playwright-test'
 import { buildWslExecArgs } from '../../src/shared/wsl-login-shell-command'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { TEST_REPO_PATH_FILE } from './global-setup'
-import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/nightshift-restart'
+import { attachRepoAndOpenTerminal, createRestartSession } from './helpers/kolux-restart'
 import { useWslRuntimeForActiveProject as selectWslRuntimeForActiveProject } from './helpers/wsl-golden-stub-agent'
 import { ensureTerminalVisible, waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 import {
@@ -16,7 +16,7 @@ import {
   waitForTerminalOutput
 } from './helpers/terminal'
 
-const REQUIRE_WSL_RESTORE = process.env.NIGHTSHIFT_REQUIRE_WSL_RESTORE_E2E === '1'
+const REQUIRE_WSL_RESTORE = process.env.KOLUX_REQUIRE_WSL_RESTORE_E2E === '1'
 
 type WslRestoreSnapshot = {
   hostCwd: string

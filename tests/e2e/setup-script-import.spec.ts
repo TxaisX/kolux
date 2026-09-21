@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Locator, Page } from '@stablyai/playwright-test'
-import { test, expect } from './helpers/nightshift-app'
+import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
 function runGit(repoPath: string, args: string[]): void {
@@ -147,30 +147,28 @@ async function expectSettingsCommandValue(
 }
 
 test.describe('Setup script import prompt', () => {
-  test.beforeEach(async ({ nightshiftPage }) => {
-    await waitForSessionReady(nightshiftPage)
-    await waitForActiveWorktree(nightshiftPage)
+  test.beforeEach(async ({ koluxPage }) => {
+    await waitForSessionReady(koluxPage)
+    await waitForActiveWorktree(koluxPage)
   })
 
-  test('imports Superset local overlays through the prompt UI', async ({
-    nightshiftPage
-  }, testInfo) => {
+  test('imports Superset local overlays through the prompt UI', async ({ koluxPage }, testInfo) => {
     const repoPath = createSupersetSetupRepo(testInfo.outputPath('superset-setup-repo'))
-    const repoId = await addAndActivateRepo(nightshiftPage, repoPath)
+    const repoId = await addAndActivateRepo(koluxPage, repoPath)
 
     await expect(
-      nightshiftPage.getByText(
+      koluxPage.getByText(
         /Found a setup command in\s*Superset \(\.superset\/config\.json \+1\)\. Save it to run for new worktrees\./
       )
     ).toBeVisible({ timeout: 15_000 })
 
-    await nightshiftPage.getByRole('button', { name: 'Save local setup' }).click()
+    await koluxPage.getByRole('button', { name: 'Save local setup' }).click()
 
     await expect(
-      nightshiftPage.getByText('2 unsupported fields skipped. Saved the setup command.')
+      koluxPage.getByText('2 unsupported fields skipped. Saved the setup command.')
     ).toBeVisible()
 
-    const localCommands = await openImportedSetupSettingsFromToast(nightshiftPage, repoId)
+    const localCommands = await openImportedSetupSettingsFromToast(koluxPage, repoId)
     await expectSettingsCommandValue(
       localCommands,
       'Setup Script',
@@ -183,25 +181,23 @@ test.describe('Setup script import prompt', () => {
     )
   })
 
-  test('imports cmux setup commands through the prompt UI', async ({
-    nightshiftPage
-  }, testInfo) => {
+  test('imports cmux setup commands through the prompt UI', async ({ koluxPage }, testInfo) => {
     const repoPath = createCmuxSetupRepo(testInfo.outputPath('cmux-setup-repo'))
-    const repoId = await addAndActivateRepo(nightshiftPage, repoPath)
+    const repoId = await addAndActivateRepo(koluxPage, repoPath)
 
     await expect(
-      nightshiftPage.getByText(
+      koluxPage.getByText(
         /Found a setup command in\s*cmux \(\.cmux\/cmux\.json\)\. Save it to run for new worktrees\./
       )
     ).toBeVisible({ timeout: 15_000 })
 
-    await nightshiftPage.getByRole('button', { name: 'Save local setup' }).click()
+    await koluxPage.getByRole('button', { name: 'Save local setup' }).click()
 
     await expect(
-      nightshiftPage.getByRole('button', { name: "project's settings", exact: true })
+      koluxPage.getByRole('button', { name: "project's settings", exact: true })
     ).toBeVisible()
 
-    const repoSettings = await openRepoSettings(nightshiftPage, repoId)
+    const repoSettings = await openRepoSettings(koluxPage, repoId)
     await expectSettingsCommandValue(repoSettings, 'Setup Script', './scripts/setup.sh')
     await expectSettingsCommandValue(repoSettings, 'Archive Script', '')
   })

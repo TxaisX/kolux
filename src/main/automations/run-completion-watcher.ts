@@ -25,9 +25,9 @@ export type AutomationRunTerminalObserver = {
 /** Truthful reason for a run this authority can no longer observe; never claims completion. */
 export function describeStrandedAutomationRun(run: AutomationRun): string {
   if (run.status === 'dispatching') {
-    return 'Nightshift stopped before this run reported that its agent started.'
+    return 'Kolux stopped before this run reported that its agent started.'
   }
-  return 'Nightshift lost the terminal for this run before it reported completion.'
+  return 'Kolux lost the terminal for this run before it reported completion.'
 }
 
 /** Why a fixed sentence: the throws here carry internal transport tokens
@@ -35,7 +35,7 @@ export function describeStrandedAutomationRun(run: AutomationRun): string {
  *  history row is user copy. The token stays in the log, where it is useful. */
 function describeObservationError(error: unknown): string {
   console.error('[automations] run completion observation failed:', error)
-  return 'Nightshift stopped watching this run before it reported completion.'
+  return 'Kolux stopped watching this run before it reported completion.'
 }
 
 export class AutomationRunCompletionWatcher {

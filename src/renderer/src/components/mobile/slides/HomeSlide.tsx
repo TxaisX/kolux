@@ -7,9 +7,9 @@ export function HomeSlide({ tapping }: { tapping: boolean }): React.JSX.Element 
     <div className="mp-device-screen">
       <div className="mp-app-topbar">
         <div className="mp-app-brand">
-          <NightshiftLogo />
+          <KoluxLogo />
           <span className="mp-app-brand-name">
-            {translate('auto.components.mobile.slides.HomeSlide.5d94e8ddcc', 'Nightshift')}
+            {translate('auto.components.mobile.slides.HomeSlide.5d94e8ddcc', 'Kolux')}
           </span>
         </div>
         <button
@@ -108,7 +108,7 @@ export function HomeSlide({ tapping }: { tapping: boolean }): React.JSX.Element 
                 {translate(
                   'auto.components.mobile.slides.HomeSlide.d33d7a9c29',
                   // Why: plain spaces (not &nbsp;) — React text nodes render HTML entities literally.
-                  'nightshift  ·  feat/mobile-page'
+                  'kolux  ·  feat/mobile-page'
                 )}
               </span>
             </div>
@@ -247,10 +247,10 @@ function UsageBar({ label, pct }: { label: string; pct: number }): React.JSX.Ele
   )
 }
 
-function NightshiftLogo(): React.JSX.Element {
+function KoluxLogo(): React.JSX.Element {
   return (
     <svg
-      className="mp-nightshift-logo"
+      className="mp-kolux-logo"
       viewBox="0 0 318.60232 202.66667"
       fill="currentColor"
       aria-hidden

@@ -310,7 +310,7 @@ describe('terminal send CLI', () => {
         enter: true,
         interrupt: false,
         agentPrompt: true,
-        client: { id: 'nightshift-cli', type: 'desktop' }
+        client: { id: 'kolux-cli', type: 'desktop' }
       },
       { terminalPromptPreflight: { runtimeId: 'runtime-current' } }
     )
@@ -388,7 +388,7 @@ describe('terminal send CLI', () => {
 
     expect(client.getCliStatus).toHaveBeenCalledOnce()
     expect(console.log).toHaveBeenCalledWith(
-      expect.stringMatching(/Structured Chat.*Switch it to Terminal.*nightshift terminal send/s)
+      expect.stringMatching(/Structured Chat.*Switch it to Terminal.*kolux terminal send/s)
     )
     expect(process.exitCode).toBe(1)
   })
@@ -423,14 +423,14 @@ describe('terminal send CLI', () => {
       text: 'x',
       enter: false,
       interrupt: false,
-      client: { id: 'nightshift-cli', type: 'desktop' }
+      client: { id: 'kolux-cli', type: 'desktop' }
     })
     expect(call).toHaveBeenNthCalledWith(2, 'terminal.send', {
       terminal: 'term-1',
       text: undefined,
       enter: true,
       interrupt: false,
-      client: { id: 'nightshift-cli', type: 'desktop' }
+      client: { id: 'kolux-cli', type: 'desktop' }
     })
   })
 

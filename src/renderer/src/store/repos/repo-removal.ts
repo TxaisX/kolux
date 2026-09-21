@@ -96,7 +96,7 @@ export function createRepoRemovalActions(
           }
         }
 
-        get().clearNightshiftHookTrustForRepo(projectId)
+        get().clearKoluxHookTrustForRepo(projectId)
         const repoPath = get().repos.find((repo) =>
           repoMatchesHostIdentity(repo, projectId, ownerHostId)
         )?.path

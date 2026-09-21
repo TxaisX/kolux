@@ -159,7 +159,7 @@ export function useTabBarRuntimeModel({
     [agentCmdOverrides, defaultAgent, detectedIds, disabledTuiAgents]
   )
   const isWebClient =
-    (globalThis as { __NIGHTSHIFT_WEB_CLIENT__?: boolean }).__NIGHTSHIFT_WEB_CLIENT__ === true
+    (globalThis as { __KOLUX_WEB_CLIENT__?: boolean }).__KOLUX_WEB_CLIENT__ === true
   const windowsTerminalCapabilityOwnerKey = getWindowsTerminalCapabilityOwnerKey(
     activeRuntimeEnvironmentId,
     worktreeConnectionId

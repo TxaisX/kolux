@@ -33,7 +33,7 @@ RUN for attempt in 1 2 3 4 5; do \
     xvfb \
   && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --create-home --shell /bin/bash nightshift
+RUN useradd --create-home --shell /bin/bash kolux
 
 COPY run-signal-case.sh /usr/local/bin/run-signal-case
 COPY run-appimage-desktop-startup-case.sh /usr/local/bin/run-appimage-desktop-startup-case

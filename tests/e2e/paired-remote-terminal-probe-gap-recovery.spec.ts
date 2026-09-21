@@ -8,14 +8,14 @@ import type {
   RuntimeTerminalShow
 } from '../../src/shared/runtime-types'
 import { toWebTerminalSurfaceTabId } from '../../src/shared/terminal-surface-id'
-import { expect, test } from './helpers/nightshift-app'
+import { expect, test } from './helpers/kolux-app'
 import {
   createRuntimeDesktopPairingOffer,
   launchPairedWebClient
 } from './helpers/paired-electron-client'
 import { getTerminalContent, waitForActivePanePtyId } from './helpers/terminal'
 
-const scratch = mkdtempSync(path.join(os.tmpdir(), 'nightshift-paired-probe-gap-'))
+const scratch = mkdtempSync(path.join(os.tmpdir(), 'kolux-paired-probe-gap-'))
 const fixturePath = path.join(scratch, 'probe-gap-terminal.mjs')
 const processedInputPath = path.join(scratch, 'processed-input.txt')
 writeFileSync(processedInputPath, '')
@@ -70,10 +70,10 @@ async function callRuntime<TResult>(page: Page, method: string, params: unknown)
 
 test('replaces a stale paired stream when the PTY snapshot advanced @headful', async ({
   electronApp,
-  nightshiftPage
+  koluxPage
 }) => {
   test.setTimeout(90_000)
-  const worktreeId = await nightshiftPage.evaluate(() => {
+  const worktreeId = await koluxPage.evaluate(() => {
     const state = window.__store?.getState()
     const id = state?.activeWorktreeId
     if (!id || !state?.allWorktrees().some((candidate) => candidate.id === id)) {
@@ -81,7 +81,7 @@ test('replaces a stale paired stream when the PTY snapshot advanced @headful', a
     }
     return id
   })
-  const offer = await createRuntimeDesktopPairingOffer(nightshiftPage)
+  const offer = await createRuntimeDesktopPairingOffer(koluxPage)
   const client = await launchPairedWebClient(electronApp, offer)
   let terminal: string | null = null
   try {
@@ -120,7 +120,7 @@ test('replaces a stale paired stream when the PTY snapshot advanced @headful', a
     await expect(tab).toHaveAttribute('data-active', 'true')
     const originalPtyId = await waitForActivePanePtyId(client.page, 30_000)
     const originalHostTerminal = await callRuntime<{ terminal: RuntimeTerminalShow }>(
-      nightshiftPage,
+      koluxPage,
       'terminal.show',
       { terminal }
     )
@@ -173,7 +173,7 @@ test('replaces a stale paired stream when the PTY snapshot advanced @headful', a
       .poll(
         async () => {
           const result = await callRuntime<{ terminal: RuntimeTerminalRead }>(
-            nightshiftPage,
+            koluxPage,
             'terminal.read',
             { terminal }
           )
@@ -190,19 +190,15 @@ test('replaces a stale paired stream when the PTY snapshot advanced @headful', a
     await expect(tab).toHaveAttribute('data-active', 'true')
     expect(await waitForActivePanePtyId(client.page, 30_000)).toBe(originalPtyId)
     const recoveredHostTerminal = await callRuntime<{ terminal: RuntimeTerminalShow }>(
-      nightshiftPage,
+      koluxPage,
       'terminal.show',
       { terminal }
     )
     expect(recoveredHostTerminal.terminal.ptyId).toBe(originalHostTerminal.terminal.ptyId)
-    const hostTerminals = await callRuntime<RuntimeTerminalListResult>(
-      nightshiftPage,
-      'terminal.list',
-      {
-        worktree: `id:${worktreeId}`,
-        requireFreshPtyLiveness: true
-      }
-    )
+    const hostTerminals = await callRuntime<RuntimeTerminalListResult>(koluxPage, 'terminal.list', {
+      worktree: `id:${worktreeId}`,
+      requireFreshPtyLiveness: true
+    })
     expect(
       hostTerminals.terminals
         .filter((candidate) => candidate.tabId === created.tab.parentTabId)
@@ -231,7 +227,7 @@ test('replaces a stale paired stream when the PTY snapshot advanced @headful', a
       })
       .catch(() => undefined)
     if (terminal) {
-      await callRuntime(nightshiftPage, 'terminal.closeTab', { terminal }).catch(() => undefined)
+      await callRuntime(koluxPage, 'terminal.closeTab', { terminal }).catch(() => undefined)
     }
     await client.dispose()
   }

@@ -78,7 +78,7 @@ describe('MobilePairingSetupSection', () => {
     expect(screen.getByText(/must be able to reach this address/i)).toBeVisible()
   })
 
-  it('demotes this computer’s address to a disclosure when Nightshift Relay is selected', async () => {
+  it('demotes this computer’s address to a disclosure when Kolux Relay is selected', async () => {
     const { user } = renderSection({
       connectionMode: 'automatic',
       selectedAddress: undefined

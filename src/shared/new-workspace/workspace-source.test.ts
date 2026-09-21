@@ -36,17 +36,17 @@ describe('workspace source policy', () => {
   it('persists a Jira title without repeating its separately stored identifier', () => {
     expect(
       buildJiraWorkspaceSource({
-        key: 'NIGHTSHIFT-123',
+        key: 'KOLUX-123',
         title: 'Fix Jira card details',
-        url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123'
+        url: 'https://company.atlassian.net/browse/KOLUX-123'
       })
     ).toEqual({
       provider: 'jira',
       type: 'issue',
       number: 0,
       title: 'Fix Jira card details',
-      url: 'https://company.atlassian.net/browse/NIGHTSHIFT-123',
-      jiraIdentifier: 'NIGHTSHIFT-123'
+      url: 'https://company.atlassian.net/browse/KOLUX-123',
+      jiraIdentifier: 'KOLUX-123'
     })
   })
 

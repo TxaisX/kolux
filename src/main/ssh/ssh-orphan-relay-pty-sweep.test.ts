@@ -235,7 +235,7 @@ describe('sweepOrphanedRelayPtys', () => {
   })
 
   it('forwards the host foreground observation, so a busy pane is never swept', async () => {
-    // A `claude` the user launched by hand: Nightshift registered no agent session, so the entry carries
+    // A `claude` the user launched by hand: Kolux registered no agent session, so the entry carries
     // no agentSessionOwners and only the host's own observation can save it.
     const harness = createHarness([
       hostEntry({

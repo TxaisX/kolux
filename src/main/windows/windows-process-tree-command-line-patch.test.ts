@@ -43,7 +43,7 @@ const processSource = patchedFile(patch, 'src/process.cc')
 describe('windows-process-tree command line patch', () => {
   it('reads the command line through ProcessCommandLineInformation', () => {
     // Class 60 is Windows 8.1+; Electron's floor is Windows 10, so every OS
-    // Nightshift supports has it.
+    // Kolux supports has it.
     expect(commandLineSource).toContain('kProcessCommandLineInformation = 60')
     expect(commandLineSource).toContain('OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION')
   })
@@ -163,7 +163,7 @@ describe.runIf(process.platform === 'win32')('windows-process-tree command line 
   })
 
   it('recovers command lines byte-for-byte, quoting and trailing spaces included', async () => {
-    const marker = `nightshift-cmdline-${Date.now()}`
+    const marker = `kolux-cmdline-${Date.now()}`
     // Quotes and trailing whitespace are exactly what a re-quoting bug eats.
     const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 20000)', `"${marker}"  `], {
       windowsHide: true,

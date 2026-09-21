@@ -99,7 +99,7 @@ export function describeSandboxedSftpFailure(error: unknown, remotePath: string)
       `Relay install could not reach ${remotePath} over SFTP (${detail}). ` +
         'The host answered the shell channel but its SFTP subsystem sees a different filesystem — ' +
         'typically a bastion or jump host that chroots SFTP to a transfer directory. ' +
-        'Nightshift cannot install the relay through a sandboxed SFTP subsystem; connect to the target ' +
+        'Kolux cannot install the relay through a sandboxed SFTP subsystem; connect to the target ' +
         'host directly (for example with ProxyJump) or allow SFTP access to the account home.',
       { cause: error }
     ),

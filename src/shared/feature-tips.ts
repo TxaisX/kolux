@@ -4,7 +4,7 @@ import {
   type FeatureInteractionState
 } from './feature-interactions'
 
-export type FeatureTipId = 'voice-dictation' | 'nightshift-cli' | 'cmd-j-palette'
+export type FeatureTipId = 'voice-dictation' | 'kolux-cli' | 'cmd-j-palette'
 
 export type FeatureTipPriority = 'new' | 'unseen'
 
@@ -30,10 +30,10 @@ export type CompletedFeatureTipState = {
 
 export const FEATURE_TIPS = [
   {
-    id: 'nightshift-cli',
+    id: 'kolux-cli',
     priority: 'new',
     eyebrow: 'Tip',
-    title: 'Let agents drive Nightshift with the Nightshift CLI',
+    title: 'Let agents drive Kolux with the Kolux CLI',
     description: 'Enable agents to coordinate child worktrees and communicate between worktrees.',
     action: 'setup-cli',
     ctaLabel: 'Install CLI & Skills',
@@ -87,7 +87,7 @@ export function normalizeFeatureTipIds(value: unknown): FeatureTipId[] {
 export function getCompletedFeatureTipIds(state: CompletedFeatureTipState): Set<FeatureTipId> {
   const completedIds = new Set<FeatureTipId>()
   if (state.cliInstalled) {
-    completedIds.add('nightshift-cli')
+    completedIds.add('kolux-cli')
   }
   if (state.voiceDictationEnabled) {
     completedIds.add('voice-dictation')

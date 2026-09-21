@@ -12,7 +12,7 @@ import {
   normalizeWorkspaceDocHistoryTitle
 } from '../../../../../shared/workspace-doc-history'
 import { browserPageDocLocationsEqual } from '../../../../../shared/browser-page-doc-location'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../../shared/constants'
 
 export function createBrowserHistoryActions(
   set: BrowserSliceSet,
@@ -62,7 +62,7 @@ export function createBrowserHistoryActions(
 
     addBrowserHistoryEntry: (url, title, faviconUrl) => {
       const safeUrl = redactKagiSessionToken(url)
-      if (safeUrl === NIGHTSHIFT_BROWSER_BLANK_URL || safeUrl === 'about:blank' || !safeUrl) {
+      if (safeUrl === KOLUX_BROWSER_BLANK_URL || safeUrl === 'about:blank' || !safeUrl) {
         return
       }
       const normalized = normalizeBrowserHistoryUrl(safeUrl)

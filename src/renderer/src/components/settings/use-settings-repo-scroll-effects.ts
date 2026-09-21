@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { NightshiftHooks } from '../../../../shared/nightshift-yaml-hook-types'
+import type { KoluxHooks } from '../../../../shared/kolux-yaml-hook-types'
 import { isFolderRepo } from '../../../../shared/repo-kind'
 import { getRepoExecutionHostId, parseExecutionHostId } from '../../../../shared/execution-host'
 import { checkRuntimeHooks } from '@/runtime/runtime-hooks-client'
@@ -49,10 +49,7 @@ export function useSettingsRepoScrollEffects(
     setRepoHooksMap((previous) => {
       const next = Object.fromEntries(
         Object.entries(previous).filter(([identity]) => repoHostIdentitySet.has(identity))
-      ) as Record<
-        string,
-        { hasHooks: boolean; hooks: NightshiftHooks | null; mayNeedUpdate: boolean }
-      >
+      ) as Record<string, { hasHooks: boolean; hooks: KoluxHooks | null; mayNeedUpdate: boolean }>
       return Object.keys(next).length === Object.keys(previous).length ? previous : next
     })
   }, [repos, setRepoHooksMap])

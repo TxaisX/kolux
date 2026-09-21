@@ -110,7 +110,7 @@ export async function saveNewSshHostFromForm({
       toast.error(
         translate(
           'auto.components.sidebar.AddRemoteHostDialog.sshAlreadyExists',
-          'That SSH host is already in Nightshift.'
+          'That SSH host is already in Kolux.'
         )
       )
       return 'validation-failed'
@@ -148,7 +148,7 @@ export async function prefillFormFromSshConfigHost(
     throw new Error(
       translate(
         'auto.components.sidebar.AddRemoteHostDialog.sshConfigPickerRestartRequired',
-        'Restart Nightshift to finish applying the SSH config picker update.'
+        'Restart Kolux to finish applying the SSH config picker update.'
       )
     )
   }
@@ -163,8 +163,8 @@ export async function prefillFormFromSshConfigHost(
   }
 }
 
-/** Bulk-load ~/.ssh/config hosts into Nightshift’s host list (sidebar targets). */
-export async function addAllSshConfigHostsToNightshift({
+/** Bulk-load ~/.ssh/config hosts into Kolux’s host list (sidebar targets). */
+export async function addAllSshConfigHostsToKolux({
   ssh,
   recordSshRepoReadoptions,
   setSshTargetsMetadata,
@@ -195,7 +195,7 @@ export async function addAllSshConfigHostsToNightshift({
     toast.success(
       translate(
         'auto.components.sidebar.AddRemoteHostDialog.sshImportSynced',
-        'Added {{value0}} host{{value1}} to Nightshift.',
+        'Added {{value0}} host{{value1}} to Kolux.',
         { value0: result.targets.length, value1: result.targets.length > 1 ? 's' : '' }
       )
     )
@@ -247,7 +247,7 @@ function normalizeSshConfigHostListResult(value: unknown): SshConfigHostListResu
       totalHostCount: value.length,
       newHostCount: value.filter(
         (host): host is SshConfigHostSummary =>
-          typeof host === 'object' && host !== null && host.alreadyInNightshift === false
+          typeof host === 'object' && host !== null && host.alreadyInKolux === false
       ).length,
       matchCount: value.length,
       hasMore: value.length > hosts.length

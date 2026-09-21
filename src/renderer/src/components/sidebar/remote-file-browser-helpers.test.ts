@@ -121,7 +121,7 @@ describe('isPathMode', () => {
 
 describe('shouldDeferRemoteFileBrowserPasteResolve', () => {
   it('keeps small path and filter pastes on the immediate resolver path', () => {
-    expect(shouldDeferRemoteFileBrowserPasteResolve('/workspaces/nightshift/src')).toBe(false)
+    expect(shouldDeferRemoteFileBrowserPasteResolve('/workspaces/kolux/src')).toBe(false)
     expect(shouldDeferRemoteFileBrowserPasteResolve('remote notes')).toBe(false)
   })
 
@@ -163,12 +163,12 @@ describe('parsePathInput', () => {
     })
   })
 
-  it('`Documents/nightshift` commits `Documents` and filters by `nightshift`', () => {
-    expect(parsePathInput('Documents/nightshift')).toEqual({
+  it('`Documents/kolux` commits `Documents` and filters by `kolux`', () => {
+    expect(parsePathInput('Documents/kolux')).toEqual({
       mode: 'path',
       base: 'cwd',
       committedSegments: ['Documents'],
-      trailingFilter: 'nightshift'
+      trailingFilter: 'kolux'
     })
   })
 
@@ -251,7 +251,7 @@ describe('resolveSegmentStep', () => {
   const listing: DirEntry[] = [
     { name: 'Documents', isDirectory: true },
     { name: 'Downloads', isDirectory: true },
-    { name: 'nightshift-internal', isDirectory: true },
+    { name: 'kolux-internal', isDirectory: true },
     { name: 'notes.txt', isDirectory: false }
   ]
 
@@ -263,9 +263,9 @@ describe('resolveSegmentStep', () => {
   })
 
   it('unique prefix descends', () => {
-    expect(resolveSegmentStep('nightshift', '/home/neil', listing)).toEqual({
+    expect(resolveSegmentStep('kolux', '/home/neil', listing)).toEqual({
       type: 'descend',
-      name: 'nightshift-internal'
+      name: 'kolux-internal'
     })
   })
 

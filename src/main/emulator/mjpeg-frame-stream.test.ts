@@ -55,6 +55,6 @@ describe('MjpegFrameStream', () => {
     })
 
     await expect(framePromise).resolves.toEqual(JPEG)
-    expect(requestUrl).toBe('/stream.mjpeg?raw=1&_nightshift=test-key')
+    expect(requestUrl).toBe('/stream.mjpeg?raw=1&_kolux=test-key')
   })
 })

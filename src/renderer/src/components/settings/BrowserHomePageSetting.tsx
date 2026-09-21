@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { NIGHTSHIFT_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { KOLUX_BROWSER_BLANK_URL } from '../../../../shared/constants'
 import { normalizeBrowserNavigationUrl } from '../../../../shared/browser-url'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -55,7 +55,7 @@ export function BrowserHomePageSetting({
             return
           }
           const normalized = normalizeBrowserNavigationUrl(trimmed)
-          if (normalized && normalized !== NIGHTSHIFT_BROWSER_BLANK_URL) {
+          if (normalized && normalized !== KOLUX_BROWSER_BLANK_URL) {
             onSave(normalized)
             toast.success(
               translate(

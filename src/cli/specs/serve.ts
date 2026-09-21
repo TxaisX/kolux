@@ -4,9 +4,9 @@ import { GLOBAL_FLAGS } from '../args'
 export const SERVE_COMMAND_SPECS: CommandSpec[] = [
   {
     path: ['serve'],
-    summary: 'Start a Nightshift runtime server without opening a desktop window',
+    summary: 'Start a Kolux runtime server without opening a desktop window',
     usage:
-      'nightshift serve [--port <port>] [--pairing-address <host>] [--mobile-pairing] [--no-pairing] [--project-root <path>] [--recipe-json] [--json]',
+      'kolux serve [--port <port>] [--pairing-address <host>] [--mobile-pairing] [--no-pairing] [--project-root <path>] [--recipe-json] [--json]',
     allowedFlags: [
       ...GLOBAL_FLAGS,
       'port',
@@ -24,11 +24,11 @@ export const SERVE_COMMAND_SPECS: CommandSpec[] = [
       'When the web client bundle is available, the server also prints a browser URL with the pairing data embedded.'
     ],
     examples: [
-      'nightshift serve',
-      'nightshift serve --json',
-      'nightshift serve --project-root /workspace/repo --pairing-address wss://sandbox.example.com --recipe-json',
-      'nightshift serve --port 6768 --pairing-address 100.64.1.20',
-      'nightshift serve --pairing-address 100.64.1.20 --mobile-pairing'
+      'kolux serve',
+      'kolux serve --json',
+      'kolux serve --project-root /workspace/repo --pairing-address wss://sandbox.example.com --recipe-json',
+      'kolux serve --port 6768 --pairing-address 100.64.1.20',
+      'kolux serve --pairing-address 100.64.1.20 --mobile-pairing'
     ]
   }
 ]

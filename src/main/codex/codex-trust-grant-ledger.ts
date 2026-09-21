@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { isDefinitiveAbsence } from '../../shared/definitive-filesystem-absence'
 import { dirname, join } from 'node:path'
-import { getNightshiftManagedCodexHomePath } from './codex-home-paths'
+import { getKoluxManagedCodexHomePath } from './codex-home-paths'
 import { normalizeCodexProjectPathForLookup } from './config-toml-trust'
 
 // Why: a grant session blocks launch prep, so it must not run on every pane
@@ -34,7 +34,7 @@ type CodexTrustGrantLedgerFile = {
 }
 
 export function getCodexTrustGrantLedgerPath(): string {
-  return join(dirname(getNightshiftManagedCodexHomePath()), 'trust-grant-ledger.json')
+  return join(dirname(getKoluxManagedCodexHomePath()), 'trust-grant-ledger.json')
 }
 
 export function getCodexTrustGrantHomeKey(runtimeHomePath: string): string {

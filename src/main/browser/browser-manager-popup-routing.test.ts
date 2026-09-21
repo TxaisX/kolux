@@ -161,7 +161,7 @@ describe('browserManager', () => {
       }
     })
     // Why: the custom createWindow is what swaps the chrome-less native child
-    // for Nightshift's origin-bar window without losing the popup contents.
+    // for Kolux's origin-bar window without losing the popup contents.
     expect(typeof response.createWindow).toBe('function')
 
     expect(shellOpenExternalMock).not.toHaveBeenCalled()
@@ -259,11 +259,11 @@ describe('browserManager', () => {
       ).toEqual({ action: 'deny' })
     }
 
-    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-nightshift-tab', {
+    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-kolux-tab', {
       browserPageId: 'browser-1',
       url: 'https://docs.example.com/guide'
     })
-    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-nightshift-tab', {
+    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-kolux-tab', {
       browserPageId: 'browser-1',
       url: 'https://docs.example.com/guide',
       activate: false
@@ -271,7 +271,7 @@ describe('browserManager', () => {
     expect(rendererSendMock).toHaveBeenCalledWith('browser:popup', {
       browserPageId: 'browser-1',
       origin: 'https://docs.example.com',
-      action: 'opened-in-nightshift'
+      action: 'opened-in-kolux'
     })
     expect(openPopupWithOriginBarMock).not.toHaveBeenCalled()
     expect(shellOpenExternalMock).not.toHaveBeenCalled()
@@ -373,7 +373,7 @@ describe('browserManager', () => {
     }
 
     const routedTabs = rendererSendMock.mock.calls.filter(
-      ([channel]) => channel === 'browser:open-link-in-nightshift-tab'
+      ([channel]) => channel === 'browser:open-link-in-kolux-tab'
     )
     expect(routedTabs).toHaveLength(MAX_PAGE_INITIATED_TABS_PER_WINDOW)
     expect(rendererSendMock).toHaveBeenCalledWith('browser:popup', {
@@ -384,7 +384,7 @@ describe('browserManager', () => {
     expect(openPopupWithOriginBarMock).toHaveBeenCalledTimes(childHandlers.length)
   })
 
-  it('keeps plain links current and routes explicit new-tab gestures to Nightshift tabs', async () => {
+  it('keeps plain links current and routes explicit new-tab gestures to Kolux tabs', async () => {
     const rendererSendMock = vi.fn()
     const executeJavaScriptInIsolatedWorldMock = vi.fn().mockResolvedValue(undefined)
     const guest = {
@@ -423,13 +423,13 @@ describe('browserManager', () => {
 
     const script = executeJavaScriptInIsolatedWorldMock.mock.calls[0][1][0].code as string
     const clickedLinkFrameNames = {
-      foreground: script.match(/__nightshift_clicked_link_foreground_[0-9a-f-]+/)?.[0],
-      background: script.match(/__nightshift_clicked_link_background_[0-9a-f-]+/)?.[0]
+      foreground: script.match(/__kolux_clicked_link_foreground_[0-9a-f-]+/)?.[0],
+      background: script.match(/__kolux_clicked_link_background_[0-9a-f-]+/)?.[0]
     }
     if (!clickedLinkFrameNames.foreground || !clickedLinkFrameNames.background) {
       throw new Error('Expected private clicked-link frame names')
     }
-    expect(clickedLinkFrameNames.foreground).toMatch(/^__nightshift_clicked_link_foreground_/)
+    expect(clickedLinkFrameNames.foreground).toMatch(/^__kolux_clicked_link_foreground_/)
     expect(executeJavaScriptInIsolatedWorldMock).toHaveBeenCalledWith(
       expect.any(Number),
       [
@@ -453,7 +453,7 @@ describe('browserManager', () => {
       })
     ).toEqual({ action: 'deny' })
 
-    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-nightshift-tab', {
+    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-kolux-tab', {
       browserPageId: 'browser-1',
       url: 'https://docs.example.com/guide',
       activate: false
@@ -461,7 +461,7 @@ describe('browserManager', () => {
     expect(rendererSendMock).toHaveBeenCalledWith('browser:popup', {
       browserPageId: 'browser-1',
       origin: 'https://docs.example.com',
-      action: 'opened-in-nightshift'
+      action: 'opened-in-kolux'
     })
     expect(openPopupWithOriginBarMock).not.toHaveBeenCalled()
     expect(shellOpenExternalMock).not.toHaveBeenCalled()
@@ -517,10 +517,10 @@ describe('browserManager', () => {
     await vi.waitFor(() => expect(executeJavaScriptMock).toHaveBeenCalledTimes(1))
     const firstScript = executeJavaScriptMock.mock.calls[0][0] as string
     const foregroundFrameName = firstScript.match(
-      /__nightshift_clicked_link_iframe_foreground_[0-9a-f-]+/
+      /__kolux_clicked_link_iframe_foreground_[0-9a-f-]+/
     )?.[0]
     const backgroundFrameName = firstScript.match(
-      /__nightshift_clicked_link_iframe_background_[0-9a-f-]+/
+      /__kolux_clicked_link_iframe_background_[0-9a-f-]+/
     )?.[0]
     if (!foregroundFrameName) {
       throw new Error('Expected a private child-frame routing token')
@@ -541,7 +541,7 @@ describe('browserManager', () => {
         frameName: backgroundFrameName
       })
     ).toEqual({ action: 'deny' })
-    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-nightshift-tab', {
+    expect(rendererSendMock).toHaveBeenCalledWith('browser:open-link-in-kolux-tab', {
       browserPageId: 'browser-frame',
       url: 'https://docs.example.com/from-frame',
       activate: false
@@ -635,7 +635,7 @@ describe('browserManager', () => {
     expect(rendererSendMock).toHaveBeenCalledWith('browser:popup', {
       browserPageId: 'browser-1',
       origin: 'https://sso.example.com',
-      action: 'opened-in-nightshift'
+      action: 'opened-in-kolux'
     })
 
     // Opener-lifecycle parity: destroying the owning guest closes the popup.
@@ -698,7 +698,7 @@ describe('browserManager', () => {
 
     expect(shellOpenExternalMock).not.toHaveBeenCalled()
     expect(rendererSendMock).not.toHaveBeenCalledWith(
-      'browser:open-link-in-nightshift-tab',
+      'browser:open-link-in-kolux-tab',
       expect.anything()
     )
     expect(rendererSendMock).toHaveBeenCalledWith('browser:popup', {
@@ -731,7 +731,7 @@ describe('browserManager', () => {
     expect(shellOpenExternalMock).toHaveBeenCalledWith('https://example.com/login')
   })
 
-  it('offers opening a link in another Nightshift browser tab from the guest context menu', () => {
+  it('offers opening a link in another Kolux browser tab from the guest context menu', () => {
     const rendererSendMock = vi.fn()
     const guest = {
       id: 104,

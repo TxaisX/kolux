@@ -4,7 +4,7 @@ import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { createHash } from 'node:crypto'
 import { delimiter } from 'node:path'
 import { makePaneKey } from '../../shared/stable-pane-id'
-import { NightshiftRuntimeService } from '../runtime/nightshift-runtime'
+import { KoluxRuntimeService } from '../runtime/kolux-runtime'
 import { ClaudeAgentTeamsService } from '../runtime/claude-agent-teams-service'
 import {
   clearPaneSpawnReservation,
@@ -41,7 +41,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -60,7 +60,7 @@ vi.mock('../codex/codex-state-db-backfill-recovery', () =>
 describe('registerPtyHandlers', () => {
   const { handlers, mainWindow, mainWindowIpcEvent } = setupPtyIpcSuite()
 
-  it('injects NIGHTSHIFT_TERMINAL_HANDLE for non-local PTY providers', async () => {
+  it('injects KOLUX_TERMINAL_HANDLE for non-local PTY providers', async () => {
     const spawn = vi.fn(async () => ({ id: 'remote-pty' }))
     registerSshPtyProvider('ssh-1', {
       spawn,
@@ -102,7 +102,7 @@ describe('registerPtyHandlers', () => {
       expect.objectContaining({
         env: expect.objectContaining({
           EXISTING: '1',
-          NIGHTSHIFT_TERMINAL_HANDLE: 'term_remote'
+          KOLUX_TERMINAL_HANDLE: 'term_remote'
         })
       })
     )
@@ -120,10 +120,10 @@ describe('registerPtyHandlers', () => {
         env: {
           CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
           PATH: `/tmp/fresh-agent-teams${delimiter}/usr/bin`,
-          TMUX: '/tmp/nightshift-claude-agent-teams/team-fresh,0,1',
+          TMUX: '/tmp/kolux-claude-agent-teams/team-fresh,0,1',
           TMUX_PANE: '%1',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-fresh',
-          NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'fresh-token'
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-fresh',
+          KOLUX_AGENT_TEAMS_TOKEN: 'fresh-token'
         }
       })),
       registerPreAllocatedHandleForPty: vi.fn(),
@@ -144,23 +144,23 @@ describe('registerPtyHandlers', () => {
       leafId,
       worktreeId: 'wt-1',
       env: {
-        NIGHTSHIFT_PANE_KEY: `tab-1:${leafId}`,
-        NIGHTSHIFT_TAB_ID: 'tab-1',
-        NIGHTSHIFT_WORKTREE_ID: 'wt-1',
+        KOLUX_PANE_KEY: `tab-1:${leafId}`,
+        KOLUX_TAB_ID: 'tab-1',
+        KOLUX_WORKTREE_ID: 'wt-1',
         CLAUDE_PROFILE: 'captured',
         PATH: `/tmp/stale-agent-teams${delimiter}/usr/bin`,
-        TMUX: '/tmp/nightshift-claude-agent-teams/team-stale,0,1',
-        NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-stale',
-        NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'stale-token',
-        TERM_PROGRAM: 'Nightshift'
+        TMUX: '/tmp/kolux-claude-agent-teams/team-stale,0,1',
+        KOLUX_AGENT_TEAMS_TEAM_ID: 'team-stale',
+        KOLUX_AGENT_TEAMS_TOKEN: 'stale-token',
+        TERM_PROGRAM: 'Kolux'
       },
       launchConfig: {
         agentCommand: 'claude --teammate-mode auto',
         agentArgs: '',
         agentEnv: {
           CLAUDE_PROFILE: 'captured',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-stale',
-          NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'stale-token'
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-stale',
+          KOLUX_AGENT_TEAMS_TOKEN: 'stale-token'
         }
       },
       launchAgent: 'claude'
@@ -171,16 +171,16 @@ describe('registerPtyHandlers', () => {
       handle: 'term_agent_teams',
       baseEnv: expect.objectContaining({
         CLAUDE_PROFILE: 'captured',
-        NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-stale'
+        KOLUX_AGENT_TEAMS_TEAM_ID: 'team-stale'
       })
     })
     expect(spawnOptions.env).toMatchObject({
       CLAUDE_PROFILE: 'captured',
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-      NIGHTSHIFT_TERMINAL_HANDLE: 'term_agent_teams',
-      NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-fresh',
-      NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'fresh-token',
-      TMUX: '/tmp/nightshift-claude-agent-teams/team-fresh,0,1',
+      KOLUX_TERMINAL_HANDLE: 'term_agent_teams',
+      KOLUX_AGENT_TEAMS_TEAM_ID: 'team-fresh',
+      KOLUX_AGENT_TEAMS_TOKEN: 'fresh-token',
+      TMUX: '/tmp/kolux-claude-agent-teams/team-fresh,0,1',
       TMUX_PANE: '%1'
     })
     expect(spawnOptions.env.PATH.split(delimiter)[0]).toBe('/tmp/fresh-agent-teams')
@@ -188,9 +188,9 @@ describe('registerPtyHandlers', () => {
     expect(result.launchConfig?.agentEnv).toMatchObject({
       CLAUDE_PROFILE: 'captured',
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-      NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-fresh',
-      NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'fresh-token',
-      TMUX: '/tmp/nightshift-claude-agent-teams/team-fresh,0,1'
+      KOLUX_AGENT_TEAMS_TEAM_ID: 'team-fresh',
+      KOLUX_AGENT_TEAMS_TOKEN: 'fresh-token',
+      TMUX: '/tmp/kolux-claude-agent-teams/team-fresh,0,1'
     })
     expect(runtime.registerPreAllocatedHandleForPty).toHaveBeenCalledWith(
       expect.any(String),
@@ -288,7 +288,7 @@ describe('registerPtyHandlers', () => {
       expectedToken: null
     }
   ])('binds only $label from renderer pty:spawn to runtime authority', async (testCase) => {
-    const runtime = new NightshiftRuntimeService()
+    const runtime = new KoluxRuntimeService()
     registerPtyHandlers(mainWindow as never, runtime)
     const worktreeId = 'repo-1::/tmp/renderer-authority'
     const tabId = 'tab-renderer-authority'
@@ -304,10 +304,10 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: paneKey,
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId,
-        NIGHTSHIFT_AGENT_LAUNCH_TOKEN: testCase.envLaunchToken
+        KOLUX_PANE_KEY: paneKey,
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId,
+        KOLUX_AGENT_LAUNCH_TOKEN: testCase.envLaunchToken
       },
       ...(testCase.launchToken ? { launchToken: testCase.launchToken } : {}),
       ...(testCase.hasLaunchConfig
@@ -377,8 +377,8 @@ describe('registerPtyHandlers', () => {
       prepareClaudeAgentTeamsLeaderForHandle: vi.fn(async () => ({
         env: {
           CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1',
-          NIGHTSHIFT_AGENT_TEAMS_TEAM_ID: 'team-fresh',
-          NIGHTSHIFT_AGENT_TEAMS_TOKEN: 'fresh-token'
+          KOLUX_AGENT_TEAMS_TEAM_ID: 'team-fresh',
+          KOLUX_AGENT_TEAMS_TOKEN: 'fresh-token'
         }
       })),
       registerPreAllocatedHandleForPty: vi.fn(),
@@ -399,9 +399,9 @@ describe('registerPtyHandlers', () => {
       leafId,
       worktreeId: 'wt-1',
       env: {
-        NIGHTSHIFT_PANE_KEY: `tab-1:${leafId}`,
-        NIGHTSHIFT_TAB_ID: 'tab-1',
-        NIGHTSHIFT_WORKTREE_ID: 'wt-1'
+        KOLUX_PANE_KEY: `tab-1:${leafId}`,
+        KOLUX_TAB_ID: 'tab-1',
+        KOLUX_WORKTREE_ID: 'wt-1'
       },
       launchConfig: {
         agentCommand: 'claude',
@@ -465,9 +465,9 @@ describe('registerPtyHandlers', () => {
       tabId,
       leafId,
       env: {
-        NIGHTSHIFT_PANE_KEY: makePaneKey(tabId, leafId),
-        NIGHTSHIFT_TAB_ID: tabId,
-        NIGHTSHIFT_WORKTREE_ID: worktreeId
+        KOLUX_PANE_KEY: makePaneKey(tabId, leafId),
+        KOLUX_TAB_ID: tabId,
+        KOLUX_WORKTREE_ID: worktreeId
       },
       launchConfig: {
         agentCommand: 'codex --model gpt-5',
@@ -527,7 +527,7 @@ describe('registerPtyHandlers', () => {
 
     const spawnCall = spawnMock.mock.calls.at(-1)!
     const env = spawnCall[2].env as Record<string, string>
-    expect(env.NIGHTSHIFT_TERMINAL_HANDLE).toBe('term_expected')
+    expect(env.KOLUX_TERMINAL_HANDLE).toBe('term_expected')
     expect(runtime.preAllocateHandleForPty).not.toHaveBeenCalled()
     expect(runtime.registerPreAllocatedHandleForPty).toHaveBeenCalledWith(
       expect.any(String),
@@ -549,7 +549,7 @@ describe('registerPtyHandlers', () => {
           teams.createLaunchEnv({
             leaderHandle: args.handle,
             baseEnv: args.baseEnv ?? {},
-            shimDir: '/tmp/nightshift-agent-teams-shim',
+            shimDir: '/tmp/kolux-agent-teams-shim',
             shimBin: null
           })
       ),
@@ -574,7 +574,7 @@ describe('registerPtyHandlers', () => {
       command: 'claude --teammate-mode auto',
       tabId: 'tab-1',
       leafId,
-      env: { NIGHTSHIFT_PANE_KEY: `tab-1:${leafId}`, NIGHTSHIFT_TAB_ID: 'tab-1' },
+      env: { KOLUX_PANE_KEY: `tab-1:${leafId}`, KOLUX_TAB_ID: 'tab-1' },
       launchConfig: { agentCommand: 'claude --teammate-mode auto', agentArgs: '', agentEnv: {} },
       launchAgent: 'claude'
     }
@@ -614,7 +614,7 @@ describe('registerPtyHandlers', () => {
           teams.createLaunchEnv({
             leaderHandle: args.handle,
             baseEnv: args.baseEnv ?? {},
-            shimDir: '/tmp/nightshift-agent-teams-shim',
+            shimDir: '/tmp/kolux-agent-teams-shim',
             shimBin: null
           })
       ),
@@ -643,7 +643,7 @@ describe('registerPtyHandlers', () => {
         tabId: 'tab-1',
         leafId,
         worktreeId: 'wt-1',
-        env: { NIGHTSHIFT_PANE_KEY: `tab-1:${leafId}`, NIGHTSHIFT_TAB_ID: 'tab-1' },
+        env: { KOLUX_PANE_KEY: `tab-1:${leafId}`, KOLUX_TAB_ID: 'tab-1' },
         launchConfig: { agentCommand: 'claude --teammate-mode auto', agentArgs: '', agentEnv: {} },
         launchAgent: 'claude'
       })

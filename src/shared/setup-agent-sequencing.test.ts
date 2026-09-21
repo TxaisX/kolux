@@ -55,7 +55,7 @@ describe('createSequencedSetupAgentCommands', () => {
 
   it('wraps POSIX setup and startup commands with a matching nonce marker', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: "codex 'fix bug'",
       platform: 'posix',
       nonce: 'nonce-123',
@@ -63,11 +63,11 @@ describe('createSequencedSetupAgentCommands', () => {
     })
 
     expect(result.setupCommand).toMatch(/^bash -lc /)
-    expect(result.setupCommand).toContain('bash /repo/.git/nightshift/setup-runner.sh')
+    expect(result.setupCommand).toContain('bash /repo/.git/kolux/setup-runner.sh')
     expect(result.setupCommand).toContain('printf')
     expect(result.setupCommand).toContain('nonce-123 "$status"')
     expect(result.setupCommand).toContain(
-      'mv -f /repo/.git/nightshift/setup-runner.sh.nonce-123.done.tmp'
+      'mv -f /repo/.git/kolux/setup-runner.sh.nonce-123.done.tmp'
     )
     const startupScript = result.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]
     expect(result.startupCommand).toBe(
@@ -78,7 +78,7 @@ describe('createSequencedSetupAgentCommands', () => {
     expect(startupScript).toContain('Waiting for setup to finish before starting agent...')
     expect(startupScript).toContain('[ "$seen" = nonce-123 ]')
     expect(startupScript).toContain(
-      'rm -f /repo/.git/nightshift/setup-runner.sh.nonce-123.done /repo/.git/nightshift/setup-runner.sh.nonce-123.done.tmp'
+      'rm -f /repo/.git/kolux/setup-runner.sh.nonce-123.done /repo/.git/kolux/setup-runner.sh.nonce-123.done.tmp'
     )
     expect(startupScript).toContain('exec codex')
     expect(startupScript).toContain('fix bug')
@@ -92,22 +92,22 @@ describe('createSequencedSetupAgentCommands', () => {
 
   it('announces success so the pane stops showing the waiting line', () => {
     const commands = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: 'codex',
       platform: 'posix',
       nonce: 'nonce-1'
     })
-    const script = commands.startupEnv?.NIGHTSHIFT_SEQUENCED_STARTUP_SCRIPT ?? ''
+    const script = commands.startupEnv?.KOLUX_SEQUENCED_STARTUP_SCRIPT ?? ''
     // Why ordering: `eval`/`exec` never returns, so a later message never renders.
     expect(script.indexOf(SETUP_COMPLETE_MESSAGE)).toBeGreaterThan(-1)
     expect(script.indexOf(SETUP_COMPLETE_MESSAGE)).toBeLessThan(
-      script.indexOf('eval "$NIGHTSHIFT_SEQUENCED_STARTUP_COMMAND"')
+      script.indexOf('eval "$KOLUX_SEQUENCED_STARTUP_COMMAND"')
     )
   })
 
   it('announces success on the native Windows gate too', () => {
     const commands = createSequencedSetupAgentCommands({
-      runnerScriptPath: 'C:\\repo\\.git\\nightshift\\setup-runner.cmd',
+      runnerScriptPath: 'C:\\repo\\.git\\kolux\\setup-runner.cmd',
       platform: 'windows',
       startupCommand: 'codex',
       nonce: 'nonce-2'
@@ -125,11 +125,11 @@ describe('createSequencedSetupAgentCommands', () => {
   it('leaves the failure and timeout messages as the only other outcomes', () => {
     const script =
       createSequencedSetupAgentCommands({
-        runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+        runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
         startupCommand: 'codex',
         platform: 'posix',
         nonce: 'nonce-3'
-      }).startupEnv?.NIGHTSHIFT_SEQUENCED_STARTUP_SCRIPT ?? ''
+      }).startupEnv?.KOLUX_SEQUENCED_STARTUP_SCRIPT ?? ''
     // Silence on success is what made a healthy worktree look stuck.
     expect(script).toContain(SETUP_COMPLETE_MESSAGE)
     expect(script).toContain('Setup failed; skipping agent startup.')
@@ -153,39 +153,33 @@ describe('createSequencedSetupAgentCommands', () => {
 
   it('uses launch-specific marker paths for overlapping setup gates', () => {
     const first = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: 'claude',
       platform: 'posix',
       nonce: 'first-launch'
     })
     const second = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: 'codex',
       platform: 'posix',
       nonce: 'second-launch'
     })
 
-    expect(first.setupCommand).toContain('/repo/.git/nightshift/setup-runner.sh.first-launch.done')
+    expect(first.setupCommand).toContain('/repo/.git/kolux/setup-runner.sh.first-launch.done')
     expect(first.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
-      '/repo/.git/nightshift/setup-runner.sh.first-launch.done'
+      '/repo/.git/kolux/setup-runner.sh.first-launch.done'
     )
-    expect(second.setupCommand).toContain(
-      '/repo/.git/nightshift/setup-runner.sh.second-launch.done'
-    )
+    expect(second.setupCommand).toContain('/repo/.git/kolux/setup-runner.sh.second-launch.done')
     expect(second.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
-      '/repo/.git/nightshift/setup-runner.sh.second-launch.done'
+      '/repo/.git/kolux/setup-runner.sh.second-launch.done'
     )
-    expect(first.setupCommand).not.toContain(
-      '/repo/.git/nightshift/setup-runner.sh.second-launch.done'
-    )
-    expect(second.setupCommand).not.toContain(
-      '/repo/.git/nightshift/setup-runner.sh.first-launch.done'
-    )
+    expect(first.setupCommand).not.toContain('/repo/.git/kolux/setup-runner.sh.second-launch.done')
+    expect(second.setupCommand).not.toContain('/repo/.git/kolux/setup-runner.sh.first-launch.done')
   })
 
   it('keeps simple POSIX startup commands eligible for exec when quoted text has separators', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: "codex 'fix this; then test'",
       platform: 'posix',
       nonce: 'nonce-quoted',
@@ -199,7 +193,7 @@ describe('createSequencedSetupAgentCommands', () => {
 
   it('preserves POSIX inline environment assignment startup commands', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/repo/.git/nightshift/setup-runner.sh',
+      runnerScriptPath: '/repo/.git/kolux/setup-runner.sh',
       startupCommand: 'FOO=bar claude',
       platform: 'posix',
       nonce: 'nonce-env',
@@ -215,7 +209,7 @@ describe('createSequencedSetupAgentCommands', () => {
   it('uses the converted Linux marker path for WSL UNC runners on Windows', () => {
     const result = createSequencedSetupAgentCommands({
       runnerScriptPath:
-        '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo\\.git\\worktrees\\feature\\nightshift\\setup-runner.sh',
+        '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo\\.git\\worktrees\\feature\\kolux\\setup-runner.sh',
       startupCommand: 'claude',
       platform: 'windows',
       nonce: 'nonce-wsl'
@@ -223,24 +217,24 @@ describe('createSequencedSetupAgentCommands', () => {
 
     expect(getSetupAgentSequenceShellForTests(resultPathWsl(), 'windows')).toBe('posix')
     expect(result.setupCommand).toContain(
-      'bash /home/jin/repo/.git/worktrees/feature/nightshift/setup-runner.sh'
+      'bash /home/jin/repo/.git/worktrees/feature/kolux/setup-runner.sh'
     )
     expect(result.setupCommand).toContain(
-      '/home/jin/repo/.git/worktrees/feature/nightshift/setup-runner.sh.nonce-wsl.done'
+      '/home/jin/repo/.git/worktrees/feature/kolux/setup-runner.sh.nonce-wsl.done'
     )
     expect(result.setupCommand).not.toContain('wsl.localhost')
   })
 
   it('keeps remote POSIX runners in bash even from a Windows client', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: '/remote/repo/.git/worktrees/feature/nightshift/setup-runner.sh',
+      runnerScriptPath: '/remote/repo/.git/worktrees/feature/kolux/setup-runner.sh',
       startupCommand: 'claude',
       platform: 'windows',
       nonce: 'nonce-remote'
     })
 
     expect(result.setupCommand).toContain(
-      'bash /remote/repo/.git/worktrees/feature/nightshift/setup-runner.sh'
+      'bash /remote/repo/.git/worktrees/feature/kolux/setup-runner.sh'
     )
     expect(result.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
       '[ "$seen" = nonce-remote ]'
@@ -249,25 +243,25 @@ describe('createSequencedSetupAgentCommands', () => {
 
   it('preserves WSL shell metadata when sequencing native Windows runners', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: 'C:\\repo\\.git\\nightshift\\setup-runner.sh',
+      runnerScriptPath: 'C:\\repo\\.git\\kolux\\setup-runner.sh',
       startupCommand: 'claude',
       platform: 'windows',
       shell: { family: 'posix', executable: 'wsl.exe' },
       nonce: 'nonce-wsl-shell'
     })
 
-    expect(result.setupCommand).toContain('bash /mnt/c/repo/.git/nightshift/setup-runner.sh')
+    expect(result.setupCommand).toContain('bash /mnt/c/repo/.git/kolux/setup-runner.sh')
     expect(result.setupCommand).toContain(
-      '/mnt/c/repo/.git/nightshift/setup-runner.sh.nonce-wsl-shell.done'
+      '/mnt/c/repo/.git/kolux/setup-runner.sh.nonce-wsl-shell.done'
     )
     expect(result.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
-      '/mnt/c/repo/.git/nightshift/setup-runner.sh.nonce-wsl-shell.done'
+      '/mnt/c/repo/.git/kolux/setup-runner.sh.nonce-wsl-shell.done'
     )
   })
 
   it('wraps native Windows runners in a cmd-pinned setup and startup gate', () => {
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: 'C:\\repo\\.git\\nightshift\\setup-runner.cmd',
+      runnerScriptPath: 'C:\\repo\\.git\\kolux\\setup-runner.cmd',
       startupCommand: "codex --model gpt-5 'fix !PATH! & test'",
       platform: 'windows',
       nonce: 'nonce-win',
@@ -279,7 +273,7 @@ describe('createSequencedSetupAgentCommands', () => {
     expect(result.setupCommand).toContain(
       'powershell.exe -NoProfile -NonInteractive -EncodedCommand'
     )
-    expect(setupPowerShell).toContain("$runner = 'C:\\repo\\.git\\nightshift\\setup-runner.cmd'")
+    expect(setupPowerShell).toContain("$runner = 'C:\\repo\\.git\\kolux\\setup-runner.cmd'")
     expect(setupPowerShell).toContain('$nonce + ":" + $setupStatus')
     expect(result.startupCommand.match(/powershell\.exe/g)).toHaveLength(1)
     expect(result.startupCommand).toContain(
@@ -320,7 +314,7 @@ describe('createSequencedSetupAgentCommands', () => {
     expect(startupPowerShell).not.toMatch(/catch \{[^}]*throw/)
     // Why: the autoloaded module's progress record would otherwise corrupt this gate's stderr.
     expect(startupPowerShell).toContain("$ProgressPreference = 'SilentlyContinue'")
-    expect(startupPowerShell).toContain('$ProgressPreference = $nightshiftProgress')
+    expect(startupPowerShell).toContain('$ProgressPreference = $koluxProgress')
     // The setup gate only ever launches a .cmd/.bat runner, so it needs no relief.
     expect(setupPowerShell).not.toMatch(/Set-ExecutionPolicy/i)
   })
@@ -330,7 +324,7 @@ describe('createSequencedSetupAgentCommands', () => {
     // runner, and the gate must not hand that runner to bash. The gate itself stays POSIX
     // because the Git Bash pane types it and quoted the startup command for bash.
     const result = createSequencedSetupAgentCommands({
-      runnerScriptPath: 'C:\\repo\\.git\\nightshift\\setup-runner.cmd',
+      runnerScriptPath: 'C:\\repo\\.git\\kolux\\setup-runner.cmd',
       startupCommand: "claude 'fix the user'\\''s login'",
       platform: 'windows',
       shell: { family: 'posix' },
@@ -342,7 +336,7 @@ describe('createSequencedSetupAgentCommands', () => {
     )
     expect(result.setupCommand).not.toMatch(/bash\s+\S*setup-runner/)
     expect(decodePowerShellScript(result.setupCommand)).toContain(
-      "$runner = 'C:\\repo\\.git\\nightshift\\setup-runner.cmd'"
+      "$runner = 'C:\\repo\\.git\\kolux\\setup-runner.cmd'"
     )
     // Why: PowerShell's `Invoke-Expression` cannot parse the POSIX `'\''` escaping a Git Bash
     // pane produces, so the gate that evaluates the startup command must be bash.
@@ -350,14 +344,14 @@ describe('createSequencedSetupAgentCommands', () => {
     expect(result.startupCommand).toMatch(/^bash -lc /)
     expect(result.startupCommand).not.toContain('Invoke-Expression')
     expect(result.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
-      'eval "$NIGHTSHIFT_SEQUENCED_STARTUP_COMMAND"'
+      'eval "$KOLUX_SEQUENCED_STARTUP_COMMAND"'
     )
     // Why: bash writes and reads the marker here, so it needs the /c/... form of the path.
     expect(result.setupCommand).toContain(
-      '/c/repo/.git/nightshift/setup-runner.cmd.nonce-gitbash-cmd.done'
+      '/c/repo/.git/kolux/setup-runner.cmd.nonce-gitbash-cmd.done'
     )
     expect(result.startupEnv?.[SETUP_AGENT_SEQUENCE_STARTUP_SCRIPT_ENV]).toContain(
-      '/c/repo/.git/nightshift/setup-runner.cmd.nonce-gitbash-cmd.done'
+      '/c/repo/.git/kolux/setup-runner.cmd.nonce-gitbash-cmd.done'
     )
   })
 
@@ -601,11 +595,11 @@ describe('createSetupAgentSequenceNonce', () => {
 })
 
 function resultPathWsl(): string {
-  return '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo\\.git\\worktrees\\feature\\nightshift\\setup-runner.sh'
+  return '\\\\wsl.localhost\\Ubuntu\\home\\jin\\repo\\.git\\worktrees\\feature\\kolux\\setup-runner.sh'
 }
 
 function makeTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-setup-sequencing-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-setup-sequencing-'))
   TEMP_DIRS.push(dir)
   return dir
 }

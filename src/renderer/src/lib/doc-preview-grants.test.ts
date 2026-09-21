@@ -28,7 +28,7 @@ beforeEach(() => {
   mocks.environmentId = null
   mocks.mintGrant.mockResolvedValue({
     grantId: 'grant-1',
-    url: 'nightshift-preview://grant-1/a.html'
+    url: 'kolux-preview://grant-1/a.html'
   })
   vi.stubGlobal('window', {
     api: { docPreview: { mintGrant: mocks.mintGrant, revokeGrant: mocks.revokeGrant } }
@@ -147,7 +147,7 @@ describe('doc preview grant lifetime', () => {
     )
     mocks.mintGrant.mockResolvedValueOnce({
       grantId: 'grant-2',
-      url: 'nightshift-preview://grant-2/a.html'
+      url: 'kolux-preview://grant-2/a.html'
     })
 
     const stale = ensureDocPreviewGrant('preview-4', request)

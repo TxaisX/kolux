@@ -58,7 +58,7 @@ const SAFETY_COPY: Record<
     },
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.fork.body',
-      fallback: 'Nightshift cannot create a {{reviewLabel}} from this fork head here.'
+      fallback: 'Kolux cannot create a {{reviewLabel}} from this fork head here.'
     }
   },
   base_not_on_remote: {
@@ -79,8 +79,7 @@ const SAFETY_COPY: Record<
     },
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.unsupported.body',
-      fallback:
-        'This repository provider does not support creating a {{reviewLabel}} from Nightshift.'
+      fallback: 'This repository provider does not support creating a {{reviewLabel}} from Kolux.'
     }
   }
 }
@@ -101,7 +100,7 @@ export function safetyBlockerState(
       ),
       description: translate(
         'auto.components.right.sidebar.checks.panel.review.existing.body',
-        'Nightshift found an existing {{reviewLabel}} for this branch.',
+        'Kolux found an existing {{reviewLabel}} for this branch.',
         { reviewLabel }
       ),
       composerMode: 'hidden',
@@ -156,7 +155,7 @@ const BRANCH_BLOCKER_COPY: Record<
     body: {
       key: 'auto.components.right.sidebar.checks.panel.review.auth_required.body',
       fallback:
-        '{{provider}} must be connected in this environment before Nightshift can create a {{reviewLabel}}.'
+        '{{provider}} must be connected in this environment before Kolux can create a {{reviewLabel}}.'
     },
     workflow: null
   }

@@ -204,7 +204,7 @@ function request(operation: string): AgentSessionHandoffRequest {
 }
 
 beforeEach(async () => {
-  root = await mkdtemp(join(tmpdir(), 'nightshift-handoff-'))
+  root = await mkdtemp(join(tmpdir(), 'kolux-handoff-'))
   operations = 0
   statuses = []
   acquireNativeCalls = 0

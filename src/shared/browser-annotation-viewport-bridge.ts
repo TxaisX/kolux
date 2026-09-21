@@ -24,7 +24,7 @@ export type BrowserAnnotationViewportBridgeOptions = {
 }
 
 export const BROWSER_ANNOTATION_VIEWPORT_BRIDGE_WORLD_ID = 1207
-export const BROWSER_ANNOTATION_VIEWPORT_MESSAGE_PREFIX = '__nightshift_annotation_viewport__:'
+export const BROWSER_ANNOTATION_VIEWPORT_MESSAGE_PREFIX = '__kolux_annotation_viewport__:'
 
 export function isValidBrowserAnnotationViewportBridgeToken(value: unknown): value is string {
   return typeof value === 'string' && /^[a-zA-Z0-9_-]{16,80}$/.test(value)
@@ -91,8 +91,8 @@ export function buildBrowserAnnotationViewportBridgeScript({
   const markers = ${JSON.stringify(markers)};
   const token = ${JSON.stringify(token)};
   const prefix = ${JSON.stringify(BROWSER_ANNOTATION_VIEWPORT_MESSAGE_PREFIX)};
-  const stateKey = '__nightshiftBrowserAnnotationViewportBridge';
-  const hostAttribute = 'data-nightshift-browser-annotation-overlay';
+  const stateKey = '__koluxBrowserAnnotationViewportBridge';
+  const hostAttribute = 'data-kolux-browser-annotation-overlay';
   const markerSize = 24;
 
   const removeOverlay = (state) => {

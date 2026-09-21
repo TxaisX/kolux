@@ -74,7 +74,7 @@ describe('createWorktreeSymlinks', () => {
   let error: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-symlinks-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-symlinks-'))
     primary = join(root, 'primary')
     worktree = join(root, 'worktree')
     mkdirSync(primary, { recursive: true })
@@ -254,7 +254,7 @@ describe('createWorktreeSymlinks', () => {
     })
 
     expect(readFileSync(target, 'utf8')).toBe('RACE=1\n')
-    expect(existsSync(join(worktree, '.nightshift-apfs-clone-file-race'))).toBe(false)
+    expect(existsSync(join(worktree, '.kolux-apfs-clone-file-race'))).toBe(false)
     expect(warn).not.toHaveBeenCalled()
     expect(error).not.toHaveBeenCalled()
   })
@@ -429,7 +429,7 @@ describe('createWorktreeSharedPaths', () => {
   let error: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-sharedpaths-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-sharedpaths-'))
     primary = join(root, 'primary')
     worktree = join(root, 'worktree')
     mkdirSync(primary, { recursive: true })
@@ -498,7 +498,7 @@ describe('createWorktreeCopiedPaths', () => {
   let error: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-copiedpaths-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-copiedpaths-'))
     primary = join(root, 'primary')
     worktree = join(root, 'worktree')
     mkdirSync(primary, { recursive: true })
@@ -660,7 +660,7 @@ describe('removeWorktreeSymlinks', () => {
   let error: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), 'nightshift-unlink-'))
+    root = mkdtempSync(join(tmpdir(), 'kolux-unlink-'))
     primary = join(root, 'primary')
     worktree = join(root, 'worktree')
     mkdirSync(primary, { recursive: true })

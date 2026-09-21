@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ORCHESTRATION_CONTRACT_VERSION } from '../../../shared/protocol-version'
 import Database from '../../sqlite/sync-database'
-import { NightshiftRuntimeService } from '../nightshift-runtime'
+import { KoluxRuntimeService } from '../kolux-runtime'
 import { OrchestrationDb } from '../orchestration/db'
 import type { RpcRequest, RpcResponse } from './core'
 import { RpcDispatcher } from './dispatcher'
@@ -54,7 +54,7 @@ afterEach(() => {
 })
 
 function createUpdateHarness(): Harness {
-  const dir = mkdtempSync(join(tmpdir(), 'nightshift-update-settlement-'))
+  const dir = mkdtempSync(join(tmpdir(), 'kolux-update-settlement-'))
   tempDirs.push(dir)
   const markerPath = join(dir, 'worker-result.txt')
   const dbPath = join(dir, 'orchestration.db')
@@ -105,7 +105,7 @@ function createUpdateHarness(): Harness {
         launchToken: 'current-coordinator-launch-token'
       }
     ]
-    const runtime = new NightshiftRuntimeService(null, undefined, {
+    const runtime = new KoluxRuntimeService(null, undefined, {
       attestAgentHookCompatibilityAuthority: ({ paneKey, launchTokenHash }) => {
         const authority = authorities.find((candidate) => candidate.paneKey === paneKey)
         return authority &&

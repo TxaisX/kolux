@@ -140,7 +140,7 @@ describe('orchestration skill agent coverage', () => {
         'claude',
         [
           skill({
-            name: 'Nightshift Orchestration',
+            name: 'Kolux Orchestration',
             providers: ['claude'],
             sourceKind: 'home',
             rootPath: '/Users/test/.claude/skills',

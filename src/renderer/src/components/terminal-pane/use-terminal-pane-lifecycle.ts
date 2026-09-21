@@ -68,12 +68,9 @@ export function useTerminalPaneLifecycle(deps: UseTerminalPaneLifecycleDeps): vo
         }
       }
     }
-    window.addEventListener('nightshift:wake-hibernated-agents-worktree', onWakeHibernatedAgents)
+    window.addEventListener('kolux:wake-hibernated-agents-worktree', onWakeHibernatedAgents)
     return () =>
-      window.removeEventListener(
-        'nightshift:wake-hibernated-agents-worktree',
-        onWakeHibernatedAgents
-      )
+      window.removeEventListener('kolux:wake-hibernated-agents-worktree', onWakeHibernatedAgents)
   }, [deps.worktreeId, deps.panePtyBindingsRef])
 
   useEffect(() => {

@@ -78,7 +78,7 @@ describe('PtyHandler retires a closed pane surface', () => {
     const term = { ...mockPtyInstance, kill: vi.fn(), onData: vi.fn(), onExit: vi.fn() }
     mockPtySpawn.mockReturnValue(term)
     const spawned = await spawnPty({
-      env: { NIGHTSHIFT_PANE_KEY: PANE_KEY },
+      env: { KOLUX_PANE_KEY: PANE_KEY },
       agentSessionEnsure: AGENT_SESSION_ENSURE,
       ...params
     })
@@ -227,7 +227,7 @@ describe('PtyHandler retires a closed pane surface', () => {
 
     const term = { ...mockPtyInstance, kill: vi.fn(), onData: vi.fn(), onExit: vi.fn() }
     mockPtySpawn.mockReturnValue(term)
-    await spawnPty({ env: { NIGHTSHIFT_PANE_KEY: PANE_KEY } })
+    await spawnPty({ env: { KOLUX_PANE_KEY: PANE_KEY } })
 
     expect(handler.isPaneSurfaceRetired(PANE_KEY)).toBe(false)
   })

@@ -105,7 +105,7 @@ describe('discoverCommitMessageModelsLocal', () => {
           type: 'control_response',
           response: {
             subtype: 'success',
-            request_id: 'nightshift-model-discovery',
+            request_id: 'kolux-model-discovery',
             response: {
               models: [
                 { value: 'default', displayName: 'Default (recommended)' },
@@ -160,7 +160,7 @@ describe('discoverCommitMessageModelsLocal', () => {
     // Captured from claude 2.1.100: the unsupported subtype still exits 0.
     listeners.get('stdout:data')?.(
       Buffer.from(
-        '{"type":"control_response","response":{"subtype":"error","request_id":"nightshift-model-discovery","error":"Unsupported control request subtype: list_models"}}\n'
+        '{"type":"control_response","response":{"subtype":"error","request_id":"kolux-model-discovery","error":"Unsupported control request subtype: list_models"}}\n'
       )
     )
     listeners.get('close')?.(0)
@@ -239,7 +239,7 @@ describe('discoverCommitMessageModelsLocal', () => {
         ['-d', 'Ubuntu', '--exec', 'sh', '-lc', expect.any(String)],
         expect.objectContaining({
           // Why a concrete directory (#16463): `undefined` makes CreateProcessW inherit
-          // Nightshift's own cwd, a deletable WSL UNC path when it was launched from a
+          // Kolux's own cwd, a deletable WSL UNC path when it was launched from a
           // worktree. The Linux directory still rides inside the command (/mnt/c/repo,
           // asserted below), so the Windows-side cwd never decides where discovery runs.
           cwd: expect.any(String),

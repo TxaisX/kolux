@@ -215,11 +215,11 @@ describe('connectPanePty', () => {
           transcriptPath: '/Users/example/.codex/sessions/2026/07/20/rollout-session.jsonl'
         },
         env: expect.objectContaining({
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-1',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-          NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-1',
+          KOLUX_WORKTREE_ID: 'wt-1',
+          KOLUX_WORKSPACE_ID: 'wt-1',
+          KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
         })
       })
     )
@@ -300,11 +300,11 @@ describe('connectPanePty', () => {
         sessionId: 'lost-pty',
         command: `codex '--dangerously-bypass-approvals-and-sandbox' 'resume' 'codex-session-1'"'"'s'`,
         env: expect.objectContaining({
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-1',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-          NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-1',
+          KOLUX_WORKTREE_ID: 'wt-1',
+          KOLUX_WORKSPACE_ID: 'wt-1',
+          KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
         })
       })
     )
@@ -390,11 +390,11 @@ describe('connectPanePty', () => {
           transcriptPath
         },
         env: expect.objectContaining({
-          NIGHTSHIFT_PANE_KEY: paneKey,
-          NIGHTSHIFT_TAB_ID: 'tab-1',
-          NIGHTSHIFT_WORKTREE_ID: 'wt-1',
-          NIGHTSHIFT_WORKSPACE_ID: 'wt-1',
-          NIGHTSHIFT_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
+          KOLUX_PANE_KEY: paneKey,
+          KOLUX_TAB_ID: 'tab-1',
+          KOLUX_WORKTREE_ID: 'wt-1',
+          KOLUX_WORKSPACE_ID: 'wt-1',
+          KOLUX_AGENT_LAUNCH_TOKEN: expect.stringMatching(new RegExp(`^${UUID_RE}$`))
         })
       })
     )

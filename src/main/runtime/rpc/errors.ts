@@ -48,7 +48,7 @@ export function errorResponse(
   }
 }
 
-// Why: the NightshiftRuntimeService throws plain Error objects whose `message` is
+// Why: the KoluxRuntimeService throws plain Error objects whose `message` is
 // actually a stable error code. This allowlist is the contract the CLI relies
 // on — expanding or renaming entries without updating the CLI would silently
 // change user-visible error codes.

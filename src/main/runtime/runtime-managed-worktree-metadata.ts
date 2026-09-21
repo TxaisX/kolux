@@ -3,7 +3,7 @@ import type { WorktreeMeta } from '../../shared/worktree/meta-types'
 import { worktreeWorkspaceKey } from '../../shared/workspace-scope'
 import { splitWorktreeId } from '../../shared/worktree/id'
 import { planWorktreeSortOrderUpdates } from '../../shared/worktree/sort-order-update'
-import { stripNightshiftProvenanceMetaUpdates } from '../worktree-removal-safety'
+import { stripKoluxProvenanceMetaUpdates } from '../worktree-removal-safety'
 import type { RuntimeStore } from './runtime-store-contract'
 import { RuntimeLineageError } from './runtime-worktree-lineage-resolution'
 import type { ResolvedWorktree } from './runtime-worktree-path-identity'
@@ -89,7 +89,7 @@ export async function updateRuntimeManagedWorktreeMetadata(args: {
       createdAt
     })
   }
-  const metadataUpdates = stripNightshiftProvenanceMetaUpdates(persisted)
+  const metadataUpdates = stripKoluxProvenanceMetaUpdates(persisted)
   const executionHostId = worktree.identity?.executionHostId ?? worktree.hostId
   if (executionHostId && args.store.setWorktreeMetaForHost) {
     args.store.setWorktreeMetaForHost(worktree.id, executionHostId, metadataUpdates)

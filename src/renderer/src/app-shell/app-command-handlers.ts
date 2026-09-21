@@ -124,7 +124,7 @@ export function createAppCommandHandlers(
     if (
       input &&
       keybindingContext === 'terminal' &&
-      (terminalShortcutPolicy ?? 'nightshift-first') === 'nightshift-first'
+      (terminalShortcutPolicy ?? 'kolux-first') === 'kolux-first'
     ) {
       showTerminalShortcutCaptureNotification({
         actionId,

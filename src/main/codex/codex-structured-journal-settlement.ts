@@ -70,7 +70,7 @@ export function settleCodexJournalSession(input: {
   if (!('cause' in input.event) || input.event.cause === 'unexpected-exit') {
     mutations.push({
       kind: 'item',
-      identity: { provider: 'nightshift', clientMessageId: exitSettlementId(input.event) },
+      identity: { provider: 'kolux', clientMessageId: exitSettlementId(input.event) },
       body: {
         kind: 'status',
         text: boundJournalStatusText(`Provider exited: ${input.event.reason}`)

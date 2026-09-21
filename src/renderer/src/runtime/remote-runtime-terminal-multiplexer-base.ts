@@ -100,7 +100,7 @@ export abstract class RemoteRuntimeTerminalMultiplexerBase {
                 this.failConnection(Object.assign(new Error(error.message), { code: error.code }))
               }
             },
-            onClose: () => this.handleClose('Remote Nightshift runtime closed the connection.')
+            onClose: () => this.handleClose('Remote Kolux runtime closed the connection.')
           }
         )
         .then((subscription) => {

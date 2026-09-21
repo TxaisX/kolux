@@ -166,7 +166,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('reads Antigravity user requests from the transcript', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-prompt-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-antigravity-prompt-'))
     const transcriptPath = join(tmpDir, 'transcript.jsonl')
     try {
       writeFileSync(
@@ -203,7 +203,7 @@ describe('shared agent-hook-listener', () => {
 
   it('reads newline-heavy Antigravity user requests without wrapper regex matching', () => {
     const matchSpy = vi.spyOn(String.prototype, 'match')
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-large-prompt-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-antigravity-large-prompt-'))
     const transcriptPath = join(tmpDir, 'transcript.jsonl')
     const requestText = 'Fix the failing test\n'.repeat(300)
     try {
@@ -243,7 +243,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('keeps the cached Antigravity prompt instead of rescanning the transcript', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-cached-prompt-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-antigravity-cached-prompt-'))
     const transcriptPath = join(tmpDir, 'transcript.jsonl')
     try {
       writeFileSync(
@@ -375,7 +375,7 @@ describe('shared agent-hook-listener', () => {
   })
 
   it('normalizes Antigravity Stop hooks and reads final text from the transcript', () => {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'nightshift-antigravity-transcript-'))
+    const tmpDir = mkdtempSync(join(tmpdir(), 'kolux-antigravity-transcript-'))
     const transcriptPath = join(tmpDir, 'transcript.jsonl')
     try {
       writeFileSync(

@@ -6,8 +6,8 @@
  * otherwise GUESS an implicit terminal refuse instead: a structured session has no pane, so every
  * guess resolves to a sibling, and `orchestration check` is destructive by default.
  */
-export const NIGHTSHIFT_STRUCTURED_SESSION_ENV = 'NIGHTSHIFT_STRUCTURED_SESSION'
+export const KOLUX_STRUCTURED_SESSION_ENV = 'KOLUX_STRUCTURED_SESSION'
 
 export function isStructuredSessionWithoutIdentity(env: NodeJS.ProcessEnv = process.env): boolean {
-  return (env[NIGHTSHIFT_STRUCTURED_SESSION_ENV] ?? '').length > 0
+  return (env[KOLUX_STRUCTURED_SESSION_ENV] ?? '').length > 0
 }

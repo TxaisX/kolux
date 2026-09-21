@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { PluginPanelSessions } from './plugin-panel-sessions'
 
 const binding = {
-  pluginKey: 'nightshift-samples.demo',
+  pluginKey: 'kolux-samples.demo',
   panelId: 'dashboard',
-  rootDir: '/plugins/nightshift-samples.demo/hash-one',
+  rootDir: '/plugins/kolux-samples.demo/hash-one',
   manifestRevision: 'manifest-v1'
 }
 

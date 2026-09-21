@@ -163,13 +163,13 @@ describe('DT_NEEDED provider check', () => {
 
 describe('collectNativeBinaries', () => {
   it('collects only ELF .node/.so/executable files, skipping non-ELF and symlinks', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-collect-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-collect-'))
     try {
       await mkdir(join(root, 'nested'), { recursive: true })
       await writeFile(join(root, 'addon.node'), ELF_HEADER)
       await writeFile(join(root, 'nested', 'lib.so'), ELF_HEADER)
       await writeFile(join(root, 'nested', 'lib.so.1'), ELF_HEADER)
-      await writeFile(join(root, 'nightshift-ide'), ELF_HEADER) // extensionless executable
+      await writeFile(join(root, 'kolux-ide'), ELF_HEADER) // extensionless executable
       await writeFile(join(root, 'script.js'), ELF_HEADER) // has extension, not native
       await writeFile(join(root, 'text.node'), 'not an elf file') // native name, non-ELF
       await writeFile(join(root, 'notes.md'), ELF_HEADER)
@@ -183,7 +183,7 @@ describe('collectNativeBinaries', () => {
       expect(found).toContain('addon.node')
       expect(found).toContain(join('nested', 'lib.so'))
       expect(found).toContain(join('nested', 'lib.so.1'))
-      expect(found).toContain('nightshift-ide')
+      expect(found).toContain('kolux-ide')
       expect(found).not.toContain('script.js')
       expect(found).not.toContain('text.node')
       expect(found).not.toContain('notes.md')
@@ -239,7 +239,7 @@ describe.skipIf(process.platform === 'win32')('verifyLinuxGlibcFloor', () => {
   }
 
   it('throws listing binaries over the floor (glibc, DT_RELR marker, and libstdc++)', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-over-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-over-'))
     try {
       const objdumpPath = await writeStubObjdump(root)
       await mkdir(join(root, 'app', 'resources'), { recursive: true })
@@ -264,7 +264,7 @@ describe.skipIf(process.platform === 'win32')('verifyLinuxGlibcFloor', () => {
   })
 
   it('throws when a pinned binary imports openpty without libutil.so.1 in DT_NEEDED', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-noutil-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-noutil-'))
     try {
       const objdumpPath = await writeStubObjdump(root)
       await mkdir(join(root, 'app'), { recursive: true })
@@ -281,14 +281,14 @@ describe.skipIf(process.platform === 'win32')('verifyLinuxGlibcFloor', () => {
   })
 
   it('passes weak/at-floor needs and the exempt sherpa-onnx libstdc++ prebuilt', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-under-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-under-'))
     try {
       const objdumpPath = await writeStubObjdump(root)
       const sherpaDir = join(root, 'app', 'node_modules', 'sherpa-onnx-linux-x64')
       await mkdir(sherpaDir, { recursive: true })
       await writeFile(join(root, 'app', 'good-pty.node'), ELF_HEADER)
       await writeFile(join(root, 'app', 'weakonly-lib.so'), ELF_HEADER) // weak GLIBC_2.32 → OK
-      await writeFile(join(root, 'app', 'nightshift-ide'), ELF_HEADER)
+      await writeFile(join(root, 'app', 'kolux-ide'), ELF_HEADER)
       await writeFile(join(sherpaDir, 'sherpa-onnx.node'), ELF_HEADER) // GLIBCXX_3.4.29, exempt
 
       expect(() => verifyLinuxGlibcFloor(join(root, 'app'), { objdumpPath })).not.toThrow()
@@ -298,7 +298,7 @@ describe.skipIf(process.platform === 'win32')('verifyLinuxGlibcFloor', () => {
   })
 
   it('fails closed when objdump cannot read a binary (non-zero exit)', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-closed-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-closed-'))
     try {
       const objdumpPath = await writeStubObjdump(root)
       await mkdir(join(root, 'app'), { recursive: true })
@@ -313,7 +313,7 @@ describe.skipIf(process.platform === 'win32')('verifyLinuxGlibcFloor', () => {
   })
 
   it('is a no-op (no objdump needed) when there are no native binaries', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'nightshift-glibc-empty-'))
+    const root = await mkdtemp(join(tmpdir(), 'kolux-glibc-empty-'))
     try {
       await mkdir(join(root, 'app'), { recursive: true })
       await writeFile(join(root, 'app', 'readme.txt'), 'no binaries here')
@@ -340,7 +340,7 @@ function elfHeader(machine) {
 
 describe('bundled native binary architecture', () => {
   it('reads e_machine from a little-endian ELF', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const file = join(dir, 'pty.node')
     await writeFile(file, elfHeader(ELF_MACHINE_BY_ARCH.arm64))
     expect(readElfMachine(file)).toBe(ELF_MACHINE_BY_ARCH.arm64)
@@ -352,7 +352,7 @@ describe('bundled native binary architecture', () => {
   // Real CI hit: @parcel/watcher ships every architecture and its loader picks the match, so the
   // arm64 copy is present in an x64 build on purpose.
   it('accepts a per-arch vendored package that matches its own path', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const pkg = join(dir, '@parcel', 'watcher-linux-arm64-glibc')
     await mkdir(pkg, { recursive: true })
     const file = join(pkg, 'watcher.node')
@@ -364,7 +364,7 @@ describe('bundled native binary architecture', () => {
 
   // But a path that names an arch must actually hold it — this is the Pi 5 failure.
   it('flags a binary that contradicts the architecture its own path names', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const nested = join(dir, 'bin', 'linux-arm64-148')
     await mkdir(nested, { recursive: true })
     const file = join(nested, 'node-pty.node')
@@ -376,7 +376,7 @@ describe('bundled native binary architecture', () => {
   })
 
   it('flags an x86-64 binary in an arm64 slice', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const file = join(dir, 'pty.node')
     await writeFile(file, elfHeader(ELF_MACHINE_BY_ARCH.x64))
     expect(findArchViolation(file, 'arm64')).toMatchObject({ actual: 'x64' })
@@ -384,7 +384,7 @@ describe('bundled native binary architecture', () => {
   })
 
   it('accepts a matching architecture', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const file = join(dir, 'pty.node')
     await writeFile(file, elfHeader(ELF_MACHINE_BY_ARCH.x64))
     expect(findArchViolation(file, 'x64')).toBeNull()
@@ -392,7 +392,7 @@ describe('bundled native binary architecture', () => {
   })
 
   it('stays silent when no target architecture is supplied', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const file = join(dir, 'pty.node')
     await writeFile(file, elfHeader(ELF_MACHINE_BY_ARCH.x64))
     expect(findArchViolation(file, undefined)).toBeNull()
@@ -400,7 +400,7 @@ describe('bundled native binary architecture', () => {
   })
 
   it('ignores a file that is not a readable little-endian ELF', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'nightshift-elf-arch-'))
+    const dir = await mkdtemp(join(tmpdir(), 'kolux-elf-arch-'))
     const file = join(dir, 'not-elf.node')
     await writeFile(file, Buffer.from('not an elf at all'))
     expect(readElfMachine(file)).toBeNull()

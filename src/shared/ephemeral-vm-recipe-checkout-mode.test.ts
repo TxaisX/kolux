@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   getEphemeralVmRecipeCheckoutModeError,
-  getEphemeralVmRecipeResultSchemaVersion
+  getEphemeralVmRecipeResultSchemaVersion,
+  normalizeLegacyCheckoutModeSpelling
 } from './ephemeral-vm-recipe-checkout-mode'
-import type { NightshiftVmRecipe } from './nightshift-yaml-hook-types'
+import type { KoluxVmRecipe } from './kolux-yaml-hook-types'
 
-const defaultRecipe: NightshiftVmRecipe = {
+const defaultRecipe: KoluxVmRecipe = {
   id: 'cloud-sandbox',
   name: 'Cloud Sandbox',
   create: './create.sh'
@@ -17,7 +18,7 @@ describe('ephemeral VM recipe checkout mode', () => {
     expect(
       getEphemeralVmRecipeCheckoutModeError(defaultRecipe, {
         schemaVersion: 1,
-        pairingCode: 'nightshift://pair?code=test',
+        pairingCode: 'kolux://pair?code=test',
         projectRoot: '/workspace/repo'
       })
     ).toBeNull()
@@ -27,7 +28,7 @@ describe('ephemeral VM recipe checkout mode', () => {
     const provisionedRootResult = {
       schemaVersion: 2 as const,
       checkoutMode: 'provisioned-root' as const,
-      pairingCode: 'nightshift://pair?code=test',
+      pairingCode: 'kolux://pair?code=test',
       projectRoot: '/workspace/repo'
     }
     expect(getEphemeralVmRecipeCheckoutModeError(defaultRecipe, provisionedRootResult)).toBe(
@@ -39,5 +40,11 @@ describe('ephemeral VM recipe checkout mode', () => {
         provisionedRootResult
       )
     ).toBeNull()
+  })
+
+  it('normalizes the pre-rename nightshift-worktree spelling to kolux-worktree', () => {
+    expect(normalizeLegacyCheckoutModeSpelling('nightshift-worktree')).toBe('kolux-worktree')
+    expect(normalizeLegacyCheckoutModeSpelling('kolux-worktree')).toBe('kolux-worktree')
+    expect(normalizeLegacyCheckoutModeSpelling('provisioned-root')).toBe('provisioned-root')
   })
 })

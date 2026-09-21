@@ -38,7 +38,7 @@ vi.mock('../telemetry/client', () =>
 vi.mock('../telemetry/classify-error', () =>
   import('./pty-ipc-mock-registry').then((m) => m.classifyErrorModuleMock())
 )
-vi.mock('../cli/linux-terminal-nightshift-cli-shim', () =>
+vi.mock('../cli/linux-terminal-kolux-cli-shim', () =>
   import('./pty-ipc-mock-registry').then((m) => m.linuxCliShimModuleMock())
 )
 vi.mock('../memory/pty-registry', () =>
@@ -58,7 +58,7 @@ describe('registerPtyHandlers', () => {
   const { handlers, mainWindow, spawnAndGetEnv, withBundledCli } = setupPtyIpcSuite()
 
   describe('spawn environment', () => {
-    it('routes headless browser launches through the owning Nightshift workspace', () => {
+    it('routes headless browser launches through the owning Kolux workspace', () => {
       const inheritedBrowser = process.env.BROWSER
       delete process.env.BROWSER
       try {
@@ -67,14 +67,14 @@ describe('registerPtyHandlers', () => {
           {},
           {
             isPackaged: true,
-            userDataPath: '/tmp/nightshift-user-data',
+            userDataPath: '/tmp/kolux-user-data',
             selectedCodexHomePath: null,
             agentStatusHooksEnabled: false,
             routeBrowserOpensToClient: true
           }
         )
 
-        expect(env.BROWSER).toBe('nightshift open-url --url %s')
+        expect(env.BROWSER).toBe('kolux open-url --url %s')
       } finally {
         if (inheritedBrowser === undefined) {
           delete process.env.BROWSER
@@ -90,7 +90,7 @@ describe('registerPtyHandlers', () => {
         { BROWSER: 'custom-browser %s' },
         {
           isPackaged: true,
-          userDataPath: '/tmp/nightshift-user-data',
+          userDataPath: '/tmp/kolux-user-data',
           selectedCodexHomePath: null,
           agentStatusHooksEnabled: false,
           routeBrowserOpensToClient: true
@@ -109,7 +109,7 @@ describe('registerPtyHandlers', () => {
           {},
           {
             isPackaged: true,
-            userDataPath: '/tmp/nightshift-user-data',
+            userDataPath: '/tmp/kolux-user-data',
             selectedCodexHomePath: null,
             isWsl: true,
             agentStatusHooksEnabled: false,
@@ -117,7 +117,7 @@ describe('registerPtyHandlers', () => {
           }
         )
 
-        expect(env.BROWSER).toBe('nightshift-ide open-url --url %s')
+        expect(env.BROWSER).toBe('kolux-ide open-url --url %s')
       } finally {
         if (inheritedBrowser === undefined) {
           delete process.env.BROWSER
@@ -129,7 +129,7 @@ describe('registerPtyHandlers', () => {
 
     it('passes the PTY-resolved Codex home to the WSL relay lane', () => {
       const runtimeHome =
-        '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\nightshift\\codex-runtime-home\\home'
+        '\\\\wsl.localhost\\Ubuntu\\home\\jin\\.local\\share\\kolux\\codex-runtime-home\\home'
       const ensureForDistro = vi
         .spyOn(wslHookRelayManager, 'ensureForDistro')
         .mockImplementation(() => {})
@@ -140,7 +140,7 @@ describe('registerPtyHandlers', () => {
           {},
           {
             isPackaged: true,
-            userDataPath: '/tmp/nightshift-user-data',
+            userDataPath: '/tmp/kolux-user-data',
             selectedCodexHomePath: runtimeHome,
             isWsl: true,
             wslDistro: 'Ubuntu',
@@ -175,7 +175,7 @@ describe('registerPtyHandlers', () => {
           buildSpawnEnv: (id, baseEnv, context) =>
             buildPtyHostEnv(id, baseEnv, {
               isPackaged: true,
-              userDataPath: '/tmp/nightshift-user-data',
+              userDataPath: '/tmp/kolux-user-data',
               selectedCodexHomePath: null,
               agentStatusHooksEnabled: false,
               isWsl: context?.isWsl,
@@ -189,20 +189,20 @@ describe('registerPtyHandlers', () => {
           shellOverride: 'wsl.exe',
           terminalWindowsWslDistro: 'Ubuntu',
           env: {
-            PATH: 'C:\\Nightshift\\bin;C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps',
-            WSLENV: 'NIGHTSHIFT_TERMINAL_HANDLE/u'
+            PATH: 'C:\\Kolux\\bin;C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps',
+            WSLENV: 'KOLUX_TERMINAL_HANDLE/u'
           }
         })
         const [file, , options] = spawnMock.mock.calls.at(-1)!
 
         expect(file).toBe('wsl.exe')
         expect(options.env.PATH).toBe(
-          'C:\\Nightshift\\bin;C:\\Windows\\System32;C:\\Python314;C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps'
+          'C:\\Kolux\\bin;C:\\Windows\\System32;C:\\Python314;C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps'
         )
         const forwardedKeys = options.env.WSLENV.split(':').map((entry) =>
           entry.split('/')[0]!.toLowerCase()
         )
-        expect(options.env.WSLENV).toContain('NIGHTSHIFT_TERMINAL_HANDLE/u')
+        expect(options.env.WSLENV).toContain('KOLUX_TERMINAL_HANDLE/u')
         expect(forwardedKeys).not.toContain('path')
       } finally {
         __resetPersistedWindowsPathCacheForTests()
@@ -296,7 +296,7 @@ describe('registerPtyHandlers', () => {
       const env = await spawnAndGetEnv()
       expect(env.TERM).toBe('xterm-256color')
       expect(env.COLORTERM).toBe('truecolor')
-      expect(env.TERM_PROGRAM).toBe('Nightshift')
+      expect(env.TERM_PROGRAM).toBe('Kolux')
     })
     it('keeps indexed Git prompt guards in a local agent terminal env', async () => {
       const env = await spawnAndGetEnv(undefined, undefined, undefined, undefined, 'claude')
@@ -318,27 +318,27 @@ describe('registerPtyHandlers', () => {
       expect(env.GCM_INTERACTIVE).toBe('never')
     })
     it('advertises OSC 8 hyperlink support via FORCE_HYPERLINK', async () => {
-      // Why: supports-hyperlinks allowlists TERM_PROGRAM and reports false for Nightshift, so FORCE_HYPERLINK=1 forces detection on (xterm.js handles OSC 8 natively).
+      // Why: supports-hyperlinks allowlists TERM_PROGRAM and reports false for Kolux, so FORCE_HYPERLINK=1 forces detection on (xterm.js handles OSC 8 natively).
       const env = await spawnAndGetEnv()
       expect(env.FORCE_HYPERLINK).toBe('1')
     })
-    it('surfaces NIGHTSHIFT_APP_VERSION as TERM_PROGRAM_VERSION for TUI feature gating', async () => {
-      const env = await spawnAndGetEnv(undefined, { NIGHTSHIFT_APP_VERSION: '1.2.3-test' })
+    it('surfaces KOLUX_APP_VERSION as TERM_PROGRAM_VERSION for TUI feature gating', async () => {
+      const env = await spawnAndGetEnv(undefined, { KOLUX_APP_VERSION: '1.2.3-test' })
       expect(env.TERM_PROGRAM_VERSION).toBe('1.2.3-test')
     })
-    it('falls back to a placeholder version when NIGHTSHIFT_APP_VERSION is unset', async () => {
-      const env = await spawnAndGetEnv(undefined, { NIGHTSHIFT_APP_VERSION: undefined })
+    it('falls back to a placeholder version when KOLUX_APP_VERSION is unset', async () => {
+      const env = await spawnAndGetEnv(undefined, { KOLUX_APP_VERSION: undefined })
       expect(env.TERM_PROGRAM_VERSION).toBe('0.0.0-dev')
     })
-    it('injects the selected Codex home into Nightshift terminal PTYs', async () => {
+    it('injects the selected Codex home into Kolux terminal PTYs', async () => {
       const env = await withBundledCli(() =>
         spawnAndGetEnv(undefined, undefined, () => TEST_CODEX_HOME)
       )
       expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
-      expect(env.NIGHTSHIFT_CODEX_HOME).toBe(TEST_CODEX_HOME)
+      expect(env.KOLUX_CODEX_HOME).toBe(TEST_CODEX_HOME)
       // Why (STA-4270): a bare name would be resolved by the post-profile PATH the codex()
       // wrapper inherits, so the preflight must carry the CLI's verified absolute path.
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
     })
     it('skips the Codex launch preflight when the bundled CLI is not executable', async () => {
       const env = await withBundledCli(
@@ -347,10 +347,10 @@ describe('registerPtyHandlers', () => {
       )
 
       expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
     })
     // Why (STA-4270): profile scripts run before the codex() wrapper and routinely prepend
-    // directories to PATH, so a scratch `nightshift` there must never become the preflight.
+    // directories to PATH, so a scratch `kolux` there must never become the preflight.
     it('pins the Codex launch preflight to the bundled CLI even when PATH leads elsewhere', async () => {
       const env = await withBundledCli(() =>
         spawnAndGetEnv(
@@ -360,9 +360,9 @@ describe('registerPtyHandlers', () => {
         )
       )
 
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT).not.toBe('nightshift')
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT.startsWith('/tmp/hijack-scratch')).toBe(false)
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT).toBe(BUNDLED_CLI_PATH)
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT).not.toBe('kolux')
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT.startsWith('/tmp/hijack-scratch')).toBe(false)
     })
     it('does not install the Codex launch preflight when Codex hooks are disabled', async () => {
       const env = await spawnAndGetEnv(
@@ -373,7 +373,7 @@ describe('registerPtyHandlers', () => {
       )
 
       expect(env.CODEX_HOME).toBe(TEST_CODEX_HOME)
-      expect(env.NIGHTSHIFT_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
+      expect(env.KOLUX_CODEX_LAUNCH_PREFLIGHT).toBeUndefined()
     })
     it('resumes an automatic Codex session from its prepared originating home', async () => {
       const selectedHome = vi.fn(() => '/managed/current/home')
@@ -412,7 +412,7 @@ describe('registerPtyHandlers', () => {
       )
       expect(selectedHome).not.toHaveBeenCalled()
       expect(env.CODEX_HOME).toBe('/managed/origin/home')
-      expect(env.NIGHTSHIFT_CODEX_HOME).toBe('/managed/origin/home')
+      expect(env.KOLUX_CODEX_HOME).toBe('/managed/origin/home')
     })
     it('blocks a shared-runtime resume when auth reconciliation fails', async () => {
       const selectedHome = vi.fn(() => {
@@ -474,7 +474,7 @@ describe('registerPtyHandlers', () => {
         rows: 24,
         command: 'codex resume session-a',
         env: { CODEX_HOME: '/custom/codex', REMOVE_ME: 'stale' },
-        envToDelete: ['CODEX_HOME', 'NIGHTSHIFT_CODEX_HOME', 'REMOVE_ME'],
+        envToDelete: ['CODEX_HOME', 'KOLUX_CODEX_HOME', 'REMOVE_ME'],
         launchAgent: 'codex',
         resumeProviderSession: {
           key: 'session_id',
@@ -486,7 +486,7 @@ describe('registerPtyHandlers', () => {
       const env = spawnMock.mock.calls.at(-1)![2].env as Record<string, string>
       expect(selectedHome).not.toHaveBeenCalled()
       expect(env.CODEX_HOME).toBe(systemHome)
-      expect(env.NIGHTSHIFT_CODEX_HOME).toBe(systemHome)
+      expect(env.KOLUX_CODEX_HOME).toBe(systemHome)
       expect(env.REMOVE_ME).toBeUndefined()
     })
     it('does not fall back to the selected account when automatic resume provenance is rejected', async () => {

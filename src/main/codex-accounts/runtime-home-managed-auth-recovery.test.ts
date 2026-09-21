@@ -68,7 +68,7 @@ describe('CodexRuntimeHomeService', () => {
           managedHomePath: wslManagedHomePath,
           managedHomeRuntime: 'wsl',
           wslDistro: 'Ubuntu',
-          wslLinuxHomePath: '/home/alice/.local/share/nightshift/codex-accounts/wsl-account/home',
+          wslLinuxHomePath: '/home/alice/.local/share/kolux/codex-accounts/wsl-account/home',
           createdAt: 2,
           updatedAt: 2,
           lastAuthenticatedAt: 2

@@ -2,15 +2,15 @@ import { spawn } from 'node:child_process'
 
 const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 const knobByFlag = {
-  '--iterations': 'NIGHTSHIFT_AI_VAULT_BENCH_ITERATIONS',
-  '--sessions': 'NIGHTSHIFT_AI_VAULT_BENCH_SESSIONS',
-  '--payload-kib': 'NIGHTSHIFT_AI_VAULT_BENCH_PAYLOAD_KIB',
-  '--keys': 'NIGHTSHIFT_AI_VAULT_BENCH_KEYS',
-  '--cadence-ms': 'NIGHTSHIFT_AI_VAULT_BENCH_CADENCE_MS',
-  '--label': 'NIGHTSHIFT_AI_VAULT_BENCH_LABEL'
+  '--iterations': 'KOLUX_AI_VAULT_BENCH_ITERATIONS',
+  '--sessions': 'KOLUX_AI_VAULT_BENCH_SESSIONS',
+  '--payload-kib': 'KOLUX_AI_VAULT_BENCH_PAYLOAD_KIB',
+  '--keys': 'KOLUX_AI_VAULT_BENCH_KEYS',
+  '--cadence-ms': 'KOLUX_AI_VAULT_BENCH_CADENCE_MS',
+  '--label': 'KOLUX_AI_VAULT_BENCH_LABEL'
 }
 
-const env = { ...process.env, NIGHTSHIFT_AI_VAULT_TYPING_BENCH: '1' }
+const env = { ...process.env, KOLUX_AI_VAULT_TYPING_BENCH: '1' }
 const passthroughArgs = []
 const argv = process.argv.slice(2)
 for (let index = 0; index < argv.length; index += 1) {

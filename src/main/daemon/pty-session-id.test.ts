@@ -6,7 +6,7 @@ import {
   ptySessionIdForAgentCreateOperation
 } from './pty-session-id'
 
-const USER_DATA = '/tmp/nightshift-userdata'
+const USER_DATA = '/tmp/kolux-userdata'
 
 describe('mintPtySessionId', () => {
   it('returns a UUID when no worktreeId is provided', () => {

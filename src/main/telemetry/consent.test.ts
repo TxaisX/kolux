@@ -13,7 +13,7 @@ function settingsWithTelemetry(telemetry: GlobalSettings['telemetry']): GlobalSe
 // and restore explicitly.
 const ENV_KEYS_UNDER_TEST = [
   'DO_NOT_TRACK',
-  'NIGHTSHIFT_TELEMETRY_DISABLED',
+  'KOLUX_TELEMETRY_DISABLED',
   'CI',
   'GITHUB_ACTIONS',
   'GITLAB_CI',
@@ -80,8 +80,8 @@ describe('resolveConsent', () => {
     })
   })
 
-  it('returns nightshift_disabled when NIGHTSHIFT_TELEMETRY_DISABLED=1', () => {
-    process.env.NIGHTSHIFT_TELEMETRY_DISABLED = '1'
+  it('returns kolux_disabled when KOLUX_TELEMETRY_DISABLED=1', () => {
+    process.env.KOLUX_TELEMETRY_DISABLED = '1'
     expect(
       resolveConsent(
         settingsWithTelemetry({
@@ -92,13 +92,13 @@ describe('resolveConsent', () => {
       )
     ).toEqual({
       effective: 'disabled',
-      reason: 'nightshift_disabled'
+      reason: 'kolux_disabled'
     })
   })
 
-  it('prefers do_not_track over nightshift_disabled when both are set', () => {
+  it('prefers do_not_track over kolux_disabled when both are set', () => {
     process.env.DO_NOT_TRACK = '1'
-    process.env.NIGHTSHIFT_TELEMETRY_DISABLED = '1'
+    process.env.KOLUX_TELEMETRY_DISABLED = '1'
     expect(
       resolveConsent(
         settingsWithTelemetry({
@@ -254,7 +254,7 @@ describe('resolveConsent', () => {
   })
 
   it('env-var override wins over a stored pending_banner state', () => {
-    process.env.NIGHTSHIFT_TELEMETRY_DISABLED = '1'
+    process.env.KOLUX_TELEMETRY_DISABLED = '1'
     expect(
       resolveConsent(
         settingsWithTelemetry({
@@ -263,6 +263,6 @@ describe('resolveConsent', () => {
           existedBeforeTelemetryRelease: true
         })
       )
-    ).toEqual({ effective: 'disabled', reason: 'nightshift_disabled' })
+    ).toEqual({ effective: 'disabled', reason: 'kolux_disabled' })
   })
 })

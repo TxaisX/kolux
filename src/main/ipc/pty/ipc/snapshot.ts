@@ -1,5 +1,5 @@
 import { getPtyIpc } from '../../pty-host-bindings'
-import type { NightshiftRuntimeService } from '../../../runtime/nightshift-runtime'
+import type { KoluxRuntimeService } from '../../../runtime/kolux-runtime'
 import { tryGetProviderForPty } from '../provider/registry'
 import { providerSnapshotRequiredPtys } from '../delivery/visibility-state'
 import type { PtyPendingDataDrainQueue } from '../../pty-pending-data-drain-queue'
@@ -18,7 +18,7 @@ function normalizeSnapshotScrollbackRows(value: unknown): number | undefined {
 }
 
 export function installPtySnapshotIpcHandlers(deps: {
-  runtime?: NightshiftRuntimeService
+  runtime?: KoluxRuntimeService
   pendingData: PtyPendingDataDrainQueue
 }): void {
   const ipcMain = getPtyIpc()

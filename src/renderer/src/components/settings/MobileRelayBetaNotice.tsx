@@ -8,7 +8,7 @@ export function MobileRelayBetaNotice({ className }: { className?: string }): Re
     <p className={cn('text-[11px] text-muted-foreground', className)}>
       {translate(
         'auto.components.settings.MobileRelayBetaNotice.notice',
-        'Nightshift Relay is in beta.'
+        'Kolux Relay is in beta.'
       )}
     </p>
   )

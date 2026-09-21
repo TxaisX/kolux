@@ -4,7 +4,7 @@ import { join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { installFakeAppEnvironment } from '../../../config/scripts/vitest-host-ports-setup'
 
-const userDataDir = mkdtempSync(join(tmpdir(), 'nightshift-pi-overlay-path-userdata-'))
+const userDataDir = mkdtempSync(join(tmpdir(), 'kolux-pi-overlay-path-userdata-'))
 
 import { PiTitlebarExtensionService } from './titlebar-extension-service'
 
@@ -12,7 +12,7 @@ const PATH_SHAPED_PTY_ID = [
   '50c010a2-bc8e-4eb1-8847-5812133ad6df',
   'Users',
   'dev',
-  'nightshift',
+  'kolux',
   'workspaces',
   'noqa',
   'feature@@a1b2c3d4'
@@ -41,19 +41,19 @@ describe('PiTitlebarExtensionService legacy overlay paths', () => {
   })
 
   it('does not redirect path-shaped PTY ids into active Pi homes', () => {
-    const piHome = mkdtempSync(join(tmpdir(), 'nightshift-pi-overlay-path-home-'))
+    const piHome = mkdtempSync(join(tmpdir(), 'kolux-pi-overlay-path-home-'))
     const svc = new PiTitlebarExtensionService()
 
     try {
       const env = svc.buildPtyEnv(PATH_SHAPED_PTY_ID, piHome, 'pi')
 
       expect(env.PI_CODING_AGENT_DIR).toBeUndefined()
-      expect(env.NIGHTSHIFT_PI_SOURCE_AGENT_DIR).toBe(piHome)
+      expect(env.KOLUX_PI_SOURCE_AGENT_DIR).toBe(piHome)
       expect(existsSync(join(userDataDir, 'pi-agent-overlays'))).toBe(false)
       expect(readdirSync(join(piHome, 'extensions')).sort()).toEqual([
-        'nightshift-agent-status.ts',
-        'nightshift-prefill.ts',
-        'nightshift-titlebar-spinner.ts'
+        'kolux-agent-status.ts',
+        'kolux-prefill.ts',
+        'kolux-titlebar-spinner.ts'
       ])
     } finally {
       rmSync(piHome, { recursive: true, force: true })
