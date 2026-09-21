@@ -85,15 +85,23 @@ export function canWatcherCoverParkedTerminalTab(
   const state = useAppStore.getState()
   const panes = resolveParkedTerminalPaneCandidates(tab, state)
   const restorePolicy = parkRestorePolicyFromState(state)
-  return (
-    panes.length > 0 &&
-    panes.every(
-      (pane) =>
-        pane.ptyId !== null &&
-        isTerminalLeafId(pane.leafId) &&
-        isParkRestorableTerminalPty(pane.ptyId, worktreeId, restorePolicy) &&
-        isPtyEligible(pane.ptyId)
-    )
+  if (panes.length === 0) {
+    return false
+  }
+  // Why: a tab whose panes have no pty anywhere yet (fresh tab, spawn not
+  // issued, or a failed spawn) has nothing a watcher could miss — deferring
+  // it costs nothing, and reconciliation starts a real watcher once a pty
+  // appears. A partially-spawned split (some panes have a pty, one doesn't)
+  // still falls through to the strict check below.
+  if (panes.every((pane) => pane.ptyId === null)) {
+    return true
+  }
+  return panes.every(
+    (pane) =>
+      pane.ptyId !== null &&
+      isTerminalLeafId(pane.leafId) &&
+      isParkRestorableTerminalPty(pane.ptyId, worktreeId, restorePolicy) &&
+      isPtyEligible(pane.ptyId)
   )
 }
 

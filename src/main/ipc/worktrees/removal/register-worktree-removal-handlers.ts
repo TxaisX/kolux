@@ -1,10 +1,12 @@
 import { ipcMain } from 'electron'
 import type { RemoveWorktreeResult } from '../../../../shared/worktree/create-types'
 import { getRepoExecutionHostId } from '../../../../shared/execution-host'
+import { isFolderRepo } from '../../../../shared/repo-kind'
 import { withWorktreeSpan } from '../../../observability/instrumentation'
 import { parseWorktreeId } from '../../worktree-logic'
 import type { RemoveWorktreeArgs } from '../ipc-context-schemas'
 import type { WorktreeIpcContext } from '../worktree-ipc-context'
+import { beginWorktreeMutationGate } from '../../worktree-refresh-mutation-gate'
 import { executeWorktreeRemoval } from './execute-worktree-removal'
 import {
   getWorktreeRemovalInFlightKey,
@@ -35,10 +37,14 @@ export function registerWorktreeRemovalHandlers(context: WorktreeIpcContext): vo
         throw new Error(`Worktree deletion already in progress: ${args.worktreeId}`)
       }
 
+      // Why: hold this repo's watcher-driven refreshes while the removal writes/deletes
+      // files, so they can't compete with it for disk/CPU. Folder workspaces are a pure
+      // registration change with no filesystem churn, so they skip the gate.
+      const releaseMutationGate = isFolderRepo(repo) ? null : beginWorktreeMutationGate(repoId)
       // Why: concurrent stale-toast/double-click/sidebar races can hit the same worktree; share the op so only one path touches Git and disk.
       const removal = withWorktreeSpan({ stage: 'remove', path: worktreePath }, () =>
         executeWorktreeRemoval(context, args, repo, repoId, worktreePath, removalHostId)
-      )
+      ).finally(() => releaseMutationGate?.())
       worktreeRemovalsInFlight.set(inFlightKey, { optionsKey, promise: removal })
       try {
         const result = await removal

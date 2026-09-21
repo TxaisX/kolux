@@ -28,6 +28,7 @@ import { adoptProvisionedRootSshCheckout } from '../../../provisioned-root-ssh-a
 import { normalizeLinkedWorkItemFields } from '../ipc-context-schemas'
 import type { CreateWorktreeArgsWithSystemProvenance } from '../ipc-context-schemas'
 import { createFolderWorkspace } from './folder-workspace-creation'
+import { beginWorktreeMutationGate } from '../../worktree-refresh-mutation-gate'
 import { findExactRepoOwner, isCapturedRepoCurrent } from '../listing/worktree-host-ownership'
 import { requireWorktreeCreateRoute } from '../../../worktree-create-execution-host-route'
 import type { WorktreeIpcContext } from '../worktree-ipc-context'
@@ -71,10 +72,17 @@ export function registerWorktreeCreateHandlers(context: WorktreeIpcContext): voi
             // row read as local here and ran `git worktree add` on the client against a remote path,
             // while the runtime sibling on the same repo already resolved.
             const createRoute = requireWorktreeCreateRoute(repo)
-            result =
-              createRoute.kind === 'ssh'
-                ? await createRemoteWorktree(createArgs, createRoute.repo, store, mainWindow)
-                : await createLocalWorktree(createArgs, repo, store, mainWindow, runtime)
+            // Why: hold this repo's watcher-driven refreshes while `git worktree add`
+            // writes the checkout, so they can't compete with it for disk/CPU.
+            const releaseMutationGate = beginWorktreeMutationGate(repo.id)
+            try {
+              result =
+                createRoute.kind === 'ssh'
+                  ? await createRemoteWorktree(createArgs, createRoute.repo, store, mainWindow)
+                  : await createLocalWorktree(createArgs, repo, store, mainWindow, runtime)
+            } finally {
+              releaseMutationGate()
+            }
           }
         } catch (error) {
           releaseAutomationWorkspaceProvenanceRequest(args.automationProvenanceRequest)

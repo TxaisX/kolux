@@ -802,6 +802,34 @@ describe('terminal-parked-tab-watchers', () => {
       )
     })
 
+    it('accepts a fresh single-pane tab whose pty has never spawned', () => {
+      // Why: a saved tab restores its layout before its pty reconnects, so
+      // right after a reload every pane's ptyId is null — that must defer,
+      // not force a mount, or a big saved session mounts everything at once.
+      mockStoreState.terminalLayoutsByTabId[TAB_ID] = {
+        root: { type: 'leaf', leafId: LEAF_ID },
+        activeLeafId: LEAF_ID,
+        expandedLeafId: null,
+        ptyIdsByLeafId: {}
+      }
+      expect(canWatcherCoverParkedTerminalTab(WORKTREE_ID, { id: TAB_ID, ptyId: null })).toBe(true)
+    })
+
+    it('accepts a fresh split tab whose panes have never spawned a pty', () => {
+      mockStoreState.terminalLayoutsByTabId[TAB_ID] = {
+        root: {
+          type: 'split',
+          direction: 'row',
+          first: { type: 'leaf', leafId: LEAF_ID },
+          second: { type: 'leaf', leafId: SECOND_LEAF_ID }
+        },
+        activeLeafId: LEAF_ID,
+        expandedLeafId: null,
+        ptyIdsByLeafId: {}
+      }
+      expect(canWatcherCoverParkedTerminalTab(WORKTREE_ID, { id: TAB_ID, ptyId: null })).toBe(true)
+    })
+
     it('accepts a current capture whose panes are all snapshot-backed', () => {
       capturePanes([
         { ptyId: PTY_ID, paneId: 1, leafId: LEAF_ID, drivesTabTitle: true },

@@ -140,7 +140,19 @@ export function shouldMountBackgroundWorktreeTab(
 // seconds (field trace: 200+ replay-guard stall releases in one activation
 // window). Deferred tabs behave like cold-parked tabs from birth: no view
 // until first reveal, parked byte watchers own their side effects meanwhile.
-export const COLD_ACTIVATION_TAB_DEFER_THRESHOLD = 4
+// Why 0, not a small-batch opt-out: an idle "only 2 would defer" activation
+// used to skip deferral entirely and mount them anyway — harmless at 2, but
+// the same opt-out was what let a first-pass coverage miss (all-null ptyIds
+// right after a reload) fall through to "mount everything". Deferral now
+// always applies whenever there is anything left to defer.
+export const COLD_ACTIVATION_TAB_DEFER_THRESHOLD = 0
+
+// Why 8: revealing many deferred tabs in one pass (a bulk reveal, or a
+// coverage break across a worktree with dozens of tabs) would otherwise mount
+// that many TerminalPanes — each a scrollback replay plus a WebGL attach — in
+// one synchronous render. Admitting a few per animation frame keeps any one
+// frame cheap; the rest catch up over the next frames via a revision bump.
+export const COLD_ACTIVATION_REVEAL_BATCH_SIZE = 8
 
 export function canMountTerminalWorkspaceForStartup(args: {
   workspaceSessionReady: boolean
@@ -243,6 +255,11 @@ export function planColdActivationTabDeferral(opts: {
  * groups' active tabs, activity-portal tabs, pending spawns) mount this pass.
  * Once every tab has been revealed the restriction is removed, returning the
  * worktree to normal fully-mounted semantics.
+ *
+ * `maxNewMountsPerPass` caps how many newly-revealed tabs this call admits;
+ * the rest stay deferred and `hasMoreToReveal` tells the caller to schedule
+ * another pass (e.g. next animation frame) instead of mounting a big batch
+ * synchronously in one render.
  */
 export function revealActivationDeferredTabs(opts: {
   restrictions: Map<string, ReadonlySet<string>>
@@ -250,36 +267,49 @@ export function revealActivationDeferredTabs(opts: {
   worktreeId: string
   allTabIds: readonly string[]
   immediateTabIds: ReadonlySet<string>
-}): void {
-  const { restrictions, deferredMountTabIdsByWorktree, worktreeId, allTabIds, immediateTabIds } =
-    opts
+  maxNewMountsPerPass?: number
+}): { hasMoreToReveal: boolean } {
+  const {
+    restrictions,
+    deferredMountTabIdsByWorktree,
+    worktreeId,
+    allTabIds,
+    immediateTabIds,
+    maxNewMountsPerPass
+  } = opts
   // Why: targeted background mounts share the allowed-tab restriction map,
   // but only activation deferral may eagerly fan out parked watcher coverage.
   if (!deferredMountTabIdsByWorktree.has(worktreeId)) {
-    return
+    return { hasMoreToReveal: false }
   }
   const existing = restrictions.get(worktreeId)
   if (!existing) {
     deferredMountTabIdsByWorktree.delete(worktreeId)
-    return
+    return { hasMoreToReveal: false }
   }
-  let grew = false
+  const newlyImmediateTabIds: string[] = []
   for (const tabId of immediateTabIds) {
     if (!existing.has(tabId)) {
-      grew = true
-      break
+      newlyImmediateTabIds.push(tabId)
     }
   }
-  const next = grew ? new Set([...existing, ...immediateTabIds]) : existing
+  const admitted =
+    maxNewMountsPerPass !== undefined
+      ? newlyImmediateTabIds.slice(0, maxNewMountsPerPass)
+      : newlyImmediateTabIds
+  const grew = admitted.length > 0
+  const next = grew ? new Set([...existing, ...admitted]) : existing
+  const hasMoreToReveal = admitted.length < newlyImmediateTabIds.length
   if (allTabIds.length > 0 && allTabIds.every((tabId) => next.has(tabId))) {
     restrictions.delete(worktreeId)
     deferredMountTabIdsByWorktree.delete(worktreeId)
-    return
+    return { hasMoreToReveal }
   }
   if (grew) {
     restrictions.set(worktreeId, next)
   }
   replaceActivationDeferredMountTabs(deferredMountTabIdsByWorktree, worktreeId, next, allTabIds)
+  return { hasMoreToReveal }
 }
 
 /** Tabs a restriction currently keeps unmounted — the set that needs parked

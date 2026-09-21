@@ -8,17 +8,18 @@ import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 // Why: cold-park hysteresis keeps a hidden pane mounted for 30s so quick tab
 // flips never pay a re-hydrate; hot-retain keeps a bounded recently-visible
 // working set warm for 5 minutes beyond that. The cap (not the clock) is the
-// primary evictor — 4 worktrees covers the ordinary working set, so parking
-// only engages for the many-worktree tail it
-// was built for. Reveal cost is a flat ~170ms remount regardless of buffer
+// primary evictor. Measured cost per mounted xterm pane is ~14MB *outside* the
+// JS heap even idle with no pty (WebGL context, xterm buffers) — not the ~4-5MB
+// this cap originally assumed — so the warm working set is capped tighter: 2
+// worktrees, 4 tabs. Reveal cost is a flat ~170ms remount regardless of buffer
 // size, so cutting remount *frequency* beats shaving replay.
 export const TERMINAL_WORKTREE_COLD_PARK_DELAY_MS = 30_000
 export const TERMINAL_WORKTREE_HOT_RETAIN_MS = 5 * 60_000
-export const TERMINAL_WORKTREE_HOT_RETAIN_LIMIT = 4
+export const TERMINAL_WORKTREE_HOT_RETAIN_LIMIT = 2
 export const TERMINAL_WORKTREE_PARK_DELAY_MS = TERMINAL_WORKTREE_COLD_PARK_DELAY_MS
 export const TERMINAL_TAB_COLD_PARK_DELAY_MS = 30_000
 export const TERMINAL_TAB_HOT_RETAIN_MS = 5 * 60_000
-export const TERMINAL_TAB_HOT_RETAIN_LIMIT = 6
+export const TERMINAL_TAB_HOT_RETAIN_LIMIT = 4
 
 // Why: tests override these per call (instead of process.env reads inside the
 // module) to shrink the 30s hysteresis to test-friendly durations.

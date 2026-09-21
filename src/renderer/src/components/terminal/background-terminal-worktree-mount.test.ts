@@ -224,7 +224,28 @@ describe('cold activation tab deferral', () => {
     expect(canDeferColdActivationTabsForHost({ executionHostId: null })).toBe(false)
   })
 
-  it('mounts everything at once when few tabs would defer', () => {
+  it('defers even a small number of would-be-deferred tabs (no small-batch opt-out)', () => {
+    // Why: the threshold used to skip deferral for a handful of hidden tabs,
+    // which also let a first-pass coverage miss (every tab's pty still null
+    // right after a reload) fall through to "mount everything". Deferral now
+    // always applies whenever there is anything left to defer.
+    const restrictions = new Map<string, ReadonlySet<string>>()
+    const deferredMountTabIdsByWorktree = new Map<string, ReadonlySet<string>>()
+    const deferring = planColdActivationTabDeferral({
+      restrictions,
+      deferredMountTabIdsByWorktree,
+      worktreeId: 'wt-1',
+      allTabIds: tabIds(3),
+      isTabLive: () => false,
+      isTabDeferrable: () => true,
+      immediateTabIds: new Set(['tab-1'])
+    })
+    expect(deferring).toBe(true)
+    expect(restrictions.get('wt-1')).toEqual(new Set(['tab-1']))
+    expect(deferredMountTabIdsByWorktree.get('wt-1')).toEqual(new Set(['tab-2', 'tab-3']))
+  })
+
+  it('never defers when nothing would be left unmounted', () => {
     const restrictions = new Map<string, ReadonlySet<string>>([['wt-1', new Set(['tab-1'])]])
     const deferredMountTabIdsByWorktree = new Map<string, ReadonlySet<string>>()
     const deferring = planColdActivationTabDeferral({
@@ -369,7 +390,10 @@ describe('cold activation tab deferral', () => {
     expect(resolve).toHaveBeenCalledOnce()
   })
 
-  it('does not defer when most tabs are already live', () => {
+  it('still defers the one non-live tab when most tabs are already live', () => {
+    // Why not skip: deferral has no small-batch opt-out any more (see the
+    // "no small-batch opt-out" test above) — even a single deferrable tab
+    // among many live ones stays unmounted until revealed.
     const restrictions = new Map<string, ReadonlySet<string>>()
     const deferredMountTabIdsByWorktree = new Map<string, ReadonlySet<string>>()
     const deferring = planColdActivationTabDeferral({
@@ -381,8 +405,8 @@ describe('cold activation tab deferral', () => {
       isTabDeferrable: () => true,
       immediateTabIds: new Set()
     })
-    expect(deferring).toBe(false)
-    expect(restrictions.has('wt-1')).toBe(false)
+    expect(deferring).toBe(true)
+    expect(deferredMountTabIdsByWorktree.get('wt-1')).toEqual(new Set(['tab-10']))
   })
 
   it('reveals newly visible tabs and lifts the restriction once all are revealed', () => {
@@ -419,6 +443,38 @@ describe('cold activation tab deferral', () => {
       allTabIds,
       immediateTabIds: new Set(['tab-3'])
     })
+    expect(restrictions.has('wt-1')).toBe(false)
+    expect(deferredMountTabIdsByWorktree.has('wt-1')).toBe(false)
+  })
+
+  it('caps how many newly-revealed tabs mount in one pass and reports more to reveal', () => {
+    const restrictions = new Map<string, ReadonlySet<string>>([['wt-1', new Set(['tab-1'])]])
+    const allTabIds = tabIds(5)
+    const deferredMountTabIdsByWorktree = new Map<string, ReadonlySet<string>>([
+      ['wt-1', new Set(['tab-2', 'tab-3', 'tab-4', 'tab-5'])]
+    ])
+
+    const first = revealActivationDeferredTabs({
+      restrictions,
+      deferredMountTabIdsByWorktree,
+      worktreeId: 'wt-1',
+      allTabIds,
+      immediateTabIds: new Set(['tab-2', 'tab-3', 'tab-4', 'tab-5']),
+      maxNewMountsPerPass: 2
+    })
+    expect(first.hasMoreToReveal).toBe(true)
+    expect(restrictions.get('wt-1')).toEqual(new Set(['tab-1', 'tab-2', 'tab-3']))
+    expect(deferredMountTabIdsByWorktree.get('wt-1')).toEqual(new Set(['tab-4', 'tab-5']))
+
+    const second = revealActivationDeferredTabs({
+      restrictions,
+      deferredMountTabIdsByWorktree,
+      worktreeId: 'wt-1',
+      allTabIds,
+      immediateTabIds: new Set(['tab-2', 'tab-3', 'tab-4', 'tab-5']),
+      maxNewMountsPerPass: 2
+    })
+    expect(second.hasMoreToReveal).toBe(false)
     expect(restrictions.has('wt-1')).toBe(false)
     expect(deferredMountTabIdsByWorktree.has('wt-1')).toBe(false)
   })
