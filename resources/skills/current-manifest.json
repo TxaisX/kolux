@@ -5,35 +5,17 @@
       "name": "computer-use",
       "sourcePath": "skills/computer-use",
       "releaseRevision": 10,
-      "packageDigest": "4dce7721b218ca48cc999218ab6467e9dbe81814e23cb5f6b0dda9d973488f6b",
-      "gitTreeSha": "e72ff4674f61c428d44322b1d8f5e784493545aa",
+      "packageDigest": "8c34624647df2e34e738c72329429bb1974f741aae990b061db3a5070d2f0863",
+      "gitTreeSha": "b8b7f8646270556d50e3a150e82438fbfb3918c6",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 1990,
+          "size": 1885,
           "executable": false,
           "classification": "text",
-          "exactSha256": "38e0ad3107ea144113e4459a37b1ffd09171f6865abb2255e1b3bba1582530bc",
-          "textNormalizedSha256": "38e0ad3107ea144113e4459a37b1ffd09171f6865abb2255e1b3bba1582530bc",
-          "identitySha256": "38e0ad3107ea144113e4459a37b1ffd09171f6865abb2255e1b3bba1582530bc"
-        }
-      ]
-    },
-    {
-      "name": "linear-tickets",
-      "sourcePath": "skills/linear-tickets",
-      "releaseRevision": 12,
-      "packageDigest": "d85e1a6e22163cc5cbc6876839d8067e6364be844ed3f4a082386f844b2a0839",
-      "gitTreeSha": "b904e1f230a76ab56b65b9310a55c917f464b052",
-      "files": [
-        {
-          "path": "SKILL.md",
-          "size": 2195,
-          "executable": false,
-          "classification": "text",
-          "exactSha256": "167a99a456d39b916e7700ad75ce18ea6521eeb30c297f6f0728e0e89fdc56b7",
-          "textNormalizedSha256": "167a99a456d39b916e7700ad75ce18ea6521eeb30c297f6f0728e0e89fdc56b7",
-          "identitySha256": "167a99a456d39b916e7700ad75ce18ea6521eeb30c297f6f0728e0e89fdc56b7"
+          "exactSha256": "f9b1493c40f40f81f219ba68fecc358f7b3e8c7add6aff98fb0fa94bdf90fa42",
+          "textNormalizedSha256": "f9b1493c40f40f81f219ba68fecc358f7b3e8c7add6aff98fb0fa94bdf90fa42",
+          "identitySha256": "f9b1493c40f40f81f219ba68fecc358f7b3e8c7add6aff98fb0fa94bdf90fa42"
         }
       ]
     },
@@ -41,17 +23,17 @@
       "name": "kolux-cli",
       "sourcePath": "skills/kolux-cli",
       "releaseRevision": 38,
-      "packageDigest": "360942b5700f66a7c6ebfa65acd22aab12bcc6ec121bc34c4e3e1e9c3a286e80",
-      "gitTreeSha": "dab2ffede793438530ad967b6e2db19c0ca6df72",
+      "packageDigest": "174116eb2d824bd3230e3bdeb4454a603b406769a7f8b565e5829b663eb45cea",
+      "gitTreeSha": "5a308713573e1d7566ff7baf0ee63280ac8fce5d",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2416,
+          "size": 2266,
           "executable": false,
           "classification": "text",
-          "exactSha256": "532c926641a0534790108509951b33bb65ceb09f61457d43f30565111922f825",
-          "textNormalizedSha256": "532c926641a0534790108509951b33bb65ceb09f61457d43f30565111922f825",
-          "identitySha256": "532c926641a0534790108509951b33bb65ceb09f61457d43f30565111922f825"
+          "exactSha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e",
+          "textNormalizedSha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e",
+          "identitySha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e"
         }
       ]
     },
@@ -59,17 +41,17 @@
       "name": "kolux-emulator",
       "sourcePath": "skills/kolux-emulator",
       "releaseRevision": 9,
-      "packageDigest": "cbbc3949356a9e3e03924f6a739be3039a07bdcb9c43fae5779a506011b95830",
-      "gitTreeSha": "d3f4266e3b9696660efd5093bbd0e866587288f2",
+      "packageDigest": "d192b0c2bde1fcc6e65e7d208fd87631ca569258bdae390318253516b022866e",
+      "gitTreeSha": "bbb932a8a38042b98afc9a35a18564c2d2cf2c90",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2325,
+          "size": 2200,
           "executable": false,
           "classification": "text",
-          "exactSha256": "dbacc906056fa00f8a289f5eae1906899fb3a4c8496109b2bada26efd8ac4f72",
-          "textNormalizedSha256": "dbacc906056fa00f8a289f5eae1906899fb3a4c8496109b2bada26efd8ac4f72",
-          "identitySha256": "dbacc906056fa00f8a289f5eae1906899fb3a4c8496109b2bada26efd8ac4f72"
+          "exactSha256": "42fc9356f2342920a8bcbbf77cae4cf4bece4c9d33bf04be29997dfcf2a37220",
+          "textNormalizedSha256": "42fc9356f2342920a8bcbbf77cae4cf4bece4c9d33bf04be29997dfcf2a37220",
+          "identitySha256": "42fc9356f2342920a8bcbbf77cae4cf4bece4c9d33bf04be29997dfcf2a37220"
         }
       ]
     },
@@ -77,17 +59,17 @@
       "name": "kolux-emulator-android",
       "sourcePath": "skills/kolux-emulator-android",
       "releaseRevision": 7,
-      "packageDigest": "475bc1a9e93c79d4ecda50c976d3f01c767c4b247ec5c76e17d4e2a85abb0a38",
-      "gitTreeSha": "8a65dcd2cc01ed12f20f0c404d90247094afeea7",
+      "packageDigest": "d414555eb2408d1bb9eacea252803e023e51c56290ce80f3a7a10cf6a0225513",
+      "gitTreeSha": "0ae255cdf3cbe12bb5cf7f386dd06bdc51b6e763",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2210,
+          "size": 2095,
           "executable": false,
           "classification": "text",
-          "exactSha256": "d9ff4b2748cb1b31c718ee205c3e6f4093518a1ab1699ac3cd689a10f448aa96",
-          "textNormalizedSha256": "d9ff4b2748cb1b31c718ee205c3e6f4093518a1ab1699ac3cd689a10f448aa96",
-          "identitySha256": "d9ff4b2748cb1b31c718ee205c3e6f4093518a1ab1699ac3cd689a10f448aa96"
+          "exactSha256": "b2214c75f1901d74e470a3f249d0cf72e85ba3ba208497e47ad13e1d1830a50d",
+          "textNormalizedSha256": "b2214c75f1901d74e470a3f249d0cf72e85ba3ba208497e47ad13e1d1830a50d",
+          "identitySha256": "b2214c75f1901d74e470a3f249d0cf72e85ba3ba208497e47ad13e1d1830a50d"
         }
       ]
     },
@@ -95,17 +77,17 @@
       "name": "kolux-linear",
       "sourcePath": "skills/kolux-linear",
       "releaseRevision": 10,
-      "packageDigest": "6473026561e979c1a32a6a83b730d941da6841e396eaad1f2491514c2ffa1fda",
-      "gitTreeSha": "fc92e9e05cfefc07d59dfd3978c1836007f9fedd",
+      "packageDigest": "1cac21170e08f3e92fa144228d2e4cb98a1a3d33a4a2db8afbf815ba9a922e02",
+      "gitTreeSha": "794eb7a1064685fc666d3c36b63b795aee2310f8",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2058,
+          "size": 1948,
           "executable": false,
           "classification": "text",
-          "exactSha256": "1c48642b044fd5ca92e5528c862b26f3c06a8ddfc8c42dcd6d6ead334dad24cc",
-          "textNormalizedSha256": "1c48642b044fd5ca92e5528c862b26f3c06a8ddfc8c42dcd6d6ead334dad24cc",
-          "identitySha256": "1c48642b044fd5ca92e5528c862b26f3c06a8ddfc8c42dcd6d6ead334dad24cc"
+          "exactSha256": "a0f79e12459faf22396aecd7d1f4d8b917f7d19bd940d1b009544fc21de2696b",
+          "textNormalizedSha256": "a0f79e12459faf22396aecd7d1f4d8b917f7d19bd940d1b009544fc21de2696b",
+          "identitySha256": "a0f79e12459faf22396aecd7d1f4d8b917f7d19bd940d1b009544fc21de2696b"
         }
       ]
     },
@@ -113,17 +95,35 @@
       "name": "kolux-per-workspace-env",
       "sourcePath": "skills/kolux-per-workspace-env",
       "releaseRevision": 7,
-      "packageDigest": "d9aafe8c8b6c14355801c0c76a8513d1ba9588f5533349a95be56ff6a0b76c0b",
-      "gitTreeSha": "4364c2292280193c219b233af7a9b9965e2d3b7d",
+      "packageDigest": "4ecae527bc01e94b8cca11f3aa757a49968cc2634fcd9e4e8303b5d0ba3e84f1",
+      "gitTreeSha": "b46539ba7447c421ce3f8c530aa0f126bcc0616b",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2244,
+          "size": 2119,
           "executable": false,
           "classification": "text",
-          "exactSha256": "6072c877e4b7fbe74213cc32767d337fa1d5744a2fb8e62e64839b1e68851c9f",
-          "textNormalizedSha256": "6072c877e4b7fbe74213cc32767d337fa1d5744a2fb8e62e64839b1e68851c9f",
-          "identitySha256": "6072c877e4b7fbe74213cc32767d337fa1d5744a2fb8e62e64839b1e68851c9f"
+          "exactSha256": "8f912ec990011efdb7a5fdc47de8f886a336be491de32a48fe48bc359c708b57",
+          "textNormalizedSha256": "8f912ec990011efdb7a5fdc47de8f886a336be491de32a48fe48bc359c708b57",
+          "identitySha256": "8f912ec990011efdb7a5fdc47de8f886a336be491de32a48fe48bc359c708b57"
+        }
+      ]
+    },
+    {
+      "name": "linear-tickets",
+      "sourcePath": "skills/linear-tickets",
+      "releaseRevision": 12,
+      "packageDigest": "0d724707aedcf260c5be7990b3ae40e48dfb435ccc066b1d27fad29d7e8f8d06",
+      "gitTreeSha": "3a423e0dc35c3ebc537fff4141debc5ead774128",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "size": 2090,
+          "executable": false,
+          "classification": "text",
+          "exactSha256": "cc00b82c4eeae24e48aa2a61aea54c416d2b84140cec0615c5fa99a7c3a72861",
+          "textNormalizedSha256": "cc00b82c4eeae24e48aa2a61aea54c416d2b84140cec0615c5fa99a7c3a72861",
+          "identitySha256": "cc00b82c4eeae24e48aa2a61aea54c416d2b84140cec0615c5fa99a7c3a72861"
         }
       ]
     },
@@ -131,17 +131,17 @@
       "name": "orchestration",
       "sourcePath": "skills/orchestration",
       "releaseRevision": 30,
-      "packageDigest": "d84f5824958935919515ca2c0fa8b2005a24dfd29a0ebe8e3db8a55ff105d7e0",
-      "gitTreeSha": "168cb65f3917839148ce601f995e2fef62212cb3",
+      "packageDigest": "93b7b6cbfdff9cb5dd47be9797f21e4ee52ad0d5e9cae799a260d022ac872f42",
+      "gitTreeSha": "e105e72334c4786c6c59d0882d6c37f596377fcd",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 4059,
+          "size": 3894,
           "executable": false,
           "classification": "text",
-          "exactSha256": "3228a3eddc4a18c9699c510cf437f5aa3af245aa9e6a74571b56146838099135",
-          "textNormalizedSha256": "3228a3eddc4a18c9699c510cf437f5aa3af245aa9e6a74571b56146838099135",
-          "identitySha256": "3228a3eddc4a18c9699c510cf437f5aa3af245aa9e6a74571b56146838099135"
+          "exactSha256": "05a38f8c80b9617c11acded3742e5832a74b15272cc9899dd2938f6cea8058ce",
+          "textNormalizedSha256": "05a38f8c80b9617c11acded3742e5832a74b15272cc9899dd2938f6cea8058ce",
+          "identitySha256": "05a38f8c80b9617c11acded3742e5832a74b15272cc9899dd2938f6cea8058ce"
         }
       ]
     }

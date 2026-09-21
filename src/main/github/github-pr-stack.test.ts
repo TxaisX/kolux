@@ -19,7 +19,7 @@ import {
   mergeGitHubPRStack
 } from './github-pr-stack'
 
-const repository = { owner: 'TxaisX', repo: 'kolux', host: 'github.com' }
+const repository = { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' }
 const summary: GitHubPRStack = {
   number: 51,
   position: 2,

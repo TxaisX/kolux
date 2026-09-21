@@ -324,7 +324,7 @@ describe('runner execFile timeout handling', () => {
     mockWedgedCliSpawn(child)
     const processKill = mockProcessGroupSignals()
     try {
-      const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fkolux/issues'], {
+      const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fnightshift/issues'], {
         cwd: '/repo'
       })
       const rejection = expect(promise).rejects.toThrow('glab timed out.')

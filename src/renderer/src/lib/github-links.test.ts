@@ -9,7 +9,7 @@ import { WORK_ITEM_LINK_QUERY_MAX_BYTES } from './work-item-link-query-bounds'
 
 describe('buildGitHubRepoUrl', () => {
   it('builds a GitHub repository URL from an owner/repo slug', () => {
-    expect(buildGitHubRepoUrl({ owner: 'TxaisX', repo: 'kolux' })).toBe(
+    expect(buildGitHubRepoUrl({ owner: 'TxaisX', repo: 'nightshift' })).toBe(
       'https://github.com/TxaisX/nightshift'
     )
   })
@@ -72,7 +72,7 @@ describe('parseGitHubIssueOrPRNumber', () => {
 describe('parseGitHubIssueOrPRLink', () => {
   it('parses slug, number, and type for direct item URLs', () => {
     expect(parseGitHubIssueOrPRLink('https://github.com/TxaisX/nightshift/pull/123')).toEqual({
-      slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+      slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
       number: 123,
       type: 'pr'
     })
@@ -91,7 +91,7 @@ describe('parseGitHubIssueOrPRLink', () => {
       type: 'pr'
     })
     expect(parseGitHubIssueOrPRLink('https://github.com/TxaisX/nightshift/issues/923')).toEqual({
-      slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+      slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
       number: 923,
       type: 'issue'
     })
@@ -141,7 +141,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'https://github.com/TxaisX/nightshift/issues/923',
       directNumber: 923,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
         number: 923,
         type: 'issue'
       }
@@ -153,7 +153,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'https://github.com/TxaisX/nightshift/pull/6934',
       directNumber: 6934,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
         number: 6934,
         type: 'pr'
       }
@@ -165,7 +165,7 @@ describe('normalizeGitHubLinkQuery', () => {
       query: 'HTTPS://github.com/TxaisX/nightshift/pull/6934',
       directNumber: 6934,
       directLink: {
-        slug: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' },
+        slug: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' },
         number: 6934,
         type: 'pr'
       }

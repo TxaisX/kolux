@@ -39,7 +39,7 @@ describe('electron-builder dev-channel identity', () => {
 
     expect(config.win.signtoolOptions.publisherName).toBe('SignPath Foundation')
     expect(config.win.verifyUpdateCodeSignature).toBeUndefined()
-    expect(config.publish.repo).toBe('kolux')
+    expect(config.publish.repo).toBe('nightshift')
     expect(config.publish.releaseType).toBe('release')
   })
 
@@ -79,9 +79,9 @@ describe('electron-builder dev-channel identity', () => {
   })
 
   it.each([
-    ['hourly', { KOLUX_WIN_HOURLY: '1' }, 'kolux-hourly'],
-    ['daily', { KOLUX_WIN_DAILY: '1' }, 'kolux-daily'],
-    ['adhoc', { KOLUX_WIN_ADHOC: '1' }, 'kolux-adhoc']
+    ['hourly', { KOLUX_WIN_HOURLY: '1' }, 'nightshift-hourly'],
+    ['daily', { KOLUX_WIN_DAILY: '1' }, 'nightshift-daily'],
+    ['adhoc', { KOLUX_WIN_ADHOC: '1' }, 'nightshift-adhoc']
   ])('publishes %s Windows builds to its own repo as a prerelease', (_channel, env, repo) => {
     const config = loadConfigWithEnv(env)
 
@@ -107,13 +107,13 @@ describe('electron-builder dev-channel identity', () => {
     })
 
     expect(config.mac.notarize).toBe(true)
-    expect(config.publish.repo).toBe('kolux-adhoc')
+    expect(config.publish.repo).toBe('nightshift-adhoc')
   })
 })
 
 describe('collectDevChannelPackagingProblems', () => {
   const goodWinConfig = {
-    publish: { repo: 'kolux-adhoc', releaseType: 'prerelease' },
+    publish: { repo: 'nightshift-adhoc', releaseType: 'prerelease' },
     extraMetadata: { version: '1.4.178-adhoc.20260819010203' },
     win: { verifyUpdateCodeSignature: false }
   }
@@ -136,11 +136,11 @@ describe('collectDevChannelPackagingProblems', () => {
     const problems = collectDevChannelPackagingProblems({
       channel: 'adhoc',
       platform: 'win32',
-      config: { ...goodWinConfig, publish: { repo: 'kolux', releaseType: 'release' } },
+      config: { ...goodWinConfig, publish: { repo: 'nightshift', releaseType: 'release' } },
       env
     })
 
-    expect(problems.join('\n')).toContain('must publish to "kolux-adhoc"')
+    expect(problems.join('\n')).toContain('must publish to "nightshift-adhoc"')
     expect(problems.join('\n')).toContain('rebase it onto a main that does')
   })
 
@@ -177,7 +177,7 @@ describe('collectDevChannelPackagingProblems', () => {
         channel: 'adhoc',
         platform: 'darwin',
         config: {
-          publish: { repo: 'kolux-adhoc', releaseType: 'prerelease' },
+          publish: { repo: 'nightshift-adhoc', releaseType: 'prerelease' },
           extraMetadata: { version: '1.4.178-adhoc.20260819010203' },
           win: { signtoolOptions: { publisherName: 'SignPath Foundation' } }
         },

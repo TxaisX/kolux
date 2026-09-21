@@ -26,10 +26,16 @@ const KOLUX_OPENCODE_PLUGIN_FILE = 'kolux-opencode-status.js'
 // Why: pre-rename Kolux wrote this filename; OpenCode loads every plugins/*.js file, so a stale
 // copy left in a mirrored/shared plugins dir would keep firing the managed hook a second time.
 const PRE_RENAME_OPENCODE_PLUGIN_FILE = 'nightshift-opencode-status.js'
+// Why: a user's own file could coincidentally share this filename; only ever-written pre-rename
+// output contains this export name, so require it before deleting (mirrors amp's plugin marker).
+const PRE_RENAME_OPENCODE_PLUGIN_MARKER = 'NightshiftOpenCodeStatusPlugin'
 
 function removeLegacyOpenCodePlugin(pluginsDir: string): void {
+  const legacyPath = join(pluginsDir, PRE_RENAME_OPENCODE_PLUGIN_FILE)
   try {
-    unlinkSync(join(pluginsDir, PRE_RENAME_OPENCODE_PLUGIN_FILE))
+    if (readFileSync(legacyPath, 'utf8').includes(PRE_RENAME_OPENCODE_PLUGIN_MARKER)) {
+      unlinkSync(legacyPath)
+    }
   } catch {
     // Absent is the common case; a real failure is non-fatal for this best-effort sweep.
   }
@@ -197,8 +203,13 @@ export class OpenCodeHookService {
           const overlayPluginsDir = join(overlayDir, 'plugins')
           mkdirSync(overlayPluginsDir, { recursive: true })
           for (const pluginEntry of readdirSync(resolvedSource, { withFileTypes: true })) {
-            // Why: skip a user plugin sharing Kolux's filename; mirroring it would let writePluginIntoOverlay clobber the user's file.
-            if (pluginEntry.name === KOLUX_OPENCODE_PLUGIN_FILE) {
+            // Why: skip a user plugin sharing Kolux's filename (mirroring it would let
+            // writePluginIntoOverlay clobber it), and skip the pre-rename filename too so a
+            // stale copy never needs deleting out of the overlay in the first place.
+            if (
+              pluginEntry.name === KOLUX_OPENCODE_PLUGIN_FILE ||
+              pluginEntry.name === PRE_RENAME_OPENCODE_PLUGIN_FILE
+            ) {
               continue
             }
             mirrorEntry(

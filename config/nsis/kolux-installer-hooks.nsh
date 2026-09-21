@@ -34,6 +34,65 @@
   DeleteRegValue SHELL_CONTEXT "Software\Classes\Applications\${APP_EXECUTABLE_FILENAME}\SupportedTypes" "${EXT}"
 !macroend
 
+; ---------------------------------------------------------------------------
+; Silently remove a leftover Nightshift install before Kolux installs (the
+; product rename's Windows migration).
+;
+; Why in customInit, not customInstall: customInit runs in .onInit
+; (installer.nsi), before initMultiUser resolves $INSTDIR and before any Kolux
+; file is written, so the two installs never race on disk. Everything here is
+; best-effort and must never Abort/Quit; a miss just leaves the old install in
+; place for Kolux's own first-launch migration
+; (src/main/startup/pre-kolux-userdata-migration.ts) to still find.
+;
+; Nightshift's OWN uninstaller is what runs, not a bespoke delete: its
+; customUnInstall hook (this file's history at c73b9e50) only kills the app
+; and the relocated daemon host and never touches %APPDATA%\Nightshift, and
+; Nightshift's config never set electron-builder's `deleteAppDataOnUninstall`
+; (the only thing that would). Running it silently is therefore safe for user
+; data.
+;
+; OLD_NIGHTSHIFT_UNINSTALL_KEY is a fixed constant, not re-derived per build:
+; app-builder-lib computes the NSIS uninstall registry key as
+; UUID.v5(appId, ELECTRON_BUILDER_NS_UUID) (NsisTarget.js), and Nightshift's
+; retired appId ("com.txais.nightshift", c73b9e50:config/electron-builder.config.cjs)
+; never changes.
+!define OLD_NIGHTSHIFT_UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\{13ea7d17-c314-5605-b7f3-d1177cb8ab25}"
+
+!macro customInit
+  Push $0
+  Push $1
+  Push $2
+
+  ; Stop a running old Nightshift the same way customUnInstall (below) stops
+  ; Kolux: taskkill scoped to the current user, so an elevated all-users
+  ; install cannot reach another logged-on user's session.
+  ReadEnvStr $1 USERNAME
+  ${if} $1 == ""
+    StrCpy $2 ""
+  ${else}
+    StrCpy $2 '/FI "USERNAME eq $1"'
+  ${endIf}
+  nsExec::Exec 'taskkill /F /IM "Nightshift.exe" $2'
+  Pop $0
+
+  ; HKCU first (electron-builder's default per-user install scope), then HKLM
+  ; for an all-users Nightshift install. QuietUninstallString already carries
+  ; /S and the installer's own /allusers or /currentuser flag
+  ; (app-builder-lib's registryAddInstallInfo) - never add flags here.
+  ReadRegStr $0 HKCU "${OLD_NIGHTSHIFT_UNINSTALL_KEY}" "QuietUninstallString"
+  ${if} $0 == ""
+    ReadRegStr $0 HKLM "${OLD_NIGHTSHIFT_UNINSTALL_KEY}" "QuietUninstallString"
+  ${endIf}
+  ${if} $0 != ""
+    ExecWait '$0' $1
+  ${endIf}
+
+  Pop $2
+  Pop $1
+  Pop $0
+!macroend
+
 !macro customInstall
   WriteRegStr SHELL_CONTEXT "Software\Classes\${MARKDOWN_PROGID}" "" "Markdown Document"
   WriteRegStr SHELL_CONTEXT "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" "$appExe,0"

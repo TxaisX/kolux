@@ -25,7 +25,7 @@ import {
 } from 'node:fs'
 import type { Dirent } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 
 const MIGRATION_COMPLETE_MARKER = '.kolux-legacy-rename-migration-complete'
 // Mirrors LEGACY_BACKUP_COUNT in kolux-profiles/profile-storage-paths.ts.
@@ -93,6 +93,26 @@ function translatedBasename(name: string): string {
   return name
 }
 
+// Why: a relative symlink target can name a sibling this migration itself renames (e.g.
+// '.nightshift-managed-home'); carrying the raw target forward verbatim would leave the new
+// link pointing at a name that only ever existed on the old side, so translate each path
+// segment the same way a real entry's basename would be translated. An absolute target is left
+// untouched — it may point outside the migrated tree entirely, and rewriting it would risk
+// aiming at a path this migration never created.
+export function translatedSymlinkTarget(rawTarget: string): string {
+  if (isAbsolute(rawTarget)) {
+    return rawTarget
+  }
+  return rawTarget
+    .split(/([\\/])/)
+    .map((part) =>
+      part === '' || part === '.' || part === '..' || /^[\\/]$/.test(part)
+        ? part
+        : translatedBasename(part)
+    )
+    .join('')
+}
+
 function moveOrCopyFile(oldPath: string, newPath: string): boolean {
   try {
     renameSync(oldPath, newPath)
@@ -118,7 +138,7 @@ function migrateEntry(oldPath: string, newPath: string, entry: Dirent): boolean 
   }
   if (entry.isSymbolicLink()) {
     try {
-      symlinkSync(readlinkSync(oldPath), newPath)
+      symlinkSync(translatedSymlinkTarget(readlinkSync(oldPath)), newPath)
       return true
     } catch (error) {
       console.warn('[legacy-rename-migration] Failed to carry forward symlink', oldPath, error)
@@ -162,16 +182,24 @@ function migrateDirectoryContents(oldDir: string, newDir: string): boolean {
 
 type LegacyDirectoryPair = { oldDir: string; newDir: string }
 
-function candidateDirectoryPairs(canonicalUserDataPath: string): LegacyDirectoryPair[] {
-  const home = homedir()
+function candidateDirectoryPairs(
+  canonicalUserDataPath: string,
+  home: string
+): LegacyDirectoryPair[] {
   const pairs: LegacyDirectoryPair[] = []
+  const rootName = basename(canonicalUserDataPath).toLowerCase()
+  // Why: dev (kolux-dev) and E2E roots run beside a live Nightshift install on a developer
+  // machine; carrying ~/.nightshift forward from there pulls hooks out from under that app.
+  if (rootName !== 'kolux' && rootName !== '.kolux') {
+    return pairs
+  }
   const appDataRoot = dirname(canonicalUserDataPath)
   // Why gated on the packaged name (case-insensitively): a dev/E2E override (kolux-dev, a
   // disposable E2E dir) is not a real user's install and must never pull another profile's
   // data into it. Case-insensitive because the CLI's own userData resolver (getDefaultUserDataPath
   // in cli/runtime/metadata.ts) can call this with a lowercase 'kolux' basename before the
   // Electron app has ever launched post-upgrade.
-  if (basename(canonicalUserDataPath).toLowerCase() === 'kolux') {
+  if (rootName === 'kolux') {
     pairs.push({ oldDir: join(appDataRoot, 'Nightshift'), newDir: canonicalUserDataPath })
     // Why also the lowercase form: CLI/hook code (cli/runtime/metadata.ts,
     // codex/codex-home-paths.ts) resolves userData independently of Electron using a
@@ -180,7 +208,7 @@ function candidateDirectoryPairs(canonicalUserDataPath: string): LegacyDirectory
     // no-op pass on case-insensitive filesystems, where it is the same physical directory.
     pairs.push({ oldDir: join(appDataRoot, 'nightshift'), newDir: canonicalUserDataPath })
   }
-  // Why unconditional: ~/.kolux is a dotfile home built independently of userData (agent
+  // Why for both root names: ~/.kolux is a dotfile home built independently of userData (agent
   // hooks, keybindings.json, credential stores, claude-agent-teams-bin, relay sessions).
   pairs.push({ oldDir: join(home, '.nightshift'), newDir: join(home, '.kolux') })
   const xdgDataHome = process.env.XDG_DATA_HOME
@@ -199,13 +227,22 @@ function candidateDirectoryPairs(canonicalUserDataPath: string): LegacyDirectory
  * failure left by a still-running old app (or a locked file) is retried on the next launch
  * instead of being silently accepted as done.
  */
-export function migrateLegacyNightshiftUserData(canonicalUserDataPath: string): void {
+export function migrateLegacyNightshiftUserData(
+  canonicalUserDataPath: string,
+  options: { homeDir?: string } = {}
+): void {
+  // Why: under a test runner homedir() and the default AppData are the developer's live install;
+  // only an explicitly supplied sandbox home may be migrated (this once moved a real profile).
+  if (process.env.VITEST && !options.homeDir) {
+    return
+  }
   const markerPath = join(canonicalUserDataPath, MIGRATION_COMPLETE_MARKER)
   if (existsSync(markerPath)) {
     return
   }
   let allSucceeded = true
-  for (const { oldDir, newDir } of candidateDirectoryPairs(canonicalUserDataPath)) {
+  const home = options.homeDir ?? homedir()
+  for (const { oldDir, newDir } of candidateDirectoryPairs(canonicalUserDataPath, home)) {
     if (!existsSync(oldDir)) {
       continue
     }

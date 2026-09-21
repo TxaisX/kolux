@@ -257,7 +257,11 @@ export const electronViteConfig: UserConfig = {
             'src/main/codex/managed-home-shell-preflight.ts'
           ),
           // Why: account import mutates the user's macOS Keychain from the CLI.
-          'claude-accounts/keychain': resolve('src/main/claude-accounts/keychain.ts')
+          'claude-accounts/keychain': resolve('src/main/claude-accounts/keychain.ts'),
+          // Why: the CLI runs the Nightshift → Kolux data carry-over when it starts before the app.
+          'startup/pre-kolux-userdata-migration': resolve(
+            'src/main/startup/pre-kolux-userdata-migration.ts'
+          )
         },
         // Why: Rolldown's SSR default is ESM, but Electron and sidecar launchers
         // consume these stable CommonJS paths.

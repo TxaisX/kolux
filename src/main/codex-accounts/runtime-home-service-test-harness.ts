@@ -18,6 +18,8 @@ export const testState = {
   userDataDir: '',
   fakeHomeDir: '',
   previousUserDataPath: undefined as string | undefined,
+  previousCodexHome: undefined as string | undefined,
+  previousKoluxCodexHome: undefined as string | undefined,
   shellStartupEnvProbeSupported: true
 }
 
@@ -167,6 +169,13 @@ export function setupRuntimeHomeTest(): void {
   testState.fakeHomeDir = mkdtempSync(join(tmpdir(), 'kolux-codex-home-'))
   testState.previousUserDataPath = process.env.KOLUX_USER_DATA_PATH
   process.env.KOLUX_USER_DATA_PATH = testState.userDataDir
+  // Why: prepareForCodexLaunch() falls back to process.env when called with no launchEnv
+  // (the test calling convention here) — an ambient CODEX_HOME from a real Kolux-launched
+  // host terminal would otherwise read as a user override and misroute these tests.
+  testState.previousCodexHome = process.env.CODEX_HOME
+  testState.previousKoluxCodexHome = process.env.KOLUX_CODEX_HOME
+  delete process.env.CODEX_HOME
+  delete process.env.KOLUX_CODEX_HOME
   mkdirSync(getSystemCodexHomePath(), { recursive: true })
   mkdirSync(getRuntimeCodexHomePath(), { recursive: true })
   writePaneRegistry({
@@ -185,5 +194,15 @@ export function teardownRuntimeHomeTest(): void {
     delete process.env.KOLUX_USER_DATA_PATH
   } else {
     process.env.KOLUX_USER_DATA_PATH = testState.previousUserDataPath
+  }
+  if (testState.previousCodexHome === undefined) {
+    delete process.env.CODEX_HOME
+  } else {
+    process.env.CODEX_HOME = testState.previousCodexHome
+  }
+  if (testState.previousKoluxCodexHome === undefined) {
+    delete process.env.KOLUX_CODEX_HOME
+  } else {
+    process.env.KOLUX_CODEX_HOME = testState.previousKoluxCodexHome
   }
 }

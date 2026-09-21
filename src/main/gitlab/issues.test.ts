@@ -68,7 +68,7 @@ describe('gitlab issue operations', () => {
 
     await expect(getIssue('/repo-root', 923)).resolves.toMatchObject({ number: 923 })
     expect(glabExecFileAsyncMock).toHaveBeenCalledWith(
-      ['api', 'projects/TxaisX%2Fkolux/issues/923'],
+      ['api', 'projects/TxaisX%2Fnightshift/issues/923'],
       { cwd: '/repo-root' }
     )
   })
@@ -143,7 +143,7 @@ describe('gitlab issue operations', () => {
     )
     expect(glabApiWithHeadersMock).toHaveBeenCalledWith(
       [
-        'projects/TxaisX%2Fkolux/issues?page=1&per_page=5&order_by=updated_at&sort=desc&state=opened'
+        'projects/TxaisX%2Fnightshift/issues?page=1&per_page=5&order_by=updated_at&sort=desc&state=opened'
       ],
       { cwd: '/repo-root', ...localGitOptions }
     )
@@ -176,7 +176,7 @@ describe('gitlab issue operations', () => {
 
     expect(glabApiWithHeadersMock).toHaveBeenCalledWith(
       [
-        'projects/TxaisX%2Fkolux/issues?page=1&per_page=5&order_by=updated_at&sort=desc&state=opened'
+        'projects/TxaisX%2Fnightshift/issues?page=1&per_page=5&order_by=updated_at&sort=desc&state=opened'
       ],
       { cwd: '/repo-root' }
     )
@@ -192,7 +192,7 @@ describe('gitlab issue operations', () => {
 
     expect(glabApiWithHeadersMock).toHaveBeenCalledWith(
       [
-        'projects/TxaisX%2Fkolux/issues?page=3&per_page=50&order_by=updated_at&sort=desc&state=opened'
+        'projects/TxaisX%2Fnightshift/issues?page=3&per_page=50&order_by=updated_at&sort=desc&state=opened'
       ],
       { cwd: '/repo-root' }
     )
@@ -311,7 +311,7 @@ describe('gitlab issue operations', () => {
         'api',
         '-X',
         'POST',
-        'projects/TxaisX%2Fkolux/issues',
+        'projects/TxaisX%2Fnightshift/issues',
         '-f',
         'title=New issue',
         '-f',
@@ -392,7 +392,14 @@ describe('gitlab issue operations', () => {
     })
 
     expect(glabExecFileAsyncMock).toHaveBeenCalledWith(
-      ['api', '-X', 'PUT', 'projects/TxaisX%2Fkolux/issues/5', '-f', 'description=Updated body'],
+      [
+        'api',
+        '-X',
+        'PUT',
+        'projects/TxaisX%2Fnightshift/issues/5',
+        '-f',
+        'description=Updated body'
+      ],
       { cwd: '/repo-root' }
     )
   })
@@ -427,7 +434,7 @@ describe('gitlab issue operations', () => {
       '--hostname',
       'git.internal',
       '--paginate',
-      'projects/TxaisX%2Fkolux/labels',
+      'projects/TxaisX%2Fnightshift/labels',
       '--jq',
       '.[].name'
     ])
@@ -436,7 +443,7 @@ describe('gitlab issue operations', () => {
       '--hostname',
       'git.internal',
       '--paginate',
-      'projects/TxaisX%2Fkolux/members/all?per_page=100',
+      'projects/TxaisX%2Fnightshift/members/all?per_page=100',
       '--jq',
       '.[] | {id, username, name, avatar_url, state}'
     ])
@@ -467,7 +474,7 @@ describe('gitlab issue operations', () => {
       }
     })
     expect(glabExecFileAsyncMock).toHaveBeenCalledWith(
-      ['api', '-X', 'POST', 'projects/TxaisX%2Fkolux/issues/5/notes', '-f', 'body=Hello'],
+      ['api', '-X', 'POST', 'projects/TxaisX%2Fnightshift/issues/5/notes', '-f', 'body=Hello'],
       { cwd: '/repo-root' }
     )
   })
@@ -490,7 +497,7 @@ describe('gitlab issue operations', () => {
         'gitlab.example.com',
         '-X',
         'POST',
-        'projects/TxaisX%2Fkolux/issues/5/notes',
+        'projects/TxaisX%2Fnightshift/issues/5/notes',
         '-f',
         'body=Hello'
       ],

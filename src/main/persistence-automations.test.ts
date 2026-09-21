@@ -198,7 +198,7 @@ describe('Store', () => {
     // The renderer forwards a Partial verbatim, so an untouched field arrives as explicit undefined
     // and must not take the `null` clear branch reserved for a real user clear.
     const store = await createStore()
-    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'kolux' } }))
+    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'nightshift' } }))
     const automation = store.createAutomation({
       name: 'Nightly',
       prompt: 'Run checks',
@@ -240,7 +240,7 @@ describe('Store', () => {
     const store = await createStore()
     store.addRepo(
       makeRepo({
-        upstream: { owner: 'txaisx', repo: 'kolux' },
+        upstream: { owner: 'txaisx', repo: 'nightshift' },
         connectionId: 'builder'
       })
     )
@@ -271,13 +271,13 @@ describe('Store', () => {
       hostId: toSshExecutionHostId('builder'),
       projectHostSetupId: 'r1',
       repoId: 'r1',
-      providerIdentity: { provider: 'github', owner: 'txaisx', repo: 'kolux' }
+      providerIdentity: { provider: 'github', owner: 'txaisx', repo: 'nightshift' }
     })
   })
 
   it('stores its own contexts over a client-perspective create runContext', async () => {
     const store = await createStore()
-    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'kolux' } }))
+    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'nightshift' } }))
 
     const automation = store.createAutomation({
       name: 'Nightly',
@@ -306,7 +306,7 @@ describe('Store', () => {
 
   it('re-derives a stored client-perspective context on an explicit move, not on a toggle', async () => {
     const store = await createStore()
-    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'kolux' } }))
+    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'nightshift' } }))
     const automation = store.createAutomation({
       name: 'Nightly',
       prompt: 'Run checks',
@@ -346,7 +346,7 @@ describe('Store', () => {
     store.addRepo(
       makeRepo({
         executionHostId: toRuntimeExecutionHostId('gpu-server'),
-        upstream: { owner: 'txaisx', repo: 'kolux' }
+        upstream: { owner: 'txaisx', repo: 'nightshift' }
       })
     )
 
@@ -369,7 +369,7 @@ describe('Store', () => {
 
   it('snapshots automation contexts onto runs', async () => {
     const store = await createStore()
-    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'kolux' } }))
+    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'nightshift' } }))
     const automation = store.createAutomation({
       name: 'Nightly',
       prompt: 'Run checks',
@@ -397,7 +397,7 @@ describe('Store', () => {
     const store = await createStore()
     store.addRepo(
       makeRepo({
-        upstream: { owner: 'txaisx', repo: 'kolux' },
+        upstream: { owner: 'txaisx', repo: 'nightshift' },
         connectionId: 'builder'
       })
     )
@@ -445,7 +445,7 @@ describe('Store', () => {
       hostId: toSshExecutionHostId('builder'),
       projectHostSetupId: 'r1',
       repoId: 'r1',
-      providerIdentity: { provider: 'github', owner: 'txaisx', repo: 'kolux' }
+      providerIdentity: { provider: 'github', owner: 'txaisx', repo: 'nightshift' }
     })
     expect(migratedRun?.runContext).toEqual(migratedAutomation?.runContext)
     expect(migratedRun?.sourceContext).toEqual(migratedAutomation?.sourceContext)
@@ -455,7 +455,7 @@ describe('Store', () => {
     const seed = await createStore()
     seed.addRepo(
       makeRepo({
-        upstream: { owner: 'txaisx', repo: 'kolux' },
+        upstream: { owner: 'txaisx', repo: 'nightshift' },
         connectionId: 'builder'
       })
     )
@@ -517,7 +517,7 @@ describe('Store', () => {
     const store = await createStore()
     store.addRepo(
       makeRepo({
-        upstream: { owner: 'txaisx', repo: 'kolux' },
+        upstream: { owner: 'txaisx', repo: 'nightshift' },
         connectionId: 'builder'
       })
     )

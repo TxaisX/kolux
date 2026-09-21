@@ -44,7 +44,7 @@ describe('getPRForBranch', () => {
   it('looks up a linked PR number across PR repo candidates', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'TxaisX', repo: 'nightshift' },
         { owner: 'fork', repo: 'kolux' }
       ],
       headRepo: { owner: 'fork', repo: 'kolux' }

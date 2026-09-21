@@ -33,7 +33,8 @@ describe('KoluxRuntimeService', () => {
     const clonePath = join(destination, 'kolux')
     const spawnSpy = vi.spyOn(gitRunner, 'gitSpawnAfterWindowsEnvironmentReady')
     const repos: Record<string, unknown>[] = []
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
+    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -113,7 +114,8 @@ describe('KoluxRuntimeService', () => {
         executionHostId: 'runtime:env-1'
       }
     ]
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
+    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,

@@ -76,7 +76,7 @@ describe('issue #7331: fork PR owner/repo resolution', () => {
 
     // PRs live on the parent, so PR lookups must target it (matches
     // getIssueOwnerRepo).
-    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'kolux' })
+    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'nightshift' })
   })
 
   it('getOwnerRepo and getIssueOwnerRepo agree on a fork checkout', async () => {
@@ -89,7 +89,7 @@ describe('issue #7331: fork PR owner/repo resolution', () => {
   it('getOwnerRepo falls back to origin when there is no upstream remote', async () => {
     const prRepo = await getOwnerRepo(NON_FORK_PATH)
 
-    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'kolux' })
+    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'nightshift' })
   })
 
   it('caches the missing-upstream probe so repeat lookups skip the git spawn', async () => {
@@ -107,7 +107,7 @@ describe('issue #7331: fork PR owner/repo resolution', () => {
   it('resolves the upstream parent for SSH-style remote URLs', async () => {
     const prRepo = await getOwnerRepo(SSH_FORK_PATH)
 
-    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'kolux' })
+    expect(prRepo).toEqual({ owner: 'TxaisX', repo: 'nightshift' })
   })
 
   it('getOwnerRepoForRemote(origin) still resolves the fork itself', async () => {
@@ -125,7 +125,7 @@ describe('issue #7331: fork PR owner/repo resolution', () => {
     const upstream = await getRepoUpstream(FORK_PATH)
 
     // Why: origin resolution pins github.com so host-scoped execution is explicit.
-    expect(upstream).toEqual({ owner: 'TxaisX', repo: 'kolux', host: 'github.com' })
+    expect(upstream).toEqual({ owner: 'TxaisX', repo: 'nightshift', host: 'github.com' })
     expect(ghExecFileAsyncMock).not.toHaveBeenCalled()
   })
 })

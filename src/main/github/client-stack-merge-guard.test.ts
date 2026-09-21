@@ -41,7 +41,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
   it('hydrates GitHub-registered stack metadata for exact linked PRs', async () => {
     getOwnerRepoMock.mockResolvedValue({
       owner: 'TxaisX',
-      repo: 'kolux',
+      repo: 'nightshift',
       host: 'github.com'
     })
     ghExecFileAsyncMock
@@ -194,7 +194,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'kolux',
+        repo: 'nightshift',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })
@@ -242,7 +242,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'kolux',
+        repo: 'nightshift',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: false, error: 'socket closed after request submission' })
@@ -563,7 +563,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
 
     const result = await mergePR(scenario.repoPath, 202, 'squash', scenario.connectionId, {
       owner: 'TxaisX',
-      repo: 'kolux',
+      repo: 'nightshift',
       host: scenario.expectedOptions.host
     })
 
@@ -634,7 +634,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 13866, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'kolux',
+        repo: 'nightshift',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })
@@ -679,7 +679,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'kolux',
+        repo: 'nightshift',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })

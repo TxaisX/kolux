@@ -842,6 +842,14 @@ describe('wrapRuntimeHomeHookCommand', () => {
     expect(result.status, result.stderr.toString()).toBe(7)
   })
 
+  // Why: the drain-vs-early-exit branch depends on Kolux pane context (#11549), so these
+  // must set it explicitly rather than inherit whatever the host terminal happens to export.
+  const KOLUX_PANE_ENV = {
+    KOLUX_AGENT_HOOK_PORT: '1',
+    KOLUX_AGENT_HOOK_TOKEN: 'test-token',
+    KOLUX_PANE_KEY: 'test-pane'
+  }
+
   it('drains stdin when HOME is unavailable', () => {
     const command = `unset HOME; ${wrapRuntimeHomeHookCommand('claude-hook')}`
     const shell =
@@ -849,6 +857,7 @@ describe('wrapRuntimeHomeHookCommand', () => {
         ? join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe')
         : '/bin/sh'
     const result = spawnSync(shell, ['-c', command], {
+      env: { ...process.env, ...KOLUX_PANE_ENV },
       input: Buffer.alloc(1_000_000, 'x')
     })
 
@@ -865,7 +874,7 @@ describe('wrapRuntimeHomeHookCommand', () => {
       shell,
       ['-c', wrapRuntimeHomeHookCommand('missing-kolux-hook', { neutralJsonWhenMissing: true })],
       {
-        env: { ...process.env, HOME: tmpDir.replaceAll('\\', '/') },
+        env: { ...process.env, ...KOLUX_PANE_ENV, HOME: tmpDir.replaceAll('\\', '/') },
         input: Buffer.alloc(1_000_000, 'x')
       }
     )

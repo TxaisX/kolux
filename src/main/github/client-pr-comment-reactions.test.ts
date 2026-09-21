@@ -145,7 +145,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await getPRComments(
       '/repo-root',
       7,
-      { prRepo: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' } },
+      { prRepo: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' } },
       undefined
     )
 

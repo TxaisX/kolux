@@ -51,7 +51,7 @@ describe('resolveMissingRepoProjectDialogState', () => {
   })
 
   it('clears slug fallback dialogs once the repo slug resolves', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
     const repoNotInKolux = { owner: 'other', repo: 'tool', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
@@ -67,7 +67,7 @@ describe('resolveMissingRepoProjectDialogState', () => {
 
   it('clears repo-not-in-kolux dialogs once the repo slug resolves', () => {
     const slugDialog = { origin: { owner: 'other', repo: 'tool' } }
-    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'nightshift', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,

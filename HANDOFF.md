@@ -9,18 +9,38 @@ Last updated: 2026-09-21.
 
 - Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). **Deliberately kept:** every `TxaisX/nightshift*` GitHub address and the release-feed repo names in `electron-builder.config.cjs` and `dev-app-update.yml`, because the GitHub repo is not renamed yet. Also kept: `LICENSE`.
 - One-time migration so upgraders lose nothing:
-  - `src/main/startup/legacy-nightshift-userdata-migration.ts` moves userData, `~/.nightshift` and marker files. It is hooked into preflight, koluxd and the CLI.
+  - `src/main/startup/pre-kolux-userdata-migration.ts` moves userData, `~/.nightshift` and marker files. It is hooked into preflight, koluxd and the CLI.
   - `legacy-persisted-key-migration.ts` covers JSON keys and enums.
   - `legacy-local-storage-prefix-migration.ts` covers renderer storage.
   - Repo-side fallbacks read `nightshift.yaml`, `.nightshift/` and `nightshift-plugin.json` when the new names are absent.
   - Agent installers sweep old-named hook files, so hooks don't run twice.
+  - The migration runs only for a real `kolux` / `.kolux` root. It never runs for `kolux-dev` or E2E roots, and under vitest it is a no-op unless the caller passes `{ homeDir }`. This protects a developer machine that still runs the installed Nightshift.
+- The Windows installer (`config/nsis/kolux-installer-hooks.nsh`, `customInit`) stops a running `Nightshift.exe` and runs the old app's `QuietUninstallString`. It is best-effort, never blocks the install, and keeps `%APPDATA%\Nightshift` so the first-launch migration can carry it over.
 - Known consequences:
-  - Kolux installs **beside** an old Nightshift (new appId), so uninstall Nightshift once.
   - Embedded-browser site logins and macOS Keychain-protected secrets need one re-entry.
   - **Kolux cannot talk to an old Nightshift remote server, and an old client can't talk to a Kolux server.** The relay handshake frame type changed. Update both ends.
-  - The old `nightshift` CLI launcher is not removed automatically.
+  - The old `nightshift` CLI launcher on mac/Linux is not removed automatically.
 - New app icon: an aperture (six petals around a light point) replaces the moon in every size, the tray, the alt icons, and the in-app logo. The tray glyph is narrower, so check that `tray-dev-badge.ts`'s DEV stamp doesn't overlap it.
-- **Not yet verified.** The full suite had 1,376 failing tests in 396 files; many match known Windows-environment reds (happy-dom `document is not defined`, symlink EPERM, EBUSY). A baseline comparison against 0.9.0 was in progress, and the rename-caused ones are unfixed; for example, tests now expect `repo: 'kolux'` where the protected GitHub owner/repo stays `nightshift`. The app has not been built or launched as Kolux.
+- Fixes the rename itself broke:
+  - The updater's feed regexes had become `txaisx/kolux`, which would have silently ended updates.
+  - The CLI bundle was missing the migration entry in `electron.vite.config.ts`.
+  - Remote browser downloads still went to `.nightshift/`.
+  - Mobile E2EE and grab-script fixture hashes.
+  - About 60 tests whose fixtures paired `TxaisX` with `repo: 'kolux'`.
+- **Verified 2026-09-21:**
+  - A sandboxed dev launch (APPDATA / USERPROFILE / HOME redirected, pane env stripped) built and launched with title "Kolux", no "nightshift" text in the DOM, and the aperture logo.
+  - A seeded legacy profile migrated, and `kolux --help` ran.
+  - CDP screenshots hang on windowless launches, so the checks were made on the DOM.
+- **Test isolation.** `config/scripts/vitest-agent-session-env-isolation.ts` runs first in every test file. It strips inherited `CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `NIGHTSHIFT_*` and `KOLUX_*`, and points HOME/USERPROFILE at a throwaway dir (keeping `GIT_CONFIG_GLOBAL`).
+  - Before this, a suite run from inside a Claude Code / Nightshift pane wrote into the developer's real `~/.claude/settings.json` (hook commands pointing at deleted temp dirs; this predates the rename, since the Sep 11 backup has the same damage), `~/.nightshift` / `~/.kolux` (keybindings.json, tmux shim, kimi-hook.sh) and `~/.codex`.
+  - On 2026-09-21 the unguarded migration also moved the owner's live Nightshift profile into `%APPDATA%\kolux` and `~/.kolux`. All 257 files were copied back and the Claude hooks were restored.
+  - **Leftover:** `%APPDATA%\kolux` still holds the stale moved copy, because the running Nightshift keeps a log open in it. Rename it aside after Nightshift next restarts and **before installing Kolux on this machine**, or the migration's no-clobber rule will keep the stale copy. `~/.kolux*.accidental-test-copy-20260921` can be deleted once nothing is missing.
+- Remaining test reds are pre-existing: each was confirmed identical against the 0.9.0 baseline, file by file. The main kinds:
+  - Windows symlink EPERM, `/bin/sh` ENOENT, chmod bits, and CRLF vs `\n` literals.
+  - About 30 tests never updated for 0.9.0's "Opus by default" launch args.
+  - About 50 CI tests referencing `.github/workflows/*.yml` files deleted at the fork split.
+  - GitHub owner lowercasing in project keys.
+  - The `mobile/` directory is absent.
 
 ## Previous pass: Codex access, account authorization, and automatic updates
 

@@ -46,7 +46,7 @@ describe('getPRForBranch', () => {
   it('uses the tracked upstream remote owner for fork branch lookup', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'TxaisX', repo: 'nightshift' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -105,7 +105,7 @@ describe('getPRForBranch', () => {
     expect(pr).toMatchObject({
       number: 78,
       title: 'Hydrated fork upstream branch PR',
-      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
       headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })
@@ -113,7 +113,7 @@ describe('getPRForBranch', () => {
   it('uses the tracked upstream remote owner when the fork branch name matches locally', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'TxaisX', repo: 'nightshift' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -174,7 +174,7 @@ describe('getPRForBranch', () => {
     )
     expect(pr).toMatchObject({
       number: 6433,
-      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
       headRepo: { owner: 'brennanb2025', repo: 'kolux' }
     })
   })
@@ -259,7 +259,7 @@ describe('getPRForBranch', () => {
     getSshGitProviderMock.mockReturnValue(sshGitProvider)
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'kolux' },
+        { owner: 'TxaisX', repo: 'nightshift' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -298,7 +298,7 @@ describe('getPRForBranch', () => {
     expect(pr).toMatchObject({
       number: 79,
       title: 'SSH same-name fork PR',
-      prRepo: { owner: 'TxaisX', repo: 'kolux' },
+      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
       headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })

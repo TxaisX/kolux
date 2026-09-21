@@ -36,18 +36,23 @@ vi.mock('node:fs', async () => {
   }
 })
 
-import { migrateLegacyNightshiftUserData } from './legacy-nightshift-userdata-migration'
+import {
+  migrateLegacyNightshiftUserData,
+  translatedSymlinkTarget
+} from './pre-kolux-userdata-migration'
 
 describe('migrateLegacyNightshiftUserData', () => {
   let root: string
   let appDataDir: string
   let newUserData: string
+  let homeDir: string
 
   beforeEach(() => {
     busyFileState.path = null
     root = mkdtempSync(join(tmpdir(), 'kolux-legacy-migration-'))
     appDataDir = join(root, 'AppData')
     newUserData = join(appDataDir, 'Kolux')
+    homeDir = join(root, 'home')
     mkdirSync(appDataDir, { recursive: true })
   })
 
@@ -74,7 +79,7 @@ describe('migrateLegacyNightshiftUserData', () => {
   it('old-only: renames files and directories into the new root', () => {
     writeOldUserData()
 
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     expect(readFileSync(join(newUserData, 'kolux-data.json'), 'utf-8')).toBe('{"settings":{}}')
     expect(existsSync(join(newUserData, 'kolux-data.json.bak.1'))).toBe(true)
@@ -93,7 +98,7 @@ describe('migrateLegacyNightshiftUserData', () => {
     mkdirSync(newUserData, { recursive: true })
     writeFileSync(join(newUserData, 'kolux-data.json'), '{"already":"kolux"}')
 
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     expect(readFileSync(join(newUserData, 'kolux-data.json'), 'utf-8')).toBe('{"already":"kolux"}')
     // Old file untouched (never deleted), a sibling that wasn't already present did migrate.
@@ -103,13 +108,13 @@ describe('migrateLegacyNightshiftUserData', () => {
 
   it('is idempotent: a second run is a no-op once the marker is written', () => {
     writeOldUserData()
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
     const markerPath = join(newUserData, '.kolux-legacy-rename-migration-complete')
     const firstMarker = readFileSync(markerPath, 'utf-8')
 
     // Mutate the old dir after migration to prove a second run does nothing.
     writeFileSync(join(appDataDir, 'Nightshift', 'nightshift-devices.json'), '{}')
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     expect(readFileSync(markerPath, 'utf-8')).toBe(firstMarker)
     expect(existsSync(join(newUserData, 'kolux-devices.json'))).toBe(false)
@@ -122,7 +127,7 @@ describe('migrateLegacyNightshiftUserData', () => {
     mkdirSync(newUserData, { recursive: true })
     writeFileSync(join(newUserData, 'kolux-data.json'), '{"settings":{}}')
 
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     expect(existsSync(join(newUserData, 'kolux-stats.json'))).toBe(true)
     expect(existsSync(join(newUserData, '.kolux-legacy-rename-migration-complete'))).toBe(true)
@@ -132,7 +137,7 @@ describe('migrateLegacyNightshiftUserData', () => {
     writeOldUserData()
     busyFileState.path = join(appDataDir, 'Nightshift', 'nightshift-stats.json')
 
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     // The busy file did not migrate, and nothing pretends it did.
     expect(existsSync(join(newUserData, 'kolux-stats.json'))).toBe(false)
@@ -144,7 +149,7 @@ describe('migrateLegacyNightshiftUserData', () => {
 
     // Next launch: the lock is gone, so a retry finishes the job and writes the marker.
     busyFileState.path = null
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
     expect(existsSync(join(newUserData, 'kolux-stats.json'))).toBe(true)
     expect(existsSync(join(newUserData, '.kolux-legacy-rename-migration-complete'))).toBe(true)
   })
@@ -158,7 +163,7 @@ describe('migrateLegacyNightshiftUserData', () => {
       'G:\\Dev\\nightshift-workspaces\\nightshift'
     )
 
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
 
     const migratedPath = join(newUserData, 'profiles', 'p1', 'nightshift-workspaces-nightshift.txt')
     expect(existsSync(migratedPath)).toBe(true)
@@ -166,7 +171,67 @@ describe('migrateLegacyNightshiftUserData', () => {
   })
 
   it('is fast when there is nothing to migrate: writes a marker without an old root', () => {
-    migrateLegacyNightshiftUserData(newUserData)
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
     expect(existsSync(join(newUserData, '.kolux-legacy-rename-migration-complete'))).toBe(true)
+  })
+
+  it('carries ~/.nightshift into ~/.kolux under the supplied home', () => {
+    mkdirSync(join(homeDir, '.nightshift'), { recursive: true })
+    writeFileSync(join(homeDir, '.nightshift', 'keybindings.json'), '[]')
+
+    migrateLegacyNightshiftUserData(newUserData, { homeDir })
+
+    expect(readFileSync(join(homeDir, '.kolux', 'keybindings.json'), 'utf-8')).toBe('[]')
+  })
+
+  it('does nothing under a test runner without an explicit sandbox home', () => {
+    writeOldUserData()
+
+    migrateLegacyNightshiftUserData(newUserData)
+
+    expect(existsSync(join(appDataDir, 'Nightshift', 'nightshift-data.json'))).toBe(true)
+    expect(existsSync(newUserData)).toBe(false)
+  })
+
+  it('never migrates into a dev or E2E root, including ~/.nightshift', () => {
+    writeOldUserData()
+    mkdirSync(join(homeDir, '.nightshift'), { recursive: true })
+    writeFileSync(join(homeDir, '.nightshift', 'keybindings.json'), '[]')
+
+    migrateLegacyNightshiftUserData(join(appDataDir, 'kolux-dev'), { homeDir })
+
+    expect(existsSync(join(homeDir, '.nightshift', 'keybindings.json'))).toBe(true)
+    expect(existsSync(join(homeDir, '.kolux'))).toBe(false)
+    expect(existsSync(join(appDataDir, 'Nightshift', 'nightshift-data.json'))).toBe(true)
+  })
+})
+
+describe('translatedSymlinkTarget', () => {
+  // Why: a relative symlink whose target names a sibling this migration itself renames must
+  // point at the new-side name, or the recreated link dangles once the sibling is migrated.
+  it('translates a bare relative target that matches a renamed basename', () => {
+    expect(translatedSymlinkTarget('.nightshift-managed-home')).toBe('.kolux-managed-home')
+  })
+
+  it('translates every renamed segment of a multi-level relative target', () => {
+    expect(translatedSymlinkTarget('../.nightshift-managed-home/nightshift-data.json')).toBe(
+      '../.kolux-managed-home/kolux-data.json'
+    )
+    expect(translatedSymlinkTarget('..\\.nightshift-managed-home\\nightshift-stats.json')).toBe(
+      '..\\.kolux-managed-home\\kolux-stats.json'
+    )
+  })
+
+  it('leaves segments with no rename-map entry untouched', () => {
+    expect(translatedSymlinkTarget('../profiles/p1/repo.txt')).toBe('../profiles/p1/repo.txt')
+  })
+
+  it('leaves an absolute target untouched', () => {
+    expect(translatedSymlinkTarget('/Users/me/.nightshift-managed-home')).toBe(
+      '/Users/me/.nightshift-managed-home'
+    )
+    expect(translatedSymlinkTarget('C:\\Users\\me\\.nightshift-managed-home')).toBe(
+      'C:\\Users\\me\\.nightshift-managed-home'
+    )
   })
 })

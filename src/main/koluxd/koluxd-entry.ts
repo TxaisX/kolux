@@ -32,7 +32,7 @@ import {
   KoluxdInstanceLockError,
   type KoluxdInstanceLock
 } from './koluxd-instance-lock'
-import { migrateLegacyNightshiftUserData } from '../startup/legacy-nightshift-userdata-migration'
+import { migrateLegacyNightshiftUserData } from '../startup/pre-kolux-userdata-migration'
 
 let runKoluxdQuitHandlers = (): void => {}
 

@@ -6,7 +6,7 @@ import {
   getRuntimeMetadataPath,
   type RuntimeMetadata
 } from '../../shared/runtime-bootstrap'
-import { migrateLegacyNightshiftUserData } from '../../main/startup/legacy-nightshift-userdata-migration'
+import { migrateLegacyNightshiftUserData } from '../../main/startup/pre-kolux-userdata-migration'
 import { RuntimeClientError } from './types'
 
 export function readMetadata(userDataPath: string): RuntimeMetadata {

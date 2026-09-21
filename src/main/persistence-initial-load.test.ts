@@ -233,16 +233,16 @@ describe('Store', () => {
       repos: [
         makeRepo({
           id: 'local-repo',
-          path: '/Users/alice/kolux',
-          displayName: 'Kolux',
-          upstream: { owner: 'Txais', repo: 'Kolux' }
+          path: '/Users/alice/nightshift',
+          displayName: 'Nightshift',
+          upstream: { owner: 'Txais', repo: 'Nightshift' }
         }),
         makeRepo({
           id: 'remote-repo',
-          path: '/home/alice/kolux',
-          displayName: 'kolux',
+          path: '/home/alice/nightshift',
+          displayName: 'nightshift',
           connectionId: 'gpu-vm',
-          upstream: { owner: 'txaisx', repo: 'kolux' }
+          upstream: { owner: 'txaisx', repo: 'nightshift' }
         })
       ]
     })
@@ -260,13 +260,13 @@ describe('Store', () => {
         id: 'local-repo',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'local',
-        path: '/Users/alice/kolux'
+        path: '/Users/alice/nightshift'
       }),
       expect.objectContaining({
         id: 'remote-repo',
         projectId: 'github:TxaisX/nightshift',
         hostId: 'ssh:gpu-vm',
-        path: '/home/alice/kolux'
+        path: '/home/alice/nightshift'
       })
     ])
 

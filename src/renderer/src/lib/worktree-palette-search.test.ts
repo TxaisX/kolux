@@ -392,9 +392,9 @@ describe('worktree-palette-search', () => {
     ]
 
     // All three match on the repo name, order preserved from input.
-    expect(searchWorktrees(worktrees, 'kolux', repoMap).map((result) => result.worktreeId)).toEqual(
-      ['wt-feature', 'wt-bugfix', 'wt-main']
-    )
+    expect(
+      searchWorktrees(worktrees, 'nightshift', repoMap).map((result) => result.worktreeId)
+    ).toEqual(['wt-feature', 'wt-bugfix', 'wt-main'])
   })
 
   it('supports "repo/worktree" composite queries and highlights both segments', () => {
@@ -407,7 +407,7 @@ describe('worktree-palette-search', () => {
       })
     ]
 
-    const results = searchWorktrees(worktrees, 'kolux/main', repoMap)
+    const results = searchWorktrees(worktrees, 'nightshift/main', repoMap)
 
     expect(results).toHaveLength(1)
     expect(results[0].worktreeId).toBe('wt-main')

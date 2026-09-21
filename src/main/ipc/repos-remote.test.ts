@@ -159,7 +159,7 @@ describe('repos:addRemote', () => {
 
     expect(mockFilesystemProvider.createDir).toHaveBeenCalledWith('/home/user')
     expect(mockGitProvider.clone).toHaveBeenCalledWith(
-      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux'],
+      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift'],
       '/home/user',
       expect.objectContaining({
         signal: expect.any(AbortSignal),
@@ -169,17 +169,17 @@ describe('repos:addRemote', () => {
     )
     expect(mockStore.addRepo).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: '/home/user/kolux',
+        path: '/home/user/nightshift',
         connectionId: 'conn-1',
         kind: 'git',
-        displayName: 'kolux',
+        displayName: 'nightshift',
         badgeColor: DEFAULT_REPO_BADGE_COLOR
       })
     )
     expect(mockMultiplexer.notify).toHaveBeenCalledWith('session.registerRoot', {
-      rootPath: '/home/user/kolux'
+      rootPath: '/home/user/nightshift'
     })
-    expect(result).toHaveProperty('path', '/home/user/kolux')
+    expect(result).toHaveProperty('path', '/home/user/nightshift')
     expect(result).toHaveProperty('connectionId', 'conn-1')
   })
 
@@ -210,9 +210,9 @@ describe('repos:addRemote', () => {
   it('returns an existing SSH repo instead of cloning the same target again', async () => {
     const existing = {
       id: 'existing-id',
-      path: '/home/user/kolux',
+      path: '/home/user/nightshift',
       connectionId: 'conn-1',
-      displayName: 'kolux',
+      displayName: 'nightshift',
       badgeColor: '#fff',
       addedAt: 1000,
       kind: 'git'
@@ -233,9 +233,9 @@ describe('repos:addRemote', () => {
   it('upgrades an existing SSH folder repo after cloning into that path', async () => {
     const existing = {
       id: 'existing-folder',
-      path: '/home/user/kolux',
+      path: '/home/user/nightshift',
       connectionId: 'conn-1',
-      displayName: 'kolux',
+      displayName: 'nightshift',
       badgeColor: '#fff',
       addedAt: 1000,
       kind: 'folder'
@@ -251,7 +251,7 @@ describe('repos:addRemote', () => {
     })
 
     expect(mockGitProvider.clone).toHaveBeenCalledWith(
-      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux'],
+      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift'],
       '/home/user',
       expect.objectContaining({
         signal: expect.any(AbortSignal),
@@ -323,7 +323,7 @@ describe('repos:addRemote', () => {
       path: '~/projects'
     })
     expect(mockGitProvider.clone).toHaveBeenCalledWith(
-      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux'],
+      ['clone', '--progress', '--', 'https://github.com/TxaisX/nightshift.git', 'nightshift'],
       '/home/ubuntu/projects',
       expect.any(Object)
     )
@@ -685,9 +685,9 @@ describe('repos:addRemote', () => {
   it('returns an existing SSH repo when a selected subdirectory resolves to the repo root', async () => {
     const existing = {
       id: 'existing-id',
-      path: '/home/user/kolux',
+      path: '/home/user/nightshift',
       connectionId: 'conn-1',
-      displayName: 'kolux',
+      displayName: 'nightshift',
       badgeColor: '#fff',
       addedAt: 1000,
       kind: 'git'
@@ -695,12 +695,12 @@ describe('repos:addRemote', () => {
     mockStore.getRepos.mockReturnValue([existing])
     mockGitProvider.isGitRepoAsync.mockResolvedValueOnce({
       isRepo: true,
-      rootPath: '/home/user/kolux'
+      rootPath: '/home/user/nightshift'
     })
 
     const result = await handlers.get('repos:addRemote')!(null, {
       connectionId: 'conn-1',
-      remotePath: '/home/user/kolux/src'
+      remotePath: '/home/user/nightshift/src'
     })
 
     expect(result).toEqual({ repo: existing })

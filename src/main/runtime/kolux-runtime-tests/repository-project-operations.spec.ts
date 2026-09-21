@@ -122,7 +122,8 @@ describe('KoluxRuntimeService', () => {
   it('sets up an existing folder on a fresh runtime after importing the repo project', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-runtime-project-setup-'))
     const repos: Record<string, unknown>[] = []
-    getRepoUpstreamMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
+    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -340,7 +341,8 @@ describe('KoluxRuntimeService', () => {
   it('keeps existing-folder imports split by runtime host on the same normalized path', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-runtime-project-host-'))
     const repos: Record<string, unknown>[] = []
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
+    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -531,7 +533,8 @@ describe('KoluxRuntimeService', () => {
     const clonePath = join(destination, 'kolux')
     const spawnSpy = vi.spyOn(gitRunner, 'gitSpawnAfterWindowsEnvironmentReady')
     const repos: Record<string, unknown>[] = []
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
+    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,

@@ -431,6 +431,30 @@ describe('OpenCodeHookService overlay mode (user OPENCODE_CONFIG_DIR set)', () =
     expectUserConfigIntact()
   })
 
+  it('does not delete a user plugin that coincidentally shares the pre-rename legacy filename', () => {
+    // Why: removeLegacyOpenCodePlugin only deletes a file that contains the pre-rename plugin's
+    // own export name; an unrelated user file with the old filename must survive untouched.
+    const userLegacyNamedSentinel = 'USER FILE, UNRELATED CONTENT — NOT A KOLUX/NIGHTSHIFT PLUGIN'
+    writeFileSync(
+      join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'),
+      userLegacyNamedSentinel
+    )
+
+    const service = new OpenCodeHookService()
+    const env = service.buildPtyEnv(ptyId, userConfigDir)
+
+    // User's source file must be untouched.
+    expect(
+      readFileSync(join(userConfigDir, 'plugins', 'nightshift-opencode-status.js'), 'utf8')
+    ).toBe(userLegacyNamedSentinel)
+
+    // The overlay never receives it either — it isn't mirrored and isn't Kolux's file to write.
+    expect(
+      existsSync(join(env.OPENCODE_CONFIG_DIR!, 'plugins', 'nightshift-opencode-status.js'))
+    ).toBe(false)
+    expectUserConfigIntact()
+  })
+
   it.skipIf(process.platform === 'win32')(
     'does not write through a symlinked plugins/ directory into the user filesystem',
     () => {

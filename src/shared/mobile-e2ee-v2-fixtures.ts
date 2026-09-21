@@ -39,9 +39,9 @@ export function createMobileE2EEV2Fixture(): {
 }
 
 export const MOBILE_E2EE_V2_VECTOR = {
-  transcriptLength: 1347,
-  transcriptHashHex: 'ca6385f8bbf64a223fdd59587bfb67e2373891ce9e6d85ab41df8b7a20a168e3',
-  mobileToDesktopKeyHex: 'df17ff534df77fd3a30999f4e6200c8fcedefbb15d369301ca62c3cdfea9559a',
-  desktopToMobileKeyHex: '71365fcf8212a6d63caf909ee28de3c8f689682ef298a374136055e0ab1cde4a',
-  sessionIdHex: '339ae1f2bdff63481857d2813c2f19dd1f5aa4824705d5e5daeb25dae7b9196e'
+  transcriptLength: 1350,
+  transcriptHashHex: 'f8479d2cba98418d5fd650ef23f1e4659f1fa8a2e4222736e760391ad8d77ffd',
+  mobileToDesktopKeyHex: '368178210a7e545ef1454af278d1e4e31ee82c7f5ca877aa18a0cb9549946651',
+  desktopToMobileKeyHex: '19af630b414f9c18d22d989fd3f82583f11747f74780eea260be7df6c3565e5c',
+  sessionIdHex: '5afe395b0759c3a4e23f04e6ad33c2a7b486dec23c572717d5cca3cc0d3a7ccb'
 } as const

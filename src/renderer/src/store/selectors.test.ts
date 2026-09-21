@@ -451,13 +451,13 @@ describe('store selectors', () => {
         id: 'local-kolux',
         path: '/Users/alice/stably/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'kolux' }
+        upstream: { owner: 'TxaisX', repo: 'nightshift' }
       }),
       makeRepo({
         id: 'vm-kolux',
         path: '/vercel/sandbox/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'kolux' },
+        upstream: { owner: 'TxaisX', repo: 'nightshift' },
         executionHostId: toRuntimeExecutionHostId('vm-env')
       })
     ]
@@ -527,7 +527,7 @@ describe('store selectors', () => {
         id: 'repo-1',
         path: '/Users/alice/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'kolux' }
+        upstream: { owner: 'TxaisX', repo: 'nightshift' }
       })
     ]
 
