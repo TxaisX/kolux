@@ -124,6 +124,18 @@ describe('runSharedCheckoutLaunch', () => {
     expect(mocks.createTab.mock.calls.map((call) => call[1])).toEqual(['group-1', 'group-2'])
   })
 
+  it('merges a seat’s effort override into the settings passed to the startup builder', async () => {
+    await runSharedCheckoutLaunch(
+      WORKTREE,
+      WORKTREE_PATH,
+      [seat({ model: 'opus', options: { effort: 'low' } })],
+      { agentDefaultArgs: {} } as never
+    )
+
+    const passedSettings = mocks.buildQuickComposerStartup.mock.calls[0][0].settings
+    expect(passedSettings.agentDefaultArgs.claude).toBe('--model opus --effort low')
+  })
+
   it('skips a seat with no buildable startup plan — no tab, no pane, no reveal', async () => {
     mocks.buildQuickComposerStartup.mockReturnValueOnce({
       startupPlan: null,

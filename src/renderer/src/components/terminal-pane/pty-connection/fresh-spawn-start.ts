@@ -298,7 +298,7 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
         session.finishReattachLiveDataDeferral(Boolean(resolvedPtyId), outputCallbacks.generation)
         return resolvedPtyId
       })
-      .catch(async () => {
+      .catch(async (err: unknown) => {
         releaseDeferredCwdFence()
         session.finishReattachLiveDataDeferral(false, outputCallbacks.generation)
         if (
@@ -308,6 +308,9 @@ export function bindStartFreshSpawn(session: ConnectPanePtySession): void {
           session.clearRegisteredStartupLaunchConfig()
         }
         clearPreSignaledSerializer()
+        // Why: the reattach paths all report; this one swallowed, so a failed
+        // fresh spawn left a blank pane with no diagnostic anywhere.
+        session.reportError(err instanceof Error ? err.message : String(err))
         return null
       })
       .finally(() => {

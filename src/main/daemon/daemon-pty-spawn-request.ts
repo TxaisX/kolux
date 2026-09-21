@@ -192,7 +192,20 @@ export abstract class DaemonPtySpawnRequest extends DaemonPtyRuntimeState {
       }
       return requestCreateOrAttach(undefined, transferId)
     }
+    // Why gated: pty:spawn latency attribution (NIGHTSHIFT_PTY_SPAWN_TIMING=1, see
+    // ../ipc/pty-spawn-timing.ts) stops at the 'provider_spawn' mark, which wraps this
+    // whole createOrAttach round trip and everything else DaemonPtyAdapter does around
+    // it. This isolates just the wire round trip to the daemon process so a slow
+    // provider_spawn can be attributed to "daemon RPC / actual pty+shell spawn" vs.
+    // "client-side adapter work around the RPC call".
+    const rpcTimingEnabled = process.env.NIGHTSHIFT_PTY_SPAWN_TIMING === '1'
+    const rpcStartedAt = rpcTimingEnabled ? Date.now() : 0
     const result = await deliverSeedAndCreate()
+    if (rpcTimingEnabled) {
+      console.log(
+        `[pty-spawn-timing] createOrAttach rpc round trip id=${context.sessionId} ms=${Date.now() - rpcStartedAt}`
+      )
+    }
     return historySeedUnavailable && result.historySeeded === undefined
       ? { ...result, historySeeded: false }
       : result

@@ -48,7 +48,7 @@ export async function runSharedCheckoutLaunch(
       agent: seat.agent,
       prompt: seat.prompt,
       draftPrompt: null,
-      settings: settingsWithSeatModel(settings, seat.agent, seat.model),
+      settings: settingsWithSeatModel(settings, seat.agent, seat.model, seat.options),
       repoConnectionId: null,
       platform: CLIENT_PLATFORM,
       shell,

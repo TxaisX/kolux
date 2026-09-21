@@ -73,6 +73,24 @@ describe('buildLaunchAgentsRequests', () => {
       expect(request.quickPrompt).toBe('ship it')
     }
   })
+
+  it('opens each seat on its own chosen effort, defaulting to the catalog default', () => {
+    const requests = build([
+      { agent: CLAUDE, model: 'opus', options: { effort: 'low' } },
+      { agent: CLAUDE, model: 'opus' }
+    ])
+    expect(requests[0]?.startupPlan?.launchCommand).toMatch(/--effort\W+low\b/)
+    // Why: an untouched seat still launches at the catalog's own default for that
+    // model, the same way the model dropdown always has.
+    expect(requests[1]?.startupPlan?.launchCommand).toMatch(/--effort\W+high\b/)
+  })
+
+  it('carries a boolean option override into the launch command', () => {
+    const requests = build([
+      { agent: 'cursor' as TuiAgent, model: 'gpt-5.3-codex', options: { fastMode: true } }
+    ])
+    expect(requests[0]?.startupPlan?.launchCommand).toMatch(/gpt-5\.3-codex-high-fast/)
+  })
 })
 
 describe('buildSharedCheckoutSeatRequests', () => {
@@ -94,6 +112,14 @@ describe('buildSharedCheckoutSeatRequests', () => {
       prompt: '  ship it  '
     })
     expect(seats[0]?.prompt).toBe('ship it')
+  })
+
+  it('carries each seat’s option overrides through untouched', () => {
+    const seats = buildSharedCheckoutSeatRequests({
+      slots: [{ agent: CLAUDE, model: 'opus', options: { effort: 'low' } }],
+      prompt: 'ship it'
+    })
+    expect(seats[0]?.options).toEqual({ effort: 'low' })
   })
 })
 

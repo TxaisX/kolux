@@ -11,6 +11,7 @@ import {
   runPtySpawnHealthProbe
 } from './pty-subprocess/spawn-preflight'
 import { createDaemonPtySubprocessHandle } from './pty-subprocess/subprocess-handle'
+import { getInFlightWindowsConptyWarmup } from './windows-conpty-warmup'
 import type { StartupCommandDelivery } from '../../shared/codex-startup-delivery'
 import type { TuiAgent } from '../../shared/tui-agent'
 
@@ -76,6 +77,21 @@ export async function createPtySubprocess(opts: PtySubprocessOptions): Promise<S
     sessionId: opts.sessionId,
     ...(opts.cancelSignal ? { signal: opts.cancelSignal } : {})
   })
+  if (opts.isCanceled?.()) {
+    throw new TerminalAttachCanceledError(opts.sessionId)
+  }
+  // Why here, after cwd preflight but before the real spawn: a terminal opened
+  // moments after daemon boot used to race the daemon's own ConPTY warm-up
+  // (windows-conpty-warmup.ts) and pay its own redundant cold-start cost in
+  // parallel instead of inheriting the warm process state. Only awaits when a
+  // warm-up is actually in flight (non-Windows / already-settled / never
+  // scheduled all return null) so this adds zero extra microtask ticks to the
+  // overwhelmingly common non-racing case -- existing cancellation-ordering
+  // tests for this function are sensitive to exactly that.
+  const inFlightWarmup = getInFlightWindowsConptyWarmup()
+  if (inFlightWarmup) {
+    await inFlightWarmup
+  }
   if (opts.isCanceled?.()) {
     throw new TerminalAttachCanceledError(opts.sessionId)
   }

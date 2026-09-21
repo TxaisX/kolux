@@ -254,7 +254,20 @@ function LaunchAgentsBody({
               slots={slots}
               agentLabel={getAgentLabel}
               onModelChange={(index, model) =>
-                setSlots((prev) => prev.map((slot, i) => (i === index ? { ...slot, model } : slot)))
+                setSlots((prev) =>
+                  // Why: a new model rarely shares the old one's option ids or
+                  // choices, so a carried-over override could apply to the wrong thing.
+                  prev.map((slot, i) => (i === index ? { ...slot, model, options: {} } : slot))
+                )
+              }
+              onOptionChange={(index, optionId, value) =>
+                setSlots((prev) =>
+                  prev.map((slot, i) =>
+                    i === index
+                      ? { ...slot, options: { ...slot.options, [optionId]: value } }
+                      : slot
+                  )
+                )
               }
             />
           </Section>

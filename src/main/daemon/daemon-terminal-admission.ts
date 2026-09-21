@@ -81,8 +81,21 @@ export class DaemonTerminalAdmission {
         request.id,
         payload.cancelAfterMs
       )
+      // Why gated: pty:spawn latency attribution (NIGHTSHIFT_PTY_SPAWN_TIMING=1) stops at the
+      // client-side RPC round trip; this splits the daemon-side half of that round trip into
+      // "prepare" (platform login preflight) vs. "host.createOrAttach" (the actual pty/shell
+      // spawn) so a slow round trip can be attributed inside the daemon process, whose console
+      // output is otherwise discarded (stdio 'ignore').
+      const admissionTimingEnabled = process.env.NIGHTSHIFT_PTY_SPAWN_TIMING === '1'
+      const prepareStartedAt = admissionTimingEnabled ? Date.now() : 0
       if (!attachOnly) {
         await this.options.preparations.prepareUnlessCanceled(payload.sessionId, spawnPreparation)
+      }
+      if (admissionTimingEnabled) {
+        this.options.log.log('pty-spawn-timing-prepare', {
+          sessionId: payload.sessionId,
+          ms: Date.now() - prepareStartedAt
+        })
       }
       if (payload.historySeed !== undefined && payload.historySeedTransferId !== undefined) {
         throw new Error('Multiple terminal history seed sources')
@@ -93,6 +106,7 @@ export class DaemonTerminalAdmission {
           : payload.historySeed !== undefined
             ? [payload.historySeed]
             : undefined
+      const hostCreateStartedAt = admissionTimingEnabled ? Date.now() : 0
       result = await this.options.host.createOrAttach({
         sessionId: payload.sessionId,
         cols: payload.cols,
@@ -121,6 +135,12 @@ export class DaemonTerminalAdmission {
         },
         streamClient: this.createStreamClient(clientId, () => routedSessionId)
       })
+      if (admissionTimingEnabled) {
+        this.options.log.log('pty-spawn-timing-host-create', {
+          sessionId: payload.sessionId,
+          ms: Date.now() - hostCreateStartedAt
+        })
+      }
     } finally {
       if (spawnPreparation) {
         this.options.preparations.finish(payload.sessionId, spawnPreparation)
