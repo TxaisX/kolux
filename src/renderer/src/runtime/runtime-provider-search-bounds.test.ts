@@ -5,7 +5,8 @@ describe('runtime provider search bounds', () => {
   it('accepts absent provider queries and small text', () => {
     expect(isRuntimeProviderSearchQueryWithinLimit(undefined)).toBe(true)
     expect(isRuntimeProviderSearchQueryWithinLimit(null)).toBe(true)
-    expect(isRuntimeProviderSearchQueryWithinLimit('project = KOLUX', 14)).toBe(true)
+    // Why: 'project = KOLUX' is 15 UTF-8 bytes; the custom limit must cover it to prove pass-through.
+    expect(isRuntimeProviderSearchQueryWithinLimit('project = KOLUX', 15)).toBe(true)
   })
 
   it('measures pasted provider search text as UTF-8 bytes', () => {

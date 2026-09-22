@@ -250,10 +250,14 @@ describe('bundled skill guide generator', () => {
       for (const reference of references) {
         const marker = `<!-- bundled-reference: references/${reference} -->`
         expect(guide.fullMarkdown.split(marker)).toHaveLength(2)
+        // Why normalized: .gitattributes only pins /skill-guides/*.md to LF, not
+        // nested references/*.md, so a CRLF checkout of this file must still match.
         expect(guide.fullMarkdown).toContain(
-          await readFile(
-            path.join(projectDir, 'skill-guides', guide.name, 'references', reference),
-            'utf8'
+          normalizeMarkdown(
+            await readFile(
+              path.join(projectDir, 'skill-guides', guide.name, 'references', reference),
+              'utf8'
+            )
           )
         )
       }
@@ -296,23 +300,27 @@ describe('bundled skill guide generator', () => {
   it('generates platform-identical output from CRLF guide sources', async () => {
     const expected = await buildArtifacts(projectDir)
     const root = await createFixture()
+    // Why normalize first: .gitattributes only pins top-level /skill-guides/*.md
+    // to LF, not nested references/*.md, so a checkout may already have CRLF
+    // there -- converting without normalizing first would double every newline.
+    const toCrlf = (text) => text.replace(/\r\n/g, '\n').replaceAll('\n', '\r\n')
     for (const name of CANONICAL_GUIDE_NAMES) {
       const sourcePath = path.join(root, 'skill-guides', `${name}.md`)
       const source = await readFile(sourcePath, 'utf8')
-      await writeFile(sourcePath, source.replaceAll('\n', '\r\n'))
+      await writeFile(sourcePath, toCrlf(source))
     }
     for (const name of STUB_TOPICS) {
       const stubPath = path.join(root, 'skill-stubs', `${name}.md`)
       const stubSource = await readFile(stubPath, 'utf8')
-      await writeFile(stubPath, stubSource.replaceAll('\n', '\r\n'))
+      await writeFile(stubPath, toCrlf(stubSource))
     }
     const sharedStubPath = path.join(root, ...SHARED_STUB_SOURCE.split('/'))
     const sharedStubSource = await readFile(sharedStubPath, 'utf8')
-    await writeFile(sharedStubPath, sharedStubSource.replaceAll('\n', '\r\n'))
+    await writeFile(sharedStubPath, toCrlf(sharedStubSource))
     for (const [guide, reference] of GUIDE_REFERENCE_PATHS) {
       const referencePath = path.join(root, 'skill-guides', guide, 'references', reference)
       const source = await readFile(referencePath, 'utf8')
-      await writeFile(referencePath, source.replaceAll('\n', '\r\n'))
+      await writeFile(referencePath, toCrlf(source))
     }
 
     const actual = await buildArtifacts(root)
@@ -323,7 +331,7 @@ describe('bundled skill guide generator', () => {
 
   it('pins guide sources, projections, and embedded output to LF in Git', async () => {
     const attributes = await readFile(path.join(projectDir, '.gitattributes'), 'utf8')
-    expect(normalizeMarkdown(attributes)).toContain('/skill-guides/*.md text eol=lf\n')
+    expect(normalizeMarkdown(attributes)).toContain('/skill-guides/**/*.md text eol=lf\n')
     expect(normalizeMarkdown(attributes)).toContain('/skill-stubs/*.md text eol=lf\n')
     expect(normalizeMarkdown(attributes)).toContain('/skill-stubs/_shared/*.md text eol=lf\n')
     expect(normalizeMarkdown(attributes)).toContain('/skills/*/SKILL.md text eol=lf\n')

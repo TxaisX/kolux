@@ -72,12 +72,21 @@ function createManagedAccount(id: string): CodexManagedAccount {
 // change to the lane rules or the shared-home layout would silence the banner
 // with every other test still green.
 describe('CodexRuntimeHomeService.getMirroredHostHomePathForStatus', () => {
-  it('returns null for the system default, which runs on the real home with no mirror', async () => {
-    const { CodexRuntimeHomeService } = await import('./runtime-home-service')
-    const service = new CodexRuntimeHomeService(createStore([], null) as never)
+  // Why: isShellStartupEnvProbeSupported() is `process.platform !== 'win32'` by design —
+  // Windows has no shell-rc probe, so the real-home lane never activates there and the
+  // system default always stays on the mirror (see runtime-home-service-home-routing.ts).
+  it.skipIf(process.platform === 'win32')(
+    'returns null for the system default, which runs on the real home with no mirror',
+    async () => {
+      const { CodexRuntimeHomeService } = await import('./runtime-home-service')
+      const service = new CodexRuntimeHomeService(createStore([], null) as never)
 
-    expect(service.getMirroredHostHomePathForStatus()).toEqual({ kind: 'ready', homePath: null })
-  })
+      expect(service.getMirroredHostHomePathForStatus()).toEqual({
+        kind: 'ready',
+        homePath: null
+      })
+    }
+  )
 
   it('returns the selected account own home, which is what its mirror targets', async () => {
     const account = createManagedAccount('acct-1')

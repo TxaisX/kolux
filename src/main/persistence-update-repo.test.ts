@@ -131,7 +131,7 @@ describe('Store', () => {
 
     expect(store.getProjects()).toEqual([
       expect.objectContaining({
-        id: 'github:TxaisX/nightshift',
+        id: 'github:txaisx/nightshift',
         displayName: 'renamed',
         sourceRepoIds: ['r1']
       })
@@ -139,7 +139,7 @@ describe('Store', () => {
     expect(store.getProjectHostSetups()).toEqual([
       expect.objectContaining({
         id: 'r1',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         displayName: 'renamed',
         worktreeBasePath: '../new-worktrees'
       })
@@ -235,7 +235,7 @@ describe('Store', () => {
     })
 
     const result = store.createProjectHostSetup({
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'runtime:gpu-vm',
       setupId: 'cloud-project::gpu-vm',
       displayName: 'GPU VM',
@@ -244,12 +244,12 @@ describe('Store', () => {
     })
 
     expect(result?.project).toMatchObject({
-      id: 'github:txais/cloud-project',
+      id: 'github:txaisx/cloud-project',
       displayName: 'Cloud Project'
     })
     expect(result?.setup).toMatchObject({
       id: 'cloud-project::gpu-vm',
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'runtime:gpu-vm',
       repoId: '',
       path: '',
@@ -272,7 +272,7 @@ describe('Store', () => {
     })
     const independentSetup = makeProjectHostSetup({
       id: 'cloud-project::gpu-vm',
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'runtime:gpu-vm'
     })
     store.createProjectHostSetup({
@@ -283,7 +283,7 @@ describe('Store', () => {
 
     expect(() =>
       store.createProjectHostSetup({
-        projectId: 'github:txais/cloud-project',
+        projectId: 'github:txaisx/cloud-project',
         hostId: 'runtime:gpu-vm',
         setupId: 'duplicate'
       })
@@ -449,7 +449,7 @@ describe('Store', () => {
     store.addRepo(makeRepo())
 
     const updated = store.updateRepo('r1', {
-      upstream: { owner: ' txais ', repo: ' nightshift ' }
+      upstream: { owner: ' txaisx ', repo: ' nightshift ' }
     })
     expect(updated!.upstream).toEqual({ owner: 'txaisx', repo: 'nightshift' })
 

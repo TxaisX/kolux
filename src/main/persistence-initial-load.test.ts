@@ -235,7 +235,7 @@ describe('Store', () => {
           id: 'local-repo',
           path: '/Users/alice/nightshift',
           displayName: 'Nightshift',
-          upstream: { owner: 'Txais', repo: 'Nightshift' }
+          upstream: { owner: 'TxaisX', repo: 'Nightshift' }
         }),
         makeRepo({
           id: 'remote-repo',
@@ -251,20 +251,20 @@ describe('Store', () => {
 
     expect(store.getProjects()).toEqual([
       expect.objectContaining({
-        id: 'github:TxaisX/nightshift',
+        id: 'github:txaisx/nightshift',
         sourceRepoIds: ['local-repo', 'remote-repo']
       })
     ])
     expect(store.getProjectHostSetups()).toEqual([
       expect.objectContaining({
         id: 'local-repo',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         hostId: 'local',
         path: '/Users/alice/nightshift'
       }),
       expect.objectContaining({
         id: 'remote-repo',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         hostId: 'ssh:gpu-vm',
         path: '/home/alice/nightshift'
       })

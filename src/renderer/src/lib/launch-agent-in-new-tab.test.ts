@@ -637,7 +637,7 @@ describe('launchAgentInNewTab', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions'"
+        command: "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
       })
     )
     expect(mockPasteDraftWhenAgentReady).toHaveBeenCalledWith(

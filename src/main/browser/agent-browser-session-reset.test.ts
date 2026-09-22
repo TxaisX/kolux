@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-import { join } from 'node:path'
+import { posix } from 'node:path'
 
 const { lstatSync } = vi.hoisted(() => ({ lstatSync: vi.fn() }))
 vi.mock('node:fs', () => ({ lstatSync }))
@@ -10,7 +10,7 @@ const owned = {
   socketDirectory: '/tmp/kolux-ab-profile',
   sessionName: 'kolux-tab-page'
 }
-const socketPath = join(owned.socketDirectory, 'kolux-tab-page.sock')
+const socketPath = posix.join(owned.socketDirectory, 'kolux-tab-page.sock')
 
 beforeEach(() => {
   lstatSync.mockReset()

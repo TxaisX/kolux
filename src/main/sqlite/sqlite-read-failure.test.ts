@@ -13,10 +13,15 @@ import { classifySqliteReadFailure, isTransientSqliteContention } from './sqlite
 let tempDirs: string[] = []
 
 afterEach(() => {
-  for (const dir of tempDirs) {
-    rmSync(dir, { recursive: true, force: true })
+  // Why a finally-guarded reset: an rmSync failure must not skip the reset and
+  // leave a stale dir poisoning every later test's cleanup with the same error.
+  try {
+    for (const dir of tempDirs) {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  } finally {
+    tempDirs = []
   }
-  tempDirs = []
 })
 
 function contendedDatabase(): { path: string; release: () => void } {
@@ -41,13 +46,16 @@ describe('isTransientSqliteContention', () => {
   it('recognizes a real SQLITE_BUSY thrown by a read-only open', () => {
     const contended = contendedDatabase()
     let thrown: unknown
+    // Why close the reader explicitly: an open handle otherwise outlives the
+    // test and holds the temp dir locked, so afterEach's rmSync fails EPERM.
+    let reader: SyncDatabase | undefined
     try {
-      new SyncDatabase(contended.path, { readonly: true, timeout: 0 })
-        .prepare('SELECT id FROM session')
-        .all()
+      reader = new SyncDatabase(contended.path, { readonly: true, timeout: 0 })
+      reader.prepare('SELECT id FROM session').all()
     } catch (error) {
       thrown = error
     } finally {
+      reader?.close()
       contended.release()
     }
 

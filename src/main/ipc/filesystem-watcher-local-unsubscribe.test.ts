@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { join } from 'node:path'
 import type * as ParcelWatcherProcess from './parcel-watcher-process'
+
+// Why a drive letter on win32: normalizeWatcherEventPath/normalizeWatcherRootPath run a driveless
+// path through node:path `resolve`, which prepends the current working directory's drive — a bare
+// `/tmp/repo` fixture then no longer string-matches the literal path the test asserts on.
+const ROOT = process.platform === 'win32' ? 'C:\\tmp\\repo' : '/tmp/repo'
+const OTHER_ROOT = process.platform === 'win32' ? 'C:\\tmp\\other' : '/tmp/other'
+const p = (name: string): string => join(ROOT, name)
 
 const { handleMock } = vi.hoisted(() => ({
   handleMock: vi.fn()
@@ -93,7 +101,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
     destroyedCallbacks[0]()
 
     let shutdownResolved = false
@@ -126,7 +134,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
     })
     const sender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 1 }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
     watcherCallback(new Error('root disappeared'), [])
 
     let shutdownResolved = false
@@ -167,7 +175,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const watchPromise = handlers['fs:watchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => {
       expect(subscribeParcelWatcher).toHaveBeenCalled()
@@ -212,14 +220,14 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const watchOne = handlers['fs:watchWorktree'](
       { sender: senderOne },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => {
       expect(statResolvers).toHaveLength(1)
     })
     const watchTwo = handlers['fs:watchWorktree'](
       { sender: senderTwo },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
 
     try {
@@ -255,12 +263,12 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
 
     vi.useFakeTimers()
     try {
-      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: '/tmp/repo' })
-      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: '/tmp/repo' })
+      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: ROOT })
+      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: ROOT })
 
       expect(vi.getTimerCount()).toBe(1)
       await vi.advanceTimersByTimeAsync(30_000)
@@ -281,8 +289,8 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
-    await closeLocalWatcherForWorktreePath('/tmp/repo')
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
+    await closeLocalWatcherForWorktreePath(ROOT)
 
     expect(unsubscribeMock).toHaveBeenCalledTimes(1)
   })
@@ -351,9 +359,9 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
     vi.mocked(subscribeParcelWatcher).mockResolvedValue({ unsubscribe: unsubscribeMock } as never)
     const sender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 1 }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
 
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).rejects.toBe(terminationError)
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).rejects.toBe(terminationError)
     expect(unsubscribeMock).toHaveBeenCalledTimes(1)
   })
 
@@ -379,13 +387,13 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       }),
       id: 1
     }
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
     destroyedCallbacks[0]()
     await vi.waitFor(() => expect(unsubscribeMock).toHaveBeenCalledTimes(1))
 
     let settled = false
     const closeFailure = expect(
-      closeLocalWatcherForWorktreePath('/tmp/repo').finally(() => {
+      closeLocalWatcherForWorktreePath(ROOT).finally(() => {
         settled = true
       })
     ).rejects.toBe(terminationError)
@@ -420,14 +428,14 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       }),
       id: 1
     }
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
     destroyedCallbacks[0]()
     await vi.waitFor(() => expect(unsubscribeMock).toHaveBeenCalledTimes(1))
 
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).rejects.toBe(terminationError)
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).rejects.toBe(terminationError)
     signalPhysicalExit()
     await Promise.resolve()
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).resolves.toBeUndefined()
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).resolves.toBeUndefined()
   })
 
   it('retains callback terminal failure when the cleared subscription later unsubscribes cleanly', async () => {
@@ -449,15 +457,15 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       return { unsubscribe }
     })
     const sender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 1 }
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
 
     watcherCallback(terminationError, [])
     await vi.waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1))
 
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).rejects.toBe(terminationError)
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).rejects.toBe(terminationError)
     signalPhysicalExit()
     await physicalExit
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).resolves.toBeUndefined()
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).resolves.toBeUndefined()
   })
 
   it('propagates terminal child failure while deletion cancels an active crawl', async () => {
@@ -481,18 +489,18 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
     const sender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 1 }
     const watchPromise = handlers['fs:watchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     const watchFailure = expect(watchPromise).rejects.toBe(terminationError)
     await vi.waitFor(() => expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(1))
 
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).rejects.toBe(terminationError)
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).rejects.toBe(terminationError)
     await watchFailure
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).rejects.toBe(terminationError)
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).rejects.toBe(terminationError)
 
     signalPhysicalExit()
     await physicalExit
-    await expect(closeLocalWatcherForWorktreePath('/tmp/repo')).resolves.toBeUndefined()
+    await expect(closeLocalWatcherForWorktreePath(ROOT)).resolves.toBeUndefined()
   })
 
   it('closes a pending grace-teardown watcher immediately for worktree deletion', async () => {
@@ -506,14 +514,14 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
 
     vi.useFakeTimers()
     try {
-      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: '/tmp/repo' })
+      handlers['fs:unwatchWorktree']({ sender: { id: 1 } }, { worktreePath: ROOT })
 
       expect(vi.getTimerCount()).toBe(1)
-      await closeLocalWatcherForWorktreePath('/tmp/repo')
+      await closeLocalWatcherForWorktreePath(ROOT)
 
       expect(unsubscribeMock).toHaveBeenCalledTimes(1)
       expect(vi.getTimerCount()).toBe(0)
@@ -541,7 +549,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const watchPromise = handlers['fs:watchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => {
       expect(subscribeParcelWatcher).toHaveBeenCalled()
@@ -549,7 +557,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const unwatchPromise = handlers['fs:unwatchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     // Why: unwatch must abort the in-flight install so watchWorktree settles
     // without waiting for the native subscribe crawl to finish.
@@ -586,23 +594,23 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const firstWatch = handlers['fs:watchWorktree'](
       { sender: firstSender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(1))
 
-    handlers['fs:unwatchWorktree']({ sender: firstSender }, { worktreePath: '/tmp/repo' })
+    handlers['fs:unwatchWorktree']({ sender: firstSender }, { worktreePath: ROOT })
     const replacementWatch = handlers['fs:watchWorktree'](
       { sender: replacementSender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
 
     await Promise.all([firstWatch, replacementWatch])
     expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(2)
-    replacementCallback(null, [{ type: 'update', path: '/tmp/repo/retry.txt' }] as never)
+    replacementCallback(null, [{ type: 'update', path: p('retry.txt') }] as never)
     await vi.waitFor(() =>
       expect(replacementSender.send).toHaveBeenCalledWith('fs:changed', {
-        worktreePath: '/tmp/repo',
-        events: [{ kind: 'update', absolutePath: '/tmp/repo/retry.txt', isDirectory: true }]
+        worktreePath: ROOT,
+        events: [{ kind: 'update', absolutePath: p('retry.txt'), isDirectory: true }]
       })
     )
   })
@@ -634,33 +642,33 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
     const reopenSender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 3 }
     const first = handlers['fs:watchWorktree'](
       { sender: firstSender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
 
     await vi.waitFor(() => expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(1))
-    handlers['fs:unwatchWorktree']({ sender: firstSender }, { worktreePath: '/tmp/repo' })
-    expect(installs.get('/tmp/repo')?.signal?.aborted).toBe(true)
+    handlers['fs:unwatchWorktree']({ sender: firstSender }, { worktreePath: ROOT })
+    expect(installs.get(ROOT)?.signal?.aborted).toBe(true)
 
     const joiner = handlers['fs:watchWorktree'](
       { sender: joinerSender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await closeAllWatchers()
     const reopen = handlers['fs:watchWorktree'](
       { sender: reopenSender },
-      { worktreePath: '/tmp/other' }
+      { worktreePath: OTHER_ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(2))
 
-    installs.get('/tmp/repo')?.resolve({ unsubscribe: lateUnsubscribe })
-    installs.get('/tmp/other')?.resolve({ unsubscribe: vi.fn() })
+    installs.get(ROOT)?.resolve({ unsubscribe: lateUnsubscribe })
+    installs.get(OTHER_ROOT)?.resolve({ unsubscribe: vi.fn() })
     await Promise.all([first, joiner, reopen])
 
     expect(subscribeViaWatcherProcess).toHaveBeenCalledTimes(2)
     expect(
       vi
         .mocked(subscribeViaWatcherProcess)
-        .mock.calls.filter(([rootPath]) => rootPath.endsWith('/tmp/repo'))
+        .mock.calls.filter(([rootPath]) => rootPath.endsWith(ROOT))
     ).toHaveLength(1)
     await vi.waitFor(() => expect(lateUnsubscribe).toHaveBeenCalledTimes(1))
   })
@@ -684,12 +692,12 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const watchPromise = handlers['fs:watchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => {
       expect(subscribeParcelWatcher).toHaveBeenCalled()
     })
-    const closePromise = closeLocalWatcherForWorktreePath('/tmp/repo')
+    const closePromise = closeLocalWatcherForWorktreePath(ROOT)
     const closedBeforeNativeSubscribe = await Promise.race([
       closePromise.then(() => true),
       new Promise<false>((resolve) => setTimeout(() => resolve(false), 0))
@@ -715,15 +723,15 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
-    await closeLocalWatcherForWorktreePath('/tmp/repo')
-    await restoreLocalWatcherAfterFailedRemoval('/tmp/repo')
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
+    await closeLocalWatcherForWorktreePath(ROOT)
+    await restoreLocalWatcherAfterFailedRemoval(ROOT)
 
     expect(firstUnsubscribe).toHaveBeenCalledTimes(1)
     expect(subscribeParcelWatcher).toHaveBeenCalledTimes(2)
     expect(sender.send).toHaveBeenCalledWith('fs:changed', {
-      worktreePath: '/tmp/repo',
-      events: [{ kind: 'overflow', absolutePath: '/tmp/repo' }]
+      worktreePath: ROOT,
+      events: [{ kind: 'overflow', absolutePath: ROOT }]
     })
   })
 
@@ -733,10 +741,10 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
     vi.mocked(subscribeParcelWatcher).mockResolvedValue({ unsubscribe: firstUnsubscribe } as never)
     const sender = { isDestroyed: () => false, send: vi.fn(), once: vi.fn(), id: 1 }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
-    await closeLocalWatcherForWorktreePath('/tmp/repo')
-    handlers['fs:unwatchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
-    await restoreLocalWatcherAfterFailedRemoval('/tmp/repo')
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
+    await closeLocalWatcherForWorktreePath(ROOT)
+    handlers['fs:unwatchWorktree']({ sender }, { worktreePath: ROOT })
+    await restoreLocalWatcherAfterFailedRemoval(ROOT)
 
     expect(firstUnsubscribe).toHaveBeenCalledTimes(1)
     expect(subscribeParcelWatcher).toHaveBeenCalledTimes(1)
@@ -759,10 +767,10 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
       id: 1
     }
 
-    await handlers['fs:watchWorktree']({ sender }, { worktreePath: '/tmp/repo' })
-    await closeLocalWatcherForWorktreePath('/tmp/repo')
+    await handlers['fs:watchWorktree']({ sender }, { worktreePath: ROOT })
+    await closeLocalWatcherForWorktreePath(ROOT)
     destroyedCallbacks[0]?.()
-    await restoreLocalWatcherAfterFailedRemoval('/tmp/repo')
+    await restoreLocalWatcherAfterFailedRemoval(ROOT)
 
     expect(firstUnsubscribe).toHaveBeenCalledTimes(1)
     expect(subscribeParcelWatcher).toHaveBeenCalledTimes(1)
@@ -788,7 +796,7 @@ describe('local filesystem watcher unsubscribe cleanup', () => {
 
     const watchPromise = handlers['fs:watchWorktree'](
       { sender },
-      { worktreePath: '/tmp/repo' }
+      { worktreePath: ROOT }
     ) as Promise<unknown>
     await vi.waitFor(() => {
       expect(subscribeParcelWatcher).toHaveBeenCalled()

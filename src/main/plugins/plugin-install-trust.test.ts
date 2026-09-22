@@ -63,7 +63,7 @@ describe('plugin install trust', () => {
   it('rejects locally installed reserved identities before publication', async () => {
     const sourcePath = await tempRoot('kolux-reserved-plugin-')
     const pluginsDir = await tempRoot('kolux-plugin-installs-')
-    await writePlugin(sourcePath, 'TxaisX', 'kolux-skills')
+    await writePlugin(sourcePath, 'txais', 'kolux-skills')
 
     await expect(
       installPluginFromLocalPath({ pluginsDir, sourcePath, hostVersion: '1.4.0' })
@@ -77,7 +77,7 @@ describe('plugin install trust', () => {
   it('allows the app-bundled path only for the complete official identity', async () => {
     const sourcePath = await tempRoot('kolux-bundled-plugin-')
     const pluginsDir = await tempRoot('kolux-plugin-installs-')
-    await writePlugin(sourcePath, 'TxaisX', 'kolux-skills')
+    await writePlugin(sourcePath, 'txais', 'kolux-skills')
 
     const result = await installBundledPlugin({
       pluginsDir,

@@ -117,7 +117,7 @@ describe('getDefaultTaskRepoSelection', () => {
     const selection = getDefaultTaskRepoSelection([
       repo({
         id: 'local-kolux',
-        upstream: { owner: 'Txais', repo: 'Kolux' }
+        upstream: { owner: 'TxaisX', repo: 'Kolux' }
       }),
       repo({
         id: 'ssh-kolux',
@@ -136,7 +136,7 @@ describe('getDefaultTaskRepoSelection', () => {
   it('keeps GitHub grouping intact while a pending-identity repo joins as its own project', () => {
     const selection = getDefaultTaskRepoSelection(
       getTaskEligibleRepos([
-        repo({ id: 'local-kolux', upstream: { owner: 'Txais', repo: 'Kolux' } }),
+        repo({ id: 'local-kolux', upstream: { owner: 'TxaisX', repo: 'Kolux' } }),
         repo({
           id: 'ssh-kolux',
           connectionId: 'builder',
@@ -210,7 +210,7 @@ describe('getTaskProjectPickerRepos', () => {
     const pickerRepos = getTaskProjectPickerRepos([
       repo({
         id: 'local-kolux',
-        upstream: { owner: 'Txais', repo: 'Kolux' }
+        upstream: { owner: 'TxaisX', repo: 'Kolux' }
       }),
       repo({
         id: 'ssh-kolux',
@@ -294,12 +294,12 @@ describe('getTaskProjectPickerGroups', () => {
 
     expect(groups).toHaveLength(2)
     expect(groups[0]).toMatchObject({
-      projectKey: 'github:TxaisX/nightshift',
+      projectKey: 'github:txaisx/kolux',
       repo: { id: 'local-kolux' }
     })
     expect(groups[0]?.sources.map((source) => source.id)).toEqual(['local-kolux', 'ssh-kolux'])
     expect(groups[1]).toMatchObject({
-      projectKey: 'github:txais/docs',
+      projectKey: 'github:txaisx/docs',
       repo: { id: 'docs' }
     })
   })

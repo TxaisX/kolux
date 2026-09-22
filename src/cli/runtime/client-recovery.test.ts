@@ -71,313 +71,333 @@ describe('RuntimeClient orchestration recovery identity', () => {
     )
   })
 
-  it('attaches the request and exact retry identity to a real RPC failure response', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-recovery-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    const server = createServer((socket) => {
-      let buffer = ''
-      socket.setEncoding('utf8')
-      socket.on('data', (chunk: string) => {
-        buffer += chunk
-        const newline = buffer.indexOf('\n')
-        if (newline === -1) {
-          return
-        }
-        const request = JSON.parse(buffer.slice(0, newline)) as { id: string; method: string }
-        const response =
-          request.method === 'status.get'
-            ? {
-                id: request.id,
-                ok: true,
-                result: { capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] },
-                _meta: { runtimeId: 'runtime-1' }
-              }
-            : {
-                id: request.id,
-                ok: false,
-                error: {
-                  code: 'runtime_timeout',
-                  message: 'request timed out',
-                  data: { requestId: 'request_1', dispatchId: 'dispatch_1' }
-                },
-                _meta: { runtimeId: 'runtime-1' }
-              }
-        socket.end(`${JSON.stringify(response)}\n`)
+  // Why: these tests create Unix domain socket servers in temp directories. Windows does not
+  // support Unix domain sockets the same way, causing EACCES on listen() (see runtime-client.test.ts).
+  it.skipIf(process.platform === 'win32')(
+    'attaches the request and exact retry identity to a real RPC failure response',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-recovery-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      const server = createServer((socket) => {
+        let buffer = ''
+        socket.setEncoding('utf8')
+        socket.on('data', (chunk: string) => {
+          buffer += chunk
+          const newline = buffer.indexOf('\n')
+          if (newline === -1) {
+            return
+          }
+          const request = JSON.parse(buffer.slice(0, newline)) as { id: string; method: string }
+          const response =
+            request.method === 'status.get'
+              ? {
+                  id: request.id,
+                  ok: true,
+                  result: { capabilities: [ORCHESTRATION_CONTRACT_RUNTIME_CAPABILITY] },
+                  _meta: { runtimeId: 'runtime-1' }
+                }
+              : {
+                  id: request.id,
+                  ok: false,
+                  error: {
+                    code: 'runtime_timeout',
+                    message: 'request timed out',
+                    data: { requestId: 'request_1', dispatchId: 'dispatch_1' }
+                  },
+                  _meta: { runtimeId: 'runtime-1' }
+                }
+          socket.end(`${JSON.stringify(response)}\n`)
+        })
       })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-1')
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-1')
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
-    try {
-      await client.call('orchestration.workerStart', { task: 'task_1' })
-      throw new Error('expected worker-start failure')
-    } catch (error) {
-      expect(error).toBeInstanceOf(RuntimeRpcFailureError)
-      const recovered = orchestrationMutationRecoveryError(error) as {
-        data?: Record<string, unknown>
-        response?: { id?: string; _meta?: { runtimeId?: string } }
-      }
-      expect(recovered).toBeInstanceOf(RuntimeRpcFailureError)
-      expect(recovered.response).toMatchObject({
-        id: expect.any(String),
-        _meta: { runtimeId: 'runtime-1' }
-      })
-      expect(recovered.data).toMatchObject({
-        orchestrationRequestId: expect.any(String),
-        dispatchId: 'dispatch_1',
-        originalCommand: ['kolux', 'orchestration', 'worker-start', '--task', 'task_1'],
-        recovery: {
-          queryCommand: [
-            'kolux',
-            'orchestration',
-            'worker-show',
-            '--dispatch',
-            'dispatch_1',
-            '--json'
-          ],
-          retryCommand: [
-            'kolux',
-            'orchestration',
-            'worker-start',
-            '--task',
-            'task_1',
-            '--retry-request',
-            expect.any(String)
-          ],
-          recoveryBlocked: false
+      const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
+      try {
+        await client.call('orchestration.workerStart', { task: 'task_1' })
+        throw new Error('expected worker-start failure')
+      } catch (error) {
+        expect(error).toBeInstanceOf(RuntimeRpcFailureError)
+        const recovered = orchestrationMutationRecoveryError(error) as {
+          data?: Record<string, unknown>
+          response?: { id?: string; _meta?: { runtimeId?: string } }
         }
-      })
+        expect(recovered).toBeInstanceOf(RuntimeRpcFailureError)
+        expect(recovered.response).toMatchObject({
+          id: expect.any(String),
+          _meta: { runtimeId: 'runtime-1' }
+        })
+        expect(recovered.data).toMatchObject({
+          orchestrationRequestId: expect.any(String),
+          dispatchId: 'dispatch_1',
+          originalCommand: ['kolux', 'orchestration', 'worker-start', '--task', 'task_1'],
+          recovery: {
+            queryCommand: [
+              'kolux',
+              'orchestration',
+              'worker-show',
+              '--dispatch',
+              'dispatch_1',
+              '--json'
+            ],
+            retryCommand: [
+              'kolux',
+              'orchestration',
+              'worker-start',
+              '--task',
+              'task_1',
+              '--retry-request',
+              expect.any(String)
+            ],
+            recoveryBlocked: false
+          }
+        })
+      }
     }
-  })
+  )
 
-  it('keeps durable prompt retry when failure metadata proves the preflight runtime', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-current-prompt-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    const server = createServer((socket) => {
-      socket.once('data', (data) => {
-        const request = JSON.parse(String(data).trim()) as { id: string }
-        socket.end(
-          `${JSON.stringify({
-            id: request.id,
-            ok: false,
-            error: { code: 'runtime_timeout', message: 'request timed out' },
-            _meta: { runtimeId: 'runtime-current' }
-          })}\n`
+  it.skipIf(process.platform === 'win32')(
+    'keeps durable prompt retry when failure metadata proves the preflight runtime',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-current-prompt-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      const server = createServer((socket) => {
+        socket.once('data', (data) => {
+          const request = JSON.parse(String(data).trim()) as { id: string }
+          socket.end(
+            `${JSON.stringify({
+              id: request.id,
+              ok: false,
+              error: { code: 'runtime_timeout', message: 'request timed out' },
+              _meta: { runtimeId: 'runtime-current' }
+            })}\n`
+          )
+        })
+      })
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
+
+      const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
+      const error = await client
+        .call(
+          'terminal.send',
+          {
+            terminal: 'term-current',
+            text: 'review',
+            enter: true,
+            interrupt: false,
+            agentPrompt: true,
+            client: { id: 'kolux-cli', type: 'desktop' }
+          },
+          {
+            terminalPromptPreflight: { runtimeId: 'runtime-current' },
+            orchestrationRequestId: 'prompt-current'
+          }
         )
+        .then(() => undefined)
+        .catch((caught: unknown) => caught)
+
+      expect(error).toBeInstanceOf(RuntimeRpcFailureError)
+      expect(error).toMatchObject({
+        data: { orchestrationRequestId: 'prompt-current' }
       })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
+      expect((error as Error).message).toContain('--retry-request prompt-current')
+    }
+  )
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
-    const error = await client
-      .call(
-        'terminal.send',
-        {
-          terminal: 'term-current',
-          text: 'review',
-          enter: true,
-          interrupt: false,
-          agentPrompt: true,
-          client: { id: 'kolux-cli', type: 'desktop' }
-        },
-        {
-          terminalPromptPreflight: { runtimeId: 'runtime-current' },
-          orchestrationRequestId: 'prompt-current'
-        }
-      )
-      .then(() => undefined)
-      .catch((caught: unknown) => caught)
-
-    expect(error).toBeInstanceOf(RuntimeRpcFailureError)
-    expect(error).toMatchObject({
-      data: { orchestrationRequestId: 'prompt-current' }
-    })
-    expect((error as Error).message).toContain('--retry-request prompt-current')
-  })
-
-  it('keeps the prompt retry ID when the attested runtime times out in transport', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-rt-timeout-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    let receivedRequest: Record<string, unknown> | undefined
-    const server = createServer((socket) => {
-      socket.once('data', (data) => {
-        receivedRequest = JSON.parse(String(data).trim()) as Record<string, unknown>
+  it.skipIf(process.platform === 'win32')(
+    'keeps the prompt retry ID when the attested runtime times out in transport',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-rt-timeout-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      let receivedRequest: Record<string, unknown> | undefined
+      const server = createServer((socket) => {
+        socket.once('data', (data) => {
+          receivedRequest = JSON.parse(String(data).trim()) as Record<string, unknown>
+        })
       })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-current')
 
-    const client = new RuntimeClient(userDataPath, 200, null, null, 'kolux')
-    const error = await client
-      .call(
-        'terminal.send',
-        {
-          terminal: 'term-current',
-          text: 'review',
-          enter: true,
-          interrupt: false,
-          agentPrompt: true,
-          client: { id: 'kolux-cli', type: 'desktop' }
-        },
-        {
-          terminalPromptPreflight: { runtimeId: 'runtime-current' },
-          orchestrationRequestId: 'prompt-transport-timeout'
-        }
-      )
-      .then(() => undefined)
-      .catch((caught: unknown) => caught)
-
-    expect(receivedRequest?.orchestrationRequestId).toBe('prompt-transport-timeout')
-    expect(error).toBeInstanceOf(RuntimeClientError)
-    expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
-    expect((error as RuntimeClientError).code).toBe('runtime_timeout')
-    expect(error).toMatchObject({ data: { orchestrationRequestId: 'prompt-transport-timeout' } })
-    expect((error as Error).message).toContain(
-      '--retry-request prompt-transport-timeout --wait-submit <seconds>'
-    )
-    expect((error as RuntimeClientError).data).not.toHaveProperty('retrySafe')
-  })
-
-  it('blocks retry when a downgraded runtime rejects after capability preflight', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-downgraded-prompt-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    let receivedRequest: Record<string, unknown> | undefined
-    const server = createServer((socket) => {
-      socket.once('data', (data) => {
-        const request = JSON.parse(String(data).trim()) as Record<string, unknown>
-        receivedRequest = request
-        socket.end(
-          `${JSON.stringify({
-            id: request.id,
-            ok: false,
-            error: { code: 'runtime_timeout', message: 'request timed out' },
-            _meta: { runtimeId: 'runtime-after-downgrade' }
-          })}\n`
+      const client = new RuntimeClient(userDataPath, 200, null, null, 'kolux')
+      const error = await client
+        .call(
+          'terminal.send',
+          {
+            terminal: 'term-current',
+            text: 'review',
+            enter: true,
+            interrupt: false,
+            agentPrompt: true,
+            client: { id: 'kolux-cli', type: 'desktop' }
+          },
+          {
+            terminalPromptPreflight: { runtimeId: 'runtime-current' },
+            orchestrationRequestId: 'prompt-transport-timeout'
+          }
         )
-      })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
+        .then(() => undefined)
+        .catch((caught: unknown) => caught)
 
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
-    const error = await client
-      .call(
-        'terminal.send',
-        {
-          terminal: 'term-downgraded',
-          text: 'review',
-          enter: true,
-          interrupt: false,
-          agentPrompt: true,
-          client: { id: 'kolux-cli', type: 'desktop' }
-        },
-        {
-          terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
-          orchestrationRequestId: 'prompt-downgraded-rejection'
+      expect(receivedRequest?.orchestrationRequestId).toBe('prompt-transport-timeout')
+      expect(error).toBeInstanceOf(RuntimeClientError)
+      expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
+      expect((error as RuntimeClientError).code).toBe('runtime_timeout')
+      expect(error).toMatchObject({ data: { orchestrationRequestId: 'prompt-transport-timeout' } })
+      expect((error as Error).message).toContain(
+        '--retry-request prompt-transport-timeout --wait-submit <seconds>'
+      )
+      expect((error as RuntimeClientError).data).not.toHaveProperty('retrySafe')
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'blocks retry when a downgraded runtime rejects after capability preflight',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-downgraded-prompt-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      let receivedRequest: Record<string, unknown> | undefined
+      const server = createServer((socket) => {
+        socket.once('data', (data) => {
+          const request = JSON.parse(String(data).trim()) as Record<string, unknown>
+          receivedRequest = request
+          socket.end(
+            `${JSON.stringify({
+              id: request.id,
+              ok: false,
+              error: { code: 'runtime_timeout', message: 'request timed out' },
+              _meta: { runtimeId: 'runtime-after-downgrade' }
+            })}\n`
+          )
+        })
+      })
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
+
+      const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
+      const error = await client
+        .call(
+          'terminal.send',
+          {
+            terminal: 'term-downgraded',
+            text: 'review',
+            enter: true,
+            interrupt: false,
+            agentPrompt: true,
+            client: { id: 'kolux-cli', type: 'desktop' }
+          },
+          {
+            terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
+            orchestrationRequestId: 'prompt-downgraded-rejection'
+          }
+        )
+        .then(() => undefined)
+        .catch((caught: unknown) => caught)
+
+      expect(receivedRequest?.orchestrationRequestId).toBe('prompt-downgraded-rejection')
+      expect(error).toBeInstanceOf(RuntimeRpcFailureError)
+      expectPromptRetryBlockedJson(error, 'prompt-downgraded-rejection')
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'blocks retry when a downgraded runtime loses the prompt reply',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-lost-prompt-reply-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      let receivedRequest: Record<string, unknown> | undefined
+      const server = createServer((socket) => {
+        socket.once('data', (data) => {
+          const request = JSON.parse(String(data).trim()) as Record<string, unknown>
+          receivedRequest = request
+          socket.destroy()
+        })
+      })
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
+
+      const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
+      const error = await client
+        .call(
+          'terminal.send',
+          {
+            terminal: 'term-downgraded',
+            text: 'review',
+            enter: true,
+            interrupt: false,
+            agentPrompt: true,
+            client: { id: 'kolux-cli', type: 'desktop' }
+          },
+          {
+            terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
+            orchestrationRequestId: 'prompt-downgraded-lost-reply'
+          }
+        )
+        .then(() => undefined)
+        .catch((caught: unknown) => caught)
+
+      expect(receivedRequest?.orchestrationRequestId).toBe('prompt-downgraded-lost-reply')
+      expect(error).toBeInstanceOf(RuntimeClientError)
+      expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
+      expectPromptRetryBlockedJson(error, 'prompt-downgraded-lost-reply')
+      expect(JSON.stringify((error as RuntimeClientError).data)).not.toContain('Update Kolux')
+    }
+  )
+
+  it.skipIf(process.platform === 'win32')(
+    'reports an unknown legacy prompt outcome without advertising an unsafe retry',
+    async () => {
+      const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-legacy-prompt-'))
+      const endpoint = join(userDataPath, 'runtime.sock')
+      let receivedRequest: Record<string, unknown> | undefined
+      const server = createServer((socket) => {
+        socket.once('data', (data) => {
+          receivedRequest = JSON.parse(String(data).trim()) as Record<string, unknown>
+          socket.destroy()
+        })
+      })
+      servers.add(server)
+      await new Promise<void>((resolve) => server.listen(endpoint, resolve))
+      writeRuntimeConnection(userDataPath, endpoint, 'runtime-legacy')
+
+      const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
+      const error = await client
+        .call(
+          'terminal.send',
+          {
+            terminal: 'term-legacy',
+            text: 'review',
+            enter: true,
+            interrupt: false,
+            agentPrompt: true,
+            client: { id: 'kolux-cli', type: 'desktop' }
+          },
+          { legacyTerminalPrompt: true }
+        )
+        .then(() => undefined)
+        .catch((caught: unknown) => caught)
+
+      expect(error).toBeInstanceOf(RuntimeClientError)
+      expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
+      expect(error).toMatchObject({
+        data: {
+          deliveryOutcome: 'unknown',
+          retrySafe: false,
+          nextSteps: expect.arrayContaining([
+            'Inspect the terminal output and agent state without sending input.',
+            'Update Kolux on the execution host before future prompt sends that need durable retry.'
+          ])
         }
-      )
-      .then(() => undefined)
-      .catch((caught: unknown) => caught)
-
-    expect(receivedRequest?.orchestrationRequestId).toBe('prompt-downgraded-rejection')
-    expect(error).toBeInstanceOf(RuntimeRpcFailureError)
-    expectPromptRetryBlockedJson(error, 'prompt-downgraded-rejection')
-  })
-
-  it('blocks retry when a downgraded runtime loses the prompt reply', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-lost-prompt-reply-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    let receivedRequest: Record<string, unknown> | undefined
-    const server = createServer((socket) => {
-      socket.once('data', (data) => {
-        const request = JSON.parse(String(data).trim()) as Record<string, unknown>
-        receivedRequest = request
-        socket.destroy()
       })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-after-downgrade')
-
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
-    const error = await client
-      .call(
-        'terminal.send',
-        {
-          terminal: 'term-downgraded',
-          text: 'review',
-          enter: true,
-          interrupt: false,
-          agentPrompt: true,
-          client: { id: 'kolux-cli', type: 'desktop' }
-        },
-        {
-          terminalPromptPreflight: { runtimeId: 'runtime-before-downgrade' },
-          orchestrationRequestId: 'prompt-downgraded-lost-reply'
-        }
-      )
-      .then(() => undefined)
-      .catch((caught: unknown) => caught)
-
-    expect(receivedRequest?.orchestrationRequestId).toBe('prompt-downgraded-lost-reply')
-    expect(error).toBeInstanceOf(RuntimeClientError)
-    expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
-    expectPromptRetryBlockedJson(error, 'prompt-downgraded-lost-reply')
-    expect(JSON.stringify((error as RuntimeClientError).data)).not.toContain('Update Kolux')
-  })
-
-  it('reports an unknown legacy prompt outcome without advertising an unsafe retry', async () => {
-    const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-runtime-legacy-prompt-'))
-    const endpoint = join(userDataPath, 'runtime.sock')
-    let receivedRequest: Record<string, unknown> | undefined
-    const server = createServer((socket) => {
-      socket.once('data', (data) => {
-        receivedRequest = JSON.parse(String(data).trim()) as Record<string, unknown>
-        socket.destroy()
-      })
-    })
-    servers.add(server)
-    await new Promise<void>((resolve) => server.listen(endpoint, resolve))
-    writeRuntimeConnection(userDataPath, endpoint, 'runtime-legacy')
-
-    const client = new RuntimeClient(userDataPath, 500, null, null, 'kolux')
-    const error = await client
-      .call(
-        'terminal.send',
-        {
-          terminal: 'term-legacy',
-          text: 'review',
-          enter: true,
-          interrupt: false,
-          agentPrompt: true,
-          client: { id: 'kolux-cli', type: 'desktop' }
-        },
-        { legacyTerminalPrompt: true }
-      )
-      .then(() => undefined)
-      .catch((caught: unknown) => caught)
-
-    expect(error).toBeInstanceOf(RuntimeClientError)
-    expect(error).not.toBeInstanceOf(RuntimeRpcFailureError)
-    expect(error).toMatchObject({
-      data: {
-        deliveryOutcome: 'unknown',
-        retrySafe: false,
-        nextSteps: expect.arrayContaining([
-          'Inspect the terminal output and agent state without sending input.',
-          'Update Kolux on the execution host before future prompt sends that need durable retry.'
-        ])
-      }
-    })
-    expect((error as RuntimeClientError).data).not.toHaveProperty('orchestrationRequestId')
-    expect(receivedRequest).not.toHaveProperty('orchestrationRequestId')
-    expect((error as Error).message).not.toContain('--retry-request')
-    expect((error as Error).message).toContain('do not resend automatically')
-  })
+      expect((error as RuntimeClientError).data).not.toHaveProperty('orchestrationRequestId')
+      expect(receivedRequest).not.toHaveProperty('orchestrationRequestId')
+      expect((error as Error).message).not.toContain('--retry-request')
+      expect((error as Error).message).toContain('do not resend automatically')
+    }
+  )
 })

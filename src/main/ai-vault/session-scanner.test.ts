@@ -7,6 +7,7 @@ import { scanAiVaultSessions } from './session-scanner'
 import {
   isolatedScanRoots,
   jsonLines,
+  posixQuote,
   writeAntigravityScannerFixture,
   writeOmpScannerFixture,
   writePrimeAgentScannerFixture
@@ -188,7 +189,7 @@ describe('scanAiVaultSessions', () => {
       model: 'gpt-5.3-codex',
       messageCount: 2,
       totalTokens: 625,
-      resumeCommand: `cd '/repo/app/packages/web' && CODEX_HOME='${root}' codex resume '019f0000-1111-7222-8333-444444444444'`
+      resumeCommand: `cd '/repo/app/packages/web' && CODEX_HOME=${posixQuote(root)} codex resume '019f0000-1111-7222-8333-444444444444'`
     })
     expect(codex?.firstUserPrompt).toBeUndefined()
   })
@@ -243,7 +244,7 @@ describe('scanAiVaultSessions', () => {
       sessionId: '019e9693-64fc-7370-9c18-7e625c595d0f',
       cwd: '/Users/nwparker/kolux/workspaces/kolux/mem4',
       codexHome: runtimeHome,
-      resumeCommand: `cd '/Users/nwparker/kolux/workspaces/kolux/mem4' && CODEX_HOME='${runtimeHome}' codex resume '019e9693-64fc-7370-9c18-7e625c595d0f'`
+      resumeCommand: `cd '/Users/nwparker/kolux/workspaces/kolux/mem4' && CODEX_HOME=${posixQuote(runtimeHome)} codex resume '019e9693-64fc-7370-9c18-7e625c595d0f'`
     })
   })
 
@@ -730,7 +731,7 @@ describe('scanAiVaultSessions', () => {
       "cd '/tmp/claude' && claude --resume 'claude-session'"
     )
     expect(commandByAgent.get('codex')).toBe(
-      `cd '/tmp/codex' && CODEX_HOME='${root}' codex resume 'codex-session'`
+      `cd '/tmp/codex' && CODEX_HOME=${posixQuote(root)} codex resume 'codex-session'`
     )
     expect(commandByAgent.get('gemini')).toBe("gemini --resume 'gemini-session'")
     expect(commandByAgent.get('antigravity')).toBe(`agy --conversation '${antigravitySessionId}'`)
@@ -753,10 +754,12 @@ describe('scanAiVaultSessions', () => {
     )
     expect(commandByAgent.get('pi')).toBe("cd '/tmp/pi' && pi --session 'pi-session'")
     // OMP resumes by absolute transcript path, not by internal session id.
-    expect(commandByAgent.get('omp')).toBe(`cd '/tmp/omp' && omp --resume '${ompSessionFile}'`)
+    expect(commandByAgent.get('omp')).toBe(
+      `cd '/tmp/omp' && omp --resume ${posixQuote(ompSessionFile)}`
+    )
     // Prime Agent's `--resume <path|id>` takes the same absolute-path form as OMP.
     expect(commandByAgent.get('prime-agent')).toBe(
-      `cd '/tmp/prime-agent' && prime-agent --resume '${primeAgentSessionFile}'`
+      `cd '/tmp/prime-agent' && prime-agent --resume ${posixQuote(primeAgentSessionFile)}`
     )
     expect(commandByAgent.get('cline')).toBe("cd '/tmp/cline' && cline --id 'cline-session'")
     expect(commandByAgent.get('devin')).toBe("cd '/tmp/devin' && devin --resume 'devin-session'")

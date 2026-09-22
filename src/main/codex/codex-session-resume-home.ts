@@ -1,5 +1,4 @@
 import { lstatSync, statSync } from 'node:fs'
-import { join } from 'node:path'
 import {
   getRuntimePathBasename,
   normalizeRuntimePathForComparison,
@@ -47,6 +46,14 @@ function isCodexRolloutInsideSessionsRoot(sessionsRoot: string, filePath: string
   return Boolean(relativePath && ROLLOUT_RELATIVE_PATH.test(relativePath.replace(/\\/g, '/')))
 }
 
+// Why: `node:path`'s `join` always normalizes to the HOST platform's separator, which
+// mangles a POSIX-shaped home passed to it on a Windows dev/CI box (and vice versa) —
+// append 'sessions' with whatever separator the home itself already uses instead.
+function joinSessionsRoot(homePath: string): string {
+  const separator = homePath.includes('\\') ? '\\' : '/'
+  return `${homePath.replace(/[\\/]+$/, '')}${separator}sessions`
+}
+
 function isRegularFile(filePath: string): boolean {
   try {
     return lstatSync(filePath).isFile()
@@ -85,7 +92,7 @@ function resolveTrustedCodexSessionResume(args: {
   }
 
   for (const homePath of args.trustedCodexHomes) {
-    const sessionsRoot = join(homePath, 'sessions')
+    const sessionsRoot = joinSessionsRoot(homePath)
     if (!isCodexRolloutInsideSessionsRoot(sessionsRoot, persistedPath)) {
       continue
     }
@@ -280,7 +287,7 @@ export async function findTrustedCodexSessionResume(args: {
 
   const selectedAccountHome = args.getSelectedAccountCodexHome()
   const selectedSessionsRoot = selectedAccountHome
-    ? normalizeRuntimePathForComparison(join(selectedAccountHome, 'sessions'))
+    ? normalizeRuntimePathForComparison(joinSessionsRoot(selectedAccountHome))
     : null
   const listSessionFiles =
     args.listSessionFiles ??
@@ -305,7 +312,7 @@ export async function findTrustedCodexSessionResume(args: {
       continue
     }
     seenHomes.add(comparisonHome)
-    const sessionsRoot = join(homePath, 'sessions')
+    const sessionsRoot = joinSessionsRoot(homePath)
     if (
       !args.listSessionFiles &&
       !sessionsTreeIsPresent(sessionsRoot, isSelectedAccountHome(selectedAccountHome, homePath))

@@ -199,6 +199,8 @@ describe('a rejected close is a real retry', () => {
     await expect(first).rejects.toThrow('injected release failure')
     await expect(second).rejects.toThrow('injected release failure')
     expect(injected.calls()).toBe(1)
+    // Why: leaves the real close to succeed so afterEach's cleanup retry can release the handle.
+    injected.stopFailing()
   })
 })
 

@@ -79,7 +79,13 @@ function fakeCodex(): CodexScript {
       calls: [],
       replies: [],
       resumedThreadId: null,
-      pid: 4321,
+      // Why process.pid, not a fake number: cancelTurn's terminate step does a REAL OS process
+      // table lookup for this pid (captureCodexTurnProcesses/terminateCodexTurnProcesses). A
+      // nonexistent pid reads as "not found" (null) on Windows but as an empty-and-valid
+      // descendant list on POSIX — only a real, currently-running pid behaves the same on both.
+      // It only reads the table and diffs against a baseline; nothing new spawns as this
+      // process's child during the test, so nothing is ever actually terminated.
+      pid: process.pid,
       closed: false,
       request: async (method, params) => {
         connection.calls.push({ method, params })

@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 function readSource(relativePath: string): string {
-  return readFileSync(join(process.cwd(), relativePath), 'utf8')
+  // Why: normalize CRLF so `toContain` pins match regardless of the file's checkout line endings.
+  return readFileSync(join(process.cwd(), relativePath), 'utf8').replace(/\r\n/g, '\n')
 }
 
 const APP_PATH = 'src/renderer/src/App.tsx'
@@ -607,7 +608,7 @@ describe('renderer startup runtime routing', () => {
       'KOLUX_RENDERER_SHUTDOWN_CHECKPOINT_ABORTED_EVENT,\n      shutdownCheckpoint.abortAfterCheckpointFailure'
     )
     expect(source).toContain(
-      'window.addEventListener(KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT, shutdownCheckpoint.abandonAttempt)'
+      'window.addEventListener(\n      KOLUX_RENDERER_UNLOAD_PREVENTED_EVENT,\n      shutdownCheckpoint.abandonAttempt\n    )'
     )
     expect(source).toContain("window.addEventListener('beforeunload', persistBeforeUnload)")
     expect(source.match(/window\.addEventListener\('beforeunload'/g) ?? []).toHaveLength(1)

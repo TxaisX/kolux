@@ -390,6 +390,10 @@ describe('GitHandler', () => {
   })
 
   describe('addWorktree', () => {
+    // Why: windowsLongPathGitArgs (shared/windows-long-path-git-args.ts) prepends this global
+    // `-c` option to every `worktree add` on win32 — a real MAX_PATH mitigation, not a rename
+    // artifact — so every expected `worktree add` array below must lead with it on that platform.
+    const longPathPrefix = process.platform === 'win32' ? ['-c', 'core.longpaths=true'] : []
     // Why: mock git to control exit codes (e.g. --get exit 1 vs other) deterministically, independent of host git config.
     function setupMockedHandler(roots: string[]) {
       const ctx = new RelayContext()
@@ -428,6 +432,7 @@ describe('GitHandler', () => {
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main^{commit}'],
         [
+          ...longPathPrefix,
           'worktree',
           'add',
           '--no-track',
@@ -467,7 +472,7 @@ describe('GitHandler', () => {
       })
 
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
-        ['worktree', 'add', '/relay/wt', 'feature/test']
+        [...longPathPrefix, 'worktree', 'add', '/relay/wt', 'feature/test']
       ])
     })
 
@@ -489,7 +494,16 @@ describe('GitHandler', () => {
 
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/heads/main^{commit}'],
-        ['worktree', 'add', '--no-track', '-b', 'feature/disambig', '/relay/wt', 'refs/heads/main'],
+        [
+          ...longPathPrefix,
+          'worktree',
+          'add',
+          '--no-track',
+          '-b',
+          'feature/disambig',
+          '/relay/wt',
+          'refs/heads/main'
+        ],
         ['config', '--local', '--replace-all', 'branch.feature/disambig.base', 'refs/heads/main'],
         ['config', '--get', 'push.autoSetupRemote'],
         ['config', '--local', 'push.autoSetupRemote', 'true']
@@ -516,6 +530,7 @@ describe('GitHandler', () => {
         ['rev-parse', '--verify', '--quiet', 'refs/remotes/release/main^{commit}'],
         ['rev-parse', '--verify', '--quiet', 'refs/heads/release/main^{commit}'],
         [
+          ...longPathPrefix,
           'worktree',
           'add',
           '--no-track',
@@ -553,6 +568,7 @@ describe('GitHandler', () => {
       })
 
       expect(gitMock.mock.calls[1]?.[0]).toEqual([
+        ...longPathPrefix,
         'worktree',
         'add',
         '--no-track',
@@ -581,7 +597,16 @@ describe('GitHandler', () => {
       // No --local set: --get succeeded so we preserve the user's value.
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/heads/main^{commit}'],
-        ['worktree', 'add', '--no-track', '-b', 'feature/preserve', '/relay/wt', 'main'],
+        [
+          ...longPathPrefix,
+          'worktree',
+          'add',
+          '--no-track',
+          '-b',
+          'feature/preserve',
+          '/relay/wt',
+          'main'
+        ],
         ['config', '--local', '--replace-all', 'branch.feature/preserve.base', 'main'],
         ['config', '--get', 'push.autoSetupRemote']
       ])
@@ -604,7 +629,16 @@ describe('GitHandler', () => {
 
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/heads/main^{commit}'],
-        ['worktree', 'add', '--no-track', '-b', 'feature/empty', '/relay/wt', 'main'],
+        [
+          ...longPathPrefix,
+          'worktree',
+          'add',
+          '--no-track',
+          '-b',
+          'feature/empty',
+          '/relay/wt',
+          'main'
+        ],
         ['config', '--local', '--replace-all', 'branch.feature/empty.base', 'main'],
         ['config', '--get', 'push.autoSetupRemote']
       ])
@@ -631,7 +665,16 @@ describe('GitHandler', () => {
 
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/heads/main^{commit}'],
-        ['worktree', 'add', '--no-track', '-b', 'feature/corrupt', '/relay/wt', 'main'],
+        [
+          ...longPathPrefix,
+          'worktree',
+          'add',
+          '--no-track',
+          '-b',
+          'feature/corrupt',
+          '/relay/wt',
+          'main'
+        ],
         ['config', '--local', '--replace-all', 'branch.feature/corrupt.base', 'main'],
         ['config', '--get', 'push.autoSetupRemote']
       ])
@@ -685,7 +728,16 @@ describe('GitHandler', () => {
 
       expect(gitMock.mock.calls.map((c) => c[0])).toEqual([
         ['rev-parse', '--verify', '--quiet', 'refs/heads/main^{commit}'],
-        ['worktree', 'add', '--no-track', '-b', 'feature/fail', '/relay/wt', 'main']
+        [
+          ...longPathPrefix,
+          'worktree',
+          'add',
+          '--no-track',
+          '-b',
+          'feature/fail',
+          '/relay/wt',
+          'main'
+        ]
       ])
     })
   })

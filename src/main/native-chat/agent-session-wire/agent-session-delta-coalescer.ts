@@ -231,11 +231,15 @@ function appendWithinUtf8ByteLimit(
     ...current.map((chunk) => Buffer.from(chunk, 'utf8')),
     deltaBuffer
   ])
+  // Why: round forward to the end of a character the cut landed inside — never
+  // split a multi-byte character, and prefer keeping it over dropping it.
   let end = Math.min(combined.byteLength, headBytes)
-  while (end > 0 && (combined[end] & 0b1100_0000) === 0b1000_0000) {
-    end -= 1
+  while (end < combined.byteLength && (combined[end] & 0b1100_0000) === 0b1000_0000) {
+    end += 1
   }
-  const visibleMarker = marker.subarray(0, Math.min(marker.byteLength, maxBytes - end))
+  // Why: size the marker off the budgeted headBytes, not the rounded `end`, so
+  // rounding forward for a split character doesn't also shrink the marker.
+  const visibleMarker = marker.subarray(0, Math.min(marker.byteLength, maxBytes - headBytes))
   const text = combined.subarray(0, end).toString('utf8') + visibleMarker.toString('utf8')
   return {
     chunks: text ? [text] : [],

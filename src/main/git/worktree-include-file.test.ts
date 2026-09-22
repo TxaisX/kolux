@@ -98,14 +98,18 @@ describe('resolveWorktreeIncludePaths', () => {
     await expect(resolveWorktreeIncludePaths(repo)).resolves.toEqual(['.env'])
   })
 
-  it('resolves a gitignored symlink entry without following it', async () => {
-    writeInclude('.env\n')
-    writeFileSync(join(repo, '.env.real'), 'A=1')
-    symlinkSync(join(repo, '.env.real'), join(repo, '.env'))
-    mockCheckIgnore(['.env'])
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  it.skipIf(process.platform === 'win32')(
+    'resolves a gitignored symlink entry without following it',
+    async () => {
+      writeInclude('.env\n')
+      writeFileSync(join(repo, '.env.real'), 'A=1')
+      symlinkSync(join(repo, '.env.real'), join(repo, '.env'))
+      mockCheckIgnore(['.env'])
 
-    await expect(resolveWorktreeIncludePaths(repo)).resolves.toEqual(['.env'])
-  })
+      await expect(resolveWorktreeIncludePaths(repo)).resolves.toEqual(['.env'])
+    }
+  )
 
   it('skips glob and negation entries with a warning', async () => {
     writeInclude('.env.*\n!.env.production\n.env\n')

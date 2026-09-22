@@ -219,35 +219,39 @@ describe('agent hook spool', () => {
     }
   })
 
-  it('spools when the endpoint is present but the receiver is unavailable', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-failure-'))
-    const endpointDir = join(dir, 'agent-hooks')
-    mkdirSync(endpointDir, { recursive: true })
-    const endpoint = join(endpointDir, 'endpoint.env')
-    writeFileSync(
-      endpoint,
-      'KOLUX_AGENT_HOOK_PORT=9\nKOLUX_AGENT_HOOK_TOKEN=stale\nKOLUX_AGENT_HOOK_ENV=production\nKOLUX_AGENT_HOOK_VERSION=1\n'
-    )
-    const script = join(dir, 'codex-hook.sh')
-    writeFileSync(script, codexInternals.getManagedScript('posix'))
-    chmodSync(script, 0o755)
-    execFileSync('/bin/sh', [script], {
-      input: '{"hook_event_name":"SubagentStop","agent_id":"child"}\n',
-      env: {
-        ...process.env,
-        KOLUX_AGENT_HOOK_ENDPOINT: endpoint,
-        KOLUX_PANE_KEY: 'tab-failure:0',
-        KOLUX_TAB_ID: 'tab-failure',
-        KOLUX_AGENT_LAUNCH_TOKEN: 'generation-token'
-      },
-      timeout: 5000
-    })
-    const spoolFiles = readdirSync(join(endpointDir, 'spool'))
-    expect(spoolFiles).toHaveLength(1)
-    expect(readFileSync(join(endpointDir, 'spool', spoolFiles[0]!), 'utf8')).toContain(
-      'SubagentStop'
-    )
-  })
+  // Why: runs the POSIX managed script through /bin/sh directly, which Windows has none of.
+  it.skipIf(process.platform === 'win32')(
+    'spools when the endpoint is present but the receiver is unavailable',
+    () => {
+      const dir = mkdtempSync(join(tmpdir(), 'kolux-spool-failure-'))
+      const endpointDir = join(dir, 'agent-hooks')
+      mkdirSync(endpointDir, { recursive: true })
+      const endpoint = join(endpointDir, 'endpoint.env')
+      writeFileSync(
+        endpoint,
+        'KOLUX_AGENT_HOOK_PORT=9\nKOLUX_AGENT_HOOK_TOKEN=stale\nKOLUX_AGENT_HOOK_ENV=production\nKOLUX_AGENT_HOOK_VERSION=1\n'
+      )
+      const script = join(dir, 'codex-hook.sh')
+      writeFileSync(script, codexInternals.getManagedScript('posix'))
+      chmodSync(script, 0o755)
+      execFileSync('/bin/sh', [script], {
+        input: '{"hook_event_name":"SubagentStop","agent_id":"child"}\n',
+        env: {
+          ...process.env,
+          KOLUX_AGENT_HOOK_ENDPOINT: endpoint,
+          KOLUX_PANE_KEY: 'tab-failure:0',
+          KOLUX_TAB_ID: 'tab-failure',
+          KOLUX_AGENT_LAUNCH_TOKEN: 'generation-token'
+        },
+        timeout: 5000
+      })
+      const spoolFiles = readdirSync(join(endpointDir, 'spool'))
+      expect(spoolFiles).toHaveLength(1)
+      expect(readFileSync(join(endpointDir, 'spool', spoolFiles[0]!), 'utf8')).toContain(
+        'SubagentStop'
+      )
+    }
+  )
 
   it('does not mark a non-terminal downtime replay as runtime-observed', async () => {
     const userDataPath = mkdtempSync(join(tmpdir(), 'kolux-spool-observed-'))

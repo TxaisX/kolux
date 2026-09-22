@@ -21,6 +21,9 @@ export async function retryPendingStructuredAgentSessionSettlement(input: {
     return true
   }
   let journal = input.sessions.get(input.sessionId)?.journal
+  // Why: a journal opened here has no session entry to hold it, so nothing else will ever
+  // close it — this scratch connection is only ever used to write the settlement row.
+  let openedHere = false
   if (!journal) {
     try {
       journal = (
@@ -31,27 +34,34 @@ export async function retryPendingStructuredAgentSessionSettlement(input: {
           adapter: input.deps.adapter
         })
       ).journal
+      openedHere = true
     } catch (error) {
       input.deps.onEventSinkError?.({ sessionId: input.sessionId, error })
       return false
     }
   }
-  const current = input.sessions.get(input.sessionId)
-  const retrySession =
-    current ??
-    ({
-      journal,
-      params: input.params,
-      fence: record.lease.runtimeFence,
-      hasProviderChild: false,
-      acquisitionGeneration: null
-    } as StructuredAgentSessionHostSession)
-  return retryLoadedStructuredAgentSessionSettlement({
-    deps: input.deps,
-    sessionId: input.sessionId,
-    session: retrySession,
-    now: input.now
-  })
+  try {
+    const current = input.sessions.get(input.sessionId)
+    const retrySession =
+      current ??
+      ({
+        journal,
+        params: input.params,
+        fence: record.lease.runtimeFence,
+        hasProviderChild: false,
+        acquisitionGeneration: null
+      } as StructuredAgentSessionHostSession)
+    return await retryLoadedStructuredAgentSessionSettlement({
+      deps: input.deps,
+      sessionId: input.sessionId,
+      session: retrySession,
+      now: input.now
+    })
+  } finally {
+    if (openedHere) {
+      await journal.close()
+    }
+  }
 }
 
 export async function retryLoadedStructuredAgentSessionSettlement(input: {

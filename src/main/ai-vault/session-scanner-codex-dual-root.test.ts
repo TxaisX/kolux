@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { scanAiVaultSessions } from './session-scanner'
-import { isolatedScanRoots, jsonLines } from './session-scanner-test-fixtures'
+import { isolatedScanRoots, jsonLines, posixQuote } from './session-scanner-test-fixtures'
 
 // Scan-level coverage for the canonical-root rule when one physical Codex
 // rollout is visible through both the real ~/.codex and the managed runtime
@@ -110,7 +110,7 @@ describe('scanAiVaultSessions codex dual-root dedup', () => {
     )
     expect(managedOnly).toMatchObject({
       codexHome: managedHome,
-      resumeCommand: `cd '/repo/app' && CODEX_HOME='${managedHome}' codex resume '029f0000-1111-7222-8333-555555555555'`
+      resumeCommand: `cd '/repo/app' && CODEX_HOME=${posixQuote(managedHome)} codex resume '029f0000-1111-7222-8333-555555555555'`
     })
   })
 

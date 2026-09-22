@@ -23,10 +23,11 @@ describe('buildAgentStartupPlan', () => {
       })
     ).toEqual({
       agent: 'claude',
-      launchCommand: "claude 'Fix the bug'",
+      launchCommand: "claude '--model' 'opus' '--effort' 'high' 'Fix the bug'",
       expectedProcess: 'claude',
       followupPrompt: null,
-      launchConfig: emptyLaunchConfig('claude')
+      launchConfig: emptyLaunchConfig('claude'),
+      sessionOptions: { model: 'opus', effort: 'high' }
     })
   })
 
@@ -320,9 +321,11 @@ describe('buildAgentDraftLaunchPlan', () => {
       })
     ).toEqual({
       agent: 'claude',
-      launchCommand: "claude --prefill 'https://github.com/acme/repo/issues/42'",
+      launchCommand:
+        "claude '--model' 'opus' '--effort' 'high' --prefill 'https://github.com/acme/repo/issues/42'",
       expectedProcess: 'claude',
-      launchConfig: emptyLaunchConfig('claude')
+      launchConfig: emptyLaunchConfig('claude'),
+      sessionOptions: { model: 'opus', effort: 'high' }
     })
   })
 
@@ -380,9 +383,11 @@ describe('buildAgentDraftLaunchPlan', () => {
       })
     ).toEqual({
       agent: 'claude',
-      launchCommand: "/opt/anthropic/bin/claude --prefill 'review this'",
+      launchCommand:
+        "/opt/anthropic/bin/claude '--model' 'opus' '--effort' 'high' --prefill 'review this'",
       expectedProcess: 'claude',
-      launchConfig: emptyLaunchConfig('/opt/anthropic/bin/claude')
+      launchConfig: emptyLaunchConfig('/opt/anthropic/bin/claude'),
+      sessionOptions: { model: 'opus', effort: 'high' }
     })
   })
 

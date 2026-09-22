@@ -342,32 +342,38 @@ describe('Windows upload over sftp', () => {
     expect(commands.at(-1)!.script).toContain('[System.IO.File]::Move($staging, $path)')
   })
 
-  it('writes a buffer through a 0600 temp file that does not outlive the transfer', async () => {
-    const seen: { path: string; contents: Buffer; mode: number }[] = []
-    runProcessMock.mockImplementation(async (spec: { args: string[]; input: string }) => {
-      sftpBatches.push({ args: spec.args, script: spec.input })
-      for (const line of spec.input.split('\n').filter((entry) => entry.startsWith('put '))) {
-        const path = putSource(line)
-        seen.push({
-          path,
-          contents: await readFile(path),
-          mode: (await stat(path)).mode & 0o777
-        })
-      }
-      return { code: 0, signal: null, stdout: '', stderr: '', timedOut: false }
-    })
+  // Why skipIf: POSIX permission bits — the local staging file's mode is asserted as an exact
+  // 0o600, but Windows doesn't restrict a file's mode the same way (chmod's effect isn't
+  // observable through stat().mode there) regardless of which OS the remote target runs.
+  it.skipIf(process.platform === 'win32')(
+    'writes a buffer through a 0600 temp file that does not outlive the transfer',
+    async () => {
+      const seen: { path: string; contents: Buffer; mode: number }[] = []
+      runProcessMock.mockImplementation(async (spec: { args: string[]; input: string }) => {
+        sftpBatches.push({ args: spec.args, script: spec.input })
+        for (const line of spec.input.split('\n').filter((entry) => entry.startsWith('put '))) {
+          const path = putSource(line)
+          seen.push({
+            path,
+            contents: await readFile(path),
+            mode: (await stat(path)).mode & 0o777
+          })
+        }
+        return { code: 0, signal: null, stdout: '', stderr: '', timedOut: false }
+      })
 
-    await writeBufferViaSystemSsh(target, `${remoteRoot}/version`, Buffer.from('1.2.3'), {
-      hostPlatform
-    })
+      await writeBufferViaSystemSsh(target, `${remoteRoot}/version`, Buffer.from('1.2.3'), {
+        hostPlatform
+      })
 
-    expect(seen).toHaveLength(1)
-    expect(seen[0]!.contents.toString()).toBe('1.2.3')
-    // The payload can be repository content and tmpdir is world-readable on every platform, so the
-    // window between write and upload must not be group- or world-readable.
-    expect(seen[0]!.mode).toBe(0o600)
-    await expect(readFile(seen[0]!.path)).rejects.toThrow()
-  })
+      expect(seen).toHaveLength(1)
+      expect(seen[0]!.contents.toString()).toBe('1.2.3')
+      // The payload can be repository content and tmpdir is world-readable on every platform, so
+      // the window between write and upload must not be group- or world-readable.
+      expect(seen[0]!.mode).toBe(0o600)
+      await expect(readFile(seen[0]!.path)).rejects.toThrow()
+    }
+  )
 
   it('creates upload directories over sftp rather than a PowerShell stdin batch', async () => {
     mkdirSync(join(localDir, 'node'), { recursive: true })
@@ -473,17 +479,22 @@ describe('Windows upload over sftp', () => {
     expect(putDestination(putLines()[0]!)).toContain('/C:/Users/dev/.kolux-remote/b.js')
   })
 
-  it('does not let a local filename sftp cannot quote become a verdict either', async () => {
-    // POSIX clients allow a newline in a filename, and sftp's batch lexer would read it as the end
-    // of one command and the start of another.
-    const awkward = join(localDir, 'two\nlines.js')
-    writeFileSync(awkward, 'x')
+  // Why skipIf: a literal newline in a filename is a POSIX-only capability — NTFS rejects
+  // control characters in filenames, so the local fixture file can't even be created on Windows.
+  it.skipIf(process.platform === 'win32')(
+    'does not let a local filename sftp cannot quote become a verdict either',
+    async () => {
+      // POSIX clients allow a newline in a filename, and sftp's batch lexer would read it as the
+      // end of one command and the start of another.
+      const awkward = join(localDir, 'two\nlines.js')
+      writeFileSync(awkward, 'x')
 
-    await uploadFileViaSystemSsh(target, awkward, `${remoteRoot}/relay.js`, { hostPlatform })
+      await uploadFileViaSystemSsh(target, awkward, `${remoteRoot}/relay.js`, { hostPlatform })
 
-    expect(fileWrites().length).toBeGreaterThan(0)
-    expect(getWindowsRemoteWriteCapabilities(target).shouldTry('sftp-subsystem')).toBe(true)
-  })
+      expect(fileWrites().length).toBeGreaterThan(0)
+      expect(getWindowsRemoteWriteCapabilities(target).shouldTry('sftp-subsystem')).toBe(true)
+    }
+  )
 
   it('translates the ssh argument list rather than passing it to a client that reads it differently', async () => {
     writeFileSync(join(localDir, 'relay.js'), 'x')

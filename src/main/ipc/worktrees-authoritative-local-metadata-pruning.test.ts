@@ -106,6 +106,18 @@ vi.mock('../runtime/worktree-teardown', async () =>
 vi.mock('./pty', async () => (await import('./worktrees-test-module-mocks')).ptyModuleMock())
 
 const REPO_ID = 'repo-1'
+// Why a drive letter on win32: the pruning code requires each metadata worktreeId's path to be
+// isWindowsAbsolutePathLike (a real Windows absolute path) before it's eligible for a presence
+// probe; a driveless `/workspace/...` fixture silently fails that check and no pruning ever fires.
+function wsPath(rel: string): string {
+  return process.platform === 'win32'
+    ? `C:\\workspace\\${rel.split('/').join('\\')}`
+    : `/workspace/${rel}`
+}
+// Why not wsPath: this must equal the harness's hardcoded repo.path (worktrees-test-harness.ts)
+// exactly, or the `repo.path !== scan.repo.path` guard in the pruning code short-circuits before
+// any probe runs. Its own driveless form never reaches the nativeAbsolute check (that only applies
+// to scan.metadata worktreeIds), so it needs no platform-native form.
 const REPO_PATH = '/workspace/repo'
 const LOCAL_HOST_ID = 'local'
 
@@ -197,8 +209,8 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('prunes once for the fresh producer, while coalesced and cached callers do nothing', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
-    const rows = [worktree(REPO_PATH), worktree('/workspace/live')]
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
+    const rows = [worktree(REPO_PATH), worktree(wsPath('live'))]
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
     )
@@ -227,7 +239,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('does not prune when the authoritative scan is invalidated while in flight', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     let resolveScan: (rows: GitWorktreeInfo[]) => void = () => {}
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
@@ -243,7 +255,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
     const pending = listDetected()
     await Promise.resolve()
     notifyWorktreesChanged(mainWindow as never, REPO_ID)
-    resolveScan([worktree(REPO_PATH), worktree('/workspace/live')])
+    resolveScan([worktree(REPO_PATH), worktree(wsPath('live'))])
     await pending
 
     expect(store.captureNativeLocalWorktreeMetadataScanExpectation).toHaveBeenCalledTimes(1)
@@ -253,7 +265,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('does not prune when the completed scan is invalidated before its caller resumes', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     let resolveScan: (rows: GitWorktreeInfo[]) => void = () => {}
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
@@ -278,7 +290,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
   it.each(localListingCalls)(
     'skips stale WSL root and lineage side effects after %s caller resumption',
     async (_channel, listWorktrees) => {
-      const orphanId = `${REPO_ID}::/workspace/orphan`
+      const orphanId = `${REPO_ID}::${wsPath('orphan')}`
       let resolveScan: (rows: GitWorktreeInfo[]) => void = () => {}
       mockSelectedWslProjectRuntime()
       store.getAllWorktreeLineage.mockReturnValue({
@@ -311,7 +323,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
   )
 
   it('preserves WSL roots and lineage created while an older Git scan is pending', async () => {
-    const newPath = '/workspace/new-wsl-worktree'
+    const newPath = wsPath('new-wsl-worktree')
     const newId = `${REPO_ID}::${newPath}`
     let resolveScan: (rows: GitWorktreeInfo[]) => void = () => {}
     mockSelectedWslProjectRuntime()
@@ -350,8 +362,8 @@ describe('authoritative local worktree metadata pruning integration', () => {
   it.each(['scan generation', 'caller request'] as const)(
     'skips metadata, root, and lineage mutations when the %s is invalidated during path probes',
     async (invalidation) => {
-      const staleId = `${REPO_ID}::/workspace/stale`
-      const orphanId = `${REPO_ID}::/workspace/orphan`
+      const staleId = `${REPO_ID}::${wsPath('stale')}`
+      const orphanId = `${REPO_ID}::${wsPath('orphan')}`
       let callerCurrent = true
       let resolvePresence: (presence: ReadonlyMap<string, boolean>) => void = () => {}
       store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
@@ -388,7 +400,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
       } else {
         callerCurrent = false
       }
-      resolvePresence(new Map([['/workspace/stale', false]]))
+      resolvePresence(new Map([[wsPath('stale'), false]]))
       await pending
 
       expect(store.pruneSessionlessMissingLocalWorktreeMetadataForRepo).not.toHaveBeenCalled()
@@ -400,8 +412,8 @@ describe('authoritative local worktree metadata pruning integration', () => {
   )
 
   it('preserves roots and lineage created while an older path probe is pending', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
-    const newPath = '/workspace/new-worktree'
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
+    const newPath = wsPath('new-worktree')
     const newId = `${REPO_ID}::${newPath}`
     let resolvePresence: (presence: ReadonlyMap<string, boolean>) => void = () => {}
     const metadata = new Map<string, { hostId: string; instanceId: string }>()
@@ -436,7 +448,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
         createdAt: 0
       }
     })
-    resolvePresence(new Map([['/workspace/stale', false]]))
+    resolvePresence(new Map([[wsPath('stale'), false]]))
     await pending
 
     expect(store.pruneSessionlessMissingLocalWorktreeMetadataForRepo).toHaveBeenCalledTimes(1)
@@ -456,7 +468,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('does not let a native scan that changes to WSL routing become destructive', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     const resolvers: ((rows: GitWorktreeInfo[]) => void)[] = []
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
@@ -477,7 +489,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
 
     resolvers[1]?.([worktree(REPO_PATH)])
     await wslPending
-    resolvers[0]?.([worktree(REPO_PATH), worktree('/workspace/live')])
+    resolvers[0]?.([worktree(REPO_PATH), worktree(wsPath('live'))])
     await nativePending
 
     expect(store.captureNativeLocalWorktreeMetadataScanExpectation).toHaveBeenCalledTimes(1)
@@ -490,7 +502,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
     ['empty', [] as GitWorktreeInfo[]],
     ['failed', new Error('git worktree list failed')]
   ] as const)('does nothing for an %s authoritative scan', async (_label, result) => {
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
     )
@@ -509,17 +521,17 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('keeps prunable Git registrations live and does not probe their paths', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
-    const liveId = `${REPO_ID}::/workspace/live`
-    const prunableId = `${REPO_ID}::/workspace/prunable`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
+    const liveId = `${REPO_ID}::${wsPath('live')}`
+    const prunableId = `${REPO_ID}::${wsPath('prunable')}`
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId, liveId, prunableId])
     )
     store.pruneSessionlessMissingLocalWorktreeMetadataForRepo.mockReturnValue([staleId])
     listWorktreesMock.mockResolvedValue([
       worktree(REPO_PATH),
-      worktree('/workspace/live'),
-      worktree('/workspace/prunable', { prunable: true })
+      worktree(wsPath('live')),
+      worktree(wsPath('prunable'), { prunable: true })
     ])
 
     await listDetected()
@@ -531,14 +543,14 @@ describe('authoritative local worktree metadata pruning integration', () => {
     expect(missing?.map(({ worktreeId }) => worktreeId)).toEqual([staleId])
     expect(missing?.map(({ worktreeId }) => worktreeId)).not.toContain(liveId)
     expect(missing?.map(({ worktreeId }) => worktreeId)).not.toContain(prunableId)
-    expect(localWorktreePathPresenceMock).toHaveBeenCalledWith(['/workspace/stale'], {
+    expect(localWorktreePathPresenceMock).toHaveBeenCalledWith([wsPath('stale')], {
       signal: undefined
     })
   })
 
   it('keeps the configured repo path live when Git reports a canonical spelling', async () => {
     const configuredMainId = `${REPO_ID}::${REPO_PATH}`
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([configuredMainId, staleId])
     )
@@ -555,8 +567,8 @@ describe('authoritative local worktree metadata pruning integration', () => {
   })
 
   it('keeps a linked worktree whose persisted symlink spelling still exists', async () => {
-    const aliasId = `${REPO_ID}::/workspace/alias/linked`
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const aliasId = `${REPO_ID}::${wsPath('alias/linked')}`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     const scan = scanExpectation([aliasId, staleId])
     const repo = scan.repo.expectedRepo!
     const prune = vi.fn(
@@ -572,25 +584,25 @@ describe('authoritative local worktree metadata pruning integration', () => {
         pruneSessionlessMissingLocalWorktreeMetadataForRepo: prune
       } as never,
       repo,
-      gitWorktrees: [worktree('/workspace/real/linked')],
+      gitWorktrees: [worktree(wsPath('real/linked'))],
       scan,
       scanGeneration: getLocalWorktreeScanGeneration(REPO_ID),
       pathsExistOrAreUnverifiable: async (pathValues) =>
-        new Map(pathValues.map((pathValue) => [pathValue, pathValue === '/workspace/alias/linked']))
+        new Map(pathValues.map((pathValue) => [pathValue, pathValue === wsPath('alias/linked')]))
     })
 
     expect(prune.mock.calls[0]?.[1].map(({ worktreeId }) => worktreeId)).toEqual([staleId])
   })
 
   it('does not rematerialize a removed lineage parent metadata row', async () => {
-    const staleId = `${REPO_ID}::/workspace/stale`
+    const staleId = `${REPO_ID}::${wsPath('stale')}`
     store.captureNativeLocalWorktreeMetadataScanExpectation.mockReturnValue(
       scanExpectation([staleId])
     )
     store.pruneSessionlessMissingLocalWorktreeMetadataForRepo.mockReturnValue([staleId])
     store.getAllWorktreeLineage.mockReturnValue({
-      [`${REPO_ID}::/workspace/live-child`]: {
-        worktreeId: `${REPO_ID}::/workspace/live-child`,
+      [`${REPO_ID}::${wsPath('live-child')}`]: {
+        worktreeId: `${REPO_ID}::${wsPath('live-child')}`,
         worktreeInstanceId: 'child-instance',
         parentWorktreeId: staleId,
         parentWorktreeInstanceId: 'stale-instance',
@@ -599,7 +611,7 @@ describe('authoritative local worktree metadata pruning integration', () => {
         createdAt: 0
       }
     })
-    listWorktreesMock.mockResolvedValue([worktree(REPO_PATH), worktree('/workspace/live')])
+    listWorktreesMock.mockResolvedValue([worktree(REPO_PATH), worktree(wsPath('live'))])
 
     await listDetected()
 

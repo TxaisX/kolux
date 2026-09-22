@@ -106,6 +106,12 @@ beforeAll(async () => {
     writeFileSync(join(workDir, filename), IDLE_SERVICE_SOURCE)
   }
   writeFileSync(join(workDir, 'looks-like-relay-watcher.js'), IDLE_SERVICE_SOURCE)
+  // Why platform-gated: everything below spawns /bin/sh, which Windows lacks. This hook runs
+  // for the whole file regardless of the posixOnly-gated describes below, so it must skip its
+  // own shell work rather than crash the file's collection on win32.
+  if (process.platform === 'win32') {
+    return
+  }
   pgreplessBinDir = join(workDir, 'pgrepless-bin')
   mkdirSync(pgreplessBinDir)
   for (const tool of ['ps', 'tr']) {
@@ -126,11 +132,16 @@ afterAll(() => {
   rmSync(workDir, { recursive: true, force: true })
 })
 
-it('runs the holder-enumeration assertions on this machine', () => {
-  // Why asserted rather than assumed: the cases below degrade to verdict-only checks without
-  // lsof, and a silently degraded suite would stop covering the reap gate entirely.
-  expect(hasLsof).toBe(true)
-})
+// Why skipIf: hasLsof only gets probed on POSIX (see beforeAll above); this whole file's
+// holder-enumeration behavior is POSIX-only.
+it.skipIf(process.platform === 'win32')(
+  'runs the holder-enumeration assertions on this machine',
+  () => {
+    // Why asserted rather than assumed: the cases below degrade to verdict-only checks without
+    // lsof, and a silently degraded suite would stop covering the reap gate entirely.
+    expect(hasLsof).toBe(true)
+  }
+)
 
 posixOnly('relay endpoint probe against a real socket', () => {
   it('reports live, and identifies the holding process, for a listening relay', async () => {

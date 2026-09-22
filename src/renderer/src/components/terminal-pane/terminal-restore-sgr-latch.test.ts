@@ -11,7 +11,9 @@ import {
 import { restoreScrollbackBuffers } from './layout-serialization'
 
 const LEAF_ID = '11111111-1111-4111-8111-111111111111'
-const UNCLOSED_BOLD_FIXTURE = 'KOLUX-SGR-REPRO \x1b[1mBOLD-RUN-LEFT-OPEN\x1b[1;34H'
+// Why: cursor must land just past "OPEN" (col 35, 1-indexed) so the follow-up plain-text write
+// doesn't overwrite the bold run it's supposed to leave untouched.
+const UNCLOSED_BOLD_FIXTURE = 'KOLUX-SGR-REPRO \x1b[1mBOLD-RUN-LEFT-OPEN\x1b[1;35H'
 const terminals: Terminal[] = []
 
 function createTerminal(): Terminal {
@@ -131,7 +133,9 @@ describe('fresh-shell terminal restore SGR state', () => {
     ['alternate-screen TUI', POST_REPLAY_REATTACH_RESET_KEEP_MOUSE]
   ])('preserves a %s pen across daemon reattach', async (_kind, reset) => {
     const terminal = createTerminal()
-    await writeTerminal(terminal, 'KOLUX-SGR-REPRO \x1b[1;34mBOLD-RUN-LEFT-OPEN\x1b[1;34H')
+    // Why: cursor must land just past "OPEN" (col 35, 1-indexed) so the follow-up write
+    // doesn't overwrite the bold run it's supposed to leave untouched.
+    await writeTerminal(terminal, 'KOLUX-SGR-REPRO \x1b[1;34mBOLD-RUN-LEFT-OPEN\x1b[1;35H')
     await writeTerminal(terminal, reset)
     await writeTerminal(terminal, 'LIVE-CONTINUATION')
 

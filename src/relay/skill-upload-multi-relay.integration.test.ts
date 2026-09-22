@@ -6,6 +6,18 @@ import { build } from 'esbuild'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { spawnRelay, type RelayProcess } from './subprocess-test-utils'
 
+// Why: on Windows, a raw filesystem path can't be bound as a listening socket the way
+// ssh-relay-endpoints.ts's relayEndpointForHost() already knows — production only ever hands
+// a Windows relay a `\\.\pipe\...` path. Mirror that convention here rather than a POSIX-only
+// `.sock` file, which fails `listen EACCES` on Windows regardless of the containing directory.
+function relaySockPath(root: string, name: string): string {
+  if (process.platform !== 'win32') {
+    return join(root, `${name}.sock`)
+  }
+  const hash = createHash('sha256').update(`${root}\0${name}`).digest('hex').slice(0, 20)
+  return `\\\\.\\pipe\\kolux-relay-test-${hash}`
+}
+
 let bundleRoot: string
 let relayEntry: string
 const relays: RelayProcess[] = []
@@ -91,107 +103,120 @@ function packageIdentity(bytes: Buffer, suffix: string) {
 }
 
 describe('skill upload ownership across relay processes', () => {
-  it('keeps each live relay upload isolated and cleans each exact owner', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'kolux-skill-multi-relay-'))
-    roots.push(root)
-    const home = join(root, 'home')
-    const environment = { ...process.env, HOME: home, USERPROFILE: home }
-    const first = spawnRelay(
-      relayEntry,
-      ['--sock-path', join(root, 'first.sock'), '--endpoint-dir', join(root, 'first-hooks')],
-      { env: environment }
-    )
-    const second = spawnRelay(
-      relayEntry,
-      ['--sock-path', join(root, 'second.sock'), '--endpoint-dir', join(root, 'second-hooks')],
-      { env: environment }
-    )
-    relays.push(first, second)
-    await Promise.all([first.sentinelReceived, second.sentinelReceived])
-    const firstBytes = Buffer.from('first relay live upload')
-    const secondBytes = Buffer.from('second relay upload')
-    const firstUpload = (await request(first, 'skills.beginUpload', {
-      package: packageIdentity(firstBytes, 'first')
-    })) as { uploadId: string }
-    await request(first, 'skills.uploadChunk', {
-      uploadId: firstUpload.uploadId,
-      offset: 0,
-      bytesBase64: firstBytes.subarray(0, 5).toString('base64')
-    })
+  // Why skipIf: the second half of this test kills a relay with SIGTERM and asserts its
+  // owner directory was cleaned up by relay-grace-lifecycle.ts's `process.on('SIGTERM', ...)`
+  // handler — Node's documented Windows behavior is that subprocess.kill('SIGTERM') just
+  // terminates the process outright, so that handler (and the cleanup it runs) never fires.
+  it.skipIf(process.platform === 'win32')(
+    'keeps each live relay upload isolated and cleans each exact owner',
+    async () => {
+      const root = await mkdtemp(join(tmpdir(), 'kolux-skill-multi-relay-'))
+      roots.push(root)
+      const home = join(root, 'home')
+      const environment = { ...process.env, HOME: home, USERPROFILE: home }
+      const first = spawnRelay(
+        relayEntry,
+        ['--sock-path', relaySockPath(root, 'first'), '--endpoint-dir', join(root, 'first-hooks')],
+        { env: environment }
+      )
+      const second = spawnRelay(
+        relayEntry,
+        [
+          '--sock-path',
+          relaySockPath(root, 'second'),
+          '--endpoint-dir',
+          join(root, 'second-hooks')
+        ],
+        { env: environment }
+      )
+      relays.push(first, second)
+      await Promise.all([first.sentinelReceived, second.sentinelReceived])
+      const firstBytes = Buffer.from('first relay live upload')
+      const secondBytes = Buffer.from('second relay upload')
+      const firstUpload = (await request(first, 'skills.beginUpload', {
+        package: packageIdentity(firstBytes, 'first')
+      })) as { uploadId: string }
+      await request(first, 'skills.uploadChunk', {
+        uploadId: firstUpload.uploadId,
+        offset: 0,
+        bytesBase64: firstBytes.subarray(0, 5).toString('base64')
+      })
 
-    const secondUpload = (await request(second, 'skills.beginUpload', {
-      package: packageIdentity(secondBytes, 'second')
-    })) as { uploadId: string }
-    await request(second, 'skills.uploadChunk', {
-      uploadId: secondUpload.uploadId,
-      offset: 0,
-      bytesBase64: secondBytes.toString('base64')
-    })
-    const uploadRoot = await uploadRootForOracle(home)
-    const ownerEntries = (await readdir(uploadRoot, { withFileTypes: true })).filter((entry) =>
-      entry.isDirectory()
-    )
-    const archives = await stagedArchives(uploadRoot)
-    const firstPath = archives.find((path) => path.endsWith(`${firstUpload.uploadId}.tar.gz`))
-    const secondPath = archives.find((path) => path.endsWith(`${secondUpload.uploadId}.tar.gz`))
-    const firstStagedBytes = firstPath ? await readFile(firstPath) : null
-    const secondStagedBytes = secondPath ? await readFile(secondPath) : null
-    const ownerPattern = /^owner-\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      const secondUpload = (await request(second, 'skills.beginUpload', {
+        package: packageIdentity(secondBytes, 'second')
+      })) as { uploadId: string }
+      await request(second, 'skills.uploadChunk', {
+        uploadId: secondUpload.uploadId,
+        offset: 0,
+        bytesBase64: secondBytes.toString('base64')
+      })
+      const uploadRoot = await uploadRootForOracle(home)
+      const ownerEntries = (await readdir(uploadRoot, { withFileTypes: true })).filter((entry) =>
+        entry.isDirectory()
+      )
+      const archives = await stagedArchives(uploadRoot)
+      const firstPath = archives.find((path) => path.endsWith(`${firstUpload.uploadId}.tar.gz`))
+      const secondPath = archives.find((path) => path.endsWith(`${secondUpload.uploadId}.tar.gz`))
+      const firstStagedBytes = firstPath ? await readFile(firstPath) : null
+      const secondStagedBytes = secondPath ? await readFile(secondPath) : null
+      const ownerPattern =
+        /^owner-\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-    expect.soft(ownerEntries).toHaveLength(2)
-    expect.soft(ownerEntries.every((entry) => ownerPattern.test(entry.name))).toBe(true)
-    expect
-      .soft(ownerEntries.some((entry) => entry.name.startsWith(`owner-${first.proc.pid}-`)))
-      .toBe(true)
-    expect
-      .soft(ownerEntries.some((entry) => entry.name.startsWith(`owner-${second.proc.pid}-`)))
-      .toBe(true)
-    expect.soft(archives).toHaveLength(2)
-    expect.soft(basename(dirname(firstPath!))).toMatch(new RegExp(`^owner-${first.proc.pid}-`))
-    expect.soft(basename(dirname(secondPath!))).toMatch(new RegExp(`^owner-${second.proc.pid}-`))
-    expect.soft(firstStagedBytes).toEqual(firstBytes.subarray(0, 5))
-    expect.soft(secondStagedBytes).toEqual(secondBytes)
-    await request(second, 'skills.cancelUpload', { uploadId: secondUpload.uploadId })
-    expect(await stagedArchives(uploadRoot)).toEqual([firstPath])
-    await request(first, 'skills.cancelUpload', { uploadId: firstUpload.uploadId })
-    expect(await stagedArchives(uploadRoot)).toEqual([])
+      expect.soft(ownerEntries).toHaveLength(2)
+      expect.soft(ownerEntries.every((entry) => ownerPattern.test(entry.name))).toBe(true)
+      expect
+        .soft(ownerEntries.some((entry) => entry.name.startsWith(`owner-${first.proc.pid}-`)))
+        .toBe(true)
+      expect
+        .soft(ownerEntries.some((entry) => entry.name.startsWith(`owner-${second.proc.pid}-`)))
+        .toBe(true)
+      expect.soft(archives).toHaveLength(2)
+      expect.soft(basename(dirname(firstPath!))).toMatch(new RegExp(`^owner-${first.proc.pid}-`))
+      expect.soft(basename(dirname(secondPath!))).toMatch(new RegExp(`^owner-${second.proc.pid}-`))
+      expect.soft(firstStagedBytes).toEqual(firstBytes.subarray(0, 5))
+      expect.soft(secondStagedBytes).toEqual(secondBytes)
+      await request(second, 'skills.cancelUpload', { uploadId: secondUpload.uploadId })
+      expect(await stagedArchives(uploadRoot)).toEqual([firstPath])
+      await request(first, 'skills.cancelUpload', { uploadId: firstUpload.uploadId })
+      expect(await stagedArchives(uploadRoot)).toEqual([])
 
-    const firstDisposalBytes = Buffer.from('first relay disposal upload')
-    const secondDisposalBytes = Buffer.from('second relay disposal upload')
-    const firstDisposalUpload = (await request(first, 'skills.beginUpload', {
-      package: packageIdentity(firstDisposalBytes, 'first_disposal')
-    })) as { uploadId: string }
-    await request(first, 'skills.uploadChunk', {
-      uploadId: firstDisposalUpload.uploadId,
-      offset: 0,
-      bytesBase64: firstDisposalBytes.toString('base64')
-    })
-    const secondDisposalUpload = (await request(second, 'skills.beginUpload', {
-      package: packageIdentity(secondDisposalBytes, 'second_disposal')
-    })) as { uploadId: string }
-    await request(second, 'skills.uploadChunk', {
-      uploadId: secondDisposalUpload.uploadId,
-      offset: 0,
-      bytesBase64: secondDisposalBytes.toString('base64')
-    })
-    const disposalArchives = await stagedArchives(uploadRoot)
-    const secondDisposalPath = disposalArchives.find((path) =>
-      path.endsWith(`${secondDisposalUpload.uploadId}.tar.gz`)
-    )
+      const firstDisposalBytes = Buffer.from('first relay disposal upload')
+      const secondDisposalBytes = Buffer.from('second relay disposal upload')
+      const firstDisposalUpload = (await request(first, 'skills.beginUpload', {
+        package: packageIdentity(firstDisposalBytes, 'first_disposal')
+      })) as { uploadId: string }
+      await request(first, 'skills.uploadChunk', {
+        uploadId: firstDisposalUpload.uploadId,
+        offset: 0,
+        bytesBase64: firstDisposalBytes.toString('base64')
+      })
+      const secondDisposalUpload = (await request(second, 'skills.beginUpload', {
+        package: packageIdentity(secondDisposalBytes, 'second_disposal')
+      })) as { uploadId: string }
+      await request(second, 'skills.uploadChunk', {
+        uploadId: secondDisposalUpload.uploadId,
+        offset: 0,
+        bytesBase64: secondDisposalBytes.toString('base64')
+      })
+      const disposalArchives = await stagedArchives(uploadRoot)
+      const secondDisposalPath = disposalArchives.find((path) =>
+        path.endsWith(`${secondDisposalUpload.uploadId}.tar.gz`)
+      )
 
-    first.kill('SIGTERM')
-    await first.waitForExit()
-    relays.splice(relays.indexOf(first), 1)
-    expect(await readdir(uploadRoot)).toEqual([
-      expect.stringMatching(new RegExp(`^owner-${second.proc.pid}-`))
-    ])
-    expect(await stagedArchives(uploadRoot)).toEqual([secondDisposalPath])
-    await expect(readFile(secondDisposalPath!)).resolves.toEqual(secondDisposalBytes)
-    second.kill('SIGTERM')
-    await second.waitForExit()
-    relays.splice(relays.indexOf(second), 1)
-    expect(await readdir(uploadRoot)).toEqual([])
-  })
+      first.kill('SIGTERM')
+      await first.waitForExit()
+      relays.splice(relays.indexOf(first), 1)
+      expect(await readdir(uploadRoot)).toEqual([
+        expect.stringMatching(new RegExp(`^owner-${second.proc.pid}-`))
+      ])
+      expect(await stagedArchives(uploadRoot)).toEqual([secondDisposalPath])
+      await expect(readFile(secondDisposalPath!)).resolves.toEqual(secondDisposalBytes)
+      second.kill('SIGTERM')
+      await second.waitForExit()
+      relays.splice(relays.indexOf(second), 1)
+      expect(await readdir(uploadRoot)).toEqual([])
+    }
+  )
 
   it
     .runIf(Boolean(process.env.KOLUX_SKILL_UPLOAD_LEGACY_RELAY_ENTRY))
@@ -219,7 +244,7 @@ describe('skill upload ownership across relay processes', () => {
           owner.entry,
           [
             '--sock-path',
-            join(root, `${owner.kind}.sock`),
+            relaySockPath(root, owner.kind),
             '--endpoint-dir',
             join(root, `${owner.kind}-hooks`)
           ],

@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest'
 
 describe('headless PTY registry hydration ordering', () => {
   it('uses exactly one deferred-or-immediate desktop hydration path', () => {
+    // Why normalize: this file has CRLF line endings on Windows checkouts, which would
+    // never match the LF-literal substrings asserted below.
     const source = readFileSync(
       join(process.cwd(), 'src/main/window/attach-main-window-services.ts'),
       'utf8'
-    )
+    ).replace(/\r\n/g, '\n')
     const start = source.indexOf('const localPtyProviderStartupReady =')
     const end = source.indexOf('registerSshHandlers(', start)
     const hydration = source.slice(start, end)

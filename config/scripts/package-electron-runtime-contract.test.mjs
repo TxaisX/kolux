@@ -3,7 +3,6 @@ import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
-import { relayArtifactFilenames } from '../../src/shared/relay-artifacts.ts'
 
 const projectDir = resolve(import.meta.dirname, '../..')
 const require = createRequire(import.meta.url)
@@ -145,119 +144,10 @@ describe('Electron runtime package contract', () => {
     expect(packageJson.scripts['build:web']).toContain('node config/scripts/verify-web-build.mjs')
   })
 
-  it('guards release publishing before electron-builder runs', () => {
-    const releaseWorkflow = readFileSync(
-      join(projectDir, '.github/workflows/release-cut.yml'),
-      'utf8'
-    )
-    const parsedWorkflow = parse(releaseWorkflow)
-    const macWorkflow = parse(
-      readFileSync(join(projectDir, '.github/workflows/release-mac-build.yml'), 'utf8')
-    )
-    const releaseCommands = new Map(
-      parsedWorkflow.jobs.build.strategy.matrix.include.map(({ platform, release_command }) => [
-        platform,
-        release_command
-      ])
-    )
-    const macReleaseCommand = macWorkflow.jobs['build-mac'].steps.find(
-      (step) => step.name === 'Publish release artifacts (macOS)'
-    ).with.command
-
-    expect([...releaseCommands.keys()].sort()).toEqual(['linux-arm64', 'linux-x64', 'win'])
-    for (const command of [...releaseCommands.values(), macReleaseCommand]) {
-      expect(command).toContain('node config/scripts/ensure-native-runtime.mjs --runtime=electron')
-      expect(command).toContain('electron-builder')
-      expect(command.indexOf('ensure-native-runtime')).toBeLessThan(
-        command.indexOf('electron-builder')
-      )
-    }
-    expect(macReleaseCommand).toContain(' && KOLUX_MAC_RELEASE=1 ')
-    expect(releaseCommands.get('linux-x64')).toContain(' && pnpm exec electron-builder ')
-    expect(releaseCommands.get('linux-x64')).toContain('--linux AppImage deb rpm --x64')
-    expect(releaseCommands.get('linux-arm64')).toContain('KOLUX_LINUX_ARM64_RELEASE=1')
-    expect(releaseCommands.get('linux-arm64')).toContain('--linux AppImage deb rpm --arm64')
-    expect(releaseCommands.get('win')).toContain(
-      '; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pnpm exec electron-builder '
-    )
-  })
-
-  it('blocks Linux and macOS release packaging on watcher process fault recovery', () => {
-    const releaseWorkflow = parse(
-      readFileSync(join(projectDir, '.github/workflows/release-cut.yml'), 'utf8')
-    )
-    const macWorkflow = parse(
-      readFileSync(join(projectDir, '.github/workflows/release-mac-build.yml'), 'utf8')
-    )
-    const assertFaultGate = (steps, publishStepName, expectedCondition) => {
-      const names = steps.map((step) => step.name)
-      const gate = steps.find((step) => step.name === 'Gate runtime file-watcher process isolation')
-
-      expect(gate.if).toBe(expectedCondition)
-      expect(gate['continue-on-error']).toBeUndefined()
-      expect(gate.run).toContain('node config/scripts/runtime-file-watcher-fault-harness.mjs')
-      expect(gate.run).toContain('ELECTRON_RUN_AS_NODE=1 pnpm exec electron')
-      expect(names.indexOf('Build app')).toBeLessThan(names.indexOf(gate.name))
-      expect(names.indexOf(gate.name)).toBeLessThan(names.indexOf(publishStepName))
-    }
-
-    assertFaultGate(
-      releaseWorkflow.jobs.build.steps,
-      'Publish release artifacts (Linux)',
-      "runner.os == 'Linux'"
-    )
-    assertFaultGate(
-      macWorkflow.jobs['build-mac'].steps,
-      'Publish release artifacts (macOS)',
-      undefined
-    )
-  })
-
-  it('packages and release-gates the SSH relay watcher child', () => {
-    const relayBuild = readFileSync(join(projectDir, 'config/scripts/build-relay.mjs'), 'utf8')
-    const builderConfig = readFileSync(
-      join(projectDir, 'config/electron-builder.config.cjs'),
-      'utf8'
-    )
-    const remoteCommands = readFileSync(
-      join(projectDir, 'src/main/ssh/ssh-remote-commands.ts'),
-      'utf8'
-    )
-    const releaseWorkflow = parse(
-      readFileSync(join(projectDir, '.github/workflows/release-cut.yml'), 'utf8')
-    )
-    const macWorkflow = parse(
-      readFileSync(join(projectDir, '.github/workflows/release-mac-build.yml'), 'utf8')
-    )
-
-    expect(relayBuild).toContain("'parcel-watcher-process-entry.ts'")
-    expect(relayBuild).toContain("outfile: join(outDir, 'relay-watcher.js')")
-    expect(relayBuild).toContain("outfile: join(outDir, 'relay-ai-vault-service.js')")
-    expect(builderConfig).toContain("from: 'out/relay'")
-
-    // Hashing and remote install probing are manifest-driven, so the contract
-    // is that both companions are declared once and that both sites read it.
-    expect(relayArtifactFilenames(true)).toContain('relay-watcher.js')
-    expect(relayArtifactFilenames(true)).toContain('relay-ai-vault-service.js')
-    expect(relayBuild).toContain('relayArtifactFilenames(')
-    expect(remoteCommands).toContain('relayArtifactFilenames(')
-
-    const assertRelayGate = (steps, publishStepName) => {
-      const names = steps.map((step) => step.name)
-      const gate = steps.find((step) => step.name === 'Gate SSH relay watcher process isolation')
-      expect(gate['continue-on-error']).toBeUndefined()
-      expect(gate.run).toContain('node config/scripts/relay-watcher-fault-harness.mjs')
-      expect(names.indexOf('Build app')).toBeLessThan(names.indexOf(gate.name))
-      expect(names.indexOf(gate.name)).toBeLessThan(names.indexOf(publishStepName))
-    }
-
-    assertRelayGate(releaseWorkflow.jobs.build.steps, 'Publish release artifacts (Linux)')
-    assertRelayGate(macWorkflow.jobs['build-mac'].steps, 'Publish release artifacts (macOS)')
-    const releaseNames = releaseWorkflow.jobs.build.steps.map((step) => step.name)
-    expect(releaseNames.indexOf('Gate SSH relay watcher process isolation')).toBeLessThan(
-      releaseNames.indexOf('Build Windows release artifacts')
-    )
-  })
+  // Why not asserted here any more: the release-cut.yml / release-mac-build.yml
+  // wiring for the ensure-native-runtime guard, the watcher fault gate, and the
+  // SSH relay watcher gate was deleted at the fork split (only ci.yml and
+  // release.yml remain), so those three cases have no surviving workflow to read.
 
   it('packages and verifies the Windows SSH node-pty console-list fallback', () => {
     const relayBuild = readFileSync(join(projectDir, 'config/scripts/build-relay.mjs'), 'utf8')

@@ -93,11 +93,14 @@ import { settledDiffCache } from './source-control/git-read-cache-invalidation'
 
 const REPO = '/repo'
 const FILE = 'src/file.ts'
-const WORKING_TREE_PATH = `${REPO}/${FILE}`
-const HEAD_PATH = `${REPO}/.git/HEAD`
-const REF_PATH = `${REPO}/.git/refs/heads/main`
-const INDEX_PATH = `${REPO}/.git/index`
-const GITMODULES_PATH = `${REPO}/.gitmodules`
+// Why path.join, not template strings: the source under test joins these same
+// segments with path.join, which yields backslashes on Windows — the fake
+// filesystem's keys have to match exactly or every read below "misses" as ENOENT.
+const WORKING_TREE_PATH = path.join(REPO, FILE)
+const HEAD_PATH = path.join(REPO, '.git', 'HEAD')
+const REF_PATH = path.join(REPO, '.git', 'refs', 'heads', 'main')
+const INDEX_PATH = path.join(REPO, '.git', 'index')
+const GITMODULES_PATH = path.join(REPO, '.gitmodules')
 
 // Old enough that a further write is guaranteed to move the mtime, which is what
 // lets the cache store at all.

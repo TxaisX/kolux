@@ -251,7 +251,10 @@ describe('createPtySubprocess', () => {
     expect(spawnMock.mock.calls.at(-1)?.[2].env.HISTFILE).toBe(expected)
   })
 
-  it.each([
+  // Why skipIf: shellOverride '/bin/zsh' only reaches selectShellStartupFeatures
+  // (KOLUX_SHELL_FEATURES/history wrapping) through createPtyShellLaunchPlan's POSIX branch —
+  // the real process.platform win32 branch never calls it, so this is a POSIX-only capability.
+  it.skipIf(process.platform === 'win32').each([
     // KOLUX_HISTFILE is exported into every pane, so a daemon started from an
     // Kolux pane inherits one. Left in place it BOTH re-scopes the pane to
     // another worktree's history file (#11146) and wraps a zsh pane nothing

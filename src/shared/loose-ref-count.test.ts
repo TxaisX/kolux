@@ -106,14 +106,18 @@ describe('countLooseRefs', () => {
     expect(readdirCalls.count).toBe(3)
   })
 
-  it('does not follow directory symlinks into a loop', async () => {
-    const refs = await makeRefsTree({ heads: 2 })
-    await symlink(refs, join(refs, 'loop'), 'dir')
+  // Why skip on win32: creating a directory symlink needs elevation or Developer Mode there.
+  it.skipIf(process.platform === 'win32')(
+    'does not follow directory symlinks into a loop',
+    async () => {
+      const refs = await makeRefsTree({ heads: 2 })
+      await symlink(refs, join(refs, 'loop'), 'dir')
 
-    const result = await countLooseRefs(refs, 100)
+      const result = await countLooseRefs(refs, 100)
 
-    expect(result.saturated).toBe(false)
-    // The symlink is one dirent, never a second traversal of the tree.
-    expect(result.count).toBe(3)
-  })
+      expect(result.saturated).toBe(false)
+      // The symlink is one dirent, never a second traversal of the tree.
+      expect(result.count).toBe(3)
+    }
+  )
 })

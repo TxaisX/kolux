@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { chmodSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { posix } from 'node:path'
 
 const AGENT_BROWSER_SOCKET_DIRECTORY_PREFIX = 'kolux-ab-'
 
@@ -45,7 +45,11 @@ export function createAgentBrowserProcessEnvironment(options: {
     return { env, ownsSocketDirectory: false }
   }
   const profileKey = createHash('sha256').update(options.userDataPath).digest('hex').slice(0, 16)
-  const socketDirectory = join('/tmp', `${AGENT_BROWSER_SOCKET_DIRECTORY_PREFIX}${profileKey}`)
+  // Always POSIX: this dir is read by the agent-browser POSIX daemon, never by Windows (guarded above).
+  const socketDirectory = posix.join(
+    '/tmp',
+    `${AGENT_BROWSER_SOCKET_DIRECTORY_PREFIX}${profileKey}`
+  )
   try {
     mkdirSync(socketDirectory, { recursive: true, mode: 0o700 })
     chmodSync(socketDirectory, 0o700)

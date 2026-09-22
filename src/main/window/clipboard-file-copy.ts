@@ -36,9 +36,13 @@ export async function writeFileToClipboard(
 
   if (deps.platform === 'darwin') {
     // macOS reads `public.file-url` and synthesizes the legacy file types Finder
-    // needs, so a single buffer is enough.
+    // needs, so a single buffer is enough. `windows: false` keeps this branch
+    // testable on a Windows host: pathToFileURL otherwise reads the real OS.
     try {
-      deps.writeBuffer('public.file-url', Buffer.from(pathToFileURL(clipboardPath).href, 'utf8'))
+      deps.writeBuffer(
+        'public.file-url',
+        Buffer.from(pathToFileURL(clipboardPath, { windows: false }).href, 'utf8')
+      )
       return { ok: true }
     } catch {
       return { ok: false, reason: 'clipboard-write-failed' }
@@ -66,7 +70,8 @@ export async function writeFileToClipboard(
   // Linux: best-effort and desktop-dependent. GNOME-family managers
   // (Nautilus/Nemo/Caja) read the "copied-files" payload that carries the
   // explicit copy verb; KDE/Qt managers (Dolphin) read text/uri-list instead.
-  const fileUrl = pathToFileURL(clipboardPath).href
+  // `windows: false` keeps this branch testable on a Windows host (see darwin branch above).
+  const fileUrl = pathToFileURL(clipboardPath, { windows: false }).href
   const [mime, payload] = /kde/i.test(deps.desktop ?? '')
     ? ['text/uri-list', `${fileUrl}\r\n`]
     : ['x-special/gnome-copied-files', `copy\n${fileUrl}`]

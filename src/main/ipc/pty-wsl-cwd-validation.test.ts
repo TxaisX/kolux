@@ -8,7 +8,6 @@ import {
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { _setWslCachesForTests } from '../wsl'
 import { registerPtyHandlers } from './pty'
-import { join } from 'node:path'
 // Why resolved rather than hardcoded: the wrapper tree is content-addressed.
 import { getShellReadyWrapperRoot } from '../providers/local-pty-shell-ready-wrapper-root'
 
@@ -354,7 +353,11 @@ describe('registerPtyHandlers', () => {
       })
       expect(shell).toBe('/bin/zsh')
       expect(args).toEqual(['-l'])
-      expect(options.env.ZDOTDIR).toBe(join(getShellReadyWrapperRoot(), 'zsh'))
+      // Why template literal, not `join`: this exercises LocalPtyProvider, and
+      // local-pty-shell-ready.ts builds ZDOTDIR as `${root}/zsh` (a POSIX shell
+      // path) rather than joining — `join` would also normalize the host-native
+      // separators already inside the wrapper root computed on this machine.
+      expect(options.env.ZDOTDIR).toBe(`${getShellReadyWrapperRoot()}/zsh`)
       // Why absent: this HOME holds no zsh startup file, so there is no user
       // config dir to hand back and Kolux must not invent one — the wrapper
       // leaves ZDOTDIR unset, exactly as an unwrapped login zsh would.

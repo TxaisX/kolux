@@ -110,10 +110,17 @@ describe('prepared worktree creation with real Git', () => {
       markRemovalStarted = resolve
     })
     const original = gitRunner.gitExecFileAsync
+    // Why not args.includes(stalePath): `git worktree list` prints forward
+    // slashes even on Windows, so the reclaimed path the pool passes back to
+    // `remove` is forward-slash-spelled while `stalePath` is backslash-joined.
+    const normalizedStalePath = stalePath.replace(/\\/g, '/')
     const spy = vi
       .spyOn(gitRunner, 'gitExecFileAsync')
       .mockImplementation(async (args, options) => {
-        if (args.includes('remove') && args.includes(stalePath)) {
+        if (
+          args.includes('remove') &&
+          args.some((arg) => arg.replace(/\\/g, '/') === normalizedStalePath)
+        ) {
           markRemovalStarted()
           await removalGate
         }
@@ -145,7 +152,10 @@ describe('prepared worktree creation with real Git', () => {
       expect(existsSync(stalePath)).toBe(false)
       const remaining = await listWorktrees(repoPath, { includeCreatePreparations: true })
       expect(remaining).toHaveLength(2)
-      expect(remaining.map((w) => w.path)).toEqual(expect.arrayContaining([repoPath, finalPath]))
+      // Why replace: `git worktree list` always prints forward slashes, even on Windows.
+      expect(remaining.map((w) => w.path)).toEqual(
+        expect.arrayContaining([repoPath.replace(/\\/g, '/'), finalPath.replace(/\\/g, '/')])
+      )
       expect(hasPendingStalePreparationCleanup()).toBe(false)
     } finally {
       releaseRemoval()

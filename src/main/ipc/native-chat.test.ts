@@ -104,10 +104,12 @@ describe('nativeChat:readSession handler', () => {
       ])
     )
 
-    // Point homedir-derived Claude root at our fixture via HOME so the resolver
-    // (which reads homedir() internally) finds the transcript.
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    // Why CLAUDE_CONFIG_DIR, not HOME: the resolver's first root is
+    // CLAUDE_CONFIG_DIR/projects (session-file-resolver.ts); HOME only steers
+    // os.homedir() on POSIX (Windows reads USERPROFILE instead), so it silently
+    // pointed the resolver at the real machine's home there.
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       const result = (await invokeReadSession({ agent: 'claude', sessionId: 'sess-ipc' })) as {
         messages?: unknown[]
@@ -116,10 +118,10 @@ describe('nativeChat:readSession handler', () => {
       expect(result.error).toBeUndefined()
       expect(result.messages).toHaveLength(2)
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })
@@ -139,8 +141,8 @@ describe('nativeChat:readSession handler', () => {
     }))
     await writeFile(join(projectDir, 'sess-limit.jsonl'), jsonLines(records))
 
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       const windowed = (await invokeReadSession({
         agent: 'claude',
@@ -156,10 +158,10 @@ describe('nativeChat:readSession handler', () => {
       })) as { messages: { id: string }[] }
       expect(wider.messages.map((m) => m.id)).toEqual(['u-2', 'u-3', 'u-4', 'u-5'])
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })
@@ -200,8 +202,8 @@ describe('nativeChat:readSession handler', () => {
       send: (channel: string, payload: unknown) => sent.push({ channel, payload })
     }
 
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       subscribe!(
         { sender },
@@ -244,10 +246,10 @@ describe('nativeChat:readSession handler', () => {
       expect(destroyedCb).toBeDefined()
       destroyedCb!()
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })
@@ -276,8 +278,8 @@ describe('nativeChat:readSession handler', () => {
       send: (channel: string, payload: unknown) => sent.push({ channel, payload })
     }
 
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       subscribe!({ sender }, { subscriptionId: 'sub-pending', agent: 'claude', sessionId: 'ghost' })
 
@@ -292,10 +294,10 @@ describe('nativeChat:readSession handler', () => {
 
       destroyedCb!()
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })
@@ -334,8 +336,8 @@ describe('nativeChat:readSession handler', () => {
       send: vi.fn()
     }
 
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       subscribe!(
         { sender },
@@ -353,10 +355,10 @@ describe('nativeChat:readSession handler', () => {
       await waitFor(() => _getNativeChatSenderCleanupCountForTest() === 0)
       expect(sender.send).not.toHaveBeenCalled()
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })
@@ -364,18 +366,18 @@ describe('nativeChat:readSession handler', () => {
   it('returns an error for an unknown session without throwing', async () => {
     const root = await mkdtemp(join(tmpdir(), 'kolux-native-chat-ipc-missing-'))
     tempRoots.push(root)
-    const previousHome = process.env.HOME
-    process.env.HOME = root
+    const previousConfigDir = process.env.CLAUDE_CONFIG_DIR
+    process.env.CLAUDE_CONFIG_DIR = join(root, '.claude')
     try {
       const result = (await invokeReadSession({ agent: 'claude', sessionId: 'nope' })) as {
         error?: string
       }
       expect(result.error).toBeTruthy()
     } finally {
-      if (previousHome === undefined) {
-        delete process.env.HOME
+      if (previousConfigDir === undefined) {
+        delete process.env.CLAUDE_CONFIG_DIR
       } else {
-        process.env.HOME = previousHome
+        process.env.CLAUDE_CONFIG_DIR = previousConfigDir
       }
     }
   })

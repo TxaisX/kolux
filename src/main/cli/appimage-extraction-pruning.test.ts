@@ -112,36 +112,40 @@ describe('AppImage extraction pruning', () => {
     ).resolves.toBe(siblingLauncher)
   })
 
-  it('preserves an active extraction during pruning', async () => {
-    const { appImagePath, cacheRootPath } = await makeExtractionFixture()
-    const root = resolveAppImageExtractedRoot({ appImagePath, cacheRootPath })!
-    let reportStarted!: (stagingPath: string) => void
-    let releaseExtraction!: () => void
-    const started = new Promise<string>((resolve) => {
-      reportStarted = resolve
-    })
-    const release = new Promise<void>((resolve) => {
-      releaseExtraction = resolve
-    })
-    const extraction = ensureAppImageExtractedRoot({
-      appImagePath,
-      cacheRootPath,
-      runExtract: async (_path, cwd) => {
-        reportStarted(cwd)
-        await release
-        await writePayload(join(cwd, 'squashfs-root'), '')
-      }
-    })
-    const stagingPath = await started
+  // Why: hasPayloadLauncher() requires the POSIX exec bit, which Windows never sets via mode.
+  it.skipIf(process.platform === 'win32')(
+    'preserves an active extraction during pruning',
+    async () => {
+      const { appImagePath, cacheRootPath } = await makeExtractionFixture()
+      const root = resolveAppImageExtractedRoot({ appImagePath, cacheRootPath })!
+      let reportStarted!: (stagingPath: string) => void
+      let releaseExtraction!: () => void
+      const started = new Promise<string>((resolve) => {
+        reportStarted = resolve
+      })
+      const release = new Promise<void>((resolve) => {
+        releaseExtraction = resolve
+      })
+      const extraction = ensureAppImageExtractedRoot({
+        appImagePath,
+        cacheRootPath,
+        runExtract: async (_path, cwd) => {
+          reportStarted(cwd)
+          await release
+          await writePayload(join(cwd, 'squashfs-root'), '')
+        }
+      })
+      const stagingPath = await started
 
-    try {
-      await pruneAppImageExtractedRoots(root.rootPath)
-      expect(existsSync(stagingPath)).toBe(true)
-    } finally {
-      releaseExtraction()
+      try {
+        await pruneAppImageExtractedRoots(root.rootPath)
+        expect(existsSync(stagingPath)).toBe(true)
+      } finally {
+        releaseExtraction()
+      }
+      await expect(extraction).resolves.toEqual(root)
     }
-    await expect(extraction).resolves.toEqual(root)
-  })
+  )
 
   it('retains recent cross-process staging and reclaims stale staging', async () => {
     const { appImagePath, cacheRootPath } = await makeExtractionFixture()

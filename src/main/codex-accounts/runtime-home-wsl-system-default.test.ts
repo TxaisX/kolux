@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type * as CodexConfigMirror from '../codex/codex-config-mirror'
+import type * as LegacyWslRuntimeAuthDrain from './legacy-wsl-runtime-auth-drain'
 import { createSettings } from './runtime-home-settings-test-fixtures'
 import {
   createCodexAuthJson,
@@ -217,6 +218,12 @@ describe('CodexRuntimeHomeService', () => {
       getDefaultWslDistro: () => 'Ubuntu',
       getWslHome: () => wslHome
     }))
+    // Why: prepareForCodexLaunch() fires the legacy drain without awaiting it — keep it a
+    // no-op so the real (unreachable) wsl.exe spawn can't outlive this test and race teardown.
+    vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
+      ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
+      startLegacyWslRuntimeAuthDrain: () => Promise.resolve()
+    }))
     const systemAuth = createCodexAuthJson('wsl@example.com', 'acct-wsl', 'system-old', 1_000)
     const refreshedAuth = createCodexAuthJson(
       'wsl@example.com',
@@ -244,6 +251,7 @@ describe('CodexRuntimeHomeService', () => {
       expect(service.prepareForCodexLaunch(target)).toBe(systemCodexHomePath)
       expect(readFileSync(join(systemCodexHomePath, 'auth.json'), 'utf-8')).toBe(refreshedAuth)
     } finally {
+      vi.doUnmock('./legacy-wsl-runtime-auth-drain')
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform)
       }
@@ -257,6 +265,12 @@ describe('CodexRuntimeHomeService', () => {
     vi.doMock('../wsl', () => ({
       getDefaultWslDistro: () => 'Ubuntu',
       getWslHome: () => wslHome
+    }))
+    // Why: prepareForCodexLaunch() fires the legacy drain without awaiting it — keep it a
+    // no-op so the real (unreachable) wsl.exe spawn can't outlive this test and race teardown.
+    vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
+      ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
+      startLegacyWslRuntimeAuthDrain: () => Promise.resolve()
     }))
     const systemAuth = createCodexAuthJson('wsl@example.com', 'acct-wsl', 'system-old', 1_000)
     const refreshedAuth = createCodexAuthJson(
@@ -294,6 +308,7 @@ describe('CodexRuntimeHomeService', () => {
       expect(readFileSync(join(systemCodexHomePath, 'auth.json'), 'utf-8')).toBe(systemAuth)
       expect(readFileSync(join(wslRuntimeHomePath, 'auth.json'), 'utf-8')).toBe(refreshedAuth)
     } finally {
+      vi.doUnmock('./legacy-wsl-runtime-auth-drain')
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform)
       }
@@ -331,9 +346,11 @@ describe('CodexRuntimeHomeService', () => {
         join(testState.userDataDir, 'runtime-home')
       )
 
+      // Why: getWslHome already returns the drvfs-mounted home as its Windows drive
+      // spelling — join onto it directly rather than forcing a wsl.localhost UNC form.
       expect(syncConfig).toHaveBeenCalledWith({
         runtimeHomePath: join(testState.userDataDir, 'runtime-home'),
-        systemHomePath: '\\\\wsl.localhost\\Ubuntu\\mnt\\c\\Users\\alice\\.codex',
+        systemHomePath: 'C:\\Users\\alice\\.codex',
         systemConfigDir: '/mnt/c/Users/alice/.codex'
       })
     } finally {

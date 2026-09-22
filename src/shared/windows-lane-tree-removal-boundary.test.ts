@@ -1,35 +1,21 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * The Windows CI lane runs a fixed list of specs on `windows-2022`, and every one of them removes
- * a temporary tree when it is done. On Windows those removals race a handle the OS has not
- * released yet — a just-exited child, an indexer, a dlopen'd native module — so a raw
- * `rmSync(dir, { recursive: true, force: true })` throws EPERM after the test's assertions have
- * all passed, and the lane reports a green test as a failure.
+ * On Windows a recursive tree removal races a handle the OS has not released yet — a just-exited
+ * child, an indexer, a dlopen'd native module — so a raw `rmSync(dir, { recursive: true, force:
+ * true })` throws EPERM after the test's assertions have all passed, and a green test reports as
+ * a failure.
  *
- * `removeTree`/`removeTreeSync` carry the repo's `maxRetries: 8` policy. This keeps the lane on
- * them: a new spec that hand-rolls the removal fails here rather than intermittently on Windows.
+ * `removeTree`/`removeTreeSync` carry the repo's `maxRetries: 8` policy for exactly this. This
+ * file guards the scanner logic that would flag a spec hand-rolling the removal instead.
+ *
+ * Why no repo-wide scan here: the fork split collapsed CI to one ubuntu-only `check` job in
+ * `.github/workflows/ci.yml` (the old `pr.yml` windows-2022 lane and its curated
+ * "Test Windows-specific boundaries" spec list are gone, confirmed absent even on the pre-rename
+ * 0.9.0 baseline) — there is no surviving list of "the windows lane's specs" to read back out of
+ * a workflow file. `findRawRecursiveRemovals` is kept and unit-tested in isolation below so a
+ * future CI lane, pre-commit hook, or ratchet script can reuse it.
  */
-const REPO_ROOT = join(__dirname, '..', '..')
-const WORKFLOW_PATH = join(REPO_ROOT, '.github', 'workflows', 'pr.yml')
-const WINDOWS_STEP_NAME = 'Test Windows-specific boundaries'
-
-/** The spec paths the `package (windows)` job passes to vitest, read from the workflow itself. */
-function readWindowsLaneSpecs(): string[] {
-  const workflow = readFileSync(WORKFLOW_PATH, 'utf8')
-  const stepIndex = workflow.indexOf(`- name: ${WINDOWS_STEP_NAME}`)
-  expect(stepIndex, `${WORKFLOW_PATH} no longer has a "${WINDOWS_STEP_NAME}" step`).toBeGreaterThan(
-    -1
-  )
-  const nextStepIndex = workflow.indexOf('\n      - name:', stepIndex + 1)
-  const step = workflow.slice(stepIndex, nextStepIndex === -1 ? undefined : nextStepIndex)
-  return step
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => /^(src|tests|config)\/.+\.(test|spec)\.(ts|tsx|mjs)$/.test(line))
-}
 
 /** `node:fs` and `node:fs/promises`, spelled with or without the `node:` prefix. */
 const FS_SPECIFIER = String.raw`['"](?:node:)?fs(?:/promises)?['"]`
@@ -94,15 +80,6 @@ function findRawRecursiveRemovals(source: string): number[] {
 }
 
 describe('windows lane tree removal', () => {
-  const specs = readWindowsLaneSpecs()
-
-  it('reads a non-trivial spec list out of the workflow', () => {
-    // A parser that silently matched nothing would make every assertion below vacuous.
-    expect(specs.length).toBeGreaterThan(10)
-    expect(specs).toContain('config/scripts/rebuild-native-deps.test.mjs')
-    expect(specs).toContain('src/main/windows/windows-host-job.win32.test.ts')
-  })
-
   it('actually detects a raw recursive removal', () => {
     // Without this the scan below passes for any reason at all, including not scanning.
     expect(findRawRecursiveRemovals('rmSync(dir, { recursive: true, force: true })')).toEqual([1])
@@ -155,17 +132,5 @@ describe('windows lane tree removal', () => {
     ).toEqual([])
     // `rm` inside a longer identifier is not a removal call.
     expect(findRawRecursiveRemovals('confirmRemoval(dir, { recursive: true })')).toEqual([])
-  })
-
-  it('removes trees through the retrying helper, never a raw recursive rm', () => {
-    const offenders = specs.flatMap((spec) => {
-      const source = readFileSync(join(REPO_ROOT, spec), 'utf8')
-      return findRawRecursiveRemovals(source).map((line) => `${spec}:${line}`)
-    })
-
-    expect(
-      offenders,
-      'these teardowns can throw EPERM on Windows after their assertions have passed; use removeTree/removeTreeSync from src/shared/windows-transient-lock-removal.ts'
-    ).toEqual([])
   })
 })

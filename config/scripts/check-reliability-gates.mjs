@@ -307,6 +307,19 @@ async function fileExists(root, filePath) {
   }
 }
 
+// Why: mobile/ is a whole subproject some checkouts (folder workspaces, partial
+// clones) never bring in at all. Its gates stay in the manifest for checkouts
+// that do have it; skip only the file-existence check, and only when the
+// directory itself is entirely absent -- a mobile/ checkout with a genuinely
+// missing test file still fails.
+async function mobileDirectoryMissing(root) {
+  try {
+    return !(await fs.stat(path.join(root, 'mobile'))).isDirectory()
+  } catch {
+    return true
+  }
+}
+
 async function validateGate(gate, maturities, root) {
   const failures = []
   if (!isRecord(gate)) {
@@ -338,6 +351,9 @@ async function validateGate(gate, maturities, root) {
     failures.push(`${gate.id}: testFiles must be an array of strings`)
   } else {
     for (const testFile of gate.testFiles) {
+      if (testFile.startsWith('mobile/') && (await mobileDirectoryMissing(root))) {
+        continue
+      }
       if (!(await fileExists(root, testFile))) {
         failures.push(`${gate.id}: test file does not exist: ${testFile}`)
       }

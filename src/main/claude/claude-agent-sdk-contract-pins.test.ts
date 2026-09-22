@@ -391,7 +391,12 @@ describe('Claude Agent SDK contract pins', () => {
       prompt: singleUserTurn(),
       options: {
         pathToClaudeCodeExecutable: FAKE_CLI,
-        cwd: scenario.cwd,
+        // Why: session.return() below does not wait for the child to actually exit,
+        // and the scripted CLI is mid `delayMs` when it runs — a cwd inside the
+        // scratch dir keeps a Windows handle open on it, racing afterEach's rmSync
+        // (STA-EPERM). The script only reads scenario/report paths, both absolute,
+        // so the cwd itself is otherwise unused.
+        cwd: tmpdir(),
         env: scenarioEnv(scenario)
       }
     })

@@ -11,7 +11,7 @@ import type {
   AgentSessionHandoffStatus
 } from '../../../shared/agent-session-wire'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
-import { openAgentSessionJournal } from '../agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import {
   queuedStructuredHandoffCanBegin,
   StructuredAgentSessionHandoffQueue
@@ -25,8 +25,10 @@ const OPERATION_A = `${NOW}-00000000000000000000000000000001`
 const OPERATION_B = `${NOW}-00000000000000000000000000000002`
 
 let root: string | null = null
+const journals = createTrackedJournalOpener()
 
 afterEach(async () => {
+  await journals.closeAll()
   if (root) {
     await rm(root, { recursive: true, force: true })
     root = null
@@ -176,7 +178,7 @@ describe('queued handoff fence revalidation', () => {
 describe('scheduled handoff revalidation', () => {
   it('refuses a native turn accepted ahead of the scheduled handoff', async () => {
     root = await mkdtemp(join(tmpdir(), 'kolux-handoff-revalidation-'))
-    const journal = await openAgentSessionJournal({
+    const journal = await journals.open({
       identity: {
         sessionId: SESSION,
         workspaceId: 'workspace-1',

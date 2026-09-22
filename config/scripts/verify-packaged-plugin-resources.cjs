@@ -109,4 +109,4 @@ function verifyPackagedPluginResources(resourcesDir) {
   )
 }
 
-module.exports = { verifyPackagedPluginResources }
+module.exports = { verifyPackagedPluginResources, hashPackagedPluginTree }

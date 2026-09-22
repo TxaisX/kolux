@@ -8,6 +8,7 @@ vi.mock('../format', () => ({ printResult: vi.fn() }))
 vi.mock('../selectors', () => ({ getTerminalHandle: vi.fn() }))
 
 import { printResult } from '../format'
+import { renderCommand } from '../orchestration-mutation-recovery'
 import { ORCHESTRATION_HANDLERS } from './orchestration'
 
 describe('orchestration timeout flag validation', () => {
@@ -264,11 +265,24 @@ describe('orchestration timeout flag validation', () => {
       ])
     )
 
+    // Why: rendering is shell-platform-specific (see renderCommand); build the expected
+    // resume command the same way rather than hardcoding POSIX quoting.
+    const resumeCommandText = renderCommand([
+      'kolux-dev',
+      'orchestration',
+      'ask',
+      '--from',
+      'term_worker',
+      '--dispatch-capability',
+      'dcap_secret',
+      '--resume',
+      'msg_question',
+      '--timeout-ms',
+      '30000'
+    ])
     expect(errorSpy).toHaveBeenCalledWith(
       'ask timeout after 30000ms; question is still pending (messageId: msg_question). ' +
-        'Resume waiting; do not ask again:\n' +
-        'kolux-dev orchestration ask --from term_worker --dispatch-capability dcap_secret ' +
-        '--resume msg_question --timeout-ms 30000'
+        `Resume waiting; do not ask again:\n${resumeCommandText}`
     )
     expect(process.exitCode).toBe(1)
   })

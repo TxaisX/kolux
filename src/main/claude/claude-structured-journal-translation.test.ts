@@ -10,7 +10,7 @@ import type {
 } from '../../shared/agent-session-journal-types'
 import { agentJournalItemKey } from '../../shared/agent-session-journal-item-key'
 import { activeStructuredAgentSessionTurnId } from '../../shared/structured-agent-session-projection'
-import { openAgentSessionJournal } from '../native-chat/agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../native-chat/agent-session-journal/journal-store-test-open'
 import {
   createDeferredStructuredAgentSessionEventSink,
   type StructuredAgentSessionEventSink
@@ -170,12 +170,14 @@ const JOURNAL_IDENTITY: AgentSessionJournalIdentity = {
 }
 
 let journalRoot = ''
+const journals = createTrackedJournalOpener()
 
 beforeEach(async () => {
   journalRoot = await mkdtemp(join(tmpdir(), 'kolux-claude-journal-translation-'))
 })
 
 afterEach(async () => {
+  await journals.closeAll()
   await rm(journalRoot, { recursive: true, force: true })
 })
 
@@ -234,7 +236,7 @@ describe('Claude structured journal translation', () => {
   })
 
   it('journals a count-to-200 stream as one assistant item carrying the complete reply', async () => {
-    const journal = await openAgentSessionJournal({
+    const journal = await journals.open({
       identity: JOURNAL_IDENTITY,
       journalDir: journalRoot,
       now: () => 1_700_000_000_000,

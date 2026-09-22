@@ -40,12 +40,15 @@ describe('project host setup projection', () => {
 
   // Why both orders: repo order comes from disk/host enumeration, so it must not decide the
   // project's timestamps. The accumulator carries 0 when the *first* sibling is the unknown one.
+  // Why owner 'TxaisX' on both: a stale 'Txais' typo here (missing the 'X') never matched
+  // unknownSibling's owner, so githubRepoIdentityKey never merged them into one project —
+  // confirmed pre-existing (identical on the 0.9.0 baseline), not a rename regression.
   const timestampedSibling = repo({
     id: 'local-repo',
     path: '/Users/alice/kolux',
     displayName: 'Kolux',
     addedAt: 100,
-    upstream: { owner: 'Txais', repo: 'Kolux' }
+    upstream: { owner: 'TxaisX', repo: 'Kolux' }
   })
   const unknownSibling = repo({
     id: 'remote-repo',
@@ -162,7 +165,7 @@ describe('project host setup projection', () => {
         id: 'local-repo',
         path: '/Users/alice/kolux',
         displayName: 'Kolux',
-        upstream: { owner: 'Txais', repo: 'Kolux' }
+        upstream: { owner: 'TxaisX', repo: 'Kolux' }
       }),
       repo({
         id: 'remote-repo',
@@ -175,13 +178,11 @@ describe('project host setup projection', () => {
 
     expect(projection.projects).toHaveLength(1)
     expect(projection.projects[0]).toMatchObject({
-      id: 'github:TxaisX/nightshift',
+      id: 'github:txaisx/kolux',
       sourceRepoIds: ['local-repo', 'remote-repo'],
-      providerIdentity: { provider: 'github', owner: 'Txais', repo: 'Kolux' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'Kolux' }
     })
-    expect(
-      getProjectHostSetupsForProject(projection.setups, 'github:TxaisX/nightshift')
-    ).toHaveLength(2)
+    expect(getProjectHostSetupsForProject(projection.setups, 'github:txaisx/kolux')).toHaveLength(2)
   })
 
   it('keeps same-named github.com and GHES repositories in separate projects', () => {
@@ -272,19 +273,22 @@ describe('project host setup projection', () => {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
           source: 'github',
-          label: 'Txais/Kolux'
+          // Why 'TxaisX/nightshift' not 'Kolux': the icon label spells the real, still-unrenamed
+          // GitHub address (AGENTS.md keeps TxaisX/nightshift* addresses as-is), and the stale
+          // 'Txais/Kolux' typo here never matched the sibling below, so they never merged.
+          label: 'TxaisX/nightshift'
         }
       })
     ])
 
     expect(projection.projects).toHaveLength(1)
     expect(projection.projects[0]).toMatchObject({
-      id: 'github:TxaisX/nightshift',
+      id: 'github:txaisx/nightshift',
       sourceRepoIds: ['local-repo', 'remote-repo'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
     })
     expect(
-      getProjectHostSetupsForProject(projection.setups, 'github:TxaisX/nightshift')
+      getProjectHostSetupsForProject(projection.setups, 'github:txaisx/nightshift')
     ).toHaveLength(2)
   })
 
@@ -314,11 +318,13 @@ describe('project host setup projection', () => {
     ])
 
     expect(projection.projects).toHaveLength(1)
+    // Why 'nightshift' not 'kolux': the git remote and icon label both spell the real,
+    // still-unrenamed GitHub address (AGENTS.md keeps TxaisX/nightshift* addresses as-is).
     expect(projection.projects[0]).toMatchObject({
-      id: 'github:TxaisX/nightshift',
+      id: 'github:txaisx/nightshift',
       displayName: 'kolux',
       sourceRepoIds: ['canonical-local-repo', 'old-branch-checkout'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
     })
   })
 
@@ -532,7 +538,7 @@ describe('project host setup projection', () => {
     const projection = projectHostSetupProjectionFromRepos([targetRepo])
 
     expect(getProjectHostSetupWorktreeMeta(projection.setups, targetRepo)).toEqual({
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:txaisx/kolux',
       hostId: 'ssh:openclaw%202',
       projectHostSetupId: 'remote-repo'
     })

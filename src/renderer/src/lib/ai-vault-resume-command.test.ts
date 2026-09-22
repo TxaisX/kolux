@@ -88,7 +88,7 @@ describe('ai vault resume command runtime', () => {
         }
       })
     ).toMatchObject({
-      command: "claude '--resume' 'session one'",
+      command: "claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'",
       cwd: 'C:\\Users\\alice\\repo'
     })
   })
@@ -109,7 +109,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('queues direct cmd syntax when the configured Windows shell is cmd.exe', () => {
@@ -129,7 +129,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe('claude "--resume" "session one"')
+    ).toBe('claude "--model" "opus" "--effort" "high" "--resume" "session one"')
   })
 
   it('queues a POSIX command for the Git Bash Windows shell', () => {
@@ -149,7 +149,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('follows the live Windows shell for non-resumable agents in the fallback path', () => {
@@ -230,7 +230,9 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe('cd /d "C:\\Users\\alice\\repo" && claude "--resume" "session one"')
+    ).toBe(
+      'cd /d "C:\\Users\\alice\\repo" && claude "--model" "opus" "--effort" "high" "--resume" "session one"'
+    )
   })
 
   it('copies syntax that matches the configured PowerShell shell', () => {
@@ -247,7 +249,9 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("Set-Location -LiteralPath 'C:\\Users\\alice\\repo'; claude '--resume' 'session one'")
+    ).toBe(
+      "Set-Location -LiteralPath 'C:\\Users\\alice\\repo'; claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'"
+    )
   })
 
   it('copies a real-home Codex command that clears inherited homes in PowerShell', () => {
@@ -355,7 +359,8 @@ describe('ai vault resume command runtime', () => {
         }
       })
     ).toEqual({
-      command: "claude '--dangerously-skip-permissions' '--effort' 'max' '--resume' 'session-1'",
+      command:
+        "claude '--model' 'opus' '--dangerously-skip-permissions' '--effort' 'max' '--resume' 'session-1'",
       cwd: '/home/alice/repo',
       env: { ANTHROPIC_BASE_URL: 'https://claude.example.test' },
       launchConfig: {
@@ -385,7 +390,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('uses POSIX command wrapping for SSH-owned worktrees on Windows clients', () => {
@@ -404,7 +409,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('uses POSIX command wrapping for folder workspaces with their own SSH target', () => {
@@ -433,7 +438,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('uses POSIX command wrapping for WSL UNC folder workspaces on Windows clients', () => {
@@ -461,7 +466,7 @@ describe('ai vault resume command runtime', () => {
           codexHome: null
         }
       })
-    ).toBe("claude '--resume' 'session one'")
+    ).toBe("claude '--model' 'opus' '--effort' 'high' '--resume' 'session one'")
   })
 
   it('keeps WSL UNC worktrees on POSIX command wrapping without an explicit override', () => {

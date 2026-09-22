@@ -8,16 +8,20 @@ import { KIMI_HOOK_EVENTS } from './kimi-hook-config-toml'
 // Why: getSharedManagedScriptPath() writes the managed script under
 // homedir()/.kolux, and getKimiHome() honors KIMI_CODE_HOME. Point both at a
 // temp dir so the local install/remove cycle never touches the real ~/.kolux or
-// ~/.kimi-code. os.homedir() resolves $HOME on POSIX (verified at write time).
+// ~/.kimi-code. os.homedir() resolves HOME on POSIX and USERPROFILE on Windows.
 let home: string
 let originalHome: string | undefined
+let originalUserProfile: string | undefined
 let originalKimiHome: string | undefined
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'kolux-kimi-hook-'))
   originalHome = process.env.HOME
+  originalUserProfile = process.env.USERPROFILE
   originalKimiHome = process.env.KIMI_CODE_HOME
   process.env.HOME = home
+  // Why: os.homedir() reads USERPROFILE on Windows, not HOME.
+  process.env.USERPROFILE = home
   process.env.KIMI_CODE_HOME = join(home, '.kimi-code')
 })
 
@@ -26,6 +30,11 @@ afterEach(() => {
     delete process.env.HOME
   } else {
     process.env.HOME = originalHome
+  }
+  if (originalUserProfile === undefined) {
+    delete process.env.USERPROFILE
+  } else {
+    process.env.USERPROFILE = originalUserProfile
   }
   if (originalKimiHome === undefined) {
     delete process.env.KIMI_CODE_HOME

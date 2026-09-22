@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { join } from 'node:path'
 import type { Event as WatcherEvent } from '@parcel/watcher'
 import type { FsChangedPayload } from '../../shared/filesystem-entry-types'
 import { WATCH_BATCH_TRAILING_MS } from '../../shared/filesystem-watch-batch-window'
+
+// Why a drive letter on win32: normalizeWatcherEventPath runs a driveless event path through
+// node:path `resolve`, which prepends the current working directory's drive — a bare `/repo`
+// fixture then no longer string-matches the literal path the test asserts on.
+const ROOT = process.platform === 'win32' ? 'C:\\repo' : '/repo'
+const p = (name: string): string => join(ROOT, name)
 
 const { statMock, subscribeMock } = vi.hoisted(() => ({
   statMock: vi.fn(),
@@ -50,10 +57,10 @@ describe('local filesystem watcher flush serialization', () => {
     const firstStat = deferred<{ isDirectory: () => boolean }>()
     const secondStat = deferred<{ isDirectory: () => boolean }>()
     statMock.mockReturnValueOnce(firstStat.promise).mockReturnValueOnce(secondStat.promise)
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
-    const firstPath = '/repo/first.ts'
-    const secondPath = '/repo/second.ts'
+    const firstPath = p('first.ts')
+    const secondPath = p('second.ts')
 
     watcherCallback?.(null, [{ type: 'update', path: firstPath }])
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
@@ -83,11 +90,11 @@ describe('local filesystem watcher flush serialization', () => {
     const firstStat = deferred<{ isDirectory: () => boolean }>()
     const createStat = deferred<{ isDirectory: () => boolean }>()
     statMock.mockReturnValueOnce(firstStat.promise).mockReturnValueOnce(createStat.promise)
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
-    const firstPath = '/repo/first.ts'
-    const transientPath = '/repo/transient.ts'
-    const replacedPath = '/repo/replaced.ts'
+    const firstPath = p('first.ts')
+    const transientPath = p('transient.ts')
+    const replacedPath = p('replaced.ts')
 
     watcherCallback?.(null, [{ type: 'update', path: firstPath }])
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
@@ -115,14 +122,14 @@ describe('local filesystem watcher flush serialization', () => {
 
   it('drops queued events when the last listener is removed', async () => {
     const firstStat = deferred<{ isDirectory: () => boolean }>()
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
     statMock.mockReturnValueOnce(firstStat.promise)
 
-    watcherCallback?.(null, [{ type: 'update', path: '/repo/first.ts' }])
+    watcherCallback?.(null, [{ type: 'update', path: p('first.ts') }])
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
     await flushMicrotasks()
-    watcherCallback?.(null, [{ type: 'update', path: '/repo/queued.ts' }])
+    watcherCallback?.(null, [{ type: 'update', path: p('queued.ts') }])
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
     await flushMicrotasks()
     root.listeners.clear()
@@ -135,7 +142,7 @@ describe('local filesystem watcher flush serialization', () => {
 
   it('caps concurrent stats at eight for a full batch and keeps result order', async () => {
     const eventCount = 5_000
-    const paths = Array.from({ length: eventCount }, (_, index) => `/repo/file-${index}.ts`)
+    const paths = Array.from({ length: eventCount }, (_, index) => p(`file-${index}.ts`))
     let inFlight = 0
     let peakInFlight = 0
     statMock.mockImplementation(async (statPath: string) => {
@@ -145,7 +152,7 @@ describe('local filesystem watcher flush serialization', () => {
       inFlight--
       return { isDirectory: () => statPath.endsWith('-0.ts') }
     })
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
 
     watcherCallback?.(
@@ -175,14 +182,14 @@ describe('local filesystem watcher flush serialization', () => {
     const eventCount = 5_000
     const pendingStats = deferred<{ isDirectory: () => boolean }>()
     statMock.mockReturnValue(pendingStats.promise)
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
 
     watcherCallback?.(
       null,
       Array.from({ length: eventCount }, (_, index) => ({
         type: 'update' as const,
-        path: `/repo/file-${index}.ts`
+        path: p(`file-${index}.ts`)
       }))
     )
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
@@ -204,12 +211,12 @@ describe('local filesystem watcher flush serialization', () => {
     const firstStat = deferred<{ isDirectory: () => boolean }>()
     const secondStat = deferred<{ isDirectory: () => boolean }>()
     statMock.mockReturnValueOnce(firstStat.promise).mockReturnValueOnce(secondStat.promise)
-    const root = await createLocalWatcher('/repo', '/repo')
+    const root = await createLocalWatcher(ROOT, ROOT)
     root.listeners.set(1, sender as never)
-    const transientPath = '/repo/transient.ts'
-    const otherPath = '/repo/other.ts'
+    const transientPath = p('transient.ts')
+    const otherPath = p('other.ts')
 
-    watcherCallback?.(null, [{ type: 'update', path: '/repo/first.ts' }])
+    watcherCallback?.(null, [{ type: 'update', path: p('first.ts') }])
     vi.advanceTimersByTime(WATCH_BATCH_TRAILING_MS)
     await flushMicrotasks()
 

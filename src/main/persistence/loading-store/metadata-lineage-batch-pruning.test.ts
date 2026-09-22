@@ -12,9 +12,14 @@ vi.mock('./write-scheduling', async (importOriginal) => ({
   scheduleSave: scheduleSaveMock
 }))
 
+// Why platform-conditional: prune validates worktree ids as native local paths, so a POSIX
+// fixture is invalid on Windows and every row would be filtered out.
+const SEP = process.platform === 'win32' ? '\\' : '/'
+const WORKSPACE_ROOT = process.platform === 'win32' ? 'C:\\workspace' : '/workspace'
+
 const REPO: Repo = {
   id: 'repo-1',
-  path: '/workspace/repo',
+  path: `${WORKSPACE_ROOT}${SEP}repo`,
   displayName: 'repo',
   badgeColor: '#000',
   addedAt: 0
@@ -43,7 +48,7 @@ describe('MetadataLineageOperations batch metadata pruning', () => {
     state.repos = [REPO]
     const staleIds = Array.from(
       { length: 2_709 },
-      (_, index) => `${REPO.id}::/workspace/stale-${index}`
+      (_, index) => `${REPO.id}::${WORKSPACE_ROOT}${SEP}stale-${index}`
     )
     for (const worktreeId of staleIds) {
       state.worktreeMeta[worktreeId] = makeMeta(worktreeId)

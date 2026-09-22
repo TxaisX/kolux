@@ -75,8 +75,11 @@ describe('structured agent session create params', () => {
         fields: { worktree: 'id:repo-1::/repo/kolux', agent: 'codex' }
       })
     )
+    // Why this literal changed: the worktree path in this fixture was renamed
+    // nightshift -> kolux (commit 9baa8d30), which changes the hashed input, but the
+    // pinned digest itself was never recomputed then - confirmed stale pre-rename too.
     expect(createParams().envelope.payloadFingerprint).toBe(
-      '56cb15e22414c0f62fd89d77d00d2d6a0a422f16e95edee154fb8b5bf53fbbc3'
+      '6cb1a531b3bc35fabf275512eb869d8b3cea000be24e0dee68e2ad5eee89a951'
     )
   })
 })

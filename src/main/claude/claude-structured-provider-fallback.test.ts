@@ -6,7 +6,7 @@ import type {
   AgentJournalItemBody,
   AgentSessionJournalIdentity
 } from '../../shared/agent-session-journal-types'
-import { openAgentSessionJournal } from '../native-chat/agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../native-chat/agent-session-journal/journal-store-test-open'
 import { createDeferredStructuredAgentSessionEventSink } from '../native-chat/agent-session-wire/structured-agent-session-event-sink'
 import { createClaudeJournalTranslator } from './claude-structured-journal-translation'
 import type { ClaudeStructuredSessionEvent } from './claude-structured-session-state'
@@ -20,6 +20,7 @@ const IDENTITY: AgentSessionJournalIdentity = {
 }
 
 let root = ''
+const journals = createTrackedJournalOpener()
 
 function message(
   role: 'assistant' | 'user',
@@ -43,6 +44,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  await journals.closeAll()
   await rm(root, { recursive: true, force: true })
 })
 
@@ -73,7 +75,7 @@ describe('Claude provider fallback', () => {
   })
 
   it('keeps provider-fallback rows distinct across acquisitions', async () => {
-    const journal = await openAgentSessionJournal({
+    const journal = await journals.open({
       identity: IDENTITY,
       journalDir: root,
       now: () => 1_700_000_000_000,

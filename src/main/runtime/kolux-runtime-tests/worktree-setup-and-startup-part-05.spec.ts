@@ -111,10 +111,13 @@ describe('KoluxRuntimeService', () => {
       '/remote/repo-nautilus-2',
       expect.any(Object)
     )
+    // Why --model opus --effort high leads: no model was picked, so the launch defaults
+    // (0cbb68f2, "Opus at full effort when no model is picked") land ahead of the agent's
+    // own --dangerously-skip-permissions default rather than replacing it.
     expect(spawn).toHaveBeenCalledWith(
       expect.objectContaining({
         cwd: '/remote/repo-nautilus-2',
-        command: `claude '--dangerously-skip-permissions' --prefill '${draftUrl}'`,
+        command: `claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' --prefill '${draftUrl}'`,
         connectionId: 'ssh-1',
         worktreeId: result.worktree.id
       })

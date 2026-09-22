@@ -22,6 +22,9 @@ const sourceNodePtyJobOwnershipPath = fileURLToPath(
 const sourceWindowsProcessTreeGypRebuildPath = fileURLToPath(
   new URL('./windows-process-tree-gyp-rebuild.mjs', import.meta.url)
 )
+const sourceWindowsProcessTreeCreationTimePath = fileURLToPath(
+  new URL('./windows-process-tree-creation-time.cjs', import.meta.url)
+)
 const sourceWindowsProcessTreePatchPath = fileURLToPath(
   new URL('../patches/@vscode__windows-process-tree@0.8.0.patch', import.meta.url)
 )
@@ -97,6 +100,12 @@ export function mkTempProject() {
   copyFileSync(
     sourceWindowsProcessTreeGypRebuildPath,
     join(projectDir, 'config', 'scripts', 'windows-process-tree-gyp-rebuild.mjs')
+  )
+  // Why: rebuild-native-deps.mjs's generated Electron prober `require`s this
+  // sibling by a relative path the static import walk above never sees.
+  copyFileSync(
+    sourceWindowsProcessTreeCreationTimePath,
+    join(projectDir, 'config', 'scripts', 'windows-process-tree-creation-time.cjs')
   )
   return projectDir
 }
@@ -369,7 +378,20 @@ export function writeFakeWindowsRegistry(projectDir) {
 export function writeFakeWindowsProcessTree(projectDir) {
   const processTreeDir = join(projectDir, 'node_modules', '@vscode', 'windows-process-tree')
   mkdirSync(processTreeDir, { recursive: true })
-  writeFileSync(join(processTreeDir, 'index.js'), 'module.exports = {}\n')
+  // Why supportedProcessDataFlags: callers of this fixture exercise node-pty and
+  // windows-native-registry only, so start windows-process-tree already
+  // reporting CreationTime support (the patched-source shape) -- otherwise
+  // assertWindowsProcessTreeCreationTime always fails it and the rebuild step
+  // pulls it into onlyModules, which needs a whole fake source tree this
+  // fixture doesn't provide (see writeFakeWindowsProcessTreeWithNodeAddonApi).
+  writeFileSync(
+    join(processTreeDir, 'package.json'),
+    '{"name":"@vscode/windows-process-tree","version":"0.8.0","main":"index.js"}\n'
+  )
+  writeFileSync(
+    join(processTreeDir, 'index.js'),
+    'module.exports = { supportedProcessDataFlags: 4 }\n'
+  )
 }
 
 export function writeFakeWindowsProcessTreeWithNodeAddonApi(

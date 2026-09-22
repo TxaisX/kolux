@@ -141,10 +141,16 @@ describe('createPtySubprocess', () => {
     validateWorkingDirectoryMock.mockImplementationOnce(() => validationGate)
     let canceled = false
 
+    // Why an explicit cwd, and native-shaped on win32: preflightPtySpawn only awaits
+    // validateWorkingDirectoryAsync there for an explicit, native Windows-shaped cwd — an
+    // omitted cwd (the default) never calls it at all, so this would hang waiting for a
+    // call that never comes.
+    const cwd = process.platform === 'win32' ? 'C:\\Users\\test' : '/home/test'
     const spawning = createPtySubprocess({
       sessionId: 'canceled-validation',
       cols: 80,
       rows: 24,
+      cwd,
       isCanceled: () => canceled
     })
     await vi.waitFor(() => expect(validateWorkingDirectoryMock).toHaveBeenCalled())

@@ -149,7 +149,13 @@ describe('normalizeWorktreeLinkedItemMetadata', () => {
 
 describe('gcStaleWorktreeMeta', () => {
   it('reclaims the identity rows of a collected worktree', () => {
-    const worktreeId = 'r1::/definitely/missing/kolux/path'
+    // Why platform-conditional: gcStaleWorktreeMeta requires a native local absolute path on
+    // Windows (a POSIX path is treated as a foreign WSL locator and skipped, not reclaimed).
+    const missingPath =
+      process.platform === 'win32'
+        ? 'C:\\definitely\\missing\\kolux\\path'
+        : '/definitely/missing/kolux/path'
+    const worktreeId = `r1::${missingPath}`
     const identityKey = 'wt2:local:dead'
     const remoteIdentityKey = 'wt2:ssh:live'
     const state = makeState({

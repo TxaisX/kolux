@@ -18,6 +18,7 @@ vi.mock('../selectors', () => ({ getTerminalHandle: vi.fn() }))
 
 import { ORCHESTRATION_HANDLERS } from './orchestration'
 import { printResult } from '../format'
+import { renderResolvedOrchestrationCommand } from '../orchestration-mutation-recovery'
 import { BOOLEAN_FLAGS, parseArgs } from '../args'
 import { formatCommandHelp } from '../help'
 import { ORCHESTRATION_WORKER_COMMAND_SPECS } from '../specs/orchestration-worker-specs'
@@ -235,14 +236,19 @@ describe('orchestration worker-start CLI contract', () => {
         boolean,
         (result: RecoveryWorkerStartResult) => string
       ]
-      expect(response.result.nextCommands).toEqual([
-        `${executable} orchestration worker-show --dispatch ctx_unknown --json`,
-        `${executable} orchestration worker-abandon --dispatch ctx_unknown --json`
-      ])
+      // Why: rendering is shell-platform-specific (see renderResolvedOrchestrationCommand);
+      // build the expected text the same way rather than hardcoding POSIX quoting.
+      const showCommandText = renderResolvedOrchestrationCommand(
+        'kolux orchestration worker-show --dispatch ctx_unknown --json',
+        executable
+      )
+      const abandonCommandText = renderResolvedOrchestrationCommand(
+        'kolux orchestration worker-abandon --dispatch ctx_unknown --json',
+        executable
+      )
+      expect(response.result.nextCommands).toEqual([showCommandText, abandonCommandText])
       if (!json) {
-        expect(formatter(response.result)).toContain(
-          `Next command: ${executable} orchestration worker-show --dispatch ctx_unknown --json`
-        )
+        expect(formatter(response.result)).toContain(`Next command: ${showCommandText}`)
       }
     }
   )

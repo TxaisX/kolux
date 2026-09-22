@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 function readRuntimeSpecifiers(source: string): string[] {
@@ -86,7 +86,7 @@ describe('agent hook listener relay dependency boundary', () => {
         .filter(
           (dependency): dependency is string =>
             dependency === `${listenerPathPrefix}.ts` ||
-            dependency?.startsWith(`${listenerPathPrefix}/`) === true
+            dependency?.startsWith(`${listenerPathPrefix}${sep}`) === true
         )
     )
     const seeded = new Set(pending)
@@ -118,7 +118,16 @@ describe('agent hook listener relay dependency boundary', () => {
     }
 
     expect(forbidden).toEqual([])
-    expect([...seeded].map((file) => file.slice(sharedRoot.length + 1)).sort()).toEqual([
+    expect(
+      [...seeded]
+        .map((file) =>
+          file
+            .slice(sharedRoot.length + 1)
+            .split(sep)
+            .join('/')
+        )
+        .sort()
+    ).toEqual([
       'agent-hook-listener.ts',
       'agent-hook-listener/endpoint-publication.ts',
       'agent-hook-listener/grok-result-discovery.ts',
@@ -130,7 +139,9 @@ describe('agent hook listener relay dependency boundary', () => {
       'agent-hook-listener/source-routing.ts'
     ])
     expect(
-      [...visited].some((file) => file.endsWith('/agent-hook-listener/provider-dispatch.ts'))
+      [...visited].some((file) =>
+        file.endsWith(`${sep}agent-hook-listener${sep}provider-dispatch.ts`)
+      )
     ).toBe(true)
   })
 })

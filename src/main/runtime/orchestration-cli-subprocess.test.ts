@@ -74,6 +74,16 @@ describeIfBuilt('kolux orchestration check --wait subprocess (§3.4)', () => {
     const server = new KoluxRuntimeRpcServer({ runtime, userDataPath })
     await server.start()
 
+    // Why: `orchestration check --wait` now requires the coordinator terminal to have a
+    // stable pane bound to a Run (`stable_pane_required`) — bind one here so the CLI reaches
+    // its wait loop and actually emits keepalives, instead of failing fast on that guard.
+    const paneKey = 'pane_test'
+    db.createRun({
+      objective: 'keepalive subprocess test',
+      coordinatorHandle: 'term_nobody',
+      coordinatorPaneKey: paneKey
+    })
+
     try {
       // Why: use the KOLUX_KEEPALIVE_INTERVAL_MS escape hatch to shrink the
       // test to ~1 s wall time. Production callers never set this; the
@@ -99,6 +109,7 @@ describeIfBuilt('kolux orchestration check --wait subprocess (§3.4)', () => {
             ...process.env,
             KOLUX_USER_DATA_PATH: userDataPath,
             KOLUX_TERMINAL_HANDLE: 'term_nobody',
+            KOLUX_PANE_KEY: paneKey,
             KOLUX_KEEPALIVE_INTERVAL_MS: String(keepaliveMs)
           },
           // Why: explicit pipe for all three fds so we can watch stderr

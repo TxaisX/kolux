@@ -8,6 +8,7 @@ const CENSUS_FILE = 'src/renderer/src/lib/agent-launch-routing-caller-census.tes
 
 const LAUNCH_AGENT_IN_NEW_TAB_CALLERS = [
   'src/renderer/src/components/dashboard/launch-dashboard-agent.ts',
+  'src/renderer/src/components/launch-agents/launch-agents-into-workspace.ts',
   'src/renderer/src/components/right-sidebar/handoff/HandoffPanel.tsx',
   'src/renderer/src/components/right-sidebar/runSourceControlAgentActionStart.ts',
   'src/renderer/src/components/right-sidebar/source-control/ai/recovery-launch.ts',

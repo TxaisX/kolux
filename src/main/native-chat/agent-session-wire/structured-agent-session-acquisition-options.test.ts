@@ -6,6 +6,7 @@ import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-ses
 import type { AgentSessionOptionsResult } from '../../../shared/agent-session-wire'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
 import type { AgentSessionRecord } from '../../../shared/agent-session-record'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import type { StructuredAgentSessionAdapter } from './structured-agent-session-adapter'
 import {
   attachFingerprintFields,
@@ -18,8 +19,14 @@ const SESSION = 'legacy-session'
 const CREATE_OPERATION = `${NOW}-${'1'.padStart(32, '0')}`
 const RESUME_OPERATION = `${NOW}-${'2'.padStart(32, '0')}`
 let root: string | null = null
+const journals = createTrackedJournalOpener()
+// Why: performAttach opens the journal itself; nothing else in this test closes it.
+const onAttached = (attached: { journal: Parameters<typeof journals.track>[0] }): void => {
+  journals.track(attached.journal)
+}
 
 afterEach(async () => {
+  await journals.closeAll()
   if (root) {
     await rm(root, { recursive: true, force: true })
   }
@@ -125,7 +132,7 @@ describe('structured session acquisition options', () => {
       callerKey: 'client-1',
       params: attachParams(CREATE_OPERATION, null, options),
       now: () => NOW,
-      onAttached: () => {}
+      onAttached
     })
 
     expect(created).toMatchObject({ ok: true })
@@ -154,7 +161,7 @@ describe('structured session acquisition options', () => {
         callerKey: 'client-1',
         params: attachParams(CREATE_OPERATION, null, options),
         now: () => NOW,
-        onAttached: () => {}
+        onAttached
       })
 
     const created = await attempt({ model: 'gpt-5.6-sol', effort: 'medium' }, 'spawn-a')
@@ -185,7 +192,7 @@ describe('structured session acquisition options', () => {
       callerKey: 'client-1',
       params: attachParams(CREATE_OPERATION, null),
       now: () => NOW,
-      onAttached: () => {}
+      onAttached
     })
     expect(created).toMatchObject({ ok: true })
     expect(store.getRecord(SESSION)?.options).toBeUndefined()
@@ -224,7 +231,7 @@ describe('structured session acquisition options', () => {
       callerKey: 'client-1',
       params: attachParams(RESUME_OPERATION, releasedFence),
       now: () => NOW + 1,
-      onAttached: () => {}
+      onAttached
     })
 
     expect(resumed).toMatchObject({ ok: true })
@@ -266,7 +273,7 @@ describe('structured session acquisition options', () => {
         callerKey: 'client-1',
         params: attachParams(CREATE_OPERATION, null),
         now: () => NOW,
-        onAttached: () => {}
+        onAttached
       })
     ).rejects.toThrow('model list unavailable')
     expect(releaseAcquisition).toHaveBeenCalledOnce()
@@ -354,7 +361,7 @@ describe('structured session acquisition options', () => {
           callerKey: 'client-1',
           params: attachParams(operationId, fence),
           now: () => NOW,
-          onAttached: () => {}
+          onAttached
         })
 
       await expect(perform(store, CREATE_OPERATION, null)).rejects.toThrow(

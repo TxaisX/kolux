@@ -101,9 +101,9 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
       upstream: { owner: 'TxaisX', repo: 'kolux' },
       repoIcon: {
         type: 'image',
-        src: 'https://github.com/txais.png?size=64',
+        src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       }
     })
     // Offline/unauthed: the parent lookup returns null. The same-name origin

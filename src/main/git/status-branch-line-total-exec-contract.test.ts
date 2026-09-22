@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { transientLockRemovalOptions } from '../../shared/windows-transient-lock-removal'
 import {
   buildGitBranchLineTotalDiffArgs,
   invalidateGitBranchLineTotalInFlight
@@ -143,7 +144,9 @@ afterEach(async () => {
   execHooks.beforeExec = undefined
   coalescerJoins.onJoin = undefined
   resetGitReadCaches()
-  await Promise.all(tempRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
+  // Why: an aborted git child (AbortError test) can still hold its cwd handle briefly on
+  // Windows after the promise rejects; transientLockRemovalOptions retries the EBUSY.
+  await Promise.all(tempRoots.splice(0).map((root) => rm(root, transientLockRemovalOptions())))
 })
 
 describe('branch line total completeness', () => {

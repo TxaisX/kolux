@@ -388,7 +388,8 @@ describe('RateLimitService', () => {
       expect.objectContaining({
         authPreparation: undefined,
         allowPtyFallback: false,
-        allowUsagePanelSupplement: true,
+        // Why: Windows keeps the usage-panel supplement off.
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )

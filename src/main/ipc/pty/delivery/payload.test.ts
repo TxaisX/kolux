@@ -9,9 +9,13 @@ import {
 
 function makeWindow(destroyed = false): {
   isDestroyed: () => boolean
-  webContents: { send: ReturnType<typeof vi.fn> }
+  webContents: { send: ReturnType<typeof vi.fn>; isDestroyed: () => boolean }
 } {
-  return { isDestroyed: () => destroyed, webContents: { send: vi.fn() } } as never
+  return {
+    isDestroyed: () => destroyed,
+    // Why webContents.isDestroyed too: isPtyDeliveryWindowDestroyed checks both.
+    webContents: { send: vi.fn(), isDestroyed: () => destroyed }
+  } as never
 }
 
 afterEach(() => {

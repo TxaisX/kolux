@@ -35,12 +35,36 @@ Last updated: 2026-09-21.
   - Before this, a suite run from inside a Claude Code / Nightshift pane wrote into the developer's real `~/.claude/settings.json` (hook commands pointing at deleted temp dirs; this predates the rename, since the Sep 11 backup has the same damage), `~/.nightshift` / `~/.kolux` (keybindings.json, tmux shim, kimi-hook.sh) and `~/.codex`.
   - On 2026-09-21 the unguarded migration also moved the owner's live Nightshift profile into `%APPDATA%\kolux` and `~/.kolux`. All 257 files were copied back and the Claude hooks were restored.
   - **Leftover:** `%APPDATA%\kolux` still holds the stale moved copy, because the running Nightshift keeps a log open in it. Rename it aside after Nightshift next restarts and **before installing Kolux on this machine**, or the migration's no-clobber rule will keep the stale copy. `~/.kolux*.accidental-test-copy-20260921` can be deleted once nothing is missing.
-- Remaining test reds are pre-existing: each was confirmed identical against the 0.9.0 baseline, file by file. The main kinds:
-  - Windows symlink EPERM, `/bin/sh` ENOENT, chmod bits, and CRLF vs `\n` literals.
-  - About 30 tests never updated for 0.9.0's "Opus by default" launch args.
-  - About 50 CI tests referencing `.github/workflows/*.yml` files deleted at the fork split.
-  - GitHub owner lowercasing in project keys.
-  - The `mobile/` directory is absent.
+- **Round 2 (2026-09-21), fixing the reds that predate the rename:** the full suite went from 1,060 failing tests in 343 files to about 200 in 50. Each fix targeted the root cause.
+  - Real code bugs fixed:
+    - A leaked journal SQLite handle in `structured-agent-session-settlement-retry.ts`; behind about 14 EBUSY reds.
+    - A daemon respawn race in `withDaemonRetry`.
+    - Monaco silently rewriting LF→CRLF.
+    - The CLI child-PATH delimiter ignoring its platform seam.
+    - POSIX socket and Wayland paths built with the host `join`.
+    - A UTF-8 truncation boundary in the delta coalescer.
+    - WSL home UNC-forcing.
+    - The plugin kill-list guard placement.
+    - A dotless-IP bypass in the local-network check.
+    - Windows `openSync` accepting a directory in the rotating log writer.
+    - A git-diff header dequoting bug on Windows.
+    - Stale node-pty patch hashes.
+  - Stale tests were updated to intended behavior:
+    - "Opus by default" (0cbb68f2).
+    - The orchestration pane-binding rule.
+    - `githubRepoIdentityKey` intentionally lowercases.
+    - Several `Txais`→`TxaisX` typos.
+  - Windows-only capability gaps are `skipIf(win32)` with a WHY comment: symlinks without Developer Mode, `/bin/sh`, chmod bits, and OpenSSH. CRLF source reads normalize line endings.
+  - Deleted as obsolete:
+    - 30 CI contract tests plus `config/scripts/pr-code-change-scope.mjs`, whose workflows, actions and scripts were removed at the fork split.
+    - 4 `tests/e2e/cross-version-wire` lanes pinned to upstream releases (v1.4.184, v1.4.190, fd9125ea8c) that are not in this repo's history. `remote-wire.cross-version-terminal-journey` is now a registered `protection: none` gap in `config/reliability-gates.jsonc`.
+    - A handful of test cases for features that never existed (Discord/X help links) or that moved.
+  - The vitest setup also removes globals a file added once it finishes, so a node test's leaked `globalThis.window` can't poison the next happy-dom file on the same fork worker.
+- **Still red:**
+  - About 43 happy-dom renderer files fail with `document/window is not defined` only deep into a full run. They pass alone, in a 958-file happy-dom batch, and in mixed batches. The cause is fork-worker global corruption that couldn't be reproduced below full-suite scale, and `pool: 'vmForks'` fixes it but breaks `vi.mock('node:…')` in 337 files.
+  - `plugins/plugin-launch-content.test.ts` expects bundled launch plugins that were never authored.
+  - `codex/config-toml-trust-hash.test.ts` doesn't reproduce a captured Codex hash, and can't be traced without Codex's source.
+  - `claude-stream-json-connection` shows an occasional EPERM under load.
 
 ## Previous pass: Codex access, account authorization, and automatic updates
 

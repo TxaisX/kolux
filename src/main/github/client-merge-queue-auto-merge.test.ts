@@ -399,8 +399,10 @@ describe('GitHub GraphQL rate-limit guard', () => {
     expect(
       ghExecFileAsyncMock.mock.calls.filter((call) => call[0].includes('graphql'))
     ).toHaveLength(1)
+    // Why: the GraphQL variable carries the caller's owner case as-is (#7331);
+    // only githubRepoIdentityKey lowercases for cache/dedup purposes.
     expect(ghExecFileAsyncMock.mock.calls[2]?.[0]).toEqual(
-      expect.arrayContaining(['-f', 'owner=txais', '-f', 'repo=nightshift', '-f', 'branch=true'])
+      expect.arrayContaining(['-f', 'owner=TxaisX', '-f', 'repo=nightshift', '-f', 'branch=true'])
     )
     expect(ghExecFileAsyncMock.mock.calls[2]?.[0]).not.toContain('-F')
   })

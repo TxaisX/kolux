@@ -1,5 +1,11 @@
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { OsOpenedMarkdownFileState } from './os-opened-markdown-files'
+
+// captureFilePaths normalizes with the host's own path module (its platform seam), so the
+// round-tripped value carries native separators; match that instead of a hardcoded POSIX literal.
+const NOTE_A = path.normalize('/notes/a.md')
+const NOTE_B = path.normalize('/notes/b.md')
 
 /**
  * The two ways a queued "Open With" can be lost between main and the renderer. Both are
@@ -8,7 +14,7 @@ import { OsOpenedMarkdownFileState } from './os-opened-markdown-files'
 describe('os-opened markdown delivery ownership', () => {
   it('keeps the batch when resolution rejects on the pull path', async () => {
     const state = new OsOpenedMarkdownFileState()
-    state.captureFilePaths(['/notes/a.md'])
+    state.captureFilePaths([NOTE_A])
     const resolve = vi.fn().mockRejectedValue(new Error('floating root unavailable'))
 
     // Mirrors the ipcMain.handle('ui:consumePendingMarkdownFileOpens') body.
@@ -24,7 +30,7 @@ describe('os-opened markdown delivery ownership', () => {
 
     await expect(pull()).rejects.toThrow('floating root unavailable')
     // Without the restore the file would be gone and no later mount could ever open it.
-    expect(state.consume()).toEqual(['/notes/a.md'])
+    expect(state.consume()).toEqual([NOTE_A])
   })
 
   it('holds the batch while the renderer listener is not yet attached', () => {
@@ -45,24 +51,24 @@ describe('os-opened markdown delivery ownership', () => {
 
     // A window exists, but the renderer has not mounted its bridge yet: send() here would be
     // dropped by Electron with no error, and consuming would destroy the queue.
-    state.captureFilePaths(['/notes/a.md'], publish)
+    state.captureFilePaths([NOTE_A], publish)
     expect(send).not.toHaveBeenCalled()
 
     // The renderer's pull is what proves the listener is live.
     listenerReady = true
-    state.captureFilePaths(['/notes/b.md'], publish)
-    expect(send).toHaveBeenCalledExactlyOnceWith(['/notes/a.md', '/notes/b.md'])
+    state.captureFilePaths([NOTE_B], publish)
+    expect(send).toHaveBeenCalledExactlyOnceWith([NOTE_A, NOTE_B])
     expect(state.consume()).toEqual([])
   })
 
   it('restores a batch the window could no longer receive', () => {
     const state = new OsOpenedMarkdownFileState()
-    state.captureFilePaths(['/notes/a.md'])
+    state.captureFilePaths([NOTE_A])
     const filePaths = state.consume()
 
     // Window died between consume and send.
     state.restore(filePaths)
 
-    expect(state.consume()).toEqual(['/notes/a.md'])
+    expect(state.consume()).toEqual([NOTE_A])
   })
 })

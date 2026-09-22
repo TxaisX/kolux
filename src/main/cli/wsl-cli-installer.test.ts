@@ -38,7 +38,7 @@ function makeHostStatus(
 const PRE_RC4_MANAGED_WSL_LAUNCHER = `#!/usr/bin/env bash
 set -euo pipefail
 # Kolux managed WSL CLI launcher
-# KOLUX_WIN_LAUNCHER_B64=QzpcUHJvZ3JhbSBGaWxlc1xPcmNhXHJlc291cmNlc1xiaW5cb3JjYS5jbWQ=
+# KOLUX_WIN_LAUNCHER_B64=QzpcUHJvZ3JhbSBGaWxlc1xLb2x1eFxyZXNvdXJjZXNcYmluXGtvbHV4LmNtZA==
 KOLUX_WIN_LAUNCHER='C:\\Program Files\\Kolux\\resources\\bin\\kolux.cmd'
 KOLUX_BRIDGE_PS1='/home/alice/.local/share/kolux/kolux-wsl-bridge.ps1'
 if command -v powershell.exe >/dev/null 2>&1; then

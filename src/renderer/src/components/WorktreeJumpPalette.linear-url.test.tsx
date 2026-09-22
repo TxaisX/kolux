@@ -475,7 +475,7 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
       'linear-workspace-1',
       expect.objectContaining({
         sourceContext: expect.objectContaining({
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:txaisx/nightshift',
           repoId: 'local-sibling'
         })
       })

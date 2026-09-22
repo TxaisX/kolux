@@ -93,7 +93,8 @@ describe('loadLocalBuildCandidate', () => {
     ).rejects.toThrow('invalid file entry')
   })
 
-  it('rejects symlinked artifacts', async () => {
+  // Why skip on win32: creating the fixture's symlink needs elevation or Developer Mode there.
+  it.skipIf(process.platform === 'win32')('rejects symlinked artifacts', async () => {
     const { artifactPath, directory, manifestPath } = await fixture()
     const realArtifact = join(directory, 'real.zip')
     await writeFile(realArtifact, 'signed-zip-placeholder')

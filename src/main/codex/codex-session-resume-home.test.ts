@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, posix } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   claimsCodexRolloutLayout,
@@ -377,24 +377,40 @@ describe('resolveTrustedCodexSessionResumeHome', () => {
 
 describe('findTrustedCodexSessionResume legacy-rescan home ranking', () => {
   const sessionId = '019f81b9-19a9-7651-a8d1-352d9420bd11'
-  const systemHome = join('/Users', 'example', '.codex')
-  const sharedMirror = join('/userData', 'codex-runtime-home', 'home')
-  const accountAHome = join('/userData', 'codex-accounts', 'account-a', 'home')
-  const accountBHome = join('/userData', 'codex-accounts', 'account-b', 'home')
+  // Why: these are logical (macOS/Linux-shaped) fixture paths, not real filesystem
+  // paths — posix.join keeps them forward-slash regardless of the host OS running
+  // the suite, matching resolveRuntimePath's own posix-flavored output.
+  const systemHome = posix.join('/Users', 'example', '.codex')
+  const sharedMirror = posix.join('/userData', 'codex-runtime-home', 'home')
+  const accountAHome = posix.join('/userData', 'codex-accounts', 'account-a', 'home')
+  const accountBHome = posix.join('/userData', 'codex-accounts', 'account-b', 'home')
 
   const rolloutIn = (homePath: string): string =>
-    join(homePath, 'sessions', '2026', '07', '20', `rollout-2026-07-20T15-50-19-${sessionId}.jsonl`)
+    posix.join(
+      homePath,
+      'sessions',
+      '2026',
+      '07',
+      '20',
+      `rollout-2026-07-20T15-50-19-${sessionId}.jsonl`
+    )
 
   // Why: one id already lives in several homes on main — the one-shot migrateLegacySessions copies
   // each per-account rollout into the shared mirror and leaves the original. #10770 widens this to
   // every managed home. Either way the id alone stops naming an account.
   const listRolloutInEveryHome = async function* (sessionsRoot: string): AsyncIterable<string> {
-    yield join(sessionsRoot, '2026', '07', '20', `rollout-2026-07-20T15-50-19-${sessionId}.jsonl`)
+    yield posix.join(
+      sessionsRoot,
+      '2026',
+      '07',
+      '20',
+      `rollout-2026-07-20T15-50-19-${sessionId}.jsonl`
+    )
   }
 
   const listRolloutIn = (...homePaths: string[]) =>
     async function* (sessionsRoot: string): AsyncIterable<string> {
-      if (homePaths.some((homePath) => sessionsRoot === join(homePath, 'sessions'))) {
+      if (homePaths.some((homePath) => sessionsRoot === posix.join(homePath, 'sessions'))) {
         yield* listRolloutInEveryHome(sessionsRoot)
       }
     }
@@ -436,7 +452,7 @@ describe('findTrustedCodexSessionResume legacy-rescan home ranking', () => {
   // Why: `/Users/…` already wins the tier-3 byte order, so the case above cannot tell the
   // system-home tier apart from the path tie-break. Pin it with a home that sorts last.
   it('ranks the real system home above the others even when its path sorts last', async () => {
-    const lateSortingSystemHome = join('/var', 'lib', 'kolux', '.codex')
+    const lateSortingSystemHome = posix.join('/var', 'lib', 'kolux', '.codex')
     await expect(
       findTrustedCodexSessionResume({
         sessionId,

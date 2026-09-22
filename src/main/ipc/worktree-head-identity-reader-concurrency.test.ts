@@ -32,7 +32,9 @@ describe('readGitCommonHeadIdentities concurrency', () => {
       concurrency.max = Math.max(concurrency.max, concurrency.active)
       await new Promise((resolve) => setTimeout(resolve, 5))
       concurrency.active -= 1
-      if (filePath.endsWith('/gitdir')) {
+      // Why: the reader joins with the native separator (join(entryPath, 'gitdir')), so a
+      // hardcoded `/gitdir` suffix never matches on Windows.
+      if (/[\\/]gitdir$/.test(filePath)) {
         return `/workspace/${filePath.match(/wt-\d+/)?.[0] ?? 'wt'}/.git\n`
       }
       return `${'a'.repeat(40)}\n`

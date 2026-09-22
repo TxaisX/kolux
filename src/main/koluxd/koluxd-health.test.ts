@@ -64,7 +64,10 @@ describe('collectTerminalDaemonHealth', () => {
   it('reports live only when the daemon answered its own PTY spawn probe', async () => {
     const health = await collectTerminalDaemonHealth()
     expect(health.state).toBe('live')
-    expect(health.selfTest).toMatchObject({ ok: true, verdict: 'healthy', coverage: 'pty-spawn' })
+    // Why platform-branched: runTerminalDaemonSelfTest only covers a full PTY spawn on
+    // POSIX; win32's self-test coverage is the lighter 'handshake' probe.
+    const coverage = process.platform === 'win32' ? 'handshake' : 'pty-spawn'
+    expect(health.selfTest).toMatchObject({ ok: true, verdict: 'healthy', coverage })
     expect(health.pid).toBe(4242)
     // The build the LIVE daemon came from, which can legitimately predate this koluxd.
     expect(health.buildVersion).toBe('1.2.2')

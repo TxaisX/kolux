@@ -1,11 +1,40 @@
-import { cp, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, cp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
-const { verifyPackagedPluginResources } = require('./verify-packaged-plugin-resources.cjs')
+const {
+  verifyPackagedPluginResources,
+  hashPackagedPluginTree
+} = require('./verify-packaged-plugin-resources.cjs')
+
+// This fork ships no bundled plugins (resources/plugins/launch/bundled-plugins.json
+// has an empty plugins array), so the mismatch-detection path below has no real
+// fixture to exercise. Build a synthetic one-plugin launch tree instead.
+async function makeFixturePluginResources(resourcesDir) {
+  const launchRoot = join(resourcesDir, 'plugins', 'launch')
+  const pluginRoot = join(launchRoot, 'txais.kolux-fixture-plugin')
+  await mkdir(pluginRoot, { recursive: true })
+  await writeFile(
+    join(pluginRoot, 'kolux-plugin.json'),
+    JSON.stringify({ publisher: 'txais', id: 'kolux-fixture-plugin' })
+  )
+  await writeFile(join(pluginRoot, 'extra.json'), '{"fixture":true}\n')
+  const contentHash = hashPackagedPluginTree(pluginRoot)
+  await writeFile(
+    join(launchRoot, 'bundled-plugins.json'),
+    JSON.stringify({
+      version: 1,
+      plugins: [
+        { pluginKey: 'txais.kolux-fixture-plugin', path: 'txais.kolux-fixture-plugin', contentHash }
+      ]
+    })
+  )
+  await writeFile(join(launchRoot, 'kolux-marketplace.json'), '{}\n')
+  return { launchRoot, pluginRoot }
+}
 
 describe('verify packaged plugin resources', () => {
   it('accepts exact launch bytes copied into a packaged resources directory', async () => {
@@ -26,17 +55,11 @@ describe('verify packaged plugin resources', () => {
   it('rejects mutated bytes in the packaged output', async () => {
     const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-packaged-plugins-'))
     try {
-      const launchRoot = join(resourcesDir, 'plugins', 'launch')
-      await cp(join(process.cwd(), 'resources', 'plugins', 'launch'), launchRoot, {
-        recursive: true
-      })
-      await writeFile(
-        join(launchRoot, 'txais.kolux-navigation-shortcuts', 'extra.json'),
-        '{"mutated":true}\n'
-      )
+      const { pluginRoot } = await makeFixturePluginResources(resourcesDir)
+      await writeFile(join(pluginRoot, 'extra.json'), '{"mutated":true}\n')
 
       expect(() => verifyPackagedPluginResources(resourcesDir)).toThrow(
-        'packaged bytes do not match txais.kolux-navigation-shortcuts'
+        'packaged bytes do not match txais.kolux-fixture-plugin'
       )
     } finally {
       await rm(resourcesDir, { recursive: true, force: true })
@@ -53,10 +76,7 @@ describe('verify packaged plugin resources', () => {
   it('rejects a CRLF checkout of the launch tree', async () => {
     const resourcesDir = await mkdtemp(join(tmpdir(), 'kolux-packaged-plugins-'))
     try {
-      const launchRoot = join(resourcesDir, 'plugins', 'launch')
-      await cp(join(process.cwd(), 'resources', 'plugins', 'launch'), launchRoot, {
-        recursive: true
-      })
+      const { launchRoot } = await makeFixturePluginResources(resourcesDir)
       for (const entry of await readdir(launchRoot, { recursive: true })) {
         const path = join(launchRoot, entry)
         if (!(await stat(path)).isFile()) {
@@ -65,8 +85,6 @@ describe('verify packaged plugin resources', () => {
         await writeFile(path, (await readFile(path, 'utf8')).replace(/\r?\n/g, '\r\n'))
       }
 
-      // Every file is rewritten, so the first mismatch is whichever plugin sorts
-      // first — don't pin a name a later branch can reorder.
       expect(() => verifyPackagedPluginResources(resourcesDir)).toThrow(
         /packaged bytes do not match txais\./
       )

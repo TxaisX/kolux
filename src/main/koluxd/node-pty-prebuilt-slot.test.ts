@@ -58,19 +58,28 @@ describe('resolveKoluxdPrebuildsDir', () => {
 })
 
 describe('installPrebuiltSlot', () => {
-  it('installs the slot binary and spawn-helper into build/Release on macOS', () => {
-    const prebuilds = temp()
-    const nodePtyDir = temp()
-    stageSlot(prebuilds, 'darwin-arm64')
+  // Why skipIf: POSIX executable-bit mode — NTFS has no such bit, so chmod's effect
+  // is not observable through stat().mode on Windows.
+  it.skipIf(process.platform === 'win32')(
+    'installs the slot binary and spawn-helper into build/Release on macOS',
+    () => {
+      const prebuilds = temp()
+      const nodePtyDir = temp()
+      stageSlot(prebuilds, 'darwin-arm64')
 
-    const outcome = installPrebuiltSlot({ abi: DARWIN_ARM64, nodePtyDir, prebuildsDir: prebuilds })
+      const outcome = installPrebuiltSlot({
+        abi: DARWIN_ARM64,
+        nodePtyDir,
+        prebuildsDir: prebuilds
+      })
 
-    expect(outcome).toEqual({ installed: true, slot: 'darwin-arm64', spawnHelper: true })
-    expect(existsSync(join(nodePtyDir, 'build', 'Release', 'pty.node'))).toBe(true)
-    // Without the executable bit every spawn fails EACCES at the moment a user opens a terminal.
-    const helper = statSync(join(nodePtyDir, 'build', 'Release', 'spawn-helper'))
-    expect(helper.mode & 0o111).not.toBe(0)
-  })
+      expect(outcome).toEqual({ installed: true, slot: 'darwin-arm64', spawnHelper: true })
+      expect(existsSync(join(nodePtyDir, 'build', 'Release', 'pty.node'))).toBe(true)
+      // Without the executable bit every spawn fails EACCES at the moment a user opens a terminal.
+      const helper = statSync(join(nodePtyDir, 'build', 'Release', 'spawn-helper'))
+      expect(helper.mode & 0o111).not.toBe(0)
+    }
+  )
 
   it('installs a Linux slot without claiming a spawn-helper it never execs', () => {
     // node-pty builds spawn-helper only under binding.gyp's OS=="mac"; reporting one off

@@ -80,7 +80,12 @@ describe('KoluxRuntimeService', () => {
       })
 
       const spawnCall = spawn.mock.calls[0]?.[0] as { command?: string } | undefined
-      expect(spawnCall?.command).toBe("claude '--dangerously-skip-permissions'")
+      // Why --model opus --effort high leads: no model was picked, so the launch defaults
+      // (0cbb68f2, "Opus at full effort when no model is picked") land ahead of the user's
+      // own --dangerously-skip-permissions rather than replacing it.
+      expect(spawnCall?.command).toBe(
+        "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
+      )
       expect(terminal).toMatchObject({
         executionHostId: 'ssh:ssh-1',
         hostPlatform: 'linux'

@@ -316,7 +316,20 @@ function writeFakeWindowsRegistry(projectDir, { requiresMarker = false } = {}) {
   )
   const processTreeDir = join(projectDir, 'node_modules', '@vscode', 'windows-process-tree')
   mkdirSync(processTreeDir, { recursive: true })
-  writeFileSync(join(processTreeDir, 'index.js'), 'module.exports = {}\n')
+  // Why supportedProcessDataFlags: these fixtures exercise node-pty and
+  // windows-native-registry rebuilds only, so start windows-process-tree
+  // already reporting CreationTime support (the patched-source shape) --
+  // otherwise ensure-native-runtime.mjs also tries to rebuild it, and that
+  // needs a whole fake source tree (binding.gyp, patch markers) this fixture
+  // doesn't provide.
+  writeFileSync(
+    join(processTreeDir, 'package.json'),
+    '{"name":"@vscode/windows-process-tree","version":"0.8.0","main":"index.js"}\n'
+  )
+  writeFileSync(
+    join(processTreeDir, 'index.js'),
+    'module.exports = { supportedProcessDataFlags: 4 }\n'
+  )
 }
 
 function writeNodePtyPatchFile(projectDir) {
@@ -346,7 +359,8 @@ function writeFakePnpm(binDir) {
   writeFileSync(
     shimPath,
     `
-const { appendFileSync, writeFileSync } = require('node:fs')
+const { appendFileSync, mkdirSync, writeFileSync } = require('node:fs')
+const path = require('node:path')
 
 appendFileSync(process.env.KOLUX_NATIVE_TEST_LOG, \`pnpm \${process.argv.slice(2).join(' ')}\\n\`)
 appendFileSync(process.env.KOLUX_NATIVE_TEST_LOG, \`cwd=\${process.cwd()}\\n\`)
@@ -358,6 +372,19 @@ appendFileSync(
   process.env.KOLUX_NATIVE_TEST_LOG,
   \`cxxflags=\${process.env.CXXFLAGS || ''}\\n\`
 )
+// Why: on win32, node-pty's real rebuild also drops the ConPTY runtime next
+// to conpty.node; assertNodePtyWindowsConptyRuntime checks for it afterward.
+if (
+  process.platform === 'win32' &&
+  path.basename(process.cwd()) === 'node-pty' &&
+  process.argv.slice(2).join(' ').includes('node-gyp rebuild')
+) {
+  const conptyDir = path.join(process.cwd(), 'build', 'Release', 'conpty')
+  mkdirSync(conptyDir, { recursive: true })
+  writeFileSync(path.join(process.cwd(), 'build', 'Release', 'conpty.node'), '')
+  writeFileSync(path.join(conptyDir, 'conpty.dll'), '')
+  writeFileSync(path.join(conptyDir, 'OpenConsole.exe'), '')
+}
 writeFileSync(process.env.KOLUX_NATIVE_TEST_MARKER, 'rebuilt')
 `
   )

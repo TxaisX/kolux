@@ -26,6 +26,8 @@ import {
 } from './ssh-relay-upload-stage-commands'
 
 const posix = getRemoteHostPlatform('linux-x64')
+// Why: the POSIX cases spawn a real /bin/sh, which Windows lacks.
+const hasPosixShell = process.platform !== 'win32'
 const windows = getRemoteHostPlatform('win32-x64')
 const owner = '.sftp-namespace-123e4567e89b12d3a456426614174000'
 const roots: string[] = []
@@ -115,7 +117,10 @@ afterEach(() => {
 const SPAWNED_INTERPRETER_TIMEOUT_MS = 240_000
 
 describe.each([
-  ['POSIX', posix] as const,
+  ...((hasPosixShell ? [['POSIX', posix] as const] : []) as (readonly [
+    string,
+    RemoteHostPlatform
+  ])[]),
   ...((powerShellExecutable ? [['PowerShell', windows] as const] : []) as (readonly [
     string,
     RemoteHostPlatform
@@ -232,7 +237,7 @@ describe.each([
   }
 )
 
-describe('POSIX ownership race fencing', () => {
+describe.skipIf(!hasPosixShell)('POSIX ownership race fencing', () => {
   it('restores a replacement directory and preserves the original moved aside before claim', () => {
     const pool = createPool()
     const destination = join(pool, 'destination')

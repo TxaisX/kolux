@@ -412,7 +412,8 @@ describe('worktree-palette-search', () => {
     expect(results).toHaveLength(1)
     expect(results[0].worktreeId).toBe('wt-main')
     expect(results[0].matchedFields).toEqual(['repo', 'branch'])
-    expect(results[0].repoRanges).toEqual([{ start: 9, end: 13 }])
+    // Why: 'nightshift' sits at index 7 in the repo's 'TxaisX/nightshift' display name.
+    expect(results[0].repoRanges).toEqual([{ start: 7, end: 17 }])
     expect(results[0].branchRanges).toEqual([{ start: 0, end: 4 }])
   })
 

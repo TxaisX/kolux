@@ -15,6 +15,7 @@ import { performAttach, type AttachFlowInput } from './structured-agent-session-
 import { AgentSessionJournal } from '../agent-session-journal/journal-store'
 import { agentSessionJournalCloseRetries } from '../agent-session-journal/journal-close-retry'
 import * as legacyImport from '../agent-session-journal/journal-legacy-import'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 
 const NOW = 1_800_000_000_000
 const SESSION = 'codex_adopting_session'
@@ -22,8 +23,12 @@ const THREAD = 'adopted-thread'
 const OPERATION = `${NOW}-${'1'.padStart(32, '0')}`
 let root: string | null = null
 let store: AgentSessionRecordStore | null = null
+const journals = createTrackedJournalOpener()
 
 afterEach(async () => {
+  // Why: a `close()` a test's own onAttached already ran is a no-op; this is the safety net for
+  // the default onAttached, which never closes its journal on its own.
+  await journals.closeAll()
   if (root) {
     await rm(root, { recursive: true, force: true })
   }
@@ -114,7 +119,9 @@ function adapter(): StructuredAgentSessionAdapter {
 async function attach(
   transcriptPath: string | undefined,
   sessionAdapter: StructuredAgentSessionAdapter,
-  onAttached: AttachFlowInput['onAttached'] = () => {}
+  onAttached: AttachFlowInput['onAttached'] = (attached) => {
+    journals.track(attached.journal)
+  }
 ) {
   store ??= await AgentSessionRecordStore.open({ directory: join(root!, 'store'), hostId: 'local' })
   return performAttach({

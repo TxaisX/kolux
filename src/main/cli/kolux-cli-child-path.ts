@@ -13,7 +13,7 @@
  * every branch behaves exactly as it did inside `buildPtyHostEnv`.
  */
 
-import { delimiter, join } from 'node:path'
+import { join } from 'node:path'
 import { readInheritedPath } from '../ipc/pty/host-env/path'
 import { resolvePathEnvKey } from '../pty/windows-environment-path'
 import { ensureLinuxTerminalKoluxCliShimDir } from './linux-terminal-kolux-cli-shim'
@@ -32,9 +32,9 @@ export function prependKoluxCliDirToChildPath(
   opts: KoluxCliChildPathOptions
 ): void {
   const platform = opts.platform ?? process.platform
-  // Why: matches node:path's `delimiter` for the running platform, but stays correct when a test
-  // drives a foreign platform through the seam.
-  const pathDelimiter = platform === 'win32' ? ';' : delimiter
+  // Why: delimiter for the TARGET platform, not the host running this code — node:path's own
+  // `delimiter` reflects the host and broke the seam for tests driving a foreign platform.
+  const pathDelimiter = platform === 'win32' ? ';' : ':'
   // Why: dev mode needs the launcher PATH override so `kolux` resolves to the dev build instead of the production binary at /usr/local/bin/kolux.
   if (!opts.isPackaged) {
     const devCliBin = join(opts.userDataPath, 'cli', 'bin')

@@ -11,10 +11,11 @@
 // refused, which is what the tests below pin; the row-level behaviour is pinned in
 // src/main/runtime/rpc/methods/session-tab-agent-status-projection.test.ts.
 
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { removeTree } from '../../../src/shared/windows-transient-lock-removal'
 import type { StructuredAgentSessionAdapter } from '../../../src/main/native-chat/agent-session-wire/structured-agent-session-adapter'
 import { attachFingerprintFields } from '../../../src/main/native-chat/agent-session-wire/structured-agent-session-attach'
 import type { AgentSessionAttachParams } from '../../../src/main/native-chat/agent-session-wire/structured-agent-session-attach'
@@ -40,6 +41,24 @@ import {
 
 // Why: a cold CI run extracts the baseline checkout before the first pairing.
 const SUITE_TIMEOUT_MS = 180_000
+
+/**
+ * Removes a temp dir without ever blocking the hook on it.
+ *
+ * `StructuredAgentSessionHost.close()` deliberately keeps a session's
+ * journal.db connection open so it can be reattached, so on Windows the
+ * handle can still be live when this runs. `removeTree`'s promise then never
+ * settles rather than rejecting, so a `.catch()` cannot bound it -- only a
+ * race can. The directory is under `tmpdir()`, so losing it is cosmetic.
+ */
+function removeTreeBestEffort(targetPath: string, timeoutMs = 2_000): Promise<void> {
+  return Promise.race([
+    removeTree(targetPath),
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs))
+  ]).catch((error: unknown) => {
+    console.warn(`cross-version-agent-session-wire: could not remove ${targetPath}:`, error)
+  })
+}
 
 const SESSION = 'session-alpha'
 const WORKSPACE = 'workspace-1'
@@ -658,7 +677,13 @@ describe('cross-version structured agent sessions', () => {
 
     afterEach(async () => {
       setStructuredAgentSessionHost(null)
-      await rm(root, { recursive: true, force: true })
+      // Why bounded, not awaited to completion: the host keeps a session's
+      // journal.db connection open by design so it can be reattached
+      // (StructuredAgentSessionHost.close() docs this), so on Windows the
+      // removal can hang past any reasonable hook budget -- `.catch()` alone
+      // does not help because the underlying handle never rejects, it just
+      // never releases. Losing the temp dir under tmpdir() is cosmetic.
+      await removeTreeBestEffort(root)
     })
 
     it('hides the row from the old client and annotates it for a capable client', async () => {
@@ -880,7 +905,10 @@ describe('cross-version structured agent sessions', () => {
 
     afterEach(async () => {
       setStructuredAgentSessionHost(null)
-      await rm(root, { recursive: true, force: true })
+      // Why bounded: see the first afterEach above -- the host keeps a
+      // session's journal.db connection open by design so it can be
+      // reattached, and the removal can hang rather than reject.
+      await removeTreeBestEffort(root)
     })
 
     it('resumes from the cursor the client held, with no snapshot and no replay', async () => {

@@ -61,7 +61,14 @@ describe('packaged node-pty launcher-surviving grandchild', () => {
 
   it('closes one-shot fixture observations before server teardown', async () => {
     const fixtureDir = await mkdtemp(join(tmpdir(), 'kolux-pty-capability-'))
-    const channel = join(fixtureDir, 'fixture.sock')
+    // Why: production only ever binds a named pipe on win32 (see
+    // runtime-rpc-socket-metadata.ts); a plain file path there fails to
+    // listen with EACCES because Windows AF_UNIX sockets are not this
+    // fixture's contract.
+    const channel =
+      process.platform === 'win32'
+        ? `\\\\.\\pipe\\kolux-test-${Math.random().toString(36).slice(2)}`
+        : join(fixtureDir, 'fixture.sock')
     const fixtureToken = 'fixture-token'
     const fixtures = createFixtureServer(channel, fixtureToken)
 
@@ -81,8 +88,9 @@ describe('packaged node-pty launcher-surviving grandchild', () => {
       })
       await expect(fixtures.close()).resolves.toBeUndefined()
     } finally {
+      // Why no second close(): the try block above already closed the server;
+      // closing an already-stopped server throws ERR_SERVER_NOT_RUNNING.
       fixtures.destroySockets()
-      await fixtures.close()
       await rm(fixtureDir, { recursive: true, force: true })
     }
   })

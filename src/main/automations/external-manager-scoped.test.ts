@@ -111,8 +111,9 @@ describe('scoped external automations', () => {
     expect(entry.manager?.id).toBe('hermes:local')
     expect(getActiveMultiplexer).not.toHaveBeenCalled()
     expect(runProcessMock).toHaveBeenCalledTimes(1)
+    // Why: the probed lookup command is platform-specific — 'where' on Windows, 'which' elsewhere.
     expect(runProcessMock.mock.calls[0]?.[0]).toEqual({
-      program: 'which',
+      program: process.platform === 'win32' ? 'where' : 'which',
       args: ['hermes'],
       timeoutMs: 5_000
     })

@@ -5,7 +5,7 @@ import {
   type DaemonSpawnCall,
   createDaemonActiveProviderFixtures
 } from './pty-ipc-daemon-provider-fixtures'
-import { delimiter, join } from 'node:path'
+import { join } from 'node:path'
 import type { TuiAgent } from '../../shared/tui-agent'
 import { LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS } from '../pty/legacy-terminal-shim-dir'
 import { wslHookRelayManager } from '../agent-hooks/wsl-hook-relay-manager'
@@ -398,11 +398,11 @@ describe('registerPtyHandlers', () => {
           value: 'linux'
         })
         try {
-          // Why: overriding process.platform doesn't change the loaded node:path dialect; keep this synthetic PATH consistent.
+          // Why: the PATH seam follows the target platform's delimiter, not the host's node:path dialect.
           const env = await daemonSpawnAndGetEnv({
-            PATH: ['/usr/local/bin', '/usr/bin'].join(delimiter)
+            PATH: ['/usr/local/bin', '/usr/bin'].join(':')
           })
-          const entries = env.PATH.split(delimiter)
+          const entries = env.PATH.split(':')
           const shimDir = join('/tmp/kolux-user-data', 'linux-kolux-cli-shim')
           // Why: bare `kolux` must resolve to the Kolux CLI before /usr/bin/orca (the GNOME screen reader) in Kolux terminals (#7904).
           expect(entries.indexOf(shimDir)).toBeGreaterThanOrEqual(0)
@@ -423,7 +423,7 @@ describe('registerPtyHandlers', () => {
         })
         try {
           const env = await daemonSpawnAndGetEnv({ PATH: '/usr/bin' })
-          expect(env.PATH.split(delimiter)[0]).toBe(join('/tmp/kolux-resources', 'bin'))
+          expect(env.PATH.split(':')[0]).toBe(join('/tmp/kolux-resources', 'bin'))
         } finally {
           if (resourcesPathDescriptor) {
             Object.defineProperty(process, 'resourcesPath', resourcesPathDescriptor)

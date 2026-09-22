@@ -328,8 +328,9 @@ describe('RateLimitService', () => {
           wslLinuxConfigDir: '/home/jin/.claude',
           stripAuthEnv: true
         }),
-        allowPtyFallback: true,
-        allowUsagePanelSupplement: true,
+        // Why: Windows keeps hidden PTY / usage-panel supplements off regardless of target.
+        allowPtyFallback: process.platform !== 'win32',
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )
@@ -357,7 +358,8 @@ describe('RateLimitService', () => {
       expect.objectContaining({
         authPreparation: expect.objectContaining({ provenance: 'system' }),
         allowPtyFallback: false,
-        allowUsagePanelSupplement: true,
+        // Why: Windows keeps the usage-panel supplement off regardless of scenario.
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )
@@ -375,7 +377,8 @@ describe('RateLimitService', () => {
       expect.objectContaining({
         authPreparation: undefined,
         allowPtyFallback: false,
-        allowUsagePanelSupplement: true,
+        // Why: Windows keeps the usage-panel supplement off regardless of scenario.
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )
@@ -403,7 +406,8 @@ describe('RateLimitService', () => {
       expect.objectContaining({
         authPreparation: expect.objectContaining({ provenance: 'wsl:Ubuntu:system' }),
         allowPtyFallback: false,
-        allowUsagePanelSupplement: true,
+        // Why: Windows keeps the usage-panel supplement off regardless of scenario.
+        allowUsagePanelSupplement: process.platform !== 'win32',
         signal: expect.any(AbortSignal)
       })
     )
@@ -519,7 +523,10 @@ describe('RateLimitService', () => {
     })
 
     expect(fetchClaudeRateLimits).toHaveBeenLastCalledWith(
-      expect.objectContaining({ allowPtyFallback: true, allowUsagePanelSupplement: true })
+      expect.objectContaining({
+        allowPtyFallback: process.platform !== 'win32',
+        allowUsagePanelSupplement: process.platform !== 'win32'
+      })
     )
 
     expect(service.getState().inactiveClaudeAccounts).not.toEqual(

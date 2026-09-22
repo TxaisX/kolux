@@ -1,21 +1,16 @@
 import { readFileSync } from 'node:fs'
-import { parse } from 'yaml'
 import { describe, expect, it } from 'vitest'
 
+// Why no PR-workflow wiring case here: pr.yml was deleted at the fork split
+// (only ci.yml and release.yml remain), so this only asserts the smoke
+// script's own source, not how a workflow invokes it.
 describe('packaged hang watchdog worker contract', () => {
-  it('boots the worker from app.asar in PR checks', () => {
-    const workflow = parse(readFileSync('.github/workflows/pr.yml', 'utf8'))
+  it('boots the worker from app.asar', () => {
     const smokeSource = readFileSync(
       'config/scripts/smoke-packaged-hang-watchdog-worker.mjs',
       'utf8'
     )
-    const smokeStep = workflow.jobs.package.steps.find(
-      (step) => step.name === 'Smoke packaged hang watchdog worker'
-    )
 
-    expect(smokeStep.run).toBe(
-      'xvfb-run --auto-servernum node config/scripts/smoke-packaged-hang-watchdog-worker.mjs --app-dir=dist/linux-unpacked'
-    )
     expect(smokeSource).toContain(
       "process.platform === 'linux' ? ['--no-sandbox', launcherDir] : [launcherDir]"
     )

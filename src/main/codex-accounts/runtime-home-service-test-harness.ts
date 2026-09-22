@@ -188,8 +188,9 @@ export function setupRuntimeHomeTest(): void {
 }
 
 export function teardownRuntimeHomeTest(): void {
-  rmSync(testState.userDataDir, { recursive: true, force: true })
-  rmSync(testState.fakeHomeDir, { recursive: true, force: true })
+  // Why: Windows AV/indexer can hold a just-closed handle briefly; retry like the rest of the repo.
+  rmSync(testState.userDataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+  rmSync(testState.fakeHomeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   if (testState.previousUserDataPath === undefined) {
     delete process.env.KOLUX_USER_DATA_PATH
   } else {

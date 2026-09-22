@@ -7,7 +7,7 @@ import {
   SSH_AI_VAULT_LIST_SESSIONS_METHOD,
   SSH_AI_VAULT_RESOLVE_SESSION_TITLES_METHOD
 } from '../shared/ssh-ai-vault-relay'
-import { getRemoteHostPlatform } from '../main/ssh/ssh-remote-platform'
+import { getRemoteHostPlatform, joinRemotePath } from '../main/ssh/ssh-remote-platform'
 import type { RemoteHostPlatform } from '../main/ssh/ssh-remote-platform'
 import { scanRemoteAiVaultSessions } from '../main/ai-vault/remote-session-scanner'
 import { readAiVaultSessionTitlesFromFiles } from '../main/ai-vault/session-title-file-reader'
@@ -72,7 +72,11 @@ describe('AiVaultHandler', () => {
 
   it('discovers and parses sessions entirely on the relay host', async () => {
     const remoteHome = await makeTemporaryHome()
-    const transcriptPath = join(
+    // Why joinRemotePath, not join(): remote roots are posix regardless of the client
+    // platform (remote-session-scanner-sources.ts), so the scanner reports filePath joined
+    // that way too — a host-native join() here would mismatch it on a Windows client.
+    const transcriptPath = joinRemotePath(
+      getRemoteHostPlatform('linux-x64'),
       remoteHome,
       '.codex',
       'sessions',

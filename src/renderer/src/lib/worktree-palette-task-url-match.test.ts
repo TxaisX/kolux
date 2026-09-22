@@ -285,8 +285,9 @@ describe('matchWorktreePaletteTaskUrl', () => {
   })
 
   it('normalizes host case, port, and owner case before comparing GitHub identities', () => {
+    // Why: owner casing (TXAISX vs TxaisX) must still match, not just host/port casing.
     const intent = parseCmdJTaskSourceUrl(
-      'https://GHE.Example.com:8443/Txais/Nightshift/pull/12789'
+      'https://GHE.Example.com:8443/TXAISX/Nightshift/pull/12789'
     )
     expect(
       matchWorktreePaletteTaskUrl({

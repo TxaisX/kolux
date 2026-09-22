@@ -845,7 +845,7 @@ describe('Store', () => {
       upstream: { owner: 'txaisx', repo: 'cloud-project' }
     })
     store.createProjectHostSetup({
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'ssh:ssh-old',
       setupId: 'cloud-project::ssh-old',
       setupMethod: 'provisioned'
@@ -866,13 +866,13 @@ describe('Store', () => {
       upstream: { owner: 'txaisx', repo: 'cloud-project' }
     })
     store.createProjectHostSetup({
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'ssh:ssh-old',
       setupId: 'setup-old',
       setupMethod: 'provisioned'
     })
     store.createProjectHostSetup({
-      projectId: 'github:txais/cloud-project',
+      projectId: 'github:txaisx/cloud-project',
       hostId: 'ssh:ssh-new',
       setupId: 'setup-new',
       setupMethod: 'provisioned'

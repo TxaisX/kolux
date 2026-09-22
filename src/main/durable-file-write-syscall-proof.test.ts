@@ -16,8 +16,12 @@ vi.mock('node:fs', async () => {
   return {
     ...actual,
     fsyncSync: (fd: number) => {
-      syscalls.push(actual.fstatSync(fd).isDirectory() ? 'fsync:directory' : 'fsync:file')
-      return actual.fsyncSync(fd)
+      const isDirectory = actual.fstatSync(fd).isDirectory()
+      // Record only on success: syncDirectorySync swallows a failed directory fsync, so an
+      // attempt that threw must not appear as if it durably happened.
+      const result = actual.fsyncSync(fd)
+      syscalls.push(isDirectory ? 'fsync:directory' : 'fsync:file')
+      return result
     },
     renameSync: (from: NodeFs.PathLike, to: NodeFs.PathLike) => {
       syscalls.push('rename')

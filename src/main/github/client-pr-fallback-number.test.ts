@@ -165,9 +165,11 @@ describe('getPRForBranch', () => {
       ],
       { cwd: '/repo-root' }
     )
+    // Why: the retry's `head` owner is candidate.owner passed through as-is (#7331);
+    // GitHub matches it case-insensitively, so the code never lowercases it.
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       2,
-      ['api', 'repos/TxaisX/nightshift/pulls?head=txais%3Afeature%2Ftest&state=all&per_page=1'],
+      ['api', 'repos/TxaisX/nightshift/pulls?head=TxaisX%3Afeature%2Ftest&state=all&per_page=1'],
       { cwd: '/repo-root' }
     )
   })

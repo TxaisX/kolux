@@ -181,36 +181,40 @@ describe('ClaudeRuntimeAuthService', () => {
     expect(readFileSync(markerPath, 'utf-8')).toBe('account-1\n')
   })
 
-  it('rejects symlinked managed credential children', async () => {
-    setPlatform('linux')
-    const runtimeCredentialsPath = join(testState.fakeHomeDir, '.claude', '.credentials.json')
-    const systemCredentials = createClaudeCredentialsJson('system@example.com', 'system')
-    const escapedCredentials = createClaudeCredentialsJson('user@example.com', 'escaped')
-    const managedAuthPath = join(testState.userDataDir, 'claude-accounts', 'account-1', 'auth')
-    const escapedCredentialsPath = join(testState.fakeHomeDir, 'escaped-credentials.json')
-    mkdirSync(managedAuthPath, { recursive: true })
-    writeFileSync(join(managedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
-    writeFileSync(
-      join(managedAuthPath, 'oauth-account.json'),
-      '{"accountUuid":"account-1"}\n',
-      'utf-8'
-    )
-    writeFileSync(escapedCredentialsPath, escapedCredentials, 'utf-8')
-    symlinkSync(escapedCredentialsPath, join(managedAuthPath, '.credentials.json'))
-    writeFileSync(runtimeCredentialsPath, systemCredentials, 'utf-8')
-    const settings = createSettings({
-      claudeManagedAccounts: [createClaudeAccount('account-1', managedAuthPath)],
-      activeClaudeManagedAccountId: 'account-1'
-    })
-    const store = createStore(settings)
+  // Why: creating a symlink needs elevation or Developer Mode on Windows; EPERM otherwise.
+  it.skipIf(process.platform === 'win32')(
+    'rejects symlinked managed credential children',
+    async () => {
+      setPlatform('linux')
+      const runtimeCredentialsPath = join(testState.fakeHomeDir, '.claude', '.credentials.json')
+      const systemCredentials = createClaudeCredentialsJson('system@example.com', 'system')
+      const escapedCredentials = createClaudeCredentialsJson('user@example.com', 'escaped')
+      const managedAuthPath = join(testState.userDataDir, 'claude-accounts', 'account-1', 'auth')
+      const escapedCredentialsPath = join(testState.fakeHomeDir, 'escaped-credentials.json')
+      mkdirSync(managedAuthPath, { recursive: true })
+      writeFileSync(join(managedAuthPath, '.kolux-managed-claude-auth'), 'account-1\n', 'utf-8')
+      writeFileSync(
+        join(managedAuthPath, 'oauth-account.json'),
+        '{"accountUuid":"account-1"}\n',
+        'utf-8'
+      )
+      writeFileSync(escapedCredentialsPath, escapedCredentials, 'utf-8')
+      symlinkSync(escapedCredentialsPath, join(managedAuthPath, '.credentials.json'))
+      writeFileSync(runtimeCredentialsPath, systemCredentials, 'utf-8')
+      const settings = createSettings({
+        claudeManagedAccounts: [createClaudeAccount('account-1', managedAuthPath)],
+        activeClaudeManagedAccountId: 'account-1'
+      })
+      const store = createStore(settings)
 
-    const { ClaudeRuntimeAuthService } = await import('./runtime-auth-service')
-    const service = new ClaudeRuntimeAuthService(store as never)
-    await service.syncForCurrentSelection()
+      const { ClaudeRuntimeAuthService } = await import('./runtime-auth-service')
+      const service = new ClaudeRuntimeAuthService(store as never)
+      await service.syncForCurrentSelection()
 
-    expect(store.getSettings().activeClaudeManagedAccountId).toBeNull()
-    expect(readFileSync(runtimeCredentialsPath, 'utf-8')).toBe(systemCredentials)
-  })
+      expect(store.getSettings().activeClaudeManagedAccountId).toBeNull()
+      expect(readFileSync(runtimeCredentialsPath, 'utf-8')).toBe(systemCredentials)
+    }
+  )
 
   it('restores system auth when switching from an owned account to an unowned account', async () => {
     setPlatform('linux')

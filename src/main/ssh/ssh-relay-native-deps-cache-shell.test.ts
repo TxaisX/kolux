@@ -46,9 +46,11 @@ const KEY = computeRelayNativeDepsCacheKey({ platform: 'linux-x64', deps: DEPS }
 // ships; run against both when both exist so a bashism cannot pass here and fail on a host.
 const SHELLS = ['/bin/sh', '/bin/dash'].filter((shell) => existsSync(shell))
 
-describe.runIf(process.platform !== 'win32').each(SHELLS)(
-  'relay native-deps cache shell scripts (%s)',
-  (shell) => {
+// Why skipIf, not just .each(SHELLS): an empty SHELLS array (no /bin/sh or /bin/dash, e.g. on
+// win32) makes .each register zero describes, which Vitest reports as "No test suite found in
+// file" — a collection error, not the clean skip a Windows-only capability gap should produce.
+describe.skipIf(SHELLS.length === 0)('relay native-deps cache shell scripts', () => {
+  describe.each(SHELLS)('(%s)', (shell) => {
     let home: string
 
     const relayDir = (version: string): string => join(home, '.kolux-remote', `relay-${version}`)
@@ -239,5 +241,5 @@ describe.runIf(process.platform !== 'win32').each(SHELLS)(
         RELAY_NATIVE_CACHE_REFS_OK
       )
     })
-  }
-)
+  })
+})

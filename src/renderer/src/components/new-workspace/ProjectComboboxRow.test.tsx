@@ -32,7 +32,7 @@ function markedText(): string {
 describe('MatchedText', () => {
   it('underlines the matched run', () => {
     act(() => {
-      root.render(<MatchedText text="kolux" hits={[0, 1, 2, 3]} />)
+      root.render(<MatchedText text="kolux" hits={[0, 1, 2, 3, 4]} />)
     })
 
     expect(markedText()).toBe('kolux')

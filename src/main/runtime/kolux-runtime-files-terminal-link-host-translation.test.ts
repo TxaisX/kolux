@@ -170,25 +170,32 @@ describe('RuntimeFileCommands', () => {
       expect(result.openTarget).toBeUndefined()
     })
 
-    it('opens IPv4 loopback local POSIX terminal links as local paths', async () => {
-      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
-      const artifactPath = await tempFile('result.json', '{}')
-      const { commands } = createRuntimeFileCommands({ path: '/repo' })
-      const canonicalPath = await realpath(artifactPath)
+    // Why skipIf: this simulates a Linux terminal's link (process.platform pinned to
+    // 'linux'), but the artifact is a REAL file from the host's own filesystem — on
+    // Windows that's a drive-lettered path, which can't stand in for a POSIX one when
+    // concatenated after the //127.0.0.1 loopback prefix.
+    it.skipIf(process.platform === 'win32')(
+      'opens IPv4 loopback local POSIX terminal links as local paths',
+      async () => {
+        Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+        const artifactPath = await tempFile('result.json', '{}')
+        const { commands } = createRuntimeFileCommands({ path: '/repo' })
+        const canonicalPath = await realpath(artifactPath)
 
-      const result = await resolveTerminalArtifactPath(commands, `//127.0.0.1${artifactPath}`)
+        const result = await resolveTerminalArtifactPath(commands, `//127.0.0.1${artifactPath}`)
 
-      expect(result).toMatchObject({
-        relativePath: null,
-        absolutePath: canonicalPath,
-        exists: true,
-        openTarget: {
-          kind: 'absolute-file',
-          provider: 'local',
-          absolutePath: canonicalPath
-        }
-      })
-    })
+        expect(result).toMatchObject({
+          relativePath: null,
+          absolutePath: canonicalPath,
+          exists: true,
+          openTarget: {
+            kind: 'absolute-file',
+            provider: 'local',
+            absolutePath: canonicalPath
+          }
+        })
+      }
+    )
 
     it('opens host-qualified remote POSIX terminal links when the source terminal verified the host', async () => {
       const resolveTerminalFileUriHostname = vi.fn(() => 'remote-host')

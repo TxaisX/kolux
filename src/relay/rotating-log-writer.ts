@@ -42,11 +42,17 @@ export class RotatingLogWriter {
       // fallback when a rename cannot succeed — e.g. Windows, where the launch
       // shell's own redirect handle blocks renaming the live file).
       this.fd = openSync(this.logPath, mode)
-      try {
-        this.currentBytes = mode === 'w' ? 0 : statSync(this.logPath).size
-      } catch {
-        this.currentBytes = 0
+      // Why statSync().isDirectory(): unlike POSIX, Windows lets openSync() succeed on a
+      // directory path — the failure only surfaces later, at the first writeSync (EISDIR).
+      // Catching it here keeps `active` false from construction on every platform, instead
+      // of silently losing whatever got written before that first write self-heals.
+      const stat = statSync(this.logPath)
+      if (stat.isDirectory()) {
+        closeSync(this.fd)
+        this.fd = null
+        throw new Error(`Log path is a directory: ${this.logPath}`)
       }
+      this.currentBytes = mode === 'w' ? 0 : stat.size
     } catch {
       // Cannot open the log file (permission/full disk): disable rotation and
       // let callers fall back to the original stream.

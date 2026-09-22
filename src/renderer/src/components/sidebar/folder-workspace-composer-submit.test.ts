@@ -433,7 +433,8 @@ describe('submitFolderWorkspaceCreate', () => {
     })
 
     const startup = mocks.activateAndRevealFolderWorkspace.mock.calls[0]?.[1]?.startup
-    expect(startup?.command).toContain('claude --prefill')
+    // Why: Claude launches at Opus/high by default (0cbb68f2), ahead of the prefill flag.
+    expect(startup?.command).toContain("claude '--model' 'opus' '--effort' 'high' --prefill")
     expect(startup?.command).toContain('Check the migration path')
     expect(startup?.command).toContain(linkedWorkItem.url)
     expect(mocks.ensureAgentStartupInTerminal).not.toHaveBeenCalled()
@@ -489,7 +490,8 @@ describe('submitFolderWorkspaceCreate', () => {
       createdWithAgent: 'claude'
     })
     const startup = mocks.activateAndRevealFolderWorkspace.mock.calls[0]?.[1]?.startup
-    expect(startup?.command).toContain('claude --prefill')
+    // Why: Claude launches at Opus/high by default (0cbb68f2), ahead of the prefill flag.
+    expect(startup?.command).toContain("claude '--model' 'opus' '--effort' 'high' --prefill")
     expect(startup?.command).toContain('User note stays above source')
     expect(startup?.command).toContain('Linked Linear issue: ENG-77')
     expect(startup?.command).toContain(
@@ -588,7 +590,8 @@ describe('submitFolderWorkspaceCreate', () => {
       'folder-workspace-1',
       expect.objectContaining({
         startup: expect.objectContaining({
-          command: `claude 'Use Bob'"'"'s POSIX startup'`
+          // Why: Claude launches at Opus/high by default (0cbb68f2).
+          command: `claude '--model' 'opus' '--effort' 'high' 'Use Bob'"'"'s POSIX startup'`
         })
       })
     )
@@ -621,7 +624,8 @@ describe('submitFolderWorkspaceCreate', () => {
       'folder-workspace-1',
       expect.objectContaining({
         startup: expect.objectContaining({
-          command: "claude 'Use Bob''s Windows startup'"
+          // Why: Claude launches at Opus/high by default (0cbb68f2).
+          command: "claude '--model' 'opus' '--effort' 'high' 'Use Bob''s Windows startup'"
         })
       })
     )

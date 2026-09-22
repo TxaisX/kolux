@@ -292,7 +292,8 @@ describe('client-hosted downloads', () => {
     browserManager.handleGuestWillDownload({ guestWebContentsId: GUEST_WEB_CONTENTS_ID, item })
 
     expect(item.cancel).not.toHaveBeenCalled()
-    expect(savedTo(item)).toContain('/downloads/')
+    // path.join uses the host's native separator, so the mocked '/downloads' root isn't literal here.
+    expect(savedTo(item)).toContain(`${path.sep}downloads${path.sep}`)
   })
 
   it('leaves ordinary browser guests on their desktop Downloads path', () => {
@@ -312,7 +313,7 @@ describe('client-hosted downloads', () => {
 
     expect(routed).toEqual([SERVER_GUEST_WEB_CONTENTS_ID])
     expect(item.cancel).not.toHaveBeenCalled()
-    expect(savedTo(item)).toContain('/downloads/')
+    expect(savedTo(item)).toContain(`${path.sep}downloads${path.sep}`)
   })
 })
 

@@ -9,7 +9,10 @@ import type {
 
 vi.mock('fs/promises', () => ({
   readFile: vi.fn(async () => ''),
-  realpath: vi.fn(async (path: string) => path),
+  // Why: real fs.realpath returns native-separator paths on Windows even when
+  // given a forward-slash "runtime path"; an identity passthrough here would
+  // let a `/`-joined path leak past canonicalization, which never happens live.
+  realpath: vi.fn(async (p: string) => (process.platform === 'win32' ? p.replace(/\//g, '\\') : p)),
   stat: vi.fn(async () => ({ isDirectory: () => true }))
 }))
 
@@ -63,10 +66,16 @@ type PollerCallback = (events: WorktreeBasePollEvent[]) => void
 const watcherCallbacks = new Map<string, PollerCallback>()
 const unsubscribeMocks = new Map<string, ReturnType<typeof vi.fn>>()
 const pollerOptions = new Map<string, WorktreeBasePollerOptions>()
-const absolutePath = (...parts: string[]): string => join(sep, ...parts)
+// Why: a driveless `\foo` has no real Windows absolute-path semantics (no drive/UNC root), so
+// isWindowsAbsolutePathLike misclassifies it as POSIX and the watcher's path-flavor resolution
+// flips its separators — use a real platform-native absolute root instead.
+const absolutePath = (...parts: string[]): string =>
+  process.platform === 'win32' ? join(`C:${sep}`, ...parts) : join(sep, ...parts)
 const WORKTREE_ROOT = absolutePath('workspace', 'worktrees')
 const PROJECT_ROOT = absolutePath('workspace', 'projects', 'project')
 const PROJECT_GIT_COMMON_DIR = join(PROJECT_ROOT, '.git')
+const slashed = (p: string) => p.replaceAll('\\', '/') // ref matching is separator-insensitive
+const originRef = (n: string) => slashed(join(PROJECT_GIT_COMMON_DIR, 'refs/remotes/origin', n))
 
 const settings = {
   workspaceDir: WORKTREE_ROOT,
@@ -238,7 +247,7 @@ describe('worktree base directory watcher', () => {
     )
     await syncWorktreeBaseDirectoryWatchers(makeStore([makeRepo()]) as never, makeWindow() as never)
     const getPaths = pollerOptions.get(PROJECT_GIT_COMMON_DIR)?.getGitStatusRefPaths
-    expect(getPaths?.()).toEqual([join(PROJECT_GIT_COMMON_DIR, 'refs/remotes/origin/first')])
+    expect(getPaths?.()?.map(slashed)).toEqual([originRef('first')])
 
     await setWorktreeGitStatusRefWatch(
       {
@@ -258,7 +267,7 @@ describe('worktree base directory watcher', () => {
       },
       async () => undefined
     )
-    expect(getPaths?.()).toEqual([join(PROJECT_GIT_COMMON_DIR, 'refs/remotes/origin/next')])
+    expect(getPaths?.()?.map(slashed)).toEqual([originRef('next')])
 
     await setWorktreeGitStatusRefWatch(
       {

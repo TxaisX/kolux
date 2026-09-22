@@ -26,7 +26,8 @@ function runHook(dir: string, extraEnv: NodeJS.ProcessEnv = {}) {
   })
 }
 
-describe('managed hook outside a Kolux terminal', () => {
+// Why: runs the POSIX managed script through /bin/sh directly, which Windows has none of.
+describe.skipIf(process.platform === 'win32')('managed hook outside a Kolux terminal', () => {
   it('no Kolux env at all: silent, exit 0, writes nothing', () => {
     const dir = mkdtempSync(join(tmpdir(), 'kolux-outside-'))
     const res = runHook(dir)

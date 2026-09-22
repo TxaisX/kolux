@@ -1,5 +1,5 @@
 import { lstatSync } from 'node:fs'
-import { join } from 'node:path'
+import { posix } from 'node:path'
 
 // agent-browser's own session-name rule; doubles as a traversal fence for the `join` below.
 const SAFE_SESSION_NAME = /^[A-Za-z0-9_-]+$/
@@ -21,7 +21,8 @@ export function canSkipAgentBrowserSessionReset(options: {
     return false
   }
   try {
-    lstatSync(join(socketDirectory, `${sessionName}.sock`))
+    // Always POSIX: ownsSocketDirectory is true only off Windows (see comment above).
+    lstatSync(posix.join(socketDirectory, `${sessionName}.sock`))
     return false
   } catch (error) {
     // Only a proven-absent socket is safe to skip; permission and other failures prove nothing.

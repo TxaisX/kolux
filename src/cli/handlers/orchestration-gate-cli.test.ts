@@ -29,6 +29,7 @@ vi.mock('../selectors', async (importOriginal) => ({
 }))
 
 import { main } from '../index'
+import { renderCommand } from '../orchestration-mutation-recovery'
 import { RuntimeClientError } from '../runtime/types'
 import { okFixture, queueFixtures } from '../test-fixtures'
 
@@ -236,7 +237,21 @@ describe('orchestration gate commands carry caller identity', () => {
     const output = JSON.parse(String(logSpy.mock.calls[0]?.[0])) as {
       error: { message: string; data: Record<string, unknown> }
     }
-    expect(output.error.message).toContain('--retry-request mutation_1')
+    // Why: rendering is shell-platform-specific (see renderCommand); build the expected
+    // fragment the same way rather than hardcoding POSIX quoting.
+    const retryCommandText = renderCommand([
+      'kolux',
+      'orchestration',
+      'gate-create',
+      '--task',
+      'task_1',
+      '--question',
+      'ship?',
+      '--json',
+      '--retry-request',
+      'mutation_1'
+    ])
+    expect(output.error.message).toContain(retryCommandText)
     expect(output.error.message).toContain('may already have taken effect')
     expect(output.error.message).toContain('Failed stage: dispatch_input')
     expect(output.error.message).toMatch(/Residual resources:.*repo::child.*term_worker/)

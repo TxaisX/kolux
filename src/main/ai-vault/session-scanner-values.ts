@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { basename, dirname, isAbsolute, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, posix } from 'node:path'
 import { wslGatedReadFile } from '../native-chat/wsl-transcript-fs-access'
 import { WslTranscriptFsError } from '../native-chat/wsl-transcript-fs-gate'
 import { asRecord } from './session-scanner-record-value'
@@ -137,6 +137,14 @@ export function findOpenCodeStorageRoot(filePath: string): string | null {
   return dirname(sessionRoot)
 }
 
+// Why: these dirs are read verbatim from an agent's env var, which may name a POSIX/WSL
+// path while this host is Windows; joining with the native `path` would rewrite its `/`
+// into `\` and corrupt a path this host never owns. Only a tilde expanded against this
+// host's own `homedir()` should pick up this host's separator (see `absoluteConfiguredDir`).
+function joinChild(dir: string, ...segments: string[]): string {
+  return dir.includes('\\') ? join(dir, ...segments) : posix.join(dir, ...segments)
+}
+
 // Pi and OMP (a Pi fork) both store transcripts under
 // <home>/<agentHomeDirName>/agent/sessions; accept any prefix of that path.
 export function normalizeAgentSessionsDir(
@@ -153,10 +161,10 @@ export function normalizeAgentSessionsDir(
     return normalized
   }
   if (leaf === 'agent') {
-    return join(normalized, 'sessions')
+    return joinChild(normalized, 'sessions')
   }
   if (leaf === agentHomeDirName) {
-    return join(normalized, 'agent', 'sessions')
+    return joinChild(normalized, 'agent', 'sessions')
   }
   return normalized
 }
@@ -170,7 +178,8 @@ function defaultPrimeAgentSessionsDir(): string {
 // Returns null for anything that is not an absolute root, since a relative value
 // ('', '.', '..', 'sessions') would resolve against the main-process cwd.
 function absoluteConfiguredDir(rawValue: string): string | null {
-  const expanded = rawValue === '~' ? homedir() : rawValue.replace(/^~(?=[\\/])/, homedir())
+  const tilde = /^~[\\/](.*)$/.exec(rawValue)
+  const expanded = rawValue === '~' ? homedir() : tilde ? join(homedir(), tilde[1]!) : rawValue
   const normalized = expanded.replace(/[\\/]+$/, '')
   return normalized && isAbsolute(normalized) ? normalized : null
 }
@@ -180,7 +189,7 @@ function absoluteConfiguredDir(rawValue: string): string | null {
 // unconditionally, so a root that is itself named `sessions` still nests one deeper.
 export function normalizePrimeAgentSessionsDir(rawAgentDir: string): string {
   const agentDir = absoluteConfiguredDir(rawAgentDir.trim())
-  return agentDir ? join(agentDir, 'sessions') : defaultPrimeAgentSessionsDir()
+  return agentDir ? joinChild(agentDir, 'sessions') : defaultPrimeAgentSessionsDir()
 }
 
 // PRIME_AGENT_SESSION_DIR (and its legacy PRIME_AGENT_CODING_AGENT_SESSION_DIR alias)

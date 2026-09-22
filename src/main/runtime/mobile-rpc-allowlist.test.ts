@@ -1,7 +1,11 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ALL_RPC_METHODS } from './rpc/methods'
+
+// Why: mobile/ lives in a separate repo and is absent from this checkout, so the source scan
+// below has nothing to read; skip only the cases that scan it, not the hardcoded-list ones.
+const hasMobileApp = existsSync(join(process.cwd(), 'mobile'))
 
 const MOBILE_DYNAMIC_RPC_METHODS = [
   // Why: computed sendRequest method names do not appear as literals in the
@@ -117,7 +121,7 @@ function registeredRuntimeMethods(): Set<string> {
 }
 
 describe('mobile RPC allowlist', () => {
-  it('allows every RPC method used by the mobile app', () => {
+  it.skipIf(!hasMobileApp)('allows every RPC method used by the mobile app', () => {
     // Why: mobile-scoped runtime tokens are checked before dispatch. A mobile
     // feature can compile and still fail at runtime if its method is missing here.
     const allowed = mobileRpcAllowlist()
@@ -126,7 +130,7 @@ describe('mobile RPC allowlist', () => {
     expect(missing).toEqual([])
   })
 
-  it('registers every RPC method used by the mobile app', () => {
+  it.skipIf(!hasMobileApp)('registers every RPC method used by the mobile app', () => {
     // Why: the allowlist check runs before dispatch, but an allowlisted mobile
     // method still fails at runtime if it was never added to ALL_RPC_METHODS.
     const registered = registeredRuntimeMethods()

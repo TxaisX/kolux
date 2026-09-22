@@ -1,10 +1,13 @@
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { validateAiVaultSessionDeleteTarget } from './session-delete-target'
 
 // All roots are supplied via rootOptions so these tests never touch the real
 // home directory or filesystem — validation is pure string-path judgement.
-const HOME = join('/tmp', 'kolux-ai-vault-delete-fixture-home')
+// Why: resolve(), not join() — production resolve()s filePath before comparing, and on
+// Windows that prepends the current drive; building HOME the same way keeps this fixture
+// self-consistent regardless of which drive the test happens to run from.
+const HOME = resolve('/tmp', 'kolux-ai-vault-delete-fixture-home')
 const GEMINI_ROOT = join(HOME, '.gemini', 'tmp')
 const CURSOR_ROOT = join(HOME, '.cursor', 'projects')
 const HERMES_ROOT = join(HOME, '.hermes', 'sessions')
@@ -20,7 +23,7 @@ const GROK_ROOT = join(HOME, '.grok', 'sessions')
 
 describe('validateAiVaultSessionDeleteTarget', () => {
   it('allows a canonical Cline manifest and removes its whole session directory', () => {
-    const root = join('/tmp', 'cline-sessions')
+    const root = resolve('/tmp', 'cline-sessions')
     const sessionId = '1786466194549_xrzrl'
     const sessionDir = join(root, sessionId)
     const result = validateAiVaultSessionDeleteTarget({
@@ -38,7 +41,7 @@ describe('validateAiVaultSessionDeleteTarget', () => {
   })
 
   it('rejects a Cline messages companion as an undiscoverable delete target', () => {
-    const root = join('/tmp', 'cline-sessions')
+    const root = resolve('/tmp', 'cline-sessions')
     const sessionId = '1786466194549_xrzrl'
     const result = validateAiVaultSessionDeleteTarget({
       agent: 'cline',
@@ -368,7 +371,7 @@ describe('directory-shaped agents', () => {
   })
 
   it("pairs a WSL-home claude session with that distro's session-env, not the local one", () => {
-    const wslHome = join('/tmp', 'kolux-wsl-home')
+    const wslHome = resolve('/tmp', 'kolux-wsl-home')
     const filePath = join(wslHome, '.claude', 'projects', '-proj', 'sess-2.jsonl')
     const result = validateAiVaultSessionDeleteTarget({
       agent: 'claude',

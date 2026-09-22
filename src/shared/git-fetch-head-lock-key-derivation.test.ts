@@ -99,7 +99,11 @@ describe('FETCH_HEAD lock key derivation', () => {
 
     const keys = lockKeys()
     expect(keys[0]).not.toBe(keys[1])
-    expect(keys[0]).toBe(path.join(String.raw`\\wsl$\Ubuntu\home\me\repo`, '.git', 'FETCH_HEAD'))
+    // Why path.posix: the code's hostPath() follows the mocked (darwin) platform, not this real
+    // test-runner host, so the expected key must be built the same posix-joined way.
+    expect(keys[0]).toBe(
+      path.posix.join(String.raw`\\wsl$\Ubuntu\home\me\repo`, '.git', 'FETCH_HEAD')
+    )
   })
 
   it('puts a padded gitfile pointer in the same lane as its bare spelling', async () => {
@@ -121,7 +125,8 @@ describe('FETCH_HEAD lock key derivation', () => {
     await runWithGitFetchHeadLock('/work/wt', undefined, async () => 0)
 
     const keys = lockKeys()
-    expect(keys[0]).toBe(path.join('/work/repo/.git/worktrees/wt', 'FETCH_HEAD'))
+    // Why path.posix: same as above, the simulated darwin platform joins with '/', not this host's '\'.
+    expect(keys[0]).toBe(path.posix.join('/work/repo/.git/worktrees/wt', 'FETCH_HEAD'))
     expect(keys[1]).toBe(keys[0])
   })
 

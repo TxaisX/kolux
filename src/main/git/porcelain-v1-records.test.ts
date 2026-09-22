@@ -30,7 +30,8 @@ describe('parsePorcelainV1Records', () => {
     expect(parsePorcelainV1Records('')).toEqual([])
   })
 
-  it('keeps paths containing spaces and quotes intact', () => {
+  // Why skipIf(win32): NTFS forbids `"` in filenames, so this fixture cannot exist on disk there.
+  it.skipIf(process.platform === 'win32')('keeps paths containing spaces and quotes intact', () => {
     const repo = createRepo()
     writeFileSync(join(repo, 'a file "quoted".txt'), 'x')
 

@@ -7,7 +7,7 @@ import { activeStructuredAgentSessionTurnId } from '../../../shared/structured-a
 import type { AgentSessionHandoffRequest } from '../../../shared/agent-session-wire'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
 import { recoverStoredDeadTuiOwnerForHandoff } from '../../runtime/agent-session-handoff-record-transitions'
-import { openAgentSessionJournal } from '../agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import { StructuredAgentSessionHandoffCoordinator } from './structured-agent-session-handoff'
 import type { StructuredAgentSessionHandoffTransport } from './structured-agent-session-handoff-types'
 import { retryLoadedStructuredAgentSessionSettlement } from './structured-agent-session-settlement-retry'
@@ -18,8 +18,10 @@ const THREAD = '019fd532-7c11-7a90-b6de-4e1a2c3d5f60'
 const CREATE_OPERATION = `${NOW}-00000000000000000000000000000000`
 const OPERATION = `${NOW}-00000000000000000000000000000001`
 const roots: string[] = []
+const journals = createTrackedJournalOpener()
 
 afterEach(async () => {
+  await journals.closeAll()
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
 })
 
@@ -81,7 +83,7 @@ describe('structured session proven-dead TUI retry', () => {
       probe: { outcome: 'pid-absent' },
       now: NOW
     })
-    const journal = await openAgentSessionJournal({
+    const journal = await journals.open({
       identity: {
         sessionId: SESSION,
         workspaceId: 'workspace-1',

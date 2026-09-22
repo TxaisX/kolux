@@ -44,9 +44,9 @@ describe('repository GitHub avatar resolution', () => {
     await expect(resolveRepositoryGitHubAvatar({ kind: 'local' }, repo)).resolves.toEqual({
       repoIcon: {
         type: 'image',
-        src: 'https://github.com/txais.png?size=64',
+        src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       },
       upstream: { owner: 'TxaisX', repo: 'kolux' }
     })
@@ -169,9 +169,9 @@ describe('repository GitHub avatar resolution', () => {
       upstream: { owner: 'TxaisX', repo: 'kolux' },
       repoIcon: {
         type: 'image',
-        src: 'https://github.com/txais.png?size=64',
+        src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       }
     })
     apiMocks.repoUpstream.mockResolvedValueOnce(null)
@@ -185,9 +185,9 @@ describe('repository GitHub avatar resolution', () => {
     expect(resolution).toEqual({
       repoIcon: {
         type: 'image',
-        src: 'https://github.com/txais.png?size=64',
+        src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       },
       upstream: { owner: 'TxaisX', repo: 'kolux' }
     })

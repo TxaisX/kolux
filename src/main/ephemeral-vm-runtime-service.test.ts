@@ -47,7 +47,11 @@ function nodeCommand(scriptPath: string): string {
   return `"${process.execPath}" "${scriptPath}"`
 }
 
-describe('ephemeral VM runtime service', () => {
+// WHY skipped on win32: the suite fakes process.platform to 'linux' for lifecycle-only coverage
+// (see beforeEach below), but node:child_process's shell:true spawn and secure-file's fsync flag
+// selection both read the live process.platform, so the fake makes them try /bin/sh and an
+// fsync-incapable read handle on a real Windows host — neither exists there.
+describe.skipIf(process.platform === 'win32')('ephemeral VM runtime service', () => {
   const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
 
   beforeEach(() => {

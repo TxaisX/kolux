@@ -1,9 +1,8 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 
 const projectDir = resolve(import.meta.dirname, '../..')
 const guardScript = join(projectDir, '.github/scripts/check-root-directory-entries.mjs')
@@ -217,18 +216,5 @@ describe('root directory guard', () => {
     expect(result.status).toBe(128)
     expect(result.stderr).not.toContain('node:internal')
     expect(result.stdout).not.toContain('guard passed')
-  })
-
-  it('is wired into the PR verify gate', () => {
-    const workflow = parse(readFileSync(join(projectDir, '.github/workflows/pr.yml'), 'utf8'))
-    const guardJob = workflow.jobs.root_directory_guard
-    const guardStep = guardJob.steps.find(
-      (step) => step.name === 'Reject new root-level files and folders'
-    )
-
-    expect(guardJob.name).toBe('root directory guard')
-    expect(guardJob.steps[0].with['fetch-depth']).toBe(0)
-    expect(guardStep.run).toContain('node .github/scripts/check-root-directory-entries.mjs')
-    expect(workflow.jobs.verify.needs).toContain('root_directory_guard')
   })
 })

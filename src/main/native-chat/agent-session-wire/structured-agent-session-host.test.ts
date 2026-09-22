@@ -61,6 +61,8 @@ const ensureParams = (fence: number): AgentSessionAttachParams => hostTestAttach
 let root: string
 let store: AgentSessionRecordStore
 let host: StructuredAgentSessionHost
+// Why: `reboot()` discards a host mid-test; its journal handle must still close before rm().
+let hostsToClose: StructuredAgentSessionHost[] = []
 let acquire: Mock<StructuredAgentSessionAdapter['acquire']>
 let releaseAcquisition: Mock<NonNullable<StructuredAgentSessionAdapter['releaseAcquisition']>>
 let dispatch: Mock<StructuredAgentSessionAdapter['dispatch']>
@@ -156,11 +158,14 @@ beforeEach(async () => {
     mintSpawnToken: () => 'spawn-a',
     now: () => NOW
   })
+  hostsToClose = [host]
 })
 
 afterEach(async () => {
   await journals.closeAll()
-  await host.flushAllStreamedEvents()
+  // Why: flushAllStreamedEvents() closes journals even for a host `reboot()` discarded.
+  const closing = [...new Set([...hostsToClose, host])].map((h) => h.flushAllStreamedEvents())
+  await Promise.allSettled(closing)
   await rm(root, { recursive: true, force: true })
 })
 
@@ -663,6 +668,7 @@ describe('restart', () => {
       probeOwner,
       now: () => NOW
     })
+    hostsToClose.push(host)
   }
 
   /** The refusal a restarted host owes a client holding the dead generation's

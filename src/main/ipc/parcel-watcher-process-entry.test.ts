@@ -1,5 +1,11 @@
 import { EventEmitter } from 'node:events'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Why a drive letter on win32: startShallowWatcher registers fs.watch under
+// join(rootPath, parent), which normalizes to native separators — a bare `/repo/.git`
+// literal then no longer string-matches the callback map key the test looks up.
+const GIT_DIR = process.platform === 'win32' ? 'C:\\repo\\.git' : '/repo/.git'
 
 const { detectShallowWatchDeliveryMock, statMock, subscribeMock, watchMock, writeFileSyncMock } =
   vi.hoisted(() => ({
@@ -117,19 +123,21 @@ describe('parcel watcher process canary', () => {
     process.emit('message', {
       op: 'subscribe',
       id: 1,
-      dir: '/repo/.git',
+      dir: GIT_DIR,
       opts: { mode: 'shallow', include: ['HEAD'] }
     })
     await vi.advanceTimersByTimeAsync(0)
 
     expect(subscribeMock).toHaveBeenCalledTimes(1)
-    watcherCallbacks.get('/repo/.git')?.('change', 'HEAD')
+    // Why join, not the literal: startShallowWatcher registers fs.watch under
+    // join(rootPath, parent), which always normalizes to native separators.
+    watcherCallbacks.get(join(GIT_DIR, ''))?.('change', 'HEAD')
     await vi.advanceTimersByTimeAsync(0)
     expect(sendMock).toHaveBeenCalledWith(
       {
         op: 'events',
         id: 1,
-        events: [{ type: 'update', path: '/repo/.git/HEAD' }]
+        events: [{ type: 'update', path: join(GIT_DIR, 'HEAD') }]
       },
       expect.any(Function)
     )

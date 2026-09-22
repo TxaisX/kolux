@@ -7,7 +7,13 @@ import {
 import type { WorktreeBaseWatchTarget } from './worktree-base-directory-event-filter'
 import { EMPTY_HEAD_IDENTITY_SCOPE, FULL_HEAD_IDENTITY_SCOPE } from './worktree-head-identity-scope'
 
-const COMMON_DIR = join('/repos', 'project', '.git')
+// Why: a driveless `/repos` has no real Windows absolute-path semantics once native-joined to
+// `\repos`; isWindowsAbsolutePathLike only recognizes drive/UNC roots, so a driveless root gets
+// silently miscategorized as POSIX by the comparison/relative-path helpers under test.
+const COMMON_DIR =
+  process.platform === 'win32'
+    ? join('C:\\', 'repos', 'project', '.git')
+    : join('/repos', 'project', '.git')
 
 function makeTarget(): WorktreeBaseWatchTarget {
   return {

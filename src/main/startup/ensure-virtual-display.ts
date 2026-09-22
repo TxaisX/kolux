@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { readFileSync, rmSync, statSync } from 'node:fs'
-import { isAbsolute, join } from 'node:path'
+import { posix } from 'node:path'
 import { app } from 'electron'
 
 // Why: headless `kolux serve` backs browser panes with offscreen BrowserWindows.
@@ -209,12 +209,16 @@ function hasUsableWaylandDisplay(env: NodeJS.ProcessEnv): boolean {
   if (!display) {
     return false
   }
-  if (isAbsolute(display)) {
+  // Always POSIX: this is a Linux display socket path (guarded to process.platform === 'linux'
+  // above), never a Windows path, so host-dependent path.join/isAbsolute must not be used.
+  if (posix.isAbsolute(display)) {
     return isUnixSocket(display)
   }
 
   const runtimeDir = env.XDG_RUNTIME_DIR?.trim()
-  return Boolean(runtimeDir && isAbsolute(runtimeDir) && isUnixSocket(join(runtimeDir, display)))
+  return Boolean(
+    runtimeDir && posix.isAbsolute(runtimeDir) && isUnixSocket(posix.join(runtimeDir, display))
+  )
 }
 
 /**

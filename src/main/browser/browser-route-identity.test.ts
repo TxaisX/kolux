@@ -78,11 +78,13 @@ describe('browser route partition identity', () => {
 
   // Why: both names are persisted, so a changed hash input, order, tag, or version relocates
   // every existing user's cookie jar instead of failing.
+  // Golden values recomputed for the 'kolux-browser-route-partition' digest domain (the
+  // Nightshift->Kolux rename intentionally changed the hash input; see commit 9baa8d30).
   it('pins the derived partition and fingerprint against silent relocation', () => {
     expect(deriveBrowserRoutePartition(pinnedIdentity)).toEqual({
       partition:
-        'persist:kolux-browser-v1-955a5db671b210d053d64d1e557d8cdf1e60e1e6cb710a033f1b5cd1b61e6586',
-      bindingFingerprint: 'fe69d9d83ab889b68eeb185f12821e4e0e77dcc91fc4cb7672c88e7818a4ded7'
+        'persist:kolux-browser-v1-ed7d3b6739789dcb34ecaffebe81a60a0285567514b1ec21fb14684c2e3a3624',
+      bindingFingerprint: 'dc02c5dfc77070773f9926af4edc09977d85b3908d14de47fd3cfe0cb46d0bcd'
     })
   })
 
@@ -100,7 +102,8 @@ describe('browser route partition identity', () => {
       environmentId: 'environment-a'
     })
 
-    expect(scope).toBe('2821c92c85c9724ddb6136aeeec266a84fc5a9ea00f61faacef8db89bea79fb4')
+    // Recomputed for the 'kolux-browser-route-partition-scope' digest domain (see 9baa8d30).
+    expect(scope).toBe('08738e8754b45cfeda46b30d992a18c37af6f40b4b247061d65194fc2f1089d9')
     expect(
       deriveBrowserRoutePartitionStorageScope({
         koluxProfileId: 'kolux/profile:alpha',

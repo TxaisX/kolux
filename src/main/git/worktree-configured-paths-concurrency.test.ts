@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { statMock, lstatMock, readFileMock, loadHooksMock, checkIgnoredPathsMock, concurrency } =
@@ -63,7 +64,9 @@ describe('configured worktree path probe concurrency', () => {
   })
 
   it('bounds include-path lstat probes while retaining candidate order', async () => {
-    const includePath = '/repo/.worktreeinclude'
+    // Why join, not a literal: the source builds this with path.join too, which
+    // yields backslashes on Windows — a literal would miss the lstat mock match.
+    const includePath = join('/repo', '.worktreeinclude')
     loadHooksMock.mockReturnValue(null)
     lstatMock.mockImplementation(async (path: string) => {
       if (path === includePath) {

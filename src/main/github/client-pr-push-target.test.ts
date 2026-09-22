@@ -238,10 +238,12 @@ describe('getPRForBranch', () => {
   })
 
   it('does not treat a same-repository upstream remote as a fork', async () => {
-    getOwnerRepoMock.mockResolvedValue({ owner: 'Txais', repo: 'Kolux' })
+    // Why: origin/upstream differ only by GitHub's case-insensitive owner/repo
+    // casing (#7331) — githubRepoIdentityKey must still see them as one repo.
+    getOwnerRepoMock.mockResolvedValue({ owner: 'txaisx', repo: 'Nightshift' })
     getOwnerRepoForRemoteMock.mockImplementation(async (_repoPath: string, remoteName: string) =>
       remoteName === 'origin'
-        ? { owner: 'Txais', repo: 'Kolux' }
+        ? { owner: 'txaisx', repo: 'Nightshift' }
         : { owner: 'TxaisX', repo: 'nightshift' }
     )
     ghExecFileAsyncMock.mockResolvedValueOnce({
@@ -253,7 +255,7 @@ describe('getPRForBranch', () => {
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
       // Why: positional slugs are explicit about github.com too, so GH_HOST
       // cannot redirect them.
-      ['repo', 'view', 'github.com/Txais/Kolux', '--json', 'isFork,parent'],
+      ['repo', 'view', 'github.com/txaisx/Nightshift', '--json', 'isFork,parent'],
       { cwd: '/repo-root', host: 'github.com', timeout: 10_000 }
     )
   })

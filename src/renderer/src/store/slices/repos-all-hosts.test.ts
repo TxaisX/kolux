@@ -676,12 +676,15 @@ describe('fetchReposForAllHosts', () => {
     expect(
       store.getState().projects.find((project) => project.id === sharedProjectId)?.sourceRepoIds
     ).toEqual(['local-repo'])
+    // Why: local-repo's upstream still derives its own lowercased identity
+    // project alongside the stale-cased hydrated one — the two ids never
+    // textually collide, so both persist (githubRepoIdentityKey lowercases).
     expect(
       store
         .getState()
         .projects.map((project) => project.id)
         .sort()
-    ).toEqual(['github:TxaisX/nightshift', 'repo:remote-repo'])
+    ).toEqual(['github:TxaisX/nightshift', 'github:txaisx/kolux', 'repo:remote-repo'])
     expect(store.getState().projectHostSetups).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

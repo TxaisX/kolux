@@ -1,9 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 import { hasWslSourceChange, selectPrE2eSpecs } from './pr-e2e-source-routing.mjs'
-
-const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
 
 describe('real WSL terminal lane', () => {
   it.each([
@@ -37,34 +33,8 @@ describe('real WSL terminal lane', () => {
     expect(hasWslSourceChange([path])).toBe(false)
   })
 
-  it('runs the reusable lane at the immutable PR head', () => {
-    const pr = parse(read('.github/workflows/pr.yml'))
-    expect(pr.jobs.windows_wsl.if).toBe("needs.code_paths.outputs.wsl_source_changed == 'true'")
-    expect(pr.jobs.windows_wsl.with.ref).toBe('${{ github.event.pull_request.head.sha }}')
-    const detector = pr.jobs['code_paths'].steps.find(
-      (step) => step.name === 'Filter changed E2E specs'
-    )
-    expect(detector.run).toContain(
-      'WSL_CHANGED="$(git diff --name-only --no-renames --diff-filter=ACDMR'
-    )
-    expect(detector.run).toContain(
-      '"$WSL_CHANGED" | node config/scripts/pr-e2e-source-routing.mjs --wsl-source'
-    )
-    const workflow = parse(read('.github/workflows/windows-wsl-e2e.yml'))
-    const steps = workflow.jobs['wsl-terminal'].steps
-    expect(steps[0].with.ref).toBe('${{ inputs.ref || github.sha }}')
-    expect(steps.some((step) => step.uses === './.github/actions/setup-wsl-test-runtime')).toBe(
-      true
-    )
-    const exercise = steps.find((step) => step.name === 'Exercise real WSL launch and paste')
-    expect(exercise.run.split(/\s+/).filter((arg) => arg.startsWith('--repeat-each='))).toEqual([
-      '--repeat-each=3'
-    ])
-    expect(exercise.run).toContain('--grep "WSL"')
-    const receipt = steps.find((step) => step.name === 'Require all nine WSL executions')
-    expect(receipt.if).toBe('always()')
-    expect(receipt.run).toBe(
-      'node config/scripts/verify-wsl-e2e-participation.mjs test-results/wsl-results.json'
-    )
-  })
+  // Why no PR/windows-wsl-e2e workflow wiring case here: pr.yml and
+  // windows-wsl-e2e.yml were both deleted at the fork split (only ci.yml and
+  // release.yml remain), so the reusable-lane dispatch this used to guard has
+  // no surviving workflow to read.
 })

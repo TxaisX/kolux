@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import {
   AgentSessionPreSpawnError,
   type StructuredAgentSessionAdapter
@@ -19,8 +20,14 @@ const SESSION = 'session-alpha'
 const OPERATION = `${NOW}-${'1'.padStart(32, '0')}`
 const NEXT_OPERATION = `${NOW}-${'2'.padStart(32, '0')}`
 let root: string | null = null
+const journals = createTrackedJournalOpener()
+// Why: performAttach opens the journal itself; nothing else in this test closes it.
+const onAttached = (attached: { journal: Parameters<typeof journals.track>[0] }): void => {
+  journals.track(attached.journal)
+}
 
 afterEach(async () => {
+  await journals.closeAll()
   if (root) {
     await rm(root, { recursive: true, force: true })
   }
@@ -95,7 +102,7 @@ describe('processless structured session reservation', () => {
         callerKey: 'client-1',
         params: attachParams(),
         now: () => NOW,
-        onAttached: () => {}
+        onAttached
       })
     ).resolves.toMatchObject({
       ok: false,
@@ -142,7 +149,7 @@ describe('processless structured session reservation', () => {
       callerKey: 'client-1',
       params: attachParams(),
       now: () => NOW,
-      onAttached: () => {}
+      onAttached
     }
 
     await expect(performAttach(input)).resolves.toMatchObject({ ok: true })
@@ -181,7 +188,7 @@ describe('processless structured session reservation', () => {
       callerKey: 'client-1',
       params: attachParams(),
       now: () => NOW,
-      onAttached: () => {}
+      onAttached
     }
 
     await expect(performAttach(input)).resolves.toMatchObject({
@@ -235,7 +242,7 @@ describe('processless structured session reservation', () => {
         callerKey: 'client-1',
         params: attachParams(),
         now: () => NOW,
-        onAttached: () => {}
+        onAttached
       })
     ).rejects.toThrow('workspace no longer exists')
     expect(settlement).toHaveBeenCalledExactlyOnceWith(
@@ -306,7 +313,7 @@ describe('processless structured session reservation', () => {
       callerKey: 'client-1',
       params: attachParams(),
       now: () => NOW,
-      onAttached: () => {}
+      onAttached
     }
 
     await expect(performAttach(input)).rejects.toThrow('launch not ready')

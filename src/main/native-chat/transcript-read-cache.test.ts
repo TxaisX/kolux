@@ -44,6 +44,8 @@ async function seedSession(sessionId: string, turns: number): Promise<string> {
   const filePath = join(projectDir, `${sessionId}.jsonl`)
   await writeFile(filePath, jsonLines(records))
   process.env.HOME = root
+  // Why: os.homedir() reads USERPROFILE on Windows, not HOME.
+  process.env.USERPROFILE = root
   return filePath
 }
 

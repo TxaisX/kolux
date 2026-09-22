@@ -140,17 +140,21 @@ describe('guarded Grok hook config mutation', () => {
     await expect(cleanup).resolves.toBe(false)
   })
 
-  it('preserves the existing file mode on replacement', async () => {
-    const configPath = makeConfigPath()
-    const installed = '{"hooks":{"SessionStart":[]}}\n'
-    writeFileSync(configPath, installed)
-    chmodSync(configPath, 0o600)
+  // Why: POSIX mode bits are inert on Windows; chmodSync(0o600) does not restrict access there.
+  it.skipIf(process.platform === 'win32')(
+    'preserves the existing file mode on replacement',
+    async () => {
+      const configPath = makeConfigPath()
+      const installed = '{"hooks":{"SessionStart":[]}}\n'
+      writeFileSync(configPath, installed)
+      chmodSync(configPath, 0o600)
 
-    await expect(
-      writeGrokHookConfigIfUnchanged(configPath, installed, '{"hooks":{}}\n')
-    ).resolves.toBe(true)
-    expect(statSync(configPath).mode & 0o777).toBe(0o600)
-  })
+      await expect(
+        writeGrokHookConfigIfUnchanged(configPath, installed, '{"hooks":{}}\n')
+      ).resolves.toBe(true)
+      expect(statSync(configPath).mode & 0o777).toBe(0o600)
+    }
+  )
 
   // Why this is pinned: Grok stats every global hook JSON and refuses to build a sandbox profile
   // for one whose st_nlink != 1, failing the whole session. A publish-by-hard-link swap leaves the

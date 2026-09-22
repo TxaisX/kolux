@@ -49,7 +49,13 @@ describe('agent session claim identity', () => {
     const transcriptPath = join(dir, 'session.jsonl')
     try {
       writeFileSync(transcriptPath, '{}\n')
-      const canonicalTranscriptPath = realpathSync(transcriptPath)
+      // Why toLocaleLowerCase on win32: canonicalPathForPlatform lowercases there for
+      // filesystem case-insensitivity, matching what canonicalizeAgentSessionIdentity returns.
+      const realTranscriptPath = realpathSync(transcriptPath)
+      const canonicalTranscriptPath =
+        process.platform === 'win32'
+          ? realTranscriptPath.toLocaleLowerCase('en-US')
+          : realTranscriptPath
       expect(
         canonicalizeAgentSessionIdentity('prime-agent', {
           key: 'session_id',

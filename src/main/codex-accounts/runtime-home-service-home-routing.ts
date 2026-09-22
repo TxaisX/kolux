@@ -1,5 +1,4 @@
-import { posix as pathPosix } from 'node:path'
-import { parseWslUncPath, toLinuxPath, toWindowsWslUncPath } from '../../shared/wsl-paths'
+import { parseWslUncPath, toLinuxPath } from '../../shared/wsl-paths'
 import { normalizeRuntimePathForComparison } from '../../shared/cross-platform-path'
 import { getDefaultWslDistro, getWslHome } from '../wsl'
 import {
@@ -206,13 +205,10 @@ export abstract class CodexRuntimeHomeRouting extends CodexRuntimeHomeManagedHom
     if (!distro) {
       return null
     }
+    // Why: getWslHome already returns the guest home as a Windows-reachable
+    // path (a \\wsl.localhost UNC in production, a plain host dir in tests) —
+    // join onto it directly rather than round-tripping through Linux form.
     const home = getWslHome(distro)
-    if (home && /^[A-Za-z]:[\\/]/.test(home)) {
-      const linuxHome = toLinuxPath(home).trim()
-      return linuxHome.startsWith('/')
-        ? toWindowsWslUncPath(pathPosix.join(linuxHome, '.codex'), distro)
-        : null
-    }
     return home ? this.joinWslPath(home, '.codex') : null
   }
 

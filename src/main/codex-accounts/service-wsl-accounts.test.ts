@@ -75,6 +75,13 @@ describe('CodexAccountService config sync', () => {
         return null
       }
     }))
+    // Why: on real Windows (unlike Linux/macOS CI) assert() validates the WSL-shaped managed
+    // home through a real wsl.exe call — mock it like every sibling test in this file does,
+    // since no WSL distro is installed in this sandbox.
+    vi.doMock('node:child_process', () => ({
+      execFileSync: vi.fn(() => `${wslLinuxHomePath}\n`),
+      spawn: vi.fn()
+    }))
     vi.doMock('../wsl', () => ({
       toWindowsWslPath: (linuxPath: string) =>
         linuxPath === wslLinuxCanonicalHomePath ||

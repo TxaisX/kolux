@@ -87,9 +87,12 @@ describe('journal database open', () => {
       latched.db.close()
     }
     expect((await stat(dbPath)).size).toBe(before.size)
-    expect(journalPragmaNumber(openJournalDatabase(dbPath).db, 'user_version')).toBe(
-      JOURNAL_DB_SCHEMA_VERSION + 5
-    )
+    const reopened = openJournalDatabase(dbPath)
+    try {
+      expect(journalPragmaNumber(reopened.db, 'user_version')).toBe(JOURNAL_DB_SCHEMA_VERSION + 5)
+    } finally {
+      reopened.db.close()
+    }
   })
 
   // Site 1: the raw connection is owned by the open call until it returns.

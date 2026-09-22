@@ -15,6 +15,15 @@ export abstract class DaemonPtyDaemonRecovery extends DaemonPtyCheckpointPersist
   }
 
   protected async withDaemonRetry<T>(fn: () => Promise<T>): Promise<T> {
+    // Why: a bare ensureConnected() (e.g. from reconnectAfterWriteFailure) racing ahead of an
+    // already-in-flight respawn can open a connect() against the dying daemon's endpoint before
+    // the replacement is listening; that doomed attempt then gets "joined" by the retry that runs
+    // after the respawn resolves (DaemonClient.connectingPromise is shared), failing it too.
+    // Waiting out a known respawn first keeps every caller's first real attempt aimed at the daemon
+    // that is actually about to exist.
+    if (this.respawnPromise) {
+      await this.respawnPromise
+    }
     try {
       return await fn()
     } catch (err) {

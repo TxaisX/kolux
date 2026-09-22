@@ -356,7 +356,8 @@ describe('worktree surface feed subscription identity', () => {
 const FOUNDATION_PATH = 'src/renderer/src/components/use-terminal-workspace-foundation.ts'
 
 describe('Terminal workbench surface feed', () => {
-  const source = readFileSync(join(process.cwd(), FOUNDATION_PATH), 'utf8')
+  // Why: normalize CRLF so checkout line-ending settings don't break literal-\n substring checks.
+  const source = readFileSync(join(process.cwd(), FOUNDATION_PATH), 'utf8').replace(/\r\n/g, '\n')
 
   it('feeds the projection from the store per-id index, never the host-qualified array', () => {
     expect(source).not.toContain('useAllWorktrees')

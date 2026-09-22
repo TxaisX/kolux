@@ -59,6 +59,20 @@ type LocalNetworkConnectionTestOptions = {
   runChild?: ConnectionChildRunner
 }
 
+// Why: a bare decimal integer (e.g. 2130706433 === 127.0.0.1) is a classic dotless-IP
+// encoding some resolvers accept — Windows's getaddrinfo does not, so relying on the real
+// child probe's DNS failure to reject it is platform-dependent. Canonicalize it up front.
+function decimalToIPv4(address: string): string | null {
+  if (!/^\d+$/.test(address)) {
+    return null
+  }
+  const value = Number(address)
+  if (!Number.isInteger(value) || value < 0 || value > 0xff_ff_ff_ff) {
+    return null
+  }
+  return [24, 16, 8, 0].map((shift) => (value >>> shift) & 0xff).join('.')
+}
+
 function normalizeTargetHost(rawHost: unknown): string | null {
   if (typeof rawHost !== 'string') {
     return null
@@ -75,11 +89,13 @@ function normalizeTargetHost(rawHost: unknown): string | null {
     return null
   }
   const addressWithoutZone = host.split('%', 1)[0] ?? host
-  const kind = classifyRemotePairingHostname(addressWithoutZone)
-  if (isIP(addressWithoutZone) === 0) {
+  const decimalIPv4 = decimalToIPv4(addressWithoutZone)
+  const canonicalAddress = decimalIPv4 ?? addressWithoutZone
+  const kind = classifyRemotePairingHostname(canonicalAddress)
+  if (isIP(addressWithoutZone) === 0 && !decimalIPv4) {
     return kind === 'loopback' ? null : host
   }
-  const isLinkLocalIpv4 = addressWithoutZone.startsWith('169.254.')
+  const isLinkLocalIpv4 = canonicalAddress.startsWith('169.254.')
   return kind === 'lan' || isLinkLocalIpv4 ? host : null
 }
 

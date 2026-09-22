@@ -124,7 +124,8 @@ describe('launchAgentBackgroundSession', () => {
     expect(mockSpawn).toHaveBeenCalledWith(
       expect.objectContaining({
         cwd: '/repo/worktree',
-        command: "claude '--dangerously-skip-permissions' 'run the automation'",
+        command:
+          "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'run the automation'",
         env: expect.objectContaining({
           KOLUX_TAB_ID: tabId,
           KOLUX_WORKTREE_ID: 'wt-1'
@@ -277,7 +278,8 @@ describe('launchAgentBackgroundSession', () => {
       expect.objectContaining({
         cwd: folderPath,
         shellOverride: 'wsl.exe',
-        command: "claude '--dangerously-skip-permissions' 'run the automation'"
+        command:
+          "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'run the automation'"
       })
     )
   })
@@ -339,7 +341,7 @@ describe('launchAgentBackgroundSession', () => {
     expect(mockSpawn).toHaveBeenCalledWith(
       expect.objectContaining({
         cwd: 'C:\\Users\\jinwo\\repo\\feature',
-        command: `claude '--dangerously-skip-permissions' 'don'"'"'t use powershell quoting'`,
+        command: `claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'don'"'"'t use powershell quoting'`,
         connectionId: null,
         worktreeId: 'wt-1',
         tabId: expect.stringMatching(UUID_RE)

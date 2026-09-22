@@ -26,7 +26,9 @@ const registeredHosts: string[] = []
 /** A remote host whose only readable file is a package.json naming a host-specific homepage. */
 function registerHomepageHost(connectionId: string, homepage: string) {
   const stat = vi.fn(async (filePath: string) => {
-    if (!filePath.endsWith('/package.json')) {
+    // Why both separators: the fixture repoPath is a real local temp dir standing in for a
+    // remote path, and joinWorktreeRelativePath joins it win32-style on this host.
+    if (!filePath.replace(/\\/g, '/').endsWith('/package.json')) {
       throw new Error('ENOENT')
     }
     return { type: 'file', size: 64, mtime: 0 }
@@ -258,7 +260,7 @@ describe('detectRepoIcon', () => {
       detectRepoIcon({ repoPath, kind: 'git', executionHostId: 'local' })
     ).resolves.toEqual({
       type: 'image',
-      src: 'https://github.com/txais.png?size=64',
+      src: 'https://github.com/TxaisX.png?size=64',
       source: 'github',
       label: 'TxaisX/nightshift'
     })
@@ -282,7 +284,7 @@ describe('detectRepoIcon', () => {
       detectRepoIcon({ repoPath, kind: 'git', executionHostId: 'local' })
     ).resolves.toEqual({
       type: 'image',
-      src: 'https://github.com/txais.png?size=64',
+      src: 'https://github.com/TxaisX.png?size=64',
       source: 'github',
       label: 'TxaisX/nightshift'
     })
@@ -302,7 +304,7 @@ describe('detectRepoIcon', () => {
   it('uses the resolved fork upstream for both metadata and the GitHub avatar', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/kolux.git'], {
+    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/nightshift.git'], {
       cwd: repoPath
     })
     await gitExecFileAsync(['remote', 'add', 'upstream', 'git@github.com:TxaisX/nightshift.git'], {
@@ -319,12 +321,12 @@ describe('detectRepoIcon', () => {
       },
       repoIcon: {
         type: 'image',
-        src: 'https://github.com/txais.png?size=64',
+        src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
         label: 'TxaisX/nightshift'
       },
       // Why: fork parents resolve host-qualified so avatars/links stay on the fork's server.
-      upstream: { owner: 'txaisx', repo: 'kolux', host: 'github.com' }
+      upstream: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' }
     })
   })
 

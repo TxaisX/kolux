@@ -7,7 +7,7 @@ import type { AgentSessionMutationEnvelope } from '../../../shared/agent-session
 import { encodeAgentSessionQuestionAnswers } from '../../../shared/agent-session-question-answer'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
 import { journalDirectoryFor } from '../agent-session-journal/journal-paths'
-import { openAgentSessionJournal } from '../agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import type {
   AgentSessionDispatchOutcome,
   StructuredAgentSessionAdapter
@@ -24,6 +24,7 @@ import {
 } from './structured-agent-session-host-test-data'
 
 const CALLER = { callerKey: 'client-1' }
+const journals = createTrackedJournalOpener()
 
 function envelope(method: string, fields: Record<string, unknown>): AgentSessionMutationEnvelope {
   return {
@@ -66,7 +67,7 @@ function adapter(): StructuredAgentSessionAdapter {
 }
 
 async function seedGroupedQuestion(): Promise<{ itemId: string; revision: number }> {
-  const journal = await openAgentSessionJournal({
+  const journal = await journals.open({
     identity: {
       sessionId: SESSION,
       workspaceId: 'workspace-1',
@@ -139,6 +140,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  await journals.closeAll()
   await host.flushAllStreamedEvents()
   await rm(root, { recursive: true, force: true })
 })

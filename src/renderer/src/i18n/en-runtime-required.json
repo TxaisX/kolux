@@ -326,6 +326,12 @@
           }
         }
       },
+      "composer": {
+        "WorkspaceComposer": {
+          "send-failed": "Could not send to {{value0}}",
+          "sent": "Sent to {{value0}}"
+        }
+      },
       "contextual": {
         "tours": {
           "ContextualTourControl": {
@@ -583,6 +589,15 @@
           "ProjectViewWrapper": {
             "1bf8c01c8b": "Switch to a Table view to work with this project in Kolux."
           }
+        }
+      },
+      "launch-agents": {
+        "LaunchAgentsDialog": {
+          "launchCount": "Launch {{count}}",
+          "launched": "Launching {{count}} agent sessions"
+        },
+        "LaunchAgentsLineup": {
+          "lineup": "Lineup ({{count}})"
         }
       },
       "linear-issue-attribute-filter-dropdowns": {
@@ -1503,16 +1518,7 @@
           "ask_before_closing_running_terminals_description": "Show a confirmation before closing a terminal that has a running command or agent.",
           "ask_before_closing_running_terminals_title": "Ask Before Closing Running Terminals",
           "cc8c5ca224": "Windows default",
-          "d78fc4fdef": "Loading distributions",
-          "minimumContrast": {
-            "automatic": "Automatic: {{light}} on light backgrounds, {{dark}} on dark.",
-            "description": "Lifts terminal foreground colors that sit too close to the background. Leave blank for automatic, or set 1 to render program colors exactly as sent.",
-            "disabled": "Correction off. Programs that rely on low contrast, like Powerline separators, render as sent.",
-            "pinned": "Targets {{ratio}}:1 contrast for foreground colors, where possible.",
-            "placeholder": "Auto",
-            "suffix": "blank = automatic, 1 = off",
-            "title": "Minimum Contrast Ratio"
-          }
+          "d78fc4fdef": "Loading distributions"
         },
         "TerminalSettingsPreview": {
           "d06664e889": "dark"
@@ -1874,6 +1880,10 @@
         "SetupScriptPromptCard": {
           "dcaa645da5": "ok"
         },
+        "SidebarFeedbackDialog": {
+          "26108d3699": "Join Discord",
+          "3460258a54": "Follow on X"
+        },
         "SidebarHeader": {
           "49f62c5665": "Workspace board",
           "5c9c7c16aa": "Add a project to create workspaces",
@@ -1890,7 +1900,9 @@
           "9c95e1ce91": "Agents"
         },
         "SidebarSettingsHelpMenu": {
-          "d396773ef0": "checking"
+          "c4f8e1b72a": "X",
+          "d396773ef0": "checking",
+          "eb9884e55b": "Discord"
         },
         "SidebarToolbar": {
           "19e32d0e5f": "Open folder picker to add a project",
@@ -1899,9 +1911,11 @@
         "SidebarWorkspaceOptionsMenu": {
           "2d4f0eb933": "Default",
           "631b97eea9": "Host scope",
+          "65a9820bd1": "Agent statuses",
           "680043342f": "compact",
           "bc96dbd041": "Workspace options ({{value0}})",
-          "c7591b6014": "repo"
+          "c7591b6014": "repo",
+          "d7084e8bc8": "Agent activity"
         },
         "WorkspaceKanbanSettingsMenu": {
           "b45b350eb0": "Move {{value0}} left"
@@ -1987,6 +2001,10 @@
               }
             }
           }
+        },
+        "useAddRepoLocalFolderFlow": {
+          "skippedBatchFolders": "Some folders were skipped",
+          "skippedBatchFoldersDescription": "Add skipped folders individually to review or confirm them."
         }
       },
       "skills": {
@@ -2295,6 +2313,9 @@
             "591f9b12c1": "Split Up",
             "af80ed83c1": "Split Down"
           },
+          "TabBar": {
+            "b1a132357f": "New tab"
+          },
           "TabBarQuickCommandsButton": {
             "c781f992e4": "destructive"
           },
@@ -2445,6 +2466,11 @@
           },
           "MobileDriverOverlay": {
             "3eed73394f": "Your keyboard is paused"
+          },
+          "TerminalPane": {
+            "ac112e9036": "Remove title",
+            "cc5a2dc706": "Edit pane title: {{value0}}",
+            "f984ab2a30": "Remove pane title: {{value0}}"
           },
           "TerminalRemoteRuntimeReconnectBanner": {
             "retryingBody": "Kolux will retry for up to one minute. This terminal will resume if the connection returns."
@@ -2649,6 +2675,10 @@
         "toggleDetails": "Toggle turn details",
         "workedFor": "Worked for {{value0}}",
         "workingFor": "Working for {{value0}}"
+      },
+      "toggle": {
+        "showChat": "Show chat view",
+        "showTerminal": "Show terminal"
       },
       "tool": {
         "countN": "{{value0}} tool calls",

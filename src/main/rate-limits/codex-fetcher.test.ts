@@ -274,23 +274,56 @@ describe('fetchCodexRateLimits', () => {
     await resultPromise
   })
 
-  it('kills the RPC child and skips PTY fallback when the fetch signal aborts', async () => {
-    const rpcChild = makeRpcChild()
-    childSpawnMock.mockReturnValue(rpcChild)
-    const controller = new AbortController()
+  // Why: terminateCodexProbeChild only sends SIGTERM on POSIX — Windows relies on
+  // stdin EOF alone, so pin a POSIX platform to assert kill() calls deterministically.
+  describe('POSIX-only child.kill assertions', () => {
+    const realPlatform = process.platform
+    const setPlatform = (value: NodeJS.Platform): void =>
+      void Object.defineProperty(process, 'platform', { configurable: true, value })
+    beforeEach(() => setPlatform('darwin'))
+    afterEach(() => setPlatform(realPlatform))
 
-    const resultPromise = fetchCodexRateLimits({ signal: controller.signal })
-    await vi.advanceTimersByTimeAsync(0)
+    it('kills the RPC child and skips PTY fallback when the fetch signal aborts', async () => {
+      const rpcChild = makeRpcChild()
+      childSpawnMock.mockReturnValue(rpcChild)
+      const controller = new AbortController()
 
-    controller.abort()
+      const resultPromise = fetchCodexRateLimits({ signal: controller.signal })
+      await vi.advanceTimersByTimeAsync(0)
 
-    await expect(resultPromise).resolves.toMatchObject({
-      provider: 'codex',
-      status: 'error',
-      error: 'Rate-limit fetch aborted'
+      controller.abort()
+
+      await expect(resultPromise).resolves.toMatchObject({
+        provider: 'codex',
+        status: 'error',
+        error: 'Rate-limit fetch aborted'
+      })
+      expect(rpcChild.kill).toHaveBeenCalledTimes(1)
+      expect(ptySpawnMock).not.toHaveBeenCalled()
     })
-    expect(rpcChild.kill).toHaveBeenCalledTimes(1)
-    expect(ptySpawnMock).not.toHaveBeenCalled()
+
+    it('removes RPC listeners when the app-server timeout settles', async () => {
+      const rpcChild = makeRpcChild()
+      childSpawnMock.mockReturnValue(rpcChild)
+
+      const resultPromise = fetchCodexRateLimits({ allowPtyFallback: false })
+      // Why: without an initialize response only the 30s boot deadline fires.
+      await vi.advanceTimersByTimeAsync(30_000)
+
+      await expect(resultPromise).resolves.toMatchObject({
+        provider: 'codex',
+        session: null,
+        weekly: null,
+        status: 'error',
+        error: 'RPC timeout'
+      })
+      expect(rpcChild.kill).toHaveBeenCalledTimes(1)
+      expect(rpcChild.stdout.listenerCount('data')).toBe(0)
+      expect(rpcChild.stderr.listenerCount('data')).toBe(0)
+      expect(rpcChild.listenerCount('error')).toBe(0)
+      expect(rpcChild.listenerCount('close')).toBe(0)
+      expect(ptySpawnMock).not.toHaveBeenCalled()
+    })
   })
 
   it('kills and unregisters the PTY fallback when the fetch signal aborts', async () => {
@@ -372,29 +405,6 @@ describe('fetchCodexRateLimits', () => {
       status: 'error'
     })
     expect(rpcChild.stdin.listenerCount('error')).toBe(0)
-    expect(ptySpawnMock).not.toHaveBeenCalled()
-  })
-
-  it('removes RPC listeners when the app-server timeout settles', async () => {
-    const rpcChild = makeRpcChild()
-    childSpawnMock.mockReturnValue(rpcChild)
-
-    const resultPromise = fetchCodexRateLimits({ allowPtyFallback: false })
-    // Why: without an initialize response only the 30s boot deadline fires.
-    await vi.advanceTimersByTimeAsync(30_000)
-
-    await expect(resultPromise).resolves.toMatchObject({
-      provider: 'codex',
-      session: null,
-      weekly: null,
-      status: 'error',
-      error: 'RPC timeout'
-    })
-    expect(rpcChild.kill).toHaveBeenCalledTimes(1)
-    expect(rpcChild.stdout.listenerCount('data')).toBe(0)
-    expect(rpcChild.stderr.listenerCount('data')).toBe(0)
-    expect(rpcChild.listenerCount('error')).toBe(0)
-    expect(rpcChild.listenerCount('close')).toBe(0)
     expect(ptySpawnMock).not.toHaveBeenCalled()
   })
 

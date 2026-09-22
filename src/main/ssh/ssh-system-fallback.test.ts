@@ -37,8 +37,18 @@ import { getRemoteHostPlatform } from './ssh-remote-platform'
 import type { SshTarget } from '../../shared/ssh-types'
 import type { SystemSshResolvedConfig } from './ssh-control-socket'
 
+// Why derived from SystemRoot/WINDIR, not a hardcoded 'C:\Windows': findSystemSsh() builds its
+// candidate from that same env var, and its value's casing (e.g. `C:\WINDOWS`) varies by machine —
+// a literal here can mismatch the real spawn() call even though both name the same file.
 const SYSTEM_SSH_PATH =
-  process.platform === 'win32' ? 'C:\\Windows\\System32\\OpenSSH\\ssh.exe' : '/usr/bin/ssh'
+  process.platform === 'win32'
+    ? join(
+        process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows',
+        'System32',
+        'OpenSSH',
+        'ssh.exe'
+      )
+    : '/usr/bin/ssh'
 
 function decodePowerShellCommand(command: string): string {
   const encoded = command.match(/-EncodedCommand\s+(\S+)/)?.[1]

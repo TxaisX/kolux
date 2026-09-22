@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Repo } from '../../shared/repo-types'
 import type { Store } from '../persistence'
 import type * as AgentTrustPretrustWorktrees from './agent-trust-pretrust-worktrees'
+import { MAX_PRE_TRUST_WORKTREES } from './agent-trust-pretrust-worktrees'
 
 const mocks = vi.hoisted(() => ({
   ipcHandlers: new Map<string, (...args: unknown[]) => unknown>(),
@@ -163,9 +164,11 @@ describe('agentTrust:preTrustWorktrees', () => {
     expect(mocks.writeClaudeProjectTrust).not.toHaveBeenCalled()
   })
 
-  it('rejects more than 6 worktree names before planning any path', async () => {
+  // Why MAX_PRE_TRUST_WORKTREES not a literal: the wave cap moved from 6 to 12
+  // (uncapped-seat-count launch shapes); a hardcoded 7 stopped exceeding it.
+  it(`rejects more than ${MAX_PRE_TRUST_WORKTREES} worktree names before planning any path`, async () => {
     registerAgentTrustHandlers(storeWithRepo(repo()))
-    const names = Array.from({ length: 7 }, (_, i) => `n${i}`)
+    const names = Array.from({ length: MAX_PRE_TRUST_WORKTREES + 1 }, (_, i) => `n${i}`)
 
     const result = await invokePreTrust({ repoId: 'repo-1', agent: 'claude', worktreeNames: names })
 

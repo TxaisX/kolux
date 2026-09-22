@@ -58,7 +58,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
     theme: 'system',
     terminalUseSeparateLightTheme: false,
-    terminalThemeDark: 'Ghostty Default Style Dark',
+    terminalThemeDark: 'Kolux Dark',
     terminalThemeLight: 'Builtin Tango Light',
     terminalDividerColorDark: '#3f3f46',
     terminalDividerColorLight: '#d4d4d8',

@@ -69,9 +69,13 @@ const baseOptions = {
 describe('resolveSharedElectronDistEntry', () => {
   it('keys the entry by version, platform, and arch under the git common dir', () => {
     const entry = resolveSharedElectronDistEntry(baseOptions)
-    expect(entry?.cacheRoot).toBe(path.join('/repo/.git', 'kolux-cache', 'electron'))
+    // Why path.resolve, not path.join: resolveGitCommonDir resolves git's raw
+    // output against repoRoot the same way, and on Windows a POSIX-looking
+    // '/repo/.git' resolves onto the current drive rather than staying bare.
+    const gitCommonDir = path.resolve('/repo', '/repo/.git')
+    expect(entry?.cacheRoot).toBe(path.join(gitCommonDir, 'kolux-cache', 'electron'))
     expect(entry?.entryPath).toBe(
-      path.join('/repo/.git', 'kolux-cache', 'electron', '43.4.1-darwin-arm64')
+      path.join(gitCommonDir, 'kolux-cache', 'electron', '43.4.1-darwin-arm64')
     )
     expect(entry?.markerPath).toBe(path.join('/repo/node_modules/electron', '.kolux-shared-dist'))
   })
@@ -122,12 +126,16 @@ describe('isUsableElectronDist', () => {
     expect(isUsableElectronDist(path.join(root, 'missing'), VERSION, PLATFORM_PATH)).toBe(false)
   })
 
-  it('rejects a symlink so a redirected entry is never treated as cache content', () => {
-    const root = makeRoot()
-    writeDist(path.join(root, 'real'))
-    symlinkSync(path.join(root, 'real'), path.join(root, 'link'), 'dir')
-    expect(isUsableElectronDist(path.join(root, 'link'), VERSION, PLATFORM_PATH)).toBe(false)
-  })
+  // Why: ordinary Windows CI tokens cannot create file symlinks without Developer Mode.
+  it.skipIf(process.platform === 'win32')(
+    'rejects a symlink so a redirected entry is never treated as cache content',
+    () => {
+      const root = makeRoot()
+      writeDist(path.join(root, 'real'))
+      symlinkSync(path.join(root, 'real'), path.join(root, 'link'), 'dir')
+      expect(isUsableElectronDist(path.join(root, 'link'), VERSION, PLATFORM_PATH)).toBe(false)
+    }
+  )
 })
 
 describe('publishSharedElectronDist', () => {

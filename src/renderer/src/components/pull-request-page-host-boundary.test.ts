@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 const COMPONENT_ROOT = __dirname
 
 function componentSource(relativePath: string): string {
-  return readFileSync(join(COMPONENT_ROOT, relativePath), 'utf8')
+  // Why: normalize CRLF so checkout line-ending settings don't break literal-\n substring checks.
+  return readFileSync(join(COMPONENT_ROOT, relativePath), 'utf8').replace(/\r\n/g, '\n')
 }
 
 function joinedSource(relativePaths: string[]): string {

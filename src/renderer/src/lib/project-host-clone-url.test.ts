@@ -26,7 +26,8 @@ describe('getProjectHostCloneUrl', () => {
           }
         })
       )
-    ).toBe('https://github.com/TxaisX/nightshift.git')
+      // Why: the function only trims/encodes — it never re-cases the identity.
+    ).toBe('https://github.com/txais/kolux.git')
   })
 
   it('preserves an authenticated Enterprise host and port', () => {

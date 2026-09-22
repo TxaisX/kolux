@@ -28,6 +28,16 @@ if (!process.env.GIT_CONFIG_GLOBAL && existsSync(realGlobalGitConfig)) {
 process.env.HOME = sandboxHome
 process.env.USERPROFILE = sandboxHome
 
+// Why: forks reuse one process across files; a node-env file that assigns globalThis.window and
+// never removes it makes the next happy-dom file keep that stub, then delete it on teardown, so
+// every later DOM file on that worker fails with "window is not defined" (full-suite only).
+const globalsAtStart = new Set(Object.getOwnPropertyNames(globalThis))
+
 afterAll(() => {
+  for (const name of Object.getOwnPropertyNames(globalThis)) {
+    if (!globalsAtStart.has(name)) {
+      Reflect.deleteProperty(globalThis, name)
+    }
+  }
   rmSync(sandboxHome, { recursive: true, force: true })
 })

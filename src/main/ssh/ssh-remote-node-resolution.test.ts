@@ -17,6 +17,9 @@ vi.mock('./ssh-relay-deploy-helpers', () => ({
 const { resolveRemoteNodePath } = await import('./ssh-remote-node-resolution')
 
 const conn = {} as SshConnection
+// Why: a handful of cases below run the generated probe script through a real /bin/sh, which
+// Windows lacks.
+const POSIX = process.platform !== 'win32'
 
 function decodePowerShellCommand(command: string): string {
   const match = command.match(/-EncodedCommand\s+([A-Za-z0-9+/=]+)/)
@@ -151,7 +154,7 @@ describe('resolveRemoteNodePath', () => {
     expect(callScript).toContain('"$mise_dir/shims/node"')
   })
 
-  it('finds node under a MISE_DATA_DIR exported from a shell dotfile', async () => {
+  it.skipIf(!POSIX)('finds node under a MISE_DATA_DIR exported from a shell dotfile', async () => {
     execCommandMock
       .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
       .mockResolvedValueOnce('v20.11.0\n')
@@ -183,59 +186,65 @@ describe('resolveRemoteNodePath', () => {
     }
   })
 
-  it('finds node under a MISE_DATA_DIR present only in the probe environment', async () => {
-    execCommandMock
-      .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
-      .mockResolvedValueOnce('v20.11.0\n')
+  it.skipIf(!POSIX)(
+    'finds node under a MISE_DATA_DIR present only in the probe environment',
+    async () => {
+      execCommandMock
+        .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
+        .mockResolvedValueOnce('v20.11.0\n')
 
-    await resolveRemoteNodePath(conn)
+      await resolveRemoteNodePath(conn)
 
-    const callScript = execCommandMock.mock.calls[0]![1] as string
-    const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-mise-env-probe-'))
-    try {
-      const miseDataDir = path.join(home, 'env-mise')
-      const installPath = path.join(miseDataDir, 'installs/node/v20.11.0/bin/node')
-      mkdirSync(path.dirname(installPath), { recursive: true })
-      writeFileSync(installPath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
-      chmodSync(installPath, 0o755)
+      const callScript = execCommandMock.mock.calls[0]![1] as string
+      const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-mise-env-probe-'))
+      try {
+        const miseDataDir = path.join(home, 'env-mise')
+        const installPath = path.join(miseDataDir, 'installs/node/v20.11.0/bin/node')
+        mkdirSync(path.dirname(installPath), { recursive: true })
+        writeFileSync(installPath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
+        chmodSync(installPath, 0o755)
 
-      const output = execFileSync('/bin/sh', ['-c', callScript], {
-        encoding: 'utf8',
-        env: { HOME: home, MISE_DATA_DIR: miseDataDir, PATH: '/usr/bin:/bin' }
-      })
+        const output = execFileSync('/bin/sh', ['-c', callScript], {
+          encoding: 'utf8',
+          env: { HOME: home, MISE_DATA_DIR: miseDataDir, PATH: '/usr/bin:/bin' }
+        })
 
-      expect(output.split('\n')).toContain(installPath)
-    } finally {
-      rmSync(home, { recursive: true, force: true })
+        expect(output.split('\n')).toContain(installPath)
+      } finally {
+        rmSync(home, { recursive: true, force: true })
+      }
     }
-  })
+  )
 
-  it('falls back to XDG_DATA_HOME for mise installs when MISE_DATA_DIR is unset', async () => {
-    execCommandMock
-      .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
-      .mockResolvedValueOnce('v20.11.0\n')
+  it.skipIf(!POSIX)(
+    'falls back to XDG_DATA_HOME for mise installs when MISE_DATA_DIR is unset',
+    async () => {
+      execCommandMock
+        .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
+        .mockResolvedValueOnce('v20.11.0\n')
 
-    await resolveRemoteNodePath(conn)
+      await resolveRemoteNodePath(conn)
 
-    const callScript = execCommandMock.mock.calls[0]![1] as string
-    const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-mise-xdg-probe-'))
-    try {
-      const xdgDataHome = path.join(home, 'xdg')
-      const installPath = path.join(xdgDataHome, 'mise/installs/node/v20.11.0/bin/node')
-      mkdirSync(path.dirname(installPath), { recursive: true })
-      writeFileSync(installPath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
-      chmodSync(installPath, 0o755)
+      const callScript = execCommandMock.mock.calls[0]![1] as string
+      const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-mise-xdg-probe-'))
+      try {
+        const xdgDataHome = path.join(home, 'xdg')
+        const installPath = path.join(xdgDataHome, 'mise/installs/node/v20.11.0/bin/node')
+        mkdirSync(path.dirname(installPath), { recursive: true })
+        writeFileSync(installPath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
+        chmodSync(installPath, 0o755)
 
-      const output = execFileSync('/bin/sh', ['-c', callScript], {
-        encoding: 'utf8',
-        env: { HOME: home, XDG_DATA_HOME: xdgDataHome, PATH: '/usr/bin:/bin' }
-      })
+        const output = execFileSync('/bin/sh', ['-c', callScript], {
+          encoding: 'utf8',
+          env: { HOME: home, XDG_DATA_HOME: xdgDataHome, PATH: '/usr/bin:/bin' }
+        })
 
-      expect(output.split('\n')).toContain(installPath)
-    } finally {
-      rmSync(home, { recursive: true, force: true })
+        expect(output.split('\n')).toContain(installPath)
+      } finally {
+        rmSync(home, { recursive: true, force: true })
+      }
     }
-  })
+  )
 
   it('quotes version-manager directory prefixes while leaving globs active', async () => {
     execCommandMock
@@ -285,7 +294,7 @@ describe('resolveRemoteNodePath', () => {
     expect(callScript.trimEnd()).toMatch(/\ntrue$/)
   })
 
-  it('expands tilde NVM_DIR assignments from shell dotfiles', async () => {
+  it.skipIf(!POSIX)('expands tilde NVM_DIR assignments from shell dotfiles', async () => {
     execCommandMock
       .mockResolvedValueOnce('/home/u/.nvm/versions/node/v20.11.0/bin/node\n')
       .mockResolvedValueOnce('v20.11.0\n')
@@ -312,66 +321,78 @@ describe('resolveRemoteNodePath', () => {
     }
   })
 
-  it('expands an $XDG_DATA_HOME-relative MISE_DATA_DIR assignment from shell dotfiles', async () => {
-    execCommandMock
-      .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
-      .mockResolvedValueOnce('v20.11.0\n')
+  it.skipIf(!POSIX)(
+    'expands an $XDG_DATA_HOME-relative MISE_DATA_DIR assignment from shell dotfiles',
+    async () => {
+      execCommandMock
+        .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
+        .mockResolvedValueOnce('v20.11.0\n')
 
-    await resolveRemoteNodePath(conn)
+      await resolveRemoteNodePath(conn)
 
-    const callScript = execCommandMock.mock.calls[0]![1] as string
-    const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-xdg-probe-'))
-    try {
-      // A name the seeded `${XDG_DATA_HOME:-$HOME/.local/share}/mise` default cannot reach, so
-      // only the dotfile arm can find it.
-      const nodePath = path.join(home, 'xdg-data/custom-mise/installs/node/20.11.0/bin/node')
-      mkdirSync(path.dirname(nodePath), { recursive: true })
-      writeFileSync(nodePath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
-      chmodSync(nodePath, 0o755)
-      writeFileSync(path.join(home, '.zshrc'), 'export MISE_DATA_DIR=$XDG_DATA_HOME/custom-mise\n')
+      const callScript = execCommandMock.mock.calls[0]![1] as string
+      const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-xdg-probe-'))
+      try {
+        // A name the seeded `${XDG_DATA_HOME:-$HOME/.local/share}/mise` default cannot reach, so
+        // only the dotfile arm can find it.
+        const nodePath = path.join(home, 'xdg-data/custom-mise/installs/node/20.11.0/bin/node')
+        mkdirSync(path.dirname(nodePath), { recursive: true })
+        writeFileSync(nodePath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
+        chmodSync(nodePath, 0o755)
+        writeFileSync(
+          path.join(home, '.zshrc'),
+          'export MISE_DATA_DIR=$XDG_DATA_HOME/custom-mise\n'
+        )
 
-      const output = execFileSync('/bin/sh', ['-c', callScript], {
-        encoding: 'utf8',
-        env: {
-          HOME: home,
-          PATH: '/usr/bin:/bin',
-          XDG_DATA_HOME: path.join(home, 'xdg-data')
-        }
-      })
+        const output = execFileSync('/bin/sh', ['-c', callScript], {
+          encoding: 'utf8',
+          env: {
+            HOME: home,
+            PATH: '/usr/bin:/bin',
+            XDG_DATA_HOME: path.join(home, 'xdg-data')
+          }
+        })
 
-      expect(output.split('\n')).toContain(nodePath)
-    } finally {
-      rmSync(home, { recursive: true, force: true })
+        expect(output.split('\n')).toContain(nodePath)
+      } finally {
+        rmSync(home, { recursive: true, force: true })
+      }
     }
-  })
+  )
 
-  it('falls back to the POSIX default when an $XDG_DATA_HOME assignment has no env value', async () => {
-    execCommandMock
-      .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
-      .mockResolvedValueOnce('v20.11.0\n')
+  it.skipIf(!POSIX)(
+    'falls back to the POSIX default when an $XDG_DATA_HOME assignment has no env value',
+    async () => {
+      execCommandMock
+        .mockResolvedValueOnce('/home/u/.local/share/mise/shims/node\n')
+        .mockResolvedValueOnce('v20.11.0\n')
 
-    await resolveRemoteNodePath(conn)
+      await resolveRemoteNodePath(conn)
 
-    const callScript = execCommandMock.mock.calls[0]![1] as string
-    const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-xdg-default-probe-'))
-    try {
-      // sshd's exec channel runs without the profile, so XDG_DATA_HOME is often simply absent.
-      const nodePath = path.join(home, '.local/share/custom-mise/installs/node/20.11.0/bin/node')
-      mkdirSync(path.dirname(nodePath), { recursive: true })
-      writeFileSync(nodePath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
-      chmodSync(nodePath, 0o755)
-      writeFileSync(path.join(home, '.zshrc'), 'export MISE_DATA_DIR=$XDG_DATA_HOME/custom-mise\n')
+      const callScript = execCommandMock.mock.calls[0]![1] as string
+      const home = mkdtempSync(path.join(os.tmpdir(), 'kolux-xdg-default-probe-'))
+      try {
+        // sshd's exec channel runs without the profile, so XDG_DATA_HOME is often simply absent.
+        const nodePath = path.join(home, '.local/share/custom-mise/installs/node/20.11.0/bin/node')
+        mkdirSync(path.dirname(nodePath), { recursive: true })
+        writeFileSync(nodePath, '#!/bin/sh\nprintf "v20.11.0\\n"\n')
+        chmodSync(nodePath, 0o755)
+        writeFileSync(
+          path.join(home, '.zshrc'),
+          'export MISE_DATA_DIR=$XDG_DATA_HOME/custom-mise\n'
+        )
 
-      const output = execFileSync('/bin/sh', ['-c', callScript], {
-        encoding: 'utf8',
-        env: { HOME: home, PATH: '/usr/bin:/bin' }
-      })
+        const output = execFileSync('/bin/sh', ['-c', callScript], {
+          encoding: 'utf8',
+          env: { HOME: home, PATH: '/usr/bin:/bin' }
+        })
 
-      expect(output.split('\n')).toContain(nodePath)
-    } finally {
-      rmSync(home, { recursive: true, force: true })
+        expect(output.split('\n')).toContain(nodePath)
+      } finally {
+        rmSync(home, { recursive: true, force: true })
+      }
     }
-  })
+  )
 
   it('joins probes with newlines, not ||, so a missing dir does not mask later probes', async () => {
     execCommandMock

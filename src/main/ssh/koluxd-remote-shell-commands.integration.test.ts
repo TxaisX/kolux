@@ -28,6 +28,8 @@ import {
 } from './koluxd-state-snapshot'
 import { getRemoteHostPlatform } from './ssh-remote-platform'
 
+// Why: this suite runs the generated commands through a real /bin/sh, which Windows lacks.
+const POSIX = process.platform !== 'win32'
 const host = getRemoteHostPlatform('linux-x64')
 let root = ''
 let dataDir = ''
@@ -55,7 +57,7 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true })
 })
 
-describe('state snapshot commands, run for real', () => {
+describe.skipIf(!POSIX)('state snapshot commands, run for real', () => {
   it('captures, then restores state the newer build overwrote', () => {
     expect(
       parseKoluxdSnapshotCapture(sh(captureKoluxdStateSnapshotCommand(host, dataDir, snapshotDir)))
@@ -125,7 +127,7 @@ describe('state snapshot commands, run for real', () => {
   })
 })
 
-describe('liveness and stop commands, run for real', () => {
+describe.skipIf(!POSIX)('liveness and stop commands, run for real', () => {
   it('reports UNKNOWN with no pid file, and DEAD for a pid that has exited', () => {
     expect(parseKoluxdLiveness(sh(koluxdLivenessProbeCommand(host, versionDir)))).toBe('UNKNOWN')
     writeFileSync(join(versionDir, KOLUXD_PID_FILENAME), 'not-a-pid')

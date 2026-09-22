@@ -19,7 +19,10 @@ const { _resetWorktreeScanCacheForTests } = await import('../../../git/worktree-
 const { isRegisteredWorktreePath, invalidateAuthorizedRootsCache } =
   await import('../../registered-worktree-roots-cache')
 
-const REPO_PATH = '/workspace/repo'
+// Why a drive letter on win32: registration resolves this path with node:path's `resolve`, which
+// treats a driveless `/workspace/repo` as relative to the current drive — so an unresolved raw
+// comparison against the registered (resolved) root would never match on Windows.
+const REPO_PATH = process.platform === 'win32' ? 'C:\\workspace\\repo' : '/workspace/repo'
 const repo = {
   id: 'repo-1',
   path: REPO_PATH,

@@ -71,6 +71,21 @@ function mockProcessGroupSignals(): ReturnType<typeof vi.spyOn> {
   }) as typeof process.kill)
 }
 
+/** Shared rig for the wedged gh/glab kill tests: hangs the CLI child, stubs process-group
+ *  signals for the body, and restores the spy afterward regardless of outcome. */
+async function withWedgedCliKill(
+  run: (processKill: ReturnType<typeof mockProcessGroupSignals>) => Promise<void>
+): Promise<void> {
+  const child = createMockChildProcess(1234)
+  mockWedgedCliSpawn(child)
+  const processKill = mockProcessGroupSignals()
+  try {
+    await run(processKill)
+  } finally {
+    processKill.mockRestore()
+  }
+}
+
 function createMockTaskkillProcess(): MockChildProcess {
   const child = createMockChildProcess(9000)
   child.unref = vi.fn()
@@ -299,44 +314,40 @@ describe('runner execFile timeout handling', () => {
   // Why the group and not the child (#18234): `gh` and `glab` on PATH are often
   // shims, so the deadline has a chain to reap. Signalling only the direct child
   // leaves the rest of it running under init long after the deadline passed.
-  it('signals the whole gh process group when gh never calls back', async () => {
-    const child = createMockChildProcess(1234)
-    mockWedgedCliSpawn(child)
-    const processKill = mockProcessGroupSignals()
-    try {
-      const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
-        cwd: '/repo'
+  // Why skipIf(win32): asserts POSIX detached+process-group kill; Windows takes
+  // the taskkill-tree path instead (spawn-resolution.ts, process-tree-termination.ts),
+  // covered on win32 by process-tree-termination.test.ts.
+  it.skipIf(process.platform === 'win32')(
+    'signals the whole gh process group when gh never calls back',
+    () =>
+      withWedgedCliKill(async (processKill) => {
+        const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
+          cwd: '/repo'
+        })
+        const rejection = expect(promise).rejects.toThrow('gh timed out.')
+        await vi.advanceTimersByTimeAsync(30_000)
+        expect(spawnMock.mock.calls[0][2].detached).toBe(true)
+        await vi.advanceTimersByTimeAsync(2_000)
+        await rejection
+        expect(processKill).toHaveBeenCalledWith(-1234, undefined)
       })
-      const rejection = expect(promise).rejects.toThrow('gh timed out.')
-      await vi.advanceTimersByTimeAsync(30_000)
-      expect(spawnMock.mock.calls[0][2].detached).toBe(true)
-      await vi.advanceTimersByTimeAsync(2_000)
+  )
 
-      await rejection
-      expect(processKill).toHaveBeenCalledWith(-1234, undefined)
-    } finally {
-      processKill.mockRestore()
-    }
-  })
-
-  it('signals the whole glab process group when glab never calls back', async () => {
-    const child = createMockChildProcess(1234)
-    mockWedgedCliSpawn(child)
-    const processKill = mockProcessGroupSignals()
-    try {
-      const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fnightshift/issues'], {
-        cwd: '/repo'
+  // Why skipIf(win32): see the gh version above.
+  it.skipIf(process.platform === 'win32')(
+    'signals the whole glab process group when glab never calls back',
+    () =>
+      withWedgedCliKill(async (processKill) => {
+        const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fnightshift/issues'], {
+          cwd: '/repo'
+        })
+        const rejection = expect(promise).rejects.toThrow('glab timed out.')
+        await vi.advanceTimersByTimeAsync(30_000)
+        await vi.advanceTimersByTimeAsync(2_000)
+        await rejection
+        expect(processKill).toHaveBeenCalledWith(-1234, undefined)
       })
-      const rejection = expect(promise).rejects.toThrow('glab timed out.')
-      await vi.advanceTimersByTimeAsync(30_000)
-      await vi.advanceTimersByTimeAsync(2_000)
-
-      await rejection
-      expect(processKill).toHaveBeenCalledWith(-1234, undefined)
-    } finally {
-      processKill.mockRestore()
-    }
-  })
+  )
 
   it('aborts glab retry backoff instead of starting another attempt', async () => {
     const controller = new AbortController()
@@ -365,34 +376,28 @@ describe('runner execFile timeout handling', () => {
     expect(spawnMock).toHaveBeenCalledTimes(1)
   })
 
-  it('kills an active gh execution when its caller aborts', async () => {
-    const child = createMockChildProcess(1234)
-    mockWedgedCliSpawn(child)
-    const processKill = mockProcessGroupSignals()
-    try {
-      const controller = new AbortController()
-      const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
-        cwd: '/repo',
-        signal: controller.signal
+  // Why skipIf(win32): see the gh deadline test above.
+  it.skipIf(process.platform === 'win32')(
+    'kills an active gh execution when its caller aborts',
+    () =>
+      withWedgedCliKill(async (processKill) => {
+        const controller = new AbortController()
+        const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
+          cwd: '/repo',
+          signal: controller.signal
+        })
+        const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+        await vi.waitFor(() => expect(spawnMock).toHaveBeenCalled())
+        controller.abort()
+        await vi.advanceTimersByTimeAsync(2_000)
+        await rejection
+        expect(processKill).toHaveBeenCalledWith(-1234, undefined)
       })
-      const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+  )
 
-      await vi.waitFor(() => expect(spawnMock).toHaveBeenCalled())
-      controller.abort()
-      await vi.advanceTimersByTimeAsync(2_000)
-
-      await rejection
-      expect(processKill).toHaveBeenCalledWith(-1234, undefined)
-    } finally {
-      processKill.mockRestore()
-    }
-  })
-
-  it('honors explicit gh timeouts', async () => {
-    const child = createMockChildProcess(1234)
-    mockWedgedCliSpawn(child)
-    const processKill = mockProcessGroupSignals()
-    try {
+  // Why skipIf(win32): see the gh deadline test above.
+  it.skipIf(process.platform === 'win32')('honors explicit gh timeouts', () =>
+    withWedgedCliKill(async (processKill) => {
       const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
         cwd: '/repo',
         timeout: 1234
@@ -402,13 +407,10 @@ describe('runner execFile timeout handling', () => {
       expect(processKill).not.toHaveBeenCalled()
       await vi.advanceTimersByTimeAsync(1)
       await vi.advanceTimersByTimeAsync(2_000)
-
       await rejection
       expect(processKill).toHaveBeenCalledWith(-1234, undefined)
-    } finally {
-      processKill.mockRestore()
-    }
-  })
+    })
+  )
 
   it('runs gh non-interactively while preserving explicit env', async () => {
     let capturedEnv: NodeJS.ProcessEnv | undefined

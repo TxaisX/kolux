@@ -23,7 +23,7 @@ async function writeBundle(root: string, name = 'Skills'): Promise<{ path: strin
     JSON.stringify({
       manifestVersion: 1,
       id: 'kolux-skills',
-      publisher: 'TxaisX',
+      publisher: 'txais',
       name,
       version: '1.0.0',
       engines: { kolux: '>=1.0.0' },

@@ -338,24 +338,35 @@ describe('openCodexAppServerConnection', () => {
   })
 
   it('exposes an unproven handshake child for later cleanup', async () => {
-    vi.useFakeTimers()
-    const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
-    child.stdin.once('data', () => {
-      child.stdout.write(
-        `${JSON.stringify({ id: 1, error: { code: -32602, message: 'initialize failed' } })}\n`
+    // Why: the synthetic pid has no real process, so the win32 teardown branch would
+    // shell out to a real (and here sandboxed/blocked) taskkill — force the POSIX
+    // branch, which never leaves the injectable child.kill mock.
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+    try {
+      vi.useFakeTimers()
+      const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
+      child.stdin.once('data', () => {
+        child.stdout.write(
+          `${JSON.stringify({ id: 1, error: { code: -32602, message: 'initialize failed' } })}\n`
+        )
+      })
+      const opening = rejection(
+        openCodexAppServerConnection({ command: 'codex', args: ['app-server'] }, {}, spawnImpl)
       )
-    })
-    const opening = rejection(
-      openCodexAppServerConnection({ command: 'codex', args: ['app-server'] }, {}, spawnImpl)
-    )
 
-    await vi.advanceTimersByTimeAsync(5_000)
-    const error = (await opening) as Error & { connection?: CodexAppServerConnection }
+      await vi.advanceTimersByTimeAsync(5_000)
+      const error = (await opening) as Error & { connection?: CodexAppServerConnection }
 
-    expect(error.name).toBe('CodexAppServerHandshakeExitUnprovenError')
-    expect(error.connection).toBeDefined()
-    child.emit('close', 1, null)
-    await expect(error.connection?.close()).resolves.toBe(true)
+      expect(error.name).toBe('CodexAppServerHandshakeExitUnprovenError')
+      expect(error.connection).toBeDefined()
+      child.emit('close', 1, null)
+      await expect(error.connection?.close()).resolves.toBe(true)
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform)
+      }
+    }
   })
 
   it('times out one request without ending the connection', async () => {
@@ -410,43 +421,64 @@ describe('openCodexAppServerConnection', () => {
   }, 10_000)
 
   it('shares one eventual exit proof across concurrent close callers', async () => {
-    vi.useFakeTimers()
-    const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
-    answerInitialize(child)
-    const connection = await openCodexAppServerConnection(
-      { command: 'codex', args: ['app-server'] },
-      {},
-      spawnImpl
-    )
-    child.kill.mockImplementation(() => {
-      setTimeout(() => child.emit('exit', null, 'SIGKILL'), 10)
-      return true
-    })
+    // Why: the synthetic pid has no real process, so the win32 teardown branch would
+    // shell out to a real (and here sandboxed/blocked) taskkill instead of exercising
+    // the SIGSTOP/SIGKILL sequence this test pins — force the POSIX branch instead.
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+    try {
+      vi.useFakeTimers()
+      const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
+      answerInitialize(child)
+      const connection = await openCodexAppServerConnection(
+        { command: 'codex', args: ['app-server'] },
+        {},
+        spawnImpl
+      )
+      child.kill.mockImplementation(() => {
+        setTimeout(() => child.emit('exit', null, 'SIGKILL'), 10)
+        return true
+      })
 
-    const first = connection.close()
-    const second = connection.close()
-    await vi.advanceTimersByTimeAsync(4_100)
+      const first = connection.close()
+      const second = connection.close()
+      await vi.advanceTimersByTimeAsync(4_100)
 
-    await expect(Promise.all([first, second])).resolves.toEqual([true, true])
-    expect(child.kill.mock.calls.map(([signal]) => signal)).toEqual(['SIGSTOP', 'SIGKILL'])
+      await expect(Promise.all([first, second])).resolves.toEqual([true, true])
+      expect(child.kill.mock.calls.map(([signal]) => signal)).toEqual(['SIGSTOP', 'SIGKILL'])
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform)
+      }
+    }
   })
 
   it('allows a later close to observe exit after an unproven attempt', async () => {
-    vi.useFakeTimers()
-    const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
-    answerInitialize(child)
-    const connection = await openCodexAppServerConnection(
-      { command: 'codex', args: ['app-server'] },
-      {},
-      spawnImpl
-    )
+    // Why: the synthetic pid has no real process — force the POSIX teardown branch so
+    // this exercises the injectable child.kill path instead of a real taskkill call.
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+    try {
+      vi.useFakeTimers()
+      const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
+      answerInitialize(child)
+      const connection = await openCodexAppServerConnection(
+        { command: 'codex', args: ['app-server'] },
+        {},
+        spawnImpl
+      )
 
-    const first = connection.close()
-    await vi.advanceTimersByTimeAsync(5_000)
-    await expect(first).resolves.toBe(false)
-    child.emit('exit', 0, null)
+      const first = connection.close()
+      await vi.advanceTimersByTimeAsync(5_000)
+      await expect(first).resolves.toBe(false)
+      child.emit('exit', 0, null)
 
-    await expect(connection.close()).resolves.toBe(true)
+      await expect(connection.close()).resolves.toBe(true)
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform)
+      }
+    }
   })
 
   it.each([1_090_188, 2_900_090])(
@@ -599,34 +631,45 @@ describe('openCodexAppServerConnection', () => {
       frame: { id: 41, method: 'item/fileChange/requestApproval', params: { itemId: 'item-1' } }
     }
   ])('surfaces a synchronous $kind handler failure as a terminal exit', async ({ frame }) => {
-    const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
-    answerInitialize(child)
-    const exits: string[] = []
-    const fail = (): never => {
-      throw new Error('structured sink failed')
+    // Why: the synthetic pid has no real process, so the win32 teardown branch would
+    // shell out to a real (and here sandboxed/blocked) taskkill before ever reaching
+    // the injectable child.kill mock this test relies on — force the POSIX branch.
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+    try {
+      const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
+      answerInitialize(child)
+      const exits: string[] = []
+      const fail = (): never => {
+        throw new Error('structured sink failed')
+      }
+      const connection = await openCodexAppServerConnection(
+        { command: 'codex', args: ['app-server'] },
+        {
+          onNotification: fail,
+          onServerRequest: fail,
+          onExit: (error) => exits.push(error.message)
+        },
+        spawnImpl
+      )
+      child.kill.mockImplementation(() => {
+        child.emit('exit', null, 'SIGKILL')
+        return true
+      })
+
+      const inFlight = rejection(connection.request('turn/start'))
+      child.stdout.write(`${JSON.stringify(frame)}\n`)
+
+      expect((await inFlight).message).toContain('structured sink failed')
+      await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGKILL'))
+      expect(exits).toEqual([expect.stringContaining('structured sink failed')])
+      expect(connection.closed).toBe(true)
+      await connection.close()
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform)
+      }
     }
-    const connection = await openCodexAppServerConnection(
-      { command: 'codex', args: ['app-server'] },
-      {
-        onNotification: fail,
-        onServerRequest: fail,
-        onExit: (error) => exits.push(error.message)
-      },
-      spawnImpl
-    )
-    child.kill.mockImplementation(() => {
-      child.emit('exit', null, 'SIGKILL')
-      return true
-    })
-
-    const inFlight = rejection(connection.request('turn/start'))
-    child.stdout.write(`${JSON.stringify(frame)}\n`)
-
-    expect((await inFlight).message).toContain('structured sink failed')
-    expect(exits).toEqual([expect.stringContaining('structured sink failed')])
-    expect(connection.closed).toBe(true)
-    await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGKILL'))
-    await connection.close()
   })
 
   it('reports one exit for a death that arrives through two listeners', async () => {
@@ -679,30 +722,41 @@ describe('openCodexAppServerConnection', () => {
   })
 
   it('treats a broken stdin pipe as the end of the transport', async () => {
-    const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
-    answerInitialize(child)
-    const exits: string[] = []
-    const connection = await openCodexAppServerConnection(
-      { command: 'codex', args: ['app-server'] },
-      { onExit: (error) => exits.push(error.message) },
-      spawnImpl
-    )
-    child.kill.mockImplementation(() => {
-      child.emit('exit', null, 'SIGKILL')
-      return true
-    })
+    // Why: the synthetic pid has no real process, so the win32 teardown branch would
+    // shell out to a real (and here sandboxed/blocked) taskkill before ever reaching
+    // the injectable child.kill mock this test relies on — force the POSIX branch.
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+    try {
+      const { child, spawnImpl } = stubChild({ exitOnStdinEnd: false })
+      answerInitialize(child)
+      const exits: string[] = []
+      const connection = await openCodexAppServerConnection(
+        { command: 'codex', args: ['app-server'] },
+        { onExit: (error) => exits.push(error.message) },
+        spawnImpl
+      )
+      child.kill.mockImplementation(() => {
+        child.emit('exit', null, 'SIGKILL')
+        return true
+      })
 
-    const inFlight = rejection(connection.request('turn/start'))
-    child.stdin.emit('error', new Error('write EPIPE'))
+      const inFlight = rejection(connection.request('turn/start'))
+      child.stdin.emit('error', new Error('write EPIPE'))
 
-    expect((await inFlight).message).toContain('EPIPE')
-    expect(exits).toHaveLength(1)
-    // A child nobody can write to is not a live session: the owner must see the
-    // connection as gone rather than keep issuing calls that can only time out.
-    expect(connection.closed).toBe(true)
-    await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGKILL'))
-    expect((await rejection(connection.request('turn/start'))).message).toContain('EPIPE')
-    await connection.close()
+      expect((await inFlight).message).toContain('EPIPE')
+      await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGKILL'))
+      expect(exits).toHaveLength(1)
+      // A child nobody can write to is not a live session: the owner must see the
+      // connection as gone rather than keep issuing calls that can only time out.
+      expect(connection.closed).toBe(true)
+      expect((await rejection(connection.request('turn/start'))).message).toContain('EPIPE')
+      await connection.close()
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, 'platform', originalPlatform)
+      }
+    }
   })
 
   it('keeps a graceful close quiet when stdin breaks during the reap', async () => {

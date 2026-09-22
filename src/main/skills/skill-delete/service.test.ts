@@ -75,7 +75,11 @@ describe('deleteSkills', () => {
     const { home, stateDirectory, canonicalDirectory, file } = await fixture()
     const aliasDirectory = join(home, '.claude', 'skills', 'demo')
     await mkdir(join(home, '.claude', 'skills'), { recursive: true })
-    await symlink(canonicalDirectory, aliasDirectory, 'dir')
+    await symlink(
+      canonicalDirectory,
+      aliasDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    )
 
     const result = await run(home, stateDirectory, await request(file))
     expect(result.skills[0].status).toBe('deleted')
@@ -85,21 +89,26 @@ describe('deleteSkills', () => {
     expect(await exists(skillDeleteJournalPath(stateDirectory, canonicalDirectory))).toBe(false)
   })
 
-  it('removes an alias-file symlink but keeps a directory that holds anything else', async () => {
-    const { home, stateDirectory, file } = await fixture()
-    const aliasDirectory = join(home, '.codex', 'skills', 'demo')
-    await mkdir(aliasDirectory, { recursive: true })
-    await symlink(file, join(aliasDirectory, 'SKILL.md'))
-    await writeFile(join(aliasDirectory, 'notes.md'), 'kept')
+  // Why: file symlinks (unlike directory junctions) need Windows Developer Mode.
+  it.skipIf(process.platform === 'win32')(
+    'removes an alias-file symlink but keeps a directory that holds anything else',
+    async () => {
+      const { home, stateDirectory, file } = await fixture()
+      const aliasDirectory = join(home, '.codex', 'skills', 'demo')
+      await mkdir(aliasDirectory, { recursive: true })
+      await symlink(file, join(aliasDirectory, 'SKILL.md'))
+      await writeFile(join(aliasDirectory, 'notes.md'), 'kept')
 
-    const result = await run(home, stateDirectory, await request(file))
-    expect(result.skills[0].status).toBe('deleted')
-    expect(await exists(join(aliasDirectory, 'SKILL.md'))).toBe(false)
-    // "Not shared with another placement" is not "contains nothing else".
-    expect(await exists(join(aliasDirectory, 'notes.md'))).toBe(true)
-  })
+      const result = await run(home, stateDirectory, await request(file))
+      expect(result.skills[0].status).toBe('deleted')
+      expect(await exists(join(aliasDirectory, 'SKILL.md'))).toBe(false)
+      // "Not shared with another placement" is not "contains nothing else".
+      expect(await exists(join(aliasDirectory, 'notes.md'))).toBe(true)
+    }
+  )
 
-  it('removes an emptied alias-file directory', async () => {
+  // Why: file symlinks (unlike directory junctions) need Windows Developer Mode.
+  it.skipIf(process.platform === 'win32')('removes an emptied alias-file directory', async () => {
     const { home, stateDirectory, file } = await fixture()
     const aliasDirectory = join(home, '.codex', 'skills', 'demo')
     await mkdir(aliasDirectory, { recursive: true })
@@ -152,7 +161,11 @@ describe('deleteSkills', () => {
     const { home, stateDirectory, canonicalDirectory, file } = await fixture()
     const aliasDirectory = join(home, '.claude', 'skills', 'demo')
     await mkdir(join(home, '.claude', 'skills'), { recursive: true })
-    await symlink(canonicalDirectory, aliasDirectory, 'dir')
+    await symlink(
+      canonicalDirectory,
+      aliasDirectory,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    )
 
     let renames = 0
     const filesystem: SkillInstallFilesystem = {
@@ -176,7 +189,11 @@ describe('deleteSkills', () => {
   it('reports partial with the staged paths when the rollback itself fails', async () => {
     const { home, stateDirectory, canonicalDirectory, file } = await fixture()
     await mkdir(join(home, '.claude', 'skills'), { recursive: true })
-    await symlink(canonicalDirectory, join(home, '.claude', 'skills', 'demo'), 'dir')
+    await symlink(
+      canonicalDirectory,
+      join(home, '.claude', 'skills', 'demo'),
+      process.platform === 'win32' ? 'junction' : 'dir'
+    )
 
     let renames = 0
     const filesystem: SkillInstallFilesystem = {
@@ -239,7 +256,7 @@ describe('deleteSkills', () => {
     )
     const link = join(home, '.claude', 'skills', 'linked')
     await mkdir(join(home, '.claude', 'skills'), { recursive: true })
-    await symlink(managedElsewhere, link, 'dir')
+    await symlink(managedElsewhere, link, process.platform === 'win32' ? 'junction' : 'dir')
 
     const result = await run(home, stateDirectory, await request(join(link, 'SKILL.md')))
     expect(result.skills[0].status).toBe('deleted')

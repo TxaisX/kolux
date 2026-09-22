@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getRemoteHostPlatform } from '../main/ssh/ssh-remote-platform'
 import {
@@ -292,8 +293,11 @@ describe('RelayAiVaultServiceClient', () => {
   })
 
   it('resolves the sidecar beside each bundled relay', () => {
+    // Why join(), not a literal '/opt/.../...': relayAiVaultServiceEntryPath only ever
+    // runs against its own process's __dirname, so it joins in that process's host-native
+    // style; the test compares against the same join() rather than a hardcoded POSIX shape.
     expect(relayAiVaultServiceEntryPath('/opt/kolux/relay')).toBe(
-      '/opt/kolux/relay/relay-ai-vault-service.js'
+      join('/opt/kolux/relay', 'relay-ai-vault-service.js')
     )
   })
 })

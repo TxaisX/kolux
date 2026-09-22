@@ -26,9 +26,18 @@ import {
   WORKTREE_BASE_TARGET_RESOLUTION_CONCURRENCY
 } from './worktree-base-directory-watch-targets'
 
-const absolutePath = (...parts: string[]): string => join(sep, ...parts)
+// Why a drive letter on win32: a bare `\workspace` is root-relative, not absolute, to
+// isWindowsAbsolutePathLike, which sent every path through the POSIX runtime-path branch
+// and made computeWorkspaceRoot resolve nothing that matched these fixtures' expectations.
+const absoluteRoot = process.platform === 'win32' ? 'C:\\' : sep
+const absolutePath = (...parts: string[]): string => join(absoluteRoot, ...parts)
 const WORKTREE_ROOT = absolutePath('workspace', 'worktrees')
 const PROJECT_ROOT = absolutePath('workspace', 'projects')
+// Why: resolveWorktreeCommonGitDirectory joins repo.path + '.git' through the cross-platform
+// "runtime path" helper, which always assembles with `/` even for a drive-lettered Windows base —
+// harmless for a real fs call, but a mock keyed on exact native-separator equality needs to ignore it.
+const sameFsPath = (a: string, b: string): boolean =>
+  a.split('\\').join('/') === b.split('\\').join('/')
 const localDirectoryStat = { isDirectory: () => true }
 const remoteDirectoryStat = { type: 'directory', size: 0, mtime: 0 }
 const settings = {
@@ -124,7 +133,7 @@ describe('worktree base directory watch target resolution', () => {
     const gitStatStarted = new Set<number>()
     const completionOrder: number[] = []
     statMock.mockImplementation(async (path: string) => {
-      const index = repos.findIndex((repo) => path === join(repo.path, '.git'))
+      const index = repos.findIndex((repo) => sameFsPath(path, join(repo.path, '.git')))
       if (index !== -1) {
         gitStatStarted.add(index)
         await gates[index].promise
@@ -142,9 +151,12 @@ describe('worktree base directory watch target resolution', () => {
     const targets = await resultPromise
 
     expect(completionOrder).toEqual([3, 2, 1, 0])
+    // Why forward slashes: resolveWorktreeCommonGitDirectory joins through the cross-platform
+    // "runtime path" helper, which always assembles with `/` (see the WSL UNC test below, which
+    // asserts this same forward-slash form as the intended git-common target.path).
     expect([...targets.values()].map((target) => [target.kind, target.path])).toEqual([
       ['base', WORKTREE_ROOT],
-      ...repos.map((repo) => ['git-common', join(repo.path, '.git')])
+      ...repos.map((repo) => ['git-common', `${repo.path.split('\\').join('/')}/.git`])
     ])
     expect([...([...targets.values()][0]?.repos.keys() ?? [])]).toEqual(
       repos.map((repo) => repo.id)
@@ -157,7 +169,10 @@ describe('worktree base directory watch target resolution', () => {
     const unavailable = makeRepo(1, { worktreeBasePath: absolutePath('worktrees', 'missing') })
     const goodAfter = makeRepo(2, { worktreeBasePath: absolutePath('worktrees', 'after') })
     statMock.mockImplementation(async (path: string) => {
-      if (path === unavailable.worktreeBasePath || path === join(unavailable.path, '.git')) {
+      if (
+        path === unavailable.worktreeBasePath ||
+        sameFsPath(path, join(unavailable.path, '.git'))
+      ) {
         throw missing
       }
       return localDirectoryStat

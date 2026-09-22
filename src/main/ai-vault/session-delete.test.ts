@@ -35,7 +35,10 @@ vi.mock('../wsl-unc-delete', () => ({
 
 import { deleteAiVaultSessionFile } from './session-delete'
 
-const HOME = join('/tmp', 'kolux-ai-vault-delete-exec-fixture-home')
+// Why: resolve(), not join() — production resolve()s filePath before comparing, and on
+// Windows that prepends the current drive; building HOME the same way keeps this fixture
+// self-consistent regardless of which drive the test happens to run from.
+const HOME = resolve('/tmp', 'kolux-ai-vault-delete-exec-fixture-home')
 const GEMINI_ROOT = join(HOME, '.gemini', 'tmp')
 const CLAUDE_ROOT = join(HOME, '.claude', 'projects')
 const ROVO_ROOT = join(HOME, '.rovodev', 'sessions')
@@ -124,7 +127,7 @@ describe('deleteAiVaultSessionFile', () => {
     // the real target, which the text-only root would not match. Realpath-ing
     // the root as well keeps this legit delete from a false rejection.
     const filePath = join(GEMINI_ROOT, 'project-a', 'session-1.json')
-    const realRoot = join('/real', '.gemini', 'tmp')
+    const realRoot = resolve('/real', '.gemini', 'tmp')
     const realFile = join(realRoot, 'project-a', 'session-1.json')
     lstatMock.mockResolvedValue({ isFile: () => true })
     realpathMock.mockImplementation((p: string) =>

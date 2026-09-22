@@ -14,7 +14,7 @@
 // Invariant: when two independently identified clients change DISJOINT workspace-view
 // fields concurrently or across stale-mirror windows, both changes survive and all
 // mirrors converge; no client may restore a stale sibling field.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { StrictMode, act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -179,18 +179,16 @@ function createMobileClient(authority: Authority) {
   }
 }
 
+const MOBILE_DIR = join(__dirname, '../../../../mobile')
+// WHY: mobile/ is absent from this checkout; skip tests that pin against its source.
+const mobileAvailable = existsSync(MOBILE_DIR)
+
 function readMobileViewSettingsHookSource(): string {
-  return readFileSync(
-    join(__dirname, '../../../../mobile/src/host-screen/use-host-view-settings.ts'),
-    'utf-8'
-  )
+  return readFileSync(join(MOBILE_DIR, 'src/host-screen/use-host-view-settings.ts'), 'utf-8')
 }
 
 function readMobileViewSettingsSource(): string {
-  return readFileSync(
-    join(__dirname, '../../../../mobile/src/worktree/workspace-view-settings.ts'),
-    'utf-8'
-  )
+  return readFileSync(join(MOBILE_DIR, 'src/worktree/workspace-view-settings.ts'), 'utf-8')
 }
 
 describe('workspace view preferences: cross-client persistence (STA-5781)', () => {
@@ -308,30 +306,34 @@ describe('workspace view preferences: cross-client persistence (STA-5781)', () =
     expect(after.hideCliCreatedWorkspaces).toBe(before.hideCliCreatedWorkspaces)
   })
 
-  it('a mobile tap must not revert a desktop change the mobile mirror has not seen', async () => {
-    const mobile = createMobileClient(authority)
-    mobile.sync()
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'a mobile tap must not revert a desktop change the mobile mirror has not seen',
+    async () => {
+      const mobile = createMobileClient(authority)
+      mobile.sync()
 
-    // Desktop turns on "hide default branch"; the write lands and broadcasts.
-    act(() => {
-      store.getState().setHideDefaultBranchWorkspace(true)
-    })
-    await flushDesktopDebounce()
-    expect(authority.get().hideDefaultBranchWorkspace).toBe(true)
-    deliverBroadcasts()
+      // Desktop turns on "hide default branch"; the write lands and broadcasts.
+      act(() => {
+        store.getState().setHideDefaultBranchWorkspace(true)
+      })
+      await flushDesktopDebounce()
+      expect(authority.get().hideDefaultBranchWorkspace).toBe(true)
+      deliverBroadcasts()
 
-    // Mobile (mirror stale since its last ui.get) toggles the DISJOINT
-    // "hide sleeping" filter.
-    mobile.tap({ hideSleeping: true })
+      // Mobile (mirror stale since its last ui.get) toggles the DISJOINT
+      // "hide sleeping" filter.
+      mobile.tap({ hideSleeping: true })
 
-    // Both changes must survive.
-    expect(authority.get().hideSleepingWorkspaces).toBe(true)
-    expect(authority.get().hideDefaultBranchWorkspace).toBe(true)
+      // Both changes must survive.
+      expect(authority.get().hideSleepingWorkspaces).toBe(true)
+      expect(authority.get().hideDefaultBranchWorkspace).toBe(true)
 
-    // And the desktop mirror must not be reverted by the echoed broadcast.
-    deliverBroadcasts()
-    expect(store.getState().hideDefaultBranchWorkspace).toBe(true)
-  })
+      // And the desktop mirror must not be reverted by the echoed broadcast.
+      deliverBroadcasts()
+      expect(store.getState().hideDefaultBranchWorkspace).toBe(true)
+    }
+  )
 
   it('persists the desktop sleeping-workspaces toggle in the durable hide form', async () => {
     // Pins the mirror->wire inversion end-to-end: showSleepingWorkspaces false
@@ -349,64 +351,72 @@ describe('workspace view preferences: cross-client persistence (STA-5781)', () =
     expect(authority.get().hideSleepingWorkspaces).toBe(false)
   })
 
-  it('the desktop debounced writer must not revert a concurrent mobile change', async () => {
-    const mobile = createMobileClient(authority)
-    mobile.sync()
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'the desktop debounced writer must not revert a concurrent mobile change',
+    async () => {
+      const mobile = createMobileClient(authority)
+      mobile.sync()
 
-    // t=0: desktop toggles a desktop-only filter (disjoint from mobile fields).
-    act(() => {
-      store.getState().setHideCliCreatedWorkspaces(true)
-    })
+      // t=0: desktop toggles a desktop-only filter (disjoint from mobile fields).
+      act(() => {
+        store.getState().setHideCliCreatedWorkspaces(true)
+      })
 
-    // t<150ms: mobile turns on "hide sleeping". The authority applies it, but the
-    // ui:stateChanged broadcast is still in flight to the desktop renderer.
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
-    mobile.tap({ hideSleeping: true })
-    expect(authority.get().hideSleepingWorkspaces).toBe(true)
+      // t<150ms: mobile turns on "hide sleeping". The authority applies it, but the
+      // ui:stateChanged broadcast is still in flight to the desktop renderer.
+      act(() => {
+        vi.advanceTimersByTime(100)
+      })
+      mobile.tap({ hideSleeping: true })
+      expect(authority.get().hideSleepingWorkspaces).toBe(true)
 
-    // t=150ms: the desktop debounce fires from its (not yet re-hydrated) mirror.
-    await flushDesktopDebounce()
+      // t=150ms: the desktop debounce fires from its (not yet re-hydrated) mirror.
+      await flushDesktopDebounce()
 
-    // Both disjoint changes must survive.
-    expect(authority.get().hideCliCreatedWorkspaces).toBe(true)
-    expect(authority.get().hideSleepingWorkspaces).toBe(true)
+      // Both disjoint changes must survive.
+      expect(authority.get().hideCliCreatedWorkspaces).toBe(true)
+      expect(authority.get().hideSleepingWorkspaces).toBe(true)
 
-    // After full delivery and a mobile re-sync, every mirror converges on both.
-    deliverBroadcasts()
-    mobile.sync()
-    expect(store.getState().showSleepingWorkspaces).toBe(false)
-    expect(store.getState().hideCliCreatedWorkspaces).toBe(true)
-    expect(mobile.view.hideSleeping).toBe(true)
-  })
+      // After full delivery and a mobile re-sync, every mirror converges on both.
+      deliverBroadcasts()
+      mobile.sync()
+      expect(store.getState().showSleepingWorkspaces).toBe(false)
+      expect(store.getState().hideCliCreatedWorkspaces).toBe(true)
+      expect(mobile.view.hideSleeping).toBe(true)
+    }
+  )
 
-  it('a broadcast landing inside the debounce window must not revert the pending desktop toggle', async () => {
-    const mobile = createMobileClient(authority)
-    mobile.sync()
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'a broadcast landing inside the debounce window must not revert the pending desktop toggle',
+    async () => {
+      const mobile = createMobileClient(authority)
+      mobile.sync()
 
-    // t=0: desktop toggles a filter; its write is pending in the 150ms debounce.
-    act(() => {
-      store.getState().setHideCliCreatedWorkspaces(true)
-    })
+      // t=0: desktop toggles a filter; its write is pending in the 150ms debounce.
+      act(() => {
+        store.getState().setHideCliCreatedWorkspaces(true)
+      })
 
-    // t<150ms: mobile changes a disjoint field AND its broadcast is delivered
-    // before the desktop debounce fires. The broadcast still carries the OLD
-    // value of the desktop's pending toggle.
-    mobile.tap({ hideSleeping: true })
-    deliverBroadcasts()
+      // t<150ms: mobile changes a disjoint field AND its broadcast is delivered
+      // before the desktop debounce fires. The broadcast still carries the OLD
+      // value of the desktop's pending toggle.
+      mobile.tap({ hideSleeping: true })
+      deliverBroadcasts()
 
-    // The hydration must not wipe the user's pending toggle from the mirror.
-    expect(store.getState().hideCliCreatedWorkspaces).toBe(true)
-    // The remote change must land in the mirror.
-    expect(store.getState().showSleepingWorkspaces).toBe(false)
+      // The hydration must not wipe the user's pending toggle from the mirror.
+      expect(store.getState().hideCliCreatedWorkspaces).toBe(true)
+      // The remote change must land in the mirror.
+      expect(store.getState().showSleepingWorkspaces).toBe(false)
 
-    await flushDesktopDebounce()
+      await flushDesktopDebounce()
 
-    // Both disjoint changes survive at the authority.
-    expect(authority.get().hideCliCreatedWorkspaces).toBe(true)
-    expect(authority.get().hideSleepingWorkspaces).toBe(true)
-  })
+      // Both disjoint changes survive at the authority.
+      expect(authority.get().hideCliCreatedWorkspaces).toBe(true)
+      expect(authority.get().hideSleepingWorkspaces).toBe(true)
+    }
+  )
 
   it('preserves a flip-back made while the first write is still in flight', async () => {
     // CodeRabbit PR#17057 finding: toggle -> debounce fires (write in flight)
@@ -474,38 +484,42 @@ describe('workspace view preferences: cross-client persistence (STA-5781)', () =
     expect(authority.get().hideAutomationGeneratedWorkspaces).toBe(true)
   })
 
-  it('converges when a remote client writes the same field during the ack window', async () => {
-    // Round-3 review: the ack must not fold the sent value over a baseline a
-    // hydration advanced past, or the mirror and authority diverge with no
-    // further traffic to reconcile them (the reset then reappears later).
-    holdAcks = true
-    const mobile = createMobileClient(authority)
-    mobile.sync()
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'converges when a remote client writes the same field during the ack window',
+    async () => {
+      // Round-3 review: the ack must not fold the sent value over a baseline a
+      // hydration advanced past, or the mirror and authority diverge with no
+      // further traffic to reconcile them (the reset then reappears later).
+      holdAcks = true
+      const mobile = createMobileClient(authority)
+      mobile.sync()
 
-    act(() => {
-      store.getState().setHideDefaultBranchWorkspace(true)
-    })
-    await flushDesktopDebounce()
+      act(() => {
+        store.getState().setHideDefaultBranchWorkspace(true)
+      })
+      await flushDesktopDebounce()
 
-    // Mobile writes the SAME field at the authority after us; both broadcasts
-    // (our echo, then mobile's) land before our ack does.
-    mobile.tap({ hideDefaultBranch: false })
-    deliverBroadcasts()
-    await resolveAcks()
+      // Mobile writes the SAME field at the authority after us; both broadcasts
+      // (our echo, then mobile's) land before our ack does.
+      mobile.tap({ hideDefaultBranch: false })
+      deliverBroadcasts()
+      await resolveAcks()
 
-    await flushDesktopDebounce()
-    await resolveAcks()
-    deliverBroadcasts()
-    await flushDesktopDebounce()
-    await resolveAcks()
-    deliverBroadcasts()
+      await flushDesktopDebounce()
+      await resolveAcks()
+      deliverBroadcasts()
+      await flushDesktopDebounce()
+      await resolveAcks()
+      deliverBroadcasts()
 
-    // Either side may win a same-field conflict, but mirror and authority
-    // must agree once traffic settles.
-    expect(store.getState().hideDefaultBranchWorkspace).toBe(
-      authority.get().hideDefaultBranchWorkspace
-    )
-  })
+      // Either side may win a same-field conflict, but mirror and authority
+      // must agree once traffic settles.
+      expect(store.getState().hideDefaultBranchWorkspace).toBe(
+        authority.get().hideDefaultBranchWorkspace
+      )
+    }
+  )
 
   it('a rejected write folds nothing and re-flushes with the next change', async () => {
     rejectSets = true
@@ -692,53 +706,61 @@ describe('workspace view preferences: cross-client persistence (STA-5781)', () =
     expect(store.getState().persistedUIWriteInFlightCounts).toEqual({})
   })
 
-  it('desktop and mobile changing the same field converges on the newest write', async () => {
-    const mobile = createMobileClient(authority)
-    mobile.sync()
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'desktop and mobile changing the same field converges on the newest write',
+    async () => {
+      const mobile = createMobileClient(authority)
+      mobile.sync()
 
-    act(() => {
-      store.getState().setHideDefaultBranchWorkspace(true)
-    })
-    await flushDesktopDebounce()
-    deliverBroadcasts()
+      act(() => {
+        store.getState().setHideDefaultBranchWorkspace(true)
+      })
+      await flushDesktopDebounce()
+      deliverBroadcasts()
 
-    // Mobile flips the SAME field afterwards; last writer wins everywhere.
-    mobile.tap({ hideDefaultBranch: false })
-    deliverBroadcasts()
-    expect(authority.get().hideDefaultBranchWorkspace).toBe(false)
-    await flushDesktopDebounce()
-    expect(authority.get().hideDefaultBranchWorkspace).toBe(false)
-    expect(store.getState().hideDefaultBranchWorkspace).toBe(false)
-  })
+      // Mobile flips the SAME field afterwards; last writer wins everywhere.
+      mobile.tap({ hideDefaultBranch: false })
+      deliverBroadcasts()
+      expect(authority.get().hideDefaultBranchWorkspace).toBe(false)
+      await flushDesktopDebounce()
+      expect(authority.get().hideDefaultBranchWorkspace).toBe(false)
+      expect(store.getState().hideDefaultBranchWorkspace).toBe(false)
+    }
+  )
 
-  it('pins the modeled mobile ui.set payload to the shipping source', async () => {
-    const source = readMobileViewSettingsHookSource()
-    if (mobileHasPatchOnlyBuilder()) {
-      // Candidate: the persistence hook must push through the patch-only builder this model uses.
-      expect(source).toContain('buildWorkspaceViewSettingsUpdate(patch, next)')
-      const builderSource = readMobileViewSettingsSource()
-      for (const guard of [
-        "if ('groupMode' in patch)",
-        "if ('sortMode' in patch)",
-        "if ('hideSleeping' in patch)",
-        "if ('hideDefaultBranch' in patch)",
-        "if ('filterRepoIds' in patch)",
-        "if ('collapsedGroups' in patch)"
-      ]) {
-        expect(builderSource).toContain(guard)
-      }
-    } else {
-      // Baseline: persistViewSettings pushes exactly this whole-snapshot payload.
-      for (const key of [
-        'groupBy: groupModeToDesktop(next.groupMode)',
-        'sortBy: next.sortMode',
-        'hideSleepingWorkspaces: next.hideSleeping',
-        'hideDefaultBranchWorkspace: next.hideDefaultBranch',
-        'filterRepoIds: next.filterRepoIds',
-        'collapsedGroups: next.collapsedGroups'
-      ]) {
-        expect(source).toContain(key)
+  // WHY: needs mobile/ source, absent from this checkout.
+  it.skipIf(!mobileAvailable)(
+    'pins the modeled mobile ui.set payload to the shipping source',
+    async () => {
+      const source = readMobileViewSettingsHookSource()
+      if (mobileHasPatchOnlyBuilder()) {
+        // Candidate: the persistence hook must push through the patch-only builder this model uses.
+        expect(source).toContain('buildWorkspaceViewSettingsUpdate(patch, next)')
+        const builderSource = readMobileViewSettingsSource()
+        for (const guard of [
+          "if ('groupMode' in patch)",
+          "if ('sortMode' in patch)",
+          "if ('hideSleeping' in patch)",
+          "if ('hideDefaultBranch' in patch)",
+          "if ('filterRepoIds' in patch)",
+          "if ('collapsedGroups' in patch)"
+        ]) {
+          expect(builderSource).toContain(guard)
+        }
+      } else {
+        // Baseline: persistViewSettings pushes exactly this whole-snapshot payload.
+        for (const key of [
+          'groupBy: groupModeToDesktop(next.groupMode)',
+          'sortBy: next.sortMode',
+          'hideSleepingWorkspaces: next.hideSleeping',
+          'hideDefaultBranchWorkspace: next.hideDefaultBranch',
+          'filterRepoIds: next.filterRepoIds',
+          'collapsedGroups: next.collapsedGroups'
+        ]) {
+          expect(source).toContain(key)
+        }
       }
     }
-  })
+  )
 })

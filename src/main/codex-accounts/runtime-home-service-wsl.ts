@@ -1,5 +1,10 @@
 import { join, win32 as pathWin32 } from 'node:path'
-import { parseWslUncPath, toLinuxPath, toWindowsWslUncPath } from '../../shared/wsl-paths'
+import {
+  isDrvfsLinuxPath,
+  parseWslUncPath,
+  toLinuxPath,
+  toWindowsWslUncPath
+} from '../../shared/wsl-paths'
 import {
   getCodexSelectionLaneKey,
   getSelectedCodexAccountIdForTarget,
@@ -48,7 +53,9 @@ export abstract class CodexRuntimeHomeWsl extends CodexRuntimeHomeWslCore {
     if (targetDistro && accountDistro.toLowerCase() !== targetDistro.toLowerCase()) {
       return null
     }
-    if (/^[A-Za-z]:[\\/]/.test(account.managedHomePath)) {
+    // Why: check the account's stored Linux identity, not the Windows-side path shape — a
+    // host-side fixture path also looks drive-letter-shaped but is not drvfs-mounted.
+    if (isDrvfsLinuxPath(wslHome.linuxHomePath)) {
       return toWindowsWslUncPath(wslHome.linuxHomePath, accountDistro)
     }
     return account.managedHomePath || toWindowsWslUncPath(wslHome.linuxHomePath, accountDistro)
@@ -102,16 +109,19 @@ export abstract class CodexRuntimeHomeWsl extends CodexRuntimeHomeWslCore {
     })
     const accounts = accountHomes.map(({ account }) => account)
     const systemHome = this.getWslSystemCodexHomePath({ runtime: 'wsl', wslDistro: distro })
-    const parsedSystemHome = systemHome ? parseWslUncPath(systemHome) : null
+    // Why: systemHome can be a wsl.localhost UNC path (native rootfs home) or a plain
+    // drive path (drvfs-mounted home) — toLinuxPath handles both, parseWslUncPath only the former.
+    const systemHomeLinuxPath = systemHome ? toLinuxPath(systemHome) : null
+    const systemHomeValid = systemHomeLinuxPath?.startsWith('/') ? systemHomeLinuxPath : null
     let reads: WslCodexAuthRead[]
     try {
       reads = await readWslCodexAuths(distro, [
         ...accountHomes.map(({ linuxPath }) => linuxPath),
-        ...(parsedSystemHome ? [parsedSystemHome.linuxPath] : [])
+        ...(systemHomeValid ? [systemHomeValid] : [])
       ])
     } catch {
       reads = accountHomes.map(() => ({ kind: 'unreadable' }))
-      if (parsedSystemHome) {
+      if (systemHomeValid) {
         reads.push({ kind: 'unreadable' })
       }
     }
@@ -136,7 +146,7 @@ export abstract class CodexRuntimeHomeWsl extends CodexRuntimeHomeWslCore {
       }
     }
 
-    if (!systemHome || !parsedSystemHome) {
+    if (!systemHome || !systemHomeValid) {
       return null
     }
     const systemAuth = reads[accountHomes.length] ?? { kind: 'unreadable' }
@@ -144,7 +154,7 @@ export abstract class CodexRuntimeHomeWsl extends CodexRuntimeHomeWslCore {
       return null
     }
     return this.runtimeAuthMatchesSystemDefaultIdentity(runtimeAuthContents, systemAuth.contents)
-      ? { authContents: systemAuth.contents, linuxHomePath: parsedSystemHome.linuxPath }
+      ? { authContents: systemAuth.contents, linuxHomePath: systemHomeValid }
       : null
   }
 

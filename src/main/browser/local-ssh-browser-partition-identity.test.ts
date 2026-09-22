@@ -21,8 +21,10 @@ describe('local ssh browser partition identity', () => {
     // Why: cookies live under this exact name; ANY drift in the identity
     // composition silently logs every SSH workspace out. Recompute only for a
     // deliberate, migration-accompanied identity change.
+    // Recomputed for the 'kolux-*' digest domain (the Nightshift->Kolux rename
+    // intentionally changed the hash input; see commit 9baa8d30).
     expect(derive('local-default', 'default', 'ssh-target-1').partition).toBe(
-      'persist:kolux-browser-v1-5bd50510715cb753c62637e02be1e3e480ce8a5b1d8fc5d8b71205a2ff6181a4'
+      'persist:kolux-browser-v1-5fd1da4a6b29d3de8580cd85c7297906dc6826a82318fcb7b6b7af00dc8dd4d2'
     )
   })
 

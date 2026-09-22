@@ -44,53 +44,61 @@ describe('ensureLinuxTerminalKoluxCliShimDir', () => {
     )
   })
 
-  it('writes an executable bare-kolux shim that execs the bundled kolux-ide launcher', async () => {
-    const { userDataPath, resourcesPath } = await makeFixture()
+  // Why: chmodSync's exec bit is a no-op on Windows, so mode assertions below can't hold there.
+  it.skipIf(process.platform === 'win32')(
+    'writes an executable bare-kolux shim that execs the bundled kolux-ide launcher',
+    async () => {
+      const { userDataPath, resourcesPath } = await makeFixture()
 
-    const shimDir = ensureLinuxTerminalKoluxCliShimDir({
-      userDataPath,
-      resourcesPath,
-      appImagePath: null
-    })
+      const shimDir = ensureLinuxTerminalKoluxCliShimDir({
+        userDataPath,
+        resourcesPath,
+        appImagePath: null
+      })
 
-    expect(shimDir).toBe(join(userDataPath, 'linux-kolux-cli-shim'))
-    const content = readFileSync(join(shimDir!, 'kolux'), 'utf8')
-    // Single-quoted so a resources path with shell metacharacters can't break out.
-    expect(content).toContain(`exec '${join(resourcesPath, 'bin', 'kolux-ide')}' "$@"`)
-    const mode = statSync(join(shimDir!, 'kolux')).mode & 0o777
-    expect(mode & 0o111).not.toBe(0)
-  })
+      expect(shimDir).toBe(join(userDataPath, 'linux-kolux-cli-shim'))
+      const content = readFileSync(join(shimDir!, 'kolux'), 'utf8')
+      // Single-quoted so a resources path with shell metacharacters can't break out.
+      expect(content).toContain(`exec '${join(resourcesPath, 'bin', 'kolux-ide')}' "$@"`)
+      const mode = statSync(join(shimDir!, 'kolux')).mode & 0o777
+      expect(mode & 0o111).not.toBe(0)
+    }
+  )
 
-  it('reuses the shim path and re-asserts its exec bit', async () => {
-    const { userDataPath, resourcesPath } = await makeFixture()
-    const options = { userDataPath, resourcesPath, appImagePath: null }
+  // Why: chmodSync's exec bit is a no-op on Windows, so mode assertions below can't hold there.
+  it.skipIf(process.platform === 'win32')(
+    'reuses the shim path and re-asserts its exec bit',
+    async () => {
+      const { userDataPath, resourcesPath } = await makeFixture()
+      const options = { userDataPath, resourcesPath, appImagePath: null }
 
-    const first = ensureLinuxTerminalKoluxCliShimDir(options)
-    expect(first).not.toBeNull()
-    const shimPath = join(first!, 'kolux')
-    chmodSync(shimPath, 0o644)
+      const first = ensureLinuxTerminalKoluxCliShimDir(options)
+      expect(first).not.toBeNull()
+      const shimPath = join(first!, 'kolux')
+      chmodSync(shimPath, 0o644)
 
-    const second = ensureLinuxTerminalKoluxCliShimDir(options)
-    expect(second).toBe(first)
-    expect(statSync(shimPath).mode & 0o111).not.toBe(0)
+      const second = ensureLinuxTerminalKoluxCliShimDir(options)
+      expect(second).toBe(first)
+      expect(statSync(shimPath).mode & 0o111).not.toBe(0)
 
-    const root = await mkdtemp(join(tmpdir(), 'kolux-terminal-cli-shim-2-'))
-    created.push(root)
-    const otherUserData = join(root, 'user-data')
-    mkdirSync(join(otherUserData, 'linux-kolux-cli-shim'), { recursive: true })
-    writeFileSync(join(otherUserData, 'linux-kolux-cli-shim', 'kolux'), 'stale contents', 'utf8')
-    chmodSync(join(otherUserData, 'linux-kolux-cli-shim', 'kolux'), 0o644)
+      const root = await mkdtemp(join(tmpdir(), 'kolux-terminal-cli-shim-2-'))
+      created.push(root)
+      const otherUserData = join(root, 'user-data')
+      mkdirSync(join(otherUserData, 'linux-kolux-cli-shim'), { recursive: true })
+      writeFileSync(join(otherUserData, 'linux-kolux-cli-shim', 'kolux'), 'stale contents', 'utf8')
+      chmodSync(join(otherUserData, 'linux-kolux-cli-shim', 'kolux'), 0o644)
 
-    const healed = ensureLinuxTerminalKoluxCliShimDir({
-      userDataPath: otherUserData,
-      resourcesPath,
-      appImagePath: null
-    })
-    expect(healed).not.toBeNull()
-    const healedPath = join(healed!, 'kolux')
-    expect(readFileSync(healedPath, 'utf8')).toContain('kolux-ide')
-    expect(statSync(healedPath).mode & 0o111).not.toBe(0)
-  })
+      const healed = ensureLinuxTerminalKoluxCliShimDir({
+        userDataPath: otherUserData,
+        resourcesPath,
+        appImagePath: null
+      })
+      expect(healed).not.toBeNull()
+      const healedPath = join(healed!, 'kolux')
+      expect(readFileSync(healedPath, 'utf8')).toContain('kolux-ide')
+      expect(statSync(healedPath).mode & 0o111).not.toBe(0)
+    }
+  )
 
   it.skipIf(!canFenceAppImageRuntime)(
     'routes first-use AppImage terminals through a fenced current mount without a live endpoint',

@@ -2,7 +2,7 @@
 # so any suite importing the script dies at load with a SyntaxError. Pin the whole
 # directory rather than the scripts that happen to have a test today.
 /config/scripts/**/*.mjs text eol=lf
-/skill-guides/*.md text eol=lf
+/skill-guides/**/*.md text eol=lf
 /skill-stubs/*.md text eol=lf
 /skill-stubs/_shared/*.md text eol=lf
 /skills/*/SKILL.md text eol=lf
@@ -34,3 +34,6 @@
 # Generated runtime English subset: compared byte-for-byte by
 # verify:localization-runtime-catalog, so a CRLF checkout would fail the gate.
 /src/renderer/src/i18n/en-runtime-required.json linguist-generated=true text eol=lf
+# Byte-exact copy of the npm tarball's src/unix/pty.cc; the cloexec patcher keys
+# off its sha256, so a CRLF checkout makes every patch assertion vacuous.
+/config/scripts/__fixtures__/node-pty-1.1.0-unix-pty.cc text eol=lf

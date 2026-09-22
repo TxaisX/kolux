@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { KoluxRuntimeService } from './kolux-runtime'
 import { SESSION_TABS_AUTHORITATIVE_INVENTORY_RUNTIME_CAPABILITY } from '../../shared/protocol-version'
@@ -20,9 +20,12 @@ describe('runtime extraction regressions', () => {
       rateLimits: {}
     } as never)
 
+    // Why resolve(), not a bare join(): skill-provider-runtime-roots.ts's normalizedRoot()
+    // calls resolve() on the configured dir before joining 'skills', which drive-qualifies a
+    // POSIX-shaped path against the current working drive on Windows.
     await expect(
       runtime.resolveSkillDiscoveryProviderRoots({ kind: 'native-host' })
-    ).resolves.toMatchObject({ claude: join('/accounts/claude/managed', 'skills') })
+    ).resolves.toMatchObject({ claude: join(resolve('/accounts/claude/managed'), 'skills') })
     expect(getRuntimeConfigDir).toHaveBeenCalledWith({ runtime: 'host' })
   })
 

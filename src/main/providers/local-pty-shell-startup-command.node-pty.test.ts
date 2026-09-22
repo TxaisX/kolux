@@ -24,7 +24,9 @@ function afterCommand(shell: string): string {
   return `printf '__AFTER_ENV__:%s\\n' "\${${POSIX_SHELL_STARTUP_COMMAND_ENV}-missing}"; exit\n`
 }
 
-describe('local POSIX shell startup-command delivery', () => {
+// Why skip on win32 / no POSIX shells found: it.each(SHELLS) with an empty array
+// produces zero cases, which vitest reports as "no test found" rather than a skip.
+describe.skipIf(SHELLS.length === 0)('local POSIX shell startup-command delivery', () => {
   let testHome: string | undefined
 
   afterEach(() => {

@@ -1,5 +1,5 @@
 import { homedir, tmpdir } from 'node:os'
-import { join, sep } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AppPathName } from '../../shared/app-environment'
 import {
@@ -102,9 +102,11 @@ describe('resolveKoluxdPath', () => {
 
 describe('resolveKoluxdInstallRoot', () => {
   it('is the directory holding the running bundle, not the working directory', () => {
-    expect(resolveKoluxdInstallRoot(join(sep, 'opt', 'kolux', 'koluxd.js'))).toBe(
-      join(sep, 'opt', 'kolux')
-    )
+    // Why resolve(), not join(sep, ...): `sep`-joined segments are drive-relative on
+    // Windows, not absolute, so resolve() here mirrors the fully-qualified path the
+    // function itself produces instead of asserting a POSIX-only shape.
+    const scriptPath = resolve(sep, 'opt', 'kolux', 'koluxd.js')
+    expect(resolveKoluxdInstallRoot(scriptPath)).toBe(dirname(scriptPath))
   })
 
   it('absolutizes a relative script path against the working directory', () => {

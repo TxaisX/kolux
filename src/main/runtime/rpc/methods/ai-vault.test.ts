@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RpcDispatcher } from '../dispatcher'
 import type { RpcRequest } from '../core'
@@ -403,7 +404,9 @@ describe('aiVault.listSessions handler + shared cache', () => {
     const options = scanAiVaultSessionsInWorker.mock.calls[0]?.[0] as AiVaultScanOptions
     // Why: the codex-home is sourced from the runtime, not the window-only
     // registerCoreHandlers path, so it survives in serve mode.
-    expect(options.additionalCodexSessionsDirs).toContain('/runtime/codex/home/sessions')
+    // join(), not a POSIX literal: this dir is only ever built with this process's own
+    // host-native path.join, since it always describes a path on the host it runs on.
+    expect(options.additionalCodexSessionsDirs).toContain(join('/runtime/codex/home', 'sessions'))
     expect(options.wslHomeDirs).toEqual([])
   })
 
@@ -416,6 +419,6 @@ describe('aiVault.listSessions handler + shared cache', () => {
     })
     await runtime.listAiVaultSessions({})
     const options = scanAiVaultSessionsInWorker.mock.calls[0]?.[0] as AiVaultScanOptions
-    expect(options.additionalCodexSessionsDirs).toContain('/ctor/codex/home/sessions')
+    expect(options.additionalCodexSessionsDirs).toContain(join('/ctor/codex/home', 'sessions'))
   })
 })

@@ -9,7 +9,8 @@ import { describe, expect, it } from 'vitest'
 const TERMINAL_PATH = 'src/renderer/src/components/use-terminal-watcher-effects.ts'
 
 function readSource(relativePath: string): string {
-  return readFileSync(join(process.cwd(), relativePath), 'utf8')
+  // Why: normalize CRLF so checkout line-ending settings don't break literal-\n substring checks.
+  return readFileSync(join(process.cwd(), relativePath), 'utf8').replace(/\r\n/g, '\n')
 }
 
 describe('Terminal auto-create wiring', () => {

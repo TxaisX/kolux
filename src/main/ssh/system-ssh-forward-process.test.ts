@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events'
+import { join } from 'node:path'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 const { existsSyncMock, spawnMock, connectMock, createServerMock } = vi.hoisted(() => ({
@@ -37,8 +38,18 @@ import {
 } from './system-ssh-forward-process'
 import type { SshTarget } from '../../shared/ssh-types'
 
+// Why derived from SystemRoot/WINDIR, not a hardcoded 'C:\Windows': findSystemSsh() builds its
+// candidate from that same env var, and its value's casing (e.g. `C:\WINDOWS`) varies by machine —
+// a literal here can mismatch the real spawn() call even though both name the same file.
 const SYSTEM_SSH_PATH =
-  process.platform === 'win32' ? 'C:\\Windows\\System32\\OpenSSH\\ssh.exe' : '/usr/bin/ssh'
+  process.platform === 'win32'
+    ? join(
+        process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows',
+        'System32',
+        'OpenSSH',
+        'ssh.exe'
+      )
+    : '/usr/bin/ssh'
 
 type FakeChildProcess = EventEmitter & {
   stderr: EventEmitter

@@ -342,6 +342,7 @@ describe('KoluxRuntimeService', () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-runtime-project-host-'))
     const repos: Record<string, unknown>[] = []
     // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
     getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
@@ -367,14 +368,14 @@ describe('KoluxRuntimeService', () => {
     try {
       execFileSync('git', ['init'], { cwd: tempRoot, stdio: 'ignore' })
       const first = await runtime.setupProjectExistingFolder({
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         hostId: 'runtime:env-1',
         path: tempRoot,
         kind: 'git',
         setupMethod: 'imported-existing-folder'
       })
       const second = await runtime.setupProjectExistingFolder({
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         hostId: 'runtime:env-2',
         path: tempRoot,
         kind: 'git',
@@ -534,6 +535,7 @@ describe('KoluxRuntimeService', () => {
     const spawnSpy = vi.spyOn(gitRunner, 'gitSpawnAfterWindowsEnvironmentReady')
     const repos: Record<string, unknown>[] = []
     // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
     getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
     const runtimeStore = {
       ...store,
@@ -568,7 +570,7 @@ describe('KoluxRuntimeService', () => {
 
     try {
       const result = await runtime.setupProjectClone({
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:txaisx/nightshift',
         hostId: 'runtime:env-1',
         url: 'https://example.com/kolux.git',
         destination

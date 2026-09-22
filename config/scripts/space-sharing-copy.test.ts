@@ -37,7 +37,16 @@ function makeTree(): { root: string; source: string } {
   const source = path.join(root, 'source')
   mkdirSync(path.join(source, 'nested'), { recursive: true })
   writeFileSync(path.join(source, 'nested', 'file'), 'contents')
-  symlinkSync(path.join('nested', 'file'), path.join(source, 'relative-link'))
+  try {
+    symlinkSync(path.join('nested', 'file'), path.join(source, 'relative-link'))
+  } catch (error) {
+    // Why: ordinary Windows CI tokens cannot create file symlinks without
+    // Developer Mode. Most callers only need the plain file tree; the two
+    // tests that assert on the symlink itself are platform-guarded below.
+    if (process.platform !== 'win32' || (error as NodeJS.ErrnoException).code !== 'EPERM') {
+      throw error
+    }
+  }
   return { root, source }
 }
 
@@ -56,13 +65,19 @@ describe('shareTree', () => {
     )
   })
 
-  it('keeps relative symlinks unresolved on whatever this host supports', () => {
-    const { root, source } = makeTree()
-    const destination = path.join(root, 'shared')
-    expect(shareTree(source, destination)).toBeTruthy()
-    expect(readFileSync(path.join(destination, 'nested', 'file'), 'utf8')).toBe('contents')
-    expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(path.join('nested', 'file'))
-  })
+  // Why: ordinary Windows CI tokens cannot create file symlinks without Developer Mode.
+  it.runIf(process.platform !== 'win32')(
+    'keeps relative symlinks unresolved on whatever this host supports',
+    () => {
+      const { root, source } = makeTree()
+      const destination = path.join(root, 'shared')
+      expect(shareTree(source, destination)).toBeTruthy()
+      expect(readFileSync(path.join(destination, 'nested', 'file'), 'utf8')).toBe('contents')
+      expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(
+        path.join('nested', 'file')
+      )
+    }
+  )
 
   it('falls from reflink to hardlink on Linux, where ext4 has no reflinks', () => {
     const { root, source } = makeTree()
@@ -108,15 +123,21 @@ describe('shareTree', () => {
 })
 
 describe('hardlinkTree', () => {
-  it('shares inodes for files but recreates symlinks as their own entries', () => {
-    const { root, source } = makeTree()
-    const destination = path.join(root, 'linked')
-    hardlinkTree(source, destination)
-    expect(statSync(path.join(destination, 'nested', 'file')).ino).toBe(
-      statSync(path.join(source, 'nested', 'file')).ino
-    )
-    expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(path.join('nested', 'file'))
-  })
+  // Why: ordinary Windows CI tokens cannot create file symlinks without Developer Mode.
+  it.runIf(process.platform !== 'win32')(
+    'shares inodes for files but recreates symlinks as their own entries',
+    () => {
+      const { root, source } = makeTree()
+      const destination = path.join(root, 'linked')
+      hardlinkTree(source, destination)
+      expect(statSync(path.join(destination, 'nested', 'file')).ino).toBe(
+        statSync(path.join(source, 'nested', 'file')).ino
+      )
+      expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(
+        path.join('nested', 'file')
+      )
+    }
+  )
 
   it('propagates a write through the shared inode, which is why callers must protect it', () => {
     const { root, source } = makeTree()
@@ -228,7 +249,13 @@ describe('copyPrivateTree', () => {
     })
     expect(hardlink).not.toHaveBeenCalled()
     expect(readFileSync(path.join(destination, 'nested', 'file'), 'utf8')).toBe('contents')
-    expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(path.join('nested', 'file'))
+    // Why guarded: ordinary Windows CI tokens cannot create file symlinks
+    // without Developer Mode, so makeTree() skips it there.
+    if (process.platform !== 'win32') {
+      expect(readlinkSync(path.join(destination, 'relative-link'))).toBe(
+        path.join('nested', 'file')
+      )
+    }
   })
 
   it('reports the private mechanism it used', () => {

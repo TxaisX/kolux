@@ -172,21 +172,13 @@
         "gh run view 34045578306 --log",
         "gh run view 34045975180 --log",
         "gh run view 34046230389 --log",
-        "KOLUX_E2E_SSH_LOCALHOST=1 KOLUX_FEATURE_REMOTE_AGENT_HOOKS=1 pnpm exec playwright test --config tests/playwright.config.ts tests/e2e/ssh-localhost.spec.ts --project=electron-headless --workers=1",
-        "node_modules/.bin/vitest run --config config/vitest.config.ts config/scripts/ssh-localhost-e2e-routing.test.mjs"
+        "KOLUX_E2E_SSH_LOCALHOST=1 KOLUX_FEATURE_REMOTE_AGENT_HOOKS=1 pnpm exec playwright test --config tests/playwright.config.ts tests/e2e/ssh-localhost.spec.ts --project=electron-headless --workers=1"
       ],
-      "testFiles": [
-        "tests/e2e/ssh-localhost.spec.ts",
-        "config/scripts/ssh-localhost-e2e-routing.test.mjs"
-      ],
+      "testFiles": ["tests/e2e/ssh-localhost.spec.ts"],
       "assertionRefs": [
         {
           "file": "tests/e2e/ssh-localhost.spec.ts",
           "assertions": ["routes a terminal and agent-hook status over localhost SSH"]
-        },
-        {
-          "file": "config/scripts/ssh-localhost-e2e-routing.test.mjs",
-          "assertions": ["selects the localhost journey for its remote hook authorities"]
         }
       ],
       "evidenceRuns": [
@@ -5440,7 +5432,6 @@
         "pnpm exec playwright test tests/e2e/paired-client-hosted-browser.spec.ts --config tests/playwright.config.ts --project electron-headless --workers=1",
         "pnpm exec vitest run --config config/vitest.config.ts src/renderer/src/runtime/web-runtime-session-browser-client-placement.test.ts src/renderer/src/runtime/web-runtime-session-browser-create-failure.test.ts src/main/runtime/kolux-runtime-browser-client-hosted.test.ts src/main/runtime/runtime-browser-client-page-creation.test.ts src/main/runtime/browser-host-page-reconciliation-orchestration.test.ts src/main/runtime/browser-host-command-ledger.test.ts",
         "pnpm exec vitest run --config config/vitest.config.ts src/shared/browser-client-host-protocol.test.ts src/shared/remote-runtime-client.test.ts src/main/runtime/browser-host-capability-selection.test.ts src/main/runtime/rpc/methods/browser-tab-create-schema.test.ts src/main/ipc/runtime-environment-browser-client-host-handler.test.ts",
-        "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/cross-version-browser-placement.unit.test.ts",
         "SKIP_BUILD=1 KOLUX_CROSS_VERSION_PACKAGED_EXECUTABLE=/Applications/Kolux.app/Contents/MacOS/Kolux pnpm exec playwright test tests/e2e/packaged-mixed-version-browser-placement.spec.ts --config tests/playwright.config.ts --project electron-headless --workers=1",
         "pnpm exec vitest run --config config/vitest.config.ts src/main/runtime/browser-network-tunnel-paired-runtime.integration.test.ts src/main/browser/paired-runtime-browser-network-route.test.ts src/main/browser/browser-network-execution-route.test.ts src/main/browser/wsl-browser-network-execution-route.test.ts src/main/browser/wsl-browser-network-relay-launch.test.ts src/main/runtime/runtime-browser-network-execution-host.test.ts",
         "pnpm exec vitest run --config config/vitest.config.ts src/main/browser/browser-screencast-lifecycle.test.ts src/main/browser/browser-screencast-stream.test.ts src/main/runtime/kolux-runtime-browser-screencast-fanout.test.ts",
@@ -5461,7 +5452,6 @@
         "src/main/runtime/browser-host-capability-selection.test.ts",
         "src/main/runtime/rpc/methods/browser-tab-create-schema.test.ts",
         "src/main/ipc/runtime-environment-browser-client-host-handler.test.ts",
-        "tests/e2e/cross-version-wire/cross-version-browser-placement.unit.test.ts",
         "tests/e2e/packaged-mixed-version-browser-placement.spec.ts",
         "src/main/runtime/browser-network-tunnel-paired-runtime.integration.test.ts",
         "src/main/browser/paired-runtime-browser-network-route.test.ts",
@@ -5489,14 +5479,6 @@
             "eligible desktops prepare exact client placement while legacy and explicit-server requests omit placement",
             "client preparation failure surfaces without server fallback",
             "acknowledged client pages wait for exact renderer-store materialization"
-          ]
-        },
-        {
-          "file": "tests/e2e/cross-version-wire/cross-version-browser-placement.unit.test.ts",
-          "assertions": [
-            "a real stable release has no client-host or browser-tunnel capability constants",
-            "the old server schema strips additive placement without changing legacy fields",
-            "the current schema accepts the old request with placement omitted"
           ]
         },
         {
@@ -5537,15 +5519,6 @@
           "result": "passed",
           "durationSeconds": 48.8,
           "summary": "Two fresh-build production journeys passed against isolated headed Electron and real headless kolux serve hosts, including client ownership, visible retained content, automation, no screencast, new-page-only kill switch, and server fallback without duplicate execution."
-        },
-        {
-          "date": "2026-08-16",
-          "runner": "local",
-          "platform": "macos",
-          "command": "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/cross-version-browser-placement.unit.test.ts",
-          "result": "passed",
-          "durationSeconds": 0.23,
-          "summary": "Three assertions passed against published v1.4.182 and the current tree: the release lacks the negotiated capabilities, strips additive placement without changing legacy fields, and the current server preserves an old request with omitted placement."
         },
         {
           "date": "2026-08-16",
@@ -5999,7 +5972,6 @@
       "oracle": "Run one fixed child-TUI journey for normal exit and cleanup-free SIGKILL. Assert renderer and host normal-buffer/non-mouse state, host snapshot terminalOwner metadata, exact PTY writes with no post-exit mouse report, unrelated-pane survival, post-boundary prompt output preserved (normal exit), ordered proof invalidation, bounded settlement and bail-out flush, one inspection per unclean episode with zero scans for ordinary output, split-escape safety at every chunk boundary, and old/new client-host fallback parity.",
       "commands": [
         "pnpm exec vitest run --config config/vitest.config.ts src/main/daemon/terminal-shell-lifecycle-scanner.test.ts src/main/daemon/terminal-shell-recovery-barrier.test.ts src/main/daemon/session-shell-recovery.test.ts src/main/daemon/session.test.ts src/main/daemon/terminal-host-concurrent-create.test.ts src/main/daemon/daemon-pty-adapter.test.ts src/main/daemon/daemon-restore-scrollback-depth.test.ts src/main/daemon/terminal-checkpoint-serializer.test.ts src/main/providers/agent-foreground-process.test.ts src/main/runtime/kolux-runtime.test.ts src/main/runtime/mobile-subscribe-integration.test.ts src/main/runtime/rpc/terminal-multiplex-escape-tail.test.ts src/renderer/src/components/terminal-pane/pty-connection-hidden-codex-queries.test.ts src/renderer/src/components/terminal-pane/pty-connection-reattach-mode-reset.test.ts src/renderer/src/components/terminal-pane/pty-connection-daemon-snapshot-replay.test.ts src/renderer/src/components/terminal-pane/remote-runtime-pty-snapshot-escape-tail.test.ts src/shared/terminal-partial-escape-tail.test.ts src/shared/terminal-partial-escape-tail.fuzz.test.ts --reporter=dot",
-        "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts --reporter=dot",
         "pnpm exec electron-vite build --mode e2e",
         "SKIP_BUILD=1 pnpm exec playwright test tests/e2e/terminal-hidden-child-tui-kill-mode-reset.spec.ts --config tests/playwright.config.ts --project electron-headless --workers=1"
       ],
@@ -6022,7 +5994,6 @@
         "src/renderer/src/components/terminal-pane/remote-runtime-pty-snapshot-escape-tail.test.ts",
         "src/shared/terminal-partial-escape-tail.test.ts",
         "src/shared/terminal-partial-escape-tail.fuzz.test.ts",
-        "tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts",
         "tests/e2e/terminal-hidden-child-tui-kill-mode-reset.spec.ts"
       ],
       "assertionRefs": [
@@ -17162,7 +17133,7 @@
       "id": "remote-wire.cross-version-terminal-journey",
       "title": "A released client and a current server still complete one terminal journey in both skew directions",
       "maturity": "experimental",
-      "protection": "partial",
+      "protection": "none",
       "owner": "remote-runtime",
       "layer": "cross-version-protocol-integration",
       "surfaces": [
@@ -17173,9 +17144,9 @@
       ],
       "platforms": ["macos", "linux", "windows"],
       "providers": ["paired-runtime"],
-      "coveredPlatforms": ["macos"],
-      "coveredProviders": ["paired-runtime"],
-      "coverageNotes": "Loads the real host RPC methods, real RpcDispatcher, real renderer terminal multiplexer, and codecs from the current working tree, exact pre-fix main, newest release tag, and the pinned reported 1.4.192-client/1.4.191-host commits. In-process transport reproduces production frame routing, including decoder-rejected opcodes. Covers the terminal stream only; session tabs, agent publications, file/Git RPCs, mobile E2EE framing, and relay transport are uncovered.",
+      "coveredPlatforms": [],
+      "coveredProviders": [],
+      "coverageNotes": "Registered gap since 2026-09-21: the pinned upstream releases (v1.4.184, v1.4.190, fd9125ea8c) this journey ran against are not in the Kolux repository history, and the Nightshift to Kolux rename broke old-client wire compatibility by design, so the lanes were retired until a Kolux release pair exists. Previously: Loads the real host RPC methods, real RpcDispatcher, real renderer terminal multiplexer, and codecs from the current working tree, exact pre-fix main, newest release tag, and the pinned reported 1.4.192-client/1.4.191-host commits. In-process transport reproduces production frame routing, including decoder-rejected opcodes. Covers the terminal stream only; session tabs, agent publications, file/Git RPCs, mobile E2EE framing, and relay transport are uncovered.",
       "motivatingLinks": [
         "https://github.com/TxaisX/nightshift/pull/12641",
         "https://github.com/TxaisX/nightshift/pull/12655"
@@ -17183,45 +17154,12 @@
       "invariant": "A client and a server built from different releases must complete subscribe, input delivery to the process, hide/reveal buffer snapshot, transport drop, and resubscribe with no frame refused by the receiving build's decoder, the same negotiated capabilities, and the same published snapshot content — so a new optional field stays safe, a new opcode is only sent after negotiation, and a change in what the host publishes is visible before release.",
       "oracle": "Run one fixed journey per general pairing (old client/new server, new client/old server, and current/current) plus the pinned reported pair, exact pre-fix main control, and candidate controls. Assert exact frames, subscriptions, input, rendered snapshot/live content, and zero decoder rejects or missing host methods. The reported and pre-fix-main clients must render blank after discarding the nonempty lossy initial image; candidate pairings must paint it once, recover the first post-snapshot sequence gap, and resume contiguous live output once.",
       "commands": [
-        "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts",
-        "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/reported-lossy-initial-snapshot.unit.test.ts"
       ],
       "testFiles": [
-        "tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts",
-        "tests/e2e/cross-version-wire/reported-lossy-initial-snapshot.unit.test.ts"
       ],
       "assertionRefs": [
-        {
-          "file": "tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts",
-          "assertions": [
-            "expect(record.completed).toEqual([...JOURNEY_STEPS])",
-            "expect(record.frameSequence).toEqual(EXPECTED_JOURNEY_FRAMES)",
-            "expect(record.rejected).toEqual([])",
-            "expect(record.inputAtProcess).toEqual([JOURNEY_INPUTS.first, JOURNEY_INPUTS.second])",
-            "expect(event.capabilities).toEqual({ outputPause: 1 })"
-          ]
-        },
-        {
-          "file": "tests/e2e/cross-version-wire/reported-lossy-initial-snapshot.unit.test.ts",
-          "assertions": [
-            "the reported 1.4.192 client discards the reported 1.4.191 host's nonempty lossy snapshot",
-            "the exact pre-fix main client reproduces the same blank rendered terminal",
-            "the candidate client paints that old-host image exactly once and resumes live output",
-            "the candidate client paints the candidate-host image exactly once and resumes live output",
-            "both candidate pairings report zero decoder rejects and missing runtime methods"
-          ]
-        }
       ],
       "evidenceRuns": [
-        {
-          "date": "2026-08-05",
-          "runner": "local",
-          "platform": "macos",
-          "result": "passed",
-          "command": "pnpm exec vitest run --config config/vitest.config.ts tests/e2e/cross-version-wire/cross-version-terminal-wire.unit.test.ts",
-          "durationSeconds": 6,
-          "summary": "v1.4.169 against working tree c4d5a535f2; all three pairings produced the identical 16-frame journey with zero rejected frames."
-        }
       ],
       "runtimeBudget": {
         "p95Seconds": 180,
@@ -17352,7 +17290,7 @@
       "invariant": "After packaged foreground headless serve publishes structured readiness, one SIGINT or SIGTERM exits successfully without an Electron fatal trap or core evidence, releases the exact listener and owned Xvfb/process tree, and leaves an unrelated process identity untouched.",
       "oracle": "First start the original, readable-and-executable AppImage once in a fresh restricted Ubuntu 26.04 container through dbus-run-session -- xvfb-run -a --appimage-extract-and-run with KOLUX_STARTUP_DIAGNOSTICS=1, and require the exact updater-setup-done marker within 90 seconds while fencing the launcher and owned Xvfb by PID start ticks. For each signal, start a separate unprivileged container with disposable profile and runtime directories, a random loopback port, DISPLAY unset, software GL, and the extracted AppImage in a fresh session. Wait for kolux_server_ready schema version 1, record the listener owner, process tree, owned Xvfb, and unrelated canary identities, deliver SIGINT to the foreground process group or the documented KillMode=mixed graceful SIGTERM to the AppRun PID, then require wait status zero, no Failed to shutdown, SIGTRAP, core, listener, recorded descendant, profile/AppImage/Xvfb residue, or changed canary identity. The 30-second bounds are failure deadlines, never success conditions.",
       "commands": [
-        "pnpm exec vitest run --config config/vitest.config.ts src/main/startup/ensure-virtual-display.test.ts config/scripts/headless-serve-shutdown-workflow.test.mjs --reporter=dot",
+        "pnpm exec vitest run --config config/vitest.config.ts src/main/startup/ensure-virtual-display.test.ts --reporter=dot",
         "shellcheck config/docker/headless-serve-shutdown/run-signal-case.sh",
         "shellcheck config/docker/headless-serve-shutdown/run-appimage-desktop-startup-case.sh",
         "node config/scripts/run-headless-serve-shutdown-docker.mjs --appimage dist/kolux-linux.AppImage",
@@ -17360,7 +17298,6 @@
       ],
       "testFiles": [
         "src/main/startup/ensure-virtual-display.test.ts",
-        "config/scripts/headless-serve-shutdown-workflow.test.mjs",
         "config/scripts/run-headless-serve-shutdown-docker.mjs",
         "config/docker/headless-serve-shutdown/run-signal-case.sh",
         "config/docker/headless-serve-shutdown/run-appimage-desktop-startup-case.sh"
@@ -17374,15 +17311,6 @@
             "owned Xvfb retains an early-process-exit guard until Electron is ready",
             "owned Xvfb is not stopped from Electron's cancelable will-quit event",
             "external displays and non-Linux startup remain untouched"
-          ]
-        },
-        {
-          "file": "config/scripts/headless-serve-shutdown-workflow.test.mjs",
-          "assertions": [
-            "PR CI builds an x64 AppImage before invoking the packaged shutdown oracle",
-            "the original AppImage desktop startup oracle is wired before extraction and signal cases",
-            "the bound AppImage is readable and executable before desktop launch and extraction",
-            "the documented systemd unit uses KillMode=mixed so graceful TERM targets Kolux before its owned Xvfb"
           ]
         },
         {
@@ -17418,10 +17346,10 @@
           "date": "2026-08-13",
           "runner": "local",
           "platform": "linux",
-          "command": "pnpm exec vitest run --config config/vitest.config.ts src/main/startup/ensure-virtual-display.test.ts config/scripts/headless-serve-shutdown-workflow.test.mjs --reporter=dot",
+          "command": "pnpm exec vitest run --config config/vitest.config.ts src/main/startup/ensure-virtual-display.test.ts --reporter=dot",
           "result": "passed",
           "durationSeconds": 1,
-          "summary": "The focused startup and workflow contracts passed with owned-display termination semantics and native amd64 CI wiring."
+          "summary": "The focused startup contract passed with owned-display termination semantics. (The former workflow-wiring companion, config/scripts/headless-serve-shutdown-workflow.test.mjs, was deleted with pr.yml at the fork split.)"
         },
         {
           "date": "2026-08-13",
@@ -17591,13 +17519,9 @@
       "invariant": "Every managed-hook companion shipped for Node 18 must load before agent installers execute, and importing desktop-only state inspection must not make unrelated remote installers depend on node:sqlite.",
       "oracle": "Build all relay artifacts, require each managed-hook-runtime.js in a real Node 18 process, assert its installer export, then install only Codex and Claude into a fresh temporary home. Require two successful installer results, executable hook scripts, and both agent configs to reference their managed scripts without touching the user's home.",
       "commands": [
-        "pnpm run build:relay && npx -y node@18 config/scripts/smoke-managed-hook-runtime-node18.mjs",
-        "pnpm exec vitest run --config config/vitest.config.ts config/scripts/pr-workflow-parallelism.test.mjs"
+        "pnpm run build:relay && npx -y node@18 config/scripts/smoke-managed-hook-runtime-node18.mjs"
       ],
-      "testFiles": [
-        "config/scripts/smoke-managed-hook-runtime-node18.mjs",
-        "config/scripts/pr-workflow-parallelism.test.mjs"
-      ],
+      "testFiles": ["config/scripts/smoke-managed-hook-runtime-node18.mjs"],
       "assertionRefs": [
         {
           "file": "config/scripts/smoke-managed-hook-runtime-node18.mjs",
@@ -17605,12 +17529,6 @@
             "all six built companions load and export installManagedHooks under Node 18",
             "Codex and Claude installations both succeed in an isolated home",
             "both generated configs reference executable managed hook scripts"
-          ]
-        },
-        {
-          "file": "config/scripts/pr-workflow-parallelism.test.mjs",
-          "assertions": [
-            "PR CI builds the companions before switching to Node 18 and running the smoke oracle"
           ]
         }
       ],
@@ -18759,12 +18677,11 @@
       "commands": [
         "gh workflow run packaged-browser-e2e.yml",
         "pnpm exec playwright test tests/e2e/packaged-mixed-version-browser-placement.spec.ts --config tests/playwright.config.ts --project=electron-headless --workers=1 --repeat-each=3 --retries=0",
-        "node_modules/.bin/vitest run --config config/vitest.config.ts config/scripts/packaged-browser-lane-contract.test.mjs config/scripts/verify-packaged-browser-participation.test.mjs",
+        "node_modules/.bin/vitest run --config config/vitest.config.ts config/scripts/verify-packaged-browser-participation.test.mjs",
         "gh run view 34069063016 --log"
       ],
       "testFiles": [
         "tests/e2e/packaged-mixed-version-browser-placement.spec.ts",
-        "config/scripts/packaged-browser-lane-contract.test.mjs",
         "config/scripts/verify-packaged-browser-participation.test.mjs"
       ],
       "assertionRefs": [
@@ -18778,13 +18695,6 @@
         {
           "file": "config/scripts/verify-packaged-browser-participation.test.mjs",
           "assertions": ["reject missing, substituted, skipped and retried scenarios"]
-        },
-        {
-          "file": "config/scripts/packaged-browser-lane-contract.test.mjs",
-          "assertions": [
-            "verify pinned package checksum before extraction",
-            "require both directions three times and run report verification even on failure"
-          ]
         }
       ],
       "evidenceRuns": [
@@ -18844,21 +18754,13 @@
       "commands": [
         "gh workflow run terminal-ime-e2e.yml",
         "gh run view 34074017928 --log",
-        "pnpm exec playwright test --config tests/playwright.config.ts tests/e2e/terminal-hangul-terminating-digit-native.spec.ts --project=electron-headful --workers=1 --repeat-each=3 --retries=0 --reporter=list,json",
-        "KOLUX_BACKGROUND_LAUNCH=1 node_modules/.bin/vitest run --config config/vitest.config.ts config/scripts/terminal-ime-e2e-workflow.test.mjs"
+        "pnpm exec playwright test --config tests/playwright.config.ts tests/e2e/terminal-hangul-terminating-digit-native.spec.ts --project=electron-headful --workers=1 --repeat-each=3 --retries=0 --reporter=list,json"
       ],
-      "testFiles": [
-        "tests/e2e/terminal-hangul-terminating-digit-native.spec.ts",
-        "config/scripts/terminal-ime-e2e-workflow.test.mjs"
-      ],
+      "testFiles": ["tests/e2e/terminal-hangul-terminating-digit-native.spec.ts"],
       "assertionRefs": [
         {
           "file": "tests/e2e/terminal-hangul-terminating-digit-native.spec.ts",
           "assertions": ["a digit typed right after a Hangul syllable reaches the pty"]
-        },
-        {
-          "file": "config/scripts/terminal-ime-e2e-workflow.test.mjs",
-          "assertions": ["runs native Wayland independently with CJK fonts and retained evidence"]
         }
       ],
       "evidenceRuns": [

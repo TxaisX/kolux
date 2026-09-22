@@ -159,15 +159,21 @@ describe('classifyNodePtyProbeResult', () => {
 
 describe('buildNodePtyLoadProbeScript', () => {
   it('loads through absolute paths so the child cannot resolve a different copy', () => {
-    const script = buildNodePtyLoadProbeScript('/opt/app/node_modules/node-pty')
-    expect(script).toContain('"/opt/app/node_modules/node-pty/lib/index.js"')
-    expect(script).toContain('"/opt/app/node_modules/node-pty/lib/utils.js"')
+    const nodePtyDir = '/opt/app/node_modules/node-pty'
+    const script = buildNodePtyLoadProbeScript(nodePtyDir)
+    // Why join(), not a POSIX literal: the script embeds paths built with this
+    // process's own host-native path.join, since the spawned probe always runs
+    // on the same host that built the script.
+    expect(script).toContain(JSON.stringify(join(nodePtyDir, 'lib', 'index.js')))
+    expect(script).toContain(JSON.stringify(join(nodePtyDir, 'lib', 'utils.js')))
     expect(script).toContain('loadNativeModule')
     // Windows defers conpty.node to first spawn, so requiring the package proves nothing there.
     expect(script).toContain('conpty')
     // The raw dlopen must precede requiring the package, or node-pty's own loader
     // re-wraps the loader error into a misleading "Cannot find module".
-    expect(script.indexOf('process.dlopen')).toBeLessThan(script.indexOf('lib/index.js'))
+    expect(script.indexOf('process.dlopen')).toBeLessThan(
+      script.indexOf(JSON.stringify(join(nodePtyDir, 'lib', 'index.js')))
+    )
   })
 })
 

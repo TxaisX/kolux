@@ -97,7 +97,10 @@ describe('discoverCommitMessageModelsLocal', () => {
     }
     spawnMock.mockReturnValue(child as never)
 
-    const pending = discoverCommitMessageModelsLocal('claude', undefined)
+    // Why an empty PATH: on win32, spawnSourceControlAgent resolves the binary via the real
+    // process.env.PATH when no env is given — on a machine with Claude CLI actually installed
+    // (like this one) that resolves to its real absolute path instead of the bare command name.
+    const pending = discoverCommitMessageModelsLocal('claude', { PATH: '' })
 
     listeners.get('stdout:data')?.(
       Buffer.from(

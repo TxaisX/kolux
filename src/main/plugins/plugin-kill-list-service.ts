@@ -32,7 +32,10 @@ export class PluginKillListService {
     fetcher?: PluginKillListFetcher
   }) {
     this.store = options.store ?? new PluginKillListStore(options.pluginsDataDir)
-    this.fetcher = options.fetcher ?? (() => fetchPluginKillList())
+    // Why here: guarding inside fetchPluginKillList made its response validation unreachable.
+    this.fetcher =
+      options.fetcher ??
+      (FORK_NO_PHONE_HOME ? async () => emptyKillList() : () => fetchPluginKillList())
   }
 
   async initialize(): Promise<void> {
@@ -100,9 +103,6 @@ export async function fetchPluginKillList(
   fetcher: typeof fetch = fetch,
   url = PLUGIN_KILL_LIST_URL
 ): Promise<PluginKillList> {
-  if (FORK_NO_PHONE_HOME) {
-    return { version: 1, generatedAt: '1970-01-01T00:00:00Z', plugins: [] }
-  }
   const response = await fetcher(url, { cache: 'no-store' })
   if (!response.ok) {
     throw new Error(`plugin kill-list request failed with HTTP ${response.status}`)

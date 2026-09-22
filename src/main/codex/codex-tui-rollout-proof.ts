@@ -1,4 +1,3 @@
-import { join } from 'node:path'
 import { stripAnsiEscapeSequences } from '../../shared/ansi-escape-sequences'
 import { relativePathInsideRoot } from '../../shared/cross-platform-path'
 import { readCodexRolloutSessionMetaId } from './codex-rollout-session-meta'
@@ -45,12 +44,20 @@ export function codexTuiStatusProbeInput(kittyKeyboardFlags: number): {
   }
 }
 
+// Why: `node:path`'s `join` always normalizes to the HOST platform's separator, which
+// mangles a POSIX-shaped home passed to it on a Windows dev/CI box (and vice versa) —
+// append 'sessions' with whatever separator the home itself already uses instead.
+function joinSessionsRoot(homePath: string): string {
+  const separator = homePath.includes('\\') ? '\\' : '/'
+  return `${homePath.replace(/[\\/]+$/, '')}${separator}sessions`
+}
+
 export async function resolvePinnedCodexRolloutProof(
   codexHome: string,
   threadId: string,
   options: CodexTuiRolloutProofOptions = {}
 ): Promise<string | null> {
-  const sessionsRoot = join(codexHome, 'sessions')
+  const sessionsRoot = joinSessionsRoot(codexHome)
   const listFiles =
     options.listFiles ??
     ((root: string) => listCodexSessionJsonlFilesIncrementally(root, { batchSize: 64, yieldMs: 0 }))

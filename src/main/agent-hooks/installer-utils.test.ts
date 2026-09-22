@@ -97,20 +97,26 @@ describe('readHooksJsonWithRaw', () => {
 })
 
 describe('writeHooksJson', () => {
-  it('updates a symlink target without replacing the hook config link', () => {
-    const targetPath = join(tmpDir, 'dotfiles-hooks.json')
-    writeFileSync(targetPath, '{"hooks":{}}\n')
-    symlinkSync(targetPath, configPath)
+  // Why: creating a symlink needs elevation or Developer Mode on Windows; EPERM otherwise.
+  // Why: creating a symlink needs elevation or Developer Mode on Windows; EPERM otherwise.
+  it.skipIf(process.platform === 'win32')(
+    'updates a symlink target without replacing the hook config link',
+    () => {
+      const targetPath = join(tmpDir, 'dotfiles-hooks.json')
+      writeFileSync(targetPath, '{"hooks":{}}\n')
+      symlinkSync(targetPath, configPath)
 
-    writeHooksJson(configPath, { hooks: { Stop: [] } })
+      writeHooksJson(configPath, { hooks: { Stop: [] } })
 
-    expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
-    expect(JSON.parse(readFileSync(targetPath, 'utf-8'))).toEqual({
-      hooks: { Stop: [] }
-    })
-  })
+      expect(lstatSync(configPath).isSymbolicLink()).toBe(true)
+      expect(JSON.parse(readFileSync(targetPath, 'utf-8'))).toEqual({
+        hooks: { Stop: [] }
+      })
+    }
+  )
 
-  it('does not replace a dangling hook config symlink', () => {
+  // Why: creating a symlink needs elevation or Developer Mode on Windows; EPERM otherwise.
+  it.skipIf(process.platform === 'win32')('does not replace a dangling hook config symlink', () => {
     const targetPath = join(tmpDir, 'missing-dotfiles-hooks.json')
     symlinkSync(targetPath, configPath)
 
@@ -150,7 +156,8 @@ describe('writeHooksJson', () => {
     expect(bak).toEqual(original)
   })
 
-  it('does not follow an existing .bak symlink', () => {
+  // Why: creating a symlink needs elevation or Developer Mode on Windows; EPERM otherwise.
+  it.skipIf(process.platform === 'win32')('does not follow an existing .bak symlink', () => {
     const original = '{"hooks":{}}\n'
     const backupTarget = join(tmpDir, 'dotfiles-backup.json')
     writeFileSync(configPath, original, 'utf-8')

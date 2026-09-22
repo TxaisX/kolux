@@ -58,6 +58,36 @@ function trimSurroundingSlashes(value) {
   return value[0] === '/' || value.endsWith('/') ? value.replace(/^\/|\/$/g, '') : value
 }
 
+function unquoteGitDiffToken(token) {
+  return token[0] === '"' ? token.slice(1, -1).replace(/\\(.)/g, '$1') : token
+}
+
+/**
+ * Undoes git's C-style header quoting, independent of core.quotePath (which
+ * only governs non-ASCII bytes): a path containing a literal backslash --
+ * every absolute path on Windows -- is always quoted and backslash-escaped in
+ * `diff --git`/`---`/`+++` lines. Scoped to those lines so hunk bodies, which
+ * can contain their own quoted strings, are never touched.
+ */
+function dequoteGitDiffHeaders(stdout) {
+  return stdout
+    .split('\n')
+    .map((line) => {
+      const diffMatch = /^diff --git (".*?"|\S+) (".*?"|\S+)$/.exec(line)
+      if (diffMatch) {
+        const [, left, right] = diffMatch
+        return `diff --git ${unquoteGitDiffToken(left).replace(/\\/g, '/')} ${unquoteGitDiffToken(right).replace(/\\/g, '/')}`
+      }
+      const pathLineMatch = /^(---|\+\+\+) (".*?"|\S+)$/.exec(line)
+      if (pathLineMatch) {
+        const [, marker, token] = pathLineMatch
+        return `${marker} ${unquoteGitDiffToken(token).replace(/\\/g, '/')}`
+      }
+      return line
+    })
+    .join('\n')
+}
+
 /**
  * Reproduces pnpm's post-processing of the raw `git diff` output: strip the two
  * scratch folder prefixes, drop a trailing no-newline marker, and remove
@@ -66,7 +96,7 @@ function trimSurroundingSlashes(value) {
 export function normalizePnpmDiff(stdout, folderA, folderB) {
   const a = folderA.replace(/\\/g, '/')
   const b = folderB.replace(/\\/g, '/')
-  return stdout
+  return dequoteGitDiffHeaders(stdout)
     .replace(new RegExp(`(a|b)(${escapeRegExp(`/${trimSurroundingSlashes(a)}/`)})`, 'g'), '$1/')
     .replace(new RegExp(`(a|b)${escapeRegExp(`/${trimSurroundingSlashes(b)}/`)}`, 'g'), '$1/')
     .replace(new RegExp(escapeRegExp(`${a}/`), 'g'), '')

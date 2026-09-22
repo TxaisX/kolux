@@ -557,9 +557,10 @@ describe('registerPtyHandlers', () => {
             PATH: '/system/bin'
           })
           expect(env.KOLUX_USER_DATA_PATH).toBe('/tmp/kolux-user-data')
-          expect(env.PATH).toContain(
-            `${join('/tmp/kolux-user-data', 'cli', 'bin')}${delimiter}/system/bin`
-          )
+          // Why ':' not `delimiter`: this suite forces process.platform to 'darwin'
+          // (pty-ipc-process-env-scope.ts) unless a test opts into win32 — `delimiter`
+          // from node:path reflects the real host running the suite, not that target.
+          expect(env.PATH).toContain(`${join('/tmp/kolux-user-data', 'cli', 'bin')}:/system/bin`)
         } finally {
           mockedApp.isPackaged = prev
         }
@@ -573,7 +574,9 @@ describe('registerPtyHandlers', () => {
         mockedApp.isPackaged = false
         try {
           const env = await daemonSpawnAndGetEnv({}, undefined, undefined, {
-            PATH: `/tmp/kolux-user-data/kolux-terminal-attribution/posix${delimiter}/system/bin`
+            // Why ':' not `delimiter`: see the comment above — this suite's process.platform
+            // is faked to 'darwin', so the scrub splits on POSIX ':', not the real host's ';'.
+            PATH: '/tmp/kolux-user-data/kolux-terminal-attribution/posix:/system/bin'
           })
           expect(env.PATH).not.toContain('kolux-terminal-attribution')
           expect(env.PATH).toContain('/system/bin')

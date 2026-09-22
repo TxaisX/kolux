@@ -75,7 +75,10 @@ describe('ensureShellReadyWrappersAt', () => {
   })
 })
 
-describe('shell-ready wrapper root resolution', () => {
+// Why skip on win32: getShellLaunchConfig's zsh branch gates ZDOTDIR on
+// ensureShellReadyWrappers(), which returns false unconditionally on win32 —
+// the wrapper tree is a POSIX-only feature there.
+describePosix('shell-ready wrapper root resolution', () => {
   // Why: daemon-entry fork is plain Node (no electron), so the wrapper root resolves from KOLUX_USER_DATA_PATH, not app.getPath.
   it('resolves the wrapper root from KOLUX_USER_DATA_PATH', async () => {
     const root = mkdtempSync(join(tmpdir(), 'kolux-userdata-env-'))

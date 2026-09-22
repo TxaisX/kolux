@@ -169,7 +169,7 @@ describe('launchAgentBackgroundSession remote runtime and SSH startup delivery',
       })
 
       expect(mockSpawn.mock.calls[0]?.[0]?.command).toBe(
-        "claude '--dangerously-skip-permissions' 'run the automation'"
+        "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'run the automation'"
       )
       expect(mockSpawn.mock.calls[0]?.[0]?.startupCommandDelivery).toBeUndefined()
       const dataSidecar = mockSubscribeToPtyData.mock.calls[0]?.[1] as (data: string) => void
@@ -178,7 +178,7 @@ describe('launchAgentBackgroundSession remote runtime and SSH startup delivery',
 
       expect(mockWrite).toHaveBeenCalledWith(
         'pty-1',
-        "claude '--dangerously-skip-permissions' 'run the automation'\r"
+        "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'run the automation'\r"
       )
     } finally {
       vi.useRealTimers()
@@ -495,7 +495,8 @@ describe('launchAgentBackgroundSession remote runtime and SSH startup delivery',
         method: 'terminal.create',
         params: expect.objectContaining({
           worktree: 'id:wt-1',
-          command: "claude '--dangerously-skip-permissions' 'run remotely'",
+          command:
+            "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' 'run remotely'",
           launchAgent: 'claude',
           presentation: 'background'
         })

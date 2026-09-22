@@ -12,7 +12,7 @@ describe('headless paired runtime startup diagnostics', () => {
 
     diagnostic.append(Buffer.from(`prefix${pairingUrl}\n`))
 
-    expect(diagnostic.read()).toBe('prefixorca://[redacted]\n')
+    expect(diagnostic.read()).toBe('prefixkolux://[redacted]\n')
     expect(diagnostic.read()).not.toContain('secret')
   })
 

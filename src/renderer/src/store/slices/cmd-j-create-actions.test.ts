@@ -184,10 +184,14 @@ describe('Cmd+J lifted creation actions', () => {
 
     await store.getState().openNewTerminalTabInActiveWorkspace('group-1')
 
+    // Why: every new session now gets its own split pane, not the source group.
+    const newGroupId = (store.getState().groupsByWorktree['wt-1'] ?? []).find(
+      (group) => group.id !== 'group-1'
+    )?.id
     expect(createWebRuntimeSessionTerminalMock).toHaveBeenCalledWith({
       worktreeId: 'wt-1',
       environmentId: 'runtime-1',
-      targetGroupId: 'group-1',
+      targetGroupId: newGroupId,
       activate: true
     })
     expect(store.getState().tabsByWorktree['wt-1'] ?? []).toEqual([])
@@ -270,10 +274,14 @@ describe('Cmd+J lifted creation actions', () => {
 
     await store.getState().openNewTerminalTabInActiveWorkspace('group-1')
 
+    // Why: every new session now gets its own split pane, not the source group.
+    const newGroupId = (store.getState().groupsByWorktree['wt-1'] ?? []).find(
+      (group) => group.id !== 'group-1'
+    )?.id
     expect(createWebRuntimeSessionTerminalMock).toHaveBeenCalledWith({
       worktreeId: 'wt-1',
       environmentId: 'owner-runtime',
-      targetGroupId: 'group-1',
+      targetGroupId: newGroupId,
       activate: true
     })
     expect(store.getState().tabsByWorktree['wt-1'] ?? []).toEqual([])

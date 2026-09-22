@@ -1,5 +1,12 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { quoteStartupArg } from '../../shared/tui-agent-startup-shell'
+
+// Why: a real host temp dir can carry Windows backslashes even under a simulated posix
+// platform; quote it the same fish-safe way production does instead of a naive literal.
+export function posixQuote(value: string): string {
+  return quoteStartupArg(value, 'posix')
+}
 
 export function isolatedScanRoots(root: string) {
   return {

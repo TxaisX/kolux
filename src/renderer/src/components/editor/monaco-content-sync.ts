@@ -2,14 +2,29 @@ import type { editor } from 'monaco-editor'
 
 export type MonacoContentSyncMode = 'undoable' | 'read-only-live-tail'
 
-function normalizeToModelEol(content: string, model: editor.ITextModel): string {
-  const eol = model.getEOL()
-  // Why: Monaco normalizes model line endings, while filesystem content keeps
-  // its raw EOLs. Compare the representation Monaco can actually retain.
-  if (eol === '\n' && !content.includes('\r')) {
+// Why: model.getEOL() is Monaco's platform default (CRLF on Windows) for a model whose content
+// has no line break to detect a convention from. Derive the target EOL from the model's current
+// value instead (already fetched by the caller): it matches getEOL() for any model with real
+// multi-line content and only falls back to LF when there's genuinely nothing to detect from.
+function resolveTargetEol(currentContent: string): '\n' | '\r\n' {
+  return currentContent.includes('\r\n') ? '\r\n' : '\n'
+}
+
+// Why: getValue() always renders line breaks through the model's own stored EOL, regardless of
+// which characters an edit inserted — so the platform-default mismatch above is invisible to
+// callers unless the model itself is corrected to match.
+function alignModelEol(model: editor.ITextModel, targetEol: '\n' | '\r\n'): void {
+  if (model.getEOL() === targetEol) {
+    return
+  }
+  model.setEOL(targetEol === '\n' ? 0 : 1) // editor.EndOfLineSequence.LF / .CRLF
+}
+
+function normalizeToModelEol(content: string, targetEol: '\n' | '\r\n'): string {
+  if (targetEol === '\n' && !content.includes('\r')) {
     return content
   }
-  return content.replace(/\r\n|\r|\n/g, eol)
+  return content.replace(/\r\n|\r|\n/g, targetEol)
 }
 
 function applyModelEdit(
@@ -69,7 +84,9 @@ export function syncContentOnMount(
     return false
   }
   const currentContent = model.getValue()
-  const normalizedContent = normalizeToModelEol(content, model)
+  const targetEol = resolveTargetEol(currentContent)
+  alignModelEol(model, targetEol)
+  const normalizedContent = normalizeToModelEol(content, targetEol)
   if (currentContent === normalizedContent) {
     return false
   }
@@ -98,7 +115,9 @@ export function syncContentUpdate(
     return
   }
   const currentContent = model.getValue()
-  const normalizedContent = normalizeToModelEol(content, model)
+  const targetEol = resolveTargetEol(currentContent)
+  alignModelEol(model, targetEol)
+  const normalizedContent = normalizeToModelEol(content, targetEol)
   if (currentContent.length === normalizedContent.length) {
     replaceModelContent(editorInstance, model, currentContent, normalizedContent, mode, true)
     return

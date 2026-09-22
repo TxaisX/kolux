@@ -161,7 +161,8 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions' --prefill 'review Bob''s change'"
+        command:
+          "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' --prefill 'review Bob''s change'"
       })
     )
   })
@@ -179,7 +180,7 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: 'claude "--dangerously-skip-permissions"'
+        command: 'claude "--model" "opus" "--effort" "high" "--dangerously-skip-permissions"'
       })
     )
   })
@@ -197,7 +198,7 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions'"
+        command: "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
       })
     )
   })
@@ -238,7 +239,7 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: `claude '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
+        command: `claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
       })
     )
   })
@@ -256,7 +257,7 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: "claude '--dangerously-skip-permissions'"
+        command: "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
       })
     )
   })
@@ -293,7 +294,7 @@ describe('launchAgentInNewTab Windows shell quoting', () => {
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
       expect.objectContaining({
-        command: `claude '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
+        command: `claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions' --prefill 'review Bob'"'"'s change'`
       })
     )
   })

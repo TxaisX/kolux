@@ -47,6 +47,12 @@ describe('CodexRuntimeHomeService', () => {
     vi.doMock('../codex/wsl-codex-session-bridge', () => ({
       startWslCodexSessionBridgeInBackground
     }))
+    // Why: no account is selected, so nothing exercises the legacy drain here — keep it a
+    // no-op instead of spawning a real (unreachable) wsl.exe that outlives this test.
+    vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
+      ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
+      startLegacyWslRuntimeAuthDrain: () => Promise.resolve()
+    }))
     const wslHome = join(testState.userDataDir, 'wsl-home')
     vi.doMock('../wsl', () => ({
       getDefaultWslDistro: () => 'Ubuntu',
@@ -84,6 +90,7 @@ describe('CodexRuntimeHomeService', () => {
       expect(existsSync(join(wslRuntimeHomePath, 'AGENTS.md'))).toBe(false)
     } finally {
       vi.doUnmock('../codex/wsl-codex-session-bridge')
+      vi.doUnmock('./legacy-wsl-runtime-auth-drain')
       vi.doUnmock('../wsl')
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform)
@@ -96,6 +103,12 @@ describe('CodexRuntimeHomeService', () => {
     Object.defineProperty(process, 'platform', { configurable: true, value: 'win32' })
     vi.doMock('../codex/wsl-codex-session-bridge', () => ({
       startWslCodexSessionBridgeInBackground: vi.fn(() => Promise.resolve())
+    }))
+    // Why: no account is selected, so nothing exercises the legacy drain here — keep it a
+    // no-op instead of spawning a real (unreachable) wsl.exe that outlives this test.
+    vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
+      ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
+      startLegacyWslRuntimeAuthDrain: () => Promise.resolve()
     }))
     const wslHome = join(testState.userDataDir, 'wsl-home')
     vi.doMock('../wsl', () => ({
@@ -140,6 +153,7 @@ describe('CodexRuntimeHomeService', () => {
       expect(existsSync(baselinePath)).toBe(false)
     } finally {
       vi.doUnmock('../codex/wsl-codex-session-bridge')
+      vi.doUnmock('./legacy-wsl-runtime-auth-drain')
       vi.doUnmock('../wsl')
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform)
@@ -153,6 +167,12 @@ describe('CodexRuntimeHomeService', () => {
     const startWslCodexSessionBridgeInBackground = vi.fn(() => Promise.resolve())
     vi.doMock('../codex/wsl-codex-session-bridge', () => ({
       startWslCodexSessionBridgeInBackground
+    }))
+    // Why: no account is selected, so nothing exercises the legacy drain here — keep it a
+    // no-op instead of spawning a real (unreachable) wsl.exe that outlives this test.
+    vi.doMock('./legacy-wsl-runtime-auth-drain', async (importOriginal) => ({
+      ...(await importOriginal<typeof LegacyWslRuntimeAuthDrain>()),
+      startLegacyWslRuntimeAuthDrain: () => Promise.resolve()
     }))
     const wslHome = join(testState.userDataDir, 'wsl-home')
     vi.doMock('../wsl', () => ({
@@ -181,6 +201,7 @@ describe('CodexRuntimeHomeService', () => {
       })
     } finally {
       vi.doUnmock('../codex/wsl-codex-session-bridge')
+      vi.doUnmock('./legacy-wsl-runtime-auth-drain')
       vi.doUnmock('../wsl')
       if (originalPlatform) {
         Object.defineProperty(process, 'platform', originalPlatform)
@@ -204,8 +225,10 @@ describe('CodexRuntimeHomeService', () => {
       const actual = await importOriginal<typeof WslPaths>()
       return {
         ...actual,
+        // Why: join() uses this process's real separator regardless of the spoofed
+        // process.platform above, so normalize before matching the fixture path.
         parseWslUncPath: (candidate: string) =>
-          candidate.includes('codex-accounts/debian-account/home')
+          candidate.replace(/\\/g, '/').includes('codex-accounts/debian-account/home')
             ? {
                 distro: 'Debian',
                 linuxPath: '/home/alice/.local/share/kolux/codex-accounts/debian-account/home'
@@ -301,7 +324,9 @@ describe('CodexRuntimeHomeService', () => {
             managedHomePath,
             managedHomeRuntime: 'wsl',
             wslDistro: 'Ubuntu',
-            wslLinuxHomePath: managedHomePath,
+            // Why: getWslManagedHomeIdentity requires a real POSIX guest path (startsWith '/'),
+            // not the Windows-side managedHomePath — a distinct fixture value catches this.
+            wslLinuxHomePath: '/home/alice/.local/share/kolux/codex-accounts/a/home',
             providerAccountId: 'acct-a',
             workspaceLabel: null,
             workspaceAccountId: 'acct-a',

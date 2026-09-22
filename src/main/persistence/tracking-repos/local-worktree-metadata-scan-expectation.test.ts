@@ -57,9 +57,11 @@ function makeCanonicalOnlyState(): {
   return { state, meta }
 }
 
+// Why 'linux' pin: fixtures use POSIX worktree paths, so pin the platform instead of
+// inheriting process.platform, which made this suite fail on Windows runners.
 function pruneCaptured(state: PersistedState): string[] {
   const scan = captureNativeLocalWorktreeMetadataScanExpectation(state, state.repos[0]!)
-  return pruneSessionlessMissingLocalWorktreeMetadataForRepo(state, scan, scan.metadata)
+  return pruneSessionlessMissingLocalWorktreeMetadataForRepo(state, scan, scan.metadata, 'linux')
 }
 
 describe('local worktree metadata scan expectations', () => {

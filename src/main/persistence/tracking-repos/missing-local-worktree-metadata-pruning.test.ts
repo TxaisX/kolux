@@ -51,11 +51,13 @@ function capture(state: PersistedState, repo = state.repos[0]!) {
   return captureNativeLocalWorktreeMetadataScanExpectation(state, repo)
 }
 
+// Why 'linux' default: fixtures use POSIX worktree paths, so pin the platform instead of
+// inheriting process.platform, which made this suite fail on Windows runners.
 function pruneCaptured(
   state: PersistedState,
   scan: ReturnType<typeof capture>,
   ids: readonly string[],
-  platform?: NodeJS.Platform
+  platform: NodeJS.Platform = 'linux'
 ): string[] {
   const wanted = new Set(ids)
   return pruneSessionlessMissingLocalWorktreeMetadataForRepo(

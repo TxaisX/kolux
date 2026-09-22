@@ -249,10 +249,11 @@ describe('runBackgroundWorktreeCreation', () => {
       expect.objectContaining({ phase: 'provisioning-vm' })
     )
     await vi.waitFor(() => expect(store.createWorktree).toHaveBeenCalled())
+    // Why: githubRepoIdentityKey lowercases owner/repo for case-insensitive identity.
     expect(prepareEphemeralVmWorkspaceTargetMock).toHaveBeenCalledWith({
       repoId: 'repo-1',
       recipeId: 'cloud-sandbox',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:txaisx/nightshift',
       workspaceName: 'feature',
       provisionId: 'creation-1',
       setupExistingFolder: store.setupProjectExistingFolder
@@ -609,6 +610,10 @@ describe('staged background worktree creation', () => {
     await vi.waitFor(() => expect(ensureWorktreeHasInitialTerminal).toHaveBeenCalledTimes(1))
 
     expect(activateAndRevealWorktree).not.toHaveBeenCalled()
+    // Why: globalThis.window is a shared, un-isolated global — leaving this
+    // one-shot markTrusted mock in place hangs every later test's preflight
+    // await forever (its promise never resolves again).
+    globalThis.window = { api: {} } as never
   })
 
   // Why: one-click "Start workspace from issue" commonly backgrounds, so the
@@ -741,9 +746,7 @@ describe('staged background worktree creation', () => {
       expect.objectContaining({ tabId: 'agent-tab' })
     )
     const createCall = store.createWorktree.mock.calls[0] as unknown[] | undefined
-    expect(createCall?.[25]).toEqual({
-      startupDraft: 'https://github.com/o/r/issues/12'
-    })
+    expect(createCall?.[25]).toEqual({ startupDraft: 'https://github.com/o/r/issues/12' })
   })
 
   it.each([

@@ -41,12 +41,31 @@ describe('orchestration mutation recovery', () => {
         workerDeathInferred: false
       }
     })
-    expect(result.message.indexOf('kolux orchestration worker-show')).toBeLessThan(
-      result.message.indexOf('kolux orchestration worker-start')
+    // Why: rendering is shell-platform-specific (see renderCommand), so build the expected
+    // text the same way rather than hardcoding POSIX quoting.
+    const queryCommandText = renderCommand([
+      'kolux',
+      'orchestration',
+      'worker-show',
+      '--dispatch',
+      'dispatch_1',
+      '--json'
+    ])
+    const retryCommandText = renderCommand([
+      'kolux',
+      'orchestration',
+      'worker-start',
+      '--task',
+      'task_1',
+      '--retry-request',
+      'request_1'
+    ])
+    expect(result.message.indexOf(queryCommandText)).toBeLessThan(
+      result.message.indexOf(retryCommandText)
     )
     expect((result.data as { nextSteps?: string[] }).nextSteps).toEqual([
-      'Run kolux orchestration worker-show --dispatch dispatch_1 --json before retrying.',
-      'After inspecting the Dispatch, if keyed recovery is still needed, run kolux orchestration worker-start --task task_1 --retry-request request_1. --retry-request reuses the same operation identity so Kolux can replay, join, or safely recover it without starting a separate duplicate.'
+      `Run ${queryCommandText} before retrying.`,
+      `After inspecting the Dispatch, if keyed recovery is still needed, run ${retryCommandText}. --retry-request reuses the same operation identity so Kolux can replay, join, or safely recover it without starting a separate duplicate.`
     ])
   })
 
@@ -82,8 +101,17 @@ describe('orchestration mutation recovery', () => {
         queryCommand: ['kolux', 'orchestration', 'request-show', '--request', 'request_4', '--json']
       }
     })
+    // Why: rendering is shell-platform-specific (see renderCommand); build expected text the same way.
+    const queryCommandText = renderCommand([
+      'kolux',
+      'orchestration',
+      'request-show',
+      '--request',
+      'request_4',
+      '--json'
+    ])
     expect((result.data as { nextSteps?: string[] }).nextSteps?.[0]).toBe(
-      'Run kolux orchestration request-show --request request_4 --json before retrying.'
+      `Run ${queryCommandText} before retrying.`
     )
   })
 
@@ -120,11 +148,31 @@ describe('orchestration mutation recovery', () => {
       })
     ) as RuntimeClientError
 
-    expect((result.data as { nextSteps?: string[] }).nextSteps).toEqual([
-      'Run kolux-dev orchestration worker-show --dispatch dispatch_3 --json before retrying.',
-      "After inspecting the Dispatch, if keyed recovery is still needed, run kolux-dev orchestration worker-start --task 'task 3' --comment 'literal $(do-not-run)' --retry-request request_3. --retry-request reuses the same operation identity so Kolux can replay, join, or safely recover it without starting a separate duplicate."
+    // Why: rendering is shell-platform-specific (see renderCommand); build expected text the same way.
+    const queryCommandText = renderCommand([
+      'kolux-dev',
+      'orchestration',
+      'worker-show',
+      '--dispatch',
+      'dispatch_3',
+      '--json'
     ])
-    expect(result.message).toContain("'literal $(do-not-run)'")
+    const retryCommandText = renderCommand([
+      'kolux-dev',
+      'orchestration',
+      'worker-start',
+      '--task',
+      'task 3',
+      '--comment',
+      'literal $(do-not-run)',
+      '--retry-request',
+      'request_3'
+    ])
+    expect((result.data as { nextSteps?: string[] }).nextSteps).toEqual([
+      `Run ${queryCommandText} before retrying.`,
+      `After inspecting the Dispatch, if keyed recovery is still needed, run ${retryCommandText}. --retry-request reuses the same operation identity so Kolux can replay, join, or safely recover it without starting a separate duplicate.`
+    ])
+    expect(result.message).toContain(retryCommandText)
   })
 
   it('parses legacy command text without losing quoted arguments', () => {

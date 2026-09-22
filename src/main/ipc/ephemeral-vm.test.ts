@@ -242,51 +242,6 @@ describe('registerEphemeralVmHandlers', () => {
     ])
   })
 
-  it('uses an immutable plugin recipe snapshot after the plugin is removed', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    const startPath = join(repoPath, 'start.js')
-    const destroyPath = join(repoPath, 'destroy.js')
-    writeFileSync(
-      startPath,
-      `console.log(${JSON.stringify(
-        JSON.stringify({
-          schemaVersion: 1,
-          pairingCode: makePairingCode(),
-          projectRoot: '/workspace/repo'
-        })
-      )})`
-    )
-    writeFileSync(destroyPath, "require('fs').writeFileSync('plugin-cleaned.txt', 'yes')")
-    const registrations = [
-      {
-        pluginKey: 'kolux-samples.recipes',
-        recipe: {
-          id: 'plugin-cloud',
-          name: 'Plugin Cloud',
-          create: nodeCommand(startPath),
-          destroy: nodeCommand(destroyPath)
-        }
-      }
-    ]
-    const pluginService = pluginServiceWithRecipes(registrations)
-    registerEphemeralVmHandlers(makeStore(repoPath) as never, pluginService as never)
-
-    const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'plugin-cloud'
-    } as never)) as { ok: true; runtime: { id: string; recipe?: { id: string } } }
-    registrations.splice(0)
-    const cleaned = await handlers.get('ephemeralVm:cleanup')?.(null, {
-      runtimeId: provisioned.runtime.id
-    } as never)
-
-    expect(provisioned.runtime.recipe).toMatchObject({ id: 'plugin-cloud' })
-    expect(cleaned).toEqual(expect.objectContaining({ status: 'cleaned' }))
-    expect(readFileSync(join(repoPath, 'plugin-cleaned.txt'), 'utf8')).toBe('yes')
-  })
-
   it('never substitutes a later same-id plugin recipe for a legacy runtime', async () => {
     const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
     const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
@@ -332,229 +287,6 @@ describe('registerEphemeralVmHandlers', () => {
       cleanupLastError: 'Recipe not found: shared-id'
     })
     expect(existsSync(join(repoPath, 'plugin-destroy-ran.txt'))).toBe(false)
-  })
-
-  it('provisions a recipe and persists the ephemeral runtime', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start.js')
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        `  pairingCode: ${JSON.stringify(makePairingCode())},`,
-        "  projectRoot: '/workspace/repo',",
-        '  userData: { providerResourceId: process.env.KOLUX_VM_INSTANCE_ID }',
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        '    destroy: none'
-      ].join('\n')
-    )
-
-    const store = makeStore(repoPath)
-    registerEphemeralVmHandlers(store as never)
-    const result = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox',
-      workspaceName: 'Fix Login Race'
-    } as never)) as {
-      ok: boolean
-      runtime?: { id: string; repoId?: string; status?: string; runtimeEnvironmentId?: string }
-      environment?: { id: string; name: string }
-    }
-
-    expect(result).toMatchObject({
-      ok: true,
-      environment: {
-        name: expect.stringContaining('Repo VM ')
-      },
-      runtime: {
-        repoId: 'repo-1',
-        status: 'running',
-        runtimeEnvironmentId: result.environment?.id
-      }
-    })
-    const runtimes = await handlers.get('ephemeralVm:listRuntimes')?.(null, undefined as never)
-    expect(runtimes).toEqual([
-      expect.objectContaining({
-        repoId: 'repo-1',
-        recipeId: 'cloud-sandbox',
-        runtimeEnvironmentId: result.environment?.id
-      })
-    ])
-
-    const attached = await handlers.get('ephemeralVm:attachWorkspace')?.(null, {
-      runtimeId: result.runtime?.id,
-      workspaceId: 'repo-1::/workspace/repo/worktree'
-    } as never)
-    expect(attached).toEqual(
-      expect.objectContaining({
-        id: result.runtime?.id,
-        workspaceId: 'repo-1::/workspace/repo/worktree'
-      })
-    )
-
-    store.updateSettings({ activeRuntimeEnvironmentId: result.environment!.id })
-    const cleaned = await handlers.get('ephemeralVm:cleanup')?.(null, {
-      runtimeId: result.runtime?.id
-    } as never)
-    expect(cleaned).toEqual(expect.objectContaining({ status: 'cleaned' }))
-    expect(listEnvironments(userDataPath)).toEqual([])
-    expect(store.getSettings().activeRuntimeEnvironmentId).toBe(result.environment!.id)
-    expect(store.updateSettings).toHaveBeenCalledTimes(1)
-  })
-
-  it('provisions an ssh recipe without creating a runtime environment', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start-ssh.js')
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        '  connection: {',
-        "    type: 'ssh',",
-        "    projectRoot: '/workspace/repo',",
-        '    target: {',
-        "      label: 'Sandbox',",
-        "      host: 'sandbox.example.com',",
-        '      port: 22,',
-        "      username: 'root'",
-        '    }',
-        '  },',
-        "  userData: { sandboxId: 'sandbox-123' }",
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        '    destroy: none'
-      ].join('\n')
-    )
-
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const result = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox',
-      workspaceName: 'Fix Login Race'
-    } as never)) as {
-      ok: boolean
-      connectionType?: string
-      sshTargetId?: string
-      runtime?: {
-        id: string
-        repoId?: string
-        status?: string
-        connectionMode?: string
-        sshTargetId?: string
-      }
-      environment?: { id: string; name: string }
-    }
-
-    expect(result).toMatchObject({
-      ok: true,
-      connectionType: 'ssh',
-      sshTargetId: 'runtime-ssh-kolux-instance-1',
-      runtime: {
-        repoId: 'repo-1',
-        status: 'running',
-        connectionMode: 'ssh',
-        sshTargetId: 'runtime-ssh-kolux-instance-1'
-      }
-    })
-    expect(result.environment).toBeUndefined()
-    expect(connectRuntimeOwnedSshTargetMock).toHaveBeenCalledWith({
-      runtimeId: result.runtime?.id,
-      connection: {
-        type: 'ssh',
-        projectRoot: '/workspace/repo',
-        target: {
-          label: 'Sandbox',
-          host: 'sandbox.example.com',
-          port: 22,
-          username: 'root'
-        }
-      }
-    })
-    expect(listEnvironments(userDataPath)).toEqual([])
-  })
-
-  it('retains the runtime-owned SSH target when destroy fails', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start-ssh.js')
-    const destroyPath = join(repoPath, 'scripts', 'destroy.js')
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        '  connection: {',
-        "    type: 'ssh',",
-        "    projectRoot: '/workspace/repo',",
-        '    target: {',
-        "      label: 'Sandbox',",
-        "      host: 'sandbox.example.com',",
-        '      port: 22,',
-        "      username: 'root'",
-        '    }',
-        '  }',
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(destroyPath, 'process.exit(1)')
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        `    destroy: ${JSON.stringify(nodeCommand(destroyPath))}`
-      ].join('\n')
-    )
-
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox'
-    } as never)) as { ok: true; runtime: { id: string } }
-
-    const cleaned = (await handlers.get('ephemeralVm:cleanup')?.(null, {
-      runtimeId: provisioned.runtime.id
-    } as never)) as {
-      status?: string
-      cleanupLastError?: string
-      connectionMode?: string
-      sshTargetId?: string
-    }
-
-    expect(cleaned).toEqual(expect.objectContaining({ status: 'cleanup_failed' }))
-    expect(cleaned.cleanupLastError).toBeTruthy()
-    expect(removeRuntimeOwnedSshTargetMock).not.toHaveBeenCalled()
-    expect(cleaned.connectionMode).toBe('ssh')
-    expect(cleaned.sshTargetId).toBe('runtime-ssh-kolux-instance-1')
   })
 
   it('retries hidden SSH teardown without rerunning completed provider cleanup', async () => {
@@ -604,248 +336,522 @@ describe('registerEphemeralVmHandlers', () => {
     expect(removeRuntimeOwnedSshTargetMock).toHaveBeenCalledTimes(2)
   })
 
-  it('runs suspend and resume for an attached ephemeral VM workspace', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start.js')
-    const suspendPath = join(repoPath, 'scripts', 'suspend.js')
-    const resumePath = join(repoPath, 'scripts', 'resume.js')
-    const resumedPairingCode = encodePairingOffer({
-      v: PAIRING_OFFER_VERSION,
-      endpoint: 'wss://resumed.example.com',
-      deviceToken: 'resumed-token',
-      publicKeyB64: 'resumed-public-key'
+  // Why: this suite spoofs process.platform to 'linux', but these tests spawn a
+  // real, unmocked recipe process that then needs an actual /bin/sh, absent on Windows.
+  describe.skipIf(process.platform === 'win32')('recipe execution (spawns real /bin/sh)', () => {
+    it('uses an immutable plugin recipe snapshot after the plugin is removed', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      const startPath = join(repoPath, 'start.js')
+      const destroyPath = join(repoPath, 'destroy.js')
+      writeFileSync(
+        startPath,
+        `console.log(${JSON.stringify(
+          JSON.stringify({
+            schemaVersion: 1,
+            pairingCode: makePairingCode(),
+            projectRoot: '/workspace/repo'
+          })
+        )})`
+      )
+      writeFileSync(destroyPath, "require('fs').writeFileSync('plugin-cleaned.txt', 'yes')")
+      const registrations = [
+        {
+          pluginKey: 'kolux-samples.recipes',
+          recipe: {
+            id: 'plugin-cloud',
+            name: 'Plugin Cloud',
+            create: nodeCommand(startPath),
+            destroy: nodeCommand(destroyPath)
+          }
+        }
+      ]
+      const pluginService = pluginServiceWithRecipes(registrations)
+      registerEphemeralVmHandlers(makeStore(repoPath) as never, pluginService as never)
+
+      const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'plugin-cloud'
+      } as never)) as { ok: true; runtime: { id: string; recipe?: { id: string } } }
+      registrations.splice(0)
+      const cleaned = await handlers.get('ephemeralVm:cleanup')?.(null, {
+        runtimeId: provisioned.runtime.id
+      } as never)
+
+      expect(provisioned.runtime.recipe).toMatchObject({ id: 'plugin-cloud' })
+      expect(cleaned).toEqual(expect.objectContaining({ status: 'cleaned' }))
+      expect(readFileSync(join(repoPath, 'plugin-cleaned.txt'), 'utf8')).toBe('yes')
     })
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        `  pairingCode: ${JSON.stringify(makePairingCode())},`,
-        "  projectRoot: '/workspace/repo'",
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(
-      suspendPath,
-      [
-        "const fs = require('fs')",
-        "const payload = JSON.parse(fs.readFileSync(0, 'utf8'))",
-        "fs.writeFileSync('suspend-mode.txt', payload.mode)"
-      ].join('\n')
-    )
-    writeFileSync(
-      resumePath,
-      [
-        "const fs = require('fs')",
-        "const payload = JSON.parse(fs.readFileSync(0, 'utf8'))",
-        'if (payload.mode !== "resume") process.exit(2)',
-        "fs.writeFileSync('resume-mode.txt', payload.mode)",
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        `  pairingCode: ${JSON.stringify(resumedPairingCode)},`,
-        "  projectRoot: '/workspace/resumed'",
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        `    suspend: ${JSON.stringify(nodeCommand(suspendPath))}`,
-        `    resume: ${JSON.stringify(nodeCommand(resumePath))}`,
-        '    destroy: none'
-      ].join('\n')
-    )
 
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox'
-    } as never)) as { ok: true; runtime: { id: string }; environment: { id: string } }
-    await handlers.get('ephemeralVm:attachWorkspace')?.(null, {
-      runtimeId: provisioned.runtime.id,
-      workspaceId: 'workspace-1'
-    } as never)
+    it('provisions a recipe and persists the ephemeral runtime', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start.js')
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          `  pairingCode: ${JSON.stringify(makePairingCode())},`,
+          "  projectRoot: '/workspace/repo',",
+          '  userData: { providerResourceId: process.env.KOLUX_VM_INSTANCE_ID }',
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          '    destroy: none'
+        ].join('\n')
+      )
 
-    const runningResume = await handlers.get('ephemeralVm:resumeWorkspace')?.(null, {
-      workspaceId: 'workspace-1'
-    } as never)
-    expect(runningResume).toEqual(expect.objectContaining({ status: 'running' }))
-    expect(existsSync(join(repoPath, 'resume-mode.txt'))).toBe(false)
+      const store = makeStore(repoPath)
+      registerEphemeralVmHandlers(store as never)
+      const result = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox',
+        workspaceName: 'Fix Login Race'
+      } as never)) as {
+        ok: boolean
+        runtime?: { id: string; repoId?: string; status?: string; runtimeEnvironmentId?: string }
+        environment?: { id: string; name: string }
+      }
 
-    const suspended = await handlers.get('ephemeralVm:suspendWorkspace')?.(null, {
-      workspaceId: 'workspace-1'
-    } as never)
-    expect(suspended).toEqual(expect.objectContaining({ status: 'suspended' }))
-    expect(readFileSync(join(repoPath, 'suspend-mode.txt'), 'utf8')).toBe('suspend')
+      expect(result).toMatchObject({
+        ok: true,
+        environment: {
+          name: expect.stringContaining('Repo VM ')
+        },
+        runtime: {
+          repoId: 'repo-1',
+          status: 'running',
+          runtimeEnvironmentId: result.environment?.id
+        }
+      })
+      const runtimes = await handlers.get('ephemeralVm:listRuntimes')?.(null, undefined as never)
+      expect(runtimes).toEqual([
+        expect.objectContaining({
+          repoId: 'repo-1',
+          recipeId: 'cloud-sandbox',
+          runtimeEnvironmentId: result.environment?.id
+        })
+      ])
 
-    invalidateRuntimeEnvironmentTransportMock.mockImplementationOnce((environmentId: string) => {
-      const environment = listEnvironments(userDataPath).find((entry) => entry.id === environmentId)
+      const attached = await handlers.get('ephemeralVm:attachWorkspace')?.(null, {
+        runtimeId: result.runtime?.id,
+        workspaceId: 'repo-1::/workspace/repo/worktree'
+      } as never)
+      expect(attached).toEqual(
+        expect.objectContaining({
+          id: result.runtime?.id,
+          workspaceId: 'repo-1::/workspace/repo/worktree'
+        })
+      )
+
+      store.updateSettings({ activeRuntimeEnvironmentId: result.environment!.id })
+      const cleaned = await handlers.get('ephemeralVm:cleanup')?.(null, {
+        runtimeId: result.runtime?.id
+      } as never)
+      expect(cleaned).toEqual(expect.objectContaining({ status: 'cleaned' }))
+      expect(listEnvironments(userDataPath)).toEqual([])
+      expect(store.getSettings().activeRuntimeEnvironmentId).toBe(result.environment!.id)
+      expect(store.updateSettings).toHaveBeenCalledTimes(1)
+    })
+
+    it('provisions an ssh recipe without creating a runtime environment', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start-ssh.js')
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          '  connection: {',
+          "    type: 'ssh',",
+          "    projectRoot: '/workspace/repo',",
+          '    target: {',
+          "      label: 'Sandbox',",
+          "      host: 'sandbox.example.com',",
+          '      port: 22,',
+          "      username: 'root'",
+          '    }',
+          '  },',
+          "  userData: { sandboxId: 'sandbox-123' }",
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          '    destroy: none'
+        ].join('\n')
+      )
+
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const result = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox',
+        workspaceName: 'Fix Login Race'
+      } as never)) as {
+        ok: boolean
+        connectionType?: string
+        sshTargetId?: string
+        runtime?: {
+          id: string
+          repoId?: string
+          status?: string
+          connectionMode?: string
+          sshTargetId?: string
+        }
+        environment?: { id: string; name: string }
+      }
+
+      expect(result).toMatchObject({
+        ok: true,
+        connectionType: 'ssh',
+        sshTargetId: 'runtime-ssh-kolux-instance-1',
+        runtime: {
+          repoId: 'repo-1',
+          status: 'running',
+          connectionMode: 'ssh',
+          sshTargetId: 'runtime-ssh-kolux-instance-1'
+        }
+      })
+      expect(result.environment).toBeUndefined()
+      expect(connectRuntimeOwnedSshTargetMock).toHaveBeenCalledWith({
+        runtimeId: result.runtime?.id,
+        connection: {
+          type: 'ssh',
+          projectRoot: '/workspace/repo',
+          target: {
+            label: 'Sandbox',
+            host: 'sandbox.example.com',
+            port: 22,
+            username: 'root'
+          }
+        }
+      })
+      expect(listEnvironments(userDataPath)).toEqual([])
+    })
+
+    it('retains the runtime-owned SSH target when destroy fails', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start-ssh.js')
+      const destroyPath = join(repoPath, 'scripts', 'destroy.js')
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          '  connection: {',
+          "    type: 'ssh',",
+          "    projectRoot: '/workspace/repo',",
+          '    target: {',
+          "      label: 'Sandbox',",
+          "      host: 'sandbox.example.com',",
+          '      port: 22,',
+          "      username: 'root'",
+          '    }',
+          '  }',
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(destroyPath, 'process.exit(1)')
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          `    destroy: ${JSON.stringify(nodeCommand(destroyPath))}`
+        ].join('\n')
+      )
+
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox'
+      } as never)) as { ok: true; runtime: { id: string } }
+
+      const cleaned = (await handlers.get('ephemeralVm:cleanup')?.(null, {
+        runtimeId: provisioned.runtime.id
+      } as never)) as {
+        status?: string
+        cleanupLastError?: string
+        connectionMode?: string
+        sshTargetId?: string
+      }
+
+      expect(cleaned).toEqual(expect.objectContaining({ status: 'cleanup_failed' }))
+      expect(cleaned.cleanupLastError).toBeTruthy()
+      expect(removeRuntimeOwnedSshTargetMock).not.toHaveBeenCalled()
+      expect(cleaned.connectionMode).toBe('ssh')
+      expect(cleaned.sshTargetId).toBe('runtime-ssh-kolux-instance-1')
+    })
+
+    it('runs suspend and resume for an attached ephemeral VM workspace', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start.js')
+      const suspendPath = join(repoPath, 'scripts', 'suspend.js')
+      const resumePath = join(repoPath, 'scripts', 'resume.js')
+      const resumedPairingCode = encodePairingOffer({
+        v: PAIRING_OFFER_VERSION,
+        endpoint: 'wss://resumed.example.com',
+        deviceToken: 'resumed-token',
+        publicKeyB64: 'resumed-public-key'
+      })
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          `  pairingCode: ${JSON.stringify(makePairingCode())},`,
+          "  projectRoot: '/workspace/repo'",
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(
+        suspendPath,
+        [
+          "const fs = require('fs')",
+          "const payload = JSON.parse(fs.readFileSync(0, 'utf8'))",
+          "fs.writeFileSync('suspend-mode.txt', payload.mode)"
+        ].join('\n')
+      )
+      writeFileSync(
+        resumePath,
+        [
+          "const fs = require('fs')",
+          "const payload = JSON.parse(fs.readFileSync(0, 'utf8'))",
+          'if (payload.mode !== "resume") process.exit(2)',
+          "fs.writeFileSync('resume-mode.txt', payload.mode)",
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          `  pairingCode: ${JSON.stringify(resumedPairingCode)},`,
+          "  projectRoot: '/workspace/resumed'",
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          `    suspend: ${JSON.stringify(nodeCommand(suspendPath))}`,
+          `    resume: ${JSON.stringify(nodeCommand(resumePath))}`,
+          '    destroy: none'
+        ].join('\n')
+      )
+
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox'
+      } as never)) as { ok: true; runtime: { id: string }; environment: { id: string } }
+      await handlers.get('ephemeralVm:attachWorkspace')?.(null, {
+        runtimeId: provisioned.runtime.id,
+        workspaceId: 'workspace-1'
+      } as never)
+
+      const runningResume = await handlers.get('ephemeralVm:resumeWorkspace')?.(null, {
+        workspaceId: 'workspace-1'
+      } as never)
+      expect(runningResume).toEqual(expect.objectContaining({ status: 'running' }))
+      expect(existsSync(join(repoPath, 'resume-mode.txt'))).toBe(false)
+
+      const suspended = await handlers.get('ephemeralVm:suspendWorkspace')?.(null, {
+        workspaceId: 'workspace-1'
+      } as never)
+      expect(suspended).toEqual(expect.objectContaining({ status: 'suspended' }))
+      expect(readFileSync(join(repoPath, 'suspend-mode.txt'), 'utf8')).toBe('suspend')
+
+      invalidateRuntimeEnvironmentTransportMock.mockImplementationOnce((environmentId: string) => {
+        const environment = listEnvironments(userDataPath).find(
+          (entry) => entry.id === environmentId
+        )
+        expect(environment?.endpoints[0]?.endpoint).toBe('wss://resumed.example.com')
+      })
+      const resumed = await handlers.get('ephemeralVm:resumeWorkspace')?.(null, {
+        workspaceId: 'workspace-1'
+      } as never)
+      expect(resumed).toEqual(
+        expect.objectContaining({
+          status: 'running',
+          recipeResult: expect.objectContaining({ projectRoot: '/workspace/resumed' })
+        })
+      )
+      expect(readFileSync(join(repoPath, 'resume-mode.txt'), 'utf8')).toBe('resume')
+      const environment = listEnvironments(userDataPath).find(
+        (entry) => entry.id === provisioned.environment.id
+      )
       expect(environment?.endpoints[0]?.endpoint).toBe('wss://resumed.example.com')
+      expect(invalidateRuntimeEnvironmentTransportMock).toHaveBeenCalledWith(
+        provisioned.environment.id
+      )
     })
-    const resumed = await handlers.get('ephemeralVm:resumeWorkspace')?.(null, {
-      workspaceId: 'workspace-1'
-    } as never)
-    expect(resumed).toEqual(
-      expect.objectContaining({
-        status: 'running',
-        recipeResult: expect.objectContaining({ projectRoot: '/workspace/resumed' })
+
+    it('returns a copyable cleanup command for a persisted runtime', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start.js')
+      const cleanupPath = join(repoPath, 'scripts', 'cleanup.js')
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          '  schemaVersion: 1,',
+          `  pairingCode: ${JSON.stringify(makePairingCode())},`,
+          "  projectRoot: '/workspace/repo'",
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(cleanupPath, 'process.stdin.resume()\n')
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          `    destroy: ${JSON.stringify(nodeCommand(cleanupPath))}`
+        ].join('\n')
+      )
+
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox',
+        workspaceName: 'Fix Login Race'
+      } as never)) as { ok: true; runtime: { id: string } }
+      const result = await handlers.get('ephemeralVm:getCleanupCommand')?.(null, {
+        runtimeId: provisioned.runtime.id
+      } as never)
+
+      expect(result).toMatchObject({
+        runtimeId: provisioned.runtime.id,
+        cleanupDisabled: false,
+        payloadJson: expect.stringContaining('"workspaceName": "Fix Login Race"'),
+        command: expect.stringContaining(nodeCommand(cleanupPath))
       })
-    )
-    expect(readFileSync(join(repoPath, 'resume-mode.txt'), 'utf8')).toBe('resume')
-    const environment = listEnvironments(userDataPath).find(
-      (entry) => entry.id === provisioned.environment.id
-    )
-    expect(environment?.endpoints[0]?.endpoint).toBe('wss://resumed.example.com')
-    expect(invalidateRuntimeEnvironmentTransportMock).toHaveBeenCalledWith(
-      provisioned.environment.id
-    )
-  })
-
-  it('returns a copyable cleanup command for a persisted runtime', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start.js')
-    const cleanupPath = join(repoPath, 'scripts', 'cleanup.js')
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        '  schemaVersion: 1,',
-        `  pairingCode: ${JSON.stringify(makePairingCode())},`,
-        "  projectRoot: '/workspace/repo'",
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(cleanupPath, 'process.stdin.resume()\n')
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        `    destroy: ${JSON.stringify(nodeCommand(cleanupPath))}`
-      ].join('\n')
-    )
-
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const provisioned = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox',
-      workspaceName: 'Fix Login Race'
-    } as never)) as { ok: true; runtime: { id: string } }
-    const result = await handlers.get('ephemeralVm:getCleanupCommand')?.(null, {
-      runtimeId: provisioned.runtime.id
-    } as never)
-
-    expect(result).toMatchObject({
-      runtimeId: provisioned.runtime.id,
-      cleanupDisabled: false,
-      payloadJson: expect.stringContaining('"workspaceName": "Fix Login Race"'),
-      command: expect.stringContaining(nodeCommand(cleanupPath))
     })
-  })
 
-  it('streams provision logs and cancels an active provision', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start.js')
-    writeFileSync(
-      startPath,
-      [
-        "process.stderr.write('creating sandbox\\n')",
-        'setTimeout(() => {',
-        '  console.log(JSON.stringify({',
-        '    schemaVersion: 1,',
-        `    pairingCode: ${JSON.stringify(makePairingCode())},`,
-        "    projectRoot: '/workspace/repo'",
-        '  }))',
-        '}, 30000)'
-      ].join('\n')
-    )
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        '    destroy: none'
-      ].join('\n')
-    )
+    it('streams provision logs and cancels an active provision', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start.js')
+      writeFileSync(
+        startPath,
+        [
+          "process.stderr.write('creating sandbox\\n')",
+          'setTimeout(() => {',
+          '  console.log(JSON.stringify({',
+          '    schemaVersion: 1,',
+          `    pairingCode: ${JSON.stringify(makePairingCode())},`,
+          "    projectRoot: '/workspace/repo'",
+          '  }))',
+          '}, 30000)'
+        ].join('\n')
+      )
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          '    destroy: none'
+        ].join('\n')
+      )
 
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const sender = { send: vi.fn() }
-    const provision = handlers.get('ephemeralVm:provision')?.({ sender }, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox',
-      workspaceName: 'Fix Login Race',
-      provisionId: 'provision-1'
-    } as never) as Promise<{ ok: boolean; error?: string }>
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const sender = { send: vi.fn() }
+      const provision = handlers.get('ephemeralVm:provision')?.({ sender }, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox',
+        workspaceName: 'Fix Login Race',
+        provisionId: 'provision-1'
+      } as never) as Promise<{ ok: boolean; error?: string }>
 
-    await vi.waitFor(() =>
-      expect(sender.send).toHaveBeenCalledWith('ephemeralVm:provisionEvent', {
-        provisionId: 'provision-1',
-        stream: 'stderr',
-        chunk: 'creating sandbox\n'
-      })
-    )
-    const cancelled = await handlers.get('ephemeralVm:cancelProvision')?.(null, {
-      provisionId: 'provision-1'
-    } as never)
-    const result = await provision
+      await vi.waitFor(() =>
+        expect(sender.send).toHaveBeenCalledWith('ephemeralVm:provisionEvent', {
+          provisionId: 'provision-1',
+          stream: 'stderr',
+          chunk: 'creating sandbox\n'
+        })
+      )
+      const cancelled = await handlers.get('ephemeralVm:cancelProvision')?.(null, {
+        provisionId: 'provision-1'
+      } as never)
+      const result = await provision
 
-    expect(cancelled).toEqual({ cancelled: true })
-    expect(result.ok).toBe(false)
-  })
+      expect(cancelled).toEqual({ cancelled: true })
+      expect(result.ok).toBe(false)
+    })
 
-  it('redacts recipe stdout when provisioning fails', async () => {
-    const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
-    const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
-    getPathMock.mockReturnValue(userDataPath)
-    mkdirSync(join(repoPath, 'scripts'), { recursive: true })
-    const startPath = join(repoPath, 'scripts', 'start.js')
-    writeFileSync(
-      startPath,
-      [
-        'console.log(JSON.stringify({',
-        `  pairingCode: ${JSON.stringify(makePairingCode())},`,
-        "  token: 'provider-token'",
-        '}))'
-      ].join('\n')
-    )
-    writeFileSync(
-      join(repoPath, 'kolux.yaml'),
-      [
-        'environmentRecipes:',
-        '  - id: cloud-sandbox',
-        '    name: Cloud Sandbox',
-        `    create: ${JSON.stringify(nodeCommand(startPath))}`,
-        '    destroy: none'
-      ].join('\n')
-    )
+    it('redacts recipe stdout when provisioning fails', async () => {
+      const userDataPath = makeDir('kolux-ephemeral-vm-ipc-user-data-')
+      const repoPath = makeDir('kolux-ephemeral-vm-ipc-repo-')
+      getPathMock.mockReturnValue(userDataPath)
+      mkdirSync(join(repoPath, 'scripts'), { recursive: true })
+      const startPath = join(repoPath, 'scripts', 'start.js')
+      writeFileSync(
+        startPath,
+        [
+          'console.log(JSON.stringify({',
+          `  pairingCode: ${JSON.stringify(makePairingCode())},`,
+          "  token: 'provider-token'",
+          '}))'
+        ].join('\n')
+      )
+      writeFileSync(
+        join(repoPath, 'kolux.yaml'),
+        [
+          'environmentRecipes:',
+          '  - id: cloud-sandbox',
+          '    name: Cloud Sandbox',
+          `    create: ${JSON.stringify(nodeCommand(startPath))}`,
+          '    destroy: none'
+        ].join('\n')
+      )
 
-    registerEphemeralVmHandlers(makeStore(repoPath) as never)
-    const result = (await handlers.get('ephemeralVm:provision')?.(null, {
-      repoId: 'repo-1',
-      recipeId: 'cloud-sandbox'
-    } as never)) as { ok: false; stdout: string }
+      registerEphemeralVmHandlers(makeStore(repoPath) as never)
+      const result = (await handlers.get('ephemeralVm:provision')?.(null, {
+        repoId: 'repo-1',
+        recipeId: 'cloud-sandbox'
+      } as never)) as { ok: false; stdout: string }
 
-    expect(result.ok).toBe(false)
-    expect(result.stdout).toContain('"pairingCode":"[redacted]"')
-    expect(result.stdout).toContain('"token":"[redacted]"')
-    expect(result.stdout).not.toContain('provider-token')
-    expect(result.stdout).not.toContain('public-key')
+      expect(result.ok).toBe(false)
+      expect(result.stdout).toContain('"pairingCode":"[redacted]"')
+      expect(result.stdout).toContain('"token":"[redacted]"')
+      expect(result.stdout).not.toContain('provider-token')
+      expect(result.stdout).not.toContain('public-key')
+    })
   })
 })

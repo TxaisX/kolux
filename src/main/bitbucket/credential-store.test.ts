@@ -104,7 +104,8 @@ describe('Bitbucket credential store', () => {
     })
   })
 
-  it('writes both credential files 0600', async () => {
+  // Why: Windows has no POSIX permission bits, so chmod-style mode assertions never hold there.
+  it.skipIf(process.platform === 'win32')('writes both credential files 0600', async () => {
     const store = await loadStore()
     store.saveBitbucketCredential({
       authMode: 'token',
@@ -120,30 +121,34 @@ describe('Bitbucket credential store', () => {
     }
   })
 
-  it('re-tightens permissions when overwriting an existing credential', async () => {
-    const store = await loadStore()
-    const save = (account: string): void =>
-      store.saveBitbucketCredential({
-        authMode: 'token',
-        email: null,
-        baseUrl: null,
-        account,
-        accessToken: 'access-secret',
-        apiToken: null
-      })
-    save('first')
-    // Why: writeFileSync's mode is ignored for an existing file, so a loosened
-    // credential would stay world-readable across a reconnect.
-    const { chmodSync } = await import('node:fs')
-    for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
-      chmodSync(join(tempHome, '.kolux', file), 0o644)
-    }
-    save('second')
+  // Why: Windows has no POSIX permission bits, so chmod-style mode assertions never hold there.
+  it.skipIf(process.platform === 'win32')(
+    're-tightens permissions when overwriting an existing credential',
+    async () => {
+      const store = await loadStore()
+      const save = (account: string): void =>
+        store.saveBitbucketCredential({
+          authMode: 'token',
+          email: null,
+          baseUrl: null,
+          account,
+          accessToken: 'access-secret',
+          apiToken: null
+        })
+      save('first')
+      // Why: writeFileSync's mode is ignored for an existing file, so a loosened
+      // credential would stay world-readable across a reconnect.
+      const { chmodSync } = await import('node:fs')
+      for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
+        chmodSync(join(tempHome, '.kolux', file), 0o644)
+      }
+      save('second')
 
-    for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
-      expect(statSync(join(tempHome, '.kolux', file)).mode & 0o777).toBe(0o600)
+      for (const file of ['bitbucket-credential.enc', 'bitbucket-credential.json']) {
+        expect(statSync(join(tempHome, '.kolux', file)).mode & 0o777).toBe(0o600)
+      }
     }
-  })
+  )
 
   it('does not decrypt for metadata/status reads — only on a forced secret load', async () => {
     const store = await loadStore()

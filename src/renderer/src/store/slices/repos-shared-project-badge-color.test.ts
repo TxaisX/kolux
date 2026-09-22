@@ -10,7 +10,9 @@ import { clearRuntimeCompatibilityCacheForTests } from '../../runtime/runtime-rp
 
 // Mirrors the real report: one project name ("kolux") set up on the local Mac and on a
 // remote Kolux server, where only the local repo row carries the user's chosen color.
-const SHARED_PROJECT_ID = 'github:TxaisX/nightshift'
+// Why: githubRepoIdentityKey lowercases owner/repo, so this must match the
+// repos' `upstream: { owner: 'TxaisX', repo: 'kolux' }` identity below verbatim.
+const SHARED_PROJECT_ID = 'github:txaisx/kolux'
 const LOCAL_GREEN = '#22c55e'
 const REMOTE_NEUTRAL = '#737373'
 

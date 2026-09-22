@@ -72,7 +72,9 @@ describe('launchAgentInNewTab per-workspace YOLO override', () => {
 
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
-      expect.objectContaining({ command: "claude '--dangerously-skip-permissions'" })
+      expect.objectContaining({
+        command: "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
+      })
     )
   })
 
@@ -84,7 +86,7 @@ describe('launchAgentInNewTab per-workspace YOLO override', () => {
 
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
-      expect.objectContaining({ command: 'claude' })
+      expect.objectContaining({ command: "claude '--model' 'opus' '--effort' 'high'" })
     )
   })
 
@@ -96,7 +98,7 @@ describe('launchAgentInNewTab per-workspace YOLO override', () => {
 
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
-      expect.objectContaining({ command: "claude '--model' 'opus'" })
+      expect.objectContaining({ command: "claude '--effort' 'high' '--model' 'opus'" })
     )
   })
 
@@ -107,7 +109,9 @@ describe('launchAgentInNewTab per-workspace YOLO override', () => {
 
     expect(mockQueueTabStartupCommand).toHaveBeenCalledWith(
       'tab-1',
-      expect.objectContaining({ command: "claude '--dangerously-skip-permissions'" })
+      expect.objectContaining({
+        command: "claude '--model' 'opus' '--effort' 'high' '--dangerously-skip-permissions'"
+      })
     )
   })
 })

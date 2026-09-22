@@ -93,7 +93,8 @@ describe('launchAgentInNewTab paired web runtime', () => {
       activate: true,
       agentSessionKind: 'fresh',
       agent: 'claude',
-      viewMode: 'terminal'
+      viewMode: 'terminal',
+      launchPreferences: { model: 'opus', effort: 'high' }
     })
     expect(mocks.createTab).not.toHaveBeenCalled()
     await Promise.resolve()

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { computeAgentSessionPayloadFingerprint } from '../../../shared/agent-session-mutation-envelope'
 import type { AgentSessionHandoffRequest } from '../../../shared/agent-session-wire'
 import { AgentSessionRecordStore } from '../../runtime/agent-session-record-store'
-import { openAgentSessionJournal } from '../agent-session-journal/journal-store-factory'
+import { createTrackedJournalOpener } from '../agent-session-journal/journal-store-test-open'
 import { StructuredAgentSessionHandoffFlowRunner } from './structured-agent-session-handoff-flow-runner'
 import { StructuredAgentSessionHandoffOperationGuard } from './structured-agent-session-handoff-operation-guard'
 import type { StructuredAgentSessionHandoffFlowContext } from './structured-agent-session-handoff-types'
@@ -15,8 +15,10 @@ const SESSION = 'session-flow-runner-outcome-write-failure'
 const THREAD = '019fd532-7c11-7a90-b6de-4e1a2c3d5f61'
 const OPERATION = `${NOW}-00000000000000000000000000000002`
 const roots: string[] = []
+const journals = createTrackedJournalOpener()
 
 afterEach(async () => {
+  await journals.closeAll()
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })))
 })
 
@@ -50,7 +52,7 @@ async function failingFlowRunner(
     directory: join(root, 'store'),
     hostId: 'local'
   })
-  const journal = await openAgentSessionJournal({
+  const journal = await journals.open({
     identity: {
       sessionId: SESSION,
       workspaceId: 'workspace-1',

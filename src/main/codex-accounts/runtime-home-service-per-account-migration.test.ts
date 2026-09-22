@@ -146,28 +146,34 @@ describe('CodexRuntimeHomeService per-account takeover composition', () => {
     expect(settings.activeCodexManagedAccountId).toBe(account.id)
   })
 
-  it('keeps E in-place auth when selection becomes real-home without an explicit sync', async () => {
-    const fresh = createAuth('one@example.com', 'acct-1', 'e-refresh', 3_000)
-    const mismatch = createAuth('other@example.com', 'acct-other', 'stale-shared', 4_000)
-    const account = createManagedAccount('account-1', 'acct-1', fresh)
-    writeFileSync(sharedAuthPath(), mismatch, 'utf-8')
-    writeFileSync(systemAuthPath(), 'system auth sentinel\n', 'utf-8')
-    const { settings, store } = createStore([account], account.id)
-    const { CodexRuntimeHomeService } = await import('./runtime-home-service')
-    const service = new CodexRuntimeHomeService(store as never)
+  // Why: isShellStartupEnvProbeSupported() is `process.platform !== 'win32'` by design —
+  // Windows has no shell-rc probe, so the real-home lane never activates there and
+  // prepareForCodexLaunch() stays on the managed mirror instead of returning null.
+  it.skipIf(process.platform === 'win32')(
+    'keeps E in-place auth when selection becomes real-home without an explicit sync',
+    async () => {
+      const fresh = createAuth('one@example.com', 'acct-1', 'e-refresh', 3_000)
+      const mismatch = createAuth('other@example.com', 'acct-other', 'stale-shared', 4_000)
+      const account = createManagedAccount('account-1', 'acct-1', fresh)
+      writeFileSync(sharedAuthPath(), mismatch, 'utf-8')
+      writeFileSync(systemAuthPath(), 'system auth sentinel\n', 'utf-8')
+      const { settings, store } = createStore([account], account.id)
+      const { CodexRuntimeHomeService } = await import('./runtime-home-service')
+      const service = new CodexRuntimeHomeService(store as never)
 
-    settings.activeCodexManagedAccountId = null
-    settings.activeCodexManagedAccountIdsByRuntime = { host: null, wsl: {} }
+      settings.activeCodexManagedAccountId = null
+      settings.activeCodexManagedAccountIdsByRuntime = { host: null, wsl: {} }
 
-    expect(service.prepareForCodexLaunch()).toBeNull()
-    expect(service.prepareForRateLimitFetch()).toEqual({
-      kind: 'ready',
-      codexHomePath: systemHome()
-    })
-    expect(readFileSync(join(account.managedHomePath, 'auth.json'), 'utf-8')).toBe(fresh)
-    expect(readFileSync(sharedAuthPath(), 'utf-8')).toBe(mismatch)
-    expect(readFileSync(systemAuthPath(), 'utf-8')).toBe('system auth sentinel\n')
-  })
+      expect(service.prepareForCodexLaunch()).toBeNull()
+      expect(service.prepareForRateLimitFetch()).toEqual({
+        kind: 'ready',
+        codexHomePath: systemHome()
+      })
+      expect(readFileSync(join(account.managedHomePath, 'auth.json'), 'utf-8')).toBe(fresh)
+      expect(readFileSync(sharedAuthPath(), 'utf-8')).toBe(mismatch)
+      expect(readFileSync(systemAuthPath(), 'utf-8')).toBe('system auth sentinel\n')
+    }
+  )
 
   it('never continuously recovers a missing E auth from shared state after takeover', async () => {
     const stale = createAuth('one@example.com', 'acct-1', 'stale', 1_000)

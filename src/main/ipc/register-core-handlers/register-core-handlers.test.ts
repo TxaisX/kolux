@@ -57,6 +57,7 @@ const {
   registerOnboardingHandlersMock,
   registerDashboardPopoutHandlersMock,
   isDashboardPopoutRendererMock,
+  registerTerminalWindowsHandlersMock,
   registerTerminalPreviewHandlersMock,
   registerSpeechHandlersMock,
   registerSkillsHandlersMock,
@@ -124,6 +125,7 @@ const {
   registerOnboardingHandlersMock: vi.fn(),
   registerDashboardPopoutHandlersMock: vi.fn(),
   isDashboardPopoutRendererMock: vi.fn(),
+  registerTerminalWindowsHandlersMock: vi.fn(),
   registerTerminalPreviewHandlersMock: vi.fn(),
   registerSpeechHandlersMock: vi.fn(),
   registerSkillsHandlersMock: vi.fn(),
@@ -164,6 +166,13 @@ vi.mock('../dashboard-popout', () => ({
 
 vi.mock('../../window/dashboard-popout-window', () => ({
   isDashboardPopoutRenderer: isDashboardPopoutRendererMock
+}))
+
+// Why: registerTerminalWindowsHandlers (added in 22f2f016) transitively imports the real
+// 'electron' package via terminal-session-window.ts; unmocked, that CJS/ESM interop throws
+// before any handler mock runs.
+vi.mock('../terminal-windows', () => ({
+  registerTerminalWindowsHandlers: registerTerminalWindowsHandlersMock
 }))
 
 vi.mock('../terminal-preview', () => ({

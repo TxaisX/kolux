@@ -77,7 +77,8 @@ describe('deferred worktree removal against the real Git binary', () => {
 
     await removeWorktree(repoPath, worktreePath, false, { deleteBranch: false })
 
-    expect(await git(['worktree', 'list'], repoPath)).toContain(siblingPath)
+    // Why: `git worktree list` always prints forward slashes, even on Windows.
+    expect(await git(['worktree', 'list'], repoPath)).toContain(siblingPath.replace(/\\/g, '/'))
     expect(existsSync(siblingPath)).toBe(true)
   })
 
@@ -92,7 +93,8 @@ describe('deferred worktree removal against the real Git binary', () => {
 
     await expect(removeWorktree(repoPath, worktreePath, false)).rejects.toThrow()
     expect(existsSync(join(worktreePath, 'seed.txt'))).toBe(true)
-    expect(await git(['worktree', 'list'], repoPath)).toContain(worktreePath)
+    // Why: `git worktree list` always prints forward slashes, even on Windows.
+    expect(await git(['worktree', 'list'], repoPath)).toContain(worktreePath.replace(/\\/g, '/'))
     expect(existsSync(getWorktreeTrashRoot(worktreePath))).toBe(false)
   })
 

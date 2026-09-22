@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { toSshExecutionHostId } from '../../shared/execution-host'
 import type * as SkillSshRelayService from '../skills/skill-ssh-relay-service'
 import type { RuntimeSkillCommandHost } from './runtime-skill-command-contract'
@@ -121,10 +121,13 @@ describe('RuntimeSkillInstallQueries', () => {
       skillTransactionRecovery: Promise.resolve()
     }
 
+    // Why resolve(), not a bare join(): skill-provider-runtime-roots.ts's normalizedRoot()
+    // calls resolve() on the configured dir before joining 'skills', which drive-qualifies a
+    // POSIX-shaped path against the current working drive on Windows.
     await expect(
       new RuntimeSkillInstallQueries(host).resolveSkillDiscoveryProviderRoots({
         kind: 'native-host'
       })
-    ).resolves.toMatchObject({ claude: join('/accounts/claude/managed', 'skills') })
+    ).resolves.toMatchObject({ claude: join(resolve('/accounts/claude/managed'), 'skills') })
   })
 })
