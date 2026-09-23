@@ -25,7 +25,7 @@ default flip alone only changes fresh profiles. The renderer store does not pick
 
 | What you see | File |
 |---|---|
-| Search / Tasks / Floor / Agent grid / Artifacts / Skills / Automations / Mobile rows | `components/sidebar/SidebarNav.tsx` — one JSX block per row; the optional ones are wrapped in a `ContextMenu` with a "Hide from sidebar" item |
+| Tasks / Artifacts / Skills / Automations / Mobile rows (Search, Floor and Agent grid were removed 2026-09-22) | `components/sidebar/SidebarNav.tsx` — one JSX block per row; the optional ones are wrapped in a `ContextMenu` with a "Hide from sidebar" item |
 | The View-menu toggles behind those rows | `src/main/menu/register-app-menu.ts`, fed by `src/main/startup/main-process-i18n-menu.ts` |
 | The Projects list itself (virtualized) | `components/sidebar/worktree-list/` — `viewport/` measures, `rows/virtual-row-dispatch.tsx` routes each row type |
 | Project header row (repo-backed) | built in `worktree-list/grouping/group-sections.ts` (`groupBy === 'repo'`), rendered by `worktree-list/rows/SectionHeader.tsx` |

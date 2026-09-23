@@ -5,6 +5,13 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-21.
 
+## 2026-09-22: a quieter left sidebar
+
+- **Removed on the owner's call:** the sidebar's Search, Floor and Agent grid rows, and the titlebar's Inbox · Floor · Code switch (`ModeSwitch.tsx` deleted). Inbox and Floor lost their default Ctrl+Shift+1/2 shortcuts, so nothing strands a user in a view that has no way back. Ctrl+Shift+3 (Code) and the worktree palette shortcut still work. The Inbox, Floor and Agent grid pages and store code are untouched; delete them in a separate pass if nobody misses them.
+- **Dark sidebar is `var(--card)` (#171717), not #2a2a2a.** #2a2a2a made the sidebar the brightest surface in the app. Its luminance step over the canvas was about 2x Zed's and 4x Superset's, with the thinnest border of the group. The titlebar was already `--card`, so the left column now reads as one panel. Selected rows use `--secondary`. Light mode is unchanged, and was already in line with VS Code and Zed.
+- **Verified in the dev app (dark theme, CDP DOM checks):** nav rows = Onboarding checklist, Tasks. No search row, no Mode switch, sidebar computed background rgb(23,23,23). The screenshot hung as usual on a hidden window.
+- **Candidates, not done:** a left accent bar on the active workspace row (Conductor's pattern), and a solid sidebar border token instead of the 7% white wash. Competitor evidence is in the 2026-09-22 field study artifact.
+
 ## 2026-09-22: one worktree per agent, OpenCode does the git work
 
 - Agents no longer commit, merge or push. `pnpm ship` (`config/scripts/ship.mjs`) stages the worktree, has OpenCode's free `opencode/big-pickle` write the message, commits, and pushes the branch; `pnpm ship --main` also lands it on GitHub main and fast-forwards the primary checkout. It merges (never rebases) when GitHub is ahead, and on any conflict it aborts and pushes nothing. Rule text is in AGENTS.md.

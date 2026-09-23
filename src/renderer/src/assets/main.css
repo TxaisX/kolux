@@ -311,11 +311,11 @@
   --chart-3: var(--color-blue-600);
   --chart-4: var(--color-blue-700);
   --chart-5: var(--color-blue-800);
-  /* Why: light mode sets worktree-sidebar to secondary (#f5f5f5); mirror that
-     lift in dark mode so the panel reads clearly above #0a0a0a canvas. */
-  --worktree-sidebar: #2a2a2a;
+  /* Why: a small lift, matching the titlebar (--card). #2a2a2a made the sidebar the brightest
+     surface in the app, ~2x the step VS Code/Zed use between side panel and content. */
+  --worktree-sidebar: var(--card);
   --worktree-sidebar-foreground: #fafafa;
-  --worktree-sidebar-accent: #353535;
+  --worktree-sidebar-accent: var(--secondary);
   --worktree-sidebar-accent-foreground: #fafafa;
   /* Match --border / --sidebar-border (7%) so the left sidebar's divider lines
      aren't brighter than the rest of the UI in dark mode (#5906). */
