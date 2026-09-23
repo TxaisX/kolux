@@ -125,7 +125,7 @@ describe('onboarding feature setup runner', () => {
 
     expect(text).toBe(ALL_SKILL_INSTALL_COMMAND)
     expect(text).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --skill computer-use --skill orchestration --skill kolux-linear --global'
+      'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli --skill computer-use --skill orchestration --skill kolux-linear --global'
     )
   })
 

@@ -84,7 +84,7 @@ describe('landing preflight issues', () => {
             type: 'image',
             src: 'https://github.com/txais.png?size=64',
             source: 'github',
-            label: 'TxaisX/nightshift'
+            label: 'TxaisX/kolux'
           }
         })
       ])

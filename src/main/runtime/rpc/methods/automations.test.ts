@@ -36,7 +36,7 @@ describe('automation RPC methods', () => {
         agentId: 'codex',
         runContext: {
           kind: 'workspace-run',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'runtime:gpu',
           projectHostSetupId: 'setup-gpu',
           repoId: 'repo-gpu',
@@ -45,7 +45,7 @@ describe('automation RPC methods', () => {
         sourceContext: {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'local',
           projectHostSetupId: 'setup-local',
           repoId: 'repo-local',

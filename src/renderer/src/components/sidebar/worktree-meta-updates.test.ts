@@ -348,13 +348,11 @@ describe('buildWorktreeMetaUpdates', () => {
   })
 
   it('rejects issue URLs in the PR input', () => {
-    expect(buildUpdates({ reviewInput: 'https://github.com/TxaisX/nightshift/issues/6933' })).toEqual(
-      {}
-    )
+    expect(buildUpdates({ reviewInput: 'https://github.com/TxaisX/kolux/issues/6933' })).toEqual({})
   })
 
   it('accepts PR URLs in the PR input', () => {
-    expect(buildUpdates({ reviewInput: 'https://github.com/TxaisX/nightshift/pull/6934' })).toEqual({
+    expect(buildUpdates({ reviewInput: 'https://github.com/TxaisX/kolux/pull/6934' })).toEqual({
       linkedPR: 6934
     })
   })
@@ -379,7 +377,7 @@ describe('buildWorktreeMetaUpdates', () => {
   it('accepts issue URLs in the issue input', () => {
     expect(
       buildUpdates(
-        { issueInput: 'https://github.com/TxaisX/nightshift/issues/6933' },
+        { issueInput: 'https://github.com/TxaisX/kolux/issues/6933' },
         {},
         { linkedLinearIssue: 'STA-335' }
       )
@@ -392,7 +390,7 @@ describe('buildWorktreeMetaUpdates', () => {
   })
 
   it('rejects PR URLs in the issue input', () => {
-    expect(buildUpdates({ issueInput: 'https://github.com/TxaisX/nightshift/pull/6934' })).toEqual({})
+    expect(buildUpdates({ issueInput: 'https://github.com/TxaisX/kolux/pull/6934' })).toEqual({})
   })
 
   // Persistence stamps lastActivityAt on any comment write, so re-emitting an

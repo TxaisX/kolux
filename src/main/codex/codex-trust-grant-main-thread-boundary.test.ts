@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Ratchet for TxaisX/nightshift#16441.
+ * Ratchet for TxaisX/kolux#16441.
  *
  * Codex hook trust used to be granted by blocking the Electron main thread on
  * `spawnSync` of a bundled ELECTRON_RUN_AS_NODE entry, for the whole

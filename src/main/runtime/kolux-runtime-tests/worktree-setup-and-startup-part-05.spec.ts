@@ -95,7 +95,7 @@ describe('KoluxRuntimeService', () => {
       getForegroundProcess: async () => null
     })
 
-    const draftUrl = 'https://github.com/TxaisX/nightshift/pull/456'
+    const draftUrl = 'https://github.com/TxaisX/kolux/pull/456'
     const result = await runtime.createManagedWorktree({
       repoSelector: TEST_REPO_ID,
       name: 'nautilus',
@@ -211,7 +211,7 @@ describe('KoluxRuntimeService', () => {
       const result = await runtime.createManagedWorktree({
         repoSelector: TEST_REPO_ID,
         name: 'mobile-codex-draft',
-        startupDraft: 'https://github.com/TxaisX/nightshift/issues/789'
+        startupDraft: 'https://github.com/TxaisX/kolux/issues/789'
       })
 
       expect(detectRemoteAgentsMock).not.toHaveBeenCalled()

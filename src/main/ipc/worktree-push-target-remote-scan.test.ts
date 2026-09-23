@@ -11,7 +11,7 @@ import type { GitRemoteExec } from './worktree-push-target-cleanup'
 const SSH_FORK = 'git@github.com:contributor/kolux.git'
 const HTTPS_FORK = 'https://github.com/contributor/kolux.git'
 const GITLAB_FORK = 'https://gitlab.com/contributor/kolux.git'
-const UPSTREAM = 'https://github.com/TxaisX/nightshift.git'
+const UPSTREAM = 'https://github.com/TxaisX/kolux.git'
 
 type RemoteRow = { name: string; fetchUrl: string; pushUrl?: string }
 

@@ -51,13 +51,13 @@ describe('resolveMissingRepoProjectDialogState', () => {
   })
 
   it('clears slug fallback dialogs once the repo slug resolves', () => {
-    const slugDialog = { origin: { owner: 'TxaisX', repo: 'nightshift' } }
+    const slugDialog = { origin: { owner: 'TxaisX', repo: 'kolux' } }
     const repoNotInKolux = { owner: 'other', repo: 'tool', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
       repoNotInKolux,
-      lookupSlug: (slug) => (slug === 'TxaisX/nightshift' ? [{ id: 'repo-1' }] : []),
+      lookupSlug: (slug) => (slug === 'TxaisX/kolux' ? [{ id: 'repo-1' }] : []),
       selectedRepoIds: new Set(['repo-1'])
     })
 
@@ -67,12 +67,12 @@ describe('resolveMissingRepoProjectDialogState', () => {
 
   it('clears repo-not-in-kolux dialogs once the repo slug resolves', () => {
     const slugDialog = { origin: { owner: 'other', repo: 'tool' } }
-    const repoNotInKolux = { owner: 'TxaisX', repo: 'nightshift', url: null }
+    const repoNotInKolux = { owner: 'TxaisX', repo: 'kolux', url: null }
     const result = resolveMissingRepoProjectDialogState({
       slugIndexReady: true,
       slugDialog,
       repoNotInKolux,
-      lookupSlug: (slug) => (slug === 'TxaisX/nightshift' ? [{ id: 'repo-1' }] : []),
+      lookupSlug: (slug) => (slug === 'TxaisX/kolux' ? [{ id: 'repo-1' }] : []),
       selectedRepoIds: new Set(['repo-1'])
     })
 

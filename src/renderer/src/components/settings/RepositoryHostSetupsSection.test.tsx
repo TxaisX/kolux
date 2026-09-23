@@ -132,18 +132,18 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo, remoteRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'remote-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'remote-repo',
           hostId: toSshExecutionHostId('openclaw 2'),
           path: '/home/alice/kolux'
@@ -175,18 +175,18 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo, remoteRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'remote-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'remote-repo',
           hostId: toSshExecutionHostId('openclaw 2'),
           path: '/home/alice/kolux'
@@ -211,7 +211,7 @@ describe('RepositoryHostSetupsSection', () => {
 
     // The single project pane switches host in place — no navigation.
     expect(setSettingsProjectHostSelection).toHaveBeenCalledWith(
-      'github:TxaisX/nightshift',
+      'github:TxaisX/kolux',
       toSshExecutionHostId('openclaw 2'),
       'remote-repo'
     )
@@ -228,11 +228,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [remoteRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift', sourceRepoIds: ['remote-repo'] })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux', sourceRepoIds: ['remote-repo'] })],
       projectHostSetups: [
         makeSetup({
           id: 'direct-setup',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'remote-repo',
           hostId: 'runtime:hub',
           executionHostId: 'ssh:direct',
@@ -241,7 +241,7 @@ describe('RepositoryHostSetupsSection', () => {
         }),
         makeSetup({
           id: 'jump-setup',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'remote-repo',
           hostId: 'runtime:hub',
           executionHostId: 'ssh:jump',
@@ -328,11 +328,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [remoteRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift', sourceRepoIds: ['remote-repo'] })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux', sourceRepoIds: ['remote-repo'] })],
       projectHostSetups: [
         makeSetup({
           id: 'hub-local-setup',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'remote-repo',
           hostId: 'runtime:hub',
           executionHostId: 'local',
@@ -351,10 +351,10 @@ describe('RepositoryHostSetupsSection', () => {
 
   it('removes independent setup metadata instead of opening an empty repo target', async () => {
     const deleteProjectHostSetup = vi.fn().mockResolvedValue({
-      project: makeProject({ id: 'github:TxaisX/nightshift' }),
+      project: makeProject({ id: 'github:TxaisX/kolux' }),
       setup: makeSetup({
         id: 'gpu-setup',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         repoId: '',
         hostId: 'runtime:gpu',
         path: ''
@@ -369,18 +369,18 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
         }),
         makeSetup({
           id: 'gpu-setup',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: '',
           hostId: 'runtime:gpu',
           path: '',
@@ -415,10 +415,10 @@ describe('RepositoryHostSetupsSection', () => {
     const openSettingsTarget = vi.fn()
     const setSettingsProjectHostSelection = vi.fn()
     const setupProjectExistingFolder = vi.fn().mockResolvedValue({
-      project: makeProject({ id: 'github:TxaisX/nightshift' }),
+      project: makeProject({ id: 'github:TxaisX/kolux' }),
       setup: makeSetup({
         id: 'remote-repo',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         repoId: 'remote-repo',
         hostId: toSshExecutionHostId('openclaw 2'),
         path: '/home/alice/kolux'
@@ -437,11 +437,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -473,14 +473,14 @@ describe('RepositoryHostSetupsSection', () => {
     })
 
     expect(setupProjectExistingFolder).toHaveBeenCalledWith({
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'ssh:openclaw%202',
       path: '/home/alice/kolux',
       kind: 'git',
       displayName: 'Kolux'
     })
     expect(setSettingsProjectHostSelection).toHaveBeenCalledWith(
-      'github:TxaisX/nightshift',
+      'github:TxaisX/kolux',
       'ssh:openclaw%202'
     )
     expect(openSettingsPage).not.toHaveBeenCalled()
@@ -492,10 +492,10 @@ describe('RepositoryHostSetupsSection', () => {
     const openSettingsTarget = vi.fn()
     const setSettingsProjectHostSelection = vi.fn()
     const setupProjectClone = vi.fn().mockResolvedValue({
-      project: makeProject({ id: 'github:TxaisX/nightshift' }),
+      project: makeProject({ id: 'github:TxaisX/kolux' }),
       setup: makeSetup({
         id: 'remote-repo',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         repoId: 'remote-repo',
         hostId: toSshExecutionHostId('openclaw 2'),
         path: '/home/alice/kolux'
@@ -514,11 +514,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -544,7 +544,7 @@ describe('RepositoryHostSetupsSection', () => {
     )
     expect(urlInput).toBeTruthy()
     expect(destinationInput).toBeTruthy()
-    typeIntoInput(urlInput!, 'https://github.com/TxaisX/nightshift.git')
+    typeIntoInput(urlInput!, 'https://github.com/TxaisX/kolux.git')
     typeIntoInput(destinationInput!, '/home/alice')
 
     const cloneButton = findButton('Clone')
@@ -555,14 +555,14 @@ describe('RepositoryHostSetupsSection', () => {
     })
 
     expect(setupProjectClone).toHaveBeenCalledWith({
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'ssh:openclaw%202',
-      url: 'https://github.com/TxaisX/nightshift.git',
+      url: 'https://github.com/TxaisX/kolux.git',
       destination: '/home/alice',
       displayName: 'Kolux'
     })
     expect(setSettingsProjectHostSelection).toHaveBeenCalledWith(
-      'github:TxaisX/nightshift',
+      'github:TxaisX/kolux',
       'ssh:openclaw%202'
     )
     expect(openSettingsPage).not.toHaveBeenCalled()
@@ -577,11 +577,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -610,10 +610,10 @@ describe('RepositoryHostSetupsSection', () => {
 
   it('creates pending setup metadata for a known host without requiring a path', async () => {
     const createProjectHostSetup = vi.fn().mockResolvedValue({
-      project: makeProject({ id: 'github:TxaisX/nightshift' }),
+      project: makeProject({ id: 'github:TxaisX/kolux' }),
       setup: makeSetup({
         id: 'gpu-setup',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         repoId: '',
         hostId: 'runtime:gpu',
         path: '',
@@ -628,11 +628,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -678,7 +678,7 @@ describe('RepositoryHostSetupsSection', () => {
     })
 
     expect(createProjectHostSetup).toHaveBeenCalledWith({
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:gpu',
       displayName: 'Kolux',
       setupState: 'not-set-up',
@@ -697,11 +697,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -753,10 +753,10 @@ describe('RepositoryHostSetupsSection', () => {
 
   it('offers inactive runtime hosts discovered from hydrated runtime status', async () => {
     const createProjectHostSetup = vi.fn().mockResolvedValue({
-      project: makeProject({ id: 'github:TxaisX/nightshift' }),
+      project: makeProject({ id: 'github:TxaisX/kolux' }),
       setup: makeSetup({
         id: 'gpu-setup',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         repoId: '',
         hostId: 'runtime:gpu',
         path: '',
@@ -771,11 +771,11 @@ describe('RepositoryHostSetupsSection', () => {
     })
     useAppStore.setState({
       repos: [localRepo],
-      projects: [makeProject({ id: 'github:TxaisX/nightshift' })],
+      projects: [makeProject({ id: 'github:TxaisX/kolux' })],
       projectHostSetups: [
         makeSetup({
           id: 'local-repo',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           repoId: 'local-repo',
           hostId: 'local',
           path: '/Users/alice/kolux'
@@ -820,7 +820,7 @@ describe('RepositoryHostSetupsSection', () => {
     })
 
     expect(createProjectHostSetup).toHaveBeenCalledWith({
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:gpu',
       displayName: 'Kolux',
       setupState: 'not-set-up',

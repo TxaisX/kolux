@@ -87,7 +87,7 @@ describe('pending worktree creation state', () => {
         taskSourceContext: {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'local',
           projectHostSetupId: 'setup-local',
           repoId: 'repo-local',
@@ -95,7 +95,7 @@ describe('pending worktree creation state', () => {
         },
         workspaceRunContext: {
           kind: 'workspace-run',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:ssh-1',
           projectHostSetupId: 'setup-ssh',
           repoId: 'repo-ssh',

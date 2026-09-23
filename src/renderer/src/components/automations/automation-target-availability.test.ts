@@ -391,7 +391,7 @@ describe('automation target availability', () => {
           sourceContext: {
             kind: 'task-source',
             provider: 'github',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-1',
             providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
@@ -417,15 +417,15 @@ describe('automation target availability', () => {
           sourceContext: {
             kind: 'task-source',
             provider: 'gitlab',
-            projectId: 'gitlab:TxaisX/nightshift',
+            projectId: 'gitlab:TxaisX/kolux',
             hostId: 'runtime:old-server',
             repoId: 'repo-1',
             providerIdentity: {
               provider: 'gitlab',
-              projectId: 'TxaisX/nightshift',
+              projectId: 'TxaisX/kolux',
               namespace: 'TxaisX',
               project: 'kolux',
-              webUrl: 'https://gitlab.com/TxaisX/nightshift'
+              webUrl: 'https://gitlab.com/TxaisX/kolux'
             }
           }
         }),

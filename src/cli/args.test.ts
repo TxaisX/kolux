@@ -96,12 +96,12 @@ describe('parseArgs', () => {
 
   it('preserves a project selector before the project command', () => {
     const parsed = parseArgs(
-      ['--project', 'github:TxaisX/nightshift', 'project', 'setups'],
+      ['--project', 'github:TxaisX/kolux', 'project', 'setups'],
       [['project', 'setups']]
     )
 
     expect(parsed.commandPath).toEqual(['project', 'setups'])
-    expect(parsed.flags.get('project')).toBe('github:TxaisX/nightshift')
+    expect(parsed.flags.get('project')).toBe('github:TxaisX/kolux')
   })
 
   it('preserves a selector value that is also a registered command', () => {

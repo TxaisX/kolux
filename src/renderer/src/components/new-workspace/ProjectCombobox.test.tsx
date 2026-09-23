@@ -34,11 +34,11 @@ let root: Root
 const projects: NewWorkspaceProjectOption[] = [
   {
     kind: 'project',
-    id: 'github:TxaisX/nightshift',
-    projectId: 'github:TxaisX/nightshift',
+    id: 'github:TxaisX/kolux',
+    projectId: 'github:TxaisX/kolux',
     displayName: 'kolux',
     badgeColor: '#111111',
-    detail: 'TxaisX/nightshift'
+    detail: 'TxaisX/kolux'
   },
   {
     kind: 'project',
@@ -112,11 +112,7 @@ describe('ProjectCombobox', () => {
   it('renders a logical project label without host-specific SSH chrome', () => {
     act(() => {
       root.render(
-        <ProjectCombobox
-          options={projects}
-          value="github:TxaisX/nightshift"
-          onValueChange={vi.fn()}
-        />
+        <ProjectCombobox options={projects} value="github:TxaisX/kolux" onValueChange={vi.fn()} />
       )
     })
 
@@ -147,7 +143,7 @@ describe('ProjectCombobox', () => {
       root.render(
         <ProjectCombobox
           options={projects}
-          value="github:TxaisX/nightshift"
+          value="github:TxaisX/kolux"
           onValueChange={onValueChange}
         />
       )
@@ -290,7 +286,7 @@ describe('ProjectCombobox', () => {
 
     type('noq')
     expect(container.textContent).toContain('txais/noqa')
-    expect(container.textContent).not.toContain('TxaisX/nightshift')
+    expect(container.textContent).not.toContain('TxaisX/kolux')
   })
 
   it('commits the armed row on Enter', () => {
@@ -344,11 +340,7 @@ describe('ProjectCombobox', () => {
   it('restores the committed project on Escape instead of stranding a stale query', () => {
     act(() => {
       root.render(
-        <ProjectCombobox
-          options={projects}
-          value="github:TxaisX/nightshift"
-          onValueChange={vi.fn()}
-        />
+        <ProjectCombobox options={projects} value="github:TxaisX/kolux" onValueChange={vi.fn()} />
       )
     })
     openList()
@@ -375,11 +367,7 @@ describe('ProjectCombobox', () => {
   it('drops an uncommitted query when the list closes, so junk text never persists', () => {
     act(() => {
       root.render(
-        <ProjectCombobox
-          options={projects}
-          value="github:TxaisX/nightshift"
-          onValueChange={vi.fn()}
-        />
+        <ProjectCombobox options={projects} value="github:TxaisX/kolux" onValueChange={vi.fn()} />
       )
     })
     openList()

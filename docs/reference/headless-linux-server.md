@@ -68,7 +68,7 @@ Download and make the AppImage executable:
 
 ```bash
 sudo mkdir -p /opt/kolux
-sudo curl -L https://github.com/TxaisX/nightshift/releases/latest/download/kolux-linux.AppImage \
+sudo curl -L https://github.com/TxaisX/kolux/releases/latest/download/kolux-linux.AppImage \
   -o /opt/kolux/kolux-linux.AppImage
 sudo chmod +x /opt/kolux/kolux-linux.AppImage
 ```
@@ -552,7 +552,7 @@ recover_failed_upgrade() {
 trap recover_failed_upgrade EXIT
 
 # 1. Stage and verify the new build while the server stays online
-sudo curl -fL --retry 3 "https://github.com/TxaisX/nightshift/releases/download/${KOLUX_VERSION}/${KOLUX_ASSET}" \
+sudo curl -fL --retry 3 "https://github.com/TxaisX/kolux/releases/download/${KOLUX_VERSION}/${KOLUX_ASSET}" \
   -o /opt/kolux/kolux-linux.AppImage.new
 sudo chown root:root /opt/kolux/kolux-linux.AppImage.new
 sudo chmod 755 /opt/kolux/kolux-linux.AppImage.new

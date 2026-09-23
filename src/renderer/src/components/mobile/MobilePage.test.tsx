@@ -180,9 +180,7 @@ describe('MobilePage pairing connection mode', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open Android install guide' }))
 
-    expect(window.api.shell.openUrl).toHaveBeenCalledWith(
-      'https://github.com/TxaisX/nightshift#readme'
-    )
+    expect(window.api.shell.openUrl).toHaveBeenCalledWith('https://github.com/TxaisX/kolux#readme')
   })
 
   it('defaults signed-in pairing to Anywhere and remints when same-network is selected', async () => {

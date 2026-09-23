@@ -204,7 +204,7 @@ describe('submitFolderWorkspaceCreate', () => {
       type: 'issue' as const,
       number: 42,
       title: 'Restore checkout polish',
-      url: 'https://github.com/TxaisX/nightshift/issues/42',
+      url: 'https://github.com/TxaisX/kolux/issues/42',
       repoId: 'repo-1'
     }
 
@@ -283,7 +283,7 @@ describe('submitFolderWorkspaceCreate', () => {
       type: 'pr' as const,
       number: 91,
       title: 'Restore linked quick-create',
-      url: 'https://github.com/TxaisX/nightshift/pull/91',
+      url: 'https://github.com/TxaisX/kolux/pull/91',
       repoId: 'repo-1'
     }
 
@@ -340,7 +340,7 @@ describe('submitFolderWorkspaceCreate', () => {
       type: 'pr' as const,
       number: 92,
       title: 'Trust remote folder draft',
-      url: 'https://github.com/TxaisX/nightshift/pull/92',
+      url: 'https://github.com/TxaisX/kolux/pull/92',
       repoId: 'repo-1'
     }
     const projectGroup = {
@@ -510,7 +510,7 @@ describe('submitFolderWorkspaceCreate', () => {
       type: 'issue' as const,
       number: 42,
       title: 'Restore checkout polish',
-      url: 'https://github.com/TxaisX/nightshift/issues/42',
+      url: 'https://github.com/TxaisX/kolux/issues/42',
       repoId: 'repo-1'
     }
 
@@ -692,7 +692,7 @@ describe('submitFolderWorkspaceCreate', () => {
 })
 
 describe('submitFolderWorkspaceCreate native-chat launch draft', () => {
-  const ISSUE_URL = 'https://github.com/TxaisX/nightshift/issues/42'
+  const ISSUE_URL = 'https://github.com/TxaisX/kolux/issues/42'
   const linkedIssue = {
     provider: 'github' as const,
     type: 'issue' as const,
@@ -804,7 +804,7 @@ describe('submitFolderWorkspaceCreate native-chat launch draft', () => {
 })
 
 describe('folder-workspace draft: seeded set == chat-opening set', () => {
-  const ISSUE_URL = 'https://github.com/TxaisX/nightshift/issues/42'
+  const ISSUE_URL = 'https://github.com/TxaisX/kolux/issues/42'
   const linkedIssue = {
     provider: 'github' as const,
     type: 'issue' as const,

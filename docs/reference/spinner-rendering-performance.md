@@ -15,9 +15,9 @@ does not make rendering or the rest of Kolux free.
 
 | Change                                                                               | What it achieved                                                                      | Remaining cost                                                                        |
 | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [#9380](https://github.com/TxaisX/nightshift/pull/9380): shared JavaScript clock         | Reduced frame-pipeline CPU in the original one-agent measurement                      | Wrote each spinner's style 12 times per second on the input thread                    |
-| [#12359](https://github.com/TxaisX/nightshift/pull/12359): compositor CSS rotation       | Removed those recurring JavaScript style writes; fixed the reported typing regression | React still receives CSS iteration events                                             |
-| [#13987](https://github.com/TxaisX/nightshift/pull/13987): synchronize on animationstart | Avoided a synchronous style query at every mount                                      | Steady-state animation overhead stayed the same                                       |
+| [#9380](https://github.com/TxaisX/kolux/pull/9380): shared JavaScript clock         | Reduced frame-pipeline CPU in the original one-agent measurement                      | Wrote each spinner's style 12 times per second on the input thread                    |
+| [#12359](https://github.com/TxaisX/kolux/pull/12359): compositor CSS rotation       | Removed those recurring JavaScript style writes; fixed the reported typing regression | React still receives CSS iteration events                                             |
+| [#13987](https://github.com/TxaisX/kolux/pull/13987): synchronize on animationstart | Avoided a synchronous style query at every mount                                      | Steady-state animation overhead stayed the same                                       |
 | This change                                                                          | Preserves both later fixes and removes almost all iteration boundaries                | Compositing, other app work, mount/reveal work, and a daily iteration boundary remain |
 
 The historical measurements in #12359 reported 41 rings causing about 490 style

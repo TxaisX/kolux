@@ -7,7 +7,7 @@ export type IosChannel = 'stable' | 'preview'
 
 export type InstallCopy = { ctaLabel: string; url: string }
 
-export const ANDROID_INSTALL_GUIDE_URL = 'https://github.com/TxaisX/nightshift#readme'
+export const ANDROID_INSTALL_GUIDE_URL = 'https://github.com/TxaisX/kolux#readme'
 
 const IOS_CHANNEL_COPY: Record<IosChannel, InstallCopy> = {
   stable: {
@@ -22,7 +22,7 @@ const IOS_CHANNEL_COPY: Record<IosChannel, InstallCopy> = {
 
 const ANDROID_COPY: InstallCopy = {
   ctaLabel: 'Download APK',
-  url: 'https://github.com/TxaisX/nightshift/releases/download/mobile-android-v0.0.48/app-release.apk'
+  url: 'https://github.com/TxaisX/kolux/releases/download/mobile-android-v0.0.48/app-release.apk'
 }
 
 export function getInstallCopy(platform: Platform, iosChannel: IosChannel): InstallCopy {

@@ -73,7 +73,7 @@ describe('RepositoryIconPicker GitHub avatar refresh', () => {
         type: 'image',
         src: 'https://github.com/txais.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       }
     })
     apiMocks.repoUpstream.mockResolvedValueOnce(null)

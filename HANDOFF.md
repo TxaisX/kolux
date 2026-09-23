@@ -7,7 +7,8 @@ Last updated: 2026-09-21.
 
 ## Current pass: the product is renamed Nightshift → Kolux
 
-- Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). **Deliberately kept:** every `TxaisX/nightshift*` GitHub address and the release-feed repo names in `electron-builder.config.cjs` and `dev-app-update.yml`, because the GitHub repo is not renamed yet. Also kept: `LICENSE`.
+- Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). Only `LICENSE` keeps its original text.
+- **2026-09-22: the GitHub repo is now `TxaisX/kolux`.** All 1,400 addresses and every release-feed repo name (`electron-builder.config.cjs`, `dev-app-update.yml`, the dev-channel names, the plugin marketplace) point at it. GitHub redirects the old address, which is what keeps already-installed 0.9.0 Nightshift builds updating. Version bumped to `0.10.0` — x-level, because the app name, the CLI command and the app identity all change.
 - One-time migration so upgraders lose nothing:
   - `src/main/startup/pre-kolux-userdata-migration.ts` moves userData, `~/.nightshift` and marker files. It is hooked into preflight, koluxd and the CLI.
   - `legacy-persisted-key-migration.ts` covers JSON keys and enums.
@@ -116,7 +117,7 @@ If a release contains both kinds, the larger one wins: any x-level change makes 
 
 ## Releasing and auto-update
 
-The installed app checks GitHub Releases on `TxaisX/nightshift` once a day. The update button
+The installed app checks GitHub Releases on `TxaisX/kolux` once a day. The update button
 in the sidebar footer (`SidebarUpdateButton.tsx`, between Help and "Reveal active workspace")
 walks the same flow by hand: Check for updates → Update to vX → Downloading % → Restart to
 update. Any check that finds a newer release starts the download itself, so the card jumps

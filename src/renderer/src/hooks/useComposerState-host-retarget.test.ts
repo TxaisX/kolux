@@ -9,7 +9,7 @@ describe('useComposerState host retarget', () => {
       number: 42,
       title: 'Fix PR workspace creation',
       state: 'open' as const,
-      url: 'https://github.com/TxaisX/nightshift/pull/42',
+      url: 'https://github.com/TxaisX/kolux/pull/42',
       labels: [],
       updatedAt: '2026-08-04T00:00:00.000Z',
       author: 'octocat',

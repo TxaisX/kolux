@@ -80,7 +80,7 @@ describe('codex rate-limit spawn runtime pairing', () => {
 
     const spawnEnv = childSpawnMock.mock.calls[0]?.[2]?.env as NodeJS.ProcessEnv
     // Guards the argument choice: pairing spawnCmd (cmd.exe on win32) rather than
-    // the resolved CLI silently reverts the ABI fix (TxaisX/nightshift#10932).
+    // the resolved CLI silently reverts the ABI fix (TxaisX/kolux#10932).
     expect(spawnEnv.PATH?.split(delimiter)[0]).toBe(bin)
 
     rpcChild.emit('close')

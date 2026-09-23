@@ -27,9 +27,9 @@ beforeEach(() => {
 describe('repo slice runtime project groups', () => {
   it('keeps runtime copies of a grouped canonical project in the same project group', async () => {
     const gitRemoteIdentity = {
-      canonicalKey: 'github.com/TxaisX/nightshift',
+      canonicalKey: 'github.com/TxaisX/kolux',
       remoteName: 'origin',
-      remoteUrl: 'https://github.com/TxaisX/nightshift.git'
+      remoteUrl: 'https://github.com/TxaisX/kolux.git'
     }
     const localKolux: Repo = {
       id: 'local-kolux',

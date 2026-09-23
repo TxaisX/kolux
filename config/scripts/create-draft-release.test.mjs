@@ -137,7 +137,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ tag_name: 'v1.4.36', draft: true }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -146,12 +146,12 @@ describe('createDraftRelease', () => {
 
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
-      'https://api.github.com/repos/TxaisX/nightshift/releases?per_page=100&page=1',
+      'https://api.github.com/repos/TxaisX/kolux/releases?per_page=100&page=1',
       expect.any(Object)
     )
     expect(fetchImpl).toHaveBeenNthCalledWith(
       2,
-      'https://api.github.com/repos/TxaisX/nightshift/releases/generate-notes',
+      'https://api.github.com/repos/TxaisX/kolux/releases/generate-notes',
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -163,7 +163,7 @@ describe('createDraftRelease', () => {
     )
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
-      'https://api.github.com/repos/TxaisX/nightshift/releases',
+      'https://api.github.com/repos/TxaisX/kolux/releases',
       expect.objectContaining({
         method: 'POST',
         body: expect.any(String)
@@ -189,7 +189,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ tag_name: 'v1.4.36-rc.1', draft: true }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36-rc.1',
       token: 'token',
       fetchImpl,
@@ -211,7 +211,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 42, draft: true, body: 'notes' }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -220,12 +220,12 @@ describe('createDraftRelease', () => {
 
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
-      'https://api.github.com/repos/TxaisX/nightshift/releases/42',
+      'https://api.github.com/repos/TxaisX/kolux/releases/42',
       expect.not.objectContaining({ method: expect.anything() })
     )
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,
-      'https://api.github.com/repos/TxaisX/nightshift/releases/42',
+      'https://api.github.com/repos/TxaisX/kolux/releases/42',
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ body: 'notes' }) })
     )
   })
@@ -240,7 +240,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 42, draft: false }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -250,7 +250,7 @@ describe('createDraftRelease', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3)
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
-      'https://api.github.com/repos/TxaisX/nightshift/releases/42',
+      'https://api.github.com/repos/TxaisX/kolux/releases/42',
       expect.not.objectContaining({ method: expect.anything() })
     )
   })
@@ -269,7 +269,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 42, draft: false, body: 'hand-written notes' }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -279,7 +279,7 @@ describe('createDraftRelease', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(6)
     expect(fetchImpl).toHaveBeenNthCalledWith(
       6,
-      'https://api.github.com/repos/TxaisX/nightshift/releases/42',
+      'https://api.github.com/repos/TxaisX/kolux/releases/42',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ body: 'hand-written notes' })
@@ -301,7 +301,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 42, draft: false, body: 'newer published body' }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -316,7 +316,7 @@ describe('createDraftRelease', () => {
     const fetchImpl = vi.fn().mockResolvedValueOnce(jsonResponse([release('v1.4.36', { id: 42 })]))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -334,7 +334,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ tag_name: 'v1.4.36', draft: true }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -356,7 +356,7 @@ describe('createDraftRelease', () => {
       .mockResolvedValueOnce(jsonResponse({ tag_name: 'v1.4.36', draft: true }))
 
     await createDraftRelease({
-      repo: 'TxaisX/nightshift',
+      repo: 'TxaisX/kolux',
       tag: 'v1.4.36',
       token: 'token',
       fetchImpl,
@@ -365,12 +365,12 @@ describe('createDraftRelease', () => {
 
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
-      'https://api.github.com/repos/TxaisX/nightshift/releases?per_page=100&page=1',
+      'https://api.github.com/repos/TxaisX/kolux/releases?per_page=100&page=1',
       expect.any(Object)
     )
     expect(fetchImpl).toHaveBeenNthCalledWith(
       2,
-      'https://api.github.com/repos/TxaisX/nightshift/releases?per_page=100&page=2',
+      'https://api.github.com/repos/TxaisX/kolux/releases?per_page=100&page=2',
       expect.any(Object)
     )
     const generateNotesBody = JSON.parse(fetchImpl.mock.calls[2][1].body)

@@ -76,7 +76,7 @@ describe('getPRForBranch', () => {
   it('resolves fork PRs from the upstream PR repo with the origin head owner', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'fork', repo: 'kolux' }
       ],
       headRepo: { owner: 'fork', repo: 'kolux' }
@@ -87,7 +87,7 @@ describe('getPRForBranch', () => {
           number: 1738,
           title: 'Fork PR',
           state: 'open',
-          html_url: 'https://github.com/TxaisX/nightshift/pull/1738',
+          html_url: 'https://github.com/TxaisX/kolux/pull/1738',
           updated_at: '2026-03-28T00:00:00Z',
           draft: false,
           mergeable_state: 'clean',
@@ -100,12 +100,12 @@ describe('getPRForBranch', () => {
     const pr = await getPRForBranch('/repo-root', 'feature/test')
 
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
-      ['api', 'repos/TxaisX/nightshift/pulls?head=fork%3Afeature%2Ftest&state=all&per_page=1'],
+      ['api', 'repos/TxaisX/kolux/pulls?head=fork%3Afeature%2Ftest&state=all&per_page=1'],
       { cwd: '/repo-root' }
     )
     expect(pr).toMatchObject({
       number: 1738,
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
       headRepo: { owner: 'fork', repo: 'kolux' }
     })
   })

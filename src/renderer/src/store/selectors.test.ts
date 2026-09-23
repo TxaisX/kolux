@@ -451,19 +451,19 @@ describe('store selectors', () => {
         id: 'local-kolux',
         path: '/Users/alice/stably/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       }),
       makeRepo({
         id: 'vm-kolux',
         path: '/vercel/sandbox/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' },
+        upstream: { owner: 'TxaisX', repo: 'kolux' },
         executionHostId: toRuntimeExecutionHostId('vm-env')
       })
     ]
     const projects = [
       {
-        id: 'github:TxaisX/nightshift',
+        id: 'github:TxaisX/kolux',
         displayName: 'kolux',
         badgeColor: '#737373',
         sourceRepoIds: ['local-kolux'],
@@ -482,7 +482,7 @@ describe('store selectors', () => {
     const projectHostSetups = [
       {
         id: 'local-setup',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'local' as const,
         repoId: 'local-kolux',
         path: '/Users/alice/stably/kolux',
@@ -513,11 +513,11 @@ describe('store selectors', () => {
     })
 
     // Why: githubRepoIdentityKey lowercases owner/repo for case-insensitive identity.
-    expect(projection.projects.map((project) => project.id)).toEqual(['github:txaisx/nightshift'])
+    expect(projection.projects.map((project) => project.id)).toEqual(['github:txaisx/kolux'])
     expect(projection.setups).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ id: 'local-setup', projectId: 'github:txaisx/nightshift' }),
-        expect.objectContaining({ id: 'vm-setup', projectId: 'github:txaisx/nightshift' })
+        expect.objectContaining({ id: 'local-setup', projectId: 'github:txaisx/kolux' }),
+        expect.objectContaining({ id: 'vm-setup', projectId: 'github:txaisx/kolux' })
       ])
     )
   })
@@ -528,7 +528,7 @@ describe('store selectors', () => {
         id: 'repo-1',
         path: '/Users/alice/kolux',
         displayName: 'kolux',
-        upstream: { owner: 'TxaisX', repo: 'nightshift' }
+        upstream: { owner: 'TxaisX', repo: 'kolux' }
       })
     ]
 
@@ -541,14 +541,14 @@ describe('store selectors', () => {
     // Why: githubRepoIdentityKey lowercases owner/repo for case-insensitive identity.
     expect(projection.projects).toEqual([
       expect.objectContaining({
-        id: 'github:txaisx/nightshift',
+        id: 'github:txaisx/kolux',
         sourceRepoIds: ['repo-1']
       })
     ])
     expect(projection.setups).toEqual([
       expect.objectContaining({
         id: 'repo-1',
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         repoId: 'repo-1',
         hostId: 'local',
         path: '/Users/alice/kolux'

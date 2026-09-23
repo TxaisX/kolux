@@ -63,23 +63,23 @@ describe('github owner/repo resolution', () => {
       owner: 'acme',
       repo: 'widgets'
     })
-    expect(parseGitHubOwnerRepo('git@github.com:TxaisX/nightshift.git')).toEqual({
+    expect(parseGitHubOwnerRepo('git@github.com:TxaisX/kolux.git')).toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(parseGitHubOwnerRepo('git@github.com:TheBoredTeam/boring.notch.git')).toEqual({
       owner: 'TheBoredTeam',
       repo: 'boring.notch'
     })
-    expect(parseGitHubOwnerRepo('ssh://git@github.com/TxaisX/nightshift.git')).toEqual({
+    expect(parseGitHubOwnerRepo('ssh://git@github.com/TxaisX/kolux.git')).toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
-    expect(parseGitHubOwnerRepo('ssh://git@ssh.github.com:443/TxaisX/nightshift.git')).toEqual({
+    expect(parseGitHubOwnerRepo('ssh://git@ssh.github.com:443/TxaisX/kolux.git')).toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
-    expect(parseGitHubOwnerRepo('git@example.com:TxaisX/nightshift.git')).toBeNull()
+    expect(parseGitHubOwnerRepo('git@example.com:TxaisX/kolux.git')).toBeNull()
   })
 
   it('parses GitHub Enterprise host identity', () => {
@@ -98,10 +98,10 @@ describe('github owner/repo resolution', () => {
 
   it('prefers upstream for PR owner/repo resolution (#7331)', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@github.com:TxaisX/nightshift.git\n'
+      stdout: 'git@github.com:TxaisX/kolux.git\n'
     })
 
-    await expect(getOwnerRepo('/repo')).resolves.toEqual({ owner: 'TxaisX', repo: 'nightshift' })
+    await expect(getOwnerRepo('/repo')).resolves.toEqual({ owner: 'TxaisX', repo: 'kolux' })
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(['remote', 'get-url', 'upstream'], {
       cwd: '/repo',
       timeout: 30_000
@@ -124,12 +124,12 @@ describe('github owner/repo resolution', () => {
 
   it('prefers upstream for issue owner/repo resolution', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@github.com:TxaisX/nightshift.git\n'
+      stdout: 'git@github.com:TxaisX/kolux.git\n'
     })
 
     await expect(getIssueOwnerRepo('/repo')).resolves.toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(['remote', 'get-url', 'upstream'], {
       cwd: '/repo',
@@ -139,7 +139,7 @@ describe('github owner/repo resolution', () => {
 
   it('falls back to origin when upstream is missing or non-GitHub', async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/kolux.git\n' })
       .mockResolvedValueOnce({ stdout: 'git@github.com:fork/kolux.git\n' })
 
     await expect(getIssueOwnerRepo('/repo')).resolves.toEqual({ owner: 'fork', repo: 'kolux' })
@@ -156,7 +156,7 @@ describe('github owner/repo resolution', () => {
   it('does not mix origin and upstream cache entries for the same repo path', async () => {
     gitExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git@github.com:fork/kolux.git\n' })
-      .mockResolvedValueOnce({ stdout: 'git@github.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@github.com:TxaisX/kolux.git\n' })
 
     await expect(getOwnerRepoForRemote('/repo', 'origin')).resolves.toEqual({
       owner: 'fork',
@@ -164,7 +164,7 @@ describe('github owner/repo resolution', () => {
     })
     await expect(getOwnerRepoForRemote('/repo', 'upstream')).resolves.toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
   })
 
@@ -199,14 +199,14 @@ describe('github owner/repo resolution', () => {
         if (args[2] === 'upstream') {
           throw new Error("fatal: No such remote 'upstream'")
         }
-        return { stdout: 'git@github.com:TxaisX/nightshift.git\n', stderr: '' }
+        return { stdout: 'git@github.com:TxaisX/kolux.git\n', stderr: '' }
       })
     }
     getSshGitProviderMock.mockReturnValue(sshProvider)
 
     await expect(getOwnerRepo('/home/user/kolux', 'openclaw-2')).resolves.toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
 
     expect(gitExecFileAsyncMock).not.toHaveBeenCalled()
@@ -276,11 +276,11 @@ describe('github owner/repo resolution', () => {
     try {
       nowSpy.mockReturnValue(1_000)
       gitExecFileAsyncMock.mockResolvedValueOnce({
-        stdout: 'git@github.com:TxaisX/nightshift.git\n'
+        stdout: 'git@github.com:TxaisX/kolux.git\n'
       })
       await expect(getOwnerRepo('/repo-a')).resolves.toEqual({
         owner: 'TxaisX',
-        repo: 'nightshift'
+        repo: 'kolux'
       })
       expect(_getOwnerRepoCacheSize()).toBe(1)
 
@@ -716,18 +716,18 @@ describe('resolveIssueSource', () => {
 
   it("'auto' + upstream exists → upstream, fellBack=false", async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@github.com:TxaisX/nightshift.git\n'
+      stdout: 'git@github.com:TxaisX/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', 'auto')).resolves.toEqual({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
   })
 
   it("'auto' + no upstream → origin, fellBack=false", async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/kolux.git\n' })
       .mockResolvedValueOnce({ stdout: 'git@github.com:solo/kolux.git\n' })
 
     await expect(resolveIssueSource('/repo', 'auto')).resolves.toEqual({
@@ -738,11 +738,11 @@ describe('resolveIssueSource', () => {
 
   it("'upstream' + upstream exists → upstream, fellBack=false", async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@github.com:TxaisX/nightshift.git\n'
+      stdout: 'git@github.com:TxaisX/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', 'upstream')).resolves.toEqual({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
   })
@@ -789,11 +789,11 @@ describe('resolveIssueSource', () => {
 
   it('undefined preference is treated identically to auto', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@github.com:TxaisX/nightshift.git\n'
+      stdout: 'git@github.com:TxaisX/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', undefined)).resolves.toEqual({
-      source: { owner: 'TxaisX', repo: 'nightshift' },
+      source: { owner: 'TxaisX', repo: 'kolux' },
       fellBack: false
     })
   })

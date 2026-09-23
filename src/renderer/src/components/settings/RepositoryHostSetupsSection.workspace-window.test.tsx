@@ -27,7 +27,7 @@ const repo: Repo = {
   executionHostId: 'runtime:hub'
 }
 const project: Project = {
-  id: 'github:TxaisX/nightshift',
+  id: 'github:TxaisX/kolux',
   displayName: 'Kolux',
   badgeColor: '#737373',
   sourceRepoIds: [repo.id],

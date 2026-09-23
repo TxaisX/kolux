@@ -159,7 +159,7 @@ describe('createGitHubSlice.fetchWorkItems source/error envelope', () => {
     const sourceContext = {
       kind: 'task-source' as const,
       provider: 'github' as const,
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:source-runtime' as const,
       projectHostSetupId: 'setup-1',
       repoId: 'source-runtime-repo-id',

@@ -225,8 +225,8 @@ describe('CLI launch redirect: command form', () => {
   })
 
   it.each([
-    ['--project', 'github:TxaisX/nightshift', 'project', 'setups'],
-    ['--project=github:TxaisX/nightshift', 'project', 'setups'],
+    ['--project', 'github:TxaisX/kolux', 'project', 'setups'],
+    ['--project=github:TxaisX/kolux', 'project', 'setups'],
     ['--project', 'project', 'project', 'setups'],
     ['--project=project', 'project', 'setups']
   ])('preserves a project selector in %j', (...args) => {

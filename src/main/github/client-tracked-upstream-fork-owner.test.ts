@@ -46,7 +46,7 @@ describe('getPRForBranch', () => {
   it('uses the tracked upstream remote owner for fork branch lookup', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -61,7 +61,7 @@ describe('getPRForBranch', () => {
             number: 78,
             title: 'Fork upstream branch PR',
             state: 'open',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/78',
+            html_url: 'https://github.com/TxaisX/kolux/pull/78',
             updated_at: '2026-03-28T00:00:00Z',
             draft: false,
             mergeable: true,
@@ -75,7 +75,7 @@ describe('getPRForBranch', () => {
           number: 78,
           title: 'Hydrated fork upstream branch PR',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/78',
+          url: 'https://github.com/TxaisX/kolux/pull/78',
           statusCheckRollup: [],
           updatedAt: '2026-03-28T00:00:00Z',
           isDraft: false,
@@ -98,14 +98,14 @@ describe('getPRForBranch', () => {
       3,
       [
         'api',
-        'repos/TxaisX/nightshift/pulls?head=fork-owner%3Acontributor%2Foriginal&state=all&per_page=1'
+        'repos/TxaisX/kolux/pulls?head=fork-owner%3Acontributor%2Foriginal&state=all&per_page=1'
       ],
       { cwd: '/repo-root' }
     )
     expect(pr).toMatchObject({
       number: 78,
       title: 'Hydrated fork upstream branch PR',
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
       headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })
@@ -113,7 +113,7 @@ describe('getPRForBranch', () => {
   it('uses the tracked upstream remote owner when the fork branch name matches locally', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -128,7 +128,7 @@ describe('getPRForBranch', () => {
             number: 6433,
             title: 'Recover Windows worktree deletes from long paths',
             state: 'open',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/6433',
+            html_url: 'https://github.com/TxaisX/kolux/pull/6433',
             updated_at: '2026-06-26T00:00:00Z',
             draft: false,
             mergeable: true,
@@ -145,7 +145,7 @@ describe('getPRForBranch', () => {
           number: 6433,
           title: 'Recover Windows worktree deletes from long paths',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/6433',
+          url: 'https://github.com/TxaisX/kolux/pull/6433',
           statusCheckRollup: [],
           updatedAt: '2026-06-26T00:00:00Z',
           isDraft: false,
@@ -168,13 +168,13 @@ describe('getPRForBranch', () => {
       3,
       [
         'api',
-        'repos/TxaisX/nightshift/pulls?head=brennanb2025%3Abrennanb2025%2Fworktree-remove-fix&state=all&per_page=1'
+        'repos/TxaisX/kolux/pulls?head=brennanb2025%3Abrennanb2025%2Fworktree-remove-fix&state=all&per_page=1'
       ],
       { cwd: '/repo-root' }
     )
     expect(pr).toMatchObject({
       number: 6433,
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
       headRepo: { owner: 'brennanb2025', repo: 'kolux' }
     })
   })
@@ -259,7 +259,7 @@ describe('getPRForBranch', () => {
     getSshGitProviderMock.mockReturnValue(sshGitProvider)
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'origin-owner', repo: 'kolux' }
       ],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
@@ -274,7 +274,7 @@ describe('getPRForBranch', () => {
             number: 79,
             title: 'SSH same-name fork PR',
             state: 'open',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/79',
+            html_url: 'https://github.com/TxaisX/kolux/pull/79',
             updated_at: '2026-03-28T00:00:00Z',
             draft: false,
             mergeable: true,
@@ -289,16 +289,13 @@ describe('getPRForBranch', () => {
     expect(getOwnerRepoForRemoteMock).toHaveBeenCalledWith('/remote/repo-root', 'fork', 'ssh-1')
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       3,
-      [
-        'api',
-        'repos/TxaisX/nightshift/pulls?head=fork-owner%3Acontributor%2Ffix&state=all&per_page=1'
-      ],
+      ['api', 'repos/TxaisX/kolux/pulls?head=fork-owner%3Acontributor%2Ffix&state=all&per_page=1'],
       {}
     )
     expect(pr).toMatchObject({
       number: 79,
       title: 'SSH same-name fork PR',
-      prRepo: { owner: 'TxaisX', repo: 'nightshift' },
+      prRepo: { owner: 'TxaisX', repo: 'kolux' },
       headRepo: { owner: 'fork-owner', repo: 'kolux' }
     })
   })

@@ -300,7 +300,7 @@ describe('worktree remote runtime mutations', () => {
     const createWorktree = store.getState().createWorktree
     const args: Parameters<typeof createWorktree> = ['repo1', 'task-draft', undefined, 'inherit']
     args[10] = 'codex'
-    args[25] = { startupDraft: 'https://github.com/TxaisX/nightshift/issues/12' }
+    args[25] = { startupDraft: 'https://github.com/TxaisX/kolux/issues/12' }
 
     await createWorktree(...args)
 
@@ -309,7 +309,7 @@ describe('worktree remote runtime mutations', () => {
         method: 'worktree.create',
         params: expect.objectContaining({
           createdWithAgent: 'codex',
-          startupDraft: 'https://github.com/TxaisX/nightshift/issues/12'
+          startupDraft: 'https://github.com/TxaisX/kolux/issues/12'
         })
       })
     )

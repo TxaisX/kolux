@@ -196,7 +196,7 @@ describe('registerWorktreeHandlers', () => {
     store.getProjectHostSetups.mockReturnValue([
       {
         id: 'repo-1',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'local',
         repoId: 'repo-1',
         path: '/workspace/repo',
@@ -224,7 +224,7 @@ describe('registerWorktreeHandlers', () => {
     })
     store.setWorktreeMeta.mockReturnValue({
       instanceId: 'existing-instance',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'local',
       projectHostSetupId: 'repo-1',
       lastActivityAt: 42
@@ -239,11 +239,11 @@ describe('registerWorktreeHandlers', () => {
     }[]
 
     expect(store.setWorktreeMeta).toHaveBeenCalledWith('repo-1::/workspace/existing-wt', {
-      projectId: 'github:TxaisX/nightshift'
+      projectId: 'github:TxaisX/kolux'
     })
     expect(listed[0]).toMatchObject({
       id: 'repo-1::/workspace/existing-wt',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'local',
       projectHostSetupId: 'repo-1',
       lastActivityAt: 42
@@ -263,7 +263,7 @@ describe('registerWorktreeHandlers', () => {
     store.getProjectHostSetups.mockReturnValue([
       {
         id: 'repo-1',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'local',
         repoId: 'repo-1',
         path: '/workspace/repo',
@@ -317,7 +317,7 @@ describe('registerWorktreeHandlers', () => {
     store.getProjectHostSetups.mockReturnValue([
       {
         id: 'repo-ssh',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'ssh:ssh-target-1',
         repoId: 'repo-ssh',
         path: '/remote/kolux',
@@ -331,7 +331,7 @@ describe('registerWorktreeHandlers', () => {
     store.setWorktreeMeta.mockReturnValue(
       makeWorktreeMeta({
         instanceId: 'existing-instance',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'ssh:ssh-target-1',
         projectHostSetupId: 'repo-ssh',
         lastActivityAt: 42
@@ -348,12 +348,12 @@ describe('registerWorktreeHandlers', () => {
 
     expect(getSshGitProviderMock).toHaveBeenCalledWith('ssh-target-1')
     expect(store.setWorktreeMeta).toHaveBeenCalledWith('repo-ssh::/remote/kolux', {
-      projectId: 'github:TxaisX/nightshift'
+      projectId: 'github:TxaisX/kolux'
     })
     expect(listed).toEqual([
       expect.objectContaining({
         id: 'repo-ssh::/remote/kolux',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'ssh:ssh-target-1',
         projectHostSetupId: 'repo-ssh',
         lastActivityAt: 42

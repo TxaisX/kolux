@@ -24,7 +24,7 @@ import { SidebarFeedbackImageAttachments } from './SidebarFeedbackImageAttachmen
 import { useSidebarFeedbackEnvironmentPrefill } from './use-sidebar-feedback-environment-prefill'
 import { useSidebarFeedbackImages } from './use-sidebar-feedback-images'
 
-const GITHUB_ISSUES_URL = 'https://github.com/TxaisX/nightshift/issues/'
+const GITHUB_ISSUES_URL = 'https://github.com/TxaisX/kolux/issues/'
 
 type SubmitIdentity = {
   githubLogin: string | null

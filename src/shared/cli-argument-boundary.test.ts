@@ -13,11 +13,11 @@ describe('findCliCommandIndex', () => {
       name: 'command-named value'
     },
     {
-      argv: ['--project', 'github:TxaisX/nightshift', 'project', 'setups'],
+      argv: ['--project', 'github:TxaisX/kolux', 'project', 'setups'],
       expected: 2,
       name: 'selector value'
     },
-    { argv: ['--project=github:TxaisX/nightshift', 'project'], expected: 1, name: 'assignment' },
+    { argv: ['--project=github:TxaisX/kolux', 'project'], expected: 1, name: 'assignment' },
     { argv: ['--', 'status'], expected: 1, name: 'bare double dash' },
     { argv: ['workspace', 'status'], expected: -1, name: 'first non-command positional' },
     { argv: ['serve'], expected: 0, name: 'direct serve' }

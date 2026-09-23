@@ -5,7 +5,7 @@
  * treatment. A structured worker has no PTY, but its provider child runs `kolux orchestration ...`
  * exactly like a PTY worker's agent does, and it was inheriting the ambient PATH instead. On
  * packaged Linux that made bare `kolux` resolve to GNOME's /usr/bin/orca screen reader, because
- * Kolux's Linux CLI installs as `kolux-ide` to avoid claiming that name (TxaisX/nightshift#7904); on
+ * Kolux's Linux CLI installs as `kolux-ide` to avoid claiming that name (TxaisX/kolux#7904); on
  * packaged macOS/Windows it reached this app's bundled CLI only if the user had separately
  * registered the CLI globally.
  *
@@ -44,7 +44,7 @@ export function prependKoluxCliDirToChildPath(
       ? `${devCliBin}${pathDelimiter}${inheritedPath}`
       : devCliBin
   } else if (platform === 'linux') {
-    // Why: bare-`kolux` shim scoped to Kolux PTYs — Linux CLI installs as `kolux-ide` to avoid shadowing GNOME's /usr/bin/orca screen reader (TxaisX/nightshift#7904).
+    // Why: bare-`kolux` shim scoped to Kolux PTYs — Linux CLI installs as `kolux-ide` to avoid shadowing GNOME's /usr/bin/orca screen reader (TxaisX/kolux#7904).
     const shimDir = ensureLinuxTerminalKoluxCliShimDir({ userDataPath: opts.userDataPath })
     if (shimDir) {
       const inheritedEntries = readInheritedPath(env, platform)

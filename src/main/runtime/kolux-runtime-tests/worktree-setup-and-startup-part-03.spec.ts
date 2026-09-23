@@ -391,7 +391,7 @@ describe('KoluxRuntimeService', () => {
       }
     ])
 
-    const draftUrl = 'https://github.com/TxaisX/nightshift/issues/123'
+    const draftUrl = 'https://github.com/TxaisX/kolux/issues/123'
     const result = await runtime.createManagedWorktree({
       repoSelector: 'id:repo-1',
       name: 'runtime-startup-draft',
@@ -474,7 +474,7 @@ describe('KoluxRuntimeService', () => {
     await runtime.createManagedWorktree({
       repoSelector: 'id:repo-1',
       name: 'runtime-opencode-draft-timeout',
-      startupDraft: 'https://github.com/TxaisX/nightshift/issues/456'
+      startupDraft: 'https://github.com/TxaisX/kolux/issues/456'
     })
 
     await vi.advanceTimersByTimeAsync(7999)

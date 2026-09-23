@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 
-const KOLUX_REPO_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_REPO_URL = 'https://github.com/TxaisX/kolux'
 type StarNagMode = 'gh' | 'web'
 type StarNagToastStatus = 'idle' | 'busy' | 'starred' | 'opened'
 

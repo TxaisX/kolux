@@ -44,7 +44,7 @@ describe('getPRForBranch', () => {
   it('looks up a linked PR number across PR repo candidates', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'fork', repo: 'kolux' }
       ],
       headRepo: { owner: 'fork', repo: 'kolux' }
@@ -78,7 +78,7 @@ describe('getPRForBranch', () => {
         'view',
         '99',
         '--repo',
-        'TxaisX/nightshift',
+        'TxaisX/kolux',
         '--json',
         'number,title,state,url,statusCheckRollup,updatedAt,isDraft,mergeable,reviewDecision,mergeStateStatus,autoMergeRequest,baseRefName,headRefName,baseRefOid,headRefOid'
       ],

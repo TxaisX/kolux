@@ -9,20 +9,20 @@ describe('automation source display', () => {
       kind: 'task-source',
       provider: 'github',
       hostId: 'ssh:devbox',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       projectHostSetupId: 'setup-devbox',
       repoId: 'repo-devbox',
       accountLabel: 'dev@example.com',
       providerIdentity: {
         provider: 'github',
         owner: 'TxaisX',
-        repo: 'nightshift'
+        repo: 'kolux'
       }
     }
 
     expect(getAutomationSourceDisplay(sourceContext)).toEqual({
-      label: 'GitHub · devbox · TxaisX/nightshift',
-      title: 'GitHub source · Host: devbox · Account: dev@example.com · Source: TxaisX/nightshift'
+      label: 'GitHub · devbox · TxaisX/kolux',
+      title: 'GitHub source · Host: devbox · Account: dev@example.com · Source: TxaisX/kolux'
     })
   })
 
@@ -55,13 +55,13 @@ describe('automation source display', () => {
       kind: 'task-source',
       provider: 'github',
       hostId: 'runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       projectHostSetupId: 'setup-runtime',
       repoId: 'repo-runtime',
       providerIdentity: {
         provider: 'github',
         owner: 'TxaisX',
-        repo: 'nightshift'
+        repo: 'kolux'
       }
     }
 
@@ -71,8 +71,8 @@ describe('automation source display', () => {
         new Map([['runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3', 'dev box']])
       )
     ).toEqual({
-      label: 'GitHub · dev box · TxaisX/nightshift',
-      title: 'GitHub source · Host: dev box · Source: TxaisX/nightshift'
+      label: 'GitHub · dev box · TxaisX/kolux',
+      title: 'GitHub source · Host: dev box · Source: TxaisX/kolux'
     })
   })
 

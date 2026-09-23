@@ -130,7 +130,7 @@ export const CORE_COMMAND_SPECS: CommandSpec[] = [
     examples: [
       'kolux worktree create --name agent-task --agent codex --prompt "hi" --json',
       'kolux worktree create --repo id:<repoId> --name related-task --json',
-      'kolux worktree create --project github:TxaisX/nightshift --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --name benchmark --json',
+      'kolux worktree create --project github:TxaisX/kolux --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --name benchmark --json',
       'kolux worktree create --repo id:<repoId> --name linear-task --linear-issue https://linear.app/stably/issue/STA-335/test-issue --json',
       'kolux worktree create --repo id:<repoId> --name agent-task --agent codex --prompt "hi" --json',
       'kolux worktree create --repo id:<repoId> --name folder-child --parent-worktree folder:<folderId> --json',

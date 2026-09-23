@@ -236,18 +236,18 @@ describe('validateGitExecArgs', () => {
 
   describe('git clone', () => {
     it('allows only the project setup clone shape', () => {
-      expectAllowed(['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux'])
-      expectAllowed(['clone', '--progress', '--', 'git@github.com:TxaisX/nightshift.git', 'kolux'])
+      expectAllowed(['clone', '--', 'https://github.com/TxaisX/kolux.git', 'kolux'])
+      expectAllowed(['clone', '--progress', '--', 'git@github.com:TxaisX/kolux.git', 'kolux'])
     })
 
     it.each([
-      [['clone', 'https://github.com/TxaisX/nightshift.git']],
-      [['clone', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
-      [['clone', '--depth=1', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', '.']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', '..']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested/kolux']],
-      [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'nested\\kolux']]
+      [['clone', 'https://github.com/TxaisX/kolux.git']],
+      [['clone', 'https://github.com/TxaisX/kolux.git', 'kolux']],
+      [['clone', '--depth=1', '--', 'https://github.com/TxaisX/kolux.git', 'kolux']],
+      [['clone', '--', 'https://github.com/TxaisX/kolux.git', '.']],
+      [['clone', '--', 'https://github.com/TxaisX/kolux.git', '..']],
+      [['clone', '--', 'https://github.com/TxaisX/kolux.git', 'nested/kolux']],
+      [['clone', '--', 'https://github.com/TxaisX/kolux.git', 'nested\\kolux']]
     ])('rejects unsafe clone args %j', (args) => {
       expectBlocked(args, 'git clone')
     })

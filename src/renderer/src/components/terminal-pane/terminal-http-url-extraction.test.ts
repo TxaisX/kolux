@@ -6,8 +6,8 @@ const urlsIn = (line: string): string[] => extractTerminalHttpLinks(line).map((l
 describe('extractTerminalHttpLinks', () => {
   it('stops at a full-width parenthesis instead of swallowing the annotation', () => {
     expect(
-      urlsIn('- PR: https://github.com/TxaisX/nightshift/pull/12345（作成済み・マージ待ち）')
-    ).toEqual(['https://github.com/TxaisX/nightshift/pull/12345'])
+      urlsIn('- PR: https://github.com/TxaisX/kolux/pull/12345（作成済み・マージ待ち）')
+    ).toEqual(['https://github.com/TxaisX/kolux/pull/12345'])
   })
 
   it('stops at a full-width closing quote', () => {

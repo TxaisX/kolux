@@ -7,8 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentSkillSetupPanel } from './AgentSkillSetupPanel'
 import { TooltipProvider } from '../ui/tooltip'
 
-const INSTALL_COMMAND =
-  'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global'
+const INSTALL_COMMAND = 'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli --global'
 const UPDATE_COMMAND = 'npx skills update kolux-cli --global'
 
 const mocks = vi.hoisted(() => ({

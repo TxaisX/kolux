@@ -136,9 +136,9 @@ describe('marketplace provenance contracts', () => {
   })
 
   it.each([
-    'https://github.com/TxaisX/nightshift-skills.git',
-    'ssh://git@github.com/TxaisX/nightshift-skills.git',
-    'git@github.com:TxaisX/nightshift-skills.git'
+    'https://github.com/TxaisX/kolux-skills.git',
+    'ssh://git@github.com/TxaisX/kolux-skills.git',
+    'git@github.com:TxaisX/kolux-skills.git'
   ])('accepts official organization source %s', (source) => {
     expect(isOfficialOrganizationGitSource(source)).toBe(true)
   })
@@ -147,9 +147,7 @@ describe('marketplace provenance contracts', () => {
     expect(isOfficialOrganizationGitSource('https://github.com/txais-fakes/kolux-skills')).toBe(
       false
     )
-    expect(isOfficialOrganizationGitSource('https://gitlab.com/TxaisX/nightshift-skills')).toBe(
-      false
-    )
+    expect(isOfficialOrganizationGitSource('https://gitlab.com/TxaisX/kolux-skills')).toBe(false)
   })
 
   it('recognizes only the canonical official marketplace repository', () => {

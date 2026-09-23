@@ -53,7 +53,7 @@ export const remoteWorktree: Worktree = {
 }
 
 export const project: Project = {
-  id: 'github:TxaisX/nightshift',
+  id: 'github:TxaisX/kolux',
   displayName: 'Kolux',
   badgeColor: '#737373',
   sourceRepoIds: [repo.id, remoteRepo.id],

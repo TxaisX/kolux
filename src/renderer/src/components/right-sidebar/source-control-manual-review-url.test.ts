@@ -84,12 +84,10 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'native-chat-does-not-auto-open',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@github.com:TxaisX/nightshift.git',
+        repoRemoteUrl: 'git@github.com:TxaisX/kolux.git',
         upstreamName: 'origin/native-chat-does-not-auto-open'
       })
-    ).toBe(
-      'https://github.com/TxaisX/nightshift/compare/main...native-chat-does-not-auto-open?expand=1'
-    )
+    ).toBe('https://github.com/TxaisX/kolux/compare/main...native-chat-does-not-auto-open?expand=1')
   })
 
   it('qualifies GitHub fork heads when the push target remote differs from the base repo', () => {
@@ -98,16 +96,14 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/upstream/main',
         branchName: 'feature/fork-head',
         repoRemoteName: 'upstream',
-        repoRemoteUrl: 'https://github.com/TxaisX/nightshift.git',
+        repoRemoteUrl: 'https://github.com/TxaisX/kolux.git',
         pushTarget: {
           remoteName: 'fork',
           branchName: 'feature/fork-head',
           remoteUrl: 'git@github.com:contributor/kolux.git'
         }
       })
-    ).toBe(
-      'https://github.com/TxaisX/nightshift/compare/main...contributor:feature/fork-head?expand=1'
-    )
+    ).toBe('https://github.com/TxaisX/kolux/compare/main...contributor:feature/fork-head?expand=1')
   })
 
   it('keeps slashes literal in a GitHub compare URL for a slash-containing branch name', () => {
@@ -116,11 +112,11 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'slashdevcorpse/identifying-pwsh.exe-error',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@github.com:TxaisX/nightshift.git',
+        repoRemoteUrl: 'git@github.com:TxaisX/kolux.git',
         upstreamName: 'origin/slashdevcorpse/identifying-pwsh.exe-error'
       })
     ).toBe(
-      'https://github.com/TxaisX/nightshift/compare/main...slashdevcorpse/identifying-pwsh.exe-error?expand=1'
+      'https://github.com/TxaisX/kolux/compare/main...slashdevcorpse/identifying-pwsh.exe-error?expand=1'
     )
   })
 
@@ -208,7 +204,7 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'quick-commands',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'https://github.com/TxaisX/nightshift.git',
+        repoRemoteUrl: 'https://github.com/TxaisX/kolux.git',
         upstreamName: 'pr-devajmeireles-kolux/quick-commands'
       })
     ).toBeNull()
@@ -220,10 +216,10 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'local-wip-name',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@github.com:TxaisX/nightshift.git',
+        repoRemoteUrl: 'git@github.com:TxaisX/kolux.git',
         upstreamName: 'origin/feature/pushed-name'
       })
-    ).toBe('https://github.com/TxaisX/nightshift/compare/main...feature/pushed-name?expand=1')
+    ).toBe('https://github.com/TxaisX/kolux/compare/main...feature/pushed-name?expand=1')
   })
 
   it('still qualifies the fork head when Kolux resolved the fork push URL', () => {
@@ -232,7 +228,7 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'quick-commands',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'https://github.com/TxaisX/nightshift.git',
+        repoRemoteUrl: 'https://github.com/TxaisX/kolux.git',
         upstreamName: 'pr-devajmeireles-kolux/quick-commands',
         pushTarget: {
           remoteName: 'pr-devajmeireles-kolux',
@@ -240,9 +236,7 @@ describe('buildSourceControlManualReviewUrl', () => {
           remoteUrl: 'git@github.com:devajmeireles/kolux.git'
         }
       })
-    ).toBe(
-      'https://github.com/TxaisX/nightshift/compare/main...devajmeireles:quick-commands?expand=1'
-    )
+    ).toBe('https://github.com/TxaisX/kolux/compare/main...devajmeireles:quick-commands?expand=1')
   })
 
   it('does not guess a provider for unknown hosts without a provider hint', () => {
@@ -265,7 +259,7 @@ describe('buildSourceControlManualReviewUrl', () => {
         baseRef: 'refs/remotes/origin/main',
         branchName: 'codex-runtime-home-refactor-design',
         repoRemoteName: 'origin',
-        repoRemoteUrl: 'git@github.com:TxaisX/nightshift.git',
+        repoRemoteUrl: 'git@github.com:TxaisX/kolux.git',
         upstreamName: null
       })
     ).toBeNull()

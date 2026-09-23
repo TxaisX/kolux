@@ -21,10 +21,10 @@ export const RELEASE_CHANNEL_LABELS: Readonly<Record<ReleaseChannel, string>> = 
 /** Dev builds live in their own repos so their tags never enter the main
  *  releases atom feed, which only exposes the 10 newest entries — 24 hourly
  *  tags a day would evict every stable/RC entry and strand real users. */
-export const HOURLY_RELEASE_REPO = 'TxaisX/nightshift-hourly'
-export const DAILY_RELEASE_REPO = 'TxaisX/nightshift-daily'
-export const ADHOC_RELEASE_REPO = 'TxaisX/nightshift-adhoc'
-export const MAIN_RELEASE_REPO = 'TxaisX/nightshift'
+export const HOURLY_RELEASE_REPO = 'TxaisX/kolux-hourly'
+export const DAILY_RELEASE_REPO = 'TxaisX/kolux-daily'
+export const ADHOC_RELEASE_REPO = 'TxaisX/kolux-adhoc'
+export const MAIN_RELEASE_REPO = 'TxaisX/kolux'
 
 export const HOURLY_PRERELEASE_IDENTIFIER = 'hourly'
 export const DAILY_PRERELEASE_IDENTIFIER = 'daily'

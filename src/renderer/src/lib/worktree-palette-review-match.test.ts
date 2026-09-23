@@ -42,7 +42,7 @@ const repoMap = new Map<string, Repo>([
     {
       id: 'repo-1',
       path: '/repo/kolux',
-      displayName: 'TxaisX/nightshift',
+      displayName: 'TxaisX/kolux',
       badgeColor: '#22c55e',
       addedAt: 0
     }

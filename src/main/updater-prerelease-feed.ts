@@ -2,15 +2,15 @@ import { net } from 'electron'
 import { parse } from 'yaml'
 import { compareVersions, isPrereleaseVersion, isValidVersion } from './updater-fallback'
 
-const ATOM_FEED_URL = 'https://github.com/TxaisX/nightshift/releases.atom'
-const RELEASES_DOWNLOAD_BASE = 'https://github.com/TxaisX/nightshift/releases/download'
+const ATOM_FEED_URL = 'https://github.com/TxaisX/kolux/releases.atom'
+const RELEASES_DOWNLOAD_BASE = 'https://github.com/TxaisX/kolux/releases/download'
 const FETCH_TIMEOUT_MS = 5000
 const MAX_MANIFEST_PROBE_CANDIDATES = 6
 
 // Why: GitHub's atom feed lists every release (prerelease or stable) in a
 // single flat list. Each entry has a /releases/tag/<tag> URL we can mine
 // without any channel filtering.
-const TAG_HREF_RE = /href="https:\/\/github\.com\/txaisx\/nightshift\/releases\/tag\/([^"]+)"/gi
+const TAG_HREF_RE = /href="https:\/\/github\.com\/txaisx\/kolux\/releases\/tag\/([^"]+)"/gi
 
 export function getReleaseDownloadUrl(tag: string): string {
   return `${RELEASES_DOWNLOAD_BASE}/${encodeURIComponent(tag)}`
@@ -153,7 +153,7 @@ async function getReleaseAssetReadiness(tag: string, assetName: string): Promise
   const isGitHubReleaseAsset =
     process.platform === 'win32' &&
     (isRelativeAsset ||
-      /^https:\/\/github\.com\/txaisx\/nightshift\/releases\/download\//i.test(assetName))
+      /^https:\/\/github\.com\/txaisx\/kolux\/releases\/download\//i.test(assetName))
   const assetUrl = isRelativeAsset
     ? getReleaseAssetUrl(tag, assetName.split('/').findLast(Boolean) ?? assetName)
     : assetName

@@ -140,7 +140,7 @@ describe('kolux cli worktree awareness', () => {
         setups: [
           {
             id: 'setup-local',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-local',
             path: '/tmp/kolux',
@@ -152,7 +152,7 @@ describe('kolux cli worktree awareness', () => {
           },
           {
             id: 'setup-gpu',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: 'repo-gpu',
             path: '/srv/kolux',
@@ -184,7 +184,7 @@ describe('kolux cli worktree awareness', () => {
         '--provider',
         'codex',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'runtime:gpu',
         '--json'
@@ -201,7 +201,7 @@ describe('kolux cli worktree awareness', () => {
         repo: 'id:repo-gpu',
         runContext: {
           kind: 'workspace-run',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'runtime:gpu',
           projectHostSetupId: 'setup-gpu',
           repoId: 'repo-gpu',
@@ -220,7 +220,7 @@ describe('kolux cli worktree awareness', () => {
         setups: [
           {
             id: 'setup-gpu',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: 'repo-gpu',
             path: '/srv/kolux',
@@ -255,7 +255,7 @@ describe('kolux cli worktree awareness', () => {
           repo: 'id:repo-gpu',
           runContext: {
             kind: 'workspace-run',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             projectHostSetupId: 'setup-gpu',
             repoId: 'repo-gpu',

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Creates TxaisX/nightshift-daily and grants the existing release App write access to
+# Creates TxaisX/kolux-daily and grants the existing release App write access to
 # it, so daily-mac-build.yml can publish there.
 #
 # Why a separate repo rather than reusing kolux-hourly: the daily channel is a
@@ -18,9 +18,9 @@
 set -euo pipefail
 
 ORG="txais"
-DAILY_REPO="$ORG/nightshift-daily"
+DAILY_REPO="$ORG/kolux-daily"
 MAIN_REPO="$ORG/kolux"
-APP_SLUG="nightshift-hourly-release"
+APP_SLUG="kolux-hourly-release"
 
 fail() {
   echo "error: $*" >&2

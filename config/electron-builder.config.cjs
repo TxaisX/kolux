@@ -59,11 +59,11 @@ const devChannelBuildVersion = isHourlyChannel
 // or a once-a-day cut cannot be picked up by someone who only meant to ride
 // main's hourlies.
 const devChannelRepo = isHourlyChannel
-  ? 'nightshift-hourly'
+  ? 'kolux-hourly'
   : isDailyChannel
-    ? 'nightshift-daily'
+    ? 'kolux-daily'
     : isAdhocChannel
-      ? 'nightshift-adhoc'
+      ? 'kolux-adhoc'
       : null
 const appId = 'com.txais.kolux'
 const featureWallResources = {
@@ -646,7 +646,7 @@ module.exports = {
   publish: {
     provider: 'github',
     owner: 'TxaisX',
-    repo: devChannelRepo ?? 'nightshift',
+    repo: devChannelRepo ?? 'kolux',
     releaseType: devChannelRepo ? 'prerelease' : 'release'
   }
 }

@@ -204,7 +204,7 @@ describe('skillUpdateFailedNames over a real inventory', () => {
           'kolux-cli': {
             skillFolderHash,
             skillPath: 'skills/kolux-cli',
-            source: 'github.com/TxaisX/nightshift'
+            source: 'github.com/TxaisX/kolux'
           }
         }
       })

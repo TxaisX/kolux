@@ -155,20 +155,20 @@ describe('task page cache selectors', () => {
     const localRepo = {
       id: 'repo-1',
       path: '/same/path',
-      sourceCacheScope: 'source:local:github:TxaisX/nightshift'
+      sourceCacheScope: 'source:local:github:TxaisX/kolux'
     }
     const sshRepo = {
       id: 'repo-1',
       path: '/same/path',
-      sourceCacheScope: 'source:ssh:devbox:github:TxaisX/nightshift'
+      sourceCacheScope: 'source:ssh:devbox:github:TxaisX/kolux'
     }
 
     expect(buildTaskPageRepoSourceState([localRepo, sshRepo], [])).toMatchObject([
       {
-        sourceKey: 'repo-1::source:local:github:TxaisX/nightshift'
+        sourceKey: 'repo-1::source:local:github:TxaisX/kolux'
       },
       {
-        sourceKey: 'repo-1::source:ssh:devbox:github:TxaisX/nightshift'
+        sourceKey: 'repo-1::source:ssh:devbox:github:TxaisX/kolux'
       }
     ])
   })

@@ -25,7 +25,7 @@ function command(repoId: string): TerminalQuickCommand {
 function setup(
   hostId: ExecutionHostId,
   repoId: string,
-  projectId = 'github:TxaisX/nightshift'
+  projectId = 'github:TxaisX/kolux'
 ): ScopeSetup {
   return { hostId, projectId, repoId }
 }
@@ -59,9 +59,9 @@ describe('terminalQuickCommandMatchesWorkspaceProject', () => {
       addedAt: 100,
       kind: 'git',
       gitRemoteIdentity: {
-        canonicalKey: 'github.com/TxaisX/nightshift',
+        canonicalKey: 'github.com/TxaisX/kolux',
         remoteName: 'origin',
-        remoteUrl: 'git@github.com:TxaisX/nightshift.git'
+        remoteUrl: 'git@github.com:TxaisX/kolux.git'
       },
       ...(executionHostId ? { executionHostId } : {})
     })

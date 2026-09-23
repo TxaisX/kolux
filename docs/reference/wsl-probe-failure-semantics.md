@@ -37,8 +37,8 @@ Three instances so far:
 
 | Where                                | What the user saw                                                                                                                       | Status                                                                |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Preflight CLI probes                 | Caching the result would have pinned "git not installed" until relaunch                                                                 | Bounded entry ([#17350](https://github.com/TxaisX/nightshift/pull/17350)) |
-| `glab auth status` fallback into WSL | Idle VM woken repeatedly for users who never touch GitLab                                                                               | Open ([#8941](https://github.com/TxaisX/nightshift/issues/8941))          |
+| Preflight CLI probes                 | Caching the result would have pinned "git not installed" until relaunch                                                                 | Bounded entry ([#17350](https://github.com/TxaisX/kolux/pull/17350)) |
+| `glab auth status` fallback into WSL | Idle VM woken repeatedly for users who never touch GitLab                                                                               | Open ([#8941](https://github.com/TxaisX/kolux/issues/8941))          |
 | `listRunningWslDistrosAsync`         | Fails closed to `[]` with no last-known-good, polled every 2s — a persistently broken `wsl.exe` makes every WSL session vanish app-wide | Open (PR #17072 review)                                               |
 
 ## What to do instead
@@ -49,7 +49,7 @@ Pick the cheapest option that fits the call site.
    the next call self-heals. This is what most of `src/` legitimately does.
 2. **Bound the entry.** If you cache, give it a TTL so a transient failure
    expires instead of lasting the session. Cheap, no signature change, and what
-   [#17350](https://github.com/TxaisX/nightshift/pull/17350) does.
+   [#17350](https://github.com/TxaisX/kolux/pull/17350) does.
 3. **Keep last-known-good.** If the probe gates discovery, fall back to the
    previous successful answer on failure rather than to empty. `listWslDistrosAsync`
    in `src/main/wsl.ts` already does this — `listRunningWslDistrosAsync`, added

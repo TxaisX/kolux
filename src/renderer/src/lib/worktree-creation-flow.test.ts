@@ -207,9 +207,9 @@ describe('runBackgroundWorktreeCreation', () => {
         id: 'repo-1',
         connectionId: null,
         gitRemoteIdentity: {
-          canonicalKey: 'github.com/TxaisX/nightshift',
+          canonicalKey: 'github.com/TxaisX/kolux',
           remoteName: 'origin',
-          remoteUrl: 'git@github.com:TxaisX/nightshift.git'
+          remoteUrl: 'git@github.com:TxaisX/kolux.git'
         }
       } as never
     ]
@@ -253,7 +253,7 @@ describe('runBackgroundWorktreeCreation', () => {
     expect(prepareEphemeralVmWorkspaceTargetMock).toHaveBeenCalledWith({
       repoId: 'repo-1',
       recipeId: 'cloud-sandbox',
-      projectId: 'github:txaisx/nightshift',
+      projectId: 'github:txaisx/kolux',
       workspaceName: 'feature',
       provisionId: 'creation-1',
       setupExistingFolder: store.setupProjectExistingFolder
@@ -300,7 +300,7 @@ describe('runBackgroundWorktreeCreation', () => {
         ephemeralVmRecipe: {
           sourceRepoId: 'repo-1',
           recipeId: 'cloud-sandbox',
-          projectId: 'github:TxaisX/nightshift'
+          projectId: 'github:TxaisX/kolux'
         },
         baseBranch: 'abc123',
         compareBaseRef: 'refs/remotes/origin/main',

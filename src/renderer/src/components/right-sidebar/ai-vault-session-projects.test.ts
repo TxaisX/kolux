@@ -145,11 +145,11 @@ describe('buildAiVaultProjectContext', () => {
       repos: [repo],
       worktrees: [worktree],
       projectHostSetupProjection: makeProjection({
-        projects: [makeProject({ id: 'github:TxaisX/nightshift', displayName: 'Canonical Kolux' })],
+        projects: [makeProject({ id: 'github:TxaisX/kolux', displayName: 'Canonical Kolux' })],
         setups: [
           makeSetup({
             repoId: repo.id,
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             path: repo.path
           })
         ]
@@ -159,10 +159,10 @@ describe('buildAiVaultProjectContext', () => {
       sessions: [session]
     })
 
-    expect(context.activeProjectKey).toBe('project:github:TxaisX/nightshift')
+    expect(context.activeProjectKey).toBe('project:github:TxaisX/kolux')
     expect(context.sessionProjectById.get(session.id)).toMatchObject({
       kind: 'repo',
-      key: 'project:github:TxaisX/nightshift',
+      key: 'project:github:TxaisX/kolux',
       label: 'Canonical Kolux'
     })
   })
@@ -184,11 +184,11 @@ describe('buildAiVaultProjectContext', () => {
       repos: [repo],
       worktrees: [worktree],
       projectHostSetupProjection: makeProjection({
-        projects: [makeProject({ id: 'github:TxaisX/nightshift', displayName: 'Canonical Kolux' })],
+        projects: [makeProject({ id: 'github:TxaisX/kolux', displayName: 'Canonical Kolux' })],
         setups: [
           makeSetup({
             repoId: repo.id,
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             path: repo.path
           })
         ]
@@ -198,8 +198,8 @@ describe('buildAiVaultProjectContext', () => {
       sessions: [session]
     })
 
-    expect(context.activeProjectKey).toBe('project:github:TxaisX/nightshift')
-    expect(context.sessionProjectById.get(session.id)?.key).toBe('project:github:TxaisX/nightshift')
+    expect(context.activeProjectKey).toBe('project:github:TxaisX/kolux')
+    expect(context.sessionProjectById.get(session.id)?.key).toBe('project:github:TxaisX/kolux')
   })
 
   it('inherits setup host ids for legacy worktrees without host metadata', () => {

@@ -28,7 +28,7 @@ and the dynamic loader then refuses to load it:
 
 Because the Kolux main process loads node-pty at startup, that failure crashes the
 whole app before a window appears — this is exactly what shipped in v1.4.150 and
-broke launch on Ubuntu 20.04 ([#9902](https://github.com/TxaisX/nightshift/issues/9902)).
+broke launch on Ubuntu 20.04 ([#9902](https://github.com/TxaisX/kolux/issues/9902)).
 
 The specific trap is glibc's 2.32–2.34 "libpthread/libutil merge", which moved
 several long-stable functions into libc under brand-new symbol versions:

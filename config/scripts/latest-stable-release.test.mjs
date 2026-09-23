@@ -71,17 +71,17 @@ describe('fetchReleases', () => {
       .mockResolvedValueOnce(jsonResponse(firstPage))
       .mockResolvedValueOnce(jsonResponse([{ tag_name: 'v1.4.44', draft: false }]))
 
-    const releases = await fetchReleases('TxaisX/nightshift', 'token', fetchImpl)
+    const releases = await fetchReleases('TxaisX/kolux', 'token', fetchImpl)
 
     expect(releases).toHaveLength(101)
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
-      'https://api.github.com/repos/TxaisX/nightshift/releases?per_page=100&page=1',
+      'https://api.github.com/repos/TxaisX/kolux/releases?per_page=100&page=1',
       expect.any(Object)
     )
     expect(fetchImpl).toHaveBeenNthCalledWith(
       2,
-      'https://api.github.com/repos/TxaisX/nightshift/releases?per_page=100&page=2',
+      'https://api.github.com/repos/TxaisX/kolux/releases?per_page=100&page=2',
       expect.any(Object)
     )
   })

@@ -41,7 +41,7 @@ describe('automation run identity', () => {
     const value = automation({
       runContext: {
         kind: 'workspace-run',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'ssh:builder',
         projectHostSetupId: 'setup-builder',
         repoId: 'remote-repo',
@@ -51,7 +51,7 @@ describe('automation run identity', () => {
 
     expect(getAutomationLegacyRepoId(value)).toBe('legacy-repo')
     expect(getAutomationRunRepoId(value)).toBe('remote-repo')
-    expect(getAutomationRunProjectId(value)).toBe('github:TxaisX/nightshift')
+    expect(getAutomationRunProjectId(value)).toBe('github:TxaisX/kolux')
   })
 
   it('falls back to the legacy repo id for pre-host-context automations', () => {

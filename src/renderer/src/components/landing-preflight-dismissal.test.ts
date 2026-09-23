@@ -53,7 +53,7 @@ describe('githubProjectKeys', () => {
       gitlabRepo('b'),
       folderRepo('c')
     ])
-    expect(keys).toEqual(['github:txaisx/nightshift'])
+    expect(keys).toEqual(['github:txaisx/kolux'])
   })
 
   it('de-dupes the same GitHub project added twice and sorts deterministically', () => {
@@ -62,7 +62,7 @@ describe('githubProjectKeys', () => {
       githubRepo('a1', 'TxaisX', 'nightshift'),
       githubRepo('z', 'octocat', 'hello')
     ])
-    expect(keys).toEqual(['github:octocat/hello', 'github:txaisx/nightshift'])
+    expect(keys).toEqual(['github:octocat/hello', 'github:txaisx/kolux'])
   })
 
   it('is empty for a GitLab-only / folder-only workspace', () => {

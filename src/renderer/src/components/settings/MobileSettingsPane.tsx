@@ -13,7 +13,7 @@ export { getMobileSettingsPaneSearchEntries }
 
 const KOLUX_IOS_APP_STORE_URL = 'https://apps.apple.com/app/kolux-ide/id6766130217'
 const KOLUX_ANDROID_APK_URL =
-  'https://github.com/TxaisX/nightshift/releases/download/mobile-android-v0.0.48/app-release.apk'
+  'https://github.com/TxaisX/kolux/releases/download/mobile-android-v0.0.48/app-release.apk'
 
 export function MobileSettingsPane(): React.JSX.Element {
   const showMobileButton = useAppStore((s) => s.settings?.showMobileButton !== false)

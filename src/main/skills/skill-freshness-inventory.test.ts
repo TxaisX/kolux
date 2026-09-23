@@ -92,7 +92,7 @@ async function fixture() {
             'kolux-cli': {
               skillFolderHash: 'tracked-old-hash',
               skillPath: 'skills/kolux-cli/SKILL.md',
-              source: 'TxaisX/nightshift'
+              source: 'TxaisX/kolux'
             }
           }
         })}\n`
@@ -149,7 +149,7 @@ async function writeSkillLockHash(homeDir: string, skillFolderHash: string): Pro
         'kolux-cli': {
           skillFolderHash,
           skillPath: 'skills/kolux-cli/SKILL.md',
-          source: 'TxaisX/nightshift'
+          source: 'TxaisX/kolux'
         }
       }
     })}\n`

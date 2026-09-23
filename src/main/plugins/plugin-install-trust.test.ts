@@ -51,7 +51,7 @@ describe('plugin install trust', () => {
     [
       {
         kind: 'git',
-        url: 'git@github.com:TxaisX/nightshift-secrets.git',
+        url: 'git@github.com:TxaisX/kolux-secrets.git',
         ref: 'main'
       },
       null

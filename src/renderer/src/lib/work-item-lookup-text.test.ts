@@ -3,9 +3,9 @@ import { isWorkItemLookupText } from './work-item-lookup-text'
 
 describe('isWorkItemLookupText', () => {
   it('detects GitHub PR and issue URLs', () => {
-    expect(isWorkItemLookupText('https://github.com/TxaisX/nightshift/pull/4900')).toBe(true)
-    expect(isWorkItemLookupText('https://github.com/TxaisX/nightshift/issues/123')).toBe(true)
-    expect(isWorkItemLookupText('  https://www.github.com/TxaisX/nightshift/pull/1 ')).toBe(true)
+    expect(isWorkItemLookupText('https://github.com/TxaisX/kolux/pull/4900')).toBe(true)
+    expect(isWorkItemLookupText('https://github.com/TxaisX/kolux/issues/123')).toBe(true)
+    expect(isWorkItemLookupText('  https://www.github.com/TxaisX/kolux/pull/1 ')).toBe(true)
   })
 
   it('detects hash-number shorthand', () => {

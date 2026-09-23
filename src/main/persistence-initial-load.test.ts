@@ -242,7 +242,7 @@ describe('Store', () => {
           path: '/home/alice/nightshift',
           displayName: 'nightshift',
           connectionId: 'gpu-vm',
-          upstream: { owner: 'txaisx', repo: 'nightshift' }
+          upstream: { owner: 'txaisx', repo: 'kolux' }
         })
       ]
     })
@@ -251,20 +251,20 @@ describe('Store', () => {
 
     expect(store.getProjects()).toEqual([
       expect.objectContaining({
-        id: 'github:txaisx/nightshift',
+        id: 'github:txaisx/kolux',
         sourceRepoIds: ['local-repo', 'remote-repo']
       })
     ])
     expect(store.getProjectHostSetups()).toEqual([
       expect.objectContaining({
         id: 'local-repo',
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'local',
         path: '/Users/alice/nightshift'
       }),
       expect.objectContaining({
         id: 'remote-repo',
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'ssh:gpu-vm',
         path: '/home/alice/nightshift'
       })

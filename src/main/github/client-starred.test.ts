@@ -55,7 +55,7 @@ describe('checkKoluxStarred', () => {
     await expect(checkKoluxStarred()).resolves.toBe(true)
 
     expect(ghExecFileAsyncMock).toHaveBeenCalledWith(
-      ['api', '--include', 'user/starred/TxaisX/nightshift'],
+      ['api', '--include', 'user/starred/TxaisX/kolux'],
       expect.objectContaining({ encoding: 'utf-8' })
     )
   })
@@ -157,7 +157,7 @@ describe('starKolux', () => {
 
     expect(execFileAsyncMock).not.toHaveBeenCalled()
     const [args, options] = ghExecFileAsyncMock.mock.calls[0]
-    expect(args).toEqual(['api', '-X', 'PUT', 'user/starred/TxaisX/nightshift'])
+    expect(args).toEqual(['api', '-X', 'PUT', 'user/starred/TxaisX/kolux'])
     expect(options.timeout).toBeGreaterThan(0)
     expect(releaseMock).toHaveBeenCalledTimes(1)
   })

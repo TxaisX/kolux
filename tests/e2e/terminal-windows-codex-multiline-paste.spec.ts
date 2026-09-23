@@ -18,7 +18,7 @@ const CODEX_TRUST_PROMPT_RE = /Do[\s\S]*you[\s\S]*trust[\s\S]*contents/i
 
 function pastePayload(repeats = 4): string {
   const lines = [
-    'Repository: TxaisX/nightshift',
+    'Repository: TxaisX/kolux',
     '',
     'Required exact revision:',
     '',

@@ -78,7 +78,7 @@ function forkTarget(overrides: Partial<GitPushTarget> = {}): GitPushTarget {
 
 describe('prepareWorktreePushTargetWithExec', () => {
   it('adds a new fork remote and fetches its head when none matches', async () => {
-    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
+    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/kolux.git' })
 
     const result = await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
 
@@ -101,7 +101,7 @@ describe('prepareWorktreePushTargetWithExec', () => {
   })
 
   it('records repo-local provenance on the remote it adds (#17828)', async () => {
-    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
+    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/kolux.git' })
 
     await prepareWorktreePushTargetWithExec(exec, REPO, forkTarget(), () => false)
 
@@ -114,7 +114,7 @@ describe('prepareWorktreePushTargetWithExec', () => {
 
   it('does not record provenance when reusing an existing remote', async () => {
     const exec = makeRepoExec({
-      origin: 'git@github.com:TxaisX/nightshift.git',
+      origin: 'git@github.com:TxaisX/kolux.git',
       'pr-contributor-kolux': FORK_HTTPS
     })
 
@@ -125,7 +125,7 @@ describe('prepareWorktreePushTargetWithExec', () => {
 
   it('reuses an existing remote pointing at the same fork (SSH vs HTTPS) without adding', async () => {
     const exec = makeRepoExec({
-      origin: 'git@github.com:TxaisX/nightshift.git',
+      origin: 'git@github.com:TxaisX/kolux.git',
       'pr-contributor-kolux': FORK_HTTPS
     })
 
@@ -171,7 +171,7 @@ describe('prepareWorktreePushTargetWithExec', () => {
   })
 
   it('strips an incoming remoteCreated flag and fetches the given remote when there is no remoteUrl', async () => {
-    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
+    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/kolux.git' })
 
     const result = await prepareWorktreePushTargetWithExec(
       exec,
@@ -191,14 +191,14 @@ describe('prepareWorktreePushTargetWithExec', () => {
 describe('findRemoteForUrl', () => {
   it('matches by GitHub owner/repo across URL protocols', async () => {
     const exec = makeRepoExec({
-      origin: 'git@github.com:TxaisX/nightshift.git',
+      origin: 'git@github.com:TxaisX/kolux.git',
       fork: FORK_SSH
     })
     await expect(findRemoteForUrl(exec, REPO, FORK_HTTPS)).resolves.toBe('fork')
   })
 
   it('returns null when no remote points at the fork', async () => {
-    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
+    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/kolux.git' })
     await expect(findRemoteForUrl(exec, REPO, FORK_SSH)).resolves.toBeNull()
   })
 })
@@ -228,7 +228,7 @@ describe('remoteAlreadyMatchesUrl', () => {
   })
 
   it('returns false when the named remote does not exist', async () => {
-    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/nightshift.git' })
+    const exec = makeRepoExec({ origin: 'git@github.com:TxaisX/kolux.git' })
     await expect(
       remoteAlreadyMatchesUrl(exec, REPO, 'pr-contributor-kolux', FORK_SSH)
     ).resolves.toBe(false)
@@ -309,7 +309,7 @@ describe('restoreUpstreamAfterMaterialize', () => {
 
 describe('prepareWorktreePushTargetWithExec rollback', () => {
   it('removes the remote it just added when the fetch fails', async () => {
-    const remotes: Record<string, string> = { origin: 'git@github.com:TxaisX/nightshift.git' }
+    const remotes: Record<string, string> = { origin: 'git@github.com:TxaisX/kolux.git' }
     const exec = vi.fn<GitRemoteExec>(async (args: string[]) => {
       if (args[0] === 'fetch') {
         throw new Error('network unreachable')
@@ -338,7 +338,7 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
 
   it('keeps a reused remote Kolux did not add when the fetch fails', async () => {
     const remotes: Record<string, string> = {
-      origin: 'git@github.com:TxaisX/nightshift.git',
+      origin: 'git@github.com:TxaisX/kolux.git',
       existing: FORK_SSH
     }
     const exec = vi.fn<GitRemoteExec>(async (args: string[]) => {
@@ -369,7 +369,7 @@ describe('prepareWorktreePushTargetWithExec rollback', () => {
   // remote a live sibling worktree was still pushing through.
   it('keeps a reused remote a sibling worktree owns when the fetch fails', async () => {
     const remotes: Record<string, string> = {
-      origin: 'git@github.com:TxaisX/nightshift.git',
+      origin: 'git@github.com:TxaisX/kolux.git',
       'pr-contributor-kolux': FORK_HTTPS
     }
     const exec = vi.fn<GitRemoteExec>(async (args: string[]) => {

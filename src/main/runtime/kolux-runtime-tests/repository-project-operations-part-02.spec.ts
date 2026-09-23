@@ -33,9 +33,9 @@ describe('KoluxRuntimeService', () => {
     const clonePath = join(destination, 'kolux')
     const spawnSpy = vi.spyOn(gitRunner, 'gitSpawnAfterWindowsEnvironmentReady')
     const repos: Record<string, unknown>[] = []
-    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why: TxaisX/kolux is the protected GitHub identity (repo not renamed), matching projectId below.
     // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -75,7 +75,7 @@ describe('KoluxRuntimeService', () => {
       expect(cloned).not.toHaveProperty('executionHostId')
 
       const result = await runtime.setupProjectExistingFolder({
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'runtime:env-1',
         path: clonePath,
         kind: 'git',
@@ -115,9 +115,9 @@ describe('KoluxRuntimeService', () => {
         executionHostId: 'runtime:env-1'
       }
     ]
-    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why: TxaisX/kolux is the protected GitHub identity (repo not renamed), matching projectId below.
     // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -151,7 +151,7 @@ describe('KoluxRuntimeService', () => {
 
     try {
       const result = await runtime.setupProjectClone({
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'runtime:env-2',
         url: 'https://example.com/kolux.git',
         destination

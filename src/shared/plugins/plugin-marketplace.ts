@@ -9,7 +9,7 @@ export const PLUGIN_MARKETPLACE_CATEGORY_LIMIT = 16
 export const OFFICIAL_PLUGIN_PUBLISHER = 'txais'
 export const OFFICIAL_PLUGIN_ID_PREFIX = 'kolux-'
 export const OFFICIAL_MARKETPLACE_OWNER = 'txaisx'
-export const OFFICIAL_MARKETPLACE_REPOSITORY = 'nightshift-plugins'
+export const OFFICIAL_MARKETPLACE_REPOSITORY = 'kolux-plugins'
 
 // Why: theme/icon/skill contributions were deferred, so `contributes` now
 // rejects them and any plugin declaring one fails to install wholesale. The
@@ -116,7 +116,7 @@ export type PluginMarketplaceTrustMetadata = z.infer<typeof pluginMarketplaceTru
 
 export const OFFICIAL_MARKETPLACE_GIT_SOURCE: PluginMarketplaceGitSource = {
   kind: 'git',
-  url: 'https://github.com/TxaisX/nightshift-plugins.git',
+  url: 'https://github.com/TxaisX/kolux-plugins.git',
   ref: 'main'
 }
 

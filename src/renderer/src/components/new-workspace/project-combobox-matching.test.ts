@@ -11,8 +11,8 @@ function project(id: string, displayName: string, detail: string): NewWorkspaceP
   return { kind: 'project', id, projectId: id, displayName, badgeColor: '#111', detail }
 }
 
-const kolux = project('kolux', 'kolux', 'TxaisX/nightshift')
-const relay = project('relay', 'kolux-relay', 'TxaisX/nightshift-relay')
+const kolux = project('kolux', 'kolux', 'TxaisX/kolux')
+const relay = project('relay', 'kolux-relay', 'TxaisX/kolux-relay')
 const gateway = project('gateway', 'api-gateway', 'acme/api-gateway')
 
 describe('rankProjectOptions', () => {
@@ -84,7 +84,7 @@ describe('splitDetailForElision', () => {
   })
 
   it('leaves short or shallow details alone', () => {
-    expect(splitDetailForElision('TxaisX/nightshift')).toBeNull()
+    expect(splitDetailForElision('TxaisX/kolux')).toBeNull()
     expect(splitDetailForElision('3 hosts configured')).toBeNull()
   })
 })

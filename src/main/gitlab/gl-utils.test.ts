@@ -67,12 +67,12 @@ describe('gitlab project ref resolution', () => {
 
   it('prefers upstream for issue project ref resolution', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:TxaisX/nightshift.git\n'
+      stdout: 'git@gitlab.com:TxaisX/kolux.git\n'
     })
 
     await expect(getIssueProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'TxaisX/nightshift'
+      path: 'TxaisX/kolux'
     })
     expect(gitExecFileAsyncMock).toHaveBeenCalledWith(['remote', 'get-url', 'upstream'], {
       cwd: '/repo',
@@ -82,7 +82,7 @@ describe('gitlab project ref resolution', () => {
 
   it('falls back to origin when upstream is missing or non-GitLab', async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/kolux.git\n' })
       .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
 
     await expect(getIssueProjectRef('/repo')).resolves.toEqual({
@@ -94,7 +94,7 @@ describe('gitlab project ref resolution', () => {
   it('does not mix origin and upstream cache entries for the same repo path', async () => {
     gitExecFileAsyncMock
       .mockResolvedValueOnce({ stdout: 'git@gitlab.com:fork/kolux.git\n' })
-      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@gitlab.com:TxaisX/kolux.git\n' })
 
     await expect(getProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
@@ -102,7 +102,7 @@ describe('gitlab project ref resolution', () => {
     })
     await expect(getIssueProjectRef('/repo')).resolves.toEqual({
       host: 'gitlab.com',
-      path: 'TxaisX/nightshift'
+      path: 'TxaisX/kolux'
     })
   })
 
@@ -185,7 +185,7 @@ describe('gitlab project ref resolution', () => {
 
   it('bounds cached project refs for distinct repo paths', async () => {
     gitExecFileAsyncMock.mockResolvedValue({
-      stdout: 'git@gitlab.com:TxaisX/nightshift.git\n',
+      stdout: 'git@gitlab.com:TxaisX/kolux.git\n',
       stderr: ''
     })
 
@@ -362,18 +362,18 @@ describe('resolveIssueSource', () => {
 
   it("'auto' + upstream exists → upstream, fellBack=false", async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:TxaisX/nightshift.git\n'
+      stdout: 'git@gitlab.com:TxaisX/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', 'auto')).resolves.toEqual({
-      source: { host: 'gitlab.com', path: 'TxaisX/nightshift' },
+      source: { host: 'gitlab.com', path: 'TxaisX/kolux' },
       fellBack: false
     })
   })
 
   it("'auto' + no upstream → origin, fellBack=false", async () => {
     gitExecFileAsyncMock
-      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/nightshift.git\n' })
+      .mockResolvedValueOnce({ stdout: 'git@example.com:TxaisX/kolux.git\n' })
       .mockResolvedValueOnce({ stdout: 'git@gitlab.com:solo/kolux.git\n' })
 
     await expect(resolveIssueSource('/repo', 'auto')).resolves.toEqual({
@@ -411,11 +411,11 @@ describe('resolveIssueSource', () => {
 
   it('undefined preference is treated identically to auto', async () => {
     gitExecFileAsyncMock.mockResolvedValueOnce({
-      stdout: 'git@gitlab.com:TxaisX/nightshift.git\n'
+      stdout: 'git@gitlab.com:TxaisX/kolux.git\n'
     })
 
     await expect(resolveIssueSource('/repo', undefined)).resolves.toEqual({
-      source: { host: 'gitlab.com', path: 'TxaisX/nightshift' },
+      source: { host: 'gitlab.com', path: 'TxaisX/kolux' },
       fellBack: false
     })
   })

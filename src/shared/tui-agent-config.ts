@@ -70,7 +70,7 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
   claude: {
     detectCmd: 'claude',
     promptInjectionMode: 'argv',
-    // Why: `claude --prefill <text>` seeds the input without submitting, avoiding the paste-after-ready race (PR https://github.com/TxaisX/nightshift/pull/926).
+    // Why: `claude --prefill <text>` seeds the input without submitting, avoiding the paste-after-ready race (PR https://github.com/TxaisX/kolux/pull/926).
     draftPromptFlag: '--prefill',
     // fork: pre-trust new worktrees so a launched prompt is not held behind the folder-trust menu.
     preflightTrust: 'claude'

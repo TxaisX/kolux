@@ -136,7 +136,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
             user: { login: 'octo', avatar_url: 'https://avatar', type: 'User' },
             body: 'top-level',
             created_at: '2026-04-01T00:00:00Z',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/7#issuecomment-10'
+            html_url: 'https://github.com/TxaisX/kolux/pull/7#issuecomment-10'
           }
         ])
       })
@@ -145,19 +145,19 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await getPRComments(
       '/repo-root',
       7,
-      { prRepo: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' } },
+      { prRepo: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' } },
       undefined
     )
 
     expect(getOwnerRepoMock).not.toHaveBeenCalled()
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       1,
-      ['api', '--cache', '60s', 'repos/TxaisX/nightshift/issues/7/comments?per_page=100'],
+      ['api', '--cache', '60s', 'repos/TxaisX/kolux/issues/7/comments?per_page=100'],
       { cwd: '/repo-root', host: 'github.com' }
     )
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       2,
-      ['api', '--cache', '60s', 'repos/TxaisX/nightshift/pulls/7/reviews?per_page=100'],
+      ['api', '--cache', '60s', 'repos/TxaisX/kolux/pulls/7/reviews?per_page=100'],
       { cwd: '/repo-root', host: 'github.com' }
     )
   })

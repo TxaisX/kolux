@@ -316,7 +316,7 @@ describe('getVersionManagerBinPaths', () => {
 })
 
 describe('withCliRuntimeOnPath', () => {
-  it('pairs a version-manager CLI with its sibling node (TxaisX/nightshift#10932)', () => {
+  it('pairs a version-manager CLI with its sibling node (TxaisX/kolux#10932)', () => {
     const root = mkdtempSync(join(tmpdir(), 'kolux-pair-'))
     const v20 = join(root, '.nvm', 'versions', 'node', 'v20.11.0', 'bin')
     const v22 = join(root, '.nvm', 'versions', 'node', 'v22.9.0', 'bin')

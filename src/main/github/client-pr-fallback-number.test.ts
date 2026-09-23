@@ -134,7 +134,7 @@ describe('getPRForBranch', () => {
 
   it('reports upstream error when fallback branch discovery fails transiently then retry misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -153,7 +153,7 @@ describe('getPRForBranch', () => {
         'pr',
         'list',
         '--repo',
-        'TxaisX/nightshift',
+        'TxaisX/kolux',
         '--head',
         'feature/test',
         '--state',
@@ -169,14 +169,14 @@ describe('getPRForBranch', () => {
     // GitHub matches it case-insensitively, so the code never lowercases it.
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       2,
-      ['api', 'repos/TxaisX/nightshift/pulls?head=TxaisX%3Afeature%2Ftest&state=all&per_page=1'],
+      ['api', 'repos/TxaisX/kolux/pulls?head=TxaisX%3Afeature%2Ftest&state=all&per_page=1'],
       { cwd: '/repo-root' }
     )
   })
 
   it('propagates a Retry-After cooldown into the rate-limited retry schedule', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     // gh puts the diagnostic on `.stderr`; a secondary limit carries Retry-After.
@@ -204,7 +204,7 @@ describe('getPRForBranch', () => {
 
   it('reports no PR when fallback branch discovery cleanly misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock.mockResolvedValueOnce({ stdout: JSON.stringify([]) })
@@ -217,7 +217,7 @@ describe('getPRForBranch', () => {
 
   it('returns found when fallback branch discovery retry finds the PR', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -228,7 +228,7 @@ describe('getPRForBranch', () => {
             number: 42,
             title: 'Retry branch PR',
             state: 'open',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/42',
+            html_url: 'https://github.com/TxaisX/kolux/pull/42',
             updated_at: '2026-03-28T00:00:00Z',
             draft: false,
             mergeable: true,
@@ -242,7 +242,7 @@ describe('getPRForBranch', () => {
           number: 42,
           title: 'Hydrated retry branch PR',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/42',
+          url: 'https://github.com/TxaisX/kolux/pull/42',
           statusCheckRollup: [],
           updatedAt: '2026-03-28T00:00:00Z',
           isDraft: false,
@@ -261,14 +261,14 @@ describe('getPRForBranch', () => {
       pr: {
         number: 42,
         title: 'Hydrated retry branch PR',
-        prRepo: { owner: 'TxaisX', repo: 'nightshift' }
+        prRepo: { owner: 'TxaisX', repo: 'kolux' }
       }
     })
   })
 
   it('lets fallback PR number recovery win after fallback branch queries throw', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -279,7 +279,7 @@ describe('getPRForBranch', () => {
           number: 42,
           title: 'Fallback number recovered PR',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/42',
+          url: 'https://github.com/TxaisX/kolux/pull/42',
           statusCheckRollup: [],
           updatedAt: '2026-03-28T00:00:00Z',
           isDraft: false,
@@ -307,7 +307,7 @@ describe('getPRForBranch', () => {
         'view',
         '42',
         '--repo',
-        'TxaisX/nightshift',
+        'TxaisX/kolux',
         '--json',
         'number,title,state,url,statusCheckRollup,updatedAt,isDraft,mergeable,reviewDecision,mergeStateStatus,autoMergeRequest,baseRefName,headRefName,baseRefOid,headRefOid'
       ],
@@ -317,7 +317,7 @@ describe('getPRForBranch', () => {
 
   it('reports upstream error when fallback branch discovery has a network failure', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -334,7 +334,7 @@ describe('getPRForBranch', () => {
 
   it('reports a GitHub server error when fallback branch discovery receives 5xx responses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: null
     })
     ghExecFileAsyncMock
@@ -352,7 +352,7 @@ describe('getPRForBranch', () => {
   it('keeps a pending fallback branch error when a later candidate cleanly misses', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
       candidates: [
-        { owner: 'TxaisX', repo: 'nightshift' },
+        { owner: 'TxaisX', repo: 'kolux' },
         { owner: 'fork', repo: 'kolux' }
       ],
       headRepo: null
@@ -398,7 +398,7 @@ describe('getPRForBranch', () => {
             title: 'Merged branch PR',
             state: 'closed',
             merged_at: '2026-06-16T17:15:33Z',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/5511',
+            html_url: 'https://github.com/TxaisX/kolux/pull/5511',
             updated_at: '2026-06-16T17:15:33Z',
             draft: false,
             mergeable_state: 'clean',
@@ -412,7 +412,7 @@ describe('getPRForBranch', () => {
           number: 5511,
           title: 'Merged branch PR',
           state: 'MERGED',
-          url: 'https://github.com/TxaisX/nightshift/pull/5511',
+          url: 'https://github.com/TxaisX/kolux/pull/5511',
           statusCheckRollup: [],
           updatedAt: '2026-06-16T17:15:33Z',
           isDraft: false,
@@ -517,7 +517,7 @@ describe('getPRForBranch', () => {
 
   it('does not carry a merged upstream branch head repo into a fallback PR number', async () => {
     resolvePRRepositoryCandidatesMock.mockResolvedValueOnce({
-      candidates: [{ owner: 'TxaisX', repo: 'nightshift' }],
+      candidates: [{ owner: 'TxaisX', repo: 'kolux' }],
       headRepo: { owner: 'origin-owner', repo: 'kolux' }
     })
     getOwnerRepoForRemoteMock.mockResolvedValueOnce({ owner: 'fork-owner', repo: 'kolux' })
@@ -534,7 +534,7 @@ describe('getPRForBranch', () => {
             title: 'Merged upstream branch PR',
             state: 'closed',
             merged_at: '2026-06-16T17:15:33Z',
-            html_url: 'https://github.com/TxaisX/nightshift/pull/5511',
+            html_url: 'https://github.com/TxaisX/kolux/pull/5511',
             updated_at: '2026-06-16T17:15:33Z',
             draft: false,
             mergeable_state: 'clean',
@@ -548,7 +548,7 @@ describe('getPRForBranch', () => {
           number: 5511,
           title: 'Merged upstream branch PR',
           state: 'MERGED',
-          url: 'https://github.com/TxaisX/nightshift/pull/5511',
+          url: 'https://github.com/TxaisX/kolux/pull/5511',
           statusCheckRollup: [],
           updatedAt: '2026-06-16T17:15:33Z',
           isDraft: false,
@@ -564,7 +564,7 @@ describe('getPRForBranch', () => {
           number: 42,
           title: 'Open fallback PR',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/42',
+          url: 'https://github.com/TxaisX/kolux/pull/42',
           statusCheckRollup: [],
           updatedAt: '2026-06-17T00:00:00Z',
           isDraft: false,
@@ -594,7 +594,7 @@ describe('getPRForBranch', () => {
           number: 5511,
           title: 'Merged fallback PR',
           state: 'MERGED',
-          url: 'https://github.com/TxaisX/nightshift/pull/5511',
+          url: 'https://github.com/TxaisX/kolux/pull/5511',
           statusCheckRollup: [],
           updatedAt: '2026-06-16T17:15:33Z',
           isDraft: false,

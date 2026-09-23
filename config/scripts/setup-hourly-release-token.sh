@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Provisions the credentials hourly-mac-build.yml uses to publish into
-# TxaisX/nightshift-hourly. GITHUB_TOKEN cannot be used: it is scoped to the repo
+# TxaisX/kolux-hourly. GITHUB_TOKEN cannot be used: it is scoped to the repo
 # running the workflow, and hourly artifacts are published to a different one.
 #
 # A GitHub App is used rather than a PAT because its private key does not expire
@@ -10,7 +10,7 @@
 #
 # The same App also serves adhoc-mac-build.yml and daily-mac-build.yml, which
 # read these same two secrets: one credential, one rotation, all dev channels.
-# Widening it to cover TxaisX/nightshift-adhoc / kolux-daily is
+# Widening it to cover TxaisX/kolux-adhoc / kolux-daily is
 # setup-adhoc-release-repo.sh / setup-daily-release-repo.sh's job.
 #
 # The key is read from a file and piped straight into `gh secret set`. It is never
@@ -29,8 +29,8 @@ if [[ -o xtrace ]]; then
 fi
 set +x
 
-MAIN_REPO="TxaisX/nightshift"
-HOURLY_REPO="TxaisX/nightshift-hourly"
+MAIN_REPO="TxaisX/kolux"
+HOURLY_REPO="TxaisX/kolux-hourly"
 APP_ID_SECRET="HOURLY_RELEASE_APP_ID"
 APP_KEY_SECRET="HOURLY_RELEASE_APP_PRIVATE_KEY"
 

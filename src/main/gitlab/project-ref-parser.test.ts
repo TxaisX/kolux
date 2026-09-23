@@ -7,9 +7,9 @@ describe('gitlab project ref parsing', () => {
       host: 'gitlab.com',
       path: 'acme/widgets'
     })
-    expect(parseGitLabProjectRef('git@gitlab.com:TxaisX/nightshift.git')).toEqual({
+    expect(parseGitLabProjectRef('git@gitlab.com:TxaisX/kolux.git')).toEqual({
       host: 'gitlab.com',
-      path: 'TxaisX/nightshift'
+      path: 'TxaisX/kolux'
     })
   })
 
@@ -25,7 +25,7 @@ describe('gitlab project ref parsing', () => {
   })
 
   it('returns null for non-GitLab hosts when host not in knownHosts', () => {
-    expect(parseGitLabProjectRef('git@github.com:TxaisX/nightshift.git')).toBeNull()
+    expect(parseGitLabProjectRef('git@github.com:TxaisX/kolux.git')).toBeNull()
     expect(parseGitLabProjectRef('git@example.com:foo/bar.git')).toBeNull()
   })
 

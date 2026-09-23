@@ -295,7 +295,7 @@ test.describe('Create Workspace', () => {
     koluxPage
   }) => {
     const title = `E2E smart URL resolution ${Date.now()}`
-    const url = 'https://github.com/TxaisX/nightshift/pull/2049'
+    const url = 'https://github.com/TxaisX/kolux/pull/2049'
     const linkedWorkspacePattern = new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
     try {
@@ -412,7 +412,7 @@ test.describe('Create Workspace', () => {
     koluxPage
   }) => {
     const title = `E2E selected URL resolution ${Date.now()}`
-    const url = 'https://github.com/TxaisX/nightshift/pull/2050'
+    const url = 'https://github.com/TxaisX/kolux/pull/2050'
     const linkedWorkspacePattern = new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
 
     try {

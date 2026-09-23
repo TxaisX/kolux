@@ -347,7 +347,7 @@ describe('KoluxRuntimeService', () => {
         return { stdout: 'origin\n', stderr: '' }
       }
       if (args[0] === 'remote' && args[1] === 'get-url') {
-        return { stdout: 'git@github.com:TxaisX/nightshift.git\n', stderr: '' }
+        return { stdout: 'git@github.com:TxaisX/kolux.git\n', stderr: '' }
       }
       return { stdout: '', stderr: '' }
     })

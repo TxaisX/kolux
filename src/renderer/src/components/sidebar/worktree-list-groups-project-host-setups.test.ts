@@ -46,7 +46,7 @@ describe('buildRows with pinned worktrees', () => {
     )
 
     expect(rows).toMatchObject([
-      { type: 'header', key: 'project:github:TxaisX/nightshift', label: 'Kolux', count: 2 },
+      { type: 'header', key: 'project:github:TxaisX/kolux', label: 'Kolux', count: 2 },
       { type: 'item', worktree: { id: worktree.id }, hostContextLabel: LOCAL_HOST_LABEL },
       { type: 'item', worktree: { id: remoteWorktree.id }, hostContextLabel: 'gpu-vm' }
     ])
@@ -99,10 +99,10 @@ describe('buildRows with pinned worktrees', () => {
     }
 
     expect(buildHeaders([], [])).toMatchObject([
-      { key: 'project:github:TxaisX/nightshift', label: 'Kolux' }
+      { key: 'project:github:TxaisX/kolux', label: 'Kolux' }
     ])
     expect(buildHeaders([otherWorktree], [otherRepo])).toMatchObject([
-      { key: 'project:github:TxaisX/nightshift', label: 'Kolux' },
+      { key: 'project:github:TxaisX/kolux', label: 'Kolux' },
       { key: 'repo:repo-other', label: 'design-assets' }
     ])
   })
@@ -364,11 +364,11 @@ describe('buildRows with pinned worktrees', () => {
 
     const headers = rows.filter((row) => row.type === 'header')
     expect(headers.map((row) => row.key)).toEqual([
-      'project:github:TxaisX/nightshift',
+      'project:github:TxaisX/kolux',
       'project:github:txais/analytics'
     ])
     expect(headers[0]).toMatchObject({
-      key: 'project:github:TxaisX/nightshift',
+      key: 'project:github:TxaisX/kolux',
       repo: { id: repo.id, badgeColor: repo.badgeColor }
     })
   })
@@ -429,11 +429,11 @@ describe('buildRows with pinned worktrees', () => {
     expect(headers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          key: 'project:github:TxaisX/nightshift::setup:repo-1',
+          key: 'project:github:TxaisX/kolux::setup:repo-1',
           label: 'kolux'
         }),
         expect.objectContaining({
-          key: 'project:github:TxaisX/nightshift::setup:repo-2',
+          key: 'project:github:TxaisX/kolux::setup:repo-2',
           label: 'kolux-2'
         })
       ])
@@ -495,9 +495,9 @@ describe('buildRows with pinned worktrees', () => {
 
     const headers = rows.filter((row) => row.type === 'header')
     expect(headers.map((row) => row.key)).toEqual([
-      'project:github:TxaisX/nightshift::setup:repo-1',
-      'project:github:TxaisX/nightshift::setup:repo-local-b',
-      'project:github:TxaisX/nightshift'
+      'project:github:TxaisX/kolux::setup:repo-1',
+      'project:github:TxaisX/kolux::setup:repo-local-b',
+      'project:github:TxaisX/kolux'
     ])
   })
 
@@ -561,7 +561,7 @@ describe('buildRows with pinned worktrees', () => {
         undefined,
         grouping
       )
-    ]).toEqual(['project:github:TxaisX/nightshift', 'project:github:TxaisX/nightshift'])
+    ]).toEqual(['project:github:TxaisX/kolux', 'project:github:TxaisX/kolux'])
   })
 
   it('keeps Git hosts grouped when folder setups share the project identity', () => {
@@ -631,7 +631,7 @@ describe('buildRows with pinned worktrees', () => {
         grouping
       )
     )
-    expect(new Set(groupKeys)).toEqual(new Set(['project:github:TxaisX/nightshift']))
+    expect(new Set(groupKeys)).toEqual(new Set(['project:github:TxaisX/kolux']))
   })
 
   it('keeps a provisioned runtime copy under the project header alongside a same-host checkout', () => {
@@ -692,7 +692,7 @@ describe('buildRows with pinned worktrees', () => {
     const headers = rows.filter((row) => row.type === 'header')
     expect(headers).toHaveLength(1)
     expect(headers[0]).toMatchObject({
-      key: 'project:github:TxaisX/nightshift',
+      key: 'project:github:TxaisX/kolux',
       label: 'Kolux',
       count: 2
     })
@@ -778,17 +778,17 @@ describe('buildRows with pinned worktrees', () => {
 
     const headers = rows.filter((row) => row.type === 'header')
     expect(headers.map((row) => row.key).sort()).toEqual([
-      'project:github:TxaisX/nightshift',
-      'project:github:TxaisX/nightshift::setup:repo-1',
-      'project:github:TxaisX/nightshift::setup:repo-local-b'
+      'project:github:TxaisX/kolux',
+      'project:github:TxaisX/kolux::setup:repo-1',
+      'project:github:TxaisX/kolux::setup:repo-local-b'
     ])
     // The provisioned copy nests under the plain project key with only its own
     // worktree; it never gets a path-scoped `::setup:` header like the real
     // checkouts do, and that header keeps the project's own display name.
     expect(
-      headers.some((row) => row.key === 'project:github:TxaisX/nightshift::setup:repo-runtime-b')
+      headers.some((row) => row.key === 'project:github:TxaisX/kolux::setup:repo-runtime-b')
     ).toBe(false)
-    expect(headers.find((row) => row.key === 'project:github:TxaisX/nightshift')).toMatchObject({
+    expect(headers.find((row) => row.key === 'project:github:TxaisX/kolux')).toMatchObject({
       label: 'Kolux',
       count: 1
     })

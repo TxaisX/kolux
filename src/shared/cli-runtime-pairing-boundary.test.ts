@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
  * `resolveCliCommand` falls back to scanning every version-manager install, so
  * it can return a CLI from one Node version while PATH leads with another. The
  * CLI's `#!/usr/bin/env node` shebang then picks the wrong runtime and a native
- * module dies on NODE_MODULE_VERSION (TxaisX/nightshift#10932). Six call sites got
+ * module dies on NODE_MODULE_VERSION (TxaisX/kolux#10932). Six call sites got
  * this wrong at once because each made the decision separately.
  *
  * Pairing is one call — `withCliRuntimeOnPath` — and this test is what stops the

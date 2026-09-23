@@ -46,26 +46,26 @@ describe('sanitizeRepoIcon', () => {
         type: 'image',
         src: 'https://github.com/txais.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       })
     ).toEqual({
       type: 'image',
       src: 'https://github.com/txais.png?size=64',
       source: 'github',
-      label: 'TxaisX/nightshift'
+      label: 'TxaisX/kolux'
     })
     expect(
       sanitizeRepoIcon({
         type: 'image',
         src: 'https://github.acme.test/txais.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       })
     ).toEqual({
       type: 'image',
       src: 'https://github.acme.test/txais.png?size=64',
       source: 'github',
-      label: 'TxaisX/nightshift'
+      label: 'TxaisX/kolux'
     })
     expect(
       sanitizeRepoIcon({

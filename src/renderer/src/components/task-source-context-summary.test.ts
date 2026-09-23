@@ -17,17 +17,17 @@ describe('task source context summary', () => {
         {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:devbox',
           projectHostSetupId: 'setup-1',
           repoId: 'repo-1',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
         }
       ]
     })
 
-    expect(summary.label).toBe('GitHub · devbox · TxaisX/nightshift')
-    expect(summary.title).toBe('GitHub · Host: devbox · Source: TxaisX/nightshift')
+    expect(summary.label).toBe('GitHub · devbox · TxaisX/kolux')
+    expect(summary.title).toBe('GitHub · Host: devbox · Source: TxaisX/kolux')
   })
 
   it('shows repo-backed provider account labels when accounts can differ by host', () => {
@@ -39,21 +39,21 @@ describe('task source context summary', () => {
         {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'local',
           projectHostSetupId: 'setup-local',
           repoId: 'repo-local',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
           accountLabel: 'personal-gh'
         },
         {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:builder',
           projectHostSetupId: 'setup-builder',
           repoId: 'repo-builder',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
           accountLabel: 'work-gh'
         }
       ]
@@ -61,7 +61,7 @@ describe('task source context summary', () => {
 
     expect(summary.label).toBe(`GitHub · ${LOCAL_HOST_LABEL}, builder · personal-gh, work-gh`)
     expect(summary.title).toBe(
-      `GitHub · Host: ${LOCAL_HOST_LABEL}, builder · Account: personal-gh, work-gh · Source: TxaisX/nightshift · 2 selected projects`
+      `GitHub · Host: ${LOCAL_HOST_LABEL}, builder · Account: personal-gh, work-gh · Source: TxaisX/kolux · 2 selected projects`
     )
   })
 
@@ -74,18 +74,18 @@ describe('task source context summary', () => {
         {
           kind: 'task-source',
           provider: 'github',
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:devbox',
           repoId: 'repo-1',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
         }
       ],
       hostAvailability: [{ hostId: 'ssh:devbox', status: 'disconnected' }]
     })
 
-    expect(summary.label).toBe('GitHub · devbox · disconnected · TxaisX/nightshift')
+    expect(summary.label).toBe('GitHub · devbox · disconnected · TxaisX/kolux')
     expect(summary.title).toBe(
-      'GitHub · Host: devbox · Availability: devbox disconnected · Source: TxaisX/nightshift'
+      'GitHub · Host: devbox · Availability: devbox disconnected · Source: TxaisX/kolux'
     )
   })
 
@@ -170,15 +170,15 @@ describe('task source context summary', () => {
           projectId: 'project-a',
           hostId: 'runtime:old-server',
           repoId: 'repo-a',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
         }
       ],
       hostAvailability: [{ hostId: 'runtime:old-server', health: 'blocked' }]
     })
 
-    expect(summary.label).toBe('GitHub · old-server · server update needed · TxaisX/nightshift')
+    expect(summary.label).toBe('GitHub · old-server · server update needed · TxaisX/kolux')
     expect(summary.title).toBe(
-      'GitHub · Host: old-server · Availability: old-server server update needed · Source: TxaisX/nightshift'
+      'GitHub · Host: old-server · Availability: old-server server update needed · Source: TxaisX/kolux'
     )
   })
 
@@ -194,7 +194,7 @@ describe('task source context summary', () => {
           projectId: 'project-a',
           hostId: 'runtime:old-server',
           repoId: 'repo-a',
-          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+          providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
         }
       ],
       hostAvailability: [
@@ -202,11 +202,9 @@ describe('task source context summary', () => {
       ]
     })
 
-    expect(summary.label).toBe(
-      'GitHub · old-server · checking server capabilities · TxaisX/nightshift'
-    )
+    expect(summary.label).toBe('GitHub · old-server · checking server capabilities · TxaisX/kolux')
     expect(summary.title).toBe(
-      'GitHub · Host: old-server · Availability: old-server checking server capabilities · Source: TxaisX/nightshift'
+      'GitHub · Host: old-server · Availability: old-server checking server capabilities · Source: TxaisX/kolux'
     )
   })
 
@@ -223,10 +221,10 @@ describe('task source context summary', () => {
           {
             kind: 'task-source',
             provider: 'github',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3',
             repoId: 'repo-runtime',
-            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
           }
         ],
         hostAvailability: [
@@ -237,9 +235,9 @@ describe('task source context summary', () => {
         ]
       })
     ).toEqual({
-      label: 'GitHub · dev box · server update needed · TxaisX/nightshift',
+      label: 'GitHub · dev box · server update needed · TxaisX/kolux',
       title:
-        'GitHub · Host: dev box · Availability: dev box server update needed · Source: TxaisX/nightshift'
+        'GitHub · Host: dev box · Availability: dev box server update needed · Source: TxaisX/kolux'
     })
 
     expect(
@@ -343,18 +341,18 @@ describe('task source context summary', () => {
           {
             kind: 'task-source',
             provider: 'github',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'ssh:devbox',
             repoId: 'repo-1',
-            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+            providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
           }
         ],
         hostAvailability: [{ hostId: 'ssh:devbox', reason: 'missing-provider-auth' }]
       })
     ).toEqual({
-      label: 'GitHub · devbox · provider auth needed · TxaisX/nightshift',
+      label: 'GitHub · devbox · provider auth needed · TxaisX/kolux',
       title:
-        'GitHub · Host: devbox · Availability: devbox provider auth needed · Source: TxaisX/nightshift'
+        'GitHub · Host: devbox · Availability: devbox provider auth needed · Source: TxaisX/kolux'
     })
 
     expect(

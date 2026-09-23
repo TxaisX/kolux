@@ -232,7 +232,7 @@ describe('ghExecFileAsync WSL fallback', () => {
     spawnMock.mockImplementation(fakeSpawnReturning({ stderr: TRANSIENT_502, code: 1 }))
 
     await expect(
-      ghExecFileAsync(['api', '-X', 'POST', 'repos/TxaisX/nightshift/issues'])
+      ghExecFileAsync(['api', '-X', 'POST', 'repos/TxaisX/kolux/issues'])
     ).rejects.toThrow('HTTP 502 Bad Gateway')
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
@@ -256,9 +256,9 @@ describe('ghExecFileAsync WSL fallback', () => {
   it('does not retry high-level gh edit transient failures', async () => {
     spawnMock.mockImplementation(fakeSpawnReturning({ stderr: TRANSIENT_502, code: 1 }))
 
-    await expect(
-      ghExecFileAsync(['issue', 'edit', '5', '--repo', 'TxaisX/nightshift'])
-    ).rejects.toThrow('HTTP 502 Bad Gateway')
+    await expect(ghExecFileAsync(['issue', 'edit', '5', '--repo', 'TxaisX/kolux'])).rejects.toThrow(
+      'HTTP 502 Bad Gateway'
+    )
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
   })
@@ -342,7 +342,7 @@ describe('ghExecFileAsync WSL fallback', () => {
     spawnMock.mockImplementation(fakeSpawnReturning({ stderr: TRANSIENT_502, code: 1 }))
 
     await expect(
-      glabExecFileAsync(['issue', 'update', '5', '-R', 'TxaisX/nightshift'], {
+      glabExecFileAsync(['issue', 'update', '5', '-R', 'TxaisX/kolux'], {
         cwd: String.raw`C:\repo`
       })
     ).rejects.toThrow('HTTP 502 Bad Gateway')

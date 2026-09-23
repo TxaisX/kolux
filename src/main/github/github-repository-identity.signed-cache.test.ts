@@ -29,7 +29,7 @@ const REPO = '/tmp/signed-cache-repo'
 const THIRTY_SECONDS = 30_000
 const FOUR_MINUTES = 4 * 60_000
 
-let remoteUrl = 'https://github.com/TxaisX/nightshift.git'
+let remoteUrl = 'https://github.com/TxaisX/kolux.git'
 
 const remoteGetUrlCalls = (): number =>
   gitExecFileAsyncMock.mock.calls.filter(([args]) => (args as string[])[1] === 'get-url').length
@@ -38,7 +38,7 @@ beforeEach(() => {
   _resetOwnerRepoCache()
   vi.useRealTimers()
   gitExecFileAsyncMock.mockReset()
-  remoteUrl = 'https://github.com/TxaisX/nightshift.git'
+  remoteUrl = 'https://github.com/TxaisX/kolux.git'
   readLocalGitConfigSignatureMock.mockReset()
   readLocalGitConfigSignatureMock.mockImplementation(async () => 'sig-1')
   gitExecFileAsyncMock.mockImplementation(async () => ({ stdout: remoteUrl }))
@@ -49,7 +49,7 @@ describe('owner/repo identity cache', () => {
     vi.useFakeTimers()
     await expect(getOwnerRepoForRemote(REPO, 'origin')).resolves.toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(remoteGetUrlCalls()).toBe(1)
 
@@ -57,7 +57,7 @@ describe('owner/repo identity cache', () => {
     vi.setSystemTime(Date.now() + FOUR_MINUTES)
     await expect(getOwnerRepoForRemote(REPO, 'origin')).resolves.toEqual({
       owner: 'TxaisX',
-      repo: 'nightshift'
+      repo: 'kolux'
     })
     expect(remoteGetUrlCalls()).toBe(1)
     vi.useRealTimers()
@@ -99,7 +99,7 @@ describe('owner/repo identity cache', () => {
       getOwnerRepoForRemote(REPO, 'origin'),
       getOwnerRepoForRemote(REPO, 'origin')
     ])
-    expect(first).toEqual({ owner: 'TxaisX', repo: 'nightshift' })
+    expect(first).toEqual({ owner: 'TxaisX', repo: 'kolux' })
     expect(second).toEqual(first)
     expect(remoteGetUrlCalls()).toBe(1)
   })

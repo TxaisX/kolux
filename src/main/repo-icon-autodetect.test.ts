@@ -252,7 +252,7 @@ describe('detectRepoIcon', () => {
   it('falls back to the GitHub owner avatar for GitHub repos', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:TxaisX/nightshift.git'], {
+    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:TxaisX/kolux.git'], {
       cwd: repoPath
     })
 
@@ -262,7 +262,7 @@ describe('detectRepoIcon', () => {
       type: 'image',
       src: 'https://github.com/TxaisX.png?size=64',
       source: 'github',
-      label: 'TxaisX/nightshift'
+      label: 'TxaisX/kolux'
     })
   })
 
@@ -270,15 +270,12 @@ describe('detectRepoIcon', () => {
     const repoPath = await makeTempRepoDir()
     await writeFile(
       join(repoPath, 'package.json'),
-      JSON.stringify({ homepage: 'https://github.com/TxaisX/nightshift' })
+      JSON.stringify({ homepage: 'https://github.com/TxaisX/kolux' })
     )
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(
-      ['remote', 'add', 'origin', 'https://github.com/TxaisX/nightshift.git'],
-      {
-        cwd: repoPath
-      }
-    )
+    await gitExecFileAsync(['remote', 'add', 'origin', 'https://github.com/TxaisX/kolux.git'], {
+      cwd: repoPath
+    })
 
     await expect(
       detectRepoIcon({ repoPath, kind: 'git', executionHostId: 'local' })
@@ -286,7 +283,7 @@ describe('detectRepoIcon', () => {
       type: 'image',
       src: 'https://github.com/TxaisX.png?size=64',
       source: 'github',
-      label: 'TxaisX/nightshift'
+      label: 'TxaisX/kolux'
     })
   })
 
@@ -307,7 +304,7 @@ describe('detectRepoIcon', () => {
     await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/nightshift.git'], {
       cwd: repoPath
     })
-    await gitExecFileAsync(['remote', 'add', 'upstream', 'git@github.com:TxaisX/nightshift.git'], {
+    await gitExecFileAsync(['remote', 'add', 'upstream', 'git@github.com:TxaisX/kolux.git'], {
       cwd: repoPath
     })
 
@@ -315,18 +312,18 @@ describe('detectRepoIcon', () => {
       detectRepoIconAndUpstream({ repoPath, kind: 'git', executionHostId: 'local' })
     ).resolves.toEqual({
       gitRemoteIdentity: {
-        canonicalKey: 'github.com/TxaisX/nightshift',
+        canonicalKey: 'github.com/TxaisX/kolux',
         remoteName: 'upstream',
-        remoteUrl: 'git@github.com:TxaisX/nightshift.git'
+        remoteUrl: 'git@github.com:TxaisX/kolux.git'
       },
       repoIcon: {
         type: 'image',
         src: 'https://github.com/TxaisX.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       },
       // Why: fork parents resolve host-qualified so avatars/links stay on the fork's server.
-      upstream: { owner: 'TxaisX', repo: 'nightshift', host: 'github.com' }
+      upstream: { owner: 'TxaisX', repo: 'kolux', host: 'github.com' }
     })
   })
 

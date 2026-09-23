@@ -159,7 +159,7 @@ describe('StarNagToastHost', () => {
       button?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
-    expect(shell.openUrl).toHaveBeenCalledWith('https://github.com/TxaisX/nightshift')
+    expect(shell.openUrl).toHaveBeenCalledWith('https://github.com/TxaisX/kolux')
     expect(starNag.openWeb).toHaveBeenCalledTimes(1)
     expect(starNag.starKolux).not.toHaveBeenCalled()
     expect(toastContainer.textContent).toContain('GitHub opened')

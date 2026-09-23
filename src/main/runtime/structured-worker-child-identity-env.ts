@@ -9,7 +9,7 @@
  * context-only dispatch, a tier that has no capability token to reject on.
  *
  * `KOLUX_CLI_COMMAND: 'kolux'` is honest ONLY because of the PATH prepend below. Kolux's Linux CLI
- * installs as `kolux-ide` so it never claims GNOME Orca's /usr/bin/orca (TxaisX/nightshift#7904), and
+ * installs as `kolux-ide` so it never claims GNOME Orca's /usr/bin/orca (TxaisX/kolux#7904), and
  * on packaged macOS/Windows the bundled launcher is reachable only from the app's own resources
  * dir. A PTY worker gets that treatment from `buildPtyHostEnv`; a structured worker has no PTY,
  * so it applies the SAME function here rather than a second, drifting copy of the rule.

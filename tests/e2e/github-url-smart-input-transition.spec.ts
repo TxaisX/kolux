@@ -5,10 +5,10 @@ import type { GitLabWorkItem } from '../../src/shared/gitlab-types'
 import { test, expect } from './helpers/kolux-app'
 import { waitForActiveWorktree, waitForSessionReady } from './helpers/store'
 
-const TARGET_URL = 'https://github.com/TxaisX/nightshift/issues/4242'
+const TARGET_URL = 'https://github.com/TxaisX/kolux/issues/4242'
 const WRONG_TITLE = 'Wrong cached issue'
 const TARGET_TITLE = 'Exact pasted issue'
-const GITLAB_TARGET_URL = 'https://gitlab.example.test/TxaisX/nightshift/-/merge_requests/4242'
+const GITLAB_TARGET_URL = 'https://gitlab.example.test/TxaisX/kolux/-/merge_requests/4242'
 const GITLAB_WRONG_TITLE = 'Wrong cached merge request'
 const GITLAB_TARGET_TITLE = 'Exact pasted merge request'
 const MIN_PASTED_FRAMES = 2
@@ -20,7 +20,7 @@ const WRONG_ITEM: GitHubWorkItem = {
   number: 17,
   title: WRONG_TITLE,
   state: 'open',
-  url: 'https://github.com/TxaisX/nightshift/issues/17',
+  url: 'https://github.com/TxaisX/kolux/issues/17',
   labels: [],
   updatedAt: '2026-08-01T00:00:00.000Z',
   author: 'e2e',
@@ -42,7 +42,7 @@ const GITLAB_WRONG_ITEM: GitLabWorkItem = {
   number: 17,
   title: GITLAB_WRONG_TITLE,
   state: 'opened',
-  url: 'https://gitlab.example.test/TxaisX/nightshift/-/merge_requests/17',
+  url: 'https://gitlab.example.test/TxaisX/kolux/-/merge_requests/17',
   labels: [],
   updatedAt: '2026-08-01T00:00:00.000Z',
   author: 'e2e',

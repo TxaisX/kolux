@@ -22,7 +22,7 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
     ],
     examples: [
       'kolux project setups',
-      'kolux project setups --project github:TxaisX/nightshift',
+      'kolux project setups --project github:TxaisX/kolux',
       'kolux project setups --host local',
       'kolux project setups --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3'
     ]
@@ -39,8 +39,8 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
       'SSH targets are set up through the desktop UI because the desktop client owns SSH connections.'
     ],
     examples: [
-      'kolux project setup-existing-folder --project github:TxaisX/nightshift --host local --path ~/kolux',
-      'kolux project setup-existing-folder --project github:TxaisX/nightshift --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --path /home/me/kolux --kind git --json'
+      'kolux project setup-existing-folder --project github:TxaisX/kolux --host local --path ~/kolux',
+      'kolux project setup-existing-folder --project github:TxaisX/kolux --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --path /home/me/kolux --kind git --json'
     ]
   },
   {
@@ -55,8 +55,8 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
       'SSH targets are cloned through the desktop UI because the desktop client owns SSH connections.'
     ],
     examples: [
-      'kolux project setup-clone --project github:TxaisX/nightshift --host local --url https://github.com/TxaisX/nightshift.git --destination ~/src',
-      'kolux project setup-clone --project github:TxaisX/nightshift --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --url https://github.com/TxaisX/nightshift.git --destination /srv --json'
+      'kolux project setup-clone --project github:TxaisX/kolux --host local --url https://github.com/TxaisX/kolux.git --destination ~/src',
+      'kolux project setup-clone --project github:TxaisX/kolux --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --url https://github.com/TxaisX/kolux.git --destination /srv --json'
     ]
   },
   {
@@ -83,7 +83,7 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
       'Use setup-existing-folder when Kolux should import and manage an actual checkout path now.'
     ],
     examples: [
-      'kolux project setup-create --project github:TxaisX/nightshift --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --state setting-up --method provisioned --json'
+      'kolux project setup-create --project github:TxaisX/kolux --host runtime:03ef704c-b180-4b10-998d-e28fbd5de9a3 --state setting-up --method provisioned --json'
     ]
   },
   {
@@ -107,8 +107,8 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
       'Path and availability state changes are only supported for independent setup records.'
     ],
     examples: [
-      'kolux project setup-update --setup github:TxaisX/nightshift::gpu --display-name "GPU VM"',
-      'kolux project setup-update --setup github:TxaisX/nightshift::gpu --path /srv/kolux --state ready --json'
+      'kolux project setup-update --setup github:TxaisX/kolux::gpu --display-name "GPU VM"',
+      'kolux project setup-update --setup github:TxaisX/kolux::gpu --path /srv/kolux --state ready --json'
     ]
   },
   {
@@ -121,6 +121,6 @@ export const PROJECT_COMMAND_SPECS: CommandSpec[] = [
       'Independent setups are removed directly.',
       'Repo-backed setups remove the registered repo compatibility record.'
     ],
-    examples: ['kolux project setup-delete --setup github:TxaisX/nightshift::gpu --json']
+    examples: ['kolux project setup-delete --setup github:TxaisX/kolux::gpu --json']
   }
 ]

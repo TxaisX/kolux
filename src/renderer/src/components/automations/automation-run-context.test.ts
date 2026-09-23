@@ -21,7 +21,7 @@ function remoteRepo(id: string, path = `/repos/${id}`): Repo {
 function setup(overrides: Partial<ProjectHostSetup> = {}): ProjectHostSetup {
   return {
     id: 'setup-builder',
-    projectId: 'github:TxaisX/nightshift',
+    projectId: 'github:TxaisX/kolux',
     hostId: 'ssh:builder',
     repoId: 'repo-builder',
     path: '/remote/kolux',
@@ -55,7 +55,7 @@ describe('buildAutomationRunContextForRepo', () => {
       })
     ).toEqual({
       kind: 'workspace-run',
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'ssh:builder',
       projectHostSetupId: 'setup-builder',
       repoId: 'repo-builder',

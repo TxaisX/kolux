@@ -20,17 +20,17 @@ function repo(id: string, overrides: Partial<Repo> = {}): Repo {
     displayName: id,
     badgeColor: '#111111',
     addedAt: 1,
-    upstream: { owner: 'TxaisX', repo: 'nightshift' },
+    upstream: { owner: 'TxaisX', repo: 'kolux' },
     ...overrides
   }
 }
 
 function project(overrides: Partial<Project> = {}): Project {
   return {
-    id: 'github:TxaisX/nightshift',
+    id: 'github:TxaisX/kolux',
     displayName: 'kolux',
     badgeColor: '#111111',
-    providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' },
+    providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' },
     sourceRepoIds: ['local-repo', 'ssh-repo'],
     createdAt: 1,
     updatedAt: 1,
@@ -41,7 +41,7 @@ function project(overrides: Partial<Project> = {}): Project {
 function setup(overrides: Partial<ProjectHostSetup>): ProjectHostSetup {
   return {
     id: overrides.id ?? 'local-setup',
-    projectId: overrides.projectId ?? 'github:TxaisX/nightshift',
+    projectId: overrides.projectId ?? 'github:TxaisX/kolux',
     hostId: overrides.hostId ?? 'local',
     repoId: overrides.repoId ?? 'local-repo',
     path: overrides.path ?? '/tmp/kolux',
@@ -83,12 +83,12 @@ describe('buildNewWorkspaceProjectOptions', () => {
 
     expect(options).toEqual([
       {
-        id: 'github:TxaisX/nightshift',
+        id: 'github:TxaisX/kolux',
         kind: 'project',
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         displayName: 'kolux',
         badgeColor: '#111111',
-        detail: 'TxaisX/nightshift'
+        detail: 'TxaisX/kolux'
       }
     ])
   })
@@ -108,7 +108,7 @@ describe('buildNewWorkspaceProjectOptions', () => {
       eligibleRepos: [repo('local-repo'), repo('other-repo')]
     })
 
-    expect(options.map((option) => option.id)).toEqual(['github:TxaisX/nightshift'])
+    expect(options.map((option) => option.id)).toEqual(['github:TxaisX/kolux'])
   })
 
   it('excludes projects configured only on removed hosts', () => {
@@ -136,7 +136,7 @@ describe('buildNewWorkspaceProjectOptions', () => {
     })
 
     expect(options).toEqual([
-      expect.objectContaining({ id: 'github:TxaisX/nightshift', detail: 'TxaisX/nightshift' })
+      expect.objectContaining({ id: 'github:TxaisX/kolux', detail: 'TxaisX/kolux' })
     ])
   })
 
@@ -399,7 +399,7 @@ describe('buildNewWorkspaceProjectOptions', () => {
         projectId: 'kolux',
         displayName: 'Kolux',
         badgeColor: '#111111',
-        detail: 'TxaisX/nightshift'
+        detail: 'TxaisX/kolux'
       },
       {
         kind: 'project',
@@ -412,7 +412,7 @@ describe('buildNewWorkspaceProjectOptions', () => {
     ]
 
     expect(searchNewWorkspaceProjectOptions(options, 'docs')).toEqual([options[1]])
-    expect(searchNewWorkspaceProjectOptions(options, 'TxaisX/nightshift')).toEqual([options[0]])
+    expect(searchNewWorkspaceProjectOptions(options, 'TxaisX/kolux')).toEqual([options[0]])
   })
 
   it('rejects oversized pasted searches before reading project options', () => {
@@ -478,7 +478,7 @@ describe('buildNewWorkspaceCreateTargetOptions', () => {
     })
 
     expect(options.map((option) => option.id).sort()).toEqual([
-      'github:TxaisX/nightshift',
+      'github:TxaisX/kolux',
       'project-group:folder-group'
     ])
     expect(options.find((option) => option.id === 'project-group:folder-group')).toMatchObject({

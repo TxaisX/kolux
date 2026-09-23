@@ -53,7 +53,7 @@ function renderHeader({
         state: 'open',
         url: isGitLab
           ? 'https://gitlab.com/acme/kolux/-/merge_requests/31'
-          : 'https://github.com/TxaisX/nightshift/pull/2964',
+          : 'https://github.com/TxaisX/kolux/pull/2964',
         status: 'pending',
         updatedAt: '2026-05-31T22:58:01Z',
         mergeable: 'UNKNOWN'

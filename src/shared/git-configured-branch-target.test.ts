@@ -11,7 +11,7 @@ import {
 
 const BRANCH = 'imp/translation'
 const FORK_URL = 'https://github.com/contributor/kolux.git'
-const UPSTREAM_URL = 'https://github.com/TxaisX/nightshift.git'
+const UPSTREAM_URL = 'https://github.com/TxaisX/kolux.git'
 
 type RemoteRow = { name: string; fetchUrl: string; pushUrl?: string }
 

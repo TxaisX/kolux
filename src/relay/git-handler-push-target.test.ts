@@ -134,7 +134,7 @@ describe('resolveRelayPushTarget', () => {
       branchRemote: forkUrl,
       remotes: ['origin', 'pr-contributor-kolux'],
       remoteUrls: {
-        origin: 'https://github.com/TxaisX/nightshift.git',
+        origin: 'https://github.com/TxaisX/kolux.git',
         'pr-contributor-kolux': forkUrl
       }
     })
@@ -152,7 +152,7 @@ describe('resolveRelayPushTarget', () => {
       branchRemote: forkUrl,
       remotes: ['origin'],
       remoteUrls: {
-        origin: 'git@github.com:TxaisX/nightshift.git'
+        origin: 'git@github.com:TxaisX/kolux.git'
       }
     })
 

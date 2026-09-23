@@ -1,5 +1,5 @@
 import { ghExecFileAsync, acquire, release } from '../../gh-utils'
-export const KOLUX_REPO = 'TxaisX/nightshift'
+export const KOLUX_REPO = 'TxaisX/kolux'
 
 /**
  * Deadline for the two star-nag gh calls.

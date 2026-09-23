@@ -269,7 +269,7 @@ export function TerminalErrorToast({
                 'If this persists, please'
               )}{' '}
               <a
-                href="https://github.com/TxaisX/nightshift/issues"
+                href="https://github.com/TxaisX/kolux/issues"
                 style={{ color: 'inherit', textDecoration: 'underline' }}
               >
                 {translate(

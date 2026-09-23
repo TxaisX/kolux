@@ -101,7 +101,7 @@ export function LinkRoutingPreferenceDialogProvider({
     void requestPreference({
       openLinksInAppDefault: previewDefault === 'kolux',
       preview: true,
-      url: 'https://github.com/TxaisX/nightshift/pull/1234'
+      url: 'https://github.com/TxaisX/kolux/pull/1234'
     })
   }, [requestPreference])
 

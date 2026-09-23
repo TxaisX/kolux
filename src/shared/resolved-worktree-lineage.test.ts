@@ -49,7 +49,7 @@ describe('sharesWorktreeLineageBoundary', () => {
   const boundary = (overrides: Partial<WorktreeLineageBoundary> = {}): WorktreeLineageBoundary => ({
     repoId: 'repo',
     hostId: 'local',
-    projectId: 'github:TxaisX/nightshift',
+    projectId: 'github:TxaisX/kolux',
     ...overrides
   })
 
@@ -109,7 +109,7 @@ describe('projectResolvedWorktreeLineage', () => {
   it.each([
     ['repo', { repoId: 'other-repo' }, {}],
     ['known host', { hostId: 'local' as const }, { hostId: 'ssh:remote' as const }],
-    ['known project', { projectId: 'github:TxaisX/nightshift' }, { projectId: 'github:other/project' }]
+    ['known project', { projectId: 'github:TxaisX/kolux' }, { projectId: 'github:other/project' }]
   ])('rejects a %s boundary mismatch', (_label, childOverrides, parentOverrides) => {
     const boundedChild = worktree('child', 'child-instance', childOverrides)
     const boundedParent = worktree('parent', 'parent-instance', parentOverrides)
@@ -127,7 +127,7 @@ describe('projectResolvedWorktreeLineage', () => {
   it('accepts legacy records when only one side has host or project identity', () => {
     const legacyChild = worktree('child', 'child-instance', {
       hostId: 'local',
-      projectId: 'github:TxaisX/nightshift'
+      projectId: 'github:TxaisX/kolux'
     })
 
     const projected = projectResolvedWorktreeLineage([legacyChild, parent], {

@@ -126,12 +126,12 @@ describe('Store', () => {
     store.updateRepo('r1', {
       displayName: 'renamed',
       worktreeBasePath: '../new-worktrees',
-      upstream: { owner: 'txaisx', repo: 'nightshift' }
+      upstream: { owner: 'txaisx', repo: 'kolux' }
     })
 
     expect(store.getProjects()).toEqual([
       expect.objectContaining({
-        id: 'github:txaisx/nightshift',
+        id: 'github:txaisx/kolux',
         displayName: 'renamed',
         sourceRepoIds: ['r1']
       })
@@ -139,7 +139,7 @@ describe('Store', () => {
     expect(store.getProjectHostSetups()).toEqual([
       expect.objectContaining({
         id: 'r1',
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         displayName: 'renamed',
         worktreeBasePath: '../new-worktrees'
       })
@@ -451,7 +451,7 @@ describe('Store', () => {
     const updated = store.updateRepo('r1', {
       upstream: { owner: ' txaisx ', repo: ' nightshift ' }
     })
-    expect(updated!.upstream).toEqual({ owner: 'txaisx', repo: 'nightshift' })
+    expect(updated!.upstream).toEqual({ owner: 'txaisx', repo: 'kolux' })
 
     store.updateRepo('r1', { upstream: null })
     store.flush()
@@ -514,9 +514,9 @@ describe('Store', () => {
 
   it('leaves a hostless persisted upstream hostless rather than inventing one', async () => {
     const store = await createStore()
-    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'nightshift' } }))
+    store.addRepo(makeRepo({ upstream: { owner: 'txaisx', repo: 'kolux' } }))
 
-    expect(store.getRepo('r1')!.upstream).toEqual({ owner: 'txaisx', repo: 'nightshift' })
+    expect(store.getRepo('r1')!.upstream).toEqual({ owner: 'txaisx', repo: 'kolux' })
     expect(store.getRepo('r1')!.upstream).not.toHaveProperty('host')
   })
 

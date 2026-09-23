@@ -556,8 +556,8 @@ describe('materializeWorktreePushTargetRemoteSsh', () => {
       if (args[0] === 'remote' && args[1] === '-v') {
         return {
           stdout: [
-            'origin\thttps://github.com/TxaisX/nightshift.git (fetch)',
-            'origin\thttps://github.com/TxaisX/nightshift.git (push)',
+            'origin\thttps://github.com/TxaisX/kolux.git (fetch)',
+            'origin\thttps://github.com/TxaisX/kolux.git (push)',
             `${SIBLING_REMOTE}\t${FORK_URL} (fetch)`,
             `${SIBLING_REMOTE}\t${FORK_URL} (push)`
           ].join('\n'),

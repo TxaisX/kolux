@@ -8,7 +8,7 @@ import { GhAuthErrorHelp } from './GhAuthErrorHelp'
 import type { GitHubProjectViewSummary } from '../../../../shared/github/project-types'
 import type { GitHubProjectViewError } from '../../../../shared/github/project-result-types'
 
-const KOLUX_FEATURE_REQUEST_URL = 'https://github.com/TxaisX/nightshift/issues/new'
+const KOLUX_FEATURE_REQUEST_URL = 'https://github.com/TxaisX/kolux/issues/new'
 
 export function ProjectViewTabStrip({
   views,

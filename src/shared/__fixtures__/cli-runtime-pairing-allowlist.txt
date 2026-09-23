@@ -4,7 +4,7 @@
 #
 # This list only shrinks. Adding an entry means arguing why a resolved CLI may
 # run under an unrelated node — which for a Node CLI with a native dependency is
-# a NODE_MODULE_VERSION crash (TxaisX/nightshift#10932).
+# a NODE_MODULE_VERSION crash (TxaisX/kolux#10932).
 
 # Launches the user's GUI editor, not a Node CLI. The resolved binary is a
 # desktop app whose own launcher picks its runtime; prepending a node directory

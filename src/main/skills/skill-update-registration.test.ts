@@ -28,18 +28,18 @@ describe('global skill update registration', () => {
           orchestration: {
             skillFolderHash: 'hash',
             skillPath: 'skills/orchestration/SKILL.md',
-            source: 'TxaisX/nightshift'
+            source: 'TxaisX/kolux'
           },
           copied: {},
           emptyHash: {
             skillFolderHash: '',
             skillPath: 'skills/empty-hash/SKILL.md',
-            source: 'TxaisX/nightshift'
+            source: 'TxaisX/kolux'
           },
           emptyPath: {
             skillFolderHash: 'hash',
             skillPath: '',
-            source: 'TxaisX/nightshift'
+            source: 'TxaisX/kolux'
           }
         }
       })
@@ -62,7 +62,7 @@ describe('global skill update registration', () => {
           'kolux-cli': {
             skillFolderHash: 'hash',
             skillPath: 'skills/kolux-cli/SKILL.md',
-            source: 'TxaisX/nightshift'
+            source: 'TxaisX/kolux'
           }
         }
       })

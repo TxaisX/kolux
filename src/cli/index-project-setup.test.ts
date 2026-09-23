@@ -81,7 +81,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_list', {
         projects: [
           {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             providerIdentity: {
@@ -111,7 +111,7 @@ describe('kolux cli worktree awareness', () => {
         setups: [
           {
             id: 'setup-local',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-local',
             path: '/tmp/kolux',
@@ -123,7 +123,7 @@ describe('kolux cli worktree awareness', () => {
           },
           {
             id: 'setup-remote',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: 'repo-remote',
             path: '/srv/kolux',
@@ -139,7 +139,7 @@ describe('kolux cli worktree awareness', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     await main(
-      ['project', 'setups', '--project', 'github:TxaisX/nightshift', '--host', 'runtime:gpu'],
+      ['project', 'setups', '--project', 'github:TxaisX/kolux', '--host', 'runtime:gpu'],
       '/tmp/repo'
     )
 
@@ -157,7 +157,7 @@ describe('kolux cli worktree awareness', () => {
         setups: [
           {
             id: 'setup-on-box',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-on-box',
             path: '/srv/kolux',
@@ -169,7 +169,7 @@ describe('kolux cli worktree awareness', () => {
           },
           {
             id: 'setup-by-client',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:prod',
             repoId: 'repo-by-client',
             path: '/srv/kolux-2',
@@ -276,7 +276,7 @@ describe('kolux cli worktree awareness', () => {
         setups: [
           {
             id: 'setup-openclaw',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'ssh:ssh-123-abc',
             repoId: 'repo-openclaw',
             path: '/home/me/kolux',
@@ -306,7 +306,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup_create', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
@@ -315,7 +315,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-awin',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: '',
             path: '',
@@ -335,7 +335,7 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-create',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'runtime:awin',
         '--json'
@@ -392,7 +392,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: ['repo-1'],
@@ -401,7 +401,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-local',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-1',
             path: path.resolve('/tmp/kolux'),
@@ -428,7 +428,7 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-existing-folder',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'local',
         '--path',
@@ -443,7 +443,7 @@ describe('kolux cli worktree awareness', () => {
     )
 
     expect(callMock).toHaveBeenCalledWith('projectHostSetup.setupExistingFolder', {
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'local',
       path: path.resolve('/tmp/kolux/worktrees'),
       kind: 'git',
@@ -462,7 +462,7 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-existing-folder',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'runtime:gpu',
         '--path',
@@ -493,7 +493,7 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-existing-folder',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'ssh:openclaw',
         '--path',
@@ -590,7 +590,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup_clone', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
@@ -599,7 +599,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-awin',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'local',
             repoId: 'repo-awin',
             path: 'C:\\kolux-probe\\kolux',
@@ -626,11 +626,11 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-clone',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'runtime:awin',
         '--url',
-        'https://github.com/TxaisX/nightshift.git',
+        'https://github.com/TxaisX/kolux.git',
         '--destination',
         'C:\\kolux-probe',
         '--json'
@@ -651,7 +651,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup_update', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
@@ -660,7 +660,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-gpu',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: '',
             path: '/srv/kolux',
@@ -717,7 +717,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup_create', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
@@ -726,7 +726,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-gpu',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: '',
             path: '',
@@ -746,7 +746,7 @@ describe('kolux cli worktree awareness', () => {
         'project',
         'setup-create',
         '--project',
-        'github:TxaisX/nightshift',
+        'github:TxaisX/kolux',
         '--host',
         'runtime:gpu',
         '--setup-id',
@@ -763,7 +763,7 @@ describe('kolux cli worktree awareness', () => {
     )
 
     expect(callMock).toHaveBeenCalledWith('projectHostSetup.create', {
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:gpu',
       setupId: 'setup-gpu',
       path: undefined,
@@ -782,7 +782,7 @@ describe('kolux cli worktree awareness', () => {
       okFixture('req_project_setup_delete', {
         result: {
           project: {
-            id: 'github:TxaisX/nightshift',
+            id: 'github:TxaisX/kolux',
             displayName: 'Kolux',
             badgeColor: '#7c3aed',
             sourceRepoIds: [],
@@ -791,7 +791,7 @@ describe('kolux cli worktree awareness', () => {
           },
           setup: {
             id: 'setup-gpu',
-            projectId: 'github:TxaisX/nightshift',
+            projectId: 'github:TxaisX/kolux',
             hostId: 'runtime:gpu',
             repoId: '',
             path: '/srv/kolux',

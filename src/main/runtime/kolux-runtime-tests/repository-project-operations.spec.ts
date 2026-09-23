@@ -122,8 +122,8 @@ describe('KoluxRuntimeService', () => {
   it('sets up an existing folder on a fresh runtime after importing the repo project', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-runtime-project-setup-'))
     const repos: Record<string, unknown>[] = []
-    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
-    getRepoUpstreamMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'nightshift' })
+    // Why: TxaisX/kolux is the protected GitHub identity (repo not renamed), matching projectId below.
+    getRepoUpstreamMock.mockResolvedValueOnce({ owner: 'TxaisX', repo: 'kolux' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -180,17 +180,17 @@ describe('KoluxRuntimeService', () => {
     try {
       execFileSync('git', ['init'], { cwd: tempRoot, stdio: 'ignore' })
       const result = await runtime.setupProjectExistingFolder({
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         hostId: 'runtime:env-1',
         path: tempRoot,
         kind: 'git',
         setupMethod: 'imported-existing-folder'
       })
 
-      expect(result.project.id).toBe('github:TxaisX/nightshift')
+      expect(result.project.id).toBe('github:TxaisX/kolux')
       expect(result.repo.path).toBe(tempRoot)
       expect(result.setup).toMatchObject({
-        projectId: 'github:TxaisX/nightshift',
+        projectId: 'github:TxaisX/kolux',
         path: tempRoot,
         setupMethod: 'imported-existing-folder'
       })
@@ -341,9 +341,9 @@ describe('KoluxRuntimeService', () => {
   it('keeps existing-folder imports split by runtime host on the same normalized path', async () => {
     const tempRoot = await mkdtemp(join(tmpdir(), 'kolux-runtime-project-host-'))
     const repos: Record<string, unknown>[] = []
-    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why: TxaisX/kolux is the protected GitHub identity (repo not renamed), matching projectId below.
     // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -368,14 +368,14 @@ describe('KoluxRuntimeService', () => {
     try {
       execFileSync('git', ['init'], { cwd: tempRoot, stdio: 'ignore' })
       const first = await runtime.setupProjectExistingFolder({
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'runtime:env-1',
         path: tempRoot,
         kind: 'git',
         setupMethod: 'imported-existing-folder'
       })
       const second = await runtime.setupProjectExistingFolder({
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'runtime:env-2',
         path: tempRoot,
         kind: 'git',
@@ -534,9 +534,9 @@ describe('KoluxRuntimeService', () => {
     const clonePath = join(destination, 'kolux')
     const spawnSpy = vi.spyOn(gitRunner, 'gitSpawnAfterWindowsEnvironmentReady')
     const repos: Record<string, unknown>[] = []
-    // Why: TxaisX/nightshift is the protected GitHub identity (repo not renamed), matching projectId below.
+    // Why: TxaisX/kolux is the protected GitHub identity (repo not renamed), matching projectId below.
     // Why lowercase in projectId below: getProjectIdForProviderIdentity always lowercases the owner (githubRepoIdentityKey), so a mixed-case projectId can never match this upstream.
-    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'nightshift' })
+    getRepoUpstreamMock.mockResolvedValue({ owner: 'TxaisX', repo: 'kolux' })
     const runtimeStore = {
       ...store,
       getRepos: () => [...repos] as never,
@@ -570,7 +570,7 @@ describe('KoluxRuntimeService', () => {
 
     try {
       const result = await runtime.setupProjectClone({
-        projectId: 'github:txaisx/nightshift',
+        projectId: 'github:txaisx/kolux',
         hostId: 'runtime:env-1',
         url: 'https://example.com/kolux.git',
         destination
@@ -624,7 +624,7 @@ describe('KoluxRuntimeService', () => {
     try {
       const cloneError = await runtime
         .setupProjectClone({
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:openclaw',
           url: 'https://example.com/kolux.git',
           destination
@@ -632,7 +632,7 @@ describe('KoluxRuntimeService', () => {
         .catch((error: unknown) => error)
       const existingFolderError = await runtime
         .setupProjectExistingFolder({
-          projectId: 'github:TxaisX/nightshift',
+          projectId: 'github:TxaisX/kolux',
           hostId: 'ssh:openclaw',
           path: existingFolder,
           kind: 'git'

@@ -6,7 +6,7 @@ import { useAppStore } from '../store'
 import { useMountedRef } from '@/hooks/useMountedRef'
 import { translate } from '@/i18n/i18n'
 
-const KOLUX_REPO_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_REPO_URL = 'https://github.com/TxaisX/kolux'
 type StarNagMode = 'gh' | 'web'
 
 /**

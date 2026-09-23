@@ -11,7 +11,7 @@ const DEFAULT_MARKETING_REPO = path.join(
   'source',
   'repos',
   'Stably',
-  'nightshift-marketing-website'
+  'kolux-marketing-website'
 )
 const MARKETING_REPO = process.env.KOLUX_MARKETING_REPO || DEFAULT_MARKETING_REPO
 const DEST_ROOT = path.join(ROOT, 'resources', 'onboarding', 'feature-wall')

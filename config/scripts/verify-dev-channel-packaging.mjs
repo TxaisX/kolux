@@ -16,9 +16,9 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const CHANNEL_REPOS = {
-  hourly: 'nightshift-hourly',
-  daily: 'nightshift-daily',
-  adhoc: 'nightshift-adhoc'
+  hourly: 'kolux-hourly',
+  daily: 'kolux-daily',
+  adhoc: 'kolux-adhoc'
 }
 
 const CHANNEL_VERSION_ENV = {

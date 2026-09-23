@@ -8,7 +8,7 @@ import {
  * Where an SSH-owned worktree's durable session state lives.
  *
  * This is the single axis on which the renderer and the main-process runtime disagree today
- * (TxaisX/nightshift#12723). Both sides now compute their partition through this function so the
+ * (TxaisX/kolux#12723). Both sides now compute their partition through this function so the
  * divergence is one argument in one place instead of two independently drifting owner maps:
  *
  * - `local-partition` — the renderer's shipping model. SSH worktrees keep their session state in

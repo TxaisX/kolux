@@ -78,7 +78,7 @@ describe('structuredWorkerChildIdentityEnv', () => {
 
   it('gives a packaged-Linux worker the bare-kolux shim its KOLUX_CLI_COMMAND assumes', () => {
     // Without this the child's first `kolux orchestration check` execs GNOME Orca — the CLI
-    // installs as `kolux-ide` on Linux (TxaisX/nightshift#7904) — and the dispatch hangs to timeout.
+    // installs as `kolux-ide` on Linux (TxaisX/kolux#7904) — and the dispatch hangs to timeout.
     pinPlatform('linux')
     installFakeAppEnvironment({ isPackaged: () => true, getPath: () => USER_DATA })
     const handle = registerWorker()

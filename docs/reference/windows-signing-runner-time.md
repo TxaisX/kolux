@@ -4,7 +4,7 @@ Status: implementation proposal; production signing behavior is unchanged.
 
 ## Measured cost
 
-In [release run 33821033674](https://github.com/TxaisX/nightshift/actions/runs/33821033674)
+In [release run 33821033674](https://github.com/TxaisX/kolux/actions/runs/33821033674)
 (September 4, 2026), the Windows job took 21m56s. The inner-binary download step
 took 13m19s and the installer download step took 40s: 13m59s, or 64% of the job,
 was spent in the signing download/wait steps. These durations include the

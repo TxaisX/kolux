@@ -2,7 +2,7 @@
 
 **Windows only.** Proves that a **crash of Kolux's main process** does not orphan
 open terminal PTYs — the regression behind
-[GitHub #7742](https://github.com/TxaisX/nightshift/issues/7742) —
+[GitHub #7742](https://github.com/TxaisX/kolux/issues/7742) —
 with machine-checkable assertions against an **already-installed, packaged**
 `Kolux.exe`.
 

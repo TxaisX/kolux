@@ -9,7 +9,7 @@ vi.mock('sonner', () => ({ toast: { success: toastSuccess } }))
 
 import { LinuxPackageInstallRecoveryCard } from './LinuxPackageInstallRecoveryCard'
 
-const RELEASE_URL = 'https://github.com/TxaisX/nightshift/releases/tag/v1.4.200'
+const RELEASE_URL = 'https://github.com/TxaisX/kolux/releases/tag/v1.4.200'
 const DIAGNOSTIC = 'pkexec: no polkit authentication agent found'
 const INSTALL_COMMAND = 'sudo apt-get install -y /tmp/kolux-updates/kolux_1.4.200_amd64.deb'
 const PACKAGE_FILE_NAME = 'kolux_1.4.200_amd64.deb'

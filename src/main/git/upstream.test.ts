@@ -358,7 +358,7 @@ describe('getUpstreamStatus', () => {
         return Promise.reject(new Error('missing branch base'))
       }
       if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'origin') {
-        return Promise.resolve({ stdout: 'https://github.com/TxaisX/nightshift.git\n' })
+        return Promise.resolve({ stdout: 'https://github.com/TxaisX/kolux.git\n' })
       }
       if (args[0] === 'remote' && args[1] === 'get-url' && args[2] === 'pr-pynickle-kolux') {
         return Promise.resolve({ stdout: 'https://github.com/pynickle/kolux.git\n' })
@@ -366,8 +366,8 @@ describe('getUpstreamStatus', () => {
       if (args[0] === 'remote' && args[1] === '-v') {
         return Promise.resolve({
           stdout: [
-            'origin\thttps://github.com/TxaisX/nightshift.git (fetch)',
-            'origin\thttps://github.com/TxaisX/nightshift.git (push)',
+            'origin\thttps://github.com/TxaisX/kolux.git (fetch)',
+            'origin\thttps://github.com/TxaisX/kolux.git (push)',
             'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (fetch)',
             'pr-pynickle-kolux\thttps://github.com/pynickle/kolux.git (push)'
           ].join('\n')
@@ -458,7 +458,7 @@ describe('getUpstreamStatus', () => {
         return Promise.reject(new Error('missing branch base'))
       }
       if (args[0] === 'remote' && args[1] === 'get-url') {
-        return Promise.resolve({ stdout: 'https://github.com/TxaisX/nightshift.git\n' })
+        return Promise.resolve({ stdout: 'https://github.com/TxaisX/kolux.git\n' })
       }
       if (args[0] === 'remote') {
         return Promise.resolve({ stdout: 'origin\n' })

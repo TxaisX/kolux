@@ -5,9 +5,9 @@ Audit date: September 5, 2026. No paid capacity or provider configuration change
 ## Measurements and changes
 
 Three recent successful PR runs used 54.6–64.9 aggregate runner minutes:
-[33998366568](https://github.com/TxaisX/nightshift/actions/runs/33998366568),
-[33998220287](https://github.com/TxaisX/nightshift/actions/runs/33998220287), and
-[33998181502](https://github.com/TxaisX/nightshift/actions/runs/33998181502).
+[33998366568](https://github.com/TxaisX/kolux/actions/runs/33998366568),
+[33998220287](https://github.com/TxaisX/kolux/actions/runs/33998220287), and
+[33998181502](https://github.com/TxaisX/kolux/actions/runs/33998181502).
 These are sums of active job durations, excluding skipped jobs; they are not
 billing minutes or queue time. This small sample is not a historical average.
 
@@ -21,7 +21,7 @@ billing minutes or queue time. This small sample is not a historical average.
   default Debian/RPM compression is xz. PR artifacts are inspected on the same
   runner, so their download size offers no benefit. Keep all AppImage, Debian,
   RPM, payload, launcher, and shutdown checks. Release compression is unchanged.
-  Hosted validation in [33999422341](https://github.com/TxaisX/nightshift/actions/runs/33999422341)
+  Hosted validation in [33999422341](https://github.com/TxaisX/kolux/actions/runs/33999422341)
   reduced the package-build step to 2m13s and the full Linux job to 6m17s, with
   all existing checks passing. This is a small observational sample.
 - Cancel superseded Mobile Checks and Skill update round-trip PR runs. The
@@ -41,7 +41,7 @@ critical-path time and aggregate job time on the same commit.
 
 - Move the hourly main/release freshness lookup to a five-minute Ubuntu
   preflight without a checkout. In unchanged run
-  [33986205749](https://github.com/TxaisX/nightshift/actions/runs/33986205749),
+  [33986205749](https://github.com/TxaisX/kolux/actions/runs/33986205749),
   Blacksmith macOS was occupied for 40 seconds, including a 30-second checkout,
   before skipping. The new job-level gate avoids that Mac allocation. Actual
   builds gain an Ubuntu scheduling hop; pin the Mac checkout and downstream
@@ -85,7 +85,7 @@ See [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product
 ### A bounded Ubicloud candidate
 
 The Linux leg of `performance-contracts.yml` took 48 seconds in
-[33994756657](https://github.com/TxaisX/nightshift/actions/runs/33994756657).
+[33994756657](https://github.com/TxaisX/kolux/actions/runs/33994756657).
 Its daily schedule and 20-minute timeout make it a small candidate: 31 ordinary
 scheduled attempts permit at most 620 job-runtime minutes, before runner
 startup/cleanup billing. Actual timings on Ubicloud's 2-vCPU hardware still need
@@ -137,12 +137,12 @@ PR leaves production signing behavior unchanged.
 - Cloud Verify ran 100 times in a sampled 39-hour window (84 PR and 16 push
   runs). Move its four Ubuntu 22.04 jobs from Blacksmith to standard hosted
   Ubuntu 22.04, preserving Postgres, secret scanning, build, tests, and Terraform
-  validation. Baseline [34001538145](https://github.com/TxaisX/nightshift/actions/runs/34001538145)
+  validation. Baseline [34001538145](https://github.com/TxaisX/kolux/actions/runs/34001538145)
   used 64/72/26/19 seconds for security/test/build/Terraform respectively.
   This conserves the shared provider allowance; hosted latency must be checked.
 - Keep full tag history for the 13-job skill round-trip matrix, but fetch blobs
   lazily. Only two historical SKILL.md files are materialized. Baseline
-  [33999994876](https://github.com/TxaisX/nightshift/actions/runs/33999994876)
+  [33999994876](https://github.com/TxaisX/kolux/actions/runs/33999994876)
   spent 42–84 seconds per checkout, about 14 aggregate runner minutes. A hosted
   trial must verify historical blob fetches on all three operating systems.
 - Use the existing Electron/native dependency cache for native IME CI. Keep
@@ -164,29 +164,29 @@ coverage or schedule frequency is outside this efficiency pass. Cache complexity
 for a seven-second docs install is unlikely to pay back. Release build reuse
 across modes risks differing telemetry identities and native platform artifacts.
 
-Terminal Perf's baseline [33955846492](https://github.com/TxaisX/nightshift/actions/runs/33955846492)
+Terminal Perf's baseline [33955846492](https://github.com/TxaisX/kolux/actions/runs/33955846492)
 failed waiting 30 seconds for workspaceSessionReady in its shared-page fixture,
 before measuring terminal performance. Compare hosted trials against that known
 failure rather than attributing it to dependency cache changes.
 
 Hosted trials for the second audit:
 
-- [Cloud Verify 34002295216](https://github.com/TxaisX/nightshift/actions/runs/34002295216)
+- [Cloud Verify 34002295216](https://github.com/TxaisX/kolux/actions/runs/34002295216)
   passed all four jobs on standard hosted Ubuntu: security 57s, test 102s, build
   35s, Terraform 19s. The test lane is 30s slower than the Blacksmith sample;
   retain this modest latency tradeoff to conserve shared allowance.
-- [Skill matrix 34002295221](https://github.com/TxaisX/nightshift/actions/runs/34002295221)
+- [Skill matrix 34002295221](https://github.com/TxaisX/kolux/actions/runs/34002295221)
   passed all 13 legs, including historical blob materialization. Checkout took
   18–20s on Linux, 39–45s on macOS, and 49–58s on Windows, versus the earlier
   42–84s range across platforms. These are observational samples.
-- [Native IME 34002299594](https://github.com/TxaisX/nightshift/actions/runs/34002299594)
+- [Native IME 34002299594](https://github.com/TxaisX/kolux/actions/runs/34002299594)
   passed both deterministic and real IBus checks. Shared dependency setup took
   29s, versus 35s for the old install/toolchain steps in the sampled baseline.
 - Native-IME-only source/spec changes no longer allocate the reusable E2E
   build, cache, and consumer jobs just to filter out the native spec. The
   separate native workflow still runs; SSH-only and mixed spec lists still
   allocate the reusable workflow. Routing contracts exercise these cases.
-- [Hourly 34001816449](https://github.com/TxaisX/nightshift/actions/runs/34001816449)
+- [Hourly 34001816449](https://github.com/TxaisX/kolux/actions/runs/34001816449)
   exercised the new five-second preflight and successfully published macOS.
   The Windows follow-up failed in its unchanged input-vetting fetch because
   remote refs differ only by case on its case-insensitive filesystem. The

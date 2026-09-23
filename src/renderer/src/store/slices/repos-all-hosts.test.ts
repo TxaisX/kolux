@@ -195,7 +195,7 @@ function configureSharedProjectCompatibilityMocks(
   sharedProjectId: string
   sharedRemoteProject: Project
 } {
-  const sharedProjectId = 'github:TxaisX/nightshift'
+  const sharedProjectId = 'github:TxaisX/kolux'
   const localRepoForSharedProject: Repo =
     options.localRepoHasProviderIdentity === false
       ? localRepo
@@ -684,7 +684,7 @@ describe('fetchReposForAllHosts', () => {
         .getState()
         .projects.map((project) => project.id)
         .sort()
-    ).toEqual(['github:TxaisX/nightshift', 'github:txaisx/kolux', 'repo:remote-repo'])
+    ).toEqual(['github:TxaisX/kolux', 'github:txaisx/kolux', 'repo:remote-repo'])
     expect(store.getState().projectHostSetups).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

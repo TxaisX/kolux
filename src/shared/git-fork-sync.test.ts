@@ -21,7 +21,7 @@ function createRunner(overrides: {
   const runGit = vi.fn(async (args: string[]) => {
     calls.push(args)
     if (args[0] === 'remote' && args[1] === 'get-url') {
-      return { stdout: overrides.upstreamUrl ?? 'git@github.com:TxaisX/nightshift.git\n' }
+      return { stdout: overrides.upstreamUrl ?? 'git@github.com:TxaisX/kolux.git\n' }
     }
     if (args[0] === 'remote') {
       return { stdout: overrides.remotes ?? 'origin\nupstream\n' }
@@ -175,7 +175,7 @@ describe('syncForkDefaultBranch', () => {
 
   it('blocks when a non-GitHub upstream remote has the expected owner and repo suffix', async () => {
     const { runGit, calls } = createRunner({
-      upstreamUrl: 'ssh://evil.example.com/TxaisX/nightshift.git\n'
+      upstreamUrl: 'ssh://evil.example.com/TxaisX/kolux.git\n'
     })
 
     await expect(

@@ -212,7 +212,7 @@ export function githubSourceContext(
   return {
     kind: 'task-source',
     provider: 'github',
-    projectId: 'github:TxaisX/nightshift',
+    projectId: 'github:TxaisX/kolux',
     hostId,
     projectHostSetupId: 'setup-1',
     repoId,

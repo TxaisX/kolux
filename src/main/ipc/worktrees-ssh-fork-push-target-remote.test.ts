@@ -110,7 +110,7 @@ describe('registerWorktreeHandlers', () => {
     const exec = vi.fn().mockImplementation(async (args: string[]) => {
       validateGitExecArgs(args)
       if (args[0] === 'remote' && args[1] === 'get-url') {
-        return { stdout: 'git@github.com:TxaisX/nightshift.git\n', stderr: '' }
+        return { stdout: 'git@github.com:TxaisX/kolux.git\n', stderr: '' }
       }
       if (args[0] === 'remote' && args.length === 1) {
         return { stdout: 'origin\n', stderr: '' }

@@ -195,7 +195,7 @@ describe('GitLab IPC handlers', () => {
         sourceContext: {
           kind: 'task-source',
           provider: 'gitlab',
-          projectId: 'gitlab:TxaisX/nightshift',
+          projectId: 'gitlab:TxaisX/kolux',
           hostId: toSshExecutionHostId('builder'),
           repoId: 'repo-ssh'
         }
@@ -288,7 +288,7 @@ describe('GitLab IPC handlers', () => {
         sourceContext: {
           kind: 'task-source',
           provider: 'gitlab',
-          projectId: 'gitlab:TxaisX/nightshift',
+          projectId: 'gitlab:TxaisX/kolux',
           hostId: toSshExecutionHostId('builder'),
           repoId: 'repo-local'
         }
@@ -318,12 +318,12 @@ describe('GitLab IPC handlers', () => {
         sourceContext: {
           kind: 'task-source',
           provider: 'gitlab',
-          projectId: 'gitlab:TxaisX/nightshift',
+          projectId: 'gitlab:TxaisX/kolux',
           hostId: toSshExecutionHostId('builder'),
           repoId: 'repo-ssh'
         },
         host: 'gitlab.com',
-        path: 'TxaisX/nightshift',
+        path: 'TxaisX/kolux',
         iid: 42,
         type: 'issue'
       })
@@ -331,7 +331,7 @@ describe('GitLab IPC handlers', () => {
 
     expect(getWorkItemByProjectRefMock).toHaveBeenCalledWith(
       '/ssh/kolux',
-      { host: 'gitlab.com', path: 'TxaisX/nightshift' },
+      { host: 'gitlab.com', path: 'TxaisX/kolux' },
       42,
       'issue',
       'builder'
@@ -361,7 +361,7 @@ describe('GitLab IPC handlers', () => {
     listLabelsMock.mockResolvedValue([])
     listAssignableUsersMock.mockResolvedValue([])
     listTodosMock.mockResolvedValue([])
-    getProjectSlugMock.mockResolvedValue({ host: 'gitlab.com', path: 'TxaisX/nightshift' })
+    getProjectSlugMock.mockResolvedValue({ host: 'gitlab.com', path: 'TxaisX/kolux' })
     getMergeRequestForBranchMock.mockResolvedValue(null)
     getMergeRequestMock.mockResolvedValue(null)
     registerGitLabHandlers(storeWithRepos([repo()], projects) as Store)

@@ -13,7 +13,7 @@ function source(hostId: TaskSourceContext['hostId']): TaskSourceContext {
   return {
     kind: 'task-source',
     provider: 'github',
-    projectId: 'github:TxaisX/nightshift',
+    projectId: 'github:TxaisX/kolux',
     hostId,
     repoId: `repo-${hostId}`
   }

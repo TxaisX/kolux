@@ -41,7 +41,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
   it('hydrates GitHub-registered stack metadata for exact linked PRs', async () => {
     getOwnerRepoMock.mockResolvedValue({
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: 'github.com'
     })
     ghExecFileAsyncMock
@@ -50,7 +50,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
           number: 202,
           title: 'Stack API',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/202',
+          url: 'https://github.com/TxaisX/kolux/pull/202',
           statusCheckRollup: [],
           updatedAt: '2026-08-10T00:00:00Z',
           isDraft: false,
@@ -65,7 +65,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
           number: 202,
           title: 'Stack API',
           state: 'open',
-          html_url: 'https://github.com/TxaisX/nightshift/pull/202',
+          html_url: 'https://github.com/TxaisX/kolux/pull/202',
           head: { ref: 'stack/api', sha: 'api-sha' },
           base: { ref: 'stack/models', sha: 'models-sha' },
           stack: {
@@ -92,7 +92,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
                         pullRequest: {
                           number: 201,
                           title: 'Stack models',
-                          url: 'https://github.com/TxaisX/nightshift/pull/201',
+                          url: 'https://github.com/TxaisX/kolux/pull/201',
                           state: 'OPEN',
                           isDraft: false,
                           mergeable: 'MERGEABLE',
@@ -104,7 +104,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
                         pullRequest: {
                           number: 202,
                           title: 'Stack API',
-                          url: 'https://github.com/TxaisX/nightshift/pull/202',
+                          url: 'https://github.com/TxaisX/kolux/pull/202',
                           state: 'OPEN',
                           isDraft: false,
                           mergeable: 'MERGEABLE',
@@ -194,18 +194,18 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })
 
     const mergeCall = ghExecFileAsyncMock.mock.calls.find(([args]) =>
-      args.includes('repos/TxaisX/nightshift/pulls/202/merge-async')
+      args.includes('repos/TxaisX/kolux/pulls/202/merge-async')
     )
     expect(mergeCall?.[0]).toEqual(
       expect.arrayContaining([
         'PUT',
-        'repos/TxaisX/nightshift/pulls/202/merge-async',
+        'repos/TxaisX/kolux/pulls/202/merge-async',
         'merge_action=merge_queue',
         `sha=${scenario.headSha}`
       ])
@@ -242,7 +242,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: false, error: 'socket closed after request submission' })
@@ -549,7 +549,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
           number: 202,
           title: 'Stack API',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/202',
+          url: 'https://github.com/TxaisX/kolux/pull/202',
           statusCheckRollup: [],
           updatedAt: '2026-08-10T00:00:00Z',
           isDraft: false,
@@ -563,19 +563,19 @@ describe('GitHub GraphQL rate-limit guard', () => {
 
     const result = await mergePR(scenario.repoPath, 202, 'squash', scenario.connectionId, {
       owner: 'TxaisX',
-      repo: 'nightshift',
+      repo: 'kolux',
       host: scenario.expectedOptions.host
     })
 
     expect.soft(result).toEqual({ ok: false, error: scenario.expectedError })
     expect
       .soft(ghExecFileAsyncMock.mock.calls.map(([args]) => args))
-      .toEqual([['api', 'repos/TxaisX/nightshift/pulls/202']])
+      .toEqual([['api', 'repos/TxaisX/kolux/pulls/202']])
     expect.soft(ghExecFileAsyncMock.mock.calls[0]?.[1]).toEqual(scenario.expectedOptions)
     expect
       .soft(
         ghExecFileAsyncMock.mock.calls.some(([args]) =>
-          args.includes('repos/TxaisX/nightshift/pulls/202/merge-async')
+          args.includes('repos/TxaisX/kolux/pulls/202/merge-async')
         )
       )
       .toBe(false)
@@ -589,7 +589,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
     expect
       .soft(consoleWarnSpy)
       .toHaveBeenCalledWith(
-        'mergePR stack metadata probe failed for TxaisX/nightshift#202:',
+        'mergePR stack metadata probe failed for TxaisX/kolux#202:',
         scenario.expectedDiagnostic
       )
     expect.soft(consoleWarnSpy).toHaveBeenCalledTimes(1)
@@ -618,7 +618,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
           number: 13866,
           title: 'Fail closed on unavailable stack metadata',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/13866',
+          url: 'https://github.com/TxaisX/kolux/pull/13866',
           statusCheckRollup: [],
           updatedAt: '2026-08-11T00:00:00Z',
           isDraft: false,
@@ -634,14 +634,14 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 13866, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })
 
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       3,
-      ['pr', 'merge', '13866', '--squash', '--repo', 'TxaisX/nightshift'],
+      ['pr', 'merge', '13866', '--squash', '--repo', 'TxaisX/kolux'],
       expect.objectContaining({ env: expect.objectContaining({ GH_PROMPT_DISABLED: '1' }) })
     )
     expect(acquireMock).toHaveBeenCalledTimes(1)
@@ -665,7 +665,7 @@ describe('GitHub GraphQL rate-limit guard', () => {
           number: 202,
           title: 'Dependent API',
           state: 'OPEN',
-          url: 'https://github.com/TxaisX/nightshift/pull/202',
+          url: 'https://github.com/TxaisX/kolux/pull/202',
           statusCheckRollup: [],
           updatedAt: '2026-08-10T00:00:00Z',
           isDraft: false,
@@ -679,14 +679,14 @@ describe('GitHub GraphQL rate-limit guard', () => {
     await expect(
       mergePR('/repo-root', 202, 'squash', undefined, {
         owner: 'TxaisX',
-        repo: 'nightshift',
+        repo: 'kolux',
         host: 'github.com'
       })
     ).resolves.toEqual({ ok: true })
 
     expect(ghExecFileAsyncMock).toHaveBeenNthCalledWith(
       3,
-      ['pr', 'merge', '202', '--squash', '--repo', 'TxaisX/nightshift'],
+      ['pr', 'merge', '202', '--squash', '--repo', 'TxaisX/kolux'],
       expect.objectContaining({ env: expect.objectContaining({ GH_PROMPT_DISABLED: '1' }) })
     )
   })

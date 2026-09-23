@@ -85,8 +85,8 @@ describe('parseGitRemoteFetchUrls', () => {
 
 describe('findGitRemoteNameByFetchUrl', () => {
   const stdout = verbose([
-    ['origin', 'https://github.com/TxaisX/nightshift.git (fetch)'],
-    ['origin', 'https://github.com/TxaisX/nightshift.git (push)'],
+    ['origin', 'https://github.com/TxaisX/kolux.git (fetch)'],
+    ['origin', 'https://github.com/TxaisX/kolux.git (push)'],
     ['first-fork', `${SSH_URL} (fetch)`],
     ['first-fork', `${SSH_URL} (push)`],
     ['second-fork', `${SSH_URL} (fetch)`],

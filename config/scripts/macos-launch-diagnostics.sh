@@ -6,7 +6,7 @@
 #   bash config/scripts/macos-launch-diagnostics.sh --tag v1.4.42-rc.1
 set -euo pipefail
 
-REPO="${KOLUX_DIAGNOSTIC_REPO:-TxaisX/nightshift}"
+REPO="${KOLUX_DIAGNOSTIC_REPO:-TxaisX/kolux}"
 TAG="${KOLUX_DIAGNOSTIC_TAG:-}"
 KEEP=0
 

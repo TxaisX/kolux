@@ -17,7 +17,7 @@ const item = {
   number: 14198,
   title: 'Agent terminals disappearing randomly',
   state: 'open',
-  url: 'https://github.com/TxaisX/nightshift/issues/14198',
+  url: 'https://github.com/TxaisX/kolux/issues/14198',
   labels: [],
   updatedAt: '2026-08-12T12:00:00.000Z',
   author: 'nwparker',

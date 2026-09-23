@@ -10,7 +10,7 @@ describe('buildFolderWorkspaceLinkedStartupPlan', () => {
         type: 'issue',
         number: 42,
         title: 'Restore linked quick-create',
-        url: 'https://github.com/TxaisX/nightshift/issues/42',
+        url: 'https://github.com/TxaisX/kolux/issues/42',
         repoId: 'repo-1'
       },
       note: '',

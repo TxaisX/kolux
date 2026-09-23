@@ -99,7 +99,7 @@ describe('parseAzureDevOpsRepoRef', () => {
   })
 
   it('ignores non-Azure remotes', () => {
-    expect(parseAzureDevOpsRepoRef('git@github.com:TxaisX/nightshift.git')).toBeNull()
+    expect(parseAzureDevOpsRepoRef('git@github.com:TxaisX/kolux.git')).toBeNull()
   })
 
   it('resolves repository refs through the SSH git provider for connected repos', async () => {

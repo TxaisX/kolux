@@ -211,7 +211,7 @@ describe('migrateForkRemoteRefspecsWithExec', () => {
   })
 
   it('never touches origin or upstream even with malformed metadata', async () => {
-    const exec = makeExec({ urlByRemote: { origin: 'git@github.com:TxaisX/nightshift.git\n' } })
+    const exec = makeExec({ urlByRemote: { origin: 'git@github.com:TxaisX/kolux.git\n' } })
 
     const migrated = await migrateForkRemoteRefspecsWithExec(
       REPO_PATH,

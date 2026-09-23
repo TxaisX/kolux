@@ -40,7 +40,7 @@ export type LinuxTerminalKoluxCliShimOptions = {
 // Orca screen reader at /usr/bin/orca — but agent-facing surfaces (skills,
 // dispatch preambles, CLI hints) all invoke bare `kolux`, so on stock Ubuntu an
 // agent inside a Kolux terminal would launch the screen reader instead
-// (TxaisX/nightshift#7904). Prepending this userData-scoped shim dir to managed-PTY
+// (TxaisX/kolux#7904). Prepending this userData-scoped shim dir to managed-PTY
 // PATH makes bare `kolux` resolve to the Kolux CLI inside Kolux terminals only,
 // leaving the user's own shells (and their screen reader) untouched.
 export function ensureLinuxTerminalKoluxCliShimDir(

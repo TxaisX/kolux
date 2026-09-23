@@ -453,13 +453,13 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
     const localSibling = {
       ...makeRepo(),
       id: 'local-sibling',
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     }
     const runtimeOwnedRepo = {
       ...makeRepo(),
       id: 'runtime-owned',
       connectionId: 'runtime-ssh-workspace-1',
-      upstream: { owner: 'TxaisX', repo: 'nightshift' }
+      upstream: { owner: 'TxaisX', repo: 'kolux' }
     }
     const fetchLinearIssue = vi.fn(async () => makeLinearIssue())
     await renderPalette({
@@ -475,7 +475,7 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
       'linear-workspace-1',
       expect.objectContaining({
         sourceContext: expect.objectContaining({
-          projectId: 'github:txaisx/nightshift',
+          projectId: 'github:txaisx/kolux',
           repoId: 'local-sibling'
         })
       })
@@ -646,7 +646,7 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
   })
 
   it('resolves a pasted GitHub issue URL and opens create with the linked issue', async () => {
-    const githubIssueUrl = 'https://github.com/TxaisX/nightshift/issues/14198'
+    const githubIssueUrl = 'https://github.com/TxaisX/kolux/issues/14198'
     const githubIssue = {
       id: 'issue-14198',
       type: 'issue',
@@ -673,7 +673,7 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
     expect(preview?.dataset.cmdJTaskUrlProvider).toBe('github')
     expect(preview?.dataset.cmdJTaskUrlState).toBe('resolved')
     expect(preview?.getAttribute('aria-label')).toBe(
-      'Create worktree from GitHub issue TxaisX/nightshift#14198: Agent terminals disappearing randomly'
+      'Create worktree from GitHub issue TxaisX/kolux#14198: Agent terminals disappearing randomly'
     )
     expect(preview?.textContent).toContain('#14198')
     expect(preview?.textContent).toContain('Agent terminals disappearing randomly')
@@ -709,13 +709,13 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
 
   it('previews a pasted GitHub pull URL', async () => {
     await renderPalette({})
-    await act(async () => setCommandQuery?.('https://github.com/TxaisX/nightshift/pull/12789'))
+    await act(async () => setCommandQuery?.('https://github.com/TxaisX/kolux/pull/12789'))
     await flushEffects()
 
     const preview = testContainer.querySelector<HTMLElement>('[data-cmd-j-task-url-preview="true"]')
     expect(preview?.dataset.cmdJTaskUrlProvider).toBe('github')
     expect(preview?.getAttribute('aria-label')).toBe(
-      'Create worktree from GitHub pull request TxaisX/nightshift#12789'
+      'Create worktree from GitHub pull request TxaisX/kolux#12789'
     )
     expect(preview?.textContent).toContain('#12789')
   })
@@ -724,11 +724,11 @@ describe('WorktreeJumpPalette Linear URL intent', () => {
     const linked = makeWorktree('wt-linked', 'Linked GitHub workspace', { linkedIssue: 14198 })
     const other = makeWorktree('wt-other', 'Unrelated workspace', { linkedIssue: 7 })
     await renderPalette({
-      repos: [{ ...makeRepo(), displayName: 'TxaisX/nightshift' }],
+      repos: [{ ...makeRepo(), displayName: 'TxaisX/kolux' }],
       worktreesByRepo: { 'repo-1': [other, linked] }
     })
 
-    await act(async () => setCommandQuery?.('https://github.com/TxaisX/nightshift/issues/14198'))
+    await act(async () => setCommandQuery?.('https://github.com/TxaisX/kolux/issues/14198'))
     await flushEffects()
 
     expect(getRenderedRowIds().filter(Boolean)).toEqual([

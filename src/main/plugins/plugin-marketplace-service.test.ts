@@ -156,7 +156,7 @@ describe('PluginMarketplaceService', () => {
           id: 'txais.kolux-shortcuts',
           source: {
             kind: 'git',
-            url: 'git@github.com:TxaisX/nightshift-shortcuts.git',
+            url: 'git@github.com:TxaisX/kolux-shortcuts.git',
             ref: 'main'
           },
           categories: ['keybindings']
@@ -168,7 +168,7 @@ describe('PluginMarketplaceService', () => {
       fetcher: async () => fetched(officialMarketplace)
     })
 
-    await service.addSource(source('https://github.com/TxaisX/nightshift-plugins.git'))
+    await service.addSource(source('https://github.com/TxaisX/kolux-plugins.git'))
 
     await expect(service.listPlugins()).resolves.toEqual([
       expect.objectContaining({ pluginKey: 'txais.kolux-shortcuts', official: true })
@@ -217,7 +217,7 @@ describe('PluginMarketplaceService', () => {
     const officialMarketplace = marketplace(
       'Kolux Plugins',
       'txais.kolux-notes',
-      'https://github.com/TxaisX/nightshift-notes.git'
+      'https://github.com/TxaisX/kolux-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'
     const fetcher = vi.fn(async () => fetched(officialMarketplace))
@@ -260,7 +260,7 @@ describe('PluginMarketplaceService', () => {
     const officialMarketplace = marketplace(
       'Kolux Plugins',
       'txais.kolux-notes',
-      'https://github.com/TxaisX/nightshift-notes.git'
+      'https://github.com/TxaisX/kolux-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'
     const listSources = vi
@@ -305,7 +305,7 @@ describe('PluginMarketplaceService', () => {
     const officialMarketplace = marketplace(
       'Kolux Plugins',
       'txais.kolux-notes',
-      'https://github.com/TxaisX/nightshift-notes.git'
+      'https://github.com/TxaisX/kolux-notes.git'
     )
     officialMarketplace.owner = 'TxaisX'
     const service = new PluginMarketplaceService({

@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 
-// fork (TxaisX/nightshift#19522): the relocated daemon must carry every native addon its bundle
+// fork (TxaisX/kolux#19522): the relocated daemon must carry every native addon its bundle
 // bare-requires, not just node-pty. Without @vscode/windows-process-tree the host loses the native
 // process table and spawns a PowerShell CIM scan every ~2s (35 powershell.exe/min).
 const DAEMON_NATIVE_ADDONS = [

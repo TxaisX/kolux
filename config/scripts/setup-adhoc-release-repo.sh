@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Creates TxaisX/nightshift-adhoc and grants the existing release App write access to
+# Creates TxaisX/kolux-adhoc and grants the existing release App write access to
 # it, so adhoc-mac-build.yml can publish there.
 #
 # Why a separate repo rather than reusing kolux-hourly: an adhoc build is somebody's
@@ -17,9 +17,9 @@
 set -euo pipefail
 
 ORG="txais"
-ADHOC_REPO="$ORG/nightshift-adhoc"
+ADHOC_REPO="$ORG/kolux-adhoc"
 MAIN_REPO="$ORG/kolux"
-APP_SLUG="nightshift-hourly-release"
+APP_SLUG="kolux-hourly-release"
 
 fail() {
   echo "error: $*" >&2

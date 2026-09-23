@@ -321,7 +321,7 @@ describe('runner execFile timeout handling', () => {
     'signals the whole gh process group when gh never calls back',
     () =>
       withWedgedCliKill(async (processKill) => {
-        const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
+        const promise = ghExecFileAsync(['api', 'repos/TxaisX/kolux/issues/5388'], {
           cwd: '/repo'
         })
         const rejection = expect(promise).rejects.toThrow('gh timed out.')
@@ -338,7 +338,7 @@ describe('runner execFile timeout handling', () => {
     'signals the whole glab process group when glab never calls back',
     () =>
       withWedgedCliKill(async (processKill) => {
-        const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fnightshift/issues'], {
+        const promise = glabExecFileAsync(['api', 'projects/TxaisX%2Fkolux/issues'], {
           cwd: '/repo'
         })
         const rejection = expect(promise).rejects.toThrow('glab timed out.')
@@ -382,7 +382,7 @@ describe('runner execFile timeout handling', () => {
     () =>
       withWedgedCliKill(async (processKill) => {
         const controller = new AbortController()
-        const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
+        const promise = ghExecFileAsync(['api', 'repos/TxaisX/kolux/issues/5388'], {
           cwd: '/repo',
           signal: controller.signal
         })
@@ -398,7 +398,7 @@ describe('runner execFile timeout handling', () => {
   // Why skipIf(win32): see the gh deadline test above.
   it.skipIf(process.platform === 'win32')('honors explicit gh timeouts', () =>
     withWedgedCliKill(async (processKill) => {
-      const promise = ghExecFileAsync(['api', 'repos/TxaisX/nightshift/issues/5388'], {
+      const promise = ghExecFileAsync(['api', 'repos/TxaisX/kolux/issues/5388'], {
         cwd: '/repo',
         timeout: 1234
       })

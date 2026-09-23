@@ -17,24 +17,24 @@ import {
 describe('agent feature skill commands', () => {
   it('builds a global install command by default', () => {
     expect(buildAgentFeatureSkillInstallCommand(['kolux-cli'])).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global'
+      'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli --global'
     )
   })
 
   it('drops --global when installing locally', () => {
     expect(buildAgentFeatureSkillInstallCommand(['kolux-cli'], { global: false })).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli'
+      'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli'
     )
   })
 
   it('repeats --skill per name for multi-skill installs', () => {
     expect(buildAgentFeatureSkillInstallCommand(['kolux-cli', 'orchestration'])).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --skill orchestration --global'
+      'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli --skill orchestration --global'
     )
     expect(buildAgentFeatureSkillInstallArgs(['kolux-cli', 'orchestration'])).toEqual([
       'skills',
       'add',
-      'https://github.com/TxaisX/nightshift',
+      'https://github.com/TxaisX/kolux',
       '--skill',
       'kolux-cli',
       '--skill',
@@ -79,7 +79,7 @@ describe('agent feature skill commands', () => {
     expect(
       buildAgentFeatureSkillInstallCommand(['kolux-cli'], { yes: true, agents: ['universal'] })
     ).toBe(
-      'npx skills add https://github.com/TxaisX/nightshift --skill kolux-cli --global --agent universal -y'
+      'npx skills add https://github.com/TxaisX/kolux --skill kolux-cli --global --agent universal -y'
     )
     expect(buildAgentFeatureSkillUpdateCommand(['kolux-cli'], { global: false, yes: true })).toBe(
       'npx skills update kolux-cli --project -y'

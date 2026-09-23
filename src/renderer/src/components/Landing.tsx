@@ -33,7 +33,7 @@ type ShortcutItem = {
 }
 
 // Do not deep-link to /stargazers: GitHub 404s that page for users without repo write access.
-const KOLUX_GITHUB_URL = 'https://github.com/TxaisX/nightshift'
+const KOLUX_GITHUB_URL = 'https://github.com/TxaisX/kolux'
 
 type StarButtonProps = {
   hasRepos: boolean

@@ -3,7 +3,7 @@
 Date: 2026-07-29 (revised 2026-07-30)
 
 Status: accepted architecture decision; PR A
-([#8512](https://github.com/TxaisX/nightshift/pull/8512)) merged; PR B not yet
+([#8512](https://github.com/TxaisX/kolux/pull/8512)) merged; PR B not yet
 implemented
 
 Revision note: the original decision selected a constrained XLIFF 2.0 profile

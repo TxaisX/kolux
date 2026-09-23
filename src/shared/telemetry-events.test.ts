@@ -150,7 +150,7 @@ describe('app_starred_kolux schema', () => {
   it('rejects extra keys via .strict()', () => {
     const parsed = eventSchemas.app_starred_kolux.safeParse({
       source: 'landing',
-      repo: 'TxaisX/nightshift'
+      repo: 'TxaisX/kolux'
     })
     expect(parsed.success).toBe(false)
   })

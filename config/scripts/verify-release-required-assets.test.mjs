@@ -100,7 +100,7 @@ describe('verifyRequiredReleaseAssets', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
-      verifyRequiredReleaseAssets({ repo: 'TxaisX/nightshift', tag, token: 'token' })
+      verifyRequiredReleaseAssets({ repo: 'TxaisX/kolux', tag, token: 'token' })
     ).rejects.toThrow('Missing: Kolux-1.4.27-arm64-mac.zip')
     expect(latestMacAsset).toBeTruthy()
   })
@@ -128,7 +128,7 @@ describe('verifyRequiredReleaseAssets', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
-      verifyRequiredReleaseAssets({ repo: 'TxaisX/nightshift', tag, token: 'token' })
+      verifyRequiredReleaseAssets({ repo: 'TxaisX/kolux', tag, token: 'token' })
     ).rejects.toThrow('Missing: kolux-linux-arm64.AppImage.blockmap')
     expect(arm64Manifest).toBeTruthy()
   })

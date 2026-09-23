@@ -15,17 +15,17 @@ function parseParams(methodName: string, params: unknown): { hostId: string } {
 const CREATING_METHODS = [
   {
     name: 'projectHostSetup.setupExistingFolder',
-    base: { projectId: 'github:TxaisX/nightshift', path: '/srv/kolux' }
+    base: { projectId: 'github:TxaisX/kolux', path: '/srv/kolux' }
   },
   {
     name: 'projectHostSetup.clone',
     base: {
-      projectId: 'github:TxaisX/nightshift',
-      url: 'https://github.com/TxaisX/nightshift.git',
+      projectId: 'github:TxaisX/kolux',
+      url: 'https://github.com/TxaisX/kolux.git',
       destination: '/srv'
     }
   },
-  { name: 'projectHostSetup.create', base: { projectId: 'github:TxaisX/nightshift' } }
+  { name: 'projectHostSetup.create', base: { projectId: 'github:TxaisX/kolux' } }
 ] as const
 
 describe('project host setup self-host stamp', () => {
@@ -53,11 +53,11 @@ describe('project host setup self-host stamp', () => {
   // Two clients paired with the same server now converge on one row instead of one each.
   it('collapses two different clients onto the same host id', () => {
     const fromClientA = parseParams('projectHostSetup.create', {
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
     })
     const fromClientB = parseParams('projectHostSetup.create', {
-      projectId: 'github:TxaisX/nightshift',
+      projectId: 'github:TxaisX/kolux',
       hostId: 'runtime:bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
     })
 

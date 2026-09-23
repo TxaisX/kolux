@@ -380,11 +380,11 @@ describe('SkillFreshnessUpdateDialog', () => {
       state: 'success',
       names: ['kolux-cli'],
       finishedAt: 2,
-      output: 'Checking skills from source: TxaisX/nightshift\n  ✓ Updated kolux-cli'
+      output: 'Checking skills from source: TxaisX/kolux\n  ✓ Updated kolux-cli'
     })
 
     expect(container?.querySelector('pre')?.textContent).toContain(
-      'Checking skills from source: TxaisX/nightshift'
+      'Checking skills from source: TxaisX/kolux'
     )
   })
 
@@ -533,7 +533,7 @@ describe('SkillFreshnessUpdateDialog', () => {
     await openViaRequest()
 
     expect(container?.textContent).toContain(
-      'npx skills add https://github.com/TxaisX/nightshift --skill orchestration --global'
+      'npx skills add https://github.com/TxaisX/kolux --skill orchestration --global'
     )
   })
 
@@ -564,7 +564,7 @@ describe('SkillFreshnessUpdateDialog', () => {
 
     const row = container?.querySelector('[data-skill-row="orchestration"]')
     expect(row?.textContent).toContain(
-      'npx skills add https://github.com/TxaisX/nightshift --skill orchestration --global'
+      'npx skills add https://github.com/TxaisX/kolux --skill orchestration --global'
     )
     expect(row?.textContent).not.toContain('This is a project skill, not a global one')
     // Still listed, though — ownership silences the explanation, never the location.

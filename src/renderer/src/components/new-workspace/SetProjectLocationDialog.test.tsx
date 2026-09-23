@@ -59,7 +59,7 @@ function renderDialog(
       option={option}
       projectName="kolux"
       projectKind="git"
-      defaultCloneUrl="git@github.com:TxaisX/nightshift.git"
+      defaultCloneUrl="git@github.com:TxaisX/kolux.git"
       onClose={vi.fn()}
       onReady={vi.fn()}
       {...overrides}
@@ -121,7 +121,7 @@ describe('SetProjectLocationDialog', () => {
     expect(storeMocks.setupProjectClone).toHaveBeenCalledWith({
       projectId: 'project-kolux',
       hostId: 'ssh:openclaw',
-      url: 'git@github.com:TxaisX/nightshift.git',
+      url: 'git@github.com:TxaisX/kolux.git',
       destination: '/remote/kolux',
       displayName: 'kolux'
     })
@@ -181,7 +181,7 @@ describe('SetProjectLocationDialog', () => {
         option={option}
         projectName="kolux"
         projectKind="git"
-        defaultCloneUrl="https://github.com/TxaisX/nightshift.git"
+        defaultCloneUrl="https://github.com/TxaisX/kolux.git"
         onClose={onClose}
         onReady={onReady}
       />
@@ -198,7 +198,7 @@ describe('SetProjectLocationDialog', () => {
         option={null}
         projectName="kolux"
         projectKind="git"
-        defaultCloneUrl="https://github.com/TxaisX/nightshift.git"
+        defaultCloneUrl="https://github.com/TxaisX/kolux.git"
         onClose={onClose}
         onReady={onReady}
       />
@@ -218,7 +218,7 @@ describe('SetProjectLocationDialog', () => {
           option={option}
           projectName="kolux"
           projectKind="git"
-          defaultCloneUrl="git@github.com:TxaisX/nightshift.git"
+          defaultCloneUrl="git@github.com:TxaisX/kolux.git"
           onClose={vi.fn()}
           onReady={onReady}
         />

@@ -7,24 +7,24 @@ describe('pluginInstallSourceSchema marketplace provenance', () => {
       pluginInstallSourceSchema.parse({
         kind: 'marketplace',
         marketplace: {
-          url: 'https://github.com/TxaisX/nightshift-plugins.git',
+          url: 'https://github.com/TxaisX/kolux-plugins.git',
           ref: 'main',
           resolvedCommit: 'a'.repeat(40)
         },
         plugin: {
-          url: 'git@github.com:TxaisX/nightshift-skills.git',
+          url: 'git@github.com:TxaisX/kolux-skills.git',
           ref: 'v1.0.0'
         }
       })
     ).toEqual({
       kind: 'marketplace',
       marketplace: {
-        url: 'https://github.com/TxaisX/nightshift-plugins.git',
+        url: 'https://github.com/TxaisX/kolux-plugins.git',
         ref: 'main',
         resolvedCommit: 'a'.repeat(40)
       },
       plugin: {
-        url: 'git@github.com:TxaisX/nightshift-skills.git',
+        url: 'git@github.com:TxaisX/kolux-skills.git',
         ref: 'v1.0.0'
       }
     })
@@ -35,12 +35,12 @@ describe('pluginInstallSourceSchema marketplace provenance', () => {
       pluginInstallSourceSchema.safeParse({
         kind: 'marketplace',
         marketplace: {
-          url: 'https://github.com/TxaisX/nightshift-plugins.git',
+          url: 'https://github.com/TxaisX/kolux-plugins.git',
           ref: '',
           resolvedCommit: 'main'
         },
         plugin: {
-          url: 'https://github.com/TxaisX/nightshift-skills.git',
+          url: 'https://github.com/TxaisX/kolux-skills.git',
           ref: ''
         }
       }).success

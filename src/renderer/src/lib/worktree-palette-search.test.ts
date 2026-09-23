@@ -41,7 +41,7 @@ const repoMap = new Map<string, Repo>([
     {
       id: 'repo-1',
       path: '/repo/kolux',
-      displayName: 'TxaisX/nightshift',
+      displayName: 'TxaisX/kolux',
       badgeColor: '#22c55e',
       addedAt: 0
     }
@@ -412,7 +412,7 @@ describe('worktree-palette-search', () => {
     expect(results).toHaveLength(1)
     expect(results[0].worktreeId).toBe('wt-main')
     expect(results[0].matchedFields).toEqual(['repo', 'branch'])
-    // Why: 'nightshift' sits at index 7 in the repo's 'TxaisX/nightshift' display name.
+    // Why: 'nightshift' sits at index 7 in the repo's 'TxaisX/kolux' display name.
     expect(results[0].repoRanges).toEqual([{ start: 7, end: 17 }])
     expect(results[0].branchRanges).toEqual([{ start: 0, end: 4 }])
   })
@@ -465,7 +465,7 @@ describe('worktree-palette-search', () => {
         makeWorktree({ id: 'wt-issue', linkedIssue: 14198 }),
         makeWorktree({ id: 'wt-other', linkedIssue: 7, displayName: 'github.com' })
       ],
-      'https://github.com/TxaisX/nightshift/issues/14198',
+      'https://github.com/TxaisX/kolux/issues/14198',
       repoMap
     )
 
@@ -495,12 +495,12 @@ describe('worktree-palette-search', () => {
             type: 'pr',
             number: 12789,
             title: 'Perf',
-            url: 'https://github.com/TxaisX/nightshift/pull/12789'
+            url: 'https://github.com/TxaisX/kolux/pull/12789'
           }
         }),
         makeWorktree({ id: 'wt-issue', linkedIssue: 12789 })
       ],
-      'https://github.com/TxaisX/nightshift/pull/12789',
+      'https://github.com/TxaisX/kolux/pull/12789',
       repoMap
     )
 

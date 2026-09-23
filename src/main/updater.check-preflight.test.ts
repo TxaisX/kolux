@@ -442,7 +442,7 @@ describe('updater', () => {
     })
     expect(autoUpdaterMock.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://github.com/TxaisX/nightshift/releases/download/v1.4.36-rc.5'
+      url: 'https://github.com/TxaisX/kolux/releases/download/v1.4.36-rc.5'
     })
     expect(
       sendMock.mock.calls

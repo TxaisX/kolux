@@ -261,7 +261,7 @@ describe('project host setup projection', () => {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
           source: 'github',
-          label: 'TxaisX/nightshift'
+          label: 'TxaisX/kolux'
         }
       }),
       repo({
@@ -273,23 +273,21 @@ describe('project host setup projection', () => {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
           source: 'github',
-          // Why 'TxaisX/nightshift' not 'Kolux': the icon label spells the real, still-unrenamed
-          // GitHub address (AGENTS.md keeps TxaisX/nightshift* addresses as-is), and the stale
+          // Why 'TxaisX/kolux' not 'Kolux': the icon label spells the real, still-unrenamed
+          // GitHub address (AGENTS.md keeps TxaisX/kolux* addresses as-is), and the stale
           // 'Txais/Kolux' typo here never matched the sibling below, so they never merged.
-          label: 'TxaisX/nightshift'
+          label: 'TxaisX/kolux'
         }
       })
     ])
 
     expect(projection.projects).toHaveLength(1)
     expect(projection.projects[0]).toMatchObject({
-      id: 'github:txaisx/nightshift',
+      id: 'github:txaisx/kolux',
       sourceRepoIds: ['local-repo', 'remote-repo'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
     })
-    expect(
-      getProjectHostSetupsForProject(projection.setups, 'github:txaisx/nightshift')
-    ).toHaveLength(2)
+    expect(getProjectHostSetupsForProject(projection.setups, 'github:txaisx/kolux')).toHaveLength(2)
   })
 
   it('uses git remote identity as a provider identity fallback', () => {
@@ -299,9 +297,9 @@ describe('project host setup projection', () => {
         path: '/Users/alice/stably/kolux',
         displayName: 'kolux',
         gitRemoteIdentity: {
-          canonicalKey: 'github.com/TxaisX/nightshift',
+          canonicalKey: 'github.com/TxaisX/kolux',
           remoteName: 'origin',
-          remoteUrl: 'git@github.com:TxaisX/nightshift.git'
+          remoteUrl: 'git@github.com:TxaisX/kolux.git'
         }
       }),
       repo({
@@ -312,19 +310,19 @@ describe('project host setup projection', () => {
           type: 'image',
           src: 'https://github.com/txais.png?size=64',
           source: 'github',
-          label: 'TxaisX/nightshift'
+          label: 'TxaisX/kolux'
         }
       })
     ])
 
     expect(projection.projects).toHaveLength(1)
     // Why 'nightshift' not 'kolux': the git remote and icon label both spell the real,
-    // still-unrenamed GitHub address (AGENTS.md keeps TxaisX/nightshift* addresses as-is).
+    // still-unrenamed GitHub address (AGENTS.md keeps TxaisX/kolux* addresses as-is).
     expect(projection.projects[0]).toMatchObject({
-      id: 'github:txaisx/nightshift',
+      id: 'github:txaisx/kolux',
       displayName: 'kolux',
       sourceRepoIds: ['canonical-local-repo', 'old-branch-checkout'],
-      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'nightshift' }
+      providerIdentity: { provider: 'github', owner: 'TxaisX', repo: 'kolux' }
     })
   })
 
@@ -565,7 +563,7 @@ describe('isGitHubBackedRepo', () => {
         type: 'image',
         src: 'https://github.com/txais.png?size=64',
         source: 'github',
-        label: 'TxaisX/nightshift'
+        label: 'TxaisX/kolux'
       }
     })
     expect(isGitHubBackedRepo(target)).toBe(true)

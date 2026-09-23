@@ -16,12 +16,12 @@ describe('worktree selector recovery', () => {
   it('names the offending value and the valid forms on a bare repo id', () => {
     const output = formatCliError(selectorNotFound(), {
       commandPath: ['orchestration', 'worker-start'],
-      worktreeSelector: 'id:github:TxaisX/nightshift'
+      worktreeSelector: 'id:github:TxaisX/kolux'
     })
 
     expect(output).toContain('No Kolux workspace matched the worktree selector')
-    expect(output).toContain('id:github:TxaisX/nightshift')
-    expect(output).toContain('Did you mean: id:github:TxaisX/nightshift::<absolute-path>')
+    expect(output).toContain('id:github:TxaisX/kolux')
+    expect(output).toContain('Did you mean: id:github:TxaisX/kolux::<absolute-path>')
     expect(output).toContain('Valid selector forms:')
     expect(output).toContain('a bare repository id is not a worktree id')
   })

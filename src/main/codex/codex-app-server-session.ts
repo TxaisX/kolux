@@ -21,7 +21,7 @@ export type CodexAppServerInvocation = {
    * The resolved CLI path, used to pair the CLI with the `node` it was installed
    * against — without it a CLI resolved out of a version-manager directory runs
    * under whatever node leads PATH and dies on a NODE_MODULE_VERSION mismatch
-   * (TxaisX/nightshift#10932).
+   * (TxaisX/kolux#10932).
    *
    * Required, and `null` only for a guest-side launcher (wsl.exe) where the host
    * path means nothing. Optional would let a native builder omit it and silently

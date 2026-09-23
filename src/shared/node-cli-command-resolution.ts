@@ -220,7 +220,7 @@ function getNvmVersionDirectories(homePath: string): string[] {
   // a CLI runs under whenever the login-shell probe does not land. Newest is
   // usually the version the user just installed and has put nothing into, so it
   // hid every globally installed CLI and mismatched native module ABIs
-  // (TxaisX/nightshift#10932). The rest stay behind it as fallbacks, so a CLI
+  // (TxaisX/kolux#10932). The rest stay behind it as fallbacks, so a CLI
   // installed outside the default version is still reachable.
   const preferred = resolveNvmDefaultVersion(nvmVersionsDir, installed)
   const ordered = preferred
@@ -331,7 +331,7 @@ function firstWindowsPathEnvKey(env: NodeJS.ProcessEnv): string {
  * when PATH misses, so it can hand back `~/.nvm/versions/node/v20.x/bin/codex`
  * while PATH still leads with v22. The CLI's `#!/usr/bin/env node` shebang then
  * loads a v20-built native module under a v22 ABI and the agent dies on first
- * require (TxaisX/nightshift#10932). Pair the binary with the runtime it was
+ * require (TxaisX/kolux#10932). Pair the binary with the runtime it was
  * installed against instead.
  *
  * Only prepends when the sibling `node` really exists, so a CLI resolved from a

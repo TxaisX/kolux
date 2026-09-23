@@ -47,9 +47,9 @@ const SidebarFeedbackDialog = lazyWithRetry(
   { reloadKey: 'sidebar-feedback-dialog' }
 )
 
-const DOCS_URL = 'https://github.com/TxaisX/nightshift#readme'
-const CHANGELOG_URL = 'https://github.com/TxaisX/nightshift/commits/main'
-const GITHUB_URL = 'https://github.com/TxaisX/nightshift'
+const DOCS_URL = 'https://github.com/TxaisX/kolux#readme'
+const CHANGELOG_URL = 'https://github.com/TxaisX/kolux/commits/main'
+const GITHUB_URL = 'https://github.com/TxaisX/kolux'
 const NO_UPDATE_CHECK_MODIFIERS = {
   altKey: false,
   ctrlKey: false,

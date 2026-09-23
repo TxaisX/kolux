@@ -5,7 +5,7 @@ describe('gitExecMutatesRepository', () => {
   it.each([
     [['remote', 'add', 'pr-contributor-kolux', 'https://github.com/contributor/kolux.git']],
     [['remote', 'remove', 'pr-contributor-kolux']],
-    [['clone', '--', 'https://github.com/TxaisX/nightshift.git', 'kolux']],
+    [['clone', '--', 'https://github.com/TxaisX/kolux.git', 'kolux']],
     [['commit', '--allow-empty', '-m', 'Initial commit']],
     [['init']]
   ])('treats %j as mutating', (args) => {
