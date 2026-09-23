@@ -5,6 +5,16 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-21.
 
+## 2026-09-22: one WebGL hiccup no longer slows every new terminal
+
+- In `auto` GPU mode (the default), one failed WebGL attach used to set a module-global flag that put every *new* terminal on the DOM renderer until the user changed the GPU setting. That contradicted the file's own per-pane-latch comment. On Windows the auto policy always allows WebGL, so a routine GPU reset after sleep stranded the session. Superset measured DOM at 1.2x to 13.7x the CPU of WebGL (their #6874).
+- Now `pane-webgl-renderer.ts` demotes new auto panes only after **3 consecutive** failed attaches, and any success resets the streak. A GPU that never gives WebGL still stops costing each pane an attempt. The per-pane latch is unchanged. Tests: `pane-webgl-context-recovery.test.ts` (one failure doesn't demote a healthy pane) and `pane-lifecycle.test.ts` (three in a row do). The pane-manager suite passes (859).
+- Other performance gaps found in the 2026-09-22 competitor study, not done yet:
+  - No periodic WebGL glyph-atlas budget (superset resets it after 32 atlas pages, #6352).
+  - Eviction-exempt hidden tabs stay mounted at any age (`pane-manager-registry.ts` notes a ~1.3 GB heap).
+  - Nothing reacts to system memory pressure. Agent hibernation is idle-only and `experimentalAgentHibernation` defaults to false.
+  - The window waits for proxy and plugin setup before opening (`main-process-ready.ts`). Measure it with `pnpm bench:startup` first.
+
 ## 2026-09-22: a quieter left sidebar
 
 - **Removed on the owner's call:** the sidebar's Search, Floor and Agent grid rows, and the titlebar's Inbox · Floor · Code switch (`ModeSwitch.tsx` deleted). Inbox and Floor lost their default Ctrl+Shift+1/2 shortcuts, so nothing strands a user in a view that has no way back. Ctrl+Shift+3 (Code) and the worktree palette shortcut still work. The Inbox, Floor and Agent grid pages and store code are untouched; delete them in a separate pass if nobody misses them.

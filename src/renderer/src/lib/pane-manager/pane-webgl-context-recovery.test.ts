@@ -96,6 +96,20 @@ describe('terminal WebGL context recovery', () => {
     expect(console.warn).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps one auto pane's failed attach from demoting other auto panes to DOM", () => {
+    const failing = createPane({ loadAddon: throwWebglUnavailable })
+    failing.terminalGpuAcceleration = 'auto'
+    const healthy = createPane()
+    healthy.terminalGpuAcceleration = 'auto'
+
+    attachWebgl(failing)
+    expect(failing.webglAddon).toBeNull()
+
+    attachWebgl(healthy)
+    expect(healthy.terminal.loadAddon).toHaveBeenCalledTimes(1)
+    expect(healthy.webglAddon).not.toBeNull()
+  })
+
   it('retries a backed-off attach on the next rendering resume', () => {
     const pane = createPane({ loadAddon: throwWebglUnavailable })
 
