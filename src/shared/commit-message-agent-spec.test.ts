@@ -523,13 +523,13 @@ describe('buildArgs (OpenCode)', () => {
     const prompt = `PROMPT ${'x'.repeat(1024)}`
     const args = spec.buildArgs({
       prompt,
-      model: 'opencode/deepseek-v4-flash-free'
+      model: 'opencode/big-pickle'
     })
 
     expect(args).toEqual([
       'run',
       '--model',
-      'opencode/deepseek-v4-flash-free',
+      'opencode/big-pickle',
       '--agent',
       'build',
       '--format',

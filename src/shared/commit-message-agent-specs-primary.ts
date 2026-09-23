@@ -177,8 +177,8 @@ export function buildPrimaryCommitMessageAgentSpecs({
           // Why: OpenCode's hosted GPT models can require workspace billing even
           // when `opencode models` lists them. This free model is available in
           // discovery and works as a usable out-of-the-box default.
-          id: 'opencode/deepseek-v4-flash-free',
-          label: 'OpenCode DeepSeek V4 Flash Free'
+          id: 'opencode/big-pickle',
+          label: 'OpenCode Big Pickle (free)'
         },
         {
           id: 'opencode/gpt-5.4-mini',
@@ -186,7 +186,7 @@ export function buildPrimaryCommitMessageAgentSpecs({
           ...withOpenAiThinking('gpt-5.4-mini')
         }
       ],
-      defaultModelId: 'opencode/deepseek-v4-flash-free'
+      defaultModelId: 'opencode/big-pickle'
     },
     pi: {
       id: 'pi',

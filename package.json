@@ -47,6 +47,7 @@
     "tc:node": "pnpm run typecheck:node",
     "tc:cli": "pnpm run typecheck:cli",
     "tc:web": "pnpm run typecheck:web",
+    "ship": "node config/scripts/ship.mjs",
     "tc": "pnpm run typecheck",
     "typecheck:node": "tsc --noEmit -p config/tsconfig.node.json",
     "typecheck:cli": "tsc --noEmit -p config/tsconfig.tc.cli.json",
