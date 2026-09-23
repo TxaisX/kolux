@@ -1251,6 +1251,20 @@ html.native-shell .app-layout {
   box-shadow: 0 1px 2px color-mix(in srgb, var(--worktree-sidebar-foreground) 3%, transparent);
 }
 
+/* Why: a thin left bar marks the current workspace without a heavier fill, so it stays
+   readable when several rows are busy at once (Conductor's pattern). */
+[data-worktree-card-surface][data-worktree-card-active='primary']::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--terminal-pane-locate);
+  pointer-events: none;
+}
+
 [data-worktree-card-surface][data-worktree-card-active='secondary'] {
   border-color: color-mix(in srgb, var(--sidebar-ring) 25%, transparent);
   background: color-mix(in srgb, var(--sidebar-accent) 45%, transparent);

@@ -10,7 +10,7 @@ Last updated: 2026-09-21.
 - **Removed on the owner's call:** the sidebar's Search, Floor and Agent grid rows, and the titlebar's Inbox · Floor · Code switch (`ModeSwitch.tsx` deleted). Inbox and Floor lost their default Ctrl+Shift+1/2 shortcuts, so nothing strands a user in a view that has no way back. Ctrl+Shift+3 (Code) and the worktree palette shortcut still work. The Inbox, Floor and Agent grid pages and store code are untouched; delete them in a separate pass if nobody misses them.
 - **Dark sidebar is `var(--card)` (#171717), not #2a2a2a.** #2a2a2a made the sidebar the brightest surface in the app. Its luminance step over the canvas was about 2x Zed's and 4x Superset's, with the thinnest border of the group. The titlebar was already `--card`, so the left column now reads as one panel. Selected rows use `--secondary`. Light mode is unchanged, and was already in line with VS Code and Zed.
 - **Verified in the dev app (dark theme, CDP DOM checks):** nav rows = Onboarding checklist, Tasks. No search row, no Mode switch, sidebar computed background rgb(23,23,23). The screenshot hung as usual on a hidden window.
-- **Candidates, not done:** a left accent bar on the active workspace row (Conductor's pattern), and a solid sidebar border token instead of the 7% white wash. Competitor evidence is in the 2026-09-22 field study artifact.
+- **The current workspace card has a 2px left bar** in `--terminal-pane-locate` (the app's "you are here" blue), via `::before` on `[data-worktree-card-active='primary']` in `main.css`. Verified in the dev app: 2px wide, blue, left -1px. The sidebar divider needed no change: 7% white over #171717 comes out about #272727, VS Code's #2B2B2B.
 
 ## 2026-09-22: one worktree per agent, OpenCode does the git work
 
