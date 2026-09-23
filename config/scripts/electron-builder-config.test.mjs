@@ -207,6 +207,37 @@ describe('electron-builder config', () => {
     )
   })
 
+  // Why: the CLI runs under ELECTRON_RUN_AS_NODE, which cannot require through app.asar, so every
+  // main-process module it imports must be unpacked. A missing entry only fails inside a packaged
+  // build (v0.10.0's first release run died on pre-kolux-userdata-migration).
+  it('unpacks every main-process module the CLI imports', async () => {
+    const { globSync } = await import('node:fs')
+    const unpacked = electronBuilderConfig.asarUnpack
+    const covers = (outPath) =>
+      unpacked.some(
+        (pattern) =>
+          pattern === outPath ||
+          (pattern.endsWith('/**') && outPath.startsWith(pattern.slice(0, -2)))
+      )
+    const cliFiles = globSync('src/cli/**/*.ts', { cwd: REPO_ROOT }).filter(
+      (file) => !file.includes('.test.')
+    )
+    const missing = []
+    for (const file of cliFiles) {
+      const text = await readFile(join(REPO_ROOT, file), 'utf8')
+      for (const [, specifier] of text.matchAll(/from '((?:\.\.\/)+main\/[^']+)'/g)) {
+        if (/^import type/m.test(text.slice(0, text.indexOf(specifier)).split('\n').at(-1) ?? '')) {
+          continue
+        }
+        const outPath = `out/main/${specifier.replace(/^(?:\.\.\/)+main\//, '')}.js`
+        if (!covers(outPath)) {
+          missing.push(`${file} -> ${outPath}`)
+        }
+      }
+    }
+    expect(missing).toEqual([])
+  })
+
   it('unpacks the compiled CommonJS boundary with CLI runtime files', () => {
     expect(electronBuilderConfig.asarUnpack).toEqual(
       expect.arrayContaining([

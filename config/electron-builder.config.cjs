@@ -38,7 +38,8 @@ const isWinAdhoc = process.env.KOLUX_WIN_ADHOC === '1'
 const isWinDevChannel = isWinHourly || isWinDaily || isWinAdhoc
 // Why: only a SignPath-signed build may advertise its publisherName; see signtoolOptions below.
 const isWinUnsigned = isWinDevChannel || process.env.KOLUX_WIN_SIGNPATH !== '1'
-const isMacRelease = process.env.KOLUX_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
+const isMacRelease =
+  process.env.KOLUX_MAC_RELEASE === '1' || isMacHourly || isMacDaily || isMacAdhoc
 const isLinuxArm64Release = process.env.KOLUX_LINUX_ARM64_RELEASE === '1'
 const localBuildVersion =
   isMacRelease || isWinDevChannel ? undefined : process.env.KOLUX_LOCAL_BUILD_VERSION
@@ -254,6 +255,9 @@ module.exports = {
     'out/main/antigravity/**',
     'out/main/claude/**',
     'out/main/claude-accounts/keychain.js',
+    // Why: cli/runtime/metadata.js runs the Nightshift → Kolux carry-over when the CLI starts
+    // before the app, and ELECTRON_RUN_AS_NODE cannot require it from inside the asar.
+    'out/main/startup/pre-kolux-userdata-migration.js',
     'out/main/codex/**',
     'out/main/copilot/**',
     'out/main/cursor/**',
