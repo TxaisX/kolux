@@ -4,11 +4,11 @@ Read [`HANDOFF.md`](./HANDOFF.md) first. It carries the current state of the pro
 was recently changed and why, what is verified versus assumed, and the traps that have
 already cost time. Update it when you finish a piece of work.
 
-# Git: OpenCode Commits, Merges, and Pushes
+# Git: `pnpm ship` Commits, Merges, and Pushes
 
 Every agent works in its own worktree, never in the primary checkout (several agents in one folder commit each other's half-done work). Start one with `kolux worktree create --name <task> --no-parent --setup run`; worktrees live under `G:/Dev/kolux-workspaces`. Create more whenever a new task starts.
 
-Claude and Codex write and change code; they do not run `git commit`, `git merge`, or `git push` here. Run `pnpm ship` from your worktree whenever a piece of work is done: it stages everything in that worktree, has a free OpenCode model write the commit message, commits, and pushes the worktree's branch to GitHub, so every step is a saved version. When the task is complete, run `pnpm ship --main` to also land it on `main`, on GitHub and in the local primary checkout. If ship reports a conflict, resolving it is code work for Claude/Codex; then run it again. Never pass `--no-verify` or force-push.
+Claude and Codex write and change code; they do not run `git commit`, `git merge`, or `git push` here. Run `pnpm ship` from your worktree whenever a piece of work is done: it stages everything in that worktree, has Claude Haiku (`claude -p`, a fraction of a cent per commit) write the commit message, commits, and pushes the worktree's branch to GitHub, so every step is a saved version. When the task is complete, run `pnpm ship --main` to also land it on `main`, on GitHub and in the local primary checkout. If ship reports a conflict, resolving it is code work for Claude/Codex; then run it again. Never pass `--no-verify` or force-push.
 
 # Design System
 
