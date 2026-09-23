@@ -5,6 +5,13 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-21.
 
+## 2026-09-22: one worktree per agent, OpenCode does the git work
+
+- Agents no longer commit, merge or push. `pnpm ship` (`config/scripts/ship.mjs`) stages the worktree, has OpenCode's free `opencode/big-pickle` write the message, commits, and pushes the branch; `pnpm ship --main` also lands it on GitHub main and fast-forwards the primary checkout. It merges (never rebases) when GitHub is ahead, and on any conflict it aborts and pushes nothing. Rule text is in AGENTS.md.
+- OpenCode is `@opencode/cli` v2 (same maintainer as `opencode-ai`). No API key is needed for its free models. The Source Control commit-message default moved to `opencode/big-pickle` because `deepseek-v4-flash-free` was retired.
+- **Not fixed:** v2 removed `run --variant`, so the commit-message generator fails if someone picks `opencode/gpt-5.4-mini` with a thinking level. Fixing it needs v1/v2 detection.
+- Worktree base for this project is `G:/Dev/kolux-workspaces`, set per project with `kolux project setup-update --worktree-base-path`. Kolux appends the repo name, so paths are `…/kolux/kolux/<name>`. The old location nested worktrees *inside* the primary checkout, where `git add -A` would have committed them as embedded repos.
+
 ## Current pass: the product is renamed Nightshift → Kolux
 
 - Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). Only `LICENSE` keeps its original text.
