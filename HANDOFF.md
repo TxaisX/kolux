@@ -58,9 +58,11 @@ Last updated: 2026-09-23.
   `interactive-tool.ts`, `claude-events.ts`, `native-chat-interactive-prompt.ts`,
   `NativeChatInteractiveCard.tsx`, `NativeChatApprovalCard.tsx`,
   `terminal-pane/TerminalPaneHeaderRow.tsx`, `i18n/locales/en.json` (new `plan-review` keys).
-- Not done: the kolux-run runtime check (another session's dev app already owned the shared
-  dev profile/port 9334 when this pass wrapped up — coordinator asked this to be skipped and
-  run later).
+- **Verified in the dev app (2026-09-23, isolated profile, CDP):** a live Claude pty doesn't run in dev shells, so a waiting status carrying the captured fixture plan was injected into a real pane's `agentStatusByPaneKey`. The pane header showed "Review plan". Clicking it opened the sheet with the plan's sections, a Comment button per section, a general note, and "Request changes (0)" (disabled until there's a comment) beside Approve. The keystrokes Approve and Request changes send were not exercised live; `plan-review-send.test.ts` covers their order and timing.
+- **Step 0 result:** Claude Code 2.1.280 fires both `PreToolUse` and `PermissionRequest` for ExitPlanMode, and each carries the full text in `tool_input.plan`. Fixtures are in `src/main/claude/__fixtures__/claude-exit-plan-mode-*.json`.
+- **Approve sends `'1'`**, like the existing approval card. In most Claude versions that is "Yes, and auto-accept edits", so the label stays a neutral "Approve".
+- **Test trap:** a hand-built `agentStatusByPaneKey` entry needs `stateHistory: []`, or the runtime-graph sync subscriber throws and the app shows "Kolux hit a recoverable UI error".
+
 ## 2026-09-23: OpenCode support removed entirely
 
 - **Owner's call:** Kolux focuses on frontier-lab agents, so OpenCode is gone, not hidden: the agent id, launcher/settings/status-bar/stats UI, OpenCode Go usage scraping and its account cookie, session-history scanning, hook plugin, PTY env/overlays, the `@opencode` orchestration address, `~/.opencode/bin` PATH discovery, the pet, and locale strings (~570 files). `pnpm ship` writes commit messages with Claude Haiku instead.
