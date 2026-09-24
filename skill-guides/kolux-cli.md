@@ -4,8 +4,9 @@ description: >-
   Operate Kolux-managed worktrees, folder contexts, terminals, repos, automations, artifacts,
   skill sharing, worktree comments, and Kolux's embedded browser through the `kolux` CLI. Use
   when the user says "$kolux-cli", "Kolux worktree", "child worktree", "spawn codex/claude in a
-  worktree", "read/wait/send Kolux terminal", "handoff" / "handover" / "give this to another
-  agent", "Kolux browser", "kolux artifacts", or "share skills". Prefer it over raw git
+  worktree", "read/wait/send Kolux terminal", "hand this off to another Kolux worktree/agent",
+  "Kolux browser", "kolux artifacts", or "share skills". Not for a session handoff note
+  (the /handoff skill) or for in-process subagents. Prefer it over raw git
   worktree, ad hoc PTYs, or Computer Use when Kolux state is involved. Use Computer Use only
   for external windows or desktop UI that needs OS-level control, and Playwright or CDP for
   external pages.

@@ -23,17 +23,17 @@
       "name": "kolux-cli",
       "sourcePath": "skills/kolux-cli",
       "releaseRevision": 38,
-      "packageDigest": "174116eb2d824bd3230e3bdeb4454a603b406769a7f8b565e5829b663eb45cea",
-      "gitTreeSha": "5a308713573e1d7566ff7baf0ee63280ac8fce5d",
+      "packageDigest": "91dd28e947e38574aa357ca58adc6393b812d8df109389128dac18cb571925bf",
+      "gitTreeSha": "26401326d3217697817285a82a119b0ae59a3c02",
       "files": [
         {
           "path": "SKILL.md",
-          "size": 2266,
+          "size": 2343,
           "executable": false,
           "classification": "text",
-          "exactSha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e",
-          "textNormalizedSha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e",
-          "identitySha256": "e8e085228523b3148edbebdeae9f9798a429fb6f42eeca08f80dff5cdaa5ff9e"
+          "exactSha256": "64ade80af4ad04ee91d26800a52c440fff86328c85b7e7c9ce22e909a6fc8d2a",
+          "textNormalizedSha256": "64ade80af4ad04ee91d26800a52c440fff86328c85b7e7c9ce22e909a6fc8d2a",
+          "identitySha256": "64ade80af4ad04ee91d26800a52c440fff86328c85b7e7c9ce22e909a6fc8d2a"
         }
       ]
     },
