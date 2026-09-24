@@ -25,7 +25,7 @@ import {
 } from 'node:fs'
 import type { Dirent } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, dirname, isAbsolute, join } from 'node:path'
+import { basename, dirname, join, win32 } from 'node:path'
 
 const MIGRATION_COMPLETE_MARKER = '.kolux-legacy-rename-migration-complete'
 // Mirrors LEGACY_BACKUP_COUNT in kolux-profiles/profile-storage-paths.ts.
@@ -98,7 +98,8 @@ function translatedBasename(name: string): string {
 // untouched — it may point outside the migrated tree entirely, and rewriting it would risk
 // aiming at a path this migration never created.
 export function translatedSymlinkTarget(rawTarget: string): string {
-  if (isAbsolute(rawTarget)) {
+  // Why: win32.isAbsolute also covers POSIX '/' roots, matching the host-independent split below.
+  if (win32.isAbsolute(rawTarget)) {
     return rawTarget
   }
   return rawTarget

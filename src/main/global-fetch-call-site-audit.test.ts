@@ -69,7 +69,9 @@ function globalFetchLineCounts(srcRoot: string): Map<string, number> {
       if (
         entry.name.endsWith('.test.ts') ||
         entry.name.endsWith('.test-fixtures.ts') ||
-        entry.name.endsWith('.d.ts')
+        entry.name.endsWith('.d.ts') ||
+        // Why: generated from skill markdown; its SSRF docs quote `fetch(` as prose, never code.
+        (root === 'cli' && entry.name === 'bundled-skill-guides.ts')
       ) {
         continue
       }

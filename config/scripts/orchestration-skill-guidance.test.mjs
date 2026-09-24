@@ -290,7 +290,7 @@ describe('owned orchestration references', () => {
 
     expect(reference).toContain('task-list --ready --brief --json')
     expect(reference).toContain('`--effort` requires `--model`')
-    expect(reference).toContain('neither option combines with `--terminal`')
+    expect(reference).toContain('neither combines with `--terminal`')
     expect(reference).toContain('`launch.requested` with `launch.effective`')
     expect(reference).toContain('worker-start --task <next_task_id> --terminal')
     expect(reference).toContain('A review-only `worker_done` authorizes synthesis')

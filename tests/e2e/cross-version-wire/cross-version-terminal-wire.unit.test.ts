@@ -45,10 +45,9 @@ beforeAll(async () => {
     loadTerminalWireBuild(WORKING_TREE),
     loadTerminalWireBuild(baselineRef)
   ])
-  ;[currentReference, baselineReference] = await Promise.all([
-    runTerminalSkewJourney({ hostBuild: current, clientBuild: current }),
-    runTerminalSkewJourney({ hostBuild: baseline, clientBuild: baseline })
-  ])
+  // Why: each journey's link owns the stubbed global `window`, so journeys cannot overlap.
+  currentReference = await runTerminalSkewJourney({ hostBuild: current, clientBuild: current })
+  baselineReference = await runTerminalSkewJourney({ hostBuild: baseline, clientBuild: baseline })
 }, SUITE_TIMEOUT_MS)
 
 function expectCompleteJourney(record: JourneyRecord): void {

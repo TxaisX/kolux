@@ -58,6 +58,11 @@ function isTestFile(path: string): boolean {
   )
 }
 
+// Why: generated from skill markdown; its security docs quote `require('child_process')` as prose, never code.
+function isGeneratedDocBundle(path: string): boolean {
+  return path.replaceAll('\\', '/').endsWith('src/cli/bundled-skill-guides.ts')
+}
+
 function collectSourceFiles(root: string): string[] {
   let found: string[] = []
   let entries: string[]
@@ -73,6 +78,9 @@ function collectSourceFiles(root: string): string[] {
     const full = join(root, entry)
     if (statSync(full).isDirectory()) {
       found = found.concat(collectSourceFiles(full))
+      continue
+    }
+    if (isGeneratedDocBundle(full)) {
       continue
     }
     if (SCANNED_EXTENSIONS.some((extension) => full.endsWith(extension))) {

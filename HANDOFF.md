@@ -9,7 +9,16 @@ Last updated: 2026-09-24.
 
 - **0.11.0 — x:** plan review before Claude runs, event-triggered automations, per-provider model routing, target-aware launcher refresh, the dashboard Runs view, terminal-grid layout presets and packaged update checks are new; OpenCode support is removed. Tagged `v0.11.0`; `release.yml` builds and publishes it.
 - `pnpm ship --message "<text>"` commits with that exact message instead of asking Haiku; use it for version bumps, whose message must state the x/y reason.
-- **CI is red and has been since at least 2026-09-11** (every finished `CI` run on main is a failure; the rest were cancelled by newer pushes). `release.yml` doesn't depend on it; it builds, typechecks and smoke-tests on its own, and the same build + smoke passed locally at `8abd69906`. Getting CI green is open work.
+
+## 2026-09-24: CI on main is green again
+
+- **Why it was red:** the unit step never finished. ~8,000 files take ~50 min on one runner and the job timed out at 30, which GitHub reports as *cancelled*, so every "cancelled" run looked like a superseded push. Under that, ~120 files failed: `--ignore-scripts` left `node-pty` unbuilt (no Linux prebuild, ~97 files), plus stale rename fixtures, Windows-only path assumptions, and a few real bugs.
+- **Now:** `.github/workflows/ci.yml` has a `check` job (typecheck, lint, max-lines) and a 4-shard `unit` matrix (~10 min each, `fail-fast: false`) that runs `ensure-native-runtime.mjs --runtime=node` first, the same step `pnpm test` runs, and sets a git author/committer so real-commit tests work.
+- **Real bugs fixed along the way:** the Vercel sandbox name budget was one short since the `orca-` days (names hit 129 > 128); `translatedSymlinkTarget` and the WSL mounted-drive `joinWslPath` used the host's path rules on Windows paths; the Unix CLI launchers (`resources/linux/bin/kolux-ide`, `resources/darwin/bin/kolux`) were committed without the exec bit (packaging already chmods them); a `Tui`→`TUI` message casing.
+- **Test fixes, not product bugs:** half-renamed fixtures (repos-remote, dev-channel/mac-channel repos, persistence, palette search, landing preflight, repo icon); the Codex trust-hash fixture needs its original `orca-case-b` command (the hash is of that exact string — Kolux's hashing is correct); `plugin-launch-content` now asserts on whatever launch packs ship (the fork ships none by design); the cross-version terminal journeys ran concurrently and clobbered one shared `window` (now sequential, and `terminal-wire-link.ts` refuses a second live link); the updater bridge subscribes before its snapshot on purpose.
+- **Guards:** the child_process-import and global-fetch guards now skip `src/cli/bundled-skill-guides.ts`: it's generated from skill markdown, and the koluxsecurity docs quote `require('child_process')` / `fetch(` as prose.
+- **Flake closed:** terminal tests could leave a real timer that fired after the file's global sweep deleted `window` (kolux#14728). `pty-connection-test-environment.ts` now tracks real timers while its globals are installed and cancels them at teardown.
+- **Trap:** `vitest-agent-session-env-isolation.ts` strips every `KOLUX_*` env var, so `KOLUX_CROSS_VERSION_BASELINE_REF` never reaches the cross-version test. Locally the repo has upstream tags to v1.4.199, so that test picks the wrong baseline; it's only meaningful on CI.
 
 ## 2026-09-23: review the plan before Claude runs it (v1)
 
@@ -276,8 +285,7 @@ triggers `release.yml`.
   - The vitest setup also removes globals a file added once it finishes, so a node test's leaked `globalThis.window` can't poison the next happy-dom file on the same fork worker.
 - **Still red:**
   - About 43 happy-dom renderer files fail with `document/window is not defined` only deep into a full run. They pass alone, in a 958-file happy-dom batch, and in mixed batches. The cause is fork-worker global corruption that couldn't be reproduced below full-suite scale, and `pool: 'vmForks'` fixes it but breaks `vi.mock('node:…')` in 337 files.
-  - `plugins/plugin-launch-content.test.ts` expects bundled launch plugins that were never authored.
-  - `codex/config-toml-trust-hash.test.ts` doesn't reproduce a captured Codex hash, and can't be traced without Codex's source.
+  - (Fixed 2026-09-24, see "CI on main is green again": `plugin-launch-content` and `config-toml-trust-hash`.)
   - `claude-stream-json-connection` shows an occasional EPERM under load.
 
 ## Previous pass: Codex access, account authorization, and automatic updates
@@ -801,10 +809,10 @@ one was attached to the wrong data. Running the app found all three. Do the same
 
 ## Verification limits carried into the next session
 
-- The full suite remains noisy on this Windows machine: the known happy-dom fork-worker
-  failures, missing `/bin/sh`, plugin launch fixtures, Codex trust-hash fixture, and
-  occasional `EPERM`/`EBUSY` failures remain pre-existing. Use focused suites locally and
-  Linux CI for the whole repository.
+- The full suite remains noisy on this Windows machine (happy-dom fork-worker failures,
+  missing `/bin/sh`, occasional `EPERM`/`EBUSY`). Use focused suites locally and Linux CI
+  (now green, 4 shards) for the whole repository; `gh workflow run CI --ref <branch>` runs
+  it on a pushed branch before landing on main.
 - The cross-version release checkout is deliberately skipped on Windows because extracting
   a tagged release hangs on OneDrive. Keep the test enabled on Linux; do not “fix” this by
   weakening the wire journey.

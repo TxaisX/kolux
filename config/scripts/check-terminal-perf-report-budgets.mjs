@@ -155,7 +155,7 @@ const rows = reportPaths.flatMap((path) =>
 )
 
 if (rows.length === 0) {
-  console.error('No Tui terminal perf annotations found.')
+  console.error('No TUI terminal perf annotations found.')
   process.exit(1)
 }
 

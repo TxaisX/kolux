@@ -134,7 +134,7 @@ describe('bundled skill guide generator', () => {
     expect(corpus).toContain('KOLUX_RECIPE_ID')
     expect(corpus).not.toContain('KOLUX_VM_RECIPE_ID')
     expect(vercelReference).toContain('recipe_id="${recipe_id//./-}"')
-    expect(vercelReference).toContain('max_recipe_id_length=$((128 - ${#instance_id} - 6))')
+    expect(vercelReference).toContain('max_recipe_id_length=$((128 - ${#instance_id} - 7))')
     expect(vercelReference).toContain(
       'name="kolux-${recipe_id:0:max_recipe_id_length}-${instance_id}"'
     )

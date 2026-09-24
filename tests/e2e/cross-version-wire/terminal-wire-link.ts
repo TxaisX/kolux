@@ -36,6 +36,8 @@ export type TerminalWireLink = {
   dispose: () => Promise<void>
 }
 
+let linkActive = false
+
 function rawOpcodeOf(bytes: Uint8Array): number {
   return bytes.length > 2 ? bytes[2]! : -1
 }
@@ -72,6 +74,13 @@ export function createTerminalWireLink(args: {
   clientBuild: TerminalWireBuild
   hostStub: HostTerminalRuntimeStub
 }): TerminalWireLink {
+  // Why: overlapping links share one stubbed `window`, routing one journey's client into another's host.
+  if (linkActive) {
+    throw new Error(
+      'Only one terminal wire link may be active at a time; run journeys sequentially.'
+    )
+  }
+  linkActive = true
   const { hostBuild, clientBuild, hostStub } = args
   const observed: ObservedFrame[] = []
   const rejected: RejectedFrame[] = []
@@ -213,6 +222,7 @@ export function createTerminalWireLink(args: {
       connection.clientCallbacks.onClose?.()
     },
     dispose: async () => {
+      linkActive = false
       for (const record of connections) {
         closeHostSideByConnection.get(record.connectionId)?.()
       }

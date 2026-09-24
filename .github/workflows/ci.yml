@@ -16,7 +16,44 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Why: native modules are rebuilt from source and are not needed to typecheck or lint.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: node config/scripts/run-typecheck-projects-in-parallel.mjs
+
+      - name: Lint
+        run: pnpm exec oxlint
+
+      - name: Max-lines ratchet
+        run: node config/scripts/check-max-lines-ratchet.mjs
+
+  # Why shards: ~8,000 test files take ~50 minutes on one runner, past any sane job timeout.
+  unit:
+    runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # Why: tests that make real commits need an identity; a fresh runner has none.
+    env:
+      GIT_AUTHOR_NAME: Kolux CI
+      GIT_AUTHOR_EMAIL: ci@kolux.invalid
+      GIT_COMMITTER_NAME: Kolux CI
+      GIT_COMMITTER_EMAIL: ci@kolux.invalid
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,19 +67,12 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # Why: native modules are rebuilt from source and are not needed to
-      # typecheck or run the unit suite, so skip them and keep CI fast.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Typecheck
-        run: node config/scripts/run-typecheck-projects-in-parallel.mjs
+      # Why: node-pty ships no Linux prebuild; ~100 test files load it. Same step `pnpm test` runs.
+      - name: Build native modules for Node
+        run: node config/scripts/ensure-native-runtime.mjs --runtime=node
 
-      - name: Lint
-        run: pnpm exec oxlint
-
-      - name: Max-lines ratchet
-        run: node config/scripts/check-max-lines-ratchet.mjs
-
-      - name: Unit tests
-        run: pnpm exec vitest run --config config/vitest.config.ts
+      - name: Unit tests (shard ${{ matrix.shard }}/4)
+        run: pnpm exec vitest run --config config/vitest.config.ts --shard=${{ matrix.shard }}/4

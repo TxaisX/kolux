@@ -513,7 +513,7 @@ describe('findTrustedCodexSessionResume legacy-rescan home ranking', () => {
     const windowsAccountAHome = `${windowsRoot}\\AppData\\Roaming\\Kolux\\codex-accounts\\a\\home`
     const windowsAccountBHome = `${windowsRoot}\\AppData\\Roaming\\Kolux\\codex-accounts\\b\\home`
     const windowsRolloutIn = (homePath: string): string =>
-      `${join(homePath, 'sessions')}\\2026\\07\\20\\rollout-2026-07-20T15-50-19-${sessionId}.jsonl`
+      `${homePath}\\sessions\\2026\\07\\20\\rollout-2026-07-20T15-50-19-${sessionId}.jsonl`
     const listSessionFiles = async function* (sessionsRoot: string): AsyncIterable<string> {
       yield `${sessionsRoot}\\2026\\07\\20\\rollout-2026-07-20T15-50-19-${sessionId}.jsonl`
     }
