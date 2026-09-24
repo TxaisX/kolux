@@ -17,7 +17,7 @@ import {
   waitForActiveTerminalManager,
   waitForTerminalOutput
 } from './helpers/terminal'
-import { scrollActiveTerminalToText } from './artificial-opencode-active-terminal-scroll'
+import { scrollActiveTerminalToText } from './artificial-tui-active-terminal-scroll'
 import { nodeTerminalCommand } from './terminal-node-command'
 
 type BrowserTerminalPane = {

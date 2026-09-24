@@ -5,7 +5,6 @@ import { StatCard } from './StatCard'
 import { ClaudeUsagePane } from './ClaudeUsagePane'
 import { CodexUsagePane } from './CodexUsagePane'
 import { GrokUsagePane } from './GrokUsagePane'
-import { OpenCodeUsagePane } from './OpenCodeUsagePane'
 import { UsageOverviewPane } from './UsageOverviewPane'
 import { Button } from '../ui/button'
 import {
@@ -52,7 +51,7 @@ function formatTrackingSince(timestamp: number | null): string {
   })
 }
 
-type UsageTab = 'overview' | 'claude' | 'codex' | 'opencode' | 'grok'
+type UsageTab = 'overview' | 'claude' | 'codex' | 'grok'
 
 const USAGE_ANALYTICS_OPTIONS = [
   {
@@ -71,12 +70,6 @@ const USAGE_ANALYTICS_OPTIONS = [
     id: 'codex',
     get label() {
       return translate('auto.components.stats.StatsPane.7d26110cea', 'Codex')
-    }
-  },
-  {
-    id: 'opencode',
-    get label() {
-      return translate('auto.components.stats.StatsPane.1e696db2f6', 'OpenCode')
     }
   },
   {
@@ -206,8 +199,6 @@ export function StatsPane(): React.JSX.Element {
             <ClaudeUsagePane />
           ) : activeUsageTab === 'codex' ? (
             <CodexUsagePane />
-          ) : activeUsageTab === 'opencode' ? (
-            <OpenCodeUsagePane />
           ) : (
             <GrokUsagePane />
           )}

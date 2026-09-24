@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { AgentStateDot } from '@/components/AgentStateDot'
 import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
-import { ClaudeIcon, OpenCodeGoIcon } from '../status-bar/icons'
+import { ClaudeIcon, GeminiIcon } from '../status-bar/icons'
 
-type AgentKind = 'claude' | 'codex' | 'opencode'
+type AgentKind = 'claude' | 'codex' | 'gemini'
 
 type WorkspaceMock = {
   id: string
@@ -14,7 +14,7 @@ type WorkspaceMock = {
 
 const WORKSPACES: readonly WorkspaceMock[] = [
   { id: 'a', name: 'set up kolux.yaml', agents: ['claude'] },
-  { id: 'b', name: 'fix login race condition', agents: ['claude', 'opencode', 'codex'] },
+  { id: 'b', name: 'fix login race condition', agents: ['claude', 'gemini', 'codex'] },
   { id: 'c', name: 'speed up CI pipeline', agents: ['claude', 'codex'] }
 ]
 
@@ -48,7 +48,7 @@ function AgentIcon({ kind }: { kind: AgentKind }): JSX.Element {
   if (kind === 'codex') {
     return <CodexInlineIcon />
   }
-  return <OpenCodeGoIcon size={14} />
+  return <GeminiIcon size={14} />
 }
 
 function StatusIcon({ running }: { running: boolean }): JSX.Element {

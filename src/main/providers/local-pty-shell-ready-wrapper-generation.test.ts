@@ -335,17 +335,12 @@ describePosix('local PTY shell-ready launch config', () => {
     const zshrc = readFileSync(join(getShellReadyWrapperRoot(), 'zsh', '.zshenv'), 'utf8')
     const zlogin = zshrc
     const bashRc = getBashShellReadyRcfileContent()
-    const restoreLine =
-      '[[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"'
     const mimoRestoreLine =
       '[[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"'
     const codexRestoreLine =
       '[[ -n "${KOLUX_CODEX_HOME:-}" ]] && export CODEX_HOME="${KOLUX_CODEX_HOME}"'
     const agentTeamsPathRestoreLine = '[[ -n "${KOLUX_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0'
     const ompWrapperLine = 'command omp --extension "${KOLUX_OMP_STATUS_EXTENSION}" "$@"'
-    expect(zshrc).toContain(restoreLine)
-    expect(zlogin).toContain(restoreLine)
-    expect(bashRc).toContain(restoreLine)
     expect(zshrc).toContain(mimoRestoreLine)
     expect(zlogin).toContain(mimoRestoreLine)
     expect(bashRc).toContain(mimoRestoreLine)

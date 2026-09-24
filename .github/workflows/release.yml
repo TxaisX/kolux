@@ -59,6 +59,11 @@ jobs:
           EP_DRAFT: 'true'
         run: pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish always
 
+      - name: Smoke test packaged CLI and profile migration
+        env:
+          KOLUX_BACKGROUND_LAUNCH: '1'
+        run: node config/scripts/release-packaged-smoke.mjs
+
       - name: Publish the complete release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

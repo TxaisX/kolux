@@ -34,8 +34,7 @@ export function buildDailyOverview(input: UsageOverviewInput): UsageOverviewDail
       day: entry.day,
       totalTokens: 0,
       claudeTokens: 0,
-      codexTokens: 0,
-      openCodeTokens: 0
+      codexTokens: 0
     }
     const total = getClaudeDailyTotal(entry)
     current.totalTokens += total
@@ -48,24 +47,10 @@ export function buildDailyOverview(input: UsageOverviewInput): UsageOverviewDail
       day: entry.day,
       totalTokens: 0,
       claudeTokens: 0,
-      codexTokens: 0,
-      openCodeTokens: 0
+      codexTokens: 0
     }
     current.totalTokens += entry.totalTokens
     current.codexTokens += entry.totalTokens
-    byDay.set(entry.day, current)
-  }
-
-  for (const entry of input.opencode.daily) {
-    const current = byDay.get(entry.day) ?? {
-      day: entry.day,
-      totalTokens: 0,
-      claudeTokens: 0,
-      codexTokens: 0,
-      openCodeTokens: 0
-    }
-    current.totalTokens += entry.totalTokens
-    current.openCodeTokens += entry.totalTokens
     byDay.set(entry.day, current)
   }
 
@@ -111,7 +96,6 @@ export function getRecentUsageDays(
         totalTokens: 0,
         claudeTokens: 0,
         codexTokens: 0,
-        openCodeTokens: 0,
         intensity: 0
       }
     )

@@ -13,7 +13,6 @@ export const TERMINAL_TITLE_CLASSIFICATION_CORPUS: readonly string[] = [
   'nwparker@mac: ~/kolux',
   'npm run dev',
   // Boundary-guard cases from agent-name-token-match.ts's header comment.
-  'opencode-blinker',
   'openclaude',
   'openclaude-scratch',
   'claude-scratch',
@@ -67,7 +66,6 @@ export const TERMINAL_TITLE_CLASSIFICATION_CORPUS: readonly string[] = [
   'mimo idle',
   'aider running',
   'grok done',
-  'opencode ready',
   'hermes ready',
   'droid ready',
   // Cursor's closed identity set.
@@ -82,5 +80,5 @@ export const TERMINAL_TITLE_CLASSIFICATION_CORPUS: readonly string[] = [
   // Wrapper/multiplexer prefixes.
   'zsh | \u280b Codex',
   'tmux | claude - action required',
-  'ssh host | opencode ready'
+  'ssh host | grok done'
 ]

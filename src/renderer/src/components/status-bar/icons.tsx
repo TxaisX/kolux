@@ -280,41 +280,6 @@ export function GeminiIcon({ size = 14 }: { size?: number }): React.JSX.Element 
   )
 }
 
-export function OpenCodeGoIcon({ size = 14 }: { size?: number }): React.JSX.Element {
-  return (
-    <svg
-      width={size}
-      height={Math.round((size * 300) / 240)}
-      viewBox="0 0 240 300"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <g clipPath="url(#oc-clip)">
-        <mask
-          id="oc-mask"
-          style={{ maskType: 'luminance' }}
-          maskUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width="240"
-          height="300"
-        >
-          <path d="M240 0H0V300H240V0Z" fill="white" />
-        </mask>
-        <g mask="url(#oc-mask)">
-          <path d="M180 240H60V120H180V240Z" fill="#4B4646" />
-          <path d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z" fill="#F1ECEC" />
-        </g>
-      </g>
-      <defs>
-        <clipPath id="oc-clip">
-          <rect width="240" height="300" fill="white" />
-        </clipPath>
-      </defs>
-    </svg>
-  )
-}
-
 export function ClaudeIcon({ size = 14 }: { size?: number }): React.JSX.Element {
   return (
     <svg height={size} width={size} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

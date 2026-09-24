@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   ClaudeRateLimitAccountsState,
   CodexRateLimitAccountsState
@@ -21,7 +21,6 @@ import {
   getAccountsGrokSearchEntries,
   getAccountsLocationSearchEntries,
   getAccountsMiniMaxSearchEntries,
-  getAccountsOpencodeSearchEntries,
   getAccountsPaneSearchEntries
 } from './accounts-search'
 import { getRemoteAccountsPaneScope } from './provider-account-scope'
@@ -53,10 +52,7 @@ import { createMiniMaxCredentialActions } from './accounts-pane-minimax-actions'
 import { renderAccountsLocationSection } from './accounts-pane-location-section'
 import { renderClaudeAccountsSection } from './accounts-pane-claude-section'
 import { renderCodexAccountsSection } from './accounts-pane-codex-section'
-import {
-  renderGeminiAccountsSection,
-  renderOpenCodeAccountsSection
-} from './accounts-pane-provider-setting-sections'
+import { renderGeminiAccountsSection } from './accounts-pane-provider-setting-sections'
 import { renderMiniMaxAccountsSection } from './accounts-pane-minimax-section'
 import { renderAccountsRemovalDialogs } from './accounts-pane-removal-dialogs'
 
@@ -78,7 +74,6 @@ export function AccountsPane({
   const recordFeatureInteraction = useAppStore((s) => s.recordFeatureInteraction)
   const fetchSettings = useAppStore((s) => s.fetchSettings)
   const runtimeEnvironments = useAppStore((s) => s.runtimeEnvironments)
-  const recordedOpenCodeSettingEditsRef = useRef<Set<'cookie' | 'workspaceId'>>(new Set())
   const [miniMaxCookieDraft, setMiniMaxCookieDraft] = useState('')
   const [miniMaxApiKeyDraft, setMiniMaxApiKeyDraft] = useState('')
   const [miniMaxApiKeyConfigured, setMiniMaxApiKeyConfigured] = useState(false)
@@ -214,13 +209,6 @@ export function AccountsPane({
   const accountRuntimeUnavailable =
     accountRuntime.runtime === 'wsl' && !wslAvailable && !wslCapabilitiesLoading
 
-  const recordOpenCodeSettingEdit = (field: 'cookie' | 'workspaceId'): void => {
-    if (recordedOpenCodeSettingEditsRef.current.has(field)) {
-      return
-    }
-    recordedOpenCodeSettingEditsRef.current.add(field)
-    recordFeatureInteraction('usage-tracking')
-  }
   const refreshMiniMaxCredentialStatus = async (): Promise<void> => {
     try {
       const status = await window.api.minimaxCredentials.getStatus()
@@ -340,7 +328,6 @@ export function AccountsPane({
     codexRateLimitTarget,
     setRemoveCodexTarget,
     runCodexAccountAction,
-    recordOpenCodeSettingEdit,
     miniMaxRateLimits,
     miniMaxApiKeyDraft,
     setMiniMaxApiKeyDraft,
@@ -368,9 +355,6 @@ export function AccountsPane({
       : null,
     matchesSettingsSearch(searchQuery, getAccountsGeminiSearchEntries())
       ? renderGeminiAccountsSection(model)
-      : null,
-    matchesSettingsSearch(searchQuery, getAccountsOpencodeSearchEntries())
-      ? renderOpenCodeAccountsSection(model)
       : null,
     matchesSettingsSearch(searchQuery, getAccountsMiniMaxSearchEntries())
       ? renderMiniMaxAccountsSection(model)

@@ -3,10 +3,7 @@ import type { GlobalSettings } from '../../../../shared/global-settings-types'
 
 export type UsageProviderSettings = Pick<
   GlobalSettings,
-  | 'codexManagedAccounts'
-  | 'claudeManagedAccounts'
-  | 'opencodeSessionCookie'
-  | 'geminiCliOAuthEnabled'
+  'codexManagedAccounts' | 'claudeManagedAccounts' | 'geminiCliOAuthEnabled'
 > & {
   // Why: Antigravity has no separate persisted usage credential in Kolux. The
   // checked status-bar item is the durable user signal; StatusBar only sets
@@ -24,7 +21,6 @@ type UsageProviderSnapshots = {
   claude: ProviderRateLimits | null | undefined
   codex: ProviderRateLimits | null | undefined
   gemini: ProviderRateLimits | null | undefined
-  opencodeGo: ProviderRateLimits | null | undefined
   kimi: ProviderRateLimits | null | undefined
   antigravity: ProviderRateLimits | null | undefined
   minimax: ProviderRateLimits | null | undefined
@@ -48,7 +44,7 @@ function isProviderSnapshotPending(provider: ProviderRateLimits | null | undefin
 }
 
 // Why: a provider that returns `unavailable` is explicitly not configured
-// (Gemini OAuth off, OpenCode Go cookie unset, Claude on API-key billing). Its
+// (Gemini OAuth off, Claude on API-key billing). Its
 // fetch object is non-null, so a bare `!== null` check still renders a "--"
 // bar for a provider the user never set up. `error` is kept visible on purpose
 // — that's a *configured* provider failing transiently, and hiding it would
@@ -74,7 +70,6 @@ export function hasUsageProviderSettings(
     (settings?.codexManagedAccounts?.length ?? 0) > 0 ||
     (settings?.claudeManagedAccounts?.length ?? 0) > 0 ||
     settings?.geminiCliOAuthEnabled === true ||
-    Boolean(settings?.opencodeSessionCookie?.trim()) ||
     // Antigravity's durable signal requires geminiCliOAuthEnabled, so it is
     // already covered by the gemini term above.
     settings?.minimaxCookieConfigured === true ||
@@ -99,9 +94,6 @@ export function hasUsageProviderSettingsForProvider(
   if (providerId === 'gemini') {
     return settings.geminiCliOAuthEnabled === true
   }
-  if (providerId === 'opencode-go') {
-    return Boolean(settings.opencodeSessionCookie?.trim())
-  }
   if (providerId === 'antigravity') {
     // Why: the Antigravity snapshot mirrors the Gemini fetch, which stays
     // 'unavailable' until the user opts into Gemini CLI OAuth. Without that
@@ -122,7 +114,6 @@ function createPendingProviderSnapshot(providerId: UsageProviderId): ProviderRat
     provider: providerId,
     session: null,
     weekly: null,
-    ...(providerId === 'opencode-go' ? { monthly: null } : {}),
     ...(providerId === 'gemini' ? { buckets: [] } : {}),
     updatedAt: 0,
     error: null,
@@ -163,7 +154,6 @@ export function isUsageEmptyState(
     isProviderSnapshotPending(providers.claude) ||
     isProviderSnapshotPending(providers.codex) ||
     isProviderSnapshotPending(providers.gemini) ||
-    isProviderSnapshotPending(providers.opencodeGo) ||
     isProviderSnapshotPending(providers.kimi) ||
     antigravitySnapshotPending ||
     isProviderSnapshotPending(providers.minimax) ||
@@ -176,7 +166,6 @@ export function isUsageEmptyState(
     !isProviderConfigured(providers.claude) &&
     !isProviderConfigured(providers.codex) &&
     !isProviderConfigured(providers.gemini) &&
-    !isProviderConfigured(providers.opencodeGo) &&
     !isProviderConfigured(providers.kimi) &&
     !isProviderConfigured(providers.antigravity) &&
     !isProviderConfigured(providers.minimax) &&

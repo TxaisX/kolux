@@ -127,7 +127,7 @@ function normalizeNumericObject(path, artifact, kind, values, unitForKey) {
 }
 
 function normalizePlaywrightArtifact(path, artifact) {
-  const rows = collectTerminalPerfRows(artifact, basename(path), { typePrefix: 'opencode-' })
+  const rows = collectTerminalPerfRows(artifact, basename(path), { typePrefix: 'tui-' })
   const groupedMetrics = new Map()
   for (const row of rows) {
     for (const [field, rawValue] of Object.entries(row)) {

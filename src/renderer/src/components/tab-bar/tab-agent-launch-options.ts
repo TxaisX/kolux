@@ -65,7 +65,7 @@ export function buildTabAgentLaunchOptions(
 // Scores how well a query matches an agent. Exact alias equality is the
 // strongest signal; otherwise every query token must prefix some alias token.
 // Why prefix-only (not substring): agent rows rank above file matches, so a
-// mid-string match like "ode" → "opencode" would noisily hijack the list.
+// mid-string match against an unrelated agent name would noisily hijack the list.
 function scoreAgentLaunchOption(
   normalizedQuery: string,
   compactQuery: string,

@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  openCodeBuildPtyEnvMock,
-  openCodeClearPtyMock,
-  piClearPtyMock
-} from './pty-ipc-mock-registry'
+import { piBuildPtyEnvMock, piClearPtyMock } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import type { AgentSessionOwnerBinding } from '../../shared/agent-session-host-authority'
 import { KoluxRuntimeService } from '../runtime/kolux-runtime'
@@ -20,9 +16,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -235,7 +228,7 @@ describe('registerPtyHandlers', () => {
   it('clears a fresh runtime session when host-env setup fails', async () => {
     const provider = createAgentClaimProvider({ spawn: vi.fn() })
     setLocalPtyProvider(provider as never)
-    openCodeBuildPtyEnvMock.mockImplementationOnce(() => {
+    piBuildPtyEnvMock.mockImplementationOnce(() => {
       throw new Error('host env failed')
     })
     const controller = registerAgentClaimController()
@@ -250,13 +243,12 @@ describe('registerPtyHandlers', () => {
     ).rejects.toThrow('host env failed')
 
     expect(provider.spawn).not.toHaveBeenCalled()
-    expect(openCodeClearPtyMock).toHaveBeenCalledOnce()
     expect(piClearPtyMock).toHaveBeenCalledOnce()
   })
   it('preserves caller-owned runtime state when host-env setup fails', async () => {
     const provider = createAgentClaimProvider({ spawn: vi.fn() })
     setLocalPtyProvider(provider as never)
-    openCodeBuildPtyEnvMock.mockImplementationOnce(() => {
+    piBuildPtyEnvMock.mockImplementationOnce(() => {
       throw new Error('host env failed')
     })
     const controller = registerAgentClaimController()
@@ -271,7 +263,6 @@ describe('registerPtyHandlers', () => {
     ).rejects.toThrow('host env failed')
 
     expect(provider.spawn).not.toHaveBeenCalled()
-    expect(openCodeClearPtyMock).not.toHaveBeenCalled()
     expect(piClearPtyMock).not.toHaveBeenCalled()
   })
   it('preserves operation-owned runtime state when retry host-env setup fails', async () => {
@@ -288,16 +279,14 @@ describe('registerPtyHandlers', () => {
       agentSessionCreateOperationId: 'a'.repeat(43)
     }
     await controller.spawn(request)
-    openCodeClearPtyMock.mockClear()
     piClearPtyMock.mockClear()
-    openCodeBuildPtyEnvMock.mockImplementationOnce(() => {
+    piBuildPtyEnvMock.mockImplementationOnce(() => {
       throw new Error('host env failed')
     })
 
     await expect(controller.spawn(request)).rejects.toThrow('host env failed')
 
     expect(physicalSpawn).toHaveBeenCalledOnce()
-    expect(openCodeClearPtyMock).not.toHaveBeenCalled()
     expect(piClearPtyMock).not.toHaveBeenCalled()
   })
   it('adopts a daemon owner recovered from provider listing before claimed ensure', async () => {

@@ -32,6 +32,16 @@ describe('worktree RPC schemas', () => {
     expect(parsed.success).toBe(false)
   })
 
+  it('degrades an unknown startupAgent (e.g. an old client still sending opencode) to no startup agent instead of rejecting worktree.create', () => {
+    const parsed = WorktreeCreate.parse({
+      repo: 'repo-1',
+      name: 'agent-startup',
+      startupAgent: 'opencode'
+    })
+
+    expect(parsed.startupAgent).toBeUndefined()
+  })
+
   it('rejects startup prompts without startup agents', () => {
     const parsed = WorktreeCreate.safeParse({
       repo: 'repo-1',

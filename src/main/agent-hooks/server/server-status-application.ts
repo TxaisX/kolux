@@ -109,7 +109,7 @@ export abstract class AgentHookServerStatusApplication extends AgentHookServerSt
       previousDedupe?.agentKind === agentKind &&
       previousDedupe.promptInteractionKey !== undefined &&
       previousDedupe.promptInteractionKey === promptInteractionKey &&
-      (agentKind === 'opencode' || previousDedupe.promptHash === promptHash)
+      (agentKind === 'mimo-code' || previousDedupe.promptHash === promptHash)
     ) {
       return
     }

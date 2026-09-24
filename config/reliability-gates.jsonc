@@ -167,7 +167,7 @@
       "coverageNotes": "Ubuntu CI loopback sshd shares the runner filesystem. Fresh per-test repositories isolate retained relay workspace snapshots; existing Pi home supplies the documented bare-shell plugin prerequisite.",
       "motivatingLinks": ["https://github.com/TxaisX/kolux/pull/19097"],
       "invariant": "A localhost SSH terminal executes on the SSH host and routes authenticated hook status to its owning pane without treating idle keyboard input as agent interruption.",
-      "oracle": "Require terminal output markers, exported hook identity, actual OpenCode/Pi plugin files, and matching pane/worktree/connection hook events; Ctrl-C and Escape in an idle shell must not interrupt a hook-owned agent.",
+      "oracle": "Require terminal output markers, exported hook identity, actual Pi plugin files, and matching pane/worktree/connection hook events; Ctrl-C and Escape in an idle shell must not interrupt a hook-owned agent.",
       "commands": [
         "gh run view 34045578306 --log",
         "gh run view 34045975180 --log",

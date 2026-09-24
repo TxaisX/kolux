@@ -9,11 +9,6 @@ import type {
   CodexUsageScanState,
   CodexUsageSummary
 } from '../../../../shared/codex-usage-types'
-import type {
-  OpenCodeUsageDailyPoint,
-  OpenCodeUsageScanState,
-  OpenCodeUsageSummary
-} from '../../../../shared/opencode-usage-types'
 import { getRecentUsageDays } from './usage-overview-daily-series'
 import { buildUsageOverview, formatUsageCost, formatUsageTokens } from './usage-overview-model'
 
@@ -36,17 +31,6 @@ function enabledCodexScanState(): CodexUsageScanState {
     lastScanCompletedAt: 400,
     lastScanError: null,
     hasAnyCodexData: true
-  }
-}
-
-function enabledOpenCodeScanState(): OpenCodeUsageScanState {
-  return {
-    enabled: true,
-    isScanning: false,
-    lastScanStartedAt: 500,
-    lastScanCompletedAt: 600,
-    lastScanError: null,
-    hasAnyOpenCodeData: true
   }
 }
 
@@ -83,21 +67,6 @@ describe('usage overview model', () => {
       topProject: 'kolux-secondary',
       hasAnyCodexData: true
     }
-    const openCodeSummary: OpenCodeUsageSummary = {
-      scope: 'kolux',
-      range: '30d',
-      sessions: 1,
-      events: 2,
-      inputTokens: 1_000,
-      cachedInputTokens: 250,
-      outputTokens: 500,
-      reasoningOutputTokens: 100,
-      totalTokens: 1_600,
-      estimatedCostUsd: 0.03,
-      topModel: 'anthropic/claude-sonnet-4-5',
-      topProject: 'kolux-third',
-      hasAnyOpenCodeData: true
-    }
     const claudeDaily: ClaudeUsageDailyPoint[] = [
       {
         day: '2026-05-13',
@@ -132,17 +101,6 @@ describe('usage overview model', () => {
         totalTokens: 1_200
       }
     ]
-    const openCodeDaily: OpenCodeUsageDailyPoint[] = [
-      {
-        day: '2026-05-15',
-        inputTokens: 1_000,
-        cachedInputTokens: 250,
-        outputTokens: 500,
-        reasoningOutputTokens: 100,
-        totalTokens: 1_600
-      }
-    ]
-
     const overview = buildUsageOverview({
       claude: {
         scanState: enabledClaudeScanState(),
@@ -153,41 +111,30 @@ describe('usage overview model', () => {
         scanState: enabledCodexScanState(),
         summary: codexSummary,
         daily: codexDaily
-      },
-      opencode: {
-        scanState: enabledOpenCodeScanState(),
-        summary: openCodeSummary,
-        daily: openCodeDaily
       }
     })
 
-    expect(overview.totalTokens).toBe(10_800)
-    expect(overview.newInputTokens).toBe(2_950)
-    expect(overview.cacheTokens).toBe(5_550)
-    expect(overview.outputTokens).toBe(2_200)
-    expect(overview.reasoningTokens).toBe(400)
-    expect(overview.sessions).toBe(4)
-    expect(overview.activityCount).toBe(9)
+    expect(overview.totalTokens).toBe(9_200)
+    expect(overview.newInputTokens).toBe(2_200)
+    expect(overview.cacheTokens).toBe(5_300)
+    expect(overview.outputTokens).toBe(1_700)
+    expect(overview.reasoningTokens).toBe(300)
+    expect(overview.sessions).toBe(3)
+    expect(overview.activityCount).toBe(7)
     expect(overview.activeDays).toBe(3)
-    expect(overview.estimatedCostUsd).toBeCloseTo(0.09)
-    expect(overview.cacheShare).toBeCloseTo(5_550 / 8_500)
+    expect(overview.estimatedCostUsd).toBeCloseTo(0.06)
+    expect(overview.cacheShare).toBeCloseTo(5_300 / 7_500)
     expect(overview.bestDay).toMatchObject({
       day: '2026-05-14',
       totalTokens: 4_500,
       claudeTokens: 2_500,
       codexTokens: 2_000,
-      openCodeTokens: 0,
       intensity: 4
     })
     expect(overview.providers.find((provider) => provider.id === 'codex')).toMatchObject({
       newInputTokens: 1_200,
       cacheTokens: 800,
       totalTokens: 3_200
-    })
-    expect(overview.providers.find((provider) => provider.id === 'opencode')).toMatchObject({
-      newInputTokens: 750,
-      cacheTokens: 250,
-      totalTokens: 1_600
     })
   })
 
@@ -199,7 +146,6 @@ describe('usage overview model', () => {
           totalTokens: 4_500,
           claudeTokens: 2_500,
           codexTokens: 2_000,
-          openCodeTokens: 0,
           intensity: 4
         }
       ],
@@ -213,7 +159,6 @@ describe('usage overview model', () => {
         totalTokens: 0,
         claudeTokens: 0,
         codexTokens: 0,
-        openCodeTokens: 0,
         intensity: 0
       },
       {
@@ -221,7 +166,6 @@ describe('usage overview model', () => {
         totalTokens: 4_500,
         claudeTokens: 2_500,
         codexTokens: 2_000,
-        openCodeTokens: 0,
         intensity: 4
       },
       {
@@ -229,7 +173,6 @@ describe('usage overview model', () => {
         totalTokens: 0,
         claudeTokens: 0,
         codexTokens: 0,
-        openCodeTokens: 0,
         intensity: 0
       }
     ])
@@ -238,8 +181,7 @@ describe('usage overview model', () => {
   it('reports disabled providers as an empty overview', () => {
     const overview = buildUsageOverview({
       claude: { scanState: null, summary: null, daily: [] },
-      codex: { scanState: null, summary: null, daily: [] },
-      opencode: { scanState: null, summary: null, daily: [] }
+      codex: { scanState: null, summary: null, daily: [] }
     })
 
     expect(overview.hasAnyEnabledProvider).toBe(false)
@@ -268,8 +210,7 @@ describe('usage overview model', () => {
         scanState: enabledCodexScanState(),
         summary: null,
         daily: codexDaily
-      },
-      opencode: { scanState: null, summary: null, daily: [] }
+      }
     })
 
     expect(overview.daily).toHaveLength(130_000)

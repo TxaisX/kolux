@@ -479,8 +479,6 @@ const JA_AUDIT_OVERRIDES = {
     '実験的機能の Kolux プラグインをインストール・管理します。',
   "Resident memory held by Kolux plus the processes under each worktree's terminals.":
     'Kolux が保持する常駐メモリと、各ワークツリーのターミナル配下で実行中のプロセス。',
-  'No local Claude, Codex, or OpenCode usage found yet. The overview will populate after the next agent session writes token logs.':
-    'ローカルの Claude、Codex、OpenCode の使用状況はまだ見つかりません。次の Agent セッションがトークンログを書き込むと、概要に反映されます。',
   'Choose or add a project before creating a workspace.':
     'ワークスペースを作成する前に、プロジェクトを選択または追加してください。',
   'Choose a project to get started.': '開始するには、プロジェクトを選択してください。',

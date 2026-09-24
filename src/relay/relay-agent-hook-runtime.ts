@@ -2,14 +2,14 @@ import type { RelayDispatcher } from './dispatcher'
 import type { PtyEnvAugmenter, PtyHandler } from './pty-handler'
 import { RelayAgentHookServer } from './agent-hook-server'
 import { endpointDirForRelaySocket } from './agent-hook-endpoint-coordinates'
-import { PluginOverlayManager } from './plugin-overlay'
+import { PluginOverlayManager, sweepRetiredOpenCodeOverlays } from './plugin-overlay'
 import {
   AGENT_HOOK_INSTALL_PLUGINS_METHOD,
   AGENT_HOOK_REQUEST_REPLAY_METHOD
 } from '../shared/agent-hook-relay'
 import { publishAgentHookEnvelope } from './agent-hook-envelope-publication'
 import { assertPluginSourceUnderByteCap } from './plugin-source-limit'
-import { resolveOpenCodeSourceConfigDir, resolvePiSourceAgentDir } from './plugin-overlay-env'
+import { resolvePiSourceAgentDir } from './plugin-overlay-env'
 import {
   detectExplicitPiAgentKindFromCommand,
   isPiCompatibleAgentType
@@ -38,6 +38,9 @@ export class RelayAgentHookRuntime {
   }
 
   async start(): Promise<void> {
+    // Why here: one-shot per relay process start, same lifecycle point that
+    // brings up the hook server below.
+    sweepRetiredOpenCodeOverlays()
     try {
       await this.hookServer.start({ publishEndpoint: false })
     } catch (error) {
@@ -77,17 +80,6 @@ export class RelayAgentHookRuntime {
   private buildPluginEnvironment(context: Parameters<PtyEnvAugmenter>[0]): Record<string, string> {
     const env: Record<string, string> = {}
     const overlayId = context.paneKey ?? context.id
-    if (this.pluginOverlay.hasOpenCodeSource()) {
-      const sourceDir = resolveOpenCodeSourceConfigDir(context.env, context.shell)
-      const dir = this.pluginOverlay.materializeOpenCode(overlayId, sourceDir)
-      if (dir) {
-        env.OPENCODE_CONFIG_DIR = dir
-        env.KOLUX_OPENCODE_CONFIG_DIR = dir
-        if (sourceDir) {
-          env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = sourceDir
-        }
-      }
-    }
     if (!this.pluginOverlay.hasPiSource()) {
       return env
     }
@@ -142,23 +134,19 @@ export class RelayAgentHookRuntime {
     }))
     registerManagedHookInstaller(this.dispatcher)
     this.dispatcher.onRequest(AGENT_HOOK_INSTALL_PLUGINS_METHOD, async (params) => {
-      const opencode = params.opencodePluginSource
       const pi = params.piExtensionSource
       const omp = params.ompExtensionSource
       const primeAgent = params.primeAgentExtensionSource
-      assertPluginSourceUnderByteCap('opencodePluginSource', opencode)
       assertPluginSourceUnderByteCap('piExtensionSource', pi)
       assertPluginSourceUnderByteCap('ompExtensionSource', omp)
       assertPluginSourceUnderByteCap('primeAgentExtensionSource', primeAgent)
       this.pluginOverlay.setSources({
-        opencodePluginSource: typeof opencode === 'string' ? opencode : undefined,
         piExtensionSource: typeof pi === 'string' ? pi : undefined,
         ompExtensionSource: typeof omp === 'string' ? omp : undefined,
         primeAgentExtensionSource: typeof primeAgent === 'string' ? primeAgent : undefined
       })
       return {
         installed: {
-          opencode: this.pluginOverlay.hasOpenCodeSource(),
           pi: this.pluginOverlay.hasPiSource('pi'),
           omp: this.pluginOverlay.hasPiSource('omp'),
           primeAgent: this.pluginOverlay.hasPiSource('prime-agent')

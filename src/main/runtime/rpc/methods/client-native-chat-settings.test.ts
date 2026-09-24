@@ -46,7 +46,7 @@ describe('native-chat settings RPC', () => {
       { type: 'apply-picks', agent: 'codex', picks: [] },
       {
         type: 'apply-picks',
-        agent: 'opencode',
+        agent: 'mimo-code',
         picks: [{ modelId: 'model', optionId: 'model', value: 'model' }]
       },
       {

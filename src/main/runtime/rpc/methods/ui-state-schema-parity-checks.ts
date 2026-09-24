@@ -20,6 +20,7 @@ type MainOwnedUIState =
   | 'starNagCompleted'
   | 'starNagDeferredUntil'
   | 'starNagAgentValueMomentAppVersion'
+  | 'lastNotifiedUpdateVersion'
 const _uiUpdateParity: AssertNoMissingKeys<
   Omit<PersistedUIState, MainOwnedUIState>,
   z.infer<UiUpdateFieldsSchema>

@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  existsSyncMock,
-  spawnMock,
-  openCodeClearPtyMock,
-  piClearPtyMock
-} from './pty-ipc-mock-registry'
+import { existsSyncMock, spawnMock, piClearPtyMock } from './pty-ipc-mock-registry'
 import { posixOnlyIt, makeDisposable } from './pty-ipc-test-constants'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import * as livePtyGate from '../claude-accounts/live-pty-gate'
@@ -18,9 +13,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -88,7 +80,6 @@ describe('registerPtyHandlers', () => {
           cwd: '/tmp',
           env: expect.objectContaining({
             SHELL: '/bin/zsh',
-            KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-config',
             KOLUX_SHELL_FEATURES: 'overlay,history,markers',
             ZDOTDIR: join(getShellReadyWrapperRoot(), 'zsh')
           })
@@ -133,7 +124,6 @@ describe('registerPtyHandlers', () => {
 
     await handlers.get('pty:kill')!(null, { id: spawnResult.id })
 
-    expect(openCodeClearPtyMock).toHaveBeenCalledWith(spawnResult.id)
     expect(piClearPtyMock).toHaveBeenCalledWith(spawnResult.id)
   })
   it('retains PTY listeners until physical exit after manual kill IPC', async () => {
@@ -538,7 +528,6 @@ describe('registerPtyHandlers', () => {
     expect((await getLocalPtyProvider().listProcesses()).map(({ id }) => id)).toContain(
       spawnResult.id
     )
-    expect(openCodeClearPtyMock).not.toHaveBeenCalled()
     expect(piClearPtyMock).not.toHaveBeenCalled()
 
     exitCb?.({ exitCode: -1 })
@@ -546,7 +535,6 @@ describe('registerPtyHandlers', () => {
     expect((await getLocalPtyProvider().listProcesses()).map(({ id }) => id)).not.toContain(
       spawnResult.id
     )
-    expect(openCodeClearPtyMock).toHaveBeenCalledWith(spawnResult.id)
     expect(piClearPtyMock).toHaveBeenCalledWith(spawnResult.id)
   })
 })

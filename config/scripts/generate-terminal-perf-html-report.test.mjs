@@ -17,7 +17,7 @@ function makeTempDir() {
 
 function writeReport(
   annotationDescription,
-  annotationType = 'opencode-scale-same-workspace-25',
+  annotationType = 'tui-scale-same-workspace-25',
   reportName = 'report.json'
 ) {
   const dir = makeTempDir()
@@ -118,7 +118,7 @@ describe('generate-terminal-perf-html-report', () => {
     expect(html).toContain('Terminal Performance Over Time')
     expect(html).toContain('2026-06-09T10:00:00.000Z')
     expect(html).toContain('Same workspace panes — 25 panes')
-    expect(html).toContain('opencode-scale-same-workspace-25')
+    expect(html).toContain('tui-scale-same-workspace-25')
     expect(html).toContain('28.6ms')
     expect(html).toContain('Pass')
     // Why: one run has no over-time story; the trend section must not render.
@@ -129,7 +129,7 @@ describe('generate-terminal-perf-html-report', () => {
   it('renders parked-memory heap and live view counts as table metrics', () => {
     const reportPath = writeReport(
       'panes=8 parkedTabs=8 heapUsedMB=142.5 liveTerminals=1 livePaneManagers=1',
-      'opencode-parked-memory'
+      'tui-parked-memory'
     )
     const outputPath = join(makeTempDir(), 'report.html')
 
@@ -155,7 +155,7 @@ describe('generate-terminal-perf-html-report', () => {
         'rendererPeakQueuedChars=2097153',
         'rendererDroppedBacklogs=1'
       ].join(' '),
-      'opencode-scale-cross-workspace-100'
+      'tui-scale-cross-workspace-100'
     )
     const outputPath = join(makeTempDir(), 'report.html')
 
@@ -171,17 +171,17 @@ describe('generate-terminal-perf-html-report', () => {
   it('renders ordered revisions with trend charts and baseline deltas', () => {
     const mainReport = writeReport(
       'panes=25 median=50.0ms worst=120.0ms rendererDroppedBacklogs=0',
-      'opencode-scale-same-workspace-25',
+      'tui-scale-same-workspace-25',
       'main.json'
     )
     const middleReport = writeReport(
       'panes=25 median=30.0ms worst=140.0ms rendererDroppedBacklogs=0',
-      'opencode-scale-same-workspace-25',
+      'tui-scale-same-workspace-25',
       'backpressure.json'
     )
     const finalReport = writeReport(
       'panes=25 median=20.0ms worst=100.0ms rendererDroppedBacklogs=0',
-      'opencode-scale-same-workspace-25',
+      'tui-scale-same-workspace-25',
       'final.json'
     )
     const outputPath = join(makeTempDir(), 'report.html')
@@ -212,7 +212,7 @@ describe('generate-terminal-perf-html-report', () => {
   it('renders missing scenarios at older revisions as gaps, not zeros', () => {
     const mainReport = writeReport(
       'panes=25 median=50.0ms rendererDroppedBacklogs=0',
-      'opencode-scale-same-workspace-25',
+      'tui-scale-same-workspace-25',
       'main.json'
     )
     const finalReport = makeTempDir()
@@ -228,11 +228,11 @@ describe('generate-terminal-perf-html-report', () => {
                   {
                     annotations: [
                       {
-                        type: 'opencode-scale-same-workspace-25',
+                        type: 'tui-scale-same-workspace-25',
                         description: 'panes=25 median=40.0ms rendererDroppedBacklogs=0'
                       },
                       {
-                        type: 'opencode-revisit-pressure',
+                        type: 'tui-revisit-pressure',
                         description: 'panes=19 median=3.0ms revisit=4.4ms rendererDroppedBacklogs=0'
                       }
                     ]
@@ -267,6 +267,6 @@ describe('generate-terminal-perf-html-report', () => {
         inputPaths: [reportPath],
         outputPath: join(makeTempDir(), 'report.html')
       })
-    ).toThrow('No opencode terminal perf annotations found')
+    ).toThrow('No tui terminal perf annotations found')
   })
 })

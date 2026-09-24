@@ -124,10 +124,6 @@ export class StateSerializationSecretHandlingOperations {
       ),
       settings: {
         ...stripRetiredGlobalSettings(this.runtime.state.settings),
-        opencodeSessionCookie: encryptToSentinel(
-          PROTECTED_SECRET_SLOT.opencodeSessionCookie,
-          this.runtime.state.settings.opencodeSessionCookie
-        ),
         httpProxyUrl: encryptToSentinel(
           PROTECTED_SECRET_SLOT.httpProxyUrl,
           this.runtime.state.settings.httpProxyUrl ?? ''

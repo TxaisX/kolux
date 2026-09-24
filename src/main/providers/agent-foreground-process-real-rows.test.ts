@@ -12,14 +12,14 @@ type CapturedRun = {
 }
 
 describe('real foreground process captures', () => {
-  it('resolves all six agents, including omp over its deeper vendor helpers', () => {
+  it('resolves all five agents, including omp over its deeper vendor helpers', () => {
     const captured = JSON.parse(
       gunzipSync(readFileSync(join(__dirname, '__fixtures__', 'real-agent-rows.json.gz'))).toString(
         'utf8'
       )
     ) as CapturedRun[]
 
-    expect(captured).toHaveLength(6)
+    expect(captured).toHaveLength(5)
     expect(
       captured.map(({ agent, shellPid, rows }) => ({
         agent,
@@ -28,7 +28,6 @@ describe('real foreground process captures', () => {
     ).toEqual([
       { agent: 'claude', processName: 'claude' },
       { agent: 'codex', processName: 'codex' },
-      { agent: 'opencode', processName: 'opencode' },
       { agent: 'gemini', processName: 'gemini' },
       { agent: 'grok', processName: 'grok' },
       { agent: 'omp', processName: 'omp' }

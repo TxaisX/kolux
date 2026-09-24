@@ -28,7 +28,7 @@ import { mainProcessState as state } from './main-process-state'
 
 export function initializeMainProcessAccountServices(): void {
   const store = state.store
-  if (!store || !state.claudeUsage || !state.codexUsage || !state.openCodeUsage) {
+  if (!store || !state.claudeUsage || !state.codexUsage) {
     throw new Error('Usage stores must be initialized before account services')
   }
   state.rateLimits = new RateLimitService()
@@ -108,13 +108,6 @@ export function initializeMainProcessAccountServices(): void {
   // Why: live Claude sessions stream usage windows through their statusLine command; feeding them here avoids OAuth usage-endpoint polling (and its 429s).
   agentHookServer.setClaudeStatusLineListener((event) => {
     state.rateLimits!.ingestLiveClaudeRateLimits(event)
-  })
-  state.rateLimits.setOpenCodeGoConfigResolver(() => {
-    const settings = store.getSettings()
-    return {
-      sessionCookie: settings.opencodeSessionCookie,
-      workspaceIdOverride: settings.opencodeWorkspaceId
-    }
   })
   state.rateLimits.setMiniMaxConfigResolver(() => {
     const settings = store.getSettings()

@@ -4,7 +4,7 @@ import type { JSX, ReactNode } from 'react'
 import { Wrench } from 'lucide-react'
 import { AgentStateDot } from '@/components/AgentStateDot'
 import { getAgentCatalog, AgentIcon, type AgentCatalogEntry } from '@/lib/agent-catalog'
-import { ClaudeIcon, OpenAIIcon } from '../../status-bar/icons'
+import { ClaudeIcon, GeminiIcon, OpenAIIcon } from '../../status-bar/icons'
 import { installWindowVisibilityInterval } from '@/lib/window-visibility-interval'
 import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
@@ -25,19 +25,19 @@ const CLAUDE_ACTIVITIES: readonly ClaudeActivity[] = [
 
 export function StatusesPage(props: { active: boolean; reducedMotion: boolean }): JSX.Element {
   const { active, reducedMotion } = props
-  const [revealed, setRevealed] = useState({ claude: false, opencode: false, codex: false })
+  const [revealed, setRevealed] = useState({ claude: false, gemini: false, codex: false })
   const [claudeIdx, setClaudeIdx] = useState(0)
   const [claudeFading, setClaudeFading] = useState(false)
 
   useEffect(() => {
     if (!active) {
-      setRevealed({ claude: false, opencode: false, codex: false })
+      setRevealed({ claude: false, gemini: false, codex: false })
       setClaudeIdx(0)
       setClaudeFading(false)
       return
     }
     if (reducedMotion) {
-      setRevealed({ claude: true, opencode: true, codex: true })
+      setRevealed({ claude: true, gemini: true, codex: true })
       return
     }
     const timeouts: number[] = []
@@ -45,7 +45,7 @@ export function StatusesPage(props: { active: boolean; reducedMotion: boolean })
       timeouts.push(window.setTimeout(fn, delay))
     }
     schedule(() => setRevealed((r) => ({ ...r, claude: true })), 700)
-    schedule(() => setRevealed((r) => ({ ...r, opencode: true })), 1200)
+    schedule(() => setRevealed((r) => ({ ...r, gemini: true })), 1200)
     schedule(() => setRevealed((r) => ({ ...r, codex: true })), 1900)
 
     let idx = 0
@@ -122,8 +122,8 @@ export function StatusesPage(props: { active: boolean; reducedMotion: boolean })
               <Skel widthPct={78} />
             )}
           </AgentRow>
-          <AgentRow icon={<AgentIcon agent="opencode" size={18} />} name="OpenCode" state="done">
-            {revealed.opencode ? (
+          <AgentRow icon={<GeminiIcon size={18} />} name="Gemini" state="done">
+            {revealed.gemini ? (
               <span>
                 {translate(
                   'auto.components.feature.wall.agents.orchestration.StatusesPage.139e3d7458',

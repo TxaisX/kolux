@@ -199,8 +199,7 @@ function installWillQuitHandler(): void {
     // scan completion would drop the final snapshot. Captured before any await; joins the barrier below.
     const usageCacheFlush = Promise.all([
       state.claudeUsage?.flush(),
-      state.codexUsage?.flush(),
-      state.openCodeUsage?.flush()
+      state.codexUsage?.flush()
     ]).then(() => {})
     const browserClientHostShutdown = shutdownPairedRuntimeBrowserClientHosts()
     const skillUploadShutdown = state.runtime?.disposeSkillUploadSessions() ?? Promise.resolve()

@@ -1,8 +1,7 @@
 // Why: relay-side equivalent of Kolux's local agent integration installers.
-// OpenCode still needs a config overlay, while Pi/OMP now get Kolux-managed
-// extension files installed into the remote agent homes. Host paths from the
-// renderer are meaningless on SSH targets, so the relay performs the remote
-// filesystem work itself.
+// Pi/OMP get Kolux-managed extension files installed into the remote agent
+// homes. Host paths from the renderer are meaningless on SSH targets, so the
+// relay performs the remote filesystem work itself.
 //
 // Plugin source strings ship over the JSON-RPC channel at session-ready —
 // they are NOT bundled with the relay binary because the relay is versioned
@@ -10,37 +9,30 @@
 // agent events get added; bundling would make every such change a relay
 // redeploy, and an old relay would silently serve stale plugin code.
 //
-// We deliberately do not reuse OpenCodeHookService / PiTitlebarExtensionService
-// directly: those modules import `electron` and ride on Kolux's userData
-// path. The relay's electron-free constraint forces a thin parallel
-// implementation rooted at $HOME/.kolux-relay/ for OpenCode and at the remote
-// Pi/OMP homes for those agents.
+// We deliberately do not reuse PiTitlebarExtensionService directly: it
+// imports `electron` and rides on Kolux's userData path. The relay's
+// electron-free constraint forces a thin parallel implementation rooted at
+// the remote Pi/OMP homes for those agents.
 
 import { createHash } from 'node:crypto'
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  statSync,
-  unlinkSync,
-  writeFileSync
-} from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { mirrorEntry, safeRemoveOverlay } from '../main/pty/overlay-mirror'
+import { safeRemoveOverlay } from '../main/pty/overlay-mirror'
 import type { PiAgentKind } from '../shared/pi-agent-kind'
 
 type LegacyOverlayAgentKind = Exclude<PiAgentKind, 'prime-agent'>
 
 const RELAY_HOOKS_DIR = '.kolux-relay'
-const OPENCODE_OVERLAY_SUBDIR = 'opencode-overlays'
+// Why this constant survives OpenCode's removal: relays deployed before the
+// ripout may have left a materialized overlay under this subdir. Only
+// `sweepRetiredOpenCodeOverlays` below still references it, to clean that
+// leftover up on the next relay start.
+const RETIRED_OPENCODE_OVERLAY_SUBDIR = 'opencode-overlays'
 const PI_OVERLAY_SUBDIR_BY_KIND: Record<LegacyOverlayAgentKind, string> = {
   pi: 'pi-overlays',
   omp: 'omp-overlays'
 }
-const OPENCODE_PLUGIN_FILE = 'kolux-opencode-status.js'
 const PI_EXTENSION_FILE = 'kolux-agent-status.ts'
 const PI_AGENT_SUBDIR = 'agent'
 // Why: bare-shell OMP still needs KOLUX_OMP_STATUS_EXTENSION without mkdir ~/.omp.
@@ -77,8 +69,6 @@ function isUsableId(id: string): boolean {
 }
 
 export type PluginSources = {
-  /** Source body of `kolux-opencode-status.js` to drop into <overlay>/plugins/. */
-  opencodePluginSource?: string
   /** Source body of Pi's `kolux-agent-status.ts` to drop into <overlay>/extensions/. */
   piExtensionSource?: string
   /** Source body of OMP's `kolux-agent-status.ts` to drop into <overlay>/extensions/. */
@@ -95,27 +85,28 @@ export type MaterializePiResult = {
   statusExtensionPath?: string
 }
 
-/** Presence of this file is what makes an overlay usable — a rebuild that failed
- *  after the wipe leaves the dir itself present but the plugin missing. */
-export function getRelayOpenCodePluginPath(overlayDir: string): string {
-  return join(overlayDir, 'plugins', OPENCODE_PLUGIN_FILE)
+/** One-shot cleanup for a relay deployed before OpenCode's removal: wipes any
+ *  overlay tree a previous relay build left under `opencode-overlays`. Call
+ *  once at relay start. Never follows the overlay's own symlinks/junctions
+ *  (safeRemoveTree's contract) and is scoped under `$HOME/.kolux-relay` so it
+ *  cannot reach anything outside it. */
+export function sweepRetiredOpenCodeOverlays(opts?: { homeDir?: string }): void {
+  const hooksRoot = join(opts?.homeDir ?? homedir(), RELAY_HOOKS_DIR)
+  safeRemoveOverlay(join(hooksRoot, RETIRED_OPENCODE_OVERLAY_SUBDIR), hooksRoot)
 }
 
 export class PluginOverlayManager {
-  private opencodePluginSource: string | null = null
   private piExtensionSources: Record<PiAgentKind, string | null> = {
     pi: null,
     omp: null,
     'prime-agent': null
   }
   private homeDir: string
-  private opencodeRoot: string
   private piRoots: Record<LegacyOverlayAgentKind, string>
 
   constructor(opts?: { homeDir?: string }) {
     const home = opts?.homeDir ?? homedir()
     this.homeDir = home
-    this.opencodeRoot = join(home, RELAY_HOOKS_DIR, OPENCODE_OVERLAY_SUBDIR)
     this.piRoots = {
       pi: join(home, RELAY_HOOKS_DIR, PI_OVERLAY_SUBDIR_BY_KIND.pi),
       omp: join(home, RELAY_HOOKS_DIR, PI_OVERLAY_SUBDIR_BY_KIND.omp)
@@ -130,9 +121,6 @@ export class PluginOverlayManager {
    *  process start. Future PTYs pick up the refreshed source when the relay
    *  writes plugin/extension files before spawn. */
   setSources(sources: PluginSources): void {
-    if (typeof sources.opencodePluginSource === 'string') {
-      this.opencodePluginSource = sources.opencodePluginSource
-    }
     if (typeof sources.piExtensionSource === 'string') {
       this.piExtensionSources.pi = withKoluxManagedPiExtensionMarker(sources.piExtensionSource)
     }
@@ -146,10 +134,6 @@ export class PluginOverlayManager {
     }
   }
 
-  hasOpenCodeSource(): boolean {
-    return this.opencodePluginSource !== null
-  }
-
   hasPiSource(kind?: PiAgentKind): boolean {
     if (kind) {
       return this.getPiExtensionSource(kind) !== null
@@ -160,87 +144,6 @@ export class PluginOverlayManager {
   private getPiExtensionSource(kind: PiAgentKind): string | null {
     const source = this.piExtensionSources[kind]
     return source ?? (kind === 'omp' ? this.piExtensionSources.pi : null)
-  }
-
-  private mirrorOpenCodeConfig(sourceDir: string, overlayDir: string): void {
-    for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
-      const sourcePath = join(sourceDir, entry.name)
-
-      if (entry.name === 'plugins') {
-        const isSymlink = entry.isSymbolicLink()
-        let isLinkPointingToDir = false
-        if (isSymlink) {
-          try {
-            isLinkPointingToDir = statSync(sourcePath).isDirectory()
-          } catch {
-            isLinkPointingToDir = false
-          }
-        }
-
-        if ((!isSymlink && entry.isDirectory()) || isLinkPointingToDir) {
-          const resolvedSource = isLinkPointingToDir ? realpathSync(sourcePath) : sourcePath
-          const overlayPluginsDir = join(overlayDir, 'plugins')
-          mkdirSync(overlayPluginsDir, { recursive: true })
-          for (const pluginEntry of readdirSync(resolvedSource, { withFileTypes: true })) {
-            if (pluginEntry.name === OPENCODE_PLUGIN_FILE) {
-              continue
-            }
-            mirrorEntry(
-              join(resolvedSource, pluginEntry.name),
-              join(overlayPluginsDir, pluginEntry.name)
-            )
-          }
-          continue
-        }
-      }
-
-      mirrorEntry(sourcePath, join(overlayDir, entry.name))
-    }
-  }
-
-  private writeOpenCodePlugin(overlayDir: string): void {
-    const pluginsDir = join(overlayDir, 'plugins')
-    mkdirSync(pluginsDir, { recursive: true })
-    const pluginPath = join(pluginsDir, OPENCODE_PLUGIN_FILE)
-    try {
-      unlinkSync(pluginPath)
-    } catch {
-      // Fresh overlay or no same-named stale symlink.
-    }
-    writeFileSync(pluginPath, this.opencodePluginSource!)
-  }
-
-  /** Materialize the OpenCode plugin overlay for `id` (typically the
-   *  renderer-supplied paneKey or, fallback, the relay-internal pty-id) and
-   *  return the directory path. Returns null when no source is cached or
-   *  the overlay write fails — caller falls back to no plugin (the agent
-   *  CLI runs without status reporting), which is the existing fail-open
-   *  behavior on the local side. */
-  materializeOpenCode(id: string, existingConfigDir?: string): string | null {
-    if (!this.opencodePluginSource || !isUsableId(id)) {
-      return null
-    }
-    const dir = join(this.opencodeRoot, safeDirName(id))
-    try {
-      safeRemoveOverlay(dir, this.opencodeRoot)
-      mkdirSync(dir, { recursive: true })
-      if (existingConfigDir) {
-        if (!existsSync(existingConfigDir)) {
-          return null
-        }
-        // Why: OPENCODE_CONFIG_DIR is a single config root. Mirror the user's
-        // remote root into the overlay before adding Kolux's plugin so status
-        // reporting does not hide their auth, models, keybinds, or plugins.
-        this.mirrorOpenCodeConfig(existingConfigDir, dir)
-      }
-      this.writeOpenCodePlugin(dir)
-      return dir
-    } catch (err) {
-      process.stderr.write(
-        `[plugin-overlay] failed to materialize OpenCode overlay: ${err instanceof Error ? err.message : String(err)}\n`
-      )
-      return null
-    }
   }
 
   private getDefaultPiAgentDir(kind: PiAgentKind): string {
@@ -334,10 +237,10 @@ export class PluginOverlayManager {
       return
     }
     const safe = safeDirName(id)
-    // Why: sweep all overlay roots (OpenCode + each Pi-kind) because PTY exit
-    // doesn't know which kind materialized this id. Per-root scoping inside
+    // Why: sweep every Pi-kind overlay root because PTY exit doesn't know
+    // which kind materialized this id. Per-root scoping inside
     // safeRemoveOverlay keeps each call bounded to its own tree.
-    for (const root of [this.opencodeRoot, ...Object.values(this.piRoots)]) {
+    for (const root of Object.values(this.piRoots)) {
       try {
         safeRemoveOverlay(join(root, safe), root)
       } catch (err) {

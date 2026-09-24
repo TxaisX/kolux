@@ -13,6 +13,7 @@ import {
   resolveWorkerStartReadinessTimeoutMs
 } from '../../../../../../shared/orchestration-timing-budgets'
 import { assertWorkerStartTaskSpecWithinPromptBudget } from './worker-start-prompt-budget'
+import { resolveWorkerStartRoutingTier } from './worker-routing-tier'
 
 export const ORCHESTRATION_WORKER_START_METHODS: RpcMethod[] = [
   defineMethod({
@@ -49,15 +50,20 @@ export const ORCHESTRATION_WORKER_START_METHODS: RpcMethod[] = [
         )
       }
       await assertWorkerStartTaskSpecWithinPromptBudget(params.spec ?? existingTask!.spec)
-      const mode = decideWorkerStartMode({
+      const routedParams = resolveWorkerStartRoutingTier({
         params,
+        runtime,
+        coordinatorPaneKey: coordinatorPane
+      })
+      const mode = decideWorkerStartMode({
+        params: routedParams,
         settings: readWorkerStartModeSettings(runtime)
       })
-      if (params.on) {
+      if (routedParams.on) {
         // A remote worker is always a terminal agent; the mode receipt rides along so the
         // coordinator still learns why its structured default did not apply.
         const receipt = await startFederatedWorker({
-          params,
+          params: routedParams,
           runtime,
           db,
           runId: run.id,
@@ -67,7 +73,7 @@ export const ORCHESTRATION_WORKER_START_METHODS: RpcMethod[] = [
         return receipt && typeof receipt === 'object' ? { ...receipt, mode } : receipt
       }
       return startLocalWorker({
-        params: { ...params, timeoutMs: readinessTimeoutMs },
+        params: { ...routedParams, timeoutMs: readinessTimeoutMs },
         runtime,
         db,
         run,

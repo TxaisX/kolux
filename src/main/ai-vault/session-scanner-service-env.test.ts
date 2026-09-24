@@ -65,16 +65,6 @@ describe('buildAiVaultServiceEnv', () => {
     })
   })
 
-  it('keeps the OpenCode data-directory and database overrides', () => {
-    const env = buildAiVaultServiceEnv(
-      { XDG_DATA_HOME: '/home/dev/data', OPENCODE_DB: 'opencode-alt.db' },
-      'linux'
-    )
-
-    expect(env.XDG_DATA_HOME).toBe('/home/dev/data')
-    expect(env.OPENCODE_DB).toBe('opencode-alt.db')
-  })
-
   it('runs the forked Electron binary as plain Node', () => {
     expect(buildAiVaultServiceEnv({}, 'linux').ELECTRON_RUN_AS_NODE).toBe('1')
   })

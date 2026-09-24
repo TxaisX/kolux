@@ -74,7 +74,7 @@ describe('ProviderSegment monthly window', () => {
     const { ProviderSegment } = await import('./StatusBar')
 
     const limits: ProviderRateLimits = {
-      provider: 'opencode-go',
+      provider: 'grok',
       session: windowOf(10, 300),
       weekly: windowOf(20, 10080),
       monthly: windowOf(30, 43200),

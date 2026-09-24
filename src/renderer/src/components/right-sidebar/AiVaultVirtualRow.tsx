@@ -120,7 +120,7 @@ export function AiVaultVirtualRow({
   const resumeLabel = resumeState ? aiVaultSessionResumeLabel(resumeState) : ''
   const canOpenLocalSessionPaths =
     row.type === 'session' && canUseLocalAiVaultSessionPathActions(row.session.executionHostId)
-  // Why: in-Kolux View Log additionally withholds synthetic (SQLite/OpenCode)
+  // Why: in-Kolux View Log additionally withholds synthetic (SQLite row)
   // identities that have no single file to open, while Reveal/CWD stay on the
   // existing local-path gate.
   const canOpenLogInKolux = row.type === 'session' && canOpenAiVaultSessionLogInKolux(row.session)

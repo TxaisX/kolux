@@ -98,7 +98,7 @@ describe('resolveWorktreeIncludePaths', () => {
     await expect(resolveWorktreeIncludePaths(repo)).resolves.toEqual(['.env'])
   })
 
-  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
   it.skipIf(process.platform === 'win32')(
     'resolves a gitignored symlink entry without following it',
     async () => {

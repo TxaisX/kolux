@@ -56,7 +56,7 @@ describe('patchPackagedProcessPath', () => {
     }
   })
 
-  it('prepends agent-CLI install dirs (~/.opencode/bin, ~/.vite-plus/bin) for packaged darwin runs', async () => {
+  it('prepends agent-CLI install dirs (~/.vite-plus/bin) for packaged darwin runs', async () => {
     const { app } = await import('electron')
     const { patchPackagedProcessPath } = await import('./configure-process')
 
@@ -68,11 +68,10 @@ describe('patchPackagedProcessPath', () => {
     patchPackagedProcessPath()
 
     const segments = (process.env.PATH ?? '').split(':')
-    // Why: issue #829 — ~/.opencode/bin and ~/.vite-plus/bin are the documented
-    // fallback install locations for the opencode and Pi CLI install scripts.
-    // Without them on PATH, GUI-launched Kolux reports both as "Not installed"
-    // even when `which` resolves them in the user's shell.
-    expect(segments).toContain(join('/Users/tester', '.opencode/bin'))
+    // Why: issue #829 — ~/.vite-plus/bin is the documented fallback install
+    // location for the Pi CLI install script. Without it on PATH, GUI-launched
+    // Kolux reports it as "Not installed" even when `which` resolves it in the
+    // user's shell.
     expect(segments).toContain(join('/Users/tester', '.vite-plus/bin'))
     expect(segments).toContain(join('/Users/tester', 'bin'))
   })

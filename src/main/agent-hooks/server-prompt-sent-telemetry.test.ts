@@ -463,12 +463,12 @@ describe('AgentHookServer prompt-sent telemetry', () => {
     expect(trackMock).not.toHaveBeenCalledWith('agent_prompt_sent', expect.anything())
   })
 
-  it('tracks OpenCode user MessagePart hooks once per message id', async () => {
+  it('tracks MiMo Code user MessagePart hooks once per message id', async () => {
     const server = new AgentHookServer()
     await server.start({ env: 'production' })
     try {
       const env = server.buildPtyEnv()
-      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/opencode`, {
+      const response = await fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/mimo-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -484,7 +484,7 @@ describe('AgentHookServer prompt-sent telemetry', () => {
         )
       })
       const updatedResponse = await fetch(
-        `http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/opencode`,
+        `http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/mimo-code`,
         {
           method: 'POST',
           headers: {
@@ -507,11 +507,11 @@ describe('AgentHookServer prompt-sent telemetry', () => {
       expect(server.getStatusSnapshot()[0]).toMatchObject({
         state: 'working',
         prompt: 'fix tests',
-        agentType: 'opencode'
+        agentType: 'mimo-code'
       })
       expect(trackMock).toHaveBeenCalledTimes(1)
       expect(trackMock).toHaveBeenCalledWith('agent_prompt_sent', {
-        agent_kind: 'opencode',
+        agent_kind: 'mimo-code',
         launch_source: 'unknown',
         request_kind: 'followup',
         nth_repo_added: 2

@@ -14,7 +14,6 @@ function baseInput(): UsageOverviewModelInput {
     rateLimits: createEmptyRateLimitState(),
     claudeUsage: emptyUsage(),
     codexUsage: emptyUsage(),
-    openCodeUsage: emptyUsage(),
     detectedAgentIds: null,
     now: NOW
   }
@@ -46,7 +45,6 @@ describe('buildUsageOverviewModel', () => {
         'claude',
         'codex',
         'gemini',
-        'opencode',
         'kimi',
         'antigravity',
         'minimax',

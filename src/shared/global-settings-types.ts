@@ -5,6 +5,7 @@ import type { GitLabProjectSettings } from './gitlab-types'
 import type { TaskProvider } from './task-providers'
 import type { KeybindingOverrides, TerminalShortcutPolicy } from './keybindings'
 import type { AppIconId } from './app-icon'
+import type { OrchestrationRoutingSettings } from './orchestration-routing-tiers'
 import type { SourceControlAiSettings } from './source-control-ai-types'
 import type { ClaudeAgentTeamsMode } from './claude-agent-teams-tmux-compat'
 import type { TerminalCustomTheme } from './terminal-custom-themes'
@@ -362,10 +363,6 @@ export type GlobalSettings = {
   /** Persisted Linear team selection (tasks view). Same nullable-array pattern as
    *  defaultRepoSelection: null = sticky-all, string[] = frozen subset of team IDs. */
   defaultLinearTeamSelection: string[] | null
-  /** Session cookie for OpenCode Go rate-limit fetching. Stored encrypted. */
-  opencodeSessionCookie: string
-  /** Optional OpenCode Go workspace ID override; when set, skips the workspaces lookup and fetches usage directly. */
-  opencodeWorkspaceId: string
   /** Optional MiniMax group id. When empty, the usage fetcher extracts minimax_group_id_v2 from the cookie. */
   minimaxGroupId: string
   /** Comma-separated MiniMax model names to show in the status bar usage window. */
@@ -386,6 +383,8 @@ export type GlobalSettings = {
   }
   /** Per-agent default CLI arguments appended after the binary/path and before prompts. */
   agentDefaultArgs?: Partial<Record<TuiAgent, string>>
+  /** Per-provider, per-tier overrides of `DEFAULT_ORCHESTRATION_ROUTING`; missing tiers use the default. */
+  orchestrationRouting?: OrchestrationRoutingSettings
   /** Per-agent launch environment defaults used when yolo mode is exposed as env. */
   agentDefaultEnv?: Partial<Record<TuiAgent, Record<string, string>>>
   /** One-shot guard for adding yolo-mode default args to untouched agent launch profiles. */

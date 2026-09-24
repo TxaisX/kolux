@@ -93,7 +93,7 @@ describe('useIpcEvents updater integration', () => {
     createTerminalListenerRef.current({
       worktreeId: 'wt-2',
       title: 'Runner',
-      command: 'opencode'
+      command: 'goose'
     })
 
     expect(setActiveView).not.toHaveBeenCalled()
@@ -112,7 +112,7 @@ describe('useIpcEvents updater integration', () => {
     expect(setTabCustomTitle).toHaveBeenCalledWith('tab-new', 'Runner', {
       recordInteraction: false
     })
-    expect(queueTabStartupCommand).toHaveBeenCalledWith('tab-new', { command: 'opencode' })
+    expect(queueTabStartupCommand).toHaveBeenCalledWith('tab-new', { command: 'goose' })
     expect(storeState.settings.activeRuntimeEnvironmentId).toBe('windows-2')
 
     storeState.settings = {
@@ -130,7 +130,7 @@ describe('useIpcEvents updater integration', () => {
     createTerminalListenerRef.current({
       worktreeId: 'wt-2',
       title: 'Runner',
-      command: 'opencode',
+      command: 'goose',
       presentation: 'focused'
     })
 

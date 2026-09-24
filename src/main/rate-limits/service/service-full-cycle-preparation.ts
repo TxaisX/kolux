@@ -4,7 +4,6 @@ import { fetchGeminiRateLimits } from '../gemini-usage-fetcher'
 import { fetchGrokRateLimits } from '../grok-fetcher'
 import { readGrokAuthSession } from '../grok-auth'
 import { fetchMiniMaxRateLimits } from '../minimax/minimax-fetcher'
-import { fetchOpenCodeGoRateLimits } from '../opencode-go-usage-fetcher'
 import { RateLimitServiceFetchPolicy } from './service-fetch-policy'
 import type {
   ClaudeRuntimeAuthPreparation,
@@ -25,13 +24,10 @@ export type FetchAllCyclePrepared = {
   codexStateBeforeFetch: ProviderRateLimits | null
   codexProvenance: string | null
   codexGeneration: number
-  opencodeConfigChanged: boolean
-  opencodeGeneration: number
   miniMaxConfigChanged: boolean
   miniMaxGeneration: number
   claudeFetchGated: boolean
   results: [
-    PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
     PromiseSettledResult<ProviderRateLimits>,
@@ -73,9 +69,6 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
       ? null
       : this.getCodexProvenance(codexTarget, codexHomePath)
     const codexGeneration = this.codexFetchGeneration
-    const openCodeGoConfig = this.openCodeGoConfigResolver?.()
-    const cookie = openCodeGoConfig?.sessionCookie ?? ''
-    const workspaceIdOverride = openCodeGoConfig?.workspaceIdOverride ?? ''
     const miniMaxConfigResult = this.resolveMiniMaxConfig()
     const miniMaxCookie = miniMaxConfigResult.config.sessionCookie
     const miniMaxGroupId = miniMaxConfigResult.config.groupId
@@ -88,14 +81,6 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
     this.grokAuthConfigured = grokAuthReadResult.status === 'ok'
 
     // Discard stale data on config change — it belongs to a different session/workspace.
-    const currentConfigHash = `${cookie}|${workspaceIdOverride}`
-    const opencodeConfigChanged = currentConfigHash !== this.lastOpencodeConfigHash
-    if (opencodeConfigChanged) {
-      this.lastOpencodeConfigHash = currentConfigHash
-      this.opencodeFetchGeneration += 1
-    }
-    const opencodeGeneration = this.opencodeFetchGeneration
-
     const currentMiniMaxConfigHash = `${miniMaxCookie}|${miniMaxGroupId}|${miniMaxModels}|${miniMaxEndpoint}|${miniMaxApiKey}|${miniMaxConfigResult.error ?? ''}`
     const miniMaxConfigChanged = currentMiniMaxConfigHash !== this.lastMiniMaxConfigHash
     if (miniMaxConfigChanged) {
@@ -113,9 +98,6 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
         ? codexStateBeforeFetch
         : this.withFetchingStatus(previousState.codex, 'codex'),
       gemini: this.withFetchingStatus(previousState.gemini, 'gemini'),
-      opencodeGo: opencodeConfigChanged
-        ? this.withFetchingStatus(null, 'opencode-go')
-        : this.withFetchingStatus(previousState.opencodeGo, 'opencode-go'),
       kimi: this.withFetchingStatus(previousState.kimi, 'kimi'),
       antigravity: this.withFetchingStatus(previousState.antigravity, 'antigravity'),
       minimax: miniMaxConfigChanged
@@ -138,7 +120,7 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
     const claudeFetchGated =
       !options?.force && this.shouldSkipAutomatedClaudeFetch(previousState.claude)
 
-    const [claudeResult, codexResult, geminiResult, opencodeGoResult, kimiResult, miniMaxResult] =
+    const [claudeResult, codexResult, geminiResult, kimiResult, miniMaxResult] =
       await Promise.allSettled([
         claudeFetchGated
           ? Promise.resolve(previousState.claude as ProviderRateLimits)
@@ -158,11 +140,6 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
               signal
             })),
         fetchGeminiRateLimits(geminiCliOAuthEnabled),
-        fetchOpenCodeGoRateLimits(
-          cookie,
-          workspaceIdOverride || undefined,
-          this.networkProxySettingsResolver?.()
-        ),
         this.fetchKimiWithResolvedHome(),
         miniMaxConfigResult.error
           ? Promise.resolve(this.getMiniMaxCredentialError(miniMaxConfigResult.error))
@@ -189,19 +166,10 @@ export abstract class RateLimitServiceFullCyclePreparation extends RateLimitServ
       codexStateBeforeFetch,
       codexProvenance,
       codexGeneration,
-      opencodeConfigChanged,
-      opencodeGeneration,
       miniMaxConfigChanged,
       miniMaxGeneration,
       claudeFetchGated,
-      results: [
-        claudeResult,
-        codexResult,
-        geminiResult,
-        opencodeGoResult,
-        kimiResult,
-        miniMaxResult
-      ],
+      results: [claudeResult, codexResult, geminiResult, kimiResult, miniMaxResult],
       grokResultPromise
     }
   }

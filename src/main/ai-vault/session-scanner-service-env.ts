@@ -41,14 +41,10 @@ const AGENT_ROOT_ENV_ALLOWLIST = [
   'KIMI_CODE_HOME',
   'OMP_CODING_AGENT_DIR',
   'OPENCLAW_STATE_DIR',
-  'OPENCODE_DB',
   'PI_CODING_AGENT_DIR',
   'PRIME_AGENT_CODING_AGENT_DIR',
   'PRIME_AGENT_CODING_AGENT_SESSION_DIR',
-  'PRIME_AGENT_SESSION_DIR',
-  // Why: OpenCode has no home variable — its store hangs off the XDG data dir,
-  // so this one is an agent root here rather than generic runtime state.
-  'XDG_DATA_HOME'
+  'PRIME_AGENT_SESSION_DIR'
 ] as const
 
 export function pickAllowedEnv(

@@ -369,7 +369,6 @@ describe('skill discovery', () => {
     expect(rootPaths).toEqual(
       expect.arrayContaining([
         '/home/test/.grok/skills',
-        '/home/test/.config/opencode/skills',
         '/home/test/.pi/agent/skills',
         '/home/test/.omp/agent/skills',
         '/home/test/.hermes/skills',

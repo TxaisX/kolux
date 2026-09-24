@@ -81,9 +81,9 @@ describe('tab agent launch options', () => {
   })
 
   it('does not match on a mid-string substring that would hijack file results', () => {
-    const options = buildTabAgentLaunchOptions(['opencode', 'claude'])
+    const options = buildTabAgentLaunchOptions(['command-code', 'claude'])
 
-    // "ode" is inside "opencode" but not a prefix — agents rank above files, so
+    // "ode" is inside "command-code" but not a prefix — agents rank above files, so
     // a noisy mid-string hit must not surface.
     expect(findMatchingTabAgentLaunchOptions('ode', options)).toEqual([])
   })

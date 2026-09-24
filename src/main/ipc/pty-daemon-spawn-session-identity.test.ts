@@ -1,10 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  openCodeBuildPtyEnvMock,
-  openCodeClearPtyMock,
-  piBuildPtyEnvMock,
-  piClearPtyMock
-} from './pty-ipc-mock-registry'
+import { piBuildPtyEnvMock, piClearPtyMock } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { createDaemonActiveProviderFixtures } from './pty-ipc-daemon-provider-fixtures'
 import { makePaneKey } from '../../shared/stable-pane-id'
@@ -22,9 +17,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -284,7 +276,6 @@ describe('registerPtyHandlers', () => {
         await expect(
           handlers.get('pty:spawn')!(null, { cols: 80, rows: 24, env: {} })
         ).rejects.toThrow(/spawn boom/)
-        expect(openCodeClearPtyMock).toHaveBeenCalled()
         expect(piClearPtyMock).toHaveBeenCalled()
         expect(runtime.preparePtyExecutionContext).toHaveBeenLastCalledWith(
           expect.any(String),
@@ -324,7 +315,6 @@ describe('registerPtyHandlers', () => {
             sessionId: 'caller-owned-session'
           })
         ).rejects.toThrow(/spawn boom/)
-        expect(openCodeClearPtyMock).not.toHaveBeenCalled()
         expect(piClearPtyMock).not.toHaveBeenCalled()
         expect(runtime.preparePtyExecutionContext).toHaveBeenLastCalledWith(
           'caller-owned-session',
@@ -398,9 +388,6 @@ describe('registerPtyHandlers', () => {
         // Why: host-local vars must be absent over SSH (they point at the local host/disk) — shipping them is useless or a credential leak.
         expect(env.KOLUX_AGENT_HOOK_PORT).toBeUndefined()
         expect(env.KOLUX_AGENT_HOOK_TOKEN).toBeUndefined()
-        expect(env.OPENCODE_CONFIG_DIR).toBeUndefined()
-        expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
-        expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
         expect(env.MIMOCODE_HOME).toBeUndefined()
         expect(env.KOLUX_MIMOCODE_HOME).toBeUndefined()
         expect(env.KOLUX_MIMOCODE_SOURCE_HOME).toBeUndefined()
@@ -418,7 +405,6 @@ describe('registerPtyHandlers', () => {
         expect(spawnOptions.envToDelete ?? []).not.toContain('KOLUX_CODEX_HOME')
         expect(spawnOptions.paneKey).toBe(makePaneKey('tab-1', leafId))
         expect(spawnOptions.tabId).toBe('tab-1')
-        expect(openCodeBuildPtyEnvMock).not.toHaveBeenCalled()
         expect(piBuildPtyEnvMock).not.toHaveBeenCalled()
         expect(store.upsertSshRemotePtyLease).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -630,7 +616,6 @@ describe('registerPtyHandlers', () => {
         }
 
         expect(store.markSshRemotePtyLease).toHaveBeenCalledWith('ssh-1', 'remote-pty', 'expired')
-        expect(openCodeClearPtyMock).toHaveBeenCalledWith(scopedPtyId)
         expect(piClearPtyMock).toHaveBeenCalledWith(scopedPtyId)
       })
     })

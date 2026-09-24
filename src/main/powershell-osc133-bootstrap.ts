@@ -38,7 +38,6 @@ export { encodePowerShellCommand } from '../shared/powershell-command-encoding'
 const POWERSHELL_OSC133_BOOTSTRAP = `# Kolux OSC 133 shell integration for PowerShell.
 # Profiles have already loaded normally by the time -EncodedCommand runs.
 # Restore managed ownership before the shell-integration compatibility guard.
-if ($env:KOLUX_OPENCODE_CONFIG_DIR) { $env:OPENCODE_CONFIG_DIR = $env:KOLUX_OPENCODE_CONFIG_DIR }
 if ($env:KOLUX_MIMOCODE_HOME) { $env:MIMOCODE_HOME = $env:KOLUX_MIMOCODE_HOME }
 if ($env:KOLUX_CODEX_HOME) { $env:CODEX_HOME = $env:KOLUX_CODEX_HOME }
 

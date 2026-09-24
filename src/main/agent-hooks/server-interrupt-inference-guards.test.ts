@@ -414,7 +414,7 @@ describe('AgentHookServer listener replay', () => {
     }
   })
 
-  it('preserves an inferred interrupted row when OpenCode immediately reports SessionIdle', () => {
+  it('preserves an inferred interrupted row when MiMo Code immediately reports SessionIdle', () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_000)
     try {
@@ -426,7 +426,7 @@ describe('AgentHookServer listener replay', () => {
           paneKey: PANE,
           tabId: 'tab-1',
           worktreeId: 'wt-1',
-          payload: { state: 'working', prompt: 'long task', agentType: 'opencode' }
+          payload: { state: 'working', prompt: 'long task', agentType: 'mimo-code' }
         },
         'conn-1'
       )
@@ -439,7 +439,7 @@ describe('AgentHookServer listener replay', () => {
           baselineUpdatedAt: baseline.receivedAt,
           baselineStateStartedAt: baseline.stateStartedAt,
           baselinePrompt: 'long task',
-          baselineAgentType: 'opencode',
+          baselineAgentType: 'mimo-code',
           intent: 'plain-escape',
           inputCount: 2
         })
@@ -451,7 +451,7 @@ describe('AgentHookServer listener replay', () => {
           paneKey: PANE,
           tabId: 'tab-1',
           worktreeId: 'wt-1',
-          payload: { state: 'done', prompt: 'long task', agentType: 'opencode' }
+          payload: { state: 'done', prompt: 'long task', agentType: 'mimo-code' }
         },
         'conn-1'
       )
@@ -461,7 +461,7 @@ describe('AgentHookServer listener replay', () => {
           paneKey: PANE,
           state: 'done',
           prompt: 'long task',
-          agentType: 'opencode',
+          agentType: 'mimo-code',
           interrupted: true,
           receivedAt: 1_500,
           stateStartedAt: 1_500
@@ -525,7 +525,7 @@ describe('AgentHookServer listener replay', () => {
     }
   })
 
-  it.each(['opencode', 'copilot'] as const)(
+  it.each(['mimo-code', 'copilot'] as const)(
     'rejects single plain Escape inference for %s',
     (agentType) => {
       vi.useFakeTimers()
@@ -567,7 +567,7 @@ describe('AgentHookServer listener replay', () => {
     }
   )
 
-  it.each(['opencode', 'copilot'] as const)(
+  it.each(['mimo-code', 'copilot'] as const)(
     'accepts double plain Escape inference for %s',
     (agentType) => {
       vi.useFakeTimers()

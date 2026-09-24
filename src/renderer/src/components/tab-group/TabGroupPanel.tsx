@@ -204,24 +204,16 @@ export default function TabGroupPanel({
       onDuplicateBrowserTab={commands.duplicateBrowserTab}
       onCloseAllFiles={commands.closeAllEditorTabsInGroup}
       onMakePreviewFilePermanent={(_fileId, tabId) => {
-        if (!tabId) {
-          return
+        const item = tabId ? model.groupTabs.find((candidate) => candidate.id === tabId) : null
+        if (item) {
+          commands.makePreviewFilePermanent(item.entityId, item.id)
         }
-        const item = model.groupTabs.find((candidate) => candidate.id === tabId)
-        if (!item) {
-          return
-        }
-        commands.makePreviewFilePermanent(item.entityId, item.id)
       }}
       onPinFile={(_fileId, tabId) => {
-        if (!tabId) {
-          return
+        const item = tabId ? model.groupTabs.find((candidate) => candidate.id === tabId) : null
+        if (item) {
+          commands.pinFile(item.entityId, item.id)
         }
-        const item = model.groupTabs.find((candidate) => candidate.id === tabId)
-        if (!item) {
-          return
-        }
-        commands.pinFile(item.entityId, item.id)
       }}
       tabBarOrder={tabBarOrder}
       hoveredTabInsertion={hoveredTabInsertion}
@@ -230,6 +222,7 @@ export default function TabGroupPanel({
     />
   )
 
+  const activeTerminalTabId = activeTab?.contentType === 'terminal' ? activeTab.entityId : null
   const menuButtonClassName =
     'my-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent'
   // Why: focused-only so quick commands and Close split pane stay with the active pane and unfocused strips stay compact.
@@ -293,9 +286,8 @@ export default function TabGroupPanel({
                   <WorkspacePreviewButton worktreeId={worktreeId} groupId={groupId} />
                 </>
               ) : null}
-              {/* Why only isFocused: Tidy and the presets apply to the panes inside a
-                  tab too, which exist with or without split groups. Closing a group
-                  still needs one, so that item keeps the stricter gate below. */}
+              {/* Why only isFocused: Tidy also reaches panes inside a single tab.
+                  Group layouts and Close split pane remain gated by split groups. */}
               {isFocused ? (
                 <Tooltip>
                   <DropdownMenu modal={false}>
@@ -328,7 +320,10 @@ export default function TabGroupPanel({
                           'Tidy panes'
                         )}
                       </DropdownMenuItem>
-                      <LayoutPresetsMenu worktreeId={worktreeId} />
+                      <LayoutPresetsMenu
+                        worktreeId={worktreeId}
+                        activeTerminalTabId={activeTerminalTabId}
+                      />
                       {hasSplitGroups ? (
                         <DropdownMenuItem
                           variant="destructive"

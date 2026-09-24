@@ -4,7 +4,6 @@ import type { RuntimeTerminalAgentStatusSnapshot } from './runtime-terminal-agen
 import type { AgentStatus } from '../../shared/agent-detection'
 import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
 import { detectTerminalWaitBlockedReason } from './terminal-wait-detection'
-import { isOpenCodeNativeTitle } from '../../shared/agent-detection'
 import type { AgentStatusEntry } from '../../shared/agent-status-types'
 import type { RuntimePtyWorktreeRecord } from './runtime-terminal-state-records'
 import { renewRuntimeMobileAgentStatusFromPtyTitle } from './runtime-mobile-agent-status-projection'
@@ -30,7 +29,6 @@ export class KoluxRuntimeWithResolveAuthoritativeTerminalWaitPermission extends 
       terminal.titleStatusIsLive &&
       terminal.titleStatus !== null &&
       terminal.titleStatus !== 'permission' &&
-      !isOpenCodeNativeTitle(terminal.title) &&
       blockedByWaitText !== 'agent-approval-prompt'
     if (liveTitleClearsBlockedText && lifecycle?.status !== terminal.titleStatus) {
       return null

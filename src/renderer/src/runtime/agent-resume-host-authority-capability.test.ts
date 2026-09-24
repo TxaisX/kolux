@@ -42,7 +42,6 @@ describe('agentResumeHostAuthorityCapability', () => {
       codex: undefined,
       gemini: undefined,
       antigravity: undefined,
-      opencode: undefined,
       pi: undefined,
       'mimo-code': undefined,
       droid: undefined,

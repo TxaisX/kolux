@@ -193,18 +193,6 @@ describe('validateAiVaultSessionDeleteTarget', () => {
     expect(result).toEqual({ allowed: false, agent: 'gemini', reason: 'non-local-host' })
   })
 
-  // A real OpenCode SQLite-row session (the `<dbPath>#<sessionId>` identity)
-  // reaches the validator as agent 'opencode', which is stopped at the agent
-  // gate — so this is how such a session actually enters judgement.
-  it('rejects a real opencode session as an unsupported agent', () => {
-    const result = validateAiVaultSessionDeleteTarget({
-      agent: 'opencode',
-      filePath: join(HOME, '.local', 'share', 'opencode', 'db.sqlite#session-1'),
-      executionHostId: 'local'
-    })
-    expect(result).toEqual({ allowed: false, agent: 'opencode', reason: 'unsupported-agent' })
-  })
-
   // Defense-in-depth: even for a deletable agent, any '#'-bearing path is
   // treated as a synthetic SQLite identity rather than a real file to delete.
   it('rejects a deletable-agent path bearing a synthetic # marker', () => {

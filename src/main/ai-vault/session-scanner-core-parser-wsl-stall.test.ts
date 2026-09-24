@@ -41,7 +41,6 @@ function uncPath(distro: string, ...segments: string[]): string {
 
 const KIMI_HOME = ['.kimi-code', 'sessions', 'wd_app_9f2', 'session_abc']
 const GROK_DIR = ['.grok', 'sessions', 'ses-1']
-const OPENCODE_ROOT = ['.local', 'share', 'opencode', 'storage']
 
 const KIMI_STATE = JSON.stringify({
   title: 'Kimi session',
@@ -65,19 +64,6 @@ const GROK_HISTORY = `${JSON.stringify({
   type: 'user',
   content: '<user_query>ship it</user_query>'
 })}\n`
-
-const OPENCODE_SESSION = JSON.stringify({
-  id: 'ses-1',
-  title: 'OpenCode session',
-  directory: '/repo/app',
-  time: { created: 1780000000000 }
-})
-
-const OPENCODE_MESSAGE = JSON.stringify({
-  role: 'user',
-  content: [{ type: 'text', text: 'ship it' }],
-  time: { created: 1780000000000 }
-})
 
 type ReadResult = { bytesRead: number; buffer: Buffer }
 
@@ -107,21 +93,6 @@ function servingHandle(body: string) {
 
 function missing(): Error {
   return Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
-}
-
-// Complete: UNC readdir results pass through the child dispatcher's dirent
-// serializer, which reads every kind flag.
-function dirent(name: string) {
-  return {
-    name,
-    isBlockDevice: () => false,
-    isCharacterDevice: () => false,
-    isDirectory: () => false,
-    isFIFO: () => false,
-    isFile: () => true,
-    isSocket: () => false,
-    isSymbolicLink: () => false
-  }
 }
 
 function candidate(agent: SessionFileCandidate['agent'], path: string): SessionFileCandidate {
@@ -237,50 +208,5 @@ describe('Grok session parse against a stalled WSL transcript', () => {
       title: 'Grok session',
       previewMessages: []
     })
-  })
-})
-
-describe('OpenCode session parse against a stalled WSL transcript', () => {
-  function sessionPath(distro: string): string {
-    return uncPath(distro, ...OPENCODE_ROOT, 'session', 'prj', 'ses-1.json')
-  }
-
-  it('refuses a stalled message-directory listing instead of an empty transcript', async () => {
-    mocks.readFile.mockResolvedValue(OPENCODE_SESSION)
-    mocks.readdir.mockImplementation(stalls<unknown[]>)
-
-    await expectRefusal(candidate('opencode', sessionPath('OpenCodeDir')))
-  })
-
-  it('refuses a stalled per-message read instead of a partial transcript', async () => {
-    const file = sessionPath('OpenCodeMessage')
-    mocks.readdir.mockResolvedValue([dirent('msg-1.json')])
-    mocks.readFile.mockImplementation((path: string) =>
-      path === file ? Promise.resolve(OPENCODE_SESSION) : stalls<string>()
-    )
-
-    await expectRefusal(candidate('opencode', file))
-    await releaseAndSettle()
-
-    mocks.readFile.mockImplementation((path: string) =>
-      Promise.resolve(path === file ? OPENCODE_SESSION : OPENCODE_MESSAGE)
-    )
-    const recovered = await parseAgentSessionFileCached(candidate('opencode', file), 'linux')
-
-    expect(recovered?.messageCount).toBe(1)
-  })
-
-  // Same guard as Kimi's: a live process mid-write must stay a parseable
-  // session, not a refusal.
-  it('still returns the session when a live process left a half-written message', async () => {
-    const file = sessionPath('OpenCodeHalfWritten')
-    mocks.readdir.mockResolvedValue([dirent('msg-1.json')])
-    mocks.readFile.mockImplementation((path: string) =>
-      Promise.resolve(path === file ? OPENCODE_SESSION : '{"role":"user",')
-    )
-
-    const session = await parseAgentSessionFileCached(candidate('opencode', file), 'linux')
-
-    expect(session).toMatchObject({ agent: 'opencode', title: 'OpenCode session', messageCount: 0 })
   })
 })

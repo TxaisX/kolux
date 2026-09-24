@@ -23,7 +23,6 @@ fi
 # continuation. Modern readline defaults this on; force it for the rest.
 [[ $- == *i* ]] && bind 'set enable-bracketed-paste on' 2>/dev/null
 # Why: remote startup files can re-export user defaults after relay spawn.
-[[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"
 [[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"
 [[ -n "${KOLUX_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"${KOLUX_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="${KOLUX_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac
 # Why: OMP does not auto-load Kolux's managed status extension; wrap only

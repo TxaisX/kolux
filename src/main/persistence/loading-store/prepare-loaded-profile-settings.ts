@@ -146,7 +146,6 @@ export function prepareLoadedProfileSettings(
   }
   if (
     parsed.settings?.agentYoloDefaultsMigrated !== true ||
-    hasUnsupportedTuiAgentArgs('opencode', parsed.settings?.agentDefaultArgs?.opencode) ||
     hasUnsupportedTuiAgentArgs('kilo', parsed.settings?.agentDefaultArgs?.kilo)
   ) {
     markNeedsSave()

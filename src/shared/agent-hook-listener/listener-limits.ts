@@ -8,12 +8,12 @@ const MAX_WARNED_KEYS = 32
 /** Slowloris cap: drop requests that have not finished sending after 5 s. */
 export const HOOK_REQUEST_SLOWLORIS_MS = 5_000
 
-/** Why: old OpenCode plugin builds re-post the full accumulated reply on every streamed part (O(n²) bytes/turn); cap at ingest to bound per-event cost. */
-export const OPENCODE_HOOK_TEXT_MAX_CHARS = 8_000
+/** Why: MiMo's plugin re-posts the full accumulated reply on every streamed MessagePart (O(n²) bytes/turn); cap at ingest to bound per-event cost. */
+export const HOOK_MESSAGE_TEXT_MAX_CHARS = 8_000
 
-export function capOpenCodeHookText(text: string): string {
-  return text.length > OPENCODE_HOOK_TEXT_MAX_CHARS
-    ? text.slice(0, OPENCODE_HOOK_TEXT_MAX_CHARS)
+export function capHookMessageText(text: string): string {
+  return text.length > HOOK_MESSAGE_TEXT_MAX_CHARS
+    ? text.slice(0, HOOK_MESSAGE_TEXT_MAX_CHARS)
     : text
 }
 

@@ -124,8 +124,8 @@ describe('uncovered compatibility lane', () => {
   it('does not let a legacy title fallback bypass the ambiguity fence', () => {
     expect(
       resolveCanonicalPaneAgentIdentity({
-        title: 'OC | something - grok',
-        uncoveredFallback: { agent: 'opencode', titleOnly: true }
+        title: 'agy gemini 3.5 - grok',
+        uncoveredFallback: { agent: 'codex', titleOnly: true }
       })
     ).toMatchObject({ agent: null, source: null, ambiguousAt: 'title' })
     expect(

@@ -18,8 +18,8 @@ describe('canUseLocalAiVaultSessionPathActions', () => {
 })
 
 describe('isSyntheticAiVaultSessionPath', () => {
-  it('treats OpenCode `<database>#<sessionId>` identities as synthetic', () => {
-    expect(isSyntheticAiVaultSessionPath('/home/user/.opencode/db.sqlite#sess_123')).toBe(true)
+  it('treats `<database>#<sessionId>` identities as synthetic', () => {
+    expect(isSyntheticAiVaultSessionPath('/home/user/.claude/db.sqlite#sess_123')).toBe(true)
   })
 
   it('treats ordinary JSONL/JSON transcript paths as real', () => {
@@ -50,7 +50,7 @@ describe('canOpenAiVaultSessionLogInKolux', () => {
     ).toBe(false)
     expect(
       canOpenAiVaultSessionLogInKolux({
-        filePath: '/home/user/.opencode/db.sqlite#sess_1',
+        filePath: '/home/user/.claude/db.sqlite#sess_1',
         executionHostId: 'local'
       })
     ).toBe(false)

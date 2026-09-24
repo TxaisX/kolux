@@ -13,7 +13,7 @@ import {
 // spawns off the Electron main-process event loop, because libuv performs
 // process creation inline on the calling thread. Lifecycle (FIFO one-at-a-time
 // dispatch, per-call deadlines, respawn-on-fault, idle teardown, fail-closed)
-// mirrors src/main/ai-vault/session-scanner-opencode-sqlite-worker-client.ts;
+// mirrors src/main/ai-vault/session-scanner-worker-client.ts;
 // the duplicated ~150 lines are cheaper than a premature shared abstraction, so
 // a third adopter should extract one.
 //
@@ -316,7 +316,7 @@ export type WorkerEntryLayout = {
 export function resolveWorkerEntryPath(layout: WorkerEntryLayout): string {
   // Packaged builds leave this entry inside app.asar — only forked child
   // processes are asarUnpack'd — so it resolves off resourcesPath rather than
-  // the bundler's __dirname, matching the shipped stt/warp/opencode workers.
+  // the bundler's __dirname, matching the shipped stt/warp workers.
   // Split out from the electron read so the packaged branch is testable without
   // a packaged build.
   // Why the resourcesPath guard: `isPackaged` is true on koluxd too, but

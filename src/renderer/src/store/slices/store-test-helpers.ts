@@ -21,11 +21,7 @@ import { createEditorSlice } from './editor'
 import { createStatsSlice } from './stats'
 import { createMemorySlice } from './memory'
 import { createWorkspaceSpaceSlice } from './workspace-space'
-import {
-  createClaudeUsageSlice,
-  createCodexUsageSlice,
-  createOpenCodeUsageSlice
-} from './usage-provider-slices'
+import { createClaudeUsageSlice, createCodexUsageSlice } from './usage-provider-slices'
 import { createBrowserSlice } from './browser'
 import { createRateLimitSlice } from './rate-limits'
 import { createWorkspaceHandoffSlice } from './workspace-handoff'
@@ -81,7 +77,6 @@ export function createTestStore() {
     ...createWorkspaceSpaceSlice(...a),
     ...createClaudeUsageSlice(...a),
     ...createCodexUsageSlice(...a),
-    ...createOpenCodeUsageSlice(...a),
     ...createBrowserSlice(...a),
     ...createRateLimitSlice(...a),
     ...createWorkspaceHandoffSlice(...a),

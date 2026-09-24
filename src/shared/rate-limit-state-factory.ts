@@ -6,7 +6,6 @@ export function createEmptyRateLimitState(overrides: Partial<RateLimitState> = {
     claude: null,
     codex: null,
     gemini: null,
-    opencodeGo: null,
     kimi: null,
     antigravity: null,
     minimax: null,

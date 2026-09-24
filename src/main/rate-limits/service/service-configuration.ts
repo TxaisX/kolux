@@ -8,7 +8,6 @@ import {
   type KimiHomeResolver,
   type ClaudeAccountSelectionTarget,
   type ClaudeAuthPreparationResolver,
-  type OpenCodeGoRateLimitConfig,
   type MiniMaxRateLimitConfig,
   type GeminiCliOAuthEnabledResolver,
   type InactiveCodexAccountInfo,
@@ -38,10 +37,6 @@ export abstract class RateLimitServiceConfiguration extends RateLimitServiceAcco
 
   setClaudeFetchTarget(target?: ClaudeAccountSelectionTarget): void {
     this.claudeFetchTarget = normalizeClaudeAccountSelectionTarget(target)
-  }
-
-  setOpenCodeGoConfigResolver(resolver: () => OpenCodeGoRateLimitConfig): void {
-    this.openCodeGoConfigResolver = resolver
   }
 
   setMiniMaxConfigResolver(resolver: () => MiniMaxRateLimitConfig): void {

@@ -130,7 +130,7 @@ export function buildAgentPromptWithContext(
   }
   // Why: the new-workspace flow launches each agent with a single plain-text
   // startup prompt. Appending attachments and bounded linked context keeps
-  // extra data visible to Claude/Codex/OpenCode without cluttering the textarea.
+  // extra data visible to Claude/Codex without cluttering the textarea.
   if (!trimmedPrompt) {
     return sections.join('\n\n')
   }

@@ -41,11 +41,6 @@ export type ClaudeAuthPreparationResolver = (
   target?: ClaudeAccountSelectionTarget
 ) => Promise<ClaudeRuntimeAuthPreparation>
 
-export type OpenCodeGoRateLimitConfig = {
-  sessionCookie: string
-  workspaceIdOverride: string
-}
-
 export type MiniMaxRateLimitConfig = {
   sessionCookie: string
   groupId: string
@@ -102,7 +97,6 @@ export type InternalRateLimitState = {
   claude: ProviderRateLimits | null
   codex: ProviderRateLimits | null
   gemini: ProviderRateLimits | null
-  opencodeGo: ProviderRateLimits | null
   kimi: ProviderRateLimits | null
   antigravity: ProviderRateLimits | null
   minimax: ProviderRateLimits | null

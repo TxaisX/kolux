@@ -179,7 +179,7 @@ describe('shared agent-hook-listener', () => {
     expect(state.lastStatusByPaneKey.has(PANE_KEY)).toBe(false)
   })
 
-  it('normalizes MiMo Code OpenCode-compatible lifecycle events as mimo-code status', () => {
+  it('normalizes MiMo Code lifecycle events as mimo-code status', () => {
     const message = normalizeHookPayload(
       state,
       'mimo-code',

@@ -706,7 +706,6 @@ describe('live resume anchors do not block hibernation (#10238 regression)', () 
     'codex',
     'gemini',
     'antigravity',
-    'opencode',
     'mimo-code',
     'droid',
     'grok',

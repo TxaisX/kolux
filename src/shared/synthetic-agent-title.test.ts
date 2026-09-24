@@ -16,7 +16,6 @@ describe('synthetic agent titles', () => {
   it.each([
     '✋ Gemini CLI',
     'π ! approve command',
-    'OpenCode - action required',
     'Codex ready',
     'Codex - action required for deployment'
   ])('keeps native and contextual titles outside generated permission suppression: %s', (title) => {
@@ -31,14 +30,6 @@ describe('synthetic agent titles', () => {
   it('does not synthesize Codex working titles over Codex native spinner titles', () => {
     expect(shouldDriveSyntheticAgentTitleFromHook('codex', 'working')).toBe(false)
     expect(shouldDriveSyntheticAgentTitleFromHook('codex', 'done')).toBe(true)
-  })
-
-  it('does not synthesize OpenCode titles over native session titles', () => {
-    expect(getSyntheticAgentTerminalTitle('opencode', 'done')).toBeNull()
-    expect(getSyntheticAgentTerminalTitle('opencode', 'waiting')).toBeNull()
-    expect(shouldDriveSyntheticAgentTitleFromHook('opencode', 'working')).toBe(false)
-    expect(shouldDriveSyntheticAgentTitleFromHook('opencode', 'done')).toBe(false)
-    expect(shouldDriveSyntheticAgentTitleFromHook('opencode', 'waiting')).toBe(false)
   })
 
   it('provides Devin titles for hook-driven status updates', () => {

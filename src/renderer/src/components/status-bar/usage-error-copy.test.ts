@@ -19,7 +19,6 @@ describe('getProviderDisplayName', () => {
     expect(getProviderDisplayName('claude')).toBe('Claude')
     expect(getProviderDisplayName('codex')).toBe('Codex')
     expect(getProviderDisplayName('gemini')).toBe('Gemini')
-    expect(getProviderDisplayName('opencode-go')).toBe('OpenCode Go')
     expect(getProviderDisplayName('kimi')).toBe('Kimi')
     expect(getProviderDisplayName('grok')).toBe('Grok')
   })

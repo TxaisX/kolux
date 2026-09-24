@@ -120,17 +120,17 @@ describe('parseAiVaultListResult', () => {
       sessions: [validSession()],
       issues: [
         {
-          agent: 'opencode',
+          agent: 'codex',
           kind: 'source-from-a-newer-host',
-          path: '/home/ada/.local/share/opencode/opencode.db',
-          message: 'OpenCode history was skipped.'
+          path: '/home/ada/.codex/sessions',
+          message: 'Codex history was skipped.'
         }
       ],
       scannedAt: '2026-07-27T00:00:00.000Z'
     })
 
     expect(parsed.issues).toEqual([
-      expect.objectContaining({ kind: 'scope', message: 'OpenCode history was skipped.' })
+      expect.objectContaining({ kind: 'scope', message: 'Codex history was skipped.' })
     ])
     expect(parsed.issues.some((issue) => issue.message.includes('invalid'))).toBe(false)
   })

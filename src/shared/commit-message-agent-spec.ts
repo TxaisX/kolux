@@ -11,7 +11,6 @@ import {
   parseClaudeModels,
   parseCodexModels,
   parseCursorModels,
-  parseLineModels,
   parsePiModels,
   withOpenAiThinking
 } from './commit-message-model-parsers'
@@ -93,7 +92,6 @@ export const COMMIT_MESSAGE_AGENT_SPECS: Partial<Record<TuiAgent, CommitMessageA
     OPENAI_THINKING_LEVELS,
     parseClaudeModels,
     parseCodexModels,
-    parseLineModels,
     parsePiModels,
     withOpenAiThinking
   }),

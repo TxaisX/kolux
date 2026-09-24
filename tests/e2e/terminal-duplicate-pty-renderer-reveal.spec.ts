@@ -52,7 +52,7 @@ setInterval(() => {
   const lines = [${JSON.stringify(marker)} + ' frame ' + String(frame).padStart(6, '0')]
   for (let row = 1; row <= 32; row += 1) {
     const width = 8 + ((frame + row * 7) % 48)
-    lines.push(String(row).padStart(2, '0') + ' OpenCode tool output ' + '#'.repeat(width))
+    lines.push(String(row).padStart(2, '0') + ' agent tool output ' + '#'.repeat(width))
   }
   process.stdout.write('\\x1b[?2026h\\x1b[H' + lines.join('\\r\\n') + '\\x1b[J\\x1b[?2026l')
 }, 32)

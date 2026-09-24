@@ -10,7 +10,6 @@ export const TUI_AGENT_AUTO_PICK_ORDER = [
   'codex',
   'grok',
   'copilot',
-  'opencode',
   'mimo-code',
   'ante',
   'trae',
@@ -86,8 +85,17 @@ export function haveSameDisabledTuiAgents(left: unknown, right: unknown): boolea
   return leftSet.size === rightSet.size && [...leftSet].every((agent) => rightSet.has(agent))
 }
 
-export function isTuiAgentEnabled(agent: TuiAgent, disabled?: Iterable<unknown> | null): boolean {
-  return !normalizeDisabledTuiAgents(disabled).includes(agent)
+export function isTuiAgentEnabled(agent: unknown, disabled?: Iterable<unknown> | null): boolean {
+  return isTuiAgent(agent) && !normalizeDisabledTuiAgents(disabled).includes(agent)
+}
+
+// Old profiles may still carry a retired agent id (e.g. 'opencode'); normalize to the
+// auto-pick default rather than surfacing a dead pick.
+export function normalizeDefaultTuiAgent(value: unknown): TuiAgent | 'blank' | null {
+  if (value === 'blank' || value === null || value === undefined) {
+    return value ?? null
+  }
+  return isTuiAgent(value) ? value : null
 }
 
 export function filterEnabledTuiAgents<T extends TuiAgent>(

@@ -48,10 +48,6 @@ vi.mock('node-pty', () => ({
   })
 }))
 
-vi.mock('../opencode/hook-service', () => ({
-  openCodeHookService: { buildPtyEnv: () => ({}), clearPty: vi.fn() }
-}))
-
 vi.mock('../pi/titlebar-extension-service', () => ({
   piTitlebarExtensionService: { buildPtyEnv: () => ({}), clearPty: vi.fn() }
 }))

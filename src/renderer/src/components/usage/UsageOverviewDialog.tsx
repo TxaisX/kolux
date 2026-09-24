@@ -23,17 +23,12 @@ export function UsageOverviewDialog({
   const codexUsageScanState = useAppStore((s) => s.codexUsageScanState)
   const codexUsageDaily = useAppStore((s) => s.codexUsageDaily)
   const codexUsageRecentSessions = useAppStore((s) => s.codexUsageRecentSessions)
-  const openCodeUsageScanState = useAppStore((s) => s.openCodeUsageScanState)
-  const openCodeUsageDaily = useAppStore((s) => s.openCodeUsageDaily)
-  const openCodeUsageRecentSessions = useAppStore((s) => s.openCodeUsageRecentSessions)
   const refreshRateLimits = useAppStore((s) => s.refreshRateLimits)
   const refreshDetectedAgents = useAppStore((s) => s.refreshDetectedAgents)
   const fetchClaudeUsage = useAppStore((s) => s.fetchClaudeUsage)
   const fetchCodexUsage = useAppStore((s) => s.fetchCodexUsage)
-  const fetchOpenCodeUsage = useAppStore((s) => s.fetchOpenCodeUsage)
   const refreshClaudeUsage = useAppStore((s) => s.refreshClaudeUsage)
   const refreshCodexUsage = useAppStore((s) => s.refreshCodexUsage)
-  const refreshOpenCodeUsage = useAppStore((s) => s.refreshOpenCodeUsage)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
@@ -42,8 +37,7 @@ export function UsageOverviewDialog({
     }
     void fetchClaudeUsage()
     void fetchCodexUsage()
-    void fetchOpenCodeUsage()
-  }, [open, fetchClaudeUsage, fetchCodexUsage, fetchOpenCodeUsage])
+  }, [open, fetchClaudeUsage, fetchCodexUsage])
 
   const model = useMemo(
     () =>
@@ -63,12 +57,6 @@ export function UsageOverviewDialog({
           summary: null,
           daily: codexUsageDaily,
           recentSessions: codexUsageRecentSessions
-        },
-        openCodeUsage: {
-          scanState: openCodeUsageScanState,
-          summary: null,
-          daily: openCodeUsageDaily,
-          recentSessions: openCodeUsageRecentSessions
         }
       }),
     [
@@ -81,10 +69,7 @@ export function UsageOverviewDialog({
       claudeUsageRecentSessions,
       codexUsageScanState,
       codexUsageDaily,
-      codexUsageRecentSessions,
-      openCodeUsageScanState,
-      openCodeUsageDaily,
-      openCodeUsageRecentSessions
+      codexUsageRecentSessions
     ]
   )
 
@@ -95,8 +80,7 @@ export function UsageOverviewDialog({
         refreshRateLimits(),
         refreshDetectedAgents(),
         claudeUsageScanState?.enabled ? refreshClaudeUsage() : Promise.resolve(),
-        codexUsageScanState?.enabled ? refreshCodexUsage() : Promise.resolve(),
-        openCodeUsageScanState?.enabled ? refreshOpenCodeUsage() : Promise.resolve()
+        codexUsageScanState?.enabled ? refreshCodexUsage() : Promise.resolve()
       ])
     } finally {
       setIsRefreshing(false)
@@ -117,7 +101,10 @@ export function UsageOverviewDialog({
               size="icon-xs"
               onClick={() => void handleRefresh()}
               disabled={isRefreshing}
-              aria-label={translate('components.usage.UsageOverviewDialog.refresh', 'Refresh usage')}
+              aria-label={translate(
+                'components.usage.UsageOverviewDialog.refresh',
+                'Refresh usage'
+              )}
             >
               <RefreshCw className={`size-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>

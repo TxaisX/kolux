@@ -26,7 +26,6 @@ export type ShellStartupFeature = (typeof SHELL_STARTUP_FEATURES)[number]
 
 /** Spawn-env keys that mean this pane carries a Kolux overlay the wrapper must re-apply. */
 const OVERLAY_ENV_KEYS = [
-  'KOLUX_OPENCODE_CONFIG_DIR',
   'KOLUX_MIMOCODE_HOME',
   'KOLUX_OMP_STATUS_EXTENSION',
   'KOLUX_CODEX_HOME',

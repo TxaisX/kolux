@@ -13,7 +13,6 @@ export const AGENT_KIND_VALUES = [
   'openclaude',
   'codex',
   'autohand',
-  'opencode',
   'mimo-code',
   'pi',
   'omp',

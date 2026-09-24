@@ -21,9 +21,7 @@ import {
   getPathMock,
   loginPreflightExecFileMock,
   spawnMock,
-  openCodeBuildPtyEnvMock,
   mimoCodeBuildPtyEnvMock,
-  openCodeClearPtyMock,
   buildAgentHookEnvMock,
   clearAgentHookPaneStateMock,
   registerPaneKeyAliasMock,
@@ -148,9 +146,7 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
     getPathMock.mockReset()
     loginPreflightExecFileMock.mockReset()
     spawnMock.mockReset()
-    openCodeBuildPtyEnvMock.mockReset()
     mimoCodeBuildPtyEnvMock.mockReset()
-    openCodeClearPtyMock.mockReset()
     buildAgentHookEnvMock.mockReset()
     clearAgentHookPaneStateMock.mockReset()
     registerPaneKeyAliasMock.mockReset()
@@ -210,14 +206,6 @@ export function createPtyIpcSuiteEnvironment(): PtyIpcSuiteEnvironment {
     // size: the shell wrapper writer verifies each generated file is non-empty.
     statSyncMock.mockReturnValue({ isDirectory: () => true, mode: 0o755, size: 1 })
     readFileSyncMock.mockReturnValue('')
-    openCodeBuildPtyEnvMock.mockImplementation((_ptyId: string, existingConfigDir?: string) => ({
-      KOLUX_OPENCODE_HOOK_PORT: '4567',
-      KOLUX_OPENCODE_HOOK_TOKEN: 'opencode-token',
-      KOLUX_OPENCODE_PTY_ID: 'test-pty',
-      OPENCODE_CONFIG_DIR: existingConfigDir
-        ? '/tmp/kolux-opencode-overlay'
-        : '/tmp/kolux-opencode-config'
-    }))
     mimoCodeBuildPtyEnvMock.mockImplementation((_ptyId: string, existingHome?: string) => ({
       MIMOCODE_HOME: existingHome ? '/tmp/kolux-mimocode-overlay' : '/tmp/kolux-mimocode-shared'
     }))

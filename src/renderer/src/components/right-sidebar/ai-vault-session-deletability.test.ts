@@ -35,12 +35,12 @@ describe('aiVaultSessionDeleteBlockedReason', () => {
     }
   })
 
-  it('blocks a synthetic OpenCode SQLite row identity', () => {
+  it('blocks a synthetic SQLite row identity', () => {
     expect(
       aiVaultSessionDeleteBlockedReason({
-        agent: 'opencode',
+        agent: 'claude',
         executionHostId: 'local',
-        filePath: '/home/user/.opencode/db.sqlite#sess_123'
+        filePath: '/home/user/.claude/db.sqlite#sess_123'
       })
     ).toBe(SYNTHETIC)
   })
@@ -48,11 +48,11 @@ describe('aiVaultSessionDeleteBlockedReason', () => {
   it('names the agent without explaining why it is unsupported', () => {
     expect(
       aiVaultSessionDeleteBlockedReason({
-        agent: 'opencode',
+        agent: 'kimi',
         executionHostId: 'local',
-        filePath: '/home/user/.opencode/sessions/log.jsonl'
+        filePath: '/home/user/.kimi/sessions/log.jsonl'
       })
-    ).toBe("OpenCode sessions can't be deleted from Kolux.")
+    ).toBe("Kimi sessions can't be deleted from Kolux.")
   })
 
   it('gives a multi-cause agent (antigravity) the same single sentence', () => {

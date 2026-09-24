@@ -4,7 +4,6 @@ import {
   isPiCompatibleAgentType
 } from '../../../../shared/pi-agent-kind'
 import { applyTerminalGitCredentialPromptGuard } from '../../terminal-git-credential-guard'
-import { openCodeHookService } from '../../../opencode/hook-service'
 import { mimoCodeHookService } from '../../../mimo/hook-service'
 import { agentHookServer } from '../../../agent-hooks/server'
 import { wslHookRelayManager } from '../../../agent-hooks/wsl-hook-relay-manager'
@@ -21,7 +20,6 @@ import {
   exposePiManagedExtensionEnv,
   isMimoLaunchCommand,
   resolveMimocodeSourceHome,
-  resolveOpenCodeSourceConfigDir,
   resolvePiAgentSourceDir,
   resolveScopedPiAgentSourceDir,
   restoreOrStripOverlayEnv
@@ -42,8 +40,6 @@ export function buildPtyHostEnv(
   mergePersistedWindowsPath(baseEnv)
   Object.assign(baseEnv, buildConfiguredProxyEnv(opts.networkProxySettings))
 
-  // Why: local path's baseEnv includes process.env but the daemon path doesn't (fork inheritance, not IPC); check both sources so guards stay in lock-step across spawn paths.
-  const preexistingOpenCodeConfigDir = resolveOpenCodeSourceConfigDir(baseEnv)
   const launchCommandHint = resolveSetupAgentSequenceLaunchCommand(baseEnv, opts.launchCommand)
   const explicitPiAgentKind = isPiCompatibleAgentType(opts.launchAgent)
     ? opts.launchAgent
@@ -74,18 +70,6 @@ export function buildPtyHostEnv(
       : resolveScopedPiAgentSourceDir(baseEnv, 'prime-agent')
 
   if (opts.agentStatusHooksEnabled) {
-    // Why: OPENCODE_CONFIG_DIR is a single path, not a colon-list; mirror the user's value into an overlay so their plugins and Kolux's status plugin coexist. See docs/opencode-config-dir-collision.md.
-    Object.assign(baseEnv, openCodeHookService.buildPtyEnv(id, preexistingOpenCodeConfigDir))
-    if (baseEnv.OPENCODE_CONFIG_DIR) {
-      // Why: ~/.zshrc can re-export the user's default after spawn; shell-ready wrappers restore this PTY-scoped value.
-      baseEnv.KOLUX_OPENCODE_CONFIG_DIR = baseEnv.OPENCODE_CONFIG_DIR
-      if (preexistingOpenCodeConfigDir) {
-        // Why: nested Kolux terminals inherit the overlay as OPENCODE_CONFIG_DIR; keep the real source so overlays don't mirror overlays.
-        baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = preexistingOpenCodeConfigDir
-      } else {
-        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
-      }
-    }
     if (isMimoLaunchCommand(launchCommandHint)) {
       const preexistingMimocodeHome = resolveMimocodeSourceHome(baseEnv)
       Object.assign(baseEnv, mimoCodeHookService.buildPtyEnv(id, preexistingMimocodeHome))
@@ -99,11 +83,6 @@ export function buildPtyHostEnv(
       }
     }
   } else {
-    restoreOrStripOverlayEnv(baseEnv, {
-      primary: 'OPENCODE_CONFIG_DIR',
-      overlay: 'KOLUX_OPENCODE_CONFIG_DIR',
-      source: 'KOLUX_OPENCODE_SOURCE_CONFIG_DIR'
-    })
     restoreOrStripOverlayEnv(baseEnv, {
       primary: 'MIMOCODE_HOME',
       overlay: 'KOLUX_MIMOCODE_HOME',
@@ -124,18 +103,6 @@ export function buildPtyHostEnv(
       const guestEndpoint = wslHookRelayManager.getGuestEndpointFilePath(distro)
       if (guestEndpoint) {
         baseEnv.KOLUX_AGENT_HOOK_ENDPOINT = guestEndpoint
-      }
-      // Why: OpenCode loads its status plugin from a guest config overlay, so point OPENCODE_CONFIG_DIR at the guest dir the relay materialized.
-      const opencodeOverlayDir = wslHookRelayManager.getOpenCodeOverlayDir(distro)
-      if (opencodeOverlayDir) {
-        baseEnv.OPENCODE_CONFIG_DIR = opencodeOverlayDir
-        baseEnv.KOLUX_OPENCODE_CONFIG_DIR = opencodeOverlayDir
-        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
-      } else {
-        // Why: relay not connected yet (or older guest bundle) — never cross the Windows overlay path into WSL; drop it so in-guest OpenCode uses its own config (pre-fix behavior, no status but no regression).
-        delete baseEnv.OPENCODE_CONFIG_DIR
-        delete baseEnv.KOLUX_OPENCODE_CONFIG_DIR
-        delete baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
       }
     }
   }

@@ -44,9 +44,6 @@ export function createAgentCompletionTitleObserver({
     if (/\bcursor(?: agent)?\b/.test(normalized)) {
       return 'cursor'
     }
-    if (/\bopencode\b/.test(normalized)) {
-      return 'opencode'
-    }
     if (/\bdroid\b/.test(normalized)) {
       return 'droid'
     }

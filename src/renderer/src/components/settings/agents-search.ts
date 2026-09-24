@@ -120,6 +120,29 @@ const getAllAgentsPaneSearchEntries = createLocalizedCatalog(() => [
     keywords: getAgentAwakeSearchKeywords()
   },
   {
+    title: translate('auto.components.settings.agents.search.modelRouting', 'Model routing'),
+    description: translate(
+      'auto.components.settings.agents.search.modelRoutingDescription',
+      "Map each orchestration tier to an agent, model, and effort for the coordinator's worker launches."
+    ),
+    keywords: [
+      ...translateSearchKeyword(
+        'auto.components.settings.agents.search.modelRouting',
+        'model routing'
+      ),
+      ...translateSearchKeyword('auto.components.settings.agents.search.tier', 'tier'),
+      ...translateSearchKeyword(
+        'auto.components.settings.agents.search.orchestration',
+        'orchestration'
+      ),
+      ...translateSearchKeyword(
+        'auto.components.settings.agents.search.coordinator',
+        'coordinator'
+      ),
+      ...translateSearchKeyword('auto.components.settings.agents.search.effort', 'effort')
+    ]
+  },
+  {
     title: translate(
       'auto.components.settings.agents.search.agentPermissions',
       'Agent Permissions'

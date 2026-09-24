@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { basename, dirname, isAbsolute, join, posix } from 'node:path'
+import { basename, isAbsolute, join, posix } from 'node:path'
 import { wslGatedReadFile } from '../native-chat/wsl-transcript-fs-access'
 import { WslTranscriptFsError } from '../native-chat/wsl-transcript-fs-gate'
 import { asRecord } from './session-scanner-record-value'
@@ -126,15 +126,6 @@ export function timeObjectValue(value: unknown, key: string): string | null {
     return null
   }
   return new Date(parsed).toISOString()
-}
-
-export function findOpenCodeStorageRoot(filePath: string): string | null {
-  const sessionDir = dirname(filePath)
-  const sessionRoot = dirname(sessionDir)
-  if (basename(sessionRoot) !== 'session') {
-    return null
-  }
-  return dirname(sessionRoot)
 }
 
 // Why: these dirs are read verbatim from an agent's env var, which may name a POSIX/WSL

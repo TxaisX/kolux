@@ -7,6 +7,7 @@ import { normalizeAppIconId } from '../../../shared/app-icon'
 import { normalizeTerminalCustomThemes } from '../../../shared/terminal-custom-themes'
 import { projectSourceControlAiToLegacyCommitMessageAi } from '../../../shared/source-control-ai'
 import { normalizeUiLanguage } from '../../../shared/ui-language'
+import { normalizeDefaultTuiAgent } from '../../../shared/tui-agent-selection'
 import { stripRetiredGlobalSettings } from '../applying-settings/terminal-settings-migrations'
 import { readLegacySidekickFlag } from '../applying-settings/onboarding-normalization'
 import type { PersistedState } from '../../../shared/persisted-state-types'
@@ -122,6 +123,9 @@ export function normalizeLoadedGlobalSettings(
       parsed.settings?.terminalShortcutPolicy
     ),
     disabledTuiAgents: migratedDisabledTuiAgents,
+    // Why: an old profile can still carry a retired agent id (e.g. 'opencode');
+    // normalize to the auto-pick default rather than surfacing a dead pick.
+    defaultTuiAgent: normalizeDefaultTuiAgent(parsed.settings?.defaultTuiAgent),
     ...migratedAgentYoloDefaults,
     ...migratedTerminalThemeDark,
     claudeAgentTeamsDefaultDisabledMigrated: true,

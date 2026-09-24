@@ -16,7 +16,7 @@ import {
   waitForActivePanePtyId,
   waitForActiveTerminalManager
 } from './helpers/terminal'
-import { scrollActiveTerminalToText } from './artificial-opencode-active-terminal-scroll'
+import { scrollActiveTerminalToText } from './artificial-tui-active-terminal-scroll'
 import {
   waitForPtyColumnsAtMost,
   waitForRenderedTerminalColumnsAtMost

@@ -302,9 +302,9 @@ action time falls from 2,791.9 ms to 323.3 ms. Median completion time falls from
 ms, and long-task count falls from 57 to 1. Renderer p95 CPU remains saturated
 and noisy in this cadence, so it is not used as the discriminating measure.
 
-The 20-pane artificial OpenCode regression passes with 12.4 ms median key echo,
-25.2 ms worst key echo, 19.4 ms maximum timer drift, and zero dropped renderer
-backlogs.
+The 20-pane artificial synthetic-TUI regression passes with 12.4 ms median key
+echo, 25.2 ms worst key echo, 19.4 ms maximum timer drift, and zero dropped
+renderer backlogs.
 
 These figures come from the bundled prototype and are restated here as the
 target. They are re-measured with the harness when the store slice lands.

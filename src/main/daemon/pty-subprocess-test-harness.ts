@@ -7,7 +7,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const KOLUX_SHELL_WRAPPER_ENV = [
-  'KOLUX_OPENCODE_CONFIG_DIR',
   'KOLUX_MIMOCODE_HOME',
   'KOLUX_PI_CODING_AGENT_DIR',
   'KOLUX_OMP_CODING_AGENT_DIR',

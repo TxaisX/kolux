@@ -579,7 +579,7 @@ describe('DaemonClient', () => {
       await client.ensureConnected()
       await waitFor(() => streamSocket !== null)
 
-      const tableRow = '│OpenCode│🧩│┼────────┤'
+      const tableRow = '│MiMo Code│🧩│┼────────┤'
       const event: DaemonEvent = {
         type: 'event',
         event: 'data',

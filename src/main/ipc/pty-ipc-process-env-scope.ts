@@ -1,9 +1,6 @@
 // Why: the pty IPC suites force darwin and rewrite a dozen agent-home env vars per test;
 // this scope captures the real values once and puts them back afterwards.
 export function createPtyIpcProcessEnvScope() {
-  const savedOpenCodeConfigDir = process.env.OPENCODE_CONFIG_DIR
-  const savedKoluxOpenCodeConfigDir = process.env.KOLUX_OPENCODE_CONFIG_DIR
-  const savedKoluxOpenCodeSourceConfigDir = process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
   const savedPiAgentDir = process.env.PI_CODING_AGENT_DIR
   const savedKoluxPiAgentDir = process.env.KOLUX_PI_CODING_AGENT_DIR
   const savedKoluxPiSourceAgentDir = process.env.KOLUX_PI_SOURCE_AGENT_DIR
@@ -27,9 +24,6 @@ export function createPtyIpcProcessEnvScope() {
     })
     // Why: forced darwin makes the TCC login(1) wrapper rewrite every asserted argv; its own test below re-enables it.
     process.env.KOLUX_DISABLE_MACOS_LOGIN_SHELL = '1'
-    delete process.env.OPENCODE_CONFIG_DIR
-    delete process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
-    delete process.env.KOLUX_OPENCODE_CONFIG_DIR
     delete process.env.KOLUX_AGENT_HOOK_ENDPOINT
     delete process.env.KOLUX_CLAUDE_AGENT_STATUS_SETTINGS
     delete process.env.PI_CODING_AGENT_DIR
@@ -57,21 +51,6 @@ export function createPtyIpcProcessEnvScope() {
       process.env.KOLUX_USER_DATA_PATH = savedKoluxUserDataPath
     } else {
       delete process.env.KOLUX_USER_DATA_PATH
-    }
-    if (savedOpenCodeConfigDir !== undefined) {
-      process.env.OPENCODE_CONFIG_DIR = savedOpenCodeConfigDir
-    } else {
-      delete process.env.OPENCODE_CONFIG_DIR
-    }
-    if (savedKoluxOpenCodeConfigDir !== undefined) {
-      process.env.KOLUX_OPENCODE_CONFIG_DIR = savedKoluxOpenCodeConfigDir
-    } else {
-      delete process.env.KOLUX_OPENCODE_CONFIG_DIR
-    }
-    if (savedKoluxOpenCodeSourceConfigDir !== undefined) {
-      process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = savedKoluxOpenCodeSourceConfigDir
-    } else {
-      delete process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
     }
     if (savedPiAgentDir !== undefined) {
       process.env.PI_CODING_AGENT_DIR = savedPiAgentDir

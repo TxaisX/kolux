@@ -130,6 +130,11 @@ const CENSUS: readonly CensusRow[] = [
     role: 'worker-show fleet verdict (driven below)'
   },
   {
+    path: 'main/runtime/rpc/methods/orchestration/worker/worker-routing-tier.ts',
+    kind: 'consumes',
+    role: "reads a pane's live agentType, matched on pane key, to enforce provider isolation"
+  },
+  {
     path: 'main/runtime/kolux-runtime-get-worktree-ps.ts',
     kind: 'consumes',
     role: 'worktree.ps inline agent rows (driven below)'

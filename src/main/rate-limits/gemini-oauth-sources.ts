@@ -15,43 +15,6 @@ export type GeminiCredentials = {
   expiry_date: number
 }
 
-export type GoogleAuthEntry = {
-  type: 'oauth'
-  access: string
-  expires: number
-  refresh: string
-}
-
-type AuthJson = {
-  google?: GoogleAuthEntry
-  'opencode-go'?: { type: 'api'; key: string }
-}
-
-export async function readAuthJson(): Promise<AuthJson | null> {
-  const candidates = [
-    process.env.APPDATA ? path.join(process.env.APPDATA, 'opencode', 'auth.json') : null,
-    process.env.XDG_DATA_HOME
-      ? path.join(process.env.XDG_DATA_HOME, 'opencode', 'auth.json')
-      : null,
-    path.join(homedir(), '.local', 'share', 'opencode', 'auth.json'),
-    path.join(homedir(), 'Library', 'Application Support', 'opencode', 'auth.json')
-  ].filter((candidate): candidate is string => candidate !== null)
-
-  for (const candidate of candidates) {
-    try {
-      const raw = await readFile(candidate, 'utf-8')
-      return JSON.parse(raw) as AuthJson
-    } catch (err) {
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'ENOENT') {
-        continue
-      }
-      throw err
-    }
-  }
-
-  return null
-}
-
 export async function readGeminiCredentials(): Promise<GeminiCredentials | null> {
   try {
     const raw = await readFile(OAUTH_CREDS_PATH, 'utf-8')

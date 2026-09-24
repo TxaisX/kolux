@@ -68,7 +68,7 @@ function makeRandom(seed: number): () => number {
   }
 }
 
-const COMMANDS = ['claude', 'codex', 'opencode', 'bash -lc build', 'node server.js']
+const COMMANDS = ['claude', 'codex', 'grok', 'bash -lc build', 'node server.js']
 
 /** A random process table: some rows reparented, some parents missing, some cycles. */
 function makeTable(random: () => number, size: number): ForegroundProcessCandidate[] {
@@ -167,7 +167,7 @@ it('reflects a reparent, a spawn and an exit on the next capture', () => {
     ppid: 1,
     depth: 1,
     stat: 'S+',
-    command: 'opencode'
+    command: 'grok'
   }
   expect(selectForegroundProcessCandidate([shell, helper, sibling])).toBeNull()
 

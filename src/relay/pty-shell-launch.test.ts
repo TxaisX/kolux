@@ -93,7 +93,7 @@ describe('getRelayShellLaunchConfig', () => {
     () => {
       const config = getRelayShellLaunchConfig('/bin/zsh', {
         HOME: homeDir,
-        KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay'
+        KOLUX_CODEX_HOME: '/tmp/kolux-codex-home-overlay'
       })
       const zshRoot = join(homeDir, '.kolux-relay', 'shell-ready', 'zsh')
 
@@ -204,7 +204,7 @@ describe('getRelayShellLaunchConfig', () => {
 
     getRelayShellLaunchConfig('/bin/zsh', {
       HOME: homeDir,
-      KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay'
+      KOLUX_CODEX_HOME: '/tmp/kolux-codex-home-overlay'
     })
 
     expect(readFileSync(join(zshRoot, '.zshenv'), 'utf8')).toContain(

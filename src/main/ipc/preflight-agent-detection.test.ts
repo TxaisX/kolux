@@ -268,15 +268,15 @@ describe('preflight', () => {
             if (cmd === 'codex') {
               return [cmd, '/Users/test/.asdf/shims/codex']
             }
-            if (cmd === 'opencode') {
-              return [cmd, '/Users/test/Library/pnpm/opencode']
+            if (cmd === 'gemini') {
+              return [cmd, '/Users/test/Library/pnpm/gemini']
             }
             return [cmd, cmd]
           })
         )
     )
 
-    await expect(detectInstalledAgents()).resolves.toEqual(['claude', 'codex', 'opencode'])
+    await expect(detectInstalledAgents()).resolves.toEqual(['claude', 'codex', 'gemini'])
     expect(resolveCliCommandsMock).toHaveBeenCalledTimes(1)
   })
 

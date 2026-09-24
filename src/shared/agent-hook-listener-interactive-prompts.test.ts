@@ -383,11 +383,11 @@ describe('shared agent-hook-listener', () => {
     expect(event?.payload.interactivePrompt).toBeUndefined()
   })
 
-  it('captures interactivePrompt for the OpenCode AskUserQuestion route', () => {
+  it('captures interactivePrompt for the MiMo Code AskUserQuestion route', () => {
     const properties = { questions: [{ question: 'Choose', options: ['x', 'y'] }] }
     const event = normalizeHookPayload(
       state,
-      'opencode',
+      'mimo-code',
       {
         paneKey: PANE_KEY,
         payload: { hook_event_name: 'AskUserQuestion', ...properties }

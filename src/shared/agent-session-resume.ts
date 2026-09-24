@@ -7,7 +7,6 @@ export const RESUMABLE_TUI_AGENTS = [
   'codex',
   'gemini',
   'antigravity',
-  'opencode',
   'pi',
   'mimo-code',
   'droid',
@@ -203,7 +202,6 @@ export function extractAgentProviderSession(
       const id = readSessionId(payload, ['conversationId'])
       return id ? { key: 'conversation_id', id } : null
     }
-    case 'opencode':
     case 'mimo-code': {
       const id = readSessionId(payload, ['sessionID'])
       return id ? { key: 'session_id', id } : null
@@ -258,8 +256,6 @@ export function getAgentResumeArgv(
       return providerSession.key === 'session_id' ? ['gemini', '--resume', id] : null
     case 'antigravity':
       return providerSession.key === 'conversation_id' ? ['agy', '--conversation', id] : null
-    case 'opencode':
-      return providerSession.key === 'session_id' ? ['opencode', '--session', id] : null
     case 'pi':
       return providerSession.key === 'session_id' && providerSession.transcriptPath
         ? ['pi', '--session', providerSession.transcriptPath]

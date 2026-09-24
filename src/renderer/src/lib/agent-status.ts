@@ -103,7 +103,6 @@ const ICONABLE_AGENT_TYPES: Record<TuiAgent, true> = {
   openclaude: true,
   codex: true,
   autohand: true,
-  opencode: true,
   'mimo-code': true,
   pi: true,
   omp: true,

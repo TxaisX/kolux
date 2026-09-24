@@ -102,41 +102,6 @@ export const getStatusBarToggles = createLocalizedCatalog(
     },
     getAntigravityStatusBarToggleSearchEntry(),
     {
-      id: 'opencode-go',
-      title: translate(
-        'auto.components.settings.appearance.search.bc046e7899',
-        'OpenCode Go Usage'
-      ),
-      description: translate(
-        'auto.components.settings.appearance.search.7f72de7cbe',
-        'Show OpenCode Go token and cost usage in the status bar.'
-      ),
-      keywords: [
-        ...translateSearchKeyword(
-          'auto.components.settings.appearance.search.896eb53fd4',
-          'status bar'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.appearance.search.a9d56852eb',
-          'opencode'
-        ),
-        ...translateSearchKeyword(
-          'auto.components.settings.appearance.search.d77537b580',
-          'opencode-go'
-        ),
-        ...translateSearchKeyword('auto.components.settings.appearance.search.00a028f25f', 'usage'),
-        ...translateSearchKeyword(
-          'auto.components.settings.appearance.search.afbb6a3767',
-          'tokens'
-        ),
-        ...translateSearchKeyword('auto.components.settings.appearance.search.edbf0f63a0', 'cost')
-      ],
-      toggleDescription: translate(
-        'settings.appearance.statusBar.opencodeGoToggleDescription',
-        'Show OpenCode Go token and cost usage for the active workspace.'
-      )
-    },
-    {
       id: 'kimi',
       title: translate('auto.components.settings.appearance.search.3a6c028ea8', 'Kimi Usage'),
       description: translate(

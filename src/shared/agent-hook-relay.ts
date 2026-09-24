@@ -40,7 +40,6 @@ const AGENT_HOOK_SOURCES = [
   'gemini',
   'antigravity',
   'amp',
-  'opencode',
   'mimo-code',
   'cursor',
   'pi',
@@ -202,7 +201,7 @@ export function restoreShedStatusFields(
 export const AGENT_HOOK_REQUEST_REPLAY_METHOD = 'agent_hook.requestReplay' as const
 
 /** JSON-RPC request method Kolux issues at session-ready to ship the
- *  OpenCode/Pi plugin source files to the relay so it can materialize the
+ *  MiMo/Pi plugin source files to the relay so it can materialize the
  *  overlay dirs on the remote. */
 export const AGENT_HOOK_INSTALL_PLUGINS_METHOD = 'agent_hook.installPlugins' as const
 

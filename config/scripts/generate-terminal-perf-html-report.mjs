@@ -457,7 +457,7 @@ export function generateTerminalPerfHtmlReport({
   })
   const totalRows = revisions.reduce((sum, revision) => sum + revision.rows.length, 0)
   if (totalRows === 0) {
-    throw new Error('No opencode terminal perf annotations found in the provided reports')
+    throw new Error('No tui terminal perf annotations found in the provided reports')
   }
   const html = renderHtml({ generatedAt: now.toISOString(), revisions })
   mkdirSync(dirname(outputPath), { recursive: true })

@@ -5,7 +5,6 @@ import { ZH_VALUE_OVERRIDES } from './locale-zh-value-overrides.mjs'
 export const LOCALE_VALUE_OVERRIDES = {
   es: {
     'Explore Kolux': 'Explorar Kolux',
-    'OpenCode Go': 'OpenCode Go',
     'Open in Cursor': 'Abrir en Cursor',
     'Local project, Git repo, or folder with many repos':
       'Proyecto local, repositorio de Git o carpeta con muchos repositorios'
@@ -202,7 +201,6 @@ export const LOCALE_VALUE_OVERRIDES = {
     'Claude Usage': 'Claude 使用情况',
     'Gemini Usage': 'Gemini 使用情况',
     'Antigravity Usage': 'Antigravity 使用情况',
-    'OpenCode Go Usage': 'OpenCode Go 使用情况',
     'Kimi Usage': 'Kimi 使用情况',
     'MiniMax Usage': 'MiniMax 使用情况',
     'Grok Usage': 'Grok 使用情况',

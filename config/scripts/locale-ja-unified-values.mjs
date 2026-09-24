@@ -86,7 +86,6 @@ export const JA_UNIFIED_VALUES = {
   'ios simulator': 'iOS シミュレータ',
   'Kill session {{value0}}': 'セッション {{value0}} を強制終了',
   Disconnected: '切断済み',
-  'OpenCode Go Usage': 'OpenCode Go の使用量',
   'Switch to': '切り替え先',
   'Update failed': '更新に失敗しました',
   cancelling: 'キャンセル中',

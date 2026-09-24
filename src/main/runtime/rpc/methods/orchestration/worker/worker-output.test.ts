@@ -213,21 +213,21 @@ describe('exact orchestration worker output', () => {
     expect(readTerminal).not.toHaveBeenCalled()
   })
 
-  it('labels OpenCode as a terminal fallback when no transcript decoder exists', async () => {
+  it('labels Gemini as a terminal fallback when no transcript decoder exists', async () => {
     const capability = `dcap_${'A'.repeat(43)}`
     readTerminal.mockResolvedValue({
       handle: 'term_worker',
       status: 'running',
-      tail: [`opencode --dispatch-capability ${capability}`],
+      tail: [`gemini --dispatch-capability ${capability}`],
       truncated: false,
       nextCursor: '9'
     })
     providerSession = {
       ...providerSession!,
-      agent: 'opencode',
+      agent: 'gemini',
       providerSession: {
         key: 'session_id',
-        id: 'session-opencode',
+        id: 'session-gemini',
         transcriptPath: transcriptA
       }
     }
@@ -237,7 +237,7 @@ describe('exact orchestration worker output', () => {
     expect(result).toMatchObject({
       source: 'terminal',
       fallbackReason: 'provider_unsupported',
-      terminal: { tail: ['opencode --dispatch-capability [dispatch capability redacted]'] },
+      terminal: { tail: ['gemini --dispatch-capability [dispatch capability redacted]'] },
       warnings: ['Dispatch capability tokens were redacted from terminal output.']
     })
     expect(JSON.stringify(result)).not.toContain(capability)

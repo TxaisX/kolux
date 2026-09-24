@@ -9,12 +9,7 @@ import type {
 import type { HooksApi } from './api/agent-hook-api'
 import type { SkillsApi } from './api/agent-skill-api'
 import type { AgentAwakeApi, AgentStatusApi, AgentTrustApi } from './api/agent-status-api'
-import type {
-  ClaudeUsageApi,
-  CodexUsageApi,
-  OpenCodeUsageApi,
-  RateLimitsApi
-} from './api/agent-usage-api'
+import type { ClaudeUsageApi, CodexUsageApi, RateLimitsApi } from './api/agent-usage-api'
 import type { AiVaultApi } from './api/ai-vault-api'
 import type { AppApi, E2EApi, PlatformApi } from './api/app-api'
 import type { AutomationsApi } from './api/automation-api'
@@ -133,7 +128,6 @@ export type PreloadApi = {
   memory: MemoryApi
   claudeUsage: ClaudeUsageApi
   codexUsage: CodexUsageApi
-  openCodeUsage: OpenCodeUsageApi
   aiVault: AiVaultApi
   nativeChat: NativeChatApi
   fs: FilesystemApi['fs']
@@ -156,7 +150,7 @@ export type PreloadApi = {
   terminalWindows: TerminalWindowsApi
 }
 
-export type { ClaudeUsageApi, CodexUsageApi, OpenCodeUsageApi } from './api/agent-usage-api'
+export type { ClaudeUsageApi, CodexUsageApi } from './api/agent-usage-api'
 export type { AiVaultApi } from './api/ai-vault-api'
 export type { AutomationsApi, ExternalAutomationManagerResult } from './api/automation-api'
 export type { AppApi } from './api/app-api'

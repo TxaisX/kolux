@@ -23,7 +23,7 @@ export function parseAnnotationDescription(description) {
 }
 
 export function collectTerminalPerfRows(report, source, options = {}) {
-  const { typePrefix = 'opencode-' } = options
+  const { typePrefix = 'tui-' } = options
   const rows = []
   const visitSuite = (suite) => {
     for (const spec of suite.specs ?? []) {

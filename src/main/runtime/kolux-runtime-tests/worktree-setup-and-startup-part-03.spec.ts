@@ -430,12 +430,12 @@ describe('KoluxRuntimeService', () => {
       ...store,
       getSettings: () => ({
         ...store.getSettings(),
-        defaultTuiAgent: 'opencode' as const,
+        defaultTuiAgent: 'gemini' as const,
         agentCmdOverrides: {}
       })
     }
     const runtime = new KoluxRuntimeService(runtimeStore as never)
-    const spawn = vi.fn().mockResolvedValue({ id: 'pty-opencode-draft-timeout' })
+    const spawn = vi.fn().mockResolvedValue({ id: 'pty-gemini-draft-timeout' })
     const write = vi.fn().mockReturnValue(true)
     runtime.setPtyController({
       spawn,
@@ -448,7 +448,7 @@ describe('KoluxRuntimeService', () => {
       reposChanged: vi.fn(),
       activateWorktree: vi.fn(),
       createTerminal: vi.fn(),
-      revealTerminalSession: vi.fn().mockResolvedValue({ tabId: 'tab-opencode-draft-timeout' }),
+      revealTerminalSession: vi.fn().mockResolvedValue({ tabId: 'tab-gemini-draft-timeout' }),
       splitTerminal: vi.fn(),
       renameTerminal: vi.fn(),
       focusTerminal: vi.fn(),
@@ -459,13 +459,13 @@ describe('KoluxRuntimeService', () => {
     })
     runtime.attachWindow(1)
 
-    computeWorktreePathMock.mockReturnValue('/tmp/workspaces/runtime-opencode-draft-timeout')
-    ensurePathWithinWorkspaceMock.mockReturnValue('/tmp/workspaces/runtime-opencode-draft-timeout')
+    computeWorktreePathMock.mockReturnValue('/tmp/workspaces/runtime-gemini-draft-timeout')
+    ensurePathWithinWorkspaceMock.mockReturnValue('/tmp/workspaces/runtime-gemini-draft-timeout')
     vi.mocked(listWorktrees).mockResolvedValue([
       {
-        path: '/tmp/workspaces/runtime-opencode-draft-timeout',
+        path: '/tmp/workspaces/runtime-gemini-draft-timeout',
         head: 'def',
-        branch: 'runtime-opencode-draft-timeout',
+        branch: 'runtime-gemini-draft-timeout',
         isBare: false,
         isMainWorktree: false
       }
@@ -473,7 +473,7 @@ describe('KoluxRuntimeService', () => {
 
     await runtime.createManagedWorktree({
       repoSelector: 'id:repo-1',
-      name: 'runtime-opencode-draft-timeout',
+      name: 'runtime-gemini-draft-timeout',
       startupDraft: 'https://github.com/TxaisX/kolux/issues/456'
     })
 
@@ -481,7 +481,7 @@ describe('KoluxRuntimeService', () => {
     expect(write).not.toHaveBeenCalled()
 
     await vi.advanceTimersByTimeAsync(1)
-    runtime.onPtyData('pty-opencode-draft-timeout', '\x1b[?2004h\x1b[?25h', Date.now())
+    runtime.onPtyData('pty-gemini-draft-timeout', '\x1b[?2004h\x1b[?25h', Date.now())
     await Promise.resolve()
     await Promise.resolve()
 

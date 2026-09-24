@@ -46,6 +46,7 @@ import {
 import { AgentAvailabilityControl, type AgentCatalogRowProps } from './AgentCatalogRow'
 import { AgentDefaultSetting } from './AgentDefaultSetting'
 import { AgentDetectionCatalog } from './AgentDetectionCatalog'
+import { ModelRoutingSection } from './ModelRoutingSection'
 
 export {
   buildAgentAvailabilitySettingsUpdate,
@@ -260,6 +261,11 @@ export function AgentsPane({
         <AgentAwakeSetting settings={settings} updateSettings={updateSettings} />
       ) : null}
       <AgentCacheTimerSection settings={settings} updateSettings={updateSettings} />
+      <ModelRoutingSection
+        settings={settings}
+        updateSettings={updateSettings}
+        detectedIds={detectedIds}
+      />
       <AgentPermissionsSetting
         mode={resolveAgentPermissionModeSummary({ agentDefaultArgs, agentDefaultEnv })}
         onChange={(mode) =>

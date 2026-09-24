@@ -59,7 +59,7 @@ describe('agent sign-in entry points', () => {
   it('uses the matching paired runtime workspace without a local fallback', () => {
     mocks.owner = 'runtime:server'
     mocks.state.settings.activeRuntimeEnvironmentId = 'server'
-    expect(openAgentSetupInWorkspace('opencode')).toBe(true)
+    expect(openAgentSetupInWorkspace('grok')).toBe(true)
   })
   it('requires a workspace and keeps settings open when launch fails', () => {
     mocks.state.activeWorktreeId = null

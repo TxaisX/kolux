@@ -200,13 +200,13 @@ describe('KoluxRuntimeService', () => {
     })
   })
 
-  it('keeps blocked prompt text authoritative over an OpenCode marker', async () => {
+  it('keeps blocked prompt text authoritative over a live-looking title', async () => {
     const runtime = new KoluxRuntimeService(store)
     runtime.setPtyController({
       spawn: vi.fn().mockResolvedValue({ id: 'pty-1' }),
       write: () => true,
       kill: () => true,
-      getForegroundProcess: async () => 'opencode'
+      getForegroundProcess: async () => 'node'
     })
     const leafId = '11111111-1111-4111-8111-111111111111'
     runtime.attachWindow(1)
@@ -215,7 +215,7 @@ describe('KoluxRuntimeService', () => {
         {
           tabId: 'tab-1',
           worktreeId: TEST_WORKTREE_ID,
-          title: 'OC | Native session',
+          title: 'Native session',
           activeLeafId: leafId,
           layout: null
         }
@@ -227,7 +227,7 @@ describe('KoluxRuntimeService', () => {
           leafId,
           paneRuntimeId: 1,
           ptyId: 'pty-1',
-          paneTitle: 'OC | Native session'
+          paneTitle: 'Native session'
         }
       ]
     })

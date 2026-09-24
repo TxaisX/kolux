@@ -2,7 +2,7 @@
  * Deterministic reproduction + benchmark for "typing lags while multiple
  * workspaces run agents" (the multi-workspace typing-latency complaint).
  *
- * Unlike the artificial-opencode suite (bounded bursts + held ACK gates),
+ * Unlike the artificial-tui suite (bounded bursts + held ACK gates),
  * this harness runs SUSTAINED paced agent-TUI streams through real PTYs in
  * background-workspace panes (and optionally visible splits) with no
  * artificial wedges, types at a fixed cadence WITHOUT waiting for each echo
@@ -46,7 +46,7 @@ import {
   focusPane,
   waitForTerminalOutputForPtyId,
   type TerminalLoadPane
-} from './artificial-opencode-pane-interactions'
+} from './artificial-tui-pane-interactions'
 import {
   sustainedLoadReadyFilePath,
   typingProbeReadyMarker,

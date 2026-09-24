@@ -13,7 +13,6 @@ import {
   isCursorNativeAgentTitle,
   titleHasAgentName
 } from './agent-title-core'
-import { isOpenCodeNativeTitle } from './opencode-terminal-title'
 import { stripLeadingAgentTitleDecorationOrEmpty } from './agent-title-decoration'
 import { getPiCompatibleSyntheticAgentLabel } from './pi-compatible-synthetic-title'
 import {
@@ -66,7 +65,6 @@ const NAME_TOKENS: readonly (readonly [string, TuiAgent])[] = [
   ['cursor', 'cursor'],
   ['gemini', 'gemini'],
   ['antigravity', 'antigravity'],
-  ['opencode', 'opencode'],
   ['mimo', 'mimo-code'],
   ['openclaw', 'openclaw'],
   ['aider', 'aider'],
@@ -271,12 +269,6 @@ function collectAnchoredNames(segments: readonly string[]): TuiAgent[] {
   const anchored = new Set<TuiAgent>()
 
   for (const segment of segments) {
-    // Why anchored and not a bare marker: the native envelope owns the whole wrapped pane title.
-    // Its session text may name other agents without changing the OpenCode owner.
-    if (isOpenCodeNativeTitle(segment)) {
-      anchored.add('opencode')
-    }
-
     const suffix = OWNER_SUFFIX_RE.exec(segment)
     if (suffix) {
       const agent = agentForOwnerSuffix(suffix[1])

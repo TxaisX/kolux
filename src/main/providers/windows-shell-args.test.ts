@@ -125,9 +125,6 @@ describe('resolveWindowsShellLaunchArgs', () => {
 
     const command = decodePowerShellCommand(result)
     const outputEncodingIndex = command.indexOf('[Console]::OutputEncoding')
-    const opencodeRestoreIndex = command.indexOf(
-      '$env:OPENCODE_CONFIG_DIR = $env:KOLUX_OPENCODE_CONFIG_DIR'
-    )
     const mimocodeRestoreIndex = command.indexOf('$env:MIMOCODE_HOME = $env:KOLUX_MIMOCODE_HOME')
     const duplicateStateGuardIndex = command.indexOf('Test-Path variable:global:__KoluxOsc133State')
     const languageModeGuardIndex = command.indexOf('LanguageMode -eq "FullLanguage"')
@@ -143,7 +140,7 @@ describe('resolveWindowsShellLaunchArgs', () => {
     expect(command).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
     expect(command).not.toContain('KOLUX_OMP_CODING_AGENT_DIR')
     expect(command).not.toContain('$env:PI_CODING_AGENT_DIR = $env:KOLUX_OMP_SOURCE_AGENT_DIR')
-    for (const restoreIndex of [opencodeRestoreIndex, mimocodeRestoreIndex, codexRestoreIndex]) {
+    for (const restoreIndex of [mimocodeRestoreIndex, codexRestoreIndex]) {
       expect(restoreIndex).toBeGreaterThanOrEqual(0)
       expect(restoreIndex).toBeLessThan(duplicateStateGuardIndex)
       expect(restoreIndex).toBeLessThan(languageModeGuardIndex)

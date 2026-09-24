@@ -168,7 +168,7 @@ describe('benchmark artifact comparison', () => {
                     {
                       annotations: [
                         {
-                          type: 'opencode-scale-same-workspace-50',
+                          type: 'tui-scale-same-workspace-50',
                           description:
                             'panes=50 frames=60 median=80.0ms worst=120.0ms rendererQueuedChars=1000 samples=1,2'
                         }
@@ -191,7 +191,7 @@ describe('benchmark artifact comparison', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-scale-same-workspace-50',
+                      type: 'tui-scale-same-workspace-50',
                       description:
                         'panes=50 frames=60 median=60.0ms worst=100.0ms rendererQueuedChars=800 samples=1,2'
                     }
@@ -207,13 +207,13 @@ describe('benchmark artifact comparison', () => {
     const comparison = comparePaths(baselinePath, candidatePath)
     const metricKeys = comparison.metrics.map((metric) => metric.key)
 
-    expect(metricKeys).toContain('opencode-scale-same-workspace-50.median')
-    expect(metricKeys).toContain('opencode-scale-same-workspace-50.rendererQueuedChars')
-    expect(metricKeys).not.toContain('opencode-scale-same-workspace-50.panes')
-    expect(metricKeys).not.toContain('opencode-scale-same-workspace-50.frames')
-    expect(metricKeys).not.toContain('opencode-scale-same-workspace-50.samples')
+    expect(metricKeys).toContain('tui-scale-same-workspace-50.median')
+    expect(metricKeys).toContain('tui-scale-same-workspace-50.rendererQueuedChars')
+    expect(metricKeys).not.toContain('tui-scale-same-workspace-50.panes')
+    expect(metricKeys).not.toContain('tui-scale-same-workspace-50.frames')
+    expect(metricKeys).not.toContain('tui-scale-same-workspace-50.samples')
     expect(
-      comparison.metrics.find((metric) => metric.key === 'opencode-scale-same-workspace-50.median')
+      comparison.metrics.find((metric) => metric.key === 'tui-scale-same-workspace-50.median')
     ).toMatchObject({ status: 'improved', unit: 'ms' })
   })
 
@@ -228,11 +228,11 @@ describe('benchmark artifact comparison', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-duplicate',
+                      type: 'tui-duplicate',
                       description: 'median=80.0ms rendererQueuedChars=1000'
                     },
                     {
-                      type: 'opencode-duplicate',
+                      type: 'tui-duplicate',
                       description: 'median=100.0ms rendererQueuedChars=1400'
                     }
                   ]
@@ -252,11 +252,11 @@ describe('benchmark artifact comparison', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-duplicate',
+                      type: 'tui-duplicate',
                       description: 'median=60.0ms rendererQueuedChars=800'
                     },
                     {
-                      type: 'opencode-duplicate',
+                      type: 'tui-duplicate',
                       description: 'median=70.0ms rendererQueuedChars=1000'
                     }
                   ]
@@ -270,7 +270,7 @@ describe('benchmark artifact comparison', () => {
 
     const comparison = comparePaths(baselinePath, candidatePath)
     const duplicateMedianMetrics = comparison.metrics.filter(
-      (metric) => metric.key === 'opencode-duplicate.median'
+      (metric) => metric.key === 'tui-duplicate.median'
     )
 
     expect(duplicateMedianMetrics).toHaveLength(1)
@@ -283,7 +283,7 @@ describe('benchmark artifact comparison', () => {
       unit: 'ms'
     })
     expect(
-      comparison.metrics.filter((metric) => metric.key === 'opencode-duplicate.rendererQueuedChars')
+      comparison.metrics.filter((metric) => metric.key === 'tui-duplicate.rendererQueuedChars')
     ).toHaveLength(1)
   })
 
@@ -298,7 +298,7 @@ describe('benchmark artifact comparison', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-units',
+                      type: 'tui-units',
                       description: 'median=80.0ms rendererQueuedChars=1000'
                     }
                   ]
@@ -318,7 +318,7 @@ describe('benchmark artifact comparison', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-units',
+                      type: 'tui-units',
                       description: 'median=60 rendererQueuedChars=800'
                     }
                   ]
@@ -333,10 +333,10 @@ describe('benchmark artifact comparison', () => {
     const comparison = comparePaths(baselinePath, candidatePath)
 
     expect(comparison.metrics.map((metric) => metric.key)).toEqual([
-      'opencode-units.rendererQueuedChars'
+      'tui-units.rendererQueuedChars'
     ])
     expect(comparison.skippedMetrics).toContainEqual({
-      key: 'opencode-units.median',
+      key: 'tui-units.median',
       reason: 'unit mismatch (ms vs count)'
     })
   })

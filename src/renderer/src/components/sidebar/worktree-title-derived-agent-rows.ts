@@ -41,7 +41,6 @@ const TITLE_AGENT_LABEL_TO_TYPE: Record<string, AgentType> = {
   Grok: 'grok',
   Devin: 'devin',
   Antigravity: 'antigravity',
-  OpenCode: 'opencode',
   Aider: 'aider',
   Cursor: 'cursor',
   Droid: 'droid',
@@ -168,8 +167,8 @@ function buildTitleDerivedAgentRow(args: {
     ? 'claude'
     : resolveTitleDerivedAgentType(title, label, args.ownerAgentType)
   // Why: a status frame proves activity, not identity, so the resolver drops it.
-  // Hook-less agents over SSH (Codex, #8711; OpenCode's '. '/'* ' frames, #8940)
-  // surface only decorated task titles; fall back to the pane's known owner instead
+  // Hook-less agents over SSH (Codex, #8711) surface only decorated task titles;
+  // fall back to the pane's known owner instead
   // of hiding the pane. Safe because the `!status || !label` gate above already
   // rejects plain shell titles — this path must never manufacture a row from one.
   const agentType = titleAgentType ?? args.ownerAgentType

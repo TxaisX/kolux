@@ -422,6 +422,28 @@ describe('Store', () => {
     expect((readDataFile() as PersistedState).settings.terminalCursorStyle).toBe('underline')
   })
 
+  it('drops the retired OpenCode settings and status bar item from an old profile on load', async () => {
+    writeDataFile({
+      settings: {
+        theme: 'dark',
+        // Why: an old build persisted this encrypted via safeStorage; the exact
+        // ciphertext bytes don't matter, only that it round-trips out on load.
+        opencodeSessionCookie: Buffer.from('encrypted:legacy-cookie', 'utf-8').toString('base64'),
+        opencodeWorkspaceId: 'wrk_legacy_123'
+      },
+      ui: {
+        statusBarItems: ['claude', 'opencode-go', 'codex']
+      }
+    })
+
+    const store = await createStore()
+
+    expect(store.getSettings()).not.toHaveProperty('opencodeSessionCookie')
+    expect(store.getSettings()).not.toHaveProperty('opencodeWorkspaceId')
+    expect(store.getSettings().theme).toBe('dark')
+    expect(store.getUI().statusBarItems).toEqual(['claude', 'codex'])
+  })
+
   it('normalizes disabled TUI agents on load and update', async () => {
     writeFileSync(
       join(testState.dir, 'kolux-data.json'),
@@ -436,9 +458,9 @@ describe('Store', () => {
     expect(store.getSettings().disabledTuiAgents).toEqual(['codex', 'claude', 'claude-agent-teams'])
 
     const updated = store.updateSettings({
-      disabledTuiAgents: ['gemini', 'not-real', 'gemini', 'opencode'] as never
+      disabledTuiAgents: ['gemini', 'not-real', 'gemini', 'kimi'] as never
     })
-    expect(updated.disabledTuiAgents).toEqual(['gemini', 'opencode'])
+    expect(updated.disabledTuiAgents).toEqual(['gemini', 'kimi'])
   })
 
   it('enables Claude Agent Teams by default for fresh installs', async () => {
@@ -496,7 +518,6 @@ describe('Store', () => {
         settings: {
           agentYoloDefaultsMigrated: true,
           agentDefaultArgs: {
-            opencode: '--dangerously-skip-permissions --model opencode/gpt-5',
             kilo: '--dangerously-skip-permissions',
             codex: '--dangerously-bypass-approvals-and-sandbox'
           }
@@ -506,13 +527,9 @@ describe('Store', () => {
     const store = await createStore()
     store.flush()
 
-    expect(store.getSettings().agentDefaultArgs?.opencode).toBe('--model opencode/gpt-5')
     expect(store.getSettings().agentDefaultArgs?.kilo).toBe('')
     expect(store.getSettings().agentDefaultArgs?.codex).toBe(
       '--dangerously-bypass-approvals-and-sandbox'
-    )
-    expect((readDataFile() as PersistedState).settings.agentDefaultArgs?.opencode).toBe(
-      '--model opencode/gpt-5'
     )
     expect((readDataFile() as PersistedState).settings.agentDefaultArgs?.kilo).toBe('')
   })
