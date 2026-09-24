@@ -89,10 +89,11 @@ export function normalizeClaudeEvent(
 
   // Why: Claude normally emits PreToolUse while AskUserQuestion is blocked; newer builds can also report it as PermissionRequest.
   // Treat the PreToolUse as waiting so the sidebar shows amber attention, not a spinner that decays to grey. Mirrors normalizeKimiEvent.
+  // ExitPlanMode gets the same treatment so plan review sees it waiting.
   const eventToolName = readString(hookPayload, 'tool_name')
   const isAskUserQuestionWait =
     (eventName === 'PreToolUse' || eventName === 'PermissionRequest') &&
-    isAskUserQuestionTool(eventToolName)
+    (isAskUserQuestionTool(eventToolName) || eventToolName === 'ExitPlanMode')
   const isAskUserQuestion = eventName === 'PreToolUse' && isAskUserQuestionWait
   // Why: a manual /compact swallows the turn boundary — it ends at an idle prompt and emits no
   // Stop, so PostCompact is the pane's only clearing signal (STA-2915). An auto compact runs INSIDE

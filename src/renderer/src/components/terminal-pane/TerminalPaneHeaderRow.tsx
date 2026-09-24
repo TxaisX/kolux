@@ -3,12 +3,14 @@ import type { ManagedPane, PaneManager } from '@/lib/pane-manager/pane-manager'
 import { translate } from '@/i18n/i18n'
 import { WORKSPACE_FILE_PATH_MIME, WORKSPACE_FILE_PATHS_MIME } from '@/lib/workspace-file-drag'
 import { isImeCompositionKeyDown } from '@/lib/ime-composition-keyboard-event'
+import { makePaneKey } from '../../../../shared/stable-pane-id'
 import type { PtyTransport } from './pty-transport'
 import { handleInternalTerminalFileDrop } from './terminal-drop-handler'
 import { useTerminalPaneHeaderAgent } from './use-terminal-pane-header-agent'
 import { TerminalPaneHeaderIdentity } from './TerminalPaneHeaderIdentity'
 import { TerminalPaneHeaderActions } from './TerminalPaneHeaderActions'
 import type { PaneTitleOverlayRect } from './TerminalPaneHeaderOverlay'
+import { PlanReviewButton } from '../plan-review/PlanReviewButton'
 
 type TerminalPaneHeaderRowProps = {
   pane: ManagedPane
@@ -164,6 +166,11 @@ export function TerminalPaneHeaderRow({
             />
           )}
           <TerminalPaneHeaderIdentity agent={agent} dotState={dotState} />
+          <PlanReviewButton
+            tabId={tabId}
+            paneKey={makePaneKey(tabId, pane.leafId)}
+            getPtyId={() => paneTransportsRef.current.get(pane.id)?.getPtyId() ?? null}
+          />
           <TerminalPaneHeaderActions
             showSplit={showSplitButton}
             canExpand={paneCount > 1}

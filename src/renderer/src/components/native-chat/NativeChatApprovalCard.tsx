@@ -1,11 +1,14 @@
-import { ShieldQuestion } from 'lucide-react'
+import { ClipboardCheck, ShieldQuestion } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { translate } from '@/i18n/i18n'
 import type { ChatApproval } from './native-chat-interactive-prompt'
 
 export type NativeChatApprovalCardProps = {
   approval: ChatApproval
   /** Send the chosen option's literal string to the agent's PTY. */
   onChoose: (send: string) => void
+  /** Opens the plan-review sheet. Present only when `approval.plan` is set. */
+  onReviewPlan?: () => void
 }
 
 /**
@@ -16,7 +19,8 @@ export type NativeChatApprovalCardProps = {
  */
 export function NativeChatApprovalCard({
   approval,
-  onChoose
+  onChoose,
+  onReviewPlan
 }: NativeChatApprovalCardProps): React.JSX.Element {
   return (
     <div className="shrink-0 bg-background">
@@ -33,7 +37,7 @@ export function NativeChatApprovalCard({
               ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {approval.options.map((opt, i) => (
               <button
                 key={`${opt.label}-${i}`}
@@ -49,6 +53,16 @@ export function NativeChatApprovalCard({
                 {opt.label}
               </button>
             ))}
+            {onReviewPlan ? (
+              <button
+                type="button"
+                onClick={onReviewPlan}
+                className="ml-auto flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ClipboardCheck className="size-4" />
+                {translate('components.plan-review.reviewPlan', 'Review plan')}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

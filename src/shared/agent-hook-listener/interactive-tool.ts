@@ -1,4 +1,5 @@
 import { isAskUserQuestionTool } from '../agent-question-answered-intent'
+import { AGENT_STATUS_INTERACTIVE_PROMPT_MAX_LENGTH } from '../agent-status-types'
 import type { ToolSnapshot } from './listener-event'
 import { parseAgentHookJson } from './request-body'
 import { readString, toolUpdate } from './tool-input-preview'
@@ -58,16 +59,86 @@ export function deriveInteractivePrompt(
       return undefined
     }
   }
-  if (eventName === 'PermissionRequest' && typeof toolName === 'string' && toolName.length > 0) {
+  // Why PreToolUse too: it arrives first, and not relying on PermissionRequest keeps plan review working across Claude versions.
+  const isExitPlanModePrompt =
+    toolName === 'ExitPlanMode' && (eventName === 'PermissionRequest' || eventName === 'PreToolUse')
+  if (
+    (eventName === 'PermissionRequest' || isExitPlanModePrompt) &&
+    typeof toolName === 'string' &&
+    toolName.length > 0
+  ) {
     try {
-      return JSON.stringify({
-        approval: { tool: toolName, summary: summarizeApprovalInput(toolInput) }
-      })
+      const summary = summarizeApprovalInput(toolInput)
+      const plan = toolName === 'ExitPlanMode' ? readPlanFieldString(toolInput) : undefined
+      return buildApprovalEnvelope(toolName, summary, plan)
     } catch {
       return undefined
     }
   }
   return undefined
+}
+
+/** Extract ExitPlanMode's `tool_input.plan` when present as a non-empty string. */
+function readPlanFieldString(toolInput: unknown): string | undefined {
+  if (!toolInput || typeof toolInput !== 'object') {
+    return undefined
+  }
+  const plan = (toolInput as Record<string, unknown>).plan
+  return typeof plan === 'string' && plan.length > 0 ? plan : undefined
+}
+
+// Why not the shared truncator: JSON escaping means the cap applies to the serialized envelope, not the raw plan.
+function truncateEnvelopePlanPreservingSurrogates(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value
+  }
+  let truncated = value.slice(0, maxLength)
+  const lastCode = truncated.charCodeAt(truncated.length - 1)
+  if (lastCode >= 0xd800 && lastCode <= 0xdbff) {
+    truncated = truncated.slice(0, -1)
+  }
+  return truncated
+}
+
+/** Build the approval envelope, shrinking `plan` (binary search on length) until
+ *  the serialized JSON fits AGENT_STATUS_INTERACTIVE_PROMPT_MAX_LENGTH. `summary`
+ *  is always kept so pre-plan-review clients still render an approval card. */
+function buildApprovalEnvelope(tool: string, summary: string, plan: string | undefined): string {
+  if (plan === undefined) {
+    return JSON.stringify({ approval: { tool, summary } })
+  }
+  const full = JSON.stringify({ approval: { tool, summary, plan } })
+  if (full.length <= AGENT_STATUS_INTERACTIVE_PROMPT_MAX_LENGTH) {
+    return full
+  }
+  let lo = 0
+  let hi = plan.length
+  let bestLen = 0
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2)
+    const candidatePlan = truncateEnvelopePlanPreservingSurrogates(plan, mid)
+    const candidate = JSON.stringify({
+      approval: { tool, summary, plan: candidatePlan, planTruncated: true }
+    })
+    if (candidate.length <= AGENT_STATUS_INTERACTIVE_PROMPT_MAX_LENGTH) {
+      bestLen = mid
+      lo = mid + 1
+    } else {
+      hi = mid - 1
+    }
+  }
+  if (bestLen === 0) {
+    // Why: never emit oversized or truncation-corrupted JSON.
+    return JSON.stringify({ approval: { tool, summary } })
+  }
+  return JSON.stringify({
+    approval: {
+      tool,
+      summary,
+      plan: truncateEnvelopePlanPreservingSurrogates(plan, bestLen),
+      planTruncated: true
+    }
+  })
 }
 
 export function readFirstString(

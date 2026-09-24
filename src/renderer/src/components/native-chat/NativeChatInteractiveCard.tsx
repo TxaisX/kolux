@@ -35,7 +35,8 @@ export function NativeChatInteractiveCard({
   messages,
   transcriptSettled,
   onShowingQuestionChange,
-  answerInputRef
+  answerInputRef,
+  onReviewPlan
 }: {
   paneKey: string
   send: NativeChatInteractiveSend
@@ -50,6 +51,8 @@ export function NativeChatInteractiveCard({
   /** Forwarded to the question card's free-text row so pane-level Paste keeps
    *  a target while the composer is unmounted. */
   answerInputRef?: React.RefObject<HTMLInputElement | null>
+  /** Opens the plan-review sheet for an ExitPlanMode approval's plan text. */
+  onReviewPlan?: (plan: { text: string; truncated: boolean }) => void
 }): React.JSX.Element | null {
   const interactivePrompt = useAppStore(
     (s) => s.agentStatusByPaneKey[paneKey]?.interactivePrompt ?? null
@@ -174,6 +177,7 @@ export function NativeChatInteractiveCard({
       />
     )
   }
+  const plan = card.approval.plan
   return (
     <NativeChatApprovalCard
       approval={card.approval}
@@ -181,6 +185,7 @@ export function NativeChatInteractiveCard({
         setDismissedKey(cardKey)
         sendRaw(raw)
       }}
+      onReviewPlan={plan ? () => onReviewPlan?.(plan) : undefined}
     />
   )
 }

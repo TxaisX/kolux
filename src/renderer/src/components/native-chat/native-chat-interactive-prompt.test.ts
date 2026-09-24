@@ -108,6 +108,32 @@ describe('parseApprovalFromStatus', () => {
     expect(approval?.title).toBe('Allow Edit?')
     expect(approval?.detail).toBeUndefined()
   })
+
+  it('carries the plan text and truncated flag for ExitPlanMode', () => {
+    const approval = parseApprovalFromStatus(
+      JSON.stringify({
+        approval: {
+          tool: 'ExitPlanMode',
+          summary: 'plan',
+          plan: '# Plan\n\nStep 1',
+          planTruncated: true
+        }
+      })
+    )
+    expect(approval?.plan).toEqual({ text: '# Plan\n\nStep 1', truncated: true })
+  })
+
+  it('defaults truncated to false when planTruncated is absent', () => {
+    const approval = parseApprovalFromStatus(
+      JSON.stringify({ approval: { tool: 'ExitPlanMode', plan: 'Do X' } })
+    )
+    expect(approval?.plan).toEqual({ text: 'Do X', truncated: false })
+  })
+
+  it('omits plan for a non-plan approval or an old host with no plan field', () => {
+    const approval = parseApprovalFromStatus(JSON.stringify({ approval: { tool: 'Bash' } }))
+    expect(approval?.plan).toBeUndefined()
+  })
 })
 
 describe('parseInteractivePrompt', () => {

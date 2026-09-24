@@ -11,6 +11,7 @@ import { useNativeChatCanSend } from './use-native-chat-can-send'
 import { NativeChatInteractiveCard } from './NativeChatInteractiveCard'
 import { NativeChatEmptyState } from './NativeChatEmptyState'
 import { useNativeChatInteractiveSend } from './use-native-chat-interactive-send'
+import { usePlanReviewApprovalTrigger } from '../plan-review/use-plan-review-approval-trigger'
 import {
   shouldClearNativeChatWorkingSuppression,
   shouldShowNativeChatWorking
@@ -116,6 +117,7 @@ export function NativeChatResolvedView({
   // Reuse the verified composer send path for interactive cards and composer
   // stop (Stop sends ESC, the agent-TUI interrupt key).
   const interactiveSend = useNativeChatInteractiveSend(terminalTabId, paneKey, targetPtyId, agent)
+  const planReview = usePlanReviewApprovalTrigger(terminalTabId, paneKey, () => targetPtyId)
   const [workingInterrupted, setWorkingInterrupted] = useState(false)
   const previousWorkingEpochRef = useRef<number | null>(null)
   // True while a question card owns the input region, so the composer is hidden.
@@ -413,7 +415,9 @@ export function NativeChatResolvedView({
         transcriptSettled={session.readPhase === 'ready'}
         onShowingQuestionChange={setQuestionActive}
         answerInputRef={questionAnswerInputRef}
+        onReviewPlan={planReview.onReviewPlan}
       />
+      {planReview.sheet}
       {/* canSend reflects the mobile presence-lock: when a mobile client holds
           the pty, the composer shows its guarded state instead of racing the
           mobile driver (R8). */}

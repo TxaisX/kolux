@@ -3,7 +3,64 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-21.
+Last updated: 2026-09-23.
+
+## 2026-09-23: review the plan before Claude runs it (v1)
+
+- New flow: when Claude calls `ExitPlanMode`, the pane header shows a "Review plan" icon
+  button (`ClipboardCheck`) and the existing native-chat approval card grows a matching
+  button. Both open the same `PlanReviewSheet` UI (a right-edge `Sheet`): the plan splits
+  into sections at blank lines (code fences are exempt so a fenced snippet never gets cut),
+  each section can take an inline comment, and a footer holds an optional general note plus
+  **Request changes (N)** / **Approve**. Approve writes `'1'`; Request changes writes ESC,
+  waits for the pane to actually leave the ExitPlanMode wait (or 3s), then sends the
+  formatted feedback as a normal chat message. Drafts live in an in-memory LRU keyed by
+  `paneKey + plan text` (`plan-review.ts`), not a store slice — a new plan from Claude is a
+  new draft key.
+- `interactive-tool.ts`'s `deriveInteractivePrompt` now carries ExitPlanMode's `tool_input.plan`
+  in the approval envelope (`{approval:{tool,summary,plan?,planTruncated?}}`), shrinking the
+  plan (binary search, surrogate-safe) until the serialized envelope fits the existing
+  16,000-char `interactivePrompt` cap — `summary` is always kept so old clients still render
+  a plain Allow/Deny card. **It fires on `PermissionRequest` OR a `PreToolUse` ExitPlanMode**:
+  step 0 could not confirm which one this Claude build sends (see below), so both are wired,
+  mirroring how `normalizeClaudeEvent` already treats AskUserQuestion. `claude-events.ts` was
+  extended the same way so the pane shows `waiting` (amber dot) either way.
+- **Step 0 deviation — no live-captured fixture.** The design called for a real ExitPlanMode
+  hook payload captured via a standalone `claude` CLI run. Two independent blockers made that
+  impossible in this environment/session:
+  1. Headless (`claude -p ... --permission-mode plan`) never exposes `ExitPlanMode` as a tool
+     at all — Claude's own reply says so verbatim: *"The tool I normally use to hand you a plan
+     for approval isn't available in this session."* Confirmed with both bare `-p` and piped
+     stdin.
+  2. A real interactive run over a standalone `node-pty` (Windows conpty) — trust dialog
+     answered, prompt submitted, echoed correctly — then produced **zero further PTY output**
+     for 170s+, three separate times (one run also surfaced "You've used 99% of your session
+     limit" first). This matches the `docs/reference` conpty caveat AGENTS.md already flags for
+     dev-shell ptys; it reproduced on a bare script outside the app too.
+  - `src/main/claude/__fixtures__/claude-exit-plan-mode-{pretooluse,permissionrequest}.json` are
+    therefore built from Claude Code's documented `ExitPlanMode` schema
+    (`tool_input: { plan: string }`) plus the exact envelope shape a real (non-plan-mode) hook
+    run *did* capture live for other tools (`session_id`/`cwd`/`transcript_path`/etc.), not a
+    literal ExitPlanMode capture. Flagged in a comment at the top of the test that loads them
+    (`server-claude-normalization.test.ts`). If a real payload ever contradicts this shape,
+    the fixtures and both event-name branches need a second look.
+- **Worktree note:** this worktree (`G:/Dev/kolux-workspaces/kolux/plan-review`) disappeared
+  mid-session (directory + branch both gone; `.git/worktrees/plan-review` was a stale/corrupt
+  admin dir `git worktree prune --dry-run` flagged) — most likely an automated stale-worktree
+  reaper firing on it while it still had zero commits. It was recreated with
+  `git worktree add -b TxaisX/plan-review` from `main` (`f21282fda`, unchanged) and `pnpm
+  install` was rerun. No work was lost — nothing had been committed or wag written to disk in
+  it yet at that point — but this HANDOFF.md's pre-existing entries below are whatever `main`
+  actually has at `f21282fda`, which may be older than what a previous session's copy of this
+  file showed.
+- New: `src/renderer/src/components/plan-review/` (`plan-review.ts`, `plan-review-send.ts`,
+  `PlanReviewSheet.tsx`, `PlanReviewButton.tsx`, plus tests for each). Changed:
+  `interactive-tool.ts`, `claude-events.ts`, `native-chat-interactive-prompt.ts`,
+  `NativeChatInteractiveCard.tsx`, `NativeChatApprovalCard.tsx`,
+  `terminal-pane/TerminalPaneHeaderRow.tsx`, `i18n/locales/en.json` (new `plan-review` keys).
+- Not done: the kolux-run runtime check (another session's dev app already owned the shared
+  dev profile/port 9334 when this pass wrapped up — coordinator asked this to be skipped and
+  run later).
 
 ## Current pass: the product is renamed Nightshift → Kolux
 

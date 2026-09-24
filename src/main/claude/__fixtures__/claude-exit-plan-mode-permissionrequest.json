@@ -1,0 +1,14 @@
+{
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "transcript_path": "<CLAUDE_CONFIG_DIR>/projects/<project>/00000000-0000-0000-0000-000000000000.jsonl",
+  "cwd": "<WORKTREE_CWD>",
+  "prompt_id": "00000000-0000-0000-0000-000000000000",
+  "permission_mode": "plan",
+  "effort": { "level": "medium" },
+  "hook_event_name": "PermissionRequest",
+  "tool_name": "ExitPlanMode",
+  "tool_input": {
+    "plan": "## Plan\n\n1. Read the target file to confirm its current contents.\n2. Add the requested line after the existing heading, with one blank line between them.\n3. Verify the diff shows only that one addition."
+  },
+  "tool_use_id": "toolu_00000000000000000000000000"
+}

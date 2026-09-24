@@ -17275,6 +17275,18 @@
         "unconfirmed": "Conversation operation was not confirmed."
       }
     },
+    "plan-review": {
+      "reviewPlan": "Review plan",
+      "title": "Review plan",
+      "truncated": "Plan shortened to fit. The full text is in the terminal.",
+      "noLongerWaiting": "Claude is no longer waiting on this plan.",
+      "comment": "Comment",
+      "deleteComment": "Delete",
+      "generalNotePlaceholder": "Add a general note (optional)",
+      "addGeneralNote": "Add a general note",
+      "requestChanges": "Request changes ({{value0}})",
+      "approve": "Approve"
+    },
     "tab": {
       "bar": {
         "SortableTabContextMenu": {

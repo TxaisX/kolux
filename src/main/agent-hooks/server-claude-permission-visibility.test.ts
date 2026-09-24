@@ -71,6 +71,42 @@ describe('AgentHookServer listener replay', () => {
     }
   })
 
+  it('shows waiting for an ExitPlanMode PreToolUse even with no PermissionRequest (plan-review premise)', async () => {
+    const server = new AgentHookServer()
+    await server.start({ env: 'production' })
+    try {
+      const env = server.buildPtyEnv()
+      const postClaudeHook = async (payload: Record<string, unknown>): Promise<Response> =>
+        fetch(`http://127.0.0.1:${env.KOLUX_AGENT_HOOK_PORT}/hook/claude`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Kolux-Agent-Hook-Token': env.KOLUX_AGENT_HOOK_TOKEN
+          },
+          body: JSON.stringify(buildBody(payload))
+        })
+
+      await expect(
+        postClaudeHook({
+          hook_event_name: 'PreToolUse',
+          tool_name: 'ExitPlanMode',
+          tool_input: { plan: '## Plan\n\nDo the thing.' }
+        })
+      ).resolves.toMatchObject({ status: 204 })
+
+      expect(server.getStatusSnapshot()).toEqual([
+        expect.objectContaining({
+          paneKey: PANE,
+          state: 'waiting',
+          agentType: 'claude',
+          toolName: 'ExitPlanMode'
+        })
+      ])
+    } finally {
+      server.stop()
+    }
+  })
+
   it('keeps Claude permission visible when matching tool activity has no execution id', async () => {
     const server = new AgentHookServer()
     await server.start({ env: 'production' })

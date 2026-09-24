@@ -33,6 +33,9 @@ export type ChatApproval = {
   title: string
   detail?: string
   options: { label: string; send: string }[]
+  /** ExitPlanMode's plan text, carried for the plan-review sheet. Absent for
+   *  every other approval (Bash, Read, …) and for old hosts with no plan field. */
+  plan?: { text: string; truncated: boolean }
 }
 
 export type InteractivePromptCard =
@@ -67,6 +70,14 @@ export function parseApprovalFromStatus(
     return null
   }
   const summary = (approval as { summary?: unknown }).summary
+  const planText = (approval as { plan?: unknown }).plan
+  const plan =
+    typeof planText === 'string' && planText.length > 0
+      ? {
+          text: planText,
+          truncated: (approval as { planTruncated?: unknown }).planTruncated === true
+        }
+      : undefined
   return {
     title: translate('components.native-chat.approval.title', 'Allow {{value0}}?', {
       value0: tool
@@ -75,7 +86,8 @@ export function parseApprovalFromStatus(
     options: [
       { label: translate('components.native-chat.approval.allow', 'Allow'), send: '1' },
       { label: translate('components.native-chat.approval.deny', 'Deny'), send: ESCAPE }
-    ]
+    ],
+    plan
   }
 }
 

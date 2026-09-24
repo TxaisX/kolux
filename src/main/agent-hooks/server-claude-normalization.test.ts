@@ -1,9 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _internals } from './server'
 import { buildBody } from './server.test-fixtures'
+
+// Why these fixtures aren't a live capture: repeated headless (`-p`) and
+// interactive-PTY capture attempts both failed — print mode never exposes the
+// ExitPlanMode tool ("the tool I normally use to hand you a plan for approval
+// isn't available"), and 3 live-PTY attempts stalled with zero PTY output for
+// 170s+ (the AGENTS.md conpty trap). Built from Claude Code's documented
+// ExitPlanMode schema (`tool_input: { plan: string }`) and the exact envelope
+// shape a real bypass-permissions run captured for other tools.
+function readExitPlanModeFixture(name: string): Record<string, unknown> {
+  return JSON.parse(
+    readFileSync(join(__dirname, '../claude/__fixtures__', name), 'utf8')
+  ) as Record<string, unknown>
+}
 
 const { getCohortAtEmitMock, trackMock } = vi.hoisted(() => ({
   getCohortAtEmitMock: vi.fn(),
@@ -309,6 +322,33 @@ describe('Claude hook normalization', () => {
     expect(result?.payload.state).toBe('waiting')
     expect(result?.payload.toolName).toBeUndefined()
     expect(result?.payload.toolInput).toBeUndefined()
+  })
+
+  it('ExitPlanMode PermissionRequest normalizes to waiting with the plan text in interactivePrompt', () => {
+    const result = _internals.normalizeHookPayload(
+      'claude',
+      buildBody(readExitPlanModeFixture('claude-exit-plan-mode-permissionrequest.json')),
+      'production'
+    )
+    expect(result?.payload.state).toBe('waiting')
+    expect(result?.payload.toolName).toBe('ExitPlanMode')
+    const parsed = JSON.parse(result?.payload.interactivePrompt as string)
+    expect(parsed.approval.tool).toBe('ExitPlanMode')
+    expect(typeof parsed.approval.plan).toBe('string')
+    expect(parsed.approval.plan.length).toBeGreaterThan(0)
+  })
+
+  it('ExitPlanMode PreToolUse (no PermissionRequest) also normalizes to waiting with the plan', () => {
+    const result = _internals.normalizeHookPayload(
+      'claude',
+      buildBody(readExitPlanModeFixture('claude-exit-plan-mode-pretooluse.json')),
+      'production'
+    )
+    expect(result?.payload.state).toBe('waiting')
+    expect(result?.payload.toolName).toBe('ExitPlanMode')
+    const parsed = JSON.parse(result?.payload.interactivePrompt as string)
+    expect(parsed.approval.tool).toBe('ExitPlanMode')
+    expect(typeof parsed.approval.plan).toBe('string')
   })
 
   it('UserPromptSubmit clears the cached tool state from the prior turn', () => {
