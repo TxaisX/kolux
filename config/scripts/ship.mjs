@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Commit all changes, optionally merge a branch, and push — with Claude Haiku writing the commit
 // message, so git chores cost a few cheap tokens instead of a full agent turn (see AGENTS.md).
-// Usage: pnpm ship [--main] [--merge <branch>] [--dry-run] [--model <claude-model-id>]
-//   --main  work is complete: also land it on main, on GitHub and locally.
+// Usage: pnpm ship [--main] [--merge <branch>] [--dry-run] [--model <claude-model-id>] [--message <text>]
+//   --main     work is complete: also land it on main, on GitHub and locally.
+//   --message  use this commit message verbatim (e.g. a version bump's required reason).
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,6 +16,7 @@ const flagValue = (name) => {
 }
 const model = flagValue('--model') ?? 'claude-haiku-4-5-20251001'
 const mergeBranch = flagValue('--merge')
+const fixedMessage = flagValue('--message')
 const dryRun = args.includes('--dry-run')
 const toMain = args.includes('--main')
 const MAX_DIFF_CHARS = 100_000
@@ -113,8 +115,8 @@ function writeCommitMessage() {
 try {
   git('add', '-A')
   if (git('diff', '--cached', '--name-only')) {
-    const message = writeCommitMessage()
-    console.log(`--- commit message (${model}) ---\n${message}\n---`)
+    const message = fixedMessage ?? writeCommitMessage()
+    console.log(`--- commit message (${fixedMessage ? 'given' : model}) ---\n${message}\n---`)
     if (dryRun) {
       git('reset', '-q')
       console.log('dry run: nothing committed, changes unstaged')

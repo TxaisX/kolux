@@ -3,7 +3,13 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-23.
+Last updated: 2026-09-24.
+
+## 2026-09-24: release 0.11.0
+
+- **0.11.0 — x:** plan review before Claude runs, event-triggered automations, per-provider model routing, target-aware launcher refresh, the dashboard Runs view, terminal-grid layout presets and packaged update checks are new; OpenCode support is removed. Tagged `v0.11.0`; `release.yml` builds and publishes it.
+- `pnpm ship --message "<text>"` commits with that exact message instead of asking Haiku; use it for version bumps, whose message must state the x/y reason.
+- **CI is red and has been since at least 2026-09-11** (every finished `CI` run on main is a failure; the rest were cancelled by newer pushes). `release.yml` doesn't depend on it; it builds, typechecks and smoke-tests on its own, and the same build + smoke passed locally at `8abd69906`. Getting CI green is open work.
 
 ## 2026-09-23: review the plan before Claude runs it (v1)
 
