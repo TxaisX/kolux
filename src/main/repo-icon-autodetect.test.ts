@@ -301,7 +301,7 @@ describe('detectRepoIcon', () => {
   it('uses the resolved fork upstream for both metadata and the GitHub avatar', async () => {
     const repoPath = await makeTempRepoDir()
     await gitExecFileAsync(['init'], { cwd: repoPath })
-    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/nightshift.git'], {
+    await gitExecFileAsync(['remote', 'add', 'origin', 'git@github.com:tmchow/kolux.git'], {
       cwd: repoPath
     })
     await gitExecFileAsync(['remote', 'add', 'upstream', 'git@github.com:TxaisX/kolux.git'], {
