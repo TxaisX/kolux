@@ -10,6 +10,9 @@ Every agent works in its own worktree, never in the primary checkout (several ag
 
 Claude and Codex write and change code; they do not run `git commit`, `git merge`, or `git push` here. Run `pnpm ship` from your worktree whenever a piece of work is done: it stages everything in that worktree, has Claude Haiku (`claude -p`, a fraction of a cent per commit) write the commit message, commits, and pushes the worktree's branch to GitHub, so every step is a saved version. When the task is complete, run `pnpm ship --main` to also land it on `main`, on GitHub and in the local primary checkout. If ship reports a conflict, resolving it is code work for Claude/Codex; then run it again. Never pass `--no-verify` or force-push.
 
+
+Cutting an actual release (version bump, tag, what CI builds and publishes, local install, and rollback) is a separate, infrequent flow — read [`docs/reference/release.md`](./docs/reference/release.md) before running one.
+
 # Design System
 
 All UI work — layout, color, typography, spacing, component selection, UX behavior — must follow [`docs/STYLEGUIDE.md`](./docs/STYLEGUIDE.md). Use the tokens defined in `src/renderer/src/assets/main.css` (the canonical source) and the shadcn primitives in `src/renderer/src/components/ui/`. Don't invent new color values, font sizes, or shadow tiers when a documented one already covers the role. When STYLEGUIDE.md is silent, follow the resolution order in its final section.
