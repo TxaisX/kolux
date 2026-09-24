@@ -20,6 +20,8 @@ const CANONICAL_GUIDE_NAMES = [
   'kolux-emulator-android',
   'kolux-linear',
   'kolux-per-workspace-env',
+  'koluxsecurity',
+  'koluxward',
   'orchestration'
 ]
 
@@ -33,6 +35,8 @@ const GUIDE_ALIASES = {
   'kolux-emulator-android': [],
   'kolux-linear': [],
   'kolux-per-workspace-env': [],
+  koluxsecurity: [],
+  koluxward: [],
   orchestration: []
 }
 
@@ -49,6 +53,8 @@ const STUB_TOPICS = [
   'kolux-emulator-android',
   'kolux-linear',
   'kolux-per-workspace-env',
+  'koluxsecurity',
+  'koluxward',
   'orchestration'
 ]
 

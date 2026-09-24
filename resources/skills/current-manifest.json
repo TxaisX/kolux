@@ -110,6 +110,42 @@
       ]
     },
     {
+      "name": "koluxsecurity",
+      "sourcePath": "skills/koluxsecurity",
+      "releaseRevision": 1,
+      "packageDigest": "e3637aed38212eacf17a984f94124da2d6526e28ea173d460203023bb57825b2",
+      "gitTreeSha": "83724d3946adb51864dc2cf3169577ac99f31f7e",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "size": 2537,
+          "executable": false,
+          "classification": "text",
+          "exactSha256": "fd2538d4b17a401459ef25047283610ddbffabed7a612db1b7d7a447c573a3f7",
+          "textNormalizedSha256": "fd2538d4b17a401459ef25047283610ddbffabed7a612db1b7d7a447c573a3f7",
+          "identitySha256": "fd2538d4b17a401459ef25047283610ddbffabed7a612db1b7d7a447c573a3f7"
+        }
+      ]
+    },
+    {
+      "name": "koluxward",
+      "sourcePath": "skills/koluxward",
+      "releaseRevision": 1,
+      "packageDigest": "01a98ae219b2a3522a84ea7a4642b67ffe28ac648ab2704278057f882bfda142",
+      "gitTreeSha": "3450573e4b3ea8cdd5a4b64d59cf47b9c1b5cc30",
+      "files": [
+        {
+          "path": "SKILL.md",
+          "size": 2554,
+          "executable": false,
+          "classification": "text",
+          "exactSha256": "420ab7e13ea6aa303439c5de39543333cf0dd57a178a5391ca0fe0e484cd2205",
+          "textNormalizedSha256": "420ab7e13ea6aa303439c5de39543333cf0dd57a178a5391ca0fe0e484cd2205",
+          "identitySha256": "420ab7e13ea6aa303439c5de39543333cf0dd57a178a5391ca0fe0e484cd2205"
+        }
+      ]
+    },
+    {
       "name": "linear-tickets",
       "sourcePath": "skills/linear-tickets",
       "releaseRevision": 12,

@@ -41,6 +41,25 @@ const GUIDE_REFERENCES = {
     'provider-vercel.md',
     'ssh-host.md',
     'windows-scripts.md'
+  ],
+  koluxsecurity: [
+    'case-studies.md',
+    'frontend-patterns.md',
+    'infrastructure-patterns.md',
+    'language-patterns.md',
+    'secrets-patterns.md',
+    'threat-modeling.md',
+    'tooling.md',
+    'vulnerability-taxonomies.md'
+  ],
+  koluxward: [
+    'case-studies.md',
+    'checklist.md',
+    'per-tool-defenses.md',
+    'red-flag-patterns.md',
+    'refusal-templates.md',
+    'threat-taxonomy.md',
+    'trust-labels.md'
   ]
 }
 const GUIDE_REFERENCE_PATHS = Object.entries(GUIDE_REFERENCES).flatMap(([guide, references]) =>
