@@ -18,7 +18,6 @@ const RESUME_HOST_AUTHORITY_CAPABILITY_BY_AGENT = {
   codex: undefined,
   gemini: undefined,
   antigravity: undefined,
-  opencode: undefined,
   pi: undefined,
   'mimo-code': undefined,
   droid: undefined,

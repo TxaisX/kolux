@@ -109,7 +109,7 @@ describe('AgentHookServer listener replay', () => {
           payload: {
             state: 'working',
             prompt: 'retryable task',
-            agentType: 'opencode',
+            agentType: 'mimo-code',
             lastAssistantMessage: 'partial answer'
           }
         },
@@ -124,7 +124,7 @@ describe('AgentHookServer listener replay', () => {
           baselineUpdatedAt: baseline.receivedAt,
           baselineStateStartedAt: baseline.stateStartedAt,
           baselinePrompt: 'retryable task',
-          baselineAgentType: 'opencode',
+          baselineAgentType: 'mimo-code',
           intent: 'ctrl-c'
         })
       ).toBe(true)
@@ -139,7 +139,7 @@ describe('AgentHookServer listener replay', () => {
           payload: {
             state: 'working',
             prompt: 'retryable task',
-            agentType: 'opencode',
+            agentType: 'mimo-code',
             lastAssistantMessage: 'partial answer'
           }
         },
@@ -150,7 +150,7 @@ describe('AgentHookServer listener replay', () => {
         expect.objectContaining({
           state: 'working',
           prompt: 'retryable task',
-          agentType: 'opencode',
+          agentType: 'mimo-code',
           lastAssistantMessage: 'partial answer',
           receivedAt: 2_000,
           stateStartedAt: 2_000
@@ -175,7 +175,7 @@ describe('AgentHookServer listener replay', () => {
           payload: {
             state: 'working',
             prompt: 'retryable task',
-            agentType: 'opencode',
+            agentType: 'mimo-code',
             lastAssistantMessage: 'partial answer'
           }
         },
@@ -190,7 +190,7 @@ describe('AgentHookServer listener replay', () => {
           baselineUpdatedAt: baseline.receivedAt,
           baselineStateStartedAt: baseline.stateStartedAt,
           baselinePrompt: 'retryable task',
-          baselineAgentType: 'opencode',
+          baselineAgentType: 'mimo-code',
           intent: 'ctrl-c'
         })
       ).toBe(true)
@@ -206,7 +206,7 @@ describe('AgentHookServer listener replay', () => {
           payload: {
             state: 'working',
             prompt: 'retryable task',
-            agentType: 'opencode',
+            agentType: 'mimo-code',
             lastAssistantMessage: 'partial answer'
           }
         },
@@ -217,7 +217,7 @@ describe('AgentHookServer listener replay', () => {
         expect.objectContaining({
           state: 'done',
           prompt: 'retryable task',
-          agentType: 'opencode',
+          agentType: 'mimo-code',
           interrupted: true,
           receivedAt: 1_500,
           stateStartedAt: 1_500

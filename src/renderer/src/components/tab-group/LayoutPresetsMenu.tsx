@@ -11,13 +11,15 @@ import { useLayoutPresetsCommand } from './useLayoutPresetsCommand'
 const T = (id: string, fallback: string): string =>
   translate(`auto.components.tab.group.LayoutPresetsMenu.${id}`, fallback)
 
-/** "Layout presets" submenu item for the pane menu — hidden when no documented preset matches the current pane count. */
+/** Group-only layouts; inner terminal splits are owned by PaneManager. */
 export default function LayoutPresetsMenu({
-  worktreeId
+  worktreeId,
+  activeTerminalTabId
 }: {
   worktreeId: string
+  activeTerminalTabId?: string | null
 }): React.JSX.Element | null {
-  const presets = useLayoutPresetsCommand(worktreeId)
+  const presets = useLayoutPresetsCommand(worktreeId, activeTerminalTabId)
   if (presets.length === 0) {
     return null
   }
@@ -37,8 +39,11 @@ export default function LayoutPresetsMenu({
           >
             {translate(
               'auto.components.tab.group.LayoutPresetsMenu.layoutPresetGrid',
-              '{{rows}} grid',
-              { rows: preset.rows.join(' × ') }
+              '{{rows}} {{target}} grid',
+              {
+                rows: preset.rows.join(' × '),
+                target: preset.target === 'terminal-panes' ? 'pane' : 'group'
+              }
             )}
           </DropdownMenuItem>
         ))}

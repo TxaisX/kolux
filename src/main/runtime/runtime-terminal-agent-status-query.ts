@@ -1,6 +1,5 @@
 import {
   detectAgentStatusFromTitle,
-  isOpenCodeNativeTitle,
   isQuarterCircleSpinnerOnlyAgentTitle,
   isShellProcess,
   type AgentStatus
@@ -71,7 +70,6 @@ export class RuntimeTerminalAgentStatusQuery {
       terminal.titleStatusIsLive &&
       terminal.titleStatus !== null &&
       terminal.titleStatus !== 'permission' &&
-      !isOpenCodeNativeTitle(terminal.title) &&
       blockedByWaitText !== 'agent-approval-prompt'
     const newestPermissionAt = Math.max(
       explicitStatus?.status === 'permission' ? explicitStatus.updatedAt : -1,
@@ -107,12 +105,9 @@ export class RuntimeTerminalAgentStatusQuery {
       }
     }
     if (terminal.titleStatus) {
-      // Why: an OpenCode marker and a lone quarter-circle spinner (STA-4028) are activity,
-      // not identity, so resolve both through the identity/foreground evidence path.
-      if (
-        isOpenCodeNativeTitle(terminal.title) ||
-        isQuarterCircleSpinnerOnlyAgentTitle(terminal.title)
-      ) {
+      // Why: a lone quarter-circle spinner (STA-4028) is activity, not identity,
+      // so resolve it through the identity/foreground evidence path.
+      if (isQuarterCircleSpinnerOnlyAgentTitle(terminal.title)) {
         const isRunningAgent = await this.deps.isRunning(handle)
         this.assertTerminalAgentStatusPtyBinding(handle, ptyId)
         return {

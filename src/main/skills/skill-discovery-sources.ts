@@ -132,14 +132,6 @@ export function buildSkillDiscoverySources(
       'grok'
     ),
     source(
-      'home-opencode',
-      'OpenCode home',
-      pathApi.join(home, '.config', 'opencode', 'skills'),
-      'home',
-      ['agent-skills'],
-      'opencode'
-    ),
-    source(
       'home-pi',
       'Pi home',
       pathApi.join(home, '.pi', 'agent', 'skills'),

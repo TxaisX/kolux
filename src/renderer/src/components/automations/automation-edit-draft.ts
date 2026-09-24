@@ -40,6 +40,7 @@ export function buildAutomationEditDraft(automation: Automation): AutomationDraf
     dayOfWeek: String(schedule?.dayOfWeek ?? 1),
     customSchedule: hasCustomSchedule ? automation.rrule : '',
     missedRunGraceMinutes: String(automation.missedRunGraceMinutes),
+    eventKind: automation.eventTrigger?.kind ?? null,
     scheduleWarning:
       schedule || hasCustomSchedule
         ? null

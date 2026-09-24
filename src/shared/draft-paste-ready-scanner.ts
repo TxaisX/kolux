@@ -5,7 +5,7 @@ import type { DraftPasteReadySignal } from './tui-agent-config'
 // "input is ready" moment per agent instead of guessing from output silence.
 const DECSET_BRACKETED_PASTE = '\x1b[?2004h'
 const CODEX_COMPOSER_PROMPT = '›'
-// Why: opencode emits the DECTCEM show-cursor only once the composer row is
+// Why: MiMo emits the DECTCEM show-cursor only once the composer row is
 // mounted and the text cursor is placed in it — a "composer ready" signal,
 // analogous to Codex's prompt glyph. It fires ~2s after bracketed paste is
 // enabled, so gating on it (instead of a quiet window) stops the paste from
@@ -92,9 +92,9 @@ export type DraftPasteReadyScanResult = {
  *     alternate screen; never arms the quiet window.
  *   - `render-cursor-after-bracketed-paste`: ready when DECTCEM show-cursor
  *     (`\x1b[?25h`) renders after DECSET 2004. Like Codex it does NOT arm the
- *     quiet window: opencode stays silent for ~1.5-2s between enabling
+ *     quiet window: MiMo stays silent for ~1.5-2s between enabling
  *     bracketed paste and mounting its composer, so a quiet window would fire
- *     during that gap and pre-empt the marker. opencode re-emits show-cursor on
+ *     during that gap and pre-empt the marker. MiMo re-emits show-cursor on
  *     every render frame once mounted, so the marker is effectively guaranteed;
  *     the caller's hard timeout is the backstop if it never appears.
  *   - `grok-composer-prompt`: ready when grok's `❯` glyph renders after the
@@ -241,8 +241,8 @@ export function createDraftPasteReadyScanner(readySignal: DraftPasteReadySignal)
           postAnchorRecent = (postAnchorRecent + data).slice(-512)
         }
       }
-      // Why: the Codex glyph and opencode show-cursor signals must NOT arm the
-      // quiet window (they carry no quiet anchor). opencode goes silent for
+      // Why: the Codex glyph and MiMo show-cursor signals must NOT arm the
+      // quiet window (they carry no quiet anchor). MiMo goes silent for
       // ~1.5-2s between enabling bracketed paste and mounting its composer, so a
       // quiet window would fire during that gap — before the composer exists —
       // and pre-empt the marker. Those signals wait for their marker, bounded

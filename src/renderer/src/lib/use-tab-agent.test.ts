@@ -260,54 +260,6 @@ describe('resolveTabAgentFromSignals', () => {
     ).toBe('claude')
   })
 
-  // Why: #8478 — OpenCode native `OC | …` titles must reclaim a stale Claude
-  // launch identity so the tab icon is OpenCode, not Claude.
-  it('uses OpenCode native session titles to replace stale Claude launch identity', () => {
-    expect(
-      resolveTabAgentFromSignals({
-        hasObservedAgentSignal: false,
-        isRemote: false,
-        title: 'OC | Understand about the plugin',
-        hookAgent: null,
-        launchAgent: 'claude'
-      })
-    ).toBe('opencode')
-  })
-
-  // Why: #8940 — an OpenCode session whose task text mentions Claude flipped the tab icon
-  // to Claude Code as soon as its hook row went stale (restart, mobile, between turns).
-  it('keeps an OpenCode tab OpenCode when its task title merely mentions Claude', () => {
-    for (const title of [
-      'OC | ⠋ ask claude about this',
-      '⠋ OpenCode',
-      '⠋ use Claude Sonnet',
-      '⠋ claude 스타일로 리팩터',
-      'OpenCode ready'
-    ]) {
-      for (const hasObservedAgentSignal of [true, false]) {
-        expect(
-          resolveTabAgentFromSignals({
-            hasObservedAgentSignal,
-            isRemote: false,
-            title,
-            hookAgent: null,
-            launchAgent: 'opencode'
-          })
-        ).toBe('opencode')
-      }
-    }
-    // Real pane reuse: the title PRESENTS Claude, so it still reclaims the pane.
-    expect(
-      resolveTabAgentFromSignals({
-        hasObservedAgentSignal: true,
-        isRemote: false,
-        title: '✳ Claude Code',
-        hookAgent: null,
-        launchAgent: 'opencode'
-      })
-    ).toBe('claude')
-  })
-
   it('does not let an explicit title override launch identity before any activity is observed', () => {
     expect(
       resolveTabAgentFromSignals({
@@ -404,11 +356,11 @@ describe('resolveTabAgentFromSignals', () => {
       resolveTabAgentFromSignals({
         hasObservedAgentSignal: false,
         isRemote: false,
-        title: '. Compare Opencode Vs Kolux',
+        title: '. Compare Goose Vs Kolux',
         hookAgent: null,
-        launchAgent: 'opencode'
+        launchAgent: 'goose'
       })
-    ).toBe('opencode')
+    ).toBe('goose')
 
     expect(
       resolveTabAgentFromSignals({
@@ -436,7 +388,7 @@ describe('resolveTabAgentFromSignals', () => {
       resolveTabAgentFromSignals({
         hasObservedAgentSignal: false,
         isRemote: false,
-        title: '. Claude Code compare Opencode',
+        title: '. Claude Code compare Codex',
         hookAgent: null,
         launchAgent: undefined
       })

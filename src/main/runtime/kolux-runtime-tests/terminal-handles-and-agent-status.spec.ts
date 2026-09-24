@@ -483,65 +483,6 @@ describe('KoluxRuntimeService', () => {
     })
   })
 
-  it('does not authorize an OpenCode marker left on a shell pane', async () => {
-    const runtime = new KoluxRuntimeService(store)
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => 'zsh'
-    })
-    syncSinglePty(runtime, 'pty-1', { paneTitle: 'OC | zsh' })
-    const [terminal] = (await runtime.listTerminals()).terminals
-
-    await expect(runtime.isTerminalRunningAgent(terminal.handle)).resolves.toBe(false)
-    await expect(runtime.getTerminalAgentStatus(terminal.handle)).resolves.toEqual({
-      handle: terminal.handle,
-      isRunningAgent: false,
-      status: null
-    })
-  })
-
-  it('authorizes a hookless OpenCode marker with an OpenCode foreground process', async () => {
-    const runtime = new KoluxRuntimeService(store)
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => 'opencode'
-    })
-    syncSinglePty(runtime, 'pty-1', { paneTitle: 'OC | Native session' })
-    const [terminal] = (await runtime.listTerminals()).terminals
-
-    await expect(runtime.isTerminalRunningAgent(terminal.handle)).resolves.toBe(true)
-    await expect(runtime.getTerminalAgentStatus(terminal.handle)).resolves.toEqual({
-      handle: terminal.handle,
-      isRunningAgent: true,
-      status: 'idle'
-    })
-  })
-
-  it('does not authorize an OpenCode marker left on a runtime PTY shell', async () => {
-    const runtime = new KoluxRuntimeService(store)
-    runtime.setPtyController({
-      spawn: vi.fn().mockResolvedValue({ id: 'pty-bg' }),
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => 'zsh'
-    })
-    runtime.attachWindow(1)
-    runtime.syncWindowGraph(1, { tabs: [], leaves: [] })
-    const { handle } = await runtime.createTerminal(`path:${TEST_WORKTREE_PATH}`, {
-      command: 'bash',
-      title: 'OC | zsh'
-    })
-
-    await expect(runtime.isTerminalRunningAgent(handle)).resolves.toBe(false)
-    await expect(runtime.getTerminalAgentStatus(handle)).resolves.toEqual({
-      handle,
-      isRunningAgent: false,
-      status: null
-    })
-  })
-
   // Why: a leaf with no PTY is the same no-evidence case as an unreadable foreground —
   // nothing was even asked, so the bare title is all that is left. The corroborating
   // foreground here is deliberately unreachable: no ptyId means no read.

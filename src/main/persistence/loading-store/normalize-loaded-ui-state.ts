@@ -6,6 +6,8 @@ import {
 import { isExistingPersistedProfile } from '../../../shared/project-order-manual-default-notice'
 import { resolveUsagePercentageDisplayChangeNoticeDismissed } from '../../../shared/usage-percentage-display-change-notice'
 import { normalizePersistedWorkspaceStatuses } from '../../../shared/workspace-statuses'
+import { DEFAULT_STATUS_BAR_ITEMS } from '../../../shared/status-bar-defaults'
+import type { StatusBarItem } from '../../../shared/ui-chrome-types'
 import {
   normalizeRightSidebarExplorerView,
   normalizeRightSidebarTab,
@@ -20,6 +22,23 @@ import {
 } from '../applying-settings/onboarding-normalization'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import type { OnboardingState } from '../../../shared/onboarding-state-types'
+
+const KNOWN_STATUS_BAR_ITEMS = new Set<string>(DEFAULT_STATUS_BAR_ITEMS)
+
+// Why: an old profile can still carry a retired id (e.g. 'opencode-go');
+// drop it here instead of the renderer so main-process consumers of the
+// loaded state never see it either.
+function normalizeLoadedStatusBarItems(
+  value: readonly unknown[] | undefined,
+  fallback: StatusBarItem[]
+): StatusBarItem[] {
+  if (!Array.isArray(value)) {
+    return fallback
+  }
+  return value.filter(
+    (id): id is StatusBarItem => typeof id === 'string' && KNOWN_STATUS_BAR_ITEMS.has(id)
+  )
+}
 
 export function normalizeLoadedUiState(
   parsed: PersistedState,
@@ -165,6 +184,16 @@ export function normalizeLoadedUiState(
   ) {
     markNeedsSave()
   }
+  const statusBarItems = normalizeLoadedStatusBarItems(
+    parsed.ui?.statusBarItems,
+    defaults.ui.statusBarItems
+  )
+  if (
+    Array.isArray(parsed.ui?.statusBarItems) &&
+    statusBarItems.length !== parsed.ui.statusBarItems.length
+  ) {
+    markNeedsSave()
+  }
   return {
     ...defaults.ui,
     // Why: missing card properties follow the persisted layout mode; explicit choices are preserved below.
@@ -172,6 +201,8 @@ export function normalizeLoadedUiState(
       loadedCompactWorktreeCards ? 'Compact' : 'Default'
     ),
     ...stripMainOwnedTelemetryMarkerFromUI(parsed.ui),
+    // Why: an old profile can still carry a retired status bar item id (e.g. 'opencode-go').
+    statusBarItems,
     // Why: migrate once from the retired Appearance setting only when no explicit chrome preference exists yet.
     rightSidebarOpen,
     rightSidebarTab: normalizeRightSidebarTab(parsed.ui?.rightSidebarTab),

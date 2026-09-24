@@ -16,13 +16,8 @@ import { RELAY_SENTINEL } from './protocol'
 import { RelayDispatcher } from './dispatcher'
 import { RelayAgentHookServer } from './agent-hook-server'
 import { registerWslHookFsHandlers } from './wsl-hook-fs-bridge'
-import { PluginOverlayManager } from './plugin-overlay'
-import { createInstallPluginsHandler } from './wsl-install-plugins-handler'
 import { PreflightHandler } from './preflight-handler'
-import {
-  AGENT_HOOK_INSTALL_PLUGINS_METHOD,
-  AGENT_HOOK_REQUEST_REPLAY_METHOD
-} from '../shared/agent-hook-relay'
+import { AGENT_HOOK_REQUEST_REPLAY_METHOD } from '../shared/agent-hook-relay'
 import { publishAgentHookEnvelope } from './agent-hook-envelope-publication'
 import {
   sanitizeWslHookInstanceKey,
@@ -75,14 +70,6 @@ async function main(): Promise<void> {
   dispatcher.onRequest(AGENT_HOOK_REQUEST_REPLAY_METHOD, async () => ({
     replayed: hookServer.replayCachedPayloadsForPanes()
   }))
-
-  // Why: OpenCode reports status via a plugin (not a hooks.json script), so the
-  // host ships its source over the wire and the guest materializes a config
-  // overlay here — the same PluginOverlayManager path the SSH relay uses. One
-  // handler for the relay's life: it remembers the materialized overlay so
-  // repeat installs don't rebuild it under running agents.
-  const installPlugins = createInstallPluginsHandler(new PluginOverlayManager(), process.env)
-  dispatcher.onRequest(AGENT_HOOK_INSTALL_PLUGINS_METHOD, async (params) => installPlugins(params))
 
   registerWslHookFsHandlers(dispatcher, homedir(), () => ({
     portFallback: hookServer.usedPortFallback,

@@ -1,5 +1,6 @@
 // Why: the automation method table stays readable only if its field-level validation lives beside it rather than inside it.
 import { z } from 'zod'
+import { AUTOMATION_EVENT_KINDS } from '../../../../shared/automation-event-trigger'
 import { isValidAutomationSchedule } from '../../../../shared/automation-schedule-parsing'
 import {
   MAX_AUTOMATION_PRECHECK_TIMEOUT_SECONDS,
@@ -35,6 +36,11 @@ const ExecutionHostId = requiredString('Missing host id').transform((value, ctx)
 const AutomationSchedule = requiredString('Missing trigger').refine(isValidAutomationSchedule, {
   message: 'Invalid automation trigger'
 })
+
+const AutomationEventTrigger = z
+  .object({ kind: z.enum(AUTOMATION_EVENT_KINDS) })
+  .nullable()
+  .optional()
 
 const AutomationPrecheck = z
   .object({
@@ -161,6 +167,7 @@ export const AutomationCreate = z.object({
   dtstart: requiredNumber('Missing trigger start time'),
   enabled: OptionalBoolean,
   missedRunGraceMinutes: OptionalPositiveInt,
+  eventTrigger: AutomationEventTrigger,
   destination: Destination
 })
 
@@ -182,7 +189,8 @@ const AutomationUpdateFields = z.object({
   rrule: AutomationSchedule.optional(),
   dtstart: requiredNumber('Missing trigger start time').optional(),
   enabled: OptionalBoolean,
-  missedRunGraceMinutes: OptionalPositiveInt
+  missedRunGraceMinutes: OptionalPositiveInt,
+  eventTrigger: AutomationEventTrigger
 })
 
 export const AutomationUpdate = z.object({

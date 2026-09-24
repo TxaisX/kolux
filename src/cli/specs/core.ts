@@ -258,8 +258,8 @@ export const CORE_COMMAND_SPECS: CommandSpec[] = [
     examples: [
       'kolux terminal create --json',
       'kolux terminal create --worktree active --command "codex" --json',
-      'kolux terminal create --worktree path:/projects/myapp --title "RUNNER" --command "opencode"',
-      'kolux terminal create --worktree path:/projects/myapp --command "opencode" --focus'
+      'kolux terminal create --worktree path:/projects/myapp --title "RUNNER" --command "gemini"',
+      'kolux terminal create --worktree path:/projects/myapp --command "gemini" --focus'
     ]
   },
   {

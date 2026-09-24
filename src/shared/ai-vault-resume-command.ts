@@ -200,7 +200,6 @@ function buildAgentResumeInvocation(
       return `${baseCommand} resume ${sessionArg}`
     case 'rovo':
       return `${baseCommand} rovodev run --restore ${sessionArg}`
-    case 'opencode':
     case 'pi':
     // Why: Kimi Code resumes with `kimi --session <id>` (alias `-S`). Sessions
     // are work-dir-scoped, so the cwd prefix from buildAiVaultResumeCommand is

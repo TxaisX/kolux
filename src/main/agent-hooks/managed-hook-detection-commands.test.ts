@@ -19,6 +19,6 @@ describe('managed hook detection commands', () => {
   })
 
   it('maps detected TUI ids back to managed hook targets', () => {
-    expect(detectedManagedHookAgents(['codex', 'opencode', 'droid'])).toEqual(['codex', 'droid'])
+    expect(detectedManagedHookAgents(['codex', 'mimo-code', 'droid'])).toEqual(['codex', 'droid'])
   })
 })

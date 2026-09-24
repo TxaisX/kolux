@@ -2,12 +2,10 @@ import { net } from 'electron'
 import type { ProviderRateLimits } from '../../shared/rate-limit-types'
 import {
   loadProjectId,
-  readAuthJson,
   readGeminiCredentials,
   saveGeminiCredentials,
   tryRefreshTokenFromBundle,
-  type GeminiCredentials,
-  type GoogleAuthEntry
+  type GeminiCredentials
 } from './gemini-oauth-sources'
 import {
   buildRateLimitBucket,
@@ -79,56 +77,6 @@ async function fetchQuota(accessToken: string, projectId: string): Promise<Provi
   } finally {
     clearTimeout(timeout)
   }
-}
-
-async function fetchViaAuthJson(
-  auth: GoogleAuthEntry,
-  geminiCliOAuthEnabled = false
-): Promise<ProviderRateLimits> {
-  let accessToken = auth.access
-  const refreshToken = (auth.refresh || '').split('|')[0] ?? ''
-  if (auth.expires < Date.now() || !accessToken) {
-    const refreshResult = await tryRefreshTokenFromBundle(refreshToken, geminiCliOAuthEnabled)
-    if (!refreshResult?.accessToken) {
-      return {
-        provider: 'gemini',
-        session: null,
-        weekly: null,
-        updatedAt: Date.now(),
-        error: 'Token refresh failed',
-        status: 'error'
-      }
-    }
-    accessToken = refreshResult.accessToken
-  }
-  let effectiveProjectId = ''
-  try {
-    effectiveProjectId = await loadProjectId(accessToken)
-  } catch {
-    effectiveProjectId =
-      (auth.refresh || '').split('|')[1] || (auth.refresh || '').split('|')[2] || ''
-  }
-  if (!effectiveProjectId) {
-    return {
-      provider: 'gemini',
-      session: null,
-      weekly: null,
-      updatedAt: Date.now(),
-      error: 'Gemini project ID not found',
-      status: 'error'
-    }
-  }
-  const result = await fetchQuota(accessToken, effectiveProjectId)
-  if (result.status === 'error' && result.error?.includes('401')) {
-    const refreshResult = await tryRefreshTokenFromBundle(refreshToken, geminiCliOAuthEnabled)
-    if (refreshResult?.accessToken) {
-      const newProjectId = await loadProjectId(refreshResult.accessToken).catch(() => {
-        return effectiveProjectId
-      })
-      return fetchQuota(refreshResult.accessToken, newProjectId)
-    }
-  }
-  return result
 }
 
 async function fetchViaOauthCreds(
@@ -204,8 +152,8 @@ export async function fetchGeminiRateLimits(
   geminiCliOAuthEnabled = false
 ): Promise<ProviderRateLimits> {
   if (!geminiCliOAuthEnabled) {
-    // Why: the OAuth sources include other apps' data folders on macOS.
-    // Do not touch them during background polling unless the user opts in.
+    // Why: reads the Gemini CLI's own oauth_creds.json. Do not touch it
+    // during background polling unless the user opts in.
     return {
       provider: 'gemini',
       session: null,
@@ -217,24 +165,18 @@ export async function fetchGeminiRateLimits(
   }
 
   try {
-    const authJson = await readAuthJson()
-    const result =
-      authJson?.google?.type === 'oauth'
-        ? await fetchViaAuthJson(authJson.google, geminiCliOAuthEnabled)
-        : await (async () => {
-            const creds = await readGeminiCredentials()
-            return !creds
-              ? ({
-                  provider: 'gemini',
-                  session: null,
-                  weekly: null,
-                  updatedAt: Date.now(),
-                  error: 'Gemini CLI credentials not found',
-                  status: 'unavailable'
-                } as ProviderRateLimits)
-              : await fetchViaOauthCreds(creds, geminiCliOAuthEnabled)
-          })()
-    return result
+    const creds = await readGeminiCredentials()
+    if (!creds) {
+      return {
+        provider: 'gemini',
+        session: null,
+        weekly: null,
+        updatedAt: Date.now(),
+        error: 'Gemini CLI credentials not found',
+        status: 'unavailable'
+      }
+    }
+    return await fetchViaOauthCreds(creds, geminiCliOAuthEnabled)
   } catch (err) {
     return {
       provider: 'gemini',

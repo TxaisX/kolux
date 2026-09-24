@@ -7,7 +7,6 @@ import { useSystemPrefersDark } from '@/components/terminal-pane/use-system-pref
 import { runTerminalCopy } from '@/components/terminal-pane/terminal-copy-rejection-guards'
 import { TerminalKittyKeyboardModeTracker } from '../../../../shared/terminal-kitty-keyboard-mode-tracker'
 import { normalizeDesktopTerminalScrollbackRows } from '../../../../shared/terminal-scrollback-policy'
-import { replayPreviewConnectionSnapshot } from '@/components/dashboard-popout/preview-terminal-snapshot-replay'
 import { useEffectiveMacOptionAsAlt } from '@/lib/keyboard-layout/use-effective-mac-option-as-alt'
 import {
   buildPreviewAppearanceOptions,
@@ -19,6 +18,7 @@ import { useAppStore } from '@/store'
 import type { TerminalPreviewDataPayload } from '../../../../shared/terminal-preview'
 import { installTerminalWindowInputBindings } from './terminal-window-input-bindings'
 import { createTerminalWindowFit } from './terminal-window-fit'
+import { replayTerminalWindowConnection } from './terminal-window-snapshot-replay'
 
 // Why 1000: main only ever serializes up to this many rows of history into a
 // terminalPreview connection, regardless of what the local buffer below can
@@ -142,6 +142,7 @@ export function useTerminalWindowTerminal(ptyId: string): TerminalWindowTerminal
       requestRefresh: () => void
     ): void => {
       const snap = connection.snapshot!
+      const replaceExisting = terminal !== null
       if (!terminal) {
         terminal = new Terminal(
           buildPreviewTerminalOptions({
@@ -168,9 +169,10 @@ export function useTerminalWindowTerminal(ptyId: string): TerminalWindowTerminal
         terminalRef.current = terminal
         io.bindTerminal(terminal, kittyKeyboardModes)
       }
-      replayPreviewConnectionSnapshot({
-        snapshot: snap,
-        replay: connection.replay,
+      replayTerminalWindowConnection({
+        terminal,
+        connection: { ...connection, snapshot: snap },
+        replaceExisting,
         kittyKeyboardModes,
         write: (chunk, live) => writeReplayed(chunk, undefined, live)
       })

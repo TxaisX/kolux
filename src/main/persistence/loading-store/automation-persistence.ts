@@ -6,6 +6,7 @@ import type {
   AutomationRunTrigger,
   AutomationUpdateInput
 } from '../../../shared/automations-types'
+import type { AutomationRunTriggerEvent } from '../../../shared/automation-event-trigger'
 import type {
   AutomationCapturedHostIssue,
   AutomationChangeSelector,
@@ -157,13 +158,15 @@ export class AutomationPersistence {
   createAutomationRun(
     automation: Automation,
     scheduledFor: number,
-    trigger: AutomationRunTrigger = 'scheduled'
+    trigger: AutomationRunTrigger = 'scheduled',
+    triggerEvent?: AutomationRunTriggerEvent
   ): AutomationRun {
     return createAutomationRunOperation(
       getAutomationRunOperations(this),
       automation,
       scheduledFor,
-      trigger
+      trigger,
+      triggerEvent
     )
   }
 

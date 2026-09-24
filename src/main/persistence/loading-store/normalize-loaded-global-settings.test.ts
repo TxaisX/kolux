@@ -35,3 +35,15 @@ describe('retired Agents sidebar setting', () => {
     expect(normalized.agentsSidebarMigratedFromExperimental).toBe(true)
   })
 })
+
+describe('retired default TUI agent', () => {
+  it('normalizes a retired defaultTuiAgent id to the auto-pick default on load', () => {
+    const normalized = normalizeLegacyProfile({ defaultTuiAgent: 'opencode' as never })
+    expect(normalized.defaultTuiAgent).toBeNull()
+  })
+
+  it('preserves a still-valid defaultTuiAgent id', () => {
+    const normalized = normalizeLegacyProfile({ defaultTuiAgent: 'claude' })
+    expect(normalized.defaultTuiAgent).toBe('claude')
+  })
+})

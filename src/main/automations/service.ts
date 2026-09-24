@@ -10,8 +10,9 @@ import {
 } from '../../shared/automations-types'
 import type { ClaudeUsageStore } from '../claude-usage/store'
 import type { CodexUsageStore } from '../codex-usage/store'
-import { runAutomationPrecheck } from './precheck-runner'
+import { runAutomationPrecheck, unresolvedTargetPrecheckResult } from './precheck-runner'
 import { resolveAutomationRunTarget, type AutomationRunTargetResult } from './run-target-resolution'
+import { runAutomationEvent, type DetectedAutomationEvent } from './automation-event-run'
 import { collectAutomationRunUsage } from './run-usage-collection'
 import type { HeadlessAutomationDispatcher } from './headless-dispatch'
 import { clearAutomationDispatchTokens, createAutomationDispatchToken } from './dispatch-tokens'
@@ -159,24 +160,12 @@ export class AutomationService {
     if (!run) {
       throw new Error('Automation run not found.')
     }
-    if (run.trigger !== 'scheduled' || !automation.precheck) {
+    if (run.trigger === 'manual' || !automation.precheck) {
       return null
     }
     const target = this.resolveTarget(automation)
     if (!target.ok) {
-      return {
-        command: automation.precheck.command,
-        exitCode: null,
-        timedOut: false,
-        durationMs: 0,
-        stdout: '',
-        stderr: '',
-        stdoutTruncated: false,
-        stderrTruncated: false,
-        error: target.error,
-        startedAt: Date.now(),
-        completedAt: Date.now()
-      }
+      return unresolvedTargetPrecheckResult(automation.precheck, target.error)
     }
     return await runAutomationPrecheck({
       precheck: automation.precheck,
@@ -225,6 +214,7 @@ export class AutomationService {
     })
   }
 
+  /** The timer never fires an event automation; only handleAutomationEvent runs it. */
   private async evaluateDueRuns(): Promise<void> {
     if (this.evaluating) {
       return
@@ -233,7 +223,7 @@ export class AutomationService {
     try {
       const now = Date.now()
       for (const automation of this.store.listAutomations()) {
-        if (!automation.enabled || automation.nextRunAt > now) {
+        if (!automation.enabled || automation.nextRunAt > now || automation.eventTrigger) {
           continue
         }
         await this.evaluateAutomation(automation, now)
@@ -241,6 +231,17 @@ export class AutomationService {
     } finally {
       this.evaluating = false
     }
+  }
+
+  async handleAutomationEvent(detected: DetectedAutomationEvent): Promise<void> {
+    await runAutomationEvent({
+      store: this.store,
+      detected,
+      allowRemoteHostScheduling: this.allowRemoteHostScheduling,
+      runs: this.runs,
+      resolveTarget: (automation) => this.resolveTarget(automation),
+      requestDispatch: (automation, run, target) => this.requestDispatch(automation, run, target)
+    })
   }
 
   private async evaluateAutomation(automation: Automation, now: number): Promise<void> {

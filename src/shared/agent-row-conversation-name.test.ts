@@ -24,13 +24,6 @@ describe('getAgentRowConversationName', () => {
     expect(getAgentRowConversationName(tab, 'claude', true)).toBe('Run tests')
   })
 
-  it('keeps OpenCode semantic session titles whole', () => {
-    const tab = makeTab({ title: 'OC | build the release pipeline' })
-    expect(getAgentRowConversationName(tab, 'opencode', false)).toBe(
-      'OC | build the release pipeline'
-    )
-  })
-
   it('uses the generated title only when generated titles are enabled', () => {
     const tab = makeTab({ generatedTitle: 'Fix intake flow', title: '✳ Investigate replay bug' })
     expect(getAgentRowConversationName(tab, 'claude', true)).toBe('Fix intake flow')
@@ -43,10 +36,6 @@ describe('getAgentRowConversationName', () => {
     expect(getAgentRowConversationName(tab, 'claude', false, '\u2733 Redis cache strategy')).toBe(
       'Redis cache strategy'
     )
-    // OpenCode's semantic title is a live title too, so it follows the pane.
-    expect(
-      getAgentRowConversationName(tab, 'opencode', false, 'OC | build the release pipeline')
-    ).toBe('OC | build the release pipeline')
     // No resolvable pane title: no live title at all, never the sibling's.
     expect(getAgentRowConversationName(tab, 'claude', false, null)).toBeNull()
     // A single-pane tab passes undefined and is untouched.

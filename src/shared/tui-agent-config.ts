@@ -124,16 +124,10 @@ const TUI_AGENT_CONFIG_SOURCE: Record<TuiAgent, TuiAgentConfigSource> = {
     // Trae subcommand or flag — `--` stops both in its Cobra parser.
     argvPromptSeparator: '--'
   },
-  opencode: {
-    detectCmd: 'opencode',
-    promptInjectionMode: 'flag-prompt',
-    // Why: opencode enables bracketed paste before its composer mounts; wait for the post-\x1b[?2004h show-cursor so paste lands.
-    draftPasteReadySignal: 'render-cursor-after-bracketed-paste'
-  },
   'mimo-code': {
     detectCmd: 'mimo',
     promptInjectionMode: 'flag-prompt',
-    // Why: mirrors opencode's cursor-gated signal by parity; mimo's startup stream isn't separately validated.
+    // Why: cursor-gated paste signal — MiMo's TUI enables bracketed paste before its composer mounts.
     draftPasteReadySignal: 'render-cursor-after-bracketed-paste'
   },
   pi: {

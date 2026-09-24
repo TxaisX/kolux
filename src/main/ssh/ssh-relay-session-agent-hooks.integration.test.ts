@@ -537,7 +537,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         payload: {
           state: 'working',
           prompt: 'retry same prompt',
-          agentType: 'opencode',
+          agentType: 'mimo-code',
           lastAssistantMessage: 'partial answer'
         }
       })
@@ -553,7 +553,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         baselineUpdatedAt: first.receivedAt,
         baselineStateStartedAt: first.stateStartedAt,
         baselinePrompt: 'retry same prompt',
-        baselineAgentType: 'opencode',
+        baselineAgentType: 'mimo-code',
         intent: 'ctrl-c'
       })
     ).toBe(true)
@@ -564,7 +564,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         payload: {
           state: 'working',
           prompt: 'retry same prompt',
-          agentType: 'opencode',
+          agentType: 'mimo-code',
           lastAssistantMessage: 'partial answer'
         }
       })
@@ -574,7 +574,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
       expect(agentHookServer.getStatusSnapshot()[0]).toMatchObject({
         state: 'working',
         prompt: 'retry same prompt',
-        agentType: 'opencode',
+        agentType: 'mimo-code',
         lastAssistantMessage: 'partial answer'
       })
     )
@@ -704,7 +704,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         payload: {
           state: 'working',
           prompt: 'replayed prompt',
-          agentType: 'opencode'
+          agentType: 'mimo-code'
         }
       })
     )
@@ -719,7 +719,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         baselineUpdatedAt: first.receivedAt,
         baselineStateStartedAt: first.stateStartedAt,
         baselinePrompt: 'replayed prompt',
-        baselineAgentType: 'opencode',
+        baselineAgentType: 'mimo-code',
         intent: 'ctrl-c'
       })
     ).toBe(true)
@@ -731,7 +731,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
         payload: {
           state: 'working',
           prompt: 'replayed prompt',
-          agentType: 'opencode'
+          agentType: 'mimo-code'
         }
       })
     )
@@ -740,7 +740,7 @@ describe('SshRelaySession agent hooks over a fake relay transport', () => {
     expect(agentHookServer.getStatusSnapshot()[0]).toMatchObject({
       state: 'done',
       prompt: 'replayed prompt',
-      agentType: 'opencode',
+      agentType: 'mimo-code',
       interrupted: true
     })
   })

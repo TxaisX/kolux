@@ -19,17 +19,6 @@ function readStartupEnv(
   return readSessionShellStartupEnvVar(name, env, shell)
 }
 
-export function resolveOpenCodeSourceConfigDir(
-  env: Record<string, string>,
-  shell: string | undefined
-): string | undefined {
-  return firstNonEmpty(
-    env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR,
-    readStartupEnv('OPENCODE_CONFIG_DIR', env, shell),
-    env.OPENCODE_CONFIG_DIR
-  )
-}
-
 export function resolvePiSourceAgentDir(
   env: Record<string, string>,
   shell: string | undefined,

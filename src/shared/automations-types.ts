@@ -1,3 +1,4 @@
+import type { AutomationEventTrigger, AutomationRunTriggerEvent } from './automation-event-trigger'
 import type { TuiAgent } from './tui-agent'
 import type { SetupDecision } from './worktree/create-types'
 import type { TaskSourceContext, WorkspaceRunContext } from './task-source-context'
@@ -16,7 +17,7 @@ export type AutomationRunStatus =
   | 'skipped_unavailable'
   | 'skipped_needs_interactive_auth'
   | 'dispatch_failed'
-export type AutomationRunTrigger = 'scheduled' | 'manual'
+export type AutomationRunTrigger = 'scheduled' | 'manual' | 'event'
 
 /** Statuses a run can never leave; only these are safe to evict from history. */
 export function isFinalAutomationRunStatus(status: AutomationRunStatus): boolean {
@@ -128,6 +129,8 @@ export type Automation = {
   lastRunAt?: number
   missedRunPolicy: AutomationMissedRunPolicy
   missedRunGraceMinutes: number
+  /** Absent/null: runs on rrule. Set: runs only on this event; rrule is kept but ignored. */
+  eventTrigger?: AutomationEventTrigger | null
   createdAt: number
   updatedAt: number
 }
@@ -141,6 +144,8 @@ export type AutomationRun = {
   scheduledFor: number
   status: AutomationRunStatus
   trigger: AutomationRunTrigger
+  /** Set only when trigger is 'event'; its key dedupes repeat deliveries. */
+  triggerEvent?: AutomationRunTriggerEvent
   workspaceId: string | null
   /** Why: run history must remain understandable after the backing workspace
    *  is deleted and its live metadata is gone. */
@@ -198,6 +203,7 @@ export type AutomationCreateInput = {
   dtstart: number
   enabled?: boolean
   missedRunGraceMinutes?: number
+  eventTrigger?: AutomationEventTrigger | null
 }
 
 export type AutomationUpdateInput = Partial<
@@ -220,6 +226,7 @@ export type AutomationUpdateInput = Partial<
     | 'dtstart'
     | 'enabled'
     | 'missedRunGraceMinutes'
+    | 'eventTrigger'
   >
 >
 

@@ -18,7 +18,6 @@ import {
   parseClaudeModels,
   parseCodexModels,
   parseCursorModels,
-  parseLineModels,
   parsePiModels
 } from './commit-message-model-parsers'
 
@@ -37,7 +36,6 @@ describe('COMMIT_MESSAGE_AGENT_SPECS', () => {
       'copilot',
       'cursor',
       'kimi',
-      'opencode',
       'pi'
     ])
   })
@@ -181,7 +179,7 @@ describe('COMMIT_MESSAGE_AGENT_SPECS', () => {
 
   it('exposes UI capabilities without spawn details', () => {
     const capabilities = listCommitMessageAgentCapabilities()
-    expect(capabilities.map((capability) => capability.id)).toContain('opencode')
+    expect(capabilities.map((capability) => capability.id)).toContain('codex')
     const codex = getCommitMessageAgentCapability('codex')
     expect(codex).toMatchObject({
       id: 'codex',
@@ -350,13 +348,6 @@ describe('model discovery parsers', () => {
     }
   })
 
-  it('parses one-model-per-line output', () => {
-    expect(parseLineModels('opencode/gpt-5.4-mini\n\nopenai/gpt-5.5\n').map((m) => m.id)).toEqual([
-      'opencode/gpt-5.4-mini',
-      'openai/gpt-5.5'
-    ])
-  })
-
   it('parses Pi model table output with provider-qualified ids', () => {
     const output = [
       'provider        model                   context  max-out  thinking  images',
@@ -430,30 +421,6 @@ describe('model discovery parsers', () => {
     const noise = 'ignored model with spaces\r\n'.repeat(10_000)
     const blankNoise = '\r\n'.repeat(10_000)
 
-    expect(parseLineModels(`${noise}opencode/gpt-5.4-mini\r\nopenai/gpt-5.5\r\n`)).toEqual([
-      {
-        id: 'opencode/gpt-5.4-mini',
-        label: 'Opencode GPT 5.4 Mini',
-        thinkingLevels: [
-          { id: 'low', label: 'Low' },
-          { id: 'medium', label: 'Medium' },
-          { id: 'high', label: 'High' },
-          { id: 'xhigh', label: 'Extra High' }
-        ],
-        defaultThinkingLevel: 'low'
-      },
-      {
-        id: 'openai/gpt-5.5',
-        label: 'Openai GPT 5.5',
-        thinkingLevels: [
-          { id: 'low', label: 'Low' },
-          { id: 'medium', label: 'Medium' },
-          { id: 'high', label: 'High' },
-          { id: 'xhigh', label: 'Extra High' }
-        ],
-        defaultThinkingLevel: 'low'
-      }
-    ])
     expect(
       parsePiModels(
         `${noise}provider model context max-out thinking images\r\ngithub-copilot gpt-5.4-mini 400K 128K yes yes\r\n`
@@ -513,60 +480,6 @@ describe('buildArgs (Codex)', () => {
   it('omits the -c flag when no thinking level is supplied', () => {
     const args = spec.buildArgs({ prompt: 'PROMPT', model: 'gpt-5.4-mini' })
     expect(args).not.toContain('-c')
-  })
-})
-
-describe('buildArgs (OpenCode)', () => {
-  const spec = getCommitMessageAgentSpec('opencode')!
-
-  it('runs `opencode run` without passing the prompt via argv', () => {
-    const prompt = `PROMPT ${'x'.repeat(1024)}`
-    const args = spec.buildArgs({
-      prompt,
-      model: 'opencode/big-pickle'
-    })
-
-    expect(args).toEqual([
-      'run',
-      '--model',
-      'opencode/big-pickle',
-      '--agent',
-      'build',
-      '--format',
-      'default'
-    ])
-    expect(args).not.toContain(prompt)
-    expect(args).not.toContain('')
-    expect(spec.promptDelivery).toBe('stdin')
-  })
-
-  it('emits --variant <level> when thinking level is supplied', () => {
-    const args = spec.buildArgs({
-      prompt: 'PROMPT',
-      model: 'opencode/gpt-5.4-mini',
-      thinkingLevel: 'high'
-    })
-
-    expect(args).toEqual([
-      'run',
-      '--model',
-      'opencode/gpt-5.4-mini',
-      '--agent',
-      'build',
-      '--format',
-      'default',
-      '--variant',
-      'high'
-    ])
-  })
-
-  it('omits --variant when no thinking level is supplied', () => {
-    const args = spec.buildArgs({
-      prompt: 'PROMPT',
-      model: 'opencode/gpt-5.4-mini'
-    })
-
-    expect(args).not.toContain('--variant')
   })
 })
 

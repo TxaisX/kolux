@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { translate } from '@/i18n/i18n'
 import type { AutomationRunsDashboardEntry } from './automation-runs-dashboard-model'
 import {
@@ -128,9 +129,25 @@ export function AutomationRunsTable({
                     <div className="min-w-0 truncate text-xs">
                       {formatAutomationDateTimeWithRelative(entry.run.scheduledFor)}
                     </div>
-                    <div className="capitalize text-xs text-muted-foreground">
-                      {entry.run.trigger}
-                    </div>
+                    {entry.run.trigger === 'event' && entry.run.triggerEvent ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            tabIndex={0}
+                            className="w-fit capitalize text-xs text-muted-foreground outline-none"
+                          >
+                            {entry.run.trigger}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={4}>
+                          {entry.run.triggerEvent.summary}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <div className="capitalize text-xs text-muted-foreground">
+                        {entry.run.trigger}
+                      </div>
+                    )}
                     <div className="min-w-0 truncate text-xs" title={entry.row.hostLabel}>
                       {entry.row.hostLabel ||
                         translate(

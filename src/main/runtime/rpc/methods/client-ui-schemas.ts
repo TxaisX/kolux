@@ -56,7 +56,6 @@ const StatusBarItem = z.enum([
   'codex',
   'gemini',
   'antigravity',
-  'opencode-go',
   'kimi',
   'minimax',
   'grok',
@@ -64,6 +63,7 @@ const StatusBarItem = z.enum([
   'resource-usage',
   'ports'
 ])
+const KNOWN_STATUS_BAR_ITEMS = new Set<string>(StatusBarItem.options)
 const WorkspaceStatusDefinition = z.object({
   id: z.string(),
   label: z.string(),
@@ -165,7 +165,18 @@ const UiUpdateFields = z
     _workspaceStatusesReorderedDefaultRepaired: z.boolean().optional(),
     _workspaceStatusesDefaultWorkflowMigrated: z.boolean().optional(),
     _workspaceStatusesDefaultVisualsMigrated: z.boolean().optional(),
-    statusBarItems: z.array(StatusBarItem).optional(),
+    // Why array(z.string()).transform(filter) rather than array(StatusBarItem):
+    // an old/new peer's retired id (e.g. a removed agent) must be dropped from
+    // the list, not fail the enum parse and drop the WHOLE statusBarItems array
+    // via tolerateUnknownValues's field-level .catch below.
+    statusBarItems: z
+      .array(z.string())
+      .transform((values) =>
+        values.filter((value): value is z.infer<typeof StatusBarItem> =>
+          KNOWN_STATUS_BAR_ITEMS.has(value)
+        )
+      )
+      .optional(),
     _portsStatusBarDefaultAdded: z.boolean().optional(),
     _kimiStatusBarDefaultAdded: z.boolean().optional(),
     _minimaxStatusBarDefaultAdded: z.boolean().optional(),

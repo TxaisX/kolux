@@ -91,14 +91,14 @@ describe('mcp-config', () => {
       workspaceCandidate,
       JSON.stringify({
         mcpServers: {
-          opencodeLocal: { type: 'local', command: ['uvx', 'server'] },
+          localMcpServer: { type: 'local', command: ['uvx', 'server'] },
           geminiRemote: { httpUrl: 'https://example.com/sse' }
         }
       })
     )
 
     expect(result.servers).toMatchObject([
-      { name: 'opencodeLocal', transport: 'stdio', command: 'uvx' },
+      { name: 'localMcpServer', transport: 'stdio', command: 'uvx' },
       { name: 'geminiRemote', transport: 'http', url: 'https://example.com/sse' }
     ])
   })

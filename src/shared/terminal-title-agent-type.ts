@@ -5,7 +5,6 @@ import {
   titleHasAgentName
 } from './agent-name-token-match'
 import { containsAgentSpinnerGlyph, isCursorAgentTitle } from './agent-title-core'
-import { isOpenCodeNativeTitle } from './opencode-terminal-title'
 import {
   getPiCompatibleSyntheticAgentLabel,
   isLegacyPiCompatibleTitle
@@ -87,7 +86,7 @@ export function isPiAgentTitle(title: string): boolean {
  * agents have different (or no) caching semantics.
  */
 function computeIsClaudeAgent(title: string): boolean {
-  if (!title || isClaudeManagementTitle(title) || isOpenCodeNativeTitle(title)) {
+  if (!title || isClaudeManagementTitle(title)) {
     return false
   }
   const lower = title.toLowerCase()
@@ -135,11 +134,6 @@ function computeAgentLabel(title: string): string | null {
   if (isClaudeManagementTitle(title)) {
     return null
   }
-  // Why: the native marker owns the whole title; its session text may name or
-  // include status glyphs from other agents without changing OpenCode identity.
-  if (isOpenCodeNativeTitle(title)) {
-    return 'OpenCode'
-  }
   // Why: Claude Code title text is often the task title. If that task mentions
   // another CLI, the Claude-specific prefix is the identity signal, not the words.
   if (
@@ -164,11 +158,10 @@ function computeAgentLabel(title: string): string | null {
   if (isPiAgentTitle(title)) {
     return 'Pi'
   }
-  // Why: Codex/OpenCode/Aider can also use braille spinner prefixes while
+  // Why: Codex/Aider can also use braille spinner prefixes while
   // working. Prefer explicit name matches before Claude's generic spinner
   // heuristic so mixed-agent hovercards stay truthful. Token-match (not
-  // substring) so cwd/worktree titles like "opencode-blinker" don't mint a
-  // false agent identity.
+  // substring) so cwd/worktree titles don't mint a false agent identity.
   if (titleHasAgentName(title, 'codex')) {
     return 'Codex'
   }
@@ -186,9 +179,6 @@ function computeAgentLabel(title: string): string | null {
   }
   if (titleHasAgentName(title, 'antigravity') || AGY_AGENT_NAME_RE.test(title)) {
     return 'Antigravity'
-  }
-  if (titleHasAgentName(title, 'opencode')) {
-    return 'OpenCode'
   }
   if (titleHasAgentName(title, 'mimo')) {
     return 'MiMo Code'
@@ -231,7 +221,6 @@ const TITLE_LABEL_TO_AGENT: Partial<Record<string, TuiAgent>> = {
   Grok: 'grok',
   Devin: 'devin',
   Antigravity: 'antigravity',
-  OpenCode: 'opencode',
   'MiMo Code': 'mimo-code',
   Aider: 'aider',
   Cursor: 'cursor',

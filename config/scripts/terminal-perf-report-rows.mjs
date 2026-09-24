@@ -13,17 +13,17 @@ const BUDGETS = {
 }
 
 const SCENARIO_LABELS = [
-  ['opencode-scale-same-workspace', 'Same workspace panes'],
-  ['opencode-scale-cross-workspace', 'Cross-workspace hidden panes'],
-  ['opencode-scale-pressure', 'ACK-backpressured PTYs'],
-  ['opencode-scale-hidden-pressure', 'Hidden real PTYs'],
-  ['opencode-cross-workspace-typing', 'Cross-workspace typing'],
-  ['opencode-main-pressure', 'Main renderer pressure'],
-  ['opencode-hidden-pressure', 'Hidden pressure'],
-  ['opencode-revisit-pressure', 'Revisit under pressure'],
-  // Why: the prefix also matches opencode-parked-memory-disabled, so both
+  ['tui-scale-same-workspace', 'Same workspace panes'],
+  ['tui-scale-cross-workspace', 'Cross-workspace hidden panes'],
+  ['tui-scale-pressure', 'ACK-backpressured PTYs'],
+  ['tui-scale-hidden-pressure', 'Hidden real PTYs'],
+  ['tui-cross-workspace-typing', 'Cross-workspace typing'],
+  ['tui-main-pressure', 'Main renderer pressure'],
+  ['tui-hidden-pressure', 'Hidden pressure'],
+  ['tui-revisit-pressure', 'Revisit under pressure'],
+  // Why: the prefix also matches tui-parked-memory-disabled, so both
   // parked-memory scenarios group under one label.
-  ['opencode-parked-memory', 'Parked hidden terminal memory']
+  ['tui-parked-memory', 'Parked hidden terminal memory']
 ]
 
 export function readJsonReport(path) {
@@ -54,7 +54,7 @@ export function collectTerminalPerfRows(report, source) {
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests ?? []) {
         for (const annotation of test.annotations ?? []) {
-          if (!annotation.type.startsWith('opencode-')) {
+          if (!annotation.type.startsWith('tui-')) {
             continue
           }
           rows.push(

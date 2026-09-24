@@ -16,16 +16,18 @@ const T = (id: string, fallback: string): string =>
 export function LaunchAgentGrid({
   agents,
   selected,
-  onSelect
+  onSelect,
+  emptyMessage
 }: {
   agents: readonly AgentCatalogEntry[]
   selected: TuiAgent | null
   onSelect: (agent: TuiAgent) => void
+  emptyMessage?: string
 }): React.JSX.Element {
   if (agents.length === 0) {
     return (
       <p className="rounded-md border border-border bg-background px-3 py-4 text-center text-xs text-muted-foreground">
-        {T('noAgentsDetected', 'No agent CLIs detected on this machine yet.')}
+        {emptyMessage ?? T('noAgentsDetected', 'No agent CLIs detected on this host yet.')}
       </p>
     )
   }

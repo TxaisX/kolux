@@ -11,7 +11,6 @@ import {
   type CodexHomePathResolver,
   type KimiHomeResolver,
   type ClaudeAuthPreparationResolver,
-  type OpenCodeGoRateLimitConfig,
   type MiniMaxRateLimitConfig,
   type GeminiCliOAuthEnabledResolver,
   type NormalizedCodexAccountSelectionTarget,
@@ -27,7 +26,6 @@ export abstract class RateLimitServiceState {
     claude: null,
     codex: null,
     gemini: null,
-    opencodeGo: null,
     kimi: null,
     antigravity: null,
     minimax: null,
@@ -42,7 +40,6 @@ export abstract class RateLimitServiceState {
     claude: 0,
     codex: 0,
     gemini: 0,
-    'opencode-go': 0,
     kimi: 0,
     minimax: 0,
     grok: 0,
@@ -53,7 +50,6 @@ export abstract class RateLimitServiceState {
     claude: 0,
     codex: 0,
     gemini: 0,
-    'opencode-go': 0,
     kimi: 0,
     minimax: 0,
     grok: 0,
@@ -72,9 +68,7 @@ export abstract class RateLimitServiceState {
   protected claudeFetchGeneration = 0
   // Why: statusline ingest must attribute live windows to the selected account without re-running the side-effectful auth sync per post.
   protected lastClaudeAuthSnapshot: { configDir: string | null; provenance: string } | null = null
-  protected opencodeFetchGeneration = 0
   protected minimaxFetchGeneration = 0
-  protected lastOpencodeConfigHash = ''
   protected lastMiniMaxConfigHash = ''
   protected codexHomePathResolver: CodexHomePathResolver | null = null
   protected codexFetchTarget: NormalizedCodexAccountSelectionTarget = {
@@ -88,7 +82,6 @@ export abstract class RateLimitServiceState {
     runtime: 'host',
     wslDistro: null
   }
-  protected openCodeGoConfigResolver: (() => OpenCodeGoRateLimitConfig) | null = null
   protected miniMaxConfigResolver: (() => MiniMaxRateLimitConfig) | null = null
   protected geminiCliOAuthEnabledResolver: GeminiCliOAuthEnabledResolver | null = null
   protected inactiveClaudeAccountsResolver: (() => InactiveClaudeAccountInfo[]) | null = null

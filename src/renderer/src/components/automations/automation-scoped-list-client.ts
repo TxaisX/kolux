@@ -40,6 +40,7 @@ import {
   assertAuthorityCapability,
   assertOwnerFencingSupported,
   assertAutomationCreateIdempotencySupported,
+  assertAutomationEventTriggersSupported,
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_LIST_HOST_SCOPE_UPDATE_REQUIRED_MESSAGE,
   AutomationHostScopeUnsupportedError,
@@ -217,6 +218,9 @@ async function updateFenced(
   expectedOwner: AutomationOwnerPrecondition,
   destination?: AutomationDestination
 ): Promise<Automation> {
+  if (updates.eventTrigger) {
+    await assertAutomationEventTriggersSupported(authority)
+  }
   await assertOwnerFencingSupported(authority)
   const result = await callAuthority<{ automation: Automation }>(authority, 'automation.update', {
     id,
@@ -318,6 +322,9 @@ export async function createAutomationForDestination(
 ): Promise<Automation> {
   if (input.creationKey) {
     await assertAutomationCreateIdempotencySupported(authority)
+  }
+  if (input.eventTrigger) {
+    await assertAutomationEventTriggersSupported(authority)
   }
   await assertOwnerFencingSupported(authority)
   const result = await callAuthority<{ automation: Automation }>(authority, 'automation.create', {

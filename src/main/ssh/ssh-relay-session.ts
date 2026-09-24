@@ -35,7 +35,6 @@ import {
   AGENT_HOOK_REQUEST_REPLAY_METHOD,
   isRemoteAgentHooksEnabled
 } from '../../shared/agent-hook-relay'
-import { _internals as openCodeInternals } from '../opencode/hook-service'
 import { getPiAgentStatusExtensionSource } from '../pi/agent-status-extension-source'
 import {
   registerSshPtyProvider,
@@ -1512,7 +1511,6 @@ export class SshRelaySession {
     }
     try {
       await mux.request(AGENT_HOOK_INSTALL_PLUGINS_METHOD, {
-        opencodePluginSource: openCodeInternals.getOpenCodePluginSource(),
         piExtensionSource: getPiAgentStatusExtensionSource('pi'),
         ompExtensionSource: getPiAgentStatusExtensionSource('omp'),
         primeAgentExtensionSource: getPiAgentStatusExtensionSource('prime-agent')

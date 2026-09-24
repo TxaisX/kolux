@@ -9,7 +9,7 @@ function makeDay(index: number): string {
 }
 
 describe('usage daily charts', () => {
-  it('renders Codex/OpenCode daily charts for very large histories', () => {
+  it('renders Codex daily charts for very large histories', () => {
     const daily: CodexUsageDailyPoint[] = Array.from({ length: 130_000 }, (_, index) => ({
       day: makeDay(index),
       inputTokens: index + 1,

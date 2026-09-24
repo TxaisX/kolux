@@ -40,7 +40,7 @@ describe('resolveAiVaultSessionResumeInChatEligibility', () => {
     expect(eligibility()).toEqual({ available: true, workspaceId: 'repo-1::/repo/kolux' })
   })
 
-  it.each(['hermes', 'grok', 'opencode'] as AiVaultSession['agent'][])(
+  it.each(['hermes', 'grok', 'kimi'] as AiVaultSession['agent'][])(
     'refuses %s, which has no structured lane',
     (agent) => {
       expect(eligibility({ session: session({ agent }) })).toEqual({

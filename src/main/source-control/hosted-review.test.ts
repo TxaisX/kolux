@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getHostedReviewForBranch } from './hosted-review'
+import { getHostedReviewForBranch, setHostedReviewObserver } from './hosted-review'
 import { __resetHostedReviewBranchCacheForTests } from './hosted-review-branch-cache'
 
 const {
@@ -84,6 +84,7 @@ describe('getHostedReviewForBranch', () => {
     // The branch cache is process-wide, so one test's answer would otherwise
     // satisfy the next one's lookup.
     __resetHostedReviewBranchCacheForTests()
+    setHostedReviewObserver(null)
   })
 
   it('maps GitLab merge requests into the hosted review surface', async () => {
@@ -366,5 +367,57 @@ describe('getHostedReviewForBranch', () => {
       'ssh-1'
     )
     expect(getGiteaRepoSlugMock).not.toHaveBeenCalled()
+  })
+
+  it('notifies the observer with the branch identity and the resolved review', async () => {
+    getProjectSlugMock.mockResolvedValue(null)
+    getRepoSlugMock.mockResolvedValue({ owner: 'o', repo: 'r' })
+    getPRForBranchOutcomeMock.mockResolvedValue({
+      kind: 'found',
+      fetchedAt: 1,
+      pr: {
+        number: 5,
+        title: 'Observed branch',
+        state: 'open',
+        url: 'https://github.com/o/r/pull/5',
+        checksStatus: 'pending',
+        updatedAt: '2026-05-10T00:00:00.000Z',
+        mergeable: 'UNKNOWN'
+      }
+    })
+    const observer = vi.fn()
+    setHostedReviewObserver(observer)
+
+    await getHostedReviewForBranch({
+      executionHostId: 'local',
+      repoPath: '/repo',
+      branch: 'feature',
+      linkedGitHubPR: 5
+    })
+
+    expect(observer).toHaveBeenCalledWith(
+      { repoPath: '/repo', executionHostId: 'local', branch: 'feature' },
+      expect.objectContaining({ number: 5, provider: 'github' })
+    )
+  })
+
+  it('does not notify the observer when the lookup throws', async () => {
+    getProjectSlugMock.mockResolvedValue(null)
+    getRepoSlugMock.mockResolvedValue(null)
+    getBitbucketRepoSlugMock.mockResolvedValue(null)
+    getAzureDevOpsRepoSlugMock.mockResolvedValue(null)
+    getGiteaRepoSlugMock.mockResolvedValue(null)
+    const observer = vi.fn()
+    setHostedReviewObserver(observer)
+
+    await expect(
+      getHostedReviewForBranch({
+        executionHostId: 'local',
+        repoPath: '/repo',
+        branch: 'feature'
+      })
+    ).rejects.toThrow()
+
+    expect(observer).not.toHaveBeenCalled()
   })
 })

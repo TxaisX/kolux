@@ -62,13 +62,6 @@ export function addKoluxWslInteropEnv(env: Record<string, string>): void {
   // via /mnt/c) until the WSL hook relay reports the guest home — then it is
   // already a guest-side POSIX path and must cross untranslated.
   const endpointFlag = env.KOLUX_AGENT_HOOK_ENDPOINT?.startsWith('/') ? 'u' : 'p'
-  // Why: ONLY a guest-side POSIX overlay may cross. /p would path-translate a
-  // Windows value into /mnt/c and let in-guest OpenCode adopt it as its config
-  // root — reachable via the relay spawn's process.env (wsl-hook-relay-launch)
-  // and via daemon-inherited env, which buildPtyHostEnv's delete cannot reach.
-  const opencodeOverlayEntries = (['OPENCODE_CONFIG_DIR', 'KOLUX_OPENCODE_CONFIG_DIR'] as const)
-    .filter((name) => env[name]?.startsWith('/'))
-    .map((name) => `${name}/u`)
   // Why: wsl.exe only imports selected Windows env vars, so WSL needs the wrapper root, pane identity, and hook/OMP coordinates at start.
   const passthroughEntries = [
     'KOLUX_TERMINAL_HANDLE/u',
@@ -93,7 +86,6 @@ export function addKoluxWslInteropEnv(env: Record<string, string>): void {
     'KOLUX_AGENT_HOOK_VERSION/u',
     'KOLUX_AGENT_HOOK_TRANSPORT/u',
     `KOLUX_AGENT_HOOK_ENDPOINT/${endpointFlag}`,
-    ...opencodeOverlayEntries,
     'KOLUX_WSL_HOOK_RELAY_VERSION/u',
     'KOLUX_WSL_HOOK_INSTANCE/u',
     'KOLUX_OMP_SOURCE_AGENT_DIR/p',

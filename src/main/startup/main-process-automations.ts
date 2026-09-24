@@ -2,6 +2,8 @@ import { AutomationService } from '../automations/service'
 import { createHeadlessAutomationOutputSnapshotBuffer } from '../automations/headless-dispatch'
 import { buildHeadlessAutomationWorktreeCreateArgs } from '../automations/headless-workspace-create'
 import { createRuntimeAutomationRunTerminalObserver } from '../automations/runtime-terminal-run-observer'
+import { wireAutomationEventSources } from '../automations/automation-event-sources'
+import { agentHookServer } from '../agent-hooks/server'
 import { mainProcessState as state } from './main-process-state'
 
 export function initializeMainProcessAutomations(): AutomationService {
@@ -96,5 +98,6 @@ export function initializeMainProcessAutomations(): AutomationService {
   })
   state.automations = service
   runtime.setAutomationService(service)
+  wireAutomationEventSources({ store, service, agentHookServer })
   return service
 }

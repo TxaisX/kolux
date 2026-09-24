@@ -13,7 +13,7 @@ const GROK_ALT_SCREEN_LEAVE = '\x1b[?1049l\x1b[?25h'
 const GROK_COMPOSER_FRAME = '\x1b[38;2;80;80;88m│\x1b[38;2;200;200;200m❯ \x1b[0m'
 
 describe('createDraftPasteReadyScanner', () => {
-  describe('render-cursor-after-bracketed-paste (opencode / mimo-code)', () => {
+  describe('render-cursor-after-bracketed-paste (mimo-code)', () => {
     it('is ready when show-cursor renders after bracketed paste in one chunk', () => {
       const scanner = createDraftPasteReadyScanner('render-cursor-after-bracketed-paste')
       expect(scanner.observe(`${DECSET_BRACKETED_PASTE}${SHOW_CURSOR}`)).toEqual({
@@ -24,7 +24,7 @@ describe('createDraftPasteReadyScanner', () => {
 
     it('does not fire on bracketed paste alone, then fires once show-cursor arrives', () => {
       const scanner = createDraftPasteReadyScanner('render-cursor-after-bracketed-paste')
-      // Why: opencode enables bracketed paste ~1.5-2s before its composer mounts
+      // Why: MiMo enables bracketed paste ~1.5-2s before its composer mounts
       // and stays SILENT in between. The cursor gates delivery and must NOT arm
       // the quiet window, which would otherwise fire during that silent gap and
       // paste before the composer exists.
@@ -70,7 +70,7 @@ describe('createDraftPasteReadyScanner', () => {
     it('never arms the quiet window during the silent pre-composer gap', () => {
       const scanner = createDraftPasteReadyScanner('render-cursor-after-bracketed-paste')
       scanner.observe(DECSET_BRACKETED_PASTE)
-      // Why: opencode is silent here; arming the quiet window would fire before
+      // Why: MiMo is silent here; arming the quiet window would fire before
       // the composer mounts and pre-empt the cursor signal (the original bug).
       // Delivery waits for show-cursor, bounded by the caller's hard timeout.
       for (let i = 0; i < 5; i += 1) {

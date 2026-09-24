@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  loginPreflightExecFileMock,
-  spawnMock,
-  openCodeBuildPtyEnvMock
-} from './pty-ipc-mock-registry'
+import { loginPreflightExecFileMock, spawnMock } from './pty-ipc-mock-registry'
 import { posixOnlyIt } from './pty-ipc-test-constants'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { userInfo } from 'node:os'
@@ -18,9 +14,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -107,40 +100,6 @@ describe('registerPtyHandlers', () => {
       }
     }
   })
-  it('uses the POSIX shell wrapper so OpenCode config survives shell startup files', async () => {
-    const originalPlatform = process.platform
-    const originalShell = process.env.SHELL
-
-    Object.defineProperty(process, 'platform', {
-      configurable: true,
-      value: 'darwin'
-    })
-    process.env.SHELL = '/bin/zsh'
-
-    try {
-      const [shell, args, options] = await spawnAndGetCall({ cwd: '/tmp' })
-      expect(shell).toBe('/bin/zsh')
-      expect(args).toEqual(['-l'])
-      expect(options.env.OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-config')
-      expect(options.env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-config')
-      // Why template literal, not `join`: this exercises LocalPtyProvider, and
-      // local-pty-shell-ready.ts builds ZDOTDIR as `${root}/zsh` (a POSIX shell
-      // path) rather than joining — `join` would also normalize the host-native
-      // separators already inside the wrapper root computed on this machine.
-      expect(options.env.ZDOTDIR).toBe(`${getShellReadyWrapperRoot()}/zsh`)
-      expect(options.env.KOLUX_SHELL_FEATURES).not.toContain('ready')
-    } finally {
-      Object.defineProperty(process, 'platform', {
-        configurable: true,
-        value: originalPlatform
-      })
-      if (originalShell === undefined) {
-        delete process.env.SHELL
-      } else {
-        process.env.SHELL = originalShell
-      }
-    }
-  })
   it('uses the POSIX shell wrapper so Pi config survives shell startup files', async () => {
     const originalPlatform = process.platform
     const originalShell = process.env.SHELL
@@ -150,11 +109,6 @@ describe('registerPtyHandlers', () => {
       value: 'darwin'
     })
     process.env.SHELL = '/bin/zsh'
-    openCodeBuildPtyEnvMock.mockImplementationOnce(() => ({
-      KOLUX_OPENCODE_HOOK_PORT: '4567',
-      KOLUX_OPENCODE_HOOK_TOKEN: 'opencode-token',
-      KOLUX_OPENCODE_PTY_ID: 'test-pty'
-    }))
 
     try {
       const [shell, args, options] = await spawnAndGetCall({
@@ -163,8 +117,6 @@ describe('registerPtyHandlers', () => {
       })
       expect(shell).toBe('/bin/zsh')
       expect(args).toEqual(['-l'])
-      expect(options.env.OPENCODE_CONFIG_DIR).toBeUndefined()
-      expect(options.env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
       expect(options.env.PI_CODING_AGENT_DIR).toBe('/tmp/user-pi-agent')
       expect(options.env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
       expect(options.env.KOLUX_PI_SOURCE_AGENT_DIR).toBe('/tmp/user-pi-agent')

@@ -53,6 +53,24 @@ function resolveAutomationOwnerRefusal(store: Store, automation: Automation): st
   return issue ? CAPTURED_HOST_REFUSALS[issue] : NO_RUNNABLE_HOST
 }
 
+const REMOTE_HOST_SCHEDULING_UNAVAILABLE =
+  'Remote-server automation scheduling is not available from this Kolux client yet. Run this automation on the remote server or update Kolux when durable remote scheduling is available.'
+
+/** Whether this process may schedule/dispatch `automation` at all — a runtime host's
+ *  own automations run only under `allowRemoteHostScheduling`. Exported so event
+ *  detection can skip an automation it doesn't own without writing a refusal row. */
+export function automationSchedulableOnThisHost(
+  automation: Automation,
+  options: AutomationRunTargetOptions = {}
+): boolean {
+  const parsedHost = parseExecutionHostId(automation.runContext?.hostId ?? null)
+  return (
+    parsedHost?.kind !== 'runtime' ||
+    (options.allowRemoteHostScheduling === true &&
+      automation.schedulerOwner === 'remote_host_service')
+  )
+}
+
 export function resolveAutomationRunTarget(
   store: Store,
   automation: Automation,
@@ -71,16 +89,8 @@ export function resolveAutomationRunTarget(
     }
     return { ok: true, cwd, repo }
   }
-  const parsedHost = parseExecutionHostId(context.hostId)
-  if (
-    parsedHost?.kind === 'runtime' &&
-    (!options.allowRemoteHostScheduling || automation.schedulerOwner !== 'remote_host_service')
-  ) {
-    return {
-      ok: false,
-      error:
-        'Remote-server automation scheduling is not available from this Kolux client yet. Run this automation on the remote server or update Kolux when durable remote scheduling is available.'
-    }
+  if (!automationSchedulableOnThisHost(automation, options)) {
+    return { ok: false, error: REMOTE_HOST_SCHEDULING_UNAVAILABLE }
   }
 
   // Why: removing a host — or removing and re-registering it under the same id —

@@ -28,7 +28,6 @@ export type AiVaultDeleteSessionResult =
 //   which line to drop can't be determined at all.
 // - codex: session_index.jsonl plus hardlink aliases between the Kolux-managed
 //   home and ~/.codex, so a one-sided delete reappears on the next scan.
-// - opencode 1.17.x: a SQLite row, not a file.
 export const AI_VAULT_DELETABLE_AGENTS = [
   'gemini',
   'copilot',
@@ -51,7 +50,7 @@ export function isAiVaultDeletableAgent(agent: AiVaultAgent): agent is AiVaultDe
   return (AI_VAULT_DELETABLE_AGENTS as readonly AiVaultAgent[]).includes(agent)
 }
 
-// A '#' marks an OpenCode 1.17.x SQLite row's synthetic `<dbPath>#<sessionId>`
+// A '#' marks a SQLite-row transcript's synthetic `<dbPath>#<sessionId>`
 // identity — no real file to open or delete. '#' never appears in a genuine
 // transcript path.
 export function isAiVaultSyntheticSessionPath(filePath: string): boolean {

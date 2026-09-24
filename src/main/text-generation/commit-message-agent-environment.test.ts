@@ -30,41 +30,11 @@ function makeHome(): string {
   tempDirs.push(dir)
   process.env.HOME = dir
   process.env.SHELL = '/bin/zsh'
-  delete process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
   delete process.env.KOLUX_PI_SOURCE_AGENT_DIR
   return dir
 }
 
 describe('prepareLocalCommitMessageAgentEnv', () => {
-  it('hydrates OpenCode config dir from shell startup files for headless generation', async () => {
-    const home = makeHome()
-    delete process.env.OPENCODE_CONFIG_DIR
-    writeFileSync(join(home, '.zshrc'), 'export OPENCODE_CONFIG_DIR="$HOME/company/opencode"\n')
-
-    const result = await prepareLocalCommitMessageAgentEnv('opencode', undefined)
-
-    expect(result).toEqual({
-      ok: true,
-      env: expect.objectContaining({
-        OPENCODE_CONFIG_DIR: `${home}/company/opencode`
-      })
-    })
-  })
-
-  it('prefers the original OpenCode config root over inherited PTY overlays', async () => {
-    process.env.OPENCODE_CONFIG_DIR = '/tmp/kolux-opencode-overlay'
-    process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR = '/Users/tester/company/opencode'
-
-    const result = await prepareLocalCommitMessageAgentEnv('opencode', undefined)
-
-    expect(result).toEqual({
-      ok: true,
-      env: expect.objectContaining({
-        OPENCODE_CONFIG_DIR: '/Users/tester/company/opencode'
-      })
-    })
-  })
-
   it('hydrates Pi agent dir from shell startup files for headless generation', async () => {
     const home = makeHome()
     delete process.env.PI_CODING_AGENT_DIR
@@ -205,9 +175,9 @@ describe('prepareLocalCommitMessageAgentEnv', () => {
   })
 
   it('does not hydrate host shell config roots for WSL-local commit generation', async () => {
-    process.env.OPENCODE_CONFIG_DIR = 'C:\\Users\\tester\\opencode'
+    process.env.PI_CODING_AGENT_DIR = 'C:\\Users\\tester\\pi'
 
-    const result = await prepareLocalCommitMessageAgentEnv('opencode', undefined, {
+    const result = await prepareLocalCommitMessageAgentEnv('pi', undefined, {
       runtime: 'wsl',
       wslDistro: 'Ubuntu'
     })

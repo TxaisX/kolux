@@ -18,7 +18,7 @@ const classifierCalls = vi.mocked(AgentNameTokenMatchModule.titleHasAgentName)
 // Titles a real sidebar holds steady while unrelated agent-status writes churn.
 const UNCHANGED_TITLES = [
   'codex working',
-  'opencode-blinker',
+  'openclaude-scratch',
   'zsh',
   '✳ Claude Code',
   'copilot.exe - action required',

@@ -216,41 +216,38 @@ describe('agent interrupt inference', () => {
     entry = undefined
   })
 
-  it.each(['opencode', 'copilot'] as const)(
-    'infers immediately on double Escape for %s',
-    (agentType) => {
-      vi.useFakeTimers()
-      let entry: AgentStatusEntry | undefined = makeEntry({ agentType })
-      const inferInterrupt = vi.fn()
-      const tracker = createAgentInterruptInference({
-        paneKey: PANE_KEY,
-        getStatusEntry: () => entry,
-        inferInterrupt,
-        now: () => 1_100
-      })
-
-      tracker.observeInputIntent('plain-escape', entry, 1)
-      expect(inferInterrupt).not.toHaveBeenCalled()
-
-      tracker.observeInputIntent('plain-escape', entry, 1)
-
-      expect(inferInterrupt).toHaveBeenCalledWith({
-        paneKey: PANE_KEY,
-        baselineUpdatedAt: 1_000,
-        baselineStateStartedAt: 900,
-        baselinePrompt: 'write tests',
-        baselineAgentType: agentType,
-        intent: 'plain-escape',
-        inputCount: 2
-      })
-      tracker.dispose()
-      entry = undefined
-    }
-  )
-
-  it('does not count an OpenCode Escape across a new turn', () => {
+  it.each(['copilot'] as const)('infers immediately on double Escape for %s', (agentType) => {
     vi.useFakeTimers()
-    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'opencode' })
+    let entry: AgentStatusEntry | undefined = makeEntry({ agentType })
+    const inferInterrupt = vi.fn()
+    const tracker = createAgentInterruptInference({
+      paneKey: PANE_KEY,
+      getStatusEntry: () => entry,
+      inferInterrupt,
+      now: () => 1_100
+    })
+
+    tracker.observeInputIntent('plain-escape', entry, 1)
+    expect(inferInterrupt).not.toHaveBeenCalled()
+
+    tracker.observeInputIntent('plain-escape', entry, 1)
+
+    expect(inferInterrupt).toHaveBeenCalledWith({
+      paneKey: PANE_KEY,
+      baselineUpdatedAt: 1_000,
+      baselineStateStartedAt: 900,
+      baselinePrompt: 'write tests',
+      baselineAgentType: agentType,
+      intent: 'plain-escape',
+      inputCount: 2
+    })
+    tracker.dispose()
+    entry = undefined
+  })
+
+  it('does not count a Copilot Escape across a new turn', () => {
+    vi.useFakeTimers()
+    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'copilot' })
     const inferInterrupt = vi.fn()
     const tracker = createAgentInterruptInference({
       paneKey: PANE_KEY,
@@ -260,7 +257,7 @@ describe('agent interrupt inference', () => {
     })
 
     tracker.observeInputIntent('plain-escape')
-    entry = makeEntry({ agentType: 'opencode', prompt: 'second task', stateStartedAt: 1_050 })
+    entry = makeEntry({ agentType: 'copilot', prompt: 'second task', stateStartedAt: 1_050 })
     tracker.observeInputIntent('plain-escape')
     vi.runOnlyPendingTimers()
 
@@ -269,7 +266,7 @@ describe('agent interrupt inference', () => {
     entry = undefined
   })
 
-  it.each(['opencode', 'copilot'] as const)(
+  it.each(['copilot'] as const)(
     'does not count a %s Escape after the double-Escape window expires',
     (agentType) => {
       vi.useFakeTimers()
@@ -293,9 +290,9 @@ describe('agent interrupt inference', () => {
     }
   )
 
-  it('does not emit again for a third OpenCode Escape after the row is already done', () => {
+  it('does not emit again for a third Copilot Escape after the row is already done', () => {
     vi.useFakeTimers()
-    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'opencode' })
+    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'copilot' })
     const inferInterrupt = vi.fn((request) => {
       entry = makeEntry({
         state: 'done',
@@ -322,9 +319,9 @@ describe('agent interrupt inference', () => {
     entry = undefined
   })
 
-  it('still infers Ctrl+C for OpenCode', () => {
+  it('still infers Ctrl+C for Goose', () => {
     vi.useFakeTimers()
-    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'opencode' })
+    let entry: AgentStatusEntry | undefined = makeEntry({ agentType: 'goose' })
     const inferInterrupt = vi.fn()
     const tracker = createAgentInterruptInference({
       paneKey: PANE_KEY,
@@ -341,7 +338,7 @@ describe('agent interrupt inference', () => {
       baselineUpdatedAt: 1_000,
       baselineStateStartedAt: 900,
       baselinePrompt: 'write tests',
-      baselineAgentType: 'opencode',
+      baselineAgentType: 'goose',
       intent: 'ctrl-c'
     })
     tracker.dispose()

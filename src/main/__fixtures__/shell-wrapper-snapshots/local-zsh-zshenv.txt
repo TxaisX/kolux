@@ -61,7 +61,7 @@ __kolux_deferred_init() {
     precmd_functions=(${precmd_functions:#__kolux_deferred_init})
   fi
   if __kolux_has_feature overlay; then
-    # Why: ~/.zshrc can export the user's default OpenCode config after spawn.
+    # Why: ~/.zshrc can export the user's default MiMo Code home after spawn.
     __kolux_restore_agent_teams_path() {
       [[ -n "${KOLUX_AGENT_TEAMS_SHIM_DIR:-}" ]] || return 0
       case "$PATH" in
@@ -70,7 +70,6 @@ __kolux_deferred_init() {
       export PATH="${KOLUX_AGENT_TEAMS_SHIM_DIR}:$PATH"
     }
     __kolux_restore_agent_teams_path
-    [[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"
     [[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"
     # Why: OMP does not auto-load Kolux's managed status extension; wrap only
     # interactive launch invocations so subcommands such as `omp config` keep

@@ -15,11 +15,7 @@ import type { EditorSlice } from './slices/editor'
 import type { StatsSlice } from './slices/stats'
 import type { MemorySlice } from './slices/memory'
 import type { WorkspaceSpaceSlice } from './slices/workspace-space'
-import type {
-  ClaudeUsageSlice,
-  CodexUsageSlice,
-  OpenCodeUsageSlice
-} from './slices/usage-provider-slices'
+import type { ClaudeUsageSlice, CodexUsageSlice } from './slices/usage-provider-slices'
 import type { BrowserSlice } from './slices/browser'
 import type { RateLimitSlice } from './slices/rate-limits'
 import type { WorkspaceHandoffSlice } from './slices/workspace-handoff'
@@ -64,7 +60,6 @@ export type AppState = RepoSlice &
   WorkspaceSpaceSlice &
   ClaudeUsageSlice &
   CodexUsageSlice &
-  OpenCodeUsageSlice &
   BrowserSlice &
   RateLimitSlice &
   WorkspaceHandoffSlice &

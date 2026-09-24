@@ -9,7 +9,7 @@ export function getDaemonZshWrapperSpec(): ZshStartupHookSpec {
     osc133CommandMarkers: true,
     startupCommandDelivery: false,
     overlayRestoreComment:
-      "# Why: ~/.zshrc can export the user's default OpenCode config after spawn.",
+      "# Why: ~/.zshrc can export the user's default MiMo Code home after spawn.",
     restores: {
       agentTeamsPath: true,
       remoteCliBinDir: false,

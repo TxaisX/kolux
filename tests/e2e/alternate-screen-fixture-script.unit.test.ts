@@ -7,7 +7,7 @@ import {
 import {
   type HiddenPressureOutputMode,
   pressureOutputScript
-} from './artificial-opencode-hidden-pressure-script'
+} from './artificial-tui-hidden-pressure-script'
 
 // The escape as it appears in generated source, where it is still a JS string escape.
 const ALTERNATE_SCREEN_ENTER_SOURCE = '\\x1b[?1049h'
@@ -50,7 +50,7 @@ describe('hidden pressure fixture', () => {
 
     expect(source).toContain(ALTERNATE_SCREEN_ENTER_SOURCE)
     expect(source.indexOf(HOLD_ALTERNATE_SCREEN_OPEN)).toBeGreaterThan(
-      source.indexOf('OPENCODE_PRESSURE_DONE_')
+      source.indexOf('TUI_PRESSURE_DONE_')
     )
   })
 })

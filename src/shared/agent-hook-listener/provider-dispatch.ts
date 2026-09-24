@@ -12,7 +12,7 @@ import { normalizeAmpEvent } from './providers/amp-events'
 import { normalizeClaudeEvent } from './providers/claude-events'
 import { normalizeCodexEvent } from './providers/codex-events'
 import { normalizeGeminiEvent } from './providers/gemini-events'
-import { normalizeOpenCodeFamilyEvent } from './providers/opencode-family-events'
+import { normalizeMimoCodeEvent } from './providers/mimo-code-events'
 import { normalizeCursorEvent } from './providers/cursor-events'
 import { normalizePiCompatibleEvent } from './providers/pi-family-events'
 import { normalizeDroidEvent } from './providers/droid-events'
@@ -72,21 +72,12 @@ export function normalizeProviderEvent(input: {
     case 'amp':
       payload = normalizeAmpEvent(state, eventName, promptText, paneKey, hookPayload)
       break
-    case 'opencode':
     case 'mimo-code': {
       if (extractedPrompt.source === 'role_user_text') {
         const messageId = readFirstString(hookPayload, ['messageID', 'messageId', 'message_id'])
-        const prefix = source === 'mimo-code' ? 'mimo-code-message' : 'opencode-message'
-        promptInteractionKey = messageId ? `${prefix}-${messageId}` : undefined
+        promptInteractionKey = messageId ? `mimo-code-message-${messageId}` : undefined
       }
-      payload = normalizeOpenCodeFamilyEvent(
-        source,
-        state,
-        eventName,
-        promptText,
-        paneKey,
-        hookPayload
-      )
+      payload = normalizeMimoCodeEvent(source, state, eventName, promptText, paneKey, hookPayload)
       break
     }
     case 'cursor':

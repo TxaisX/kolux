@@ -39,7 +39,7 @@ coordinator calls; a dispatched worker instead copies the exact `--from` and
 capability arguments in its preamble. `check` is the exception: it identifies
 its caller with `--terminal`, never `--from`.
 
-Group addresses include `@all`, `@idle`, `@claude`, `@codex`, `@opencode`,
+Group addresses include `@all`, `@idle`, `@claude`, `@codex`,
 `@gemini`, `@droid`, `@grok`, `@cursor`, and `@worktree:<id>`. Use them only for
 intentional fan-out status or questions. `worker_done`, heartbeat, and other
 Dispatch lifecycle messages never target groups.

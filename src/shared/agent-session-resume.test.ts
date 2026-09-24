@@ -37,7 +37,6 @@ describe('agent session resume metadata', () => {
       { conversationId: 'agy-conversation' },
       { key: 'conversation_id', id: 'agy-conversation' }
     ],
-    ['opencode', { sessionID: 'opencode-session' }, { key: 'session_id', id: 'opencode-session' }],
     [
       'pi',
       { session_id: 'pi-session', session_file: '/tmp/pi-session.jsonl' },
@@ -73,7 +72,6 @@ describe('agent session resume metadata', () => {
     ['codex', { key: 'session_id', id: 's1' }, ['codex', 'resume', 's1']],
     ['gemini', { key: 'session_id', id: 's1' }, ['gemini', '--resume', 's1']],
     ['antigravity', { key: 'conversation_id', id: 's1' }, ['agy', '--conversation', 's1']],
-    ['opencode', { key: 'session_id', id: 's1' }, ['opencode', '--session', 's1']],
     [
       'pi',
       { key: 'session_id', id: 's1', transcriptPath: '/tmp/pi-session.jsonl' },

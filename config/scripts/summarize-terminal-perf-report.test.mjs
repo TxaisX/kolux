@@ -22,7 +22,7 @@ function writeReport() {
                 {
                   annotations: [
                     {
-                      type: 'opencode-scale',
+                      type: 'tui-scale',
                       description: 'panes=50 frames=60 median=12.3ms rendererQueuedChars=1000'
                     },
                     {
@@ -48,14 +48,14 @@ afterEach(() => {
 })
 
 describe('summarize-terminal-perf-report', () => {
-  it('prints only OpenCode terminal perf annotation rows', () => {
+  it('prints only TUI terminal perf annotation rows', () => {
     const output = execFileSync(process.execPath, [scriptPath, writeReport()], {
       cwd: process.cwd(),
       encoding: 'utf8'
     })
 
     expect(output).toContain('| Source | Scenario | Panes | Frames | Median |')
-    expect(output).toContain('| report.json | opencode-scale | 50 | 60 | 12.3ms |')
+    expect(output).toContain('| report.json | tui-scale | 50 | 60 | 12.3ms |')
     expect(output).toContain('1000')
     expect(output).not.toContain('browser-unrelated')
     expect(output).not.toContain('999.0ms')

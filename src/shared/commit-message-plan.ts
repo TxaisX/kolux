@@ -310,7 +310,7 @@ export function planCommitMessageGeneration(
     return { ok: false, error: command.error }
   }
   // Why: repeating a singleton flag makes yargs-based CLIs parse it as an array and
-  // crash (OpenCode's `model.split('/')`). User values replace Kolux's, never stack.
+  // crash on a `model.split('/')`-style call. User values replace Kolux's, never stack.
   const merged = applySingletonOptionOverrides({
     generatedArgs: baseArgs,
     prefixArgs: command.prefixArgs,

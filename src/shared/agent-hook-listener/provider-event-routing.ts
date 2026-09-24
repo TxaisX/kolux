@@ -7,7 +7,7 @@ import { extractCodexToolFields } from './providers/codex-tool-fields'
 import { extractGeminiToolFields } from './providers/gemini-tool-fields'
 import { extractAntigravityToolFields } from './providers/antigravity-tool-fields'
 import { extractAmpToolFields } from './providers/amp-tool-fields'
-import { extractOpenCodeToolFields } from './providers/opencode-family-tool-fields'
+import { extractMimoCodeToolFields } from './providers/mimo-code-tool-fields'
 import { extractCursorToolFields } from './providers/cursor-tool-fields'
 import {
   extractCopilotToolFields,
@@ -53,8 +53,6 @@ export function isNewTurnEvent(source: AgentHookSource, eventName: unknown): boo
       return eventName === 'PreInvocation'
     case 'amp':
       return eventName === 'agent.start'
-    case 'opencode':
-      return eventName === 'SessionStart'
     case 'mimo-code':
       return false
     case 'cursor':
@@ -105,7 +103,7 @@ export function hasExplicitUserPrompt(
     return true
   }
   if (extractedPrompt.source === 'role_user_text') {
-    return (source === 'opencode' || source === 'mimo-code') && eventName === 'MessagePart'
+    return source === 'mimo-code' && eventName === 'MessagePart'
   }
   if (extractedPrompt.text.length === 0) {
     return false
@@ -134,7 +132,7 @@ export function extractToolFields(
   hookPayload: Record<string, unknown>,
   options?: { grokHome?: string }
 ): ToolSnapshot {
-  // Why: exhaustive switch so a new AgentHookSource fails typecheck here instead of silently routing through OpenCode's extractor.
+  // Why: exhaustive switch so a new AgentHookSource fails typecheck here instead of silently routing through MiMo's extractor.
   switch (source) {
     case 'claude':
     // Why: Kimi Code uses Claude's tool_name/tool_input payload fields verbatim.
@@ -149,9 +147,8 @@ export function extractToolFields(
       return extractAntigravityToolFields(eventName, hookPayload)
     case 'amp':
       return extractAmpToolFields(eventName, hookPayload)
-    case 'opencode':
     case 'mimo-code':
-      return extractOpenCodeToolFields(eventName, hookPayload)
+      return extractMimoCodeToolFields(eventName, hookPayload)
     case 'cursor':
       return extractCursorToolFields(eventName, hookPayload)
     case 'pi':

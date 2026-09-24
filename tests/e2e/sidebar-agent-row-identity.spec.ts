@@ -15,14 +15,15 @@ import { worktreeRow } from './worktree-row-locators'
  *
  * #10258 — Cursor's only native OSC title is the literal `cursor agent`; it was
  * dropped unconditionally, so a hookless Cursor pane produced no sidebar row.
- * #8940 — an incidental `claude` token inside an OpenCode task title outranked
- * the pane's known owner, flipping the row label + identity icon to Claude Code.
+ * #8940 — an incidental `claude` token inside another agent's free-form task
+ * title outranked the pane's known owner, flipping the row label + identity
+ * icon to Claude Code.
  */
 
 // The literal Cursor emits on every redraw — the pane's ONLY identity signal.
 const CURSOR_NATIVE_OSC_TITLE = 'Cursor Agent'
-// An OpenCode task title that merely MENTIONS claude (see #8940).
-const OPENCODE_TASK_OSC_TITLE = '⠋ use Claude Sonnet'
+// A free-form task title that merely MENTIONS claude (see #8940).
+const GEMINI_TASK_OSC_TITLE = '⠋ use Claude Sonnet'
 
 /** Printed banner that proves the emitter ran; the OSC title trails it in the same chunk. */
 const PANE_HOLD_MARKER = 'agent pane holding'
@@ -70,7 +71,7 @@ function paneTitles(page: Page, tabId: string): Promise<string[]> {
 async function openAgentTab(
   page: Page,
   worktreeId: string,
-  launchAgent: 'cursor' | 'opencode'
+  launchAgent: 'cursor' | 'gemini'
 ): Promise<{ tabId: string; ptyId: string }> {
   const tabId = await page.evaluate(
     ({ worktreeId, launchAgent }) => {
@@ -147,7 +148,7 @@ async function settledSidebarAgentRowIdentities(
   return settled
 }
 
-test('sidebar keeps a Cursor pane visible and an OpenCode pane out of Claude Code hands', async ({
+test('sidebar keeps a Cursor pane visible and a Gemini pane out of Claude Code hands', async ({
   koluxPage
 }) => {
   await waitForSessionReady(koluxPage)
@@ -155,22 +156,22 @@ test('sidebar keeps a Cursor pane visible and an OpenCode pane out of Claude Cod
   await ensureTerminalVisible(koluxPage)
   await useFullAgentActivityRows(koluxPage)
 
-  const openCode = await openAgentTab(koluxPage, worktreeId, 'opencode')
-  const openCodeScript = await runNodeScriptInTerminal(
+  const gemini = await openAgentTab(koluxPage, worktreeId, 'gemini')
+  const geminiScript = await runNodeScriptInTerminal(
     koluxPage,
-    openCode.ptyId,
-    // ⠋ is the braille spinner frame OpenCode paints ahead of its task text.
+    gemini.ptyId,
+    // ⠋ is a braille spinner frame a free-form-title TUI paints ahead of its task text.
     oscTitleHolderScript('\\u280b use Claude Sonnet')
   )
   await waitForTerminalOutput(koluxPage, PANE_HOLD_MARKER, 15_000)
   // Precondition, not the claim under test: this title is filtered on neither
   // branch, so a failure here means the PTY never emitted it.
   await expect
-    .poll(() => paneTitles(koluxPage, openCode.tabId), {
+    .poll(() => paneTitles(koluxPage, gemini.tabId), {
       timeout: 15_000,
-      message: 'the OpenCode task title never reached the renderer'
+      message: 'the Gemini task title never reached the renderer'
     })
-    .toContain(OPENCODE_TASK_OSC_TITLE)
+    .toContain(GEMINI_TASK_OSC_TITLE)
 
   const cursor = await openAgentTab(koluxPage, worktreeId, 'cursor')
   const cursorScript = await runNodeScriptInTerminal(
@@ -187,18 +188,18 @@ test('sidebar keeps a Cursor pane visible and an OpenCode pane out of Claude Cod
   const agentList = worktreeRow(koluxPage, worktreeId).locator('[aria-label="Agents"]')
   await expect(agentList.locator('> div').first()).toBeVisible()
 
-  // #10258: the Cursor pane gets a row at all. #8940: the OpenCode pane stays OpenCode.
+  // #10258: the Cursor pane gets a row at all. #8940: the Gemini pane stays Gemini.
   expect(await settledSidebarAgentRowIdentities(koluxPage, agentListSelector)).toEqual([
     'Cursor',
-    'OpenCode'
+    'Gemini'
   ])
 
   // Both panes are on the card: the Cursor row exists at all (#10258) next to the
-  // OpenCode row still labelled by its own task text (#8940).
+  // Gemini row still labelled by its own task text (#8940).
   await expect(agentList.locator('> div')).toHaveCount(2)
   await expect(agentList).toContainText('Cursor')
   await expect(agentList).toContainText('use Claude Sonnet')
 
-  openCodeScript.cleanup()
+  geminiScript.cleanup()
   cursorScript.cleanup()
 })

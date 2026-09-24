@@ -3,6 +3,7 @@ import {
   formatAutomationScheduleTime,
   type AutomationScheduleDescriptor
 } from '../../../../shared/automation-schedules'
+import type { Automation } from '../../../../shared/automations-types'
 import { translate } from '@/i18n/i18n'
 import { getUiWeekdayNames } from '@/i18n/weekday-names'
 
@@ -58,4 +59,17 @@ export function formatUiAutomationScheduleDescriptor(
 /** Convenience wrapper for callers that hold the raw cron/RRULE expression. */
 export function formatUiAutomationSchedule(scheduleExpression: string): string {
   return formatUiAutomationScheduleDescriptor(describeAutomationSchedule(scheduleExpression))
+}
+
+export function formatUiAutomationOnEventLabel(): string {
+  return translate('auto.components.automations.automation.schedule.label.7f2a4c9e10', 'On event')
+}
+
+/** eventTrigger set: rrule is kept but ignored, so its own label replaces the schedule text. */
+export function formatUiAutomationTrigger(
+  automation: Pick<Automation, 'eventTrigger' | 'rrule'>
+): string {
+  return automation.eventTrigger
+    ? formatUiAutomationOnEventLabel()
+    : formatUiAutomationSchedule(automation.rrule)
 }

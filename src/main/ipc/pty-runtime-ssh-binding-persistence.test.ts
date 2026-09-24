@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { spawnMock, openCodeClearPtyMock, piClearPtyMock } from './pty-ipc-mock-registry'
+import { spawnMock, piClearPtyMock } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import { makePaneKey } from '../../shared/stable-pane-id'
 import { SSH_SESSION_EXPIRED_ERROR, SshPtyAbsentFromRelayError } from '../providers/ssh-pty-errors'
@@ -16,9 +16,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -528,7 +525,6 @@ describe('registerPtyHandlers', () => {
       )
       expect(store.upsertSshRemotePtyLease).not.toHaveBeenCalled()
       expect(store.persistPtyBinding).not.toHaveBeenCalled()
-      expect(openCodeClearPtyMock).toHaveBeenCalledWith(appPtyId)
       expect(piClearPtyMock).toHaveBeenCalledWith(appPtyId)
       getPtyWriteListener()(mainWindowIpcEvent, { id: appPtyId, data: 'echo nope' })
       expect(remoteWrite).not.toHaveBeenCalled()

@@ -10,7 +10,6 @@ import {
   isPiAgentTitle,
   titleHasAgentName
 } from './agent-title-core'
-import { isOpenCodeNativeTitle } from './opencode-terminal-title'
 import { getPiCompatibleSyntheticAgentLabel } from './pi-compatible-synthetic-title'
 import { memoizeTitleClassification } from './terminal-title-classification-memo'
 
@@ -19,7 +18,7 @@ import { memoizeTitleClassification } from './terminal-title-classification-memo
  * Used to scope prompt-cache-timer behavior to Claude sessions only.
  */
 function computeIsClaudeAgent(title: string): boolean {
-  if (!title || isClaudeManagementTitle(title) || isOpenCodeNativeTitle(title)) {
+  if (!title || isClaudeManagementTitle(title)) {
     return false
   }
   const lower = title.toLowerCase()
@@ -51,11 +50,6 @@ export const isClaudeAgent: (title: string) => boolean =
 function computeAgentLabel(title: string): string | null {
   if (isClaudeManagementTitle(title)) {
     return null
-  }
-  // Why: the native marker owns the whole title; its session text may name or
-  // include status glyphs from other agents without changing OpenCode identity.
-  if (isOpenCodeNativeTitle(title)) {
-    return 'OpenCode'
   }
   // Why: Claude task titles can mention another CLI; the prefix is the identity
   // signal, not arbitrary task text.
@@ -97,9 +91,6 @@ function computeAgentLabel(title: string): string | null {
   }
   if (titleHasAgentName(title, 'antigravity') || AGY_AGENT_NAME_RE.test(title)) {
     return 'Antigravity'
-  }
-  if (titleHasAgentName(title, 'opencode')) {
-    return 'OpenCode'
   }
   if (titleHasAgentName(title, 'mimo')) {
     return 'MiMo Code'

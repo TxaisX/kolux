@@ -7,7 +7,7 @@ import { sweepStaleAgentHookEndpointTemps } from '../agent-hook-endpoint-temp-cl
 // ─── Endpoint-file writing ──────────────────────────────────────────
 
 export function getEndpointFileName(): string {
-  // Why: per-platform extension lets hook scripts source the file natively (POSIX `. "$file"` / Windows `call "%file%"`); the OpenCode plugin regex accepts both shapes.
+  // Why: per-platform extension lets hook scripts source the file natively (POSIX `. "$file"` / Windows `call "%file%"`); the MiMo plugin regex accepts both shapes.
   return process.platform === 'win32' ? 'endpoint.cmd' : 'endpoint.env'
 }
 

@@ -6,6 +6,7 @@ import type { Repo } from '../../shared/repo-types'
 import { AutomationService } from './service'
 import { runHeadlessAutomationDispatch } from './headless-dispatch-runner'
 import { createAutomationRunWriter } from './automation-run-writer'
+import type * as PrecheckRunner from './precheck-runner'
 import { installFakeAppEnvironment } from '../../../config/scripts/vitest-host-ports-setup'
 
 const runAutomationPrecheckMock = vi.hoisted(() => vi.fn())
@@ -22,7 +23,8 @@ vi.mock('electron', () => ({
   }
 }))
 
-vi.mock('./precheck-runner', () => ({
+vi.mock('./precheck-runner', async (importOriginal) => ({
+  ...(await importOriginal<typeof PrecheckRunner>()),
   runAutomationPrecheck: runAutomationPrecheckMock
 }))
 
@@ -163,6 +165,55 @@ describe('AutomationService prechecks', () => {
     expect(runAutomationPrecheckMock).not.toHaveBeenCalled()
   })
 
+  it('runs prechecks for event-triggered runs, not only scheduled ones', async () => {
+    vi.setSystemTime(new Date('2026-05-13T08:00:00Z'))
+    const store = await createStore()
+    store.addRepo(makeRepo({ path: '/repo/path' }))
+    const automation = store.createAutomation({
+      name: 'On PR opened',
+      prompt: 'Investigate',
+      precheck: {
+        command: 'test -f ready',
+        timeoutSeconds: 30
+      },
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-14T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'review_opened' }
+    })
+    const run = store.createAutomationRun(automation, Date.now(), 'event', {
+      kind: 'review_opened',
+      key: 'review_opened:github:local:/repo/path:3',
+      summary: 'PR #3 was opened'
+    })
+    const precheckResult = {
+      command: 'test -f ready',
+      exitCode: 0,
+      timedOut: false,
+      durationMs: 5,
+      stdout: '',
+      stderr: '',
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      error: null,
+      startedAt: Date.now(),
+      completedAt: Date.now()
+    }
+    runAutomationPrecheckMock.mockResolvedValue(precheckResult)
+    const service = new AutomationService(store, { tickMs: 60_000 })
+
+    const result = await service.runPrecheck(automation.id, run.id)
+
+    expect(result).toEqual(precheckResult)
+    expect(runAutomationPrecheckMock).toHaveBeenCalledWith({
+      precheck: { command: 'test -f ready', timeoutSeconds: 30 },
+      target: { type: 'local', cwd: '/repo/path' }
+    })
+  })
+
   it('does not run prechecks for manual dispatches', async () => {
     vi.setSystemTime(new Date('2026-05-13T08:00:00Z'))
     const store = await createStore()
@@ -226,6 +277,68 @@ describe('AutomationService prechecks', () => {
       headlessDispatcher
     })
     const run = store.createAutomationRun(automation, Date.now(), 'scheduled')
+
+    await runHeadlessAutomationDispatch({
+      automation,
+      run,
+      target: { ok: true, cwd: '/repo', repo: store.getRepo('r1')! },
+      dispatcher: headlessDispatcher,
+      runs: createAutomationRunWriter(store, null),
+      runPrecheck: () => service.runPrecheck(automation.id, run.id),
+      markDispatchResult: (result) => service.markDispatchResult(result),
+      watchRun: () => {}
+    })
+
+    expect(headlessDispatcher).not.toHaveBeenCalled()
+    expect(store.listAutomationRuns(automation.id)[0]).toMatchObject({
+      status: 'skipped_precheck',
+      error: 'Precheck exited with code 1.'
+    })
+  })
+
+  it('honors event-triggered prechecks before headless dispatch', async () => {
+    vi.setSystemTime(new Date('2026-05-12T08:59:00Z'))
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'On PR opened remote check',
+      prompt: 'Investigate',
+      precheck: {
+        command: 'test -f ready',
+        timeoutSeconds: 30
+      },
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-12T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'review_opened' }
+    })
+    runAutomationPrecheckMock.mockResolvedValue({
+      command: 'test -f ready',
+      exitCode: 1,
+      timedOut: false,
+      durationMs: 5,
+      stdout: '',
+      stderr: 'missing',
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      error: null,
+      startedAt: Date.now(),
+      completedAt: Date.now()
+    })
+    const headlessDispatcher = vi.fn()
+    const service = new AutomationService(store, {
+      tickMs: 60_000,
+      allowRemoteHostScheduling: true,
+      headlessDispatcher
+    })
+    const run = store.createAutomationRun(automation, Date.now(), 'event', {
+      kind: 'review_opened',
+      key: 'review_opened:github:local:/repo:3',
+      summary: 'PR #3 was opened'
+    })
 
     await runHeadlessAutomationDispatch({
       automation,

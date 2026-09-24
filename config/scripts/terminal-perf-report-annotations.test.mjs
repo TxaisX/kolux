@@ -44,7 +44,7 @@ function makeNestedReport() {
                   {
                     annotations: [
                       {
-                        type: 'opencode-scale',
+                        type: 'tui-scale',
                         description: 'panes=50 median=12.3ms ignored-token rendererQueuedChars=1000'
                       },
                       {
@@ -86,13 +86,13 @@ describe('terminal perf report annotations', () => {
     expect(readJsonReport(reportPath)).toEqual({ suites: [] })
   })
 
-  it('collects nested OpenCode annotations by default', () => {
+  it('collects nested TUI annotations by default', () => {
     expect(collectTerminalPerfRows(makeNestedReport(), 'report.json')).toEqual([
       {
         median: '12.3ms',
         panes: '50',
         rendererQueuedChars: '1000',
-        scenario: 'opencode-scale',
+        scenario: 'tui-scale',
         source: 'report.json'
       }
     ])
@@ -108,7 +108,7 @@ describe('terminal perf report annotations', () => {
                 {
                   annotations: [
                     {
-                      type: 'opencode-scale',
+                      type: 'tui-scale',
                       description: 'source=spoofed.json scenario=spoofed median=12.3ms'
                     }
                   ]
@@ -123,7 +123,7 @@ describe('terminal perf report annotations', () => {
     expect(collectTerminalPerfRows(report, 'report.json')).toEqual([
       {
         median: '12.3ms',
-        scenario: 'opencode-scale',
+        scenario: 'tui-scale',
         source: 'report.json'
       }
     ])

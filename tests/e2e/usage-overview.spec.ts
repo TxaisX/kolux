@@ -29,19 +29,10 @@ test.describe('usage overview', () => {
     await expect(koluxPage.getByRole('heading', { name: 'Providers' })).toBeVisible()
     await expect(koluxPage.getByRole('button', { name: 'Enable Claude' })).toBeVisible()
     await expect(koluxPage.getByRole('button', { name: 'Enable Codex' })).toBeVisible()
-    await expect(koluxPage.getByRole('button', { name: 'Enable OpenCode' })).toBeVisible()
 
     await providerDropdown.click()
     await koluxPage.getByRole('menuitem', { name: 'Codex', exact: true }).click()
     await expect(koluxPage.getByRole('heading', { name: 'Codex Usage Tracking' })).toBeVisible()
     await expect(providerDropdown).toHaveAttribute('aria-label', 'Usage analytics provider: Codex')
-
-    await providerDropdown.click()
-    await koluxPage.getByRole('menuitem', { name: 'OpenCode', exact: true }).click()
-    await expect(koluxPage.getByRole('heading', { name: 'OpenCode Usage Tracking' })).toBeVisible()
-    await expect(providerDropdown).toHaveAttribute(
-      'aria-label',
-      'Usage analytics provider: OpenCode'
-    )
   })
 })

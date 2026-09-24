@@ -115,9 +115,10 @@ export class PiTitlebarExtensionService {
     return join(this.getOverlayRoot(kind), ptyId)
   }
 
-  // Why: overlay teardown must use the shared safeRemoveOverlay so the
-  // Windows-junction guard from issue #1083 stays in lock-step across all
-  // overlay consumers (Pi here, OpenCode in src/main/opencode/hook-service.ts).
+  // Why: overlay teardown must use the shared safeRemoveOverlay/safeRemoveTree
+  // (../pty/overlay-mirror.ts) so the Windows-junction guard from issue #1083
+  // stays in lock-step across every overlay consumer, including MiMo Code
+  // (src/main/mimo/hook-service.ts).
   private safeRemoveOverlay(overlayDir: string, kind: LegacyOverlayAgentKind): void {
     safeRemoveOverlay(overlayDir, this.getOverlayRoot(kind))
   }

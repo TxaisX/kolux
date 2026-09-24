@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
   activateAndRevealWorktree: vi.fn(),
   preflightAgentTrust: vi.fn(() => Promise.resolve()),
   buildQuickComposerStartup: vi.fn(),
+  connectionId: null as string | null | undefined,
+  executionHostId: 'local',
+  projectRuntime: undefined as undefined | { status: 'resolved'; runtime: { kind: 'wsl' } },
   groups: [] as { id: string; tabOrder: string[] }[]
 }))
 
@@ -41,6 +44,15 @@ vi.mock('@/lib/agent-trust-preflight', () => ({
 vi.mock('@/hooks/composer-state/quick-startup-plan', () => ({
   buildQuickComposerStartup: mocks.buildQuickComposerStartup
 }))
+vi.mock('@/lib/connection-context', () => ({
+  getConnectionIdFromState: () => mocks.connectionId
+}))
+vi.mock('@/lib/resolved-worktree-execution-host', () => ({
+  getResolvedExecutionHostIdForWorktree: () => mocks.executionHostId
+}))
+vi.mock('@/lib/local-preflight-context', () => ({
+  getLocalProjectExecutionRuntimeContext: () => mocks.projectRuntime
+}))
 
 // eslint-disable-next-line import/first -- mocks above must register before the module under test loads
 import { runSharedCheckoutLaunch } from './launch-agents-shared-checkout'
@@ -63,6 +75,9 @@ function seat(overrides: Partial<SharedCheckoutSeatRequest> = {}): SharedCheckou
 describe('runSharedCheckoutLaunch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.connectionId = null
+    mocks.executionHostId = 'local'
+    mocks.projectRuntime = undefined
     mocks.groups = [{ id: ROOT_GROUP, tabOrder: [] }]
     mocks.ensureWorktreeRootGroup.mockReturnValue(ROOT_GROUP)
     mocks.createEmptySplitGroup.mockImplementation(
@@ -86,13 +101,14 @@ describe('runSharedCheckoutLaunch', () => {
 
   it('gives every seat its own pane in the project workspace, then regrids and reveals it', async () => {
     const seats = [seat(), seat({ model: 'opus' }), seat()]
-    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, seats, {} as never)
+    expect(await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, seats, {} as never)).toBe(3)
 
     // Why: one trust write per agent in the wave, and it lands before any tab exists.
     expect(mocks.preflightAgentTrust).toHaveBeenCalledTimes(1)
     expect(mocks.preflightAgentTrust).toHaveBeenCalledWith({
       agent: CLAUDE,
-      workspacePath: WORKTREE_PATH
+      workspacePath: WORKTREE_PATH,
+      connectionId: null
     })
     expect(mocks.preflightAgentTrust.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.createTab.mock.invocationCallOrder[0]
@@ -142,11 +158,62 @@ describe('runSharedCheckoutLaunch', () => {
       backendStartup: undefined,
       telemetry: null
     })
-    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat()], {} as never)
+    expect(await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat()], {} as never)).toBe(0)
 
     expect(mocks.createTab).not.toHaveBeenCalled()
     expect(mocks.createEmptySplitGroup).not.toHaveBeenCalled()
     expect(mocks.regridToCurrentLeaves).not.toHaveBeenCalled()
     expect(mocks.activateAndRevealWorktree).not.toHaveBeenCalled()
+  })
+
+  it('uses the SSH host platform and connection for startup and trust', async () => {
+    mocks.connectionId = 'builder'
+    mocks.executionHostId = 'ssh:builder'
+    await runSharedCheckoutLaunch(WORKTREE, '/srv/project', [seat()], {} as never)
+
+    expect(mocks.preflightAgentTrust).toHaveBeenCalledWith({
+      agent: CLAUDE,
+      workspacePath: '/srv/project',
+      connectionId: 'builder'
+    })
+    expect(mocks.buildQuickComposerStartup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repoConnectionId: 'builder',
+        platform: 'linux',
+        isRemote: true
+      })
+    )
+  })
+
+  it('uses the WSL platform for a local project configured for WSL', async () => {
+    mocks.projectRuntime = { status: 'resolved', runtime: { kind: 'wsl' } }
+    await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat()], {} as never)
+
+    expect(mocks.buildQuickComposerStartup).toHaveBeenCalledWith(
+      expect.objectContaining({ platform: 'linux', isRemote: false })
+    )
+  })
+
+  it('does not launch when the checkout owner is unresolved', async () => {
+    mocks.connectionId = undefined
+    expect(await runSharedCheckoutLaunch(WORKTREE, WORKTREE_PATH, [seat()], {} as never)).toBe(0)
+    expect(mocks.preflightAgentTrust).not.toHaveBeenCalled()
+    expect(mocks.createTab).not.toHaveBeenCalled()
+  })
+
+  it('does not launch through an unresolved paired-runtime owner', async () => {
+    mocks.executionHostId = ''
+    expect(await runSharedCheckoutLaunch(WORKTREE, '/srv/project', [seat()], {} as never)).toBe(0)
+    expect(mocks.preflightAgentTrust).not.toHaveBeenCalled()
+    expect(mocks.createTab).not.toHaveBeenCalled()
+  })
+
+  it('does not write a paired-runtime checkout into local trust storage', async () => {
+    mocks.executionHostId = 'runtime:remote-1'
+    await runSharedCheckoutLaunch(WORKTREE, '/srv/project', [seat()], {} as never)
+    expect(mocks.preflightAgentTrust).not.toHaveBeenCalled()
+    expect(mocks.buildQuickComposerStartup).toHaveBeenCalledWith(
+      expect.objectContaining({ platform: 'linux', isRemote: true })
+    )
   })
 })

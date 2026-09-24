@@ -30,9 +30,6 @@ __kolux_restore_agent_teams_path() {
   export PATH="${KOLUX_AGENT_TEAMS_SHIM_DIR}:$PATH"
 }
 __kolux_restore_agent_teams_path
-# Why: user startup files may set the default OpenCode config after Kolux's
-# spawn env; restore the Kolux-managed config dir before the first prompt.
-[[ -n "${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"
 [[ -n "${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="${KOLUX_MIMOCODE_HOME}"
 # Why: OMP does not auto-load Kolux's managed status extension; wrap only
 # interactive launch invocations so subcommands such as `omp config` keep

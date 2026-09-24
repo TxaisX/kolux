@@ -33,25 +33,18 @@ export function UsageOverviewPane(): React.JSX.Element {
   const codexScanState = useAppStore((state) => state.codexUsageScanState)
   const codexSummary = useAppStore((state) => state.codexUsageSummary)
   const codexDaily = useAppStore((state) => state.codexUsageDaily)
-  const openCodeScanState = useAppStore((state) => state.openCodeUsageScanState)
-  const openCodeSummary = useAppStore((state) => state.openCodeUsageSummary)
-  const openCodeDaily = useAppStore((state) => state.openCodeUsageDaily)
   const fetchClaudeUsage = useAppStore((state) => state.fetchClaudeUsage)
   const fetchCodexUsage = useAppStore((state) => state.fetchCodexUsage)
-  const fetchOpenCodeUsage = useAppStore((state) => state.fetchOpenCodeUsage)
   const refreshClaudeUsage = useAppStore((state) => state.refreshClaudeUsage)
   const refreshCodexUsage = useAppStore((state) => state.refreshCodexUsage)
-  const refreshOpenCodeUsage = useAppStore((state) => state.refreshOpenCodeUsage)
   const enableClaudeUsage = useAppStore((state) => state.enableClaudeUsage)
   const enableCodexUsage = useAppStore((state) => state.enableCodexUsage)
-  const enableOpenCodeUsage = useAppStore((state) => state.enableOpenCodeUsage)
   const recordFeatureInteraction = useAppStore((state) => state.recordFeatureInteraction)
 
   useEffect(() => {
     void fetchClaudeUsage()
     void fetchCodexUsage()
-    void fetchOpenCodeUsage()
-  }, [fetchClaudeUsage, fetchCodexUsage, fetchOpenCodeUsage])
+  }, [fetchClaudeUsage, fetchCodexUsage])
 
   const overview = useMemo(
     () =>
@@ -65,24 +58,9 @@ export function UsageOverviewPane(): React.JSX.Element {
           scanState: codexScanState,
           summary: codexSummary,
           daily: codexDaily
-        },
-        opencode: {
-          scanState: openCodeScanState,
-          summary: openCodeSummary,
-          daily: openCodeDaily
         }
       }),
-    [
-      claudeDaily,
-      claudeScanState,
-      claudeSummary,
-      codexDaily,
-      codexScanState,
-      codexSummary,
-      openCodeDaily,
-      openCodeScanState,
-      openCodeSummary
-    ]
+    [claudeDaily, claudeScanState, claudeSummary, codexDaily, codexScanState, codexSummary]
   )
   const recentDays = useMemo(
     () => getRecentUsageDays(overview.daily, RECENT_DAY_COUNT),
@@ -93,8 +71,7 @@ export function UsageOverviewPane(): React.JSX.Element {
   const handleRefresh = (): void => {
     void Promise.all([
       claudeScanState?.enabled ? refreshClaudeUsage() : Promise.resolve(),
-      codexScanState?.enabled ? refreshCodexUsage() : Promise.resolve(),
-      openCodeScanState?.enabled ? refreshOpenCodeUsage() : Promise.resolve()
+      codexScanState?.enabled ? refreshCodexUsage() : Promise.resolve()
     ])
   }
 
@@ -174,19 +151,6 @@ export function UsageOverviewPane(): React.JSX.Element {
                 >
                   {translate('auto.components.stats.UsageOverviewPane.2f1ee2878b', 'Enable Codex')}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    recordFeatureInteraction('usage-tracking')
-                    void enableOpenCodeUsage()
-                  }}
-                >
-                  {translate(
-                    'auto.components.stats.UsageOverviewPane.2d13e57f72',
-                    'Enable OpenCode'
-                  )}
-                </Button>
               </div>
             </div>
           </div>
@@ -228,7 +192,7 @@ export function UsageOverviewPane(): React.JSX.Element {
               <div className="mt-4 rounded-lg border border-dashed border-border/60 bg-card/30 px-4 py-5 text-sm text-muted-foreground">
                 {translate(
                   'auto.components.stats.UsageOverviewPane.60002bb22f',
-                  'No local Claude, Codex, or OpenCode usage found yet. The overview will populate after the next agent session writes token logs.'
+                  'No local Claude or Codex usage found yet. The overview will populate after the next agent session writes token logs.'
                 )}
               </div>
             ) : (
@@ -270,10 +234,8 @@ export function UsageOverviewPane(): React.JSX.Element {
                 recordFeatureInteraction('usage-tracking')
                 if (provider.id === 'claude') {
                   void enableClaudeUsage()
-                } else if (provider.id === 'codex') {
-                  void enableCodexUsage()
                 } else {
-                  void enableOpenCodeUsage()
+                  void enableCodexUsage()
                 }
               }}
             />

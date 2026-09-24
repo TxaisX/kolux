@@ -10,7 +10,6 @@ const WELL_KNOWN_LABELS: Record<string, string> = {
   antigravity: 'Antigravity',
   amp: 'Amp',
   copilot: 'GitHub Copilot',
-  opencode: 'OpenCode',
   'mimo-code': 'MiMo Code',
   cursor: 'Cursor',
   aider: 'Aider',

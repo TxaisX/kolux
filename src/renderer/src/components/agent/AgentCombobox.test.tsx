@@ -186,16 +186,6 @@ describe('AgentCombobox', () => {
     expect(markup).not.toContain('<svg')
   })
 
-  it('uses the official OpenCode SVG mark instead of a remote favicon', () => {
-    const markup = renderToStaticMarkup(<AgentIcon agent="opencode" />)
-
-    expect(markup).toContain('<svg')
-    expect(markup).toContain('viewBox="0 0 512 512"')
-    expect(markup).not.toContain('/resources/opencode.webp')
-    expect(markup).not.toContain('https://www.google.com/s2/favicons')
-    expect(markup).not.toContain('<img')
-  })
-
   it('renders bundled favicons for favicon-domain agents instead of the remote Google service', () => {
     // Why: previously loaded from Google's favicon service (#8451). Iterate the
     // full asset map so missing files/key mismatches fail the test.

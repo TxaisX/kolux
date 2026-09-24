@@ -50,32 +50,8 @@ describe('fetchGeminiRateLimits fallback oauth creds', () => {
     })
   })
 
-  it('falls back to oauth_creds.json when auth.json has no google key', async () => {
+  it('reads oauth_creds.json and resolves project via loadCodeAssist', async () => {
     readFileMock.mockImplementation(async (filePath: string) => {
-      if (filePath.includes('auth.json')) {
-        return JSON.stringify({ 'opencode-go': { type: 'api', key: 'k' } })
-      }
-      if (filePath.includes('oauth_creds.json')) {
-        return JSON.stringify(validCreds)
-      }
-      throw { code: 'ENOENT' }
-    })
-    netFetchMock
-      .mockResolvedValueOnce(makeResponse({ cloudaicompanionProject: 'proj-123' }))
-      .mockResolvedValueOnce(makeResponse(quotaResponse))
-
-    const result = await fetchGeminiRateLimits(true)
-
-    expect(result.status).toBe('ok')
-    expect(result.error).toBeNull()
-    expect(result.session).not.toBeNull()
-  })
-
-  it('falls back to oauth_creds.json and resolves project via loadCodeAssist', async () => {
-    readFileMock.mockImplementation(async (filePath: string) => {
-      if (filePath.includes('auth.json')) {
-        return JSON.stringify({})
-      }
       if (filePath.includes('oauth_creds.json')) {
         return JSON.stringify(validCreds)
       }
@@ -101,9 +77,6 @@ describe('fetchGeminiRateLimits fallback oauth creds', () => {
 
   it('refreshes via bundled client credentials when expiry passed', async () => {
     readFileMock.mockImplementation(async (filePath: string) => {
-      if (filePath.includes('auth.json')) {
-        return JSON.stringify({})
-      }
       if (filePath.includes('oauth_creds.json')) {
         return JSON.stringify(expiredCreds)
       }
@@ -133,9 +106,6 @@ describe('fetchGeminiRateLimits fallback oauth creds', () => {
 
   it('returns error when oauth_creds.json token expired and bundle refresh fails', async () => {
     readFileMock.mockImplementation(async (filePath: string) => {
-      if (filePath.includes('auth.json')) {
-        return JSON.stringify({})
-      }
       if (filePath.includes('oauth_creds.json')) {
         return JSON.stringify(expiredCreds)
       }
@@ -159,9 +129,6 @@ describe('fetchGeminiRateLimits fallback oauth creds', () => {
     // error rather than silently posting an empty project to the quota API —
     // an empty project causes a 400 that looks like an auth failure.
     readFileMock.mockImplementation(async (filePath: string) => {
-      if (filePath.includes('auth.json')) {
-        return JSON.stringify({})
-      }
       if (filePath.includes('oauth_creds.json')) {
         return JSON.stringify(validCreds)
       }

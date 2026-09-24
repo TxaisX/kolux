@@ -13,7 +13,6 @@ export const AI_VAULT_AGENTS = [
   'antigravity',
   'rovo',
   'copilot',
-  'opencode',
   'grok',
   'openclaw',
   'devin',
@@ -55,7 +54,6 @@ export const AI_VAULT_AGENT_LABELS = {
   antigravity: 'Antigravity',
   rovo: 'Rovo Dev',
   copilot: 'GitHub Copilot',
-  opencode: 'OpenCode',
   grok: 'Grok',
   openclaw: 'OpenClaw',
   devin: 'Devin',
@@ -144,7 +142,7 @@ export type AiVaultSubagentListResult = {
 export type AiVaultFirstUserPromptArgs = {
   agent: AiVaultAgent
   filePath: string
-  // Required for OpenCode SQLite rows (filePath is the db; session is a row id).
+  // Required for SQLite-backed transcripts (filePath is the db; session is a row id).
   sessionId?: string
   // Transcripts are local-FS only; non-local hosts resolve to null prompt.
   executionHostId?: ExecutionHostId
@@ -157,7 +155,7 @@ export type AiVaultFirstUserPromptResult = {
 
 // A session is only offered for normal resume when its transcript actually holds
 // conversation turns; resuming a zero-turn transcript lands in an empty session.
-// Conversation previews count as evidence too: some parsers (e.g. Grok, OpenCode
+// Conversation previews count as evidence too: some parsers (e.g. Grok
 // fallback schemas) only learn the turn count from metadata that may be absent.
 export function isAiVaultSessionResumableContent(
   session: Pick<AiVaultSession, 'messageCount' | 'previewMessages'>

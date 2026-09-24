@@ -2,7 +2,7 @@ import { getAppEnvironment } from '../../shared/app-environment'
 import { join } from 'node:path'
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { getOpenCodeFamilyPluginSource } from '../opencode/hook-service'
+import { getMimoCodePluginSource } from './status-plugin/mimo-code-plugin-source'
 import { mirrorEntry, safeRemoveTree } from '../pty/overlay-mirror'
 
 const KOLUX_MIMOCODE_PLUGIN_FILE = 'kolux-mimocode-status.js'
@@ -78,7 +78,7 @@ export class MimoCodeHookService {
       mkdirSync(pluginsDir, { recursive: true })
       writeFileSync(
         join(pluginsDir, KOLUX_MIMOCODE_PLUGIN_FILE),
-        getOpenCodeFamilyPluginSource('/hook/mimo-code', { emitSessionStart: false })
+        getMimoCodePluginSource('/hook/mimo-code', { emitSessionStart: false })
       )
     } catch {
       return existingMimocodeHome ? { MIMOCODE_HOME: existingMimocodeHome } : {}

@@ -73,7 +73,6 @@ describe('zh provider usage wording (#12881)', () => {
       ['c0909c686e', 'Codex'],
       ['c1df0d67ec', 'Gemini'],
       ['antigravityUsage', 'Antigravity'],
-      ['8c86cd77b0', 'OpenCode Go'],
       ['5e59007df4', 'Kimi'],
       ['3bbf140864', 'MiniMax'],
       ['grokUsageMenu', 'Grok'],
@@ -82,7 +81,6 @@ describe('zh provider usage wording (#12881)', () => {
       ['54b1acf24f', 'Codex'],
       ['5bfb874d05', 'Gemini'],
       ['antigravityUsageTitle', 'Antigravity'],
-      ['bc046e7899', 'OpenCode Go'],
       ['3a6c028ea8', 'Kimi'],
       ['0f08f6b483', 'MiniMax'],
       ['f8e2a1c4b6', 'Grok'],
@@ -115,7 +113,6 @@ describe('zh provider usage wording (#12881)', () => {
   it('uses one wording for the "Open <Brand> usage details" labels', () => {
     for (const [key, brand] of [
       ['fda8146810', 'Kimi'],
-      ['629251f4b6', 'OpenCode Go'],
       ['d2375976eb', 'Gemini'],
       ['06741a2f3d', 'MiniMax'],
       ['antigravityUsageDetails', 'Antigravity'],

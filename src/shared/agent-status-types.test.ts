@@ -646,7 +646,6 @@ describe('normalizeAgentStatusPayload matches the JSON round trip', () => {
       agentType: 'kimi',
       lastAssistantMessage: '"escaped" quotes and \\ backslashes'
     },
-    { state: 'working', prompt: 'p', agentType: 'opencode' },
     { state: 'done', prompt: 'p', agentType: 'antigravity', interrupted: false },
     { state: 'working', prompt: 'p', agentType: 'pi', toolName: 'x'.repeat(9000) },
     { state: 'working', prompt: 'x'.repeat(9000), agentType: 'omp' },

@@ -155,7 +155,7 @@ Mapped 2026-09-14. Paths are repo-relative under `src/renderer/src` unless noted
 | Pane grid | `components/pane-layout/` (`computeGridRows`, `buildGridLayout`, `tidyLayout`), `setTabGroupLayout` | a "set pane count to N" command that creates and closes leaves |
 | YOLO by default | `src/shared/tui-agent-launch-defaults.ts` defaults every agent to its skip-permissions flag; `resolveWorktreeAgentLaunchArgs` applies the per-workspace override | none |
 | Workspace composer | `components/composer/WorkspaceComposer.tsx` under the panes: agent picker chip (`deriveNotesSendAgentTargets`) + YOLO chip (`agentPermissionModeByWorktree`), sends via `sendBracketedPasteToRunningAgent` | model / effort / branch / token chips |
-| Usage | `store/slices/rate-limits.ts`, `usage-provider-slices.ts` (Claude, Codex, OpenCode, Grok), `components/status-bar/InlineProviderUsage.tsx`, switcher menus, `feature-wall/agents-orchestration/UsagePage.tsx` | one view across CLIs with reset times |
+| Usage | `store/slices/rate-limits.ts`, `usage-provider-slices.ts` (Claude, Codex, Grok), `components/status-bar/InlineProviderUsage.tsx`, switcher menus, `feature-wall/agents-orchestration/UsagePage.tsx` | one view across CLIs with reset times |
 | PR state | `store/slices/hosted-review.ts` (provider-agnostic state and decision), `github-checks.ts` `checksStatus`, `components/github-pr-merge-state.ts` | a derived "ready to merge" |
 | Changes panel | `components/right-sidebar/source-control/` | bind to an arbitrary worktree, not only the active one |
 | Embedded browser | `components/browser-pane/` | place in the grid, bind to a workspace's dev server |

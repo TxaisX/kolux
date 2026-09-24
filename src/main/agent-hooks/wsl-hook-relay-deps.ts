@@ -8,10 +8,8 @@ import { isAgentStatusHooksEnabled } from './managed-agent-hook-controls'
 import { agentHookServer } from './server'
 import type { ManagedHookDetectionSettings } from './managed-hook-detection-commands'
 import { installRemoteManagedAgentHooks } from './remote-managed-hook-installers'
-import { getOpenCodePluginSource } from '../opencode/hook-service'
 import { codexHookService } from '../codex/hook-service'
 import type { AgentHookInstallStatus } from '../../shared/agent-hook-types'
-import type { PluginSources } from '../../relay/plugin-overlay'
 import {
   isWslDistroRunning,
   resolveWslHookRelayBundle,
@@ -65,8 +63,6 @@ export type WslHookRelayManagerDeps = {
   installHooks: typeof installRemoteManagedAgentHooks
   installCodex: (runtimeHomePath: string, distro: string) => Promise<AgentHookInstallStatus | null>
   managedHookSettings: () => ManagedHookDetectionSettings
-  /** Plugin source strings shipped to the guest relay so a Kolux update needn't redeploy the relay bundle. */
-  pluginSources: () => PluginSources
   warn: (message: string) => void
   transientRetryDelayMs: number
 }
@@ -111,8 +107,6 @@ export const defaultWslHookRelayDeps: WslHookRelayManagerDeps = {
       wslDistro: distro
     }),
   managedHookSettings: () => null,
-  // Why: only OpenCode is in scope for WSL now; the payload shape stays identical to SSH so Pi/OMP are additive later.
-  pluginSources: () => ({ opencodePluginSource: getOpenCodePluginSource() }),
   warn: (message) => console.warn(message),
   transientRetryDelayMs: WSL_RELAY_TRANSIENT_RETRY_DELAY_MS
 }

@@ -95,15 +95,14 @@ function LaunchAgentsBody({
     detectedIds: detectedAgentList,
     isLoading,
     isRefreshing,
+    detectionFailed,
     refresh
   } = useDetectedAgents(detectionTarget)
 
   const agents = useMemo(() => {
-    const detected = detectedAgentList ? new Set<TuiAgent>(detectedAgentList) : null
+    const detected = new Set<TuiAgent>(detectedAgentList ?? [])
     return getAgentCatalog().filter(
-      (entry) =>
-        isTuiAgentEnabled(entry.id, settings?.disabledTuiAgents) &&
-        (detected === null || detected.has(entry.id))
+      (entry) => isTuiAgentEnabled(entry.id, settings?.disabledTuiAgents) && detected.has(entry.id)
     )
   }, [detectedAgentList, settings?.disabledTuiAgents])
 
@@ -115,11 +114,12 @@ function LaunchAgentsBody({
   const [prompt, setPrompt] = useState('')
   const [launching, setLaunching] = useState(false)
 
-  // Why: pick the first detected agent once detection resolves, rather than
-  // blocking the grid on a default that may not be installed here.
+  // Why: a refresh or host switch can remove the selected CLI; keep the lineup launchable.
   useEffect(() => {
-    if (selectedAgent === null && agents.length > 0) {
-      setSelectedAgent(agents[0].id)
+    if (!agents.some((entry) => entry.id === selectedAgent)) {
+      const next = agents[0]?.id ?? null
+      setSelectedAgent(next)
+      setSlots((prev) => (next ? retargetLaunchSlots(prev, next) : []))
     }
   }, [agents, selectedAgent])
 
@@ -141,7 +141,14 @@ function LaunchAgentsBody({
     isolation === 'new-worktree' && newWorktreeAvailable ? 'new-worktree' : 'shared-checkout'
 
   const launch = async (): Promise<void> => {
-    if (!repo || !settings || slots.length === 0) {
+    if (
+      !repo ||
+      !settings ||
+      isLoading ||
+      isRefreshing ||
+      slots.length === 0 ||
+      slots.some((slot) => !agents.some((agent) => agent.id === slot.agent))
+    ) {
       return
     }
     setLaunching(true)
@@ -158,8 +165,12 @@ function LaunchAgentsBody({
           return
         }
         const seats = buildSharedCheckoutSeatRequests({ slots, prompt })
-        await runSharedCheckoutLaunch(worktree.id, worktree.path, seats, settings)
-        toast.success(T('launched', 'Launching {{count}} agent sessions', { count: seats.length }))
+        const launched = await runSharedCheckoutLaunch(worktree.id, worktree.path, seats, settings)
+        if (launched === 0) {
+          toast.error(T('noneLaunched', 'No agent sessions could be started.'))
+          return
+        }
+        toast.success(T('launched', 'Launching {{count}} agent sessions', { count: launched }))
         onClose()
         return
       }
@@ -187,7 +198,11 @@ function LaunchAgentsBody({
         setupDecision: trust === 'skip' ? 'skip' : setup.decision,
         worktreesByRepo,
         retired
-      })
+      }).filter((request) => request.startupPlan !== null)
+      if (requests.length === 0) {
+        toast.error(T('noneLaunched', 'No agent sessions could be started.'))
+        return
+      }
       for (const request of requests) {
         runBackgroundWorktreeCreation(request)
       }
@@ -222,7 +237,21 @@ function LaunchAgentsBody({
       <div className="scrollbar-sleek flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
         <div className="flex w-full max-w-[520px] flex-col gap-6">
           <Section label={T('agentSection', 'Agent')}>
-            <LaunchAgentGrid agents={agents} selected={selectedAgent} onSelect={selectAgent} />
+            <LaunchAgentGrid
+              agents={agents}
+              selected={selectedAgent}
+              onSelect={selectAgent}
+              emptyMessage={
+                isLoading
+                  ? T('detectingAgents', 'Looking for agent CLIs on this host…')
+                  : detectionFailed
+                    ? T(
+                        'detectionFailed',
+                        'Could not check this host for agent CLIs. Try Refresh agents.'
+                      )
+                    : T('noAgentsDetected', 'No agent CLIs detected on this host yet.')
+              }
+            />
             <Button
               type="button"
               variant="ghost"
@@ -299,7 +328,7 @@ function LaunchAgentsBody({
         <Button
           type="button"
           size="sm"
-          disabled={launching || slots.length === 0 || repo === null}
+          disabled={launching || isLoading || isRefreshing || slots.length === 0 || repo === null}
           onClick={() => void launch()}
         >
           <Rocket className="size-3.5" />

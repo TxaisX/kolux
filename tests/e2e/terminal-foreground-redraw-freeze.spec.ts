@@ -9,10 +9,12 @@ import { waitForTerminalPtyDataInjector } from './helpers/terminal-pty-injection
 // Repro commands:
 //   SKIP_BUILD=1 pnpm exec playwright test tests/e2e/terminal-foreground-redraw-freeze.spec.ts --config tests/playwright.config.ts --project electron-headless -g "active OpenTUI-style"
 //   git clone https://github.com/anomalyco/opencode.git .tmp/opencode
-//   node tests/e2e/capture-opencode-tui-repro.mjs
-//   SKIP_BUILD=1 pnpm exec playwright test tests/e2e/terminal-foreground-redraw-freeze.spec.ts --config tests/playwright.config.ts --project electron-headless -g "captured OpenCode/OpenTUI" --reporter=json
-// The captured replay uses an artificial OpenCode source-tree harness that
-// imports OpenCode's spinner frames and emits real OpenTUI <=2KB redraw chunks.
+//   node tests/e2e/capture-synthetic-tui-repro.mjs
+//   SKIP_BUILD=1 pnpm exec playwright test tests/e2e/terminal-foreground-redraw-freeze.spec.ts --config tests/playwright.config.ts --project electron-headless -g "captured synthetic TUI" --reporter=json
+// The captured replay uses an artificial source-tree harness built on the
+// real OpenCode/OpenTUI open-source project (unrelated to Kolux's own agent
+// integrations), importing its spinner frames to emit real OpenTUI <=2KB
+// redraw chunks.
 
 type SchedulerDebugSnapshot = {
   deferredForegroundEnqueueCount: number
@@ -60,8 +62,8 @@ const REWRITE_REDRAW_PAYLOAD_CHARS = REDRAW_PAYLOAD_CHARS
 const TIMER_SAMPLE_MS = 16
 const MAX_RENDERER_TIMER_DRIFT_MS = 500
 const FOREGROUND_IMMEDIATE_BUDGET_CHARS = 128 * 1024
-const OPENCODE_CAPTURE_REPLAY_CHARS = FOREGROUND_IMMEDIATE_BUDGET_CHARS * 64
-const OPENCODE_CAPTURE_PATH = path.join(process.cwd(), '.tmp', 'opencode-tui-capture.txt')
+const SYNTHETIC_TUI_CAPTURE_REPLAY_CHARS = FOREGROUND_IMMEDIATE_BUDGET_CHARS * 64
+const SYNTHETIC_TUI_CAPTURE_PATH = path.join(process.cwd(), '.tmp', 'synthetic-tui-capture.txt')
 
 async function resetSchedulerDebug(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -296,11 +298,11 @@ async function disposeActivePaneRefreshProbe(page: Page): Promise<void> {
   })
 }
 
-function loadCapturedOpenCodeSmallRedrawFrames(): string[] {
-  if (!existsSync(OPENCODE_CAPTURE_PATH)) {
+function loadCapturedSyntheticTuiSmallRedrawFrames(): string[] {
+  if (!existsSync(SYNTHETIC_TUI_CAPTURE_PATH)) {
     return []
   }
-  const capture = readFileSync(OPENCODE_CAPTURE_PATH, 'utf8')
+  const capture = readFileSync(SYNTHETIC_TUI_CAPTURE_PATH, 'utf8')
   const smallFrames = capture
     .split('\x1b[?2026h')
     .slice(1)
@@ -309,11 +311,11 @@ function loadCapturedOpenCodeSmallRedrawFrames(): string[] {
 
   const frames: string[] = []
   let totalChars = 0
-  while (smallFrames.length > 0 && totalChars <= OPENCODE_CAPTURE_REPLAY_CHARS) {
+  while (smallFrames.length > 0 && totalChars <= SYNTHETIC_TUI_CAPTURE_REPLAY_CHARS) {
     for (const frame of smallFrames) {
       frames.push(frame)
       totalChars += frame.length
-      if (totalChars > OPENCODE_CAPTURE_REPLAY_CHARS) {
+      if (totalChars > SYNTHETIC_TUI_CAPTURE_REPLAY_CHARS) {
         break
       }
     }
@@ -420,13 +422,13 @@ test.describe('Terminal foreground redraw freeze repro', () => {
     expect(scheduler.deferredForegroundEnqueueCount).toBeGreaterThan(0)
   })
 
-  test('captured OpenCode/OpenTUI redraw bytes do not monopolize foreground writes', async ({
+  test('captured synthetic TUI (OpenCode/OpenTUI) redraw bytes do not monopolize foreground writes', async ({
     koluxPage
   }, testInfo) => {
-    const frames = loadCapturedOpenCodeSmallRedrawFrames()
+    const frames = loadCapturedSyntheticTuiSmallRedrawFrames()
     test.skip(
       frames.length === 0,
-      `OpenCode PTY capture missing; run "git clone https://github.com/anomalyco/opencode.git .tmp/opencode" then "node tests/e2e/capture-opencode-tui-repro.mjs" to generate ${OPENCODE_CAPTURE_PATH}`
+      `synthetic-TUI PTY capture missing; run "git clone https://github.com/anomalyco/opencode.git .tmp/opencode" then "node tests/e2e/capture-synthetic-tui-repro.mjs" to generate ${SYNTHETIC_TUI_CAPTURE_PATH}`
     )
 
     await waitForSessionReady(koluxPage)

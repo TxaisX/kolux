@@ -3,9 +3,8 @@ import { join } from 'node:path'
 /**
  * Where an agent CLI lands when no version manager installed it: Homebrew (both
  * prefixes), npm's default global prefix, snap, nix, or the CLI's own installer
- * (#829 named `~/.opencode/bin` and `~/.vite-plus/bin` as the motivating cases,
- * but only for the login-shell probe; the fallback used when that probe fails
- * never gained either).
+ * (#829 named `~/.vite-plus/bin` as a motivating case, but only for the
+ * login-shell probe; the fallback used when that probe fails never gained it).
  *
  * Ordered to match the system block `patchPackagedProcessPath` appends to PATH,
  * so a CLI present in two of *these* dirs resolves to the same binary here, in
@@ -34,8 +33,8 @@ export function getSystemCliInstallDirectories(
   homePath: string
 ): string[] {
   // Why nothing here: the PATH seed's system block is POSIX-only too, so
-  // Windows installs outside a version manager (`%USERPROFILE%\.opencode\bin`)
-  // have never had install-dir coverage in either list. Unchanged, not fixed.
+  // Windows installs outside a version manager have never had install-dir
+  // coverage in either list. Unchanged, not fixed.
   if (platform === 'win32') {
     return []
   }
@@ -52,8 +51,7 @@ export function getSystemCliInstallDirectories(
   directories.push(
     '/nix/var/nix/profiles/default/bin',
     join(homePath, '.nix-profile', 'bin'),
-    // Why both: the opencode and Pi installers' own defaults, which no version manager owns (#829).
-    join(homePath, '.opencode', 'bin'),
+    // Why: Pi's installer own default, which no version manager owns (#829).
     join(homePath, '.vite-plus', 'bin')
   )
   return directories

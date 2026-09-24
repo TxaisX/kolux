@@ -442,7 +442,7 @@ describe('GrokHookService', () => {
   // Why: hook-config-write-path.ts exists because users symlink these configs into dotfiles repos.
   // Unlinking or renaming onto the link path destroys that link and silently detaches the file they
   // version-control. Their file is theirs -- strip our entries and write through it.
-  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
   it.skipIf(process.platform === 'win32')(
     'writes through a symlinked config instead of destroying the link',
     async () => {
@@ -463,7 +463,7 @@ describe('GrokHookService', () => {
     }
   )
 
-  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
   it.skipIf(process.platform === 'win32')(
     'respects an empty user-managed symlink as an opt-out',
     () => {
@@ -482,7 +482,7 @@ describe('GrokHookService', () => {
     }
   )
 
-  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
   it.skipIf(process.platform === 'win32')(
     'writes through a symlinked config on the sync remove path too',
     () => {
@@ -506,7 +506,7 @@ describe('GrokHookService', () => {
   // Why: a symlinked config is written THROUGH on removal rather than unlinked, so after a quit it
   // is an empty file WE emptied -- byte-identical to one a user cleared. Letting the user-cleared
   // heuristic see it meant a symlinked config was silently never reinstalled after the first quit.
-  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+  // Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
   it.skipIf(process.platform === 'win32')(
     'reinstalls into a symlinked config on the launch after a quit',
     async () => {

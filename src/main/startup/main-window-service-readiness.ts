@@ -8,7 +8,6 @@ const MAIN_WINDOW_SERVICE_REQUIREMENTS = [
   ['stats', 'Stats must be initialized before opening the main window'],
   ['claudeUsage', 'Claude usage store must be initialized before opening the main window'],
   ['codexUsage', 'Codex usage store must be initialized before opening the main window'],
-  ['openCodeUsage', 'OpenCode usage store must be initialized before opening the main window'],
   ['rateLimits', 'Rate limit service must be initialized before opening the main window'],
   ['automations', 'Automation service must be initialized before opening the main window'],
   ['codexAccounts', 'Codex account service must be initialized before opening the main window'],

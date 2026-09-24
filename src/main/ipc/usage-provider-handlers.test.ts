@@ -20,14 +20,12 @@ describe('usage provider IPC handlers', () => {
     })
     const claudeUsage = createUsage()
     const codexUsage = createUsage()
-    const openCodeUsage = createUsage()
     registerUsageProviderHandlers({
       claudeUsage: claudeUsage as never,
-      codexUsage: codexUsage as never,
-      openCodeUsage: openCodeUsage as never
+      codexUsage: codexUsage as never
     })
 
-    const prefixes = ['claudeUsage', 'codexUsage', 'openCodeUsage']
+    const prefixes = ['claudeUsage', 'codexUsage']
     const suffixes = Object.keys(claudeUsage)
     expect(handle.mock.calls.map(([channel]) => channel)).toEqual(
       prefixes.flatMap((prefix) => suffixes.map((suffix) => `${prefix}:${suffix}`))
@@ -41,7 +39,6 @@ describe('usage provider IPC handlers', () => {
     }
     call('claudeUsage', 'getScanState')
     call('codexUsage', 'getScanState')
-    call('openCodeUsage', 'getScanState')
     call('claudeUsage', 'setEnabled', { enabled: true })
     call('claudeUsage', 'refresh')
     call('claudeUsage', 'refresh', { force: true })
@@ -53,7 +50,6 @@ describe('usage provider IPC handlers', () => {
 
     expect(claudeUsage.getScanState).toHaveBeenCalledWith()
     expect(codexUsage.getScanState).toHaveBeenCalledWith()
-    expect(openCodeUsage.getScanState).toHaveBeenCalledWith()
     expect(claudeUsage.setEnabled).toHaveBeenCalledWith(true)
     expect(claudeUsage.refresh.mock.calls).toEqual([[false], [true]])
     expect(claudeUsage.getSnapshot).toHaveBeenCalledWith('kolux', '30d', 7)

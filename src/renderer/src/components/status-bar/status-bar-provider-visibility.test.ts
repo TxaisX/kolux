@@ -35,15 +35,15 @@ describe('isProviderConfigured', () => {
   })
 
   it('hides an unconfigured (unavailable) provider', () => {
-    // The bug: Gemini OAuth off / OpenCode Go cookie unset returns a non-null
-    // `unavailable` object, which previously slipped past the `!== null` gate
-    // and rendered a "--" bar for a provider the user never configured.
+    // The bug: Gemini OAuth off returns a non-null `unavailable` object, which
+    // previously slipped past the `!== null` gate and rendered a "--" bar for
+    // a provider the user never configured.
     expect(isProviderConfigured(provider('unavailable'))).toBe(false)
   })
 
   it('hides a first-load fetching provider until it has proven usage data', () => {
     // The initial fetch marks every provider as `fetching`; without prior data
-    // that state is not proof the user configured Gemini or OpenCode Go.
+    // that state is not proof the user configured Gemini.
     expect(isProviderConfigured(provider('fetching'))).toBe(false)
   })
 
@@ -70,7 +70,6 @@ function usageSettings(overrides: Partial<UsageProviderSettings> = {}): UsagePro
   return {
     codexManagedAccounts: [],
     claudeManagedAccounts: [],
-    opencodeSessionCookie: '',
     geminiCliOAuthEnabled: false,
     antigravityUsageConfigured: false,
     minimaxCookieConfigured: false,
@@ -120,9 +119,6 @@ describe('hasUsageProviderSettings', () => {
 
   it('treats explicit non-managed provider settings as configured usage providers', () => {
     expect(hasUsageProviderSettings(usageSettings({ geminiCliOAuthEnabled: true }))).toBe(true)
-    expect(
-      hasUsageProviderSettings(usageSettings({ opencodeSessionCookie: ' session=abc ' }))
-    ).toBe(true)
     // Why: antigravity durability requires the Gemini OAuth opt-in; the
     // checked item alone must not suppress the usage setup CTA.
     expect(hasUsageProviderSettings(usageSettings({ antigravityUsageConfigured: true }))).toBe(
@@ -394,7 +390,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('unavailable', { provider: 'claude' }),
           codex: provider('unavailable', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: undefined,
           minimax: undefined,
@@ -412,7 +407,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('fetching', { provider: 'claude' }),
           codex: provider('fetching', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: provider('unavailable', { provider: 'antigravity' }),
           minimax: provider('unavailable', { provider: 'minimax' }),
@@ -430,7 +424,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('unavailable', { provider: 'claude' }),
           codex: provider('unavailable', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: provider('unavailable', { provider: 'antigravity' }),
           minimax: provider('unavailable', { provider: 'minimax' }),
@@ -463,7 +456,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('unavailable', { provider: 'claude' }),
           codex: provider('unavailable', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: null,
           minimax: provider('unavailable', { provider: 'minimax' }),
@@ -481,7 +473,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('unavailable', { provider: 'claude' }),
           codex: provider('unavailable', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: null,
           grok: provider('unavailable', { provider: 'grok' }),
@@ -501,7 +492,6 @@ describe('isUsageEmptyState', () => {
           claude: provider('unavailable', { provider: 'claude' }),
           codex: provider('unavailable', { provider: 'codex' }),
           gemini: provider('unavailable'),
-          opencodeGo: provider('unavailable', { provider: 'opencode-go' }),
           kimi: provider('unavailable', { provider: 'kimi' }),
           antigravity: null,
           grok: provider('unavailable', { provider: 'grok' }),

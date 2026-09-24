@@ -48,7 +48,7 @@ function parseAssignedValue(
       continue
     }
     // Why: strip trailing unquoted `# comment` first so quoted values like
-    // `"$HOME/.opencode" # note` survive intact for unquoteShellValue.
+    // `"$HOME/.config" # note` survive intact for unquoteShellValue.
     const decommented = stripTrailingComment(match[2])
     const { text, quoted } = unquoteShellValue(decommented)
     // Why: $HOME / ${HOME} / ~ expansion mimics what the live shell would

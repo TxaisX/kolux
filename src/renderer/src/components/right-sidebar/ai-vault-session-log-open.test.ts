@@ -92,7 +92,7 @@ describe('openAiVaultSessionLogInKolux', () => {
     await openAiVaultSessionLogInKolux({ filePath: '   ', executionHostId: 'local' })
     await openAiVaultSessionLogInKolux({ filePath: LOG_PATH, executionHostId: 'ssh:dev-box' })
     await openAiVaultSessionLogInKolux({
-      filePath: '/home/user/.opencode/db.sqlite#sess_1',
+      filePath: '/home/user/.claude/db.sqlite#sess_1',
       executionHostId: 'local'
     })
 

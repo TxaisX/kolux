@@ -94,12 +94,15 @@ export function getSidebarUpdateButtonModel(status: UpdateStatus): SidebarUpdate
     case 'error':
       return {
         ...base,
-        label: translate('auto.components.sidebar.SidebarUpdateButton.0c9d7b5e36', 'Update failed'),
-        tooltip: translate(
-          'auto.components.sidebar.SidebarUpdateButton.e4f1b8c627',
-          'Update failed. Click to try again.'
-        ),
-        action: 'check'
+        label:
+          status.retryable === false
+            ? translate(
+                'auto.components.sidebar.SidebarUpdateButton.1e6f4a8b27',
+                'Update unavailable'
+              )
+            : translate('auto.components.sidebar.SidebarUpdateButton.0c9d7b5e36', 'Update failed'),
+        tooltip: status.message,
+        action: status.retryable === false ? null : 'check'
       }
     case 'idle':
       return {

@@ -165,8 +165,8 @@ describe('SyncDatabase statement cache', () => {
   })
 })
 
-// Why (#15036): the OpenCode readers opened read-only with no busy timeout, so a
-// contended DB failed in ~1 ms and emptied the whole panel. These pin that the
+// Why (#15036): a read-only reader opened with no busy timeout made a
+// contended DB fail in ~1 ms and empty the whole panel. These pin that the
 // wrapper really forwards `timeout` into sqlite3_busy_timeout.
 describe('SyncDatabase read-only opens under contention', () => {
   // The lock holder must live on another thread: sqlite3_busy_timeout sleeps

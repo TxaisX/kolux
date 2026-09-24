@@ -51,13 +51,11 @@ function readInheritedOrShellEnvVar(name: string, sourceName?: string): string |
 
 function prepareShellConfigDirEnv(agentId: string): { ok: true; env?: NodeJS.ProcessEnv } | null {
   const configVar =
-    agentId === 'opencode'
-      ? 'OPENCODE_CONFIG_DIR'
-      : agentId === 'pi' || agentId === 'omp'
-        ? 'PI_CODING_AGENT_DIR'
-        : agentId === 'grok'
-          ? 'GROK_HOME'
-          : null
+    agentId === 'pi' || agentId === 'omp'
+      ? 'PI_CODING_AGENT_DIR'
+      : agentId === 'grok'
+        ? 'GROK_HOME'
+        : null
   if (!configVar) {
     return null
   }
@@ -66,13 +64,11 @@ function prepareShellConfigDirEnv(agentId: string): { ok: true; env?: NodeJS.Pro
   // the Pi one (and vice versa). PI_CODING_AGENT_DIR is the binary-facing var
   // both kinds consume — see src/main/pi/titlebar-extension-service.ts.
   const sourceVar =
-    agentId === 'opencode'
-      ? 'KOLUX_OPENCODE_SOURCE_CONFIG_DIR'
-      : agentId === 'pi'
-        ? 'KOLUX_PI_SOURCE_AGENT_DIR'
-        : agentId === 'omp'
-          ? 'KOLUX_OMP_SOURCE_AGENT_DIR'
-          : undefined
+    agentId === 'pi'
+      ? 'KOLUX_PI_SOURCE_AGENT_DIR'
+      : agentId === 'omp'
+        ? 'KOLUX_OMP_SOURCE_AGENT_DIR'
+        : undefined
 
   const value = readInheritedOrShellEnvVar(configVar, sourceVar)
   if (!value) {

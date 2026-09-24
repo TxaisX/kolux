@@ -101,36 +101,7 @@ describe('createPtySubprocess', () => {
         rows: 24,
         env: {
           SHELL: '/bin/zsh',
-          KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-config'
-        }
-      })
-    } finally {
-      if (platform) {
-        Object.defineProperty(process, 'platform', platform)
-      }
-    }
-
-    const lastCall = spawnMock.mock.calls.at(-1)!
-    expect(lastCall[1]).toEqual(['-l'])
-    expect(lastCall[2].env.ZDOTDIR).toMatch(ZSH_SHELL_READY_DIR)
-    expect(lastCall[2].env.KOLUX_SHELL_FEATURES).not.toContain('ready')
-  })
-
-  it('uses shell wrapper when OpenCode config must survive shell startup', async () => {
-    const proc = mockPtyProcess()
-    spawnMock.mockReturnValue(proc)
-    const platform = Object.getOwnPropertyDescriptor(process, 'platform')
-    Object.defineProperty(process, 'platform', { value: 'linux' })
-
-    try {
-      await createPtySubprocess({
-        sessionId: 'test',
-        cols: 80,
-        rows: 24,
-        env: {
-          SHELL: '/bin/zsh',
-          OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay',
-          KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-overlay'
+          KOLUX_MIMOCODE_HOME: '/tmp/kolux-mimocode-config'
         }
       })
     } finally {

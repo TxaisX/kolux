@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 const scriptPath = 'config/scripts/check-terminal-perf-report-budgets.mjs'
 const tempDirs = []
 
-function writeReport(annotationDescription, annotationType = 'opencode-test') {
+function writeReport(annotationDescription, annotationType = 'tui-test') {
   const dir = mkdtempSync(join(tmpdir(), 'kolux-terminal-perf-report-'))
   tempDirs.push(dir)
   const reportPath = join(dir, 'report.json')
@@ -51,7 +51,7 @@ afterEach(() => {
 })
 
 describe('check-terminal-perf-report-budgets', () => {
-  it('passes reports whose OpenCode terminal perf annotations stay within budgets', () => {
+  it('passes reports whose TUI terminal perf annotations stay within budgets', () => {
     const reportPath = writeReport(
       [
         'panes=51',
@@ -111,10 +111,10 @@ describe('check-terminal-perf-report-budgets', () => {
   // prefix matches) so a predicate regression cannot silently re-apply the
   // unloaded 150ms ceiling to multi-pane redraw rows.
   it.each([
-    'opencode-same-workspace-typing',
-    'opencode-cross-workspace-typing',
-    'opencode-scale-same-workspace-50',
-    'opencode-scale-cross-workspace-50'
+    'tui-same-workspace-typing',
+    'tui-cross-workspace-typing',
+    'tui-scale-same-workspace-50',
+    'tui-scale-cross-workspace-50'
   ])('applies the under-load timer-drift budget to %s', (scenario) => {
     const passPath = writeReport(
       ['panes=50', 'frames=60', 'median=12.0ms', 'worst=40.0ms', 'maxTimerDrift=1510.0ms'].join(
@@ -135,7 +135,7 @@ describe('check-terminal-perf-report-budgets', () => {
       ['panes=50', 'frames=60', 'median=12.0ms', 'worst=40.0ms', 'maxTimerDrift=3501.0ms'].join(
         ' '
       ),
-      'opencode-cross-workspace-typing'
+      'tui-cross-workspace-typing'
     )
     const failResult = runChecker(failPath)
     expect(failResult.status).toBe(1)
@@ -168,7 +168,7 @@ describe('check-terminal-perf-report-budgets', () => {
   it('accepts parked-memory rows that carry only heap and view-count metrics', () => {
     const reportPath = writeReport(
       'panes=8 parkedTabs=8 heapUsedMB=87.8 liveTerminals=1 livePaneManagers=1',
-      'opencode-parked-memory'
+      'tui-parked-memory'
     )
 
     const output = execFileSync(process.execPath, [scriptPath, reportPath], {
@@ -179,7 +179,7 @@ describe('check-terminal-perf-report-budgets', () => {
     expect(output).toContain('Terminal perf budget check passed for 1 annotation row(s).')
   })
 
-  it('fails OpenCode annotation rows that contain no budget metrics', () => {
+  it('fails TUI annotation rows that contain no budget metrics', () => {
     const reportPath = writeReport('panes=1 frames=60')
 
     const result = runChecker(reportPath)
@@ -188,12 +188,12 @@ describe('check-terminal-perf-report-budgets', () => {
     expect(result.stderr).toContain('no recognized budget metrics found')
   })
 
-  it('ignores non-OpenCode annotations but fails when no perf rows remain', () => {
+  it('ignores non-TUI annotations but fails when no perf rows remain', () => {
     const reportPath = writeReport('median=999.0ms', 'browser-unrelated')
 
     const result = runChecker(reportPath)
 
     expect(result.status).toBe(1)
-    expect(result.stderr).toContain('No OpenCode terminal perf annotations found.')
+    expect(result.stderr).toContain('No TUI terminal perf annotations found.')
   })
 })

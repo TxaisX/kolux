@@ -28,6 +28,8 @@ export type UpdaterSetupOptions = {
   getLastUpdateCheckAt?: () => number | null
   onBeforeQuit?: () => void | Promise<void>
   setLastUpdateCheckAt?: (timestamp: number) => void
+  getLastNotifiedUpdateVersion?: () => string | null
+  setLastNotifiedUpdateVersion?: (version: string) => void
   getPendingUpdateNudgeId?: () => string | null
   getDismissedUpdateNudgeId?: () => string | null
   setPendingUpdateNudgeId?: (id: string | null) => void
@@ -113,6 +115,8 @@ export class UpdaterSetup extends UpdaterDownloadInstall {
     this.mainWindowRef = mainWindow
     this.onBeforeQuitCleanup = opts?.onBeforeQuit ?? null
     this.persistLastUpdateCheckAt = opts?.setLastUpdateCheckAt ?? null
+    this.getLastNotifiedUpdateVersion = opts?.getLastNotifiedUpdateVersion ?? null
+    this.setLastNotifiedUpdateVersion = opts?.setLastNotifiedUpdateVersion ?? null
     this._getLastUpdateCheckAt = opts?.getLastUpdateCheckAt ?? null
     this._getPendingUpdateNudgeId = opts?.getPendingUpdateNudgeId ?? null
     this._getDismissedUpdateNudgeId = opts?.getDismissedUpdateNudgeId ?? null

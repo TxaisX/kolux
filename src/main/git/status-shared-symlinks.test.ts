@@ -12,7 +12,7 @@ import { getStatus } from './status'
 const git = (args: string[], cwd: string): string =>
   execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
 
-// Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches opencode's guard.
+// Why skipIf(win32): symlinkSync needs Windows Developer Mode/admin; matches the overlay symlink guard used elsewhere for junction-safety tests.
 describe.skipIf(process.platform === 'win32')('getStatus shared symlink exclusion', () => {
   let root: string
   let primary: string

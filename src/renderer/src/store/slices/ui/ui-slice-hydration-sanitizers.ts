@@ -249,12 +249,14 @@ export function presetToQuery(presetId: TaskViewPresetId | null): string {
 
 export function migrateStatusBarItems(items: readonly string[] | undefined): StatusBarItem[] {
   const source = items ?? DEFAULT_STATUS_BAR_ITEMS
-  const out: string[] = []
+  const out: StatusBarItem[] = []
   for (const id of source) {
     const mapped = id === 'memory' || id === 'sessions' ? 'resource-usage' : id
-    if (!out.includes(mapped)) {
-      out.push(mapped)
+    // Why: persisted state can still name retired items (e.g. 'opencode-go'); defaults list every live item.
+    const known = DEFAULT_STATUS_BAR_ITEMS.find((item) => item === mapped)
+    if (known && !out.includes(known)) {
+      out.push(known)
     }
   }
-  return out as StatusBarItem[]
+  return out
 }

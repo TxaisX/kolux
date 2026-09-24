@@ -75,14 +75,6 @@ export function UpdateCard(): React.JSX.Element | null {
     const timer = window.setTimeout(() => setAutoDismissed(true), 3000)
     return () => window.clearTimeout(timer)
   }, [shouldAutoDismissLatest])
-  useEffect(() => {
-    if (status.state === 'downloaded' && hasStartedDownload.current) {
-      void window.api.updater.quitAndInstall().catch((error) => {
-        setInstallError(String((error as Error)?.message ?? error))
-      })
-    }
-  }, [status.state])
-
   const prefersReducedMotion = usePrefersReducedMotion()
   const clearAnimationTimers = useCallback(() => {
     if (dismissAnimationTimerRef.current !== null) {
@@ -217,7 +209,6 @@ export function UpdateCard(): React.JSX.Element | null {
       errorCard={errorCard}
       linuxPackageRecovery={linuxPackageRecovery}
       isLocalBuild={isLocalBuild}
-      hasStartedDownload={hasStartedDownload.current}
       prefersReducedMotion={prefersReducedMotion}
       mediaFailed={mediaFailed}
       mediaLoaded={mediaLoaded}

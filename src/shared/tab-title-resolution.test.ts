@@ -26,23 +26,10 @@ describe('tab title resolution', () => {
     ).toBe('Payments')
   })
 
-  it('uses meaningful native OpenCode session titles before generated titles', () => {
+  it('keeps generated titles ahead of a bare idle live title', () => {
     expect(
       resolveTerminalTabTitle(
-        {
-          customTitle: null,
-          generatedTitle: 'Refactor auth',
-          title: 'OC | Native Stable Session'
-        },
-        true
-      )
-    ).toBe('OC | Native Stable Session')
-  })
-
-  it('keeps generated titles ahead of generic OpenCode titles', () => {
-    expect(
-      resolveTerminalTabTitle(
-        { customTitle: null, generatedTitle: 'Refactor auth', title: 'OpenCode' },
+        { customTitle: null, generatedTitle: 'Refactor auth', title: 'Idle session' },
         true
       )
     ).toBe('Refactor auth')
@@ -120,7 +107,7 @@ describe('tab title resolution', () => {
     ).toBe('Run tests')
   })
 
-  it('keeps OpenCode native and Kolux-generated title behavior intact', () => {
+  it('keeps AI Vault and Kolux-generated title behavior intact', () => {
     const aiVaultTitle = {
       agent: 'codex' as const,
       sessionId: 'codex-session',
@@ -132,11 +119,11 @@ describe('tab title resolution', () => {
           customTitle: null,
           aiVaultTitle,
           generatedTitle: 'Kolux generated',
-          title: 'OC | OpenCode native'
+          title: '⠋ albacore'
         },
         true
       )
-    ).toBe('OC | OpenCode native')
+    ).toBe('Codex conversation')
     expect(
       resolveTerminalTabTitle(
         { customTitle: null, generatedTitle: 'Kolux generated', title: '⠋ albacore' },
@@ -168,27 +155,14 @@ describe('tab title resolution', () => {
     ).toBe('Run build')
   })
 
-  it('uses meaningful native OpenCode labels before generated unified labels', () => {
-    expect(
-      resolveUnifiedTabLabel(
-        {
-          customLabel: null,
-          generatedLabel: 'Fix flaky tests',
-          label: 'OC | Native Stable Session'
-        },
-        true
-      )
-    ).toBe('OC | Native Stable Session')
-  })
-
-  it('keeps manual and quick command labels ahead of native OpenCode labels', () => {
+  it('keeps manual and quick command labels ahead of a live label', () => {
     expect(
       resolveUnifiedTabLabel(
         {
           customLabel: 'Manual label',
           quickCommandLabel: 'Run build',
           generatedLabel: 'Fix flaky tests',
-          label: 'OC | Native Stable Session'
+          label: 'Idle session'
         },
         true
       )
@@ -199,7 +173,7 @@ describe('tab title resolution', () => {
           customLabel: null,
           quickCommandLabel: 'Run build',
           generatedLabel: 'Fix flaky tests',
-          label: 'OC | Native Stable Session'
+          label: 'Idle session'
         },
         true
       )

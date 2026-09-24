@@ -58,7 +58,7 @@ describe('NativeChatSupportedAgents', () => {
     }
   })
 
-  it('omits agents native chat cannot render, including OpenCode', () => {
+  it('omits agents native chat cannot render', () => {
     const rendered = getRenderedChips().map((chip) => chip.agent)
 
     for (const entry of getAgentCatalog()) {
@@ -66,7 +66,6 @@ describe('NativeChatSupportedAgents', () => {
         expect(rendered).not.toContain(entry.id)
       }
     }
-    expect(rendered).not.toContain('opencode')
   })
 
   it('keeps the label in the English catalog', () => {

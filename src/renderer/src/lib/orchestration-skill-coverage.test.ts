@@ -160,11 +160,6 @@ describe('orchestration skill agent coverage', () => {
         directoryPath: '/Users/test/.grok/skills/orchestration'
       },
       {
-        agent: 'opencode',
-        rootPath: '/Users/test/.config/opencode/skills',
-        directoryPath: '/Users/test/.config/opencode/skills/orchestration'
-      },
-      {
         agent: 'pi',
         rootPath: '/Users/test/.pi/agent/skills',
         directoryPath: '/Users/test/.pi/agent/skills/orchestration'
@@ -206,7 +201,6 @@ describe('orchestration skill agent coverage', () => {
       source('/Users/test/.codex/skills', 'codex'),
       source('/Users/test/.claude/skills', 'claude'),
       source('/Users/test/.grok/skills', 'grok'),
-      source('/Users/test/.config/opencode/skills', 'opencode'),
       source('/Users/test/.pi/agent/skills', 'pi'),
       source('/Users/test/.gemini/skills', 'gemini'),
       source('/Users/test/.gemini/antigravity/skills', 'antigravity'),
@@ -224,17 +218,7 @@ describe('orchestration skill agent coverage', () => {
     expect(
       getOrchestrationSkillAgentStatuses(
         skills,
-        [
-          'codex',
-          'claude',
-          'claude-agent-teams',
-          'grok',
-          'opencode',
-          'pi',
-          'gemini',
-          'antigravity',
-          'cursor'
-        ],
+        ['codex', 'claude', 'claude-agent-teams', 'grok', 'pi', 'gemini', 'antigravity', 'cursor'],
         roots
       ).every((status) => status.installed)
     ).toBe(true)
@@ -309,16 +293,16 @@ describe('orchestration skill agent coverage', () => {
   it('marks a multi-segment provider-home agent from a Windows-style path', () => {
     expect(
       agentHasOrchestrationSkill(
-        'opencode',
+        'antigravity',
         [
           skill({
             providers: ['agent-skills'],
             sourceKind: 'home',
-            rootPath: 'C:\\Users\\test\\.config\\opencode\\skills',
-            directoryPath: 'C:\\Users\\test\\.config\\opencode\\skills\\orchestration'
+            rootPath: 'C:\\Users\\test\\.gemini\\antigravity\\skills',
+            directoryPath: 'C:\\Users\\test\\.gemini\\antigravity\\skills\\orchestration'
           })
         ],
-        [source('C:\\Users\\test\\.config\\opencode\\skills', 'opencode')]
+        [source('C:\\Users\\test\\.gemini\\antigravity\\skills', 'antigravity')]
       )
     ).toBe(true)
   })

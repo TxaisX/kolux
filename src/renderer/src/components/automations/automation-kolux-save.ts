@@ -173,6 +173,13 @@ export async function saveKoluxAutomation(
     updates.rrule = rrule
     updates.dtstart = time.now
   }
+  const eventTrigger = draft.eventKind ? { kind: draft.eventKind } : null
+  if (
+    !currentAutomation ||
+    (currentAutomation.eventTrigger?.kind ?? null) !== (draft.eventKind ?? null)
+  ) {
+    updates.eventTrigger = eventTrigger
+  }
   const createInput: AutomationCreateInput = {
     name: draft.name,
     prompt: draft.prompt,
@@ -188,7 +195,8 @@ export async function saveKoluxAutomation(
     timezone,
     rrule,
     dtstart: updates.dtstart ?? time.now,
-    missedRunGraceMinutes
+    missedRunGraceMinutes,
+    eventTrigger
   }
 
   const destinationResult = resolveAutomationEditDestination({

@@ -4,18 +4,10 @@ import type {
   UsageOverviewInput,
   UsageOverviewModel
 } from './usage-overview-types'
-import {
-  createClaudeProvider,
-  createCodexProvider,
-  createOpenCodeProvider
-} from './usage-provider-normalization'
+import { createClaudeProvider, createCodexProvider } from './usage-provider-normalization'
 
 export function buildUsageOverview(input: UsageOverviewInput): UsageOverviewModel {
-  const providers = [
-    createClaudeProvider(input.claude),
-    createCodexProvider(input.codex),
-    createOpenCodeProvider(input.opencode)
-  ]
+  const providers = [createClaudeProvider(input.claude), createCodexProvider(input.codex)]
   const daily = buildDailyOverview(input)
   const bestDay =
     daily.length === 0

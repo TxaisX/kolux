@@ -153,7 +153,7 @@ function richSleepWakePayload(runId: string): string {
     '│ agent      │ status        │ output        │',
     '├────────────┼───────────────┼───────────────┤',
     `│ codex-${shortId.slice(0, 4)} │ thinking      │ box/table ok  │`,
-    '│ opencode   │ streaming     │ unicode ✓     │',
+    '│ gemini     │ streaming     │ unicode ✓     │',
     '│ shell      │ idle          │ prompt ready  │',
     '╰────────────┴───────────────┴───────────────╯',
     `SLEEP_WAKE_RESTORE_${runId}`,

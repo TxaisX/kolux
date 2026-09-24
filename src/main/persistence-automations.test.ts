@@ -776,4 +776,113 @@ describe('Store', () => {
       terminalPtyId: 'pty-run'
     })
   })
+
+  it('loads an old automation record with no eventTrigger field unchanged', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'Legacy scheduled',
+      prompt: 'Run checks',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-13T00:00:00Z').getTime()
+    })
+    const persisted = readDataFile() as { automations: Record<string, unknown>[] }
+    expect(persisted.automations[0]).not.toHaveProperty('eventTrigger')
+
+    const reloaded = await createStore()
+    const loaded = reloaded.listAutomations().find((entry) => entry.id === automation.id)
+
+    expect(loaded?.eventTrigger).toBeUndefined()
+  })
+
+  it('round-trips an event trigger through create, update and reload', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'On checks failed',
+      prompt: 'Investigate',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-13T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'review_checks_failed' }
+    })
+    expect(automation.eventTrigger).toEqual({ kind: 'review_checks_failed' })
+
+    const reloaded = await createStore()
+    expect(
+      reloaded.listAutomations().find((entry) => entry.id === automation.id)?.eventTrigger
+    ).toEqual({ kind: 'review_checks_failed' })
+
+    const cleared = store.updateAutomation(automation.id, { eventTrigger: null })
+    expect(cleared.eventTrigger).toBeNull()
+  })
+
+  it('recomputes nextRunAt on switching back to schedule, so a stale value cannot trigger the missed-run grace', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-13T08:00:00Z'))
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'Switches trigger',
+      prompt: 'Run checks',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-13T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'agent_done' }
+    })
+    const staleNextRunAt = automation.nextRunAt
+
+    // Days pass while the automation runs on its event only; a stale nextRunAt from
+    // creation time would now be far in the past.
+    vi.setSystemTime(new Date('2026-05-20T10:00:00Z'))
+    const backToSchedule = store.updateAutomation(automation.id, { eventTrigger: null })
+
+    expect(backToSchedule.nextRunAt).not.toBe(staleNextRunAt)
+    expect(backToSchedule.nextRunAt).toBeGreaterThan(Date.now())
+    vi.useRealTimers()
+  })
+
+  it('persists a run trigger event and dedupes on its key', async () => {
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'On PR opened',
+      prompt: 'Review it',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'new_per_run',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-13T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'review_opened' }
+    })
+    const triggerEvent = {
+      kind: 'review_opened' as const,
+      key: 'review_opened:github:local:/repo:3',
+      summary: 'PR #3 was opened',
+      url: 'https://example.test/pull/3'
+    }
+
+    const run = store.createAutomationRun(automation, Date.now(), 'event', triggerEvent)
+
+    expect(run.trigger).toBe('event')
+    expect(run.triggerEvent).toEqual(triggerEvent)
+    const persisted = store.listAutomationRuns(automation.id)[0]
+    expect(persisted.triggerEvent).toEqual(triggerEvent)
+
+    const reloaded = await createStore()
+    expect(
+      reloaded.listAutomationRuns(automation.id).find((entry) => entry.id === run.id)?.triggerEvent
+    ).toEqual(triggerEvent)
+  })
 })

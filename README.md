@@ -10,7 +10,7 @@ terminals, and a status you can read at a glance.
 
 - **Isolated sessions.** Each agent works in its own git worktree, so parallel sessions never fight
   over the same checkout.
-- **Any agent on your PATH.** Claude Code, Codex, Gemini CLI, Copilot, OpenCode, Aider and others
+- **Any agent on your PATH.** Claude Code, Codex, Gemini CLI, Copilot, Aider and others
   are detected automatically. Kolux launches them and bills through your own accounts; it
   bundles no models and no keys.
 - **One-click launch.** The `+` menu lists only the agents actually installed on the machine, so a

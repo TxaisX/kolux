@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentDetectionTarget, UseDetectedAgentsResult } from '@/hooks/useDetectedAgents'
 import LaunchAgentsDialog from './LaunchAgentsDialog'
@@ -88,5 +88,44 @@ describe.each(surfaces)('$name agent refresh', ({ component }) => {
     expect((refreshButton as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(refreshButton)
     expect(mocks.refresh).not.toHaveBeenCalled()
+  })
+})
+
+describe('launch dialog detection state', () => {
+  it('moves its selection and lineup when the selected CLI disappears', async () => {
+    mocks.target = { kind: 'local', worktreeId: 'folder:project' }
+    mocks.detection = { ...mocks.detection, detectedIds: ['claude', 'codex'] }
+    const view = render(<LaunchAgentsDialog />)
+    fireEvent.click(screen.getByRole('button', { name: /Codex/ }))
+    expect(screen.getByRole('button', { name: /Codex/ }).getAttribute('aria-pressed')).toBe('true')
+
+    mocks.detection = { ...mocks.detection, detectedIds: ['claude'] }
+    view.rerender(<LaunchAgentsDialog />)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Claude/ }).getAttribute('aria-pressed')).toBe(
+        'true'
+      )
+      expect(screen.queryByRole('button', { name: /Codex/ })).toBeNull()
+    })
+  })
+
+  it('disables launch and distinguishes failed detection from an empty result', () => {
+    mocks.target = { kind: 'ssh', connectionId: 'remote-host' }
+    mocks.detection = {
+      ...mocks.detection,
+      detectedIds: null,
+      detectionFailed: true
+    }
+    const view = render(<LaunchAgentsDialog />)
+    expect(
+      screen.getByText('Could not check this host for agent CLIs. Try Refresh agents.')
+    ).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Launch 0' }) as HTMLButtonElement).disabled).toBe(
+      true
+    )
+
+    mocks.detection = { ...mocks.detection, detectedIds: [], detectionFailed: false }
+    view.rerender(<LaunchAgentsDialog />)
+    expect(screen.getByText('No agent CLIs detected on this host yet.')).toBeTruthy()
   })
 })

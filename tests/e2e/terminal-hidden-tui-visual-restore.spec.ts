@@ -45,9 +45,9 @@ function tuiFrame(runId: string, frame: number): string {
   const progress = `${'█'.repeat((frame % 8) + 1)}${'░'.repeat(8 - ((frame % 8) + 1))}`
   const rows = [
     '╭────────────────────────────────────────────────────────────────────╮',
-    `│ OpenCode visual restore Frame ${String(frame).padStart(3, '0')} ${frame % 2 === 0 ? '🟢' : '🟡'} ${progress} │`,
+    `│ synthetic TUI visual restore Frame ${String(frame).padStart(3, '0')} ${frame % 2 === 0 ? '🟢' : '🟡'} ${progress} │`,
     '├──────────────┬──────────────────────┬──────────────────────────────┤',
-    `│ model        │ codex/opencode       │ ${runId.slice(0, 28).padEnd(28)} │`,
+    `│ model        │ codex/gemini       │ ${runId.slice(0, 28).padEnd(28)} │`,
     `│ status       │ ${frame % 2 === 0 ? 'thinking' : 'streaming'}            │ input ${'#'.repeat((frame % 18) + 1).padEnd(22)} │`,
     `│ diff         │ +${String(frame * 3).padEnd(19)} │ -${String(frame).padEnd(27)} │`,
     '╰──────────────┴──────────────────────┴──────────────────────────────╯',

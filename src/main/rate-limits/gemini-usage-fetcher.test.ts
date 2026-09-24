@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  authJsonGoogle,
-  authJsonGoogleExpired,
+  expiredCreds,
   makeResponse,
-  quotaResponse
+  quotaResponse,
+  validCreds
 } from './gemini-usage-fetcher.test-fixtures'
 
 const { readFileMock, extractCredsMock, netFetchMock } = vi.hoisted(() => ({
@@ -51,18 +51,18 @@ describe('fetchGeminiRateLimits', () => {
     readFileMock.mockRejectedValue({ code: 'ENOENT' })
   })
 
-  const setupAuthJsonValid = () => {
+  const setupOauthCredsValid = () => {
     readFileMock.mockImplementation(async (p: string) => {
-      if (p.includes('auth.json')) {
-        return JSON.stringify(authJsonGoogle)
+      if (p.includes('oauth_creds.json')) {
+        return JSON.stringify(validCreds)
       }
       throw { code: 'ENOENT' }
     })
   }
-  const setupAuthJsonExpired = () => {
+  const setupOauthCredsExpired = () => {
     readFileMock.mockImplementation(async (p: string) => {
-      if (p.includes('auth.json')) {
-        return JSON.stringify(authJsonGoogleExpired)
+      if (p.includes('oauth_creds.json')) {
+        return JSON.stringify(expiredCreds)
       }
       throw { code: 'ENOENT' }
     })
@@ -73,8 +73,8 @@ describe('fetchGeminiRateLimits', () => {
     expect(result.status).toBe('unavailable')
   })
 
-  it('returns quota via auth.json', async () => {
-    setupAuthJsonValid()
+  it('returns quota via oauth_creds.json', async () => {
+    setupOauthCredsValid()
     netFetchMock.mockImplementation((url: string) => {
       if (url.includes('retrieveUserQuota')) {
         return Promise.resolve(makeResponse(quotaResponse))
@@ -90,7 +90,7 @@ describe('fetchGeminiRateLimits', () => {
   })
 
   it('deduplicates buckets', async () => {
-    setupAuthJsonValid()
+    setupOauthCredsValid()
     netFetchMock.mockImplementation((url: string) => {
       if (url.includes('retrieveUserQuota')) {
         return Promise.resolve(
@@ -120,7 +120,7 @@ describe('fetchGeminiRateLimits', () => {
   })
 
   it('handles empty bucket list', async () => {
-    setupAuthJsonValid()
+    setupOauthCredsValid()
     netFetchMock.mockImplementation((url: string) => {
       if (url.includes('retrieveUserQuota')) {
         return Promise.resolve(makeResponse([]))
@@ -137,7 +137,7 @@ describe('fetchGeminiRateLimits', () => {
 
   it('returns error when token refresh fails', async () => {
     vi.useRealTimers()
-    setupAuthJsonExpired()
+    setupOauthCredsExpired()
     const result = await fetchGeminiRateLimits(true)
     expect(result.status).toBe('error')
     expect(result.error).toContain('Token refresh failed')
@@ -145,7 +145,7 @@ describe('fetchGeminiRateLimits', () => {
   })
 
   it('handles wrapped buckets response', async () => {
-    setupAuthJsonValid()
+    setupOauthCredsValid()
     netFetchMock.mockImplementation((url: string) => {
       if (url.includes('retrieveUserQuota')) {
         return Promise.resolve(makeResponse({ buckets: quotaResponse }))
@@ -161,7 +161,7 @@ describe('fetchGeminiRateLimits', () => {
   })
 
   it('filters out NaN buckets', async () => {
-    setupAuthJsonValid()
+    setupOauthCredsValid()
     netFetchMock.mockImplementation((url: string) => {
       if (url.includes('retrieveUserQuota')) {
         return Promise.resolve(
@@ -190,7 +190,7 @@ describe('fetchGeminiRateLimits', () => {
   })
 
   it('retries refresh on 401', async () => {
-    setupAuthJsonValid()
+    setupOauthCredsValid()
     extractCredsMock.mockResolvedValue({ clientId: 'cid', clientSecret: 'csec' })
     let quotaCallCount = 0
     netFetchMock.mockImplementation((url: string) => {

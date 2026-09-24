@@ -474,27 +474,6 @@ describe('scanAiVaultSessions', () => {
       ])
     )
 
-    await mkdir(join(roots.opencodeStorageDir, 'session', 'project'), { recursive: true })
-    await mkdir(join(roots.opencodeStorageDir, 'message', 'opencode-session'), { recursive: true })
-    await writeFile(
-      join(roots.opencodeStorageDir, 'session', 'project', 'ses_opencode.json'),
-      JSON.stringify({
-        id: 'opencode-session',
-        directory: '/tmp/opencode',
-        title: 'OpenCode title',
-        time: { created: 1_777_634_000_000, updated: 1_777_634_001_000 }
-      })
-    )
-    await writeFile(
-      join(roots.opencodeStorageDir, 'message', 'opencode-session', 'msg_1.json'),
-      JSON.stringify({
-        role: 'user',
-        summary: { title: 'OpenCode title' },
-        time: { created: 1_777_634_000_000 },
-        tokens: { input: 7, output: 3 }
-      })
-    )
-
     await mkdir(join(roots.grokSessionsDir, encodeURIComponent('/tmp/grok'), 'grok-session'), {
       recursive: true
     })
@@ -739,9 +718,6 @@ describe('scanAiVaultSessions', () => {
       "cd '/tmp/copilot' && copilot --resume='copilot-session'"
     )
     expect(commandByAgent.get('cursor')).toBe("cursor-agent --resume 'cursor-session'")
-    expect(commandByAgent.get('opencode')).toBe(
-      "cd '/tmp/opencode' && opencode --session 'opencode-session'"
-    )
     expect(commandByAgent.get('grok')).toBe("cd '/tmp/grok' && grok --resume 'grok-session'")
     expect(commandByAgent.get('hermes')).toBe(
       "cd '/tmp/hermes' && hermes --resume 'hermes-session'"

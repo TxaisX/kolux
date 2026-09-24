@@ -4,14 +4,13 @@ const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
 const env = {
   ...process.env,
-  KOLUX_E2E_OPENCODE_SCALE_PANES: process.env.KOLUX_E2E_OPENCODE_SCALE_PANES ?? '10,25,50,100',
-  KOLUX_E2E_OPENCODE_SCALE_CROSS_WORKSPACE_PANES:
-    process.env.KOLUX_E2E_OPENCODE_SCALE_CROSS_WORKSPACE_PANES ?? '10,25,50,100',
-  KOLUX_E2E_OPENCODE_SCALE_PRESSURE_PANES:
-    process.env.KOLUX_E2E_OPENCODE_SCALE_PRESSURE_PANES ?? '25,50',
-  KOLUX_E2E_OPENCODE_SCALE_HIDDEN_PRESSURE_PANES:
-    process.env.KOLUX_E2E_OPENCODE_SCALE_HIDDEN_PRESSURE_PANES ?? '25',
-  KOLUX_E2E_OPENCODE_FRAME_COUNT: process.env.KOLUX_E2E_OPENCODE_FRAME_COUNT ?? '60'
+  KOLUX_E2E_TUI_SCALE_PANES: process.env.KOLUX_E2E_TUI_SCALE_PANES ?? '10,25,50,100',
+  KOLUX_E2E_TUI_SCALE_CROSS_WORKSPACE_PANES:
+    process.env.KOLUX_E2E_TUI_SCALE_CROSS_WORKSPACE_PANES ?? '10,25,50,100',
+  KOLUX_E2E_TUI_SCALE_PRESSURE_PANES: process.env.KOLUX_E2E_TUI_SCALE_PRESSURE_PANES ?? '25,50',
+  KOLUX_E2E_TUI_SCALE_HIDDEN_PRESSURE_PANES:
+    process.env.KOLUX_E2E_TUI_SCALE_HIDDEN_PRESSURE_PANES ?? '25',
+  KOLUX_E2E_TUI_FRAME_COUNT: process.env.KOLUX_E2E_TUI_FRAME_COUNT ?? '60'
 }
 const extraArgs = process.argv.slice(2)
 if (extraArgs[0] === '--') {
@@ -23,7 +22,7 @@ const child = spawn(
   [
     'playwright',
     'test',
-    'tests/e2e/artificial-opencode-terminal-load.spec.ts',
+    'tests/e2e/artificial-tui-terminal-load.spec.ts',
     '--config',
     'tests/playwright.config.ts',
     '--project',

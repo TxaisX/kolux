@@ -1,12 +1,79 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PersistedState } from '../../../shared/persisted-state-types'
-import { listAutomationRunsPage } from './automation-run-operations'
+import type { Automation } from '../../../shared/automations-types'
+import {
+  createAutomationRun,
+  listAutomationRunsPage,
+  type AutomationRunOperations
+} from './automation-run-operations'
 
 function stateWithRuns(runs: { id: string; createdAt: number }[]): PersistedState {
   return {
     automationRuns: runs.map((run) => ({ ...run, automationId: 'a1' }))
   } as PersistedState
 }
+
+function makeOperations(state: Partial<PersistedState> = {}): AutomationRunOperations {
+  return {
+    state: { automations: [], automationRuns: [], ...state } as PersistedState,
+    flush: vi.fn(),
+    recordManualRun: vi.fn(),
+    getWorkspaceDisplayName: () => null
+  }
+}
+
+function makeAutomation(overrides: Partial<Automation> = {}): Automation {
+  return {
+    id: 'a1',
+    name: 'On PR opened',
+    prompt: 'Review it',
+    precheck: null,
+    agentId: 'claude',
+    projectId: 'r1',
+    executionTargetType: 'local',
+    executionTargetId: 'local',
+    schedulerOwner: 'local_host_service',
+    workspaceMode: 'new_per_run',
+    workspaceId: null,
+    baseBranch: null,
+    reuseSession: false,
+    timezone: 'UTC',
+    rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+    dtstart: 0,
+    enabled: true,
+    nextRunAt: 0,
+    missedRunPolicy: 'run_once_within_grace',
+    missedRunGraceMinutes: 720,
+    createdAt: 0,
+    updatedAt: 0,
+    ...overrides
+  }
+}
+
+describe('createAutomationRun', () => {
+  it('persists a triggerEvent when one is passed for an event-triggered run', () => {
+    const operations = makeOperations()
+    const triggerEvent = {
+      kind: 'review_opened' as const,
+      key: 'review_opened:github:local:/repo:3',
+      summary: 'PR #3 was opened'
+    }
+
+    const run = createAutomationRun(operations, makeAutomation(), Date.now(), 'event', triggerEvent)
+
+    expect(run.trigger).toBe('event')
+    expect(run.triggerEvent).toEqual(triggerEvent)
+  })
+
+  it('omits triggerEvent for a scheduled run', () => {
+    const operations = makeOperations()
+
+    const run = createAutomationRun(operations, makeAutomation(), Date.now())
+
+    expect(run.trigger).toBe('scheduled')
+    expect(run.triggerEvent).toBeUndefined()
+  })
+})
 
 describe('listAutomationRunsPage', () => {
   it('returns a bounded, newest-first page and an opaque continuation cursor', () => {

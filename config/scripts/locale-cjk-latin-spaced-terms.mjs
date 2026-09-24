@@ -30,7 +30,6 @@ export const CJK_LATIN_SPACED_TERMS = [
   'Codex',
   'Gemini',
   'Kimi',
-  'OpenCode',
   'Kolux',
   'Cursor',
   'Bitbucket',

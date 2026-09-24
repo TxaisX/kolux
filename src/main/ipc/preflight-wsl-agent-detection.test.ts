@@ -331,7 +331,7 @@ describe('the mount table read, counted against a real shell', () => {
     // The prelude is embedded in the lookup script, which the caller wraps in
     // `for cmd in <every agent>`. An unconditional assignment forked awk once
     // per CLI -- 36 of them inside the distro against a 10s budget.
-    expect(await runWithCountingAwk(['claude', 'codex', 'gemini', 'opencode'])).toBe(1)
+    expect(await runWithCountingAwk(['claude', 'codex', 'gemini', 'pi'])).toBe(1)
   })
 
   itPosix('still reads it once when only one command is probed', async () => {

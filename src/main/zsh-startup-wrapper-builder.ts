@@ -70,7 +70,6 @@ const AGENT_TEAMS_PATH_RESTORE_BLOCK = `__kolux_restore_agent_teams_path() {
 }
 __kolux_restore_agent_teams_path`
 
-const OPENCODE_CONFIG_DIR_RESTORE = `[[ -n "\${KOLUX_OPENCODE_CONFIG_DIR:-}" ]] && export OPENCODE_CONFIG_DIR="\${KOLUX_OPENCODE_CONFIG_DIR}"`
 const MIMOCODE_HOME_RESTORE = `[[ -n "\${KOLUX_MIMOCODE_HOME:-}" ]] && export MIMOCODE_HOME="\${KOLUX_MIMOCODE_HOME}"`
 const REMOTE_CLI_BIN_DIR_RESTORE = `[[ -n "\${KOLUX_REMOTE_CLI_BIN_DIR:-}" ]] && case ":$PATH:" in *:"\${KOLUX_REMOTE_CLI_BIN_DIR}":*) ;; *) export PATH="\${KOLUX_REMOTE_CLI_BIN_DIR}:$PATH" ;; esac`
 const CODEX_HOME_RESTORE = `# Why: Codex must keep using Kolux's runtime CODEX_HOME after rc files.
@@ -120,7 +119,6 @@ function getOverlayRestoreBlocks(spec: ZshStartupHookSpec): (string | null)[] {
   return [
     spec.overlayRestoreComment,
     spec.restores.agentTeamsPath ? AGENT_TEAMS_PATH_RESTORE_BLOCK : null,
-    OPENCODE_CONFIG_DIR_RESTORE,
     MIMOCODE_HOME_RESTORE,
     spec.restores.remoteCliBinDir ? REMOTE_CLI_BIN_DIR_RESTORE : null,
     getPosixOmpShellWrapper(),
