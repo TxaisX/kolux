@@ -20,6 +20,7 @@ import { getStatusPluginPostSource } from './status-plugin-post-source'
 import { getStatusPluginDeliverySource } from './status-plugin-delivery-source'
 import { getStatusPluginOwnershipSource } from './status-plugin-ownership-source'
 import { getStatusPluginLifecycleSource } from './status-plugin-lifecycle-source'
+import { getStatusPluginV2EventAdapterSource } from './status-plugin-v2-event-adapter-source'
 import { getStatusPluginFactorySource } from './status-plugin-factory-source'
 
 const KOLUX_OPENCODE_PLUGIN_FILE = 'kolux-opencode-status.js'
@@ -78,6 +79,7 @@ export function getOpenCodeFamilyPluginSource(
     ...getStatusPluginDeliverySource(),
     ...getStatusPluginOwnershipSource(),
     ...getStatusPluginLifecycleSource(),
+    ...getStatusPluginV2EventAdapterSource(),
     ...getStatusPluginFactorySource(options)
   ].join('\n')
 }

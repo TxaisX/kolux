@@ -74,14 +74,14 @@ describe('OpenCode hook plugin source', () => {
   it('keeps generated plugin bytes stable across the module split', () => {
     const digest = (source: string): string => createHash('sha256').update(source).digest('hex')
 
-    // Why pinned hash changed here: the Nightshift->Kolux rename changed embedded brand
-    // strings (class name, header name) in the generated plugin source; re-pinned post-rename.
+    // Why pinned hash changed here: re-pinned after the OpenCode 2.x port added the event
+    // adapter + `setup()` export to the generated plugin source.
     expect(digest(getOpenCodePluginSource())).toBe(
-      '4f34c8032d3598cd84e789c14ae1168b03300abd68ac5d0e9d9ba2ad4c22a142'
+      '27d89453b4abcbb92e64cc74896282c9a128b534d4c4777efbc06ce48b4bac3b'
     )
     expect(
       digest(getOpenCodeFamilyPluginSource('/hook/mimo-code', { emitSessionStart: false }))
-    ).toBe('926738d360ac4d52f0782f2e0cba131e960e760f040c0a7b1e43c97a5e2821e0')
+    ).toBe('56c26270b34360ca6507e18e59c4ddb8510489d100edd45b4f4085f0774b5ad1')
   })
 
   it('filters child sessions via parentID lookup before forwarding events', () => {
@@ -111,7 +111,31 @@ describe('OpenCode hook plugin source', () => {
     const source = _internals.getOpenCodePluginSource()
 
     expect(source).toContain('export const KoluxOpenCodeStatusPlugin = async (_ctx) => {')
-    expect(source).toContain('const client = _ctx?.client;')
+    // Why: V2 hands `setup` the plugin context itself, so the factory must fall back to
+    // its own argument when there is no `.client`.
+    expect(source).toContain('const client = _ctx?.client ?? _ctx;')
+  })
+
+  it('exposes both generation entry points on the default export', () => {
+    const source = _internals.getOpenCodePluginSource()
+
+    expect(source).toContain('server: KoluxOpenCodeStatusPlugin,')
+    expect(source).toContain('setup: async (ctx) => {')
+    expect(source).toContain('ctx.event.subscribe({ signal: controller.signal })')
+    expect(source).toContain('controller.abort();')
+  })
+
+  it('translates V2 event payloads into the V1 shape the handler consumes', () => {
+    const source = _internals.getOpenCodePluginSource()
+
+    expect(source).toContain('function v2ToV1Events(event)')
+    expect(source).toContain('const data = event.data && typeof event.data === "object"')
+    expect(source).toContain('case "form.created":')
+    expect(source).toContain('case "session.inbox.enqueued":')
+    expect(source).toContain('case "session.text.ended":')
+    // Why: 2.x split V1 session.error across per-execution/per-compaction failures.
+    expect(source).toContain('case "session.execution.failed":')
+    expect(source).toContain('return [{ type: "session.error", properties: data }];')
   })
 
   it('resolves hook coords from the endpoint file before falling back to process.env', () => {
