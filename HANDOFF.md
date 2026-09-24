@@ -5,6 +5,16 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-21.
 
+## 2026-09-22: per-provider model routing tiers for orchestration workers
+
+- `kolux orchestration worker-start --tier major|deep|build|light` resolves to a model + effort from Settings > Agents > Model routing (`GlobalSettings.orchestrationRouting`, one table per provider). Contract and defaults: `src/shared/orchestration-routing-tiers.ts` (Claude: fable/opus/sonnet/haiku; Codex: gpt-5.6-sol/terra/terra/luna). Resolution: `orchestration/worker/worker-routing-tier.ts`, run in `workers.ts` before the local/federated split, so remotes only ever get plain model/effort.
+- **Providers never mix** (owner decision): every worker-start, tiered or not, must use the coordinator's own agent. The coordinator's agent comes from the hook-fed fleet status snapshot; when no status has been reported yet the check can't prove a mismatch and lets the launch through (known ceiling).
+- The coordinator guide (`skill-guides/orchestration/references/coordinator-loop.md`, regenerated into `src/cli/bundled-skill-guides.ts`) now tells coordinators to classify tasks into tiers and to do small tasks inline, since every worker pays the full startup context.
+- Codex CLI 0.156 was installed on the owner's machine (`npm i -g @openai/codex`); it reuses the desktop app's ChatGPT login and reads Kolux's skills from `~/.agents/skills`. A one-word Fable probe cost ~$0.48 at API rates, almost all startup context — Fable belongs on coordination, not routine edits.
+- Verified: `pnpm tc`, oxlint, 377 test files (orchestration RPC, CLI, settings) green; dev app over CDP shows the section, per-provider defaults, an edit persists as `orchestrationRouting.claude.build`, Reset removes it. **Not driven live:** a real `worker-start --tier` from a coordinator pane (unit/handler tests only).
+- **Trap:** keep worktree names short. `G:/Dev/kolux-workspaces/kolux/orchestration-routing-tiers` pushed a node-gyp `.tlog` path past Windows' 260-char MAX_PATH and `pnpm install` failed rebuilding `@vscode/windows-process-tree` (FTK1011).
+- Next idea (not built): per-provider "tactics" — Claude/Codex native subagents for small delegations inside one session (no startup cost), Kolux workers only for big isolated work. OpenCode needs `supportsWorkerLaunchPreferences` in its option catalog before it can route.
+
 ## 2026-09-22: one worktree per agent, OpenCode does the git work
 
 - Agents no longer commit, merge or push. `pnpm ship` (`config/scripts/ship.mjs`) stages the worktree, has OpenCode's free `opencode/big-pickle` write the message, commits, and pushes the branch; `pnpm ship --main` also lands it on GitHub main and fast-forwards the primary checkout. It merges (never rebases) when GitHub is ahead, and on any conflict it aborts and pushes nothing. Rule text is in AGENTS.md.
