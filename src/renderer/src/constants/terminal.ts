@@ -33,6 +33,8 @@ export const SYNC_FIT_PANES_EVENT = 'kolux-sync-fit-panes'
  * same way for refits.
  */
 export const EQUALIZE_PANES_EVENT = 'kolux-equalize-panes'
+export const ARRANGE_TERMINAL_PANE_GRID_EVENT = 'kolux-arrange-terminal-pane-grid'
+export type ArrangeTerminalPaneGridDetail = { tabId: string; rows: number[] }
 
 export type FocusTerminalPaneDetail = {
   tabId: string

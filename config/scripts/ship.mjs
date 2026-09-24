@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Commit all changes, optionally merge a branch, and push — with a free OpenCode model writing
-// the commit message, so Claude/Codex tokens aren't spent on git chores (see AGENTS.md).
-// Usage: pnpm ship [--main] [--merge <branch>] [--dry-run] [--model <provider/model>]
+// Commit all changes, optionally merge a branch, and push — with Claude Haiku writing the commit
+// message, so git chores cost a few cheap tokens instead of a full agent turn (see AGENTS.md).
+// Usage: pnpm ship [--main] [--merge <branch>] [--dry-run] [--model <claude-model-id>]
 //   --main  work is complete: also land it on main, on GitHub and locally.
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -13,7 +13,7 @@ const flagValue = (name) => {
   const i = args.indexOf(name)
   return i === -1 ? undefined : args[i + 1]
 }
-const model = flagValue('--model') ?? 'opencode/big-pickle'
+const model = flagValue('--model') ?? 'claude-haiku-4-5-20251001'
 const mergeBranch = flagValue('--merge')
 const dryRun = args.includes('--dry-run')
 const toMain = args.includes('--main')
@@ -67,39 +67,42 @@ function writeCommitMessage() {
     diff
   ].join('\n')
 
-  if (!/^[\w./#:-]+$/.test(model)) {
+  if (!/^[\w.-]+$/.test(model)) {
     fail(`invalid model id: ${model}`)
   }
-  // Why: run outside the repo so the OpenCode agent can't edit tracked files.
+  // Why: run outside the repo with every tool disabled, so the model can only return text.
   const cwd = mkdtempSync(join(tmpdir(), 'ship-'))
   try {
-    const runArgs = ['run', '-m', model, '--format', 'json']
-    const options = { cwd, input: prompt, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 << 20 }
-    // Why: npm installs opencode as a .cmd shim on Windows, which needs a shell; model id is validated above.
-    const r =
-      process.platform === 'win32'
-        ? spawnSync(['opencode', ...runArgs].join(' '), { ...options, shell: true })
-        : spawnSync('opencode', runArgs, options)
+    // Why: skip user settings, plugins, MCP and skills — they alone overflow Haiku's context
+    // window, and skipping user settings also keeps Kolux's pane hooks out of this throwaway run.
+    const r = spawnSync(
+      'claude',
+      [
+        '-p',
+        '--model',
+        model,
+        '--tools',
+        '',
+        '--setting-sources',
+        '',
+        '--strict-mcp-config',
+        '--disable-slash-commands',
+        '--system-prompt',
+        'You write git commit messages.',
+        '--output-format',
+        'text',
+        '--no-session-persistence'
+      ],
+      { cwd, input: prompt, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 << 20 }
+    )
     if (r.status !== 0) {
       fail(
-        `opencode failed (is it installed? \`npm i -g @opencode/cli\`):\n${r.stderr || r.stdout || r.error}`
+        `claude failed (is Claude Code installed and signed in?):\n${r.stderr || r.stdout || r.error}`
       )
     }
-    const text = r.stdout
-      .split('\n')
-      .map((line) => {
-        try {
-          const event = JSON.parse(line)
-          return event.type === 'text' ? (event.part?.text ?? '') : ''
-        } catch {
-          return ''
-        }
-      })
-      .join('')
-      .replace(/^```\w*\n?|```$/gm, '')
-      .trim()
+    const text = r.stdout.replace(/^```\w*\n?|```$/gm, '').trim()
     if (!text) {
-      fail(`opencode returned no commit message. Raw output:\n${r.stdout}`)
+      fail(`claude returned no commit message. Raw output:\n${r.stdout}`)
     }
     return text
   } finally {

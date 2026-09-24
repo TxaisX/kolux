@@ -57,6 +57,7 @@ import {
 } from './pane-manager-layout-sweeps'
 import { collectPaneRenderingDiagnostics } from './pane-rendering-diagnostics'
 import { FIRST_PANE_ID } from '../../../../shared/pane-key'
+import { rearrangeManagedPaneGrid } from './pane-grid-rearrange'
 
 export type {
   PaneManagerOptions,
@@ -171,21 +172,16 @@ export class PaneManager {
     return this.panes.size
   }
 
-  fitAllPanes(): void {
-    fitAllPanesInternal(this.panes)
-  }
+  fitAllPanes = (): void => fitAllPanesInternal(this.panes)
 
-  fitAllRevealedPanes(): void {
-    fitRevealedPanes(this.panes)
-  }
+  fitAllRevealedPanes = (): void => fitRevealedPanes(this.panes)
 
-  refreshAllPanes(): void {
-    refreshAllPaneTerminals(this.panes)
-  }
+  refreshAllPanes = (): void => refreshAllPaneTerminals(this.panes)
 
-  equalizePaneSizes(): void {
+  equalizePaneSizes = (): void =>
     equalizeManagedPaneSizes(this.panes, this.root, this.options.onLayoutChanged)
-  }
+
+  arrangeGrid = (rows: readonly number[]): boolean => rearrangeManagedPaneGrid(this.host, rows)
 
   getActivePane(): ManagedPane | null {
     if (this.activePaneId === null) {

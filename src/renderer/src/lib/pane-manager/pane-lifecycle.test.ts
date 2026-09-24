@@ -396,19 +396,23 @@ describe('attachWebgl', () => {
     expect(pane.terminal.loadAddon).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps later auto panes on DOM after WebGL attach fails', () => {
-    vi.mocked(WebglAddon).mockImplementationOnce(() => {
-      throw new Error('webgl unavailable')
-    })
-    const firstPane = createPane()
-    const secondPane = createPane()
+  it('keeps later auto panes on DOM after three WebGL attach failures in a row', () => {
+    for (let i = 0; i < 3; i++) {
+      vi.mocked(WebglAddon).mockImplementationOnce(() => {
+        throw new Error('webgl unavailable')
+      })
+    }
+    const failedPanes = [createPane(), createPane(), createPane()]
+    const laterPane = createPane()
 
-    attachWebgl(firstPane)
-    attachWebgl(secondPane)
+    for (const pane of failedPanes) {
+      attachWebgl(pane)
+    }
+    attachWebgl(laterPane)
 
-    expect(firstPane.webglAddon).toBeNull()
-    expect(secondPane.webglAddon).toBeNull()
-    expect(secondPane.terminal.loadAddon).not.toHaveBeenCalled()
+    expect(failedPanes.every((pane) => pane.webglAddon === null)).toBe(true)
+    expect(laterPane.webglAddon).toBeNull()
+    expect(laterPane.terminal.loadAddon).not.toHaveBeenCalled()
   })
 
   it('keeps forced WebGL on after complex-script output', () => {

@@ -64,6 +64,8 @@ export abstract class UpdaterState {
   // Why: recovery must only run after the native quitAndInstall call; pre-native errors must not clear quittingForUpdate or look like install recovery.
   protected quitAndInstallNativeInvoked = false
   protected persistLastUpdateCheckAt: ((timestamp: number) => void) | null = null
+  protected getLastNotifiedUpdateVersion: (() => string | null) | null = null
+  protected setLastNotifiedUpdateVersion: ((version: string) => void) | null = null
   protected _getLastUpdateCheckAt: (() => number | null) | null = null
   protected backgroundCheckLaunchPending = false
   // Why: a promoted background check can emit an error event before its promise catch runs; keep the promotion attached to that launch.

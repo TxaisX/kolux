@@ -8,7 +8,7 @@ export const KEYBINDING_DEFINITION_CORE_2: readonly KeybindingDefinition[] = [
     group: 'Global',
     scope: 'global',
     searchKeywords: ['shortcut', 'view', 'mode', 'inbox', 'needs you'],
-    defaultBindings: platformBindings(['Mod+Shift+1'])
+    defaultBindings: platformBindings([])
   },
   {
     id: 'view.floor',
@@ -16,7 +16,7 @@ export const KEYBINDING_DEFINITION_CORE_2: readonly KeybindingDefinition[] = [
     group: 'Global',
     scope: 'global',
     searchKeywords: ['shortcut', 'view', 'mode', 'floor', 'agents', 'lanes'],
-    defaultBindings: platformBindings(['Mod+Shift+2'])
+    defaultBindings: platformBindings([])
   },
   {
     id: 'view.code',

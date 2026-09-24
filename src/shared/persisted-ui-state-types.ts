@@ -128,6 +128,8 @@ export type PersistedUIState = {
   statusBarUsageMode?: StatusBarUsageMode
   dismissedUpdateVersion: string | null
   lastUpdateCheckAt: number | null
+  /** Prevent repeat desktop update alerts across launches; in-app status remains live. */
+  lastNotifiedUpdateVersion?: string | null
   /** Dev-only update channel override; absent means the build's own channel. */
   releaseChannelOverride?: ReleaseChannel | null
   pendingUpdateNudgeId?: string | null

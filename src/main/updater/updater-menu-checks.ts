@@ -8,7 +8,12 @@ import { UpdaterScheduling } from './updater-scheduling'
 export abstract class UpdaterMenuChecks extends UpdaterScheduling {
   protected checkForUpdatesFromMenu(options?: UpdateCheckOptions): void {
     if (!app.isPackaged || is.dev) {
-      this.sendStatus({ state: 'not-available', userInitiated: true })
+      this.sendStatus({
+        state: 'error',
+        message: 'Updates can be checked and installed from a packaged Kolux app.',
+        retryable: false,
+        userInitiated: true
+      })
       return
     }
     if (options?.localBuild) {

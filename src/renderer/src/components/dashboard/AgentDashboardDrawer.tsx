@@ -14,6 +14,11 @@ import {
 } from '../sidebar/workspace-chrome-metrics'
 import { AgentDashboardSettingsMenu } from './AgentDashboardSettingsMenu'
 import { useLiveDashboardSnapshot } from './useLiveDashboardSnapshot'
+import { DashboardRunsPanel } from './DashboardRunsPanel'
+import { getResolvedExecutionHostIdForWorktree } from '@/lib/resolved-worktree-execution-host'
+import { toRuntimeExecutionHostId } from '../../../../shared/execution-host'
+import type { ExecutionHostId } from '../../../../shared/execution-host'
+import { Button } from '@/components/ui/button'
 import { translate } from '@/i18n/i18n'
 
 // Why: Escape should dismiss interactive nested overlays (e.g. the terminal
@@ -39,6 +44,14 @@ function AgentDashboardDrawerBody({
   onMenuOpenChange: (open: boolean) => void
 }): React.JSX.Element {
   const snapshot = useLiveDashboardSnapshot()
+  const [view, setView] = useState<'agents' | 'runs'>('agents')
+  const hostId = useAppStore((state): ExecutionHostId | null => {
+    if (state.activeWorktreeId) {
+      return getResolvedExecutionHostIdForWorktree(state, state.activeWorktreeId)
+    }
+    const environmentId = state.settings?.activeRuntimeEnvironmentId?.trim()
+    return environmentId ? toRuntimeExecutionHostId(environmentId) : 'local'
+  })
 
   // In-window ack/reveal act on the local store directly — the pop-out's IPC
   // relay is gated to the pop-out renderer and would reject calls from here.
@@ -60,7 +73,9 @@ function AgentDashboardDrawerBody({
     void window.api.dashboard.openPopout?.()
   }, [onClose])
 
-  return (
+  return view === 'runs' ? (
+    <DashboardRunsPanel hostId={hostId} onBack={() => setView('agents')} onClose={onClose} />
+  ) : (
     <AgentKanbanBoard
       snapshot={snapshot}
       // Why: bg-transparent lets the sheet's worktree-sidebar surface through
@@ -70,10 +85,15 @@ function AgentDashboardDrawerBody({
       onRevealAgent={handleRevealAgent}
       onClose={onClose}
       headerActions={
-        <AgentDashboardSettingsMenu
-          onSwitchToPopout={handleSwitchToPopout}
-          onOpenChange={onMenuOpenChange}
-        />
+        <>
+          <Button variant="ghost" size="xs" onClick={() => setView('runs')}>
+            {translate('dashboardPopout.runs', 'Runs')}
+          </Button>
+          <AgentDashboardSettingsMenu
+            onSwitchToPopout={handleSwitchToPopout}
+            onOpenChange={onMenuOpenChange}
+          />
+        </>
       }
     />
   )
