@@ -5,6 +5,40 @@ import { drainFakeTimerWork, flushAsyncTicks } from './pty-connection-test-async
 const originalRequestAnimationFrame = globalThis.requestAnimationFrame
 const originalCancelAnimationFrame = globalThis.cancelAnimationFrame
 const originalDocument = globalThis.document
+let untrackRealTimers: (() => void) | null = null
+
+// Why: a real timer a test leaves behind (e.g. a reattach retry) can fire after the file's
+// global sweep deletes `window` and fail the whole run (kolux#14728); cancel them at teardown.
+function trackRealTimers(): void {
+  if (vi.isFakeTimers() || untrackRealTimers) {
+    return
+  }
+  const baseSetTimeout = globalThis.setTimeout
+  const baseClearTimeout = globalThis.clearTimeout
+  const live = new Set<ReturnType<typeof setTimeout>>()
+  const tracked = (handler: unknown, timeout?: number, ...args: unknown[]) => {
+    const handle = baseSetTimeout(() => {
+      live.delete(handle)
+      if (typeof handler === 'function') {
+        handler(...args)
+      }
+    }, timeout)
+    live.add(handle)
+    return handle
+  }
+  globalThis.setTimeout = Object.assign(tracked, baseSetTimeout) as typeof setTimeout
+  untrackRealTimers = () => {
+    for (const handle of live) {
+      baseClearTimeout(handle)
+    }
+    globalThis.setTimeout = baseSetTimeout
+  }
+}
+
+function cancelLiveRealTimers(): void {
+  untrackRealTimers?.()
+  untrackRealTimers = null
+}
 
 export function buildAgentStatusModuleMock(
   actual: Record<string, unknown>
@@ -93,6 +127,7 @@ export function installTerminalTestGlobals(): void {
     return 1
   })
   globalThis.cancelAnimationFrame = vi.fn()
+  trackRealTimers()
 }
 
 export async function restoreTerminalTestGlobals(): Promise<void> {
@@ -105,6 +140,7 @@ export async function restoreTerminalTestGlobals(): Promise<void> {
   // continuation throws `ReferenceError: window is not defined` and fails the
   // whole file (kolux#14728, CI-only because it needs a slow enough tick).
   await flushAsyncTicks(20)
+  cancelLiveRealTimers()
   vi.restoreAllMocks()
   if (originalRequestAnimationFrame) {
     globalThis.requestAnimationFrame = originalRequestAnimationFrame
