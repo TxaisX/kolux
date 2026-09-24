@@ -283,3 +283,23 @@ export async function runAutomationPrecheck(args: {
   }
   return await runLocalPrecheck(args.precheck, args.target)
 }
+
+/** Precheck can't run without a resolved target; reports the refusal as its own result. */
+export function unresolvedTargetPrecheckResult(
+  precheck: AutomationPrecheck,
+  error: string
+): AutomationPrecheckResult {
+  return {
+    command: precheck.command,
+    exitCode: null,
+    timedOut: false,
+    durationMs: 0,
+    stdout: '',
+    stderr: '',
+    stdoutTruncated: false,
+    stderrTruncated: false,
+    error,
+    startedAt: Date.now(),
+    completedAt: Date.now()
+  }
+}

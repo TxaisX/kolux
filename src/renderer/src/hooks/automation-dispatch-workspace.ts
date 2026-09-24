@@ -164,7 +164,7 @@ export async function prepareAutomationDispatchWorkspace(args: {
     return null
   }
 
-  if (run.trigger === 'scheduled' && automation.precheck) {
+  if (run.trigger !== 'manual' && automation.precheck) {
     context.precheckResult = await window.api.automations.runPrecheck({
       automationId: automation.id,
       runId: run.id

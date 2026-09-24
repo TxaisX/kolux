@@ -193,6 +193,8 @@ export const AUTOMATION_OWNER_FENCING_UPDATE_REQUIRED_MESSAGE =
   'Editing automations on this host requires a newer Kolux server. Update the HUB and try again.'
 export const AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY =
   'automation.create-idempotency.v1' as const
+// Why: an older host would silently drop eventTrigger and keep running the automation on its schedule.
+export const AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY = 'automation.event-triggers.v1' as const
 
 // Generic native clients include the CLI and must not claim Electron-only page
 // placement support.
@@ -288,7 +290,8 @@ export const RUNTIME_CAPABILITIES = [
   SKILL_DELETE_CAPABILITY,
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY,
-  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY
+  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY,
+  AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY
 ] as const
 
 export type RuntimeCapability = (typeof RUNTIME_CAPABILITIES)[number] | (string & {})

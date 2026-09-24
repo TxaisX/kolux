@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AUTOMATION_OWNER_CONFLICT_CODES } from '../../../../shared/automation-owner-conflict'
+import type { AutomationCreateInput } from '../../../../shared/automations-types'
 import {
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY,
-  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY
+  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY,
+  AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY
 } from '../../../../shared/protocol-version'
 
 const callRuntimeRpc = vi.fn()
@@ -29,8 +31,20 @@ const ALL_CAPABILITIES = {
   capabilities: [
     AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
     AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY,
-    AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY
+    AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY,
+    AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY
   ]
+}
+
+const MINIMAL_CREATE_INPUT: AutomationCreateInput = {
+  name: 'Weekday audit',
+  prompt: 'Run the audit.',
+  agentId: 'codex',
+  projectId: 'repo-1',
+  workspaceMode: 'existing',
+  timezone: 'UTC',
+  rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+  dtstart: 0
 }
 
 beforeEach(async () => {
@@ -301,6 +315,59 @@ describe('owner-fenced mutations', () => {
     )
     expect(getRuntimeEnvironmentStatus).not.toHaveBeenCalled()
     expect(typeof deleteAutomationForOwner).toBe('function')
+  })
+})
+
+// An older host would silently drop eventTrigger and keep running the automation
+// on its schedule, so the capability is checked whenever a call actually sets it.
+describe('event-triggered automation mutations', () => {
+  it('creates an event-triggered automation once the host confirms support', async () => {
+    const { createAutomationForDestination } = await client()
+    getRuntimeEnvironmentStatus.mockResolvedValue(ALL_CAPABILITIES)
+    callRuntimeRpc.mockResolvedValue({ automation: { id: 'a1' } })
+    await createAutomationForDestination(
+      RUNTIME,
+      { ...MINIMAL_CREATE_INPUT, eventTrigger: { kind: 'agent_done' } },
+      { selector: { kind: 'self' } }
+    )
+    expect(callRuntimeRpc).toHaveBeenCalled()
+  })
+
+  it('refuses to create an event-triggered automation on a host that predates the capability', async () => {
+    const { createAutomationForDestination, AutomationHostScopeUnsupportedError } = await client()
+    getRuntimeEnvironmentStatus.mockResolvedValue({
+      capabilities: [AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY]
+    })
+    await expect(
+      createAutomationForDestination(
+        RUNTIME,
+        { ...MINIMAL_CREATE_INPUT, eventTrigger: { kind: 'agent_done' } },
+        { selector: { kind: 'self' } }
+      )
+    ).rejects.toBeInstanceOf(AutomationHostScopeUnsupportedError)
+    expect(callRuntimeRpc).not.toHaveBeenCalled()
+  })
+
+  it('does not probe event-trigger support when creating a schedule-only automation', async () => {
+    const { createAutomationForDestination } = await client()
+    getRuntimeEnvironmentStatus.mockResolvedValue({
+      capabilities: [AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY]
+    })
+    callRuntimeRpc.mockResolvedValue({ automation: { id: 'a1' } })
+    await expect(
+      createAutomationForDestination(RUNTIME, MINIMAL_CREATE_INPUT, { selector: { kind: 'self' } })
+    ).resolves.toBeTruthy()
+  })
+
+  it('refuses to switch an existing automation onto an event trigger on an unsupported host', async () => {
+    const { updateAutomationForOwner, AutomationHostScopeUnsupportedError } = await client()
+    getRuntimeEnvironmentStatus.mockResolvedValue({
+      capabilities: [AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY]
+    })
+    await expect(
+      updateAutomationForOwner(SSH_OWNER, 'a1', { eventTrigger: { kind: 'review_opened' } })
+    ).rejects.toBeInstanceOf(AutomationHostScopeUnsupportedError)
+    expect(callRuntimeRpc).not.toHaveBeenCalled()
   })
 })
 

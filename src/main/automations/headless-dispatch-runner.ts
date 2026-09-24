@@ -32,7 +32,7 @@ export async function runHeadlessAutomationDispatch(
 ): Promise<AutomationRun> {
   const { automation, run, target, runs } = ctx
   const precheckResult =
-    run.trigger === 'scheduled' && automation.precheck ? await ctx.runPrecheck() : null
+    run.trigger !== 'manual' && automation.precheck ? await ctx.runPrecheck() : null
   if (precheckResult && !didAutomationPrecheckPass(precheckResult)) {
     return runs.updateRun({
       runId: run.id,

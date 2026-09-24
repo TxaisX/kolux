@@ -9,6 +9,25 @@ import {
   type HostedReviewExecutionOptions
 } from './hosted-review-git-options'
 
+export type HostedReviewObservedIdentity = {
+  repoPath: string
+  executionHostId: ExecutionHostId
+  branch: string
+}
+
+export type HostedReviewObserver = (
+  identity: HostedReviewObservedIdentity,
+  review: HostedReviewInfo | null
+) => void
+
+let observer: HostedReviewObserver | null = null
+
+/** Event detection taps a resolved lookup here — never called on a throw, so a
+ *  provider outage cannot be read as "review went away". */
+export function setHostedReviewObserver(next: HostedReviewObserver | null): void {
+  observer = next
+}
+
 function reviewLinkForProvider(
   input: Parameters<typeof getHostedReviewForBranch>[0],
   provider: ForgeProviderId
@@ -67,7 +86,7 @@ export async function getHostedReviewForBranch(
   const headOid = input.currentHeadOid?.trim() || null
   // Why (#11532): every client polls this one entry point, and they share the
   // host's per-user API quota, so the cache has to sit above the provider call.
-  return withHostedReviewBranchCache(
+  const review = await withHostedReviewBranchCache(
     { ...input, branch: branchName },
     { headOid, ...(input.active === true ? { active: true } : {}) },
     async () => {
@@ -99,4 +118,6 @@ export async function getHostedReviewForBranch(
       })
     }
   )
+  observer?.({ repoPath: input.repoPath, executionHostId: input.executionHostId, branch: branchName }, review)
+  return review
 }

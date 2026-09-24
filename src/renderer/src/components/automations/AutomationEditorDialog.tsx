@@ -2,6 +2,7 @@ import React from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { getAgentCatalog } from '@/lib/agent-catalog'
 import { filterEnabledTuiAgents } from '../../../../shared/tui-agent-selection'
+import type { AutomationEventKind } from '../../../../shared/automation-event-trigger'
 import type {
   AutomationSchedulePreset,
   AutomationWorkspaceMode
@@ -52,6 +53,8 @@ export type AutomationDraft = {
   customSchedule: string
   missedRunGraceMinutes: string
   scheduleWarning: string | null
+  /** Absent/null: runs on the schedule below. Set: runs only on this event. */
+  eventKind?: AutomationEventKind | null
 }
 
 export type AutomationCreateTarget = 'kolux' | 'hermes'

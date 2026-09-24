@@ -109,6 +109,7 @@ export function createAutomation(
     nextRunAt: nextAutomationOccurrenceAfter(input.rrule, input.dtstart, now),
     missedRunPolicy: 'run_once_within_grace',
     missedRunGraceMinutes: input.missedRunGraceMinutes ?? 720,
+    ...(input.eventTrigger !== undefined ? { eventTrigger: input.eventTrigger } : {}),
     createdAt: now,
     updatedAt: now
   }
@@ -157,7 +158,9 @@ export function updateAutomation(
   const contexts = getAutomationContextsForRepo(repo, operations.state.projectHostSetups ?? [])
   const rrule = updates.rrule ?? current.rrule
   const dtstart = updates.dtstart ?? current.dtstart
-  const scheduleChanged = updates.rrule !== undefined || updates.dtstart !== undefined
+  // Why: switching event→schedule must recompute nextRunAt, or a stale past value fires the missed-run grace immediately.
+  const scheduleChanged =
+    updates.rrule !== undefined || updates.dtstart !== undefined || updates.eventTrigger !== undefined
   const workspaceMode = updates.workspaceMode ?? current.workspaceMode
   const merged: Automation = {
     ...current,

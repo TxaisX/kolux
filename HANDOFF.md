@@ -5,6 +5,24 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-21.
 
+## 2026-09-23: automations can start on an event
+
+- An automation's **Trigger** is now Schedule or Event. The v1 events are: a PR/MR opens on a workspace branch, checks fail on a PR/MR, and an agent finishes in the project. They work for every git provider `getHostedReviewForBranch` supports.
+- **Data:** `Automation.eventTrigger` and `AutomationRun.triggerEvent` (`src/shared/automation-event-trigger.ts`); the new run trigger value is `'event'`. When `eventTrigger` is absent, the automation runs on its rrule exactly as before. No migration.
+- **Detection** (`src/main/automations/automation-event-sources.ts`):
+  - Review events come from `setHostedReviewObserver` in `hosted-review.ts`. The first answer for a branch only sets a baseline.
+  - `agent_done` comes from `subscribeEnrichedStatus`.
+  - `automation-event-run.ts` filters on enabled, kind, repo, host ownership, the persisted key and a 5-minute cooldown, then dispatches with the event appended to the prompt.
+  - Panes owned by an automation run are ignored, so a run can't trigger itself.
+- **Wire:** the capability is `automation.event-triggers.v1`. The renderer refuses to save an event trigger to a host that doesn't advertise it, because an older host would silently run it on the schedule instead.
+- **Limits:**
+  - Review events fire only while something polls that branch (a worktree card or the checks panel). A headless serve with no client sees none. Latency is up to ~15 min before a PR exists and ~60 s after.
+  - Anything that happened while Kolux was down is missed.
+  - The run goes to the automation's configured workspace, not the triggering worktree. That override is the obvious v1.1.
+  - Linear/Jira events need a poller that doesn't exist yet.
+- **Verified:** 278 main-process tests (32 files, including `service.test.ts`) and 806 renderer automations tests pass; both typechecks clean. Dev app (isolated profile via `KOLUX_DEV_USER_DATA_PATH`): the editor shows Trigger, Schedule/Event, and the three event options.
+- **Trap:** this worktree's first install left `node-pty` empty, so every file importing it failed at load. A second `pnpm install --frozen-lockfile` fixed it; the `@vscode/windows-process-tree` native rebuild still fails there, and unit tests don't need it.
+
 ## 2026-09-22: one WebGL hiccup no longer slows every new terminal
 
 - In `auto` GPU mode (the default), one failed WebGL attach used to set a module-global flag that put every *new* terminal on the DOM renderer until the user changed the GPU setting. That contradicted the file's own per-pane-latch comment. On Windows the auto policy always allows WebGL, so a routine GPU reset after sleep stranded the session. Superset measured DOM at 1.2x to 13.7x the CPU of WebGL (their #6874).

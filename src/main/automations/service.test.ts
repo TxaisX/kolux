@@ -647,4 +647,96 @@ describe('AutomationService', () => {
     expect(updated.usage?.status).toBe('unavailable')
     expect(updated.usage?.unavailableReason).toBe('provider_unsupported')
   })
+
+  it('never fires an event-triggered automation from the schedule timer', async () => {
+    vi.setSystemTime(new Date('2026-05-13T08:59:00'))
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    store.createAutomation({
+      name: 'On PR opened',
+      prompt: 'Review it',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'existing',
+      workspaceId: 'wt1',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-12T00:00:00').getTime(),
+      eventTrigger: { kind: 'review_opened' }
+    })
+
+    vi.setSystemTime(new Date('2026-05-13T09:01:00'))
+    const send = vi.fn()
+    const service = new AutomationService(store, { tickMs: 60_000 })
+    service.setWebContents({ isDestroyed: () => false, send } as never)
+
+    service.start()
+    service.setRendererReady()
+    await Promise.resolve()
+    await Promise.resolve()
+    service.stop()
+
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('dispatches a matching event automation with the event context appended to the prompt', async () => {
+    vi.setSystemTime(new Date('2026-05-13T08:00:00Z'))
+    const store = await createStore()
+    store.addRepo(makeRepo())
+    const automation = store.createAutomation({
+      name: 'On PR opened',
+      prompt: 'Review it.',
+      agentId: 'claude',
+      projectId: 'r1',
+      workspaceMode: 'existing',
+      workspaceId: 'wt1',
+      timezone: 'UTC',
+      rrule: 'FREQ=DAILY;BYHOUR=9;BYMINUTE=0',
+      dtstart: new Date('2026-05-14T00:00:00Z').getTime(),
+      eventTrigger: { kind: 'review_opened' }
+    })
+    const send = vi.fn()
+    const service = new AutomationService(store, { tickMs: 60_000 })
+    service.setWebContents({ isDestroyed: () => false, send } as never)
+    service.setRendererReady()
+
+    await service.handleAutomationEvent({
+      event: {
+        kind: 'review_opened',
+        key: 'review_opened:github:local:/repo:3',
+        summary: 'PR #3 was opened',
+        url: 'https://example.test/pull/3'
+      },
+      repoId: 'r1'
+    })
+
+    expect(send).toHaveBeenCalledWith(
+      'automations:dispatchRequested',
+      expect.objectContaining({
+        automation: expect.objectContaining({
+          id: automation.id,
+          prompt: 'Review it.\n\nTriggered by: PR #3 was opened\nLink: https://example.test/pull/3'
+        })
+      })
+    )
+    const run = store.listAutomationRuns(automation.id)[0]
+    expect(run).toMatchObject({
+      trigger: 'event',
+      triggerEvent: expect.objectContaining({ key: 'review_opened:github:local:/repo:3' })
+    })
+
+    // A second delivery of the same event key must not dispatch again.
+    send.mockClear()
+    await service.handleAutomationEvent({
+      event: {
+        kind: 'review_opened',
+        key: 'review_opened:github:local:/repo:3',
+        summary: 'PR #3 was opened',
+        url: 'https://example.test/pull/3'
+      },
+      repoId: 'r1'
+    })
+    expect(send).not.toHaveBeenCalled()
+    expect(store.listAutomationRuns(automation.id)).toHaveLength(1)
+  })
 })

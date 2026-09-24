@@ -132,7 +132,8 @@ export class RuntimeAutomationController {
         rrule: input.rrule,
         dtstart: input.dtstart,
         enabled: input.enabled,
-        missedRunGraceMinutes: input.missedRunGraceMinutes
+        missedRunGraceMinutes: input.missedRunGraceMinutes,
+        eventTrigger: input.eventTrigger
       },
       (destination ?? input.destination)
         ? { destination: destination ?? input.destination }
@@ -236,7 +237,8 @@ export class RuntimeAutomationController {
       'rrule',
       'dtstart',
       'enabled',
-      'missedRunGraceMinutes'
+      'missedRunGraceMinutes',
+      'eventTrigger'
     ] as const
     for (const key of keys) {
       if (hasRuntimeAutomationUpdateValue(updates, key)) {

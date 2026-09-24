@@ -12,10 +12,10 @@ import type { Repo } from '../../../../shared/repo-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { AgentCatalogEntry } from '@/lib/agent-catalog'
 import { AUTOMATION_EDITOR_SECTION_LABEL_CLASS, Field } from './automation-page-parts'
+import { AutomationEventTriggerField } from './AutomationEventTriggerField'
 import { AutomationMissedRunGraceField } from './AutomationMissedRunGraceField'
 import { AutomationPrecheckFields } from './AutomationPrecheckFields'
 import AutomationProjectCombobox from './AutomationProjectCombobox'
-import { AutomationSchedulePicker } from './AutomationSchedulePicker'
 import { AutomationSessionField } from './AutomationSessionField'
 import { AutomationSetupDecisionField } from './AutomationSetupDecisionField'
 import { AutomationWorkspaceField } from './AutomationWorkspaceField'
@@ -170,29 +170,24 @@ export function AutomationEditorSettingsSidebar({
             />
           </div>
         </div>
-        <Field
-          className="mb-4"
-          labelClassName={AUTOMATION_EDITOR_SECTION_LABEL_CLASS}
-          label={translate(
-            'auto.components.automations.AutomationEditorDialog.c4b19094c2',
-            'Schedule'
-          )}
-        >
-          <AutomationSchedulePicker
-            draft={draft}
-            validateAdvancedSchedule={
-              isHermesTarget ? isValidAutomationCronSchedule : isValidAutomationSchedule
-            }
-            onDraftChange={onDraftChange}
-          />
-        </Field>
+        <AutomationEventTriggerField
+          draft={draft}
+          isHermesTarget={isHermesTarget}
+          validateAdvancedSchedule={
+            isHermesTarget ? isValidAutomationCronSchedule : isValidAutomationSchedule
+          }
+          toggleGroupClassName={segmentedGroupClassName}
+          toggleItemClassName={segmentedItemClassName}
+          pickerTriggerClassName={pickerTriggerClassName}
+          onDraftChange={onDraftChange}
+        />
         <div
           className={cn(
             'grid overflow-hidden transition-[grid-template-rows,margin] duration-200 ease-out',
-            isHermesTarget ? 'mb-0 grid-rows-[0fr]' : 'mb-4 grid-rows-[1fr]'
+            isHermesTarget || draft.eventKind ? 'mb-0 grid-rows-[0fr]' : 'mb-4 grid-rows-[1fr]'
           )}
-          aria-hidden={isHermesTarget}
-          inert={isHermesTarget}
+          aria-hidden={isHermesTarget || Boolean(draft.eventKind)}
+          inert={isHermesTarget || Boolean(draft.eventKind)}
         >
           <div className="min-h-0">
             <AutomationMissedRunGraceField

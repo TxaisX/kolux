@@ -15833,6 +15833,14 @@
           "4bdce31f37": "Session reuse help",
           "5ad314118e": "Session"
         },
+        "AutomationEventTriggerField": {
+          "1a7c9e4b21": "Trigger",
+          "6e3f8a0c15": "Schedule",
+          "72d4b1e893": "Event",
+          "b1f4d0a712": "A PR/MR opens on a workspace branch",
+          "c8a3e56f90": "Checks fail on a PR/MR",
+          "9d271b6a44": "An agent finishes in this project"
+        },
         "AutomationsPage": {
           "2695883141": "delete",
           "c3a28c9793": "Select an automation to view runs.",
@@ -16042,7 +16050,8 @@
               "a95afb7483": "Hourly at :{{minute}}",
               "280ccd2701": "Daily at {{time}}",
               "3f1422adc1": "Weekdays at {{time}}",
-              "cc71e252ba": "{{day}}s at {{time}}"
+              "cc71e252ba": "{{day}}s at {{time}}",
+              "7f2a4c9e10": "On event"
             }
           }
         },

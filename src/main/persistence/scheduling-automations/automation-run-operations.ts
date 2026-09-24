@@ -8,6 +8,7 @@ import type {
   AutomationRunsPage,
   AutomationRunTrigger
 } from '../../../shared/automations-types'
+import type { AutomationRunTriggerEvent } from '../../../shared/automation-event-trigger'
 import type { PersistedState } from '../../../shared/persisted-state-types'
 import {
   nextAutomationRunNumber,
@@ -68,7 +69,8 @@ export function createAutomationRun(
   operations: AutomationRunOperations,
   automation: Automation,
   scheduledFor: number,
-  trigger: AutomationRunTrigger = 'scheduled'
+  trigger: AutomationRunTrigger = 'scheduled',
+  triggerEvent?: AutomationRunTriggerEvent
 ): AutomationRun {
   const existing = (operations.state.automationRuns ?? []).find(
     (run) => run.automationId === automation.id && run.scheduledFor === scheduledFor
@@ -91,6 +93,7 @@ export function createAutomationRun(
     scheduledFor,
     status: 'pending',
     trigger,
+    ...(triggerEvent ? { triggerEvent } : {}),
     workspaceId: automation.workspaceId,
     workspaceDisplayName: operations.getWorkspaceDisplayName(automation.workspaceId),
     sessionKind: 'terminal',

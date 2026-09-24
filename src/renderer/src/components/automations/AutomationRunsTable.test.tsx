@@ -7,6 +7,12 @@ import type { Automation, AutomationRun } from '../../../../shared/automations-t
 import type { AutomationRunsDashboardEntry } from './automation-runs-dashboard-model'
 import { AutomationRunsTable } from './AutomationRunsTable'
 
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: ({
     count,
@@ -66,6 +72,51 @@ describe('AutomationRunsTable virtualization', () => {
   afterEach(() => {
     act(() => root.unmount())
     container.remove()
+  })
+
+  it('shows the triggering event summary as a tooltip on an event run', () => {
+    const automation = { id: 'automation', name: 'Daily check' } as Automation
+    const row = {
+      key: 'row',
+      automation,
+      catalogRef: { authority: { kind: 'desktop' }, selector: { kind: 'self' } },
+      hostLabel: 'Local Mac',
+      usageSummary: null
+    } as const
+    const entry: AutomationRunsDashboardEntry = {
+      key: 'row:run-event',
+      hostKey: 'desktop:self',
+      searchText: 'daily check run event local mac',
+      row,
+      run: {
+        id: 'run-event',
+        automationId: automation.id,
+        title: 'Run event',
+        scheduledFor: 0,
+        trigger: 'event',
+        status: 'completed',
+        triggerEvent: {
+          kind: 'agent_done',
+          key: 'agent_done:pane-1:1',
+          summary: 'An agent finished in this project'
+        }
+      } as AutomationRun,
+      scope: 'local'
+    }
+
+    act(() => {
+      root.render(
+        <AutomationRunsTable
+          entries={[entry]}
+          loading={false}
+          hasMore={false}
+          onLoadMore={() => {}}
+          onOpenRun={() => {}}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('An agent finished in this project')
   })
 
   it('keeps a 10,000-run history to a bounded number of mounted rows', () => {

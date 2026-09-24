@@ -26,8 +26,8 @@ export function createAutomationRunWriter(
     publish({ reason, ...(selector ? { selector } : {}) })
   }
   return {
-    createRun: (automation, scheduledFor, trigger): AutomationRun => {
-      const run = store.createAutomationRun(automation, scheduledFor, trigger)
+    createRun: (automation, scheduledFor, trigger, triggerEvent): AutomationRun => {
+      const run = store.createAutomationRun(automation, scheduledFor, trigger, triggerEvent)
       announce(automation.id, 'run')
       return run
     },

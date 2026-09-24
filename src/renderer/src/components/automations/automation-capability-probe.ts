@@ -6,6 +6,7 @@ import {
   AUTOMATION_OWNER_FENCING_RUNTIME_CAPABILITY,
   AUTOMATION_OWNER_FENCING_UPDATE_REQUIRED_MESSAGE,
   AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY,
+  AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY,
   type RuntimeCapability
 } from '../../../../shared/protocol-version'
 import { automationAuthorityCatalogKey } from './automation-host-catalog-types'
@@ -140,8 +141,20 @@ export async function assertAutomationCreateIdempotencySupported(
   )
 }
 
+// Why: an older host would silently drop eventTrigger and keep running the automation on its schedule.
+export async function assertAutomationEventTriggersSupported(
+  authority: AutomationAuthorityRef
+): Promise<void> {
+  await assertAuthorityCapability(
+    authority,
+    AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY,
+    'Event-triggered automations require a newer Kolux server. Update the HUB and try again.'
+  )
+}
+
 export {
   AUTOMATION_LIST_HOST_SCOPE_RUNTIME_CAPABILITY,
   AUTOMATION_LIST_HOST_SCOPE_UPDATE_REQUIRED_MESSAGE,
-  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY
+  AUTOMATION_CREATE_IDEMPOTENCY_RUNTIME_CAPABILITY,
+  AUTOMATION_EVENT_TRIGGERS_RUNTIME_CAPABILITY
 }
