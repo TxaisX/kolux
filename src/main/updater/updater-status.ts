@@ -1,5 +1,6 @@
 import { loadElectronAutoUpdater, type ElectronAutoUpdater } from '../electron-updater-loader'
 import { statusesEqual } from '../updater-fallback'
+import { getRuntimeDesktopSurface } from '../runtime/runtime-desktop-surface'
 import type { UpdateCheckOptions, UpdateStatus } from '../../shared/update-status-types'
 import type { UpdateCheckVariant } from './updater-types'
 import { UpdaterState as BaseUpdaterState } from './updater-state'
@@ -175,6 +176,20 @@ export abstract class UpdaterStatus extends BaseUpdaterState {
     }
     this.currentStatus = decoratedStatus
     this.mainWindowRef?.webContents.send('updater:status', decoratedStatus)
+    if (
+      decoratedStatus.state === 'available' &&
+      this.updateInstallMode === 'interactive' &&
+      this.activeUpdateSource === 'release' &&
+      this.mainWindowRef &&
+      !this.mainWindowRef.isFocused?.() &&
+      this.getLastNotifiedUpdateVersion?.() !== decoratedStatus.version &&
+      getRuntimeDesktopSurface().showNotification({
+        title: `Kolux v${decoratedStatus.version} is available`,
+        body: 'Kolux will download it. Restart when the update is ready.'
+      })
+    ) {
+      this.setLastNotifiedUpdateVersion?.(decoratedStatus.version)
+    }
   }
 
   protected abstract finishActiveUpdateCheckAttempt(): void

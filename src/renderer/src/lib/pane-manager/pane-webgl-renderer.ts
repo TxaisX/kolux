@@ -26,7 +26,11 @@ import {
 export { primeTerminalWebglAddon } from './terminal-webgl-addon-loader'
 
 export const ENABLE_WEBGL_RENDERER = true
-let suggestedRendererType: 'dom' | undefined
+// Why a streak, not one failure: on Windows "auto" always allows WebGL, so a single transient
+// failure (GPU reset after sleep) must not strand every new pane on DOM, but a GPU that never
+// gives WebGL should stop costing each new pane an attempt.
+const AUTO_ATTACH_FAILURES_BEFORE_DOM = 3
+let consecutiveAutoAttachFailures = 0
 // Attach-failure latching is per-pane (pane.webglAttachFailedSinceRecovery):
 // while Chromium refuses WebGL context creation, every attach attempt burns a
 // canvas + failed getContext and logs a full-stack warning — and title changes
@@ -71,13 +75,10 @@ setTerminalWebglAddonLoadHandlers({
 })
 
 export function resetTerminalWebglSuggestion(): void {
-  // Why: toggling GPU settings should let "auto" retry WebGL after an earlier
-  // attach failure suggested DOM rendering for this app session. Per-pane
-  // failure latches are cleared by the callers that iterate panes.
-  suggestedRendererType = undefined
-  // Why here too: a failed addon load is the other thing that strands panes on
-  // the DOM renderer, and this is the recovery boundary, so it has to re-arm
-  // the load rather than only the auto decision.
+  // Why: a failed addon load strands panes on the DOM renderer, and a GPU-setting
+  // change is the recovery boundary, so re-arm the load and the auto decision.
+  // Per-pane failure latches are cleared by the callers that iterate panes.
+  consecutiveAutoAttachFailures = 0
   rearmTerminalWebglAddonLoad()
   resetTerminalWebglAutoDecision()
 }
@@ -90,7 +91,10 @@ export function shouldUseTerminalWebgl(pane: ManagedPaneInternal): boolean {
   if (pane.terminalGpuAcceleration === 'on') {
     return true
   }
-  if (pane.terminalGpuAcceleration !== 'auto' || suggestedRendererType === 'dom') {
+  if (
+    pane.terminalGpuAcceleration !== 'auto' ||
+    consecutiveAutoAttachFailures >= AUTO_ATTACH_FAILURES_BEFORE_DOM
+  ) {
     return false
   }
   return getTerminalWebglAutoDecision().allowWebgl
@@ -314,12 +318,11 @@ export function attachWebgl(pane: ManagedPaneInternal): void {
     })
     pane.terminal.loadAddon(addon)
     pane.webglAddon = addon
+    consecutiveAutoAttachFailures = 0
     refreshTerminalAfterWebglAttach(pane)
   } catch (err) {
     if (pane.terminalGpuAcceleration === 'auto') {
-      // Why: "auto" tries the faster renderer first, but one failed attach is
-      // enough signal to keep new auto panes on DOM until the setting changes.
-      suggestedRendererType = 'dom'
+      consecutiveAutoAttachFailures += 1
     }
     pane.webglAttachFailedSinceRecovery = true
     // WebGL not available — default DOM renderer is fine, but log it for debugging

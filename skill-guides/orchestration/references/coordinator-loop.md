@@ -21,19 +21,41 @@ when an older CLI rejects the flag. A nested worker must respect
 
 ## Launch preferences
 
-For a fresh Claude, Codex, or Cursor terminal, `--model` accepts an opaque
-provider model ID. Pass it only when the user named a model; otherwise omit it
-so the worker inherits the user's configured agent default. Add `--effort` only
-when that model supports it:
+Providers never mix: a worker always runs on the coordinator's own agent
+(Claude, Codex, ...), never a different one. Tiers pick among that provider's
+own models — they never change which provider runs.
+
+Classify every task into a routing tier and pass `--tier`; Kolux resolves it to
+a model and effort from the user's own Settings > Agents > Model routing for
+the coordinator's own provider, so cheap work lands on cheap models without
+the coordinator naming one:
+
+- `major` — building something big or changing a system as a whole: plan and final review.
+- `deep` — planning, review, hard bugs, architecture.
+- `build` — implementing features and multi-file refactors.
+- `light` — mechanical work: renames, lint fixes, test scaffolding, search/summarize, docs.
 
 ```text
-KOLUX orchestration worker-start --task <task_id> --worktree current --agent claude --model opus --effort high --json
+KOLUX orchestration worker-start --task <task_id> --worktree current --tier build --json
 ```
 
-`--effort` requires `--model`; neither option combines with `--terminal`. A
-connected worker server must advertise launch-preference support before Kolux
-forwards either field. Compare `launch.requested` with `launch.effective`; never
-claim a model or effort from requested arguments alone.
+If the user explicitly named a model, that wins: use `--agent`/`--model`/
+`--effort` instead of `--tier` for that launch, and never start the worker on
+another provider than the coordinator's own. `--tier` cannot combine with
+`--model`, `--effort`, or `--terminal`. `--agent` may still accompany `--tier`,
+but only to restate the coordinator's own agent, or to supply one when the
+coordinator's agent cannot be detected — never to route to a different
+provider. `--effort` requires `--model`; neither combines with `--terminal`. A
+connected worker server must advertise launch-preference (or tier-routing)
+support before Kolux forwards the resolved fields.
+
+Before starting a worker for a small task, consider doing it yourself instead:
+every worker pays a fixed startup cost to load its system prompt, skills, and
+MCP servers, so a one-line rename or a quick lookup is often cheaper done
+directly than dispatched.
+
+Compare `launch.requested` with `launch.effective`; never claim a model or
+effort from requested arguments alone.
 
 ## Reuse after settlement
 

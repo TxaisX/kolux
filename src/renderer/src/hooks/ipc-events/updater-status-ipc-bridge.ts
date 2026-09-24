@@ -1,18 +1,33 @@
 import type { UpdateStatus } from '../../../../shared/update-status-types'
+import { toast } from 'sonner'
 import { useAppStore } from '../../store'
 
-/** Installs updater listeners in their historical snapshot-before-push order. */
-export function registerUpdaterStatusIpcBridge(unsubs: (() => void)[]): void {
-  // Current behavior intentionally permits the initial snapshot to overwrite an earlier push.
-  window.api.updater.getStatus().then((status) => {
-    useAppStore.getState().setUpdateStatus(status as UpdateStatus)
-  })
+const announcedVersions = new Set<string>()
 
+function applyUpdateStatus(status: UpdateStatus): void {
+  useAppStore.getState().setUpdateStatus(status)
+  if (status.state === 'available' && !announcedVersions.has(status.version)) {
+    announcedVersions.add(status.version)
+    toast.info(`Kolux v${status.version} is available`, {
+      description: 'Kolux will download it. Restart when the update is ready.'
+    })
+  }
+}
+
+export function registerUpdaterStatusIpcBridge(unsubs: (() => void)[]): void {
+  let receivedPush = false
   unsubs.push(
     window.api.updater.onStatus((raw) => {
-      useAppStore.getState().setUpdateStatus(raw as UpdateStatus)
+      receivedPush = true
+      applyUpdateStatus(raw as UpdateStatus)
     })
   )
+  void window.api.updater.getStatus().then((status) => {
+    // Why: the initial snapshot may settle after a newer live event.
+    if (!receivedPush) {
+      applyUpdateStatus(status as UpdateStatus)
+    }
+  })
   unsubs.push(
     window.api.updater.onClearDismissal(() => {
       useAppStore.getState().clearDismissedUpdateVersion()

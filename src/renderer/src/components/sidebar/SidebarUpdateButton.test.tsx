@@ -54,6 +54,17 @@ describe('getSidebarUpdateButtonModel', () => {
     expect(getSidebarUpdateButtonModel({ state: 'not-available' }).action).toBe('check')
     expect(getSidebarUpdateButtonModel({ state: 'error', message: 'offline' }).action).toBe('check')
   })
+
+  it('explains why development builds cannot install updates', () => {
+    const model = getSidebarUpdateButtonModel({
+      state: 'error',
+      message: 'Updates require an installed build.',
+      retryable: false
+    })
+
+    expect(model.action).toBeNull()
+    expect(model.tooltip).toBe('Updates require an installed build.')
+  })
 })
 
 describe('runSidebarUpdateAction', () => {

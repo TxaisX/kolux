@@ -1,5 +1,9 @@
 import { useAppStore } from '@/store'
-import { CLIENT_PLATFORM } from '@/lib/new-workspace'
+import { getAgentLaunchPlatformForRepo } from '@/lib/agent-launch-platform'
+import { getConnectionIdFromState } from '@/lib/connection-context'
+import { getLocalProjectExecutionRuntimeContext } from '@/lib/local-preflight-context'
+import { getResolvedExecutionHostIdForWorktree } from '@/lib/resolved-worktree-execution-host'
+import { parseExecutionHostId } from '../../../../shared/execution-host'
 import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import { preflightAgentTrust } from '@/lib/agent-trust-preflight'
 import { buildQuickComposerStartup } from '@/hooks/composer-state/quick-startup-plan'
@@ -23,15 +27,30 @@ export async function runSharedCheckoutLaunch(
   worktreePath: string,
   seats: readonly SharedCheckoutSeatRequest[],
   settings: GlobalSettings
-): Promise<void> {
+): Promise<number> {
+  const store = useAppStore.getState()
+  const connectionId = getConnectionIdFromState(store, worktreeId)
+  const executionHost = parseExecutionHostId(
+    getResolvedExecutionHostIdForWorktree(store, worktreeId)
+  )
+  if (connectionId === undefined || !executionHost) {
+    return 0
+  }
+  const isRemote = executionHost.kind !== 'local'
+  const platform = getAgentLaunchPlatformForRepo(
+    { path: worktreePath, connectionId: isRemote ? (connectionId ?? 'remote') : null },
+    isRemote ? undefined : getLocalProjectExecutionRuntimeContext(store, worktreeId)
+  )
   // Why before any tab exists: a trust artifact must land before the first pty spawns.
   for (const agent of new Set(seats.map((seat) => seat.agent))) {
-    await preflightAgentTrust({ agent, workspacePath: worktreePath })
+    // The client trust API routes only local and direct SSH paths, never paired runtimes.
+    if (executionHost.kind !== 'runtime') {
+      await preflightAgentTrust({ agent, workspacePath: worktreePath, connectionId })
+    }
   }
-  const store = useAppStore.getState()
   const shell = resolveLocalWindowsAgentStartupShell({
-    platform: CLIENT_PLATFORM,
-    isRemote: false,
+    platform,
+    isRemote,
     terminalWindowsShell: settings.terminalWindowsShell
   })
   const rootGroupId = store.ensureWorktreeRootGroup(worktreeId)
@@ -49,10 +68,10 @@ export async function runSharedCheckoutLaunch(
       prompt: seat.prompt,
       draftPrompt: null,
       settings: settingsWithSeatModel(settings, seat.agent, seat.model, seat.options),
-      repoConnectionId: null,
-      platform: CLIENT_PLATFORM,
+      repoConnectionId: connectionId,
+      platform,
       shell,
-      isRemote: false,
+      isRemote,
       telemetrySource: 'sidebar'
     })
     if (!startupPlan) {
@@ -87,8 +106,9 @@ export async function runSharedCheckoutLaunch(
     seated += 1
   }
   if (seated === 0) {
-    return
+    return 0
   }
   regridToCurrentLeaves(useAppStore.getState(), worktreeId)
   activateAndRevealWorktree(worktreeId)
+  return seated
 }

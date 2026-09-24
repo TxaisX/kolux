@@ -1,5 +1,10 @@
 import type { PaneManager } from '@/lib/pane-manager/pane-manager'
-import { CLOSE_TERMINAL_PANE_EVENT, type CloseTerminalPaneDetail } from '@/constants/terminal'
+import {
+  ARRANGE_TERMINAL_PANE_GRID_EVENT,
+  CLOSE_TERMINAL_PANE_EVENT,
+  type ArrangeTerminalPaneGridDetail,
+  type CloseTerminalPaneDetail
+} from '@/constants/terminal'
 import { consumePendingWebRuntimeSplitMirrorTelemetry } from '@/runtime/web-runtime-session'
 import { scheduleRuntimeGraphSync } from '@/runtime/sync-runtime-graph'
 import { closeTerminalTab } from '../terminal/terminal-tab-actions'
@@ -111,8 +116,16 @@ export function installTerminalPaneMountEvents(args: {
   }
 
   window.addEventListener(CLOSE_TERMINAL_PANE_EVENT, onCliClosePane)
+  const onArrangeGrid = (event: Event): void => {
+    const detail = (event as CustomEvent<ArrangeTerminalPaneGridDetail>).detail
+    if (detail?.tabId === deps.tabId) {
+      deps.managerRef.current?.arrangeGrid(detail.rows)
+    }
+  }
+  window.addEventListener(ARRANGE_TERMINAL_PANE_GRID_EVENT, onArrangeGrid)
   return () => {
     unregisterTerminalPaneSplitRequestHandler()
     window.removeEventListener(CLOSE_TERMINAL_PANE_EVENT, onCliClosePane)
+    window.removeEventListener(ARRANGE_TERMINAL_PANE_GRID_EVENT, onArrangeGrid)
   }
 }
