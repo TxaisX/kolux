@@ -98,8 +98,8 @@ it, moved it into the `codex-pass` worktree on top of main, and shipped it.
 - **Release assurance:** `.github/workflows/release.yml` now runs
   `config/scripts/release-packaged-smoke.mjs` before publishing. It checks the packaged
   Windows CLI (`--version`, `--help`) and an isolated Nightshift-to-Kolux profile
-  migration. The executable is not present in this checkout’s `dist/`, so this smoke
-  test has still not run locally — that step is still open, see below.
+  migration. Passed locally 2026-09-24 on a Windows package of main `8abd69906` (see
+  Next steps).
 - **Terminal continuity:** standalone terminal-window replay now resets the xterm
   buffer before applying replacement scrollback after resize. A headless regression and
   the terminal-window suite pass; this surface is dormant in the pane-based UI and the
@@ -142,17 +142,19 @@ it, moved it into the `codex-pass` worktree on top of main, and shipped it.
   no longer type-imports from `main/runtime/orchestration/types.ts` (renderer tsconfig
   doesn't include main); it mirrors the two picked fields locally instead.
 - `git diff --check` is clean.
-- Not verified here: packaged Windows smoke (still needs a packaged `Kolux.exe`), real
-  browser sign-in in an installed build, and a full Linux CI run.
+- Not verified here: real browser sign-in in an installed build, and a full Linux CI run.
 
 ### Next steps for Claude
 
-Steps 1, 2, 3 and 5 from the previous handoff are done (see above and Known gaps).
-Remaining:
-
-1. Build/package Windows, then run `node config/scripts/release-packaged-smoke.mjs` with
-   `dist/win-unpacked/Kolux.exe` present. Do not publish until the smoke test and release
-   workflow are green.
+All five steps from the previous handoff are done. Step 4, 2026-09-24: in a `rel-build`
+worktree at main `8abd69906` (OpenCode removal included), ran the release workflow's
+build (`build:desktop` incl. typecheck, `build:native`, `ensure:electron-runtime`), then
+`electron-builder --win --publish never` → `dist/kolux-windows-setup.exe` (169 MB,
+signed). `release-packaged-smoke.mjs` passed: packaged CLI `--version` = 0.10.0 and
+`--help`, and the isolated Nightshift → Kolux profile migration. Not done: installing
+that build over the owner's live app or booting its UI (the smoke runs the exe as Node
+only). A real release still needs a version bump past 0.10.0 and a `v*` tag, which
+triggers `release.yml`.
 
 ## 2026-09-23: automations can start on an event
 
