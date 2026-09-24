@@ -410,8 +410,9 @@ describe('useIpcEvents App-lifetime lifecycle', () => {
         'rateLimits.get'
       ])
     ).toEqual([
-      'updater.getStatus',
+      // Why: subscribe before the snapshot so a push racing the fetch isn't lost.
       'updater.onStatus',
+      'updater.getStatus',
       'updater.onClearDismissal',
       'rateLimits.onUpdate',
       'rateLimits.get'

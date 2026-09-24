@@ -449,7 +449,7 @@ describe('Store', () => {
     store.addRepo(makeRepo())
 
     const updated = store.updateRepo('r1', {
-      upstream: { owner: ' txaisx ', repo: ' nightshift ' }
+      upstream: { owner: ' txaisx ', repo: ' kolux ' }
     })
     expect(updated!.upstream).toEqual({ owner: 'txaisx', repo: 'kolux' })
 
