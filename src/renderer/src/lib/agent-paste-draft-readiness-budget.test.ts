@@ -77,7 +77,7 @@ describe('pty-bound agent draft readiness budget', () => {
       tabId: 'tab-1',
       ptyId: 'pty-1',
       content: 'draft',
-      agent: 'gemini',
+      agent: 'mimo-code',
       forcePaste: true,
       onTimeout
     })

@@ -5,6 +5,16 @@ context a fresh agent cannot infer from the code. Update it when you finish work
 
 Last updated: 2026-09-23.
 
+## 2026-09-23: OpenCode support removed entirely
+
+- **Owner's call:** Kolux focuses on frontier-lab agents, so OpenCode is gone, not hidden: the agent id, launcher/settings/status-bar/stats UI, OpenCode Go usage scraping and its account cookie, session-history scanning, hook plugin, PTY env/overlays, the `@opencode` orchestration address, `~/.opencode/bin` PATH discovery, the pet, and locale strings (~570 files). `pnpm ship` writes commit messages with Claude Haiku instead.
+- **MiMo Code stays.** It reused OpenCode's status plugin, which now lives in `src/main/mimo/status-plugin/` (`getMimoCodePluginSource`); the generated plugin is byte-identical apart from names/comments. Shared normalizers are `normalizeMimoCodeEvent` / `extractMimoCodeToolFields`.
+- **Mixed versions degrade, never fail** (`remote-wire-compatibility.md`): an old peer sending `statusBarItems` with `'opencode-go'` is filtered (`client-ui-schemas.ts`), `startupAgent`/`agent`/`launchAgent: 'opencode'` becomes "no agent"/a plain terminal (`worktree-schemas.ts`, `session-tabs-schemas.ts`); resuming an OpenCode session fails with invalid params. The `opencodePluginSource` relay param was removed on both sides at once.
+- **Old profiles load clean:** `stripRetiredGlobalSettings` drops `opencodeSessionCookie`/`opencodeWorkspaceId` (the ciphertext is never retained, so the next save erases it); `normalizeDefaultTuiAgent` and `isTuiAgentEnabled` reject unknown agent ids; unknown status-bar ids are filtered in main (`normalize-loaded-ui-state.ts`) and renderer (`migrateStatusBarItems`).
+- **One-time cleanup:** `src/main/startup/retired-opencode-cleanup.ts` (marker-guarded, run from preflight) deletes `<userData>/opencode-hooks`, `opencode-config-overlays` and `kolux-opencode-usage.json` via `safeRemoveTree` (never follows junctions into the user's real `~/.config/opencode`, which Kolux never touches). Relays sweep `~/.kolux-relay/opencode-overlays` at start.
+- **Verified 2026-09-23:** `tc:node/web/cli` clean after merging main; renderer suites 9,920/9,928 (the remaining failures `palette-match-performance`, `worktree-palette-search` and the `repos-remote` SSH clone cases fail identically on main). Dev app over CDP with a seeded old profile (`defaultTuiAgent:'opencode'`, `opencodeWorkspaceId`, `statusBarItems` with `'opencode-go'`, a real leftover `opencode-hooks/`): loaded with `defaultTuiAgent:null`, no OpenCode settings, status bar filtered, `opencode-hooks/` deleted and the marker written; Settings > Agents lists MiMo/Claude/Codex/Gemini and no OpenCode; Accounts and Appearance have none; zero console errors. **Not verified:** a real remote host running an old Kolux (tolerance is unit-tested only).
+- **Kept on purpose:** the terminal perf e2e fixtures, renamed `artificial-tui-*` (they emulate a heavy TUI); `capture-synthetic-tui-repro.mjs` still clones the public OpenCode repo as realistic redraw bytes. Remaining `opencode` strings are only the cleanup/tolerance code and their tests.
+
 ## Current handoff: improvement pass for Claude (2026-09-22)
 
 Codex left this pass uncommitted in the primary checkout; on 2026-09-23 Claude verified
@@ -111,13 +121,12 @@ Remaining:
 - Codex CLI 0.156 was installed on the owner's machine (`npm i -g @openai/codex`); it reuses the desktop app's ChatGPT login and reads Kolux's skills from `~/.agents/skills`. A one-word Fable probe cost ~$0.48 at API rates, almost all startup context — Fable belongs on coordination, not routine edits.
 - Verified: `pnpm tc`, oxlint, 377 test files (orchestration RPC, CLI, settings) green; dev app over CDP shows the section, per-provider defaults, an edit persists as `orchestrationRouting.claude.build`, Reset removes it. **Not driven live:** a real `worker-start --tier` from a coordinator pane (unit/handler tests only).
 - **Trap:** keep worktree names short. `G:/Dev/kolux-workspaces/kolux/orchestration-routing-tiers` pushed a node-gyp `.tlog` path past Windows' 260-char MAX_PATH and `pnpm install` failed rebuilding `@vscode/windows-process-tree` (FTK1011).
-- Next idea (not built): per-provider "tactics" — Claude/Codex native subagents for small delegations inside one session (no startup cost), Kolux workers only for big isolated work. OpenCode needs `supportsWorkerLaunchPreferences` in its option catalog before it can route.
+- Next idea (not built): per-provider "tactics" — Claude/Codex native subagents for small delegations inside one session (no startup cost), Kolux workers only for big isolated work.
 
-## 2026-09-22: one worktree per agent, OpenCode does the git work
+## 2026-09-22: one worktree per agent, `pnpm ship` does the git work
 
-- Agents no longer commit, merge or push. `pnpm ship` (`config/scripts/ship.mjs`) stages the worktree, has OpenCode's free `opencode/big-pickle` write the message, commits, and pushes the branch; `pnpm ship --main` also lands it on GitHub main and fast-forwards the primary checkout. It merges (never rebases) when GitHub is ahead, and on any conflict it aborts and pushes nothing. Rule text is in AGENTS.md.
-- OpenCode is `@opencode/cli` v2 (same maintainer as `opencode-ai`). No API key is needed for its free models. The Source Control commit-message default moved to `opencode/big-pickle` because `deepseek-v4-flash-free` was retired.
-- **Not fixed:** v2 removed `run --variant`, so the commit-message generator fails if someone picks `opencode/gpt-5.4-mini` with a thinking level. Fixing it needs v1/v2 detection.
+- Agents no longer commit, merge or push. `pnpm ship` (`config/scripts/ship.mjs`) stages the worktree, has Claude Haiku write the message (`claude -p`, ~$0.002 per commit), commits, and pushes the branch; `pnpm ship --main` also lands it on GitHub main and fast-forwards the primary checkout. It merges (never rebases) when GitHub is ahead, and on any conflict it aborts and pushes nothing. Rule text is in AGENTS.md.
+- **Trap:** `claude -p` must run with `--setting-sources '' --strict-mcp-config --disable-slash-commands --system-prompt …`. The owner's plugins, skills and MCP servers alone make a ~440K-token prompt, over Haiku's 200K window. `--bare` is not an option: it only accepts API-key auth and the owner signs in with OAuth.
 - Worktree base for this project is `G:/Dev/kolux-workspaces`, set per project with `kolux project setup-update --worktree-base-path`. Kolux appends the repo name, so paths are `…/kolux/kolux/<name>`. The old location nested worktrees *inside* the primary checkout, where `git add -A` would have committed them as embedded repos.
 
 ## Current pass: the product is renamed Nightshift → Kolux

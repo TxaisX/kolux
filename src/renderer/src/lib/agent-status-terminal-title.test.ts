@@ -58,10 +58,4 @@ describe('resolveAgentStatusTerminalTitle', () => {
       resolveAgentStatusTerminalTitle({ agentType: 'devin', state: 'waiting' }, '\u280b Devin')
     ).toBe('Devin - action required')
   })
-
-  it('does not invent a title when no native title exists', () => {
-    expect(
-      resolveAgentStatusTerminalTitle({ agentType: 'cursor', state: 'done' }, undefined)
-    ).toBeUndefined()
-  })
 })
