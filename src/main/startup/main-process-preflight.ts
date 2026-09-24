@@ -65,6 +65,7 @@ import { desktopWorktreeWatcherRemoval } from '../ipc/filesystem-watcher'
 import { setDefaultProxySessionResolver } from '../network/proxy-settings'
 import { initDataPath, getCanonicalUserDataPath } from '../persistence'
 import { migrateLegacyNightshiftUserData } from './pre-kolux-userdata-migration'
+import { cleanupRetiredOpenCodeUserData } from './retired-opencode-cleanup'
 import { getMainE2EConfig } from '../e2e-config'
 import { applyMacPressAndHoldDefaultAtStartup } from '../macos-press-and-hold-default'
 import { initSessionParseCachePersistence } from '../ai-vault/session-parse-cache-persistence'
@@ -72,7 +73,6 @@ import { initKoluxProfilePaths } from '../kolux-profiles/profile-index-store'
 import { initStatsPath } from '../stats/collector'
 import { initClaudeUsagePath } from '../claude-usage/store'
 import { initCodexUsagePath } from '../codex-usage/store'
-import { initOpenCodeUsagePath } from '../opencode-usage/store'
 import { registerDocPreviewSchemePrivileges } from '../browser/doc-preview-protocol'
 import { startCrashpadCapture } from '../crash-reporting/crashpad-capture'
 import { CrashReportStore } from '../crash-reporting/crash-report-store'
@@ -189,6 +189,7 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   if (!getMainE2EConfig().userDataDir) {
     migrateLegacyNightshiftUserData(getCanonicalUserDataPath())
   }
+  cleanupRetiredOpenCodeUserData(getCanonicalUserDataPath())
   state.startupDiagnosticsEnabled = isStartupDiagnosticsEnabled()
   if (state.startupDiagnosticsEnabled) {
     logStartupDiagnostic('before-single-instance-lock', {
@@ -285,7 +286,6 @@ export function runMainProcessPreflight(options: MainProcessPreflightOptions): b
   initStatsPath()
   initClaudeUsagePath()
   initCodexUsagePath()
-  initOpenCodeUsagePath()
   // Why: Electron resolves the macOS safeStorage Keychain service name
   // ("<app name> Safe Storage") before `ready`, so the setName in whenReady is
   // too late to move it — dev otherwise lands on the package.json name. Dev-only

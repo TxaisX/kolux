@@ -11,7 +11,6 @@ describe('RateLimitState', () => {
       claude: null,
       codex: null,
       gemini: null,
-      opencodeGo: null,
       kimi: null,
       antigravity: null,
       minimax: null,

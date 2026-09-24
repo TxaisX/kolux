@@ -9,7 +9,6 @@ import {
   CopilotIcon,
   KiloIcon,
   OmpIcon,
-  OpenCodeIcon,
   PiIcon
 } from './agent-icon-glyphs'
 import { translate } from '@/i18n/i18n'
@@ -83,12 +82,6 @@ export const getAgentCatalog = createLocalizedCatalog((): AgentCatalogEntry[] =>
     label: translate('auto.lib.agent.catalog.706b0fe68b', 'GitHub Copilot'),
     cmd: 'copilot',
     homepageUrl: 'https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli'
-  },
-  {
-    id: 'opencode',
-    label: translate('auto.lib.agent.catalog.e7a4ca5103', 'OpenCode'),
-    cmd: 'opencode',
-    homepageUrl: 'https://opencode.ai/docs/cli/'
   },
   {
     id: 'mimo-code',
@@ -353,9 +346,6 @@ export function AgentIcon({
   }
   if (agent === 'copilot') {
     return <CopilotIcon size={size} />
-  }
-  if (agent === 'opencode') {
-    return <OpenCodeIcon size={size} />
   }
   const catalogEntry = getAgentCatalog().find((a) => a.id === agent)
   // Why: prefer the favicon bundled at build time so the icon renders without a

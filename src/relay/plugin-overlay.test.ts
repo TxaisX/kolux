@@ -6,12 +6,11 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
-  symlinkSync,
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, join } from 'node:path'
-import { PluginOverlayManager } from './plugin-overlay'
+import { join } from 'node:path'
+import { PluginOverlayManager, sweepRetiredOpenCodeOverlays } from './plugin-overlay'
 import { resolvePiSourceAgentDir } from './plugin-overlay-env'
 
 describe('PluginOverlayManager', () => {
@@ -28,46 +27,8 @@ describe('PluginOverlayManager', () => {
   })
 
   it('reports no source until install runs', () => {
-    expect(manager.hasOpenCodeSource()).toBe(false)
     expect(manager.hasPiSource()).toBe(false)
-    expect(manager.materializeOpenCode('tab-1:0')).toBeNull()
     expect(manager.materializePi('tab-1:0')).toBeNull()
-  })
-
-  it('materializes OpenCode plugin into <overlay>/plugins/<file>', () => {
-    manager.setSources({ opencodePluginSource: 'export const X = 1' })
-    const dir = manager.materializeOpenCode('tab-1:0')
-    expect(dir).not.toBeNull()
-    const expected = join(dir!, 'plugins', 'kolux-opencode-status.js')
-    expect(existsSync(expected)).toBe(true)
-    expect(readFileSync(expected, 'utf8')).toBe('export const X = 1')
-  })
-
-  it('mirrors a preexisting remote OpenCode config dir before adding Kolux plugin', () => {
-    const userConfigDir = join(homeDir, 'company-opencode')
-    mkdirSync(join(userConfigDir, 'plugins'), { recursive: true })
-    writeFileSync(join(userConfigDir, 'opencode.json'), '{"provider":"custom"}')
-    writeFileSync(join(userConfigDir, 'plugins', 'user-plugin.js'), 'user plugin')
-    writeFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), 'user same-name')
-
-    manager.setSources({ opencodePluginSource: 'kolux plugin' })
-    const dir = manager.materializeOpenCode('tab-opencode:0', userConfigDir)
-
-    expect(dir).not.toBeNull()
-    expect(readFileSync(join(dir!, 'opencode.json'), 'utf8')).toBe('{"provider":"custom"}')
-    expect(readFileSync(join(dir!, 'plugins', 'user-plugin.js'), 'utf8')).toBe('user plugin')
-    expect(readFileSync(join(dir!, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe(
-      'kolux plugin'
-    )
-    expect(readFileSync(join(userConfigDir, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe(
-      'user same-name'
-    )
-  })
-
-  it('does not override a missing preexisting OpenCode config dir', () => {
-    manager.setSources({ opencodePluginSource: 'kolux plugin' })
-
-    expect(manager.materializeOpenCode('tab-missing:0', join(homeDir, 'missing'))).toBeNull()
   })
 
   it('installs Pi extension into the real agent extensions dir', () => {
@@ -324,65 +285,52 @@ describe('PluginOverlayManager', () => {
     expect(manager.materializePi('tab-missing-pi:0', join(homeDir, 'missing-pi'))).toBeNull()
   })
 
-  it('clearOverlay removes OpenCode overlays without deleting real Pi/OMP homes', () => {
+  it('clearOverlay does not delete real Pi/OMP agent homes', () => {
     manager.setSources({
-      opencodePluginSource: 'opencode',
       piExtensionSource: 'pi',
       ompExtensionSource: 'omp'
     })
-    const opencodeDir = manager.materializeOpenCode('tab-3:0')!
     const piDir = manager.materializePi('tab-3:0', undefined, 'pi')!.sourceAgentDir!
     const ompDir = manager.materializePi('tab-3:0', undefined, 'omp')!.sourceAgentDir!
     expect(piDir).not.toBe(ompDir)
-    expect(existsSync(opencodeDir)).toBe(true)
     expect(existsSync(piDir)).toBe(true)
     expect(existsSync(ompDir)).toBe(true)
 
     manager.clearOverlay('tab-3:0')
 
-    expect(existsSync(opencodeDir)).toBe(false)
     expect(existsSync(piDir)).toBe(true)
     expect(existsSync(ompDir)).toBe(true)
   })
+})
 
-  it.skipIf(process.platform === 'win32')(
-    'clearOverlay removes OpenCode overlay symlinks without deleting their targets',
-    () => {
-      const userConfigDir = join(homeDir, 'company-opencode')
-      const linkedTarget = join(homeDir, 'linked-plugin-target')
-      mkdirSync(join(userConfigDir, 'plugins'), { recursive: true })
-      mkdirSync(linkedTarget, { recursive: true })
-      writeFileSync(join(linkedTarget, 'keep.js'), 'do not delete')
-      symlinkSync(linkedTarget, join(userConfigDir, 'plugins', 'linked-plugin'), 'dir')
+describe('sweepRetiredOpenCodeOverlays', () => {
+  let homeDir: string
 
-      manager.setSources({ opencodePluginSource: 'kolux plugin' })
-      const dir = manager.materializeOpenCode('tab-opencode-symlink:0', userConfigDir)!
-      expect(existsSync(join(dir, 'plugins', 'linked-plugin'))).toBe(true)
-
-      manager.clearOverlay('tab-opencode-symlink:0')
-
-      expect(existsSync(dir)).toBe(false)
-      expect(readFileSync(join(linkedTarget, 'keep.js'), 'utf8')).toBe('do not delete')
-    }
-  )
-
-  it('produces stable overlay dirs for a given id (idempotent re-materialization)', () => {
-    manager.setSources({ opencodePluginSource: 'first' })
-    const dirA = manager.materializeOpenCode('tab-stable:0')!
-    manager.setSources({ opencodePluginSource: 'second' })
-    const dirB = manager.materializeOpenCode('tab-stable:0')!
-    expect(dirA).toBe(dirB)
-    expect(readFileSync(join(dirA, 'plugins', 'kolux-opencode-status.js'), 'utf8')).toBe('second')
+  beforeEach(() => {
+    homeDir = mkdtempSync(join(tmpdir(), 'plugin-overlay-sweep-'))
   })
 
-  it('hashes unsafe pane ids into portable overlay directory names', () => {
-    manager.setSources({ opencodePluginSource: 'plugin' })
-    const dir = manager.materializeOpenCode('tab/with\\unsafe:chars\n0')
+  afterEach(() => {
+    rmSync(homeDir, { recursive: true, force: true })
+  })
 
-    expect(dir).not.toBeNull()
-    expect(basename(dir!)).toMatch(/^[a-f0-9]{32}$/)
-    expect(dir).not.toContain('tab/with')
-    expect(existsSync(join(dir!, 'plugins', 'kolux-opencode-status.js'))).toBe(true)
+  it('removes a leftover opencode-overlays dir and leaves a sentinel outside it', () => {
+    const leftoverDir = join(homeDir, '.kolux-relay', 'opencode-overlays', 'deadbeef')
+    mkdirSync(leftoverDir, { recursive: true })
+    writeFileSync(join(leftoverDir, 'kolux-opencode-status.js'), 'stale')
+    const sentinelDir = join(homeDir, '.kolux-relay', 'pi-overlays')
+    mkdirSync(sentinelDir, { recursive: true })
+    const sentinel = join(sentinelDir, 'sentinel.txt')
+    writeFileSync(sentinel, 'keep')
+
+    sweepRetiredOpenCodeOverlays({ homeDir })
+
+    expect(existsSync(join(homeDir, '.kolux-relay', 'opencode-overlays'))).toBe(false)
+    expect(existsSync(sentinel)).toBe(true)
+  })
+
+  it('is a no-op when no relay ever left an overlay behind', () => {
+    expect(() => sweepRetiredOpenCodeOverlays({ homeDir })).not.toThrow()
   })
 })
 

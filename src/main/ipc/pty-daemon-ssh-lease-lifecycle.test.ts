@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { openCodeClearPtyMock, piClearPtyMock } from './pty-ipc-mock-registry'
+import { piClearPtyMock } from './pty-ipc-mock-registry'
 import { setupPtyIpcSuite } from './pty-ipc-test-harness'
 import {
   SSH_PTY_IDENTITY_MISMATCH_ERROR,
@@ -18,9 +18,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -124,7 +121,6 @@ describe('registerPtyHandlers', () => {
             'remote-pty',
             'expired'
           )
-          expect(openCodeClearPtyMock).not.toHaveBeenCalledWith(scopedPtyId)
           expect(piClearPtyMock).not.toHaveBeenCalledWith(scopedPtyId)
           getPtyWriteListener()(mainWindowIpcEvent, {
             id: scopedPtyId,

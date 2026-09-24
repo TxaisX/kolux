@@ -11,7 +11,6 @@ type PrimaryAgentSpecDeps = {
   OPENAI_THINKING_LEVELS: ThinkingLevel[]
   parseClaudeModels: (stdout: string) => CommitMessageModel[]
   parseCodexModels: (stdout: string) => CommitMessageModel[]
-  parseLineModels: (stdout: string) => CommitMessageModel[]
   parsePiModels: (stdout: string) => CommitMessageModel[]
   withOpenAiThinking: (
     id: string
@@ -23,7 +22,6 @@ export function buildPrimaryCommitMessageAgentSpecs({
   OPENAI_THINKING_LEVELS,
   parseClaudeModels,
   parseCodexModels,
-  parseLineModels,
   parsePiModels,
   withOpenAiThinking
 }: PrimaryAgentSpecDeps): Partial<Record<TuiAgent, CommitMessageAgentSpec>> {
@@ -151,42 +149,6 @@ export function buildPrimaryCommitMessageAgentSpecs({
         }
       ],
       defaultModelId: 'gpt-5.5'
-    },
-    opencode: {
-      id: 'opencode',
-      label: 'OpenCode',
-      binary: 'opencode',
-      // Why: Source Control AI prompts can include large staged diffs; OpenCode
-      // accepts the prompt on stdin, which avoids cross-platform argv limits.
-      promptDelivery: 'stdin',
-      buildArgs: ({ model, thinkingLevel }) => [
-        'run',
-        '--model',
-        model,
-        '--agent',
-        'build',
-        '--format',
-        'default',
-        ...(thinkingLevel ? ['--variant', thinkingLevel] : [])
-      ],
-      singletonOptions: [['--model', '-m'], ['--agent'], ['--format'], ['--variant']],
-      modelSource: 'dynamic',
-      modelDiscovery: { binary: 'opencode', args: ['models'], parse: parseLineModels },
-      models: [
-        {
-          // Why: OpenCode's hosted GPT models can require workspace billing even
-          // when `opencode models` lists them. This free model is available in
-          // discovery and works as a usable out-of-the-box default.
-          id: 'opencode/big-pickle',
-          label: 'OpenCode Big Pickle (free)'
-        },
-        {
-          id: 'opencode/gpt-5.4-mini',
-          label: 'OpenCode GPT 5.4 Mini',
-          ...withOpenAiThinking('gpt-5.4-mini')
-        }
-      ],
-      defaultModelId: 'opencode/big-pickle'
     },
     pi: {
       id: 'pi',

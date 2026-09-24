@@ -64,7 +64,6 @@ describe('collectAgentTitleEvidence', () => {
     ['cursor', 'cursor'],
     ['gemini', 'gemini'],
     ['antigravity', 'antigravity'],
-    ['opencode', 'opencode'],
     ['mimo', 'mimo-code'],
     ['openclaw', 'openclaw'],
     ['aider', 'aider'],
@@ -90,10 +89,6 @@ describe('collectAgentTitleEvidence', () => {
       expect(reasonFor('✳ agy')).toBe('vendor-marker')
       expect(agentFor('✳ codex')).toBe('claude')
       expect(reasonFor('✳ codex')).toBe('vendor-marker')
-    })
-
-    it('keeps an OpenCode envelope OpenCode when its session text names another agent', () => {
-      expect(agentFor('OC | QA PR #14582 Cursor sidecar SSH arms')).toBe('opencode')
     })
   })
 
@@ -238,24 +233,16 @@ describe('collectAgentTitleEvidence', () => {
     expect(reasonFor(title)).toBe('anchored')
   })
 
-  it('does not invent synthetic titles for an opted-out profile', () => {
-    expect(agentFor('OpenCode ready')).toBeNull()
-    expect(agentFor('⠋ OpenCode')).toBeNull()
-    expect(reasonFor('OpenCode ready')).toBe('free-text-only')
-  })
-
   it('reads identity from the innermost wrapper segment', () => {
     expect(agentFor('zsh | ⠋ Claude Code')).toBe('claude')
     expect(agentFor('ssh | tmux | Cursor Agent')).toBe('cursor')
-    expect(agentFor('ssh | tmux | OC | review the parser')).toBe('opencode')
     expect(agentFor('zsh | Fix the Codex parser')).toBeNull()
   })
 
   it('bounds wrapper inspection while preserving innermost identity', () => {
     const wrappers = Array.from({ length: 200 }, (_, index) => `wrapper-${index}`).join(' | ')
     expect(agentFor(`${wrappers} | ⠋ Cursor Agent`)).toBe('cursor')
-    expect(agentFor(`${wrappers} | OC | review the parser`)).toBe('opencode')
-    expect(agentFor(`outer-a | outer-b | OC | ${wrappers} | Cursor Agent`)).toBe('cursor')
+    expect(agentFor(`outer-a | outer-b | ${wrappers} | Cursor Agent`)).toBe('cursor')
   })
 
   it.each([
@@ -312,17 +299,17 @@ describe('collectAgentTitleEvidence', () => {
 
   describe('conflicting evidence of the same class resolves to nothing', () => {
     it('declines two anchored names', () => {
-      const evidence = collectAgentTitleEvidence('OC | something… - grok')
+      const evidence = collectAgentTitleEvidence('agy gemini 3.5 - grok')
       expect(evidence.agent).toBeNull()
       expect(evidence.reason).toBe('conflicting-anchored-names')
-      expect([...evidence.anchoredNames].sort()).toEqual(['grok', 'opencode'])
+      expect([...evidence.anchoredNames].sort()).toEqual(['antigravity', 'grok'])
     })
 
     it('keeps an anchored conflict ahead of a vendor marker', () => {
-      const evidence = collectAgentTitleEvidence('✳ | OC | something… - grok')
+      const evidence = collectAgentTitleEvidence('✳ | agy gemini 3.5 - grok')
       expect(evidence.agent).toBeNull()
       expect(evidence.reason).toBe('conflicting-anchored-names')
-      expect([...evidence.anchoredNames].sort()).toEqual(['grok', 'opencode'])
+      expect([...evidence.anchoredNames].sort()).toEqual(['antigravity', 'grok'])
       expect(evidence.vendorMarkers).toEqual(['claude'])
     })
 

@@ -64,7 +64,7 @@ describe('detectAgentStatusFromTitle', () => {
   })
 
   it('detects braille spinner ⠼ as working', () => {
-    expect(detectAgentStatusFromTitle('⠼ opencode')).toBe('working')
+    expect(detectAgentStatusFromTitle('⠼ codex')).toBe('working')
   })
 
   it('detects braille spinner ⠴ as working', () => {
@@ -113,7 +113,7 @@ describe('detectAgentStatusFromTitle', () => {
   })
 
   it('detects "running" keyword as working', () => {
-    expect(detectAgentStatusFromTitle('opencode running tests')).toBe('working')
+    expect(detectAgentStatusFromTitle('codex running tests')).toBe('working')
   })
 
   // --- Claude Code title prefixes ---
@@ -156,8 +156,8 @@ describe('detectAgentStatusFromTitle', () => {
     expect(detectAgentStatusFromTitle('aider')).toBe('idle')
   })
 
-  it('returns idle for bare agent name "opencode"', () => {
-    expect(detectAgentStatusFromTitle('opencode')).toBe('idle')
+  it('returns idle for bare agent name "gemini"', () => {
+    expect(detectAgentStatusFromTitle('gemini')).toBe('idle')
   })
 
   it('classifies OpenClaude titles without falling through to Claude naming', () => {
@@ -245,7 +245,7 @@ describe('detectAgentStatusFromTitle', () => {
   it('does not treat cwd-path agent-name fragments as agent activity', () => {
     expect(detectAgentStatusFromTitle('~/codex-scratch')).toBeNull()
     expect(detectAgentStatusFromTitle('~/codex already built')).toBeNull()
-    expect(detectAgentStatusFromTitle('opencode-blinker')).toBeNull()
+    expect(detectAgentStatusFromTitle('aider-blinker')).toBeNull()
     expect(detectAgentStatusFromTitle('claude-scratch')).toBeNull()
   })
 
@@ -289,7 +289,7 @@ describe('detectAgentStatusFromTitle path-separator rejection', () => {
 
   test('still accepts legitimate idle/working titles separated by whitespace', () => {
     expect(detectAgentStatusFromTitle('Codex done')).toBe('idle')
-    expect(detectAgentStatusFromTitle('OpenCode ready')).toBe('idle')
+    expect(detectAgentStatusFromTitle('Grok ready')).toBe('idle')
     expect(detectAgentStatusFromTitle('Aider idle')).toBe('idle')
     expect(detectAgentStatusFromTitle('Codex working')).toBe('working')
     expect(detectAgentStatusFromTitle('Aider thinking')).toBe('working')
@@ -299,7 +299,7 @@ describe('detectAgentStatusFromTitle path-separator rejection', () => {
   test('still accepts keywords followed by trailing punctuation', () => {
     expect(detectAgentStatusFromTitle('Codex done.')).toBe('idle')
     expect(detectAgentStatusFromTitle('Aider idle!')).toBe('idle')
-    expect(detectAgentStatusFromTitle('OpenCode ready?')).toBe('idle')
+    expect(detectAgentStatusFromTitle('Grok ready?')).toBe('idle')
     expect(detectAgentStatusFromTitle('Codex working.')).toBe('working')
     expect(detectAgentStatusFromTitle('Aider thinking...')).toBe('working')
   })
@@ -450,7 +450,7 @@ describe('getAgentLabel', () => {
 
   it('treats Claude Code prefixed task titles as Claude even when they mention another CLI', () => {
     expect(getAgentLabel('✳ Gemini CLI')).toBe('Claude Code')
-    expect(getAgentLabel('. Compare Opencode Vs Kolux')).toBe('Claude Code')
+    expect(getAgentLabel('. Compare Goose Vs Kolux')).toBe('Claude Code')
     expect(getAgentLabel('* Review Codex behavior')).toBe('Claude Code')
   })
 
@@ -485,9 +485,9 @@ describe('getAgentLabel', () => {
     expect(getAgentLabel('android emulator ready')).toBeNull()
   })
 
-  // Why: substring matching mislabeled cwd/worktree name fragments (e.g. "opencode-blinker") as agents; token-match to reject them.
+  // Why: substring matching mislabeled cwd/worktree name fragments (e.g. "goose-blinker") as agents; token-match to reject them.
   it('does not label cwd/worktree path fragments as an agent', () => {
-    expect(getAgentLabel('opencode-blinker')).toBeNull()
+    expect(getAgentLabel('goose-blinker')).toBeNull()
     expect(getAgentLabel('claude-scratch')).toBeNull()
     expect(getAgentLabel('~/projects/codex-scratch')).toBeNull()
     expect(getAgentLabel('~/cursor-rules')).toBeNull()
@@ -497,7 +497,7 @@ describe('getAgentLabel', () => {
   })
 
   it('still labels real agent titles that contain the name as a token', () => {
-    expect(getAgentLabel('OpenCode ready')).toBe('OpenCode')
+    expect(getAgentLabel('Grok ready')).toBe('Grok')
     expect(getAgentLabel('claude.exe')).toBe('Claude Code')
     expect(getAgentLabel('openclaude.cmd')).toBe('OpenClaude')
     expect(getAgentLabel('⠋ Codex')).toBe('Codex')

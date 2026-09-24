@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import {
-  readFileSyncMock,
-  openCodeBuildPtyEnvMock,
-  piBuildPtyEnvMock
-} from './pty-ipc-mock-registry'
+import { readFileSyncMock, piBuildPtyEnvMock } from './pty-ipc-mock-registry'
 import {
   expectedOmpStatusExtension,
   TEST_CODEX_HOME,
@@ -20,9 +16,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -425,38 +418,6 @@ describe('registerPtyHandlers', () => {
         })
         expect(daemonSpawn).toHaveBeenCalledOnce()
         expect(daemonSpawn.mock.calls[0]?.[0].env).not.toHaveProperty('CODEX_HOME')
-      })
-      it('injects OpenCode plugin env (OPENCODE_CONFIG_DIR) on the daemon path', async () => {
-        const env = await daemonSpawnAndGetEnv({}, undefined, undefined, {
-          OPENCODE_CONFIG_DIR: undefined
-        })
-        expect(openCodeBuildPtyEnvMock).toHaveBeenCalled()
-        expect(env.OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-config')
-        expect(env.KOLUX_OPENCODE_HOOK_PORT).toBe('4567')
-      })
-      it('mirrors a user-provided OPENCODE_CONFIG_DIR into a source-scoped overlay on the daemon path', async () => {
-        const env = await daemonSpawnAndGetEnv({ OPENCODE_CONFIG_DIR: '/user/custom/opencode' })
-        // Why: OpenCode loads config from a single dir, so the user's path is mirrored into a source-scoped overlay, not passed through.
-        expect(openCodeBuildPtyEnvMock).toHaveBeenCalledWith(
-          expect.any(String),
-          '/user/custom/opencode'
-        )
-        expect(env.OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-overlay')
-        expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-overlay')
-        expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBe('/user/custom/opencode')
-      })
-      it('uses source OpenCode config env instead of remirroring a parent overlay', async () => {
-        const env = await daemonSpawnAndGetEnv({
-          OPENCODE_CONFIG_DIR: '/tmp/parent-kolux-opencode-overlay',
-          KOLUX_OPENCODE_SOURCE_CONFIG_DIR: '/user/custom/opencode'
-        })
-        expect(openCodeBuildPtyEnvMock).toHaveBeenCalledWith(
-          expect.any(String),
-          '/user/custom/opencode'
-        )
-        expect(env.OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-overlay')
-        expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/tmp/kolux-opencode-overlay')
-        expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBe('/user/custom/opencode')
       })
       it('installs Pi managed extensions without redirecting homes on the daemon path', async () => {
         const env = await daemonSpawnAndGetEnv({ PI_CODING_AGENT_DIR: '/user/.pi/agent' })

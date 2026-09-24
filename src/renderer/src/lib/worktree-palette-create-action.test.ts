@@ -32,7 +32,7 @@ describe('worktree-palette-create-action', () => {
 
   it('skips create for free text even when it is listed before every other row', () => {
     const state = getWorktreePaletteCreateActionState({
-      query: 'opencode-issue'
+      query: 'triage-issue'
     })
 
     expect(state.showCreateAction).toBe(true)

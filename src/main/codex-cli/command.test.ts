@@ -241,12 +241,12 @@ describe('resolveCliCommands', () => {
     const pathDir = join(root, 'bin')
     const pathClaude = join(pathDir, 'claude')
     const nvmCodex = join(root, '.nvm', 'versions', 'node', 'v24.13.0', 'bin', 'codex')
-    const pnpmOpencode = join(root, 'Library', 'pnpm', 'opencode')
+    const pnpmGemini = join(root, 'Library', 'pnpm', 'gemini')
     makeExecutable(pathClaude)
     makeExecutable(nvmCodex)
-    makeExecutable(pnpmOpencode)
+    makeExecutable(pnpmGemini)
 
-    const resolved = resolveCliCommands(['claude', 'codex', 'opencode', 'missing'], {
+    const resolved = resolveCliCommands(['claude', 'codex', 'gemini', 'missing'], {
       platform: 'darwin',
       pathEnv: pathDir,
       homePath: root
@@ -254,7 +254,7 @@ describe('resolveCliCommands', () => {
 
     expect(resolved.get('claude')).toBe(pathClaude)
     expect(resolved.get('codex')).toBe(nvmCodex)
-    expect(resolved.get('opencode')).toBe(pnpmOpencode)
+    expect(resolved.get('gemini')).toBe(pnpmGemini)
     expect(resolved.get('missing')).toBe('missing')
   })
 

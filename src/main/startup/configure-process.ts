@@ -159,7 +159,6 @@ export function patchPackagedProcessPath(): void {
         join(home, '.local/bin'),
         join(home, '.nix-profile/bin'),
         // Why: some agent CLIs install into ~/.<name>/bin; GUI-launched Electron's minimal PATH misses them (TxaisX/kolux#829).
-        join(home, '.opencode/bin'),
         join(home, '.vite-plus/bin')
       )
     }

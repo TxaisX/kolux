@@ -1,6 +1,5 @@
 import type { Tab } from './tab-types'
 import type { TerminalTab } from './terminal-tab-types'
-import { isMeaningfulOpenCodeTerminalTitle } from './opencode-terminal-title'
 
 export function resolveTerminalTabTitle(
   tab: Pick<
@@ -14,7 +13,6 @@ export function resolveTerminalTabTitle(
   return (
     tab.customTitle?.trim() ||
     tab.quickCommandLabel?.trim() ||
-    (isMeaningfulOpenCodeTerminalTitle(liveTitle) ? liveTitle : '') ||
     tab.aiVaultTitle?.title.trim() ||
     (generatedTitlesEnabled ? tab.generatedTitle?.trim() : '') ||
     liveTitle ||
@@ -33,7 +31,6 @@ export function resolveUnifiedTabLabel(
   return (
     tab?.customLabel?.trim() ||
     tab?.quickCommandLabel?.trim() ||
-    (isMeaningfulOpenCodeTerminalTitle(liveLabel) ? liveLabel : '') ||
     tab?.aiVaultTitle?.title.trim() ||
     (generatedTitlesEnabled ? tab?.generatedLabel?.trim() : '') ||
     liveLabel ||

@@ -22,8 +22,6 @@ function scopedScanOptions(claudeProjectsDir: string, extra: Partial<AiVaultScan
     antigravityBrainDir: '/nonexistent/antigravity',
     copilotSessionsDir: '/nonexistent/copilot',
     cursorProjectsDir: '/nonexistent/cursor',
-    opencodeStorageDir: '/nonexistent/opencode',
-    opencodeDbPaths: [],
     grokSessionsDir: '/nonexistent/grok',
     devinTranscriptsDir: '/nonexistent/devin',
     hermesSessionsDir: '/nonexistent/hermes',

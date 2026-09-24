@@ -67,7 +67,7 @@ describe('sourceControlTextGenerationDefaultsMatchTarget', () => {
         actionId: 'commitMessage',
         target: { type: 'repo', repoId: 'repo-1' },
         params: {
-          agentId: 'opencode',
+          agentId: 'codex',
           model: '',
           commandInputTemplate: '{basePrompt}\n\nrepo only',
           agentArgs: ''
@@ -78,7 +78,7 @@ describe('sourceControlTextGenerationDefaultsMatchTarget', () => {
             enabled: true,
             actionOverrides: {
               commitMessage: generationParamsToActionRecipe({
-                agentId: 'opencode',
+                agentId: 'codex',
                 model: '',
                 commandInputTemplate: '{basePrompt}\n\nrepo only',
                 agentArgs: ''

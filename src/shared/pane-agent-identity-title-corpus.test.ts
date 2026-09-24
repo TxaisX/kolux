@@ -96,7 +96,7 @@ describe('controlled title fixtures (always run)', () => {
     },
     {
       name: 'conflicting anchored names resolve to nothing',
-      title: 'OC | something… - grok',
+      title: 'agy gemini 3.5 - grok',
       expected: null
     },
     { name: 'a bare Pi title anchors as Pi', title: 'pi', expected: 'pi' },

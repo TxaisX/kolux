@@ -21,19 +21,10 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       codexStateBeforeFetch,
       codexProvenance,
       codexGeneration,
-      opencodeConfigChanged,
-      opencodeGeneration,
       miniMaxConfigChanged,
       miniMaxGeneration,
       claudeFetchGated,
-      results: [
-        claudeResult,
-        codexResult,
-        geminiResult,
-        opencodeGoResult,
-        kimiResult,
-        miniMaxResult
-      ],
+      results: [claudeResult, codexResult, geminiResult, kimiResult, miniMaxResult],
       grokResultPromise
     } = prepared
     if (signal.aborted) {
@@ -81,22 +72,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
 
     // Why: Antigravity can only borrow a *successful* Gemini read; a Gemini failure is not an Antigravity failure.
     const antigravity = deriveAntigravityRateLimits(gemini)
-
-    const opencodeGo =
-      opencodeGoResult.status === 'fulfilled'
-        ? opencodeGoResult.value
-        : ({
-            provider: 'opencode-go',
-            session: null,
-            weekly: null,
-            monthly: null,
-            updatedAt: Date.now(),
-            error:
-              opencodeGoResult.reason instanceof Error
-                ? opencodeGoResult.reason.message
-                : 'Unknown error',
-            status: 'error'
-          } satisfies ProviderRateLimits)
 
     const kimi =
       kimiResult.status === 'fulfilled'
@@ -146,7 +121,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
       claudeGeneration === this.claudeFetchGeneration &&
       claudeProvenance === latestClaudeProvenance &&
       this.isSameClaudeTarget(claudeTarget, this.claudeFetchTarget)
-    const shouldApplyOpencode = opencodeGeneration === this.opencodeFetchGeneration
     const shouldApplyMiniMax = miniMaxGeneration === this.minimaxFetchGeneration
 
     if (shouldApplyClaude) {
@@ -157,9 +131,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
     }
     this.trackActiveFailureStreak('gemini', gemini)
     this.trackActiveFailureStreak('antigravity', antigravity)
-    if (shouldApplyOpencode) {
-      this.trackActiveFailureStreak('opencode-go', opencodeGo)
-    }
     this.trackActiveFailureStreak('kimi', kimi)
     if (shouldApplyMiniMax) {
       this.trackActiveFailureStreak('minimax', miniMax)
@@ -177,11 +148,6 @@ export abstract class RateLimitServiceFullCycleApplication extends RateLimitServ
           ? codexStateBeforeFetch
           : this.state.codex,
       gemini: this.applyStalePolicy(gemini, previousState.gemini),
-      opencodeGo: shouldApplyOpencode
-        ? opencodeConfigChanged
-          ? opencodeGo
-          : this.applyStalePolicy(opencodeGo, previousState.opencodeGo)
-        : this.state.opencodeGo,
       kimi: this.applyStalePolicy(kimi, previousState.kimi),
       antigravity: this.applyStalePolicy(antigravity, previousState.antigravity),
       minimax: shouldApplyMiniMax

@@ -7,24 +7,6 @@ export function makeResponse(body: unknown, status = 200): Response {
   } as Response
 }
 
-export const authJsonGoogle = {
-  google: {
-    type: 'oauth',
-    access: 'auth-json-access-token',
-    expires: new Date('2026-04-24T13:00:00.000Z').getTime(),
-    refresh: 'refresh-token-abc|proj-123|managed-456'
-  }
-} as const
-
-export const authJsonGoogleExpired = {
-  google: {
-    type: 'oauth',
-    access: 'expired-access-token',
-    expires: new Date('2026-04-24T11:00:00.000Z').getTime(),
-    refresh: 'refresh-token-abc|proj-123|managed-456'
-  }
-} as const
-
 export const validCreds = {
   access_token: 'valid-token',
   refresh_token: 'refresh-token',

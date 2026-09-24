@@ -1672,5 +1672,5 @@ disconnect boundaries remain separate gates below.
       web mirror, Windows-path contract, CLI parser/help, and Settings UI tests.
 - [ ] Complete a live signed-in production publish through the dev CLI, resolve the returned link,
       revoke it, and confirm a later resolution fails while the local source skills remain intact.
-- [ ] Complete independent OpenCode and release-readiness review, full repository validation, PR
+- [ ] Complete an independent release-readiness review, full repository validation, PR
       CI, and an ad hoc build from the final commit.

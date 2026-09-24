@@ -9,7 +9,7 @@ describe('plugin source byte limit', () => {
   it('allows sources at the byte cap', () => {
     const source = 'a'.repeat(PLUGIN_SOURCE_MAX_BYTES)
 
-    expect(() => assertPluginSourceUnderByteCap('opencodePluginSource', source)).not.toThrow()
+    expect(() => assertPluginSourceUnderByteCap('piExtensionSource', source)).not.toThrow()
   })
 
   it('rejects sources over the byte cap using utf8 byte length, not string length', () => {

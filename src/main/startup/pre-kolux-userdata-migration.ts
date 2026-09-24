@@ -40,7 +40,6 @@ function buildBasenameRenameMap(): ReadonlyMap<string, string> {
     ['nightshift-stats.json', 'kolux-stats.json'],
     ['nightshift-claude-usage.json', 'kolux-claude-usage.json'],
     ['nightshift-codex-usage.json', 'kolux-codex-usage.json'],
-    ['nightshift-opencode-usage.json', 'kolux-opencode-usage.json'],
     ['nightshift-devices.json', 'kolux-devices.json'],
     ['nightshift-e2ee-keypair.json', 'kolux-e2ee-keypair.json'],
     ['nightshift-relay-region-preference.json', 'kolux-relay-region-preference.json'],
@@ -60,7 +59,6 @@ function buildBasenameRenameMap(): ReadonlyMap<string, string> {
     ['.nightshift-config-settings-baseline.json', '.kolux-config-settings-baseline.json'],
     ['.nightshift-hook-trust-provenance.json', '.kolux-hook-trust-provenance.json'],
     ['.nightshift-shell-wrapper', '.kolux-shell-wrapper'],
-    ['.nightshift-opencode-overlay-manifest.json', '.kolux-opencode-overlay-manifest.json'],
     ['.nightshift-pi-overlay-manifest.json', '.kolux-pi-overlay-manifest.json'],
     ['.nightshift-omp-overlay-migration-complete', '.kolux-omp-overlay-migration-complete'],
     // Electron strips the `persist:` prefix from a session partition name on disk.

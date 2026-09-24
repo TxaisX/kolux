@@ -1,4 +1,4 @@
-// Why: Pi (PI_CODING_AGENT_DIR) and OpenCode (OPENCODE_CONFIG_DIR) both inject
+// Why: Pi (PI_CODING_AGENT_DIR) and MiMo Code (MIMOCODE_HOME) both inject
 // Kolux-owned files into overlay directories that mirror a user-owned
 // source dir via symlinks/junctions. The safety guarantees here -- never
 // descend into a symlink/junction during teardown, refuse to operate outside

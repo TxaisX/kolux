@@ -70,7 +70,6 @@ const CONTRACT_GLOBALS = new Set([
   'CODEX_HOME',
   'HISTFILE',
   'MIMOCODE_HOME',
-  'OPENCODE_CONFIG_DIR',
   'PATH',
   'PROMPT_COMMAND',
   'PS1', // Bash appends its non-printing Readline readiness marker.

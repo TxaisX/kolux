@@ -1,7 +1,7 @@
 // Resolves the stable "conversation name" an agent row can show instead of the
 // live last-message preview. Sources, in the same precedence the tab bar uses
-// (tab-title-resolution.ts): manual rename → quick-command label → OpenCode's
-// semantic session title → Kolux's generated title → the agent-set live title.
+// (tab-title-resolution.ts): manual rename → quick-command label → Kolux's
+// generated title → the agent-set live title.
 // Live titles are accepted only when they carry a real name — pure status,
 // identity-echo, and spinner/cwd titles yield null so callers keep the
 // last-message label.
@@ -9,7 +9,6 @@ import type { AgentType } from './agent-status-types'
 import { isClaudeManagementTitle } from './agent-title-core'
 import { stripLeadingAgentTitleDecorationOrEmpty } from './agent-title-decoration'
 import { formatAgentTypeLabel } from './agent-type-label'
-import { isMeaningfulOpenCodeTerminalTitle } from './opencode-terminal-title'
 import { SYNTHETIC_AGENT_TITLE_PROFILES } from './synthetic-agent-title'
 import type { TerminalTab } from './terminal-tab-types'
 
@@ -131,9 +130,6 @@ export function getAgentRowConversationName(
   }
   const liveTitle =
     paneLiveTitle === undefined ? (tab.title?.trim() ?? '') : (paneLiveTitle?.trim() ?? '')
-  if (isMeaningfulOpenCodeTerminalTitle(liveTitle)) {
-    return liveTitle
-  }
   const generatedTitle = generatedTitlesEnabled ? tab.generatedTitle?.trim() : ''
   if (generatedTitle) {
     return generatedTitle

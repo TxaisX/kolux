@@ -1,12 +1,12 @@
 // Why: pi has no settings.json hook surface — its extensibility is the
 // in-process TypeScript extension API (pi.on('agent_start'), 'tool_call',
 // etc.). To get pi panes into the unified agent-hooks pipeline alongside
-// Claude/Codex/Gemini/OpenCode/Cursor, we ship a bundled extension into
+// Claude/Codex/Gemini/MiMo Code/Cursor, we ship a bundled extension into
 // the selected Pi/OMP extension dir (PiTitlebarExtensionService) that POSTs to
 // /hook/<kind> using the same KOLUX_AGENT_HOOK_* + KOLUX_PANE_KEY env that every
 // PTY already receives from ipc/pty.ts.
 //
-// Each Pi process gets its own paneKey through env. Like the OpenCode plugin,
+// Each Pi process gets its own paneKey through env. Like the MiMo Code plugin,
 // the returned source is a string (loaded by jiti from disk inside the pi process), so we
 // keep the source body in plain JS without TS types and avoid pulling pi or
 // any Kolux dep into the pi runtime.
@@ -88,7 +88,7 @@ export function getPiAgentStatusExtensionSource(kind: PiAgentKind = 'pi'): strin
 
   // Why: keep this string self-contained — it runs inside the pi process,
   // so it cannot import from Kolux's main bundle. fs/http coords come from
-  // the same endpoint file the OpenCode plugin reads (process.env is frozen
+  // the same endpoint file the MiMo Code plugin reads (process.env is frozen
   // at PTY spawn, so on Kolux restart we have to re-read it from disk).
   return [
     '// Why: no package-specific type import here. Pi and OMP expose the same',
@@ -107,7 +107,7 @@ export function getPiAgentStatusExtensionSource(kind: PiAgentKind = 'pi'): strin
     '',
     '// Why: re-reading the endpoint file on every event is cheap (small file,',
     '// rare changes) but stat+mtime caching avoids re-parsing on every event',
-    '// during streaming tool execution. Mirrors the OpenCode plugin cache shape.',
+    '// during streaming tool execution. Mirrors the MiMo Code plugin cache shape.',
     "let cachedEndpointKey = ''",
     'let cachedEndpointValues: Record<string, string> | null = null',
     '',

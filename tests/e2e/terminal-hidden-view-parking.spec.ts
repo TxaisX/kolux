@@ -51,7 +51,7 @@ function parkedTuiFrame(runId: string, frame: number): string {
     '╭────────────────────────────────────────────────────────────────────╮',
     `│ Parked view restore Frame ${String(frame).padStart(3, '0')} ${frame % 2 === 0 ? '🟢' : '🟡'} ${progress} │`,
     '├──────────────┬──────────────────────┬──────────────────────────────┤',
-    `│ model        │ codex/opencode       │ ${runId.slice(0, 28).padEnd(28)} │`,
+    `│ model        │ codex/gemini       │ ${runId.slice(0, 28).padEnd(28)} │`,
     `│ status       │ ${frame % 2 === 0 ? 'thinking' : 'streaming'}            │ input ${'#'.repeat((frame % 18) + 1).padEnd(22)} │`,
     `│ diff         │ +${String(frame * 3).padEnd(19)} │ -${String(frame).padEnd(27)} │`,
     '╰──────────────┴──────────────────────┴──────────────────────────────╯',
@@ -89,7 +89,7 @@ function cycleReferenceFrame(runId: string): string {
     '╭──────────────────────────────────────────────────────────╮',
     `│ Park/reveal cycle reference ${runId.slice(0, 8)} 🟢 你好世界 터미널  │`,
     '├───────────────┬──────────────────────────────────────────┤',
-    `│ model         │ \x1b[1mcodex/opencode\x1b[22m stream +142 -37        │`,
+    `│ model         │ \x1b[1mcodex/gemini\x1b[22m stream +142 -37        │`,
     `│ status        │ \x1b[38;5;204mrunning\x1b[0m\x1b[2;36m diff --git a/pty.ts esc↩     │`,
     '╰───────────────┴──────────────────────────────────────────╯',
     `CYCLE_REFERENCE_${runId}`

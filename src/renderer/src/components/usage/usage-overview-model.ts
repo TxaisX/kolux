@@ -1,6 +1,10 @@
 // Pure model combining rate limits + usage snapshots + detected agents into one
 // "usage across every CLI" view. No React/store imports so it stays cheaply testable.
-import type { ProviderRateLimits, RateLimitState, RateLimitWindow } from '../../../../shared/rate-limit-types'
+import type {
+  ProviderRateLimits,
+  RateLimitState,
+  RateLimitWindow
+} from '../../../../shared/rate-limit-types'
 import { formatResetCountdown } from '../../../../shared/rate-limit-reset-format'
 import { clampUsedPercent } from '../../../../shared/usage-percentage-display'
 import type {
@@ -15,12 +19,6 @@ import type {
   CodexUsageSessionRow,
   CodexUsageSummary
 } from '../../../../shared/codex-usage-types'
-import type {
-  OpenCodeUsageDailyPoint,
-  OpenCodeUsageScanState,
-  OpenCodeUsageSessionRow,
-  OpenCodeUsageSummary
-} from '../../../../shared/opencode-usage-types'
 import type { TuiAgent } from '../../../../shared/tui-agent'
 import { getAgentLabel } from '@/lib/agent-catalog'
 import { getProviderDisplayName } from '../status-bar/usage-error-copy'
@@ -80,12 +78,6 @@ export type UsageOverviewModelInput = {
     CodexUsageDailyPoint,
     CodexUsageSessionRow
   >
-  openCodeUsage: UsageSnapshotInput<
-    OpenCodeUsageScanState,
-    OpenCodeUsageSummary,
-    OpenCodeUsageDailyPoint,
-    OpenCodeUsageSessionRow
-  >
   detectedAgentIds: TuiAgent[] | null
   claudeAccount?: string | null
   codexAccount?: string | null
@@ -141,7 +133,6 @@ type RateLimitProviderKey =
   | 'claude'
   | 'codex'
   | 'gemini'
-  | 'opencodeGo'
   | 'kimi'
   | 'antigravity'
   | 'minimax'
@@ -155,7 +146,6 @@ const RATE_LIMIT_PROVIDERS: {
   { key: 'claude', providerId: 'claude', tuiAgent: 'claude' },
   { key: 'codex', providerId: 'codex', tuiAgent: 'codex' },
   { key: 'gemini', providerId: 'gemini', tuiAgent: 'gemini' },
-  { key: 'opencodeGo', providerId: 'opencode-go', tuiAgent: 'opencode' },
   { key: 'kimi', providerId: 'kimi', tuiAgent: 'kimi' },
   { key: 'antigravity', providerId: 'antigravity', tuiAgent: 'antigravity' },
   { key: 'minimax', providerId: 'minimax', tuiAgent: null },
@@ -182,7 +172,8 @@ function buildRateLimitProviders(
 ): UsageOverviewProvider[] {
   return RATE_LIMIT_PROVIDERS.map(({ key, providerId, tuiAgent }) => {
     const p = rateLimits[key]
-    const minimaxConfigured = rateLimits.minimaxCookieConfigured || rateLimits.minimaxApiKeyConfigured
+    const minimaxConfigured =
+      rateLimits.minimaxCookieConfigured || rateLimits.minimaxApiKeyConfigured
     return {
       id: tuiAgent ?? key,
       label: getProviderDisplayName(providerId),
@@ -210,7 +201,11 @@ function findToday<T extends { day: string }>(daily: T[], now: number): T | unde
 
 function withUsageExtras(
   provider: UsageOverviewProvider,
-  extras: { account?: string | null; todayTokens: number; recentSessions: UsageRecentSessionRow[] } | null
+  extras: {
+    account?: string | null
+    todayTokens: number
+    recentSessions: UsageRecentSessionRow[]
+  } | null
 ): UsageOverviewProvider {
   if (!extras) {
     return provider
@@ -268,26 +263,6 @@ function applyCodexExtras(
   })
 }
 
-function applyOpenCodeExtras(
-  provider: UsageOverviewProvider,
-  usage: UsageOverviewModelInput['openCodeUsage'],
-  now: number
-): UsageOverviewProvider {
-  if (!usage.scanState?.enabled) {
-    return provider
-  }
-  const today = findToday(usage.daily, now)
-  const recentSessions = usage.recentSessions.slice(0, RECENT_SESSION_LIMIT).map((row) => ({
-    label: row.projectLabel || row.model || 'Session',
-    tokens: row.totalTokens,
-    when: row.lastActiveAt
-  }))
-  return withUsageExtras(provider, {
-    todayTokens: today ? today.totalTokens : 0,
-    recentSessions
-  })
-}
-
 /** Builds the "usage across every CLI" view from rate limits, usage snapshots, and detected agents. */
 export function buildUsageOverviewModel(input: UsageOverviewModelInput): UsageOverviewModel {
   const now = input.now ?? Date.now()
@@ -298,9 +273,6 @@ export function buildUsageOverviewModel(input: UsageOverviewModelInput): UsageOv
       }
       if (provider.id === 'codex') {
         return applyCodexExtras(provider, input.codexUsage, input.codexAccount, now)
-      }
-      if (provider.id === 'opencode') {
-        return applyOpenCodeExtras(provider, input.openCodeUsage, now)
       }
       return provider
     }
@@ -321,8 +293,7 @@ export function buildUsageOverviewModel(input: UsageOverviewModelInput): UsageOv
   const timestamps: number[] = [
     ...RATE_LIMIT_PROVIDERS.map(({ key }) => input.rateLimits[key]?.updatedAt ?? 0),
     input.claudeUsage.scanState?.lastScanCompletedAt ?? 0,
-    input.codexUsage.scanState?.lastScanCompletedAt ?? 0,
-    input.openCodeUsage.scanState?.lastScanCompletedAt ?? 0
+    input.codexUsage.scanState?.lastScanCompletedAt ?? 0
   ]
   const updatedAt = Math.max(0, ...timestamps)
 

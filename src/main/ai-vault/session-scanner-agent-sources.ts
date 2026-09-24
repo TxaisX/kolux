@@ -77,7 +77,7 @@ type AiVaultAgentSourceTable = Record<AiVaultDeletableAgent, AiVaultAgentSource>
   Partial<Record<AiVaultAgent, AiVaultAgentSource>>
 
 // Agents absent from this table are discovered by shape-specific scanners
-// instead: opencode (SQLite plus legacy files) and antigravity (brain dirs).
+// instead: antigravity (brain dirs).
 export const AI_VAULT_AGENT_SOURCES: AiVaultAgentSourceTable = {
   claude: {
     rootDirs: (options, wslHomeDirs) =>

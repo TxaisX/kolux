@@ -9,11 +9,6 @@ import type {
   CodexUsageScope,
   CodexUsageSnapshot
 } from '../../../../shared/codex-usage-types'
-import type {
-  OpenCodeUsageRange,
-  OpenCodeUsageScope,
-  OpenCodeUsageSnapshot
-} from '../../../../shared/opencode-usage-types'
 import type { AppState } from '../types'
 
 type UsageSnapshot = {
@@ -257,11 +252,9 @@ function createUsageProviderSlice<
 
 type ClaudeUsageShape = UsageShape<ClaudeUsageScope, ClaudeUsageRange, ClaudeUsageSnapshot>
 type CodexUsageShape = UsageShape<CodexUsageScope, CodexUsageRange, CodexUsageSnapshot>
-type OpenCodeUsageShape = UsageShape<OpenCodeUsageScope, OpenCodeUsageRange, OpenCodeUsageSnapshot>
 
 export type ClaudeUsageSlice = ProviderUsageSlice<'claude', 'Claude', ClaudeUsageShape>
 export type CodexUsageSlice = ProviderUsageSlice<'codex', 'Codex', CodexUsageShape>
-export type OpenCodeUsageSlice = ProviderUsageSlice<'openCode', 'OpenCode', OpenCodeUsageShape>
 
 export const createClaudeUsageSlice = createUsageProviderSlice<
   'claude',
@@ -283,17 +276,4 @@ export const createCodexUsageSlice = createUsageProviderSlice<'codex', 'Codex', 
   initialRange: '30d',
   getApi: () => window.api.codexUsage,
   hasCachedData: (state) => state.hasAnyCodexData
-})
-
-export const createOpenCodeUsageSlice = createUsageProviderSlice<
-  'openCode',
-  'OpenCode',
-  OpenCodeUsageShape
->({
-  prefix: 'openCode',
-  name: 'OpenCode',
-  initialScope: 'kolux',
-  initialRange: '30d',
-  getApi: () => window.api.openCodeUsage,
-  hasCachedData: (state) => state.hasAnyOpenCodeData
 })

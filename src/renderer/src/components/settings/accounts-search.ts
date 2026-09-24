@@ -127,50 +127,6 @@ export const getAccountsGeminiSearchEntries = createLocalizedCatalog(() => [
   }
 ])
 
-export const getAccountsOpencodeSearchEntries = createLocalizedCatalog(() => [
-  {
-    title: translate(
-      'auto.components.settings.accounts.search.6ed1401020',
-      'OpenCode Go Session Cookie'
-    ),
-    description: translate(
-      'auto.components.settings.accounts.search.d1d2ae383c',
-      'Paste your opencode.ai session cookie for rate limit fetching.'
-    ),
-    keywords: [
-      ...translateSearchKeyword('auto.components.settings.accounts.search.8dcbef1856', 'opencode'),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.61f7d1fcbe', 'cookie'),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.9c4e40cf6b', 'session'),
-      ...translateSearchKeyword(
-        'auto.components.settings.accounts.search.e949b08ffb',
-        'rate limit'
-      ),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.86edc96bc9', 'status bar')
-    ]
-  },
-  {
-    title: translate(
-      'auto.components.settings.accounts.search.4ee2029e9c',
-      'OpenCode Go Workspace ID'
-    ),
-    description: translate(
-      'auto.components.settings.accounts.search.38d22ff8d6',
-      'Optional workspace ID override if the automatic lookup fails.'
-    ),
-    keywords: [
-      ...translateSearchKeyword('auto.components.settings.accounts.search.8dcbef1856', 'opencode'),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.be8b621bdc', 'workspace'),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.421c6be25e', 'id'),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.7e67d7d1b6', 'wrk'),
-      ...translateSearchKeyword(
-        'auto.components.settings.accounts.search.e949b08ffb',
-        'rate limit'
-      ),
-      ...translateSearchKeyword('auto.components.settings.accounts.search.86edc96bc9', 'status bar')
-    ]
-  }
-])
-
 export const getAccountsMiniMaxSearchEntries = createLocalizedCatalog(() => [
   {
     title: translate('auto.components.settings.accounts.search.733f9e2a93', 'MiniMax Usage'),
@@ -221,7 +177,6 @@ export const getAccountsPaneSearchEntries = createLocalizedCatalog((): SettingsS
   ...getAccountsClaudeSearchEntries(),
   ...getAccountsCodexSearchEntries(),
   ...getAccountsGeminiSearchEntries(),
-  ...getAccountsOpencodeSearchEntries(),
   ...getAccountsMiniMaxSearchEntries(),
   ...getAccountsGrokSearchEntries()
 ])

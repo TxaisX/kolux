@@ -58,7 +58,6 @@ export type StatusBarItem =
   | 'codex'
   | 'gemini'
   | 'antigravity'
-  | 'opencode-go'
   | 'kimi'
   | 'minimax'
   | 'grok'

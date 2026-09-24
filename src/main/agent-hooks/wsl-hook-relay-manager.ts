@@ -43,7 +43,6 @@ type DistroState = {
   guestHome?: string
   codexHomePath?: string
   guestEndpointFilePath?: string
-  opencodeOverlayDir?: string
   failures: number
   cooldownUntil: number
   connectedAt?: number
@@ -105,13 +104,6 @@ export class WslHookRelayManager {
    *  (callers keep the /p-translated Windows endpoint path until then). */
   getGuestEndpointFilePath(distro: string | null): string | null {
     return this.stateFor(distro)?.guestEndpointFilePath ?? null
-  }
-
-  /** Guest OpenCode config-overlay dir once the guest relay materializes it;
-   *  null before then (older bundle / relay not yet connected). Callers drop
-   *  OPENCODE_CONFIG_DIR while null so no Windows overlay path crosses into WSL. */
-  getOpenCodeOverlayDir(distro: string | null): string | null {
-    return this.stateFor(distro)?.opencodeOverlayDir ?? null
   }
 
   /** Kills every live relay. Non-permanent (hooks switched off mid-session) leaves the
@@ -199,9 +191,6 @@ export class WslHookRelayManager {
       distro,
       phase: 'starting',
       failures: existing?.failures ?? 0,
-      // Why: instance-keyed and on the distro's persistent fs, so it outlives a relay
-      // crash — dropping it would blank status on panes spawned mid-relaunch.
-      opencodeOverlayDir: existing?.opencodeOverlayDir,
       codexHomePath: requestedCodexHomePath ?? existing?.codexHomePath,
       cooldownUntil: 0
     }

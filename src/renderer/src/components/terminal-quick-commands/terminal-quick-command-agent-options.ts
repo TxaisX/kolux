@@ -8,7 +8,6 @@ const QUICK_COMMAND_AGENT_PRESENTATION_ORDER = [
   'codex',
   'gemini',
   'copilot',
-  'opencode',
   'pi',
   'omp',
   'cursor',

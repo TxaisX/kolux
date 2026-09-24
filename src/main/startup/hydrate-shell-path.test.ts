@@ -55,7 +55,7 @@ describe('hydrateShellPath', () => {
       spawner: async (shell) => {
         capturedShell = shell
         return {
-          segments: ['/Users/tester/.opencode/bin', '/Users/tester/.cargo/bin'],
+          segments: ['/Users/tester/.gemini/bin', '/Users/tester/.cargo/bin'],
           ok: true,
           failureReason: 'none'
         }
@@ -64,7 +64,7 @@ describe('hydrateShellPath', () => {
 
     expect(capturedShell).toBe('/bin/zsh')
     expect(result.ok).toBe(true)
-    expect(result.segments).toEqual(['/Users/tester/.opencode/bin', '/Users/tester/.cargo/bin'])
+    expect(result.segments).toEqual(['/Users/tester/.gemini/bin', '/Users/tester/.cargo/bin'])
     expect(result.failureReason).toBe('none')
   })
 
@@ -255,22 +255,22 @@ describe('mergePathSegments', () => {
   it('prepends new segments ahead of existing PATH entries', () => {
     process.env.PATH = joinPath('/usr/bin', '/bin')
 
-    const added = mergePathSegments(['/Users/tester/.opencode/bin', '/Users/tester/.cargo/bin'])
+    const added = mergePathSegments(['/Users/tester/.gemini/bin', '/Users/tester/.cargo/bin'])
 
-    expect(added).toEqual(['/Users/tester/.opencode/bin', '/Users/tester/.cargo/bin'])
+    expect(added).toEqual(['/Users/tester/.gemini/bin', '/Users/tester/.cargo/bin'])
     expect(process.env.PATH).toBe(
-      joinPath('/Users/tester/.opencode/bin', '/Users/tester/.cargo/bin', '/usr/bin', '/bin')
+      joinPath('/Users/tester/.gemini/bin', '/Users/tester/.cargo/bin', '/usr/bin', '/bin')
     )
   })
 
   it('promotes shell segments already on PATH so shell ordering wins', () => {
     process.env.PATH = joinPath('/Users/tester/.cargo/bin', '/usr/bin')
 
-    const added = mergePathSegments(['/Users/tester/.cargo/bin', '/Users/tester/.opencode/bin'])
+    const added = mergePathSegments(['/Users/tester/.cargo/bin', '/Users/tester/.gemini/bin'])
 
-    expect(added).toEqual(['/Users/tester/.opencode/bin'])
+    expect(added).toEqual(['/Users/tester/.gemini/bin'])
     expect(process.env.PATH).toBe(
-      joinPath('/Users/tester/.cargo/bin', '/Users/tester/.opencode/bin', '/usr/bin')
+      joinPath('/Users/tester/.cargo/bin', '/Users/tester/.gemini/bin', '/usr/bin')
     )
   })
 

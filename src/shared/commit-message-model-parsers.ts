@@ -129,22 +129,6 @@ export function parseCodexModels(stdout: string): CommitMessageModel[] {
   }
 }
 
-export function parseLineModels(stdout: string): CommitMessageModel[] {
-  const models: CommitMessageModel[] = []
-  for (const rawLine of iterateModelOutputLines(stdout)) {
-    const id = rawLine.trim()
-    if (id.length === 0 || id.includes(' ')) {
-      continue
-    }
-    models.push({
-      id,
-      label: labelFromModelId(id),
-      ...withOpenAiThinking(id)
-    })
-  }
-  return uniqueModels(models)
-}
-
 export function parsePiModels(stdout: string): CommitMessageModel[] {
   const models: CommitMessageModel[] = []
   for (const rawLine of iterateModelOutputLines(stdout)) {

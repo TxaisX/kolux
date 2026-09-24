@@ -72,8 +72,6 @@ function getProviderLetter(provider: ProviderRateLimits['provider']): string {
       return 'C'
     case 'gemini':
       return 'G'
-    case 'opencode-go':
-      return 'O'
     case 'kimi':
       return 'K'
     case 'antigravity':

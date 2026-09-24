@@ -1,11 +1,10 @@
 import { z } from 'zod'
 import { MAX_QUICK_COMMAND_AGENT_PROMPT_LENGTH } from '../../../../shared/terminal-quick-commands'
-import { isTuiAgent } from '../../../../shared/tui-agent-config'
-import type { TuiAgent } from '../../../../shared/tui-agent'
 import { sleepingAgentLaunchConfigSchema } from '../../../../shared/workspace-session-sleeping-agents'
 import { RUNTIME_NAVIGATION_TARGETS } from '../../../../shared/runtime-navigation'
 import { TAB_ACTIVATION_INTENTS } from '../../../../shared/tab-activation-intent'
 import { OptionalBoolean } from '../schemas'
+import { OptionalTuiAgent } from './worktree-schemas'
 
 export const WorktreeTabSelector = z.object({
   worktree: z
@@ -141,11 +140,10 @@ export const CreateTerminalTab = WorktreeTabSelector.extend({
   startupCommandDelivery: z.enum(['fast', 'shell-ready']).optional(),
   launchConfig: sleepingAgentLaunchConfigSchema,
   launchToken: z.string().min(1).max(128).optional(),
-  agent: z
-    .custom<TuiAgent>(isTuiAgent, {
-      message: 'Unknown agent preset'
-    })
-    .optional(),
+  // Why OptionalTuiAgent, not a hard-failing custom check: an old peer can
+  // send an agent id this build no longer knows (e.g. a retired provider) —
+  // that degrades to a plain terminal instead of rejecting the whole create.
+  agent: OptionalTuiAgent,
   // Why: agent prompts must be quoted and injected for the host shell (native,
   // WSL, or SSH) instead of pasted from the mobile client before the TUI is ready.
   agentPrompt: z
@@ -155,11 +153,7 @@ export const CreateTerminalTab = WorktreeTabSelector.extend({
     .optional(),
   // Why: `agent` is the legacy preset field; `launchAgent` is the launch-plan
   // identity used when preserving resume config across runtime boundaries.
-  launchAgent: z
-    .custom<TuiAgent>(isTuiAgent, {
-      message: 'Unknown launch agent'
-    })
-    .optional(),
+  launchAgent: OptionalTuiAgent,
   viewMode: z.enum(['terminal', 'chat']).optional(),
   activate: z.boolean().optional(),
   select: z.boolean().optional(),

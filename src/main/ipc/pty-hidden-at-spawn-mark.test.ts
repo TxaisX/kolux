@@ -15,9 +15,6 @@ vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePt
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
 )
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
-)
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
 )
@@ -414,7 +411,6 @@ describe('registerPtyHandlers', () => {
         expect.objectContaining({
           cwd: '/tmp',
           env: expect.objectContaining({
-            KOLUX_OPENCODE_CONFIG_DIR: '/tmp/kolux-opencode-config',
             // No `ready`: the fallback shell carries an overlay, not a startup command.
             KOLUX_SHELL_FEATURES: 'overlay,history,markers',
             ZDOTDIR: join(getShellReadyWrapperRoot(), 'zsh')

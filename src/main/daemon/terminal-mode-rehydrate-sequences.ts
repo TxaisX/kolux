@@ -20,7 +20,7 @@ export function buildRehydrateSequences(modes: TerminalModes): string {
     seqs.push('\x1b[?1h')
   }
   // Why: mobile alt-screen scroll gestures need xterm's mouse mode restored
-  // from cold snapshots; OpenCode/OpenTUI enables scrollable panes this way.
+  // from cold snapshots; MiMo Code/OpenTUI enables scrollable panes this way.
   switch (modes.mouseTracking ? (modes.mouseTrackingMode ?? 'vt200') : 'none') {
     case 'x10':
       seqs.push('\x1b[?9h')

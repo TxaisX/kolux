@@ -345,7 +345,7 @@ describe('agent process recognition', () => {
   it('does not classify prompt text as a wrapped agent command', () => {
     expect(
       recognizeAgentProcessFromCommandLine(
-        'node /tmp/not-an-agent.js "compare opencode vs kolux in Gemini CLI"'
+        'node /tmp/not-an-agent.js "compare grok vs kolux in Gemini CLI"'
       )
     ).toBeNull()
     expect(recognizeAgentProcessFromCommandLine(String.raw`node C:\tmp\not-an-agent.js`)).toBeNull()

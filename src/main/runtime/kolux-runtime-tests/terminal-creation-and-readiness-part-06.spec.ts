@@ -5,8 +5,7 @@ import {
   TEST_WORKTREE_PATH,
   antigravityPromptBeforeModelReadyScreen,
   antigravityReadyScreen,
-  store,
-  syncSinglePty
+  store
 } from '../kolux-runtime-test-fixtures.spec'
 
 describe('KoluxRuntimeService', () => {
@@ -380,28 +379,6 @@ describe('KoluxRuntimeService', () => {
       runtime.waitForTerminal(handle, { condition: 'tui-idle', timeoutMs: 1_000 })
     ).resolves.toMatchObject({
       handle,
-      condition: 'tui-idle',
-      status: 'running'
-    })
-  })
-
-  it('resolves live-leaf tui-idle from an OpenCode native title', async () => {
-    const runtime = new KoluxRuntimeService(store)
-    runtime.setPtyController({
-      write: () => true,
-      kill: () => true,
-      getForegroundProcess: async () => null
-    })
-    syncSinglePty(runtime, 'remote:pty-1', {
-      tabTitle: 'repo terminal',
-      paneTitle: 'ssh build-host | OC | Native session'
-    })
-    const [terminal] = (await runtime.listTerminals()).terminals
-
-    await expect(
-      runtime.waitForTerminal(terminal.handle, { condition: 'tui-idle', timeoutMs: 1_000 })
-    ).resolves.toMatchObject({
-      handle: terminal.handle,
       condition: 'tui-idle',
       status: 'running'
     })

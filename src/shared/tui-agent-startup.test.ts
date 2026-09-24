@@ -7,7 +7,7 @@ import {
   planAgentCliArgsSuffix
 } from './tui-agent-startup'
 import { TUI_AGENT_CONFIG } from './tui-agent-config'
-import { normalizeTuiAgentArgsRecord, resolveTuiAgentLaunchArgs } from './tui-agent-launch-defaults'
+import { resolveTuiAgentLaunchArgs } from './tui-agent-launch-defaults'
 import { tokenizeStartupCommand } from './tui-agent-startup-shell'
 import {
   unwrapPosixShellScript,
@@ -536,42 +536,14 @@ describe('tui agent startup plans', () => {
     expect(plan?.launchConfig).toEqual({ agentCommand: 'claude', agentArgs: '', agentEnv: {} })
   })
 
-  it('does not append the unsupported OpenCode TUI skip-permissions arg', () => {
-    const agentDefaultArgs = normalizeTuiAgentArgsRecord({
-      opencode: '--dangerously-skip-permissions'
-    })
-    const plan = buildAgentStartupPlan({
-      agent: 'opencode',
-      prompt: 'fix it',
-      cmdOverrides: {},
-      agentArgs: resolveTuiAgentLaunchArgs('opencode', agentDefaultArgs),
-      platform: 'linux'
-    })
-
-    expect(plan?.launchCommand).toBe("opencode --prompt 'fix it'")
-  })
-
-  it('keeps opencode and mimo-code on the cursor-gated paste draft route', () => {
-    expect(TUI_AGENT_CONFIG.opencode.draftPasteReadySignal).toBe(
-      'render-cursor-after-bracketed-paste'
-    )
-    expect(TUI_AGENT_CONFIG.opencode.draftPromptFlag).toBeUndefined()
-    expect(TUI_AGENT_CONFIG.opencode.draftPromptEnvVar).toBeUndefined()
+  it('keeps mimo-code on the cursor-gated paste draft route', () => {
     expect(TUI_AGENT_CONFIG['mimo-code'].draftPasteReadySignal).toBe(
       'render-cursor-after-bracketed-paste'
     )
     expect(TUI_AGENT_CONFIG['mimo-code'].draftPromptFlag).toBeUndefined()
     expect(TUI_AGENT_CONFIG['mimo-code'].draftPromptEnvVar).toBeUndefined()
-    // Why: no native draft launch plan means both agents fall through to the
+    // Why: no native draft launch plan means the agent falls through to the
     // cursor-gated paste-after-ready route, where the new signal applies.
-    expect(
-      buildAgentDraftLaunchPlan({
-        agent: 'opencode',
-        draft: 'x',
-        cmdOverrides: {},
-        platform: 'darwin'
-      })
-    ).toBeNull()
     expect(
       buildAgentDraftLaunchPlan({
         agent: 'mimo-code',

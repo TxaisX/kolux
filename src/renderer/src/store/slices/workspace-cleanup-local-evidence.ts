@@ -30,8 +30,7 @@ const AGENT_PROCESS_NAMES = new Set([
   'droid',
   'gemini',
   'gemini-cli',
-  'goose',
-  'opencode'
+  'goose'
 ])
 
 export function shouldPreserveCleanupInspection(

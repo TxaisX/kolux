@@ -26,13 +26,11 @@ const OptionalExecutionHostId = z
   })
   .optional()
 
+// Why no superRefine: an old peer can send a startupAgent id this build no
+// longer knows (e.g. a retired provider) — that must degrade to "no startup
+// agent" rather than reject the whole worktree.create payload.
 export const OptionalTuiAgent = z
   .unknown()
-  .superRefine((value, ctx) => {
-    if (value !== undefined && !isTuiAgent(value)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Unknown TUI agent' })
-    }
-  })
   .transform((value): TuiAgent | undefined => (isTuiAgent(value) ? value : undefined))
   .optional()
 

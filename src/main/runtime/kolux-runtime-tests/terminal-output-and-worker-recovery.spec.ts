@@ -158,7 +158,7 @@ describe('KoluxRuntimeService', () => {
 
     runtime.onPtyData(
       'hook-only-pty',
-      '\x1b]9999;{"state":"working","prompt":"fix the tests","agentType":"opencode"}\x07',
+      '\x1b]9999;{"state":"working","prompt":"fix the tests","agentType":"mimo-code"}\x07',
       100
     )
 
@@ -170,14 +170,14 @@ describe('KoluxRuntimeService', () => {
         agentStatus: expect.objectContaining({
           state: 'working',
           prompt: 'fix the tests',
-          agentType: 'opencode'
+          agentType: 'mimo-code'
         })
       })
     )
 
     runtime.onPtyData(
       'hook-only-pty',
-      '\x1b]9999;{"state":"waiting","prompt":"fix the tests","agentType":"opencode"}\x07',
+      '\x1b]9999;{"state":"waiting","prompt":"fix the tests","agentType":"mimo-code"}\x07',
       101
     )
 

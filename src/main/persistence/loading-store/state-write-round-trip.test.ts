@@ -78,8 +78,8 @@ describe('persisted state survives a save/load round trip', () => {
     )
     const written = openStore(dataFile)
     written.updateSettings({
-      // Three secret slots, i.e. three sentinels in one save — the case the old loop paid 7 copies for.
-      opencodeSessionCookie: 'cookie-é-value',
+      // Two secret slots across settings and ui, i.e. multiple sentinels in one
+      // save — the case the old loop paid 7 copies for.
       httpProxyUrl: 'http://proxy.example:8080/?a=b&c=$&'
     })
     written.updateUI({ browserKagiSessionLink: 'https://kagi.com/session?t=abc' })
@@ -97,14 +97,10 @@ describe('persisted state survives a save/load round trip', () => {
     // The file is valid UTF-8 JSON and holds ciphertext, not the plaintext secrets.
     const bytes = readFileSync(dataFile)
     const onDisk = JSON.parse(bytes.toString('utf8'))
-    expect(onDisk.settings.opencodeSessionCookie).not.toBe('cookie-é-value')
-    expect(Buffer.from(onDisk.settings.opencodeSessionCookie, 'base64').toString('utf8')).toContain(
-      'cookie-é-value'
-    )
+    expect(onDisk.settings.httpProxyUrl).not.toBe('http://proxy.example:8080/?a=b&c=$&')
     expect(bytes.toString('utf8')).not.toContain('kolux-secret-slot-')
 
     const reloaded = openStore(dataFile)
-    expect(reloaded.getSettings().opencodeSessionCookie).toBe(before.settings.opencodeSessionCookie)
     expect(reloaded.getSettings().httpProxyUrl).toBe(before.settings.httpProxyUrl)
     expect(reloaded.getUI().browserKagiSessionLink).toBe(before.ui.browserKagiSessionLink)
     // `toMatchObject`: the load path spreads session defaults over what was written, so the

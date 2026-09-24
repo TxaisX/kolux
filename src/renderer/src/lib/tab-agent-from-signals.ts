@@ -7,7 +7,6 @@ import {
   resolveCompatibleAgentTypeForOwner,
   shareCompatibleTitleIdentityGroup
 } from '../../../shared/agent-title-owner'
-import { isOpenCodeNativeTitle } from '../../../shared/opencode-terminal-title'
 import { resolvePaneAgentOwnerRecord } from '../../../shared/pane-agent-owner'
 import type { TuiAgent } from '../../../shared/tui-agent'
 
@@ -118,12 +117,10 @@ export function resolveTabAgentFromSignals(args: {
   const rawTitleAgent = resolveExplicitTerminalTitleAgentType(args.title)
   const explicitTitleAgent = resolveSignalAgentForLaunchOwner(rawTitleAgent, owner, ownerIsLaunch)
   const priorIdentity = idleFocusedIdentity ?? launchAgent
-  const nativeOpenCodeTitle = explicitTitleAgent === 'opencode' && isOpenCodeNativeTitle(args.title)
   // Why: a "claude" token in another agent's task text is a mention, not identity, so it must
   // not take a pane from its known owner — only a title that PRESENTS Claude may (#8940).
   const titleClaimsIdentity =
     explicitTitleAgent !== 'claude' || isClaudeIdentityFrameTitle(args.title)
-  // Why: native OpenCode titles can reclaim stale launch intent before any observed hook signal.
   // Raw title group, not the fallback-rewritten agent: inferred Pi owners would otherwise treat an OMP wrapper title as a different identity.
   const titleReclaimsReusedPane =
     priorIdentity !== null &&
@@ -131,12 +128,9 @@ export function resolveTabAgentFromSignals(args: {
     explicitTitleAgent !== priorIdentity &&
     !shareCompatibleTitleIdentityGroup(rawTitleAgent, priorIdentity) &&
     titleClaimsIdentity &&
-    (args.hasObservedAgentSignal || hasCompletedHook || nativeOpenCodeTitle)
-  // Why: native OpenCode titles lack a provider generation and cannot displace durable ownership.
+    (args.hasObservedAgentSignal || hasCompletedHook)
   const titleAgent =
-    processProvesShell ||
-    sleepingSessionAgent ||
-    (nativeOpenCodeTitle && idleFocusedIdentity !== null)
+    processProvesShell || sleepingSessionAgent
       ? null
       : titleReclaimsReusedPane
         ? explicitTitleAgent

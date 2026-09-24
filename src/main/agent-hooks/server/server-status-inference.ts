@@ -45,7 +45,7 @@ export abstract class AgentHookServerStatusInference extends AgentHookServerList
     }
     // Why: these agents use the first Escape as a TUI cancel that can leave the turn running; only a double Escape infers an interrupt.
     if (
-      (agentType === 'opencode' || agentType === 'copilot') &&
+      (agentType === 'mimo-code' || agentType === 'copilot') &&
       request.intent === 'plain-escape' &&
       request.inputCount !== 2
     ) {

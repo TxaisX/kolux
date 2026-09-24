@@ -6,8 +6,8 @@ import { installTerminalCapabilityReplyHandlers } from './terminal-capability-re
 import { createIpcPtyTransport } from './pty-transport'
 import type { PtyTransport } from './pty-transport-types'
 
-// Regression for #12112: a NEW opencode agent tab on Linux prints the literal
-// `10;rgb:ffff/ffff/ffff` / `11;rgb:2828/2c2c/3434` text and opencode never
+// Regression for #12112: a NEW TUI agent tab on Linux prints the literal
+// `10;rgb:ffff/ffff/ffff` / `11;rgb:2828/2c2c/3434` text and the agent never
 // initializes, while a plain Ctrl+T tab running the same program is clean.
 //
 // The divergence is the main-side PtyStartupIngress: only agent panes arm it
@@ -18,8 +18,8 @@ import type { PtyTransport } from './pty-transport-types'
 // (pty-startup-ingress.ts:26-29, 247-252), so the cooked-mode echo of Kolux's
 // own reply is forwarded to the renderer verbatim and rendered as text.
 
-// opencode/OpenTUI's unconditional startup burst (BEL-terminated, not ST).
-const OPENCODE_STARTUP_QUERY_BURST = '\x1b]10;?\x07\x1b]11;?\x07\x1b]4;0;?\x07'
+// OpenTUI-family agents' unconditional startup burst (BEL-terminated, not ST).
+const AGENT_STARTUP_QUERY_BURST = '\x1b]10;?\x07\x1b]11;?\x07\x1b]4;0;?\x07'
 // Kolux's One Dark terminal theme — the values that appear in the leaked text.
 const KOLUX_TERMINAL_THEME = { foreground: '#ffffff', background: '#282c34' }
 const OSC10_REPLY = '\x1b]10;rgb:ffff/ffff/ffff\x1b\\'
@@ -80,8 +80,8 @@ function createStartupTty(): StartupTty {
       sink = next
     },
     emitStartupBurst: () => {
-      sink(OPENCODE_STARTUP_QUERY_BURST)
-      // Why microtask: opencode finishes entering raw mode essentially at once,
+      sink(AGENT_STARTUP_QUERY_BURST)
+      // Why microtask: the agent finishes entering raw mode essentially at once,
       // but not inside its writer's synchronous callback.
       queueMicrotask(() => {
         raw = true
@@ -163,7 +163,7 @@ async function settleUntil(condition: () => boolean, timeoutMs = 500): Promise<v
   expect(condition()).toBe(true)
 }
 
-describe('#12112 opencode startup OSC 10/11 replies on the local path', () => {
+describe('#12112 agent pane startup OSC 10/11 replies on the local path', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
@@ -196,9 +196,9 @@ describe('#12112 opencode startup OSC 10/11 replies on the local path', () => {
     stubPtyApi(tty)
     const pane = await createRendererPane()
 
-    // opencode is a TUI agent, so main arms spawnOptions.startupIngress for this
+    // mimo-code is a TUI agent, so main arms spawnOptions.startupIngress for this
     // pane and only this pane (pty.ts:4024, terminal-startup-color-query-replies.ts).
-    expect(isTuiAgent('opencode')).toBe(true)
+    expect(isTuiAgent('mimo-code')).toBe(true)
     const ingress = new PtyStartupIngress({
       intent: { colors: KOLUX_TERMINAL_THEME, deadlineMs: 5_000 },
       ownerBackend: 'posix-pty',
@@ -221,14 +221,14 @@ describe('#12112 opencode startup OSC 10/11 replies on the local path', () => {
   })
 
   it('renders no reply text when the tty echo is coalesced with program output', () => {
-    // The reported topology: the agent is launched by writing `opencode\n` into an
+    // The reported topology: the agent is launched by writing `mimo\n` into an
     // interactive shell, so bash's echo of Kolux's reply shares a read with the shell's
     // own echo and the agent's first frame. It is never at the head of a chunk, and a
     // read carrying no echo at all comes first.
     vi.useFakeTimers()
     const echoLayouts = [
       (replies: readonly string[]) =>
-        `opencode\r\n\x1b[2Jloading${replies.map(readlineEchoOf).join('')}\r\n$ `,
+        `mimo\r\n\x1b[2Jloading${replies.map(readlineEchoOf).join('')}\r\n$ `,
       // Both slots answered, but the agent draws between the two echoes.
       (replies: readonly string[]) =>
         replies.map((reply) => `${readlineEchoOf(reply)}FRAME\r\n`).join('')
@@ -243,7 +243,7 @@ describe('#12112 opencode startup OSC 10/11 replies on the local path', () => {
         write: (data) => writes.push(data),
         onEmission: (emission) => emitted.push(emission.data)
       })
-      ingress.accept(OPENCODE_STARTUP_QUERY_BURST)
+      ingress.accept(AGENT_STARTUP_QUERY_BURST)
       vi.advanceTimersByTime(0)
       expect(writes, `layout ${index}`).toEqual([OSC10_REPLY, OSC11_REPLY])
 
@@ -274,7 +274,7 @@ describe('#12112 opencode startup OSC 10/11 replies on the local path', () => {
         },
         onEmission: (emission) => emitted.push(emission.data)
       })
-      ingress.accept(OPENCODE_STARTUP_QUERY_BURST)
+      ingress.accept(AGENT_STARTUP_QUERY_BURST)
       // Why: the posix write is deferred, so draining first would make this arm
       // assert on a stream where no reply was ever sent.
       vi.advanceTimersByTime(0)

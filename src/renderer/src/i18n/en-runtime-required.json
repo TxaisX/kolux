@@ -1666,7 +1666,6 @@
             "5d9ba08673": "copilot",
             "5fdf1dc2d1": "omp",
             "8436ff6f8e": "Proxy Bypass Rules",
-            "882c4896fd": "opencode",
             "8ea37a05bc": "agent",
             "9b0bc30160": "pi",
             "9da6c875e5": "dock",
@@ -2194,11 +2193,6 @@
           "ae255c3dba": "n/a",
           "bf1bf2f674": "sessions •"
         },
-        "OpenCodeUsagePane": {
-          "1e5d410df0": "events",
-          "8095a63426": "n/a",
-          "bc0cb89901": "sessions •"
-        },
         "StatsPane": {
           "908c470587": "codex",
           "eb6a066185": "claude",
@@ -2256,14 +2250,12 @@
             "2483c60695": "···",
             "3d79122c3f": "kimi",
             "4dff061aab": "·",
-            "629251f4b6": "Open OpenCode Go usage details",
             "68efc0345c": "gemini",
             "76b06d4da5": "claude",
             "a28a5dd9b1": "error",
             "antigravityUsageDetails": "Open Antigravity usage details",
             "d2375976eb": "Open Gemini usage details",
             "d79c3362c4": "5h",
-            "d7a0668acc": "opencode-go",
             "fda8146810": "Open Kimi usage details",
             "grokUsageAria": "Open Grok usage details"
           },

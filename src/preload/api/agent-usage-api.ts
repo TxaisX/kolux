@@ -1,10 +1,6 @@
 import type { ClaudeUsageBreakdownKind, ClaudeUsageSnapshot } from '../../shared/claude-usage-types'
 import type { CodexUsageBreakdownKind, CodexUsageSnapshot } from '../../shared/codex-usage-types'
 import type {
-  OpenCodeUsageBreakdownKind,
-  OpenCodeUsageSnapshot
-} from '../../shared/opencode-usage-types'
-import type {
   CodexRateLimitResetResult,
   RateLimitRuntimeTarget,
   RateLimitState
@@ -41,8 +37,6 @@ export type UsageProviderApi<Snapshot extends UsageProviderSnapshot, BreakdownKi
 export type ClaudeUsageApi = UsageProviderApi<ClaudeUsageSnapshot, ClaudeUsageBreakdownKind>
 
 export type CodexUsageApi = UsageProviderApi<CodexUsageSnapshot, CodexUsageBreakdownKind>
-
-export type OpenCodeUsageApi = UsageProviderApi<OpenCodeUsageSnapshot, OpenCodeUsageBreakdownKind>
 
 export type RateLimitsApi = {
   get: () => Promise<RateLimitState>

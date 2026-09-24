@@ -51,7 +51,6 @@ const PROVIDER_IDS: ProviderRateLimits['provider'][] = [
   'codex',
   'gemini',
   'antigravity',
-  'opencode-go',
   'kimi',
   'minimax',
   'grok'
@@ -123,16 +122,9 @@ describe('provider usage error copy', () => {
       provider: 'kimi',
       error: 'Kimi credentials-file is invalid'
     })
-    const opencodeGo = provider({
-      provider: 'opencode-go',
-      error: 'Please log in before refreshing usage.'
-    })
 
     expect(getProviderUsageErrorMessage(kimi)).toBe(
       'Kimi usage could not be refreshed. Agent sessions may still be signed in.'
-    )
-    expect(getProviderUsageErrorMessage(opencodeGo)).toBe(
-      'OpenCode Go usage could not be refreshed. Agent sessions may still be signed in.'
     )
   })
 

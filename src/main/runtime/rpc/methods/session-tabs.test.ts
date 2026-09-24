@@ -606,10 +606,17 @@ describe('session tab RPC methods', () => {
     })
   })
 
-  it('rejects unknown agent presets without creating a terminal', async () => {
+  it('degrades an unknown agent preset to a plain terminal instead of rejecting the create', async () => {
+    // Why: an old peer can still send a retired agent id (e.g. a removed
+    // provider) — that must open a plain terminal, not reject the whole
+    // session.tabs.createTerminal call.
     const runtime = {
       getRuntimeId: () => 'test-runtime',
-      createMobileSessionTerminal: vi.fn()
+      createMobileSessionTerminal: vi.fn().mockResolvedValue({
+        tab: { type: 'terminal', id: 'tab-1::leaf-1' },
+        publicationEpoch: 'epoch-1',
+        snapshotVersion: 1
+      })
     } as unknown as KoluxRuntimeService
     const dispatcher = new RpcDispatcher({ runtime, methods: SESSION_TAB_METHODS })
 
@@ -620,11 +627,11 @@ describe('session tab RPC methods', () => {
       })
     )
 
-    expect(response.ok).toBe(false)
-    expect(response).toMatchObject({
-      error: { code: 'invalid_argument', message: 'Unknown agent preset' }
-    })
-    expect(runtime.createMobileSessionTerminal).not.toHaveBeenCalled()
+    expect(response.ok).toBe(true)
+    expect(runtime.createMobileSessionTerminal).toHaveBeenCalledWith(
+      'id:wt-1',
+      expect.objectContaining({ agent: undefined })
+    )
   })
 
   it('streams all known session tab snapshots and later updates', async () => {

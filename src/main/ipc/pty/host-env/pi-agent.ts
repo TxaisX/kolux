@@ -143,7 +143,7 @@ export function getInheritedClaudeSessionStampEnvKeysToDelete(
   return CLAUDE_CHILD_SESSION_STAMP_ENV_KEYS.filter((key) => env[key] === undefined)
 }
 
-// Why: a nested terminal can inherit prior OpenCode/Pi/OMP overlay env; restore the user's recorded source dir, else strip only Kolux-owned values.
+// Why: a nested terminal can inherit prior Pi/OMP overlay env; restore the user's recorded source dir, else strip only Kolux-owned values.
 export function restoreOrStripOverlayEnv(
   baseEnv: Record<string, string>,
   keys: {
@@ -181,23 +181,4 @@ export function resolveMimocodeSourceHome(baseEnv: Record<string, string>): stri
     return undefined
   }
   return configHome
-}
-
-export function resolveOpenCodeSourceConfigDir(
-  baseEnv: Record<string, string>
-): string | undefined {
-  const sourceDir =
-    baseEnv.KOLUX_OPENCODE_SOURCE_CONFIG_DIR ?? process.env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR
-  if (sourceDir) {
-    return sourceDir
-  }
-
-  const configDir = baseEnv.OPENCODE_CONFIG_DIR ?? process.env.OPENCODE_CONFIG_DIR
-  const koluxConfigDir = baseEnv.KOLUX_OPENCODE_CONFIG_DIR ?? process.env.KOLUX_OPENCODE_CONFIG_DIR
-  // Why: with no recorded source dir, an inherited OPENCODE_CONFIG_DIR is Kolux-owned, not user config; treating it as user config makes child Koluxs mirror the hook dir.
-  if (configDir && koluxConfigDir && configDir === koluxConfigDir) {
-    return undefined
-  }
-
-  return configDir ?? readSessionShellStartupEnvVar('OPENCODE_CONFIG_DIR', baseEnv)
 }

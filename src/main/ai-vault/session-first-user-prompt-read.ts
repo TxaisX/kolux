@@ -7,8 +7,6 @@ import { LOCAL_EXECUTION_HOST_ID, type ExecutionHostId } from '../../shared/exec
 import { wslGatedStat } from '../native-chat/wsl-transcript-fs-access'
 import { parseAgentSessionFile } from './session-scanner-agent-parser'
 import { withFullFirstUserPromptCapture } from './session-scanner-first-user-prompt-capture'
-import { parseOpenCodeSqliteSession } from './session-scanner-opencode-sqlite'
-import { splitOpenCodeSqliteCandidate } from './session-scanner-opencode-sqlite-paths'
 import type { FileWithMtime } from './session-scanner-types'
 
 export type ReadAiVaultFirstUserPromptArgs = {
@@ -66,28 +64,7 @@ async function parseSessionForFullFirstUserPrompt(args: {
   sessionId?: string
   codexHome: string | null
 }): Promise<AiVaultSession | null> {
-  // Why: OpenCode SQLite sessions store filePath as the db path (not db#id).
-  // Re-parse in-process under full capture so ALS applies and we can read the
-  // earliest user row (worker list-scan path only joins newest messages).
-  if (args.agent === 'opencode') {
-    const fromSynthetic = splitOpenCodeSqliteCandidate(args.filePath)
-    if (fromSynthetic) {
-      return parseOpenCodeSqliteSession({
-        dbPath: fromSynthetic.dbPath,
-        sessionId: fromSynthetic.sessionId,
-        platform: process.platform
-      })
-    }
-    if (args.sessionId) {
-      return parseOpenCodeSqliteSession({
-        dbPath: args.filePath,
-        sessionId: args.sessionId,
-        platform: process.platform
-      })
-    }
-  }
-
-  const file = await fileWithMtimeForPath(args.filePath, args.agent)
+  const file = await fileWithMtimeForPath(args.filePath)
   if (!file) {
     return null
   }
@@ -102,21 +79,7 @@ async function parseSessionForFullFirstUserPrompt(args: {
   )
 }
 
-async function fileWithMtimeForPath(
-  filePath: string,
-  agent: AiVaultAgent
-): Promise<FileWithMtime | null> {
-  // OpenCode SQLite candidates use a synthetic `dbPath#sessionId` path that is
-  // not a real filesystem object; parsers that need it accept the path as-is.
-  // `#` is legal in real filenames, so gate on the agent and the synthetic shape.
-  if (agent === 'opencode' && splitOpenCodeSqliteCandidate(filePath)) {
-    return {
-      path: filePath,
-      mtimeMs: 0,
-      modifiedAt: new Date(0).toISOString()
-    }
-  }
-
+async function fileWithMtimeForPath(filePath: string): Promise<FileWithMtime | null> {
   try {
     // 'scan' matches the parser this feeds, so the two halves of one re-parse
     // share a lane instead of the stat jumping the live-transcript queue.

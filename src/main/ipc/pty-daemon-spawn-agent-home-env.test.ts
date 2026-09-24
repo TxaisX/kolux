@@ -8,7 +8,6 @@ import {
 import { join } from 'node:path'
 import type { TuiAgent } from '../../shared/tui-agent'
 import { LEGACY_TERMINAL_SHIM_REMOTE_ENV_KEYS } from '../pty/legacy-terminal-shim-dir'
-import { wslHookRelayManager } from '../agent-hooks/wsl-hook-relay-manager'
 import { registerPtyHandlers } from './pty'
 
 vi.mock('electron', () => import('./pty-ipc-mock-registry').then((m) => m.electronModuleMock()))
@@ -16,9 +15,6 @@ vi.mock('fs', () => import('./pty-ipc-mock-registry').then((m) => m.fsModuleMock
 vi.mock('node-pty', () => import('./pty-ipc-mock-registry').then((m) => m.nodePtyModuleMock()))
 vi.mock('node:child_process', async (importOriginal) =>
   (await import('./pty-ipc-mock-registry')).childProcessModuleMock(await importOriginal())
-)
-vi.mock('../opencode/hook-service', () =>
-  import('./pty-ipc-mock-registry').then((m) => m.openCodeHookServiceModuleMock())
 )
 vi.mock('../mimo/hook-service', () =>
   import('./pty-ipc-mock-registry').then((m) => m.mimoHookServiceModuleMock())
@@ -265,17 +261,6 @@ describe('registerPtyHandlers', () => {
           })
         }
       })
-      it('drops OPENCODE_CONFIG_DIR for a WSL daemon spawn until the guest overlay is known', async () => {
-        await withWin32Platform(async () => {
-          const env = await daemonSpawnAndGetEnv({}, undefined, undefined, undefined, {
-            shellOverride: 'wsl.exe'
-          })
-          // Why: relay not connected yet → never cross the Windows overlay path into WSL.
-          expect(env.OPENCODE_CONFIG_DIR).toBeUndefined()
-          expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBeUndefined()
-          expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
-        })
-      })
       it('does not install or inject a Prime extension for an explicit WSL launch', async () => {
         await withWin32Platform(async () => {
           const env = await daemonSpawnAndGetEnv(
@@ -308,27 +293,6 @@ describe('registerPtyHandlers', () => {
           expect(env.KOLUX_PRIME_AGENT_STATUS_EXTENSION).toBeUndefined()
           expect(env.PRIME_AGENT_CODING_AGENT_DIR).toBeUndefined()
         })
-      })
-      it('points OPENCODE_CONFIG_DIR at the guest overlay when the WSL relay reports it', async () => {
-        const guestDir = '/home/jin/.kolux-relay/opencode-overlays/abc'
-        const spy = vi.spyOn(wslHookRelayManager, 'getOpenCodeOverlayDir').mockReturnValue(guestDir)
-        try {
-          await withWin32Platform(async () => {
-            const env = await daemonSpawnAndGetEnv(
-              { KOLUX_OPENCODE_SOURCE_CONFIG_DIR: '/home/jin/.config/opencode' },
-              undefined,
-              undefined,
-              undefined,
-              { shellOverride: 'wsl.exe' }
-            )
-            expect(env.OPENCODE_CONFIG_DIR).toBe(guestDir)
-            expect(env.KOLUX_OPENCODE_CONFIG_DIR).toBe(guestDir)
-            // The Windows-side source pointer must not cross into the guest.
-            expect(env.KOLUX_OPENCODE_SOURCE_CONFIG_DIR).toBeUndefined()
-          })
-        } finally {
-          spy.mockRestore()
-        }
       })
       it('strips the daemon-inherited Kolux-owned CODEX_HOME for real-home routing', async () => {
         const spawnOptions = await daemonSpawnAndGetOptions(

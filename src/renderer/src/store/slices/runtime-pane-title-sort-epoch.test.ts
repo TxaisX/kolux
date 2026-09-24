@@ -112,7 +112,6 @@ describe('runtimePaneTitle → sortEpoch', () => {
       '⠐ User acknowledgment and confirmation'
     ],
     ['Codex', '⠋ Codex is thinking', '⠙ Codex is thinking'],
-    ['OpenCode', '⠋ OpenCode running tests', '⠙ OpenCode running tests'],
     ['Aider', '⠋ Aider running', '⠙ Aider running'],
     ['Cursor synthesized title', '⠋ Cursor Agent', '⠙ Cursor Agent'],
     ['Droid synthesized title', '⠋ Droid', '⠙ Droid'],

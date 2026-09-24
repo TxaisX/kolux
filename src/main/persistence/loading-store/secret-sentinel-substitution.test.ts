@@ -59,7 +59,7 @@ describe('applySecretSentinelSubstitutions', () => {
       { sentinel: sentinel(), blob: '', hashValue: 'https://kagi.com/session?t=abc' }
     ]
     const state = {
-      settings: { opencodeSessionCookie: subs[0].sentinel, httpProxyUrl: subs[1].sentinel },
+      settings: { browserKagiSessionLink: subs[0].sentinel, httpProxyUrl: subs[1].sentinel },
       ui: { browserKagiSessionLink: subs[2].sentinel },
       // Adjacent content that must not shift: a near-miss prefix, and JSON escapes either side.
       noise: ['kolux-secret-slot-', 'a\\b"c\n\t', subs[0].sentinel.slice(0, -1)]

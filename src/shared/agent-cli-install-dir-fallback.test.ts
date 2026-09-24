@@ -12,7 +12,7 @@ import { getSystemCliInstallDirectories } from './system-cli-install-dirs'
 /**
  * The install-dir fallback answers "is this agent CLI installed?" whenever the
  * login-shell PATH probe does not land. Homebrew, npm's default global prefix
- * and opencode's own installer are absolute paths, so they cannot be staged
+ * and an agent CLI's own installer are absolute paths, so they cannot be staged
  * under a temp home -- hence a synthetic fs rather than a fixture tree.
  *
  * Every staged path goes through `join`, because the lookup builds candidates
@@ -84,10 +84,10 @@ describe('agent CLI install-dir fallback', () => {
       join(home, '.local', 'bin', 'claude'),
       join('/opt/homebrew/bin', 'codex'),
       join('/usr/local/bin', 'cursor-agent'),
-      join(home, '.opencode', 'bin', 'opencode')
+      join(home, '.vite-plus', 'bin', 'pi')
     )
     expect(
-      resolveAll(['claude', 'codex', 'cursor-agent', 'opencode'], {
+      resolveAll(['claude', 'codex', 'cursor-agent', 'pi'], {
         platform: 'darwin',
         homePath: home
       })
@@ -95,7 +95,7 @@ describe('agent CLI install-dir fallback', () => {
       claude: join(home, '.local', 'bin', 'claude'),
       codex: join('/opt/homebrew/bin', 'codex'),
       'cursor-agent': join('/usr/local/bin', 'cursor-agent'),
-      opencode: join(home, '.opencode', 'bin', 'opencode')
+      pi: join(home, '.vite-plus', 'bin', 'pi')
     })
   })
 
@@ -104,18 +104,18 @@ describe('agent CLI install-dir fallback', () => {
     stage(
       join('/home/linuxbrew/.linuxbrew/bin', 'codex'),
       join('/snap/bin', 'cursor-agent'),
-      join(home, '.nix-profile', 'bin', 'opencode'),
+      join(home, '.nix-profile', 'bin', 'aider'),
       join('/opt/homebrew/bin', 'claude')
     )
     expect(
-      resolveAll(['codex', 'cursor-agent', 'opencode', 'claude'], {
+      resolveAll(['codex', 'cursor-agent', 'aider', 'claude'], {
         platform: 'linux',
         homePath: home
       })
     ).toEqual({
       codex: join('/home/linuxbrew/.linuxbrew/bin', 'codex'),
       'cursor-agent': join('/snap/bin', 'cursor-agent'),
-      opencode: join(home, '.nix-profile', 'bin', 'opencode'),
+      aider: join(home, '.nix-profile', 'bin', 'aider'),
       // Why unresolved: /opt/homebrew is an Apple Silicon prefix; Linuxbrew uses another.
       claude: 'claude'
     })
@@ -141,15 +141,14 @@ describe('agent CLI install-dir fallback', () => {
       '/home/linuxbrew/.linuxbrew/bin',
       '/nix/var/nix/profiles/default/bin',
       join(home, '.nix-profile', 'bin'),
-      join(home, '.opencode', 'bin'),
       join(home, '.vite-plus', 'bin')
     ]
-    stage(...dirs.map((dir) => join(dir, 'opencode')))
+    stage(...dirs.map((dir) => join(dir, 'aider')))
     for (const expected of dirs) {
-      expect(resolveAll(['opencode'], { platform: 'linux', homePath: home })).toEqual({
-        opencode: join(expected, 'opencode')
+      expect(resolveAll(['aider'], { platform: 'linux', homePath: home })).toEqual({
+        aider: join(expected, 'aider')
       })
-      fsFixture.executables.delete(join(expected, 'opencode'))
+      fsFixture.executables.delete(join(expected, 'aider'))
     }
   })
 
@@ -207,7 +206,6 @@ describe('agent CLI install-dir fallback', () => {
         '/home/linuxbrew/.linuxbrew/bin',
         '/nix/var/nix/profiles/default/bin',
         join(home, '.nix-profile', 'bin'),
-        join(home, '.opencode', 'bin'),
         join(home, '.vite-plus', 'bin')
       ]) {
         expect(seeded).not.toContain(directory)
@@ -222,15 +220,13 @@ describe('agent CLI install-dir fallback', () => {
     () => {
       stage(
         join('/usr/local/bin', 'codex'),
-        join(MOCK_HOME, '.opencode', 'bin', 'opencode'),
         // Why pi: it is a probed detect command on every runtime (tui-agent-config.ts,
-        // no detectUnsupportedRuntimes) and its installer defaults to ~/.vite-plus/bin,
-        // the second dir #829 named and seeded alongside ~/.opencode/bin.
+        // no detectUnsupportedRuntimes) and its installer defaults to ~/.vite-plus/bin (#829).
         join(MOCK_HOME, '.vite-plus', 'bin', 'pi')
       )
-      // All three come from the fallback: the stubbed PATH holds no system dir.
-      expect(detectCommandsInInstallDirs(['codex', 'opencode', 'pi', 'cursor-agent'])).toEqual(
-        new Set(['codex', 'opencode', 'pi'])
+      // Both come from the fallback: the stubbed PATH holds no system dir.
+      expect(detectCommandsInInstallDirs(['codex', 'pi', 'cursor-agent'])).toEqual(
+        new Set(['codex', 'pi'])
       )
     }
   )
@@ -243,7 +239,6 @@ describe('agent CLI install-dir fallback', () => {
       '"/home/linuxbrew/.linuxbrew/bin"',
       '"/nix/var/nix/profiles/default/bin"',
       '"$HOME/.nix-profile/bin"',
-      '"$HOME/.opencode/bin"',
       '"$HOME/.vite-plus/bin"'
     ]
     const offsets = systemDirs.map((dir) => prelude.indexOf(dir))

@@ -36,7 +36,6 @@ const PINNED_CLASSIFICATIONS: readonly PinnedRow[] = [
   ['bash', null, null, false, false, null, false, null, null],
   ['nwparker@mac: ~/kolux', null, null, false, false, null, false, null, null],
   ['npm run dev', null, null, false, false, null, false, null, null],
-  ['opencode-blinker', null, null, false, false, null, false, null, null],
   [
     'openclaude',
     'idle',
@@ -215,7 +214,6 @@ const PINNED_CLASSIFICATIONS: readonly PinnedRow[] = [
   ['mimo idle', 'idle', 'MiMo Code', false, false, 'MiMo Code', false, 'mimo-code', 'mimo-code'],
   ['aider running', 'working', 'Aider', false, false, 'Aider', false, 'aider', 'aider'],
   ['grok done', 'idle', 'Grok', false, false, 'Grok', false, 'grok', 'grok'],
-  ['opencode ready', 'idle', 'OpenCode', false, false, 'OpenCode', false, 'opencode', 'opencode'],
   ['hermes ready', 'idle', 'Hermes', false, false, 'Hermes', false, 'hermes', 'hermes'],
   ['droid ready', 'idle', 'Droid', false, false, 'Droid', false, 'droid', 'droid'],
   ['cursor agent', null, 'Cursor', false, false, 'Cursor', false, 'cursor', 'cursor'],
@@ -237,17 +235,7 @@ const PINNED_CLASSIFICATIONS: readonly PinnedRow[] = [
   ['\u280b \u03c0 - session - ~/kolux', 'working', 'Pi', true, false, 'Pi', true, 'pi', 'pi'],
   ['zsh | \u280b Codex', 'working', 'Codex', true, false, 'Codex', true, 'codex', 'codex'],
   ['tmux | claude - action required', 'permission', null, false, false, null, false, null, null],
-  [
-    'ssh host | opencode ready',
-    'idle',
-    'OpenCode',
-    false,
-    false,
-    'OpenCode',
-    false,
-    'opencode',
-    'opencode'
-  ]
+  ['ssh host | grok done', 'idle', 'Grok', false, false, 'Grok', false, 'grok', 'grok']
 ]
 
 describe('terminal title classification', () => {

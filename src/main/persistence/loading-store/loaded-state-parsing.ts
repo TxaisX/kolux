@@ -17,10 +17,7 @@ import {
   PROTECTED_SECRET_SLOT,
   sshPtyOwnerLeaseSecretSlot
 } from '../../protected-secret-persistence'
-import {
-  isLegacyOpenCodeSessionCookie,
-  isLegacySshPtyOwnerLease
-} from '../leasing-ssh-ptys/secret-validation'
+import { isLegacySshPtyOwnerLease } from '../leasing-ssh-ptys/secret-validation'
 import { readGithubCacheSnapshot } from './user-data-path'
 import { migrateLegacyPersistedKeysAndValues } from './legacy-persisted-key-migration'
 import {
@@ -108,13 +105,6 @@ export class LoadedStateParsingOperations {
         }
 
         // Why: secrets are stored encrypted via safeStorage; decrypt at the load boundary so the app sees plaintext.
-        if (parsed.settings?.opencodeSessionCookie) {
-          parsed.settings.opencodeSessionCookie = this.runtime.protectedSecrets.decrypt(
-            PROTECTED_SECRET_SLOT.opencodeSessionCookie,
-            parsed.settings.opencodeSessionCookie,
-            isLegacyOpenCodeSessionCookie
-          )
-        }
         if (parsed.settings?.httpProxyUrl) {
           const decryptedProxy = this.runtime.protectedSecrets.decryptWithStatus(
             PROTECTED_SECRET_SLOT.httpProxyUrl,

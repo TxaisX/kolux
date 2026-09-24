@@ -2,7 +2,7 @@ import {
   isCompactContinuationUserTurnText,
   isKnownHarnessInjectedUserTurnText
 } from '../harness-injected-user-turns'
-import { capOpenCodeHookText } from './listener-limits'
+import { capHookMessageText } from './listener-limits'
 import type { HookListenerState } from './listener-state'
 import type { ToolSnapshot } from './listener-event'
 
@@ -64,9 +64,9 @@ export function extractPromptText(hookPayload: Record<string, unknown>): Extract
       }
     }
   }
-  // Why: OpenCode sends MessagePart { role, text } with no UserPromptSubmit; when role === 'user' the text is the prompt.
+  // Why: MiMo sends MessagePart { role, text } with no UserPromptSubmit; when role === 'user' the text is the prompt.
   if (hookPayload.role === 'user' && typeof hookPayload.text === 'string') {
-    const trimmed = capOpenCodeHookText(hookPayload.text.trim())
+    const trimmed = capHookMessageText(hookPayload.text.trim())
     if (trimmed.length > 0) {
       return { text: trimmed, source: 'role_user_text' }
     }

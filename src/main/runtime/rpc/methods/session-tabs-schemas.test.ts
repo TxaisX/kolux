@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { ActivateTab, CloseLifecycleTab, CloseTab, UpdatePaneLayout } from './session-tabs-schemas'
+import {
+  ActivateTab,
+  CloseLifecycleTab,
+  CloseTab,
+  CreateTerminalTab,
+  UpdatePaneLayout
+} from './session-tabs-schemas'
 
 const WT = 'id:wt'
 
@@ -70,6 +76,23 @@ describe('CloseLifecycleTab (session.tabs.closeLifecycle params)', () => {
         terminal: 'term-1'
       }).success
     ).toBe(false)
+  })
+})
+
+describe('CreateTerminalTab.agent / launchAgent wire tolerance', () => {
+  it('degrades an unknown agent (e.g. an old client still sending opencode) to a plain terminal instead of rejecting the create', () => {
+    const parsed = CreateTerminalTab.parse({ worktree: WT, agent: 'opencode' })
+    expect(parsed.agent).toBeUndefined()
+  })
+
+  it('degrades an unknown launchAgent the same way', () => {
+    const parsed = CreateTerminalTab.parse({ worktree: WT, launchAgent: 'opencode' })
+    expect(parsed.launchAgent).toBeUndefined()
+  })
+
+  it('still accepts a known agent', () => {
+    const parsed = CreateTerminalTab.parse({ worktree: WT, agent: 'codex' })
+    expect(parsed.agent).toBe('codex')
   })
 })
 

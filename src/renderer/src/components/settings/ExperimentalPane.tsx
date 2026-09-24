@@ -84,7 +84,7 @@ export function ExperimentalPane({
               <p className="text-xs text-muted-foreground">
                 {translate(
                   'auto.components.settings.ExperimentalPane.ca2219fe5e',
-                  'Shows a small animated pet pinned to the bottom-right corner. Pick a character (Claudino, OpenCode, Gremlin) or upload your own PNG, APNG, GIF, WebP, JPG, or SVG from the status-bar pet menu. Hide it any time from the same menu without disabling this setting.'
+                  'Shows a small animated pet pinned to the bottom-right corner. Pick a character (Claudino, Gremlin) or upload your own PNG, APNG, GIF, WebP, JPG, or SVG from the status-bar pet menu. Hide it any time from the same menu without disabling this setting.'
                 )}
               </p>
             </div>

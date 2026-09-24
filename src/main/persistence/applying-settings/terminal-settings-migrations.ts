@@ -60,6 +60,9 @@ type RetiredGlobalSettings = {
   terminalScrollbackBytes?: unknown
   enableGitHubAttribution?: unknown
   showAgentsSidebar?: unknown
+  // Why: OpenCode support was removed; old profiles can still carry these on disk.
+  opencodeSessionCookie?: unknown
+  opencodeWorkspaceId?: unknown
 }
 
 export function stripRetiredGlobalSettings(
@@ -69,11 +72,15 @@ export function stripRetiredGlobalSettings(
     terminalScrollbackBytes: _legacyScrollbackBytes,
     enableGitHubAttribution: _legacyGitHubAttribution,
     showAgentsSidebar: _legacyShowAgentsSidebar,
+    opencodeSessionCookie: _legacyOpencodeSessionCookie,
+    opencodeWorkspaceId: _legacyOpencodeWorkspaceId,
     ...rest
   } = (settings ?? {}) as Partial<GlobalSettings> & RetiredGlobalSettings
   void _legacyScrollbackBytes
   void _legacyGitHubAttribution
   void _legacyShowAgentsSidebar
+  void _legacyOpencodeSessionCookie
+  void _legacyOpencodeWorkspaceId
   return rest
 }
 

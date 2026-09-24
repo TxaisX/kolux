@@ -145,7 +145,6 @@ export function TerminalInteractionSection({
             'mouse',
             'trackpad',
             'tui',
-            'opencode',
             'fast scroll'
           ]}
         >

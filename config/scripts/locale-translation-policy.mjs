@@ -60,8 +60,6 @@ export const NEVER_TRANSLATE_VALUES = new Set([
   'OMP',
   'OpenClaude',
   'OpenClaw',
-  'OpenCode',
-  'OpenCode Go',
   'Kolux',
   'Pi',
   'PostHog',

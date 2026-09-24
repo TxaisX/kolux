@@ -11,9 +11,9 @@ export type MiniMaxUsageItem = {
   end_time?: unknown
   remains_time?: unknown
   // Why: Coding Plan also reports a separate 7-day quota. The API returns the
-  // raw remaining percent against the un-boosted base; the opencode-tku
-  // equivalent uses the value as-is. weekly_boost_permille exists in the
-  // payload but is intentionally not parsed yet (see handleMiniMaxWeeklyBoost).
+  // raw remaining percent against the un-boosted base, used as-is.
+  // weekly_boost_permille exists in the payload but is intentionally not
+  // parsed yet (see handleMiniMaxWeeklyBoost).
   current_weekly_remaining_percent?: unknown
   weekly_remains_time?: unknown
   weekly_boost_permille?: unknown

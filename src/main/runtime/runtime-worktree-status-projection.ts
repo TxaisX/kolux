@@ -1,7 +1,6 @@
 import {
   detectAgentStatusFromTitle,
   isClaudeManagementTitle,
-  isOpenCodeNativeTitle,
   isQuarterCircleSpinnerOnlyAgentTitle,
   isShellProcess,
   type AgentStatus
@@ -94,11 +93,7 @@ export function agentTitleProvesAgentPresence(
   title: string | null,
   classification: 'agent' | 'management' | 'neutral'
 ): boolean {
-  return (
-    classification === 'agent' &&
-    !isOpenCodeNativeTitle(title) &&
-    !isQuarterCircleSpinnerOnlyAgentTitle(title)
-  )
+  return classification === 'agent' && !isQuarterCircleSpinnerOnlyAgentTitle(title)
 }
 
 export function ptyTitleProvesAgentPresence(

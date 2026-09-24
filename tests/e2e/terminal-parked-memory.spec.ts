@@ -291,7 +291,7 @@ test.describe('Terminal parked memory', () => {
 
       const metrics = await sampleParkedMemoryMetrics(koluxPage)
       testInfo.annotations.push({
-        type: 'opencode-parked-memory',
+        type: 'tui-parked-memory',
         description: formatParkedMemoryAnnotation(metrics, parkableTabs.length)
       })
 
@@ -356,7 +356,7 @@ test.describe('Terminal parked memory', () => {
 
       const metrics = await sampleParkedMemoryMetrics(koluxPage)
       testInfo.annotations.push({
-        type: 'opencode-parked-memory-disabled',
+        type: 'tui-parked-memory-disabled',
         description: formatParkedMemoryAnnotation(metrics, 0)
       })
 

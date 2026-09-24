@@ -26,23 +26,17 @@ vi.mock('../../store', () => ({
       codexUsageScanState: null,
       codexUsageDaily: [],
       codexUsageRecentSessions: [],
-      openCodeUsageScanState: null,
-      openCodeUsageDaily: [],
-      openCodeUsageRecentSessions: [],
       refreshRateLimits: testState.refreshRateLimits,
       refreshDetectedAgents: testState.refreshDetectedAgents,
       fetchClaudeUsage: vi.fn().mockResolvedValue(undefined),
       fetchCodexUsage: vi.fn().mockResolvedValue(undefined),
-      fetchOpenCodeUsage: vi.fn().mockResolvedValue(undefined),
       refreshClaudeUsage: vi.fn().mockResolvedValue(undefined),
-      refreshCodexUsage: vi.fn().mockResolvedValue(undefined),
-      refreshOpenCodeUsage: vi.fn().mockResolvedValue(undefined)
+      refreshCodexUsage: vi.fn().mockResolvedValue(undefined)
     })
 }))
 
 vi.mock('../ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode; open: boolean }) =>
-    open ? children : null,
+  Dialog: ({ children, open }: { children: ReactNode; open: boolean }) => (open ? children : null),
   DialogContent: ({ children }: { children: ReactNode }) => children,
   DialogHeader: ({ children }: { children: ReactNode }) => children,
   DialogTitle: ({ children }: { children: ReactNode }) => children

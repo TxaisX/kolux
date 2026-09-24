@@ -8,13 +8,8 @@ import type {
   CodexUsageScanState,
   CodexUsageSummary
 } from '../../../../shared/codex-usage-types'
-import type {
-  OpenCodeUsageDailyPoint,
-  OpenCodeUsageScanState,
-  OpenCodeUsageSummary
-} from '../../../../shared/opencode-usage-types'
 
-export type UsageProviderId = 'claude' | 'codex' | 'opencode'
+export type UsageProviderId = 'claude' | 'codex'
 
 export type UsageProviderOverview = {
   id: UsageProviderId
@@ -43,7 +38,6 @@ export type UsageOverviewDailyPoint = {
   totalTokens: number
   claudeTokens: number
   codexTokens: number
-  openCodeTokens: number
   intensity: 0 | 1 | 2 | 3 | 4
 }
 
@@ -79,10 +73,5 @@ export type UsageOverviewInput = {
     scanState: CodexUsageScanState | null
     summary: CodexUsageSummary | null
     daily: CodexUsageDailyPoint[]
-  }
-  opencode: {
-    scanState: OpenCodeUsageScanState | null
-    summary: OpenCodeUsageSummary | null
-    daily: OpenCodeUsageDailyPoint[]
   }
 }

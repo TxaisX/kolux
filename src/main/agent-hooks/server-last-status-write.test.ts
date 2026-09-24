@@ -305,9 +305,9 @@ describe('Last-status persistence', () => {
           hook_event_name: 'MessagePart',
           role: 'user',
           text: 'persist status only',
-          messageID: 'opencode-local-message-id'
+          messageID: 'mimo-code-local-message-id'
         }),
-        '/hook/opencode'
+        '/hook/mimo-code'
       )
       server.flushStatusPersistSync()
       const file = JSON.parse(readFileSync(lastStatusPath(), 'utf8'))

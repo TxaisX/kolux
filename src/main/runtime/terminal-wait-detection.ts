@@ -1,8 +1,4 @@
-import {
-  detectAgentStatusFromTitle,
-  isOpenCodeNativeTitle,
-  type AgentStatus
-} from '../../shared/agent-detection'
+import { detectAgentStatusFromTitle, type AgentStatus } from '../../shared/agent-detection'
 import type { RuntimeTerminalWaitBlockedReason } from '../../shared/runtime-types'
 import {
   isTerminalWaitWhitespace,
@@ -23,8 +19,6 @@ export function detectExplicitIdleStatusFromTitle(title: string): AgentStatus | 
   // Why: launch titles like "Codex YOLO" contain an agent name but aren't readiness signals; terminal.wait needs explicit idle evidence.
   if (
     EXPLICIT_IDLE_TITLE_RE.test(title) ||
-    // Why: unblock hookless remote waits; guarded writes corroborate this marker.
-    isOpenCodeNativeTitle(title) ||
     title.startsWith(CLAUDE_IDLE_PREFIX) ||
     title.startsWith('* ') ||
     title.includes(GEMINI_IDLE_PREFIX) ||

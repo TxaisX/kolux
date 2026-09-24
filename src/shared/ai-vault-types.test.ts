@@ -34,7 +34,7 @@ describe('isAiVaultSessionResumableContent', () => {
   })
 
   it('accepts conversation previews when the turn count is missing', () => {
-    // Some parsers (Grok, OpenCode fallback schemas) derive messageCount from
+    // Some parsers (Grok fallback schemas) derive messageCount from
     // metadata that can be absent while real turns exist in previews.
     expect(isAiVaultSessionResumableContent(signal({ previewMessages: [preview('user')] }))).toBe(
       true

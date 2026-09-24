@@ -8,13 +8,12 @@ import { formatSessionTime, formatTokens } from '../stats/usage-formatters'
 import type { UsageOverviewProvider } from './usage-overview-model'
 import { translate } from '@/i18n/i18n'
 
-// usage-overview-model ids that match a ProviderIcon case (opencode's rate-limit
-// icon is keyed 'opencode-go'); anything else falls back to the agent catalog icon.
+// usage-overview-model ids that match a ProviderIcon case; anything else falls
+// back to the agent catalog icon.
 const RATE_LIMIT_ICON_ID: Record<string, string> = {
   claude: 'claude',
   codex: 'codex',
   gemini: 'gemini',
-  opencode: 'opencode-go',
   kimi: 'kimi',
   antigravity: 'antigravity',
   minimax: 'minimax',

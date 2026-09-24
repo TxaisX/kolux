@@ -12,7 +12,6 @@ describe('PowerShell OSC 133 bootstrap', () => {
     const script = getPowerShellOsc133Bootstrap()
 
     expect(script).toContain('[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()')
-    expect(script).toContain('KOLUX_OPENCODE_CONFIG_DIR')
     expect(script).toContain('KOLUX_MIMOCODE_HOME')
     expect(script).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
     expect(script).not.toContain('KOLUX_OMP_CODING_AGENT_DIR')

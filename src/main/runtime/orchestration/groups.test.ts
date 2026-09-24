@@ -120,8 +120,7 @@ describe('resolveGroupAddress', () => {
       ['@gemini', 'gemini'],
       ['@droid', 'droid'],
       ['@grok', 'grok'],
-      ['@cursor', 'cursor'],
-      ['@opencode', 'opencode']
+      ['@cursor', 'cursor']
     ])('routes %s to its agent id', (group, agentIdentity) => {
       const terminals = [
         makeSummary('sender'),

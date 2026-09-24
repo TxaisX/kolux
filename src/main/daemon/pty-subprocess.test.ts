@@ -476,7 +476,7 @@ describe('createPtySubprocess', () => {
           sessionId: 'test',
           cols: 80,
           rows: 24,
-          command: 'opencode'
+          command: 'mimo'
         })
       ).resolves.not.toThrow()
 

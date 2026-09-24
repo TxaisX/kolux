@@ -12,7 +12,6 @@ const agents = [
   entry('claude', 'Claude', 'claude'),
   entry('codex', 'Codex', 'codex'),
   entry('copilot', 'GitHub Copilot', 'copilot'),
-  entry('opencode', 'OpenCode', 'opencode'),
   entry('mistral-vibe', 'Mistral Vibe', 'vibe'),
   entry('qwen-code', 'Qwen Code', 'qwen-code'),
   entry('crush', 'Charm', 'crush'),
@@ -35,8 +34,8 @@ describe('agent picker search', () => {
     expect(
       searchAgentPickerEntries(agents, 'cod')
         .map((agent) => agent.id)
-        .slice(0, 3)
-    ).toEqual(['codex', 'opencode', 'qwen-code'])
+        .slice(0, 2)
+    ).toEqual(['codex', 'qwen-code'])
   })
 
   it('matches multi-word agents by initials and ordered shorthand', () => {

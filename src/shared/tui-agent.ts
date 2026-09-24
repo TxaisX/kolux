@@ -6,7 +6,6 @@ export type TuiAgent =
   | 'openclaude' // OpenClaude
   | 'codex' // OpenAI Codex
   | 'autohand' // Autohand Code CLI
-  | 'opencode' // OpenCode
   | 'mimo-code'
   | 'pi' // Pi (pi.dev)
   | 'omp' // OMP (omp.sh)

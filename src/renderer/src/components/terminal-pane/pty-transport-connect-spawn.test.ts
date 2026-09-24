@@ -44,8 +44,8 @@ describe('createIpcPtyTransport', () => {
     }
   )
 
-  it('leaves title tracking to the PTY data stream (no OpenCode IPC channel)', async () => {
-    // Why: the OpenCode status IPC channel is gone (now the agent-hooks server), so the transport has no per-agent status callback.
+  it('leaves title tracking to the PTY data stream (no legacy agent status IPC channel)', async () => {
+    // Why: the legacy per-agent status IPC channel is gone (now the agent-hooks server), so the transport has no per-agent status callback.
     const { createIpcPtyTransport } = await import('./pty-transport')
     const transport = createIpcPtyTransport({})
 

@@ -572,25 +572,25 @@ describe('PtyHandler', () => {
   })
 
   it('passes process and renderer env to env augmenters before augmenter overrides are applied', async () => {
-    const oldProcessValue = process.env.OPENCODE_CONFIG_DIR
-    process.env.OPENCODE_CONFIG_DIR = '/remote/default-opencode'
+    const oldProcessValue = process.env.KOLUX_CODEX_HOME
+    process.env.KOLUX_CODEX_HOME = '/remote/default-codex-home'
     try {
       handler.addEnvAugmenter((ctx) => ({
-        SEEN_OPENCODE_CONFIG_DIR: ctx.env.OPENCODE_CONFIG_DIR,
+        SEEN_KOLUX_CODEX_HOME: ctx.env.KOLUX_CODEX_HOME,
         SEEN_PI_CODING_AGENT_DIR: ctx.env.PI_CODING_AGENT_DIR
       }))
 
       await dispatcher.callRequest('pty.spawn', {
         env: {
-          OPENCODE_CONFIG_DIR: '/remote/renderer-opencode',
+          KOLUX_CODEX_HOME: '/remote/renderer-codex-home',
           PI_CODING_AGENT_DIR: '/remote/pi'
         }
       })
     } finally {
       if (oldProcessValue === undefined) {
-        delete process.env.OPENCODE_CONFIG_DIR
+        delete process.env.KOLUX_CODEX_HOME
       } else {
-        process.env.OPENCODE_CONFIG_DIR = oldProcessValue
+        process.env.KOLUX_CODEX_HOME = oldProcessValue
       }
     }
 
@@ -599,7 +599,7 @@ describe('PtyHandler', () => {
       env: Record<string, string>
     }
     expect(spawnEnv.name).toBe('xterm-256color')
-    expect(spawnEnv.env.SEEN_OPENCODE_CONFIG_DIR).toBe('/remote/renderer-opencode')
+    expect(spawnEnv.env.SEEN_KOLUX_CODEX_HOME).toBe('/remote/renderer-codex-home')
     expect(spawnEnv.env.SEEN_PI_CODING_AGENT_DIR).toBe('/remote/pi')
   })
 
@@ -718,8 +718,6 @@ describe('PtyHandler', () => {
         }
 
         handler.addEnvAugmenter(() => ({
-          OPENCODE_CONFIG_DIR: '/remote/overlay/opencode',
-          KOLUX_OPENCODE_CONFIG_DIR: '/remote/overlay/opencode',
           KOLUX_OMP_STATUS_EXTENSION: '/remote/.omp/agent/extensions/kolux-agent-status.ts'
         }))
 
@@ -747,11 +745,7 @@ describe('PtyHandler', () => {
       const rcfile = join(homeDir, '.kolux-relay', 'shell-ready', 'bash', 'rcfile')
 
       expect(shellArgs).toEqual(['--rcfile', rcfile])
-      expect(spawnOptions.env.KOLUX_OPENCODE_CONFIG_DIR).toBe('/remote/overlay/opencode')
       expect(spawnOptions.env.KOLUX_PI_CODING_AGENT_DIR).toBeUndefined()
-      expect(readFileSync(rcfile, 'utf8')).toContain(
-        'export OPENCODE_CONFIG_DIR="${KOLUX_OPENCODE_CONFIG_DIR}"'
-      )
       expect(readFileSync(rcfile, 'utf8')).not.toContain('KOLUX_PI_CODING_AGENT_DIR')
       expect(readFileSync(rcfile, 'utf8')).toContain('command omp --extension')
 

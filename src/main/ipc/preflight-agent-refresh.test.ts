@@ -179,20 +179,20 @@ describe('preflight', () => {
     // the shell hydrator for a fresh PATH, (2) merge any new segments, then
     // (3) re-run `which` so newly-installed CLIs appear without a restart.
     hydrateShellPathMock.mockResolvedValueOnce({
-      segments: ['/Users/test/.opencode/bin'],
+      segments: ['/Users/test/.gemini/bin'],
       ok: true,
       failureReason: 'none'
     })
-    mergePathSegmentsMock.mockReturnValueOnce(['/Users/test/.opencode/bin'])
+    mergePathSegmentsMock.mockReturnValueOnce(['/Users/test/.gemini/bin'])
     execFileAsyncMock.mockImplementation(async (command, args) => {
       if (command !== 'which') {
         throw new Error(`unexpected command ${String(command)}`)
       }
-      if (String(args[0]) === 'opencode') {
+      if (String(args[0]) === 'gemini') {
         return {
           environmentResolved: true,
           code: 0,
-          stdout: '/Users/test/.opencode/bin/opencode\n',
+          stdout: '/Users/test/.gemini/bin/gemini\n',
           stderr: '',
           timedOut: false
         }
@@ -211,8 +211,8 @@ describe('preflight', () => {
     }
 
     expect(result).toEqual({
-      agents: ['opencode'],
-      addedPathSegments: ['/Users/test/.opencode/bin'],
+      agents: ['gemini'],
+      addedPathSegments: ['/Users/test/.gemini/bin'],
       shellHydrationOk: true,
       pathSource: 'shell_hydrate',
       pathFailureReason: 'none'

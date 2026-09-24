@@ -235,14 +235,14 @@ describePosix('epilogue under hostile user shell options', () => {
         return
       }
       const scoped = join(home, 'kolux-history', 'zsh_history')
-      const opencodeDir = join(home, 'opencode-overlay')
+      const mimocodeHome = join(home, 'mimocode-overlay')
       writeFileSync(join(home, '.zshrc'), `setopt ${option}\n`)
       // Why an overlay pane: KSH_ARRAYS only drops whichever feature is listed
       // first, and `overlay` is the first token the selector ever emits.
       const spawnEnv: Record<string, string> = {
         HOME: home,
         KOLUX_HISTFILE: scoped,
-        KOLUX_OPENCODE_CONFIG_DIR: opencodeDir
+        KOLUX_MIMOCODE_HOME: mimocodeHome
       }
       const features = selectShellStartupFeatures({
         shellPath: ZSH_PATH,
@@ -263,7 +263,7 @@ describePosix('epilogue under hostile user shell options', () => {
           ...launch.env,
           KOLUX_ORIG_ZDOTDIR: home
         },
-        report: ['LINEINIT', 'PRECMD', 'OPENCODE_CONFIG_DIR', 'ZDOTDIR', 'HISTFILE'],
+        report: ['LINEINIT', 'PRECMD', 'MIMOCODE_HOME', 'ZDOTDIR', 'HISTFILE'],
         commands: [
           'LINEINIT="${widgets[zle-line-init]:-none}"; PRECMD="${precmd_functions[*]:-none}"'
         ]
@@ -271,7 +271,7 @@ describePosix('epilogue under hostile user shell options', () => {
 
       expect(values.LINEINIT).toBe('user:__kolux_prompt_mark')
       expect(values.PRECMD).toContain('__kolux_osc133_precmd')
-      expect(values.OPENCODE_CONFIG_DIR).toBe(opencodeDir)
+      expect(values.MIMOCODE_HOME).toBe(mimocodeHome)
       expect(values.ZDOTDIR).toBe(home)
       expect(values.HISTFILE).toBe(scoped)
     }

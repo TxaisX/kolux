@@ -20,7 +20,7 @@ const BUDGETS = {
   maxWorstKeyLatencyMs: 300,
   maxRevisitLatencyMs: 300,
   maxTimerDriftMs: 150,
-  // Why: mirrors MAX_TIMER_DRIFT_UNDER_LOAD_MS in artificial-opencode-terminal-load.spec.ts
+  // Why: mirrors MAX_TIMER_DRIFT_UNDER_LOAD_MS in artificial-tui-terminal-load.spec.ts
   // so injected multi-pane redraw rows are not judged against the unloaded ceiling.
   maxTimerDriftUnderLoadMs: 3_500,
   maxScrollLatencyMs: 150,
@@ -34,10 +34,10 @@ const BUDGETS = {
 // in the e2e suite; other rows keep the unloaded smoke ceiling.
 function isUnderLoadTimerDriftScenario(scenario) {
   return (
-    scenario === 'opencode-same-workspace-typing' ||
-    scenario === 'opencode-cross-workspace-typing' ||
-    scenario.startsWith('opencode-scale-same-workspace-') ||
-    scenario.startsWith('opencode-scale-cross-workspace-')
+    scenario === 'tui-same-workspace-typing' ||
+    scenario === 'tui-cross-workspace-typing' ||
+    scenario.startsWith('tui-scale-same-workspace-') ||
+    scenario.startsWith('tui-scale-cross-workspace-')
   )
 }
 
@@ -155,7 +155,7 @@ const rows = reportPaths.flatMap((path) =>
 )
 
 if (rows.length === 0) {
-  console.error('No OpenCode terminal perf annotations found.')
+  console.error('No Tui terminal perf annotations found.')
   process.exit(1)
 }
 

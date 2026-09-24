@@ -150,7 +150,7 @@ describe('resolvePaneRendererPolicy', () => {
   })
 
   describe('agent token text cannot flip renderer policy under authoritative owners', () => {
-    const AGENT_TOKENS = ['gemini', 'claude', 'codex', 'opencode', 'cursor', 'omp', 'pi'] as const
+    const AGENT_TOKENS = ['gemini', 'claude', 'codex', 'goose', 'cursor', 'omp', 'pi'] as const
 
     for (const token of AGENT_TOKENS) {
       it(`keeps GPU on when a title mentions "${token}" but owner is another agent`, () => {

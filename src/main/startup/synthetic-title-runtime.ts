@@ -17,7 +17,7 @@ import { resolveTuiAgentPermissionMode } from '../../shared/tui-agent-permission
 import { mainProcessState as state } from './main-process-state'
 
 // Why: cursor-agent re-emits its own OSC title on every redraw, overwriting a one-shot frame — so re-assert a working frame on an interval.
-// 80ms matches Pi's cadence (smooth but under the IPC budget). opencode needs only one frame but reuses this for consistent animated UX.
+// 80ms matches Pi's cadence (smooth but under the IPC budget). mimo-code needs only one frame but reuses this for consistent animated UX.
 const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 const SPINNER_INTERVAL_MS = 80
 const syntheticTitleSpinnerByPaneKey = new Map<

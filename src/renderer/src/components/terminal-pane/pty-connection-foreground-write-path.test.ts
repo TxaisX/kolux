@@ -344,7 +344,7 @@ describe('connectPanePty', () => {
       vi.useFakeTimers()
       // Enter submits; the synchronized repaint frame opens immediately after.
       sendTerminalInputThroughPane(pane, '\r')
-      const repaintBody = 'opencode repaint '.repeat(200)
+      const repaintBody = 'agent repaint '.repeat(200)
       expect(repaintBody.length).toBeGreaterThan(2048)
       capturedDataCallback.current?.(`\x1b[?2026h${repaintBody}`)
       // The frame body holds, then its hold-safety fallback drains it.
@@ -389,7 +389,7 @@ describe('connectPanePty', () => {
 
       vi.useFakeTimers()
       // No terminal input: this synchronized redraw is not submit-driven.
-      const repaintBody = 'opencode repaint '.repeat(200)
+      const repaintBody = 'agent repaint '.repeat(200)
       capturedDataCallback.current?.(`\x1b[?2026h${repaintBody}`)
       // Let the frame body drain via its 250ms hold-safety fallback before isolating the closing chunk.
       vi.advanceTimersByTime(300)
@@ -480,7 +480,7 @@ describe('connectPanePty', () => {
       vi.useFakeTimers()
       // Load-bearing: Enter opens an INTERACTIVE frame that stays OPEN — the leak precondition, since the buggy set-branch is gated on !active.
       sendTerminalInputThroughPane(pane, '\r')
-      const repaintBody = 'opencode repaint '.repeat(200)
+      const repaintBody = 'agent repaint '.repeat(200)
       expect(repaintBody.length).toBeGreaterThan(2048)
       capturedDataCallback.current?.(`\x1b[?2026h${repaintBody}`)
       // Move past the 400ms interactive window without closing the frame, so any new frame now classifies non-interactive.
@@ -534,7 +534,7 @@ describe('connectPanePty', () => {
       vi.useFakeTimers()
       // Frame 1: submit-driven and interactive; opens and closes cleanly.
       sendTerminalInputThroughPane(pane, '\r')
-      const repaintBody = 'opencode repaint '.repeat(200)
+      const repaintBody = 'agent repaint '.repeat(200)
       expect(repaintBody.length).toBeGreaterThan(2048)
       capturedDataCallback.current?.(`\x1b[?2026h${repaintBody}\x1b[?2026l`)
       vi.advanceTimersByTime(40)
