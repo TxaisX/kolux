@@ -3,7 +3,88 @@
 Read this before changing anything. It is the current state of the project and the
 context a fresh agent cannot infer from the code. Update it when you finish work.
 
-Last updated: 2026-09-21.
+Last updated: 2026-09-23.
+
+## Current handoff: improvement pass for Claude (2026-09-22)
+
+Codex left this pass uncommitted in the primary checkout; on 2026-09-23 Claude verified
+it, moved it into the `codex-pass` worktree on top of main, and shipped it.
+
+- **Launcher reliability:** launch-agent discovery and refresh are now target-aware
+  (local, environment, or SSH), stale selections are revalidated, unresolved hosts
+  stay visible as an explicit state, and the queue shows the actual queued count.
+  The focused launcher suites reported 51 tests plus 19 shared-checkout/refresh tests
+  passing. Runtime-verified 2026-09-23: opened the launcher for a throwaway local
+  project, clicked "Refresh agents", and confirmed the busy state toggled and the
+  agent tiles (Claude/Codex) reflected local detection.
+- **Updates:** the packaged app checks the `TxaisX/kolux` GitHub release feed every
+  15 minutes and the sidebar button uses the same feed. Development builds now report
+  that updates require a packaged app instead of claiming they are current. Available
+  releases produce one in-app toast per version and an OS notification when the window
+  is not focused; installing still requires the normal user restart. The update card
+  no longer auto-restarts the app. Runtime-verified 2026-09-23 on a fresh dev boot: the
+  store's `updateStatus` settles to `{state:'error', retryable:false, message:'Updates
+  can be checked and installed from a packaged Kolux app.'}`, the sidebar button renders
+  disabled as "Update unavailable", and the update card shows a failed-check state — none
+  of it claims "current".
+- **Release assurance:** `.github/workflows/release.yml` now runs
+  `config/scripts/release-packaged-smoke.mjs` before publishing. It checks the packaged
+  Windows CLI (`--version`, `--help`) and an isolated Nightshift-to-Kolux profile
+  migration. The executable is not present in this checkout’s `dist/`, so this smoke
+  test has still not run locally — that step is still open, see below.
+- **Terminal continuity:** standalone terminal-window replay now resets the xterm
+  buffer before applying replacement scrollback after resize. A headless regression and
+  the terminal-window suite pass; this surface is dormant in the pane-based UI and the
+  active SSH reconnect path had no reproduced failure. Not re-verified live this pass
+  (out of scope — see Known gaps).
+- **Layout presets:** presets can now arrange the active terminal pane grid while
+  preserving the existing pane/PTY identities; tab-group presets remain identity-safe.
+  Runtime-verified 2026-09-23: dispatched the same `kolux-split-terminal-pane` /
+  `kolux-arrange-terminal-pane-grid` events the UI uses, split one pane into two, then
+  applied the "2 pane grid" preset. Both panes kept the same `data-pane-id`/
+  `data-leaf-id`/`data-pty-id` triples across the rearrange — no pane or pty was
+  recreated.
+- **Orchestration visibility:** the agent dashboard now has a Runs view that reads the
+  runtime run/task ledger, supports refresh and pagination, and explains why direct SSH
+  hosts cannot use the local ledger. The focused panel tests cover environment, SSH,
+  and unresolved-host states. Runtime-verified 2026-09-23 with
+  `experimentalAgentDashboardPopout` enabled on a throwaway dev profile: the Runs view
+  rendered "RECENT RUNS" with the legacy local run and its inspect-only detail pane.
+- **Cross-version wire coverage:** a new terminal-wire journey exercises current and
+  release-tagged clients. CI now fetches full history so tags are available. The test is
+  skipped on Windows because release-tree extraction hangs on this OneDrive checkout;
+  Linux CI is the intended signal.
+
+### Verification snapshot
+
+- Updater preflight: 12/12 focused checks passed; renderer updater tests: 33/33.
+- 2026-09-23: the full focused-suite sweep for this pass — launch-agents (7 files/55
+  tests), updater incl. `UpdateCard*`/`SidebarUpdateButton*`/`updater-status-ipc-bridge*`
+  (28 files/307 tests, 1 file/14 tests skipped), terminal-window (3/7), tab-group incl.
+  layout presets (20/117), dashboard (70/542), pane-manager (76/859, 1 skipped),
+  cross-version-wire (3 files/26 tests, 1 file/5 tests skipped on Windows as designed),
+  settings incl. the terminal-preview snapshot (175/1148, 1 skipped) — all passed.
+- `pnpm tc:node`, `pnpm tc:web` and `pnpm tc:cli` pass. (`tc:node` needed
+  `'lastNotifiedUpdateVersion'` added to `MainOwnedUIState` in
+  `ui-state-schema-parity-checks.ts`: only the main process writes it.)
+- `oxlint` is clean on all 41 touched files. Two files needed line-count trims to stay
+  under the 300/400-line ratchet after the pass's additions: `pane-manager.ts` (delegate
+  methods converted to one-line arrow class fields) and `TabGroupPanel.tsx` (an
+  `activeTerminalTabId` local extracted, two tab handlers collapsed). `DashboardRunsPanel.tsx`
+  no longer type-imports from `main/runtime/orchestration/types.ts` (renderer tsconfig
+  doesn't include main); it mirrors the two picked fields locally instead.
+- `git diff --check` is clean.
+- Not verified here: packaged Windows smoke (still needs a packaged `Kolux.exe`), real
+  browser sign-in in an installed build, and a full Linux CI run.
+
+### Next steps for Claude
+
+Steps 1, 2, 3 and 5 from the previous handoff are done (see above and Known gaps).
+Remaining:
+
+1. Build/package Windows, then run `node config/scripts/release-packaged-smoke.mjs` with
+   `dist/win-unpacked/Kolux.exe` present. Do not publish until the smoke test and release
+   workflow are green.
 
 ## 2026-09-22: one WebGL hiccup no longer slows every new terminal
 
@@ -34,6 +115,9 @@ Last updated: 2026-09-21.
 - Every mention was renamed by a case-preserving replace (nightshift→kolux, Nightshift→Kolux, NIGHTSHIFT→KOLUX), including 587 file paths, env vars, IPC/RPC names, the CLI (`kolux`), the protocol (`kolux://`), and the appId (`com.txais.kolux`). Only `LICENSE` keeps its original text.
 - **2026-09-22: shipped as v0.10.0** (`kolux-windows-setup.exe`, published as Latest). The first release run failed in packaging because `cli/runtime/metadata.js` requires `pre-kolux-userdata-migration` and it was not in `asarUnpack`; the CLI's `ELECTRON_RUN_AS_NODE` loader cannot see into app.asar. Fixed, and `electron-builder-config.test.mjs` now fails when any main-process module the CLI imports is left packed.
 - **The owner's machine was swapped to Kolux on 2026-09-22**: Nightshift closed, `%APPDATA%\kolux` (the stale test copy) moved aside, the Kolux installer removed Nightshift, then Kolux launched and carried the data forward. The script deleted the Nightshift leftovers (`%APPDATA%\nightshift`, `~/.nightshift`, `~/.nightshift-remote`, `%APPDATA%\nightshift-dev`, `%LOCALAPPDATA%\Nightshift`, `nightshift-updater`, `Programs\nightshift`) only after the carry-over marker appeared. Log: `%TEMP%\kolux-swap.log`.
+  - **Second sweep, 2026-09-22:** removed the dead `~/.nightshift/agent-hooks/claude-hook.cmd` entries from `~/.codex/hooks.json` and `%APPDATA%\kolux\codex-runtime-home\home\hooks.json` (Kolux keeps foreign entries when it merges its own), the `NIGHTSHIFT_WORKSPACES_DIR` user env var and the dead `Programs\nightshift` PATH entry, the `nightshift-cli` / `nightshift-run` skills (replaced by `kolux-cli` and a ported `kolux-run`), `G:\Temp\nightshift-*`, the Nightshift shortcuts, and the old `G:\Dev\git-repos\nightshift` clone. Its two unpushed branches, `archive/pre-original` and `TxaisX/wip-pane-per-session-and-conpty-warmup`, now exist **only as local branches in this repo**.
+  - Kept on purpose: `G:\Dev\nightshift-workspaces` is Kolux's `workspaceDir` and holds registered repos (`nightshift/` there is a clone of `TxaisX/kolux`); renaming it would orphan persisted paths.
+  - **Follow-up for upgraders:** the migration sweeps old-named hook *files* but not Codex `hooks.json` *entries* that point into `~/.nightshift`. They are no-ops (`|| echo {}`), but each fires a failed command per event until removed.
 - **2026-09-22: the GitHub repo is now `TxaisX/kolux`.** All 1,400 addresses and every release-feed repo name (`electron-builder.config.cjs`, `dev-app-update.yml`, the dev-channel names, the plugin marketplace) point at it. GitHub redirects the old address, which is what keeps already-installed 0.9.0 Nightshift builds updating. Version bumped to `0.10.0` — x-level, because the app name, the CLI command and the app identity all change.
 - One-time migration so upgraders lose nothing:
   - `src/main/startup/pre-kolux-userdata-migration.ts` moves userData, `~/.nightshift` and marker files. It is hooked into preflight, koluxd and the CLI.
@@ -584,18 +668,47 @@ one was attached to the wrong data. Running the app found all three. Do the same
   `sidebar/WorktreeCardAgents.tsx` and its four tests remain; the only live import is the
   `SUPPRESS_WORKTREE_LIST_SCROLL_ADJUSTMENT_EVENT` constant in `use-scroll-suppression.ts`.
   Move that constant, then delete the file and its tests.
-- **Terminal windows can repeat a block of scrollback** after a resize resync; the live
-  prompt is correct underneath. Seen once in a restored Claude window, not yet chased.
-- **SSH terminal windows are never restored.** Restore trusts only the local daemon
-  inventory, so a remote pty reads as unverifiable and its window stays closed.
-- **Layout presets** apply a grid to the tab-group tree only, so they are rarely
-  applicable. Tidy was fixed to cover both trees; presets were not.
-- **Orchestration has a command line but no control UI.** Runs, tasks, dispatch and
-  mailboxes exist in the CLI and are not exposed to the renderer at all. The agent
-  dashboard shows agents and nested sub-agents, but cannot create or route work.
+- **Standalone terminal-window scrollback resync** previously appended a replacement
+  snapshot to the old xterm buffer after resize. The window now resets its buffer before
+  replay, guarded by a headless terminal regression test. This standalone window surface
+  is dormant in the current pane-based UI, so the fix has not had a live UI repro.
+- **The earlier SSH terminal-window restore claim was stale.**
+  `restoreLiveTerminalSessionWindows` has no production caller, and the renderer has no
+  `terminalWindows.open` caller. Active main-window SSH panes use the persisted remote
+  session IDs and a separate reconnect path; no failure in that path was reproduced here.
+- **Layout presets** now cover the active terminal-pane grid as well as the tab-group
+  tree. The pane path preserves mounted pane and PTY identities — runtime-verified
+  2026-09-23 by driving the real `kolux-split-terminal-pane` /
+  `kolux-arrange-terminal-pane-grid` events and diffing `data-pane-id`/`data-leaf-id`/
+  `data-pty-id` before and after. Still not exercised with WebGL or existing scrollback
+  present, or through the actual dropdown-menu click path (the pane header's split
+  button and the "Pane Actions" menu are hover/opacity-gated and did not resolve as
+  clickable in a hidden/background CDP window; the events they dispatch are the same
+  ones driven here).
+- **Orchestration control is still intentionally split.** The dashboard now exposes a
+  read-only Runs/tasks view with refresh and pagination; creating or routing work still
+  happens from the coordinator terminal/CLI. Do not describe the new panel as a full
+  dispatcher. Runtime-verified 2026-09-23: with the experimental setting on, the Runs
+  view rendered the legacy local run and its read-only detail pane.
 - **The agent dashboard is off by default** behind "Experimental agent dashboard popout".
   Until that setting is on, its shortcut does nothing and its row is hidden in the shortcut
-  list, which reads as a broken key rather than a disabled feature.
+  list, which reads as a broken key rather than a disabled feature. This pass only enabled
+  it on a throwaway dev profile to verify the Runs view; the shipped default is unchanged,
+  so this gap stands.
+
+## Verification limits carried into the next session
+
+- The full suite remains noisy on this Windows machine: the known happy-dom fork-worker
+  failures, missing `/bin/sh`, plugin launch fixtures, Codex trust-hash fixture, and
+  occasional `EPERM`/`EBUSY` failures remain pre-existing. Use focused suites locally and
+  Linux CI for the whole repository.
+- The cross-version release checkout is deliberately skipped on Windows because extracting
+  a tagged release hangs on OneDrive. Keep the test enabled on Linux; do not “fix” this by
+  weakening the wire journey.
+- No packaged `dist/win-unpacked/Kolux.exe` exists in this worktree, so the release smoke
+  script could only be reviewed, not executed locally.
+- A real browser authorization flow and a live hidden-renderer/CDP check of the new UI
+  surfaces are still outstanding.
 
 ## Working here
 

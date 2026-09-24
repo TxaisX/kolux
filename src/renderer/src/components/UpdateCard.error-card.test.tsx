@@ -90,6 +90,20 @@ afterEach(() => {
   useAppStore.setState(useAppStore.getInitialState(), true)
 })
 
+describe('UpdateCard install consent', () => {
+  it('waits for Restart after a user downloads an update', () => {
+    renderAfterAvailableStatus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Update' }))
+    expect(download).toHaveBeenCalledOnce()
+
+    act(() => useAppStore.getState().setUpdateStatus({ state: 'downloaded', version: '1.4.200' }))
+
+    expect(screen.getByRole('button', { name: /Restart/ })).toBeTruthy()
+    expect(quitAndInstall).not.toHaveBeenCalled()
+  })
+})
+
 describe('UpdateCard Windows signature failures', () => {
   it('does not offer the rejected version as a manual publisher-check bypass', () => {
     const message =

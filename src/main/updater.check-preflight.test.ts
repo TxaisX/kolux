@@ -31,6 +31,23 @@ describe('updater', () => {
     resetUpdaterMocks()
   })
 
+  it('explains that an unpackaged build cannot install GitHub updates', async () => {
+    const sendMock = vi.fn()
+    const { setupAutoUpdater, checkForUpdatesFromMenu } = await loadUpdaterModule()
+    appMock.isPackaged = false
+    setupAutoUpdater({ webContents: { send: sendMock } } as never)
+
+    checkForUpdatesFromMenu()
+
+    expect(sendMock).toHaveBeenCalledWith('updater:status', {
+      state: 'error',
+      message: 'Updates can be checked and installed from a packaged Kolux app.',
+      retryable: false,
+      userInitiated: true
+    })
+    expect(autoUpdaterMock.checkForUpdates).not.toHaveBeenCalled()
+  })
+
   it('ignores stale updater events while a new check is still in feed preflight', async () => {
     vi.useFakeTimers()
     let resolveSecondTags: (value: { tags: string[]; state: 'no-newer' }) => void = () => {}

@@ -45,6 +45,10 @@ export function scheduleMainWindowAutoUpdaterSetup(
     updaterSetupDone = true
     setupAutoUpdater(mainWindow, {
       getLastUpdateCheckAt: () => store.getUI().lastUpdateCheckAt,
+      getLastNotifiedUpdateVersion: () => store.getUI().lastNotifiedUpdateVersion ?? null,
+      setLastNotifiedUpdateVersion: (version) => {
+        store.updateUI({ lastNotifiedUpdateVersion: version })
+      },
       onBeforeQuit: async () => {
         try {
           await options?.onBeforeUpdateQuit?.()

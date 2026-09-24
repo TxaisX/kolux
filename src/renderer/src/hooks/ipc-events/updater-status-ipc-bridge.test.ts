@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { registerUpdaterStatusIpcBridge } from './updater-status-ipc-bridge'
 
 const mocks = vi.hoisted(() => ({ setUpdateStatus: vi.fn() }))
+vi.mock('sonner', () => ({ toast: { info: vi.fn() } }))
 
 vi.mock('../../store', () => ({
   useAppStore: {
@@ -18,10 +19,10 @@ describe('registerUpdaterStatusIpcBridge', () => {
     vi.unstubAllGlobals()
   })
 
-  it('registers after requesting the snapshot and preserves the current late snapshot overwrite', async () => {
+  it('subscribes before the snapshot and ignores a snapshot older than a live update', async () => {
     const order: string[] = []
     let resolveSnapshot: ((status: { state: string }) => void) | undefined
-    let statusListener: ((status: { state: string }) => void) | undefined
+    let statusListener: ((status: unknown) => void) | undefined
     const statusCleanup = vi.fn()
     const dismissalCleanup = vi.fn()
     vi.stubGlobal('window', {
@@ -33,7 +34,7 @@ describe('registerUpdaterStatusIpcBridge', () => {
               resolveSnapshot = resolve
             })
           },
-          onStatus: (listener: (status: { state: string }) => void) => {
+          onStatus: (listener: (status: unknown) => void) => {
             order.push('listener')
             statusListener = listener
             return statusCleanup
@@ -46,17 +47,44 @@ describe('registerUpdaterStatusIpcBridge', () => {
     const unsubs: (() => void)[] = []
     registerUpdaterStatusIpcBridge(unsubs)
 
-    expect(order).toEqual(['snapshot', 'listener'])
-    statusListener?.({ state: 'available' })
+    expect(order).toEqual(['listener', 'snapshot'])
+    statusListener?.({ state: 'available', version: '0.10.9', changelog: null })
     resolveSnapshot?.({ state: 'idle' })
     await Promise.resolve()
     expect(mocks.setUpdateStatus.mock.calls).toEqual([
-      [{ state: 'available' }],
-      [{ state: 'idle' }]
+      [{ state: 'available', version: '0.10.9', changelog: null }]
     ])
 
     unsubs.forEach((unsubscribe) => unsubscribe())
     expect(statusCleanup).toHaveBeenCalledOnce()
     expect(dismissalCleanup).toHaveBeenCalledOnce()
+  })
+
+  it('announces each newly available version once', async () => {
+    const { toast } = await import('sonner')
+    let statusListener: ((status: unknown) => void) | undefined
+    vi.stubGlobal('window', {
+      api: {
+        updater: {
+          getStatus: () => Promise.resolve({ state: 'idle' }),
+          onStatus: (listener: (status: unknown) => void) => {
+            statusListener = listener
+            return vi.fn()
+          },
+          onClearDismissal: () => vi.fn()
+        }
+      }
+    })
+
+    registerUpdaterStatusIpcBridge([])
+    await Promise.resolve()
+    statusListener?.({ state: 'available', version: '0.11.0', changelog: null })
+    statusListener?.({ state: 'available', version: '0.11.0', changelog: null })
+
+    expect(toast.info).toHaveBeenCalledOnce()
+    expect(toast.info).toHaveBeenCalledWith(
+      'Kolux v0.11.0 is available',
+      expect.objectContaining({ description: expect.stringContaining('Restart') })
+    )
   })
 })
