@@ -104,7 +104,7 @@ gh_token="${GH_TOKEN:-${GITHUB_TOKEN:-$(command -v gh >/dev/null 2>&1 && gh auth
 recipe_id="${KOLUX_RECIPE_ID:-vercel-sandbox}"
 recipe_id="${recipe_id//./-}"  # Vercel names forbid dots.
 instance_id="${KOLUX_VM_INSTANCE_ID:-$(date +%s)}"
-max_recipe_id_length=$((128 - ${#instance_id} - 6))  # Preserve the unique instance suffix.
+max_recipe_id_length=$((128 - ${#instance_id} - 7))  # 7 = "kolux-" + "-"; preserves the unique instance suffix.
 [ "$max_recipe_id_length" -gt 0 ] || { echo "KOLUX_VM_INSTANCE_ID is too long for a Vercel sandbox name" >&2; exit 1; }
 name="kolux-${recipe_id:0:max_recipe_id_length}-${instance_id}"
 

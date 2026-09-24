@@ -11,6 +11,7 @@ import {
   type CodexAccountSelectionTarget
 } from './runtime-selection'
 import { getDefaultWslDistro, getWslHome } from '../wsl'
+import { isWindowsAbsolutePathLike } from '../../shared/cross-platform-path'
 import { hasRecordedLegacyWslCodexPane } from '../codex/codex-pane-account-registry'
 import {
   startLegacyWslRuntimeAuthDrain,
@@ -158,8 +159,9 @@ export abstract class CodexRuntimeHomeWsl extends CodexRuntimeHomeWslCore {
       : null
   }
 
+  // Why: a drvfs home arrives as a drive path; host `join` would append with '/' off Windows.
   protected joinWslPath(basePath: string, ...segments: string[]): string {
-    return parseWslUncPath(basePath)
+    return parseWslUncPath(basePath) || isWindowsAbsolutePathLike(basePath)
       ? pathWin32.join(basePath, ...segments)
       : join(basePath, ...segments)
   }
