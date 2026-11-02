@@ -700,6 +700,8 @@ pub fn app_restart(app: tauri::AppHandle) -> Result<(), String> {
     }
     if QUIT_UNDER_WAY.load(Ordering::SeqCst) {
         // A quit came in during the save point: the user's quit wins and runs its own exit routine.
+        // The guard goes back, or a waiting update would install and reopen the app the user quit.
+        restart_ended();
         return Ok(());
     }
     crate::procs::hand_off(true);
@@ -962,6 +964,8 @@ mod tests {
         assert!(body.contains("restart_started()"), "a second click, another restart or a quit under way is ignored");
         assert!(body.contains("restart_ended()"), "a failed save gives the guard back");
         assert!(body.find("QUIT_UNDER_WAY").unwrap() < body.find("app.request_restart()").unwrap(), "a quit during the save point wins over the restart");
+        let quit_wins = &body[body.find("QUIT_UNDER_WAY").unwrap()..body.find("crate::procs::hand_off(true);").unwrap()];
+        assert!(quit_wins.contains("restart_ended();"), "a quit that wins gives the guard back, so a waiting update does not reopen the app");
         let update = include_str!("update.rs").replace("\r\n", "\n");
         assert!(update.contains("restart_after_install(crate::lifecycle::restart_requested())"), "Help > Restart with a downloaded update installs it and reopens the app");
         // Every restart hands off first, or the new copy dies with the job; and goes through the full exit routine.
