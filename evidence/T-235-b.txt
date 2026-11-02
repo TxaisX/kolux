@@ -129,3 +129,45 @@ LIVE PROOF PENDING (batched) - nothing of this was run in the app (no app launch
 4. A PDF with a sticky note or comment: a yellow square shows; click it: the note text pops up. A form PDF: fields are not editable and nothing runs.
 5. Devtools network panel while opening: only the app's own requests.
 STILL OPEN IN T-235-b: CI check tab (Checks panel data), JPX images (wasm off).
+
+
+=== T-235-b piece 7: CI check tab (lane s-90, 2026-11-01) ===
+Built: Rust CheckStep/CheckAnnotation/CheckDetail, steps_of, annotations_of, read_check_detail (pull_requests.rs), check_target + scm_check_detail command (pr_review.rs, registered in lib.rs); TS pane kind "check" (layout, App Pane type, keyScopes, Grid icon, tabName), src/scm/checkCard.ts (checkIdOf, findCheckPane, insideWorktree, cardText, fixBlockerFor), src/scm/CheckPane.tsx, openCheck in paneActions, an Open button on each Checks-panel row.
+Deviation: scm_check_detail takes (link, checkId), no worktree: it is unused (gh_json runs in the temp dir) and the host and repo come from the check link, so a fork PR in the parent repo works.
+tabMenu("check") is just ["close"]: tabMenu already has no copy-path item for any kind (test asserts it).
+Files outside OWNS needed: src/shell/window/Pane.tsx (render CheckPane for kind "check", else it falls to TerminalPane) and src/shell/window/Right.tsx (pass onOpenCheck to ChecksPanel). Patch: evidence/T-235-b-wiring.patch (tsc was run clean with it applied; reverted here).
+
+--- FAILING FIRST ---
+$ cargo test --lib -- pull_requests:: pr_review::   => exit 101
+      1 error: could not compile `kolux-rs` (lib test) due to 15 previous errors
+      2 error[E0425]: cannot find function `annotations_of` in this scope
+      5 error[E0425]: cannot find function `check_target` in this scope
+      4 error[E0425]: cannot find function `read_check_detail` in this scope
+      4 error[E0425]: cannot find function `steps_of` in this scope
+$ VITEST_MAX_WORKERS=2 pnpm exec vitest run src/scm/checkCard.test.ts src/scm/CheckPane.test.ts   => exit 1
+Error: Cannot find module './checkCard' imported from G:/Dev/kolux-rs-sessions/wt/90-T-235-b/src/scm/checkCard.test.ts
+Error: Cannot find module './CheckPane' imported from G:/Dev/kolux-rs-sessions/wt/90-T-235-b/src/scm/CheckPane.test.ts
+ Test Files  2 failed (2)
+      Tests  no tests
+
+--- PASSING (after the build) ---
+$ cargo test --lib -- pull_requests:: pr_review::   => exit 0
+test result: ok. 55 passed; 0 failed; 0 ignored; 0 measured; 2603 filtered out; finished in 2.27s
+$ cargo clippy --all-targets -- -D warnings   => exit 0
+    Finished `dev` profile [unoptimized] target(s) in 1m 54s
+clippy exit 0
+$ VITEST_MAX_WORKERS=2 pnpm exec vitest run src/scm src/terminal   => exit 0
+ Test Files  128 passed (128)
+      Tests  864 passed (864)
+$ pnpm exec tsc --noEmit -p .   => exit 0
+$ node scripts/plan-check.mjs   => exit 0 (plan-check: OK)
+(Mid-run: one vitest failure, checkIdOf took the run number from /runs/42/job/9; fixed to prefer /job/<n>, rerun green as above.)
+
+LIVE PENDING (needs Windows and a real PR):
+1. Open a real failing check from the Checks panel (Open button on its row): a Check tab opens, the header shows the name and no path.
+2. Steps list with their status, annotations listed; open the same check again: the same tab is focused, not a second one. Two checks with the same name in different jobs get two tabs.
+3. Click an annotation inside the worktree: the file opens at that line. One that climbs out: disabled with the visible reason.
+4. Copy card puts the whole card on the clipboard.
+5. Fix with AI on a failed check of an open PR: the check log goes to the workspace agent; on a passed check or a closed PR it is off with the reason shown.
+6. Apply evidence/T-235-b-wiring.patch with the merge (Pane.tsx, Right.tsx); without it the Open button is not shown (ChecksPanel gets no onOpenCheck) and a check tab could not be drawn.
+JPX images (b): not built. Awaiting the owner decision: allow a bundled wasm decoder, or strike the case.

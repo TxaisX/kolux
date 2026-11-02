@@ -36,6 +36,7 @@ import type { Page } from "../projects/ProjectsPanel";
 import type { PaletteItem } from "../projects/WorktreePalette";
 import { folderName } from "../projects/model";
 import { stepAllowed, travel, type Place } from "../projects/nav";
+import { findCheckPane, type CheckRef } from "../scm/checkCard";
 import { DIFF_SPLIT_KEY, diffSplitOf, targetCell } from "../scm/split";
 import { PAGES, openSettings, type PageId } from "../settings/pages";
 import { openTabSearch, tabSearchCommand } from "../shell/findTab";
@@ -241,6 +242,19 @@ export function paneActions(s: WindowState, p: ReturnType<typeof useSettingsPlum
     }
     const key = nextKey.current++;
     setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "preview", path }]);
+    setFocused(key);
+  };
+  // T-235-b (EDIT-030): a CI check opens as its own tab beside the focused pane. One tab per check per
+  // worktree, found by the check's id (never its name); opening it again brings that tab forward.
+  const openCheck = (check: CheckRef) => {
+    const here = panes.find((p) => p.key === focused && sameDir(p.cwd, activeDir));
+    const same = findCheckPane(panes, activeDir, check.id);
+    if (same) {
+      setPanes((ps) => ps.map((p) => (p.key === same.key ? { ...p, check } : p)));
+      return setFocused(same.key);
+    }
+    const key = nextKey.current++;
+    setPanes((ps) => [...ps, { key, cwd: activeDir, branch: here?.branch ?? null, group: here ? groupOf(here) : undefined, agent: "shell", program: null, args: [], kind: "check", check }]);
     setFocused(key);
   };
   // TERM-001: the layout strip sets how many cells the workspace in front holds. Growing adds
@@ -595,7 +609,7 @@ export function paneActions(s: WindowState, p: ReturnType<typeof useSettingsPlum
     setFocused(key);
   };
   return {
-    addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, setCount, expandPane, splitPane, setChooser,
+    addShell, addChooser, removeSession, openTerminalIn, newTab, openFile, followLink, openDiff, openPreview, openCheck, setCount, expandPane, splitPane, setChooser,
     setSeats, stillThere, step, paletteItems, keyOfHandle, showDir, termCreate, termSwitch, renamePane, termRename, failedPane, restartPane, noticeFor,
     orderOf, dropPanes, dropPane, dropTabOn, dropCellOn, splitTab, closeTab, closePane, leavePage, runPane, copyId, findHandle, openPane, reviewChanges,
     addPreset,

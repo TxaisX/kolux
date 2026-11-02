@@ -1,0 +1,44 @@
+diff --git a/src/shell/window/Pane.tsx b/src/shell/window/Pane.tsx
+index 20a2b32a..42e4bf14 100644
+--- a/src/shell/window/Pane.tsx
++++ b/src/shell/window/Pane.tsx
+@@ -30,6 +30,7 @@ import { EditorPane } from "../../lazy/panes";
+ import { DiffPane } from "../../lazy/panes";
+ import { AllChangesPane } from "../../lazy/panes";
+ import { PreviewPane } from "../../lazy/panes";
++import CheckPane from "../../scm/CheckPane";
+ import { BrowserPane } from "../../lazy/panes";
+ import { openInBrowser } from "../../browser/openIn";
+ 
+@@ -113,6 +114,9 @@ export default function WindowPane({ pane: p, active }: { pane: Pane; active: nu
+       <AllChangesPane key={p.key} id={p.key} root={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenDiff={(path, staged) => openDiff(path, staged, true)} pinnedBase={projects.find((pr) => pr.id === projectOf(p.cwd))?.base ?? null} />
+     );
+   }
++  if (p.kind === "check" && p.check && p.cwd) {
++    return <CheckPane key={p.key} id={p.key} check={p.check} cwd={p.cwd} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} onOpenFile={openFile} onToast={setToast} />;
++  }
+   if (p.kind === "preview" && p.path) {
+     return (
+       <PreviewPane key={p.key} id={p.key} path={p.path} worktree={p.cwd} onLink={followLink} hidden={!terminals || p.key !== active} focused={p.key === focused} onFocus={() => setFocused(p.key)} onClose={() => closePane(p.key)} />
+diff --git a/src/shell/window/Right.tsx b/src/shell/window/Right.tsx
+index 04f6c53c..5b3b67d5 100644
+--- a/src/shell/window/Right.tsx
++++ b/src/shell/window/Right.tsx
+@@ -33,7 +33,7 @@ export default function WindowRight() {
+     projectOf, setProjects, openDiff, newTab, notesFor, repoless, openFile, dropNotes, saveNotes, setScreen,
+     select, defaultId, openIn, panes, startIn, agents, classic, resumeOrFocus, resumeIn, wsKind, cli,
+     runSetup, setRefresh, explorerOpen, explorerFocus, openTerminalIn, showRight, owner, saveSetting, shells, sendNotes,
+-    setActiveDir, setToast,
++    setActiveDir, setToast, openCheck,
+   } = useWindow();
+   return (
+     <RightSidebar tab={right.tab} width={clampWidth(dragWidth ?? right.width, window.innerWidth, sidebarOpen ? leftWidth + 8 : 0)} hidden={!terminals || !right.open || fullPage} offered={offeredRight} onTab={(tab) => {
+@@ -68,7 +68,7 @@ export default function WindowRight() {
+       {right.open && right.tab === "attached" && activeDir !== null && <AttachedWorktreesTab folder={activeDir} worktrees={wsKind.worktrees} onOpen={(path) => { setScreen("terminals"); select(path, null); }} />}
+       {right.open && right.tab === "prchecks" && activeDir !== null && <FolderChecksTab folder={activeDir} worktrees={wsKind.worktrees} />}
+       {/* VIEW-073: the Checks tab follows the workspace of the focused terminal. */}
+-      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals} />}
++      {right.open && right.tab === "checks" && <ChecksPanel dir={activeDir} linked={activeDir === null ? null : (linkedPrs(settings[SCM_LINKED_PR_KEY])[activeDir] ?? null)} visible={terminals} onOpenCheck={openCheck} />}
+       {/* T-187-b / T-189-b: the dialog and helpers behind "Continue with…", "Fix with an agent" and "Start with an agent". */}
+       <AgentStartHost
+         agents={agents}

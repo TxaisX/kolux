@@ -13,6 +13,7 @@ import GhBanner, { classify } from "../tasks/GhBanner";
 import CommentsPanel from "./CommentsPanel";
 import ConflictPanel from "./ConflictPanel";
 import PrStart from "./PrStart";
+import { checkIdOf, type CheckRef } from "./checkCard";
 import { reviewHint, reviewWhere } from "./startPr";
 import { CHECKS_POLL_MS, CHECKS_UNLINKED_KEY, checksSummary, panelBody, reusableNoPr, reuseNoPr, showing, stillRunning, unlinkedPrs, withUnlinkedPr, type PrChecks } from "./checks";
 import { prStateWord } from "./model";
@@ -20,7 +21,7 @@ import { recordChecks } from "./prSearch";
 import { CHECK_CAP, capped, checkGroups } from "./review";
 import type { Check } from "./checks";
 
-type Props = { dir: string | null; linked: string | null; visible: boolean };
+type Props = { dir: string | null; linked: string | null; visible: boolean; /** T-235-b: opens a check as its own tab; without it the rows have no Open button. */ onOpenCheck?: (check: CheckRef) => void };
 
 /** When each worktree last answered "no pull request", kept across tab switches. */
 const noPrSeen = new Map<string, number>();
@@ -34,7 +35,7 @@ const GROUPS = [
 
 const when = (t?: string | null) => (t ? new Date(t).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : null);
 
-export default function ChecksPanel({ dir, linked, visible }: Props) {
+export default function ChecksPanel({ dir, linked, visible, onOpenCheck }: Props) {
   const [note, setNote] = useState<string | null>(null);
   const { settings, save } = useSettings();
   const inKolux = settings?.linksOpenInKolux === true;
@@ -86,6 +87,11 @@ export default function ChecksPanel({ dir, linked, visible }: Props) {
   const pr = view?.kind === "pr" ? view.pr : null;
   const unlink = () => dir !== null && pr && void save({ [CHECKS_UNLINKED_KEY]: withUnlinkedPr(unlinkedAll, dir, { number: pr.number, url: pr.url }) });
   const linkAgain = () => dir !== null && void save({ [CHECKS_UNLINKED_KEY]: withUnlinkedPr(unlinkedAll, dir, null) });
+  /** The check as a tab keeps it; null for a check with no run address to read (an outside service). */
+  const opened = (c: Check): CheckRef | null => {
+    const id = checkIdOf(c.link);
+    return id === null || !c.link ? null : { id, name: c.name, link: c.link, outcome: c.outcome, workflow: c.workflow, pr: pr ? { number: pr.number, url: pr.url, state: pr.state } : null };
+  };
   const body = panelBody({ dir, error: shown?.error ?? null, data, view: view?.kind ?? null });
   return (
     <aside className="sidebar-wrap right">
@@ -177,6 +183,20 @@ ${reviewHint(inKolux)}`.trim()}
                               </span>
                               {c.workflow && <span className="wf">{c.workflow}</span>}
                               <span className={`word ${c.outcome}`}>{c.outcome}</span>
+                              {onOpenCheck && opened(c) && (
+                                <button
+                                  className="btn"
+                                  data-open-check
+                                  title="Open this check's steps and annotations in a tab"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onOpenCheck(opened(c)!);
+                                  }}
+                                >
+                                  Open
+                                </button>
+                              )}
                             </summary>
                             <div className="check-detail">
                               {c.description && <div>{c.description}</div>}

@@ -509,6 +509,24 @@ pub async fn scm_check_log(worktree: String, link: String) -> Result<String, Str
     .map_err(|e| e.to_string())?
 }
 
+/// T-235-b: the host and `owner/name` a check's link points into (`https://host/owner/name/...`).
+pub fn check_target(link: &str) -> Option<(String, String)> {
+    let mut parts = link.strip_prefix("https://")?.split('/');
+    let host = parts.next().filter(|h| !h.is_empty() && h.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-'))?;
+    let repo = format!("{}/{}", parts.next()?, parts.next()?);
+    crate::github::full_name_ok(&repo).then(|| (host.to_string(), repo))
+}
+
+/// T-235-b (EDIT-030): a check's steps and annotations for its tab, read from GitHub's public REST
+/// through the repository the link names (a fork's pull request lives in its parent). A link without a
+/// job gives annotations only.
+#[tauri::command(async)]
+pub fn scm_check_detail(link: String, check_id: u64) -> Result<crate::github::pull_requests::CheckDetail, String> {
+    let (host, repo) = check_target(&link).ok_or("This check has no GitHub page to read")?;
+    let job = run_id_of(&link).and_then(|(_, job)| job);
+    crate::github::pull_requests::read_check_detail(&scm::gh_program()?, &host, &repo, check_id, job)
+}
+
 /// GIT-024: the title and description an agent writes for the branch against `base`. Needs a real
 /// agent, so its live run is pending; the prompt and the parsing are unit tested.
 #[tauri::command]
@@ -753,6 +771,15 @@ pub async fn scm_stack_prs(worktree: String) -> Result<StackList, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn t235b_a_check_link_names_its_host_repository_and_job() {
+        assert_eq!(check_target("https://github.com/acme/app/actions/runs/123/job/456"), Some(("github.com".into(), "acme/app".into())));
+        assert_eq!(check_target("https://ghe.corp/o/r.x/runs/9"), Some(("ghe.corp".into(), "o/r.x".into())));
+        assert_eq!(check_target("https://github.com/acme/../actions/runs/1"), None);
+        assert_eq!(check_target("http://github.com/acme/app/runs/1"), None);
+        assert_eq!(check_target("not a link"), None);
+    }
 
     #[test]
     fn row267_the_conflict_check_fetches_the_base_first() {

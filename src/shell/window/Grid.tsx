@@ -2,7 +2,7 @@
 // lanes on the Board, the empty state, one cell per group (TERM-017), the tab strip with its drag and
 // drop (TERM-015, TERM-049, TERM-054) and the pane body beside it (Pane.tsx). The grid's frame follows
 // the screen it is on (VIEW-026, TERM-013).
-import { FileCode, Globe, Pin } from "../../chrome/icons";
+import { CheckCircle, FileCode, Globe, Pin } from "../../chrome/icons";
 import VendorMark from "../../chrome/VendorMark";
 import { needsYou } from "../../board/chip";
 import { folderName } from "../../projects/model";
@@ -151,7 +151,7 @@ export default function Grid() {
                         <Pin size={10} />
                       </span>
                     )}
-                    {p.kind === "editor" || p.kind === "preview" || p.kind === "diff" || p.kind === "changes" ? <FileCode size={12} /> : p.kind === "browser" ? <Globe size={12} /> : <VendorMark agent={shownAgent(p.agent, creditedLive(launchedAgent(p), liveIds[p.key] ?? IDLE))} size={12} />}
+                    {p.kind === "editor" || p.kind === "preview" || p.kind === "diff" || p.kind === "changes" ? <FileCode size={12} /> : p.kind === "check" ? <CheckCircle size={12} /> : p.kind === "browser" ? <Globe size={12} /> : <VendorMark agent={shownAgent(p.agent, creditedLive(launchedAgent(p), liveIds[p.key] ?? IDLE))} size={12} />}
                     {!p.kind && !p.seats && <TabBadge kind={tabBadge(p.agent, running[p.key], needsYou(statusOf(p)), unreadPanes.has(p.key), hook[p.key])} />}
                     {context[p.key] && <Ring percent={contextFill(context[p.key], capOn(settings))} size={10} title={meterText(meterOf(context[p.key], p.agent, plan.claude, codexOf(p.agent, p.account, accountSwitcher.active.codex, plan.codex, plan.codexBy), capOn(settings)) ?? {})} />}
                     {renamingTab === p.key ? (
