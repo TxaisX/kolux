@@ -655,6 +655,26 @@ pub fn save_point(app: &tauri::AppHandle, unsaved_drafts: usize) -> Result<final
     restart_allowed(&report, true, unsaved_drafts).map(|()| report)
 }
 
+/// APP-010: a restart is under way (Help > Restart Kolux); a second click while the save point runs
+/// is ignored. A save that cancelled the restart clears it so the user can try again.
+static RESTARTING: AtomicBool = AtomicBool::new(false);
+
+/// APP-010 / APP-011: Help > Restart Kolux. The same durable save point as a quit, then the hand-off
+/// the update restart makes (the new copy must not die with this copy's job), then the relaunch.
+/// A save that fails or times out cancels the restart and says why; nothing is changed.
+#[tauri::command]
+pub fn app_restart(app: tauri::AppHandle) -> Result<(), String> {
+    if RESTARTING.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+    if let Err(e) = save_point(&app, 0) {
+        RESTARTING.store(false, Ordering::SeqCst);
+        return Err(e);
+    }
+    crate::procs::hand_off(true);
+    app.restart();
+}
+
 // ---------------------------------------------------------------- APP-020: the search path
 
 /// `current`'s entries in order, then every entry of `stored` (the user's and system's stored
@@ -896,6 +916,19 @@ mod tests {
         assert!(d > final_save::QUIT_DEADLINE + crate::tools::WEBVIEW_EXIT_WAIT, "{d:?}");
         assert!(d <= Duration::from_secs(20), "a quit that takes longer than this is a hang: {d:?}");
         assert!(ASK_LIMIT < d);
+    }
+
+    #[test]
+    fn app010_help_restart_saves_hands_off_and_ignores_a_second_click() {
+        let src = include_str!("lifecycle.rs").replace("\r\n", "\n"); // a Windows checkout is CRLF
+        let code = &src[..src.find("#[cfg(test)]").unwrap()];
+        let body = &code[code.find("pub fn app_restart").unwrap()..];
+        let body = &body[..body.find("\n}\n").unwrap()];
+        assert!(body.find("save_point(&app, 0)").unwrap() < body.find("crate::procs::hand_off(true);").unwrap(), "the save point comes before the hand-off");
+        assert!(body.contains("RESTARTING.swap(true, Ordering::SeqCst)"), "a second click is ignored");
+        // Same rule as update.rs: every restart in this file hands off first, or the new copy dies with the job.
+        assert!(code.matches("app.restart()").count() >= 1);
+        assert_eq!(code.matches("app.restart()").count(), code.matches("crate::procs::hand_off(true);\n    app.restart()").count(), "a restart that skips the hand-off dies with the job");
     }
 
     #[test]
