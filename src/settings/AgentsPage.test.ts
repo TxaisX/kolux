@@ -1,6 +1,7 @@
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vitest";
+import { hooksDefault } from "../onboarding/hooksOn";
 import { AgentsPageView, HooksSwitch, hookProblems, hooksOn } from "./AgentsPage";
 
 test("the Agents page carries the 200k cap switch, on by default (USAGE-006)", () => {
@@ -11,7 +12,7 @@ test("the Agents page carries the 200k cap switch, on by default (USAGE-006)", (
   expect(renderToString(createElement(AgentsPageView, { cap: false, onCap: () => {} }))).not.toContain('checked=""');
 });
 
-test("the status hooks switch is off until saved on, says what off does and names the file (STAT-002, T-152-gate)", () => {
+test("the status hooks switch installs only on a saved true, says what off does and names the file (STAT-002, T-152-gate)", () => {
   expect(hooksOn({})).toBe(false);
   expect(hooksOn({ agentStatusHooks: "x" })).toBe(false);
   expect(hooksOn({ agentStatusHooks: false })).toBe(false);
@@ -22,6 +23,15 @@ test("the status hooks switch is off until saved on, says what off does and name
   expect(html).toContain('checked=""');
   expect(html).toContain("stops them being put back");
   expect(renderToString(createElement(HooksSwitch, { on: false, onSwitch: () => {} }))).not.toContain('checked=""');
+});
+
+// DT-C52 (PR #55 review): the switch starts on once the consent line was answered, and the guide says so; the text
+// under the switch must not keep the pre-DT-C52 "Off until you turn it on".
+test("the text under the status hooks switch says it starts on after the consent line, not off until turned on (DT-C52)", () => {
+  expect(hooksDefault({})).toBe(true);
+  const html = renderToString(createElement(HooksSwitch, { on: true, onSwitch: () => {} }));
+  expect(html).not.toMatch(/Off until you turn it on/);
+  expect(html).toContain("On once you have answered the line in setup");
 });
 
 test("a failed hook install or removal is shown beside the switch instead of being dropped (T-152-c (3))", () => {
