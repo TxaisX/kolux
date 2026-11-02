@@ -6,8 +6,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 import { Close, CheckCircle } from "../chrome/icons";
 import { fixText } from "../tasks/prModel";
-import { checkKey, type CheckDetail, type CheckRef } from "./checkCard";
-import { asPrCheck, cardText, fixBlockerFor, insideWorktree } from "./checkText";
+import type { CheckDetail, CheckRef } from "./checkCard";
+import { asPrCheck, cardText, checkKey, fixBlockerFor, insideWorktree } from "./checkText";
 
 type CardProps = {
   check: CheckRef;

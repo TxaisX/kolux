@@ -24,9 +24,6 @@ export function checkIdOf(link: string | null | undefined): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-/** One tab per check per worktree: the key a check tab is known by. */
-export const checkKey = (cwd: string | null, id: number): string => `${cwd ?? ""}::check:${id}`;
-
 /** The open tab of this check in this worktree, if any: found by the check's id, so two checks with the same name never share one. */
 export function findCheckPane<P extends { kind?: string; cwd: string | null; check?: { id: number } }>(panes: P[], cwd: string | null, id: number): P | undefined {
   return cwd === null ? undefined : panes.find((p) => p.kind === "check" && p.check?.id === id && sameDir(p.cwd, cwd));
