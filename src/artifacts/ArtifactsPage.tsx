@@ -101,34 +101,52 @@ export function viewerUrl(a: Pick<Artifact, "id" | "page">, windows = navigator.
   return `${base}/${a.id}/${a.page.split("/").map(encodeURIComponent).join("/")}`;
 }
 
-/** Where the focus has been: whether the viewer frame holds it now, when it last took it from
- * Kolux's own window, and when the user last pressed a pointer or key in Kolux's own window
- * (performance.now() times). A click inside the frame reaches none of Kolux's listeners. */
-export type FrameFocus = { frameFocused: boolean; frameFocusedAt: number; ownInputAt: number };
+/** A link a viewer page asked for: the address and the host the user is shown. */
+export type LinkAsk = { url: string; host: string };
 
-/** The link a message from the viewer asks to open, or null. Only our own frame may ask, and only
- * for a click made inside it: the user's activation has to be live (a click inside the frame counts
- * for its ancestors too), the frame has to hold the focus, and it has to have taken the focus after
- * the user's last input in Kolux itself. Activation alone is not enough: a row click in the list
- * activates Kolux's own window for a few seconds, which is long enough for the picked page to load
- * and post, and so does a later click or key press anywhere in Kolux. A page's own script posting on
- * load, or in a loop, therefore opens nothing; nor does any message in a web view without
- * userActivation, since it cannot tell the cases apart. */
-export function viewerLink(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined, focus: FrameFocus, nav: Navigator = navigator): string | null {
+/** The link a message from the viewer asks for, or null. Only our own frame may ask, and only for a
+ * web or mail address. The page's script posts the message, so it says nothing about the user
+ * (DT-C77): it is never a reason to open anything, only to ask. */
+export function linkAsk(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined): LinkAsk | null {
   if (!frameWindow || e.source !== frameWindow) return null;
   const data = e.data as { koluxOpen?: unknown } | null | undefined;
   if (typeof data?.koluxOpen !== "string") return null;
-  const activation = (nav as Navigator & { userActivation?: { isActive: boolean } }).userActivation;
-  if (!activation?.isActive) return null;
-  if (!focus.frameFocused || !(focus.frameFocusedAt > focus.ownInputAt)) return null;
-  return data.koluxOpen;
+  let u: URL;
+  try {
+    u = new URL(data.koluxOpen);
+  } catch {
+    return null;
+  }
+  if (u.protocol === "http:" || u.protocol === "https:") return u.host ? { url: data.koluxOpen, host: u.host } : null;
+  if (u.protocol === "mailto:") return { url: data.koluxOpen, host: decodeURIComponent(u.pathname.split("?")[0]) };
+  return null;
 }
 
-/** Hands a clicked link from the viewer to the system browser (`open_external` lets only web and mail
- * links through); a message that does not come from a click inside the frame does nothing. */
-export function openViewerLink(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined, focus: FrameFocus, nav: Navigator = navigator): Promise<unknown> | null {
-  const url = viewerLink(e, frameWindow, focus, nav);
-  return url === null ? null : invoke("open_external", { url });
+/** DT-C77: a message from the viewer never opens the browser. It raises one Kolux-owned question
+ * ("Open example.com?") and the browser opens only when the user clicks Open in Kolux. One question
+ * at a time: a new request replaces the pending one, nothing queues, and Open uses the question up,
+ * so a second click cannot open it twice. */
+export function linkPrompt(open: (url: string) => Promise<unknown>, show: (ask: LinkAsk | null) => void) {
+  let pending: LinkAsk | null = null;
+  const set = (ask: LinkAsk | null) => {
+    pending = ask;
+    show(ask);
+  };
+  return {
+    ask(e: Pick<MessageEvent, "data" | "source">, frameWindow: Window | null | undefined) {
+      const ask = linkAsk(e, frameWindow);
+      if (ask) set(ask);
+    },
+    async accept(): Promise<unknown> {
+      const ask = pending;
+      if (!ask) return null;
+      set(null);
+      return open(ask.url);
+    },
+    cancel() {
+      if (pending) set(null);
+    },
+  };
 }
 
 type Props = {
@@ -184,36 +202,20 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
     };
   }, [workspace, project, refresh, onToast]);
 
-  // A link clicked inside the viewer: only a message from our own frame, for a click inside it.
-  // Kolux's own pointer and key presses are noted in the capture phase (a click inside the frame
-  // never reaches them), and so is the moment the frame takes the focus from Kolux's window
-  // (clicking into a frame blurs the window and makes the frame element the active one).
-  const ownInputAt = useRef(0);
-  const frameFocusedAt = useRef(0);
+  // A link a viewer page asks for (DT-C77): the message only raises Kolux's own question below; the
+  // browser opens when the user clicks Open there, never from the message itself.
+  const [asked, setAsked] = useState<LinkAsk | null>(null);
+  const prompt = useRef<ReturnType<typeof linkPrompt> | null>(null);
+  prompt.current ??= linkPrompt((url) => invoke("open_external", { url }), setAsked);
   useEffect(() => {
-    const own = () => void (ownInputAt.current = performance.now());
-    const focusMoved = () => {
-      if (frame.current && document.activeElement === frame.current) frameFocusedAt.current = performance.now();
-    };
-    const onBlur = () => {
-      focusMoved();
-      // Some web views move the active element just after the blur.
-      window.setTimeout(focusMoved, 0);
-    };
-    const onMessage = (e: MessageEvent) => {
-      const focused = !!frame.current && document.activeElement === frame.current;
-      openViewerLink(e, frame.current?.contentWindow, { frameFocused: focused, frameFocusedAt: frameFocusedAt.current, ownInputAt: ownInputAt.current })?.catch((err) => onToast(String(err)));
-    };
-    const inputs = ["pointerdown", "mousedown", "keydown", "touchend"] as const;
-    for (const t of inputs) window.addEventListener(t, own, true);
-    window.addEventListener("blur", onBlur);
+    const onMessage = (e: MessageEvent) => prompt.current?.ask(e, frame.current?.contentWindow);
     window.addEventListener("message", onMessage);
-    return () => {
-      for (const t of inputs) window.removeEventListener(t, own, true);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("message", onMessage);
-    };
+    return () => window.removeEventListener("message", onMessage);
   }, []);
+  // Another page, or none, is a different conversation: the old question is dropped.
+  useEffect(() => {
+    prompt.current?.cancel();
+  }, [selected]);
 
   const shown = useMemo(() => group((list ?? []).filter((a) => matches(a.title, query))), [list, query]);
   const current = list?.find((a) => a.id === selected) ?? null;
@@ -300,6 +302,19 @@ export default function ArtifactsPage({ onToast, workspace, project }: Props) {
         </div>
       </div>
       <div className="art-view">
+        {asked && (
+          <div className="art-ask" role="alertdialog" aria-label="Open link">
+            <span className="art-ask-text" title={asked.url}>
+              Open <strong>{asked.host}</strong>?
+            </span>
+            <button className="btn" autoFocus onClick={() => void prompt.current?.accept().catch((err) => onToast(String(err)))}>
+              Open
+            </button>
+            <button className="btn" onClick={() => prompt.current?.cancel()}>
+              Cancel
+            </button>
+          </div>
+        )}
         {!current && <div className="empty"><p>Pick an artifact to view it here.</p></div>}
         {current?.state === "remote" && <div className="empty"><h2>{current.title}</h2><p>This page is on a machine this computer cannot read (WSL or SSH).</p></div>}
         {current?.state === "unavailable" && <div className="empty"><h2>{current.title}</h2><p>This page is on a network share, which Kolux never opens.</p></div>}

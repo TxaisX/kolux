@@ -1,52 +1,75 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// A page in the viewer frame runs its own script, and the frame's sandbox lets it post to the app
-// (link_script needs that). The app opens a koluxOpen message in the system browser only for a click
-// made inside the frame: the user's activation has to be live, the frame has to hold the focus, and
-// it has to have taken it after the user's last click or key press in Kolux itself. A row click in
-// the list gives Kolux's own window activation for a few seconds, so activation alone would let a
-// page that posts on load open the browser just by being picked.
+// DT-C77. A page in the viewer frame runs its own script, and the frame's sandbox lets it post to the
+// app (link_script needs that), so a koluxOpen message proves nothing about the user: the page can
+// post on load, in a loop, or after one real click. A message therefore never opens the browser. It
+// only raises Kolux's own question ("Open example.com?"), and the browser opens when the user clicks
+// Open in Kolux. One question at a time: a newer request replaces the older, nothing queues.
 const invoke = vi.fn(async (..._a: unknown[]) => null);
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(async () => null) }));
 
-import { openViewerLink, viewerLink } from "./ArtifactsPage";
+import { linkAsk, linkPrompt, type LinkAsk } from "./ArtifactsPage";
 
 const frame = { name: "artifact-a" } as unknown as Window;
-const msg = (over: Partial<{ data: unknown; source: unknown }>) => ({ data: { koluxOpen: "https://example.com/" }, source: frame, ...over }) as MessageEvent;
-const nav = (isActive: boolean | undefined) => (isActive === undefined ? {} : { userActivation: { isActive } }) as Navigator;
-/** The user clicked into the frame after their last input in Kolux. */
-const inFrame = { frameFocused: true, frameFocusedAt: 200, ownInputAt: 100 };
+const msg = (over: Partial<{ data: unknown; source: unknown }>) => ({ data: { koluxOpen: "https://example.com/path?q=1" }, source: frame, ...over }) as MessageEvent;
 
 afterEach(() => invoke.mockClear());
 
-describe("a link clicked inside the viewer (SKILL-036)", () => {
-  it("opens only while the user is acting, and only from our own frame", () => {
-    expect(viewerLink(msg({}), frame, inFrame, nav(true))).toBe("https://example.com/");
-    expect(viewerLink(msg({}), frame, inFrame, nav(false))).toBeNull();
-    expect(viewerLink(msg({}), frame, inFrame, nav(undefined))).toBeNull();
-    expect(viewerLink(msg({ source: {} }), frame, inFrame, nav(true))).toBeNull();
-    expect(viewerLink(msg({}), null, inFrame, nav(true))).toBeNull();
-    expect(viewerLink(msg({ data: { koluxOpen: 5 } }), frame, inFrame, nav(true))).toBeNull();
-    expect(viewerLink(msg({ data: null }), frame, inFrame, nav(true))).toBeNull();
+describe("a link asked for by the viewer (SKILL-036, DT-C77)", () => {
+  it("names the destination host, and only for our own frame", () => {
+    expect(linkAsk(msg({}), frame)).toEqual({ url: "https://example.com/path?q=1", host: "example.com" });
+    expect(linkAsk(msg({ data: { koluxOpen: "https://Sub.Example.com:8443/x" } }), frame)?.host).toBe("sub.example.com:8443");
+    expect(linkAsk(msg({ data: { koluxOpen: "mailto:someone@example.com" } }), frame)).toEqual({ url: "mailto:someone@example.com", host: "someone@example.com" });
+    expect(linkAsk(msg({ source: {} }), frame)).toBeNull();
+    expect(linkAsk(msg({}), null)).toBeNull();
+    expect(linkAsk(msg({ data: { koluxOpen: 5 } }), frame)).toBeNull();
+    expect(linkAsk(msg({ data: null }), frame)).toBeNull();
+    // Not a web or mail link: no question is worth asking.
+    expect(linkAsk(msg({ data: { koluxOpen: "file:///C:/Windows/notepad.exe" } }), frame)).toBeNull();
+    expect(linkAsk(msg({ data: { koluxOpen: "javascript:alert(1)" } }), frame)).toBeNull();
+    expect(linkAsk(msg({ data: { koluxOpen: "not a url" } }), frame)).toBeNull();
   });
 
-  it("a row click in Kolux gives activation but is not a click on the page's link", () => {
-    // The user just clicked the row (Kolux's own input, now) and the page posted on load: the focus
-    // is on the row, not the frame.
-    expect(viewerLink(msg({}), frame, { frameFocused: false, frameFocusedAt: 0, ownInputAt: 300 }, nav(true))).toBeNull();
-    // The frame kept the focus from an earlier click, but the user has since clicked or typed in Kolux.
-    expect(viewerLink(msg({}), frame, { frameFocused: true, frameFocusedAt: 200, ownInputAt: 300 }, nav(true))).toBeNull();
-    // The user clicked into the frame after their last input in Kolux.
-    expect(viewerLink(msg({}), frame, { frameFocused: true, frameFocusedAt: 400, ownInputAt: 300 }, nav(true))).toBe("https://example.com/");
-  });
-
-  it("a koluxOpen posted by a page's own script, with no click inside the frame, never reaches open_external", async () => {
-    await openViewerLink(msg({}), frame, inFrame, nav(false));
-    await openViewerLink(msg({}), frame, { frameFocused: false, frameFocusedAt: 0, ownInputAt: 300 }, nav(true));
+  it("a message never opens the browser, however many a page posts", () => {
+    const shown: (LinkAsk | null)[] = [];
+    const p = linkPrompt((url) => invoke("open_external", { url }), (a) => shown.push(a));
+    for (let i = 0; i < 20; i++) p.ask(msg({ data: { koluxOpen: `https://example.com/${i}` } }), frame);
     expect(invoke).not.toHaveBeenCalled();
-    await openViewerLink(msg({}), frame, inFrame, nav(true));
-    expect(invoke).toHaveBeenCalledWith("open_external", { url: "https://example.com/" });
+    expect(shown[shown.length - 1]).toEqual({ url: "https://example.com/19", host: "example.com" });
+  });
+
+  it("only one question is pending: a new request replaces the old one, with no queue", async () => {
+    const p = linkPrompt((url) => invoke("open_external", { url }), () => {});
+    p.ask(msg({ data: { koluxOpen: "https://first.example/" } }), frame);
+    p.ask(msg({ data: { koluxOpen: "https://second.example/" } }), frame);
+    await p.accept();
+    await p.accept();
+    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://second.example/" }]]);
+  });
+
+  it("clicking Open opens the link once; Cancel opens nothing", async () => {
+    const shown: (LinkAsk | null)[] = [];
+    const p = linkPrompt((url) => invoke("open_external", { url }), (a) => shown.push(a));
+    p.ask(msg({}), frame);
+    await p.accept();
+    await p.accept();
+    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://example.com/path?q=1" }]]);
+    expect(shown[shown.length - 1]).toBeNull();
+    invoke.mockClear();
+    p.ask(msg({}), frame);
+    p.cancel();
+    await p.accept();
+    expect(invoke).not.toHaveBeenCalled();
+    expect(shown[shown.length - 1]).toBeNull();
+  });
+
+  it("a message from another frame leaves the pending question alone", async () => {
+    const p = linkPrompt((url) => invoke("open_external", { url }), () => {});
+    p.ask(msg({}), frame);
+    p.ask(msg({ source: {}, data: { koluxOpen: "https://evil.example/" } }), frame);
+    await p.accept();
+    expect(invoke.mock.calls).toEqual([["open_external", { url: "https://example.com/path?q=1" }]]);
   });
 });
