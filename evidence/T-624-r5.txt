@@ -1,0 +1,94 @@
+T-624 round 5 (PR #37 round 4 review: code review A-, security audit C) - evidence
+==================================================================================
+
+Scope. Worker 2f, branch lane/artifacts-auto, worktree wt/2f-pr37. The question of whether the sandboxed viewer
+frame can reach the app's IPC (finding S1) and the correction of evidence/T-500-isolation.txt are NOT part of this
+round: the IPC question is handled in its own PR. Nothing here touches IPC, the ACL, capabilities or build.rs, and
+the dev app was not run. main was not merged into the branch this round (the coordinator will merge it later).
+
+Final commands (real output, worktree wt/2f-pr37, CARGO_TARGET_DIR=G:/Dev/kolux-rs-sessions/target-2f)
+  cargo test --manifest-path src-tauri/Cargo.toml --lib artifacts
+                                       -> test result: ok. 47 passed; 0 failed (lib, filter "artifacts")
+  cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+                                       -> Finished, exit 0, no warnings
+  npx vitest run src/artifacts         -> Test Files 4 passed (4), Tests 34 passed (34)
+  pnpm tsc --noEmit                    -> no output, exit 0
+  node scripts/plan-check.mjs          -> plan-check: OK
+
+Before / after
+  Before-state was read from the code and the round 4 review, not re-run: this round's tests were written together
+  with the fixes (the budget did not allow a red run against the old code). Two of the new Rust tests failed on their
+  first run for a reason in the test, not the code (they counted every kept file in the workspace instead of finding
+  the page's entry); they were fixed and the whole set then passed.
+
+  S2 (HIGH) decoded reference bypass       FIXED, TESTED.
+     Before: relative_refs judged the raw text, then percent-decoded it, so `%2F%2Fhost%2Fs%2Fa.png` became
+     `//host/s/a.png`, a UNC path; on Windows the copy would have contacted that server (NTLM leak).
+     After: relative_refs decodes first, then safe_ref() refuses an empty ref, a leading / or \, any ':' or control
+     character, a `..` part, a Windows device name (con, prn, aux, nul, com0-9, lpt0-9 ...) and anything that is not a
+     plain relative path; inside() builds the path from plain parts and refuses a ':' in a part on Windows; copy_assets
+     opens it with open_source(path, name, Some(folder)) (no canonicalize before the open) and derives the stored
+     relative name from the final path of the opened handle.
+     Tests: a_reference_is_judged_after_it_is_decoded (%2F%2F, %5C%5C, %2f%2f, C%3A, C%3a%5C, x.png%3Astream,
+     x.png%3A%3A%24DATA, %2E%2E, a/%2e%2e%2f%2e%2e/, %2Fabs, ..%5C, NUL, con.txt, sub/COM1, %00, https%3A%2F%2F);
+     a_decoded_unc_reference_is_never_opened_or_copied (a page naming them is kept, its plain assets are copied, no
+     stored name holds ':' or the host); an_asset_reached_through_a_linked_subfolder_is_not_copied (a junction on
+     Windows, a symlink elsewhere, to a folder outside the workspace holding secret.png); titles_and_refs (the
+     decoded form comes through, a climbing reference does not).
+  S3 (MEDIUM) reference count              FIXED, TESTED.
+     copy_assets looks at most MAX_REFS = 400 distinct references and stops after MAX_MISSES = 32 failed opens in a
+     row (a good open resets the count).
+     Test: a_page_naming_thousands_of_missing_files_stops_the_scan_early (a file named first is copied, then 37
+     missing names, and a real file named after them is not reached; a hit in between resets the run of misses; 400
+     distinct spellings of one file and then another real file: the last is not reached; the same reference 800
+     times counts once).
+  S4 / R1 / R3 (MEDIUM) scheme reads       FIXED, TESTED.
+     A whole read (no range, not video/audio over a chunk) of a file above WHOLE_MAX = 20 MB answers 413 with a
+     text reason instead of reading it. The read gate is now bounded: 4 at once (as before), at most MAX_WAITING =
+     64 waiting, the rest 503 with Retry-After: 1. The false comments are corrected: artifacts.rs (Gate and serve) and
+     lib.rs (the scheme registration) say the gate bounds the count of reads, not their size, and the most in memory
+     is about 80 MB (4 x 20 MB). The 206 answer to an un-ranged video/audio request is documented as a deliberate
+     trade-off (RFC 9110 lets a server ignore Range but has no way to answer a request without one with a part).
+     Tests: the_gate_never_lets_more_than_its_width_in_at_once_and_does_let_that_many_in (peak exactly 4, a barrier);
+     a_full_gate_queues_only_so_many_and_then_says_no (the waiting count never passes the bound, the extra caller
+     gets None); serve_answers_503_when_its_queue_is_full_and_413_for_a_file_too_big_to_read_whole (sparse 20 MB + 1
+     file, serve_with on a one-wide gate); the_scheme_reads_go_through_the_four_wide_gate (R8, below).
+  R8 gate test                              FIXED. The source guard now checks that serve calls serve_with(lib, req,
+     &READS, MAX_WAITING) and that in serve_with the slot is taken (gate.enter_bounded) before fs::metadata, read_range
+     and fs::read, and that the 503 and Retry-After are there.
+  S5 (LOW) Open on an "other" file          FIXED, TESTED.
+     ArtifactsPage.tsx openFile now calls the new artifact_open command (artifacts.rs, registered in lib.rs), which
+     takes Library::stored_file(id) (the copy in the library folder; None for an unknown id or an entry never read),
+     runs on a blocking worker, and reveals a program-like file or opens anything else (links::open_choice).
+     Tests: open_hands_over_the_stored_copy_never_the_workspace_file (the workspace file is edited and removed, the
+     stored copy is still what is handed over; unknown and unavailable ids give none);
+     the_open_command_runs_off_the_window_thread_and_never_reads_the_origin; ArtifactsPage.test.ts "Open on a file
+     that opens in its own app hands over the library copy, not the workspace file".
+  S6 (LOW) prompt                           FIXED, TESTED.
+     linkPrompt backs off after LINK_BACKOFF = 3 Cancels in a row (until the entry is chosen again: choose() and the
+     [selected] effect call reset(); an accepted Open also clears the count); touch() restarts the 1 s wait on any
+     pointerdown, keydown or blur while Open is disabled (capture listeners on window); the strip has role="status";
+     a mailto address goes through displayText(): control, zero-width and bidi characters removed (U+0000-001F,
+     007F-009F, 200B-200F, 202A-202E, 2060-2064, 2066-2069, FEFF), at most 80 characters with an ellipsis, an address
+     that is nothing but those shows nothing and asks nothing; the tooltip uses displayText(url, 200).
+     Tests (viewerLink.test.ts): "a mailto address is shown without control or bidi characters, and no longer than
+     80"; "after three Cancels in a row the same entry is not asked again until it is chosen again"; "an Open (or two
+     Cancels and an Open) clears the count ..."; "a click, key or focus change while Open is disabled restarts the
+     delay"; "the strip is a status line, not a dialog that asks for the focus". ArtifactsPage.test.ts: "a click, a
+     key or the focus leaving restarts the Open delay ..."; "choosing an entry, even the one already shown, starts its
+     link refusals over".
+     Left as it was: a mailto still opens the address that was sent (minus its query), only the question's text is
+     cleaned.
+  R2 DECISIONS.md DT-C65                    FIXED. The round-3 sentence now reads "a viewer link only raises Kolux's own
+     prompt (see DT-C77), so a page's own script cannot open the browser". One new row, DT-C78, records the limits and
+     the patient prompt (worker call, Txais may veto).
+  R4 PLAN.md T-624 line                     FIXED. The corrupted tail ("...T-624-r4.txtened file, async scheme reads:
+     evidence/T-624-r3.txt") is restored to the round 3 clause ("real-path check on every opened file, async scheme
+     reads: evidence/T-624-r3.txt", taken from commit 278f597c), followed by a round 4 clause (evidence/T-624-r4.txt)
+     and a round 5 clause (evidence/T-624-r5.txt, with the note that the IPC question is handled in its own PR).
+     The card id still appears once; plan-check: OK.
+  S1 and the T-500 evidence correction      DROPPED from this PR (moved to its own PR by the coordinator).
+
+Not run
+  - No live window / dev app: none of this round's changes needed one (S1 was the only live-probe item and it moved).
+  - cargo test --test cards_15 skill036: still stops at the scratch-root precondition on this machine, as in round 4.
