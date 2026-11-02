@@ -11,7 +11,7 @@
 //! are blocked with that reason; the rest gather every folder and link that holds the same skill
 //! across the scanned roots, plus its install receipt. Removing a link never touches what it points
 //! at. Each skill is then deleted on its own, all or nothing, under the one lock skill installs and
-//! updates share, and comes back as deleted, skipped, busy, partly removed or failed.
+//! updates share, and comes back as deleted, skipped, busy, partly removed, failed or (inside WSL) unsure.
 
 use crate::skills::wsl::{self, Reply, Step};
 use crate::skills::{self, Places, SKILL_FILE};
@@ -883,7 +883,8 @@ pub struct Item {
 #[serde(rename_all = "camelCase")]
 pub struct Planned {
     pub path: String,
-    /// bundled | plugin | outside | gone | changed; None when it can go.
+    /// bundled | plugin | outside | gone | changed | unreadable (WSL gave no readable answer to the
+    /// check); None when it can go.
     pub blocked: Option<&'static str>,
     pub items: Vec<Item>,
     /// Where the skill's content stays when only links to it are removed.
@@ -898,7 +899,8 @@ pub struct Planned {
 #[serde(rename_all = "camelCase")]
 pub struct Done {
     pub path: String,
-    /// deleted | skipped | busy | partly | failed
+    /// deleted | skipped | busy | partly | failed | unsure (a delete inside WSL that did not
+    /// finish: part of it may already be gone)
     pub outcome: &'static str,
     pub note: Option<String>,
 }
@@ -980,13 +982,15 @@ fn wsl_skill<'a>(places: &'a Places, path: &str) -> Option<Result<WslSkill<'a>, 
 /// T-180-b: asks the distribution what `skill` is, and plans the one item that goes.
 fn plan_wsl(pick: &Pick, skill: &WslSkill, runner: &dyn wsl::Runner) -> Result<Planned, String> {
     let blocked = |why: &'static str| Planned { path: pick.path.clone(), blocked: Some(why), items: vec![], remains: None, dangling: vec![] };
-    let reply = runner.delete(&skill.distro, skill.root, &skill.dir, Step::Check).and_then(|b| wsl::parse_reply(&b)).map_err(|e| format!("WSL {}: {e}", skill.distro))?;
+    // A check that cannot be answered or read blocks this one skill, never the whole request: the
+    // checked skills (Windows ones included) still go, and nothing is deleted for this one.
+    let Ok(reply) = runner.delete(&skill.distro, skill.root, &skill.dir, Step::Check).and_then(|b| wsl::parse_reply(&b)) else { return Ok(blocked("unreadable")) };
     let here = skills::plain(&wsl::unc(&skill.distro, &skill.dir));
     let (kind, updated, remains) = match reply {
         Reply::Gone => return Ok(blocked("gone")),
         Reply::Outside => return Ok(blocked("outside")),
-        // A step the distribution could not do is a failure of the whole plan, never a shorter list.
-        Reply::Fail(why) => return Err(format!("WSL {}: {why}", skill.distro)),
+        // A check the distribution could not do blocks this skill with a reason, never a shorter list.
+        Reply::Fail(_) => return Ok(blocked("unreadable")),
         Reply::Folder { updated } => ("folder", updated, None),
         Reply::Link { updated, target } => ("link", updated, Some(skills::plain(&wsl::unc(&skill.distro, &target)))),
     };
@@ -1129,8 +1133,11 @@ fn delete_wsl(places: &Places, p: &Planned, runner: &dyn wsl::Runner) -> Done {
         Ok(Reply::Folder { .. } | Reply::Link { .. }) => Done { path, outcome: "deleted", note: None },
         Ok(Reply::Gone) => Done { path, outcome: "skipped", note: Some("gone".into()) },
         Ok(Reply::Outside) => Done { path, outcome: "skipped", note: Some("outside".into()) },
-        Ok(Reply::Fail(why)) => Done { path, outcome: "failed", note: Some(why) },
-        Err(e) => Done { path, outcome: "failed", note: Some(e) },
+        // `rm -rf` may have removed part of the folder before it failed, or before it was cut off at
+        // the time limit, or before its answer was lost: what is left is not known, so this is never
+        // "failed" (which the page words as "nothing was changed").
+        Ok(Reply::Fail(why)) => Done { path, outcome: "unsure", note: Some(why) },
+        Err(e) => Done { path, outcome: "unsure", note: Some(e) },
     }
 }
 
@@ -2772,21 +2779,22 @@ mod tests {
     }
 
     #[test]
-    fn skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_fails_the_plan() {
+    fn skill022_wsl_a_changed_or_gone_skill_is_blocked_and_a_distribution_that_cannot_answer_blocks_that_skill() {
         let at = wsl_places(&[]);
         let codex = r"\\wsl.localhost\Ubuntu\home\me\.codex\skills\old\SKILL.md";
         let fake = FakeDistro::new(vec![(PDF_DIR, Step::Check, Ok("OK folder 1600000000")), ("/home/me/.codex/skills/old", Step::Check, Ok("GONE"))]);
         let plan_of = plan_with(&at, &[wsl_pick(PDF), wsl_pick(codex)], &fake).unwrap();
         assert_eq!(plan_of.iter().map(|p| p.blocked).collect::<Vec<_>>(), [Some("changed"), Some("gone")]);
         let down = FakeDistro::new(vec![(PDF_DIR, Step::Check, Err("wsl.exe ended with exit code 1"))]);
-        let e = plan_with(&at, &[wsl_pick(PDF)], &down).unwrap_err();
-        assert!(e.contains("Ubuntu") && e.contains("exit code 1"), "{e}");
+        assert_eq!(plan_with(&at, &[wsl_pick(PDF)], &down).unwrap()[0].blocked, Some("unreadable"));
         let garbled = FakeDistro::new(vec![(PDF_DIR, Step::Check, Ok("nonsense"))]);
-        assert!(plan_with(&at, &[wsl_pick(PDF)], &garbled).unwrap_err().contains("could not read"));
+        assert_eq!(plan_with(&at, &[wsl_pick(PDF)], &garbled).unwrap()[0].blocked, Some("unreadable"));
+        let failing = FakeDistro::new(vec![(PDF_DIR, Step::Check, Ok("FAIL cannot read it"))]);
+        assert_eq!(plan_with(&at, &[wsl_pick(PDF)], &failing).unwrap()[0].blocked, Some("unreadable"));
     }
 
     #[test]
-    fn skill022_wsl_a_failing_command_or_a_garbled_answer_is_a_failure_and_a_skill_gone_meanwhile_is_skipped() {
+    fn skill022_wsl_a_failing_command_or_a_garbled_answer_is_unsure_and_a_skill_gone_meanwhile_is_skipped() {
         let t = temp("skill022-wsl-d");
         let at = wsl_places(&[]);
         let ok = "OK folder 1700000000";
@@ -2806,11 +2814,11 @@ mod tests {
         let picks: Vec<Pick> = paths.iter().map(|(p, _, _)| wsl_pick(p)).collect();
         let done = run_with(&t.join("app"), &at, &picks, &fake).unwrap();
         let got: Vec<(&str, Option<&str>)> = done.iter().map(|d| (d.outcome, d.note.as_deref())).collect();
-        assert_eq!(got[0].0, "failed");
+        assert_eq!(got[0].0, "unsure");
         assert!(got[0].1.unwrap().contains("Permission denied"), "{got:?}");
-        assert_eq!(got[1].0, "failed");
+        assert_eq!(got[1].0, "unsure");
         assert!(got[1].1.unwrap().contains("exit code 1"), "{got:?}");
-        assert_eq!(got[2].0, "failed");
+        assert_eq!(got[2].0, "unsure");
         assert!(got[2].1.unwrap().contains("could not read"), "{got:?}");
         assert_eq!(got[3], ("skipped", Some("gone")));
         assert_eq!(got[4], ("deleted", None));
@@ -2880,6 +2888,57 @@ mod tests {
         assert_eq!(done.iter().map(|d| d.outcome).collect::<Vec<_>>(), ["deleted", "deleted"], "{done:?}");
         assert!(!lint.exists() && !mine.exists());
         assert_eq!(names(&repo_root), Vec::<String>::new(), "nothing is left beside it");
+    }
+
+    #[test]
+    fn skill022_wsl_a_failed_or_timed_out_delete_never_claims_nothing_changed() {
+        // `rm -rf` may have removed part of the folder before it failed or was cut off, so the
+        // outcome says the state is not known, in any of the ways a delete step can go wrong.
+        let t = temp("skill022-wsl-unsure");
+        let at = wsl_places(&[]);
+        let ok = "OK folder 1700000000";
+        let paths = [
+            (r"\\wsl.localhost\Ubuntu\home\me\.claude\skills\one\SKILL.md", "/home/me/.claude/skills/one", Ok("FAIL rm: cannot remove 'one/x': Permission denied")),
+            (r"\\wsl.localhost\Ubuntu\home\me\.claude\skills\two\SKILL.md", "/home/me/.claude/skills/two", Err("The delete inside WSL took longer than 60 seconds")),
+            (r"\\wsl.localhost\Ubuntu\home\me\.claude\skills\three\SKILL.md", "/home/me/.claude/skills/three", Ok("nonsense")),
+        ];
+        let mut replies = vec![];
+        for (_, dir, at_delete) in &paths {
+            replies.push((*dir, Step::Check, Ok(ok)));
+            replies.push((*dir, Step::Delete, *at_delete));
+        }
+        let fake = FakeDistro::new(replies);
+        let picks: Vec<Pick> = paths.iter().map(|(p, _, _)| wsl_pick(p)).collect();
+        let done = run_with(&t.join("app"), &at, &picks, &fake).unwrap();
+        assert_eq!(done.iter().map(|d| d.outcome).collect::<Vec<_>>(), ["unsure", "unsure", "unsure"], "{done:?}");
+        assert!(done[0].note.as_deref().unwrap().contains("Permission denied"));
+        assert!(done[1].note.as_deref().unwrap().contains("longer than 60 seconds"));
+        assert!(done[2].note.as_deref().unwrap().contains("could not read"));
+    }
+
+    #[test]
+    fn skill022_wsl_one_check_that_fails_blocks_only_that_skill_and_the_rest_of_the_request_goes_on() {
+        let t = temp("skill022-wsl-partial");
+        let root = t.join("home/.claude/skills");
+        let win = skill(&root, "plain");
+        let at = wsl_places(&[&root]);
+        let down = r"\\wsl.localhost\Ubuntu\home\me\.claude\skills\pdf\SKILL.md";
+        let garbled = r"\\wsl.localhost\Ubuntu\home\me\.codex\skills\odd\SKILL.md";
+        let fine = r"\\wsl.localhost\Ubuntu\home\me\repo\.claude\skills\fine\SKILL.md";
+        let fake = FakeDistro::new(vec![
+            (PDF_DIR, Step::Check, Err("wsl.exe ended with exit code 1")),
+            ("/home/me/.codex/skills/odd", Step::Check, Ok("nonsense")),
+            ("/home/me/repo/.claude/skills/fine", Step::Check, Ok("OK folder 1700000000")),
+        ]);
+        let picks = [pick(&win), wsl_pick(down), wsl_pick(garbled), wsl_pick(fine)];
+        let plan_of = plan_with(&at, &picks, &fake).unwrap();
+        assert_eq!(plan_of.iter().map(|p| p.blocked).collect::<Vec<_>>(), [None, Some("unreadable"), Some("unreadable"), None]);
+        let done = run_with(&t.join("app"), &at, &picks, &fake).unwrap();
+        assert_eq!(done.iter().map(|d| d.outcome).collect::<Vec<_>>(), ["deleted", "skipped", "skipped", "deleted"], "{done:?}");
+        assert_eq!(done[1].note.as_deref(), Some("unreadable"));
+        assert!(!win.exists());
+        // Nothing is ever deleted for a skill whose check failed.
+        assert!(fake.calls().iter().filter(|c| c.3 == Step::Delete).all(|c| c.2 == "/home/me/repo/.claude/skills/fine"), "{:?}", fake.calls());
     }
 
     #[test]

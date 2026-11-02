@@ -152,7 +152,11 @@ test("SKILL-022: a skill inside the project's WSL distribution is chosen like an
   expect(s.headline).toBe("1 skill will be deleted: 1 link removed across all skill folders.");
   expect(s.remains).toEqual([String.raw`pdf-tools: only a link is removed; the content stays in \\wsl.localhost\Ubuntu\home\me\dev\pdf`]);
   expect(s.blocked).toEqual([`other: ${BLOCKED.outside}`]);
-  expect(outcomeText({ path: inWsl.path, outcome: "failed", note: "rm: cannot remove 'pdf': Permission denied" })).toBe("Failed; nothing was changed (rm: cannot remove 'pdf': Permission denied)");
+  // A delete inside WSL that failed may have removed part of the folder first: it never says "nothing was changed".
+  const unsure = outcomeText({ path: inWsl.path, outcome: "unsure", note: "rm: cannot remove 'pdf/x': Permission denied" });
+  expect(unsure).toBe("Not confirmed: some of it may already be removed (rm: cannot remove 'pdf/x': Permission denied)");
+  expect(unsure).not.toContain("nothing was changed");
+  expect(outcomeText({ path: inWsl.path, outcome: "skipped", note: "unreadable" })).toBe(`Skipped: ${BLOCKED.unreadable}`);
   expect(outcomeText({ path: inWsl.path, outcome: "skipped", note: "gone" })).toBe(`Skipped: ${BLOCKED.gone}`);
 });
 
