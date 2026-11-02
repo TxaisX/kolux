@@ -315,8 +315,8 @@ Columns: command; aliases; positional arguments; the command's own flags (global
 | `kolux geolocation` |  |  | `--latitude` `--longitude` `--accuracy` `--worktree` |  | yes | `kolux geolocation --latitude <lat> --longitude <lon> [--accuracy <n>] [--worktree <selector>] [--json]` |
 | `kolux set device` |  |  | `--name` `--worktree` |  | yes | `kolux set device --name <device> [--worktree <selector>] [--json]` |
 | `kolux set offline` |  |  | `--state` `--worktree` |  | yes | `kolux set offline [--state <on\|off>] [--worktree <selector>] [--json]` |
-| `kolux set headers` |  |  | `--headers` `--worktree` |  | yes | `kolux set headers --headers <json> [--worktree <selector>] [--json]` |
-| `kolux set credentials` |  |  | `--user` `--pass` `--worktree` |  | yes | `kolux set credentials --user <user> --pass <pass> [--worktree <selector>] [--json]` |
+| `kolux set headers` |  |  | `--headers` `--origin` `--worktree` |  | yes | `kolux set headers --headers <json> [--origin <url>] [--worktree <selector>] [--json]` |
+| `kolux set credentials` |  |  | `--user` `--pass` `--origin` `--worktree` |  | yes | `kolux set credentials --user <user> --pass <pass> [--origin <url>] [--worktree <selector>] [--json]` |
 | `kolux set media` |  |  | `--color-scheme` `--reduced-motion` `--worktree` |  | yes | `kolux set media [--color-scheme <dark\|light>] [--reduced-motion <reduce\|no-preference>] [--worktree <selector>] [--json]` |
 | `kolux clipboard read` |  |  | `--worktree` |  | yes | `kolux clipboard read [--worktree <selector>] [--json]` |
 | `kolux clipboard write` |  |  | `--text` `--worktree` |  | yes | `kolux clipboard write --text <text> [--worktree <selector>] [--json]` |

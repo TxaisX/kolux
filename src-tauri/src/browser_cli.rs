@@ -103,8 +103,8 @@ pub const COMMANDS: &[Command] = &[
     ("geolocation", "browser.geolocation", &["latitude", "longitude", "accuracy", "worktree", "page"]),
     ("set device", "browser.set-device", &["name", "worktree", "page"]),
     ("set offline", "browser.set-offline", &["state", "worktree", "page"]),
-    ("set headers", "browser.set-headers", &["headers", "worktree", "page"]),
-    ("set credentials", "browser.set-credentials", &["user", "pass", "worktree", "page"]),
+    ("set headers", "browser.set-headers", &["headers", "origin", "worktree", "page"]),
+    ("set credentials", "browser.set-credentials", &["user", "pass", "origin", "worktree", "page"]),
     ("set media", "browser.set-media", &["color-scheme", "reduced-motion", "worktree", "page"]),
     ("clipboard read", "browser.clipboard-read", &["worktree", "page"]),
     ("clipboard write", "browser.clipboard-write", &["text", "worktree", "page"]),
@@ -402,13 +402,20 @@ pub fn check(command: &str, flags: &Map<String, Value>) -> Result<Map<String, Va
             }
         }
         "browser.set-offline" => one_of("state", &["on", "off"])?,
-        "browser.set-headers" => {
-            headers_of(need("headers")?)?;
-        }
-        "browser.set-credentials" => {
-            need("user")?;
-            if !flags.contains_key("pass") {
-                return Err(args("--pass is required"));
+        "browser.set-headers" | "browser.set-credentials" => {
+            if command == "browser.set-headers" {
+                headers_of(need("headers")?)?;
+            } else {
+                need("user")?;
+                if !flags.contains_key("pass") {
+                    return Err(args("--pass is required"));
+                }
+            }
+            // T-656: --origin names the one site the values are sent to.
+            if let Some(o) = flags.get("origin").and_then(Value::as_str) {
+                if origin_of(o).is_none() {
+                    return Err(args(format!("--origin takes a web address such as https://example.com, not {o}")));
+                }
             }
         }
         "browser.set-media" => {
@@ -688,11 +695,34 @@ fn with_emu<T>(id: u32, f: impl FnOnce(&mut Emu) -> T) -> T {
     f(all.entry(id).or_default())
 }
 
-/// The tab's emulation state as the page's script takes it; `None` when nothing is emulated.
-pub fn emu_state(id: u32) -> Option<String> {
+/// The tab's emulation state as the script of a page at `page` takes it; `None` when nothing is
+/// emulated. T-656: the extra headers and credentials are blanked unless the page is on the site they
+/// were set for, so a page on another site never holds them, nor learns which site that is (they stay
+/// stored for the way back).
+pub fn emu_state(id: u32, page: &str) -> Option<String> {
     let all = EMU.lock().ok()?;
-    let e = all.get(&id)?;
-    (!e.state.is_empty()).then(|| Value::Object(e.state.clone()).to_string())
+    let mut s = all.get(&id).filter(|e| !e.state.is_empty())?.state.clone();
+    let here = origin_of(page);
+    for (value, at, blank) in [("headers", "headersOrigin", json!({})), ("auth", "authOrigin", Value::Null)] {
+        if s.contains_key(value) && (here.is_none() || s.get(at).and_then(Value::as_str) != here.as_deref()) {
+            s.insert(value.into(), blank);
+            s.remove(at);
+        }
+    }
+    Some(Value::Object(s).to_string())
+}
+
+/// T-656: an address's site as its page sees it (`location.origin`); `None` when it has none
+/// (about:blank, data:, an unparsable address).
+pub fn origin_of(url: &str) -> Option<String> {
+    let o = tauri::Url::parse(url).ok()?.origin();
+    o.is_tuple().then(|| o.ascii_serialization())
+}
+
+/// T-656: the site that extra headers or credentials are for: `--origin`, else the open page's.
+fn site_for(id: u32, given: Option<String>) -> Result<String, Fail> {
+    let from = given.unwrap_or_else(|| tabs().into_iter().find(|t| t.id == id).map(|t| t.url).unwrap_or_default());
+    origin_of(&from).ok_or_else(|| args(format!("page {id} is not on a web site ({from:?}); open the site first or pass --origin https://host")))
 }
 
 /// BROW-050: whether the tab emulates being offline (its navigations are refused).
@@ -771,7 +801,8 @@ pub fn preset(id: u32, name: Option<&str>) -> Result<Value, Fail> {
 
 /// Sends the tab's emulation state to its page (the same script the load hook runs).
 fn apply_emu(id: u32) -> Result<(), Fail> {
-    let state = emu_state(id).unwrap_or_else(|| "{}".into());
+    let page = tabs().into_iter().find(|t| t.id == id).map(|t| t.url).unwrap_or_default();
+    let state = emu_state(id, &page).unwrap_or_else(|| "{}".into());
     eval_json(id, &format!("({}, {{ok:true}})", super::emu_script(&state)), EVAL_WAIT).map(|_| ()).map_err(|m| Fail::new("failed", m))
 }
 
@@ -919,19 +950,31 @@ pub fn run(req: &Request, worktree: Option<&str>) -> Result<Value, Fail> {
         }
         "browser.set-headers" => {
             let h = headers_of(&text("headers").unwrap_or_default())?;
+            // Clearing (`--headers {}`) needs no site, so it works on any tab.
+            let at = if h.is_empty() { None } else { Some(site_for(id, text("origin"))?) };
             set(&|s| {
                 s.insert("headers".into(), Value::Object(h.clone()));
+                match &at {
+                    Some(at) => s.insert("headersOrigin".into(), json!(at)),
+                    None => s.remove("headersOrigin"),
+                };
             });
             apply_emu(id)?;
-            Ok(json!({ "page": id, "headers": h, "summary": format!("page {id} sends {} extra header(s) with its requests", h.len()) }))
+            let summary = match &at {
+                Some(at) => format!("page {id} sends {} extra header(s) with its requests to {at}", h.len()),
+                None => format!("page {id} sends no extra headers"),
+            };
+            Ok(json!({ "page": id, "headers": h, "origin": at, "summary": summary }))
         }
         "browser.set-credentials" => {
             let auth = basic_auth(&text("user").unwrap_or_default(), &text("pass").unwrap_or_default());
+            let at = site_for(id, text("origin"))?;
             set(&|s| {
                 s.insert("auth".into(), json!(auth));
+                s.insert("authOrigin".into(), json!(at));
             });
             apply_emu(id)?;
-            Ok(json!({ "page": id, "summary": format!("page {id} sends HTTP basic credentials with its requests") }))
+            Ok(json!({ "page": id, "origin": at, "summary": format!("page {id} sends HTTP basic credentials with its requests to {at}") }))
         }
         "browser.set-media" => {
             let media = json!({ "colorScheme": text("color-scheme"), "reducedMotion": text("reduced-motion") });
@@ -1614,7 +1657,7 @@ mod tests {
     #[test]
     fn brow049_050_emulation_state_is_per_tab_and_goes_with_the_tab() {
         let id = 9_049;
-        assert_eq!(emu_state(id), None);
+        assert_eq!(emu_state(id, "https://a.test/"), None);
         assert!(!offline(id));
         assert_eq!(fit(id, 1200.0, 800.0), (1200.0, 800.0));
         with_emu(id, |e| {
@@ -1625,12 +1668,45 @@ mod tests {
         // The page is cut to the emulated viewport, never grown past its pane.
         assert_eq!(fit(id, 1200.0, 800.0), (390.0, 800.0));
         assert_eq!(fit(id, 300.0, 900.0), (300.0, 844.0));
-        assert_eq!(emu_state(id).as_deref(), Some(r#"{"offline":true}"#));
-        assert_eq!(super::super::emu_script(r#"{"offline":true}"#), r#"window.__kxEmu && window.__kxEmu(JSON.parse("{\"offline\":true}"))"#);
+        assert_eq!(emu_state(id, "https://a.test/").as_deref(), Some(r#"{"offline":true}"#));
+        assert_eq!(super::super::emu_script(r#"{"offline":true}"#), r#"window.__kxEmu && window.__kxEmu({"offline":true})"#);
         forget(id);
-        assert_eq!(emu_state(id), None);
+        assert_eq!(emu_state(id, "https://a.test/"), None);
         assert!(!offline(id));
         assert_eq!(fit(id, 1200.0, 800.0), (1200.0, 800.0));
+    }
+
+    #[test]
+    fn t656_extra_headers_and_credentials_reach_only_pages_on_their_own_site() {
+        let id = 9_656;
+        with_emu(id, |e| {
+            e.state.insert("headers".into(), json!({ "X-Token": "t" }));
+            e.state.insert("headersOrigin".into(), json!("http://127.0.0.1:5000"));
+            e.state.insert("auth".into(), json!("Basic bWU6c2VjcmV0"));
+            e.state.insert("authOrigin".into(), json!("https://b.test"));
+        });
+        let at = |page: &str| serde_json::from_str::<Value>(&emu_state(id, page).unwrap()).unwrap();
+        // On the headers' own site the headers go in; the credentials belong to another site.
+        let a = at("http://127.0.0.1:5000/form?x=1");
+        assert_eq!(a["headers"], json!({ "X-Token": "t" }));
+        assert_eq!(a["auth"], Value::Null);
+        // Another port, scheme or host is another site: neither value reaches that page.
+        for other in ["http://127.0.0.1:5001/", "https://127.0.0.1:5000/", "http://localhost:5000/", "about:blank", "data:text/html,x"] {
+            let s = at(other);
+            assert_eq!(s["headers"], json!({}), "{other}");
+            assert_eq!(s["auth"], Value::Null, "{other}");
+            // Nor does that page learn which site they are for.
+            assert!(s.get("headersOrigin").is_none() && s.get("authOrigin").is_none(), "{other}");
+        }
+        assert_eq!(at("https://b.test/login")["auth"], json!("Basic bWU6c2VjcmV0"));
+        // Stored, not lost: back on the site the headers apply again.
+        assert_eq!(at("http://127.0.0.1:5000/")["headers"], json!({ "X-Token": "t" }));
+        forget(id);
+        assert_eq!(origin_of("https://b.test:443/x"), Some("https://b.test".into()));
+        assert_eq!(origin_of("about:blank"), None);
+        assert!(check("browser.set-headers", &flags(&[("headers", "{}"), ("origin", "about:blank")])).unwrap_err().message.starts_with("--origin takes a web address"));
+        assert!(check("browser.set-credentials", &flags(&[("user", "me"), ("pass", "x"), ("origin", "https://b.test")])).is_ok());
+        assert_eq!(check("browser.set-credentials", &flags(&[("user", "me")])).unwrap_err().message, "--pass is required");
     }
 
     #[test]

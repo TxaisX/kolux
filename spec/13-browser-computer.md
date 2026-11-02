@@ -782,14 +782,16 @@ User sees: the tab's viewport, device, location, offline state, extra headers, H
   colour-scheme or reduced-motion preference change; page dialogs are accepted (with text) or
   dismissed; the clipboard is read or written.
 Rules: an oversized clipboard write is refused before anything runs; mobile viewport emulation
-  stays in force across later commands.
+  stays in force across later commands; extra headers and credentials go only to the one site
+  they were set for (the open page's, or `--origin`), from a page on that site (T-656, DT-C92).
 Acceptance:
   - [ ] `kolux set offline --state on`, then `kolux goto` a site → an offline failure.
   - [ ] `kolux dialog accept --text hi` while a prompt is open → the prompt receives hi.
 Compat: `kolux viewport --width <w> --height <h> [--scale <n>] [--mobile]`;
   `kolux geolocation --latitude <lat> --longitude <lon> [--accuracy <n>]`;
   `kolux set device --name <device>`; `kolux set offline [--state on|off]`;
-  `kolux set headers --headers <json>`; `kolux set credentials --user <user> --pass <pass>`;
+  `kolux set headers --headers <json> [--origin <url>]`;
+  `kolux set credentials --user <user> --pass <pass> [--origin <url>]`;
   `kolux set media [--color-scheme dark|light] [--reduced-motion reduce|no-preference]`;
   `kolux clipboard read`; `kolux clipboard write --text <text>`;
   `kolux dialog accept [--text <text>]`; `kolux dialog dismiss`.
