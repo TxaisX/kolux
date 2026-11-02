@@ -1076,6 +1076,7 @@ If a pass reads forbidden material, follow LOOP.md section 0: stop, then add a l
 > 2026-10-26 · prove T-032-c · this tree's own PlanSheet, TerminalPane and hooks code; claude --help text for --permission-mode as given; no outside source
 > 2026-10-26 · prove T-033-d · this tree's own SourceControlPanel, AllChangesPane, scm status watcher and the T-033-c GIT_TRACE2 method; claude --help text for --permission-mode as given; no outside source
 > 2026-10-26 · close T-234-b and T-323-c · this tree's own editor, browser and settings code only; no outside source
+> 2026-11-01 · T-124-d · public doc: Gemini CLI settings reference (geminicli.com/docs/cli/settings, the `ui.dynamicWindowTitle` entry: "Update the terminal window title with current status icons (Ready: ◇, Action Required: ✋, Working: ✦)", on by default) · area 04 (STAT-033) · behaviour only: the three icons and what each means; read on the public site, no Gemini CLI code opened; nothing copied, no old-app material
 
 ## 2026-10-30 · Old-app material removed (Txais's request)
 
