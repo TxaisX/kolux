@@ -11,6 +11,7 @@ use std::ffi::OsString;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -27,6 +28,8 @@ const FILE_MAX: u64 = 64 * 1024 * 1024;
 const SOURCE_MAX: usize = 4 * 1024 * 1024;
 /// How long to wait for the output pipes to close once the program has ended.
 const PIPE_WAIT: Duration = Duration::from_secs(2);
+/// The most notebooks the trust list keeps; a new one past this drops the oldest.
+const TRUSTED_MAX: usize = 500;
 
 #[derive(Serialize, Debug)]
 pub struct RunResult {
@@ -49,10 +52,17 @@ fn plain(p: &Path) -> PathBuf {
     }
 }
 
-/// What two spellings of one path are compared by: the plain form, with Windows' case and slash blindness.
+/// What two spellings of one path are compared by: the plain form with one slash style. The case is kept
+/// exact: both sides come from `canonicalize`, which gives the real on-disk case, and a folder can be
+/// case-sensitive on Windows, where `A.ipynb` and `a.ipynb` are two files.
 fn key(p: &Path) -> String {
     let s = plain(p).to_string_lossy().to_string();
-    if cfg!(windows) { s.replace('/', "\\").to_lowercase() } else { s }
+    if cfg!(windows) { s.replace('/', "\\") } else { s }
+}
+
+/// `key` with Windows' case blindness, for asking whether a folder is below another. Never for trust.
+fn fold(p: &Path) -> String {
+    if cfg!(windows) { key(p).to_lowercase() } else { key(p) }
 }
 
 /// The real file a path names: `..`, links, another case or slash spelling all resolved. Only an
@@ -80,11 +90,14 @@ fn is_listed(raw: Option<&str>, real: &Path) -> bool {
     listed(raw).iter().any(|p| key(Path::new(p)) == want)
 }
 
-/// The list with `real` added (once).
+/// The list with `real` added (once). Past `TRUSTED_MAX` entries the oldest is dropped.
+// ponytail: no way to untrust yet; revoking comes with a settings list of trusted notebooks.
 fn with_listed(raw: Option<&str>, real: &Path) -> String {
     let mut all = listed(raw);
     if !is_listed(raw, real) {
         all.push(plain(real).to_string_lossy().to_string());
+        let extra = all.len().saturating_sub(TRUSTED_MAX);
+        all.drain(..extra);
     }
     serde_json::to_string(&all).unwrap_or_else(|_| "[]".into())
 }
@@ -110,14 +123,42 @@ pub fn notebook_trust(path: String, store: Store<'_>) -> Result<(), String> {
     store.set(KEY, &with_listed(raw.as_deref(), &real)).map_err(|_| "Trust could not be saved.".to_string())
 }
 
+/// Whether a cell is running now: one at a time for the whole app.
+static RUNNING: AtomicBool = AtomicBool::new(false);
+
+/// Held for the length of one run; dropping it (on any path out, a panic included) frees the slot.
+struct RunGuard;
+
+impl RunGuard {
+    fn take() -> Option<RunGuard> {
+        RUNNING.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).ok().map(|_| RunGuard)
+    }
+}
+
+impl Drop for RunGuard {
+    fn drop(&mut self) {
+        RUNNING.store(false, Ordering::Release);
+    }
+}
+
 /// Runs one code cell. `notebook_trusted` is checked again here: the window's yes is not the guard.
-#[tauri::command(async)]
-pub fn notebook_run_cell(path: String, index: usize, store: Store<'_>) -> Result<RunResult, String> {
-    let trusted = |real: &Path| {
-        let raw = lock(&store).get(KEY).ok().flatten();
-        is_listed(raw.as_deref(), real)
-    };
-    run_cell_in(&path, index, &trusted, &Setup { path_var: std::env::var_os("PATH"), limit: RUN_LIMIT, cap: OUT_CAP })
+/// Only one cell runs at a time; a second asked for meanwhile is refused before anything is read or started.
+/// An async command that does the waiting on a blocking thread, so a 60 s run never holds a runtime thread.
+#[tauri::command]
+pub async fn notebook_run_cell(app: tauri::AppHandle, path: String, index: usize) -> Result<RunResult, String> {
+    use tauri::Manager;
+    let guard = RunGuard::take().ok_or("Another cell is still running.")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = guard;
+        let store = app.state::<Mutex<crate::state::Store>>();
+        let trusted = |real: &Path| {
+            let raw = lock(&store).get(KEY).ok().flatten();
+            is_listed(raw.as_deref(), real)
+        };
+        run_cell_in(&path, index, &trusted, &Setup { path_var: std::env::var_os("PATH"), limit: RUN_LIMIT, cap: OUT_CAP })
+    })
+    .await
+    .map_err(|_| "The run stopped unexpectedly.".to_string())?
 }
 
 // ---- the run ----------------------------------------------------------------------------------------------------
@@ -171,26 +212,32 @@ fn read_cell(file: &Path, index: usize) -> Result<(String, u32), String> {
 /// A Windows Store alias (`...\WindowsApps\python.exe`) is a stub that opens the Store when no Python is
 /// installed through it, so a real install on the PATH goes first.
 fn is_store_alias(p: &Path) -> bool {
-    key(p).replace('\\', "/").contains("/windowsapps/")
+    fold(p).replace('\\', "/").contains("/windowsapps/")
+}
+
+/// On Windows only a real program (.exe or .com) is run: `Command::new` on a .bat or .cmd goes through
+/// cmd.exe, which `files::find_program` still offers. Elsewhere any file will do.
+fn is_direct_program(p: &Path) -> bool {
+    !cfg!(windows) || p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("exe") || e.eq_ignore_ascii_case("com"))
 }
 
 /// The interpreter to run: an absolute file found on the PATH's absolute folders (`files::find_program`
 /// drops a relative one such as "."), never one in the notebook's folder or below it, which is where a
 /// downloaded notebook can plant a `python.exe`. `None` when there is none.
 fn pick_python(path_var: Option<OsString>, notebook_dir: &Path) -> Option<PathBuf> {
-    let below = PathBuf::from(key(notebook_dir));
+    let below = PathBuf::from(fold(notebook_dir));
     let dirs: Vec<PathBuf> = path_var
         .map(|v| std::env::split_paths(&v).collect::<Vec<_>>())
         .unwrap_or_default()
         .into_iter()
         .filter(|d| d.is_absolute())
-        .filter(|d| !PathBuf::from(key(&std::fs::canonicalize(d).unwrap_or_else(|_| d.clone()))).starts_with(&below))
+        .filter(|d| !PathBuf::from(fold(&std::fs::canonicalize(d).unwrap_or_else(|_| d.clone()))).starts_with(&below))
         .collect();
     let names: &[&str] = if cfg!(windows) { &["python3", "python", "py"] } else { &["python3", "python"] };
     let found: Vec<PathBuf> = names
         .iter()
         .flat_map(|n| dirs.iter().filter_map(move |d| crate::files::find_program(n, Some(d.clone().into_os_string()))))
-        .filter(|p| p.is_absolute())
+        .filter(|p| p.is_absolute() && is_direct_program(p))
         .collect();
     found.iter().find(|p| !is_store_alias(p)).or_else(|| found.first()).cloned()
 }
@@ -255,6 +302,17 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
         cmd.process_group(0);
     }
     let mut child = cmd.spawn().map_err(|e| format!("Python could not be started: {e}"))?;
+    // A kill-on-close job holds the program and whatever it starts, so a grandchild that detached itself
+    // still ends with the run. Without one (or off Windows) `kill_tree` is the fallback.
+    let job = crate::procs::Job::new().and_then(|j| j.assign_pid(child.id()).map(|()| j)).ok();
+    let jobbed = cfg!(windows) && job.is_some();
+    let stop = |child: &mut std::process::Child| {
+        if !jobbed {
+            crate::procs::kill_tree(child.id());
+        }
+        let _ = child.kill();
+        let _ = child.wait();
+    };
     let (out, err) = (Arc::new(Mutex::new(Capture::default())), Arc::new(Mutex::new(Capture::default())));
     let (tx, rx) = mpsc::channel();
     drain(child.stdout.take().expect("piped"), cap, out.clone(), tx.clone());
@@ -275,17 +333,21 @@ fn run_python(python: &Path, source: &str, cwd: &Path, limit: Duration, cap: usi
             }
             Ok(None) if Instant::now() >= deadline => {
                 timed_out = true;
-                // ponytail: taskkill /T (Windows) or a group signal (elsewhere) ends the cell's children while they are
-                // still attached to the program; one that detached itself first (a daemonized process) is not reached.
-                crate::procs::kill_tree(child.id());
-                let _ = child.kill();
-                let _ = child.wait();
+                // ponytail: the job object ends the cell's whole tree, detached grandchildren too, when it is dropped
+                // below; with no job (or off Windows) taskkill /T or a group signal reaches only children still
+                // attached to the program, and one that detached itself first is not reached.
+                stop(&mut child);
                 break;
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-            Err(_) => break,
+            Err(_) => {
+                // The program's state cannot be read: end it rather than leave it running unwatched.
+                stop(&mut child);
+                break;
+            }
         }
     }
+    drop(job);
     // Both pipes close when the program (and anything holding them) is gone; a straggler is not waited for.
     let end = Instant::now() + PIPE_WAIT;
     for _ in 0..2 {
@@ -463,6 +525,64 @@ mod tests {
     }
 
     #[test]
+    fn trust_keys_compare_the_case_exactly() {
+        // Two files that differ only in case (possible in a case-sensitive folder) are two entries.
+        let raw = serde_json::to_string(&[r"C:\Work\A.ipynb"]).unwrap();
+        assert!(is_listed(Some(&raw), Path::new(r"C:\Work\A.ipynb")));
+        assert!(!is_listed(Some(&raw), Path::new(r"C:\Work\a.ipynb")));
+        assert_ne!(key(Path::new(r"C:\Work\A.ipynb")), key(Path::new(r"C:\Work\a.ipynb")));
+        // Only the folder-below question folds the case.
+        assert_eq!(fold(Path::new(r"C:\Work\A.ipynb")) == fold(Path::new(r"C:\Work\a.ipynb")), cfg!(windows));
+    }
+
+    #[test]
+    fn the_trust_list_keeps_the_newest_500_and_never_repeats_one() {
+        let d = crate::test_dir::temp("nbrun-cap500");
+        let old: Vec<String> = (0..TRUSTED_MAX).map(|i| format!("/nbrun-old/n{i}.ipynb")).collect();
+        let raw = serde_json::to_string(&old).unwrap();
+        let nb = notebook(&d, "new.ipynb", json!([code("pass")]));
+        let real = real_notebook(&nb).unwrap();
+        let after = with_listed(Some(&raw), &real);
+        let all = listed(Some(&after));
+        assert_eq!(all.len(), TRUSTED_MAX, "still 500");
+        assert_eq!(all[0], "/nbrun-old/n1.ipynb", "the oldest went");
+        assert!(is_listed(Some(&after), &real), "the new one is in, last");
+        assert!(!is_listed(Some(&after), Path::new("/nbrun-old/n0.ipynb")));
+        // Trusting it again, or one already in the list, changes nothing.
+        assert_eq!(with_listed(Some(&after), &real), after);
+        let again = with_listed(Some(&after), Path::new("/nbrun-old/n1.ipynb"));
+        assert_eq!(again, after);
+    }
+
+    #[test]
+    fn only_one_cell_runs_at_a_time() {
+        let first = RunGuard::take();
+        assert!(first.is_some(), "free at the start");
+        assert!(RunGuard::take().is_none(), "refused while held");
+        drop(first);
+        let again = RunGuard::take();
+        assert!(again.is_some(), "free again after the drop");
+    }
+
+    #[test]
+    fn a_batch_file_is_never_the_interpreter() {
+        let d = crate::test_dir::temp("nbrun-nb");
+        let elsewhere = crate::test_dir::temp("nbrun-bat");
+        for n in ["python.bat", "python3.cmd", "py.bat"] {
+            std::fs::write(elsewhere.join(n), "@echo off").unwrap();
+        }
+        let only_bat = std::env::join_paths([elsewhere.0.clone()]).unwrap();
+        assert_eq!(pick_python(Some(only_bat), &d), None, "a .bat or .cmd runs through cmd.exe, so it is not chosen");
+        if cfg!(windows) {
+            // The same folder with a real program in it is chosen (the file is not run here).
+            std::fs::write(elsewhere.join("python.EXE"), "not a program").unwrap();
+            let with_exe = std::env::join_paths([elsewhere.0.clone()]).unwrap();
+            let picked = pick_python(Some(with_exe), &d).unwrap();
+            assert!(picked.extension().unwrap().eq_ignore_ascii_case("exe"), "{}", picked.display());
+        }
+    }
+
+    #[test]
     fn a_replaced_file_stays_trusted_by_its_path() {
         // The card's model: trust belongs to the path, not the contents. A swapped file under a trusted
         // path still runs; trust is the user's say-so about where the notebook lives.
@@ -489,7 +609,7 @@ mod tests {
         let picked = pick_python(Some(path_var.clone()), &d);
         if let Some(p) = &picked {
             assert!(p.is_absolute(), "{}", p.display());
-            assert!(!key(p).starts_with(&key(&d)), "{} is inside the notebook folder", p.display());
+            assert!(!fold(p).starts_with(&fold(&d)), "{} is inside the notebook folder", p.display());
         }
         // With only the planted folders on the PATH there is no interpreter at all.
         let only_fake = std::env::join_paths([d.0.clone(), fake, PathBuf::from(".")]).unwrap();

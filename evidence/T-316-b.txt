@@ -125,3 +125,11 @@ LIVE WINDOWS PROOF STILL TO DO
 3. A cell with time.sleep(120) stops after 60 s with the stopped message and no python.exe is left in Task Manager.
 4. A cell printing 2 MB shows the cut note; a raising cell shows the error; a notebook with a python.exe next to it still uses the installed Python.
 5. A read-only tab shows no Run button.
+
+AUDIT HARDENING (security audit A-, Low items L1-part, L2, L3, L4, L5; M1 left as is)
+- L3: pick_python drops any interpreter that is not .exe or .com on Windows (a python.bat or python.cmd would run through cmd.exe). Test a_batch_file_is_never_the_interpreter.
+- L2: the trust key keeps the on-disk case exactly (slash style and the \?\ strip are still normalised); the case fold survives only for the notebook-folder exclusion (fold). Entries stored in lowercase by the unreleased version no longer match and are asked about again. Test trust_keys_compare_the_case_exactly; the existing spelling-variant test is unchanged and passes.
+- L1 (part): the 'notebooks.trusted' list keeps the newest 500; a new entry drops the oldest; re-trusting never duplicates. No untrust command or UI yet (ponytail: revoke comes with a settings list). Test the_trust_list_keeps_the_newest_500_and_never_repeats_one.
+- L4: each run is put in a procs::Job (kill on close) right after spawn and the job is dropped at the end and on timeout, so detached grandchildren die too; kill_tree stays as the fallback when no job could be made (and off Windows). A try_wait error now kills the program instead of just stopping the watch. The window between spawn and assignment is not closed (the program is not started suspended).
+- L5: one run at a time, app-wide: a static AtomicBool taken through RunGuard (freed on every path by Drop). A second notebook_run_cell returns "Another cell is still running." before the file is read or a process starts. The command is now an async fn that does the run in tauri::async_runtime::spawn_blocking (a sync #[tauri::command(async)] fn runs on a runtime worker thread, so a 60 s run would have held one). The page sees the message as any other run error. Test only_one_cell_runs_at_a_time.
+- Proofs: cargo test --lib notebook_run 18 passed; mutation (a) exe/com filter off -> a_batch_file_is_never_the_interpreter fails; mutation (b) guard no-op -> only_one_cell_runs_at_a_time fails; both restored.
