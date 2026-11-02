@@ -539,7 +539,7 @@ mod tests {
         assert_eq!((r.available, w.state.as_str()), (0, "skipped"));
         assert!(w.copies[0].chips.contains(&"unrecognised".to_string()));
         assert!(w.reason.as_deref().unwrap().contains("changed"));
-        assert_eq!(w.reinstall.as_deref(), Some("npx --yes skills add kolux/skills --skill orchestration -g"));
+        assert_eq!(w.reinstall.as_deref(), Some("npx --yes skills add TxaisX/kolux-skills --skill orchestration -g"));
         assert!(r.notice.is_empty());
         // No record at all.
         fs::remove_file(t.join(".agents").join(".skill-lock.json")).unwrap();

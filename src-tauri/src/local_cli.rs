@@ -634,7 +634,7 @@ mod tests {
         assert!(local("skills get video --reference higgsfield").unwrap()["markdown"].as_str().unwrap().contains("mcp.higgsfield.ai/mcp"));
         // SKILL-031: a dry run prints the command and starts nothing; JSON is refused on a real run.
         let dry = local("skills install --skill orchestration --agent universal --dry-run").unwrap();
-        assert_eq!(dry["command"], "npx --yes skills add kolux/skills --skill orchestration --agent universal -y -g");
+        assert_eq!(dry["command"], "npx --yes skills add TxaisX/kolux-skills --skill orchestration --agent universal -y -g");
         assert_eq!(dry["ran"], false);
         assert!(local("skills install --all --skill orchestration --dry-run").unwrap_err().message.contains("cannot be combined"));
         assert!(local("skills install --local --all --agent universal --dry-run").unwrap()["command"].as_str().unwrap().ends_with("universal -y"));

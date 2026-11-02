@@ -5,7 +5,7 @@ import { chipTone, claimNotice, freshKeys, noticeShown, resetNoticeClaim, notice
 const report = (over: Partial<Report> = {}): Report => ({
   rows: [
     { name: "orchestration", state: "available", reason: null, reinstall: null, copies: [] },
-    { name: "koluxward", state: "skipped", reason: "changed", reinstall: "npx --yes skills add kolux/skills --skill koluxward -g", copies: [] },
+    { name: "koluxward", state: "skipped", reason: "changed", reinstall: "npx --yes skills add TxaisX/kolux-skills --skill koluxward -g", copies: [] },
   ],
   available: 1,
   revisions: [],

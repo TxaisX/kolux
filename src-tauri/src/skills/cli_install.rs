@@ -272,7 +272,7 @@ mod tests {
 
     fn ctx(dir: &Path) -> Ctx<'_> {
         let v = |x: &[&str]| x.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        Ctx { bundled: v(&["kolux-cli", "orchestration", "koluxward"]), installed: v(&["orchestration", "koluxward"]), updatable: v(&["orchestration"]), detected: v(&["gemini", "claude", "codex", "mystery"]), app_dir: dir, repo: "kolux/skills" }
+        Ctx { bundled: v(&["kolux-cli", "orchestration", "koluxward"]), installed: v(&["orchestration", "koluxward"]), updatable: v(&["orchestration"]), detected: v(&["gemini", "claude", "codex", "mystery"]), app_dir: dir, repo: "TxaisX/kolux-skills" }
     }
 
     fn req<R>(update: bool, f: impl FnOnce(&mut Req) -> R) -> Req {
@@ -294,7 +294,7 @@ mod tests {
         let f = Fake::ok();
         let r = run(&req(false, |r| (r.skill = Some("orchestration,kolux-cli".into()), r.dry_run = true)), &ctx(&t), &f).unwrap();
         // gemini and claude get their installer names; codex is served by the shared folder; an agent with no known name is never guessed at.
-        assert_eq!(r["command"], "npx --yes skills add kolux/skills --skill kolux-cli --skill orchestration --agent claude-code gemini-cli universal -y -g");
+        assert_eq!(r["command"], "npx --yes skills add TxaisX/kolux-skills --skill kolux-cli --skill orchestration --agent claude-code gemini-cli universal -y -g");
         assert_eq!((r["ran"].clone(), r["scope"].clone()), (json!(false), json!("computer")));
         assert!(f.seen.lock().unwrap().is_empty());
         assert_eq!(text(&r), format!("Would run: {}", r["command"].as_str().unwrap()));
@@ -330,7 +330,7 @@ mod tests {
         c.repo = installer::OFFICIAL_REPO;
         let a = run(&req(false, |r| (r.all = true, r.dry_run = true)), &c, &f).unwrap();
         let line = a["command"].as_str().unwrap();
-        assert!(line.starts_with("npx --yes skills add kolux/skills "), "{line}");
+        assert!(line.starts_with("npx --yes skills add TxaisX/kolux-skills "), "{line}");
         let mut named: Vec<&str> = line.split(" --skill ").skip(1).map(|s| s.split(' ').next().unwrap()).collect();
         named.sort_unstable();
         let mut want: Vec<&str> = bundled.iter().map(String::as_str).collect();
