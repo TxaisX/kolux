@@ -203,8 +203,9 @@ fn command(l: &Launch, dir: Option<&Path>) -> std::process::Command {
     {
         use std::os::windows::process::CommandExt;
         // R10-skills.2 (T-633): the interpreter's own lookups (npx.cmd starting node) skip the
-        // current folder, which for a project install is the project. Node's launcher honours the
-        // same variable, so its children skip it too while they keep this environment.
+        // current folder, which for a project install is the project. Node's launcher (libuv 1.48+,
+        // Node 22 and later) honours the same variable, so its children skip it too while they
+        // keep this environment.
         c.env("NoDefaultCurrentDirectoryInExePath", "1");
         c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
         c.args(&l.args);
@@ -409,11 +410,16 @@ exit /b 0
     /// R10-skills.2 (T-633): one level further down. Real Node, started by the runner in the
     /// project, launches a program by bare name that exists only as a planted .exe in the project;
     /// it is not found. Without the guard variable it is, so the check can see it. Skipped when
-    /// this computer has no Node.
+    /// this computer has no Node, or one older than libuv 1.48 (Node 22), which ignores the variable.
     #[cfg(windows)]
     #[test]
     fn t633_what_node_starts_is_not_found_in_the_project_either() {
         let Some(node) = crate::agents::find_program("node") else { return eprintln!("no Node here, skipped") };
+        let uv = std::process::Command::new(&node).args(["-p", "process.versions.uv"]).output().unwrap();
+        let uv: Vec<u32> = String::from_utf8_lossy(&uv.stdout).trim().split('.').map(|n| n.parse().unwrap_or(0)).collect();
+        if uv.len() < 2 || (uv[0], uv[1]) < (1, 48) {
+            return eprintln!("Node's libuv {uv:?} predates the variable, skipped");
+        }
         let project = crate::test_dir::temp("t633-node-project");
         let runner = crate::test_dir::temp("t633-node-runner");
         let system = std::env::var("SystemRoot").unwrap();
