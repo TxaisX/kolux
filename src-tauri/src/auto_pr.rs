@@ -3,13 +3,15 @@
 //! would be stopped by, `auto_pr_commit` commits a workspace's changes on its own branch and
 //! `auto_pr_push` pushes that branch. All three fail closed: they never touch the default branch,
 //! never force, never pull, and stop (naming the files, never the value) when a file looks like a
-//! secret or is over 10 MB. They act only on a folder the project fence (ACCT-055) allows.
+//! secret or is over 10 MB. They act only on a folder the project fence (ACCT-055) allows. A
+//! repository whose `index.lock` exists is left alone (the lock is never deleted), and every read of
+//! the history has a time limit that fails the step instead of passing it.
 
 use crate::git::{command, run, Git, NO_PROMPT};
 use crate::scm::{self, Status};
 use regex::bytes::Regex;
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{mpsc, OnceLock};
@@ -132,22 +134,36 @@ fn scan_cmd(dir: &Path, args: &[&str]) -> Command {
     cmd
 }
 
+#[cfg(test)]
+thread_local! {
+    /// Tests only: when set, a read of the history stops after this long instead of `PUSH_LIMIT`.
+    static SCAN_LIMIT: std::cell::Cell<Option<Duration>> = const { std::cell::Cell::new(None) };
+}
+
+/// How long one git read of the history (a commit range, the objects in it) may take before Kolux
+/// stops waiting. A read that runs out of time is an error, never a pass.
+fn scan_limit() -> Duration {
+    #[cfg(test)]
+    if let Some(limit) = SCAN_LIMIT.with(|l| l.get()) {
+        return limit;
+    }
+    PUSH_LIMIT
+}
+
+/// What `args` print, with `input` on git's standard input, within `limit`.
+fn git_fed_within(dir: &Path, args: &[&str], input: String, limit: Duration) -> Result<Vec<u8>, String> {
+    let (ok, out, err) = run_fed(scan_cmd(dir, args), Some(input.into_bytes()), limit)?;
+    if ok {
+        Ok(out)
+    } else {
+        let err = String::from_utf8_lossy(&err).trim().to_string();
+        Err(if err.is_empty() { format!("git {} failed", args.join(" ")) } else { err })
+    }
+}
+
 /// What `args` print, with `input` on git's standard input.
 fn git_fed(dir: &Path, args: &[&str], input: String) -> Result<Vec<u8>, String> {
-    let mut child = scan_cmd(dir, args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
-    let mut stdin = child.stdin.take().ok_or("git has no input")?;
-    // A thread feeds the list so a long one cannot fill the pipes and stall both sides.
-    let writer = std::thread::spawn(move || {
-        let _ = stdin.write_all(input.as_bytes());
-    });
-    let out = child.wait_with_output().map_err(|e| format!("could not run git: {e}"))?;
-    let _ = writer.join();
-    if out.status.success() {
-        Ok(out.stdout)
-    } else {
-        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
-        Err(if err.is_empty() { format!("git {} failed ({})", args.join(" "), out.status) } else { err })
-    }
+    git_fed_within(dir, args, input, scan_limit())
 }
 
 fn git_bytes(dir: &Path, args: &[&str]) -> Result<Vec<u8>, String> {
@@ -227,9 +243,23 @@ fn gate(dir: &Path) -> Result<Gate, String> {
             return skip(&format!("Skipped: git does not list {branch} under exactly that name (check its capital letters)."));
         }
     }
-    let top = run(&["rev-parse", "--show-toplevel"], Some(dir)).map(PathBuf::from).unwrap_or_else(|_| dir.to_path_buf());
-    Ok(Gate::Go(Box::new(Ctx { branch, st, defaults, top })))
+    Ok(Gate::Go(Box::new(Ctx { branch, st, defaults, top: top_of(dir) })))
 }
+
+/// The top of the working tree `dir` is in (`dir` itself when git cannot say).
+fn top_of(dir: &Path) -> PathBuf {
+    run(&["rev-parse", "--show-toplevel"], Some(dir)).map(PathBuf::from).unwrap_or_else(|_| dir.to_path_buf())
+}
+
+/// Is another git command using this repository? While git rewrites the index it holds
+/// `<git dir>/index.lock` (a linked worktree has a git dir of its own). Kolux never deletes that
+/// file, since the git holding it may still be running: it waits for the next finished turn.
+fn index_locked(dir: &Path) -> bool {
+    run(&["rev-parse", "--git-dir"], Some(dir)).is_ok_and(|git_dir| dir.join(git_dir).join("index.lock").exists())
+}
+
+/// What a step answers while `index_locked` is true.
+const LOCKED: &str = "Another git command is using this repository; the next finished turn will try again.";
 
 /// The one rule about a branch's upstream, for commit and push alike. No upstream, `origin/<branch>`
 /// and the default branch on origin (a workspace branch cut from `origin/main` tracks it until its
@@ -346,9 +376,9 @@ fn heavy_in(top: &Path, paths: &BTreeSet<String>) -> Vec<String> {
 
 /// The checks that need no staging: how many files, heavy folders, then the names, sizes and
 /// content of the working-tree files `git add -A` would add. `Some` is the step that stops it.
-fn precheck(ctx: &Ctx, verb: &str) -> Result<Option<AutoStep>, String> {
-    let paths = paths_to_add(&ctx.st);
-    let heavy = heavy_in(&ctx.top, &paths);
+fn precheck(st: &Status, top: &Path, verb: &str) -> Result<Option<AutoStep>, String> {
+    let paths = paths_to_add(st);
+    let heavy = heavy_in(top, &paths);
     if !heavy.is_empty() {
         let n = paths.iter().filter(|p| heavy.iter().any(|h| p.starts_with(&format!("{h}/")))).count();
         let list = heavy.join(", ");
@@ -359,7 +389,7 @@ fn precheck(ctx: &Ctx, verb: &str) -> Result<Option<AutoStep>, String> {
         let message = format!("Not {verb}: {} files would be added, over the limit of {MAX_FILES}. Add the generated folders to the ignore file (.gitignore) first, or commit by hand if it is really that many.", paths.len());
         return Ok(Some(AutoStep { kind: "blocked".into(), message, files: Vec::new() }));
     }
-    let hits = scan_worktree(&ctx.top, &paths)?;
+    let hits = scan_worktree(top, &paths)?;
     if hits.is_empty() {
         Ok(None)
     } else {
@@ -391,18 +421,17 @@ fn staged_blobs(dir: &Path) -> Result<BTreeMap<String, BTreeSet<String>>, String
 fn undo(dir: &Path, saved: &str, head_before: &Option<String>, mut s: AutoStep) -> AutoStep {
     // A commit that did land is not undone: the index then belongs to the new HEAD.
     if head_oid(dir) == *head_before {
-        if let Err(e) = run(&["read-tree", saved], Some(dir)) {
+        if index_locked(dir) {
+            // The lock is never deleted here (the git holding it may be running), and the index is
+            // not rewritten under it. If the git Kolux stopped left it, that git writes its new
+            // index through the lock and renames it in last, so the index is as it found it. The
+            // next finished turn skips until the lock is gone.
+            s.message = format!("{} The staging area was left as it is because the repository's index.lock is still there.", s.message);
+        } else if let Err(e) = run(&["read-tree", saved], Some(dir)) {
             s.message = format!("{} The staging area could not be put back: {}", s.message, scrub(&e));
         }
     }
     s
-}
-
-/// A git killed part-way through `git add` leaves its index lock behind; Kolux killed that git.
-fn clear_index_lock(dir: &Path) {
-    if let Ok(lock) = run(&["rev-parse", "--git-path", "index.lock"], Some(dir)) {
-        let _ = std::fs::remove_file(dir.join(lock));
-    }
 }
 
 /// Is a hook installed that can refuse a commit? (`core.hooksPath` is honoured by git itself.)
@@ -419,11 +448,15 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     if let Some(stop) = upstream_rule(&ctx) {
         return Ok(stop);
     }
+    // Staging needs the index lock; never take it from under another git, never delete it.
+    if index_locked(dir) {
+        return Ok(step("skipped", LOCKED));
+    }
     if ctx.st.staged.is_empty() && ctx.st.changed.is_empty() && ctx.st.untracked.is_empty() {
         return Ok(step("clean", "Nothing to commit."));
     }
     // The cheap checks first, before anything is staged or hashed.
-    if let Some(stop) = precheck(&ctx, "committed")? {
+    if let Some(stop) = precheck(&ctx.st, &ctx.top, "committed")? {
         return Ok(stop);
     }
     let head_before = head_oid(dir);
@@ -431,12 +464,8 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     let fail = |s: AutoStep| Ok(undo(dir, &saved, &head_before, s));
 
     match run_limited(command(&["add", "-A"], Some(dir)), PUSH_LIMIT) {
-        Err(e) => {
-            if e.starts_with("git did not finish") {
-                clear_index_lock(dir);
-            }
-            return fail(step("failed", format!("Not committed: {}", scrub(&e))));
-        }
+        // A git stopped at the limit may leave its index.lock behind; that is left alone (see `undo`).
+        Err(e) => return fail(step("failed", format!("Not committed: {}", scrub(&e)))),
         Ok((false, log)) => return fail(step("failed", format!("Not committed: git add failed: {}", scrub(&crate::git::failure_reason(&log).unwrap_or_else(|| "git gave no reason".into()))))),
         Ok((true, _)) => {}
     }
@@ -453,9 +482,6 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     let (ok, log) = match run_limited(command(&["commit", "--quiet", "-m", &message], Some(dir)), PUSH_LIMIT) {
         Ok(r) => r,
         Err(e) => {
-            if e.starts_with("git did not finish") {
-                clear_index_lock(dir);
-            }
             // The commit may have landed before Kolux lost sight of git.
             return match head_oid(dir) {
                 Some(now) if Some(&now) != head_before.as_ref() => Ok(step("done", format!("Committed {} on {}.", &now[..now.len().min(7)], ctx.branch))),
@@ -476,19 +502,15 @@ fn commit_step(dir: &Path) -> Result<AutoStep, String> {
     fail(step("failed", format!("{who}: {}", scrub(&why))))
 }
 
-/// What a commit would be stopped by, found without staging anything.
+/// What a commit would be stopped by, found without staging anything. The manual one-click flow
+/// runs this before it stages, on any branch it accepts: only the fence (before this function) and
+/// the file checks apply, not the automatic flow's branch rules (`gate`, `upstream_rule`).
 fn scan_step(dir: &Path) -> Result<AutoStep, String> {
-    let ctx = match gate(dir)? {
-        Gate::Stop(s) => return Ok(s),
-        Gate::Go(c) => c,
-    };
-    if let Some(stop) = upstream_rule(&ctx) {
-        return Ok(stop);
-    }
-    if paths_to_add(&ctx.st).is_empty() {
+    let st = scm::status(dir)?;
+    if paths_to_add(&st).is_empty() {
         return Ok(step("clean", "Nothing to scan: no file would be added."));
     }
-    Ok(precheck(&ctx, "committed")?.unwrap_or_else(|| step("clean", "No file looks like a secret, is over 10 MB or belongs in the ignore file.")))
+    Ok(precheck(&st, &top_of(dir), "committed")?.unwrap_or_else(|| step("clean", "No file looks like a secret, is over 10 MB or belongs in the ignore file.")))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -497,22 +519,6 @@ fn scan_step(dir: &Path) -> Result<AutoStep, String> {
 
 fn is_oid(s: &str) -> bool {
     (s.len() == 40 || s.len() == 64) && s.bytes().all(|b| b.is_ascii_hexdigit())
-}
-
-/// Starts `git cat-file <mode>` and feeds it the object ids from another thread, so a long list
-/// cannot fill the pipes and stall both sides.
-fn spawn_cat_file(dir: &Path, mode: &str, ids: Vec<String>) -> Result<(std::process::Child, std::thread::JoinHandle<()>), String> {
-    let mut child = scan_cmd(dir, &["cat-file", mode]).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().map_err(|e| format!("could not run git: {e}"))?;
-    let mut stdin = child.stdin.take().ok_or("git has no input")?;
-    let writer = std::thread::spawn(move || {
-        let mut text = String::new();
-        for id in ids {
-            text.push_str(&id);
-            text.push('\n');
-        }
-        let _ = stdin.write_all(text.as_bytes());
-    });
-    Ok((child, writer))
 }
 
 /// What a push would send: the commit being pushed, and every tip the remote already has that
@@ -574,18 +580,31 @@ fn scan_messages(dir: &Path, input: &str) -> Result<BTreeSet<String>, String> {
     Ok(hits)
 }
 
+/// The most blob content one `git cat-file --batch` call is asked for: its output is held in memory.
+const BATCH_BYTES: u64 = 32 * 1024 * 1024;
+
 /// Scans the blobs in `blobs` (id to the names it has); the names of the offending files. Every
-/// object must be answered for: a git that dies half-way is an error, not a pass.
+/// object must be answered for: a git that dies half-way, or that does not finish in time, is an
+/// error, not a pass.
 fn scan_blobs(dir: &Path, blobs: &BTreeMap<String, BTreeSet<String>>) -> Result<BTreeSet<String>, String> {
+    scan_blobs_within(dir, blobs, scan_limit())
+}
+
+/// `scan_blobs`, with `limit` for all of its git calls together.
+fn scan_blobs_within(dir: &Path, blobs: &BTreeMap<String, BTreeSet<String>>, limit: Duration) -> Result<BTreeSet<String>, String> {
     if blobs.is_empty() {
         return Ok(BTreeSet::new());
     }
+    let deadline = Instant::now() + limit;
+    let ask = |mode: &str, ids: &[String]| {
+        let input: String = ids.iter().map(|id| format!("{id}\n")).collect();
+        run_fed(scan_cmd(dir, &["cat-file", mode]), Some(input.into_bytes()), deadline.saturating_duration_since(Instant::now()))
+    };
     // Pass 1: type and size of every object, without reading any content.
-    let (mut child, writer) = spawn_cat_file(dir, "--batch-check", blobs.keys().cloned().collect())?;
+    let (ok, listing, _) = ask("--batch-check", &blobs.keys().cloned().collect::<Vec<_>>())?;
     let mut sizes: BTreeMap<String, u64> = BTreeMap::new();
     let mut answered = 0usize;
-    for line in BufReader::new(child.stdout.take().ok_or("git has no output")?).lines() {
-        let line = line.map_err(|e| e.to_string())?;
+    for line in String::from_utf8_lossy(&listing).lines() {
         answered += 1;
         let f: Vec<&str> = line.split_whitespace().collect();
         match f.as_slice() {
@@ -598,13 +617,15 @@ fn scan_blobs(dir: &Path, blobs: &BTreeMap<String, BTreeSet<String>>) -> Result<
             _ => return Err("git gave an answer about an object that Kolux does not understand, so nothing was scanned".into()),
         }
     }
-    let _ = writer.join();
-    if !child.wait().is_ok_and(|s| s.success()) || answered != blobs.len() {
+    if !ok || answered != blobs.len() {
         return Err("git did not describe every object, so nothing was scanned".into());
     }
 
     let mut hits = BTreeSet::new();
-    let mut to_read = Vec::new();
+    // The blobs whose content must be read, in batches of at most BATCH_BYTES (a blob is at most MAX_BYTES).
+    let mut batches: Vec<Vec<String>> = Vec::new();
+    let mut batch: Vec<String> = Vec::new();
+    let mut batch_bytes = 0u64;
     for (oid, size) in &sizes {
         let names = &blobs[oid];
         let by_name: Vec<&String> = names.iter().filter(|n| name_hit(n)).collect();
@@ -613,38 +634,40 @@ fn scan_blobs(dir: &Path, blobs: &BTreeMap<String, BTreeSet<String>>) -> Result<
         } else if *size > MAX_BYTES {
             hits.extend(names.iter().cloned());
         } else {
-            to_read.push(oid.clone());
+            if !batch.is_empty() && batch_bytes + size > BATCH_BYTES {
+                batches.push(std::mem::take(&mut batch));
+                batch_bytes = 0;
+            }
+            batch_bytes += size;
+            batch.push(oid.clone());
         }
     }
-    if to_read.is_empty() {
-        return Ok(hits);
+    if !batch.is_empty() {
+        batches.push(batch);
     }
-    // Pass 2: the content of the rest, one blob at a time.
-    let wanted = to_read.len();
-    let (mut child, writer) = spawn_cat_file(dir, "--batch", to_read)?;
-    let mut out = BufReader::new(child.stdout.take().ok_or("git has no output")?);
-    let mut header = String::new();
-    let mut read = 0usize;
-    loop {
-        header.clear();
-        if out.read_line(&mut header).map_err(|e| e.to_string())? == 0 {
-            break;
+    // Pass 2: the content of the rest, `<id> blob <size>`, the content, a newline, for each.
+    for batch in batches {
+        let (ok, out, _) = ask("--batch", &batch)?;
+        let mut at = 0usize;
+        let mut read = 0usize;
+        while at < out.len() {
+            let Some(end_of_header) = out[at..].iter().position(|b| *b == b'\n').map(|i| at + i) else { return Err("git gave an unreadable object".into()) };
+            let header = String::from_utf8_lossy(&out[at..end_of_header]);
+            let f: Vec<&str> = header.split_whitespace().collect();
+            let [oid, "blob", size] = f.as_slice() else { return Err("git gave an unreadable object".into()) };
+            let size: usize = size.parse().map_err(|_| "git gave an unreadable size".to_string())?;
+            let start = end_of_header + 1;
+            let Some(end) = start.checked_add(size).filter(|e| *e < out.len()) else { return Err("git did not hand over every file, so nothing was scanned".into()) };
+            // `end` is the newline git puts after the content.
+            if content_hit(&out[start..end]) {
+                hits.extend(blobs.get(*oid).into_iter().flatten().cloned());
+            }
+            read += 1;
+            at = end + 1;
         }
-        let f: Vec<&str> = header.split_whitespace().collect();
-        let [oid, "blob", size] = f.as_slice() else { return Err("git gave an unreadable object".into()) };
-        let size: usize = size.parse().map_err(|_| "git gave an unreadable size".to_string())?;
-        let mut body = vec![0u8; size];
-        out.read_exact(&mut body).map_err(|e| e.to_string())?;
-        let mut nl = [0u8; 1];
-        out.read_exact(&mut nl).map_err(|e| e.to_string())?;
-        read += 1;
-        if content_hit(&body) {
-            hits.extend(blobs.get(*oid).into_iter().flatten().cloned());
+        if !ok || read != batch.len() {
+            return Err("git did not hand over every file, so nothing was scanned".into());
         }
-    }
-    let _ = writer.join();
-    if !child.wait().is_ok_and(|s| s.success()) || read != wanted {
-        return Err("git did not hand over every file, so nothing was scanned".into());
     }
     Ok(hits)
 }
@@ -664,10 +687,32 @@ fn drain(mut r: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
 /// Runs a prepared command with a deadline; whether it succeeded and what it printed on each pipe.
 /// Both the process and the wait for its pipes to close are limited: a hook that leaves a program
 /// running holds the pipes open long after git has exited.
-fn run_split(mut cmd: Command, limit: Duration) -> Result<(bool, Vec<u8>, Vec<u8>), String> {
-    let mut child = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
+fn run_split(cmd: Command, limit: Duration) -> Result<(bool, Vec<u8>, Vec<u8>), String> {
+    run_fed(cmd, None, limit)
+}
+
+/// What a command that outlived its limit answers with.
+fn timed_out(limit: Duration) -> String {
+    let secs = limit.as_secs();
+    let human = if secs >= 60 { format!("{} minutes", secs / 60) } else { format!("{secs} seconds") };
+    format!("git did not finish in {human}, so Kolux stopped waiting")
+}
+
+/// `run_split` with `input` (if any) on the command's standard input. A thread feeds it so a long
+/// one cannot fill the pipes and stall both sides; the thread ends when the command does.
+fn run_fed(mut cmd: Command, input: Option<Vec<u8>>, limit: Duration) -> Result<(bool, Vec<u8>, Vec<u8>), String> {
+    if limit.is_zero() {
+        return Err(timed_out(limit));
+    }
+    let stdin = if input.is_some() { Stdio::piped() } else { Stdio::null() };
+    let mut child = cmd.stdin(stdin).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn().map_err(|e| format!("could not run git: {e}"))?;
     let out = drain(child.stdout.take().ok_or("git has no output")?);
     let err = drain(child.stderr.take().ok_or("git has no output")?);
+    if let (Some(bytes), Some(mut pipe)) = (input, child.stdin.take()) {
+        std::thread::spawn(move || {
+            let _ = pipe.write_all(&bytes);
+        });
+    }
     let deadline = Instant::now() + limit;
     let status = loop {
         match child.try_wait() {
@@ -676,9 +721,7 @@ fn run_split(mut cmd: Command, limit: Duration) -> Result<(bool, Vec<u8>, Vec<u8
                 crate::procs::kill_tree(child.id());
                 let _ = child.kill();
                 let _ = child.wait();
-                let secs = limit.as_secs();
-                let human = if secs >= 60 { format!("{} minutes", secs / 60) } else { format!("{secs} seconds") };
-                return Err(format!("git did not finish in {human}, so Kolux stopped waiting"));
+                return Err(timed_out(limit));
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(20)),
             Err(e) => return Err(format!("could not wait for git: {e}")),
@@ -696,24 +739,26 @@ fn run_limited(cmd: Command, limit: Duration) -> Result<(bool, String), String> 
     Ok((ok, format!("{}{}", String::from_utf8_lossy(&out), String::from_utf8_lossy(&err))))
 }
 
-/// What origin has: the branch its HEAD names, and every branch tip.
+/// What origin has: the branch its HEAD names, every branch tip and each branch with its tip.
 struct Remote {
     head: Option<String>,
     tips: Vec<String>,
+    branches: Vec<(String, String)>,
 }
 
 /// `git ls-remote --symref origin HEAD 'refs/heads/*'`: `ref: refs/heads/<name>\tHEAD`, then
 /// `<id>\t<ref>` lines.
 fn parse_remote(text: &str) -> Remote {
-    let mut remote = Remote { head: None, tips: Vec::new() };
+    let mut remote = Remote { head: None, tips: Vec::new(), branches: Vec::new() };
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("ref: refs/heads/") {
             if let Some((name, "HEAD")) = rest.split_once('\t') {
                 remote.head = Some(name.to_string());
             }
         } else if let Some((oid, name)) = line.split_once('\t') {
-            if is_oid(oid) && name.starts_with("refs/heads/") {
+            if let Some(branch) = name.strip_prefix("refs/heads/").filter(|_| is_oid(oid)) {
                 remote.tips.push(oid.to_string());
+                remote.branches.push((branch.to_string(), oid.to_string()));
             }
         }
     }
@@ -746,6 +791,17 @@ fn explain(log: &str, branch: &str, hook: bool) -> String {
         _ => format!("Not pushed: {}", crate::git::failure_reason(log).unwrap_or_else(|| "git gave no reason".into())),
     };
     scrub(message.trim())
+}
+
+/// Links `branch` to its own copy on origin (`git branch --set-upstream-to=origin/<branch>`).
+/// `oid` is what origin's branch holds. A push that reached origin without this computer hearing
+/// of it leaves no remote-tracking ref to link to, so that ref is made first, at `oid`.
+fn link_upstream(dir: &Path, branch: &str, own: &str, oid: &str) -> Result<(), String> {
+    let tracking = format!("refs/remotes/{own}");
+    if run(&["rev-parse", "--verify", "-q", &tracking], Some(dir)).is_err() {
+        run(&["update-ref", &tracking, oid], Some(dir))?;
+    }
+    run(&["branch", &format!("--set-upstream-to={own}"), branch], Some(dir)).map(|_| ())
 }
 
 fn push_step(dir: &Path) -> Result<AutoStep, String> {
@@ -790,19 +846,46 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
     if let Some(head) = remote.head.as_deref().filter(|h| h.eq_ignore_ascii_case(branch)) {
         return Ok(step("skipped", format!("Skipped: {branch} is origin's default branch ({head}), and automatic pull requests only work on a branch of their own.")));
     }
-    let input = range_input(&oid, &tips_here(dir, &remote.tips)?);
-    let ahead = String::from_utf8_lossy(&git_fed(dir, &["rev-list", "--count", "--stdin", "--"], input.clone())?).trim().parse::<u64>().unwrap_or(1);
+    // Reading the history is limited in time (`scan_limit`); a read that runs out is a failed step.
+    let unread = |e: String| Ok(step("failed", format!("Not pushed: {}", scrub(&e))));
+    let tips = match tips_here(dir, &remote.tips) {
+        Ok(t) => t,
+        Err(e) => return unread(e),
+    };
+    let input = range_input(&oid, &tips);
+    let ahead = match git_fed(dir, &["rev-list", "--count", "--stdin", "--"], input.clone()) {
+        Ok(out) => String::from_utf8_lossy(&out).trim().parse::<u64>().unwrap_or(1),
+        Err(e) => return unread(e),
+    };
     if ahead == 0 {
+        // Everything is on origin already. If origin's copy of this very branch is the commit pinned
+        // above but the branch is not linked to it (the link failed, a push reached origin without
+        // Kolux seeing its end, or the app quit in between), link it now: the pull request step
+        // refuses a branch whose upstream is not origin/<branch>.
+        if !linked && remote.branches.iter().any(|(name, tip)| name == branch && *tip == oid) {
+            return Ok(match link_upstream(dir, branch, &own, &oid) {
+                Ok(()) => step("done", format!("{branch} is on origin already; linked it to {own}.")),
+                Err(e) => step("failed", format!("Not linked: {branch} is on origin, but could not be linked to {own} ({}); the next finished turn will try again.", scrub(&e))),
+            });
+        }
         return Ok(step("clean", "Nothing to push: every commit is already on origin."));
     }
-    let mut hits = scan_blobs(dir, &range_blobs(dir, &input)?)?;
-    hits.extend(scan_messages(dir, &input)?);
+    let hits = match range_blobs(dir, &input).and_then(|blobs| scan_blobs(dir, &blobs)).and_then(|mut hits| {
+        hits.extend(scan_messages(dir, &input)?);
+        Ok(hits)
+    }) {
+        Ok(h) => h,
+        Err(e) => return unread(e),
+    };
     if !hits.is_empty() {
         return Ok(blocked("pushed", hits, "Remove them from the commits, or push by hand if they are not real secrets."));
     }
-    // The commit that was scanned, to the branch of this name, never forced; the user's hooks still run.
+    // The commit that was scanned, to the branch of this name, never forced; the user's hooks still
+    // run. Config must not add to what is sent: no annotated tags that happen to be reachable from
+    // the commit (push.followTags) and no submodule commits (push.recurseSubmodules), whose
+    // messages and files were never scanned.
     let refspec = format!("{oid}:refs/heads/{branch}");
-    let mut cmd = command(&["push", "origin", &refspec], Some(dir));
+    let mut cmd = command(&["push", "--no-follow-tags", "--no-recurse-submodules", "--", "origin", &refspec], Some(dir));
     cmd.envs(NO_PROMPT);
     let (ok, log) = match run_limited(cmd, PUSH_LIMIT) {
         Ok(r) => r,
@@ -810,8 +893,8 @@ fn push_step(dir: &Path) -> Result<AutoStep, String> {
     };
     if ok {
         // Link the branch to its own copy on origin (it had none, or tracked the default branch).
-        if !linked && run(&["branch", &format!("--set-upstream-to={own}"), branch], Some(dir)).is_err() {
-            return Ok(step("done", format!("Pushed {branch} to origin. It could not be linked to {own}; the next push will try again.")));
+        if !linked && link_upstream(dir, branch, &own, &oid).is_err() {
+            return Ok(step("done", format!("Pushed {branch} to origin. It could not be linked to {own}; the next finished turn will try again.")));
         }
         return Ok(step("done", format!("Pushed {branch} to origin.")));
     }
@@ -881,7 +964,8 @@ pub async fn auto_pr_push(worktree: String, fence: tauri::State<'_, crate::fence
 }
 
 /// What `auto_pr_commit` would be stopped by (secret names and content, sizes, dependency folders,
-/// too many files), without staging anything: clean, blocked (the files) or failed.
+/// too many files), without staging anything: clean, blocked (the files) or failed. It looks at the
+/// files only, on any branch: the automatic flow's branch and upstream rules do not apply.
 /// ACCT-055: only inside a project or worktree (fence.rs).
 #[tauri::command]
 pub async fn auto_pr_scan(worktree: String, fence: tauri::State<'_, crate::fence::Fence>, store: tauri::State<'_, std::sync::Mutex<crate::state::Store>>, git: tauri::State<'_, Git>) -> Result<AutoStep, String> {
@@ -1145,10 +1229,12 @@ mod tests {
         let before = head(&dir);
         // HEAD names `Main`; a Windows disk reads that as `main`, another disk as a branch with no commits.
         run(&["symbolic-ref", "HEAD", "refs/heads/Main"], Some(&dir)).unwrap();
-        for s in [commit_step(&dir).unwrap(), push_step(&dir).unwrap(), scan_step(&dir).unwrap()] {
+        for s in [commit_step(&dir).unwrap(), push_step(&dir).unwrap()] {
             assert_eq!(s.kind, "skipped", "{s:?}");
             assert!(s.message.contains("default branch"), "{}", s.message);
         }
+        // The manual scan has no branch rules: it only looks at the files.
+        assert_eq!(scan_step(&dir).unwrap().kind, "clean");
         assert_eq!(remote_ref(&bare, "main").as_deref(), Some(before.as_str()));
         assert!(index_of(&dir).contains("?? new.txt"), "nothing staged");
         cleanup(&[&dir, &bare]);
@@ -1206,7 +1292,8 @@ mod tests {
         fs::create_dir_all(&not_repo).unwrap();
         assert_eq!(commit_step(&not_repo).unwrap().kind, "skipped");
         assert_eq!(push_step(&not_repo).unwrap().kind, "skipped");
-        assert_eq!(scan_step(&not_repo).unwrap().kind, "skipped");
+        // The scan has no guards of its own (the fence stops a non-repository first); asked anyway, it is never a pass.
+        assert!(scan_step(&not_repo).is_err_and(|e| !e.is_empty()));
         cleanup(&[&dir, &bare, &not_repo]);
     }
 
@@ -1245,7 +1332,6 @@ mod tests {
         assert_eq!(s.kind, "skipped", "{s:?}");
         assert!(s.message.contains("origin/other"), "{}", s.message);
         assert_eq!(push_step(&dir).unwrap().kind, "skipped");
-        assert_eq!(scan_step(&dir).unwrap().kind, "skipped");
         assert_eq!(head(&dir), before);
         assert!(index_of(&dir).contains("?? b.txt"), "nothing staged");
         assert_eq!(remote_ref(&bare, "feature"), None);
@@ -1454,7 +1540,7 @@ mod tests {
     #[test]
     fn t652_auto_pr_scan_reports_without_staging_anything() {
         let (dir, bare) = with_origin("n-scan");
-        assert_eq!(scan_step(&dir).unwrap().kind, "skipped", "the default branch");
+        assert_eq!(scan_step(&dir).unwrap().kind, "clean", "the default branch: the scan only looks at files");
         branch(&dir, "feature");
         let s = scan_step(&dir).unwrap();
         assert_eq!(s.kind, "clean", "{s:?}");
@@ -1751,5 +1837,251 @@ mod tests {
         assert!(started.elapsed() < Duration::from_secs(6), "stopped at the limit, not at the end of the command");
         let (ok, out) = run_limited(command(&["--version"], None), Duration::from_secs(30)).unwrap();
         assert!(ok && out.starts_with("git version"), "{out}");
+    }
+
+    #[test]
+    fn t652_a_branch_on_origin_that_lost_its_upstream_is_linked_on_the_next_run_without_pushing() {
+        let (dir, bare) = with_origin("p-relink");
+        let mark = std::env::temp_dir().join(format!("kolux-rs-autopr-relink-mark-{}", id()));
+        let _ = fs::remove_file(&mark);
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a\n");
+        // A pre-push hook that leaves a mark, so a push can be told from none.
+        hook(&dir, "pre-push", &format!("#!/bin/sh\necho pushed >> \"{}\"\nexit 0\n", url(&mark)));
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert!(mark.exists(), "the premise: the hook marks a real push");
+        let on_origin = remote_ref(&bare, "feature");
+        assert_eq!(on_origin, Some(head(&dir)));
+        // The link is lost (it failed, or the app quit between the push and the link): the branch
+        // tracks the default branch again, and then nothing at all.
+        for lost in [Some("origin/main"), None] {
+            let _ = fs::remove_file(&mark);
+            match lost {
+                Some(up) => run(&["branch", &format!("--set-upstream-to={up}")], Some(&dir)).unwrap(),
+                None => run(&["branch", "--unset-upstream"], Some(&dir)).unwrap(),
+            };
+            assert_eq!(scm::status(&dir).unwrap().upstream.as_deref(), lost, "the premise");
+            let s = push_step(&dir).unwrap();
+            assert_eq!(s.kind, "done", "{s:?}");
+            assert!(s.message.contains("origin/feature"), "{}", s.message);
+            assert_eq!(scm::status(&dir).unwrap().upstream.as_deref(), Some("origin/feature"), "linked to its own copy again");
+            assert_eq!(remote_ref(&bare, "feature"), on_origin, "origin is as it was");
+            assert!(!mark.exists(), "nothing was pushed");
+        }
+        assert_eq!(push_step(&dir).unwrap().kind, "clean", "linked: nothing left to do");
+        // A branch at the same commit that origin does not have under its own name is not linked to anything.
+        branch(&dir, "other");
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "clean", "{s:?}");
+        assert_eq!(scm::status(&dir).unwrap().upstream, None);
+        cleanup(&[&dir, &bare, &mark]);
+    }
+
+    #[test]
+    fn t652_a_missing_remote_tracking_ref_is_made_before_the_branch_is_linked() {
+        let (dir, bare) = with_origin("p-relink-ref");
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a\n");
+        assert_eq!(push_step(&dir).unwrap().kind, "done");
+        // A push that reached origin while this computer never heard of it: no tracking ref, no link.
+        run(&["branch", "--unset-upstream"], Some(&dir)).unwrap();
+        run(&["update-ref", "-d", "refs/remotes/origin/feature"], Some(&dir)).unwrap();
+        assert!(run(&["rev-parse", "--verify", "-q", "refs/remotes/origin/feature"], Some(&dir)).is_err(), "the premise");
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert_eq!(scm::status(&dir).unwrap().upstream.as_deref(), Some("origin/feature"));
+        assert_eq!(run(&["rev-parse", "refs/remotes/origin/feature"], Some(&dir)).unwrap(), head(&dir));
+        assert_eq!(remote_ref(&bare, "feature"), Some(head(&dir)));
+        cleanup(&[&dir, &bare]);
+    }
+
+    #[test]
+    fn t652_push_follow_tags_in_the_config_sends_no_tags() {
+        let (dir, bare) = with_origin("p-tags");
+        let elsewhere = bare_repo("p-tags-premise", "main");
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a\n");
+        run(&["config", "push.followTags", "true"], Some(&dir)).unwrap();
+        run(&["tag", "-a", "v1", "-m", "a tag message that is never scanned"], Some(&dir)).unwrap();
+        // The premise: with that setting an explicit commit-to-branch push does carry the tag.
+        run(&["push", "-q", &url(&elsewhere), &format!("{}:refs/heads/x", head(&dir))], Some(&dir)).unwrap();
+        assert!(run(&["for-each-ref", "refs/tags"], Some(&elsewhere)).unwrap().contains("refs/tags/v1"), "the premise");
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert_eq!(remote_ref(&bare, "feature"), Some(head(&dir)));
+        assert_eq!(run(&["for-each-ref", "refs/tags"], Some(&bare)).unwrap(), "", "no tag went with the branch");
+        cleanup(&[&dir, &bare, &elsewhere]);
+    }
+
+    // ---- the repository lock ---------------------------------------------------------------------
+
+    #[test]
+    fn t652_an_index_lock_skips_the_commit_and_is_never_deleted() {
+        let (dir, bare) = with_origin("l-lock");
+        branch(&dir, "feature");
+        fs::write(dir.join("ok.txt"), "fine\n").unwrap();
+        let lock = dir.join(".git").join("index.lock");
+        fs::write(&lock, "").unwrap();
+        let before = head(&dir);
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "skipped", "{s:?}");
+        assert_eq!(s.message, "Another git command is using this repository; the next finished turn will try again.");
+        assert_eq!(head(&dir), before, "nothing was committed");
+        assert!(index_of(&dir).contains("?? ok.txt"), "nothing was staged");
+        assert!(lock.exists(), "the lock is not Kolux's to delete");
+        fs::remove_file(&lock).unwrap();
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        assert!(!lock.exists());
+        cleanup(&[&dir, &bare]);
+    }
+
+    #[test]
+    fn t652_a_linked_worktree_has_a_lock_of_its_own() {
+        let (dir, bare) = with_origin("l-wt");
+        let ws = std::env::temp_dir().join(format!("kolux-rs-autopr-lockws-{}", id()));
+        let _ = fs::remove_dir_all(&ws);
+        run(&["worktree", "add", "-q", "-b", "ws", &url(&ws), "origin/main"], Some(&dir)).unwrap();
+        fs::write(ws.join("w.txt"), "w\n").unwrap();
+        // The main checkout's lock guards the main checkout's index, not this one.
+        let main_lock = dir.join(".git").join("index.lock");
+        fs::write(&main_lock, "").unwrap();
+        let s = commit_step(&ws).unwrap();
+        assert_eq!(s.kind, "done", "{s:?}");
+        fs::remove_file(&main_lock).unwrap();
+        // The worktree's own lock sits in its own git dir.
+        fs::write(ws.join("v.txt"), "v\n").unwrap();
+        let own_lock = ws.join(run(&["rev-parse", "--git-dir"], Some(&ws)).unwrap()).join("index.lock");
+        assert_ne!(own_lock, main_lock, "the premise: a worktree's git dir is its own");
+        fs::write(&own_lock, "").unwrap();
+        let before = head(&ws);
+        let s = commit_step(&ws).unwrap();
+        assert_eq!(s.kind, "skipped", "{s:?}");
+        assert!(s.message.starts_with("Another git command"), "{}", s.message);
+        assert_eq!(head(&ws), before);
+        assert!(own_lock.exists());
+        let _ = run(&["worktree", "remove", "--force", &url(&ws)], Some(&dir));
+        cleanup(&[&dir, &bare, &ws]);
+    }
+
+    #[test]
+    fn t652_a_lock_left_behind_keeps_the_index_from_being_rewritten_under_it() {
+        let dir = repo("u-lock");
+        let saved = run(&["write-tree"], Some(&dir)).unwrap();
+        fs::write(dir.join("new.txt"), "n\n").unwrap();
+        run(&["add", "new.txt"], Some(&dir)).unwrap();
+        let head_before = head_oid(&dir);
+        let lock = dir.join(".git").join("index.lock");
+        fs::write(&lock, "").unwrap();
+        let s = undo(&dir, &saved, &head_before, step("failed", "Not committed: git did not finish."));
+        assert!(s.message.contains("index.lock") && s.message.starts_with("Not committed"), "{}", s.message);
+        assert!(!s.message.contains("could not be put back"), "{}", s.message);
+        assert!(lock.exists(), "the lock is not Kolux's to delete");
+        assert_eq!(run(&["diff", "--cached", "--name-only"], Some(&dir)).unwrap(), "new.txt", "the index was not touched while locked");
+        // Without the lock the staging area is put back as before.
+        fs::remove_file(&lock).unwrap();
+        let s = undo(&dir, &saved, &head_before, step("failed", "Not committed: git did not finish."));
+        assert_eq!(s.message, "Not committed: git did not finish.");
+        assert_eq!(run(&["diff", "--cached", "--name-only"], Some(&dir)).unwrap(), "");
+        cleanup(&[&dir]);
+    }
+
+    // ---- the manual scan -------------------------------------------------------------------------
+
+    #[test]
+    fn t652_the_manual_scan_looks_at_files_only_and_not_at_the_branch() {
+        let (dir, bare) = with_origin("n-manual");
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a\n");
+        // The branch tracks another name: the automatic flow skips it, the manual one accepts it.
+        run(&["push", "-q", "origin", "main:other"], Some(&dir)).unwrap();
+        run(&["branch", "--set-upstream-to=origin/other"], Some(&dir)).unwrap();
+        fs::write(dir.join("b.txt"), "b\n").unwrap();
+        assert_eq!(commit_step(&dir).unwrap().kind, "skipped");
+        let s = scan_step(&dir).unwrap();
+        assert_eq!(s.kind, "clean", "{s:?}");
+        assert!(s.message.starts_with("No file looks like a secret"), "{}", s.message);
+        // It still stops what the files hold.
+        fs::write(dir.join(".env"), "A=1\n").unwrap();
+        let s = scan_step(&dir).unwrap();
+        assert_eq!((s.kind.as_str(), s.files.as_slice()), ("blocked", [".env".to_string()].as_slice()), "{s:?}");
+        fs::remove_file(dir.join(".env")).unwrap();
+        // No branch at all.
+        run(&["checkout", "-q", "--detach"], Some(&dir)).unwrap();
+        assert_eq!(commit_step(&dir).unwrap().kind, "skipped");
+        assert_eq!(scan_step(&dir).unwrap().kind, "clean");
+        assert_eq!(run(&["diff", "--cached", "--name-only"], Some(&dir)).unwrap(), "", "nothing staged");
+        cleanup(&[&dir, &bare]);
+    }
+
+    // ---- reading the history in time -------------------------------------------------------------
+
+    #[test]
+    fn t652_a_history_read_that_runs_out_of_time_is_a_failed_step_and_never_a_pass() {
+        let (dir, bare) = with_origin("p-slow");
+        branch(&dir, "feature");
+        commit_file(&dir, "a.txt", "a\n");
+        SCAN_LIMIT.with(|l| l.set(Some(Duration::ZERO)));
+        let s = push_step(&dir).unwrap();
+        assert_eq!(s.kind, "failed", "{s:?}");
+        assert!(s.message.starts_with("Not pushed") && s.message.contains("did not finish"), "{}", s.message);
+        assert_eq!(remote_ref(&bare, "feature"), None, "nothing was pushed");
+        // The commit's own scan has the same limit: it fails and the staging area is put back.
+        fs::write(dir.join("b.txt"), "b\n").unwrap();
+        let before = head(&dir);
+        let s = commit_step(&dir).unwrap();
+        assert_eq!(s.kind, "failed", "{s:?}");
+        assert!(s.message.contains("did not finish"), "{}", s.message);
+        assert_eq!(head(&dir), before);
+        assert_eq!(run(&["diff", "--cached", "--name-only"], Some(&dir)).unwrap(), "", "nothing stays staged");
+        SCAN_LIMIT.with(|l| l.set(None));
+        assert_eq!(commit_step(&dir).unwrap().kind, "done");
+        assert_eq!(push_step(&dir).unwrap().kind, "done", "with time to read, the same branch goes");
+        cleanup(&[&dir, &bare]);
+    }
+
+    #[test]
+    fn t652_a_command_with_input_outlives_its_limit_or_answers() {
+        let mut cmd = if cfg!(windows) { Command::new("ping") } else { Command::new("sleep") };
+        if cfg!(windows) {
+            cmd.args(["-n", "8", "127.0.0.1"]);
+        } else {
+            cmd.arg("8");
+        }
+        let started = Instant::now();
+        let e = run_fed(cmd, Some(b"input nobody reads\n".to_vec()), Duration::from_millis(500)).unwrap_err();
+        assert!(e.starts_with("git did not finish"), "{e}");
+        assert!(started.elapsed() < Duration::from_secs(6), "stopped at the limit");
+        let dir = repo("r-fed");
+        let (ok, out, _) = run_fed(command(&["cat-file", "--batch-check"], Some(&dir)), Some(format!("{}\n", head(&dir)).into_bytes()), Duration::from_secs(30)).unwrap();
+        assert!(ok && String::from_utf8_lossy(&out).contains(" commit "), "{}", String::from_utf8_lossy(&out));
+        // No time left is a timeout before anything starts.
+        assert!(run_fed(command(&["--version"], None), None, Duration::ZERO).unwrap_err().starts_with("git did not finish"));
+        let blobs = BTreeMap::from([(run(&["rev-parse", "HEAD:README.md"], Some(&dir)).unwrap(), BTreeSet::from(["README.md".to_string()]))]);
+        assert!(scan_blobs_within(&dir, &blobs, Duration::ZERO).unwrap_err().starts_with("git did not finish"));
+        assert_eq!(scan_blobs_within(&dir, &blobs, Duration::from_secs(30)).unwrap(), BTreeSet::new());
+        cleanup(&[&dir]);
+    }
+
+    #[test]
+    fn t652_blobs_are_read_in_batches_and_a_secret_in_a_later_batch_is_found() {
+        let dir = repo("r-batch");
+        // Four files of 9 MiB: more than one batch of BATCH_BYTES. The last holds the key.
+        let mut blobs: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        for (i, name) in ["big1.txt", "big2.txt", "big3.txt", "big4.txt"].iter().enumerate() {
+            let mut body = vec![b'a' + i as u8; 9 * 1024 * 1024];
+            if i == 3 {
+                body.extend(format!("\nTOKEN={}\n", fake_token()).into_bytes());
+            }
+            fs::write(dir.join(name), body).unwrap();
+            run(&["add", name], Some(&dir)).unwrap();
+            blobs.insert(run(&["rev-parse", &format!(":{name}")], Some(&dir)).unwrap(), BTreeSet::from([name.to_string()]));
+        }
+        assert_eq!(blobs.len(), 4);
+        assert!(blobs.len() as u64 * 9 * 1024 * 1024 > BATCH_BYTES, "the premise: more than one batch");
+        let hits = scan_blobs(&dir, &blobs).unwrap();
+        assert_eq!(hits, BTreeSet::from(["big4.txt".to_string()]));
+        cleanup(&[&dir]);
     }
 }

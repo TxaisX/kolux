@@ -1558,6 +1558,7 @@ pub async fn scm_prs_poll(app: tauri::AppHandle, items: Vec<PollItem>) -> Result
 /// head must still be checked out and ahead of the base, with no uncommitted tracked change.
 /// T-652: with `push` false nothing is pushed here; a branch whose commits are not all on
 /// `origin/<branch>` is refused instead, so the automatic flow's guarded push is the only push.
+/// `push`: the automatic flow must always pass false, so that the guarded push in `auto_pr.rs` stays the only push.
 pub fn pr_create(gh: &Path, worktree: &Path, title: &str, body: &str, base: &str, draft: bool, push: bool) -> Result<Pr, String> {
     let st = status(worktree)?;
     let branch = st.branch.clone().ok_or("No branch is checked out here; check out the head branch first")?;
