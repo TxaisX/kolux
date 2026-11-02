@@ -4,7 +4,8 @@
 import { createElement, Fragment } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { click, type FakeDocument, type FakeNode, find, installDom, mount, typeInto, until, withText } from "../../tasks/fakeDom";
-import { FEEDBACK_REPO, OUTBOUND } from "../privacy";
+import { OUTBOUND } from "../outbound";
+import { FEEDBACK_REPO } from "../privacy";
 
 const calls = vi.hoisted(() => ({ list: [] as { cmd: string; args: Record<string, unknown> }[], bundle: "" }));
 vi.mock("@tauri-apps/api/core", () => ({

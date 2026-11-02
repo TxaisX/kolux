@@ -7,7 +7,7 @@ import { FIRST_FIELD, LAST_SCREEN_FIELD, LOOK_FIELD, NEEDS_STRIP_FIELD, readLook
 import { REVIEW_FIELD, reviewOn } from "../editor/notes";
 import { CONFIRM_DELETE_KEY, confirmDelete } from "../automations/model";
 import { askAgainPatch, skippedOf, skippedSentence } from "./confirmations";
-import { OUTBOUND } from "./privacy";
+import { OUTBOUND } from "./outbound";
 import { requestFeedback } from "../feedback/FeedbackDialog";
 import { DELAY, prefPatch, readEditorPrefs, type DiffView } from "./editorPrefs";
 import { addApp, addCustom, draftReady, moveApp, OPEN_IN_FIELD, presetsLeft, readOpenIn, removeApp, type OpenInApp } from "./openIn";

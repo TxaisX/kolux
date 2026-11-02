@@ -1,5 +1,5 @@
 // APP-070: a network client anywhere in the shipped source would be a connection the privacy
-// statement (src/settings/privacy.ts) does not name.
+// statement (OUTBOUND in src/settings/outbound.ts) does not name.
 import { expect, test } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
