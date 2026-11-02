@@ -6,30 +6,41 @@ What is built
   installer, pinned)`, the Windows signature reader `check_file` (Windows PowerShell from
   %SystemRoot%\System32, never PATH; the file path goes in an environment variable, never in the
   script text; no window), `parse_report`, `vet` (writes the downloaded bytes to a temp file, checks
-  them, deletes the file; the installer is never started), and the refused-version list
-  (`refused_add`, `refused_has`, store key update.refusedVersions, capped at 20).
+  them, deletes the file; the installer is never started), and the refused-installer list
+  (`refused_add`, `refused_has`, store key update.refusedInstallers, capped at 20). Each entry is
+  known by the installer's SHA-256 and the feed's update signature, never by version, so a stale
+  installer served under a new version number cannot block the real release. (The first build kept a
+  version-keyed list under update.refusedVersions; that key is no longer read.)
 - Rules: a damaged, untrusted or unreadable installer signature is always refused; a signed copy
   (or a build with KOLUX_RS_PUBLISHER pinned at build time) takes only an installer validly signed
   by the same publisher (compared by certificate subject, so a renewed certificate still updates);
   an unsigned copy (today's releases and development copies) takes an unsigned or validly signed
-  installer (the minisign key already vouched for it); a copy whose own signature is damaged or
-  unreadable refuses every installer. There is no setting, variable or argument that skips it.
-- Wiring (evidence/reliability-T-293-update.rs.patch, applies after the T-286-b patches):
-  update_download vets the bytes before keeping them as ready; a refusal stores the version as
-  refused, clears the pending update, writes a diagnostics line and returns
-  "update:refused|<reason>"; update_check drops a refused version (never offered again). The same
-  patch drops the dead_code allow on `pub mod update_guard;` in resources.rs.
+  installer (the minisign key already vouched for it). A "Valid" signature with no publisher, and
+  a HashMismatch, are definite refusals (Verdict::Stop, remembered). An unclear answer (the tool
+  failed, timed out, or reported a status that is not a definite verdict) is Verdict::Retry: that
+  one download is stopped once, nothing is remembered, and the next check tries again. A copy built
+  signed (KOLUX_RS_SIGNED_BUILD=1) whose own signature cannot be read updates nothing (Retry); a
+  copy not built signed treats an unreadable own signature as unsigned. An optional issuer pin
+  (KOLUX_RS_PUBLISHER_ISSUER, `decide_pinned`) additionally requires an installer that passed the
+  subject check to come from that certificate authority; unset today. There is no setting,
+  variable or argument that skips it; update_mark("refusedInstallers", "") can only empty the list.
+- Wiring (as it stands on main): update_download vets the bytes before keeping them as ready; a
+  Stop verdict stores the installer (sha256, signature, version) in update.refusedInstallers, clears
+  the pending update, writes a diagnostics line and returns "update:refused|<reason>"; a Retry
+  verdict does the same except nothing is stored ("stopped once" in the diagnostics line). update_check drops an
+  update whose feed signature is in the refused list (never offered again).
 - Card (evidence/reliability-T-293-UpdateCenter.tsx.patch: card.ts, card.test.ts,
   UpdateCenter.tsx): the marker turns the card into "Update refused for security" with the reason,
   a next-step line, no Try again and no install button (mainAction null), status bar item
   "Update refused", ready pop-up cleared.
 
-Tests (real readings)
+Tests (readings from when T-293 landed; the refused list and Retry rules were reworked later in FIX-2,
+so the test names for those two now differ from the first build)
 - cargo test update (patched, G:/Temp/reliability-v3-logs/t293-p-test.log): 31 passed, 0 failed,
   including 9 resources::update_guard tests: reports_from_the_windows_tool_are_read,
   a_signed_copy_takes_only_its_own_publisher, a_pinned_publisher_wins_over_the_running_signature,
   an_unsigned_copy_never_takes_a_broken_signature, a_copy_that_cannot_vouch_for_itself_refuses_everything,
-  vet_checks_a_temporary_copy_and_removes_it, refused_versions_are_remembered_once_and_capped,
+  vet_checks_a_temporary_copy_and_removes_it, the_refused_list_keeps_each_installer_once_and_only_the_newest_twenty (and a_refused_installer_is_known_by_its_bytes_not_its_version),
   publisher_names_read_well, the_windows_tool_reports_an_unsigned_file (real Get-AuthenticodeSignature
   on a local text file; nothing downloaded or run).
 - cargo test update unpatched (t293-u-test.log): 31 passed.
@@ -44,5 +55,5 @@ LIVE PROOF PENDING (batched; needs a signed build and a test feed, never a real 
    minisign-signed but Authenticode-signed with certificate B. Check for updates.
    Expect: the card reads "Update refused for security", names both publishers, shows no Try
    again and no install button; the status bar shows "Update refused".
-2. Check again. Expect: "Kolux RS is up to date" (the refused version is not offered again).
+2. Check again. Expect: "Kolux RS is up to date" (the refused installer, matched by its update signature, is not offered again).
 3. Same with an unsigned installer against the signed copy: refused, "the installer is not signed".
